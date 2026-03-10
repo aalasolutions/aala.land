@@ -1,0 +1,54 @@
+<form
+  data-test-login-form
+  class="flex col gap-5 w-full"
+  {{on "submit" this.submit}}
+>
+  <div class="flex col gap-2">
+    <label class="font-sm text-muted" for="login-email">Email</label>
+    <input
+      data-test-email-input
+      id="login-email"
+      type="email"
+      class="px-4 py-3 rounded-xl bg-white border border-white@10 text-color font-sm outline-none"
+      placeholder="you@company.com"
+      value={{this.email}}
+      autocomplete="email"
+      required
+      {{on "input" this.updateEmail}}
+    />
+  </div>
+
+  <div class="flex col gap-2">
+    <label class="font-sm text-muted" for="login-password">Password</label>
+    <input
+      data-test-password-input
+      id="login-password"
+      type="password"
+      class="px-4 py-3 rounded-xl bg-white border border-white@10 text-color font-sm outline-none"
+      placeholder="••••••••"
+      value={{this.password}}
+      autocomplete="current-password"
+      required
+      {{on "input" this.updatePassword}}
+    />
+  </div>
+
+  {{#if this.errorMessage}}
+    <p data-test-error-message class="font-sm text-danger text-center">
+      {{this.errorMessage}}
+    </p>
+  {{/if}}
+
+  <button
+    data-test-submit-button
+    type="submit"
+    class="px-4 py-3 rounded-xl bg-primary text-white font-sm font-bold transition"
+    disabled={{this.isLoading}}
+  >
+    {{#if this.isLoading}}
+      Signing in...
+    {{else}}
+      Sign In
+    {{/if}}
+  </button>
+</form>

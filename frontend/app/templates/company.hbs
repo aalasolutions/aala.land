@@ -1,0 +1,84 @@
+{{page-title "Company Settings"}}
+
+<div class="page-header">
+  <div class="page-title-section">
+    <h2 class="page-title"><Ph @icon="building-office" @size="28px" /> Company Settings</h2>
+    <p class="page-subtitle">Manage your company information.</p>
+  </div>
+</div>
+
+{{#if this.model}}
+  <div class="glass-panel p-6 max-w-lg">
+    <form {{on "submit" this.saveCompany}}>
+      <div class="form-group">
+        <label class="form-label" for="company-name">Company Name</label>
+        <input
+          id="company-name"
+          type="text"
+          class="form-input"
+          value={{or this.formName this.model.name}}
+          {{on "input" (fn this.setField "formName")}}
+          required
+        />
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="company-email">Email</label>
+        <input
+          id="company-email"
+          type="email"
+          class="form-input"
+          value={{this.model.email}}
+          disabled
+        />
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="company-phone">Phone</label>
+        <input
+          id="company-phone"
+          type="text"
+          class="form-input"
+          value={{or this.formPhone this.model.phone}}
+          {{on "input" (fn this.setField "formPhone")}}
+          placeholder="+971 4 XXX XXXX"
+        />
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="company-address">Address</label>
+        <textarea
+          id="company-address"
+          class="form-input"
+          rows="3"
+          {{on "input" (fn this.setField "formAddress")}}
+          placeholder="Business Bay, Dubai, UAE"
+        >{{or this.formAddress this.model.address}}</textarea>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Plan</label>
+        <input
+          type="text"
+          class="form-input"
+          value={{or this.model.plan "Free"}}
+          disabled
+        />
+      </div>
+
+      {{#if this.errorMsg}}
+        <p class="text-danger">{{this.errorMsg}}</p>
+      {{/if}}
+
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary" disabled={{this.isSaving}}>
+          {{if this.isSaving "Saving..." "Save Changes"}}
+        </button>
+      </div>
+    </form>
+  </div>
+{{else}}
+  <div class="empty-state">
+    <p>Loading company info...</p>
+  </div>
+{{/if}}

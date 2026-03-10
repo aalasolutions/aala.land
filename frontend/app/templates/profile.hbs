@@ -1,0 +1,74 @@
+{{page-title "My Profile"}}
+
+<div class="page-header">
+  <div class="page-title-section">
+    <h2 class="page-title"><Ph @icon="user" @size="28px" /> My Profile</h2>
+    <p class="page-subtitle">Manage your account settings.</p>
+  </div>
+</div>
+
+{{#if this.model}}
+  <div class="glass-panel p-6 max-w-lg">
+    <form {{on "submit" this.saveProfile}}>
+      <div class="form-group">
+        <label class="form-label" for="profile-name">Name</label>
+        <input
+          id="profile-name"
+          type="text"
+          class="form-input"
+          value={{or this.formName this.model.name}}
+          {{on "input" (fn this.setField "formName")}}
+          required
+        />
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="profile-email">Email</label>
+        <input
+          id="profile-email"
+          type="email"
+          class="form-input"
+          value={{or this.formEmail this.model.email}}
+          {{on "input" (fn this.setField "formEmail")}}
+          required
+        />
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="profile-password">New Password</label>
+        <input
+          id="profile-password"
+          type="password"
+          class="form-input"
+          placeholder="Leave blank to keep current"
+          value={{this.formPassword}}
+          {{on "input" (fn this.setField "formPassword")}}
+        />
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Role</label>
+        <input
+          type="text"
+          class="form-input"
+          value={{this.model.role}}
+          disabled
+        />
+      </div>
+
+      {{#if this.errorMsg}}
+        <p class="text-danger">{{this.errorMsg}}</p>
+      {{/if}}
+
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary" disabled={{this.isSaving}}>
+          {{if this.isSaving "Saving..." "Save Changes"}}
+        </button>
+      </div>
+    </form>
+  </div>
+{{else}}
+  <div class="empty-state">
+    <p>Loading profile...</p>
+  </div>
+{{/if}}

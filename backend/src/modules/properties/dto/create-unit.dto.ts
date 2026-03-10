@@ -1,0 +1,60 @@
+import { IsString, IsNotEmpty, IsOptional, IsUUID, IsEnum, IsNumber, IsInt, IsArray, Min, MaxLength } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { UnitStatus } from '../entities/unit.entity';
+import { PropertyType } from '../entities/property-type.enum';
+
+export class CreateUnitDto {
+  @ApiProperty({ example: '1A' })
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(50)
+  unitNumber: string;
+
+  @ApiProperty({ example: 'uuid-of-building' })
+  @IsUUID()
+  @IsNotEmpty()
+  buildingId: string;
+
+  @ApiPropertyOptional({ example: 'uuid-of-owner' })
+  @IsUUID()
+  @IsOptional()
+  ownerId?: string;
+
+  @ApiPropertyOptional({ enum: UnitStatus, default: UnitStatus.AVAILABLE })
+  @IsEnum(UnitStatus)
+  @IsOptional()
+  status?: UnitStatus;
+
+  @ApiPropertyOptional({ enum: PropertyType, description: 'Overrides building default. Null = inherit from building' })
+  @IsEnum(PropertyType)
+  @IsOptional()
+  propertyType?: PropertyType;
+
+  @ApiPropertyOptional({ example: 150000 })
+  @IsNumber()
+  @IsOptional()
+  price?: number;
+
+  @ApiPropertyOptional({ example: 850.5 })
+  @IsNumber()
+  @IsOptional()
+  sqFt?: number;
+
+  @ApiPropertyOptional({ example: 2 })
+  @IsInt()
+  @Min(0)
+  @IsOptional()
+  bedrooms?: number;
+
+  @ApiPropertyOptional({ example: 2 })
+  @IsInt()
+  @Min(0)
+  @IsOptional()
+  bathrooms?: number;
+
+  @ApiPropertyOptional({ example: ['free_parking', 'gym', 'pool'], description: 'List of amenity keys' })
+  @IsArray()
+  @IsString({ each: true })
+  @IsOptional()
+  amenities?: string[];
+}

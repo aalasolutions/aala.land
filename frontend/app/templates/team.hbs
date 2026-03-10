@@ -1,0 +1,99 @@
+<div class="page-header">
+  <div class="page-title-section">
+    <h2 class="page-title"><Ph @icon="users-three" @size="28px" /> Team</h2>
+    <p class="page-subtitle">Manage your team members and their roles.</p>
+  </div>
+  <button type="button" class="btn btn-primary" data-test-add-member {{on "click" this.openCreate}}>
+    <Ph @icon="plus" /> Add Member
+  </button>
+</div>
+
+<div class="team-list">
+  {{#each this.model.users as |user|}}
+    <div class="list-item" data-test-user-id={{user.id}}>
+      <div class="user-info">
+        <div class="agent-avatar">{{user.name}}</div>
+        <div class="user-details">
+          <p class="user-name">{{user.name}}</p>
+          <p class="user-email">{{user.email}}</p>
+        </div>
+      </div>
+      <div class="user-meta">
+        <span class="status-badge">{{user.role}}</span>
+        <span class="user-status">
+          {{#if user.isActive}}Active{{else}}Inactive{{/if}}
+        </span>
+      </div>
+      <div class="user-actions">
+        <button type="button" class="btn btn-secondary" data-test-edit-user {{on "click" (fn this.openEdit user)}}>
+          <Ph @icon="pencil-simple" /> Edit
+        </button>
+        <button type="button" class="btn btn-secondary text-danger" data-test-delete-user {{on "click" (fn this.deleteUser user)}}>
+          <Ph @icon="trash" /> Remove
+        </button>
+      </div>
+    </div>
+  {{else}}
+    <div class="empty-state">
+      <p>No team members yet. Add your first team member to get started.</p>
+    </div>
+  {{/each}}
+</div>
+
+<p class="text-muted" style="margin-top: var(--space-4);">
+  Showing {{this.model.users.length}} of {{this.model.total}} team members
+</p>
+
+{{#if this.showModal}}
+  <div class="modal-backdrop" data-test-modal-backdrop {{on "click" this.closeModal}}></div>
+  <div class="modal-panel" data-test-user-modal>
+    <h3 class="modal-title">
+      {{#if this.editUser}}
+        Edit Team Member
+      {{else}}
+        Add Team Member
+      {{/if}}
+    </h3>
+    {{#if this.errorMsg}}
+      <p class="error-message" data-test-error>{{this.errorMsg}}</p>
+    {{/if}}
+    <form {{on "submit" this.saveUser}}>
+      <div class="form-group">
+        <label class="form-label">Name</label>
+        <input type="text" class="form-input" data-test-input-name value={{this.formName}} {{on "input" (fn this.setField "formName")}} required />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Email</label>
+        <input type="email" class="form-input" data-test-input-email value={{this.formEmail}} {{on "input" (fn this.setField "formEmail")}} required />
+      </div>
+      {{#unless this.editUser}}
+        <div class="form-group">
+          <label class="form-label">Password</label>
+          <input type="password" class="form-input" data-test-input-password value={{this.formPassword}} {{on "input" (fn this.setField "formPassword")}} required />
+        </div>
+      {{/unless}}
+      <div class="form-group">
+        <label class="form-label">Role</label>
+        <select class="form-select" data-test-input-role {{on "change" (fn this.setField "formRole")}}>
+          {{#each this.roles as |roleOption|}}
+            <option value={{roleOption.value}} selected={{eq roleOption.value this.formRole}}>{{roleOption.label}}</option>
+          {{/each}}
+        </select>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-secondary" {{on "click" this.closeModal}}>
+          Cancel
+        </button>
+        <button type="submit" class="btn btn-primary" disabled={{this.isSaving}} data-test-save-user>
+          {{#if this.isSaving}}
+            Saving...
+          {{else if this.editUser}}
+            Update
+          {{else}}
+            Create
+          {{/if}}
+        </button>
+      </div>
+    </form>
+  </div>
+{{/if}}

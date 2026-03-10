@@ -1,0 +1,146 @@
+{{page-title "Maintenance"}}
+
+<div data-test-maintenance-page class="flex col gap-6">
+  <div class="flex between x-center">
+    <div>
+      <h2 class="font-3xl font-bold"><Ph @icon="wrench" @size="28px" /> Maintenance</h2>
+      <p class="text-muted mt-1">Track and manage property work orders.</p>
+    </div>
+    <button type="button" class="btn btn-primary" {{on "click" this.openCreate}}>
+      <Ph @icon="plus" /> New Work Order
+    </button>
+  </div>
+
+  <div class="flex gap-4 x-center">
+    <div class="flex col gap-1">
+      <label class="font-xs text-muted">Status</label>
+      <select class="form-input" style="min-width: 150px;" {{on "change" (fn this.setField "filterStatus")}}>
+        {{#each this.statusOptions as |opt|}}
+          <option value={{opt.value}} selected={{eq this.filterStatus opt.value}}>{{opt.label}}</option>
+        {{/each}}
+      </select>
+    </div>
+    <div class="flex col gap-1">
+      <label class="font-xs text-muted">Period</label>
+      <select class="form-input" style="min-width: 150px;" {{on "change" (fn this.setField "filterMonth")}}>
+        {{#each this.monthOptions as |opt|}}
+          <option value={{opt.value}} selected={{eq this.filterMonth opt.value}}>{{opt.label}}</option>
+        {{/each}}
+      </select>
+    </div>
+  </div>
+
+  <div class="glass-panel p-5">
+    {{#if this.filteredWorkOrders.length}}
+      <div class="flex col gap-3">
+        {{#each this.filteredWorkOrders as |wo|}}
+          <div data-test-work-order class="flex between x-center p-4 rounded-xl bg-white@02 border border-white@05">
+            <div class="flex col gap-1">
+              <p class="font-sm font-bold">{{wo.title}}</p>
+              <p class="text-muted font-xs">{{wo.category}} - Priority: {{wo.priority}}</p>
+              {{#if wo.scheduledDate}}
+                <p class="text-muted font-xs">Scheduled: {{wo.scheduledDate}}</p>
+              {{/if}}
+            </div>
+            <div class="flex x-center gap-3">
+              <span class="font-xs px-2 py-1 rounded bg-white@05">{{wo.status}}</span>
+              <button type="button" class="btn btn-secondary btn-sm" {{on "click" (fn this.openEdit wo)}}>
+                <Ph @icon="pencil-simple" /> Edit
+              </button>
+            </div>
+          </div>
+        {{/each}}
+      </div>
+    {{else}}
+      <p class="text-muted text-center py-8">No work orders match your filters.</p>
+    {{/if}}
+  </div>
+</div>
+
+{{#if this.showModal}}
+  <button type="button" class="modal-backdrop" aria-label="Close modal" {{on "click" this.closeModal}}></button>
+  <div class="modal-panel glass-panel p-8 flex col gap-6" role="dialog">
+    <div class="flex between x-center">
+      <h3 class="font-xl font-bold">{{if this.editWorkOrder "Edit Work Order" "New Work Order"}}</h3>
+      <button type="button" class="text-muted font-lg px-2" {{on "click" this.closeModal}}>x</button>
+    </div>
+    <form class="flex col gap-4" {{on "submit" this.saveWorkOrder}}>
+      <div class="flex col gap-2">
+        <label class="font-sm text-muted" for="wo-title">Title *</label>
+        <input id="wo-title" type="text"
+          class="form-input"
+          placeholder="e.g. Fix leaking pipe in unit 302" value={{this.formTitle}} required {{on "input" (fn this.setField "formTitle")}} />
+      </div>
+      <div class="flex col gap-2">
+        <label class="font-sm text-muted" for="wo-desc">Description *</label>
+        <textarea id="wo-desc" rows="3"
+          class="form-input"
+          placeholder="Describe the issue in detail..." required {{on "input" (fn this.setField "formDescription")}}>{{this.formDescription}}</textarea>
+      </div>
+      <div class="flex gap-4">
+        <div class="flex col gap-2 flex-1">
+          <label class="font-sm text-muted" for="wo-priority">Priority</label>
+          <select id="wo-priority" class="form-input" {{on "change" (fn this.setField "formPriority")}}>
+            <option value="LOW" selected={{eq this.formPriority "LOW"}}>Low</option>
+            <option value="MEDIUM" selected={{eq this.formPriority "MEDIUM"}}>Medium</option>
+            <option value="HIGH" selected={{eq this.formPriority "HIGH"}}>High</option>
+            <option value="URGENT" selected={{eq this.formPriority "URGENT"}}>Urgent</option>
+          </select>
+        </div>
+        <div class="flex col gap-2 flex-1">
+          <label class="font-sm text-muted" for="wo-category">Category</label>
+          <select id="wo-category" class="form-input" {{on "change" (fn this.setField "formCategory")}}>
+            <option value="PLUMBING" selected={{eq this.formCategory "PLUMBING"}}>Plumbing</option>
+            <option value="ELECTRICAL" selected={{eq this.formCategory "ELECTRICAL"}}>Electrical</option>
+            <option value="HVAC" selected={{eq this.formCategory "HVAC"}}>HVAC</option>
+            <option value="STRUCTURAL" selected={{eq this.formCategory "STRUCTURAL"}}>Structural</option>
+            <option value="CLEANING" selected={{eq this.formCategory "CLEANING"}}>Cleaning</option>
+            <option value="PEST_CONTROL" selected={{eq this.formCategory "PEST_CONTROL"}}>Pest Control</option>
+            <option value="APPLIANCE" selected={{eq this.formCategory "APPLIANCE"}}>Appliance</option>
+            <option value="OTHER" selected={{eq this.formCategory "OTHER"}}>Other</option>
+          </select>
+        </div>
+      </div>
+      {{#if this.editWorkOrder}}
+        <div class="flex col gap-2">
+          <label class="font-sm text-muted" for="wo-status">Status</label>
+          <select id="wo-status" class="form-input" {{on "change" (fn this.setField "formStatus")}}>
+            <option value="PENDING" selected={{eq this.formStatus "PENDING"}}>Pending</option>
+            <option value="IN_PROGRESS" selected={{eq this.formStatus "IN_PROGRESS"}}>In Progress</option>
+            <option value="PENDING_APPROVAL" selected={{eq this.formStatus "PENDING_APPROVAL"}}>Pending Approval</option>
+            <option value="COMPLETED" selected={{eq this.formStatus "COMPLETED"}}>Completed</option>
+          </select>
+        </div>
+      {{/if}}
+      <div class="flex gap-4">
+        <div class="flex col gap-2 flex-1">
+          <label class="font-sm text-muted" for="wo-reported-by">Reported By</label>
+          <input id="wo-reported-by" type="text"
+            class="form-input"
+            placeholder="Tenant or staff name" value={{this.formReportedBy}} {{on "input" (fn this.setField "formReportedBy")}} />
+        </div>
+        <div class="flex col gap-2 flex-1">
+          <label class="font-sm text-muted" for="wo-cost">Estimated Cost (AED)</label>
+          <input id="wo-cost" type="number" min="0" step="0.01"
+            class="form-input"
+            placeholder="e.g. 500" value={{this.formEstimatedCost}} {{on "input" (fn this.setField "formEstimatedCost")}} />
+        </div>
+      </div>
+      <div class="flex col gap-2">
+        <label class="font-sm text-muted" for="wo-scheduled">Scheduled Date</label>
+        <input id="wo-scheduled" type="date"
+          class="form-input"
+          value={{this.formScheduledDate}} {{on "change" (fn this.setField "formScheduledDate")}} />
+      </div>
+      {{#if this.errorMsg}}
+        <p class="font-sm text-danger">{{this.errorMsg}}</p>
+      {{/if}}
+      <div class="flex gap-3 mt-2">
+        <button type="button" class="btn btn-secondary" {{on "click" this.closeModal}}>Cancel</button>
+        <button type="submit" class="btn btn-primary" disabled={{this.isSaving}}>
+          {{if this.isSaving "Saving..." (if this.editWorkOrder "Update" "Create Work Order")}}
+        </button>
+      </div>
+    </form>
+  </div>
+{{/if}}

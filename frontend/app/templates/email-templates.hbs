@@ -1,0 +1,144 @@
+{{page-title "Email Templates"}}
+
+<div data-test-email-templates class="flex col gap-6">
+  <div class="flex between x-center">
+    <div class="flex x-center gap-3">
+      <Ph @icon="envelope-simple" @size="24px" />
+      <h2 class="font-2xl font-bold">Email Templates</h2>
+      <span class="text-muted font-sm">({{@model.total}})</span>
+    </div>
+    <button type="button" class="btn btn-primary" {{on "click" this.openCreate}}>
+      <Ph @icon="plus" /> New Template
+    </button>
+  </div>
+
+  <div class="flex gap-3">
+    <select class="form-select" style="max-width: 200px;" {{on "change" this.filterCategory}}>
+      <option value="">All Categories</option>
+      {{#each this.categories as |cat|}}
+        <option value={{cat.value}} selected={{eq this.category cat.value}}>{{cat.label}}</option>
+      {{/each}}
+    </select>
+  </div>
+
+  {{#if @model.templates.length}}
+    <div class="grid cols-2 gap-4">
+      {{#each @model.templates as |template|}}
+        <div data-test-template-card class="glass-panel p-5 flex col gap-3">
+          <div class="flex between x-center">
+            <div class="flex x-center gap-2">
+              <Ph @icon="envelope-simple" />
+              <h4 class="font-md font-bold">{{template.name}}</h4>
+            </div>
+            <div class="flex gap-1 x-center">
+              {{#unless template.isActive}}
+                <span class="type-badge type-inactive">Inactive</span>
+              {{/unless}}
+              <span class="type-badge type-{{lowercase template.category}}">{{template.category}}</span>
+            </div>
+          </div>
+          <p class="text-muted font-sm">Subject: {{template.subject}}</p>
+          {{#if template.variables.length}}
+            <div class="flex gap-1 wrap">
+              {{#each template.variables as |v|}}
+                <span class="amenity-tag">{{v}}</span>
+              {{/each}}
+            </div>
+          {{/if}}
+          <div class="flex gap-2 mt-auto">
+            <button type="button" class="btn btn-secondary btn-sm" {{on "click" (fn this.openPreview template)}}>
+              <Ph @icon="eye" /> Preview
+            </button>
+            <button type="button" class="btn btn-secondary btn-sm" {{on "click" (fn this.openEdit template)}}>
+              <Ph @icon="pencil-simple" /> Edit
+            </button>
+            <button type="button" class="btn btn-danger btn-sm" {{on "click" (fn this.deleteTemplate template)}}>
+              <Ph @icon="trash" />
+            </button>
+          </div>
+        </div>
+      {{/each}}
+    </div>
+  {{else}}
+    <div class="glass-panel p-8 text-center">
+      <Ph @icon="envelope-simple" @size="48px" @color="var(--text-muted)" />
+      <p class="text-muted mt-3">No email templates yet. Create your first template above.</p>
+    </div>
+  {{/if}}
+</div>
+
+{{#if this.showModal}}
+  <button type="button" class="modal-backdrop" aria-label="Close modal" {{on "click" this.closeModal}}></button>
+  <div class="modal-panel glass-panel p-8 flex col gap-6" role="dialog" aria-label="Email template form">
+    <div class="flex between x-center">
+      <h3 class="font-xl font-bold">{{if this.editTemplate "Edit Template" "New Template"}}</h3>
+      <button type="button" class="text-muted font-lg px-2" {{on "click" this.closeModal}}>x</button>
+    </div>
+    <form class="flex col gap-4" {{on "submit" this.saveTemplate}}>
+      <div class="flex gap-4">
+        <div class="flex col gap-2 flex-1">
+          <label class="font-sm text-muted" for="t-name">Template Name *</label>
+          <input id="t-name" type="text" class="form-input" placeholder="Welcome New Tenant" value={{this.formName}} required {{on "input" (fn this.setField "formName")}} />
+        </div>
+        <div class="flex col gap-2" style="min-width: 180px;">
+          <label class="font-sm text-muted" for="t-category">Category</label>
+          <select id="t-category" class="form-select" {{on "change" (fn this.setField "formCategory")}}>
+            {{#each this.categories as |cat|}}
+              <option value={{cat.value}} selected={{eq this.formCategory cat.value}}>{{cat.label}}</option>
+            {{/each}}
+          </select>
+        </div>
+      </div>
+      <div class="flex col gap-2">
+        <label class="font-sm text-muted" for="t-subject">Subject *</label>
+        <input id="t-subject" type="text" class="form-input" placeholder="Welcome to your new home!" value={{this.formSubject}} required {{on "input" (fn this.setField "formSubject")}} />
+      </div>
+      <div class="flex col gap-2">
+        <label class="font-sm text-muted" for="t-body">Body (HTML) *</label>
+        <textarea id="t-body" class="form-input" rows="8" placeholder="Use curly braces for variables, e.g. first name" value={{this.formBody}} required {{on "input" (fn this.setField "formBody")}}></textarea>
+      </div>
+      <div class="flex col gap-2">
+        <label class="font-sm text-muted" for="t-vars">Variables (comma-separated)</label>
+        <input id="t-vars" type="text" class="form-input" placeholder="firstName, lastName, propertyName" value={{this.formVariables}} {{on "input" (fn this.setField "formVariables")}} />
+        <p class="font-xs text-muted">Use double curly braces in subject/body to reference variables.</p>
+      </div>
+      <div class="flex x-center gap-2">
+        <input id="t-active" type="checkbox" checked={{this.formIsActive}} {{on "change" (fn this.setField "formIsActive")}} />
+        <label class="font-sm" for="t-active">Active</label>
+      </div>
+      {{#if this.errorMsg}}
+        <p class="font-sm text-danger">{{this.errorMsg}}</p>
+      {{/if}}
+      <div class="flex gap-3 mt-2">
+        <button type="button" class="btn btn-secondary" {{on "click" this.closeModal}}>Cancel</button>
+        <button type="submit" class="btn btn-primary" disabled={{this.isSaving}}>
+          {{if this.isSaving "Saving..." (if this.editTemplate "Update" "Create Template")}}
+        </button>
+      </div>
+    </form>
+  </div>
+{{/if}}
+
+{{#if this.showPreview}}
+  <button type="button" class="modal-backdrop" aria-label="Close preview" {{on "click" this.closePreview}}></button>
+  <div class="modal-panel glass-panel p-8 flex col gap-6" role="dialog" aria-label="Email preview">
+    <div class="flex between x-center">
+      <h3 class="font-xl font-bold">Template Preview</h3>
+      <button type="button" class="text-muted font-lg px-2" {{on "click" this.closePreview}}>x</button>
+    </div>
+    <div class="flex col gap-3">
+      <div class="flex col gap-1">
+        <p class="font-sm text-muted">Subject:</p>
+        <p class="font-bold">{{this.previewSubject}}</p>
+      </div>
+      {{#if this.previewVars}}
+        <p class="font-xs text-muted">Variables: {{this.previewVars}}</p>
+      {{/if}}
+      <div class="flex col gap-1">
+        <p class="font-sm text-muted">Body:</p>
+        <div class="p-4 bg-white rounded-lg border font-sm">{{{this.previewBody}}}</div>
+      </div>
+    </div>
+    <button type="button" class="btn btn-secondary" {{on "click" this.closePreview}}>Close</button>
+  </div>
+{{/if}}

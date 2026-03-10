@@ -1,0 +1,41 @@
+{{page-title "Dashboard"}}
+
+<div data-test-dashboard class="flex col gap-8">
+  <div>
+    <h2 class="font-3xl font-bold"><Ph @icon="squares-four" @size="28px" /> Command Center</h2>
+    <p class="text-muted mt-1">Live overview of your property empire.</p>
+  </div>
+
+  {{#if @model.kpis}}
+    <div class="grid cols-3 gap-6">
+      <div data-test-kpi="total-units" class="glass-panel p-6">
+        <p class="text-muted font-sm uppercase tracking-wider mb-1"><Ph @icon="buildings" /> Total Units</p>
+        <h3 class="font-4xl font-bold">{{@model.kpis.totalUnits}}</h3>
+      </div>
+      <div data-test-kpi="total-leads" class="glass-panel p-6">
+        <p class="text-muted font-sm uppercase tracking-wider mb-1"><Ph @icon="funnel" /> Active Leads</p>
+        <h3 class="font-4xl font-bold">{{@model.kpis.totalLeads}}</h3>
+      </div>
+      <div data-test-kpi="monthly-revenue" class="glass-panel p-6">
+        <p class="text-muted font-sm uppercase tracking-wider mb-1"><Ph @icon="currency-dollar" /> Monthly Revenue</p>
+        <h3 class="font-4xl font-bold">AED {{format-number @model.kpis.monthlyRevenue}}</h3>
+      </div>
+      <div data-test-kpi="won-leads" class="glass-panel p-6">
+        <p class="text-muted font-sm uppercase tracking-wider mb-1"><Ph @icon="trophy" /> Deals Won</p>
+        <h3 class="font-4xl font-bold">{{@model.kpis.wonLeads}}</h3>
+      </div>
+      <div data-test-kpi="active-leases" class="glass-panel p-6">
+        <p class="text-muted font-sm uppercase tracking-wider mb-1"><Ph @icon="file-text" /> Active Leases</p>
+        <h3 class="font-4xl font-bold">{{@model.kpis.activeLeases}}</h3>
+      </div>
+      <div data-test-kpi="pending-cheques" class="glass-panel p-6">
+        <p class="text-muted font-sm uppercase tracking-wider mb-1"><Ph @icon="checks" /> Pending Cheques</p>
+        <h3 class="font-4xl font-bold">{{@model.kpis.pendingCheques}}</h3>
+      </div>
+    </div>
+  {{else}}
+    <div class="glass-panel p-8 text-center">
+      <p class="text-muted">Loading KPIs...</p>
+    </div>
+  {{/if}}
+</div>

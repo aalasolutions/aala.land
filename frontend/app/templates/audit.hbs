@@ -1,0 +1,91 @@
+<div class="page-header">
+  <h1 class="page-title"><Ph @icon="clipboard-text" @size="28px" /> Audit Logs</h1>
+  <p class="page-subtitle">Track all changes across your account</p>
+</div>
+
+<div class="glass-panel card">
+  <div class="card-header">
+    <div class="flex gap-2">
+      <select class="form-field" {{on "change" this.setFilterAction}}>
+        {{#each this.model.auditActions as |actionChoice|}}
+          <option value={{actionChoice.value}}>
+            {{actionChoice.label}}
+          </option>
+        {{/each}}
+      </select>
+
+      <select class="form-field" {{on "change" this.setFilterEntityType}}>
+        {{#each this.model.entityTypes as |entityChoice|}}
+          <option value={{entityChoice.value}}>
+            {{entityChoice.label}}
+          </option>
+        {{/each}}
+      </select>
+
+      {{#if (or this.filterAction this.filterEntityType)}}
+        <button type="button" class="btn btn-secondary" {{on "click" this.clearFilters}}>
+          Clear Filters
+        </button>
+      {{/if}}
+    </div>
+  </div>
+
+  <div class="card-content">
+    {{#if this.model.forbidden}}
+      <div class="alert alert-error">
+        <Ph @icon="warning" @size="20px" />
+        <span>You don't have permission to view audit logs.</span>
+      </div>
+    {{else}}
+      {{#if (gt this.model.logs.length 0)}}
+        <div class="audit-list">
+          {{#each this.model.logs as |log|}}
+            <div class="audit-item">
+              <div class="audit-summary" {{on "click" (fn this.toggleExpand log.id)}}>
+                <span class="audit-badge {{this.getActionBadgeClass log.action}}">
+                  {{log.action}}
+                </span>
+                <span class="audit-entity">{{log.entityType}}</span>
+                <span class="audit-entity-id">{{log.entityId}}</span>
+                <span class="audit-user">{{log.userEmail}}</span>
+                <span class="audit-date">{{this.formatDate log.createdAt}}</span>
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="chevron {{if (eq this.expandedLogId log.id) 'expanded'}}">
+                  <polyline points="6 9 12 15 18 9"/>
+                </svg>
+              </div>
+              {{#if (eq this.expandedLogId log.id)}}
+                <div class="audit-details">
+                  <div class="audit-detail-row">
+                    <span class="audit-detail-label">IP Address:</span>
+                    <span class="audit-detail-value">{{log.ipAddress}}</span>
+                  </div>
+                  <div class="audit-detail-row">
+                    <span class="audit-detail-label">User Agent:</span>
+                    <span class="audit-detail-value text-muted">{{log.userAgent}}</span>
+                  </div>
+                  {{#if log.oldValue}}
+                    <div class="audit-detail-section">
+                      <span class="audit-detail-label">Old Value:</span>
+                      <pre class="audit-json">{{this.formatJson log.oldValue}}</pre>
+                    </div>
+                  {{/if}}
+                  {{#if log.newValue}}
+                    <div class="audit-detail-section">
+                      <span class="audit-detail-label">New Value:</span>
+                      <pre class="audit-json">{{this.formatJson log.newValue}}</pre>
+                    </div>
+                  {{/if}}
+                </div>
+              {{/if}}
+            </div>
+          {{/each}}
+        </div>
+      {{else}}
+        <div class="empty-state">
+          <Ph @icon="clock" @size="64px" />
+          <p>No audit logs found</p>
+        </div>
+      {{/if}}
+    {{/if}}
+  </div>
+</div>

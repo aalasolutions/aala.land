@@ -1,0 +1,112 @@
+{{page-title "Cheques"}}
+
+<div data-test-cheques-page class="flex col gap-6">
+  <div class="flex between x-center">
+    <div>
+      <h2 class="font-3xl font-bold"><Ph @icon="checks" @size="28px" /> Cheque Management</h2>
+      <p class="text-muted mt-1">Track post-dated cheques and payment schedules.</p>
+    </div>
+    <button type="button" class="btn btn-primary" {{on "click" this.openCreate}}>
+      <Ph @icon="plus" /> New Cheque
+    </button>
+  </div>
+
+  <div class="glass-panel p-5">
+    {{#if @model.cheques.length}}
+      <div class="flex col gap-3">
+        {{#each @model.cheques as |cheque|}}
+          <div data-test-cheque-row class="flex between x-center p-4 rounded-xl bg-white@02 border border-white@05">
+            <div class="flex col gap-1">
+              <p class="font-sm font-bold"><Ph @icon="hash" /> {{cheque.chequeNumber}} - <Ph @icon="bank" /> {{cheque.bankName}}</p>
+              <p class="text-muted font-xs">{{cheque.accountHolder}} - AED {{format-number cheque.amount}}</p>
+              <p class="text-muted font-xs"><Ph @icon="calendar" /> Due: {{cheque.dueDate}} - {{cheque.type}}</p>
+            </div>
+            <div class="flex x-center gap-3">
+              <span class="font-xs px-2 py-1 rounded bg-white@05">{{cheque.status}}</span>
+              <button type="button" class="btn btn-secondary btn-sm" {{on "click" (fn this.openEdit cheque)}}>
+                <Ph @icon="pencil-simple" /> Edit
+              </button>
+            </div>
+          </div>
+        {{/each}}
+      </div>
+    {{else}}
+      <p class="text-muted text-center py-8">No cheques yet. Add your first cheque record.</p>
+    {{/if}}
+  </div>
+</div>
+
+{{#if this.showModal}}
+  <button type="button" class="modal-backdrop" aria-label="Close modal" {{on "click" this.closeModal}}></button>
+  <div class="modal-panel glass-panel p-8 flex col gap-6" role="dialog">
+    <div class="flex between x-center">
+      <h3 class="font-xl font-bold">{{if this.editCheque "Edit Cheque" "New Cheque"}}</h3>
+      <button type="button" class="text-muted font-lg px-2" {{on "click" this.closeModal}}>x</button>
+    </div>
+    <form class="flex col gap-4" {{on "submit" this.saveCheque}}>
+      <div class="flex gap-4">
+        <div class="flex col gap-2 flex-1">
+          <label class="font-sm text-muted" for="chq-number">Cheque Number *</label>
+          <input id="chq-number" type="text"
+            class="form-input"
+            placeholder="e.g. 000123" value={{this.formChequeNumber}} required {{on "input" (fn this.setField "formChequeNumber")}} />
+        </div>
+        <div class="flex col gap-2 flex-1">
+          <label class="font-sm text-muted" for="chq-type">Type</label>
+          <select id="chq-type" class="form-input" {{on "change" (fn this.setField "formType")}}>
+            <option value="RENT" selected={{eq this.formType "RENT"}}>Rent</option>
+            <option value="SECURITY_DEPOSIT" selected={{eq this.formType "SECURITY_DEPOSIT"}}>Security Deposit</option>
+            <option value="MAINTENANCE" selected={{eq this.formType "MAINTENANCE"}}>Maintenance</option>
+            <option value="OTHER" selected={{eq this.formType "OTHER"}}>Other</option>
+          </select>
+        </div>
+      </div>
+      <div class="flex col gap-2">
+        <label class="font-sm text-muted" for="chq-bank">Bank Name *</label>
+        <input id="chq-bank" type="text"
+          class="form-input"
+          placeholder="e.g. Emirates NBD" value={{this.formBankName}} required {{on "input" (fn this.setField "formBankName")}} />
+      </div>
+      <div class="flex col gap-2">
+        <label class="font-sm text-muted" for="chq-holder">Account Holder *</label>
+        <input id="chq-holder" type="text"
+          class="form-input"
+          placeholder="e.g. Ahmed Al Mansouri" value={{this.formAccountHolder}} required {{on "input" (fn this.setField "formAccountHolder")}} />
+      </div>
+      <div class="flex col gap-2">
+        <label class="font-sm text-muted" for="chq-unit">Property (Unit)</label>
+        <select id="chq-unit" class="form-input" {{on "change" (fn this.setField "formUnitId")}}>
+          <option value="">No property linked</option>
+          {{#each @model.units as |unit|}}
+            <option value={{unit.id}} selected={{eq unit.id this.formUnitId}}>
+              {{unit.areaName}} - {{unit.buildingName}} - Unit {{unit.unitNumber}}
+            </option>
+          {{/each}}
+        </select>
+      </div>
+      <div class="flex gap-4">
+        <div class="flex col gap-2 flex-1">
+          <label class="font-sm text-muted" for="chq-amount">Amount (AED) *</label>
+          <input id="chq-amount" type="number" min="0" step="0.01"
+            class="form-input"
+            placeholder="e.g. 8500" value={{this.formAmount}} required {{on "input" (fn this.setField "formAmount")}} />
+        </div>
+        <div class="flex col gap-2 flex-1">
+          <label class="font-sm text-muted" for="chq-due">Due Date *</label>
+          <input id="chq-due" type="date"
+            class="form-input"
+            value={{this.formDueDate}} required {{on "change" (fn this.setField "formDueDate")}} />
+        </div>
+      </div>
+      {{#if this.errorMsg}}
+        <p class="font-sm text-danger">{{this.errorMsg}}</p>
+      {{/if}}
+      <div class="flex gap-3 mt-2">
+        <button type="button" class="btn btn-secondary" {{on "click" this.closeModal}}>Cancel</button>
+        <button type="submit" class="btn btn-primary" disabled={{this.isSaving}}>
+          {{if this.isSaving "Saving..." (if this.editCheque "Update" "Create Cheque")}}
+        </button>
+      </div>
+    </form>
+  </div>
+{{/if}}

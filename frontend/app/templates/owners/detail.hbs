@@ -1,0 +1,83 @@
+<div class="page-header">
+  <div class="page-title-section">
+    <button type="button" class="btn btn-secondary btn-back" {{on "click" this.goBack}}>
+      ← Back
+    </button>
+    <h2 class="page-title">{{this.model.owner.name}}</h2>
+    <p class="page-subtitle">Property Owner Details</p>
+  </div>
+  <button type="button" class="btn btn-primary" {{on "click" this.editOwner}}>
+    Edit Owner
+  </button>
+</div>
+
+<div class="owner-detail-grid">
+  <div class="info-card">
+    <h3 class="card-title">Contact Information</h3>
+    <div class="info-row">
+      <span class="info-label">Email:</span>
+      <span class="info-value">{{#if this.model.owner.email}}{{this.model.owner.email}}{{else}}N/A{{/if}}</span>
+    </div>
+    <div class="info-row">
+      <span class="info-label">Phone:</span>
+      <span class="info-value">{{#if this.model.owner.phone}}{{this.model.owner.phone}}{{else}}N/A{{/if}}</span>
+    </div>
+    <div class="info-row">
+      <span class="info-label">Nationality ID:</span>
+      <span class="info-value">{{#if this.model.owner.nationalityId}}{{this.model.owner.nationalityId}}{{else}}N/A{{/if}}</span>
+    </div>
+    <div class="info-row">
+      <span class="info-label">Address:</span>
+      <span class="info-value">{{#if this.model.owner.address}}{{this.model.owner.address}}{{else}}N/A{{/if}}</span>
+    </div>
+    {{#if this.model.owner.assignedAgent}}
+      <div class="info-row">
+        <span class="info-label">Assigned Agent:</span>
+        <span class="info-value">{{this.model.owner.assignedAgent.name}}</span>
+      </div>
+    {{/if}}
+  </div>
+
+  {{#if this.model.owner.notes}}
+    <div class="info-card">
+      <h3 class="card-title">Notes</h3>
+      <p class="notes-text">{{this.model.owner.notes}}</p>
+    </div>
+  {{/if}}
+</div>
+
+<div class="units-section">
+  <h3 class="section-title">Properties Owned ({{this.model.owner.units.length}})</h3>
+  {{#if this.model.owner.units}}
+    <div class="units-grid">
+      {{#each this.model.owner.units as |unit|}}
+        {{#if unit.building}}
+          <LinkTo @route="properties.detail" @model={{unit.building.areaId}} class="unit-card unit-card-link">
+            <p class="unit-number">{{unit.unitNumber}}</p>
+            {{#if unit.building.area}}
+              <p class="unit-building">{{unit.building.area.name}} - {{unit.building.name}}</p>
+            {{else}}
+              <p class="unit-building">{{unit.building.name}}</p>
+            {{/if}}
+            <p class="unit-status">{{unit.status}}</p>
+            {{#if unit.price}}
+              <p class="unit-price">AED {{unit.price}}</p>
+            {{/if}}
+          </LinkTo>
+        {{else}}
+          <div class="unit-card">
+            <p class="unit-number">{{unit.unitNumber}}</p>
+            <p class="unit-status">{{unit.status}}</p>
+            {{#if unit.price}}
+              <p class="unit-price">AED {{unit.price}}</p>
+            {{/if}}
+          </div>
+        {{/if}}
+      {{/each}}
+    </div>
+  {{else}}
+    <div class="empty-state">
+      <p>No properties assigned to this owner yet.</p>
+    </div>
+  {{/if}}
+</div>

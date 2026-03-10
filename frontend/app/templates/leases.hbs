@@ -1,0 +1,139 @@
+{{page-title "Leases"}}
+
+<div data-test-leases-page class="flex col gap-6">
+  <div class="flex between x-center">
+    <div>
+      <h2 class="font-3xl font-bold"><Ph @icon="file-text" @size="28px" /> Lease Agreements</h2>
+      <p class="text-muted mt-1">Manage tenant lease contracts and renewals.</p>
+    </div>
+    <button type="button" class="btn btn-primary" {{on "click" this.openCreate}}>
+      <Ph @icon="plus" /> New Lease
+    </button>
+  </div>
+
+  <div class="glass-panel p-5">
+    {{#if @model.leases.length}}
+      <div class="flex col gap-3">
+        {{#each @model.leases as |lease|}}
+          <div data-test-lease-row class="flex between x-center p-4 rounded-xl bg-white@02 border border-white@05">
+            <div class="flex col gap-1">
+              <p class="font-sm font-bold">{{lease.tenantName}}</p>
+              <p class="text-muted font-xs">{{lease.type}} - AED {{format-number lease.monthlyRent}}/mo</p>
+              <p class="text-muted font-xs">{{lease.startDate}} to {{lease.endDate}}</p>
+            </div>
+            <div class="flex x-center gap-3">
+              <span class="font-xs px-2 py-1 rounded bg-white@05">{{lease.status}}</span>
+              <button type="button" class="btn btn-secondary btn-sm" {{on "click" (fn this.openEdit lease)}}>
+                <Ph @icon="pencil-simple" /> Edit
+              </button>
+            </div>
+          </div>
+        {{/each}}
+      </div>
+    {{else}}
+      <p class="text-muted text-center py-8">No leases yet. Create your first lease agreement.</p>
+    {{/if}}
+  </div>
+</div>
+
+{{#if this.showModal}}
+  <button type="button" class="modal-backdrop" aria-label="Close modal" {{on "click" this.closeModal}}></button>
+  <div class="modal-panel glass-panel p-8 flex col gap-6" role="dialog">
+    <div class="flex between x-center">
+      <h3 class="font-xl font-bold">{{if this.editLease "Edit Lease" "New Lease"}}</h3>
+      <button type="button" class="text-muted font-lg px-2" {{on "click" this.closeModal}}>x</button>
+    </div>
+    <form class="flex col gap-4" {{on "submit" this.saveLease}}>
+      <div class="flex col gap-2">
+        <label class="font-sm text-muted" for="lease-unit-id">Unit *</label>
+        <select id="lease-unit-id" class="form-input" {{on "change" (fn this.setField "formUnitId")}} required>
+          <option value="">Select a unit...</option>
+          {{#each @model.units as |unit|}}
+            <option value={{unit.id}} selected={{eq unit.id this.formUnitId}}>
+              {{unit.areaName}} - {{unit.buildingName}} - Unit {{unit.unitNumber}}
+              {{#if unit.floorNumber}}(Floor {{unit.floorNumber}}){{/if}}
+            </option>
+          {{/each}}
+        </select>
+      </div>
+      <div class="flex col gap-2">
+        <label class="font-sm text-muted" for="lease-tenant-name">Tenant Name *</label>
+        <input id="lease-tenant-name" type="text"
+          class="form-input"
+          placeholder="e.g. Ahmed Al Mansouri" value={{this.formTenantName}} required {{on "input" (fn this.setField "formTenantName")}} />
+      </div>
+      <div class="flex gap-4">
+        <div class="flex col gap-2 flex-1">
+          <label class="font-sm text-muted" for="lease-tenant-email">Email</label>
+          <input id="lease-tenant-email" type="email"
+            class="form-input"
+            placeholder="ahmed@example.com" value={{this.formTenantEmail}} {{on "input" (fn this.setField "formTenantEmail")}} />
+        </div>
+        <div class="flex col gap-2 flex-1">
+          <label class="font-sm text-muted" for="lease-tenant-phone">Phone</label>
+          <input id="lease-tenant-phone" type="text"
+            class="form-input"
+            placeholder="+971501234567" value={{this.formTenantPhone}} {{on "input" (fn this.setField "formTenantPhone")}} />
+        </div>
+      </div>
+      <div class="flex gap-4">
+        <div class="flex col gap-2 flex-1">
+          <label class="font-sm text-muted" for="lease-type">Lease Type</label>
+          <select id="lease-type" class="form-input" {{on "change" (fn this.setField "formType")}}>
+            <option value="RESIDENTIAL" selected={{eq this.formType "RESIDENTIAL"}}>Residential</option>
+            <option value="COMMERCIAL" selected={{eq this.formType "COMMERCIAL"}}>Commercial</option>
+          </select>
+        </div>
+        <div class="flex col gap-2 flex-1">
+          <label class="font-sm text-muted" for="lease-cheques">Number of Cheques</label>
+          <input id="lease-cheques" type="number" min="1" max="12"
+            class="form-input"
+            value={{this.formNumberOfCheques}} {{on "input" (fn this.setField "formNumberOfCheques")}} />
+        </div>
+      </div>
+      <div class="flex gap-4">
+        <div class="flex col gap-2 flex-1">
+          <label class="font-sm text-muted" for="lease-start">Start Date *</label>
+          <input id="lease-start" type="date"
+            class="form-input"
+            value={{this.formStartDate}} required {{on "change" (fn this.setField "formStartDate")}} />
+        </div>
+        <div class="flex col gap-2 flex-1">
+          <label class="font-sm text-muted" for="lease-end">End Date *</label>
+          <input id="lease-end" type="date"
+            class="form-input"
+            value={{this.formEndDate}} required {{on "change" (fn this.setField "formEndDate")}} />
+        </div>
+      </div>
+      <div class="flex gap-4">
+        <div class="flex col gap-2 flex-1">
+          <label class="font-sm text-muted" for="lease-rent">Monthly Rent (AED) *</label>
+          <input id="lease-rent" type="number" min="0" step="0.01"
+            class="form-input"
+            placeholder="e.g. 8500" value={{this.formMonthlyRent}} required {{on "input" (fn this.setField "formMonthlyRent")}} />
+        </div>
+        <div class="flex col gap-2 flex-1">
+          <label class="font-sm text-muted" for="lease-deposit">Security Deposit (AED)</label>
+          <input id="lease-deposit" type="number" min="0" step="0.01"
+            class="form-input"
+            placeholder="e.g. 17000" value={{this.formSecurityDeposit}} {{on "input" (fn this.setField "formSecurityDeposit")}} />
+        </div>
+      </div>
+      <div class="flex col gap-2">
+        <label class="font-sm text-muted" for="lease-ejari">Ejari Number</label>
+        <input id="lease-ejari" type="text"
+          class="form-input"
+          placeholder="e.g. EJARI-2026-00001" value={{this.formEjariNumber}} {{on "input" (fn this.setField "formEjariNumber")}} />
+      </div>
+      {{#if this.errorMsg}}
+        <p class="font-sm text-danger">{{this.errorMsg}}</p>
+      {{/if}}
+      <div class="flex gap-3 mt-2">
+        <button type="button" class="btn btn-secondary" {{on "click" this.closeModal}}>Cancel</button>
+        <button type="submit" class="btn btn-primary" disabled={{this.isSaving}}>
+          {{if this.isSaving "Saving..." (if this.editLease "Update" "Create Lease")}}
+        </button>
+      </div>
+    </form>
+  </div>
+{{/if}}

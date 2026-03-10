@@ -1,0 +1,74 @@
+# Dependencies
+**/node_modules/
+
+# Build output
+**/dist/
+**/build/
+**/.next/
+**/out/
+**/declarations/
+
+# Environment and secrets
+**/.env
+**/.env.local
+**/.env.production
+!**/.env.example
+!**/.env.test
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Debug logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Testing
+**/coverage/
+**/testem.log
+
+# E2E (skipping from repo)
+/e2e/
+
+# Playwright artifacts
+playwright-report/
+test-results/
+
+# Private / research
+/-extinct-dont-read-private
+/dark/
+/.agent/
+
+# Claude Code (memory is private, agents/commands are shared)
+.claude/memory/
+.claude/settings.local.json
+
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts
+
+# Ember
+/frontend/DEBUG/
+/frontend/.eslintcache
+
+# NestJS
+/backend/.prettierrc
+
+# Misc
+*.pem
+.vercel
+.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions

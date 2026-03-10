@@ -1,0 +1,151 @@
+{{page-title "Properties"}}
+
+<div data-test-properties-page class="flex col gap-6">
+  <div class="flex between x-center">
+    <div>
+      <h2 class="font-3xl font-bold"><Ph @icon="buildings" @size="28px" /> Properties</h2>
+      <p class="text-muted mt-1">Areas, buildings, and units.</p>
+    </div>
+    <div class="flex gap-3">
+      <button type="button" class="btn btn-secondary" {{on "click" this.openImport}}>
+        <Ph @icon="upload-simple" /> Bulk Import
+      </button>
+      <button type="button" class="btn btn-primary" {{on "click" this.openCreate}}>
+        <Ph @icon="plus" /> New Area
+      </button>
+    </div>
+  </div>
+
+  {{#if @model.length}}
+    <div class="flex col gap-3">
+      {{#each @model as |area|}}
+        <div data-test-area-card class="glass-panel p-5 flex between x-center">
+          <div class="flex gap-6">
+            <div>
+              <h4 class="font-md font-bold">{{area.name}}</h4>
+              <p class="text-muted font-xs mt-1">{{area.location}}</p>
+            </div>
+            <div class="flex gap-4 text-sm">
+              <span class="text-muted">{{area.buildingCount}} Buildings</span>
+              <span class="text-muted">{{area.unitCount}} Units</span>
+            </div>
+          </div>
+          <div class="flex gap-3">
+            <button type="button" class="btn btn-secondary btn-sm" {{on "click" (fn this.openEdit area)}}>
+              <Ph @icon="pencil-simple" /> Edit
+            </button>
+            <LinkTo @route="properties.detail" @model={{area.id}} class="btn btn-primary btn-sm">
+              <Ph @icon="eye" /> View
+            </LinkTo>
+          </div>
+        </div>
+      {{/each}}
+    </div>
+  {{else}}
+    <div class="glass-panel p-8 text-center">
+      <p class="text-muted">No property areas yet. Create your first one above.</p>
+    </div>
+  {{/if}}
+</div>
+
+{{#if this.showModal}}
+  <button type="button" class="modal-backdrop" aria-label="Close modal" {{on "click" this.closeModal}}></button>
+  <div class="modal-panel glass-panel p-8 flex col gap-6" role="dialog">
+    <div class="flex between x-center">
+      <h3 class="font-xl font-bold">{{if this.editArea "Edit Area" "New Area"}}</h3>
+      <button type="button" class="text-muted font-lg px-2" {{on "click" this.closeModal}}>x</button>
+    </div>
+    <form class="flex col gap-4" {{on "submit" this.saveArea}}>
+      <div class="flex col gap-2">
+        <label class="font-sm text-muted" for="area-name">Area Name *</label>
+        <input id="area-name" type="text"
+          class="form-input"
+          placeholder="e.g. Downtown Dubai" value={{this.formName}} required {{on "input" (fn this.setField "formName")}} />
+      </div>
+      <div class="flex col gap-2">
+        <label class="font-sm text-muted" for="area-location">Location</label>
+        <input id="area-location" type="text"
+          class="form-input"
+          placeholder="e.g. Dubai, UAE" value={{this.formLocation}} {{on "input" (fn this.setField "formLocation")}} />
+      </div>
+      <div class="flex col gap-2">
+        <label class="font-sm text-muted" for="area-description">Description</label>
+        <textarea id="area-description" type="text"
+          class="form-input"
+          placeholder="Brief description about this area" rows="3" value={{this.formDescription}} {{on "input" (fn this.setField "formDescription")}}></textarea>
+      </div>
+      {{#if this.errorMsg}}
+        <p class="font-sm text-danger">{{this.errorMsg}}</p>
+      {{/if}}
+      <div class="flex gap-3 mt-2">
+        <button type="button" class="btn btn-secondary" {{on "click" this.closeModal}}>
+          Cancel
+        </button>
+        <button type="submit" class="btn btn-primary" disabled={{this.isSaving}}>
+          {{if this.isSaving "Saving..." (if this.editArea "Update" "Create Area")}}
+        </button>
+      </div>
+    </form>
+  </div>
+{{/if}}
+
+{{#if this.showImportModal}}
+  <button type="button" class="modal-backdrop" aria-label="Close modal" {{on "click" this.closeImportModal}}></button>
+  <div class="modal-panel glass-panel p-8 flex col gap-6" role="dialog" style="max-width: 600px;">
+    <div class="flex between x-center">
+      <h3 class="font-xl font-bold">Bulk Import Properties</h3>
+      <button type="button" class="text-muted font-lg px-2" {{on "click" this.closeImportModal}}>x</button>
+    </div>
+
+    <div class="flex col gap-4">
+      <p class="text-muted">Import multiple property areas from a CSV file.</p>
+
+      <button type="button" class="btn btn-secondary" {{on "click" this.downloadTemplate}}>
+        Download CSV Template
+      </button>
+
+      <div class="flex col gap-2">
+        <label class="font-sm text-muted" for="import-file">Select CSV File *</label>
+        <input id="import-file" type="file" accept=".csv" class="form-input" {{on "change" this.handleFileSelect}} />
+      </div>
+
+      {{#if this.importPreview}}
+        <div class="flex col gap-2">
+          <p class="font-sm font-bold">Preview (first 10 rows):</p>
+          <div class="import-preview" style="max-height: 200px; overflow-y: auto;">
+            {{#each this.importPreview as |row|}}
+              <p class="font-xs">{{row.areaName}}, {{row.location}}</p>
+            {{/each}}
+          </div>
+        </div>
+      {{/if}}
+
+      {{#if this.importResults}}
+        <div class="import-results">
+          <p class="font-sm font-bold">Import Results:</p>
+          <p class="font-sm text-success">{{this.importResults.created}} areas created</p>
+          {{#if this.importResults.failed}}
+            <p class="font-sm text-danger">{{this.importResults.failed}} failed</p>
+          {{/if}}
+          {{#if this.importResults.errors}}
+            <div class="import-errors mt-2">
+              <p class="font-xs text-muted">Errors:</p>
+              {{#each this.importResults.errors as |error|}}
+                <p class="font-xs text-danger">{{error}}</p>
+              {{/each}}
+            </div>
+          {{/if}}
+        </div>
+      {{/if}}
+
+      <div class="flex gap-3 mt-2">
+        <button type="button" class="btn btn-secondary" {{on "click" this.closeImportModal}}>
+          Cancel
+        </button>
+        <button type="button" class="btn btn-primary" disabled={{or this.isImporting (not this.importFile)}} {{on "click" this.importProperties}}>
+          {{if this.isImporting "Importing..." "Import"}}
+        </button>
+      </div>
+    </div>
+  </div>
+{{/if}}

@@ -1,0 +1,136 @@
+{{page-title "Contacts"}}
+
+<div data-test-contacts class="flex col gap-6">
+  <div class="flex between x-center">
+    <div class="flex x-center gap-3">
+      <Ph @icon="address-book" @size="24px" />
+      <h2 class="font-2xl font-bold">Contacts</h2>
+      <span class="text-muted font-sm">({{@model.total}})</span>
+    </div>
+    <button type="button" class="btn btn-primary" {{on "click" this.openCreate}}>
+      <Ph @icon="plus" /> New Contact
+    </button>
+  </div>
+
+  <div class="flex gap-3">
+    <input type="text" class="form-input flex-1" placeholder="Search contacts..." value={{this.search}} {{on "input" this.updateSearch}} />
+  </div>
+
+  {{#if @model.contacts.length}}
+    <div class="data-table-wrapper">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Type</th>
+            <th>Email</th>
+            <th>Phone</th>
+            <th>Company</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{#each @model.contacts as |contact|}}
+            <tr data-test-contact-row>
+              <td>
+                <span class="font-bold">{{contact.firstName}} {{contact.lastName}}</span>
+              </td>
+              <td><span class="type-badge type-{{lowercase contact.type}}">{{contact.type}}</span></td>
+              <td>{{contact.email}}</td>
+              <td>{{contact.phone}}</td>
+              <td>{{contact.contactCompany}}</td>
+              <td>
+                <div class="flex gap-2">
+                  <button type="button" class="btn btn-secondary btn-xs" {{on "click" (fn this.openEdit contact)}}>
+                    <Ph @icon="pencil-simple" /> Edit
+                  </button>
+                  <button type="button" class="btn btn-danger btn-xs" {{on "click" (fn this.deleteContact contact)}}>
+                    <Ph @icon="trash" />
+                  </button>
+                </div>
+              </td>
+            </tr>
+          {{/each}}
+        </tbody>
+      </table>
+    </div>
+  {{else}}
+    <div class="glass-panel p-8 text-center">
+      <Ph @icon="address-book" @size="48px" @color="var(--text-muted)" />
+      <p class="text-muted mt-3">No contacts yet. Add your first contact above.</p>
+    </div>
+  {{/if}}
+</div>
+
+{{#if this.showModal}}
+  <button type="button" class="modal-backdrop" aria-label="Close modal" {{on "click" this.closeModal}}></button>
+  <div class="modal-panel glass-panel p-8 flex col gap-6" role="dialog" aria-label="Contact form">
+    <div class="flex between x-center">
+      <h3 class="font-xl font-bold">{{if this.editContact "Edit Contact" "New Contact"}}</h3>
+      <button type="button" class="text-muted font-lg px-2" {{on "click" this.closeModal}}>x</button>
+    </div>
+    <form class="flex col gap-4" {{on "submit" this.saveContact}}>
+      <div class="flex gap-4">
+        <div class="flex col gap-2 flex-1">
+          <label class="font-sm text-muted" for="c-fname">First Name *</label>
+          <input id="c-fname" type="text" class="form-input" placeholder="Ahmed" value={{this.formFirstName}} required {{on "input" (fn this.setField "formFirstName")}} />
+        </div>
+        <div class="flex col gap-2 flex-1">
+          <label class="font-sm text-muted" for="c-lname">Last Name</label>
+          <input id="c-lname" type="text" class="form-input" placeholder="Al-Rashid" value={{this.formLastName}} {{on "input" (fn this.setField "formLastName")}} />
+        </div>
+      </div>
+      <div class="flex gap-4">
+        <div class="flex col gap-2 flex-1">
+          <label class="font-sm text-muted" for="c-email">Email</label>
+          <input id="c-email" type="email" class="form-input" placeholder="ahmed@example.com" value={{this.formEmail}} {{on "input" (fn this.setField "formEmail")}} />
+        </div>
+        <div class="flex col gap-2 flex-1">
+          <label class="font-sm text-muted" for="c-type">Type</label>
+          <select id="c-type" class="form-select" {{on "change" (fn this.setField "formType")}}>
+            {{#each this.contactTypes as |ct|}}
+              <option value={{ct.value}} selected={{eq this.formType ct.value}}>{{ct.label}}</option>
+            {{/each}}
+          </select>
+        </div>
+      </div>
+      <div class="flex gap-4">
+        <div class="flex col gap-2 flex-1">
+          <label class="font-sm text-muted" for="c-phone">Phone</label>
+          <input id="c-phone" type="text" class="form-input" placeholder="+971501234567" value={{this.formPhone}} {{on "input" (fn this.setField "formPhone")}} />
+        </div>
+        <div class="flex col gap-2 flex-1">
+          <label class="font-sm text-muted" for="c-whatsapp">WhatsApp</label>
+          <input id="c-whatsapp" type="text" class="form-input" placeholder="+971501234567" value={{this.formWhatsappNumber}} {{on "input" (fn this.setField "formWhatsappNumber")}} />
+        </div>
+      </div>
+      <div class="flex gap-4">
+        <div class="flex col gap-2 flex-1">
+          <label class="font-sm text-muted" for="c-company">Company</label>
+          <input id="c-company" type="text" class="form-input" placeholder="Emaar Properties" value={{this.formContactCompany}} {{on "input" (fn this.setField "formContactCompany")}} />
+        </div>
+        <div class="flex col gap-2 flex-1">
+          <label class="font-sm text-muted" for="c-job">Job Title</label>
+          <input id="c-job" type="text" class="form-input" placeholder="Property Manager" value={{this.formJobTitle}} {{on "input" (fn this.setField "formJobTitle")}} />
+        </div>
+      </div>
+      <div class="flex col gap-2">
+        <label class="font-sm text-muted" for="c-address">Address</label>
+        <input id="c-address" type="text" class="form-input" placeholder="Business Bay, Dubai" value={{this.formAddress}} {{on "input" (fn this.setField "formAddress")}} />
+      </div>
+      <div class="flex col gap-2">
+        <label class="font-sm text-muted" for="c-notes">Notes</label>
+        <textarea id="c-notes" class="form-input" rows="3" placeholder="Additional notes..." value={{this.formNotes}} {{on "input" (fn this.setField "formNotes")}}></textarea>
+      </div>
+      {{#if this.errorMsg}}
+        <p class="font-sm text-danger">{{this.errorMsg}}</p>
+      {{/if}}
+      <div class="flex gap-3 mt-2">
+        <button type="button" class="btn btn-secondary" {{on "click" this.closeModal}}>Cancel</button>
+        <button type="submit" class="btn btn-primary" disabled={{this.isSaving}}>
+          {{if this.isSaving "Saving..." (if this.editContact "Update" "Create Contact")}}
+        </button>
+      </div>
+    </form>
+  </div>
+{{/if}}

@@ -1,0 +1,114 @@
+<div class="page-header">
+  <div class="page-title-section">
+    <h2 class="page-title"><Ph @icon="user-circle" @size="28px" /> Property Owners</h2>
+    <p class="page-subtitle">Manage property owners and their contact information.</p>
+  </div>
+  <button type="button" class="btn btn-primary" data-test-add-owner {{on "click" this.openCreate}}>
+    <Ph @icon="plus" /> Add Owner
+  </button>
+</div>
+
+<div class="owners-list">
+  {{#each this.model.owners as |owner|}}
+    <div class="list-item" data-test-owner-id={{owner.id}}>
+      <div class="owner-info">
+        <div class="owner-avatar">{{owner.name}}</div>
+        <div class="owner-details">
+          <p class="owner-name">{{owner.name}}</p>
+          <p class="owner-contact">{{owner.phone}}</p>
+          <p class="owner-email">{{owner.email}}</p>
+        </div>
+      </div>
+      <div class="owner-meta">
+        {{#if owner.assignedAgent}}
+          <span class="status-badge">Agent: {{owner.assignedAgent.name}}</span>
+        {{/if}}
+        <span class="owner-units">{{owner.units.length}} Units</span>
+      </div>
+      <div class="owner-actions">
+        <button type="button" class="btn btn-secondary" data-test-view-owner {{on "click" (fn this.viewOwner owner)}}>
+          <Ph @icon="eye" /> View
+        </button>
+        <button type="button" class="btn btn-secondary" data-test-edit-owner {{on "click" (fn this.openEdit owner)}}>
+          <Ph @icon="pencil-simple" /> Edit
+        </button>
+        <button type="button" class="btn btn-secondary text-danger" data-test-delete-owner {{on "click" (fn this.deleteOwner owner)}}>
+          <Ph @icon="trash" /> Remove
+        </button>
+      </div>
+    </div>
+  {{else}}
+    <div class="empty-state">
+      <p>No owners yet. Add your first property owner to get started.</p>
+    </div>
+  {{/each}}
+</div>
+
+<p class="text-muted" style="margin-top: var(--space-4);">
+  Showing {{this.model.owners.length}} of {{this.model.total}} owners
+</p>
+
+{{#if this.showModal}}
+  <div class="modal-backdrop" data-test-modal-backdrop {{on "click" this.closeModal}}></div>
+  <div class="modal-panel" data-test-owner-modal>
+    <h3 class="modal-title">
+      {{#if this.editOwner}}
+        Edit Owner
+      {{else}}
+        Add Owner
+      {{/if}}
+    </h3>
+    {{#if this.errorMsg}}
+      <p class="error-message" data-test-error>{{this.errorMsg}}</p>
+    {{/if}}
+    <form {{on "submit" this.saveOwner}}>
+      <div class="form-group">
+        <label class="form-label">Name *</label>
+        <input type="text" class="form-input" data-test-input-name value={{this.formName}} {{on "input" (fn this.setField "formName")}} required />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Email</label>
+        <input type="email" class="form-input" data-test-input-email value={{this.formEmail}} {{on "input" (fn this.setField "formEmail")}} />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Phone</label>
+        <input type="tel" class="form-input" data-test-input-phone value={{this.formPhone}} {{on "input" (fn this.setField "formPhone")}} />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Nationality ID</label>
+        <input type="text" class="form-input" data-test-input-nationality-id value={{this.formNationalityId}} {{on "input" (fn this.setField "formNationalityId")}} />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Address</label>
+        <textarea class="form-input" data-test-input-address {{on "input" (fn this.setField "formAddress")}}>{{this.formAddress}}</textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Assigned Agent</label>
+        <select class="form-select" data-test-input-agent {{on "change" (fn this.setField "formAssignedAgentId")}}>
+          <option value="">Unassigned</option>
+          {{#each this.agents as |agent|}}
+            <option value={{agent.id}} selected={{eq agent.id this.formAssignedAgentId}}>{{agent.name}}</option>
+          {{/each}}
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Notes</label>
+        <textarea class="form-input" data-test-input-notes {{on "input" (fn this.setField "formNotes")}}>{{this.formNotes}}</textarea>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-secondary" {{on "click" this.closeModal}}>
+          Cancel
+        </button>
+        <button type="submit" class="btn btn-primary" disabled={{this.isSaving}} data-test-save-owner>
+          {{#if this.isSaving}}
+            Saving...
+          {{else if this.editOwner}}
+            Update
+          {{else}}
+            Create
+          {{/if}}
+        </button>
+      </div>
+    </form>
+  </div>
+{{/if}}

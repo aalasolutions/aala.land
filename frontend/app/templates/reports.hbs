@@ -1,0 +1,49 @@
+{{page-title "Reports"}}
+
+<div data-test-reports-page class="flex col gap-6">
+  <div>
+    <h2 class="font-3xl font-bold"><Ph @icon="chart-bar" @size="28px" /> Boss Dashboard</h2>
+    <p class="text-muted mt-1">Real-time agent performance and business intelligence.</p>
+  </div>
+
+  {{#if @model.agents.length}}
+    <div class="glass-panel p-5">
+      <h4 class="font-lg font-bold mb-4">Agent Performance</h4>
+      <div class="flex col gap-3">
+        {{#each @model.agents as |agent|}}
+          <div
+            data-test-agent-row
+            data-test-agent-id={{agent.agentId}}
+            class="flex between x-center p-4 rounded-xl bg-white@02 border border-white@05"
+          >
+            <div class="flex x-center gap-3">
+              <div class="agent-avatar">A</div>
+              <div>
+                <p class="font-sm font-bold">Agent</p>
+                <p class="text-muted font-xs">{{agent.leadsAssigned}} leads</p>
+              </div>
+            </div>
+            <div class="flex x-center gap-6">
+              <div class="text-center">
+                <p class="font-xs text-muted">Won</p>
+                <p class="font-sm font-bold text-success">{{agent.leadsWon}}</p>
+              </div>
+              <div class="text-center">
+                <p class="font-xs text-muted">Commissions</p>
+                <p class="font-sm font-bold">AED {{format-number agent.commissionsEarned}}</p>
+              </div>
+              <div class="text-center">
+                <p class="font-xs text-muted">Conversion</p>
+                <p class="font-sm font-bold">{{agent.conversionRate}}%</p>
+              </div>
+            </div>
+          </div>
+        {{/each}}
+      </div>
+    </div>
+  {{else}}
+    <div class="glass-panel p-8 text-center">
+      <p class="text-muted">No agent data available.</p>
+    </div>
+  {{/if}}
+</div>

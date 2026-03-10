@@ -1,0 +1,424 @@
+{{page-title "Leads"}}
+
+<div data-test-leads-page class="flex col gap-6">
+  <div class="flex between x-center">
+    <div>
+      <h2 class="font-3xl font-bold"><Ph @icon="funnel" @size="28px" /> Lead Pipeline</h2>
+      <p class="text-muted mt-1">Track and manage your leads through the pipeline.</p>
+    </div>
+    <div class="flex gap-3 x-center">
+      {{!-- View Toggle --}}
+      <div class="view-toggle">
+        <button type="button"
+          class="view-toggle-btn {{if (eq this.viewMode 'kanban') 'active'}}"
+          {{on "click" (fn (mut this.viewMode) "kanban")}}>
+          <Ph @icon="squares-four" /> Kanban
+        </button>
+        <button type="button"
+          class="view-toggle-btn {{if (eq this.viewMode 'list') 'active'}}"
+          {{on "click" (fn (mut this.viewMode) "list")}}>
+          <Ph @icon="list" /> List
+        </button>
+      </div>
+      <button type="button" class="btn btn-primary" data-test-add-lead {{on "click" this.openCreate}}>
+        <Ph @icon="plus" /> New Lead
+      </button>
+    </div>
+  </div>
+
+  {{!-- Filter Buttons --}}
+  <div class="kanban-filters">
+    <button type="button" class="filter-btn {{if (eq this.filterType 'all') 'active'}}" {{on "click" (fn this.setFilter "all")}}>
+      All
+    </button>
+    <button type="button" class="filter-btn {{if (eq this.filterType 'mine') 'active'}}" {{on "click" (fn this.setFilter "mine")}}>
+      Assigned to Me
+    </button>
+    <button type="button" class="filter-btn {{if (eq this.filterType 'others') 'active'}}" {{on "click" (fn this.setFilter "others")}}>
+      Others
+    </button>
+    <button type="button" class="filter-btn {{if (eq this.filterType 'unassigned') 'active'}}" {{on "click" (fn this.setFilter "unassigned")}}>
+      Unassigned
+    </button>
+  </div>
+
+  {{!-- KANBAN VIEW --}}
+  {{#if (eq this.viewMode 'kanban')}}
+    <div class="kanban-board">
+      {{#each this.columns as |column|}}
+        <div data-test-kanban-column
+          data-test-column-status={{column.status}}
+          class="kanban-column flex col gap-3"
+          role="button"
+          draggable="true"
+          {{on "dragover" (fn this.handleDragOver column.status)}}
+          {{on "drop" (fn this.handleDrop column.status)}}
+        >
+          <div class="flex between x-center px-3 py-2 rounded-lg bg-surface">
+            <span class="font-sm font-bold">{{column.label}}</span>
+            <span class="font-xs text-muted">{{column.leads.length}}</span>
+          </div>
+
+          {{#each column.leads as |lead|}}
+            <div
+              data-test-lead-card
+              data-test-lead-id={{lead.id}}
+              class="glass-panel p-4 flex col gap-2 lead-card-clickable"
+              draggable="true"
+              {{on "dragstart" (fn this.handleDragStart lead)}}
+              {{on "click" (fn this.openDetailModal lead)}}
+            >
+              <div class="flex between x-center">
+                <p class="font-sm font-bold">{{lead.firstName}}{{#if lead.lastName}} {{lead.lastName}}{{/if}}</p>
+                <span class="temp-badge temp-{{lowercase lead.temperature}}">{{lead.temperature}}</span>
+              </div>
+              <p class="text-muted font-xs">{{lead.phone}}</p>
+              <p class="text-muted font-xs">{{lead.email}}</p>
+              {{#if lead.property}}
+                <p class="text-primary font-xs flex gap-1 x-center"><Ph @icon="buildings" /> {{lead.property.name}}</p>
+              {{/if}}
+              {{#if lead.unit}}
+                <p class="text-info font-xs flex gap-1 x-center"><Ph @icon="house" /> Unit {{lead.unit.unitNumber}}</p>
+              {{/if}}
+              {{#if lead.assignedAgentName}}
+                <p class="assign-badge">{{lead.assignedAgentName}}</p>
+              {{/if}}
+              <div class="flex between x-center mt-1">
+                <span class="font-xs text-muted">{{format-date lead.createdAt}}</span>
+                <div class="flex gap-2" {{on "click" this.stopPropagation}}>
+                  <button type="button" class="btn btn-secondary btn-xs" {{on "click" (fn this.openEdit lead)}}>
+                    Edit
+                  </button>
+                  <button type="button" class="btn btn-secondary btn-xs" {{on "click" (fn this.openAssignModal lead)}}>
+                    Assign
+                  </button>
+                </div>
+              </div>
+            </div>
+          {{else}}
+            <div class="p-4 rounded-xl border border-white@05 text-center">
+              <p class="text-muted font-xs">No leads</p>
+            </div>
+          {{/each}}
+        </div>
+      {{/each}}
+    </div>
+  {{/if}}
+
+  {{!-- LIST VIEW --}}
+  {{#if (eq this.viewMode 'list')}}
+    <div class="leads-list-view">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Contact</th>
+            <th>Status</th>
+            <th>Temperature</th>
+            <th>Property</th>
+            <th>Assigned</th>
+            <th>Created</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{#each this.filteredLeads as |lead|}}
+            <tr data-test-lead-row data-test-lead-id={{lead.id}} class="lead-row-clickable" {{on "click" (fn this.openDetailModal lead)}}>
+              <td>
+                <span class="font-bold">{{lead.firstName}}{{#if lead.lastName}} {{lead.lastName}}{{/if}}</span>
+              </td>
+              <td>
+                <div class="flex col gap-1">
+                  <span class="font-xs">{{lead.phone}}</span>
+                  <span class="font-xs text-muted">{{lead.email}}</span>
+                </div>
+              </td>
+              <td>
+                <span class="status-badge status-{{lowercase lead.status}}">{{lead.status}}</span>
+              </td>
+              <td>
+                <span class="temp-badge temp-{{lowercase lead.temperature}}">{{lead.temperature}}</span>
+              </td>
+              <td>
+                {{#if lead.property}}
+                  <span>{{lead.property.name}}</span>
+                  {{#if lead.unit}}
+                    <span class="text-muted font-xs"> - Unit {{lead.unit.unitNumber}}</span>
+                  {{/if}}
+                {{else}}
+                  <span class="text-muted">-</span>
+                {{/if}}
+              </td>
+              <td>
+                {{#if lead.assignedAgentName}}
+                  <span class="assign-badge-sm">{{lead.assignedAgentName}}</span>
+                {{else}}
+                  <span class="text-muted">Unassigned</span>
+                {{/if}}
+              </td>
+              <td>
+                <span class="font-xs text-muted">{{format-date lead.createdAt}}</span>
+              </td>
+              <td>
+                <div class="flex gap-2" {{on "click" this.stopPropagation}}>
+                  <button type="button" class="btn btn-secondary btn-xs" {{on "click" (fn this.openEdit lead)}}>
+                    Edit
+                  </button>
+                  <button type="button" class="btn btn-secondary btn-xs" {{on "click" (fn this.openAssignModal lead)}}>
+                    Assign
+                  </button>
+                </div>
+              </td>
+            </tr>
+          {{else}}
+            <tr>
+              <td colspan="8" class="text-center text-muted py-8">
+                No leads found
+              </td>
+            </tr>
+          {{/each}}
+        </tbody>
+      </table>
+    </div>
+  {{/if}}
+</div>
+
+{{!-- Edit Modal --}}
+{{#if this.showModal}}
+  <button type="button" class="modal-backdrop-nested" aria-label="Close modal" {{on "click" this.closeModal}}></button>
+  <div class="modal-panel modal-nested glass-panel p-8 flex col gap-6" role="dialog">
+    <div class="flex between x-center">
+      <h3 class="font-xl font-bold">{{if this.editLead "Edit Lead" "New Lead"}}</h3>
+      <button type="button" class="text-muted font-lg px-2" {{on "click" this.closeModal}}>x</button>
+    </div>
+    <form class="flex col gap-4" {{on "submit" this.saveLead}}>
+      <div class="flex gap-4">
+        <div class="flex col gap-2 flex-1">
+          <label class="font-sm text-muted" for="lead-first-name">First Name *</label>
+          <input id="lead-first-name" type="text"
+            class="form-input"
+            placeholder="e.g. Ahmed" value={{this.formFirstName}} required {{on "input" (fn this.setField "formFirstName")}} />
+        </div>
+        <div class="flex col gap-2 flex-1">
+          <label class="font-sm text-muted" for="lead-last-name">Last Name</label>
+          <input id="lead-last-name" type="text"
+            class="form-input"
+            placeholder="e.g. Al Mansouri" value={{this.formLastName}} {{on "input" (fn this.setField "formLastName")}} />
+        </div>
+      </div>
+      <div class="flex col gap-2">
+        <label class="font-sm text-muted" for="lead-email">Email</label>
+        <input id="lead-email" type="email"
+          class="form-input"
+          placeholder="ahmed@example.com" value={{this.formEmail}} {{on "input" (fn this.setField "formEmail")}} />
+      </div>
+      <div class="flex col gap-2">
+        <label class="font-sm text-muted" for="lead-phone">Phone</label>
+        <input id="lead-phone" type="text"
+          class="form-input"
+          placeholder="+971501234567" value={{this.formPhone}} {{on "input" (fn this.setField "formPhone")}} />
+      </div>
+      <div class="flex gap-4">
+        <div class="flex col gap-2 flex-1">
+          <label class="font-sm text-muted" for="lead-status">Status</label>
+          <select id="lead-status" class="form-select" {{on "change" (fn this.setField "formStatus")}}>
+            <option value="NEW" selected={{eq this.formStatus "NEW"}}>New</option>
+            <option value="CONTACTED" selected={{eq this.formStatus "CONTACTED"}}>Contacted</option>
+            <option value="VIEWING" selected={{eq this.formStatus "VIEWING"}}>Viewing</option>
+            <option value="NEGOTIATING" selected={{eq this.formStatus "NEGOTIATING"}}>Negotiating</option>
+            <option value="WON" selected={{eq this.formStatus "WON"}}>Won</option>
+            <option value="LOST" selected={{eq this.formStatus "LOST"}}>Lost</option>
+          </select>
+        </div>
+        <div class="flex col gap-2 flex-1">
+          <label class="font-sm text-muted" for="lead-temp">Temperature</label>
+          <select id="lead-temp" class="form-select" {{on "change" (fn this.setField "formTemperature")}}>
+            <option value="HOT" selected={{eq this.formTemperature "HOT"}}>Hot</option>
+            <option value="WARM" selected={{eq this.formTemperature "WARM"}}>Warm</option>
+            <option value="COLD" selected={{eq this.formTemperature "COLD"}}>Cold</option>
+            <option value="DEAD" selected={{eq this.formTemperature "DEAD"}}>Dead</option>
+          </select>
+        </div>
+      </div>
+      <div class="flex col gap-2">
+        <label class="font-sm text-muted" for="lead-property">Property Area</label>
+        <select id="lead-property" class="form-select" {{on "change" this.setPropertyId}}>
+          <option value="">-- None --</option>
+          {{#each this.properties as |property|}}
+            <option value={{property.id}} selected={{eq this.formPropertyId property.id}}>{{property.name}}</option>
+          {{/each}}
+        </select>
+      </div>
+      {{#if this.formPropertyId}}
+        <div class="flex col gap-2">
+          <label class="font-sm text-muted" for="lead-unit">Unit</label>
+          <select id="lead-unit" class="form-select" {{on "change" (fn this.setField "formUnitId")}}>
+            <option value="">-- None --</option>
+            {{#each this.filteredUnits as |unit|}}
+              <option value={{unit.id}} selected={{eq this.formUnitId unit.id}}>Unit {{unit.unitNumber}} ({{unit.status}})</option>
+            {{/each}}
+          </select>
+        </div>
+      {{/if}}
+      {{#if this.errorMsg}}
+        <p class="text-danger">{{this.errorMsg}}</p>
+      {{/if}}
+      <div class="flex gap-3 mt-2">
+        <button type="button" class="btn btn-secondary" {{on "click" this.closeModal}}>Cancel</button>
+        <button type="submit" class="btn btn-primary" disabled={{this.isSaving}}>
+          {{if this.isSaving "Saving..." (if this.editLead "Update" "Create Lead")}}
+        </button>
+      </div>
+    </form>
+  </div>
+{{/if}}
+
+{{!-- Assign Modal --}}
+{{#if this.showAssignModal}}
+  <button type="button" class="modal-backdrop-nested" aria-label="Close modal" {{on "click" this.closeAssignModal}}></button>
+  <div class="modal-panel modal-nested glass-panel p-8 flex col gap-6" role="dialog">
+    <div class="flex between x-center">
+      <h3 class="font-xl font-bold">Assign Lead</h3>
+      <button type="button" class="text-muted font-lg px-2" {{on "click" this.closeAssignModal}}>x</button>
+    </div>
+    <form class="flex col gap-4" {{on "submit" this.assignToAgent}}>
+      <p class="text-muted">Select an agent to assign <strong>{{this.assignLead.firstName}}</strong> to:</p>
+      <div class="flex col gap-2">
+        <label class="form-label" for="agent-select">Agent</label>
+        <select id="agent-select" class="form-select" {{on "change" (fn this.setField "selectedAgentId")}}>
+          <option value="">-- Select Agent --</option>
+          {{#each this.agents as |agent|}}
+            <option value={{agent.id}} selected={{eq this.selectedAgentId agent.id}}>{{agent.name}}</option>
+          {{/each}}
+        </select>
+      </div>
+      <div class="flex gap-3 mt-2">
+        <button type="button" class="btn btn-secondary" {{on "click" this.closeAssignModal}}>Cancel</button>
+        <button type="submit" class="btn btn-primary">
+          Assign
+        </button>
+      </div>
+    </form>
+  </div>
+{{/if}}
+
+{{!-- Lead Detail Modal --}}
+{{#if this.showDetailModal}}
+  <button type="button" class="modal-backdrop" aria-label="Close modal" {{on "click" this.closeDetailModal}}></button>
+  <div class="modal-panel modal-lg glass-panel p-0 flex col" role="dialog">
+    {{!-- Header --}}
+    <div class="detail-modal-header p-6 border-b">
+      <div class="flex between x-center">
+        <div class="flex gap-4 x-center">
+          <h3 class="font-xl font-bold">
+            {{this.detailLead.firstName}}{{#if this.detailLead.lastName}} {{this.detailLead.lastName}}{{/if}}
+          </h3>
+          <span class="temp-badge temp-{{lowercase this.detailLead.temperature}}">{{this.detailLead.temperature}}</span>
+          <span class="status-badge status-{{lowercase this.detailLead.status}}">{{this.detailLead.status}}</span>
+        </div>
+        <button type="button" class="text-muted font-lg px-2" {{on "click" this.closeDetailModal}}>x</button>
+      </div>
+    </div>
+
+    {{!-- Content --}}
+    <div class="detail-modal-content flex gap-6 p-6 flex-1 overflow-auto">
+      {{!-- Left: Lead Info --}}
+      <div class="detail-info flex col gap-4" style="flex: 0 0 280px;">
+        <div class="info-section">
+          <h4 class="font-sm font-bold text-muted mb-2">Contact Info</h4>
+          <div class="flex col gap-2">
+            <div class="flex gap-2 x-center">
+              <span><Ph @icon="phone" /></span>
+              <span>{{or this.detailLead.phone 'N/A'}}</span>
+            </div>
+            <div class="flex gap-2 x-center">
+              <span><Ph @icon="envelope" /></span>
+              <span>{{or this.detailLead.email 'N/A'}}</span>
+            </div>
+            <div class="flex gap-2 x-center">
+              <span><Ph @icon="whatsapp-logo" /></span>
+              <span>{{or this.detailLead.whatsappNumber 'N/A'}}</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="info-section">
+          <h4 class="font-sm font-bold text-muted mb-2">Property Interest</h4>
+          {{#if this.detailLead.property}}
+            <div class="flex gap-2 x-center">
+              <span><Ph @icon="buildings" /></span>
+              <span>{{this.detailLead.property.name}}</span>
+            </div>
+            {{#if this.detailLead.unit}}
+              <div class="flex gap-2 x-center mt-1">
+                <span><Ph @icon="house" /></span>
+                <span>Unit {{this.detailLead.unit.unitNumber}}</span>
+              </div>
+            {{/if}}
+          {{else}}
+            <span class="text-muted">No property selected</span>
+          {{/if}}
+        </div>
+
+        <div class="info-section">
+          <h4 class="font-sm font-bold text-muted mb-2">Budget</h4>
+          {{#if this.detailLead.budgetMin}}
+            <span>AED {{this.detailLead.budgetMin}}</span>
+            {{#if this.detailLead.budgetMax}}
+              <span> - AED {{this.detailLead.budgetMax}}</span>
+            {{/if}}
+          {{else}}
+            <span class="text-muted">Not specified</span>
+          {{/if}}
+        </div>
+
+        <div class="info-section">
+          <h4 class="font-sm font-bold text-muted mb-2">Notes</h4>
+          <p class="text-sm">{{or this.detailLead.notes 'No notes'}}</p>
+        </div>
+
+        <div class="info-section">
+          <h4 class="font-sm font-bold text-muted mb-2">Source</h4>
+          <span>{{or this.detailLead.source 'Unknown'}}</span>
+        </div>
+
+        <div class="flex gap-2 mt-2">
+          <button type="button" class="btn btn-secondary btn-sm flex-1" {{on "click" (fn this.openEdit this.detailLead)}}>
+            Edit
+          </button>
+          <button type="button" class="btn btn-secondary btn-sm flex-1" {{on "click" (fn this.openAssignModal this.detailLead)}}>
+            Assign
+          </button>
+        </div>
+      </div>
+
+      {{!-- Right: Activity Timeline --}}
+      <div class="detail-timeline flex-1">
+        <h4 class="font-sm font-bold text-muted mb-4">Activity History</h4>
+        <div class="activity-timeline flex col gap-3">
+          {{#each this.leadActivities as |activity|}}
+            <div class="activity-item flex gap-3 p-3 rounded-lg" data-test-activity-id={{activity.id}}>
+              <div class="activity-icon">
+                <Ph @icon={{get-activity-icon activity.type}} />
+              </div>
+              <div class="activity-content flex-1">
+                <div class="flex between x-center">
+                  <span class="font-sm font-bold">{{activity.type}}</span>
+                  <span class="font-xs text-muted">{{format-date-time activity.createdAt}}</span>
+                </div>
+                <p class="text-muted font-sm mt-1">{{activity.notes}}</p>
+                {{#if activity.performedByName}}
+                  <p class="font-xs text-muted mt-1">by {{activity.performedByName}}</p>
+                {{/if}}
+              </div>
+            </div>
+          {{else}}
+            <div class="text-center text-muted py-8">
+              <p>No activity recorded yet</p>
+            </div>
+          {{/each}}
+        </div>
+      </div>
+    </div>
+  </div>
+{{/if}}

@@ -1,0 +1,238 @@
+{{page-title (if @model.area @model.area.name "Area Detail")}}
+
+<div data-test-property-detail class="flex col gap-6">
+  <div class="flex between x-center">
+    <div class="flex x-center gap-3">
+      <LinkTo @route="properties" class="text-muted font-sm">Properties</LinkTo>
+      <span class="text-muted">/</span>
+      <h2 class="font-2xl font-bold">{{@model.area.name}}</h2>
+    </div>
+    <button type="button" class="btn btn-primary" {{on "click" this.openCreateBuilding}}>
+      <Ph @icon="plus" /> New Building
+    </button>
+  </div>
+
+  {{#if this.buildingsWithHistory.length}}
+    <div class="flex col gap-4">
+      {{#each this.buildingsWithHistory as |building|}}
+        <div data-test-building-card class="glass-panel p-5 flex col gap-4">
+          <div class="flex between x-center">
+            <div class="flex x-center gap-2">
+              <h4 class="font-md font-bold">{{building.name}}</h4>
+              <span class="type-badge type-{{lowercase building.propertyType}}">{{if (eq building.propertyType 'FOR_SALE') 'For Sale' 'Rental'}}</span>
+            </div>
+            <div class="flex gap-2">
+              <button type="button" class="btn btn-secondary btn-sm" {{on "click" (fn this.openEditBuilding building)}}>
+                Edit
+              </button>
+              <button type="button" class="btn btn-primary btn-sm" {{on "click" (fn this.openCreateUnit building.id building.propertyType)}}>
+                <Ph @icon="plus" /> Unit
+              </button>
+            </div>
+          </div>
+          {{#if building.units.length}}
+            <div class="grid cols-3 gap-3">
+              {{#each building.units as |unit|}}
+                <div data-test-unit-card data-test-unit-id={{unit.id}} class="p-3 rounded-lg bg-white@05 font-sm flex col gap-1">
+                  <div class="flex between x-center">
+                    <div class="flex x-center gap-2">
+                      <p class="font-bold">Unit {{unit.unitNumber}}</p>
+                      {{#if unit.propertyType}}
+                        <span class="type-badge type-{{lowercase unit.propertyType}}">{{if (eq unit.propertyType 'FOR_SALE') 'Sale' 'Rent'}}</span>
+                      {{else}}
+                        <span class="type-badge type-inherited">{{if (eq building.propertyType 'FOR_SALE') 'Sale' 'Rent'}}</span>
+                      {{/if}}
+                    </div>
+                    <button type="button" class="btn btn-secondary btn-sm" {{on "click" (fn this.openEditUnit unit building.id building.propertyType)}}>
+                      Edit
+                    </button>
+                  </div>
+                  <p class="text-muted font-xs">{{capitalize unit.status}}</p>
+                  <div class="flex gap-2 font-xs text-muted">
+                    {{#if unit.bedrooms}}
+                      <span>{{unit.bedrooms}} bed</span>
+                    {{/if}}
+                    {{#if unit.bathrooms}}
+                      <span>{{unit.bathrooms}} bath</span>
+                    {{/if}}
+                    {{#if unit.sqFt}}
+                      <span>{{unit.sqFt}} sqft</span>
+                    {{/if}}
+                  </div>
+                  {{#if unit.price}}
+                    <p class="text-success font-xs">AED {{format-number unit.price}}</p>
+                  {{/if}}
+                  {{#if unit.amenities.length}}
+                    <div class="flex gap-1 wrap mt-1">
+                      {{#each unit.amenities as |amenity|}}
+                        <span class="amenity-tag">{{amenity}}</span>
+                      {{/each}}
+                    </div>
+                  {{/if}}
+                  {{#if unit.owner}}
+                    <p class="text-primary font-xs">Owner: <LinkTo @route="owners.detail" @model={{unit.owner.id}} class="owner-link">{{unit.owner.name}}</LinkTo></p>
+                  {{/if}}
+                  {{#if unit.tenantHistory}}
+                    <div class="mt-2 pt-2 border-t border-white@05">
+                      <p class="text-muted font-xs mb-1">Past Tenants:</p>
+                      {{#each unit.tenantHistory as |lease|}}
+                        <p class="font-xs">
+                          {{lease.tenantName}}
+                          <span class="text-muted">({{lease.startDate}} - {{lease.endDate}})</span>
+                        </p>
+                      {{/each}}
+                    </div>
+                  {{/if}}
+                </div>
+              {{/each}}
+            </div>
+          {{else}}
+            <p class="text-muted font-sm">No units yet.</p>
+          {{/if}}
+        </div>
+      {{/each}}
+    </div>
+  {{else}}
+    <div class="glass-panel p-8 text-center">
+      <p class="text-muted">No buildings in this area. Create one above.</p>
+    </div>
+  {{/if}}
+</div>
+
+{{#if this.showBuildingModal}}
+  <button type="button" class="modal-backdrop" aria-label="Close modal" {{on "click" this.closeBuildingModal}}></button>
+  <div class="modal-panel glass-panel p-8 flex col gap-6" role="dialog" aria-label="Building form">
+    <div class="flex between x-center">
+      <h3 class="font-xl font-bold">{{if this.editBuilding "Edit Building" "New Building"}}</h3>
+      <button type="button" class="text-muted font-lg px-2" {{on "click" this.closeBuildingModal}}>x</button>
+    </div>
+    <form class="flex col gap-4" {{on "submit" this.saveBuilding}}>
+      <div class="flex col gap-2">
+        <label class="font-sm text-muted" for="b-name">Building Name *</label>
+        <input id="b-name" type="text"
+          class="form-input"
+          placeholder="e.g. Tower A" value={{this.formBuildingName}} required {{on "input" (fn this.setField "formBuildingName")}} />
+      </div>
+      <div class="flex col gap-2">
+        <label class="font-sm text-muted" for="b-type">Property Type *</label>
+        <select id="b-type" class="form-select" {{on "change" (fn this.setField "formBuildingPropertyType")}}>
+          <option value="RENTAL" selected={{eq this.formBuildingPropertyType "RENTAL"}}>Rental</option>
+          <option value="FOR_SALE" selected={{eq this.formBuildingPropertyType "FOR_SALE"}}>For Sale</option>
+        </select>
+      </div>
+      <div class="flex col gap-2">
+        <label class="font-sm text-muted" for="b-address">Address</label>
+        <input id="b-address" type="text"
+          class="form-input"
+          placeholder="e.g. 123 Sheikh Zayed Road" value={{this.formBuildingAddress}} {{on "input" (fn this.setField "formBuildingAddress")}} />
+      </div>
+      {{#if this.buildingError}}
+        <p class="font-sm text-danger">{{this.buildingError}}</p>
+      {{/if}}
+      <div class="flex gap-3 mt-2">
+        <button type="button" class="btn btn-secondary" {{on "click" this.closeBuildingModal}}>Cancel</button>
+        <button type="submit" class="btn btn-primary" disabled={{this.isSavingBuilding}}>
+          {{if this.isSavingBuilding "Saving..." (if this.editBuilding "Update" "Create Building")}}
+        </button>
+      </div>
+    </form>
+  </div>
+{{/if}}
+
+{{#if this.showUnitModal}}
+  <button type="button" class="modal-backdrop" aria-label="Close modal" {{on "click" this.closeUnitModal}}></button>
+  <div class="modal-panel glass-panel p-8 flex col gap-6" role="dialog" aria-label="Unit form">
+    <div class="flex between x-center">
+      <h3 class="font-xl font-bold">{{if this.editUnit "Edit Unit" "New Unit"}}</h3>
+      <button type="button" class="text-muted font-lg px-2" {{on "click" this.closeUnitModal}}>x</button>
+    </div>
+    <form class="flex col gap-4" {{on "submit" this.saveUnit}}>
+      <div class="flex gap-4">
+        <div class="flex col gap-2 flex-1">
+          <label class="font-sm text-muted" for="u-number">Unit Number *</label>
+          <input id="u-number" type="text"
+            class="form-input"
+            placeholder="e.g. 101" value={{this.formUnitNumber}} required {{on "input" (fn this.setField "formUnitNumber")}} />
+        </div>
+        <div class="flex col gap-2 flex-1">
+          <label class="font-sm text-muted" for="u-status">Status</label>
+          <select id="u-status" class="form-input" {{on "change" (fn this.setField "formUnitStatus")}}>
+            <option value="available" selected={{eq this.formUnitStatus "available"}}>Available</option>
+            <option value="rented" selected={{eq this.formUnitStatus "rented"}}>Rented</option>
+            <option value="sold" selected={{eq this.formUnitStatus "sold"}}>Sold</option>
+            <option value="maintenance" selected={{eq this.formUnitStatus "maintenance"}}>Maintenance</option>
+          </select>
+        </div>
+      </div>
+      <div class="flex col gap-2">
+        <label class="font-sm text-muted" for="u-property-type">Property Type</label>
+        <select id="u-property-type" class="form-select" {{on "change" (fn this.setField "formUnitPropertyType")}}>
+          <option value="" selected={{eq this.formUnitPropertyType ""}}>Inherit from Building ({{if (eq this.activeBuildingPropertyType 'FOR_SALE') 'For Sale' 'Rental'}})</option>
+          <option value="RENTAL" selected={{eq this.formUnitPropertyType "RENTAL"}}>Rental</option>
+          <option value="FOR_SALE" selected={{eq this.formUnitPropertyType "FOR_SALE"}}>For Sale</option>
+        </select>
+        <p class="font-xs text-muted">Leave as "Inherit" to use the building's default type.</p>
+      </div>
+      <div class="flex gap-4">
+        <div class="flex col gap-2 flex-1">
+          <label class="font-sm text-muted" for="u-price">Price (AED)</label>
+          <input id="u-price" type="number" min="0"
+            class="form-input"
+            placeholder="e.g. 150000" value={{this.formUnitPrice}} {{on "input" (fn this.setField "formUnitPrice")}} />
+        </div>
+        <div class="flex col gap-2 flex-1">
+          <label class="font-sm text-muted" for="u-sqft">Sq Ft</label>
+          <input id="u-sqft" type="number" min="0"
+            class="form-input"
+            placeholder="e.g. 850" value={{this.formUnitSqFt}} {{on "input" (fn this.setField "formUnitSqFt")}} />
+        </div>
+      </div>
+      <div class="flex gap-4">
+        <div class="flex col gap-2 flex-1">
+          <label class="font-sm text-muted" for="u-beds">Bedrooms</label>
+          <input id="u-beds" type="number" min="0"
+            class="form-input"
+            placeholder="e.g. 2" value={{this.formUnitBedrooms}} {{on "input" (fn this.setField "formUnitBedrooms")}} />
+        </div>
+        <div class="flex col gap-2 flex-1">
+          <label class="font-sm text-muted" for="u-baths">Bathrooms</label>
+          <input id="u-baths" type="number" min="0"
+            class="form-input"
+            placeholder="e.g. 2" value={{this.formUnitBathrooms}} {{on "input" (fn this.setField "formUnitBathrooms")}} />
+        </div>
+      </div>
+      <div class="flex col gap-2">
+        <label class="font-sm text-muted" for="u-owner">Owner (Optional)</label>
+        <select id="u-owner" class="form-select" {{on "change" (fn this.setField "formUnitOwnerId")}}>
+          <option value="">Unassigned</option>
+          {{#each this.owners as |owner|}}
+            <option value={{owner.id}} selected={{eq owner.id this.formUnitOwnerId}}>{{owner.name}}</option>
+          {{/each}}
+        </select>
+      </div>
+      <div class="flex col gap-2">
+        <label class="font-sm text-muted">Amenities</label>
+        <div class="amenities-grid">
+          {{#each this.amenityOptions as |opt|}}
+            <button
+              type="button"
+              class="amenity-chip {{if (includes this.formUnitAmenities opt.key) 'amenity-chip-active'}}"
+              {{on "click" (fn this.toggleAmenity opt.key)}}
+            >
+              <Ph @icon={{opt.icon}} /> {{opt.label}}
+            </button>
+          {{/each}}
+        </div>
+      </div>
+      {{#if this.unitError}}
+        <p class="font-sm text-danger">{{this.unitError}}</p>
+      {{/if}}
+      <div class="flex gap-3 mt-2">
+        <button type="button" class="btn btn-secondary" {{on "click" this.closeUnitModal}}>Cancel</button>
+        <button type="submit" class="btn btn-primary" disabled={{this.isSavingUnit}}>
+          {{if this.isSavingUnit "Saving..." (if this.editUnit "Update" "Create Unit")}}
+        </button>
+      </div>
+    </form>
+  </div>
+{{/if}}

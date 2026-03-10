@@ -1,0 +1,138 @@
+{{page-title "AALA.LAND"}}
+
+{{#if this.session.isAuthenticated}}
+  <div class="app-layout">
+    {{!-- Sidebar --}}
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <h1 class="brand-title">AALA.LAND</h1>
+        <p class="brand-subtitle">Property Management</p>
+      </div>
+
+      <nav data-test-sidebar-nav class="sidebar-nav">
+        <LinkTo @route="dashboard" class="sidebar-link" activeClass="sidebar-link-active">
+          <Ph @icon="squares-four" /> <span>Dashboard</span>
+        </LinkTo>
+        <LinkTo @route="properties" class="sidebar-link" activeClass="sidebar-link-active">
+          <Ph @icon="buildings" /> <span>Properties</span>
+        </LinkTo>
+        <LinkTo @route="owners" class="sidebar-link" activeClass="sidebar-link-active">
+          <Ph @icon="user-circle" /> <span>Owners</span>
+        </LinkTo>
+        <LinkTo @route="leads" class="sidebar-link" activeClass="sidebar-link-active">
+          <Ph @icon="funnel" /> <span>Leads</span>
+        </LinkTo>
+        <LinkTo @route="leases" class="sidebar-link" activeClass="sidebar-link-active">
+          <Ph @icon="file-text" /> <span>Leases</span>
+        </LinkTo>
+        <LinkTo @route="financials" class="sidebar-link" activeClass="sidebar-link-active">
+          <Ph @icon="currency-dollar" /> <span>Financials</span>
+        </LinkTo>
+        <LinkTo @route="cheques" class="sidebar-link" activeClass="sidebar-link-active">
+          <Ph @icon="checks" /> <span>Cheques</span>
+        </LinkTo>
+        <LinkTo @route="maintenance" class="sidebar-link" activeClass="sidebar-link-active">
+          <Ph @icon="wrench" /> <span>Maintenance</span>
+        </LinkTo>
+        <LinkTo @route="whatsapp" class="sidebar-link" activeClass="sidebar-link-active">
+          <Ph @icon="whatsapp-logo" /> <span>WhatsApp</span>
+        </LinkTo>
+        <LinkTo @route="reports" class="sidebar-link" activeClass="sidebar-link-active">
+          <Ph @icon="chart-bar" /> <span>Reports</span>
+        </LinkTo>
+        <LinkTo @route="contacts" class="sidebar-link" activeClass="sidebar-link-active">
+          <Ph @icon="address-book" /> <span>Contacts</span>
+        </LinkTo>
+        <LinkTo @route="email-templates" class="sidebar-link" activeClass="sidebar-link-active">
+          <Ph @icon="envelope-simple" /> <span>Templates</span>
+        </LinkTo>
+        <LinkTo @route="team" class="sidebar-link" activeClass="sidebar-link-active">
+          <Ph @icon="users-three" /> <span>Team</span>
+        </LinkTo>
+        <LinkTo @route="audit" class="sidebar-link" activeClass="sidebar-link-active">
+          <Ph @icon="clipboard-text" /> <span>Audit</span>
+        </LinkTo>
+      </nav>
+
+      <div class="sidebar-spacer"></div>
+    </aside>
+
+    {{!-- Main Content --}}
+    <main class="main-content">
+      {{!-- Top Bar --}}
+      <header class="topbar">
+        <div class="search-box">
+          <input
+            type="text"
+            aria-label="Search"
+            placeholder="Search..."
+            class="search-input"
+          />
+        </div>
+        <div class="topbar-actions">
+          <button type="button" class="notification-bell" aria-label="Notifications" {{on "click" this.toggleNotifications}}>
+            <Ph @icon="bell" @size="22px" />
+            {{#if this.unreadCount}}
+              <span class="notification-badge">{{this.unreadCount}}</span>
+            {{/if}}
+          </button>
+          <LinkTo @route="company" class="topbar-icon-btn" aria-label="Company settings">
+            <Ph @icon="building-office" @size="20px" />
+          </LinkTo>
+          <LinkTo @route="profile" class="topbar-icon-btn" aria-label="My profile">
+            <Ph @icon="user" @size="20px" />
+          </LinkTo>
+          <button
+            data-test-logout-button
+            type="button"
+            class="topbar-icon-btn topbar-logout"
+            aria-label="Logout"
+            {{on "click" this.logout}}
+          >
+            <Ph @icon="sign-out" @size="20px" />
+          </button>
+        </div>
+      </header>
+
+      {{!-- Notifications Dropdown --}}
+      {{#if this.showNotifications}}
+        <button type="button" class="notification-overlay" aria-label="Close notifications" {{on "click" this.closeNotifications}}></button>
+        <div class="notification-dropdown">
+          <div class="notification-dropdown-header">
+            <span class="font-sm font-bold">Notifications</span>
+            {{#if this.unreadCount}}
+              <button type="button" class="btn-link font-xs" {{on "click" this.markAllRead}}>Mark all read</button>
+            {{/if}}
+          </div>
+          <div class="notification-dropdown-list">
+            {{#each this.notifications as |notif|}}
+              <button type="button" class="notification-item {{unless notif.isRead 'unread'}}" {{on "click" (fn this.markAsRead notif)}}>
+                <div class="flex col gap-1">
+                  <span class="font-sm font-bold">{{notif.title}}</span>
+                  <span class="font-xs text-muted">{{notif.message}}</span>
+                </div>
+                {{#unless notif.isRead}}
+                  <span class="unread-dot"></span>
+                {{/unless}}
+              </button>
+            {{else}}
+              <div class="notification-empty">
+                <Ph @icon="bell-slash" @size="24px" @color="var(--text-muted)" />
+                <p class="font-xs text-muted mt-2">No notifications</p>
+              </div>
+            {{/each}}
+          </div>
+        </div>
+      {{/if}}
+
+      {{!-- Route Outlet --}}
+      <section class="content-area">
+        {{outlet}}
+      </section>
+    </main>
+  </div>
+{{else}}
+  {{outlet}}
+{{/if}}
+
+<ToastContainer />
