@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { UnauthorizedException } from '@nestjs/common';
+import { UnauthorizedException, BadRequestException } from '@nestjs/common';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
@@ -30,6 +30,8 @@ describe('AuthController', () => {
             validateUser: jest.fn(),
             login: jest.fn(),
             refresh: jest.fn(),
+            forgotPassword: jest.fn(),
+            resetPassword: jest.fn(),
           },
         },
       ],
@@ -88,6 +90,47 @@ describe('AuthController', () => {
       const req = { user: { userId: 'user-uuid-1', email: 'admin@test.com' } };
       const result = controller.getProfile(req);
       expect(result.email).toBe('admin@test.com');
+    });
+  });
+
+  describe('forgotPassword', () => {
+    it('calls authService.forgotPassword and returns message', async () => {
+      const response = { message: 'If the email exists, a password reset link has been sent.' };
+      authService.forgotPassword.mockResolvedValue(response);
+
+      const result = await controller.forgotPassword({ email: 'admin@test.com' });
+
+      expect(authService.forgotPassword).toHaveBeenCalledWith('admin@test.com');
+      expect(result.message).toContain('If the email exists');
+    });
+
+    it('returns success message even for non-existent email', async () => {
+      const response = { message: 'If the email exists, a password reset link has been sent.' };
+      authService.forgotPassword.mockResolvedValue(response);
+
+      const result = await controller.forgotPassword({ email: 'unknown@test.com' });
+
+      expect(result.message).toContain('If the email exists');
+    });
+  });
+
+  describe('resetPassword', () => {
+    it('calls authService.resetPassword and returns success', async () => {
+      const response = { message: 'Password has been reset successfully.' };
+      authService.resetPassword.mockResolvedValue(response);
+
+      const result = await controller.resetPassword({ token: 'valid-token', newPassword: 'NewPass123!' });
+
+      expect(authService.resetPassword).toHaveBeenCalledWith('valid-token', 'NewPass123!');
+      expect(result.message).toContain('reset successfully');
+    });
+
+    it('propagates BadRequestException from service', async () => {
+      authService.resetPassword.mockRejectedValue(new BadRequestException('Invalid or expired reset token'));
+
+      await expect(
+        controller.resetPassword({ token: 'bad-token', newPassword: 'NewPass123!' }),
+      ).rejects.toThrow(BadRequestException);
     });
   });
 });

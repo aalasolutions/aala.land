@@ -26,6 +26,19 @@
               <button type="button" class="btn btn-secondary btn-sm" {{on "click" (fn this.openEdit lease)}}>
                 <Ph @icon="pencil-simple" /> Edit
               </button>
+              {{#if (eq lease.status "ACTIVE")}}
+                <button data-test-renew-lease type="button" class="btn btn-secondary btn-sm" {{on "click" (fn this.renewLease lease)}}>
+                  <Ph @icon="arrows-clockwise" /> Renew
+                </button>
+                <button data-test-terminate-lease type="button" class="btn btn-danger btn-sm" {{on "click" (fn this.terminateLease lease)}}>
+                  <Ph @icon="x-circle" /> Terminate
+                </button>
+              {{/if}}
+              {{#if (eq lease.status "EXPIRED")}}
+                <button data-test-renew-lease type="button" class="btn btn-secondary btn-sm" {{on "click" (fn this.renewLease lease)}}>
+                  <Ph @icon="arrows-clockwise" /> Renew
+                </button>
+              {{/if}}
             </div>
           </div>
         {{/each}}
@@ -40,7 +53,7 @@
   <button type="button" class="modal-backdrop" aria-label="Close modal" {{on "click" this.closeModal}}></button>
   <div class="modal-panel glass-panel p-8 flex col gap-6" role="dialog">
     <div class="flex between x-center">
-      <h3 class="font-xl font-bold">{{if this.editLease "Edit Lease" "New Lease"}}</h3>
+      <h3 class="font-xl font-bold">{{if this.editLease "Edit Lease" (if this.renewingLeaseId "Renew Lease" "New Lease")}}</h3>
       <button type="button" class="text-muted font-lg px-2" {{on "click" this.closeModal}}>x</button>
     </div>
     <form class="flex col gap-4" {{on "submit" this.saveLease}}>
@@ -131,7 +144,7 @@
       <div class="flex gap-3 mt-2">
         <button type="button" class="btn btn-secondary" {{on "click" this.closeModal}}>Cancel</button>
         <button type="submit" class="btn btn-primary" disabled={{this.isSaving}}>
-          {{if this.isSaving "Saving..." (if this.editLease "Update" "Create Lease")}}
+          {{if this.isSaving "Saving..." (if this.editLease "Update" (if this.renewingLeaseId "Renew Lease" "Create Lease"))}}
         </button>
       </div>
     </form>

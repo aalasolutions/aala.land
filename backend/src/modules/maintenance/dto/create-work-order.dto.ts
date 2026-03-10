@@ -32,6 +32,11 @@ export class CreateWorkOrderDto {
   @ApiProperty({ required: false })
   @IsOptional()
   @IsUUID()
+  vendorId?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsUUID()
   assignedTo?: string;
 
   @ApiProperty({ required: false })

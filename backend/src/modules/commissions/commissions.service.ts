@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Commission, CommissionStatus } from './entities/commission.entity';
@@ -68,6 +68,25 @@ export class CommissionsService {
       commission.paidAt = new Date();
     }
 
+    return this.commissionRepository.save(commission);
+  }
+
+  async approve(id: string, companyId: string): Promise<Commission> {
+    const commission = await this.findOne(id, companyId);
+    if (commission.status !== CommissionStatus.PENDING) {
+      throw new BadRequestException('Only PENDING commissions can be approved');
+    }
+    commission.status = CommissionStatus.APPROVED;
+    return this.commissionRepository.save(commission);
+  }
+
+  async pay(id: string, companyId: string): Promise<Commission> {
+    const commission = await this.findOne(id, companyId);
+    if (commission.status !== CommissionStatus.APPROVED) {
+      throw new BadRequestException('Only APPROVED commissions can be marked as paid');
+    }
+    commission.status = CommissionStatus.PAID;
+    commission.paidAt = new Date();
     return this.commissionRepository.save(commission);
   }
 

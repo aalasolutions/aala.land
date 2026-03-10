@@ -1612,6 +1612,41 @@ body {
         background: #fef2f2;
         color: #dc2626;
     }
+
+    &.status-pending {
+        background: #fefce8;
+        color: #a16207;
+    }
+
+    &.status-approved {
+        background: #eff6ff;
+        color: #1d4ed8;
+    }
+
+    &.status-paid {
+        background: #f0fdf4;
+        color: #16a34a;
+    }
+
+    &.status-cancelled {
+        background: #f5f5f5;
+        color: #737373;
+    }
+
+    &.status-in_progress {
+        background: #eff6ff;
+        color: #1d4ed8;
+    }
+
+    &.status-completed {
+        background: #f0fdf4;
+        color: #16a34a;
+    }
+
+    &.status-pending_approval {
+        background: #fff7ed;
+        color: #c2410c;
+    }
 }
 
 // =================================
@@ -1641,6 +1676,16 @@ body {
         background: #f5f5f5;
         color: #737373;
         font-style: italic;
+    }
+
+    &.type-sale {
+        background: #f0fdf4;
+        color: #16a34a;
+    }
+
+    &.type-referral {
+        background: #fdf4ff;
+        color: #a21caf;
     }
 }
 

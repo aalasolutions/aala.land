@@ -1,0 +1,135 @@
+{{page-title "Vendors"}}
+
+<div data-test-vendors-page class="flex col gap-6">
+  <div class="flex between x-center">
+    <div>
+      <h2 class="font-3xl font-bold"><Ph @icon="toolbox" @size="28px" /> Vendors</h2>
+      <p class="text-muted mt-1">Manage service providers and contractors.</p>
+    </div>
+    <button data-test-new-vendor type="button" class="btn btn-primary" {{on "click" this.openCreate}}>
+      <Ph @icon="plus" /> New Vendor
+    </button>
+  </div>
+
+  {{#if @model.vendors.length}}
+    <div class="data-table-wrapper">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Specialty</th>
+            <th>Phone</th>
+            <th>Email</th>
+            <th>Company</th>
+            <th>Rate (AED/hr)</th>
+            <th>Rating</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{#each @model.vendors as |vendor|}}
+            <tr data-test-vendor-row>
+              <td>
+                <span class="font-bold">{{vendor.name}}</span>
+              </td>
+              <td><span class="type-badge type-{{lowercase vendor.specialty}}">{{vendor.specialty}}</span></td>
+              <td>{{vendor.phone}}</td>
+              <td>{{vendor.email}}</td>
+              <td>{{vendor.companyName}}</td>
+              <td>{{vendor.hourlyRate}}</td>
+              <td>
+                {{#if vendor.rating}}
+                  {{vendor.rating}} / 5
+                {{/if}}
+              </td>
+              <td>
+                <div class="flex gap-2">
+                  <button data-test-edit-vendor type="button" class="btn btn-secondary btn-xs" {{on "click" (fn this.openEdit vendor)}}>
+                    <Ph @icon="pencil-simple" /> Edit
+                  </button>
+                  <button data-test-delete-vendor type="button" class="btn btn-danger btn-xs" {{on "click" (fn this.deleteVendor vendor)}}>
+                    <Ph @icon="trash" />
+                  </button>
+                </div>
+              </td>
+            </tr>
+          {{/each}}
+        </tbody>
+      </table>
+    </div>
+  {{else}}
+    <div class="glass-panel p-8 text-center">
+      <Ph @icon="toolbox" @size="48px" @color="var(--text-muted)" />
+      <p class="text-muted mt-3">No vendors yet. Add your first vendor above.</p>
+    </div>
+  {{/if}}
+</div>
+
+{{#if this.showModal}}
+  <button type="button" class="modal-backdrop" aria-label="Close modal" {{on "click" this.closeModal}}></button>
+  <div class="modal-panel glass-panel p-8 flex col gap-6" role="dialog" aria-label="Vendor form">
+    <div class="flex between x-center">
+      <h3 class="font-xl font-bold">{{if this.editVendor "Edit Vendor" "New Vendor"}}</h3>
+      <button type="button" class="text-muted font-lg px-2" {{on "click" this.closeModal}}>x</button>
+    </div>
+    <form class="flex col gap-4" {{on "submit" this.saveVendor}}>
+      <div class="flex gap-4">
+        <div class="flex col gap-2 flex-1">
+          <label class="font-sm text-muted" for="v-name">Name *</label>
+          <input data-test-vendor-name id="v-name" type="text" class="form-input" placeholder="Ahmed Al-Rashid" value={{this.formName}} required {{on "input" (fn this.setField "formName")}} />
+        </div>
+        <div class="flex col gap-2 flex-1">
+          <label class="font-sm text-muted" for="v-specialty">Specialty</label>
+          <select data-test-vendor-specialty id="v-specialty" class="form-select" {{on "change" (fn this.setField "formSpecialty")}}>
+            {{#each this.specialtyOptions as |opt|}}
+              <option value={{opt.value}} selected={{eq this.formSpecialty opt.value}}>{{opt.label}}</option>
+            {{/each}}
+          </select>
+        </div>
+      </div>
+      <div class="flex gap-4">
+        <div class="flex col gap-2 flex-1">
+          <label class="font-sm text-muted" for="v-email">Email</label>
+          <input data-test-vendor-email id="v-email" type="email" class="form-input" placeholder="vendor@example.com" value={{this.formEmail}} {{on "input" (fn this.setField "formEmail")}} />
+        </div>
+        <div class="flex col gap-2 flex-1">
+          <label class="font-sm text-muted" for="v-phone">Phone</label>
+          <input data-test-vendor-phone id="v-phone" type="text" class="form-input" placeholder="+971501234567" value={{this.formPhone}} {{on "input" (fn this.setField "formPhone")}} />
+        </div>
+      </div>
+      <div class="flex gap-4">
+        <div class="flex col gap-2 flex-1">
+          <label class="font-sm text-muted" for="v-company">Company Name</label>
+          <input data-test-vendor-company id="v-company" type="text" class="form-input" placeholder="Al-Rashid Maintenance LLC" value={{this.formCompanyName}} {{on "input" (fn this.setField "formCompanyName")}} />
+        </div>
+        <div class="flex col gap-2 flex-1">
+          <label class="font-sm text-muted" for="v-rate">Hourly Rate (AED)</label>
+          <input data-test-vendor-rate id="v-rate" type="number" min="0" step="0.01" class="form-input" placeholder="150" value={{this.formHourlyRate}} {{on "input" (fn this.setField "formHourlyRate")}} />
+        </div>
+      </div>
+      <div class="flex gap-4">
+        <div class="flex col gap-2 flex-1">
+          <label class="font-sm text-muted" for="v-address">Address</label>
+          <input data-test-vendor-address id="v-address" type="text" class="form-input" placeholder="Al Quoz Industrial, Dubai" value={{this.formAddress}} {{on "input" (fn this.setField "formAddress")}} />
+        </div>
+        <div class="flex col gap-2 flex-1">
+          <label class="font-sm text-muted" for="v-rating">Rating (1-5)</label>
+          <input data-test-vendor-rating id="v-rating" type="number" min="1" max="5" step="1" class="form-input" placeholder="5" value={{this.formRating}} {{on "input" (fn this.setField "formRating")}} />
+        </div>
+      </div>
+      <div class="flex col gap-2">
+        <label class="font-sm text-muted" for="v-notes">Notes</label>
+        <textarea data-test-vendor-notes id="v-notes" class="form-input" rows="3" placeholder="Additional notes about this vendor..." value={{this.formNotes}} {{on "input" (fn this.setField "formNotes")}}></textarea>
+      </div>
+      {{#if this.errorMsg}}
+        <p class="font-sm text-danger">{{this.errorMsg}}</p>
+      {{/if}}
+      <div class="flex gap-3 mt-2">
+        <button type="button" class="btn btn-secondary" {{on "click" this.closeModal}}>Cancel</button>
+        <button data-test-vendor-submit type="submit" class="btn btn-primary" disabled={{this.isSaving}}>
+          {{if this.isSaving "Saving..." (if this.editVendor "Update" "Create Vendor")}}
+        </button>
+      </div>
+    </form>
+  </div>
+{{/if}}

@@ -31,8 +31,32 @@ export class User {
     @JoinColumn({ name: 'company_id' })
     company: Company;
 
+    @Column({ type: 'varchar', length: 50, nullable: true })
+    phone: string | null;
+
+    @Column({ name: 'preferred_language', type: 'varchar', length: 5, default: 'en' })
+    preferredLanguage: string;
+
+    @Column({ name: 'date_format', type: 'varchar', length: 20, default: 'DD/MM/YYYY' })
+    dateFormat: string;
+
+    @Column({ type: 'varchar', length: 3, default: 'AED' })
+    currency: string;
+
+    @Column({ type: 'varchar', length: 50, default: 'Asia/Dubai' })
+    timezone: string;
+
+    @Column({ name: 'last_login_at', type: 'timestamp', nullable: true })
+    lastLoginAt: Date | null;
+
     @Column({ name: 'is_active', type: 'boolean', default: true })
     isActive: boolean;
+
+    @Column({ name: 'reset_password_token', type: 'varchar', length: 255, nullable: true, select: false })
+    resetPasswordToken: string | null;
+
+    @Column({ name: 'reset_password_expires', type: 'timestamp', nullable: true, select: false })
+    resetPasswordExpires: Date | null;
 
     @CreateDateColumn({ name: 'created_at' })
     createdAt: Date;

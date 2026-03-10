@@ -56,6 +56,20 @@ export class LeasesController {
     return this.leasesService.update(id, req.user.companyId, dto);
   }
 
+  @Post(':id/renew')
+  @Roles(Role.COMPANY_ADMIN)
+  @ApiOperation({ summary: 'Renew a lease (creates new lease, marks old as RENEWED)' })
+  renew(@Param('id', ParseUUIDPipe) id: string, @Body() dto: CreateLeaseDto, @Request() req: any) {
+    return this.leasesService.renew(id, req.user.companyId, dto);
+  }
+
+  @Post(':id/terminate')
+  @Roles(Role.COMPANY_ADMIN)
+  @ApiOperation({ summary: 'Terminate a lease early' })
+  terminate(@Param('id', ParseUUIDPipe) id: string, @Request() req: any) {
+    return this.leasesService.terminate(id, req.user.companyId);
+  }
+
   @Delete(':id')
   @Roles(Role.COMPANY_ADMIN)
   @HttpCode(HttpStatus.NO_CONTENT)

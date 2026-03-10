@@ -17,8 +17,10 @@ Router.map(function () {
   });
   this.route('leads');
   this.route('financials');
+  this.route('commissions');
   this.route('leases');
   this.route('maintenance');
+  this.route('vendors');
   this.route('cheques');
   this.route('whatsapp');
   this.route('team');

@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { NotFoundException } from '@nestjs/common';
+import { NotFoundException, BadRequestException } from '@nestjs/common';
 import { CommissionsService } from './commissions.service';
 import { Commission, CommissionStatus, CommissionType } from './entities/commission.entity';
 
@@ -151,6 +151,66 @@ describe('CommissionsService', () => {
       await service.update('commission-uuid-1', companyId, { status: CommissionStatus.PAID });
 
       expect(unpaid.paidAt).not.toBeNull();
+    });
+  });
+
+  describe('approve', () => {
+    it('approves a PENDING commission', async () => {
+      const pending = { ...mockCommission, status: CommissionStatus.PENDING } as Commission;
+      const approved = { ...pending, status: CommissionStatus.APPROVED } as Commission;
+      repo.findOne.mockResolvedValue(pending);
+      repo.save.mockResolvedValue(approved);
+
+      const result = await service.approve('commission-uuid-1', companyId);
+
+      expect(result.status).toBe(CommissionStatus.APPROVED);
+      expect(repo.save).toHaveBeenCalledWith(expect.objectContaining({ status: CommissionStatus.APPROVED }));
+    });
+
+    it('throws BadRequestException when commission is not PENDING', async () => {
+      const approved = { ...mockCommission, status: CommissionStatus.APPROVED } as Commission;
+      repo.findOne.mockResolvedValue(approved);
+
+      await expect(service.approve('commission-uuid-1', companyId)).rejects.toThrow(BadRequestException);
+    });
+
+    it('throws NotFoundException when commission not found', async () => {
+      repo.findOne.mockResolvedValue(null);
+
+      await expect(service.approve('bad-id', companyId)).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('pay', () => {
+    it('marks an APPROVED commission as PAID and sets paidAt', async () => {
+      const approved = { ...mockCommission, status: CommissionStatus.APPROVED, paidAt: null } as Commission;
+      repo.findOne.mockResolvedValue(approved);
+      repo.save.mockImplementation(async (c) => c as Commission);
+
+      const result = await service.pay('commission-uuid-1', companyId);
+
+      expect(result.status).toBe(CommissionStatus.PAID);
+      expect(result.paidAt).toBeInstanceOf(Date);
+    });
+
+    it('throws BadRequestException when commission is not APPROVED', async () => {
+      const pending = { ...mockCommission, status: CommissionStatus.PENDING } as Commission;
+      repo.findOne.mockResolvedValue(pending);
+
+      await expect(service.pay('commission-uuid-1', companyId)).rejects.toThrow(BadRequestException);
+    });
+
+    it('throws BadRequestException when commission is already PAID', async () => {
+      const paid = { ...mockCommission, status: CommissionStatus.PAID } as Commission;
+      repo.findOne.mockResolvedValue(paid);
+
+      await expect(service.pay('commission-uuid-1', companyId)).rejects.toThrow(BadRequestException);
+    });
+
+    it('throws NotFoundException when commission not found', async () => {
+      repo.findOne.mockResolvedValue(null);
+
+      await expect(service.pay('bad-id', companyId)).rejects.toThrow(NotFoundException);
     });
   });
 

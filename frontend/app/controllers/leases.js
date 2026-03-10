@@ -21,6 +21,7 @@ export default class LeasesController extends Controller {
   @tracked formSecurityDeposit = '';
   @tracked formNumberOfCheques = '4';
   @tracked formEjariNumber = '';
+  @tracked renewingLeaseId = null;
   @tracked isSaving = false;
   @tracked errorMsg = '';
 
@@ -39,6 +40,7 @@ export default class LeasesController extends Controller {
     this.formNumberOfCheques = '4';
     this.formEjariNumber = '';
     this.editLease = null;
+    this.renewingLeaseId = null;
     this.errorMsg = '';
     this.showModal = true;
   }
@@ -63,6 +65,7 @@ export default class LeasesController extends Controller {
   @action closeModal() {
     this.showModal = false;
     this.editLease = null;
+    this.renewingLeaseId = null;
     this.errorMsg = '';
   }
 
@@ -73,7 +76,20 @@ export default class LeasesController extends Controller {
     this.errorMsg = '';
 
     const isEdit = !!this.editLease;
-    const path = isEdit ? `/leases/${this.editLease.id}` : '/leases';
+    const isRenew = !!this.renewingLeaseId;
+    let path;
+    let method;
+
+    if (isEdit) {
+      path = `/leases/${this.editLease.id}`;
+      method = 'PATCH';
+    } else if (isRenew) {
+      path = `/leases/${this.renewingLeaseId}/renew`;
+      method = 'POST';
+    } else {
+      path = '/leases';
+      method = 'POST';
+    }
 
     const body = isEdit
       ? {
@@ -102,18 +118,51 @@ export default class LeasesController extends Controller {
           ...(this.formEjariNumber ? { ejariNumber: this.formEjariNumber } : {}),
         };
 
+    let successMsg = 'Lease created';
+    if (isEdit) successMsg = 'Lease updated';
+    if (isRenew) successMsg = 'Lease renewed';
+
     try {
       await this.auth.fetchJson(path, {
-        method: isEdit ? 'PATCH' : 'POST',
+        method,
         body: JSON.stringify(body),
       });
-      this.notifications.success(isEdit ? 'Lease updated' : 'Lease created');
+      this.notifications.success(successMsg);
       this.closeModal();
       this.router.refresh('leases');
     } catch (e) {
       this.errorMsg = e.message;
     } finally {
       this.isSaving = false;
+    }
+  }
+
+  @action renewLease(lease) {
+    this.formTenantName = lease.tenantName;
+    this.formTenantEmail = lease.tenantEmail ?? '';
+    this.formTenantPhone = lease.tenantPhone ?? '';
+    this.formUnitId = lease.unitId ?? '';
+    this.formType = lease.type ?? 'RESIDENTIAL';
+    this.formStartDate = lease.endDate ? lease.endDate.split('T')[0] : '';
+    this.formEndDate = '';
+    this.formMonthlyRent = String(lease.monthlyRent);
+    this.formSecurityDeposit = lease.securityDeposit ? String(lease.securityDeposit) : '';
+    this.formNumberOfCheques = String(lease.numberOfCheques ?? 4);
+    this.formEjariNumber = '';
+    this.editLease = null;
+    this.renewingLeaseId = lease.id;
+    this.errorMsg = '';
+    this.showModal = true;
+  }
+
+  @action async terminateLease(lease) {
+    if (!confirm('Are you sure you want to terminate this lease?')) return;
+    try {
+      await this.auth.fetchJson(`/leases/${lease.id}/terminate`, { method: 'POST' });
+      this.notifications.success('Lease terminated');
+      this.router.refresh('leases');
+    } catch (e) {
+      this.notifications.error(e.message || 'Failed to terminate lease');
     }
   }
 }

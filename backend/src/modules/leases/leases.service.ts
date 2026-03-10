@@ -1,7 +1,7 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Lease } from './entities/lease.entity';
+import { Lease, LeaseStatus } from './entities/lease.entity';
 import { CreateLeaseDto } from './dto/create-lease.dto';
 import { UpdateLeaseDto } from './dto/update-lease.dto';
 
@@ -49,6 +49,29 @@ export class LeasesService {
   async update(id: string, companyId: string, dto: UpdateLeaseDto): Promise<Lease> {
     const lease = await this.findOne(id, companyId);
     Object.assign(lease, dto);
+    return this.leaseRepository.save(lease);
+  }
+
+  async renew(id: string, companyId: string, dto: CreateLeaseDto): Promise<{ oldLease: Lease; newLease: Lease }> {
+    const oldLease = await this.findOne(id, companyId);
+    if (oldLease.status !== LeaseStatus.ACTIVE && oldLease.status !== LeaseStatus.EXPIRED) {
+      throw new BadRequestException('Only ACTIVE or EXPIRED leases can be renewed');
+    }
+    oldLease.status = LeaseStatus.RENEWED;
+    await this.leaseRepository.save(oldLease);
+
+    const newLease = this.leaseRepository.create({ ...dto, companyId });
+    const savedNewLease = await this.leaseRepository.save(newLease);
+
+    return { oldLease, newLease: savedNewLease };
+  }
+
+  async terminate(id: string, companyId: string): Promise<Lease> {
+    const lease = await this.findOne(id, companyId);
+    if (lease.status !== LeaseStatus.ACTIVE) {
+      throw new BadRequestException('Only ACTIVE leases can be terminated');
+    }
+    lease.status = LeaseStatus.TERMINATED;
     return this.leaseRepository.save(lease);
   }
 

@@ -13,6 +13,12 @@ export default class LoginFormComponent extends Component {
   @tracked isLoading = false;
   @tracked errorMessage = '';
 
+  @tracked showForgotPassword = false;
+  @tracked resetEmail = '';
+  @tracked resetSent = false;
+  @tracked resetLoading = false;
+  @tracked resetError = '';
+
   @action
   updateEmail(event) {
     this.email = event.target.value;
@@ -40,6 +46,45 @@ export default class LoginFormComponent extends Component {
       this.errorMessage = err.message ?? 'Login failed. Check your credentials.';
     } finally {
       this.isLoading = false;
+    }
+  }
+
+  @action
+  toggleForgotPassword() {
+    this.showForgotPassword = !this.showForgotPassword;
+    this.resetEmail = '';
+    this.resetSent = false;
+    this.resetError = '';
+  }
+
+  @action
+  updateResetEmail(event) {
+    this.resetEmail = event.target.value;
+    this.resetError = '';
+  }
+
+  @action
+  async submitForgotPassword(event) {
+    event.preventDefault();
+    if (this.resetLoading) return;
+    this.resetLoading = true;
+    this.resetError = '';
+    try {
+      const apiBase = this.auth.apiBase;
+      const res = await fetch(`${apiBase}/auth/forgot-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: this.resetEmail }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message || 'Request failed');
+      }
+      this.resetSent = true;
+    } catch (err) {
+      this.resetError = err.message || 'Something went wrong. Please try again.';
+    } finally {
+      this.resetLoading = false;
     }
   }
 }

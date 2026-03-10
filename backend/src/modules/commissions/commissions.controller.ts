@@ -54,6 +54,20 @@ export class CommissionsController {
     return this.commissionsService.getSummary(agentId, req.user.companyId);
   }
 
+  @Post(':id/approve')
+  @Roles(Role.COMPANY_ADMIN)
+  @ApiOperation({ summary: 'Approve a commission (COMPANY_ADMIN+)' })
+  approve(@Param('id', ParseUUIDPipe) id: string, @Request() req: any) {
+    return this.commissionsService.approve(id, req.user.companyId);
+  }
+
+  @Post(':id/pay')
+  @Roles(Role.COMPANY_ADMIN)
+  @ApiOperation({ summary: 'Mark commission as paid (COMPANY_ADMIN+)' })
+  pay(@Param('id', ParseUUIDPipe) id: string, @Request() req: any) {
+    return this.commissionsService.pay(id, req.user.companyId);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get a commission by ID' })
   findOne(@Param('id', ParseUUIDPipe) id: string, @Request() req: any) {

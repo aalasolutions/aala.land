@@ -41,6 +41,9 @@
               {{#if wo.scheduledDate}}
                 <p class="text-muted font-xs">Scheduled: {{wo.scheduledDate}}</p>
               {{/if}}
+              {{#if wo.vendorId}}
+                <p class="text-muted font-xs"><Ph @icon="toolbox" /> Vendor: assigned</p>
+              {{/if}}
             </div>
             <div class="flex x-center gap-3">
               <span class="font-xs px-2 py-1 rounded bg-white@05">{{wo.status}}</span>
@@ -131,6 +134,17 @@
         <input id="wo-scheduled" type="date"
           class="form-input"
           value={{this.formScheduledDate}} {{on "change" (fn this.setField "formScheduledDate")}} />
+      </div>
+      <div class="flex col gap-2">
+        <label class="font-sm text-muted" for="wo-vendor">Vendor</label>
+        <select id="wo-vendor" class="form-input" {{on "change" (fn this.setField "formVendorId")}}>
+          <option value="">No vendor assigned</option>
+          {{#each @model.vendors as |vendor|}}
+            <option value={{vendor.id}} selected={{eq vendor.id this.formVendorId}}>
+              {{vendor.name}} ({{vendor.specialty}})
+            </option>
+          {{/each}}
+        </select>
       </div>
       {{#if this.errorMsg}}
         <p class="font-sm text-danger">{{this.errorMsg}}</p>

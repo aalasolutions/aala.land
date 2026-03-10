@@ -23,6 +23,7 @@ import { OwnersModule } from '@modules/owners/owners.module';
 import { AuditModule } from '@modules/audit/audit.module';
 import { EmailTemplatesModule } from '@modules/email-templates/email-templates.module';
 import { ContactsModule } from '@modules/contacts/contacts.module';
+import { VendorsModule } from '@modules/vendors/vendors.module';
 
 @Module({
   imports: [
@@ -68,6 +69,7 @@ import { ContactsModule } from '@modules/contacts/contacts.module';
     AuditModule,
     EmailTemplatesModule,
     ContactsModule,
+    VendorsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

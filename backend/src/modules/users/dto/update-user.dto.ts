@@ -24,4 +24,34 @@ export class UpdateUserDto {
   @IsBoolean()
   @IsOptional()
   isActive?: boolean;
+
+  @ApiPropertyOptional({ example: '+971501234567' })
+  @IsString()
+  @IsOptional()
+  @MaxLength(50)
+  phone?: string;
+
+  @ApiPropertyOptional({ example: 'en' })
+  @IsString()
+  @IsOptional()
+  @MaxLength(5)
+  preferredLanguage?: string;
+
+  @ApiPropertyOptional({ example: 'DD/MM/YYYY' })
+  @IsString()
+  @IsOptional()
+  @MaxLength(20)
+  dateFormat?: string;
+
+  @ApiPropertyOptional({ example: 'AED' })
+  @IsString()
+  @IsOptional()
+  @MaxLength(3)
+  currency?: string;
+
+  @ApiPropertyOptional({ example: 'Asia/Dubai' })
+  @IsString()
+  @IsOptional()
+  @MaxLength(50)
+  timezone?: string;
 }

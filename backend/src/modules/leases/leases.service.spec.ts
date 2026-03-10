@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { NotFoundException } from '@nestjs/common';
+import { NotFoundException, BadRequestException } from '@nestjs/common';
 import { LeasesService } from './leases.service';
 import { Lease, LeaseStatus, LeaseType } from './entities/lease.entity';
 
@@ -132,6 +132,103 @@ describe('LeasesService', () => {
       const result = await service.update('lease-uuid-1', companyId, { status: LeaseStatus.EXPIRED });
 
       expect(result.status).toBe(LeaseStatus.EXPIRED);
+    });
+  });
+
+  describe('renew', () => {
+    it('marks ACTIVE lease as RENEWED and creates new lease', async () => {
+      const activeLease = { ...mockLease, status: LeaseStatus.ACTIVE } as Lease;
+      const newLeaseData = {
+        unitId: 'unit-uuid-1',
+        tenantName: 'Ahmed Al-Rashid',
+        startDate: '2027-01-01',
+        endDate: '2027-12-31',
+        monthlyRent: 5500,
+      };
+      const savedNewLease = { ...newLeaseData, id: 'lease-uuid-2', companyId, status: LeaseStatus.DRAFT } as unknown as Lease;
+
+      repo.findOne.mockResolvedValue(activeLease);
+      repo.save.mockResolvedValueOnce({ ...activeLease, status: LeaseStatus.RENEWED } as Lease);
+      repo.create.mockReturnValue(savedNewLease);
+      repo.save.mockResolvedValueOnce(savedNewLease);
+
+      const result = await service.renew('lease-uuid-1', companyId, newLeaseData as any);
+
+      expect(result.oldLease.status).toBe(LeaseStatus.RENEWED);
+      expect(result.newLease).toEqual(savedNewLease);
+    });
+
+    it('allows renewal of EXPIRED lease', async () => {
+      const expiredLease = { ...mockLease, status: LeaseStatus.EXPIRED } as Lease;
+      const newLeaseData = {
+        unitId: 'unit-uuid-1',
+        tenantName: 'Ahmed Al-Rashid',
+        startDate: '2027-01-01',
+        endDate: '2027-12-31',
+        monthlyRent: 5500,
+      };
+      const savedNewLease = { ...newLeaseData, id: 'lease-uuid-2', companyId } as unknown as Lease;
+
+      repo.findOne.mockResolvedValue(expiredLease);
+      repo.save.mockResolvedValueOnce({ ...expiredLease, status: LeaseStatus.RENEWED } as Lease);
+      repo.create.mockReturnValue(savedNewLease);
+      repo.save.mockResolvedValueOnce(savedNewLease);
+
+      const result = await service.renew('lease-uuid-1', companyId, newLeaseData as any);
+
+      expect(result.oldLease.status).toBe(LeaseStatus.RENEWED);
+    });
+
+    it('throws BadRequestException when lease is TERMINATED', async () => {
+      const terminated = { ...mockLease, status: LeaseStatus.TERMINATED } as Lease;
+      repo.findOne.mockResolvedValue(terminated);
+
+      await expect(service.renew('lease-uuid-1', companyId, {} as any)).rejects.toThrow(BadRequestException);
+    });
+
+    it('throws BadRequestException when lease is DRAFT', async () => {
+      const draft = { ...mockLease, status: LeaseStatus.DRAFT } as Lease;
+      repo.findOne.mockResolvedValue(draft);
+
+      await expect(service.renew('lease-uuid-1', companyId, {} as any)).rejects.toThrow(BadRequestException);
+    });
+
+    it('throws NotFoundException when lease not found', async () => {
+      repo.findOne.mockResolvedValue(null);
+
+      await expect(service.renew('bad-id', companyId, {} as any)).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('terminate', () => {
+    it('terminates an ACTIVE lease', async () => {
+      const activeLease = { ...mockLease, status: LeaseStatus.ACTIVE } as Lease;
+      repo.findOne.mockResolvedValue(activeLease);
+      repo.save.mockImplementation(async (l) => l as Lease);
+
+      const result = await service.terminate('lease-uuid-1', companyId);
+
+      expect(result.status).toBe(LeaseStatus.TERMINATED);
+    });
+
+    it('throws BadRequestException when lease is not ACTIVE', async () => {
+      const expired = { ...mockLease, status: LeaseStatus.EXPIRED } as Lease;
+      repo.findOne.mockResolvedValue(expired);
+
+      await expect(service.terminate('lease-uuid-1', companyId)).rejects.toThrow(BadRequestException);
+    });
+
+    it('throws BadRequestException when lease is DRAFT', async () => {
+      const draft = { ...mockLease, status: LeaseStatus.DRAFT } as Lease;
+      repo.findOne.mockResolvedValue(draft);
+
+      await expect(service.terminate('lease-uuid-1', companyId)).rejects.toThrow(BadRequestException);
+    });
+
+    it('throws NotFoundException when lease not found', async () => {
+      repo.findOne.mockResolvedValue(null);
+
+      await expect(service.terminate('bad-id', companyId)).rejects.toThrow(NotFoundException);
     });
   });
 

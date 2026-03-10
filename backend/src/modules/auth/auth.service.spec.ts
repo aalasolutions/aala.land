@@ -1,10 +1,13 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { JwtService } from '@nestjs/jwt';
+import { BadRequestException } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { UsersService } from '../users/users.service';
 import * as bcrypt from 'bcryptjs';
+import * as crypto from 'crypto';
 
 jest.mock('bcryptjs');
+jest.mock('crypto');
 
 describe('AuthService', () => {
   let service: AuthService;
@@ -31,6 +34,9 @@ describe('AuthService', () => {
           provide: UsersService,
           useValue: {
             findByEmail: jest.fn(),
+            findByResetToken: jest.fn(),
+            updateResetToken: jest.fn(),
+            updatePassword: jest.fn(),
           },
         },
         {
@@ -114,6 +120,118 @@ describe('AuthService', () => {
         role: jwtPayload.role,
       });
       expect(result.accessToken).toBe('mock-jwt-token');
+    });
+  });
+
+  describe('forgotPassword', () => {
+    const fakeToken = 'a'.repeat(64);
+
+    beforeEach(() => {
+      (crypto.randomBytes as jest.Mock).mockReturnValue({ toString: () => fakeToken });
+    });
+
+    it('generates token and saves it when email exists', async () => {
+      usersService.findByEmail.mockResolvedValue(mockUser as any);
+
+      const result = await service.forgotPassword('admin@test.com');
+
+      expect(usersService.findByEmail).toHaveBeenCalledWith('admin@test.com');
+      expect(usersService.updateResetToken).toHaveBeenCalledWith(
+        mockUser.id,
+        fakeToken,
+        expect.any(Date),
+      );
+      expect(result.message).toContain('If the email exists');
+    });
+
+    it('returns success even when email does not exist (no leak)', async () => {
+      usersService.findByEmail.mockResolvedValue(null);
+
+      const result = await service.forgotPassword('unknown@test.com');
+
+      expect(usersService.updateResetToken).not.toHaveBeenCalled();
+      expect(result.message).toContain('If the email exists');
+    });
+
+    it('sets token expiry to approximately 1 hour from now', async () => {
+      usersService.findByEmail.mockResolvedValue(mockUser as any);
+
+      await service.forgotPassword('admin@test.com');
+
+      const savedExpiry = (usersService.updateResetToken as jest.Mock).mock.calls[0][2] as Date;
+      const diffMs = savedExpiry.getTime() - Date.now();
+      // Should be roughly 1 hour (3600000ms), allow 5 second tolerance
+      expect(diffMs).toBeGreaterThan(3595000);
+      expect(diffMs).toBeLessThanOrEqual(3600000);
+    });
+  });
+
+  describe('resetPassword', () => {
+    const validToken = 'valid-reset-token';
+    const futureDate = new Date(Date.now() + 60 * 60 * 1000);
+    const pastDate = new Date(Date.now() - 60 * 60 * 1000);
+
+    it('resets password when token is valid and not expired', async () => {
+      usersService.findByResetToken.mockResolvedValue({
+        id: 'user-uuid-1',
+        email: 'admin@test.com',
+        resetPasswordToken: validToken,
+        resetPasswordExpires: futureDate,
+      } as any);
+      (bcrypt.hash as jest.Mock).mockResolvedValue('new-hashed-password');
+
+      const result = await service.resetPassword(validToken, 'NewPass123!');
+
+      expect(usersService.findByResetToken).toHaveBeenCalledWith(validToken);
+      expect(bcrypt.hash).toHaveBeenCalledWith('NewPass123!', 10);
+      expect(usersService.updatePassword).toHaveBeenCalledWith('user-uuid-1', 'new-hashed-password');
+      expect(usersService.updateResetToken).toHaveBeenCalledWith('user-uuid-1', null, null);
+      expect(result.message).toContain('reset successfully');
+    });
+
+    it('throws BadRequestException when token not found', async () => {
+      usersService.findByResetToken.mockResolvedValue(null);
+
+      await expect(service.resetPassword('bad-token', 'NewPass123!'))
+        .rejects.toThrow(BadRequestException);
+    });
+
+    it('throws BadRequestException when token is expired', async () => {
+      usersService.findByResetToken.mockResolvedValue({
+        id: 'user-uuid-1',
+        email: 'admin@test.com',
+        resetPasswordToken: validToken,
+        resetPasswordExpires: pastDate,
+      } as any);
+
+      await expect(service.resetPassword(validToken, 'NewPass123!'))
+        .rejects.toThrow(BadRequestException);
+    });
+
+    it('throws BadRequestException when resetPasswordExpires is null', async () => {
+      usersService.findByResetToken.mockResolvedValue({
+        id: 'user-uuid-1',
+        email: 'admin@test.com',
+        resetPasswordToken: validToken,
+        resetPasswordExpires: null,
+      } as any);
+
+      await expect(service.resetPassword(validToken, 'NewPass123!'))
+        .rejects.toThrow(BadRequestException);
+    });
+
+    it('clears token fields after successful reset', async () => {
+      usersService.findByResetToken.mockResolvedValue({
+        id: 'user-uuid-1',
+        email: 'admin@test.com',
+        resetPasswordToken: validToken,
+        resetPasswordExpires: futureDate,
+      } as any);
+      (bcrypt.hash as jest.Mock).mockResolvedValue('new-hashed-password');
+
+      await service.resetPassword(validToken, 'NewPass123!');
+
+      expect(usersService.updateResetToken).toHaveBeenCalledWith('user-uuid-1', null, null);
     });
   });
 });

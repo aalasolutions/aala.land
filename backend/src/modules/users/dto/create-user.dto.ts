@@ -25,5 +25,35 @@ export class CreateUserDto {
   @IsOptional()
   role?: Role;
 
+  @ApiPropertyOptional({ example: '+971501234567' })
+  @IsString()
+  @IsOptional()
+  @MaxLength(50)
+  phone?: string;
+
+  @ApiPropertyOptional({ example: 'en', default: 'en' })
+  @IsString()
+  @IsOptional()
+  @MaxLength(5)
+  preferredLanguage?: string;
+
+  @ApiPropertyOptional({ example: 'DD/MM/YYYY', default: 'DD/MM/YYYY' })
+  @IsString()
+  @IsOptional()
+  @MaxLength(20)
+  dateFormat?: string;
+
+  @ApiPropertyOptional({ example: 'AED', default: 'AED' })
+  @IsString()
+  @IsOptional()
+  @MaxLength(3)
+  currency?: string;
+
+  @ApiPropertyOptional({ example: 'Asia/Dubai', default: 'Asia/Dubai' })
+  @IsString()
+  @IsOptional()
+  @MaxLength(50)
+  timezone?: string;
+
   // companyId is extracted from JWT, not sent by client
 }

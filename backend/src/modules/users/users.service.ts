@@ -65,6 +65,24 @@ export class UsersService {
         await this.userRepository.remove(user);
     }
 
+    async findByResetToken(token: string): Promise<User | null> {
+        return this.userRepository.findOne({
+            where: { resetPasswordToken: token },
+            select: ['id', 'email', 'resetPasswordToken', 'resetPasswordExpires'],
+        });
+    }
+
+    async updateResetToken(userId: string, token: string | null, expires: Date | null): Promise<void> {
+        await this.userRepository.update(userId, {
+            resetPasswordToken: token,
+            resetPasswordExpires: expires,
+        });
+    }
+
+    async updatePassword(userId: string, hashedPassword: string): Promise<void> {
+        await this.userRepository.update(userId, { password: hashedPassword });
+    }
+
     async findAgents(companyId: string): Promise<User[]> {
         return this.userRepository.find({
             where: { companyId, isActive: true },

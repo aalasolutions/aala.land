@@ -1,0 +1,95 @@
+{{page-title "Commissions"}}
+
+<div data-test-commissions-page class="flex col gap-6">
+  <div class="flex between x-center">
+    <div>
+      <h2 class="font-3xl font-bold"><Ph @icon="hand-coins" @size="28px" /> Commissions</h2>
+      <p class="text-muted mt-1">Track agent commissions and payouts.</p>
+    </div>
+    <div class="flex col gap-1">
+      <label class="font-xs text-muted">Filter by Status</label>
+      <select class="form-input" style="min-width: 160px;" {{on "change" (fn this.setField "filterStatus")}}>
+        <option value="" selected={{eq this.filterStatus ""}}>All</option>
+        <option value="PENDING" selected={{eq this.filterStatus "PENDING"}}>Pending</option>
+        <option value="APPROVED" selected={{eq this.filterStatus "APPROVED"}}>Approved</option>
+        <option value="PAID" selected={{eq this.filterStatus "PAID"}}>Paid</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="data-table-wrapper">
+    {{#if this.filteredCommissions.length}}
+      <table class="data-table" data-test-commissions-table>
+        <thead>
+          <tr>
+            <th>Agent ID</th>
+            <th>Deal ID</th>
+            <th>Type</th>
+            <th>Amount (AED)</th>
+            <th>Rate</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{#each this.filteredCommissions as |comm|}}
+            <tr data-test-commission-row>
+              <td class="font-xs">{{truncate-id comm.agentId}}</td>
+              <td class="font-xs">
+                {{#if comm.leadId}}
+                  {{truncate-id comm.leadId}}
+                {{else if comm.transactionId}}
+                  {{truncate-id comm.transactionId}}
+                {{else}}
+                  <span class="text-muted">N/A</span>
+                {{/if}}
+              </td>
+              <td>
+                <span class="type-badge type-{{lowercase comm.type}}">{{comm.type}}</span>
+              </td>
+              <td class="font-bold">{{format-number comm.commissionAmount}} / {{format-number comm.grossAmount}}</td>
+              <td>{{comm.commissionRate}}%</td>
+              <td>
+                <span class="status-badge status-{{lowercase comm.status}}">{{comm.status}}</span>
+              </td>
+              <td>
+                {{#if (eq comm.status "PENDING")}}
+                  <button
+                    data-test-approve-btn
+                    type="button"
+                    class="btn btn-primary btn-sm"
+                    {{on "click" (fn this.approveCommission comm)}}
+                  >
+                    <Ph @icon="check" /> Approve
+                  </button>
+                {{else if (eq comm.status "APPROVED")}}
+                  <button
+                    data-test-pay-btn
+                    type="button"
+                    class="btn btn-primary btn-sm"
+                    {{on "click" (fn this.payCommission comm)}}
+                  >
+                    <Ph @icon="currency-dollar" /> Mark Paid
+                  </button>
+                {{else if (eq comm.status "PAID")}}
+                  <span class="font-xs text-muted">
+                    {{#if comm.paidAt}}
+                      Paid {{comm.paidAt}}
+                    {{else}}
+                      Paid
+                    {{/if}}
+                  </span>
+                {{/if}}
+              </td>
+            </tr>
+          {{/each}}
+        </tbody>
+      </table>
+    {{else}}
+      <div class="glass-panel p-8 text-center">
+        <Ph @icon="hand-coins" @size="32px" @color="var(--text-muted)" />
+        <p class="text-muted mt-2">No commissions found.</p>
+      </div>
+    {{/if}}
+  </div>
+</div>

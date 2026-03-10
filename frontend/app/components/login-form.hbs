@@ -1,54 +1,137 @@
-<form
-  data-test-login-form
-  class="flex col gap-5 w-full"
-  {{on "submit" this.submit}}
->
-  <div class="flex col gap-2">
-    <label class="font-sm text-muted" for="login-email">Email</label>
-    <input
-      data-test-email-input
-      id="login-email"
-      type="email"
-      class="px-4 py-3 rounded-xl bg-white border border-white@10 text-color font-sm outline-none"
-      placeholder="you@company.com"
-      value={{this.email}}
-      autocomplete="email"
-      required
-      {{on "input" this.updateEmail}}
-    />
-  </div>
+{{#if this.showForgotPassword}}
+  {{#if this.resetSent}}
+    <div data-test-reset-success class="flex col gap-5 w-full text-center">
+      <div class="flex col gap-2">
+        <Ph @icon="check-circle" @size="48px" />
+        <p class="font-sm text-muted">
+          If an account exists with that email, you will receive a password reset link.
+        </p>
+      </div>
+      <button
+        data-test-back-to-login
+        type="button"
+        class="btn-link font-sm text-muted"
+        {{on "click" this.toggleForgotPassword}}
+      >
+        Back to Sign In
+      </button>
+    </div>
+  {{else}}
+    <form
+      data-test-forgot-password-form
+      class="flex col gap-5 w-full"
+      {{on "submit" this.submitForgotPassword}}
+    >
+      <div class="flex col gap-2">
+        <p class="font-sm text-muted">Enter your email address and we will send you a link to reset your password.</p>
+      </div>
 
-  <div class="flex col gap-2">
-    <label class="font-sm text-muted" for="login-password">Password</label>
-    <input
-      data-test-password-input
-      id="login-password"
-      type="password"
-      class="px-4 py-3 rounded-xl bg-white border border-white@10 text-color font-sm outline-none"
-      placeholder="••••••••"
-      value={{this.password}}
-      autocomplete="current-password"
-      required
-      {{on "input" this.updatePassword}}
-    />
-  </div>
+      <div class="flex col gap-2">
+        <label class="font-sm text-muted" for="reset-email">Email</label>
+        <input
+          data-test-reset-email-input
+          id="reset-email"
+          type="email"
+          class="px-4 py-3 rounded-xl bg-white border border-white@10 text-color font-sm outline-none"
+          placeholder="you@company.com"
+          value={{this.resetEmail}}
+          autocomplete="email"
+          required
+          {{on "input" this.updateResetEmail}}
+        />
+      </div>
 
-  {{#if this.errorMessage}}
-    <p data-test-error-message class="font-sm text-danger text-center">
-      {{this.errorMessage}}
-    </p>
+      {{#if this.resetError}}
+        <p data-test-reset-error class="font-sm text-danger text-center">
+          {{this.resetError}}
+        </p>
+      {{/if}}
+
+      <button
+        data-test-reset-submit
+        type="submit"
+        class="px-4 py-3 rounded-xl bg-primary text-white font-sm font-bold transition"
+        disabled={{this.resetLoading}}
+      >
+        {{if this.resetLoading "Sending..." "Send Reset Link"}}
+      </button>
+
+      <div class="text-center">
+        <button
+          data-test-back-to-login
+          type="button"
+          class="btn-link font-sm text-muted"
+          {{on "click" this.toggleForgotPassword}}
+        >
+          Back to Sign In
+        </button>
+      </div>
+    </form>
   {{/if}}
-
-  <button
-    data-test-submit-button
-    type="submit"
-    class="px-4 py-3 rounded-xl bg-primary text-white font-sm font-bold transition"
-    disabled={{this.isLoading}}
+{{else}}
+  <form
+    data-test-login-form
+    class="flex col gap-5 w-full"
+    {{on "submit" this.submit}}
   >
-    {{#if this.isLoading}}
-      Signing in...
-    {{else}}
-      Sign In
+    <div class="flex col gap-2">
+      <label class="font-sm text-muted" for="login-email">Email</label>
+      <input
+        data-test-email-input
+        id="login-email"
+        type="email"
+        class="px-4 py-3 rounded-xl bg-white border border-white@10 text-color font-sm outline-none"
+        placeholder="you@company.com"
+        value={{this.email}}
+        autocomplete="email"
+        required
+        {{on "input" this.updateEmail}}
+      />
+    </div>
+
+    <div class="flex col gap-2">
+      <label class="font-sm text-muted" for="login-password">Password</label>
+      <input
+        data-test-password-input
+        id="login-password"
+        type="password"
+        class="px-4 py-3 rounded-xl bg-white border border-white@10 text-color font-sm outline-none"
+        placeholder="••••••••"
+        value={{this.password}}
+        autocomplete="current-password"
+        required
+        {{on "input" this.updatePassword}}
+      />
+    </div>
+
+    {{#if this.errorMessage}}
+      <p data-test-error-message class="font-sm text-danger text-center">
+        {{this.errorMessage}}
+      </p>
     {{/if}}
-  </button>
-</form>
+
+    <button
+      data-test-submit-button
+      type="submit"
+      class="px-4 py-3 rounded-xl bg-primary text-white font-sm font-bold transition"
+      disabled={{this.isLoading}}
+    >
+      {{#if this.isLoading}}
+        Signing in...
+      {{else}}
+        Sign In
+      {{/if}}
+    </button>
+
+    <div class="text-center">
+      <button
+        data-test-forgot-password-link
+        type="button"
+        class="btn-link font-sm text-muted"
+        {{on "click" this.toggleForgotPassword}}
+      >
+        Forgot Password?
+      </button>
+    </div>
+  </form>
+{{/if}}
