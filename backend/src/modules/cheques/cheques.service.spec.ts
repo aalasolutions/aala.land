@@ -37,6 +37,7 @@ describe('ChequesService', () => {
             create: jest.fn(),
             save: jest.fn(),
             findOne: jest.fn(),
+            find: jest.fn(),
             findAndCount: jest.fn(),
             remove: jest.fn(),
           },
@@ -150,6 +151,95 @@ describe('ChequesService', () => {
       expect(result.ocrProcessed).toBe(false);
 
       delete process.env.OCR_API_KEY;
+    });
+  });
+
+  describe('bounce', () => {
+    it('increments bounceCount and sets status to BOUNCED', async () => {
+      const cheque = { ...mockCheque, bounceCount: 0, bounceReason: null, lastBounceDate: null } as unknown as Cheque;
+      repo.findOne.mockResolvedValue(cheque);
+      repo.save.mockImplementation(async (c) => c as Cheque);
+
+      const result = await service.bounce('cheque-uuid-1', companyId, { bounceReason: 'Insufficient funds' });
+
+      expect(result.bounceCount).toBe(1);
+      expect(result.bounceReason).toBe('Insufficient funds');
+      expect(result.lastBounceDate).toBeInstanceOf(Date);
+      expect(result.status).toBe(ChequeStatus.BOUNCED);
+    });
+
+    it('increments existing bounceCount', async () => {
+      const cheque = { ...mockCheque, bounceCount: 2, bounceReason: 'Old reason', lastBounceDate: new Date('2025-01-01') } as unknown as Cheque;
+      repo.findOne.mockResolvedValue(cheque);
+      repo.save.mockImplementation(async (c) => c as Cheque);
+
+      const result = await service.bounce('cheque-uuid-1', companyId, { bounceReason: 'Account closed' });
+
+      expect(result.bounceCount).toBe(3);
+      expect(result.bounceReason).toBe('Account closed');
+    });
+
+    it('sets bounceReason to null when not provided', async () => {
+      const cheque = { ...mockCheque, bounceCount: 0, bounceReason: null, lastBounceDate: null } as unknown as Cheque;
+      repo.findOne.mockResolvedValue(cheque);
+      repo.save.mockImplementation(async (c) => c as Cheque);
+
+      const result = await service.bounce('cheque-uuid-1', companyId, {});
+
+      expect(result.bounceReason).toBeNull();
+      expect(result.status).toBe(ChequeStatus.BOUNCED);
+    });
+
+    it('throws NotFoundException for wrong company', async () => {
+      repo.findOne.mockResolvedValue(null);
+
+      await expect(service.bounce('cheque-uuid-1', 'other-company', {})).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('getCollectionSchedule', () => {
+    it('returns cheques grouped by due date schedule', async () => {
+      const overdueCheque = { ...mockCheque, id: 'overdue-1' } as Cheque;
+      const thisWeekCheque = { ...mockCheque, id: 'week-1' } as Cheque;
+      const nextWeekCheque = { ...mockCheque, id: 'next-week-1' } as Cheque;
+      const monthCheque = { ...mockCheque, id: 'month-1' } as Cheque;
+
+      repo.find
+        .mockResolvedValueOnce([overdueCheque])
+        .mockResolvedValueOnce([thisWeekCheque])
+        .mockResolvedValueOnce([nextWeekCheque])
+        .mockResolvedValueOnce([monthCheque]);
+
+      const result = await service.getCollectionSchedule(companyId);
+
+      expect(result.overdue).toEqual([overdueCheque]);
+      expect(result.thisWeek).toEqual([thisWeekCheque]);
+      expect(result.nextWeek).toEqual([nextWeekCheque]);
+      expect(result.thisMonth).toEqual([monthCheque]);
+      expect(repo.find).toHaveBeenCalledTimes(4);
+    });
+
+    it('returns empty arrays when no pending cheques', async () => {
+      repo.find.mockResolvedValue([]);
+
+      const result = await service.getCollectionSchedule(companyId);
+
+      expect(result.overdue).toEqual([]);
+      expect(result.thisWeek).toEqual([]);
+      expect(result.nextWeek).toEqual([]);
+      expect(result.thisMonth).toEqual([]);
+    });
+
+    it('filters by PENDING status only', async () => {
+      repo.find.mockResolvedValue([]);
+
+      await service.getCollectionSchedule(companyId);
+
+      for (const call of repo.find.mock.calls) {
+        const where = (call[0] as any).where;
+        expect(where.companyId).toBe(companyId);
+        expect(where.status).toBe(ChequeStatus.PENDING);
+      }
     });
   });
 

@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { MaintenanceController } from './maintenance.controller';
 import { MaintenanceService } from './maintenance.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { WorkOrderStatus, WorkOrderPriority, WorkOrderCategory } from './entities/work-order.entity';
+import { WorkOrderStatus, WorkOrderPriority, WorkOrderCategory, ScheduleFrequency } from './entities/work-order.entity';
 
 describe('MaintenanceController', () => {
   let controller: MaintenanceController;
@@ -35,6 +35,8 @@ describe('MaintenanceController', () => {
             findOne: jest.fn(),
             update: jest.fn(),
             remove: jest.fn(),
+            getCostSummary: jest.fn(),
+            getUpcoming: jest.fn(),
           },
         },
       ],
@@ -56,7 +58,7 @@ describe('MaintenanceController', () => {
       service.create.mockResolvedValue(mockOrder as any);
 
       const dto = { title: 'Fix AC', description: 'AC not cooling', priority: WorkOrderPriority.HIGH };
-      const result = await controller.create(dto as any, mockReq);
+      await controller.create(dto as any, mockReq);
 
       expect(service.create).toHaveBeenCalledWith(companyId, dto);
     });
@@ -66,9 +68,38 @@ describe('MaintenanceController', () => {
     it('returns paginated work orders', async () => {
       service.findAll.mockResolvedValue(paginated as any);
 
-      const result = await controller.findAll(mockReq, 1, 20);
+      await controller.findAll(mockReq, 1, 20);
 
       expect(service.findAll).toHaveBeenCalledWith(companyId, 1, 20);
+    });
+  });
+
+  describe('getCostSummary', () => {
+    it('returns cost summary for company', async () => {
+      const summary = { totalEstimated: 15000, totalActual: 12000, variance: 3000, workOrderCount: 5, avgCostPerOrder: 2400 };
+      service.getCostSummary.mockResolvedValue(summary);
+
+      const result = await controller.getCostSummary(mockReq);
+
+      expect(service.getCostSummary).toHaveBeenCalledWith(companyId);
+      expect(result).toEqual(summary);
+    });
+  });
+
+  describe('getUpcoming', () => {
+    it('returns upcoming preventive work orders', async () => {
+      const preventiveOrder = {
+        ...mockOrder,
+        isPreventive: true,
+        scheduleFrequency: ScheduleFrequency.MONTHLY,
+        nextScheduledDate: new Date(),
+      };
+      service.getUpcoming.mockResolvedValue([preventiveOrder] as any);
+
+      const result = await controller.getUpcoming(mockReq);
+
+      expect(service.getUpcoming).toHaveBeenCalledWith(companyId);
+      expect(result).toHaveLength(1);
     });
   });
 

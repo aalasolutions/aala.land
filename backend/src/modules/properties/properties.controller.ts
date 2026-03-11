@@ -13,6 +13,8 @@ import { CreateBuildingDto } from './dto/create-building.dto';
 import { UpdateBuildingDto } from './dto/update-building.dto';
 import { CreateUnitDto } from './dto/create-unit.dto';
 import { UpdateUnitDto } from './dto/update-unit.dto';
+import { CreateListingDto } from './dto/create-listing.dto';
+import { UpdateListingDto } from './dto/update-listing.dto';
 
 @ApiTags('Properties')
 @ApiBearerAuth()
@@ -163,5 +165,52 @@ export class PropertiesController {
     @ApiOperation({ summary: 'Delete unit (COMPANY_ADMIN+)' })
     removeUnit(@Param('id', ParseUUIDPipe) id: string, @Request() req) {
         return this.propertiesService.removeUnit(id, req.user.companyId);
+    }
+
+    @Get('occupancy')
+    @ApiOperation({ summary: 'Building-level occupancy rates' })
+    getOccupancy(@Request() req) {
+        return this.propertiesService.getBuildingOccupancy(req.user.companyId);
+    }
+
+    // Listings
+    @Post('listings')
+    @Roles(Role.COMPANY_ADMIN)
+    @ApiOperation({ summary: 'Create a property listing' })
+    createListing(@Body() dto: CreateListingDto, @Request() req) {
+        return this.propertiesService.createListing(req.user.companyId, dto);
+    }
+
+    @Get('listings')
+    @ApiOperation({ summary: 'List all property listings (paginated)' })
+    @ApiQuery({ name: 'page', required: false, type: Number })
+    @ApiQuery({ name: 'limit', required: false, type: Number })
+    findAllListings(
+        @Request() req,
+        @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+        @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
+    ) {
+        return this.propertiesService.findAllListings(req.user.companyId, page, limit);
+    }
+
+    @Get('listings/:id')
+    @ApiOperation({ summary: 'Get a listing by ID' })
+    findOneListing(@Param('id', ParseUUIDPipe) id: string, @Request() req) {
+        return this.propertiesService.findOneListing(id, req.user.companyId);
+    }
+
+    @Patch('listings/:id')
+    @Roles(Role.COMPANY_ADMIN)
+    @ApiOperation({ summary: 'Update a listing' })
+    updateListing(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateListingDto, @Request() req) {
+        return this.propertiesService.updateListing(id, req.user.companyId, dto);
+    }
+
+    @Delete('listings/:id')
+    @Roles(Role.COMPANY_ADMIN)
+    @HttpCode(HttpStatus.NO_CONTENT)
+    @ApiOperation({ summary: 'Delete a listing' })
+    removeListing(@Param('id', ParseUUIDPipe) id: string, @Request() req) {
+        return this.propertiesService.removeListing(id, req.user.companyId);
     }
 }

@@ -79,6 +79,15 @@ export class Cheque {
   @Column({ name: 'ocr_data', type: 'jsonb', nullable: true })
   ocrData: Record<string, unknown> | null;
 
+  @Column({ name: 'bounce_count', type: 'int', default: 0 })
+  bounceCount: number;
+
+  @Column({ name: 'bounce_reason', type: 'varchar', length: 500, nullable: true })
+  bounceReason: string | null;
+
+  @Column({ name: 'last_bounce_date', type: 'timestamp', nullable: true })
+  lastBounceDate: Date | null;
+
   @Column({ type: 'text', nullable: true })
   notes: string | null;
 

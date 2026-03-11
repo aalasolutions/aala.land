@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, LessThan, Between, LessThanOrEqual, MoreThan } from 'typeorm';
 import { Transaction, TransactionType, TransactionStatus } from './entities/transaction.entity';
 import { CreateTransactionDto } from './dto/create-transaction.dto';
 import { UpdateTransactionDto } from './dto/update-transaction.dto';
@@ -81,5 +81,48 @@ export class FinancialService {
       net: totalIncome - totalExpense,
       currency: 'AED',
     };
+  }
+
+  async getDepositReminders(companyId: string): Promise<{
+    overdue: Transaction[];
+    dueToday: Transaction[];
+    dueThisWeek: Transaction[];
+    dueThisMonth: Transaction[];
+  }> {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const endOfWeek = new Date(today);
+    endOfWeek.setDate(endOfWeek.getDate() + (7 - endOfWeek.getDay()));
+    const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+
+    const baseWhere = {
+      companyId,
+      type: TransactionType.INCOME,
+      status: TransactionStatus.PENDING,
+    };
+
+    const overdue = await this.transactionRepository.find({
+      where: { ...baseWhere, dueDate: LessThan(today) },
+      order: { dueDate: 'ASC' },
+    });
+
+    const dueToday = await this.transactionRepository.find({
+      where: { ...baseWhere, dueDate: Between(today, tomorrow) },
+      order: { dueDate: 'ASC' },
+    });
+
+    const dueThisWeek = await this.transactionRepository.find({
+      where: { ...baseWhere, dueDate: Between(tomorrow, endOfWeek) },
+      order: { dueDate: 'ASC' },
+    });
+
+    const dueThisMonth = await this.transactionRepository.find({
+      where: { ...baseWhere, dueDate: Between(endOfWeek, endOfMonth) },
+      order: { dueDate: 'ASC' },
+    });
+
+    return { overdue, dueToday, dueThisWeek, dueThisMonth };
   }
 }

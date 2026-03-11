@@ -35,6 +35,7 @@ describe('FinancialController', () => {
             findOne: jest.fn(),
             update: jest.fn(),
             getSummary: jest.fn(),
+            getDepositReminders: jest.fn(),
           },
         },
       ],
@@ -110,6 +111,23 @@ describe('FinancialController', () => {
       const result = await controller.update('txn-uuid-1', { status: TransactionStatus.COMPLETED }, mockReq);
 
       expect(service.update).toHaveBeenCalledWith('txn-uuid-1', companyId, { status: TransactionStatus.COMPLETED });
+    });
+  });
+
+  describe('getDepositReminders', () => {
+    it('returns deposit reminders grouped by due date', async () => {
+      const reminders = {
+        overdue: [mockTransaction],
+        dueToday: [],
+        dueThisWeek: [],
+        dueThisMonth: [],
+      };
+      service.getDepositReminders.mockResolvedValue(reminders as any);
+
+      const result = await controller.getDepositReminders(mockReq);
+
+      expect(service.getDepositReminders).toHaveBeenCalledWith(companyId);
+      expect(result).toEqual(reminders);
     });
   });
 });

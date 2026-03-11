@@ -1,66 +1,136 @@
 {{page-title "AALA.LAND"}}
 
 {{#if this.session.isAuthenticated}}
-  <div class="app-layout">
+  <div class="app-layout {{if this.sidebarCollapsed 'sidebar-collapsed'}}">
     {{!-- Sidebar --}}
-    <aside class="sidebar">
+    <aside class="sidebar" data-test-sidebar>
       <div class="sidebar-header">
-        <h1 class="brand-title">AALA.LAND</h1>
-        <p class="brand-subtitle">Property Management</p>
+        <h1 class="brand-title">AALA<span class="brand-dot">.</span>LAND</h1>
+        {{#unless this.sidebarCollapsed}}
+          <p class="brand-subtitle">Property Management</p>
+        {{/unless}}
       </div>
 
       <nav data-test-sidebar-nav class="sidebar-nav">
-        <LinkTo @route="dashboard" class="sidebar-link" activeClass="sidebar-link-active">
-          <Ph @icon="squares-four" /> <span>Dashboard</span>
+        {{!-- Dashboard (direct link) --}}
+        <LinkTo @route="dashboard" class="sidebar-link" data-test-nav-dashboard>
+          <Ph @icon="gauge" /> <span class="sidebar-label">Dashboard</span>
         </LinkTo>
-        <LinkTo @route="properties" class="sidebar-link" activeClass="sidebar-link-active">
-          <Ph @icon="buildings" /> <span>Properties</span>
+
+        {{!-- Properties Group --}}
+        <div class="sidebar-group {{if (or (eq this.expandedGroup 'properties') (eq this.activeGroup 'properties')) 'expanded'}}">
+          <button type="button" class="sidebar-group-toggle {{if (eq this.activeGroup 'properties') 'sidebar-group-active'}}" {{on "click" (fn this.toggleGroup "properties")}}>
+            <Ph @icon="buildings" /> <span class="sidebar-label">Properties</span>
+            <Ph @icon="caret-down" class="sidebar-chevron" />
+          </button>
+          <div class="sidebar-group-items">
+            <LinkTo @route="properties" class="sidebar-sublink" data-test-nav-properties>
+              <span class="sidebar-label">All Properties</span>
+            </LinkTo>
+            <LinkTo @route="owners" class="sidebar-sublink" data-test-nav-owners>
+              <span class="sidebar-label">Owners</span>
+            </LinkTo>
+          </div>
+        </div>
+
+        {{!-- Leads / CRM Group --}}
+        <div class="sidebar-group {{if (or (eq this.expandedGroup 'crm') (eq this.activeGroup 'crm')) 'expanded'}}">
+          <button type="button" class="sidebar-group-toggle {{if (eq this.activeGroup 'crm') 'sidebar-group-active'}}" {{on "click" (fn this.toggleGroup "crm")}}>
+            <Ph @icon="funnel" /> <span class="sidebar-label">Leads</span>
+            <Ph @icon="caret-down" class="sidebar-chevron" />
+          </button>
+          <div class="sidebar-group-items">
+            <LinkTo @route="leads" class="sidebar-sublink" data-test-nav-leads>
+              <span class="sidebar-label">Pipeline</span>
+            </LinkTo>
+            <LinkTo @route="contacts" class="sidebar-sublink" data-test-nav-contacts>
+              <span class="sidebar-label">Contacts</span>
+            </LinkTo>
+          </div>
+        </div>
+
+        {{!-- Finance Group --}}
+        <div class="sidebar-group {{if (or (eq this.expandedGroup 'finance') (eq this.activeGroup 'finance')) 'expanded'}}">
+          <button type="button" class="sidebar-group-toggle {{if (eq this.activeGroup 'finance') 'sidebar-group-active'}}" {{on "click" (fn this.toggleGroup "finance")}}>
+            <Ph @icon="currency-circle-dollar" /> <span class="sidebar-label">Finance</span>
+            <Ph @icon="caret-down" class="sidebar-chevron" />
+          </button>
+          <div class="sidebar-group-items">
+            <LinkTo @route="leases" class="sidebar-sublink" data-test-nav-leases>
+              <span class="sidebar-label">Leases</span>
+            </LinkTo>
+            <LinkTo @route="financials" class="sidebar-sublink" data-test-nav-financials>
+              <span class="sidebar-label">Transactions</span>
+            </LinkTo>
+            <LinkTo @route="cheques" class="sidebar-sublink" data-test-nav-cheques>
+              <span class="sidebar-label">Cheques</span>
+            </LinkTo>
+            <LinkTo @route="commissions" class="sidebar-sublink" data-test-nav-commissions>
+              <span class="sidebar-label">Commissions</span>
+            </LinkTo>
+          </div>
+        </div>
+
+        {{!-- Outreach Group --}}
+        <div class="sidebar-group {{if (or (eq this.expandedGroup 'outreach') (eq this.activeGroup 'outreach')) 'expanded'}}">
+          <button type="button" class="sidebar-group-toggle {{if (eq this.activeGroup 'outreach') 'sidebar-group-active'}}" {{on "click" (fn this.toggleGroup "outreach")}}>
+            <Ph @icon="chats-circle" /> <span class="sidebar-label">Outreach</span>
+            <Ph @icon="caret-down" class="sidebar-chevron" />
+          </button>
+          <div class="sidebar-group-items">
+            <LinkTo @route="whatsapp" class="sidebar-sublink" data-test-nav-whatsapp>
+              <span class="sidebar-label">WhatsApp</span>
+            </LinkTo>
+            <LinkTo @route="email-templates" class="sidebar-sublink" data-test-nav-templates>
+              <span class="sidebar-label">Email Templates</span>
+            </LinkTo>
+          </div>
+        </div>
+
+        {{!-- Operations Group --}}
+        <div class="sidebar-group {{if (or (eq this.expandedGroup 'operations') (eq this.activeGroup 'operations')) 'expanded'}}">
+          <button type="button" class="sidebar-group-toggle {{if (eq this.activeGroup 'operations') 'sidebar-group-active'}}" {{on "click" (fn this.toggleGroup "operations")}}>
+            <Ph @icon="wrench" /> <span class="sidebar-label">Operations</span>
+            <Ph @icon="caret-down" class="sidebar-chevron" />
+          </button>
+          <div class="sidebar-group-items">
+            <LinkTo @route="maintenance" class="sidebar-sublink" data-test-nav-maintenance>
+              <span class="sidebar-label">Maintenance</span>
+            </LinkTo>
+            <LinkTo @route="vendors" class="sidebar-sublink" data-test-nav-vendors>
+              <span class="sidebar-label">Vendors</span>
+            </LinkTo>
+          </div>
+        </div>
+
+        {{!-- Reports (direct link) --}}
+        <LinkTo @route="reports" class="sidebar-link" data-test-nav-reports>
+          <Ph @icon="chart-bar" /> <span class="sidebar-label">Reports</span>
         </LinkTo>
-        <LinkTo @route="owners" class="sidebar-link" activeClass="sidebar-link-active">
-          <Ph @icon="user-circle" /> <span>Owners</span>
-        </LinkTo>
-        <LinkTo @route="leads" class="sidebar-link" activeClass="sidebar-link-active">
-          <Ph @icon="funnel" /> <span>Leads</span>
-        </LinkTo>
-        <LinkTo @route="leases" class="sidebar-link" activeClass="sidebar-link-active">
-          <Ph @icon="file-text" /> <span>Leases</span>
-        </LinkTo>
-        <LinkTo @route="financials" class="sidebar-link" activeClass="sidebar-link-active">
-          <Ph @icon="currency-dollar" /> <span>Financials</span>
-        </LinkTo>
-        <LinkTo @route="commissions" class="sidebar-link" activeClass="sidebar-link-active">
-          <Ph @icon="hand-coins" /> <span>Commissions</span>
-        </LinkTo>
-        <LinkTo @route="cheques" class="sidebar-link" activeClass="sidebar-link-active">
-          <Ph @icon="checks" /> <span>Cheques</span>
-        </LinkTo>
-        <LinkTo @route="maintenance" class="sidebar-link" activeClass="sidebar-link-active">
-          <Ph @icon="wrench" /> <span>Maintenance</span>
-        </LinkTo>
-        <LinkTo @route="vendors" class="sidebar-link" activeClass="sidebar-link-active">
-          <Ph @icon="toolbox" /> <span>Vendors</span>
-        </LinkTo>
-        <LinkTo @route="whatsapp" class="sidebar-link" activeClass="sidebar-link-active">
-          <Ph @icon="whatsapp-logo" /> <span>WhatsApp</span>
-        </LinkTo>
-        <LinkTo @route="reports" class="sidebar-link" activeClass="sidebar-link-active">
-          <Ph @icon="chart-bar" /> <span>Reports</span>
-        </LinkTo>
-        <LinkTo @route="contacts" class="sidebar-link" activeClass="sidebar-link-active">
-          <Ph @icon="address-book" /> <span>Contacts</span>
-        </LinkTo>
-        <LinkTo @route="email-templates" class="sidebar-link" activeClass="sidebar-link-active">
-          <Ph @icon="envelope-simple" /> <span>Templates</span>
-        </LinkTo>
-        <LinkTo @route="team" class="sidebar-link" activeClass="sidebar-link-active">
-          <Ph @icon="users-three" /> <span>Team</span>
-        </LinkTo>
-        <LinkTo @route="audit" class="sidebar-link" activeClass="sidebar-link-active">
-          <Ph @icon="clipboard-text" /> <span>Audit</span>
-        </LinkTo>
+
+        {{!-- Admin Group --}}
+        <div class="sidebar-group {{if (or (eq this.expandedGroup 'admin') (eq this.activeGroup 'admin')) 'expanded'}}">
+          <button type="button" class="sidebar-group-toggle {{if (eq this.activeGroup 'admin') 'sidebar-group-active'}}" {{on "click" (fn this.toggleGroup "admin")}}>
+            <Ph @icon="gear" /> <span class="sidebar-label">Admin</span>
+            <Ph @icon="caret-down" class="sidebar-chevron" />
+          </button>
+          <div class="sidebar-group-items">
+            <LinkTo @route="team" class="sidebar-sublink" data-test-nav-team>
+              <span class="sidebar-label">Team</span>
+            </LinkTo>
+            <LinkTo @route="audit" class="sidebar-sublink" data-test-nav-audit>
+              <span class="sidebar-label">Audit Log</span>
+            </LinkTo>
+          </div>
+        </div>
       </nav>
 
       <div class="sidebar-spacer"></div>
+
+      {{!-- Collapse toggle --}}
+      <button type="button" class="sidebar-collapse-btn" aria-label="Toggle sidebar" {{on "click" this.toggleSidebar}}>
+        <Ph @icon={{if this.sidebarCollapsed "caret-double-right" "caret-double-left"}} />
+      </button>
     </aside>
 
     {{!-- Main Content --}}

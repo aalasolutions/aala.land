@@ -1,5 +1,13 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn } from 'typeorm';
 
+export enum SubscriptionTier {
+    FREE = 'FREE',
+    STARTER = 'STARTER',
+    GROWTH = 'GROWTH',
+    SCALE = 'SCALE',
+    ENTERPRISE = 'ENTERPRISE',
+}
+
 @Entity('companies')
 export class Company {
     @PrimaryGeneratedColumn('uuid')
@@ -13,6 +21,23 @@ export class Company {
 
     @Column({ name: 'is_active', type: 'boolean', default: true })
     isActive: boolean;
+
+    @Column({
+        name: 'subscription_tier',
+        type: 'enum',
+        enum: SubscriptionTier,
+        default: SubscriptionTier.FREE,
+    })
+    subscriptionTier: SubscriptionTier;
+
+    @Column({ name: 'max_users', type: 'int', default: 1 })
+    maxUsers: number;
+
+    @Column({ name: 'max_properties', type: 'int', default: 25 })
+    maxProperties: number;
+
+    @Column({ name: 'subscription_expires_at', type: 'timestamptz', nullable: true })
+    subscriptionExpiresAt: Date;
 
     @CreateDateColumn({ name: 'created_at' })
     createdAt: Date;

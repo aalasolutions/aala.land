@@ -20,4 +20,9 @@ export default class LeadsRoute extends AuthenticatedRoute {
     if (!response.ok) return { leads: [], total: 0, page: 1 };
     return response.json().then((r) => r.data);
   }
+
+  setupController(controller) {
+    super.setupController(...arguments);
+    controller.loadAgents();
+  }
 }

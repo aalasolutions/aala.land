@@ -3,47 +3,139 @@
 <div data-test-reports-page class="flex col gap-6">
   <div>
     <h2 class="font-3xl font-bold"><Ph @icon="chart-bar" @size="28px" /> Boss Dashboard</h2>
-    <p class="text-muted mt-1">Real-time agent performance and business intelligence.</p>
+    <p class="text-muted mt-1">Real-time performance and business intelligence.</p>
   </div>
 
-  {{#if @model.agents.length}}
+  {{!-- KPI Cards --}}
+  {{#if @model.kpis}}
+    <div class="kpi-grid">
+      <div class="glass-panel p-5 text-center">
+        <p class="font-xs text-muted uppercase">Total Leads</p>
+        <p class="font-3xl font-bold mt-1">{{@model.kpis.totalLeads}}</p>
+      </div>
+      <div class="glass-panel p-5 text-center">
+        <p class="font-xs text-muted uppercase">Won Leads</p>
+        <p class="font-3xl font-bold mt-1 text-success">{{@model.kpis.wonLeads}}</p>
+      </div>
+      <div class="glass-panel p-5 text-center">
+        <p class="font-xs text-muted uppercase">Total Units</p>
+        <p class="font-3xl font-bold mt-1">{{@model.kpis.totalUnits}}</p>
+      </div>
+      <div class="glass-panel p-5 text-center">
+        <p class="font-xs text-muted uppercase">Monthly Revenue</p>
+        <p class="font-3xl font-bold mt-1">AED {{format-number @model.kpis.monthlyRevenue}}</p>
+      </div>
+      <div class="glass-panel p-5 text-center">
+        <p class="font-xs text-muted uppercase">Active Leases</p>
+        <p class="font-3xl font-bold mt-1">{{@model.kpis.activeLeases}}</p>
+      </div>
+      <div class="glass-panel p-5 text-center">
+        <p class="font-xs text-muted uppercase">Pending Cheques</p>
+        <p class="font-3xl font-bold mt-1">{{@model.kpis.pendingCheques}}</p>
+      </div>
+    </div>
+  {{/if}}
+
+  {{!-- Red Flag Alerts --}}
+  {{#if @model.redFlags.length}}
     <div class="glass-panel p-5">
-      <h4 class="font-lg font-bold mb-4">Agent Performance</h4>
-      <div class="flex col gap-3">
-        {{#each @model.agents as |agent|}}
-          <div
-            data-test-agent-row
-            data-test-agent-id={{agent.agentId}}
-            class="flex between x-center p-4 rounded-xl bg-white@02 border border-white@05"
-          >
+      <h4 class="font-lg font-bold mb-4"><Ph @icon="warning" @size="20px" /> Red Flag Alerts</h4>
+      <div class="flex col gap-2">
+        {{#each @model.redFlags as |flag|}}
+          <div class="flex between x-center p-3 rounded-lg red-flag-{{lowercase flag.severity}}">
             <div class="flex x-center gap-3">
-              <div class="agent-avatar">A</div>
-              <div>
-                <p class="font-sm font-bold">Agent</p>
-                <p class="text-muted font-xs">{{agent.leadsAssigned}} leads</p>
-              </div>
+              {{#if (eq flag.severity "HIGH")}}
+                <span class="flag-dot flag-dot-high"></span>
+              {{else if (eq flag.severity "MEDIUM")}}
+                <span class="flag-dot flag-dot-medium"></span>
+              {{else}}
+                <span class="flag-dot flag-dot-low"></span>
+              {{/if}}
+              <span class="font-sm">{{flag.message}}</span>
             </div>
-            <div class="flex x-center gap-6">
-              <div class="text-center">
-                <p class="font-xs text-muted">Won</p>
-                <p class="font-sm font-bold text-success">{{agent.leadsWon}}</p>
-              </div>
-              <div class="text-center">
-                <p class="font-xs text-muted">Commissions</p>
-                <p class="font-sm font-bold">AED {{format-number agent.commissionsEarned}}</p>
-              </div>
-              <div class="text-center">
-                <p class="font-xs text-muted">Conversion</p>
-                <p class="font-sm font-bold">{{agent.conversionRate}}%</p>
-              </div>
-            </div>
+            <span class="type-badge type-{{lowercase flag.type}}">{{flag.type}}</span>
           </div>
         {{/each}}
+      </div>
+    </div>
+  {{/if}}
+
+  {{!-- Pipeline Funnel --}}
+  {{#if @model.funnel.length}}
+    <div class="glass-panel p-5">
+      <h4 class="font-lg font-bold mb-4"><Ph @icon="funnel" @size="20px" /> Pipeline Funnel</h4>
+      <div class="funnel-grid">
+        {{#each @model.funnel as |stage|}}
+          <div class="funnel-stage text-center">
+            <p class="font-2xl font-bold">{{stage.count}}</p>
+            <p class="font-xs text-muted uppercase mt-1">{{stage.stage}}</p>
+          </div>
+        {{/each}}
+      </div>
+    </div>
+  {{/if}}
+
+  {{!-- Agent Performance --}}
+  {{#if @model.agents.length}}
+    <div class="glass-panel p-5">
+      <h4 class="font-lg font-bold mb-4"><Ph @icon="users-three" @size="20px" /> Agent Performance</h4>
+      <div class="data-table-wrapper">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Agent</th>
+              <th>Leads</th>
+              <th>Won</th>
+              <th>Lost</th>
+              <th>Conversion</th>
+              <th>Commissions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {{#each @model.agents as |agent|}}
+              <tr data-test-agent-row data-test-agent-id={{agent.agentId}}>
+                <td>
+                  <div class="flex x-center gap-2">
+                    <div class="agent-avatar">A</div>
+                    <span class="font-sm">{{truncate-id agent.agentId}}</span>
+                  </div>
+                </td>
+                <td>{{agent.leadsAssigned}}</td>
+                <td class="text-success font-bold">{{agent.leadsWon}}</td>
+                <td class="text-danger">{{agent.leadsLost}}</td>
+                <td>
+                  <span class="font-bold {{if (gt agent.conversionRate 50) 'text-success' (if (gt agent.conversionRate 25) 'text-warning' 'text-danger')}}">
+                    {{agent.conversionRate}}%
+                  </span>
+                </td>
+                <td class="font-bold">AED {{format-number agent.commissionsEarned}}</td>
+              </tr>
+            {{/each}}
+          </tbody>
+        </table>
       </div>
     </div>
   {{else}}
     <div class="glass-panel p-8 text-center">
       <p class="text-muted">No agent data available.</p>
+    </div>
+  {{/if}}
+
+  {{!-- Activity Feed --}}
+  {{#if @model.activity.length}}
+    <div class="glass-panel p-5">
+      <h4 class="font-lg font-bold mb-4"><Ph @icon="clock-counter-clockwise" @size="20px" /> Recent Activity</h4>
+      <div class="flex col gap-2">
+        {{#each @model.activity as |item|}}
+          <div class="flex between x-center p-3 rounded-lg activity-row">
+            <div class="flex x-center gap-3">
+              <span class="type-badge type-{{lowercase item.action}}">{{item.action}}</span>
+              <span class="font-sm">{{item.entityType}}</span>
+            </div>
+            <span class="font-xs text-muted">{{format-date item.createdAt}}</span>
+          </div>
+        {{/each}}
+      </div>
     </div>
   {{/if}}
 </div>

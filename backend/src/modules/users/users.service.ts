@@ -1,13 +1,17 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, ConflictException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from './entities/user.entity';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { InviteUserDto } from './dto/invite-user.dto';
 import * as bcrypt from 'bcryptjs';
+import * as crypto from 'crypto';
 
 @Injectable()
 export class UsersService {
+    private readonly logger = new Logger(UsersService.name);
+
     constructor(
         @InjectRepository(User)
         private readonly userRepository: Repository<User>,
@@ -89,5 +93,33 @@ export class UsersService {
             select: ['id', 'name', 'email', 'role'],
             order: { name: 'ASC' },
         });
+    }
+
+    async inviteUser(companyId: string, dto: InviteUserDto): Promise<User> {
+        const existing = await this.userRepository.findOne({ where: { email: dto.email } });
+        if (existing) {
+            throw new ConflictException('Email already exists');
+        }
+
+        const tempPassword = crypto.randomBytes(16).toString('hex');
+        const hashedPassword = await bcrypt.hash(tempPassword, 10);
+        const name = `${dto.firstName} ${dto.lastName}`;
+
+        const user = this.userRepository.create({
+            name,
+            email: dto.email,
+            password: hashedPassword,
+            role: dto.role,
+            companyId,
+            mustChangePassword: true,
+        });
+
+        const saved = await this.userRepository.save(user);
+
+        this.logger.log(
+            `User invited: ${dto.email} | Temporary password: ${tempPassword} (no email service configured)`,
+        );
+
+        return saved;
     }
 }

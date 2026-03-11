@@ -12,6 +12,13 @@
     href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap"
     rel="stylesheet">
 
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#2563eb">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="AALA.LAND">
+  <link rel="apple-touch-icon" href="/icons/icon-192.png">
+
   {{content-for "head"}}
 
   <link integrity="" rel="stylesheet" href="{{rootURL}}assets/vendor.css">
@@ -29,6 +36,20 @@
   <script src="{{rootURL}}assets/frontend.js"></script>
 
   {{content-for "body-footer"}}
+
+  <script>
+    if ('serviceWorker' in navigator) {
+      if (window.location.hostname === 'localhost') {
+        navigator.serviceWorker.getRegistrations().then(function(regs) {
+          regs.forEach(function(r) { r.unregister(); });
+        });
+      } else {
+        window.addEventListener('load', function () {
+          navigator.serviceWorker.register('/sw.js');
+        });
+      }
+    }
+  </script>
 </body>
 
 </html>

@@ -1,9 +1,17 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, LessThanOrEqual } from 'typeorm';
 import { WorkOrder, WorkOrderStatus } from './entities/work-order.entity';
 import { CreateWorkOrderDto } from './dto/create-work-order.dto';
 import { UpdateWorkOrderDto } from './dto/update-work-order.dto';
+
+export interface CostSummary {
+  totalEstimated: number;
+  totalActual: number;
+  variance: number;
+  workOrderCount: number;
+  avgCostPerOrder: number;
+}
 
 @Injectable()
 export class MaintenanceService {
@@ -53,5 +61,41 @@ export class MaintenanceService {
   async remove(id: string, companyId: string): Promise<void> {
     const order = await this.findOne(id, companyId);
     await this.workOrderRepository.remove(order);
+  }
+
+  async getCostSummary(companyId: string): Promise<CostSummary> {
+    const result = await this.workOrderRepository
+      .createQueryBuilder('wo')
+      .select('COALESCE(SUM(wo.estimated_cost), 0)', 'totalEstimated')
+      .addSelect('COALESCE(SUM(wo.actual_cost), 0)', 'totalActual')
+      .addSelect('COUNT(*)::int', 'workOrderCount')
+      .where('wo.company_id = :companyId', { companyId })
+      .getRawOne();
+
+    const totalEstimated = parseFloat(result.totalEstimated);
+    const totalActual = parseFloat(result.totalActual);
+    const workOrderCount = parseInt(result.workOrderCount, 10);
+
+    return {
+      totalEstimated,
+      totalActual,
+      variance: totalEstimated - totalActual,
+      workOrderCount,
+      avgCostPerOrder: workOrderCount > 0 ? totalActual / workOrderCount : 0,
+    };
+  }
+
+  async getUpcoming(companyId: string): Promise<WorkOrder[]> {
+    const thirtyDaysFromNow = new Date();
+    thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
+
+    return this.workOrderRepository.find({
+      where: {
+        companyId,
+        isPreventive: true,
+        nextScheduledDate: LessThanOrEqual(thirtyDaysFromNow),
+      },
+      order: { nextScheduledDate: 'ASC' },
+    });
   }
 }

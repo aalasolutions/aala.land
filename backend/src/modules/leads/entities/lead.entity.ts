@@ -111,6 +111,15 @@ export class Lead {
   @Column({ name: 'budget_max', type: 'decimal', precision: 12, scale: 2, nullable: true })
   budgetMax: number;
 
+  @Column({ name: 'stage_entered_at', type: 'timestamptz', nullable: true })
+  stageEnteredAt: Date;
+
+  @Column({ name: 'transfer_reason', type: 'varchar', length: 500, nullable: true })
+  transferReason: string;
+
+  @Column({ name: 'previous_agent', type: 'uuid', nullable: true })
+  previousAgent: string;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 

@@ -3,7 +3,7 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { NotFoundException } from '@nestjs/common';
 import { FinancialService } from './financial.service';
-import { Transaction, TransactionType, TransactionStatus } from './entities/transaction.entity';
+import { Transaction, TransactionType, TransactionStatus, PaymentMethod } from './entities/transaction.entity';
 
 describe('FinancialService', () => {
   let service: FinancialService;
@@ -139,6 +139,53 @@ describe('FinancialService', () => {
       expect(result.totalExpense).toBe(3000);
       expect(result.net).toBe(12000);
       expect(result.currency).toBe('AED');
+    });
+  });
+
+  describe('getDepositReminders', () => {
+    it('returns transactions grouped by due date proximity', async () => {
+      const overdueTransaction = { ...mockTransaction, id: 'txn-overdue', dueDate: new Date('2025-01-01') } as Transaction;
+      const todayTransaction = { ...mockTransaction, id: 'txn-today' } as Transaction;
+      const weekTransaction = { ...mockTransaction, id: 'txn-week' } as Transaction;
+      const monthTransaction = { ...mockTransaction, id: 'txn-month' } as Transaction;
+
+      repo.find
+        .mockResolvedValueOnce([overdueTransaction])
+        .mockResolvedValueOnce([todayTransaction])
+        .mockResolvedValueOnce([weekTransaction])
+        .mockResolvedValueOnce([monthTransaction]);
+
+      const result = await service.getDepositReminders(companyId);
+
+      expect(result.overdue).toEqual([overdueTransaction]);
+      expect(result.dueToday).toEqual([todayTransaction]);
+      expect(result.dueThisWeek).toEqual([weekTransaction]);
+      expect(result.dueThisMonth).toEqual([monthTransaction]);
+      expect(repo.find).toHaveBeenCalledTimes(4);
+    });
+
+    it('returns empty arrays when no matching transactions', async () => {
+      repo.find.mockResolvedValue([]);
+
+      const result = await service.getDepositReminders(companyId);
+
+      expect(result.overdue).toEqual([]);
+      expect(result.dueToday).toEqual([]);
+      expect(result.dueThisWeek).toEqual([]);
+      expect(result.dueThisMonth).toEqual([]);
+    });
+
+    it('filters by INCOME type and PENDING status', async () => {
+      repo.find.mockResolvedValue([]);
+
+      await service.getDepositReminders(companyId);
+
+      for (const call of repo.find.mock.calls) {
+        const where = (call[0] as any).where;
+        expect(where.companyId).toBe(companyId);
+        expect(where.type).toBe(TransactionType.INCOME);
+        expect(where.status).toBe(TransactionStatus.PENDING);
+      }
     });
   });
 });

@@ -5,17 +5,21 @@ import {
   Body,
   Param,
   Query,
+  Headers,
   UseGuards,
   Request,
   ParseIntPipe,
   DefaultValuePipe,
   HttpCode,
   HttpStatus,
+  ForbiddenException,
+  RawBodyRequest,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { WhatsappService } from './whatsapp.service';
 import { SendMessageDto } from './dto/send-message.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import * as crypto from 'crypto';
 
 @ApiTags('whatsapp')
 @Controller('whatsapp')
@@ -33,7 +37,21 @@ export class WhatsappController {
   @Post('webhook')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Receive WhatsApp webhook events from Meta' })
-  async webhook(@Body() payload: Record<string, unknown>, @Query('company_id') companyId: string) {
+  async webhook(
+    @Body() payload: Record<string, unknown>,
+    @Query('company_id') companyId: string,
+    @Headers('x-hub-signature-256') signature: string,
+    @Request() req: RawBodyRequest<Request>,
+  ) {
+    const appSecret = process.env.WHATSAPP_APP_SECRET;
+    if (appSecret && req.rawBody) {
+      const expectedSig =
+        'sha256=' +
+        crypto.createHmac('sha256', appSecret).update(req.rawBody).digest('hex');
+      if (signature !== expectedSig) {
+        throw new ForbiddenException('Invalid webhook signature');
+      }
+    }
     return this.whatsappService.handleWebhook(companyId ?? 'system', payload);
   }
 

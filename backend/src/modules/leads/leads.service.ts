@@ -48,6 +48,11 @@ export class LeadsService {
     const previousStatus = lead.status;
 
     Object.assign(lead, dto);
+
+    if (dto.status && dto.status !== previousStatus) {
+      lead.stageEnteredAt = new Date();
+    }
+
     const updated = await this.leadRepository.save(lead);
 
     if (dto.status && dto.status !== previousStatus) {
@@ -65,17 +70,29 @@ export class LeadsService {
     return updated;
   }
 
-  async assign(id: string, companyId: string, agentId: string, performedBy?: string): Promise<Lead> {
+  async assign(id: string, companyId: string, agentId: string, performedBy?: string, reason?: string): Promise<Lead> {
     const lead = await this.findOne(id, companyId);
+
+    if (lead.assignedTo) {
+      lead.previousAgent = lead.assignedTo;
+    }
+    if (reason) {
+      lead.transferReason = reason;
+    }
+
     lead.assignedTo = agentId;
     const updated = await this.leadRepository.save(lead);
+
+    const activityNotes = reason
+      ? `Lead assigned to agent ${agentId} (reason: ${reason})`
+      : `Lead assigned to agent ${agentId}`;
 
     await this.activityRepository.save(
       this.activityRepository.create({
         leadId: id,
         companyId,
         type: ActivityType.ASSIGNMENT,
-        notes: `Lead assigned to agent ${agentId}`,
+        notes: activityNotes,
         performedBy,
       }),
     );

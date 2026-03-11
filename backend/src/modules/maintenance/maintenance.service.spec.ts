@@ -3,11 +3,11 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { NotFoundException } from '@nestjs/common';
 import { MaintenanceService } from './maintenance.service';
-import { WorkOrder, WorkOrderStatus, WorkOrderPriority, WorkOrderCategory } from './entities/work-order.entity';
+import { WorkOrder, WorkOrderStatus, WorkOrderPriority, WorkOrderCategory, ScheduleFrequency } from './entities/work-order.entity';
 
 describe('MaintenanceService', () => {
   let service: MaintenanceService;
-  let repo: jest.Mocked<Repository<WorkOrder>>;
+  let repo: any;
 
   const companyId = 'company-uuid-1';
 
@@ -21,6 +21,18 @@ describe('MaintenanceService', () => {
     priority: WorkOrderPriority.HIGH,
     category: WorkOrderCategory.HVAC,
     completedAt: null,
+    photos: [],
+    isPreventive: false,
+    scheduleFrequency: null,
+    nextScheduledDate: null,
+    costNotes: null,
+  };
+
+  const mockQueryBuilder = {
+    select: jest.fn().mockReturnThis(),
+    addSelect: jest.fn().mockReturnThis(),
+    where: jest.fn().mockReturnThis(),
+    getRawOne: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -34,7 +46,9 @@ describe('MaintenanceService', () => {
             save: jest.fn(),
             findOne: jest.fn(),
             findAndCount: jest.fn(),
+            find: jest.fn(),
             remove: jest.fn(),
+            createQueryBuilder: jest.fn().mockReturnValue(mockQueryBuilder),
           },
         },
       ],
@@ -128,6 +142,68 @@ describe('MaintenanceService', () => {
       await service.remove('order-uuid-1', companyId);
 
       expect(repo.remove).toHaveBeenCalledWith(mockOrder);
+    });
+  });
+
+  describe('getCostSummary', () => {
+    it('returns cost summary with SQL aggregation', async () => {
+      mockQueryBuilder.getRawOne.mockResolvedValue({
+        totalEstimated: '15000.00',
+        totalActual: '12000.00',
+        workOrderCount: '5',
+      });
+
+      const result = await service.getCostSummary(companyId);
+
+      expect(result.totalEstimated).toBe(15000);
+      expect(result.totalActual).toBe(12000);
+      expect(result.variance).toBe(3000);
+      expect(result.workOrderCount).toBe(5);
+      expect(result.avgCostPerOrder).toBe(2400);
+    });
+
+    it('returns zero averages when no work orders exist', async () => {
+      mockQueryBuilder.getRawOne.mockResolvedValue({
+        totalEstimated: '0',
+        totalActual: '0',
+        workOrderCount: '0',
+      });
+
+      const result = await service.getCostSummary(companyId);
+
+      expect(result.avgCostPerOrder).toBe(0);
+      expect(result.workOrderCount).toBe(0);
+    });
+  });
+
+  describe('getUpcoming', () => {
+    it('returns preventive work orders due in next 30 days', async () => {
+      const preventiveOrder = {
+        ...mockOrder,
+        isPreventive: true,
+        scheduleFrequency: ScheduleFrequency.MONTHLY,
+        nextScheduledDate: new Date(),
+      };
+      repo.find.mockResolvedValue([preventiveOrder]);
+
+      const result = await service.getUpcoming(companyId);
+
+      expect(result).toHaveLength(1);
+      expect(repo.find).toHaveBeenCalledWith(expect.objectContaining({
+        where: expect.objectContaining({
+          companyId,
+          isPreventive: true,
+        }),
+        order: { nextScheduledDate: 'ASC' },
+      }));
+    });
+
+    it('returns empty array when no preventive orders exist', async () => {
+      repo.find.mockResolvedValue([]);
+
+      const result = await service.getUpcoming(companyId);
+
+      expect(result).toHaveLength(0);
     });
   });
 });

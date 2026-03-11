@@ -11,29 +11,95 @@
     </button>
   </div>
 
-  <div class="glass-panel p-5">
-    {{#if @model.cheques.length}}
-      <div class="flex col gap-3">
-        {{#each @model.cheques as |cheque|}}
-          <div data-test-cheque-row class="flex between x-center p-4 rounded-xl bg-white@02 border border-white@05">
-            <div class="flex col gap-1">
-              <p class="font-sm font-bold"><Ph @icon="hash" /> {{cheque.chequeNumber}} - <Ph @icon="bank" /> {{cheque.bankName}}</p>
-              <p class="text-muted font-xs">{{cheque.accountHolder}} - AED {{format-number cheque.amount}}</p>
-              <p class="text-muted font-xs"><Ph @icon="calendar" /> Due: {{cheque.dueDate}} - {{cheque.type}}</p>
-            </div>
-            <div class="flex x-center gap-3">
-              <span class="font-xs px-2 py-1 rounded bg-white@05">{{cheque.status}}</span>
-              <button type="button" class="btn btn-secondary btn-sm" {{on "click" (fn this.openEdit cheque)}}>
-                <Ph @icon="pencil-simple" /> Edit
-              </button>
-            </div>
-          </div>
-        {{/each}}
-      </div>
-    {{else}}
-      <p class="text-muted text-center py-8">No cheques yet. Add your first cheque record.</p>
-    {{/if}}
+  <div class="tabs">
+    <button type="button" class="tab-btn {{if (eq this.activeTab 'cheques') 'active'}}" {{on "click" (fn this.setTab 'cheques')}}>
+      <Ph @icon="list-checks" /> Cheques
+    </button>
+    <button type="button" class="tab-btn {{if (eq this.activeTab 'schedule') 'active'}}" {{on "click" (fn this.setTab 'schedule')}}>
+      <Ph @icon="calendar-check" /> Collection Schedule
+    </button>
   </div>
+
+  {{#if (eq this.activeTab "cheques")}}
+    <div class="glass-panel p-5">
+      {{#if @model.cheques.length}}
+        <div class="data-table-wrapper">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Cheque #</th>
+                <th>Bank</th>
+                <th>Account Holder</th>
+                <th>Amount</th>
+                <th>Due Date</th>
+                <th>Type</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {{#each @model.cheques as |cheque|}}
+                <tr data-test-cheque-row>
+                  <td class="font-bold">{{cheque.chequeNumber}}</td>
+                  <td>{{cheque.bankName}}</td>
+                  <td>{{cheque.accountHolder}}</td>
+                  <td class="font-bold">AED {{format-number cheque.amount}}</td>
+                  <td>{{cheque.dueDate}}</td>
+                  <td><span class="type-badge type-{{lowercase cheque.type}}">{{cheque.type}}</span></td>
+                  <td><span class="status-badge status-{{lowercase cheque.status}}">{{cheque.status}}</span></td>
+                  <td>
+                    <div class="flex gap-2">
+                      <button type="button" class="btn btn-secondary btn-xs" {{on "click" (fn this.openEdit cheque)}}>
+                        <Ph @icon="pencil-simple" /> Edit
+                      </button>
+                      {{#unless (eq cheque.status "BOUNCED")}}
+                        <button type="button" class="btn btn-danger btn-xs" data-test-bounce {{on "click" (fn this.bounceCheque cheque)}}>
+                          <Ph @icon="x-circle" /> Bounce
+                        </button>
+                      {{/unless}}
+                    </div>
+                  </td>
+                </tr>
+              {{/each}}
+            </tbody>
+          </table>
+        </div>
+      {{else}}
+        <p class="text-muted text-center py-8">No cheques yet. Add your first cheque record.</p>
+      {{/if}}
+    </div>
+  {{/if}}
+
+  {{#if (eq this.activeTab "schedule")}}
+    <div class="glass-panel p-5">
+      <h4 class="font-lg font-bold mb-4"><Ph @icon="calendar" /> Collection Schedule</h4>
+      {{#if @model.collectionSchedule.length}}
+        <div class="flex col gap-4">
+          {{#each @model.collectionSchedule as |group|}}
+            <div class="glass-panel p-4">
+              <h5 class="font-sm font-bold uppercase tracking-wider text-muted mb-3">{{group.period}}</h5>
+              <div class="flex col gap-2">
+                {{#each group.cheques as |cheque|}}
+                  <div class="flex between x-center p-3 rounded bg-white@02 border border-white@05">
+                    <div>
+                      <p class="font-sm font-bold">{{cheque.chequeNumber}} - {{cheque.bankName}}</p>
+                      <p class="text-muted font-xs">{{cheque.accountHolder}} - Due: {{cheque.dueDate}}</p>
+                    </div>
+                    <p class="font-sm font-bold">AED {{format-number cheque.amount}}</p>
+                  </div>
+                {{/each}}
+              </div>
+              {{#if group.totalAmount}}
+                <p class="font-sm font-bold text-right mt-2">Total: AED {{format-number group.totalAmount}}</p>
+              {{/if}}
+            </div>
+          {{/each}}
+        </div>
+      {{else}}
+        <p class="text-muted text-center py-8">No upcoming cheques in the collection schedule.</p>
+      {{/if}}
+    </div>
+  {{/if}}
 </div>
 
 {{#if this.showModal}}

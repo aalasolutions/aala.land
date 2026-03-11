@@ -21,7 +21,11 @@ export default class ChequesController extends Controller {
   @tracked isSaving = false;
   @tracked errorMsg = '';
 
+  @tracked activeTab = 'cheques';
+
   @action setField(fieldName, e) { this[fieldName] = e.target.value; }
+
+  @action setTab(tab) { this.activeTab = tab; }
 
   @action openCreate() {
     this.formChequeNumber = '';
@@ -96,6 +100,22 @@ export default class ChequesController extends Controller {
       this.errorMsg = e.message;
     } finally {
       this.isSaving = false;
+    }
+  }
+
+  @action async bounceCheque(cheque) {
+    const reason = prompt('Bounce reason (optional):');
+    if (reason === null) return;
+
+    try {
+      await this.auth.fetchJson(`/cheques/${cheque.id}/bounce`, {
+        method: 'POST',
+        body: JSON.stringify({ bounceReason: reason || undefined }),
+      });
+      this.notifications.success('Cheque marked as bounced');
+      this.router.refresh('cheques');
+    } catch (e) {
+      this.notifications.error(e.message);
     }
   }
 }

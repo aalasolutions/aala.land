@@ -7,6 +7,7 @@ import { Roles } from '@shared/decorators/roles.decorator';
 import { Role } from '@shared/enums/roles.enum';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { InviteUserDto } from './dto/invite-user.dto';
 
 @ApiTags('Users')
 @ApiBearerAuth()
@@ -20,6 +21,13 @@ export class UsersController {
     @ApiOperation({ summary: 'Create a new user (COMPANY_ADMIN+)' })
     create(@Body() createUserDto: CreateUserDto, @Request() req) {
         return this.usersService.create(createUserDto, req.user.companyId);
+    }
+
+    @Post('invite')
+    @Roles(Role.COMPANY_ADMIN)
+    @ApiOperation({ summary: 'Invite a new user via temporary password (COMPANY_ADMIN+)' })
+    invite(@Body() dto: InviteUserDto, @Request() req) {
+        return this.usersService.inviteUser(req.user.companyId, dto);
     }
 
     @Get()

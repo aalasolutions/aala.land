@@ -12,6 +12,13 @@ const PIPELINE_STAGES = [
   { status: 'LOST', label: 'Lost' },
 ];
 
+const TEMPERATURE_STAGES = [
+  { temperature: 'HOT', label: 'Hot', icon: 'fire' },
+  { temperature: 'WARM', label: 'Warm', icon: 'sun' },
+  { temperature: 'COLD', label: 'Cold', icon: 'snowflake' },
+  { temperature: 'DEAD', label: 'Dead', icon: 'skull' },
+];
+
 const TEMPERATURE_COLORS = {
   HOT: { bg: '#fef2f2', text: '#dc2626', border: '#fecaca' },
   WARM: { bg: '#fffbeb', text: '#d97706', border: '#fde68a' },
@@ -49,12 +56,14 @@ export default class LeadsController extends Controller {
   @tracked properties = [];
   @tracked filteredUnits = [];
 
-  @tracked viewMode = 'kanban';
+  @tracked viewMode = 'pipeline';
 
   @tracked filterType = 'all';
   @tracked agents = [];
   @tracked draggedLead = null;
   @tracked dropTargetStatus = null;
+  @tracked dropTargetTemp = null;
+  @tracked dropTargetAgent = null;
   @tracked selectedAgentId = '';
 
   get allLeads() {
@@ -82,12 +91,39 @@ export default class LeadsController extends Controller {
     }));
   }
 
+  get temperatureColumns() {
+    return TEMPERATURE_STAGES.map((stage) => ({
+      ...stage,
+      leads: this.filteredLeads.filter((l) => l.temperature === stage.temperature),
+    }));
+  }
+
+  get agentColumns() {
+    const leads = this.filteredLeads;
+    const unassigned = {
+      agentId: null,
+      agentName: 'Unassigned',
+      leads: leads.filter((l) => !l.assignedTo),
+    };
+
+    const agentCols = this.agents.map((agent) => ({
+      agentId: agent.id,
+      agentName: agent.name,
+      leads: leads.filter((l) => l.assignedTo === agent.id),
+    }));
+
+    return [unassigned, ...agentCols];
+  }
+
   @action setFilter(filter) {
     this.filterType = filter;
   }
 
-  @action toggleViewMode() {
-    this.viewMode = this.viewMode === 'kanban' ? 'list' : 'kanban';
+  @action setViewMode(mode) {
+    this.viewMode = mode;
+    if (mode === 'agent' && this.agents.length === 0) {
+      this.loadAgents();
+    }
   }
 
   getTemperatureColor(temp) {
@@ -250,6 +286,80 @@ export default class LeadsController extends Controller {
     } finally {
       this.draggedLead = null;
       this.dropTargetStatus = null;
+    }
+  }
+
+  // Temperature Board drag-drop
+  @action handleTempDragOver(temperature, event) {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'move';
+    this.dropTargetTemp = temperature;
+  }
+
+  @action async handleTempDrop(newTemperature, event) {
+    event.preventDefault();
+    if (!this.draggedLead || this.draggedLead.temperature === newTemperature) {
+      this.draggedLead = null;
+      this.dropTargetTemp = null;
+      return;
+    }
+
+    try {
+      await this.auth.fetchJson(`/leads/${this.draggedLead.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ temperature: newTemperature }),
+      });
+
+      this.notifications.success(`Lead temperature changed to ${newTemperature}`);
+      this.router.refresh('leads');
+    } catch (e) {
+      this.notifications.error(e.message);
+    } finally {
+      this.draggedLead = null;
+      this.dropTargetTemp = null;
+    }
+  }
+
+  // Agent Board drag-drop
+  @action handleAgentDragOver(agentId, event) {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'move';
+    this.dropTargetAgent = agentId;
+  }
+
+  @action async handleAgentDrop(newAgentId, event) {
+    event.preventDefault();
+    const currentAgent = this.draggedLead?.assignedTo || null;
+    if (!this.draggedLead || currentAgent === newAgentId) {
+      this.draggedLead = null;
+      this.dropTargetAgent = null;
+      return;
+    }
+
+    try {
+      if (newAgentId) {
+        await this.auth.fetchJson(`/leads/${this.draggedLead.id}/assign`, {
+          method: 'POST',
+          body: JSON.stringify({ agentId: newAgentId }),
+        });
+      } else {
+        // Unassign: PATCH assignedTo to null
+        await this.auth.fetchJson(`/leads/${this.draggedLead.id}`, {
+          method: 'PATCH',
+          body: JSON.stringify({ assignedTo: null }),
+        });
+      }
+
+      const label = newAgentId
+        ? this.agents.find((a) => a.id === newAgentId)?.name || 'agent'
+        : 'Unassigned';
+      this.notifications.success(`Lead reassigned to ${label}`);
+      this.router.refresh('leads');
+    } catch (e) {
+      this.notifications.error(e.message);
+    } finally {
+      this.draggedLead = null;
+      this.dropTargetAgent = null;
     }
   }
 

@@ -6,6 +6,7 @@ import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger'
 import { ChequesService } from './cheques.service';
 import { CreateChequeDto } from './dto/create-cheque.dto';
 import { UpdateChequeDto } from './dto/update-cheque.dto';
+import { BounceChequeDto } from './dto/bounce-cheque.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '@shared/guards/roles.guard';
 import { Roles } from '@shared/decorators/roles.decorator';
@@ -37,6 +38,13 @@ export class ChequesController {
     return this.chequesService.findAll(req.user.companyId, page, limit);
   }
 
+  @Get('collection-schedule')
+  @Roles(Role.COMPANY_ADMIN, Role.AGENT)
+  @ApiOperation({ summary: 'Get cheque collection schedule grouped by due date' })
+  getCollectionSchedule(@Request() req: any) {
+    return this.chequesService.getCollectionSchedule(req.user.companyId);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get a cheque by ID' })
   findOne(@Param('id', ParseUUIDPipe) id: string, @Request() req: any) {
@@ -48,6 +56,17 @@ export class ChequesController {
   @ApiOperation({ summary: 'Update a cheque (COMPANY_ADMIN+)' })
   update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateChequeDto, @Request() req: any) {
     return this.chequesService.update(id, req.user.companyId, dto);
+  }
+
+  @Post(':id/bounce')
+  @Roles(Role.COMPANY_ADMIN)
+  @ApiOperation({ summary: 'Record a cheque bounce (COMPANY_ADMIN+)' })
+  bounce(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: BounceChequeDto,
+    @Request() req: any,
+  ) {
+    return this.chequesService.bounce(id, req.user.companyId, dto);
   }
 
   @Post(':id/ocr')

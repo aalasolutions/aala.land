@@ -42,6 +42,13 @@ export class FinancialController {
     return this.financialService.getSummary(req.user.companyId);
   }
 
+  @Get('deposit-reminders')
+  @Roles(Role.COMPANY_ADMIN, Role.AGENT)
+  @ApiOperation({ summary: 'Get deposit reminders grouped by due date proximity' })
+  getDepositReminders(@Request() req) {
+    return this.financialService.getDepositReminders(req.user.companyId);
+  }
+
   @Get('transactions/:id')
   @ApiOperation({ summary: 'Get transaction by ID' })
   findOne(@Param('id', ParseUUIDPipe) id: string, @Request() req) {

@@ -1,97 +1,153 @@
-<div class="page-header">
-  <div class="page-title-section">
-    <h2 class="page-title"><Ph @icon="users-three" @size="28px" /> Team</h2>
-    <p class="page-subtitle">Manage your team members and their roles.</p>
+{{page-title "Team"}}
+
+<div data-test-team-page class="flex col gap-6">
+  <div class="flex between x-center">
+    <div>
+      <h2 class="font-3xl font-bold"><Ph @icon="users-three" @size="28px" /> Team</h2>
+      <p class="text-muted mt-1">Manage your team members and their roles.</p>
+    </div>
+    <div class="flex gap-3">
+      <button type="button" class="btn btn-secondary" data-test-invite-member {{on "click" this.openInvite}}>
+        <Ph @icon="envelope" /> Invite
+      </button>
+      <button type="button" class="btn btn-primary" data-test-add-member {{on "click" this.openCreate}}>
+        <Ph @icon="plus" /> Add Member
+      </button>
+    </div>
   </div>
-  <button type="button" class="btn btn-primary" data-test-add-member {{on "click" this.openCreate}}>
-    <Ph @icon="plus" /> Add Member
-  </button>
-</div>
 
-<div class="team-list">
-  {{#each this.model.users as |user|}}
-    <div class="list-item" data-test-user-id={{user.id}}>
-      <div class="user-info">
-        <div class="agent-avatar">{{user.name}}</div>
-        <div class="user-details">
-          <p class="user-name">{{user.name}}</p>
-          <p class="user-email">{{user.email}}</p>
-        </div>
+  <div class="glass-panel p-5">
+    {{#if this.model.users.length}}
+      <div class="data-table-wrapper">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Email</th>
+              <th>Role</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {{#each this.model.users as |user|}}
+              <tr data-test-user-id={{user.id}}>
+                <td class="font-bold">{{user.name}}</td>
+                <td class="text-muted">{{user.email}}</td>
+                <td><span class="status-badge">{{user.role}}</span></td>
+                <td>
+                  {{#if user.isActive}}
+                    <span class="status-badge status-completed">Active</span>
+                  {{else}}
+                    <span class="status-badge status-pending">Inactive</span>
+                  {{/if}}
+                </td>
+                <td>
+                  <div class="flex gap-2">
+                    <button type="button" class="btn btn-secondary btn-xs" data-test-edit-user {{on "click" (fn this.openEdit user)}}>
+                      <Ph @icon="pencil-simple" /> Edit
+                    </button>
+                    <button type="button" class="btn btn-danger btn-xs" data-test-delete-user {{on "click" (fn this.deleteUser user)}}>
+                      <Ph @icon="trash" /> Remove
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            {{/each}}
+          </tbody>
+        </table>
       </div>
-      <div class="user-meta">
-        <span class="status-badge">{{user.role}}</span>
-        <span class="user-status">
-          {{#if user.isActive}}Active{{else}}Inactive{{/if}}
-        </span>
-      </div>
-      <div class="user-actions">
-        <button type="button" class="btn btn-secondary" data-test-edit-user {{on "click" (fn this.openEdit user)}}>
-          <Ph @icon="pencil-simple" /> Edit
-        </button>
-        <button type="button" class="btn btn-secondary text-danger" data-test-delete-user {{on "click" (fn this.deleteUser user)}}>
-          <Ph @icon="trash" /> Remove
-        </button>
-      </div>
-    </div>
-  {{else}}
-    <div class="empty-state">
-      <p>No team members yet. Add your first team member to get started.</p>
-    </div>
-  {{/each}}
-</div>
+    {{else}}
+      <p class="text-muted text-center py-8">No team members yet. Add your first team member to get started.</p>
+    {{/if}}
+  </div>
 
-<p class="text-muted" style="margin-top: var(--space-4);">
-  Showing {{this.model.users.length}} of {{this.model.total}} team members
-</p>
+  <p class="text-muted font-sm">
+    Showing {{this.model.users.length}} of {{this.model.total}} team members
+  </p>
+</div>
 
 {{#if this.showModal}}
-  <div class="modal-backdrop" data-test-modal-backdrop {{on "click" this.closeModal}}></div>
-  <div class="modal-panel" data-test-user-modal>
-    <h3 class="modal-title">
-      {{#if this.editUser}}
-        Edit Team Member
-      {{else}}
-        Add Team Member
-      {{/if}}
-    </h3>
-    {{#if this.errorMsg}}
-      <p class="error-message" data-test-error>{{this.errorMsg}}</p>
-    {{/if}}
-    <form {{on "submit" this.saveUser}}>
-      <div class="form-group">
-        <label class="form-label">Name</label>
+  <button type="button" class="modal-backdrop" aria-label="Close modal" {{on "click" this.closeModal}}></button>
+  <div class="modal-panel glass-panel p-8 flex col gap-6" role="dialog" data-test-user-modal>
+    <div class="flex between x-center">
+      <h3 class="font-xl font-bold">{{if this.editUser "Edit Team Member" "Add Team Member"}}</h3>
+      <button type="button" class="text-muted font-lg px-2" {{on "click" this.closeModal}}>x</button>
+    </div>
+    <form class="flex col gap-4" {{on "submit" this.saveUser}}>
+      <div class="flex col gap-2">
+        <label class="font-sm text-muted">Name *</label>
         <input type="text" class="form-input" data-test-input-name value={{this.formName}} {{on "input" (fn this.setField "formName")}} required />
       </div>
-      <div class="form-group">
-        <label class="form-label">Email</label>
+      <div class="flex col gap-2">
+        <label class="font-sm text-muted">Email *</label>
         <input type="email" class="form-input" data-test-input-email value={{this.formEmail}} {{on "input" (fn this.setField "formEmail")}} required />
       </div>
       {{#unless this.editUser}}
-        <div class="form-group">
-          <label class="form-label">Password</label>
+        <div class="flex col gap-2">
+          <label class="font-sm text-muted">Password *</label>
           <input type="password" class="form-input" data-test-input-password value={{this.formPassword}} {{on "input" (fn this.setField "formPassword")}} required />
         </div>
       {{/unless}}
-      <div class="form-group">
-        <label class="form-label">Role</label>
-        <select class="form-select" data-test-input-role {{on "change" (fn this.setField "formRole")}}>
+      <div class="flex col gap-2">
+        <label class="font-sm text-muted">Role</label>
+        <select class="form-input" data-test-input-role {{on "change" (fn this.setField "formRole")}}>
           {{#each this.roles as |roleOption|}}
             <option value={{roleOption.value}} selected={{eq roleOption.value this.formRole}}>{{roleOption.label}}</option>
           {{/each}}
         </select>
       </div>
-      <div class="modal-actions">
-        <button type="button" class="btn btn-secondary" {{on "click" this.closeModal}}>
-          Cancel
-        </button>
+      {{#if this.errorMsg}}
+        <p class="font-sm text-danger" data-test-error>{{this.errorMsg}}</p>
+      {{/if}}
+      <div class="flex gap-3 mt-2">
+        <button type="button" class="btn btn-secondary" {{on "click" this.closeModal}}>Cancel</button>
         <button type="submit" class="btn btn-primary" disabled={{this.isSaving}} data-test-save-user>
-          {{#if this.isSaving}}
-            Saving...
-          {{else if this.editUser}}
-            Update
-          {{else}}
-            Create
-          {{/if}}
+          {{if this.isSaving "Saving..." (if this.editUser "Update" "Create")}}
+        </button>
+      </div>
+    </form>
+  </div>
+{{/if}}
+
+{{#if this.showInviteModal}}
+  <button type="button" class="modal-backdrop" aria-label="Close modal" {{on "click" this.closeInvite}}></button>
+  <div class="modal-panel glass-panel p-8 flex col gap-6" role="dialog" data-test-invite-modal>
+    <div class="flex between x-center">
+      <h3 class="font-xl font-bold"><Ph @icon="envelope" /> Invite Team Member</h3>
+      <button type="button" class="text-muted font-lg px-2" {{on "click" this.closeInvite}}>x</button>
+    </div>
+    <p class="text-muted font-sm">Send an invitation with a temporary password. The new member will receive login credentials.</p>
+    <form class="flex col gap-4" {{on "submit" this.sendInvite}}>
+      <div class="flex gap-4">
+        <div class="flex col gap-2 flex-1">
+          <label class="font-sm text-muted">First Name *</label>
+          <input type="text" class="form-input" data-test-invite-first placeholder="e.g. Jane" value={{this.inviteFirstName}} {{on "input" (fn this.setField "inviteFirstName")}} required />
+        </div>
+        <div class="flex col gap-2 flex-1">
+          <label class="font-sm text-muted">Last Name *</label>
+          <input type="text" class="form-input" data-test-invite-last placeholder="e.g. Smith" value={{this.inviteLastName}} {{on "input" (fn this.setField "inviteLastName")}} required />
+        </div>
+      </div>
+      <div class="flex col gap-2">
+        <label class="font-sm text-muted">Email *</label>
+        <input type="email" class="form-input" data-test-invite-email placeholder="e.g. jane@company.com" value={{this.inviteEmail}} {{on "input" (fn this.setField "inviteEmail")}} required />
+      </div>
+      <div class="flex col gap-2">
+        <label class="font-sm text-muted">Role</label>
+        <select class="form-input" data-test-invite-role {{on "change" (fn this.setField "inviteRole")}}>
+          {{#each this.roles as |roleOption|}}
+            <option value={{roleOption.value}} selected={{eq roleOption.value this.inviteRole}}>{{roleOption.label}}</option>
+          {{/each}}
+        </select>
+      </div>
+      {{#if this.inviteErrorMsg}}
+        <p class="font-sm text-danger">{{this.inviteErrorMsg}}</p>
+      {{/if}}
+      <div class="flex gap-3 mt-2">
+        <button type="button" class="btn btn-secondary" {{on "click" this.closeInvite}}>Cancel</button>
+        <button type="submit" class="btn btn-primary" disabled={{this.isInviting}} data-test-send-invite>
+          {{if this.isInviting "Sending..." "Send Invitation"}}
         </button>
       </div>
     </form>

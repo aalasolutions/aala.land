@@ -60,4 +60,34 @@ export class NotificationsController {
   send(@Body() dto: SendNotificationDto) {
     return this.notificationsService.send(dto);
   }
+
+  @Get('rent-reminders')
+  @ApiOperation({ summary: 'Get upcoming rent-due cheques within N days' })
+  @ApiQuery({ name: 'days', required: false, type: Number, description: 'Days ahead to check (default 3)' })
+  getRentReminders(
+    @Request() req,
+    @Query('days', new DefaultValuePipe(3), ParseIntPipe) days: number,
+  ) {
+    return this.notificationsService.checkRentDueReminders(req.user.companyId, days);
+  }
+
+  @Get('lease-expiry-alerts')
+  @ApiOperation({ summary: 'Get leases expiring within N days' })
+  @ApiQuery({ name: 'days', required: false, type: Number, description: 'Days ahead to check (default 60)' })
+  getLeaseExpiryAlerts(
+    @Request() req,
+    @Query('days', new DefaultValuePipe(60), ParseIntPipe) days: number,
+  ) {
+    return this.notificationsService.checkLeaseExpiryAlerts(req.user.companyId, days);
+  }
+
+  @Get('maintenance-reminders')
+  @ApiOperation({ summary: 'Get upcoming preventive maintenance within N days' })
+  @ApiQuery({ name: 'days', required: false, type: Number, description: 'Days ahead to check (default 7)' })
+  getMaintenanceReminders(
+    @Request() req,
+    @Query('days', new DefaultValuePipe(7), ParseIntPipe) days: number,
+  ) {
+    return this.notificationsService.checkMaintenanceReminders(req.user.companyId, days);
+  }
 }

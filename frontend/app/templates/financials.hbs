@@ -28,57 +28,66 @@
     </div>
   {{/if}}
 
+  {{#if @model.depositReminders.length}}
+    <div class="glass-panel p-5">
+      <h4 class="font-lg font-bold mb-3"><Ph @icon="bell-ringing" /> Deposit Reminders</h4>
+      <div class="flex col gap-2">
+        {{#each @model.depositReminders as |reminder|}}
+          <div class="flex between x-center p-3 rounded bg-white@02 border border-white@05">
+            <div>
+              <p class="font-sm font-bold">{{reminder.description}}</p>
+              <p class="text-muted font-xs">Due: {{reminder.dueDate}} - {{reminder.category}}</p>
+            </div>
+            <p class="font-sm font-bold">AED {{format-number reminder.amount}}</p>
+          </div>
+        {{/each}}
+      </div>
+    </div>
+  {{/if}}
+
   <div class="glass-panel p-5">
     <div class="flex between x-center mb-4">
       <h4 class="font-lg font-bold">Transactions</h4>
       <div class="tabs">
-        <button
-          type="button"
-          class="tab-btn {{if (eq this.activeTab 'all') 'active'}}"
-          {{on "click" (fn this.setTab 'all')}}
-        >
-          All
-        </button>
-        <button
-          type="button"
-          class="tab-btn {{if (eq this.activeTab 'INCOME') 'active'}}"
-          {{on "click" (fn this.setTab 'INCOME')}}
-        >
-          Income
-        </button>
-        <button
-          type="button"
-          class="tab-btn {{if (eq this.activeTab 'EXPENSE') 'active'}}"
-          {{on "click" (fn this.setTab 'EXPENSE')}}
-        >
-          Expenses
-        </button>
+        <button type="button" class="tab-btn {{if (eq this.activeTab 'all') 'active'}}" {{on "click" (fn this.setTab 'all')}}>All</button>
+        <button type="button" class="tab-btn {{if (eq this.activeTab 'INCOME') 'active'}}" {{on "click" (fn this.setTab 'INCOME')}}>Income</button>
+        <button type="button" class="tab-btn {{if (eq this.activeTab 'EXPENSE') 'active'}}" {{on "click" (fn this.setTab 'EXPENSE')}}>Expenses</button>
       </div>
     </div>
     {{#if this.filteredTransactions.length}}
-      <div class="flex col gap-3">
-        {{#each this.filteredTransactions as |tx|}}
-          <div
-            data-test-transaction
-            class="flex between x-center p-3 rounded-xl bg-white@02 border border-white@05"
-          >
-            <div>
-              <p class="font-sm font-bold">{{tx.description}}</p>
-              <p class="text-muted font-xs">{{tx.type}} - {{tx.category}}</p>
-            </div>
-            <div class="flex x-center gap-4">
-              <div class="text-right">
-                <p class="font-sm font-bold {{if (eq tx.type 'INCOME') 'text-success' 'text-danger'}}">
+      <div class="data-table-wrapper">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Description</th>
+              <th>Category</th>
+              <th>Payment</th>
+              <th>Amount</th>
+              <th>Status</th>
+              <th>Date</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {{#each this.filteredTransactions as |tx|}}
+              <tr data-test-transaction>
+                <td>{{tx.description}}</td>
+                <td><span class="type-badge">{{tx.category}}</span></td>
+                <td>{{tx.paymentMethod}}</td>
+                <td class="font-bold {{if (eq tx.type 'INCOME') 'text-success' 'text-danger'}}">
                   {{if (eq tx.type 'INCOME') "+" "-"}}AED {{format-number tx.amount}}
-                </p>
-                <p class="text-muted font-xs">{{tx.status}}</p>
-              </div>
-              <button type="button" class="btn btn-secondary btn-sm" {{on "click" (fn this.openEdit tx)}}>
-                <Ph @icon="pencil-simple" /> Edit
-              </button>
-            </div>
-          </div>
-        {{/each}}
+                </td>
+                <td><span class="status-badge status-{{lowercase tx.status}}">{{tx.status}}</span></td>
+                <td class="font-xs">{{tx.transactionDate}}</td>
+                <td>
+                  <button type="button" class="btn btn-secondary btn-xs" {{on "click" (fn this.openEdit tx)}}>
+                    <Ph @icon="pencil-simple" /> Edit
+                  </button>
+                </td>
+              </tr>
+            {{/each}}
+          </tbody>
+        </table>
       </div>
     {{else}}
       <p class="text-muted text-center py-4">
@@ -116,11 +125,23 @@
           </select>
         </div>
       </div>
-      <div class="flex col gap-2">
-        <label class="font-sm text-muted" for="tx-amount">Amount (AED) *</label>
-        <input id="tx-amount" type="number" min="0" step="0.01"
-          class="form-input"
-          placeholder="e.g. 15000" value={{this.formAmount}} required {{on "input" (fn this.setField "formAmount")}} />
+      <div class="flex gap-4">
+        <div class="flex col gap-2 flex-1">
+          <label class="font-sm text-muted" for="tx-amount">Amount (AED) *</label>
+          <input id="tx-amount" type="number" min="0" step="0.01"
+            class="form-input"
+            placeholder="e.g. 15000" value={{this.formAmount}} required {{on "input" (fn this.setField "formAmount")}} />
+        </div>
+        <div class="flex col gap-2 flex-1">
+          <label class="font-sm text-muted" for="tx-payment">Payment Method</label>
+          <select id="tx-payment" class="form-input" {{on "change" (fn this.setField "formPaymentMethod")}}>
+            <option value="CASH" selected={{eq this.formPaymentMethod "CASH"}}>Cash</option>
+            <option value="CHEQUE" selected={{eq this.formPaymentMethod "CHEQUE"}}>Cheque</option>
+            <option value="BANK_TRANSFER" selected={{eq this.formPaymentMethod "BANK_TRANSFER"}}>Bank Transfer</option>
+            <option value="CREDIT_CARD" selected={{eq this.formPaymentMethod "CREDIT_CARD"}}>Credit Card</option>
+            <option value="ONLINE" selected={{eq this.formPaymentMethod "ONLINE"}}>Online</option>
+          </select>
+        </div>
       </div>
       <div class="flex col gap-2">
         <label class="font-sm text-muted" for="tx-desc">Description</label>

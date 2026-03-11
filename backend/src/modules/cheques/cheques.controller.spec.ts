@@ -34,6 +34,8 @@ describe('ChequesController', () => {
             findAll: jest.fn(),
             findOne: jest.fn(),
             update: jest.fn(),
+            bounce: jest.fn(),
+            getCollectionSchedule: jest.fn(),
             processOcr: jest.fn(),
             remove: jest.fn(),
           },
@@ -90,6 +92,35 @@ describe('ChequesController', () => {
       await controller.update('cheque-uuid-1', { status: ChequeStatus.DEPOSITED }, mockReq);
 
       expect(service.update).toHaveBeenCalledWith('cheque-uuid-1', companyId, { status: ChequeStatus.DEPOSITED });
+    });
+  });
+
+  describe('bounce', () => {
+    it('records a cheque bounce', async () => {
+      const bounced = { ...mockCheque, status: ChequeStatus.BOUNCED, bounceCount: 1 };
+      service.bounce.mockResolvedValue(bounced as any);
+
+      const dto = { bounceReason: 'Insufficient funds' };
+      await controller.bounce('cheque-uuid-1', dto, mockReq);
+
+      expect(service.bounce).toHaveBeenCalledWith('cheque-uuid-1', companyId, dto);
+    });
+  });
+
+  describe('getCollectionSchedule', () => {
+    it('returns cheque collection schedule', async () => {
+      const schedule = {
+        overdue: [mockCheque],
+        thisWeek: [],
+        nextWeek: [],
+        thisMonth: [],
+      };
+      service.getCollectionSchedule.mockResolvedValue(schedule as any);
+
+      const result = await controller.getCollectionSchedule(mockReq);
+
+      expect(service.getCollectionSchedule).toHaveBeenCalledWith(companyId);
+      expect(result).toEqual(schedule);
     });
   });
 

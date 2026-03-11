@@ -11,53 +11,126 @@
     </button>
   </div>
 
-  <div class="flex gap-4 x-center">
-    <div class="flex col gap-1">
-      <label class="font-xs text-muted">Status</label>
-      <select class="form-input" style="min-width: 150px;" {{on "change" (fn this.setField "filterStatus")}}>
-        {{#each this.statusOptions as |opt|}}
-          <option value={{opt.value}} selected={{eq this.filterStatus opt.value}}>{{opt.label}}</option>
-        {{/each}}
-      </select>
+  {{#if @model.costSummary}}
+    <div class="grid cols-4 gap-4">
+      <div class="glass-panel p-4">
+        <p class="text-muted font-xs uppercase tracking-wider mb-1">Total Estimated</p>
+        <h4 class="font-xl font-bold">AED {{format-number @model.costSummary.totalEstimated}}</h4>
+      </div>
+      <div class="glass-panel p-4">
+        <p class="text-muted font-xs uppercase tracking-wider mb-1">Total Actual</p>
+        <h4 class="font-xl font-bold">AED {{format-number @model.costSummary.totalActual}}</h4>
+      </div>
+      <div class="glass-panel p-4">
+        <p class="text-muted font-xs uppercase tracking-wider mb-1">Pending Cost</p>
+        <h4 class="font-xl font-bold text-warning">AED {{format-number @model.costSummary.pendingCost}}</h4>
+      </div>
+      <div class="glass-panel p-4">
+        <p class="text-muted font-xs uppercase tracking-wider mb-1">Work Orders</p>
+        <h4 class="font-xl font-bold">{{@model.costSummary.totalOrders}}</h4>
+      </div>
     </div>
-    <div class="flex col gap-1">
-      <label class="font-xs text-muted">Period</label>
-      <select class="form-input" style="min-width: 150px;" {{on "change" (fn this.setField "filterMonth")}}>
-        {{#each this.monthOptions as |opt|}}
-          <option value={{opt.value}} selected={{eq this.filterMonth opt.value}}>{{opt.label}}</option>
-        {{/each}}
-      </select>
-    </div>
+  {{/if}}
+
+  <div class="tabs">
+    <button type="button" class="tab-btn {{if (eq this.activeSection 'orders') 'active'}}" {{on "click" (fn this.setSection 'orders')}}>
+      <Ph @icon="list-checks" /> Work Orders
+    </button>
+    <button type="button" class="tab-btn {{if (eq this.activeSection 'upcoming') 'active'}}" {{on "click" (fn this.setSection 'upcoming')}}>
+      <Ph @icon="calendar-check" /> Upcoming Preventive
+    </button>
   </div>
 
-  <div class="glass-panel p-5">
-    {{#if this.filteredWorkOrders.length}}
-      <div class="flex col gap-3">
-        {{#each this.filteredWorkOrders as |wo|}}
-          <div data-test-work-order class="flex between x-center p-4 rounded-xl bg-white@02 border border-white@05">
-            <div class="flex col gap-1">
-              <p class="font-sm font-bold">{{wo.title}}</p>
-              <p class="text-muted font-xs">{{wo.category}} - Priority: {{wo.priority}}</p>
-              {{#if wo.scheduledDate}}
-                <p class="text-muted font-xs">Scheduled: {{wo.scheduledDate}}</p>
-              {{/if}}
-              {{#if wo.vendorId}}
-                <p class="text-muted font-xs"><Ph @icon="toolbox" /> Vendor: assigned</p>
-              {{/if}}
-            </div>
-            <div class="flex x-center gap-3">
-              <span class="font-xs px-2 py-1 rounded bg-white@05">{{wo.status}}</span>
-              <button type="button" class="btn btn-secondary btn-sm" {{on "click" (fn this.openEdit wo)}}>
-                <Ph @icon="pencil-simple" /> Edit
-              </button>
-            </div>
-          </div>
-        {{/each}}
+  {{#if (eq this.activeSection "orders")}}
+    <div class="flex gap-4 x-center">
+      <div class="flex col gap-1">
+        <label class="font-xs text-muted">Status</label>
+        <select class="form-input" style="min-width: 150px;" {{on "change" (fn this.setField "filterStatus")}}>
+          {{#each this.statusOptions as |opt|}}
+            <option value={{opt.value}} selected={{eq this.filterStatus opt.value}}>{{opt.label}}</option>
+          {{/each}}
+        </select>
       </div>
-    {{else}}
-      <p class="text-muted text-center py-8">No work orders match your filters.</p>
-    {{/if}}
-  </div>
+      <div class="flex col gap-1">
+        <label class="font-xs text-muted">Period</label>
+        <select class="form-input" style="min-width: 150px;" {{on "change" (fn this.setField "filterMonth")}}>
+          {{#each this.monthOptions as |opt|}}
+            <option value={{opt.value}} selected={{eq this.filterMonth opt.value}}>{{opt.label}}</option>
+          {{/each}}
+        </select>
+      </div>
+    </div>
+
+    <div class="glass-panel p-5">
+      {{#if this.filteredWorkOrders.length}}
+        <div class="data-table-wrapper">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Title</th>
+                <th>Category</th>
+                <th>Priority</th>
+                <th>Est. Cost</th>
+                <th>Actual Cost</th>
+                <th>Scheduled</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {{#each this.filteredWorkOrders as |wo|}}
+                <tr data-test-work-order>
+                  <td>
+                    <p class="font-sm font-bold">{{wo.title}}</p>
+                    {{#if wo.vendorId}}<p class="text-muted font-xs"><Ph @icon="toolbox" /> Vendor assigned</p>{{/if}}
+                  </td>
+                  <td><span class="type-badge type-{{lowercase wo.category}}">{{wo.category}}</span></td>
+                  <td><span class="status-badge status-{{lowercase wo.priority}}">{{wo.priority}}</span></td>
+                  <td>{{#if wo.estimatedCost}}AED {{format-number wo.estimatedCost}}{{else}}-{{/if}}</td>
+                  <td>{{#if wo.actualCost}}AED {{format-number wo.actualCost}}{{else}}-{{/if}}</td>
+                  <td class="font-xs">{{#if wo.scheduledDate}}{{wo.scheduledDate}}{{else}}-{{/if}}</td>
+                  <td><span class="status-badge status-{{lowercase wo.status}}">{{wo.status}}</span></td>
+                  <td>
+                    <button type="button" class="btn btn-secondary btn-xs" {{on "click" (fn this.openEdit wo)}}>
+                      <Ph @icon="pencil-simple" /> Edit
+                    </button>
+                  </td>
+                </tr>
+              {{/each}}
+            </tbody>
+          </table>
+        </div>
+      {{else}}
+        <p class="text-muted text-center py-8">No work orders match your filters.</p>
+      {{/if}}
+    </div>
+  {{/if}}
+
+  {{#if (eq this.activeSection "upcoming")}}
+    <div class="glass-panel p-5">
+      <h4 class="font-lg font-bold mb-3"><Ph @icon="clock-countdown" /> Preventive Maintenance (Next 30 Days)</h4>
+      {{#if @model.upcoming.length}}
+        <div class="flex col gap-3">
+          {{#each @model.upcoming as |wo|}}
+            <div class="flex between x-center p-4 rounded bg-white@02 border border-white@05">
+              <div class="flex col gap-1">
+                <p class="font-sm font-bold">{{wo.title}}</p>
+                <p class="text-muted font-xs">{{wo.category}} - Scheduled: {{wo.scheduledDate}}</p>
+              </div>
+              <div class="flex x-center gap-3">
+                <span class="status-badge status-{{lowercase wo.priority}}">{{wo.priority}}</span>
+                <button type="button" class="btn btn-secondary btn-xs" {{on "click" (fn this.openEdit wo)}}>
+                  <Ph @icon="pencil-simple" /> Edit
+                </button>
+              </div>
+            </div>
+          {{/each}}
+        </div>
+      {{else}}
+        <p class="text-muted text-center py-8">No preventive maintenance scheduled for the next 30 days.</p>
+      {{/if}}
+    </div>
+  {{/if}}
 </div>
 
 {{#if this.showModal}}
@@ -123,28 +196,44 @@
             placeholder="Tenant or staff name" value={{this.formReportedBy}} {{on "input" (fn this.setField "formReportedBy")}} />
         </div>
         <div class="flex col gap-2 flex-1">
-          <label class="font-sm text-muted" for="wo-cost">Estimated Cost (AED)</label>
-          <input id="wo-cost" type="number" min="0" step="0.01"
+          <label class="font-sm text-muted" for="wo-est-cost">Estimated Cost (AED)</label>
+          <input id="wo-est-cost" type="number" min="0" step="0.01"
             class="form-input"
             placeholder="e.g. 500" value={{this.formEstimatedCost}} {{on "input" (fn this.setField "formEstimatedCost")}} />
         </div>
       </div>
-      <div class="flex col gap-2">
-        <label class="font-sm text-muted" for="wo-scheduled">Scheduled Date</label>
-        <input id="wo-scheduled" type="date"
-          class="form-input"
-          value={{this.formScheduledDate}} {{on "change" (fn this.setField "formScheduledDate")}} />
+      <div class="flex gap-4">
+        <div class="flex col gap-2 flex-1">
+          <label class="font-sm text-muted" for="wo-act-cost">Actual Cost (AED)</label>
+          <input id="wo-act-cost" type="number" min="0" step="0.01"
+            class="form-input"
+            placeholder="e.g. 450" value={{this.formActualCost}} {{on "input" (fn this.setField "formActualCost")}} />
+        </div>
+        <div class="flex col gap-2 flex-1">
+          <label class="font-sm text-muted" for="wo-cost-notes">Cost Notes</label>
+          <input id="wo-cost-notes" type="text"
+            class="form-input"
+            placeholder="e.g. Parts + labor" value={{this.formCostNotes}} {{on "input" (fn this.setField "formCostNotes")}} />
+        </div>
       </div>
-      <div class="flex col gap-2">
-        <label class="font-sm text-muted" for="wo-vendor">Vendor</label>
-        <select id="wo-vendor" class="form-input" {{on "change" (fn this.setField "formVendorId")}}>
-          <option value="">No vendor assigned</option>
-          {{#each @model.vendors as |vendor|}}
-            <option value={{vendor.id}} selected={{eq vendor.id this.formVendorId}}>
-              {{vendor.name}} ({{vendor.specialty}})
-            </option>
-          {{/each}}
-        </select>
+      <div class="flex gap-4">
+        <div class="flex col gap-2 flex-1">
+          <label class="font-sm text-muted" for="wo-scheduled">Scheduled Date</label>
+          <input id="wo-scheduled" type="date"
+            class="form-input"
+            value={{this.formScheduledDate}} {{on "change" (fn this.setField "formScheduledDate")}} />
+        </div>
+        <div class="flex col gap-2 flex-1">
+          <label class="font-sm text-muted" for="wo-vendor">Vendor</label>
+          <select id="wo-vendor" class="form-input" {{on "change" (fn this.setField "formVendorId")}}>
+            <option value="">No vendor assigned</option>
+            {{#each @model.vendors as |vendor|}}
+              <option value={{vendor.id}} selected={{eq vendor.id this.formVendorId}}>
+                {{vendor.name}} ({{vendor.specialty}})
+              </option>
+            {{/each}}
+          </select>
+        </div>
       </div>
       {{#if this.errorMsg}}
         <p class="font-sm text-danger">{{this.errorMsg}}</p>

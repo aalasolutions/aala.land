@@ -87,6 +87,7 @@ describe('LeadsService', () => {
 
       expect(leadRepo.findAndCount).toHaveBeenCalledWith({
         where: { companyId },
+        relations: ['property', 'unit'],
         skip: 0,
         take: 20,
         order: { createdAt: 'DESC' },
@@ -143,6 +144,30 @@ describe('LeadsService', () => {
         expect.objectContaining({ type: ActivityType.STATUS_CHANGE }),
       );
     });
+
+    it('sets stageEnteredAt when status changes', async () => {
+      const leadWithStatus = { ...mockLead, status: LeadStatus.NEW } as Lead;
+      leadRepo.findOne.mockResolvedValue(leadWithStatus);
+      leadRepo.save.mockImplementation(async (lead) => lead as Lead);
+      activityRepo.create.mockReturnValue(mockActivity as LeadActivity);
+      activityRepo.save.mockResolvedValue(mockActivity as LeadActivity);
+
+      await service.update('lead-uuid-1', companyId, { status: LeadStatus.CONTACTED } as any);
+
+      const savedLead = leadRepo.save.mock.calls[0][0] as Lead;
+      expect(savedLead.stageEnteredAt).toBeInstanceOf(Date);
+    });
+
+    it('does not set stageEnteredAt when status does not change', async () => {
+      const leadWithStatus = { ...mockLead, status: LeadStatus.NEW } as Lead;
+      leadRepo.findOne.mockResolvedValue(leadWithStatus);
+      leadRepo.save.mockImplementation(async (lead) => lead as Lead);
+
+      await service.update('lead-uuid-1', companyId, { score: 80 } as any);
+
+      const savedLead = leadRepo.save.mock.calls[0][0] as Lead;
+      expect(savedLead.stageEnteredAt).toBeUndefined();
+    });
   });
 
   describe('assign', () => {
@@ -158,6 +183,50 @@ describe('LeadsService', () => {
       expect(activityRepo.create).toHaveBeenCalledWith(
         expect.objectContaining({ type: ActivityType.ASSIGNMENT }),
       );
+    });
+
+    it('saves previousAgent and transferReason when reassigning', async () => {
+      const leadWithAgent = { ...mockLead, assignedTo: 'old-agent-uuid' } as Lead;
+      leadRepo.findOne.mockResolvedValue(leadWithAgent);
+      leadRepo.save.mockImplementation(async (lead) => lead as Lead);
+      activityRepo.create.mockReturnValue(mockActivity as LeadActivity);
+      activityRepo.save.mockResolvedValue(mockActivity as LeadActivity);
+
+      await service.assign('lead-uuid-1', companyId, 'new-agent-uuid', 'admin-uuid', 'Client prefers Arabic speaker');
+
+      const savedLead = leadRepo.save.mock.calls[0][0] as Lead;
+      expect(savedLead.previousAgent).toBe('old-agent-uuid');
+      expect(savedLead.transferReason).toBe('Client prefers Arabic speaker');
+      expect(savedLead.assignedTo).toBe('new-agent-uuid');
+    });
+
+    it('includes reason in activity notes when provided', async () => {
+      leadRepo.findOne.mockResolvedValue({ ...mockLead } as Lead);
+      leadRepo.save.mockResolvedValue({ ...mockLead, assignedTo: 'agent-uuid-1' } as Lead);
+      activityRepo.create.mockReturnValue(mockActivity as LeadActivity);
+      activityRepo.save.mockResolvedValue(mockActivity as LeadActivity);
+
+      await service.assign('lead-uuid-1', companyId, 'agent-uuid-1', 'admin-uuid', 'Test reason');
+
+      expect(activityRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: ActivityType.ASSIGNMENT,
+          notes: expect.stringContaining('reason: Test reason'),
+        }),
+      );
+    });
+
+    it('does not set previousAgent when no existing agent', async () => {
+      const leadNoAgent = { ...mockLead, assignedTo: null } as unknown as Lead;
+      leadRepo.findOne.mockResolvedValue(leadNoAgent);
+      leadRepo.save.mockImplementation(async (lead) => lead as Lead);
+      activityRepo.create.mockReturnValue(mockActivity as LeadActivity);
+      activityRepo.save.mockResolvedValue(mockActivity as LeadActivity);
+
+      await service.assign('lead-uuid-1', companyId, 'agent-uuid-1');
+
+      const savedLead = leadRepo.save.mock.calls[0][0] as Lead;
+      expect(savedLead.previousAgent).toBeUndefined();
     });
   });
 

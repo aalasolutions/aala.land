@@ -28,6 +28,13 @@ export enum WorkOrderCategory {
   OTHER = 'OTHER',
 }
 
+export enum ScheduleFrequency {
+  WEEKLY = 'WEEKLY',
+  MONTHLY = 'MONTHLY',
+  QUARTERLY = 'QUARTERLY',
+  ANNUALLY = 'ANNUALLY',
+}
+
 @Entity('work_orders')
 export class WorkOrder {
   @PrimaryGeneratedColumn('uuid')
@@ -98,8 +105,28 @@ export class WorkOrder {
   @Column({ name: 'completed_at', type: 'timestamp', nullable: true })
   completedAt: Date | null;
 
+  @Column({ name: 'cost_notes', type: 'text', nullable: true })
+  costNotes: string | null;
+
   @Column({ type: 'text', nullable: true })
   notes: string | null;
+
+  @Column({ type: 'jsonb', default: [] })
+  photos: string[];
+
+  @Column({ name: 'is_preventive', type: 'boolean', default: false })
+  isPreventive: boolean;
+
+  @Column({
+    name: 'schedule_frequency',
+    type: 'enum',
+    enum: ScheduleFrequency,
+    nullable: true,
+  })
+  scheduleFrequency: ScheduleFrequency | null;
+
+  @Column({ name: 'next_scheduled_date', type: 'timestamp', nullable: true })
+  nextScheduledDate: Date | null;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;

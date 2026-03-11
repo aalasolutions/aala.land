@@ -1,9 +1,10 @@
 import { Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, LessThan, Between } from 'typeorm';
 import { Cheque, ChequeStatus } from './entities/cheque.entity';
 import { CreateChequeDto } from './dto/create-cheque.dto';
 import { UpdateChequeDto } from './dto/update-cheque.dto';
+import { BounceChequeDto } from './dto/bounce-cheque.dto';
 
 @Injectable()
 export class ChequesService {
@@ -62,6 +63,54 @@ export class ChequesService {
     }
 
     return this.chequeRepository.save(cheque);
+  }
+
+  async bounce(id: string, companyId: string, dto: BounceChequeDto): Promise<Cheque> {
+    const cheque = await this.findOne(id, companyId);
+    cheque.bounceCount = (cheque.bounceCount || 0) + 1;
+    cheque.bounceReason = dto.bounceReason || null;
+    cheque.lastBounceDate = new Date();
+    cheque.status = ChequeStatus.BOUNCED;
+    return this.chequeRepository.save(cheque);
+  }
+
+  async getCollectionSchedule(companyId: string): Promise<{
+    overdue: Cheque[];
+    thisWeek: Cheque[];
+    nextWeek: Cheque[];
+    thisMonth: Cheque[];
+  }> {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const endOfWeek = new Date(today);
+    endOfWeek.setDate(endOfWeek.getDate() + (7 - endOfWeek.getDay()));
+    const endOfNextWeek = new Date(endOfWeek);
+    endOfNextWeek.setDate(endOfNextWeek.getDate() + 7);
+    const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+
+    const baseWhere = { companyId, status: ChequeStatus.PENDING };
+
+    const overdue = await this.chequeRepository.find({
+      where: { ...baseWhere, dueDate: LessThan(today) },
+      order: { dueDate: 'ASC' },
+    });
+
+    const thisWeek = await this.chequeRepository.find({
+      where: { ...baseWhere, dueDate: Between(today, endOfWeek) },
+      order: { dueDate: 'ASC' },
+    });
+
+    const nextWeek = await this.chequeRepository.find({
+      where: { ...baseWhere, dueDate: Between(endOfWeek, endOfNextWeek) },
+      order: { dueDate: 'ASC' },
+    });
+
+    const thisMonth = await this.chequeRepository.find({
+      where: { ...baseWhere, dueDate: Between(endOfNextWeek, endOfMonth) },
+      order: { dueDate: 'ASC' },
+    });
+
+    return { overdue, thisWeek, nextWeek, thisMonth };
   }
 
   async remove(id: string, companyId: string): Promise<void> {

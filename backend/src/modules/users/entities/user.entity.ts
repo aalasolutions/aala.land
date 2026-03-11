@@ -52,6 +52,9 @@ export class User {
     @Column({ name: 'is_active', type: 'boolean', default: true })
     isActive: boolean;
 
+    @Column({ name: 'must_change_password', type: 'boolean', default: false })
+    mustChangePassword: boolean;
+
     @Column({ name: 'reset_password_token', type: 'varchar', length: 255, nullable: true, select: false })
     resetPasswordToken: string | null;
 

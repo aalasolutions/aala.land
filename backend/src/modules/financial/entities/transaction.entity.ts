@@ -23,6 +23,14 @@ export enum TransactionStatus {
   FAILED = 'FAILED',
 }
 
+export enum PaymentMethod {
+  CASH = 'CASH',
+  CHEQUE = 'CHEQUE',
+  BANK_TRANSFER = 'BANK_TRANSFER',
+  CREDIT_CARD = 'CREDIT_CARD',
+  ONLINE = 'ONLINE',
+}
+
 @Entity('transactions')
 export class Transaction {
   @PrimaryGeneratedColumn('uuid')
@@ -63,6 +71,15 @@ export class Transaction {
 
   @Column({ type: 'varchar', length: 3, default: 'AED' })
   currency: string;
+
+  @Column({
+    name: 'payment_method',
+    type: 'enum',
+    enum: PaymentMethod,
+    default: PaymentMethod.CASH,
+    nullable: true,
+  })
+  paymentMethod: PaymentMethod;
 
   @Column({ type: 'text', nullable: true })
   description: string;

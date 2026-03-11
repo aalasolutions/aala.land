@@ -37,6 +37,18 @@ export class MaintenanceController {
     return this.maintenanceService.findAll(req.user.companyId, page, limit);
   }
 
+  @Get('cost-summary')
+  @ApiOperation({ summary: 'Get cost summary for all work orders' })
+  getCostSummary(@Request() req: any) {
+    return this.maintenanceService.getCostSummary(req.user.companyId);
+  }
+
+  @Get('upcoming')
+  @ApiOperation({ summary: 'Get preventive maintenance due in next 30 days' })
+  getUpcoming(@Request() req: any) {
+    return this.maintenanceService.getUpcoming(req.user.companyId);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get a work order by ID' })
   findOne(@Param('id', ParseUUIDPipe) id: string, @Request() req: any) {

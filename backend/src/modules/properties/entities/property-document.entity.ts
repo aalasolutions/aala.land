@@ -3,6 +3,26 @@ import { Company } from '../../companies/entities/company.entity';
 import { Unit } from './unit.entity';
 import { Building } from './building.entity';
 
+export enum DocumentCategory {
+    LEASE = 'LEASE',
+    EJARI = 'EJARI',
+    TITLE_DEED = 'TITLE_DEED',
+    ID_COPY = 'ID_COPY',
+    NOC = 'NOC',
+    INSURANCE = 'INSURANCE',
+    MAINTENANCE = 'MAINTENANCE',
+    INVOICE = 'INVOICE',
+    RECEIPT = 'RECEIPT',
+    OTHER = 'OTHER',
+}
+
+export enum DocumentAccessLevel {
+    PUBLIC = 'PUBLIC',
+    COMPANY = 'COMPANY',
+    OWNER_ONLY = 'OWNER_ONLY',
+    ADMIN_ONLY = 'ADMIN_ONLY',
+}
+
 @Entity('property_documents')
 export class PropertyDocument {
     @PrimaryGeneratedColumn('uuid')
@@ -14,18 +34,18 @@ export class PropertyDocument {
     @Column({ type: 'varchar', length: 255 })
     url: string;
 
-    @Column({ type: 'varchar', length: 50, nullable: true })
-    fileType: string;
+    @Column({ name: 'file_type', type: 'varchar', length: 50, nullable: true })
+    fileType: string | null;
 
     @Column({ name: 'unit_id', type: 'uuid', nullable: true })
-    unitId: string;
+    unitId: string | null;
 
     @ManyToOne(() => Unit, { nullable: true, onDelete: 'CASCADE' })
     @JoinColumn({ name: 'unit_id' })
     unit: Unit;
 
     @Column({ name: 'building_id', type: 'uuid', nullable: true })
-    buildingId: string;
+    buildingId: string | null;
 
     @ManyToOne(() => Building, { nullable: true, onDelete: 'CASCADE' })
     @JoinColumn({ name: 'building_id' })
@@ -37,6 +57,34 @@ export class PropertyDocument {
     @ManyToOne(() => Company)
     @JoinColumn({ name: 'company_id' })
     company: Company;
+
+    @Column({
+        type: 'enum',
+        enum: DocumentCategory,
+        default: DocumentCategory.OTHER,
+    })
+    category: DocumentCategory;
+
+    @Column({
+        name: 'access_level',
+        type: 'enum',
+        enum: DocumentAccessLevel,
+        default: DocumentAccessLevel.COMPANY,
+    })
+    accessLevel: DocumentAccessLevel;
+
+    @Column({ type: 'int', default: 1 })
+    version: number;
+
+    @Column({ name: 'previous_version_id', type: 'uuid', nullable: true })
+    previousVersionId: string | null;
+
+    @ManyToOne(() => PropertyDocument, { nullable: true })
+    @JoinColumn({ name: 'previous_version_id' })
+    previousVersion: PropertyDocument | null;
+
+    @Column({ name: 'uploaded_by', type: 'uuid', nullable: true })
+    uploadedBy: string | null;
 
     @CreateDateColumn({ name: 'created_at' })
     createdAt: Date;

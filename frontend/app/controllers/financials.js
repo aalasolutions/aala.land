@@ -16,6 +16,7 @@ export default class FinancialsController extends Controller {
   @tracked formDescription = '';
   @tracked formDate = '';
   @tracked formStatus = 'PENDING';
+  @tracked formPaymentMethod = 'CASH';
   @tracked isSaving = false;
   @tracked errorMsg = '';
   @tracked activeTab = 'all';
@@ -39,6 +40,7 @@ export default class FinancialsController extends Controller {
     this.formDescription = '';
     this.formDate = new Date().toISOString().split('T')[0];
     this.formStatus = 'PENDING';
+    this.formPaymentMethod = 'CASH';
     this.editTransaction = null;
     this.errorMsg = '';
     this.showModal = true;
@@ -51,6 +53,7 @@ export default class FinancialsController extends Controller {
     this.formDescription = tx.description ?? '';
     this.formDate = tx.transactionDate ? tx.transactionDate.split('T')[0] : '';
     this.formStatus = tx.status;
+    this.formPaymentMethod = tx.paymentMethod ?? 'CASH';
     this.editTransaction = tx;
     this.errorMsg = '';
     this.showModal = true;
@@ -77,6 +80,7 @@ export default class FinancialsController extends Controller {
       ? {
           amount: parseFloat(this.formAmount),
           status: this.formStatus,
+          paymentMethod: this.formPaymentMethod,
           ...(this.formDescription ? { description: this.formDescription } : {}),
         }
       : {
@@ -84,6 +88,7 @@ export default class FinancialsController extends Controller {
           category: this.formCategory,
           amount: parseFloat(this.formAmount),
           status: this.formStatus,
+          paymentMethod: this.formPaymentMethod,
           ...(this.formDescription ? { description: this.formDescription } : {}),
           ...(this.formDate ? { transactionDate: this.formDate } : {}),
         };

@@ -5,10 +5,14 @@ import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { NotificationsService } from './notifications.service';
 import { Notification, NotificationType } from './entities/notification.entity';
 import { NotificationChannel, NotificationStatus } from './dto/send-notification.dto';
+import { Cheque, ChequeStatus, ChequeType } from '../cheques/entities/cheque.entity';
+import { Lease, LeaseStatus, LeaseType } from '../leases/entities/lease.entity';
+import { WorkOrder, WorkOrderStatus, WorkOrderPriority, WorkOrderCategory } from '../maintenance/entities/work-order.entity';
 
 describe('NotificationsService', () => {
   let service: NotificationsService;
   let repo: jest.Mocked<Repository<Notification>>;
+  let module: TestingModule;
 
   const companyId = 'company-uuid-1';
   const userId = 'user-uuid-1';
@@ -33,7 +37,14 @@ describe('NotificationsService', () => {
   beforeEach(async () => {
     process.env = { ...originalEnv };
 
-    const module: TestingModule = await Test.createTestingModule({
+    const mockQueryBuilder = {
+      where: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
+      orderBy: jest.fn().mockReturnThis(),
+      getMany: jest.fn().mockResolvedValue([]),
+    };
+
+    module = await Test.createTestingModule({
       providers: [
         NotificationsService,
         {
@@ -45,6 +56,24 @@ describe('NotificationsService', () => {
             findAndCount: jest.fn(),
             count: jest.fn(),
             update: jest.fn(),
+          },
+        },
+        {
+          provide: getRepositoryToken(Cheque),
+          useValue: {
+            createQueryBuilder: jest.fn().mockReturnValue({ ...mockQueryBuilder }),
+          },
+        },
+        {
+          provide: getRepositoryToken(Lease),
+          useValue: {
+            createQueryBuilder: jest.fn().mockReturnValue({ ...mockQueryBuilder }),
+          },
+        },
+        {
+          provide: getRepositoryToken(WorkOrder),
+          useValue: {
+            createQueryBuilder: jest.fn().mockReturnValue({ ...mockQueryBuilder }),
           },
         },
       ],
@@ -318,6 +347,159 @@ describe('NotificationsService', () => {
 
       expect(result.status).toBe(NotificationStatus.FAILED);
       expect(result.error).toBe('Twilio error');
+    });
+  });
+
+  // ---- Reminder check tests ----
+
+  describe('checkRentDueReminders', () => {
+    it('returns pending cheques due within specified days', async () => {
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+
+      const mockCheque = {
+        id: 'cheque-uuid-1',
+        chequeNumber: 'CHQ-001',
+        amount: 5000,
+        currency: 'AED',
+        dueDate: tomorrow,
+        accountHolder: 'Ahmed Al-Rashid',
+        status: ChequeStatus.PENDING,
+        companyId,
+      };
+
+      const qb = {
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        orderBy: jest.fn().mockReturnThis(),
+        getMany: jest.fn().mockResolvedValue([mockCheque]),
+      };
+
+      const chequeRepo = module.get(getRepositoryToken(Cheque));
+      (chequeRepo.createQueryBuilder as jest.Mock).mockReturnValue(qb);
+
+      const result = await service.checkRentDueReminders(companyId, 3);
+
+      expect(result.data).toHaveLength(1);
+      expect(result.data[0].chequeId).toBe('cheque-uuid-1');
+      expect(result.data[0].amount).toBe(5000);
+      expect(result.data[0].daysUntilDue).toBeGreaterThanOrEqual(0);
+    });
+
+    it('returns empty data when no pending cheques due soon', async () => {
+      const qb = {
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        orderBy: jest.fn().mockReturnThis(),
+        getMany: jest.fn().mockResolvedValue([]),
+      };
+
+      const chequeRepo = module.get(getRepositoryToken(Cheque));
+      (chequeRepo.createQueryBuilder as jest.Mock).mockReturnValue(qb);
+
+      const result = await service.checkRentDueReminders(companyId, 3);
+
+      expect(result.data).toHaveLength(0);
+    });
+  });
+
+  describe('checkLeaseExpiryAlerts', () => {
+    it('returns active leases expiring within specified days', async () => {
+      const endDate = new Date();
+      endDate.setDate(endDate.getDate() + 30);
+
+      const mockLease = {
+        id: 'lease-uuid-1',
+        unitId: 'unit-uuid-1',
+        tenantName: 'Fatima Hassan',
+        endDate,
+        status: LeaseStatus.ACTIVE,
+        companyId,
+      };
+
+      const qb = {
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        orderBy: jest.fn().mockReturnThis(),
+        getMany: jest.fn().mockResolvedValue([mockLease]),
+      };
+
+      const leaseRepo = module.get(getRepositoryToken(Lease));
+      (leaseRepo.createQueryBuilder as jest.Mock).mockReturnValue(qb);
+
+      const result = await service.checkLeaseExpiryAlerts(companyId, 60);
+
+      expect(result.data).toHaveLength(1);
+      expect(result.data[0].leaseId).toBe('lease-uuid-1');
+      expect(result.data[0].tenantName).toBe('Fatima Hassan');
+      expect(result.data[0].daysRemaining).toBeLessThanOrEqual(60);
+    });
+
+    it('returns empty data when no leases expiring soon', async () => {
+      const qb = {
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        orderBy: jest.fn().mockReturnThis(),
+        getMany: jest.fn().mockResolvedValue([]),
+      };
+
+      const leaseRepo = module.get(getRepositoryToken(Lease));
+      (leaseRepo.createQueryBuilder as jest.Mock).mockReturnValue(qb);
+
+      const result = await service.checkLeaseExpiryAlerts(companyId, 60);
+
+      expect(result.data).toHaveLength(0);
+    });
+  });
+
+  describe('checkMaintenanceReminders', () => {
+    it('returns preventive work orders with upcoming next_scheduled_date', async () => {
+      const nextDate = new Date();
+      nextDate.setDate(nextDate.getDate() + 3);
+
+      const mockWorkOrder = {
+        id: 'wo-uuid-1',
+        title: 'HVAC Filter Replacement',
+        unitId: 'unit-uuid-1',
+        nextScheduledDate: nextDate,
+        category: WorkOrderCategory.HVAC,
+        priority: WorkOrderPriority.MEDIUM,
+        isPreventive: true,
+        companyId,
+      };
+
+      const qb = {
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        orderBy: jest.fn().mockReturnThis(),
+        getMany: jest.fn().mockResolvedValue([mockWorkOrder]),
+      };
+
+      const woRepo = module.get(getRepositoryToken(WorkOrder));
+      (woRepo.createQueryBuilder as jest.Mock).mockReturnValue(qb);
+
+      const result = await service.checkMaintenanceReminders(companyId, 7);
+
+      expect(result.data).toHaveLength(1);
+      expect(result.data[0].workOrderId).toBe('wo-uuid-1');
+      expect(result.data[0].title).toBe('HVAC Filter Replacement');
+      expect(result.data[0].daysUntilDue).toBeLessThanOrEqual(7);
+    });
+
+    it('returns empty data when no preventive maintenance due', async () => {
+      const qb = {
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        orderBy: jest.fn().mockReturnThis(),
+        getMany: jest.fn().mockResolvedValue([]),
+      };
+
+      const woRepo = module.get(getRepositoryToken(WorkOrder));
+      (woRepo.createQueryBuilder as jest.Mock).mockReturnValue(qb);
+
+      const result = await service.checkMaintenanceReminders(companyId, 7);
+
+      expect(result.data).toHaveLength(0);
     });
   });
 });

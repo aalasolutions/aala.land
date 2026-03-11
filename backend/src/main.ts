@@ -11,7 +11,7 @@ async function bootstrap() {
   await AppDataSource.initialize();
   console.log('✅ TypeORM DataSource initialized');
 
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, { rawBody: true });
 
   // Security headers
   app.use(helmet());

@@ -3,13 +3,16 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { PropertyArea } from './entities/property-area.entity';
 import { Building } from './entities/building.entity';
-import { Unit } from './entities/unit.entity';
+import { Unit, UnitStatus } from './entities/unit.entity';
+import { Listing, ListingStatus } from './entities/listing.entity';
 import { CreateAreaDto } from './dto/create-area.dto';
 import { UpdateAreaDto } from './dto/update-area.dto';
 import { CreateBuildingDto } from './dto/create-building.dto';
 import { UpdateBuildingDto } from './dto/update-building.dto';
 import { CreateUnitDto } from './dto/create-unit.dto';
 import { UpdateUnitDto } from './dto/update-unit.dto';
+import { CreateListingDto } from './dto/create-listing.dto';
+import { UpdateListingDto } from './dto/update-listing.dto';
 
 @Injectable()
 export class PropertiesService {
@@ -20,6 +23,8 @@ export class PropertiesService {
         private readonly buildingRepository: Repository<Building>,
         @InjectRepository(Unit)
         private readonly unitRepository: Repository<Unit>,
+        @InjectRepository(Listing)
+        private readonly listingRepository: Repository<Listing>,
     ) { }
 
     // Areas
@@ -230,5 +235,80 @@ export class PropertiesService {
         }
 
         return results;
+    }
+
+    async getBuildingOccupancy(companyId: string) {
+        const results = await this.unitRepository
+            .createQueryBuilder('u')
+            .innerJoin('u.building', 'b')
+            .select('b.id', 'buildingId')
+            .addSelect('b.name', 'buildingName')
+            .addSelect('COUNT(*)::int', 'totalUnits')
+            .addSelect(
+                `SUM(CASE WHEN u.status = :rented THEN 1 ELSE 0 END)::int`,
+                'rentedUnits',
+            )
+            .addSelect(
+                `SUM(CASE WHEN u.status = :available THEN 1 ELSE 0 END)::int`,
+                'availableUnits',
+            )
+            .where('u.companyId = :companyId', { companyId })
+            .setParameter('rented', UnitStatus.RENTED)
+            .setParameter('available', UnitStatus.AVAILABLE)
+            .groupBy('b.id')
+            .addGroupBy('b.name')
+            .getRawMany();
+
+        return results.map((r) => ({
+            buildingId: r.buildingId,
+            buildingName: r.buildingName,
+            totalUnits: Number(r.totalUnits),
+            rentedUnits: Number(r.rentedUnits),
+            availableUnits: Number(r.availableUnits),
+            occupancyRate:
+                Number(r.totalUnits) > 0
+                    ? Math.round((Number(r.rentedUnits) / Number(r.totalUnits)) * 100)
+                    : 0,
+        }));
+    }
+
+    // Listings
+    async createListing(companyId: string, dto: CreateListingDto): Promise<Listing> {
+        const listing = this.listingRepository.create({ ...dto, companyId });
+        return this.listingRepository.save(listing);
+    }
+
+    async findAllListings(companyId: string, page = 1, limit = 20) {
+        const [data, total] = await this.listingRepository.findAndCount({
+            where: { companyId },
+            relations: ['unit'],
+            skip: (page - 1) * limit,
+            take: limit,
+            order: { createdAt: 'DESC' },
+        });
+        return { data, total, page, limit };
+    }
+
+    async findOneListing(id: string, companyId: string): Promise<Listing> {
+        const listing = await this.listingRepository.findOne({
+            where: { id, companyId },
+            relations: ['unit'],
+        });
+        if (!listing) throw new NotFoundException('Listing not found');
+        return listing;
+    }
+
+    async updateListing(id: string, companyId: string, dto: UpdateListingDto): Promise<Listing> {
+        const listing = await this.findOneListing(id, companyId);
+        if (dto.status === ListingStatus.ACTIVE && !listing.publishedAt) {
+            listing.publishedAt = new Date();
+        }
+        Object.assign(listing, dto);
+        return this.listingRepository.save(listing);
+    }
+
+    async removeListing(id: string, companyId: string): Promise<void> {
+        const listing = await this.findOneListing(id, companyId);
+        await this.listingRepository.remove(listing);
     }
 }

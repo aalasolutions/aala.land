@@ -6,8 +6,10 @@ import { UsersService } from './users.service';
 import { User } from './entities/user.entity';
 import { Role } from '@shared/enums/roles.enum';
 import * as bcrypt from 'bcryptjs';
+import * as crypto from 'crypto';
 
 jest.mock('bcryptjs');
+jest.mock('crypto');
 
 describe('UsersService', () => {
   let service: UsersService;
@@ -29,6 +31,7 @@ describe('UsersService', () => {
     timezone: 'Asia/Dubai',
     lastLoginAt: null,
     isActive: true,
+    mustChangePassword: false,
     resetPasswordToken: null,
     resetPasswordExpires: null,
     createdAt: new Date(),
@@ -159,6 +162,74 @@ describe('UsersService', () => {
       repo.findOne.mockResolvedValue(null);
 
       await expect(service.remove('bad-id', companyId)).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('inviteUser', () => {
+    beforeEach(() => {
+      const mockRandomBytes = { toString: jest.fn().mockReturnValue('abc123temppassword') };
+      (crypto.randomBytes as jest.Mock).mockReturnValue(mockRandomBytes);
+    });
+
+    it('creates a user with temporary password and mustChangePassword=true', async () => {
+      repo.findOne.mockResolvedValue(null);
+      const invitedUser = {
+        ...mockUser,
+        name: 'Jane Smith',
+        email: 'jane@company.com',
+        mustChangePassword: true,
+      };
+      repo.create.mockReturnValue(invitedUser as User);
+      repo.save.mockResolvedValue(invitedUser as User);
+
+      const dto = {
+        email: 'jane@company.com',
+        firstName: 'Jane',
+        lastName: 'Smith',
+        role: Role.AGENT,
+      };
+      const result = await service.inviteUser(companyId, dto);
+
+      expect(crypto.randomBytes).toHaveBeenCalledWith(16);
+      expect(bcrypt.hash).toHaveBeenCalledWith('abc123temppassword', 10);
+      expect(repo.create).toHaveBeenCalledWith({
+        name: 'Jane Smith',
+        email: 'jane@company.com',
+        password: 'hashed-password',
+        role: Role.AGENT,
+        companyId,
+        mustChangePassword: true,
+      });
+      expect(result.mustChangePassword).toBe(true);
+    });
+
+    it('throws ConflictException when email already exists', async () => {
+      repo.findOne.mockResolvedValue(mockUser);
+
+      const dto = {
+        email: 'agent@test.com',
+        firstName: 'Duplicate',
+        lastName: 'User',
+      };
+      await expect(service.inviteUser(companyId, dto)).rejects.toThrow(ConflictException);
+    });
+
+    it('combines firstName and lastName into name', async () => {
+      repo.findOne.mockResolvedValue(null);
+      const invitedUser = { ...mockUser, name: 'Ahmed Al-Rashid', mustChangePassword: true };
+      repo.create.mockReturnValue(invitedUser as User);
+      repo.save.mockResolvedValue(invitedUser as User);
+
+      const dto = {
+        email: 'ahmed@company.com',
+        firstName: 'Ahmed',
+        lastName: 'Al-Rashid',
+      };
+      await service.inviteUser(companyId, dto);
+
+      expect(repo.create).toHaveBeenCalledWith(
+        expect.objectContaining({ name: 'Ahmed Al-Rashid' }),
+      );
     });
   });
 });

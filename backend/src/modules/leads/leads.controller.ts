@@ -7,6 +7,7 @@ import { Roles } from '@shared/decorators/roles.decorator';
 import { Role } from '@shared/enums/roles.enum';
 import { CreateLeadDto } from './dto/create-lead.dto';
 import { UpdateLeadDto } from './dto/update-lead.dto';
+import { AssignLeadDto } from './dto/assign-lead.dto';
 import { CreateLeadActivityDto } from './dto/create-lead-activity.dto';
 
 @ApiTags('Leads')
@@ -49,8 +50,8 @@ export class LeadsController {
   @Post(':id/assign')
   @Roles(Role.COMPANY_ADMIN)
   @ApiOperation({ summary: 'Assign lead to an agent (COMPANY_ADMIN+)' })
-  assign(@Param('id', ParseUUIDPipe) id: string, @Body() body: { agentId: string }, @Request() req) {
-    return this.leadsService.assign(id, req.user.companyId, body.agentId, req.user.userId);
+  assign(@Param('id', ParseUUIDPipe) id: string, @Body() dto: AssignLeadDto, @Request() req) {
+    return this.leadsService.assign(id, req.user.companyId, dto.agentId, req.user.userId, dto.reason);
   }
 
   @Post(':id/convert')

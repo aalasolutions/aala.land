@@ -109,18 +109,27 @@ body {
     border-right: 1px solid var(--border-light);
     display: flex;
     flex-direction: column;
-    padding: var(--space-6);
+    padding: var(--space-4) var(--space-3);
+    transition: width 0.2s ease, min-width 0.2s ease, padding 0.2s ease;
+    position: relative;
+    z-index: 100;
 }
 
 .sidebar-header {
-    margin-bottom: var(--space-8);
+    margin-bottom: var(--space-6);
+    padding: 0 var(--space-3);
+    white-space: nowrap;
 }
 
 .brand-title {
-    font-size: var(--font-2xl);
+    font-size: var(--font-xl);
     font-weight: 700;
     color: var(--color-primary);
     margin: 0;
+}
+
+.brand-dot {
+    color: var(--text-muted);
 }
 
 .brand-subtitle {
@@ -136,17 +145,24 @@ body {
     flex: 1;
 }
 
+.sidebar-label {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+// Direct links (Dashboard, Reports)
 .sidebar-link {
     display: flex;
     align-items: center;
-    gap: var(--space-2);
-    padding: var(--space-3) var(--space-4);
-    border-radius: var(--radius-lg);
+    gap: var(--space-3);
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-md);
     color: var(--text-secondary);
     font-size: var(--font-sm);
     font-weight: 500;
     text-decoration: none;
-    transition: all var(--transition-fast);
+    transition: background 0.15s ease, color 0.15s ease;
 }
 
 .sidebar-link:hover {
@@ -154,13 +170,184 @@ body {
     color: var(--text-primary);
 }
 
-.sidebar-link-active {
+.sidebar-link.active,
+.sidebar-sublink.active {
     background: var(--color-primary) !important;
     color: var(--text-inverse) !important;
 }
 
+// Group toggle button
+.sidebar-group-toggle {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    width: 100%;
+    padding: var(--space-2) var(--space-3);
+    border: none;
+    border-radius: var(--radius-md);
+    background: none;
+    color: var(--text-secondary);
+    font-size: var(--font-sm);
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease;
+    text-align: left;
+}
+
+.sidebar-group-toggle:hover {
+    background: var(--bg-muted);
+    color: var(--text-primary);
+}
+
+.sidebar-group-active {
+    background: lighten($color-primary, 38%);
+    color: $color-primary;
+}
+
+.sidebar-group-active:hover {
+    background: lighten($color-primary, 34%);
+    color: $color-primary;
+}
+
+// Chevron rotation
+.sidebar-chevron {
+    margin-left: auto;
+    font-size: 12px;
+    transition: transform 0.2s ease;
+    opacity: 0.5;
+}
+
+.sidebar-group.expanded .sidebar-chevron {
+    transform: rotate(180deg);
+}
+
+// Sub-items container
+.sidebar-group-items {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.2s ease;
+}
+
+.sidebar-group.expanded .sidebar-group-items {
+    max-height: 200px;
+}
+
+// Sub-links
+.sidebar-sublink {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-3) var(--space-2) 2.5rem;
+    border-radius: var(--radius-md);
+    color: var(--text-muted);
+    font-size: var(--font-xs);
+    font-weight: 500;
+    text-decoration: none;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+
+.sidebar-sublink:hover {
+    background: var(--bg-muted);
+    color: var(--text-primary);
+}
+
 .sidebar-spacer {
     flex: 1;
+}
+
+// Collapse toggle button
+.sidebar-collapse-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-2);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-md);
+    background: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease;
+    margin-top: var(--space-2);
+}
+
+.sidebar-collapse-btn:hover {
+    background: var(--bg-muted);
+    color: var(--text-primary);
+}
+
+// Collapsed sidebar state (shared rules for manual collapse + responsive)
+@mixin sidebar-icon-only {
+    .sidebar {
+        width: 60px;
+        min-width: 60px;
+        padding: var(--space-4) var(--space-2);
+    }
+
+    .brand-title {
+        font-size: var(--font-sm);
+        text-align: center;
+    }
+
+    .brand-subtitle,
+    .sidebar-label,
+    .sidebar-chevron {
+        display: none;
+    }
+
+    .sidebar-link,
+    .sidebar-group-toggle {
+        justify-content: center;
+        padding: var(--space-2);
+        gap: 0;
+        width: 40px;
+        height: 40px;
+        border-radius: var(--radius-md);
+    }
+
+    // Flyout menu on hover in collapsed mode
+    .sidebar-group {
+        position: relative;
+    }
+
+    .sidebar-group-items {
+        max-height: 0 !important;
+        position: absolute;
+        left: 100%;
+        top: 0;
+        min-width: 160px;
+        background: var(--bg-surface);
+        border: 1px solid var(--border-light);
+        border-radius: var(--radius-md);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        padding: var(--space-2);
+        z-index: 1050;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.15s ease, max-height 0s;
+    }
+
+    .sidebar-group:hover .sidebar-group-items {
+        max-height: 300px !important;
+        opacity: 1;
+        pointer-events: auto;
+    }
+
+    .sidebar-group:hover .sidebar-group-items .sidebar-sublink {
+        padding-left: var(--space-3);
+    }
+
+    // Restore labels inside flyout
+    .sidebar-group-items .sidebar-label {
+        display: inline;
+    }
+}
+
+.sidebar-collapsed {
+    @include sidebar-icon-only;
+
+    .sidebar-collapse-btn {
+        align-self: center;
+    }
 }
 
 .sidebar-footer {
@@ -1100,24 +1287,7 @@ body {
     box-shadow: var(--shadow-sm);
 }
 
-// =================================
-// SIDEBAR SECONDARY NAV
-// =================================
-
-.sidebar-nav-secondary {
-    margin-top: auto;
-    padding-top: var(--space-4);
-    border-top: 1px solid var(--border-light);
-}
-
-.sidebar-nav-secondary .sidebar-link {
-    font-size: var(--font-xs);
-    color: var(--text-muted);
-}
-
-.sidebar-nav-secondary .sidebar-link:hover {
-    color: var(--text-primary);
-}
+// (sidebar-nav-secondary removed: replaced by sidebar-group system)
 
 // =================================
 // FORM ACTIONS
@@ -1138,9 +1308,10 @@ body {
 // =================================
 
 @media (max-width: 1024px) {
-    .sidebar {
-        width: 200px;
-        min-width: 200px;
+    @include sidebar-icon-only;
+
+    .sidebar-collapse-btn {
+        display: none;
     }
 
     .grid-cols-3 {
@@ -1149,32 +1320,6 @@ body {
 }
 
 @media (max-width: 768px) {
-    .app-layout {
-        flex-direction: column;
-    }
-
-    .sidebar {
-        width: 100%;
-        min-width: 100%;
-        border-right: none;
-        border-bottom: 1px solid var(--border-light);
-        padding: var(--space-4);
-    }
-
-    .sidebar-nav {
-        flex-direction: row;
-        flex-wrap: wrap;
-        gap: var(--space-2);
-    }
-
-    .sidebar-link {
-        padding: var(--space-2) var(--space-3);
-    }
-
-    .sidebar-footer {
-        display: none;
-    }
-
     .content-area {
         padding: var(--space-4);
     }
@@ -1867,6 +2012,29 @@ body {
     }
 }
 
+.wa-link {
+    color: #25d366;
+    display: inline-flex;
+    align-items: center;
+    transition: color 0.2s;
+    text-decoration: none;
+
+    &:hover {
+        color: #128c7e;
+    }
+}
+
+.wa-link-text {
+    color: #25d366;
+    text-decoration: none;
+    transition: color 0.2s;
+
+    &:hover {
+        color: #128c7e;
+        text-decoration: underline;
+    }
+}
+
 // =================================
 // LEADS PAGE - KANBAN IMPROVEMENTS
 // =================================
@@ -1915,6 +2083,95 @@ body {
     }
 }
 
+// =================================
+// TEMPERATURE BOARD - Column Headers
+// =================================
+
+.temp-column-header {
+    border: 1px solid var(--border-light);
+
+    &.temp-column-hot {
+        background: #fef2f2;
+        color: #dc2626;
+        border-color: #fecaca;
+    }
+
+    &.temp-column-warm {
+        background: #fffbeb;
+        color: #d97706;
+        border-color: #fde68a;
+    }
+
+    &.temp-column-cold {
+        background: #eff6ff;
+        color: #2563eb;
+        border-color: #bfdbfe;
+    }
+
+    &.temp-column-dead {
+        background: #f3f4f6;
+        color: #6b7280;
+        border-color: #d1d5db;
+    }
+}
+
+.temp-column-count {
+    background: rgba(0, 0, 0, 0.08);
+    padding: 2px 8px;
+    border-radius: 9999px;
+    font-weight: 600;
+}
+
+// =================================
+// AGENT BOARD - Column Headers & Load
+// =================================
+
+.agent-column-header {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-light);
+}
+
+.agent-load-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 24px;
+    height: 24px;
+    background: var(--color-primary);
+    color: white;
+    border-radius: 9999px;
+    font-size: var(--font-xs);
+    font-weight: 700;
+}
+
+.agent-load-bar {
+    height: 4px;
+    background: var(--bg-muted);
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.agent-load-fill {
+    height: 100%;
+    border-radius: 2px;
+    transition: width var(--transition-normal);
+
+    &.load-low {
+        width: 25%;
+        background: var(--color-success, #22c55e);
+    }
+
+    &.load-medium {
+        width: 60%;
+        background: var(--color-warning, #eab308);
+    }
+
+    &.load-high {
+        width: 100%;
+        background: var(--color-danger, #ef4444);
+    }
+}
+
 // Small buttons for cards
 .btn-xs {
     padding: var(--space-1) var(--space-2);
@@ -1924,4 +2181,94 @@ body {
 // Helper to stop event propagation on action buttons in clickable cards
 .stop-propagation {
     pointer-events: auto;
+}
+
+// =================================
+// BOSS DASHBOARD (Reports)
+// =================================
+
+.kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--space-4);
+
+    @media (max-width: 1024px) {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    @media (max-width: 768px) {
+        grid-template-columns: 1fr;
+    }
+}
+
+.funnel-grid {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: var(--space-3);
+
+    @media (max-width: 768px) {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+.funnel-stage {
+    padding: var(--space-4);
+    background: var(--bg-muted);
+    border-radius: var(--radius-lg);
+}
+
+// Red flag severity rows
+.red-flag-high {
+    background: rgba(220, 38, 38, 0.08);
+    border: 1px solid rgba(220, 38, 38, 0.2);
+}
+
+.red-flag-medium {
+    background: rgba(234, 179, 8, 0.08);
+    border: 1px solid rgba(234, 179, 8, 0.2);
+}
+
+.red-flag-low {
+    background: var(--bg-muted);
+    border: 1px solid var(--border-light);
+}
+
+.flag-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.flag-dot-high {
+    background: var(--color-danger);
+}
+
+.flag-dot-medium {
+    background: var(--color-warning);
+}
+
+.flag-dot-low {
+    background: var(--text-muted);
+}
+
+.activity-row {
+    background: var(--bg-muted);
+    transition: background var(--transition-fast);
+
+    &:hover {
+        background: var(--bg-surface);
+    }
+}
+
+.agent-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--color-primary-light);
+    color: var(--color-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: var(--font-xs);
+    font-weight: 600;
 }

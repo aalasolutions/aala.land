@@ -1,6 +1,6 @@
-import { IsString, IsOptional, IsUUID, IsEnum, IsNumber, Min, IsDateString, MaxLength } from 'class-validator';
+import { IsString, IsOptional, IsUUID, IsEnum, IsNumber, Min, IsDateString, MaxLength, IsArray, IsBoolean } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
-import { WorkOrderStatus, WorkOrderPriority, WorkOrderCategory } from '../entities/work-order.entity';
+import { WorkOrderStatus, WorkOrderPriority, WorkOrderCategory, ScheduleFrequency } from '../entities/work-order.entity';
 
 export class UpdateWorkOrderDto {
   @ApiProperty({ required: false })
@@ -59,5 +59,31 @@ export class UpdateWorkOrderDto {
   @ApiProperty({ required: false })
   @IsOptional()
   @IsString()
+  costNotes?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
   notes?: string;
+
+  @ApiProperty({ required: false, type: [String] })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  photos?: string[];
+
+  @ApiProperty({ required: false, default: false })
+  @IsOptional()
+  @IsBoolean()
+  isPreventive?: boolean;
+
+  @ApiProperty({ enum: ScheduleFrequency, required: false })
+  @IsOptional()
+  @IsEnum(ScheduleFrequency)
+  scheduleFrequency?: ScheduleFrequency;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsDateString()
+  nextScheduledDate?: string;
 }

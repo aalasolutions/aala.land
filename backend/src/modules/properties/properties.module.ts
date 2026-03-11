@@ -8,6 +8,7 @@ import { Building } from './entities/building.entity';
 import { Unit } from './entities/unit.entity';
 import { PropertyMedia } from './entities/property-media.entity';
 import { PropertyDocument } from './entities/property-document.entity';
+import { Listing } from './entities/listing.entity';
 
 @Module({
   imports: [
@@ -16,7 +17,8 @@ import { PropertyDocument } from './entities/property-document.entity';
       Building,
       Unit,
       PropertyMedia,
-      PropertyDocument
+      PropertyDocument,
+      Listing,
     ]),
   ],
   controllers: [PropertiesController],

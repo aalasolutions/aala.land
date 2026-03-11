@@ -24,6 +24,8 @@ import { AuditModule } from '@modules/audit/audit.module';
 import { EmailTemplatesModule } from '@modules/email-templates/email-templates.module';
 import { ContactsModule } from '@modules/contacts/contacts.module';
 import { VendorsModule } from '@modules/vendors/vendors.module';
+import { ReminderRulesModule } from '@modules/reminder-rules/reminder-rules.module';
+import { DocumentsModule } from '@modules/documents/documents.module';
 
 @Module({
   imports: [
@@ -70,6 +72,8 @@ import { VendorsModule } from '@modules/vendors/vendors.module';
     EmailTemplatesModule,
     ContactsModule,
     VendorsModule,
+    ReminderRulesModule,
+    DocumentsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

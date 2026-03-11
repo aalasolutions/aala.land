@@ -16,6 +16,8 @@ export default class MaintenanceController extends Controller {
   @tracked formCategory = 'OTHER';
   @tracked formReportedBy = '';
   @tracked formEstimatedCost = '';
+  @tracked formActualCost = '';
+  @tracked formCostNotes = '';
   @tracked formScheduledDate = '';
   @tracked formVendorId = '';
   @tracked formStatus = 'PENDING';
@@ -24,6 +26,7 @@ export default class MaintenanceController extends Controller {
 
   @tracked filterStatus = 'all';
   @tracked filterMonth = 'all';
+  @tracked activeSection = 'orders';
 
   statusOptions = [
     { value: 'all', label: 'All Status' },
@@ -81,6 +84,8 @@ export default class MaintenanceController extends Controller {
 
   @action setField(fieldName, e) { this[fieldName] = e.target.value; }
 
+  @action setSection(section) { this.activeSection = section; }
+
   @action openCreate() {
     this.formTitle = '';
     this.formDescription = '';
@@ -88,6 +93,8 @@ export default class MaintenanceController extends Controller {
     this.formCategory = 'OTHER';
     this.formReportedBy = '';
     this.formEstimatedCost = '';
+    this.formActualCost = '';
+    this.formCostNotes = '';
     this.formScheduledDate = '';
     this.formVendorId = '';
     this.formStatus = 'PENDING';
@@ -103,6 +110,8 @@ export default class MaintenanceController extends Controller {
     this.formCategory = wo.category;
     this.formReportedBy = wo.reportedBy ?? '';
     this.formEstimatedCost = wo.estimatedCost ? String(wo.estimatedCost) : '';
+    this.formActualCost = wo.actualCost ? String(wo.actualCost) : '';
+    this.formCostNotes = wo.costNotes ?? '';
     this.formScheduledDate = wo.scheduledDate ? wo.scheduledDate.split('T')[0] : '';
     this.formVendorId = wo.vendorId ?? '';
     this.formStatus = wo.status || 'PENDING';
@@ -133,6 +142,8 @@ export default class MaintenanceController extends Controller {
       category: this.formCategory,
       ...(isEdit ? { status: this.formStatus } : {}),
       ...(this.formEstimatedCost ? { estimatedCost: parseFloat(this.formEstimatedCost) } : {}),
+      ...(this.formActualCost ? { actualCost: parseFloat(this.formActualCost) } : {}),
+      ...(this.formCostNotes ? { costNotes: this.formCostNotes } : {}),
       ...(this.formScheduledDate ? { scheduledDate: this.formScheduledDate } : {}),
       ...(this.formReportedBy ? { reportedBy: this.formReportedBy } : {}),
       ...(this.formVendorId ? { vendorId: this.formVendorId } : {}),

@@ -11,6 +11,46 @@ export default class ApplicationController extends Controller {
   @tracked unreadCount = 0;
   @tracked showNotifications = false;
   @tracked notifications = [];
+  @tracked expandedGroup = null;
+  @tracked sidebarCollapsed = false;
+
+  routeGroupMap = {
+    properties: 'properties', 'properties.index': 'properties', 'properties.detail': 'properties',
+    owners: 'properties', 'owners.index': 'properties', 'owners.detail': 'properties',
+    leads: 'crm', contacts: 'crm',
+    leases: 'finance', financials: 'finance', cheques: 'finance', commissions: 'finance',
+    whatsapp: 'outreach', 'email-templates': 'outreach',
+    maintenance: 'operations', vendors: 'operations',
+    team: 'admin', audit: 'admin',
+  };
+
+  get activeGroup() {
+    const route = this.router.currentRouteName;
+    if (!route) return null;
+    const base = route.split('.')[0];
+    return this.routeGroupMap[route] ?? this.routeGroupMap[base] ?? null;
+  }
+
+  constructor() {
+    super(...arguments);
+    this.router.on('routeDidChange', () => {
+      const group = this.activeGroup;
+      if (group) this.expandedGroup = group;
+    });
+  }
+
+  @action
+  toggleGroup(group) {
+    this.expandedGroup = this.expandedGroup === group ? null : group;
+  }
+
+  @action
+  toggleSidebar() {
+    this.sidebarCollapsed = !this.sidebarCollapsed;
+    if (this.sidebarCollapsed) {
+      this.expandedGroup = null;
+    }
+  }
 
   async loadUnreadCount() {
     if (!this.session.isAuthenticated) return;

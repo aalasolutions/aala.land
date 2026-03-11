@@ -28,6 +28,11 @@ describe('ReportsController', () => {
           useValue: {
             getDashboardKpis: jest.fn(),
             getAgentPerformance: jest.fn(),
+            getRedFlags: jest.fn(),
+            getActivityFeed: jest.fn(),
+            getPipelineFunnel: jest.fn(),
+            getBottlenecks: jest.fn(),
+            getResponseTimeMetrics: jest.fn(),
           },
         },
       ],
@@ -65,6 +70,68 @@ describe('ReportsController', () => {
       const result = await controller.getAgentPerformance(mockReq);
 
       expect(service.getAgentPerformance).toHaveBeenCalledWith(companyId);
+      expect(result).toEqual(mockPerf);
+    });
+  });
+
+  describe('getRedFlags', () => {
+    it('delegates to service with companyId', async () => {
+      service.getRedFlags.mockResolvedValue([]);
+
+      const result = await controller.getRedFlags(mockReq);
+
+      expect(service.getRedFlags).toHaveBeenCalledWith(companyId);
+      expect(result).toEqual([]);
+    });
+  });
+
+  describe('getActivityFeed', () => {
+    it('delegates to service with companyId', async () => {
+      service.getActivityFeed.mockResolvedValue([]);
+
+      const result = await controller.getActivityFeed(mockReq);
+
+      expect(service.getActivityFeed).toHaveBeenCalledWith(companyId);
+      expect(result).toEqual([]);
+    });
+  });
+
+  describe('getPipelineFunnel', () => {
+    it('delegates to service with companyId', async () => {
+      service.getPipelineFunnel.mockResolvedValue([]);
+
+      const result = await controller.getPipelineFunnel(mockReq);
+
+      expect(service.getPipelineFunnel).toHaveBeenCalledWith(companyId);
+      expect(result).toEqual([]);
+    });
+  });
+
+  describe('getBottlenecks', () => {
+    it('returns bottleneck data for company', async () => {
+      const mockBottlenecks = [
+        { stage: 'NEGOTIATING', avgDays: 8.5, count: 3, slowestLeadDays: 14.2 },
+      ];
+      service.getBottlenecks.mockResolvedValue(mockBottlenecks);
+
+      const result = await controller.getBottlenecks(mockReq);
+
+      expect(service.getBottlenecks).toHaveBeenCalledWith(companyId);
+      expect(result).toEqual(mockBottlenecks);
+    });
+  });
+
+  describe('getResponseTimes', () => {
+    it('returns response time metrics for company', async () => {
+      const mockTimes = [
+        { agentId: 'agent-1', avgResponseMinutes: 120.5, totalLeadsHandled: 5 },
+      ];
+      service.getResponseTimeMetrics.mockResolvedValue(mockTimes);
+
+      const result = await controller.getResponseTimes(mockReq);
+
+      expect(service.getResponseTimeMetrics).toHaveBeenCalledWith(companyId);
+      expect(result).toEqual(mockTimes);
     });
   });
 });

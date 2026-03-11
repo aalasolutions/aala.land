@@ -96,12 +96,22 @@ describe('LeadsController', () => {
   });
 
   describe('assign', () => {
-    it('assigns lead to agent', async () => {
+    it('assigns lead to agent without reason', async () => {
       service.assign.mockResolvedValue({ ...mockLead, assignedTo: 'agent-uuid-1' } as any);
 
-      const result = await controller.assign('lead-uuid-1', { agentId: 'agent-uuid-1' }, mockReq);
+      const dto = { agentId: 'agent-uuid-1' };
+      const result = await controller.assign('lead-uuid-1', dto as any, mockReq);
 
-      expect(service.assign).toHaveBeenCalledWith('lead-uuid-1', companyId, 'agent-uuid-1', 'user-uuid-1');
+      expect(service.assign).toHaveBeenCalledWith('lead-uuid-1', companyId, 'agent-uuid-1', 'user-uuid-1', undefined);
+    });
+
+    it('assigns lead to agent with transfer reason', async () => {
+      service.assign.mockResolvedValue({ ...mockLead, assignedTo: 'agent-uuid-1' } as any);
+
+      const dto = { agentId: 'agent-uuid-1', reason: 'Client prefers Arabic speaker' };
+      const result = await controller.assign('lead-uuid-1', dto as any, mockReq);
+
+      expect(service.assign).toHaveBeenCalledWith('lead-uuid-1', companyId, 'agent-uuid-1', 'user-uuid-1', 'Client prefers Arabic speaker');
     });
   });
 

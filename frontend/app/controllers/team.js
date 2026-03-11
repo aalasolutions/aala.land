@@ -16,6 +16,7 @@ export default class TeamController extends Controller {
   @service router;
 
   @tracked showModal = false;
+  @tracked showInviteModal = false;
   @tracked editUser = null;
   @tracked formName = '';
   @tracked formEmail = '';
@@ -23,6 +24,13 @@ export default class TeamController extends Controller {
   @tracked formRole = 'agent';
   @tracked isSaving = false;
   @tracked errorMsg = '';
+
+  @tracked inviteFirstName = '';
+  @tracked inviteLastName = '';
+  @tracked inviteEmail = '';
+  @tracked inviteRole = 'agent';
+  @tracked isInviting = false;
+  @tracked inviteErrorMsg = '';
 
   get roles() {
     return ROLES;
@@ -56,6 +64,46 @@ export default class TeamController extends Controller {
     this.errorMsg = '';
   }
 
+  @action openInvite() {
+    this.inviteFirstName = '';
+    this.inviteLastName = '';
+    this.inviteEmail = '';
+    this.inviteRole = 'agent';
+    this.inviteErrorMsg = '';
+    this.showInviteModal = true;
+  }
+
+  @action closeInvite() {
+    this.showInviteModal = false;
+    this.inviteErrorMsg = '';
+  }
+
+  @action async sendInvite(event) {
+    event.preventDefault();
+    if (this.isInviting) return;
+    this.isInviting = true;
+    this.inviteErrorMsg = '';
+
+    try {
+      await this.auth.fetchJson('/users/invite', {
+        method: 'POST',
+        body: JSON.stringify({
+          email: this.inviteEmail,
+          firstName: this.inviteFirstName,
+          lastName: this.inviteLastName,
+          role: this.inviteRole,
+        }),
+      });
+      this.notifications.success('Invitation sent successfully');
+      this.closeInvite();
+      this.router.refresh('team');
+    } catch (e) {
+      this.inviteErrorMsg = e.message;
+    } finally {
+      this.isInviting = false;
+    }
+  }
+
   @action async saveUser(event) {
     event.preventDefault();
     if (this.isSaving) return;
@@ -80,7 +128,7 @@ export default class TeamController extends Controller {
         body: JSON.stringify(body),
       });
 
-      this.notifications.success(isEdit ? 'Team member updated' : 'Team member invited');
+      this.notifications.success(isEdit ? 'Team member updated' : 'Team member created');
       this.closeModal();
       this.router.refresh('team');
     } catch (e) {

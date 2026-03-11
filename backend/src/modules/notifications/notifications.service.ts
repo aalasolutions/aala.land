@@ -1,9 +1,12 @@
 import { Injectable, Logger, BadRequestException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, LessThanOrEqual, MoreThanOrEqual } from 'typeorm';
 import { SendNotificationDto, NotificationChannel, NotificationStatus } from './dto/send-notification.dto';
 import { Notification } from './entities/notification.entity';
 import { CreateNotificationDto } from './dto/create-notification.dto';
+import { Cheque, ChequeStatus } from '../cheques/entities/cheque.entity';
+import { Lease, LeaseStatus } from '../leases/entities/lease.entity';
+import { WorkOrder } from '../maintenance/entities/work-order.entity';
 
 export interface NotificationResult {
   channel: NotificationChannel;
@@ -20,6 +23,12 @@ export class NotificationsService {
   constructor(
     @InjectRepository(Notification)
     private readonly notificationRepository: Repository<Notification>,
+    @InjectRepository(Cheque)
+    private readonly chequeRepository: Repository<Cheque>,
+    @InjectRepository(Lease)
+    private readonly leaseRepository: Repository<Lease>,
+    @InjectRepository(WorkOrder)
+    private readonly workOrderRepository: Repository<WorkOrder>,
   ) {}
 
   // ---- Persistence methods ----
@@ -137,6 +146,137 @@ export class NotificationsService {
         error: err.message,
       };
     }
+  }
+
+  // ---- Reminder check methods ----
+
+  async checkRentDueReminders(
+    companyId: string,
+    daysBefore = 3,
+  ): Promise<{
+    data: Array<{
+      chequeId: string;
+      chequeNumber: string;
+      amount: number;
+      currency: string;
+      dueDate: Date;
+      accountHolder: string;
+      daysUntilDue: number;
+    }>;
+  }> {
+    const now = new Date();
+    const futureDate = new Date();
+    futureDate.setDate(now.getDate() + daysBefore);
+
+    const cheques = await this.chequeRepository
+      .createQueryBuilder('cheque')
+      .where('cheque.company_id = :companyId', { companyId })
+      .andWhere('cheque.status = :status', { status: ChequeStatus.PENDING })
+      .andWhere('cheque.due_date >= :now', { now: now.toISOString().split('T')[0] })
+      .andWhere('cheque.due_date <= :futureDate', { futureDate: futureDate.toISOString().split('T')[0] })
+      .orderBy('cheque.due_date', 'ASC')
+      .getMany();
+
+    const data = cheques.map((c) => {
+      const dueMs = new Date(c.dueDate).getTime() - now.getTime();
+      const daysUntilDue = Math.ceil(dueMs / (1000 * 60 * 60 * 24));
+      return {
+        chequeId: c.id,
+        chequeNumber: c.chequeNumber,
+        amount: Number(c.amount),
+        currency: c.currency,
+        dueDate: c.dueDate,
+        accountHolder: c.accountHolder,
+        daysUntilDue,
+      };
+    });
+
+    return { data };
+  }
+
+  async checkLeaseExpiryAlerts(
+    companyId: string,
+    daysAhead = 60,
+  ): Promise<{
+    data: Array<{
+      leaseId: string;
+      unitId: string;
+      tenantName: string;
+      endDate: Date;
+      daysRemaining: number;
+    }>;
+  }> {
+    const now = new Date();
+    const futureDate = new Date();
+    futureDate.setDate(now.getDate() + daysAhead);
+
+    const leases = await this.leaseRepository
+      .createQueryBuilder('lease')
+      .where('lease.company_id = :companyId', { companyId })
+      .andWhere('lease.status = :status', { status: LeaseStatus.ACTIVE })
+      .andWhere('lease.end_date >= :now', { now: now.toISOString().split('T')[0] })
+      .andWhere('lease.end_date <= :futureDate', { futureDate: futureDate.toISOString().split('T')[0] })
+      .orderBy('lease.end_date', 'ASC')
+      .getMany();
+
+    const data = leases.map((l) => {
+      const endMs = new Date(l.endDate).getTime() - now.getTime();
+      const daysRemaining = Math.ceil(endMs / (1000 * 60 * 60 * 24));
+      return {
+        leaseId: l.id,
+        unitId: l.unitId,
+        tenantName: l.tenantName,
+        endDate: l.endDate,
+        daysRemaining,
+      };
+    });
+
+    return { data };
+  }
+
+  async checkMaintenanceReminders(
+    companyId: string,
+    daysAhead = 7,
+  ): Promise<{
+    data: Array<{
+      workOrderId: string;
+      title: string;
+      unitId: string | null;
+      nextScheduledDate: Date | null;
+      daysUntilDue: number;
+      category: string;
+      priority: string;
+    }>;
+  }> {
+    const now = new Date();
+    const futureDate = new Date();
+    futureDate.setDate(now.getDate() + daysAhead);
+
+    const workOrders = await this.workOrderRepository
+      .createQueryBuilder('wo')
+      .where('wo.company_id = :companyId', { companyId })
+      .andWhere('wo.is_preventive = :isPreventive', { isPreventive: true })
+      .andWhere('wo.next_scheduled_date IS NOT NULL')
+      .andWhere('wo.next_scheduled_date >= :now', { now: now.toISOString().split('T')[0] })
+      .andWhere('wo.next_scheduled_date <= :futureDate', { futureDate: futureDate.toISOString().split('T')[0] })
+      .orderBy('wo.next_scheduled_date', 'ASC')
+      .getMany();
+
+    const data = workOrders.map((wo) => {
+      const dueMs = new Date(wo.nextScheduledDate!).getTime() - now.getTime();
+      const daysUntilDue = Math.ceil(dueMs / (1000 * 60 * 60 * 24));
+      return {
+        workOrderId: wo.id,
+        title: wo.title,
+        unitId: wo.unitId,
+        nextScheduledDate: wo.nextScheduledDate,
+        daysUntilDue,
+        category: wo.category,
+        priority: wo.priority,
+      };
+    });
+
+    return { data };
   }
 
   private async sendSms(dto: SendNotificationDto): Promise<NotificationResult> {
