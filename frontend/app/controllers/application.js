@@ -7,12 +7,18 @@ export default class ApplicationController extends Controller {
   @service session;
   @service auth;
   @service router;
+  @service region;
 
   @tracked unreadCount = 0;
   @tracked showNotifications = false;
   @tracked notifications = [];
   @tracked expandedGroup = null;
   @tracked sidebarCollapsed = false;
+  @tracked showRegionDropdown = false;
+
+  get showRegionSwitcher() {
+    return this.region.regions.length > 1;
+  }
 
   routeGroupMap = {
     properties: 'properties', 'properties.index': 'properties', 'properties.detail': 'properties',
@@ -101,6 +107,23 @@ export default class ApplicationController extends Controller {
     } catch {
       // silently fail
     }
+  }
+
+  @action
+  toggleRegionDropdown() {
+    this.showRegionDropdown = !this.showRegionDropdown;
+  }
+
+  @action
+  closeRegionDropdown() {
+    this.showRegionDropdown = false;
+  }
+
+  @action
+  selectRegion(selectedRegion) {
+    this.region.switchRegion(selectedRegion);
+    this.showRegionDropdown = false;
+    this.router.refresh();
   }
 
   @action

@@ -23,29 +23,32 @@ export class VendorsService {
     limit = 20,
     search?: string,
     specialty?: VendorSpecialty,
+    regionCode?: string,
   ): Promise<{ data: Vendor[]; total: number; page: number; limit: number }> {
     const where: any[] = [];
+    const base: any = { companyId };
+    if (regionCode) base.regionCode = regionCode;
 
     if (search && specialty) {
       const pattern = `%${search}%`;
       where.push(
-        { companyId, specialty, name: ILike(pattern) },
-        { companyId, specialty, email: ILike(pattern) },
-        { companyId, specialty, phone: ILike(pattern) },
-        { companyId, specialty, companyName: ILike(pattern) },
+        { ...base, specialty, name: ILike(pattern) },
+        { ...base, specialty, email: ILike(pattern) },
+        { ...base, specialty, phone: ILike(pattern) },
+        { ...base, specialty, companyName: ILike(pattern) },
       );
     } else if (search) {
       const pattern = `%${search}%`;
       where.push(
-        { companyId, name: ILike(pattern) },
-        { companyId, email: ILike(pattern) },
-        { companyId, phone: ILike(pattern) },
-        { companyId, companyName: ILike(pattern) },
+        { ...base, name: ILike(pattern) },
+        { ...base, email: ILike(pattern) },
+        { ...base, phone: ILike(pattern) },
+        { ...base, companyName: ILike(pattern) },
       );
     } else if (specialty) {
-      where.push({ companyId, specialty });
+      where.push({ ...base, specialty });
     } else {
-      where.push({ companyId });
+      where.push(base);
     }
 
     const [data, total] = await this.vendorRepository.findAndCount({

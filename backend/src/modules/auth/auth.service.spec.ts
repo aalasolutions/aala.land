@@ -3,6 +3,7 @@ import { JwtService } from '@nestjs/jwt';
 import { BadRequestException } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { UsersService } from '../users/users.service';
+import { CompaniesService } from '../companies/companies.service';
 import * as bcrypt from 'bcryptjs';
 import * as crypto from 'crypto';
 
@@ -13,6 +14,7 @@ describe('AuthService', () => {
   let service: AuthService;
   let usersService: jest.Mocked<UsersService>;
   let jwtService: jest.Mocked<JwtService>;
+  let companiesService: jest.Mocked<CompaniesService>;
 
   const mockUser = {
     id: 'user-uuid-1',
@@ -22,6 +24,17 @@ describe('AuthService', () => {
     role: 'admin',
     companyId: 'company-uuid-1',
     isActive: true,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  };
+
+  const mockCompany = {
+    id: 'company-uuid-1',
+    name: 'Test Company',
+    slug: 'test-company',
+    isActive: true,
+    activeRegions: ['dubai', 'abu-dhabi'],
+    defaultRegionCode: 'dubai',
     createdAt: new Date(),
     updatedAt: new Date(),
   };
@@ -45,12 +58,19 @@ describe('AuthService', () => {
             sign: jest.fn().mockReturnValue('mock-jwt-token'),
           },
         },
+        {
+          provide: CompaniesService,
+          useValue: {
+            findOne: jest.fn().mockResolvedValue(mockCompany),
+          },
+        },
       ],
     }).compile();
 
     service = module.get<AuthService>(AuthService);
     usersService = module.get(UsersService);
     jwtService = module.get(JwtService);
+    companiesService = module.get(CompaniesService);
   });
 
   it('should be defined', () => {
@@ -87,7 +107,7 @@ describe('AuthService', () => {
   });
 
   describe('login', () => {
-    it('returns accessToken and user info', async () => {
+    it('returns accessToken, user info, regions, and defaultRegionCode', async () => {
       const result = await service.login(mockUser);
 
       expect(jwtService.sign).toHaveBeenCalledWith({
@@ -96,9 +116,15 @@ describe('AuthService', () => {
         companyId: mockUser.companyId,
         role: mockUser.role,
       });
+      expect(companiesService.findOne).toHaveBeenCalledWith(mockUser.companyId);
       expect(result.accessToken).toBe('mock-jwt-token');
       expect(result.user.id).toBe(mockUser.id);
       expect(result.user).not.toHaveProperty('password');
+      expect(result.defaultRegionCode).toBe('dubai');
+      expect(result.regions).toHaveLength(2);
+      expect(result.regions[0].code).toBe('dubai');
+      expect(result.regions[0].currency).toBe('AED');
+      expect(result.regions[1].code).toBe('abu-dhabi');
     });
   });
 

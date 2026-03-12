@@ -8,10 +8,11 @@ export default class ProfileRoute extends AuthenticatedRoute {
     const userId = this.auth.currentUser?.id;
     if (!userId) return null;
 
-    const response = await this.auth.authorizedFetch(
-      `${this.auth.apiBase}/users/${userId}`,
-    );
-    if (!response.ok) return null;
-    return response.json().then((r) => r.data);
+    try {
+      const json = await this.auth.fetchJson(`/users/${userId}`);
+      return json.data;
+    } catch {
+      return null;
+    }
   }
 }

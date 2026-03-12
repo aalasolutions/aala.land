@@ -350,6 +350,16 @@
       <button type="button" class="text-muted font-lg px-2" {{on "click" this.closeModal}}>x</button>
     </div>
     <form class="flex col gap-4" {{on "submit" this.saveLead}}>
+      {{#if this.showRegionField}}
+        <div class="flex col gap-2">
+          <label class="font-sm text-muted" for="lead-region">Region</label>
+          <select id="lead-region" class="form-select" data-test-region-select {{on "change" (fn this.setField "formRegionCode")}}>
+            {{#each this.region.regions as |r|}}
+              <option value={{r.code}} selected={{eq r.code this.formRegionCode}}>{{r.name}} ({{r.currency}})</option>
+            {{/each}}
+          </select>
+        </div>
+      {{/if}}
       <div class="flex gap-4">
         <div class="flex col gap-2 flex-1">
           <label class="font-sm text-muted" for="lead-first-name">First Name *</label>
@@ -532,9 +542,9 @@
         <div class="info-section">
           <h4 class="font-sm font-bold text-muted mb-2">Budget</h4>
           {{#if this.detailLead.budgetMin}}
-            <span>AED {{this.detailLead.budgetMin}}</span>
+            <span>{{format-currency this.detailLead.budgetMin}}</span>
             {{#if this.detailLead.budgetMax}}
-              <span> - AED {{this.detailLead.budgetMax}}</span>
+              <span> - {{format-currency this.detailLead.budgetMax}}</span>
             {{/if}}
           {{else}}
             <span class="text-muted">Not specified</span>

@@ -43,26 +43,24 @@ export default class AuditRoute extends AuthenticatedRoute {
     if (action) queryParams.set('action', action);
     if (entityType) queryParams.set('entityType', entityType);
 
-    const response = await this.auth.authorizedFetch(
-      `${this.auth.apiBase}/audit-logs?${queryParams.toString()}`,
-    );
-    if (!response.ok) {
+    try {
+      const json = await this.auth.fetchJson(`/audit-logs?${queryParams.toString()}`);
+      return {
+        logs: json.data?.data || [],
+        total: json.data?.total || 0,
+        page: json.data?.page || 1,
+        auditActions: AUDIT_ACTIONS,
+        entityTypes: ENTITY_TYPES,
+      };
+    } catch (e) {
       return {
         logs: [],
         total: 0,
         page: 1,
-        forbidden: response.status === 403,
+        forbidden: e?.status === 403,
         auditActions: AUDIT_ACTIONS,
         entityTypes: ENTITY_TYPES,
       };
     }
-    const result = await response.json();
-    return {
-      logs: result.data?.data || [],
-      total: result.data?.total || 0,
-      page: result.data?.page || 1,
-      auditActions: AUDIT_ACTIONS,
-      entityTypes: ENTITY_TYPES,
-    };
   }
 }

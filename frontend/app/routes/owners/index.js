@@ -12,11 +12,11 @@ export default class OwnersIndexRoute extends AuthenticatedRoute {
   async model({ page = 1, limit = 20 }) {
     const params = new URLSearchParams({ page, limit });
 
-    const response = await this.auth.authorizedFetch(
-      `${this.auth.apiBase}/owners?${params.toString()}`,
-    );
-    if (!response.ok) return { owners: [], total: 0, page: 1 };
-    const result = await response.json();
-    return { owners: result.data?.data || [], total: result.data?.total || 0, page: result.data?.page || 1 };
+    try {
+      const json = await this.auth.fetchJson(`/owners?${params.toString()}`);
+      return { owners: json.data?.data || [], total: json.data?.total || 0, page: json.data?.page || 1 };
+    } catch {
+      return { owners: [], total: 0, page: 1 };
+    }
   }
 }

@@ -5,7 +5,7 @@
     <div class="flex x-center gap-3">
       <Ph @icon="address-book" @size="24px" />
       <h2 class="font-2xl font-bold">Contacts</h2>
-      <span class="text-muted font-sm">({{@model.total}})</span>
+      <span class="text-muted font-sm">({{format-number @model.total}})</span>
     </div>
     <button type="button" class="btn btn-primary" {{on "click" this.openCreate}}>
       <Ph @icon="plus" /> New Contact

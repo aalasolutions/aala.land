@@ -1,0 +1,320 @@
+{{page-title (if @model.unit (concat "Unit " @model.unit.unitNumber) "Unit Detail")}}
+
+<div data-test-unit-detail class="flex col gap-6">
+  {{! Breadcrumb }}
+  <div data-test-breadcrumb class="flex x-center gap-2 font-sm text-muted">
+    <LinkTo @route="properties" data-test-breadcrumb-properties>Properties</LinkTo>
+    <span>/</span>
+    {{#if @model.unit.building.area}}
+      <LinkTo @route="properties.detail" @model={{@model.areaId}} data-test-breadcrumb-area>{{@model.unit.building.area.name}}</LinkTo>
+      <span>/</span>
+    {{/if}}
+    {{#if @model.unit.building}}
+      <span>{{@model.unit.building.name}}</span>
+      <span>/</span>
+    {{/if}}
+    <span class="font-bold" style="color: var(--text-primary)">Unit {{@model.unit.unitNumber}}</span>
+  </div>
+
+  {{#if @model.unit}}
+    {{! Two column: Gallery + Info }}
+    <div class="unit-detail-grid">
+      {{! Left: Photo gallery }}
+      <div class="glass-panel p-6 flex col gap-4">
+        <div class="flex between x-center mb-2">
+          <h4 class="font-sm font-bold uppercase text-muted">Photos</h4>
+          <label class="btn btn-primary btn-sm {{if this.isUploading 'disabled'}}" data-test-upload-photo-btn>
+            <Ph @icon="camera-plus" /> {{if this.isUploading this.uploadStatus "Add Photo"}}
+            <input type="file" class="sr-only" accept="image/jpeg,image/png,image/webp,image/gif" {{on "change" this.uploadPhoto}} />
+          </label>
+        </div>
+
+        {{#if @model.media.length}}
+          {{#let (object-at @model.media 0) as |primary|}}
+            <div class="unit-main-photo" data-test-main-photo>
+              <img src={{primary.url}} alt="Unit photo" />
+            </div>
+          {{/let}}
+          <div class="flex gap-2 wrap">
+            {{#each @model.media as |media|}}
+              <div class="unit-thumb {{if media.isPrimary 'unit-thumb-primary'}}" data-test-photo-thumb>
+                <img src={{or media.thumbnailUrl media.url}} alt={{media.fileName}} />
+                <div class="unit-thumb-actions">
+                  {{#unless media.isPrimary}}
+                    <button type="button" class="btn-icon" title="Set as primary" {{on "click" (fn this.setPrimaryPhoto media)}}>
+                      <Ph @icon="star" />
+                    </button>
+                  {{/unless}}
+                  <button type="button" class="btn-icon btn-icon-danger" title="Delete" {{on "click" (fn this.deletePhoto media)}}>
+                    <Ph @icon="trash" />
+                  </button>
+                </div>
+              </div>
+            {{/each}}
+          </div>
+        {{else}}
+          <div class="unit-photo-placeholder" data-test-photo-placeholder>
+            <Ph @icon="image" />
+            <p class="text-muted mt-2 font-sm">No photos uploaded yet</p>
+          </div>
+        {{/if}}
+      </div>
+
+      {{! Right: Unit info panel }}
+      <div class="flex col gap-4">
+        <div class="glass-panel p-6 flex col gap-3">
+          <div class="flex between x-center">
+            <h2 data-test-unit-title class="font-2xl font-bold">Unit {{@model.unit.unitNumber}}</h2>
+            <button type="button" class="btn btn-secondary btn-sm" data-test-edit-btn {{on "click" this.openEdit}}>
+              <Ph @icon="pencil-simple" /> Edit
+            </button>
+          </div>
+
+          {{#if @model.unit.building}}
+            <p class="text-muted font-sm">
+              {{@model.unit.building.name}}
+              {{#if @model.unit.building.area}}
+                &middot; {{@model.unit.building.area.name}}
+              {{/if}}
+            </p>
+          {{/if}}
+
+          {{#if @model.unit.price}}
+            <p data-test-unit-price class="font-2xl font-bold text-success">{{format-currency @model.unit.price}}</p>
+          {{/if}}
+
+          {{! Specs row }}
+          <div class="flex gap-4 font-sm flex wrap" data-test-unit-specs>
+            {{#if @model.unit.bedrooms}}
+              <span class="flex x-center gap-1"><Ph @icon="bed" /> {{@model.unit.bedrooms}} Beds</span>
+            {{/if}}
+            {{#if @model.unit.bathrooms}}
+              <span class="flex x-center gap-1"><Ph @icon="bathtub" /> {{@model.unit.bathrooms}} Baths</span>
+            {{/if}}
+            {{#if @model.unit.sqFt}}
+              <span class="flex x-center gap-1"><Ph @icon="ruler" /> {{format-number @model.unit.sqFt}} sqft</span>
+            {{/if}}
+            {{#if @model.unit.floor}}
+              <span class="flex x-center gap-1"><Ph @icon="stairs" /> Floor {{@model.unit.floor}}</span>
+            {{/if}}
+          </div>
+
+          {{! Status + Property Type badges }}
+          <div class="flex gap-3 x-center" data-test-unit-badges>
+            <span class="status-badge status-{{@model.unit.status}}">{{capitalize @model.unit.status}}</span>
+            {{#if @model.unit.propertyType}}
+              <span class="type-badge type-{{lowercase @model.unit.propertyType}}">
+                {{if (eq @model.unit.propertyType "FOR_SALE") "For Sale" "Rental"}}
+              </span>
+            {{else if @model.unit.building.propertyType}}
+              <span class="type-badge type-inherited">
+                {{if (eq @model.unit.building.propertyType "FOR_SALE") "For Sale" "Rental"}} (inherited)
+              </span>
+            {{/if}}
+          </div>
+
+          {{! Owner }}
+          {{#if @model.unit.owner}}
+            <div class="flex x-center gap-2 font-sm" data-test-unit-owner>
+              <Ph @icon="user" />
+              <span class="text-muted">Owner:</span>
+              <LinkTo @route="owners.detail" @model={{@model.unit.owner.id}} class="text-primary owner-link">
+                {{@model.unit.owner.name}}
+              </LinkTo>
+            </div>
+          {{/if}}
+        </div>
+
+        {{! Amenities card }}
+        {{#if @model.unit.amenities.length}}
+          <div class="glass-panel p-5" data-test-amenities-card>
+            <h4 class="font-sm font-bold uppercase text-muted mb-3">Amenities</h4>
+            <div class="flex gap-2 wrap">
+              {{#each @model.unit.amenities as |amenity|}}
+                <span class="amenity-tag">{{amenity}}</span>
+              {{/each}}
+            </div>
+          </div>
+        {{/if}}
+      </div>
+    </div>
+
+    {{! Description }}
+    {{#if @model.unit.description}}
+      <div class="glass-panel p-6" data-test-description>
+        <h4 class="font-md font-bold mb-3"><Ph @icon="text-align-left" /> Description</h4>
+        <p class="text-muted">{{@model.unit.description}}</p>
+      </div>
+    {{/if}}
+
+    {{! Lease History }}
+    <div class="glass-panel p-6" data-test-lease-history>
+      <h4 class="font-md font-bold mb-3"><Ph @icon="file-text" /> Lease History</h4>
+      {{#if @model.leases.length}}
+        <div class="data-table-wrapper">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Tenant</th>
+                <th>Start</th>
+                <th>End</th>
+                <th>Rent</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {{#each @model.leases as |lease|}}
+                <tr data-test-lease-row>
+                  <td>{{lease.tenantName}}</td>
+                  <td>{{format-date lease.startDate}}</td>
+                  <td>{{format-date lease.endDate}}</td>
+                  <td>{{format-currency lease.monthlyRent}}</td>
+                  <td><span class="status-badge status-{{lowercase lease.status}}">{{lease.status}}</span></td>
+                </tr>
+              {{/each}}
+            </tbody>
+          </table>
+        </div>
+      {{else}}
+        <p class="text-muted font-sm">No lease history for this unit.</p>
+      {{/if}}
+    </div>
+
+  {{else}}
+    <div class="glass-panel p-8 text-center" data-test-unit-not-found>
+      <Ph @icon="warning" />
+      <p class="text-muted mt-2">Unit not found.</p>
+      <LinkTo @route="properties" class="btn btn-primary mt-4">Back to Properties</LinkTo>
+    </div>
+  {{/if}}
+</div>
+
+{{! Edit Modal }}
+{{#if this.showEditModal}}
+  <button type="button" class="modal-backdrop" aria-label="Close modal" {{on "click" this.closeEdit}}></button>
+  <div class="modal-panel glass-panel p-8 flex col gap-6" role="dialog" aria-label="Edit unit" data-test-edit-modal>
+    <div class="flex between x-center">
+      <h3 class="font-xl font-bold">Edit Unit</h3>
+      <button type="button" class="text-muted font-lg px-2" data-test-close-modal {{on "click" this.closeEdit}}>x</button>
+    </div>
+    <form class="flex col gap-4" {{on "submit" this.save}}>
+      <div class="flex gap-4">
+        <div class="flex col gap-2 flex-1">
+          <label class="font-sm text-muted" for="u-number">Unit Number *</label>
+          <input id="u-number" type="text"
+            class="form-input"
+            data-test-field-unit-number
+            placeholder="e.g. 101" value={{this.formUnitNumber}} required {{on "input" (fn this.setField "formUnitNumber")}} />
+        </div>
+        <div class="flex col gap-2 flex-1">
+          <label class="font-sm text-muted" for="u-status">Status</label>
+          <select id="u-status" class="form-select" data-test-field-status {{on "change" (fn this.setField "formStatus")}}>
+            <option value="available" selected={{eq this.formStatus "available"}}>Available</option>
+            <option value="rented" selected={{eq this.formStatus "rented"}}>Rented</option>
+            <option value="sold" selected={{eq this.formStatus "sold"}}>Sold</option>
+            <option value="maintenance" selected={{eq this.formStatus "maintenance"}}>Maintenance</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="flex col gap-2">
+        <label class="font-sm text-muted" for="u-property-type">Property Type</label>
+        <select id="u-property-type" class="form-select" data-test-field-property-type {{on "change" (fn this.setField "formPropertyType")}}>
+          <option value="" selected={{eq this.formPropertyType ""}}>Inherit from Building ({{if (eq this.buildingPropertyType "FOR_SALE") "For Sale" "Rental"}})</option>
+          <option value="RENTAL" selected={{eq this.formPropertyType "RENTAL"}}>Rental</option>
+          <option value="FOR_SALE" selected={{eq this.formPropertyType "FOR_SALE"}}>For Sale</option>
+        </select>
+        <p class="font-xs text-muted">Leave as "Inherit" to use the building's default type.</p>
+      </div>
+
+      <div class="flex gap-4">
+        <div class="flex col gap-2 flex-1">
+          <label class="font-sm text-muted" for="u-price">Price</label>
+          <input id="u-price" type="number" min="0"
+            class="form-input"
+            data-test-field-price
+            placeholder="e.g. 150000" value={{this.formPrice}} {{on "input" (fn this.setField "formPrice")}} />
+        </div>
+        <div class="flex col gap-2 flex-1">
+          <label class="font-sm text-muted" for="u-sqft">Sq Ft</label>
+          <input id="u-sqft" type="number" min="0"
+            class="form-input"
+            data-test-field-sqft
+            placeholder="e.g. 850" value={{this.formSqFt}} {{on "input" (fn this.setField "formSqFt")}} />
+        </div>
+      </div>
+
+      <div class="flex gap-4">
+        <div class="flex col gap-2 flex-1">
+          <label class="font-sm text-muted" for="u-beds">Bedrooms</label>
+          <input id="u-beds" type="number" min="0"
+            class="form-input"
+            data-test-field-bedrooms
+            placeholder="e.g. 2" value={{this.formBedrooms}} {{on "input" (fn this.setField "formBedrooms")}} />
+        </div>
+        <div class="flex col gap-2 flex-1">
+          <label class="font-sm text-muted" for="u-baths">Bathrooms</label>
+          <input id="u-baths" type="number" min="0"
+            class="form-input"
+            data-test-field-bathrooms
+            placeholder="e.g. 2" value={{this.formBathrooms}} {{on "input" (fn this.setField "formBathrooms")}} />
+        </div>
+      </div>
+
+      <div class="flex col gap-2">
+        <label class="font-sm text-muted" for="u-floor">Floor</label>
+        <input id="u-floor" type="number" min="0"
+          class="form-input"
+          data-test-field-floor
+          placeholder="e.g. 5" value={{this.formFloor}} {{on "input" (fn this.setField "formFloor")}} />
+      </div>
+
+      <div class="flex col gap-2">
+        <label class="font-sm text-muted" for="u-desc">Description</label>
+        <textarea id="u-desc"
+          class="form-input"
+          data-test-field-description
+          rows="3"
+          placeholder="Unit description..."
+          {{on "input" (fn this.setField "formDescription")}}>{{this.formDescription}}</textarea>
+      </div>
+
+      <div class="flex col gap-2">
+        <label class="font-sm text-muted" for="u-owner">Owner (Optional)</label>
+        <select id="u-owner" class="form-select" data-test-field-owner {{on "change" (fn this.setField "formOwnerId")}}>
+          <option value="">Unassigned</option>
+          {{#each @model.owners as |owner|}}
+            <option value={{owner.id}} selected={{eq owner.id this.formOwnerId}}>{{owner.name}}</option>
+          {{/each}}
+        </select>
+      </div>
+
+      <div class="flex col gap-2">
+        <label class="font-sm text-muted">Amenities</label>
+        <div class="amenities-grid" data-test-amenities-picker>
+          {{#each this.amenityOptions as |opt|}}
+            <button
+              type="button"
+              class="amenity-chip {{if (includes this.formAmenities opt.key) 'amenity-chip-active'}}"
+              data-test-amenity={{opt.key}}
+              {{on "click" (fn this.toggleAmenity opt.key)}}
+            >
+              <Ph @icon={{opt.icon}} /> {{opt.label}}
+            </button>
+          {{/each}}
+        </div>
+      </div>
+
+      {{#if this.errorMsg}}
+        <p class="font-sm text-danger" data-test-error>{{this.errorMsg}}</p>
+      {{/if}}
+
+      <div class="flex gap-3 mt-2">
+        <button type="button" class="btn btn-secondary" data-test-cancel-btn {{on "click" this.closeEdit}}>Cancel</button>
+        <button type="submit" class="btn btn-primary" data-test-save-btn disabled={{this.isSaving}}>
+          {{if this.isSaving "Saving..." "Update Unit"}}
+        </button>
+      </div>
+    </form>
+  </div>
+{{/if}}

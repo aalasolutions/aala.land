@@ -7,15 +7,22 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '@shared/guards/roles.guard';
 import { Roles } from '@shared/decorators/roles.decorator';
 import { Role } from '@shared/enums/roles.enum';
+import { MENA_REGIONS } from '@shared/constants/regions';
 
 @ApiTags('Companies')
-@ApiBearerAuth()
-@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('companies')
 export class CompaniesController {
     constructor(private readonly companiesService: CompaniesService) { }
 
+    @Get('regions')
+    @ApiOperation({ summary: 'Get all supported MENA regions (public, no auth)' })
+    getRegions() {
+        return MENA_REGIONS;
+    }
+
     @Post()
+    @ApiBearerAuth()
+    @UseGuards(JwtAuthGuard, RolesGuard)
     @Roles(Role.SUPER_ADMIN)
     @ApiOperation({ summary: 'Create a new company (tenant) - SUPER_ADMIN only' })
     create(@Body() createDto: CreateCompanyDto) {
@@ -23,6 +30,8 @@ export class CompaniesController {
     }
 
     @Get()
+    @ApiBearerAuth()
+    @UseGuards(JwtAuthGuard, RolesGuard)
     @ApiOperation({ summary: 'List all companies (paginated)' })
     @ApiQuery({ name: 'page', required: false, type: Number })
     @ApiQuery({ name: 'limit', required: false, type: Number })
@@ -34,12 +43,16 @@ export class CompaniesController {
     }
 
     @Get(':id')
+    @ApiBearerAuth()
+    @UseGuards(JwtAuthGuard, RolesGuard)
     @ApiOperation({ summary: 'Get company by ID' })
     findOne(@Param('id', ParseUUIDPipe) id: string) {
         return this.companiesService.findOne(id);
     }
 
     @Patch(':id')
+    @ApiBearerAuth()
+    @UseGuards(JwtAuthGuard, RolesGuard)
     @ApiOperation({ summary: 'Update company' })
     update(@Param('id', ParseUUIDPipe) id: string, @Body() updateDto: UpdateCompanyDto) {
         return this.companiesService.update(id, updateDto);

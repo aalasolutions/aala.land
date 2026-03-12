@@ -41,4 +41,9 @@ export class CreateCommissionDto {
   @IsOptional()
   @IsString()
   notes?: string;
+
+  @ApiProperty({ required: false, example: 'dubai', description: 'Region code for multi-region filtering' })
+  @IsOptional()
+  @IsString()
+  regionCode?: string;
 }

@@ -29,13 +29,54 @@ export class MaintenanceService {
     companyId: string,
     page = 1,
     limit = 20,
-  ): Promise<{ data: WorkOrder[]; total: number; page: number; limit: number }> {
-    const [data, total] = await this.workOrderRepository.findAndCount({
-      where: { companyId },
-      skip: (page - 1) * limit,
-      take: limit,
-      order: { createdAt: 'DESC' },
-    });
+    regionCode?: string,
+  ) {
+    const qb = this.workOrderRepository
+      .createQueryBuilder('wo')
+      .where('wo.company_id = :companyId', { companyId });
+
+    if (regionCode) {
+      qb.andWhere(
+        `wo.unit_id IN (
+          SELECT u.id FROM units u
+          JOIN buildings b ON u.building_id = b.id
+          JOIN property_areas pa ON b.area_id = pa.id
+          WHERE pa.region_code = :regionCode
+        )`,
+        { regionCode },
+      );
+    }
+
+    qb.skip((page - 1) * limit)
+      .take(limit)
+      .orderBy('wo.created_at', 'DESC');
+
+    const [orders, total] = await qb.getManyAndCount();
+
+    const orderIds = orders.map(o => o.id);
+    let unitMap: Record<string, { unitNumber: string; buildingName: string; areaName: string }> = {};
+    if (orderIds.length) {
+      const unitInfo = await this.workOrderRepository.query(
+        `SELECT wo.id AS "woId", u.unit_number AS "unitNumber", b.name AS "buildingName", pa.name AS "areaName"
+         FROM work_orders wo
+         LEFT JOIN units u ON wo.unit_id = u.id
+         LEFT JOIN buildings b ON u.building_id = b.id
+         LEFT JOIN property_areas pa ON b.area_id = pa.id
+         WHERE wo.id = ANY($1)`,
+        [orderIds],
+      );
+      unitMap = Object.fromEntries(
+        unitInfo.map((r: any) => [r.woId, { unitNumber: r.unitNumber, buildingName: r.buildingName, areaName: r.areaName }]),
+      );
+    }
+
+    const data = orders.map(o => ({
+      ...o,
+      unitNumber: unitMap[o.id]?.unitNumber ?? null,
+      buildingName: unitMap[o.id]?.buildingName ?? null,
+      areaName: unitMap[o.id]?.areaName ?? null,
+    }));
+
     return { data, total, page, limit };
   }
 
@@ -63,14 +104,27 @@ export class MaintenanceService {
     await this.workOrderRepository.remove(order);
   }
 
-  async getCostSummary(companyId: string): Promise<CostSummary> {
-    const result = await this.workOrderRepository
+  async getCostSummary(companyId: string, regionCode?: string): Promise<CostSummary> {
+    const qb = this.workOrderRepository
       .createQueryBuilder('wo')
       .select('COALESCE(SUM(wo.estimated_cost), 0)', 'totalEstimated')
       .addSelect('COALESCE(SUM(wo.actual_cost), 0)', 'totalActual')
       .addSelect('COUNT(*)::int', 'workOrderCount')
-      .where('wo.company_id = :companyId', { companyId })
-      .getRawOne();
+      .where('wo.company_id = :companyId', { companyId });
+
+    if (regionCode) {
+      qb.andWhere(
+        `wo.unit_id IN (
+          SELECT u.id FROM units u
+          JOIN buildings b ON u.building_id = b.id
+          JOIN property_areas pa ON b.area_id = pa.id
+          WHERE pa.region_code = :regionCode
+        )`,
+        { regionCode },
+      );
+    }
+
+    const result = await qb.getRawOne();
 
     const totalEstimated = parseFloat(result.totalEstimated);
     const totalActual = parseFloat(result.totalActual);
@@ -85,17 +139,29 @@ export class MaintenanceService {
     };
   }
 
-  async getUpcoming(companyId: string): Promise<WorkOrder[]> {
+  async getUpcoming(companyId: string, regionCode?: string): Promise<WorkOrder[]> {
     const thirtyDaysFromNow = new Date();
     thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
 
-    return this.workOrderRepository.find({
-      where: {
-        companyId,
-        isPreventive: true,
-        nextScheduledDate: LessThanOrEqual(thirtyDaysFromNow),
-      },
-      order: { nextScheduledDate: 'ASC' },
-    });
+    const qb = this.workOrderRepository
+      .createQueryBuilder('wo')
+      .where('wo.company_id = :companyId', { companyId })
+      .andWhere('wo.is_preventive = true')
+      .andWhere('wo.next_scheduled_date <= :thirtyDays', { thirtyDays: thirtyDaysFromNow })
+      .orderBy('wo.next_scheduled_date', 'ASC');
+
+    if (regionCode) {
+      qb.andWhere(
+        `wo.unit_id IN (
+          SELECT u.id FROM units u
+          JOIN buildings b ON u.building_id = b.id
+          JOIN property_areas pa ON b.area_id = pa.id
+          WHERE pa.region_code = :regionCode
+        )`,
+        { regionCode },
+      );
+    }
+
+    return qb.getMany();
   }
 }

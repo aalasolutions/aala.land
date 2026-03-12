@@ -83,4 +83,9 @@ export class CreateLeadDto {
   @IsString()
   @IsOptional()
   unitId?: string;
+
+  @ApiPropertyOptional({ example: 'dubai', description: 'Region code for multi-region filtering' })
+  @IsString()
+  @IsOptional()
+  regionCode?: string;
 }

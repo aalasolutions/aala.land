@@ -27,12 +27,14 @@ export class LeadsController {
   @ApiOperation({ summary: 'List all leads for company (paginated)' })
   @ApiQuery({ name: 'page', required: false, type: Number })
   @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiQuery({ name: 'regionCode', required: false, type: String })
   findAll(
     @Request() req,
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
     @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
+    @Query('regionCode') regionCode?: string,
   ) {
-    return this.leadsService.findAll(req.user.companyId, page, limit);
+    return this.leadsService.findAll(req.user.companyId, page, limit, regionCode);
   }
 
   @Get(':id')

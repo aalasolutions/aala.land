@@ -27,7 +27,6 @@ describe('UsersService', () => {
     phone: null,
     preferredLanguage: 'en',
     dateFormat: 'DD/MM/YYYY',
-    currency: 'AED',
     timezone: 'Asia/Dubai',
     lastLoginAt: null,
     isActive: true,

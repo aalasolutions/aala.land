@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { NotFoundException } from '@nestjs/common';
+import { NotFoundException, BadRequestException } from '@nestjs/common';
 import { CompaniesService } from './companies.service';
 import { Company } from './entities/company.entity';
 
@@ -14,9 +14,11 @@ describe('CompaniesService', () => {
     name: 'Test Company',
     slug: 'test-company',
     isActive: true,
+    activeRegions: ['dubai'],
+    defaultRegionCode: 'dubai',
     createdAt: new Date(),
     updatedAt: new Date(),
-  };
+  } as Company;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -104,6 +106,44 @@ describe('CompaniesService', () => {
       repo.findOne.mockResolvedValue(null);
 
       await expect(service.update('bad-id', { name: 'X' })).rejects.toThrow(NotFoundException);
+    });
+
+    it('validates activeRegions codes exist in MENA_REGIONS', async () => {
+      repo.findOne.mockResolvedValue({ ...mockCompany });
+
+      await expect(
+        service.update('company-uuid-1', { activeRegions: ['dubai', 'narnia'] }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('validates defaultRegionCode exists in MENA_REGIONS', async () => {
+      repo.findOne.mockResolvedValue({ ...mockCompany });
+
+      await expect(
+        service.update('company-uuid-1', { defaultRegionCode: 'atlantis' }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('throws when defaultRegionCode is not in activeRegions', async () => {
+      repo.findOne.mockResolvedValue({ ...mockCompany, activeRegions: ['dubai'] });
+
+      await expect(
+        service.update('company-uuid-1', { defaultRegionCode: 'riyadh' }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('accepts valid region codes', async () => {
+      const updated = { ...mockCompany, activeRegions: ['dubai', 'riyadh'], defaultRegionCode: 'riyadh' };
+      repo.findOne.mockResolvedValue({ ...mockCompany });
+      repo.save.mockResolvedValue(updated as Company);
+
+      const result = await service.update('company-uuid-1', {
+        activeRegions: ['dubai', 'riyadh'],
+        defaultRegionCode: 'riyadh',
+      });
+
+      expect(result.activeRegions).toEqual(['dubai', 'riyadh']);
+      expect(result.defaultRegionCode).toBe('riyadh');
     });
   });
 

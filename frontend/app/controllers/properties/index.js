@@ -7,6 +7,7 @@ export default class PropertiesIndexController extends Controller {
   @service auth;
   @service notifications;
   @service router;
+  @service region;
 
   @tracked showModal = false;
   @tracked showImportModal = false;
@@ -14,20 +15,144 @@ export default class PropertiesIndexController extends Controller {
   @tracked formName = '';
   @tracked formLocation = '';
   @tracked formDescription = '';
+  @tracked formRegionCode = '';
   @tracked isSaving = false;
   @tracked errorMsg = '';
+
+  get showRegionField() {
+    return this.region.regions.length > 1;
+  }
 
   @tracked importFile = null;
   @tracked importPreview = null;
   @tracked importResults = null;
   @tracked isImporting = false;
 
+  // Browse Units view
+  @tracked activeView = 'areas';
+  @tracked browseUnits = [];
+  @tracked browseTotal = 0;
+  @tracked browsePage = 1;
+  @tracked isLoadingBrowse = false;
+
+  @tracked filterType = '';
+  @tracked filterStatus = '';
+  @tracked filterBeds = '';
+  @tracked filterMinPrice = '';
+  @tracked filterMaxPrice = '';
+  @tracked filterAmenities = [];
+
+  amenityOptions = [
+    { key: 'free_parking', label: 'Free Parking', icon: 'car' },
+    { key: 'paid_parking', label: 'Paid Parking', icon: 'car' },
+    { key: 'gym', label: 'Gym', icon: 'barbell' },
+    { key: 'pool', label: 'Swimming Pool', icon: 'swimming-pool' },
+    { key: 'wifi', label: 'Free WiFi', icon: 'wifi-high' },
+    { key: 'security', label: '24/7 Security', icon: 'shield-check' },
+    { key: 'cctv', label: 'CCTV', icon: 'security-camera' },
+    { key: 'balcony', label: 'Balcony', icon: 'house-line' },
+    { key: 'furnished', label: 'Furnished', icon: 'couch' },
+    { key: 'central_ac', label: 'Central A/C', icon: 'thermometer-cold' },
+    { key: 'concierge', label: 'Concierge', icon: 'bell' },
+    { key: 'elevator', label: 'Elevator', icon: 'elevator' },
+    { key: 'garden', label: 'Garden', icon: 'plant' },
+    { key: 'maid_room', label: "Maid's Room", icon: 'broom' },
+    { key: 'storage', label: 'Storage', icon: 'warehouse' },
+    { key: 'pet_friendly', label: 'Pet Friendly', icon: 'paw-print' },
+    { key: 'kids_play', label: 'Kids Play Area', icon: 'baby' },
+    { key: 'bbq', label: 'BBQ Area', icon: 'fire' },
+    { key: 'sea_view', label: 'Sea View', icon: 'waves' },
+    { key: 'city_view', label: 'City View', icon: 'buildings' },
+  ];
+
+  get browseHasNextPage() {
+    return this.browseTotal > this.browsePage * 20;
+  }
+
   @action setField(fieldName, e) { this[fieldName] = e.target.value; }
+
+  @action switchView(view) {
+    this.activeView = view;
+    if (view === 'browse' && this.browseUnits.length === 0) {
+      this.loadBrowseUnits();
+    }
+  }
+
+  @action setFilterType(e) { this.filterType = e.target.value; this.applyFilters(); }
+  @action setFilterStatus(e) { this.filterStatus = e.target.value; this.applyFilters(); }
+  @action setFilterBeds(e) { this.filterBeds = e.target.value; this.applyFilters(); }
+
+  @action applyFilters() {
+    this.browsePage = 1;
+    this.loadBrowseUnits();
+  }
+
+  @action clearFilters() {
+    this.filterType = '';
+    this.filterStatus = '';
+    this.filterBeds = '';
+    this.filterMinPrice = '';
+    this.filterMaxPrice = '';
+    this.filterAmenities = [];
+    this.browsePage = 1;
+    this.loadBrowseUnits();
+  }
+
+  @action toggleBrowseAmenity(key) {
+    const current = [...this.filterAmenities];
+    const idx = current.indexOf(key);
+    if (idx === -1) {
+      current.push(key);
+    } else {
+      current.splice(idx, 1);
+    }
+    this.filterAmenities = current;
+    this.applyFilters();
+  }
+
+  @action browsePrevPage() {
+    if (this.browsePage > 1) {
+      this.browsePage = this.browsePage - 1;
+      this.loadBrowseUnits();
+    }
+  }
+
+  @action browseNextPage() {
+    if (this.browseHasNextPage) {
+      this.browsePage = this.browsePage + 1;
+      this.loadBrowseUnits();
+    }
+  }
+
+  @action async loadBrowseUnits() {
+    this.isLoadingBrowse = true;
+    try {
+      let params = `page=${this.browsePage}&limit=20`;
+      if (this.filterType) params += `&propertyType=${this.filterType}`;
+      if (this.filterStatus) params += `&status=${this.filterStatus}`;
+      if (this.filterMinPrice) params += `&minPrice=${this.filterMinPrice}`;
+      if (this.filterMaxPrice) params += `&maxPrice=${this.filterMaxPrice}`;
+      if (this.filterBeds) {
+        params += `&minBeds=${this.filterBeds}`;
+        params += `&maxBeds=${this.filterBeds === '4' ? '99' : this.filterBeds}`;
+      }
+      if (this.filterAmenities.length) params += `&amenities=${this.filterAmenities.join(',')}`;
+      const json = await this.auth.fetchJson(`/properties/units?${params}`);
+      this.browseUnits = json.data?.data ?? [];
+      this.browseTotal = json.data?.total ?? 0;
+    } catch {
+      this.browseUnits = [];
+      this.browseTotal = 0;
+    } finally {
+      this.isLoadingBrowse = false;
+    }
+  }
 
   @action openCreate() {
     this.formName = '';
     this.formLocation = '';
     this.formDescription = '';
+    this.formRegionCode = this.region.regionCode;
     this.editArea = null;
     this.errorMsg = '';
     this.showModal = true;
@@ -146,6 +271,7 @@ export default class PropertiesIndexController extends Controller {
           name: this.formName,
           location: this.formLocation,
           description: this.formDescription,
+          ...(!isEdit && this.formRegionCode ? { regionCode: this.formRegionCode } : {}),
         }),
       });
       this.notifications.success(isEdit ? 'Area updated' : 'Area created');

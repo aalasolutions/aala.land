@@ -40,9 +40,6 @@ export class User {
     @Column({ name: 'date_format', type: 'varchar', length: 20, default: 'DD/MM/YYYY' })
     dateFormat: string;
 
-    @Column({ type: 'varchar', length: 3, default: 'AED' })
-    currency: string;
-
     @Column({ type: 'varchar', length: 50, default: 'Asia/Dubai' })
     timezone: string;
 

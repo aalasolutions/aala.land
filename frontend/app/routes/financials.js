@@ -10,18 +10,23 @@ export default class FinancialsRoute extends AuthenticatedRoute {
   };
 
   async model({ page = 1, limit = 20 }) {
-    const [transactionsRes, summaryRes, depositsRes] = await Promise.all([
-      this.auth.authorizedFetch(`${this.auth.apiBase}/financial/transactions?page=${page}&limit=${limit}`),
-      this.auth.authorizedFetch(`${this.auth.apiBase}/financial/transactions/summary`),
-      this.auth.authorizedFetch(`${this.auth.apiBase}/financial/deposit-reminders`),
-    ]);
+    try {
+      const [txnJson, summaryJson, depositsJson] = await Promise.all([
+        this.auth.fetchJson(`/financial/transactions?page=${page}&limit=${limit}`),
+        this.auth.fetchJson(`/financial/transactions/summary`),
+        this.auth.fetchJson(`/financial/deposit-reminders`),
+      ]);
 
-    const transactions = transactionsRes.ok
-      ? (await transactionsRes.json()).data
-      : { data: [], total: 0 };
-    const summary = summaryRes.ok ? (await summaryRes.json()).data : null;
-    const depositReminders = depositsRes.ok ? (await depositsRes.json()).data ?? [] : [];
-
-    return { transactions: transactions.data ?? [], total: transactions.total ?? 0, summary, depositReminders, page };
+      const transactions = txnJson.data ?? { data: [], total: 0 };
+      return {
+        transactions: transactions.data ?? [],
+        total: transactions.total ?? 0,
+        summary: summaryJson.data ?? null,
+        depositReminders: depositsJson.data ?? [],
+        page,
+      };
+    } catch {
+      return { transactions: [], total: 0, summary: null, depositReminders: [], page };
+    }
   }
 }

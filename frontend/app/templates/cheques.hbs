@@ -43,7 +43,7 @@
                   <td class="font-bold">{{cheque.chequeNumber}}</td>
                   <td>{{cheque.bankName}}</td>
                   <td>{{cheque.accountHolder}}</td>
-                  <td class="font-bold">AED {{format-number cheque.amount}}</td>
+                  <td class="font-bold">{{format-currency cheque.amount}}</td>
                   <td>{{cheque.dueDate}}</td>
                   <td><span class="type-badge type-{{lowercase cheque.type}}">{{cheque.type}}</span></td>
                   <td><span class="status-badge status-{{lowercase cheque.status}}">{{cheque.status}}</span></td>
@@ -85,12 +85,12 @@
                       <p class="font-sm font-bold">{{cheque.chequeNumber}} - {{cheque.bankName}}</p>
                       <p class="text-muted font-xs">{{cheque.accountHolder}} - Due: {{cheque.dueDate}}</p>
                     </div>
-                    <p class="font-sm font-bold">AED {{format-number cheque.amount}}</p>
+                    <p class="font-sm font-bold">{{format-currency cheque.amount}}</p>
                   </div>
                 {{/each}}
               </div>
               {{#if group.totalAmount}}
-                <p class="font-sm font-bold text-right mt-2">Total: AED {{format-number group.totalAmount}}</p>
+                <p class="font-sm font-bold text-right mt-2">Total: {{format-currency group.totalAmount}}</p>
               {{/if}}
             </div>
           {{/each}}
@@ -152,7 +152,7 @@
       </div>
       <div class="flex gap-4">
         <div class="flex col gap-2 flex-1">
-          <label class="font-sm text-muted" for="chq-amount">Amount (AED) *</label>
+          <label class="font-sm text-muted" for="chq-amount">Amount *</label>
           <input id="chq-amount" type="number" min="0" step="0.01"
             class="form-input"
             placeholder="e.g. 8500" value={{this.formAmount}} required {{on "input" (fn this.setField "formAmount")}} />

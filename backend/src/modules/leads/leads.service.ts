@@ -21,9 +21,12 @@ export class LeadsService {
     return this.leadRepository.save(lead);
   }
 
-  async findAll(companyId: string, page = 1, limit = 20): Promise<{ data: Lead[]; total: number; page: number; limit: number }> {
+  async findAll(companyId: string, page = 1, limit = 20, regionCode?: string): Promise<{ data: Lead[]; total: number; page: number; limit: number }> {
+    const where: any = { companyId };
+    if (regionCode) where.regionCode = regionCode;
+
     const [data, total] = await this.leadRepository.findAndCount({
-      where: { companyId },
+      where,
       relations: ['property', 'unit'],
       skip: (page - 1) * limit,
       take: limit,

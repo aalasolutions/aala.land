@@ -25,7 +25,7 @@
             <th>Agent ID</th>
             <th>Deal ID</th>
             <th>Type</th>
-            <th>Amount (AED)</th>
+            <th>Amount</th>
             <th>Rate</th>
             <th>Status</th>
             <th>Actions</th>
@@ -47,7 +47,7 @@
               <td>
                 <span class="type-badge type-{{lowercase comm.type}}">{{comm.type}}</span>
               </td>
-              <td class="font-bold">{{format-number comm.commissionAmount}} / {{format-number comm.grossAmount}}</td>
+              <td class="font-bold">{{format-currency comm.commissionAmount}} / {{format-currency comm.grossAmount}}</td>
               <td>{{comm.commissionRate}}%</td>
               <td>
                 <span class="status-badge status-{{lowercase comm.status}}">{{comm.status}}</span>

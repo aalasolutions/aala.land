@@ -55,6 +55,7 @@
     "pg": "^8.17.1",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
+    "sharp": "^0.34.5",
     "typeorm": "^0.3.28",
     "uuid": "^13.0.0"
   },
@@ -69,6 +70,7 @@
     "@types/jest": "^30.0.0",
     "@types/node": "^22.10.7",
     "@types/passport-jwt": "^4.0.1",
+    "@types/sharp": "^0.32.0",
     "@types/supertest": "^6.0.2",
     "@types/uuid": "^11.0.0",
     "eslint": "^9.18.0",
@@ -85,5 +87,10 @@
     "tsconfig-paths": "^4.2.0",
     "typescript": "^5.7.3",
     "typescript-eslint": "^8.20.0"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "sharp"
+    ]
   }
 }

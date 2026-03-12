@@ -71,6 +71,15 @@ export class Unit {
     @Column({ type: 'jsonb', default: '[]' })
     amenities: string[];
 
+    @Column({ type: 'text', nullable: true })
+    description: string | null;
+
+    @Column({ type: 'varchar', length: 20, nullable: true })
+    floor: string | null;
+
+    @Column({ type: 'jsonb', default: '[]' })
+    photos: string[];
+
     @CreateDateColumn({ name: 'created_at' })
     createdAt: Date;
 

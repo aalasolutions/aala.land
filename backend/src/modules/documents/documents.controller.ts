@@ -11,13 +11,24 @@ import { RolesGuard } from '@shared/guards/roles.guard';
 import { Roles } from '@shared/decorators/roles.decorator';
 import { Role } from '@shared/enums/roles.enum';
 import { DocumentCategory } from '../properties/entities/property-document.entity';
+import { MediaService } from '../properties/media.service';
+import { PresignedUrlDto } from '../properties/dto/presigned-url.dto';
 
 @ApiTags('documents')
 @Controller('documents')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @ApiBearerAuth()
 export class DocumentsController {
-  constructor(private readonly documentsService: DocumentsService) {}
+  constructor(
+    private readonly documentsService: DocumentsService,
+    private readonly mediaService: MediaService,
+  ) {}
+
+  @Post('presigned-url')
+  @ApiOperation({ summary: 'Get S3 presigned URL for uploading a document' })
+  getPresignedUrl(@Body() dto: PresignedUrlDto, @Request() req: any) {
+    return this.mediaService.getDocumentPresignedUrl(req.user.companyId, dto);
+  }
 
   @Post()
   @Roles(Role.COMPANY_ADMIN)

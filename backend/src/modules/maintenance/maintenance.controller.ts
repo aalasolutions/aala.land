@@ -29,24 +29,28 @@ export class MaintenanceController {
   @ApiOperation({ summary: 'List work orders (paginated)' })
   @ApiQuery({ name: 'page', required: false })
   @ApiQuery({ name: 'limit', required: false })
+  @ApiQuery({ name: 'regionCode', required: false, type: String })
   findAll(
     @Request() req: any,
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
     @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
+    @Query('regionCode') regionCode?: string,
   ) {
-    return this.maintenanceService.findAll(req.user.companyId, page, limit);
+    return this.maintenanceService.findAll(req.user.companyId, page, limit, regionCode);
   }
 
   @Get('cost-summary')
   @ApiOperation({ summary: 'Get cost summary for all work orders' })
-  getCostSummary(@Request() req: any) {
-    return this.maintenanceService.getCostSummary(req.user.companyId);
+  @ApiQuery({ name: 'regionCode', required: false, type: String })
+  getCostSummary(@Request() req: any, @Query('regionCode') regionCode?: string) {
+    return this.maintenanceService.getCostSummary(req.user.companyId, regionCode);
   }
 
   @Get('upcoming')
   @ApiOperation({ summary: 'Get preventive maintenance due in next 30 days' })
-  getUpcoming(@Request() req: any) {
-    return this.maintenanceService.getUpcoming(req.user.companyId);
+  @ApiQuery({ name: 'regionCode', required: false, type: String })
+  getUpcoming(@Request() req: any, @Query('regionCode') regionCode?: string) {
+    return this.maintenanceService.getUpcoming(req.user.companyId, regionCode);
   }
 
   @Get(':id')

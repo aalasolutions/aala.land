@@ -17,6 +17,21 @@ export class PropertyMedia {
     @Column({ type: 'varchar', length: 255 })
     url: string;
 
+    @Column({ name: 'thumbnail_url', type: 'varchar', length: 255, nullable: true })
+    thumbnailUrl: string | null;
+
+    @Column({ name: 'file_name', type: 'varchar', length: 255, nullable: true })
+    fileName: string | null;
+
+    @Column({ name: 's3_key', type: 'varchar', length: 500, nullable: true })
+    s3Key: string | null;
+
+    @Column({ name: 'content_type', type: 'varchar', length: 100, nullable: true })
+    contentType: string | null;
+
+    @Column({ name: 'file_size', type: 'integer', nullable: true })
+    fileSize: number | null;
+
     @Column({
         type: 'enum',
         enum: MediaType,

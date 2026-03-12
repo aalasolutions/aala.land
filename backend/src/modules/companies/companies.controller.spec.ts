@@ -14,6 +14,8 @@ describe('CompaniesController', () => {
     name: 'Test Company',
     slug: 'test-company',
     isActive: true,
+    activeRegions: ['dubai'],
+    defaultRegionCode: 'dubai',
     createdAt: new Date(),
     updatedAt: new Date(),
   };
@@ -96,6 +98,19 @@ describe('CompaniesController', () => {
 
       expect(service.update).toHaveBeenCalledWith('company-uuid-1', { name: 'Updated' });
       expect(result.name).toBe('Updated');
+    });
+  });
+
+  describe('getRegions', () => {
+    it('returns the MENA_REGIONS array', () => {
+      const result = controller.getRegions();
+
+      expect(Array.isArray(result)).toBe(true);
+      expect(result.length).toBeGreaterThan(0);
+      const dubai = result.find((r: any) => r.code === 'dubai');
+      expect(dubai).toBeDefined();
+      expect(dubai.currency).toBe('AED');
+      expect(dubai.country).toBe('AE');
     });
   });
 });

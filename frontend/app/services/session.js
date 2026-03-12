@@ -1,13 +1,11 @@
 import Service from '@ember/service';
 import { service } from '@ember/service';
 import { tracked } from '@glimmer/tracking';
+import config from 'frontend/config/environment';
 
-/**
- * Custom session service for managing authentication state.
- * Provides a compatible interface with the app's auth service and ember-simple-auth.
- */
 export default class SessionService extends Service {
   @service router;
+  @service region;
 
   @tracked isAuthenticated = false;
   @tracked data = {
@@ -15,6 +13,8 @@ export default class SessionService extends Service {
       user: null,
       accessToken: null,
       refreshToken: null,
+      regions: [],
+      defaultRegionCode: 'dubai',
     },
   };
 
@@ -30,6 +30,11 @@ export default class SessionService extends Service {
         const session = JSON.parse(stored);
         this.data = session.data;
         this.isAuthenticated = session.isAuthenticated;
+
+        const authData = this.data.authenticated;
+        if (authData.regions) {
+          this.region.initialize(authData.regions, authData.defaultRegionCode || 'dubai');
+        }
       } catch (error) {
         // If restore fails, just start fresh
       }
@@ -44,10 +49,9 @@ export default class SessionService extends Service {
   }
 
   async authenticate(method, email, password) {
-    // Handle credentials authentication by calling API
     if (method === 'authenticator:credentials') {
       try {
-        const response = await fetch('http://localhost:3010/v1/auth/login', {
+        const response = await fetch(`${config.APP.API_BASE}/auth/login`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email, password }),
@@ -59,14 +63,20 @@ export default class SessionService extends Service {
 
         const { data } = await response.json();
 
-        // Set authenticated state with token and user data
         this.data.authenticated = {
           user: data.user,
           accessToken: data.accessToken,
           refreshToken: data.refreshToken,
+          regions: data.regions || [],
+          defaultRegionCode: data.defaultRegionCode || 'dubai',
         };
         this.isAuthenticated = true;
         this.saveToStorage();
+
+        this.region.initialize(
+          data.regions || [],
+          data.defaultRegionCode || 'dubai',
+        );
       } catch (error) {
         this.isAuthenticated = false;
         throw error;
@@ -81,9 +91,12 @@ export default class SessionService extends Service {
         user: null,
         accessToken: null,
         refreshToken: null,
+        regions: [],
+        defaultRegionCode: 'dubai',
       },
     };
     localStorage.removeItem('aala-session');
+    this.region.clear();
   }
 
   requireAuthentication(transition, routeName) {

@@ -92,9 +92,30 @@ Commands live in [.claude/commands/](.claude/commands/). Invoke with `/command-n
 
 | Service | URL | Email | Password |
 |---------|-----|-------|----------|
-| Frontend | http://localhost:4201 | admin@test.com | Admin123! |
+| Frontend | http://localhost:4200 | admin@test.com | Admin123! |
 | Backend API | http://localhost:3010/v1 | — | — |
 | MinIO console | http://localhost:9001 | minioadmin | minioadmin |
+
+**Test user details:**
+- **admin@test.com** belongs to companyId `068dfa72-9a27-4527-b3e4-a4251d7ed643` ("Test Company")
+- userId: `9460c4c5-344a-4782-963e-8ec3b2b52479`
+- role: `company_admin`
+
+---
+
+## Quick DB Overrides
+
+Test Company (admin@test.com) companyId: `068dfa72-9a27-4527-b3e4-a4251d7ed643`
+
+```bash
+# Set to GROWTH (paid) - enables multi-region, higher limits
+docker exec aala-land-postgres psql -U postgres -d aala_land -c "UPDATE companies SET subscription_tier = 'GROWTH' WHERE id = '068dfa72-9a27-4527-b3e4-a4251d7ed643';"
+
+# Set back to FREE - single region, 1 user, 25 properties
+docker exec aala-land-postgres psql -U postgres -d aala_land -c "UPDATE companies SET subscription_tier = 'FREE' WHERE id = '068dfa72-9a27-4527-b3e4-a4251d7ed643';"
+```
+
+Valid tiers: `FREE`, `STARTER`, `GROWTH`, `SCALE`, `ENTERPRISE`
 
 ---
 

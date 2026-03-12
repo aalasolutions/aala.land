@@ -10,38 +10,28 @@ export default class MaintenanceRoute extends AuthenticatedRoute {
   };
 
   async model({ page = 1, limit = 20 }) {
-    const [res, vendorsRes, costRes, upcomingRes] = await Promise.all([
-      this.auth.authorizedFetch(
-        `${this.auth.apiBase}/maintenance?page=${page}&limit=${limit}`,
-      ),
-      this.auth.authorizedFetch(
-        `${this.auth.apiBase}/vendors?page=1&limit=100`,
-      ),
-      this.auth.authorizedFetch(
-        `${this.auth.apiBase}/maintenance/cost-summary`,
-      ),
-      this.auth.authorizedFetch(
-        `${this.auth.apiBase}/maintenance/upcoming`,
-      ),
+    const safeJson = async (path) => {
+      try { return await this.auth.fetchJson(path); }
+      catch (e) { console.error('[MAINT-ROUTE] Failed:', path, e.message); return null; }
+    };
+
+    const [mainJson, vendorsJson, costJson, upcomingJson, unitsJson] = await Promise.all([
+      safeJson(`/maintenance?page=${page}&limit=${limit}`),
+      safeJson(`/vendors?page=1&limit=100`),
+      safeJson(`/maintenance/cost-summary`),
+      safeJson(`/maintenance/upcoming`),
+      safeJson(`/properties/units?page=1&limit=500`),
     ]);
 
-    let workOrders = [];
-    let total = 0;
-    if (res.ok) {
-      const json = await res.json();
-      workOrders = json.data?.data ?? [];
-      total = json.data?.total ?? 0;
-    }
-
-    let vendors = [];
-    if (vendorsRes.ok) {
-      const vendorsJson = await vendorsRes.json();
-      vendors = vendorsJson.data?.data ?? [];
-    }
-
-    const costSummary = costRes.ok ? (await costRes.json()).data ?? null : null;
-    const upcoming = upcomingRes.ok ? (await upcomingRes.json()).data ?? [] : [];
-
-    return { workOrders, vendors, costSummary, upcoming, total, page, limit };
+    return {
+      workOrders: mainJson?.data?.data ?? [],
+      vendors: vendorsJson?.data?.data ?? [],
+      costSummary: costJson?.data ?? null,
+      upcoming: upcomingJson?.data ?? [],
+      units: unitsJson?.data?.data ?? [],
+      total: mainJson?.data?.total ?? 0,
+      page,
+      limit,
+    };
   }
 }

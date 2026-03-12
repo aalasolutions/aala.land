@@ -5,15 +5,11 @@ export default class OwnersDetailRoute extends AuthenticatedRoute {
   @service auth;
 
   async model(params) {
-    const response = await this.auth.authorizedFetch(
-      `${this.auth.apiBase}/owners/${params.owner_id}`,
-    );
-    if (!response.ok) {
+    try {
+      const json = await this.auth.fetchJson(`/owners/${params.owner_id}`);
+      return { owner: json.data };
+    } catch {
       return { owner: null, units: [], financialSummary: null };
     }
-    const result = await response.json();
-    const owner = result.data;
-
-    return { owner };
   }
 }

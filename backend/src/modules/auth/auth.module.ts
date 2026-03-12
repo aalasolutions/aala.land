@@ -5,18 +5,20 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { UsersModule } from '../users/users.module';
+import { CompaniesModule } from '../companies/companies.module';
 import { JwtStrategy } from './strategies/jwt.strategy';
 
 @Module({
   imports: [
     UsersModule,
+    CompaniesModule,
     PassportModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => ({
         secret: configService.get<string>('JWT_SECRET') || 'fallback-secret',
         signOptions: {
-          expiresIn: '24h', // Explicitly setting for now to fix type issue, or cast it
+          expiresIn: '24h',
         },
       }),
       inject: [ConfigService],

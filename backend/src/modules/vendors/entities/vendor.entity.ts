@@ -63,6 +63,9 @@ export class Vendor {
   @Column({ type: 'text', nullable: true })
   notes: string | null;
 
+  @Column({ name: 'region_code', type: 'varchar', length: 50, default: 'dubai' })
+  regionCode: string;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 

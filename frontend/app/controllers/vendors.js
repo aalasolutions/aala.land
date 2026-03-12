@@ -19,6 +19,7 @@ export default class VendorsController extends Controller {
   @service auth;
   @service notifications;
   @service router;
+  @service region;
 
   @tracked showModal = false;
   @tracked editVendor = null;
@@ -31,8 +32,13 @@ export default class VendorsController extends Controller {
   @tracked formHourlyRate = '';
   @tracked formRating = '';
   @tracked formNotes = '';
+  @tracked formRegionCode = '';
   @tracked isSaving = false;
   @tracked errorMsg = '';
+
+  get showRegionField() {
+    return this.region.regions.length > 1;
+  }
 
   get specialtyOptions() {
     return SPECIALTY_OPTIONS;
@@ -50,6 +56,7 @@ export default class VendorsController extends Controller {
     this.formHourlyRate = '';
     this.formRating = '';
     this.formNotes = '';
+    this.formRegionCode = this.region.regionCode;
     this.editVendor = null;
     this.errorMsg = '';
     this.showModal = true;
@@ -95,6 +102,7 @@ export default class VendorsController extends Controller {
       ...(this.formHourlyRate ? { hourlyRate: parseFloat(this.formHourlyRate) } : {}),
       ...(this.formRating ? { rating: parseInt(this.formRating, 10) } : {}),
       ...(this.formNotes ? { notes: this.formNotes } : {}),
+      ...(!isEdit && this.formRegionCode ? { regionCode: this.formRegionCode } : {}),
     };
 
     try {

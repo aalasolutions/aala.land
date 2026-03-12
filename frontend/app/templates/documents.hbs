@@ -1,0 +1,137 @@
+{{page-title "Documents"}}
+
+<div data-test-documents class="flex col gap-6">
+  <div class="flex between x-center">
+    <div class="flex x-center gap-3">
+      <Ph @icon="file-arrow-up" @size="24px" />
+      <h2 class="font-2xl font-bold">Documents</h2>
+      <span class="text-muted font-sm">({{format-number @model.total}})</span>
+    </div>
+    <button type="button" class="btn btn-primary" data-test-upload-btn {{on "click" this.openCreate}}>
+      <Ph @icon="upload-simple" /> Upload Document
+    </button>
+  </div>
+
+  <div class="flex gap-3">
+    <select class="form-select" style="max-width: 200px" data-test-category-filter {{on "change" this.setCategory}}>
+      {{#each this.categories as |cat|}}
+        <option value={{cat.value}} selected={{eq this.category cat.value}}>{{cat.label}}</option>
+      {{/each}}
+    </select>
+  </div>
+
+  {{#if @model.documents.length}}
+    <div class="data-table-wrapper">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Category</th>
+            <th>Access</th>
+            <th>Type</th>
+            <th>Version</th>
+            <th>Uploaded</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{#each @model.documents as |doc|}}
+            <tr data-test-document-row>
+              <td>
+                <div class="flex x-center gap-2">
+                  <Ph @icon={{this.fileIcon doc.fileType}} />
+                  <span class="font-bold">{{doc.name}}</span>
+                </div>
+              </td>
+              <td><span class="type-badge type-{{lowercase doc.category}}">{{doc.category}}</span></td>
+              <td><span class="status-badge status-{{lowercase doc.accessLevel}}">{{doc.accessLevel}}</span></td>
+              <td class="font-sm text-muted">{{doc.fileType}}</td>
+              <td class="font-sm">v{{doc.version}}</td>
+              <td class="font-sm text-muted">{{format-date doc.createdAt}}</td>
+              <td>
+                <div class="flex gap-2">
+                  <button type="button" class="btn btn-secondary btn-xs" data-test-download-btn {{on "click" (fn this.downloadDocument doc)}}>
+                    <Ph @icon="download-simple" />
+                  </button>
+                  <button type="button" class="btn btn-secondary btn-xs" {{on "click" (fn this.openEdit doc)}}>
+                    <Ph @icon="pencil-simple" />
+                  </button>
+                  <button type="button" class="btn btn-danger btn-xs" {{on "click" (fn this.deleteDocument doc)}}>
+                    <Ph @icon="trash" />
+                  </button>
+                </div>
+              </td>
+            </tr>
+          {{/each}}
+        </tbody>
+      </table>
+    </div>
+  {{else}}
+    <div class="glass-panel p-8 text-center">
+      <Ph @icon="file-arrow-up" @size="48px" @color="var(--text-muted)" />
+      <p class="text-muted mt-3">No documents yet. Upload your first document above.</p>
+    </div>
+  {{/if}}
+</div>
+
+{{#if this.showModal}}
+  <button type="button" class="modal-backdrop" aria-label="Close modal" {{on "click" this.closeModal}}></button>
+  <div class="modal-panel glass-panel p-8 flex col gap-6" role="dialog" aria-label="Document form">
+    <div class="flex between x-center">
+      <h3 class="font-xl font-bold">{{if this.editDocument "Update Document" "Upload Document"}}</h3>
+      <button type="button" class="text-muted font-lg px-2" {{on "click" this.closeModal}}>x</button>
+    </div>
+    <form class="flex col gap-4" {{on "submit" this.saveDocument}}>
+      <div class="flex col gap-2">
+        <label class="font-sm text-muted" for="d-file">File {{unless this.editDocument "*"}}</label>
+        <input id="d-file" type="file" class="form-input" data-test-file-input
+          accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.webp,.gif"
+          {{on "change" this.onFileSelect}} />
+        {{#if this.selectedFile}}
+          <p class="font-xs text-muted">Selected: {{this.selectedFile.name}} ({{this.selectedFile.size}} bytes)</p>
+        {{/if}}
+      </div>
+
+      <div class="flex col gap-2">
+        <label class="font-sm text-muted" for="d-name">Document Name *</label>
+        <input id="d-name" type="text" class="form-input" data-test-field-name
+          placeholder="Lease Agreement Q1 2026"
+          value={{this.formName}} required {{on "input" (fn this.setField "formName")}} />
+      </div>
+
+      <div class="flex gap-4">
+        <div class="flex col gap-2 flex-1">
+          <label class="font-sm text-muted" for="d-category">Category</label>
+          <select id="d-category" class="form-select" data-test-field-category {{on "change" (fn this.setField "formCategory")}}>
+            {{#each this.categoryOptions as |cat|}}
+              <option value={{cat.value}} selected={{eq this.formCategory cat.value}}>{{cat.label}}</option>
+            {{/each}}
+          </select>
+        </div>
+        <div class="flex col gap-2 flex-1">
+          <label class="font-sm text-muted" for="d-access">Access Level</label>
+          <select id="d-access" class="form-select" data-test-field-access {{on "change" (fn this.setField "formAccessLevel")}}>
+            {{#each this.accessLevels as |al|}}
+              <option value={{al.value}} selected={{eq this.formAccessLevel al.value}}>{{al.label}}</option>
+            {{/each}}
+          </select>
+        </div>
+      </div>
+
+      {{#if this.uploadProgress}}
+        <p class="font-sm text-muted">{{this.uploadProgress}}</p>
+      {{/if}}
+
+      {{#if this.errorMsg}}
+        <p class="font-sm text-danger" data-test-error>{{this.errorMsg}}</p>
+      {{/if}}
+
+      <div class="flex gap-3 mt-2">
+        <button type="button" class="btn btn-secondary" {{on "click" this.closeModal}}>Cancel</button>
+        <button type="submit" class="btn btn-primary" data-test-save-btn disabled={{this.isSaving}}>
+          {{if this.isSaving "Uploading..." (if this.editDocument "Update" "Upload")}}
+        </button>
+      </div>
+    </form>
+  </div>
+{{/if}}

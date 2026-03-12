@@ -3,15 +3,32 @@ import { service } from '@ember/service';
 
 export default class CompanyRoute extends AuthenticatedRoute {
   @service auth;
+  @service region;
 
   async model() {
     const companyId = this.auth.currentUser?.companyId;
     if (!companyId) return null;
 
-    const response = await this.auth.authorizedFetch(
-      `${this.auth.apiBase}/companies/${companyId}`,
-    );
-    if (!response.ok) return null;
-    return response.json().then((r) => r.data);
+    const [companyResult, regionsResponse] = await Promise.all([
+      this.auth.fetchJson(`/companies/${companyId}`),
+      fetch(`${this.auth.apiBase}/companies/regions`).then((r) => r.json()).catch(() => ({ data: [] })),
+    ]);
+
+    const company = companyResult.data || null;
+    const regions = regionsResponse.data || regionsResponse || [];
+
+    return { company, regions };
+  }
+
+  setupController(controller, model) {
+    super.setupController(controller, model);
+    const c = model?.company;
+    if (c) {
+      controller.formName = c.name || '';
+      controller.formPhone = c.phone || '';
+      controller.formAddress = c.address || '';
+      controller.formActiveRegions = c.activeRegions || ['dubai'];
+      controller.formDefaultRegionCode = c.defaultRegionCode || 'dubai';
+    }
   }
 }

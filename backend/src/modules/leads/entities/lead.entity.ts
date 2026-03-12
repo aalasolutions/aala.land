@@ -120,6 +120,9 @@ export class Lead {
   @Column({ name: 'previous_agent', type: 'uuid', nullable: true })
   previousAgent: string;
 
+  @Column({ name: 'region_code', type: 'varchar', length: 50, default: 'dubai' })
+  regionCode: string;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 

@@ -30,6 +30,7 @@ export default class LeadsController extends Controller {
   @service auth;
   @service notifications;
   @service router;
+  @service region;
 
   queryParams = ['page', 'limit', 'status'];
   page = 1;
@@ -65,6 +66,11 @@ export default class LeadsController extends Controller {
   @tracked dropTargetTemp = null;
   @tracked dropTargetAgent = null;
   @tracked selectedAgentId = '';
+  @tracked formRegionCode = '';
+
+  get showRegionField() {
+    return this.region.regions.length > 1;
+  }
 
   get allLeads() {
     return this.model?.data ?? [];
@@ -150,6 +156,7 @@ export default class LeadsController extends Controller {
     this.formTemperature = 'WARM';
     this.formPropertyId = '';
     this.formUnitId = '';
+    this.formRegionCode = this.region.regionCode;
     this.filteredUnits = [];
     this.editLead = null;
     this.errorMsg = '';
@@ -402,6 +409,7 @@ export default class LeadsController extends Controller {
           temperature: this.formTemperature,
           ...(this.formPropertyId ? { propertyId: this.formPropertyId } : {}),
           ...(this.formUnitId ? { unitId: this.formUnitId } : {}),
+          ...(!isEdit && this.formRegionCode ? { regionCode: this.formRegionCode } : {}),
         }),
       });
 

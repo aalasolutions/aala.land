@@ -19,6 +19,7 @@ export default class MaintenanceController extends Controller {
   @tracked formActualCost = '';
   @tracked formCostNotes = '';
   @tracked formScheduledDate = '';
+  @tracked formUnitId = '';
   @tracked formVendorId = '';
   @tracked formStatus = 'PENDING';
   @tracked isSaving = false;
@@ -96,6 +97,7 @@ export default class MaintenanceController extends Controller {
     this.formActualCost = '';
     this.formCostNotes = '';
     this.formScheduledDate = '';
+    this.formUnitId = '';
     this.formVendorId = '';
     this.formStatus = 'PENDING';
     this.editWorkOrder = null;
@@ -113,6 +115,7 @@ export default class MaintenanceController extends Controller {
     this.formActualCost = wo.actualCost ? String(wo.actualCost) : '';
     this.formCostNotes = wo.costNotes ?? '';
     this.formScheduledDate = wo.scheduledDate ? wo.scheduledDate.split('T')[0] : '';
+    this.formUnitId = wo.unitId ?? '';
     this.formVendorId = wo.vendorId ?? '';
     this.formStatus = wo.status || 'PENDING';
     this.editWorkOrder = wo;
@@ -146,6 +149,7 @@ export default class MaintenanceController extends Controller {
       ...(this.formCostNotes ? { costNotes: this.formCostNotes } : {}),
       ...(this.formScheduledDate ? { scheduledDate: this.formScheduledDate } : {}),
       ...(this.formReportedBy ? { reportedBy: this.formReportedBy } : {}),
+      ...(this.formUnitId ? { unitId: this.formUnitId } : {}),
       ...(this.formVendorId ? { vendorId: this.formVendorId } : {}),
     };
 

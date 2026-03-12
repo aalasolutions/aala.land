@@ -61,7 +61,7 @@
             {{/if}}
             <p class="unit-status">{{unit.status}}</p>
             {{#if unit.price}}
-              <p class="unit-price">AED {{unit.price}}</p>
+              <p class="unit-price">{{format-currency unit.price}}</p>
             {{/if}}
           </LinkTo>
         {{else}}
@@ -69,7 +69,7 @@
             <p class="unit-number">{{unit.unitNumber}}</p>
             <p class="unit-status">{{unit.status}}</p>
             {{#if unit.price}}
-              <p class="unit-price">AED {{unit.price}}</p>
+              <p class="unit-price">{{format-currency unit.price}}</p>
             {{/if}}
           </div>
         {{/if}}

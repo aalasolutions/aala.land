@@ -14,11 +14,12 @@ export default class LeadsRoute extends AuthenticatedRoute {
     const params = new URLSearchParams({ page, limit });
     if (status) params.set('status', status);
 
-    const response = await this.auth.authorizedFetch(
-      `${this.auth.apiBase}/leads?${params.toString()}`,
-    );
-    if (!response.ok) return { leads: [], total: 0, page: 1 };
-    return response.json().then((r) => r.data);
+    try {
+      const json = await this.auth.fetchJson(`/leads?${params.toString()}`);
+      return json.data;
+    } catch {
+      return { leads: [], total: 0, page: 1 };
+    }
   }
 
   setupController(controller) {

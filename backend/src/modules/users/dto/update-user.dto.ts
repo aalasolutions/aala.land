@@ -43,12 +43,6 @@ export class UpdateUserDto {
   @MaxLength(20)
   dateFormat?: string;
 
-  @ApiPropertyOptional({ example: 'AED' })
-  @IsString()
-  @IsOptional()
-  @MaxLength(3)
-  currency?: string;
-
   @ApiPropertyOptional({ example: 'Asia/Dubai' })
   @IsString()
   @IsOptional()

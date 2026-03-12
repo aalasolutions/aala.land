@@ -21,7 +21,24 @@ export class LeasesService {
     companyId: string,
     page = 1,
     limit = 20,
+    regionCode?: string,
   ): Promise<{ data: Lease[]; total: number; page: number; limit: number }> {
+    if (regionCode) {
+      const qb = this.leaseRepository
+        .createQueryBuilder('l')
+        .innerJoin('units', 'u', 'l.unit_id = u.id')
+        .innerJoin('buildings', 'b', 'u.building_id = b.id')
+        .innerJoin('property_areas', 'pa', 'b.area_id = pa.id')
+        .where('l.company_id = :companyId', { companyId })
+        .andWhere('pa.region_code = :regionCode', { regionCode })
+        .skip((page - 1) * limit)
+        .take(limit)
+        .orderBy('l.created_at', 'DESC');
+
+      const [data, total] = await qb.getManyAndCount();
+      return { data, total, page, limit };
+    }
+
     const [data, total] = await this.leaseRepository.findAndCount({
       where: { companyId },
       skip: (page - 1) * limit,

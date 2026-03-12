@@ -29,12 +29,14 @@ export class CommissionsController {
   @ApiOperation({ summary: 'List commissions (paginated)' })
   @ApiQuery({ name: 'page', required: false })
   @ApiQuery({ name: 'limit', required: false })
+  @ApiQuery({ name: 'regionCode', required: false, type: String })
   findAll(
     @Request() req: any,
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
     @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
+    @Query('regionCode') regionCode?: string,
   ) {
-    return this.commissionsService.findAll(req.user.companyId, page, limit);
+    return this.commissionsService.findAll(req.user.companyId, page, limit, regionCode);
   }
 
   @Get('agent/:agentId')

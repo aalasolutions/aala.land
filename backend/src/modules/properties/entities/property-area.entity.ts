@@ -28,6 +28,9 @@ export class PropertyArea {
     @OneToMany(() => Building, (building) => building.area)
     buildings: Building[];
 
+    @Column({ name: 'region_code', type: 'varchar', length: 50, default: 'dubai' })
+    regionCode: string;
+
     @CreateDateColumn({ name: 'created_at' })
     createdAt: Date;
 

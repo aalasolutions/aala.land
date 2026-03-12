@@ -18,4 +18,9 @@ export class CreateAreaDto {
   @IsOptional()
   @MaxLength(255)
   location?: string;
+
+  @ApiPropertyOptional({ example: 'dubai', description: 'Region code for multi-region filtering' })
+  @IsString()
+  @IsOptional()
+  regionCode?: string;
 }

@@ -118,6 +118,9 @@
             <LinkTo @route="team" class="sidebar-sublink" data-test-nav-team>
               <span class="sidebar-label">Team</span>
             </LinkTo>
+            <LinkTo @route="documents" class="sidebar-sublink" data-test-nav-documents>
+              <span class="sidebar-label">Documents</span>
+            </LinkTo>
             <LinkTo @route="audit" class="sidebar-sublink" data-test-nav-audit>
               <span class="sidebar-label">Audit Log</span>
             </LinkTo>
@@ -146,6 +149,26 @@
           />
         </div>
         <div class="topbar-actions">
+          {{#if this.showRegionSwitcher}}
+            <div class="region-switcher" data-test-region-switcher>
+              <button type="button" class="region-btn" {{on "click" this.toggleRegionDropdown}}>
+                <Ph @icon="globe" @size="18px" />
+                <span class="region-name">{{this.region.activeRegion.name}}</span>
+                <Ph @icon="caret-down" @size="12px" />
+              </button>
+              {{#if this.showRegionDropdown}}
+                <button type="button" class="region-overlay" {{on "click" this.closeRegionDropdown}}></button>
+                <div class="region-dropdown" data-test-region-dropdown>
+                  {{#each this.region.regions as |r|}}
+                    <button type="button" class="region-option {{if (eq r.code this.region.activeRegion.code) 'active'}}" data-test-region-option={{r.code}} {{on "click" (fn this.selectRegion r)}}>
+                      <span>{{r.name}}</span>
+                      <span class="region-currency-tag">{{r.currency}}</span>
+                    </button>
+                  {{/each}}
+                </div>
+              {{/if}}
+            </div>
+          {{/if}}
           <button type="button" class="notification-bell" aria-label="Notifications" {{on "click" this.toggleNotifications}}>
             <Ph @icon="bell" @size="22px" />
             {{#if this.unreadCount}}

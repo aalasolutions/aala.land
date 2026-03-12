@@ -273,6 +273,30 @@ Note: Commission tracking and vendor module are listed under MVP (sections 6 and
 
 ---
 
+## Multi-Region Support
+
+**Status:** Phase 12 (in progress)
+**Availability:** All tiers (paid guard deferred to payments phase)
+
+**How it works:**
+- MENA regions are a hardcoded list (14 cities across 8 countries)
+- Company admin selects which regions they operate in (Company Settings)
+- Default region sets the currency for single-region companies
+- When 2+ regions selected: top nav shows a region switcher dropdown
+- All data filters by active region (properties, leads, financials, reports)
+- Currency formatting uses Intl.NumberFormat with browser locale detection
+
+**Region list:** Dubai, Abu Dhabi, Sharjah, Ajman (AED), Riyadh, Jeddah, Dammam (SAR), Manama (BHD), Muscat (OMR), Doha (QAR), Kuwait City (KWD), Cairo (EGP), Amman (JOD), Beirut (LBP)
+
+**Entity scoping:**
+- Direct regionCode: PropertyArea, Lead, Vendor, Commission
+- Inherited via FK chain: Lease, Cheque, WorkOrder, Transaction (through Unit > Building > PropertyArea)
+- Cross-region (no filter): Users, Contacts, EmailTemplates, Notifications, AuditLog
+
+**Future (payments phase):** Paid guard on multi-region addon, included in GROWTH tier and above.
+
+---
+
 *"Every feature should answer: Does this make the boss's life easier? If yes, build it. If maybe, defer it. If no, skip it."*
 
 *Last verified against codebase: 2026-03-11*

@@ -45,7 +45,7 @@
 </div>
 
 <p class="text-muted" style="margin-top: var(--space-4);">
-  Showing {{this.model.owners.length}} of {{this.model.total}} owners
+  Showing {{format-number this.model.owners.length}} of {{format-number this.model.total}} owners
 </p>
 
 {{#if this.showModal}}

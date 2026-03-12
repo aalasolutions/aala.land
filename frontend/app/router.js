@@ -14,6 +14,7 @@ Router.map(function () {
   this.route('properties', function () {
     this.route('index', { path: '/' });
     this.route('detail', { path: '/:area_id' });
+    this.route('unit', { path: '/:area_id/unit/:unit_id' });
   });
   this.route('leads');
   this.route('financials');
@@ -29,6 +30,7 @@ Router.map(function () {
     this.route('detail', { path: '/:owner_id' });
   });
   this.route('contacts');
+  this.route('documents');
   this.route('email-templates');
   this.route('reports');
   this.route('audit');

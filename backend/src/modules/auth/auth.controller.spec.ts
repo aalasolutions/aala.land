@@ -18,6 +18,10 @@ describe('AuthController', () => {
       role: 'admin',
       companyId: 'company-uuid-1',
     },
+    regions: [
+      { code: 'dubai', name: 'Dubai', country: 'AE', currency: 'AED', currencySymbol: '\u062F.\u0625', timezone: 'Asia/Dubai' },
+    ],
+    defaultRegionCode: 'dubai',
   };
 
   beforeEach(async () => {

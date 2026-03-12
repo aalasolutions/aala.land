@@ -26,7 +26,6 @@ export interface AgentPerformance {
   leadsLost: number;
   conversionRate: number;
   commissionsEarned: number;
-  currency: string;
 }
 
 export interface RedFlag {
@@ -109,25 +108,83 @@ export class ReportsService {
     private readonly auditLogRepository: Repository<AuditLog>,
   ) {}
 
-  async getDashboardKpis(companyId: string): Promise<DashboardKpis> {
+  async getDashboardKpis(companyId: string, regionCode?: string): Promise<DashboardKpis> {
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
+    // Leads and Commissions have direct regionCode
+    const leadWhere: any = { companyId };
+    if (regionCode) leadWhere.regionCode = regionCode;
+
+    // Units, Transactions, Leases, Cheques need FK chain filtering
+    let totalUnitsPromise: Promise<number>;
+    let revenuePromise: Promise<any>;
+    let activeLeasesPromise: Promise<number>;
+    let pendingChequesPromise: Promise<number>;
+
+    if (regionCode) {
+      totalUnitsPromise = this.unitRepository
+        .createQueryBuilder('u')
+        .innerJoin('buildings', 'b', 'u.building_id = b.id')
+        .innerJoin('property_areas', 'pa', 'b.area_id = pa.id')
+        .where('u.company_id = :companyId', { companyId })
+        .andWhere('pa.region_code = :regionCode', { regionCode })
+        .getCount();
+
+      revenuePromise = this.transactionRepository
+        .createQueryBuilder('t')
+        .select('COALESCE(SUM(t.amount), 0)', 'total')
+        .innerJoin('units', 'u', 't.unit_id = u.id')
+        .innerJoin('buildings', 'b', 'u.building_id = b.id')
+        .innerJoin('property_areas', 'pa', 'b.area_id = pa.id')
+        .where('t.companyId = :companyId', { companyId })
+        .andWhere('t.type = :type', { type: TransactionType.INCOME })
+        .andWhere('t.status = :status', { status: TransactionStatus.COMPLETED })
+        .andWhere('t.createdAt >= :startOfMonth', { startOfMonth })
+        .andWhere('pa.region_code = :regionCode', { regionCode })
+        .getRawOne();
+
+      activeLeasesPromise = this.leaseRepository
+        .createQueryBuilder('l')
+        .innerJoin('units', 'u', 'l.unit_id = u.id')
+        .innerJoin('buildings', 'b', 'u.building_id = b.id')
+        .innerJoin('property_areas', 'pa', 'b.area_id = pa.id')
+        .where('l.company_id = :companyId', { companyId })
+        .andWhere('l.status = :status', { status: LeaseStatus.ACTIVE })
+        .andWhere('pa.region_code = :regionCode', { regionCode })
+        .getCount();
+
+      pendingChequesPromise = this.chequeRepository
+        .createQueryBuilder('c')
+        .innerJoin('units', 'u', 'c.unit_id = u.id')
+        .innerJoin('buildings', 'b', 'u.building_id = b.id')
+        .innerJoin('property_areas', 'pa', 'b.area_id = pa.id')
+        .where('c.company_id = :companyId', { companyId })
+        .andWhere('c.status = :status', { status: ChequeStatus.PENDING })
+        .andWhere('pa.region_code = :regionCode', { regionCode })
+        .getCount();
+    } else {
+      totalUnitsPromise = this.unitRepository.count({ where: { companyId } });
+      revenuePromise = this.transactionRepository
+        .createQueryBuilder('t')
+        .select('COALESCE(SUM(t.amount), 0)', 'total')
+        .where('t.companyId = :companyId', { companyId })
+        .andWhere('t.type = :type', { type: TransactionType.INCOME })
+        .andWhere('t.status = :status', { status: TransactionStatus.COMPLETED })
+        .andWhere('t.createdAt >= :startOfMonth', { startOfMonth })
+        .getRawOne();
+      activeLeasesPromise = this.leaseRepository.count({ where: { companyId, status: LeaseStatus.ACTIVE } });
+      pendingChequesPromise = this.chequeRepository.count({ where: { companyId, status: ChequeStatus.PENDING } });
+    }
+
     const [totalLeads, wonLeads, totalUnits, revenueResult, activeLeases, pendingCheques] =
       await Promise.all([
-        this.leadRepository.count({ where: { companyId } }),
-        this.leadRepository.count({ where: { companyId, status: LeadStatus.WON } }),
-        this.unitRepository.count({ where: { companyId } }),
-        this.transactionRepository
-          .createQueryBuilder('t')
-          .select('COALESCE(SUM(t.amount), 0)', 'total')
-          .where('t.companyId = :companyId', { companyId })
-          .andWhere('t.type = :type', { type: TransactionType.INCOME })
-          .andWhere('t.status = :status', { status: TransactionStatus.COMPLETED })
-          .andWhere('t.createdAt >= :startOfMonth', { startOfMonth })
-          .getRawOne(),
-        this.leaseRepository.count({ where: { companyId, status: LeaseStatus.ACTIVE } }),
-        this.chequeRepository.count({ where: { companyId, status: ChequeStatus.PENDING } }),
+        this.leadRepository.count({ where: leadWhere }),
+        this.leadRepository.count({ where: { ...leadWhere, status: LeadStatus.WON } }),
+        totalUnitsPromise,
+        revenuePromise,
+        activeLeasesPromise,
+        pendingChequesPromise,
       ]);
 
     return {
@@ -140,27 +197,33 @@ export class ReportsService {
     };
   }
 
-  async getAgentPerformance(companyId: string): Promise<AgentPerformance[]> {
+  async getAgentPerformance(companyId: string, regionCode?: string): Promise<AgentPerformance[]> {
+    const leadQb = this.leadRepository
+      .createQueryBuilder('l')
+      .select('l.assignedTo', 'agentId')
+      .addSelect('COUNT(*)::int', 'leadsAssigned')
+      .addSelect("SUM(CASE WHEN l.status = :won THEN 1 ELSE 0 END)::int", 'leadsWon')
+      .addSelect("SUM(CASE WHEN l.status = :lost THEN 1 ELSE 0 END)::int", 'leadsLost')
+      .where('l.companyId = :companyId', { companyId })
+      .andWhere('l.assignedTo IS NOT NULL')
+      .setParameter('won', LeadStatus.WON)
+      .setParameter('lost', LeadStatus.LOST);
+
+    if (regionCode) leadQb.andWhere('l.regionCode = :regionCode', { regionCode });
+    leadQb.groupBy('l.assignedTo');
+
+    const commQb = this.commissionRepository
+      .createQueryBuilder('c')
+      .select('c.agentId', 'agentId')
+      .addSelect('COALESCE(SUM(c.commissionAmount), 0)', 'commissionsEarned')
+      .where('c.companyId = :companyId', { companyId });
+
+    if (regionCode) commQb.andWhere('c.regionCode = :regionCode', { regionCode });
+    commQb.groupBy('c.agentId');
+
     const [leadStats, commissionStats] = await Promise.all([
-      this.leadRepository
-        .createQueryBuilder('l')
-        .select('l.assignedTo', 'agentId')
-        .addSelect('COUNT(*)::int', 'leadsAssigned')
-        .addSelect("SUM(CASE WHEN l.status = :won THEN 1 ELSE 0 END)::int", 'leadsWon')
-        .addSelect("SUM(CASE WHEN l.status = :lost THEN 1 ELSE 0 END)::int", 'leadsLost')
-        .where('l.companyId = :companyId', { companyId })
-        .andWhere('l.assignedTo IS NOT NULL')
-        .setParameter('won', LeadStatus.WON)
-        .setParameter('lost', LeadStatus.LOST)
-        .groupBy('l.assignedTo')
-        .getRawMany(),
-      this.commissionRepository
-        .createQueryBuilder('c')
-        .select('c.agentId', 'agentId')
-        .addSelect('COALESCE(SUM(c.commissionAmount), 0)', 'commissionsEarned')
-        .where('c.companyId = :companyId', { companyId })
-        .groupBy('c.agentId')
-        .getRawMany(),
+      leadQb.getRawMany(),
+      commQb.getRawMany(),
     ]);
 
     const agentMap = new Map<string, AgentPerformance>();
@@ -173,7 +236,6 @@ export class ReportsService {
         leadsLost: Number(row.leadsLost),
         conversionRate: 0,
         commissionsEarned: 0,
-        currency: 'AED',
       });
     }
 
@@ -188,8 +250,7 @@ export class ReportsService {
           leadsLost: 0,
           conversionRate: 0,
           commissionsEarned: Number(row.commissionsEarned),
-          currency: 'AED',
-        });
+          });
       }
     }
 
@@ -199,13 +260,55 @@ export class ReportsService {
     }));
   }
 
-  async getRedFlags(companyId: string): Promise<RedFlag[]> {
+  async getRedFlags(companyId: string, regionCode?: string): Promise<RedFlag[]> {
     const now = new Date();
     const hours24Ago = new Date(now.getTime() - 24 * 60 * 60 * 1000);
     const hours48Ago = new Date(now.getTime() - 48 * 60 * 60 * 1000);
     const days7Ago = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
     const days14Ago = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
     const days30Ago = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+    // Lead where clause (direct regionCode)
+    const leadWhere: any = { companyId };
+    if (regionCode) leadWhere.regionCode = regionCode;
+
+    // Overdue followups QBuilder
+    const overdueQb = this.leadRepository
+      .createQueryBuilder('l')
+      .select(['l.id', 'l.firstName', 'l.lastName', 'l.status', 'l.updatedAt'])
+      .where('l.companyId = :companyId', { companyId })
+      .andWhere('l.status IN (:...statuses)', {
+        statuses: [LeadStatus.CONTACTED, LeadStatus.VIEWING],
+      })
+      .andWhere('l.updatedAt < :days7Ago', { days7Ago });
+    if (regionCode) overdueQb.andWhere('l.regionCode = :regionCode', { regionCode });
+    overdueQb.take(20);
+
+    // Vacant units (inherit region through FK)
+    let vacantUnitsPromise: Promise<any[]>;
+    if (regionCode) {
+      vacantUnitsPromise = this.unitRepository
+        .createQueryBuilder('u')
+        .select(['u.id', 'u.unitNumber', 'u.updatedAt'])
+        .innerJoin('buildings', 'b', 'u.building_id = b.id')
+        .innerJoin('property_areas', 'pa', 'b.area_id = pa.id')
+        .where('u.company_id = :companyId', { companyId })
+        .andWhere('u.status = :status', { status: UnitStatus.AVAILABLE })
+        .andWhere('u.updated_at < :days30Ago', { days30Ago })
+        .andWhere('pa.region_code = :regionCode', { regionCode })
+        .take(20)
+        .getMany();
+    } else {
+      vacantUnitsPromise = this.unitRepository.find({
+        where: {
+          companyId,
+          status: UnitStatus.AVAILABLE,
+          updatedAt: LessThan(days30Ago),
+        },
+        select: ['id', 'unitNumber', 'updatedAt'],
+        take: 20,
+      });
+    }
 
     const [
       untouchedLeads48h,
@@ -217,7 +320,7 @@ export class ReportsService {
       // Leads sitting in NEW for 48+ hours
       this.leadRepository.find({
         where: {
-          companyId,
+          ...leadWhere,
           status: LeadStatus.NEW,
           createdAt: LessThan(hours48Ago),
         },
@@ -227,7 +330,7 @@ export class ReportsService {
       // Leads sitting in NEW for 24+ hours (but less than 48)
       this.leadRepository.find({
         where: {
-          companyId,
+          ...leadWhere,
           status: LeadStatus.NEW,
           createdAt: LessThan(hours24Ago),
         },
@@ -237,7 +340,7 @@ export class ReportsService {
       // Leads stuck in same pipeline stage for 14+ days
       this.leadRepository.find({
         where: {
-          companyId,
+          ...leadWhere,
           status: LeadStatus.NEGOTIATING,
           updatedAt: LessThan(days14Ago),
         },
@@ -245,26 +348,9 @@ export class ReportsService {
         take: 20,
       }),
       // Leads in active stages not updated for 7+ days
-      this.leadRepository
-        .createQueryBuilder('l')
-        .select(['l.id', 'l.firstName', 'l.lastName', 'l.status', 'l.updatedAt'])
-        .where('l.companyId = :companyId', { companyId })
-        .andWhere('l.status IN (:...statuses)', {
-          statuses: [LeadStatus.CONTACTED, LeadStatus.VIEWING],
-        })
-        .andWhere('l.updatedAt < :days7Ago', { days7Ago })
-        .take(20)
-        .getMany(),
+      overdueQb.getMany(),
       // Units vacant for 30+ days
-      this.unitRepository.find({
-        where: {
-          companyId,
-          status: UnitStatus.AVAILABLE,
-          updatedAt: LessThan(days30Ago),
-        },
-        select: ['id', 'unitNumber', 'updatedAt'],
-        take: 20,
-      }),
+      vacantUnitsPromise,
     ]);
 
     const flags: RedFlag[] = [];
@@ -338,7 +424,7 @@ export class ReportsService {
     return flags;
   }
 
-  async getActivityFeed(companyId: string): Promise<ActivityFeedItem[]> {
+  async getActivityFeed(companyId: string, _regionCode?: string): Promise<ActivityFeedItem[]> {
     const logs = await this.auditLogRepository.find({
       where: { companyId },
       order: { createdAt: 'DESC' },
@@ -356,14 +442,17 @@ export class ReportsService {
     }));
   }
 
-  async getPipelineFunnel(companyId: string): Promise<PipelineFunnel[]> {
-    const results = await this.leadRepository
+  async getPipelineFunnel(companyId: string, regionCode?: string): Promise<PipelineFunnel[]> {
+    const qb = this.leadRepository
       .createQueryBuilder('l')
       .select('l.status', 'stage')
       .addSelect('COUNT(*)::int', 'count')
-      .where('l.companyId = :companyId', { companyId })
-      .groupBy('l.status')
-      .getRawMany();
+      .where('l.companyId = :companyId', { companyId });
+
+    if (regionCode) qb.andWhere('l.regionCode = :regionCode', { regionCode });
+    qb.groupBy('l.status');
+
+    const results = await qb.getRawMany();
 
     // Return in pipeline order
     const order = [
@@ -382,11 +471,11 @@ export class ReportsService {
     }));
   }
 
-  async getBottlenecks(companyId: string): Promise<StageBottleneck[]> {
+  async getBottlenecks(companyId: string, regionCode?: string): Promise<StageBottleneck[]> {
     const now = new Date();
 
     // Get active leads (not WON/LOST) with stageEnteredAt set, grouped by status
-    const results = await this.leadRepository
+    const qb = this.leadRepository
       .createQueryBuilder('l')
       .select('l.status', 'stage')
       .addSelect('COUNT(*)::int', 'count')
@@ -403,7 +492,11 @@ export class ReportsService {
       .andWhere('l.status NOT IN (:...terminalStatuses)', {
         terminalStatuses: [LeadStatus.WON, LeadStatus.LOST],
       })
-      .setParameter('now', now)
+      .setParameter('now', now);
+
+    if (regionCode) qb.andWhere('l.regionCode = :regionCode', { regionCode });
+
+    const results = await qb
       .groupBy('l.status')
       .orderBy('"avgDays"', 'DESC')
       .getRawMany();
@@ -416,7 +509,7 @@ export class ReportsService {
     }));
   }
 
-  async getResponseTimeMetrics(companyId: string): Promise<AgentResponseTime[]> {
+  async getResponseTimeMetrics(companyId: string, _regionCode?: string): Promise<AgentResponseTime[]> {
     // Find the first STATUS_CHANGE activity per lead, then calculate diff from lead.createdAt
     // Uses lead_activities table for historical accuracy
     const results = await this.activityRepository
@@ -455,8 +548,8 @@ export class ReportsService {
     }));
   }
 
-  async getAchievements(companyId: string): Promise<Achievement[]> {
-    const agents = await this.getAgentPerformance(companyId);
+  async getAchievements(companyId: string, regionCode?: string): Promise<Achievement[]> {
+    const agents = await this.getAgentPerformance(companyId, regionCode);
     const achievements: Achievement[] = [];
 
     if (agents.length === 0) return achievements;
@@ -492,7 +585,7 @@ export class ReportsService {
       achievements.push({
         type: 'TOP_EARNER',
         agentId: topEarner.agentId,
-        message: `Top commission earner: AED ${topEarner.commissionsEarned.toLocaleString()}`,
+        message: `Top commission earner: ${topEarner.commissionsEarned.toLocaleString()}`,
         value: topEarner.commissionsEarned,
       });
     }
@@ -512,8 +605,8 @@ export class ReportsService {
     return achievements;
   }
 
-  async getAgentComparison(companyId: string): Promise<AgentComparison[]> {
-    const agents = await this.getAgentPerformance(companyId);
+  async getAgentComparison(companyId: string, regionCode?: string): Promise<AgentComparison[]> {
+    const agents = await this.getAgentPerformance(companyId, regionCode);
 
     // Rank by conversion rate, then by leads won as tiebreaker
     const sorted = [...agents].sort((a, b) => {

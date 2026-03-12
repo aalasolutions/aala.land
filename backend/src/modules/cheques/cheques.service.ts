@@ -24,7 +24,24 @@ export class ChequesService {
     companyId: string,
     page = 1,
     limit = 20,
+    regionCode?: string,
   ): Promise<{ data: Cheque[]; total: number; page: number; limit: number }> {
+    if (regionCode) {
+      const qb = this.chequeRepository
+        .createQueryBuilder('c')
+        .innerJoin('units', 'u', 'c.unit_id = u.id')
+        .innerJoin('buildings', 'b', 'u.building_id = b.id')
+        .innerJoin('property_areas', 'pa', 'b.area_id = pa.id')
+        .where('c.company_id = :companyId', { companyId })
+        .andWhere('pa.region_code = :regionCode', { regionCode })
+        .skip((page - 1) * limit)
+        .take(limit)
+        .orderBy('c.due_date', 'ASC');
+
+      const [data, total] = await qb.getManyAndCount();
+      return { data, total, page, limit };
+    }
+
     const [data, total] = await this.chequeRepository.findAndCount({
       where: { companyId },
       skip: (page - 1) * limit,

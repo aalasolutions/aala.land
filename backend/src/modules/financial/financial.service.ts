@@ -9,7 +9,6 @@ export interface TransactionSummary {
   totalIncome: number;
   totalExpense: number;
   net: number;
-  currency: string;
 }
 
 @Injectable()
@@ -24,7 +23,29 @@ export class FinancialService {
     return this.transactionRepository.save(transaction);
   }
 
-  async findAll(companyId: string, page = 1, limit = 20, ownerId?: string): Promise<{ data: Transaction[]; total: number; page: number; limit: number }> {
+  async findAll(companyId: string, page = 1, limit = 20, ownerId?: string, regionCode?: string): Promise<{ data: Transaction[]; total: number; page: number; limit: number }> {
+    if (regionCode) {
+      const qb = this.transactionRepository
+        .createQueryBuilder('t')
+        .leftJoinAndSelect('t.unit', 'unit')
+        .innerJoin('units', 'u', 't.unit_id = u.id')
+        .innerJoin('buildings', 'b', 'u.building_id = b.id')
+        .innerJoin('property_areas', 'pa', 'b.area_id = pa.id')
+        .where('t.company_id = :companyId', { companyId })
+        .andWhere('pa.region_code = :regionCode', { regionCode });
+
+      if (ownerId) {
+        qb.andWhere('u.owner_id = :ownerId', { ownerId });
+      }
+
+      qb.skip((page - 1) * limit)
+        .take(limit)
+        .orderBy('t.created_at', 'DESC');
+
+      const [data, total] = await qb.getManyAndCount();
+      return { data, total, page, limit };
+    }
+
     const where: any = { companyId };
 
     if (ownerId) {
@@ -79,7 +100,6 @@ export class FinancialService {
       totalIncome,
       totalExpense,
       net: totalIncome - totalExpense,
-      currency: 'AED',
     };
   }
 

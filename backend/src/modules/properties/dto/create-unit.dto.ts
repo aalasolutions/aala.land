@@ -57,4 +57,20 @@ export class CreateUnitDto {
   @IsString({ each: true })
   @IsOptional()
   amenities?: string[];
+
+  @ApiPropertyOptional({ example: 'Spacious 2-bedroom with marina views' })
+  @IsString()
+  @IsOptional()
+  description?: string;
+
+  @ApiPropertyOptional({ example: '10' })
+  @IsString()
+  @IsOptional()
+  floor?: string;
+
+  @ApiPropertyOptional({ example: [], description: 'Array of photo URLs' })
+  @IsArray()
+  @IsString({ each: true })
+  @IsOptional()
+  photos?: string[];
 }

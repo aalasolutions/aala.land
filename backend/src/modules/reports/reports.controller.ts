@@ -1,5 +1,5 @@
-import { Controller, Get, UseGuards, Request } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { Controller, Get, Query, UseGuards, Request } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { ReportsService } from './reports.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '@shared/guards/roles.guard';
@@ -16,63 +16,72 @@ export class ReportsController {
   @Get('dashboard')
   @Roles(Role.COMPANY_ADMIN)
   @ApiOperation({ summary: 'Boss dashboard KPIs' })
-  getDashboard(@Request() req: any) {
-    return this.reportsService.getDashboardKpis(req.user.companyId);
+  @ApiQuery({ name: 'regionCode', required: false, type: String })
+  getDashboard(@Request() req: any, @Query('regionCode') regionCode?: string) {
+    return this.reportsService.getDashboardKpis(req.user.companyId, regionCode);
   }
 
   @Get('agent-performance')
   @Roles(Role.COMPANY_ADMIN)
   @ApiOperation({ summary: 'Agent performance report' })
-  getAgentPerformance(@Request() req: any) {
-    return this.reportsService.getAgentPerformance(req.user.companyId);
+  @ApiQuery({ name: 'regionCode', required: false, type: String })
+  getAgentPerformance(@Request() req: any, @Query('regionCode') regionCode?: string) {
+    return this.reportsService.getAgentPerformance(req.user.companyId, regionCode);
   }
 
   @Get('red-flags')
   @Roles(Role.COMPANY_ADMIN)
   @ApiOperation({ summary: 'Red flag alerts for boss' })
-  getRedFlags(@Request() req: any) {
-    return this.reportsService.getRedFlags(req.user.companyId);
+  @ApiQuery({ name: 'regionCode', required: false, type: String })
+  getRedFlags(@Request() req: any, @Query('regionCode') regionCode?: string) {
+    return this.reportsService.getRedFlags(req.user.companyId, regionCode);
   }
 
   @Get('activity-feed')
   @Roles(Role.COMPANY_ADMIN)
   @ApiOperation({ summary: 'Recent activity feed' })
-  getActivityFeed(@Request() req: any) {
-    return this.reportsService.getActivityFeed(req.user.companyId);
+  @ApiQuery({ name: 'regionCode', required: false, type: String })
+  getActivityFeed(@Request() req: any, @Query('regionCode') regionCode?: string) {
+    return this.reportsService.getActivityFeed(req.user.companyId, regionCode);
   }
 
   @Get('pipeline-funnel')
   @Roles(Role.COMPANY_ADMIN)
   @ApiOperation({ summary: 'Lead pipeline funnel counts' })
-  getPipelineFunnel(@Request() req: any) {
-    return this.reportsService.getPipelineFunnel(req.user.companyId);
+  @ApiQuery({ name: 'regionCode', required: false, type: String })
+  getPipelineFunnel(@Request() req: any, @Query('regionCode') regionCode?: string) {
+    return this.reportsService.getPipelineFunnel(req.user.companyId, regionCode);
   }
 
   @Get('bottlenecks')
   @Roles(Role.COMPANY_ADMIN)
   @ApiOperation({ summary: 'Pipeline bottleneck identification: avg days per stage' })
-  getBottlenecks(@Request() req: any) {
-    return this.reportsService.getBottlenecks(req.user.companyId);
+  @ApiQuery({ name: 'regionCode', required: false, type: String })
+  getBottlenecks(@Request() req: any, @Query('regionCode') regionCode?: string) {
+    return this.reportsService.getBottlenecks(req.user.companyId, regionCode);
   }
 
   @Get('response-times')
   @Roles(Role.COMPANY_ADMIN)
   @ApiOperation({ summary: 'Agent response time metrics: avg minutes from lead creation to first status change' })
-  getResponseTimes(@Request() req: any) {
-    return this.reportsService.getResponseTimeMetrics(req.user.companyId);
+  @ApiQuery({ name: 'regionCode', required: false, type: String })
+  getResponseTimes(@Request() req: any, @Query('regionCode') regionCode?: string) {
+    return this.reportsService.getResponseTimeMetrics(req.user.companyId, regionCode);
   }
 
   @Get('achievements')
   @Roles(Role.COMPANY_ADMIN)
   @ApiOperation({ summary: 'Team achievements: best converter, most wins, top earner' })
-  getAchievements(@Request() req: any) {
-    return this.reportsService.getAchievements(req.user.companyId);
+  @ApiQuery({ name: 'regionCode', required: false, type: String })
+  getAchievements(@Request() req: any, @Query('regionCode') regionCode?: string) {
+    return this.reportsService.getAchievements(req.user.companyId, regionCode);
   }
 
   @Get('agent-comparison')
   @Roles(Role.COMPANY_ADMIN)
   @ApiOperation({ summary: 'Agent comparison with ranking' })
-  getAgentComparison(@Request() req: any) {
-    return this.reportsService.getAgentComparison(req.user.companyId);
+  @ApiQuery({ name: 'regionCode', required: false, type: String })
+  getAgentComparison(@Request() req: any, @Query('regionCode') regionCode?: string) {
+    return this.reportsService.getAgentComparison(req.user.companyId, regionCode);
   }
 }

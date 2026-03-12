@@ -15,15 +15,15 @@
     <div class="grid cols-4 gap-4">
       <div class="glass-panel p-4">
         <p class="text-muted font-xs uppercase tracking-wider mb-1">Total Estimated</p>
-        <h4 class="font-xl font-bold">AED {{format-number @model.costSummary.totalEstimated}}</h4>
+        <h4 class="font-xl font-bold">{{format-currency @model.costSummary.totalEstimated}}</h4>
       </div>
       <div class="glass-panel p-4">
         <p class="text-muted font-xs uppercase tracking-wider mb-1">Total Actual</p>
-        <h4 class="font-xl font-bold">AED {{format-number @model.costSummary.totalActual}}</h4>
+        <h4 class="font-xl font-bold">{{format-currency @model.costSummary.totalActual}}</h4>
       </div>
       <div class="glass-panel p-4">
         <p class="text-muted font-xs uppercase tracking-wider mb-1">Pending Cost</p>
-        <h4 class="font-xl font-bold text-warning">AED {{format-number @model.costSummary.pendingCost}}</h4>
+        <h4 class="font-xl font-bold text-warning">{{format-currency @model.costSummary.pendingCost}}</h4>
       </div>
       <div class="glass-panel p-4">
         <p class="text-muted font-xs uppercase tracking-wider mb-1">Work Orders</p>
@@ -68,6 +68,7 @@
             <thead>
               <tr>
                 <th>Title</th>
+                <th>Unit</th>
                 <th>Category</th>
                 <th>Priority</th>
                 <th>Est. Cost</th>
@@ -84,10 +85,17 @@
                     <p class="font-sm font-bold">{{wo.title}}</p>
                     {{#if wo.vendorId}}<p class="text-muted font-xs"><Ph @icon="toolbox" /> Vendor assigned</p>{{/if}}
                   </td>
+                  <td class="font-sm text-muted">
+                    {{#if wo.unitNumber}}
+                      {{wo.areaName}} / {{wo.buildingName}} / {{wo.unitNumber}}
+                    {{else}}
+                      <span class="text-muted">-</span>
+                    {{/if}}
+                  </td>
                   <td><span class="type-badge type-{{lowercase wo.category}}">{{wo.category}}</span></td>
                   <td><span class="status-badge status-{{lowercase wo.priority}}">{{wo.priority}}</span></td>
-                  <td>{{#if wo.estimatedCost}}AED {{format-number wo.estimatedCost}}{{else}}-{{/if}}</td>
-                  <td>{{#if wo.actualCost}}AED {{format-number wo.actualCost}}{{else}}-{{/if}}</td>
+                  <td>{{#if wo.estimatedCost}}{{format-currency wo.estimatedCost}}{{else}}-{{/if}}</td>
+                  <td>{{#if wo.actualCost}}{{format-currency wo.actualCost}}{{else}}-{{/if}}</td>
                   <td class="font-xs">{{#if wo.scheduledDate}}{{wo.scheduledDate}}{{else}}-{{/if}}</td>
                   <td><span class="status-badge status-{{lowercase wo.status}}">{{wo.status}}</span></td>
                   <td>
@@ -141,6 +149,15 @@
       <button type="button" class="text-muted font-lg px-2" {{on "click" this.closeModal}}>x</button>
     </div>
     <form class="flex col gap-4" {{on "submit" this.saveWorkOrder}}>
+      <div class="flex col gap-2">
+        <label class="font-sm text-muted" for="wo-unit">Unit (Optional)</label>
+        <select id="wo-unit" class="form-input" data-test-wo-unit {{on "change" (fn this.setField "formUnitId")}}>
+          <option value="">No unit assigned</option>
+          {{#each @model.units as |unit|}}
+            <option value={{unit.id}} selected={{eq unit.id this.formUnitId}}>{{unit.areaName}} / {{unit.buildingName}} / Unit {{unit.unitNumber}}</option>
+          {{/each}}
+        </select>
+      </div>
       <div class="flex col gap-2">
         <label class="font-sm text-muted" for="wo-title">Title *</label>
         <input id="wo-title" type="text"
@@ -196,7 +213,7 @@
             placeholder="Tenant or staff name" value={{this.formReportedBy}} {{on "input" (fn this.setField "formReportedBy")}} />
         </div>
         <div class="flex col gap-2 flex-1">
-          <label class="font-sm text-muted" for="wo-est-cost">Estimated Cost (AED)</label>
+          <label class="font-sm text-muted" for="wo-est-cost">Estimated Cost</label>
           <input id="wo-est-cost" type="number" min="0" step="0.01"
             class="form-input"
             placeholder="e.g. 500" value={{this.formEstimatedCost}} {{on "input" (fn this.setField "formEstimatedCost")}} />
@@ -204,7 +221,7 @@
       </div>
       <div class="flex gap-4">
         <div class="flex col gap-2 flex-1">
-          <label class="font-sm text-muted" for="wo-act-cost">Actual Cost (AED)</label>
+          <label class="font-sm text-muted" for="wo-act-cost">Actual Cost</label>
           <input id="wo-act-cost" type="number" min="0" step="0.01"
             class="form-input"
             placeholder="e.g. 450" value={{this.formActualCost}} {{on "input" (fn this.setField "formActualCost")}} />

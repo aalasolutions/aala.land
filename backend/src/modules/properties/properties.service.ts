@@ -33,9 +33,12 @@ export class PropertiesService {
         return this.areaRepository.save(area);
     }
 
-    async findAllAreas(companyId: string, page = 1, limit = 20) {
+    async findAllAreas(companyId: string, page = 1, limit = 20, regionCode?: string) {
+        const where: any = { companyId };
+        if (regionCode) where.regionCode = regionCode;
+
         const [areas, total] = await this.areaRepository.findAndCount({
-            where: { companyId },
+            where,
             skip: (page - 1) * limit,
             take: limit,
             order: { createdAt: 'DESC' },
@@ -124,16 +127,52 @@ export class PropertiesService {
     }
 
     // Units
-    async findAllUnits(companyId: string, page = 1, limit = 100, amenities?: string[]) {
+    async findAllUnits(
+        companyId: string,
+        page = 1,
+        limit = 100,
+        filters?: {
+            amenities?: string[];
+            propertyType?: string;
+            status?: string;
+            minPrice?: number;
+            maxPrice?: number;
+            minBeds?: number;
+            maxBeds?: number;
+            regionCode?: string;
+        },
+    ) {
         const qb = this.unitRepository
             .createQueryBuilder('u')
             .innerJoin('u.building', 'b')
             .innerJoin('b.area', 'a')
-            .addSelect(['b.id', 'b.name', 'a.id', 'a.name'])
+            .leftJoin('u.owner', 'o')
+            .addSelect(['b.id', 'b.name', 'b.propertyType', 'a.id', 'a.name', 'o.id', 'o.name'])
             .where('u.companyId = :companyId', { companyId });
 
-        if (amenities?.length) {
-            qb.andWhere('u.amenities @> :amenities', { amenities: JSON.stringify(amenities) });
+        if (filters?.amenities?.length) {
+            qb.andWhere('u.amenities @> :amenities', { amenities: JSON.stringify(filters.amenities) });
+        }
+        if (filters?.propertyType) {
+            qb.andWhere('u.propertyType = :propertyType', { propertyType: filters.propertyType });
+        }
+        if (filters?.status) {
+            qb.andWhere('u.status = :status', { status: filters.status });
+        }
+        if (filters?.minPrice !== undefined) {
+            qb.andWhere('u.price >= :minPrice', { minPrice: filters.minPrice });
+        }
+        if (filters?.maxPrice !== undefined) {
+            qb.andWhere('u.price <= :maxPrice', { maxPrice: filters.maxPrice });
+        }
+        if (filters?.minBeds !== undefined) {
+            qb.andWhere('u.bedrooms >= :minBeds', { minBeds: filters.minBeds });
+        }
+        if (filters?.maxBeds !== undefined) {
+            qb.andWhere('u.bedrooms <= :maxBeds', { maxBeds: filters.maxBeds });
+        }
+        if (filters?.regionCode) {
+            qb.andWhere('a.regionCode = :regionCode', { regionCode: filters.regionCode });
         }
 
         qb.skip((page - 1) * limit)
@@ -148,10 +187,19 @@ export class PropertiesService {
             id: u.id,
             unitNumber: u.unitNumber,
             status: u.status,
+            price: u.price,
+            sqFt: u.sqFt,
+            bedrooms: u.bedrooms,
+            bathrooms: u.bathrooms,
+            propertyType: u.propertyType ?? u.building?.propertyType ?? null,
             amenities: u.amenities,
+            photos: u.photos,
+            floor: u.floor,
             buildingId: u.buildingId,
             buildingName: u.building?.name ?? '',
+            areaId: u.building?.area?.id ?? '',
             areaName: u.building?.area?.name ?? '',
+            ownerName: u.owner?.name ?? null,
         }));
 
         return { data, total, page, limit };
@@ -174,7 +222,10 @@ export class PropertiesService {
     }
 
     async findOneUnit(id: string, companyId: string): Promise<Unit> {
-        const unit = await this.unitRepository.findOne({ where: { id, companyId } });
+        const unit = await this.unitRepository.findOne({
+            where: { id, companyId },
+            relations: ['building', 'building.area', 'owner'],
+        });
         if (!unit) throw new NotFoundException(`Unit not found`);
         return unit;
     }

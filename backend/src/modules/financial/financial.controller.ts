@@ -27,13 +27,15 @@ export class FinancialController {
   @ApiQuery({ name: 'page', required: false, type: Number })
   @ApiQuery({ name: 'limit', required: false, type: Number })
   @ApiQuery({ name: 'ownerId', required: false, type: String })
+  @ApiQuery({ name: 'regionCode', required: false, type: String })
   findAll(
     @Request() req,
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
     @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
     @Query('ownerId') ownerId?: string,
+    @Query('regionCode') regionCode?: string,
   ) {
-    return this.financialService.findAll(req.user.companyId, page, limit, ownerId);
+    return this.financialService.findAll(req.user.companyId, page, limit, ownerId, regionCode);
   }
 
   @Get('transactions/summary')

@@ -43,12 +43,6 @@ export class CreateUserDto {
   @MaxLength(20)
   dateFormat?: string;
 
-  @ApiPropertyOptional({ example: 'AED', default: 'AED' })
-  @IsString()
-  @IsOptional()
-  @MaxLength(3)
-  currency?: string;
-
   @ApiPropertyOptional({ example: 'Asia/Dubai', default: 'Asia/Dubai' })
   @IsString()
   @IsOptional()

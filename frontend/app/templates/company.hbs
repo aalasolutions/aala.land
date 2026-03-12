@@ -7,75 +7,128 @@
   </div>
 </div>
 
-{{#if this.model}}
-  <div class="glass-panel p-6 max-w-lg">
-    <form {{on "submit" this.saveCompany}}>
-      <div class="form-group">
-        <label class="form-label" for="company-name">Company Name</label>
-        <input
-          id="company-name"
-          type="text"
-          class="form-input"
-          value={{or this.formName this.model.name}}
-          {{on "input" (fn this.setField "formName")}}
-          required
-        />
-      </div>
+{{#if this.company}}
+  <div class="company-settings-grid">
+    {{! Left: Company Info }}
+    <div class="glass-panel p-6">
+      <h3 class="font-lg font-bold mb-4">Company Information</h3>
+      <form {{on "submit" this.saveCompany}}>
+        <div class="form-group">
+          <label class="form-label" for="company-name">Company Name</label>
+          <input
+            id="company-name"
+            type="text"
+            class="form-input"
+            value={{or this.formName this.company.name}}
+            {{on "input" (fn this.setField "formName")}}
+            required
+          />
+        </div>
 
-      <div class="form-group">
-        <label class="form-label" for="company-email">Email</label>
-        <input
-          id="company-email"
-          type="email"
-          class="form-input"
-          value={{this.model.email}}
-          disabled
-        />
-      </div>
+        <div class="form-group">
+          <label class="form-label" for="company-email">Email</label>
+          <input
+            id="company-email"
+            type="email"
+            class="form-input"
+            value={{this.company.email}}
+            disabled
+          />
+        </div>
 
-      <div class="form-group">
-        <label class="form-label" for="company-phone">Phone</label>
-        <input
-          id="company-phone"
-          type="text"
-          class="form-input"
-          value={{or this.formPhone this.model.phone}}
-          {{on "input" (fn this.setField "formPhone")}}
-          placeholder="+971 4 XXX XXXX"
-        />
-      </div>
+        <div class="form-group">
+          <label class="form-label" for="company-phone">Phone</label>
+          <input
+            id="company-phone"
+            type="text"
+            class="form-input"
+            value={{or this.formPhone this.company.phone}}
+            {{on "input" (fn this.setField "formPhone")}}
+            placeholder="+971 4 XXX XXXX"
+          />
+        </div>
 
-      <div class="form-group">
-        <label class="form-label" for="company-address">Address</label>
-        <textarea
-          id="company-address"
-          class="form-input"
-          rows="3"
-          {{on "input" (fn this.setField "formAddress")}}
-          placeholder="Business Bay, Dubai, UAE"
-        >{{or this.formAddress this.model.address}}</textarea>
-      </div>
+        <div class="form-group">
+          <label class="form-label" for="company-address">Address</label>
+          <textarea
+            id="company-address"
+            class="form-input"
+            rows="3"
+            {{on "input" (fn this.setField "formAddress")}}
+            placeholder="Business Bay, Dubai, UAE"
+          >{{or this.formAddress this.company.address}}</textarea>
+        </div>
 
-      <div class="form-group">
-        <label class="form-label">Plan</label>
-        <input
-          type="text"
-          class="form-input"
-          value={{or this.model.plan "Free"}}
-          disabled
-        />
-      </div>
+        <div class="form-group">
+          <label class="form-label">Plan</label>
+          <input
+            type="text"
+            class="form-input"
+            value={{or this.company.subscriptionTier "FREE"}}
+            disabled
+          />
+        </div>
 
-      {{#if this.errorMsg}}
-        <p class="text-danger">{{this.errorMsg}}</p>
-      {{/if}}
+        {{#if this.errorMsg}}
+          <p class="text-danger">{{this.errorMsg}}</p>
+        {{/if}}
 
-      <div class="form-actions">
-        <button type="submit" class="btn btn-primary" disabled={{this.isSaving}}>
-          {{if this.isSaving "Saving..." "Save Changes"}}
-        </button>
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary" disabled={{this.isSaving}}>
+            {{if this.isSaving "Saving..." "Save Changes"}}
+          </button>
+        </div>
+      </form>
+    </div>
+
+    {{! Right: Operating Regions }}
+    {{#if this.model.regions.length}}
+      <div class="glass-panel p-6" data-test-region-settings>
+        <h3 class="font-lg font-bold mb-2">Operating Regions</h3>
+        <p class="font-sm text-muted mb-4">
+          {{#if this.isPaid}}
+            Select the regions where your company operates.
+          {{else}}
+            Free plan: select one region. Upgrade to operate in multiple regions.
+          {{/if}}
+        </p>
+
+        {{! Default Region (above the list) }}
+        {{#if this.formActiveRegions.length}}
+          <div class="mb-4">
+            <label class="font-sm font-bold text-muted uppercase" for="default-region">Default Region</label>
+            <select id="default-region" class="form-select mt-1" data-test-default-region {{on "change" (fn this.setField "formDefaultRegionCode")}}>
+              {{#each this.activeRegionObjects as |r|}}
+                <option value={{r.code}} selected={{eq r.code this.formDefaultRegionCode}}>
+                  {{r.name}} ({{r.currency}})
+                </option>
+              {{/each}}
+            </select>
+          </div>
+        {{/if}}
+
+        <label class="font-sm font-bold text-muted uppercase mb-2 block">Available Regions</label>
+
+        <div class="region-grid">
+          {{#each this.model.regions as |r|}}
+            <label class="region-checkbox" data-test-region-checkbox={{r.code}}>
+              {{#if this.isPaid}}
+                <input type="checkbox"
+                  checked={{includes this.formActiveRegions r.code}}
+                  {{on "change" (fn this.toggleRegion r.code)}} />
+              {{else}}
+                <input type="radio" name="region-select"
+                  checked={{includes this.formActiveRegions r.code}}
+                  {{on "change" (fn this.selectSingleRegion r.code)}} />
+              {{/if}}
+              <span class="region-check-label">
+                {{r.name}} <span class="text-muted font-xs">({{r.currency}})</span>
+              </span>
+            </label>
+          {{/each}}
+        </div>
       </div>
-    </form>
+    {{/if}}
   </div>
 {{else}}
   <div class="empty-state">

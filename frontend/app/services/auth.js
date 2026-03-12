@@ -3,6 +3,7 @@ import config from 'frontend/config/environment';
 
 export default class AuthService extends Service {
   @service session;
+  @service region;
   @service router;
 
   get apiBase() {
@@ -80,7 +81,13 @@ export default class AuthService extends Service {
   }
 
   async fetchJson(path, options = {}) {
-    const res = await this.authorizedFetch(`${this.apiBase}${path}`, options);
+    let finalPath = path;
+    if (this.region.activeRegion && !path.startsWith('/auth/')) {
+      const separator = path.includes('?') ? '&' : '?';
+      finalPath = `${path}${separator}regionCode=${this.region.regionCode}`;
+    }
+
+    const res = await this.authorizedFetch(`${this.apiBase}${finalPath}`, options);
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
       throw new Error(

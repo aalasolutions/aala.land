@@ -10,13 +10,15 @@ export default class WhatsappRoute extends AuthenticatedRoute {
   };
 
   async model({ page = 1, leadId = '' }) {
-    const url = leadId
-      ? `${this.auth.apiBase}/whatsapp/lead/${leadId}?page=${page}&limit=50`
-      : `${this.auth.apiBase}/whatsapp?page=${page}&limit=50`;
+    const path = leadId
+      ? `/whatsapp/lead/${leadId}?page=${page}&limit=50`
+      : `/whatsapp?page=${page}&limit=50`;
 
-    const response = await this.auth.authorizedFetch(url);
-    if (!response.ok) return { messages: [], total: 0, leadId };
-    const { data } = await response.json();
-    return { messages: data.data ?? [], total: data.total ?? 0, leadId };
+    try {
+      const json = await this.auth.fetchJson(path);
+      return { messages: json.data?.data ?? [], total: json.data?.total ?? 0, leadId };
+    } catch {
+      return { messages: [], total: 0, leadId };
+    }
   }
 }

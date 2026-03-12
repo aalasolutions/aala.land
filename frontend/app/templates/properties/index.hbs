@@ -6,48 +6,181 @@
       <h2 class="font-3xl font-bold"><Ph @icon="buildings" @size="28px" /> Properties</h2>
       <p class="text-muted mt-1">Areas, buildings, and units.</p>
     </div>
-    <div class="flex gap-3">
-      <button type="button" class="btn btn-secondary" {{on "click" this.openImport}}>
-        <Ph @icon="upload-simple" /> Bulk Import
-      </button>
-      <button type="button" class="btn btn-primary" {{on "click" this.openCreate}}>
-        <Ph @icon="plus" /> New Area
-      </button>
+    <div class="flex gap-3 x-center">
+      <div class="flex gap-1" data-test-view-toggle>
+        <button type="button" class="btn btn-sm {{if (eq this.activeView 'areas') 'btn-primary' 'btn-secondary'}}" data-test-view-areas {{on "click" (fn this.switchView "areas")}}>
+          <Ph @icon="list" /> Areas
+        </button>
+        <button type="button" class="btn btn-sm {{if (eq this.activeView 'browse') 'btn-primary' 'btn-secondary'}}" data-test-view-browse {{on "click" (fn this.switchView "browse")}}>
+          <Ph @icon="grid-four" /> Browse Units
+        </button>
+      </div>
+      {{#if (eq this.activeView "areas")}}
+        <button type="button" class="btn btn-secondary" {{on "click" this.openImport}} data-test-bulk-import>
+          <Ph @icon="upload-simple" /> Bulk Import
+        </button>
+        <button type="button" class="btn btn-primary" {{on "click" this.openCreate}} data-test-new-area>
+          <Ph @icon="plus" /> New Area
+        </button>
+      {{/if}}
     </div>
   </div>
 
-  {{#if @model.length}}
-    <div class="flex col gap-3">
-      {{#each @model as |area|}}
-        <div data-test-area-card class="glass-panel p-5 flex between x-center">
-          <div class="flex gap-6">
-            <div>
-              <h4 class="font-md font-bold">{{area.name}}</h4>
-              <p class="text-muted font-xs mt-1">{{area.location}}</p>
+  {{#if (eq this.activeView "areas")}}
+    {{!-- AREAS LIST VIEW --}}
+    {{#if @model.length}}
+      <div class="flex col gap-3">
+        {{#each @model as |area|}}
+          <div data-test-area-card class="glass-panel p-5 flex between x-center">
+            <div class="flex gap-6">
+              <div>
+                <h4 class="font-md font-bold">{{area.name}}</h4>
+                <p class="text-muted font-xs mt-1">{{area.location}}</p>
+              </div>
+              <div class="flex gap-4 text-sm">
+                <span class="text-muted">{{area.buildingCount}} Buildings</span>
+                <span class="text-muted">{{area.unitCount}} Units</span>
+              </div>
             </div>
-            <div class="flex gap-4 text-sm">
-              <span class="text-muted">{{area.buildingCount}} Buildings</span>
-              <span class="text-muted">{{area.unitCount}} Units</span>
+            <div class="flex gap-3">
+              <button type="button" class="btn btn-secondary btn-sm" {{on "click" (fn this.openEdit area)}}>
+                <Ph @icon="pencil-simple" /> Edit
+              </button>
+              <LinkTo @route="properties.detail" @model={{area.id}} class="btn btn-primary btn-sm">
+                <Ph @icon="eye" /> View
+              </LinkTo>
             </div>
           </div>
-          <div class="flex gap-3">
-            <button type="button" class="btn btn-secondary btn-sm" {{on "click" (fn this.openEdit area)}}>
-              <Ph @icon="pencil-simple" /> Edit
-            </button>
-            <LinkTo @route="properties.detail" @model={{area.id}} class="btn btn-primary btn-sm">
-              <Ph @icon="eye" /> View
-            </LinkTo>
-          </div>
-        </div>
-      {{/each}}
-    </div>
+        {{/each}}
+      </div>
+    {{else}}
+      <div class="glass-panel p-8 text-center">
+        <p class="text-muted">No property areas yet. Create your first one above.</p>
+      </div>
+    {{/if}}
   {{else}}
-    <div class="glass-panel p-8 text-center">
-      <p class="text-muted">No property areas yet. Create your first one above.</p>
+    {{!-- BROWSE UNITS VIEW --}}
+    <div class="glass-panel p-4 flex col gap-4" data-test-browse-filters>
+      <div class="flex gap-4 wrap x-center">
+        <div class="flex col gap-1">
+          <label class="font-xs text-muted">Type</label>
+          <select class="form-input" style="min-width:120px" data-test-filter-type {{on "change" this.setFilterType}}>
+            <option value="" selected={{eq this.filterType ""}}>All</option>
+            <option value="RENTAL" selected={{eq this.filterType "RENTAL"}}>Rent</option>
+            <option value="FOR_SALE" selected={{eq this.filterType "FOR_SALE"}}>Sale</option>
+          </select>
+        </div>
+        <div class="flex col gap-1">
+          <label class="font-xs text-muted">Status</label>
+          <select class="form-input" style="min-width:130px" data-test-filter-status {{on "change" this.setFilterStatus}}>
+            <option value="" selected={{eq this.filterStatus ""}}>All</option>
+            <option value="available" selected={{eq this.filterStatus "available"}}>Available</option>
+            <option value="rented" selected={{eq this.filterStatus "rented"}}>Rented</option>
+            <option value="sold" selected={{eq this.filterStatus "sold"}}>Sold</option>
+            <option value="maintenance" selected={{eq this.filterStatus "maintenance"}}>Maintenance</option>
+          </select>
+        </div>
+        <div class="flex col gap-1">
+          <label class="font-xs text-muted">Bedrooms</label>
+          <select class="form-input" style="min-width:110px" data-test-filter-beds {{on "change" this.setFilterBeds}}>
+            <option value="" selected={{eq this.filterBeds ""}}>Any</option>
+            <option value="0" selected={{eq this.filterBeds "0"}}>Studio</option>
+            <option value="1" selected={{eq this.filterBeds "1"}}>1</option>
+            <option value="2" selected={{eq this.filterBeds "2"}}>2</option>
+            <option value="3" selected={{eq this.filterBeds "3"}}>3</option>
+            <option value="4" selected={{eq this.filterBeds "4"}}>4+</option>
+          </select>
+        </div>
+        <div class="flex col gap-1">
+          <label class="font-xs text-muted">Min Price</label>
+          <input type="number" class="form-input" style="min-width:110px" placeholder="Min" value={{this.filterMinPrice}} data-test-filter-min-price {{on "input" (fn this.setField "filterMinPrice")}} {{on "change" this.applyFilters}} />
+        </div>
+        <div class="flex col gap-1">
+          <label class="font-xs text-muted">Max Price</label>
+          <input type="number" class="form-input" style="min-width:110px" placeholder="Max" value={{this.filterMaxPrice}} data-test-filter-max-price {{on "input" (fn this.setField "filterMaxPrice")}} {{on "change" this.applyFilters}} />
+        </div>
+        <div class="flex col gap-1">
+          <label class="font-xs text-muted">&nbsp;</label>
+          <button class="btn btn-secondary btn-sm" data-test-clear-filters {{on "click" this.clearFilters}}>Clear</button>
+        </div>
+      </div>
+
+      <div>
+        <label class="font-xs text-muted mb-1">Amenities</label>
+        <div class="flex gap-2 wrap">
+          {{#each this.amenityOptions as |opt|}}
+            <button type="button" class="amenity-chip {{if (includes this.filterAmenities opt.key) 'amenity-chip-active'}}" data-test-amenity-filter={{opt.key}} {{on "click" (fn this.toggleBrowseAmenity opt.key)}}>
+              <Ph @icon={{opt.icon}} /> {{opt.label}}
+            </button>
+          {{/each}}
+        </div>
+      </div>
     </div>
+
+    <p class="text-muted font-sm" data-test-browse-count>{{format-number this.browseTotal}} units found</p>
+
+    {{#if this.isLoadingBrowse}}
+      <div class="glass-panel p-8 text-center">
+        <p class="text-muted">Loading...</p>
+      </div>
+    {{else if this.browseUnits.length}}
+      <div class="browse-unit-grid" data-test-browse-grid>
+        {{#each this.browseUnits as |unit|}}
+          <LinkTo @route="properties.unit" @models={{array unit.areaId unit.id}} class="unit-browse-card glass-panel" data-test-browse-unit={{unit.id}}>
+            <div class="unit-card-photo">
+              {{#if unit.photos.length}}
+                <img src={{object-at unit.photos 0}} alt="Unit {{unit.unitNumber}}" />
+              {{else}}
+                <div class="unit-card-photo-empty"><Ph @icon="buildings" /></div>
+              {{/if}}
+            </div>
+            <div class="p-4 flex col gap-2">
+              <div class="flex between x-center">
+                <p class="font-bold">Unit {{unit.unitNumber}}</p>
+                <span class="status-badge status-{{unit.status}}">{{capitalize unit.status}}</span>
+              </div>
+              <p class="font-xs text-muted">{{unit.buildingName}} &middot; {{unit.areaName}}</p>
+              {{#if unit.price}}
+                <p class="font-lg font-bold text-success">{{format-currency unit.price}}</p>
+              {{/if}}
+              <div class="flex gap-3 font-xs text-muted">
+                {{#if unit.bedrooms}}<span><Ph @icon="bed" /> {{unit.bedrooms}} bed</span>{{/if}}
+                {{#if unit.bathrooms}}<span><Ph @icon="bathtub" /> {{unit.bathrooms}} bath</span>{{/if}}
+                {{#if unit.sqFt}}<span><Ph @icon="ruler" /> {{format-number unit.sqFt}} sqft</span>{{/if}}
+              </div>
+              {{#if unit.ownerName}}
+                <p class="font-xs text-muted"><Ph @icon="user" /> {{unit.ownerName}}</p>
+              {{/if}}
+              {{#if unit.propertyType}}
+                <span class="type-badge type-{{lowercase unit.propertyType}}">{{if (eq unit.propertyType "FOR_SALE") "Sale" "Rent"}}</span>
+              {{/if}}
+            </div>
+          </LinkTo>
+        {{/each}}
+      </div>
+
+      {{#if this.browseHasNextPage}}
+        <div class="flex center gap-4" data-test-browse-pagination>
+          <button class="btn btn-secondary btn-sm" disabled={{eq this.browsePage 1}} {{on "click" this.browsePrevPage}}>Previous</button>
+          <span class="font-sm text-muted">Page {{this.browsePage}}</span>
+          <button class="btn btn-secondary btn-sm" {{on "click" this.browseNextPage}}>Next</button>
+        </div>
+      {{else if (gt this.browsePage 1)}}
+        <div class="flex center gap-4" data-test-browse-pagination>
+          <button class="btn btn-secondary btn-sm" {{on "click" this.browsePrevPage}}>Previous</button>
+          <span class="font-sm text-muted">Page {{this.browsePage}}</span>
+        </div>
+      {{/if}}
+    {{else}}
+      <div class="glass-panel p-8 text-center">
+        <Ph @icon="magnifying-glass" />
+        <p class="text-muted mt-2">No units match your filters.</p>
+      </div>
+    {{/if}}
   {{/if}}
 </div>
 
+{{!-- Area create/edit modal (areas view only) --}}
 {{#if this.showModal}}
   <button type="button" class="modal-backdrop" aria-label="Close modal" {{on "click" this.closeModal}}></button>
   <div class="modal-panel glass-panel p-8 flex col gap-6" role="dialog">
@@ -56,6 +189,16 @@
       <button type="button" class="text-muted font-lg px-2" {{on "click" this.closeModal}}>x</button>
     </div>
     <form class="flex col gap-4" {{on "submit" this.saveArea}}>
+      {{#if this.showRegionField}}
+        <div class="flex col gap-2">
+          <label class="font-sm text-muted" for="area-region">Region</label>
+          <select id="area-region" class="form-select" data-test-region-select {{on "change" (fn this.setField "formRegionCode")}}>
+            {{#each this.region.regions as |r|}}
+              <option value={{r.code}} selected={{eq r.code this.formRegionCode}}>{{r.name}} ({{r.currency}})</option>
+            {{/each}}
+          </select>
+        </div>
+      {{/if}}
       <div class="flex col gap-2">
         <label class="font-sm text-muted" for="area-name">Area Name *</label>
         <input id="area-name" type="text"
@@ -89,6 +232,7 @@
   </div>
 {{/if}}
 
+{{!-- Bulk import modal --}}
 {{#if this.showImportModal}}
   <button type="button" class="modal-backdrop" aria-label="Close modal" {{on "click" this.closeImportModal}}></button>
   <div class="modal-panel glass-panel p-8 flex col gap-6" role="dialog" style="max-width: 600px;">

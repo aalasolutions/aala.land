@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsBoolean, MaxLength } from 'class-validator';
+import { IsString, IsOptional, IsBoolean, IsArray, MaxLength } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
 export class UpdateCompanyDto {
@@ -12,4 +12,16 @@ export class UpdateCompanyDto {
   @IsBoolean()
   @IsOptional()
   isActive?: boolean;
+
+  @ApiPropertyOptional({ example: ['dubai', 'abu-dhabi'], description: 'Array of region codes from MENA_REGIONS' })
+  @IsArray()
+  @IsString({ each: true })
+  @IsOptional()
+  activeRegions?: string[];
+
+  @ApiPropertyOptional({ example: 'dubai', description: 'Default region code, must be in activeRegions' })
+  @IsString()
+  @IsOptional()
+  @MaxLength(50)
+  defaultRegionCode?: string;
 }

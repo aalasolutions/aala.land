@@ -3,6 +3,7 @@ import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger'
 import { PropertiesService } from './properties.service';
 import { MediaService } from './media.service';
 import { PresignedUrlDto } from './dto/presigned-url.dto';
+import { CreateMediaDto } from './dto/create-media.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '@shared/guards/roles.guard';
 import { Roles } from '@shared/decorators/roles.decorator';
@@ -32,6 +33,40 @@ export class PropertiesController {
         return this.mediaService.getPresignedUploadUrl(req.user.companyId, dto);
     }
 
+    @Post('media')
+    @Roles(Role.COMPANY_ADMIN)
+    @ApiOperation({ summary: 'Create a media record after S3 upload. Generates thumbnail for images.' })
+    createMedia(@Body() dto: CreateMediaDto, @Request() req) {
+        return this.mediaService.createMedia(req.user.companyId, dto);
+    }
+
+    @Get('units/:unitId/media')
+    @ApiOperation({ summary: 'List all media for a unit' })
+    findUnitMedia(@Param('unitId', ParseUUIDPipe) unitId: string, @Request() req) {
+        return this.mediaService.findByUnit(req.user.companyId, unitId);
+    }
+
+    @Get('buildings/:buildingId/media')
+    @ApiOperation({ summary: 'List all media for a building' })
+    findBuildingMedia(@Param('buildingId', ParseUUIDPipe) buildingId: string, @Request() req) {
+        return this.mediaService.findByBuilding(req.user.companyId, buildingId);
+    }
+
+    @Patch('media/:id/set-primary')
+    @Roles(Role.COMPANY_ADMIN)
+    @ApiOperation({ summary: 'Set a media item as primary (unsets others for the same unit/building)' })
+    setPrimary(@Param('id', ParseUUIDPipe) id: string, @Request() req) {
+        return this.mediaService.setPrimary(id, req.user.companyId);
+    }
+
+    @Delete('media/:id')
+    @Roles(Role.COMPANY_ADMIN)
+    @HttpCode(HttpStatus.NO_CONTENT)
+    @ApiOperation({ summary: 'Delete a media item and its S3 files' })
+    deleteMedia(@Param('id', ParseUUIDPipe) id: string, @Request() req) {
+        return this.mediaService.deleteMedia(id, req.user.companyId);
+    }
+
     @Post('bulk-import')
     @Roles(Role.COMPANY_ADMIN)
     @ApiOperation({ summary: 'Bulk import units from CSV (COMPANY_ADMIN+)' })
@@ -51,12 +86,14 @@ export class PropertiesController {
     @ApiOperation({ summary: 'List all property areas (paginated)' })
     @ApiQuery({ name: 'page', required: false, type: Number })
     @ApiQuery({ name: 'limit', required: false, type: Number })
+    @ApiQuery({ name: 'regionCode', required: false, type: String })
     findAllAreas(
         @Request() req,
         @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
         @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
+        @Query('regionCode') regionCode?: string,
     ) {
-        return this.propertiesService.findAllAreas(req.user.companyId, page, limit);
+        return this.propertiesService.findAllAreas(req.user.companyId, page, limit, regionCode);
     }
 
     @Get('areas/:id')
@@ -118,18 +155,47 @@ export class PropertiesController {
 
     // Units
     @Get('units')
-    @ApiOperation({ summary: 'List all units across all buildings (paginated, with building/area names). Filter by amenities with comma-separated values.' })
+    @ApiOperation({ summary: 'List all units (paginated, filterable). Supports amenities, propertyType, status, price range, bedrooms, regionCode.' })
     @ApiQuery({ name: 'page', required: false, type: Number })
     @ApiQuery({ name: 'limit', required: false, type: Number })
-    @ApiQuery({ name: 'amenities', required: false, type: String, description: 'Comma-separated amenity keys (e.g. free_parking,gym)' })
+    @ApiQuery({ name: 'amenities', required: false, type: String, description: 'Comma-separated amenity keys' })
+    @ApiQuery({ name: 'propertyType', required: false, type: String })
+    @ApiQuery({ name: 'status', required: false, type: String })
+    @ApiQuery({ name: 'minPrice', required: false, type: Number })
+    @ApiQuery({ name: 'maxPrice', required: false, type: Number })
+    @ApiQuery({ name: 'minBeds', required: false, type: Number })
+    @ApiQuery({ name: 'maxBeds', required: false, type: Number })
+    @ApiQuery({ name: 'regionCode', required: false, type: String })
     findAllUnits(
         @Request() req,
         @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
-        @Query('limit', new DefaultValuePipe(100), ParseIntPipe) limit: number,
+        @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
         @Query('amenities') amenitiesStr?: string,
+        @Query('propertyType') propertyType?: string,
+        @Query('status') status?: string,
+        @Query('minPrice') minPrice?: string,
+        @Query('maxPrice') maxPrice?: string,
+        @Query('minBeds') minBeds?: string,
+        @Query('maxBeds') maxBeds?: string,
+        @Query('regionCode') regionCode?: string,
     ) {
-        const amenities = amenitiesStr ? amenitiesStr.split(',').map(a => a.trim()).filter(Boolean) : undefined;
-        return this.propertiesService.findAllUnits(req.user.companyId, page, limit, amenities);
+        const filters = {
+            amenities: amenitiesStr ? amenitiesStr.split(',').map(a => a.trim()).filter(Boolean) : undefined,
+            propertyType: propertyType || undefined,
+            status: status || undefined,
+            minPrice: minPrice ? Number(minPrice) : undefined,
+            maxPrice: maxPrice ? Number(maxPrice) : undefined,
+            minBeds: minBeds ? Number(minBeds) : undefined,
+            maxBeds: maxBeds ? Number(maxBeds) : undefined,
+            regionCode: regionCode || undefined,
+        };
+        return this.propertiesService.findAllUnits(req.user.companyId, page, limit, filters);
+    }
+
+    @Get('units/:id')
+    @ApiOperation({ summary: 'Get unit by ID with building, area, and owner relations' })
+    findOneUnit(@Param('id', ParseUUIDPipe) id: string, @Request() req) {
+        return this.propertiesService.findOneUnit(id, req.user.companyId);
     }
 
     @Post('units')

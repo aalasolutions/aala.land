@@ -1,6 +1,8 @@
 import { Injectable, UnauthorizedException, BadRequestException, Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { UsersService } from '../users/users.service';
+import { CompaniesService } from '../companies/companies.service';
+import { resolveRegions } from '@shared/constants/regions';
 import * as bcrypt from 'bcryptjs';
 import * as crypto from 'crypto';
 
@@ -11,6 +13,7 @@ export class AuthService {
     constructor(
         private readonly usersService: UsersService,
         private readonly jwtService: JwtService,
+        private readonly companiesService: CompaniesService,
     ) { }
 
     async validateUser(email: string, pass: string): Promise<any> {
@@ -29,6 +32,9 @@ export class AuthService {
             companyId: user.companyId,
             role: user.role,
         };
+
+        const company = await this.companiesService.findOne(user.companyId);
+
         return {
             accessToken: this.jwtService.sign(payload),
             refreshToken: this.jwtService.sign(payload, { expiresIn: '7d' }),
@@ -39,6 +45,8 @@ export class AuthService {
                 role: user.role,
                 companyId: user.companyId,
             },
+            regions: resolveRegions(company.activeRegions),
+            defaultRegionCode: company.defaultRegionCode,
         };
     }
 

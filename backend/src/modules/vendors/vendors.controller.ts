@@ -32,14 +32,16 @@ export class VendorsController {
   @ApiQuery({ name: 'limit', required: false, type: Number })
   @ApiQuery({ name: 'search', required: false, type: String })
   @ApiQuery({ name: 'specialty', required: false, enum: VendorSpecialty })
+  @ApiQuery({ name: 'regionCode', required: false, type: String })
   findAll(
     @Request() req: any,
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
     @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
     @Query('search') search?: string,
     @Query('specialty') specialty?: VendorSpecialty,
+    @Query('regionCode') regionCode?: string,
   ) {
-    return this.vendorsService.findAll(req.user.companyId, page, limit, search, specialty);
+    return this.vendorsService.findAll(req.user.companyId, page, limit, search, specialty, regionCode);
   }
 
   @Get(':id')

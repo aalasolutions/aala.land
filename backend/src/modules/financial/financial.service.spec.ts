@@ -138,7 +138,6 @@ describe('FinancialService', () => {
       expect(result.totalIncome).toBe(15000);
       expect(result.totalExpense).toBe(3000);
       expect(result.net).toBe(12000);
-      expect(result.currency).toBe('AED');
     });
   });
 

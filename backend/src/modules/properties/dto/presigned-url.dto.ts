@@ -10,7 +10,14 @@ export class PresignedUrlDto {
   @ApiProperty({ description: 'MIME content type', example: 'image/jpeg' })
   @IsString()
   @IsNotEmpty()
-  @IsIn(['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'application/pdf'])
+  @IsIn([
+    'image/jpeg', 'image/png', 'image/webp', 'image/gif',
+    'application/pdf',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/vnd.ms-excel',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.document',
+  ])
   contentType: string;
 
   @ApiProperty({ description: 'Unit ID this media belongs to', required: false })

@@ -11,27 +11,27 @@
     <div class="kpi-grid">
       <div class="glass-panel p-5 text-center">
         <p class="font-xs text-muted uppercase">Total Leads</p>
-        <p class="font-3xl font-bold mt-1">{{@model.kpis.totalLeads}}</p>
+        <p class="font-3xl font-bold mt-1">{{format-number @model.kpis.totalLeads}}</p>
       </div>
       <div class="glass-panel p-5 text-center">
         <p class="font-xs text-muted uppercase">Won Leads</p>
-        <p class="font-3xl font-bold mt-1 text-success">{{@model.kpis.wonLeads}}</p>
+        <p class="font-3xl font-bold mt-1 text-success">{{format-number @model.kpis.wonLeads}}</p>
       </div>
       <div class="glass-panel p-5 text-center">
         <p class="font-xs text-muted uppercase">Total Units</p>
-        <p class="font-3xl font-bold mt-1">{{@model.kpis.totalUnits}}</p>
+        <p class="font-3xl font-bold mt-1">{{format-number @model.kpis.totalUnits}}</p>
       </div>
       <div class="glass-panel p-5 text-center">
         <p class="font-xs text-muted uppercase">Monthly Revenue</p>
-        <p class="font-3xl font-bold mt-1">AED {{format-number @model.kpis.monthlyRevenue}}</p>
+        <p class="font-3xl font-bold mt-1">{{format-currency @model.kpis.monthlyRevenue}}</p>
       </div>
       <div class="glass-panel p-5 text-center">
         <p class="font-xs text-muted uppercase">Active Leases</p>
-        <p class="font-3xl font-bold mt-1">{{@model.kpis.activeLeases}}</p>
+        <p class="font-3xl font-bold mt-1">{{format-number @model.kpis.activeLeases}}</p>
       </div>
       <div class="glass-panel p-5 text-center">
         <p class="font-xs text-muted uppercase">Pending Cheques</p>
-        <p class="font-3xl font-bold mt-1">{{@model.kpis.pendingCheques}}</p>
+        <p class="font-3xl font-bold mt-1">{{format-number @model.kpis.pendingCheques}}</p>
       </div>
     </div>
   {{/if}}
@@ -67,7 +67,7 @@
       <div class="funnel-grid">
         {{#each @model.funnel as |stage|}}
           <div class="funnel-stage text-center">
-            <p class="font-2xl font-bold">{{stage.count}}</p>
+            <p class="font-2xl font-bold">{{format-number stage.count}}</p>
             <p class="font-xs text-muted uppercase mt-1">{{stage.stage}}</p>
           </div>
         {{/each}}
@@ -100,15 +100,15 @@
                     <span class="font-sm">{{truncate-id agent.agentId}}</span>
                   </div>
                 </td>
-                <td>{{agent.leadsAssigned}}</td>
-                <td class="text-success font-bold">{{agent.leadsWon}}</td>
-                <td class="text-danger">{{agent.leadsLost}}</td>
+                <td>{{format-number agent.leadsAssigned}}</td>
+                <td class="text-success font-bold">{{format-number agent.leadsWon}}</td>
+                <td class="text-danger">{{format-number agent.leadsLost}}</td>
                 <td>
                   <span class="font-bold {{if (gt agent.conversionRate 50) 'text-success' (if (gt agent.conversionRate 25) 'text-warning' 'text-danger')}}">
                     {{agent.conversionRate}}%
                   </span>
                 </td>
-                <td class="font-bold">AED {{format-number agent.commissionsEarned}}</td>
+                <td class="font-bold">{{format-currency agent.commissionsEarned}}</td>
               </tr>
             {{/each}}
           </tbody>

@@ -27,9 +27,13 @@ export class CommissionsService {
     companyId: string,
     page = 1,
     limit = 20,
+    regionCode?: string,
   ): Promise<{ data: Commission[]; total: number; page: number; limit: number }> {
+    const where: any = { companyId };
+    if (regionCode) where.regionCode = regionCode;
+
     const [data, total] = await this.commissionRepository.findAndCount({
-      where: { companyId },
+      where,
       skip: (page - 1) * limit,
       take: limit,
       order: { createdAt: 'DESC' },

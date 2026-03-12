@@ -43,9 +43,14 @@
                         <span class="type-badge type-inherited">{{if (eq building.propertyType 'FOR_SALE') 'Sale' 'Rent'}}</span>
                       {{/if}}
                     </div>
-                    <button type="button" class="btn btn-secondary btn-sm" {{on "click" (fn this.openEditUnit unit building.id building.propertyType)}}>
-                      Edit
-                    </button>
+                    <div class="flex gap-2">
+                      <LinkTo @route="properties.unit" @models={{array @model.area.id unit.id}} class="btn btn-primary btn-xs" data-test-view-unit>
+                        <Ph @icon="eye" /> View
+                      </LinkTo>
+                      <button type="button" class="btn btn-secondary btn-xs" {{on "click" (fn this.openEditUnit unit building.id building.propertyType)}}>
+                        Edit
+                      </button>
+                    </div>
                   </div>
                   <p class="text-muted font-xs">{{capitalize unit.status}}</p>
                   <div class="flex gap-2 font-xs text-muted">
@@ -56,11 +61,11 @@
                       <span>{{unit.bathrooms}} bath</span>
                     {{/if}}
                     {{#if unit.sqFt}}
-                      <span>{{unit.sqFt}} sqft</span>
+                      <span>{{format-number unit.sqFt}} sqft</span>
                     {{/if}}
                   </div>
                   {{#if unit.price}}
-                    <p class="text-success font-xs">AED {{format-number unit.price}}</p>
+                    <p class="text-success font-xs">{{format-currency unit.price}}</p>
                   {{/if}}
                   {{#if unit.amenities.length}}
                     <div class="flex gap-1 wrap mt-1">
@@ -175,7 +180,7 @@
       </div>
       <div class="flex gap-4">
         <div class="flex col gap-2 flex-1">
-          <label class="font-sm text-muted" for="u-price">Price (AED)</label>
+          <label class="font-sm text-muted" for="u-price">Price</label>
           <input id="u-price" type="number" min="0"
             class="form-input"
             placeholder="e.g. 150000" value={{this.formUnitPrice}} {{on "input" (fn this.setField "formUnitPrice")}} />

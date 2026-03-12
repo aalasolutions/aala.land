@@ -18,7 +18,7 @@
           <div data-test-lease-row class="flex between x-center p-4 rounded-xl bg-white@02 border border-white@05">
             <div class="flex col gap-1">
               <p class="font-sm font-bold">{{lease.tenantName}}</p>
-              <p class="text-muted font-xs">{{lease.type}} - AED {{format-number lease.monthlyRent}}/mo</p>
+              <p class="text-muted font-xs">{{lease.type}} - {{format-currency lease.monthlyRent}}/mo</p>
               <p class="text-muted font-xs">{{lease.startDate}} to {{lease.endDate}}</p>
             </div>
             <div class="flex x-center gap-3">
@@ -120,13 +120,13 @@
       </div>
       <div class="flex gap-4">
         <div class="flex col gap-2 flex-1">
-          <label class="font-sm text-muted" for="lease-rent">Monthly Rent (AED) *</label>
+          <label class="font-sm text-muted" for="lease-rent">Monthly Rent *</label>
           <input id="lease-rent" type="number" min="0" step="0.01"
             class="form-input"
             placeholder="e.g. 8500" value={{this.formMonthlyRent}} required {{on "input" (fn this.setField "formMonthlyRent")}} />
         </div>
         <div class="flex col gap-2 flex-1">
-          <label class="font-sm text-muted" for="lease-deposit">Security Deposit (AED)</label>
+          <label class="font-sm text-muted" for="lease-deposit">Security Deposit</label>
           <input id="lease-deposit" type="number" min="0" step="0.01"
             class="form-input"
             placeholder="e.g. 17000" value={{this.formSecurityDeposit}} {{on "input" (fn this.setField "formSecurityDeposit")}} />

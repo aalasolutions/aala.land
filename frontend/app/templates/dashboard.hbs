@@ -1,36 +1,66 @@
 {{page-title "Dashboard"}}
 
-<div data-test-dashboard class="flex col gap-8">
-  <div>
-    <h2 class="font-3xl font-bold"><Ph @icon="squares-four" @size="28px" /> Command Center</h2>
-    <p class="text-muted mt-1">Live overview of your property empire.</p>
+<div data-test-dashboard class="dashboard-page">
+  {{! Header }}
+  <div class="dashboard-header">
+    <div>
+      <h2 class="dashboard-title"><Ph @icon="squares-four" @size="28px" /> Command Center</h2>
+      <p class="dashboard-subtitle">Live overview of your property operation.</p>
+    </div>
+    <div class="dashboard-header-right">
+      <span class="dashboard-region-badge">
+        <Ph @icon="globe" @size="14px" /> {{this.regionLabel}}
+      </span>
+    </div>
   </div>
 
+  {{! KPI Cards }}
   {{#if @model.kpis}}
-    <div class="grid cols-3 gap-6">
-      <div data-test-kpi="total-units" class="glass-panel p-6">
-        <p class="text-muted font-sm uppercase tracking-wider mb-1"><Ph @icon="buildings" /> Total Units</p>
-        <h3 class="font-4xl font-bold">{{@model.kpis.totalUnits}}</h3>
+    <div class="kpi-grid">
+      <div data-test-kpi="total-units" class="kpi-card kpi-primary">
+        <div class="kpi-icon-wrap kpi-icon-primary"><Ph @icon="buildings" @size="20px" /></div>
+        <p class="kpi-label">Total Units</p>
+        <h3 class="kpi-value">{{format-number @model.kpis.totalUnits}}</h3>
       </div>
-      <div data-test-kpi="total-leads" class="glass-panel p-6">
-        <p class="text-muted font-sm uppercase tracking-wider mb-1"><Ph @icon="funnel" /> Active Leads</p>
-        <h3 class="font-4xl font-bold">{{@model.kpis.totalLeads}}</h3>
+      <div data-test-kpi="total-leads" class="kpi-card kpi-coral">
+        <div class="kpi-icon-wrap kpi-icon-coral"><Ph @icon="funnel" @size="20px" /></div>
+        <p class="kpi-label">Active Leads</p>
+        <h3 class="kpi-value">{{format-number @model.kpis.totalLeads}}</h3>
       </div>
-      <div data-test-kpi="monthly-revenue" class="glass-panel p-6">
-        <p class="text-muted font-sm uppercase tracking-wider mb-1"><Ph @icon="currency-dollar" /> Monthly Revenue</p>
-        <h3 class="font-4xl font-bold">AED {{format-number @model.kpis.monthlyRevenue}}</h3>
+      <div data-test-kpi="monthly-revenue" class="kpi-card kpi-primary">
+        <div class="kpi-icon-wrap kpi-icon-primary"><Ph @icon="currency-dollar" @size="20px" /></div>
+        <p class="kpi-label">Monthly Revenue</p>
+        <h3 class="kpi-value">{{format-currency @model.kpis.monthlyRevenue}}</h3>
       </div>
-      <div data-test-kpi="won-leads" class="glass-panel p-6">
-        <p class="text-muted font-sm uppercase tracking-wider mb-1"><Ph @icon="trophy" /> Deals Won</p>
-        <h3 class="font-4xl font-bold">{{@model.kpis.wonLeads}}</h3>
+      <div data-test-kpi="occupancy" class="kpi-card kpi-success">
+        <div class="kpi-icon-wrap kpi-icon-success"><Ph @icon="chart-pie" @size="20px" /></div>
+        <p class="kpi-label">Occupancy Rate</p>
+        <h3 class="kpi-value">
+          {{#if @model.kpis.totalUnits}}
+            {{this.occupancyRate}}%
+          {{else}}
+            0%
+          {{/if}}
+        </h3>
       </div>
-      <div data-test-kpi="active-leases" class="glass-panel p-6">
-        <p class="text-muted font-sm uppercase tracking-wider mb-1"><Ph @icon="file-text" /> Active Leases</p>
-        <h3 class="font-4xl font-bold">{{@model.kpis.activeLeases}}</h3>
+    </div>
+
+    {{! Second row: Won + Leases + Cheques }}
+    <div class="kpi-grid kpi-grid-3">
+      <div data-test-kpi="won-leads" class="kpi-card kpi-success">
+        <div class="kpi-icon-wrap kpi-icon-success"><Ph @icon="trophy" @size="20px" /></div>
+        <p class="kpi-label">Deals Won</p>
+        <h3 class="kpi-value">{{format-number @model.kpis.wonLeads}}</h3>
       </div>
-      <div data-test-kpi="pending-cheques" class="glass-panel p-6">
-        <p class="text-muted font-sm uppercase tracking-wider mb-1"><Ph @icon="checks" /> Pending Cheques</p>
-        <h3 class="font-4xl font-bold">{{@model.kpis.pendingCheques}}</h3>
+      <div data-test-kpi="active-leases" class="kpi-card kpi-primary">
+        <div class="kpi-icon-wrap kpi-icon-primary"><Ph @icon="file-text" @size="20px" /></div>
+        <p class="kpi-label">Active Leases</p>
+        <h3 class="kpi-value">{{format-number @model.kpis.activeLeases}}</h3>
+      </div>
+      <div data-test-kpi="pending-cheques" class="kpi-card kpi-warning">
+        <div class="kpi-icon-wrap kpi-icon-warning"><Ph @icon="checks" @size="20px" /></div>
+        <p class="kpi-label">Pending Cheques</p>
+        <h3 class="kpi-value">{{format-number @model.kpis.pendingCheques}}</h3>
       </div>
     </div>
   {{else}}
@@ -38,4 +68,58 @@
       <p class="text-muted">Loading KPIs...</p>
     </div>
   {{/if}}
+
+  {{! Bottom row: Activity Feed + Pipeline }}
+  <div class="dashboard-panels">
+    {{! Activity Feed }}
+    <div class="dashboard-panel">
+      <div class="panel-header">
+        <h3 class="panel-title"><Ph @icon="lightning" @size="18px" /> Recent Activity</h3>
+      </div>
+      <div class="activity-feed">
+        {{#each @model.activity as |item|}}
+          <div class="activity-item">
+            <span class="activity-dot activity-dot-{{this.activityColor item.entityType}}"></span>
+            <div class="activity-content">
+              <span class="activity-text">{{item.action}} {{item.entityType}}</span>
+              <span class="activity-time">{{this.timeAgo item.createdAt}}</span>
+            </div>
+          </div>
+        {{else}}
+          <div class="activity-empty">
+            <Ph @icon="clock" @size="24px" />
+            <p>No recent activity</p>
+          </div>
+        {{/each}}
+      </div>
+    </div>
+
+    {{! Pipeline Funnel }}
+    <div class="dashboard-panel">
+      <div class="panel-header">
+        <h3 class="panel-title"><Ph @icon="funnel" @size="18px" /> Lead Pipeline</h3>
+      </div>
+      <div class="pipeline-bars">
+        {{#each @model.pipeline as |stage|}}
+          <div class="pipeline-stage">
+            <div class="pipeline-stage-header">
+              <span class="pipeline-stage-name">{{stage.stage}}</span>
+              <span class="pipeline-stage-count">{{stage.count}}</span>
+            </div>
+            <div class="pipeline-bar-track">
+              <div
+                class="pipeline-bar-fill pipeline-bar-{{this.pipelineColor stage.stage}}"
+                style="width: {{this.pipelineWidth stage.count}}%"
+              ></div>
+            </div>
+          </div>
+        {{else}}
+          <div class="activity-empty">
+            <Ph @icon="funnel" @size="24px" />
+            <p>No leads in pipeline</p>
+          </div>
+        {{/each}}
+      </div>
+    </div>
+  </div>
 </div>
