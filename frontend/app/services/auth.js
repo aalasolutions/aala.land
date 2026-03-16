@@ -62,13 +62,17 @@ export default class AuthService extends Service {
   }
 
   async authorizedFetch(url, options = {}) {
+    const headers = {
+      ...(options.headers ?? {}),
+      Authorization: `Bearer ${this.token}`,
+    };
+    // Only set Content-Type if body is not FormData (browser handles it for FormData)
+    if (options.body && !(options.body instanceof FormData)) {
+      headers['Content-Type'] = 'application/json';
+    }
     const response = await fetch(url, {
       ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        ...(options.headers ?? {}),
-        Authorization: `Bearer ${this.token}`,
-      },
+      headers,
     });
 
     if (response.status === 401) {
