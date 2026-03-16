@@ -138,12 +138,13 @@ export class NotificationsService {
         externalId: messageId,
       };
     } catch (err) {
-      this.logger.error(`Email send failed for ${dto.email}: ${err.message}`);
+      const message = err instanceof Error ? err.message : String(err);
+      this.logger.error(`Email send failed for ${dto.email}: ${message}`);
       return {
         channel: NotificationChannel.EMAIL,
         recipient: dto.email,
         status: NotificationStatus.FAILED,
-        error: err.message,
+        error: message,
       };
     }
   }
@@ -331,12 +332,13 @@ export class NotificationsService {
         externalId: data.sid,
       };
     } catch (err) {
-      this.logger.error(`SMS send failed for ${dto.phone}: ${err.message}`);
+      const message = err instanceof Error ? err.message : String(err);
+      this.logger.error(`SMS send failed for ${dto.phone}: ${message}`);
       return {
         channel: NotificationChannel.SMS,
         recipient: dto.phone,
         status: NotificationStatus.FAILED,
-        error: err.message,
+        error: message,
       };
     }
   }
