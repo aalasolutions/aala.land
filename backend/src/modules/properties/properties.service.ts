@@ -280,8 +280,9 @@ export class PropertiesService {
                 await this.unitRepository.save(unit);
                 results.created++;
             } catch (err) {
+                const message = err instanceof Error ? err.message : String(err);
                 results.failed++;
-                results.errors.push(`Row ${i}: ${err.message}`);
+                results.errors.push(`Row ${i}: ${message}`);
             }
         }
 
