@@ -75,12 +75,12 @@ export class CreateLeadDto {
   budgetMax?: number;
 
   @ApiPropertyOptional({ example: 'uuid-of-property-area' })
-  @IsString()
+  @IsUUID()
   @IsOptional()
   propertyId?: string;
 
   @ApiPropertyOptional({ example: 'uuid-of-unit' })
-  @IsString()
+  @IsUUID()
   @IsOptional()
   unitId?: string;
 
