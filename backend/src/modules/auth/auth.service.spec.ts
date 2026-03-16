@@ -85,7 +85,7 @@ describe('AuthService', () => {
       const result = await service.validateUser('admin@test.com', 'correct-password');
 
       expect(result).not.toHaveProperty('password');
-      expect(result.email).toBe('admin@test.com');
+      expect(result!.email).toBe('admin@test.com');
     });
 
     it('returns null when user not found', async () => {

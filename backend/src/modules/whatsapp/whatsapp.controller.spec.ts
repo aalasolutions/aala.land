@@ -3,6 +3,7 @@ import { WhatsappController } from './whatsapp.controller';
 import { WhatsappService } from './whatsapp.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { MessageDirection, MessageStatus } from './entities/whatsapp-message.entity';
+import * as crypto from 'crypto';
 
 describe('WhatsappController', () => {
   let controller: WhatsappController;
@@ -64,11 +65,24 @@ describe('WhatsappController', () => {
   });
 
   describe('webhook', () => {
+    const originalEnv = process.env;
+
+    beforeEach(() => {
+      process.env = { ...originalEnv, WHATSAPP_APP_SECRET: 'test-app-secret' };
+    });
+
+    afterEach(() => {
+      process.env = originalEnv;
+    });
+
     it('processes incoming webhook', async () => {
       service.handleWebhook.mockResolvedValue({ received: true });
 
       const payload = { object: 'whatsapp_business_account', entry: [] };
-      const result = await controller.webhook(payload, companyId);
+      const rawBody = Buffer.from(JSON.stringify(payload));
+      const signature = 'sha256=' + crypto.createHmac('sha256', 'test-app-secret').update(rawBody).digest('hex');
+      const mockReq = { rawBody } as any;
+      const result = await controller.webhook(payload, companyId, signature, mockReq);
 
       expect(service.handleWebhook).toHaveBeenCalledWith(companyId, payload);
       expect(result).toEqual({ received: true });
@@ -77,7 +91,10 @@ describe('WhatsappController', () => {
     it('uses system as fallback when no company_id query param', async () => {
       service.handleWebhook.mockResolvedValue({ received: true });
 
-      await controller.webhook({}, undefined as any);
+      const rawBody = Buffer.from('{}');
+      const signature = 'sha256=' + crypto.createHmac('sha256', 'test-app-secret').update(rawBody).digest('hex');
+      const mockReq = { rawBody } as any;
+      await controller.webhook({}, undefined as any, signature, mockReq);
 
       expect(service.handleWebhook).toHaveBeenCalledWith('system', {});
     });

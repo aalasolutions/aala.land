@@ -153,10 +153,10 @@ describe('NotificationsService', () => {
       repo.findOne.mockResolvedValue(unread);
       repo.save.mockResolvedValue({ ...unread, isRead: true, readAt: expect.any(Date) } as Notification);
 
-      const result = await service.markAsRead('notif-uuid-1', companyId);
+      const result = await service.markAsRead('notif-uuid-1', companyId, userId);
 
       expect(repo.findOne).toHaveBeenCalledWith({
-        where: { id: 'notif-uuid-1', companyId },
+        where: { id: 'notif-uuid-1', companyId, userId },
       });
       expect(repo.save).toHaveBeenCalled();
       expect(result.isRead).toBe(true);
@@ -165,13 +165,13 @@ describe('NotificationsService', () => {
     it('throws NotFoundException when notification not found', async () => {
       repo.findOne.mockResolvedValue(null);
 
-      await expect(service.markAsRead('bad-id', companyId)).rejects.toThrow(NotFoundException);
+      await expect(service.markAsRead('bad-id', companyId, userId)).rejects.toThrow(NotFoundException);
     });
 
     it('throws NotFoundException for wrong company', async () => {
       repo.findOne.mockResolvedValue(null);
 
-      await expect(service.markAsRead('notif-uuid-1', 'other-company')).rejects.toThrow(NotFoundException);
+      await expect(service.markAsRead('notif-uuid-1', 'other-company', userId)).rejects.toThrow(NotFoundException);
     });
   });
 

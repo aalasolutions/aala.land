@@ -81,7 +81,7 @@ describe('MaintenanceController', () => {
 
       const result = await controller.getCostSummary(mockReq);
 
-      expect(service.getCostSummary).toHaveBeenCalledWith(companyId);
+      expect(service.getCostSummary).toHaveBeenCalledWith(companyId, undefined);
       expect(result).toEqual(summary);
     });
   });

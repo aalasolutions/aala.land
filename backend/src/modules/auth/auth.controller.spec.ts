@@ -54,7 +54,17 @@ describe('AuthController', () => {
 
   describe('login', () => {
     it('returns tokens when credentials are valid', async () => {
-      authService.validateUser.mockResolvedValue({ id: 'user-uuid-1', email: 'admin@test.com' });
+      authService.validateUser.mockResolvedValue({
+        id: 'user-uuid-1',
+        email: 'admin@test.com',
+        name: 'Test Admin',
+        role: 'admin',
+        companyId: 'company-uuid-1',
+        isActive: true,
+        mustChangePassword: false,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      } as any);
       authService.login.mockResolvedValue(mockLoginResponse as any);
 
       const result = await controller.login({ email: 'admin@test.com', password: 'pass' });

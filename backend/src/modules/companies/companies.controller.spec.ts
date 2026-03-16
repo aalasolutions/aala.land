@@ -9,6 +9,8 @@ describe('CompaniesController', () => {
   let controller: CompaniesController;
   let service: jest.Mocked<CompaniesService>;
 
+  const mockReq = { user: { companyId: 'company-uuid-1', role: 'company_admin' } };
+
   const mockCompany = {
     id: 'company-uuid-1',
     name: 'Test Company',
@@ -77,7 +79,7 @@ describe('CompaniesController', () => {
     it('returns a company by id', async () => {
       service.findOne.mockResolvedValue(mockCompany as any);
 
-      const result = await controller.findOne('company-uuid-1');
+      const result = await controller.findOne('company-uuid-1', mockReq);
 
       expect(service.findOne).toHaveBeenCalledWith('company-uuid-1');
       expect(result).toEqual(mockCompany);
@@ -86,7 +88,7 @@ describe('CompaniesController', () => {
     it('propagates NotFoundException when company not found', async () => {
       service.findOne.mockRejectedValue(new NotFoundException());
 
-      await expect(controller.findOne('bad-id')).rejects.toThrow(NotFoundException);
+      await expect(controller.findOne('company-uuid-1', mockReq)).rejects.toThrow(NotFoundException);
     });
   });
 
@@ -94,7 +96,7 @@ describe('CompaniesController', () => {
     it('updates a company', async () => {
       service.update.mockResolvedValue({ ...mockCompany, name: 'Updated' } as any);
 
-      const result = await controller.update('company-uuid-1', { name: 'Updated' });
+      const result = await controller.update('company-uuid-1', { name: 'Updated' }, mockReq);
 
       expect(service.update).toHaveBeenCalledWith('company-uuid-1', { name: 'Updated' });
       expect(result.name).toBe('Updated');
@@ -109,8 +111,10 @@ describe('CompaniesController', () => {
       expect(result.length).toBeGreaterThan(0);
       const dubai = result.find((r: any) => r.code === 'dubai');
       expect(dubai).toBeDefined();
-      expect(dubai.currency).toBe('AED');
-      expect(dubai.country).toBe('AE');
+      if (dubai) {
+        expect(dubai.currency).toBe('AED');
+        expect(dubai.country).toBe('AE');
+      }
     });
   });
 });

@@ -10,6 +10,7 @@ import { AuditAction } from './dto/query-audit-logs.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '@shared/guards/roles.guard';
 import { Role } from '@shared/enums/roles.enum';
+import { ResponseInterceptor } from '@shared/interceptors/response.interceptor';
 
 describe('AuditController (e2e)', () => {
   let app: INestApplication;
@@ -81,6 +82,7 @@ describe('AuditController (e2e)', () => {
 
     app = moduleFixture.createNestApplication();
     app.useGlobalPipes(new ValidationPipe({ whitelist: true }));
+    app.useGlobalInterceptors(new ResponseInterceptor());
     await app.init();
 
     auditService = moduleFixture.get<AuditService>(AuditService);

@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { DocumentsController } from './documents.controller';
 import { DocumentsService } from './documents.service';
+import { MediaService } from '../properties/media.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { DocumentCategory, DocumentAccessLevel } from '../properties/entities/property-document.entity';
 
@@ -41,6 +42,12 @@ describe('DocumentsController', () => {
             update: jest.fn(),
             remove: jest.fn(),
             getVersionHistory: jest.fn(),
+          },
+        },
+        {
+          provide: MediaService,
+          useValue: {
+            getPresignedUploadUrl: jest.fn(),
           },
         },
       ],

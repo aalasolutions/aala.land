@@ -55,7 +55,7 @@ describe('ReportsController', () => {
 
       const result = await controller.getDashboard(mockReq);
 
-      expect(service.getDashboardKpis).toHaveBeenCalledWith(companyId);
+      expect(service.getDashboardKpis).toHaveBeenCalledWith(companyId, undefined);
       expect(result).toEqual(mockKpis);
     });
   });
@@ -63,13 +63,13 @@ describe('ReportsController', () => {
   describe('getAgentPerformance', () => {
     it('returns agent performance for company', async () => {
       const mockPerf = [
-        { agentId: 'agent-1', leadsAssigned: 5, leadsWon: 3, leadsLost: 1, conversionRate: 60, commissionsEarned: 2000, currency: 'AED' },
+        { agentId: 'agent-1', agentName: 'Agent One', leadsAssigned: 5, leadsWon: 3, leadsLost: 1, conversionRate: 60, commissionsEarned: 2000, currency: 'AED' },
       ];
-      service.getAgentPerformance.mockResolvedValue(mockPerf);
+      service.getAgentPerformance.mockResolvedValue(mockPerf as any);
 
       const result = await controller.getAgentPerformance(mockReq);
 
-      expect(service.getAgentPerformance).toHaveBeenCalledWith(companyId);
+      expect(service.getAgentPerformance).toHaveBeenCalledWith(companyId, undefined);
       expect(result).toEqual(mockPerf);
     });
   });
@@ -80,7 +80,7 @@ describe('ReportsController', () => {
 
       const result = await controller.getRedFlags(mockReq);
 
-      expect(service.getRedFlags).toHaveBeenCalledWith(companyId);
+      expect(service.getRedFlags).toHaveBeenCalledWith(companyId, undefined);
       expect(result).toEqual([]);
     });
   });
@@ -91,7 +91,7 @@ describe('ReportsController', () => {
 
       const result = await controller.getActivityFeed(mockReq);
 
-      expect(service.getActivityFeed).toHaveBeenCalledWith(companyId);
+      expect(service.getActivityFeed).toHaveBeenCalledWith(companyId, undefined);
       expect(result).toEqual([]);
     });
   });
@@ -102,7 +102,7 @@ describe('ReportsController', () => {
 
       const result = await controller.getPipelineFunnel(mockReq);
 
-      expect(service.getPipelineFunnel).toHaveBeenCalledWith(companyId);
+      expect(service.getPipelineFunnel).toHaveBeenCalledWith(companyId, undefined);
       expect(result).toEqual([]);
     });
   });
@@ -116,7 +116,7 @@ describe('ReportsController', () => {
 
       const result = await controller.getBottlenecks(mockReq);
 
-      expect(service.getBottlenecks).toHaveBeenCalledWith(companyId);
+      expect(service.getBottlenecks).toHaveBeenCalledWith(companyId, undefined);
       expect(result).toEqual(mockBottlenecks);
     });
   });
@@ -130,7 +130,7 @@ describe('ReportsController', () => {
 
       const result = await controller.getResponseTimes(mockReq);
 
-      expect(service.getResponseTimeMetrics).toHaveBeenCalledWith(companyId);
+      expect(service.getResponseTimeMetrics).toHaveBeenCalledWith(companyId, undefined);
       expect(result).toEqual(mockTimes);
     });
   });
