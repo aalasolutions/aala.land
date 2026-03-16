@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, ILike } from 'typeorm';
+import { Repository, ILike, FindOptionsWhere } from 'typeorm';
 import { Contact } from './entities/contact.entity';
 import { CreateContactDto } from './dto/create-contact.dto';
 import { UpdateContactDto } from './dto/update-contact.dto';
@@ -23,7 +23,7 @@ export class ContactsService {
     limit = 20,
     search?: string,
   ): Promise<{ data: Contact[]; total: number; page: number; limit: number }> {
-    const where: any[] = [];
+    const where: FindOptionsWhere<Contact>[] = [];
 
     if (search) {
       const pattern = `%${search}%`;
