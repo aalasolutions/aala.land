@@ -4,7 +4,7 @@ import { Repository, LessThanOrEqual, SelectQueryBuilder } from 'typeorm';
 import { WorkOrder, WorkOrderStatus } from './entities/work-order.entity';
 import { CreateWorkOrderDto } from './dto/create-work-order.dto';
 import { UpdateWorkOrderDto } from './dto/update-work-order.dto';
-import { appendRegionFilter } from '../../shared/utils/region-filter.util';
+import { REGION_FILTER_SUBQUERY } from '../../shared/utils/region-filter.util';
 
 export interface CostSummary {
   totalEstimated: number;
@@ -38,12 +38,7 @@ export class MaintenanceService {
 
     if (regionCode) {
       qb.andWhere(
-        `wo.unit_id IN (
-          SELECT u.id FROM units u
-          JOIN buildings b ON u.building_id = b.id
-          JOIN property_areas pa ON b.area_id = pa.id
-          WHERE pa.region_code = :regionCode
-        )`,
+        `wo.unit_id IN (${REGION_FILTER_SUBQUERY})`,
         { regionCode },
       );
     }
@@ -115,12 +110,7 @@ export class MaintenanceService {
 
     if (regionCode) {
       qb.andWhere(
-        `wo.unit_id IN (
-          SELECT u.id FROM units u
-          JOIN buildings b ON u.building_id = b.id
-          JOIN property_areas pa ON b.area_id = pa.id
-          WHERE pa.region_code = :regionCode
-        )`,
+        `wo.unit_id IN (${REGION_FILTER_SUBQUERY})`,
         { regionCode },
       );
     }
@@ -153,12 +143,7 @@ export class MaintenanceService {
 
     if (regionCode) {
       qb.andWhere(
-        `wo.unit_id IN (
-          SELECT u.id FROM units u
-          JOIN buildings b ON u.building_id = b.id
-          JOIN property_areas pa ON b.area_id = pa.id
-          WHERE pa.region_code = :regionCode
-        )`,
+        `wo.unit_id IN (${REGION_FILTER_SUBQUERY})`,
         { regionCode },
       );
     }

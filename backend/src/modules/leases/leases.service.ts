@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { Lease, LeaseStatus } from './entities/lease.entity';
 import { CreateLeaseDto } from './dto/create-lease.dto';
 import { UpdateLeaseDto } from './dto/update-lease.dto';
+import { REGION_FILTER_SUBQUERY } from '../../shared/utils/region-filter.util';
 
 @Injectable()
 export class LeasesService {
@@ -28,10 +29,7 @@ export class LeasesService {
         .createQueryBuilder('l')
         .where('l.companyId = :companyId', { companyId })
         .andWhere(
-          'l.unitId IN (SELECT u.id FROM units u ' +
-          'INNER JOIN buildings b ON u.building_id = b.id ' +
-          'INNER JOIN property_areas pa ON b.area_id = pa.id ' +
-          'WHERE pa.region_code = :regionCode)',
+          `l.unitId IN (${REGION_FILTER_SUBQUERY})`,
           { regionCode },
         )
         .skip((page - 1) * limit)

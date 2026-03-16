@@ -5,6 +5,7 @@ import { Cheque, ChequeStatus } from './entities/cheque.entity';
 import { CreateChequeDto } from './dto/create-cheque.dto';
 import { UpdateChequeDto } from './dto/update-cheque.dto';
 import { BounceChequeDto } from './dto/bounce-cheque.dto';
+import { REGION_FILTER_SUBQUERY } from '../../shared/utils/region-filter.util';
 
 @Injectable()
 export class ChequesService {
@@ -31,10 +32,7 @@ export class ChequesService {
         .createQueryBuilder('c')
         .where('c.companyId = :companyId', { companyId })
         .andWhere(
-          'c.unitId IN (SELECT u.id FROM units u ' +
-          'INNER JOIN buildings b ON u.building_id = b.id ' +
-          'INNER JOIN property_areas pa ON b.area_id = pa.id ' +
-          'WHERE pa.region_code = :regionCode)',
+          `c.unitId IN (${REGION_FILTER_SUBQUERY})`,
           { regionCode },
         )
         .skip((page - 1) * limit)

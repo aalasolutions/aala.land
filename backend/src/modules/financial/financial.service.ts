@@ -4,6 +4,8 @@ import { Repository, LessThan, Between, LessThanOrEqual, MoreThan, FindOptionsWh
 import { Transaction, TransactionType, TransactionStatus } from './entities/transaction.entity';
 import { CreateTransactionDto } from './dto/create-transaction.dto';
 import { UpdateTransactionDto } from './dto/update-transaction.dto';
+import { REGION_FILTER_SUBQUERY } from '../../shared/utils/region-filter.util';
+import { REGION_FILTER_SUBQUERY } from '../../shared/utils/region-filter.util';
 
 export interface TransactionSummary {
   totalIncome: number;
@@ -31,11 +33,7 @@ export class FinancialService {
         .leftJoinAndSelect('t.unit', 'unit')
         .where('t.companyId = :companyId', { companyId })
         .andWhere(
-          '(t.unitId IS NULL OR t.unitId IN ' +
-          '(SELECT u.id FROM units u ' +
-          'INNER JOIN buildings b ON u.building_id = b.id ' +
-          'INNER JOIN property_areas pa ON b.area_id = pa.id ' +
-          'WHERE pa.region_code = :regionCode))',
+          `(t.unitId IS NULL OR t.unitId IN (${REGION_FILTER_SUBQUERY}))`,
           { regionCode },
         );
 
