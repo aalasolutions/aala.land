@@ -35,7 +35,7 @@ export class Unit {
 
     @Index()
     @Column({ name: 'owner_id', type: 'uuid', nullable: true })
-    ownerId: string;
+    ownerId: string | null;
 
     @ManyToOne(() => Owner, (owner) => owner.units)
     @JoinColumn({ name: 'owner_id' })
@@ -49,10 +49,10 @@ export class Unit {
     status: UnitStatus;
 
     @Column({ type: 'decimal', precision: 12, scale: 2, nullable: true })
-    price: number;
+    price: number | null;
 
     @Column({ name: 'sq_ft', type: 'decimal', precision: 10, scale: 2, nullable: true })
-    sqFt: number;
+    sqFt: number | null;
 
     @Column({ type: 'integer', default: 0 })
     bedrooms: number;

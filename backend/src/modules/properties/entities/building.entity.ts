@@ -30,7 +30,7 @@ export class Building {
     units: Unit[];
 
     @Column({ type: 'text', nullable: true })
-    address: string;
+    address: string | null;
 
     @Column({
         name: 'property_type',

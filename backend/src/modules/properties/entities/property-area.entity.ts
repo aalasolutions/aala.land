@@ -12,7 +12,7 @@ export class PropertyArea {
     name: string;
 
     @Column({ type: 'text', nullable: true })
-    description: string;
+    description: string | null;
 
     @Column({ type: 'varchar', length: 255, nullable: true })
     location: string;
