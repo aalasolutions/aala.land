@@ -63,8 +63,8 @@ export default class ApplicationController extends Controller {
     try {
       const result = await this.auth.fetchJson('/notifications/unread-count');
       this.unreadCount = result.data?.count ?? 0;
-    } catch {
-      // silently fail
+    } catch (e) {
+      console.error('[APP-CTRL] Failed to load unread count:', e.message);
     }
   }
 
@@ -75,7 +75,8 @@ export default class ApplicationController extends Controller {
       try {
         const result = await this.auth.fetchJson('/notifications?page=1&limit=10');
         this.notifications = result.data?.data ?? [];
-      } catch {
+      } catch (e) {
+        console.error('[APP-CTRL] Failed to load notifications:', e.message);
         this.notifications = [];
       }
     }
@@ -93,8 +94,8 @@ export default class ApplicationController extends Controller {
       notification.isRead = true;
       this.unreadCount = Math.max(0, this.unreadCount - 1);
       this.notifications = [...this.notifications];
-    } catch {
-      // silently fail
+    } catch (e) {
+      console.error('[APP-CTRL] Failed to mark notification as read:', e.message);
     }
   }
 
@@ -104,8 +105,8 @@ export default class ApplicationController extends Controller {
       await this.auth.fetchJson('/notifications/read-all', { method: 'PATCH' });
       this.unreadCount = 0;
       this.notifications = this.notifications.map(n => ({ ...n, isRead: true }));
-    } catch {
-      // silently fail
+    } catch (e) {
+      console.error('[APP-CTRL] Failed to mark all notifications as read:', e.message);
     }
   }
 
