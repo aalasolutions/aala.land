@@ -44,27 +44,32 @@ export class PropertiesService {
             order: { createdAt: 'DESC' },
         });
 
-        // Get building and unit counts for each area
+        // Get building and unit counts for each area (guard against empty array)
         const areaIds = areas.map(a => a.id);
-        const buildings = await this.buildingRepository
-            .createQueryBuilder('b')
-            .select('b.areaId', 'areaId')
-            .addSelect('COUNT(*)', 'count')
-            .where('b.areaId IN (:...areaIds)', { areaIds })
-            .groupBy('b.areaId')
-            .getRawMany();
+        let buildingCounts: Record<string, number> = {};
+        let unitCounts: Record<string, number> = {};
 
-        const units = await this.unitRepository
-            .createQueryBuilder('u')
-            .innerJoin('u.building', 'b')
-            .select('b.areaId', 'areaId')
-            .addSelect('COUNT(*)', 'count')
-            .where('b.areaId IN (:...areaIds)', { areaIds })
-            .groupBy('b.areaId')
-            .getRawMany();
+        if (areaIds.length > 0) {
+            const buildings = await this.buildingRepository
+                .createQueryBuilder('b')
+                .select('b.areaId', 'areaId')
+                .addSelect('COUNT(*)', 'count')
+                .where('b.areaId IN (:...areaIds)', { areaIds })
+                .groupBy('b.areaId')
+                .getRawMany();
 
-        const buildingCounts = Object.fromEntries(buildings.map(b => [b.areaId, parseInt(b.count)]));
-        const unitCounts = Object.fromEntries(units.map(u => [u.areaId, parseInt(u.count)]));
+            const units = await this.unitRepository
+                .createQueryBuilder('u')
+                .innerJoin('u.building', 'b')
+                .select('b.areaId', 'areaId')
+                .addSelect('COUNT(*)', 'count')
+                .where('b.areaId IN (:...areaIds)', { areaIds })
+                .groupBy('b.areaId')
+                .getRawMany();
+
+            buildingCounts = Object.fromEntries(buildings.map(b => [b.areaId, parseInt(b.count)]));
+            unitCounts = Object.fromEntries(units.map(u => [u.areaId, parseInt(u.count)]));
+        }
 
         const data = areas.map(area => ({
             ...area,
