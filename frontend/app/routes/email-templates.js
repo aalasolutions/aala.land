@@ -11,14 +11,18 @@ export default class EmailTemplatesRoute extends AuthenticatedRoute {
   };
 
   async model({ page = 1, limit = 20, category = '' }) {
-    const params = new URLSearchParams({ page, limit });
-    if (category) params.set('category', category);
+    try {
+      const params = new URLSearchParams({ page, limit });
+      if (category) params.set('category', category);
 
-    const result = await this.auth.fetchJson(`/email-templates?${params.toString()}`);
-    return {
-      templates: result.data?.data || [],
-      total: result.data?.total || 0,
-      page: result.data?.page || 1,
-    };
+      const result = await this.auth.fetchJson(`/email-templates?${params.toString()}`);
+      return {
+        templates: result.data?.data || [],
+        total: result.data?.total || 0,
+        page: result.data?.page || 1,
+      };
+    } catch {
+      return { templates: [], total: 0, page: 1 };
+    }
   }
 }
