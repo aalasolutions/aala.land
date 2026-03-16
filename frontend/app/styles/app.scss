@@ -69,6 +69,40 @@
     // Transitions
     --transition-fast: #{$transition-fast};
     --transition-normal: #{$transition-normal};
+
+    // Badge colors (semantic pairs: bg + text)
+    --badge-red-bg: #FEE2E2;
+    --badge-red-text: #B91C1C;
+    --badge-amber-bg: #FEF3C7;
+    --badge-amber-text: #B45309;
+    --badge-blue-bg: #DBEAFE;
+    --badge-blue-text: #1D4ED8;
+    --badge-sky-bg: #f0f9ff;
+    --badge-sky-text: #0369a1;
+    --badge-purple-bg: #fdf4ff;
+    --badge-purple-text: #a21caf;
+    --badge-orange-bg: #fff7ed;
+    --badge-orange-text: #c2410c;
+    --badge-yellow-bg: #fefce8;
+    --badge-yellow-text: #a16207;
+    --badge-green-bg: #f0fdf4;
+    --badge-green-text: #16a34a;
+    --badge-gray-bg: #f5f5f5;
+    --badge-gray-text: #737373;
+    --badge-red-light-bg: #fef2f2;
+    --badge-red-light-text: #dc2626;
+    --badge-blue-light-bg: #eff6ff;
+    --badge-blue-light-text: #2563eb;
+
+    // Border colors for badges
+    --badge-red-border: #fecaca;
+    --badge-amber-border: #fde68a;
+    --badge-blue-border: #bfdbfe;
+    --badge-gray-border: #d1d5db;
+
+    // WhatsApp colors
+    --whatsapp-primary: #25d366;
+    --whatsapp-dark: #128c7e;
 }
 
 // =================================
@@ -1028,8 +1062,8 @@ body {
 // =================================
 
 .lead-temp-hot {
-    background: #FEE2E2;
-    color: #B91C1C;
+    background: var(--badge-red-bg);
+    color: var(--badge-red-text);
     padding: 2px 8px;
     border-radius: 9999px;
     font-size: 11px;
@@ -1037,8 +1071,8 @@ body {
 }
 
 .lead-temp-warm {
-    background: #FEF3C7;
-    color: #B45309;
+    background: var(--badge-amber-bg);
+    color: var(--badge-amber-text);
     padding: 2px 8px;
     border-radius: 9999px;
     font-size: 11px;
@@ -1046,8 +1080,8 @@ body {
 }
 
 .lead-temp-cold {
-    background: #DBEAFE;
-    color: #1D4ED8;
+    background: var(--badge-blue-bg);
+    color: var(--badge-blue-text);
     padding: 2px 8px;
     border-radius: 9999px;
     font-size: 11px;
@@ -1078,89 +1112,89 @@ body {
 
     // Lead status variants
     &.status-new {
-        background: #f0f9ff;
-        color: #0369a1;
+        background: var(--badge-sky-bg);
+        color: var(--badge-sky-text);
     }
 
     &.status-contacted {
-        background: #fdf4ff;
-        color: #a21caf;
+        background: var(--badge-purple-bg);
+        color: var(--badge-purple-text);
     }
 
     &.status-viewing {
-        background: #fff7ed;
-        color: #c2410c;
+        background: var(--badge-orange-bg);
+        color: var(--badge-orange-text);
     }
 
     &.status-negotiating {
-        background: #fefce8;
-        color: #a16207;
+        background: var(--badge-yellow-bg);
+        color: var(--badge-yellow-text);
     }
 
     &.status-won {
-        background: #f0fdf4;
-        color: #16a34a;
+        background: var(--badge-green-bg);
+        color: var(--badge-green-text);
     }
 
     &.status-lost {
-        background: #fef2f2;
-        color: #dc2626;
+        background: var(--badge-red-light-bg);
+        color: var(--badge-red-light-text);
     }
 
     &.status-pending {
-        background: #fefce8;
-        color: #a16207;
+        background: var(--badge-yellow-bg);
+        color: var(--badge-yellow-text);
     }
 
     &.status-approved {
-        background: #eff6ff;
-        color: #1d4ed8;
+        background: var(--badge-blue-light-bg);
+        color: var(--badge-blue-text);
     }
 
     &.status-paid {
-        background: #f0fdf4;
-        color: #16a34a;
+        background: var(--badge-green-bg);
+        color: var(--badge-green-text);
     }
 
     &.status-cancelled {
-        background: #f5f5f5;
-        color: #737373;
+        background: var(--badge-gray-bg);
+        color: var(--badge-gray-text);
     }
 
     &.status-in_progress {
-        background: #eff6ff;
-        color: #1d4ed8;
+        background: var(--badge-blue-light-bg);
+        color: var(--badge-blue-text);
     }
 
     &.status-completed {
-        background: #f0fdf4;
-        color: #16a34a;
+        background: var(--badge-green-bg);
+        color: var(--badge-green-text);
     }
 
     &.status-pending_approval {
-        background: #fff7ed;
-        color: #c2410c;
+        background: var(--badge-orange-bg);
+        color: var(--badge-orange-text);
     }
 
     // Unit status variants
     &.status-available {
-        background: #f0fdf4;
-        color: #16a34a;
+        background: var(--badge-green-bg);
+        color: var(--badge-green-text);
     }
 
     &.status-rented {
-        background: #eff6ff;
-        color: #1d4ed8;
+        background: var(--badge-blue-light-bg);
+        color: var(--badge-blue-text);
     }
 
     &.status-sold {
-        background: #fdf4ff;
-        color: #a21caf;
+        background: var(--badge-purple-bg);
+        color: var(--badge-purple-text);
     }
 
     &.status-maintenance {
-        background: #fff7ed;
-        color: #c2410c;
+        background: var(--badge-orange-bg);
+        color: var(--badge-orange-text);
     }
 }
 
@@ -1248,6 +1282,17 @@ body {
     to {
         opacity: 1;
         transform: translateY(0);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
     }
 }
 
@@ -1681,8 +1726,8 @@ body {
 }
 
 .alert-error {
-    background: #FEE2E2;
-    color: #B91C1C;
+    background: var(--badge-red-bg);
+    color: var(--badge-red-text);
 }
 
 .form-field {
@@ -1893,27 +1938,27 @@ body {
     letter-spacing: 0.5px;
 
     &.temp-hot {
-        background: #fef2f2;
-        color: #dc2626;
-        border: 1px solid #fecaca;
+        background: var(--badge-red-light-bg);
+        color: var(--badge-red-light-text);
+        border: 1px solid var(--badge-red-border);
     }
 
     &.temp-warm {
-        background: #fffbeb;
-        color: #d97706;
-        border: 1px solid #fde68a;
+        background: var(--badge-amber-bg);
+        color: var(--badge-amber-text);
+        border: 1px solid var(--badge-amber-border);
     }
 
     &.temp-cold {
-        background: #eff6ff;
-        color: #2563eb;
-        border: 1px solid #bfdbfe;
+        background: var(--badge-blue-light-bg);
+        color: var(--badge-blue-light-text);
+        border: 1px solid var(--badge-blue-border);
     }
 
     &.temp-dead {
-        background: #f3f4f6;
-        color: #6b7280;
-        border: 1px solid #d1d5db;
+        background: var(--badge-gray-bg);
+        color: var(--badge-gray-text);
+        border: 1px solid var(--badge-gray-border);
     }
 }
 
@@ -1931,29 +1976,29 @@ body {
     text-transform: capitalize;
 
     &.type-rental {
-        background: #eff6ff;
-        color: #1d4ed8;
+        background: var(--badge-blue-light-bg);
+        color: var(--badge-blue-text);
     }
 
     &.type-for_sale {
-        background: #f0fdf4;
-        color: #16a34a;
+        background: var(--badge-green-bg);
+        color: var(--badge-green-text);
     }
 
     &.type-inherited {
-        background: #f5f5f5;
-        color: #737373;
+        background: var(--badge-gray-bg);
+        color: var(--badge-gray-text);
         font-style: italic;
     }
 
     &.type-sale {
-        background: #f0fdf4;
-        color: #16a34a;
+        background: var(--badge-green-bg);
+        color: var(--badge-green-text);
     }
 
     &.type-referral {
-        background: #fdf4ff;
-        color: #a21caf;
+        background: var(--badge-purple-bg);
+        color: var(--badge-purple-text);
     }
 }
 
@@ -2000,8 +2045,8 @@ body {
     border-radius: var(--radius-full);
     font-size: 10px;
     font-weight: 500;
-    background: #eff6ff;
-    color: #1d4ed8;
+    background: var(--badge-blue-light-bg);
+    color: var(--badge-blue-text);
 }
 
 // =================================
@@ -2136,24 +2181,24 @@ body {
 }
 
 .wa-link {
-    color: #25d366;
+    color: var(--whatsapp-primary);
     display: inline-flex;
     align-items: center;
     transition: color 0.2s;
     text-decoration: none;
 
     &:hover {
-        color: #128c7e;
+        color: var(--whatsapp-dark);
     }
 }
 
 .wa-link-text {
-    color: #25d366;
+    color: var(--whatsapp-primary);
     text-decoration: none;
     transition: color 0.2s;
 
     &:hover {
-        color: #128c7e;
+        color: var(--whatsapp-dark);
         text-decoration: underline;
     }
 }
