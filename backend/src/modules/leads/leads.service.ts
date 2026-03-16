@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, FindOptionsWhere } from 'typeorm';
 import { Lead, LeadStatus } from './entities/lead.entity';
 import { LeadActivity, ActivityType } from './entities/lead-activity.entity';
 import { CreateLeadDto } from './dto/create-lead.dto';
@@ -22,7 +22,7 @@ export class LeadsService {
   }
 
   async findAll(companyId: string, page = 1, limit = 20, regionCode?: string): Promise<{ data: Lead[]; total: number; page: number; limit: number }> {
-    const where: any = { companyId };
+    const where: FindOptionsWhere<Lead> = { companyId };
     if (regionCode) where.regionCode = regionCode;
 
     const [data, total] = await this.leadRepository.findAndCount({
