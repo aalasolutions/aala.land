@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, FindOptionsWhere } from 'typeorm';
 import { Commission, CommissionStatus } from './entities/commission.entity';
 import { CreateCommissionDto } from './dto/create-commission.dto';
 import { UpdateCommissionDto } from './dto/update-commission.dto';
@@ -29,7 +29,7 @@ export class CommissionsService {
     limit = 20,
     regionCode?: string,
   ): Promise<{ data: Commission[]; total: number; page: number; limit: number }> {
-    const where: any = { companyId };
+    const where: FindOptionsWhere<Commission> = { companyId };
     if (regionCode) where.regionCode = regionCode;
 
     const [data, total] = await this.commissionRepository.findAndCount({
