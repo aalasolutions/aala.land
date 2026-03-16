@@ -36,7 +36,9 @@ export default class SessionService extends Service {
           this.region.initialize(authData.regions, authData.defaultRegionCode || 'dubai');
         }
       } catch (error) {
-        // If restore fails, just start fresh
+        // If restore fails, clear corrupt data and start fresh
+        localStorage.removeItem('aala-session');
+        localStorage.removeItem('aala-region');
       }
     }
   }
