@@ -3,6 +3,8 @@
  * Used by services that filter by regionCode through the Unit > Building > PropertyArea chain
  */
 
+import { SelectQueryBuilder } from 'typeorm';
+
 export const REGION_FILTER_SUBQUERY = `
   SELECT u.id FROM units u
   INNER JOIN buildings b ON u.building_id = b.id

@@ -70,7 +70,7 @@ describe('LeasesController', () => {
 
       const result = await controller.findAll(mockReq, 1, 20);
 
-      expect(service.findAll).toHaveBeenCalledWith(companyId, 1, 20);
+      expect(service.findAll).toHaveBeenCalledWith(companyId, 1, 20, undefined);
     });
   });
 

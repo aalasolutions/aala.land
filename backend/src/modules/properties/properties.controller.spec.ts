@@ -81,7 +81,7 @@ describe('PropertiesController', () => {
 
       const result = await controller.findAllAreas(mockReq, 1, 20);
 
-      expect(service.findAllAreas).toHaveBeenCalledWith(companyId, 1, 20);
+      expect(service.findAllAreas).toHaveBeenCalledWith(companyId, 1, 20, undefined);
       expect(result).toEqual(paginatedAreas);
     });
   });

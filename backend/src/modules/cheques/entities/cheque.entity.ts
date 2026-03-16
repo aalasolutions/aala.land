@@ -1,5 +1,7 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
 import { Company } from '../../companies/entities/company.entity';
+import { Lease } from '../../leases/entities/lease.entity';
+import { Unit } from '../../properties/entities/unit.entity';
 
 export enum ChequeStatus {
   PENDING = 'PENDING',
@@ -34,6 +36,14 @@ export class Cheque {
 
   @Column({ name: 'unit_id', type: 'uuid', nullable: true })
   unitId: string | null;
+
+  @ManyToOne(() => Lease, { nullable: true })
+  @JoinColumn({ name: 'lease_id' })
+  lease: Lease | null;
+
+  @ManyToOne(() => Unit, { nullable: true })
+  @JoinColumn({ name: 'unit_id' })
+  unit: Unit | null;
 
   @Column({ name: 'cheque_number', length: 100 })
   chequeNumber: string;

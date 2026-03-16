@@ -128,7 +128,7 @@ describe('WhatsappController', () => {
 
       const result = await controller.findAll(mockReq, 1, 20);
 
-      expect(service.findMessages).toHaveBeenCalledWith(companyId, 1, 20);
+      expect(service.findMessages).toHaveBeenCalledWith(companyId, 1, 20, undefined);
       expect(result).toEqual(paginated);
     });
   });

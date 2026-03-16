@@ -1,5 +1,6 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
 import { Company } from '../../companies/entities/company.entity';
+import { Unit } from '../../properties/entities/unit.entity';
 
 export enum LeaseStatus {
   DRAFT = 'DRAFT',
@@ -28,6 +29,10 @@ export class Lease {
 
   @Column({ name: 'unit_id', type: 'uuid' })
   unitId: string;
+
+  @ManyToOne(() => Unit)
+  @JoinColumn({ name: 'unit_id' })
+  unit: Unit;
 
   @Column({ name: 'tenant_name', length: 255 })
   tenantName: string;

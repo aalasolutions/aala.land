@@ -1,6 +1,8 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
 import { Company } from '../../companies/entities/company.entity';
 import { User } from '../../users/entities/user.entity';
+import { Lead } from '../../leads/entities/lead.entity';
+import { Transaction } from '../../financial/entities/transaction.entity';
 
 export enum CommissionStatus {
   PENDING = 'PENDING',
@@ -39,6 +41,14 @@ export class Commission {
 
   @Column({ name: 'transaction_id', type: 'uuid', nullable: true })
   transactionId: string | null;
+
+  @ManyToOne(() => Lead, { nullable: true })
+  @JoinColumn({ name: 'lead_id' })
+  lead: Lead | null;
+
+  @ManyToOne(() => Transaction, { nullable: true })
+  @JoinColumn({ name: 'transaction_id' })
+  transaction: Transaction | null;
 
   @Column({
     type: 'enum',

@@ -1,6 +1,8 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
 import { Company } from '../../companies/entities/company.entity';
 import { Vendor } from '../../vendors/entities/vendor.entity';
+import { User } from '../../users/entities/user.entity';
+import { Unit } from '../../properties/entities/unit.entity';
 
 export enum WorkOrderStatus {
   OPEN = 'OPEN',
@@ -50,6 +52,10 @@ export class WorkOrder {
   @Column({ name: 'unit_id', type: 'uuid', nullable: true })
   unitId: string | null;
 
+  @ManyToOne(() => Unit, { nullable: true })
+  @JoinColumn({ name: 'unit_id' })
+  unit: Unit | null;
+
   @Column({ length: 255 })
   title: string;
 
@@ -79,6 +85,10 @@ export class WorkOrder {
 
   @Column({ name: 'assigned_to', type: 'uuid', nullable: true })
   assignedTo: string | null;
+
+  @ManyToOne(() => User, { nullable: true })
+  @JoinColumn({ name: 'assigned_to' })
+  assignee: User | null;
 
   @Column({ name: 'vendor_id', type: 'uuid', nullable: true })
   vendorId: string | null;

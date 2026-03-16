@@ -117,7 +117,7 @@ describe('NotificationsController', () => {
 
       const result = await controller.markAsRead('notif-uuid-1', mockReq);
 
-      expect(service.markAsRead).toHaveBeenCalledWith('notif-uuid-1', companyId);
+      expect(service.markAsRead).toHaveBeenCalledWith('notif-uuid-1', companyId, userId);
       expect(result.isRead).toBe(true);
     });
   });
