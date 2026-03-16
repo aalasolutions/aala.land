@@ -114,21 +114,25 @@ export class ChequesService {
     const overdue = await this.chequeRepository.find({
       where: { ...baseWhere, dueDate: LessThan(today) },
       order: { dueDate: 'ASC' },
+      take: 100,
     });
 
     const thisWeek = await this.chequeRepository.find({
       where: { ...baseWhere, dueDate: Between(today, endOfWeek) },
       order: { dueDate: 'ASC' },
+      take: 100,
     });
 
     const nextWeek = await this.chequeRepository.find({
       where: { ...baseWhere, dueDate: Between(endOfWeek, endOfNextWeek) },
       order: { dueDate: 'ASC' },
+      take: 100,
     });
 
     const thisMonth = await this.chequeRepository.find({
       where: { ...baseWhere, dueDate: Between(endOfNextWeek, endOfMonth) },
       order: { dueDate: 'ASC' },
+      take: 100,
     });
 
     return { overdue, thisWeek, nextWeek, thisMonth };

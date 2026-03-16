@@ -131,21 +131,25 @@ export class FinancialService {
     const overdue = await this.transactionRepository.find({
       where: { ...baseWhere, dueDate: LessThan(today) },
       order: { dueDate: 'ASC' },
+      take: 100,
     });
 
     const dueToday = await this.transactionRepository.find({
       where: { ...baseWhere, dueDate: Between(today, tomorrow) },
       order: { dueDate: 'ASC' },
+      take: 100,
     });
 
     const dueThisWeek = await this.transactionRepository.find({
       where: { ...baseWhere, dueDate: Between(tomorrow, endOfWeek) },
       order: { dueDate: 'ASC' },
+      take: 100,
     });
 
     const dueThisMonth = await this.transactionRepository.find({
       where: { ...baseWhere, dueDate: Between(endOfWeek, endOfMonth) },
       order: { dueDate: 'ASC' },
+      take: 100,
     });
 
     return { overdue, dueToday, dueThisWeek, dueThisMonth };
