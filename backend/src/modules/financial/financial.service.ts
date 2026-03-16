@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, LessThan, Between, LessThanOrEqual, MoreThan } from 'typeorm';
+import { Repository, LessThan, Between, LessThanOrEqual, MoreThan, FindOptionsWhere } from 'typeorm';
 import { Transaction, TransactionType, TransactionStatus } from './entities/transaction.entity';
 import { CreateTransactionDto } from './dto/create-transaction.dto';
 import { UpdateTransactionDto } from './dto/update-transaction.dto';
@@ -51,7 +51,7 @@ export class FinancialService {
       return { data, total, page, limit };
     }
 
-    const where: any = { companyId };
+    const where: FindOptionsWhere<Transaction> = { companyId };
 
     if (ownerId) {
       where.unit = { ownerId };
