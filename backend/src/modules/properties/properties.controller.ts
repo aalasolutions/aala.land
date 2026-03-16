@@ -130,7 +130,7 @@ export class PropertiesController {
     @ApiQuery({ name: 'page', required: false, type: Number })
     @ApiQuery({ name: 'limit', required: false, type: Number })
     findBuildings(
-        @Param('areaId') areaId: string,
+        @Param('areaId', ParseUUIDPipe) areaId: string,
         @Request() req,
         @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
         @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
@@ -210,7 +210,7 @@ export class PropertiesController {
     @ApiQuery({ name: 'page', required: false, type: Number })
     @ApiQuery({ name: 'limit', required: false, type: Number })
     findUnits(
-        @Param('buildingId') buildingId: string,
+        @Param('buildingId', ParseUUIDPipe) buildingId: string,
         @Request() req,
         @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
         @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,

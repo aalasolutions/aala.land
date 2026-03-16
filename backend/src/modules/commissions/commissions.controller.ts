@@ -42,7 +42,7 @@ export class CommissionsController {
   @Get('agent/:agentId')
   @ApiOperation({ summary: 'List commissions for a specific agent' })
   findByAgent(
-    @Param('agentId') agentId: string,
+    @Param('agentId', ParseUUIDPipe) agentId: string,
     @Request() req: any,
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
     @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
@@ -52,7 +52,7 @@ export class CommissionsController {
 
   @Get('agent/:agentId/summary')
   @ApiOperation({ summary: 'Get commission summary for an agent' })
-  getSummary(@Param('agentId') agentId: string, @Request() req: any) {
+  getSummary(@Param('agentId', ParseUUIDPipe) agentId: string, @Request() req: any) {
     return this.commissionsService.getSummary(agentId, req.user.companyId);
   }
 

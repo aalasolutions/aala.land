@@ -41,7 +41,7 @@ export class LeasesController {
 
   @Get('unit/:unitId')
   @ApiOperation({ summary: 'Get all leases for a specific unit' })
-  findByUnit(@Param('unitId') unitId: string, @Request() req: any) {
+  findByUnit(@Param('unitId', ParseUUIDPipe) unitId: string, @Request() req: any) {
     return this.leasesService.findByUnit(unitId, req.user.companyId);
   }
 

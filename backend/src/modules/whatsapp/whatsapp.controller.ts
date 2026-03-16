@@ -9,6 +9,7 @@ import {
   UseGuards,
   Request,
   ParseIntPipe,
+  ParseUUIDPipe,
   DefaultValuePipe,
   HttpCode,
   HttpStatus,
@@ -89,7 +90,7 @@ export class WhatsappController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'List WhatsApp messages for a specific lead' })
   async findByLead(
-    @Param('leadId') leadId: string,
+    @Param('leadId', ParseUUIDPipe) leadId: string,
     @Request() req: any,
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
     @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
@@ -101,7 +102,7 @@ export class WhatsappController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Get a specific WhatsApp message' })
-  async findOne(@Param('id') id: string, @Request() req: any) {
+  async findOne(@Param('id', ParseUUIDPipe) id: string, @Request() req: any) {
     return this.whatsappService.findOne(id, req.user.companyId);
   }
 }
