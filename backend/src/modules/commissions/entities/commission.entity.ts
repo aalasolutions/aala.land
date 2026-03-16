@@ -1,5 +1,6 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
 import { Company } from '../../companies/entities/company.entity';
+import { User } from '../../users/entities/user.entity';
 
 export enum CommissionStatus {
   PENDING = 'PENDING',
@@ -28,6 +29,10 @@ export class Commission {
 
   @Column({ name: 'agent_id', type: 'uuid' })
   agentId: string;
+
+  @ManyToOne(() => User)
+  @JoinColumn({ name: 'agent_id' })
+  agent: User;
 
   @Column({ name: 'lead_id', type: 'uuid', nullable: true })
   leadId: string | null;

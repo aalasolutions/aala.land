@@ -1,6 +1,7 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
 import { Lead } from './lead.entity';
 import { Company } from '../../companies/entities/company.entity';
+import { User } from '../../users/entities/user.entity';
 
 export enum ActivityType {
   CALL = 'CALL',
@@ -42,7 +43,11 @@ export class LeadActivity {
   notes: string;
 
   @Column({ name: 'performed_by', type: 'uuid', nullable: true })
-  performedBy: string;
+  performedBy: string | null;
+
+  @ManyToOne(() => User)
+  @JoinColumn({ name: 'performed_by' })
+  performer: User | null;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
