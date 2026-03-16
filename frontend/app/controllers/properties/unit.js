@@ -2,6 +2,7 @@ import Controller from '@ember/controller';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
+import { AMENITY_OPTIONS } from '../../constants/amenities';
 
 export default class PropertiesUnitController extends Controller {
   @service auth;
@@ -30,28 +31,7 @@ export default class PropertiesUnitController extends Controller {
   @tracked formOwnerId = '';
   @tracked formAmenities = [];
 
-  amenityOptions = [
-    { key: 'free_parking', label: 'Free Parking', icon: 'car' },
-    { key: 'paid_parking', label: 'Paid Parking', icon: 'car' },
-    { key: 'gym', label: 'Gym', icon: 'barbell' },
-    { key: 'pool', label: 'Swimming Pool', icon: 'swimming-pool' },
-    { key: 'wifi', label: 'Free WiFi', icon: 'wifi-high' },
-    { key: 'security', label: '24/7 Security', icon: 'shield-check' },
-    { key: 'cctv', label: 'CCTV', icon: 'security-camera' },
-    { key: 'balcony', label: 'Balcony', icon: 'house-line' },
-    { key: 'furnished', label: 'Furnished', icon: 'couch' },
-    { key: 'central_ac', label: 'Central A/C', icon: 'thermometer-cold' },
-    { key: 'concierge', label: 'Concierge', icon: 'bell' },
-    { key: 'elevator', label: 'Elevator', icon: 'elevator' },
-    { key: 'garden', label: 'Garden', icon: 'plant' },
-    { key: 'maid_room', label: "Maid's Room", icon: 'broom' },
-    { key: 'storage', label: 'Storage', icon: 'warehouse' },
-    { key: 'pet_friendly', label: 'Pet Friendly', icon: 'paw-print' },
-    { key: 'kids_play', label: 'Kids Play Area', icon: 'baby' },
-    { key: 'bbq', label: 'BBQ Area', icon: 'fire' },
-    { key: 'sea_view', label: 'Sea View', icon: 'waves' },
-    { key: 'city_view', label: 'City View', icon: 'buildings' },
-  ];
+  get amenityOptions() { return AMENITY_OPTIONS; }
 
   get buildingPropertyType() {
     return this.model?.unit?.building?.propertyType ?? 'RENTAL';
