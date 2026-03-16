@@ -11,14 +11,18 @@ export default class ContactsRoute extends AuthenticatedRoute {
   };
 
   async model({ page = 1, limit = 20, search = '' }) {
-    const params = new URLSearchParams({ page, limit });
-    if (search) params.set('search', search);
+    try {
+      const params = new URLSearchParams({ page, limit });
+      if (search) params.set('search', search);
 
-    const result = await this.auth.fetchJson(`/contacts?${params.toString()}`);
-    return {
-      contacts: result.data?.data || [],
-      total: result.data?.total || 0,
-      page: result.data?.page || 1,
-    };
+      const result = await this.auth.fetchJson(`/contacts?${params.toString()}`);
+      return {
+        contacts: result.data?.data || [],
+        total: result.data?.total || 0,
+        page: result.data?.page || 1,
+      };
+    } catch {
+      return { contacts: [], total: 0, page: 1 };
+    }
   }
 }

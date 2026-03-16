@@ -11,14 +11,18 @@ export default class DocumentsRoute extends AuthenticatedRoute {
   };
 
   async model({ page = 1, limit = 20, category = '' }) {
-    const params = new URLSearchParams({ page, limit });
-    if (category) params.set('category', category);
+    try {
+      const params = new URLSearchParams({ page, limit });
+      if (category) params.set('category', category);
 
-    const result = await this.auth.fetchJson(`/documents?${params.toString()}`);
-    return {
-      documents: result.data?.data || [],
-      total: result.data?.total || 0,
-      page: result.data?.page || 1,
-    };
+      const result = await this.auth.fetchJson(`/documents?${params.toString()}`);
+      return {
+        documents: result.data?.data || [],
+        total: result.data?.total || 0,
+        page: result.data?.page || 1,
+      };
+    } catch {
+      return { documents: [], total: 0, page: 1 };
+    }
   }
 }
