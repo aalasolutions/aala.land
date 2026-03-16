@@ -87,6 +87,22 @@ export default class SessionService extends Service {
   }
 
   async invalidate() {
+    // Call backend logout to invalidate refresh token and log audit event
+    if (this.data.authenticated?.refreshToken) {
+      try {
+        await fetch(`${config.APP.API_BASE}/auth/logout`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${this.data.authenticated.accessToken}`,
+          },
+          body: JSON.stringify({ refreshToken: this.data.authenticated.refreshToken }),
+        });
+      } catch {
+        // Ignore backend logout errors - proceed with local cleanup
+      }
+    }
+
     this.isAuthenticated = false;
     this.data = {
       authenticated: {
