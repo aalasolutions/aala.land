@@ -22,6 +22,9 @@ export default class ChequesController extends Controller {
   @tracked errorMsg = '';
 
   @tracked activeTab = 'cheques';
+  @tracked showBounceModal = false;
+  @tracked bounceChequeItem = null;
+  @tracked formBounceReason = '';
 
   @action setField(fieldName, e) { this[fieldName] = e.target.value; }
 
@@ -103,16 +106,27 @@ export default class ChequesController extends Controller {
     }
   }
 
-  @action async bounceCheque(cheque) {
-    const reason = prompt('Bounce reason (optional):');
-    if (reason === null) return;
+  @action openBounceModal(cheque) {
+    this.bounceChequeItem = cheque;
+    this.formBounceReason = '';
+    this.showBounceModal = true;
+  }
 
+  @action closeBounceModal() {
+    this.showBounceModal = false;
+    this.bounceChequeItem = null;
+    this.formBounceReason = '';
+  }
+
+  @action async confirmBounce() {
+    if (!this.bounceChequeItem) return;
     try {
-      await this.auth.fetchJson(`/cheques/${cheque.id}/bounce`, {
+      await this.auth.fetchJson(`/cheques/${this.bounceChequeItem.id}/bounce`, {
         method: 'POST',
-        body: JSON.stringify({ bounceReason: reason || undefined }),
+        body: JSON.stringify({ bounceReason: this.formBounceReason || undefined }),
       });
       this.notifications.success('Cheque marked as bounced');
+      this.closeBounceModal();
       this.router.refresh('cheques');
     } catch (e) {
       this.notifications.error(e.message);
