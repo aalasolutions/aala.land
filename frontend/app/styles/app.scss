@@ -1064,18 +1064,104 @@ body {
 }
 
 // =================================
-// STATUS BADGES
+// STATUS BADGES (CANONICAL)
 // =================================
 
 .status-badge {
     display: inline-flex;
     align-items: center;
-    padding: var(--space-1) var(--space-3);
-    font-size: var(--font-xs);
+    padding: var(--space-1) var(--space-2);
+    border-radius: var(--radius-full);
+    font-size: 0.75rem;
     font-weight: 600;
-    border-radius: 9999px;
-    background: var(--bg-muted);
-    color: var(--text-secondary);
+    text-transform: capitalize;
+
+    // Lead status variants
+    &.status-new {
+        background: #f0f9ff;
+        color: #0369a1;
+    }
+
+    &.status-contacted {
+        background: #fdf4ff;
+        color: #a21caf;
+    }
+
+    &.status-viewing {
+        background: #fff7ed;
+        color: #c2410c;
+    }
+
+    &.status-negotiating {
+        background: #fefce8;
+        color: #a16207;
+    }
+
+    &.status-won {
+        background: #f0fdf4;
+        color: #16a34a;
+    }
+
+    &.status-lost {
+        background: #fef2f2;
+        color: #dc2626;
+    }
+
+    &.status-pending {
+        background: #fefce8;
+        color: #a16207;
+    }
+
+    &.status-approved {
+        background: #eff6ff;
+        color: #1d4ed8;
+    }
+
+    &.status-paid {
+        background: #f0fdf4;
+        color: #16a34a;
+    }
+
+    &.status-cancelled {
+        background: #f5f5f5;
+        color: #737373;
+    }
+
+    &.status-in_progress {
+        background: #eff6ff;
+        color: #1d4ed8;
+    }
+
+    &.status-completed {
+        background: #f0fdf4;
+        color: #16a34a;
+    }
+
+    &.status-pending_approval {
+        background: #fff7ed;
+        color: #c2410c;
+    }
+
+    // Unit status variants
+    &.status-available {
+        background: #f0fdf4;
+        color: #16a34a;
+    }
+
+    &.status-rented {
+        background: #eff6ff;
+        color: #1d4ed8;
+    }
+
+    &.status-sold {
+        background: #fdf4ff;
+        color: #a21caf;
+    }
+
+    &.status-maintenance {
+        background: #fff7ed;
+        color: #c2410c;
+    }
 }
 
 // =================================
@@ -1210,18 +1296,6 @@ body {
     display: flex;
     align-items: center;
     gap: var(--space-3);
-}
-
-.status-badge {
-    display: inline-flex;
-    align-items: center;
-    padding: var(--space-1) var(--space-3);
-    font-size: var(--font-xs);
-    font-weight: 600;
-    border-radius: 9999px;
-    background: var(--color-primary);
-    color: white;
-    text-transform: capitalize;
 }
 
 .user-status {
@@ -1840,85 +1914,6 @@ body {
         background: #f3f4f6;
         color: #6b7280;
         border: 1px solid #d1d5db;
-    }
-}
-
-// =================================
-// LEADS PAGE - STATUS BADGES
-// =================================
-
-.status-badge {
-    display: inline-flex;
-    align-items: center;
-    padding: var(--space-1) var(--space-2);
-    border-radius: var(--radius-full);
-    font-size: var(--font-xs);
-    font-weight: 600;
-    text-transform: capitalize;
-
-    &.status-new {
-        background: #f0f9ff;
-        color: #0369a1;
-    }
-
-    &.status-contacted {
-        background: #fdf4ff;
-        color: #a21caf;
-    }
-
-    &.status-viewing {
-        background: #fff7ed;
-        color: #c2410c;
-    }
-
-    &.status-negotiating {
-        background: #fefce8;
-        color: #a16207;
-    }
-
-    &.status-won {
-        background: #f0fdf4;
-        color: #16a34a;
-    }
-
-    &.status-lost {
-        background: #fef2f2;
-        color: #dc2626;
-    }
-
-    &.status-pending {
-        background: #fefce8;
-        color: #a16207;
-    }
-
-    &.status-approved {
-        background: #eff6ff;
-        color: #1d4ed8;
-    }
-
-    &.status-paid {
-        background: #f0fdf4;
-        color: #16a34a;
-    }
-
-    &.status-cancelled {
-        background: #f5f5f5;
-        color: #737373;
-    }
-
-    &.status-in_progress {
-        background: #eff6ff;
-        color: #1d4ed8;
-    }
-
-    &.status-completed {
-        background: #f0fdf4;
-        color: #16a34a;
-    }
-
-    &.status-pending_approval {
-        background: #fff7ed;
-        color: #c2410c;
     }
 }
 
@@ -2784,32 +2779,6 @@ body {
     clip: rect(0, 0, 0, 0);
     white-space: nowrap;
     border: 0;
-}
-
-// =================================
-// UNIT STATUS BADGES
-// =================================
-
-.status-badge {
-    &.status-available {
-        background: #f0fdf4;
-        color: #16a34a;
-    }
-
-    &.status-rented {
-        background: #eff6ff;
-        color: #1d4ed8;
-    }
-
-    &.status-sold {
-        background: #fdf4ff;
-        color: #a21caf;
-    }
-
-    &.status-maintenance {
-        background: #fff7ed;
-        color: #c2410c;
-    }
 }
 
 // =================================
