@@ -136,7 +136,7 @@
       {{/if}}
       <div class="flex col gap-1">
         <p class="font-sm text-muted">Body:</p>
-        <div class="p-4 bg-white rounded-lg border font-sm">{{{this.previewBody}}}</div>
+        <pre class="p-4 bg-white rounded-lg border font-sm whitespace-pre-wrap text-xs">{{this.previewBody}}</pre>
       </div>
     </div>
     <button type="button" class="btn btn-secondary" {{on "click" this.closePreview}}>Close</button>
