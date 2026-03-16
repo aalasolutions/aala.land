@@ -116,9 +116,7 @@ export class UsersService {
 
         const saved = await this.userRepository.save(user);
 
-        this.logger.log(
-            `User invited: ${dto.email} | Temporary password: ${tempPassword} (no email service configured)`,
-        );
+        this.logger.debug(`User invited: ${dto.email} (temporary password generated, pending email service)`);
 
         return saved;
     }
