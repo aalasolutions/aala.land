@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, ILike } from 'typeorm';
+import { Repository, ILike, FindOptionsWhere } from 'typeorm';
 import { Vendor, VendorSpecialty } from './entities/vendor.entity';
 import { CreateVendorDto } from './dto/create-vendor.dto';
 import { UpdateVendorDto } from './dto/update-vendor.dto';
@@ -25,8 +25,8 @@ export class VendorsService {
     specialty?: VendorSpecialty,
     regionCode?: string,
   ): Promise<{ data: Vendor[]; total: number; page: number; limit: number }> {
-    const where: any[] = [];
-    const base: any = { companyId };
+    const where: FindOptionsWhere<Vendor>[] = [];
+    const base: FindOptionsWhere<Vendor> = { companyId };
     if (regionCode) base.regionCode = regionCode;
 
     if (search && specialty) {
