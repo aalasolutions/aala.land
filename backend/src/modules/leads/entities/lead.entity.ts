@@ -43,7 +43,7 @@ export class Lead {
 
   @Index()
   @Column({ name: 'property_id', type: 'uuid', nullable: true })
-  propertyId: string;
+  propertyId: string | null;
 
   @ManyToOne(() => PropertyArea)
   @JoinColumn({ name: 'property_id' })
@@ -51,7 +51,7 @@ export class Lead {
 
   @Index()
   @Column({ name: 'unit_id', type: 'uuid', nullable: true })
-  unitId: string;
+  unitId: string | null;
 
   @ManyToOne(() => Unit, { nullable: true })
   @JoinColumn({ name: 'unit_id' })
@@ -61,16 +61,16 @@ export class Lead {
   firstName: string;
 
   @Column({ name: 'last_name', type: 'varchar', length: 100, nullable: true })
-  lastName: string;
+  lastName: string | null;
 
   @Column({ type: 'varchar', length: 255, nullable: true })
-  email: string;
+  email: string | null;
 
   @Column({ type: 'varchar', length: 50, nullable: true })
-  phone: string;
+  phone: string | null;
 
   @Column({ name: 'whatsapp_number', type: 'varchar', length: 50, nullable: true })
-  whatsappNumber: string;
+  whatsappNumber: string | null;
 
   @Column({
     type: 'enum',
@@ -97,28 +97,28 @@ export class Lead {
   score: number;
 
   @Column({ name: 'assigned_to', type: 'uuid', nullable: true })
-  assignedTo: string;
+  assignedTo: string | null;
 
   @Column({ name: 'property_interest', type: 'text', nullable: true })
-  propertyInterest: string;
+  propertyInterest: string | null;
 
   @Column({ type: 'text', nullable: true })
-  notes: string;
+  notes: string | null;
 
   @Column({ name: 'budget_min', type: 'decimal', precision: 12, scale: 2, nullable: true })
-  budgetMin: number;
+  budgetMin: number | null;
 
   @Column({ name: 'budget_max', type: 'decimal', precision: 12, scale: 2, nullable: true })
-  budgetMax: number;
+  budgetMax: number | null;
 
   @Column({ name: 'stage_entered_at', type: 'timestamptz', nullable: true })
-  stageEnteredAt: Date;
+  stageEnteredAt: Date | null;
 
   @Column({ name: 'transfer_reason', type: 'varchar', length: 500, nullable: true })
-  transferReason: string;
+  transferReason: string | null;
 
   @Column({ name: 'previous_agent', type: 'uuid', nullable: true })
-  previousAgent: string;
+  previousAgent: string | null;
 
   @Column({ name: 'region_code', type: 'varchar', length: 50, default: 'dubai' })
   regionCode: string;
