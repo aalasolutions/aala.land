@@ -31,7 +31,8 @@ export class WhatsappService {
       saved.status = MessageStatus.SENT;
       await this.messageRepository.save(saved);
     } catch (err) {
-      this.logger.error(`WhatsApp dispatch failed for ${dto.phoneNumber}: ${err.message}`);
+      const message = err instanceof Error ? err.message : String(err);
+      this.logger.error(`WhatsApp dispatch failed for ${dto.phoneNumber}: ${message}`);
       saved.status = MessageStatus.FAILED;
       await this.messageRepository.save(saved);
     }
@@ -77,7 +78,8 @@ export class WhatsappService {
         }
       }
     } catch (err) {
-      this.logger.error(`Webhook processing error: ${err.message}`);
+      const message = err instanceof Error ? err.message : String(err);
+      this.logger.error(`Webhook processing error: ${message}`);
     }
 
     return { received: true };
