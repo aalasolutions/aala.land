@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, FindOptionsWhere } from 'typeorm';
 import { PropertyArea } from './entities/property-area.entity';
 import { Building } from './entities/building.entity';
 import { Unit, UnitStatus } from './entities/unit.entity';
@@ -34,7 +34,7 @@ export class PropertiesService {
     }
 
     async findAllAreas(companyId: string, page = 1, limit = 20, regionCode?: string) {
-        const where: any = { companyId };
+        const where: FindOptionsWhere<PropertyArea> = { companyId };
         if (regionCode) where.regionCode = regionCode;
 
         const [areas, total] = await this.areaRepository.findAndCount({
