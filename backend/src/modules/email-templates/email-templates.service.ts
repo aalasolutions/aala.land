@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, FindOptionsWhere } from 'typeorm';
 import { EmailTemplate, EmailTemplateCategory } from './entities/email-template.entity';
 import { CreateEmailTemplateDto } from './dto/create-email-template.dto';
 import { UpdateEmailTemplateDto } from './dto/update-email-template.dto';
@@ -23,7 +23,7 @@ export class EmailTemplatesService {
     limit = 20,
     category?: EmailTemplateCategory,
   ): Promise<{ data: EmailTemplate[]; total: number; page: number; limit: number }> {
-    const where: any = { companyId };
+    const where: FindOptionsWhere<EmailTemplate> = { companyId };
     if (category) {
       where.category = category;
     }
