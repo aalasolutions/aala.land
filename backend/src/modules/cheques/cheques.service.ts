@@ -78,7 +78,8 @@ export class ChequesService {
       cheque.ocrProcessed = true;
       this.logger.log(`OCR processed for cheque ${id}`);
     } catch (err) {
-      this.logger.error(`OCR failed for cheque ${id}: ${err.message}`);
+      const message = err instanceof Error ? err.message : String(err);
+      this.logger.error(`OCR failed for cheque ${id}: ${message}`);
       cheque.ocrProcessed = false;
     }
 
