@@ -7,10 +7,12 @@ const projectRoot = resolve(__dirname, '..');
 const envPath = resolve(projectRoot, '.env');
 dotenv.config({ path: envPath });
 
-console.log(`[DataSource] DB_HOST: ${process.env.DB_HOST || 'localhost'}`);
-console.log(`[DataSource] DB_PORT: ${process.env.DB_PORT || '5480'}`);
-console.log(`[DataSource] DB_DATABASE: ${process.env.DB_DATABASE || 'aala_land'}`);
-console.log(`[DataSource] NODE_ENV: ${process.env.NODE_ENV || 'not set'}`);
+if (process.env.NODE_ENV !== 'production') {
+  console.log(`[DataSource] DB_HOST: ${process.env.DB_HOST || 'localhost'}`);
+  console.log(`[DataSource] DB_PORT: ${process.env.DB_PORT || '5480'}`);
+  console.log(`[DataSource] DB_DATABASE: ${process.env.DB_DATABASE || 'aala_land'}`);
+  console.log(`[DataSource] NODE_ENV: ${process.env.NODE_ENV || 'not set'}`);
+}
 
 const entityPaths = [
   join(__dirname, '/modules/**/entities/*.entity{.ts,.js}'),
