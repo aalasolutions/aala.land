@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Body, Param, Query, ParseIntPipe, ParseUUIDPipe, DefaultValuePipe, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Body, Param, Query, ParseIntPipe, ParseUUIDPipe, DefaultValuePipe, UseGuards, Request, ForbiddenException } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiQuery, ApiBearerAuth } from '@nestjs/swagger';
 import { CompaniesService } from './companies.service';
 import { CreateCompanyDto } from './dto/create-company.dto';
@@ -32,7 +32,8 @@ export class CompaniesController {
     @Get()
     @ApiBearerAuth()
     @UseGuards(JwtAuthGuard, RolesGuard)
-    @ApiOperation({ summary: 'List all companies (paginated)' })
+    @Roles(Role.SUPER_ADMIN)
+    @ApiOperation({ summary: 'List all companies (paginated) - SUPER_ADMIN only' })
     @ApiQuery({ name: 'page', required: false, type: Number })
     @ApiQuery({ name: 'limit', required: false, type: Number })
     findAll(
@@ -46,7 +47,11 @@ export class CompaniesController {
     @ApiBearerAuth()
     @UseGuards(JwtAuthGuard, RolesGuard)
     @ApiOperation({ summary: 'Get company by ID' })
-    findOne(@Param('id', ParseUUIDPipe) id: string) {
+    findOne(@Param('id', ParseUUIDPipe) id: string, @Request() req: any) {
+        // Users can only view their own company, SUPER_ADMIN can view any
+        if (req.user.role !== Role.SUPER_ADMIN && req.user.companyId !== id) {
+            throw new ForbiddenException('You do not have access to this company');
+        }
         return this.companiesService.findOne(id);
     }
 
@@ -54,7 +59,11 @@ export class CompaniesController {
     @ApiBearerAuth()
     @UseGuards(JwtAuthGuard, RolesGuard)
     @ApiOperation({ summary: 'Update company' })
-    update(@Param('id', ParseUUIDPipe) id: string, @Body() updateDto: UpdateCompanyDto) {
+    update(@Param('id', ParseUUIDPipe) id: string, @Body() updateDto: UpdateCompanyDto, @Request() req: any) {
+        // Users can only update their own company, SUPER_ADMIN can update any
+        if (req.user.role !== Role.SUPER_ADMIN && req.user.companyId !== id) {
+            throw new ForbiddenException('You do not have access to this company');
+        }
         return this.companiesService.update(id, updateDto);
     }
 }
