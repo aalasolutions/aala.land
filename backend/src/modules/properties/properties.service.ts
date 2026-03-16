@@ -252,6 +252,7 @@ export class PropertiesService {
 
         const headers = lines[0].split(',').map((h) => h.trim().toLowerCase());
         const results = { created: 0, failed: 0, errors: [] as string[] };
+        const unitsToCreate: Unit[] = [];
 
         for (let i = 1; i < lines.length; i++) {
             const values = lines[i].split(',').map((v) => v.trim());
@@ -277,12 +278,23 @@ export class PropertiesService {
                     price,
                     status: (row['status'] as any) || 'available',
                 });
-                await this.unitRepository.save(unit);
-                results.created++;
+                unitsToCreate.push(unit);
             } catch (err) {
                 const message = err instanceof Error ? err.message : String(err);
                 results.failed++;
                 results.errors.push(`Row ${i}: ${message}`);
+            }
+        }
+
+        // Batch insert all units at once (avoid N+1)
+        if (unitsToCreate.length > 0) {
+            try {
+                await this.unitRepository.save(unitsToCreate);
+                results.created = unitsToCreate.length;
+            } catch (err) {
+                const message = err instanceof Error ? err.message : String(err);
+                results.errors.push(`Batch insert failed: ${message}`);
+                results.failed += unitsToCreate.length;
             }
         }
 
