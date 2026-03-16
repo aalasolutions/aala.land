@@ -31,7 +31,6 @@ export default class ProfileController extends Controller {
     try {
       const body = {
         name: this.formName,
-        email: this.formEmail,
       };
 
       if (this.formPassword) {
