@@ -9,6 +9,7 @@ import { Commission } from '../commissions/entities/commission.entity';
 import { Lease, LeaseStatus } from '../leases/entities/lease.entity';
 import { Cheque, ChequeStatus } from '../cheques/entities/cheque.entity';
 import { AuditLog } from '../audit/entities/audit-log.entity';
+import { User } from '../users/entities/user.entity';
 
 export interface DashboardKpis {
   totalLeads: number;
@@ -21,6 +22,7 @@ export interface DashboardKpis {
 
 export interface AgentPerformance {
   agentId: string;
+  agentName: string;
   leadsAssigned: number;
   leadsWon: number;
   leadsLost: number;
@@ -106,6 +108,9 @@ export class ReportsService {
 
     @InjectRepository(AuditLog)
     private readonly auditLogRepository: Repository<AuditLog>,
+
+    @InjectRepository(User)
+    private readonly userRepository: Repository<User>,
   ) {}
 
   async getDashboardKpis(companyId: string, regionCode?: string): Promise<DashboardKpis> {
@@ -231,6 +236,7 @@ export class ReportsService {
     for (const row of leadStats) {
       agentMap.set(row.agentId, {
         agentId: row.agentId,
+        agentName: '',
         leadsAssigned: Number(row.leadsAssigned),
         leadsWon: Number(row.leadsWon),
         leadsLost: Number(row.leadsLost),
@@ -245,12 +251,29 @@ export class ReportsService {
       } else {
         agentMap.set(row.agentId, {
           agentId: row.agentId,
+          agentName: '',
           leadsAssigned: 0,
           leadsWon: 0,
           leadsLost: 0,
           conversionRate: 0,
           commissionsEarned: Number(row.commissionsEarned),
-          });
+        });
+      }
+    }
+
+    // Resolve agent UUIDs to names
+    const agentIds = Array.from(agentMap.keys());
+    if (agentIds.length > 0) {
+      const users = await this.userRepository
+        .createQueryBuilder('u')
+        .select(['u.id', 'u.name'])
+        .where('u.id IN (:...agentIds)', { agentIds })
+        .getMany();
+
+      for (const user of users) {
+        if (agentMap.has(user.id)) {
+          agentMap.get(user.id)!.agentName = user.name;
+        }
       }
     }
 

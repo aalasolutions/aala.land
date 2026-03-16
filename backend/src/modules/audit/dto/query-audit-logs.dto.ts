@@ -45,4 +45,9 @@ export class QueryAuditLogsDto {
   @IsOptional()
   @IsUUID()
   userId?: string;
+
+  @ApiProperty({ required: false, description: 'Region code filter (ignored - audit logs are region-agnostic)' })
+  @IsOptional()
+  @IsString()
+  regionCode?: string;
 }

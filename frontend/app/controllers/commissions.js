@@ -9,6 +9,16 @@ export default class CommissionsController extends Controller {
   @service router;
 
   @tracked filterStatus = '';
+  @tracked showModal = false;
+  @tracked isSaving = false;
+  @tracked errorMsg = '';
+  @tracked formAgentId = '';
+  @tracked formType = 'SALE';
+  @tracked formGrossAmount = '';
+  @tracked formCommissionRate = '';
+  @tracked formLeadId = '';
+  @tracked formTransactionId = '';
+  @tracked formNotes = '';
 
   get filteredCommissions() {
     const all = this.model?.commissions || [];
@@ -18,6 +28,52 @@ export default class CommissionsController extends Controller {
 
   @action setField(fieldName, e) {
     this[fieldName] = e.target.value;
+  }
+
+  @action openCreate() {
+    this.formAgentId = '';
+    this.formType = 'SALE';
+    this.formGrossAmount = '';
+    this.formCommissionRate = '';
+    this.formLeadId = '';
+    this.formTransactionId = '';
+    this.formNotes = '';
+    this.errorMsg = '';
+    this.showModal = true;
+  }
+
+  @action closeModal() {
+    this.showModal = false;
+    this.errorMsg = '';
+  }
+
+  @action async saveCommission(event) {
+    event.preventDefault();
+    this.isSaving = true;
+    this.errorMsg = '';
+    try {
+      const body = {
+        agentId: this.formAgentId,
+        type: this.formType,
+        grossAmount: parseFloat(this.formGrossAmount),
+        commissionRate: parseFloat(this.formCommissionRate),
+      };
+      if (this.formLeadId) body.leadId = this.formLeadId;
+      if (this.formTransactionId) body.transactionId = this.formTransactionId;
+      if (this.formNotes) body.notes = this.formNotes;
+
+      await this.auth.fetchJson('/commissions', {
+        method: 'POST',
+        body: JSON.stringify(body),
+      });
+      this.notifications.success('Commission created');
+      this.showModal = false;
+      this.router.refresh('commissions');
+    } catch (e) {
+      this.errorMsg = e.message || 'Failed to create commission';
+    } finally {
+      this.isSaving = false;
+    }
   }
 
   @action async approveCommission(commission) {

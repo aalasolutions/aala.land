@@ -10,23 +10,24 @@ export default class ChequesRoute extends AuthenticatedRoute {
   };
 
   async model({ page = 1, limit = 20 }) {
-    try {
-      const [chequesJson, unitsJson, scheduleJson] = await Promise.all([
-        this.auth.fetchJson(`/cheques?page=${page}&limit=${limit}`),
-        this.auth.fetchJson(`/properties/units?page=1&limit=100`),
-        this.auth.fetchJson(`/cheques/collection-schedule`),
-      ]);
+    const safeJson = async (path) => {
+      try { return await this.auth.fetchJson(path); }
+      catch (e) { console.error('[CHEQUES-ROUTE] Failed:', path, e.message); return null; }
+    };
 
-      return {
-        cheques: chequesJson.data?.data ?? [],
-        units: unitsJson.data?.data ?? [],
-        collectionSchedule: scheduleJson.data ?? [],
-        total: chequesJson.data?.total ?? 0,
-        page,
-        limit,
-      };
-    } catch {
-      return { cheques: [], units: [], collectionSchedule: [], total: 0, page: 1, limit: 20 };
-    }
+    const [chequesJson, unitsJson, scheduleJson] = await Promise.all([
+      safeJson(`/cheques?page=${page}&limit=${limit}`),
+      safeJson(`/properties/units?page=1&limit=100`),
+      safeJson(`/cheques/collection-schedule`),
+    ]);
+
+    return {
+      cheques: chequesJson?.data?.data ?? [],
+      units: unitsJson?.data?.data ?? [],
+      collectionSchedule: scheduleJson?.data ?? [],
+      total: chequesJson?.data?.total ?? 0,
+      page,
+      limit,
+    };
   }
 }

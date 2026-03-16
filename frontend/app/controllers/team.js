@@ -116,11 +116,11 @@ export default class TeamController extends Controller {
     try {
       const body = {
         name: this.formName,
-        email: this.formEmail,
         role: this.formRole,
       };
-      if (!isEdit && this.formPassword) {
-        body.password = this.formPassword;
+      if (!isEdit) {
+        body.email = this.formEmail;
+        if (this.formPassword) body.password = this.formPassword;
       }
 
       await this.auth.fetchJson(path, {

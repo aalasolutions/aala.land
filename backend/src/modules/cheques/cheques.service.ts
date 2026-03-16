@@ -29,14 +29,17 @@ export class ChequesService {
     if (regionCode) {
       const qb = this.chequeRepository
         .createQueryBuilder('c')
-        .innerJoin('units', 'u', 'c.unit_id = u.id')
-        .innerJoin('buildings', 'b', 'u.building_id = b.id')
-        .innerJoin('property_areas', 'pa', 'b.area_id = pa.id')
-        .where('c.company_id = :companyId', { companyId })
-        .andWhere('pa.region_code = :regionCode', { regionCode })
+        .where('c.companyId = :companyId', { companyId })
+        .andWhere(
+          'c.unitId IN (SELECT u.id FROM units u ' +
+          'INNER JOIN buildings b ON u.building_id = b.id ' +
+          'INNER JOIN property_areas pa ON b.area_id = pa.id ' +
+          'WHERE pa.region_code = :regionCode)',
+          { regionCode },
+        )
         .skip((page - 1) * limit)
         .take(limit)
-        .orderBy('c.due_date', 'ASC');
+        .orderBy('c.dueDate', 'ASC');
 
       const [data, total] = await qb.getManyAndCount();
       return { data, total, page, limit };

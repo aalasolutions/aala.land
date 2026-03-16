@@ -4,11 +4,16 @@ import { action } from '@ember/object';
 import { service } from '@ember/service';
 
 export default class AuditController extends Controller {
+  @service auth;
   @service notifications;
+  @service router;
 
   @tracked filterAction = '';
   @tracked filterEntityType = '';
   @tracked expandedLogId = null;
+  @tracked showPurgeModal = false;
+  @tracked purgeDays = 90;
+  @tracked isPurging = false;
 
   @action setFilterAction(event) {
     const value = event.target.value;
@@ -75,5 +80,35 @@ export default class AuditController extends Controller {
     if (!dateStr) return '-';
     const date = new Date(dateStr);
     return date.toLocaleString();
+  }
+
+  @action setField(fieldName, e) { this[fieldName] = e.target.value; }
+
+  @action openPurge() {
+    this.purgeDays = 90;
+    this.showPurgeModal = true;
+  }
+
+  @action closePurge() {
+    this.showPurgeModal = false;
+  }
+
+  @action async confirmPurge() {
+    if (this.isPurging) return;
+    this.isPurging = true;
+
+    try {
+      const result = await this.auth.fetchJson(`/audit-logs/purge?olderThanDays=${this.purgeDays}`, {
+        method: 'DELETE',
+      });
+      const deleted = result.data?.deleted || 0;
+      this.notifications.success(`Purged ${deleted} audit log${deleted !== 1 ? 's' : ''}`);
+      this.closePurge();
+      this.router.refresh('audit');
+    } catch (e) {
+      this.notifications.error(e.message);
+    } finally {
+      this.isPurging = false;
+    }
   }
 }

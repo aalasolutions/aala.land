@@ -1,3 +1,4 @@
+{{page-title "Audit Log"}}
 <div class="page-header">
   <h1 class="page-title"><Ph @icon="clipboard-text" @size="28px" /> Audit Logs</h1>
   <p class="page-subtitle">Track all changes across your account</p>
@@ -27,6 +28,10 @@
           Clear Filters
         </button>
       {{/if}}
+
+      <button type="button" class="btn btn-danger btn-sm" {{on "click" this.openPurge}} data-test-purge-btn>
+        <Ph @icon="trash" @size="16px" /> Purge Old Logs
+      </button>
     </div>
   </div>
 
@@ -89,3 +94,28 @@
     {{/if}}
   </div>
 </div>
+
+{{#if this.showPurgeModal}}
+  <div class="modal-backdrop" {{on "click" this.closePurge}}>
+    <div class="modal-panel glass-panel p-8 flex col gap-6" {{on "click" (fn (mut this._noop) true)}}>
+      <div class="flex between x-center">
+        <h2 class="font-lg font-semibold">Purge Audit Logs</h2>
+        <button type="button" class="btn btn-sm" {{on "click" this.closePurge}}>x</button>
+      </div>
+
+      <p class="text-muted">Permanently delete audit logs older than the specified number of days. Minimum retention is 30 days.</p>
+
+      <div class="flex col gap-2">
+        <label class="font-sm text-muted">Delete logs older than (days)</label>
+        <input type="number" class="form-input" min="30" value={{this.purgeDays}} {{on "input" (fn this.setField "purgeDays")}} data-test-purge-days />
+      </div>
+
+      <div class="flex gap-2 end">
+        <button type="button" class="btn btn-secondary" {{on "click" this.closePurge}}>Cancel</button>
+        <button type="button" class="btn btn-danger" {{on "click" this.confirmPurge}} disabled={{this.isPurging}} data-test-purge-confirm>
+          {{if this.isPurging "Purging..." "Purge"}}
+        </button>
+      </div>
+    </div>
+  </div>
+{{/if}}

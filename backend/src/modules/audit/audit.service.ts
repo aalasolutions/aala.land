@@ -1,6 +1,6 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, LessThan } from 'typeorm';
 import { AuditLog } from './entities/audit-log.entity';
 import { CreateAuditLogDto } from './dto/create-audit-log.dto';
 import { QueryAuditLogsDto } from './dto/query-audit-logs.dto';
@@ -70,5 +70,21 @@ export class AuditService {
     }
 
     return auditLog;
+  }
+
+  async purge(companyId: string, olderThanDays: number): Promise<{ deleted: number }> {
+    if (olderThanDays < 30) {
+      throw new BadRequestException('Minimum retention period is 30 days');
+    }
+
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - olderThanDays);
+
+    const result = await this.auditLogRepository.delete({
+      companyId,
+      createdAt: LessThan(cutoffDate),
+    });
+
+    return { deleted: result.affected || 0 };
   }
 }

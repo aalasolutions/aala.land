@@ -1,4 +1,4 @@
-import { Controller, Get, Param, Query, UseGuards, Request, ParseUUIDPipe } from '@nestjs/common';
+import { Controller, Get, Delete, Param, Query, UseGuards, Request, ParseUUIDPipe, ParseIntPipe, DefaultValuePipe } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { AuditService } from './audit.service';
 import { QueryAuditLogsDto } from './dto/query-audit-logs.dto';
@@ -18,21 +18,24 @@ export class AuditController {
   @Roles(Role.COMPANY_ADMIN, Role.SUPER_ADMIN)
   @ApiOperation({ summary: 'Get all audit logs for company' })
   async findAll(@Request() req, @Query() query: QueryAuditLogsDto) {
-    const result = await this.auditService.findAll(req.user.companyId, query);
-    return {
-      success: true,
-      data: result,
-    };
+    return this.auditService.findAll(req.user.companyId, query);
+  }
+
+  @Delete('purge')
+  @Roles(Role.COMPANY_ADMIN, Role.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Purge audit logs older than N days (minimum 30)' })
+  @ApiQuery({ name: 'olderThanDays', required: false, type: Number, description: 'Delete logs older than this many days (min 30, default 90)' })
+  async purge(
+    @Request() req,
+    @Query('olderThanDays', new DefaultValuePipe(90), ParseIntPipe) olderThanDays: number,
+  ) {
+    return this.auditService.purge(req.user.companyId, olderThanDays);
   }
 
   @Get(':id')
   @Roles(Role.COMPANY_ADMIN, Role.SUPER_ADMIN)
   @ApiOperation({ summary: 'Get single audit log by ID' })
   async findOne(@Param('id', ParseUUIDPipe) id: string, @Request() req) {
-    const auditLog = await this.auditService.findOne(id, req.user.companyId);
-    return {
-      success: true,
-      data: auditLog,
-    };
+    return this.auditService.findOne(id, req.user.companyId);
   }
 }

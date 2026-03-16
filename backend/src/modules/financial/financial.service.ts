@@ -25,22 +25,27 @@ export class FinancialService {
 
   async findAll(companyId: string, page = 1, limit = 20, ownerId?: string, regionCode?: string): Promise<{ data: Transaction[]; total: number; page: number; limit: number }> {
     if (regionCode) {
+      // Show transactions that either belong to a unit in the region OR have no unit linked
       const qb = this.transactionRepository
         .createQueryBuilder('t')
         .leftJoinAndSelect('t.unit', 'unit')
-        .innerJoin('units', 'u', 't.unit_id = u.id')
-        .innerJoin('buildings', 'b', 'u.building_id = b.id')
-        .innerJoin('property_areas', 'pa', 'b.area_id = pa.id')
-        .where('t.company_id = :companyId', { companyId })
-        .andWhere('pa.region_code = :regionCode', { regionCode });
+        .where('t.companyId = :companyId', { companyId })
+        .andWhere(
+          '(t.unitId IS NULL OR t.unitId IN ' +
+          '(SELECT u.id FROM units u ' +
+          'INNER JOIN buildings b ON u.building_id = b.id ' +
+          'INNER JOIN property_areas pa ON b.area_id = pa.id ' +
+          'WHERE pa.region_code = :regionCode))',
+          { regionCode },
+        );
 
       if (ownerId) {
-        qb.andWhere('u.owner_id = :ownerId', { ownerId });
+        qb.andWhere('unit.ownerId = :ownerId', { ownerId });
       }
 
       qb.skip((page - 1) * limit)
         .take(limit)
-        .orderBy('t.created_at', 'DESC');
+        .orderBy('t.createdAt', 'DESC');
 
       const [data, total] = await qb.getManyAndCount();
       return { data, total, page, limit };

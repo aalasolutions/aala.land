@@ -34,7 +34,7 @@
               <tr data-test-user-id={{user.id}}>
                 <td class="font-bold">{{user.name}}</td>
                 <td class="text-muted">{{user.email}}</td>
-                <td><span class="status-badge">{{user.role}}</span></td>
+                <td><span class="status-badge">{{format-role user.role}}</span></td>
                 <td>
                   {{#if user.isActive}}
                     <span class="status-badge status-completed">Active</span>

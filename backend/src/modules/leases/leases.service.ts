@@ -26,14 +26,17 @@ export class LeasesService {
     if (regionCode) {
       const qb = this.leaseRepository
         .createQueryBuilder('l')
-        .innerJoin('units', 'u', 'l.unit_id = u.id')
-        .innerJoin('buildings', 'b', 'u.building_id = b.id')
-        .innerJoin('property_areas', 'pa', 'b.area_id = pa.id')
-        .where('l.company_id = :companyId', { companyId })
-        .andWhere('pa.region_code = :regionCode', { regionCode })
+        .where('l.companyId = :companyId', { companyId })
+        .andWhere(
+          'l.unitId IN (SELECT u.id FROM units u ' +
+          'INNER JOIN buildings b ON u.building_id = b.id ' +
+          'INNER JOIN property_areas pa ON b.area_id = pa.id ' +
+          'WHERE pa.region_code = :regionCode)',
+          { regionCode },
+        )
         .skip((page - 1) * limit)
         .take(limit)
-        .orderBy('l.created_at', 'DESC');
+        .orderBy('l.createdAt', 'DESC');
 
       const [data, total] = await qb.getManyAndCount();
       return { data, total, page, limit };

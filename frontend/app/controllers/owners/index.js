@@ -83,15 +83,13 @@ export default class OwnersIndexController extends Controller {
     const path = isEdit ? `/owners/${this.editOwner.id}` : '/owners';
 
     try {
-      const body = {
-        name: this.formName,
-        email: this.formEmail || null,
-        phone: this.formPhone || null,
-        nationalityId: this.formNationalityId || null,
-        address: this.formAddress || null,
-        notes: this.formNotes || null,
-        assignedAgentId: this.formAssignedAgentId || null,
-      };
+      const body = { name: this.formName };
+      if (this.formEmail) body.email = this.formEmail;
+      if (this.formPhone) body.phone = this.formPhone;
+      if (this.formNationalityId) body.nationalityId = this.formNationalityId;
+      if (this.formAddress) body.address = this.formAddress;
+      if (this.formNotes) body.notes = this.formNotes;
+      if (this.formAssignedAgentId) body.assignedAgentId = this.formAssignedAgentId;
 
       await this.auth.fetchJson(path, {
         method: isEdit ? 'PATCH' : 'POST',

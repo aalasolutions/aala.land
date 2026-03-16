@@ -2,9 +2,43 @@ import { Injectable, UnauthorizedException, BadRequestException, Logger } from '
 import { JwtService } from '@nestjs/jwt';
 import { UsersService } from '../users/users.service';
 import { CompaniesService } from '../companies/companies.service';
-import { resolveRegions } from '@shared/constants/regions';
+import { User } from '../users/entities/user.entity';
+import { Region, resolveRegions } from '@shared/constants/regions';
 import * as bcrypt from 'bcryptjs';
 import * as crypto from 'crypto';
+
+interface LoginUser {
+    id: string;
+    name: string;
+    email: string;
+    role: string;
+    companyId: string;
+}
+
+interface RefreshUser {
+    email: string;
+    userId: string;
+    companyId: string;
+    role: string;
+}
+
+interface LoginResponse {
+    accessToken: string;
+    refreshToken: string;
+    user: {
+        id: string;
+        name: string;
+        email: string;
+        role: string;
+        companyId: string;
+    };
+    regions: Region[];
+    defaultRegionCode: string;
+}
+
+interface RefreshResponse {
+    accessToken: string;
+}
 
 @Injectable()
 export class AuthService {
@@ -16,7 +50,7 @@ export class AuthService {
         private readonly companiesService: CompaniesService,
     ) { }
 
-    async validateUser(email: string, pass: string): Promise<any> {
+    async validateUser(email: string, pass: string): Promise<Omit<User, 'password'> | null> {
         const user = await this.usersService.findByEmail(email);
         if (user && await bcrypt.compare(pass, user.password)) {
             const { password, ...result } = user;
@@ -25,7 +59,7 @@ export class AuthService {
         return null;
     }
 
-    async login(user: any) {
+    async login(user: LoginUser): Promise<LoginResponse> {
         const payload = {
             email: user.email,
             sub: user.id,
@@ -50,7 +84,7 @@ export class AuthService {
         };
     }
 
-    async refresh(user: any) {
+    async refresh(user: RefreshUser): Promise<RefreshResponse> {
         const payload = {
             email: user.email,
             sub: user.userId,
@@ -71,8 +105,8 @@ export class AuthService {
 
             await this.usersService.updateResetToken(user.id, token, expires);
 
-            // TODO: Wire to email service. For now, log the token.
-            this.logger.log(`Password reset token for ${email}: ${token}`);
+            // TODO: Wire to email service. For now, log token generation without exposing it.
+            this.logger.debug(`Password reset token generated for ${email}`);
         }
 
         // Always return success to avoid leaking whether email exists
