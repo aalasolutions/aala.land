@@ -15,6 +15,7 @@ import {
   HttpStatus,
   ForbiddenException,
   RawBodyRequest,
+  Logger,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { WhatsappService } from './whatsapp.service';
@@ -25,6 +26,8 @@ import * as crypto from 'crypto';
 @ApiTags('whatsapp')
 @Controller('whatsapp')
 export class WhatsappController {
+  private readonly logger = new Logger(WhatsappController.name);
+
   constructor(private readonly whatsappService: WhatsappService) { }
 
   @Post('send')
@@ -45,7 +48,11 @@ export class WhatsappController {
     @Request() req: RawBodyRequest<Request>,
   ) {
     const appSecret = process.env.WHATSAPP_APP_SECRET;
-    if (appSecret && req.rawBody) {
+    if (!appSecret) {
+      this.logger.error('WHATSAPP_APP_SECRET not configured - webhook rejected');
+      throw new ForbiddenException('WhatsApp webhook not configured');
+    }
+    if (req.rawBody) {
       const expectedSig =
         'sha256=' +
         crypto.createHmac('sha256', appSecret).update(req.rawBody).digest('hex');
