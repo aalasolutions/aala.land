@@ -40,7 +40,7 @@ module.exports = function (environment) {
   }
 
   if (environment === 'production') {
-    // here you can enable a production-specific feature
+    ENV.APP.API_BASE = process.env.API_BASE || '/v1';
   }
 
   return ENV;
