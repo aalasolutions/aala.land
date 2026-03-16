@@ -56,6 +56,7 @@ export class ReminderRulesController {
 
   @Delete(':id')
   @Roles(Role.COMPANY_ADMIN)
+  @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Soft-delete a reminder rule (sets isActive=false)' })
   remove(@Param('id', ParseUUIDPipe) id: string, @Request() req) {
     return this.reminderRulesService.remove(id, req.user.companyId);

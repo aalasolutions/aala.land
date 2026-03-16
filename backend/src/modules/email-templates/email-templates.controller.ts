@@ -53,6 +53,7 @@ export class EmailTemplatesController {
 
   @Delete(':id')
   @Roles(Role.COMPANY_ADMIN)
+  @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Delete email template (COMPANY_ADMIN+)' })
   remove(@Param('id', ParseUUIDPipe) id: string, @Request() req) {
     return this.emailTemplatesService.remove(id, req.user.companyId);
