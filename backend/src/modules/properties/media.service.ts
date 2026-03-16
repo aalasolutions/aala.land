@@ -123,7 +123,8 @@ export class MediaService {
     const isImage = dto.contentType?.startsWith('image/');
     if (isImage && dto.s3Key) {
       this.generateThumbnail(saved.id, dto.s3Key).catch(err => {
-        this.logger.error(`Thumbnail generation failed for ${saved.id}: ${err.message}`);
+        const message = err instanceof Error ? err.message : String(err);
+        this.logger.error(`Thumbnail generation failed for ${saved.id}: ${message}`);
       });
     }
 
@@ -181,7 +182,8 @@ export class MediaService {
       try {
         await client.send(new DeleteObjectCommand({ Bucket: bucket, Key: media.s3Key }));
       } catch (err) {
-        this.logger.warn(`Failed to delete S3 object ${media.s3Key}: ${err.message}`);
+        const message = err instanceof Error ? err.message : String(err);
+        this.logger.warn(`Failed to delete S3 object ${media.s3Key}: ${message}`);
       }
     }
 
@@ -191,7 +193,8 @@ export class MediaService {
       try {
         await client.send(new DeleteObjectCommand({ Bucket: bucket, Key: thumbKey }));
       } catch (err) {
-        this.logger.warn(`Failed to delete thumbnail ${thumbKey}: ${err.message}`);
+        const message = err instanceof Error ? err.message : String(err);
+        this.logger.warn(`Failed to delete thumbnail ${thumbKey}: ${message}`);
       }
     }
 
