@@ -1,5 +1,6 @@
 import AuthenticatedRoute from './authenticated';
 import { service } from '@ember/service';
+import { safeJson } from '../utils/safe-json';
 
 export default class ChequesRoute extends AuthenticatedRoute {
   @service auth;
@@ -10,15 +11,10 @@ export default class ChequesRoute extends AuthenticatedRoute {
   };
 
   async model({ page = 1, limit = 20 }) {
-    const safeJson = async (path) => {
-      try { return await this.auth.fetchJson(path); }
-      catch (e) { console.error('[CHEQUES-ROUTE] Failed:', path, e.message); return null; }
-    };
-
     const [chequesJson, unitsJson, scheduleJson] = await Promise.all([
-      safeJson(`/cheques?page=${page}&limit=${limit}`),
-      safeJson(`/properties/units?page=1&limit=100`),
-      safeJson(`/cheques/collection-schedule`),
+      safeJson(this.auth, `/cheques?page=${page}&limit=${limit}`, 'CHEQUES'),
+      safeJson(this.auth, '/properties/units?page=1&limit=100', 'CHEQUES'),
+      safeJson(this.auth, '/cheques/collection-schedule', 'CHEQUES'),
     ]);
 
     return {

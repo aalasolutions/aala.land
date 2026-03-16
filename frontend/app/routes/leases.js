@@ -1,5 +1,6 @@
 import AuthenticatedRoute from './authenticated';
 import { service } from '@ember/service';
+import { safeJson } from '../utils/safe-json';
 
 export default class LeasesRoute extends AuthenticatedRoute {
   @service auth;
@@ -10,14 +11,9 @@ export default class LeasesRoute extends AuthenticatedRoute {
   };
 
   async model({ page = 1, limit = 20 }) {
-    const safeJson = async (path) => {
-      try { return await this.auth.fetchJson(path); }
-      catch (e) { console.error('[LEASES-ROUTE] Failed:', path, e.message); return null; }
-    };
-
     const [leasesJson, unitsJson] = await Promise.all([
-      safeJson(`/leases?page=${page}&limit=${limit}`),
-      safeJson(`/properties/units?page=1&limit=100`),
+      safeJson(this.auth, `/leases?page=${page}&limit=${limit}`, 'LEASES'),
+      safeJson(this.auth, '/properties/units?page=1&limit=100', 'LEASES'),
     ]);
 
     return {

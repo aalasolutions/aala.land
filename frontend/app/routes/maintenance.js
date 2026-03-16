@@ -1,5 +1,6 @@
 import AuthenticatedRoute from './authenticated';
 import { service } from '@ember/service';
+import { safeJson } from '../utils/safe-json';
 
 export default class MaintenanceRoute extends AuthenticatedRoute {
   @service auth;
@@ -10,17 +11,12 @@ export default class MaintenanceRoute extends AuthenticatedRoute {
   };
 
   async model({ page = 1, limit = 20 }) {
-    const safeJson = async (path) => {
-      try { return await this.auth.fetchJson(path); }
-      catch (e) { console.error('[MAINT-ROUTE] Failed:', path, e.message); return null; }
-    };
-
     const [mainJson, vendorsJson, costJson, upcomingJson, unitsJson] = await Promise.all([
-      safeJson(`/maintenance?page=${page}&limit=${limit}`),
-      safeJson(`/vendors?page=1&limit=100`),
-      safeJson(`/maintenance/cost-summary`),
-      safeJson(`/maintenance/upcoming`),
-      safeJson(`/properties/units?page=1&limit=500`),
+      safeJson(this.auth, `/maintenance?page=${page}&limit=${limit}`, 'MAINT'),
+      safeJson(this.auth, '/vendors?page=1&limit=100', 'MAINT'),
+      safeJson(this.auth, '/maintenance/cost-summary', 'MAINT'),
+      safeJson(this.auth, '/maintenance/upcoming', 'MAINT'),
+      safeJson(this.auth, '/properties/units?page=1&limit=500', 'MAINT'),
     ]);
 
     return {
