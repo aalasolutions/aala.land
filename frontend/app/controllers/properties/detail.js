@@ -3,6 +3,7 @@ import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
 import { AMENITY_OPTIONS } from '../../constants/amenities';
+import { toggleArrayItem } from '../../utils/toggle-array-item';
 
 export default class PropertiesDetailController extends Controller {
   @service auth;
@@ -112,14 +113,7 @@ export default class PropertiesDetailController extends Controller {
   @action setField(fieldName, e) { this[fieldName] = e.target.value; }
 
   @action toggleAmenity(key) {
-    const current = [...this.formUnitAmenities];
-    const idx = current.indexOf(key);
-    if (idx === -1) {
-      current.push(key);
-    } else {
-      current.splice(idx, 1);
-    }
-    this.formUnitAmenities = current;
+    this.formUnitAmenities = toggleArrayItem(this.formUnitAmenities, key);
   }
 
   @action openCreateBuilding() {
