@@ -87,19 +87,22 @@ export class FinancialService {
   }
 
   async getSummary(companyId: string): Promise<TransactionSummary> {
-    const transactions = await this.transactionRepository.find({ where: { companyId } });
+    const result = await this.transactionRepository
+      .createQueryBuilder('t')
+      .select(
+        "COALESCE(SUM(CASE WHEN t.type = :income THEN t.amount ELSE 0 END), 0)",
+        'totalIncome'
+      )
+      .addSelect(
+        "COALESCE(SUM(CASE WHEN t.type = :expense THEN t.amount ELSE 0 END), 0)",
+        'totalExpense'
+      )
+      .where('t.companyId = :companyId', { companyId })
+      .setParameters({ income: TransactionType.INCOME, expense: TransactionType.EXPENSE })
+      .getRawOne();
 
-    let totalIncome = 0;
-    let totalExpense = 0;
-
-    for (const t of transactions) {
-      const amount = parseFloat(String(t.amount));
-      if (t.type === TransactionType.INCOME) {
-        totalIncome += amount;
-      } else {
-        totalExpense += amount;
-      }
-    }
+    const totalIncome = Number(result?.totalIncome ?? 0);
+    const totalExpense = Number(result?.totalExpense ?? 0);
 
     return {
       totalIncome,

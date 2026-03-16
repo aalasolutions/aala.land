@@ -100,18 +100,28 @@ export class CommissionsService {
     totalPending: number;
     count: number;
   }> {
-    const commissions = await this.commissionRepository.find({
-      where: { agentId, companyId },
-    });
+    const result = await this.commissionRepository
+      .createQueryBuilder('c')
+      .select('COALESCE(SUM(c.commissionAmount), 0)', 'totalEarned')
+      .addSelect(
+        "COALESCE(SUM(CASE WHEN c.status = :paid THEN c.commissionAmount ELSE 0 END), 0)",
+        'totalPaid'
+      )
+      .addSelect(
+        "COALESCE(SUM(CASE WHEN c.status IN (:...pending) THEN c.commissionAmount ELSE 0 END), 0)",
+        'totalPending'
+      )
+      .addSelect('COUNT(c.id)', 'count')
+      .where('c.agentId = :agentId', { agentId })
+      .andWhere('c.companyId = :companyId', { companyId })
+      .setParameters({ paid: CommissionStatus.PAID, pending: [CommissionStatus.PENDING, CommissionStatus.APPROVED] })
+      .getRawOne();
 
-    const totalEarned = commissions.reduce((sum, c) => sum + Number(c.commissionAmount), 0);
-    const totalPaid = commissions
-      .filter((c) => c.status === CommissionStatus.PAID)
-      .reduce((sum, c) => sum + Number(c.commissionAmount), 0);
-    const totalPending = commissions
-      .filter((c) => c.status === CommissionStatus.PENDING || c.status === CommissionStatus.APPROVED)
-      .reduce((sum, c) => sum + Number(c.commissionAmount), 0);
-
-    return { totalEarned, totalPaid, totalPending, count: commissions.length };
+    return {
+      totalEarned: Number(result.totalEarned),
+      totalPaid: Number(result.totalPaid),
+      totalPending: Number(result.totalPending),
+      count: Number(result.count),
+    };
   }
 }
