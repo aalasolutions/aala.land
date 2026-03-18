@@ -1,0 +1,162 @@
+AALA.LAND Software License Agreement
+Version 1.0, March 2026
+
+Copyright (c) 2026 AALA IT Solutions. All rights reserved.
+https://aala.land
+
+IMPORTANT: BY DOWNLOADING, INSTALLING, OR USING THIS SOFTWARE, YOU AGREE
+TO BE BOUND BY THE TERMS OF THIS LICENSE. IF YOU DO NOT AGREE, DO NOT USE
+THE SOFTWARE.
+
+--------------------------------------------------------------------------------
+
+1. DEFINITIONS
+
+"Software" means the AALA.LAND source code, binaries, documentation, and
+all associated files in this repository.
+
+"You" means the individual or entity exercising the rights granted under
+this License.
+
+"Commercial Use" means offering the Software, or any derivative work, to
+third parties as a hosted service, managed service, or software product
+in exchange for payment, subscription fees, or other commercial
+consideration.
+
+"Internal Business Use" means using the Software to operate your own
+business, manage your own properties, or serve your own clients directly.
+This includes running the Software for your own team, agents, and
+employees.
+
+"Telemetry" means the anonymous usage reporting functionality built into
+the Software that transmits operational metrics to AALA servers.
+
+--------------------------------------------------------------------------------
+
+2. GRANT OF LICENSE
+
+Subject to the terms of this License, AALA IT Solutions grants You a
+non-exclusive, worldwide, royalty-free license to:
+
+  a) Use the Software for Internal Business Use, including commercial
+     operation of your own business (e.g., property management, real
+     estate brokerage, facility management).
+
+  b) Copy, modify, and create derivative works of the Software for your
+     own Internal Business Use.
+
+  c) Contribute modifications back to the official AALA.LAND repository
+     under the terms of this License.
+
+--------------------------------------------------------------------------------
+
+3. RESTRICTIONS
+
+You MAY NOT:
+
+  a) Offer the Software, or any derivative work, as a hosted service,
+     managed service, SaaS product, or platform-as-a-service to third
+     parties.
+
+  b) Sell, sublicense, lease, rent, or otherwise commercially distribute
+     the Software or derivative works to third parties.
+
+  c) Remove, disable, bypass, or alter the Telemetry functionality of
+     the Software. The Telemetry system reports anonymous operational
+     metrics (instance identifier, version, aggregate user count,
+     aggregate property count, uptime) and does not collect personal
+     data, customer information, or business-sensitive content.
+
+  d) Remove or alter any copyright notices, license headers, branding,
+     or attribution notices included in the Software.
+
+  e) Use the name "AALA", "AALA.LAND", or associated trademarks to
+     promote or endorse derivative works without prior written consent
+     from AALA IT Solutions.
+
+  f) Represent any derivative work as the official AALA.LAND product.
+
+--------------------------------------------------------------------------------
+
+4. TELEMETRY
+
+The Software includes a Telemetry system that periodically reports the
+following anonymous data to AALA servers:
+
+  - A unique instance identifier (generated on first run)
+  - Software version number
+  - Aggregate count of users, companies, and properties
+  - Server uptime duration
+  - Country of origin (derived from server IP address)
+
+This data is used solely for license compliance monitoring, product
+improvement, and aggregate usage analytics. No personal data, customer
+records, property details, financial information, or business-sensitive
+content is collected or transmitted.
+
+Disabling, removing, or tampering with the Telemetry system constitutes
+a material breach of this License and grounds for immediate termination.
+
+--------------------------------------------------------------------------------
+
+5. CONTRIBUTIONS
+
+Contributions to the official AALA.LAND repository (via pull requests or
+other means) are licensed under this same License. By contributing, You
+grant AALA IT Solutions a perpetual, irrevocable, worldwide, royalty-free
+license to use, modify, sublicense, and distribute Your contributions as
+part of the Software.
+
+--------------------------------------------------------------------------------
+
+6. TERMINATION
+
+This License is effective until terminated. It will terminate
+automatically if You breach any of its terms. Upon termination, You must
+cease all use of the Software and destroy all copies in Your possession.
+
+AALA IT Solutions reserves the right to pursue legal remedies for any
+breach, including but not limited to injunctive relief and damages.
+
+--------------------------------------------------------------------------------
+
+7. DISCLAIMER OF WARRANTY
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NONINFRINGEMENT.
+
+IN NO EVENT SHALL AALA IT SOLUTIONS BE LIABLE FOR ANY CLAIM, DAMAGES, OR
+OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT, OR OTHERWISE,
+ARISING FROM, OUT OF, OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+OTHER DEALINGS IN THE SOFTWARE.
+
+--------------------------------------------------------------------------------
+
+8. GOVERNING LAW
+
+This License shall be governed by and construed in accordance with the
+laws of the United Arab Emirates. Any disputes arising under this License
+shall be subject to the exclusive jurisdiction of the courts of Dubai,
+UAE.
+
+--------------------------------------------------------------------------------
+
+9. CONTACT
+
+For licensing inquiries, commercial partnerships, or permission requests:
+
+AALA IT Solutions
+Dubai, United Arab Emirates
+Email: legal@aalasolutions.com
+Web: https://aala.land
+
+--------------------------------------------------------------------------------
+
+SUMMARY (not legally binding, provided for clarity):
+
+  CAN:     Use it for your own business, modify it, self-host it,
+           contribute back.
+
+  CANNOT:  Resell it, host it as a service for others, remove telemetry,
+           remove branding.
