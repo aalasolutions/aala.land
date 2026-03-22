@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://aala.land/logo.svg" alt="AALA.LAND" width="200" />
+  <img src="https://aala.land/logo.png" alt="AALA.LAND" width="200" />
 </p>
 
 <h1 align="center">AALA.LAND</h1>
