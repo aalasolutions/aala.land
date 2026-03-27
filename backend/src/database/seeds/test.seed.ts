@@ -23,8 +23,8 @@ export async function runTestSeed(dataSource: DataSource): Promise<TestSeedResul
   ]);
 
   // Create test users with hashed passwords
-  const hashedAdminPassword = await bcrypt.hash('Admin123!', 10);
-  const hashedAgentPassword = await bcrypt.hash('Agent123!', 10);
+  const hashedAdminPassword = await bcrypt.hash('Admin123!', 12);
+  const hashedAgentPassword = await bcrypt.hash('Agent123!', 12);
 
   const users = await userRepo.save([
     userRepo.create({
@@ -47,8 +47,5 @@ export async function runTestSeed(dataSource: DataSource): Promise<TestSeedResul
 }
 
 export async function teardownTestSeed(dataSource: DataSource): Promise<void> {
-  const userRepo = dataSource.getRepository(User);
-  const companyRepo = dataSource.getRepository(Company);
-
   await dataSource.query('TRUNCATE TABLE companies CASCADE');
 }
