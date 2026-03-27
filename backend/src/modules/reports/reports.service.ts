@@ -43,7 +43,7 @@ export interface ActivityFeedItem {
   id: string;
   action: string;
   entityType: string;
-  entityId: string;
+  entityId: string | null;
   userId: string | null;
   createdAt: Date;
 }
@@ -118,7 +118,7 @@ export class ReportsService {
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
     // Leads and Commissions have direct regionCode
-    const leadWhere: any = { companyId };
+    const leadWhere: Record<string, string> = { companyId };
     if (regionCode) leadWhere.regionCode = regionCode;
 
     // Units, Transactions, Leases, Cheques need FK chain filtering
@@ -292,7 +292,7 @@ export class ReportsService {
     const days30Ago = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
     // Lead where clause (direct regionCode)
-    const leadWhere: any = { companyId };
+    const leadWhere: Record<string, string> = { companyId };
     if (regionCode) leadWhere.regionCode = regionCode;
 
     // Overdue followups QBuilder
