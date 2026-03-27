@@ -62,7 +62,7 @@ export class MaintenanceService {
         [orderIds],
       );
       unitMap = Object.fromEntries(
-        unitInfo.map((r: any) => [r.woId, { unitNumber: r.unitNumber, buildingName: r.buildingName, areaName: r.areaName }]),
+        unitInfo.map((r: { woId: string; unitNumber: string; buildingName: string; areaName: string }) => [r.woId, { unitNumber: r.unitNumber, buildingName: r.buildingName, areaName: r.areaName }]),
       );
     }
 
@@ -148,6 +148,6 @@ export class MaintenanceService {
       );
     }
 
-    return qb.getMany();
+    return qb.take(100).getMany();
   }
 }
