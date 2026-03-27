@@ -140,6 +140,7 @@ export class LeadsService {
     return this.activityRepository.find({
       where: { leadId, companyId },
       order: { createdAt: 'DESC' },
+      take: 200,
     });
   }
 }
