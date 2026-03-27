@@ -8,6 +8,7 @@ import { RolesGuard } from '@shared/guards/roles.guard';
 import { Roles } from '@shared/decorators/roles.decorator';
 import { Role } from '@shared/enums/roles.enum';
 import { MENA_REGIONS } from '@shared/constants/regions';
+import { AuthenticatedRequest } from '@shared/interfaces/authenticated-request.interface';
 
 @ApiTags('Companies')
 @Controller('companies')
@@ -47,7 +48,7 @@ export class CompaniesController {
     @ApiBearerAuth()
     @UseGuards(JwtAuthGuard, RolesGuard)
     @ApiOperation({ summary: 'Get company by ID' })
-    findOne(@Param('id', ParseUUIDPipe) id: string, @Request() req: any) {
+    findOne(@Param('id', ParseUUIDPipe) id: string, @Request() req: AuthenticatedRequest) {
         // Users can only view their own company, SUPER_ADMIN can view any
         if (req.user.role !== Role.SUPER_ADMIN && req.user.companyId !== id) {
             throw new ForbiddenException('You do not have access to this company');
@@ -59,7 +60,7 @@ export class CompaniesController {
     @ApiBearerAuth()
     @UseGuards(JwtAuthGuard, RolesGuard)
     @ApiOperation({ summary: 'Update company' })
-    update(@Param('id', ParseUUIDPipe) id: string, @Body() updateDto: UpdateCompanyDto, @Request() req: any) {
+    update(@Param('id', ParseUUIDPipe) id: string, @Body() updateDto: UpdateCompanyDto, @Request() req: AuthenticatedRequest) {
         // Users can only update their own company, SUPER_ADMIN can update any
         if (req.user.role !== Role.SUPER_ADMIN && req.user.companyId !== id) {
             throw new ForbiddenException('You do not have access to this company');

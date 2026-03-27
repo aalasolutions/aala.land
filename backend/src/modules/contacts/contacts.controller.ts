@@ -7,6 +7,7 @@ import { Roles } from '@shared/decorators/roles.decorator';
 import { Role } from '@shared/enums/roles.enum';
 import { CreateContactDto } from './dto/create-contact.dto';
 import { UpdateContactDto } from './dto/update-contact.dto';
+import { AuthenticatedRequest } from '@shared/interfaces/authenticated-request.interface';
 
 @ApiTags('contacts')
 @ApiBearerAuth()
@@ -18,7 +19,7 @@ export class ContactsController {
   @Post()
   @Roles(Role.COMPANY_ADMIN, Role.AGENT)
   @ApiOperation({ summary: 'Create a new contact' })
-  create(@Body() dto: CreateContactDto, @Request() req) {
+  create(@Body() dto: CreateContactDto, @Request() req: AuthenticatedRequest) {
     return this.contactsService.create(req.user.companyId, dto);
   }
 
@@ -28,7 +29,7 @@ export class ContactsController {
   @ApiQuery({ name: 'limit', required: false, type: Number })
   @ApiQuery({ name: 'search', required: false, type: String })
   findAll(
-    @Request() req,
+    @Request() req: AuthenticatedRequest,
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
     @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
     @Query('search') search?: string,
@@ -38,14 +39,14 @@ export class ContactsController {
 
   @Get(':id')
   @ApiOperation({ summary: 'Get a contact by ID (scoped to company)' })
-  findOne(@Param('id', ParseUUIDPipe) id: string, @Request() req) {
+  findOne(@Param('id', ParseUUIDPipe) id: string, @Request() req: AuthenticatedRequest) {
     return this.contactsService.findOne(id, req.user.companyId);
   }
 
   @Patch(':id')
   @Roles(Role.COMPANY_ADMIN, Role.AGENT)
   @ApiOperation({ summary: 'Update a contact' })
-  update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateContactDto, @Request() req) {
+  update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateContactDto, @Request() req: AuthenticatedRequest) {
     return this.contactsService.update(id, req.user.companyId, dto);
   }
 
@@ -53,7 +54,7 @@ export class ContactsController {
   @Roles(Role.COMPANY_ADMIN)
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Delete a contact (COMPANY_ADMIN+)' })
-  remove(@Param('id', ParseUUIDPipe) id: string, @Request() req) {
+  remove(@Param('id', ParseUUIDPipe) id: string, @Request() req: AuthenticatedRequest) {
     return this.contactsService.remove(id, req.user.companyId);
   }
 }

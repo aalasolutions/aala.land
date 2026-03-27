@@ -10,6 +10,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '@shared/guards/roles.guard';
 import { Roles } from '@shared/decorators/roles.decorator';
 import { Role } from '@shared/enums/roles.enum';
+import { AuthenticatedRequest } from '@shared/interfaces/authenticated-request.interface';
 import { DocumentCategory } from '../properties/entities/property-document.entity';
 import { MediaService } from '../properties/media.service';
 import { PresignedUrlDto } from '../properties/dto/presigned-url.dto';
@@ -26,14 +27,14 @@ export class DocumentsController {
 
   @Post('presigned-url')
   @ApiOperation({ summary: 'Get S3 presigned URL for uploading a document' })
-  getPresignedUrl(@Body() dto: PresignedUrlDto, @Request() req: any) {
+  getPresignedUrl(@Body() dto: PresignedUrlDto, @Request() req: AuthenticatedRequest) {
     return this.mediaService.getDocumentPresignedUrl(req.user.companyId, dto);
   }
 
   @Post()
   @Roles(Role.COMPANY_ADMIN)
   @ApiOperation({ summary: 'Upload a document record (COMPANY_ADMIN+)' })
-  create(@Body() dto: CreateDocumentDto, @Request() req: any) {
+  create(@Body() dto: CreateDocumentDto, @Request() req: AuthenticatedRequest) {
     return this.documentsService.create(req.user.companyId, req.user.userId, dto);
   }
 
@@ -43,7 +44,7 @@ export class DocumentsController {
   @ApiQuery({ name: 'limit', required: false })
   @ApiQuery({ name: 'category', required: false, enum: DocumentCategory })
   findAll(
-    @Request() req: any,
+    @Request() req: AuthenticatedRequest,
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
     @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
     @Query('category') category?: DocumentCategory,
@@ -53,13 +54,13 @@ export class DocumentsController {
 
   @Get(':id')
   @ApiOperation({ summary: 'Get a document by ID' })
-  findOne(@Param('id', ParseUUIDPipe) id: string, @Request() req: any) {
+  findOne(@Param('id', ParseUUIDPipe) id: string, @Request() req: AuthenticatedRequest) {
     return this.documentsService.findOne(id, req.user.companyId, req.user.role);
   }
 
   @Get(':id/versions')
   @ApiOperation({ summary: 'Get version history for a document' })
-  getVersionHistory(@Param('id', ParseUUIDPipe) id: string, @Request() req: any) {
+  getVersionHistory(@Param('id', ParseUUIDPipe) id: string, @Request() req: AuthenticatedRequest) {
     return this.documentsService.getVersionHistory(id, req.user.companyId, req.user.role);
   }
 
@@ -69,7 +70,7 @@ export class DocumentsController {
   update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateDocumentDto,
-    @Request() req: any,
+    @Request() req: AuthenticatedRequest,
   ) {
     return this.documentsService.update(id, req.user.companyId, req.user.userId, req.user.role, dto);
   }
@@ -78,7 +79,7 @@ export class DocumentsController {
   @Roles(Role.COMPANY_ADMIN)
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Delete a document (COMPANY_ADMIN+)' })
-  remove(@Param('id', ParseUUIDPipe) id: string, @Request() req: any) {
+  remove(@Param('id', ParseUUIDPipe) id: string, @Request() req: AuthenticatedRequest) {
     return this.documentsService.remove(id, req.user.companyId, req.user.role);
   }
 }
