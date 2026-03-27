@@ -9,7 +9,7 @@ import { AppDataSource } from './data-source';
 async function bootstrap() {
   // Initialize TypeORM DataSource before NestJS app
   await AppDataSource.initialize();
-  console.log('✅ TypeORM DataSource initialized');
+  console.log('TypeORM DataSource initialized');
 
   const app = await NestFactory.create(AppModule, { rawBody: true });
 
@@ -53,7 +53,7 @@ async function bootstrap() {
 
   const port = process.env.PORT ?? 3010;
   await app.listen(port);
-  console.log(`🚀 AALA.LAND Backend is breathing on: http://localhost:${port}/v1`);
-  console.log(`📜 API Documentation: http://localhost:${port}/docs`);
+  console.log(`AALA.LAND Backend is breathing on: http://localhost:${port}/v1`);
+  console.log(`API Documentation: http://localhost:${port}/docs`);
 }
 bootstrap();
