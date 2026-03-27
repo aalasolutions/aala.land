@@ -17,7 +17,7 @@ export class AuditController {
   @Get()
   @Roles(Role.COMPANY_ADMIN, Role.SUPER_ADMIN)
   @ApiOperation({ summary: 'Get all audit logs for company' })
-  async findAll(@Request() req, @Query() query: QueryAuditLogsDto) {
+  async findAll(@Request() req: { user: { companyId: string } }, @Query() query: QueryAuditLogsDto) {
     return this.auditService.findAll(req.user.companyId, query);
   }
 
@@ -26,7 +26,7 @@ export class AuditController {
   @ApiOperation({ summary: 'Purge audit logs older than N days (minimum 30)' })
   @ApiQuery({ name: 'olderThanDays', required: false, type: Number, description: 'Delete logs older than this many days (min 30, default 90)' })
   async purge(
-    @Request() req,
+    @Request() req: { user: { companyId: string } },
     @Query('olderThanDays', new DefaultValuePipe(90), ParseIntPipe) olderThanDays: number,
   ) {
     return this.auditService.purge(req.user.companyId, olderThanDays);
@@ -35,7 +35,7 @@ export class AuditController {
   @Get(':id')
   @Roles(Role.COMPANY_ADMIN, Role.SUPER_ADMIN)
   @ApiOperation({ summary: 'Get single audit log by ID' })
-  async findOne(@Param('id', ParseUUIDPipe) id: string, @Request() req) {
+  async findOne(@Param('id', ParseUUIDPipe) id: string, @Request() req: { user: { companyId: string } }) {
     return this.auditService.findOne(id, req.user.companyId);
   }
 }

@@ -27,7 +27,7 @@ export class AuthController {
     @HttpCode(HttpStatus.OK)
     @ApiBearerAuth()
     @ApiOperation({ summary: 'Refresh access token' })
-    async refresh(@Request() req) {
+    async refresh(@Request() req: { user: { email: string; userId: string; companyId: string; role: string } }) {
         return this.authService.refresh(req.user);
     }
 
@@ -44,7 +44,7 @@ export class AuthController {
     @Get('profile')
     @ApiBearerAuth()
     @ApiOperation({ summary: 'Get current user profile' })
-    getProfile(@Request() req) {
+    getProfile(@Request() req: { user: { userId: string; email: string; companyId: string; role: string } }) {
         return req.user;
     }
 
