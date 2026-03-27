@@ -16,6 +16,7 @@ import { CreateUnitDto } from './dto/create-unit.dto';
 import { UpdateUnitDto } from './dto/update-unit.dto';
 import { CreateListingDto } from './dto/create-listing.dto';
 import { UpdateListingDto } from './dto/update-listing.dto';
+import { AuthenticatedRequest } from '@shared/interfaces/authenticated-request.interface';
 
 @ApiTags('Properties')
 @ApiBearerAuth()
@@ -29,33 +30,33 @@ export class PropertiesController {
 
     @Post('media/presigned-url')
     @ApiOperation({ summary: 'Get S3 presigned URL for uploading property photos' })
-    getPresignedUrl(@Body() dto: PresignedUrlDto, @Request() req) {
+    getPresignedUrl(@Body() dto: PresignedUrlDto, @Request() req: AuthenticatedRequest) {
         return this.mediaService.getPresignedUploadUrl(req.user.companyId, dto);
     }
 
     @Post('media')
     @Roles(Role.COMPANY_ADMIN)
     @ApiOperation({ summary: 'Create a media record after S3 upload. Generates thumbnail for images.' })
-    createMedia(@Body() dto: CreateMediaDto, @Request() req) {
+    createMedia(@Body() dto: CreateMediaDto, @Request() req: AuthenticatedRequest) {
         return this.mediaService.createMedia(req.user.companyId, dto);
     }
 
     @Get('units/:unitId/media')
     @ApiOperation({ summary: 'List all media for a unit' })
-    findUnitMedia(@Param('unitId', ParseUUIDPipe) unitId: string, @Request() req) {
+    findUnitMedia(@Param('unitId', ParseUUIDPipe) unitId: string, @Request() req: AuthenticatedRequest) {
         return this.mediaService.findByUnit(req.user.companyId, unitId);
     }
 
     @Get('buildings/:buildingId/media')
     @ApiOperation({ summary: 'List all media for a building' })
-    findBuildingMedia(@Param('buildingId', ParseUUIDPipe) buildingId: string, @Request() req) {
+    findBuildingMedia(@Param('buildingId', ParseUUIDPipe) buildingId: string, @Request() req: AuthenticatedRequest) {
         return this.mediaService.findByBuilding(req.user.companyId, buildingId);
     }
 
     @Patch('media/:id/set-primary')
     @Roles(Role.COMPANY_ADMIN)
     @ApiOperation({ summary: 'Set a media item as primary (unsets others for the same unit/building)' })
-    setPrimary(@Param('id', ParseUUIDPipe) id: string, @Request() req) {
+    setPrimary(@Param('id', ParseUUIDPipe) id: string, @Request() req: AuthenticatedRequest) {
         return this.mediaService.setPrimary(id, req.user.companyId);
     }
 
@@ -63,14 +64,14 @@ export class PropertiesController {
     @Roles(Role.COMPANY_ADMIN)
     @HttpCode(HttpStatus.NO_CONTENT)
     @ApiOperation({ summary: 'Delete a media item and its S3 files' })
-    deleteMedia(@Param('id', ParseUUIDPipe) id: string, @Request() req) {
+    deleteMedia(@Param('id', ParseUUIDPipe) id: string, @Request() req: AuthenticatedRequest) {
         return this.mediaService.deleteMedia(id, req.user.companyId);
     }
 
     @Post('bulk-import')
     @Roles(Role.COMPANY_ADMIN)
     @ApiOperation({ summary: 'Bulk import units from CSV (COMPANY_ADMIN+)' })
-    bulkImport(@Body('csv') csv: string, @Request() req) {
+    bulkImport(@Body('csv') csv: string, @Request() req: AuthenticatedRequest) {
         return this.propertiesService.bulkImportUnits(req.user.companyId, csv);
     }
 
@@ -78,7 +79,7 @@ export class PropertiesController {
     @Post('areas')
     @Roles(Role.COMPANY_ADMIN)
     @ApiOperation({ summary: 'Create a new property area (COMPANY_ADMIN+)' })
-    createArea(@Body() dto: CreateAreaDto, @Request() req) {
+    createArea(@Body() dto: CreateAreaDto, @Request() req: AuthenticatedRequest) {
         return this.propertiesService.createArea(req.user.companyId, dto);
     }
 
@@ -88,7 +89,7 @@ export class PropertiesController {
     @ApiQuery({ name: 'limit', required: false, type: Number })
     @ApiQuery({ name: 'regionCode', required: false, type: String })
     findAllAreas(
-        @Request() req,
+        @Request() req: AuthenticatedRequest,
         @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
         @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
         @Query('regionCode') regionCode?: string,
@@ -98,14 +99,14 @@ export class PropertiesController {
 
     @Get('areas/:id')
     @ApiOperation({ summary: 'Get area by ID' })
-    findOneArea(@Param('id', ParseUUIDPipe) id: string, @Request() req) {
+    findOneArea(@Param('id', ParseUUIDPipe) id: string, @Request() req: AuthenticatedRequest) {
         return this.propertiesService.findOneArea(id, req.user.companyId);
     }
 
     @Patch('areas/:id')
     @Roles(Role.COMPANY_ADMIN)
     @ApiOperation({ summary: 'Update area (COMPANY_ADMIN+)' })
-    updateArea(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateAreaDto, @Request() req) {
+    updateArea(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateAreaDto, @Request() req: AuthenticatedRequest) {
         return this.propertiesService.updateArea(id, req.user.companyId, dto);
     }
 
@@ -113,7 +114,7 @@ export class PropertiesController {
     @Roles(Role.COMPANY_ADMIN)
     @HttpCode(HttpStatus.NO_CONTENT)
     @ApiOperation({ summary: 'Delete area (COMPANY_ADMIN+)' })
-    removeArea(@Param('id', ParseUUIDPipe) id: string, @Request() req) {
+    removeArea(@Param('id', ParseUUIDPipe) id: string, @Request() req: AuthenticatedRequest) {
         return this.propertiesService.removeArea(id, req.user.companyId);
     }
 
@@ -121,7 +122,7 @@ export class PropertiesController {
     @Post('buildings')
     @Roles(Role.COMPANY_ADMIN)
     @ApiOperation({ summary: 'Create a new building (COMPANY_ADMIN+)' })
-    createBuilding(@Body() dto: CreateBuildingDto, @Request() req) {
+    createBuilding(@Body() dto: CreateBuildingDto, @Request() req: AuthenticatedRequest) {
         return this.propertiesService.createBuilding(req.user.companyId, dto);
     }
 
@@ -131,7 +132,7 @@ export class PropertiesController {
     @ApiQuery({ name: 'limit', required: false, type: Number })
     findBuildings(
         @Param('areaId', ParseUUIDPipe) areaId: string,
-        @Request() req,
+        @Request() req: AuthenticatedRequest,
         @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
         @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
     ) {
@@ -141,7 +142,7 @@ export class PropertiesController {
     @Patch('buildings/:id')
     @Roles(Role.COMPANY_ADMIN)
     @ApiOperation({ summary: 'Update building (COMPANY_ADMIN+)' })
-    updateBuilding(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateBuildingDto, @Request() req) {
+    updateBuilding(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateBuildingDto, @Request() req: AuthenticatedRequest) {
         return this.propertiesService.updateBuilding(id, req.user.companyId, dto);
     }
 
@@ -149,7 +150,7 @@ export class PropertiesController {
     @Roles(Role.COMPANY_ADMIN)
     @HttpCode(HttpStatus.NO_CONTENT)
     @ApiOperation({ summary: 'Delete building (COMPANY_ADMIN+)' })
-    removeBuilding(@Param('id', ParseUUIDPipe) id: string, @Request() req) {
+    removeBuilding(@Param('id', ParseUUIDPipe) id: string, @Request() req: AuthenticatedRequest) {
         return this.propertiesService.removeBuilding(id, req.user.companyId);
     }
 
@@ -167,7 +168,7 @@ export class PropertiesController {
     @ApiQuery({ name: 'maxBeds', required: false, type: Number })
     @ApiQuery({ name: 'regionCode', required: false, type: String })
     findAllUnits(
-        @Request() req,
+        @Request() req: AuthenticatedRequest,
         @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
         @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
         @Query('amenities') amenitiesStr?: string,
@@ -194,14 +195,14 @@ export class PropertiesController {
 
     @Get('units/:id')
     @ApiOperation({ summary: 'Get unit by ID with building, area, and owner relations' })
-    findOneUnit(@Param('id', ParseUUIDPipe) id: string, @Request() req) {
+    findOneUnit(@Param('id', ParseUUIDPipe) id: string, @Request() req: AuthenticatedRequest) {
         return this.propertiesService.findOneUnit(id, req.user.companyId);
     }
 
     @Post('units')
     @Roles(Role.COMPANY_ADMIN)
     @ApiOperation({ summary: 'Create a new unit (COMPANY_ADMIN+)' })
-    createUnit(@Body() dto: CreateUnitDto, @Request() req) {
+    createUnit(@Body() dto: CreateUnitDto, @Request() req: AuthenticatedRequest) {
         return this.propertiesService.createUnit(req.user.companyId, dto);
     }
 
@@ -211,7 +212,7 @@ export class PropertiesController {
     @ApiQuery({ name: 'limit', required: false, type: Number })
     findUnits(
         @Param('buildingId', ParseUUIDPipe) buildingId: string,
-        @Request() req,
+        @Request() req: AuthenticatedRequest,
         @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
         @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
     ) {
@@ -221,7 +222,7 @@ export class PropertiesController {
     @Patch('units/:id')
     @Roles(Role.COMPANY_ADMIN)
     @ApiOperation({ summary: 'Update unit (COMPANY_ADMIN+)' })
-    updateUnit(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateUnitDto, @Request() req) {
+    updateUnit(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateUnitDto, @Request() req: AuthenticatedRequest) {
         return this.propertiesService.updateUnit(id, req.user.companyId, dto);
     }
 
@@ -229,13 +230,13 @@ export class PropertiesController {
     @Roles(Role.COMPANY_ADMIN)
     @HttpCode(HttpStatus.NO_CONTENT)
     @ApiOperation({ summary: 'Delete unit (COMPANY_ADMIN+)' })
-    removeUnit(@Param('id', ParseUUIDPipe) id: string, @Request() req) {
+    removeUnit(@Param('id', ParseUUIDPipe) id: string, @Request() req: AuthenticatedRequest) {
         return this.propertiesService.removeUnit(id, req.user.companyId);
     }
 
     @Get('occupancy')
     @ApiOperation({ summary: 'Building-level occupancy rates' })
-    getOccupancy(@Request() req) {
+    getOccupancy(@Request() req: AuthenticatedRequest) {
         return this.propertiesService.getBuildingOccupancy(req.user.companyId);
     }
 
@@ -243,7 +244,7 @@ export class PropertiesController {
     @Post('listings')
     @Roles(Role.COMPANY_ADMIN)
     @ApiOperation({ summary: 'Create a property listing' })
-    createListing(@Body() dto: CreateListingDto, @Request() req) {
+    createListing(@Body() dto: CreateListingDto, @Request() req: AuthenticatedRequest) {
         return this.propertiesService.createListing(req.user.companyId, dto);
     }
 
@@ -252,7 +253,7 @@ export class PropertiesController {
     @ApiQuery({ name: 'page', required: false, type: Number })
     @ApiQuery({ name: 'limit', required: false, type: Number })
     findAllListings(
-        @Request() req,
+        @Request() req: AuthenticatedRequest,
         @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
         @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
     ) {
@@ -261,14 +262,14 @@ export class PropertiesController {
 
     @Get('listings/:id')
     @ApiOperation({ summary: 'Get a listing by ID' })
-    findOneListing(@Param('id', ParseUUIDPipe) id: string, @Request() req) {
+    findOneListing(@Param('id', ParseUUIDPipe) id: string, @Request() req: AuthenticatedRequest) {
         return this.propertiesService.findOneListing(id, req.user.companyId);
     }
 
     @Patch('listings/:id')
     @Roles(Role.COMPANY_ADMIN)
     @ApiOperation({ summary: 'Update a listing' })
-    updateListing(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateListingDto, @Request() req) {
+    updateListing(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateListingDto, @Request() req: AuthenticatedRequest) {
         return this.propertiesService.updateListing(id, req.user.companyId, dto);
     }
 
@@ -276,7 +277,7 @@ export class PropertiesController {
     @Roles(Role.COMPANY_ADMIN)
     @HttpCode(HttpStatus.NO_CONTENT)
     @ApiOperation({ summary: 'Delete a listing' })
-    removeListing(@Param('id', ParseUUIDPipe) id: string, @Request() req) {
+    removeListing(@Param('id', ParseUUIDPipe) id: string, @Request() req: AuthenticatedRequest) {
         return this.propertiesService.removeListing(id, req.user.companyId);
     }
 }

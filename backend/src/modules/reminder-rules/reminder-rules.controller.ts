@@ -11,6 +11,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '@shared/guards/roles.guard';
 import { Roles } from '@shared/decorators/roles.decorator';
 import { Role } from '@shared/enums/roles.enum';
+import { AuthenticatedRequest } from '@shared/interfaces/authenticated-request.interface';
 
 @ApiTags('reminder-rules')
 @Controller('reminder-rules')
@@ -22,7 +23,7 @@ export class ReminderRulesController {
   @Post()
   @Roles(Role.COMPANY_ADMIN)
   @ApiOperation({ summary: 'Create a reminder rule (COMPANY_ADMIN+)' })
-  create(@Body() dto: CreateReminderRuleDto, @Request() req) {
+  create(@Body() dto: CreateReminderRuleDto, @Request() req: AuthenticatedRequest) {
     return this.reminderRulesService.create(req.user.companyId, dto);
   }
 
@@ -31,7 +32,7 @@ export class ReminderRulesController {
   @ApiQuery({ name: 'page', required: false, type: Number })
   @ApiQuery({ name: 'limit', required: false, type: Number })
   findAll(
-    @Request() req,
+    @Request() req: AuthenticatedRequest,
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
     @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
   ) {
@@ -40,7 +41,7 @@ export class ReminderRulesController {
 
   @Get(':id')
   @ApiOperation({ summary: 'Get a reminder rule by ID' })
-  findOne(@Param('id', ParseUUIDPipe) id: string, @Request() req) {
+  findOne(@Param('id', ParseUUIDPipe) id: string, @Request() req: AuthenticatedRequest) {
     return this.reminderRulesService.findOne(id, req.user.companyId);
   }
 
@@ -50,7 +51,7 @@ export class ReminderRulesController {
   update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateReminderRuleDto,
-    @Request() req,
+    @Request() req: AuthenticatedRequest,
   ) {
     return this.reminderRulesService.update(id, req.user.companyId, dto);
   }
@@ -59,7 +60,7 @@ export class ReminderRulesController {
   @Roles(Role.COMPANY_ADMIN)
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Soft-delete a reminder rule (sets isActive=false)' })
-  remove(@Param('id', ParseUUIDPipe) id: string, @Request() req) {
+  remove(@Param('id', ParseUUIDPipe) id: string, @Request() req: AuthenticatedRequest) {
     return this.reminderRulesService.remove(id, req.user.companyId);
   }
 }

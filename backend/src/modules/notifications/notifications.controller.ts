@@ -10,6 +10,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '@shared/guards/roles.guard';
 import { Roles } from '@shared/decorators/roles.decorator';
 import { Role } from '@shared/enums/roles.enum';
+import { AuthenticatedRequest } from '@shared/interfaces/authenticated-request.interface';
 
 @ApiTags('notifications')
 @Controller('notifications')
@@ -21,7 +22,7 @@ export class NotificationsController {
   @Post()
   @Roles(Role.COMPANY_ADMIN)
   @ApiOperation({ summary: 'Create a notification for a user (COMPANY_ADMIN+)' })
-  create(@Body() dto: CreateNotificationDto, @Request() req) {
+  create(@Body() dto: CreateNotificationDto, @Request() req: AuthenticatedRequest) {
     return this.notificationsService.create(req.user.companyId, dto);
   }
 
@@ -30,7 +31,7 @@ export class NotificationsController {
   @ApiQuery({ name: 'page', required: false, type: Number })
   @ApiQuery({ name: 'limit', required: false, type: Number })
   findAll(
-    @Request() req,
+    @Request() req: AuthenticatedRequest,
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
     @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
   ) {
@@ -39,19 +40,19 @@ export class NotificationsController {
 
   @Get('unread-count')
   @ApiOperation({ summary: 'Get unread notification count for current user' })
-  getUnreadCount(@Request() req) {
+  getUnreadCount(@Request() req: AuthenticatedRequest) {
     return this.notificationsService.getUnreadCount(req.user.companyId, req.user.userId);
   }
 
   @Patch('read-all')
   @ApiOperation({ summary: 'Mark all notifications as read for current user' })
-  markAllRead(@Request() req) {
+  markAllRead(@Request() req: AuthenticatedRequest) {
     return this.notificationsService.markAllRead(req.user.companyId, req.user.userId);
   }
 
   @Patch(':id/read')
   @ApiOperation({ summary: 'Mark a single notification as read' })
-  markAsRead(@Param('id', ParseUUIDPipe) id: string, @Request() req) {
+  markAsRead(@Param('id', ParseUUIDPipe) id: string, @Request() req: AuthenticatedRequest) {
     return this.notificationsService.markAsRead(id, req.user.companyId, req.user.userId);
   }
 
@@ -65,7 +66,7 @@ export class NotificationsController {
   @ApiOperation({ summary: 'Get upcoming rent-due cheques within N days' })
   @ApiQuery({ name: 'days', required: false, type: Number, description: 'Days ahead to check (default 3)' })
   getRentReminders(
-    @Request() req,
+    @Request() req: AuthenticatedRequest,
     @Query('days', new DefaultValuePipe(3), ParseIntPipe) days: number,
   ) {
     return this.notificationsService.checkRentDueReminders(req.user.companyId, days);
@@ -75,7 +76,7 @@ export class NotificationsController {
   @ApiOperation({ summary: 'Get leases expiring within N days' })
   @ApiQuery({ name: 'days', required: false, type: Number, description: 'Days ahead to check (default 60)' })
   getLeaseExpiryAlerts(
-    @Request() req,
+    @Request() req: AuthenticatedRequest,
     @Query('days', new DefaultValuePipe(60), ParseIntPipe) days: number,
   ) {
     return this.notificationsService.checkLeaseExpiryAlerts(req.user.companyId, days);
@@ -85,7 +86,7 @@ export class NotificationsController {
   @ApiOperation({ summary: 'Get upcoming preventive maintenance within N days' })
   @ApiQuery({ name: 'days', required: false, type: Number, description: 'Days ahead to check (default 7)' })
   getMaintenanceReminders(
-    @Request() req,
+    @Request() req: AuthenticatedRequest,
     @Query('days', new DefaultValuePipe(7), ParseIntPipe) days: number,
   ) {
     return this.notificationsService.checkMaintenanceReminders(req.user.companyId, days);

@@ -7,6 +7,7 @@ import { Roles } from '@shared/decorators/roles.decorator';
 import { Role } from '@shared/enums/roles.enum';
 import { CreateOwnerDto } from './dto/create-owner.dto';
 import { UpdateOwnerDto } from './dto/update-owner.dto';
+import { AuthenticatedRequest } from '@shared/interfaces/authenticated-request.interface';
 
 @ApiTags('owners')
 @ApiBearerAuth()
@@ -18,7 +19,7 @@ export class OwnersController {
   @Post()
   @Roles(Role.COMPANY_ADMIN)
   @ApiOperation({ summary: 'Create a new owner (COMPANY_ADMIN+)' })
-  create(@Body() createOwnerDto: CreateOwnerDto, @Request() req) {
+  create(@Body() createOwnerDto: CreateOwnerDto, @Request() req: AuthenticatedRequest) {
     return this.ownersService.create(createOwnerDto, req.user.companyId);
   }
 
@@ -27,7 +28,7 @@ export class OwnersController {
   @ApiQuery({ name: 'page', required: false, type: Number })
   @ApiQuery({ name: 'limit', required: false, type: Number })
   findAll(
-    @Request() req,
+    @Request() req: AuthenticatedRequest,
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
     @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
   ) {
@@ -36,14 +37,14 @@ export class OwnersController {
 
   @Get(':id')
   @ApiOperation({ summary: 'Get an owner by ID (scoped to company)' })
-  findOne(@Param('id', ParseUUIDPipe) id: string, @Request() req) {
+  findOne(@Param('id', ParseUUIDPipe) id: string, @Request() req: AuthenticatedRequest) {
     return this.ownersService.findOne(id, req.user.companyId);
   }
 
   @Patch(':id')
   @Roles(Role.COMPANY_ADMIN)
   @ApiOperation({ summary: 'Update an owner (COMPANY_ADMIN+)' })
-  update(@Param('id', ParseUUIDPipe) id: string, @Body() updateOwnerDto: UpdateOwnerDto, @Request() req) {
+  update(@Param('id', ParseUUIDPipe) id: string, @Body() updateOwnerDto: UpdateOwnerDto, @Request() req: AuthenticatedRequest) {
     return this.ownersService.update(id, req.user.companyId, updateOwnerDto);
   }
 
@@ -51,7 +52,7 @@ export class OwnersController {
   @Roles(Role.COMPANY_ADMIN)
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Delete an owner (COMPANY_ADMIN+)' })
-  remove(@Param('id', ParseUUIDPipe) id: string, @Request() req) {
+  remove(@Param('id', ParseUUIDPipe) id: string, @Request() req: AuthenticatedRequest) {
     return this.ownersService.remove(id, req.user.companyId);
   }
 }
