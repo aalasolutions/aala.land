@@ -32,7 +32,7 @@ export class AuditLog {
 
   @Index()
   @Column({ name: 'entity_id', type: 'uuid', nullable: true })
-  entityId: string;
+  entityId: string | null;
 
   @Column({ type: 'jsonb', nullable: true })
   oldValue: Record<string, any> | null;
@@ -41,10 +41,10 @@ export class AuditLog {
   newValue: Record<string, any> | null;
 
   @Column({ type: 'varchar', length: 100, nullable: true })
-  ipAddress: string;
+  ipAddress: string | null;
 
   @Column({ type: 'text', nullable: true })
-  userAgent: string;
+  userAgent: string | null;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
