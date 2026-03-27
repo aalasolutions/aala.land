@@ -9,6 +9,7 @@ import { CreateEmailTemplateDto } from './dto/create-email-template.dto';
 import { UpdateEmailTemplateDto } from './dto/update-email-template.dto';
 import { RenderEmailTemplateDto } from './dto/render-email-template.dto';
 import { EmailTemplateCategory } from './entities/email-template.entity';
+import { AuthenticatedRequest } from '@shared/interfaces/authenticated-request.interface';
 
 @ApiTags('Email Templates')
 @ApiBearerAuth()
@@ -20,7 +21,7 @@ export class EmailTemplatesController {
   @Post()
   @Roles(Role.COMPANY_ADMIN)
   @ApiOperation({ summary: 'Create a new email template (COMPANY_ADMIN+)' })
-  create(@Body() dto: CreateEmailTemplateDto, @Request() req) {
+  create(@Body() dto: CreateEmailTemplateDto, @Request() req: AuthenticatedRequest) {
     return this.emailTemplatesService.create(req.user.companyId, dto, req.user.userId);
   }
 
@@ -30,7 +31,7 @@ export class EmailTemplatesController {
   @ApiQuery({ name: 'limit', required: false, type: Number })
   @ApiQuery({ name: 'category', required: false, enum: EmailTemplateCategory })
   findAll(
-    @Request() req,
+    @Request() req: AuthenticatedRequest,
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
     @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
     @Query('category') category?: EmailTemplateCategory,
@@ -40,14 +41,14 @@ export class EmailTemplatesController {
 
   @Get(':id')
   @ApiOperation({ summary: 'Get email template by ID' })
-  findOne(@Param('id', ParseUUIDPipe) id: string, @Request() req) {
+  findOne(@Param('id', ParseUUIDPipe) id: string, @Request() req: AuthenticatedRequest) {
     return this.emailTemplatesService.findOne(id, req.user.companyId);
   }
 
   @Patch(':id')
   @Roles(Role.COMPANY_ADMIN)
   @ApiOperation({ summary: 'Update email template (COMPANY_ADMIN+)' })
-  update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateEmailTemplateDto, @Request() req) {
+  update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateEmailTemplateDto, @Request() req: AuthenticatedRequest) {
     return this.emailTemplatesService.update(id, req.user.companyId, dto);
   }
 
@@ -55,13 +56,13 @@ export class EmailTemplatesController {
   @Roles(Role.COMPANY_ADMIN)
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Delete email template (COMPANY_ADMIN+)' })
-  remove(@Param('id', ParseUUIDPipe) id: string, @Request() req) {
+  remove(@Param('id', ParseUUIDPipe) id: string, @Request() req: AuthenticatedRequest) {
     return this.emailTemplatesService.remove(id, req.user.companyId);
   }
 
   @Post(':id/render')
   @ApiOperation({ summary: 'Render email template with variables (preview)' })
-  render(@Param('id', ParseUUIDPipe) id: string, @Body() dto: RenderEmailTemplateDto, @Request() req) {
+  render(@Param('id', ParseUUIDPipe) id: string, @Body() dto: RenderEmailTemplateDto, @Request() req: AuthenticatedRequest) {
     return this.emailTemplatesService.render(id, req.user.companyId, dto.variables);
   }
 }

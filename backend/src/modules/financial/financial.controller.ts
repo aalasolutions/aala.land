@@ -7,6 +7,7 @@ import { Roles } from '@shared/decorators/roles.decorator';
 import { Role } from '@shared/enums/roles.enum';
 import { CreateTransactionDto } from './dto/create-transaction.dto';
 import { UpdateTransactionDto } from './dto/update-transaction.dto';
+import { AuthenticatedRequest } from '@shared/interfaces/authenticated-request.interface';
 
 @ApiTags('Financial')
 @ApiBearerAuth()
@@ -18,7 +19,7 @@ export class FinancialController {
   @Post('transactions')
   @Roles(Role.COMPANY_ADMIN)
   @ApiOperation({ summary: 'Create a new transaction (COMPANY_ADMIN+)' })
-  create(@Body() dto: CreateTransactionDto, @Request() req) {
+  create(@Body() dto: CreateTransactionDto, @Request() req: AuthenticatedRequest) {
     return this.financialService.create(req.user.companyId, dto);
   }
 
@@ -29,7 +30,7 @@ export class FinancialController {
   @ApiQuery({ name: 'ownerId', required: false, type: String })
   @ApiQuery({ name: 'regionCode', required: false, type: String })
   findAll(
-    @Request() req,
+    @Request() req: AuthenticatedRequest,
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
     @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
     @Query('ownerId') ownerId?: string,
@@ -40,27 +41,27 @@ export class FinancialController {
 
   @Get('transactions/summary')
   @ApiOperation({ summary: 'Get financial summary for company' })
-  getSummary(@Request() req) {
+  getSummary(@Request() req: AuthenticatedRequest) {
     return this.financialService.getSummary(req.user.companyId);
   }
 
   @Get('deposit-reminders')
   @Roles(Role.COMPANY_ADMIN, Role.AGENT)
   @ApiOperation({ summary: 'Get deposit reminders grouped by due date proximity' })
-  getDepositReminders(@Request() req) {
+  getDepositReminders(@Request() req: AuthenticatedRequest) {
     return this.financialService.getDepositReminders(req.user.companyId);
   }
 
   @Get('transactions/:id')
   @ApiOperation({ summary: 'Get transaction by ID' })
-  findOne(@Param('id', ParseUUIDPipe) id: string, @Request() req) {
+  findOne(@Param('id', ParseUUIDPipe) id: string, @Request() req: AuthenticatedRequest) {
     return this.financialService.findOne(id, req.user.companyId);
   }
 
   @Patch('transactions/:id')
   @Roles(Role.COMPANY_ADMIN)
   @ApiOperation({ summary: 'Update transaction (COMPANY_ADMIN+)' })
-  update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateTransactionDto, @Request() req) {
+  update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateTransactionDto, @Request() req: AuthenticatedRequest) {
     return this.financialService.update(id, req.user.companyId, dto);
   }
 }

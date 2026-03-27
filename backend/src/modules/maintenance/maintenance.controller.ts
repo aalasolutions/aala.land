@@ -10,6 +10,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '@shared/guards/roles.guard';
 import { Roles } from '@shared/decorators/roles.decorator';
 import { Role } from '@shared/enums/roles.enum';
+import { AuthenticatedRequest } from '@shared/interfaces/authenticated-request.interface';
 
 @ApiTags('maintenance')
 @Controller('maintenance')
@@ -21,7 +22,7 @@ export class MaintenanceController {
   @Post()
   @Roles(Role.COMPANY_ADMIN)
   @ApiOperation({ summary: 'Create a maintenance work order (COMPANY_ADMIN+)' })
-  create(@Body() dto: CreateWorkOrderDto, @Request() req: any) {
+  create(@Body() dto: CreateWorkOrderDto, @Request() req: AuthenticatedRequest) {
     return this.maintenanceService.create(req.user.companyId, dto);
   }
 
@@ -31,7 +32,7 @@ export class MaintenanceController {
   @ApiQuery({ name: 'limit', required: false })
   @ApiQuery({ name: 'regionCode', required: false, type: String })
   findAll(
-    @Request() req: any,
+    @Request() req: AuthenticatedRequest,
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
     @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
     @Query('regionCode') regionCode?: string,
@@ -42,27 +43,27 @@ export class MaintenanceController {
   @Get('cost-summary')
   @ApiOperation({ summary: 'Get cost summary for all work orders' })
   @ApiQuery({ name: 'regionCode', required: false, type: String })
-  getCostSummary(@Request() req: any, @Query('regionCode') regionCode?: string) {
+  getCostSummary(@Request() req: AuthenticatedRequest, @Query('regionCode') regionCode?: string) {
     return this.maintenanceService.getCostSummary(req.user.companyId, regionCode);
   }
 
   @Get('upcoming')
   @ApiOperation({ summary: 'Get preventive maintenance due in next 30 days' })
   @ApiQuery({ name: 'regionCode', required: false, type: String })
-  getUpcoming(@Request() req: any, @Query('regionCode') regionCode?: string) {
+  getUpcoming(@Request() req: AuthenticatedRequest, @Query('regionCode') regionCode?: string) {
     return this.maintenanceService.getUpcoming(req.user.companyId, regionCode);
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Get a work order by ID' })
-  findOne(@Param('id', ParseUUIDPipe) id: string, @Request() req: any) {
+  findOne(@Param('id', ParseUUIDPipe) id: string, @Request() req: AuthenticatedRequest) {
     return this.maintenanceService.findOne(id, req.user.companyId);
   }
 
   @Patch(':id')
   @Roles(Role.COMPANY_ADMIN)
   @ApiOperation({ summary: 'Update a work order (COMPANY_ADMIN+)' })
-  update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateWorkOrderDto, @Request() req: any) {
+  update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateWorkOrderDto, @Request() req: AuthenticatedRequest) {
     return this.maintenanceService.update(id, req.user.companyId, dto);
   }
 
@@ -70,7 +71,7 @@ export class MaintenanceController {
   @Roles(Role.COMPANY_ADMIN)
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Delete a work order (COMPANY_ADMIN+)' })
-  remove(@Param('id', ParseUUIDPipe) id: string, @Request() req: any) {
+  remove(@Param('id', ParseUUIDPipe) id: string, @Request() req: AuthenticatedRequest) {
     return this.maintenanceService.remove(id, req.user.companyId);
   }
 }

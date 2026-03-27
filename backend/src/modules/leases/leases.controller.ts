@@ -10,6 +10,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '@shared/guards/roles.guard';
 import { Roles } from '@shared/decorators/roles.decorator';
 import { Role } from '@shared/enums/roles.enum';
+import { AuthenticatedRequest } from '@shared/interfaces/authenticated-request.interface';
 
 @ApiTags('leases')
 @Controller('leases')
@@ -21,7 +22,7 @@ export class LeasesController {
   @Post()
   @Roles(Role.COMPANY_ADMIN)
   @ApiOperation({ summary: 'Create a lease agreement (COMPANY_ADMIN+)' })
-  create(@Body() dto: CreateLeaseDto, @Request() req: any) {
+  create(@Body() dto: CreateLeaseDto, @Request() req: AuthenticatedRequest) {
     return this.leasesService.create(req.user.companyId, dto);
   }
 
@@ -31,7 +32,7 @@ export class LeasesController {
   @ApiQuery({ name: 'limit', required: false })
   @ApiQuery({ name: 'regionCode', required: false, type: String })
   findAll(
-    @Request() req: any,
+    @Request() req: AuthenticatedRequest,
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
     @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
     @Query('regionCode') regionCode?: string,
@@ -41,34 +42,34 @@ export class LeasesController {
 
   @Get('unit/:unitId')
   @ApiOperation({ summary: 'Get all leases for a specific unit' })
-  findByUnit(@Param('unitId', ParseUUIDPipe) unitId: string, @Request() req: any) {
+  findByUnit(@Param('unitId', ParseUUIDPipe) unitId: string, @Request() req: AuthenticatedRequest) {
     return this.leasesService.findByUnit(unitId, req.user.companyId);
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Get a lease by ID' })
-  findOne(@Param('id', ParseUUIDPipe) id: string, @Request() req: any) {
+  findOne(@Param('id', ParseUUIDPipe) id: string, @Request() req: AuthenticatedRequest) {
     return this.leasesService.findOne(id, req.user.companyId);
   }
 
   @Patch(':id')
   @Roles(Role.COMPANY_ADMIN)
   @ApiOperation({ summary: 'Update a lease (COMPANY_ADMIN+)' })
-  update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateLeaseDto, @Request() req: any) {
+  update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateLeaseDto, @Request() req: AuthenticatedRequest) {
     return this.leasesService.update(id, req.user.companyId, dto);
   }
 
   @Post(':id/renew')
   @Roles(Role.COMPANY_ADMIN)
   @ApiOperation({ summary: 'Renew a lease (creates new lease, marks old as RENEWED)' })
-  renew(@Param('id', ParseUUIDPipe) id: string, @Body() dto: CreateLeaseDto, @Request() req: any) {
+  renew(@Param('id', ParseUUIDPipe) id: string, @Body() dto: CreateLeaseDto, @Request() req: AuthenticatedRequest) {
     return this.leasesService.renew(id, req.user.companyId, dto);
   }
 
   @Post(':id/terminate')
   @Roles(Role.COMPANY_ADMIN)
   @ApiOperation({ summary: 'Terminate a lease early' })
-  terminate(@Param('id', ParseUUIDPipe) id: string, @Request() req: any) {
+  terminate(@Param('id', ParseUUIDPipe) id: string, @Request() req: AuthenticatedRequest) {
     return this.leasesService.terminate(id, req.user.companyId);
   }
 
@@ -76,7 +77,7 @@ export class LeasesController {
   @Roles(Role.COMPANY_ADMIN)
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Delete a lease (COMPANY_ADMIN+)' })
-  remove(@Param('id', ParseUUIDPipe) id: string, @Request() req: any) {
+  remove(@Param('id', ParseUUIDPipe) id: string, @Request() req: AuthenticatedRequest) {
     return this.leasesService.remove(id, req.user.companyId);
   }
 }
