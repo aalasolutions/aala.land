@@ -5,7 +5,6 @@ import { Transaction, TransactionType, TransactionStatus } from './entities/tran
 import { CreateTransactionDto } from './dto/create-transaction.dto';
 import { UpdateTransactionDto } from './dto/update-transaction.dto';
 import { REGION_FILTER_SUBQUERY } from '../../shared/utils/region-filter.util';
-import { REGION_FILTER_SUBQUERY } from '../../shared/utils/region-filter.util';
 
 export interface TransactionSummary {
   totalIncome: number;

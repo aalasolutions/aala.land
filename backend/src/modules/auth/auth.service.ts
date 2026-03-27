@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException, BadRequestException, Logger } from '@nestjs/common';
+import { Injectable, BadRequestException, Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { UsersService } from '../users/users.service';
 import { CompaniesService } from '../companies/companies.service';
@@ -124,7 +124,7 @@ export class AuthService {
             throw new BadRequestException('Invalid or expired reset token');
         }
 
-        const hashedPassword = await bcrypt.hash(newPassword, 10);
+        const hashedPassword = await bcrypt.hash(newPassword, 12);
         await this.usersService.updatePassword(user.id, hashedPassword);
         await this.usersService.updateResetToken(user.id, null, null);
 
