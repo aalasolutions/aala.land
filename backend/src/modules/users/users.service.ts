@@ -23,7 +23,7 @@ export class UsersService {
             throw new ConflictException('Email already exists');
         }
 
-        const hashedPassword = await bcrypt.hash(dto.password, 10);
+        const hashedPassword = await bcrypt.hash(dto.password, 12);
         const user = this.userRepository.create({ ...dto, password: hashedPassword, companyId });
         return this.userRepository.save(user);
     }
@@ -56,11 +56,12 @@ export class UsersService {
     async update(id: string, companyId: string, dto: UpdateUserDto): Promise<User> {
         const user = await this.findOne(id, companyId);
 
-        if (dto.password) {
-            dto.password = await bcrypt.hash(dto.password, 10);
+        const updates = { ...dto };
+        if (updates.password) {
+            updates.password = await bcrypt.hash(updates.password, 12);
         }
 
-        Object.assign(user, dto);
+        Object.assign(user, updates);
         return this.userRepository.save(user);
     }
 
@@ -102,7 +103,7 @@ export class UsersService {
         }
 
         const tempPassword = crypto.randomBytes(16).toString('hex');
-        const hashedPassword = await bcrypt.hash(tempPassword, 10);
+        const hashedPassword = await bcrypt.hash(tempPassword, 12);
         const name = `${dto.firstName} ${dto.lastName}`;
 
         const user = this.userRepository.create({
