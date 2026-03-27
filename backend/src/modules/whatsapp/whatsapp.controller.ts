@@ -22,6 +22,7 @@ import { WhatsappService } from './whatsapp.service';
 import { SendMessageDto } from './dto/send-message.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import * as crypto from 'crypto';
+import { AuthenticatedRequest } from '@shared/interfaces/authenticated-request.interface';
 
 @ApiTags('whatsapp')
 @Controller('whatsapp')
@@ -34,7 +35,7 @@ export class WhatsappController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Send a WhatsApp message' })
-  async send(@Body() dto: SendMessageDto, @Request() req: any) {
+  async send(@Body() dto: SendMessageDto, @Request() req: AuthenticatedRequest) {
     return this.whatsappService.sendMessage(req.user.companyId, dto);
   }
 
@@ -85,7 +86,7 @@ export class WhatsappController {
   @ApiQuery({ name: 'page', required: false })
   @ApiQuery({ name: 'limit', required: false })
   async findAll(
-    @Request() req: any,
+    @Request() req: AuthenticatedRequest,
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
     @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
   ) {
@@ -98,7 +99,7 @@ export class WhatsappController {
   @ApiOperation({ summary: 'List WhatsApp messages for a specific lead' })
   async findByLead(
     @Param('leadId', ParseUUIDPipe) leadId: string,
-    @Request() req: any,
+    @Request() req: AuthenticatedRequest,
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
     @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
   ) {
@@ -109,7 +110,7 @@ export class WhatsappController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Get a specific WhatsApp message' })
-  async findOne(@Param('id', ParseUUIDPipe) id: string, @Request() req: any) {
+  async findOne(@Param('id', ParseUUIDPipe) id: string, @Request() req: AuthenticatedRequest) {
     return this.whatsappService.findOne(id, req.user.companyId);
   }
 }

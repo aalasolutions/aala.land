@@ -11,6 +11,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '@shared/guards/roles.guard';
 import { Roles } from '@shared/decorators/roles.decorator';
 import { Role } from '@shared/enums/roles.enum';
+import { AuthenticatedRequest } from '@shared/interfaces/authenticated-request.interface';
 
 @ApiTags('vendors')
 @ApiBearerAuth()
@@ -22,7 +23,7 @@ export class VendorsController {
   @Post()
   @Roles(Role.COMPANY_ADMIN)
   @ApiOperation({ summary: 'Create a vendor (COMPANY_ADMIN+)' })
-  create(@Body() dto: CreateVendorDto, @Request() req: any) {
+  create(@Body() dto: CreateVendorDto, @Request() req: AuthenticatedRequest) {
     return this.vendorsService.create(req.user.companyId, dto);
   }
 
@@ -34,7 +35,7 @@ export class VendorsController {
   @ApiQuery({ name: 'specialty', required: false, enum: VendorSpecialty })
   @ApiQuery({ name: 'regionCode', required: false, type: String })
   findAll(
-    @Request() req: any,
+    @Request() req: AuthenticatedRequest,
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
     @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
     @Query('search') search?: string,
@@ -46,14 +47,14 @@ export class VendorsController {
 
   @Get(':id')
   @ApiOperation({ summary: 'Get a vendor by ID' })
-  findOne(@Param('id', ParseUUIDPipe) id: string, @Request() req: any) {
+  findOne(@Param('id', ParseUUIDPipe) id: string, @Request() req: AuthenticatedRequest) {
     return this.vendorsService.findOne(id, req.user.companyId);
   }
 
   @Patch(':id')
   @Roles(Role.COMPANY_ADMIN)
   @ApiOperation({ summary: 'Update a vendor (COMPANY_ADMIN+)' })
-  update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateVendorDto, @Request() req: any) {
+  update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateVendorDto, @Request() req: AuthenticatedRequest) {
     return this.vendorsService.update(id, req.user.companyId, dto);
   }
 
@@ -61,7 +62,7 @@ export class VendorsController {
   @Roles(Role.COMPANY_ADMIN)
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Deactivate a vendor (COMPANY_ADMIN+)' })
-  remove(@Param('id', ParseUUIDPipe) id: string, @Request() req: any) {
+  remove(@Param('id', ParseUUIDPipe) id: string, @Request() req: AuthenticatedRequest) {
     return this.vendorsService.remove(id, req.user.companyId);
   }
 }
