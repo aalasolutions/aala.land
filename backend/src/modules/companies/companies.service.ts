@@ -4,7 +4,7 @@ import { Repository, DataSource } from 'typeorm';
 import { Company, SubscriptionTier } from './entities/company.entity';
 import { CreateCompanyDto } from './dto/create-company.dto';
 import { UpdateCompanyDto } from './dto/update-company.dto';
-import { MENA_REGIONS } from '@shared/constants/regions';
+import { REGIONS } from '@shared/constants/regions';
 
 @Injectable()
 export class CompaniesService {
@@ -15,15 +15,18 @@ export class CompaniesService {
     ) { }
 
     async create(dto: CreateCompanyDto): Promise<Company> {
-        if (dto.activeRegions) {
+        this.validateRegionCode(dto.defaultRegionCode);
+
+        // If activeRegions not provided, default to [defaultRegionCode]
+        if (!dto.activeRegions) {
+            dto.activeRegions = [dto.defaultRegionCode];
+        } else {
             this.validateRegionCodes(dto.activeRegions);
-        }
-        if (dto.defaultRegionCode) {
-            this.validateRegionCode(dto.defaultRegionCode);
-            if (dto.activeRegions && !dto.activeRegions.includes(dto.defaultRegionCode)) {
+            if (!dto.activeRegions.includes(dto.defaultRegionCode)) {
                 throw new BadRequestException('defaultRegionCode must be included in activeRegions');
             }
         }
+
         const company = this.companyRepository.create(dto);
         return this.companyRepository.save(company);
     }
@@ -109,7 +112,7 @@ export class CompaniesService {
     }
 
     private validateRegionCode(code: string): void {
-        const valid = MENA_REGIONS.some(r => r.code === code);
+        const valid = REGIONS.some(r => r.code === code);
         if (!valid) {
             throw new BadRequestException(`Invalid region code: ${code}`);
         }
