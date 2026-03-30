@@ -4,21 +4,27 @@ import { Repository, FindOptionsWhere } from 'typeorm';
 import { Commission, CommissionStatus } from './entities/commission.entity';
 import { CreateCommissionDto } from './dto/create-commission.dto';
 import { UpdateCommissionDto } from './dto/update-commission.dto';
+import { Company } from '../companies/entities/company.entity';
+import { resolveRegionCode } from '../../shared/utils/resolve-region-code.util';
 
 @Injectable()
 export class CommissionsService {
   constructor(
     @InjectRepository(Commission)
     private readonly commissionRepository: Repository<Commission>,
+    @InjectRepository(Company)
+    private readonly companyRepository: Repository<Company>,
   ) { }
 
   async create(companyId: string, dto: CreateCommissionDto): Promise<Commission> {
     const commissionAmount = (dto.grossAmount * dto.commissionRate) / 100;
+    const regionCode = await resolveRegionCode(this.companyRepository, companyId, dto.regionCode);
 
     const commission = this.commissionRepository.create({
       ...dto,
       companyId,
       commissionAmount,
+      regionCode,
     });
     return this.commissionRepository.save(commission);
   }

@@ -4,10 +4,12 @@ import { Repository } from 'typeorm';
 import { NotFoundException, BadRequestException } from '@nestjs/common';
 import { CommissionsService } from './commissions.service';
 import { Commission, CommissionStatus, CommissionType } from './entities/commission.entity';
+import { Company } from '../companies/entities/company.entity';
 
 describe('CommissionsService', () => {
   let service: CommissionsService;
   let repo: jest.Mocked<Repository<Commission>>;
+  let companyRepo: jest.Mocked<Repository<Company>>;
 
   const companyId = 'company-uuid-1';
   const agentId = 'agent-uuid-1';
@@ -39,11 +41,18 @@ describe('CommissionsService', () => {
             find: jest.fn(),
           },
         },
+        {
+          provide: getRepositoryToken(Company),
+          useValue: {
+            findOne: jest.fn(),
+          },
+        },
       ],
     }).compile();
 
     service = module.get<CommissionsService>(CommissionsService);
     repo = module.get(getRepositoryToken(Commission));
+    companyRepo = module.get(getRepositoryToken(Company));
   });
 
   it('should be defined', () => {
@@ -52,6 +61,7 @@ describe('CommissionsService', () => {
 
   describe('create', () => {
     it('creates commission and auto-calculates amount', async () => {
+      companyRepo.findOne.mockResolvedValue({ defaultRegionCode: 'dubai' } as Company);
       repo.create.mockReturnValue(mockCommission as Commission);
       repo.save.mockResolvedValue(mockCommission as Commission);
 
@@ -72,6 +82,7 @@ describe('CommissionsService', () => {
     });
 
     it('calculates 2.5% of 200000 = 5000', async () => {
+      companyRepo.findOne.mockResolvedValue({ defaultRegionCode: 'dubai' } as Company);
       repo.create.mockReturnValue({ ...mockCommission, commissionAmount: 5000 } as Commission);
       repo.save.mockResolvedValue({ ...mockCommission, commissionAmount: 5000 } as Commission);
 
