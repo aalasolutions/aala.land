@@ -39,10 +39,10 @@ export class Company {
     @Column({ name: 'subscription_expires_at', type: 'timestamptz', nullable: true })
     subscriptionExpiresAt: Date;
 
-    @Column({ name: 'active_regions', type: 'jsonb', default: '["dubai"]' })
+    @Column({ name: 'active_regions', type: 'jsonb' })
     activeRegions: string[];
 
-    @Column({ name: 'default_region_code', type: 'varchar', length: 50, default: 'dubai' })
+    @Column({ name: 'default_region_code', type: 'varchar', length: 50 })
     defaultRegionCode: string;
 
     @CreateDateColumn({ name: 'created_at' })
