@@ -5,7 +5,7 @@
 <h1 align="center">AALA.LAND</h1>
 
 <p align="center">
-  Property Management Platform built for the Middle East.
+  Property Management Platform for modern real estate teams.
   <br />
   <a href="https://aala.land">Website</a> &middot; <a href="#features">Features</a> &middot; <a href="#installation">Install</a> &middot; <a href="#license">License</a>
 </p>
@@ -61,8 +61,8 @@ Manage properties, leads, leases, maintenance, cheques, commissions, and teams f
 - Activity feed from audit logs
 
 **Multi-Region**
-- 14 MENA cities: Dubai, Abu Dhabi, Sharjah, Ajman, Riyadh, Jeddah, Dammam, Manama, Muscat, Doha, Kuwait City, Cairo, Amman, Beirut
-- Automatic currency switching (AED, SAR, BHD, OMR, QAR, KWD, EGP, JOD, LBP)
+- Configurable city and region support (ships with 14 cities across MENA, extensible to any market)
+- Automatic currency switching per region
 - Region-filtered data across all modules
 - Company settings for active regions
 
