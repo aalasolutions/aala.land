@@ -4,10 +4,12 @@ import { Repository } from 'typeorm';
 import { NotFoundException } from '@nestjs/common';
 import { VendorsService } from './vendors.service';
 import { Vendor, VendorSpecialty } from './entities/vendor.entity';
+import { Company } from '../companies/entities/company.entity';
 
 describe('VendorsService', () => {
   let service: VendorsService;
   let repo: jest.Mocked<Repository<Vendor>>;
+  let companyRepo: jest.Mocked<Repository<Company>>;
 
   const companyId = 'company-uuid-1';
 
@@ -42,11 +44,18 @@ describe('VendorsService', () => {
             findAndCount: jest.fn(),
           },
         },
+        {
+          provide: getRepositoryToken(Company),
+          useValue: {
+            findOne: jest.fn(),
+          },
+        },
       ],
     }).compile();
 
     service = module.get<VendorsService>(VendorsService);
     repo = module.get(getRepositoryToken(Vendor));
+    companyRepo = module.get(getRepositoryToken(Company));
   });
 
   it('should be defined', () => {
@@ -55,6 +64,7 @@ describe('VendorsService', () => {
 
   describe('create', () => {
     it('creates and returns a vendor', async () => {
+      companyRepo.findOne.mockResolvedValue({ defaultRegionCode: 'dubai' } as Company);
       const dto = {
         name: 'Al Futtaim Maintenance',
         email: 'info@alfuttaim.ae',
@@ -67,7 +77,7 @@ describe('VendorsService', () => {
 
       const result = await service.create(companyId, dto as any);
 
-      expect(repo.create).toHaveBeenCalledWith({ ...dto, companyId });
+      expect(repo.create).toHaveBeenCalledWith({ ...dto, companyId, regionCode: 'dubai' });
       expect(repo.save).toHaveBeenCalledWith(mockVendor);
       expect(result).toEqual(mockVendor);
     });

@@ -4,16 +4,21 @@ import { Repository, ILike, FindOptionsWhere } from 'typeorm';
 import { Vendor, VendorSpecialty } from './entities/vendor.entity';
 import { CreateVendorDto } from './dto/create-vendor.dto';
 import { UpdateVendorDto } from './dto/update-vendor.dto';
+import { Company } from '../companies/entities/company.entity';
+import { resolveRegionCode } from '../../shared/utils/resolve-region-code.util';
 
 @Injectable()
 export class VendorsService {
   constructor(
     @InjectRepository(Vendor)
     private readonly vendorRepository: Repository<Vendor>,
+    @InjectRepository(Company)
+    private readonly companyRepository: Repository<Company>,
   ) {}
 
   async create(companyId: string, dto: CreateVendorDto): Promise<Vendor> {
-    const vendor = this.vendorRepository.create({ ...dto, companyId });
+    const regionCode = await resolveRegionCode(this.companyRepository, companyId, dto.regionCode);
+    const vendor = this.vendorRepository.create({ ...dto, companyId, regionCode });
     return this.vendorRepository.save(vendor);
   }
 
