@@ -104,7 +104,7 @@ describe('CompaniesController', () => {
   });
 
   describe('getRegions', () => {
-    it('returns the MENA_REGIONS array', () => {
+    it('returns the REGIONS array', () => {
       const result = controller.getRegions();
 
       expect(Array.isArray(result)).toBe(true);

@@ -108,7 +108,7 @@ describe('CompaniesService', () => {
       await expect(service.update('bad-id', { name: 'X' })).rejects.toThrow(NotFoundException);
     });
 
-    it('validates activeRegions codes exist in MENA_REGIONS', async () => {
+    it('validates activeRegions codes exist in REGIONS', async () => {
       repo.findOne.mockResolvedValue({ ...mockCompany });
 
       await expect(
@@ -116,7 +116,7 @@ describe('CompaniesService', () => {
       ).rejects.toThrow(BadRequestException);
     });
 
-    it('validates defaultRegionCode exists in MENA_REGIONS', async () => {
+    it('validates defaultRegionCode exists in REGIONS', async () => {
       repo.findOne.mockResolvedValue({ ...mockCompany });
 
       await expect(
