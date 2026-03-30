@@ -5,11 +5,13 @@ import { NotFoundException } from '@nestjs/common';
 import { LeadsService } from './leads.service';
 import { Lead, LeadStatus, LeadTemperature, LeadSource } from './entities/lead.entity';
 import { LeadActivity, ActivityType } from './entities/lead-activity.entity';
+import { Company } from '../companies/entities/company.entity';
 
 describe('LeadsService', () => {
   let service: LeadsService;
   let leadRepo: jest.Mocked<Repository<Lead>>;
   let activityRepo: jest.Mocked<Repository<LeadActivity>>;
+  let companyRepo: jest.Mocked<Repository<Company>>;
 
   const companyId = 'company-uuid-1';
 
@@ -54,12 +56,19 @@ describe('LeadsService', () => {
             find: jest.fn(),
           },
         },
+        {
+          provide: getRepositoryToken(Company),
+          useValue: {
+            findOne: jest.fn(),
+          },
+        },
       ],
     }).compile();
 
     service = module.get<LeadsService>(LeadsService);
     leadRepo = module.get(getRepositoryToken(Lead));
     activityRepo = module.get(getRepositoryToken(LeadActivity));
+    companyRepo = module.get(getRepositoryToken(Company));
   });
 
   it('should be defined', () => {
@@ -68,13 +77,14 @@ describe('LeadsService', () => {
 
   describe('create', () => {
     it('creates and returns a lead', async () => {
+      companyRepo.findOne.mockResolvedValue({ defaultRegionCode: 'dubai' } as Company);
       leadRepo.create.mockReturnValue(mockLead as Lead);
       leadRepo.save.mockResolvedValue(mockLead as Lead);
 
       const dto = { firstName: 'Ahmed', source: LeadSource.WHATSAPP };
       const result = await service.create(companyId, dto as any);
 
-      expect(leadRepo.create).toHaveBeenCalledWith({ ...dto, companyId });
+      expect(leadRepo.create).toHaveBeenCalledWith({ ...dto, companyId, regionCode: 'dubai' });
       expect(result).toEqual(mockLead);
     });
   });

@@ -6,6 +6,8 @@ import { LeadActivity, ActivityType } from './entities/lead-activity.entity';
 import { CreateLeadDto } from './dto/create-lead.dto';
 import { UpdateLeadDto } from './dto/update-lead.dto';
 import { CreateLeadActivityDto } from './dto/create-lead-activity.dto';
+import { Company } from '../companies/entities/company.entity';
+import { resolveRegionCode } from '../../shared/utils/resolve-region-code.util';
 
 @Injectable()
 export class LeadsService {
@@ -14,10 +16,13 @@ export class LeadsService {
     private readonly leadRepository: Repository<Lead>,
     @InjectRepository(LeadActivity)
     private readonly activityRepository: Repository<LeadActivity>,
+    @InjectRepository(Company)
+    private readonly companyRepository: Repository<Company>,
   ) { }
 
   async create(companyId: string, dto: CreateLeadDto): Promise<Lead> {
-    const lead = this.leadRepository.create({ ...dto, companyId });
+    const regionCode = await resolveRegionCode(this.companyRepository, companyId, dto.regionCode);
+    const lead = this.leadRepository.create({ ...dto, companyId, regionCode });
     return this.leadRepository.save(lead);
   }
 
