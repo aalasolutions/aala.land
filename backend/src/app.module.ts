@@ -27,6 +27,7 @@ import { ContactsModule } from '@modules/contacts/contacts.module';
 import { VendorsModule } from '@modules/vendors/vendors.module';
 import { ReminderRulesModule } from '@modules/reminder-rules/reminder-rules.module';
 import { DocumentsModule } from '@modules/documents/documents.module';
+import { LocationsModule } from '@modules/locations/locations.module';
 
 @Module({
   imports: [
@@ -75,6 +76,7 @@ import { DocumentsModule } from '@modules/documents/documents.module';
     VendorsModule,
     ReminderRulesModule,
     DocumentsModule,
+    LocationsModule,
   ],
   controllers: [AppController],
   providers: [
