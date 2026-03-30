@@ -52,23 +52,23 @@ export class PropertiesService {
         if (areaIds.length > 0) {
             const buildings = await this.buildingRepository
                 .createQueryBuilder('b')
-                .select('b.areaId', 'areaId')
+                .select('b.localityId', 'localityId')
                 .addSelect('COUNT(*)', 'count')
-                .where('b.areaId IN (:...areaIds)', { areaIds })
-                .groupBy('b.areaId')
+                .where('b.localityId IN (:...areaIds)', { areaIds })
+                .groupBy('b.localityId')
                 .getRawMany();
 
             const units = await this.unitRepository
                 .createQueryBuilder('u')
                 .innerJoin('u.building', 'b')
-                .select('b.areaId', 'areaId')
+                .select('b.localityId', 'localityId')
                 .addSelect('COUNT(*)', 'count')
-                .where('b.areaId IN (:...areaIds)', { areaIds })
-                .groupBy('b.areaId')
+                .where('b.localityId IN (:...areaIds)', { areaIds })
+                .groupBy('b.localityId')
                 .getRawMany();
 
-            buildingCounts = Object.fromEntries(buildings.map(b => [b.areaId, parseInt(b.count)]));
-            unitCounts = Object.fromEntries(units.map(u => [u.areaId, parseInt(u.count)]));
+            buildingCounts = Object.fromEntries(buildings.map(b => [b.localityId, parseInt(b.count)]));
+            unitCounts = Object.fromEntries(units.map(u => [u.localityId, parseInt(u.count)]));
         }
 
         const data = areas.map(area => ({
@@ -105,7 +105,7 @@ export class PropertiesService {
 
     async findBuildingsByArea(areaId: string, companyId: string, page = 1, limit = 20) {
         const [data, total] = await this.buildingRepository.findAndCount({
-            where: { areaId, companyId },
+            where: { localityId: areaId, companyId },
             relations: ['units'],
             skip: (page - 1) * limit,
             take: limit,
@@ -150,7 +150,7 @@ export class PropertiesService {
         const qb = this.unitRepository
             .createQueryBuilder('u')
             .innerJoin('u.building', 'b')
-            .innerJoin('b.area', 'a')
+            .innerJoin('b.locality', 'a')
             .leftJoin('u.owner', 'o')
             .addSelect(['b.id', 'b.name', 'b.propertyType', 'a.id', 'a.name', 'o.id', 'o.name'])
             .where('u.companyId = :companyId', { companyId });
@@ -202,8 +202,8 @@ export class PropertiesService {
             floor: u.floor,
             buildingId: u.buildingId,
             buildingName: u.building?.name ?? '',
-            areaId: u.building?.area?.id ?? '',
-            areaName: u.building?.area?.name ?? '',
+            areaId: u.building?.locality?.id ?? '',
+            areaName: u.building?.locality?.name ?? '',
             ownerName: u.owner?.name ?? null,
         }));
 
@@ -229,7 +229,7 @@ export class PropertiesService {
     async findOneUnit(id: string, companyId: string): Promise<Unit> {
         const unit = await this.unitRepository.findOne({
             where: { id, companyId },
-            relations: ['building', 'building.area', 'owner'],
+            relations: ['building', 'building.locality', 'owner'],
         });
         if (!unit) throw new NotFoundException(`Unit not found`);
         return unit;
