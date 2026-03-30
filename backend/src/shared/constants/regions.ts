@@ -7,7 +7,7 @@ export interface Region {
   timezone: string;
 }
 
-export const MENA_REGIONS: Region[] = [
+export const REGIONS: Region[] = [
   // UAE (AED)
   { code: 'dubai', name: 'Dubai', country: 'AE', currency: 'AED', currencySymbol: '\u062F.\u0625', timezone: 'Asia/Dubai' },
   { code: 'abu-dhabi', name: 'Abu Dhabi', country: 'AE', currency: 'AED', currencySymbol: '\u062F.\u0625', timezone: 'Asia/Dubai' },
@@ -31,12 +31,29 @@ export const MENA_REGIONS: Region[] = [
   { code: 'amman', name: 'Amman', country: 'JO', currency: 'JOD', currencySymbol: '\u062F.\u0627', timezone: 'Asia/Amman' },
   // Lebanon (LBP)
   { code: 'beirut', name: 'Beirut', country: 'LB', currency: 'LBP', currencySymbol: '\u0644.\u0644', timezone: 'Asia/Beirut' },
+  // Pakistan (PKR)
+  { code: 'punjab', name: 'Punjab', country: 'PK', currency: 'PKR', currencySymbol: '\u20A8', timezone: 'Asia/Karachi' },
+  { code: 'sindh', name: 'Sindh', country: 'PK', currency: 'PKR', currencySymbol: '\u20A8', timezone: 'Asia/Karachi' },
+  { code: 'kpk', name: 'KPK', country: 'PK', currency: 'PKR', currencySymbol: '\u20A8', timezone: 'Asia/Karachi' },
+  { code: 'balochistan', name: 'Balochistan', country: 'PK', currency: 'PKR', currencySymbol: '\u20A8', timezone: 'Asia/Karachi' },
+  { code: 'islamabad', name: 'Islamabad', country: 'PK', currency: 'PKR', currencySymbol: '\u20A8', timezone: 'Asia/Karachi' },
+  // India (INR)
+  { code: 'maharashtra', name: 'Maharashtra', country: 'IN', currency: 'INR', currencySymbol: '\u20B9', timezone: 'Asia/Kolkata' },
+  { code: 'delhi', name: 'Delhi', country: 'IN', currency: 'INR', currencySymbol: '\u20B9', timezone: 'Asia/Kolkata' },
+  { code: 'karnataka', name: 'Karnataka', country: 'IN', currency: 'INR', currencySymbol: '\u20B9', timezone: 'Asia/Kolkata' },
+  { code: 'telangana', name: 'Telangana', country: 'IN', currency: 'INR', currencySymbol: '\u20B9', timezone: 'Asia/Kolkata' },
+  { code: 'tamil-nadu', name: 'Tamil Nadu', country: 'IN', currency: 'INR', currencySymbol: '\u20B9', timezone: 'Asia/Kolkata' },
+  { code: 'gujarat', name: 'Gujarat', country: 'IN', currency: 'INR', currencySymbol: '\u20B9', timezone: 'Asia/Kolkata' },
+  { code: 'rajasthan', name: 'Rajasthan', country: 'IN', currency: 'INR', currencySymbol: '\u20B9', timezone: 'Asia/Kolkata' },
 ];
 
+/** @deprecated Use REGIONS instead */
+export const MENA_REGIONS = REGIONS;
+
 export function getRegionByCode(code: string): Region | undefined {
-  return MENA_REGIONS.find(r => r.code === code);
+  return REGIONS.find(r => r.code === code);
 }
 
 export function resolveRegions(codes: string[]): Region[] {
-  return codes.map(c => MENA_REGIONS.find(r => r.code === c)).filter(Boolean) as Region[];
+  return codes.map(c => REGIONS.find(r => r.code === c)).filter(Boolean) as Region[];
 }
