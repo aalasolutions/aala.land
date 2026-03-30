@@ -1,7 +1,9 @@
-# frontend
+# AALA.LAND Frontend (Ember.js)
 
-This README outlines the details of collaborating on this Ember application.
-A short introduction of this app could easily go here.
+This is the Ember.js app for AALA.LAND.
+
+**Repo location:** `Main/frontend`
+**Backend API (dev):** `http://localhost:3010/v1` (see `config/environment.js`)
 
 ## Prerequisites
 
@@ -10,45 +12,51 @@ You will need the following things properly installed on your computer.
 - [Git](https://git-scm.com/)
 - [Node.js](https://nodejs.org/)
 - [pnpm](https://pnpm.io/)
-- [Ember CLI](https://cli.emberjs.com/release/)
 - [Google Chrome](https://google.com/chrome/)
 
 ## Installation
 
-- `git clone <repository-url>` this repository
-- `cd frontend`
+- `cd Main/frontend`
 - `pnpm install`
 
-## Running / Development
+## Quickstart (Local Dev)
 
-- `pnpm start`
-- Visit your app at [http://localhost:4200](http://localhost:4200).
-- Visit your tests at [http://localhost:4200/tests](http://localhost:4200/tests).
+1. Start infra containers (Postgres, Dragonfly, MinIO) from `Main/`:
+   - `cd Main && docker compose up -d`
+2. Start the backend API from `Main/backend` (serves `http://localhost:3010/v1`)
+3. Start the frontend from `Main/frontend`:
+   - `pnpm start`
+4. Visit:
+   - App: `http://localhost:4200`
+   - Tests: `http://localhost:4200/tests`
 
-### Code Generators
+## Local Credentials (Dev)
 
-Make use of the many generators for code, try `ember help generate` for more details
+- Email: `admin@test.com`
+- Password: `Admin123!`
 
-### Running Tests
+## Configuration
 
-- `pnpm test`
-- `pnpm test:ember --server`
+- **Dev API base** is hardcoded to `http://localhost:3010/v1` in `config/environment.js`.
+- **Production API base** comes from `API_BASE` (falls back to `/v1`).
 
-### Linting
+## Commands
 
-- `pnpm lint`
-- `pnpm lint:fix`
+- Dev server: `pnpm start`
+- Tests (lint + Ember tests): `pnpm test`
+- Ember tests only: `pnpm test:ember`
+- Watch mode: `pnpm test:ember -- --server`
+- Lint: `pnpm lint`
+- Lint + auto-fix + format: `pnpm lint:fix`
+- Format only: `pnpm format`
+- Build (production): `pnpm build`
 
-### Building
+## Conventions (Project Rules)
 
-- `pnpm ember build` (development)
-- `pnpm build` (production)
+- Styling is NuvoUI SCSS (no Tailwind, no inline styles).
+- Add `data-test-*` attributes for interactive elements in templates.
 
-### Deploying
-
-Specify what it takes to deploy your app.
-
-## Further Reading / Useful Links
+## Further Reading
 
 - [ember.js](https://emberjs.com/)
 - [ember-cli](https://cli.emberjs.com/release/)
