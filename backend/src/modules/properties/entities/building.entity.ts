@@ -1,6 +1,6 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, OneToMany, ManyToOne, JoinColumn } from 'typeorm';
 import { Company } from '../../companies/entities/company.entity';
-import { PropertyArea } from './property-area.entity';
+import { Locality } from '../../locations/entities/locality.entity';
 import { Unit } from './unit.entity';
 import { PropertyType } from './property-type.enum';
 
@@ -12,12 +12,12 @@ export class Building {
     @Column({ type: 'varchar', length: 255 })
     name: string;
 
-    @Column({ name: 'area_id', type: 'uuid' })
-    areaId: string;
+    @Column({ name: 'locality_id', type: 'uuid' })
+    localityId: string;
 
-    @ManyToOne(() => PropertyArea, (area) => area.buildings)
-    @JoinColumn({ name: 'area_id' })
-    area: PropertyArea;
+    @ManyToOne(() => Locality)
+    @JoinColumn({ name: 'locality_id' })
+    locality: Locality;
 
     @Column({ name: 'company_id', type: 'uuid' })
     companyId: string;
