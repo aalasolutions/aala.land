@@ -1,6 +1,5 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, OneToMany, ManyToOne, JoinColumn, Index } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn, Index } from 'typeorm';
 import { Company } from '../../companies/entities/company.entity';
-import { Building } from './building.entity';
 
 @Entity('property_areas')
 @Index(['name', 'companyId'], { unique: true })
@@ -25,10 +24,7 @@ export class PropertyArea {
     @JoinColumn({ name: 'company_id' })
     company: Company;
 
-    @OneToMany(() => Building, (building) => building.area)
-    buildings: Building[];
-
-    @Column({ name: 'region_code', type: 'varchar', length: 50, default: 'dubai' })
+    @Column({ name: 'region_code', type: 'varchar', length: 50 })
     regionCode: string;
 
     @CreateDateColumn({ name: 'created_at' })
