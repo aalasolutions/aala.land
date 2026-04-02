@@ -200,16 +200,36 @@
         </div>
       {{/if}}
       <div class="flex col gap-2">
+        <label class="font-sm text-muted">City</label>
+        <LocationTypeahead
+          @searchUrl={{this.citySearchUrl}}
+          @createUrl="/locations/cities"
+          @createPayload={{this.cityCreatePayload}}
+          @placeholder="Search city..."
+          @selectedName={{this.selectedCity.name}}
+          @onSelect={{this.selectCity}}
+          @onClear={{this.clearCity}}
+        />
+      </div>
+      {{#if this.selectedCity}}
+        <div class="flex col gap-2">
+          <label class="font-sm text-muted">Locality</label>
+          <LocationTypeahead
+            @searchUrl={{this.localitySearchUrl}}
+            @createUrl="/locations/localities"
+            @createPayload={{this.localityCreatePayload}}
+            @placeholder="Search locality..."
+            @selectedName={{this.selectedLocality.name}}
+            @onSelect={{this.selectLocality}}
+            @onClear={{this.clearLocality}}
+          />
+        </div>
+      {{/if}}
+      <div class="flex col gap-2">
         <label class="font-sm text-muted" for="area-name">Area Name *</label>
         <input id="area-name" type="text"
           class="form-input"
-          placeholder="e.g. Downtown Dubai" value={{this.formName}} required {{on "input" (fn this.setField "formName")}} />
-      </div>
-      <div class="flex col gap-2">
-        <label class="font-sm text-muted" for="area-location">Location</label>
-        <input id="area-location" type="text"
-          class="form-input"
-          placeholder="e.g. Dubai, UAE" value={{this.formLocation}} {{on "input" (fn this.setField "formLocation")}} />
+          placeholder="e.g. Business Bay" value={{this.formName}} required {{on "input" (fn this.setField "formName")}} />
       </div>
       <div class="flex col gap-2">
         <label class="font-sm text-muted" for="area-description">Description</label>
