@@ -6,15 +6,15 @@ export default class RegionService extends Service {
   @tracked regions = [];
 
   get currencyCode() {
-    return this.activeRegion?.currency ?? 'AED';
+    return this.activeRegion?.currency ?? null;
   }
 
   get currencySymbol() {
-    return this.activeRegion?.currencySymbol ?? '\u062F.\u0625';
+    return this.activeRegion?.currencySymbol ?? null;
   }
 
   get regionCode() {
-    return this.activeRegion?.code ?? 'dubai';
+    return this.activeRegion?.code ?? null;
   }
 
   initialize(regions, defaultRegionCode) {
