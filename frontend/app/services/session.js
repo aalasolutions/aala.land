@@ -14,7 +14,7 @@ export default class SessionService extends Service {
       accessToken: null,
       refreshToken: null,
       regions: [],
-      defaultRegionCode: 'dubai',
+      defaultRegionCode: null,
     },
   };
 
@@ -33,7 +33,7 @@ export default class SessionService extends Service {
 
         const authData = this.data.authenticated;
         if (authData.regions) {
-          this.region.initialize(authData.regions, authData.defaultRegionCode || 'dubai');
+          this.region.initialize(authData.regions, authData.defaultRegionCode || null);
         }
       } catch (error) {
         // If restore fails, clear corrupt data and start fresh
@@ -70,14 +70,14 @@ export default class SessionService extends Service {
           accessToken: data.accessToken,
           refreshToken: data.refreshToken,
           regions: data.regions || [],
-          defaultRegionCode: data.defaultRegionCode || 'dubai',
+          defaultRegionCode: data.defaultRegionCode || null,
         };
         this.isAuthenticated = true;
         this.saveToStorage();
 
         this.region.initialize(
           data.regions || [],
-          data.defaultRegionCode || 'dubai',
+          data.defaultRegionCode || null,
         );
       } catch (error) {
         this.isAuthenticated = false;
@@ -110,7 +110,7 @@ export default class SessionService extends Service {
         accessToken: null,
         refreshToken: null,
         regions: [],
-        defaultRegionCode: 'dubai',
+        defaultRegionCode: null,
       },
     };
     localStorage.removeItem('aala-session');
