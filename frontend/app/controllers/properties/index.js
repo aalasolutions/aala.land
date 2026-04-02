@@ -17,6 +17,8 @@ export default class PropertiesIndexController extends Controller {
   @tracked formLocation = '';
   @tracked formDescription = '';
   @tracked formRegionCode = '';
+  @tracked selectedCity = null;
+  @tracked selectedLocality = null;
   @tracked isSaving = false;
   @tracked errorMsg = '';
 
@@ -128,11 +130,48 @@ export default class PropertiesIndexController extends Controller {
     }
   }
 
+  get citySearchUrl() {
+    const code = this.formRegionCode || this.region.regionCode;
+    return code ? `/locations/cities/search?regionCode=${code}` : null;
+  }
+
+  get localitySearchUrl() {
+    return this.selectedCity ? `/locations/localities/search?cityId=${this.selectedCity.id}` : null;
+  }
+
+  get cityCreatePayload() {
+    return { regionCode: this.formRegionCode || this.region.regionCode };
+  }
+
+  get localityCreatePayload() {
+    return this.selectedCity ? { cityId: this.selectedCity.id } : {};
+  }
+
+  @action selectCity(city) {
+    this.selectedCity = city;
+    this.selectedLocality = null;
+  }
+
+  @action clearCity() {
+    this.selectedCity = null;
+    this.selectedLocality = null;
+  }
+
+  @action selectLocality(locality) {
+    this.selectedLocality = locality;
+  }
+
+  @action clearLocality() {
+    this.selectedLocality = null;
+  }
+
   @action openCreate() {
     this.formName = '';
     this.formLocation = '';
     this.formDescription = '';
     this.formRegionCode = this.region.regionCode;
+    this.selectedCity = null;
+    this.selectedLocality = null;
     this.editArea = null;
     this.errorMsg = '';
     this.showModal = true;
@@ -142,6 +181,8 @@ export default class PropertiesIndexController extends Controller {
     this.formName = area.name;
     this.formLocation = area.location ?? '';
     this.formDescription = area.description ?? '';
+    this.selectedCity = area.city ?? null;
+    this.selectedLocality = area.locality ?? null;
     this.editArea = area;
     this.errorMsg = '';
     this.showModal = true;
@@ -225,7 +266,7 @@ export default class PropertiesIndexController extends Controller {
   }
 
   @action downloadTemplate() {
-    const csv = 'areaName,location\nDowntown Dubai,Dubai\nBusiness Bay,Dubai\nMarina,Dubai';
+    const csv = 'areaName,location\nGulberg,Lahore\nDHA Phase 5,Karachi\nBandra West,Mumbai';
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
