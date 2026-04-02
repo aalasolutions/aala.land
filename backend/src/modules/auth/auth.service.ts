@@ -1,9 +1,12 @@
-import { Injectable, BadRequestException, Logger } from '@nestjs/common';
+import { Injectable, BadRequestException, Logger, ConflictException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { UsersService } from '../users/users.service';
 import { CompaniesService } from '../companies/companies.service';
 import { User } from '../users/entities/user.entity';
 import { Region, resolveRegions } from '@shared/constants/regions';
+import { RegisterDto } from './dto/register.dto';
+import { Role } from '@shared/enums/roles.enum';
+import { DataSource } from 'typeorm';
 import * as bcrypt from 'bcryptjs';
 import * as crypto from 'crypto';
 
@@ -48,6 +51,7 @@ export class AuthService {
         private readonly usersService: UsersService,
         private readonly jwtService: JwtService,
         private readonly companiesService: CompaniesService,
+        private readonly dataSource: DataSource,
     ) { }
 
     async validateUser(email: string, pass: string): Promise<Omit<User, 'password'> | null> {
@@ -129,5 +133,61 @@ export class AuthService {
         await this.usersService.updateResetToken(user.id, null, null);
 
         return { message: 'Password has been reset successfully.' };
+    }
+
+    async register(dto: RegisterDto): Promise<LoginResponse> {
+        const existingUser = await this.usersService.findByEmail(dto.email);
+        if (existingUser) {
+            throw new ConflictException('Email already registered');
+        }
+
+        const existingSlug = await this.companiesService.findBySlug(dto.companySlug).catch(() => null);
+        if (existingSlug) {
+            throw new ConflictException('Company slug already taken');
+        }
+
+        return this.dataSource.transaction(async (manager) => {
+            const companyRepo = manager.getRepository('Company');
+            const userRepo = manager.getRepository('User');
+
+            const company = companyRepo.create({
+                name: dto.companyName,
+                slug: dto.companySlug,
+                defaultRegionCode: dto.defaultRegionCode,
+                activeRegions: [dto.defaultRegionCode],
+            });
+            const savedCompany = await companyRepo.save(company);
+
+            const hashedPassword = await bcrypt.hash(dto.password, 12);
+            const user = userRepo.create({
+                name: dto.userName,
+                email: dto.email,
+                password: hashedPassword,
+                role: Role.COMPANY_ADMIN,
+                companyId: savedCompany.id,
+            });
+            const savedUser = await userRepo.save(user);
+
+            const payload = {
+                email: savedUser.email,
+                sub: savedUser.id,
+                companyId: savedCompany.id,
+                role: savedUser.role,
+            };
+
+            return {
+                accessToken: this.jwtService.sign(payload),
+                refreshToken: this.jwtService.sign(payload, { expiresIn: '7d' }),
+                user: {
+                    id: savedUser.id,
+                    name: savedUser.name,
+                    email: savedUser.email,
+                    role: savedUser.role,
+                    companyId: savedCompany.id,
+                },
+                regions: resolveRegions(savedCompany.activeRegions),
+                defaultRegionCode: savedCompany.defaultRegionCode,
+            };
+        });
     }
 }
