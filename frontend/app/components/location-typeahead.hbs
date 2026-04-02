@@ -1,0 +1,58 @@
+<div class="location-typeahead" data-test-location-typeahead>
+  <div class="typeahead-input-wrap">
+    <input
+      data-test-typeahead-input
+      type="text"
+      class="form-input"
+      placeholder={{this.placeholder}}
+      value={{this.displayValue}}
+      autocomplete="off"
+      {{on "input" this.onInput}}
+      {{on "focus" this.onFocus}}
+      {{on "blur" this.onBlur}}
+    />
+    {{#if this.isSearching}}
+      <span class="typeahead-spinner font-xs text-muted">...</span>
+    {{/if}}
+  </div>
+
+  {{#if this.showDropdown}}
+    <div class="typeahead-dropdown" data-test-typeahead-dropdown>
+      {{#each this.results as |item|}}
+        <button
+          type="button"
+          class="typeahead-item"
+          data-test-typeahead-item={{item.id}}
+          {{on "mousedown" (fn this.selectItem item)}}
+        >
+          <span class="typeahead-item-name">{{item.name}}</span>
+          {{#if item.score}}
+            <span class="typeahead-item-score font-xs text-muted">{{item.score}}</span>
+          {{/if}}
+        </button>
+      {{/each}}
+
+      {{#if @createUrl}}
+        <button
+          type="button"
+          class="typeahead-item typeahead-create"
+          data-test-typeahead-create
+          disabled={{this.isCreating}}
+          {{on "mousedown" this.createNew}}
+        >
+          {{#if this.isCreating}}
+            Creating...
+          {{else}}
+            + Create "{{this.query}}"
+          {{/if}}
+        </button>
+      {{/if}}
+
+      {{#if (and (eq this.results.length 0) (not this.isSearching))}}
+        {{#unless @createUrl}}
+          <div class="typeahead-item text-muted font-xs">No matches found</div>
+        {{/unless}}
+      {{/if}}
+    </div>
+  {{/if}}
+</div>
