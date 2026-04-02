@@ -1,0 +1,19 @@
+{{page-title "Sign Up"}}
+
+<div class="auth-page">
+  <div class="auth-card">
+    <div class="auth-header">
+      <h1 class="font-xl font-bold">Create Account</h1>
+      <p class="font-sm text-muted">Set up your property management company</p>
+    </div>
+
+    <SignupForm @regions={{this.model.regions}} @grouped={{this.model.grouped}} @countries={{this.model.countries}} />
+
+    <div class="auth-footer">
+      <p class="font-sm text-muted">
+        Already have an account?
+        <LinkTo @route="login" class="text-primary">Sign in</LinkTo>
+      </p>
+    </div>
+  </div>
+</div>
