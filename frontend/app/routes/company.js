@@ -27,8 +27,8 @@ export default class CompanyRoute extends AuthenticatedRoute {
       controller.formName = c.name || '';
       controller.formPhone = c.phone || '';
       controller.formAddress = c.address || '';
-      controller.formActiveRegions = c.activeRegions || ['dubai'];
-      controller.formDefaultRegionCode = c.defaultRegionCode || 'dubai';
+      controller.formActiveRegions = c.activeRegions || [];
+      controller.formDefaultRegionCode = c.defaultRegionCode || null;
     }
   }
 }
