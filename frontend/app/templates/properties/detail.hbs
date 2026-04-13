@@ -1,11 +1,11 @@
-{{page-title (if @model.area @model.area.name "Area Detail")}}
+{{page-title (if @model.buildings.length (get (get @model.buildings "0") "locality.name") "Location Detail")}}
 
 <div data-test-property-detail class="flex col gap-6">
   <div class="flex between x-center">
     <div class="flex x-center gap-3">
       <LinkTo @route="properties" class="text-muted font-sm">Properties</LinkTo>
       <span class="text-muted">/</span>
-      <h2 class="font-2xl font-bold">{{@model.area.name}}</h2>
+      <h2 class="font-2xl font-bold">{{if @model.buildings.length (get (get @model.buildings "0") "locality.name") "Location"}}</h2>
     </div>
     <button type="button" class="btn btn-primary" {{on "click" this.openCreateBuilding}}>
       <Ph @icon="plus" /> New Building
@@ -44,7 +44,7 @@
                       {{/if}}
                     </div>
                     <div class="flex gap-2">
-                      <LinkTo @route="properties.unit" @models={{array @model.area.id unit.id}} class="btn btn-primary btn-xs" data-test-view-unit>
+                      <LinkTo @route="properties.unit" @models={{array @model.localityId unit.id}} class="btn btn-primary btn-xs" data-test-view-unit>
                         <Ph @icon="eye" /> View
                       </LinkTo>
                       <button type="button" class="btn btn-secondary btn-xs" {{on "click" (fn this.openEditUnit unit building.id building.propertyType)}}>

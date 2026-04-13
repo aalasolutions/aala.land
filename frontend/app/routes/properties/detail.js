@@ -6,12 +6,8 @@ export default class PropertiesDetailRoute extends AuthenticatedRoute {
 
   async model({ area_id }) {
     try {
-      const [areaJson, buildingsJson] = await Promise.all([
-        this.auth.fetchJson(`/properties/areas/${area_id}`),
-        this.auth.fetchJson('/properties/buildings?limit=100'),
-      ]);
+      const buildingsJson = await this.auth.fetchJson(`/properties/localities/${area_id}/buildings?limit=100`);
 
-      const area = areaJson.data ?? null;
       const buildings = buildingsJson.data?.data ?? [];
 
       const buildingsWithUnits = await Promise.all(
@@ -28,9 +24,9 @@ export default class PropertiesDetailRoute extends AuthenticatedRoute {
         }),
       );
 
-      return { area, buildings: buildingsWithUnits };
+      return { localityId: area_id, buildings: buildingsWithUnits };
     } catch {
-      return { area: null, buildings: [] };
+      return { localityId: area_id, buildings: [] };
     }
   }
 
