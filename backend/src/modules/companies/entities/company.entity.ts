@@ -8,6 +8,14 @@ export enum SubscriptionTier {
     ENTERPRISE = 'ENTERPRISE',
 }
 
+export const TIER_LIMITS: Record<SubscriptionTier, { maxUsers: number; maxCountries: number }> = {
+    [SubscriptionTier.FREE]: { maxUsers: 1, maxCountries: 1 },
+    [SubscriptionTier.STARTER]: { maxUsers: 5, maxCountries: 1 },
+    [SubscriptionTier.GROWTH]: { maxUsers: 20, maxCountries: 2 },
+    [SubscriptionTier.SCALE]: { maxUsers: 999, maxCountries: 999 },
+    [SubscriptionTier.ENTERPRISE]: { maxUsers: 999, maxCountries: 999 },
+};
+
 @Entity('companies')
 export class Company {
     @PrimaryGeneratedColumn('uuid')
@@ -33,8 +41,8 @@ export class Company {
     @Column({ name: 'max_users', type: 'int', default: 1 })
     maxUsers: number;
 
-    @Column({ name: 'max_properties', type: 'int', default: 25 })
-    maxProperties: number;
+    @Column({ name: 'max_countries', type: 'int', default: 1 })
+    maxCountries: number;
 
     @Column({ name: 'subscription_expires_at', type: 'timestamptz', nullable: true })
     subscriptionExpiresAt: Date;

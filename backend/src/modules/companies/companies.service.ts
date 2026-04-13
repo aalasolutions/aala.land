@@ -1,17 +1,16 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, DataSource } from 'typeorm';
-import { Company, SubscriptionTier } from './entities/company.entity';
+import { Repository } from 'typeorm';
+import { Company, SubscriptionTier, TIER_LIMITS } from './entities/company.entity';
 import { CreateCompanyDto } from './dto/create-company.dto';
 import { UpdateCompanyDto } from './dto/update-company.dto';
-import { REGIONS } from '@shared/constants/regions';
+import { REGIONS, getRegionByCode } from '@shared/constants/regions';
 
 @Injectable()
 export class CompaniesService {
     constructor(
         @InjectRepository(Company)
         private readonly companyRepository: Repository<Company>,
-        private readonly dataSource: DataSource,
     ) { }
 
     async create(dto: CreateCompanyDto): Promise<Company> {
@@ -58,20 +57,16 @@ export class CompaniesService {
             this.validateRegionCode(dto.defaultRegionCode);
         }
 
-        // FREE plan: block region change if entities exist in current region
-        if (
-            company.subscriptionTier === SubscriptionTier.FREE &&
-            dto.activeRegions &&
-            !this.arraysEqual(dto.activeRegions, company.activeRegions)
-        ) {
-            const currentRegion = company.activeRegions[0];
-            if (currentRegion) {
-                const hasData = await this.hasEntitiesInRegion(id, currentRegion);
-                if (hasData) {
-                    throw new BadRequestException(
-                        'Cannot change region while properties exist. Delete all properties in your current region first.',
-                    );
-                }
+        // Enforce country limit based on subscription tier
+        if (dto.activeRegions) {
+            const limits = TIER_LIMITS[company.subscriptionTier] || TIER_LIMITS[SubscriptionTier.FREE];
+            const uniqueCountries = new Set(
+                dto.activeRegions.map(code => getRegionByCode(code)?.country).filter(Boolean),
+            );
+            if (uniqueCountries.size > limits.maxCountries) {
+                throw new BadRequestException(
+                    `Your ${company.subscriptionTier} plan allows up to ${limits.maxCountries} country. Upgrade to add more.`,
+                );
             }
         }
 
@@ -84,23 +79,6 @@ export class CompaniesService {
 
         Object.assign(company, dto);
         return this.companyRepository.save(company);
-    }
-
-    private arraysEqual(a: string[], b: string[]): boolean {
-        if (a.length !== b.length) return false;
-        const sorted1 = [...a].sort();
-        const sorted2 = [...b].sort();
-        return sorted1.every((v, i) => v === sorted2[i]);
-    }
-
-    private async hasEntitiesInRegion(companyId: string, regionCode: string): Promise<boolean> {
-        const result = await this.dataSource.query(
-            `SELECT EXISTS(
-                SELECT 1 FROM property_areas WHERE company_id = $1 AND region_code = $2
-            ) AS has_data`,
-            [companyId, regionCode],
-        );
-        return result[0]?.has_data === true;
     }
 
     async findBySlug(slug: string): Promise<Company> {
