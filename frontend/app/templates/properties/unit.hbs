@@ -5,12 +5,12 @@
   <div data-test-breadcrumb class="flex x-center gap-2 font-sm text-muted">
     <LinkTo @route="properties" data-test-breadcrumb-properties>Properties</LinkTo>
     <span>/</span>
-    {{#if @model.unit.building.locality}}
-      <LinkTo @route="properties.detail" @model={{@model.areaId}} data-test-breadcrumb-area>{{@model.unit.building.locality.name}}</LinkTo>
+    {{#if @model.unit.asset.locality}}
+      <LinkTo @route="properties.detail" @model={{@model.areaId}} data-test-breadcrumb-area>{{@model.unit.asset.locality.name}}</LinkTo>
       <span>/</span>
     {{/if}}
-    {{#if @model.unit.building}}
-      <span>{{@model.unit.building.name}}</span>
+    {{#if @model.unit.asset}}
+      <span>{{@model.unit.asset.name}}</span>
       <span>/</span>
     {{/if}}
     <span class="font-bold" style="color: var(--text-primary)">Unit {{@model.unit.unitNumber}}</span>
@@ -70,11 +70,11 @@
             </button>
           </div>
 
-          {{#if @model.unit.building}}
+          {{#if @model.unit.asset}}
             <p class="text-muted font-sm">
-              {{@model.unit.building.name}}
-              {{#if @model.unit.building.locality}}
-                &middot; {{@model.unit.building.locality.name}}
+              {{@model.unit.asset.name}}
+              {{#if @model.unit.asset.locality}}
+                &middot; {{@model.unit.asset.locality.name}}
               {{/if}}
             </p>
           {{/if}}
@@ -106,9 +106,9 @@
               <span class="type-badge type-{{lowercase @model.unit.propertyType}}">
                 {{if (eq @model.unit.propertyType "FOR_SALE") "For Sale" "Rental"}}
               </span>
-            {{else if @model.unit.building.propertyType}}
+            {{else if @model.unit.asset.propertyType}}
               <span class="type-badge type-inherited">
-                {{if (eq @model.unit.building.propertyType "FOR_SALE") "For Sale" "Rental"}} (inherited)
+                {{if (eq @model.unit.asset.propertyType "FOR_SALE") "For Sale" "Rental"}} (inherited)
               </span>
             {{/if}}
           </div>
@@ -220,11 +220,11 @@
       <div class="flex col gap-2">
         <label class="font-sm text-muted" for="u-property-type">Property Type</label>
         <select id="u-property-type" class="form-select" data-test-field-property-type {{on "change" (fn this.setField "formPropertyType")}}>
-          <option value="" selected={{eq this.formPropertyType ""}}>Inherit from Building ({{if (eq this.buildingPropertyType "FOR_SALE") "For Sale" "Rental"}})</option>
+          <option value="" selected={{eq this.formPropertyType ""}}>Inherit from Asset ({{if (eq this.assetPropertyType "FOR_SALE") "For Sale" "Rental"}})</option>
           <option value="RENTAL" selected={{eq this.formPropertyType "RENTAL"}}>Rental</option>
           <option value="FOR_SALE" selected={{eq this.formPropertyType "FOR_SALE"}}>For Sale</option>
         </select>
-        <p class="font-xs text-muted">Leave as "Inherit" to use the building's default type.</p>
+        <p class="font-xs text-muted">Leave as "Inherit" to use the asset's default type.</p>
       </div>
 
       <div class="flex gap-4">

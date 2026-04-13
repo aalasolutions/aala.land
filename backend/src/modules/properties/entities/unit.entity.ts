@@ -1,6 +1,6 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn, Index } from 'typeorm';
 import { Company } from '../../companies/entities/company.entity';
-import { Building } from './building.entity';
+import { Asset } from './asset.entity';
 import { Owner } from '../../owners/entities/owner.entity';
 import { PropertyType } from './property-type.enum';
 
@@ -19,12 +19,12 @@ export class Unit {
     @Column({ name: 'unit_number', type: 'varchar', length: 50 })
     unitNumber: string;
 
-    @Column({ name: 'building_id', type: 'uuid' })
-    buildingId: string;
+    @Column({ name: 'asset_id', type: 'uuid' })
+    assetId: string;
 
-    @ManyToOne(() => Building, (building) => building.units)
-    @JoinColumn({ name: 'building_id' })
-    building: Building;
+    @ManyToOne(() => Asset, (asset) => asset.units)
+    @JoinColumn({ name: 'asset_id' })
+    asset: Asset;
 
     @Column({ name: 'company_id', type: 'uuid' })
     companyId: string;

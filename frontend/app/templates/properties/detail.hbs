@@ -1,38 +1,38 @@
-{{page-title (if @model.buildings.length (get (get @model.buildings "0") "locality.name") "Location Detail")}}
+{{page-title (if @model.assets.length (get (get @model.assets "0") "locality.name") "Location Detail")}}
 
 <div data-test-property-detail class="flex col gap-6">
   <div class="flex between x-center">
     <div class="flex x-center gap-3">
       <LinkTo @route="properties" class="text-muted font-sm">Properties</LinkTo>
       <span class="text-muted">/</span>
-      <h2 class="font-2xl font-bold">{{if @model.buildings.length (get (get @model.buildings "0") "locality.name") "Location"}}</h2>
+      <h2 class="font-2xl font-bold">{{if @model.assets.length (get (get @model.assets "0") "locality.name") "Location"}}</h2>
     </div>
-    <button type="button" class="btn btn-primary" {{on "click" this.openCreateBuilding}}>
-      <Ph @icon="plus" /> New Building
+    <button type="button" class="btn btn-primary" {{on "click" this.openCreateAsset}}>
+      <Ph @icon="plus" /> New Asset
     </button>
   </div>
 
-  {{#if this.buildingsWithHistory.length}}
+  {{#if this.assetsWithHistory.length}}
     <div class="flex col gap-4">
-      {{#each this.buildingsWithHistory as |building|}}
-        <div data-test-building-card class="glass-panel p-5 flex col gap-4">
+      {{#each this.assetsWithHistory as |asset|}}
+        <div data-test-asset-card class="glass-panel p-5 flex col gap-4">
           <div class="flex between x-center">
             <div class="flex x-center gap-2">
-              <h4 class="font-md font-bold">{{building.name}}</h4>
-              <span class="type-badge type-{{lowercase building.propertyType}}">{{if (eq building.propertyType 'FOR_SALE') 'For Sale' 'Rental'}}</span>
+              <h4 class="font-md font-bold">{{asset.name}}</h4>
+              <span class="type-badge type-{{lowercase asset.propertyType}}">{{if (eq asset.propertyType 'FOR_SALE') 'For Sale' 'Rental'}}</span>
             </div>
             <div class="flex gap-2">
-              <button type="button" class="btn btn-secondary btn-sm" {{on "click" (fn this.openEditBuilding building)}}>
+              <button type="button" class="btn btn-secondary btn-sm" {{on "click" (fn this.openEditAsset asset)}}>
                 Edit
               </button>
-              <button type="button" class="btn btn-primary btn-sm" {{on "click" (fn this.openCreateUnit building.id building.propertyType)}}>
+              <button type="button" class="btn btn-primary btn-sm" {{on "click" (fn this.openCreateUnit asset.id asset.propertyType)}}>
                 <Ph @icon="plus" /> Unit
               </button>
             </div>
           </div>
-          {{#if building.units.length}}
+          {{#if asset.units.length}}
             <div class="grid cols-3 gap-3">
-              {{#each building.units as |unit|}}
+              {{#each asset.units as |unit|}}
                 <div data-test-unit-card data-test-unit-id={{unit.id}} class="p-3 rounded-lg bg-white@05 font-sm flex col gap-1">
                   <div class="flex between x-center">
                     <div class="flex x-center gap-2">
@@ -40,14 +40,14 @@
                       {{#if unit.propertyType}}
                         <span class="type-badge type-{{lowercase unit.propertyType}}">{{if (eq unit.propertyType 'FOR_SALE') 'Sale' 'Rent'}}</span>
                       {{else}}
-                        <span class="type-badge type-inherited">{{if (eq building.propertyType 'FOR_SALE') 'Sale' 'Rent'}}</span>
+                        <span class="type-badge type-inherited">{{if (eq asset.propertyType 'FOR_SALE') 'Sale' 'Rent'}}</span>
                       {{/if}}
                     </div>
                     <div class="flex gap-2">
                       <LinkTo @route="properties.unit" @models={{array @model.localityId unit.id}} class="btn btn-primary btn-xs" data-test-view-unit>
                         <Ph @icon="eye" /> View
                       </LinkTo>
-                      <button type="button" class="btn btn-secondary btn-xs" {{on "click" (fn this.openEditUnit unit building.id building.propertyType)}}>
+                      <button type="button" class="btn btn-secondary btn-xs" {{on "click" (fn this.openEditUnit unit asset.id asset.propertyType)}}>
                         Edit
                       </button>
                     </div>
@@ -99,20 +99,20 @@
     </div>
   {{else}}
     <div class="glass-panel p-8 text-center">
-      <p class="text-muted">No buildings in this area. Create one above.</p>
+      <p class="text-muted">No assets in this location. Create one above.</p>
     </div>
   {{/if}}
 </div>
 
-{{#if this.showBuildingModal}}
-  <button type="button" class="modal-backdrop" aria-label="Close modal" {{on "click" this.closeBuildingModal}}></button>
-  <div class="modal-panel glass-panel p-8 flex col gap-6" role="dialog" aria-label="Building form">
+{{#if this.showAssetModal}}
+  <button type="button" class="modal-backdrop" aria-label="Close modal" {{on "click" this.closeAssetModal}}></button>
+  <div class="modal-panel glass-panel p-8 flex col gap-6" role="dialog" aria-label="Asset form">
     <div class="flex between x-center">
-      <h3 class="font-xl font-bold">{{if this.editBuilding "Edit Building" "New Building"}}</h3>
-      <button type="button" class="text-muted font-lg px-2" {{on "click" this.closeBuildingModal}}>x</button>
+      <h3 class="font-xl font-bold">{{if this.editAsset "Edit Asset" "New Asset"}}</h3>
+      <button type="button" class="text-muted font-lg px-2" {{on "click" this.closeAssetModal}}>x</button>
     </div>
-    <form class="flex col gap-4" {{on "submit" this.saveBuilding}}>
-      {{#unless this.editBuilding}}
+    <form class="flex col gap-4" {{on "submit" this.saveAsset}}>
+      {{#unless this.editAsset}}
         <div class="flex col gap-2">
           <label class="font-sm text-muted">City *</label>
           <LocationTypeahead
@@ -141,31 +141,31 @@
         {{/if}}
       {{/unless}}
       <div class="flex col gap-2">
-        <label class="font-sm text-muted" for="b-name">Building Name *</label>
+        <label class="font-sm text-muted" for="b-name">Asset Name *</label>
         <input id="b-name" type="text"
           class="form-input"
-          placeholder="e.g. Tower A" value={{this.formBuildingName}} required {{on "input" (fn this.setField "formBuildingName")}} />
+          placeholder="e.g. Tower A" value={{this.formAssetName}} required {{on "input" (fn this.setField "formAssetName")}} />
       </div>
       <div class="flex col gap-2">
         <label class="font-sm text-muted" for="b-type">Property Type *</label>
-        <select id="b-type" class="form-select" {{on "change" (fn this.setField "formBuildingPropertyType")}}>
-          <option value="RENTAL" selected={{eq this.formBuildingPropertyType "RENTAL"}}>Rental</option>
-          <option value="FOR_SALE" selected={{eq this.formBuildingPropertyType "FOR_SALE"}}>For Sale</option>
+        <select id="b-type" class="form-select" {{on "change" (fn this.setField "formAssetPropertyType")}}>
+          <option value="RENTAL" selected={{eq this.formAssetPropertyType "RENTAL"}}>Rental</option>
+          <option value="FOR_SALE" selected={{eq this.formAssetPropertyType "FOR_SALE"}}>For Sale</option>
         </select>
       </div>
       <div class="flex col gap-2">
         <label class="font-sm text-muted" for="b-address">Address</label>
         <input id="b-address" type="text"
           class="form-input"
-          placeholder="e.g. 123 Sheikh Zayed Road" value={{this.formBuildingAddress}} {{on "input" (fn this.setField "formBuildingAddress")}} />
+          placeholder="e.g. 123 Sheikh Zayed Road" value={{this.formAssetAddress}} {{on "input" (fn this.setField "formAssetAddress")}} />
       </div>
-      {{#if this.buildingError}}
-        <p class="font-sm text-danger">{{this.buildingError}}</p>
+      {{#if this.assetError}}
+        <p class="font-sm text-danger">{{this.assetError}}</p>
       {{/if}}
       <div class="flex gap-3 mt-2">
-        <button type="button" class="btn btn-secondary" {{on "click" this.closeBuildingModal}}>Cancel</button>
-        <button type="submit" class="btn btn-primary" disabled={{this.isSavingBuilding}}>
-          {{if this.isSavingBuilding "Saving..." (if this.editBuilding "Update" "Create Building")}}
+        <button type="button" class="btn btn-secondary" {{on "click" this.closeAssetModal}}>Cancel</button>
+        <button type="submit" class="btn btn-primary" disabled={{this.isSavingAsset}}>
+          {{if this.isSavingAsset "Saving..." (if this.editAsset "Update" "Create Asset")}}
         </button>
       </div>
     </form>
@@ -200,11 +200,11 @@
       <div class="flex col gap-2">
         <label class="font-sm text-muted" for="u-property-type">Property Type</label>
         <select id="u-property-type" class="form-select" {{on "change" (fn this.setField "formUnitPropertyType")}}>
-          <option value="" selected={{eq this.formUnitPropertyType ""}}>Inherit from Building ({{if (eq this.activeBuildingPropertyType 'FOR_SALE') 'For Sale' 'Rental'}})</option>
+          <option value="" selected={{eq this.formUnitPropertyType ""}}>Inherit from Asset ({{if (eq this.activeAssetPropertyType 'FOR_SALE') 'For Sale' 'Rental'}})</option>
           <option value="RENTAL" selected={{eq this.formUnitPropertyType "RENTAL"}}>Rental</option>
           <option value="FOR_SALE" selected={{eq this.formUnitPropertyType "FOR_SALE"}}>For Sale</option>
         </select>
-        <p class="font-xs text-muted">Leave as "Inherit" to use the building's default type.</p>
+        <p class="font-xs text-muted">Leave as "Inherit" to use the asset's default type.</p>
       </div>
       <div class="flex gap-4">
         <div class="flex col gap-2 flex-1">

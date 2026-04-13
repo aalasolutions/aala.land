@@ -52,13 +52,13 @@
   {{#if this.model.owner.units}}
     <div class="units-grid">
       {{#each this.model.owner.units as |unit|}}
-        {{#if unit.building}}
-          <LinkTo @route="properties.detail" @model={{unit.building.localityId}} class="unit-card unit-card-link">
+        {{#if unit.asset}}
+          <LinkTo @route="properties.detail" @model={{unit.asset.localityId}} class="unit-card unit-card-link">
             <p class="unit-number">{{unit.unitNumber}}</p>
-            {{#if unit.building.locality}}
-              <p class="unit-building">{{unit.building.locality.name}} - {{unit.building.name}}</p>
+            {{#if unit.asset.locality}}
+              <p class="unit-building">{{unit.asset.locality.name}} - {{unit.asset.name}}</p>
             {{else}}
-              <p class="unit-building">{{unit.building.name}}</p>
+              <p class="unit-building">{{unit.asset.name}}</p>
             {{/if}}
             <p class="unit-status">{{unit.status}}</p>
             {{#if unit.price}}

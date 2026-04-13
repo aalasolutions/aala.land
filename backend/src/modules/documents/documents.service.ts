@@ -83,7 +83,7 @@ export class DocumentsService {
         category: dto.category ?? existing.category,
         accessLevel: dto.accessLevel ?? existing.accessLevel,
         unitId: existing.unitId,
-        buildingId: existing.buildingId,
+        assetId: existing.assetId,
         companyId,
         uploadedBy: userId,
         version: existing.version + 1,

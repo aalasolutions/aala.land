@@ -145,7 +145,7 @@
           <option value="">No property linked</option>
           {{#each @model.units as |unit|}}
             <option value={{unit.id}} selected={{eq unit.id this.formUnitId}}>
-              {{unit.areaName}} - {{unit.buildingName}} - Unit {{unit.unitNumber}}
+              {{unit.areaName}} - {{unit.assetName}} - Unit {{unit.unitNumber}}
             </option>
           {{/each}}
         </select>

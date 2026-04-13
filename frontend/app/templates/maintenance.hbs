@@ -87,7 +87,7 @@
                   </td>
                   <td class="font-sm text-muted">
                     {{#if wo.unitNumber}}
-                      {{wo.areaName}} / {{wo.buildingName}} / {{wo.unitNumber}}
+                      {{wo.areaName}} / {{wo.assetName}} / {{wo.unitNumber}}
                     {{else}}
                       <span class="text-muted">-</span>
                     {{/if}}
@@ -154,7 +154,7 @@
         <select id="wo-unit" class="form-input" data-test-wo-unit {{on "change" (fn this.setField "formUnitId")}}>
           <option value="">No unit assigned</option>
           {{#each @model.units as |unit|}}
-            <option value={{unit.id}} selected={{eq unit.id this.formUnitId}}>{{unit.areaName}} / {{unit.buildingName}} / Unit {{unit.unitNumber}}</option>
+            <option value={{unit.id}} selected={{eq unit.id this.formUnitId}}>{{unit.areaName}} / {{unit.assetName}} / Unit {{unit.unitNumber}}</option>
           {{/each}}
         </select>
       </div>

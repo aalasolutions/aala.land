@@ -4,7 +4,7 @@ import { PropertiesService } from './properties.service';
 import { MediaService } from './media.service';
 import { PropertiesController } from './properties.controller';
 import { PropertyArea } from './entities/property-area.entity';
-import { Building } from './entities/building.entity';
+import { Asset } from './entities/asset.entity';
 import { Unit } from './entities/unit.entity';
 import { PropertyMedia } from './entities/property-media.entity';
 import { PropertyDocument } from './entities/property-document.entity';
@@ -14,7 +14,7 @@ import { Listing } from './entities/listing.entity';
   imports: [
     TypeOrmModule.forFeature([
       PropertyArea,
-      Building,
+      Asset,
       Unit,
       PropertyMedia,
       PropertyDocument,

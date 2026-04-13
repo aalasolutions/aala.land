@@ -50,26 +50,26 @@ export class MaintenanceService {
     const [orders, total] = await qb.getManyAndCount();
 
     const orderIds = orders.map(o => o.id);
-    let unitMap: Record<string, { unitNumber: string; buildingName: string; areaName: string }> = {};
+    let unitMap: Record<string, { unitNumber: string; assetName: string; areaName: string }> = {};
     if (orderIds.length) {
       const unitInfo = await this.workOrderRepository.query(
-        `SELECT wo.id AS "woId", u.unit_number AS "unitNumber", b.name AS "buildingName", loc.name AS "areaName"
+        `SELECT wo.id AS "woId", u.unit_number AS "unitNumber", ast.name AS "assetName", loc.name AS "areaName"
          FROM work_orders wo
          LEFT JOIN units u ON wo.unit_id = u.id
-         LEFT JOIN buildings b ON u.building_id = b.id
-         LEFT JOIN localities loc ON b.locality_id = loc.id
+         LEFT JOIN assets ast ON u.asset_id = ast.id
+         LEFT JOIN localities loc ON ast.locality_id = loc.id
          WHERE wo.id = ANY($1)`,
         [orderIds],
       );
       unitMap = Object.fromEntries(
-        unitInfo.map((r: { woId: string; unitNumber: string; buildingName: string; areaName: string }) => [r.woId, { unitNumber: r.unitNumber, buildingName: r.buildingName, areaName: r.areaName }]),
+        unitInfo.map((r: { woId: string; unitNumber: string; assetName: string; areaName: string }) => [r.woId, { unitNumber: r.unitNumber, assetName: r.assetName, areaName: r.areaName }]),
       );
     }
 
     const data = orders.map(o => ({
       ...o,
       unitNumber: unitMap[o.id]?.unitNumber ?? null,
-      buildingName: unitMap[o.id]?.buildingName ?? null,
+      assetName: unitMap[o.id]?.assetName ?? null,
       areaName: unitMap[o.id]?.areaName ?? null,
     }));
 

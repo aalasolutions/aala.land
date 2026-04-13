@@ -10,8 +10,8 @@ import { Roles } from '@shared/decorators/roles.decorator';
 import { Role } from '@shared/enums/roles.enum';
 import { CreateAreaDto } from './dto/create-area.dto';
 import { UpdateAreaDto } from './dto/update-area.dto';
-import { CreateBuildingDto } from './dto/create-building.dto';
-import { UpdateBuildingDto } from './dto/update-building.dto';
+import { CreateAssetDto } from './dto/create-asset.dto';
+import { UpdateAssetDto } from './dto/update-asset.dto';
 import { CreateUnitDto } from './dto/create-unit.dto';
 import { UpdateUnitDto } from './dto/update-unit.dto';
 import { CreateListingDto } from './dto/create-listing.dto';
@@ -47,15 +47,15 @@ export class PropertiesController {
         return this.mediaService.findByUnit(req.user.companyId, unitId);
     }
 
-    @Get('buildings/:buildingId/media')
-    @ApiOperation({ summary: 'List all media for a building' })
-    findBuildingMedia(@Param('buildingId', ParseUUIDPipe) buildingId: string, @Request() req: AuthenticatedRequest) {
-        return this.mediaService.findByBuilding(req.user.companyId, buildingId);
+    @Get('assets/:assetId/media')
+    @ApiOperation({ summary: 'List all media for an asset' })
+    findAssetMedia(@Param('assetId', ParseUUIDPipe) assetId: string, @Request() req: AuthenticatedRequest) {
+        return this.mediaService.findByAsset(req.user.companyId, assetId);
     }
 
     @Patch('media/:id/set-primary')
     @Roles(Role.COMPANY_ADMIN)
-    @ApiOperation({ summary: 'Set a media item as primary (unsets others for the same unit/building)' })
+    @ApiOperation({ summary: 'Set a media item as primary (unsets others for the same unit/asset)' })
     setPrimary(@Param('id', ParseUUIDPipe) id: string, @Request() req: AuthenticatedRequest) {
         return this.mediaService.setPrimary(id, req.user.companyId);
     }
@@ -75,7 +75,7 @@ export class PropertiesController {
         return this.propertiesService.bulkImportUnits(req.user.companyId, csv);
     }
 
-    // Areas
+    // Areas (deprecated, kept for backward compat)
     @Post('areas')
     @Roles(Role.COMPANY_ADMIN)
     @ApiOperation({ summary: 'Create a new property area (COMPANY_ADMIN+)' })
@@ -118,52 +118,57 @@ export class PropertiesController {
         return this.propertiesService.removeArea(id, req.user.companyId);
     }
 
-    // Buildings
-    @Post('buildings')
-    @Roles(Role.COMPANY_ADMIN)
-    @ApiOperation({ summary: 'Create a new building (COMPANY_ADMIN+)' })
-    createBuilding(@Body() dto: CreateBuildingDto, @Request() req: AuthenticatedRequest) {
-        return this.propertiesService.createBuilding(req.user.companyId, dto);
+    // Assets (shared, community-seeded)
+    @Post('assets')
+    @ApiOperation({ summary: 'Create a new asset (tower, villa, mall, etc.)' })
+    createAsset(@Body() dto: CreateAssetDto, @Request() req: AuthenticatedRequest) {
+        return this.propertiesService.createAsset(req.user.companyId, dto);
     }
 
-    @Get('buildings')
-    @ApiOperation({ summary: 'List all buildings for company (paginated)' })
+    @Get('assets')
+    @ApiOperation({ summary: 'List assets where company has units (paginated)' })
     @ApiQuery({ name: 'page', required: false, type: Number })
     @ApiQuery({ name: 'limit', required: false, type: Number })
-    findAllBuildings(
+    findAllAssets(
         @Request() req: AuthenticatedRequest,
         @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
         @Query('limit', new DefaultValuePipe(100), ParseIntPipe) limit: number,
     ) {
-        return this.propertiesService.findAllBuildings(req.user.companyId, page, limit);
+        return this.propertiesService.findAllAssets(req.user.companyId, page, limit);
     }
 
-    @Get('localities/:localityId/buildings')
-    @ApiOperation({ summary: 'List buildings in a locality (paginated)' })
+    @Get('localities/:localityId/assets')
+    @ApiOperation({ summary: 'List assets in a locality where company has units (paginated)' })
     @ApiQuery({ name: 'page', required: false, type: Number })
     @ApiQuery({ name: 'limit', required: false, type: Number })
-    findBuildingsByLocality(
+    findAssetsByLocality(
         @Param('localityId', ParseUUIDPipe) localityId: string,
         @Request() req: AuthenticatedRequest,
         @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
         @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
     ) {
-        return this.propertiesService.findBuildingsByLocality(localityId, req.user.companyId, page, limit);
+        return this.propertiesService.findAssetsByLocality(localityId, req.user.companyId, page, limit);
     }
 
-    @Patch('buildings/:id')
-    @Roles(Role.COMPANY_ADMIN)
-    @ApiOperation({ summary: 'Update building (COMPANY_ADMIN+)' })
-    updateBuilding(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateBuildingDto, @Request() req: AuthenticatedRequest) {
-        return this.propertiesService.updateBuilding(id, req.user.companyId, dto);
+    @Get('assets/:id')
+    @ApiOperation({ summary: 'Get asset by ID (shared)' })
+    findOneAsset(@Param('id', ParseUUIDPipe) id: string) {
+        return this.propertiesService.findOneAsset(id);
     }
 
-    @Delete('buildings/:id')
-    @Roles(Role.COMPANY_ADMIN)
+    @Patch('assets/:id')
+    @Roles(Role.SUPER_ADMIN)
+    @ApiOperation({ summary: 'Update asset (SUPER_ADMIN only, shared entity)' })
+    updateAsset(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateAssetDto) {
+        return this.propertiesService.updateAsset(id, dto);
+    }
+
+    @Delete('assets/:id')
+    @Roles(Role.SUPER_ADMIN)
     @HttpCode(HttpStatus.NO_CONTENT)
-    @ApiOperation({ summary: 'Delete building (COMPANY_ADMIN+)' })
-    removeBuilding(@Param('id', ParseUUIDPipe) id: string, @Request() req: AuthenticatedRequest) {
-        return this.propertiesService.removeBuilding(id, req.user.companyId);
+    @ApiOperation({ summary: 'Delete asset (SUPER_ADMIN only, shared entity)' })
+    removeAsset(@Param('id', ParseUUIDPipe) id: string) {
+        return this.propertiesService.removeAsset(id);
     }
 
     // Units
@@ -206,7 +211,7 @@ export class PropertiesController {
     }
 
     @Get('units/:id')
-    @ApiOperation({ summary: 'Get unit by ID with building, area, and owner relations' })
+    @ApiOperation({ summary: 'Get unit by ID with asset, locality, and owner relations' })
     findOneUnit(@Param('id', ParseUUIDPipe) id: string, @Request() req: AuthenticatedRequest) {
         return this.propertiesService.findOneUnit(id, req.user.companyId);
     }
@@ -218,17 +223,17 @@ export class PropertiesController {
         return this.propertiesService.createUnit(req.user.companyId, dto);
     }
 
-    @Get('buildings/:buildingId/units')
-    @ApiOperation({ summary: 'List units in a building (paginated)' })
+    @Get('assets/:assetId/units')
+    @ApiOperation({ summary: 'List units in an asset (paginated)' })
     @ApiQuery({ name: 'page', required: false, type: Number })
     @ApiQuery({ name: 'limit', required: false, type: Number })
-    findUnits(
-        @Param('buildingId', ParseUUIDPipe) buildingId: string,
+    findUnitsByAsset(
+        @Param('assetId', ParseUUIDPipe) assetId: string,
         @Request() req: AuthenticatedRequest,
         @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
         @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
     ) {
-        return this.propertiesService.findUnitsByBuilding(buildingId, req.user.companyId, page, limit);
+        return this.propertiesService.findUnitsByAsset(assetId, req.user.companyId, page, limit);
     }
 
     @Patch('units/:id')
@@ -247,9 +252,9 @@ export class PropertiesController {
     }
 
     @Get('occupancy')
-    @ApiOperation({ summary: 'Building-level occupancy rates' })
+    @ApiOperation({ summary: 'Asset-level occupancy rates' })
     getOccupancy(@Request() req: AuthenticatedRequest) {
-        return this.propertiesService.getBuildingOccupancy(req.user.companyId);
+        return this.propertiesService.getAssetOccupancy(req.user.companyId);
     }
 
     // Listings

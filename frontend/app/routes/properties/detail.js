@@ -6,27 +6,27 @@ export default class PropertiesDetailRoute extends AuthenticatedRoute {
 
   async model({ area_id }) {
     try {
-      const buildingsJson = await this.auth.fetchJson(`/properties/localities/${area_id}/buildings?limit=100`);
+      const assetsJson = await this.auth.fetchJson(`/properties/localities/${area_id}/assets?limit=100`);
 
-      const buildings = buildingsJson.data?.data ?? [];
+      const assets = assetsJson.data?.data ?? [];
 
-      const buildingsWithUnits = await Promise.all(
-        buildings.map(async (building) => {
+      const assetsWithUnits = await Promise.all(
+        assets.map(async (asset) => {
           try {
             const unitsJson = await this.auth.fetchJson(
-              `/properties/buildings/${building.id}/units?limit=100`,
+              `/properties/assets/${asset.id}/units?limit=100`,
             );
             const units = unitsJson.data?.data ?? [];
-            return { ...building, units };
+            return { ...asset, units };
           } catch {
-            return { ...building, units: [] };
+            return { ...asset, units: [] };
           }
         }),
       );
 
-      return { localityId: area_id, buildings: buildingsWithUnits };
+      return { localityId: area_id, assets: assetsWithUnits };
     } catch {
-      return { localityId: area_id, buildings: [] };
+      return { localityId: area_id, assets: [] };
     }
   }
 

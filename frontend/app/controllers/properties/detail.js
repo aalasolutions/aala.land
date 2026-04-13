@@ -18,11 +18,11 @@ export default class PropertiesDetailController extends Controller {
 
   @action
   async loadTenantHistory() {
-    const buildings = this.model?.buildings || [];
+    const assets = this.model?.assets || [];
     const unitIds = [];
 
-    for (const building of buildings) {
-      const units = building.units || [];
+    for (const asset of assets) {
+      const units = asset.units || [];
       for (const unit of units) {
         unitIds.push(unit.id);
       }
@@ -69,13 +69,13 @@ export default class PropertiesDetailController extends Controller {
     return this.tenantHistoryCache.get(unitId) || [];
   }
 
-  get buildingsWithHistory() {
+  get assetsWithHistory() {
     const version = this._historyVersion;
-    const buildings = this.model?.buildings || [];
+    const assets = this.model?.assets || [];
 
-    return buildings.map(building => ({
-      ...building,
-      units: (building.units || []).map(unit => ({
+    return assets.map(asset => ({
+      ...asset,
+      units: (asset.units || []).map(unit => ({
         ...unit,
         tenantHistory: this.getTenantHistory(unit.id),
       })),
@@ -84,14 +84,14 @@ export default class PropertiesDetailController extends Controller {
 
   @service region;
 
-  // Building modal
-  @tracked showBuildingModal = false;
-  @tracked editBuilding = null;
-  @tracked formBuildingName = '';
-  @tracked formBuildingAddress = '';
-  @tracked formBuildingPropertyType = 'RENTAL';
-  @tracked isSavingBuilding = false;
-  @tracked buildingError = '';
+  // Asset modal
+  @tracked showAssetModal = false;
+  @tracked editAsset = null;
+  @tracked formAssetName = '';
+  @tracked formAssetAddress = '';
+  @tracked formAssetPropertyType = 'RENTAL';
+  @tracked isSavingAsset = false;
+  @tracked assetError = '';
   @tracked selectedCity = null;
   @tracked selectedLocality = null;
 
@@ -132,8 +132,8 @@ export default class PropertiesDetailController extends Controller {
   // Unit modal
   @tracked showUnitModal = false;
   @tracked editUnit = null;
-  @tracked activeBuildingId = null;
-  @tracked activeBuildingPropertyType = 'RENTAL';
+  @tracked activeAssetId = null;
+  @tracked activeAssetPropertyType = 'RENTAL';
   @tracked formUnitNumber = '';
   @tracked formUnitStatus = 'available';
   @tracked formUnitPropertyType = '';
@@ -154,54 +154,54 @@ export default class PropertiesDetailController extends Controller {
     this.formUnitAmenities = toggleArrayItem(this.formUnitAmenities, key);
   }
 
-  @action openCreateBuilding() {
-    this.formBuildingName = '';
-    this.formBuildingAddress = '';
-    this.formBuildingPropertyType = 'RENTAL';
-    this.editBuilding = null;
-    this.buildingError = '';
+  @action openCreateAsset() {
+    this.formAssetName = '';
+    this.formAssetAddress = '';
+    this.formAssetPropertyType = 'RENTAL';
+    this.editAsset = null;
+    this.assetError = '';
     this.selectedCity = null;
     this.selectedLocality = null;
-    this.showBuildingModal = true;
+    this.showAssetModal = true;
   }
 
-  @action openEditBuilding(building) {
-    this.formBuildingName = building.name;
-    this.formBuildingAddress = building.address ?? '';
-    this.formBuildingPropertyType = building.propertyType ?? 'RENTAL';
-    this.editBuilding = building;
-    this.buildingError = '';
-    this.showBuildingModal = true;
+  @action openEditAsset(asset) {
+    this.formAssetName = asset.name;
+    this.formAssetAddress = asset.address ?? '';
+    this.formAssetPropertyType = asset.propertyType ?? 'RENTAL';
+    this.editAsset = asset;
+    this.assetError = '';
+    this.showAssetModal = true;
   }
 
-  @action closeBuildingModal() {
-    this.showBuildingModal = false;
-    this.editBuilding = null;
-    this.buildingError = '';
+  @action closeAssetModal() {
+    this.showAssetModal = false;
+    this.editAsset = null;
+    this.assetError = '';
   }
 
-  @action async saveBuilding(event) {
+  @action async saveAsset(event) {
     event.preventDefault();
-    if (this.isSavingBuilding) return;
+    if (this.isSavingAsset) return;
 
-    const isEdit = !!this.editBuilding;
+    const isEdit = !!this.editAsset;
     if (!isEdit && !this.selectedLocality) {
-      this.buildingError = 'Please select a city and locality first.';
+      this.assetError = 'Please select a city and locality first.';
       return;
     }
 
-    this.isSavingBuilding = true;
-    this.buildingError = '';
+    this.isSavingAsset = true;
+    this.assetError = '';
 
     const path = isEdit
-      ? `/properties/buildings/${this.editBuilding.id}`
-      : '/properties/buildings';
+      ? `/properties/assets/${this.editAsset.id}`
+      : '/properties/assets';
 
     const body = {
-      name: this.formBuildingName,
+      name: this.formAssetName,
       ...(!isEdit ? { localityId: this.selectedLocality.id } : {}),
-      propertyType: this.formBuildingPropertyType,
-      ...(this.formBuildingAddress ? { address: this.formBuildingAddress } : {}),
+      propertyType: this.formAssetPropertyType,
+      ...(this.formAssetAddress ? { address: this.formAssetAddress } : {}),
     };
 
     try {
@@ -209,19 +209,19 @@ export default class PropertiesDetailController extends Controller {
         method: isEdit ? 'PATCH' : 'POST',
         body: JSON.stringify(body),
       });
-      this.notifications.success(isEdit ? 'Building updated' : 'Building created');
-      this.closeBuildingModal();
+      this.notifications.success(isEdit ? 'Asset updated' : 'Asset created');
+      this.closeAssetModal();
       this.router.refresh('properties.detail');
     } catch (e) {
-      this.buildingError = e.message;
+      this.assetError = e.message;
     } finally {
-      this.isSavingBuilding = false;
+      this.isSavingAsset = false;
     }
   }
 
-  @action openCreateUnit(buildingId, buildingPropertyType = 'RENTAL') {
-    this.activeBuildingId = buildingId;
-    this.activeBuildingPropertyType = buildingPropertyType;
+  @action openCreateUnit(assetId, assetPropertyType = 'RENTAL') {
+    this.activeAssetId = assetId;
+    this.activeAssetPropertyType = assetPropertyType;
     this.formUnitNumber = '';
     this.formUnitStatus = 'available';
     this.formUnitPropertyType = '';
@@ -236,9 +236,9 @@ export default class PropertiesDetailController extends Controller {
     this.showUnitModal = true;
   }
 
-  @action openEditUnit(unit, buildingId, buildingPropertyType = 'RENTAL') {
-    this.activeBuildingId = buildingId;
-    this.activeBuildingPropertyType = buildingPropertyType;
+  @action openEditUnit(unit, assetId, assetPropertyType = 'RENTAL') {
+    this.activeAssetId = assetId;
+    this.activeAssetPropertyType = assetPropertyType;
     this.formUnitNumber = unit.unitNumber;
     this.formUnitStatus = unit.status ?? 'available';
     this.formUnitPropertyType = unit.propertyType ?? '';
@@ -273,7 +273,7 @@ export default class PropertiesDetailController extends Controller {
     const body = {
       unitNumber: this.formUnitNumber,
       status: this.formUnitStatus,
-      ...(!isEdit ? { buildingId: this.activeBuildingId } : {}),
+      ...(!isEdit ? { assetId: this.activeAssetId } : {}),
       ...(this.formUnitPropertyType ? { propertyType: this.formUnitPropertyType } : (isEdit ? { propertyType: null } : {})),
       ...(this.formUnitPrice ? { price: parseFloat(this.formUnitPrice) } : {}),
       ...(this.formUnitSqFt ? { sqFt: parseFloat(this.formUnitSqFt) } : {}),

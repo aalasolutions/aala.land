@@ -138,9 +138,9 @@ export class MediaService {
     });
   }
 
-  async findByBuilding(companyId: string, buildingId: string): Promise<PropertyMedia[]> {
+  async findByAsset(companyId: string, assetId: string): Promise<PropertyMedia[]> {
     return this.mediaRepository.find({
-      where: { companyId, buildingId },
+      where: { companyId, assetId },
       order: { isPrimary: 'DESC', createdAt: 'DESC' },
     });
   }
@@ -151,15 +151,15 @@ export class MediaService {
       throw new NotFoundException('Media not found');
     }
 
-    // Unset all other primary for same unit/building
+    // Unset all other primary for same unit/asset
     if (media.unitId) {
       await this.mediaRepository.update(
         { companyId, unitId: media.unitId },
         { isPrimary: false },
       );
-    } else if (media.buildingId) {
+    } else if (media.assetId) {
       await this.mediaRepository.update(
-        { companyId, buildingId: media.buildingId },
+        { companyId, assetId: media.assetId },
         { isPrimary: false },
       );
     }

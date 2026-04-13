@@ -10,10 +10,10 @@ export class CreateUnitDto {
   @MaxLength(50)
   unitNumber: string;
 
-  @ApiProperty({ example: 'uuid-of-building' })
+  @ApiProperty({ example: 'uuid-of-asset' })
   @IsUUID()
   @IsNotEmpty()
-  buildingId: string;
+  assetId: string;
 
   @ApiPropertyOptional({ example: 'uuid-of-owner' })
   @IsUUID()
@@ -25,7 +25,7 @@ export class CreateUnitDto {
   @IsOptional()
   status?: UnitStatus;
 
-  @ApiPropertyOptional({ enum: PropertyType, description: 'Overrides building default. Null = inherit from building' })
+  @ApiPropertyOptional({ enum: PropertyType, description: 'Overrides asset default. Null = inherit from asset' })
   @IsEnum(PropertyType)
   @IsOptional()
   propertyType?: PropertyType;

@@ -1,7 +1,7 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
 import { Company } from '../../companies/entities/company.entity';
 import { Unit } from './unit.entity';
-import { Building } from './building.entity';
+import { Asset } from './asset.entity';
 
 export enum DocumentCategory {
     LEASE = 'LEASE',
@@ -44,12 +44,12 @@ export class PropertyDocument {
     @JoinColumn({ name: 'unit_id' })
     unit: Unit;
 
-    @Column({ name: 'building_id', type: 'uuid', nullable: true })
-    buildingId: string | null;
+    @Column({ name: 'asset_id', type: 'uuid', nullable: true })
+    assetId: string | null;
 
-    @ManyToOne(() => Building, { nullable: true, onDelete: 'CASCADE' })
-    @JoinColumn({ name: 'building_id' })
-    building: Building;
+    @ManyToOne(() => Asset, { nullable: true, onDelete: 'CASCADE' })
+    @JoinColumn({ name: 'asset_id' })
+    asset: Asset;
 
     @Column({ name: 'company_id', type: 'uuid' })
     companyId: string;

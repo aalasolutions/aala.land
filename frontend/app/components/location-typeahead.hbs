@@ -26,9 +26,6 @@
           {{on "mousedown" (fn this.selectItem item)}}
         >
           <span class="typeahead-item-name">{{item.name}}</span>
-          {{#if item.score}}
-            <span class="typeahead-item-score font-xs text-muted">{{item.score}}</span>
-          {{/if}}
         </button>
       {{/each}}
 

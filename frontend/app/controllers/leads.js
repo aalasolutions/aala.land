@@ -243,9 +243,9 @@ export default class LeadsController extends Controller {
 
   @action async loadUnits(propertyId) {
     try {
-      const json = await this.auth.fetchJson(`/properties/areas/${propertyId}/buildings`);
-      const buildings = json.data?.data || [];
-      this.filteredUnits = buildings.flatMap(b => b.units || []);
+      const json = await this.auth.fetchJson(`/properties/areas/${propertyId}/assets`);
+      const assets = json.data?.data || [];
+      this.filteredUnits = assets.flatMap(a => a.units || []);
     } catch (e) {
       console.error('Failed to load units:', e);
     }

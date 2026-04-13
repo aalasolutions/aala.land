@@ -20,7 +20,7 @@ export class UpdateUnitDto {
   @IsOptional()
   status?: UnitStatus;
 
-  @ApiPropertyOptional({ enum: PropertyType, description: 'Overrides building default. Null = inherit from building' })
+  @ApiPropertyOptional({ enum: PropertyType, description: 'Overrides asset default. Null = inherit from asset' })
   @IsEnum(PropertyType)
   @IsOptional()
   propertyType?: PropertyType;

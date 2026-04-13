@@ -47,8 +47,8 @@ export class CreateMediaDto {
   @IsUUID()
   unitId?: string;
 
-  @ApiProperty({ description: 'Building ID this media belongs to', required: false })
+  @ApiProperty({ description: 'Asset ID this media belongs to', required: false })
   @IsOptional()
   @IsUUID()
-  buildingId?: string;
+  assetId?: string;
 }

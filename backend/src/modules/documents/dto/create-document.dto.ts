@@ -29,7 +29,7 @@ export class CreateDocumentDto {
   @ApiProperty({ required: false })
   @IsOptional()
   @IsUUID()
-  buildingId?: string;
+  assetId?: string;
 
   @ApiProperty({ enum: DocumentCategory, default: DocumentCategory.OTHER })
   @IsOptional()

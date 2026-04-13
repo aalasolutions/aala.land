@@ -1,14 +1,14 @@
 /**
  * Utility for region-based filtering via FK chain
- * Used by services that filter by regionCode through the Unit > Building > Locality > City chain
+ * Used by services that filter by regionCode through the Unit > Asset > Locality > City chain
  */
 
 import { SelectQueryBuilder } from 'typeorm';
 
 export const REGION_FILTER_SUBQUERY = `
   SELECT u.id FROM units u
-  INNER JOIN buildings b ON u.building_id = b.id
-  INNER JOIN localities loc ON b.locality_id = loc.id
+  INNER JOIN assets ast ON u.asset_id = ast.id
+  INNER JOIN localities loc ON ast.locality_id = loc.id
   INNER JOIN cities c ON loc.city_id = c.id
   WHERE c.region_code = :regionCode
 `;

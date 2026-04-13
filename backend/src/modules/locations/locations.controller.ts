@@ -52,7 +52,7 @@ export class LocationsController {
     }
 
     @Get('company/localities')
-    @ApiOperation({ summary: 'List localities that have buildings for the current company' })
+    @ApiOperation({ summary: 'List localities that have assets for the current company' })
     getCompanyLocalities(@Request() req: AuthenticatedRequest, @Query('regionCode') regionCode?: string) {
         return this.locationsService.getCompanyLocalities(req.user.companyId, regionCode);
     }

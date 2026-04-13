@@ -63,7 +63,7 @@
           <option value="">Select a unit...</option>
           {{#each @model.units as |unit|}}
             <option value={{unit.id}} selected={{eq unit.id this.formUnitId}}>
-              {{unit.areaName}} - {{unit.buildingName}} - Unit {{unit.unitNumber}}
+              {{unit.areaName}} - {{unit.assetName}} - Unit {{unit.unitNumber}}
               {{#if unit.floorNumber}}(Floor {{unit.floorNumber}}){{/if}}
             </option>
           {{/each}}

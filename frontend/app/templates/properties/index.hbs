@@ -4,7 +4,7 @@
   <div class="flex between x-center">
     <div>
       <h2 class="font-3xl font-bold"><Ph @icon="buildings" @size="28px" /> Properties</h2>
-      <p class="text-muted mt-1">Areas, buildings, and units.</p>
+      <p class="text-muted mt-1">Locations, assets, and units.</p>
     </div>
     <div class="flex gap-3 x-center">
       <div class="flex gap-1" data-test-view-toggle>
@@ -38,7 +38,7 @@
                 <p class="text-muted font-xs mt-1">{{loc.cityName}}</p>
               </div>
               <div class="flex gap-4 text-sm">
-                <span class="text-muted">{{loc.buildingCount}} Buildings</span>
+                <span class="text-muted">{{loc.assetCount}} Assets</span>
                 <span class="text-muted">{{loc.unitCount}} Units</span>
               </div>
             </div>
@@ -136,7 +136,7 @@
                 <p class="font-bold">Unit {{unit.unitNumber}}</p>
                 <span class="status-badge status-{{unit.status}}">{{capitalize unit.status}}</span>
               </div>
-              <p class="font-xs text-muted">{{unit.buildingName}} &middot; {{unit.areaName}}</p>
+              <p class="font-xs text-muted">{{unit.assetName}} &middot; {{unit.areaName}}</p>
               {{#if unit.price}}
                 <p class="font-lg font-bold text-success">{{format-currency unit.price}}</p>
               {{/if}}

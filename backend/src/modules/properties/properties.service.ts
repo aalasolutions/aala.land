@@ -2,13 +2,13 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, FindOptionsWhere } from 'typeorm';
 import { PropertyArea } from './entities/property-area.entity';
-import { Building } from './entities/building.entity';
+import { Asset } from './entities/asset.entity';
 import { Unit, UnitStatus } from './entities/unit.entity';
 import { Listing, ListingStatus } from './entities/listing.entity';
 import { CreateAreaDto } from './dto/create-area.dto';
 import { UpdateAreaDto } from './dto/update-area.dto';
-import { CreateBuildingDto } from './dto/create-building.dto';
-import { UpdateBuildingDto } from './dto/update-building.dto';
+import { CreateAssetDto } from './dto/create-asset.dto';
+import { UpdateAssetDto } from './dto/update-asset.dto';
 import { CreateUnitDto } from './dto/create-unit.dto';
 import { UpdateUnitDto } from './dto/update-unit.dto';
 import { CreateListingDto } from './dto/create-listing.dto';
@@ -19,8 +19,8 @@ export class PropertiesService {
     constructor(
         @InjectRepository(PropertyArea)
         private readonly areaRepository: Repository<PropertyArea>,
-        @InjectRepository(Building)
-        private readonly buildingRepository: Repository<Building>,
+        @InjectRepository(Asset)
+        private readonly assetRepository: Repository<Asset>,
         @InjectRepository(Unit)
         private readonly unitRepository: Repository<Unit>,
         @InjectRepository(Listing)
@@ -44,37 +44,10 @@ export class PropertiesService {
             order: { createdAt: 'DESC' },
         });
 
-        // Get building and unit counts for each area (guard against empty array)
-        const areaIds = areas.map(a => a.id);
-        let buildingCounts: Record<string, number> = {};
-        let unitCounts: Record<string, number> = {};
-
-        if (areaIds.length > 0) {
-            const buildings = await this.buildingRepository
-                .createQueryBuilder('b')
-                .select('b.localityId', 'localityId')
-                .addSelect('COUNT(*)', 'count')
-                .where('b.localityId IN (:...areaIds)', { areaIds })
-                .groupBy('b.localityId')
-                .getRawMany();
-
-            const units = await this.unitRepository
-                .createQueryBuilder('u')
-                .innerJoin('u.building', 'b')
-                .select('b.localityId', 'localityId')
-                .addSelect('COUNT(*)', 'count')
-                .where('b.localityId IN (:...areaIds)', { areaIds })
-                .groupBy('b.localityId')
-                .getRawMany();
-
-            buildingCounts = Object.fromEntries(buildings.map(b => [b.localityId, parseInt(b.count)]));
-            unitCounts = Object.fromEntries(units.map(u => [u.localityId, parseInt(u.count)]));
-        }
-
         const data = areas.map(area => ({
             ...area,
-            buildingCount: buildingCounts[area.id] || 0,
-            unitCount: unitCounts[area.id] || 0,
+            assetCount: 0,
+            unitCount: 0,
         }));
 
         return { data, total, page, limit };
@@ -97,49 +70,78 @@ export class PropertiesService {
         await this.areaRepository.remove(area);
     }
 
-    // Buildings
-    async createBuilding(companyId: string, dto: CreateBuildingDto): Promise<Building> {
-        const building = this.buildingRepository.create({ ...dto, companyId });
-        return this.buildingRepository.save(building);
+    // Assets
+    async createAsset(companyId: string, dto: CreateAssetDto): Promise<Asset> {
+        const existing = await this.assetRepository.findOne({
+            where: { name: dto.name, localityId: dto.localityId },
+        });
+        if (existing) {
+            return existing;
+        }
+        const asset = this.assetRepository.create({ ...dto, createdByCompanyId: companyId });
+        return this.assetRepository.save(asset);
     }
 
-    async findBuildingsByLocality(localityId: string, companyId: string, page = 1, limit = 20) {
-        const [data, total] = await this.buildingRepository.findAndCount({
-            where: { localityId, companyId },
-            relations: ['units', 'locality'],
+    async findAssetsByLocality(localityId: string, companyId: string, page = 1, limit = 20) {
+        const [data, total] = await this.assetRepository.findAndCount({
+            where: [
+                { localityId, units: { companyId } },
+                { localityId, createdByCompanyId: companyId },
+            ],
+            relations: ['locality', 'units'],
             skip: (page - 1) * limit,
             take: limit,
             order: { createdAt: 'DESC' },
         });
-        return { data, total, page, limit };
+
+        const filtered = data.map(a => ({
+            ...a,
+            units: (a.units || []).filter(u => u.companyId === companyId),
+        }));
+
+        return { data: filtered, total, page, limit };
     }
 
-    async findAllBuildings(companyId: string, page = 1, limit = 100) {
-        const [data, total] = await this.buildingRepository.findAndCount({
-            where: { companyId },
-            relations: ['units', 'locality'],
+    async findAllAssets(companyId: string, page = 1, limit = 100) {
+        const [data, total] = await this.assetRepository.findAndCount({
+            where: [
+                { units: { companyId } },
+                { createdByCompanyId: companyId },
+            ],
+            relations: ['locality', 'units'],
             skip: (page - 1) * limit,
             take: limit,
             order: { createdAt: 'DESC' },
         });
-        return { data, total, page, limit };
+
+        const filtered = data.map(a => ({
+            ...a,
+            units: (a.units || []).filter(u => u.companyId === companyId),
+        }));
+
+        return { data: filtered, total, page, limit };
     }
 
-    async findOneBuilding(id: string, companyId: string): Promise<Building> {
-        const building = await this.buildingRepository.findOne({ where: { id, companyId } });
-        if (!building) throw new NotFoundException(`Building not found`);
-        return building;
+    async findOneAsset(id: string): Promise<Asset> {
+        const asset = await this.assetRepository.findOne({
+            where: { id },
+            relations: ['locality'],
+        });
+        if (!asset) throw new NotFoundException(`Asset not found`);
+        return asset;
     }
 
-    async updateBuilding(id: string, companyId: string, dto: UpdateBuildingDto): Promise<Building> {
-        const building = await this.findOneBuilding(id, companyId);
-        Object.assign(building, dto);
-        return this.buildingRepository.save(building);
+    async updateAsset(id: string, dto: UpdateAssetDto): Promise<Asset> {
+        const asset = await this.assetRepository.findOne({ where: { id } });
+        if (!asset) throw new NotFoundException(`Asset not found`);
+        Object.assign(asset, dto);
+        return this.assetRepository.save(asset);
     }
 
-    async removeBuilding(id: string, companyId: string): Promise<void> {
-        const building = await this.findOneBuilding(id, companyId);
-        await this.buildingRepository.remove(building);
+    async removeAsset(id: string): Promise<void> {
+        const asset = await this.assetRepository.findOne({ where: { id } });
+        if (!asset) throw new NotFoundException(`Asset not found`);
+        await this.assetRepository.remove(asset);
     }
 
     // Units
@@ -160,11 +162,11 @@ export class PropertiesService {
     ) {
         const qb = this.unitRepository
             .createQueryBuilder('u')
-            .innerJoin('u.building', 'b')
-            .innerJoin('b.locality', 'loc')
+            .innerJoin('u.asset', 'a')
+            .innerJoin('a.locality', 'loc')
             .innerJoin('loc.city', 'ci')
             .leftJoin('u.owner', 'o')
-            .addSelect(['b.id', 'b.name', 'b.propertyType', 'loc.id', 'loc.name', 'o.id', 'o.name'])
+            .addSelect(['a.id', 'a.name', 'a.propertyType', 'loc.id', 'loc.name', 'o.id', 'o.name'])
             .where('u.companyId = :companyId', { companyId });
 
         if (filters?.amenities?.length) {
@@ -195,7 +197,7 @@ export class PropertiesService {
         qb.skip((page - 1) * limit)
             .take(limit)
             .orderBy('loc.name', 'ASC')
-            .addOrderBy('b.name', 'ASC')
+            .addOrderBy('a.name', 'ASC')
             .addOrderBy('u.unitNumber', 'ASC');
 
         const [units, total] = await qb.getManyAndCount();
@@ -208,14 +210,14 @@ export class PropertiesService {
             sqFt: u.sqFt,
             bedrooms: u.bedrooms,
             bathrooms: u.bathrooms,
-            propertyType: u.propertyType ?? u.building?.propertyType ?? null,
+            propertyType: u.propertyType ?? u.asset?.propertyType ?? null,
             amenities: u.amenities,
             photos: u.photos,
             floor: u.floor,
-            buildingId: u.buildingId,
-            buildingName: u.building?.name ?? '',
-            areaId: u.building?.locality?.id ?? '',
-            areaName: u.building?.locality?.name ?? '',
+            assetId: u.assetId,
+            assetName: u.asset?.name ?? '',
+            areaId: u.asset?.locality?.id ?? '',
+            areaName: u.asset?.locality?.name ?? '',
             ownerName: u.owner?.name ?? null,
         }));
 
@@ -227,9 +229,9 @@ export class PropertiesService {
         return this.unitRepository.save(unit);
     }
 
-    async findUnitsByBuilding(buildingId: string, companyId: string, page = 1, limit = 20) {
+    async findUnitsByAsset(assetId: string, companyId: string, page = 1, limit = 20) {
         const [data, total] = await this.unitRepository.findAndCount({
-            where: { buildingId, companyId },
+            where: { assetId, companyId },
             relations: ['owner'],
             skip: (page - 1) * limit,
             take: limit,
@@ -241,7 +243,7 @@ export class PropertiesService {
     async findOneUnit(id: string, companyId: string): Promise<Unit> {
         const unit = await this.unitRepository.findOne({
             where: { id, companyId },
-            relations: ['building', 'building.locality', 'owner'],
+            relations: ['asset', 'asset.locality', 'owner'],
         });
         if (!unit) throw new NotFoundException(`Unit not found`);
         return unit;
@@ -276,9 +278,9 @@ export class PropertiesService {
             const row: Record<string, string> = {};
             headers.forEach((h, idx) => { row[h] = values[idx] ?? ''; });
 
-            if (!row['unitnumber'] || !row['buildingid']) {
+            if (!row['unitnumber'] || !row['assetid']) {
                 results.failed++;
-                results.errors.push(`Row ${i}: unitNumber and buildingId are required`);
+                results.errors.push(`Row ${i}: unitNumber and assetId are required`);
                 continue;
             }
 
@@ -288,7 +290,7 @@ export class PropertiesService {
                 const unit = this.unitRepository.create({
                     companyId,
                     unitNumber: row['unitnumber'],
-                    buildingId: row['buildingid'],
+                    assetId: row['assetid'],
                     bedrooms: parseInt(row['bedrooms'] || '0', 10),
                     bathrooms: parseInt(row['bathrooms'] || '0', 10),
                     sqFt,
@@ -303,7 +305,6 @@ export class PropertiesService {
             }
         }
 
-        // Batch insert all units at once (avoid N+1)
         if (unitsToCreate.length > 0) {
             try {
                 await this.unitRepository.save(unitsToCreate);
@@ -318,12 +319,12 @@ export class PropertiesService {
         return results;
     }
 
-    async getBuildingOccupancy(companyId: string) {
+    async getAssetOccupancy(companyId: string) {
         const results = await this.unitRepository
             .createQueryBuilder('u')
-            .innerJoin('u.building', 'b')
-            .select('b.id', 'buildingId')
-            .addSelect('b.name', 'buildingName')
+            .innerJoin('u.asset', 'a')
+            .select('a.id', 'assetId')
+            .addSelect('a.name', 'assetName')
             .addSelect('COUNT(*)::int', 'totalUnits')
             .addSelect(
                 `SUM(CASE WHEN u.status = :rented THEN 1 ELSE 0 END)::int`,
@@ -336,13 +337,13 @@ export class PropertiesService {
             .where('u.companyId = :companyId', { companyId })
             .setParameter('rented', UnitStatus.RENTED)
             .setParameter('available', UnitStatus.AVAILABLE)
-            .groupBy('b.id')
-            .addGroupBy('b.name')
+            .groupBy('a.id')
+            .addGroupBy('a.name')
             .getRawMany();
 
         return results.map((r) => ({
-            buildingId: r.buildingId,
-            buildingName: r.buildingName,
+            assetId: r.assetId,
+            assetName: r.assetName,
             totalUnits: Number(r.totalUnits),
             rentedUnits: Number(r.rentedUnits),
             availableUnits: Number(r.availableUnits),
