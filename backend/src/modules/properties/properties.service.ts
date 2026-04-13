@@ -210,7 +210,7 @@ export class PropertiesService {
             sqFt: u.sqFt,
             bedrooms: u.bedrooms,
             bathrooms: u.bathrooms,
-            propertyType: u.propertyType ?? u.asset?.propertyType ?? null,
+            propertyType: u.propertyType ?? null,
             amenities: u.amenities,
             photos: u.photos,
             floor: u.floor,

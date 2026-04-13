@@ -17,15 +17,9 @@
       {{#each this.assetsWithHistory as |asset|}}
         <div data-test-asset-card class="glass-panel p-5 flex col gap-4">
           <div class="flex between x-center">
-            <div class="flex x-center gap-2">
-              <h4 class="font-md font-bold">{{asset.name}}</h4>
-              <span class="type-badge type-{{lowercase asset.propertyType}}">{{if (eq asset.propertyType 'FOR_SALE') 'For Sale' 'Rental'}}</span>
-            </div>
+            <h4 class="font-md font-bold">{{asset.name}}</h4>
             <div class="flex gap-2">
-              <button type="button" class="btn btn-secondary btn-sm" {{on "click" (fn this.openEditAsset asset)}}>
-                Edit
-              </button>
-              <button type="button" class="btn btn-primary btn-sm" {{on "click" (fn this.openCreateUnit asset.id asset.propertyType)}}>
+              <button type="button" class="btn btn-primary btn-sm" {{on "click" (fn this.openCreateUnit asset.id)}}>
                 <Ph @icon="plus" /> Unit
               </button>
             </div>
@@ -39,15 +33,13 @@
                       <p class="font-bold">Unit {{unit.unitNumber}}</p>
                       {{#if unit.propertyType}}
                         <span class="type-badge type-{{lowercase unit.propertyType}}">{{if (eq unit.propertyType 'FOR_SALE') 'Sale' 'Rent'}}</span>
-                      {{else}}
-                        <span class="type-badge type-inherited">{{if (eq asset.propertyType 'FOR_SALE') 'Sale' 'Rent'}}</span>
                       {{/if}}
                     </div>
                     <div class="flex gap-2">
                       <LinkTo @route="properties.unit" @models={{array @model.localityId unit.id}} class="btn btn-primary btn-xs" data-test-view-unit>
                         <Ph @icon="eye" /> View
                       </LinkTo>
-                      <button type="button" class="btn btn-secondary btn-xs" {{on "click" (fn this.openEditUnit unit asset.id asset.propertyType)}}>
+                      <button type="button" class="btn btn-secondary btn-xs" {{on "click" (fn this.openEditUnit unit asset.id)}}>
                         Edit
                       </button>
                     </div>
@@ -145,13 +137,6 @@
         <input id="b-name" type="text"
           class="form-input"
           placeholder="e.g. Tower A" value={{this.formAssetName}} required {{on "input" (fn this.setField "formAssetName")}} />
-      </div>
-      <div class="flex col gap-2">
-        <label class="font-sm text-muted" for="b-type">Property Type *</label>
-        <select id="b-type" class="form-select" {{on "change" (fn this.setField "formAssetPropertyType")}}>
-          <option value="RENTAL" selected={{eq this.formAssetPropertyType "RENTAL"}}>Rental</option>
-          <option value="FOR_SALE" selected={{eq this.formAssetPropertyType "FOR_SALE"}}>For Sale</option>
-        </select>
       </div>
       <div class="flex col gap-2">
         <label class="font-sm text-muted" for="b-address">Address</label>

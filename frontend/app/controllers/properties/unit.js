@@ -34,10 +34,6 @@ export default class PropertiesUnitController extends Controller {
 
   get amenityOptions() { return AMENITY_OPTIONS; }
 
-  get assetPropertyType() {
-    return this.model?.unit?.asset?.propertyType ?? 'RENTAL';
-  }
-
   @action setField(fieldName, e) {
     this[fieldName] = e.target.value;
   }

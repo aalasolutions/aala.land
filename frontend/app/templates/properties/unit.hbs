@@ -106,10 +106,6 @@
               <span class="type-badge type-{{lowercase @model.unit.propertyType}}">
                 {{if (eq @model.unit.propertyType "FOR_SALE") "For Sale" "Rental"}}
               </span>
-            {{else if @model.unit.asset.propertyType}}
-              <span class="type-badge type-inherited">
-                {{if (eq @model.unit.asset.propertyType "FOR_SALE") "For Sale" "Rental"}} (inherited)
-              </span>
             {{/if}}
           </div>
 
@@ -218,13 +214,12 @@
       </div>
 
       <div class="flex col gap-2">
-        <label class="font-sm text-muted" for="u-property-type">Property Type</label>
+        <label class="font-sm text-muted" for="u-property-type">Listing Type</label>
         <select id="u-property-type" class="form-select" data-test-field-property-type {{on "change" (fn this.setField "formPropertyType")}}>
-          <option value="" selected={{eq this.formPropertyType ""}}>Inherit from Asset ({{if (eq this.assetPropertyType "FOR_SALE") "For Sale" "Rental"}})</option>
+          <option value="" selected={{eq this.formPropertyType ""}}>Not set</option>
           <option value="RENTAL" selected={{eq this.formPropertyType "RENTAL"}}>Rental</option>
           <option value="FOR_SALE" selected={{eq this.formPropertyType "FOR_SALE"}}>For Sale</option>
         </select>
-        <p class="font-xs text-muted">Leave as "Inherit" to use the asset's default type.</p>
       </div>
 
       <div class="flex gap-4">

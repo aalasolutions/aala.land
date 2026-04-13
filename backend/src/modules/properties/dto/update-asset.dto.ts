@@ -1,6 +1,5 @@
-import { IsString, IsOptional, IsEnum, MaxLength } from 'class-validator';
+import { IsString, IsOptional, MaxLength } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { PropertyType } from '../entities/property-type.enum';
 
 export class UpdateAssetDto {
   @ApiPropertyOptional({ example: 'Bay Tower Updated' })
@@ -13,9 +12,4 @@ export class UpdateAssetDto {
   @IsString()
   @IsOptional()
   address?: string;
-
-  @ApiPropertyOptional({ enum: PropertyType })
-  @IsEnum(PropertyType)
-  @IsOptional()
-  propertyType?: PropertyType;
 }

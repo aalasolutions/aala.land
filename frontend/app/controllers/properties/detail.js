@@ -89,7 +89,6 @@ export default class PropertiesDetailController extends Controller {
   @tracked editAsset = null;
   @tracked formAssetName = '';
   @tracked formAssetAddress = '';
-  @tracked formAssetPropertyType = 'RENTAL';
   @tracked isSavingAsset = false;
   @tracked assetError = '';
   @tracked selectedCity = null;
@@ -133,7 +132,6 @@ export default class PropertiesDetailController extends Controller {
   @tracked showUnitModal = false;
   @tracked editUnit = null;
   @tracked activeAssetId = null;
-  @tracked activeAssetPropertyType = 'RENTAL';
   @tracked formUnitNumber = '';
   @tracked formUnitStatus = 'available';
   @tracked formUnitPropertyType = '';
@@ -157,7 +155,6 @@ export default class PropertiesDetailController extends Controller {
   @action openCreateAsset() {
     this.formAssetName = '';
     this.formAssetAddress = '';
-    this.formAssetPropertyType = 'RENTAL';
     this.editAsset = null;
     this.assetError = '';
     this.selectedCity = null;
@@ -168,7 +165,6 @@ export default class PropertiesDetailController extends Controller {
   @action openEditAsset(asset) {
     this.formAssetName = asset.name;
     this.formAssetAddress = asset.address ?? '';
-    this.formAssetPropertyType = asset.propertyType ?? 'RENTAL';
     this.editAsset = asset;
     this.assetError = '';
     this.showAssetModal = true;
@@ -200,7 +196,6 @@ export default class PropertiesDetailController extends Controller {
     const body = {
       name: this.formAssetName,
       ...(!isEdit ? { localityId: this.selectedLocality.id } : {}),
-      propertyType: this.formAssetPropertyType,
       ...(this.formAssetAddress ? { address: this.formAssetAddress } : {}),
     };
 
@@ -219,9 +214,8 @@ export default class PropertiesDetailController extends Controller {
     }
   }
 
-  @action openCreateUnit(assetId, assetPropertyType = 'RENTAL') {
+  @action openCreateUnit(assetId) {
     this.activeAssetId = assetId;
-    this.activeAssetPropertyType = assetPropertyType;
     this.formUnitNumber = '';
     this.formUnitStatus = 'available';
     this.formUnitPropertyType = '';
@@ -236,9 +230,8 @@ export default class PropertiesDetailController extends Controller {
     this.showUnitModal = true;
   }
 
-  @action openEditUnit(unit, assetId, assetPropertyType = 'RENTAL') {
+  @action openEditUnit(unit, assetId) {
     this.activeAssetId = assetId;
-    this.activeAssetPropertyType = assetPropertyType;
     this.formUnitNumber = unit.unitNumber;
     this.formUnitStatus = unit.status ?? 'available';
     this.formUnitPropertyType = unit.propertyType ?? '';

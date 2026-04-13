@@ -2,7 +2,6 @@ import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateCol
 import { Company } from '../../companies/entities/company.entity';
 import { Locality } from '../../locations/entities/locality.entity';
 import { Unit } from './unit.entity';
-import { PropertyType } from './property-type.enum';
 
 @Entity('assets')
 export class Asset {
@@ -31,14 +30,6 @@ export class Asset {
 
     @Column({ type: 'text', nullable: true })
     address: string | null;
-
-    @Column({
-        name: 'property_type',
-        type: 'enum',
-        enum: PropertyType,
-        default: PropertyType.RENTAL,
-    })
-    propertyType: PropertyType;
 
     @CreateDateColumn({ name: 'created_at' })
     createdAt: Date;
