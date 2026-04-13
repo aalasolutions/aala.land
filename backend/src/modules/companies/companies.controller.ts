@@ -7,7 +7,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '@shared/guards/roles.guard';
 import { Roles } from '@shared/decorators/roles.decorator';
 import { Role } from '@shared/enums/roles.enum';
-import { REGIONS } from '@shared/constants/regions';
+import { REGIONS, getRegionsGroupedByCountry } from '@shared/constants/regions';
 import { AuthenticatedRequest } from '@shared/interfaces/authenticated-request.interface';
 
 @ApiTags('Companies')
@@ -16,9 +16,9 @@ export class CompaniesController {
     constructor(private readonly companiesService: CompaniesService) { }
 
     @Get('regions')
-    @ApiOperation({ summary: 'Get all supported regions (public, no auth)' })
+    @ApiOperation({ summary: 'Get all supported regions grouped by country (public, no auth)' })
     getRegions() {
-        return REGIONS;
+        return { flat: REGIONS, grouped: getRegionsGroupedByCountry() };
     }
 
     @Post()
