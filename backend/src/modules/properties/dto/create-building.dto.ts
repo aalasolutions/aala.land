@@ -9,10 +9,10 @@ export class CreateBuildingDto {
   @MaxLength(255)
   name: string;
 
-  @ApiProperty({ example: 'uuid-of-area' })
+  @ApiProperty({ example: 'uuid-of-locality' })
   @IsUUID()
   @IsNotEmpty()
-  areaId: string;
+  localityId: string;
 
   @ApiPropertyOptional({ example: '123 Sheikh Zayed Road, Dubai' })
   @IsString()

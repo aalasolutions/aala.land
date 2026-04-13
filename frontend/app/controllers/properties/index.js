@@ -150,19 +150,25 @@ export default class PropertiesIndexController extends Controller {
   @action selectCity(city) {
     this.selectedCity = city;
     this.selectedLocality = null;
+    this.formLocation = city.name;
   }
 
   @action clearCity() {
     this.selectedCity = null;
     this.selectedLocality = null;
+    this.formLocation = '';
   }
 
   @action selectLocality(locality) {
     this.selectedLocality = locality;
+    this.formLocation = this.selectedCity
+      ? `${locality.name}, ${this.selectedCity.name}`
+      : locality.name;
   }
 
   @action clearLocality() {
     this.selectedLocality = null;
+    this.formLocation = this.selectedCity ? this.selectedCity.name : '';
   }
 
   @action openCreate() {

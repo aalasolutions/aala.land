@@ -154,7 +154,7 @@ export default class PropertiesDetailController extends Controller {
 
     const body = {
       name: this.formBuildingName,
-      ...(!isEdit ? { areaId } : {}),
+      ...(!isEdit ? { localityId: areaId } : {}),
       propertyType: this.formBuildingPropertyType,
       ...(this.formBuildingAddress ? { address: this.formBuildingAddress } : {}),
     };

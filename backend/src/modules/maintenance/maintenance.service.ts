@@ -53,11 +53,11 @@ export class MaintenanceService {
     let unitMap: Record<string, { unitNumber: string; buildingName: string; areaName: string }> = {};
     if (orderIds.length) {
       const unitInfo = await this.workOrderRepository.query(
-        `SELECT wo.id AS "woId", u.unit_number AS "unitNumber", b.name AS "buildingName", pa.name AS "areaName"
+        `SELECT wo.id AS "woId", u.unit_number AS "unitNumber", b.name AS "buildingName", loc.name AS "areaName"
          FROM work_orders wo
          LEFT JOIN units u ON wo.unit_id = u.id
          LEFT JOIN buildings b ON u.building_id = b.id
-         LEFT JOIN property_areas pa ON b.area_id = pa.id
+         LEFT JOIN localities loc ON b.locality_id = loc.id
          WHERE wo.id = ANY($1)`,
         [orderIds],
       );

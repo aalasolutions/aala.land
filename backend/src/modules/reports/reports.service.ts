@@ -131,9 +131,10 @@ export class ReportsService {
       totalUnitsPromise = this.unitRepository
         .createQueryBuilder('u')
         .innerJoin('buildings', 'b', 'u.building_id = b.id')
-        .innerJoin('property_areas', 'pa', 'b.area_id = pa.id')
+        .innerJoin('localities', 'loc', 'b.locality_id = loc.id')
+        .innerJoin('cities', 'ci', 'loc.city_id = ci.id')
         .where('u.company_id = :companyId', { companyId })
-        .andWhere('pa.region_code = :regionCode', { regionCode })
+        .andWhere('ci.region_code = :regionCode', { regionCode })
         .getCount();
 
       revenuePromise = this.transactionRepository
@@ -141,32 +142,35 @@ export class ReportsService {
         .select('COALESCE(SUM(t.amount), 0)', 'total')
         .innerJoin('units', 'u', 't.unit_id = u.id')
         .innerJoin('buildings', 'b', 'u.building_id = b.id')
-        .innerJoin('property_areas', 'pa', 'b.area_id = pa.id')
+        .innerJoin('localities', 'loc', 'b.locality_id = loc.id')
+        .innerJoin('cities', 'ci', 'loc.city_id = ci.id')
         .where('t.companyId = :companyId', { companyId })
         .andWhere('t.type = :type', { type: TransactionType.INCOME })
         .andWhere('t.status = :status', { status: TransactionStatus.COMPLETED })
         .andWhere('t.createdAt >= :startOfMonth', { startOfMonth })
-        .andWhere('pa.region_code = :regionCode', { regionCode })
+        .andWhere('ci.region_code = :regionCode', { regionCode })
         .getRawOne();
 
       activeLeasesPromise = this.leaseRepository
         .createQueryBuilder('l')
         .innerJoin('units', 'u', 'l.unit_id = u.id')
         .innerJoin('buildings', 'b', 'u.building_id = b.id')
-        .innerJoin('property_areas', 'pa', 'b.area_id = pa.id')
+        .innerJoin('localities', 'loc', 'b.locality_id = loc.id')
+        .innerJoin('cities', 'ci', 'loc.city_id = ci.id')
         .where('l.company_id = :companyId', { companyId })
         .andWhere('l.status = :status', { status: LeaseStatus.ACTIVE })
-        .andWhere('pa.region_code = :regionCode', { regionCode })
+        .andWhere('ci.region_code = :regionCode', { regionCode })
         .getCount();
 
       pendingChequesPromise = this.chequeRepository
         .createQueryBuilder('c')
         .innerJoin('units', 'u', 'c.unit_id = u.id')
         .innerJoin('buildings', 'b', 'u.building_id = b.id')
-        .innerJoin('property_areas', 'pa', 'b.area_id = pa.id')
+        .innerJoin('localities', 'loc', 'b.locality_id = loc.id')
+        .innerJoin('cities', 'ci', 'loc.city_id = ci.id')
         .where('c.company_id = :companyId', { companyId })
         .andWhere('c.status = :status', { status: ChequeStatus.PENDING })
-        .andWhere('pa.region_code = :regionCode', { regionCode })
+        .andWhere('ci.region_code = :regionCode', { regionCode })
         .getCount();
     } else {
       totalUnitsPromise = this.unitRepository.count({ where: { companyId } });
@@ -314,11 +318,12 @@ export class ReportsService {
         .createQueryBuilder('u')
         .select(['u.id', 'u.unitNumber', 'u.updatedAt'])
         .innerJoin('buildings', 'b', 'u.building_id = b.id')
-        .innerJoin('property_areas', 'pa', 'b.area_id = pa.id')
+        .innerJoin('localities', 'loc', 'b.locality_id = loc.id')
+        .innerJoin('cities', 'ci', 'loc.city_id = ci.id')
         .where('u.company_id = :companyId', { companyId })
         .andWhere('u.status = :status', { status: UnitStatus.AVAILABLE })
         .andWhere('u.updated_at < :days30Ago', { days30Ago })
-        .andWhere('pa.region_code = :regionCode', { regionCode })
+        .andWhere('ci.region_code = :regionCode', { regionCode })
         .take(20)
         .getMany();
     } else {
