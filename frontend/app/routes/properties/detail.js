@@ -8,7 +8,7 @@ export default class PropertiesDetailRoute extends AuthenticatedRoute {
     try {
       const [areaJson, buildingsJson] = await Promise.all([
         this.auth.fetchJson(`/properties/areas/${area_id}`),
-        this.auth.fetchJson(`/properties/areas/${area_id}/buildings?limit=100`),
+        this.auth.fetchJson('/properties/buildings?limit=100'),
       ]);
 
       const area = areaJson.data ?? null;
