@@ -53,7 +53,7 @@
     <div class="units-grid">
       {{#each this.model.owner.units as |unit|}}
         {{#if unit.asset}}
-          <LinkTo @route="properties.detail" @model={{unit.asset.localityId}} class="unit-card unit-card-link">
+          <LinkTo @route="properties.unit" @models={{array unit.asset.localityId unit.id}} class="unit-card unit-card-link">
             <p class="unit-number">{{unit.unitNumber}}</p>
             {{#if unit.asset.locality}}
               <p class="unit-building">{{unit.asset.locality.name}} - {{unit.asset.name}}</p>
