@@ -27,26 +27,23 @@
   </div>
 
   {{#if (eq this.activeView "areas")}}
-    {{!-- AREAS LIST VIEW --}}
+    {{!-- LOCATIONS LIST VIEW --}}
     {{#if @model.length}}
       <div class="flex col gap-3">
-        {{#each @model as |area|}}
+        {{#each @model as |loc|}}
           <div data-test-area-card class="glass-panel p-5 flex between x-center">
             <div class="flex gap-6">
               <div>
-                <h4 class="font-md font-bold">{{area.name}}</h4>
-                <p class="text-muted font-xs mt-1">{{area.location}}</p>
+                <h4 class="font-md font-bold">{{loc.name}}</h4>
+                <p class="text-muted font-xs mt-1">{{loc.cityName}}</p>
               </div>
               <div class="flex gap-4 text-sm">
-                <span class="text-muted">{{area.buildingCount}} Buildings</span>
-                <span class="text-muted">{{area.unitCount}} Units</span>
+                <span class="text-muted">{{loc.buildingCount}} Buildings</span>
+                <span class="text-muted">{{loc.unitCount}} Units</span>
               </div>
             </div>
             <div class="flex gap-3">
-              <button type="button" class="btn btn-secondary btn-sm" {{on "click" (fn this.openEdit area)}}>
-                <Ph @icon="pencil-simple" /> Edit
-              </button>
-              <LinkTo @route="properties.detail" @model={{area.id}} class="btn btn-primary btn-sm">
+              <LinkTo @route="properties.detail" @model={{loc.id}} class="btn btn-primary btn-sm">
                 <Ph @icon="eye" /> View
               </LinkTo>
             </div>

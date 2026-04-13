@@ -11,8 +11,8 @@ export default class PropertiesIndexRoute extends AuthenticatedRoute {
 
   async model({ page = 1, limit = 20 }) {
     try {
-      const json = await this.auth.fetchJson(`/properties/areas?page=${page}&limit=${limit}`);
-      return json.data?.data ?? [];
+      const json = await this.auth.fetchJson('/locations/company/localities');
+      return json.data ?? [];
     } catch {
       return [];
     }
