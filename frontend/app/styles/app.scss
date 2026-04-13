@@ -714,10 +714,56 @@ body {
     }
 }
 
+.region-country-group {
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+}
+
+.region-country-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 12px 16px;
+    background: var(--bg-surface);
+    border: none;
+    cursor: pointer;
+    text-align: left;
+    font-size: 0.95rem;
+    color: var(--text-primary);
+
+    .country-name { font-weight: 600; }
+
+    .country-meta {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-left: auto;
+    }
+
+    .region-total {
+        font-size: 0.8rem;
+        color: var(--text-muted);
+    }
+
+    .region-selected-badge {
+        font-size: 0.75rem;
+        font-weight: 600;
+        padding: 2px 8px;
+        border-radius: 10px;
+        background: rgba($color-primary, 0.12);
+        color: $color-primary;
+    }
+
+    &:hover { background: var(--bg-hover); }
+}
+
 .region-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
     gap: 8px;
+    padding: 0 8px;
 }
 
 .region-checkbox {

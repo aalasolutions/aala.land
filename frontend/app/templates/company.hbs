@@ -107,26 +107,44 @@
           </div>
         {{/if}}
 
-        <label class="font-sm font-bold text-muted uppercase mb-2 block">Available Regions</label>
+        <p class="font-sm font-bold text-muted uppercase mb-3">Available Regions</p>
 
-        <div class="region-grid">
-          {{#each this.model.regions as |r|}}
-            <label class="region-checkbox" data-test-region-checkbox={{r.code}}>
-              {{#if this.isPaid}}
-                <input type="checkbox"
-                  checked={{includes this.formActiveRegions r.code}}
-                  {{on "change" (fn this.toggleRegion r.code)}} />
-              {{else}}
-                <input type="radio" name="region-select"
-                  checked={{includes this.formActiveRegions r.code}}
-                  {{on "change" (fn this.selectSingleRegion r.code)}} />
-              {{/if}}
-              <span class="region-check-label">
-                {{r.name}} <span class="text-muted font-xs">({{r.currency}})</span>
+        {{#each this.model.groupedRegions as |group|}}
+          <div class="region-country-group mb-2" data-test-country-group={{group.country}}>
+            <button type="button" class="region-country-header" {{on "click" (fn this.toggleCountry group.country)}}>
+              <span class="country-name">{{group.countryName}}</span>
+              <span class="country-meta">
+                {{#let (this.selectedCountInGroup group.regions) as |count|}}
+                  {{#if count}}
+                    <span class="region-selected-badge">{{count}} selected</span>
+                  {{/if}}
+                {{/let}}
+                <span class="region-total">{{group.regions.length}} states</span>
               </span>
-            </label>
-          {{/each}}
-        </div>
+              <Ph @icon={{if (includes this.expandedCountries group.country) "caret-up" "caret-down"}} @size="16" />
+            </button>
+            {{#if (includes this.expandedCountries group.country)}}
+              <div class="region-grid mt-2 mb-2 ml-2">
+                {{#each group.regions as |r|}}
+                  <div class="region-checkbox" data-test-region-checkbox={{r.code}}>
+                    {{#if this.isPaid}}
+                      <input type="checkbox" id={{r.code}}
+                        checked={{includes this.formActiveRegions r.code}}
+                        {{on "change" (fn this.toggleRegion r.code)}} />
+                    {{else}}
+                      <input type="radio" name="region-select" id={{r.code}}
+                        checked={{includes this.formActiveRegions r.code}}
+                        {{on "change" (fn this.selectSingleRegion r.code)}} />
+                    {{/if}}
+                    <label for={{r.code}} class="region-check-label">
+                      {{r.name}} <span class="text-muted font-xs">({{r.currency}})</span>
+                    </label>
+                  </div>
+                {{/each}}
+              </div>
+            {{/if}}
+          </div>
+        {{/each}}
       </div>
     {{/if}}
   </div>

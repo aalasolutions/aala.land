@@ -15,9 +15,11 @@ export default class CompanyRoute extends AuthenticatedRoute {
     ]);
 
     const company = companyResult.data || null;
-    const regions = regionsResponse.data || regionsResponse || [];
+    const regionsData = regionsResponse.data || regionsResponse || {};
+    const regions = regionsData.flat || regionsData || [];
+    const groupedRegions = regionsData.grouped || [];
 
-    return { company, regions };
+    return { company, regions, groupedRegions };
   }
 
   setupController(controller, model) {

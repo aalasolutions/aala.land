@@ -17,6 +17,19 @@ export default class CompanyController extends Controller {
   @tracked formDefaultRegionCode = '';
   @tracked isSaving = false;
   @tracked errorMsg = '';
+  @tracked expandedCountries = [];
+
+  @action toggleCountry(countryCode) {
+    if (this.expandedCountries.includes(countryCode)) {
+      this.expandedCountries = this.expandedCountries.filter(c => c !== countryCode);
+    } else {
+      this.expandedCountries = [...this.expandedCountries, countryCode];
+    }
+  }
+
+  @action selectedCountInGroup(regions) {
+    return regions.filter(r => this.formActiveRegions.includes(r.code)).length;
+  }
 
   get company() {
     return this.model?.company;
