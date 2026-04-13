@@ -258,6 +258,10 @@
             <input id="nu-beds" type="number" min="0" class="form-input" placeholder="0" value={{this.newUnitBedrooms}} {{on "input" (fn this.setField "newUnitBedrooms")}} />
           </div>
         </div>
+        <div class="flex col gap-2">
+          <label class="font-sm text-muted" for="nu-baths">Bathrooms</label>
+          <input id="nu-baths" type="number" min="0" class="form-input" placeholder="0" value={{this.newUnitBathrooms}} {{on "input" (fn this.setField "newUnitBathrooms")}} />
+        </div>
       {{/if}}
       {{#if this.newUnitError}}
         <p class="font-sm text-danger">{{this.newUnitError}}</p>

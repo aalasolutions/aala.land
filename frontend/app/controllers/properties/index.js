@@ -119,6 +119,7 @@ export default class PropertiesIndexController extends Controller {
   @tracked newUnitStatus = 'available';
   @tracked newUnitPrice = '';
   @tracked newUnitBedrooms = '';
+  @tracked newUnitBathrooms = '';
   @tracked newUnitError = '';
   @tracked isSavingNewUnit = false;
 
@@ -185,6 +186,7 @@ export default class PropertiesIndexController extends Controller {
     this.newUnitStatus = 'available';
     this.newUnitPrice = '';
     this.newUnitBedrooms = '';
+    this.newUnitBathrooms = '';
     this.newUnitError = '';
     this.showNewUnitModal = true;
   }
@@ -217,6 +219,7 @@ export default class PropertiesIndexController extends Controller {
       ...(this.newUnitType ? { propertyType: this.newUnitType } : {}),
       ...(this.newUnitPrice ? { price: parseFloat(this.newUnitPrice) } : {}),
       ...(this.newUnitBedrooms ? { bedrooms: parseInt(this.newUnitBedrooms, 10) } : {}),
+      ...(this.newUnitBathrooms ? { bathrooms: parseInt(this.newUnitBathrooms, 10) } : {}),
     };
 
     try {
