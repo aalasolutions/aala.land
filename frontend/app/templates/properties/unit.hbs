@@ -10,7 +10,7 @@
       <span>/</span>
     {{/if}}
     {{#if @model.unit.asset}}
-      <span>{{@model.unit.asset.name}}</span>
+      <LinkTo @route="properties.detail" @model={{@model.areaId}}>{{@model.unit.asset.name}}</LinkTo>
       <span>/</span>
     {{/if}}
     <span class="font-bold" style="color: var(--text-primary)">Unit {{@model.unit.unitNumber}}</span>
