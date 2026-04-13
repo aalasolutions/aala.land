@@ -5,8 +5,8 @@
   <div data-test-breadcrumb class="flex x-center gap-2 font-sm text-muted">
     <LinkTo @route="properties" data-test-breadcrumb-properties>Properties</LinkTo>
     <span>/</span>
-    {{#if @model.unit.building.area}}
-      <LinkTo @route="properties.detail" @model={{@model.areaId}} data-test-breadcrumb-area>{{@model.unit.building.area.name}}</LinkTo>
+    {{#if @model.unit.building.locality}}
+      <LinkTo @route="properties.detail" @model={{@model.areaId}} data-test-breadcrumb-area>{{@model.unit.building.locality.name}}</LinkTo>
       <span>/</span>
     {{/if}}
     {{#if @model.unit.building}}
@@ -73,8 +73,8 @@
           {{#if @model.unit.building}}
             <p class="text-muted font-sm">
               {{@model.unit.building.name}}
-              {{#if @model.unit.building.area}}
-                &middot; {{@model.unit.building.area.name}}
+              {{#if @model.unit.building.locality}}
+                &middot; {{@model.unit.building.locality.name}}
               {{/if}}
             </p>
           {{/if}}
