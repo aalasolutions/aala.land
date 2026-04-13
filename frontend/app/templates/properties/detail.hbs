@@ -127,12 +127,12 @@
         </div>
         {{#if this.selectedCity}}
           <div class="flex col gap-2">
-            <label class="font-sm text-muted">Locality *</label>
+            <label class="font-sm text-muted">Location / Area *</label>
             <LocationTypeahead
               @searchUrl={{this.localitySearchUrl}}
               @createUrl="/locations/localities"
               @createPayload={{this.localityCreatePayload}}
-              @placeholder="Search locality..."
+              @placeholder="Search location..."
               @selectedName={{this.selectedLocality.name}}
               @onSelect={{this.selectLocality}}
               @onClear={{this.clearLocality}}
