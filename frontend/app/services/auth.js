@@ -86,7 +86,7 @@ export default class AuthService extends Service {
 
   async fetchJson(path, options = {}) {
     let finalPath = path;
-    if (this.region.activeRegion && !path.startsWith('/auth/')) {
+    if (this.region.activeRegion && !path.startsWith('/auth/') && !path.includes('regionCode=')) {
       const separator = path.includes('?') ? '&' : '?';
       finalPath = `${path}${separator}regionCode=${this.region.regionCode}`;
     }
