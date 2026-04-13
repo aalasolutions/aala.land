@@ -157,8 +157,18 @@ export default class PropertiesDetailController extends Controller {
     this.formAssetAddress = '';
     this.editAsset = null;
     this.assetError = '';
-    this.selectedCity = null;
-    this.selectedLocality = null;
+
+    const firstAsset = this.model?.assets?.[0];
+    if (firstAsset?.locality?.city) {
+      this.selectedCity = firstAsset.locality.city;
+      this.selectedLocality = firstAsset.locality;
+    } else if (firstAsset?.locality) {
+      this.selectedCity = null;
+      this.selectedLocality = firstAsset.locality;
+    } else {
+      this.selectedCity = null;
+      this.selectedLocality = null;
+    }
     this.showAssetModal = true;
   }
 

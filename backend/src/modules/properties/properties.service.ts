@@ -88,7 +88,7 @@ export class PropertiesService {
                 { localityId, units: { companyId } },
                 { localityId, createdByCompanyId: companyId },
             ],
-            relations: ['locality', 'units'],
+            relations: ['locality', 'locality.city', 'units'],
             skip: (page - 1) * limit,
             take: limit,
             order: { createdAt: 'DESC' },
@@ -108,7 +108,7 @@ export class PropertiesService {
                 { units: { companyId } },
                 { createdByCompanyId: companyId },
             ],
-            relations: ['locality', 'units'],
+            relations: ['locality', 'locality.city', 'units'],
             skip: (page - 1) * limit,
             take: limit,
             order: { createdAt: 'DESC' },
@@ -120,6 +120,19 @@ export class PropertiesService {
         }));
 
         return { data: filtered, total, page, limit };
+    }
+
+    async searchAssets(localityId: string, q: string): Promise<any[]> {
+        const results = await this.assetRepository.query(
+            `SELECT id, name, address, similarity(name, $1) AS score
+             FROM assets
+             WHERE locality_id = $2
+               AND similarity(name, $1) > 0.2
+             ORDER BY score DESC
+             LIMIT 10`,
+            [q, localityId],
+        );
+        return results;
     }
 
     async findOneAsset(id: string): Promise<Asset> {

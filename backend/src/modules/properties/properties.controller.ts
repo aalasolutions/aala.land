@@ -119,6 +119,14 @@ export class PropertiesController {
     }
 
     // Assets (shared, community-seeded)
+    @Get('assets/search')
+    @ApiOperation({ summary: 'Fuzzy search assets by name within a locality' })
+    @ApiQuery({ name: 'q', required: true, type: String })
+    @ApiQuery({ name: 'localityId', required: true, type: String })
+    searchAssets(@Query('q') q: string, @Query('localityId') localityId: string) {
+        return this.propertiesService.searchAssets(localityId, q);
+    }
+
     @Post('assets')
     @ApiOperation({ summary: 'Create a new asset (tower, villa, mall, etc.)' })
     createAsset(@Body() dto: CreateAssetDto, @Request() req: AuthenticatedRequest) {

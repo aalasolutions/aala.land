@@ -16,11 +16,8 @@
         </button>
       </div>
       {{#if (eq this.activeView "areas")}}
-        <button type="button" class="btn btn-secondary" {{on "click" this.openImport}} data-test-bulk-import>
-          <Ph @icon="upload-simple" /> Bulk Import
-        </button>
-        <button type="button" class="btn btn-primary" {{on "click" this.openCreate}} data-test-new-area>
-          <Ph @icon="plus" /> New Area
+        <button type="button" class="btn btn-primary" {{on "click" this.openNewUnitModal}} data-test-new-unit>
+          <Ph @icon="plus" /> New Unit
         </button>
       {{/if}}
     </div>
@@ -52,7 +49,7 @@
       </div>
     {{else}}
       <div class="glass-panel p-8 text-center">
-        <p class="text-muted">No property areas yet. Create your first one above.</p>
+        <p class="text-muted">No assets yet. Click "New Unit" to add your first property.</p>
       </div>
     {{/if}}
   {{else}}
@@ -177,27 +174,17 @@
   {{/if}}
 </div>
 
-{{!-- Area create/edit modal (areas view only) --}}
-{{#if this.showModal}}
-  <button type="button" class="modal-backdrop" aria-label="Close modal" {{on "click" this.closeModal}}></button>
+{{!-- New Unit modal (cascading: city > location > asset > unit) --}}
+{{#if this.showNewUnitModal}}
+  <button type="button" class="modal-backdrop" aria-label="Close modal" {{on "click" this.closeNewUnitModal}}></button>
   <div class="modal-panel glass-panel p-8 flex col gap-6" role="dialog">
     <div class="flex between x-center">
-      <h3 class="font-xl font-bold">{{if this.editArea "Edit Area" "New Area"}}</h3>
-      <button type="button" class="text-muted font-lg px-2" {{on "click" this.closeModal}}>x</button>
+      <h3 class="font-xl font-bold">New Unit</h3>
+      <button type="button" class="text-muted font-lg px-2" {{on "click" this.closeNewUnitModal}}>x</button>
     </div>
-    <form class="flex col gap-4" {{on "submit" this.saveArea}}>
-      {{#if this.showRegionField}}
-        <div class="flex col gap-2">
-          <label class="font-sm text-muted" for="area-region">Region</label>
-          <select id="area-region" class="form-select" data-test-region-select {{on "change" (fn this.setField "formRegionCode")}}>
-            {{#each this.region.regions as |r|}}
-              <option value={{r.code}} selected={{eq r.code this.formRegionCode}}>{{r.name}} ({{r.currency}})</option>
-            {{/each}}
-          </select>
-        </div>
-      {{/if}}
+    <form class="flex col gap-4" {{on "submit" this.saveNewUnit}}>
       <div class="flex col gap-2">
-        <label class="font-sm text-muted">City</label>
+        <label class="font-sm text-muted">City *</label>
         <LocationTypeahead
           @searchUrl={{this.citySearchUrl}}
           @createUrl="/locations/cities"
@@ -210,7 +197,7 @@
       </div>
       {{#if this.selectedCity}}
         <div class="flex col gap-2">
-          <label class="font-sm text-muted">Location / Area</label>
+          <label class="font-sm text-muted">Location / Area *</label>
           <LocationTypeahead
             @searchUrl={{this.localitySearchUrl}}
             @createUrl="/locations/localities"
@@ -222,28 +209,66 @@
           />
         </div>
       {{/if}}
-      <div class="flex col gap-2">
-        <label class="font-sm text-muted" for="area-name">Area Name *</label>
-        <input id="area-name" type="text"
-          class="form-input"
-          placeholder="e.g. Business Bay" value={{this.formName}} required {{on "input" (fn this.setField "formName")}} />
-      </div>
-      <div class="flex col gap-2">
-        <label class="font-sm text-muted" for="area-description">Description</label>
-        <textarea id="area-description" type="text"
-          class="form-input"
-          placeholder="Brief description about this area" rows="3" value={{this.formDescription}} {{on "input" (fn this.setField "formDescription")}}></textarea>
-      </div>
-      {{#if this.errorMsg}}
-        <p class="font-sm text-danger">{{this.errorMsg}}</p>
+      {{#if this.selectedLocality}}
+        <div class="flex col gap-2">
+          <label class="font-sm text-muted">Asset *</label>
+          <LocationTypeahead
+            @searchUrl={{this.assetSearchUrl}}
+            @createUrl="/properties/assets"
+            @createPayload={{this.assetCreatePayload}}
+            @placeholder="Search asset (tower, villa, mall...)"
+            @selectedName={{this.selectedAsset.name}}
+            @onSelect={{this.selectAsset}}
+            @onClear={{this.clearAsset}}
+          />
+        </div>
+      {{/if}}
+      {{#if this.selectedAsset}}
+        <hr class="border-t border-light" />
+        <div class="flex col gap-2">
+          <label class="font-sm text-muted" for="nu-number">Unit Number *</label>
+          <input id="nu-number" type="text" class="form-input" placeholder="e.g. 101, Villa A" value={{this.newUnitNumber}} required {{on "input" (fn this.setField "newUnitNumber")}} />
+        </div>
+        <div class="flex gap-4">
+          <div class="flex col gap-2 flex-1">
+            <label class="font-sm text-muted" for="nu-type">Listing Type</label>
+            <select id="nu-type" class="form-select" {{on "change" (fn this.setField "newUnitType")}}>
+              <option value="">Not set</option>
+              <option value="RENTAL" selected={{eq this.newUnitType "RENTAL"}}>Rental</option>
+              <option value="FOR_SALE" selected={{eq this.newUnitType "FOR_SALE"}}>For Sale</option>
+            </select>
+          </div>
+          <div class="flex col gap-2 flex-1">
+            <label class="font-sm text-muted" for="nu-status">Status</label>
+            <select id="nu-status" class="form-select" {{on "change" (fn this.setField "newUnitStatus")}}>
+              <option value="available" selected={{eq this.newUnitStatus "available"}}>Available</option>
+              <option value="rented" selected={{eq this.newUnitStatus "rented"}}>Rented</option>
+              <option value="sold" selected={{eq this.newUnitStatus "sold"}}>Sold</option>
+              <option value="maintenance" selected={{eq this.newUnitStatus "maintenance"}}>Maintenance</option>
+            </select>
+          </div>
+        </div>
+        <div class="flex gap-4">
+          <div class="flex col gap-2 flex-1">
+            <label class="font-sm text-muted" for="nu-price">Price</label>
+            <input id="nu-price" type="number" min="0" class="form-input" placeholder="0" value={{this.newUnitPrice}} {{on "input" (fn this.setField "newUnitPrice")}} />
+          </div>
+          <div class="flex col gap-2 flex-1">
+            <label class="font-sm text-muted" for="nu-beds">Bedrooms</label>
+            <input id="nu-beds" type="number" min="0" class="form-input" placeholder="0" value={{this.newUnitBedrooms}} {{on "input" (fn this.setField "newUnitBedrooms")}} />
+          </div>
+        </div>
+      {{/if}}
+      {{#if this.newUnitError}}
+        <p class="font-sm text-danger">{{this.newUnitError}}</p>
       {{/if}}
       <div class="flex gap-3 mt-2">
-        <button type="button" class="btn btn-secondary" {{on "click" this.closeModal}}>
-          Cancel
-        </button>
-        <button type="submit" class="btn btn-primary" disabled={{this.isSaving}}>
-          {{if this.isSaving "Saving..." (if this.editArea "Update" "Create Area")}}
-        </button>
+        <button type="button" class="btn btn-secondary" {{on "click" this.closeNewUnitModal}}>Cancel</button>
+        {{#if this.selectedAsset}}
+          <button type="submit" class="btn btn-primary" disabled={{this.isSavingNewUnit}}>
+            {{if this.isSavingNewUnit "Creating..." "Create Unit"}}
+          </button>
+        {{/if}}
       </div>
     </form>
   </div>

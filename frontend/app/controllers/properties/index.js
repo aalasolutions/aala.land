@@ -10,27 +10,6 @@ export default class PropertiesIndexController extends Controller {
   @service router;
   @service region;
 
-  @tracked showModal = false;
-  @tracked showImportModal = false;
-  @tracked editArea = null;
-  @tracked formName = '';
-  @tracked formLocation = '';
-  @tracked formDescription = '';
-  @tracked formRegionCode = '';
-  @tracked selectedCity = null;
-  @tracked selectedLocality = null;
-  @tracked isSaving = false;
-  @tracked errorMsg = '';
-
-  get showRegionField() {
-    return this.region.regions.length > 1;
-  }
-
-  @tracked importFile = null;
-  @tracked importPreview = null;
-  @tracked importResults = null;
-  @tracked isImporting = false;
-
   // Browse Units view
   @tracked activeView = 'areas';
   @tracked browseUnits = [];
@@ -130,184 +109,128 @@ export default class PropertiesIndexController extends Controller {
     }
   }
 
+  // New Unit modal (cascading: city > location > asset > unit fields)
+  @tracked showNewUnitModal = false;
+  @tracked selectedCity = null;
+  @tracked selectedLocality = null;
+  @tracked selectedAsset = null;
+  @tracked newUnitNumber = '';
+  @tracked newUnitType = '';
+  @tracked newUnitStatus = 'available';
+  @tracked newUnitPrice = '';
+  @tracked newUnitBedrooms = '';
+  @tracked newUnitError = '';
+  @tracked isSavingNewUnit = false;
+
   get citySearchUrl() {
-    const code = this.formRegionCode || this.region.regionCode;
-    return code ? `/locations/cities/search?regionCode=${code}` : null;
+    return this.region.regionCode ? '/locations/cities/search' : null;
+  }
+
+  get cityCreatePayload() {
+    return { regionCode: this.region.regionCode };
   }
 
   get localitySearchUrl() {
     return this.selectedCity ? `/locations/localities/search?cityId=${this.selectedCity.id}` : null;
   }
 
-  get cityCreatePayload() {
-    return { regionCode: this.formRegionCode || this.region.regionCode };
-  }
-
   get localityCreatePayload() {
     return this.selectedCity ? { cityId: this.selectedCity.id } : {};
+  }
+
+  get assetSearchUrl() {
+    return this.selectedLocality ? `/properties/assets/search?localityId=${this.selectedLocality.id}` : null;
+  }
+
+  get assetCreatePayload() {
+    return this.selectedLocality ? { localityId: this.selectedLocality.id } : {};
   }
 
   @action selectCity(city) {
     this.selectedCity = city;
     this.selectedLocality = null;
-    this.formLocation = city.name;
+    this.selectedAsset = null;
   }
 
   @action clearCity() {
     this.selectedCity = null;
     this.selectedLocality = null;
-    this.formLocation = '';
+    this.selectedAsset = null;
   }
 
   @action selectLocality(locality) {
     this.selectedLocality = locality;
-    this.formLocation = this.selectedCity
-      ? `${locality.name}, ${this.selectedCity.name}`
-      : locality.name;
+    this.selectedAsset = null;
   }
 
   @action clearLocality() {
     this.selectedLocality = null;
-    this.formLocation = this.selectedCity ? this.selectedCity.name : '';
+    this.selectedAsset = null;
   }
 
-  @action openCreate() {
-    this.formName = '';
-    this.formLocation = '';
-    this.formDescription = '';
-    this.formRegionCode = this.region.regionCode;
+  @action selectAsset(asset) {
+    this.selectedAsset = asset;
+  }
+
+  @action clearAsset() {
+    this.selectedAsset = null;
+  }
+
+  @action openNewUnitModal() {
     this.selectedCity = null;
     this.selectedLocality = null;
-    this.editArea = null;
-    this.errorMsg = '';
-    this.showModal = true;
+    this.selectedAsset = null;
+    this.newUnitNumber = '';
+    this.newUnitType = '';
+    this.newUnitStatus = 'available';
+    this.newUnitPrice = '';
+    this.newUnitBedrooms = '';
+    this.newUnitError = '';
+    this.showNewUnitModal = true;
   }
 
-  @action openEdit(area) {
-    this.formName = area.name;
-    this.formLocation = area.location ?? '';
-    this.formDescription = area.description ?? '';
-    this.selectedCity = area.city ?? null;
-    this.selectedLocality = area.locality ?? null;
-    this.editArea = area;
-    this.errorMsg = '';
-    this.showModal = true;
+  @action closeNewUnitModal() {
+    this.showNewUnitModal = false;
+    this.newUnitError = '';
   }
 
-  @action openImport() {
-    this.importFile = null;
-    this.importPreview = null;
-    this.importResults = null;
-    this.showImportModal = true;
-  }
-
-  @action closeModal() {
-    this.showModal = false;
-    this.editArea = null;
-    this.errorMsg = '';
-  }
-
-  @action closeImportModal() {
-    this.showImportModal = false;
-    this.importFile = null;
-    this.importPreview = null;
-    this.importResults = null;
-  }
-
-  @action handleFileSelect(event) {
-    const file = event.target.files[0];
-    if (file && file.type === 'text/csv') {
-      this.importFile = file;
-      this.parseCSV(file);
-    } else {
-      this.notifications.error('Please select a CSV file');
-    }
-  }
-
-  @action async parseCSV(file) {
-    const text = await file.text();
-    const lines = text.split('\n').filter(l => l.trim());
-    const headers = lines[0].split(',').map(h => h.trim());
-    const rows = lines.slice(1).map(line => {
-      const values = line.split(',');
-      const row = {};
-      headers.forEach((h, i) => row[h] = values[i]?.trim());
-      return row;
-    }).filter(r => r.areaName);
-
-    this.importPreview = rows.slice(0, 10);
-  }
-
-  @action async importProperties() {
-    if (!this.importFile || this.isImporting) return;
-
-    this.isImporting = true;
-    this.importResults = null;
-
-    try {
-      const formData = new FormData();
-      formData.append('file', this.importFile);
-
-      const res = await this.auth.authorizedFetch(`${this.auth.apiBase}/properties/bulk-import`, {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.message || 'Import failed');
-      }
-
-      this.importResults = await res.json();
-      this.notifications.success(`Import complete: ${this.importResults.created} created, ${this.importResults.failed} failed`);
-
-      if (this.importResults.created > 0) {
-        this.router.refresh('properties.index');
-      }
-    } catch (e) {
-      this.notifications.error(e.message);
-    } finally {
-      this.isImporting = false;
-    }
-  }
-
-  @action downloadTemplate() {
-    const csv = 'areaName,location\nGulberg,Lahore\nDHA Phase 5,Karachi\nBandra West,Mumbai';
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'properties-import-template.csv';
-    a.click();
-    URL.revokeObjectURL(url);
-  }
-
-  @action async saveArea(event) {
+  @action async saveNewUnit(event) {
     event.preventDefault();
-    if (this.isSaving) return;
-    this.isSaving = true;
-    this.errorMsg = '';
+    if (this.isSavingNewUnit) return;
 
-    const isEdit = !!this.editArea;
-    const path = isEdit ? `/properties/areas/${this.editArea.id}` : '/properties/areas';
+    if (!this.selectedAsset) {
+      this.newUnitError = 'Please select a city, location, and asset first.';
+      return;
+    }
+    if (!this.newUnitNumber.trim()) {
+      this.newUnitError = 'Unit number is required.';
+      return;
+    }
+
+    this.isSavingNewUnit = true;
+    this.newUnitError = '';
+
+    const body = {
+      assetId: this.selectedAsset.id,
+      unitNumber: this.newUnitNumber.trim(),
+      status: this.newUnitStatus,
+      ...(this.newUnitType ? { propertyType: this.newUnitType } : {}),
+      ...(this.newUnitPrice ? { price: parseFloat(this.newUnitPrice) } : {}),
+      ...(this.newUnitBedrooms ? { bedrooms: parseInt(this.newUnitBedrooms, 10) } : {}),
+    };
 
     try {
-      await this.auth.fetchJson(path, {
-        method: isEdit ? 'PATCH' : 'POST',
-        body: JSON.stringify({
-          name: this.formName,
-          location: this.formLocation,
-          description: this.formDescription,
-          ...(!isEdit && this.formRegionCode ? { regionCode: this.formRegionCode } : {}),
-        }),
+      await this.auth.fetchJson('/properties/units', {
+        method: 'POST',
+        body: JSON.stringify(body),
       });
-      this.notifications.success(isEdit ? 'Area updated' : 'Area created');
-      this.closeModal();
+      this.notifications.success('Unit created');
+      this.closeNewUnitModal();
       this.router.refresh('properties.index');
     } catch (e) {
-      this.errorMsg = e.message;
+      this.newUnitError = e.message;
     } finally {
-      this.isSaving = false;
+      this.isSavingNewUnit = false;
     }
   }
 }
