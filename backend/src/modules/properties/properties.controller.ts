@@ -126,17 +126,29 @@ export class PropertiesController {
         return this.propertiesService.createBuilding(req.user.companyId, dto);
     }
 
-    @Get('areas/:areaId/buildings')
-    @ApiOperation({ summary: 'List buildings in an area (paginated)' })
+    @Get('buildings')
+    @ApiOperation({ summary: 'List all buildings for company (paginated)' })
     @ApiQuery({ name: 'page', required: false, type: Number })
     @ApiQuery({ name: 'limit', required: false, type: Number })
-    findBuildings(
-        @Param('areaId', ParseUUIDPipe) areaId: string,
+    findAllBuildings(
+        @Request() req: AuthenticatedRequest,
+        @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+        @Query('limit', new DefaultValuePipe(100), ParseIntPipe) limit: number,
+    ) {
+        return this.propertiesService.findAllBuildings(req.user.companyId, page, limit);
+    }
+
+    @Get('localities/:localityId/buildings')
+    @ApiOperation({ summary: 'List buildings in a locality (paginated)' })
+    @ApiQuery({ name: 'page', required: false, type: Number })
+    @ApiQuery({ name: 'limit', required: false, type: Number })
+    findBuildingsByLocality(
+        @Param('localityId', ParseUUIDPipe) localityId: string,
         @Request() req: AuthenticatedRequest,
         @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
         @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
     ) {
-        return this.propertiesService.findBuildingsByArea(areaId, req.user.companyId, page, limit);
+        return this.propertiesService.findBuildingsByLocality(localityId, req.user.companyId, page, limit);
     }
 
     @Patch('buildings/:id')

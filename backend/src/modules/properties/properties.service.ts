@@ -103,10 +103,21 @@ export class PropertiesService {
         return this.buildingRepository.save(building);
     }
 
-    async findBuildingsByArea(areaId: string, companyId: string, page = 1, limit = 20) {
+    async findBuildingsByLocality(localityId: string, companyId: string, page = 1, limit = 20) {
         const [data, total] = await this.buildingRepository.findAndCount({
-            where: { localityId: areaId, companyId },
-            relations: ['units'],
+            where: { localityId, companyId },
+            relations: ['units', 'locality'],
+            skip: (page - 1) * limit,
+            take: limit,
+            order: { createdAt: 'DESC' },
+        });
+        return { data, total, page, limit };
+    }
+
+    async findAllBuildings(companyId: string, page = 1, limit = 100) {
+        const [data, total] = await this.buildingRepository.findAndCount({
+            where: { companyId },
+            relations: ['units', 'locality'],
             skip: (page - 1) * limit,
             take: limit,
             order: { createdAt: 'DESC' },
@@ -150,9 +161,10 @@ export class PropertiesService {
         const qb = this.unitRepository
             .createQueryBuilder('u')
             .innerJoin('u.building', 'b')
-            .innerJoin('b.locality', 'a')
+            .innerJoin('b.locality', 'loc')
+            .innerJoin('loc.city', 'ci')
             .leftJoin('u.owner', 'o')
-            .addSelect(['b.id', 'b.name', 'b.propertyType', 'a.id', 'a.name', 'o.id', 'o.name'])
+            .addSelect(['b.id', 'b.name', 'b.propertyType', 'loc.id', 'loc.name', 'o.id', 'o.name'])
             .where('u.companyId = :companyId', { companyId });
 
         if (filters?.amenities?.length) {
@@ -177,12 +189,12 @@ export class PropertiesService {
             qb.andWhere('u.bedrooms <= :maxBeds', { maxBeds: filters.maxBeds });
         }
         if (filters?.regionCode) {
-            qb.andWhere('a.regionCode = :regionCode', { regionCode: filters.regionCode });
+            qb.andWhere('ci.regionCode = :regionCode', { regionCode: filters.regionCode });
         }
 
         qb.skip((page - 1) * limit)
             .take(limit)
-            .orderBy('a.name', 'ASC')
+            .orderBy('loc.name', 'ASC')
             .addOrderBy('b.name', 'ASC')
             .addOrderBy('u.unitNumber', 'ASC');
 
