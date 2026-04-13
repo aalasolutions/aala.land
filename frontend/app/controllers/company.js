@@ -40,6 +40,25 @@ export default class CompanyController extends Controller {
     return tier && tier !== 'FREE';
   }
 
+  get maxCountries() {
+    const limits = { FREE: 1, STARTER: 1, GROWTH: 2, SCALE: 999, ENTERPRISE: 999 };
+    return limits[this.company?.subscriptionTier] || 1;
+  }
+
+  get selectedCountries() {
+    const regions = this.model?.regions || [];
+    const countries = new Set();
+    for (const code of this.formActiveRegions) {
+      const r = regions.find(reg => reg.code === code);
+      if (r) countries.add(r.country);
+    }
+    return [...countries];
+  }
+
+  get canAddMoreCountries() {
+    return this.selectedCountries.length < this.maxCountries;
+  }
+
   get activeRegionObjects() {
     const regions = this.model?.regions || [];
     return regions.filter((r) => this.formActiveRegions.includes(r.code));
@@ -54,16 +73,20 @@ export default class CompanyController extends Controller {
         this.formDefaultRegionCode = this.formActiveRegions[0] || '';
       }
     } else {
+      const regions = this.model?.regions || [];
+      const regionObj = regions.find(r => r.code === code);
+      const regionCountry = regionObj?.country;
+
+      if (!this.selectedCountries.includes(regionCountry) && !this.canAddMoreCountries) {
+        this.notifications.error(`Your ${this.company?.subscriptionTier || 'FREE'} plan allows ${this.maxCountries} country. Upgrade to add more.`);
+        return;
+      }
+
       this.formActiveRegions = [...this.formActiveRegions, code];
       if (this.formActiveRegions.length === 1) {
         this.formDefaultRegionCode = code;
       }
     }
-  }
-
-  @action selectSingleRegion(code) {
-    this.formActiveRegions = [code];
-    this.formDefaultRegionCode = code;
   }
 
   @action async saveCompany(event) {

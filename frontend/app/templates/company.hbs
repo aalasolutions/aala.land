@@ -86,11 +86,7 @@
       <div class="glass-panel p-6" data-test-region-settings>
         <h3 class="font-lg font-bold mb-2">Operating Regions</h3>
         <p class="font-sm text-muted mb-4">
-          {{#if this.isPaid}}
-            Select the regions where your company operates.
-          {{else}}
-            Free plan: select one region. Upgrade to operate in multiple regions.
-          {{/if}}
+          Select states where your company operates. Your {{or this.company.subscriptionTier "FREE"}} plan includes {{if (eq this.maxCountries 999) "unlimited countries" (if (eq this.maxCountries 1) "1 country" (concat this.maxCountries " countries"))}}.
         </p>
 
         {{! Default Region (above the list) }}
@@ -127,15 +123,9 @@
               <div class="region-grid mt-2 mb-2 ml-2">
                 {{#each group.regions as |r|}}
                   <div class="region-checkbox" data-test-region-checkbox={{r.code}}>
-                    {{#if this.isPaid}}
-                      <input type="checkbox" id={{r.code}}
-                        checked={{includes this.formActiveRegions r.code}}
-                        {{on "change" (fn this.toggleRegion r.code)}} />
-                    {{else}}
-                      <input type="radio" name="region-select" id={{r.code}}
-                        checked={{includes this.formActiveRegions r.code}}
-                        {{on "change" (fn this.selectSingleRegion r.code)}} />
-                    {{/if}}
+                    <input type="checkbox" id={{r.code}}
+                      checked={{includes this.formActiveRegions r.code}}
+                      {{on "change" (fn this.toggleRegion r.code)}} />
                     <label for={{r.code}} class="region-check-label">
                       {{r.name}} <span class="text-muted font-xs">({{r.currency}})</span>
                     </label>
