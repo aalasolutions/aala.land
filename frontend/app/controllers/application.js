@@ -124,7 +124,17 @@ export default class ApplicationController extends Controller {
   selectRegion(selectedRegion) {
     this.region.switchRegion(selectedRegion);
     this.showRegionDropdown = false;
-    this.router.refresh();
+
+    const currentRoute = this.router.currentRouteName;
+    const params = this.router.currentRoute?.params || {};
+    const hasDynamicSegment = Object.keys(params).length > 0;
+
+    if (hasDynamicSegment) {
+      const parentRoute = currentRoute.split('.').slice(0, -1).join('.') || 'dashboard';
+      this.router.transitionTo(parentRoute);
+    } else {
+      this.router.refresh();
+    }
   }
 
   @action
