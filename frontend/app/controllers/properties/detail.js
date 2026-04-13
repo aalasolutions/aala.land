@@ -82,6 +82,8 @@ export default class PropertiesDetailController extends Controller {
     }));
   }
 
+  @service region;
+
   // Building modal
   @tracked showBuildingModal = false;
   @tracked editBuilding = null;
@@ -90,6 +92,42 @@ export default class PropertiesDetailController extends Controller {
   @tracked formBuildingPropertyType = 'RENTAL';
   @tracked isSavingBuilding = false;
   @tracked buildingError = '';
+  @tracked selectedCity = null;
+  @tracked selectedLocality = null;
+
+  get citySearchUrl() {
+    return this.region.regionCode ? '/locations/cities/search' : null;
+  }
+
+  get cityCreatePayload() {
+    return { regionCode: this.region.regionCode };
+  }
+
+  get localitySearchUrl() {
+    return this.selectedCity ? `/locations/localities/search?cityId=${this.selectedCity.id}` : null;
+  }
+
+  get localityCreatePayload() {
+    return this.selectedCity ? { cityId: this.selectedCity.id } : {};
+  }
+
+  @action selectCity(city) {
+    this.selectedCity = city;
+    this.selectedLocality = null;
+  }
+
+  @action clearCity() {
+    this.selectedCity = null;
+    this.selectedLocality = null;
+  }
+
+  @action selectLocality(locality) {
+    this.selectedLocality = locality;
+  }
+
+  @action clearLocality() {
+    this.selectedLocality = null;
+  }
 
   // Unit modal
   @tracked showUnitModal = false;
@@ -122,6 +160,8 @@ export default class PropertiesDetailController extends Controller {
     this.formBuildingPropertyType = 'RENTAL';
     this.editBuilding = null;
     this.buildingError = '';
+    this.selectedCity = null;
+    this.selectedLocality = null;
     this.showBuildingModal = true;
   }
 
@@ -143,18 +183,23 @@ export default class PropertiesDetailController extends Controller {
   @action async saveBuilding(event) {
     event.preventDefault();
     if (this.isSavingBuilding) return;
+
+    const isEdit = !!this.editBuilding;
+    if (!isEdit && !this.selectedLocality) {
+      this.buildingError = 'Please select a city and locality first.';
+      return;
+    }
+
     this.isSavingBuilding = true;
     this.buildingError = '';
 
-    const areaId = this.model.area.id;
-    const isEdit = !!this.editBuilding;
     const path = isEdit
       ? `/properties/buildings/${this.editBuilding.id}`
       : '/properties/buildings';
 
     const body = {
       name: this.formBuildingName,
-      ...(!isEdit ? { localityId: areaId } : {}),
+      ...(!isEdit ? { localityId: this.selectedLocality.id } : {}),
       propertyType: this.formBuildingPropertyType,
       ...(this.formBuildingAddress ? { address: this.formBuildingAddress } : {}),
     };
