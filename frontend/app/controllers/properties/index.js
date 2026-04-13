@@ -9,9 +9,14 @@ export default class PropertiesIndexController extends Controller {
   @service notifications;
   @service router;
   @service region;
+  @service preferences;
 
-  // Browse Units view
-  @tracked activeView = 'areas';
+  @tracked activeView = null;
+
+  get currentView() {
+    if (this.activeView) return this.activeView;
+    return this.preferences.get('properties-index-view', 'cards');
+  }
   @tracked browseUnits = [];
   @tracked browseTotal = 0;
   @tracked browsePage = 1;
@@ -34,6 +39,7 @@ export default class PropertiesIndexController extends Controller {
 
   @action switchView(view) {
     this.activeView = view;
+    this.preferences.set('properties-index-view', view);
     if (view === 'browse' && this.browseUnits.length === 0) {
       this.loadBrowseUnits();
     }

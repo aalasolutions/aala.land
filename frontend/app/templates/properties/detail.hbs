@@ -7,88 +7,129 @@
       <span class="text-muted">/</span>
       <h2 class="font-2xl font-bold">{{if @model.assets.length (get (get @model.assets "0") "locality.name") "Location"}}</h2>
     </div>
-    <button type="button" class="btn btn-primary" {{on "click" this.openCreateAsset}}>
-      <Ph @icon="plus" /> New Asset
-    </button>
+    <div class="flex gap-3 x-center">
+      <div class="flex gap-1">
+        <button type="button" class="btn btn-sm {{if (eq this.currentDetailView 'cards') 'btn-primary' 'btn-secondary'}}" {{on "click" (fn this.switchDetailView "cards")}}>
+          <Ph @icon="squares-four" /> Cards
+        </button>
+        <button type="button" class="btn btn-sm {{if (eq this.currentDetailView 'list') 'btn-primary' 'btn-secondary'}}" {{on "click" (fn this.switchDetailView "list")}}>
+          <Ph @icon="list" /> List
+        </button>
+      </div>
+      <button type="button" class="btn btn-primary" {{on "click" this.openCreateAsset}}>
+        <Ph @icon="plus" /> New Asset
+      </button>
+    </div>
   </div>
 
   {{#if this.assetsWithHistory.length}}
-    <div class="flex col gap-4">
-      {{#each this.assetsWithHistory as |asset|}}
-        <div data-test-asset-card class="glass-panel p-5 flex col gap-4">
-          <div class="flex between x-center">
-            <h4 class="font-md font-bold">{{asset.name}}</h4>
-            <div class="flex gap-2">
-              <button type="button" class="btn btn-primary btn-sm" {{on "click" (fn this.openCreateUnit asset.id)}}>
-                <Ph @icon="plus" /> Unit
-              </button>
+    {{#if (eq this.currentDetailView "cards")}}
+      {{!-- CARDS VIEW --}}
+      <div class="flex col gap-4">
+        {{#each this.assetsWithHistory as |asset|}}
+          <div data-test-asset-card class="glass-panel p-5 flex col gap-4">
+            <div class="flex between x-center">
+              <h4 class="font-md font-bold">{{asset.name}}</h4>
+              <div class="flex gap-2">
+                <button type="button" class="btn btn-primary btn-sm" {{on "click" (fn this.openCreateUnit asset.id)}}>
+                  <Ph @icon="plus" /> Unit
+                </button>
+              </div>
             </div>
+            {{#if asset.units.length}}
+              <div class="grid cols-3 gap-3">
+                {{#each asset.units as |unit|}}
+                  <div data-test-unit-card data-test-unit-id={{unit.id}} class="p-3 rounded-lg bg-white@05 font-sm flex col gap-1">
+                    <div class="flex between x-center">
+                      <div class="flex x-center gap-2">
+                        <p class="font-bold">Unit {{unit.unitNumber}}</p>
+                        {{#if unit.propertyType}}
+                          <span class="type-badge type-{{lowercase unit.propertyType}}">{{if (eq unit.propertyType 'FOR_SALE') 'Sale' 'Rent'}}</span>
+                        {{/if}}
+                      </div>
+                      <div class="flex gap-2">
+                        <LinkTo @route="properties.unit" @models={{array @model.localityId unit.id}} class="btn btn-primary btn-xs" data-test-view-unit>
+                          <Ph @icon="eye" /> View
+                        </LinkTo>
+                        <button type="button" class="btn btn-secondary btn-xs" {{on "click" (fn this.openEditUnit unit asset.id)}}>
+                          Edit
+                        </button>
+                      </div>
+                    </div>
+                    <p class="text-muted font-xs">{{capitalize unit.status}}</p>
+                    <div class="flex gap-2 font-xs text-muted">
+                      {{#if unit.bedrooms}}<span>{{unit.bedrooms}} bed</span>{{/if}}
+                      {{#if unit.bathrooms}}<span>{{unit.bathrooms}} bath</span>{{/if}}
+                      {{#if unit.sqFt}}<span>{{format-number unit.sqFt}} sqft</span>{{/if}}
+                    </div>
+                    {{#if unit.price}}
+                      <p class="text-success font-xs">{{format-currency unit.price}}</p>
+                    {{/if}}
+                  </div>
+                {{/each}}
+              </div>
+            {{else}}
+              <p class="text-muted font-sm">No units yet.</p>
+            {{/if}}
           </div>
-          {{#if asset.units.length}}
-            <div class="grid cols-3 gap-3">
+        {{/each}}
+      </div>
+    {{else}}
+      {{!-- LIST VIEW --}}
+      <div class="data-table-wrapper">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Asset</th>
+              <th>Unit</th>
+              <th>Status</th>
+              <th>Type</th>
+              <th>Beds</th>
+              <th>Baths</th>
+              <th>Size</th>
+              <th>Price</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {{#each this.assetsWithHistory as |asset|}}
               {{#each asset.units as |unit|}}
-                <div data-test-unit-card data-test-unit-id={{unit.id}} class="p-3 rounded-lg bg-white@05 font-sm flex col gap-1">
-                  <div class="flex between x-center">
-                    <div class="flex x-center gap-2">
-                      <p class="font-bold">Unit {{unit.unitNumber}}</p>
-                      {{#if unit.propertyType}}
-                        <span class="type-badge type-{{lowercase unit.propertyType}}">{{if (eq unit.propertyType 'FOR_SALE') 'Sale' 'Rent'}}</span>
-                      {{/if}}
-                    </div>
-                    <div class="flex gap-2">
-                      <LinkTo @route="properties.unit" @models={{array @model.localityId unit.id}} class="btn btn-primary btn-xs" data-test-view-unit>
-                        <Ph @icon="eye" /> View
-                      </LinkTo>
-                      <button type="button" class="btn btn-secondary btn-xs" {{on "click" (fn this.openEditUnit unit asset.id)}}>
-                        Edit
-                      </button>
-                    </div>
-                  </div>
-                  <p class="text-muted font-xs">{{capitalize unit.status}}</p>
-                  <div class="flex gap-2 font-xs text-muted">
-                    {{#if unit.bedrooms}}
-                      <span>{{unit.bedrooms}} bed</span>
+                <tr>
+                  <td class="font-bold">{{asset.name}}</td>
+                  <td>{{unit.unitNumber}}</td>
+                  <td><span class="status-badge status-{{unit.status}}">{{capitalize unit.status}}</span></td>
+                  <td>
+                    {{#if unit.propertyType}}
+                      <span class="type-badge type-{{lowercase unit.propertyType}}">{{if (eq unit.propertyType 'FOR_SALE') 'Sale' 'Rent'}}</span>
                     {{/if}}
-                    {{#if unit.bathrooms}}
-                      <span>{{unit.bathrooms}} bath</span>
-                    {{/if}}
-                    {{#if unit.sqFt}}
-                      <span>{{format-number unit.sqFt}} sqft</span>
-                    {{/if}}
-                  </div>
-                  {{#if unit.price}}
-                    <p class="text-success font-xs">{{format-currency unit.price}}</p>
-                  {{/if}}
-                  {{#if unit.amenities.length}}
-                    <div class="flex gap-1 wrap mt-1">
-                      {{#each unit.amenities as |amenity|}}
-                        <span class="amenity-tag">{{amenity}}</span>
-                      {{/each}}
+                  </td>
+                  <td>{{unit.bedrooms}}</td>
+                  <td>{{unit.bathrooms}}</td>
+                  <td>{{if unit.sqFt (concat (format-number unit.sqFt) " sqft") ""}}</td>
+                  <td class="text-success">{{if unit.price (format-currency unit.price) ""}}</td>
+                  <td class="text-right">
+                    <div class="flex gap-1">
+                      <LinkTo @route="properties.unit" @models={{array @model.localityId unit.id}} class="btn btn-primary btn-xs">View</LinkTo>
+                      <button type="button" class="btn btn-secondary btn-xs" {{on "click" (fn this.openEditUnit unit asset.id)}}>Edit</button>
                     </div>
-                  {{/if}}
-                  {{#if unit.owner}}
-                    <p class="text-primary font-xs">Owner: <LinkTo @route="owners.detail" @model={{unit.owner.id}} class="owner-link">{{unit.owner.name}}</LinkTo></p>
-                  {{/if}}
-                  {{#if unit.tenantHistory}}
-                    <div class="mt-2 pt-2 border-t border-white@05">
-                      <p class="text-muted font-xs mb-1">Past Tenants:</p>
-                      {{#each unit.tenantHistory as |lease|}}
-                        <p class="font-xs">
-                          {{lease.tenantName}}
-                          <span class="text-muted">({{lease.startDate}} - {{lease.endDate}})</span>
-                        </p>
-                      {{/each}}
-                    </div>
-                  {{/if}}
-                </div>
+                  </td>
+                </tr>
+              {{else}}
+                <tr>
+                  <td class="font-bold">{{asset.name}}</td>
+                  <td colspan="7" class="text-muted">No units</td>
+                  <td class="text-right">
+                    <button type="button" class="btn btn-primary btn-xs" {{on "click" (fn this.openCreateUnit asset.id)}}>
+                      <Ph @icon="plus" /> Unit
+                    </button>
+                  </td>
+                </tr>
               {{/each}}
-            </div>
-          {{else}}
-            <p class="text-muted font-sm">No units yet.</p>
-          {{/if}}
-        </div>
-      {{/each}}
-    </div>
+            {{/each}}
+          </tbody>
+        </table>
+      </div>
+    {{/if}}
   {{else}}
     <div class="glass-panel p-8 text-center">
       <p class="text-muted">No assets in this location. Create one above.</p>

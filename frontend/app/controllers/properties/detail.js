@@ -9,6 +9,19 @@ export default class PropertiesDetailController extends Controller {
   @service auth;
   @service notifications;
   @service router;
+  @service preferences;
+
+  @tracked detailView = null;
+
+  get currentDetailView() {
+    if (this.detailView) return this.detailView;
+    return this.preferences.get('properties-detail-view', 'cards');
+  }
+
+  @action switchDetailView(view) {
+    this.detailView = view;
+    this.preferences.set('properties-detail-view', view);
+  }
 
   @tracked owners = [];
   @tracked isLoadingOwners = false;

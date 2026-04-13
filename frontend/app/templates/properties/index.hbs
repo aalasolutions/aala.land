@@ -8,27 +8,30 @@
     </div>
     <div class="flex gap-3 x-center">
       <div class="flex gap-1" data-test-view-toggle>
-        <button type="button" class="btn btn-sm {{if (eq this.activeView 'areas') 'btn-primary' 'btn-secondary'}}" data-test-view-areas {{on "click" (fn this.switchView "areas")}}>
-          <Ph @icon="list" /> Areas
+        <button type="button" class="btn btn-sm {{if (eq this.currentView 'cards') 'btn-primary' 'btn-secondary'}}" {{on "click" (fn this.switchView "cards")}}>
+          <Ph @icon="squares-four" /> Cards
         </button>
-        <button type="button" class="btn btn-sm {{if (eq this.activeView 'browse') 'btn-primary' 'btn-secondary'}}" data-test-view-browse {{on "click" (fn this.switchView "browse")}}>
+        <button type="button" class="btn btn-sm {{if (eq this.currentView 'list') 'btn-primary' 'btn-secondary'}}" {{on "click" (fn this.switchView "list")}}>
+          <Ph @icon="list" /> List
+        </button>
+        <button type="button" class="btn btn-sm {{if (eq this.currentView 'browse') 'btn-primary' 'btn-secondary'}}" {{on "click" (fn this.switchView "browse")}}>
           <Ph @icon="grid-four" /> Browse Units
         </button>
       </div>
-      {{#if (eq this.activeView "areas")}}
+      {{#unless (eq this.currentView "browse")}}
         <button type="button" class="btn btn-primary" {{on "click" this.openNewUnitModal}} data-test-new-unit>
           <Ph @icon="plus" /> New Unit
         </button>
-      {{/if}}
+      {{/unless}}
     </div>
   </div>
 
-  {{#if (eq this.activeView "areas")}}
-    {{!-- LOCATIONS LIST VIEW --}}
+  {{#if (eq this.currentView "cards")}}
+    {{!-- CARDS VIEW --}}
     {{#if @model.length}}
       <div class="flex col gap-3">
         {{#each @model as |loc|}}
-          <div data-test-area-card class="glass-panel p-5 flex between x-center">
+          <LinkTo @route="properties.detail" @model={{loc.id}} class="glass-panel p-5 flex between x-center hover-lift">
             <div class="flex gap-6">
               <div>
                 <h4 class="font-md font-bold">{{loc.name}}</h4>
@@ -39,13 +42,45 @@
                 <span class="text-muted">{{loc.unitCount}} Units</span>
               </div>
             </div>
-            <div class="flex gap-3">
-              <LinkTo @route="properties.detail" @model={{loc.id}} class="btn btn-primary btn-sm">
-                <Ph @icon="eye" /> View
-              </LinkTo>
-            </div>
-          </div>
+            <Ph @icon="caret-right" @size="20" />
+          </LinkTo>
         {{/each}}
+      </div>
+    {{else}}
+      <div class="glass-panel p-8 text-center">
+        <p class="text-muted">No assets yet. Click "New Unit" to add your first property.</p>
+      </div>
+    {{/if}}
+  {{else if (eq this.currentView "list")}}
+    {{!-- LIST VIEW --}}
+    {{#if @model.length}}
+      <div class="data-table-wrapper">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Location</th>
+              <th>City</th>
+              <th>Assets</th>
+              <th>Units</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {{#each @model as |loc|}}
+              <tr>
+                <td class="font-bold">{{loc.name}}</td>
+                <td class="text-muted">{{loc.cityName}}</td>
+                <td>{{loc.assetCount}}</td>
+                <td>{{loc.unitCount}}</td>
+                <td class="text-right">
+                  <LinkTo @route="properties.detail" @model={{loc.id}} class="btn btn-primary btn-xs">
+                    View
+                  </LinkTo>
+                </td>
+              </tr>
+            {{/each}}
+          </tbody>
+        </table>
       </div>
     {{else}}
       <div class="glass-panel p-8 text-center">

@@ -31,6 +31,7 @@ export default class LeadsController extends Controller {
   @service notifications;
   @service router;
   @service region;
+  @service preferences;
 
   queryParams = ['page', 'limit', 'status'];
   page = 1;
@@ -57,7 +58,13 @@ export default class LeadsController extends Controller {
   @tracked properties = [];
   @tracked filteredUnits = [];
 
-  @tracked viewMode = 'pipeline';
+  @tracked _viewMode = null;
+
+  get viewMode() {
+    if (this._viewMode) return this._viewMode;
+    return this.preferences.get('leads-view-mode', 'pipeline');
+  }
+  set viewMode(val) { this._viewMode = val; }
 
   @tracked filterType = 'all';
   @tracked agents = [];
@@ -127,6 +134,7 @@ export default class LeadsController extends Controller {
 
   @action setViewMode(mode) {
     this.viewMode = mode;
+    this.preferences.set('leads-view-mode', mode);
     if (mode === 'agent' && this.agents.length === 0) {
       this.loadAgents();
     }
