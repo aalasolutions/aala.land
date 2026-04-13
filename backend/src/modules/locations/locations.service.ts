@@ -104,4 +104,26 @@ export class LocationsService {
             order: { name: 'ASC' },
         });
     }
+
+    async getCompanyLocalities(companyId: string, regionCode?: string) {
+        let query = `
+            SELECT l.id, l.name, c.name AS "cityName", c.region_code AS "regionCode",
+                   COUNT(DISTINCT b.id)::int AS "buildingCount",
+                   COUNT(DISTINCT u.id)::int AS "unitCount"
+            FROM localities l
+            INNER JOIN cities c ON l.city_id = c.id
+            INNER JOIN buildings b ON b.locality_id = l.id AND b.company_id = $1
+            LEFT JOIN units u ON u.building_id = b.id AND u.company_id = $1
+        `;
+        const params: (string)[] = [companyId];
+
+        if (regionCode) {
+            query += ` WHERE c.region_code = $2`;
+            params.push(regionCode);
+        }
+
+        query += ` GROUP BY l.id, l.name, c.name, c.region_code ORDER BY c.name ASC, l.name ASC`;
+
+        return this.dataSource.query(query, params);
+    }
 }
