@@ -19,6 +19,11 @@ export default class PropertiesUnitController extends Controller {
   @tracked isUploading = false;
   @tracked uploadStatus = '';
 
+  // Delete confirmation state
+  @tracked showDeleteModal = false;
+  @tracked itemToDelete = null;
+  @tracked isDeleting = false;
+
   // Form fields
   @tracked formUnitNumber = '';
   @tracked formStatus = 'available';
@@ -33,6 +38,33 @@ export default class PropertiesUnitController extends Controller {
   @tracked formAmenities = [];
 
   get amenityOptions() { return AMENITY_OPTIONS; }
+
+  get statusOptions() {
+    return [
+      { value: 'available', label: 'Available' },
+      { value: 'rented', label: 'Rented' },
+      { value: 'sold', label: 'Sold' },
+      { value: 'maintenance', label: 'Maintenance' }
+    ];
+  }
+
+  get propertyTypeOptions() {
+    return [
+      { value: '', label: 'Not set' },
+      { value: 'RENTAL', label: 'Rental' },
+      { value: 'FOR_SALE', label: 'For Sale' }
+    ];
+  }
+
+  get ownerOptions() {
+    return [
+      { value: '', label: 'Unassigned' },
+      ...(this.model.owners || []).map(owner => ({
+        value: owner.id,
+        label: owner.name
+      }))
+    ];
+  }
 
   @action setField(fieldName, e) {
     this[fieldName] = e.target.value;
@@ -128,15 +160,29 @@ export default class PropertiesUnitController extends Controller {
     }
   }
 
-  @action async deletePhoto(media) {
-    if (!confirm('Delete this photo?')) return;
+  @action openDeletePhoto(media) {
+    this.itemToDelete = media;
+    this.showDeleteModal = true;
+  }
 
+  @action closeDeleteModal() {
+    this.showDeleteModal = false;
+    this.itemToDelete = null;
+  }
+
+  @action async confirmDeletePhoto() {
+    if (!this.itemToDelete || this.isDeleting) return;
+
+    this.isDeleting = true;
     try {
-      await this.auth.fetchJson(`/properties/media/${media.id}`, { method: 'DELETE' });
+      await this.auth.fetchJson(`/properties/media/${this.itemToDelete.id}`, { method: 'DELETE' });
       this.notifications.success('Photo deleted');
+      this.closeDeleteModal();
       this.router.refresh('properties.unit');
     } catch (err) {
       this.notifications.error(err.message || 'Delete failed');
+    } finally {
+      this.isDeleting = false;
     }
   }
 
@@ -167,7 +213,7 @@ export default class PropertiesUnitController extends Controller {
       ...(this.formSqFt ? { sqFt: parseFloat(this.formSqFt) } : {}),
       ...(this.formBedrooms ? { bedrooms: parseInt(this.formBedrooms, 10) } : {}),
       ...(this.formBathrooms ? { bathrooms: parseInt(this.formBathrooms, 10) } : {}),
-      ...(this.formFloor ? { floor: parseInt(this.formFloor, 10) } : {}),
+      ...(this.formFloor ? { floor: this.formFloor } : {}),
       ...(this.formDescription ? { description: this.formDescription } : {}),
       ...(this.formOwnerId ? { ownerId: this.formOwnerId } : {}),
       amenities: this.formAmenities,

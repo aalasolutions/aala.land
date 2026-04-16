@@ -102,60 +102,27 @@
   {{/if}}
 </div>
 
-{{#if this.showModal}}
-  <button type="button" class="modal-backdrop" aria-label="Close modal" {{on "click" this.closeModal}}></button>
-  <div class="modal-panel glass-panel p-8 flex col gap-6" role="dialog">
-    <div class="flex between x-center">
-      <h3 class="font-xl font-bold">{{if this.editCheque "Edit Cheque" "New Cheque"}}</h3>
-      <button type="button" class="text-muted font-lg px-2" {{on "click" this.closeModal}}>x</button>
-    </div>
-    <form class="flex col gap-4" {{on "submit" this.saveCheque}}>
+<Modal
+  @isOpen={{this.showModal}}
+  @title={{if this.editCheque "Edit Cheque" "New Cheque"}}
+  @onClose={{this.closeModal}}
+  @showClose={{true}}
+>
+  <form class="flex col gap-4" {{on "submit" this.saveCheque}}>
       <div class="flex gap-4">
         <div class="flex col gap-2 flex-1">
-          <label class="font-sm text-muted" for="chq-number">Cheque Number *</label>
-          <input id="chq-number" type="text"
-            class="form-input"
-            placeholder="e.g. 000123" value={{this.formChequeNumber}} required {{on "input" (fn this.setField "formChequeNumber")}} />
+          <FormInput @label="Cheque Number" @id="chq-number" @type="text" @placeholder="e.g. 000123" @value={{this.formChequeNumber}} @onChange={{fn this.setField "formChequeNumber"}} @required={{true}} />
         </div>
         <div class="flex col gap-2 flex-1">
-          <label class="font-sm text-muted" for="chq-type">Type</label>
-          <select id="chq-type" class="form-input" {{on "change" (fn this.setField "formType")}}>
-            <option value="RENT" selected={{eq this.formType "RENT"}}>Rent</option>
-            <option value="SECURITY_DEPOSIT" selected={{eq this.formType "SECURITY_DEPOSIT"}}>Security Deposit</option>
-            <option value="MAINTENANCE" selected={{eq this.formType "MAINTENANCE"}}>Maintenance</option>
-            <option value="OTHER" selected={{eq this.formType "OTHER"}}>Other</option>
-          </select>
+          <FormDropdown @label="Type" @id="chq-type" @value={{this.formType}} @onChange={{fn this.setField "formType"}} @options={{this.chequeTypeOptions}} @placeholder="Select type..." />
         </div>
       </div>
-      <div class="flex col gap-2">
-        <label class="font-sm text-muted" for="chq-bank">Bank Name *</label>
-        <input id="chq-bank" type="text"
-          class="form-input"
-          placeholder="e.g. Emirates NBD" value={{this.formBankName}} required {{on "input" (fn this.setField "formBankName")}} />
-      </div>
-      <div class="flex col gap-2">
-        <label class="font-sm text-muted" for="chq-holder">Account Holder *</label>
-        <input id="chq-holder" type="text"
-          class="form-input"
-          placeholder="e.g. Ahmed Al Mansouri" value={{this.formAccountHolder}} required {{on "input" (fn this.setField "formAccountHolder")}} />
-      </div>
-      <div class="flex col gap-2">
-        <label class="font-sm text-muted" for="chq-unit">Property (Unit)</label>
-        <select id="chq-unit" class="form-input" {{on "change" (fn this.setField "formUnitId")}}>
-          <option value="">No property linked</option>
-          {{#each @model.units as |unit|}}
-            <option value={{unit.id}} selected={{eq unit.id this.formUnitId}}>
-              {{unit.areaName}} - {{unit.assetName}} - Unit {{unit.unitNumber}}
-            </option>
-          {{/each}}
-        </select>
-      </div>
+      <FormInput @label="Bank Name" @id="chq-bank" @type="text" @placeholder="e.g. Emirates NBD" @value={{this.formBankName}} @onChange={{fn this.setField "formBankName"}} @required={{true}} />
+      <FormInput @label="Account Holder" @id="chq-holder" @type="text" @placeholder="e.g. Ahmed Al Mansouri" @value={{this.formAccountHolder}} @onChange={{fn this.setField "formAccountHolder"}} @required={{true}} />
+      <FormDropdown @label="Property (Unit)" @id="chq-unit" @value={{this.formUnitId}} @onChange={{fn this.setField "formUnitId"}} @options={{this.unitOptions}} @placeholder="No property linked" />
       <div class="flex gap-4">
         <div class="flex col gap-2 flex-1">
-          <label class="font-sm text-muted" for="chq-amount">Amount *</label>
-          <input id="chq-amount" type="number" min="0" step="0.01"
-            class="form-input"
-            placeholder="e.g. 8500" value={{this.formAmount}} required {{on "input" (fn this.setField "formAmount")}} />
+          <FormInput @label="Amount" @id="chq-amount" @type="number" @min={{0}} @step={{0.01}} @placeholder="e.g. 8500" @value={{this.formAmount}} @onChange={{fn this.setField "formAmount"}} @required={{true}} />
         </div>
         <div class="flex col gap-2 flex-1">
           <label class="font-sm text-muted" for="chq-due">Due Date *</label>
@@ -168,31 +135,27 @@
         <p class="font-sm text-danger">{{this.errorMsg}}</p>
       {{/if}}
       <div class="flex gap-3 mt-2">
-        <button type="button" class="btn btn-secondary" {{on "click" this.closeModal}}>Cancel</button>
-        <button type="submit" class="btn btn-primary" disabled={{this.isSaving}}>
-          {{if this.isSaving "Saving..." (if this.editCheque "Update" "Create Cheque")}}
-        </button>
+        <AppButton @variant="secondary" @text="Cancel" @onClick={{this.closeModal}} />
+        <AppButton @variant="primary" @buttonType="submit" @text={{if this.editCheque "Update" "Create Cheque"}} @loading={{this.isSaving}} @loadingText="Saving..." />
       </div>
     </form>
-  </div>
-{{/if}}
+</Modal>
 
-{{#if this.showBounceModal}}
-  <div class="modal-backdrop" role="button" {{on "click" this.closeBounceModal}}></div>
-  <div class="modal-panel glass-panel p-8 flex col gap-6">
-    <h3 class="font-lg font-semibold">Bounce Cheque</h3>
-    <p class="text-muted">Mark cheque {{this.bounceChequeItem.chequeNumber}} as bounced?</p>
-    <div class="flex col gap-2">
-      <label class="font-sm text-muted" for="bounce-reason">Reason (optional)</label>
-      <input id="bounce-reason" type="text"
-        class="form-input"
-        placeholder="e.g. Insufficient funds" value={{this.formBounceReason}} {{on "input" (fn this.setField "formBounceReason")}} />
-    </div>
-    <div class="flex gap-3">
-      <button type="button" class="btn btn-secondary" {{on "click" this.closeBounceModal}}>Cancel</button>
-      <button type="button" class="btn btn-danger" {{on "click" this.confirmBounce}}>
-        Confirm Bounce
-      </button>
-    </div>
+<Modal
+  @isOpen={{this.showBounceModal}}
+  @title="Bounce Cheque"
+  @onClose={{this.closeBounceModal}}
+  @showClose={{true}}
+>
+  <p class="text-muted">Mark cheque {{this.bounceChequeItem.chequeNumber}} as bounced?</p>
+  <div class="flex col gap-2">
+    <label class="font-sm text-muted" for="bounce-reason">Reason (optional)</label>
+    <input id="bounce-reason" type="text"
+      class="form-input"
+      placeholder="e.g. Insufficient funds" value={{this.formBounceReason}} {{on "input" (fn this.setField "formBounceReason")}} />
   </div>
-{{/if}}
+  <div class="flex gap-3">
+    <AppButton @variant="secondary" @text="Cancel" @onClick={{this.closeBounceModal}} />
+    <AppButton @variant="danger" @text="Confirm Bounce" @onClick={{this.confirmBounce}} />
+  </div>
+</Modal>

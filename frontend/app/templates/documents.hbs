@@ -13,11 +13,7 @@
   </div>
 
   <div class="flex gap-3">
-    <select class="form-select" style="max-width: 200px" data-test-category-filter {{on "change" this.setCategory}}>
-      {{#each this.categories as |cat|}}
-        <option value={{cat.value}} selected={{eq this.category cat.value}}>{{cat.label}}</option>
-      {{/each}}
-    </select>
+    <FormDropdown @label="" @value={{this.category}} @onChange={{this.setCategory}} @options={{this.categories}} @placeholder="All Categories" data-test-category-filter />
   </div>
 
   {{#if @model.documents.length}}
@@ -56,7 +52,7 @@
                   <button type="button" class="btn btn-secondary btn-xs" {{on "click" (fn this.openEdit doc)}}>
                     <Ph @icon="pencil-simple" />
                   </button>
-                  <button type="button" class="btn btn-danger btn-xs" {{on "click" (fn this.deleteDocument doc)}}>
+                  <button type="button" class="btn btn-danger btn-xs" {{on "click" (fn this.openDelete doc)}}>
                     <Ph @icon="trash" />
                   </button>
                 </div>
@@ -74,64 +70,58 @@
   {{/if}}
 </div>
 
-{{#if this.showModal}}
-  <button type="button" class="modal-backdrop" aria-label="Close modal" {{on "click" this.closeModal}}></button>
-  <div class="modal-panel glass-panel p-8 flex col gap-6" role="dialog" aria-label="Document form">
-    <div class="flex between x-center">
-      <h3 class="font-xl font-bold">{{if this.editDocument "Update Document" "Upload Document"}}</h3>
-      <button type="button" class="text-muted font-lg px-2" {{on "click" this.closeModal}}>x</button>
+<Modal
+  @isOpen={{this.showModal}}
+  @title={{if this.editDocument "Update Document" "Upload Document"}}
+  @onClose={{this.closeModal}}
+  @showClose={{true}}
+>
+  <form class="flex col gap-4" {{on "submit" this.saveDocument}}>
+    <div class="flex col gap-2">
+      <label class="font-sm text-muted" for="d-file">File {{unless this.editDocument "*"}}</label>
+      <input id="d-file" type="file" class="form-input" data-test-file-input
+        accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.webp,.gif"
+        {{on "change" this.onFileSelect}} />
+      {{#if this.selectedFile}}
+        <p class="font-xs text-muted">Selected: {{this.selectedFile.name}} ({{this.selectedFile.size}} bytes)</p>
+      {{/if}}
     </div>
-    <form class="flex col gap-4" {{on "submit" this.saveDocument}}>
-      <div class="flex col gap-2">
-        <label class="font-sm text-muted" for="d-file">File {{unless this.editDocument "*"}}</label>
-        <input id="d-file" type="file" class="form-input" data-test-file-input
-          accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.webp,.gif"
-          {{on "change" this.onFileSelect}} />
-        {{#if this.selectedFile}}
-          <p class="font-xs text-muted">Selected: {{this.selectedFile.name}} ({{this.selectedFile.size}} bytes)</p>
-        {{/if}}
+
+    <FormInput @label="Document Name" @id="d-name" @type="text" @placeholder="Lease Agreement Q1 2026" @value={{this.formName}} @onChange={{fn this.setField "formName"}} @required={{true}} data-test-field-name />
+
+    <div class="flex gap-4">
+      <div class="flex col gap-2 flex-1">
+        <FormDropdown @label="Category" @id="d-category" @value={{this.formCategory}} @onChange={{fn this.setField "formCategory"}} @options={{this.categoryOptions}} @placeholder="Select category..." data-test-field-category />
       </div>
-
-      <div class="flex col gap-2">
-        <label class="font-sm text-muted" for="d-name">Document Name *</label>
-        <input id="d-name" type="text" class="form-input" data-test-field-name
-          placeholder="Lease Agreement Q1 2026"
-          value={{this.formName}} required {{on "input" (fn this.setField "formName")}} />
+      <div class="flex col gap-2 flex-1">
+        <FormDropdown @label="Access Level" @id="d-access" @value={{this.formAccessLevel}} @onChange={{fn this.setField "formAccessLevel"}} @options={{this.accessLevels}} @placeholder="Select access level..." data-test-field-access />
       </div>
+    </div>
 
-      <div class="flex gap-4">
-        <div class="flex col gap-2 flex-1">
-          <label class="font-sm text-muted" for="d-category">Category</label>
-          <select id="d-category" class="form-select" data-test-field-category {{on "change" (fn this.setField "formCategory")}}>
-            {{#each this.categoryOptions as |cat|}}
-              <option value={{cat.value}} selected={{eq this.formCategory cat.value}}>{{cat.label}}</option>
-            {{/each}}
-          </select>
-        </div>
-        <div class="flex col gap-2 flex-1">
-          <label class="font-sm text-muted" for="d-access">Access Level</label>
-          <select id="d-access" class="form-select" data-test-field-access {{on "change" (fn this.setField "formAccessLevel")}}>
-            {{#each this.accessLevels as |al|}}
-              <option value={{al.value}} selected={{eq this.formAccessLevel al.value}}>{{al.label}}</option>
-            {{/each}}
-          </select>
-        </div>
-      </div>
+    {{#if this.uploadProgress}}
+      <p class="font-sm text-muted">{{this.uploadProgress}}</p>
+    {{/if}}
 
-      {{#if this.uploadProgress}}
-        <p class="font-sm text-muted">{{this.uploadProgress}}</p>
-      {{/if}}
+    {{#if this.errorMsg}}
+      <p class="font-sm text-danger" data-test-error>{{this.errorMsg}}</p>
+    {{/if}}
 
-      {{#if this.errorMsg}}
-        <p class="font-sm text-danger" data-test-error>{{this.errorMsg}}</p>
-      {{/if}}
+    <div class="flex gap-3 mt-2">
+      <AppButton @variant="secondary" @text="Cancel" @onClick={{this.closeModal}} />
+      <AppButton @variant="primary" @buttonType="submit" @text={{if this.editDocument "Update" "Upload"}} @loading={{this.isSaving}} @loadingText="Uploading..." data-test-save-btn />
+    </div>
+  </form>
+</Modal>
 
-      <div class="flex gap-3 mt-2">
-        <button type="button" class="btn btn-secondary" {{on "click" this.closeModal}}>Cancel</button>
-        <button type="submit" class="btn btn-primary" data-test-save-btn disabled={{this.isSaving}}>
-          {{if this.isSaving "Uploading..." (if this.editDocument "Update" "Upload")}}
-        </button>
-      </div>
-    </form>
-  </div>
-{{/if}}
+<ConfirmModal
+  @isOpen={{this.showDeleteModal}}
+  @title="Delete Document"
+  @message="Are you sure you want to delete {{this.documentToDelete.name}}? This action cannot be undone."
+  @confirmText="Delete"
+  @cancelText="Cancel"
+  @confirmType="btn-danger"
+  @isConfirming={{this.isDeleting}}
+  @confirmingText="Deleting..."
+  @onClose={{this.closeDeleteModal}}
+  @onConfirm={{this.confirmDelete}}
+/>

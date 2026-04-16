@@ -45,7 +45,7 @@
                       <Ph @icon="star" />
                     </button>
                   {{/unless}}
-                  <button type="button" class="btn-icon btn-icon-danger" title="Delete" {{on "click" (fn this.deletePhoto media)}}>
+                  <button type="button" class="btn-icon btn-icon-danger" title="Delete" {{on "click" (fn this.openDeletePhoto media)}}>
                     <Ph @icon="trash" />
                   </button>
                 </div>
@@ -186,130 +186,120 @@
 </div>
 
 {{! Edit Modal }}
-{{#if this.showEditModal}}
-  <button type="button" class="modal-backdrop" aria-label="Close modal" {{on "click" this.closeEdit}}></button>
-  <div class="modal-panel glass-panel p-8 flex col gap-6" role="dialog" aria-label="Edit unit" data-test-edit-modal>
-    <div class="flex between x-center">
-      <h3 class="font-xl font-bold">Edit Unit</h3>
-      <button type="button" class="text-muted font-lg px-2" data-test-close-modal {{on "click" this.closeEdit}}>x</button>
+<Modal
+  @isOpen={{this.showEditModal}}
+  @title="Edit Unit"
+  @onClose={{this.closeEdit}}
+  @showClose={{true}}
+>
+  <form class="flex col gap-4" {{on "submit" this.save}}>
+    <div class="flex gap-4">
+      <div class="flex col gap-2 flex-1">
+        <label class="font-sm text-muted" for="u-number">Unit Number *</label>
+        <input id="u-number" type="text"
+          class="form-input"
+          data-test-field-unit-number
+          placeholder="e.g. 101" value={{this.formUnitNumber}} required {{on "input" (fn this.setField "formUnitNumber")}} />
+      </div>
+      <div class="flex col gap-2 flex-1">
+        <FormDropdown @label="Status" @id="u-status" @value={{this.formStatus}} @onChange={{fn this.setField "formStatus"}} @options={{this.statusOptions}} @placeholder="Select status..." data-test-field-status />
+      </div>
     </div>
-    <form class="flex col gap-4" {{on "submit" this.save}}>
-      <div class="flex gap-4">
-        <div class="flex col gap-2 flex-1">
-          <label class="font-sm text-muted" for="u-number">Unit Number *</label>
-          <input id="u-number" type="text"
-            class="form-input"
-            data-test-field-unit-number
-            placeholder="e.g. 101" value={{this.formUnitNumber}} required {{on "input" (fn this.setField "formUnitNumber")}} />
-        </div>
-        <div class="flex col gap-2 flex-1">
-          <label class="font-sm text-muted" for="u-status">Status</label>
-          <select id="u-status" class="form-select" data-test-field-status {{on "change" (fn this.setField "formStatus")}}>
-            <option value="available" selected={{eq this.formStatus "available"}}>Available</option>
-            <option value="rented" selected={{eq this.formStatus "rented"}}>Rented</option>
-            <option value="sold" selected={{eq this.formStatus "sold"}}>Sold</option>
-            <option value="maintenance" selected={{eq this.formStatus "maintenance"}}>Maintenance</option>
-          </select>
-        </div>
-      </div>
 
-      <div class="flex col gap-2">
-        <label class="font-sm text-muted" for="u-property-type">Listing Type</label>
-        <select id="u-property-type" class="form-select" data-test-field-property-type {{on "change" (fn this.setField "formPropertyType")}}>
-          <option value="" selected={{eq this.formPropertyType ""}}>Not set</option>
-          <option value="RENTAL" selected={{eq this.formPropertyType "RENTAL"}}>Rental</option>
-          <option value="FOR_SALE" selected={{eq this.formPropertyType "FOR_SALE"}}>For Sale</option>
-        </select>
-      </div>
+    <FormDropdown @label="Listing Type" @id="u-property-type" @value={{this.formPropertyType}} @onChange={{fn this.setField "formPropertyType"}} @options={{this.propertyTypeOptions}} @placeholder="Not set" data-test-field-property-type />
 
-      <div class="flex gap-4">
-        <div class="flex col gap-2 flex-1">
-          <label class="font-sm text-muted" for="u-price">Price</label>
-          <input id="u-price" type="number" min="0"
-            class="form-input"
-            data-test-field-price
-            placeholder="e.g. 150000" value={{this.formPrice}} {{on "input" (fn this.setField "formPrice")}} />
-        </div>
-        <div class="flex col gap-2 flex-1">
-          <label class="font-sm text-muted" for="u-sqft">Sq Ft</label>
-          <input id="u-sqft" type="number" min="0"
-            class="form-input"
-            data-test-field-sqft
-            placeholder="e.g. 850" value={{this.formSqFt}} {{on "input" (fn this.setField "formSqFt")}} />
-        </div>
-      </div>
-
-      <div class="flex gap-4">
-        <div class="flex col gap-2 flex-1">
-          <label class="font-sm text-muted" for="u-beds">Bedrooms</label>
-          <input id="u-beds" type="number" min="0"
-            class="form-input"
-            data-test-field-bedrooms
-            placeholder="e.g. 2" value={{this.formBedrooms}} {{on "input" (fn this.setField "formBedrooms")}} />
-        </div>
-        <div class="flex col gap-2 flex-1">
-          <label class="font-sm text-muted" for="u-baths">Bathrooms</label>
-          <input id="u-baths" type="number" min="0"
-            class="form-input"
-            data-test-field-bathrooms
-            placeholder="e.g. 2" value={{this.formBathrooms}} {{on "input" (fn this.setField "formBathrooms")}} />
-        </div>
-      </div>
-
-      <div class="flex col gap-2">
-        <label class="font-sm text-muted" for="u-floor">Floor</label>
-        <input id="u-floor" type="number" min="0"
+    <div class="flex gap-4">
+      <div class="flex col gap-2 flex-1">
+        <label class="font-sm text-muted" for="u-price">Price</label>
+        <input id="u-price" type="number" min="0"
           class="form-input"
-          data-test-field-floor
-          placeholder="e.g. 5" value={{this.formFloor}} {{on "input" (fn this.setField "formFloor")}} />
+          data-test-field-price
+          placeholder="e.g. 150000" value={{this.formPrice}} {{on "input" (fn this.setField "formPrice")}} />
       </div>
-
-      <div class="flex col gap-2">
-        <label class="font-sm text-muted" for="u-desc">Description</label>
-        <textarea id="u-desc"
+      <div class="flex col gap-2 flex-1">
+        <label class="font-sm text-muted" for="u-sqft">Sq Ft</label>
+        <input id="u-sqft" type="number" min="0"
           class="form-input"
-          data-test-field-description
-          rows="3"
-          placeholder="Unit description..."
-          {{on "input" (fn this.setField "formDescription")}}>{{this.formDescription}}</textarea>
+          data-test-field-sqft
+          placeholder="e.g. 850" value={{this.formSqFt}} {{on "input" (fn this.setField "formSqFt")}} />
       </div>
+    </div>
 
-      <div class="flex col gap-2">
-        <label class="font-sm text-muted" for="u-owner">Owner (Optional)</label>
-        <select id="u-owner" class="form-select" data-test-field-owner {{on "change" (fn this.setField "formOwnerId")}}>
-          <option value="">Unassigned</option>
-          {{#each @model.owners as |owner|}}
-            <option value={{owner.id}} selected={{eq owner.id this.formOwnerId}}>{{owner.name}}</option>
-          {{/each}}
-        </select>
+    <div class="flex gap-4">
+      <div class="flex col gap-2 flex-1">
+        <label class="font-sm text-muted" for="u-beds">Bedrooms</label>
+        <input id="u-beds" type="number" min="0"
+          class="form-input"
+          data-test-field-bedrooms
+          placeholder="e.g. 2" value={{this.formBedrooms}} {{on "input" (fn this.setField "formBedrooms")}} />
       </div>
-
-      <div class="flex col gap-2">
-        <label class="font-sm text-muted">Amenities</label>
-        <div class="amenities-grid" data-test-amenities-picker>
-          {{#each this.amenityOptions as |opt|}}
-            <button
-              type="button"
-              class="amenity-chip {{if (includes this.formAmenities opt.key) 'amenity-chip-active'}}"
-              data-test-amenity={{opt.key}}
-              {{on "click" (fn this.toggleAmenity opt.key)}}
-            >
-              <Ph @icon={{opt.icon}} /> {{opt.label}}
-            </button>
-          {{/each}}
-        </div>
+      <div class="flex col gap-2 flex-1">
+        <label class="font-sm text-muted" for="u-baths">Bathrooms</label>
+        <input id="u-baths" type="number" min="0"
+          class="form-input"
+          data-test-field-bathrooms
+          placeholder="e.g. 2" value={{this.formBathrooms}} {{on "input" (fn this.setField "formBathrooms")}} />
       </div>
+    </div>
 
-      {{#if this.errorMsg}}
-        <p class="font-sm text-danger" data-test-error>{{this.errorMsg}}</p>
-      {{/if}}
+    <div class="flex col gap-2">
+      <label class="font-sm text-muted" for="u-floor">Floor</label>
+      <input id="u-floor" type="number" min="0"
+        class="form-input"
+        data-test-field-floor
+        placeholder="e.g. 5" value={{this.formFloor}} {{on "input" (fn this.setField "formFloor")}} />
+    </div>
 
-      <div class="flex gap-3 mt-2">
-        <button type="button" class="btn btn-secondary" data-test-cancel-btn {{on "click" this.closeEdit}}>Cancel</button>
-        <button type="submit" class="btn btn-primary" data-test-save-btn disabled={{this.isSaving}}>
-          {{if this.isSaving "Saving..." "Update Unit"}}
-        </button>
+    <div class="flex col gap-2">
+      <label class="font-sm text-muted" for="u-desc">Description</label>
+      <textarea id="u-desc"
+        class="form-input"
+        data-test-field-description
+        rows="3"
+        placeholder="Unit description..."
+        {{on "input" (fn this.setField "formDescription")}}>{{this.formDescription}}</textarea>
+    </div>
+
+    <FormDropdown @label="Owner" @id="u-owner" @value={{this.formOwnerId}} @onChange={{fn this.setField "formOwnerId"}} @options={{this.ownerOptions}} @placeholder="Unassigned" data-test-field-owner />
+
+    <div class="flex col gap-2">
+      <label class="font-sm text-muted">Amenities</label>
+      <div class="amenities-grid" data-test-amenities-picker>
+        {{#each this.amenityOptions as |opt|}}
+          <button
+            type="button"
+            class="amenity-chip {{if (includes this.formAmenities opt.key) 'amenity-chip-active'}}"
+            data-test-amenity={{opt.key}}
+            {{on "click" (fn this.toggleAmenity opt.key)}}
+          >
+            <Ph @icon={{opt.icon}} /> {{opt.label}}
+          </button>
+        {{/each}}
       </div>
-    </form>
-  </div>
-{{/if}}
+    </div>
+
+    {{#if this.errorMsg}}
+      <p class="font-sm text-danger" data-test-error>{{this.errorMsg}}</p>
+    {{/if}}
+
+    <div class="flex gap-3 mt-2">
+      <button type="button" class="btn btn-secondary" data-test-cancel-btn {{on "click" this.closeEdit}}>Cancel</button>
+      <button type="submit" class="btn btn-primary" data-test-save-btn disabled={{this.isSaving}}>
+        {{if this.isSaving "Saving..." "Update Unit"}}
+      </button>
+    </div>
+  </form>
+</Modal>
+
+<ConfirmModal
+  @isOpen={{this.showDeleteModal}}
+  @title="Delete Photo"
+  @message="Are you sure you want to delete this photo? This action cannot be undone."
+  @confirmText="Delete"
+  @cancelText="Cancel"
+  @confirmType="btn-danger"
+  @isConfirming={{this.isDeleting}}
+  @confirmingText="Deleting..."
+  @onClose={{this.closeDeleteModal}}
+  @onConfirm={{this.confirmDeletePhoto}}
+/>

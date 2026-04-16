@@ -44,11 +44,11 @@ export class PropertyDocument {
     @JoinColumn({ name: 'unit_id' })
     unit: Unit;
 
-    @Column({ name: 'asset_id', type: 'uuid', nullable: true })
+    @Column({ name: 'building_id', type: 'uuid', nullable: true })
     assetId: string | null;
 
     @ManyToOne(() => Asset, { nullable: true, onDelete: 'CASCADE' })
-    @JoinColumn({ name: 'asset_id' })
+    @JoinColumn({ name: 'building_id' })
     asset: Asset;
 
     @Column({ name: 'company_id', type: 'uuid' })

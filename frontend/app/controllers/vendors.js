@@ -35,6 +35,9 @@ export default class VendorsController extends Controller {
   @tracked formRegionCode = '';
   @tracked isSaving = false;
   @tracked errorMsg = '';
+  @tracked showDeleteModal = false;
+  @tracked vendorToDelete = null;
+  @tracked isDeleting = false;
 
   get showRegionField() {
     return this.region.regions.length > 1;
@@ -120,15 +123,29 @@ export default class VendorsController extends Controller {
     }
   }
 
-  @action async deleteVendor(vendor) {
-    if (!confirm(`Delete vendor ${vendor.name}?`)) return;
+  @action openDelete(vendor) {
+    this.vendorToDelete = vendor;
+    this.showDeleteModal = true;
+  }
 
+  @action closeDeleteModal() {
+    this.showDeleteModal = false;
+    this.vendorToDelete = null;
+  }
+
+  @action async confirmDelete() {
+    if (!this.vendorToDelete || this.isDeleting) return;
+
+    this.isDeleting = true;
     try {
-      await this.auth.fetchJson(`/vendors/${vendor.id}`, { method: 'DELETE' });
+      await this.auth.fetchJson(`/vendors/${this.vendorToDelete.id}`, { method: 'DELETE' });
       this.notifications.success('Vendor deleted');
+      this.closeDeleteModal();
       this.router.refresh('vendors');
     } catch (e) {
       this.notifications.error(e.message);
+    } finally {
+      this.isDeleting = false;
     }
   }
 }

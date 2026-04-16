@@ -21,6 +21,43 @@ export default class FinancialsController extends Controller {
   @tracked errorMsg = '';
   @tracked activeTab = 'all';
 
+  get transactionTypeOptions() {
+    return [
+      { value: 'INCOME', label: 'Income' },
+      { value: 'EXPENSE', label: 'Expense' }
+    ];
+  }
+
+  get categoryOptions() {
+    return [
+      { value: 'RENT', label: 'Rent' },
+      { value: 'SALE', label: 'Sale' },
+      { value: 'DEPOSIT', label: 'Deposit' },
+      { value: 'MAINTENANCE', label: 'Maintenance' },
+      { value: 'COMMISSION', label: 'Commission' },
+      { value: 'OTHER', label: 'Other' }
+    ];
+  }
+
+  get paymentMethodOptions() {
+    return [
+      { value: 'CASH', label: 'Cash' },
+      { value: 'CHEQUE', label: 'Cheque' },
+      { value: 'BANK_TRANSFER', label: 'Bank Transfer' },
+      { value: 'CREDIT_CARD', label: 'Credit Card' },
+      { value: 'ONLINE', label: 'Online' }
+    ];
+  }
+
+  get statusOptions() {
+    return [
+      { value: 'PENDING', label: 'Pending' },
+      { value: 'COMPLETED', label: 'Completed' },
+      { value: 'CANCELLED', label: 'Cancelled' },
+      { value: 'FAILED', label: 'Failed' }
+    ];
+  }
+
   get filteredTransactions() {
     const transactions = this.model?.transactions ?? [];
     if (this.activeTab === 'all') return transactions;

@@ -43,22 +43,8 @@
 
   {{#if (eq this.activeSection "orders")}}
     <div class="flex gap-4 x-center">
-      <div class="flex col gap-1">
-        <label class="font-xs text-muted">Status</label>
-        <select class="form-input" style="min-width: 150px;" {{on "change" (fn this.setField "filterStatus")}}>
-          {{#each this.statusOptions as |opt|}}
-            <option value={{opt.value}} selected={{eq this.filterStatus opt.value}}>{{opt.label}}</option>
-          {{/each}}
-        </select>
-      </div>
-      <div class="flex col gap-1">
-        <label class="font-xs text-muted">Period</label>
-        <select class="form-input" style="min-width: 150px;" {{on "change" (fn this.setField "filterMonth")}}>
-          {{#each this.monthOptions as |opt|}}
-            <option value={{opt.value}} selected={{eq this.filterMonth opt.value}}>{{opt.label}}</option>
-          {{/each}}
-        </select>
-      </div>
+      <FormDropdown @label="Status" @value={{this.filterStatus}} @onChange={{fn this.setField "filterStatus"}} @options={{this.statusOptions}} @placeholder="All" />
+      <FormDropdown @label="Period" @value={{this.filterMonth}} @onChange={{fn this.setField "filterMonth"}} @options={{this.monthOptions}} @placeholder="All" />
     </div>
 
     <div class="glass-panel p-5">
@@ -141,126 +127,72 @@
   {{/if}}
 </div>
 
-{{#if this.showModal}}
-  <button type="button" class="modal-backdrop" aria-label="Close modal" {{on "click" this.closeModal}}></button>
-  <div class="modal-panel glass-panel p-8 flex col gap-6" role="dialog">
-    <div class="flex between x-center">
-      <h3 class="font-xl font-bold">{{if this.editWorkOrder "Edit Work Order" "New Work Order"}}</h3>
-      <button type="button" class="text-muted font-lg px-2" {{on "click" this.closeModal}}>x</button>
+<Modal
+  @isOpen={{this.showModal}}
+  @title={{if this.editWorkOrder "Edit Work Order" "New Work Order"}}
+  @onClose={{this.closeModal}}
+  @showClose={{true}}
+>
+  <form class="flex col gap-4" {{on "submit" this.saveWorkOrder}}>
+    {{#unless this.editWorkOrder}}
+      <FormDropdown @label="Unit" @id="wo-unit" @value={{this.formUnitId}} @onChange={{fn this.setField "formUnitId"}} @options={{this.unitOptions}} @placeholder="No unit assigned" data-test-wo-unit />
+    {{/unless}}
+
+    <FormInput @label="Title" @id="wo-title" @type="text" @placeholder="e.g. Fix leaking pipe in unit 302" @value={{this.formTitle}} @onChange={{fn this.setField "formTitle"}} @required={{true}} />
+
+    <FormTextarea @label="Description" @id="wo-desc" @placeholder="Describe the issue in detail..." @rows={{3}} @value={{this.formDescription}} @onChange={{fn this.setField "formDescription"}} @required={{true}} />
+
+    <div class="flex gap-4">
+      <div class="flex col gap-2 flex-1">
+        <FormDropdown @label="Priority" @id="wo-priority" @value={{this.formPriority}} @onChange={{fn this.setField "formPriority"}} @options={{this.priorityOptions}} @placeholder="Select priority..." />
+      </div>
+      <div class="flex col gap-2 flex-1">
+        <FormDropdown @label="Category" @id="wo-category" @value={{this.formCategory}} @onChange={{fn this.setField "formCategory"}} @options={{this.categoryOptions}} @placeholder="Select category..." />
+      </div>
     </div>
-    <form class="flex col gap-4" {{on "submit" this.saveWorkOrder}}>
-      <div class="flex col gap-2">
-        <label class="font-sm text-muted" for="wo-unit">Unit (Optional)</label>
-        <select id="wo-unit" class="form-input" data-test-wo-unit {{on "change" (fn this.setField "formUnitId")}}>
-          <option value="">No unit assigned</option>
-          {{#each @model.units as |unit|}}
-            <option value={{unit.id}} selected={{eq unit.id this.formUnitId}}>{{unit.areaName}} / {{unit.assetName}} / Unit {{unit.unitNumber}}</option>
-          {{/each}}
-        </select>
-      </div>
-      <div class="flex col gap-2">
-        <label class="font-sm text-muted" for="wo-title">Title *</label>
-        <input id="wo-title" type="text"
-          class="form-input"
-          placeholder="e.g. Fix leaking pipe in unit 302" value={{this.formTitle}} required {{on "input" (fn this.setField "formTitle")}} />
-      </div>
-      <div class="flex col gap-2">
-        <label class="font-sm text-muted" for="wo-desc">Description *</label>
-        <textarea id="wo-desc" rows="3"
-          class="form-input"
-          placeholder="Describe the issue in detail..." required {{on "input" (fn this.setField "formDescription")}}>{{this.formDescription}}</textarea>
-      </div>
+
+    {{#if this.editWorkOrder}}
+      <FormDropdown @label="Status" @id="wo-status" @value={{this.formStatus}} @onChange={{fn this.setField "formStatus"}} @options={{this.statusOptions}} @placeholder="Select status..." />
+    {{/if}}
+
+    {{#unless this.editWorkOrder}}
       <div class="flex gap-4">
         <div class="flex col gap-2 flex-1">
-          <label class="font-sm text-muted" for="wo-priority">Priority</label>
-          <select id="wo-priority" class="form-input" {{on "change" (fn this.setField "formPriority")}}>
-            <option value="LOW" selected={{eq this.formPriority "LOW"}}>Low</option>
-            <option value="MEDIUM" selected={{eq this.formPriority "MEDIUM"}}>Medium</option>
-            <option value="HIGH" selected={{eq this.formPriority "HIGH"}}>High</option>
-            <option value="URGENT" selected={{eq this.formPriority "URGENT"}}>Urgent</option>
-          </select>
+          <FormInput @label="Reported By" @id="wo-reported-by" @type="text" @placeholder="Tenant or staff name" @value={{this.formReportedBy}} @onChange={{fn this.setField "formReportedBy"}} />
         </div>
         <div class="flex col gap-2 flex-1">
-          <label class="font-sm text-muted" for="wo-category">Category</label>
-          <select id="wo-category" class="form-input" {{on "change" (fn this.setField "formCategory")}}>
-            <option value="PLUMBING" selected={{eq this.formCategory "PLUMBING"}}>Plumbing</option>
-            <option value="ELECTRICAL" selected={{eq this.formCategory "ELECTRICAL"}}>Electrical</option>
-            <option value="HVAC" selected={{eq this.formCategory "HVAC"}}>HVAC</option>
-            <option value="STRUCTURAL" selected={{eq this.formCategory "STRUCTURAL"}}>Structural</option>
-            <option value="CLEANING" selected={{eq this.formCategory "CLEANING"}}>Cleaning</option>
-            <option value="PEST_CONTROL" selected={{eq this.formCategory "PEST_CONTROL"}}>Pest Control</option>
-            <option value="APPLIANCE" selected={{eq this.formCategory "APPLIANCE"}}>Appliance</option>
-            <option value="OTHER" selected={{eq this.formCategory "OTHER"}}>Other</option>
-          </select>
+          <FormInput @label="Estimated Cost" @id="wo-est-cost" @type="number" @placeholder="e.g. 500" @value={{this.formEstimatedCost}} @onChange={{fn this.setField "formEstimatedCost"}} @min={{0}} @step={{0.01}} />
         </div>
       </div>
-      {{#if this.editWorkOrder}}
-        <div class="flex col gap-2">
-          <label class="font-sm text-muted" for="wo-status">Status</label>
-          <select id="wo-status" class="form-input" {{on "change" (fn this.setField "formStatus")}}>
-            <option value="PENDING" selected={{eq this.formStatus "PENDING"}}>Pending</option>
-            <option value="IN_PROGRESS" selected={{eq this.formStatus "IN_PROGRESS"}}>In Progress</option>
-            <option value="PENDING_APPROVAL" selected={{eq this.formStatus "PENDING_APPROVAL"}}>Pending Approval</option>
-            <option value="COMPLETED" selected={{eq this.formStatus "COMPLETED"}}>Completed</option>
-          </select>
-        </div>
-      {{/if}}
-      <div class="flex gap-4">
-        <div class="flex col gap-2 flex-1">
-          <label class="font-sm text-muted" for="wo-reported-by">Reported By</label>
-          <input id="wo-reported-by" type="text"
-            class="form-input"
-            placeholder="Tenant or staff name" value={{this.formReportedBy}} {{on "input" (fn this.setField "formReportedBy")}} />
-        </div>
-        <div class="flex col gap-2 flex-1">
-          <label class="font-sm text-muted" for="wo-est-cost">Estimated Cost</label>
-          <input id="wo-est-cost" type="number" min="0" step="0.01"
-            class="form-input"
-            placeholder="e.g. 500" value={{this.formEstimatedCost}} {{on "input" (fn this.setField "formEstimatedCost")}} />
-        </div>
+    {{else}}
+      <FormInput @label="Estimated Cost" @id="wo-est-cost" @type="number" @placeholder="e.g. 500" @value={{this.formEstimatedCost}} @onChange={{fn this.setField "formEstimatedCost"}} @min={{0}} @step={{0.01}} />
+    {{/unless}}
+
+    <div class="flex gap-4">
+      <div class="flex col gap-2 flex-1">
+        <FormInput @label="Actual Cost" @id="wo-act-cost" @type="number" @placeholder="e.g. 450" @value={{this.formActualCost}} @onChange={{fn this.setField "formActualCost"}} @min={{0}} @step={{0.01}} />
       </div>
-      <div class="flex gap-4">
-        <div class="flex col gap-2 flex-1">
-          <label class="font-sm text-muted" for="wo-act-cost">Actual Cost</label>
-          <input id="wo-act-cost" type="number" min="0" step="0.01"
-            class="form-input"
-            placeholder="e.g. 450" value={{this.formActualCost}} {{on "input" (fn this.setField "formActualCost")}} />
-        </div>
-        <div class="flex col gap-2 flex-1">
-          <label class="font-sm text-muted" for="wo-cost-notes">Cost Notes</label>
-          <input id="wo-cost-notes" type="text"
-            class="form-input"
-            placeholder="e.g. Parts + labor" value={{this.formCostNotes}} {{on "input" (fn this.setField "formCostNotes")}} />
-        </div>
+      <div class="flex col gap-2 flex-1">
+        <FormInput @label="Cost Notes" @id="wo-cost-notes" @type="text" @placeholder="e.g. Parts + labor" @value={{this.formCostNotes}} @onChange={{fn this.setField "formCostNotes"}} />
       </div>
-      <div class="flex gap-4">
-        <div class="flex col gap-2 flex-1">
-          <label class="font-sm text-muted" for="wo-scheduled">Scheduled Date</label>
-          <input id="wo-scheduled" type="date"
-            class="form-input"
-            value={{this.formScheduledDate}} {{on "change" (fn this.setField "formScheduledDate")}} />
-        </div>
-        <div class="flex col gap-2 flex-1">
-          <label class="font-sm text-muted" for="wo-vendor">Vendor</label>
-          <select id="wo-vendor" class="form-input" {{on "change" (fn this.setField "formVendorId")}}>
-            <option value="">No vendor assigned</option>
-            {{#each @model.vendors as |vendor|}}
-              <option value={{vendor.id}} selected={{eq vendor.id this.formVendorId}}>
-                {{vendor.name}} ({{vendor.specialty}})
-              </option>
-            {{/each}}
-          </select>
-        </div>
+    </div>
+
+    <div class="flex gap-4">
+      <div class="flex col gap-2 flex-1">
+        <FormInput @label="Scheduled Date" @id="wo-scheduled" @type="date" @value={{this.formScheduledDate}} @onChange={{fn this.setField "formScheduledDate"}} />
       </div>
-      {{#if this.errorMsg}}
-        <p class="font-sm text-danger">{{this.errorMsg}}</p>
-      {{/if}}
-      <div class="flex gap-3 mt-2">
-        <button type="button" class="btn btn-secondary" {{on "click" this.closeModal}}>Cancel</button>
-        <button type="submit" class="btn btn-primary" disabled={{this.isSaving}}>
-          {{if this.isSaving "Saving..." (if this.editWorkOrder "Update" "Create Work Order")}}
-        </button>
+      <div class="flex col gap-2 flex-1">
+        <FormDropdown @label="Vendor" @id="wo-vendor" @value={{this.formVendorId}} @onChange={{fn this.setField "formVendorId"}} @options={{this.vendorOptions}} @placeholder="No vendor assigned" />
       </div>
-    </form>
-  </div>
-{{/if}}
+    </div>
+
+    {{#if this.errorMsg}}
+      <p class="font-sm text-danger">{{this.errorMsg}}</p>
+    {{/if}}
+
+    <div class="flex gap-3 mt-2">
+      <AppButton @variant="secondary" @text="Cancel" @onClick={{this.closeModal}} />
+      <AppButton @variant="primary" @buttonType="submit" @text={{if this.editWorkOrder "Update" "Create Work Order"}} @loading={{this.isSaving}} @loadingText="Saving..." />
+    </div>
+  </form>
+</Modal>

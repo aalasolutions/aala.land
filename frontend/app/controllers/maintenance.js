@@ -44,6 +44,48 @@ export default class MaintenanceController extends Controller {
     { value: 'last_3_months', label: 'Last 3 Months' },
   ];
 
+  get priorityOptions() {
+    return [
+      { value: 'LOW', label: 'Low' },
+      { value: 'MEDIUM', label: 'Medium' },
+      { value: 'HIGH', label: 'High' },
+      { value: 'URGENT', label: 'Urgent' }
+    ];
+  }
+
+  get categoryOptions() {
+    return [
+      { value: 'PLUMBING', label: 'Plumbing' },
+      { value: 'ELECTRICAL', label: 'Electrical' },
+      { value: 'HVAC', label: 'HVAC' },
+      { value: 'STRUCTURAL', label: 'Structural' },
+      { value: 'CLEANING', label: 'Cleaning' },
+      { value: 'PEST_CONTROL', label: 'Pest Control' },
+      { value: 'APPLIANCE', label: 'Appliance' },
+      { value: 'OTHER', label: 'Other' }
+    ];
+  }
+
+  get unitOptions() {
+    return [
+      { value: '', label: 'No unit assigned' },
+      ...(this.model.units || []).map(unit => ({
+        value: unit.id,
+        label: `${unit.areaName} / ${unit.assetName} / Unit ${unit.unitNumber}`
+      }))
+    ];
+  }
+
+  get vendorOptions() {
+    return [
+      { value: '', label: 'No vendor assigned' },
+      ...(this.model.vendors || []).map(vendor => ({
+        value: vendor.id,
+        label: `${vendor.name} (${vendor.specialty})`
+      }))
+    ];
+  }
+
   get filteredWorkOrders() {
     let orders = this.model?.workOrders || [];
 
@@ -148,10 +190,13 @@ export default class MaintenanceController extends Controller {
       ...(this.formActualCost ? { actualCost: parseFloat(this.formActualCost) } : {}),
       ...(this.formCostNotes ? { costNotes: this.formCostNotes } : {}),
       ...(this.formScheduledDate ? { scheduledDate: this.formScheduledDate } : {}),
-      ...(this.formReportedBy ? { reportedBy: this.formReportedBy } : {}),
-      ...(this.formUnitId ? { unitId: this.formUnitId } : {}),
       ...(this.formVendorId ? { vendorId: this.formVendorId } : {}),
     };
+
+    if (!isEdit) {
+      if (this.formReportedBy) body.reportedBy = this.formReportedBy;
+      if (this.formUnitId) body.unitId = this.formUnitId;
+    }
 
     try {
       await this.auth.fetchJson(path, {

@@ -100,6 +100,12 @@ export default class AuthService extends Service {
           : (err.message ?? 'Request failed'),
       );
     }
+
+    const contentType = res.headers.get('content-type');
+    if (!contentType || !contentType.includes('application/json')) {
+      return null;
+    }
+
     return res.json();
   }
 }

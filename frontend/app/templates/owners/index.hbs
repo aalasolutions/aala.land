@@ -33,7 +33,7 @@
         <button type="button" class="btn btn-secondary" data-test-edit-owner {{on "click" (fn this.openEdit owner)}}>
           <Ph @icon="pencil-simple" /> Edit
         </button>
-        <button type="button" class="btn btn-secondary text-danger" data-test-delete-owner {{on "click" (fn this.deleteOwner owner)}}>
+        <button type="button" class="btn btn-secondary text-danger" data-test-delete-owner {{on "click" (fn this.openDelete owner)}}>
           <Ph @icon="trash" /> Remove
         </button>
       </div>
@@ -49,67 +49,53 @@
   Showing {{format-number this.model.owners.length}} of {{format-number this.model.total}} owners
 </p>
 
-{{#if this.showModal}}
-  <div class="modal-backdrop" data-test-modal-backdrop {{on "click" this.closeModal}}></div>
-  <div class="modal-panel" data-test-owner-modal>
-    <h3 class="modal-title">
-      {{#if this.editOwner}}
-        Edit Owner
-      {{else}}
-        Add Owner
-      {{/if}}
-    </h3>
-    {{#if this.errorMsg}}
-      <p class="error-message" data-test-error>{{this.errorMsg}}</p>
-    {{/if}}
-    <form {{on "submit" this.saveOwner}}>
+<Modal
+  @isOpen={{this.showModal}}
+  @title={{if this.editOwner "Edit Owner" "Add Owner"}}
+  @onClose={{this.closeModal}}
+  @showClose={{true}}
+>
+  {{#if this.errorMsg}}
+    <p class="error-message" data-test-error>{{this.errorMsg}}</p>
+  {{/if}}
+  <form {{on "submit" this.saveOwner}}>
       <div class="form-group">
-        <label class="form-label">Name *</label>
-        <input type="text" class="form-input" data-test-input-name value={{this.formName}} {{on "input" (fn this.setField "formName")}} required />
+        <FormInput @label="Name" @id="o-name" @type="text" @value={{this.formName}} @onChange={{fn this.setField "formName"}} @required={{true}} data-test-input-name />
       </div>
       <div class="form-group">
-        <label class="form-label">Email</label>
-        <input type="email" class="form-input" data-test-input-email value={{this.formEmail}} {{on "input" (fn this.setField "formEmail")}} />
+        <FormInput @label="Email" @id="o-email" @type="email" @value={{this.formEmail}} @onChange={{fn this.setField "formEmail"}} data-test-input-email />
       </div>
       <div class="form-group">
-        <label class="form-label">Phone</label>
-        <input type="tel" class="form-input" data-test-input-phone value={{this.formPhone}} {{on "input" (fn this.setField "formPhone")}} />
+        <FormInput @label="Phone" @id="o-phone" @type="tel" @value={{this.formPhone}} @onChange={{fn this.setField "formPhone"}} data-test-input-phone />
       </div>
       <div class="form-group">
-        <label class="form-label">Nationality ID</label>
-        <input type="text" class="form-input" data-test-input-nationality-id value={{this.formNationalityId}} {{on "input" (fn this.setField "formNationalityId")}} />
+        <FormInput @label="Nationality ID" @id="o-nid" @type="text" @value={{this.formNationalityId}} @onChange={{fn this.setField "formNationalityId"}} data-test-input-nationality-id />
       </div>
       <div class="form-group">
-        <label class="form-label">Address</label>
-        <textarea class="form-input" data-test-input-address {{on "input" (fn this.setField "formAddress")}}>{{this.formAddress}}</textarea>
+        <FormTextarea @label="Address" @id="o-address" @rows={{3}} @value={{this.formAddress}} @onChange={{fn this.setField "formAddress"}} data-test-input-address />
       </div>
       <div class="form-group">
-        <label class="form-label">Assigned Agent</label>
-        <select class="form-select" data-test-input-agent {{on "change" (fn this.setField "formAssignedAgentId")}}>
-          <option value="">Unassigned</option>
-          {{#each this.agents as |agent|}}
-            <option value={{agent.id}} selected={{eq agent.id this.formAssignedAgentId}}>{{agent.name}}</option>
-          {{/each}}
-        </select>
+        <FormDropdown @label="Assigned Agent" @value={{this.formAssignedAgentId}} @onChange={{fn this.setField "formAssignedAgentId"}} @options={{this.agentOptions}} @placeholder="Unassigned" data-test-input-agent />
       </div>
       <div class="form-group">
-        <label class="form-label">Notes</label>
-        <textarea class="form-input" data-test-input-notes {{on "input" (fn this.setField "formNotes")}}>{{this.formNotes}}</textarea>
+        <FormTextarea @label="Notes" @id="o-notes" @rows={{3}} @value={{this.formNotes}} @onChange={{fn this.setField "formNotes"}} data-test-input-notes />
       </div>
       <div class="modal-actions">
-        <button type="button" class="btn btn-secondary" {{on "click" this.closeModal}}>
-          Cancel
-        </button>
-        <button type="submit" class="btn btn-primary" disabled={{this.isSaving}} data-test-save-owner>
-          {{#if this.isSaving}}
-            Saving...
-          {{else if this.editOwner}}
-            Update
-          {{else}}
-            Create
-          {{/if}}
-        </button>
+        <AppButton @variant="secondary" @text="Cancel" @onClick={{this.closeModal}} />
+        <AppButton @variant="primary" @buttonType="submit" @text={{if this.editOwner "Update" "Create"}} @loading={{this.isSaving}} @loadingText="Saving..." data-test-save-owner />
       </div>
     </form>
-  </div>
-{{/if}}
+</Modal>
+
+<ConfirmModal
+  @isOpen={{this.showDeleteModal}}
+  @title="Remove Owner"
+  @message="Are you sure you want to remove {{this.ownerToDelete.name}}? This action cannot be undone."
+  @confirmText="Remove"
+  @cancelText="Cancel"
+  @confirmType="btn-danger"
+  @isConfirming={{this.isDeleting}}
+  @confirmingText="Removing..."
+  @onClose={{this.closeDeleteModal}}
+  @onConfirm={{this.confirmDelete}}
+/>

@@ -31,6 +31,9 @@ export default class TeamController extends Controller {
   @tracked inviteRole = 'agent';
   @tracked isInviting = false;
   @tracked inviteErrorMsg = '';
+  @tracked showDeleteModal = false;
+  @tracked userToDelete = null;
+  @tracked isDeleting = false;
 
   get roles() {
     return ROLES;
@@ -138,15 +141,29 @@ export default class TeamController extends Controller {
     }
   }
 
-  @action async deleteUser(user) {
-    if (!confirm(`Remove ${user.name}?`)) return;
+  @action openDelete(user) {
+    this.userToDelete = user;
+    this.showDeleteModal = true;
+  }
 
+  @action closeDeleteModal() {
+    this.showDeleteModal = false;
+    this.userToDelete = null;
+  }
+
+  @action async confirmDelete() {
+    if (!this.userToDelete || this.isDeleting) return;
+
+    this.isDeleting = true;
     try {
-      await this.auth.fetchJson(`/users/${user.id}`, { method: 'DELETE' });
+      await this.auth.fetchJson(`/users/${this.userToDelete.id}`, { method: 'DELETE' });
       this.notifications.success('Team member removed');
+      this.closeDeleteModal();
       this.router.refresh('team');
     } catch (e) {
       this.notifications.error(e.message);
+    } finally {
+      this.isDeleting = false;
     }
   }
 }

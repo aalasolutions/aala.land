@@ -79,8 +79,10 @@ export class PropertiesController {
     @Post('areas')
     @Roles(Role.COMPANY_ADMIN)
     @ApiOperation({ summary: 'Create a new property area (COMPANY_ADMIN+)' })
-    createArea(@Body() dto: CreateAreaDto, @Request() req: AuthenticatedRequest) {
-        return this.propertiesService.createArea(req.user.companyId, dto);
+    @ApiQuery({ name: 'regionCode', required: false, type: String })
+    createArea(@Body() dto: CreateAreaDto, @Request() req: AuthenticatedRequest, @Query('regionCode') regionCode?: string) {
+        const enrichedDto = regionCode ? { ...dto, regionCode } : dto;
+        return this.propertiesService.createArea(req.user.companyId, enrichedDto);
     }
 
     @Get('areas')

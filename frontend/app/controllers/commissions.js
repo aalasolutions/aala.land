@@ -20,6 +20,30 @@ export default class CommissionsController extends Controller {
   @tracked formTransactionId = '';
   @tracked formNotes = '';
 
+  get filterStatusOptions() {
+    return [
+      { value: '', label: 'All' },
+      { value: 'PENDING', label: 'Pending' },
+      { value: 'APPROVED', label: 'Approved' },
+      { value: 'PAID', label: 'Paid' }
+    ];
+  }
+
+  get commissionTypeOptions() {
+    return [
+      { value: 'SALE', label: 'Sale' },
+      { value: 'RENTAL', label: 'Rental' },
+      { value: 'REFERRAL', label: 'Referral' }
+    ];
+  }
+
+  get agentOptions() {
+    return (this.model.agents || []).map(agent => ({
+      value: agent.id,
+      label: agent.name
+    }));
+  }
+
   get filteredCommissions() {
     const all = this.model?.commissions || [];
     if (!this.filterStatus) return all;
@@ -49,6 +73,10 @@ export default class CommissionsController extends Controller {
 
   @action async saveCommission(event) {
     event.preventDefault();
+    if (!this.formAgentId) {
+      this.errorMsg = 'Please select an agent';
+      return;
+    }
     this.isSaving = true;
     this.errorMsg = '';
     try {

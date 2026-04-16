@@ -6,15 +6,9 @@
       <h2 class="font-3xl font-bold"><Ph @icon="hand-coins" @size="28px" /> Commissions</h2>
       <p class="text-muted mt-1">Track agent commissions and payouts.</p>
     </div>
-    <div class="flex gap-3 x-center">
+    <div class="flex gap-3 x-end">
       <div class="flex col gap-1">
-        <label class="font-xs text-muted">Filter by Status</label>
-        <select class="form-input" style="min-width: 160px;" {{on "change" (fn this.setField "filterStatus")}}>
-          <option value="" selected={{eq this.filterStatus ""}}>All</option>
-          <option value="PENDING" selected={{eq this.filterStatus "PENDING"}}>Pending</option>
-          <option value="APPROVED" selected={{eq this.filterStatus "APPROVED"}}>Approved</option>
-          <option value="PAID" selected={{eq this.filterStatus "PAID"}}>Paid</option>
-        </select>
+        <FormDropdown @label="Filter by Status" @value={{this.filterStatus}} @onChange={{fn this.setField "filterStatus"}} @options={{this.filterStatusOptions}} @placeholder="All" />
       </div>
       <button type="button" class="btn btn-primary" data-test-add-commission {{on "click" this.openCreate}}>
         <Ph @icon="plus" /> New Commission
@@ -99,51 +93,24 @@
   </div>
 </div>
 
-{{#if this.showModal}}
-  <div class="modal-backdrop" data-test-modal-backdrop {{on "click" this.closeModal}}></div>
-  <div class="modal-panel glass-panel p-8 flex col gap-6" data-test-commission-modal>
-    <h3 class="font-xl font-bold">New Commission</h3>
-    {{#if this.errorMsg}}
-      <p class="text-danger" data-test-error>{{this.errorMsg}}</p>
-    {{/if}}
-    <form {{on "submit" this.saveCommission}}>
-      <div class="form-group">
-        <label class="form-label">Agent *</label>
-        <select class="form-input" data-test-input-agent {{on "change" (fn this.setField "formAgentId")}} required>
-          <option value="">Select agent...</option>
-          {{#each @model.agents as |agent|}}
-            <option value={{agent.id}} selected={{eq agent.id this.formAgentId}}>{{agent.name}}</option>
-          {{/each}}
-        </select>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Type *</label>
-        <select class="form-input" data-test-input-type {{on "change" (fn this.setField "formType")}}>
-          <option value="SALE" selected={{eq this.formType "SALE"}}>Sale</option>
-          <option value="RENTAL" selected={{eq this.formType "RENTAL"}}>Rental</option>
-          <option value="REFERRAL" selected={{eq this.formType "REFERRAL"}}>Referral</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Gross Amount *</label>
-        <input type="number" step="0.01" min="0" class="form-input" data-test-input-gross-amount value={{this.formGrossAmount}} {{on "input" (fn this.setField "formGrossAmount")}} required />
-      </div>
-      <div class="form-group">
-        <label class="form-label">Commission Rate (%) *</label>
-        <input type="number" step="0.01" min="0" max="100" class="form-input" data-test-input-rate value={{this.formCommissionRate}} {{on "input" (fn this.setField "formCommissionRate")}} required />
-      </div>
-      <div class="form-group">
-        <label class="form-label">Notes</label>
-        <textarea class="form-input" data-test-input-notes {{on "input" (fn this.setField "formNotes")}}>{{this.formNotes}}</textarea>
-      </div>
-      <div class="modal-actions">
-        <button type="button" class="btn btn-secondary" {{on "click" this.closeModal}}>
-          Cancel
-        </button>
-        <button type="submit" class="btn btn-primary" disabled={{this.isSaving}} data-test-save-commission>
-          {{if this.isSaving "Saving..." "Create"}}
-        </button>
-      </div>
-    </form>
-  </div>
-{{/if}}
+<Modal
+  @isOpen={{this.showModal}}
+  @title="New Commission"
+  @onClose={{this.closeModal}}
+  @showClose={{true}}
+>
+  {{#if this.errorMsg}}
+    <p class="text-danger" data-test-error>{{this.errorMsg}}</p>
+  {{/if}}
+  <form class="flex col gap-4" {{on "submit" this.saveCommission}}>
+    <FormDropdown @label="Agent" @value={{this.formAgentId}} @onChange={{fn this.setField "formAgentId"}} @options={{this.agentOptions}} @placeholder="Select agent..." @required={{true}} data-test-input-agent />
+    <FormDropdown @label="Type" @value={{this.formType}} @onChange={{fn this.setField "formType"}} @options={{this.commissionTypeOptions}} @placeholder="Select type..." @required={{true}} data-test-input-type />
+    <FormInput @label="Gross Amount" @type="number" @placeholder="e.g. 50000" @value={{this.formGrossAmount}} @onChange={{fn this.setField "formGrossAmount"}} @required={{true}} data-test-input-amount />
+    <FormInput @label="Commission Rate %" @type="number" @placeholder="e.g. 2.5" @value={{this.formCommissionRate}} @onChange={{fn this.setField "formCommissionRate"}} @required={{true}} data-test-input-rate />
+    <FormTextarea @label="Notes" @placeholder="Optional notes..." @value={{this.formNotes}} @onChange={{fn this.setField "formNotes"}} data-test-input-notes />
+    <div class="flex gap-3 mt-2">
+      <AppButton @variant="secondary" @text="Cancel" @onClick={{this.closeModal}} />
+      <AppButton @variant="primary" @buttonType="submit" @text="Create" @loading={{this.isSaving}} @loadingText="Saving..." data-test-save-commission />
+    </div>
+  </form>
+</Modal>

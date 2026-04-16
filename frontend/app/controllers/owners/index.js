@@ -21,6 +21,9 @@ export default class OwnersIndexController extends Controller {
   @tracked isSaving = false;
   @tracked isLoadingAgents = false;
   @tracked errorMsg = '';
+  @tracked showDeleteModal = false;
+  @tracked ownerToDelete = null;
+  @tracked isDeleting = false;
 
   constructor() {
     super(...arguments);
@@ -37,6 +40,16 @@ export default class OwnersIndexController extends Controller {
     } finally {
       this.isLoadingAgents = false;
     }
+  }
+
+  get agentOptions() {
+    return [
+      { value: '', label: 'Unassigned' },
+      ...this.agents.map(agent => ({
+        value: agent.id,
+        label: agent.name
+      }))
+    ];
   }
 
   @action setField(fieldName, e) { this[fieldName] = e.target.value; }
@@ -106,15 +119,29 @@ export default class OwnersIndexController extends Controller {
     }
   }
 
-  @action async deleteOwner(owner) {
-    if (!confirm(`Remove ${owner.name}?`)) return;
+  @action openDelete(owner) {
+    this.ownerToDelete = owner;
+    this.showDeleteModal = true;
+  }
 
+  @action closeDeleteModal() {
+    this.showDeleteModal = false;
+    this.ownerToDelete = null;
+  }
+
+  @action async confirmDelete() {
+    if (!this.ownerToDelete || this.isDeleting) return;
+
+    this.isDeleting = true;
     try {
-      await this.auth.fetchJson(`/owners/${owner.id}`, { method: 'DELETE' });
+      await this.auth.fetchJson(`/owners/${this.ownerToDelete.id}`, { method: 'DELETE' });
       this.notifications.success('Owner removed');
+      this.closeDeleteModal();
       this.router.refresh('owners');
     } catch (e) {
       this.notifications.error(e.message);
+    } finally {
+      this.isDeleting = false;
     }
   }
 

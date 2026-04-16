@@ -24,6 +24,26 @@ export default class LeasesController extends Controller {
   @tracked renewingLeaseId = null;
   @tracked isSaving = false;
   @tracked errorMsg = '';
+  @tracked showTerminateModal = false;
+  @tracked leaseToTerminate = null;
+  @tracked isTerminating = false;
+
+  get leaseTypeOptions() {
+    return [
+      { value: 'RESIDENTIAL', label: 'Residential' },
+      { value: 'COMMERCIAL', label: 'Commercial' }
+    ];
+  }
+
+  get unitOptions() {
+    return [
+      { value: '', label: 'Select a unit...' },
+      ...(this.model.units || []).map(unit => ({
+        value: unit.id,
+        label: `${unit.areaName} - ${unit.assetName} - Unit ${unit.unitNumber}${unit.floorNumber ? ` (Floor ${unit.floorNumber})` : ''}`
+      }))
+    ];
+  }
 
   @action setField(fieldName, e) { this[fieldName] = e.target.value; }
 
@@ -155,14 +175,29 @@ export default class LeasesController extends Controller {
     this.showModal = true;
   }
 
-  @action async terminateLease(lease) {
-    if (!confirm('Are you sure you want to terminate this lease?')) return;
+  @action openTerminate(lease) {
+    this.leaseToTerminate = lease;
+    this.showTerminateModal = true;
+  }
+
+  @action closeTerminateModal() {
+    this.showTerminateModal = false;
+    this.leaseToTerminate = null;
+  }
+
+  @action async confirmTerminate() {
+    if (!this.leaseToTerminate || this.isTerminating) return;
+
+    this.isTerminating = true;
     try {
-      await this.auth.fetchJson(`/leases/${lease.id}/terminate`, { method: 'POST' });
+      await this.auth.fetchJson(`/leases/${this.leaseToTerminate.id}/terminate`, { method: 'POST' });
       this.notifications.success('Lease terminated');
+      this.closeTerminateModal();
       this.router.refresh('leases');
     } catch (e) {
       this.notifications.error(e.message || 'Failed to terminate lease');
+    } finally {
+      this.isTerminating = false;
     }
   }
 }

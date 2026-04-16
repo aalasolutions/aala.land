@@ -18,7 +18,7 @@ export default class AuditController extends Controller {
   @action setFilterAction(event) {
     const value = event.target.value;
     this.filterAction = value;
-    this.transitionToRoute('audit', {
+    this.router.transitionTo('audit', {
       queryParams: {
         action: value || undefined,
         page: 1,
@@ -29,7 +29,7 @@ export default class AuditController extends Controller {
   @action setFilterEntityType(event) {
     const value = event.target.value;
     this.filterEntityType = value;
-    this.transitionToRoute('audit', {
+    this.router.transitionTo('audit', {
       queryParams: {
         entityType: value || undefined,
         page: 1,
@@ -40,7 +40,7 @@ export default class AuditController extends Controller {
   @action clearFilters() {
     this.filterAction = '';
     this.filterEntityType = '';
-    this.transitionToRoute('audit', {
+    this.router.transitionTo('audit', {
       queryParams: {
         action: undefined,
         entityType: undefined,
@@ -91,6 +91,10 @@ export default class AuditController extends Controller {
 
   @action closePurge() {
     this.showPurgeModal = false;
+  }
+
+  @action stopPropagation(event) {
+    event.stopPropagation();
   }
 
   @action async confirmPurge() {

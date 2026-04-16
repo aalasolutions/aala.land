@@ -45,6 +45,9 @@ export default class DocumentsController extends Controller {
   // Upload state
   @tracked selectedFile = null;
   @tracked uploadProgress = '';
+  @tracked showDeleteModal = false;
+  @tracked documentToDelete = null;
+  @tracked isDeleting = false;
 
   get categories() {
     return CATEGORIES;
@@ -177,15 +180,29 @@ export default class DocumentsController extends Controller {
     }
   }
 
-  @action async deleteDocument(doc) {
-    if (!confirm(`Delete "${doc.name}"?`)) return;
+  @action openDelete(doc) {
+    this.documentToDelete = doc;
+    this.showDeleteModal = true;
+  }
 
+  @action closeDeleteModal() {
+    this.showDeleteModal = false;
+    this.documentToDelete = null;
+  }
+
+  @action async confirmDelete() {
+    if (!this.documentToDelete || this.isDeleting) return;
+
+    this.isDeleting = true;
     try {
-      await this.auth.fetchJson(`/documents/${doc.id}`, { method: 'DELETE' });
+      await this.auth.fetchJson(`/documents/${this.documentToDelete.id}`, { method: 'DELETE' });
       this.notifications.success('Document deleted');
+      this.closeDeleteModal();
       this.router.refresh('documents');
     } catch (e) {
       this.notifications.error(e.message);
+    } finally {
+      this.isDeleting = false;
     }
   }
 

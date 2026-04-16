@@ -125,7 +125,7 @@ export class PropertiesService {
     async searchAssets(localityId: string, q: string): Promise<any[]> {
         const results = await this.assetRepository.query(
             `SELECT id, name, address, similarity(name, $1) AS score
-             FROM assets
+             FROM buildings
              WHERE locality_id = $2
                AND similarity(name, $1) > 0.2
              ORDER BY score DESC
@@ -277,6 +277,10 @@ export class PropertiesService {
         companyId: string,
         csvContent: string,
     ): Promise<{ created: number; failed: number; errors: string[] }> {
+        if (!csvContent || typeof csvContent !== 'string') {
+            return { created: 0, failed: 0, errors: ['CSV content is required and must be a string'] };
+        }
+
         const lines = csvContent.trim().split('\n');
         if (lines.length < 2) {
             return { created: 0, failed: 0, errors: ['CSV must have a header row and at least one data row'] };

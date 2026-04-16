@@ -64,6 +64,13 @@ export default class CompanyController extends Controller {
     return regions.filter((r) => this.formActiveRegions.includes(r.code));
   }
 
+  get activeRegionOptions() {
+    return this.activeRegionObjects.map(r => ({
+      value: r.code,
+      label: `${r.name} (${r.currency})`
+    }));
+  }
+
   @action setField(fieldName, e) { this[fieldName] = e.target.value; }
 
   @action toggleRegion(code) {

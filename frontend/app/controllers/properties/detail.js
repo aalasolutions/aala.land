@@ -95,6 +95,33 @@ export default class PropertiesDetailController extends Controller {
     }));
   }
 
+  get statusOptions() {
+    return [
+      { value: 'available', label: 'Available' },
+      { value: 'rented', label: 'Rented' },
+      { value: 'sold', label: 'Sold' },
+      { value: 'maintenance', label: 'Maintenance' }
+    ];
+  }
+
+  get propertyTypeOptions() {
+    return [
+      { value: '', label: 'Inherit from Asset' },
+      { value: 'RENTAL', label: 'Rental' },
+      { value: 'FOR_SALE', label: 'For Sale' }
+    ];
+  }
+
+  get ownerOptions() {
+    return [
+      { value: '', label: 'Unassigned' },
+      ...(this.owners || []).map(owner => ({
+        value: owner.id,
+        label: owner.name
+      }))
+    ];
+  }
+
   @service region;
 
   // Asset modal

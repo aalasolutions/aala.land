@@ -31,6 +31,52 @@ export default class PropertiesIndexController extends Controller {
 
   get amenityOptions() { return AMENITY_OPTIONS; }
 
+  get filterTypeOptions() {
+    return [
+      { value: '', label: 'All' },
+      { value: 'RENTAL', label: 'Rent' },
+      { value: 'FOR_SALE', label: 'Sale' }
+    ];
+  }
+
+  get filterStatusOptions() {
+    return [
+      { value: '', label: 'All' },
+      { value: 'available', label: 'Available' },
+      { value: 'rented', label: 'Rented' },
+      { value: 'sold', label: 'Sold' },
+      { value: 'maintenance', label: 'Maintenance' }
+    ];
+  }
+
+  get filterBedsOptions() {
+    return [
+      { value: '', label: 'Any' },
+      { value: '0', label: 'Studio' },
+      { value: '1', label: '1' },
+      { value: '2', label: '2' },
+      { value: '3', label: '3' },
+      { value: '4', label: '4+' }
+    ];
+  }
+
+  get unitTypeOptions() {
+    return [
+      { value: '', label: 'Not set' },
+      { value: 'RENTAL', label: 'Rental' },
+      { value: 'FOR_SALE', label: 'For Sale' }
+    ];
+  }
+
+  get unitStatusOptions() {
+    return [
+      { value: 'available', label: 'Available' },
+      { value: 'rented', label: 'Rented' },
+      { value: 'sold', label: 'Sold' },
+      { value: 'maintenance', label: 'Maintenance' }
+    ];
+  }
+
   get browseHasNextPage() {
     return this.browseTotal > this.browsePage * 20;
   }

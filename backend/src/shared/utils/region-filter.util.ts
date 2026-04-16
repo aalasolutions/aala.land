@@ -7,7 +7,7 @@ import { SelectQueryBuilder } from 'typeorm';
 
 export const REGION_FILTER_SUBQUERY = `
   SELECT u.id FROM units u
-  INNER JOIN assets ast ON u.asset_id = ast.id
+  INNER JOIN buildings ast ON u.building_id = ast.id
   INNER JOIN localities loc ON ast.locality_id = loc.id
   INNER JOIN cities c ON loc.city_id = c.id
   WHERE c.region_code = :regionCode

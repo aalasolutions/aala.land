@@ -38,9 +38,19 @@ export default class EmailTemplatesController extends Controller {
   @tracked previewSubject = '';
   @tracked previewBody = '';
   @tracked previewVars = '';
+  @tracked showDeleteModal = false;
+  @tracked templateToDelete = null;
+  @tracked isDeleting = false;
 
   get categories() {
     return CATEGORIES;
+  }
+
+  get filterCategories() {
+    return [
+      { value: '', label: 'All Categories' },
+      ...CATEGORIES
+    ];
   }
 
   @action setField(fieldName, e) {
@@ -123,15 +133,29 @@ export default class EmailTemplatesController extends Controller {
     }
   }
 
-  @action async deleteTemplate(template) {
-    if (!confirm(`Delete template "${template.name}"?`)) return;
+  @action openDelete(template) {
+    this.templateToDelete = template;
+    this.showDeleteModal = true;
+  }
 
+  @action closeDeleteModal() {
+    this.showDeleteModal = false;
+    this.templateToDelete = null;
+  }
+
+  @action async confirmDelete() {
+    if (!this.templateToDelete || this.isDeleting) return;
+
+    this.isDeleting = true;
     try {
-      await this.auth.fetchJson(`/email-templates/${template.id}`, { method: 'DELETE' });
+      await this.auth.fetchJson(`/email-templates/${this.templateToDelete.id}`, { method: 'DELETE' });
       this.notifications.success('Template deleted');
+      this.closeDeleteModal();
       this.router.refresh('email-templates');
     } catch (e) {
       this.notifications.error(e.message);
+    } finally {
+      this.isDeleting = false;
     }
   }
 

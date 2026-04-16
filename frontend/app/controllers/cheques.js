@@ -26,6 +26,25 @@ export default class ChequesController extends Controller {
   @tracked bounceChequeItem = null;
   @tracked formBounceReason = '';
 
+  get chequeTypeOptions() {
+    return [
+      { value: 'RENT', label: 'Rent' },
+      { value: 'SECURITY_DEPOSIT', label: 'Security Deposit' },
+      { value: 'MAINTENANCE', label: 'Maintenance' },
+      { value: 'OTHER', label: 'Other' }
+    ];
+  }
+
+  get unitOptions() {
+    return [
+      { value: '', label: 'No property linked' },
+      ...(this.model.units || []).map(unit => ({
+        value: unit.id,
+        label: `${unit.areaName} - ${unit.assetName} - Unit ${unit.unitNumber}`
+      }))
+    ];
+  }
+
   @action setField(fieldName, e) { this[fieldName] = e.target.value; }
 
   @action setTab(tab) { this.activeTab = tab; }

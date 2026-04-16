@@ -189,7 +189,10 @@ export function getRegionByCode(code: string): Region | undefined {
   return REGIONS.find(r => r.code === code);
 }
 
-export function resolveRegions(codes: string[]): Region[] {
+export function resolveRegions(codes: string[] | null | undefined): Region[] {
+  if (!codes || !Array.isArray(codes)) {
+    return [];
+  }
   return codes.map(c => REGIONS.find(r => r.code === c)).filter(Boolean) as Region[];
 }
 

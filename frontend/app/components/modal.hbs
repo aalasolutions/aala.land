@@ -1,0 +1,18 @@
+{{#if @isOpen}}
+  <div class="modal-backdrop" {{on "click" this.close}}>
+    <div class="modal-panel {{@panelClass}}" {{on "click" this.stopPropagation}}>
+      {{#if @showClose}}
+        <div class="modal-header">
+          <h2>{{@title}}</h2>
+          <button type="button" class="modal-close-btn" aria-label="Close" {{on "click" this.close}}>
+            <Ph @icon="x" @size="20px" />
+          </button>
+        </div>
+      {{/if}}
+
+      <div class="modal-content flex col gap-6">
+        {{yield}}
+      </div>
+    </div>
+  </div>
+{{/if}}

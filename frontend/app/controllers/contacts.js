@@ -35,6 +35,9 @@ export default class ContactsController extends Controller {
   @tracked formNotes = '';
   @tracked isSaving = false;
   @tracked errorMsg = '';
+  @tracked showDeleteModal = false;
+  @tracked contactToDelete = null;
+  @tracked isDeleting = false;
 
   get contactTypes() {
     return CONTACT_TYPES;
@@ -122,15 +125,29 @@ export default class ContactsController extends Controller {
     }
   }
 
-  @action async deleteContact(contact) {
-    if (!confirm(`Delete ${contact.firstName} ${contact.lastName || ''}?`)) return;
+  @action openDelete(contact) {
+    this.contactToDelete = contact;
+    this.showDeleteModal = true;
+  }
 
+  @action closeDeleteModal() {
+    this.showDeleteModal = false;
+    this.contactToDelete = null;
+  }
+
+  @action async confirmDelete() {
+    if (!this.contactToDelete || this.isDeleting) return;
+
+    this.isDeleting = true;
     try {
-      await this.auth.fetchJson(`/contacts/${contact.id}`, { method: 'DELETE' });
+      await this.auth.fetchJson(`/contacts/${this.contactToDelete.id}`, { method: 'DELETE' });
       this.notifications.success('Contact deleted');
+      this.closeDeleteModal();
       this.router.refresh('contacts');
     } catch (e) {
       this.notifications.error(e.message);
+    } finally {
+      this.isDeleting = false;
     }
   }
 }

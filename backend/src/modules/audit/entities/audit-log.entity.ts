@@ -34,16 +34,16 @@ export class AuditLog {
   @Column({ name: 'entity_id', type: 'uuid', nullable: true })
   entityId: string | null;
 
-  @Column({ type: 'jsonb', nullable: true })
+  @Column({ name: 'old_value', type: 'jsonb', nullable: true })
   oldValue: Record<string, any> | null;
 
-  @Column({ type: 'jsonb', nullable: true })
+  @Column({ name: 'new_value', type: 'jsonb', nullable: true })
   newValue: Record<string, any> | null;
 
-  @Column({ type: 'varchar', length: 100, nullable: true })
+  @Column({ name: 'ip_address', type: 'varchar', length: 100, nullable: true })
   ipAddress: string | null;
 
-  @Column({ type: 'text', nullable: true })
+  @Column({ name: 'user_agent', type: 'text', nullable: true })
   userAgent: string | null;
 
   @CreateDateColumn({ name: 'created_at' })

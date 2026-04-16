@@ -79,6 +79,63 @@ export default class LeadsController extends Controller {
     return this.region.regions.length > 1;
   }
 
+  get statusOptions() {
+    return [
+      { value: 'NEW', label: 'New' },
+      { value: 'CONTACTED', label: 'Contacted' },
+      { value: 'VIEWING', label: 'Viewing' },
+      { value: 'NEGOTIATING', label: 'Negotiating' },
+      { value: 'WON', label: 'Won' },
+      { value: 'LOST', label: 'Lost' }
+    ];
+  }
+
+  get temperatureOptions() {
+    return [
+      { value: 'HOT', label: 'Hot' },
+      { value: 'WARM', label: 'Warm' },
+      { value: 'COLD', label: 'Cold' },
+      { value: 'DEAD', label: 'Dead' }
+    ];
+  }
+
+  get regionOptions() {
+    return this.region.regions.map(r => ({
+      value: r.code,
+      label: `${r.name} (${r.currency})`
+    }));
+  }
+
+  get propertyOptions() {
+    return [
+      { value: '', label: '-- None --' },
+      ...(this.properties || []).map(property => ({
+        value: property.id,
+        label: property.name
+      }))
+    ];
+  }
+
+  get unitOptions() {
+    return [
+      { value: '', label: '-- None --' },
+      ...(this.filteredUnits || []).map(unit => ({
+        value: unit.id,
+        label: `Unit ${unit.unitNumber} (${unit.status})`
+      }))
+    ];
+  }
+
+  get agentOptions() {
+    return [
+      { value: '', label: '-- Select Agent --' },
+      ...(this.agents || []).map(agent => ({
+        value: agent.id,
+        label: agent.name
+      }))
+    ];
+  }
+
   get allLeads() {
     return this.model?.data ?? [];
   }
