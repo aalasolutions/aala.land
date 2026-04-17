@@ -11,8 +11,6 @@ export default class CompanyController extends Controller {
   @service session;
 
   @tracked formName = '';
-  @tracked formPhone = '';
-  @tracked formAddress = '';
   @tracked formActiveRegions = [];
   @tracked formDefaultRegionCode = '';
   @tracked isSaving = false;
@@ -109,8 +107,6 @@ export default class CompanyController extends Controller {
         method: 'PATCH',
         body: JSON.stringify({
           name: this.formName,
-          ...(this.formPhone ? { phone: this.formPhone } : {}),
-          ...(this.formAddress ? { address: this.formAddress } : {}),
           ...(this.formActiveRegions.length > 0 ? {
             activeRegions: this.formActiveRegions,
             defaultRegionCode: this.formDefaultRegionCode,

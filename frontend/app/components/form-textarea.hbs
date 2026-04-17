@@ -10,7 +10,7 @@
     disabled={{@disabled}}
     readonly={{@readonly}}
     autocomplete={{@autocomplete}}
-    {{on "input" @onChange}}
+    {{on "input" this.handleInput}}
     ...attributes
   >{{@value}}</textarea>
 </div>

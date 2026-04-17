@@ -15,7 +15,7 @@
       disabled={{@disabled}}
       readonly={{@readonly}}
       autocomplete={{@autocomplete}}
-      {{on "input" @onChange}}
+      {{on "input" this.handleInput}}
       ...attributes
     />
   </div>

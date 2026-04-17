@@ -12,14 +12,10 @@
     {{! Left: Company Info }}
     <div class="glass-panel p-6">
       <h3 class="font-lg font-bold mb-4">Company Information</h3>
-      <form {{on "submit" this.saveCompany}}>
+      <form class="flex col gap-4" {{on "submit" this.saveCompany}}>
         <FormInput @label="Company Name" @id="company-name" @type="text" @value={{or this.formName this.company.name}} @onChange={{fn this.setField "formName"}} @required={{true}} />
 
         <FormInput @label="Email" @id="company-email" @type="email" @value={{this.company.email}} @disabled={{true}} />
-
-        <FormInput @label="Phone" @id="company-phone" @type="text" @value={{or this.formPhone this.company.phone}} @onChange={{fn this.setField "formPhone"}} @placeholder="+971 4 XXX XXXX" />
-
-        <FormTextarea @label="Address" @id="company-address" @rows={{3}} @value={{or this.formAddress this.company.address}} @onChange={{fn this.setField "formAddress"}} @placeholder="e.g. Gulberg, Lahore" />
 
         <FormInput @label="Plan" @type="text" @value={{or this.company.subscriptionTier "FREE"}} @disabled={{true}} />
 
