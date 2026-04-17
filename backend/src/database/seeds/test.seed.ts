@@ -40,7 +40,7 @@ export async function runTestSeed(dataSource: DataSource): Promise<TestSeedResul
   await dataSource.query(
     `INSERT INTO users (id, name, email, password, role, company_id, is_active)
      VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-    [adminId, 'Test Admin', 'admin@test.com', hashedAdminPassword, 'admin', company1Id, true]
+    [adminId, 'Test Admin', 'admin@test.com', hashedAdminPassword, 'company_admin', company1Id, true]
   );
 
   await dataSource.query(

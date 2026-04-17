@@ -1,6 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class AddReminderRulesAndUserInvite1773500000000 implements MigrationInterface {
+export class AddReminderRulesAndUserInvite1773500000002 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
     // 1. Add mustChangePassword to users
     const userCols = await queryRunner.query(

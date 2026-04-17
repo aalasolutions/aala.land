@@ -1,6 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class EnhanceMaintenanceAndDocuments1773500000000 implements MigrationInterface {
+export class EnhanceMaintenanceAndDocuments1773500000003 implements MigrationInterface {
     public async up(queryRunner: QueryRunner): Promise<void> {
         // === Work Orders: photos, costNotes, preventive maintenance ===
 
