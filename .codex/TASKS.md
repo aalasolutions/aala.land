@@ -1,0 +1,8 @@
+- [x] AGENT:@codex | Record shared component flow and styling system | 2026-04-17 | 2026-04-17 done
+- [x] AGENT:@codex | Fix backend TS2688 implicit `glob` type error | 2026-04-17 | 2026-04-17 done
+- [x] AGENT:@codex | Record core project structure and stages in memory | 2026-04-17 | 2026-04-17 done
+- [x] AGENT:@codex | Remove final legacy control-root references | 2026-04-17 | 2026-04-17 done
+- [x] AGENT:@codex | Record frontend UI primitives in memory | 2026-04-17 | 2026-04-17 done
+- [x] AGENT:@codex | Rename `.codex` workflow root and references | 2026-04-17 | 2026-04-17 done
+- [x] AGENT:@codex | Implement structured project memory workflow | 2026-04-17 | 2026-04-17 done
+- [x] AGENT:@codex | Bootstrap single-agent `.codex` workflow | 2026-04-17 | 2026-04-17 done

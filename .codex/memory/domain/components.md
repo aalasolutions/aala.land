@@ -1,0 +1,15 @@
+# Components Memory
+
+## Shared UI Primitives
+
+2026-04-17 | AGENT:@codex | AppButton | `frontend/app/components/app-button.{js,hbs}` wraps a native `<button>` and standardizes variant classes. Main args are `@variant`, `@text`, `@buttonType`, `@loading`, `@loadingText`, `@disabled`, `@onClick`, and optional `@class`.
+2026-04-17 | AGENT:@codex | AppButton | Variant mapping in `app-button.js` is `primary -> btn-primary`, `secondary -> btn-secondary`, `success -> btn-success`, `danger -> btn-danger`, and `warning -> btn-warning`, all layered on top of base class `btn`.
+2026-04-17 | AGENT:@codex | AppButton | Shared action rows commonly use `AppButton` for modal footer actions: secondary cancel button plus primary submit/save button. Common usage exists in `leads`, `leases`, `vendors`, `contacts`, `team`, `documents`, `maintenance`, `owners`, `financials`, `commissions`, `cheques`, and `properties`.
+2026-04-17 | AGENT:@codex | FormInput | `frontend/app/components/form-input.{js,hbs}` is a presentational labeled input wrapper. Main args are `@label`, `@id`, `@type`, `@placeholder`, `@value`, `@onChange`, `@required`, `@min`, `@max`, and `@step`.
+2026-04-17 | AGENT:@codex | FormInput | The form flow across the app is controller-tracked state -> `<FormInput ... @value={{this.field}} @onChange={{fn this.setField "field"}} />` -> controller `setField` updates tracked state -> enclosing `<form>` submit action persists.
+2026-04-17 | AGENT:@codex | FormInput | `FormInput` is reused broadly for CRUD forms in `leads`, `leases`, `vendors`, `contacts`, `team`, `documents`, `maintenance`, `owners`, `financials`, `commissions`, `cheques`, `properties`, `company`, and `email-templates`.
+2026-04-17 | AGENT:@codex | Modal | `frontend/app/components/modal.{js,hbs}` is the generic shell for overlay dialogs. Main args are `@isOpen`, `@title`, `@onClose`, `@showClose`, and optional `@panelClass`. It closes on backdrop click and stops propagation inside the panel.
+2026-04-17 | AGENT:@codex | Modal | Standard modal flow is tracked boolean like `showModal`/`showAssignModal` in a controller -> template renders `<Modal @isOpen={{...}} ...>` -> close action resets boolean and form/error state in the controller.
+2026-04-17 | AGENT:@codex | ConfirmModal | `frontend/app/components/confirm-modal.{js,hbs}` composes `Modal` for destructive/confirm actions. Main args are `@isOpen`, `@title`, `@message`, `@onClose`, `@onConfirm`, `@cancelText`, `@confirmText`, `@confirmingText`, `@confirmType`, and `@isConfirming`.
+2026-04-17 | AGENT:@codex | ConfirmModal | `ConfirmModal` is used where a second confirmation step exists, such as delete/archive/bounce actions in `documents`, `leases`, `vendors`, `contacts`, `team`, `owners`, and `properties/unit`.
+2026-04-17 | AGENT:@codex | Leads Flow | `frontend/app/templates/leads.hbs` shows the common CRUD pattern: kanban/list surface -> `openCreate`/`openEdit` set tracked form state -> `Modal` hosts `FormInput` and `FormDropdown` fields -> `AppButton` handles cancel/save -> a separate `Modal` handles assignment and a custom detail overlay handles richer read-only inspection.
