@@ -3,9 +3,14 @@
   <textarea
     id={{@id}}
     class="form-input"
+    name={{@name}}
     rows={{@rows}}
     placeholder={{@placeholder}}
     required={{@required}}
+    disabled={{@disabled}}
+    readonly={{@readonly}}
+    autocomplete={{@autocomplete}}
     {{on "input" @onChange}}
+    ...attributes
   >{{@value}}</textarea>
 </div>

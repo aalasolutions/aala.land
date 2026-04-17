@@ -1890,6 +1890,18 @@ textarea {
     margin-bottom: var(--space-8);
 }
 
+.owner-detail-title-section {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+}
+
+.owner-detail-heading {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+}
+
 .info-card {
     background: var(--bg-surface);
     border: 1px solid var(--border-light);
@@ -1996,7 +2008,7 @@ textarea {
 }
 
 .btn-back {
-    margin-right: var(--space-4);
+    align-self: flex-start;
 }
 
 .unit-card-link {
