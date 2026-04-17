@@ -1677,6 +1677,20 @@ textarea {
     gap: var(--space-3);
 }
 
+.modal-content .form-actions,
+.modal-content .flex.gap-3:last-child {
+    width: 100%;
+
+    > * {
+        flex: 1 1 0;
+    }
+
+    .btn {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
 .max-w-lg {
     max-width: 480px;
 }
