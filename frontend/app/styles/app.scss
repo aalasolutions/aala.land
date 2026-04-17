@@ -3256,6 +3256,11 @@ textarea {
 // =================================
 // FORM COMPONENT ALIGNMENT FIX
 // =================================
+.flex-1 {
+    flex: 1 1 0;
+    min-width: 0;
+}
+
 .flex.items-start {
     > .flex-1 {
         display: flex;
