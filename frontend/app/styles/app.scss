@@ -2208,7 +2208,9 @@ textarea {
     background: var(--bg-surface);
     border-radius: var(--radius-xl);
     border: 1px solid var(--border-light);
-    overflow: hidden;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
 }
 
 // Legacy alias
@@ -2216,6 +2218,7 @@ textarea {
 
 .data-table {
     width: 100%;
+    min-width: max-content;
     border-collapse: collapse;
 
     thead {
