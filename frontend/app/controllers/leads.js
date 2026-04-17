@@ -230,6 +230,10 @@ export default class LeadsController extends Controller {
   }
 
   @action openEdit(lead) {
+    if (this.showDetailModal) {
+      this.closeDetailModal();
+    }
+
     this.formFirstName = lead.firstName ?? '';
     this.formLastName = lead.lastName ?? '';
     this.formEmail = lead.email ?? '';
@@ -248,6 +252,10 @@ export default class LeadsController extends Controller {
   }
 
   @action openAssignModal(lead) {
+    if (this.showDetailModal) {
+      this.closeDetailModal();
+    }
+
     this.assignLead = lead;
     this.selectedAgentId = lead.assignedTo ?? '';
     this.loadAgents();

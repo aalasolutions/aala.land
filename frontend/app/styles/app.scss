@@ -2303,18 +2303,22 @@ textarea {
     max-height: 85vh;
 }
 
-.detail-modal-header {
-    background: var(--bg-surface);
-    flex-shrink: 0;
-}
-
 .detail-modal-content {
     background: var(--bg-surface);
+    align-items: stretch;
+    min-width: 0;
 }
 
 .detail-info {
+    flex: 0 0 280px;
     border-right: 1px solid var(--border-light);
     padding-right: var(--space-4);
+    min-width: 0;
+}
+
+.detail-timeline {
+    flex: 1 1 auto;
+    min-width: 0;
 }
 
 .info-section {
@@ -2329,19 +2333,94 @@ textarea {
 .activity-timeline {
     max-height: 400px;
     overflow-y: auto;
+    padding-right: var(--space-2);
+}
+
+@media (max-width: 768px) {
+    .detail-modal-content {
+        flex-direction: column;
+    }
+
+    .detail-info {
+        flex: 1 1 auto;
+        border-right: none;
+        border-bottom: 1px solid var(--border-light);
+        padding-right: 0;
+        padding-bottom: var(--space-4);
+    }
 }
 
 .activity-item {
+    display: grid;
+    grid-template-columns: 180px minmax(0, 1fr);
+    gap: var(--space-4);
+    align-items: flex-start;
+    padding: var(--space-3);
     background: var(--bg-muted);
+    border: 1px solid var(--border-light);
     border-radius: var(--radius-lg);
+}
 
-    .activity-icon {
-        font-size: var(--font-xl);
-        line-height: 1;
-    }
+.activity-side {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-3);
+    min-width: 0;
+}
 
-    .activity-content {
-        min-width: 0;
+.activity-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: var(--bg-surface);
+    color: var(--color-primary);
+    border: 1px solid var(--border-light);
+    line-height: 1;
+    flex-shrink: 0;
+}
+
+.activity-summary {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    min-width: 0;
+}
+
+.activity-type {
+    font-size: var(--font-sm);
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.activity-date {
+    font-size: var(--font-xs);
+    color: var(--text-muted);
+}
+
+.activity-content {
+    min-width: 0;
+}
+
+.activity-notes {
+    margin-top: var(--space-2);
+    font-size: var(--font-sm);
+    color: var(--text-secondary);
+    line-height: 1.5;
+}
+
+.activity-meta {
+    margin-top: var(--space-2);
+    font-size: var(--font-xs);
+    color: var(--text-muted);
+}
+
+@media (max-width: 768px) {
+    .activity-item {
+        grid-template-columns: 1fr;
+        gap: var(--space-3);
     }
 }
 
