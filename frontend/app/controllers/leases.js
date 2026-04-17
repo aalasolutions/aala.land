@@ -3,6 +3,8 @@ import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
 
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 export default class LeasesController extends Controller {
   @service auth;
   @service notifications;
@@ -92,11 +94,17 @@ export default class LeasesController extends Controller {
   @action async saveLease(event) {
     event.preventDefault();
     if (this.isSaving) return;
-    this.isSaving = true;
     this.errorMsg = '';
 
     const isEdit = !!this.editLease;
     const isRenew = !!this.renewingLeaseId;
+
+    if (!isEdit && !UUID_PATTERN.test(this.formUnitId)) {
+      this.errorMsg = 'Please select a valid unit.';
+      return;
+    }
+
+    this.isSaving = true;
     let path;
     let method;
 
