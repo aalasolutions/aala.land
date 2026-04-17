@@ -2009,6 +2009,14 @@ textarea {
 
 .btn-back {
     align-self: flex-start;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+}
+
+.btn-back-label {
+    line-height: 1;
 }
 
 .unit-card-link {
