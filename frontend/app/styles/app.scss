@@ -3091,7 +3091,7 @@ textarea {
     .dropdown-trigger {
         width: 100%;
         cursor: pointer;
-        padding-right: 40px !important;
+        padding-right: 40px;
 
         &:disabled {
             opacity: 0.6;
