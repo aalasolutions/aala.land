@@ -8,6 +8,9 @@ import { InviteUserDto } from './dto/invite-user.dto';
 import * as bcrypt from 'bcryptjs';
 import * as crypto from 'crypto';
 import { paginationOptions } from '../../shared/utils/pagination.util';
+import { MailService } from '../../shared/services/mail.service';
+import { EmailTemplatesService } from '../email-templates/email-templates.service';
+import { EmailTemplateCategory } from '../email-templates/entities/email-template.entity';
 
 @Injectable()
 export class UsersService {
@@ -16,6 +19,8 @@ export class UsersService {
     constructor(
         @InjectRepository(User)
         private readonly userRepository: Repository<User>,
+        private readonly mailService: MailService,
+        private readonly emailTemplatesService: EmailTemplatesService,
     ) { }
 
     async create(dto: CreateUserDto, companyId: string): Promise<User> {
@@ -117,8 +122,62 @@ export class UsersService {
 
         const saved = await this.userRepository.save(user);
 
-        this.logger.debug(`User invited: ${dto.email} (temporary password generated, pending email service)`);
+        this.sendInviteEmail(companyId, dto.email, name, tempPassword).catch((err) => {
+            this.logger.error(`Failed to send invite email to ${dto.email}: ${err instanceof Error ? err.message : String(err)}`);
+        });
 
         return saved;
+    }
+
+    private async sendInviteEmail(
+        companyId: string,
+        email: string,
+        name: string,
+        tempPassword: string,
+    ): Promise<void> {
+        const loginUrl = `${process.env.APP_URL || 'http://localhost:4200'}/login`;
+        const variables = { name, email, password: tempPassword, loginUrl };
+
+        let subject: string;
+        let text: string;
+
+        try {
+            const { data: templates } = await this.emailTemplatesService.findAll(
+                companyId,
+                1,
+                1,
+                EmailTemplateCategory.WELCOME,
+            );
+
+            if (templates.length > 0) {
+                const rendered = await this.emailTemplatesService.render(templates[0].id, companyId, variables);
+                subject = rendered.subject;
+                text = rendered.body;
+            } else {
+                subject = 'You have been invited to AALA.LAND';
+                text = this.buildFallbackInviteText(variables);
+            }
+        } catch (err) {
+            this.logger.warn(`Template lookup failed for invite to ${email}, using plaintext fallback: ${err instanceof Error ? err.message : String(err)}`);
+            subject = 'You have been invited to AALA.LAND';
+            text = this.buildFallbackInviteText(variables);
+        }
+
+        await this.mailService.sendMail({ to: email, subject, text });
+    }
+
+    private buildFallbackInviteText(vars: { name: string; email: string; password: string; loginUrl: string }): string {
+        return [
+            `Hi ${vars.name},`,
+            '',
+            'You have been invited to AALA.LAND.',
+            '',
+            `Email: ${vars.email}`,
+            `Temporary Password: ${vars.password}`,
+            '',
+            `Login at: ${vars.loginUrl}`,
+            '',
+            'You will be asked to change your password on first login.',
+        ].join('\n');
     }
 }
