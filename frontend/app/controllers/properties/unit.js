@@ -3,7 +3,21 @@ import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
 import { AMENITY_OPTIONS } from '../../constants/amenities';
+import { closeDeleteModal, confirmDeleteModal, openDeleteModal } from '../../utils/delete-modal';
 import { toggleArrayItem } from '../../utils/toggle-array-item';
+
+const PROPERTY_STATUS_OPTIONS = [
+  { value: 'available', label: 'Available' },
+  { value: 'rented', label: 'Rented' },
+  { value: 'sold', label: 'Sold' },
+  { value: 'maintenance', label: 'Maintenance' },
+];
+
+const PROPERTY_TYPE_OPTIONS = [
+  { value: '', label: 'Not set' },
+  { value: 'RENTAL', label: 'Rental' },
+  { value: 'FOR_SALE', label: 'For Sale' },
+];
 
 export default class PropertiesUnitController extends Controller {
   @service auth;
@@ -37,24 +51,11 @@ export default class PropertiesUnitController extends Controller {
   @tracked formOwnerId = '';
   @tracked formAmenities = [];
 
-  get amenityOptions() { return AMENITY_OPTIONS; }
+  amenityOptions = AMENITY_OPTIONS;
 
-  get statusOptions() {
-    return [
-      { value: 'available', label: 'Available' },
-      { value: 'rented', label: 'Rented' },
-      { value: 'sold', label: 'Sold' },
-      { value: 'maintenance', label: 'Maintenance' }
-    ];
-  }
+  statusOptions = PROPERTY_STATUS_OPTIONS;
 
-  get propertyTypeOptions() {
-    return [
-      { value: '', label: 'Not set' },
-      { value: 'RENTAL', label: 'Rental' },
-      { value: 'FOR_SALE', label: 'For Sale' }
-    ];
-  }
+  propertyTypeOptions = PROPERTY_TYPE_OPTIONS;
 
   get ownerOptions() {
     return [
@@ -161,29 +162,21 @@ export default class PropertiesUnitController extends Controller {
   }
 
   @action openDeletePhoto(media) {
-    this.itemToDelete = media;
-    this.showDeleteModal = true;
+    openDeleteModal(this, 'itemToDelete', media);
   }
 
   @action closeDeleteModal() {
-    this.showDeleteModal = false;
-    this.itemToDelete = null;
+    closeDeleteModal(this, 'itemToDelete');
   }
 
   @action async confirmDeletePhoto() {
-    if (!this.itemToDelete || this.isDeleting) return;
-
-    this.isDeleting = true;
-    try {
-      await this.auth.fetchJson(`/properties/media/${this.itemToDelete.id}`, { method: 'DELETE' });
-      this.notifications.success('Photo deleted');
-      this.closeDeleteModal();
-      this.router.refresh('properties.unit');
-    } catch (err) {
-      this.notifications.error(err.message || 'Delete failed');
-    } finally {
-      this.isDeleting = false;
-    }
+    await confirmDeleteModal(this, {
+      itemKey: 'itemToDelete',
+      resourcePath: '/properties/media',
+      successMessage: 'Photo deleted',
+      refreshRoute: 'properties.unit',
+      errorMessage: 'Delete failed',
+    });
   }
 
   @action async setPrimaryPhoto(media) {

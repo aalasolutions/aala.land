@@ -2,6 +2,7 @@ import Controller from '@ember/controller';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
+import { closeDeleteModal, confirmDeleteModal, openDeleteModal } from '../../utils/delete-modal';
 
 export default class OwnersIndexController extends Controller {
   @service auth;
@@ -120,29 +121,20 @@ export default class OwnersIndexController extends Controller {
   }
 
   @action openDelete(owner) {
-    this.ownerToDelete = owner;
-    this.showDeleteModal = true;
+    openDeleteModal(this, 'ownerToDelete', owner);
   }
 
   @action closeDeleteModal() {
-    this.showDeleteModal = false;
-    this.ownerToDelete = null;
+    closeDeleteModal(this, 'ownerToDelete');
   }
 
   @action async confirmDelete() {
-    if (!this.ownerToDelete || this.isDeleting) return;
-
-    this.isDeleting = true;
-    try {
-      await this.auth.fetchJson(`/owners/${this.ownerToDelete.id}`, { method: 'DELETE' });
-      this.notifications.success('Owner removed');
-      this.closeDeleteModal();
-      this.router.refresh('owners');
-    } catch (e) {
-      this.notifications.error(e.message);
-    } finally {
-      this.isDeleting = false;
-    }
+    await confirmDeleteModal(this, {
+      itemKey: 'ownerToDelete',
+      resourcePath: '/owners',
+      successMessage: 'Owner removed',
+      refreshRoute: 'owners',
+    });
   }
 
   @action viewOwner(owner) {

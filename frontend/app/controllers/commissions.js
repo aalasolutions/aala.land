@@ -3,6 +3,19 @@ import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
 
+const FILTER_STATUS_OPTIONS = [
+  { value: '', label: 'All' },
+  { value: 'PENDING', label: 'Pending' },
+  { value: 'APPROVED', label: 'Approved' },
+  { value: 'PAID', label: 'Paid' },
+];
+
+const COMMISSION_TYPE_OPTIONS = [
+  { value: 'SALE', label: 'Sale' },
+  { value: 'RENTAL', label: 'Rental' },
+  { value: 'REFERRAL', label: 'Referral' },
+];
+
 export default class CommissionsController extends Controller {
   @service auth;
   @service notifications;
@@ -20,22 +33,9 @@ export default class CommissionsController extends Controller {
   @tracked formTransactionId = '';
   @tracked formNotes = '';
 
-  get filterStatusOptions() {
-    return [
-      { value: '', label: 'All' },
-      { value: 'PENDING', label: 'Pending' },
-      { value: 'APPROVED', label: 'Approved' },
-      { value: 'PAID', label: 'Paid' }
-    ];
-  }
+  filterStatusOptions = FILTER_STATUS_OPTIONS;
 
-  get commissionTypeOptions() {
-    return [
-      { value: 'SALE', label: 'Sale' },
-      { value: 'RENTAL', label: 'Rental' },
-      { value: 'REFERRAL', label: 'Referral' }
-    ];
-  }
+  commissionTypeOptions = COMMISSION_TYPE_OPTIONS;
 
   get agentOptions() {
     return (this.model.agents || []).map(agent => ({

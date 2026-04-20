@@ -19,12 +19,14 @@ const TEMPERATURE_STAGES = [
   { temperature: 'DEAD', label: 'Dead', icon: 'skull' },
 ];
 
-const TEMPERATURE_COLORS = {
-  HOT: { bg: '#fef2f2', text: '#dc2626', border: '#fecaca' },
-  WARM: { bg: '#fffbeb', text: '#d97706', border: '#fde68a' },
-  COLD: { bg: '#eff6ff', text: '#2563eb', border: '#bfdbfe' },
-  DEAD: { bg: '#f3f4f6', text: '#6b7280', border: '#d1d5db' },
-};
+const STATUS_OPTIONS = PIPELINE_STAGES.map(({ status, label }) => ({ value: status, label }));
+
+const TEMPERATURE_OPTIONS = TEMPERATURE_STAGES.map(({ temperature, label }) => ({
+  value: temperature,
+  label,
+}));
+
+const NONE_OPTION = { value: '', label: '-- None --' };
 
 export default class LeadsController extends Controller {
   @service auth;
@@ -79,25 +81,9 @@ export default class LeadsController extends Controller {
     return this.region.regions.length > 1;
   }
 
-  get statusOptions() {
-    return [
-      { value: 'NEW', label: 'New' },
-      { value: 'CONTACTED', label: 'Contacted' },
-      { value: 'VIEWING', label: 'Viewing' },
-      { value: 'NEGOTIATING', label: 'Negotiating' },
-      { value: 'WON', label: 'Won' },
-      { value: 'LOST', label: 'Lost' }
-    ];
-  }
+  statusOptions = STATUS_OPTIONS;
 
-  get temperatureOptions() {
-    return [
-      { value: 'HOT', label: 'Hot' },
-      { value: 'WARM', label: 'Warm' },
-      { value: 'COLD', label: 'Cold' },
-      { value: 'DEAD', label: 'Dead' }
-    ];
-  }
+  temperatureOptions = TEMPERATURE_OPTIONS;
 
   get regionOptions() {
     return this.region.regions.map(r => ({
@@ -108,7 +94,7 @@ export default class LeadsController extends Controller {
 
   get propertyOptions() {
     return [
-      { value: '', label: '-- None --' },
+      NONE_OPTION,
       ...(this.properties || []).map(property => ({
         value: property.id,
         label: property.name
@@ -118,7 +104,7 @@ export default class LeadsController extends Controller {
 
   get unitOptions() {
     return [
-      { value: '', label: '-- None --' },
+      NONE_OPTION,
       ...(this.filteredUnits || []).map(unit => ({
         value: unit.id,
         label: `Unit ${unit.unitNumber} (${unit.status})`
@@ -195,10 +181,6 @@ export default class LeadsController extends Controller {
     if (mode === 'agent' && this.agents.length === 0) {
       this.loadAgents();
     }
-  }
-
-  getTemperatureColor(temp) {
-    return TEMPERATURE_COLORS[temp] || TEMPERATURE_COLORS.WARM;
   }
 
   @action setField(fieldName, e) { this[fieldName] = e.target.value; }

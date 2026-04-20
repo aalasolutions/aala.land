@@ -54,7 +54,7 @@
 
   {{!-- PIPELINE KANBAN VIEW --}}
   {{#if (eq this.viewMode 'pipeline')}}
-    <div class="kanban-board">
+    <div class="kanban-board kanban-board--pipeline">
       {{#each this.columns as |column|}}
         <div data-test-kanban-column
           data-test-column-status={{column.status}}
@@ -124,7 +124,7 @@
 
   {{!-- TEMPERATURE BOARD VIEW --}}
   {{#if (eq this.viewMode 'temperature')}}
-    <div data-test-temperature-board class="kanban-board" style="grid-template-columns: repeat(4, minmax(250px, 1fr));">
+    <div data-test-temperature-board class="kanban-board kanban-board--temperature">
       {{#each this.temperatureColumns as |column|}}
         <div data-test-kanban-column
           data-test-column-temp={{column.temperature}}
@@ -191,7 +191,7 @@
 
   {{!-- AGENT BOARD VIEW --}}
   {{#if (eq this.viewMode 'agent')}}
-    <div data-test-agent-board class="kanban-board" style="grid-template-columns: repeat({{this.agentColumns.length}}, minmax(250px, 1fr));">
+    <div data-test-agent-board class="kanban-board kanban-board--agent">
       {{#each this.agentColumns as |column|}}
         <div data-test-kanban-column
           data-test-column-agent={{or column.agentId "unassigned"}}
@@ -417,7 +417,7 @@
     {{!-- Content --}}
     <div class="detail-modal-content flex gap-6">
       {{!-- Left: Lead Info --}}
-      <div class="detail-info flex col gap-4" style="flex: 0 0 280px;">
+      <div class="detail-info flex col gap-4">
         <div class="info-section">
           <h4 class="font-sm font-bold text-muted mb-2">Contact Info</h4>
           <div class="flex col gap-2">

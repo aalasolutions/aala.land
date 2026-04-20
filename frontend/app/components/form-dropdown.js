@@ -2,6 +2,7 @@ import Component from '@glimmer/component';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { registerDestructor } from '@ember/destroyable';
+import { htmlSafe } from '@ember/template';
 
 export default class FormDropdownComponent extends Component {
   @tracked isOpen = false;
@@ -9,6 +10,7 @@ export default class FormDropdownComponent extends Component {
   @tracked dropdownPosition = null;
   @tracked isInModal = false;
   clickOutsideHandler = null;
+  dropdownElement = null;
 
   constructor() {
     super(...arguments);
@@ -41,13 +43,21 @@ export default class FormDropdownComponent extends Component {
     return optionCount > threshold;
   }
 
+  get dropdownMenuStyle() {
+    if (!this.isInModal || !this.dropdownPosition) {
+      return undefined;
+    }
+
+    const { top, left, width } = this.dropdownPosition;
+    return htmlSafe(
+      `position:fixed;top:${top}px;left:${left}px;width:${width}px;z-index:2000;max-height:300px;`
+    );
+  }
+
   setupClickOutsideHandler() {
     this.clickOutsideHandler = (event) => {
-      if (this.isOpen) {
-        const dropdownContainer = document.getElementById(this.args.id)?.closest('.form-dropdown');
-        if (dropdownContainer && !dropdownContainer.contains(event.target)) {
-          this.closeDropdown();
-        }
+      if (this.isOpen && this.dropdownElement && !this.dropdownElement.contains(event.target)) {
+        this.closeDropdown();
       }
     };
     document.addEventListener('click', this.clickOutsideHandler, true);
@@ -60,10 +70,7 @@ export default class FormDropdownComponent extends Component {
     }
   }
 
-  calculateDropdownPosition() {
-    const triggerElement = document.getElementById(this.args.id);
-    if (!triggerElement) return null;
-
+  calculateDropdownPosition(triggerElement) {
     const triggerRect = triggerElement.getBoundingClientRect();
     const dropdownHeight = 300;
     const windowHeight = window.innerHeight;
@@ -99,20 +106,20 @@ export default class FormDropdownComponent extends Component {
   }
 
   @action
-  toggleDropdown() {
+  toggleDropdown(event) {
     if (this.args.disabled) return;
 
-    if (!this.isOpen) {
-      this.dropdownPosition = this.calculateDropdownPosition();
-    } else {
-      this.dropdownPosition = null;
+    if (this.isOpen) {
+      this.closeDropdown();
+      return;
     }
 
-    this.isOpen = !this.isOpen;
-    if (!this.isOpen) {
-      this.searchText = '';
-      this.dropdownPosition = null;
-    }
+    const triggerElement = event?.currentTarget;
+    this.dropdownElement = triggerElement?.closest('.form-dropdown') ?? null;
+    this.dropdownPosition = triggerElement
+      ? this.calculateDropdownPosition(triggerElement)
+      : null;
+    this.isOpen = true;
   }
 
   @action
@@ -120,6 +127,8 @@ export default class FormDropdownComponent extends Component {
     this.isOpen = false;
     this.searchText = '';
     this.dropdownPosition = null;
+    this.isInModal = false;
+    this.dropdownElement = null;
   }
 
   @action

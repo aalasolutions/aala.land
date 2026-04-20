@@ -96,11 +96,11 @@
         <FormDropdown @label="Bedrooms" @value={{this.filterBeds}} @onChange={{this.setFilterBeds}} @options={{this.filterBedsOptions}} @placeholder="Any" data-test-filter-beds />
         <div class="flex col gap-1">
           <label class="font-xs text-muted">Min Price</label>
-          <input type="number" class="form-input" style="min-width:110px" placeholder="Min" value={{this.filterMinPrice}} data-test-filter-min-price {{on "input" (fn this.setField "filterMinPrice")}} {{on "change" this.applyFilters}} />
+          <input type="number" class="form-input form-input--price-range" placeholder="Min" value={{this.filterMinPrice}} data-test-filter-min-price {{on "input" (fn this.setField "filterMinPrice")}} {{on "change" this.applyFilters}} />
         </div>
         <div class="flex col gap-1">
           <label class="font-xs text-muted">Max Price</label>
-          <input type="number" class="form-input" style="min-width:110px" placeholder="Max" value={{this.filterMaxPrice}} data-test-filter-max-price {{on "input" (fn this.setField "filterMaxPrice")}} {{on "change" this.applyFilters}} />
+          <input type="number" class="form-input form-input--price-range" placeholder="Max" value={{this.filterMaxPrice}} data-test-filter-max-price {{on "input" (fn this.setField "filterMaxPrice")}} {{on "change" this.applyFilters}} />
         </div>
         <div class="flex col gap-1">
           <label class="font-xs text-muted">&nbsp;</label>
@@ -263,7 +263,7 @@
 </Modal>
 
 {{!-- Bulk import modal --}}
-<Modal @isOpen={{this.showImportModal}} @title="Bulk Import Properties" @onClose={{this.closeImportModal}} @showClose={{true}} @panelClass="style='max-width: 600px;'">
+<Modal @isOpen={{this.showImportModal}} @title="Bulk Import Properties" @onClose={{this.closeImportModal}} @showClose={{true}} @panelClass="modal-md">
   <div class="flex col gap-4">
     <p class="text-muted">Import multiple property areas from a CSV file.</p>
 
@@ -279,7 +279,7 @@
     {{#if this.importPreview}}
       <div class="flex col gap-2">
         <p class="font-sm font-bold">Preview (first 10 rows):</p>
-        <div class="import-preview" style="max-height: 200px; overflow-y: auto;">
+        <div class="import-preview import-preview--scroll">
           {{#each this.importPreview as |row|}}
             <p class="font-xs">{{row.areaName}}, {{row.location}}</p>
           {{/each}}

@@ -1,5 +1,6 @@
 import Controller from '@ember/controller';
 import { service } from '@ember/service';
+import { htmlSafe } from '@ember/template';
 
 export default class DashboardController extends Controller {
   @service region;
@@ -23,6 +24,10 @@ export default class DashboardController extends Controller {
 
   pipelineWidth = (count) => {
     return Math.max(Math.round((count / this.maxPipelineCount) * 100), 2);
+  };
+
+  pipelineBarStyle = (count) => {
+    return htmlSafe(`width:${this.pipelineWidth(count)}%;`);
   };
 
   pipelineColor = (stage) => {

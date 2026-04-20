@@ -1,5 +1,5 @@
 {{! template-lint-disable no-invalid-interactive style-concatenation no-inline-styles }}
 <div class="glass-glow-container" {{on "mousemove" this.handleMouseMove}} {{on "mouseleave" this.handleMouseLeave}}>
-    <div class="glass-glow-spot" style="left: {{this.x}}px; top: {{this.y}}px; opacity: {{this.opacity}};"></div>
+    <div class="glass-glow-spot" style={{this.spotStyle}}></div>
     {{yield}}
 </div>

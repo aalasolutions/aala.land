@@ -2,6 +2,7 @@ import Controller from '@ember/controller';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
+import { closeDeleteModal, confirmDeleteModal, openDeleteModal } from '../utils/delete-modal';
 
 const SPECIALTY_OPTIONS = [
   { value: 'PLUMBING', label: 'Plumbing' },
@@ -43,9 +44,7 @@ export default class VendorsController extends Controller {
     return this.region.regions.length > 1;
   }
 
-  get specialtyOptions() {
-    return SPECIALTY_OPTIONS;
-  }
+  specialtyOptions = SPECIALTY_OPTIONS;
 
   @action setField(fieldName, e) { this[fieldName] = e.target.value; }
 
@@ -124,28 +123,19 @@ export default class VendorsController extends Controller {
   }
 
   @action openDelete(vendor) {
-    this.vendorToDelete = vendor;
-    this.showDeleteModal = true;
+    openDeleteModal(this, 'vendorToDelete', vendor);
   }
 
   @action closeDeleteModal() {
-    this.showDeleteModal = false;
-    this.vendorToDelete = null;
+    closeDeleteModal(this, 'vendorToDelete');
   }
 
   @action async confirmDelete() {
-    if (!this.vendorToDelete || this.isDeleting) return;
-
-    this.isDeleting = true;
-    try {
-      await this.auth.fetchJson(`/vendors/${this.vendorToDelete.id}`, { method: 'DELETE' });
-      this.notifications.success('Vendor deleted');
-      this.closeDeleteModal();
-      this.router.refresh('vendors');
-    } catch (e) {
-      this.notifications.error(e.message);
-    } finally {
-      this.isDeleting = false;
-    }
+    await confirmDeleteModal(this, {
+      itemKey: 'vendorToDelete',
+      resourcePath: '/vendors',
+      successMessage: 'Vendor deleted',
+      refreshRoute: 'vendors',
+    });
   }
 }
