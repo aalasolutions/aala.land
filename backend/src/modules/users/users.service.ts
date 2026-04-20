@@ -7,6 +7,7 @@ import { UpdateUserDto } from './dto/update-user.dto';
 import { InviteUserDto } from './dto/invite-user.dto';
 import * as bcrypt from 'bcryptjs';
 import * as crypto from 'crypto';
+import { paginationOptions } from '../../shared/utils/pagination.util';
 
 @Injectable()
 export class UsersService {
@@ -31,8 +32,7 @@ export class UsersService {
     async findAll(companyId: string, page = 1, limit = 20): Promise<{ data: User[]; total: number; page: number; limit: number }> {
         const [data, total] = await this.userRepository.findAndCount({
             where: { companyId },
-            skip: (page - 1) * limit,
-            take: limit,
+            ...paginationOptions(page, limit),
             order: { createdAt: 'DESC' },
         });
         return { data, total, page, limit };

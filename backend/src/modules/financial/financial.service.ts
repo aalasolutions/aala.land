@@ -1,10 +1,11 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, LessThan, Between, LessThanOrEqual, MoreThan, FindOptionsWhere } from 'typeorm';
+import { Repository, LessThan, Between, FindOptionsWhere } from 'typeorm';
 import { Transaction, TransactionType, TransactionStatus } from './entities/transaction.entity';
 import { CreateTransactionDto } from './dto/create-transaction.dto';
 import { UpdateTransactionDto } from './dto/update-transaction.dto';
 import { REGION_FILTER_SUBQUERY } from '../../shared/utils/region-filter.util';
+import { paginationOptions, pageSkip } from '../../shared/utils/pagination.util';
 
 export interface TransactionSummary {
   totalIncome: number;
@@ -40,7 +41,7 @@ export class FinancialService {
         qb.andWhere('unit.ownerId = :ownerId', { ownerId });
       }
 
-      qb.skip((page - 1) * limit)
+      qb.skip(pageSkip(page, limit))
         .take(limit)
         .orderBy('t.createdAt', 'DESC');
 
@@ -57,8 +58,7 @@ export class FinancialService {
     const [data, total] = await this.transactionRepository.findAndCount({
       where,
       relations: ['unit'],
-      skip: (page - 1) * limit,
-      take: limit,
+      ...paginationOptions(page, limit),
       order: { createdAt: 'DESC' },
     });
     return { data, total, page, limit };
@@ -128,29 +128,28 @@ export class FinancialService {
       status: TransactionStatus.PENDING,
     };
 
-    const overdue = await this.transactionRepository.find({
-      where: { ...baseWhere, dueDate: LessThan(today) },
-      order: { dueDate: 'ASC' },
-      take: 100,
-    });
-
-    const dueToday = await this.transactionRepository.find({
-      where: { ...baseWhere, dueDate: Between(today, tomorrow) },
-      order: { dueDate: 'ASC' },
-      take: 100,
-    });
-
-    const dueThisWeek = await this.transactionRepository.find({
-      where: { ...baseWhere, dueDate: Between(tomorrow, endOfWeek) },
-      order: { dueDate: 'ASC' },
-      take: 100,
-    });
-
-    const dueThisMonth = await this.transactionRepository.find({
-      where: { ...baseWhere, dueDate: Between(endOfWeek, endOfMonth) },
-      order: { dueDate: 'ASC' },
-      take: 100,
-    });
+    const [overdue, dueToday, dueThisWeek, dueThisMonth] = await Promise.all([
+      this.transactionRepository.find({
+        where: { ...baseWhere, dueDate: LessThan(today) },
+        order: { dueDate: 'ASC' },
+        take: 100,
+      }),
+      this.transactionRepository.find({
+        where: { ...baseWhere, dueDate: Between(today, tomorrow) },
+        order: { dueDate: 'ASC' },
+        take: 100,
+      }),
+      this.transactionRepository.find({
+        where: { ...baseWhere, dueDate: Between(tomorrow, endOfWeek) },
+        order: { dueDate: 'ASC' },
+        take: 100,
+      }),
+      this.transactionRepository.find({
+        where: { ...baseWhere, dueDate: Between(endOfWeek, endOfMonth) },
+        order: { dueDate: 'ASC' },
+        take: 100,
+      }),
+    ]);
 
     return { overdue, dueToday, dueThisWeek, dueThisMonth };
   }

@@ -13,6 +13,7 @@ import { CreateUnitDto } from './dto/create-unit.dto';
 import { UpdateUnitDto } from './dto/update-unit.dto';
 import { CreateListingDto } from './dto/create-listing.dto';
 import { UpdateListingDto } from './dto/update-listing.dto';
+import { paginationOptions, pageSkip } from '../../shared/utils/pagination.util';
 
 @Injectable()
 export class PropertiesService {
@@ -39,8 +40,7 @@ export class PropertiesService {
 
         const [areas, total] = await this.areaRepository.findAndCount({
             where,
-            skip: (page - 1) * limit,
-            take: limit,
+            ...paginationOptions(page, limit),
             order: { createdAt: 'DESC' },
         });
 
@@ -89,8 +89,7 @@ export class PropertiesService {
                 { localityId, createdByCompanyId: companyId },
             ],
             relations: ['locality', 'locality.city', 'units'],
-            skip: (page - 1) * limit,
-            take: limit,
+            ...paginationOptions(page, limit),
             order: { createdAt: 'DESC' },
         });
 
@@ -109,8 +108,7 @@ export class PropertiesService {
                 { createdByCompanyId: companyId },
             ],
             relations: ['locality', 'locality.city', 'units'],
-            skip: (page - 1) * limit,
-            take: limit,
+            ...paginationOptions(page, limit),
             order: { createdAt: 'DESC' },
         });
 
@@ -207,7 +205,7 @@ export class PropertiesService {
             qb.andWhere('ci.regionCode = :regionCode', { regionCode: filters.regionCode });
         }
 
-        qb.skip((page - 1) * limit)
+        qb.skip(pageSkip(page, limit))
             .take(limit)
             .orderBy('loc.name', 'ASC')
             .addOrderBy('a.name', 'ASC')
@@ -246,8 +244,7 @@ export class PropertiesService {
         const [data, total] = await this.unitRepository.findAndCount({
             where: { assetId, companyId },
             relations: ['owner'],
-            skip: (page - 1) * limit,
-            take: limit,
+            ...paginationOptions(page, limit),
             order: { createdAt: 'DESC' },
         });
         return { data, total, page, limit };
@@ -381,8 +378,7 @@ export class PropertiesService {
         const [data, total] = await this.listingRepository.findAndCount({
             where: { companyId },
             relations: ['unit'],
-            skip: (page - 1) * limit,
-            take: limit,
+            ...paginationOptions(page, limit),
             order: { createdAt: 'DESC' },
         });
         return { data, total, page, limit };

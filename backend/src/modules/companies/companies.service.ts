@@ -5,6 +5,7 @@ import { Company, SubscriptionTier, TIER_LIMITS } from './entities/company.entit
 import { CreateCompanyDto } from './dto/create-company.dto';
 import { UpdateCompanyDto } from './dto/update-company.dto';
 import { REGIONS, getRegionByCode } from '@shared/constants/regions';
+import { paginationOptions } from '../../shared/utils/pagination.util';
 
 @Injectable()
 export class CompaniesService {
@@ -32,8 +33,7 @@ export class CompaniesService {
 
     async findAll(page = 1, limit = 20): Promise<{ data: Company[]; total: number; page: number; limit: number }> {
         const [data, total] = await this.companyRepository.findAndCount({
-            skip: (page - 1) * limit,
-            take: limit,
+            ...paginationOptions(page, limit),
             order: { createdAt: 'DESC' },
         });
         return { data, total, page, limit };

@@ -5,6 +5,7 @@ import { Lease, LeaseStatus } from './entities/lease.entity';
 import { CreateLeaseDto } from './dto/create-lease.dto';
 import { UpdateLeaseDto } from './dto/update-lease.dto';
 import { REGION_FILTER_SUBQUERY } from '../../shared/utils/region-filter.util';
+import { paginationOptions } from '../../shared/utils/pagination.util';
 
 @Injectable()
 export class LeasesService {
@@ -42,8 +43,7 @@ export class LeasesService {
 
     const [data, total] = await this.leaseRepository.findAndCount({
       where: { companyId },
-      skip: (page - 1) * limit,
-      take: limit,
+      ...paginationOptions(page, limit),
       order: { createdAt: 'DESC' },
     });
     return { data, total, page, limit };

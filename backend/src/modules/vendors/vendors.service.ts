@@ -6,6 +6,7 @@ import { CreateVendorDto } from './dto/create-vendor.dto';
 import { UpdateVendorDto } from './dto/update-vendor.dto';
 import { Company } from '../companies/entities/company.entity';
 import { resolveRegionCode } from '../../shared/utils/resolve-region-code.util';
+import { paginationOptions } from '../../shared/utils/pagination.util';
 
 @Injectable()
 export class VendorsService {
@@ -58,8 +59,7 @@ export class VendorsService {
 
     const [data, total] = await this.vendorRepository.findAndCount({
       where,
-      skip: (page - 1) * limit,
-      take: limit,
+      ...paginationOptions(page, limit),
       order: { createdAt: 'DESC' },
     });
 

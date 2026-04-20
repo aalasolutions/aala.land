@@ -8,6 +8,7 @@ import { UpdateLeadDto } from './dto/update-lead.dto';
 import { CreateLeadActivityDto } from './dto/create-lead-activity.dto';
 import { Company } from '../companies/entities/company.entity';
 import { resolveRegionCode } from '../../shared/utils/resolve-region-code.util';
+import { paginationOptions } from '../../shared/utils/pagination.util';
 
 @Injectable()
 export class LeadsService {
@@ -33,8 +34,7 @@ export class LeadsService {
     const [data, total] = await this.leadRepository.findAndCount({
       where,
       relations: ['property', 'unit'],
-      skip: (page - 1) * limit,
-      take: limit,
+      ...paginationOptions(page, limit),
       order: { createdAt: 'DESC' },
     });
     return { data, total, page, limit };

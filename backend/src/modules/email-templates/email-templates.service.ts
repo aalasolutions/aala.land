@@ -4,6 +4,7 @@ import { Repository, FindOptionsWhere } from 'typeorm';
 import { EmailTemplate, EmailTemplateCategory } from './entities/email-template.entity';
 import { CreateEmailTemplateDto } from './dto/create-email-template.dto';
 import { UpdateEmailTemplateDto } from './dto/update-email-template.dto';
+import { paginationOptions } from '../../shared/utils/pagination.util';
 
 @Injectable()
 export class EmailTemplatesService {
@@ -30,8 +31,7 @@ export class EmailTemplatesService {
 
     const [data, total] = await this.templateRepository.findAndCount({
       where,
-      skip: (page - 1) * limit,
-      take: limit,
+      ...paginationOptions(page, limit),
       order: { createdAt: 'DESC' },
     });
     return { data, total, page, limit };
