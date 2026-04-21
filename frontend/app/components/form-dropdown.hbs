@@ -11,6 +11,7 @@
         disabled={{@disabled}}
         value={{this.displayText}}
         {{on "click" this.toggleDropdown}}
+        {{on "keydown" this.handleKeydown}}
       />
       <span class="dropdown-arrow {{if this.isOpen 'open'}}">
         <Ph @icon="caret-down" @size="16px" />
@@ -34,12 +35,13 @@
             </div>
           {{/if}}
 
-          <div class="dropdown-options">
+          <div class="dropdown-options" role="listbox" aria-labelledby={{@id}}>
             {{#if this.filteredOptions.length}}
-              {{#each this.filteredOptions as |opt|}}
+              {{#each this.filteredOptions as |opt index|}}
                 <div
-                  class="dropdown-option {{if (eq @value opt.value) 'selected'}}"
-                  role="button"
+                  class="dropdown-option {{if (eq @value opt.value) 'selected'}} {{if (eq this.highlightedIndex index) 'highlighted'}}"
+                  role="option"
+                  aria-selected={{if (eq @value opt.value) "true" "false"}}
                   {{on "click" (fn this.selectOption opt)}}
                 >
                   {{opt.label}}

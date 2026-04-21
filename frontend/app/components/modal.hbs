@@ -1,9 +1,16 @@
 {{#if @isOpen}}
   <div class="modal-backdrop" {{on "click" this.close}}>
-    <div class="modal-panel {{@panelClass}}" {{on "click" this.stopPropagation}} ...attributes>
+    <div 
+      class="modal-panel {{@panelClass}}" 
+      role="dialog" 
+      aria-modal="true" 
+      aria-labelledby={{if @title "modal-title"}}
+      {{on "click" this.stopPropagation}} 
+      ...attributes
+    >
       {{#if @showClose}}
         <div class="modal-header">
-          <h2>{{@title}}</h2>
+          <h2 id="modal-title">{{@title}}</h2>
           <button type="button" class="modal-close-btn" aria-label="Close" {{on "click" this.close}}>
             <Ph @icon="x" @size="20px" />
           </button>

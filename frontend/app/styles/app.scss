@@ -3312,7 +3312,7 @@ textarea {
                 margin-bottom: 4px;
             }
 
-            &:hover {
+            &:hover, &.highlighted {
                 background-color: var(--bg-muted);
             }
 

@@ -17,7 +17,7 @@
 
         <FormInput @label="Email" @id="company-email" @type="email" @value={{this.company.email}} @disabled={{true}} />
 
-        <FormInput @label="Plan" @type="text" @value={{or this.company.subscriptionTier "FREE"}} @disabled={{true}} />
+        <FormInput @label="Plan" @id="company-plan" @type="text" @value={{or this.company.subscriptionTier "FREE"}} @disabled={{true}} />
 
         {{#if this.errorMsg}}
           <p class="text-danger">{{this.errorMsg}}</p>

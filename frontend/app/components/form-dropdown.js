@@ -7,6 +7,7 @@ import { htmlSafe } from '@ember/template';
 export default class FormDropdownComponent extends Component {
   @tracked isOpen = false;
   @tracked searchText = '';
+  @tracked highlightedIndex = -1;
   @tracked dropdownPosition = null;
   @tracked isInModal = false;
   clickOutsideHandler = null;
@@ -115,18 +116,20 @@ export default class FormDropdownComponent extends Component {
       return;
     }
 
-    const triggerElement = event?.currentTarget;
+    const triggerElement = event?.currentTarget?.closest('.dropdown-container')?.querySelector('.dropdown-trigger');
     this.dropdownElement = triggerElement?.closest('.form-dropdown') ?? null;
     this.dropdownPosition = triggerElement
       ? this.calculateDropdownPosition(triggerElement)
       : null;
     this.isOpen = true;
+    this.highlightedIndex = -1;
   }
 
   @action
   closeDropdown() {
     this.isOpen = false;
     this.searchText = '';
+    this.highlightedIndex = -1;
     this.dropdownPosition = null;
     this.isInModal = false;
     this.dropdownElement = null;
@@ -143,19 +146,54 @@ export default class FormDropdownComponent extends Component {
   @action
   updateSearch(event) {
     this.searchText = event.target.value;
+    this.highlightedIndex = -1;
   }
 
   @action
   handleKeydown(event) {
+    if (!this.isOpen) {
+      if (event.key === 'ArrowDown' || event.key === 'ArrowUp' || event.key === 'Enter') {
+        event.preventDefault();
+        this.toggleDropdown(event);
+      }
+      return;
+    }
+
+    const optionsCount = this.filteredOptions.length;
+
     switch (event.key) {
-      case 'Escape':
-        this.closeDropdown();
+      case 'ArrowDown':
+        event.preventDefault();
+        this.highlightedIndex = (this.highlightedIndex + 1) % optionsCount;
+        this.scrollToHighlighted();
+        break;
+      case 'ArrowUp':
+        event.preventDefault();
+        this.highlightedIndex = (this.highlightedIndex - 1 + optionsCount) % optionsCount;
+        this.scrollToHighlighted();
         break;
       case 'Enter':
-        if (this.isOpen) {
-          event.preventDefault();
+        event.preventDefault();
+        if (this.highlightedIndex >= 0 && this.highlightedIndex < optionsCount) {
+          this.selectOption(this.filteredOptions[this.highlightedIndex]);
         }
         break;
+      case 'Escape':
+        event.preventDefault();
+        this.closeDropdown();
+        break;
+      case 'Tab':
+        this.closeDropdown();
+        break;
     }
+  }
+
+  scrollToHighlighted() {
+    setTimeout(() => {
+      const activeElement = document.querySelector('.dropdown-option.highlighted');
+      if (activeElement) {
+        activeElement.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      }
+    }, 0);
   }
 }
