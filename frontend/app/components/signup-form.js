@@ -2,9 +2,9 @@ import Component from '@glimmer/component';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
-import config from 'frontend/config/environment';
 
 export default class SignupFormComponent extends Component {
+  @service auth;
   @service router;
 
   @tracked companyName = '';
@@ -16,6 +16,16 @@ export default class SignupFormComponent extends Component {
   @tracked selectedRegion = '';
   @tracked isLoading = false;
   @tracked errorMessage = '';
+
+  get regionOptions() {
+    return (this.args.grouped || []).flatMap(group => 
+      (group.regions || []).map(r => ({
+        value: r.code,
+        label: `${r.name} (${r.currency})`,
+        group: group.countryName
+      }))
+    );
+  }
 
   get canSubmit() {
     return (
@@ -46,7 +56,8 @@ export default class SignupFormComponent extends Component {
   }
 
   @action
-  selectRegion(code) {
+  selectRegion(event) {
+    const code = event.target.value;
     this.selectedRegion = code;
     this.errorMessage = '';
   }
@@ -54,48 +65,29 @@ export default class SignupFormComponent extends Component {
   @action
   async submit(event) {
     event.preventDefault();
-    if (this.isLoading || !this.canSubmit) return;
+    
+    if (this.isLoading) return;
+    
+    if (!this.canSubmit) {
+      if (!this.selectedRegion) this.errorMessage = 'Please select a region';
+      else if (this.password !== this.confirmPassword) this.errorMessage = 'Passwords do not match';
+      else if (this.password.length < 8) this.errorMessage = 'Password must be at least 8 characters';
+      else this.errorMessage = 'Please fill in all fields';
+      return;
+    }
 
     this.isLoading = true;
     this.errorMessage = '';
 
     try {
-      const response = await fetch(`${config.APP.API_BASE}/auth/register`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          companyName: this.companyName.trim(),
-          companySlug: this.companySlug.trim(),
-          defaultRegionCode: this.selectedRegion,
-          userName: this.userName.trim(),
-          email: this.email.trim(),
-          password: this.password,
-        }),
+      await this.auth.register({
+        companyName: this.companyName.trim(),
+        companySlug: this.companySlug.trim(),
+        defaultRegionCode: this.selectedRegion,
+        userName: this.userName.trim(),
+        email: this.email.trim(),
+        password: this.password,
       });
-
-      if (!response.ok) {
-        const err = await response.json().catch(() => ({}));
-        const msg = Array.isArray(err.message)
-          ? err.message.join(', ')
-          : (err.message || 'Registration failed');
-        throw new Error(msg);
-      }
-
-      const { data } = await response.json();
-
-      // Auto-login: store session
-      localStorage.setItem('aala-session', JSON.stringify({
-        data: {
-          authenticated: {
-            user: data.user,
-            accessToken: data.accessToken,
-            refreshToken: data.refreshToken,
-            regions: data.regions || [],
-            defaultRegionCode: data.defaultRegionCode || null,
-          },
-        },
-        isAuthenticated: true,
-      }));
 
       this.router.transitionTo('dashboard');
     } catch (err) {

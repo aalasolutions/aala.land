@@ -16,20 +16,16 @@ export default class SignupRoute extends Route {
     try {
       const response = await fetch(`${config.APP.API_BASE}/companies/regions`);
       const result = await response.json();
-      const regions = Array.isArray(result) ? result : (result.data || []);
+      
+      const data = result.data || {};
 
-      // Group regions by country
-      const grouped = {};
-      for (const r of regions) {
-        if (!grouped[r.country]) {
-          grouped[r.country] = [];
-        }
-        grouped[r.country].push(r);
-      }
-
-      return { regions, grouped, countries: Object.keys(grouped).sort() };
+      return { 
+        regions: data.flat || [], 
+        grouped: data.grouped || [], 
+        countries: data.grouped.map(g => g.countryName)
+      };
     } catch {
-      return { regions: [], grouped: {}, countries: [] };
+      return { regions: [], grouped: [], countries: [] };
     }
   }
 }

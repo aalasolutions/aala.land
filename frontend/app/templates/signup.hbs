@@ -1,15 +1,15 @@
 {{page-title "Sign Up"}}
 
-<div class="auth-page">
-  <div class="auth-card">
-    <div class="auth-header">
-      <h1 class="font-xl font-bold">Create Account</h1>
-      <p class="font-sm text-muted">Set up your property management company</p>
+<div data-test-signup-page class="login-page">
+  <div class="card p-10 flex col gap-8 signup-card">
+    <div class="text-center">
+      <h1 class="brand-title">AALA.LAND</h1>
+      <p class="text-muted font-sm mt-2">Create your management workspace</p>
     </div>
 
     <SignupForm @regions={{this.model.regions}} @grouped={{this.model.grouped}} @countries={{this.model.countries}} />
 
-    <div class="auth-footer">
+    <div class="text-center">
       <p class="font-sm text-muted">
         Already have an account?
         <LinkTo @route="login" class="text-primary">Sign in</LinkTo>

@@ -30,6 +30,29 @@ export default class AuthService extends Service {
     await this.session.authenticate('authenticator:credentials', email, password);
   }
 
+  async register(registrationData) {
+    const response = await fetch(`${this.apiBase}/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(registrationData),
+    });
+
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw new Error(
+        Array.isArray(err.message)
+          ? err.message.join(', ')
+          : (err.message ?? 'Registration failed'),
+      );
+    }
+
+    const { data } = await response.json();
+    
+    await this.login(registrationData.email, registrationData.password);
+    
+    return data;
+  }
+
   async logout() {
     await this.session.invalidate();
   }

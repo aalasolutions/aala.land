@@ -815,10 +815,17 @@ body {
     border: 1px solid var(--border-light);
     border-radius: var(--radius-sm);
     cursor: pointer;
-    transition: border-color var(--transition-fast);
+    transition: all var(--transition-fast);
 
     &:hover {
         border-color: var(--color-primary);
+        background: var(--bg-muted);
+    }
+
+    &.active-region {
+        border-color: var(--color-primary);
+        background: var(--bg-primary-subtle);
+        box-shadow: 0 0 0 1px var(--color-primary);
     }
 }
 
@@ -907,6 +914,15 @@ textarea {
 
 .login-card {
     width: 400px;
+    background: var(--bg-surface);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-lg);
+    padding: var(--space-10);
+}
+
+.signup-card {
+    width: 600px;
+    max-width: 95vw;
     background: var(--bg-surface);
     border-radius: var(--radius-xl);
     box-shadow: var(--shadow-lg);
