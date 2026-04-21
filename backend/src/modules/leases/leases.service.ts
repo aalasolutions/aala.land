@@ -66,6 +66,16 @@ export class LeasesService {
 
   async update(id: string, companyId: string, dto: UpdateLeaseDto): Promise<Lease> {
     const lease = await this.findOne(id, companyId);
+
+    if (dto.status && dto.status !== lease.status) {
+      const terminal = [LeaseStatus.TERMINATED, LeaseStatus.RENEWED];
+      if (terminal.includes(lease.status)) {
+        throw new BadRequestException(
+          `Cannot change status of a ${lease.status} lease`,
+        );
+      }
+    }
+
     Object.assign(lease, dto);
     return this.leaseRepository.save(lease);
   }

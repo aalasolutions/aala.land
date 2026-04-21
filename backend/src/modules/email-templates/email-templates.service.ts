@@ -67,9 +67,10 @@ export class EmailTemplatesService {
     let renderedBody = template.body;
 
     for (const [key, value] of Object.entries(variables)) {
-      const placeholder = `{{${key}}}`;
-      renderedSubject = renderedSubject.split(placeholder).join(value);
-      renderedBody = renderedBody.split(placeholder).join(value);
+      renderedSubject = renderedSubject.split(`{{${key}}}`).join(value);
+      renderedSubject = renderedSubject.split(`{${key}}`).join(value);
+      renderedBody = renderedBody.split(`{{${key}}}`).join(value);
+      renderedBody = renderedBody.split(`{${key}}`).join(value);
     }
 
     return { subject: renderedSubject, body: renderedBody };

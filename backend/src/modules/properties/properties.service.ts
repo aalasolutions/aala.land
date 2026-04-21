@@ -1,9 +1,10 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, FindOptionsWhere } from 'typeorm';
+import { Repository, FindOptionsWhere, In } from 'typeorm';
 import { PropertyArea } from './entities/property-area.entity';
 import { Asset } from './entities/asset.entity';
 import { Unit, UnitStatus } from './entities/unit.entity';
+import { PropertyMedia } from './entities/property-media.entity';
 import { Listing, ListingStatus } from './entities/listing.entity';
 import { CreateAreaDto } from './dto/create-area.dto';
 import { UpdateAreaDto } from './dto/update-area.dto';
@@ -26,6 +27,8 @@ export class PropertiesService {
         private readonly unitRepository: Repository<Unit>,
         @InjectRepository(Listing)
         private readonly listingRepository: Repository<Listing>,
+        @InjectRepository(PropertyMedia)
+        private readonly mediaRepository: Repository<PropertyMedia>,
     ) { }
 
     // Areas
@@ -213,6 +216,21 @@ export class PropertiesService {
 
         const [units, total] = await qb.getManyAndCount();
 
+        const unitIds = units.map(u => u.id);
+        const primaryPhotoMap = new Map<string, string>();
+        if (unitIds.length > 0) {
+            const mediaList = await this.mediaRepository.find({
+                where: { unitId: In(unitIds), companyId },
+                order: { isPrimary: 'DESC', createdAt: 'DESC' },
+                select: ['unitId', 'url', 'thumbnailUrl'],
+            });
+            for (const m of mediaList) {
+                if (!primaryPhotoMap.has(m.unitId)) {
+                    primaryPhotoMap.set(m.unitId, m.thumbnailUrl ?? m.url);
+                }
+            }
+        }
+
         const data = units.map(u => ({
             id: u.id,
             unitNumber: u.unitNumber,
@@ -223,7 +241,7 @@ export class PropertiesService {
             bathrooms: u.bathrooms,
             propertyType: u.propertyType ?? null,
             amenities: u.amenities,
-            photos: u.photos,
+            photos: primaryPhotoMap.has(u.id) ? [primaryPhotoMap.get(u.id)!] : [],
             floor: u.floor,
             assetId: u.assetId,
             assetName: u.asset?.name ?? '',

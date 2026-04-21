@@ -29,6 +29,7 @@ export default class LeasesController extends Controller {
   @tracked showTerminateModal = false;
   @tracked leaseToTerminate = null;
   @tracked isTerminating = false;
+  @tracked formStatus = '';
 
   get leaseTypeOptions() {
     return [
@@ -45,6 +46,19 @@ export default class LeasesController extends Controller {
         label: `${unit.areaName} - ${unit.assetName} - Unit ${unit.unitNumber}${unit.floorNumber ? ` (Floor ${unit.floorNumber})` : ''}`
       }))
     ];
+  }
+
+  get validNextStatuses() {
+    const current = this.editLease?.status;
+    const map = {
+      DRAFT:      ['DRAFT', 'ACTIVE'],
+      ACTIVE:     ['DRAFT', 'ACTIVE', 'EXPIRED'],
+      EXPIRED:    ['ACTIVE', 'EXPIRED'],
+      TERMINATED: ['TERMINATED'],
+      RENEWED:    ['RENEWED'],
+    };
+    const statuses = map[current] ?? (current ? [current] : []);
+    return statuses.map(s => ({ value: s, label: s }));
   }
 
   @action setField(fieldName, e) { this[fieldName] = e.target.value; }
@@ -64,6 +78,7 @@ export default class LeasesController extends Controller {
     this.editLease = null;
     this.renewingLeaseId = null;
     this.errorMsg = '';
+    this.formStatus = '';
     this.showModal = true;
   }
 
@@ -80,6 +95,7 @@ export default class LeasesController extends Controller {
     this.formNumberOfCheques = String(lease.numberOfCheques ?? 4);
     this.formEjariNumber = lease.ejariNumber ?? '';
     this.editLease = lease;
+    this.formStatus = lease.status ?? 'DRAFT';
     this.errorMsg = '';
     this.showModal = true;
   }
@@ -89,6 +105,7 @@ export default class LeasesController extends Controller {
     this.editLease = null;
     this.renewingLeaseId = null;
     this.errorMsg = '';
+    this.formStatus = '';
   }
 
   @action async saveLease(event) {
@@ -131,6 +148,7 @@ export default class LeasesController extends Controller {
           ...(this.formSecurityDeposit ? { securityDeposit: parseFloat(this.formSecurityDeposit) } : {}),
           numberOfCheques: parseInt(this.formNumberOfCheques, 10),
           ...(this.formEjariNumber ? { ejariNumber: this.formEjariNumber } : {}),
+          status: this.formStatus,
         }
       : {
           tenantName: this.formTenantName,

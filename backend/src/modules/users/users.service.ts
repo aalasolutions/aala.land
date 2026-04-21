@@ -122,7 +122,7 @@ export class UsersService {
 
         const saved = await this.userRepository.save(user);
 
-        this.sendInviteEmail(companyId, dto.email, name, tempPassword).catch((err) => {
+        this.sendInviteEmail(companyId, dto.email, dto.role ?? '', name, tempPassword).catch((err) => {
             this.logger.error(`Failed to send invite email to ${dto.email}: ${err instanceof Error ? err.message : String(err)}`);
         });
 
@@ -132,11 +132,12 @@ export class UsersService {
     private async sendInviteEmail(
         companyId: string,
         email: string,
+        role: string,
         name: string,
         tempPassword: string,
     ): Promise<void> {
         const loginUrl = `${process.env.APP_URL || 'http://localhost:4200'}/login`;
-        const variables = { name, email, password: tempPassword, loginUrl };
+        const variables = { role, name, email, password: tempPassword, loginUrl };
 
         let subject: string;
         let text: string;
