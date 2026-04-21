@@ -19,7 +19,7 @@ export default class FormDropdownComponent extends Component {
   }
 
   get displayText() {
-    if (this.args.value && this.args.options) {
+    if (this.args.value !== undefined && this.args.value !== null && this.args.options) {
       const selectedOption = this.args.options.find(opt => opt.value === this.args.value);
       return selectedOption ? selectedOption.label : this.args.placeholder || 'Select...';
     }
@@ -27,13 +27,14 @@ export default class FormDropdownComponent extends Component {
   }
 
   get filteredOptions() {
+    const options = this.args.options || [];
     if (!this.searchText) {
-      return this.args.options || [];
+      return options;
     }
 
     const searchLower = this.searchText.toLowerCase();
-    return (this.args.options || []).filter(opt =>
-      opt.label.toLowerCase().includes(searchLower)
+    return options.filter(opt =>
+      (opt.label || '').toLowerCase().includes(searchLower)
     );
   }
 

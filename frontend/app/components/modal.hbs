@@ -1,6 +1,6 @@
 {{#if @isOpen}}
   <div class="modal-backdrop" {{on "click" this.close}}>
-    <div class="modal-panel {{@panelClass}}" {{on "click" this.stopPropagation}}>
+    <div class="modal-panel {{@panelClass}}" {{on "click" this.stopPropagation}} ...attributes>
       {{#if @showClose}}
         <div class="modal-header">
           <h2>{{@title}}</h2>

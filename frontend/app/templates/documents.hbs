@@ -13,7 +13,7 @@
   </div>
 
   <div class="flex gap-3">
-    <FormDropdown @label="" @value={{this.category}} @onChange={{this.setCategory}} @options={{this.categories}} @placeholder="All Categories" data-test-category-filter />
+    <FormDropdown @id="document-category-filter" @label="" @value={{this.category}} @onChange={{this.setCategory}} @options={{this.categories}} @placeholder="All Categories" data-test-category-filter />
   </div>
 
   {{#if @model.documents.length}}

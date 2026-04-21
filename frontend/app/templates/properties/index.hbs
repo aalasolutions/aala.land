@@ -91,9 +91,9 @@
     {{!-- BROWSE UNITS VIEW --}}
     <div class="glass-panel p-4 flex col gap-4" data-test-browse-filters>
       <div class="flex gap-4 wrap x-center">
-        <FormDropdown @label="Type" @value={{this.filterType}} @onChange={{this.setFilterType}} @options={{this.filterTypeOptions}} @placeholder="All" data-test-filter-type />
-        <FormDropdown @label="Status" @value={{this.filterStatus}} @onChange={{this.setFilterStatus}} @options={{this.filterStatusOptions}} @placeholder="All" data-test-filter-status />
-        <FormDropdown @label="Bedrooms" @value={{this.filterBeds}} @onChange={{this.setFilterBeds}} @options={{this.filterBedsOptions}} @placeholder="Any" data-test-filter-beds />
+        <FormDropdown @id="browse-type-filter" @label="Type" @value={{this.filterType}} @onChange={{this.setFilterType}} @options={{this.filterTypeOptions}} @placeholder="All" data-test-filter-type />
+        <FormDropdown @id="browse-status-filter" @label="Status" @value={{this.filterStatus}} @onChange={{this.setFilterStatus}} @options={{this.filterStatusOptions}} @placeholder="All" data-test-filter-status />
+        <FormDropdown @id="browse-beds-filter" @label="Bedrooms" @value={{this.filterBeds}} @onChange={{this.setFilterBeds}} @options={{this.filterBedsOptions}} @placeholder="Any" data-test-filter-beds />
         <div class="flex col gap-1">
           <label class="font-xs text-muted">Min Price</label>
           <input type="number" class="form-input form-input--price-range" placeholder="Min" value={{this.filterMinPrice}} data-test-filter-min-price {{on "input" (fn this.setField "filterMinPrice")}} {{on "change" this.applyFilters}} />

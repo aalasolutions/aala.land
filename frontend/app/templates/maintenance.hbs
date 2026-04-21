@@ -43,8 +43,8 @@
 
   {{#if (eq this.activeSection "orders")}}
     <div class="flex gap-4 x-center">
-      <FormDropdown @label="Status" @value={{this.filterStatus}} @onChange={{fn this.setField "filterStatus"}} @options={{this.statusOptions}} @placeholder="All" />
-      <FormDropdown @label="Period" @value={{this.filterMonth}} @onChange={{fn this.setField "filterMonth"}} @options={{this.monthOptions}} @placeholder="All" />
+      <FormDropdown @id="maintenance-status-filter" @label="Status" @value={{this.filterStatus}} @onChange={{fn this.setField "filterStatus"}} @options={{this.statusOptions}} @placeholder="All" />
+      <FormDropdown @id="maintenance-period-filter" @label="Period" @value={{this.filterMonth}} @onChange={{fn this.setField "filterMonth"}} @options={{this.monthOptions}} @placeholder="All" />
     </div>
 
     <div class="glass-panel p-5">

@@ -18,7 +18,7 @@
 
       {{#if this.isOpen}}
         <div
-          class="dropdown-menu open {{if (and this.dropdownPosition.openUpward (not this.isInModal)) 'open-upward'}} {{if this.isInModal 'in-modal-dropdown'}}"
+          class="dropdown-menu open {{if (and this.dropdownPosition (and this.dropdownPosition.openUpward (not this.isInModal))) 'open-upward'}} {{if this.isInModal 'in-modal-dropdown'}}"
           style={{this.dropdownMenuStyle}}
         >
           {{#if this.showSearch}}

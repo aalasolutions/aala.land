@@ -44,6 +44,13 @@ export default class VendorsController extends Controller {
     return this.region.regions.length > 1;
   }
 
+  get regionOptions() {
+    return this.region.regions.map(r => ({
+      value: r.code,
+      label: `${r.name} (${r.currency})`
+    }));
+  }
+
   specialtyOptions = SPECIALTY_OPTIONS;
 
   @action setField(fieldName, e) { this[fieldName] = e.target.value; }
