@@ -3,6 +3,12 @@ import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
 
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const LEASE_TYPE_OPTIONS = [
+  { value: 'RESIDENTIAL', label: 'Residential' },
+  { value: 'COMMERCIAL', label: 'Commercial' },
+];
+
 export default class LeasesController extends Controller {
   @service auth;
   @service notifications;
@@ -24,6 +30,21 @@ export default class LeasesController extends Controller {
   @tracked renewingLeaseId = null;
   @tracked isSaving = false;
   @tracked errorMsg = '';
+  @tracked showTerminateModal = false;
+  @tracked leaseToTerminate = null;
+  @tracked isTerminating = false;
+
+  leaseTypeOptions = LEASE_TYPE_OPTIONS;
+
+  get unitOptions() {
+    return [
+      { value: '', label: 'Select a unit...' },
+      ...(this.model.units || []).map(unit => ({
+        value: unit.id,
+        label: `${unit.areaName} - ${unit.assetName} - Unit ${unit.unitNumber}${unit.floorNumber ? ` (Floor ${unit.floorNumber})` : ''}`
+      }))
+    ];
+  }
 
   @action setField(fieldName, e) { this[fieldName] = e.target.value; }
 
@@ -72,11 +93,17 @@ export default class LeasesController extends Controller {
   @action async saveLease(event) {
     event.preventDefault();
     if (this.isSaving) return;
-    this.isSaving = true;
     this.errorMsg = '';
 
     const isEdit = !!this.editLease;
     const isRenew = !!this.renewingLeaseId;
+
+    if (!isEdit && !UUID_PATTERN.test(this.formUnitId)) {
+      this.errorMsg = 'Please select a valid unit.';
+      return;
+    }
+
+    this.isSaving = true;
     let path;
     let method;
 
@@ -155,14 +182,29 @@ export default class LeasesController extends Controller {
     this.showModal = true;
   }
 
-  @action async terminateLease(lease) {
-    if (!confirm('Are you sure you want to terminate this lease?')) return;
+  @action openTerminate(lease) {
+    this.leaseToTerminate = lease;
+    this.showTerminateModal = true;
+  }
+
+  @action closeTerminateModal() {
+    this.showTerminateModal = false;
+    this.leaseToTerminate = null;
+  }
+
+  @action async confirmTerminate() {
+    if (!this.leaseToTerminate || this.isTerminating) return;
+
+    this.isTerminating = true;
     try {
-      await this.auth.fetchJson(`/leases/${lease.id}/terminate`, { method: 'POST' });
+      await this.auth.fetchJson(`/leases/${this.leaseToTerminate.id}/terminate`, { method: 'POST' });
       this.notifications.success('Lease terminated');
+      this.closeTerminateModal();
       this.router.refresh('leases');
     } catch (e) {
       this.notifications.error(e.message || 'Failed to terminate lease');
+    } finally {
+      this.isTerminating = false;
     }
   }
 }

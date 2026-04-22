@@ -1,6 +1,6 @@
 import { MigrationInterface, QueryRunner, TableColumn } from 'typeorm';
 
-export class AddPasswordResetToUsers1773400000000 implements MigrationInterface {
+export class AddPasswordResetToUsers1773400000001 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
     const table = await queryRunner.getTable('users');
     if (!table) {

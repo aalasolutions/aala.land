@@ -1,0 +1,22 @@
+<div class="flex col gap-2">
+  <label class="font-sm text-muted" for={{@id}}>{{@label}}{{#if @required}} *{{/if}}</label>
+  <div class="form-input-wrapper">
+    <input
+      id={{@id}}
+      type={{@type}}
+      class="form-input"
+      name={{@name}}
+      placeholder={{@placeholder}}
+      value={{@value}}
+      min={{@min}}
+      max={{@max}}
+      step={{@step}}
+      required={{@required}}
+      disabled={{@disabled}}
+      readonly={{@readonly}}
+      autocomplete={{@autocomplete}}
+      {{on "input" this.handleInput}}
+      ...attributes
+    />
+  </div>
+</div>

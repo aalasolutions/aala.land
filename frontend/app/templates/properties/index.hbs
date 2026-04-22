@@ -91,42 +91,16 @@
     {{!-- BROWSE UNITS VIEW --}}
     <div class="glass-panel p-4 flex col gap-4" data-test-browse-filters>
       <div class="flex gap-4 wrap x-center">
-        <div class="flex col gap-1">
-          <label class="font-xs text-muted">Type</label>
-          <select class="form-input" style="min-width:120px" data-test-filter-type {{on "change" this.setFilterType}}>
-            <option value="" selected={{eq this.filterType ""}}>All</option>
-            <option value="RENTAL" selected={{eq this.filterType "RENTAL"}}>Rent</option>
-            <option value="FOR_SALE" selected={{eq this.filterType "FOR_SALE"}}>Sale</option>
-          </select>
-        </div>
-        <div class="flex col gap-1">
-          <label class="font-xs text-muted">Status</label>
-          <select class="form-input" style="min-width:130px" data-test-filter-status {{on "change" this.setFilterStatus}}>
-            <option value="" selected={{eq this.filterStatus ""}}>All</option>
-            <option value="available" selected={{eq this.filterStatus "available"}}>Available</option>
-            <option value="rented" selected={{eq this.filterStatus "rented"}}>Rented</option>
-            <option value="sold" selected={{eq this.filterStatus "sold"}}>Sold</option>
-            <option value="maintenance" selected={{eq this.filterStatus "maintenance"}}>Maintenance</option>
-          </select>
-        </div>
-        <div class="flex col gap-1">
-          <label class="font-xs text-muted">Bedrooms</label>
-          <select class="form-input" style="min-width:110px" data-test-filter-beds {{on "change" this.setFilterBeds}}>
-            <option value="" selected={{eq this.filterBeds ""}}>Any</option>
-            <option value="0" selected={{eq this.filterBeds "0"}}>Studio</option>
-            <option value="1" selected={{eq this.filterBeds "1"}}>1</option>
-            <option value="2" selected={{eq this.filterBeds "2"}}>2</option>
-            <option value="3" selected={{eq this.filterBeds "3"}}>3</option>
-            <option value="4" selected={{eq this.filterBeds "4"}}>4+</option>
-          </select>
-        </div>
+        <FormDropdown @id="browse-type-filter" @label="Type" @value={{this.filterType}} @onChange={{this.setFilterType}} @options={{this.filterTypeOptions}} @placeholder="All" data-test-filter-type />
+        <FormDropdown @id="browse-status-filter" @label="Status" @value={{this.filterStatus}} @onChange={{this.setFilterStatus}} @options={{this.filterStatusOptions}} @placeholder="All" data-test-filter-status />
+        <FormDropdown @id="browse-beds-filter" @label="Bedrooms" @value={{this.filterBeds}} @onChange={{this.setFilterBeds}} @options={{this.filterBedsOptions}} @placeholder="Any" data-test-filter-beds />
         <div class="flex col gap-1">
           <label class="font-xs text-muted">Min Price</label>
-          <input type="number" class="form-input" style="min-width:110px" placeholder="Min" value={{this.filterMinPrice}} data-test-filter-min-price {{on "input" (fn this.setField "filterMinPrice")}} {{on "change" this.applyFilters}} />
+          <input type="number" class="form-input form-input--price-range" placeholder="Min" value={{this.filterMinPrice}} data-test-filter-min-price {{on "input" (fn this.setField "filterMinPrice")}} {{on "change" this.applyFilters}} />
         </div>
         <div class="flex col gap-1">
           <label class="font-xs text-muted">Max Price</label>
-          <input type="number" class="form-input" style="min-width:110px" placeholder="Max" value={{this.filterMaxPrice}} data-test-filter-max-price {{on "input" (fn this.setField "filterMaxPrice")}} {{on "change" this.applyFilters}} />
+          <input type="number" class="form-input form-input--price-range" placeholder="Max" value={{this.filterMaxPrice}} data-test-filter-max-price {{on "input" (fn this.setField "filterMaxPrice")}} {{on "change" this.applyFilters}} />
         </div>
         <div class="flex col gap-1">
           <label class="font-xs text-muted">&nbsp;</label>
@@ -210,167 +184,134 @@
 </div>
 
 {{!-- New Unit modal (cascading: city > location > asset > unit) --}}
-{{#if this.showNewUnitModal}}
-  <button type="button" class="modal-backdrop" aria-label="Close modal" {{on "click" this.closeNewUnitModal}}></button>
-  <div class="modal-panel glass-panel p-8 flex col gap-6" role="dialog">
-    <div class="flex between x-center">
-      <h3 class="font-xl font-bold">New Unit</h3>
-      <button type="button" class="text-muted font-lg px-2" {{on "click" this.closeNewUnitModal}}>x</button>
+<Modal @isOpen={{this.showNewUnitModal}} @title="New Unit" @onClose={{this.closeNewUnitModal}} @showClose={{true}}>
+  <form class="flex col gap-4" {{on "submit" this.saveNewUnit}}>
+    <div class="flex col gap-2">
+      <label class="font-sm text-muted">City *</label>
+      <LocationTypeahead
+        @searchUrl={{this.citySearchUrl}}
+        @createUrl="/locations/cities"
+        @createPayload={{this.cityCreatePayload}}
+        @placeholder="Search city..."
+        @selectedName={{this.selectedCity.name}}
+        @onSelect={{this.selectCity}}
+        @onClear={{this.clearCity}}
+      />
     </div>
-    <form class="flex col gap-4" {{on "submit" this.saveNewUnit}}>
+    {{#if this.selectedCity}}
       <div class="flex col gap-2">
-        <label class="font-sm text-muted">City *</label>
+        <label class="font-sm text-muted">Location / Area *</label>
         <LocationTypeahead
-          @searchUrl={{this.citySearchUrl}}
-          @createUrl="/locations/cities"
-          @createPayload={{this.cityCreatePayload}}
-          @placeholder="Search city..."
-          @selectedName={{this.selectedCity.name}}
-          @onSelect={{this.selectCity}}
-          @onClear={{this.clearCity}}
+          @searchUrl={{this.localitySearchUrl}}
+          @createUrl="/locations/localities"
+          @createPayload={{this.localityCreatePayload}}
+          @placeholder="Search location..."
+          @selectedName={{this.selectedLocality.name}}
+          @onSelect={{this.selectLocality}}
+          @onClear={{this.clearLocality}}
         />
       </div>
-      {{#if this.selectedCity}}
-        <div class="flex col gap-2">
-          <label class="font-sm text-muted">Location / Area *</label>
-          <LocationTypeahead
-            @searchUrl={{this.localitySearchUrl}}
-            @createUrl="/locations/localities"
-            @createPayload={{this.localityCreatePayload}}
-            @placeholder="Search location..."
-            @selectedName={{this.selectedLocality.name}}
-            @onSelect={{this.selectLocality}}
-            @onClear={{this.clearLocality}}
-          />
-        </div>
-      {{/if}}
-      {{#if this.selectedLocality}}
-        <div class="flex col gap-2">
-          <label class="font-sm text-muted">Asset *</label>
-          <LocationTypeahead
-            @searchUrl={{this.assetSearchUrl}}
-            @createUrl="/properties/assets"
-            @createPayload={{this.assetCreatePayload}}
-            @placeholder="Search asset (tower, villa, mall...)"
-            @selectedName={{this.selectedAsset.name}}
-            @onSelect={{this.selectAsset}}
-            @onClear={{this.clearAsset}}
-          />
-        </div>
-      {{/if}}
-      {{#if this.selectedAsset}}
-        <hr class="border-t border-light" />
-        <div class="flex col gap-2">
-          <label class="font-sm text-muted" for="nu-number">Unit Number *</label>
-          <input id="nu-number" type="text" class="form-input" placeholder="e.g. 101, Villa A" value={{this.newUnitNumber}} required {{on "input" (fn this.setField "newUnitNumber")}} />
-        </div>
-        <div class="flex gap-4">
-          <div class="flex col gap-2 flex-1">
-            <label class="font-sm text-muted" for="nu-type">Listing Type</label>
-            <select id="nu-type" class="form-select" {{on "change" (fn this.setField "newUnitType")}}>
-              <option value="">Not set</option>
-              <option value="RENTAL" selected={{eq this.newUnitType "RENTAL"}}>Rental</option>
-              <option value="FOR_SALE" selected={{eq this.newUnitType "FOR_SALE"}}>For Sale</option>
-            </select>
-          </div>
-          <div class="flex col gap-2 flex-1">
-            <label class="font-sm text-muted" for="nu-status">Status</label>
-            <select id="nu-status" class="form-select" {{on "change" (fn this.setField "newUnitStatus")}}>
-              <option value="available" selected={{eq this.newUnitStatus "available"}}>Available</option>
-              <option value="rented" selected={{eq this.newUnitStatus "rented"}}>Rented</option>
-              <option value="sold" selected={{eq this.newUnitStatus "sold"}}>Sold</option>
-              <option value="maintenance" selected={{eq this.newUnitStatus "maintenance"}}>Maintenance</option>
-            </select>
-          </div>
-        </div>
-        <div class="flex gap-4">
-          <div class="flex col gap-2 flex-1">
-            <label class="font-sm text-muted" for="nu-price">Price</label>
-            <input id="nu-price" type="number" min="0" class="form-input" placeholder="0" value={{this.newUnitPrice}} {{on "input" (fn this.setField "newUnitPrice")}} />
-          </div>
-          <div class="flex col gap-2 flex-1">
-            <label class="font-sm text-muted" for="nu-beds">Bedrooms</label>
-            <input id="nu-beds" type="number" min="0" class="form-input" placeholder="0" value={{this.newUnitBedrooms}} {{on "input" (fn this.setField "newUnitBedrooms")}} />
-          </div>
-        </div>
-        <div class="flex col gap-2">
-          <label class="font-sm text-muted" for="nu-baths">Bathrooms</label>
-          <input id="nu-baths" type="number" min="0" class="form-input" placeholder="0" value={{this.newUnitBathrooms}} {{on "input" (fn this.setField "newUnitBathrooms")}} />
-        </div>
-      {{/if}}
-      {{#if this.newUnitError}}
-        <p class="font-sm text-danger">{{this.newUnitError}}</p>
-      {{/if}}
-      <div class="flex gap-3 mt-2">
-        <button type="button" class="btn btn-secondary" {{on "click" this.closeNewUnitModal}}>Cancel</button>
-        {{#if this.selectedAsset}}
-          <button type="submit" class="btn btn-primary" disabled={{this.isSavingNewUnit}}>
-            {{if this.isSavingNewUnit "Creating..." "Create Unit"}}
-          </button>
-        {{/if}}
+    {{/if}}
+    {{#if this.selectedLocality}}
+      <div class="flex col gap-2">
+        <label class="font-sm text-muted">Asset *</label>
+        <LocationTypeahead
+          @searchUrl={{this.assetSearchUrl}}
+          @createUrl="/properties/assets"
+          @createPayload={{this.assetCreatePayload}}
+          @placeholder="Search asset (tower, villa, mall...)"
+          @selectedName={{this.selectedAsset.name}}
+          @onSelect={{this.selectAsset}}
+          @onClear={{this.clearAsset}}
+        />
       </div>
-    </form>
-  </div>
-{{/if}}
+    {{/if}}
+    {{#if this.selectedAsset}}
+      <hr class="border-t border-light" />
+      <FormInput @label="Unit Number" @id="nu-number" @type="text" @placeholder="e.g. 101, Villa A" @value={{this.newUnitNumber}} @onChange={{fn this.setField "newUnitNumber"}} @required={{true}} />
+
+      <div class="flex gap-4">
+        <div class="flex col gap-2 flex-1">
+          <FormDropdown @label="Listing Type" @id="nu-type" @value={{this.newUnitType}} @onChange={{fn this.setField "newUnitType"}} @options={{this.unitTypeOptions}} @placeholder="Not set" />
+        </div>
+        <div class="flex col gap-2 flex-1">
+          <FormDropdown @label="Status" @id="nu-status" @value={{this.newUnitStatus}} @onChange={{fn this.setField "newUnitStatus"}} @options={{this.unitStatusOptions}} @placeholder="Select status..." />
+        </div>
+      </div>
+
+      <div class="flex gap-4">
+        <div class="flex col gap-2 flex-1">
+          <FormInput @label="Price" @id="nu-price" @type="number" @placeholder="0" @value={{this.newUnitPrice}} @onChange={{fn this.setField "newUnitPrice"}} @min={{0}} />
+        </div>
+        <div class="flex col gap-2 flex-1">
+          <FormInput @label="Bedrooms" @id="nu-beds" @type="number" @placeholder="0" @value={{this.newUnitBedrooms}} @onChange={{fn this.setField "newUnitBedrooms"}} @min={{0}} />
+        </div>
+      </div>
+
+      <FormInput @label="Bathrooms" @id="nu-baths" @type="number" @placeholder="0" @value={{this.newUnitBathrooms}} @onChange={{fn this.setField "newUnitBathrooms"}} @min={{0}} />
+    {{/if}}
+    {{#if this.newUnitError}}
+      <p class="font-sm text-danger">{{this.newUnitError}}</p>
+    {{/if}}
+    <div class="flex gap-3 mt-2">
+      <AppButton @variant="secondary" @text="Cancel" @onClick={{this.closeNewUnitModal}} />
+      {{#if this.selectedAsset}}
+        <AppButton @variant="primary" @buttonType="submit" @text="Create Unit" @loading={{this.isSavingNewUnit}} @loadingText="Creating..." />
+      {{/if}}
+    </div>
+  </form>
+</Modal>
 
 {{!-- Bulk import modal --}}
-{{#if this.showImportModal}}
-  <button type="button" class="modal-backdrop" aria-label="Close modal" {{on "click" this.closeImportModal}}></button>
-  <div class="modal-panel glass-panel p-8 flex col gap-6" role="dialog" style="max-width: 600px;">
-    <div class="flex between x-center">
-      <h3 class="font-xl font-bold">Bulk Import Properties</h3>
-      <button type="button" class="text-muted font-lg px-2" {{on "click" this.closeImportModal}}>x</button>
+<Modal @isOpen={{this.showImportModal}} @title="Bulk Import Properties" @onClose={{this.closeImportModal}} @showClose={{true}} @panelClass="modal-md">
+  <div class="flex col gap-4">
+    <p class="text-muted">Import multiple property areas from a CSV file.</p>
+
+    <button type="button" class="btn btn-secondary" {{on "click" this.downloadTemplate}}>
+      Download CSV Template
+    </button>
+
+    <div class="flex col gap-2">
+      <label class="font-sm text-muted" for="import-file">Select CSV File *</label>
+      <input id="import-file" type="file" accept=".csv" class="form-input" {{on "change" this.handleFileSelect}} />
     </div>
 
-    <div class="flex col gap-4">
-      <p class="text-muted">Import multiple property areas from a CSV file.</p>
-
-      <button type="button" class="btn btn-secondary" {{on "click" this.downloadTemplate}}>
-        Download CSV Template
-      </button>
-
+    {{#if this.importPreview}}
       <div class="flex col gap-2">
-        <label class="font-sm text-muted" for="import-file">Select CSV File *</label>
-        <input id="import-file" type="file" accept=".csv" class="form-input" {{on "change" this.handleFileSelect}} />
+        <p class="font-sm font-bold">Preview (first 10 rows):</p>
+        <div class="import-preview import-preview--scroll">
+          {{#each this.importPreview as |row|}}
+            <p class="font-xs">{{row.areaName}}, {{row.location}}</p>
+          {{/each}}
+        </div>
       </div>
+    {{/if}}
 
-      {{#if this.importPreview}}
-        <div class="flex col gap-2">
-          <p class="font-sm font-bold">Preview (first 10 rows):</p>
-          <div class="import-preview" style="max-height: 200px; overflow-y: auto;">
-            {{#each this.importPreview as |row|}}
-              <p class="font-xs">{{row.areaName}}, {{row.location}}</p>
+    {{#if this.importResults}}
+      <div class="import-results">
+        <p class="font-sm font-bold">Import Results:</p>
+        <p class="font-sm text-success">{{this.importResults.created}} areas created</p>
+        {{#if this.importResults.failed}}
+          <p class="font-sm text-danger">{{this.importResults.failed}} failed</p>
+        {{/if}}
+        {{#if this.importResults.errors}}
+          <div class="import-errors mt-2">
+            <p class="font-xs text-muted">Errors:</p>
+            {{#each this.importResults.errors as |error|}}
+              <p class="font-xs text-danger">{{error}}</p>
             {{/each}}
           </div>
-        </div>
-      {{/if}}
-
-      {{#if this.importResults}}
-        <div class="import-results">
-          <p class="font-sm font-bold">Import Results:</p>
-          <p class="font-sm text-success">{{this.importResults.created}} areas created</p>
-          {{#if this.importResults.failed}}
-            <p class="font-sm text-danger">{{this.importResults.failed}} failed</p>
-          {{/if}}
-          {{#if this.importResults.errors}}
-            <div class="import-errors mt-2">
-              <p class="font-xs text-muted">Errors:</p>
-              {{#each this.importResults.errors as |error|}}
-                <p class="font-xs text-danger">{{error}}</p>
-              {{/each}}
-            </div>
-          {{/if}}
-        </div>
-      {{/if}}
-
-      <div class="flex gap-3 mt-2">
-        <button type="button" class="btn btn-secondary" {{on "click" this.closeImportModal}}>
-          Cancel
-        </button>
-        <button type="button" class="btn btn-primary" disabled={{or this.isImporting (not this.importFile)}} {{on "click" this.importProperties}}>
-          {{if this.isImporting "Importing..." "Import"}}
-        </button>
+        {{/if}}
       </div>
+    {{/if}}
+
+    <div class="flex gap-3 mt-2">
+      <button type="button" class="btn btn-secondary" {{on "click" this.closeImportModal}}>
+        Cancel
+      </button>
+      <button type="button" class="btn btn-primary" disabled={{or this.isImporting (not this.importFile)}} {{on "click" this.importProperties}}>
+        {{if this.isImporting "Importing..." "Import"}}
+      </button>
     </div>
   </div>
-{{/if}}
+</Modal>

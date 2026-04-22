@@ -46,6 +46,8 @@ test-results/
 /-extinct-dont-read-private
 /dark/
 /.agent/
+/.codex/
+/scripts/codex.sh
 
 # Claude Code (memory is private, agents/commands are shared)
 .claude/memory/

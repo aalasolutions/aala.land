@@ -3,6 +3,15 @@ import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
 
+const CHEQUE_TYPE_OPTIONS = [
+  { value: 'RENT', label: 'Rent' },
+  { value: 'SECURITY_DEPOSIT', label: 'Security Deposit' },
+  { value: 'MAINTENANCE', label: 'Maintenance' },
+  { value: 'OTHER', label: 'Other' },
+];
+
+const EMPTY_UNIT_OPTION = { value: '', label: 'No property linked' };
+
 export default class ChequesController extends Controller {
   @service auth;
   @service notifications;
@@ -25,6 +34,20 @@ export default class ChequesController extends Controller {
   @tracked showBounceModal = false;
   @tracked bounceChequeItem = null;
   @tracked formBounceReason = '';
+
+  get chequeTypeOptions() {
+    return CHEQUE_TYPE_OPTIONS;
+  }
+
+  get unitOptions() {
+    return [
+      EMPTY_UNIT_OPTION,
+      ...(this.model.units || []).map(unit => ({
+        value: unit.id,
+        label: `${unit.areaName} - ${unit.assetName} - Unit ${unit.unitNumber}`
+      }))
+    ];
+  }
 
   @action setField(fieldName, e) { this[fieldName] = e.target.value; }
 

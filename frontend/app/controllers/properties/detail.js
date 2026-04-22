@@ -5,6 +5,19 @@ import { service } from '@ember/service';
 import { AMENITY_OPTIONS } from '../../constants/amenities';
 import { toggleArrayItem } from '../../utils/toggle-array-item';
 
+const PROPERTY_STATUS_OPTIONS = [
+  { value: 'available', label: 'Available' },
+  { value: 'rented', label: 'Rented' },
+  { value: 'sold', label: 'Sold' },
+  { value: 'maintenance', label: 'Maintenance' },
+];
+
+const PROPERTY_TYPE_INHERIT_OPTIONS = [
+  { value: '', label: 'Inherit from Asset' },
+  { value: 'RENTAL', label: 'Rental' },
+  { value: 'FOR_SALE', label: 'For Sale' },
+];
+
 export default class PropertiesDetailController extends Controller {
   @service auth;
   @service notifications;
@@ -95,6 +108,20 @@ export default class PropertiesDetailController extends Controller {
     }));
   }
 
+  statusOptions = PROPERTY_STATUS_OPTIONS;
+
+  propertyTypeOptions = PROPERTY_TYPE_INHERIT_OPTIONS;
+
+  get ownerOptions() {
+    return [
+      { value: '', label: 'Unassigned' },
+      ...(this.owners || []).map(owner => ({
+        value: owner.id,
+        label: owner.name
+      }))
+    ];
+  }
+
   @service region;
 
   // Asset modal
@@ -157,7 +184,7 @@ export default class PropertiesDetailController extends Controller {
   @tracked isSavingUnit = false;
   @tracked unitError = '';
 
-  get amenityOptions() { return AMENITY_OPTIONS; }
+  amenityOptions = AMENITY_OPTIONS;
 
   @action setField(fieldName, e) { this[fieldName] = e.target.value; }
 

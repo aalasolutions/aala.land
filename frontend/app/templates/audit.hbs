@@ -6,22 +6,10 @@
 
 <div class="glass-panel card">
   <div class="card-header">
-    <div class="flex gap-2">
-      <select class="form-field" {{on "change" this.setFilterAction}}>
-        {{#each this.model.auditActions as |actionChoice|}}
-          <option value={{actionChoice.value}}>
-            {{actionChoice.label}}
-          </option>
-        {{/each}}
-      </select>
+    <div class="flex gap-2 items-center flex-wrap">
+      <FormDropdown @id="audit-action-filter" @label="" @value={{this.filterAction}} @onChange={{this.setFilterAction}} @options={{this.model.auditActions}} @placeholder="All Actions" />
 
-      <select class="form-field" {{on "change" this.setFilterEntityType}}>
-        {{#each this.model.entityTypes as |entityChoice|}}
-          <option value={{entityChoice.value}}>
-            {{entityChoice.label}}
-          </option>
-        {{/each}}
-      </select>
+      <FormDropdown @id="audit-entity-filter" @label="" @value={{this.filterEntityType}} @onChange={{this.setFilterEntityType}} @options={{this.model.entityTypes}} @placeholder="All Entities" />
 
       {{#if (or this.filterAction this.filterEntityType)}}
         <button type="button" class="btn btn-secondary" {{on "click" this.clearFilters}}>
@@ -29,7 +17,7 @@
         </button>
       {{/if}}
 
-      <button type="button" class="btn btn-danger btn-sm" {{on "click" this.openPurge}} data-test-purge-btn>
+      <button type="button" class="btn btn-danger" {{on "click" this.openPurge}} data-test-purge-btn>
         <Ph @icon="trash" @size="16px" /> Purge Old Logs
       </button>
     </div>
@@ -95,27 +83,23 @@
   </div>
 </div>
 
-{{#if this.showPurgeModal}}
-  <div class="modal-backdrop" {{on "click" this.closePurge}}>
-    <div class="modal-panel glass-panel p-8 flex col gap-6" {{on "click" (fn (mut this._noop) true)}}>
-      <div class="flex between x-center">
-        <h2 class="font-lg font-semibold">Purge Audit Logs</h2>
-        <button type="button" class="btn btn-sm" {{on "click" this.closePurge}}>x</button>
-      </div>
+<Modal
+  @isOpen={{this.showPurgeModal}}
+  @title="Purge Audit Logs"
+  @onClose={{this.closePurge}}
+  @showClose={{true}}
+>
+  <p class="text-muted">Permanently delete audit logs older than the specified number of days. Minimum retention is 30 days.</p>
 
-      <p class="text-muted">Permanently delete audit logs older than the specified number of days. Minimum retention is 30 days.</p>
-
-      <div class="flex col gap-2">
-        <label class="font-sm text-muted">Delete logs older than (days)</label>
-        <input type="number" class="form-input" min="30" value={{this.purgeDays}} {{on "input" (fn this.setField "purgeDays")}} data-test-purge-days />
-      </div>
-
-      <div class="flex gap-2 end">
-        <button type="button" class="btn btn-secondary" {{on "click" this.closePurge}}>Cancel</button>
-        <button type="button" class="btn btn-danger" {{on "click" this.confirmPurge}} disabled={{this.isPurging}} data-test-purge-confirm>
-          {{if this.isPurging "Purging..." "Purge"}}
-        </button>
-      </div>
-    </div>
+  <div class="flex col gap-2">
+    <label class="font-sm text-muted">Delete logs older than (days)</label>
+    <input type="number" class="form-input" min="30" value={{this.purgeDays}} {{on "input" (fn this.setField "purgeDays")}} data-test-purge-days />
   </div>
-{{/if}}
+
+  <div class="flex gap-2 end">
+    <button type="button" class="btn btn-secondary" {{on "click" this.closePurge}}>Cancel</button>
+    <button type="button" class="btn btn-danger" {{on "click" this.confirmPurge}} disabled={{this.isPurging}} data-test-purge-confirm>
+      {{if this.isPurging "Purging..." "Purge"}}
+    </button>
+  </div>
+</Modal>

@@ -130,7 +130,7 @@ export class ReportsService {
     if (regionCode) {
       totalUnitsPromise = this.unitRepository
         .createQueryBuilder('u')
-        .innerJoin('assets', 'ast', 'u.asset_id = ast.id')
+        .innerJoin('buildings', 'ast', 'u.building_id = ast.id')
         .innerJoin('localities', 'loc', 'ast.locality_id = loc.id')
         .innerJoin('cities', 'ci', 'loc.city_id = ci.id')
         .where('u.company_id = :companyId', { companyId })
@@ -141,7 +141,7 @@ export class ReportsService {
         .createQueryBuilder('t')
         .select('COALESCE(SUM(t.amount), 0)', 'total')
         .innerJoin('units', 'u', 't.unit_id = u.id')
-        .innerJoin('assets', 'ast', 'u.asset_id = ast.id')
+        .innerJoin('buildings', 'ast', 'u.building_id = ast.id')
         .innerJoin('localities', 'loc', 'ast.locality_id = loc.id')
         .innerJoin('cities', 'ci', 'loc.city_id = ci.id')
         .where('t.companyId = :companyId', { companyId })
@@ -154,7 +154,7 @@ export class ReportsService {
       activeLeasesPromise = this.leaseRepository
         .createQueryBuilder('l')
         .innerJoin('units', 'u', 'l.unit_id = u.id')
-        .innerJoin('assets', 'ast', 'u.asset_id = ast.id')
+        .innerJoin('buildings', 'ast', 'u.building_id = ast.id')
         .innerJoin('localities', 'loc', 'ast.locality_id = loc.id')
         .innerJoin('cities', 'ci', 'loc.city_id = ci.id')
         .where('l.company_id = :companyId', { companyId })
@@ -165,7 +165,7 @@ export class ReportsService {
       pendingChequesPromise = this.chequeRepository
         .createQueryBuilder('c')
         .innerJoin('units', 'u', 'c.unit_id = u.id')
-        .innerJoin('assets', 'ast', 'u.asset_id = ast.id')
+        .innerJoin('buildings', 'ast', 'u.building_id = ast.id')
         .innerJoin('localities', 'loc', 'ast.locality_id = loc.id')
         .innerJoin('cities', 'ci', 'loc.city_id = ci.id')
         .where('c.company_id = :companyId', { companyId })
@@ -317,7 +317,7 @@ export class ReportsService {
       vacantUnitsPromise = this.unitRepository
         .createQueryBuilder('u')
         .select(['u.id', 'u.unitNumber', 'u.updatedAt'])
-        .innerJoin('assets', 'ast', 'u.asset_id = ast.id')
+        .innerJoin('buildings', 'ast', 'u.building_id = ast.id')
         .innerJoin('localities', 'loc', 'ast.locality_id = loc.id')
         .innerJoin('cities', 'ci', 'loc.city_id = ci.id')
         .where('u.company_id = :companyId', { companyId })

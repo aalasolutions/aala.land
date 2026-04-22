@@ -97,84 +97,44 @@
   </div>
 </div>
 
-{{#if this.showModal}}
-  <button type="button" class="modal-backdrop" aria-label="Close modal" {{on "click" this.closeModal}}></button>
-  <div class="modal-panel glass-panel p-8 flex col gap-6" role="dialog">
-    <div class="flex between x-center">
-      <h3 class="font-xl font-bold">{{if this.editTransaction "Edit Transaction" "New Transaction"}}</h3>
-      <button type="button" class="text-muted font-lg px-2" {{on "click" this.closeModal}}>x</button>
-    </div>
-    <form class="flex col gap-4" {{on "submit" this.saveTx}}>
+<Modal
+  @isOpen={{this.showModal}}
+  @title={{if this.editTransaction "Edit Transaction" "New Transaction"}}
+  @onClose={{this.closeModal}}
+  @showClose={{true}}
+>
+  <form class="flex col gap-4" {{on "submit" this.saveTx}}>
       <div class="flex gap-4">
         <div class="flex col gap-2 flex-1">
-          <label class="font-sm text-muted" for="tx-type">Type *</label>
-          <select id="tx-type" class="form-input" {{on "change" (fn this.setField "formType")}}>
-            <option value="INCOME" selected={{eq this.formType "INCOME"}}>Income</option>
-            <option value="EXPENSE" selected={{eq this.formType "EXPENSE"}}>Expense</option>
-          </select>
+          <FormDropdown @label="Type" @id="tx-type" @value={{this.formType}} @onChange={{fn this.setField "formType"}} @options={{this.transactionTypeOptions}} @placeholder="Select type..." @required={{true}} />
         </div>
         <div class="flex col gap-2 flex-1">
-          <label class="font-sm text-muted" for="tx-category">Category</label>
-          <select id="tx-category" class="form-input" {{on "change" (fn this.setField "formCategory")}}>
-            <option value="RENT" selected={{eq this.formCategory "RENT"}}>Rent</option>
-            <option value="SALE" selected={{eq this.formCategory "SALE"}}>Sale</option>
-            <option value="DEPOSIT" selected={{eq this.formCategory "DEPOSIT"}}>Deposit</option>
-            <option value="MAINTENANCE" selected={{eq this.formCategory "MAINTENANCE"}}>Maintenance</option>
-            <option value="COMMISSION" selected={{eq this.formCategory "COMMISSION"}}>Commission</option>
-            <option value="OTHER" selected={{eq this.formCategory "OTHER"}}>Other</option>
-          </select>
+          <FormDropdown @label="Category" @id="tx-category" @value={{this.formCategory}} @onChange={{fn this.setField "formCategory"}} @options={{this.categoryOptions}} @placeholder="Select category..." @required={{true}} />
         </div>
       </div>
       <div class="flex gap-4">
         <div class="flex col gap-2 flex-1">
-          <label class="font-sm text-muted" for="tx-amount">Amount *</label>
-          <input id="tx-amount" type="number" min="0" step="0.01"
-            class="form-input"
-            placeholder="e.g. 15000" value={{this.formAmount}} required {{on "input" (fn this.setField "formAmount")}} />
+          <FormInput @label="Amount" @id="tx-amount" @type="number" @min={{0}} @step={{0.01}} @placeholder="e.g. 15000" @value={{this.formAmount}} @onChange={{fn this.setField "formAmount"}} @required={{true}} />
         </div>
         <div class="flex col gap-2 flex-1">
-          <label class="font-sm text-muted" for="tx-payment">Payment Method</label>
-          <select id="tx-payment" class="form-input" {{on "change" (fn this.setField "formPaymentMethod")}}>
-            <option value="CASH" selected={{eq this.formPaymentMethod "CASH"}}>Cash</option>
-            <option value="CHEQUE" selected={{eq this.formPaymentMethod "CHEQUE"}}>Cheque</option>
-            <option value="BANK_TRANSFER" selected={{eq this.formPaymentMethod "BANK_TRANSFER"}}>Bank Transfer</option>
-            <option value="CREDIT_CARD" selected={{eq this.formPaymentMethod "CREDIT_CARD"}}>Credit Card</option>
-            <option value="ONLINE" selected={{eq this.formPaymentMethod "ONLINE"}}>Online</option>
-          </select>
+          <FormDropdown @label="Payment Method" @id="tx-payment" @value={{this.formPaymentMethod}} @onChange={{fn this.setField "formPaymentMethod"}} @options={{this.paymentMethodOptions}} @placeholder="Select payment method..." @required={{true}} />
         </div>
       </div>
-      <div class="flex col gap-2">
-        <label class="font-sm text-muted" for="tx-desc">Description</label>
-        <input id="tx-desc" type="text"
-          class="form-input"
-          placeholder="e.g. Monthly rent payment" value={{this.formDescription}} {{on "input" (fn this.setField "formDescription")}} />
-      </div>
+      <FormInput @label="Description" @id="tx-desc" @type="text" @placeholder="e.g. Monthly rent payment" @value={{this.formDescription}} @onChange={{fn this.setField "formDescription"}} />
       <div class="flex gap-4">
         <div class="flex col gap-2 flex-1">
-          <label class="font-sm text-muted" for="tx-date">Date</label>
-          <input id="tx-date" type="date"
-            class="form-input"
-            value={{this.formDate}} {{on "change" (fn this.setField "formDate")}} />
+          <FormInput @label="Date" @id="tx-date" @type="date" @value={{this.formDate}} @onChange={{fn this.setField "formDate"}} />
         </div>
         <div class="flex col gap-2 flex-1">
-          <label class="font-sm text-muted" for="tx-status">Status</label>
-          <select id="tx-status" class="form-input" {{on "change" (fn this.setField "formStatus")}}>
-            <option value="PENDING" selected={{eq this.formStatus "PENDING"}}>Pending</option>
-            <option value="COMPLETED" selected={{eq this.formStatus "COMPLETED"}}>Completed</option>
-            <option value="CANCELLED" selected={{eq this.formStatus "CANCELLED"}}>Cancelled</option>
-            <option value="FAILED" selected={{eq this.formStatus "FAILED"}}>Failed</option>
-          </select>
+          <FormDropdown @label="Status" @id="tx-status" @value={{this.formStatus}} @onChange={{fn this.setField "formStatus"}} @options={{this.statusOptions}} @placeholder="Select status..." @required={{true}} />
         </div>
       </div>
       {{#if this.errorMsg}}
         <p class="font-sm text-danger">{{this.errorMsg}}</p>
       {{/if}}
       <div class="flex gap-3 mt-2">
-        <button type="button" class="btn btn-secondary" {{on "click" this.closeModal}}>Cancel</button>
-        <button type="submit" class="btn btn-primary" disabled={{this.isSaving}}>
-          {{if this.isSaving "Saving..." (if this.editTransaction "Update" "Create")}}
-        </button>
+        <AppButton @variant="secondary" @text="Cancel" @onClick={{this.closeModal}} />
+        <AppButton @variant="primary" @buttonType="submit" @text={{if this.editTransaction "Update" "Create"}} @loading={{this.isSaving}} @loadingText="Saving..." />
       </div>
     </form>
-  </div>
-{{/if}}
+</Modal>

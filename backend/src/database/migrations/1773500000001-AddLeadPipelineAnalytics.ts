@@ -1,6 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class AddLeadPipelineAnalytics1773500000000 implements MigrationInterface {
+export class AddLeadPipelineAnalytics1773500000001 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
     // Add stage_entered_at column
     const hasStageEnteredAt = await queryRunner.query(`

@@ -13,12 +13,7 @@
   </div>
 
   <div class="flex gap-3">
-    <select class="form-select" style="max-width: 200px;" {{on "change" this.filterCategory}}>
-      <option value="">All Categories</option>
-      {{#each this.categories as |cat|}}
-        <option value={{cat.value}} selected={{eq this.category cat.value}}>{{cat.label}}</option>
-      {{/each}}
-    </select>
+    <FormDropdown @id="email-template-category-filter" @label="" @value={{this.category}} @onChange={{this.filterCategory}} @options={{this.filterCategories}} @placeholder="All Categories" data-test-category-filter />
   </div>
 
   {{#if @model.templates.length}}
@@ -52,7 +47,7 @@
             <button type="button" class="btn btn-secondary btn-sm" {{on "click" (fn this.openEdit template)}}>
               <Ph @icon="pencil-simple" /> Edit
             </button>
-            <button type="button" class="btn btn-danger btn-sm" {{on "click" (fn this.deleteTemplate template)}}>
+            <button type="button" class="btn btn-danger btn-sm" {{on "click" (fn this.openDelete template)}}>
               <Ph @icon="trash" />
             </button>
           </div>
@@ -67,78 +62,72 @@
   {{/if}}
 </div>
 
-{{#if this.showModal}}
-  <button type="button" class="modal-backdrop" aria-label="Close modal" {{on "click" this.closeModal}}></button>
-  <div class="modal-panel glass-panel p-8 flex col gap-6" role="dialog" aria-label="Email template form">
-    <div class="flex between x-center">
-      <h3 class="font-xl font-bold">{{if this.editTemplate "Edit Template" "New Template"}}</h3>
-      <button type="button" class="text-muted font-lg px-2" {{on "click" this.closeModal}}>x</button>
+<Modal
+  @isOpen={{this.showModal}}
+  @title={{if this.editTemplate "Edit Template" "New Template"}}
+  @onClose={{this.closeModal}}
+  @showClose={{true}}
+>
+  <form class="flex col gap-4" {{on "submit" this.saveTemplate}}>
+    <div class="flex gap-4">
+      <div class="flex col gap-2 flex-1">
+        <FormInput @label="Template Name" @id="t-name" @type="text" @placeholder="Welcome New Tenant" @value={{this.formName}} @onChange={{fn this.setField "formName"}} @required={{true}} />
+      </div>
+      <div class="flex col gap-2 flex-1">
+        <FormDropdown @label="Category" @id="t-category" @value={{this.formCategory}} @onChange={{fn this.setField "formCategory"}} @options={{this.categories}} @placeholder="Select category..." />
+      </div>
     </div>
-    <form class="flex col gap-4" {{on "submit" this.saveTemplate}}>
-      <div class="flex gap-4">
-        <div class="flex col gap-2 flex-1">
-          <label class="font-sm text-muted" for="t-name">Template Name *</label>
-          <input id="t-name" type="text" class="form-input" placeholder="Welcome New Tenant" value={{this.formName}} required {{on "input" (fn this.setField "formName")}} />
-        </div>
-        <div class="flex col gap-2" style="min-width: 180px;">
-          <label class="font-sm text-muted" for="t-category">Category</label>
-          <select id="t-category" class="form-select" {{on "change" (fn this.setField "formCategory")}}>
-            {{#each this.categories as |cat|}}
-              <option value={{cat.value}} selected={{eq this.formCategory cat.value}}>{{cat.label}}</option>
-            {{/each}}
-          </select>
-        </div>
-      </div>
-      <div class="flex col gap-2">
-        <label class="font-sm text-muted" for="t-subject">Subject *</label>
-        <input id="t-subject" type="text" class="form-input" placeholder="Welcome to your new home!" value={{this.formSubject}} required {{on "input" (fn this.setField "formSubject")}} />
-      </div>
-      <div class="flex col gap-2">
-        <label class="font-sm text-muted" for="t-body">Body (HTML) *</label>
-        <textarea id="t-body" class="form-input" rows="8" placeholder="Use curly braces for variables, e.g. first name" value={{this.formBody}} required {{on "input" (fn this.setField "formBody")}}></textarea>
-      </div>
-      <div class="flex col gap-2">
-        <label class="font-sm text-muted" for="t-vars">Variables (comma-separated)</label>
-        <input id="t-vars" type="text" class="form-input" placeholder="firstName, lastName, propertyName" value={{this.formVariables}} {{on "input" (fn this.setField "formVariables")}} />
-        <p class="font-xs text-muted">Use double curly braces in subject/body to reference variables.</p>
-      </div>
-      <div class="flex x-center gap-2">
-        <input id="t-active" type="checkbox" checked={{this.formIsActive}} {{on "change" (fn this.setField "formIsActive")}} />
-        <label class="font-sm" for="t-active">Active</label>
-      </div>
-      {{#if this.errorMsg}}
-        <p class="font-sm text-danger">{{this.errorMsg}}</p>
-      {{/if}}
-      <div class="flex gap-3 mt-2">
-        <button type="button" class="btn btn-secondary" {{on "click" this.closeModal}}>Cancel</button>
-        <button type="submit" class="btn btn-primary" disabled={{this.isSaving}}>
-          {{if this.isSaving "Saving..." (if this.editTemplate "Update" "Create Template")}}
-        </button>
-      </div>
-    </form>
-  </div>
-{{/if}}
+    <FormInput @label="Subject" @id="t-subject" @type="text" @placeholder="Welcome to your new home!" @value={{this.formSubject}} @onChange={{fn this.setField "formSubject"}} @required={{true}} />
+    <FormTextarea @label="Body (HTML)" @id="t-body" @placeholder="Use curly braces for variables, e.g. first name" @rows={{8}} @value={{this.formBody}} @onChange={{fn this.setField "formBody"}} @required={{true}} />
+    <div class="flex col gap-2">
+      <FormInput @label="Variables (comma-separated)" @id="t-vars" @type="text" @placeholder="firstName, lastName, propertyName" @value={{this.formVariables}} @onChange={{fn this.setField "formVariables"}} />
+      <p class="font-xs text-muted">Use double curly braces in subject/body to reference variables.</p>
+    </div>
+    <div class="flex x-center gap-2">
+      <input id="t-active" type="checkbox" checked={{this.formIsActive}} {{on "change" (fn this.setField "formIsActive")}} />
+      <label class="font-sm" for="t-active">Active</label>
+    </div>
+    {{#if this.errorMsg}}
+      <p class="font-sm text-danger">{{this.errorMsg}}</p>
+    {{/if}}
+    <div class="flex gap-3 mt-2">
+      <AppButton @variant="secondary" @text="Cancel" @onClick={{this.closeModal}} />
+      <AppButton @variant="primary" @buttonType="submit" @text={{if this.editTemplate "Update" "Create Template"}} @loading={{this.isSaving}} @loadingText="Saving..." />
+    </div>
+  </form>
+</Modal>
 
-{{#if this.showPreview}}
-  <button type="button" class="modal-backdrop" aria-label="Close preview" {{on "click" this.closePreview}}></button>
-  <div class="modal-panel glass-panel p-8 flex col gap-6" role="dialog" aria-label="Email preview">
-    <div class="flex between x-center">
-      <h3 class="font-xl font-bold">Template Preview</h3>
-      <button type="button" class="text-muted font-lg px-2" {{on "click" this.closePreview}}>x</button>
+<Modal
+  @isOpen={{this.showPreview}}
+  @title="Template Preview"
+  @onClose={{this.closePreview}}
+  @showClose={{true}}
+>
+  <div class="flex col gap-3">
+    <div class="flex col gap-1">
+      <p class="font-sm text-muted">Subject:</p>
+      <p class="font-bold">{{this.previewSubject}}</p>
     </div>
-    <div class="flex col gap-3">
-      <div class="flex col gap-1">
-        <p class="font-sm text-muted">Subject:</p>
-        <p class="font-bold">{{this.previewSubject}}</p>
-      </div>
-      {{#if this.previewVars}}
-        <p class="font-xs text-muted">Variables: {{this.previewVars}}</p>
-      {{/if}}
-      <div class="flex col gap-1">
-        <p class="font-sm text-muted">Body:</p>
-        <pre class="p-4 bg-white rounded-lg border font-sm whitespace-pre-wrap text-xs">{{this.previewBody}}</pre>
-      </div>
+    {{#if this.previewVars}}
+      <p class="font-xs text-muted">Variables: {{this.previewVars}}</p>
+    {{/if}}
+    <div class="flex col gap-1">
+      <p class="font-sm text-muted">Body:</p>
+      <pre class="p-4 bg-white rounded-lg border font-sm whitespace-pre-wrap text-xs">{{this.previewBody}}</pre>
     </div>
-    <button type="button" class="btn btn-secondary" {{on "click" this.closePreview}}>Close</button>
   </div>
-{{/if}}
+  <button type="button" class="btn btn-secondary" {{on "click" this.closePreview}}>Close</button>
+</Modal>
+
+<ConfirmModal
+  @isOpen={{this.showDeleteModal}}
+  @title="Delete Template"
+  @message="Are you sure you want to delete {{this.templateToDelete.name}}? This action cannot be undone."
+  @confirmText="Delete"
+  @cancelText="Cancel"
+  @confirmType="btn-danger"
+  @isConfirming={{this.isDeleting}}
+  @confirmingText="Deleting..."
+  @onClose={{this.closeDeleteModal}}
+  @onConfirm={{this.confirmDelete}}
+/>

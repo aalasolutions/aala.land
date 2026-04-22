@@ -112,9 +112,9 @@ export class LocationsService {
                    COUNT(DISTINCT u.id)::int AS "unitCount"
             FROM localities l
             INNER JOIN cities c ON l.city_id = c.id
-            INNER JOIN assets ast ON ast.locality_id = l.id
-            LEFT JOIN units u ON u.asset_id = ast.id AND u.company_id = $1
-            WHERE (u.company_id = $1 OR ast.created_by_company_id = $1)
+            INNER JOIN buildings ast ON ast.locality_id = l.id
+            LEFT JOIN units u ON u.building_id = ast.id AND u.company_id = $1
+            WHERE (u.company_id = $1 OR ast.company_id = $1)
         `;
         const params: (string)[] = [companyId];
 

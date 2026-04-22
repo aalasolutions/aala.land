@@ -137,161 +137,126 @@
   {{/if}}
 </div>
 
-{{#if this.showAssetModal}}
-  <button type="button" class="modal-backdrop" aria-label="Close modal" {{on "click" this.closeAssetModal}}></button>
-  <div class="modal-panel glass-panel p-8 flex col gap-6" role="dialog" aria-label="Asset form">
-    <div class="flex between x-center">
-      <h3 class="font-xl font-bold">{{if this.editAsset "Edit Asset" "New Asset"}}</h3>
-      <button type="button" class="text-muted font-lg px-2" {{on "click" this.closeAssetModal}}>x</button>
-    </div>
-    <form class="flex col gap-4" {{on "submit" this.saveAsset}}>
-      {{#unless this.editAsset}}
+<Modal @isOpen={{this.showAssetModal}} @title={{if this.editAsset "Edit Asset" "New Asset"}} @onClose={{this.closeAssetModal}} @showClose={{true}}>
+  <form class="flex col gap-4" {{on "submit" this.saveAsset}}>
+    {{#unless this.editAsset}}
+      <div class="flex col gap-2">
+        <label class="font-sm text-muted">City *</label>
+        <LocationTypeahead
+          @searchUrl={{this.citySearchUrl}}
+          @createUrl="/locations/cities"
+          @createPayload={{this.cityCreatePayload}}
+          @placeholder="Search city..."
+          @selectedName={{this.selectedCity.name}}
+          @onSelect={{this.selectCity}}
+          @onClear={{this.clearCity}}
+        />
+      </div>
+      {{#if this.selectedCity}}
         <div class="flex col gap-2">
-          <label class="font-sm text-muted">City *</label>
+          <label class="font-sm text-muted">Location / Area *</label>
           <LocationTypeahead
-            @searchUrl={{this.citySearchUrl}}
-            @createUrl="/locations/cities"
-            @createPayload={{this.cityCreatePayload}}
-            @placeholder="Search city..."
-            @selectedName={{this.selectedCity.name}}
-            @onSelect={{this.selectCity}}
-            @onClear={{this.clearCity}}
+            @searchUrl={{this.localitySearchUrl}}
+            @createUrl="/locations/localities"
+            @createPayload={{this.localityCreatePayload}}
+            @placeholder="Search location..."
+            @selectedName={{this.selectedLocality.name}}
+            @onSelect={{this.selectLocality}}
+            @onClear={{this.clearLocality}}
           />
         </div>
-        {{#if this.selectedCity}}
-          <div class="flex col gap-2">
-            <label class="font-sm text-muted">Location / Area *</label>
-            <LocationTypeahead
-              @searchUrl={{this.localitySearchUrl}}
-              @createUrl="/locations/localities"
-              @createPayload={{this.localityCreatePayload}}
-              @placeholder="Search location..."
-              @selectedName={{this.selectedLocality.name}}
-              @onSelect={{this.selectLocality}}
-              @onClear={{this.clearLocality}}
-            />
-          </div>
-        {{/if}}
-      {{/unless}}
-      <div class="flex col gap-2">
-        <label class="font-sm text-muted" for="b-name">Asset Name *</label>
-        <input id="b-name" type="text"
-          class="form-input"
-          placeholder="e.g. Tower A" value={{this.formAssetName}} required {{on "input" (fn this.setField "formAssetName")}} />
-      </div>
-      <div class="flex col gap-2">
-        <label class="font-sm text-muted" for="b-address">Address</label>
-        <input id="b-address" type="text"
-          class="form-input"
-          placeholder="e.g. 123 Sheikh Zayed Road" value={{this.formAssetAddress}} {{on "input" (fn this.setField "formAssetAddress")}} />
-      </div>
-      {{#if this.assetError}}
-        <p class="font-sm text-danger">{{this.assetError}}</p>
       {{/if}}
-      <div class="flex gap-3 mt-2">
-        <button type="button" class="btn btn-secondary" {{on "click" this.closeAssetModal}}>Cancel</button>
-        <button type="submit" class="btn btn-primary" disabled={{this.isSavingAsset}}>
-          {{if this.isSavingAsset "Saving..." (if this.editAsset "Update" "Create Asset")}}
-        </button>
-      </div>
-    </form>
-  </div>
-{{/if}}
-
-{{#if this.showUnitModal}}
-  <button type="button" class="modal-backdrop" aria-label="Close modal" {{on "click" this.closeUnitModal}}></button>
-  <div class="modal-panel glass-panel p-8 flex col gap-6" role="dialog" aria-label="Unit form">
-    <div class="flex between x-center">
-      <h3 class="font-xl font-bold">{{if this.editUnit "Edit Unit" "New Unit"}}</h3>
-      <button type="button" class="text-muted font-lg px-2" {{on "click" this.closeUnitModal}}>x</button>
+    {{/unless}}
+    <div class="flex col gap-2">
+      <label class="font-sm text-muted" for="b-name">Asset Name *</label>
+      <input id="b-name" type="text"
+        class="form-input"
+        placeholder="e.g. Tower A" value={{this.formAssetName}} required {{on "input" (fn this.setField "formAssetName")}} />
     </div>
-    <form class="flex col gap-4" {{on "submit" this.saveUnit}}>
-      <div class="flex gap-4">
-        <div class="flex col gap-2 flex-1">
-          <label class="font-sm text-muted" for="u-number">Unit Number *</label>
-          <input id="u-number" type="text"
-            class="form-input"
-            placeholder="e.g. 101" value={{this.formUnitNumber}} required {{on "input" (fn this.setField "formUnitNumber")}} />
-        </div>
-        <div class="flex col gap-2 flex-1">
-          <label class="font-sm text-muted" for="u-status">Status</label>
-          <select id="u-status" class="form-input" {{on "change" (fn this.setField "formUnitStatus")}}>
-            <option value="available" selected={{eq this.formUnitStatus "available"}}>Available</option>
-            <option value="rented" selected={{eq this.formUnitStatus "rented"}}>Rented</option>
-            <option value="sold" selected={{eq this.formUnitStatus "sold"}}>Sold</option>
-            <option value="maintenance" selected={{eq this.formUnitStatus "maintenance"}}>Maintenance</option>
-          </select>
-        </div>
+    <div class="flex col gap-2">
+      <label class="font-sm text-muted" for="b-address">Address</label>
+      <input id="b-address" type="text"
+        class="form-input"
+        placeholder="e.g. 123 Sheikh Zayed Road" value={{this.formAssetAddress}} {{on "input" (fn this.setField "formAssetAddress")}} />
+    </div>
+    {{#if this.assetError}}
+      <p class="font-sm text-danger">{{this.assetError}}</p>
+    {{/if}}
+    <div class="flex gap-3 mt-2">
+      <button type="button" class="btn btn-secondary" {{on "click" this.closeAssetModal}}>Cancel</button>
+      <button type="submit" class="btn btn-primary" disabled={{this.isSavingAsset}}>
+        {{if this.isSavingAsset "Saving..." (if this.editAsset "Update" "Create Asset")}}
+      </button>
+    </div>
+  </form>
+</Modal>
+
+<Modal @isOpen={{this.showUnitModal}} @title={{if this.editUnit "Edit Unit" "New Unit"}} @onClose={{this.closeUnitModal}} @showClose={{true}}>
+  <form class="flex col gap-4" {{on "submit" this.saveUnit}}>
+    <div class="flex gap-4">
+      <div class="flex col gap-2 flex-1">
+        <label class="font-sm text-muted" for="u-number">Unit Number *</label>
+        <input id="u-number" type="text"
+          class="form-input"
+          placeholder="e.g. 101" value={{this.formUnitNumber}} required {{on "input" (fn this.setField "formUnitNumber")}} />
       </div>
-      <div class="flex col gap-2">
-        <label class="font-sm text-muted" for="u-property-type">Property Type</label>
-        <select id="u-property-type" class="form-select" {{on "change" (fn this.setField "formUnitPropertyType")}}>
-          <option value="" selected={{eq this.formUnitPropertyType ""}}>Inherit from Asset ({{if (eq this.activeAssetPropertyType 'FOR_SALE') 'For Sale' 'Rental'}})</option>
-          <option value="RENTAL" selected={{eq this.formUnitPropertyType "RENTAL"}}>Rental</option>
-          <option value="FOR_SALE" selected={{eq this.formUnitPropertyType "FOR_SALE"}}>For Sale</option>
-        </select>
-        <p class="font-xs text-muted">Leave as "Inherit" to use the asset's default type.</p>
+      <div class="flex col gap-2 flex-1">
+        <FormDropdown @label="Status" @id="u-status" @value={{this.formUnitStatus}} @onChange={{fn this.setField "formUnitStatus"}} @options={{this.statusOptions}} @placeholder="Select status..." />
       </div>
-      <div class="flex gap-4">
-        <div class="flex col gap-2 flex-1">
-          <label class="font-sm text-muted" for="u-price">Price</label>
-          <input id="u-price" type="number" min="0"
-            class="form-input"
-            placeholder="e.g. 150000" value={{this.formUnitPrice}} {{on "input" (fn this.setField "formUnitPrice")}} />
-        </div>
-        <div class="flex col gap-2 flex-1">
-          <label class="font-sm text-muted" for="u-sqft">Sq Ft</label>
-          <input id="u-sqft" type="number" min="0"
-            class="form-input"
-            placeholder="e.g. 850" value={{this.formUnitSqFt}} {{on "input" (fn this.setField "formUnitSqFt")}} />
-        </div>
+    </div>
+    <FormDropdown @label="Property Type" @id="u-property-type" @value={{this.formUnitPropertyType}} @onChange={{fn this.setField "formUnitPropertyType"}} @options={{this.propertyTypeOptions}} @placeholder="Inherit from Asset" />
+    <p class="font-xs text-muted">Leave as "Inherit" to use the asset's default type.</p>
+    <div class="flex gap-4">
+      <div class="flex col gap-2 flex-1">
+        <label class="font-sm text-muted" for="u-price">Price</label>
+        <input id="u-price" type="number" min="0"
+          class="form-input"
+          placeholder="e.g. 150000" value={{this.formUnitPrice}} {{on "input" (fn this.setField "formUnitPrice")}} />
       </div>
-      <div class="flex gap-4">
-        <div class="flex col gap-2 flex-1">
-          <label class="font-sm text-muted" for="u-beds">Bedrooms</label>
-          <input id="u-beds" type="number" min="0"
-            class="form-input"
-            placeholder="e.g. 2" value={{this.formUnitBedrooms}} {{on "input" (fn this.setField "formUnitBedrooms")}} />
-        </div>
-        <div class="flex col gap-2 flex-1">
-          <label class="font-sm text-muted" for="u-baths">Bathrooms</label>
-          <input id="u-baths" type="number" min="0"
-            class="form-input"
-            placeholder="e.g. 2" value={{this.formUnitBathrooms}} {{on "input" (fn this.setField "formUnitBathrooms")}} />
-        </div>
+      <div class="flex col gap-2 flex-1">
+        <label class="font-sm text-muted" for="u-sqft">Sq Ft</label>
+        <input id="u-sqft" type="number" min="0"
+          class="form-input"
+          placeholder="e.g. 850" value={{this.formUnitSqFt}} {{on "input" (fn this.setField "formUnitSqFt")}} />
       </div>
-      <div class="flex col gap-2">
-        <label class="font-sm text-muted" for="u-owner">Owner (Optional)</label>
-        <select id="u-owner" class="form-select" {{on "change" (fn this.setField "formUnitOwnerId")}}>
-          <option value="">Unassigned</option>
-          {{#each this.owners as |owner|}}
-            <option value={{owner.id}} selected={{eq owner.id this.formUnitOwnerId}}>{{owner.name}}</option>
-          {{/each}}
-        </select>
+    </div>
+    <div class="flex gap-4">
+      <div class="flex col gap-2 flex-1">
+        <label class="font-sm text-muted" for="u-beds">Bedrooms</label>
+        <input id="u-beds" type="number" min="0"
+          class="form-input"
+          placeholder="e.g. 2" value={{this.formUnitBedrooms}} {{on "input" (fn this.setField "formUnitBedrooms")}} />
       </div>
-      <div class="flex col gap-2">
-        <label class="font-sm text-muted">Amenities</label>
-        <div class="amenities-grid">
-          {{#each this.amenityOptions as |opt|}}
-            <button
-              type="button"
-              class="amenity-chip {{if (includes this.formUnitAmenities opt.key) 'amenity-chip-active'}}"
-              {{on "click" (fn this.toggleAmenity opt.key)}}
-            >
-              <Ph @icon={{opt.icon}} /> {{opt.label}}
-            </button>
-          {{/each}}
-        </div>
+      <div class="flex col gap-2 flex-1">
+        <label class="font-sm text-muted" for="u-baths">Bathrooms</label>
+        <input id="u-baths" type="number" min="0"
+          class="form-input"
+          placeholder="e.g. 2" value={{this.formUnitBathrooms}} {{on "input" (fn this.setField "formUnitBathrooms")}} />
       </div>
-      {{#if this.unitError}}
-        <p class="font-sm text-danger">{{this.unitError}}</p>
-      {{/if}}
-      <div class="flex gap-3 mt-2">
-        <button type="button" class="btn btn-secondary" {{on "click" this.closeUnitModal}}>Cancel</button>
-        <button type="submit" class="btn btn-primary" disabled={{this.isSavingUnit}}>
-          {{if this.isSavingUnit "Saving..." (if this.editUnit "Update" "Create Unit")}}
-        </button>
+    </div>
+    <FormDropdown @label="Owner" @id="u-owner" @value={{this.formUnitOwnerId}} @onChange={{fn this.setField "formUnitOwnerId"}} @options={{this.ownerOptions}} @placeholder="Unassigned" />
+    <div class="flex col gap-2">
+      <label class="font-sm text-muted">Amenities</label>
+      <div class="amenities-grid">
+        {{#each this.amenityOptions as |opt|}}
+          <button
+            type="button"
+            class="amenity-chip {{if (includes this.formUnitAmenities opt.key) 'amenity-chip-active'}}"
+            {{on "click" (fn this.toggleAmenity opt.key)}}
+          >
+            <Ph @icon={{opt.icon}} /> {{opt.label}}
+          </button>
+        {{/each}}
       </div>
-    </form>
-  </div>
-{{/if}}
+    </div>
+    {{#if this.unitError}}
+      <p class="font-sm text-danger">{{this.unitError}}</p>
+    {{/if}}
+    <div class="flex gap-3 mt-2">
+      <button type="button" class="btn btn-secondary" {{on "click" this.closeUnitModal}}>Cancel</button>
+      <button type="submit" class="btn btn-primary" disabled={{this.isSavingUnit}}>
+        {{if this.isSavingUnit "Saving..." (if this.editUnit "Update" "Create Unit")}}
+      </button>
+    </div>
+  </form>
+</Modal>

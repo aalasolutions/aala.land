@@ -1,11 +1,14 @@
 {{page-title "Owner Detail"}}
 <div class="page-header">
-  <div class="page-title-section">
+  <div class="page-title-section owner-detail-title-section">
     <button type="button" class="btn btn-secondary btn-back" {{on "click" this.goBack}}>
-      ← Back
+      <Ph @icon="arrow-left" @size="16px" />
+      <span class="btn-back-label">Back</span>
     </button>
-    <h2 class="page-title">{{this.model.owner.name}}</h2>
-    <p class="page-subtitle">Property Owner Details</p>
+    <div class="owner-detail-heading">
+      <h2 class="page-title">{{this.model.owner.name}}</h2>
+      <p class="page-subtitle">Property Owner Details</p>
+    </div>
   </div>
   <button type="button" class="btn btn-primary" {{on "click" this.editOwner}}>
     Edit Owner

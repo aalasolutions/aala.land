@@ -2,8 +2,9 @@ import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateCol
 import { Company } from '../../companies/entities/company.entity';
 import { Locality } from '../../locations/entities/locality.entity';
 import { Unit } from './unit.entity';
+import { PropertyType } from './property-type.enum';
 
-@Entity('assets')
+@Entity('buildings')
 export class Asset {
     @PrimaryGeneratedColumn('uuid')
     id: string;
@@ -18,11 +19,11 @@ export class Asset {
     @JoinColumn({ name: 'locality_id' })
     locality: Locality;
 
-    @Column({ name: 'created_by_company_id', type: 'uuid' })
+    @Column({ name: 'company_id', type: 'uuid' })
     createdByCompanyId: string;
 
     @ManyToOne(() => Company)
-    @JoinColumn({ name: 'created_by_company_id' })
+    @JoinColumn({ name: 'company_id' })
     company: Company;
 
     @OneToMany(() => Unit, (unit) => unit.asset)
@@ -30,6 +31,14 @@ export class Asset {
 
     @Column({ type: 'text', nullable: true })
     address: string | null;
+
+    @Column({
+        name: 'property_type',
+        type: 'enum',
+        enum: PropertyType,
+        nullable: true,
+    })
+    propertyType: PropertyType | null;
 
     @CreateDateColumn({ name: 'created_at' })
     createdAt: Date;

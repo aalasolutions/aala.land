@@ -12,71 +12,19 @@
     {{! Left: Company Info }}
     <div class="glass-panel p-6">
       <h3 class="font-lg font-bold mb-4">Company Information</h3>
-      <form {{on "submit" this.saveCompany}}>
-        <div class="form-group">
-          <label class="form-label" for="company-name">Company Name</label>
-          <input
-            id="company-name"
-            type="text"
-            class="form-input"
-            value={{or this.formName this.company.name}}
-            {{on "input" (fn this.setField "formName")}}
-            required
-          />
-        </div>
+      <form class="flex col gap-4" {{on "submit" this.saveCompany}}>
+        <FormInput @label="Company Name" @id="company-name" @type="text" @value={{or this.formName this.company.name}} @onChange={{fn this.setField "formName"}} @required={{true}} />
 
-        <div class="form-group">
-          <label class="form-label" for="company-email">Email</label>
-          <input
-            id="company-email"
-            type="email"
-            class="form-input"
-            value={{this.company.email}}
-            disabled
-          />
-        </div>
+        <FormInput @label="Email" @id="company-email" @type="email" @value={{this.company.email}} @disabled={{true}} />
 
-        <div class="form-group">
-          <label class="form-label" for="company-phone">Phone</label>
-          <input
-            id="company-phone"
-            type="text"
-            class="form-input"
-            value={{or this.formPhone this.company.phone}}
-            {{on "input" (fn this.setField "formPhone")}}
-            placeholder="+971 4 XXX XXXX"
-          />
-        </div>
-
-        <div class="form-group">
-          <label class="form-label" for="company-address">Address</label>
-          <textarea
-            id="company-address"
-            class="form-input"
-            rows="3"
-            {{on "input" (fn this.setField "formAddress")}}
-            placeholder="e.g. Gulberg, Lahore"
-          >{{or this.formAddress this.company.address}}</textarea>
-        </div>
-
-        <div class="form-group">
-          <label class="form-label">Plan</label>
-          <input
-            type="text"
-            class="form-input"
-            value={{or this.company.subscriptionTier "FREE"}}
-            disabled
-          />
-        </div>
+        <FormInput @label="Plan" @id="company-plan" @type="text" @value={{or this.company.subscriptionTier "FREE"}} @disabled={{true}} />
 
         {{#if this.errorMsg}}
           <p class="text-danger">{{this.errorMsg}}</p>
         {{/if}}
 
         <div class="form-actions">
-          <button type="submit" class="btn btn-primary" disabled={{this.isSaving}}>
-            {{if this.isSaving "Saving..." "Save Changes"}}
-          </button>
+          <AppButton @variant="primary" @buttonType="submit" @text="Save Changes" @loading={{this.isSaving}} @loadingText="Saving..." />
         </div>
       </form>
     </div>
@@ -92,14 +40,7 @@
         {{! Default Region (above the list) }}
         {{#if this.formActiveRegions.length}}
           <div class="mb-4">
-            <label class="font-sm font-bold text-muted uppercase" for="default-region">Default Region</label>
-            <select id="default-region" class="form-select mt-1" data-test-default-region {{on "change" (fn this.setField "formDefaultRegionCode")}}>
-              {{#each this.activeRegionObjects as |r|}}
-                <option value={{r.code}} selected={{eq r.code this.formDefaultRegionCode}}>
-                  {{r.name}} ({{r.currency}})
-                </option>
-              {{/each}}
-            </select>
+            <FormDropdown @label="Default Region" @id="default-region" @value={{this.formDefaultRegionCode}} @onChange={{fn this.setField "formDefaultRegionCode"}} @options={{this.activeRegionOptions}} @placeholder="Select default region..." data-test-default-region />
           </div>
         {{/if}}
 

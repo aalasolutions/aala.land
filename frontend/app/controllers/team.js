@@ -2,6 +2,7 @@ import Controller from '@ember/controller';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
+import { closeDeleteModal, confirmDeleteModal, openDeleteModal } from '../utils/delete-modal';
 
 const ROLES = [
   { value: 'super_admin', label: 'Super Admin' },
@@ -31,10 +32,11 @@ export default class TeamController extends Controller {
   @tracked inviteRole = 'agent';
   @tracked isInviting = false;
   @tracked inviteErrorMsg = '';
+  @tracked showDeleteModal = false;
+  @tracked userToDelete = null;
+  @tracked isDeleting = false;
 
-  get roles() {
-    return ROLES;
-  }
+  roles = ROLES;
 
   @action setField(fieldName, e) { this[fieldName] = e.target.value; }
 
@@ -138,15 +140,20 @@ export default class TeamController extends Controller {
     }
   }
 
-  @action async deleteUser(user) {
-    if (!confirm(`Remove ${user.name}?`)) return;
+  @action openDelete(user) {
+    openDeleteModal(this, 'userToDelete', user);
+  }
 
-    try {
-      await this.auth.fetchJson(`/users/${user.id}`, { method: 'DELETE' });
-      this.notifications.success('Team member removed');
-      this.router.refresh('team');
-    } catch (e) {
-      this.notifications.error(e.message);
-    }
+  @action closeDeleteModal() {
+    closeDeleteModal(this, 'userToDelete');
+  }
+
+  @action async confirmDelete() {
+    await confirmDeleteModal(this, {
+      itemKey: 'userToDelete',
+      resourcePath: '/users',
+      successMessage: 'Team member removed',
+      refreshRoute: 'team',
+    });
   }
 }

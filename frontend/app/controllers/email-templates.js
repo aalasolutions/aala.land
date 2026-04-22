@@ -2,6 +2,7 @@ import Controller from '@ember/controller';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
+import { closeDeleteModal, confirmDeleteModal, openDeleteModal } from '../utils/delete-modal';
 
 const CATEGORIES = [
   { value: 'FOLLOW_UP', label: 'Follow Up' },
@@ -11,6 +12,11 @@ const CATEGORIES = [
   { value: 'MAINTENANCE_UPDATE', label: 'Maintenance Update' },
   { value: 'MARKETING', label: 'Marketing' },
   { value: 'CUSTOM', label: 'Custom' },
+];
+
+const FILTER_CATEGORIES = [
+  { value: '', label: 'All Categories' },
+  ...CATEGORIES,
 ];
 
 export default class EmailTemplatesController extends Controller {
@@ -38,9 +44,16 @@ export default class EmailTemplatesController extends Controller {
   @tracked previewSubject = '';
   @tracked previewBody = '';
   @tracked previewVars = '';
+  @tracked showDeleteModal = false;
+  @tracked templateToDelete = null;
+  @tracked isDeleting = false;
 
   get categories() {
     return CATEGORIES;
+  }
+
+  get filterCategories() {
+    return FILTER_CATEGORIES;
   }
 
   @action setField(fieldName, e) {
@@ -123,16 +136,21 @@ export default class EmailTemplatesController extends Controller {
     }
   }
 
-  @action async deleteTemplate(template) {
-    if (!confirm(`Delete template "${template.name}"?`)) return;
+  @action openDelete(template) {
+    openDeleteModal(this, 'templateToDelete', template);
+  }
 
-    try {
-      await this.auth.fetchJson(`/email-templates/${template.id}`, { method: 'DELETE' });
-      this.notifications.success('Template deleted');
-      this.router.refresh('email-templates');
-    } catch (e) {
-      this.notifications.error(e.message);
-    }
+  @action closeDeleteModal() {
+    closeDeleteModal(this, 'templateToDelete');
+  }
+
+  @action async confirmDelete() {
+    await confirmDeleteModal(this, {
+      itemKey: 'templateToDelete',
+      resourcePath: '/email-templates',
+      successMessage: 'Template deleted',
+      refreshRoute: 'email-templates',
+    });
   }
 
   @action async openPreview(template) {

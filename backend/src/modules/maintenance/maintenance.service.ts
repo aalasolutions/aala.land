@@ -56,7 +56,7 @@ export class MaintenanceService {
         `SELECT wo.id AS "woId", u.unit_number AS "unitNumber", ast.name AS "assetName", loc.name AS "areaName"
          FROM work_orders wo
          LEFT JOIN units u ON wo.unit_id = u.id
-         LEFT JOIN assets ast ON u.asset_id = ast.id
+         LEFT JOIN buildings ast ON u.building_id = ast.id
          LEFT JOIN localities loc ON ast.locality_id = loc.id
          WHERE wo.id = ANY($1)`,
         [orderIds],

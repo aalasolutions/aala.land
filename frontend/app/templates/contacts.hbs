@@ -44,7 +44,7 @@
                   <button type="button" class="btn btn-secondary btn-xs" {{on "click" (fn this.openEdit contact)}}>
                     <Ph @icon="pencil-simple" /> Edit
                   </button>
-                  <button type="button" class="btn btn-danger btn-xs" {{on "click" (fn this.deleteContact contact)}}>
+                  <button type="button" class="btn btn-danger btn-xs" {{on "click" (fn this.openDelete contact)}}>
                     <Ph @icon="trash" />
                   </button>
                 </div>
@@ -62,75 +62,73 @@
   {{/if}}
 </div>
 
-{{#if this.showModal}}
-  <button type="button" class="modal-backdrop" aria-label="Close modal" {{on "click" this.closeModal}}></button>
-  <div class="modal-panel glass-panel p-8 flex col gap-6" role="dialog" aria-label="Contact form">
-    <div class="flex between x-center">
-      <h3 class="font-xl font-bold">{{if this.editContact "Edit Contact" "New Contact"}}</h3>
-      <button type="button" class="text-muted font-lg px-2" {{on "click" this.closeModal}}>x</button>
-    </div>
-    <form class="flex col gap-4" {{on "submit" this.saveContact}}>
+<Modal
+  @isOpen={{this.showModal}}
+  @title={{if this.editContact "Edit Contact" "New Contact"}}
+  @onClose={{this.closeModal}}
+  @showClose={{true}}
+>
+  <form class="flex col gap-4" {{on "submit" this.saveContact}}>
       <div class="flex gap-4">
         <div class="flex col gap-2 flex-1">
-          <label class="font-sm text-muted" for="c-fname">First Name *</label>
-          <input id="c-fname" type="text" class="form-input" placeholder="Ahmed" value={{this.formFirstName}} required {{on "input" (fn this.setField "formFirstName")}} />
+          <FormInput @label="First Name" @id="c-fname" @type="text" @placeholder="Ahmed" @value={{this.formFirstName}} @onChange={{fn this.setField "formFirstName"}} @required={{true}} />
         </div>
         <div class="flex col gap-2 flex-1">
-          <label class="font-sm text-muted" for="c-lname">Last Name</label>
-          <input id="c-lname" type="text" class="form-input" placeholder="Al-Rashid" value={{this.formLastName}} {{on "input" (fn this.setField "formLastName")}} />
+          <FormInput @label="Last Name" @id="c-lname" @type="text" @placeholder="Al-Rashid" @value={{this.formLastName}} @onChange={{fn this.setField "formLastName"}} />
         </div>
       </div>
+
       <div class="flex gap-4">
         <div class="flex col gap-2 flex-1">
-          <label class="font-sm text-muted" for="c-email">Email</label>
-          <input id="c-email" type="email" class="form-input" placeholder="ahmed@example.com" value={{this.formEmail}} {{on "input" (fn this.setField "formEmail")}} />
+          <FormInput @label="Email" @id="c-email" @type="email" @placeholder="ahmed@example.com" @value={{this.formEmail}} @onChange={{fn this.setField "formEmail"}} />
         </div>
         <div class="flex col gap-2 flex-1">
-          <label class="font-sm text-muted" for="c-type">Type</label>
-          <select id="c-type" class="form-select" {{on "change" (fn this.setField "formType")}}>
-            {{#each this.contactTypes as |ct|}}
-              <option value={{ct.value}} selected={{eq this.formType ct.value}}>{{ct.label}}</option>
-            {{/each}}
-          </select>
+          <FormDropdown @label="Type" @id="c-type" @value={{this.formType}} @onChange={{fn this.setField "formType"}} @options={{this.contactTypes}} @placeholder="Select type..." />
         </div>
       </div>
+
       <div class="flex gap-4">
         <div class="flex col gap-2 flex-1">
-          <label class="font-sm text-muted" for="c-phone">Phone</label>
-          <input id="c-phone" type="text" class="form-input" placeholder="+971501234567" value={{this.formPhone}} {{on "input" (fn this.setField "formPhone")}} />
+          <FormInput @label="Phone" @id="c-phone" @type="text" @placeholder="+971501234567" @value={{this.formPhone}} @onChange={{fn this.setField "formPhone"}} />
         </div>
         <div class="flex col gap-2 flex-1">
-          <label class="font-sm text-muted" for="c-whatsapp">WhatsApp</label>
-          <input id="c-whatsapp" type="text" class="form-input" placeholder="+971501234567" value={{this.formWhatsappNumber}} {{on "input" (fn this.setField "formWhatsappNumber")}} />
+          <FormInput @label="WhatsApp" @id="c-whatsapp" @type="text" @placeholder="+971501234567" @value={{this.formWhatsappNumber}} @onChange={{fn this.setField "formWhatsappNumber"}} />
         </div>
       </div>
+
       <div class="flex gap-4">
         <div class="flex col gap-2 flex-1">
-          <label class="font-sm text-muted" for="c-company">Company</label>
-          <input id="c-company" type="text" class="form-input" placeholder="Emaar Properties" value={{this.formContactCompany}} {{on "input" (fn this.setField "formContactCompany")}} />
+          <FormInput @label="Company" @id="c-company" @type="text" @placeholder="Emaar Properties" @value={{this.formContactCompany}} @onChange={{fn this.setField "formContactCompany"}} />
         </div>
         <div class="flex col gap-2 flex-1">
-          <label class="font-sm text-muted" for="c-job">Job Title</label>
-          <input id="c-job" type="text" class="form-input" placeholder="Property Manager" value={{this.formJobTitle}} {{on "input" (fn this.setField "formJobTitle")}} />
+          <FormInput @label="Job Title" @id="c-job" @type="text" @placeholder="Property Manager" @value={{this.formJobTitle}} @onChange={{fn this.setField "formJobTitle"}} />
         </div>
       </div>
-      <div class="flex col gap-2">
-        <label class="font-sm text-muted" for="c-address">Address</label>
-        <input id="c-address" type="text" class="form-input" placeholder="e.g. Gulberg, Lahore" value={{this.formAddress}} {{on "input" (fn this.setField "formAddress")}} />
-      </div>
-      <div class="flex col gap-2">
-        <label class="font-sm text-muted" for="c-notes">Notes</label>
-        <textarea id="c-notes" class="form-input" rows="3" placeholder="Additional notes..." value={{this.formNotes}} {{on "input" (fn this.setField "formNotes")}}></textarea>
-      </div>
+
+      <FormInput @label="Address" @id="c-address" @type="text" @placeholder="e.g. Gulberg, Lahore" @value={{this.formAddress}} @onChange={{fn this.setField "formAddress"}} />
+
+      <FormTextarea @label="Notes" @id="c-notes" @placeholder="Additional notes..." @rows={{3}} @value={{this.formNotes}} @onChange={{fn this.setField "formNotes"}} />
+
       {{#if this.errorMsg}}
         <p class="font-sm text-danger">{{this.errorMsg}}</p>
       {{/if}}
+
       <div class="flex gap-3 mt-2">
-        <button type="button" class="btn btn-secondary" {{on "click" this.closeModal}}>Cancel</button>
-        <button type="submit" class="btn btn-primary" disabled={{this.isSaving}}>
-          {{if this.isSaving "Saving..." (if this.editContact "Update" "Create Contact")}}
-        </button>
+        <AppButton @variant="secondary" @text="Cancel" @onClick={{this.closeModal}} />
+        <AppButton @variant="primary" @buttonType="submit" @text={{if this.editContact "Update" "Create Contact"}} @loading={{this.isSaving}} @loadingText="Saving..." />
       </div>
     </form>
-  </div>
-{{/if}}
+</Modal>
+
+<ConfirmModal
+  @isOpen={{this.showDeleteModal}}
+  @title="Delete Contact"
+  @message="Are you sure you want to delete {{this.contactToDelete.firstName}} {{this.contactToDelete.lastName}}? This action cannot be undone."
+  @confirmText="Delete"
+  @cancelText="Cancel"
+  @confirmType="btn-danger"
+  @isConfirming={{this.isDeleting}}
+  @confirmingText="Deleting..."
+  @onClose={{this.closeDeleteModal}}
+  @onConfirm={{this.confirmDelete}}
+/>

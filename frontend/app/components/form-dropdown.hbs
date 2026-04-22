@@ -1,0 +1,60 @@
+<div class="flex col gap-2">
+  <label class="font-sm text-muted" for={{@id}}>{{@label}}{{#if @required}} *{{/if}}</label>
+
+  <div class="form-dropdown" ...attributes>
+    <div class="dropdown-container">
+      <input
+        type="text"
+        id={{@id}}
+        class="dropdown-trigger form-input"
+        readonly
+        disabled={{@disabled}}
+        value={{this.displayText}}
+        {{on "click" this.toggleDropdown}}
+        {{on "keydown" this.handleKeydown}}
+      />
+      <span class="dropdown-arrow {{if this.isOpen 'open'}}">
+        <Ph @icon="caret-down" @size="16px" />
+      </span>
+
+      {{#if this.isOpen}}
+        <div
+          class="dropdown-menu open {{if (and this.dropdownPosition (and this.dropdownPosition.openUpward (not this.isInModal))) 'open-upward'}} {{if this.isInModal 'in-modal-dropdown'}}"
+          style={{this.dropdownMenuStyle}}
+        >
+          {{#if this.showSearch}}
+            <div class="dropdown-search">
+              <input
+                type="text"
+                class="form-input"
+                placeholder="Search..."
+                value={{this.searchText}}
+                {{on "input" this.updateSearch}}
+                {{on "keydown" this.handleKeydown}}
+              />
+            </div>
+          {{/if}}
+
+          <div class="dropdown-options" role="listbox" aria-labelledby={{@id}}>
+            {{#if this.filteredOptions.length}}
+              {{#each this.filteredOptions as |opt index|}}
+                <div
+                  class="dropdown-option {{if (eq @value opt.value) 'selected'}} {{if (eq this.highlightedIndex index) 'highlighted'}}"
+                  role="option"
+                  aria-selected={{if (eq @value opt.value) "true" "false"}}
+                  {{on "click" (fn this.selectOption opt)}}
+                >
+                  {{opt.label}}
+                </div>
+              {{/each}}
+            {{else}}
+              <div class="dropdown-no-results">
+                No results found
+              </div>
+            {{/if}}
+          </div>
+        </div>
+      {{/if}}
+    </div>
+  </div>
+</div>

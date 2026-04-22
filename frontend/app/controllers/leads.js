@@ -19,12 +19,14 @@ const TEMPERATURE_STAGES = [
   { temperature: 'DEAD', label: 'Dead', icon: 'skull' },
 ];
 
-const TEMPERATURE_COLORS = {
-  HOT: { bg: '#fef2f2', text: '#dc2626', border: '#fecaca' },
-  WARM: { bg: '#fffbeb', text: '#d97706', border: '#fde68a' },
-  COLD: { bg: '#eff6ff', text: '#2563eb', border: '#bfdbfe' },
-  DEAD: { bg: '#f3f4f6', text: '#6b7280', border: '#d1d5db' },
-};
+const STATUS_OPTIONS = PIPELINE_STAGES.map(({ status, label }) => ({ value: status, label }));
+
+const TEMPERATURE_OPTIONS = TEMPERATURE_STAGES.map(({ temperature, label }) => ({
+  value: temperature,
+  label,
+}));
+
+const NONE_OPTION = { value: '', label: '-- None --' };
 
 export default class LeadsController extends Controller {
   @service auth;
@@ -77,6 +79,47 @@ export default class LeadsController extends Controller {
 
   get showRegionField() {
     return this.region.regions.length > 1;
+  }
+
+  statusOptions = STATUS_OPTIONS;
+
+  temperatureOptions = TEMPERATURE_OPTIONS;
+
+  get regionOptions() {
+    return this.region.regions.map(r => ({
+      value: r.code,
+      label: `${r.name} (${r.currency})`
+    }));
+  }
+
+  get propertyOptions() {
+    return [
+      NONE_OPTION,
+      ...(this.properties || []).map(property => ({
+        value: property.id,
+        label: property.name
+      }))
+    ];
+  }
+
+  get unitOptions() {
+    return [
+      NONE_OPTION,
+      ...(this.filteredUnits || []).map(unit => ({
+        value: unit.id,
+        label: `Unit ${unit.unitNumber} (${unit.status})`
+      }))
+    ];
+  }
+
+  get agentOptions() {
+    return [
+      { value: '', label: '-- Select Agent --' },
+      ...(this.agents || []).map(agent => ({
+        value: agent.id,
+        label: agent.name
+      }))
+    ];
   }
 
   get allLeads() {
@@ -140,10 +183,6 @@ export default class LeadsController extends Controller {
     }
   }
 
-  getTemperatureColor(temp) {
-    return TEMPERATURE_COLORS[temp] || TEMPERATURE_COLORS.WARM;
-  }
-
   @action setField(fieldName, e) { this[fieldName] = e.target.value; }
 
   @action setPropertyId(e) {
@@ -173,6 +212,10 @@ export default class LeadsController extends Controller {
   }
 
   @action openEdit(lead) {
+    if (this.showDetailModal) {
+      this.closeDetailModal();
+    }
+
     this.formFirstName = lead.firstName ?? '';
     this.formLastName = lead.lastName ?? '';
     this.formEmail = lead.email ?? '';
@@ -191,6 +234,10 @@ export default class LeadsController extends Controller {
   }
 
   @action openAssignModal(lead) {
+    if (this.showDetailModal) {
+      this.closeDetailModal();
+    }
+
     this.assignLead = lead;
     this.selectedAgentId = lead.assignedTo ?? '';
     this.loadAgents();

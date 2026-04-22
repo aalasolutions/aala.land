@@ -3,6 +3,35 @@ import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
 
+const TRANSACTION_TYPE_OPTIONS = [
+  { value: 'INCOME', label: 'Income' },
+  { value: 'EXPENSE', label: 'Expense' },
+];
+
+const CATEGORY_OPTIONS = [
+  { value: 'RENT', label: 'Rent' },
+  { value: 'SALE', label: 'Sale' },
+  { value: 'DEPOSIT', label: 'Deposit' },
+  { value: 'MAINTENANCE', label: 'Maintenance' },
+  { value: 'COMMISSION', label: 'Commission' },
+  { value: 'OTHER', label: 'Other' },
+];
+
+const PAYMENT_METHOD_OPTIONS = [
+  { value: 'CASH', label: 'Cash' },
+  { value: 'CHEQUE', label: 'Cheque' },
+  { value: 'BANK_TRANSFER', label: 'Bank Transfer' },
+  { value: 'CREDIT_CARD', label: 'Credit Card' },
+  { value: 'ONLINE', label: 'Online' },
+];
+
+const STATUS_OPTIONS = [
+  { value: 'PENDING', label: 'Pending' },
+  { value: 'COMPLETED', label: 'Completed' },
+  { value: 'CANCELLED', label: 'Cancelled' },
+  { value: 'FAILED', label: 'Failed' },
+];
+
 export default class FinancialsController extends Controller {
   @service auth;
   @service notifications;
@@ -20,6 +49,14 @@ export default class FinancialsController extends Controller {
   @tracked isSaving = false;
   @tracked errorMsg = '';
   @tracked activeTab = 'all';
+
+  transactionTypeOptions = TRANSACTION_TYPE_OPTIONS;
+
+  categoryOptions = CATEGORY_OPTIONS;
+
+  paymentMethodOptions = PAYMENT_METHOD_OPTIONS;
+
+  statusOptions = STATUS_OPTIONS;
 
   get filteredTransactions() {
     const transactions = this.model?.transactions ?? [];

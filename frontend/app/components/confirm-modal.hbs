@@ -1,0 +1,30 @@
+<Modal
+  @isOpen={{@isOpen}}
+  @title={{@title}}
+  @onClose={{this.close}}
+  @showClose={{true}}
+>
+  <div class="flex col gap-4">
+    {{#if @message}}
+      <p class="text-muted">{{@message}}</p>
+    {{/if}}
+
+    <div class="flex gap-3 justify-end">
+      <button type="button" class="btn btn-secondary" {{on "click" this.close}}>
+        {{@cancelText}}
+      </button>
+      <button
+        type="button"
+        class="btn {{@confirmType}}"
+        {{on "click" this.confirm}}
+        disabled={{@isConfirming}}
+      >
+        {{#if @isConfirming}}
+          {{@confirmingText}}
+        {{else}}
+          {{@confirmText}}
+        {{/if}}
+      </button>
+    </div>
+  </div>
+</Modal>

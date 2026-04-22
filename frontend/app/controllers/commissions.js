@@ -3,6 +3,19 @@ import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
 
+const FILTER_STATUS_OPTIONS = [
+  { value: '', label: 'All' },
+  { value: 'PENDING', label: 'Pending' },
+  { value: 'APPROVED', label: 'Approved' },
+  { value: 'PAID', label: 'Paid' },
+];
+
+const COMMISSION_TYPE_OPTIONS = [
+  { value: 'SALE', label: 'Sale' },
+  { value: 'RENTAL', label: 'Rental' },
+  { value: 'REFERRAL', label: 'Referral' },
+];
+
 export default class CommissionsController extends Controller {
   @service auth;
   @service notifications;
@@ -19,6 +32,17 @@ export default class CommissionsController extends Controller {
   @tracked formLeadId = '';
   @tracked formTransactionId = '';
   @tracked formNotes = '';
+
+  filterStatusOptions = FILTER_STATUS_OPTIONS;
+
+  commissionTypeOptions = COMMISSION_TYPE_OPTIONS;
+
+  get agentOptions() {
+    return (this.model.agents || []).map(agent => ({
+      value: agent.id,
+      label: agent.name
+    }));
+  }
 
   get filteredCommissions() {
     const all = this.model?.commissions || [];
@@ -49,6 +73,10 @@ export default class CommissionsController extends Controller {
 
   @action async saveCommission(event) {
     event.preventDefault();
+    if (!this.formAgentId) {
+      this.errorMsg = 'Please select an agent';
+      return;
+    }
     this.isSaving = true;
     this.errorMsg = '';
     try {

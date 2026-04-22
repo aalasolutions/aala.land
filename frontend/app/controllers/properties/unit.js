@@ -3,7 +3,21 @@ import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
 import { AMENITY_OPTIONS } from '../../constants/amenities';
+import { closeDeleteModal, confirmDeleteModal, openDeleteModal } from '../../utils/delete-modal';
 import { toggleArrayItem } from '../../utils/toggle-array-item';
+
+const PROPERTY_STATUS_OPTIONS = [
+  { value: 'available', label: 'Available' },
+  { value: 'rented', label: 'Rented' },
+  { value: 'sold', label: 'Sold' },
+  { value: 'maintenance', label: 'Maintenance' },
+];
+
+const PROPERTY_TYPE_OPTIONS = [
+  { value: '', label: 'Not set' },
+  { value: 'RENTAL', label: 'Rental' },
+  { value: 'FOR_SALE', label: 'For Sale' },
+];
 
 export default class PropertiesUnitController extends Controller {
   @service auth;
@@ -19,6 +33,11 @@ export default class PropertiesUnitController extends Controller {
   @tracked isUploading = false;
   @tracked uploadStatus = '';
 
+  // Delete confirmation state
+  @tracked showDeleteModal = false;
+  @tracked itemToDelete = null;
+  @tracked isDeleting = false;
+
   // Form fields
   @tracked formUnitNumber = '';
   @tracked formStatus = 'available';
@@ -32,7 +51,21 @@ export default class PropertiesUnitController extends Controller {
   @tracked formOwnerId = '';
   @tracked formAmenities = [];
 
-  get amenityOptions() { return AMENITY_OPTIONS; }
+  amenityOptions = AMENITY_OPTIONS;
+
+  statusOptions = PROPERTY_STATUS_OPTIONS;
+
+  propertyTypeOptions = PROPERTY_TYPE_OPTIONS;
+
+  get ownerOptions() {
+    return [
+      { value: '', label: 'Unassigned' },
+      ...(this.model.owners || []).map(owner => ({
+        value: owner.id,
+        label: owner.name
+      }))
+    ];
+  }
 
   @action setField(fieldName, e) {
     this[fieldName] = e.target.value;
@@ -128,16 +161,22 @@ export default class PropertiesUnitController extends Controller {
     }
   }
 
-  @action async deletePhoto(media) {
-    if (!confirm('Delete this photo?')) return;
+  @action openDeletePhoto(media) {
+    openDeleteModal(this, 'itemToDelete', media);
+  }
 
-    try {
-      await this.auth.fetchJson(`/properties/media/${media.id}`, { method: 'DELETE' });
-      this.notifications.success('Photo deleted');
-      this.router.refresh('properties.unit');
-    } catch (err) {
-      this.notifications.error(err.message || 'Delete failed');
-    }
+  @action closeDeleteModal() {
+    closeDeleteModal(this, 'itemToDelete');
+  }
+
+  @action async confirmDeletePhoto() {
+    await confirmDeleteModal(this, {
+      itemKey: 'itemToDelete',
+      resourcePath: '/properties/media',
+      successMessage: 'Photo deleted',
+      refreshRoute: 'properties.unit',
+      errorMessage: 'Delete failed',
+    });
   }
 
   @action async setPrimaryPhoto(media) {
@@ -167,7 +206,7 @@ export default class PropertiesUnitController extends Controller {
       ...(this.formSqFt ? { sqFt: parseFloat(this.formSqFt) } : {}),
       ...(this.formBedrooms ? { bedrooms: parseInt(this.formBedrooms, 10) } : {}),
       ...(this.formBathrooms ? { bathrooms: parseInt(this.formBathrooms, 10) } : {}),
-      ...(this.formFloor ? { floor: parseInt(this.formFloor, 10) } : {}),
+      ...(this.formFloor ? { floor: this.formFloor } : {}),
       ...(this.formDescription ? { description: this.formDescription } : {}),
       ...(this.formOwnerId ? { ownerId: this.formOwnerId } : {}),
       amenities: this.formAmenities,

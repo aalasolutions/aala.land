@@ -47,7 +47,7 @@
                     <button type="button" class="btn btn-secondary btn-xs" data-test-edit-user {{on "click" (fn this.openEdit user)}}>
                       <Ph @icon="pencil-simple" /> Edit
                     </button>
-                    <button type="button" class="btn btn-danger btn-xs" data-test-delete-user {{on "click" (fn this.deleteUser user)}}>
+                    <button type="button" class="btn btn-danger btn-xs" data-test-delete-user {{on "click" (fn this.openDelete user)}}>
                       <Ph @icon="trash" /> Remove
                     </button>
                   </div>
@@ -67,89 +67,81 @@
   </p>
 </div>
 
-{{#if this.showModal}}
-  <button type="button" class="modal-backdrop" aria-label="Close modal" {{on "click" this.closeModal}}></button>
-  <div class="modal-panel glass-panel p-8 flex col gap-6" role="dialog" data-test-user-modal>
-    <div class="flex between x-center">
-      <h3 class="font-xl font-bold">{{if this.editUser "Edit Team Member" "Add Team Member"}}</h3>
-      <button type="button" class="text-muted font-lg px-2" {{on "click" this.closeModal}}>x</button>
-    </div>
-    <form class="flex col gap-4" {{on "submit" this.saveUser}}>
-      <div class="flex col gap-2">
-        <label class="font-sm text-muted">Name *</label>
-        <input type="text" class="form-input" data-test-input-name value={{this.formName}} {{on "input" (fn this.setField "formName")}} required />
-      </div>
-      <div class="flex col gap-2">
-        <label class="font-sm text-muted">Email *</label>
-        <input type="email" class="form-input" data-test-input-email value={{this.formEmail}} {{on "input" (fn this.setField "formEmail")}} required />
-      </div>
-      {{#unless this.editUser}}
-        <div class="flex col gap-2">
-          <label class="font-sm text-muted">Password *</label>
-          <input type="password" class="form-input" data-test-input-password value={{this.formPassword}} {{on "input" (fn this.setField "formPassword")}} required />
-        </div>
-      {{/unless}}
-      <div class="flex col gap-2">
-        <label class="font-sm text-muted">Role</label>
-        <select class="form-input" data-test-input-role {{on "change" (fn this.setField "formRole")}}>
-          {{#each this.roles as |roleOption|}}
-            <option value={{roleOption.value}} selected={{eq roleOption.value this.formRole}}>{{roleOption.label}}</option>
-          {{/each}}
-        </select>
-      </div>
-      {{#if this.errorMsg}}
-        <p class="font-sm text-danger" data-test-error>{{this.errorMsg}}</p>
-      {{/if}}
-      <div class="flex gap-3 mt-2">
-        <button type="button" class="btn btn-secondary" {{on "click" this.closeModal}}>Cancel</button>
-        <button type="submit" class="btn btn-primary" disabled={{this.isSaving}} data-test-save-user>
-          {{if this.isSaving "Saving..." (if this.editUser "Update" "Create")}}
-        </button>
-      </div>
-    </form>
-  </div>
-{{/if}}
+<Modal
+  @isOpen={{this.showModal}}
+  @title={{if this.editUser "Edit Team Member" "Add Team Member"}}
+  @onClose={{this.closeModal}}
+  @showClose={{true}}
+>
+  <form class="flex col gap-4" {{on "submit" this.saveUser}}>
+    <FormInput @label="Name" @id="t-name" @type="text" @value={{this.formName}} @onChange={{fn this.setField "formName"}} @required={{true}} data-test-input-name />
 
-{{#if this.showInviteModal}}
-  <button type="button" class="modal-backdrop" aria-label="Close modal" {{on "click" this.closeInvite}}></button>
-  <div class="modal-panel glass-panel p-8 flex col gap-6" role="dialog" data-test-invite-modal>
-    <div class="flex between x-center">
-      <h3 class="font-xl font-bold"><Ph @icon="envelope" /> Invite Team Member</h3>
-      <button type="button" class="text-muted font-lg px-2" {{on "click" this.closeInvite}}>x</button>
+    <FormInput @label="Email" @id="t-email" @type="email" @value={{this.formEmail}} @onChange={{fn this.setField "formEmail"}} @required={{true}} data-test-input-email />
+
+    {{#unless this.editUser}}
+      <FormInput @label="Password" @id="t-password" @type="password" @value={{this.formPassword}} @onChange={{fn this.setField "formPassword"}} @required={{true}} data-test-input-password />
+    {{/unless}}
+
+    <div class="flex col gap-2">
+      <FormDropdown @label="Role" @id="t-role" @value={{this.formRole}} @onChange={{fn this.setField "formRole"}} @options={{this.roles}} @placeholder="Select role..." data-test-input-role />
     </div>
-    <p class="text-muted font-sm">Send an invitation with a temporary password. The new member will receive login credentials.</p>
-    <form class="flex col gap-4" {{on "submit" this.sendInvite}}>
-      <div class="flex gap-4">
-        <div class="flex col gap-2 flex-1">
-          <label class="font-sm text-muted">First Name *</label>
-          <input type="text" class="form-input" data-test-invite-first placeholder="e.g. Jane" value={{this.inviteFirstName}} {{on "input" (fn this.setField "inviteFirstName")}} required />
-        </div>
-        <div class="flex col gap-2 flex-1">
-          <label class="font-sm text-muted">Last Name *</label>
-          <input type="text" class="form-input" data-test-invite-last placeholder="e.g. Smith" value={{this.inviteLastName}} {{on "input" (fn this.setField "inviteLastName")}} required />
-        </div>
+
+    {{#if this.errorMsg}}
+      <p class="font-sm text-danger" data-test-error>{{this.errorMsg}}</p>
+    {{/if}}
+
+    <div class="flex gap-3 mt-2">
+      <AppButton @variant="secondary" @text="Cancel" @onClick={{this.closeModal}} />
+      <AppButton @variant="primary" @buttonType="submit" @text={{if this.editUser "Update" "Create"}} @loading={{this.isSaving}} @loadingText="Saving..." />
+    </div>
+  </form>
+</Modal>
+
+<Modal
+  @isOpen={{this.showInviteModal}}
+  @title="Invite Team Member"
+  @onClose={{this.closeInvite}}
+  @showClose={{true}}
+>
+  <p class="text-muted font-sm">Send an invitation with a temporary password. The new member will receive login credentials.</p>
+  <form class="flex col gap-4" {{on "submit" this.sendInvite}}>
+    <div class="flex gap-4">
+      <div class="flex col gap-2 flex-1">
+        <FormInput @label="First Name" @id="i-fname" @type="text" @placeholder="e.g. Jane" @value={{this.inviteFirstName}} @onChange={{fn this.setField "inviteFirstName"}} @required={{true}} data-test-invite-first />
       </div>
-      <div class="flex col gap-2">
-        <label class="font-sm text-muted">Email *</label>
-        <input type="email" class="form-input" data-test-invite-email placeholder="e.g. jane@company.com" value={{this.inviteEmail}} {{on "input" (fn this.setField "inviteEmail")}} required />
+      <div class="flex col gap-2 flex-1">
+        <FormInput @label="Last Name" @id="i-lname" @type="text" @placeholder="e.g. Smith" @value={{this.inviteLastName}} @onChange={{fn this.setField "inviteLastName"}} @required={{true}} data-test-invite-last />
       </div>
-      <div class="flex col gap-2">
-        <label class="font-sm text-muted">Role</label>
-        <select class="form-input" data-test-invite-role {{on "change" (fn this.setField "inviteRole")}}>
-          {{#each this.roles as |roleOption|}}
-            <option value={{roleOption.value}} selected={{eq roleOption.value this.inviteRole}}>{{roleOption.label}}</option>
-          {{/each}}
-        </select>
-      </div>
-      {{#if this.inviteErrorMsg}}
-        <p class="font-sm text-danger">{{this.inviteErrorMsg}}</p>
-      {{/if}}
-      <div class="flex gap-3 mt-2">
-        <button type="button" class="btn btn-secondary" {{on "click" this.closeInvite}}>Cancel</button>
-        <button type="submit" class="btn btn-primary" disabled={{this.isInviting}} data-test-send-invite>
-          {{if this.isInviting "Sending..." "Send Invitation"}}
-        </button>
-      </div>
-    </form>
-  </div>
-{{/if}}
+    </div>
+
+    <FormInput @label="Email" @id="i-email" @type="email" @placeholder="e.g. jane@company.com" @value={{this.inviteEmail}} @onChange={{fn this.setField "inviteEmail"}} @required={{true}} data-test-invite-email />
+
+    <div class="flex col gap-2">
+      <FormDropdown @label="Role" @id="i-role" @value={{this.inviteRole}} @onChange={{fn this.setField "inviteRole"}} @options={{this.roles}} @placeholder="Select role..." data-test-invite-role />
+    </div>
+
+    {{#if this.inviteErrorMsg}}
+      <p class="font-sm text-danger">{{this.inviteErrorMsg}}</p>
+    {{/if}}
+
+    <div class="flex gap-3 mt-2">
+      <button type="button" class="btn btn-secondary" {{on "click" this.closeInvite}}>Cancel</button>
+      <button type="submit" class="btn btn-primary" disabled={{this.isInviting}} data-test-send-invite>
+        {{if this.isInviting "Sending..." "Send Invitation"}}
+      </button>
+    </div>
+  </form>
+</Modal>
+
+<ConfirmModal
+  @isOpen={{this.showDeleteModal}}
+  @title="Remove Team Member"
+  @message="Are you sure you want to remove {{this.userToDelete.name}}? This action cannot be undone."
+  @confirmText="Remove"
+  @cancelText="Cancel"
+  @confirmType="btn-danger"
+  @isConfirming={{this.isDeleting}}
+  @confirmingText="Removing..."
+  @onClose={{this.closeDeleteModal}}
+  @onConfirm={{this.confirmDelete}}
+/>

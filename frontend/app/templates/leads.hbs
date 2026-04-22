@@ -54,7 +54,7 @@
 
   {{!-- PIPELINE KANBAN VIEW --}}
   {{#if (eq this.viewMode 'pipeline')}}
-    <div class="kanban-board">
+    <div class="kanban-board kanban-board--pipeline">
       {{#each this.columns as |column|}}
         <div data-test-kanban-column
           data-test-column-status={{column.status}}
@@ -124,7 +124,7 @@
 
   {{!-- TEMPERATURE BOARD VIEW --}}
   {{#if (eq this.viewMode 'temperature')}}
-    <div data-test-temperature-board class="kanban-board" style="grid-template-columns: repeat(4, minmax(250px, 1fr));">
+    <div data-test-temperature-board class="kanban-board kanban-board--temperature">
       {{#each this.temperatureColumns as |column|}}
         <div data-test-kanban-column
           data-test-column-temp={{column.temperature}}
@@ -191,7 +191,7 @@
 
   {{!-- AGENT BOARD VIEW --}}
   {{#if (eq this.viewMode 'agent')}}
-    <div data-test-agent-board class="kanban-board" style="grid-template-columns: repeat({{this.agentColumns.length}}, minmax(250px, 1fr));">
+    <div data-test-agent-board class="kanban-board kanban-board--agent">
       {{#each this.agentColumns as |column|}}
         <div data-test-kanban-column
           data-test-column-agent={{or column.agentId "unassigned"}}
@@ -342,156 +342,82 @@
 </div>
 
 {{!-- Edit Modal --}}
-{{#if this.showModal}}
-  <button type="button" class="modal-backdrop-nested" aria-label="Close modal" {{on "click" this.closeModal}}></button>
-  <div class="modal-panel modal-nested glass-panel p-8 flex col gap-6" role="dialog">
-    <div class="flex between x-center">
-      <h3 class="font-xl font-bold">{{if this.editLead "Edit Lead" "New Lead"}}</h3>
-      <button type="button" class="text-muted font-lg px-2" {{on "click" this.closeModal}}>x</button>
+<Modal
+  @isOpen={{this.showModal}}
+  @title={{if this.editLead "Edit Lead" "New Lead"}}
+  @onClose={{this.closeModal}}
+  @showClose={{true}}
+>
+  <form class="flex col gap-4" {{on "submit" this.saveLead}}>
+    {{#if this.showRegionField}}
+      <FormDropdown @label="Region" @id="lead-region" @value={{this.formRegionCode}} @onChange={{fn this.setField "formRegionCode"}} @options={{this.regionOptions}} @placeholder="Select region..." data-test-region-select />
+    {{/if}}
+    <div class="flex gap-4">
+      <div class="flex-1">
+        <FormInput @label="First Name" @id="lead-first-name" @type="text" @placeholder="e.g. Ahmed" @value={{this.formFirstName}} @onChange={{fn this.setField "formFirstName"}} @required={{true}} />
+      </div>
+      <div class="flex-1">
+        <FormInput @label="Last Name" @id="lead-last-name" @type="text" @placeholder="e.g. Al Mansouri" @value={{this.formLastName}} @onChange={{fn this.setField "formLastName"}} />
+      </div>
     </div>
-    <form class="flex col gap-4" {{on "submit" this.saveLead}}>
-      {{#if this.showRegionField}}
-        <div class="flex col gap-2">
-          <label class="font-sm text-muted" for="lead-region">Region</label>
-          <select id="lead-region" class="form-select" data-test-region-select {{on "change" (fn this.setField "formRegionCode")}}>
-            {{#each this.region.regions as |r|}}
-              <option value={{r.code}} selected={{eq r.code this.formRegionCode}}>{{r.name}} ({{r.currency}})</option>
-            {{/each}}
-          </select>
-        </div>
-      {{/if}}
-      <div class="flex gap-4">
-        <div class="flex col gap-2 flex-1">
-          <label class="font-sm text-muted" for="lead-first-name">First Name *</label>
-          <input id="lead-first-name" type="text"
-            class="form-input"
-            placeholder="e.g. Ahmed" value={{this.formFirstName}} required {{on "input" (fn this.setField "formFirstName")}} />
-        </div>
-        <div class="flex col gap-2 flex-1">
-          <label class="font-sm text-muted" for="lead-last-name">Last Name</label>
-          <input id="lead-last-name" type="text"
-            class="form-input"
-            placeholder="e.g. Al Mansouri" value={{this.formLastName}} {{on "input" (fn this.setField "formLastName")}} />
-        </div>
+    <FormInput @label="Email" @id="lead-email" @type="email" @placeholder="ahmed@example.com" @value={{this.formEmail}} @onChange={{fn this.setField "formEmail"}} />
+    <FormInput @label="Phone" @id="lead-phone" @type="text" @placeholder="+971501234567" @value={{this.formPhone}} @onChange={{fn this.setField "formPhone"}} />
+    <div class="flex gap-4">
+      <div class="flex-1">
+        <FormDropdown @label="Status" @id="lead-status" @value={{this.formStatus}} @onChange={{fn this.setField "formStatus"}} @options={{this.statusOptions}} @placeholder="Select status..." />
       </div>
-      <div class="flex col gap-2">
-        <label class="font-sm text-muted" for="lead-email">Email</label>
-        <input id="lead-email" type="email"
-          class="form-input"
-          placeholder="ahmed@example.com" value={{this.formEmail}} {{on "input" (fn this.setField "formEmail")}} />
+      <div class="flex-1">
+        <FormDropdown @label="Temperature" @id="lead-temp" @value={{this.formTemperature}} @onChange={{fn this.setField "formTemperature"}} @options={{this.temperatureOptions}} @placeholder="Select temperature..." />
       </div>
-      <div class="flex col gap-2">
-        <label class="font-sm text-muted" for="lead-phone">Phone</label>
-        <input id="lead-phone" type="text"
-          class="form-input"
-          placeholder="+971501234567" value={{this.formPhone}} {{on "input" (fn this.setField "formPhone")}} />
-      </div>
-      <div class="flex gap-4">
-        <div class="flex col gap-2 flex-1">
-          <label class="font-sm text-muted" for="lead-status">Status</label>
-          <select id="lead-status" class="form-select" {{on "change" (fn this.setField "formStatus")}}>
-            <option value="NEW" selected={{eq this.formStatus "NEW"}}>New</option>
-            <option value="CONTACTED" selected={{eq this.formStatus "CONTACTED"}}>Contacted</option>
-            <option value="VIEWING" selected={{eq this.formStatus "VIEWING"}}>Viewing</option>
-            <option value="NEGOTIATING" selected={{eq this.formStatus "NEGOTIATING"}}>Negotiating</option>
-            <option value="WON" selected={{eq this.formStatus "WON"}}>Won</option>
-            <option value="LOST" selected={{eq this.formStatus "LOST"}}>Lost</option>
-          </select>
-        </div>
-        <div class="flex col gap-2 flex-1">
-          <label class="font-sm text-muted" for="lead-temp">Temperature</label>
-          <select id="lead-temp" class="form-select" {{on "change" (fn this.setField "formTemperature")}}>
-            <option value="HOT" selected={{eq this.formTemperature "HOT"}}>Hot</option>
-            <option value="WARM" selected={{eq this.formTemperature "WARM"}}>Warm</option>
-            <option value="COLD" selected={{eq this.formTemperature "COLD"}}>Cold</option>
-            <option value="DEAD" selected={{eq this.formTemperature "DEAD"}}>Dead</option>
-          </select>
-        </div>
-      </div>
-      <div class="flex col gap-2">
-        <label class="font-sm text-muted" for="lead-property">Property Area</label>
-        <select id="lead-property" class="form-select" {{on "change" this.setPropertyId}}>
-          <option value="">-- None --</option>
-          {{#each this.properties as |property|}}
-            <option value={{property.id}} selected={{eq this.formPropertyId property.id}}>{{property.name}}</option>
-          {{/each}}
-        </select>
-      </div>
-      {{#if this.formPropertyId}}
-        <div class="flex col gap-2">
-          <label class="font-sm text-muted" for="lead-unit">Unit</label>
-          <select id="lead-unit" class="form-select" {{on "change" (fn this.setField "formUnitId")}}>
-            <option value="">-- None --</option>
-            {{#each this.filteredUnits as |unit|}}
-              <option value={{unit.id}} selected={{eq this.formUnitId unit.id}}>Unit {{unit.unitNumber}} ({{unit.status}})</option>
-            {{/each}}
-          </select>
-        </div>
-      {{/if}}
-      {{#if this.errorMsg}}
-        <p class="text-danger">{{this.errorMsg}}</p>
-      {{/if}}
-      <div class="flex gap-3 mt-2">
-        <button type="button" class="btn btn-secondary" {{on "click" this.closeModal}}>Cancel</button>
-        <button type="submit" class="btn btn-primary" disabled={{this.isSaving}}>
-          {{if this.isSaving "Saving..." (if this.editLead "Update" "Create Lead")}}
-        </button>
-      </div>
-    </form>
-  </div>
-{{/if}}
+    </div>
+    <FormDropdown @label="Property Area" @id="lead-property" @value={{this.formPropertyId}} @onChange={{this.setPropertyId}} @options={{this.propertyOptions}} @placeholder="-- None --" />
+    {{#if this.formPropertyId}}
+      <FormDropdown @label="Unit" @id="lead-unit" @value={{this.formUnitId}} @onChange={{fn this.setField "formUnitId"}} @options={{this.unitOptions}} @placeholder="-- None --" />
+    {{/if}}
+    {{#if this.errorMsg}}
+      <p class="text-danger">{{this.errorMsg}}</p>
+    {{/if}}
+    <div class="flex gap-3 mt-2">
+      <AppButton @variant="secondary" @text="Cancel" @onClick={{this.closeModal}} />
+      <AppButton @variant="primary" @buttonType="submit" @text={{if this.editLead "Update" "Create Lead"}} @loading={{this.isSaving}} @loadingText="Saving..." />
+    </div>
+  </form>
+</Modal>
 
 {{!-- Assign Modal --}}
-{{#if this.showAssignModal}}
-  <button type="button" class="modal-backdrop-nested" aria-label="Close modal" {{on "click" this.closeAssignModal}}></button>
-  <div class="modal-panel modal-nested glass-panel p-8 flex col gap-6" role="dialog">
-    <div class="flex between x-center">
-      <h3 class="font-xl font-bold">Assign Lead</h3>
-      <button type="button" class="text-muted font-lg px-2" {{on "click" this.closeAssignModal}}>x</button>
+<Modal
+  @isOpen={{this.showAssignModal}}
+  @title="Assign Lead"
+  @onClose={{this.closeAssignModal}}
+  @showClose={{true}}
+>
+  <form class="flex col gap-4" {{on "submit" this.assignToAgent}}>
+    <p class="text-muted">Select an agent to assign <strong>{{this.assignLead.firstName}}</strong> to:</p>
+    <FormDropdown @label="Agent" @id="agent-select" @value={{this.selectedAgentId}} @onChange={{fn this.setField "selectedAgentId"}} @options={{this.agentOptions}} @placeholder="-- Select Agent --" />
+    <div class="flex gap-3 mt-2">
+      <AppButton @variant="secondary" @text="Cancel" @onClick={{this.closeAssignModal}} />
+      <AppButton @variant="primary" @buttonType="submit" @text="Assign" />
     </div>
-    <form class="flex col gap-4" {{on "submit" this.assignToAgent}}>
-      <p class="text-muted">Select an agent to assign <strong>{{this.assignLead.firstName}}</strong> to:</p>
-      <div class="flex col gap-2">
-        <label class="form-label" for="agent-select">Agent</label>
-        <select id="agent-select" class="form-select" {{on "change" (fn this.setField "selectedAgentId")}}>
-          <option value="">-- Select Agent --</option>
-          {{#each this.agents as |agent|}}
-            <option value={{agent.id}} selected={{eq this.selectedAgentId agent.id}}>{{agent.name}}</option>
-          {{/each}}
-        </select>
-      </div>
-      <div class="flex gap-3 mt-2">
-        <button type="button" class="btn btn-secondary" {{on "click" this.closeAssignModal}}>Cancel</button>
-        <button type="submit" class="btn btn-primary">
-          Assign
-        </button>
-      </div>
-    </form>
-  </div>
-{{/if}}
+  </form>
+</Modal>
 
 {{!-- Lead Detail Modal --}}
-{{#if this.showDetailModal}}
-  <button type="button" class="modal-backdrop" aria-label="Close modal" {{on "click" this.closeDetailModal}}></button>
-  <div class="modal-panel modal-lg glass-panel p-0 flex col" role="dialog">
-    {{!-- Header --}}
-    <div class="detail-modal-header p-6 border-b">
-      <div class="flex between x-center">
-        <div class="flex gap-4 x-center">
-          <h3 class="font-xl font-bold">
-            {{this.detailLead.firstName}}{{#if this.detailLead.lastName}} {{this.detailLead.lastName}}{{/if}}
-          </h3>
-          <span class="temp-badge temp-{{lowercase this.detailLead.temperature}}">{{this.detailLead.temperature}}</span>
-          <span class="status-badge status-{{lowercase this.detailLead.status}}">{{this.detailLead.status}}</span>
-        </div>
-        <button type="button" class="text-muted font-lg px-2" {{on "click" this.closeDetailModal}}>x</button>
-      </div>
+<Modal
+  @isOpen={{this.showDetailModal}}
+  @title={{if this.detailLead (concat this.detailLead.firstName (if this.detailLead.lastName (concat " " this.detailLead.lastName) "")) "Lead Details"}}
+  @onClose={{this.closeDetailModal}}
+  @showClose={{true}}
+  @panelClass="modal-lg"
+>
+    <div class="flex gap-4 x-center">
+      <span class="temp-badge temp-{{lowercase this.detailLead.temperature}}">{{this.detailLead.temperature}}</span>
+      <span class="status-badge status-{{lowercase this.detailLead.status}}">{{this.detailLead.status}}</span>
     </div>
 
     {{!-- Content --}}
-    <div class="detail-modal-content flex gap-6 p-6 flex-1 overflow-auto">
+    <div class="detail-modal-content flex gap-6">
       {{!-- Left: Lead Info --}}
-      <div class="detail-info flex col gap-4" style="flex: 0 0 280px;">
+      <div class="detail-info flex col gap-4">
         <div class="info-section">
           <h4 class="font-sm font-bold text-muted mb-2">Contact Info</h4>
           <div class="flex col gap-2">
@@ -576,18 +502,20 @@
         <h4 class="font-sm font-bold text-muted mb-4">Activity History</h4>
         <div class="activity-timeline flex col gap-3">
           {{#each this.leadActivities as |activity|}}
-            <div class="activity-item flex gap-3 p-3 rounded-lg" data-test-activity-id={{activity.id}}>
-              <div class="activity-icon">
-                <Ph @icon={{get-activity-icon activity.type}} />
-              </div>
-              <div class="activity-content flex-1">
-                <div class="flex between x-center">
-                  <span class="font-sm font-bold">{{activity.type}}</span>
-                  <span class="font-xs text-muted">{{format-date-time activity.createdAt}}</span>
+            <div class="activity-item" data-test-activity-id={{activity.id}}>
+              <div class="activity-side">
+                <div class="activity-icon">
+                  <Ph @icon={{get-activity-icon activity.type}} @size="16px" />
                 </div>
-                <p class="text-muted font-sm mt-1">{{activity.notes}}</p>
+                <div class="activity-summary">
+                  <span class="activity-type">{{activity.type}}</span>
+                  <span class="activity-date">{{format-date-time activity.createdAt}}</span>
+                </div>
+              </div>
+              <div class="activity-content">
+                <p class="activity-notes">{{activity.notes}}</p>
                 {{#if activity.performedByName}}
-                  <p class="font-xs text-muted mt-1">by {{activity.performedByName}}</p>
+                  <p class="activity-meta">by {{activity.performedByName}}</p>
                 {{/if}}
               </div>
             </div>
@@ -599,5 +527,4 @@
         </div>
       </div>
     </div>
-  </div>
-{{/if}}
+</Modal>

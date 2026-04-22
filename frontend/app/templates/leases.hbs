@@ -30,7 +30,7 @@
                 <button data-test-renew-lease type="button" class="btn btn-secondary btn-sm" {{on "click" (fn this.renewLease lease)}}>
                   <Ph @icon="arrows-clockwise" /> Renew
                 </button>
-                <button data-test-terminate-lease type="button" class="btn btn-danger btn-sm" {{on "click" (fn this.terminateLease lease)}}>
+                <button data-test-terminate-lease type="button" class="btn btn-danger btn-sm" {{on "click" (fn this.openTerminate lease)}}>
                   <Ph @icon="x-circle" /> Terminate
                 </button>
               {{/if}}
@@ -49,104 +49,75 @@
   </div>
 </div>
 
-{{#if this.showModal}}
-  <button type="button" class="modal-backdrop" aria-label="Close modal" {{on "click" this.closeModal}}></button>
-  <div class="modal-panel glass-panel p-8 flex col gap-6" role="dialog">
-    <div class="flex between x-center">
-      <h3 class="font-xl font-bold">{{if this.editLease "Edit Lease" (if this.renewingLeaseId "Renew Lease" "New Lease")}}</h3>
-      <button type="button" class="text-muted font-lg px-2" {{on "click" this.closeModal}}>x</button>
-    </div>
-    <form class="flex col gap-4" {{on "submit" this.saveLease}}>
-      <div class="flex col gap-2">
-        <label class="font-sm text-muted" for="lease-unit-id">Unit *</label>
-        <select id="lease-unit-id" class="form-input" {{on "change" (fn this.setField "formUnitId")}} required>
-          <option value="">Select a unit...</option>
-          {{#each @model.units as |unit|}}
-            <option value={{unit.id}} selected={{eq unit.id this.formUnitId}}>
-              {{unit.areaName}} - {{unit.assetName}} - Unit {{unit.unitNumber}}
-              {{#if unit.floorNumber}}(Floor {{unit.floorNumber}}){{/if}}
-            </option>
-          {{/each}}
-        </select>
-      </div>
-      <div class="flex col gap-2">
-        <label class="font-sm text-muted" for="lease-tenant-name">Tenant Name *</label>
-        <input id="lease-tenant-name" type="text"
-          class="form-input"
-          placeholder="e.g. Ahmed Al Mansouri" value={{this.formTenantName}} required {{on "input" (fn this.setField "formTenantName")}} />
-      </div>
-      <div class="flex gap-4">
-        <div class="flex col gap-2 flex-1">
-          <label class="font-sm text-muted" for="lease-tenant-email">Email</label>
-          <input id="lease-tenant-email" type="email"
-            class="form-input"
-            placeholder="ahmed@example.com" value={{this.formTenantEmail}} {{on "input" (fn this.setField "formTenantEmail")}} />
+<Modal
+  @isOpen={{this.showModal}}
+  @title={{if this.editLease "Edit Lease" (if this.renewingLeaseId "Renew Lease" "New Lease")}}
+  @onClose={{this.closeModal}}
+  @showClose={{true}}
+>
+  <form class="flex col gap-4" {{on "submit" this.saveLease}}>
+      <FormDropdown @label="Unit" @id="lease-unit-id" @value={{this.formUnitId}} @onChange={{fn this.setField "formUnitId"}} @options={{this.unitOptions}} @placeholder="Select a unit..." @required={{true}} />
+
+      <FormInput @label="Tenant Name" @id="lease-tenant-name" @type="text" @placeholder="e.g. Ahmed Al Mansouri" @value={{this.formTenantName}} @onChange={{fn this.setField "formTenantName"}} @required={{true}} />
+
+      <div class="flex gap-4 items-start">
+        <div class="flex-1">
+          <FormInput @label="Email" @id="lease-tenant-email" @type="email" @placeholder="ahmed@example.com" @value={{this.formTenantEmail}} @onChange={{fn this.setField "formTenantEmail"}} />
         </div>
-        <div class="flex col gap-2 flex-1">
-          <label class="font-sm text-muted" for="lease-tenant-phone">Phone</label>
-          <input id="lease-tenant-phone" type="text"
-            class="form-input"
-            placeholder="+971501234567" value={{this.formTenantPhone}} {{on "input" (fn this.setField "formTenantPhone")}} />
+        <div class="flex-1">
+          <FormInput @label="Phone" @id="lease-tenant-phone" @type="text" @placeholder="+971501234567" @value={{this.formTenantPhone}} @onChange={{fn this.setField "formTenantPhone"}} />
         </div>
       </div>
-      <div class="flex gap-4">
-        <div class="flex col gap-2 flex-1">
-          <label class="font-sm text-muted" for="lease-type">Lease Type</label>
-          <select id="lease-type" class="form-input" {{on "change" (fn this.setField "formType")}}>
-            <option value="RESIDENTIAL" selected={{eq this.formType "RESIDENTIAL"}}>Residential</option>
-            <option value="COMMERCIAL" selected={{eq this.formType "COMMERCIAL"}}>Commercial</option>
-          </select>
+
+      <div class="flex gap-4 items-start">
+        <div class="flex-1">
+          <FormDropdown @label="Lease Type" @id="lease-type" @value={{this.formType}} @onChange={{fn this.setField "formType"}} @options={{this.leaseTypeOptions}} @placeholder="Select lease type..." />
         </div>
-        <div class="flex col gap-2 flex-1">
-          <label class="font-sm text-muted" for="lease-cheques">Number of Cheques</label>
-          <input id="lease-cheques" type="number" min="1" max="12"
-            class="form-input"
-            value={{this.formNumberOfCheques}} {{on "input" (fn this.setField "formNumberOfCheques")}} />
+        <div class="flex-1">
+          <FormInput @label="Number of Cheques" @id="lease-cheques" @type="number" @value={{this.formNumberOfCheques}} @onChange={{fn this.setField "formNumberOfCheques"}} @min={{1}} @max={{12}} />
         </div>
       </div>
-      <div class="flex gap-4">
-        <div class="flex col gap-2 flex-1">
-          <label class="font-sm text-muted" for="lease-start">Start Date *</label>
-          <input id="lease-start" type="date"
-            class="form-input"
-            value={{this.formStartDate}} required {{on "change" (fn this.setField "formStartDate")}} />
+
+      <div class="flex gap-4 items-start">
+        <div class="flex-1">
+          <FormInput @label="Start Date" @id="lease-start" @type="date" @value={{this.formStartDate}} @onChange={{fn this.setField "formStartDate"}} @required={{true}} />
         </div>
-        <div class="flex col gap-2 flex-1">
-          <label class="font-sm text-muted" for="lease-end">End Date *</label>
-          <input id="lease-end" type="date"
-            class="form-input"
-            value={{this.formEndDate}} required {{on "change" (fn this.setField "formEndDate")}} />
+        <div class="flex-1">
+          <FormInput @label="End Date" @id="lease-end" @type="date" @value={{this.formEndDate}} @onChange={{fn this.setField "formEndDate"}} @required={{true}} />
         </div>
       </div>
-      <div class="flex gap-4">
-        <div class="flex col gap-2 flex-1">
-          <label class="font-sm text-muted" for="lease-rent">Monthly Rent *</label>
-          <input id="lease-rent" type="number" min="0" step="0.01"
-            class="form-input"
-            placeholder="e.g. 8500" value={{this.formMonthlyRent}} required {{on "input" (fn this.setField "formMonthlyRent")}} />
+
+      <div class="flex gap-4 items-start">
+        <div class="flex-1">
+          <FormInput @label="Monthly Rent" @id="lease-rent" @type="number" @placeholder="e.g. 8500" @value={{this.formMonthlyRent}} @onChange={{fn this.setField "formMonthlyRent"}} @required={{true}} @min={{0}} @step={{0.01}} />
         </div>
-        <div class="flex col gap-2 flex-1">
-          <label class="font-sm text-muted" for="lease-deposit">Security Deposit</label>
-          <input id="lease-deposit" type="number" min="0" step="0.01"
-            class="form-input"
-            placeholder="e.g. 17000" value={{this.formSecurityDeposit}} {{on "input" (fn this.setField "formSecurityDeposit")}} />
+        <div class="flex-1">
+          <FormInput @label="Security Deposit" @id="lease-deposit" @type="number" @placeholder="e.g. 17000" @value={{this.formSecurityDeposit}} @onChange={{fn this.setField "formSecurityDeposit"}} @min={{0}} @step={{0.01}} />
         </div>
       </div>
-      <div class="flex col gap-2">
-        <label class="font-sm text-muted" for="lease-ejari">Ejari Number</label>
-        <input id="lease-ejari" type="text"
-          class="form-input"
-          placeholder="e.g. EJARI-2026-00001" value={{this.formEjariNumber}} {{on "input" (fn this.setField "formEjariNumber")}} />
-      </div>
+
+      <FormInput @label="Ejari Number" @id="lease-ejari" @type="text" @placeholder="e.g. EJARI-2026-00001" @value={{this.formEjariNumber}} @onChange={{fn this.setField "formEjariNumber"}} />
+
       {{#if this.errorMsg}}
         <p class="font-sm text-danger">{{this.errorMsg}}</p>
       {{/if}}
-      <div class="flex gap-3 mt-2">
-        <button type="button" class="btn btn-secondary" {{on "click" this.closeModal}}>Cancel</button>
-        <button type="submit" class="btn btn-primary" disabled={{this.isSaving}}>
-          {{if this.isSaving "Saving..." (if this.editLease "Update" (if this.renewingLeaseId "Renew Lease" "Create Lease"))}}
-        </button>
+
+      <div class="flex gap-3">
+        <AppButton @variant="secondary" @text="Cancel" @onClick={{this.closeModal}} />
+        <AppButton @variant="primary" @buttonType="submit" @text={{if this.editLease "Update" (if this.renewingLeaseId "Renew Lease" "Create Lease")}} @loading={{this.isSaving}} @loadingText="Saving..." />
       </div>
     </form>
-  </div>
-{{/if}}
+</Modal>
+
+<ConfirmModal
+  @isOpen={{this.showTerminateModal}}
+  @title="Terminate Lease"
+  @message="Are you sure you want to terminate this lease? This action cannot be undone."
+  @confirmText="Terminate"
+  @cancelText="Cancel"
+  @confirmType="btn-danger"
+  @isConfirming={{this.isTerminating}}
+  @confirmingText="Terminating..."
+  @onClose={{this.closeTerminateModal}}
+  @onConfirm={{this.confirmTerminate}}
+/>

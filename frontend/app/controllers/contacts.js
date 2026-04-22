@@ -2,6 +2,7 @@ import Controller from '@ember/controller';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
+import { closeDeleteModal, confirmDeleteModal, openDeleteModal } from '../utils/delete-modal';
 
 const CONTACT_TYPES = [
   { value: 'LEAD', label: 'Lead' },
@@ -35,10 +36,11 @@ export default class ContactsController extends Controller {
   @tracked formNotes = '';
   @tracked isSaving = false;
   @tracked errorMsg = '';
+  @tracked showDeleteModal = false;
+  @tracked contactToDelete = null;
+  @tracked isDeleting = false;
 
-  get contactTypes() {
-    return CONTACT_TYPES;
-  }
+  contactTypes = CONTACT_TYPES;
 
   @action setField(fieldName, e) { this[fieldName] = e.target.value; }
 
@@ -122,15 +124,20 @@ export default class ContactsController extends Controller {
     }
   }
 
-  @action async deleteContact(contact) {
-    if (!confirm(`Delete ${contact.firstName} ${contact.lastName || ''}?`)) return;
+  @action openDelete(contact) {
+    openDeleteModal(this, 'contactToDelete', contact);
+  }
 
-    try {
-      await this.auth.fetchJson(`/contacts/${contact.id}`, { method: 'DELETE' });
-      this.notifications.success('Contact deleted');
-      this.router.refresh('contacts');
-    } catch (e) {
-      this.notifications.error(e.message);
-    }
+  @action closeDeleteModal() {
+    closeDeleteModal(this, 'contactToDelete');
+  }
+
+  @action async confirmDelete() {
+    await confirmDeleteModal(this, {
+      itemKey: 'contactToDelete',
+      resourcePath: '/contacts',
+      successMessage: 'Contact deleted',
+      refreshRoute: 'contacts',
+    });
   }
 }

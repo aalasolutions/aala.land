@@ -2,6 +2,7 @@ import Controller from '@ember/controller';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
+import { closeDeleteModal, confirmDeleteModal, openDeleteModal } from '../utils/delete-modal';
 
 const CATEGORIES = [
   { value: '', label: 'All Categories' },
@@ -45,18 +46,17 @@ export default class DocumentsController extends Controller {
   // Upload state
   @tracked selectedFile = null;
   @tracked uploadProgress = '';
+  @tracked showDeleteModal = false;
+  @tracked documentToDelete = null;
+  @tracked isDeleting = false;
 
   get categories() {
     return CATEGORIES;
   }
 
-  get categoryOptions() {
-    return CATEGORIES.filter((c) => c.value !== '');
-  }
+  categoryOptions = CATEGORIES.filter((c) => c.value !== '');
 
-  get accessLevels() {
-    return ACCESS_LEVELS;
-  }
+  accessLevels = ACCESS_LEVELS;
 
   @action setField(fieldName, e) {
     this[fieldName] = e.target.value;
@@ -177,16 +177,21 @@ export default class DocumentsController extends Controller {
     }
   }
 
-  @action async deleteDocument(doc) {
-    if (!confirm(`Delete "${doc.name}"?`)) return;
+  @action openDelete(doc) {
+    openDeleteModal(this, 'documentToDelete', doc);
+  }
 
-    try {
-      await this.auth.fetchJson(`/documents/${doc.id}`, { method: 'DELETE' });
-      this.notifications.success('Document deleted');
-      this.router.refresh('documents');
-    } catch (e) {
-      this.notifications.error(e.message);
-    }
+  @action closeDeleteModal() {
+    closeDeleteModal(this, 'documentToDelete');
+  }
+
+  @action async confirmDelete() {
+    await confirmDeleteModal(this, {
+      itemKey: 'documentToDelete',
+      resourcePath: '/documents',
+      successMessage: 'Document deleted',
+      refreshRoute: 'documents',
+    });
   }
 
   @action downloadDocument(doc) {

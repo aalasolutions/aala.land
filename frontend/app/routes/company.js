@@ -27,8 +27,6 @@ export default class CompanyRoute extends AuthenticatedRoute {
     const c = model?.company;
     if (c) {
       controller.formName = c.name || '';
-      controller.formPhone = c.phone || '';
-      controller.formAddress = c.address || '';
       controller.formActiveRegions = c.activeRegions || [];
       controller.formDefaultRegionCode = c.defaultRegionCode || null;
     }

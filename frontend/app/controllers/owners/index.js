@@ -2,6 +2,7 @@ import Controller from '@ember/controller';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
+import { closeDeleteModal, confirmDeleteModal, openDeleteModal } from '../../utils/delete-modal';
 
 export default class OwnersIndexController extends Controller {
   @service auth;
@@ -21,6 +22,9 @@ export default class OwnersIndexController extends Controller {
   @tracked isSaving = false;
   @tracked isLoadingAgents = false;
   @tracked errorMsg = '';
+  @tracked showDeleteModal = false;
+  @tracked ownerToDelete = null;
+  @tracked isDeleting = false;
 
   constructor() {
     super(...arguments);
@@ -37,6 +41,16 @@ export default class OwnersIndexController extends Controller {
     } finally {
       this.isLoadingAgents = false;
     }
+  }
+
+  get agentOptions() {
+    return [
+      { value: '', label: 'Unassigned' },
+      ...this.agents.map(agent => ({
+        value: agent.id,
+        label: agent.name
+      }))
+    ];
   }
 
   @action setField(fieldName, e) { this[fieldName] = e.target.value; }
@@ -106,16 +120,21 @@ export default class OwnersIndexController extends Controller {
     }
   }
 
-  @action async deleteOwner(owner) {
-    if (!confirm(`Remove ${owner.name}?`)) return;
+  @action openDelete(owner) {
+    openDeleteModal(this, 'ownerToDelete', owner);
+  }
 
-    try {
-      await this.auth.fetchJson(`/owners/${owner.id}`, { method: 'DELETE' });
-      this.notifications.success('Owner removed');
-      this.router.refresh('owners');
-    } catch (e) {
-      this.notifications.error(e.message);
-    }
+  @action closeDeleteModal() {
+    closeDeleteModal(this, 'ownerToDelete');
+  }
+
+  @action async confirmDelete() {
+    await confirmDeleteModal(this, {
+      itemKey: 'ownerToDelete',
+      resourcePath: '/owners',
+      successMessage: 'Owner removed',
+      refreshRoute: 'owners',
+    });
   }
 
   @action viewOwner(owner) {

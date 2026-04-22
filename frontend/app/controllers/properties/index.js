@@ -4,6 +4,42 @@ import { action } from '@ember/object';
 import { service } from '@ember/service';
 import { AMENITY_OPTIONS } from '../../constants/amenities';
 
+const FILTER_TYPE_OPTIONS = [
+  { value: '', label: 'All' },
+  { value: 'RENTAL', label: 'Rent' },
+  { value: 'FOR_SALE', label: 'Sale' },
+];
+
+const PROPERTY_FILTER_STATUS_OPTIONS = [
+  { value: '', label: 'All' },
+  { value: 'available', label: 'Available' },
+  { value: 'rented', label: 'Rented' },
+  { value: 'sold', label: 'Sold' },
+  { value: 'maintenance', label: 'Maintenance' },
+];
+
+const FILTER_BEDS_OPTIONS = [
+  { value: '', label: 'Any' },
+  { value: '0', label: 'Studio' },
+  { value: '1', label: '1' },
+  { value: '2', label: '2' },
+  { value: '3', label: '3' },
+  { value: '4', label: '4+' },
+];
+
+const PROPERTY_TYPE_OPTIONS = [
+  { value: '', label: 'Not set' },
+  { value: 'RENTAL', label: 'Rental' },
+  { value: 'FOR_SALE', label: 'For Sale' },
+];
+
+const PROPERTY_STATUS_OPTIONS = [
+  { value: 'available', label: 'Available' },
+  { value: 'rented', label: 'Rented' },
+  { value: 'sold', label: 'Sold' },
+  { value: 'maintenance', label: 'Maintenance' },
+];
+
 export default class PropertiesIndexController extends Controller {
   @service auth;
   @service notifications;
@@ -29,7 +65,17 @@ export default class PropertiesIndexController extends Controller {
   @tracked filterMaxPrice = '';
   @tracked filterAmenities = [];
 
-  get amenityOptions() { return AMENITY_OPTIONS; }
+  amenityOptions = AMENITY_OPTIONS;
+
+  filterTypeOptions = FILTER_TYPE_OPTIONS;
+
+  filterStatusOptions = PROPERTY_FILTER_STATUS_OPTIONS;
+
+  filterBedsOptions = FILTER_BEDS_OPTIONS;
+
+  unitTypeOptions = PROPERTY_TYPE_OPTIONS;
+
+  unitStatusOptions = PROPERTY_STATUS_OPTIONS;
 
   get browseHasNextPage() {
     return this.browseTotal > this.browsePage * 20;
