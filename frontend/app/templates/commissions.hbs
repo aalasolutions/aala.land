@@ -8,7 +8,7 @@
     </div>
     <div class="flex gap-3 x-end">
       <div class="flex col gap-1">
-        <FormDropdown @label="Filter by Status" @value={{this.filterStatus}} @onChange={{fn this.setField "filterStatus"}} @options={{this.filterStatusOptions}} @placeholder="All" />
+        <FormDropdown @id="commissions-status-filter" @label="Filter by Status" @value={{this.filterStatus}} @onChange={{fn this.setField "filterStatus"}} @options={{this.filterStatusOptions}} @placeholder="All" />
       </div>
       <button type="button" class="btn btn-primary" data-test-add-commission {{on "click" this.openCreate}}>
         <Ph @icon="plus" /> New Commission
@@ -103,11 +103,11 @@
     <p class="text-danger" data-test-error>{{this.errorMsg}}</p>
   {{/if}}
   <form class="flex col gap-4" {{on "submit" this.saveCommission}}>
-    <FormDropdown @label="Agent" @value={{this.formAgentId}} @onChange={{fn this.setField "formAgentId"}} @options={{this.agentOptions}} @placeholder="Select agent..." @required={{true}} data-test-input-agent />
-    <FormDropdown @label="Type" @value={{this.formType}} @onChange={{fn this.setField "formType"}} @options={{this.commissionTypeOptions}} @placeholder="Select type..." @required={{true}} data-test-input-type />
-    <FormInput @label="Gross Amount" @type="number" @placeholder="e.g. 50000" @value={{this.formGrossAmount}} @onChange={{fn this.setField "formGrossAmount"}} @required={{true}} data-test-input-amount />
-    <FormInput @label="Commission Rate %" @type="number" @step="0.01" @min="0" @max="100" @placeholder="e.g. 2.5" @value={{this.formCommissionRate}} @onChange={{fn this.setField "formCommissionRate"}} @required={{true}} data-test-input-rate />
-    <FormTextarea @label="Notes" @placeholder="Optional notes..." @value={{this.formNotes}} @onChange={{fn this.setField "formNotes"}} data-test-input-notes />
+    <FormDropdown @id="commission-agent" @label="Agent" @value={{this.formAgentId}} @onChange={{fn this.setField "formAgentId"}} @options={{this.agentOptions}} @placeholder="Select agent..." @required={{true}} data-test-input-agent />
+    <FormDropdown @id="commission-type" @label="Type" @value={{this.formType}} @onChange={{fn this.setField "formType"}} @options={{this.commissionTypeOptions}} @placeholder="Select type..." @required={{true}} data-test-input-type />
+    <FormInput @id="commission-gross" @label="Gross Amount" @type="number" @placeholder="e.g. 50000" @value={{this.formGrossAmount}} @onChange={{fn this.setField "formGrossAmount"}} @required={{true}} data-test-input-amount />
+    <FormInput @id="commission-rate" @label="Commission Rate %" @type="number" @step="0.01" @min="0" @max="100" @placeholder="e.g. 2.5" @value={{this.formCommissionRate}} @onChange={{fn this.setField "formCommissionRate"}} @required={{true}} data-test-input-rate />
+    <FormTextarea @id="commission-notes" @label="Notes" @placeholder="Optional notes..." @value={{this.formNotes}} @onChange={{fn this.setField "formNotes"}} data-test-input-notes />
     <div class="flex gap-3 mt-2">
       <AppButton @variant="secondary" @text="Cancel" @onClick={{this.closeModal}} />
       <AppButton @variant="primary" @buttonType="submit" @text="Create" @loading={{this.isSaving}} @loadingText="Saving..." data-test-save-commission />

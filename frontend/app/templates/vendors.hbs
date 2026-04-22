@@ -74,7 +74,7 @@
   <form class="flex col gap-4" {{on "submit" this.saveVendor}}>
       {{#if this.showRegionField}}
         <div class="flex col gap-2">
-          <FormDropdown @label="Region" @id="v-region" @value={{this.formRegionCode}} @onChange={{fn this.setField "formRegionCode"}} @options={{this.region.regions}} @placeholder="Select region..." data-test-region-select />
+          <FormDropdown @label="Region" @id="vendor-region" @value={{this.formRegionCode}} @onChange={{fn this.setField "formRegionCode"}} @options={{this.regionOptions}} @placeholder="Select region..." data-test-region-select />
         </div>
       {{/if}}
 
@@ -83,7 +83,7 @@
           <FormInput @label="Name" @id="v-name" @type="text" @placeholder="Ahmed Al-Rashid" @value={{this.formName}} @onChange={{fn this.setField "formName"}} @required={{true}} data-test-vendor-name />
         </div>
         <div class="flex col gap-2 flex-1">
-          <FormDropdown @label="Specialty" @id="v-specialty" @value={{this.formSpecialty}} @onChange={{fn this.setField "formSpecialty"}} @options={{this.specialtyOptions}} @placeholder="Select specialty..." data-test-vendor-specialty />
+          <FormDropdown @label="Specialty" @id="vendor-specialty" @value={{this.formSpecialty}} @onChange={{fn this.setField "formSpecialty"}} @options={{this.specialtyOptions}} @placeholder="Select specialty..." data-test-vendor-specialty />
         </div>
       </div>
 

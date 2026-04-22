@@ -4,6 +4,10 @@ import { action } from '@ember/object';
 import { service } from '@ember/service';
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const LEASE_TYPE_OPTIONS = [
+  { value: 'RESIDENTIAL', label: 'Residential' },
+  { value: 'COMMERCIAL', label: 'Commercial' },
+];
 
 export default class LeasesController extends Controller {
   @service auth;
@@ -31,12 +35,7 @@ export default class LeasesController extends Controller {
   @tracked isTerminating = false;
   @tracked formStatus = '';
 
-  get leaseTypeOptions() {
-    return [
-      { value: 'RESIDENTIAL', label: 'Residential' },
-      { value: 'COMMERCIAL', label: 'Commercial' }
-    ];
-  }
+  leaseTypeOptions = LEASE_TYPE_OPTIONS;
 
   get unitOptions() {
     return [

@@ -54,7 +54,7 @@
 
   {{!-- PIPELINE KANBAN VIEW --}}
   {{#if (eq this.viewMode 'pipeline')}}
-    <div class="kanban-board">
+    <div class="kanban-board kanban-board--pipeline">
       {{#each this.columns as |column|}}
         <div data-test-kanban-column
           data-test-column-status={{column.status}}
@@ -124,7 +124,7 @@
 
   {{!-- TEMPERATURE BOARD VIEW --}}
   {{#if (eq this.viewMode 'temperature')}}
-    <div data-test-temperature-board class="kanban-board" style="grid-template-columns: repeat(4, minmax(250px, 1fr));">
+    <div data-test-temperature-board class="kanban-board kanban-board--temperature">
       {{#each this.temperatureColumns as |column|}}
         <div data-test-kanban-column
           data-test-column-temp={{column.temperature}}
@@ -191,7 +191,7 @@
 
   {{!-- AGENT BOARD VIEW --}}
   {{#if (eq this.viewMode 'agent')}}
-    <div data-test-agent-board class="kanban-board" style="grid-template-columns: repeat({{this.agentColumns.length}}, minmax(250px, 1fr));">
+    <div data-test-agent-board class="kanban-board kanban-board--agent">
       {{#each this.agentColumns as |column|}}
         <div data-test-kanban-column
           data-test-column-agent={{or column.agentId "unassigned"}}
@@ -402,27 +402,22 @@
 </Modal>
 
 {{!-- Lead Detail Modal --}}
-{{#if this.showDetailModal}}
-  <button type="button" class="modal-backdrop" aria-label="Close modal" {{on "click" this.closeDetailModal}}></button>
-  <div class="modal-panel modal-lg glass-panel p-0 flex col" role="dialog">
-    {{!-- Header --}}
-    <div class="detail-modal-header p-6 border-b">
-      <div class="flex between x-center">
-        <div class="flex gap-4 x-center">
-          <h3 class="font-xl font-bold">
-            {{this.detailLead.firstName}}{{#if this.detailLead.lastName}} {{this.detailLead.lastName}}{{/if}}
-          </h3>
-          <span class="temp-badge temp-{{lowercase this.detailLead.temperature}}">{{this.detailLead.temperature}}</span>
-          <span class="status-badge status-{{lowercase this.detailLead.status}}">{{this.detailLead.status}}</span>
-        </div>
-        <button type="button" class="text-muted font-lg px-2" {{on "click" this.closeDetailModal}}>x</button>
-      </div>
+<Modal
+  @isOpen={{this.showDetailModal}}
+  @title={{if this.detailLead (concat this.detailLead.firstName (if this.detailLead.lastName (concat " " this.detailLead.lastName) "")) "Lead Details"}}
+  @onClose={{this.closeDetailModal}}
+  @showClose={{true}}
+  @panelClass="modal-lg"
+>
+    <div class="flex gap-4 x-center">
+      <span class="temp-badge temp-{{lowercase this.detailLead.temperature}}">{{this.detailLead.temperature}}</span>
+      <span class="status-badge status-{{lowercase this.detailLead.status}}">{{this.detailLead.status}}</span>
     </div>
 
     {{!-- Content --}}
-    <div class="detail-modal-content flex gap-6 p-6 flex-1 overflow-auto">
+    <div class="detail-modal-content flex gap-6">
       {{!-- Left: Lead Info --}}
-      <div class="detail-info flex col gap-4" style="flex: 0 0 280px;">
+      <div class="detail-info flex col gap-4">
         <div class="info-section">
           <h4 class="font-sm font-bold text-muted mb-2">Contact Info</h4>
           <div class="flex col gap-2">
@@ -507,18 +502,20 @@
         <h4 class="font-sm font-bold text-muted mb-4">Activity History</h4>
         <div class="activity-timeline flex col gap-3">
           {{#each this.leadActivities as |activity|}}
-            <div class="activity-item flex gap-3 p-3 rounded-lg" data-test-activity-id={{activity.id}}>
-              <div class="activity-icon">
-                <Ph @icon={{get-activity-icon activity.type}} />
-              </div>
-              <div class="activity-content flex-1">
-                <div class="flex between x-center">
-                  <span class="font-sm font-bold">{{activity.type}}</span>
-                  <span class="font-xs text-muted">{{format-date-time activity.createdAt}}</span>
+            <div class="activity-item" data-test-activity-id={{activity.id}}>
+              <div class="activity-side">
+                <div class="activity-icon">
+                  <Ph @icon={{get-activity-icon activity.type}} @size="16px" />
                 </div>
-                <p class="text-muted font-sm mt-1">{{activity.notes}}</p>
+                <div class="activity-summary">
+                  <span class="activity-type">{{activity.type}}</span>
+                  <span class="activity-date">{{format-date-time activity.createdAt}}</span>
+                </div>
+              </div>
+              <div class="activity-content">
+                <p class="activity-notes">{{activity.notes}}</p>
                 {{#if activity.performedByName}}
-                  <p class="font-xs text-muted mt-1">by {{activity.performedByName}}</p>
+                  <p class="activity-meta">by {{activity.performedByName}}</p>
                 {{/if}}
               </div>
             </div>
@@ -530,5 +527,4 @@
         </div>
       </div>
     </div>
-  </div>
-{{/if}}
+</Modal>

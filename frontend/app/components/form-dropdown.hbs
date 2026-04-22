@@ -1,7 +1,7 @@
 <div class="flex col gap-2">
   <label class="font-sm text-muted" for={{@id}}>{{@label}}{{#if @required}} *{{/if}}</label>
 
-  <div class="form-dropdown {{if this.isInModal 'in-modal'}}" ...attributes>
+  <div class="form-dropdown" ...attributes>
     <div class="dropdown-container">
       <input
         type="text"
@@ -11,6 +11,7 @@
         disabled={{@disabled}}
         value={{this.displayText}}
         {{on "click" this.toggleDropdown}}
+        {{on "keydown" this.handleKeydown}}
       />
       <span class="dropdown-arrow {{if this.isOpen 'open'}}">
         <Ph @icon="caret-down" @size="16px" />
@@ -18,8 +19,8 @@
 
       {{#if this.isOpen}}
         <div
-          class="dropdown-menu open {{if (and this.dropdownPosition.openUpward (not this.isInModal)) 'open-upward'}} {{if this.isInModal 'in-modal-dropdown'}}"
-          style="{{if this.isInModal (concat 'position:fixed;top:' this.dropdownPosition.top 'px;left:' this.dropdownPosition.left 'px;width:' this.dropdownPosition.width 'px;z-index:2000;max-height:300px;')}}"
+          class="dropdown-menu open {{if (and this.dropdownPosition (and this.dropdownPosition.openUpward (not this.isInModal))) 'open-upward'}} {{if this.isInModal 'in-modal-dropdown'}}"
+          style={{this.dropdownMenuStyle}}
         >
           {{#if this.showSearch}}
             <div class="dropdown-search">
@@ -34,12 +35,13 @@
             </div>
           {{/if}}
 
-          <div class="dropdown-options">
+          <div class="dropdown-options" role="listbox" aria-labelledby={{@id}}>
             {{#if this.filteredOptions.length}}
-              {{#each this.filteredOptions as |opt|}}
+              {{#each this.filteredOptions as |opt index|}}
                 <div
-                  class="dropdown-option {{if (eq @value opt.value) 'selected'}}"
-                  role="button"
+                  class="dropdown-option {{if (eq @value opt.value) 'selected'}} {{if (eq this.highlightedIndex index) 'highlighted'}}"
+                  role="option"
+                  aria-selected={{if (eq @value opt.value) "true" "false"}}
                   {{on "click" (fn this.selectOption opt)}}
                 >
                   {{opt.label}}

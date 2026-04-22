@@ -3,6 +3,39 @@ import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
 
+const STATUS_OPTIONS = [
+  { value: 'all', label: 'All Status' },
+  { value: 'PENDING', label: 'Pending' },
+  { value: 'IN_PROGRESS', label: 'In Progress' },
+  { value: 'PENDING_APPROVAL', label: 'Pending Approval' },
+  { value: 'COMPLETED', label: 'Completed' },
+];
+
+const MONTH_OPTIONS = [
+  { value: 'all', label: 'All Time' },
+  { value: 'this_month', label: 'This Month' },
+  { value: 'last_month', label: 'Last Month' },
+  { value: 'last_3_months', label: 'Last 3 Months' },
+];
+
+const PRIORITY_OPTIONS = [
+  { value: 'LOW', label: 'Low' },
+  { value: 'MEDIUM', label: 'Medium' },
+  { value: 'HIGH', label: 'High' },
+  { value: 'URGENT', label: 'Urgent' },
+];
+
+const CATEGORY_OPTIONS = [
+  { value: 'PLUMBING', label: 'Plumbing' },
+  { value: 'ELECTRICAL', label: 'Electrical' },
+  { value: 'HVAC', label: 'HVAC' },
+  { value: 'STRUCTURAL', label: 'Structural' },
+  { value: 'CLEANING', label: 'Cleaning' },
+  { value: 'PEST_CONTROL', label: 'Pest Control' },
+  { value: 'APPLIANCE', label: 'Appliance' },
+  { value: 'OTHER', label: 'Other' },
+];
+
 export default class MaintenanceController extends Controller {
   @service auth;
   @service notifications;
@@ -29,42 +62,13 @@ export default class MaintenanceController extends Controller {
   @tracked filterMonth = 'all';
   @tracked activeSection = 'orders';
 
-  statusOptions = [
-    { value: 'all', label: 'All Status' },
-    { value: 'PENDING', label: 'Pending' },
-    { value: 'IN_PROGRESS', label: 'In Progress' },
-    { value: 'PENDING_APPROVAL', label: 'Pending Approval' },
-    { value: 'COMPLETED', label: 'Completed' },
-  ];
+  statusOptions = STATUS_OPTIONS;
 
-  monthOptions = [
-    { value: 'all', label: 'All Time' },
-    { value: 'this_month', label: 'This Month' },
-    { value: 'last_month', label: 'Last Month' },
-    { value: 'last_3_months', label: 'Last 3 Months' },
-  ];
+  monthOptions = MONTH_OPTIONS;
 
-  get priorityOptions() {
-    return [
-      { value: 'LOW', label: 'Low' },
-      { value: 'MEDIUM', label: 'Medium' },
-      { value: 'HIGH', label: 'High' },
-      { value: 'URGENT', label: 'Urgent' }
-    ];
-  }
+  priorityOptions = PRIORITY_OPTIONS;
 
-  get categoryOptions() {
-    return [
-      { value: 'PLUMBING', label: 'Plumbing' },
-      { value: 'ELECTRICAL', label: 'Electrical' },
-      { value: 'HVAC', label: 'HVAC' },
-      { value: 'STRUCTURAL', label: 'Structural' },
-      { value: 'CLEANING', label: 'Cleaning' },
-      { value: 'PEST_CONTROL', label: 'Pest Control' },
-      { value: 'APPLIANCE', label: 'Appliance' },
-      { value: 'OTHER', label: 'Other' }
-    ];
-  }
+  categoryOptions = CATEGORY_OPTIONS;
 
   get unitOptions() {
     return [

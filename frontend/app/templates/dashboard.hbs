@@ -78,11 +78,11 @@
       </div>
       <div class="activity-feed">
         {{#each @model.activity as |item|}}
-          <div class="activity-item">
-            <span class="activity-dot activity-dot-{{this.activityColor item.entityType}}"></span>
-            <div class="activity-content">
-              <span class="activity-text">{{item.action}} {{item.entityType}}</span>
-              <span class="activity-time">{{this.timeAgo item.createdAt}}</span>
+          <div class="dashboard-activity-item">
+            <span class="dashboard-activity-dot dashboard-activity-dot-{{this.activityColor item.entityType}}"></span>
+            <div class="dashboard-activity-content">
+              <span class="dashboard-activity-text">{{item.action}} {{item.entityType}}</span>
+              <span class="dashboard-activity-time">{{this.timeAgo item.createdAt}}</span>
             </div>
           </div>
         {{else}}
@@ -109,7 +109,7 @@
             <div class="pipeline-bar-track">
               <div
                 class="pipeline-bar-fill pipeline-bar-{{this.pipelineColor stage.stage}}"
-                style="width: {{this.pipelineWidth stage.count}}%"
+                style={{this.pipelineBarStyle stage.count}}
               ></div>
             </div>
           </div>

@@ -7,9 +7,9 @@
 <div class="glass-panel card">
   <div class="card-header">
     <div class="flex gap-2 items-center flex-wrap">
-      <FormDropdown @label="" @value={{this.filterAction}} @onChange={{this.setFilterAction}} @options={{this.model.auditActions}} @placeholder="All Actions" />
+      <FormDropdown @id="audit-action-filter" @label="" @value={{this.filterAction}} @onChange={{this.setFilterAction}} @options={{this.model.auditActions}} @placeholder="All Actions" />
 
-      <FormDropdown @label="" @value={{this.filterEntityType}} @onChange={{this.setFilterEntityType}} @options={{this.model.entityTypes}} @placeholder="All Entities" />
+      <FormDropdown @id="audit-entity-filter" @label="" @value={{this.filterEntityType}} @onChange={{this.setFilterEntityType}} @options={{this.model.entityTypes}} @placeholder="All Entities" />
 
       {{#if (or this.filterAction this.filterEntityType)}}
         <button type="button" class="btn btn-secondary" {{on "click" this.clearFilters}}>
