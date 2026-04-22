@@ -139,6 +139,19 @@ export default class ChequesController extends Controller {
     this.formBounceReason = '';
   }
 
+  @action async updateStatus(cheque, status) {
+    try {
+      await this.auth.fetchJson(`/cheques/${cheque.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status }),
+      });
+      this.notifications.success(`Cheque marked as ${status.toLowerCase()}`);
+      this.router.refresh('cheques');
+    } catch (e) {
+      this.notifications.error(e.message);
+    }
+  }
+
   @action async confirmBounce() {
     if (!this.bounceChequeItem) return;
     try {

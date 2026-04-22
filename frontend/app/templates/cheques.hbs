@@ -52,11 +52,27 @@
                       <button type="button" class="btn btn-secondary btn-xs" {{on "click" (fn this.openEdit cheque)}}>
                         <Ph @icon="pencil-simple" /> Edit
                       </button>
-                      {{#unless (eq cheque.status "BOUNCED")}}
+                      {{#if (eq cheque.status "PENDING")}}
+                        <button type="button" class="btn btn-success btn-xs" {{on "click" (fn this.updateStatus cheque "DEPOSITED")}}>
+                          <Ph @icon="bank" /> Deposit
+                        </button>
                         <button type="button" class="btn btn-danger btn-xs" data-test-bounce {{on "click" (fn this.openBounceModal cheque)}}>
                           <Ph @icon="x-circle" /> Bounce
                         </button>
-                      {{/unless}}
+                      {{/if}}
+                      {{#if (eq cheque.status "DEPOSITED")}}
+                        <button type="button" class="btn btn-success btn-xs" {{on "click" (fn this.updateStatus cheque "CLEARED")}}>
+                          <Ph @icon="check-circle" /> Clear
+                        </button>
+                        <button type="button" class="btn btn-danger btn-xs" data-test-bounce {{on "click" (fn this.openBounceModal cheque)}}>
+                          <Ph @icon="x-circle" /> Bounce
+                        </button>
+                      {{/if}}
+                      {{#if (eq cheque.status "BOUNCED")}}
+                        <button type="button" class="btn btn-secondary btn-xs" {{on "click" (fn this.updateStatus cheque "REPLACED")}}>
+                          <Ph @icon="arrows-clockwise" /> Replace
+                        </button>
+                      {{/if}}
                     </div>
                   </td>
                 </tr>
