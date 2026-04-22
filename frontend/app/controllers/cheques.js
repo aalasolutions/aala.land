@@ -35,6 +35,11 @@ export default class ChequesController extends Controller {
   @tracked bounceChequeItem = null;
   @tracked formBounceReason = '';
 
+  get isAdmin() {
+    const role = this.auth.currentUser?.role;
+    return role === 'company_admin' || role === 'super_admin';
+  }
+
   get chequeTypeOptions() {
     return CHEQUE_TYPE_OPTIONS;
   }

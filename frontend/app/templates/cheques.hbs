@@ -6,9 +6,11 @@
       <h2 class="font-3xl font-bold"><Ph @icon="checks" @size="28px" /> Cheque Management</h2>
       <p class="text-muted mt-1">Track post-dated cheques and payment schedules.</p>
     </div>
-    <button type="button" class="btn btn-primary" {{on "click" this.openCreate}}>
-      <Ph @icon="plus" /> New Cheque
-    </button>
+    {{#if this.isAdmin}}
+      <button type="button" class="btn btn-primary" {{on "click" this.openCreate}}>
+        <Ph @icon="plus" /> New Cheque
+      </button>
+    {{/if}}
   </div>
 
   <div class="tabs">
@@ -49,29 +51,31 @@
                   <td><span class="status-badge status-{{lowercase cheque.status}}">{{cheque.status}}</span></td>
                   <td>
                     <div class="flex gap-2">
-                      <button type="button" class="btn btn-secondary btn-xs" {{on "click" (fn this.openEdit cheque)}}>
-                        <Ph @icon="pencil-simple" /> Edit
-                      </button>
-                      {{#if (eq cheque.status "PENDING")}}
-                        <button type="button" class="btn btn-success btn-xs" {{on "click" (fn this.updateStatus cheque "DEPOSITED")}}>
-                          <Ph @icon="bank" /> Deposit
+                      {{#if this.isAdmin}}
+                        <button type="button" class="btn btn-secondary btn-xs" {{on "click" (fn this.openEdit cheque)}}>
+                          <Ph @icon="pencil-simple" /> Edit
                         </button>
-                        <button type="button" class="btn btn-danger btn-xs" data-test-bounce {{on "click" (fn this.openBounceModal cheque)}}>
-                          <Ph @icon="x-circle" /> Bounce
-                        </button>
-                      {{/if}}
-                      {{#if (eq cheque.status "DEPOSITED")}}
-                        <button type="button" class="btn btn-success btn-xs" {{on "click" (fn this.updateStatus cheque "CLEARED")}}>
-                          <Ph @icon="check-circle" /> Clear
-                        </button>
-                        <button type="button" class="btn btn-danger btn-xs" data-test-bounce {{on "click" (fn this.openBounceModal cheque)}}>
-                          <Ph @icon="x-circle" /> Bounce
-                        </button>
-                      {{/if}}
-                      {{#if (eq cheque.status "BOUNCED")}}
-                        <button type="button" class="btn btn-secondary btn-xs" {{on "click" (fn this.updateStatus cheque "REPLACED")}}>
-                          <Ph @icon="arrows-clockwise" /> Replace
-                        </button>
+                        {{#if (eq cheque.status "PENDING")}}
+                          <button type="button" class="btn btn-success btn-xs" {{on "click" (fn this.updateStatus cheque "DEPOSITED")}}>
+                            <Ph @icon="bank" /> Deposit
+                          </button>
+                          <button type="button" class="btn btn-danger btn-xs" data-test-bounce {{on "click" (fn this.openBounceModal cheque)}}>
+                            <Ph @icon="x-circle" /> Bounce
+                          </button>
+                        {{/if}}
+                        {{#if (eq cheque.status "DEPOSITED")}}
+                          <button type="button" class="btn btn-success btn-xs" {{on "click" (fn this.updateStatus cheque "CLEARED")}}>
+                            <Ph @icon="check-circle" /> Clear
+                          </button>
+                          <button type="button" class="btn btn-danger btn-xs" data-test-bounce {{on "click" (fn this.openBounceModal cheque)}}>
+                            <Ph @icon="x-circle" /> Bounce
+                          </button>
+                        {{/if}}
+                        {{#if (eq cheque.status "BOUNCED")}}
+                          <button type="button" class="btn btn-secondary btn-xs" {{on "click" (fn this.updateStatus cheque "REPLACED")}}>
+                            <Ph @icon="arrows-clockwise" /> Replace
+                          </button>
+                        {{/if}}
                       {{/if}}
                     </div>
                   </td>

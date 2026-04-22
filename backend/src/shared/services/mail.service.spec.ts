@@ -8,14 +8,19 @@ jest.mock('nodemailer', () => ({
   createTransport: (...args: any[]) => mockCreateTransport(...args),
 }));
 
-global.fetch = jest.fn() as jest.Mock;
+const originalFetch = global.fetch;
 
 describe('MailService', () => {
   const originalEnv = process.env;
 
+  beforeEach(() => {
+    global.fetch = jest.fn() as jest.Mock;
+  });
+
   afterEach(() => {
     process.env = originalEnv;
     jest.clearAllMocks();
+    global.fetch = originalFetch;
   });
 
   describe('sendMail - SendGrid path', () => {
