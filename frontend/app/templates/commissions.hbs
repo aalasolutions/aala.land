@@ -106,7 +106,7 @@
     <FormDropdown @label="Agent" @value={{this.formAgentId}} @onChange={{fn this.setField "formAgentId"}} @options={{this.agentOptions}} @placeholder="Select agent..." @required={{true}} data-test-input-agent />
     <FormDropdown @label="Type" @value={{this.formType}} @onChange={{fn this.setField "formType"}} @options={{this.commissionTypeOptions}} @placeholder="Select type..." @required={{true}} data-test-input-type />
     <FormInput @label="Gross Amount" @type="number" @placeholder="e.g. 50000" @value={{this.formGrossAmount}} @onChange={{fn this.setField "formGrossAmount"}} @required={{true}} data-test-input-amount />
-    <FormInput @label="Commission Rate %" @type="number" @placeholder="e.g. 2.5" @value={{this.formCommissionRate}} @onChange={{fn this.setField "formCommissionRate"}} @required={{true}} data-test-input-rate />
+    <FormInput @label="Commission Rate %" @type="number" @step="0.01" @min="0" @max="100" @placeholder="e.g. 2.5" @value={{this.formCommissionRate}} @onChange={{fn this.setField "formCommissionRate"}} @required={{true}} data-test-input-rate />
     <FormTextarea @label="Notes" @placeholder="Optional notes..." @value={{this.formNotes}} @onChange={{fn this.setField "formNotes"}} data-test-input-notes />
     <div class="flex gap-3 mt-2">
       <AppButton @variant="secondary" @text="Cancel" @onClick={{this.closeModal}} />

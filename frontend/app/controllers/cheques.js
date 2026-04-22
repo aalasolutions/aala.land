@@ -97,6 +97,8 @@ export default class ChequesController extends Controller {
           chequeNumber: this.formChequeNumber,
           bankName: this.formBankName,
           amount: parseFloat(this.formAmount),
+          type: this.formType,
+          dueDate: this.formDueDate,
           ...(this.formUnitId ? { unitId: this.formUnitId } : {}),
         }
       : {

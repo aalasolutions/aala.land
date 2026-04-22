@@ -94,7 +94,7 @@ export class FinancialService {
         "COALESCE(SUM(CASE WHEN t.type = :expense THEN t.amount ELSE 0 END), 0)",
         'totalExpense'
       )
-      .where('t.companyId = :companyId', { companyId })
+      .where('t.companyId = :companyId AND t.status NOT IN (:...excludedStatuses)', { companyId, excludedStatuses: [TransactionStatus.CANCELLED, TransactionStatus.FAILED] })
       .setParameters({ income: TransactionType.INCOME, expense: TransactionType.EXPENSE })
       .getRawOne();
 

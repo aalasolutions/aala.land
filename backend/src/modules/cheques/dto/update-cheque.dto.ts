@@ -1,12 +1,17 @@
 import { IsString, IsOptional, IsEnum, IsNumber, Min, IsDateString, MaxLength, IsUUID } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
-import { ChequeStatus } from '../entities/cheque.entity';
+import { ChequeStatus, ChequeType } from '../entities/cheque.entity';
 
 export class UpdateChequeDto {
   @ApiProperty({ enum: ChequeStatus, required: false })
   @IsOptional()
   @IsEnum(ChequeStatus)
   status?: ChequeStatus;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsDateString()
+  dueDate?: string;
 
   @ApiProperty({ required: false })
   @IsOptional()
@@ -35,6 +40,11 @@ export class UpdateChequeDto {
   @IsOptional()
   @IsUUID()
   unitId?: string;
+
+  @ApiProperty({ enum: ChequeType, required: false })
+  @IsOptional()
+  @IsEnum(ChequeType)
+  type?: ChequeType;
 
   @ApiProperty({ required: false })
   @IsOptional()

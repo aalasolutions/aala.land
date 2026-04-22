@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, Logger } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, LessThan, Between } from 'typeorm';
 import { Cheque, ChequeStatus } from './entities/cheque.entity';
@@ -62,7 +62,18 @@ export class ChequesService {
 
   async update(id: string, companyId: string, dto: UpdateChequeDto): Promise<Cheque> {
     const cheque = await this.findOne(id, companyId);
+
+    const terminalStatuses = [ChequeStatus.CLEARED, ChequeStatus.CANCELLED, ChequeStatus.REPLACED];
+    if (terminalStatuses.includes(cheque.status) && dto.status && dto.status !== cheque.status) {
+      throw new BadRequestException(`Cannot update a cheque with status ${cheque.status}`);
+    }
+
     Object.assign(cheque, dto);
+
+    if (cheque.status === ChequeStatus.DEPOSITED && !cheque.depositDate) {
+      cheque.depositDate = new Date();
+    }
+
     return this.chequeRepository.save(cheque);
   }
 
