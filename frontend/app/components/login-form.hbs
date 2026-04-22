@@ -10,10 +10,10 @@
       <button
         data-test-back-to-login
         type="button"
-        class="btn-link font-sm text-muted"
+        class="btn-link text-primary font-sm"
         {{on "click" this.toggleForgotPassword}}
       >
-        Back to Sign In
+        Sign in
       </button>
     </div>
   {{else}}
@@ -22,24 +22,17 @@
       class="flex col gap-5 w-full"
       {{on "submit" this.submitForgotPassword}}
     >
-      <div class="flex col gap-2">
-        <p class="font-sm text-muted">Enter your email address and we will send you a link to reset your password.</p>
-      </div>
-
-      <div class="flex col gap-2">
-        <label class="font-sm text-muted" for="reset-email">Email</label>
-        <input
-          data-test-reset-email-input
-          id="reset-email"
-          type="email"
-          class="px-4 py-3 rounded-xl bg-white border border-white@10 text-color font-sm outline-none"
-          placeholder="you@company.com"
-          value={{this.resetEmail}}
-          autocomplete="email"
-          required
-          {{on "input" this.updateResetEmail}}
-        />
-      </div>
+      <FormInput
+        @label="Email"
+        @id="reset-email"
+        @type="email"
+        @placeholder="you@company.com"
+        @value={{this.resetEmail}}
+        @autocomplete="email"
+        @required={{true}}
+        @onChange={{this.updateResetEmail}}
+        data-test-reset-email-input
+      />
 
       {{#if this.resetError}}
         <p data-test-reset-error class="font-sm text-danger text-center">
@@ -47,16 +40,16 @@
         </p>
       {{/if}}
 
-      <button
+      <AppButton
+        @variant="primary"
+        @buttonType="submit"
+        @text="Send Reset Link"
+        @loading={{this.resetLoading}}
+        @loadingText="Sending..."
         data-test-reset-submit
-        type="submit"
-        class="px-4 py-3 rounded-xl bg-primary text-white font-sm font-bold transition"
-        disabled={{this.resetLoading}}
-      >
-        {{if this.resetLoading "Sending..." "Send Reset Link"}}
-      </button>
+      />
 
-      <div class="text-center">
+      <div class="text-center text-muted">
         <button
           data-test-back-to-login
           type="button"
@@ -74,35 +67,29 @@
     class="flex col gap-5 w-full"
     {{on "submit" this.submit}}
   >
-    <div class="flex col gap-2">
-      <label class="font-sm text-muted" for="login-email">Email</label>
-      <input
-        data-test-email-input
-        id="login-email"
-        type="email"
-        class="px-4 py-3 rounded-xl bg-white border border-white@10 text-color font-sm outline-none"
-        placeholder="you@company.com"
-        value={{this.email}}
-        autocomplete="email"
-        required
-        {{on "input" this.updateEmail}}
-      />
-    </div>
+    <FormInput
+      @label="Email"
+      @id="login-email"
+      @type="email"
+      @placeholder="you@company.com"
+      @value={{this.email}}
+      @autocomplete="email"
+      @required={{true}}
+      @onChange={{this.updateEmail}}
+      data-test-email-input
+    />
 
-    <div class="flex col gap-2">
-      <label class="font-sm text-muted" for="login-password">Password</label>
-      <input
-        data-test-password-input
-        id="login-password"
-        type="password"
-        class="px-4 py-3 rounded-xl bg-white border border-white@10 text-color font-sm outline-none"
-        placeholder="••••••••"
-        value={{this.password}}
-        autocomplete="current-password"
-        required
-        {{on "input" this.updatePassword}}
-      />
-    </div>
+    <FormInput
+      @label="Password"
+      @id="login-password"
+      @type="password"
+      @placeholder="••••••••"
+      @value={{this.password}}
+      @autocomplete="current-password"
+      @required={{true}}
+      @onChange={{this.updatePassword}}
+      data-test-password-input
+    />
 
     {{#if this.errorMessage}}
       <p data-test-error-message class="font-sm text-danger text-center">
@@ -110,18 +97,14 @@
       </p>
     {{/if}}
 
-    <button
+    <AppButton
+      @variant="primary"
+      @buttonType="submit"
+      @text="Sign In"
+      @loading={{this.isLoading}}
+      @loadingText="Signing in..."
       data-test-submit-button
-      type="submit"
-      class="px-4 py-3 rounded-xl bg-primary text-white font-sm font-bold transition"
-      disabled={{this.isLoading}}
-    >
-      {{#if this.isLoading}}
-        Signing in...
-      {{else}}
-        Sign In
-      {{/if}}
-    </button>
+    />
 
     <div class="text-center">
       <button

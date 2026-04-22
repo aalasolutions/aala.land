@@ -1,6 +1,13 @@
 import Service, { service } from '@ember/service';
 import config from 'frontend/config/environment';
 
+async function parseErrorResponse(response, fallbackMessage) {
+  const err = await response.json().catch(() => ({}));
+  return Array.isArray(err.message)
+    ? err.message.join(', ')
+    : (err.message ?? fallbackMessage);
+}
+
 export default class AuthService extends Service {
   @service session;
   @service region;
@@ -38,18 +45,43 @@ export default class AuthService extends Service {
     });
 
     if (!response.ok) {
-      const err = await response.json().catch(() => ({}));
-      throw new Error(
-        Array.isArray(err.message)
-          ? err.message.join(', ')
-          : (err.message ?? 'Registration failed'),
-      );
+      throw new Error(await parseErrorResponse(response, 'Registration failed'));
     }
 
     const { data } = await response.json();
-    
-    await this.login(registrationData.email, registrationData.password);
-    
+
+    this.session.establish(data);
+
+    return data;
+  }
+
+  async requestPasswordReset(email) {
+    const response = await fetch(`${this.apiBase}/auth/forgot-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    });
+
+    if (!response.ok) {
+      throw new Error(await parseErrorResponse(response, 'Unable to send reset link'));
+    }
+
+    const { data } = await response.json();
+    return data;
+  }
+
+  async resetPassword(payload) {
+    const response = await fetch(`${this.apiBase}/auth/reset-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      throw new Error(await parseErrorResponse(response, 'Unable to reset password'));
+    }
+
+    const { data } = await response.json();
     return data;
   }
 
@@ -77,8 +109,13 @@ export default class AuthService extends Service {
       }
 
       const { data } = await response.json();
+      if (!data?.accessToken) {
+        await this.logout();
+        return;
+      }
+
       this.session.data.authenticated.accessToken = data.accessToken;
-      this.session.data.authenticated.refreshToken = data.refreshToken;
+      this.session.saveToStorage();
     } catch {
       await this.logout();
     }
@@ -116,12 +153,7 @@ export default class AuthService extends Service {
 
     const res = await this.authorizedFetch(`${this.apiBase}${finalPath}`, options);
     if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(
-        Array.isArray(err.message)
-          ? err.message.join(', ')
-          : (err.message ?? 'Request failed'),
-      );
+      throw new Error(await parseErrorResponse(res, 'Request failed'));
     }
 
     const contentType = res.headers.get('content-type');
