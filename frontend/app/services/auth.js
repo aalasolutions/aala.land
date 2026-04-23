@@ -99,8 +99,9 @@ export default class AuthService extends Service {
     try {
       const response = await fetch(`${this.apiBase}/auth/refresh`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ refreshToken: token }),
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
       });
 
       if (!response.ok) {

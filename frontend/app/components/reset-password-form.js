@@ -21,7 +21,7 @@ export default class ResetPasswordFormComponent extends Component {
   }
 
   get canSubmit() {
-    return this.hasToken && this.password.length >= 8 && this.password === this.confirmPassword;
+    return this.hasToken && this.password.length > 0 && this.confirmPassword.length > 0;
   }
 
   @action
@@ -56,7 +56,7 @@ export default class ResetPasswordFormComponent extends Component {
 
     try {
       await this.auth.resetPassword({
-        token: this.token,
+        token: this.token.trim(),
         newPassword: this.password,
       });
       this.isSuccess = true;
