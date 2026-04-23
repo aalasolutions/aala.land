@@ -10,6 +10,7 @@ Router.map(function () {
   this.route('index', { path: '/' });
   this.route('login');
   this.route('signup');
+  this.route('reset-password');
 
   this.route('dashboard');
   this.route('properties', function () {
