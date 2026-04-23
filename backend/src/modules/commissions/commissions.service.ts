@@ -6,6 +6,7 @@ import { CreateCommissionDto } from './dto/create-commission.dto';
 import { UpdateCommissionDto } from './dto/update-commission.dto';
 import { Company } from '../companies/entities/company.entity';
 import { resolveRegionCode } from '../../shared/utils/resolve-region-code.util';
+import { paginationOptions } from '../../shared/utils/pagination.util';
 
 @Injectable()
 export class CommissionsService {
@@ -40,8 +41,7 @@ export class CommissionsService {
 
     const [data, total] = await this.commissionRepository.findAndCount({
       where,
-      skip: (page - 1) * limit,
-      take: limit,
+      ...paginationOptions(page, limit),
       order: { createdAt: 'DESC' },
     });
     return { data, total, page, limit };
@@ -55,8 +55,7 @@ export class CommissionsService {
   ): Promise<{ data: Commission[]; total: number; page: number; limit: number }> {
     const [data, total] = await this.commissionRepository.findAndCount({
       where: { agentId, companyId },
-      skip: (page - 1) * limit,
-      take: limit,
+      ...paginationOptions(page, limit),
       order: { createdAt: 'DESC' },
     });
     return { data, total, page, limit };

@@ -1,12 +1,13 @@
 import { Injectable, Logger, BadRequestException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, LessThanOrEqual, MoreThanOrEqual } from 'typeorm';
+import { Repository } from 'typeorm';
 import { SendNotificationDto, NotificationChannel, NotificationStatus } from './dto/send-notification.dto';
 import { Notification } from './entities/notification.entity';
 import { CreateNotificationDto } from './dto/create-notification.dto';
 import { Cheque, ChequeStatus } from '../cheques/entities/cheque.entity';
 import { Lease, LeaseStatus } from '../leases/entities/lease.entity';
 import { WorkOrder } from '../maintenance/entities/work-order.entity';
+import { paginationOptions } from '../../shared/utils/pagination.util';
 
 export interface NotificationResult {
   channel: NotificationChannel;
@@ -46,8 +47,7 @@ export class NotificationsService {
   ): Promise<{ data: Notification[]; total: number; page: number; limit: number }> {
     const [data, total] = await this.notificationRepository.findAndCount({
       where: { companyId, userId },
-      skip: (page - 1) * limit,
-      take: limit,
+      ...paginationOptions(page, limit),
       order: { createdAt: 'DESC' },
     });
     return { data, total, page, limit };

@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { Owner } from './entities/owner.entity';
 import { CreateOwnerDto } from './dto/create-owner.dto';
 import { UpdateOwnerDto } from './dto/update-owner.dto';
+import { paginationOptions } from '../../shared/utils/pagination.util';
 
 @Injectable()
 export class OwnersService {
@@ -21,8 +22,7 @@ export class OwnersService {
     const [data, total] = await this.ownerRepository.findAndCount({
       where: { companyId },
       relations: ['assignedAgent', 'units'],
-      skip: (page - 1) * limit,
-      take: limit,
+      ...paginationOptions(page, limit),
       order: { createdAt: 'DESC' },
     });
     return { data, total, page, limit };

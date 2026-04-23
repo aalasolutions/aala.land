@@ -17,6 +17,11 @@ export enum CommissionType {
   REFERRAL = 'REFERRAL',
 }
 
+const decimalTransformer = {
+  to: (v: number) => v,
+  from: (v: string) => parseFloat(v),
+};
+
 @Entity('commissions')
 export class Commission {
   @PrimaryGeneratedColumn('uuid')
@@ -64,13 +69,13 @@ export class Commission {
   })
   status: CommissionStatus;
 
-  @Column({ name: 'gross_amount', type: 'decimal', precision: 12, scale: 2 })
+  @Column({ name: 'gross_amount', type: 'decimal', precision: 12, scale: 2, transformer: decimalTransformer })
   grossAmount: number;
 
-  @Column({ name: 'commission_rate', type: 'decimal', precision: 5, scale: 2 })
+  @Column({ name: 'commission_rate', type: 'decimal', precision: 5, scale: 2, transformer: decimalTransformer })
   commissionRate: number;
 
-  @Column({ name: 'commission_amount', type: 'decimal', precision: 12, scale: 2 })
+  @Column({ name: 'commission_amount', type: 'decimal', precision: 12, scale: 2, transformer: decimalTransformer })
   commissionAmount: number;
 
   @Column({ type: 'varchar', length: 3, default: 'AED' })

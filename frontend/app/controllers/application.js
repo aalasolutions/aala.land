@@ -9,6 +9,11 @@ export default class ApplicationController extends Controller {
   @service router;
   @service region;
 
+  get isAdmin() {
+    const role = this.auth.currentUser?.role;
+    return role === 'company_admin' || role === 'super_admin';
+  }
+
   @tracked unreadCount = 0;
   @tracked showNotifications = false;
   @tracked notifications = [];

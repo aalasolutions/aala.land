@@ -1,9 +1,10 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, FindOptionsWhere } from 'typeorm';
+import { Repository, FindOptionsWhere, In } from 'typeorm';
 import { PropertyArea } from './entities/property-area.entity';
 import { Asset } from './entities/asset.entity';
 import { Unit, UnitStatus } from './entities/unit.entity';
+import { PropertyMedia } from './entities/property-media.entity';
 import { Listing, ListingStatus } from './entities/listing.entity';
 import { CreateAreaDto } from './dto/create-area.dto';
 import { UpdateAreaDto } from './dto/update-area.dto';
@@ -13,6 +14,7 @@ import { CreateUnitDto } from './dto/create-unit.dto';
 import { UpdateUnitDto } from './dto/update-unit.dto';
 import { CreateListingDto } from './dto/create-listing.dto';
 import { UpdateListingDto } from './dto/update-listing.dto';
+import { paginationOptions, pageSkip } from '../../shared/utils/pagination.util';
 
 @Injectable()
 export class PropertiesService {
@@ -25,6 +27,8 @@ export class PropertiesService {
         private readonly unitRepository: Repository<Unit>,
         @InjectRepository(Listing)
         private readonly listingRepository: Repository<Listing>,
+        @InjectRepository(PropertyMedia)
+        private readonly mediaRepository: Repository<PropertyMedia>,
     ) { }
 
     // Areas
@@ -39,8 +43,7 @@ export class PropertiesService {
 
         const [areas, total] = await this.areaRepository.findAndCount({
             where,
-            skip: (page - 1) * limit,
-            take: limit,
+            ...paginationOptions(page, limit),
             order: { createdAt: 'DESC' },
         });
 
@@ -89,8 +92,7 @@ export class PropertiesService {
                 { localityId, createdByCompanyId: companyId },
             ],
             relations: ['locality', 'locality.city', 'units'],
-            skip: (page - 1) * limit,
-            take: limit,
+            ...paginationOptions(page, limit),
             order: { createdAt: 'DESC' },
         });
 
@@ -109,8 +111,7 @@ export class PropertiesService {
                 { createdByCompanyId: companyId },
             ],
             relations: ['locality', 'locality.city', 'units'],
-            skip: (page - 1) * limit,
-            take: limit,
+            ...paginationOptions(page, limit),
             order: { createdAt: 'DESC' },
         });
 
@@ -207,13 +208,28 @@ export class PropertiesService {
             qb.andWhere('ci.regionCode = :regionCode', { regionCode: filters.regionCode });
         }
 
-        qb.skip((page - 1) * limit)
+        qb.skip(pageSkip(page, limit))
             .take(limit)
             .orderBy('loc.name', 'ASC')
             .addOrderBy('a.name', 'ASC')
             .addOrderBy('u.unitNumber', 'ASC');
 
         const [units, total] = await qb.getManyAndCount();
+
+        const unitIds = units.map(u => u.id);
+        const primaryPhotoMap = new Map<string, string>();
+        if (unitIds.length > 0) {
+            const mediaList = await this.mediaRepository.find({
+                where: { unitId: In(unitIds), companyId },
+                order: { isPrimary: 'DESC', createdAt: 'DESC' },
+                select: ['unitId', 'url', 'thumbnailUrl'],
+            });
+            for (const m of mediaList) {
+                if (!primaryPhotoMap.has(m.unitId)) {
+                    primaryPhotoMap.set(m.unitId, m.thumbnailUrl ?? m.url);
+                }
+            }
+        }
 
         const data = units.map(u => ({
             id: u.id,
@@ -225,7 +241,7 @@ export class PropertiesService {
             bathrooms: u.bathrooms,
             propertyType: u.propertyType ?? null,
             amenities: u.amenities,
-            photos: u.photos,
+            photos: primaryPhotoMap.has(u.id) ? [primaryPhotoMap.get(u.id)!] : [],
             floor: u.floor,
             assetId: u.assetId,
             assetName: u.asset?.name ?? '',
@@ -246,8 +262,7 @@ export class PropertiesService {
         const [data, total] = await this.unitRepository.findAndCount({
             where: { assetId, companyId },
             relations: ['owner'],
-            skip: (page - 1) * limit,
-            take: limit,
+            ...paginationOptions(page, limit),
             order: { createdAt: 'DESC' },
         });
         return { data, total, page, limit };
@@ -381,8 +396,7 @@ export class PropertiesService {
         const [data, total] = await this.listingRepository.findAndCount({
             where: { companyId },
             relations: ['unit'],
-            skip: (page - 1) * limit,
-            take: limit,
+            ...paginationOptions(page, limit),
             order: { createdAt: 'DESC' },
         });
         return { data, total, page, limit };
