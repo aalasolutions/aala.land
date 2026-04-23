@@ -11,6 +11,7 @@ Router.map(function () {
   this.route('login');
   this.route('signup');
   this.route('accept-invite');
+  this.route('reset-password');
 
   this.route('dashboard');
   this.route('properties', function () {

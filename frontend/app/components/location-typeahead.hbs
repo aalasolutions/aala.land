@@ -29,24 +29,24 @@
         </button>
       {{/each}}
 
-      {{#if @createUrl}}
+      {{#if this.canCreate}}
         <button
           type="button"
-          class="typeahead-item typeahead-create"
+          class="typeahead-item"
           data-test-typeahead-create
           disabled={{this.isCreating}}
           {{on "mousedown" this.createNew}}
         >
           {{#if this.isCreating}}
-            Creating...
+            <span class="typeahead-item-name">Creating...</span>
           {{else}}
-            + Create "{{this.query}}"
+            <span class="typeahead-item-name">Add "{{this.trimmedQuery}}"</span>
           {{/if}}
         </button>
       {{/if}}
 
       {{#if (and (eq this.results.length 0) (not this.isSearching))}}
-        {{#unless @createUrl}}
+        {{#unless this.canCreate}}
           <div class="typeahead-item text-muted font-xs">No matches found</div>
         {{/unless}}
       {{/if}}
