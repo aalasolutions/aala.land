@@ -65,7 +65,7 @@ export class ChequesService {
 
     const terminalStatuses = [ChequeStatus.CLEARED, ChequeStatus.CANCELLED, ChequeStatus.REPLACED];
     if (terminalStatuses.includes(cheque.status) && dto.status && dto.status !== cheque.status) {
-      throw new BadRequestException(`Cannot update a cheque with status ${cheque.status}`);
+      throw new BadRequestException(`Cannot change the status of a cheque that is already ${cheque.status}`);
     }
 
     Object.assign(cheque, dto);

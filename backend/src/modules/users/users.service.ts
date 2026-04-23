@@ -107,14 +107,13 @@ export class UsersService {
             throw new ConflictException('Email already exists');
         }
 
-        const tempPassword = crypto.randomBytes(16).toString('hex');
-        const hashedPassword = await bcrypt.hash(tempPassword, 12);
+        const placeholderPassword = await bcrypt.hash(crypto.randomBytes(32).toString('hex'), 12);
         const name = `${dto.firstName} ${dto.lastName}`;
 
         const user = this.userRepository.create({
             name,
             email: dto.email,
-            password: hashedPassword,
+            password: placeholderPassword,
             role: dto.role,
             companyId,
             mustChangePassword: true,
@@ -122,7 +121,11 @@ export class UsersService {
 
         const saved = await this.userRepository.save(user);
 
-        this.sendInviteEmail(companyId, dto.email, dto.role ?? '', name, tempPassword).catch((err) => {
+        const inviteToken = crypto.randomBytes(32).toString('hex');
+        const inviteExpires = new Date(Date.now() + 72 * 60 * 60 * 1000);
+        await this.updateResetToken(saved.id, inviteToken, inviteExpires);
+
+        this.sendInviteEmail(companyId, dto.email, dto.role ?? '', name, inviteToken).catch((err) => {
             this.logger.error(`Failed to send invite email to ${dto.email}: ${err instanceof Error ? err.message : String(err)}`);
         });
 
@@ -134,10 +137,11 @@ export class UsersService {
         email: string,
         role: string,
         name: string,
-        tempPassword: string,
+        inviteToken: string,
     ): Promise<void> {
-        const loginUrl = `${process.env.APP_URL || 'http://localhost:4200'}/login`;
-        const variables = { role, name, email, password: tempPassword, loginUrl };
+        const appUrl = process.env.APP_URL || 'http://localhost:4200';
+        const inviteUrl = `${appUrl}/accept-invite?token=${inviteToken}`;
+        const variables = { role, name, email, inviteUrl };
 
         let subject: string;
         let text: string;
@@ -167,18 +171,16 @@ export class UsersService {
         await this.mailService.sendMail({ to: email, subject, text });
     }
 
-    private buildFallbackInviteText(vars: { name: string; email: string; password: string; loginUrl: string }): string {
+    private buildFallbackInviteText(vars: { name: string; email: string; inviteUrl: string }): string {
         return [
             `Hi ${vars.name},`,
             '',
             'You have been invited to AALA.LAND.',
             '',
-            `Email: ${vars.email}`,
-            `Temporary Password: ${vars.password}`,
+            'Click the link below to set your password and activate your account:',
+            vars.inviteUrl,
             '',
-            `Login at: ${vars.loginUrl}`,
-            '',
-            'You will be asked to change your password on first login.',
+            'This link expires in 72 hours.',
         ].join('\n');
     }
 }
