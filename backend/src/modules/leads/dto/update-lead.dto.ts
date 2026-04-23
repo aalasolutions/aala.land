@@ -61,4 +61,9 @@ export class UpdateLeadDto {
   @IsUUID()
   @IsOptional()
   unitId?: string;
+
+  @ApiPropertyOptional({ example: 'dubai' })
+  @IsString()
+  @IsOptional()
+  regionCode?: string;
 }

@@ -7,6 +7,7 @@ import { CreateLeadDto } from './dto/create-lead.dto';
 import { UpdateLeadDto } from './dto/update-lead.dto';
 import { CreateLeadActivityDto } from './dto/create-lead-activity.dto';
 import { Company } from '../companies/entities/company.entity';
+import { User } from '../users/entities/user.entity';
 import { resolveRegionCode } from '../../shared/utils/resolve-region-code.util';
 
 @Injectable()
@@ -18,6 +19,8 @@ export class LeadsService {
     private readonly activityRepository: Repository<LeadActivity>,
     @InjectRepository(Company)
     private readonly companyRepository: Repository<Company>,
+    @InjectRepository(User)
+    private readonly userRepository: Repository<User>,
   ) { }
 
   async create(companyId: string, dto: CreateLeadDto): Promise<Lead> {
@@ -32,23 +35,34 @@ export class LeadsService {
 
     const [data, total] = await this.leadRepository.findAndCount({
       where,
-      relations: ['property', 'unit'],
+      relations: ['property', 'unit', 'assignedAgent'],
       skip: (page - 1) * limit,
       take: limit,
       order: { createdAt: 'DESC' },
     });
-    return { data, total, page, limit };
+    return {
+      data: data.map((lead) => ({
+        ...lead,
+        assignedAgentName: lead.assignedAgent?.name ?? null,
+      })),
+      total,
+      page,
+      limit,
+    };
   }
 
   async findOne(id: string, companyId: string): Promise<Lead> {
     const lead = await this.leadRepository.findOne({
       where: { id, companyId },
-      relations: ['property', 'unit'],
+      relations: ['property', 'unit', 'assignedAgent'],
     });
     if (!lead) {
       throw new NotFoundException('Lead not found');
     }
-    return lead;
+    return {
+      ...lead,
+      assignedAgentName: lead.assignedAgent?.name ?? null,
+    } as Lead;
   }
 
   async update(id: string, companyId: string, dto: UpdateLeadDto, userId?: string): Promise<Lead> {
@@ -56,6 +70,16 @@ export class LeadsService {
     const previousStatus = lead.status;
 
     Object.assign(lead, dto);
+
+    if (Object.prototype.hasOwnProperty.call(dto, 'propertyId')) {
+      lead.property = null as any;
+    }
+    if (Object.prototype.hasOwnProperty.call(dto, 'unitId')) {
+      lead.unit = null as any;
+    }
+    if (Object.prototype.hasOwnProperty.call(dto, 'assignedTo')) {
+      lead.assignedAgent = null as any;
+    }
 
     if (dto.status && dto.status !== previousStatus) {
       lead.stageEnteredAt = new Date();
@@ -80,6 +104,10 @@ export class LeadsService {
 
   async assign(id: string, companyId: string, agentId: string, performedBy?: string, reason?: string): Promise<Lead> {
     const lead = await this.findOne(id, companyId);
+    const agent = await this.userRepository.findOne({
+      where: { id: agentId, companyId },
+      select: { id: true, name: true },
+    });
 
     if (lead.assignedTo) {
       lead.previousAgent = lead.assignedTo;
@@ -89,11 +117,13 @@ export class LeadsService {
     }
 
     lead.assignedTo = agentId;
-    const updated = await this.leadRepository.save(lead);
+    lead.assignedAgent = null as any;
+    await this.leadRepository.save(lead);
 
+    const agentLabel = agent?.name ?? agentId;
     const activityNotes = reason
-      ? `Lead assigned to agent ${agentId} (reason: ${reason})`
-      : `Lead assigned to agent ${agentId}`;
+      ? `Lead assigned to agent ${agentLabel} (reason: ${reason})`
+      : `Lead assigned to agent ${agentLabel}`;
 
     await this.activityRepository.save(
       this.activityRepository.create({
@@ -105,7 +135,7 @@ export class LeadsService {
       }),
     );
 
-    return updated;
+    return this.findOne(id, companyId);
   }
 
   async convert(id: string, companyId: string, performedBy?: string): Promise<Lead> {
@@ -142,10 +172,16 @@ export class LeadsService {
   async findActivities(leadId: string, companyId: string): Promise<LeadActivity[]> {
     await this.findOne(leadId, companyId);
 
-    return this.activityRepository.find({
+    const activities = await this.activityRepository.find({
       where: { leadId, companyId },
+      relations: ['performer'],
       order: { createdAt: 'DESC' },
       take: 200,
     });
+
+    return activities.map((activity) => ({
+      ...activity,
+      performedByName: activity.performer?.name ?? null,
+    }));
   }
 }
