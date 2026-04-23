@@ -1,11 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, LessThan, MoreThan } from 'typeorm';
+import { Repository, LessThan } from 'typeorm';
 import { Lead, LeadStatus } from '../leads/entities/lead.entity';
 import { LeadActivity, ActivityType } from '../leads/entities/lead-activity.entity';
 import { Transaction, TransactionStatus, TransactionType } from '../financial/entities/transaction.entity';
 import { Unit, UnitStatus } from '../properties/entities/unit.entity';
-import { Commission } from '../commissions/entities/commission.entity';
+import { Commission, CommissionStatus } from '../commissions/entities/commission.entity';
 import { Lease, LeaseStatus } from '../leases/entities/lease.entity';
 import { Cheque, ChequeStatus } from '../cheques/entities/cheque.entity';
 import { AuditLog } from '../audit/entities/audit-log.entity';
@@ -225,7 +225,10 @@ export class ReportsService {
       .createQueryBuilder('c')
       .select('c.agentId', 'agentId')
       .addSelect('COALESCE(SUM(c.commissionAmount), 0)', 'commissionsEarned')
-      .where('c.companyId = :companyId', { companyId });
+      .where('c.companyId = :companyId', { companyId })
+      .andWhere('c.status IN (:...commStatuses)', {
+        commStatuses: [CommissionStatus.APPROVED, CommissionStatus.PAID],
+      });
 
     if (regionCode) commQb.andWhere('c.regionCode = :regionCode', { regionCode });
     commQb.groupBy('c.agentId');
@@ -281,10 +284,13 @@ export class ReportsService {
       }
     }
 
-    return Array.from(agentMap.values()).map((p) => ({
-      ...p,
-      conversionRate: p.leadsAssigned > 0 ? Math.round((p.leadsWon / p.leadsAssigned) * 100) : 0,
-    }));
+    return Array.from(agentMap.values()).map((p) => {
+      const closed = p.leadsWon + p.leadsLost;
+      return {
+        ...p,
+        conversionRate: closed > 0 ? Math.round((p.leadsWon / closed) * 100) : 0,
+      };
+    });
   }
 
   async getRedFlags(companyId: string, regionCode?: string): Promise<RedFlag[]> {
