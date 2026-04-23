@@ -37,14 +37,13 @@ export class LeadsService {
     const [data, total] = await this.leadRepository.findAndCount({
       where,
       relations: ['property', 'unit', 'assignedAgent'],
-      skip: (page - 1) * limit,
-      take: limit,
+      ...paginationOptions(page, limit),
       order: { createdAt: 'DESC' },
     });
     return {
-      data: data.map((lead) => ({
+      data: data.map(({ assignedAgent, ...lead }) => ({
         ...lead,
-        assignedAgentName: lead.assignedAgent?.name ?? null,
+        assignedAgentName: assignedAgent?.name ?? null,
       })),
       total,
       page,
@@ -60,9 +59,10 @@ export class LeadsService {
     if (!lead) {
       throw new NotFoundException('Lead not found');
     }
+    const { assignedAgent, ...leadWithoutAssignedAgent } = lead;
     return {
-      ...lead,
-      assignedAgentName: lead.assignedAgent?.name ?? null,
+      ...leadWithoutAssignedAgent,
+      assignedAgentName: assignedAgent?.name ?? null,
     } as Lead;
   }
 
@@ -73,13 +73,13 @@ export class LeadsService {
     Object.assign(lead, dto);
 
     if (Object.prototype.hasOwnProperty.call(dto, 'propertyId')) {
-      lead.property = null as any;
+      lead.property = null;
     }
     if (Object.prototype.hasOwnProperty.call(dto, 'unitId')) {
-      lead.unit = null as any;
+      lead.unit = null;
     }
     if (Object.prototype.hasOwnProperty.call(dto, 'assignedTo')) {
-      lead.assignedAgent = null as any;
+      lead.assignedAgent = null;
     }
 
     if (dto.status && dto.status !== previousStatus) {
@@ -118,7 +118,7 @@ export class LeadsService {
     }
 
     lead.assignedTo = agentId;
-    lead.assignedAgent = null as any;
+    lead.assignedAgent = null;
     await this.leadRepository.save(lead);
 
     const agentLabel = agent?.name ?? agentId;
@@ -180,9 +180,9 @@ export class LeadsService {
       take: 200,
     });
 
-    return activities.map((activity) => ({
+    return activities.map(({ performer, ...activity }) => ({
       ...activity,
-      performedByName: activity.performer?.name ?? null,
+      performedByName: performer?.name ?? null,
     }));
   }
 }

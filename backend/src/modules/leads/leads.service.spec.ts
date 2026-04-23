@@ -107,8 +107,7 @@ describe('LeadsService', () => {
       expect(leadRepo.findAndCount).toHaveBeenCalledWith({
         where: { companyId },
         relations: ['property', 'unit', 'assignedAgent'],
-        skip: 0,
-        take: 20,
+        ...{ skip: 0, take: 20 },
         order: { createdAt: 'DESC' },
       });
       expect(result.data).toEqual([{ ...mockLead, assignedAgentName: null }]);
@@ -186,6 +185,26 @@ describe('LeadsService', () => {
 
       const savedLead = leadRepo.save.mock.calls[0][0] as Lead;
       expect(savedLead.stageEnteredAt).toBeUndefined();
+    });
+
+    it('clears property and unit relations when ids are explicitly unset', async () => {
+      const leadWithRelations = {
+        ...mockLead,
+        propertyId: 'locality-uuid-1',
+        unitId: 'unit-uuid-1',
+        property: { id: 'locality-uuid-1', name: 'Dubai Marina' },
+        unit: { id: 'unit-uuid-1', unitNumber: '1204' },
+      } as unknown as Lead;
+      leadRepo.findOne.mockResolvedValue(leadWithRelations);
+      leadRepo.save.mockImplementation(async (lead) => lead as Lead);
+
+      await service.update('lead-uuid-1', companyId, { propertyId: null, unitId: null } as any);
+
+      const savedLead = leadRepo.save.mock.calls[0][0] as Lead;
+      expect(savedLead.propertyId).toBeNull();
+      expect(savedLead.unitId).toBeNull();
+      expect(savedLead.property).toBeNull();
+      expect(savedLead.unit).toBeNull();
     });
   });
 

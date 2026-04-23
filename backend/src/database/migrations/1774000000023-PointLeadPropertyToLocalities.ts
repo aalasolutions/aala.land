@@ -28,6 +28,16 @@ export class PointLeadPropertyToLocalities1774000000023 implements MigrationInte
               AND ld.company_id = locality_matches.company_id
         `);
         await queryRunner.query(`
+            UPDATE "leads" ld
+            SET "property_id" = NULL
+            WHERE ld.property_id IS NOT NULL
+              AND NOT EXISTS (
+                  SELECT 1
+                  FROM "localities" l
+                  WHERE l.id = ld.property_id
+              )
+        `);
+        await queryRunner.query(`
             ALTER TABLE "leads"
             ADD CONSTRAINT "fk_leads_property"
             FOREIGN KEY ("property_id") REFERENCES "localities"("id") NOT VALID
@@ -57,6 +67,16 @@ export class PointLeadPropertyToLocalities1774000000023 implements MigrationInte
             FROM property_area_matches
             WHERE ld.property_id = property_area_matches.locality_id
               AND ld.company_id = property_area_matches.company_id
+        `);
+        await queryRunner.query(`
+            UPDATE "leads" ld
+            SET "property_id" = NULL
+            WHERE ld.property_id IS NOT NULL
+              AND NOT EXISTS (
+                  SELECT 1
+                  FROM "property_areas" pa
+                  WHERE pa.id = ld.property_id
+              )
         `);
         await queryRunner.query(`
             ALTER TABLE "leads"

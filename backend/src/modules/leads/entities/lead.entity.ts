@@ -48,7 +48,7 @@ export class Lead {
 
   @ManyToOne(() => Locality)
   @JoinColumn({ name: 'property_id' })
-  property: Locality;
+  property: Locality | null;
 
   @Index()
   @Column({ name: 'unit_id', type: 'uuid', nullable: true })
@@ -56,7 +56,7 @@ export class Lead {
 
   @ManyToOne(() => Unit, { nullable: true })
   @JoinColumn({ name: 'unit_id' })
-  unit: Unit;
+  unit: Unit | null;
 
   @Column({ name: 'first_name', type: 'varchar', length: 100 })
   firstName: string;

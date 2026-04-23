@@ -304,7 +304,11 @@ export default class LeadsController extends Controller {
         params.set('regionCode', regionCode);
       }
 
-      const json = await this.auth.fetchJson(`/locations/company/localities?${params.toString()}`);
+      const queryString = params.toString();
+      const url = queryString
+        ? `/locations/company/localities?${queryString}`
+        : '/locations/company/localities';
+      const json = await this.auth.fetchJson(url);
       this.properties = json.data || [];
     } catch (e) {
       console.error('Failed to load properties:', e);
