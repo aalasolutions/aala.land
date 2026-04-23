@@ -63,7 +63,7 @@ describe('ReportsController', () => {
   describe('getAgentPerformance', () => {
     it('returns agent performance for company', async () => {
       const mockPerf = [
-        { agentId: 'agent-1', agentName: 'Agent One', leadsAssigned: 5, leadsWon: 3, leadsLost: 1, conversionRate: 60, commissionsEarned: 2000, currency: 'AED' },
+        { agentId: 'agent-1', agentName: 'Agent One', leadsAssigned: 5, leadsWon: 3, leadsLost: 1, conversionRate: 75, commissionsEarned: 2000, currency: 'AED' },
       ];
       service.getAgentPerformance.mockResolvedValue(mockPerf as any);
 

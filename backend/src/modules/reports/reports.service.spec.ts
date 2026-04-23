@@ -159,7 +159,7 @@ describe('ReportsService', () => {
       expect(agent1!.leadsAssigned).toBe(5);
       expect(agent1!.leadsWon).toBe(3);
       expect(agent1!.leadsLost).toBe(1);
-      expect(agent1!.conversionRate).toBe(60);
+      expect(agent1!.conversionRate).toBe(75);
       expect(agent1!.commissionsEarned).toBe(2000);
     });
 
