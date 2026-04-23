@@ -26,7 +26,6 @@ Router.map(function () {
   this.route('maintenance');
   this.route('vendors');
   this.route('cheques');
-  this.route('whatsapp');
   this.route('team');
   this.route('owners', function () {
     this.route('index', { path: '/' });
