@@ -1,0 +1,61 @@
+{{page-title "Accept Invitation"}}
+
+<div class="login-page">
+  <div class="card p-10 flex col gap-8 login-card">
+    <div class="text-center">
+      <h1 class="brand-title">AALA.LAND</h1>
+      <p class="text-muted font-sm mt-2">Set your password to activate your account</p>
+    </div>
+
+    {{#if this.done}}
+      <div class="flex col gap-4 text-center">
+        <p class="text-success font-sm">Your password has been set. You can now sign in.</p>
+        <button type="button" class="btn btn-primary" {{on "click" this.goToLogin}}>
+          Go to Login
+        </button>
+      </div>
+    {{else}}
+      <form class="flex col gap-4" {{on "submit" this.submit}}>
+        <div class="flex col gap-2">
+          <label class="font-sm text-muted" for="ai-password">New Password</label>
+          <input
+            id="ai-password"
+            type="password"
+            class="form-input"
+            placeholder="At least 8 characters"
+            value={{this.password}}
+            {{on "input" (fn this.setField "password")}}
+            required
+          />
+        </div>
+        <div class="flex col gap-2">
+          <label class="font-sm text-muted" for="ai-confirm">Confirm Password</label>
+          <input
+            id="ai-confirm"
+            type="password"
+            class="form-input"
+            placeholder="Repeat your password"
+            value={{this.confirmPassword}}
+            {{on "input" (fn this.setField "confirmPassword")}}
+            required
+          />
+        </div>
+
+        {{#if this.errorMsg}}
+          <p class="font-sm text-danger">{{this.errorMsg}}</p>
+        {{/if}}
+
+        <button type="submit" class="btn btn-primary" disabled={{this.isSubmitting}}>
+          {{if this.isSubmitting "Setting password..." "Activate Account"}}
+        </button>
+      </form>
+
+      <div class="text-center">
+        <p class="font-sm text-muted">
+          Already have an account?
+          <LinkTo @route="login" class="text-primary">Sign in</LinkTo>
+        </p>
+      </div>
+    {{/if}}
+  </div>
+</div>

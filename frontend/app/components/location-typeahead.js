@@ -22,6 +22,14 @@ export default class LocationTypeaheadComponent extends Component {
     return this.args.selectedName || this.query;
   }
 
+  get trimmedQuery() {
+    return this.query.trim();
+  }
+
+  get canCreate() {
+    return Boolean(this.args.createUrl && this.trimmedQuery.length >= 2);
+  }
+
   @action
   onInput(event) {
     this.query = event.target.value;

@@ -6,7 +6,6 @@ import { service } from '@ember/service';
 export default class LoginFormComponent extends Component {
   @service auth;
   @service router;
-  @service notifications;
 
   @tracked email = '';
   @tracked password = '';
@@ -70,16 +69,7 @@ export default class LoginFormComponent extends Component {
     this.resetLoading = true;
     this.resetError = '';
     try {
-      const apiBase = this.auth.apiBase;
-      const res = await fetch(`${apiBase}/auth/forgot-password`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: this.resetEmail }),
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.message || 'Request failed');
-      }
+      await this.auth.requestPasswordReset(this.resetEmail);
       this.resetSent = true;
     } catch (err) {
       this.resetError = err.message || 'Something went wrong. Please try again.';

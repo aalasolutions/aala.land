@@ -7,6 +7,8 @@ import { User } from './entities/user.entity';
 import { Role } from '@shared/enums/roles.enum';
 import * as bcrypt from 'bcryptjs';
 import * as crypto from 'crypto';
+import { MailService } from '../../shared/services/mail.service';
+import { EmailTemplatesService } from '../email-templates/email-templates.service';
 
 jest.mock('bcryptjs');
 jest.mock('crypto');
@@ -14,6 +16,8 @@ jest.mock('crypto');
 describe('UsersService', () => {
   let service: UsersService;
   let repo: jest.Mocked<Repository<User>>;
+  let mailService: jest.Mocked<Pick<MailService, 'sendMail'>>;
+  let emailTemplatesService: jest.Mocked<Pick<EmailTemplatesService, 'findAll' | 'render'>>;
 
   const companyId = 'company-uuid-1';
 
@@ -50,6 +54,18 @@ describe('UsersService', () => {
             create: jest.fn(),
             save: jest.fn(),
             remove: jest.fn(),
+            update: jest.fn(),
+          },
+        },
+        {
+          provide: MailService,
+          useValue: { sendMail: jest.fn().mockResolvedValue(undefined) },
+        },
+        {
+          provide: EmailTemplatesService,
+          useValue: {
+            findAll: jest.fn().mockResolvedValue({ data: [], total: 0, page: 1, limit: 20 }),
+            render: jest.fn(),
           },
         },
       ],
@@ -57,6 +73,8 @@ describe('UsersService', () => {
 
     service = module.get<UsersService>(UsersService);
     repo = module.get(getRepositoryToken(User));
+    mailService = module.get(MailService);
+    emailTemplatesService = module.get(EmailTemplatesService);
 
     (bcrypt.hash as jest.Mock).mockResolvedValue('hashed-password');
   });
@@ -74,7 +92,7 @@ describe('UsersService', () => {
       const dto = { name: 'Test Agent', email: 'agent@test.com', password: 'pass123', companyId };
       const result = await service.create(dto as any, companyId);
 
-      expect(bcrypt.hash).toHaveBeenCalledWith('pass123', 10);
+      expect(bcrypt.hash).toHaveBeenCalledWith('pass123', 12);
       expect(result).toEqual(mockUser);
     });
 
@@ -143,7 +161,7 @@ describe('UsersService', () => {
 
       await service.update('user-uuid-1', companyId, { password: 'new-password' } as any);
 
-      expect(bcrypt.hash).toHaveBeenCalledWith('new-password', 10);
+      expect(bcrypt.hash).toHaveBeenCalledWith('new-password', 12);
     });
   });
 
@@ -190,7 +208,7 @@ describe('UsersService', () => {
       const result = await service.inviteUser(companyId, dto);
 
       expect(crypto.randomBytes).toHaveBeenCalledWith(16);
-      expect(bcrypt.hash).toHaveBeenCalledWith('abc123temppassword', 10);
+      expect(bcrypt.hash).toHaveBeenCalledWith('abc123temppassword', 12);
       expect(repo.create).toHaveBeenCalledWith({
         name: 'Jane Smith',
         email: 'jane@company.com',
@@ -229,6 +247,101 @@ describe('UsersService', () => {
       expect(repo.create).toHaveBeenCalledWith(
         expect.objectContaining({ name: 'Ahmed Al-Rashid' }),
       );
+    });
+
+    it('calls MailService.sendMail with plaintext fallback when no WELCOME template exists', async () => {
+      repo.findOne.mockResolvedValue(null);
+      const invitedUser = { ...mockUser, name: 'Jane Smith', email: 'jane@company.com', mustChangePassword: true };
+      repo.create.mockReturnValue(invitedUser as User);
+      repo.save.mockResolvedValue(invitedUser as User);
+      (emailTemplatesService.findAll as jest.Mock).mockResolvedValue({ data: [], total: 0, page: 1, limit: 20 });
+
+      const mockRandomBytes = { toString: jest.fn().mockReturnValue('abc123temppassword') };
+      (crypto.randomBytes as jest.Mock).mockReturnValue(mockRandomBytes);
+
+      await service.inviteUser(companyId, {
+        email: 'jane@company.com',
+        firstName: 'Jane',
+        lastName: 'Smith',
+        role: Role.AGENT,
+      });
+
+      // Wait for fire-and-forget to complete
+      await new Promise(resolve => setImmediate(resolve));
+
+      expect(mailService.sendMail).toHaveBeenCalledWith(
+        expect.objectContaining({
+          to: 'jane@company.com',
+          subject: expect.any(String),
+          text: expect.stringContaining('abc123temppassword'),
+        }),
+      );
+    });
+
+    it('calls MailService.sendMail with rendered template when WELCOME template exists', async () => {
+      repo.findOne.mockResolvedValue(null);
+      const invitedUser = { ...mockUser, name: 'Jane Smith', email: 'jane@company.com', mustChangePassword: true };
+      repo.create.mockReturnValue(invitedUser as User);
+      repo.save.mockResolvedValue(invitedUser as User);
+
+      const mockTemplate = { id: 'tpl-1', subject: 'Welcome {{name}}', body: 'Password: {{password}}' };
+      (emailTemplatesService.findAll as jest.Mock).mockResolvedValue({ data: [mockTemplate], total: 1, page: 1, limit: 1 });
+      (emailTemplatesService.render as jest.Mock).mockResolvedValue({
+        subject: 'Welcome Jane Smith',
+        body: 'Password: abc123temppassword',
+      });
+
+      const mockRandomBytes = { toString: jest.fn().mockReturnValue('abc123temppassword') };
+      (crypto.randomBytes as jest.Mock).mockReturnValue(mockRandomBytes);
+
+      await service.inviteUser(companyId, {
+        email: 'jane@company.com',
+        firstName: 'Jane',
+        lastName: 'Smith',
+        role: Role.AGENT,
+      });
+
+      await new Promise(resolve => setImmediate(resolve));
+
+      expect(emailTemplatesService.render).toHaveBeenCalledWith(
+        'tpl-1',
+        companyId,
+        expect.objectContaining({
+          name: 'Jane Smith',
+          email: 'jane@company.com',
+          password: 'abc123temppassword',
+          loginUrl: expect.stringContaining('/login'),
+        }),
+      );
+      expect(mailService.sendMail).toHaveBeenCalledWith(
+        expect.objectContaining({
+          to: 'jane@company.com',
+          subject: 'Welcome Jane Smith',
+          text: 'Password: abc123temppassword',
+        }),
+      );
+    });
+
+    it('still returns saved user even when MailService.sendMail throws', async () => {
+      repo.findOne.mockResolvedValue(null);
+      const invitedUser = { ...mockUser, name: 'Jane Smith', email: 'jane@company.com', mustChangePassword: true };
+      repo.create.mockReturnValue(invitedUser as User);
+      repo.save.mockResolvedValue(invitedUser as User);
+      (emailTemplatesService.findAll as jest.Mock).mockResolvedValue({ data: [], total: 0, page: 1, limit: 20 });
+      (mailService.sendMail as jest.Mock).mockRejectedValue(new Error('transport error'));
+
+      const mockRandomBytes = { toString: jest.fn().mockReturnValue('abc123temppassword') };
+      (crypto.randomBytes as jest.Mock).mockReturnValue(mockRandomBytes);
+
+      const result = await service.inviteUser(companyId, {
+        email: 'jane@company.com',
+        firstName: 'Jane',
+        lastName: 'Smith',
+        role: Role.AGENT,
+      });
+
+      expect(result).toBeDefined();
+      expect(result.email).toBe('jane@company.com');
     });
   });
 });

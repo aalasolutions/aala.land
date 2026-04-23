@@ -9,6 +9,7 @@ import { CreateLeadActivityDto } from './dto/create-lead-activity.dto';
 import { Company } from '../companies/entities/company.entity';
 import { User } from '../users/entities/user.entity';
 import { resolveRegionCode } from '../../shared/utils/resolve-region-code.util';
+import { paginationOptions } from '../../shared/utils/pagination.util';
 
 @Injectable()
 export class LeadsService {

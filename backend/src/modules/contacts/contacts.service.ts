@@ -4,6 +4,7 @@ import { Repository, ILike, FindOptionsWhere } from 'typeorm';
 import { Contact } from './entities/contact.entity';
 import { CreateContactDto } from './dto/create-contact.dto';
 import { UpdateContactDto } from './dto/update-contact.dto';
+import { paginationOptions } from '../../shared/utils/pagination.util';
 
 @Injectable()
 export class ContactsService {
@@ -39,8 +40,7 @@ export class ContactsService {
 
     const [data, total] = await this.contactRepository.findAndCount({
       where,
-      skip: (page - 1) * limit,
-      take: limit,
+      ...paginationOptions(page, limit),
       order: { createdAt: 'DESC' },
     });
 

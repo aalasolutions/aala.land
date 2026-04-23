@@ -35,6 +35,11 @@ export default class ChequesController extends Controller {
   @tracked bounceChequeItem = null;
   @tracked formBounceReason = '';
 
+  get isAdmin() {
+    const role = this.auth.currentUser?.role;
+    return role === 'company_admin' || role === 'super_admin';
+  }
+
   get chequeTypeOptions() {
     return CHEQUE_TYPE_OPTIONS;
   }
@@ -101,6 +106,8 @@ export default class ChequesController extends Controller {
           chequeNumber: this.formChequeNumber,
           bankName: this.formBankName,
           amount: parseFloat(this.formAmount),
+          type: this.formType,
+          dueDate: this.formDueDate,
           ...(this.formUnitId ? { unitId: this.formUnitId } : {}),
         }
       : {
@@ -139,6 +146,19 @@ export default class ChequesController extends Controller {
     this.showBounceModal = false;
     this.bounceChequeItem = null;
     this.formBounceReason = '';
+  }
+
+  @action async updateStatus(cheque, status) {
+    try {
+      await this.auth.fetchJson(`/cheques/${cheque.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status }),
+      });
+      this.notifications.success(`Cheque marked as ${status.toLowerCase()}`);
+      this.router.refresh('cheques');
+    } catch (e) {
+      this.notifications.error(e.message);
+    }
   }
 
   @action async confirmBounce() {

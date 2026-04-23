@@ -3332,6 +3332,70 @@ textarea {
 }
 
 // =================================
+// LOCATION TYPEAHEAD
+// =================================
+
+.location-typeahead {
+    position: relative;
+
+    .typeahead-input-wrap {
+        position: relative;
+    }
+
+    .typeahead-spinner {
+        position: absolute;
+        right: 14px;
+        top: 50%;
+        transform: translateY(-50%);
+        pointer-events: none;
+    }
+
+    .typeahead-dropdown {
+        position: absolute;
+        top: calc(100% + 6px);
+        left: 0;
+        right: 0;
+        z-index: 1100;
+        padding: 8px;
+        background: var(--bg-surface);
+        border: 1px solid var(--border-light);
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-float-strong);
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .typeahead-item {
+        width: 100%;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 12px;
+        border: 0;
+        border-radius: calc(var(--radius-lg) - 4px);
+        background: transparent;
+        color: var(--text-primary);
+        text-align: left;
+        transition: background-color var(--transition-fast), transform var(--transition-fast);
+
+        &:hover {
+            background: var(--bg-muted);
+        }
+    }
+
+    button.typeahead-item {
+        cursor: pointer;
+    }
+
+    .typeahead-item-name {
+        font-size: var(--font-sm);
+        font-weight: 500;
+    }
+}
+
+
+// =================================
 // CONTACTS PAGE ENHANCEMENTS
 // =================================
 

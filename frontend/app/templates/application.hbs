@@ -108,24 +108,26 @@
           <Ph @icon="chart-bar" /> <span class="sidebar-label">Reports</span>
         </LinkTo>
 
-        {{!-- Admin Group --}}
-        <div class="sidebar-group {{if (or (eq this.expandedGroup 'admin') (eq this.activeGroup 'admin')) 'expanded'}}">
-          <button type="button" class="sidebar-group-toggle {{if (eq this.activeGroup 'admin') 'sidebar-group-active'}}" {{on "click" (fn this.toggleGroup "admin")}}>
-            <Ph @icon="gear" /> <span class="sidebar-label">Admin</span>
-            <Ph @icon="caret-down" class="sidebar-chevron" />
-          </button>
-          <div class="sidebar-group-items">
-            <LinkTo @route="team" class="sidebar-sublink" data-test-nav-team>
-              <span class="sidebar-label">Team</span>
-            </LinkTo>
-            <LinkTo @route="documents" class="sidebar-sublink" data-test-nav-documents>
-              <span class="sidebar-label">Documents</span>
-            </LinkTo>
-            <LinkTo @route="audit" class="sidebar-sublink" data-test-nav-audit>
-              <span class="sidebar-label">Audit Log</span>
-            </LinkTo>
+        {{!-- Admin Group (company_admin / super_admin only) --}}
+        {{#if this.isAdmin}}
+          <div class="sidebar-group {{if (or (eq this.expandedGroup 'admin') (eq this.activeGroup 'admin')) 'expanded'}}">
+            <button type="button" class="sidebar-group-toggle {{if (eq this.activeGroup 'admin') 'sidebar-group-active'}}" {{on "click" (fn this.toggleGroup "admin")}}>
+              <Ph @icon="gear" /> <span class="sidebar-label">Admin</span>
+              <Ph @icon="caret-down" class="sidebar-chevron" />
+            </button>
+            <div class="sidebar-group-items">
+              <LinkTo @route="team" class="sidebar-sublink" data-test-nav-team>
+                <span class="sidebar-label">Team</span>
+              </LinkTo>
+              <LinkTo @route="documents" class="sidebar-sublink" data-test-nav-documents>
+                <span class="sidebar-label">Documents</span>
+              </LinkTo>
+              <LinkTo @route="audit" class="sidebar-sublink" data-test-nav-audit>
+                <span class="sidebar-label">Audit Log</span>
+              </LinkTo>
+            </div>
           </div>
-        </div>
+        {{/if}}
       </nav>
 
       <div class="sidebar-spacer"></div>

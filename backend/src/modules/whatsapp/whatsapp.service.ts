@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { WhatsappMessage, MessageDirection, MessageStatus } from './entities/whatsapp-message.entity';
 import { SendMessageDto } from './dto/send-message.dto';
+import { paginationOptions } from '../../shared/utils/pagination.util';
 
 @Injectable()
 export class WhatsappService {
@@ -92,8 +93,7 @@ export class WhatsappService {
   ): Promise<{ data: WhatsappMessage[]; total: number; page: number; limit: number }> {
     const [data, total] = await this.messageRepository.findAndCount({
       where: { companyId },
-      skip: (page - 1) * limit,
-      take: limit,
+      ...paginationOptions(page, limit),
       order: { createdAt: 'DESC' },
     });
     return { data, total, page, limit };
@@ -107,8 +107,7 @@ export class WhatsappService {
   ): Promise<{ data: WhatsappMessage[]; total: number; page: number; limit: number }> {
     const [data, total] = await this.messageRepository.findAndCount({
       where: { leadId, companyId },
-      skip: (page - 1) * limit,
-      take: limit,
+      ...paginationOptions(page, limit),
       order: { createdAt: 'DESC' },
     });
     return { data, total, page, limit };

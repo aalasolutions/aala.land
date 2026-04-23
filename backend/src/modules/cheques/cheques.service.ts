@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, Logger } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, LessThan, Between } from 'typeorm';
 import { Cheque, ChequeStatus } from './entities/cheque.entity';
@@ -6,6 +6,7 @@ import { CreateChequeDto } from './dto/create-cheque.dto';
 import { UpdateChequeDto } from './dto/update-cheque.dto';
 import { BounceChequeDto } from './dto/bounce-cheque.dto';
 import { REGION_FILTER_SUBQUERY } from '../../shared/utils/region-filter.util';
+import { paginationOptions, pageSkip } from '../../shared/utils/pagination.util';
 
 @Injectable()
 export class ChequesService {
@@ -35,7 +36,7 @@ export class ChequesService {
           `c.unitId IN (${REGION_FILTER_SUBQUERY})`,
           { regionCode },
         )
-        .skip((page - 1) * limit)
+        .skip(pageSkip(page, limit))
         .take(limit)
         .orderBy('c.dueDate', 'ASC');
 
@@ -45,8 +46,7 @@ export class ChequesService {
 
     const [data, total] = await this.chequeRepository.findAndCount({
       where: { companyId },
-      skip: (page - 1) * limit,
-      take: limit,
+      ...paginationOptions(page, limit),
       order: { dueDate: 'ASC' },
     });
     return { data, total, page, limit };
@@ -62,7 +62,18 @@ export class ChequesService {
 
   async update(id: string, companyId: string, dto: UpdateChequeDto): Promise<Cheque> {
     const cheque = await this.findOne(id, companyId);
+
+    const terminalStatuses = [ChequeStatus.CLEARED, ChequeStatus.CANCELLED, ChequeStatus.REPLACED];
+    if (terminalStatuses.includes(cheque.status) && dto.status && dto.status !== cheque.status) {
+      throw new BadRequestException(`Cannot change the status of a cheque that is already ${cheque.status}`);
+    }
+
     Object.assign(cheque, dto);
+
+    if (cheque.status === ChequeStatus.DEPOSITED && !cheque.depositDate) {
+      cheque.depositDate = new Date();
+    }
+
     return this.chequeRepository.save(cheque);
   }
 
@@ -109,29 +120,28 @@ export class ChequesService {
 
     const baseWhere = { companyId, status: ChequeStatus.PENDING };
 
-    const overdue = await this.chequeRepository.find({
-      where: { ...baseWhere, dueDate: LessThan(today) },
-      order: { dueDate: 'ASC' },
-      take: 100,
-    });
-
-    const thisWeek = await this.chequeRepository.find({
-      where: { ...baseWhere, dueDate: Between(today, endOfWeek) },
-      order: { dueDate: 'ASC' },
-      take: 100,
-    });
-
-    const nextWeek = await this.chequeRepository.find({
-      where: { ...baseWhere, dueDate: Between(endOfWeek, endOfNextWeek) },
-      order: { dueDate: 'ASC' },
-      take: 100,
-    });
-
-    const thisMonth = await this.chequeRepository.find({
-      where: { ...baseWhere, dueDate: Between(endOfNextWeek, endOfMonth) },
-      order: { dueDate: 'ASC' },
-      take: 100,
-    });
+    const [overdue, thisWeek, nextWeek, thisMonth] = await Promise.all([
+      this.chequeRepository.find({
+        where: { ...baseWhere, dueDate: LessThan(today) },
+        order: { dueDate: 'ASC' },
+        take: 100,
+      }),
+      this.chequeRepository.find({
+        where: { ...baseWhere, dueDate: Between(today, endOfWeek) },
+        order: { dueDate: 'ASC' },
+        take: 100,
+      }),
+      this.chequeRepository.find({
+        where: { ...baseWhere, dueDate: Between(endOfWeek, endOfNextWeek) },
+        order: { dueDate: 'ASC' },
+        take: 100,
+      }),
+      this.chequeRepository.find({
+        where: { ...baseWhere, dueDate: Between(endOfNextWeek, endOfMonth) },
+        order: { dueDate: 'ASC' },
+        take: 100,
+      }),
+    ]);
 
     return { overdue, thisWeek, nextWeek, thisMonth };
   }

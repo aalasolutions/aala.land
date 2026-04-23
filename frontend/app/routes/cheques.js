@@ -17,10 +17,23 @@ export default class ChequesRoute extends AuthenticatedRoute {
       safeJson(this.auth, '/cheques/collection-schedule', 'CHEQUES'),
     ]);
 
+    const schedule = scheduleJson?.data ?? {};
+    const toGroup = (period, cheques) => ({
+      period,
+      cheques: cheques ?? [],
+      totalAmount: (cheques ?? []).reduce((sum, c) => sum + Number(c.amount), 0),
+    });
+    const collectionSchedule = [
+      toGroup('Overdue', schedule.overdue),
+      toGroup('This Week', schedule.thisWeek),
+      toGroup('Next Week', schedule.nextWeek),
+      toGroup('This Month', schedule.thisMonth),
+    ].filter(g => g.cheques.length > 0);
+
     return {
       cheques: chequesJson?.data?.data ?? [],
       units: unitsJson?.data?.data ?? [],
-      collectionSchedule: scheduleJson?.data ?? [],
+      collectionSchedule,
       total: chequesJson?.data?.total ?? 0,
       page,
       limit,

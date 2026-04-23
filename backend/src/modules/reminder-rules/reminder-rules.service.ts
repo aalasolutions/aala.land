@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { ReminderRule } from './entities/reminder-rule.entity';
 import { CreateReminderRuleDto } from './dto/create-reminder-rule.dto';
 import { UpdateReminderRuleDto } from './dto/update-reminder-rule.dto';
+import { paginationOptions } from '../../shared/utils/pagination.util';
 
 @Injectable()
 export class ReminderRulesService {
@@ -24,8 +25,7 @@ export class ReminderRulesService {
   ): Promise<{ data: ReminderRule[]; total: number; page: number; limit: number }> {
     const [data, total] = await this.reminderRuleRepository.findAndCount({
       where: { companyId },
-      skip: (page - 1) * limit,
-      take: limit,
+      ...paginationOptions(page, limit),
       order: { createdAt: 'DESC' },
     });
     return { data, total, page, limit };

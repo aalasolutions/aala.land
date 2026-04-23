@@ -58,6 +58,16 @@
   <form class="flex col gap-4" {{on "submit" this.saveLease}}>
       <FormDropdown @label="Unit" @id="lease-unit-id" @value={{this.formUnitId}} @onChange={{fn this.setField "formUnitId"}} @options={{this.unitOptions}} @placeholder="Select a unit..." @required={{true}} />
 
+      {{#if this.editLease}}
+        <FormDropdown
+          @label="Status"
+          @id="lease-status"
+          @value={{this.formStatus}}
+          @onChange={{fn this.setField "formStatus"}}
+          @options={{this.validNextStatuses}}
+        />
+      {{/if}}
+
       <FormInput @label="Tenant Name" @id="lease-tenant-name" @type="text" @placeholder="e.g. Ahmed Al Mansouri" @value={{this.formTenantName}} @onChange={{fn this.setField "formTenantName"}} @required={{true}} />
 
       <div class="flex gap-4 items-start">
