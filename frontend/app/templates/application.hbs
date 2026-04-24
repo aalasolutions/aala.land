@@ -145,8 +145,21 @@
             aria-label="Search"
             placeholder="Search..."
             class="search-input"
+            value={{this.searchQuery}}
+            {{on "input" this.onSearchInput}}
+            {{on "keydown" this.onSearchKeydown}}
           />
+          {{#if this.showSearchDropdown}}
+            <SearchDropdown
+              @results={{this.searchResults}}
+              @isSearching={{this.isSearching}}
+              @onSelect={{this.onSearchSelect}}
+            />
+          {{/if}}
         </div>
+        {{#if this.showSearchDropdown}}
+          <button type="button" class="search-overlay" {{on "click" this.closeSearch}}></button>
+        {{/if}}
         <div class="topbar-actions">
           {{#if this.showRegionSwitcher}}
             <div class="region-switcher" data-test-region-switcher>
