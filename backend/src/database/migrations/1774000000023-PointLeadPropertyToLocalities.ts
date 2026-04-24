@@ -42,6 +42,7 @@ export class PointLeadPropertyToLocalities1774000000023 implements MigrationInte
             ADD CONSTRAINT "fk_leads_property"
             FOREIGN KEY ("property_id") REFERENCES "localities"("id") NOT VALID
         `);
+        await queryRunner.query(`ALTER TABLE "leads" VALIDATE CONSTRAINT "fk_leads_property"`);
     }
 
     public async down(queryRunner: QueryRunner): Promise<void> {
@@ -83,5 +84,6 @@ export class PointLeadPropertyToLocalities1774000000023 implements MigrationInte
             ADD CONSTRAINT "fk_leads_property"
             FOREIGN KEY ("property_id") REFERENCES "property_areas"("id") NOT VALID
         `);
+        await queryRunner.query(`ALTER TABLE "leads" VALIDATE CONSTRAINT "fk_leads_property"`);
     }
 }

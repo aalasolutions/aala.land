@@ -139,19 +139,22 @@ describe('LeadsService', () => {
 
   describe('update', () => {
     it('updates lead fields', async () => {
-      leadRepo.findOne.mockResolvedValue({ ...mockLead } as Lead);
+      leadRepo.findOne
+        .mockResolvedValueOnce({ ...mockLead } as Lead)
+        .mockResolvedValueOnce({ ...mockLead, score: 75 } as Lead);
       leadRepo.save.mockResolvedValue({ ...mockLead, score: 75 } as Lead);
-      activityRepo.create.mockReturnValue(mockActivity as LeadActivity);
-      activityRepo.save.mockResolvedValue(mockActivity as LeadActivity);
 
       const result = await service.update('lead-uuid-1', companyId, { score: 75 } as any);
 
       expect(result.score).toBe(75);
+      expect(result.assignedAgentName).toBeNull();
     });
 
     it('creates activity log when status changes', async () => {
       const leadWithStatus = { ...mockLead, status: LeadStatus.NEW } as Lead;
-      leadRepo.findOne.mockResolvedValue(leadWithStatus);
+      leadRepo.findOne
+        .mockResolvedValueOnce(leadWithStatus)
+        .mockResolvedValueOnce({ ...leadWithStatus, status: LeadStatus.CONTACTED } as Lead);
       leadRepo.save.mockResolvedValue({ ...leadWithStatus, status: LeadStatus.CONTACTED } as Lead);
       activityRepo.create.mockReturnValue(mockActivity as LeadActivity);
       activityRepo.save.mockResolvedValue(mockActivity as LeadActivity);
@@ -165,7 +168,9 @@ describe('LeadsService', () => {
 
     it('sets stageEnteredAt when status changes', async () => {
       const leadWithStatus = { ...mockLead, status: LeadStatus.NEW } as Lead;
-      leadRepo.findOne.mockResolvedValue(leadWithStatus);
+      leadRepo.findOne
+        .mockResolvedValueOnce(leadWithStatus)
+        .mockResolvedValueOnce({ ...leadWithStatus, status: LeadStatus.CONTACTED } as Lead);
       leadRepo.save.mockImplementation(async (lead) => lead as Lead);
       activityRepo.create.mockReturnValue(mockActivity as LeadActivity);
       activityRepo.save.mockResolvedValue(mockActivity as LeadActivity);
@@ -178,7 +183,9 @@ describe('LeadsService', () => {
 
     it('does not set stageEnteredAt when status does not change', async () => {
       const leadWithStatus = { ...mockLead, status: LeadStatus.NEW } as Lead;
-      leadRepo.findOne.mockResolvedValue(leadWithStatus);
+      leadRepo.findOne
+        .mockResolvedValueOnce(leadWithStatus)
+        .mockResolvedValueOnce(leadWithStatus);
       leadRepo.save.mockImplementation(async (lead) => lead as Lead);
 
       await service.update('lead-uuid-1', companyId, { score: 80 } as any);
@@ -195,7 +202,9 @@ describe('LeadsService', () => {
         property: { id: 'locality-uuid-1', name: 'Dubai Marina' },
         unit: { id: 'unit-uuid-1', unitNumber: '1204' },
       } as unknown as Lead;
-      leadRepo.findOne.mockResolvedValue(leadWithRelations);
+      leadRepo.findOne
+        .mockResolvedValueOnce(leadWithRelations)
+        .mockResolvedValueOnce({ ...leadWithRelations, propertyId: null, unitId: null, property: null, unit: null } as unknown as Lead);
       leadRepo.save.mockImplementation(async (lead) => lead as Lead);
 
       await service.update('lead-uuid-1', companyId, { propertyId: null, unitId: null } as any);
@@ -224,6 +233,15 @@ describe('LeadsService', () => {
       expect(activityRepo.create).toHaveBeenCalledWith(
         expect.objectContaining({ type: ActivityType.ASSIGNMENT }),
       );
+    });
+
+    it('throws when assigned agent does not exist in the company', async () => {
+      leadRepo.findOne.mockResolvedValue({ ...mockLead } as Lead);
+      userRepo.findOne.mockResolvedValue(null);
+
+      await expect(service.assign('lead-uuid-1', companyId, 'missing-agent')).rejects.toThrow(NotFoundException);
+      expect(leadRepo.save).not.toHaveBeenCalled();
+      expect(activityRepo.save).not.toHaveBeenCalled();
     });
 
     it('saves previousAgent and transferReason when reassigning', async () => {

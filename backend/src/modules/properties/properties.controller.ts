@@ -183,7 +183,7 @@ export class PropertiesController {
 
     // Units
     @Get('units')
-    @ApiOperation({ summary: 'List all units (paginated, filterable). Supports amenities, propertyType, status, price range, bedrooms, regionCode.' })
+    @ApiOperation({ summary: 'List all units (paginated, filterable). Supports amenities, propertyType, status, price range, bedrooms, localityId, and regionCode.' })
     @ApiQuery({ name: 'page', required: false, type: Number })
     @ApiQuery({ name: 'limit', required: false, type: Number })
     @ApiQuery({ name: 'amenities', required: false, type: String, description: 'Comma-separated amenity keys' })
