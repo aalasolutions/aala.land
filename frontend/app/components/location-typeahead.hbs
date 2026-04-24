@@ -17,35 +17,42 @@
   </div>
 
   {{#if this.showDropdown}}
-    <div class="typeahead-dropdown" data-test-typeahead-dropdown>
-      {{#each this.results as |item|}}
+    <div
+      class="typeahead-dropdown {{if this.isInModal 'typeahead-dropdown--floating'}}"
+      data-test-typeahead-dropdown
+      style={{this.dropdownStyle}}
+    >
+      {{#if this.canCreate}}
+        <button
+          type="button"
+          class="typeahead-item typeahead-item--create"
+          data-test-typeahead-create
+          disabled={{this.isCreating}}
+          {{on "mousedown" this.createNew}}
+        >
+          {{#if this.isCreating}}
+            <span class="typeahead-item-name typeahead-item-name--create">Creating...</span>
+          {{else}}
+            <span class="typeahead-item-name typeahead-item-name--create">
+              <span class="typeahead-item-name-emphasis">Add</span>
+              <span class="typeahead-item-name-emphasis">"</span>{{this.trimmedQuery}}<span class="typeahead-item-name-emphasis">"</span>
+            </span>
+          {{/if}}
+        </button>
+      {{/if}}
+
+      {{#each this.uniqueResults as |item|}}
         <button
           type="button"
           class="typeahead-item"
           data-test-typeahead-item={{item.id}}
           {{on "mousedown" (fn this.selectItem item)}}
         >
-          <span class="typeahead-item-name">{{item.name}}</span>
+          <span class="typeahead-item-name typeahead-item-name--result">{{item.name}}</span>
         </button>
       {{/each}}
 
-      {{#if this.canCreate}}
-        <button
-          type="button"
-          class="typeahead-item"
-          data-test-typeahead-create
-          disabled={{this.isCreating}}
-          {{on "mousedown" this.createNew}}
-        >
-          {{#if this.isCreating}}
-            <span class="typeahead-item-name">Creating...</span>
-          {{else}}
-            <span class="typeahead-item-name">Add "{{this.trimmedQuery}}"</span>
-          {{/if}}
-        </button>
-      {{/if}}
-
-      {{#if (and (eq this.results.length 0) (not this.isSearching))}}
+      {{#if (and (eq this.uniqueResults.length 0) (not this.isSearching))}}
         {{#unless this.canCreate}}
           <div class="typeahead-item text-muted font-xs">No matches found</div>
         {{/unless}}

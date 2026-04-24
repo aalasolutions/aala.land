@@ -4,6 +4,8 @@ export class CreateLocationsModule1774000000000 implements MigrationInterface {
     name = 'CreateLocationsModule1774000000000';
 
     public async up(queryRunner: QueryRunner): Promise<void> {
+        await queryRunner.query(`CREATE EXTENSION IF NOT EXISTS "pg_trgm"`);
+
         // === Create cities table ===
         await queryRunner.query(`
             CREATE TABLE "cities" (
