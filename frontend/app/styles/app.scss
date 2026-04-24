@@ -3365,6 +3365,27 @@ textarea {
         display: flex;
         flex-direction: column;
         gap: 4px;
+        max-height: 220px;
+        overflow-y: auto;
+        scrollbar-width: thin;
+        scrollbar-color: var(--border-strong) transparent;
+
+        &::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        &::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        &::-webkit-scrollbar-thumb {
+            background: var(--border-strong);
+            border-radius: 999px;
+        }
+    }
+
+    .typeahead-dropdown--floating {
+        right: auto;
     }
 
     .typeahead-item {
@@ -3383,15 +3404,41 @@ textarea {
         &:hover {
             background: var(--bg-muted);
         }
+
+        & + .typeahead-item {
+            border-top: 1px solid var(--border-light);
+        }
     }
 
     button.typeahead-item {
         cursor: pointer;
     }
 
+    .typeahead-item--create {
+        background: color-mix(in srgb, var(--accent-primary) 12%, transparent);
+        border: 1px solid color-mix(in srgb, var(--accent-primary) 24%, transparent);
+
+        &:hover {
+            background: color-mix(in srgb, var(--accent-primary) 18%, transparent);
+        }
+    }
+
     .typeahead-item-name {
         font-size: var(--font-sm);
         font-weight: 500;
+    }
+
+    .typeahead-item-name--create {
+        color: var(--accent-primary);
+        font-weight: 400;
+    }
+
+    .typeahead-item-name--result {
+        color: var(--text-secondary);
+    }
+
+    .typeahead-item-name-emphasis {
+        font-weight: 700;
     }
 }
 

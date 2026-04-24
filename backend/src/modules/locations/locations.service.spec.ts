@@ -206,6 +206,17 @@ describe('LocationsService', () => {
         }),
       );
     });
+
+    it('returns existing city for case-insensitive duplicate names', async () => {
+      cityRepo.findOne.mockResolvedValue(mockCity);
+
+      const dto: CreateCityDto = { name: '  lahore  ', regionCode: 'punjab' };
+      const result = await service.createCity(dto, 'company-uuid-1');
+
+      expect(cityRepo.findOne).toHaveBeenCalled();
+      expect(cityRepo.create).not.toHaveBeenCalled();
+      expect(result).toEqual(mockCity);
+    });
   });
 
   // ---------------------------------------------------------------------------
@@ -257,6 +268,18 @@ describe('LocationsService', () => {
           name: 'Business Bay',
         }),
       );
+    });
+
+    it('returns existing locality for case-insensitive duplicate names', async () => {
+      cityRepo.findOne.mockResolvedValue(mockCity);
+      localityRepo.findOne.mockResolvedValue(mockLocality);
+
+      const dto: CreateLocalityDto = { name: '  business bay  ', cityId: 'city-uuid-1' };
+      const result = await service.createLocality(dto, 'company-uuid-1');
+
+      expect(localityRepo.findOne).toHaveBeenCalled();
+      expect(localityRepo.create).not.toHaveBeenCalled();
+      expect(result).toEqual(mockLocality);
     });
   });
 

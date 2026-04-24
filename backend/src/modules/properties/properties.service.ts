@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, FindOptionsWhere, In } from 'typeorm';
+import { Repository, FindOptionsWhere, In, Raw } from 'typeorm';
 import { PropertyArea } from './entities/property-area.entity';
 import { Asset } from './entities/asset.entity';
 import { Unit, UnitStatus } from './entities/unit.entity';
@@ -15,6 +15,10 @@ import { UpdateUnitDto } from './dto/update-unit.dto';
 import { CreateListingDto } from './dto/create-listing.dto';
 import { UpdateListingDto } from './dto/update-listing.dto';
 import { paginationOptions, pageSkip } from '../../shared/utils/pagination.util';
+
+function sanitizeName(input: string): string {
+    return input.trim().replace(/\s+/g, ' ');
+}
 
 @Injectable()
 export class PropertiesService {
@@ -75,13 +79,21 @@ export class PropertiesService {
 
     // Assets
     async createAsset(companyId: string, dto: CreateAssetDto): Promise<Asset> {
+        const sanitizedName = sanitizeName(dto.name);
         const existing = await this.assetRepository.findOne({
-            where: { name: dto.name, localityId: dto.localityId },
+            where: {
+                localityId: dto.localityId,
+                name: Raw((alias) => `LOWER(${alias}) = LOWER(:name)`, { name: sanitizedName }),
+            },
         });
         if (existing) {
             return existing;
         }
-        const asset = this.assetRepository.create({ ...dto, createdByCompanyId: companyId });
+        const asset = this.assetRepository.create({
+            ...dto,
+            name: sanitizedName,
+            createdByCompanyId: companyId,
+        });
         return this.assetRepository.save(asset);
     }
 
@@ -124,14 +136,23 @@ export class PropertiesService {
     }
 
     async searchAssets(localityId: string, q: string): Promise<any[]> {
+        const query = sanitizeName(q);
         const results = await this.assetRepository.query(
-            `SELECT id, name, address, similarity(name, $1) AS score
-             FROM buildings
-             WHERE locality_id = $2
-               AND similarity(name, $1) > 0.2
-             ORDER BY score DESC
+            `SELECT *
+             FROM (
+                 SELECT DISTINCT ON (LOWER(name))
+                     id,
+                     name,
+                     address,
+                     similarity(name, $1) AS score
+                 FROM buildings
+                 WHERE locality_id = $2
+                   AND similarity(name, $1) > 0.2
+                 ORDER BY LOWER(name), score DESC, name ASC
+             ) deduped
+             ORDER BY score DESC, name ASC
              LIMIT 10`,
-            [q, localityId],
+            [query, localityId],
         );
         return results;
     }

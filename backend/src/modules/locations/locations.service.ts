@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, DataSource } from 'typeorm';
+import { Repository, DataSource, Raw } from 'typeorm';
 import { City } from './entities/city.entity';
 import { Locality } from './entities/locality.entity';
 import { SearchCityDto } from './dto/search-city.dto';
@@ -39,38 +39,67 @@ export class LocationsService {
     ) { }
 
     async searchCities(dto: SearchCityDto): Promise<CitySearchResult[]> {
+        const query = sanitizeName(dto.q);
         const results = await this.dataSource.query(
-            `SELECT id, name, region_code AS "regionCode", country, similarity(name, $1) AS score
-             FROM cities
-             WHERE region_code = $2
-               AND similarity(name, $1) > 0.3
-             ORDER BY score DESC
+            `SELECT *
+             FROM (
+                 SELECT DISTINCT ON (LOWER(name))
+                     id,
+                     name,
+                     region_code AS "regionCode",
+                     country,
+                     similarity(name, $1) AS score
+                 FROM cities
+                 WHERE region_code = $2
+                   AND similarity(name, $1) > 0.3
+                 ORDER BY LOWER(name), score DESC, name ASC
+             ) deduped
+             ORDER BY score DESC, name ASC
              LIMIT 5`,
-            [dto.q, dto.regionCode],
+            [query, dto.regionCode],
         );
         return results;
     }
 
     async searchLocalities(dto: SearchLocalityDto): Promise<LocalitySearchResult[]> {
+        const query = sanitizeName(dto.q);
         const results = await this.dataSource.query(
-            `SELECT id, name, city_id AS "cityId", similarity(name, $1) AS score
-             FROM localities
-             WHERE city_id = $2
-               AND similarity(name, $1) > 0.3
-             ORDER BY score DESC
+            `SELECT *
+             FROM (
+                 SELECT DISTINCT ON (LOWER(name))
+                     id,
+                     name,
+                     city_id AS "cityId",
+                     similarity(name, $1) AS score
+                 FROM localities
+                 WHERE city_id = $2
+                   AND similarity(name, $1) > 0.3
+                 ORDER BY LOWER(name), score DESC, name ASC
+             ) deduped
+             ORDER BY score DESC, name ASC
              LIMIT 5`,
-            [dto.q, dto.cityId],
+            [query, dto.cityId],
         );
         return results;
     }
 
     async createCity(dto: CreateCityDto, companyId: string): Promise<City> {
+        const sanitizedName = sanitizeName(dto.name);
         const region = getRegionByCode(dto.regionCode);
         if (!region) {
             throw new BadRequestException(`Invalid region code: ${dto.regionCode}`);
         }
+        const existing = await this.cityRepository.findOne({
+            where: {
+                regionCode: dto.regionCode,
+                name: Raw((alias) => `LOWER(${alias}) = LOWER(:name)`, { name: sanitizedName }),
+            },
+        });
+        if (existing) {
+            return existing;
+        }
         const city = this.cityRepository.create({
-            name: sanitizeName(dto.name),
+            name: sanitizedName,
             regionCode: dto.regionCode,
             country: region.country,
             createdByCompanyId: companyId,
@@ -79,12 +108,22 @@ export class LocationsService {
     }
 
     async createLocality(dto: CreateLocalityDto, companyId: string): Promise<Locality> {
+        const sanitizedName = sanitizeName(dto.name);
         const city = await this.cityRepository.findOne({ where: { id: dto.cityId } });
         if (!city) {
             throw new NotFoundException(`City with ID ${dto.cityId} not found`);
         }
+        const existing = await this.localityRepository.findOne({
+            where: {
+                cityId: dto.cityId,
+                name: Raw((alias) => `LOWER(${alias}) = LOWER(:name)`, { name: sanitizedName }),
+            },
+        });
+        if (existing) {
+            return existing;
+        }
         const locality = this.localityRepository.create({
-            name: sanitizeName(dto.name),
+            name: sanitizedName,
             cityId: dto.cityId,
             createdByCompanyId: companyId,
         });
