@@ -7,8 +7,20 @@ import { CreateLeadDto } from './dto/create-lead.dto';
 import { UpdateLeadDto } from './dto/update-lead.dto';
 import { CreateLeadActivityDto } from './dto/create-lead-activity.dto';
 import { Company } from '../companies/entities/company.entity';
+import { User } from '../users/entities/user.entity';
 import { resolveRegionCode } from '../../shared/utils/resolve-region-code.util';
 import { paginationOptions } from '../../shared/utils/pagination.util';
+
+export type LeadResponse = Omit<Lead, 'assignedAgent'> & {
+  assignedAgentName: string | null;
+};
+
+type PaginatedLeadResponse = {
+  data: LeadResponse[];
+  total: number;
+  page: number;
+  limit: number;
+};
 
 @Injectable()
 export class LeadsService {
@@ -19,6 +31,8 @@ export class LeadsService {
     private readonly activityRepository: Repository<LeadActivity>,
     @InjectRepository(Company)
     private readonly companyRepository: Repository<Company>,
+    @InjectRepository(User)
+    private readonly userRepository: Repository<User>,
   ) { }
 
   async create(companyId: string, dto: CreateLeadDto): Promise<Lead> {
@@ -27,43 +41,53 @@ export class LeadsService {
     return this.leadRepository.save(lead);
   }
 
-  async findAll(companyId: string, page = 1, limit = 20, regionCode?: string): Promise<{ data: Lead[]; total: number; page: number; limit: number }> {
+  async findAll(companyId: string, page = 1, limit = 20, regionCode?: string): Promise<PaginatedLeadResponse> {
     const where: FindOptionsWhere<Lead> = { companyId };
     if (regionCode) where.regionCode = regionCode;
 
     const [data, total] = await this.leadRepository.findAndCount({
       where,
-      relations: ['property', 'unit'],
+      relations: ['property', 'unit', 'assignedAgent'],
       ...paginationOptions(page, limit),
       order: { createdAt: 'DESC' },
     });
-    return { data, total, page, limit };
+    return {
+      data: data.map((lead) => this.serializeLead(lead)),
+      total,
+      page,
+      limit,
+    };
   }
 
-  async findOne(id: string, companyId: string): Promise<Lead> {
-    const lead = await this.leadRepository.findOne({
-      where: { id, companyId },
-      relations: ['property', 'unit'],
-    });
-    if (!lead) {
-      throw new NotFoundException('Lead not found');
-    }
-    return lead;
+  async findOne(id: string, companyId: string): Promise<LeadResponse> {
+    const lead = await this.findLeadEntityOrThrow(id, companyId);
+    return this.serializeLead(lead);
   }
 
-  async update(id: string, companyId: string, dto: UpdateLeadDto, userId?: string): Promise<Lead> {
-    const lead = await this.findOne(id, companyId);
+  async update(id: string, companyId: string, dto: UpdateLeadDto, userId?: string): Promise<LeadResponse> {
+    const lead = await this.findLeadEntityOrThrow(id, companyId);
     const previousStatus = lead.status;
+    const statusChanged = dto.status !== undefined && dto.status !== previousStatus;
 
     Object.assign(lead, dto);
 
-    if (dto.status && dto.status !== previousStatus) {
+    if (Object.prototype.hasOwnProperty.call(dto, 'propertyId')) {
+      lead.property = null;
+    }
+    if (Object.prototype.hasOwnProperty.call(dto, 'unitId')) {
+      lead.unit = null;
+    }
+    if (Object.prototype.hasOwnProperty.call(dto, 'assignedTo')) {
+      lead.assignedAgent = null;
+    }
+
+    if (statusChanged) {
       lead.stageEnteredAt = new Date();
     }
 
-    const updated = await this.leadRepository.save(lead);
+    await this.leadRepository.save(lead);
 
-    if (dto.status && dto.status !== previousStatus) {
+    if (statusChanged) {
       await this.activityRepository.save(
         this.activityRepository.create({
           leadId: id,
@@ -75,11 +99,18 @@ export class LeadsService {
       );
     }
 
-    return updated;
+    return this.findOne(id, companyId);
   }
 
-  async assign(id: string, companyId: string, agentId: string, performedBy?: string, reason?: string): Promise<Lead> {
-    const lead = await this.findOne(id, companyId);
+  async assign(id: string, companyId: string, agentId: string, performedBy?: string, reason?: string): Promise<LeadResponse> {
+    const lead = await this.findLeadEntityOrThrow(id, companyId);
+    const agent = await this.userRepository.findOne({
+      where: { id: agentId, companyId },
+      select: { id: true, name: true },
+    });
+    if (!agent) {
+      throw new NotFoundException('Assigned agent not found');
+    }
 
     if (lead.assignedTo) {
       lead.previousAgent = lead.assignedTo;
@@ -89,11 +120,13 @@ export class LeadsService {
     }
 
     lead.assignedTo = agentId;
-    const updated = await this.leadRepository.save(lead);
+    lead.assignedAgent = null;
+    await this.leadRepository.save(lead);
 
+    const agentLabel = agent.name;
     const activityNotes = reason
-      ? `Lead assigned to agent ${agentId} (reason: ${reason})`
-      : `Lead assigned to agent ${agentId}`;
+      ? `Lead assigned to agent ${agentLabel} (reason: ${reason})`
+      : `Lead assigned to agent ${agentLabel}`;
 
     await this.activityRepository.save(
       this.activityRepository.create({
@@ -105,11 +138,11 @@ export class LeadsService {
       }),
     );
 
-    return updated;
+    return this.findOne(id, companyId);
   }
 
   async convert(id: string, companyId: string, performedBy?: string): Promise<Lead> {
-    const lead = await this.findOne(id, companyId);
+    const lead = await this.findLeadEntityOrThrow(id, companyId);
     const previousStatus = lead.status;
     lead.status = LeadStatus.WON;
     const updated = await this.leadRepository.save(lead);
@@ -128,7 +161,7 @@ export class LeadsService {
   }
 
   async addActivity(leadId: string, companyId: string, dto: CreateLeadActivityDto, performedBy?: string): Promise<LeadActivity> {
-    await this.findOne(leadId, companyId);
+    await this.findLeadEntityOrThrow(leadId, companyId);
 
     const activity = this.activityRepository.create({
       leadId,
@@ -140,12 +173,38 @@ export class LeadsService {
   }
 
   async findActivities(leadId: string, companyId: string): Promise<LeadActivity[]> {
-    await this.findOne(leadId, companyId);
+    await this.findLeadEntityOrThrow(leadId, companyId);
 
-    return this.activityRepository.find({
+    const activities = await this.activityRepository.find({
       where: { leadId, companyId },
+      relations: ['performer'],
       order: { createdAt: 'DESC' },
       take: 200,
     });
+
+    return activities.map(({ performer, ...activity }) => ({
+      ...activity,
+      performedByName: performer?.name ?? null,
+    }));
+  }
+
+  private async findLeadEntityOrThrow(id: string, companyId: string): Promise<Lead> {
+    const lead = await this.leadRepository.findOne({
+      where: { id, companyId },
+      relations: ['property', 'unit', 'assignedAgent'],
+    });
+    if (!lead) {
+      throw new NotFoundException('Lead not found');
+    }
+
+    return lead;
+  }
+
+  private serializeLead(lead: Lead): LeadResponse {
+    const { assignedAgent, ...leadWithoutAssignedAgent } = lead;
+    return {
+      ...leadWithoutAssignedAgent,
+      assignedAgentName: assignedAgent?.name ?? null,
+    };
   }
 }

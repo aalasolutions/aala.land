@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsEmail, IsEnum, IsInt, IsNumber, Min, Max, MaxLength, IsUUID } from 'class-validator';
+import { IsString, IsOptional, IsEmail, IsEnum, IsInt, Min, Max, MaxLength, IsUUID, IsNotEmpty, ValidateIf } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { LeadStatus, LeadTemperature } from '../entities/lead.entity';
 
@@ -61,4 +61,10 @@ export class UpdateLeadDto {
   @IsUUID()
   @IsOptional()
   unitId?: string;
+
+  @ApiPropertyOptional({ example: 'dubai' })
+  @ValidateIf((_obj, value) => value !== undefined)
+  @IsString()
+  @IsNotEmpty()
+  regionCode?: string;
 }

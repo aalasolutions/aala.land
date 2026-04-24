@@ -171,6 +171,7 @@ export class PropertiesService {
             maxPrice?: number;
             minBeds?: number;
             maxBeds?: number;
+            localityId?: string;
             regionCode?: string;
         },
     ) {
@@ -203,6 +204,9 @@ export class PropertiesService {
         }
         if (filters?.maxBeds !== undefined) {
             qb.andWhere('u.bedrooms <= :maxBeds', { maxBeds: filters.maxBeds });
+        }
+        if (filters?.localityId) {
+            qb.andWhere('loc.id = :localityId', { localityId: filters.localityId });
         }
         if (filters?.regionCode) {
             qb.andWhere('ci.regionCode = :regionCode', { regionCode: filters.regionCode });

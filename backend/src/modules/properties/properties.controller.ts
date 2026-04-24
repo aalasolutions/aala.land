@@ -183,7 +183,7 @@ export class PropertiesController {
 
     // Units
     @Get('units')
-    @ApiOperation({ summary: 'List all units (paginated, filterable). Supports amenities, propertyType, status, price range, bedrooms, regionCode.' })
+    @ApiOperation({ summary: 'List all units (paginated, filterable). Supports amenities, propertyType, status, price range, bedrooms, localityId, and regionCode.' })
     @ApiQuery({ name: 'page', required: false, type: Number })
     @ApiQuery({ name: 'limit', required: false, type: Number })
     @ApiQuery({ name: 'amenities', required: false, type: String, description: 'Comma-separated amenity keys' })
@@ -193,6 +193,7 @@ export class PropertiesController {
     @ApiQuery({ name: 'maxPrice', required: false, type: Number })
     @ApiQuery({ name: 'minBeds', required: false, type: Number })
     @ApiQuery({ name: 'maxBeds', required: false, type: Number })
+    @ApiQuery({ name: 'localityId', required: false, type: String })
     @ApiQuery({ name: 'regionCode', required: false, type: String })
     findAllUnits(
         @Request() req: AuthenticatedRequest,
@@ -205,6 +206,7 @@ export class PropertiesController {
         @Query('maxPrice') maxPrice?: string,
         @Query('minBeds') minBeds?: string,
         @Query('maxBeds') maxBeds?: string,
+        @Query('localityId') localityId?: string,
         @Query('regionCode') regionCode?: string,
     ) {
         const filters = {
@@ -215,6 +217,7 @@ export class PropertiesController {
             maxPrice: maxPrice ? Number(maxPrice) : undefined,
             minBeds: minBeds ? Number(minBeds) : undefined,
             maxBeds: maxBeds ? Number(maxBeds) : undefined,
+            localityId: localityId || undefined,
             regionCode: regionCode || undefined,
         };
         return this.propertiesService.findAllUnits(req.user.companyId, page, limit, filters);
