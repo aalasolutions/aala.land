@@ -1,0 +1,49 @@
+<div class="search-dropdown">
+  {{#if @isSearching}}
+    <div class="search-dropdown-state">
+      <Ph @icon="spinner" @size="16px" />
+      <span>Searching...</span>
+    </div>
+  {{else if @results}}
+    {{#if (and (not @results.properties.length) (not @results.agents.length))}}
+      <div class="search-dropdown-state">
+        <Ph @icon="magnifying-glass" @size="16px" />
+        <span>No results found</span>
+      </div>
+    {{else}}
+      {{#if @results.properties.length}}
+        <div class="search-group">
+          <div class="search-group-label">Properties</div>
+          {{#each @results.properties as |result|}}
+            <button type="button" class="search-result-item" {{on "click" (fn @onSelect result)}}>
+              <Ph
+                @icon={{if (eq result.type "city") "map-pin" (if (eq result.type "locality") "map-trifold" "buildings")}}
+                @size="15px"
+                class="search-result-icon"
+              />
+              <div class="search-result-text">
+                <span class="search-result-name">{{result.name}}</span>
+                <span class="search-result-sub">{{result.subtitle}}</span>
+              </div>
+            </button>
+          {{/each}}
+        </div>
+      {{/if}}
+
+      {{#if @results.agents.length}}
+        <div class="search-group">
+          <div class="search-group-label">Agents</div>
+          {{#each @results.agents as |agent|}}
+            <button type="button" class="search-result-item" {{on "click" (fn @onSelect agent)}}>
+              <Ph @icon="user" @size="15px" class="search-result-icon" />
+              <div class="search-result-text">
+                <span class="search-result-name">{{agent.name}}</span>
+                <span class="search-result-sub">{{format-role agent.subtitle}}</span>
+              </div>
+            </button>
+          {{/each}}
+        </div>
+      {{/if}}
+    {{/if}}
+  {{/if}}
+</div>

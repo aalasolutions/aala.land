@@ -21,6 +21,12 @@ export default class ApplicationController extends Controller {
   @tracked sidebarCollapsed = false;
   @tracked showRegionDropdown = false;
 
+  @tracked searchQuery = '';
+  @tracked searchResults = null;
+  @tracked showSearchDropdown = false;
+  @tracked isSearching = false;
+  _searchTimer = null;
+
   get showRegionSwitcher() {
     return this.region.regions.length > 1;
   }
@@ -139,6 +145,57 @@ export default class ApplicationController extends Controller {
       this.router.transitionTo(parentRoute);
     } else {
       this.router.refresh();
+    }
+  }
+
+  @action
+  onSearchInput(e) {
+    this.searchQuery = e.target.value;
+    clearTimeout(this._searchTimer);
+
+    if (this.searchQuery.length < 2) {
+      this.showSearchDropdown = false;
+      this.searchResults = null;
+      return;
+    }
+
+    this._searchTimer = setTimeout(async () => {
+      this.isSearching = true;
+      this.showSearchDropdown = true;
+      try {
+        const result = await this.auth.fetchJson(`/search?q=${encodeURIComponent(this.searchQuery)}`);
+        this.searchResults = result.data;
+      } catch {
+        this.searchResults = { properties: [], agents: [] };
+      } finally {
+        this.isSearching = false;
+      }
+    }, 300);
+  }
+
+  @action
+  onSearchKeydown(e) {
+    if (e.key === 'Escape') this.closeSearch();
+  }
+
+  @action
+  closeSearch() {
+    this.showSearchDropdown = false;
+    this.searchQuery = '';
+    this.searchResults = null;
+  }
+
+  @action
+  onSearchSelect(result) {
+    this.closeSearch();
+    if (result.type === 'city') {
+      this.router.transitionTo('properties');
+    } else if (result.type === 'locality') {
+      this.router.transitionTo('properties.detail', result.id);
+    } else if (result.type === 'asset') {
+      this.router.transitionTo('properties.detail', result.localityId);
+    } else if (result.type === 'agent') {
+      this.router.transitionTo('team');
     }
   }
 
