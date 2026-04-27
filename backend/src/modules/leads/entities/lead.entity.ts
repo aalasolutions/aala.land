@@ -1,7 +1,8 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn, OneToMany, Index } from 'typeorm';
 import { Company } from '../../companies/entities/company.entity';
-import { PropertyArea } from '../../properties/entities/property-area.entity';
+import { Locality } from '../../locations/entities/locality.entity';
 import { Unit } from '../../properties/entities/unit.entity';
+import { User } from '../../users/entities/user.entity';
 
 export enum LeadStatus {
   NEW = 'NEW',
@@ -45,9 +46,9 @@ export class Lead {
   @Column({ name: 'property_id', type: 'uuid', nullable: true })
   propertyId: string | null;
 
-  @ManyToOne(() => PropertyArea)
+  @ManyToOne(() => Locality, { nullable: true })
   @JoinColumn({ name: 'property_id' })
-  property: PropertyArea;
+  property: Locality | null;
 
   @Index()
   @Column({ name: 'unit_id', type: 'uuid', nullable: true })
@@ -55,7 +56,7 @@ export class Lead {
 
   @ManyToOne(() => Unit, { nullable: true })
   @JoinColumn({ name: 'unit_id' })
-  unit: Unit;
+  unit: Unit | null;
 
   @Column({ name: 'first_name', type: 'varchar', length: 100 })
   firstName: string;
@@ -98,6 +99,10 @@ export class Lead {
 
   @Column({ name: 'assigned_to', type: 'uuid', nullable: true })
   assignedTo: string | null;
+
+  @ManyToOne(() => User, { nullable: true })
+  @JoinColumn({ name: 'assigned_to' })
+  assignedAgent: User | null;
 
   @Column({ name: 'property_interest', type: 'text', nullable: true })
   propertyInterest: string | null;

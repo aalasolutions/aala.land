@@ -47,7 +47,7 @@ export class LeadsController {
   @Patch(':id')
   @ApiOperation({ summary: 'Update lead' })
   update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateLeadDto, @Request() req: AuthenticatedRequest) {
-    return this.leadsService.update(id, req.user.companyId, dto, req.user.userId);
+    return this.leadsService.update(id, req.user.companyId, dto, req.user.userId, req.user.role);
   }
 
   @Post(':id/assign')

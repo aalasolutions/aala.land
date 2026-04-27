@@ -45,7 +45,7 @@ export class LeadActivity {
   @Column({ name: 'performed_by', type: 'uuid', nullable: true })
   performedBy: string | null;
 
-  @ManyToOne(() => User)
+  @ManyToOne(() => User, { nullable: true })
   @JoinColumn({ name: 'performed_by' })
   performer?: User | null;
 
