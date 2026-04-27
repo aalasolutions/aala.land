@@ -162,7 +162,7 @@ export class LeadsService {
     }
 
     lead.assignedTo = agentId;
-    lead.assignedAgent = null;
+    lead.assignedAgent = agent as User;
     await this.leadRepository.save(lead);
 
     const agentLabel = agent.name;
