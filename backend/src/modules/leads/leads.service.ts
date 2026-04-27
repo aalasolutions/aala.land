@@ -49,7 +49,7 @@ export class LeadsService {
   async create(companyId: string, dto: CreateLeadDto): Promise<Lead> {
     const { propertyId, unitId, regionCode: dtoRegionCode, ...rest } = dto;
 
-    if (propertyId) await this.validateLocalityOwnership(propertyId, companyId);
+    if (propertyId) await this.validateLocalityOwnership(propertyId);
     if (unitId) await this.validateUnitOwnership(unitId, companyId);
 
     const regionCode = await resolveRegionCode(this.companyRepository, companyId, dtoRegionCode);
@@ -84,7 +84,7 @@ export class LeadsService {
     const lead = await this.findLeadEntityOrThrow(id, companyId);
 
     if (dto.propertyId && dto.propertyId !== lead.propertyId) {
-      await this.validateLocalityOwnership(dto.propertyId, companyId);
+      await this.validateLocalityOwnership(dto.propertyId);
     }
     if (dto.unitId && dto.unitId !== lead.unitId) {
       await this.validateUnitOwnership(dto.unitId, companyId);
@@ -271,11 +271,11 @@ export class LeadsService {
     return agent;
   }
 
-  private async validateLocalityOwnership(propertyId: string, companyId: string): Promise<void> {
-    const locality = await this.localityRepository.findOne({
-      where: { id: propertyId, createdByCompanyId: companyId },
+  private async validateLocalityOwnership(propertyId: string): Promise<void> {
+    const exists = await this.localityRepository.exist({
+      where: { id: propertyId },
     });
-    if (!locality) {
+    if (!exists) {
       throw new BadRequestException('Invalid property (locality) selected');
     }
   }

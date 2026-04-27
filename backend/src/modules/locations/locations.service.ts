@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, DataSource, QueryFailedError } from 'typeorm';
+import { Repository, DataSource } from 'typeorm';
 import { City } from './entities/city.entity';
 import { Locality } from './entities/locality.entity';
 import { SearchCityDto } from './dto/search-city.dto';

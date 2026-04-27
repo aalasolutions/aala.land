@@ -131,7 +131,7 @@ export default class LocationTypeaheadComponent extends Component {
 
     clearTimeout(this._debounceTimer);
 
-    if (this.query.length < 2) {
+    if (this.trimmedQuery.length < 2) {
       this._pendingSearches = 0;
       this.isSearching = false;
       this.results = [];
@@ -163,7 +163,7 @@ export default class LocationTypeaheadComponent extends Component {
   }
 
   async search() {
-    if (!this.args.searchUrl) return;
+    if (!this.args.searchUrl || this.trimmedQuery.length < 2) return;
 
     let query = this.trimmedQuery;
 
