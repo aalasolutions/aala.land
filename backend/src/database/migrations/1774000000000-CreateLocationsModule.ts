@@ -91,12 +91,10 @@ export class CreateLocationsModule1774000000000 implements MigrationInterface {
         `);
 
         // Drop localities
-        await queryRunner.query(`DROP INDEX IF EXISTS "IDX_localities_name_trgm"`);
         await queryRunner.query(`DROP INDEX IF EXISTS "IDX_localities_name_city"`);
         await queryRunner.query(`DROP TABLE "localities"`);
 
         // Drop cities
-        await queryRunner.query(`DROP INDEX IF EXISTS "IDX_cities_name_trgm"`);
         await queryRunner.query(`DROP INDEX IF EXISTS "IDX_cities_name_region"`);
         await queryRunner.query(`DROP TABLE "cities"`);
     }

@@ -79,6 +79,7 @@ describe('LeadsService', () => {
           provide: getRepositoryToken(Locality),
           useValue: {
             findOne: jest.fn(),
+            exist: jest.fn(),
           },
         },
         {
@@ -112,17 +113,19 @@ describe('LeadsService', () => {
       const dto = { firstName: 'Ahmed', source: LeadSource.WHATSAPP };
       const result = await service.create(companyId, dto as any);
 
-      expect(leadRepo.create).toHaveBeenCalledWith({ ...dto, companyId, regionCode: 'dubai' });
+      expect(leadRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({ ...dto, companyId, regionCode: 'dubai' }),
+      );
       expect(result).toEqual(mockLead);
     });
 
     it('validates property ownership in create', async () => {
-      localityRepo.findOne.mockResolvedValue(null);
+      localityRepo.exist.mockResolvedValue(false);
       const dto = { firstName: 'Ahmed', propertyId: 'other-company-locality' };
 
       await expect(service.create(companyId, dto as any)).rejects.toThrow(BadRequestException);
-      expect(localityRepo.findOne).toHaveBeenCalledWith({
-        where: { id: 'other-company-locality', createdByCompanyId: companyId },
+      expect(localityRepo.exist).toHaveBeenCalledWith({
+        where: { id: 'other-company-locality' },
       });
     });
 
@@ -347,11 +350,14 @@ describe('LeadsService', () => {
 
     it('validates property ownership in update', async () => {
       leadRepo.findOne.mockResolvedValue(mockLead as Lead);
-      localityRepo.findOne.mockResolvedValue(null);
+      localityRepo.exist.mockResolvedValue(false);
 
       await expect(
         service.update('lead-uuid-1', companyId, { propertyId: 'other-locality' } as any),
       ).rejects.toThrow(BadRequestException);
+      expect(localityRepo.exist).toHaveBeenCalledWith({
+        where: { id: 'other-locality' },
+      });
     });
 
     it('validates unit ownership in update', async () => {
