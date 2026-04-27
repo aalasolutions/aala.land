@@ -47,10 +47,10 @@ export class UpdateLeadDto {
   @IsOptional()
   notes?: string;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ nullable: true })
   @IsUUID()
   @IsOptional()
-  assignedTo?: string;
+  assignedTo?: string | null;
 
   @ApiPropertyOptional()
   @IsUUID()

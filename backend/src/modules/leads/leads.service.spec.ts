@@ -283,6 +283,29 @@ describe('LeadsService', () => {
         }),
       );
     });
+
+    it('allows admin to unassign a lead with assignedTo: null', async () => {
+      const leadWithAgent = { ...mockLead, assignedTo: 'old-agent-uuid' } as Lead;
+      leadRepo.findOne
+        .mockResolvedValueOnce(leadWithAgent)
+        .mockResolvedValueOnce({ ...leadWithAgent, assignedTo: null } as Lead);
+      leadRepo.save.mockImplementation(async (lead) => lead as Lead);
+      activityRepo.create.mockImplementation((activity) => activity as LeadActivity);
+      activityRepo.save.mockResolvedValue(mockActivity as LeadActivity);
+
+      await service.update(
+        'lead-uuid-1',
+        companyId,
+        { assignedTo: null } as any,
+        'admin-uuid',
+        Role.COMPANY_ADMIN,
+      );
+
+      expect(userRepo.findOne).not.toHaveBeenCalled();
+      const savedLead = leadRepo.save.mock.calls[0][0] as Lead;
+      expect(savedLead.assignedTo).toBeNull();
+      expect(savedLead.previousAgent).toBe('old-agent-uuid');
+    });
   });
 
   describe('assign', () => {
