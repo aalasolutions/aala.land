@@ -1,12 +1,13 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { LeadsService } from './leads.service';
 import { Lead, LeadStatus, LeadTemperature, LeadSource } from './entities/lead.entity';
 import { LeadActivity, ActivityType } from './entities/lead-activity.entity';
 import { Company } from '../companies/entities/company.entity';
 import { User } from '../users/entities/user.entity';
+import { Role } from '@shared/enums/roles.enum';
 
 describe('LeadsService', () => {
   let service: LeadsService;
@@ -214,6 +215,73 @@ describe('LeadsService', () => {
       expect(savedLead.unitId).toBeNull();
       expect(savedLead.property).toBeNull();
       expect(savedLead.unit).toBeNull();
+    });
+
+    it('rejects null status updates before saving', async () => {
+      leadRepo.findOne.mockResolvedValue({ ...mockLead } as Lead);
+
+      await expect(service.update('lead-uuid-1', companyId, { status: null } as any)).rejects.toThrow(
+        BadRequestException,
+      );
+
+      expect(leadRepo.save).not.toHaveBeenCalled();
+    });
+
+    it('forbids non-admin assignment changes through update', async () => {
+      leadRepo.findOne.mockResolvedValue({ ...mockLead } as Lead);
+
+      await expect(
+        service.update('lead-uuid-1', companyId, { assignedTo: 'agent-uuid-1' } as any, 'user-uuid-1', Role.AGENT),
+      ).rejects.toThrow(ForbiddenException);
+
+      expect(userRepo.findOne).not.toHaveBeenCalled();
+      expect(leadRepo.save).not.toHaveBeenCalled();
+    });
+
+    it('validates assigned agent when admin updates assignment', async () => {
+      leadRepo.findOne.mockResolvedValue({ ...mockLead } as Lead);
+      userRepo.findOne.mockResolvedValue(null);
+
+      await expect(
+        service.update(
+          'lead-uuid-1',
+          companyId,
+          { assignedTo: 'missing-agent' } as any,
+          'user-uuid-1',
+          Role.COMPANY_ADMIN,
+        ),
+      ).rejects.toThrow(NotFoundException);
+
+      expect(leadRepo.save).not.toHaveBeenCalled();
+    });
+
+    it('logs assignment activity when admin updates assignment', async () => {
+      const leadWithAgent = { ...mockLead, assignedTo: 'old-agent-uuid' } as Lead;
+      leadRepo.findOne
+        .mockResolvedValueOnce(leadWithAgent)
+        .mockResolvedValueOnce({ ...leadWithAgent, assignedTo: 'new-agent-uuid' } as Lead);
+      leadRepo.save.mockImplementation(async (lead) => lead as Lead);
+      userRepo.findOne.mockResolvedValue({ id: 'new-agent-uuid', name: 'New Agent' } as User);
+      activityRepo.create.mockImplementation((activity) => activity as LeadActivity);
+      activityRepo.save.mockResolvedValue(mockActivity as LeadActivity);
+
+      await service.update(
+        'lead-uuid-1',
+        companyId,
+        { assignedTo: 'new-agent-uuid' } as any,
+        'admin-uuid',
+        Role.COMPANY_ADMIN,
+      );
+
+      const savedLead = leadRepo.save.mock.calls[0][0] as Lead;
+      expect(savedLead.previousAgent).toBe('old-agent-uuid');
+      expect(activityRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: ActivityType.ASSIGNMENT,
+          notes: 'Lead assigned to agent New Agent',
+          performedBy: 'admin-uuid',
+        }),
+      );
     });
   });
 

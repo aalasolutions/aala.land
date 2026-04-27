@@ -26,8 +26,8 @@ export class UpdateLeadDto {
   phone?: string;
 
   @ApiPropertyOptional({ enum: LeadStatus })
+  @ValidateIf((_obj, value) => value !== undefined)
   @IsEnum(LeadStatus)
-  @IsOptional()
   status?: LeadStatus;
 
   @ApiPropertyOptional({ enum: LeadTemperature })

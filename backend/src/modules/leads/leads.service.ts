@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, FindOptionsWhere } from 'typeorm';
 import { Lead, LeadStatus } from './entities/lead.entity';
@@ -10,9 +10,14 @@ import { Company } from '../companies/entities/company.entity';
 import { User } from '../users/entities/user.entity';
 import { resolveRegionCode } from '../../shared/utils/resolve-region-code.util';
 import { paginationOptions } from '../../shared/utils/pagination.util';
+import { Role } from '../../shared/enums/roles.enum';
 
 export type LeadResponse = Omit<Lead, 'assignedAgent'> & {
   assignedAgentName: string | null;
+};
+
+export type LeadActivityResponse = Omit<LeadActivity, 'performer'> & {
+  performedByName: string | null;
 };
 
 type PaginatedLeadResponse = {
@@ -64,10 +69,30 @@ export class LeadsService {
     return this.serializeLead(lead);
   }
 
-  async update(id: string, companyId: string, dto: UpdateLeadDto, userId?: string): Promise<LeadResponse> {
+  async update(id: string, companyId: string, dto: UpdateLeadDto, userId?: string, userRole?: string): Promise<LeadResponse> {
     const lead = await this.findLeadEntityOrThrow(id, companyId);
+    const hasStatusUpdate = Object.prototype.hasOwnProperty.call(dto, 'status');
+    const hasAssignmentUpdate = Object.prototype.hasOwnProperty.call(dto, 'assignedTo');
+    const previousAssignedTo = lead.assignedTo;
+
+    if (hasStatusUpdate && dto.status === null) {
+      throw new BadRequestException('status cannot be null');
+    }
+
+    let assignedAgent: Pick<User, 'id' | 'name'> | null = null;
+    if (hasAssignmentUpdate) {
+      if (!this.canManageAssignments(userRole)) {
+        throw new ForbiddenException('Only company admins can change lead assignment');
+      }
+
+      if (dto.assignedTo !== null && dto.assignedTo !== undefined) {
+        assignedAgent = await this.findAssignableAgentOrThrow(dto.assignedTo, companyId);
+      }
+    }
+
     const previousStatus = lead.status;
-    const statusChanged = dto.status !== undefined && dto.status !== previousStatus;
+    const statusChanged = hasStatusUpdate && dto.status !== previousStatus;
+    const assignmentChanged = hasAssignmentUpdate && dto.assignedTo !== previousAssignedTo;
 
     Object.assign(lead, dto);
 
@@ -78,6 +103,9 @@ export class LeadsService {
       lead.unit = null;
     }
     if (Object.prototype.hasOwnProperty.call(dto, 'assignedTo')) {
+      if (assignmentChanged && previousAssignedTo) {
+        lead.previousAgent = previousAssignedTo;
+      }
       lead.assignedAgent = null;
     }
 
@@ -99,18 +127,28 @@ export class LeadsService {
       );
     }
 
+    if (assignmentChanged) {
+      const assignmentNotes = assignedAgent
+        ? `Lead assigned to agent ${assignedAgent.name}`
+        : 'Lead unassigned';
+
+      await this.activityRepository.save(
+        this.activityRepository.create({
+          leadId: id,
+          companyId,
+          type: ActivityType.ASSIGNMENT,
+          notes: assignmentNotes,
+          performedBy: userId,
+        }),
+      );
+    }
+
     return this.findOne(id, companyId);
   }
 
   async assign(id: string, companyId: string, agentId: string, performedBy?: string, reason?: string): Promise<LeadResponse> {
     const lead = await this.findLeadEntityOrThrow(id, companyId);
-    const agent = await this.userRepository.findOne({
-      where: { id: agentId, companyId },
-      select: { id: true, name: true },
-    });
-    if (!agent) {
-      throw new NotFoundException('Assigned agent not found');
-    }
+    const agent = await this.findAssignableAgentOrThrow(agentId, companyId);
 
     if (lead.assignedTo) {
       lead.previousAgent = lead.assignedTo;
@@ -172,7 +210,7 @@ export class LeadsService {
     return this.activityRepository.save(activity);
   }
 
-  async findActivities(leadId: string, companyId: string): Promise<LeadActivity[]> {
+  async findActivities(leadId: string, companyId: string): Promise<LeadActivityResponse[]> {
     await this.findLeadEntityOrThrow(leadId, companyId);
 
     const activities = await this.activityRepository.find({
@@ -198,6 +236,23 @@ export class LeadsService {
     }
 
     return lead;
+  }
+
+  private canManageAssignments(userRole?: string): boolean {
+    return userRole === Role.COMPANY_ADMIN || userRole === Role.SUPER_ADMIN;
+  }
+
+  private async findAssignableAgentOrThrow(agentId: string, companyId: string): Promise<Pick<User, 'id' | 'name'>> {
+    const agent = await this.userRepository.findOne({
+      where: { id: agentId, companyId },
+      select: { id: true, name: true },
+    });
+
+    if (!agent) {
+      throw new NotFoundException('Assigned agent not found');
+    }
+
+    return agent;
   }
 
   private serializeLead(lead: Lead): LeadResponse {
