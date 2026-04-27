@@ -1,6 +1,6 @@
 import { Injectable, Logger, NotFoundException, ConflictException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, In } from 'typeorm';
 import { User } from './entities/user.entity';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -11,6 +11,7 @@ import { paginationOptions } from '../../shared/utils/pagination.util';
 import { MailService } from '../../shared/services/mail.service';
 import { EmailTemplatesService } from '../email-templates/email-templates.service';
 import { EmailTemplateCategory } from '../email-templates/entities/email-template.entity';
+import { Role } from '../../shared/enums/roles.enum';
 
 @Injectable()
 export class UsersService {
@@ -98,6 +99,17 @@ export class UsersService {
             where: { companyId, isActive: true },
             select: ['id', 'name', 'email', 'role'],
             order: { name: 'ASC' },
+        });
+    }
+
+    async findAdmins(companyId: string): Promise<User[]> {
+        return this.userRepository.find({
+            where: {
+                companyId,
+                role: In([Role.COMPANY_ADMIN, Role.SUPER_ADMIN]),
+                isActive: true,
+            },
+            select: ['id', 'name', 'email', 'role'],
         });
     }
 

@@ -7,6 +7,9 @@ import { UpdateChequeDto } from './dto/update-cheque.dto';
 import { BounceChequeDto } from './dto/bounce-cheque.dto';
 import { REGION_FILTER_SUBQUERY } from '../../shared/utils/region-filter.util';
 import { paginationOptions, pageSkip } from '../../shared/utils/pagination.util';
+import { NotificationsService } from '../notifications/notifications.service';
+import { UsersService } from '../users/users.service';
+import { NotificationType } from '../notifications/entities/notification.entity';
 
 @Injectable()
 export class ChequesService {
@@ -15,6 +18,8 @@ export class ChequesService {
   constructor(
     @InjectRepository(Cheque)
     private readonly chequeRepository: Repository<Cheque>,
+    private readonly notificationsService: NotificationsService,
+    private readonly usersService: UsersService,
   ) { }
 
   async create(companyId: string, dto: CreateChequeDto): Promise<Cheque> {
@@ -68,13 +73,30 @@ export class ChequesService {
       throw new BadRequestException(`Cannot change the status of a cheque that is already ${cheque.status}`);
     }
 
+    const oldStatus = cheque.status;
     Object.assign(cheque, dto);
 
     if (cheque.status === ChequeStatus.DEPOSITED && !cheque.depositDate) {
       cheque.depositDate = new Date();
     }
 
-    return this.chequeRepository.save(cheque);
+    const saved = await this.chequeRepository.save(cheque);
+
+    if (oldStatus !== saved.status) {
+      const admins = await this.usersService.findAdmins(companyId);
+      for (const admin of admins) {
+        await this.notificationsService.create(companyId, {
+          userId: admin.id,
+          title: 'Cheque Status Updated',
+          message: `Cheque #${saved.chequeNumber} for ${saved.amount} ${saved.currency} status changed to ${saved.status}`,
+          type: NotificationType.CHEQUE_DUE,
+          entityType: 'cheque',
+          entityId: saved.id,
+        });
+      }
+    }
+
+    return saved;
   }
 
   async processOcr(id: string, companyId: string, imageUrl: string): Promise<Cheque> {
@@ -101,7 +123,21 @@ export class ChequesService {
     cheque.bounceReason = dto.bounceReason || null;
     cheque.lastBounceDate = new Date();
     cheque.status = ChequeStatus.BOUNCED;
-    return this.chequeRepository.save(cheque);
+    const saved = await this.chequeRepository.save(cheque);
+
+    const admins = await this.usersService.findAdmins(companyId);
+    for (const admin of admins) {
+      await this.notificationsService.create(companyId, {
+        userId: admin.id,
+        title: 'Cheque Bounced!',
+        message: `Cheque #${saved.chequeNumber} from ${saved.accountHolder} for ${saved.amount} ${saved.currency} has bounced. Reason: ${saved.bounceReason || 'Not specified'}`,
+        type: NotificationType.CHEQUE_BOUNCED,
+        entityType: 'cheque',
+        entityId: saved.id,
+      });
+    }
+
+    return saved;
   }
 
   async getCollectionSchedule(companyId: string): Promise<{

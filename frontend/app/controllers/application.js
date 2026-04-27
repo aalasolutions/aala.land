@@ -8,6 +8,7 @@ export default class ApplicationController extends Controller {
   @service auth;
   @service router;
   @service region;
+  @service socket;
 
   get isAdmin() {
     const role = this.auth.currentUser?.role;
@@ -48,6 +49,10 @@ export default class ApplicationController extends Controller {
       const group = this.activeGroup;
       if (group) this.expandedGroup = group;
     });
+
+    if (this.session.isAuthenticated) {
+      this.setupSocket();
+    }
   }
 
   @action
@@ -61,6 +66,25 @@ export default class ApplicationController extends Controller {
     if (this.sidebarCollapsed) {
       this.expandedGroup = null;
     }
+  }
+
+  setupSocket() {
+    if (!this.session.isAuthenticated) return;
+    
+    this.socket.onNotificationReceived = (notification) => {
+      this.unreadCount++;
+      if (this.showNotifications) {
+        this.notifications = [notification, ...this.notifications].slice(0, 10);
+      }
+    };
+
+    if (this.socket.socket) {
+      this.socket.socket.on('connect', () => {
+        this.loadUnreadCount();
+      });
+    }
+
+    this.socket.setup();
   }
 
   async loadUnreadCount() {
@@ -99,8 +123,26 @@ export default class ApplicationController extends Controller {
       notification.isRead = true;
       this.unreadCount = Math.max(0, this.unreadCount - 1);
       this.notifications = [...this.notifications];
+
+      // Smart Navigation
+      this.handleNotificationNavigation(notification);
     } catch (e) {
       console.error('[APP-CTRL] Failed to mark notification as read:', e.message);
+    }
+  }
+
+  handleNotificationNavigation(notification) {
+    this.showNotifications = false;
+    const { entityType, type } = notification;
+
+    if (entityType === 'lead' || type.includes('LEAD')) {
+      this.router.transitionTo('leads');
+    } else if (entityType === 'cheque' || type.includes('CHEQUE')) {
+      this.router.transitionTo('cheques');
+    } else if (entityType === 'lease') {
+      this.router.transitionTo('leases');
+    } else if (type === 'MAINTENANCE_UPDATE') {
+      this.router.transitionTo('maintenance');
     }
   }
 

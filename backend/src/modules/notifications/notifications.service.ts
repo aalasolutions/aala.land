@@ -1,13 +1,18 @@
 import { Injectable, Logger, BadRequestException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, In, LessThanOrEqual, IsNull } from 'typeorm';
+import { Cron, CronExpression } from '@nestjs/schedule';
 import { SendNotificationDto, NotificationChannel, NotificationStatus } from './dto/send-notification.dto';
-import { Notification } from './entities/notification.entity';
+import { Notification, NotificationType } from './entities/notification.entity';
 import { CreateNotificationDto } from './dto/create-notification.dto';
 import { Cheque, ChequeStatus } from '../cheques/entities/cheque.entity';
 import { Lease, LeaseStatus } from '../leases/entities/lease.entity';
 import { WorkOrder } from '../maintenance/entities/work-order.entity';
+import { User } from '../users/entities/user.entity';
+import { Lead, LeadStatus } from '../leads/entities/lead.entity';
+import { Role } from '../../shared/enums/roles.enum';
 import { paginationOptions } from '../../shared/utils/pagination.util';
+import { NotificationsGateway } from './notifications.gateway';
 
 export interface NotificationResult {
   channel: NotificationChannel;
@@ -30,13 +35,26 @@ export class NotificationsService {
     private readonly leaseRepository: Repository<Lease>,
     @InjectRepository(WorkOrder)
     private readonly workOrderRepository: Repository<WorkOrder>,
+    @InjectRepository(User)
+    private readonly userRepository: Repository<User>,
+    @InjectRepository(Lead)
+    private readonly leadRepository: Repository<Lead>,
+    private readonly notificationsGateway: NotificationsGateway,
   ) {}
 
   // ---- Persistence methods ----
 
   async create(companyId: string, dto: CreateNotificationDto): Promise<Notification> {
     const notification = this.notificationRepository.create({ ...dto, companyId });
-    return this.notificationRepository.save(notification);
+    const saved = await this.notificationRepository.save(notification);
+
+    try {
+      this.notificationsGateway.sendNotificationToUser(dto.userId, saved);
+    } catch (err) {
+      this.logger.error(`Failed to emit notification via socket: ${err.message}`);
+    }
+
+    return saved;
   }
 
   async findAll(
@@ -150,6 +168,148 @@ export class NotificationsService {
   }
 
   // ---- Reminder check methods ----
+
+  @Cron(CronExpression.EVERY_DAY_AT_9AM)
+  async runDailyReminders() {
+    this.logger.log('Running daily notification reminders...');
+    await this.notifyUpcomingCheques();
+    await this.notifyOverdueCheques();
+    await this.notifyDelayedCheques();
+    await this.notifyUnassignedLeads();
+  }
+
+  private async notifyUpcomingCheques() {
+    const targetDate = new Date();
+    targetDate.setDate(targetDate.getDate() + 3);
+    const dateStr = targetDate.toISOString().split('T')[0];
+
+    const upcomingCheques = await this.chequeRepository.find({
+      where: {
+        status: ChequeStatus.PENDING,
+        dueDate: dateStr as any,
+      },
+    });
+
+    for (const cheque of upcomingCheques) {
+      const admins = await this.userRepository.find({
+        where: {
+          companyId: cheque.companyId,
+          role: In([Role.COMPANY_ADMIN, Role.SUPER_ADMIN]),
+          isActive: true,
+        },
+      });
+
+      for (const admin of admins) {
+        await this.create(cheque.companyId, {
+          userId: admin.id,
+          title: 'Upcoming Cheque',
+          message: `Cheque #${cheque.chequeNumber} for ${cheque.amount} ${cheque.currency} is due in 3 days (${cheque.dueDate})`,
+          type: NotificationType.CHEQUE_DUE,
+          entityType: 'cheque',
+          entityId: cheque.id,
+        });
+      }
+    }
+  }
+
+  private async notifyOverdueCheques() {
+    const today = new Date();
+    const dateStr = today.toISOString().split('T')[0];
+
+    const overdueCheques = await this.chequeRepository.find({
+      where: {
+        status: ChequeStatus.PENDING,
+        dueDate: LessThanOrEqual(dateStr as any),
+      },
+    });
+
+    for (const cheque of overdueCheques) {
+      const admins = await this.userRepository.find({
+        where: {
+          companyId: cheque.companyId,
+          role: In([Role.COMPANY_ADMIN, Role.SUPER_ADMIN]),
+          isActive: true,
+        },
+      });
+
+      for (const admin of admins) {
+        await this.create(cheque.companyId, {
+          userId: admin.id,
+          title: 'Overdue Cheque!',
+          message: `Cheque #${cheque.chequeNumber} for ${cheque.amount} ${cheque.currency} was due on ${cheque.dueDate} and is still pending.`,
+          type: NotificationType.CHEQUE_OVERDUE,
+          entityType: 'cheque',
+          entityId: cheque.id,
+        });
+      }
+    }
+  }
+
+  private async notifyDelayedCheques() {
+    const threeDaysAgo = new Date();
+    threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
+    const dateStr = threeDaysAgo.toISOString().split('T')[0];
+
+    // Cheques that are DEPOSITED but not CLEARED for more than 3 days
+    const delayedCheques = await this.chequeRepository.find({
+      where: {
+        status: ChequeStatus.DEPOSITED,
+        depositDate: LessThanOrEqual(dateStr as any),
+      },
+    });
+
+    for (const cheque of delayedCheques) {
+      const admins = await this.userRepository.find({
+        where: {
+          companyId: cheque.companyId,
+          role: In([Role.COMPANY_ADMIN, Role.SUPER_ADMIN]),
+          isActive: true,
+        },
+      });
+
+      for (const admin of admins) {
+        await this.create(cheque.companyId, {
+          userId: admin.id,
+          title: 'Delayed Cheque Clearing',
+          message: `Cheque #${cheque.chequeNumber} was deposited on ${cheque.depositDate} but hasn't cleared yet.`,
+          type: NotificationType.CHEQUE_DELAYED,
+          entityType: 'cheque',
+          entityId: cheque.id,
+        });
+      }
+    }
+  }
+
+  private async notifyUnassignedLeads() {
+    const unassignedLeads = await this.leadRepository.find({
+      where: {
+        status: LeadStatus.NEW,
+        assignedTo: IsNull(),
+      },
+    });
+
+    for (const lead of unassignedLeads) {
+      const clientName = `${lead.firstName} ${lead.lastName || ''}`.trim();
+      const admins = await this.userRepository.find({
+        where: {
+          companyId: lead.companyId,
+          role: In([Role.COMPANY_ADMIN, Role.SUPER_ADMIN]),
+          isActive: true,
+        },
+      });
+
+      for (const admin of admins) {
+        await this.create(lead.companyId, {
+          userId: admin.id,
+          title: 'Pending Unassigned Lead',
+          message: `Lead for ${clientName} is still unassigned and needs attention.`,
+          type: NotificationType.LEAD_UNASSIGNED,
+          entityType: 'lead',
+          entityId: lead.id,
+        });
+      }
+    }
+  }
 
   async checkRentDueReminders(
     companyId: string,
