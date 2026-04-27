@@ -37,9 +37,9 @@ export class Unit {
     @Column({ name: 'owner_id', type: 'uuid', nullable: true })
     ownerId: string | null;
 
-    @ManyToOne(() => Owner, (owner) => owner.units)
+    @ManyToOne(() => Owner, (owner) => owner.units, { nullable: true })
     @JoinColumn({ name: 'owner_id' })
-    owner: Owner;
+    owner: Owner | null;
 
     @Column({
         type: 'enum',
