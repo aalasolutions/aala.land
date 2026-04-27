@@ -46,7 +46,7 @@ export class Lead {
   @Column({ name: 'property_id', type: 'uuid', nullable: true })
   propertyId: string | null;
 
-  @ManyToOne(() => Locality)
+  @ManyToOne(() => Locality, { nullable: true })
   @JoinColumn({ name: 'property_id' })
   property: Locality | null;
 
