@@ -96,17 +96,21 @@ export class LeadsService {
 
     Object.assign(lead, dto);
 
-    if (Object.prototype.hasOwnProperty.call(dto, 'propertyId')) {
+    if (Object.prototype.hasOwnProperty.call(dto, 'propertyId') && dto.propertyId === null) {
       lead.property = null;
     }
-    if (Object.prototype.hasOwnProperty.call(dto, 'unitId')) {
+    if (Object.prototype.hasOwnProperty.call(dto, 'unitId') && dto.unitId === null) {
       lead.unit = null;
     }
     if (Object.prototype.hasOwnProperty.call(dto, 'assignedTo')) {
       if (assignmentChanged && previousAssignedTo) {
         lead.previousAgent = previousAssignedTo;
       }
-      lead.assignedAgent = null;
+      if (dto.assignedTo === null) {
+        lead.assignedAgent = null;
+      } else if (dto.assignedTo !== undefined && assignedAgent) {
+        lead.assignedAgent = assignedAgent as User;
+      }
     }
 
     if (statusChanged) {

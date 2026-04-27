@@ -52,15 +52,15 @@ export class UpdateLeadDto {
   @IsOptional()
   assignedTo?: string | null;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ nullable: true })
   @IsUUID()
   @IsOptional()
-  propertyId?: string;
+  propertyId?: string | null;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ nullable: true })
   @IsUUID()
   @IsOptional()
-  unitId?: string;
+  unitId?: string | null;
 
   @ApiPropertyOptional({ example: 'dubai' })
   @ValidateIf((_obj, value) => value !== undefined)
