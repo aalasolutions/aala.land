@@ -1,6 +1,6 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, FindOptionsWhere, In, Raw } from 'typeorm';
+import { Repository, FindOptionsWhere, In, Not, QueryFailedError } from 'typeorm';
 import { PropertyArea } from './entities/property-area.entity';
 import { Asset } from './entities/asset.entity';
 import { Unit, UnitStatus } from './entities/unit.entity';
@@ -15,9 +15,15 @@ import { UpdateUnitDto } from './dto/update-unit.dto';
 import { CreateListingDto } from './dto/create-listing.dto';
 import { UpdateListingDto } from './dto/update-listing.dto';
 import { paginationOptions, pageSkip } from '../../shared/utils/pagination.util';
+import { normalizedNameSql, normalizedNameWhere, sanitizeName } from '../../shared/utils/name-normalization.util';
 
-function sanitizeName(input: string): string {
-    return input.trim().replace(/\s+/g, ' ');
+function isUniqueViolation(error: unknown): boolean {
+    if (!(error instanceof QueryFailedError)) {
+        return false;
+    }
+
+    const driverError = error.driverError as { code?: string } | undefined;
+    return driverError?.code === '23505';
 }
 
 @Injectable()
@@ -80,12 +86,7 @@ export class PropertiesService {
     // Assets
     async createAsset(companyId: string, dto: CreateAssetDto): Promise<Asset> {
         const sanitizedName = sanitizeName(dto.name);
-        const existing = await this.assetRepository.findOne({
-            where: {
-                localityId: dto.localityId,
-                name: Raw((alias) => `LOWER(${alias}) = LOWER(:name)`, { name: sanitizedName }),
-            },
-        });
+        const existing = await this.findAssetByNormalizedName(dto.localityId, sanitizedName);
         if (existing) {
             return existing;
         }
@@ -94,7 +95,18 @@ export class PropertiesService {
             name: sanitizedName,
             createdByCompanyId: companyId,
         });
-        return this.assetRepository.save(asset);
+        try {
+            return await this.assetRepository.save(asset);
+        } catch (error) {
+            if (isUniqueViolation(error)) {
+                const duplicate = await this.findAssetByNormalizedName(dto.localityId, sanitizedName);
+                if (duplicate) {
+                    return duplicate;
+                }
+            }
+
+            throw error;
+        }
     }
 
     async findAssetsByLocality(localityId: string, companyId: string, page = 1, limit = 20) {
@@ -140,7 +152,7 @@ export class PropertiesService {
         const results = await this.assetRepository.query(
             `SELECT *
              FROM (
-                 SELECT DISTINCT ON (LOWER(name))
+                 SELECT DISTINCT ON (${normalizedNameSql('name')})
                      id,
                      name,
                      address,
@@ -148,7 +160,7 @@ export class PropertiesService {
                  FROM buildings
                  WHERE locality_id = $2
                    AND similarity(name, $1) > 0.2
-                 ORDER BY LOWER(name), score DESC, name ASC
+                 ORDER BY ${normalizedNameSql('name')}, score DESC, name ASC
              ) deduped
              ORDER BY score DESC, name ASC
              LIMIT 10`,
@@ -169,14 +181,49 @@ export class PropertiesService {
     async updateAsset(id: string, dto: UpdateAssetDto): Promise<Asset> {
         const asset = await this.assetRepository.findOne({ where: { id } });
         if (!asset) throw new NotFoundException(`Asset not found`);
-        Object.assign(asset, dto);
-        return this.assetRepository.save(asset);
+
+        if (dto.name !== undefined) {
+            const sanitizedName = sanitizeName(dto.name);
+            const duplicate = await this.findAssetByNormalizedName(asset.localityId, sanitizedName, id);
+            if (duplicate) {
+                throw new ConflictException('Asset already exists in this locality');
+            }
+
+            asset.name = sanitizedName;
+        }
+
+        if (dto.address !== undefined) {
+            asset.address = dto.address;
+        }
+
+        try {
+            return await this.assetRepository.save(asset);
+        } catch (error) {
+            if (isUniqueViolation(error)) {
+                throw new ConflictException('Asset already exists in this locality');
+            }
+
+            throw error;
+        }
     }
 
     async removeAsset(id: string): Promise<void> {
         const asset = await this.assetRepository.findOne({ where: { id } });
         if (!asset) throw new NotFoundException(`Asset not found`);
         await this.assetRepository.remove(asset);
+    }
+
+    private findAssetByNormalizedName(localityId: string, name: string, excludeId?: string): Promise<Asset | null> {
+        const where: FindOptionsWhere<Asset> = {
+            localityId,
+            name: normalizedNameWhere(name),
+        };
+
+        if (excludeId) {
+            where.id = Not(excludeId);
+        }
+
+        return this.assetRepository.findOne({ where });
     }
 
     // Units

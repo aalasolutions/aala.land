@@ -5,7 +5,7 @@ import { service } from '@ember/service';
 import { htmlSafe } from '@ember/template';
 
 function normalizeName(input) {
-  return (input || '').trim().replace(/\s+/g, ' ').toLocaleLowerCase();
+  return (input || '').trim().replace(/\s+/g, ' ').toLowerCase();
 }
 
 export default class LocationTypeaheadComponent extends Component {

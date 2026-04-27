@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, DataSource, Raw } from 'typeorm';
+import { Repository, DataSource, QueryFailedError } from 'typeorm';
 import { City } from './entities/city.entity';
 import { Locality } from './entities/locality.entity';
 import { SearchCityDto } from './dto/search-city.dto';
@@ -8,6 +8,7 @@ import { SearchLocalityDto } from './dto/search-locality.dto';
 import { CreateCityDto } from './dto/create-city.dto';
 import { CreateLocalityDto } from './dto/create-locality.dto';
 import { getRegionByCode } from '../../shared/constants/regions';
+import { normalizedNameSql, normalizedNameWhere, sanitizeName } from '../../shared/utils/name-normalization.util';
 
 export interface CitySearchResult {
     id: string;
@@ -24,8 +25,13 @@ export interface LocalitySearchResult {
     score: number;
 }
 
-function sanitizeName(input: string): string {
-    return input.trim().replace(/\s+/g, ' ');
+function isUniqueViolation(error: unknown): boolean {
+    if (!(error instanceof QueryFailedError)) {
+        return false;
+    }
+
+    const driverError = error.driverError as { code?: string } | undefined;
+    return driverError?.code === '23505';
 }
 
 @Injectable()
@@ -43,7 +49,7 @@ export class LocationsService {
         const results = await this.dataSource.query(
             `SELECT *
              FROM (
-                 SELECT DISTINCT ON (LOWER(name))
+                 SELECT DISTINCT ON (${normalizedNameSql('name')})
                      id,
                      name,
                      region_code AS "regionCode",
@@ -52,7 +58,7 @@ export class LocationsService {
                  FROM cities
                  WHERE region_code = $2
                    AND similarity(name, $1) > 0.3
-                 ORDER BY LOWER(name), score DESC, name ASC
+                 ORDER BY ${normalizedNameSql('name')}, score DESC, name ASC
              ) deduped
              ORDER BY score DESC, name ASC
              LIMIT 5`,
@@ -66,7 +72,7 @@ export class LocationsService {
         const results = await this.dataSource.query(
             `SELECT *
              FROM (
-                 SELECT DISTINCT ON (LOWER(name))
+                 SELECT DISTINCT ON (${normalizedNameSql('name')})
                      id,
                      name,
                      city_id AS "cityId",
@@ -74,7 +80,7 @@ export class LocationsService {
                  FROM localities
                  WHERE city_id = $2
                    AND similarity(name, $1) > 0.3
-                 ORDER BY LOWER(name), score DESC, name ASC
+                 ORDER BY ${normalizedNameSql('name')}, score DESC, name ASC
              ) deduped
              ORDER BY score DESC, name ASC
              LIMIT 5`,
@@ -92,7 +98,7 @@ export class LocationsService {
         const existing = await this.cityRepository.findOne({
             where: {
                 regionCode: dto.regionCode,
-                name: Raw((alias) => `LOWER(${alias}) = LOWER(:name)`, { name: sanitizedName }),
+                name: normalizedNameWhere(sanitizedName),
             },
         });
         if (existing) {
@@ -104,7 +110,23 @@ export class LocationsService {
             country: region.country,
             createdByCompanyId: companyId,
         });
-        return this.cityRepository.save(city);
+        try {
+            return await this.cityRepository.save(city);
+        } catch (error) {
+            if (isUniqueViolation(error)) {
+                const duplicate = await this.cityRepository.findOne({
+                    where: {
+                        regionCode: dto.regionCode,
+                        name: normalizedNameWhere(sanitizedName),
+                    },
+                });
+                if (duplicate) {
+                    return duplicate;
+                }
+            }
+
+            throw error;
+        }
     }
 
     async createLocality(dto: CreateLocalityDto, companyId: string): Promise<Locality> {
@@ -116,7 +138,7 @@ export class LocationsService {
         const existing = await this.localityRepository.findOne({
             where: {
                 cityId: dto.cityId,
-                name: Raw((alias) => `LOWER(${alias}) = LOWER(:name)`, { name: sanitizedName }),
+                name: normalizedNameWhere(sanitizedName),
             },
         });
         if (existing) {
@@ -127,7 +149,23 @@ export class LocationsService {
             cityId: dto.cityId,
             createdByCompanyId: companyId,
         });
-        return this.localityRepository.save(locality);
+        try {
+            return await this.localityRepository.save(locality);
+        } catch (error) {
+            if (isUniqueViolation(error)) {
+                const duplicate = await this.localityRepository.findOne({
+                    where: {
+                        cityId: dto.cityId,
+                        name: normalizedNameWhere(sanitizedName),
+                    },
+                });
+                if (duplicate) {
+                    return duplicate;
+                }
+            }
+
+            throw error;
+        }
     }
 
     async getCitiesByRegion(regionCode: string): Promise<City[]> {

@@ -4,8 +4,6 @@ export class CreateLocationsModule1774000000000 implements MigrationInterface {
     name = 'CreateLocationsModule1774000000000';
 
     public async up(queryRunner: QueryRunner): Promise<void> {
-        await queryRunner.query(`CREATE EXTENSION IF NOT EXISTS "pg_trgm"`);
-
         // === Create cities table ===
         await queryRunner.query(`
             CREATE TABLE "cities" (
@@ -24,11 +22,6 @@ export class CreateLocationsModule1774000000000 implements MigrationInterface {
             CREATE UNIQUE INDEX "IDX_cities_name_region" ON "cities" ("name", "region_code")
         `);
 
-        // GIN trigram index for fuzzy search
-        await queryRunner.query(`
-            CREATE INDEX "IDX_cities_name_trgm" ON "cities" USING GIN ("name" gin_trgm_ops)
-        `);
-
         // === Create localities table ===
         await queryRunner.query(`
             CREATE TABLE "localities" (
@@ -45,11 +38,6 @@ export class CreateLocationsModule1774000000000 implements MigrationInterface {
         // Unique index: one locality name per city
         await queryRunner.query(`
             CREATE UNIQUE INDEX "IDX_localities_name_city" ON "localities" ("name", "city_id")
-        `);
-
-        // GIN trigram index for fuzzy search
-        await queryRunner.query(`
-            CREATE INDEX "IDX_localities_name_trgm" ON "localities" USING GIN ("name" gin_trgm_ops)
         `);
 
         // === Alter buildings: area_id → locality_id ===

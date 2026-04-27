@@ -4,6 +4,8 @@ export class AddBuildingsNameTrgmIndex1774000000024 implements MigrationInterfac
     name = 'AddBuildingsNameTrgmIndex1774000000024';
 
     public async up(queryRunner: QueryRunner): Promise<void> {
+        await queryRunner.query(`CREATE EXTENSION IF NOT EXISTS "pg_trgm"`);
+
         await queryRunner.query(`
             CREATE INDEX IF NOT EXISTS "IDX_buildings_name_trgm"
             ON "buildings" USING GIN ("name" gin_trgm_ops)
