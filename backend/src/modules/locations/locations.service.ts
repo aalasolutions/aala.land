@@ -8,7 +8,7 @@ import { SearchLocalityDto } from './dto/search-locality.dto';
 import { CreateCityDto } from './dto/create-city.dto';
 import { CreateLocalityDto } from './dto/create-locality.dto';
 import { getRegionByCode } from '../../shared/constants/regions';
-import { normalizedNameSql, normalizedNameWhere, sanitizeName } from '../../shared/utils/name-normalization.util';
+import { normalizedNameSql, normalizedNameWhere, sanitizeName, isUniqueViolation } from '../../shared/utils/name-normalization.util';
 
 export interface CitySearchResult {
     id: string;
@@ -23,15 +23,6 @@ export interface LocalitySearchResult {
     name: string;
     cityId: string;
     score: number;
-}
-
-function isUniqueViolation(error: unknown): boolean {
-    if (!(error instanceof QueryFailedError)) {
-        return false;
-    }
-
-    const driverError = error.driverError as { code?: string } | undefined;
-    return driverError?.code === '23505';
 }
 
 @Injectable()

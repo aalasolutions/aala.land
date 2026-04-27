@@ -15,16 +15,7 @@ import { UpdateUnitDto } from './dto/update-unit.dto';
 import { CreateListingDto } from './dto/create-listing.dto';
 import { UpdateListingDto } from './dto/update-listing.dto';
 import { paginationOptions, pageSkip } from '../../shared/utils/pagination.util';
-import { normalizedNameSql, normalizedNameWhere, sanitizeName } from '../../shared/utils/name-normalization.util';
-
-function isUniqueViolation(error: unknown): boolean {
-    if (!(error instanceof QueryFailedError)) {
-        return false;
-    }
-
-    const driverError = error.driverError as { code?: string } | undefined;
-    return driverError?.code === '23505';
-}
+import { normalizedNameSql, normalizedNameWhere, sanitizeName, isUniqueViolation } from '../../shared/utils/name-normalization.util';
 
 @Injectable()
 export class PropertiesService {
