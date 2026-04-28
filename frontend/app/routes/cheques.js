@@ -10,7 +10,7 @@ export default class ChequesRoute extends AuthenticatedRoute {
     limit: { refreshModel: true },
   };
 
-  async model({ page = 1, limit = 20 }) {
+  async model({ page = 1, limit = 10 }) {
     const [chequesJson, unitsJson, scheduleJson] = await Promise.all([
       safeJson(this.auth, `/cheques?page=${page}&limit=${limit}`, 'CHEQUES'),
       safeJson(this.auth, '/properties/units?page=1&limit=100', 'CHEQUES'),

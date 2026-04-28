@@ -20,7 +20,7 @@ export default class ChequesController extends Controller {
   chequeUpdatedHandler = null;
   queryParams = ['page', 'limit'];
   @tracked page = 1;
-  @tracked limit = 20;
+  @tracked limit = 10;
 
   constructor() {
     super(...arguments);
@@ -94,7 +94,7 @@ export default class ChequesController extends Controller {
   @action setTab(tab) { this.activeTab = tab; }
 
   @action setLimit(e) {
-    this.limit = Number(e.target.value) || 20;
+    this.limit = Number(e.target.value) || 10;
     this.page = 1;
   }
 

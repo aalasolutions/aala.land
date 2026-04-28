@@ -21,6 +21,9 @@ export default class CommissionsController extends Controller {
   @service notifications;
   @service router;
 
+  queryParams = ['page', 'limit', 'filterStatus'];
+  @tracked page = 1;
+  @tracked limit = 10;
   @tracked filterStatus = '';
   @tracked showModal = false;
   @tracked isSaving = false;
@@ -45,13 +48,36 @@ export default class CommissionsController extends Controller {
   }
 
   get filteredCommissions() {
-    const all = this.model?.commissions || [];
-    if (!this.filterStatus) return all;
-    return all.filter((c) => c.status === this.filterStatus);
+    return this.model?.commissions || [];
+  }
+
+  get totalPages() {
+    const total = this.model?.total ?? 0;
+    return Math.max(1, Math.ceil(total / this.limit));
   }
 
   @action setField(fieldName, e) {
     this[fieldName] = e.target.value;
+  }
+
+  @action setStatusFilter(e) {
+    this.filterStatus = e.target.value;
+    this.page = 1;
+  }
+
+  @action setLimit(e) {
+    this.limit = Number(e.target.value) || 10;
+    this.page = 1;
+  }
+
+  @action goToPreviousPage() {
+    if (this.page <= 1) return;
+    this.page -= 1;
+  }
+
+  @action goToNextPage() {
+    if (this.page >= this.totalPages) return;
+    this.page += 1;
   }
 
   @action openCreate() {

@@ -4,15 +4,16 @@ import { action } from '@ember/object';
 import { service } from '@ember/service';
 
 const STATUS_OPTIONS = [
-  { value: 'all', label: 'All Status' },
-  { value: 'PENDING', label: 'Pending' },
+  { value: '', label: 'All Status' },
+  { value: 'OPEN', label: 'Open' },
   { value: 'IN_PROGRESS', label: 'In Progress' },
   { value: 'PENDING_APPROVAL', label: 'Pending Approval' },
   { value: 'COMPLETED', label: 'Completed' },
+  { value: 'CANCELLED', label: 'Cancelled' },
 ];
 
 const MONTH_OPTIONS = [
-  { value: 'all', label: 'All Time' },
+  { value: '', label: 'All Time' },
   { value: 'this_month', label: 'This Month' },
   { value: 'last_month', label: 'Last Month' },
   { value: 'last_3_months', label: 'Last 3 Months' },
@@ -41,6 +42,13 @@ export default class MaintenanceController extends Controller {
   @service notifications;
   @service router;
 
+  queryParams = ['page', 'limit', 'filterStatus', 'filterMonth'];
+
+  @tracked page = 1;
+  @tracked limit = 10;
+  @tracked filterStatus = '';
+  @tracked filterMonth = '';
+
   @tracked showModal = false;
   @tracked editWorkOrder = null;
   @tracked formTitle = '';
@@ -54,12 +62,9 @@ export default class MaintenanceController extends Controller {
   @tracked formScheduledDate = '';
   @tracked formUnitId = '';
   @tracked formVendorId = '';
-  @tracked formStatus = 'PENDING';
+  @tracked formStatus = 'OPEN';
   @tracked isSaving = false;
   @tracked errorMsg = '';
-
-  @tracked filterStatus = 'all';
-  @tracked filterMonth = 'all';
   @tracked activeSection = 'orders';
 
   statusOptions = STATUS_OPTIONS;
@@ -91,47 +96,42 @@ export default class MaintenanceController extends Controller {
   }
 
   get filteredWorkOrders() {
-    let orders = this.model?.workOrders || [];
+    return this.model?.workOrders || [];
+  }
 
-    if (this.filterStatus !== 'all') {
-      orders = orders.filter(wo => wo.status === this.filterStatus);
-    }
-
-    if (this.filterMonth !== 'all') {
-      const now = new Date();
-      const thisMonth = now.getMonth();
-      const thisYear = now.getFullYear();
-
-      orders = orders.filter(wo => {
-        if (!wo.scheduledDate && !wo.createdAt) return false;
-        const date = new Date(wo.scheduledDate || wo.createdAt);
-        const orderMonth = date.getMonth();
-        const orderYear = date.getFullYear();
-
-        switch (this.filterMonth) {
-          case 'this_month':
-            return orderMonth === thisMonth && orderYear === thisYear;
-          case 'last_month': {
-            const lastMonth = thisMonth === 0 ? 11 : thisMonth - 1;
-            const lastMonthYear = thisMonth === 0 ? thisYear - 1 : thisYear;
-            return orderMonth === lastMonth && orderYear === lastMonthYear;
-          }
-          case 'last_3_months': {
-            const threeMonthsAgo = new Date(thisYear, thisMonth - 3, 1);
-            return date >= threeMonthsAgo;
-          }
-          default:
-            return true;
-        }
-      });
-    }
-
-    return orders;
+  get totalPages() {
+    const total = this.model?.total ?? 0;
+    return Math.max(1, Math.ceil(total / this.limit));
   }
 
   @action setField(fieldName, e) { this[fieldName] = e.target.value; }
 
   @action setSection(section) { this.activeSection = section; }
+
+  @action setStatusFilter(e) {
+    this.filterStatus = e.target.value;
+    this.page = 1;
+  }
+
+  @action setMonthFilter(e) {
+    this.filterMonth = e.target.value;
+    this.page = 1;
+  }
+
+  @action setLimit(e) {
+    this.limit = Number(e.target.value) || 10;
+    this.page = 1;
+  }
+
+  @action goToPreviousPage() {
+    if (this.page <= 1) return;
+    this.page -= 1;
+  }
+
+  @action goToNextPage() {
+    if (this.page >= this.totalPages) return;
+    this.page += 1;
+  }
 
   @action openCreate() {
     this.formTitle = '';
@@ -145,7 +145,7 @@ export default class MaintenanceController extends Controller {
     this.formScheduledDate = '';
     this.formUnitId = '';
     this.formVendorId = '';
-    this.formStatus = 'PENDING';
+    this.formStatus = 'OPEN';
     this.editWorkOrder = null;
     this.errorMsg = '';
     this.showModal = true;
@@ -163,7 +163,7 @@ export default class MaintenanceController extends Controller {
     this.formScheduledDate = wo.scheduledDate ? wo.scheduledDate.split('T')[0] : '';
     this.formUnitId = wo.unitId ?? '';
     this.formVendorId = wo.vendorId ?? '';
-    this.formStatus = wo.status || 'PENDING';
+    this.formStatus = wo.status || 'OPEN';
     this.editWorkOrder = wo;
     this.errorMsg = '';
     this.showModal = true;

@@ -10,59 +10,70 @@
       <Ph @icon="plus" /> New Vendor
     </button>
   </div>
-
-  {{#if @model.vendors.length}}
-    <div class="data-table-wrapper">
-      <table class="data-table">
-        <thead>
-          <tr>
-            <th>Name</th>
-            <th>Specialty</th>
-            <th>Phone</th>
-            <th>Email</th>
-            <th>Company</th>
-            <th>Rate/hr</th>
-            <th>Rating</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {{#each @model.vendors as |vendor|}}
-            <tr data-test-vendor-row>
-              <td>
-                <span class="font-bold">{{vendor.name}}</span>
-              </td>
-              <td><span class="type-badge type-{{lowercase vendor.specialty}}">{{vendor.specialty}}</span></td>
-              <td>{{vendor.phone}}</td>
-              <td>{{vendor.email}}</td>
-              <td>{{vendor.companyName}}</td>
-              <td>{{format-currency vendor.hourlyRate}}</td>
-              <td>
-                {{#if vendor.rating}}
-                  {{vendor.rating}} / 5
-                {{/if}}
-              </td>
-              <td>
-                <div class="flex gap-2">
-                  <button data-test-edit-vendor type="button" class="btn btn-secondary btn-xs" {{on "click" (fn this.openEdit vendor)}}>
-                    <Ph @icon="pencil-simple" /> Edit
-                  </button>
-                  <button data-test-delete-vendor type="button" class="btn btn-danger btn-xs" {{on "click" (fn this.openDelete vendor)}}>
-                    <Ph @icon="trash" />
-                  </button>
-                </div>
-              </td>
+  <div>
+    {{#if @model.vendors.length}}
+      <div class="data-table-wrapper data-table-wrapper--with-pagination">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Specialty</th>
+              <th>Phone</th>
+              <th>Email</th>
+              <th>Company</th>
+              <th>Rate/hr</th>
+              <th>Rating</th>
+              <th>Actions</th>
             </tr>
-          {{/each}}
-        </tbody>
-      </table>
-    </div>
-  {{else}}
-    <div class="glass-panel p-8 text-center">
-      <Ph @icon="toolbox" @size="48px" @color="var(--text-muted)" />
-      <p class="text-muted mt-3">No vendors yet. Add your first vendor above.</p>
-    </div>
-  {{/if}}
+          </thead>
+          <tbody>
+            {{#each @model.vendors as |vendor|}}
+              <tr data-test-vendor-row>
+                <td>
+                  <span class="font-bold">{{vendor.name}}</span>
+                </td>
+                <td><span class="type-badge type-{{lowercase vendor.specialty}}">{{vendor.specialty}}</span></td>
+                <td>{{vendor.phone}}</td>
+                <td>{{vendor.email}}</td>
+                <td>{{vendor.companyName}}</td>
+                <td>{{format-currency vendor.hourlyRate}}</td>
+                <td>
+                  {{#if vendor.rating}}
+                    {{vendor.rating}} / 5
+                  {{/if}}
+                </td>
+                <td>
+                  <div class="flex gap-2">
+                    <button data-test-edit-vendor type="button" class="btn btn-secondary btn-xs" {{on "click" (fn this.openEdit vendor)}}>
+                      <Ph @icon="pencil-simple" /> Edit
+                    </button>
+                    <button data-test-delete-vendor type="button" class="btn btn-danger btn-xs" {{on "click" (fn this.openDelete vendor)}}>
+                      <Ph @icon="trash" />
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            {{/each}}
+          </tbody>
+        </table>
+      </div>
+
+      <Pagination
+        @selectId="vendors-limit"
+        @page={{this.page}}
+        @limit={{this.limit}}
+        @total={{@model.total}}
+        @onLimitChange={{this.setLimit}}
+        @onPrevious={{this.goToPreviousPage}}
+        @onNext={{this.goToNextPage}}
+      />
+    {{else}}
+      <div class="glass-panel p-8 text-center">
+        <Ph @icon="toolbox" @size="48px" @color="var(--text-muted)" />
+        <p class="text-muted mt-3">No vendors yet. Add your first vendor above.</p>
+      </div>
+    {{/if}}
+  </div>
 </div>
 
 <Modal

@@ -36,6 +36,9 @@ export default class FinancialsController extends Controller {
   @service auth;
   @service notifications;
   @service router;
+  queryParams = ['page', 'limit', 'activeTab'];
+  @tracked page = 1;
+  @tracked limit = 10;
 
   @tracked showModal = false;
   @tracked editTransaction = null;
@@ -59,16 +62,35 @@ export default class FinancialsController extends Controller {
   statusOptions = STATUS_OPTIONS;
 
   get filteredTransactions() {
-    const transactions = this.model?.transactions ?? [];
-    if (this.activeTab === 'all') return transactions;
-    return transactions.filter((tx) => tx.type === this.activeTab);
+    return this.model?.transactions ?? [];
+  }
+
+  get totalPages() {
+    const total = this.model?.total ?? 0;
+    return Math.max(1, Math.ceil(total / this.limit));
   }
 
   @action setTab(tab) {
     this.activeTab = tab;
+    this.page = 1;
   }
 
   @action setField(fieldName, e) { this[fieldName] = e.target.value; }
+
+  @action setLimit(e) {
+    this.limit = Number(e.target.value) || 10;
+    this.page = 1;
+  }
+
+  @action goToPreviousPage() {
+    if (this.page <= 1) return;
+    this.page -= 1;
+  }
+
+  @action goToNextPage() {
+    if (this.page >= this.totalPages) return;
+    this.page += 1;
+  }
 
   @action openCreate() {
     this.formType = 'INCOME';
