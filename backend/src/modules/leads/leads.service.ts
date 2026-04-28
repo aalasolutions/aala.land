@@ -14,6 +14,7 @@ import { Role } from '../../shared/enums/roles.enum';
 import { NotificationsService } from '../notifications/notifications.service';
 import { UsersService } from '../users/users.service';
 import { NotificationType } from '../notifications/entities/notification.entity';
+import { NotificationsGateway } from '../notifications/notifications.gateway';
 
 export type LeadResponse = Omit<Lead, 'assignedAgent'> & {
   assignedAgentName: string | null;
@@ -43,18 +44,31 @@ export class LeadsService {
     private readonly userRepository: Repository<User>,
     private readonly notificationsService: NotificationsService,
     private readonly usersService: UsersService,
+    private readonly notificationsGateway: NotificationsGateway,
   ) { }
 
-  async create(companyId: string, dto: CreateLeadDto): Promise<Lead> {
+  async create(companyId: string, dto: CreateLeadDto, userId?: string): Promise<Lead> {
     const regionCode = await resolveRegionCode(this.companyRepository, companyId, dto.regionCode);
     const lead = this.leadRepository.create({ ...dto, companyId, regionCode });
     const saved = await this.leadRepository.save(lead);
 
     const clientName = `${saved.firstName} ${saved.lastName || ''}`.trim();
 
+    // Broadcast update to all users in the company
+    this.notificationsGateway.broadcastToCompany(companyId, 'leadUpdated', {
+      id: saved.id,
+      status: saved.status,
+      assignedTo: saved.assignedTo,
+      updatedBy: userId,
+    });
+
     if (!saved.assignedTo) {
       const admins = await this.usersService.findAdmins(companyId);
       for (const admin of admins) {
+        if (admin.id === userId) {
+          continue;
+        }
+
         await this.notificationsService.create(companyId, {
           userId: admin.id,
           title: 'New Unassigned Lead',
@@ -65,14 +79,16 @@ export class LeadsService {
         });
       }
     } else {
-      await this.notificationsService.create(companyId, {
-        userId: saved.assignedTo,
-        title: 'New Lead Assigned',
-        message: `You have been assigned a new lead: ${clientName}`,
-        type: NotificationType.LEAD_ASSIGNED,
-        entityType: 'lead',
-        entityId: saved.id,
-      });
+      if (saved.assignedTo !== userId) {
+        await this.notificationsService.create(companyId, {
+          userId: saved.assignedTo,
+          title: 'New Lead Assigned',
+          message: `You have been assigned a new lead: ${clientName}`,
+          type: NotificationType.LEAD_ASSIGNED,
+          entityType: 'lead',
+          entityId: saved.id,
+        });
+      }
     }
 
     return saved;
@@ -152,6 +168,14 @@ export class LeadsService {
     await this.leadRepository.save(lead);
 
     const clientName = `${lead.firstName} ${lead.lastName || ''}`.trim();
+
+    // Broadcast update to all users in the company
+    this.notificationsGateway.broadcastToCompany(companyId, 'leadUpdated', {
+      id,
+      status: lead.status,
+      assignedTo: lead.assignedTo,
+      updatedBy: userId,
+    });
 
     if (statusChanged) {
       await this.activityRepository.save(
@@ -238,6 +262,15 @@ export class LeadsService {
     await this.leadRepository.save(lead);
 
     const clientName = `${lead.firstName} ${lead.lastName || ''}`.trim();
+
+    // Broadcast update to all users in the company
+    this.notificationsGateway.broadcastToCompany(companyId, 'leadUpdated', {
+      id,
+      status: lead.status,
+      assignedTo: lead.assignedTo,
+      updatedBy: performedBy,
+    });
+
     const agentLabel = agent.name;
     const activityNotes = reason
       ? `Lead assigned to agent ${agentLabel} (reason: ${reason})`
@@ -272,6 +305,14 @@ export class LeadsService {
     const previousStatus = lead.status;
     lead.status = LeadStatus.WON;
     const updated = await this.leadRepository.save(lead);
+
+    // Broadcast update to all users in the company
+    this.notificationsGateway.broadcastToCompany(companyId, 'leadUpdated', {
+      id,
+      status: updated.status,
+      assignedTo: updated.assignedTo,
+      updatedBy: performedBy,
+    });
 
     await this.activityRepository.save(
       this.activityRepository.create({

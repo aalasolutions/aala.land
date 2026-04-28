@@ -10,6 +10,7 @@ import { paginationOptions, pageSkip } from '../../shared/utils/pagination.util'
 import { NotificationsService } from '../notifications/notifications.service';
 import { UsersService } from '../users/users.service';
 import { NotificationType } from '../notifications/entities/notification.entity';
+import { NotificationsGateway } from '../notifications/notifications.gateway';
 
 @Injectable()
 export class ChequesService {
@@ -20,11 +21,20 @@ export class ChequesService {
     private readonly chequeRepository: Repository<Cheque>,
     private readonly notificationsService: NotificationsService,
     private readonly usersService: UsersService,
+    private readonly notificationsGateway: NotificationsGateway,
   ) { }
 
-  async create(companyId: string, dto: CreateChequeDto): Promise<Cheque> {
+  async create(companyId: string, dto: CreateChequeDto, userId?: string): Promise<Cheque> {
     const cheque = this.chequeRepository.create({ ...dto, companyId });
-    return this.chequeRepository.save(cheque);
+    const saved = await this.chequeRepository.save(cheque);
+
+    this.notificationsGateway.broadcastToCompany(companyId, 'chequeUpdated', {
+      id: saved.id,
+      status: saved.status,
+      updatedBy: userId,
+    });
+
+    return saved;
   }
 
   async findAll(
@@ -65,7 +75,7 @@ export class ChequesService {
     return cheque;
   }
 
-  async update(id: string, companyId: string, dto: UpdateChequeDto): Promise<Cheque> {
+  async update(id: string, companyId: string, dto: UpdateChequeDto, userId?: string): Promise<Cheque> {
     const cheque = await this.findOne(id, companyId);
 
     const terminalStatuses = [ChequeStatus.CLEARED, ChequeStatus.CANCELLED, ChequeStatus.REPLACED];
@@ -82,14 +92,42 @@ export class ChequesService {
 
     const saved = await this.chequeRepository.save(cheque);
 
+    this.notificationsGateway.broadcastToCompany(companyId, 'chequeUpdated', {
+      id: saved.id,
+      status: saved.status,
+      updatedBy: userId,
+    });
+
     if (oldStatus !== saved.status) {
       const admins = await this.usersService.findAdmins(companyId);
       for (const admin of admins) {
+        if (admin.id === userId) {
+          continue;
+        }
+
+        let notificationType = NotificationType.CHEQUE_DUE;
+        let title = 'Cheque Status Updated';
+        let message = `Cheque #${saved.chequeNumber} for ${saved.amount} ${saved.currency} status changed to ${saved.status}`;
+
+        if (saved.status === ChequeStatus.DEPOSITED) {
+          notificationType = NotificationType.CHEQUE_DEPOSITED;
+          title = 'Cheque Deposited';
+          message = `Cheque #${saved.chequeNumber} for ${saved.amount} ${saved.currency} has been marked as DEPOSITED.`;
+        } else if (saved.status === ChequeStatus.CLEARED) {
+          notificationType = NotificationType.PAYMENT_RECEIVED;
+          title = 'Cheque Cleared';
+          message = `Cheque #${saved.chequeNumber} for ${saved.amount} ${saved.currency} has been CLEARED. Payment received.`;
+        } else if (saved.status === ChequeStatus.CANCELLED) {
+          notificationType = NotificationType.SYSTEM;
+          title = 'Cheque Cancelled';
+          message = `Cheque #${saved.chequeNumber} for ${saved.amount} ${saved.currency} has been CANCELLED.`;
+        }
+
         await this.notificationsService.create(companyId, {
           userId: admin.id,
-          title: 'Cheque Status Updated',
-          message: `Cheque #${saved.chequeNumber} for ${saved.amount} ${saved.currency} status changed to ${saved.status}`,
-          type: NotificationType.CHEQUE_DUE,
+          title,
+          message,
+          type: notificationType,
           entityType: 'cheque',
           entityId: saved.id,
         });
@@ -117,7 +155,7 @@ export class ChequesService {
     return this.chequeRepository.save(cheque);
   }
 
-  async bounce(id: string, companyId: string, dto: BounceChequeDto): Promise<Cheque> {
+  async bounce(id: string, companyId: string, dto: BounceChequeDto, userId?: string): Promise<Cheque> {
     const cheque = await this.findOne(id, companyId);
     cheque.bounceCount = (cheque.bounceCount || 0) + 1;
     cheque.bounceReason = dto.bounceReason || null;
@@ -125,8 +163,18 @@ export class ChequesService {
     cheque.status = ChequeStatus.BOUNCED;
     const saved = await this.chequeRepository.save(cheque);
 
+    this.notificationsGateway.broadcastToCompany(companyId, 'chequeUpdated', {
+      id: saved.id,
+      status: saved.status,
+      updatedBy: userId,
+    });
+
     const admins = await this.usersService.findAdmins(companyId);
     for (const admin of admins) {
+      if (admin.id === userId) {
+        continue;
+      }
+
       await this.notificationsService.create(companyId, {
         userId: admin.id,
         title: 'Cheque Bounced!',

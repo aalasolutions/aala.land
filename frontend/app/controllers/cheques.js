@@ -16,6 +16,33 @@ export default class ChequesController extends Controller {
   @service auth;
   @service notifications;
   @service router;
+  @service socket;
+  chequeUpdatedHandler = null;
+
+  constructor() {
+    super(...arguments);
+    this.setupSocket();
+  }
+
+  setupSocket() {
+    this.chequeUpdatedHandler = (data) => {
+      // Only refresh if the update was from another user
+      if (data.updatedBy !== this.auth.currentUser?.id) {
+        if (this.router.isActive('cheques')) {
+          this.router.refresh('cheques');
+        }
+      }
+    };
+    this.socket.on('chequeUpdated', this.chequeUpdatedHandler);
+  }
+
+  willDestroy() {
+    if (this.chequeUpdatedHandler) {
+      this.socket.off('chequeUpdated', this.chequeUpdatedHandler);
+    }
+
+    super.willDestroy(...arguments);
+  }
 
   @tracked showModal = false;
   @tracked editCheque = null;

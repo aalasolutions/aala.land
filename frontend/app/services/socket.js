@@ -15,30 +15,35 @@ export default class SocketService extends Service {
     if (this.socket || !this.auth.currentUser) return;
 
     const apiUrl = ENV.APP.API_URL || 'http://localhost:3010';
-    const userId = this.auth.currentUser.id;
+    const token = this.auth.token;
+    if (!token) return;
 
     this.socket = io(apiUrl, {
-      query: { userId }
+      auth: { token }
     });
 
     this.socket.on('connect', () => {
       this.isConnected = true;
-      console.log('[SOCKET] Connected to notifications namespace');
     });
 
     this.socket.on('disconnect', () => {
       this.isConnected = false;
-      console.log('[SOCKET] Disconnected');
     });
 
     this.socket.on('newNotification', (notification) => {
-      console.log('[SOCKET] New notification received:', notification);
-      if (this.onNotificationReceived) {
-        this.onNotificationReceived(notification);
-      }
-      
       this.notifications.info(notification.message);
     });
+  }
+
+  on(eventName, handler) {
+    this.setup();
+    if (!this.socket || typeof handler !== 'function') return;
+    this.socket.on(eventName, handler);
+  }
+
+  off(eventName, handler) {
+    if (!this.socket || typeof handler !== 'function') return;
+    this.socket.off(eventName, handler);
   }
 
   disconnect() {

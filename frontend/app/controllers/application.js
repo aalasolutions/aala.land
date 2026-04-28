@@ -21,6 +21,8 @@ export default class ApplicationController extends Controller {
   @tracked expandedGroup = null;
   @tracked sidebarCollapsed = false;
   @tracked showRegionDropdown = false;
+  notificationHandler = null;
+  socketConnectHandler = null;
 
   get showRegionSwitcher() {
     return this.region.regions.length > 1;
@@ -70,21 +72,35 @@ export default class ApplicationController extends Controller {
 
   setupSocket() {
     if (!this.session.isAuthenticated) return;
-    
-    this.socket.onNotificationReceived = (notification) => {
+
+    this.notificationHandler = (notification) => {
       this.unreadCount++;
       if (this.showNotifications) {
         this.notifications = [notification, ...this.notifications].slice(0, 10);
       }
     };
 
-    if (this.socket.socket) {
-      this.socket.socket.on('connect', () => {
-        this.loadUnreadCount();
-      });
+    this.socket.setup();
+    this.socket.on('newNotification', this.notificationHandler);
+
+    this.socketConnectHandler = () => {
+      this.loadUnreadCount();
+    };
+    this.socket.on('connect', this.socketConnectHandler);
+    if (this.socket.socket?.connected) {
+      this.loadUnreadCount();
+    }
+  }
+
+  willDestroy() {
+    if (this.notificationHandler) {
+      this.socket.off('newNotification', this.notificationHandler);
+    }
+    if (this.socketConnectHandler) {
+      this.socket.off('connect', this.socketConnectHandler);
     }
 
-    this.socket.setup();
+    super.willDestroy(...arguments);
   }
 
   async loadUnreadCount() {
