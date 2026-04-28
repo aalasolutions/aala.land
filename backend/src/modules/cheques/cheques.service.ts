@@ -123,14 +123,19 @@ export class ChequesService {
           message = `Cheque #${saved.chequeNumber} for ${saved.amount} ${saved.currency} has been CANCELLED.`;
         }
 
-        await this.notificationsService.create(companyId, {
-          userId: admin.id,
-          title,
-          message,
-          type: notificationType,
-          entityType: 'cheque',
-          entityId: saved.id,
-        });
+        try {
+          await this.notificationsService.create(companyId, {
+            userId: admin.id,
+            title,
+            message,
+            type: notificationType,
+            entityType: 'cheque',
+            entityId: saved.id,
+          });
+        } catch (error) {
+          const messageText = error instanceof Error ? error.message : String(error);
+          this.logger.error(`Failed to create cheque status notification for cheque ${saved.id}: ${messageText}`);
+        }
       }
     }
 
@@ -175,14 +180,19 @@ export class ChequesService {
         continue;
       }
 
-      await this.notificationsService.create(companyId, {
-        userId: admin.id,
-        title: 'Cheque Bounced!',
-        message: `Cheque #${saved.chequeNumber} from ${saved.accountHolder} for ${saved.amount} ${saved.currency} has bounced. Reason: ${saved.bounceReason || 'Not specified'}`,
-        type: NotificationType.CHEQUE_BOUNCED,
-        entityType: 'cheque',
-        entityId: saved.id,
-      });
+      try {
+        await this.notificationsService.create(companyId, {
+          userId: admin.id,
+          title: 'Cheque Bounced!',
+          message: `Cheque #${saved.chequeNumber} from ${saved.accountHolder} for ${saved.amount} ${saved.currency} has bounced. Reason: ${saved.bounceReason || 'Not specified'}`,
+          type: NotificationType.CHEQUE_BOUNCED,
+          entityType: 'cheque',
+          entityId: saved.id,
+        });
+      } catch (error) {
+        const messageText = error instanceof Error ? error.message : String(error);
+        this.logger.error(`Failed to create cheque bounce notification for cheque ${saved.id}: ${messageText}`);
+      }
     }
 
     return saved;

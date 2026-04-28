@@ -18,6 +18,9 @@ export default class ChequesController extends Controller {
   @service router;
   @service socket;
   chequeUpdatedHandler = null;
+  queryParams = ['page', 'limit'];
+  @tracked page = 1;
+  @tracked limit = 20;
 
   constructor() {
     super(...arguments);
@@ -62,6 +65,11 @@ export default class ChequesController extends Controller {
   @tracked bounceChequeItem = null;
   @tracked formBounceReason = '';
 
+  get totalPages() {
+    const total = this.model?.total ?? 0;
+    return Math.max(1, Math.ceil(total / this.limit));
+  }
+
   get isAdmin() {
     const role = this.auth.currentUser?.role;
     return role === 'company_admin' || role === 'super_admin';
@@ -84,6 +92,21 @@ export default class ChequesController extends Controller {
   @action setField(fieldName, e) { this[fieldName] = e.target.value; }
 
   @action setTab(tab) { this.activeTab = tab; }
+
+  @action setLimit(e) {
+    this.limit = Number(e.target.value) || 20;
+    this.page = 1;
+  }
+
+  @action goToPreviousPage() {
+    if (this.page <= 1) return;
+    this.page -= 1;
+  }
+
+  @action goToNextPage() {
+    if (this.page >= this.totalPages) return;
+    this.page += 1;
+  }
 
   @action openCreate() {
     this.formChequeNumber = '';
