@@ -113,6 +113,8 @@ export default class ApplicationController extends Controller {
       this.socketConnectHandler = null;
     }
 
+    this.socket.disconnect();
+
     this.showNotifications = false;
     this.notifications = [];
     this.unreadCount = 0;
