@@ -8,6 +8,9 @@ import { NotificationChannel, NotificationStatus } from './dto/send-notification
 import { Cheque, ChequeStatus, ChequeType } from '../cheques/entities/cheque.entity';
 import { Lease, LeaseStatus, LeaseType } from '../leases/entities/lease.entity';
 import { WorkOrder, WorkOrderStatus, WorkOrderPriority, WorkOrderCategory } from '../maintenance/entities/work-order.entity';
+import { User } from '../users/entities/user.entity';
+import { Lead } from '../leads/entities/lead.entity';
+import { NotificationsGateway } from './notifications.gateway';
 
 describe('NotificationsService', () => {
   let service: NotificationsService;
@@ -74,6 +77,24 @@ describe('NotificationsService', () => {
           provide: getRepositoryToken(WorkOrder),
           useValue: {
             createQueryBuilder: jest.fn().mockReturnValue({ ...mockQueryBuilder }),
+          },
+        },
+        {
+          provide: getRepositoryToken(User),
+          useValue: {
+            find: jest.fn(),
+          },
+        },
+        {
+          provide: getRepositoryToken(Lead),
+          useValue: {
+            find: jest.fn(),
+          },
+        },
+        {
+          provide: NotificationsGateway,
+          useValue: {
+            sendNotificationToUser: jest.fn(),
           },
         },
       ],

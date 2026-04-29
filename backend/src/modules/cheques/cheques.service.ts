@@ -105,7 +105,7 @@ export class ChequesService {
           continue;
         }
 
-        let notificationType = NotificationType.CHEQUE_DUE;
+        let notificationType = NotificationType.SYSTEM;
         let title = 'Cheque Status Updated';
         let message = `Cheque #${saved.chequeNumber} for ${saved.amount} ${saved.currency} status changed to ${saved.status}`;
 
@@ -121,6 +121,10 @@ export class ChequesService {
           notificationType = NotificationType.SYSTEM;
           title = 'Cheque Cancelled';
           message = `Cheque #${saved.chequeNumber} for ${saved.amount} ${saved.currency} has been CANCELLED.`;
+        } else if (saved.status === ChequeStatus.BOUNCED) {
+          notificationType = NotificationType.CHEQUE_BOUNCED;
+          title = 'Cheque Bounced';
+          message = `Cheque #${saved.chequeNumber} for ${saved.amount} ${saved.currency} has been marked as BOUNCED.`;
         }
 
         try {

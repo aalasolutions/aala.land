@@ -4,6 +4,9 @@ import { Repository } from 'typeorm';
 import { NotFoundException } from '@nestjs/common';
 import { ChequesService } from './cheques.service';
 import { Cheque, ChequeStatus, ChequeType } from './entities/cheque.entity';
+import { NotificationsService } from '../notifications/notifications.service';
+import { UsersService } from '../users/users.service';
+import { NotificationsGateway } from '../notifications/notifications.gateway';
 
 describe('ChequesService', () => {
   let service: ChequesService;
@@ -40,6 +43,24 @@ describe('ChequesService', () => {
             find: jest.fn(),
             findAndCount: jest.fn(),
             remove: jest.fn(),
+          },
+        },
+        {
+          provide: NotificationsService,
+          useValue: {
+            create: jest.fn(),
+          },
+        },
+        {
+          provide: UsersService,
+          useValue: {
+            findAdmins: jest.fn().mockResolvedValue([]),
+          },
+        },
+        {
+          provide: NotificationsGateway,
+          useValue: {
+            broadcastToCompany: jest.fn(),
           },
         },
       ],

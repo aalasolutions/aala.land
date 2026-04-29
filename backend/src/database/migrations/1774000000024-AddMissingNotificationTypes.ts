@@ -11,5 +11,9 @@ export class AddMissingNotificationTypes1774000000024 implements MigrationInterf
     await queryRunner.query(`ALTER TYPE "notifications_type_enum" ADD VALUE IF NOT EXISTS 'CHEQUE_DEPOSITED'`);
   }
 
-  public async down(queryRunner: QueryRunner): Promise<void> {}
+  public async down(queryRunner: QueryRunner): Promise<void> {
+    // No rollback: PostgreSQL enum values added via ALTER TYPE cannot be safely removed
+    // without recreating the enum type and updating all dependent columns and data.
+    void queryRunner;
+  }
 }

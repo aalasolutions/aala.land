@@ -7,6 +7,7 @@ const NOTIFICATION_ICONS = {
   LEASE_EXPIRING: 'timer',
   MAINTENANCE_UPDATE: 'wrench',
   CHEQUE_DUE: 'calendar-blank',
+  CHEQUE_DEPOSITED: 'bank',
   CHEQUE_BOUNCED: 'warning-circle',
   CHEQUE_OVERDUE: 'clock-countdown',
   CHEQUE_DELAYED: 'hourglass',

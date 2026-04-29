@@ -14,7 +14,8 @@ export default class SocketService extends Service {
   setup() {
     if (this.socket || !this.auth.currentUser) return;
 
-    const apiUrl = ENV.APP.API_URL || 'http://localhost:3010';
+    const apiBase = ENV.APP.API_BASE || 'http://localhost:3010/v1';
+    const apiUrl = ENV.APP.API_URL || new URL(apiBase, window.location.origin).origin;
     const token = this.auth.token;
     if (!token) return;
 

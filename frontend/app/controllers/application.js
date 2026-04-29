@@ -23,6 +23,7 @@ export default class ApplicationController extends Controller {
   @tracked showRegionDropdown = false;
   notificationHandler = null;
   socketConnectHandler = null;
+  routeDidChangeHandler = null;
 
   get showRegionSwitcher() {
     return this.region.regions.length > 1;
@@ -47,13 +48,23 @@ export default class ApplicationController extends Controller {
 
   constructor() {
     super(...arguments);
-    this.router.on('routeDidChange', () => {
+    this.routeDidChangeHandler = () => {
       const group = this.activeGroup;
       if (group) this.expandedGroup = group;
-    });
+
+      if (this.session.isAuthenticated) {
+        this.setupSocket();
+      } else {
+        this.teardownSocket();
+      }
+    };
+
+    this.router.on('routeDidChange', this.routeDidChangeHandler);
 
     if (this.session.isAuthenticated) {
       this.setupSocket();
+    } else {
+      this.teardownSocket();
     }
   }
 
@@ -71,7 +82,7 @@ export default class ApplicationController extends Controller {
   }
 
   setupSocket() {
-    if (!this.session.isAuthenticated) return;
+    if (!this.session.isAuthenticated || this.notificationHandler || this.socketConnectHandler) return;
 
     this.notificationHandler = (notification) => {
       this.unreadCount++;
@@ -92,12 +103,26 @@ export default class ApplicationController extends Controller {
     }
   }
 
-  willDestroy() {
+  teardownSocket() {
     if (this.notificationHandler) {
       this.socket.off('newNotification', this.notificationHandler);
+      this.notificationHandler = null;
     }
     if (this.socketConnectHandler) {
       this.socket.off('connect', this.socketConnectHandler);
+      this.socketConnectHandler = null;
+    }
+
+    this.showNotifications = false;
+    this.notifications = [];
+    this.unreadCount = 0;
+  }
+
+  willDestroy() {
+    this.teardownSocket();
+    if (this.routeDidChangeHandler) {
+      this.router.off('routeDidChange', this.routeDidChangeHandler);
+      this.routeDidChangeHandler = null;
     }
 
     super.willDestroy(...arguments);
@@ -203,6 +228,7 @@ export default class ApplicationController extends Controller {
   @action
   async logout() {
     await this.auth.logout();
+    this.teardownSocket();
     this.router.transitionTo('login');
   }
 }

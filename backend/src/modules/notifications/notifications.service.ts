@@ -1,6 +1,6 @@
 import { Injectable, Logger, BadRequestException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, In, LessThanOrEqual, IsNull } from 'typeorm';
+import { Repository, In, LessThanOrEqual, IsNull, MoreThanOrEqual } from 'typeorm';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { SendNotificationDto, NotificationChannel, NotificationStatus } from './dto/send-notification.dto';
 import { Notification, NotificationType } from './entities/notification.entity';
@@ -190,26 +190,14 @@ export class NotificationsService {
       },
     });
 
-    for (const cheque of upcomingCheques) {
-      const admins = await this.userRepository.find({
-        where: {
-          companyId: cheque.companyId,
-          role: In([Role.COMPANY_ADMIN, Role.SUPER_ADMIN]),
-          isActive: true,
-        },
-      });
-
-      for (const admin of admins) {
-        await this.create(cheque.companyId, {
-          userId: admin.id,
-          title: 'Upcoming Cheque',
-          message: `Cheque #${cheque.chequeNumber} for ${cheque.amount} ${cheque.currency} is due in 3 days (${cheque.dueDate})`,
-          type: NotificationType.CHEQUE_DUE,
-          entityType: 'cheque',
-          entityId: cheque.id,
-        });
-      }
-    }
+    await this.notifyAdminsOncePerDay(upcomingCheques, NotificationType.CHEQUE_DUE, (cheque, admin) => ({
+      userId: admin.id,
+      title: 'Upcoming Cheque',
+      message: `Cheque #${cheque.chequeNumber} for ${cheque.amount} ${cheque.currency} is due in 3 days (${cheque.dueDate})`,
+      type: NotificationType.CHEQUE_DUE,
+      entityType: 'cheque',
+      entityId: cheque.id,
+    }));
   }
 
   private async notifyOverdueCheques() {
@@ -223,26 +211,14 @@ export class NotificationsService {
       },
     });
 
-    for (const cheque of overdueCheques) {
-      const admins = await this.userRepository.find({
-        where: {
-          companyId: cheque.companyId,
-          role: In([Role.COMPANY_ADMIN, Role.SUPER_ADMIN]),
-          isActive: true,
-        },
-      });
-
-      for (const admin of admins) {
-        await this.create(cheque.companyId, {
-          userId: admin.id,
-          title: 'Overdue Cheque!',
-          message: `Cheque #${cheque.chequeNumber} for ${cheque.amount} ${cheque.currency} was due on ${cheque.dueDate} and is still pending.`,
-          type: NotificationType.CHEQUE_OVERDUE,
-          entityType: 'cheque',
-          entityId: cheque.id,
-        });
-      }
-    }
+    await this.notifyAdminsOncePerDay(overdueCheques, NotificationType.CHEQUE_OVERDUE, (cheque, admin) => ({
+      userId: admin.id,
+      title: 'Overdue Cheque!',
+      message: `Cheque #${cheque.chequeNumber} for ${cheque.amount} ${cheque.currency} was due on ${cheque.dueDate} and is still pending.`,
+      type: NotificationType.CHEQUE_OVERDUE,
+      entityType: 'cheque',
+      entityId: cheque.id,
+    }));
   }
 
   private async notifyDelayedCheques() {
@@ -258,26 +234,14 @@ export class NotificationsService {
       },
     });
 
-    for (const cheque of delayedCheques) {
-      const admins = await this.userRepository.find({
-        where: {
-          companyId: cheque.companyId,
-          role: In([Role.COMPANY_ADMIN, Role.SUPER_ADMIN]),
-          isActive: true,
-        },
-      });
-
-      for (const admin of admins) {
-        await this.create(cheque.companyId, {
-          userId: admin.id,
-          title: 'Delayed Cheque Clearing',
-          message: `Cheque #${cheque.chequeNumber} was deposited on ${cheque.depositDate} but hasn't cleared yet.`,
-          type: NotificationType.CHEQUE_DELAYED,
-          entityType: 'cheque',
-          entityId: cheque.id,
-        });
-      }
-    }
+    await this.notifyAdminsOncePerDay(delayedCheques, NotificationType.CHEQUE_DELAYED, (cheque, admin) => ({
+      userId: admin.id,
+      title: 'Delayed Cheque Clearing',
+      message: `Cheque #${cheque.chequeNumber} was deposited on ${cheque.depositDate} but hasn't cleared yet.`,
+      type: NotificationType.CHEQUE_DELAYED,
+      entityType: 'cheque',
+      entityId: cheque.id,
+    }));
   }
 
   private async notifyUnassignedLeads() {
@@ -288,27 +252,17 @@ export class NotificationsService {
       },
     });
 
-    for (const lead of unassignedLeads) {
+    await this.notifyAdminsOncePerDay(unassignedLeads, NotificationType.LEAD_UNASSIGNED, (lead, admin) => {
       const clientName = `${lead.firstName} ${lead.lastName || ''}`.trim();
-      const admins = await this.userRepository.find({
-        where: {
-          companyId: lead.companyId,
-          role: In([Role.COMPANY_ADMIN, Role.SUPER_ADMIN]),
-          isActive: true,
-        },
-      });
-
-      for (const admin of admins) {
-        await this.create(lead.companyId, {
-          userId: admin.id,
-          title: 'Pending Unassigned Lead',
-          message: `Lead for ${clientName} is still unassigned and needs attention.`,
-          type: NotificationType.LEAD_UNASSIGNED,
-          entityType: 'lead',
-          entityId: lead.id,
-        });
-      }
-    }
+      return {
+        userId: admin.id,
+        title: 'Pending Unassigned Lead',
+        message: `Lead for ${clientName} is still unassigned and needs attention.`,
+        type: NotificationType.LEAD_UNASSIGNED,
+        entityType: 'lead',
+        entityId: lead.id,
+      };
+    });
   }
 
   async checkRentDueReminders(
@@ -501,5 +455,110 @@ export class NotificationsService {
         error: message,
       };
     }
+  }
+
+  private async findAdminsByCompanyIds(companyIds: string[]): Promise<Map<string, User[]>> {
+    const uniqueCompanyIds = [...new Set(companyIds.filter(Boolean))];
+    if (uniqueCompanyIds.length === 0) {
+      return new Map();
+    }
+
+    const admins = await this.userRepository.find({
+      where: {
+        companyId: In(uniqueCompanyIds),
+        role: In([Role.COMPANY_ADMIN, Role.SUPER_ADMIN]),
+        isActive: true,
+      },
+    });
+
+    const adminsByCompanyId = new Map<string, User[]>();
+    for (const admin of admins) {
+      const companyAdmins = adminsByCompanyId.get(admin.companyId) ?? [];
+      companyAdmins.push(admin);
+      adminsByCompanyId.set(admin.companyId, companyAdmins);
+    }
+
+    return adminsByCompanyId;
+  }
+
+  private async notifyAdminsOncePerDay<T extends { id: string; companyId: string }>(
+    items: T[],
+    type: NotificationType,
+    buildDto: (item: T, admin: User) => CreateNotificationDto,
+  ): Promise<void> {
+    const adminsByCompanyId = await this.findAdminsByCompanyIds(
+      items.map((item) => item.companyId),
+    );
+    const existingReminderKeys = await this.findExistingReminderKeys({
+      adminsByCompanyId,
+      companyIds: items.map((item) => item.companyId),
+      entityIds: items.map((item) => item.id),
+      type,
+      since: this.startOfToday(),
+    });
+
+    for (const item of items) {
+      const admins = adminsByCompanyId.get(item.companyId) ?? [];
+
+      for (const admin of admins) {
+        const reminderKey = this.buildReminderKey(admin.id, item.id);
+        if (existingReminderKeys.has(reminderKey)) {
+          continue;
+        }
+
+        await this.create(item.companyId, buildDto(item, admin));
+        existingReminderKeys.add(reminderKey);
+      }
+    }
+  }
+
+  private async findExistingReminderKeys({
+    adminsByCompanyId,
+    companyIds,
+    entityIds,
+    type,
+    since,
+  }: {
+    adminsByCompanyId: Map<string, User[]>;
+    companyIds: string[];
+    entityIds: string[];
+    type: NotificationType;
+    since: Date;
+  }): Promise<Set<string>> {
+    const uniqueCompanyIds = [...new Set(companyIds.filter(Boolean))];
+    const uniqueEntityIds = [...new Set(entityIds.filter(Boolean))];
+    const userIds = [...new Set(
+      [...adminsByCompanyId.values()].flatMap((admins) => admins.map((admin) => admin.id)),
+    )];
+
+    if (uniqueCompanyIds.length === 0 || uniqueEntityIds.length === 0 || userIds.length === 0) {
+      return new Set();
+    }
+
+    const existingNotifications = await this.notificationRepository.find({
+      where: {
+        companyId: In(uniqueCompanyIds),
+        userId: In(userIds),
+        type,
+        entityId: In(uniqueEntityIds),
+        createdAt: MoreThanOrEqual(since),
+      },
+    });
+
+    return new Set(
+      existingNotifications.map((notification) =>
+        this.buildReminderKey(notification.userId, notification.entityId),
+      ),
+    );
+  }
+
+  private buildReminderKey(userId: string, entityId: string): string {
+    return `${userId}:${entityId}`;
+  }
+
+  private startOfToday(): Date {
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    return now;
   }
 }

@@ -71,13 +71,15 @@ export default class VendorsController extends Controller {
   }
 
   @action goToPreviousPage() {
-    if (this.page <= 1) return;
-    this.page -= 1;
+    const page = Number(this.page) || 1;
+    if (page <= 1) return;
+    this.page = page - 1;
   }
 
   @action goToNextPage() {
-    if (this.page >= this.totalPages) return;
-    this.page += 1;
+    const page = Number(this.page) || 1;
+    if (page >= this.totalPages) return;
+    this.page = page + 1;
   }
 
   @action openCreate() {

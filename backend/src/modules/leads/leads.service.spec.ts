@@ -8,6 +8,9 @@ import { LeadActivity, ActivityType } from './entities/lead-activity.entity';
 import { Company } from '../companies/entities/company.entity';
 import { User } from '../users/entities/user.entity';
 import { Role } from '@shared/enums/roles.enum';
+import { NotificationsService } from '../notifications/notifications.service';
+import { UsersService } from '../users/users.service';
+import { NotificationsGateway } from '../notifications/notifications.gateway';
 
 describe('LeadsService', () => {
   let service: LeadsService;
@@ -69,6 +72,24 @@ describe('LeadsService', () => {
           provide: getRepositoryToken(User),
           useValue: {
             findOne: jest.fn(),
+          },
+        },
+        {
+          provide: NotificationsService,
+          useValue: {
+            create: jest.fn(),
+          },
+        },
+        {
+          provide: UsersService,
+          useValue: {
+            findAdmins: jest.fn().mockResolvedValue([]),
+          },
+        },
+        {
+          provide: NotificationsGateway,
+          useValue: {
+            broadcastToCompany: jest.fn(),
           },
         },
       ],
