@@ -1,7 +1,7 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class EnsurePgTrgmAndLocationNameIndexes1774000000023 implements MigrationInterface {
-    name = 'EnsurePgTrgmAndLocationNameIndexes1774000000023';
+export class EnsurePgTrgmAndLocationNameIndexes1774000000025 implements MigrationInterface {
+    name = 'EnsurePgTrgmAndLocationNameIndexes1774000000025';
 
     public async up(queryRunner: QueryRunner): Promise<void> {
         await queryRunner.query(`CREATE EXTENSION IF NOT EXISTS "pg_trgm"`);

@@ -90,6 +90,27 @@ export class AddNormalizedLocationNameUniqueIndexes1774000000026 implements Migr
                 FROM "localities"
             ),
             duplicates AS (
+                SELECT "id" AS duplicate_id, canonical_id
+                FROM ranked
+                WHERE "id" <> canonical_id
+            )
+            UPDATE "leads" AS ld
+            SET "property_id" = d.canonical_id
+            FROM duplicates d
+            WHERE ld."property_id" = d.duplicate_id
+        `);
+
+        await queryRunner.query(`
+            WITH ranked AS (
+                SELECT
+                    "id",
+                    FIRST_VALUE("id") OVER (
+                        PARTITION BY "city_id", LOWER(regexp_replace(BTRIM("name"), '\\s+', ' ', 'g'))
+                        ORDER BY "created_at" ASC, "id" ASC
+                    ) AS canonical_id
+                FROM "localities"
+            ),
+            duplicates AS (
                 SELECT "id" AS duplicate_id
                 FROM ranked
                 WHERE "id" <> canonical_id
