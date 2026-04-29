@@ -119,7 +119,7 @@ describe('LeadsService', () => {
       expect(result).toEqual(mockLead);
     });
 
-    it('validates property ownership in create', async () => {
+    it('validates property/locality exists in create', async () => {
       localityRepo.exist.mockResolvedValue(false);
       const dto = { firstName: 'Ahmed', propertyId: 'other-company-locality' };
 
@@ -348,7 +348,7 @@ describe('LeadsService', () => {
       expect(savedLead.previousAgent).toBe('old-agent-uuid');
     });
 
-    it('validates property ownership in update', async () => {
+    it('validates property/locality exists in update', async () => {
       leadRepo.findOne.mockResolvedValue(mockLead as Lead);
       localityRepo.exist.mockResolvedValue(false);
 

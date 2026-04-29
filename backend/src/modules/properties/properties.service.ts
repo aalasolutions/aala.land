@@ -139,7 +139,15 @@ export class PropertiesService {
     }
 
     async searchAssets(localityId: string, q: string): Promise<any[]> {
+        if (typeof q !== 'string') {
+            return [];
+        }
+
         const query = sanitizeName(q);
+        if (!query) {
+            return [];
+        }
+
         const results = await this.assetRepository.query(
             `SELECT *
              FROM (
