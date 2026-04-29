@@ -182,6 +182,7 @@ export default class LocationTypeaheadComponent extends Component {
     } catch {
       if (query === this.trimmedQuery) {
         this.results = [];
+        this.hasLoadedResults = true;
       }
     } finally {
       this._pendingSearches = Math.max(0, this._pendingSearches - 1);

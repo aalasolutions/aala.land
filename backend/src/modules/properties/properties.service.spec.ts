@@ -1,16 +1,18 @@
+import { ConflictException, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { NotFoundException } from '@nestjs/common';
+import { QueryFailedError, Repository } from 'typeorm';
 import { PropertiesService } from './properties.service';
 import { PropertyArea } from './entities/property-area.entity';
-import { Building } from './entities/building.entity';
+import { Asset } from './entities/asset.entity';
 import { Unit } from './entities/unit.entity';
+import { Listing } from './entities/listing.entity';
+import { PropertyMedia } from './entities/property-media.entity';
 
 describe('PropertiesService', () => {
   let service: PropertiesService;
   let areaRepo: jest.Mocked<Repository<PropertyArea>>;
-  let buildingRepo: jest.Mocked<Repository<Building>>;
+  let assetRepo: jest.Mocked<Repository<Asset>>;
   let unitRepo: jest.Mocked<Repository<Unit>>;
 
   const companyId = 'company-uuid-1';
@@ -19,23 +21,35 @@ describe('PropertiesService', () => {
     id: 'area-uuid-1',
     name: 'Downtown Dubai',
     companyId,
-    buildings: [],
   };
 
-  const mockBuilding: Partial<Building> = {
-    id: 'building-uuid-1',
-    name: 'Burj View Tower',
-    areaId: 'area-uuid-1',
-    companyId,
-    units: [],
+  const mockAsset: Partial<Asset> = {
+    id: 'asset-uuid-1',
+    name: 'Bay Tower',
+    localityId: 'locality-uuid-1',
+    createdByCompanyId: companyId,
+    address: '123 Road',
   };
 
   const mockUnit: Partial<Unit> = {
     id: 'unit-uuid-1',
     unitNumber: '1A',
-    buildingId: 'building-uuid-1',
+    assetId: 'asset-uuid-1',
     companyId,
   };
+
+  function createRepositoryMock<T extends object>() {
+    return {
+      create: jest.fn(),
+      save: jest.fn(),
+      find: jest.fn(),
+      findOne: jest.fn(),
+      findAndCount: jest.fn(),
+      remove: jest.fn(),
+      query: jest.fn(),
+      createQueryBuilder: jest.fn(),
+    } as unknown as jest.Mocked<Repository<T>>;
+  }
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -43,43 +57,30 @@ describe('PropertiesService', () => {
         PropertiesService,
         {
           provide: getRepositoryToken(PropertyArea),
-          useValue: {
-            create: jest.fn(),
-            save: jest.fn(),
-            find: jest.fn(),
-            findOne: jest.fn(),
-            findAndCount: jest.fn(),
-            remove: jest.fn(),
-          },
+          useValue: createRepositoryMock<PropertyArea>(),
         },
         {
-          provide: getRepositoryToken(Building),
-          useValue: {
-            create: jest.fn(),
-            save: jest.fn(),
-            find: jest.fn(),
-            findOne: jest.fn(),
-            findAndCount: jest.fn(),
-            remove: jest.fn(),
-          },
+          provide: getRepositoryToken(Asset),
+          useValue: createRepositoryMock<Asset>(),
         },
         {
           provide: getRepositoryToken(Unit),
-          useValue: {
-            create: jest.fn(),
-            save: jest.fn(),
-            find: jest.fn(),
-            findOne: jest.fn(),
-            findAndCount: jest.fn(),
-            remove: jest.fn(),
-          },
+          useValue: createRepositoryMock<Unit>(),
+        },
+        {
+          provide: getRepositoryToken(Listing),
+          useValue: createRepositoryMock<Listing>(),
+        },
+        {
+          provide: getRepositoryToken(PropertyMedia),
+          useValue: createRepositoryMock<PropertyMedia>(),
         },
       ],
     }).compile();
 
     service = module.get<PropertiesService>(PropertiesService);
     areaRepo = module.get(getRepositoryToken(PropertyArea));
-    buildingRepo = module.get(getRepositoryToken(Building));
+    assetRepo = module.get(getRepositoryToken(Asset));
     unitRepo = module.get(getRepositoryToken(Unit));
   });
 
@@ -99,148 +100,111 @@ describe('PropertiesService', () => {
     });
   });
 
-  describe('findAllAreas', () => {
-    it('returns paginated areas for company', async () => {
-      areaRepo.findAndCount.mockResolvedValue([[mockArea as PropertyArea], 1]);
+  describe('createAsset', () => {
+    it('returns an existing asset when the normalized name already exists', async () => {
+      assetRepo.findOne.mockResolvedValue(mockAsset as Asset);
 
-      const result = await service.findAllAreas(companyId, 1, 20);
-
-      expect(areaRepo.findAndCount).toHaveBeenCalledWith({
-        where: { companyId },
-        relations: ['buildings'],
-        skip: 0,
-        take: 20,
-        order: { createdAt: 'DESC' },
+      const result = await service.createAsset(companyId, {
+        name: '  Bay   Tower  ',
+        localityId: 'locality-uuid-1',
+        address: '123 Road',
       });
-      expect(result.data).toEqual([mockArea]);
-      expect(result.total).toBe(1);
-    });
-  });
 
-  describe('findOneArea', () => {
-    it('returns area when found', async () => {
-      areaRepo.findOne.mockResolvedValue(mockArea as PropertyArea);
-
-      const result = await service.findOneArea('area-uuid-1', companyId);
-
-      expect(result).toEqual(mockArea);
+      expect(result).toEqual(mockAsset);
+      expect(assetRepo.create).not.toHaveBeenCalled();
+      expect(assetRepo.save).not.toHaveBeenCalled();
     });
 
-    it('throws NotFoundException when area not found', async () => {
-      areaRepo.findOne.mockResolvedValue(null);
+    it('trims and collapses whitespace before creating a new asset', async () => {
+      const createdAsset = { ...mockAsset, name: 'Bay Tower' } as Asset;
+      assetRepo.findOne.mockResolvedValueOnce(null);
+      assetRepo.create.mockReturnValue(createdAsset);
+      assetRepo.save.mockResolvedValue(createdAsset);
 
-      await expect(service.findOneArea('bad-id', companyId)).rejects.toThrow(NotFoundException);
-    });
-  });
-
-  describe('updateArea', () => {
-    it('updates area', async () => {
-      areaRepo.findOne.mockResolvedValue(mockArea as PropertyArea);
-      areaRepo.save.mockResolvedValue({ ...mockArea, name: 'Updated' } as PropertyArea);
-
-      const result = await service.updateArea('area-uuid-1', companyId, { name: 'Updated' });
-
-      expect(result.name).toBe('Updated');
-    });
-  });
-
-  describe('removeArea', () => {
-    it('removes area', async () => {
-      areaRepo.findOne.mockResolvedValue(mockArea as PropertyArea);
-      areaRepo.remove.mockResolvedValue(mockArea as PropertyArea);
-
-      await service.removeArea('area-uuid-1', companyId);
-
-      expect(areaRepo.remove).toHaveBeenCalledWith(mockArea);
-    });
-  });
-
-  describe('createBuilding', () => {
-    it('creates and returns a building', async () => {
-      buildingRepo.create.mockReturnValue(mockBuilding as Building);
-      buildingRepo.save.mockResolvedValue(mockBuilding as Building);
-
-      const result = await service.createBuilding(companyId, { name: 'Burj View Tower', areaId: 'area-uuid-1' });
-
-      expect(result).toEqual(mockBuilding);
-    });
-  });
-
-  describe('findBuildingsByArea', () => {
-    it('returns paginated buildings for area and company', async () => {
-      buildingRepo.findAndCount.mockResolvedValue([[mockBuilding as Building], 1]);
-
-      const result = await service.findBuildingsByArea('area-uuid-1', companyId, 1, 20);
-
-      expect(buildingRepo.findAndCount).toHaveBeenCalledWith({
-        where: { areaId: 'area-uuid-1', companyId },
-        relations: ['units'],
-        skip: 0,
-        take: 20,
-        order: { createdAt: 'DESC' },
+      const result = await service.createAsset(companyId, {
+        name: '  Bay   Tower  ',
+        localityId: 'locality-uuid-1',
+        address: '123 Road',
       });
-      expect(result.data).toEqual([mockBuilding]);
-    });
-  });
 
-  describe('createUnit', () => {
-    it('creates and returns a unit', async () => {
-      unitRepo.create.mockReturnValue(mockUnit as Unit);
-      unitRepo.save.mockResolvedValue(mockUnit as Unit);
-
-      const result = await service.createUnit(companyId, { unitNumber: '1A', buildingId: 'building-uuid-1' });
-
-      expect(result).toEqual(mockUnit);
-    });
-  });
-
-  describe('findUnitsByBuilding', () => {
-    it('returns paginated units for building and company', async () => {
-      unitRepo.findAndCount.mockResolvedValue([[mockUnit as Unit], 1]);
-
-      const result = await service.findUnitsByBuilding('building-uuid-1', companyId, 1, 20);
-
-      expect(unitRepo.findAndCount).toHaveBeenCalledWith({
-        where: { buildingId: 'building-uuid-1', companyId },
-        skip: 0,
-        take: 20,
-        order: { createdAt: 'DESC' },
+      expect(assetRepo.create).toHaveBeenCalledWith({
+        name: 'Bay Tower',
+        localityId: 'locality-uuid-1',
+        address: '123 Road',
+        createdByCompanyId: companyId,
       });
-      expect(result.data).toEqual([mockUnit]);
+      expect(result).toEqual(createdAsset);
+    });
+
+    it('returns the existing asset when a unique violation races with another create', async () => {
+      const duplicate = { ...mockAsset, id: 'asset-uuid-2' } as Asset;
+      const uniqueViolation = new QueryFailedError('INSERT INTO buildings ...', [], { code: '23505' });
+
+      assetRepo.findOne.mockResolvedValueOnce(null).mockResolvedValueOnce(duplicate);
+      assetRepo.create.mockReturnValue({ ...duplicate, id: 'new-asset' } as Asset);
+      assetRepo.save.mockRejectedValue(uniqueViolation);
+
+      const result = await service.createAsset(companyId, {
+        name: '  Bay   Tower  ',
+        localityId: 'locality-uuid-1',
+      });
+
+      expect(result).toEqual(duplicate);
     });
   });
 
-  describe('findOneUnit', () => {
-    it('returns unit when found', async () => {
-      unitRepo.findOne.mockResolvedValue(mockUnit as Unit);
+  describe('updateAsset', () => {
+    it('throws ConflictException when a normalized duplicate already exists', async () => {
+      assetRepo.findOne
+        .mockResolvedValueOnce(mockAsset as Asset)
+        .mockResolvedValueOnce({ ...mockAsset, id: 'asset-uuid-2' } as Asset);
 
-      const result = await service.findOneUnit('unit-uuid-1', companyId);
+      await expect(
+        service.updateAsset('asset-uuid-1', { name: '  Bay   Tower  ' }),
+      ).rejects.toThrow(ConflictException);
 
-      expect(result).toEqual(mockUnit);
+      expect(assetRepo.save).not.toHaveBeenCalled();
     });
 
-    it('throws NotFoundException when unit not found', async () => {
-      unitRepo.findOne.mockResolvedValue(null);
+    it('trims and collapses whitespace before saving an updated asset', async () => {
+      const existingAsset = { ...mockAsset, name: 'Old Name' } as Asset;
+      const savedAsset = { ...existingAsset, name: 'Bay Tower' } as Asset;
 
-      await expect(service.findOneUnit('bad-id', companyId)).rejects.toThrow(NotFoundException);
+      assetRepo.findOne.mockResolvedValueOnce(existingAsset).mockResolvedValueOnce(null);
+      assetRepo.save.mockResolvedValue(savedAsset);
+
+      const result = await service.updateAsset('asset-uuid-1', { name: '  Bay   Tower  ' });
+
+      expect(assetRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'asset-uuid-1', name: 'Bay Tower' }),
+      );
+      expect(result).toEqual(savedAsset);
+    });
+
+    it('throws NotFoundException when the asset does not exist', async () => {
+      assetRepo.findOne.mockResolvedValue(null);
+
+      await expect(service.updateAsset('missing-asset', { name: 'Bay Tower' })).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
   describe('bulkImportUnits', () => {
     it('creates units from valid CSV', async () => {
       unitRepo.create.mockImplementation((data) => data as Unit);
-      unitRepo.save.mockResolvedValue({} as Unit);
+      unitRepo.save.mockResolvedValue([mockUnit] as Unit[]);
 
-      const csv = 'unitNumber,buildingId,bedrooms,bathrooms\n101,building-1,2,1\n102,building-1,3,2';
+      const csv = 'unitNumber,assetId,bedrooms,bathrooms\n101,asset-1,2,1\n102,asset-1,3,2';
       const result = await service.bulkImportUnits(companyId, csv);
 
       expect(result.created).toBe(2);
       expect(result.failed).toBe(0);
-      expect(unitRepo.save).toHaveBeenCalledTimes(2);
+      expect(unitRepo.save).toHaveBeenCalledTimes(1);
     });
 
     it('reports error for rows missing required fields', async () => {
-      const csv = 'unitNumber,buildingId\n,building-1\n102,';
+      const csv = 'unitNumber,assetId\n,asset-1\n102,';
       const result = await service.bulkImportUnits(companyId, csv);
 
       expect(result.failed).toBe(2);
@@ -248,7 +212,7 @@ describe('PropertiesService', () => {
     });
 
     it('returns error when CSV has no data rows', async () => {
-      const csv = 'unitNumber,buildingId';
+      const csv = 'unitNumber,assetId';
       const result = await service.bulkImportUnits(companyId, csv);
 
       expect(result.created).toBe(0);
