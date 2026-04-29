@@ -200,6 +200,8 @@ export default class ApplicationController extends Controller {
     }
   }
 
+  @tracked showLogoutModal = false;
+
   @action
   toggleRegionDropdown() {
     this.showRegionDropdown = !this.showRegionDropdown;
@@ -228,7 +230,18 @@ export default class ApplicationController extends Controller {
   }
 
   @action
-  async logout() {
+  logout() {
+    this.showLogoutModal = true;
+  }
+
+  @action
+  closeLogoutModal() {
+    this.showLogoutModal = false;
+  }
+
+  @action
+  async confirmLogout() {
+    this.showLogoutModal = false;
     await this.auth.logout();
     this.teardownSocket();
     this.router.transitionTo('login');

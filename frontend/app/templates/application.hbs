@@ -238,3 +238,14 @@
 {{/if}}
 
 <ToastContainer />
+
+<ConfirmModal
+  @isOpen={{this.showLogoutModal}}
+  @title="Logout"
+  @message="Are you sure you want to logout?"
+  @confirmText="Logout"
+  @cancelText="Cancel"
+  @confirmType="btn-danger"
+  @onClose={{this.closeLogoutModal}}
+  @onConfirm={{this.confirmLogout}}
+/>
