@@ -32,7 +32,7 @@ export default class DocumentsController extends Controller {
 
   queryParams = ['page', 'limit', 'category'];
   @tracked page = 1;
-  @tracked limit = 20;
+  @tracked limit = 10;
   @tracked category = '';
 
   @tracked showModal = false;
@@ -58,6 +58,11 @@ export default class DocumentsController extends Controller {
 
   accessLevels = ACCESS_LEVELS;
 
+  get totalPages() {
+    const total = this.model?.total ?? 0;
+    return Math.max(1, Math.ceil(total / this.limit));
+  }
+
   @action setField(fieldName, e) {
     this[fieldName] = e.target.value;
   }
@@ -65,6 +70,23 @@ export default class DocumentsController extends Controller {
   @action setCategory(e) {
     this.category = e.target.value;
     this.page = 1;
+  }
+
+  @action setLimit(e) {
+    this.limit = Number(e.target.value) || 10;
+    this.page = 1;
+  }
+
+  @action goToPreviousPage() {
+    const page = Number(this.page) || 1;
+    if (page <= 1) return;
+    this.page = page - 1;
+  }
+
+  @action goToNextPage() {
+    const page = Number(this.page) || 1;
+    if (page >= this.totalPages) return;
+    this.page = page + 1;
   }
 
   @action onFileSelect(e) {

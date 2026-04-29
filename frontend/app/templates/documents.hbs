@@ -17,50 +17,62 @@
   </div>
 
   {{#if @model.documents.length}}
-    <div class="data-table-wrapper">
-      <table class="data-table">
-        <thead>
-          <tr>
-            <th>Name</th>
-            <th>Category</th>
-            <th>Access</th>
-            <th>Type</th>
-            <th>Version</th>
-            <th>Uploaded</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {{#each @model.documents as |doc|}}
-            <tr data-test-document-row>
-              <td>
-                <div class="flex x-center gap-2">
-                  <Ph @icon={{this.fileIcon doc.fileType}} />
-                  <span class="font-bold">{{doc.name}}</span>
-                </div>
-              </td>
-              <td><span class="type-badge type-{{lowercase doc.category}}">{{doc.category}}</span></td>
-              <td><span class="status-badge status-{{lowercase doc.accessLevel}}">{{doc.accessLevel}}</span></td>
-              <td class="font-sm text-muted">{{doc.fileType}}</td>
-              <td class="font-sm">v{{doc.version}}</td>
-              <td class="font-sm text-muted">{{format-date doc.createdAt}}</td>
-              <td>
-                <div class="flex gap-2">
-                  <button type="button" class="btn btn-secondary btn-xs" data-test-download-btn {{on "click" (fn this.downloadDocument doc)}}>
-                    <Ph @icon="download-simple" />
-                  </button>
-                  <button type="button" class="btn btn-secondary btn-xs" {{on "click" (fn this.openEdit doc)}}>
-                    <Ph @icon="pencil-simple" />
-                  </button>
-                  <button type="button" class="btn btn-danger btn-xs" {{on "click" (fn this.openDelete doc)}}>
-                    <Ph @icon="trash" />
-                  </button>
-                </div>
-              </td>
+    <div>
+      <div class="data-table-wrapper data-table-wrapper--with-pagination">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Category</th>
+              <th>Access</th>
+              <th>Type</th>
+              <th>Version</th>
+              <th>Uploaded</th>
+              <th>Actions</th>
             </tr>
-          {{/each}}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {{#each @model.documents as |doc|}}
+              <tr data-test-document-row>
+                <td>
+                  <div class="flex x-center gap-2">
+                    <Ph @icon={{this.fileIcon doc.fileType}} />
+                    <span class="font-bold">{{doc.name}}</span>
+                  </div>
+                </td>
+                <td><span class="type-badge type-{{lowercase doc.category}}">{{doc.category}}</span></td>
+                <td><span class="status-badge status-{{lowercase doc.accessLevel}}">{{doc.accessLevel}}</span></td>
+                <td class="font-sm text-muted">{{doc.fileType}}</td>
+                <td class="font-sm">v{{doc.version}}</td>
+                <td class="font-sm text-muted">{{format-date doc.createdAt}}</td>
+                <td>
+                  <div class="flex gap-2">
+                    <button type="button" class="btn btn-secondary btn-xs" data-test-download-btn {{on "click" (fn this.downloadDocument doc)}}>
+                      <Ph @icon="download-simple" />
+                    </button>
+                    <button type="button" class="btn btn-secondary btn-xs" {{on "click" (fn this.openEdit doc)}}>
+                      <Ph @icon="pencil-simple" />
+                    </button>
+                    <button type="button" class="btn btn-danger btn-xs" {{on "click" (fn this.openDelete doc)}}>
+                      <Ph @icon="trash" />
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            {{/each}}
+          </tbody>
+        </table>
+      </div>
+
+      <Pagination
+        @selectId="documents-limit"
+        @page={{this.page}}
+        @limit={{this.limit}}
+        @total={{@model.total}}
+        @onLimitChange={{this.setLimit}}
+        @onPrevious={{this.goToPreviousPage}}
+        @onNext={{this.goToNextPage}}
+      />
     </div>
   {{else}}
     <div class="glass-panel p-8 text-center">
