@@ -27,49 +27,79 @@
       {{!-- CARDS VIEW --}}
       <div class="flex col gap-4">
         {{#each this.assetsWithHistory as |asset|}}
-          <div data-test-asset-card class="glass-panel p-5 flex col gap-4">
+          <div data-test-asset-card class="glass-panel p-6 flex col gap-5 relative overflow-hidden">
             <div class="flex between x-center">
-              <h4 class="font-md font-bold">{{asset.name}}</h4>
+              <div class="flex col gap-1">
+                <h4 class="font-lg font-bold flex x-center gap-2"><Ph @icon="buildings" class="text-primary" /> {{asset.name}}</h4>
+                <p class="text-muted font-sm">{{asset.units.length}} Units</p>
+              </div>
               <div class="flex gap-2">
                 <button type="button" class="btn btn-primary btn-sm" {{on "click" (fn this.openCreateUnit asset.id)}}>
-                  <Ph @icon="plus" /> Unit
+                  <Ph @icon="plus" /> Add Unit
                 </button>
               </div>
             </div>
             {{#if asset.units.length}}
-              <div class="grid cols-3 gap-3">
+              <div class="grid-cols-3 gap-4">
                 {{#each asset.units as |unit|}}
-                  <div data-test-unit-card data-test-unit-id={{unit.id}} class="p-3 rounded-lg bg-white@05 font-sm flex col gap-1">
-                    <div class="flex between x-center">
+                  <div data-test-unit-card data-test-unit-id={{unit.id}} class="unit-card-premium flex col gap-3">
+                    <div class="flex between x-center border-b border-light pb-2">
                       <div class="flex x-center gap-2">
-                        <p class="font-bold">Unit {{unit.unitNumber}}</p>
-                        {{#if unit.propertyType}}
-                          <span class="type-badge type-{{lowercase unit.propertyType}}">{{if (eq unit.propertyType 'FOR_SALE') 'Sale' 'Rent'}}</span>
-                        {{/if}}
+                        <div class="unit-card-icon-box">
+                          <Ph @icon="door" />
+                        </div>
+                        <p class="font-bold font-md">Unit {{unit.unitNumber}}</p>
                       </div>
-                      <div class="flex gap-2">
-                        <LinkTo @route="properties.unit" @models={{array @model.localityId unit.id}} class="btn btn-primary btn-xs" data-test-view-unit>
-                          <Ph @icon="eye" /> View
-                        </LinkTo>
-                        <button type="button" class="btn btn-secondary btn-xs" {{on "click" (fn this.openEditUnit unit asset.id)}}>
-                          Edit
-                        </button>
-                      </div>
+                      {{#if unit.propertyType}}
+                        <span class="type-badge type-{{lowercase unit.propertyType}}">{{if (eq unit.propertyType 'FOR_SALE') 'Sale' 'Rent'}}</span>
+                      {{/if}}
                     </div>
-                    <p class="text-muted font-xs">{{capitalize unit.status}}</p>
-                    <div class="flex gap-2 font-xs text-muted">
-                      {{#if unit.bedrooms}}<span>{{unit.bedrooms}} bed</span>{{/if}}
-                      {{#if unit.bathrooms}}<span>{{unit.bathrooms}} bath</span>{{/if}}
-                      {{#if unit.sqFt}}<span>{{format-number unit.sqFt}} sqft</span>{{/if}}
+
+                    <div class="flex between x-center">
+                      <p class="text-muted font-sm flex x-center gap-1">
+                        <span class="status-badge status-{{unit.status}}">{{capitalize unit.status}}</span>
+                      </p>
+                      {{#if unit.price}}
+                        <p class="text-success font-bold font-md">{{format-currency unit.price}}</p>
+                      {{/if}}
                     </div>
-                    {{#if unit.price}}
-                      <p class="text-success font-xs">{{format-currency unit.price}}</p>
-                    {{/if}}
+
+                    <div class="unit-amenities-strip">
+                      <span class="flex x-center gap-1 {{unless unit.bedrooms 'opacity-50'}}">
+                        <Ph @icon="bed" /> {{if unit.bedrooms unit.bedrooms "-"}}
+                      </span>
+                      <span class="flex x-center gap-1 {{unless unit.bathrooms 'opacity-50'}}">
+                        <Ph @icon="bathtub" /> {{if unit.bathrooms unit.bathrooms "-"}}
+                      </span>
+                      <span class="flex x-center gap-1 {{unless unit.sqFt 'opacity-50'}}">
+                        <Ph @icon="selection" /> {{if unit.sqFt (format-number unit.sqFt) "-"}}
+                      </span>
+                    </div>
+
+                    <div class="flex gap-2 pt-1">
+                      <LinkTo @route="properties.unit" @models={{array @model.localityId unit.id}} class="btn btn-primary btn-sm flex-1 justify-center" data-test-view-unit>
+                        View Details
+                      </LinkTo>
+                      <button type="button" class="btn btn-secondary btn-sm" {{on "click" (fn this.openEditUnit unit asset.id)}}>
+                        <Ph @icon="pencil" />
+                      </button>
+                    </div>
                   </div>
                 {{/each}}
               </div>
             {{else}}
-              <p class="text-muted font-sm">No units yet.</p>
+              <div class="property-empty-state-box animate-reveal">
+                <div class="icon-holder">
+                  <Ph @icon="house-line" @size="32px" class="text-muted" />
+                </div>
+                <div class="text-center">
+                  <h5 class="font-md font-bold">No units yet</h5>
+                  <p class="text-muted font-sm">Start by adding the first unit to this asset.</p>
+                </div>
+                <button type="button" class="btn btn-primary btn-sm px-6" {{on "click" (fn this.openCreateUnit asset.id)}}>
+                  <Ph @icon="plus" /> Add First Unit
+                </button>
+              </div>
             {{/if}}
           </div>
         {{/each}}
@@ -116,12 +146,19 @@
                 </tr>
               {{else}}
                 <tr>
-                  <td class="font-bold">{{asset.name}}</td>
-                  <td colspan="7" class="text-muted">No units</td>
-                  <td class="text-right">
-                    <button type="button" class="btn btn-primary btn-xs" {{on "click" (fn this.openCreateUnit asset.id)}}>
-                      <Ph @icon="plus" /> Unit
-                    </button>
+                  <td colspan="9" class="p-0">
+                    <div class="property-empty-state-box empty-state-flat">
+                      <div class="icon-holder">
+                        <Ph @icon="door" @size="32px" class="text-muted opacity-50" />
+                      </div>
+                      <div class="text-center">
+                        <p class="font-bold font-md">No units in {{asset.name}}</p>
+                        <p class="text-muted font-sm">Add your first unit to start managing this asset.</p>
+                      </div>
+                      <button type="button" class="btn btn-primary btn-xs px-6 mt-2" {{on "click" (fn this.openCreateUnit asset.id)}}>
+                        <Ph @icon="plus" /> Add First Unit
+                      </button>
+                    </div>
                   </td>
                 </tr>
               {{/each}}
@@ -131,8 +168,17 @@
       </div>
     {{/if}}
   {{else}}
-    <div class="glass-panel p-8 text-center">
-      <p class="text-muted">No assets in this location. Create one above.</p>
+    <div class="property-empty-state-box empty-state-large">
+      <div class="icon-holder">
+        <Ph @icon="buildings" @size="48px" class="text-muted" />
+      </div>
+      <div>
+        <h3 class="font-xl font-bold">No assets found</h3>
+        <p class="text-muted">There are no assets or units in this location yet.</p>
+      </div>
+      <button type="button" class="btn btn-primary px-8" {{on "click" this.openCreateAsset}}>
+        <Ph @icon="plus" /> Create First Asset
+      </button>
     </div>
   {{/if}}
 </div>
