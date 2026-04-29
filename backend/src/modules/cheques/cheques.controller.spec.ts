@@ -61,7 +61,7 @@ describe('ChequesController', () => {
       const dto = { chequeNumber: 'CHQ001', bankName: 'Emirates NBD', accountHolder: 'Ahmed', amount: 15000, dueDate: '2026-03-01' };
       const result = await controller.create(dto as any, mockReq);
 
-      expect(service.create).toHaveBeenCalledWith(companyId, dto);
+      expect(service.create).toHaveBeenCalledWith(companyId, dto, 'user-uuid-1');
     });
   });
 
@@ -91,7 +91,7 @@ describe('ChequesController', () => {
 
       await controller.update('cheque-uuid-1', { status: ChequeStatus.DEPOSITED }, mockReq);
 
-      expect(service.update).toHaveBeenCalledWith('cheque-uuid-1', companyId, { status: ChequeStatus.DEPOSITED });
+      expect(service.update).toHaveBeenCalledWith('cheque-uuid-1', companyId, { status: ChequeStatus.DEPOSITED }, 'user-uuid-1');
     });
   });
 
@@ -103,7 +103,7 @@ describe('ChequesController', () => {
       const dto = { bounceReason: 'Insufficient funds' };
       await controller.bounce('cheque-uuid-1', dto, mockReq);
 
-      expect(service.bounce).toHaveBeenCalledWith('cheque-uuid-1', companyId, dto);
+      expect(service.bounce).toHaveBeenCalledWith('cheque-uuid-1', companyId, dto, 'user-uuid-1');
     });
   });
 

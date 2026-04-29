@@ -1,6 +1,6 @@
 import { module, test } from 'qunit';
 import { setupRenderingTest } from 'frontend/tests/helpers';
-import { render } from '@ember/test-helpers';
+import { render, settled } from '@ember/test-helpers';
 import { hbs } from 'ember-cli-htmlbars';
 
 module('Integration | Component | pagination', function (hooks) {
@@ -31,6 +31,7 @@ module('Integration | Component | pagination', function (hooks) {
     assert.dom('.table-pagination__button:last-of-type').isNotDisabled();
 
     this.set('page', '3');
+    await settled();
 
     assert.dom('.table-pagination__button').isNotDisabled();
     assert.dom('.table-pagination__button:last-of-type').isDisabled();
@@ -65,6 +66,35 @@ module('Integration | Component | pagination', function (hooks) {
     `);
 
     assert.dom('select').hasValue('20');
-    assert.dom('option[value="20"]').isSelected();
+    assert.true(this.element.querySelector('option[value="20"]').selected);
+  });
+
+  test('it falls back to the first limit option when @limit is missing', async function (assert) {
+    this.setProperties({
+      page: 1,
+      total: 25,
+      onPrevious: () => {},
+      onNext: () => {},
+      onLimitChange: () => {},
+      limitOptions: [
+        { value: '10', label: '10 rows' },
+        { value: '20', label: '20 rows' },
+      ],
+    });
+
+    await render(hbs`
+      <Pagination
+        @page={{this.page}}
+        @total={{this.total}}
+        @limitOptions={{this.limitOptions}}
+        @onPrevious={{this.onPrevious}}
+        @onNext={{this.onNext}}
+        @onLimitChange={{this.onLimitChange}}
+      />
+    `);
+
+    assert.dom('.table-pagination__status-value').hasText('1 / 3');
+    assert.dom('select').hasValue('10');
+    assert.true(this.element.querySelector('option[value="10"]').selected);
   });
 });

@@ -50,7 +50,7 @@ export default class TeamController extends Controller {
   @action setField(fieldName, e) { this[fieldName] = e.target.value; }
 
   @action setLimit(e) {
-    this.limit = Number(e.target.value) || 20;
+    this.limit = Number(e.target.value) || 10;
     this.page = 1;
   }
 
