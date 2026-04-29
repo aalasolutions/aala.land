@@ -11,9 +11,14 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from '../users/entities/user.entity';
 
+const websocketCorsOrigins = process.env.CORS_ORIGIN
+  ? process.env.CORS_ORIGIN.split(',').map((origin) => origin.trim()).filter(Boolean)
+  : ['http://localhost:4200'];
+
 @WebSocketGateway({
   cors: {
-    origin: '*',
+    origin: websocketCorsOrigins,
+    credentials: true,
   },
 })
 export class NotificationsGateway implements OnGatewayConnection, OnGatewayDisconnect {
