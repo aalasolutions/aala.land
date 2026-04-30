@@ -122,12 +122,15 @@
         </div>
 
         {{! Amenities card }}
-        {{#if @model.unit.amenities.length}}
+        {{#if this.unitAmenities.length}}
           <div class="glass-panel p-5" data-test-amenities-card>
             <h4 class="font-sm font-bold uppercase text-muted mb-3">Amenities</h4>
             <div class="flex gap-2 wrap">
-              {{#each @model.unit.amenities as |amenity|}}
-                <span class="amenity-tag">{{amenity}}</span>
+              {{#each this.unitAmenities as |amenity|}}
+                <span class="amenity-tag">
+                  <Ph @icon={{amenity.icon}} />
+                  {{amenity.label}}
+                </span>
               {{/each}}
             </div>
           </div>
