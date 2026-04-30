@@ -1,12 +1,13 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { NotFoundException } from '@nestjs/common';
-import { ChequesService } from './cheques.service';
-import { Cheque, ChequeStatus, ChequeType } from './entities/cheque.entity';
+import { NotFoundException, BadRequestException } from '@nestjs/common';
 import { NotificationsService } from '../notifications/notifications.service';
+import { NotificationType } from '../notifications/entities/notification.entity';
 import { UsersService } from '../users/users.service';
 import { NotificationsGateway } from '../notifications/notifications.gateway';
+import { ChequesService } from './cheques.service';
+import { Cheque, ChequeStatus, ChequeType } from './entities/cheque.entity';
 
 describe('ChequesService', () => {
   let service: ChequesService;
@@ -139,6 +140,201 @@ describe('ChequesService', () => {
       const result = await service.update('cheque-uuid-1', companyId, { status: ChequeStatus.DEPOSITED });
 
       expect(result.status).toBe(ChequeStatus.DEPOSITED);
+    });
+
+    it('broadcasts chequeUpdated event on every update', async () => {
+      const updated = { ...mockCheque, status: ChequeStatus.DEPOSITED } as Cheque;
+      repo.findOne.mockResolvedValue({ ...mockCheque } as Cheque);
+      repo.save.mockResolvedValue(updated);
+      const gateway = module.get(NotificationsGateway) as any;
+
+      await service.update('cheque-uuid-1', companyId, { status: ChequeStatus.DEPOSITED }, 'user-1');
+
+      expect(gateway.broadcastToCompany).toHaveBeenCalledWith(companyId, 'chequeUpdated', expect.objectContaining({
+        id: 'cheque-uuid-1',
+        status: ChequeStatus.DEPOSITED,
+        updatedBy: 'user-1',
+      }));
+    });
+
+    it('broadcasts chequeUpdated event even when status does not change', async () => {
+      const gateway = module.get(NotificationsGateway) as any;
+      const updated = { ...mockCheque, bankName: 'New Bank' } as Cheque;
+      repo.findOne.mockResolvedValue({ ...mockCheque } as Cheque);
+      repo.save.mockResolvedValue(updated);
+
+      await service.update('cheque-uuid-1', companyId, { bankName: 'New Bank' } as any);
+
+      expect(gateway.broadcastToCompany).toHaveBeenCalledWith(companyId, 'chequeUpdated', expect.objectContaining({
+        id: 'cheque-uuid-1',
+        status: ChequeStatus.PENDING,
+      }));
+    });
+
+    it('creates CHEQUE_DEPOSITED notification for admins when status changes to DEPOSITED', async () => {
+      const adminUser = { id: 'admin-1', name: 'Admin One', email: 'admin@test.com' };
+      const updated = { ...mockCheque, status: ChequeStatus.DEPOSITED, depositDate: new Date() } as Cheque;
+      repo.findOne.mockResolvedValue({ ...mockCheque } as Cheque);
+      repo.save.mockResolvedValue(updated);
+      (module.get(UsersService).findAdmins as jest.Mock).mockResolvedValue([adminUser]);
+      const notificationsService = module.get(NotificationsService) as any;
+
+      await service.update('cheque-uuid-1', companyId, { status: ChequeStatus.DEPOSITED }, 'user-1');
+
+      expect(notificationsService.create).toHaveBeenCalledWith(companyId, expect.objectContaining({
+        userId: 'admin-1',
+        title: 'Cheque Deposited',
+        message: expect.stringContaining('has been marked as DEPOSITED'),
+        type: NotificationType.CHEQUE_DEPOSITED,
+        entityType: 'cheque',
+        entityId: 'cheque-uuid-1',
+      }));
+    });
+
+    it('skips admin notification if admin is the same user who performed the update', async () => {
+      const updated = { ...mockCheque, status: ChequeStatus.DEPOSITED, depositDate: new Date() } as Cheque;
+      repo.findOne.mockResolvedValue({ ...mockCheque } as Cheque);
+      repo.save.mockResolvedValue(updated);
+      (module.get(UsersService).findAdmins as jest.Mock).mockResolvedValue([
+        { id: 'user-1', name: 'Admin User', email: 'admin@test.com' },
+      ]);
+      const notificationsService = module.get(NotificationsService) as any;
+
+      await service.update('cheque-uuid-1', companyId, { status: ChequeStatus.DEPOSITED }, 'user-1');
+
+      expect(notificationsService.create).not.toHaveBeenCalled();
+    });
+
+    it('creates PAYMENT_RECEIVED notification when status changes to CLEARED', async () => {
+      const adminUser = { id: 'admin-2', name: 'Admin Two', email: 'admin2@test.com' };
+      const updated = { ...mockCheque, status: ChequeStatus.CLEARED } as Cheque;
+      repo.findOne.mockResolvedValue({ ...mockCheque } as Cheque);
+      repo.save.mockResolvedValue(updated);
+      (module.get(UsersService).findAdmins as jest.Mock).mockResolvedValue([adminUser]);
+      const notificationsService = module.get(NotificationsService) as any;
+
+      await service.update('cheque-uuid-1', companyId, { status: ChequeStatus.CLEARED }, 'user-1');
+
+      expect(notificationsService.create).toHaveBeenCalledWith(companyId, expect.objectContaining({
+        title: 'Cheque Cleared',
+        message: expect.stringContaining('has been CLEARED'),
+        type: NotificationType.PAYMENT_RECEIVED,
+      }));
+    });
+
+    it('creates SYSTEM notification when status changes to CANCELLED', async () => {
+      const adminUser = { id: 'admin-3', name: 'Admin Three', email: 'admin3@test.com' };
+      const updated = { ...mockCheque, status: ChequeStatus.CANCELLED } as Cheque;
+      repo.findOne.mockResolvedValue({ ...mockCheque } as Cheque);
+      repo.save.mockResolvedValue(updated);
+      (module.get(UsersService).findAdmins as jest.Mock).mockResolvedValue([adminUser]);
+      const notificationsService = module.get(NotificationsService) as any;
+
+      await service.update('cheque-uuid-1', companyId, { status: ChequeStatus.CANCELLED }, 'user-1');
+
+      expect(notificationsService.create).toHaveBeenCalledWith(companyId, expect.objectContaining({
+        title: 'Cheque Cancelled',
+        message: expect.stringContaining('has been CANCELLED'),
+        type: NotificationType.SYSTEM,
+      }));
+    });
+
+    it('creates CHEQUE_BOUNCED notification when status changes to BOUNCED', async () => {
+      const adminUser = { id: 'admin-4', name: 'Admin Four', email: 'admin4@test.com' };
+      const updated = { ...mockCheque, status: ChequeStatus.BOUNCED } as Cheque;
+      repo.findOne.mockResolvedValue({ ...mockCheque } as Cheque);
+      repo.save.mockResolvedValue(updated);
+      (module.get(UsersService).findAdmins as jest.Mock).mockResolvedValue([adminUser]);
+      const notificationsService = module.get(NotificationsService) as any;
+
+      await service.update('cheque-uuid-1', companyId, { status: ChequeStatus.BOUNCED }, 'user-1');
+
+      expect(notificationsService.create).toHaveBeenCalledWith(companyId, expect.objectContaining({
+        title: 'Cheque Bounced',
+        message: expect.stringContaining('has been marked as BOUNCED'),
+        type: NotificationType.CHEQUE_BOUNCED,
+      }));
+    });
+
+    it('sets depositDate to now when status is DEPOSITED and depositDate is null', async () => {
+      const chequeNoDepositDate = { ...mockCheque, depositDate: null } as Cheque;
+      const updated = { ...mockCheque, status: ChequeStatus.DEPOSITED, depositDate: expect.any(Date) } as Cheque;
+      repo.findOne.mockResolvedValue(chequeNoDepositDate);
+      repo.save.mockImplementation(async (c) => {
+        const saved = { ...chequeNoDepositDate, ...c };
+        return saved as Cheque;
+      });
+
+      const result = await service.update('cheque-uuid-1', companyId, { status: ChequeStatus.DEPOSITED });
+
+      expect(result.depositDate).toBeInstanceOf(Date);
+    });
+
+    it('does not allow changing status of a terminal cheque (CLEARED)', async () => {
+      const clearedCheque = { ...mockCheque, status: ChequeStatus.CLEARED } as Cheque;
+      repo.findOne.mockResolvedValue(clearedCheque);
+
+      await expect(
+        service.update('cheque-uuid-1', companyId, { status: ChequeStatus.PENDING } as any),
+      ).rejects.toThrow(BadRequestException);
+
+      expect(repo.save).not.toHaveBeenCalled();
+    });
+
+    it('does not allow changing status of a terminal cheque (CANCELLED)', async () => {
+      const cancelledCheque = { ...mockCheque, status: ChequeStatus.CANCELLED } as Cheque;
+      repo.findOne.mockResolvedValue(cancelledCheque);
+
+      await expect(
+        service.update('cheque-uuid-1', companyId, { status: ChequeStatus.DEPOSITED } as any),
+      ).rejects.toThrow(BadRequestException);
+
+      expect(repo.save).not.toHaveBeenCalled();
+    });
+
+    it('does not allow changing status of a terminal cheque (REPLACED)', async () => {
+      const replacedCheque = { ...mockCheque, status: ChequeStatus.REPLACED } as Cheque;
+      repo.findOne.mockResolvedValue(replacedCheque);
+
+      await expect(
+        service.update('cheque-uuid-1', companyId, { status: ChequeStatus.PENDING } as any),
+      ).rejects.toThrow(BadRequestException);
+
+      expect(repo.save).not.toHaveBeenCalled();
+    });
+
+    it('does not create notifications when status does not change', async () => {
+      const notificationsService = module.get(NotificationsService) as any;
+      const updated = { ...mockCheque, bankName: 'New Bank Name' } as Cheque;
+      repo.findOne.mockResolvedValue({ ...mockCheque } as Cheque);
+      repo.save.mockResolvedValue(updated);
+      (module.get(UsersService).findAdmins as jest.Mock).mockResolvedValue([
+        { id: 'admin-x', name: 'Admin X', email: 'adminx@test.com' },
+      ]);
+
+      await service.update('cheque-uuid-1', companyId, { bankName: 'New Bank Name' } as any);
+
+      expect(notificationsService.create).not.toHaveBeenCalled();
+    });
+
+    it('logs error but continues when notification creation fails', async () => {
+      const adminUser = { id: 'admin-5', name: 'Admin Five', email: 'admin5@test.com' };
+      const updated = { ...mockCheque, status: ChequeStatus.DEPOSITED, depositDate: new Date() } as Cheque;
+      repo.findOne.mockResolvedValue({ ...mockCheque } as Cheque);
+      repo.save.mockResolvedValue(updated);
+      (module.get(UsersService).findAdmins as jest.Mock).mockResolvedValue([adminUser]);
+      const notificationsService = module.get(NotificationsService) as any;
+      notificationsService.create.mockRejectedValue(new Error('Notification service unavailable'));
+      const loggerErrorSpy = jest.spyOn((service as any).logger, 'error').mockImplementation();
+
+      const result = await service.update('cheque-uuid-1', companyId, { status: ChequeStatus.DEPOSITED }, 'user-1');
+
+      expect(result.status).toBe(ChequeStatus.DEPOSITED);
+      expect(loggerErrorSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Failed to create cheque status notification'),
+      );
+
+      loggerErrorSpy.mockRestore();
     });
   });
 

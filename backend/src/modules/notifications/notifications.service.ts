@@ -1,6 +1,6 @@
 import { Injectable, Logger, BadRequestException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, In, LessThanOrEqual, IsNull, MoreThanOrEqual } from 'typeorm';
+import { Repository, In, LessThan, LessThanOrEqual, IsNull, MoreThanOrEqual } from 'typeorm';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { SendNotificationDto, NotificationChannel, NotificationStatus } from './dto/send-notification.dto';
 import { Notification, NotificationType } from './entities/notification.entity';
@@ -205,7 +205,7 @@ export class NotificationsService {
     const overdueCheques = await this.chequeRepository.find({
       where: {
         status: ChequeStatus.PENDING,
-        dueDate: LessThanOrEqual(today),
+        dueDate: LessThan(today),
       },
     });
 
