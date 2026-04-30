@@ -8,6 +8,8 @@ import { UpdateLeadDto } from './dto/update-lead.dto';
 import { CreateLeadActivityDto } from './dto/create-lead-activity.dto';
 import { Company } from '../companies/entities/company.entity';
 import { User } from '../users/entities/user.entity';
+import { Locality } from '../locations/entities/locality.entity';
+import { Unit } from '../properties/entities/unit.entity';
 import { resolveRegionCode } from '../../shared/utils/resolve-region-code.util';
 import { paginationOptions } from '../../shared/utils/pagination.util';
 import { Role } from '../../shared/enums/roles.enum';
@@ -38,11 +40,20 @@ export class LeadsService {
     private readonly companyRepository: Repository<Company>,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+    @InjectRepository(Locality)
+    private readonly localityRepository: Repository<Locality>,
+    @InjectRepository(Unit)
+    private readonly unitRepository: Repository<Unit>,
   ) { }
 
   async create(companyId: string, dto: CreateLeadDto): Promise<Lead> {
-    const regionCode = await resolveRegionCode(this.companyRepository, companyId, dto.regionCode);
-    const lead = this.leadRepository.create({ ...dto, companyId, regionCode });
+    const { propertyId, unitId, regionCode: dtoRegionCode, ...rest } = dto;
+
+    if (propertyId) await this.validateLocalityExists(propertyId);
+    if (unitId) await this.validateUnitOwnership(unitId, companyId);
+
+    const regionCode = await resolveRegionCode(this.companyRepository, companyId, dtoRegionCode);
+    const lead = this.leadRepository.create({ ...rest, propertyId, unitId, companyId, regionCode });
     return this.leadRepository.save(lead);
   }
 
@@ -71,8 +82,16 @@ export class LeadsService {
 
   async update(id: string, companyId: string, dto: UpdateLeadDto, userId?: string, userRole?: string): Promise<LeadResponse> {
     const lead = await this.findLeadEntityOrThrow(id, companyId);
-    const hasStatusUpdate = Object.prototype.hasOwnProperty.call(dto, 'status');
-    const hasAssignmentUpdate = Object.prototype.hasOwnProperty.call(dto, 'assignedTo');
+
+    if (dto.propertyId && dto.propertyId !== lead.propertyId) {
+      await this.validateLocalityExists(dto.propertyId);
+    }
+    if (dto.unitId && dto.unitId !== lead.unitId) {
+      await this.validateUnitOwnership(dto.unitId, companyId);
+    }
+
+    const hasStatusUpdate = 'status' in dto;
+    const hasAssignmentUpdate = 'assignedTo' in dto;
     const previousAssignedTo = lead.assignedTo;
 
     if (hasStatusUpdate && dto.status === null) {
@@ -85,7 +104,7 @@ export class LeadsService {
         throw new ForbiddenException('Only company admins can change lead assignment');
       }
 
-      if (dto.assignedTo !== null && dto.assignedTo !== undefined) {
+      if (dto.assignedTo) {
         assignedAgent = await this.findAssignableAgentOrThrow(dto.assignedTo, companyId);
       }
     }
@@ -96,19 +115,16 @@ export class LeadsService {
 
     Object.assign(lead, dto);
 
-    if (Object.prototype.hasOwnProperty.call(dto, 'propertyId') && dto.propertyId === null) {
-      lead.property = null;
-    }
-    if (Object.prototype.hasOwnProperty.call(dto, 'unitId') && dto.unitId === null) {
-      lead.unit = null;
-    }
-    if (Object.prototype.hasOwnProperty.call(dto, 'assignedTo')) {
+    if (dto.propertyId === null) lead.property = null;
+    if (dto.unitId === null) lead.unit = null;
+
+    if (hasAssignmentUpdate) {
       if (assignmentChanged && previousAssignedTo) {
         lead.previousAgent = previousAssignedTo;
       }
       if (dto.assignedTo === null) {
         lead.assignedAgent = null;
-      } else if (dto.assignedTo !== undefined && assignedAgent) {
+      } else if (dto.assignedTo && assignedAgent) {
         lead.assignedAgent = assignedAgent as User;
       }
     }
@@ -132,16 +148,12 @@ export class LeadsService {
     }
 
     if (assignmentChanged) {
-      const assignmentNotes = assignedAgent
-        ? `Lead assigned to agent ${assignedAgent.name}`
-        : 'Lead unassigned';
-
       await this.activityRepository.save(
         this.activityRepository.create({
           leadId: id,
           companyId,
           type: ActivityType.ASSIGNMENT,
-          notes: assignmentNotes,
+          notes: assignedAgent ? `Lead assigned to agent ${assignedAgent.name}` : 'Lead unassigned',
           performedBy: userId,
         }),
       );
@@ -257,6 +269,24 @@ export class LeadsService {
     }
 
     return agent;
+  }
+
+  private async validateLocalityExists(propertyId: string): Promise<void> {
+    const exists = await this.localityRepository.exist({
+      where: { id: propertyId },
+    });
+    if (!exists) {
+      throw new BadRequestException('Invalid property (locality) selected');
+    }
+  }
+
+  private async validateUnitOwnership(unitId: string, companyId: string): Promise<void> {
+    const unit = await this.unitRepository.findOne({
+      where: { id: unitId, companyId },
+    });
+    if (!unit) {
+      throw new BadRequestException('Invalid unit selected');
+    }
   }
 
   private serializeLead(lead: Lead): LeadResponse {

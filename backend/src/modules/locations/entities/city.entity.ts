@@ -1,8 +1,7 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, OneToMany, Index } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, OneToMany } from 'typeorm';
 import { Locality } from './locality.entity';
 
 @Entity('cities')
-@Index('IDX_cities_name_region', ['name', 'regionCode'], { unique: true })
 export class City {
     @PrimaryGeneratedColumn('uuid')
     id: string;

@@ -1,6 +1,6 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, FindOptionsWhere, In } from 'typeorm';
+import { Repository, FindOptionsWhere, In, Not } from 'typeorm';
 import { PropertyArea } from './entities/property-area.entity';
 import { Asset } from './entities/asset.entity';
 import { Unit, UnitStatus } from './entities/unit.entity';
@@ -15,6 +15,7 @@ import { UpdateUnitDto } from './dto/update-unit.dto';
 import { CreateListingDto } from './dto/create-listing.dto';
 import { UpdateListingDto } from './dto/update-listing.dto';
 import { paginationOptions, pageSkip } from '../../shared/utils/pagination.util';
+import { normalizedNameSql, normalizedNameWhere, sanitizeName, isUniqueViolation } from '../../shared/utils/name-normalization.util';
 
 @Injectable()
 export class PropertiesService {
@@ -75,14 +76,28 @@ export class PropertiesService {
 
     // Assets
     async createAsset(companyId: string, dto: CreateAssetDto): Promise<Asset> {
-        const existing = await this.assetRepository.findOne({
-            where: { name: dto.name, localityId: dto.localityId },
-        });
+        const sanitizedName = sanitizeName(dto.name);
+        const existing = await this.findAssetByNormalizedName(dto.localityId, sanitizedName);
         if (existing) {
             return existing;
         }
-        const asset = this.assetRepository.create({ ...dto, createdByCompanyId: companyId });
-        return this.assetRepository.save(asset);
+        const asset = this.assetRepository.create({
+            ...dto,
+            name: sanitizedName,
+            createdByCompanyId: companyId,
+        });
+        try {
+            return await this.assetRepository.save(asset);
+        } catch (error) {
+            if (isUniqueViolation(error)) {
+                const duplicate = await this.findAssetByNormalizedName(dto.localityId, sanitizedName);
+                if (duplicate) {
+                    return duplicate;
+                }
+            }
+
+            throw error;
+        }
     }
 
     async findAssetsByLocality(localityId: string, companyId: string, page = 1, limit = 20) {
@@ -124,14 +139,31 @@ export class PropertiesService {
     }
 
     async searchAssets(localityId: string, q: string): Promise<any[]> {
+        if (typeof q !== 'string') {
+            return [];
+        }
+
+        const query = sanitizeName(q);
+        if (!query) {
+            return [];
+        }
+
         const results = await this.assetRepository.query(
-            `SELECT id, name, address, similarity(name, $1) AS score
-             FROM buildings
-             WHERE locality_id = $2
-               AND similarity(name, $1) > 0.2
-             ORDER BY score DESC
+            `SELECT *
+             FROM (
+                 SELECT DISTINCT ON (${normalizedNameSql('name')})
+                     id,
+                     name,
+                     address,
+                     similarity(name, $1) AS score
+                 FROM buildings
+                 WHERE locality_id = $2
+                   AND similarity(name, $1) > 0.2
+                 ORDER BY ${normalizedNameSql('name')}, score DESC, name ASC
+             ) deduped
+             ORDER BY score DESC, name ASC
              LIMIT 10`,
-            [q, localityId],
+            [query, localityId],
         );
         return results;
     }
@@ -148,14 +180,52 @@ export class PropertiesService {
     async updateAsset(id: string, dto: UpdateAssetDto): Promise<Asset> {
         const asset = await this.assetRepository.findOne({ where: { id } });
         if (!asset) throw new NotFoundException(`Asset not found`);
-        Object.assign(asset, dto);
-        return this.assetRepository.save(asset);
+
+        if (dto.name !== undefined) {
+            const sanitizedName = sanitizeName(dto.name);
+            if (!sanitizedName) {
+                throw new BadRequestException('Asset name is required and cannot be empty or whitespace-only');
+            }
+            const duplicate = await this.findAssetByNormalizedName(asset.localityId, sanitizedName, id);
+            if (duplicate) {
+                throw new ConflictException('Asset already exists in this locality');
+            }
+
+            asset.name = sanitizedName;
+        }
+
+        if (dto.address !== undefined) {
+            asset.address = dto.address;
+        }
+
+        try {
+            return await this.assetRepository.save(asset);
+        } catch (error) {
+            if (isUniqueViolation(error)) {
+                throw new ConflictException('Asset already exists in this locality');
+            }
+
+            throw error;
+        }
     }
 
     async removeAsset(id: string): Promise<void> {
         const asset = await this.assetRepository.findOne({ where: { id } });
         if (!asset) throw new NotFoundException(`Asset not found`);
         await this.assetRepository.remove(asset);
+    }
+
+    private findAssetByNormalizedName(localityId: string, name: string, excludeId?: string): Promise<Asset | null> {
+        const where: FindOptionsWhere<Asset> = {
+            localityId,
+            name: normalizedNameWhere(name),
+        };
+
+        if (excludeId) {
+            where.id = Not(excludeId);
+        }
+
+        return this.assetRepository.findOne({ where });
     }
 
     // Units

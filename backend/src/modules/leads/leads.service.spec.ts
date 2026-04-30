@@ -7,6 +7,8 @@ import { Lead, LeadStatus, LeadTemperature, LeadSource } from './entities/lead.e
 import { LeadActivity, ActivityType } from './entities/lead-activity.entity';
 import { Company } from '../companies/entities/company.entity';
 import { User } from '../users/entities/user.entity';
+import { Locality } from '../locations/entities/locality.entity';
+import { Unit } from '../properties/entities/unit.entity';
 import { Role } from '@shared/enums/roles.enum';
 
 describe('LeadsService', () => {
@@ -15,6 +17,8 @@ describe('LeadsService', () => {
   let activityRepo: jest.Mocked<Repository<LeadActivity>>;
   let companyRepo: jest.Mocked<Repository<Company>>;
   let userRepo: jest.Mocked<Repository<User>>;
+  let localityRepo: jest.Mocked<Repository<Locality>>;
+  let unitRepo: jest.Mocked<Repository<Unit>>;
 
   const companyId = 'company-uuid-1';
 
@@ -71,6 +75,19 @@ describe('LeadsService', () => {
             findOne: jest.fn(),
           },
         },
+        {
+          provide: getRepositoryToken(Locality),
+          useValue: {
+            findOne: jest.fn(),
+            exist: jest.fn(),
+          },
+        },
+        {
+          provide: getRepositoryToken(Unit),
+          useValue: {
+            findOne: jest.fn(),
+          },
+        },
       ],
     }).compile();
 
@@ -79,6 +96,8 @@ describe('LeadsService', () => {
     activityRepo = module.get(getRepositoryToken(LeadActivity));
     companyRepo = module.get(getRepositoryToken(Company));
     userRepo = module.get(getRepositoryToken(User));
+    localityRepo = module.get(getRepositoryToken(Locality));
+    unitRepo = module.get(getRepositoryToken(Unit));
   });
 
   it('should be defined', () => {
@@ -94,8 +113,30 @@ describe('LeadsService', () => {
       const dto = { firstName: 'Ahmed', source: LeadSource.WHATSAPP };
       const result = await service.create(companyId, dto as any);
 
-      expect(leadRepo.create).toHaveBeenCalledWith({ ...dto, companyId, regionCode: 'dubai' });
+      expect(leadRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({ ...dto, companyId, regionCode: 'dubai' }),
+      );
       expect(result).toEqual(mockLead);
+    });
+
+    it('validates property/locality exists in create', async () => {
+      localityRepo.exist.mockResolvedValue(false);
+      const dto = { firstName: 'Ahmed', propertyId: 'other-company-locality' };
+
+      await expect(service.create(companyId, dto as any)).rejects.toThrow(BadRequestException);
+      expect(localityRepo.exist).toHaveBeenCalledWith({
+        where: { id: 'other-company-locality' },
+      });
+    });
+
+    it('validates unit ownership in create', async () => {
+      unitRepo.findOne.mockResolvedValue(null);
+      const dto = { firstName: 'Ahmed', unitId: 'other-company-unit' };
+
+      await expect(service.create(companyId, dto as any)).rejects.toThrow(BadRequestException);
+      expect(unitRepo.findOne).toHaveBeenCalledWith({
+        where: { id: 'other-company-unit', companyId },
+      });
     });
   });
 
@@ -305,6 +346,27 @@ describe('LeadsService', () => {
       const savedLead = leadRepo.save.mock.calls[0][0] as Lead;
       expect(savedLead.assignedTo).toBeNull();
       expect(savedLead.previousAgent).toBe('old-agent-uuid');
+    });
+
+    it('validates property/locality exists in update', async () => {
+      leadRepo.findOne.mockResolvedValue(mockLead as Lead);
+      localityRepo.exist.mockResolvedValue(false);
+
+      await expect(
+        service.update('lead-uuid-1', companyId, { propertyId: 'other-locality' } as any),
+      ).rejects.toThrow(BadRequestException);
+      expect(localityRepo.exist).toHaveBeenCalledWith({
+        where: { id: 'other-locality' },
+      });
+    });
+
+    it('validates unit ownership in update', async () => {
+      leadRepo.findOne.mockResolvedValue(mockLead as Lead);
+      unitRepo.findOne.mockResolvedValue(null);
+
+      await expect(
+        service.update('lead-uuid-1', companyId, { unitId: 'other-unit' } as any),
+      ).rejects.toThrow(BadRequestException);
     });
   });
 
