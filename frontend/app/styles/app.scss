@@ -910,6 +910,15 @@ input[type="checkbox"]:hover {
     border-color: var(--color-primary);
 }
 
+input[type="checkbox"]:checked:disabled {
+    background: color-mix(in srgb, var(--color-primary) 30%, white);
+    border-color: transparent;
+}
+
+input[type="checkbox"]:checked:disabled::after {
+    border-color: var(--color-primary);
+}
+
 textarea {
     resize: vertical;
     min-height: 80px;
