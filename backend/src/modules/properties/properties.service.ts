@@ -1,4 +1,4 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, FindOptionsWhere, In, Not } from 'typeorm';
 import { PropertyArea } from './entities/property-area.entity';
@@ -183,6 +183,9 @@ export class PropertiesService {
 
         if (dto.name !== undefined) {
             const sanitizedName = sanitizeName(dto.name);
+            if (!sanitizedName) {
+                throw new BadRequestException('Asset name is required and cannot be empty or whitespace-only');
+            }
             const duplicate = await this.findAssetByNormalizedName(asset.localityId, sanitizedName, id);
             if (duplicate) {
                 throw new ConflictException('Asset already exists in this locality');

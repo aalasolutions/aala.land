@@ -37,6 +37,9 @@ export class LocationsService {
 
     async searchCities(dto: SearchCityDto): Promise<CitySearchResult[]> {
         const query = sanitizeName(dto.q);
+        if (!query) {
+            return [];
+        }
         const results = await this.dataSource.query(
             `SELECT *
              FROM (
@@ -60,6 +63,9 @@ export class LocationsService {
 
     async searchLocalities(dto: SearchLocalityDto): Promise<LocalitySearchResult[]> {
         const query = sanitizeName(dto.q);
+        if (!query) {
+            return [];
+        }
         const results = await this.dataSource.query(
             `SELECT *
              FROM (
@@ -82,6 +88,9 @@ export class LocationsService {
 
     async createCity(dto: CreateCityDto, companyId: string): Promise<City> {
         const sanitizedName = sanitizeName(dto.name);
+        if (!sanitizedName) {
+            throw new BadRequestException('City name is required and cannot be empty or whitespace-only');
+        }
         const region = getRegionByCode(dto.regionCode);
         if (!region) {
             throw new BadRequestException(`Invalid region code: ${dto.regionCode}`);
@@ -122,6 +131,9 @@ export class LocationsService {
 
     async createLocality(dto: CreateLocalityDto, companyId: string): Promise<Locality> {
         const sanitizedName = sanitizeName(dto.name);
+        if (!sanitizedName) {
+            throw new BadRequestException('Locality name is required and cannot be empty or whitespace-only');
+        }
         const city = await this.cityRepository.findOne({ where: { id: dto.cityId } });
         if (!city) {
             throw new NotFoundException(`City with ID ${dto.cityId} not found`);
