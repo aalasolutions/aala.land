@@ -96,7 +96,20 @@
           @onNext={{this.goToNextPage}}
         />
       {{else}}
-        <p class="text-muted text-center py-8">No cheques yet. Add your first cheque record.</p>
+        {{#if @model.total}}
+          <p class="text-muted text-center py-8">No cheques on this page. Navigate to find cheques or adjust filters.</p>
+          <Pagination
+            @selectId="cheques-limit"
+            @page={{this.page}}
+            @limit={{this.limit}}
+            @total={{@model.total}}
+            @onLimitChange={{this.setLimit}}
+            @onPrevious={{this.goToPreviousPage}}
+            @onNext={{this.goToNextPage}}
+          />
+        {{else}}
+          <p class="text-muted text-center py-8">No cheques yet. Add your first cheque record.</p>
+        {{/if}}
       {{/if}}
     </div>
   {{/if}}

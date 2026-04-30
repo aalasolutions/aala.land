@@ -68,10 +68,25 @@
         @onNext={{this.goToNextPage}}
       />
     {{else}}
-      <div class="glass-panel p-8 text-center">
-        <Ph @icon="toolbox" @size="48px" @color="var(--text-muted)" />
-        <p class="text-muted mt-3">No vendors yet. Add your first vendor above.</p>
-      </div>
+      {{#if @model.total}}
+        <div class="glass-panel p-8 text-center">
+          <p class="text-muted mt-3">No vendors on page {{this.page}}. Navigate back to find vendors.</p>
+        </div>
+        <Pagination
+          @selectId="vendors-limit"
+          @page={{this.page}}
+          @limit={{this.limit}}
+          @total={{@model.total}}
+          @onLimitChange={{this.setLimit}}
+          @onPrevious={{this.goToPreviousPage}}
+          @onNext={{this.goToNextPage}}
+        />
+      {{else}}
+        <div class="glass-panel p-8 text-center">
+          <Ph @icon="toolbox" @size="48px" @color="var(--text-muted)" />
+          <p class="text-muted mt-3">No vendors yet. Add your first vendor above.</p>
+        </div>
+      {{/if}}
     {{/if}}
   </div>
 </div>

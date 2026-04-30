@@ -86,14 +86,20 @@
           </tbody>
         </table>
       {{else}}
-        <div class="glass-panel p-8 text-center">
-          <Ph @icon="hand-coins" @size="32px" @color="var(--text-muted)" />
-          <p class="text-muted mt-2">No commissions found.</p>
-        </div>
+        {{#if @model.total}}
+          <div class="glass-panel p-8 text-center">
+            <p class="text-muted mt-2">No commissions on this page with current filters. Navigate to find commissions or adjust filters.</p>
+          </div>
+        {{else}}
+          <div class="glass-panel p-8 text-center">
+            <Ph @icon="hand-coins" @size="32px" @color="var(--text-muted)" />
+            <p class="text-muted mt-2">No commissions found.</p>
+          </div>
+        {{/if}}
       {{/if}}
     </div>
 
-    {{#if this.filteredCommissions.length}}
+    {{#if @model.total}}
       <Pagination
         @selectId="commissions-limit"
         @page={{this.page}}

@@ -105,7 +105,20 @@
           @onNext={{this.goToNextPage}}
         />
       {{else}}
-        <p class="text-muted text-center py-8">No work orders match your filters.</p>
+        {{#if @model.total}}
+          <p class="text-muted text-center py-8">No work orders on this page with current filters. Navigate to find orders or adjust filters.</p>
+          <Pagination
+            @selectId="maintenance-limit"
+            @page={{this.page}}
+            @limit={{this.limit}}
+            @total={{@model.total}}
+            @onLimitChange={{this.setLimit}}
+            @onPrevious={{this.goToPreviousPage}}
+            @onNext={{this.goToNextPage}}
+          />
+        {{else}}
+          <p class="text-muted text-center py-8">No work orders match your filters.</p>
+        {{/if}}
       {{/if}}
     </div>
   {{/if}}
