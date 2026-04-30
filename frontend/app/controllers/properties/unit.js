@@ -58,8 +58,10 @@ export default class PropertiesUnitController extends Controller {
   propertyTypeOptions = PROPERTY_TYPE_OPTIONS;
 
   get unitAmenities() {
-    const amenities = this.model?.unit?.amenities || [];
-    return amenities.map((key) => {
+    const amenities = this.model?.unit?.amenities;
+    const amenityList = Array.isArray(amenities) ? amenities : [];
+
+    return amenityList.map((key) => {
       const option = AMENITY_OPTIONS.find((opt) => opt.key === key);
       if (option) return option;
 

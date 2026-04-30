@@ -40,7 +40,7 @@
               </div>
             </div>
             {{#if asset.units.length}}
-              <div class="grid-cols-3 gap-4">
+              <div class="grid-cols-3">
                 {{#each asset.units as |unit|}}
                   <div data-test-unit-card data-test-unit-id={{unit.id}} class="unit-card-premium flex col gap-3">
                     <div class="flex between x-center border-b border-light pb-2">
@@ -65,14 +65,14 @@
                     </div>
 
                     <div class="unit-amenities-strip">
-                      <span class="flex x-center gap-1 {{unless unit.bedrooms 'opacity-50'}}">
-                        <Ph @icon="bed" /> {{if unit.bedrooms unit.bedrooms "-"}}
+                      <span class="flex x-center gap-1 {{unless (has-value unit.bedrooms) 'opacity-50'}}">
+                        <Ph @icon="bed" /> {{if (has-value unit.bedrooms) unit.bedrooms "-"}}
                       </span>
-                      <span class="flex x-center gap-1 {{unless unit.bathrooms 'opacity-50'}}">
-                        <Ph @icon="bathtub" /> {{if unit.bathrooms unit.bathrooms "-"}}
+                      <span class="flex x-center gap-1 {{unless (has-value unit.bathrooms) 'opacity-50'}}">
+                        <Ph @icon="bathtub" /> {{if (has-value unit.bathrooms) unit.bathrooms "-"}}
                       </span>
-                      <span class="flex x-center gap-1 {{unless unit.sqFt 'opacity-50'}}">
-                        <Ph @icon="selection" /> {{if unit.sqFt (format-number unit.sqFt) "-"}}
+                      <span class="flex x-center gap-1 {{unless (has-value unit.sqFt) 'opacity-50'}}">
+                        <Ph @icon="selection" /> {{if (has-value unit.sqFt) (format-number unit.sqFt) "-"}}
                       </span>
                     </div>
 
@@ -80,7 +80,7 @@
                       <LinkTo @route="properties.unit" @models={{array @model.localityId unit.id}} class="btn btn-primary btn-sm flex-1 justify-center" data-test-view-unit>
                         View Details
                       </LinkTo>
-                      <button type="button" class="btn btn-secondary btn-sm" {{on "click" (fn this.openEditUnit unit asset.id)}}>
+                      <button type="button" class="btn btn-secondary btn-sm" aria-label="Edit unit" title="Edit unit" {{on "click" (fn this.openEditUnit unit asset.id)}}>
                         <Ph @icon="pencil" />
                       </button>
                     </div>
