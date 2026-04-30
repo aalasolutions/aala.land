@@ -2,6 +2,7 @@ import Controller from '@ember/controller';
 import { service } from '@ember/service';
 import { action } from '@ember/object';
 import { tracked } from '@glimmer/tracking';
+import { isAdminRole } from '../utils/roles';
 
 export default class ApplicationController extends Controller {
   @service session;
@@ -10,8 +11,7 @@ export default class ApplicationController extends Controller {
   @service region;
 
   get isAdmin() {
-    const role = this.auth.currentUser?.role;
-    return role === 'company_admin' || role === 'super_admin';
+    return isAdminRole(this.auth.currentUser?.role);
   }
 
   @tracked unreadCount = 0;

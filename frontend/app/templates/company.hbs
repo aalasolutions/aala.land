@@ -13,25 +13,29 @@
     <div class="glass-panel p-6">
       <h3 class="font-lg font-bold mb-4">Company Information</h3>
       <form class="flex col gap-4" {{on "submit" this.saveCompany}}>
-        <FormInput @label="Company Name" @id="company-name" @type="text" @value={{or this.formName this.company.name}} @onChange={{fn this.setField "formName"}} @required={{true}} />
+        <FormInput @label="Company Name" @id="company-name" @type="text" @value={{or this.formName this.company.name}} @onChange={{fn this.setField "formName"}} @required={{true}} @readonly={{not this.isAdmin}} />
 
         <FormInput @label="Email" @id="company-email" @type="email" @value={{this.company.email}} @disabled={{true}} />
 
         <FormInput @label="Plan" @id="company-plan" @type="text" @value={{or this.company.subscriptionTier "FREE"}} @disabled={{true}} />
+
+        {{#unless this.isAdmin}}
+          <p class="font-sm text-muted">Only company admins and super admins can change these settings.</p>
+        {{/unless}}
 
         {{#if this.errorMsg}}
           <p class="text-danger">{{this.errorMsg}}</p>
         {{/if}}
 
         <div class="form-actions">
-          <AppButton @variant="primary" @buttonType="submit" @text="Save Changes" @loading={{this.isSaving}} @loadingText="Saving..." />
+          <AppButton @variant="primary" @buttonType="submit" @text="Save Changes" @loading={{this.isSaving}} @loadingText="Saving..." @disabled={{not this.isAdmin}} />
         </div>
       </form>
     </div>
 
     {{! Right: Operating Regions }}
     {{#if this.model.regions.length}}
-      <div class="glass-panel p-6" data-test-region-settings>
+      <div class="glass-panel p-6 {{unless this.isAdmin 'region-settings-readonly'}}" data-test-region-settings>
         <h3 class="font-lg font-bold mb-2">Operating Regions</h3>
         <p class="font-sm text-muted mb-4">
           Select states where your company operates. Your {{or this.company.subscriptionTier "FREE"}} plan includes {{if (eq this.maxCountries 999) "unlimited countries" (if (eq this.maxCountries 1) "1 country" (concat this.maxCountries " countries"))}}.
@@ -40,14 +44,14 @@
         {{! Default Region (above the list) }}
         {{#if this.formActiveRegions.length}}
           <div class="mb-4">
-            <FormDropdown @label="Default Region" @id="default-region" @value={{this.formDefaultRegionCode}} @onChange={{fn this.setField "formDefaultRegionCode"}} @options={{this.activeRegionOptions}} @placeholder="Select default region..." data-test-default-region />
+            <FormDropdown @label="Default Region" @id="default-region" @value={{this.formDefaultRegionCode}} @onChange={{fn this.setField "formDefaultRegionCode"}} @options={{this.activeRegionOptions}} @placeholder="Select default region..." @disabled={{not this.isAdmin}} data-test-default-region />
           </div>
         {{/if}}
 
         <p class="font-sm font-bold text-muted uppercase mb-3">Available Regions</p>
 
         {{#each this.model.groupedRegions as |group|}}
-          <div class="region-country-group mb-2" data-test-country-group={{group.country}}>
+          <div class="region-country-group mb-2 {{unless this.isAdmin 'is-readonly'}}" data-test-country-group={{group.country}}>
             <button type="button" class="region-country-header" {{on "click" (fn this.toggleCountry group.country)}}>
               <span class="country-name">{{group.countryName}}</span>
               <span class="country-meta">
@@ -63,9 +67,10 @@
             {{#if (includes this.expandedCountries group.country)}}
               <div class="region-grid mt-2 mb-2 ml-2">
                 {{#each group.regions as |r|}}
-                  <div class="region-checkbox" data-test-region-checkbox={{r.code}}>
+                  <div class="region-checkbox {{unless this.isAdmin 'is-readonly'}}" data-test-region-checkbox={{r.code}}>
                     <input type="checkbox" id={{r.code}}
                       checked={{includes this.formActiveRegions r.code}}
+                      disabled={{not this.isAdmin}}
                       {{on "change" (fn this.toggleRegion r.code)}} />
                     <label for={{r.code}} class="region-check-label">
                       {{r.name}} <span class="text-muted font-xs">({{r.currency}})</span>

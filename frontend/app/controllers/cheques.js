@@ -2,6 +2,7 @@ import Controller from '@ember/controller';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
+import { isAdminRole } from '../utils/roles';
 
 const CHEQUE_TYPE_OPTIONS = [
   { value: 'RENT', label: 'Rent' },
@@ -36,8 +37,7 @@ export default class ChequesController extends Controller {
   @tracked formBounceReason = '';
 
   get isAdmin() {
-    const role = this.auth.currentUser?.role;
-    return role === 'company_admin' || role === 'super_admin';
+    return isAdminRole(this.auth.currentUser?.role);
   }
 
   get chequeTypeOptions() {
