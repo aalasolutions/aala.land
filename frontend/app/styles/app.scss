@@ -926,6 +926,114 @@ textarea {
 
 .search-box {
     width: 300px;
+    position: relative;
+    z-index: 1051;
+}
+
+.search-overlay {
+    position: fixed;
+    inset: 0;
+    background: transparent;
+    z-index: 1049;
+    border: none;
+    cursor: default;
+}
+
+.search-dropdown {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    width: 100%;
+    min-width: 280px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-popover);
+    z-index: 1050;
+    overflow: hidden;
+}
+
+.search-dropdown-results {
+    display: flex;
+    flex-direction: column;
+}
+
+.search-dropdown-state {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-4);
+    color: var(--text-muted);
+    font-size: var(--font-sm);
+}
+
+.search-group {
+    &:not(:last-child) {
+        border-bottom: 1px solid var(--border-light);
+    }
+}
+
+.search-group-label {
+    padding: var(--space-2) var(--space-4);
+    font-size: var(--font-xs);
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    background: var(--bg-muted);
+}
+
+.search-result-item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    width: 100%;
+    padding: var(--space-3) var(--space-4);
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid var(--border-light);
+    cursor: pointer;
+    text-align: left;
+    transition: background var(--transition-fast);
+
+    &:last-child {
+        border-bottom: none;
+    }
+
+    &:hover {
+        background: var(--bg-hover-subtle);
+    }
+}
+
+.search-result-item.active,
+.search-result-item[aria-selected="true"] {
+    background: var(--bg-hover-subtle);
+}
+
+.search-result-icon {
+    color: var(--text-muted);
+    flex-shrink: 0;
+}
+
+.search-result-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.search-result-name {
+    font-size: var(--font-sm);
+    color: var(--text-primary);
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.search-result-sub {
+    font-size: var(--font-xs);
+    color: var(--text-muted);
 }
 
 .search-input {

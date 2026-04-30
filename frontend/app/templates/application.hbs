@@ -145,8 +145,29 @@
             aria-label="Search"
             placeholder="Search..."
             class="search-input"
+            role="combobox"
+            aria-autocomplete="list"
+            aria-haspopup="listbox"
+            aria-expanded={{if this.showSearchDropdown "true" "false"}}
+            aria-controls="search-results"
+            aria-activedescendant={{this.activeSearchResultId}}
+            value={{this.searchQuery}}
+            {{on "input" this.onSearchInput}}
+            {{on "keydown" this.onSearchKeydown}}
           />
+          {{#if this.showSearchDropdown}}
+            <SearchDropdown
+              id="search-results"
+              @results={{this.searchResults}}
+              @isSearching={{this.isSearching}}
+              @onSelect={{this.onSearchSelect}}
+              @activeIndex={{this.activeSearchIndex}}
+            />
+          {{/if}}
         </div>
+        {{#if this.showSearchDropdown}}
+          <div class="search-overlay" {{on "click" this.closeSearch}}></div>
+        {{/if}}
         <div class="topbar-actions">
           {{#if this.showRegionSwitcher}}
             <div class="region-switcher" data-test-region-switcher>

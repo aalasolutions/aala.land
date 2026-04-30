@@ -1,0 +1,53 @@
+<div class="search-dropdown">
+  <div id="search-results" class="search-dropdown-results" ...attributes>
+    {{#if @isSearching}}
+      <div class="search-dropdown-state" role="status" aria-live="polite">
+        <Ph @icon="spinner" @size="16px" />
+        <span>Searching...</span>
+      </div>
+    {{else if @results}}
+      {{#if (and (not @results.properties.length) (not @results.agents.length))}}
+        <div class="search-dropdown-state" role="status" aria-live="polite">
+          <Ph @icon="magnifying-glass" @size="16px" />
+          <span>No results found</span>
+        </div>
+      {{else}}
+        <div role="listbox" aria-label="Search results">
+          {{#each this.groupedResults as |group|}}
+            <div class="search-group" role="group" aria-labelledby={{group.groupId}}>
+              <div class="search-group-label" id={{group.groupId}}>{{group.label}}</div>
+              {{#each group.items as |item|}}
+                <button
+                  type="button"
+                  id={{item.id}}
+                  class="search-result-item {{if (eq item.index @activeIndex) 'active'}}"
+                  role="option"
+                  aria-selected={{if (eq item.index @activeIndex) "true" "false"}}
+                  {{on "click" (fn @onSelect item.value)}}
+                >
+                  {{#if (eq group.label "Properties")}}
+                    <Ph
+                      @icon={{if (eq item.value.type "city") "map-pin" (if (eq item.value.type "locality") "map-trifold" "buildings")}}
+                      @size="15px"
+                      class="search-result-icon"
+                    />
+                    <div class="search-result-text">
+                      <span class="search-result-name">{{item.value.name}}</span>
+                      <span class="search-result-sub">{{item.value.subtitle}}</span>
+                    </div>
+                  {{else}}
+                    <Ph @icon="user" @size="15px" class="search-result-icon" />
+                    <div class="search-result-text">
+                      <span class="search-result-name">{{item.value.name}}</span>
+                      <span class="search-result-sub">{{format-role item.value.subtitle}}</span>
+                    </div>
+                  {{/if}}
+                </button>
+              {{/each}}
+            </div>
+          {{/each}}
+        </div>
+      {{/if}}
+    {{/if}}
+  </div>
+</div>
