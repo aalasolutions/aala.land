@@ -25,6 +25,7 @@ export default class ApplicationController extends Controller {
   @tracked searchResults = null;
   @tracked showSearchDropdown = false;
   @tracked isSearching = false;
+  @tracked searchError = false;
   _searchTimer = null;
 
   get showRegionSwitcher() {
@@ -156,6 +157,8 @@ export default class ApplicationController extends Controller {
     if (this.searchQuery.length < 2) {
       this.showSearchDropdown = false;
       this.searchResults = null;
+      this.searchError = false;
+      this.isSearching = false;
       return;
     }
 
@@ -163,6 +166,7 @@ export default class ApplicationController extends Controller {
       const queryAtTimeOfRequest = this.searchQuery;
       this.isSearching = true;
       this.showSearchDropdown = true;
+      this.searchError = false;
       try {
         const result = await this.auth.fetchJson(`/search?q=${encodeURIComponent(queryAtTimeOfRequest)}`);
         if (queryAtTimeOfRequest === this.searchQuery) {
@@ -170,7 +174,8 @@ export default class ApplicationController extends Controller {
         }
       } catch {
         if (queryAtTimeOfRequest === this.searchQuery) {
-          this.searchResults = { properties: [], agents: [] };
+          this.searchError = true;
+          this.searchResults = null;
         }
       } finally {
         if (queryAtTimeOfRequest === this.searchQuery) {
@@ -190,6 +195,8 @@ export default class ApplicationController extends Controller {
     this.showSearchDropdown = false;
     this.searchQuery = '';
     this.searchResults = null;
+    this.searchError = false;
+    this.isSearching = false;
     clearTimeout(this._searchTimer);
   }
 

@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { SearchController } from './search.controller';
 import { SearchService } from './search.service';
-import { JwtAuthGuard } from '../../shared/guards/jwt-auth.guard';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { INestApplication } from '@nestjs/common';
 import * as request from 'supertest';
 
@@ -87,7 +87,7 @@ describe('SearchController', () => {
       // We can add a simple end-to-end test using supertest to ensure the guard is active.
       mockJwtAuthGuard.canActivate.mockReturnValue(false);
       const response = await request(app.getHttpServer()).get('/search?q=test');
-      expect(response.status).toBe(401); // Unauthorized if guard returns false
+      expect(response.status).toBe(403); // Forbidden if guard returns false
     });
 
     it('should return 200 for authenticated request', async () => {
