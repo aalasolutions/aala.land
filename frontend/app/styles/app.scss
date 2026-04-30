@@ -759,6 +759,11 @@ body {
     border: 1px solid var(--border-light);
     border-radius: var(--radius-sm);
     overflow: hidden;
+
+    &.is-readonly {
+        border-color: color-mix(in srgb, var(--border-light) 75%, transparent);
+        background: color-mix(in srgb, var(--bg-muted) 35%, transparent);
+    }
 }
 
 .region-country-header {
@@ -800,6 +805,28 @@ body {
     &:hover { background: var(--bg-hover); }
 }
 
+.region-settings-readonly {
+    .region-country-header {
+        background: color-mix(in srgb, var(--bg-surface) 82%, var(--bg-muted));
+        color: color-mix(in srgb, var(--text-primary) 78%, white);
+    }
+
+    .region-country-header:hover {
+        background: color-mix(in srgb, var(--bg-surface) 82%, var(--bg-muted));
+    }
+
+    .region-total,
+    .region-check-label,
+    .text-muted {
+        color: color-mix(in srgb, var(--text-muted) 78%, white);
+    }
+
+    .region-selected-badge {
+        background: color-mix(in srgb, var(--bg-primary-soft-strong) 55%, white);
+        color: color-mix(in srgb, var(--color-primary) 70%, white);
+    }
+}
+
 .region-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
@@ -827,6 +854,18 @@ body {
         background: var(--bg-primary-subtle);
         box-shadow: 0 0 0 1px var(--color-primary);
     }
+
+    &.is-readonly {
+        cursor: not-allowed;
+        background: color-mix(in srgb, var(--bg-muted) 45%, transparent);
+        border-color: color-mix(in srgb, var(--border-light) 72%, transparent);
+        opacity: 0.78;
+    }
+
+    &.is-readonly:hover {
+        border-color: color-mix(in srgb, var(--border-light) 72%, transparent);
+        background: color-mix(in srgb, var(--bg-muted) 45%, transparent);
+    }
 }
 
 .region-check-label {
@@ -842,6 +881,12 @@ input[type="checkbox"] {
     cursor: pointer;
     position: relative;
     background: var(--bg-surface);
+}
+
+input[type="checkbox"]:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+    background: color-mix(in srgb, var(--bg-muted) 70%, white);
 }
 
 input[type="checkbox"]:checked {
@@ -862,6 +907,15 @@ input[type="checkbox"]:checked::after {
 }
 
 input[type="checkbox"]:hover {
+    border-color: var(--color-primary);
+}
+
+input[type="checkbox"]:checked:disabled {
+    background: color-mix(in srgb, var(--color-primary) 30%, white);
+    border-color: transparent;
+}
+
+input[type="checkbox"]:checked:disabled::after {
     border-color: var(--color-primary);
 }
 
