@@ -899,6 +899,11 @@ textarea {
     overflow: hidden;
 }
 
+.search-dropdown-results {
+    display: flex;
+    flex-direction: column;
+}
+
 .search-dropdown-state {
     display: flex;
     align-items: center;
