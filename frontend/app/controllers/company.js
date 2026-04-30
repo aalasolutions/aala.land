@@ -104,7 +104,7 @@ export default class CompanyController extends Controller {
   @action async saveCompany(event) {
     event.preventDefault();
     if (!this.isAdmin) {
-      this.errorMsg = 'Only company admins can update company settings.';
+      this.errorMsg = 'Only company admins and super admins can update company settings.';
       return;
     }
 
