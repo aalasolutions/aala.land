@@ -148,7 +148,7 @@
             role="combobox"
             aria-autocomplete="list"
             aria-haspopup="listbox"
-            aria-expanded={{if this.showSearchDropdown ? "true" : "false"}}
+            aria-expanded={{if this.showSearchDropdown "true" "false"}}
             aria-controls="search-results"
             aria-activedescendant={{this.activeSearchResultId}}
             value={{this.searchQuery}}
