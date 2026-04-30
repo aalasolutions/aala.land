@@ -160,15 +160,22 @@ export default class ApplicationController extends Controller {
     }
 
     this._searchTimer = setTimeout(async () => {
+      const queryAtTimeOfRequest = this.searchQuery;
       this.isSearching = true;
       this.showSearchDropdown = true;
       try {
-        const result = await this.auth.fetchJson(`/search?q=${encodeURIComponent(this.searchQuery)}`);
-        this.searchResults = result.data;
+        const result = await this.auth.fetchJson(`/search?q=${encodeURIComponent(queryAtTimeOfRequest)}`);
+        if (queryAtTimeOfRequest === this.searchQuery) {
+          this.searchResults = result.data;
+        }
       } catch {
-        this.searchResults = { properties: [], agents: [] };
+        if (queryAtTimeOfRequest === this.searchQuery) {
+          this.searchResults = { properties: [], agents: [] };
+        }
       } finally {
-        this.isSearching = false;
+        if (queryAtTimeOfRequest === this.searchQuery) {
+          this.isSearching = false;
+        }
       }
     }, 300);
   }
@@ -183,6 +190,7 @@ export default class ApplicationController extends Controller {
     this.showSearchDropdown = false;
     this.searchQuery = '';
     this.searchResults = null;
+    clearTimeout(this._searchTimer);
   }
 
   @action

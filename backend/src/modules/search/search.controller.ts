@@ -22,8 +22,8 @@ export class SearchController {
     ) {
         const trimmed = q?.trim() ?? '';
         if (trimmed.length < 2 || trimmed.length > 100) {
-            return { data: { properties: [], agents: [] } };
+            return { properties: [], agents: [] };
         }
-        return { data: await this.searchService.search(trimmed, req.user.companyId, regionCode) };
+        return await this.searchService.search(trimmed, req.user.companyId, regionCode);
     }
 }
