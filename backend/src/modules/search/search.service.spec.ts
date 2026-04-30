@@ -61,7 +61,7 @@ describe('SearchService', () => {
   it('should filter by companyId', async () => {
     const companyId = 'company2';
     const q = 'test';
-    const term = `%${q}%`;
+    const term = `${q.toLowerCase()}%`;
 
     dataSource.query.mockResolvedValue([]); // Mock all queries to return empty
 
@@ -75,7 +75,7 @@ describe('SearchService', () => {
     const companyId = 'company1';
     const regionCode = 'dubai';
     const q = 'test';
-    const term = `%${q}%`;
+    const term = `${q.toLowerCase()}%`;
 
     dataSource.query.mockResolvedValue([]);
 
@@ -90,7 +90,7 @@ describe('SearchService', () => {
   it('should handle different query parameters for regionCode present/absent', async () => {
     const companyId = 'company1';
     const q = 'test';
-    const term = `%${q}%`;
+    const term = `${q.toLowerCase()}%`;
 
     dataSource.query.mockResolvedValue([]);
 
@@ -102,5 +102,21 @@ describe('SearchService', () => {
     dataSource.query.mockClear();
     await service.search(q, companyId, 'dubai');
     expect(dataSource.query).toHaveBeenCalledWith(expect.stringContaining('region_code'), expect.arrayContaining([term, companyId, 'dubai']));
+  });
+
+  it('should exclude super_admin users from agent search results', async () => {
+    const companyId = 'company1';
+    const q = 'test';
+    const term = `${q.toLowerCase()}%`;
+
+    dataSource.query.mockResolvedValue([]);
+
+    await service.search(q, companyId);
+
+    // Verify the agents query excludes super_admin users
+    expect(dataSource.query).toHaveBeenCalledWith(
+      expect.stringContaining("role != 'super_admin'"),
+      expect.arrayContaining([term, companyId])
+    );
   });
 });

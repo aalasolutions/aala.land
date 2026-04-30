@@ -946,6 +946,11 @@ textarea {
     }
 }
 
+.search-result-item.active,
+.search-result-item[aria-selected="true"] {
+    background: var(--bg-hover-subtle);
+}
+
 .search-result-icon {
     color: var(--text-muted);
     flex-shrink: 0;

@@ -6,9 +6,10 @@ export class SearchService {
     constructor(private readonly dataSource: DataSource) {}
 
     private queryWithOptionalRegion(sql: string, params: unknown[], regionCode?: string) {
+        const paramIndex = regionCode ? params.length + 1 : 0;
         const finalSql = sql.replace(
             '/* REGION_FILTER */',
-            regionCode ? 'AND c.region_code = $3' : '',
+            regionCode ? `AND c.region_code = $${paramIndex}` : '',
         );
         return this.dataSource.query(
             finalSql,
@@ -17,14 +18,19 @@ export class SearchService {
     }
 
     async search(q: string, companyId: string, regionCode?: string) {
-        const term = `%${q}%`;
+        const query = q?.trim();
+        if (!query || query.length < 2) {
+            return { properties: [], agents: [] };
+        }
+
+        const term = `${query.toLowerCase()}%`;
         const [cities, localities, assets, agents] = await Promise.all([
             this.queryWithOptionalRegion(
                 `SELECT DISTINCT c.id, c.name
                  FROM cities c
                  INNER JOIN localities l ON l.city_id = c.id
                  INNER JOIN buildings b ON b.locality_id = l.id
-                 WHERE c.name ILIKE $1
+                 WHERE LOWER(c.name) LIKE $1
                    /* REGION_FILTER */
                    AND (b.company_id = $2
                         OR EXISTS (SELECT 1 FROM units u WHERE u.building_id = b.id AND u.company_id = $2))
@@ -37,7 +43,7 @@ export class SearchService {
                  FROM localities l
                  INNER JOIN cities c ON c.id = l.city_id
                  INNER JOIN buildings b ON b.locality_id = l.id
-                 WHERE l.name ILIKE $1
+                 WHERE LOWER(l.name) LIKE $1
                    /* REGION_FILTER */
                    AND (b.company_id = $2
                         OR EXISTS (SELECT 1 FROM units u WHERE u.building_id = b.id AND u.company_id = $2))
@@ -51,7 +57,7 @@ export class SearchService {
                  FROM buildings b
                  INNER JOIN localities l ON l.id = b.locality_id
                  INNER JOIN cities c ON c.id = l.city_id
-                 WHERE b.name ILIKE $1
+                 WHERE LOWER(b.name) LIKE $1
                    /* REGION_FILTER */
                    AND (b.company_id = $2
                         OR EXISTS (SELECT 1 FROM units u WHERE u.building_id = b.id AND u.company_id = $2))
@@ -62,7 +68,7 @@ export class SearchService {
             this.dataSource.query(
                 `SELECT id, name, role
                  FROM users
-                 WHERE name ILIKE $1
+                 WHERE LOWER(name) LIKE $1
                    AND company_id = $2
                    AND is_active = true
                    AND role != 'super_admin'

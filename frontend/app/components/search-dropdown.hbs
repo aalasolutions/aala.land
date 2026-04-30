@@ -11,48 +11,39 @@
         <span>No results found</span>
       </div>
     {{else}}
-      <div role="listbox" aria-label="Search results">
-        {{#if @results.properties.length}}
-          <div class="search-group" role="group" aria-labelledby="search-group-properties-label">
-            <div class="search-group-label" id="search-group-properties-label">Properties</div>
-            {{#each @results.properties as |result|}}
+      <div role="listbox" aria-label="Search results" ...attributes>
+        {{#each this.groupedResults as |group|}}
+          <div class="search-group" role="group" aria-labelledby={{group.groupId}}>
+            <div class="search-group-label" id={{group.groupId}}>{{group.label}}</div>
+            {{#each group.items as |item|}}
               <button
-                type="button"
-                class="search-result-item"
-                role="option"
-                aria-selected="false"
-                {{on "click" (fn @onSelect result)}}
-              >
-                <Ph
-                  @icon={{if (eq result.type "city") "map-pin" (if (eq result.type "locality") "map-trifold" "buildings")}}
-                  @size="15px"
-                  class="search-result-icon"
-                />
-                <div class="search-result-text">
-                  <span class="search-result-name">{{result.name}}</span>
-                  <span class="search-result-sub">{{result.subtitle}}</span>
-                </div>
-              </button>
-            {{/each}}
-          </div>
-        {{/if}}
-        {{#if @results.agents.length}}
-          <div class="search-group" role="group" aria-labelledby="search-group-agents-label">
-            <div class="search-group-label" id="search-group-agents-label">Agents</div>
-            {{#each @results.agents as |agent|}}
-              <button
-                type="button"
-                class="search-result-item"
-                role="option"
-                aria-selected="false"
-                {{on "click" (fn @onSelect agent)}}
-              >
-                <Ph @icon="user" @size="15px" class="search-result-icon" />
-                <div class="search-result-text">
-                  <span class="search-result-name">{{agent.name}}</span>
-                  <span class="search-result-sub">{{format-role agent.subtitle}}</span>
-                </div>
-              </button>
+                    type="button"
+                    id={{item.id}}
+                    class="search-result-item {{if (eq item.index @activeIndex) 'active'}}"
+                    role="option"
+                    aria-selected={{if (eq item.index @activeIndex) "true" "false"}}
+                    {{on "click" (fn @onSelect item.value)}}
+                  >
+                    {{#if (eq group.label "Properties")}}
+                      <Ph
+                        @icon={{if (eq item.value.type "city") "map-pin" (if (eq item.value.type "locality") "map-trifold" "buildings")}}
+                        @size="15px"
+                        class="search-result-icon"
+                      />
+                      <div class="search-result-text">
+                        <span class="search-result-name">{{item.value.name}}</span>
+                        <span class="search-result-sub">{{item.value.subtitle}}</span>
+                      </div>
+                    {{else}}
+                      <Ph @icon="user" @size="15px" class="search-result-icon" />
+                      <div class="search-result-text">
+                        <span class="search-result-name">{{item.value.name}}</span>
+                        <span class="search-result-sub">{{format-role item.value.subtitle}}</span>
+                      </div>
+                    {{/if}}
+                  </button>
+                {{/each}}
+              </div>
             {{/each}}
           </div>
         {{/if}}
