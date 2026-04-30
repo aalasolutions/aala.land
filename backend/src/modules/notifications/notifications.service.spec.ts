@@ -15,6 +15,7 @@ import { NotificationsGateway } from './notifications.gateway';
 describe('NotificationsService', () => {
   let service: NotificationsService;
   let repo: jest.Mocked<Repository<Notification>>;
+  let gateway: { sendNotificationToUser: jest.Mock };
   let module: TestingModule;
 
   const companyId = 'company-uuid-1';
@@ -102,6 +103,7 @@ describe('NotificationsService', () => {
 
     service = module.get<NotificationsService>(NotificationsService);
     repo = module.get(getRepositoryToken(Notification));
+    gateway = module.get(NotificationsGateway);
   });
 
   afterEach(() => {
@@ -132,7 +134,34 @@ describe('NotificationsService', () => {
 
       expect(repo.create).toHaveBeenCalledWith({ ...dto, companyId });
       expect(repo.save).toHaveBeenCalled();
+      expect(gateway.sendNotificationToUser).toHaveBeenCalledWith(userId, mockNotification);
       expect(result).toEqual(mockNotification);
+    });
+
+    it('returns the notification when socket emission fails', async () => {
+      repo.create.mockReturnValue(mockNotification as Notification);
+      repo.save.mockResolvedValue(mockNotification as Notification);
+      gateway.sendNotificationToUser.mockImplementation(() => {
+        throw new Error('socket unavailable');
+      });
+
+      const loggerErrorSpy = jest.spyOn((service as any).logger, 'error').mockImplementation();
+      const dto = {
+        userId,
+        title: 'New Lead Assigned',
+        message: 'Lead Ahmed Al-Rashid has been assigned to you',
+        type: NotificationType.LEAD_ASSIGNED,
+        entityType: 'lead',
+        entityId: 'lead-uuid-1',
+      };
+
+      const result = await service.create(companyId, dto);
+
+      expect(result).toEqual(mockNotification);
+      expect(gateway.sendNotificationToUser).toHaveBeenCalledWith(userId, mockNotification);
+      expect(loggerErrorSpy).toHaveBeenCalledWith(
+        'Failed to emit notification via socket: socket unavailable',
+      );
     });
   });
 

@@ -20,6 +20,8 @@
     <button
       type="button"
       class="table-pagination__button"
+      aria-label="Previous page"
+      title="Previous page"
       disabled={{this.disablePrevious}}
       {{on "click" @onPrevious}}
     >
@@ -33,6 +35,8 @@
     <button
       type="button"
       class="table-pagination__button"
+      aria-label="Next page"
+      title="Next page"
       disabled={{this.disableNext}}
       {{on "click" @onNext}}
     >

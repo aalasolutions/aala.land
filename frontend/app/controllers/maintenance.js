@@ -1,4 +1,4 @@
-import Controller from '@ember/controller';
+import PaginatedController from './paginated-base';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
@@ -37,15 +37,13 @@ const CATEGORY_OPTIONS = [
   { value: 'OTHER', label: 'Other' },
 ];
 
-export default class MaintenanceController extends Controller {
+export default class MaintenanceController extends PaginatedController {
   @service auth;
   @service notifications;
   @service router;
 
   queryParams = ['page', 'limit', 'filterStatus', 'filterMonth'];
 
-  @tracked page = 1;
-  @tracked limit = 10;
   @tracked filterStatus = '';
   @tracked filterMonth = '';
 
@@ -99,11 +97,6 @@ export default class MaintenanceController extends Controller {
     return this.model?.workOrders || [];
   }
 
-  get totalPages() {
-    const total = this.model?.total ?? 0;
-    return Math.max(1, Math.ceil(total / this.limit));
-  }
-
   @action setField(fieldName, e) { this[fieldName] = e.target.value; }
 
   @action setSection(section) { this.activeSection = section; }
@@ -118,22 +111,6 @@ export default class MaintenanceController extends Controller {
     this.page = 1;
   }
 
-  @action setLimit(e) {
-    this.limit = Number(e.target.value) || 10;
-    this.page = 1;
-  }
-
-  @action goToPreviousPage() {
-    const page = Number(this.page) || 1;
-    if (page <= 1) return;
-    this.page = page - 1;
-  }
-
-  @action goToNextPage() {
-    const page = Number(this.page) || 1;
-    if (page >= this.totalPages) return;
-    this.page = page + 1;
-  }
 
   @action openCreate() {
     this.formTitle = '';

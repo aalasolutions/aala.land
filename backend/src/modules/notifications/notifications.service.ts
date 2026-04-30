@@ -51,7 +51,8 @@ export class NotificationsService {
     try {
       this.notificationsGateway.sendNotificationToUser(dto.userId, saved);
     } catch (err) {
-      this.logger.error(`Failed to emit notification via socket: ${err.message}`);
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      this.logger.error(`Failed to emit notification via socket: ${errorMessage}`);
     }
 
     return saved;
@@ -179,14 +180,12 @@ export class NotificationsService {
   }
 
   private async notifyUpcomingCheques() {
-    const targetDate = new Date();
-    targetDate.setDate(targetDate.getDate() + 3);
-    const dateStr = targetDate.toISOString().split('T')[0];
+    const targetDate = this.startOfDay(this.addDays(new Date(), 3));
 
     const upcomingCheques = await this.chequeRepository.find({
       where: {
         status: ChequeStatus.PENDING,
-        dueDate: dateStr as any,
+        dueDate: targetDate,
       },
     });
 
@@ -201,13 +200,12 @@ export class NotificationsService {
   }
 
   private async notifyOverdueCheques() {
-    const today = new Date();
-    const dateStr = today.toISOString().split('T')[0];
+    const today = this.startOfToday();
 
     const overdueCheques = await this.chequeRepository.find({
       where: {
         status: ChequeStatus.PENDING,
-        dueDate: LessThanOrEqual(dateStr as any),
+        dueDate: LessThanOrEqual(today),
       },
     });
 
@@ -222,15 +220,13 @@ export class NotificationsService {
   }
 
   private async notifyDelayedCheques() {
-    const threeDaysAgo = new Date();
-    threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
-    const dateStr = threeDaysAgo.toISOString().split('T')[0];
+    const threeDaysAgo = this.startOfDay(this.addDays(new Date(), -3));
 
     // Cheques that are DEPOSITED but not CLEARED for more than 3 days
     const delayedCheques = await this.chequeRepository.find({
       where: {
         status: ChequeStatus.DEPOSITED,
-        depositDate: LessThanOrEqual(dateStr as any),
+        depositDate: LessThanOrEqual(threeDaysAgo),
       },
     });
 
@@ -556,9 +552,19 @@ export class NotificationsService {
     return `${userId}:${entityId}`;
   }
 
+  private addDays(date: Date, days: number): Date {
+    const value = new Date(date);
+    value.setDate(value.getDate() + days);
+    return value;
+  }
+
+  private startOfDay(date: Date): Date {
+    const value = new Date(date);
+    value.setHours(0, 0, 0, 0);
+    return value;
+  }
+
   private startOfToday(): Date {
-    const now = new Date();
-    now.setHours(0, 0, 0, 0);
-    return now;
+    return this.startOfDay(new Date());
   }
 }

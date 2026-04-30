@@ -1,4 +1,4 @@
-import Controller from '@ember/controller';
+import PaginatedController from './paginated-base';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
@@ -16,16 +16,13 @@ const SPECIALTY_OPTIONS = [
   { value: 'GENERAL', label: 'General' },
 ];
 
-export default class VendorsController extends Controller {
+export default class VendorsController extends PaginatedController {
   @service auth;
   @service notifications;
   @service router;
   @service region;
 
   queryParams = ['page', 'limit'];
-
-  @tracked page = 1;
-  @tracked limit = 10;
 
   @tracked showModal = false;
   @tracked editVendor = null;
@@ -58,29 +55,7 @@ export default class VendorsController extends Controller {
 
   specialtyOptions = SPECIALTY_OPTIONS;
 
-  get totalPages() {
-    const total = this.model?.total ?? 0;
-    return Math.max(1, Math.ceil(total / this.limit));
-  }
-
   @action setField(fieldName, e) { this[fieldName] = e.target.value; }
-
-  @action setLimit(e) {
-    this.limit = Number(e.target.value) || 10;
-    this.page = 1;
-  }
-
-  @action goToPreviousPage() {
-    const page = Number(this.page) || 1;
-    if (page <= 1) return;
-    this.page = page - 1;
-  }
-
-  @action goToNextPage() {
-    const page = Number(this.page) || 1;
-    if (page >= this.totalPages) return;
-    this.page = page + 1;
-  }
 
   @action openCreate() {
     this.formName = '';
