@@ -208,7 +208,7 @@ export default class ApplicationController extends Controller {
     } else if (result.type === 'locality') {
       this.router.transitionTo('properties.detail', result.id);
     } else if (result.type === 'asset') {
-      this.router.transitionTo('properties.detail', result.localityId);
+      this.router.transitionTo('properties.detail', result.id);
     } else if (result.type === 'agent') {
       this.router.transitionTo('team');
     }

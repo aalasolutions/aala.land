@@ -103,7 +103,7 @@ describe('SearchController', () => {
         .set('Authorization', 'Bearer some_token'); // Mocking token presence
 
       expect(response.status).toBe(200);
-      expect(response.body).toEqual({ success: true, data: expectedResults });
+      expect(response.body).toEqual(expectedResults);
     });
   });
 });

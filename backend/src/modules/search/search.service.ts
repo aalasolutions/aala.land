@@ -65,6 +65,7 @@ export class SearchService {
                  WHERE name ILIKE $1
                    AND company_id = $2
                    AND is_active = true
+                   AND role != 'super_admin'
                  LIMIT 5`,
                 [term, companyId],
             ),
