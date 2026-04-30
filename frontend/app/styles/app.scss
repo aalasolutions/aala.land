@@ -1454,6 +1454,81 @@ textarea {
 }
 
 // =================================
+// PROPERTY DETAIL COMPONENT STYLES
+// =================================
+
+.unit-card-premium {
+    background-color: var(--bg-surface);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-xl);
+    padding: var(--space-4);
+    box-shadow: var(--shadow-sm);
+    transition: box-shadow var(--transition-fast);
+
+    &:hover {
+        box-shadow: var(--shadow-md);
+    }
+}
+
+.unit-card-icon-box {
+    background-color: var(--bg-muted);
+    color: var(--color-primary);
+    padding: var(--space-2);
+    border-radius: var(--radius-lg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.unit-amenities-strip {
+    background-color: var(--bg-muted);
+    padding: var(--space-2);
+    border-radius: var(--radius-lg);
+    display: flex;
+    justify-content: space-around;
+    gap: var(--space-4);
+    font-size: var(--font-sm);
+    color: var(--text-muted);
+}
+
+.property-empty-state-box {
+    background-color: var(--bg-muted);
+    border: 1px dashed var(--border-medium);
+    border-radius: var(--radius-xl);
+    padding: var(--space-4);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-4);
+    text-align: center;
+
+    .icon-holder {
+        background-color: var(--bg-surface);
+        padding: var(--space-4);
+        border-radius: var(--radius-xl);
+        box-shadow: var(--shadow-sm);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    &.empty-state-flat {
+        border-radius: 0;
+        border: none;
+        padding: var(--space-8);
+    }
+
+    &.empty-state-large {
+        padding: var(--space-16);
+
+        .icon-holder {
+            padding: var(--space-6);
+        }
+    }
+}
+
+// =================================
 // ANIMATIONS
 // =================================
 
@@ -2271,6 +2346,7 @@ textarea {
 .amenity-tag {
     display: inline-flex;
     align-items: center;
+    gap: var(--space-1);
     padding: 1px var(--space-2);
     border-radius: var(--radius-full);
     font-size: 10px;
