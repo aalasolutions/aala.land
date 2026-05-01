@@ -1,4 +1,4 @@
-import Controller from '@ember/controller';
+import PaginatedController from './paginated-base';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
@@ -32,11 +32,11 @@ const STATUS_OPTIONS = [
   { value: 'FAILED', label: 'Failed' },
 ];
 
-export default class FinancialsController extends Controller {
+export default class FinancialsController extends PaginatedController {
   @service auth;
   @service notifications;
   @service router;
-
+  queryParams = ['page', 'limit', 'activeTab'];
   @tracked showModal = false;
   @tracked editTransaction = null;
   @tracked formType = 'INCOME';
@@ -59,13 +59,12 @@ export default class FinancialsController extends Controller {
   statusOptions = STATUS_OPTIONS;
 
   get filteredTransactions() {
-    const transactions = this.model?.transactions ?? [];
-    if (this.activeTab === 'all') return transactions;
-    return transactions.filter((tx) => tx.type === this.activeTab);
+    return this.model?.transactions ?? [];
   }
 
   @action setTab(tab) {
     this.activeTab = tab;
+    this.page = 1;
   }
 
   @action setField(fieldName, e) { this[fieldName] = e.target.value; }

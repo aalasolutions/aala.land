@@ -9,6 +9,7 @@ export default class ApplicationController extends Controller {
   @service auth;
   @service router;
   @service region;
+  @service socket;
 
   get isAdmin() {
     return isAdminRole(this.auth.currentUser?.role);
@@ -20,6 +21,9 @@ export default class ApplicationController extends Controller {
   @tracked expandedGroup = null;
   @tracked sidebarCollapsed = false;
   @tracked showRegionDropdown = false;
+  notificationHandler = null;
+  socketConnectHandler = null;
+  routeDidChangeHandler = null;
 
   get showRegionSwitcher() {
     return this.region.regions.length > 1;
@@ -44,10 +48,24 @@ export default class ApplicationController extends Controller {
 
   constructor() {
     super(...arguments);
-    this.router.on('routeDidChange', () => {
+    this.routeDidChangeHandler = () => {
       const group = this.activeGroup;
       if (group) this.expandedGroup = group;
-    });
+
+      if (this.session.isAuthenticated) {
+        this.setupSocket();
+      } else {
+        this.teardownSocket();
+      }
+    };
+
+    this.router.on('routeDidChange', this.routeDidChangeHandler);
+
+    if (this.session.isAuthenticated) {
+      this.setupSocket();
+    } else {
+      this.teardownSocket();
+    }
   }
 
   @action
@@ -61,6 +79,55 @@ export default class ApplicationController extends Controller {
     if (this.sidebarCollapsed) {
       this.expandedGroup = null;
     }
+  }
+
+  setupSocket() {
+    if (!this.session.isAuthenticated || this.notificationHandler || this.socketConnectHandler) return;
+
+    this.notificationHandler = (notification) => {
+      this.unreadCount++;
+      if (this.showNotifications) {
+        this.notifications = [notification, ...this.notifications].slice(0, 10);
+      }
+    };
+
+    this.socket.setup();
+    this.socket.on('newNotification', this.notificationHandler);
+
+    this.socketConnectHandler = () => {
+      this.loadUnreadCount();
+    };
+    this.socket.on('connect', this.socketConnectHandler);
+    if (this.socket.socket?.connected) {
+      this.loadUnreadCount();
+    }
+  }
+
+  teardownSocket() {
+    if (this.notificationHandler) {
+      this.socket.off('newNotification', this.notificationHandler);
+      this.notificationHandler = null;
+    }
+    if (this.socketConnectHandler) {
+      this.socket.off('connect', this.socketConnectHandler);
+      this.socketConnectHandler = null;
+    }
+
+    this.socket.disconnect();
+
+    this.showNotifications = false;
+    this.notifications = [];
+    this.unreadCount = 0;
+  }
+
+  willDestroy() {
+    this.teardownSocket();
+    if (this.routeDidChangeHandler) {
+      this.router.off('routeDidChange', this.routeDidChangeHandler);
+      this.routeDidChangeHandler = null;
+    }
+
+    super.willDestroy(...arguments);
   }
 
   async loadUnreadCount() {
@@ -99,8 +166,26 @@ export default class ApplicationController extends Controller {
       notification.isRead = true;
       this.unreadCount = Math.max(0, this.unreadCount - 1);
       this.notifications = [...this.notifications];
+
+      // Smart Navigation
+      this.handleNotificationNavigation(notification);
     } catch (e) {
       console.error('[APP-CTRL] Failed to mark notification as read:', e.message);
+    }
+  }
+
+  handleNotificationNavigation(notification) {
+    this.showNotifications = false;
+    const { entityType, type } = notification;
+
+    if (entityType === 'lead' || type.includes('LEAD')) {
+      this.router.transitionTo('leads');
+    } else if (entityType === 'cheque' || type.includes('CHEQUE')) {
+      this.router.transitionTo('cheques');
+    } else if (entityType === 'lease') {
+      this.router.transitionTo('leases');
+    } else if (type === 'MAINTENANCE_UPDATE') {
+      this.router.transitionTo('maintenance');
     }
   }
 
@@ -114,6 +199,8 @@ export default class ApplicationController extends Controller {
       console.error('[APP-CTRL] Failed to mark all notifications as read:', e.message);
     }
   }
+
+  @tracked showLogoutModal = false;
 
   @action
   toggleRegionDropdown() {
@@ -143,8 +230,20 @@ export default class ApplicationController extends Controller {
   }
 
   @action
-  async logout() {
+  logout() {
+    this.showLogoutModal = true;
+  }
+
+  @action
+  closeLogoutModal() {
+    this.showLogoutModal = false;
+  }
+
+  @action
+  async confirmLogout() {
+    this.showLogoutModal = false;
     await this.auth.logout();
+    this.teardownSocket();
     this.router.transitionTo('login');
   }
 }

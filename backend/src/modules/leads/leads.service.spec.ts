@@ -8,6 +8,10 @@ import { LeadActivity, ActivityType } from './entities/lead-activity.entity';
 import { Company } from '../companies/entities/company.entity';
 import { User } from '../users/entities/user.entity';
 import { Role } from '@shared/enums/roles.enum';
+import { NotificationsService } from '../notifications/notifications.service';
+import { NotificationType } from '../notifications/entities/notification.entity';
+import { UsersService } from '../users/users.service';
+import { NotificationsGateway } from '../notifications/notifications.gateway';
 
 describe('LeadsService', () => {
   let service: LeadsService;
@@ -15,6 +19,7 @@ describe('LeadsService', () => {
   let activityRepo: jest.Mocked<Repository<LeadActivity>>;
   let companyRepo: jest.Mocked<Repository<Company>>;
   let userRepo: jest.Mocked<Repository<User>>;
+  let module: TestingModule;
 
   const companyId = 'company-uuid-1';
 
@@ -71,6 +76,24 @@ describe('LeadsService', () => {
             findOne: jest.fn(),
           },
         },
+        {
+          provide: NotificationsService,
+          useValue: {
+            create: jest.fn(),
+          },
+        },
+        {
+          provide: UsersService,
+          useValue: {
+            findAdmins: jest.fn().mockResolvedValue([]),
+          },
+        },
+        {
+          provide: NotificationsGateway,
+          useValue: {
+            broadcastToCompany: jest.fn(),
+          },
+        },
       ],
     }).compile();
 
@@ -96,6 +119,213 @@ describe('LeadsService', () => {
 
       expect(leadRepo.create).toHaveBeenCalledWith({ ...dto, companyId, regionCode: 'dubai' });
       expect(result).toEqual(mockLead);
+    });
+
+    it('should be defined', () => {
+      expect(service).toBeDefined();
+    });
+
+    it('broadcasts a leadUpdated event on create', async () => {
+      const clientLead: Partial<Lead> = {
+        id: 'lead-uuid-2',
+        companyId,
+        firstName: 'Clara',
+        lastName: 'Rashid',
+        email: 'clara@example.com',
+        status: LeadStatus.NEW,
+        temperature: LeadTemperature.WARM,
+        source: LeadSource.WHATSAPP,
+        score: 0,
+        assignedTo: 'agent-uuid-1',
+      };
+      companyRepo.findOne.mockResolvedValue({ defaultRegionCode: 'dubai' } as Company);
+      leadRepo.create.mockReturnValue(clientLead as Lead);
+      leadRepo.save.mockResolvedValue(clientLead as Lead);
+
+      await service.create(companyId, { firstName: 'Clara', source: LeadSource.WHATSAPP } as any);
+
+      expect(module!.get(NotificationsGateway).broadcastToCompany).toHaveBeenCalledWith(
+        companyId,
+        'leadUpdated',
+        expect.objectContaining({
+          id: 'lead-uuid-2',
+          status: LeadStatus.NEW,
+          assignedTo: 'agent-uuid-1',
+        }),
+      );
+    });
+
+    it('sends LEAD_ASSIGNED notification to the assigned agent', async () => {
+      const clientLead: Partial<Lead> = {
+        id: 'lead-assigned-1',
+        companyId,
+        firstName: 'Samir',
+        lastName: 'Hassan',
+        email: 'samir@example.com',
+        status: LeadStatus.NEW,
+        temperature: LeadTemperature.WARM,
+        source: LeadSource.WHATSAPP,
+        score: 0,
+        assignedTo: 'agent-uuid-1',
+      };
+      companyRepo.findOne.mockResolvedValue({ defaultRegionCode: 'dubai' } as Company);
+      leadRepo.create.mockReturnValue(clientLead as Lead);
+      leadRepo.save.mockResolvedValue(clientLead as Lead);
+      const notificationsService = module!.get(NotificationsService);
+
+      await service.create(companyId, { firstName: 'Samir', source: LeadSource.WHATSAPP } as any);
+
+      expect(notificationsService.create).toHaveBeenCalledWith(companyId, expect.objectContaining({
+        userId: 'agent-uuid-1',
+        title: 'New Lead Assigned',
+        message: 'You have been assigned a new lead: Samir Hassan',
+        type: NotificationType.LEAD_ASSIGNED,
+        entityType: 'lead',
+        entityId: 'lead-assigned-1',
+      }));
+    });
+
+    it('does NOT send LEAD_ASSIGNED notification if user creates lead already assigned to themselves', async () => {
+      const clientLead: Partial<Lead> = {
+        id: 'lead-self-assigned',
+        companyId,
+        firstName: 'Nadia',
+        lastName: 'Ali',
+        email: 'nadia@example.com',
+        status: LeadStatus.NEW,
+        temperature: LeadTemperature.WARM,
+        source: LeadSource.WHATSAPP,
+        score: 0,
+        assignedTo: 'creator-user-id',
+      };
+      companyRepo.findOne.mockResolvedValue({ defaultRegionCode: 'dubai' } as Company);
+      leadRepo.create.mockReturnValue(clientLead as Lead);
+      leadRepo.save.mockResolvedValue(clientLead as Lead);
+      const notificationsService = module!.get(NotificationsService);
+
+      await service.create(companyId, { firstName: 'Nadia' } as any, 'creator-user-id');
+
+      expect(notificationsService.create).not.toHaveBeenCalled();
+    });
+
+    it('does NOT send LEAD_UNASSIGNED notification if admin creates lead assigned to an agent', async () => {
+      const clientLead: Partial<Lead> = {
+        id: 'lead-assigned-2',
+        companyId,
+        firstName: 'Omar',
+        lastName: 'Khalid',
+        email: 'omar@example.com',
+        status: LeadStatus.NEW,
+        temperature: LeadTemperature.WARM,
+        source: LeadSource.WHATSAPP,
+        score: 0,
+        assignedTo: 'agent-uuid-2',
+      };
+      companyRepo.findOne.mockResolvedValue({ defaultRegionCode: 'dubai' } as Company);
+      leadRepo.create.mockReturnValue(clientLead as Lead);
+      leadRepo.save.mockResolvedValue(clientLead as Lead);
+      const notificationsService = module!.get(NotificationsService);
+      (module.get(UsersService).findAdmins as jest.Mock).mockResolvedValue([
+        { id: 'admin-1', name: 'Super Admin', email: 'super@company.com' },
+      ]);
+
+      await service.create(companyId, { firstName: 'Omar' } as any);
+
+      expect(notificationsService.create).toHaveBeenCalledWith(expect.objectContaining({
+        userId: 'agent-uuid-2',
+        type: NotificationType.LEAD_ASSIGNED,
+      }));
+    });
+
+    it('skips LEAD_UNASSIGNED notification for admin creator when lead has no assigned agent', async () => {
+      const noAssignLead: Partial<Lead> = {
+        id: 'lead-no-assign',
+        companyId,
+        firstName: 'Rania',
+        lastName: 'Mohammed',
+        email: 'rania@example.com',
+        status: LeadStatus.NEW,
+        temperature: LeadTemperature.WARM,
+        source: LeadSource.REFERRAL,
+        score: 0,
+        assignedTo: null,
+      };
+      companyRepo.findOne.mockResolvedValue({ defaultRegionCode: 'dubai' } as Company);
+      leadRepo.create.mockReturnValue(noAssignLead as Lead);
+      leadRepo.save.mockResolvedValue(noAssignLead as Lead);
+      const notificationsService = module!.get(NotificationsService);
+      (module.get(UsersService).findAdmins as jest.Mock).mockResolvedValue([
+        { id: 'creator-user-id', name: 'Admin Creator', email: 'creator@company.com' },
+      ]);
+
+      await service.create(companyId, { firstName: 'Rania' } as any, 'creator-user-id');
+
+      expect(notificationsService.create).not.toHaveBeenCalled();
+    });
+
+    it('sends LEAD_UNASSIGNED notifications to all other admins when lead has no assigned agent', async () => {
+      const noAssignLead: Partial<Lead> = {
+        id: 'lead-unassigned-multi',
+        companyId,
+        firstName: 'Layla',
+        lastName: 'Ibrahim',
+        email: 'layla@example.com',
+        status: LeadStatus.NEW,
+        temperature: LeadTemperature.WARM,
+        source: LeadSource.WEBSITE,
+        score: 0,
+        assignedTo: null,
+      };
+      const admin1 = { id: 'admin-not-creator', name: 'Admin One', email: 'admin1@company.com' };
+      const admin2 = { id: 'admin2-also-not', name: 'Admin Two', email: 'admin2@company.com' };
+      companyRepo.findOne.mockResolvedValue({ defaultRegionCode: 'dubai' } as Company);
+      leadRepo.create.mockReturnValue(noAssignLead as Lead);
+      leadRepo.save.mockResolvedValue(noAssignLead as Lead);
+      const notificationsService = module!.get(NotificationsService);
+      (module.get(UsersService).findAdmins as jest.Mock).mockResolvedValue([admin1, admin2]);
+
+      await service.create(companyId, { firstName: 'Layla' } as any, 'creator-user-id');
+
+      expect(notificationsService.create).toHaveBeenCalledWith(expect.objectContaining({
+        userId: 'admin-not-creator',
+        title: 'New Unassigned Lead',
+        message: 'A new lead for Layla Ibrahim has been created and needs assignment.',
+        type: NotificationType.LEAD_UNASSIGNED,
+        entityType: 'lead',
+        entityId: 'lead-unassigned-multi',
+      }));
+      expect(notificationsService.create).toHaveBeenCalledWith(expect.objectContaining({
+        userId: 'admin2-also-not',
+        title: 'New Unassigned Lead',
+        type: NotificationType.LEAD_UNASSIGNED,
+      }));
+    });
+
+    it('formats first name only when lastName is empty', async () => {
+      const noAssignLead: Partial<Lead> = {
+        id: 'lead-no-lastname',
+        companyId,
+        firstName: 'Salma',
+        lastName: '',
+        email: 'salma@example.com',
+        status: LeadStatus.NEW,
+        temperature: LeadTemperature.WARM,
+        source: LeadSource.OTHER,
+        score: 0,
+        assignedTo: 'agent-uuid-1',
+      };
+      companyRepo.findOne.mockResolvedValue({ defaultRegionCode: 'dubai' } as Company);
+      leadRepo.create.mockReturnValue(noAssignLead as Lead);
+      leadRepo.save.mockResolvedValue(noAssignLead as Lead);
+      const notificationsService = module!.get(NotificationsService);
+
+      await service.create(companyId, { firstName: 'Salma' } as any);
+
+      expect(notificationsService.create).toHaveBeenCalledWith(expect.objectContaining({
+        userId: 'agent-uuid-1',
+        message: 'You have been assigned a new lead: Salma',
+        type: NotificationType.LEAD_ASSIGNED,
+      }));
     });
   });
 

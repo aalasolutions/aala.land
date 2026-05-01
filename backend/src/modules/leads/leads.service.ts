@@ -11,6 +11,10 @@ import { User } from '../users/entities/user.entity';
 import { resolveRegionCode } from '../../shared/utils/resolve-region-code.util';
 import { paginationOptions } from '../../shared/utils/pagination.util';
 import { Role } from '../../shared/enums/roles.enum';
+import { NotificationsService } from '../notifications/notifications.service';
+import { UsersService } from '../users/users.service';
+import { NotificationType } from '../notifications/entities/notification.entity';
+import { NotificationsGateway } from '../notifications/notifications.gateway';
 
 export type LeadResponse = Omit<Lead, 'assignedAgent'> & {
   assignedAgentName: string | null;
@@ -38,12 +42,56 @@ export class LeadsService {
     private readonly companyRepository: Repository<Company>,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+    private readonly notificationsService: NotificationsService,
+    private readonly usersService: UsersService,
+    private readonly notificationsGateway: NotificationsGateway,
   ) { }
 
-  async create(companyId: string, dto: CreateLeadDto): Promise<Lead> {
+  async create(companyId: string, dto: CreateLeadDto, userId?: string): Promise<Lead> {
     const regionCode = await resolveRegionCode(this.companyRepository, companyId, dto.regionCode);
     const lead = this.leadRepository.create({ ...dto, companyId, regionCode });
-    return this.leadRepository.save(lead);
+    const saved = await this.leadRepository.save(lead);
+
+    const clientName = `${saved.firstName} ${saved.lastName || ''}`.trim();
+
+    // Broadcast update to all users in the company
+    this.notificationsGateway.broadcastToCompany(companyId, 'leadUpdated', {
+      id: saved.id,
+      status: saved.status,
+      assignedTo: saved.assignedTo,
+      updatedBy: userId,
+    });
+
+    if (!saved.assignedTo) {
+      const admins = await this.usersService.findAdmins(companyId);
+      for (const admin of admins) {
+        if (admin.id === userId) {
+          continue;
+        }
+
+        await this.notificationsService.create(companyId, {
+          userId: admin.id,
+          title: 'New Unassigned Lead',
+          message: `A new lead for ${clientName} has been created and needs assignment.`,
+          type: NotificationType.LEAD_UNASSIGNED,
+          entityType: 'lead',
+          entityId: saved.id,
+        });
+      }
+    } else {
+      if (saved.assignedTo !== userId) {
+        await this.notificationsService.create(companyId, {
+          userId: saved.assignedTo,
+          title: 'New Lead Assigned',
+          message: `You have been assigned a new lead: ${clientName}`,
+          type: NotificationType.LEAD_ASSIGNED,
+          entityType: 'lead',
+          entityId: saved.id,
+        });
+      }
+    }
+
+    return saved;
   }
 
   async findAll(companyId: string, page = 1, limit = 20, regionCode?: string): Promise<PaginatedLeadResponse> {
@@ -119,6 +167,16 @@ export class LeadsService {
 
     await this.leadRepository.save(lead);
 
+    const clientName = `${lead.firstName} ${lead.lastName || ''}`.trim();
+
+    // Broadcast update to all users in the company
+    this.notificationsGateway.broadcastToCompany(companyId, 'leadUpdated', {
+      id,
+      status: lead.status,
+      assignedTo: lead.assignedTo,
+      updatedBy: userId,
+    });
+
     if (statusChanged) {
       await this.activityRepository.save(
         this.activityRepository.create({
@@ -129,6 +187,18 @@ export class LeadsService {
           performedBy: userId,
         }),
       );
+
+      // Notify assigned agent about status change (only if it's not the performer)
+      if (lead.assignedTo && lead.assignedTo !== userId) {
+        await this.notificationsService.create(companyId, {
+          userId: lead.assignedTo,
+          title: 'Lead Status Updated',
+          message: `Lead ${clientName} status changed to ${lead.status}`,
+          type: NotificationType.LEAD_STATUS_CHANGED,
+          entityType: 'lead',
+          entityId: lead.id,
+        });
+      }
     }
 
     if (assignmentChanged) {
@@ -145,6 +215,32 @@ export class LeadsService {
           performedBy: userId,
         }),
       );
+
+      if (dto.assignedTo && dto.assignedTo !== userId) {
+        await this.notificationsService.create(companyId, {
+          userId: dto.assignedTo,
+          title: 'New Lead Assigned',
+          message: `You have been assigned a lead: ${clientName}`,
+          type: NotificationType.LEAD_ASSIGNED,
+          entityType: 'lead',
+          entityId: lead.id,
+        });
+      } else if (assignmentChanged && !dto.assignedTo) {
+        // Notify admins about unassigned lead (only if not the performer)
+        const admins = await this.usersService.findAdmins(companyId);
+        for (const admin of admins) {
+          if (admin.id !== userId) {
+            await this.notificationsService.create(companyId, {
+              userId: admin.id,
+              title: 'Lead Unassigned',
+              message: `Lead for ${clientName} is now unassigned.`,
+              type: NotificationType.LEAD_UNASSIGNED,
+              entityType: 'lead',
+              entityId: lead.id,
+            });
+          }
+        }
+      }
     }
 
     return this.findOne(id, companyId);
@@ -165,6 +261,16 @@ export class LeadsService {
     lead.assignedAgent = agent as User;
     await this.leadRepository.save(lead);
 
+    const clientName = `${lead.firstName} ${lead.lastName || ''}`.trim();
+
+    // Broadcast update to all users in the company
+    this.notificationsGateway.broadcastToCompany(companyId, 'leadUpdated', {
+      id,
+      status: lead.status,
+      assignedTo: lead.assignedTo,
+      updatedBy: performedBy,
+    });
+
     const agentLabel = agent.name;
     const activityNotes = reason
       ? `Lead assigned to agent ${agentLabel} (reason: ${reason})`
@@ -180,6 +286,17 @@ export class LeadsService {
       }),
     );
 
+    if (agentId !== performedBy) {
+      await this.notificationsService.create(companyId, {
+        userId: agentId,
+        title: 'New Lead Assigned',
+        message: `You have been assigned a lead: ${clientName}`,
+        type: NotificationType.LEAD_ASSIGNED,
+        entityType: 'lead',
+        entityId: lead.id,
+      });
+    }
+
     return this.findOne(id, companyId);
   }
 
@@ -188,6 +305,14 @@ export class LeadsService {
     const previousStatus = lead.status;
     lead.status = LeadStatus.WON;
     const updated = await this.leadRepository.save(lead);
+
+    // Broadcast update to all users in the company
+    this.notificationsGateway.broadcastToCompany(companyId, 'leadUpdated', {
+      id,
+      status: updated.status,
+      assignedTo: updated.assignedTo,
+      updatedBy: performedBy,
+    });
 
     await this.activityRepository.save(
       this.activityRepository.create({

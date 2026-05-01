@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, LessThanOrEqual, SelectQueryBuilder } from 'typeorm';
+import { Repository } from 'typeorm';
 import { WorkOrder, WorkOrderStatus } from './entities/work-order.entity';
 import { CreateWorkOrderDto } from './dto/create-work-order.dto';
 import { UpdateWorkOrderDto } from './dto/update-work-order.dto';
@@ -31,6 +31,8 @@ export class MaintenanceService {
     page = 1,
     limit = 20,
     regionCode?: string,
+    status?: string,
+    period?: string,
   ) {
     const qb = this.workOrderRepository
       .createQueryBuilder('wo')
@@ -41,6 +43,32 @@ export class MaintenanceService {
         `wo.unit_id IN (${REGION_FILTER_SUBQUERY})`,
         { regionCode },
       );
+    }
+
+    if (status) {
+      qb.andWhere('wo.status = :status', { status });
+    }
+
+    const now = new Date();
+    if (period === 'this_month') {
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+      const nextMonthStart = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+      qb.andWhere(
+        'COALESCE(wo.scheduled_date, wo.created_at) >= :monthStart AND COALESCE(wo.scheduled_date, wo.created_at) < :nextMonthStart',
+        { monthStart, nextMonthStart },
+      );
+    } else if (period === 'last_month') {
+      const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+      qb.andWhere(
+        'COALESCE(wo.scheduled_date, wo.created_at) >= :lastMonthStart AND COALESCE(wo.scheduled_date, wo.created_at) < :thisMonthStart',
+        { lastMonthStart, thisMonthStart },
+      );
+    } else if (period === 'last_3_months') {
+      const threeMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 3, 1);
+      qb.andWhere('COALESCE(wo.scheduled_date, wo.created_at) >= :threeMonthsAgo', {
+        threeMonthsAgo,
+      });
     }
 
     qb.skip((page - 1) * limit)

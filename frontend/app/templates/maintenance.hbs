@@ -43,13 +43,13 @@
 
   {{#if (eq this.activeSection "orders")}}
     <div class="flex gap-4 x-center">
-      <FormDropdown @id="maintenance-status-filter" @label="Status" @value={{this.filterStatus}} @onChange={{fn this.setField "filterStatus"}} @options={{this.statusOptions}} @placeholder="All" />
-      <FormDropdown @id="maintenance-period-filter" @label="Period" @value={{this.filterMonth}} @onChange={{fn this.setField "filterMonth"}} @options={{this.monthOptions}} @placeholder="All" />
+      <FormDropdown @id="maintenance-status-filter" @label="Status" @value={{this.filterStatus}} @onChange={{this.setStatusFilter}} @options={{this.statusOptions}} @placeholder="All" />
+      <FormDropdown @id="maintenance-period-filter" @label="Period" @value={{this.filterMonth}} @onChange={{this.setMonthFilter}} @options={{this.monthOptions}} @placeholder="All" />
     </div>
 
     <div class="glass-panel p-5">
       {{#if this.filteredWorkOrders.length}}
-        <div class="data-table-wrapper">
+        <div class="data-table-wrapper data-table-wrapper--with-pagination">
           <table class="data-table">
             <thead>
               <tr>
@@ -94,8 +94,31 @@
             </tbody>
           </table>
         </div>
+
+        <Pagination
+          @selectId="maintenance-limit"
+          @page={{this.page}}
+          @limit={{this.limit}}
+          @total={{@model.total}}
+          @onLimitChange={{this.setLimit}}
+          @onPrevious={{this.goToPreviousPage}}
+          @onNext={{this.goToNextPage}}
+        />
       {{else}}
-        <p class="text-muted text-center py-8">No work orders match your filters.</p>
+        {{#if @model.total}}
+          <p class="text-muted text-center py-8">No work orders on this page with current filters. Navigate to find orders or adjust filters.</p>
+          <Pagination
+            @selectId="maintenance-limit"
+            @page={{this.page}}
+            @limit={{this.limit}}
+            @total={{@model.total}}
+            @onLimitChange={{this.setLimit}}
+            @onPrevious={{this.goToPreviousPage}}
+            @onNext={{this.goToNextPage}}
+          />
+        {{else}}
+          <p class="text-muted text-center py-8">No work orders match your filters.</p>
+        {{/if}}
       {{/if}}
     </div>
   {{/if}}

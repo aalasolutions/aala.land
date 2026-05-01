@@ -1,13 +1,18 @@
 import { Injectable, Logger, BadRequestException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, In, LessThan, LessThanOrEqual, IsNull, MoreThanOrEqual } from 'typeorm';
+import { Cron, CronExpression } from '@nestjs/schedule';
 import { SendNotificationDto, NotificationChannel, NotificationStatus } from './dto/send-notification.dto';
-import { Notification } from './entities/notification.entity';
+import { Notification, NotificationType } from './entities/notification.entity';
 import { CreateNotificationDto } from './dto/create-notification.dto';
 import { Cheque, ChequeStatus } from '../cheques/entities/cheque.entity';
 import { Lease, LeaseStatus } from '../leases/entities/lease.entity';
 import { WorkOrder } from '../maintenance/entities/work-order.entity';
+import { User } from '../users/entities/user.entity';
+import { Lead, LeadStatus } from '../leads/entities/lead.entity';
+import { Role } from '../../shared/enums/roles.enum';
 import { paginationOptions } from '../../shared/utils/pagination.util';
+import { NotificationsGateway } from './notifications.gateway';
 
 export interface NotificationResult {
   channel: NotificationChannel;
@@ -30,13 +35,27 @@ export class NotificationsService {
     private readonly leaseRepository: Repository<Lease>,
     @InjectRepository(WorkOrder)
     private readonly workOrderRepository: Repository<WorkOrder>,
+    @InjectRepository(User)
+    private readonly userRepository: Repository<User>,
+    @InjectRepository(Lead)
+    private readonly leadRepository: Repository<Lead>,
+    private readonly notificationsGateway: NotificationsGateway,
   ) {}
 
   // ---- Persistence methods ----
 
   async create(companyId: string, dto: CreateNotificationDto): Promise<Notification> {
     const notification = this.notificationRepository.create({ ...dto, companyId });
-    return this.notificationRepository.save(notification);
+    const saved = await this.notificationRepository.save(notification);
+
+    try {
+      this.notificationsGateway.sendNotificationToUser(dto.userId, saved);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      this.logger.error(`Failed to emit notification via socket: ${errorMessage}`);
+    }
+
+    return saved;
   }
 
   async findAll(
@@ -150,6 +169,97 @@ export class NotificationsService {
   }
 
   // ---- Reminder check methods ----
+
+  @Cron(CronExpression.EVERY_DAY_AT_9AM)
+  async runDailyReminders() {
+    this.logger.log('Running daily notification reminders...');
+    await this.notifyUpcomingCheques();
+    await this.notifyOverdueCheques();
+    await this.notifyDelayedCheques();
+    await this.notifyUnassignedLeads();
+  }
+
+  private async notifyUpcomingCheques() {
+    const targetDate = this.startOfDay(this.addDays(new Date(), 3));
+
+    const upcomingCheques = await this.chequeRepository.find({
+      where: {
+        status: ChequeStatus.PENDING,
+        dueDate: targetDate,
+      },
+    });
+
+    await this.notifyAdminsOncePerDay(upcomingCheques, NotificationType.CHEQUE_DUE, (cheque, admin) => ({
+      userId: admin.id,
+      title: 'Upcoming Cheque',
+      message: `Cheque #${cheque.chequeNumber} for ${cheque.amount} ${cheque.currency} is due in 3 days (${cheque.dueDate})`,
+      type: NotificationType.CHEQUE_DUE,
+      entityType: 'cheque',
+      entityId: cheque.id,
+    }));
+  }
+
+  private async notifyOverdueCheques() {
+    const today = this.startOfToday();
+
+    const overdueCheques = await this.chequeRepository.find({
+      where: {
+        status: ChequeStatus.PENDING,
+        dueDate: LessThan(today),
+      },
+    });
+
+    await this.notifyAdminsOncePerDay(overdueCheques, NotificationType.CHEQUE_OVERDUE, (cheque, admin) => ({
+      userId: admin.id,
+      title: 'Overdue Cheque!',
+      message: `Cheque #${cheque.chequeNumber} for ${cheque.amount} ${cheque.currency} was due on ${cheque.dueDate} and is still pending.`,
+      type: NotificationType.CHEQUE_OVERDUE,
+      entityType: 'cheque',
+      entityId: cheque.id,
+    }));
+  }
+
+  private async notifyDelayedCheques() {
+    const threeDaysAgo = this.startOfDay(this.addDays(new Date(), -3));
+
+    // Cheques that are DEPOSITED but not CLEARED for more than 3 days
+    const delayedCheques = await this.chequeRepository.find({
+      where: {
+        status: ChequeStatus.DEPOSITED,
+        depositDate: LessThanOrEqual(threeDaysAgo),
+      },
+    });
+
+    await this.notifyAdminsOncePerDay(delayedCheques, NotificationType.CHEQUE_DELAYED, (cheque, admin) => ({
+      userId: admin.id,
+      title: 'Delayed Cheque Clearing',
+      message: `Cheque #${cheque.chequeNumber} was deposited on ${cheque.depositDate} but hasn't cleared yet.`,
+      type: NotificationType.CHEQUE_DELAYED,
+      entityType: 'cheque',
+      entityId: cheque.id,
+    }));
+  }
+
+  private async notifyUnassignedLeads() {
+    const unassignedLeads = await this.leadRepository.find({
+      where: {
+        status: LeadStatus.NEW,
+        assignedTo: IsNull(),
+      },
+    });
+
+    await this.notifyAdminsOncePerDay(unassignedLeads, NotificationType.LEAD_UNASSIGNED, (lead, admin) => {
+      const clientName = `${lead.firstName} ${lead.lastName || ''}`.trim();
+      return {
+        userId: admin.id,
+        title: 'Pending Unassigned Lead',
+        message: `Lead for ${clientName} is still unassigned and needs attention.`,
+        type: NotificationType.LEAD_UNASSIGNED,
+        entityType: 'lead',
+        entityId: lead.id,
+      };
+    });
+  }
 
   async checkRentDueReminders(
     companyId: string,
@@ -341,5 +451,120 @@ export class NotificationsService {
         error: message,
       };
     }
+  }
+
+  private async findAdminsByCompanyIds(companyIds: string[]): Promise<Map<string, User[]>> {
+    const uniqueCompanyIds = [...new Set(companyIds.filter(Boolean))];
+    if (uniqueCompanyIds.length === 0) {
+      return new Map();
+    }
+
+    const admins = await this.userRepository.find({
+      where: {
+        companyId: In(uniqueCompanyIds),
+        role: In([Role.COMPANY_ADMIN, Role.SUPER_ADMIN]),
+        isActive: true,
+      },
+    });
+
+    const adminsByCompanyId = new Map<string, User[]>();
+    for (const admin of admins) {
+      const companyAdmins = adminsByCompanyId.get(admin.companyId) ?? [];
+      companyAdmins.push(admin);
+      adminsByCompanyId.set(admin.companyId, companyAdmins);
+    }
+
+    return adminsByCompanyId;
+  }
+
+  private async notifyAdminsOncePerDay<T extends { id: string; companyId: string }>(
+    items: T[],
+    type: NotificationType,
+    buildDto: (item: T, admin: User) => CreateNotificationDto,
+  ): Promise<void> {
+    const adminsByCompanyId = await this.findAdminsByCompanyIds(
+      items.map((item) => item.companyId),
+    );
+    const existingReminderKeys = await this.findExistingReminderKeys({
+      adminsByCompanyId,
+      companyIds: items.map((item) => item.companyId),
+      entityIds: items.map((item) => item.id),
+      type,
+      since: this.startOfToday(),
+    });
+
+    for (const item of items) {
+      const admins = adminsByCompanyId.get(item.companyId) ?? [];
+
+      for (const admin of admins) {
+        const reminderKey = this.buildReminderKey(admin.id, item.id);
+        if (existingReminderKeys.has(reminderKey)) {
+          continue;
+        }
+
+        await this.create(item.companyId, buildDto(item, admin));
+        existingReminderKeys.add(reminderKey);
+      }
+    }
+  }
+
+  private async findExistingReminderKeys({
+    adminsByCompanyId,
+    companyIds,
+    entityIds,
+    type,
+    since,
+  }: {
+    adminsByCompanyId: Map<string, User[]>;
+    companyIds: string[];
+    entityIds: string[];
+    type: NotificationType;
+    since: Date;
+  }): Promise<Set<string>> {
+    const uniqueCompanyIds = [...new Set(companyIds.filter(Boolean))];
+    const uniqueEntityIds = [...new Set(entityIds.filter(Boolean))];
+    const userIds = [...new Set(
+      [...adminsByCompanyId.values()].flatMap((admins) => admins.map((admin) => admin.id)),
+    )];
+
+    if (uniqueCompanyIds.length === 0 || uniqueEntityIds.length === 0 || userIds.length === 0) {
+      return new Set();
+    }
+
+    const existingNotifications = await this.notificationRepository.find({
+      where: {
+        companyId: In(uniqueCompanyIds),
+        userId: In(userIds),
+        type,
+        entityId: In(uniqueEntityIds),
+        createdAt: MoreThanOrEqual(since),
+      },
+    });
+
+    return new Set(
+      existingNotifications.map((notification) =>
+        this.buildReminderKey(notification.userId, notification.entityId),
+      ),
+    );
+  }
+
+  private buildReminderKey(userId: string, entityId: string): string {
+    return `${userId}:${entityId}`;
+  }
+
+  private addDays(date: Date, days: number): Date {
+    const value = new Date(date);
+    value.setDate(value.getDate() + days);
+    return value;
+  }
+
+  private startOfDay(date: Date): Date {
+    const value = new Date(date);
+    value.setHours(0, 0, 0, 0);
+    return value;
+  }
+
+  private startOfToday(): Date {
+    return this.startOfDay(new Date());
   }
 }

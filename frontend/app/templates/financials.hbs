@@ -55,7 +55,7 @@
       </div>
     </div>
     {{#if this.filteredTransactions.length}}
-      <div class="data-table-wrapper">
+      <div class="data-table-wrapper data-table-wrapper--with-pagination">
         <table class="data-table">
           <thead>
             <tr>
@@ -89,10 +89,35 @@
           </tbody>
         </table>
       </div>
+
+      <Pagination
+        @selectId="financials-limit"
+        @page={{this.page}}
+        @limit={{this.limit}}
+        @total={{@model.total}}
+        @onLimitChange={{this.setLimit}}
+        @onPrevious={{this.goToPreviousPage}}
+        @onNext={{this.goToNextPage}}
+      />
     {{else}}
-      <p class="text-muted text-center py-4">
-        {{if (eq this.activeTab 'INCOME') 'No income transactions.' (if (eq this.activeTab 'EXPENSE') 'No expense transactions.' 'No transactions yet.')}}
-      </p>
+      {{#if @model.total}}
+        <p class="text-muted text-center py-4">
+          No transactions on this page with current filters. Adjust filters or navigate to find transactions.
+        </p>
+        <Pagination
+          @selectId="financials-limit"
+          @page={{this.page}}
+          @limit={{this.limit}}
+          @total={{@model.total}}
+          @onLimitChange={{this.setLimit}}
+          @onPrevious={{this.goToPreviousPage}}
+          @onNext={{this.goToNextPage}}
+        />
+      {{else}}
+        <p class="text-muted text-center py-4">
+          {{if (eq this.activeTab 'INCOME') 'No income transactions.' (if (eq this.activeTab 'EXPENSE') 'No expense transactions.' 'No transactions yet.')}}
+        </p>
+      {{/if}}
     {{/if}}
   </div>
 </div>

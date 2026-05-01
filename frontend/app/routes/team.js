@@ -9,7 +9,7 @@ export default class TeamRoute extends AuthenticatedRoute {
     limit: { refreshModel: true },
   };
 
-  async model({ page = 1, limit = 20 }) {
+  async model({ page = 1, limit = 10 }) {
     const params = new URLSearchParams({ page, limit });
 
     try {

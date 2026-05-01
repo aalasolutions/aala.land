@@ -205,9 +205,13 @@
           <div class="notification-dropdown-list">
             {{#each this.notifications as |notif|}}
               <button type="button" class="notification-item {{unless notif.isRead 'unread'}}" {{on "click" (fn this.markAsRead notif)}}>
-                <div class="flex col gap-1">
-                  <span class="font-sm font-bold">{{notif.title}}</span>
-                  <span class="font-xs text-muted">{{notif.message}}</span>
+                <div class="notification-icon {{notif.type}}">
+                  <Ph @icon={{get-notification-icon notif.type}} @size="18px" />
+                </div>
+                <div class="notification-content">
+                  <span class="notification-title">{{notif.title}}</span>
+                  <span class="notification-message">{{notif.message}}</span>
+                  <span class="notification-time">{{format-date-time notif.createdAt}}</span>
                 </div>
                 {{#unless notif.isRead}}
                   <span class="unread-dot"></span>
@@ -234,3 +238,14 @@
 {{/if}}
 
 <ToastContainer />
+
+<ConfirmModal
+  @isOpen={{this.showLogoutModal}}
+  @title="Logout"
+  @message="Are you sure you want to logout?"
+  @confirmText="Logout"
+  @cancelText="Cancel"
+  @confirmType="btn-danger"
+  @onClose={{this.closeLogoutModal}}
+  @onConfirm={{this.confirmLogout}}
+/>
