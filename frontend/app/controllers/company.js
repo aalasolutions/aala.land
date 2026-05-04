@@ -2,6 +2,7 @@ import Controller from '@ember/controller';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
+import { isAdminRole } from '../utils/roles';
 
 export default class CompanyController extends Controller {
   @service auth;
@@ -38,6 +39,10 @@ export default class CompanyController extends Controller {
     return tier && tier !== 'FREE';
   }
 
+  get isAdmin() {
+    return isAdminRole(this.auth.currentUser?.role);
+  }
+
   get maxCountries() {
     const limits = { FREE: 1, STARTER: 1, GROWTH: 2, SCALE: 999, ENTERPRISE: 999 };
     return limits[this.company?.subscriptionTier] || 1;
@@ -72,6 +77,8 @@ export default class CompanyController extends Controller {
   @action setField(fieldName, e) { this[fieldName] = e.target.value; }
 
   @action toggleRegion(code) {
+    if (!this.isAdmin) return;
+
     if (this.formActiveRegions.includes(code)) {
       this.formActiveRegions = this.formActiveRegions.filter((c) => c !== code);
       if (this.formDefaultRegionCode === code) {
@@ -96,6 +103,11 @@ export default class CompanyController extends Controller {
 
   @action async saveCompany(event) {
     event.preventDefault();
+    if (!this.isAdmin) {
+      this.errorMsg = 'Only company admins and super admins can update company settings.';
+      return;
+    }
+
     if (this.isSaving) return;
     this.isSaving = true;
     this.errorMsg = '';

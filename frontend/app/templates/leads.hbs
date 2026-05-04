@@ -350,7 +350,7 @@
 >
   <form class="flex col gap-4" {{on "submit" this.saveLead}}>
     {{#if this.showRegionField}}
-      <FormDropdown @label="Region" @id="lead-region" @value={{this.formRegionCode}} @onChange={{fn this.setField "formRegionCode"}} @options={{this.regionOptions}} @placeholder="Select region..." data-test-region-select />
+      <FormDropdown @label="Region" @id="lead-region" @value={{this.formRegionCode}} @onChange={{this.setRegionCode}} @options={{this.regionOptions}} @placeholder="Select region..." data-test-region-select />
     {{/if}}
     <div class="flex gap-4">
       <div class="flex-1">
@@ -434,16 +434,14 @@
               <span><Ph @icon="envelope" /></span>
               <span>{{or this.detailLead.email 'N/A'}}</span>
             </div>
-            <div class="flex gap-2 x-center">
-              <span><Ph @icon="whatsapp-logo" /></span>
-              {{#if this.detailLead.whatsappNumber}}
+            {{#if this.detailLead.whatsappNumber}}
+              <div class="flex gap-2 x-center">
+                <span><Ph @icon="whatsapp-logo" /></span>
                 <a href={{wa-link this.detailLead.whatsappNumber}} target="_blank" rel="noopener noreferrer" class="wa-link-text" data-test-wa-link>
                   {{this.detailLead.whatsappNumber}}
                 </a>
-              {{else}}
-                <span>N/A</span>
-              {{/if}}
-            </div>
+              </div>
+            {{/if}}
           </div>
         </div>
 

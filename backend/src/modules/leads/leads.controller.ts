@@ -21,7 +21,7 @@ export class LeadsController {
   @Post()
   @ApiOperation({ summary: 'Create a new lead' })
   create(@Body() dto: CreateLeadDto, @Request() req: AuthenticatedRequest) {
-    return this.leadsService.create(req.user.companyId, dto);
+    return this.leadsService.create(req.user.companyId, dto, req.user.userId);
   }
 
   @Get()
@@ -47,7 +47,7 @@ export class LeadsController {
   @Patch(':id')
   @ApiOperation({ summary: 'Update lead' })
   update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateLeadDto, @Request() req: AuthenticatedRequest) {
-    return this.leadsService.update(id, req.user.companyId, dto, req.user.userId);
+    return this.leadsService.update(id, req.user.companyId, dto, req.user.userId, req.user.role);
   }
 
   @Post(':id/assign')

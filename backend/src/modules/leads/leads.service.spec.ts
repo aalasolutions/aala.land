@@ -1,17 +1,25 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { LeadsService } from './leads.service';
 import { Lead, LeadStatus, LeadTemperature, LeadSource } from './entities/lead.entity';
 import { LeadActivity, ActivityType } from './entities/lead-activity.entity';
 import { Company } from '../companies/entities/company.entity';
+import { User } from '../users/entities/user.entity';
+import { Role } from '@shared/enums/roles.enum';
+import { NotificationsService } from '../notifications/notifications.service';
+import { NotificationType } from '../notifications/entities/notification.entity';
+import { UsersService } from '../users/users.service';
+import { NotificationsGateway } from '../notifications/notifications.gateway';
 
 describe('LeadsService', () => {
   let service: LeadsService;
   let leadRepo: jest.Mocked<Repository<Lead>>;
   let activityRepo: jest.Mocked<Repository<LeadActivity>>;
   let companyRepo: jest.Mocked<Repository<Company>>;
+  let userRepo: jest.Mocked<Repository<User>>;
+  let module: TestingModule;
 
   const companyId = 'company-uuid-1';
 
@@ -62,6 +70,30 @@ describe('LeadsService', () => {
             findOne: jest.fn(),
           },
         },
+        {
+          provide: getRepositoryToken(User),
+          useValue: {
+            findOne: jest.fn(),
+          },
+        },
+        {
+          provide: NotificationsService,
+          useValue: {
+            create: jest.fn(),
+          },
+        },
+        {
+          provide: UsersService,
+          useValue: {
+            findAdmins: jest.fn().mockResolvedValue([]),
+          },
+        },
+        {
+          provide: NotificationsGateway,
+          useValue: {
+            broadcastToCompany: jest.fn(),
+          },
+        },
       ],
     }).compile();
 
@@ -69,6 +101,7 @@ describe('LeadsService', () => {
     leadRepo = module.get(getRepositoryToken(Lead));
     activityRepo = module.get(getRepositoryToken(LeadActivity));
     companyRepo = module.get(getRepositoryToken(Company));
+    userRepo = module.get(getRepositoryToken(User));
   });
 
   it('should be defined', () => {
@@ -87,6 +120,213 @@ describe('LeadsService', () => {
       expect(leadRepo.create).toHaveBeenCalledWith({ ...dto, companyId, regionCode: 'dubai' });
       expect(result).toEqual(mockLead);
     });
+
+    it('should be defined', () => {
+      expect(service).toBeDefined();
+    });
+
+    it('broadcasts a leadUpdated event on create', async () => {
+      const clientLead: Partial<Lead> = {
+        id: 'lead-uuid-2',
+        companyId,
+        firstName: 'Clara',
+        lastName: 'Rashid',
+        email: 'clara@example.com',
+        status: LeadStatus.NEW,
+        temperature: LeadTemperature.WARM,
+        source: LeadSource.WHATSAPP,
+        score: 0,
+        assignedTo: 'agent-uuid-1',
+      };
+      companyRepo.findOne.mockResolvedValue({ defaultRegionCode: 'dubai' } as Company);
+      leadRepo.create.mockReturnValue(clientLead as Lead);
+      leadRepo.save.mockResolvedValue(clientLead as Lead);
+
+      await service.create(companyId, { firstName: 'Clara', source: LeadSource.WHATSAPP } as any);
+
+      expect(module!.get(NotificationsGateway).broadcastToCompany).toHaveBeenCalledWith(
+        companyId,
+        'leadUpdated',
+        expect.objectContaining({
+          id: 'lead-uuid-2',
+          status: LeadStatus.NEW,
+          assignedTo: 'agent-uuid-1',
+        }),
+      );
+    });
+
+    it('sends LEAD_ASSIGNED notification to the assigned agent', async () => {
+      const clientLead: Partial<Lead> = {
+        id: 'lead-assigned-1',
+        companyId,
+        firstName: 'Samir',
+        lastName: 'Hassan',
+        email: 'samir@example.com',
+        status: LeadStatus.NEW,
+        temperature: LeadTemperature.WARM,
+        source: LeadSource.WHATSAPP,
+        score: 0,
+        assignedTo: 'agent-uuid-1',
+      };
+      companyRepo.findOne.mockResolvedValue({ defaultRegionCode: 'dubai' } as Company);
+      leadRepo.create.mockReturnValue(clientLead as Lead);
+      leadRepo.save.mockResolvedValue(clientLead as Lead);
+      const notificationsService = module!.get(NotificationsService);
+
+      await service.create(companyId, { firstName: 'Samir', source: LeadSource.WHATSAPP } as any);
+
+      expect(notificationsService.create).toHaveBeenCalledWith(companyId, expect.objectContaining({
+        userId: 'agent-uuid-1',
+        title: 'New Lead Assigned',
+        message: 'You have been assigned a new lead: Samir Hassan',
+        type: NotificationType.LEAD_ASSIGNED,
+        entityType: 'lead',
+        entityId: 'lead-assigned-1',
+      }));
+    });
+
+    it('does NOT send LEAD_ASSIGNED notification if user creates lead already assigned to themselves', async () => {
+      const clientLead: Partial<Lead> = {
+        id: 'lead-self-assigned',
+        companyId,
+        firstName: 'Nadia',
+        lastName: 'Ali',
+        email: 'nadia@example.com',
+        status: LeadStatus.NEW,
+        temperature: LeadTemperature.WARM,
+        source: LeadSource.WHATSAPP,
+        score: 0,
+        assignedTo: 'creator-user-id',
+      };
+      companyRepo.findOne.mockResolvedValue({ defaultRegionCode: 'dubai' } as Company);
+      leadRepo.create.mockReturnValue(clientLead as Lead);
+      leadRepo.save.mockResolvedValue(clientLead as Lead);
+      const notificationsService = module!.get(NotificationsService);
+
+      await service.create(companyId, { firstName: 'Nadia' } as any, 'creator-user-id');
+
+      expect(notificationsService.create).not.toHaveBeenCalled();
+    });
+
+    it('does NOT send LEAD_UNASSIGNED notification if admin creates lead assigned to an agent', async () => {
+      const clientLead: Partial<Lead> = {
+        id: 'lead-assigned-2',
+        companyId,
+        firstName: 'Omar',
+        lastName: 'Khalid',
+        email: 'omar@example.com',
+        status: LeadStatus.NEW,
+        temperature: LeadTemperature.WARM,
+        source: LeadSource.WHATSAPP,
+        score: 0,
+        assignedTo: 'agent-uuid-2',
+      };
+      companyRepo.findOne.mockResolvedValue({ defaultRegionCode: 'dubai' } as Company);
+      leadRepo.create.mockReturnValue(clientLead as Lead);
+      leadRepo.save.mockResolvedValue(clientLead as Lead);
+      const notificationsService = module!.get(NotificationsService);
+      (module.get(UsersService).findAdmins as jest.Mock).mockResolvedValue([
+        { id: 'admin-1', name: 'Super Admin', email: 'super@company.com' },
+      ]);
+
+      await service.create(companyId, { firstName: 'Omar' } as any);
+
+      expect(notificationsService.create).toHaveBeenCalledWith(expect.objectContaining({
+        userId: 'agent-uuid-2',
+        type: NotificationType.LEAD_ASSIGNED,
+      }));
+    });
+
+    it('skips LEAD_UNASSIGNED notification for admin creator when lead has no assigned agent', async () => {
+      const noAssignLead: Partial<Lead> = {
+        id: 'lead-no-assign',
+        companyId,
+        firstName: 'Rania',
+        lastName: 'Mohammed',
+        email: 'rania@example.com',
+        status: LeadStatus.NEW,
+        temperature: LeadTemperature.WARM,
+        source: LeadSource.REFERRAL,
+        score: 0,
+        assignedTo: null,
+      };
+      companyRepo.findOne.mockResolvedValue({ defaultRegionCode: 'dubai' } as Company);
+      leadRepo.create.mockReturnValue(noAssignLead as Lead);
+      leadRepo.save.mockResolvedValue(noAssignLead as Lead);
+      const notificationsService = module!.get(NotificationsService);
+      (module.get(UsersService).findAdmins as jest.Mock).mockResolvedValue([
+        { id: 'creator-user-id', name: 'Admin Creator', email: 'creator@company.com' },
+      ]);
+
+      await service.create(companyId, { firstName: 'Rania' } as any, 'creator-user-id');
+
+      expect(notificationsService.create).not.toHaveBeenCalled();
+    });
+
+    it('sends LEAD_UNASSIGNED notifications to all other admins when lead has no assigned agent', async () => {
+      const noAssignLead: Partial<Lead> = {
+        id: 'lead-unassigned-multi',
+        companyId,
+        firstName: 'Layla',
+        lastName: 'Ibrahim',
+        email: 'layla@example.com',
+        status: LeadStatus.NEW,
+        temperature: LeadTemperature.WARM,
+        source: LeadSource.WEBSITE,
+        score: 0,
+        assignedTo: null,
+      };
+      const admin1 = { id: 'admin-not-creator', name: 'Admin One', email: 'admin1@company.com' };
+      const admin2 = { id: 'admin2-also-not', name: 'Admin Two', email: 'admin2@company.com' };
+      companyRepo.findOne.mockResolvedValue({ defaultRegionCode: 'dubai' } as Company);
+      leadRepo.create.mockReturnValue(noAssignLead as Lead);
+      leadRepo.save.mockResolvedValue(noAssignLead as Lead);
+      const notificationsService = module!.get(NotificationsService);
+      (module.get(UsersService).findAdmins as jest.Mock).mockResolvedValue([admin1, admin2]);
+
+      await service.create(companyId, { firstName: 'Layla' } as any, 'creator-user-id');
+
+      expect(notificationsService.create).toHaveBeenCalledWith(expect.objectContaining({
+        userId: 'admin-not-creator',
+        title: 'New Unassigned Lead',
+        message: 'A new lead for Layla Ibrahim has been created and needs assignment.',
+        type: NotificationType.LEAD_UNASSIGNED,
+        entityType: 'lead',
+        entityId: 'lead-unassigned-multi',
+      }));
+      expect(notificationsService.create).toHaveBeenCalledWith(expect.objectContaining({
+        userId: 'admin2-also-not',
+        title: 'New Unassigned Lead',
+        type: NotificationType.LEAD_UNASSIGNED,
+      }));
+    });
+
+    it('formats first name only when lastName is empty', async () => {
+      const noAssignLead: Partial<Lead> = {
+        id: 'lead-no-lastname',
+        companyId,
+        firstName: 'Salma',
+        lastName: '',
+        email: 'salma@example.com',
+        status: LeadStatus.NEW,
+        temperature: LeadTemperature.WARM,
+        source: LeadSource.OTHER,
+        score: 0,
+        assignedTo: 'agent-uuid-1',
+      };
+      companyRepo.findOne.mockResolvedValue({ defaultRegionCode: 'dubai' } as Company);
+      leadRepo.create.mockReturnValue(noAssignLead as Lead);
+      leadRepo.save.mockResolvedValue(noAssignLead as Lead);
+      const notificationsService = module!.get(NotificationsService);
+
+      await service.create(companyId, { firstName: 'Salma' } as any);
+
+      expect(notificationsService.create).toHaveBeenCalledWith(expect.objectContaining({
+        userId: 'agent-uuid-1',
+        message: 'You have been assigned a new lead: Salma',
+        type: NotificationType.LEAD_ASSIGNED,
+      }));
+    });
   });
 
   describe('findAll', () => {
@@ -97,12 +337,11 @@ describe('LeadsService', () => {
 
       expect(leadRepo.findAndCount).toHaveBeenCalledWith({
         where: { companyId },
-        relations: ['property', 'unit'],
-        skip: 0,
-        take: 20,
+        relations: ['property', 'unit', 'assignedAgent'],
+        ...{ skip: 0, take: 20 },
         order: { createdAt: 'DESC' },
       });
-      expect(result.data).toEqual([mockLead]);
+      expect(result.data).toEqual([{ ...mockLead, assignedAgentName: null }]);
       expect(result.total).toBe(1);
     });
   });
@@ -113,7 +352,7 @@ describe('LeadsService', () => {
 
       const result = await service.findOne('lead-uuid-1', companyId);
 
-      expect(result).toEqual(mockLead);
+      expect(result).toEqual({ ...mockLead, assignedAgentName: null });
     });
 
     it('throws NotFoundException when lead not found', async () => {
@@ -131,19 +370,22 @@ describe('LeadsService', () => {
 
   describe('update', () => {
     it('updates lead fields', async () => {
-      leadRepo.findOne.mockResolvedValue({ ...mockLead } as Lead);
+      leadRepo.findOne
+        .mockResolvedValueOnce({ ...mockLead } as Lead)
+        .mockResolvedValueOnce({ ...mockLead, score: 75 } as Lead);
       leadRepo.save.mockResolvedValue({ ...mockLead, score: 75 } as Lead);
-      activityRepo.create.mockReturnValue(mockActivity as LeadActivity);
-      activityRepo.save.mockResolvedValue(mockActivity as LeadActivity);
 
       const result = await service.update('lead-uuid-1', companyId, { score: 75 } as any);
 
       expect(result.score).toBe(75);
+      expect(result.assignedAgentName).toBeNull();
     });
 
     it('creates activity log when status changes', async () => {
       const leadWithStatus = { ...mockLead, status: LeadStatus.NEW } as Lead;
-      leadRepo.findOne.mockResolvedValue(leadWithStatus);
+      leadRepo.findOne
+        .mockResolvedValueOnce(leadWithStatus)
+        .mockResolvedValueOnce({ ...leadWithStatus, status: LeadStatus.CONTACTED } as Lead);
       leadRepo.save.mockResolvedValue({ ...leadWithStatus, status: LeadStatus.CONTACTED } as Lead);
       activityRepo.create.mockReturnValue(mockActivity as LeadActivity);
       activityRepo.save.mockResolvedValue(mockActivity as LeadActivity);
@@ -157,7 +399,9 @@ describe('LeadsService', () => {
 
     it('sets stageEnteredAt when status changes', async () => {
       const leadWithStatus = { ...mockLead, status: LeadStatus.NEW } as Lead;
-      leadRepo.findOne.mockResolvedValue(leadWithStatus);
+      leadRepo.findOne
+        .mockResolvedValueOnce(leadWithStatus)
+        .mockResolvedValueOnce({ ...leadWithStatus, status: LeadStatus.CONTACTED } as Lead);
       leadRepo.save.mockImplementation(async (lead) => lead as Lead);
       activityRepo.create.mockReturnValue(mockActivity as LeadActivity);
       activityRepo.save.mockResolvedValue(mockActivity as LeadActivity);
@@ -170,7 +414,9 @@ describe('LeadsService', () => {
 
     it('does not set stageEnteredAt when status does not change', async () => {
       const leadWithStatus = { ...mockLead, status: LeadStatus.NEW } as Lead;
-      leadRepo.findOne.mockResolvedValue(leadWithStatus);
+      leadRepo.findOne
+        .mockResolvedValueOnce(leadWithStatus)
+        .mockResolvedValueOnce(leadWithStatus);
       leadRepo.save.mockImplementation(async (lead) => lead as Lead);
 
       await service.update('lead-uuid-1', companyId, { score: 80 } as any);
@@ -178,12 +424,127 @@ describe('LeadsService', () => {
       const savedLead = leadRepo.save.mock.calls[0][0] as Lead;
       expect(savedLead.stageEnteredAt).toBeUndefined();
     });
+
+    it('clears property and unit relations when ids are explicitly unset', async () => {
+      const leadWithRelations = {
+        ...mockLead,
+        propertyId: 'locality-uuid-1',
+        unitId: 'unit-uuid-1',
+        property: { id: 'locality-uuid-1', name: 'Dubai Marina' },
+        unit: { id: 'unit-uuid-1', unitNumber: '1204' },
+      } as unknown as Lead;
+      leadRepo.findOne
+        .mockResolvedValueOnce(leadWithRelations)
+        .mockResolvedValueOnce({ ...leadWithRelations, propertyId: null, unitId: null, property: null, unit: null } as unknown as Lead);
+      leadRepo.save.mockImplementation(async (lead) => lead as Lead);
+
+      await service.update('lead-uuid-1', companyId, { propertyId: null, unitId: null } as any);
+
+      const savedLead = leadRepo.save.mock.calls[0][0] as Lead;
+      expect(savedLead.propertyId).toBeNull();
+      expect(savedLead.unitId).toBeNull();
+      expect(savedLead.property).toBeNull();
+      expect(savedLead.unit).toBeNull();
+    });
+
+    it('rejects null status updates before saving', async () => {
+      leadRepo.findOne.mockResolvedValue({ ...mockLead } as Lead);
+
+      await expect(service.update('lead-uuid-1', companyId, { status: null } as any)).rejects.toThrow(
+        BadRequestException,
+      );
+
+      expect(leadRepo.save).not.toHaveBeenCalled();
+    });
+
+    it('forbids non-admin assignment changes through update', async () => {
+      leadRepo.findOne.mockResolvedValue({ ...mockLead } as Lead);
+
+      await expect(
+        service.update('lead-uuid-1', companyId, { assignedTo: 'agent-uuid-1' } as any, 'user-uuid-1', Role.AGENT),
+      ).rejects.toThrow(ForbiddenException);
+
+      expect(userRepo.findOne).not.toHaveBeenCalled();
+      expect(leadRepo.save).not.toHaveBeenCalled();
+    });
+
+    it('validates assigned agent when admin updates assignment', async () => {
+      leadRepo.findOne.mockResolvedValue({ ...mockLead } as Lead);
+      userRepo.findOne.mockResolvedValue(null);
+
+      await expect(
+        service.update(
+          'lead-uuid-1',
+          companyId,
+          { assignedTo: 'missing-agent' } as any,
+          'user-uuid-1',
+          Role.COMPANY_ADMIN,
+        ),
+      ).rejects.toThrow(NotFoundException);
+
+      expect(leadRepo.save).not.toHaveBeenCalled();
+    });
+
+    it('logs assignment activity when admin updates assignment', async () => {
+      const leadWithAgent = { ...mockLead, assignedTo: 'old-agent-uuid' } as Lead;
+      leadRepo.findOne
+        .mockResolvedValueOnce(leadWithAgent)
+        .mockResolvedValueOnce({ ...leadWithAgent, assignedTo: 'new-agent-uuid' } as Lead);
+      leadRepo.save.mockImplementation(async (lead) => lead as Lead);
+      userRepo.findOne.mockResolvedValue({ id: 'new-agent-uuid', name: 'New Agent' } as User);
+      activityRepo.create.mockImplementation((activity) => activity as LeadActivity);
+      activityRepo.save.mockResolvedValue(mockActivity as LeadActivity);
+
+      await service.update(
+        'lead-uuid-1',
+        companyId,
+        { assignedTo: 'new-agent-uuid' } as any,
+        'admin-uuid',
+        Role.COMPANY_ADMIN,
+      );
+
+      const savedLead = leadRepo.save.mock.calls[0][0] as Lead;
+      expect(savedLead.previousAgent).toBe('old-agent-uuid');
+      expect(activityRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: ActivityType.ASSIGNMENT,
+          notes: 'Lead assigned to agent New Agent',
+          performedBy: 'admin-uuid',
+        }),
+      );
+    });
+
+    it('allows admin to unassign a lead with assignedTo: null', async () => {
+      const leadWithAgent = { ...mockLead, assignedTo: 'old-agent-uuid' } as Lead;
+      leadRepo.findOne
+        .mockResolvedValueOnce(leadWithAgent)
+        .mockResolvedValueOnce({ ...leadWithAgent, assignedTo: null } as Lead);
+      leadRepo.save.mockImplementation(async (lead) => lead as Lead);
+      activityRepo.create.mockImplementation((activity) => activity as LeadActivity);
+      activityRepo.save.mockResolvedValue(mockActivity as LeadActivity);
+
+      await service.update(
+        'lead-uuid-1',
+        companyId,
+        { assignedTo: null } as any,
+        'admin-uuid',
+        Role.COMPANY_ADMIN,
+      );
+
+      expect(userRepo.findOne).not.toHaveBeenCalled();
+      const savedLead = leadRepo.save.mock.calls[0][0] as Lead;
+      expect(savedLead.assignedTo).toBeNull();
+      expect(savedLead.previousAgent).toBe('old-agent-uuid');
+    });
   });
 
   describe('assign', () => {
     it('assigns lead to agent and logs activity', async () => {
-      leadRepo.findOne.mockResolvedValue({ ...mockLead } as Lead);
+      leadRepo.findOne
+        .mockResolvedValueOnce({ ...mockLead } as Lead)
+        .mockResolvedValueOnce({ ...mockLead, assignedTo: 'agent-uuid-1' } as Lead);
       leadRepo.save.mockResolvedValue({ ...mockLead, assignedTo: 'agent-uuid-1' } as Lead);
+      userRepo.findOne.mockResolvedValue({ id: 'agent-uuid-1', name: 'Agent One' } as User);
       activityRepo.create.mockReturnValue(mockActivity as LeadActivity);
       activityRepo.save.mockResolvedValue(mockActivity as LeadActivity);
 
@@ -195,10 +556,22 @@ describe('LeadsService', () => {
       );
     });
 
+    it('throws when assigned agent does not exist in the company', async () => {
+      leadRepo.findOne.mockResolvedValue({ ...mockLead } as Lead);
+      userRepo.findOne.mockResolvedValue(null);
+
+      await expect(service.assign('lead-uuid-1', companyId, 'missing-agent')).rejects.toThrow(NotFoundException);
+      expect(leadRepo.save).not.toHaveBeenCalled();
+      expect(activityRepo.save).not.toHaveBeenCalled();
+    });
+
     it('saves previousAgent and transferReason when reassigning', async () => {
       const leadWithAgent = { ...mockLead, assignedTo: 'old-agent-uuid' } as Lead;
-      leadRepo.findOne.mockResolvedValue(leadWithAgent);
+      leadRepo.findOne
+        .mockResolvedValueOnce(leadWithAgent)
+        .mockResolvedValueOnce({ ...leadWithAgent, assignedTo: 'new-agent-uuid' } as Lead);
       leadRepo.save.mockImplementation(async (lead) => lead as Lead);
+      userRepo.findOne.mockResolvedValue({ id: 'new-agent-uuid', name: 'New Agent' } as User);
       activityRepo.create.mockReturnValue(mockActivity as LeadActivity);
       activityRepo.save.mockResolvedValue(mockActivity as LeadActivity);
 
@@ -211,8 +584,11 @@ describe('LeadsService', () => {
     });
 
     it('includes reason in activity notes when provided', async () => {
-      leadRepo.findOne.mockResolvedValue({ ...mockLead } as Lead);
+      leadRepo.findOne
+        .mockResolvedValueOnce({ ...mockLead } as Lead)
+        .mockResolvedValueOnce({ ...mockLead, assignedTo: 'agent-uuid-1' } as Lead);
       leadRepo.save.mockResolvedValue({ ...mockLead, assignedTo: 'agent-uuid-1' } as Lead);
+      userRepo.findOne.mockResolvedValue({ id: 'agent-uuid-1', name: 'Agent One' } as User);
       activityRepo.create.mockReturnValue(mockActivity as LeadActivity);
       activityRepo.save.mockResolvedValue(mockActivity as LeadActivity);
 
@@ -228,8 +604,11 @@ describe('LeadsService', () => {
 
     it('does not set previousAgent when no existing agent', async () => {
       const leadNoAgent = { ...mockLead, assignedTo: null } as unknown as Lead;
-      leadRepo.findOne.mockResolvedValue(leadNoAgent);
+      leadRepo.findOne
+        .mockResolvedValueOnce(leadNoAgent)
+        .mockResolvedValueOnce({ ...leadNoAgent, assignedTo: 'agent-uuid-1' } as Lead);
       leadRepo.save.mockImplementation(async (lead) => lead as Lead);
+      userRepo.findOne.mockResolvedValue({ id: 'agent-uuid-1', name: 'Agent One' } as User);
       activityRepo.create.mockReturnValue(mockActivity as LeadActivity);
       activityRepo.save.mockResolvedValue(mockActivity as LeadActivity);
 
@@ -284,9 +663,11 @@ describe('LeadsService', () => {
 
       expect(activityRepo.find).toHaveBeenCalledWith({
         where: { leadId: 'lead-uuid-1', companyId },
+        relations: ['performer'],
         order: { createdAt: 'DESC' },
+        take: 200,
       });
-      expect(result).toEqual([mockActivity]);
+      expect(result).toEqual([{ ...mockActivity, performedByName: null }]);
     });
   });
 });

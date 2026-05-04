@@ -1,4 +1,4 @@
-import Controller from '@ember/controller';
+import PaginatedController from './paginated-base';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
@@ -16,11 +16,12 @@ const COMMISSION_TYPE_OPTIONS = [
   { value: 'REFERRAL', label: 'Referral' },
 ];
 
-export default class CommissionsController extends Controller {
+export default class CommissionsController extends PaginatedController {
   @service auth;
   @service notifications;
   @service router;
 
+  queryParams = ['page', 'limit', 'filterStatus'];
   @tracked filterStatus = '';
   @tracked showModal = false;
   @tracked isSaving = false;
@@ -45,14 +46,18 @@ export default class CommissionsController extends Controller {
   }
 
   get filteredCommissions() {
-    const all = this.model?.commissions || [];
-    if (!this.filterStatus) return all;
-    return all.filter((c) => c.status === this.filterStatus);
+    return this.model?.commissions || [];
   }
 
   @action setField(fieldName, e) {
     this[fieldName] = e.target.value;
   }
+
+  @action setStatusFilter(e) {
+    this.filterStatus = e.target.value;
+    this.page = 1;
+  }
+
 
   @action openCreate() {
     this.formAgentId = '';

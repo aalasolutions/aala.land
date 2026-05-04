@@ -1,4 +1,4 @@
-import Controller from '@ember/controller';
+import PaginatedController from './paginated-base';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
@@ -25,14 +25,12 @@ const ACCESS_LEVELS = [
   { value: 'ADMIN_ONLY', label: 'Admin Only' },
 ];
 
-export default class DocumentsController extends Controller {
+export default class DocumentsController extends PaginatedController {
   @service auth;
   @service notifications;
   @service router;
 
   queryParams = ['page', 'limit', 'category'];
-  @tracked page = 1;
-  @tracked limit = 20;
   @tracked category = '';
 
   @tracked showModal = false;
@@ -66,6 +64,7 @@ export default class DocumentsController extends Controller {
     this.category = e.target.value;
     this.page = 1;
   }
+
 
   @action onFileSelect(e) {
     const file = e.target.files?.[0];

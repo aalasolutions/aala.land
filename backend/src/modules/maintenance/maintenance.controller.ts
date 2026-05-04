@@ -30,14 +30,18 @@ export class MaintenanceController {
   @ApiOperation({ summary: 'List work orders (paginated)' })
   @ApiQuery({ name: 'page', required: false })
   @ApiQuery({ name: 'limit', required: false })
+  @ApiQuery({ name: 'status', required: false, enum: ['OPEN', 'IN_PROGRESS', 'PENDING_APPROVAL', 'COMPLETED', 'CANCELLED'] })
+  @ApiQuery({ name: 'period', required: false, enum: ['this_month', 'last_month', 'last_3_months'] })
   @ApiQuery({ name: 'regionCode', required: false, type: String })
   findAll(
     @Request() req: AuthenticatedRequest,
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
     @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
+    @Query('status') status?: string,
+    @Query('period') period?: string,
     @Query('regionCode') regionCode?: string,
   ) {
-    return this.maintenanceService.findAll(req.user.companyId, page, limit, regionCode);
+    return this.maintenanceService.findAll(req.user.companyId, page, limit, regionCode, status, period);
   }
 
   @Get('cost-summary')

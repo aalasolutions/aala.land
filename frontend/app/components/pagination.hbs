@@ -1,0 +1,46 @@
+<div class="table-pagination">
+  <div class="table-pagination__spacer"></div>
+
+  <div class="table-pagination__controls">
+    <div class="table-pagination__limit">
+      <label class="sr-only" for={{this.selectId}}>Rows per page</label>
+      <select
+        id={{this.selectId}}
+        class="table-pagination__select"
+        {{on "change" @onLimitChange}}
+      >
+        {{#each this.limitOptions as |limitOption|}}
+          <option value={{limitOption.value}} selected={{limitOption.selected}}>
+            {{limitOption.label}}
+          </option>
+        {{/each}}
+      </select>
+    </div>
+
+    <button
+      type="button"
+      class="table-pagination__button"
+      aria-label="Previous page"
+      title="Previous page"
+      disabled={{this.disablePrevious}}
+      {{on "click" @onPrevious}}
+    >
+      &lsaquo;
+    </button>
+
+    <div class="table-pagination__status">
+      <span class="table-pagination__status-value">{{this.page}} / {{this.totalPages}}</span>
+    </div>
+
+    <button
+      type="button"
+      class="table-pagination__button"
+      aria-label="Next page"
+      title="Next page"
+      disabled={{this.disableNext}}
+      {{on "click" @onNext}}
+    >
+      &rsaquo;
+    </button>
+  </div>
+</div>

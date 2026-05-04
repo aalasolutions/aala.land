@@ -8,11 +8,21 @@ export default class MaintenanceRoute extends AuthenticatedRoute {
   queryParams = {
     page: { refreshModel: true },
     limit: { refreshModel: true },
+    filterStatus: { refreshModel: true },
+    filterMonth: { refreshModel: true },
   };
 
-  async model({ page = 1, limit = 20 }) {
+  async model({ page = 1, limit = 10, filterStatus = '', filterMonth = '' }) {
+    const maintenanceParams = new URLSearchParams({ page, limit });
+    if (filterStatus) {
+      maintenanceParams.set('status', filterStatus);
+    }
+    if (filterMonth) {
+      maintenanceParams.set('period', filterMonth);
+    }
+
     const [mainJson, vendorsJson, costJson, upcomingJson, unitsJson] = await Promise.all([
-      safeJson(this.auth, `/maintenance?page=${page}&limit=${limit}`, 'MAINT'),
+      safeJson(this.auth, `/maintenance?${maintenanceParams.toString()}`, 'MAINT'),
       safeJson(this.auth, '/vendors?page=1&limit=100', 'MAINT'),
       safeJson(this.auth, '/maintenance/cost-summary', 'MAINT'),
       safeJson(this.auth, '/maintenance/upcoming', 'MAINT'),
@@ -28,6 +38,8 @@ export default class MaintenanceRoute extends AuthenticatedRoute {
       total: mainJson?.data?.total ?? 0,
       page,
       limit,
+      filterStatus,
+      filterMonth,
     };
   }
 }

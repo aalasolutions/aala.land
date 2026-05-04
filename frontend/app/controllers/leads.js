@@ -34,6 +34,33 @@ export default class LeadsController extends Controller {
   @service router;
   @service region;
   @service preferences;
+  @service socket;
+  leadUpdatedHandler = null;
+
+  constructor() {
+    super(...arguments);
+    this.setupSocket();
+  }
+
+  setupSocket() {
+    this.leadUpdatedHandler = (data) => {
+      // Only refresh if the update was from another user
+      if (data.updatedBy !== this.auth.currentUser?.id) {
+        if (this.router.isActive('leads')) {
+          this.router.refresh('leads');
+        }
+      }
+    };
+    this.socket.on('leadUpdated', this.leadUpdatedHandler);
+  }
+
+  willDestroy() {
+    if (this.leadUpdatedHandler) {
+      this.socket.off('leadUpdated', this.leadUpdatedHandler);
+    }
+
+    super.willDestroy(...arguments);
+  }
 
   queryParams = ['page', 'limit', 'status'];
   page = 1;
@@ -185,12 +212,20 @@ export default class LeadsController extends Controller {
 
   @action setField(fieldName, e) { this[fieldName] = e.target.value; }
 
+  @action setRegionCode(e) {
+    this.formRegionCode = e.target.value;
+    this.formPropertyId = '';
+    this.formUnitId = '';
+    this.filteredUnits = [];
+    this.loadProperties(this.formRegionCode);
+  }
+
   @action setPropertyId(e) {
     this.formPropertyId = e.target.value;
     this.formUnitId = '';
     this.filteredUnits = [];
     if (e.target.value) {
-      this.loadUnits(e.target.value);
+      this.loadUnits(e.target.value, this.formRegionCode);
     }
   }
 
@@ -208,7 +243,7 @@ export default class LeadsController extends Controller {
     this.editLead = null;
     this.errorMsg = '';
     this.showModal = true;
-    this.loadProperties();
+    this.loadProperties(this.formRegionCode);
   }
 
   @action openEdit(lead) {
@@ -222,14 +257,16 @@ export default class LeadsController extends Controller {
     this.formPhone = lead.phone ?? '';
     this.formStatus = lead.status ?? 'NEW';
     this.formTemperature = lead.temperature ?? 'WARM';
-    this.formPropertyId = lead.propertyId ?? '';
+    this.formRegionCode = lead.regionCode ?? this.region.regionCode;
+    const propertyId = lead.property?.id ?? lead.propertyId ?? '';
+    this.formPropertyId = propertyId;
     this.formUnitId = lead.unitId ?? '';
     this.editLead = lead;
     this.errorMsg = '';
     this.showModal = true;
-    this.loadProperties();
-    if (lead.propertyId) {
-      this.loadUnits(lead.propertyId);
+    this.loadProperties(this.formRegionCode);
+    if (propertyId) {
+      this.loadUnits(propertyId, this.formRegionCode);
     }
   }
 
@@ -287,22 +324,41 @@ export default class LeadsController extends Controller {
     e.stopPropagation();
   }
 
-  @action async loadProperties() {
+  @action async loadProperties(regionCode = this.formRegionCode || this.region.regionCode) {
     try {
-      const json = await this.auth.fetchJson('/properties/areas');
-      this.properties = json.data?.data || [];
+      const params = new URLSearchParams();
+      if (regionCode) {
+        params.set('regionCode', regionCode);
+      }
+
+      const queryString = params.toString();
+      const url = queryString
+        ? `/locations/company/localities?${queryString}`
+        : '/locations/company/localities';
+      const json = await this.auth.fetchJson(url);
+      this.properties = json.data || [];
     } catch (e) {
       console.error('Failed to load properties:', e);
+      this.properties = [];
     }
   }
 
-  @action async loadUnits(propertyId) {
+  @action async loadUnits(propertyId, regionCode = this.formRegionCode || this.region.regionCode) {
     try {
-      const json = await this.auth.fetchJson(`/properties/areas/${propertyId}/assets`);
-      const assets = json.data?.data || [];
-      this.filteredUnits = assets.flatMap(a => a.units || []);
+      const params = new URLSearchParams({
+        localityId: propertyId,
+        limit: '100',
+      });
+
+      if (regionCode) {
+        params.set('regionCode', regionCode);
+      }
+
+      const json = await this.auth.fetchJson(`/properties/units?${params.toString()}`);
+      this.filteredUnits = json.data?.data || [];
     } catch (e) {
       console.error('Failed to load units:', e);
+      this.filteredUnits = [];
     }
   }
 
@@ -453,6 +509,10 @@ export default class LeadsController extends Controller {
     const path = isEdit ? `/leads/${this.editLead.id}` : '/leads';
 
     try {
+      const originalPropertyId = this.editLead?.property?.id ?? this.editLead?.propertyId ?? '';
+      const originalUnitId = this.editLead?.unitId ?? '';
+      const originalRegionCode = this.editLead?.regionCode ?? '';
+
       await this.auth.fetchJson(path, {
         method: isEdit ? 'PATCH' : 'POST',
         body: JSON.stringify({
@@ -462,9 +522,23 @@ export default class LeadsController extends Controller {
           ...(this.formPhone ? { phone: this.formPhone } : {}),
           status: this.formStatus,
           temperature: this.formTemperature,
-          ...(this.formPropertyId ? { propertyId: this.formPropertyId } : {}),
-          ...(this.formUnitId ? { unitId: this.formUnitId } : {}),
-          ...(!isEdit && this.formRegionCode ? { regionCode: this.formRegionCode } : {}),
+          ...(isEdit
+            ? {
+                ...(this.formPropertyId !== originalPropertyId
+                  ? { propertyId: this.formPropertyId || null }
+                  : {}),
+                ...(this.formUnitId !== originalUnitId
+                  ? { unitId: this.formUnitId || null }
+                  : {}),
+                ...(this.formRegionCode !== originalRegionCode
+                  ? { regionCode: this.formRegionCode }
+                  : {}),
+              }
+            : {
+                ...(this.formPropertyId ? { propertyId: this.formPropertyId } : {}),
+                ...(this.formUnitId ? { unitId: this.formUnitId } : {}),
+                ...(this.formRegionCode ? { regionCode: this.formRegionCode } : {}),
+              }),
         }),
       });
 

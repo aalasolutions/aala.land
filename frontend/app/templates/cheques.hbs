@@ -5,6 +5,7 @@
     <div>
       <h2 class="font-3xl font-bold"><Ph @icon="checks" @size="28px" /> Cheque Management</h2>
       <p class="text-muted mt-1">Track post-dated cheques and payment schedules.</p>
+      <p class="text-muted font-sm mt-1">{{format-number @model.total}} cheque records</p>
     </div>
     {{#if this.isAdmin}}
       <button type="button" class="btn btn-primary" {{on "click" this.openCreate}}>
@@ -25,7 +26,7 @@
   {{#if (eq this.activeTab "cheques")}}
     <div class="glass-panel p-5">
       {{#if @model.cheques.length}}
-        <div class="data-table-wrapper">
+        <div class="data-table-wrapper data-table-wrapper--with-pagination">
           <table class="data-table">
             <thead>
               <tr>
@@ -84,8 +85,31 @@
             </tbody>
           </table>
         </div>
+
+        <Pagination
+          @selectId="cheques-limit"
+          @page={{this.page}}
+          @limit={{this.limit}}
+          @total={{@model.total}}
+          @onLimitChange={{this.setLimit}}
+          @onPrevious={{this.goToPreviousPage}}
+          @onNext={{this.goToNextPage}}
+        />
       {{else}}
-        <p class="text-muted text-center py-8">No cheques yet. Add your first cheque record.</p>
+        {{#if @model.total}}
+          <p class="text-muted text-center py-8">No cheques on this page. Navigate to find cheques or adjust filters.</p>
+          <Pagination
+            @selectId="cheques-limit"
+            @page={{this.page}}
+            @limit={{this.limit}}
+            @total={{@model.total}}
+            @onLimitChange={{this.setLimit}}
+            @onPrevious={{this.goToPreviousPage}}
+            @onNext={{this.goToNextPage}}
+          />
+        {{else}}
+          <p class="text-muted text-center py-8">No cheques yet. Add your first cheque record.</p>
+        {{/if}}
       {{/if}}
     </div>
   {{/if}}

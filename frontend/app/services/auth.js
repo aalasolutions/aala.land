@@ -12,6 +12,7 @@ export default class AuthService extends Service {
   @service session;
   @service region;
   @service router;
+  @service socket;
 
   get apiBase() {
     return config.APP.API_BASE;
@@ -86,6 +87,7 @@ export default class AuthService extends Service {
   }
 
   async logout() {
+    this.socket.disconnect();
     await this.session.invalidate();
   }
 

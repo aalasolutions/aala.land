@@ -74,7 +74,7 @@ export class CreateLeadDto {
   @IsOptional()
   budgetMax?: number;
 
-  @ApiPropertyOptional({ example: 'uuid-of-property-area' })
+  @ApiPropertyOptional({ example: 'uuid-of-locality' })
   @IsUUID()
   @IsOptional()
   propertyId?: string;
