@@ -7,12 +7,18 @@ export default class FinancialsRoute extends AuthenticatedRoute {
   queryParams = {
     page: { refreshModel: true },
     limit: { refreshModel: true },
+    activeTab: { refreshModel: true },
   };
 
-  async model({ page = 1, limit = 20 }) {
+  async model({ page = 1, limit = 10, activeTab = 'all' }) {
     try {
+      const params = new URLSearchParams({ page, limit });
+      if (activeTab !== 'all') {
+        params.set('type', activeTab);
+      }
+
       const [txnJson, summaryJson, depositsJson] = await Promise.all([
-        this.auth.fetchJson(`/financial/transactions?page=${page}&limit=${limit}`),
+        this.auth.fetchJson(`/financial/transactions?${params.toString()}`),
         this.auth.fetchJson(`/financial/transactions/summary`),
         this.auth.fetchJson(`/financial/deposit-reminders`),
       ]);
@@ -24,9 +30,11 @@ export default class FinancialsRoute extends AuthenticatedRoute {
         summary: summaryJson.data ?? null,
         depositReminders: depositsJson.data ?? [],
         page,
+        limit,
+        activeTab,
       };
     } catch {
-      return { transactions: [], total: 0, summary: null, depositReminders: [], page };
+      return { transactions: [], total: 0, summary: null, depositReminders: [], page, limit, activeTab };
     }
   }
 }

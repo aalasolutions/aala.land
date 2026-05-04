@@ -1,4 +1,4 @@
-import Controller from '@ember/controller';
+import PaginatedController from './paginated-base';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
@@ -12,14 +12,12 @@ const CONTACT_TYPES = [
   { value: 'OTHER', label: 'Other' },
 ];
 
-export default class ContactsController extends Controller {
+export default class ContactsController extends PaginatedController {
   @service auth;
   @service notifications;
   @service router;
 
   queryParams = ['page', 'limit', 'search'];
-  @tracked page = 1;
-  @tracked limit = 20;
   @tracked search = '';
 
   @tracked showModal = false;
@@ -48,6 +46,7 @@ export default class ContactsController extends Controller {
     this.search = e.target.value;
     this.page = 1;
   }
+
 
   @action openCreate() {
     this.formFirstName = '';

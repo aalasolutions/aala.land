@@ -34,9 +34,11 @@ export class CommissionsService {
     companyId: string,
     page = 1,
     limit = 20,
+    status?: string,
     regionCode?: string,
   ): Promise<{ data: Commission[]; total: number; page: number; limit: number }> {
     const where: FindOptionsWhere<Commission> = { companyId };
+    if (status) where.status = status as CommissionStatus;
     if (regionCode) where.regionCode = regionCode;
 
     const [data, total] = await this.commissionRepository.findAndCount({

@@ -1,7 +1,8 @@
-import Controller from '@ember/controller';
+import PaginatedController from './paginated-base';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
+import { isAdminRole } from '../utils/roles';
 
 const CHEQUE_TYPE_OPTIONS = [
   { value: 'RENT', label: 'Rent' },
@@ -12,10 +13,37 @@ const CHEQUE_TYPE_OPTIONS = [
 
 const EMPTY_UNIT_OPTION = { value: '', label: 'No property linked' };
 
-export default class ChequesController extends Controller {
+export default class ChequesController extends PaginatedController {
   @service auth;
   @service notifications;
   @service router;
+  @service socket;
+  chequeUpdatedHandler = null;
+  queryParams = ['page', 'limit'];
+  constructor() {
+    super(...arguments);
+    this.setupSocket();
+  }
+
+  setupSocket() {
+    this.chequeUpdatedHandler = (data) => {
+      // Only refresh if the update was from another user
+      if (data.updatedBy !== this.auth.currentUser?.id) {
+        if (this.router.isActive('cheques')) {
+          this.router.refresh('cheques');
+        }
+      }
+    };
+    this.socket.on('chequeUpdated', this.chequeUpdatedHandler);
+  }
+
+  willDestroy() {
+    if (this.chequeUpdatedHandler) {
+      this.socket.off('chequeUpdated', this.chequeUpdatedHandler);
+    }
+
+    super.willDestroy(...arguments);
+  }
 
   @tracked showModal = false;
   @tracked editCheque = null;
@@ -36,8 +64,7 @@ export default class ChequesController extends Controller {
   @tracked formBounceReason = '';
 
   get isAdmin() {
-    const role = this.auth.currentUser?.role;
-    return role === 'company_admin' || role === 'super_admin';
+    return isAdminRole(this.auth.currentUser?.role);
   }
 
   get chequeTypeOptions() {

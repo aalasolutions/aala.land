@@ -25,7 +25,7 @@ export class FinancialService {
     return this.transactionRepository.save(transaction);
   }
 
-  async findAll(companyId: string, page = 1, limit = 20, ownerId?: string, regionCode?: string): Promise<{ data: Transaction[]; total: number; page: number; limit: number }> {
+  async findAll(companyId: string, page = 1, limit = 20, type?: string, ownerId?: string, regionCode?: string): Promise<{ data: Transaction[]; total: number; page: number; limit: number }> {
     if (regionCode) {
       // Show transactions that either belong to a unit in the region OR have no unit linked
       const qb = this.transactionRepository
@@ -41,6 +41,10 @@ export class FinancialService {
         qb.andWhere('unit.ownerId = :ownerId', { ownerId });
       }
 
+      if (type) {
+        qb.andWhere('t.type = :type', { type });
+      }
+
       qb.skip(pageSkip(page, limit))
         .take(limit)
         .orderBy('t.createdAt', 'DESC');
@@ -53,6 +57,10 @@ export class FinancialService {
 
     if (ownerId) {
       where.unit = { ownerId };
+    }
+
+    if (type) {
+      where.type = type as TransactionType;
     }
 
     const [data, total] = await this.transactionRepository.findAndCount({

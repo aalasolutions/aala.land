@@ -1,4 +1,4 @@
-import Controller from '@ember/controller';
+import PaginatedController from './paginated-base';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
@@ -16,11 +16,13 @@ const SPECIALTY_OPTIONS = [
   { value: 'GENERAL', label: 'General' },
 ];
 
-export default class VendorsController extends Controller {
+export default class VendorsController extends PaginatedController {
   @service auth;
   @service notifications;
   @service router;
   @service region;
+
+  queryParams = ['page', 'limit'];
 
   @tracked showModal = false;
   @tracked editVendor = null;

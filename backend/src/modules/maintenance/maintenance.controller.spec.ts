@@ -70,7 +70,7 @@ describe('MaintenanceController', () => {
 
       await controller.findAll(mockReq, 1, 20);
 
-      expect(service.findAll).toHaveBeenCalledWith(companyId, 1, 20, undefined);
+      expect(service.findAll).toHaveBeenCalledWith(companyId, 1, 20, undefined, undefined, undefined);
     });
   });
 

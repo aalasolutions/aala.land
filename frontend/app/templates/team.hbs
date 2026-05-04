@@ -18,7 +18,7 @@
 
   <div class="glass-panel p-5">
     {{#if this.model.users.length}}
-      <div class="data-table-wrapper">
+      <div class="data-table-wrapper data-table-wrapper--with-pagination">
         <table class="data-table">
           <thead>
             <tr>
@@ -57,14 +57,33 @@
           </tbody>
         </table>
       </div>
+
+      <Pagination
+        @selectId="team-limit"
+        @page={{this.page}}
+        @limit={{this.limit}}
+        @total={{@model.total}}
+        @onLimitChange={{this.setLimit}}
+        @onPrevious={{this.goToPreviousPage}}
+        @onNext={{this.goToNextPage}}
+      />
     {{else}}
-      <p class="text-muted text-center py-8">No team members yet. Add your first team member to get started.</p>
+      {{#if @model.total}}
+        <p class="text-muted text-center py-8">No team members on page {{this.page}}. Navigate back to find members.</p>
+        <Pagination
+          @selectId="team-limit"
+          @page={{this.page}}
+          @limit={{this.limit}}
+          @total={{@model.total}}
+          @onLimitChange={{this.setLimit}}
+          @onPrevious={{this.goToPreviousPage}}
+          @onNext={{this.goToNextPage}}
+        />
+      {{else}}
+        <p class="text-muted text-center py-8">No team members yet. Add your first team member to get started.</p>
+      {{/if}}
     {{/if}}
   </div>
-
-  <p class="text-muted font-sm">
-    Showing {{format-number this.model.users.length}} of {{format-number this.model.total}} team members
-  </p>
 </div>
 
 <Modal

@@ -24,7 +24,7 @@ export class ChequesController {
   @Roles(Role.COMPANY_ADMIN)
   @ApiOperation({ summary: 'Create a cheque record (COMPANY_ADMIN+)' })
   create(@Body() dto: CreateChequeDto, @Request() req: AuthenticatedRequest) {
-    return this.chequesService.create(req.user.companyId, dto);
+    return this.chequesService.create(req.user.companyId, dto, req.user.userId);
   }
 
   @Get()
@@ -58,7 +58,7 @@ export class ChequesController {
   @Roles(Role.COMPANY_ADMIN)
   @ApiOperation({ summary: 'Update a cheque (COMPANY_ADMIN+)' })
   update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateChequeDto, @Request() req: AuthenticatedRequest) {
-    return this.chequesService.update(id, req.user.companyId, dto);
+    return this.chequesService.update(id, req.user.companyId, dto, req.user.userId);
   }
 
   @Post(':id/bounce')
@@ -69,7 +69,7 @@ export class ChequesController {
     @Body() dto: BounceChequeDto,
     @Request() req: AuthenticatedRequest,
   ) {
-    return this.chequesService.bounce(id, req.user.companyId, dto);
+    return this.chequesService.bounce(id, req.user.companyId, dto, req.user.userId);
   }
 
   @Post(':id/ocr')

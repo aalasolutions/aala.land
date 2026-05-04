@@ -1,4 +1,4 @@
-import Controller from '@ember/controller';
+import PaginatedController from './paginated-base';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
@@ -11,11 +11,12 @@ const ROLES = [
   { value: 'viewer', label: 'Viewer' },
 ];
 
-export default class TeamController extends Controller {
+export default class TeamController extends PaginatedController {
   @service auth;
   @service notifications;
   @service router;
 
+  queryParams = ['page', 'limit'];
   @tracked showModal = false;
   @tracked showInviteModal = false;
   @tracked editUser = null;

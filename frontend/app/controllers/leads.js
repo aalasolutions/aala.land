@@ -34,6 +34,33 @@ export default class LeadsController extends Controller {
   @service router;
   @service region;
   @service preferences;
+  @service socket;
+  leadUpdatedHandler = null;
+
+  constructor() {
+    super(...arguments);
+    this.setupSocket();
+  }
+
+  setupSocket() {
+    this.leadUpdatedHandler = (data) => {
+      // Only refresh if the update was from another user
+      if (data.updatedBy !== this.auth.currentUser?.id) {
+        if (this.router.isActive('leads')) {
+          this.router.refresh('leads');
+        }
+      }
+    };
+    this.socket.on('leadUpdated', this.leadUpdatedHandler);
+  }
+
+  willDestroy() {
+    if (this.leadUpdatedHandler) {
+      this.socket.off('leadUpdated', this.leadUpdatedHandler);
+    }
+
+    super.willDestroy(...arguments);
+  }
 
   queryParams = ['page', 'limit', 'status'];
   page = 1;

@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { BullModule } from '@nestjs/bullmq';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { ScheduleModule } from '@nestjs/schedule';
 import { APP_GUARD } from '@nestjs/core';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -55,6 +56,8 @@ import { LocationsModule } from '@modules/locations/locations.module';
         limit: 100,
       },
     ]),
+
+    ScheduleModule.forRoot(),
 
     CompaniesModule,
     AuthModule,
