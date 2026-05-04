@@ -17,8 +17,20 @@ describe('SearchController', () => {
     }),
   };
 
+  const mockExecutionContext = {
+    switchToHttp: jest.fn(() => ({
+      getRequest: jest.fn(() => ({ user: { userId: 1, companyId: 'company1' } })),
+    })),
+  };
+
   const mockJwtAuthGuard = {
     canActivate: jest.fn(() => true),
+    canActivateRequest: jest.fn((ctx) => {
+      if (ctx) {
+        mockExecutionContext.switchToHttp().getRequest();
+      }
+      return true;
+    }),
   };
 
   beforeEach(async () => {
@@ -33,6 +45,12 @@ describe('SearchController', () => {
     .compile();
 
     app = module.createNestApplication();
+
+    app.use((req, res, next) => {
+      req.user = { userId: 1, companyId: 'company1' };
+      next();
+    });
+
     await app.init();
 
     searchController = module.get<SearchController>(SearchController);
@@ -82,12 +100,9 @@ describe('SearchController', () => {
     });
 
     it('should use JwtAuthGuard', async () => {
-      // This is more of an integration test for the guard, but we can verify it's configured.
-      // For a unit test, we've already mocked it, so its `canActivate` is called.
-      // We can add a simple end-to-end test using supertest to ensure the guard is active.
       mockJwtAuthGuard.canActivate.mockReturnValue(false);
       const response = await request(app.getHttpServer()).get('/search?q=test');
-      expect(response.status).toBe(403); // Forbidden if guard returns false
+      expect(response.status).toBe(403);
     });
 
     it('should return 200 for authenticated request', async () => {
@@ -100,7 +115,7 @@ describe('SearchController', () => {
 
       const response = await request(app.getHttpServer())
         .get('/search?q=test')
-        .set('Authorization', 'Bearer some_token'); // Mocking token presence
+        .set('Authorization', 'Bearer some_token');
 
       expect(response.status).toBe(200);
       expect(response.body).toEqual(expectedResults);

@@ -2,6 +2,7 @@ import Controller from '@ember/controller';
 import { service } from '@ember/service';
 import { action } from '@ember/object';
 import { tracked } from '@glimmer/tracking';
+import { later } from '@ember/runloop';
 import { isAdminRole } from '../utils/roles';
 
 export default class ApplicationController extends Controller {
@@ -74,7 +75,7 @@ export default class ApplicationController extends Controller {
       return;
     }
 
-    setTimeout(() => {
+    later(this, () => {
       const activeElement = document.getElementById(this.activeSearchResultId);
       if (activeElement) {
         activeElement.scrollIntoView({ block: 'nearest', behavior: 'smooth' });

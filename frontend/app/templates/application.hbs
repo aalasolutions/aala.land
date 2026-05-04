@@ -157,7 +157,6 @@
           />
           {{#if this.showSearchDropdown}}
             <SearchDropdown
-              id="search-results"
               @results={{this.searchResults}}
               @isSearching={{this.isSearching}}
               @onSelect={{this.onSearchSelect}}
@@ -166,7 +165,7 @@
           {{/if}}
         </div>
         {{#if this.showSearchDropdown}}
-          <div class="search-overlay" {{on "click" this.closeSearch}}></div>
+          <button type="button" class="search-overlay" aria-label="Close search results" {{on "click" this.closeSearch}}></button>
         {{/if}}
         <div class="topbar-actions">
           {{#if this.showRegionSwitcher}}
