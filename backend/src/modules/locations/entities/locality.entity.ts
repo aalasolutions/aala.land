@@ -1,8 +1,7 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn, Index } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
 import { City } from './city.entity';
 
 @Entity('localities')
-@Index(['name', 'cityId', 'createdByCompanyId'], { unique: true })
 export class Locality {
     @PrimaryGeneratedColumn('uuid')
     id: string;
