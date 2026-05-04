@@ -2,7 +2,7 @@ import Controller from '@ember/controller';
 import { service } from '@ember/service';
 import { action } from '@ember/object';
 import { tracked } from '@glimmer/tracking';
-import { later } from '@ember/runloop';
+import { cancel, later } from '@ember/runloop';
 import { isAdminRole } from '../utils/roles';
 
 export default class ApplicationController extends Controller {
@@ -164,6 +164,11 @@ export default class ApplicationController extends Controller {
       this.routeDidChangeHandler = null;
     }
 
+    if (this._searchTimer) {
+      cancel(this._searchTimer);
+      this._searchTimer = null;
+    }
+
     super.willDestroy(...arguments);
   }
 
@@ -270,7 +275,10 @@ export default class ApplicationController extends Controller {
   onSearchInput(e) {
     this.searchQuery = e.target.value;
     this.activeSearchIndex = -1;
-    clearTimeout(this._searchTimer);
+    if (this._searchTimer) {
+      cancel(this._searchTimer);
+      this._searchTimer = null;
+    }
 
     if (this.searchQuery.length < 2) {
       this.showSearchDropdown = false;
@@ -280,7 +288,7 @@ export default class ApplicationController extends Controller {
       return;
     }
 
-    this._searchTimer = setTimeout(async () => {
+    this._searchTimer = later(this, async() => {
       const queryAtTimeOfRequest = this.searchQuery;
       this.isSearching = true;
       this.showSearchDropdown = true;
@@ -288,7 +296,7 @@ export default class ApplicationController extends Controller {
       try {
         const result = await this.auth.fetchJson(`/search?q=${encodeURIComponent(queryAtTimeOfRequest)}`);
         if (queryAtTimeOfRequest === this.searchQuery) {
-          this.searchResults = result?.data ?? result; // Support both { data: ... } and direct response formats
+          this.searchResults = result?.data ?? result;
           this.activeSearchIndex = -1;
         }
       } catch {
@@ -302,6 +310,7 @@ export default class ApplicationController extends Controller {
           this.isSearching = false;
         }
       }
+      this._searchTimer = null;
     }, 300);
   }
 
@@ -345,7 +354,10 @@ export default class ApplicationController extends Controller {
     this.searchError = false;
     this.isSearching = false;
     this.activeSearchIndex = -1;
-    clearTimeout(this._searchTimer);
+    if (this._searchTimer) {
+      cancel(this._searchTimer);
+      this._searchTimer = null;
+    }
   }
 
   @action

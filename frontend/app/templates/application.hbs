@@ -165,7 +165,7 @@
           {{/if}}
         </div>
         {{#if this.showSearchDropdown}}
-          <button type="button" class="search-overlay" aria-label="Close search results" {{on "click" this.closeSearch}}></button>
+          <div class="search-overlay" tabindex="-1" aria-hidden="true" {{on "click" this.closeSearch}}></div>
         {{/if}}
         <div class="topbar-actions">
           {{#if this.showRegionSwitcher}}

@@ -30,11 +30,12 @@ export class SearchService {
                  FROM cities c
                  INNER JOIN localities l ON l.city_id = c.id
                  INNER JOIN buildings b ON b.locality_id = l.id
-                 WHERE LOWER(c.name) LIKE $1
-                   /* REGION_FILTER */
-                   AND (b.company_id = $2
-                        OR EXISTS (SELECT 1 FROM units u WHERE u.building_id = b.id AND u.company_id = $2))
-                 LIMIT 5`,
+                  WHERE LOWER(c.name) LIKE $1
+                    /* REGION_FILTER */
+                    AND (b.company_id = $2
+                         OR EXISTS (SELECT 1 FROM units u WHERE u.building_id = b.id AND u.company_id = $2))
+                  ORDER BY LOWER(c.name)
+                  LIMIT 5`,
                 [term, companyId],
                 regionCode,
             ),
@@ -47,8 +48,9 @@ export class SearchService {
                    /* REGION_FILTER */
                    AND (b.company_id = $2
                         OR EXISTS (SELECT 1 FROM units u WHERE u.building_id = b.id AND u.company_id = $2))
-                 GROUP BY l.id, l.name, c.name
-                 LIMIT 5`,
+                  GROUP BY l.id, l.name, c.name
+                  ORDER BY LOWER(l.name)
+                  LIMIT 5`,
                 [term, companyId],
                 regionCode,
             ),
@@ -57,22 +59,24 @@ export class SearchService {
                  FROM buildings b
                  INNER JOIN localities l ON l.id = b.locality_id
                  INNER JOIN cities c ON c.id = l.city_id
-                 WHERE LOWER(b.name) LIKE $1
-                   /* REGION_FILTER */
-                   AND (b.company_id = $2
-                        OR EXISTS (SELECT 1 FROM units u WHERE u.building_id = b.id AND u.company_id = $2))
-                 LIMIT 5`,
+                  WHERE LOWER(b.name) LIKE $1
+                    /* REGION_FILTER */
+                    AND (b.company_id = $2
+                         OR EXISTS (SELECT 1 FROM units u WHERE u.building_id = b.id AND u.company_id = $2))
+                  ORDER BY LOWER(b.name)
+                  LIMIT 5`,
                 [term, companyId],
                 regionCode,
             ),
             this.dataSource.query(
                 `SELECT id, name, role
                  FROM users
-                 WHERE LOWER(name) LIKE $1
-                   AND company_id = $2
-                   AND is_active = true
-                   AND role != 'super_admin'
-                 LIMIT 5`,
+                  WHERE LOWER(name) LIKE $1
+                    AND company_id = $2
+                    AND is_active = true
+                    AND role != 'super_admin'
+                  ORDER BY LOWER(name)
+                  LIMIT 5`,
                 [term, companyId],
             ),
         ]);
