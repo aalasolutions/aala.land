@@ -23,14 +23,14 @@ export class LeadActivity {
 
   @ManyToOne(() => Company)
   @JoinColumn({ name: 'company_id' })
-  company: Company;
+  company?: Company;
 
   @Column({ name: 'lead_id', type: 'uuid' })
   leadId: string;
 
   @ManyToOne(() => Lead)
   @JoinColumn({ name: 'lead_id' })
-  lead: Lead;
+  lead?: Lead;
 
   @Column({
     type: 'enum',
@@ -47,7 +47,7 @@ export class LeadActivity {
 
   @ManyToOne(() => User, { nullable: true })
   @JoinColumn({ name: 'performed_by' })
-  performer: User | null;
+  performer?: User | null;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;

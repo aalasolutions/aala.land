@@ -40,7 +40,7 @@ export class Lead {
 
   @ManyToOne(() => Company)
   @JoinColumn({ name: 'company_id' })
-  company: Company;
+  company?: Company;
 
   @Index()
   @Column({ name: 'property_id', type: 'uuid', nullable: true })
