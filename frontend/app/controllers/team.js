@@ -5,7 +5,6 @@ import { service } from '@ember/service';
 import { closeDeleteModal, confirmDeleteModal, openDeleteModal } from '../utils/delete-modal';
 
 const ROLES = [
-  { value: 'super_admin', label: 'Super Admin' },
   { value: 'company_admin', label: 'Company Admin' },
   { value: 'agent', label: 'Agent' },
   { value: 'viewer', label: 'Viewer' },

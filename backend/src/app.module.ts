@@ -29,6 +29,7 @@ import { VendorsModule } from '@modules/vendors/vendors.module';
 import { ReminderRulesModule } from '@modules/reminder-rules/reminder-rules.module';
 import { DocumentsModule } from '@modules/documents/documents.module';
 import { LocationsModule } from '@modules/locations/locations.module';
+import { SearchModule } from '@modules/search/search.module';
 
 @Module({
   imports: [
@@ -80,6 +81,7 @@ import { LocationsModule } from '@modules/locations/locations.module';
     ReminderRulesModule,
     DocumentsModule,
     LocationsModule,
+    SearchModule,
   ],
   controllers: [AppController],
   providers: [

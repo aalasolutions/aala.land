@@ -2,6 +2,7 @@ import Controller from '@ember/controller';
 import { service } from '@ember/service';
 import { action } from '@ember/object';
 import { tracked } from '@glimmer/tracking';
+import { cancel, later } from '@ember/runloop';
 import { isAdminRole } from '../utils/roles';
 
 export default class ApplicationController extends Controller {
@@ -25,6 +26,14 @@ export default class ApplicationController extends Controller {
   socketConnectHandler = null;
   routeDidChangeHandler = null;
 
+  @tracked searchQuery = '';
+  @tracked searchResults = null;
+  @tracked showSearchDropdown = false;
+  @tracked isSearching = false;
+  @tracked searchError = false;
+  @tracked activeSearchIndex = -1;
+  _searchTimer = null;
+
   get showRegionSwitcher() {
     return this.region.regions.length > 1;
   }
@@ -44,6 +53,34 @@ export default class ApplicationController extends Controller {
     if (!route) return null;
     const base = route.split('.')[0];
     return this.routeGroupMap[route] ?? this.routeGroupMap[base] ?? null;
+  }
+
+  get searchResultsList() {
+    if (!this.searchResults) {
+      return [];
+    }
+
+    return [
+      ...(this.searchResults.properties || []),
+      ...(this.searchResults.agents || []),
+    ];
+  }
+
+  get activeSearchResultId() {
+    return this.activeSearchIndex >= 0 ? `search-result-item-${this.activeSearchIndex}` : undefined;
+  }
+
+  scrollActiveSearchResultIntoView() {
+    if (!this.activeSearchResultId) {
+      return;
+    }
+
+    later(this, () => {
+      const activeElement = document.getElementById(this.activeSearchResultId);
+      if (activeElement) {
+        activeElement.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      }
+    }, 0);
   }
 
   constructor() {
@@ -125,6 +162,11 @@ export default class ApplicationController extends Controller {
     if (this.routeDidChangeHandler) {
       this.router.off('routeDidChange', this.routeDidChangeHandler);
       this.routeDidChangeHandler = null;
+    }
+
+    if (this._searchTimer) {
+      cancel(this._searchTimer);
+      this._searchTimer = null;
     }
 
     super.willDestroy(...arguments);
@@ -226,6 +268,110 @@ export default class ApplicationController extends Controller {
       this.router.transitionTo(parentRoute);
     } else {
       this.router.refresh();
+    }
+  }
+
+  @action
+  onSearchInput(e) {
+    this.searchQuery = e.target.value;
+    this.activeSearchIndex = -1;
+    if (this._searchTimer) {
+      cancel(this._searchTimer);
+      this._searchTimer = null;
+    }
+
+    if (this.searchQuery.length < 2) {
+      this.showSearchDropdown = false;
+      this.searchResults = null;
+      this.searchError = false;
+      this.isSearching = false;
+      return;
+    }
+
+    this._searchTimer = later(this, async() => {
+      const queryAtTimeOfRequest = this.searchQuery;
+      this.isSearching = true;
+      this.showSearchDropdown = true;
+      this.searchError = false;
+      try {
+        const result = await this.auth.fetchJson(`/search?q=${encodeURIComponent(queryAtTimeOfRequest)}`);
+        if (queryAtTimeOfRequest === this.searchQuery) {
+          this.searchResults = result?.data ?? result;
+          this.activeSearchIndex = -1;
+        }
+      } catch {
+        if (queryAtTimeOfRequest === this.searchQuery) {
+          this.searchError = true;
+          this.searchResults = null;
+          this.activeSearchIndex = -1;
+        }
+      } finally {
+        if (queryAtTimeOfRequest === this.searchQuery) {
+          this.isSearching = false;
+        }
+      }
+      this._searchTimer = null;
+    }, 300);
+  }
+
+  @action
+  onSearchKeydown(e) {
+    if (e.key === 'Escape') {
+      this.closeSearch();
+      return;
+    }
+
+    const results = this.searchResultsList;
+    if (!this.showSearchDropdown || !results.length) {
+      return;
+    }
+
+    switch (e.key) {
+      case 'ArrowDown':
+        e.preventDefault();
+        this.activeSearchIndex = Math.min(this.activeSearchIndex + 1, results.length - 1);
+        this.scrollActiveSearchResultIntoView();
+        break;
+      case 'ArrowUp':
+        e.preventDefault();
+        this.activeSearchIndex = Math.max(this.activeSearchIndex - 1, 0);
+        this.scrollActiveSearchResultIntoView();
+        break;
+      case 'Enter':
+        if (this.activeSearchIndex >= 0) {
+          e.preventDefault();
+          this.onSearchSelect(results[this.activeSearchIndex]);
+        }
+        break;
+    }
+  }
+
+  @action
+  closeSearch() {
+    this.showSearchDropdown = false;
+    this.searchQuery = '';
+    this.searchResults = null;
+    this.searchError = false;
+    this.isSearching = false;
+    this.activeSearchIndex = -1;
+    if (this._searchTimer) {
+      cancel(this._searchTimer);
+      this._searchTimer = null;
+    }
+  }
+
+  @action
+  onSearchSelect(result) {
+    this.activeSearchIndex = -1;
+    this.closeSearch();
+    if (result.type === 'city') {
+      this.router.transitionTo('properties');
+    } else if (result.type === 'locality') {
+      this.router.transitionTo('properties.detail', result.id);
+    } else if (result.type === 'asset') {
+      this.router.transitionTo('properties.detail', result.id);
+    } else if (result.type === 'agent') {
+      this.router.transitionTo('team');
     }
   }
 
