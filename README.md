@@ -147,7 +147,6 @@ DB_PORT=5480
 DB_USERNAME=postgres
 DB_PASSWORD=postgres
 DB_DATABASE=aala_land
-DB_SYNC=true                    # Set false in production
 
 JWT_SECRET=your-secret-key      # Generate: openssl rand -base64 64
 
@@ -158,9 +157,10 @@ AWS_SECRET_ACCESS_KEY=your-secret
 AWS_S3_BUCKET=aala-land-media
 ```
 
-Start the backend:
+Run database migrations, then start the backend:
 
 ```bash
+pnpm run db:migration:run
 pnpm run start:dev
 ```
 
@@ -178,7 +178,7 @@ Frontend runs on **http://localhost:4200**
 
 ### 5. Create your first account
 
-On first run with `DB_SYNC=true`, the database tables are created automatically. Use the API to create your first company and admin user:
+On first run, apply migrations before using the API to create your first company and admin user:
 
 ```bash
 # Create company

@@ -185,6 +185,10 @@ export class PropertiesService {
         if (!asset) throw new NotFoundException(`Asset not found`);
 
         if (dto.name !== undefined) {
+            if (typeof dto.name !== 'string') {
+                throw new BadRequestException('Asset name must be a string');
+            }
+
             const sanitizedName = sanitizeName(dto.name);
             if (!sanitizedName) {
                 throw new BadRequestException('Asset name is required and cannot be empty or whitespace-only');

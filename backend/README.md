@@ -91,7 +91,6 @@ DB_PORT=5480
 DB_USERNAME=postgres
 DB_PASSWORD=postgres
 DB_DATABASE=aala_land
-DB_SYNC=true                    # Set false in production
 
 JWT_SECRET=your-secret-key      # Generate: openssl rand -base64 64
 
@@ -105,6 +104,9 @@ AWS_S3_BUCKET=aala-land-media
 ### Run
 
 ```bash
+# Apply migrations first
+pnpm run db:migration:run
+
 # Development (watch mode)
 pnpm run start:dev
 

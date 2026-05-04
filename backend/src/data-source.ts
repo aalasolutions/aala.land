@@ -34,6 +34,6 @@ export const AppDataSource = new DataSource({
 
   entities: entityPaths,
   migrations: migrationPaths,
-  synchronize: false,
+  synchronize: process.env.DB_SYNC === 'true',
   logging: process.env.NODE_ENV !== 'production',
 });
