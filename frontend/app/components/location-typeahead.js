@@ -105,17 +105,24 @@ export default class LocationTypeaheadComponent extends Component {
     let dropdownHeight = 260;
     let spaceBelow = window.innerHeight - triggerRect.bottom;
     let spaceAbove = triggerRect.top;
-    let openUpward = !!modalPanel && spaceBelow < 170 && spaceAbove > spaceBelow;
+    let availableBelow = Math.max(0, window.innerHeight - viewportPadding - (triggerRect.bottom + dropdownGap));
+    let availableAbove = Math.max(0, triggerRect.top - viewportPadding - dropdownGap);
+    let openUpward =
+      (!!modalPanel && spaceBelow < 170 && spaceAbove > spaceBelow) ||
+      (availableBelow < 120 && availableAbove > availableBelow);
+    let maxHeight = openUpward
+      ? Math.min(dropdownHeight, availableAbove)
+      : Math.min(dropdownHeight, availableBelow);
     let top = openUpward
-      ? Math.max(viewportPadding, triggerRect.top - Math.min(dropdownHeight, spaceAbove - viewportPadding))
-      : Math.min(triggerRect.bottom + dropdownGap, window.innerHeight - viewportPadding);
+      ? Math.max(viewportPadding, triggerRect.top - dropdownGap - maxHeight)
+      : Math.min(triggerRect.bottom + dropdownGap, window.innerHeight - viewportPadding - maxHeight);
 
     this.isInModal = !!modalPanel;
     this.dropdownPosition = {
       top,
       left: Math.max(viewportPadding, Math.min(triggerRect.left, window.innerWidth - triggerRect.width - viewportPadding)),
       width: Math.min(triggerRect.width, window.innerWidth - viewportPadding * 2),
-      maxHeight: openUpward ? Math.max(120, triggerRect.top - viewportPadding - dropdownGap) : Math.max(120, spaceBelow - viewportPadding),
+      maxHeight,
     };
   }
 
