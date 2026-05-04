@@ -77,6 +77,9 @@ export class PropertiesService {
     // Assets
     async createAsset(companyId: string, dto: CreateAssetDto): Promise<Asset> {
         const sanitizedName = sanitizeName(dto.name);
+        if (!sanitizedName) {
+            throw new BadRequestException('Asset name is required and cannot be empty or whitespace-only');
+        }
         const existing = await this.findAssetByNormalizedName(dto.localityId, sanitizedName);
         if (existing) {
             return existing;
