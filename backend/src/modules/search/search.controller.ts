@@ -2,16 +2,20 @@ import { Controller, Get, Query, UseGuards, Request } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { SearchService } from './search.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '@shared/guards/roles.guard';
+import { Roles } from '@shared/decorators/roles.decorator';
+import { Role } from '@shared/enums/roles.enum';
 import { AuthenticatedRequest } from '@shared/interfaces/authenticated-request.interface';
 
 @ApiTags('search')
 @Controller('search')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 @ApiBearerAuth()
 export class SearchController {
     constructor(private readonly searchService: SearchService) {}
 
     @Get()
+    @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT, Role.ACCOUNTANT)
     @ApiOperation({ summary: 'Global search across properties and agents' })
     @ApiQuery({ name: 'q', required: true, type: String })
     @ApiQuery({ name: 'regionCode', required: false, type: String })

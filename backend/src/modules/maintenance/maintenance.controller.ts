@@ -20,13 +20,14 @@ export class MaintenanceController {
   constructor(private readonly maintenanceService: MaintenanceService) { }
 
   @Post()
-  @Roles(Role.COMPANY_ADMIN)
-  @ApiOperation({ summary: 'Create a maintenance work order (COMPANY_ADMIN+)' })
+  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER)
+  @ApiOperation({ summary: 'Create a maintenance work order (ADMIN+)' })
   create(@Body() dto: CreateWorkOrderDto, @Request() req: AuthenticatedRequest) {
     return this.maintenanceService.create(req.user.companyId, dto);
   }
 
   @Get()
+  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.ACCOUNTANT)
   @ApiOperation({ summary: 'List work orders (paginated)' })
   @ApiQuery({ name: 'page', required: false })
   @ApiQuery({ name: 'limit', required: false })
@@ -45,6 +46,7 @@ export class MaintenanceController {
   }
 
   @Get('cost-summary')
+  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.ACCOUNTANT)
   @ApiOperation({ summary: 'Get cost summary for all work orders' })
   @ApiQuery({ name: 'regionCode', required: false, type: String })
   getCostSummary(@Request() req: AuthenticatedRequest, @Query('regionCode') regionCode?: string) {
@@ -52,6 +54,7 @@ export class MaintenanceController {
   }
 
   @Get('upcoming')
+  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.ACCOUNTANT)
   @ApiOperation({ summary: 'Get preventive maintenance due in next 30 days' })
   @ApiQuery({ name: 'regionCode', required: false, type: String })
   getUpcoming(@Request() req: AuthenticatedRequest, @Query('regionCode') regionCode?: string) {
@@ -59,20 +62,21 @@ export class MaintenanceController {
   }
 
   @Get(':id')
+  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.ACCOUNTANT)
   @ApiOperation({ summary: 'Get a work order by ID' })
   findOne(@Param('id', ParseUUIDPipe) id: string, @Request() req: AuthenticatedRequest) {
     return this.maintenanceService.findOne(id, req.user.companyId);
   }
 
   @Patch(':id')
-  @Roles(Role.COMPANY_ADMIN)
-  @ApiOperation({ summary: 'Update a work order (COMPANY_ADMIN+)' })
+  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER)
+  @ApiOperation({ summary: 'Update a work order (ADMIN+)' })
   update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateWorkOrderDto, @Request() req: AuthenticatedRequest) {
     return this.maintenanceService.update(id, req.user.companyId, dto);
   }
 
   @Delete(':id')
-  @Roles(Role.COMPANY_ADMIN)
+  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN)
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Delete a work order (COMPANY_ADMIN+)' })
   remove(@Param('id', ParseUUIDPipe) id: string, @Request() req: AuthenticatedRequest) {

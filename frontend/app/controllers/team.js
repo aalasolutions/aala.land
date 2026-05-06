@@ -6,8 +6,10 @@ import { closeDeleteModal, confirmDeleteModal, openDeleteModal } from '../utils/
 
 const ROLES = [
   { value: 'company_admin', label: 'Company Admin' },
+  { value: 'admin', label: 'Admin' },
+  { value: 'manager', label: 'Manager' },
   { value: 'agent', label: 'Agent' },
-  { value: 'viewer', label: 'Viewer' },
+  { value: 'accountant', label: 'Accountant' },
 ];
 
 export default class TeamController extends PaginatedController {

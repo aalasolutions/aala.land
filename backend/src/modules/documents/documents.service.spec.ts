@@ -151,8 +151,8 @@ describe('DocumentsService', () => {
   });
 
   describe('access control', () => {
-    it('VIEWER only sees PUBLIC documents', async () => {
-      await service.findAll(companyId, Role.VIEWER, 1, 20);
+    it('ACCOUNTANT only sees PUBLIC documents', async () => {
+      await service.findAll(companyId, Role.ACCOUNTANT, 1, 20);
 
       const qb = repo.createQueryBuilder();
       expect(qb.andWhere).toHaveBeenCalledWith(

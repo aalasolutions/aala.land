@@ -13,7 +13,7 @@
   </div>
 
   <div class="flex gap-3">
-    <input type="text" class="form-input flex-1" placeholder="Search contacts..." value={{this.search}} {{on "input" this.updateSearch}} />
+    <input type="text" autocomplete="off" class="form-input flex-1" placeholder="Search contacts..." value={{this.search}} {{on "input" this.updateSearch}} />
   </div>
 
   <div>

@@ -1,8 +1,17 @@
 import AuthenticatedRoute from './authenticated';
 import { service } from '@ember/service';
+import { canManageUsers } from '../utils/roles';
 
 export default class TeamRoute extends AuthenticatedRoute {
+  @service router;
   @service auth;
+
+  beforeModel() {
+    const role = this.auth.currentUser?.role;
+    if (!canManageUsers(role)) {
+      this.router.transitionTo('dashboard');
+    }
+  }
 
   queryParams = {
     page: { refreshModel: true },

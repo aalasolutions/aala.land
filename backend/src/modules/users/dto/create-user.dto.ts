@@ -49,5 +49,11 @@ export class CreateUserDto {
   @MaxLength(50)
   timezone?: string;
 
-  // companyId is extracted from JWT, not sent by client
+  @ApiPropertyOptional({ example: '550e8400-e29b-41d4-a716-446655440000', description: 'companyId extracted from JWT for company admins. Required for SUPER_ADMIN to assign user to a company.' })
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  companyId?: string;
+
+  // companyId is extracted from JWT for company admins
 }

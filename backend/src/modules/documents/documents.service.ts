@@ -139,7 +139,8 @@ export class DocumentsService {
           DocumentAccessLevel.PUBLIC,
           DocumentAccessLevel.COMPANY,
         ];
-      case Role.VIEWER:
+      case Role.ACCOUNTANT:
+      case Role.MANAGER:
       default:
         return [DocumentAccessLevel.PUBLIC];
     }

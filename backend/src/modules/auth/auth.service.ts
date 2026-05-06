@@ -100,6 +100,10 @@ export class AuthService {
         };
     }
 
+    generateTokenPair(payload: Record<string, unknown>, options?: Object): string {
+        return this.jwtService.sign(payload, options);
+    }
+
     async forgotPassword(email: string): Promise<{ message: string }> {
         const user = await this.usersService.findByEmail(email);
 

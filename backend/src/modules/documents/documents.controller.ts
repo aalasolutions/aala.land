@@ -26,19 +26,21 @@ export class DocumentsController {
   ) {}
 
   @Post('presigned-url')
+  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER)
   @ApiOperation({ summary: 'Get S3 presigned URL for uploading a document' })
   getPresignedUrl(@Body() dto: PresignedUrlDto, @Request() req: AuthenticatedRequest) {
     return this.mediaService.getDocumentPresignedUrl(req.user.companyId, dto);
   }
 
   @Post()
-  @Roles(Role.COMPANY_ADMIN)
-  @ApiOperation({ summary: 'Upload a document record (COMPANY_ADMIN+)' })
+  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER)
+  @ApiOperation({ summary: 'Upload a document record (ADMIN+)' })
   create(@Body() dto: CreateDocumentDto, @Request() req: AuthenticatedRequest) {
     return this.documentsService.create(req.user.companyId, req.user.userId, dto);
   }
 
   @Get()
+  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER)
   @ApiOperation({ summary: 'List documents (paginated, filtered by access level and optional category)' })
   @ApiQuery({ name: 'page', required: false })
   @ApiQuery({ name: 'limit', required: false })
@@ -53,20 +55,22 @@ export class DocumentsController {
   }
 
   @Get(':id')
+  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER)
   @ApiOperation({ summary: 'Get a document by ID' })
   findOne(@Param('id', ParseUUIDPipe) id: string, @Request() req: AuthenticatedRequest) {
     return this.documentsService.findOne(id, req.user.companyId, req.user.role);
   }
 
   @Get(':id/versions')
+  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER)
   @ApiOperation({ summary: 'Get version history for a document' })
   getVersionHistory(@Param('id', ParseUUIDPipe) id: string, @Request() req: AuthenticatedRequest) {
     return this.documentsService.getVersionHistory(id, req.user.companyId, req.user.role);
   }
 
   @Patch(':id')
-  @Roles(Role.COMPANY_ADMIN)
-  @ApiOperation({ summary: 'Update a document (COMPANY_ADMIN+). Changing URL creates a new version.' })
+  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER)
+  @ApiOperation({ summary: 'Update a document (ADMIN+). Changing URL creates a new version.' })
   update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateDocumentDto,
@@ -76,7 +80,7 @@ export class DocumentsController {
   }
 
   @Delete(':id')
-  @Roles(Role.COMPANY_ADMIN)
+  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN)
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Delete a document (COMPANY_ADMIN+)' })
   remove(@Param('id', ParseUUIDPipe) id: string, @Request() req: AuthenticatedRequest) {

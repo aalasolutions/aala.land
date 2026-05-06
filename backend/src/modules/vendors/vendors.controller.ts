@@ -21,13 +21,14 @@ export class VendorsController {
   constructor(private readonly vendorsService: VendorsService) {}
 
   @Post()
-  @Roles(Role.COMPANY_ADMIN)
-  @ApiOperation({ summary: 'Create a vendor (COMPANY_ADMIN+)' })
+  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER)
+  @ApiOperation({ summary: 'Create a vendor (ADMIN+)' })
   create(@Body() dto: CreateVendorDto, @Request() req: AuthenticatedRequest) {
     return this.vendorsService.create(req.user.companyId, dto);
   }
 
   @Get()
+  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.ACCOUNTANT)
   @ApiOperation({ summary: 'List vendors (paginated, searchable, filterable by specialty)' })
   @ApiQuery({ name: 'page', required: false, type: Number })
   @ApiQuery({ name: 'limit', required: false, type: Number })
@@ -46,20 +47,21 @@ export class VendorsController {
   }
 
   @Get(':id')
+  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.ACCOUNTANT)
   @ApiOperation({ summary: 'Get a vendor by ID' })
   findOne(@Param('id', ParseUUIDPipe) id: string, @Request() req: AuthenticatedRequest) {
     return this.vendorsService.findOne(id, req.user.companyId);
   }
 
   @Patch(':id')
-  @Roles(Role.COMPANY_ADMIN)
-  @ApiOperation({ summary: 'Update a vendor (COMPANY_ADMIN+)' })
+  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER)
+  @ApiOperation({ summary: 'Update a vendor (ADMIN+)' })
   update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateVendorDto, @Request() req: AuthenticatedRequest) {
     return this.vendorsService.update(id, req.user.companyId, dto);
   }
 
   @Delete(':id')
-  @Roles(Role.COMPANY_ADMIN)
+  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN)
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Deactivate a vendor (COMPANY_ADMIN+)' })
   remove(@Param('id', ParseUUIDPipe) id: string, @Request() req: AuthenticatedRequest) {

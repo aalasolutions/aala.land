@@ -20,13 +20,14 @@ export class CommissionsController {
   constructor(private readonly commissionsService: CommissionsService) { }
 
   @Post()
-  @Roles(Role.COMPANY_ADMIN)
-  @ApiOperation({ summary: 'Create a commission record (COMPANY_ADMIN+)' })
+  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER)
+  @ApiOperation({ summary: 'Create a commission record (ADMIN+)' })
   create(@Body() dto: CreateCommissionDto, @Request() req: AuthenticatedRequest) {
     return this.commissionsService.create(req.user.companyId, dto);
   }
 
   @Get()
+  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER)
   @ApiOperation({ summary: 'List commissions (paginated)' })
   @ApiQuery({ name: 'page', required: false })
   @ApiQuery({ name: 'limit', required: false })
@@ -43,6 +44,7 @@ export class CommissionsController {
   }
 
   @Get('agent/:agentId')
+  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER)
   @ApiOperation({ summary: 'List commissions for a specific agent' })
   findByAgent(
     @Param('agentId', ParseUUIDPipe) agentId: string,
@@ -54,34 +56,36 @@ export class CommissionsController {
   }
 
   @Get('agent/:agentId/summary')
+  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER)
   @ApiOperation({ summary: 'Get commission summary for an agent' })
   getSummary(@Param('agentId', ParseUUIDPipe) agentId: string, @Request() req: AuthenticatedRequest) {
     return this.commissionsService.getSummary(agentId, req.user.companyId);
   }
 
   @Post(':id/approve')
-  @Roles(Role.COMPANY_ADMIN)
-  @ApiOperation({ summary: 'Approve a commission (COMPANY_ADMIN+)' })
+  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER)
+  @ApiOperation({ summary: 'Approve a commission (ADMIN+)' })
   approve(@Param('id', ParseUUIDPipe) id: string, @Request() req: AuthenticatedRequest) {
     return this.commissionsService.approve(id, req.user.companyId);
   }
 
   @Post(':id/pay')
-  @Roles(Role.COMPANY_ADMIN)
-  @ApiOperation({ summary: 'Mark commission as paid (COMPANY_ADMIN+)' })
+  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER)
+  @ApiOperation({ summary: 'Mark commission as paid (ADMIN+)' })
   pay(@Param('id', ParseUUIDPipe) id: string, @Request() req: AuthenticatedRequest) {
     return this.commissionsService.pay(id, req.user.companyId);
   }
 
   @Get(':id')
+  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER)
   @ApiOperation({ summary: 'Get a commission by ID' })
   findOne(@Param('id', ParseUUIDPipe) id: string, @Request() req: AuthenticatedRequest) {
     return this.commissionsService.findOne(id, req.user.companyId);
   }
 
   @Patch(':id')
-  @Roles(Role.COMPANY_ADMIN)
-  @ApiOperation({ summary: 'Update commission status (COMPANY_ADMIN+)' })
+  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER)
+  @ApiOperation({ summary: 'Update commission status (ADMIN+)' })
   update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateCommissionDto, @Request() req: AuthenticatedRequest) {
     return this.commissionsService.update(id, req.user.companyId, dto);
   }

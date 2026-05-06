@@ -105,6 +105,22 @@ describe('UsersService', () => {
   });
 
   describe('findAll', () => {
+    const mockAdmin: User = {
+      ...mockUser,
+      id: 'admin-uuid',
+      role: Role.ADMIN,
+      name: 'Test Admin',
+      email: 'admin@test.com',
+    };
+    const mockSuperAdmin: User = {
+      ...mockUser,
+      id: 'super-uuid',
+      role: Role.SUPER_ADMIN,
+      name: 'Super Admin',
+      email: 'super@test.com',
+      companyId: undefined,
+    };
+
     it('returns paginated users for company', async () => {
       repo.findAndCount.mockResolvedValue([[mockUser], 1]);
 
@@ -119,6 +135,36 @@ describe('UsersService', () => {
       expect(result.data).toEqual([mockUser]);
       expect(result.total).toBe(1);
       expect(result.page).toBe(1);
+    });
+
+    it('excludes SUPER_ADMIN users for normal company queries', async () => {
+      repo.findAndCount.mockResolvedValue([[mockUser, mockAdmin], 2]);
+
+      const result = await service.findAll(companyId, 1, 20);
+
+      expect(repo.findAndCount).toHaveBeenCalledWith({
+        where: { companyId, role: expect.anything() },
+        skip: 0,
+        take: 20,
+        order: { createdAt: 'DESC' },
+      });
+      expect(result.data.length).toBe(2);
+      expect(result.data.every(u => u.role !== Role.SUPER_ADMIN)).toBe(true);
+    });
+
+    it('returns all users across companies for SUPER_ADMIN', async () => {
+      repo.findAndCount.mockResolvedValue([[mockUser, mockSuperAdmin], 2]);
+
+      const result = await service.findAll(undefined as any, 1, 20, Role.SUPER_ADMIN);
+
+      expect(repo.findAndCount).toHaveBeenCalledWith({
+        where: {},
+        skip: 0,
+        take: 20,
+        order: { createdAt: 'DESC' },
+      });
+      expect(result.data.length).toBe(2);
+      expect(result.data.every(u => u.role !== Role.SUPER_ADMIN || u.companyId === undefined)).toBe(true);
     });
   });
 
@@ -146,7 +192,16 @@ describe('UsersService', () => {
   });
 
   describe('update', () => {
-    it('updates user fields', async () => {
+    const mockCompanyAdmin: User = {
+      ...mockUser,
+      id: 'ca-uuid',
+      role: Role.COMPANY_ADMIN,
+      name: 'Company Admin',
+      email: 'ca@test.com',
+      companyId,
+    };
+
+    it('updates user fields for same company users', async () => {
       repo.findOne.mockResolvedValue(mockUser);
       repo.save.mockResolvedValue({ ...mockUser, name: 'Updated Name' });
 
@@ -162,6 +217,36 @@ describe('UsersService', () => {
       await service.update('user-uuid-1', companyId, { password: 'new-password' } as any);
 
       expect(bcrypt.hash).toHaveBeenCalledWith('new-password', 12);
+    });
+
+    it('throws ConflictException when trying to assign a role <= requester role', async () => {
+      repo.findOne.mockResolvedValue(mockUser);
+
+      await expect(
+        service.update('user-uuid-1', companyId, { role: Role.MANAGER } as any, mockUser),
+      ).rejects.toThrow(ConflictException);
+    });
+
+    it('allows SUPER_ADMIN to update any user role (except SUPER_ADMIN)', async () => {
+      const requester: User = {
+        ...mockUser,
+        role: Role.SUPER_ADMIN,
+        id: 'super-uuid',
+        email: 'super@test.com',
+      };
+      const target: User = {
+        ...mockUser,
+        role: Role.ADMIN,
+        id: 'admin-uuid',
+        email: 'admin@test.com',
+        companyId,
+      };
+      repo.findOne.mockResolvedValue(target);
+      repo.save.mockResolvedValue({ ...target, role: Role.COMPANY_ADMIN });
+
+      const result = await service.update('admin-uuid', companyId, { role: Role.COMPANY_ADMIN } as any, requester);
+
+      expect(result.role).toBe(Role.COMPANY_ADMIN);
     });
   });
 

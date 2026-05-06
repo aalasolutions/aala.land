@@ -20,13 +20,14 @@ export class LeasesController {
   constructor(private readonly leasesService: LeasesService) { }
 
   @Post()
-  @Roles(Role.COMPANY_ADMIN)
-  @ApiOperation({ summary: 'Create a lease agreement (COMPANY_ADMIN+)' })
+  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER)
+  @ApiOperation({ summary: 'Create a lease agreement (ADMIN+)' })
   create(@Body() dto: CreateLeaseDto, @Request() req: AuthenticatedRequest) {
     return this.leasesService.create(req.user.companyId, dto);
   }
 
   @Get()
+  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER)
   @ApiOperation({ summary: 'List lease agreements (paginated)' })
   @ApiQuery({ name: 'page', required: false })
   @ApiQuery({ name: 'limit', required: false })
@@ -41,40 +42,42 @@ export class LeasesController {
   }
 
   @Get('unit/:unitId')
+  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT, Role.ACCOUNTANT)
   @ApiOperation({ summary: 'Get all leases for a specific unit' })
   findByUnit(@Param('unitId', ParseUUIDPipe) unitId: string, @Request() req: AuthenticatedRequest) {
     return this.leasesService.findByUnit(unitId, req.user.companyId);
   }
 
   @Get(':id')
+  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER)
   @ApiOperation({ summary: 'Get a lease by ID' })
   findOne(@Param('id', ParseUUIDPipe) id: string, @Request() req: AuthenticatedRequest) {
     return this.leasesService.findOne(id, req.user.companyId);
   }
 
   @Patch(':id')
-  @Roles(Role.COMPANY_ADMIN)
-  @ApiOperation({ summary: 'Update a lease (COMPANY_ADMIN+)' })
+  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER)
+  @ApiOperation({ summary: 'Update a lease (ADMIN+)' })
   update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateLeaseDto, @Request() req: AuthenticatedRequest) {
     return this.leasesService.update(id, req.user.companyId, dto);
   }
 
   @Post(':id/renew')
-  @Roles(Role.COMPANY_ADMIN)
+  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER)
   @ApiOperation({ summary: 'Renew a lease (creates new lease, marks old as RENEWED)' })
   renew(@Param('id', ParseUUIDPipe) id: string, @Body() dto: CreateLeaseDto, @Request() req: AuthenticatedRequest) {
     return this.leasesService.renew(id, req.user.companyId, dto);
   }
 
   @Post(':id/terminate')
-  @Roles(Role.COMPANY_ADMIN)
+  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER)
   @ApiOperation({ summary: 'Terminate a lease early' })
   terminate(@Param('id', ParseUUIDPipe) id: string, @Request() req: AuthenticatedRequest) {
     return this.leasesService.terminate(id, req.user.companyId);
   }
 
   @Delete(':id')
-  @Roles(Role.COMPANY_ADMIN)
+  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN)
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Delete a lease (COMPANY_ADMIN+)' })
   remove(@Param('id', ParseUUIDPipe) id: string, @Request() req: AuthenticatedRequest) {

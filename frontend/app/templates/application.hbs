@@ -18,6 +18,7 @@
         </LinkTo>
 
         {{!-- Properties Group --}}
+        {{#if this.sidebarGroups.properties}}
         <div class="sidebar-group {{if (or (eq this.expandedGroup 'properties') (eq this.activeGroup 'properties')) 'expanded'}}">
           <button type="button" class="sidebar-group-toggle {{if (eq this.activeGroup 'properties') 'sidebar-group-active'}}" {{on "click" (fn this.toggleGroup "properties")}}>
             <Ph @icon="buildings" /> <span class="sidebar-label">Properties</span>
@@ -32,8 +33,10 @@
             </LinkTo>
           </div>
         </div>
+        {{/if}}
 
         {{!-- Leads / CRM Group --}}
+        {{#if this.sidebarGroups.crm}}
         <div class="sidebar-group {{if (or (eq this.expandedGroup 'crm') (eq this.activeGroup 'crm')) 'expanded'}}">
           <button type="button" class="sidebar-group-toggle {{if (eq this.activeGroup 'crm') 'sidebar-group-active'}}" {{on "click" (fn this.toggleGroup "crm")}}>
             <Ph @icon="funnel" /> <span class="sidebar-label">Leads</span>
@@ -48,8 +51,10 @@
             </LinkTo>
           </div>
         </div>
+        {{/if}}
 
         {{!-- Finance Group --}}
+        {{#if this.sidebarGroups.finance}}
         <div class="sidebar-group {{if (or (eq this.expandedGroup 'finance') (eq this.activeGroup 'finance')) 'expanded'}}">
           <button type="button" class="sidebar-group-toggle {{if (eq this.activeGroup 'finance') 'sidebar-group-active'}}" {{on "click" (fn this.toggleGroup "finance")}}>
             <Ph @icon="currency-circle-dollar" /> <span class="sidebar-label">Finance</span>
@@ -70,8 +75,10 @@
             </LinkTo>
           </div>
         </div>
+        {{/if}}
 
         {{!-- Outreach Group --}}
+        {{#if this.sidebarGroups.outreach}}
         <div class="sidebar-group {{if (or (eq this.expandedGroup 'outreach') (eq this.activeGroup 'outreach')) 'expanded'}}">
           <button type="button" class="sidebar-group-toggle {{if (eq this.activeGroup 'outreach') 'sidebar-group-active'}}" {{on "click" (fn this.toggleGroup "outreach")}}>
             <Ph @icon="chats-circle" /> <span class="sidebar-label">Outreach</span>
@@ -83,8 +90,10 @@
             </LinkTo>
           </div>
         </div>
+        {{/if}}
 
         {{!-- Operations Group --}}
+        {{#if this.sidebarGroups.operations}}
         <div class="sidebar-group {{if (or (eq this.expandedGroup 'operations') (eq this.activeGroup 'operations')) 'expanded'}}">
           <button type="button" class="sidebar-group-toggle {{if (eq this.activeGroup 'operations') 'sidebar-group-active'}}" {{on "click" (fn this.toggleGroup "operations")}}>
             <Ph @icon="wrench" /> <span class="sidebar-label">Operations</span>
@@ -99,31 +108,38 @@
             </LinkTo>
           </div>
         </div>
+        {{/if}}
 
         {{!-- Reports (direct link) --}}
+        {{#if this.sidebarGroups.reports}}
         <LinkTo @route="reports" class="sidebar-link" data-test-nav-reports>
           <Ph @icon="chart-bar" /> <span class="sidebar-label">Reports</span>
         </LinkTo>
+        {{/if}}
 
-        {{!-- Admin Group (company_admin / super_admin only) --}}
-        {{#if this.isAdmin}}
-          <div class="sidebar-group {{if (or (eq this.expandedGroup 'admin') (eq this.activeGroup 'admin')) 'expanded'}}">
-            <button type="button" class="sidebar-group-toggle {{if (eq this.activeGroup 'admin') 'sidebar-group-active'}}" {{on "click" (fn this.toggleGroup "admin")}}>
-              <Ph @icon="gear" /> <span class="sidebar-label">Admin</span>
-              <Ph @icon="caret-down" class="sidebar-chevron" />
-            </button>
-            <div class="sidebar-group-items">
-              <LinkTo @route="team" class="sidebar-sublink" data-test-nav-team>
-                <span class="sidebar-label">Team</span>
-              </LinkTo>
-              <LinkTo @route="documents" class="sidebar-sublink" data-test-nav-documents>
-                <span class="sidebar-label">Documents</span>
-              </LinkTo>
-              <LinkTo @route="audit" class="sidebar-sublink" data-test-nav-audit>
-                <span class="sidebar-label">Audit Log</span>
-              </LinkTo>
-            </div>
+        {{!-- Team --}}
+        {{#if this.sidebarGroups.team}}
+        <LinkTo @route="team" class="sidebar-link" data-test-nav-team>
+          <Ph @icon="users" /> <span class="sidebar-label">Team</span>
+        </LinkTo>
+        {{/if}}
+
+        {{!-- Admin Group --}}
+        {{#if this.sidebarGroups.admin}}
+        <div class="sidebar-group {{if (or (eq this.expandedGroup 'admin') (eq this.activeGroup 'admin')) 'expanded'}}">
+          <button type="button" class="sidebar-group-toggle {{if (eq this.activeGroup 'admin') 'sidebar-group-active'}}" {{on "click" (fn this.toggleGroup "admin")}}>
+            <Ph @icon="gear" /> <span class="sidebar-label">Admin</span>
+            <Ph @icon="caret-down" class="sidebar-chevron" />
+          </button>
+          <div class="sidebar-group-items">
+            <LinkTo @route="documents" class="sidebar-sublink" data-test-nav-documents>
+              <span class="sidebar-label">Documents</span>
+            </LinkTo>
+            <LinkTo @route="audit" class="sidebar-sublink" data-test-nav-audit>
+              <span class="sidebar-label">Audit Log</span>
+            </LinkTo>
           </div>
+        </div>
         {{/if}}
       </nav>
 
@@ -142,6 +158,7 @@
         <div class="search-box">
           <input
             type="text"
+            autocomplete="off"
             aria-label="Search"
             placeholder="Search..."
             class="search-input"

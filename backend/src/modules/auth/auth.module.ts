@@ -10,6 +10,7 @@ import { CompaniesModule } from '../companies/companies.module';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { User } from '../users/entities/user.entity';
 import { Company } from '../companies/entities/company.entity';
+import { ImpersonateService } from './impersonate.service';
 
 @Module({
   imports: [
@@ -29,7 +30,7 @@ import { Company } from '../companies/entities/company.entity';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy],
+  providers: [AuthService, JwtStrategy, ImpersonateService],
   exports: [AuthService],
 })
 export class AuthModule { }

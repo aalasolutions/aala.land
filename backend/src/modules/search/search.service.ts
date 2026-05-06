@@ -34,7 +34,7 @@ export class SearchService {
                     /* REGION_FILTER */
                     AND (b.company_id = $2
                          OR EXISTS (SELECT 1 FROM units u WHERE u.building_id = b.id AND u.company_id = $2))
-                  ORDER BY LOWER(c.name)
+                  ORDER BY c.name
                   LIMIT 5`,
                 [term, companyId],
                 regionCode,

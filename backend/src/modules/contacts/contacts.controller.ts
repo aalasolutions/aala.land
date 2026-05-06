@@ -17,13 +17,14 @@ export class ContactsController {
   constructor(private readonly contactsService: ContactsService) {}
 
   @Post()
-  @Roles(Role.COMPANY_ADMIN, Role.AGENT)
-  @ApiOperation({ summary: 'Create a new contact' })
+  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT)
+  @ApiOperation({ summary: 'Create a new contact (ADMIN+, AGENT)' })
   create(@Body() dto: CreateContactDto, @Request() req: AuthenticatedRequest) {
     return this.contactsService.create(req.user.companyId, dto);
   }
 
   @Get()
+  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT, Role.ACCOUNTANT)
   @ApiOperation({ summary: 'List contacts for current company (paginated, searchable)' })
   @ApiQuery({ name: 'page', required: false, type: Number })
   @ApiQuery({ name: 'limit', required: false, type: Number })
@@ -38,20 +39,21 @@ export class ContactsController {
   }
 
   @Get(':id')
+  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT, Role.ACCOUNTANT)
   @ApiOperation({ summary: 'Get a contact by ID (scoped to company)' })
   findOne(@Param('id', ParseUUIDPipe) id: string, @Request() req: AuthenticatedRequest) {
     return this.contactsService.findOne(id, req.user.companyId);
   }
 
   @Patch(':id')
-  @Roles(Role.COMPANY_ADMIN, Role.AGENT)
-  @ApiOperation({ summary: 'Update a contact' })
+  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT)
+  @ApiOperation({ summary: 'Update a contact (ADMIN+, AGENT)' })
   update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateContactDto, @Request() req: AuthenticatedRequest) {
     return this.contactsService.update(id, req.user.companyId, dto);
   }
 
   @Delete(':id')
-  @Roles(Role.COMPANY_ADMIN)
+  @Roles(Role.COMPANY_ADMIN, Role.ADMIN)
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Delete a contact (COMPANY_ADMIN+)' })
   remove(@Param('id', ParseUUIDPipe) id: string, @Request() req: AuthenticatedRequest) {

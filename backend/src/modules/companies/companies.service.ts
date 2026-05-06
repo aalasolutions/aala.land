@@ -6,6 +6,7 @@ import { CreateCompanyDto } from './dto/create-company.dto';
 import { UpdateCompanyDto } from './dto/update-company.dto';
 import { REGIONS, getRegionByCode } from '@shared/constants/regions';
 import { paginationOptions } from '../../shared/utils/pagination.util';
+import { Role } from '@shared/enums/roles.enum';
 
 @Injectable()
 export class CompaniesService {
@@ -47,8 +48,18 @@ export class CompaniesService {
         return company;
     }
 
-    async update(id: string, dto: UpdateCompanyDto): Promise<Company> {
+    async update(id: string, dto: UpdateCompanyDto, role?: string): Promise<Company> {
         const company = await this.findOne(id);
+
+        const restrictedFields = ['activeRegions', 'subscriptionTier', 'maxUsers', 'maxCountries', 'subscriptionExpiresAt'];
+
+        if (role === Role.ADMIN) {
+            for (const field of restrictedFields) {
+                if (field in dto) {
+                    delete (dto as Record<string, unknown>)[field];
+                }
+            }
+        }
 
         if (dto.activeRegions) {
             this.validateRegionCodes(dto.activeRegions);

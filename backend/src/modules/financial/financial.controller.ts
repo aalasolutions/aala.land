@@ -17,13 +17,14 @@ export class FinancialController {
   constructor(private readonly financialService: FinancialService) { }
 
   @Post('transactions')
-  @Roles(Role.COMPANY_ADMIN)
-  @ApiOperation({ summary: 'Create a new transaction (COMPANY_ADMIN+)' })
+  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.ACCOUNTANT)
+  @ApiOperation({ summary: 'Create a new transaction (ADMIN+ or Accountant)' })
   create(@Body() dto: CreateTransactionDto, @Request() req: AuthenticatedRequest) {
     return this.financialService.create(req.user.companyId, dto);
   }
 
   @Get('transactions')
+  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.ACCOUNTANT)
   @ApiOperation({ summary: 'List all transactions for company (paginated)' })
   @ApiQuery({ name: 'page', required: false, type: Number })
   @ApiQuery({ name: 'limit', required: false, type: Number })
@@ -42,27 +43,29 @@ export class FinancialController {
   }
 
   @Get('transactions/summary')
+  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.ACCOUNTANT)
   @ApiOperation({ summary: 'Get financial summary for company' })
   getSummary(@Request() req: AuthenticatedRequest) {
     return this.financialService.getSummary(req.user.companyId);
   }
 
   @Get('deposit-reminders')
-  @Roles(Role.COMPANY_ADMIN, Role.AGENT)
+  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.ACCOUNTANT)
   @ApiOperation({ summary: 'Get deposit reminders grouped by due date proximity' })
   getDepositReminders(@Request() req: AuthenticatedRequest) {
     return this.financialService.getDepositReminders(req.user.companyId);
   }
 
   @Get('transactions/:id')
+  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.ACCOUNTANT)
   @ApiOperation({ summary: 'Get transaction by ID' })
   findOne(@Param('id', ParseUUIDPipe) id: string, @Request() req: AuthenticatedRequest) {
     return this.financialService.findOne(id, req.user.companyId);
   }
 
   @Patch('transactions/:id')
-  @Roles(Role.COMPANY_ADMIN)
-  @ApiOperation({ summary: 'Update transaction (COMPANY_ADMIN+)' })
+  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.ACCOUNTANT)
+  @ApiOperation({ summary: 'Update transaction (ADMIN+ or Accountant)' })
   update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateTransactionDto, @Request() req: AuthenticatedRequest) {
     return this.financialService.update(id, req.user.companyId, dto);
   }

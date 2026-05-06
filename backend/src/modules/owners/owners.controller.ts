@@ -17,13 +17,14 @@ export class OwnersController {
   constructor(private readonly ownersService: OwnersService) {}
 
   @Post()
-  @Roles(Role.COMPANY_ADMIN)
-  @ApiOperation({ summary: 'Create a new owner (COMPANY_ADMIN+)' })
+  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT)
+  @ApiOperation({ summary: 'Create a new owner (ADMIN+, AGENT)' })
   create(@Body() createOwnerDto: CreateOwnerDto, @Request() req: AuthenticatedRequest) {
     return this.ownersService.create(createOwnerDto, req.user.companyId);
   }
 
   @Get()
+  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT, Role.ACCOUNTANT)
   @ApiOperation({ summary: 'List owners for current company (paginated)' })
   @ApiQuery({ name: 'page', required: false, type: Number })
   @ApiQuery({ name: 'limit', required: false, type: Number })
@@ -36,20 +37,21 @@ export class OwnersController {
   }
 
   @Get(':id')
+  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT, Role.ACCOUNTANT)
   @ApiOperation({ summary: 'Get an owner by ID (scoped to company)' })
   findOne(@Param('id', ParseUUIDPipe) id: string, @Request() req: AuthenticatedRequest) {
     return this.ownersService.findOne(id, req.user.companyId);
   }
 
   @Patch(':id')
-  @Roles(Role.COMPANY_ADMIN)
-  @ApiOperation({ summary: 'Update an owner (COMPANY_ADMIN+)' })
+  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT)
+  @ApiOperation({ summary: 'Update an owner (ADMIN+, AGENT)' })
   update(@Param('id', ParseUUIDPipe) id: string, @Body() updateOwnerDto: UpdateOwnerDto, @Request() req: AuthenticatedRequest) {
     return this.ownersService.update(id, req.user.companyId, updateOwnerDto);
   }
 
   @Delete(':id')
-  @Roles(Role.COMPANY_ADMIN)
+  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN)
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Delete an owner (COMPANY_ADMIN+)' })
   remove(@Param('id', ParseUUIDPipe) id: string, @Request() req: AuthenticatedRequest) {

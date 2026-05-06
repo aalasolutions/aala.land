@@ -20,13 +20,14 @@ export class NotificationsController {
   constructor(private readonly notificationsService: NotificationsService) {}
 
   @Post()
-  @Roles(Role.COMPANY_ADMIN)
-  @ApiOperation({ summary: 'Create a notification for a user (COMPANY_ADMIN+)' })
+  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER)
+  @ApiOperation({ summary: 'Create a notification for a user (ADMIN+)' })
   create(@Body() dto: CreateNotificationDto, @Request() req: AuthenticatedRequest) {
     return this.notificationsService.create(req.user.companyId, dto);
   }
 
   @Get()
+  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT, Role.ACCOUNTANT)
   @ApiOperation({ summary: 'List notifications for current user (paginated)' })
   @ApiQuery({ name: 'page', required: false, type: Number })
   @ApiQuery({ name: 'limit', required: false, type: Number })
@@ -39,18 +40,21 @@ export class NotificationsController {
   }
 
   @Get('unread-count')
+  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT, Role.ACCOUNTANT)
   @ApiOperation({ summary: 'Get unread notification count for current user' })
   getUnreadCount(@Request() req: AuthenticatedRequest) {
     return this.notificationsService.getUnreadCount(req.user.companyId, req.user.userId);
   }
 
   @Patch('read-all')
+  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT, Role.ACCOUNTANT)
   @ApiOperation({ summary: 'Mark all notifications as read for current user' })
   markAllRead(@Request() req: AuthenticatedRequest) {
     return this.notificationsService.markAllRead(req.user.companyId, req.user.userId);
   }
 
   @Patch(':id/read')
+  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT, Role.ACCOUNTANT)
   @ApiOperation({ summary: 'Mark a single notification as read' })
   markAsRead(@Param('id', ParseUUIDPipe) id: string, @Request() req: AuthenticatedRequest) {
     return this.notificationsService.markAsRead(id, req.user.companyId, req.user.userId);
@@ -63,6 +67,7 @@ export class NotificationsController {
   }
 
   @Get('rent-reminders')
+  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT, Role.ACCOUNTANT)
   @ApiOperation({ summary: 'Get upcoming rent-due cheques within N days' })
   @ApiQuery({ name: 'days', required: false, type: Number, description: 'Days ahead to check (default 3)' })
   getRentReminders(
@@ -73,6 +78,7 @@ export class NotificationsController {
   }
 
   @Get('lease-expiry-alerts')
+  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT, Role.ACCOUNTANT)
   @ApiOperation({ summary: 'Get leases expiring within N days' })
   @ApiQuery({ name: 'days', required: false, type: Number, description: 'Days ahead to check (default 60)' })
   getLeaseExpiryAlerts(
@@ -83,6 +89,7 @@ export class NotificationsController {
   }
 
   @Get('maintenance-reminders')
+  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT, Role.ACCOUNTANT)
   @ApiOperation({ summary: 'Get upcoming preventive maintenance within N days' })
   @ApiQuery({ name: 'days', required: false, type: Number, description: 'Days ahead to check (default 7)' })
   getMaintenanceReminders(

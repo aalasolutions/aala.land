@@ -3,7 +3,7 @@ import { service } from '@ember/service';
 import { action } from '@ember/object';
 import { tracked } from '@glimmer/tracking';
 import { cancel, later } from '@ember/runloop';
-import { isAdminRole } from '../utils/roles';
+import { isAdminRole, canManageUsers, getVisibleGroups } from '../utils/roles';
 
 export default class ApplicationController extends Controller {
   @service session;
@@ -12,8 +12,20 @@ export default class ApplicationController extends Controller {
   @service region;
   @service socket;
 
+  get isCompanyAdmin() {
+    return this.auth.currentUser?.role === 'company_admin';
+  }
+
+  get isSuperAdmin() {
+    return this.auth.currentUser?.role === 'super_admin';
+  }
+
   get isAdmin() {
     return isAdminRole(this.auth.currentUser?.role);
+  }
+
+  get sidebarGroups() {
+    return getVisibleGroups(this.auth.currentUser?.role);
   }
 
   @tracked unreadCount = 0;

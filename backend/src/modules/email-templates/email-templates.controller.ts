@@ -19,13 +19,14 @@ export class EmailTemplatesController {
   constructor(private readonly emailTemplatesService: EmailTemplatesService) { }
 
   @Post()
-  @Roles(Role.COMPANY_ADMIN)
-  @ApiOperation({ summary: 'Create a new email template (COMPANY_ADMIN+)' })
+  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER)
+  @ApiOperation({ summary: 'Create a new email template (ADMIN+)' })
   create(@Body() dto: CreateEmailTemplateDto, @Request() req: AuthenticatedRequest) {
     return this.emailTemplatesService.create(req.user.companyId, dto, req.user.userId);
   }
 
   @Get()
+  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER)
   @ApiOperation({ summary: 'List all email templates for company (paginated)' })
   @ApiQuery({ name: 'page', required: false, type: Number })
   @ApiQuery({ name: 'limit', required: false, type: Number })
@@ -40,20 +41,21 @@ export class EmailTemplatesController {
   }
 
   @Get(':id')
+  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER)
   @ApiOperation({ summary: 'Get email template by ID' })
   findOne(@Param('id', ParseUUIDPipe) id: string, @Request() req: AuthenticatedRequest) {
     return this.emailTemplatesService.findOne(id, req.user.companyId);
   }
 
   @Patch(':id')
-  @Roles(Role.COMPANY_ADMIN)
-  @ApiOperation({ summary: 'Update email template (COMPANY_ADMIN+)' })
+  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER)
+  @ApiOperation({ summary: 'Update email template (ADMIN+)' })
   update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateEmailTemplateDto, @Request() req: AuthenticatedRequest) {
     return this.emailTemplatesService.update(id, req.user.companyId, dto);
   }
 
   @Delete(':id')
-  @Roles(Role.COMPANY_ADMIN)
+  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN)
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Delete email template (COMPANY_ADMIN+)' })
   remove(@Param('id', ParseUUIDPipe) id: string, @Request() req: AuthenticatedRequest) {
@@ -61,6 +63,7 @@ export class EmailTemplatesController {
   }
 
   @Post(':id/render')
+  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER)
   @ApiOperation({ summary: 'Render email template with variables (preview)' })
   render(@Param('id', ParseUUIDPipe) id: string, @Body() dto: RenderEmailTemplateDto, @Request() req: AuthenticatedRequest) {
     return this.emailTemplatesService.render(id, req.user.companyId, dto.variables);

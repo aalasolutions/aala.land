@@ -47,6 +47,7 @@ export class CompaniesController {
     @Get(':id')
     @ApiBearerAuth()
     @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT, Role.ACCOUNTANT)
     @ApiOperation({ summary: 'Get company by ID' })
     findOne(@Param('id', ParseUUIDPipe) id: string, @Request() req: AuthenticatedRequest) {
         // Users can only view their own company, SUPER_ADMIN can view any
@@ -59,12 +60,13 @@ export class CompaniesController {
     @Patch(':id')
     @ApiBearerAuth()
     @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN)
     @ApiOperation({ summary: 'Update company' })
     update(@Param('id', ParseUUIDPipe) id: string, @Body() updateDto: UpdateCompanyDto, @Request() req: AuthenticatedRequest) {
         // Users can only update their own company, SUPER_ADMIN can update any
         if (req.user.role !== Role.SUPER_ADMIN && req.user.companyId !== id) {
             throw new ForbiddenException('You do not have access to this company');
         }
-        return this.companiesService.update(id, updateDto);
+        return this.companiesService.update(id, updateDto, req.user.role);
     }
 }

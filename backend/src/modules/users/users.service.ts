@@ -1,6 +1,6 @@
 import { Injectable, Logger, NotFoundException, ConflictException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, In } from 'typeorm';
+import { Repository, In, Not } from 'typeorm';
 import { User } from './entities/user.entity';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -35,21 +35,28 @@ export class UsersService {
         return this.userRepository.save(user);
     }
 
-    async findAll(companyId: string, page = 1, limit = 20): Promise<{ data: User[]; total: number; page: number; limit: number }> {
+    async findAll(companyId: string | null | undefined, page = 1, limit = 20): Promise<{ data: User[]; total: number; page: number; limit: number }> {
         const [data, total] = await this.userRepository.findAndCount({
-            where: { companyId },
+            where: companyId ? { companyId, role: Not(Role.SUPER_ADMIN) } : {},
             ...paginationOptions(page, limit),
             order: { createdAt: 'DESC' },
         });
         return { data, total, page, limit };
     }
 
-    async findOne(id: string, companyId: string): Promise<User> {
-        const user = await this.userRepository.findOne({ where: { id, companyId } });
+    async findOne(id: string, companyId: string | undefined): Promise<User> {
+        const user = await this.userRepository.findOne({ where: { id, ...(companyId ? { companyId } : {}) } });
         if (!user) {
             throw new NotFoundException('User not found');
         }
         return user;
+    }
+
+    async findByIdWithoutCompany(id: string): Promise<User | null> {
+        return this.userRepository.findOne({
+            where: { id },
+            select: ['id', 'email', 'name', 'role', 'companyId'],
+        });
     }
 
     async findByEmail(email: string): Promise<User | null> {
@@ -59,10 +66,27 @@ export class UsersService {
         });
     }
 
-    async update(id: string, companyId: string, dto: UpdateUserDto): Promise<User> {
-        const user = await this.findOne(id, companyId);
+    async update(targetUserId: string, companyId: string, dto: UpdateUserDto, requesterRole: string): Promise<User> {
+        const user = await this.userRepository.findOne({ where: { id: targetUserId, companyId } });
+        if (!user) {
+            throw new NotFoundException('User not found');
+        }
+
+        const roleHierarchy = [Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT, Role.ACCOUNTANT];
+        const requesterLevel = roleHierarchy.indexOf(requesterRole as Role);
+        const targetLevel = roleHierarchy.indexOf(user.role as Role);
+
+        if (targetLevel <= requesterLevel) {
+            throw new ConflictException('You do not have permission to update this user');
+        }
 
         const updates = { ...dto };
+        if (updates.role) {
+            const newRoleLevel = roleHierarchy.indexOf(updates.role);
+            if (newRoleLevel <= requesterLevel) {
+                throw new ConflictException('You cannot assign a role lower than your own');
+            }
+        }
         if (updates.password) {
             updates.password = await bcrypt.hash(updates.password, 12);
         }
@@ -71,8 +95,20 @@ export class UsersService {
         return this.userRepository.save(user);
     }
 
-    async remove(id: string, companyId: string): Promise<void> {
-        const user = await this.findOne(id, companyId);
+    async remove(targetUserId: string, companyId: string, requesterRole: string): Promise<void> {
+        const user = await this.userRepository.findOne({ where: { id: targetUserId, companyId } });
+        if (!user) {
+            throw new NotFoundException('User not found');
+        }
+
+        const roleHierarchy = [Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT, Role.ACCOUNTANT];
+        const requesterLevel = roleHierarchy.indexOf(requesterRole as Role);
+        const targetLevel = roleHierarchy.indexOf(user.role as Role);
+
+        if (targetLevel <= requesterLevel) {
+            throw new ConflictException('You do not have permission to delete this user');
+        }
+
         await this.userRepository.remove(user);
     }
 
@@ -94,9 +130,9 @@ export class UsersService {
         await this.userRepository.update(userId, { password: hashedPassword });
     }
 
-    async findAgents(companyId: string): Promise<User[]> {
+    async findAgents(companyId: string | undefined): Promise<User[]> {
         return this.userRepository.find({
-            where: { companyId, isActive: true },
+            where: companyId ? { companyId, role: Role.AGENT, isActive: true } : { role: Role.AGENT, isActive: true },
             select: ['id', 'name', 'email', 'role'],
             order: { name: 'ASC' },
         });
