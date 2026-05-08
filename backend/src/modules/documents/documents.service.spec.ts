@@ -171,6 +171,16 @@ describe('DocumentsService', () => {
       );
     });
 
+    it('MANAGER sees PUBLIC and COMPANY documents', async () => {
+      await service.findAll(companyId, Role.MANAGER, 1, 20);
+
+      const qb = repo.createQueryBuilder();
+      expect(qb.andWhere).toHaveBeenCalledWith(
+        'doc.access_level IN (:...allowedLevels)',
+        { allowedLevels: [DocumentAccessLevel.PUBLIC, DocumentAccessLevel.COMPANY] },
+      );
+    });
+
     it('COMPANY_ADMIN sees PUBLIC, COMPANY, and ADMIN_ONLY documents', async () => {
       await service.findAll(companyId, Role.COMPANY_ADMIN, 1, 20);
 

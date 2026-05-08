@@ -117,27 +117,30 @@
         </LinkTo>
         {{/if}}
 
-        {{!-- Team --}}
-        {{#if this.sidebarGroups.team}}
-        <LinkTo @route="team" class="sidebar-link" data-test-nav-team>
-          <Ph @icon="users" /> <span class="sidebar-label">Team</span>
-        </LinkTo>
-        {{/if}}
-
         {{!-- Admin Group --}}
-        {{#if this.sidebarGroups.admin}}
+        {{#if (or this.sidebarGroups.admin this.sidebarGroups.team)}}
         <div class="sidebar-group {{if (or (eq this.expandedGroup 'admin') (eq this.activeGroup 'admin')) 'expanded'}}">
           <button type="button" class="sidebar-group-toggle {{if (eq this.activeGroup 'admin') 'sidebar-group-active'}}" {{on "click" (fn this.toggleGroup "admin")}}>
             <Ph @icon="gear" /> <span class="sidebar-label">Admin</span>
             <Ph @icon="caret-down" class="sidebar-chevron" />
           </button>
           <div class="sidebar-group-items">
+
+            {{!-- Team --}}
+            {{#if this.sidebarGroups.team}}
+            <LinkTo @route="team" class="sidebar-sublink" data-test-nav-team>
+              <span class="sidebar-label">Team</span>
+            </LinkTo>
+            {{/if}}
+
+            {{#if this.sidebarGroups.admin}}
             <LinkTo @route="documents" class="sidebar-sublink" data-test-nav-documents>
               <span class="sidebar-label">Documents</span>
             </LinkTo>
             <LinkTo @route="audit" class="sidebar-sublink" data-test-nav-audit>
               <span class="sidebar-label">Audit Log</span>
             </LinkTo>
+            {{/if}}
           </div>
         </div>
         {{/if}}

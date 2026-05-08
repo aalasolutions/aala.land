@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { NotFoundException, ConflictException } from '@nestjs/common';
+import { NotFoundException, ConflictException, ForbiddenException } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { User } from './entities/user.entity';
 import { Role } from '@shared/enums/roles.enum';
@@ -205,7 +205,7 @@ describe('UsersService', () => {
       repo.findOne.mockResolvedValue(mockUser);
       repo.save.mockResolvedValue({ ...mockUser, name: 'Updated Name' });
 
-      const result = await service.update('user-uuid-1', companyId, { name: 'Updated Name' } as any);
+      const result = await service.update('user-uuid-1', companyId, { name: 'Updated Name' } as any, Role.COMPANY_ADMIN);
 
       expect(result.name).toBe('Updated Name');
     });
@@ -214,26 +214,20 @@ describe('UsersService', () => {
       repo.findOne.mockResolvedValue(mockUser);
       repo.save.mockResolvedValue(mockUser);
 
-      await service.update('user-uuid-1', companyId, { password: 'new-password' } as any);
+      await service.update('user-uuid-1', companyId, { password: 'new-password' } as any, Role.COMPANY_ADMIN);
 
       expect(bcrypt.hash).toHaveBeenCalledWith('new-password', 12);
     });
 
-    it('throws ConflictException when trying to assign a role <= requester role', async () => {
+    it('throws ForbiddenException when trying to assign a role <= requester role', async () => {
       repo.findOne.mockResolvedValue(mockUser);
 
       await expect(
-        service.update('user-uuid-1', companyId, { role: Role.MANAGER } as any, mockUser),
-      ).rejects.toThrow(ConflictException);
+        service.update('user-uuid-1', companyId, { role: Role.MANAGER } as any, Role.AGENT),
+      ).rejects.toThrow(ForbiddenException);
     });
 
     it('allows SUPER_ADMIN to update any user role (except SUPER_ADMIN)', async () => {
-      const requester: User = {
-        ...mockUser,
-        role: Role.SUPER_ADMIN,
-        id: 'super-uuid',
-        email: 'super@test.com',
-      };
       const target: User = {
         ...mockUser,
         role: Role.ADMIN,
@@ -244,7 +238,7 @@ describe('UsersService', () => {
       repo.findOne.mockResolvedValue(target);
       repo.save.mockResolvedValue({ ...target, role: Role.COMPANY_ADMIN });
 
-      const result = await service.update('admin-uuid', companyId, { role: Role.COMPANY_ADMIN } as any, requester);
+      const result = await service.update('admin-uuid', companyId, { role: Role.COMPANY_ADMIN } as any, Role.SUPER_ADMIN);
 
       expect(result.role).toBe(Role.COMPANY_ADMIN);
     });
@@ -255,7 +249,7 @@ describe('UsersService', () => {
       repo.findOne.mockResolvedValue(mockUser);
       repo.remove.mockResolvedValue(mockUser);
 
-      await service.remove('user-uuid-1', companyId);
+      await service.remove('user-uuid-1', companyId, Role.COMPANY_ADMIN);
 
       expect(repo.remove).toHaveBeenCalledWith(mockUser);
     });
@@ -263,7 +257,7 @@ describe('UsersService', () => {
     it('throws NotFoundException when user not found', async () => {
       repo.findOne.mockResolvedValue(null);
 
-      await expect(service.remove('bad-id', companyId)).rejects.toThrow(NotFoundException);
+      await expect(service.remove('bad-id', companyId, Role.COMPANY_ADMIN)).rejects.toThrow(NotFoundException);
     });
   });
 

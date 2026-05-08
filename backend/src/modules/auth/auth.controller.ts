@@ -95,6 +95,7 @@ export class AuthController {
             sub: user.sub,
             companyId: user.companyId,
             role: user.role,
+            impersonatedBy: req.user.userId, // Add SUPER_ADMIN's ID
         };
         return {
             accessToken: this.authService.generateTokenPair(payload2),

@@ -1,4 +1,4 @@
-import { Injectable, Logger, NotFoundException, ConflictException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, ConflictException, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In, Not } from 'typeorm';
 import { User } from './entities/user.entity';
@@ -66,8 +66,8 @@ export class UsersService {
         });
     }
 
-    async update(targetUserId: string, companyId: string, dto: UpdateUserDto, requesterRole: string): Promise<User> {
-        const user = await this.userRepository.findOne({ where: { id: targetUserId, companyId } });
+    async update(targetUserId: string, companyId: string | undefined, dto: UpdateUserDto, requesterRole: string): Promise<User> {
+        const user = await this.userRepository.findOne({ where: { id: targetUserId, ...(companyId ? { companyId } : {}) } });
         if (!user) {
             throw new NotFoundException('User not found');
         }
@@ -76,15 +76,22 @@ export class UsersService {
         const requesterLevel = roleHierarchy.indexOf(requesterRole as Role);
         const targetLevel = roleHierarchy.indexOf(user.role as Role);
 
-        if (targetLevel <= requesterLevel) {
-            throw new ConflictException('You do not have permission to update this user');
+        if (requesterLevel === -1 || targetLevel === -1) {
+            throw new ForbiddenException('Invalid role hierarchy state');
+        }
+
+        if (targetLevel <= requesterLevel && requesterRole !== Role.SUPER_ADMIN) {
+            throw new ForbiddenException('You do not have permission to update this user');
         }
 
         const updates = { ...dto };
         if (updates.role) {
             const newRoleLevel = roleHierarchy.indexOf(updates.role);
-            if (newRoleLevel <= requesterLevel) {
-                throw new ConflictException('You cannot assign a role lower than your own');
+            if (newRoleLevel === -1) {
+                throw new ForbiddenException('Invalid role assigned');
+            }
+            if (newRoleLevel <= requesterLevel && requesterRole !== Role.SUPER_ADMIN) {
+                throw new ForbiddenException('You cannot assign a role higher than or equal to your own');
             }
         }
         if (updates.password) {
@@ -95,8 +102,8 @@ export class UsersService {
         return this.userRepository.save(user);
     }
 
-    async remove(targetUserId: string, companyId: string, requesterRole: string): Promise<void> {
-        const user = await this.userRepository.findOne({ where: { id: targetUserId, companyId } });
+    async remove(targetUserId: string, companyId: string | undefined, requesterRole: string): Promise<void> {
+        const user = await this.userRepository.findOne({ where: { id: targetUserId, ...(companyId ? { companyId } : {}) } });
         if (!user) {
             throw new NotFoundException('User not found');
         }
@@ -105,8 +112,12 @@ export class UsersService {
         const requesterLevel = roleHierarchy.indexOf(requesterRole as Role);
         const targetLevel = roleHierarchy.indexOf(user.role as Role);
 
-        if (targetLevel <= requesterLevel) {
-            throw new ConflictException('You do not have permission to delete this user');
+        if (requesterLevel === -1 || targetLevel === -1) {
+            throw new ForbiddenException('Invalid role hierarchy state');
+        }
+
+        if (targetLevel <= requesterLevel && requesterRole !== Role.SUPER_ADMIN) {
+            throw new ForbiddenException('You do not have permission to delete this user');
         }
 
         await this.userRepository.remove(user);

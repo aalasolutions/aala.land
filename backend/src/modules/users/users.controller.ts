@@ -34,7 +34,18 @@ export class UsersController {
     @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN)
     @ApiOperation({ summary: 'Invite a new user via temporary password (ADMIN+)' })
     invite(@Body() dto: InviteUserDto, @Request() req: AuthenticatedRequest) {
-        return this.usersService.inviteUser(req.user.companyId, dto);
+        const companyId = req.user.role === Role.SUPER_ADMIN ? dto.companyId : req.user.companyId;
+        if (req.user.role === Role.SUPER_ADMIN && !companyId) {
+            throw new Error('companyId is required for SUPER_ADMIN');
+        }
+        return this.usersService.inviteUser(companyId as string, dto);
+    }
+
+    @Get('me')
+    @UseGuards(JwtAuthGuard)
+    @ApiOperation({ summary: 'Get current user profile' })
+    getMyProfile(@Request() req: AuthenticatedRequest) {
+        return this.usersService.findOne(req.user.userId, req.user.companyId);
     }
 
     @Get()
@@ -59,28 +70,20 @@ export class UsersController {
         return this.usersService.findAgents(companyId);
     }
 
-    @Get('me')
-    @UseGuards(JwtAuthGuard)
-    @ApiOperation({ summary: 'Get current user profile' })
-    getMyProfile(@Request() req: AuthenticatedRequest) {
-        return this.usersService.findOne(req.user.userId, req.user.companyId);
-    }
-
     @Get(':id')
     @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN)
     @ApiOperation({ summary: 'Get a user by ID (scoped to company)' })
     findOne(@Param('id', ParseUUIDPipe) id: string, @Request() req: AuthenticatedRequest) {
         const companyId = req.user.role === Role.SUPER_ADMIN ? undefined : req.user.companyId;
-        return req.user.role === Role.SUPER_ADMIN 
-            ? this.usersService.findOne(id, undefined)
-            : this.usersService.findOne(id, req.user.companyId);
+        return this.usersService.findOne(id, companyId);
     }
 
     @Patch(':id')
     @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN)
     @ApiOperation({ summary: 'Update a user (ADMIN+)' })
     update(@Param('id', ParseUUIDPipe) id: string, @Body() updateUserDto: UpdateUserDto, @Request() req: AuthenticatedRequest) {
-        return this.usersService.update(id, req.user.companyId, updateUserDto, req.user.role);
+        const companyId = req.user.role === Role.SUPER_ADMIN ? undefined : req.user.companyId;
+        return this.usersService.update(id, companyId, updateUserDto, req.user.role);
     }
 
     @Delete(':id')
@@ -88,6 +91,7 @@ export class UsersController {
     @HttpCode(HttpStatus.NO_CONTENT)
     @ApiOperation({ summary: 'Delete a user (ADMIN+)' })
     remove(@Param('id', ParseUUIDPipe) id: string, @Request() req: AuthenticatedRequest) {
-        return this.usersService.remove(id, req.user.companyId, req.user.role);
+        const companyId = req.user.role === Role.SUPER_ADMIN ? undefined : req.user.companyId;
+        return this.usersService.remove(id, companyId, req.user.role);
     }
 }

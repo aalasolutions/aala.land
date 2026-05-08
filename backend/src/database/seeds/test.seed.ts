@@ -35,7 +35,7 @@ export async function runTestSeed(dataSource: DataSource): Promise<TestSeedResul
   );
 
   const users: User[] = [
-    { id: superAdminId, name: 'Super Admin', email: 'test@aala.land', password: hashedPassword, role: Role.SUPER_ADMIN, isActive: true } as User,
+    { id: superAdminId, name: 'Super Admin', email: 'admin@aala.land', password: hashedPassword, role: Role.SUPER_ADMIN, isActive: true } as User,
   ];
 
   return { companies: [], users };

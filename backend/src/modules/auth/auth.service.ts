@@ -39,6 +39,14 @@ interface LoginResponse {
     defaultRegionCode: string;
 }
 
+interface JwtPayload {
+    email: string;
+    sub: string;
+    companyId: string;
+    role: string;
+    impersonatedBy?: string;
+}
+
 interface RefreshResponse {
     accessToken: string;
 }
@@ -64,7 +72,7 @@ export class AuthService {
     }
 
     async login(user: LoginUser): Promise<LoginResponse> {
-        const payload = {
+        const payload: JwtPayload = {
             email: user.email,
             sub: user.id,
             companyId: user.companyId,
@@ -89,7 +97,7 @@ export class AuthService {
     }
 
     async refresh(user: RefreshUser): Promise<RefreshResponse> {
-        const payload = {
+        const payload: JwtPayload = {
             email: user.email,
             sub: user.userId,
             companyId: user.companyId,
@@ -100,7 +108,11 @@ export class AuthService {
         };
     }
 
-    generateTokenPair(payload: Record<string, unknown>, options?: Object): string {
+    generateTokenPair(payload: JwtPayload, options?: any): string {
+        // Log impersonation action
+        if (payload.impersonatedBy) {
+            this.logger.log(`User ${payload.impersonatedBy} impersonated user ${payload.sub} (email: ${payload.email})`);
+        }
         return this.jwtService.sign(payload, options);
     }
 
@@ -113,7 +125,7 @@ export class AuthService {
 
             await this.usersService.updateResetToken(user.id, token, expires);
 
-            // TODO: Wire to email service. For now, log token generation without exposing it.
+        // TODO: Wire to email service. For now, log token generation without exposing it.
             this.logger.debug(`Password reset token generated for ${email}`);
         }
 
