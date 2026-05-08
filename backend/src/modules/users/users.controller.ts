@@ -9,6 +9,7 @@ import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { InviteUserDto } from './dto/invite-user.dto';
 import { AuthenticatedRequest } from '@shared/interfaces/authenticated-request.interface';
+import { BadRequestException } from '@nestjs/common';
 
 @ApiTags('Users')
 @ApiBearerAuth()
@@ -23,7 +24,7 @@ export class UsersController {
     create(@Body() createUserDto: CreateUserDto, @Request() req: AuthenticatedRequest) {
         if (req.user.role === Role.SUPER_ADMIN) {
             if (!createUserDto.companyId) {
-                throw new Error('companyId is required for SUPER_ADMIN');
+                throw new BadRequestException('companyId is required for SUPER_ADMIN');
             }
             return this.usersService.create(createUserDto, createUserDto.companyId);
         }

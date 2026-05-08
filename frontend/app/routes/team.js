@@ -6,10 +6,13 @@ export default class TeamRoute extends AuthenticatedRoute {
   @service router;
   @service auth;
 
-  beforeModel() {
+  async beforeModel(transition) {
+    await super.beforeModel(transition);
+
     const role = this.auth.currentUser?.role;
+
     if (!canManageUsers(role)) {
-      this.router.transitionTo('dashboard');
+      return this.router.transitionTo('dashboard');
     }
   }
 
@@ -19,13 +22,25 @@ export default class TeamRoute extends AuthenticatedRoute {
   };
 
   async model({ page = 1, limit = 10 }) {
-    const params = new URLSearchParams({ page, limit });
+    const params = new URLSearchParams({
+      page: String(page),
+      limit: String(limit),
+    });
 
     try {
       const json = await this.auth.fetchJson(`/users?${params.toString()}`);
-      return { users: json.data?.data || [], total: json.data?.total || 0, page: json.data?.page || 1 };
+
+      return {
+        users: json.data?.data || [],
+        total: json.data?.total || 0,
+        page: json.data?.page || 1,
+      };
     } catch {
-      return { users: [], total: 0, page: 1 };
+      return {
+        users: [],
+        total: 0,
+        page: 1,
+      };
     }
   }
 }

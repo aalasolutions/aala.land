@@ -44,7 +44,18 @@ export const ROLE_HIERARCHY = [
 ];
 
 export function canUpdateUser(role, targetRole) {
-  return ROLE_HIERARCHY.indexOf(role) < ROLE_HIERARCHY.indexOf(targetRole);
+  const currentRoleIndex = ROLE_HIERARCHY.indexOf(role);
+  const targetRoleIndex = ROLE_HIERARCHY.indexOf(targetRole);
+
+  const hasValidRoles =
+    currentRoleIndex !== -1 &&
+    targetRoleIndex !== -1;
+
+  if (!hasValidRoles) {
+    return false;
+  }
+
+  return currentRoleIndex < targetRoleIndex;
 }
 
 export function getVisibleGroups(role) {

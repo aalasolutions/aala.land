@@ -155,7 +155,7 @@ describe('UsersService', () => {
     it('returns all users across companies for SUPER_ADMIN', async () => {
       repo.findAndCount.mockResolvedValue([[mockUser, mockSuperAdmin], 2]);
 
-      const result = await service.findAll(undefined as any, 1, 20, Role.SUPER_ADMIN);
+      const result = await service.findAll(undefined as any, 1, 20);
 
       expect(repo.findAndCount).toHaveBeenCalledWith({
         where: {},

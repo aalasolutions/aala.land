@@ -3,7 +3,7 @@ import { service } from '@ember/service';
 import { action } from '@ember/object';
 import { tracked } from '@glimmer/tracking';
 import { cancel, later } from '@ember/runloop';
-import { isAdminRole, canManageUsers, getVisibleGroups } from '../utils/roles';
+import { isAdminRole, getVisibleGroups } from '../utils/roles';
 
 export default class ApplicationController extends Controller {
   @service session;

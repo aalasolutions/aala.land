@@ -66,39 +66,67 @@ export class UsersService {
         });
     }
 
-    async update(targetUserId: string, companyId: string | undefined, dto: UpdateUserDto, requesterRole: string): Promise<User> {
-        const user = await this.userRepository.findOne({ where: { id: targetUserId, ...(companyId ? { companyId } : {}) } });
+    async update(
+        targetUserId: string,
+        companyId: string | undefined,
+        dto: UpdateUserDto,
+        requesterRole: string,
+        ): Promise<User> {
+
+        const roleHierarchy = [
+            Role.SUPER_ADMIN,
+            Role.COMPANY_ADMIN,
+            Role.ADMIN,
+            Role.MANAGER,
+            Role.AGENT,
+            Role.ACCOUNTANT,
+        ];
+
+        const getLevel = (role: Role) => {
+            const level = roleHierarchy.indexOf(role);
+            if (level === -1) {
+            throw new ForbiddenException(`Invalid role detected: ${role}`);
+            }
+            return level;
+        };
+
+        const requesterLevel = getLevel(requesterRole as Role);
+
+        const user = await this.userRepository.findOne({
+            where: { id: targetUserId, ...(companyId ? { companyId } : {}) },
+        });
+
         if (!user) {
             throw new NotFoundException('User not found');
         }
 
-        const roleHierarchy = [Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT, Role.ACCOUNTANT];
-        const requesterLevel = roleHierarchy.indexOf(requesterRole as Role);
-        const targetLevel = roleHierarchy.indexOf(user.role as Role);
+        const targetLevel = getLevel(user.role as Role);
 
-        if (requesterLevel === -1 || targetLevel === -1) {
-            throw new ForbiddenException('Invalid role hierarchy state');
-        }
-
-        if (targetLevel <= requesterLevel && requesterRole !== Role.SUPER_ADMIN) {
+        // 🔒 Prevent unauthorized updates (except SUPER_ADMIN override)
+        if (requesterRole !== Role.SUPER_ADMIN && targetLevel <= requesterLevel) {
             throw new ForbiddenException('You do not have permission to update this user');
         }
 
-        const updates = { ...dto };
+        const updates: Partial<User> = { ...dto };
+
+        // 🔒 Role change validation
         if (updates.role) {
-            const newRoleLevel = roleHierarchy.indexOf(updates.role);
-            if (newRoleLevel === -1) {
-                throw new ForbiddenException('Invalid role assigned');
-            }
-            if (newRoleLevel <= requesterLevel && requesterRole !== Role.SUPER_ADMIN) {
-                throw new ForbiddenException('You cannot assign a role higher than or equal to your own');
+            const newRoleLevel = getLevel(updates.role);
+
+            if (requesterRole !== Role.SUPER_ADMIN && newRoleLevel <= requesterLevel) {
+                throw new ForbiddenException(
+                    'You are only allowed to assign roles with lower privilege than your own',
+                );
             }
         }
+
+        // 🔐 Password hashing
         if (updates.password) {
             updates.password = await bcrypt.hash(updates.password, 12);
         }
 
         Object.assign(user, updates);
+
         return this.userRepository.save(user);
     }
 
