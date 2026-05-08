@@ -53,9 +53,9 @@ export class ContactsController {
   }
 
   @Delete(':id')
-  @Roles(Role.COMPANY_ADMIN, Role.ADMIN)
+  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN)
   @HttpCode(HttpStatus.NO_CONTENT)
-  @ApiOperation({ summary: 'Delete a contact (COMPANY_ADMIN+)' })
+  @ApiOperation({ summary: 'Delete a contact (SUPER_ADMIN, COMPANY_ADMIN, ADMIN)' })
   remove(@Param('id', ParseUUIDPipe) id: string, @Request() req: AuthenticatedRequest) {
     return this.contactsService.remove(id, req.user.companyId);
   }

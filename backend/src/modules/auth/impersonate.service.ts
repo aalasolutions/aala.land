@@ -10,6 +10,10 @@ export class ImpersonateService {
     if (!user) {
       throw new BadRequestException('User not found');
     }
+    const userStatus = user as { isActive?: boolean; active?: boolean };
+    if (userStatus.isActive === false || userStatus.active === false) {
+      throw new BadRequestException('User is inactive');
+    }
     return {
       email: user.email,
       sub: user.id,

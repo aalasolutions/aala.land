@@ -63,7 +63,7 @@ export class VendorsController {
   @Delete(':id')
   @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN)
   @HttpCode(HttpStatus.NO_CONTENT)
-  @ApiOperation({ summary: 'Deactivate a vendor (COMPANY_ADMIN+)' })
+  @ApiOperation({ summary: 'Deactivate a vendor (ADMIN+)' })
   remove(@Param('id', ParseUUIDPipe) id: string, @Request() req: AuthenticatedRequest) {
     return this.vendorsService.remove(id, req.user.companyId);
   }

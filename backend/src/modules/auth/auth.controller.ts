@@ -98,8 +98,8 @@ export class AuthController {
             impersonatedBy: req.user.userId, // Add SUPER_ADMIN's ID
         };
         return {
-            accessToken: this.authService.generateTokenPair(payload2),
-            refreshToken: this.authService.generateTokenPair(payload2, { expiresIn: '7d' }),
+            accessToken: this.authService.generateToken(payload2),
+            refreshToken: this.authService.generateToken(payload2, { expiresIn: '7d' }),
         };
     }
 }

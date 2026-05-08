@@ -37,7 +37,7 @@ export class UsersController {
     invite(@Body() dto: InviteUserDto, @Request() req: AuthenticatedRequest) {
         const companyId = req.user.role === Role.SUPER_ADMIN ? dto.companyId : req.user.companyId;
         if (req.user.role === Role.SUPER_ADMIN && !companyId) {
-            throw new Error('companyId is required for SUPER_ADMIN');
+            throw new BadRequestException('companyId is required for SUPER_ADMIN');
         }
         return this.usersService.inviteUser(companyId as string, dto);
     }
