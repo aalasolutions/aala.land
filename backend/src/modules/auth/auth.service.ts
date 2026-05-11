@@ -109,10 +109,6 @@ export class AuthService {
     }
 
     generateToken(payload: JwtPayload, options?: any): string {
-        // Log impersonation action
-        if (payload.impersonatedBy) {
-            this.logger.log(`User ${payload.impersonatedBy} impersonated user ${payload.sub} (email: ${payload.email})`);
-        }
         return this.jwtService.sign(payload, options);
     }
 

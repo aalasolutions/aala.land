@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, In } from 'typeorm';
+import { Repository } from 'typeorm';
 import { PropertyDocument, DocumentCategory, DocumentAccessLevel } from '../properties/entities/property-document.entity';
 import { CreateDocumentDto } from './dto/create-document.dto';
 import { UpdateDocumentDto } from './dto/update-document.dto';
@@ -129,6 +129,7 @@ export class DocumentsService {
           DocumentAccessLevel.ADMIN_ONLY,
         ];
       case Role.COMPANY_ADMIN:
+      case Role.ADMIN:
         return [
           DocumentAccessLevel.PUBLIC,
           DocumentAccessLevel.COMPANY,

@@ -1,4 +1,4 @@
-import { Controller, Post, Body, UnauthorizedException, Get, UseGuards, Request, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Post, Body, UnauthorizedException, Get, UseGuards, Request, HttpCode, HttpStatus, Logger } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { ImpersonateService } from './impersonate.service';
@@ -16,6 +16,8 @@ import { AuthenticatedRequest } from '@shared/interfaces/authenticated-request.i
 @ApiTags('Authentication')
 @Controller('auth')
 export class AuthController {
+    private readonly logger = new Logger(AuthController.name);
+
     constructor(
         private readonly authService: AuthService,
         private readonly impersonateService: ImpersonateService,
@@ -90,12 +92,13 @@ export class AuthController {
     async impersonate(@Request() req: AuthenticatedRequest, @Body() payload: ImpersonateDto) {
         const { userId } = payload;
         const user = await this.impersonateService.impersonate(userId);
+        this.logger.log(`User ${req.user.userId} impersonated user ${user.sub} (email: ${user.email})`);
         const payload2 = {
             email: user.email,
             sub: user.sub,
             companyId: user.companyId,
             role: user.role,
-            impersonatedBy: req.user.userId, // Add SUPER_ADMIN's ID
+            impersonatedBy: req.user.userId,
         };
         return {
             accessToken: this.authService.generateToken(payload2),

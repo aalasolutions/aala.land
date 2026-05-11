@@ -6,6 +6,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
 import { Company } from '../../companies/entities/company.entity';
+import { Role } from '../../../shared/enums/roles.enum';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
@@ -39,16 +40,18 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
             throw new UnauthorizedException('User no longer exists or is inactive');
         }
 
-        const company = await this.companiesRepository.findOne({
-            where: { id: user.companyId },
-            select: {
-                id: true,
-                isActive: true,
-            },
-        });
+        if (user.role !== Role.SUPER_ADMIN) {
+            const company = await this.companiesRepository.findOne({
+                where: { id: user.companyId! },
+                select: {
+                    id: true,
+                    isActive: true,
+                },
+            });
 
-        if (!company || !company.isActive) {
-            throw new UnauthorizedException('Company no longer exists or is inactive');
+            if (!company || !company.isActive) {
+                throw new UnauthorizedException('Company no longer exists or is inactive');
+            }
         }
 
         return {
