@@ -82,7 +82,7 @@ export class DocumentsController {
   @Delete(':id')
   @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN)
   @HttpCode(HttpStatus.NO_CONTENT)
-  @ApiOperation({ summary: 'Delete a document (COMPANY_ADMIN+)' })
+  @ApiOperation({ summary: 'Delete a document (SUPER_ADMIN, COMPANY_ADMIN, ADMIN)' })
   remove(@Param('id', ParseUUIDPipe) id: string, @Request() req: AuthenticatedRequest) {
     return this.documentsService.remove(id, req.user.companyId, req.user.role);
   }

@@ -86,8 +86,8 @@ export class UsersController {
     @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN)
     @ApiOperation({ summary: 'Update a user (ADMIN+)' })
     update(@Param('id', ParseUUIDPipe) id: string, @Body() updateUserDto: UpdateUserDto, @Request() req: AuthenticatedRequest) {
-        const companyId = req.user.role === Role.SUPER_ADMIN ? undefined : req.user.companyId;
-        return this.usersService.update(id, companyId, updateUserDto, req.user.role);
+        const companyId = req.user.role === Role.SUPER_ADMIN ? undefined : (req.user.companyId ?? undefined);
+        return this.usersService.update(id, companyId, updateUserDto, req.user.role, req.user.userId);
     }
 
     @Delete(':id')

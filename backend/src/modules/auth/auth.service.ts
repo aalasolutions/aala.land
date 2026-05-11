@@ -15,13 +15,13 @@ interface LoginUser {
     name: string;
     email: string;
     role: string;
-    companyId: string;
+    companyId: string | null;
 }
 
 interface RefreshUser {
     email: string;
     userId: string;
-    companyId: string;
+    companyId: string | null;
     role: string;
 }
 
@@ -33,7 +33,7 @@ interface LoginResponse {
         name: string;
         email: string;
         role: string;
-        companyId: string;
+        companyId: string | null;
     };
     regions: Region[];
     defaultRegionCode: string;
@@ -42,7 +42,7 @@ interface LoginResponse {
 interface JwtPayload {
     email: string;
     sub: string;
-    companyId: string;
+    companyId: string | null;
     role: string;
     impersonatedBy?: string;
 }
@@ -79,7 +79,9 @@ export class AuthService {
             role: user.role,
         };
 
-        const company = await this.companiesService.findOne(user.companyId);
+        const company = user.companyId
+            ? await this.companiesService.findOne(user.companyId)
+            : null;
 
         return {
             accessToken: this.jwtService.sign(payload),
@@ -91,8 +93,8 @@ export class AuthService {
                 role: user.role,
                 companyId: user.companyId,
             },
-            regions: resolveRegions(company.activeRegions),
-            defaultRegionCode: company.defaultRegionCode,
+            regions: company ? resolveRegions(company.activeRegions) : [],
+            defaultRegionCode: company?.defaultRegionCode ?? '',
         };
     }
 

@@ -6,14 +6,16 @@
       <h2 class="font-3xl font-bold"><Ph @icon="users-three" @size="28px" /> Team</h2>
       <p class="text-muted mt-1">Manage your team members and their roles.</p>
     </div>
-    <div class="flex gap-3">
-      <button type="button" class="btn btn-secondary" data-test-invite-member {{on "click" this.openInvite}}>
-        <Ph @icon="envelope" /> Invite
-      </button>
-      <button type="button" class="btn btn-primary" data-test-add-member {{on "click" this.openCreate}}>
-        <Ph @icon="plus" /> Add Member
-      </button>
-    </div>
+    {{#unless this.isSuperAdmin}}
+      <div class="flex gap-3">
+        <button type="button" class="btn btn-secondary" data-test-invite-member {{on "click" this.openInvite}}>
+          <Ph @icon="envelope" /> Invite
+        </button>
+        <button type="button" class="btn btn-primary" data-test-add-member {{on "click" this.openCreate}}>
+          <Ph @icon="plus" /> Add Member
+        </button>
+      </div>
+    {{/unless}}
   </div>
 
   <div class="glass-panel p-5">
@@ -26,7 +28,7 @@
               <th>Email</th>
               <th>Role</th>
               <th>Status</th>
-              <th>Actions</th>
+              {{#unless this.isSuperAdmin}}<th>Actions</th>{{/unless}}
             </tr>
           </thead>
           <tbody>
@@ -42,16 +44,18 @@
                     <span class="status-badge status-pending">Inactive</span>
                   {{/if}}
                 </td>
-                <td>
-                  <div class="flex gap-2">
-                    <button type="button" class="btn btn-secondary btn-xs" data-test-edit-user {{on "click" (fn this.openEdit user)}}>
-                      <Ph @icon="pencil-simple" /> Edit
-                    </button>
-                    <button type="button" class="btn btn-danger btn-xs" data-test-delete-user {{on "click" (fn this.openDelete user)}}>
-                      <Ph @icon="trash" /> Remove
-                    </button>
-                  </div>
-                </td>
+                {{#unless this.isSuperAdmin}}
+                  <td>
+                    <div class="flex gap-2">
+                      <button type="button" class="btn btn-secondary btn-xs" data-test-edit-user {{on "click" (fn this.openEdit user)}}>
+                        <Ph @icon="pencil-simple" /> Edit
+                      </button>
+                      <button type="button" class="btn btn-danger btn-xs" data-test-delete-user {{on "click" (fn this.openDelete user)}}>
+                        <Ph @icon="trash" /> Remove
+                      </button>
+                    </div>
+                  </td>
+                {{/unless}}
               </tr>
             {{/each}}
           </tbody>

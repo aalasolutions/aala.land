@@ -3,8 +3,7 @@ import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
 import { closeDeleteModal, confirmDeleteModal, openDeleteModal } from '../utils/delete-modal';
-
-const ROLE_HIERARCHY = ['super_admin', 'company_admin', 'admin', 'manager', 'agent', 'accountant'];
+import { ROLE_HIERARCHY } from '../utils/roles';
 
 const ALL_ROLES = [
   { value: 'company_admin', label: 'Company Admin' },
@@ -39,6 +38,10 @@ export default class TeamController extends PaginatedController {
   @tracked showDeleteModal = false;
   @tracked userToDelete = null;
   @tracked isDeleting = false;
+
+  get isSuperAdmin() {
+    return this.auth.currentUser?.role === 'super_admin';
+  }
 
   get roles() {
     const myRole = this.auth.currentUser?.role;

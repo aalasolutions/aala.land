@@ -83,6 +83,7 @@ export class UsersService {
         companyId: string | undefined,
         dto: UpdateUserDto,
         requesterRole: string,
+        requesterId: string,
         ): Promise<User> {
 
         const roleHierarchy = [
@@ -113,9 +114,10 @@ export class UsersService {
         }
 
         const targetLevel = getLevel(user.role as Role);
+        const isSelfUpdate = targetUserId === requesterId;
 
-        // 🔒 Prevent unauthorized updates (except SUPER_ADMIN override)
-        if (requesterRole !== Role.SUPER_ADMIN && targetLevel <= requesterLevel) {
+        // 🔒 Prevent unauthorized updates (except SUPER_ADMIN override and self-updates)
+        if (!isSelfUpdate && requesterRole !== Role.SUPER_ADMIN && targetLevel <= requesterLevel) {
             throw new ForbiddenException('You do not have permission to update this user');
         }
 
@@ -123,6 +125,10 @@ export class UsersService {
 
         // 🔒 Role change validation
         if (updates.role) {
+            if (isSelfUpdate) {
+                throw new ForbiddenException('You cannot change your own role');
+            }
+
             const newRoleLevel = getLevel(updates.role);
 
             if (requesterRole !== Role.SUPER_ADMIN && newRoleLevel <= requesterLevel) {

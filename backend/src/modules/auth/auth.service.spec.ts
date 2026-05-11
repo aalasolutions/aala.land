@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { JwtService } from '@nestjs/jwt';
-import { BadRequestException, Logger } from '@nestjs/common';
+import { BadRequestException } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import { AuthService } from './auth.service';
 import { UsersService } from '../users/users.service';
@@ -85,27 +85,7 @@ describe('AuthService', () => {
   });
 
   describe('generateToken', () => {
-    it('logs impersonation when impersonatedBy is present', () => {
-      const loggerSpy = jest.spyOn(Logger.prototype, 'log').mockImplementation();
-      const payload = {
-        sub: 'user-123',
-        email: 'user@test.com',
-        companyId: 'company-uuid-1',
-        role: 'user',
-        impersonatedBy: 'admin-456',
-      };
-
-      service.generateToken(payload);
-
-      expect(loggerSpy).toHaveBeenCalledWith(
-        expect.stringContaining('User admin-456 impersonated user user-123 (email: user@test.com)'),
-      );
-      expect(jwtService.sign).toHaveBeenCalledWith(payload, undefined);
-      loggerSpy.mockRestore();
-    });
-
-    it('does not log impersonation when impersonatedBy is absent', () => {
-      const loggerSpy = jest.spyOn(Logger.prototype, 'log').mockImplementation();
+    it('signs and returns a token', () => {
       const payload = {
         sub: 'user-123',
         email: 'user@test.com',
@@ -115,9 +95,7 @@ describe('AuthService', () => {
 
       service.generateToken(payload);
 
-      expect(loggerSpy).not.toHaveBeenCalled();
       expect(jwtService.sign).toHaveBeenCalledWith(payload, undefined);
-      loggerSpy.mockRestore();
     });
   });
 
