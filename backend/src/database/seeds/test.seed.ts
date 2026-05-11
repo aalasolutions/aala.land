@@ -1,6 +1,5 @@
 import { DataSource } from 'typeorm';
 import * as bcrypt from 'bcryptjs';
-import { Company } from '@modules/companies/entities/company.entity';
 import { User } from '@modules/users/entities/user.entity';
 import { Role } from '@shared/enums/roles.enum';
 import { v4 as uuidv4 } from 'uuid';
@@ -26,7 +25,7 @@ export async function runTestSeed(dataSource: DataSource): Promise<TestSeedResul
     [superAdminId, 'Super Admin', 'admin@aala.land', hashedPassword, 'super_admin', null, true]
   );
   const users: User[] = [
-    {id: superAdminId, name: 'Super Admin', email: 'admin@aala.land', password: hashedPassword, role: Role.SUPER_ADMIN, companyId: null, isActive: true, } as User,
+    {id: superAdminId, name: 'Super Admin', email: 'admin@aala.land', password: hashedPassword, role: Role.SUPER_ADMIN, companyId: null, isActive: true, } as unknown as User,
   ];
   return { users };
 }
