@@ -12,6 +12,6 @@ export class UpdateRolesEnum1774000000029 implements MigrationInterface {
     public async down(queryRunner: QueryRunner): Promise<void> {
         // PostgreSQL does not support removing enum values
         // If this migration needs to be reverted, the app version
-        // should be compatible with the 7-value enum.
+        // should be compatible with the 6-value enum.
     }
 }
