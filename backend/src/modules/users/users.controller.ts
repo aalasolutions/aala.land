@@ -26,9 +26,9 @@ export class UsersController {
             if (!createUserDto.companyId) {
                 throw new BadRequestException('companyId is required for SUPER_ADMIN');
             }
-            return this.usersService.create(createUserDto, createUserDto.companyId);
+            return this.usersService.create(createUserDto, createUserDto.companyId, req.user.role as Role);
         }
-        return this.usersService.create(createUserDto, req.user.companyId);
+        return this.usersService.create(createUserDto, req.user.companyId, req.user.role as Role);
     }
 
     @Post('invite')
@@ -39,7 +39,7 @@ export class UsersController {
         if (req.user.role === Role.SUPER_ADMIN && !companyId) {
             throw new BadRequestException('companyId is required for SUPER_ADMIN');
         }
-        return this.usersService.inviteUser(companyId as string, dto);
+        return this.usersService.inviteUser(companyId as string, dto, req.user.role as Role);
     }
 
     @Get('me')
@@ -51,7 +51,10 @@ export class UsersController {
 
     @Get()
     @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN)
-    @ApiOperation({ summary: 'List users for current company (paginated)' })
+    @ApiOperation({
+        summary: 'List users (paginated)',
+        description: 'SUPER_ADMIN receives users across all companies. COMPANY_ADMIN and ADMIN are scoped to their own company.',
+    })
     @ApiQuery({ name: 'page', required: false, type: Number })
     @ApiQuery({ name: 'limit', required: false, type: Number })
     findAll(

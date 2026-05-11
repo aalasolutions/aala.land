@@ -24,7 +24,19 @@ export class UsersService {
         private readonly emailTemplatesService: EmailTemplatesService,
     ) { }
 
-    async create(dto: CreateUserDto, companyId: string): Promise<User> {
+    async create(dto: CreateUserDto, companyId: string, requesterRole: Role): Promise<User> {
+        if (dto.role) {
+            const roleHierarchy = [Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT, Role.ACCOUNTANT];
+            const requesterLevel = roleHierarchy.indexOf(requesterRole);
+            const assignedLevel = roleHierarchy.indexOf(dto.role);
+            if (requesterLevel === -1 || assignedLevel === -1) {
+                throw new ForbiddenException('Invalid role');
+            }
+            if (requesterRole !== Role.SUPER_ADMIN && assignedLevel <= requesterLevel) {
+                throw new ForbiddenException('You are only allowed to assign roles with lower privilege than your own');
+            }
+        }
+
         const existing = await this.userRepository.findOne({ where: { email: dto.email } });
         if (existing) {
             throw new ConflictException('Email already exists');
@@ -188,7 +200,19 @@ export class UsersService {
         });
     }
 
-    async inviteUser(companyId: string, dto: InviteUserDto): Promise<User> {
+    async inviteUser(companyId: string, dto: InviteUserDto, requesterRole: Role): Promise<User> {
+        if (dto.role) {
+            const roleHierarchy = [Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT, Role.ACCOUNTANT];
+            const requesterLevel = roleHierarchy.indexOf(requesterRole);
+            const assignedLevel = roleHierarchy.indexOf(dto.role);
+            if (requesterLevel === -1 || assignedLevel === -1) {
+                throw new ForbiddenException('Invalid role');
+            }
+            if (requesterRole !== Role.SUPER_ADMIN && assignedLevel <= requesterLevel) {
+                throw new ForbiddenException('You are only allowed to assign roles with lower privilege than your own');
+            }
+        }
+
         const existing = await this.userRepository.findOne({ where: { email: dto.email } });
         if (existing) {
             throw new ConflictException('Email already exists');
