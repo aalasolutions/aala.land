@@ -89,8 +89,8 @@ describe('UsersService', () => {
       repo.create.mockReturnValue(mockUser);
       repo.save.mockResolvedValue(mockUser);
 
-      const dto = { name: 'Test Agent', email: 'agent@test.com', password: 'pass123', companyId };
-      const result = await service.create(dto as any, companyId);
+      const dto = { name: 'Test Agent', email: 'agent@test.com', password: 'pass123', companyId, role: Role.AGENT };
+      const result = await service.create(dto as any, companyId, Role.COMPANY_ADMIN);
 
       expect(bcrypt.hash).toHaveBeenCalledWith('pass123', 12);
       expect(result).toEqual(mockUser);
@@ -99,8 +99,28 @@ describe('UsersService', () => {
     it('throws ConflictException when email already exists', async () => {
       repo.findOne.mockResolvedValue(mockUser);
 
-      const dto = { name: 'Test', email: 'agent@test.com', password: 'pass123', companyId };
-      await expect(service.create(dto as any, companyId)).rejects.toThrow(ConflictException);
+      const dto = { name: 'Test', email: 'agent@test.com', password: 'pass123', companyId, role: Role.AGENT };
+      await expect(service.create(dto as any, companyId, Role.COMPANY_ADMIN)).rejects.toThrow(ConflictException);
+    });
+
+    it('throws ForbiddenException when assigning a role equal to requester role', async () => {
+      const dto = { name: 'Test', email: 'new@test.com', password: 'pass123', companyId, role: Role.ADMIN };
+      await expect(service.create(dto as any, companyId, Role.ADMIN)).rejects.toThrow(ForbiddenException);
+    });
+
+    it('throws ForbiddenException when assigning a role higher than requester role', async () => {
+      const dto = { name: 'Test', email: 'new@test.com', password: 'pass123', companyId, role: Role.COMPANY_ADMIN };
+      await expect(service.create(dto as any, companyId, Role.ADMIN)).rejects.toThrow(ForbiddenException);
+    });
+
+    it('allows SUPER_ADMIN to assign any role including equal privilege', async () => {
+      repo.findOne.mockResolvedValue(null);
+      const superAdminUser = { ...mockUser, role: Role.SUPER_ADMIN };
+      repo.create.mockReturnValue(superAdminUser);
+      repo.save.mockResolvedValue(superAdminUser);
+
+      const dto = { name: 'Another SA', email: 'sa2@test.com', password: 'pass123', companyId, role: Role.SUPER_ADMIN };
+      await expect(service.create(dto as any, companyId, Role.SUPER_ADMIN)).resolves.not.toThrow();
     });
   });
 
@@ -118,7 +138,7 @@ describe('UsersService', () => {
       role: Role.SUPER_ADMIN,
       name: 'Super Admin',
       email: 'super@test.com',
-      companyId: undefined,
+      companyId: null as any,
     };
 
     it('returns paginated users for company', async () => {
@@ -127,7 +147,7 @@ describe('UsersService', () => {
       const result = await service.findAll(companyId, 1, 20);
 
       expect(repo.findAndCount).toHaveBeenCalledWith({
-        where: { companyId },
+        where: { companyId, role: expect.anything() },
         skip: 0,
         take: 20,
         order: { createdAt: 'DESC' },
@@ -164,7 +184,7 @@ describe('UsersService', () => {
         order: { createdAt: 'DESC' },
       });
       expect(result.data.length).toBe(2);
-      expect(result.data.every(u => u.role !== Role.SUPER_ADMIN || u.companyId === undefined)).toBe(true);
+      expect(result.data.every(u => u.role !== Role.SUPER_ADMIN || u.companyId == null)).toBe(true);
     });
   });
 
@@ -284,9 +304,9 @@ describe('UsersService', () => {
         lastName: 'Smith',
         role: Role.AGENT,
       };
-      const result = await service.inviteUser(companyId, dto);
+      const result = await service.inviteUser(companyId, dto, Role.COMPANY_ADMIN);
 
-      expect(crypto.randomBytes).toHaveBeenCalledWith(16);
+      expect(crypto.randomBytes).toHaveBeenCalledWith(32);
       expect(bcrypt.hash).toHaveBeenCalledWith('abc123temppassword', 12);
       expect(repo.create).toHaveBeenCalledWith({
         name: 'Jane Smith',
@@ -307,7 +327,7 @@ describe('UsersService', () => {
         firstName: 'Duplicate',
         lastName: 'User',
       };
-      await expect(service.inviteUser(companyId, dto)).rejects.toThrow(ConflictException);
+      await expect(service.inviteUser(companyId, dto, Role.COMPANY_ADMIN)).rejects.toThrow(ConflictException);
     });
 
     it('combines firstName and lastName into name', async () => {
@@ -321,7 +341,7 @@ describe('UsersService', () => {
         firstName: 'Ahmed',
         lastName: 'Al-Rashid',
       };
-      await service.inviteUser(companyId, dto);
+      await service.inviteUser(companyId, dto, Role.COMPANY_ADMIN);
 
       expect(repo.create).toHaveBeenCalledWith(
         expect.objectContaining({ name: 'Ahmed Al-Rashid' }),
@@ -343,7 +363,7 @@ describe('UsersService', () => {
         firstName: 'Jane',
         lastName: 'Smith',
         role: Role.AGENT,
-      });
+      }, Role.COMPANY_ADMIN);
 
       // Wait for fire-and-forget to complete
       await new Promise(resolve => setImmediate(resolve));
@@ -378,7 +398,7 @@ describe('UsersService', () => {
         firstName: 'Jane',
         lastName: 'Smith',
         role: Role.AGENT,
-      });
+      }, Role.COMPANY_ADMIN);
 
       await new Promise(resolve => setImmediate(resolve));
 
@@ -388,8 +408,7 @@ describe('UsersService', () => {
         expect.objectContaining({
           name: 'Jane Smith',
           email: 'jane@company.com',
-          password: 'abc123temppassword',
-          loginUrl: expect.stringContaining('/login'),
+          inviteUrl: expect.stringContaining('/accept-invite'),
         }),
       );
       expect(mailService.sendMail).toHaveBeenCalledWith(
@@ -417,7 +436,7 @@ describe('UsersService', () => {
         firstName: 'Jane',
         lastName: 'Smith',
         role: Role.AGENT,
-      });
+      }, Role.COMPANY_ADMIN);
 
       expect(result).toBeDefined();
       expect(result.email).toBe('jane@company.com');
