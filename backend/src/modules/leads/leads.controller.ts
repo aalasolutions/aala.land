@@ -20,7 +20,7 @@ export class LeadsController {
 
   @Post()
   @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT)
-  @ApiOperation({ summary: 'Create a new lead (ADMIN+)' })
+  @ApiOperation({ summary: 'Create a new lead (SUPER_ADMIN, COMPANY_ADMIN, ADMIN, MANAGER, AGENT)' })
   create(@Body() dto: CreateLeadDto, @Request() req: AuthenticatedRequest) {
     return this.leadsService.create(req.user.companyId, dto, req.user.userId);
   }
