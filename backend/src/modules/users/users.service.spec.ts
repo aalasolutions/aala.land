@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, Not } from 'typeorm';
 import { NotFoundException, ConflictException, ForbiddenException } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { User } from './entities/user.entity';
@@ -147,7 +147,7 @@ describe('UsersService', () => {
       const result = await service.findAll(companyId, 1, 20);
 
       expect(repo.findAndCount).toHaveBeenCalledWith({
-        where: { companyId, role: expect.anything() },
+        where: { companyId, role: Not(Role.SUPER_ADMIN) },
         skip: 0,
         take: 20,
         order: { createdAt: 'DESC' },
@@ -160,16 +160,14 @@ describe('UsersService', () => {
     it('excludes SUPER_ADMIN users for normal company queries', async () => {
       repo.findAndCount.mockResolvedValue([[mockUser, mockAdmin], 2]);
 
-      const result = await service.findAll(companyId, 1, 20);
+      await service.findAll(companyId, 1, 20);
 
       expect(repo.findAndCount).toHaveBeenCalledWith({
-        where: { companyId, role: expect.anything() },
+        where: { companyId, role: Not(Role.SUPER_ADMIN) },
         skip: 0,
         take: 20,
         order: { createdAt: 'DESC' },
       });
-      expect(result.data.length).toBe(2);
-      expect(result.data.every(u => u.role !== Role.SUPER_ADMIN)).toBe(true);
     });
 
     it('returns all users across companies for SUPER_ADMIN', async () => {

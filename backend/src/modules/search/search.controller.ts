@@ -16,7 +16,7 @@ export class SearchController {
     constructor(private readonly searchService: SearchService) {}
 
     @Get()
-    @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT, Role.ACCOUNTANT)
+    @Roles(Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT, Role.ACCOUNTANT)
     @ApiOperation({ summary: 'Global search across properties and agents' })
     @ApiQuery({ name: 'q', required: true, type: String })
     @ApiQuery({ name: 'regionCode', required: false, type: String })
