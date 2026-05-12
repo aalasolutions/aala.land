@@ -6,6 +6,7 @@ import { RolesGuard } from '@shared/guards/roles.guard';
 import { Roles } from '@shared/decorators/roles.decorator';
 import { Role } from '@shared/enums/roles.enum';
 import { AuthenticatedRequest } from '@shared/interfaces/authenticated-request.interface';
+import { requireCompanyId } from '@shared/utils/auth.util';
 
 @ApiTags('search')
 @Controller('search')
@@ -28,6 +29,6 @@ export class SearchController {
         if (trimmed.length < 2 || trimmed.length > 100) {
             return { properties: [], agents: [] };
         }
-        return await this.searchService.search(trimmed, req.user.companyId, regionCode);
+        return await this.searchService.search(trimmed, requireCompanyId(req.user), regionCode);
     }
 }

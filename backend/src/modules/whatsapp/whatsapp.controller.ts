@@ -25,6 +25,7 @@ import { RolesGuard } from '@shared/guards/roles.guard';
 import { Roles } from '@shared/decorators/roles.decorator';
 import { Role } from '@shared/enums/roles.enum';
 import { AuthenticatedRequest } from '@shared/interfaces/authenticated-request.interface';
+import { requireCompanyId } from '@shared/utils/auth.util';
 import * as crypto from 'crypto';
 
 @ApiTags('whatsapp')
@@ -40,7 +41,7 @@ export class WhatsappController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Send a WhatsApp message (ADMIN+ or Agent)' })
   async send(@Body() dto: SendMessageDto, @Request() req: AuthenticatedRequest) {
-    return this.whatsappService.sendMessage(req.user.companyId, dto);
+    return this.whatsappService.sendMessage(requireCompanyId(req.user), dto);
   }
 
   @Post('webhook')
@@ -95,7 +96,7 @@ export class WhatsappController {
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
     @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
   ) {
-    return this.whatsappService.findMessages(req.user.companyId, page, limit);
+    return this.whatsappService.findMessages(requireCompanyId(req.user), page, limit);
   }
 
   @Get('lead/:leadId')
@@ -109,7 +110,7 @@ export class WhatsappController {
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
     @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
   ) {
-    return this.whatsappService.findMessagesByLead(leadId, req.user.companyId, page, limit);
+    return this.whatsappService.findMessagesByLead(leadId, requireCompanyId(req.user), page, limit);
   }
 
   @Get(':id')
@@ -118,6 +119,6 @@ export class WhatsappController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Get a specific WhatsApp message (ADMIN+ or Agent)' })
   async findOne(@Param('id', ParseUUIDPipe) id: string, @Request() req: AuthenticatedRequest) {
-    return this.whatsappService.findOne(id, req.user.companyId);
+    return this.whatsappService.findOne(id, requireCompanyId(req.user));
   }
 }

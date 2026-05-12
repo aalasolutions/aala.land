@@ -10,6 +10,7 @@ import { UpdateLeadDto } from './dto/update-lead.dto';
 import { AssignLeadDto } from './dto/assign-lead.dto';
 import { CreateLeadActivityDto } from './dto/create-lead-activity.dto';
 import { AuthenticatedRequest } from '@shared/interfaces/authenticated-request.interface';
+import { requireCompanyId } from '@shared/utils/auth.util';
 
 @ApiTags('Leads')
 @ApiBearerAuth()
@@ -22,7 +23,7 @@ export class LeadsController {
   @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT)
   @ApiOperation({ summary: 'Create a new lead (SUPER_ADMIN, COMPANY_ADMIN, ADMIN, MANAGER, AGENT)' })
   create(@Body() dto: CreateLeadDto, @Request() req: AuthenticatedRequest) {
-    return this.leadsService.create(req.user.companyId, dto, req.user.userId);
+    return this.leadsService.create(requireCompanyId(req.user), dto, req.user.userId);
   }
 
   @Get()
@@ -37,48 +38,48 @@ export class LeadsController {
     @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
     @Query('regionCode') regionCode?: string,
   ) {
-    return this.leadsService.findAll(req.user.companyId, page, limit, regionCode);
+    return this.leadsService.findAll(requireCompanyId(req.user), page, limit, regionCode);
   }
 
   @Get(':id')
   @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT, Role.ACCOUNTANT)
   @ApiOperation({ summary: 'Get lead by ID' })
   findOne(@Param('id', ParseUUIDPipe) id: string, @Request() req: AuthenticatedRequest) {
-    return this.leadsService.findOne(id, req.user.companyId);
+    return this.leadsService.findOne(id, requireCompanyId(req.user));
   }
 
   @Patch(':id')
   @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT)
   @ApiOperation({ summary: 'Update lead (ADMIN+, AGENT can update only)' })
   update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateLeadDto, @Request() req: AuthenticatedRequest) {
-    return this.leadsService.update(id, req.user.companyId, dto, req.user.userId, req.user.role);
+    return this.leadsService.update(id, requireCompanyId(req.user), dto, req.user.userId, req.user.role);
   }
 
   @Post(':id/assign')
   @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT)
   @ApiOperation({ summary: 'Assign lead to an agent (ADMIN+, AGENT can assign)' })
   assign(@Param('id', ParseUUIDPipe) id: string, @Body() dto: AssignLeadDto, @Request() req: AuthenticatedRequest) {
-    return this.leadsService.assign(id, req.user.companyId, dto.agentId, req.user.userId, dto.reason);
+    return this.leadsService.assign(id, requireCompanyId(req.user), dto.agentId, req.user.userId, dto.reason);
   }
 
   @Post(':id/convert')
   @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT)
   @ApiOperation({ summary: 'Convert lead to WON status (ADMIN+, AGENT can convert)' })
   convert(@Param('id', ParseUUIDPipe) id: string, @Request() req: AuthenticatedRequest) {
-    return this.leadsService.convert(id, req.user.companyId, req.user.userId);
+    return this.leadsService.convert(id, requireCompanyId(req.user), req.user.userId);
   }
 
   @Post(':id/activities')
   @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT)
   @ApiOperation({ summary: 'Add activity to lead (ADMIN+, AGENT can add activity)' })
   addActivity(@Param('id', ParseUUIDPipe) id: string, @Body() dto: CreateLeadActivityDto, @Request() req: AuthenticatedRequest) {
-    return this.leadsService.addActivity(id, req.user.companyId, dto, req.user.userId);
+    return this.leadsService.addActivity(id, requireCompanyId(req.user), dto, req.user.userId);
   }
 
   @Get(':id/activities')
   @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT, Role.ACCOUNTANT)
   @ApiOperation({ summary: 'Get all activities for a lead' })
   findActivities(@Param('id', ParseUUIDPipe) id: string, @Request() req: AuthenticatedRequest) {
-    return this.leadsService.findActivities(id, req.user.companyId);
+    return this.leadsService.findActivities(id, requireCompanyId(req.user));
   }
 }

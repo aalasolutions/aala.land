@@ -469,6 +469,7 @@ export class NotificationsService {
 
     const adminsByCompanyId = new Map<string, User[]>();
     for (const admin of admins) {
+      if (!admin.companyId) continue;
       const companyAdmins = adminsByCompanyId.get(admin.companyId) ?? [];
       companyAdmins.push(admin);
       adminsByCompanyId.set(admin.companyId, companyAdmins);

@@ -225,7 +225,7 @@ describe('UsersService', () => {
       repo.findOne.mockResolvedValue(mockUser);
       repo.save.mockResolvedValue({ ...mockUser, name: 'Updated Name' });
 
-      const result = await service.update('user-uuid-1', companyId, { name: 'Updated Name' } as any, Role.COMPANY_ADMIN);
+      const result = await service.update('user-uuid-1', companyId, { name: 'Updated Name' } as any, Role.COMPANY_ADMIN, 'ca-uuid');
 
       expect(result.name).toBe('Updated Name');
     });
@@ -234,7 +234,7 @@ describe('UsersService', () => {
       repo.findOne.mockResolvedValue(mockUser);
       repo.save.mockResolvedValue(mockUser);
 
-      await service.update('user-uuid-1', companyId, { password: 'new-password' } as any, Role.COMPANY_ADMIN);
+      await service.update('user-uuid-1', companyId, { password: 'new-password' } as any, Role.COMPANY_ADMIN, 'ca-uuid');
 
       expect(bcrypt.hash).toHaveBeenCalledWith('new-password', 12);
     });
@@ -243,7 +243,7 @@ describe('UsersService', () => {
       repo.findOne.mockResolvedValue(mockUser);
 
       await expect(
-        service.update('user-uuid-1', companyId, { role: Role.MANAGER } as any, Role.AGENT),
+        service.update('user-uuid-1', companyId, { role: Role.MANAGER } as any, Role.AGENT, 'agent-uuid'),
       ).rejects.toThrow(ForbiddenException);
     });
 
@@ -258,7 +258,7 @@ describe('UsersService', () => {
       repo.findOne.mockResolvedValue(target);
       repo.save.mockResolvedValue({ ...target, role: Role.COMPANY_ADMIN });
 
-      const result = await service.update('admin-uuid', companyId, { role: Role.COMPANY_ADMIN } as any, Role.SUPER_ADMIN);
+      const result = await service.update('admin-uuid', companyId, { role: Role.COMPANY_ADMIN } as any, Role.SUPER_ADMIN, 'super-admin-uuid');
 
       expect(result.role).toBe(Role.COMPANY_ADMIN);
     });

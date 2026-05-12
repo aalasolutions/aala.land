@@ -10,6 +10,7 @@ import { RolesGuard } from '@shared/guards/roles.guard';
 import { Roles } from '@shared/decorators/roles.decorator';
 import { Role } from '@shared/enums/roles.enum';
 import { AuthenticatedRequest } from '@shared/interfaces/authenticated-request.interface';
+import { requireCompanyId } from '@shared/utils/auth.util';
 
 @ApiTags('Locations')
 @ApiBearerAuth()
@@ -29,7 +30,7 @@ export class LocationsController {
     @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER)
     @ApiOperation({ summary: 'Create a new city (ADMIN+)' })
     createCity(@Body() dto: CreateCityDto, @Request() req: AuthenticatedRequest) {
-        return this.locationsService.createCity(dto, req.user.companyId);
+        return this.locationsService.createCity(dto, requireCompanyId(req.user));
     }
 
     @Get('cities/:regionCode')
@@ -50,7 +51,7 @@ export class LocationsController {
     @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER)
     @ApiOperation({ summary: 'Create a new locality (ADMIN+)' })
     createLocality(@Body() dto: CreateLocalityDto, @Request() req: AuthenticatedRequest) {
-        return this.locationsService.createLocality(dto, req.user.companyId);
+        return this.locationsService.createLocality(dto, requireCompanyId(req.user));
     }
 
     @Get('localities/:cityId')
@@ -64,6 +65,6 @@ export class LocationsController {
     @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT, Role.ACCOUNTANT)
     @ApiOperation({ summary: 'List localities that have assets for the current company' })
     getCompanyLocalities(@Request() req: AuthenticatedRequest, @Query('regionCode') regionCode?: string) {
-        return this.locationsService.getCompanyLocalities(req.user.companyId, regionCode);
+        return this.locationsService.getCompanyLocalities(requireCompanyId(req.user), regionCode);
     }
 }

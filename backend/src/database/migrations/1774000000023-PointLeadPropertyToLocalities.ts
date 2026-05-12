@@ -14,6 +14,7 @@ export class PointLeadPropertyToLocalities1774000000023 implements MigrationInte
                      JOIN "cities" c ON c.id = l.city_id AND c.region_code = pa.region_code
                      WHERE LOWER(TRIM(l.name)) = LOWER(TRIM(pa.name))
                      AND l.created_by_company_id = pa.company_id
+                     ORDER BY l.id
                      LIMIT 1) AS locality_id
                 FROM "property_areas" pa
             )
@@ -54,6 +55,7 @@ export class PointLeadPropertyToLocalities1774000000023 implements MigrationInte
                      WHERE LOWER(TRIM(pa.name)) = LOWER(TRIM(l.name))
                      AND pa.company_id = l.created_by_company_id
                      AND pa.region_code = c.region_code
+                     ORDER BY pa.id
                      LIMIT 1) AS property_area_id
                 FROM "localities" l
             )
