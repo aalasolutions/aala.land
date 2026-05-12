@@ -8,7 +8,7 @@ export const ROLES = {
 };
 
 export function isAdminRole(role) {
-  return [ROLES.SUPER_ADMIN, ROLES.COMPANY_ADMIN, ROLES.ADMIN, ROLES.MANAGER].includes(role);
+  return [ROLES.SUPER_ADMIN, ROLES.COMPANY_ADMIN, ROLES.ADMIN].includes(role);
 }
 
 export function canManageUsers(role) {

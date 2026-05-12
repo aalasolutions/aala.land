@@ -2,7 +2,7 @@ import PaginatedController from './paginated-base';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
-import { isAdminRole } from '../utils/roles';
+import { canManageFinancials } from '../utils/roles';
 
 const CHEQUE_TYPE_OPTIONS = [
   { value: 'RENT', label: 'Rent' },
@@ -64,7 +64,7 @@ export default class ChequesController extends PaginatedController {
   @tracked formBounceReason = '';
 
   get isAdmin() {
-    return isAdminRole(this.auth.currentUser?.role);
+    return canManageFinancials(this.auth.currentUser?.role);
   }
 
   get chequeTypeOptions() {
