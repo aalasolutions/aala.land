@@ -41,8 +41,12 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
         }
 
         if (user.role !== Role.SUPER_ADMIN) {
+            if (!user.companyId) {
+                throw new UnauthorizedException('User is not associated with a company');
+            }
+
             const company = await this.companiesRepository.findOne({
-                where: { id: user.companyId! },
+                where: { id: user.companyId },
                 select: {
                     id: true,
                     isActive: true,
