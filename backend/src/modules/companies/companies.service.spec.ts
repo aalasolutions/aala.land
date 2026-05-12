@@ -65,7 +65,17 @@ describe('CompaniesService', () => {
 
       const result = await service.findAll(1, 20);
 
-      expect(result.total).toBe(1);
+      expect(repo.findAndCount).toHaveBeenCalledWith({
+        skip: 0,
+        take: 20,
+        order: { createdAt: 'DESC' },
+      });
+      expect(result).toEqual({
+        data: [mockCompany],
+        total: 1,
+        page: 1,
+        limit: 20,
+      });
     });
   });
 
