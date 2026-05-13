@@ -12,6 +12,7 @@ import { RolesGuard } from '@shared/guards/roles.guard';
 import { Roles } from '@shared/decorators/roles.decorator';
 import { Role } from '@shared/enums/roles.enum';
 import { AuthenticatedRequest } from '@shared/interfaces/authenticated-request.interface';
+import { requireCompanyId } from '@shared/utils/auth.util';
 
 @ApiTags('cheques')
 @Controller('cheques')
@@ -21,13 +22,14 @@ export class ChequesController {
   constructor(private readonly chequesService: ChequesService) { }
 
   @Post()
-  @Roles(Role.COMPANY_ADMIN)
-  @ApiOperation({ summary: 'Create a cheque record (COMPANY_ADMIN+)' })
+  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER)
+  @ApiOperation({ summary: 'Create a cheque record (ADMIN+)' })
   create(@Body() dto: CreateChequeDto, @Request() req: AuthenticatedRequest) {
-    return this.chequesService.create(req.user.companyId, dto, req.user.userId);
+    return this.chequesService.create(requireCompanyId(req.user), dto, req.user.userId);
   }
 
   @Get()
+  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.ACCOUNTANT)
   @ApiOperation({ summary: 'List cheques (paginated, sorted by due date)' })
   @ApiQuery({ name: 'page', required: false })
   @ApiQuery({ name: 'limit', required: false })
@@ -38,55 +40,57 @@ export class ChequesController {
     @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
     @Query('regionCode') regionCode?: string,
   ) {
-    return this.chequesService.findAll(req.user.companyId, page, limit, regionCode);
+    return this.chequesService.findAll(requireCompanyId(req.user), page, limit, regionCode);
   }
 
   @Get('collection-schedule')
-  @Roles(Role.COMPANY_ADMIN, Role.AGENT)
+  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.ACCOUNTANT)
   @ApiOperation({ summary: 'Get cheque collection schedule grouped by due date' })
   getCollectionSchedule(@Request() req: AuthenticatedRequest) {
-    return this.chequesService.getCollectionSchedule(req.user.companyId);
+    return this.chequesService.getCollectionSchedule(requireCompanyId(req.user));
   }
 
   @Get(':id')
+  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.ACCOUNTANT)
   @ApiOperation({ summary: 'Get a cheque by ID' })
   findOne(@Param('id', ParseUUIDPipe) id: string, @Request() req: AuthenticatedRequest) {
-    return this.chequesService.findOne(id, req.user.companyId);
+    return this.chequesService.findOne(id, requireCompanyId(req.user));
   }
 
   @Patch(':id')
-  @Roles(Role.COMPANY_ADMIN)
-  @ApiOperation({ summary: 'Update a cheque (COMPANY_ADMIN+)' })
+  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER)
+  @ApiOperation({ summary: 'Update a cheque (ADMIN+)' })
   update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateChequeDto, @Request() req: AuthenticatedRequest) {
-    return this.chequesService.update(id, req.user.companyId, dto, req.user.userId);
+    return this.chequesService.update(id, requireCompanyId(req.user), dto, req.user.userId);
   }
 
   @Post(':id/bounce')
-  @Roles(Role.COMPANY_ADMIN)
-  @ApiOperation({ summary: 'Record a cheque bounce (COMPANY_ADMIN+)' })
+  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER)
+  @ApiOperation({ summary: 'Record a cheque bounce (ADMIN+)' })
   bounce(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: BounceChequeDto,
     @Request() req: AuthenticatedRequest,
   ) {
-    return this.chequesService.bounce(id, req.user.companyId, dto, req.user.userId);
+    return this.chequesService.bounce(id, requireCompanyId(req.user), dto, req.user.userId);
   }
 
   @Post(':id/ocr')
+  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.ACCOUNTANT)
   @ApiOperation({ summary: 'Trigger OCR processing for a cheque image' })
   processOcr(
     @Param('id', ParseUUIDPipe) id: string,
     @Body('imageUrl') imageUrl: string,
     @Request() req: AuthenticatedRequest,
   ) {
-    return this.chequesService.processOcr(id, req.user.companyId, imageUrl);
+    return this.chequesService.processOcr(id, requireCompanyId(req.user), imageUrl);
   }
 
   @Delete(':id')
-  @Roles(Role.COMPANY_ADMIN)
+  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN)
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Delete a cheque (COMPANY_ADMIN+)' })
   remove(@Param('id', ParseUUIDPipe) id: string, @Request() req: AuthenticatedRequest) {
-    return this.chequesService.remove(id, req.user.companyId);
+    return this.chequesService.remove(id, requireCompanyId(req.user));
   }
 }

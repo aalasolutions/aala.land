@@ -17,7 +17,6 @@ async function main() {
       console.log('Running test seed...');
       const result = await runTestSeed(dataSource);
       console.log('Seed complete.');
-      console.log(`Created ${result.companies.length} companies`);
       console.log(`Created ${result.users.length} users`);
     }
 

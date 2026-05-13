@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { NotFoundException, ConflictException } from '@nestjs/common';
+import { Repository, Not } from 'typeorm';
+import { NotFoundException, ConflictException, ForbiddenException } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { User } from './entities/user.entity';
 import { Role } from '@shared/enums/roles.enum';
@@ -89,8 +89,8 @@ describe('UsersService', () => {
       repo.create.mockReturnValue(mockUser);
       repo.save.mockResolvedValue(mockUser);
 
-      const dto = { name: 'Test Agent', email: 'agent@test.com', password: 'pass123', companyId };
-      const result = await service.create(dto as any, companyId);
+      const dto = { name: 'Test Agent', email: 'agent@test.com', password: 'pass123', companyId, role: Role.AGENT };
+      const result = await service.create(dto as any, companyId, Role.COMPANY_ADMIN);
 
       expect(bcrypt.hash).toHaveBeenCalledWith('pass123', 12);
       expect(result).toEqual(mockUser);
@@ -99,19 +99,55 @@ describe('UsersService', () => {
     it('throws ConflictException when email already exists', async () => {
       repo.findOne.mockResolvedValue(mockUser);
 
-      const dto = { name: 'Test', email: 'agent@test.com', password: 'pass123', companyId };
-      await expect(service.create(dto as any, companyId)).rejects.toThrow(ConflictException);
+      const dto = { name: 'Test', email: 'agent@test.com', password: 'pass123', companyId, role: Role.AGENT };
+      await expect(service.create(dto as any, companyId, Role.COMPANY_ADMIN)).rejects.toThrow(ConflictException);
+    });
+
+    it('throws ForbiddenException when assigning a role equal to requester role', async () => {
+      const dto = { name: 'Test', email: 'new@test.com', password: 'pass123', companyId, role: Role.ADMIN };
+      await expect(service.create(dto as any, companyId, Role.ADMIN)).rejects.toThrow(ForbiddenException);
+    });
+
+    it('throws ForbiddenException when assigning a role higher than requester role', async () => {
+      const dto = { name: 'Test', email: 'new@test.com', password: 'pass123', companyId, role: Role.COMPANY_ADMIN };
+      await expect(service.create(dto as any, companyId, Role.ADMIN)).rejects.toThrow(ForbiddenException);
+    });
+
+    it('allows SUPER_ADMIN to assign any role including equal privilege', async () => {
+      repo.findOne.mockResolvedValue(null);
+      const superAdminUser = { ...mockUser, role: Role.SUPER_ADMIN };
+      repo.create.mockReturnValue(superAdminUser);
+      repo.save.mockResolvedValue(superAdminUser);
+
+      const dto = { name: 'Another SA', email: 'sa2@test.com', password: 'pass123', companyId, role: Role.SUPER_ADMIN };
+      await expect(service.create(dto as any, companyId, Role.SUPER_ADMIN)).resolves.not.toThrow();
     });
   });
 
   describe('findAll', () => {
+    const mockAdmin: User = {
+      ...mockUser,
+      id: 'admin-uuid',
+      role: Role.ADMIN,
+      name: 'Test Admin',
+      email: 'admin@test.com',
+    };
+    const mockSuperAdmin: User = {
+      ...mockUser,
+      id: 'super-uuid',
+      role: Role.SUPER_ADMIN,
+      name: 'Super Admin',
+      email: 'super@test.com',
+      companyId: null as any,
+    };
+
     it('returns paginated users for company', async () => {
       repo.findAndCount.mockResolvedValue([[mockUser], 1]);
 
       const result = await service.findAll(companyId, 1, 20);
 
       expect(repo.findAndCount).toHaveBeenCalledWith({
-        where: { companyId },
+        where: { companyId, role: Not(Role.SUPER_ADMIN) },
         skip: 0,
         take: 20,
         order: { createdAt: 'DESC' },
@@ -119,6 +155,34 @@ describe('UsersService', () => {
       expect(result.data).toEqual([mockUser]);
       expect(result.total).toBe(1);
       expect(result.page).toBe(1);
+    });
+
+    it('excludes SUPER_ADMIN users for normal company queries', async () => {
+      repo.findAndCount.mockResolvedValue([[mockUser, mockAdmin], 2]);
+
+      await service.findAll(companyId, 1, 20);
+
+      expect(repo.findAndCount).toHaveBeenCalledWith({
+        where: { companyId, role: Not(Role.SUPER_ADMIN) },
+        skip: 0,
+        take: 20,
+        order: { createdAt: 'DESC' },
+      });
+    });
+
+    it('returns all users across companies for SUPER_ADMIN', async () => {
+      repo.findAndCount.mockResolvedValue([[mockUser, mockSuperAdmin], 2]);
+
+      const result = await service.findAll(undefined as any, 1, 20);
+
+      expect(repo.findAndCount).toHaveBeenCalledWith({
+        where: {},
+        skip: 0,
+        take: 20,
+        order: { createdAt: 'DESC' },
+      });
+      expect(result.data.length).toBe(2);
+      expect(result.data.every(u => u.role !== Role.SUPER_ADMIN || u.companyId == null)).toBe(true);
     });
   });
 
@@ -146,11 +210,20 @@ describe('UsersService', () => {
   });
 
   describe('update', () => {
-    it('updates user fields', async () => {
+    const mockCompanyAdmin: User = {
+      ...mockUser,
+      id: 'ca-uuid',
+      role: Role.COMPANY_ADMIN,
+      name: 'Company Admin',
+      email: 'ca@test.com',
+      companyId,
+    };
+
+    it('updates user fields for same company users', async () => {
       repo.findOne.mockResolvedValue(mockUser);
       repo.save.mockResolvedValue({ ...mockUser, name: 'Updated Name' });
 
-      const result = await service.update('user-uuid-1', companyId, { name: 'Updated Name' } as any);
+      const result = await service.update('user-uuid-1', companyId, { name: 'Updated Name' } as any, Role.COMPANY_ADMIN, 'ca-uuid');
 
       expect(result.name).toBe('Updated Name');
     });
@@ -159,9 +232,33 @@ describe('UsersService', () => {
       repo.findOne.mockResolvedValue(mockUser);
       repo.save.mockResolvedValue(mockUser);
 
-      await service.update('user-uuid-1', companyId, { password: 'new-password' } as any);
+      await service.update('user-uuid-1', companyId, { password: 'new-password' } as any, Role.COMPANY_ADMIN, 'ca-uuid');
 
       expect(bcrypt.hash).toHaveBeenCalledWith('new-password', 12);
+    });
+
+    it('throws ForbiddenException when trying to assign a role <= requester role', async () => {
+      repo.findOne.mockResolvedValue(mockUser);
+
+      await expect(
+        service.update('user-uuid-1', companyId, { role: Role.MANAGER } as any, Role.AGENT, 'agent-uuid'),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('allows SUPER_ADMIN to update any user role (except SUPER_ADMIN)', async () => {
+      const target: User = {
+        ...mockUser,
+        role: Role.ADMIN,
+        id: 'admin-uuid',
+        email: 'admin@test.com',
+        companyId,
+      };
+      repo.findOne.mockResolvedValue(target);
+      repo.save.mockResolvedValue({ ...target, role: Role.COMPANY_ADMIN });
+
+      const result = await service.update('admin-uuid', companyId, { role: Role.COMPANY_ADMIN } as any, Role.SUPER_ADMIN, 'super-admin-uuid');
+
+      expect(result.role).toBe(Role.COMPANY_ADMIN);
     });
   });
 
@@ -170,7 +267,7 @@ describe('UsersService', () => {
       repo.findOne.mockResolvedValue(mockUser);
       repo.remove.mockResolvedValue(mockUser);
 
-      await service.remove('user-uuid-1', companyId);
+      await service.remove('user-uuid-1', companyId, Role.COMPANY_ADMIN);
 
       expect(repo.remove).toHaveBeenCalledWith(mockUser);
     });
@@ -178,7 +275,7 @@ describe('UsersService', () => {
     it('throws NotFoundException when user not found', async () => {
       repo.findOne.mockResolvedValue(null);
 
-      await expect(service.remove('bad-id', companyId)).rejects.toThrow(NotFoundException);
+      await expect(service.remove('bad-id', companyId, Role.COMPANY_ADMIN)).rejects.toThrow(NotFoundException);
     });
   });
 
@@ -205,9 +302,9 @@ describe('UsersService', () => {
         lastName: 'Smith',
         role: Role.AGENT,
       };
-      const result = await service.inviteUser(companyId, dto);
+      const result = await service.inviteUser(companyId, dto, Role.COMPANY_ADMIN);
 
-      expect(crypto.randomBytes).toHaveBeenCalledWith(16);
+      expect(crypto.randomBytes).toHaveBeenCalledWith(32);
       expect(bcrypt.hash).toHaveBeenCalledWith('abc123temppassword', 12);
       expect(repo.create).toHaveBeenCalledWith({
         name: 'Jane Smith',
@@ -228,7 +325,7 @@ describe('UsersService', () => {
         firstName: 'Duplicate',
         lastName: 'User',
       };
-      await expect(service.inviteUser(companyId, dto)).rejects.toThrow(ConflictException);
+      await expect(service.inviteUser(companyId, dto, Role.COMPANY_ADMIN)).rejects.toThrow(ConflictException);
     });
 
     it('combines firstName and lastName into name', async () => {
@@ -242,7 +339,7 @@ describe('UsersService', () => {
         firstName: 'Ahmed',
         lastName: 'Al-Rashid',
       };
-      await service.inviteUser(companyId, dto);
+      await service.inviteUser(companyId, dto, Role.COMPANY_ADMIN);
 
       expect(repo.create).toHaveBeenCalledWith(
         expect.objectContaining({ name: 'Ahmed Al-Rashid' }),
@@ -264,7 +361,7 @@ describe('UsersService', () => {
         firstName: 'Jane',
         lastName: 'Smith',
         role: Role.AGENT,
-      });
+      }, Role.COMPANY_ADMIN);
 
       // Wait for fire-and-forget to complete
       await new Promise(resolve => setImmediate(resolve));
@@ -299,7 +396,7 @@ describe('UsersService', () => {
         firstName: 'Jane',
         lastName: 'Smith',
         role: Role.AGENT,
-      });
+      }, Role.COMPANY_ADMIN);
 
       await new Promise(resolve => setImmediate(resolve));
 
@@ -309,8 +406,7 @@ describe('UsersService', () => {
         expect.objectContaining({
           name: 'Jane Smith',
           email: 'jane@company.com',
-          password: 'abc123temppassword',
-          loginUrl: expect.stringContaining('/login'),
+          inviteUrl: expect.stringContaining('/accept-invite'),
         }),
       );
       expect(mailService.sendMail).toHaveBeenCalledWith(
@@ -338,7 +434,7 @@ describe('UsersService', () => {
         firstName: 'Jane',
         lastName: 'Smith',
         role: Role.AGENT,
-      });
+      }, Role.COMPANY_ADMIN);
 
       expect(result).toBeDefined();
       expect(result.email).toBe('jane@company.com');

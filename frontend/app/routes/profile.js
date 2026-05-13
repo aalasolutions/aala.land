@@ -5,13 +5,11 @@ export default class ProfileRoute extends AuthenticatedRoute {
   @service auth;
 
   async model() {
-    const userId = this.auth.currentUser?.id;
-    if (!userId) return null;
-
     try {
-      const json = await this.auth.fetchJson(`/users/${userId}`);
+      const json = await this.auth.fetchJson('/users/me');
       return json.data;
-    } catch {
+    } catch (error) {
+      console.error('Failed to load user profile:', error);
       return null;
     }
   }

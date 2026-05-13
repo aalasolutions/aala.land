@@ -1,7 +1,7 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class AddUniqueAssetNamePerLocality1774000000027 implements MigrationInterface {
-    name = 'AddUniqueAssetNamePerLocality1774000000027';
+export class AddUniqueAssetNamePerLocality1774000000030 implements MigrationInterface {
+    name = 'AddUniqueAssetNamePerLocality1774000000030';
 
     public async up(queryRunner: QueryRunner): Promise<void> {
         await queryRunner.query(`

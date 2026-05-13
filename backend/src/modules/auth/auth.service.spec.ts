@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { JwtService } from '@nestjs/jwt';
 import { BadRequestException } from '@nestjs/common';
+import { DataSource } from 'typeorm';
 import { AuthService } from './auth.service';
 import { UsersService } from '../users/users.service';
 import { CompaniesService } from '../companies/companies.service';
@@ -64,6 +65,12 @@ describe('AuthService', () => {
             findOne: jest.fn().mockResolvedValue(mockCompany),
           },
         },
+        {
+          provide: DataSource,
+          useValue: {
+            transaction: jest.fn(),
+          },
+        },
       ],
     }).compile();
 
@@ -75,6 +82,21 @@ describe('AuthService', () => {
 
   it('should be defined', () => {
     expect(service).toBeDefined();
+  });
+
+  describe('generateToken', () => {
+    it('signs and returns a token', () => {
+      const payload = {
+        sub: 'user-123',
+        email: 'user@test.com',
+        companyId: 'company-uuid-1',
+        role: 'user',
+      };
+
+      service.generateToken(payload);
+
+      expect(jwtService.sign).toHaveBeenCalledWith(payload, undefined);
+    });
   });
 
   describe('validateUser', () => {
@@ -209,7 +231,7 @@ describe('AuthService', () => {
       const result = await service.resetPassword(validToken, 'NewPass123!');
 
       expect(usersService.findByResetToken).toHaveBeenCalledWith(validToken);
-      expect(bcrypt.hash).toHaveBeenCalledWith('NewPass123!', 10);
+      expect(bcrypt.hash).toHaveBeenCalledWith('NewPass123!', 12);
       expect(usersService.updatePassword).toHaveBeenCalledWith('user-uuid-1', 'new-hashed-password');
       expect(usersService.updateResetToken).toHaveBeenCalledWith('user-uuid-1', null, null);
       expect(result.message).toContain('reset successfully');

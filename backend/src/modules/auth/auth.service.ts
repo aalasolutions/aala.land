@@ -15,13 +15,13 @@ interface LoginUser {
     name: string;
     email: string;
     role: string;
-    companyId: string;
+    companyId: string | null;
 }
 
 interface RefreshUser {
     email: string;
     userId: string;
-    companyId: string;
+    companyId: string | null;
     role: string;
 }
 
@@ -33,10 +33,18 @@ interface LoginResponse {
         name: string;
         email: string;
         role: string;
-        companyId: string;
+        companyId: string | null;
     };
     regions: Region[];
     defaultRegionCode: string;
+}
+
+interface JwtPayload {
+    email: string;
+    sub: string;
+    companyId: string | null;
+    role: string;
+    impersonatedBy?: string;
 }
 
 interface RefreshResponse {
@@ -64,14 +72,16 @@ export class AuthService {
     }
 
     async login(user: LoginUser): Promise<LoginResponse> {
-        const payload = {
+        const payload: JwtPayload = {
             email: user.email,
             sub: user.id,
             companyId: user.companyId,
             role: user.role,
         };
 
-        const company = await this.companiesService.findOne(user.companyId);
+        const company = user.companyId
+            ? await this.companiesService.findOne(user.companyId)
+            : null;
 
         return {
             accessToken: this.jwtService.sign(payload),
@@ -83,13 +93,13 @@ export class AuthService {
                 role: user.role,
                 companyId: user.companyId,
             },
-            regions: resolveRegions(company.activeRegions),
-            defaultRegionCode: company.defaultRegionCode,
+            regions: company ? resolveRegions(company.activeRegions) : [],
+            defaultRegionCode: company?.defaultRegionCode ?? '',
         };
     }
 
     async refresh(user: RefreshUser): Promise<RefreshResponse> {
-        const payload = {
+        const payload: JwtPayload = {
             email: user.email,
             sub: user.userId,
             companyId: user.companyId,
@@ -98,6 +108,10 @@ export class AuthService {
         return {
             accessToken: this.jwtService.sign(payload),
         };
+    }
+
+    generateToken(payload: JwtPayload, options?: any): string {
+        return this.jwtService.sign(payload, options);
     }
 
     async forgotPassword(email: string): Promise<{ message: string }> {
@@ -109,7 +123,7 @@ export class AuthService {
 
             await this.usersService.updateResetToken(user.id, token, expires);
 
-            // TODO: Wire to email service. For now, log token generation without exposing it.
+        // TODO: Wire to email service. For now, log token generation without exposing it.
             this.logger.debug(`Password reset token generated for ${email}`);
         }
 

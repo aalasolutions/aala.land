@@ -11,6 +11,7 @@ import { RolesGuard } from '@shared/guards/roles.guard';
 import { Roles } from '@shared/decorators/roles.decorator';
 import { Role } from '@shared/enums/roles.enum';
 import { AuthenticatedRequest } from '@shared/interfaces/authenticated-request.interface';
+import { requireCompanyId } from '@shared/utils/auth.util';
 
 @ApiTags('notifications')
 @Controller('notifications')
@@ -20,13 +21,14 @@ export class NotificationsController {
   constructor(private readonly notificationsService: NotificationsService) {}
 
   @Post()
-  @Roles(Role.COMPANY_ADMIN)
-  @ApiOperation({ summary: 'Create a notification for a user (COMPANY_ADMIN+)' })
+  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER)
+  @ApiOperation({ summary: 'Create a notification for a user (ADMIN+)' })
   create(@Body() dto: CreateNotificationDto, @Request() req: AuthenticatedRequest) {
-    return this.notificationsService.create(req.user.companyId, dto);
+    return this.notificationsService.create(requireCompanyId(req.user), dto);
   }
 
   @Get()
+  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT, Role.ACCOUNTANT)
   @ApiOperation({ summary: 'List notifications for current user (paginated)' })
   @ApiQuery({ name: 'page', required: false, type: Number })
   @ApiQuery({ name: 'limit', required: false, type: Number })
@@ -35,25 +37,28 @@ export class NotificationsController {
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
     @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
   ) {
-    return this.notificationsService.findAll(req.user.companyId, req.user.userId, page, limit);
+    return this.notificationsService.findAll(requireCompanyId(req.user), req.user.userId, page, limit);
   }
 
   @Get('unread-count')
+  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT, Role.ACCOUNTANT)
   @ApiOperation({ summary: 'Get unread notification count for current user' })
   getUnreadCount(@Request() req: AuthenticatedRequest) {
-    return this.notificationsService.getUnreadCount(req.user.companyId, req.user.userId);
+    return this.notificationsService.getUnreadCount(requireCompanyId(req.user), req.user.userId);
   }
 
   @Patch('read-all')
+  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT, Role.ACCOUNTANT)
   @ApiOperation({ summary: 'Mark all notifications as read for current user' })
   markAllRead(@Request() req: AuthenticatedRequest) {
-    return this.notificationsService.markAllRead(req.user.companyId, req.user.userId);
+    return this.notificationsService.markAllRead(requireCompanyId(req.user), req.user.userId);
   }
 
   @Patch(':id/read')
+  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT, Role.ACCOUNTANT)
   @ApiOperation({ summary: 'Mark a single notification as read' })
   markAsRead(@Param('id', ParseUUIDPipe) id: string, @Request() req: AuthenticatedRequest) {
-    return this.notificationsService.markAsRead(id, req.user.companyId, req.user.userId);
+    return this.notificationsService.markAsRead(id, requireCompanyId(req.user), req.user.userId);
   }
 
   @Post('send')
@@ -63,32 +68,35 @@ export class NotificationsController {
   }
 
   @Get('rent-reminders')
+  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT, Role.ACCOUNTANT)
   @ApiOperation({ summary: 'Get upcoming rent-due cheques within N days' })
   @ApiQuery({ name: 'days', required: false, type: Number, description: 'Days ahead to check (default 3)' })
   getRentReminders(
     @Request() req: AuthenticatedRequest,
     @Query('days', new DefaultValuePipe(3), ParseIntPipe) days: number,
   ) {
-    return this.notificationsService.checkRentDueReminders(req.user.companyId, days);
+    return this.notificationsService.checkRentDueReminders(requireCompanyId(req.user), days);
   }
 
   @Get('lease-expiry-alerts')
+  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT, Role.ACCOUNTANT)
   @ApiOperation({ summary: 'Get leases expiring within N days' })
   @ApiQuery({ name: 'days', required: false, type: Number, description: 'Days ahead to check (default 60)' })
   getLeaseExpiryAlerts(
     @Request() req: AuthenticatedRequest,
     @Query('days', new DefaultValuePipe(60), ParseIntPipe) days: number,
   ) {
-    return this.notificationsService.checkLeaseExpiryAlerts(req.user.companyId, days);
+    return this.notificationsService.checkLeaseExpiryAlerts(requireCompanyId(req.user), days);
   }
 
   @Get('maintenance-reminders')
+  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT, Role.ACCOUNTANT)
   @ApiOperation({ summary: 'Get upcoming preventive maintenance within N days' })
   @ApiQuery({ name: 'days', required: false, type: Number, description: 'Days ahead to check (default 7)' })
   getMaintenanceReminders(
     @Request() req: AuthenticatedRequest,
     @Query('days', new DefaultValuePipe(7), ParseIntPipe) days: number,
   ) {
-    return this.notificationsService.checkMaintenanceReminders(req.user.companyId, days);
+    return this.notificationsService.checkMaintenanceReminders(requireCompanyId(req.user), days);
   }
 }

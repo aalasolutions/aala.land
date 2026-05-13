@@ -24,8 +24,8 @@ export class User {
     role: Role;
 
     @Index()
-    @Column({ name: 'company_id', type: 'uuid' })
-    companyId: string;
+    @Column({ name: 'company_id', type: 'uuid', nullable: true })
+    companyId: string | null;
 
     @ManyToOne(() => Company)
     @JoinColumn({ name: 'company_id' })

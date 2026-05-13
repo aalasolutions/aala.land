@@ -10,31 +10,29 @@ export class PointLeadPropertyToLocalities1774000000023 implements MigrationInte
                 SELECT
                     pa.id AS property_area_id,
                     pa.company_id AS company_id,
-                    MIN(l.id) AS locality_id
+                    (SELECT l.id FROM "localities" l
+                     JOIN "cities" c ON c.id = l.city_id AND c.region_code = pa.region_code
+                     WHERE LOWER(TRIM(l.name)) = LOWER(TRIM(pa.name))
+                     AND l.created_by_company_id = pa.company_id
+                     ORDER BY l.id
+                     LIMIT 1) AS locality_id
                 FROM "property_areas" pa
-                INNER JOIN "localities" l
-                    ON LOWER(TRIM(l.name)) = LOWER(TRIM(pa.name))
-                    AND l.created_by_company_id = pa.company_id
-                INNER JOIN "cities" c
-                    ON c.id = l.city_id
-                    AND c.region_code = pa.region_code
-                GROUP BY pa.id, pa.company_id
-                HAVING COUNT(*) = 1
             )
             UPDATE "leads" ld
             SET "property_id" = locality_matches.locality_id
             FROM locality_matches
             WHERE ld.property_id = locality_matches.property_area_id
               AND ld.company_id = locality_matches.company_id
+              AND locality_matches.locality_id IS NOT NULL
         `);
         await queryRunner.query(`
             UPDATE "leads" ld
             SET "property_id" = NULL
             WHERE ld.property_id IS NOT NULL
               AND NOT EXISTS (
-                  SELECT 1
-                  FROM "localities" l
-                  WHERE l.id = ld.property_id
+                SELECT 1
+                FROM "localities" l
+                WHERE l.id = ld.property_id
               )
         `);
         await queryRunner.query(`
@@ -52,31 +50,30 @@ export class PointLeadPropertyToLocalities1774000000023 implements MigrationInte
                 SELECT
                     l.id AS locality_id,
                     l.created_by_company_id AS company_id,
-                    MIN(pa.id) AS property_area_id
+                    (SELECT pa.id FROM "property_areas" pa
+                     JOIN "cities" c ON c.id = l.city_id
+                     WHERE LOWER(TRIM(pa.name)) = LOWER(TRIM(l.name))
+                     AND pa.company_id = l.created_by_company_id
+                     AND pa.region_code = c.region_code
+                     ORDER BY pa.id
+                     LIMIT 1) AS property_area_id
                 FROM "localities" l
-                INNER JOIN "cities" c
-                    ON c.id = l.city_id
-                INNER JOIN "property_areas" pa
-                    ON LOWER(TRIM(pa.name)) = LOWER(TRIM(l.name))
-                    AND pa.company_id = l.created_by_company_id
-                    AND pa.region_code = c.region_code
-                GROUP BY l.id, l.created_by_company_id
-                HAVING COUNT(*) = 1
             )
             UPDATE "leads" ld
             SET "property_id" = property_area_matches.property_area_id
             FROM property_area_matches
             WHERE ld.property_id = property_area_matches.locality_id
               AND ld.company_id = property_area_matches.company_id
+              AND property_area_matches.property_area_id IS NOT NULL
         `);
         await queryRunner.query(`
             UPDATE "leads" ld
             SET "property_id" = NULL
             WHERE ld.property_id IS NOT NULL
               AND NOT EXISTS (
-                  SELECT 1
-                  FROM "property_areas" pa
-                  WHERE pa.id = ld.property_id
+                SELECT 1
+                FROM "property_areas" pa
+                WHERE pa.id = ld.property_id
               )
         `);
         await queryRunner.query(`

@@ -11,6 +11,7 @@ import { RolesGuard } from '@shared/guards/roles.guard';
 import { Roles } from '@shared/decorators/roles.decorator';
 import { Role } from '@shared/enums/roles.enum';
 import { AuthenticatedRequest } from '@shared/interfaces/authenticated-request.interface';
+import { requireCompanyId } from '@shared/utils/auth.util';
 
 @ApiTags('maintenance')
 @Controller('maintenance')
@@ -20,13 +21,14 @@ export class MaintenanceController {
   constructor(private readonly maintenanceService: MaintenanceService) { }
 
   @Post()
-  @Roles(Role.COMPANY_ADMIN)
-  @ApiOperation({ summary: 'Create a maintenance work order (COMPANY_ADMIN+)' })
+  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER)
+  @ApiOperation({ summary: 'Create a maintenance work order (ADMIN+)' })
   create(@Body() dto: CreateWorkOrderDto, @Request() req: AuthenticatedRequest) {
-    return this.maintenanceService.create(req.user.companyId, dto);
+    return this.maintenanceService.create(requireCompanyId(req.user), dto);
   }
 
   @Get()
+  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.ACCOUNTANT)
   @ApiOperation({ summary: 'List work orders (paginated)' })
   @ApiQuery({ name: 'page', required: false })
   @ApiQuery({ name: 'limit', required: false })
@@ -41,41 +43,44 @@ export class MaintenanceController {
     @Query('period') period?: string,
     @Query('regionCode') regionCode?: string,
   ) {
-    return this.maintenanceService.findAll(req.user.companyId, page, limit, regionCode, status, period);
+    return this.maintenanceService.findAll(requireCompanyId(req.user), page, limit, regionCode, status, period);
   }
 
   @Get('cost-summary')
+  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.ACCOUNTANT)
   @ApiOperation({ summary: 'Get cost summary for all work orders' })
   @ApiQuery({ name: 'regionCode', required: false, type: String })
   getCostSummary(@Request() req: AuthenticatedRequest, @Query('regionCode') regionCode?: string) {
-    return this.maintenanceService.getCostSummary(req.user.companyId, regionCode);
+    return this.maintenanceService.getCostSummary(requireCompanyId(req.user), regionCode);
   }
 
   @Get('upcoming')
+  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.ACCOUNTANT)
   @ApiOperation({ summary: 'Get preventive maintenance due in next 30 days' })
   @ApiQuery({ name: 'regionCode', required: false, type: String })
   getUpcoming(@Request() req: AuthenticatedRequest, @Query('regionCode') regionCode?: string) {
-    return this.maintenanceService.getUpcoming(req.user.companyId, regionCode);
+    return this.maintenanceService.getUpcoming(requireCompanyId(req.user), regionCode);
   }
 
   @Get(':id')
+  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.ACCOUNTANT)
   @ApiOperation({ summary: 'Get a work order by ID' })
   findOne(@Param('id', ParseUUIDPipe) id: string, @Request() req: AuthenticatedRequest) {
-    return this.maintenanceService.findOne(id, req.user.companyId);
+    return this.maintenanceService.findOne(id, requireCompanyId(req.user));
   }
 
   @Patch(':id')
-  @Roles(Role.COMPANY_ADMIN)
-  @ApiOperation({ summary: 'Update a work order (COMPANY_ADMIN+)' })
+  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER)
+  @ApiOperation({ summary: 'Update a work order (ADMIN+)' })
   update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateWorkOrderDto, @Request() req: AuthenticatedRequest) {
-    return this.maintenanceService.update(id, req.user.companyId, dto);
+    return this.maintenanceService.update(id, requireCompanyId(req.user), dto);
   }
 
   @Delete(':id')
-  @Roles(Role.COMPANY_ADMIN)
+  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN)
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Delete a work order (COMPANY_ADMIN+)' })
   remove(@Param('id', ParseUUIDPipe) id: string, @Request() req: AuthenticatedRequest) {
-    return this.maintenanceService.remove(id, req.user.companyId);
+    return this.maintenanceService.remove(id, requireCompanyId(req.user));
   }
 }

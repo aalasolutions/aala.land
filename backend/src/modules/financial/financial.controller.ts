@@ -8,6 +8,7 @@ import { Role } from '@shared/enums/roles.enum';
 import { CreateTransactionDto } from './dto/create-transaction.dto';
 import { UpdateTransactionDto } from './dto/update-transaction.dto';
 import { AuthenticatedRequest } from '@shared/interfaces/authenticated-request.interface';
+import { requireCompanyId } from '@shared/utils/auth.util';
 
 @ApiTags('Financial')
 @ApiBearerAuth()
@@ -17,13 +18,14 @@ export class FinancialController {
   constructor(private readonly financialService: FinancialService) { }
 
   @Post('transactions')
-  @Roles(Role.COMPANY_ADMIN)
-  @ApiOperation({ summary: 'Create a new transaction (COMPANY_ADMIN+)' })
+  @Roles(Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.ACCOUNTANT)
+  @ApiOperation({ summary: 'Create a new transaction (ADMIN+ or Accountant)' })
   create(@Body() dto: CreateTransactionDto, @Request() req: AuthenticatedRequest) {
-    return this.financialService.create(req.user.companyId, dto);
+    return this.financialService.create(requireCompanyId(req.user), dto);
   }
 
   @Get('transactions')
+  @Roles(Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.ACCOUNTANT)
   @ApiOperation({ summary: 'List all transactions for company (paginated)' })
   @ApiQuery({ name: 'page', required: false, type: Number })
   @ApiQuery({ name: 'limit', required: false, type: Number })
@@ -38,32 +40,34 @@ export class FinancialController {
     @Query('ownerId') ownerId?: string,
     @Query('regionCode') regionCode?: string,
   ) {
-    return this.financialService.findAll(req.user.companyId, page, limit, type, ownerId, regionCode);
+    return this.financialService.findAll(requireCompanyId(req.user), page, limit, type, ownerId, regionCode);
   }
 
   @Get('transactions/summary')
+  @Roles(Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.ACCOUNTANT)
   @ApiOperation({ summary: 'Get financial summary for company' })
   getSummary(@Request() req: AuthenticatedRequest) {
-    return this.financialService.getSummary(req.user.companyId);
+    return this.financialService.getSummary(requireCompanyId(req.user));
   }
 
   @Get('deposit-reminders')
-  @Roles(Role.COMPANY_ADMIN, Role.AGENT)
+  @Roles(Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.ACCOUNTANT)
   @ApiOperation({ summary: 'Get deposit reminders grouped by due date proximity' })
   getDepositReminders(@Request() req: AuthenticatedRequest) {
-    return this.financialService.getDepositReminders(req.user.companyId);
+    return this.financialService.getDepositReminders(requireCompanyId(req.user));
   }
 
   @Get('transactions/:id')
+  @Roles(Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.ACCOUNTANT)
   @ApiOperation({ summary: 'Get transaction by ID' })
   findOne(@Param('id', ParseUUIDPipe) id: string, @Request() req: AuthenticatedRequest) {
-    return this.financialService.findOne(id, req.user.companyId);
+    return this.financialService.findOne(id, requireCompanyId(req.user));
   }
 
   @Patch('transactions/:id')
-  @Roles(Role.COMPANY_ADMIN)
-  @ApiOperation({ summary: 'Update transaction (COMPANY_ADMIN+)' })
+  @Roles(Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.ACCOUNTANT)
+  @ApiOperation({ summary: 'Update transaction (ADMIN+ or Accountant)' })
   update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateTransactionDto, @Request() req: AuthenticatedRequest) {
-    return this.financialService.update(id, req.user.companyId, dto);
+    return this.financialService.update(id, requireCompanyId(req.user), dto);
   }
 }

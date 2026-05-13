@@ -9,6 +9,7 @@ import { Roles } from '@shared/decorators/roles.decorator';
 import { Role } from '@shared/enums/roles.enum';
 import { REGIONS, getRegionsGroupedByCountry } from '@shared/constants/regions';
 import { AuthenticatedRequest } from '@shared/interfaces/authenticated-request.interface';
+import { requireCompanyId } from '@shared/utils/auth.util';
 
 @ApiTags('Companies')
 @Controller('companies')
@@ -47,10 +48,11 @@ export class CompaniesController {
     @Get(':id')
     @ApiBearerAuth()
     @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT, Role.ACCOUNTANT)
     @ApiOperation({ summary: 'Get company by ID' })
     findOne(@Param('id', ParseUUIDPipe) id: string, @Request() req: AuthenticatedRequest) {
         // Users can only view their own company, SUPER_ADMIN can view any
-        if (req.user.role !== Role.SUPER_ADMIN && req.user.companyId !== id) {
+        if (req.user.role !== Role.SUPER_ADMIN && requireCompanyId(req.user) !== id) {
             throw new ForbiddenException('You do not have access to this company');
         }
         return this.companiesService.findOne(id);
@@ -59,12 +61,13 @@ export class CompaniesController {
     @Patch(':id')
     @ApiBearerAuth()
     @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN)
     @ApiOperation({ summary: 'Update company' })
     update(@Param('id', ParseUUIDPipe) id: string, @Body() updateDto: UpdateCompanyDto, @Request() req: AuthenticatedRequest) {
         // Users can only update their own company, SUPER_ADMIN can update any
-        if (req.user.role !== Role.SUPER_ADMIN && req.user.companyId !== id) {
+        if (req.user.role !== Role.SUPER_ADMIN && requireCompanyId(req.user) !== id) {
             throw new ForbiddenException('You do not have access to this company');
         }
-        return this.companiesService.update(id, updateDto);
+        return this.companiesService.update(id, updateDto, req.user.role);
     }
 }

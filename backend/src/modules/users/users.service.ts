@@ -1,6 +1,6 @@
-import { Injectable, Logger, NotFoundException, ConflictException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, ConflictException, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, In } from 'typeorm';
+import { Repository, In, Not } from 'typeorm';
 import { User } from './entities/user.entity';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -8,6 +8,7 @@ import { InviteUserDto } from './dto/invite-user.dto';
 import * as bcrypt from 'bcryptjs';
 import * as crypto from 'crypto';
 import { paginationOptions } from '../../shared/utils/pagination.util';
+import { getRoleLevel } from '../../shared/utils/auth.util';
 import { MailService } from '../../shared/services/mail.service';
 import { EmailTemplatesService } from '../email-templates/email-templates.service';
 import { EmailTemplateCategory } from '../email-templates/entities/email-template.entity';
@@ -24,7 +25,15 @@ export class UsersService {
         private readonly emailTemplatesService: EmailTemplatesService,
     ) { }
 
-    async create(dto: CreateUserDto, companyId: string): Promise<User> {
+    async create(dto: CreateUserDto, companyId: string, requesterRole: Role): Promise<User> {
+        if (dto.role) {
+            const requesterLevel = getRoleLevel(requesterRole);
+            const assignedLevel = getRoleLevel(dto.role);
+            if (requesterRole !== Role.SUPER_ADMIN && assignedLevel <= requesterLevel) {
+                throw new ForbiddenException('You are only allowed to assign roles with lower privilege than your own');
+            }
+        }
+
         const existing = await this.userRepository.findOne({ where: { email: dto.email } });
         if (existing) {
             throw new ConflictException('Email already exists');
@@ -35,21 +44,28 @@ export class UsersService {
         return this.userRepository.save(user);
     }
 
-    async findAll(companyId: string, page = 1, limit = 20): Promise<{ data: User[]; total: number; page: number; limit: number }> {
+    async findAll(companyId: string | null | undefined, page = 1, limit = 20): Promise<{ data: User[]; total: number; page: number; limit: number }> {
         const [data, total] = await this.userRepository.findAndCount({
-            where: { companyId },
+            where: companyId ? { companyId, role: Not(Role.SUPER_ADMIN) } : {},
             ...paginationOptions(page, limit),
             order: { createdAt: 'DESC' },
         });
         return { data, total, page, limit };
     }
 
-    async findOne(id: string, companyId: string): Promise<User> {
-        const user = await this.userRepository.findOne({ where: { id, companyId } });
+    async findOne(id: string, companyId: string | undefined): Promise<User> {
+        const user = await this.userRepository.findOne({ where: { id, ...(companyId ? { companyId } : {}) } });
         if (!user) {
             throw new NotFoundException('User not found');
         }
         return user;
+    }
+
+    async findByIdWithoutCompany(id: string): Promise<User | null> {
+        return this.userRepository.findOne({
+            where: { id },
+            select: ['id', 'email', 'name', 'role', 'companyId', 'isActive'],
+        });
     }
 
     async findByEmail(email: string): Promise<User | null> {
@@ -59,20 +75,72 @@ export class UsersService {
         });
     }
 
-    async update(id: string, companyId: string, dto: UpdateUserDto): Promise<User> {
-        const user = await this.findOne(id, companyId);
+    async update(
+        targetUserId: string,
+        companyId: string | undefined,
+        dto: UpdateUserDto,
+        requesterRole: string,
+        requesterId: string,
+        ): Promise<User> {
 
-        const updates = { ...dto };
+        const requesterLevel = getRoleLevel(requesterRole as Role);
+
+        const user = await this.userRepository.findOne({
+            where: { id: targetUserId, ...(companyId ? { companyId } : {}) },
+        });
+
+        if (!user) {
+            throw new NotFoundException('User not found');
+        }
+
+        const targetLevel = getRoleLevel(user.role as Role);
+        const isSelfUpdate = targetUserId === requesterId;
+
+        // 🔒 Prevent unauthorized updates (except SUPER_ADMIN override and self-updates)
+        if (!isSelfUpdate && requesterRole !== Role.SUPER_ADMIN && targetLevel <= requesterLevel) {
+            throw new ForbiddenException('You do not have permission to update this user');
+        }
+
+        const updates: Partial<User> = { ...dto };
+
+        // 🔒 Role change validation
+        if (updates.role) {
+            if (isSelfUpdate) {
+                throw new ForbiddenException('You cannot change your own role');
+            }
+
+            const newRoleLevel = getRoleLevel(updates.role);
+
+            if (requesterRole !== Role.SUPER_ADMIN && newRoleLevel <= requesterLevel) {
+                throw new ForbiddenException(
+                    'You are only allowed to assign roles with lower privilege than your own',
+                );
+            }
+        }
+
+        // 🔐 Password hashing
         if (updates.password) {
             updates.password = await bcrypt.hash(updates.password, 12);
         }
 
         Object.assign(user, updates);
+
         return this.userRepository.save(user);
     }
 
-    async remove(id: string, companyId: string): Promise<void> {
-        const user = await this.findOne(id, companyId);
+    async remove(targetUserId: string, companyId: string | undefined, requesterRole: string): Promise<void> {
+        const user = await this.userRepository.findOne({ where: { id: targetUserId, ...(companyId ? { companyId } : {}) } });
+        if (!user) {
+            throw new NotFoundException('User not found');
+        }
+
+        const requesterLevel = getRoleLevel(requesterRole as Role);
+        const targetLevel = getRoleLevel(user.role as Role);
+
+        if (targetLevel <= requesterLevel && requesterRole !== Role.SUPER_ADMIN) {
+            throw new ForbiddenException('You do not have permission to delete this user');
+        }
+
         await this.userRepository.remove(user);
     }
 
@@ -94,9 +162,9 @@ export class UsersService {
         await this.userRepository.update(userId, { password: hashedPassword });
     }
 
-    async findAgents(companyId: string): Promise<User[]> {
+    async findAgents(companyId: string | undefined): Promise<User[]> {
         return this.userRepository.find({
-            where: { companyId, isActive: true },
+            where: companyId ? { companyId, role: Role.AGENT, isActive: true } : { role: Role.AGENT, isActive: true },
             select: ['id', 'name', 'email', 'role'],
             order: { name: 'ASC' },
         });
@@ -113,7 +181,15 @@ export class UsersService {
         });
     }
 
-    async inviteUser(companyId: string, dto: InviteUserDto): Promise<User> {
+    async inviteUser(companyId: string, dto: InviteUserDto, requesterRole: Role): Promise<User> {
+        if (dto.role) {
+            const requesterLevel = getRoleLevel(requesterRole);
+            const assignedLevel = getRoleLevel(dto.role);
+            if (requesterRole !== Role.SUPER_ADMIN && assignedLevel <= requesterLevel) {
+                throw new ForbiddenException('You are only allowed to assign roles with lower privilege than your own');
+            }
+        }
+
         const existing = await this.userRepository.findOne({ where: { email: dto.email } });
         if (existing) {
             throw new ConflictException('Email already exists');

@@ -1122,6 +1122,25 @@ textarea {
     background: var(--bg-base);
 }
 
+.content-area--centered {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.forbidden-message {
+    text-align: center;
+    padding: var(--space-10) var(--space-8);
+    max-width: 400px;
+}
+
+.forbidden-message h2 {
+    font-size: var(--font-xl);
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-top: var(--space-4);
+}
+
 // =================================
 // LOGIN PAGE
 // =================================

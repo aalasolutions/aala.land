@@ -1,16 +1,27 @@
-import { Controller, Post, Body, UnauthorizedException, Get, UseGuards, Request, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Post, Body, UnauthorizedException, Get, UseGuards, Request, HttpCode, HttpStatus, Logger } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
+import { ImpersonateService } from './impersonate.service';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { RolesGuard } from '@shared/guards/roles.guard';
+import { Roles } from '@shared/decorators/roles.decorator';
+import { Role } from '@shared/enums/roles.enum';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
+import { ImpersonateDto } from './dto/impersonate.dto';
+import { AuthenticatedRequest } from '@shared/interfaces/authenticated-request.interface';
 
 @ApiTags('Authentication')
 @Controller('auth')
 export class AuthController {
-    constructor(private readonly authService: AuthService) { }
+    private readonly logger = new Logger(AuthController.name);
+
+    constructor(
+        private readonly authService: AuthService,
+        private readonly impersonateService: ImpersonateService,
+    ) { }
 
     @Post('register')
     @HttpCode(HttpStatus.CREATED)
@@ -30,16 +41,18 @@ export class AuthController {
         return this.authService.login(user);
     }
 
-    @UseGuards(JwtAuthGuard)
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT, Role.ACCOUNTANT)
     @Post('refresh')
     @HttpCode(HttpStatus.OK)
     @ApiBearerAuth()
     @ApiOperation({ summary: 'Refresh access token' })
-    async refresh(@Request() req: { user: { email: string; userId: string; companyId: string; role: string } }) {
+    async refresh(@Request() req: AuthenticatedRequest) {
         return this.authService.refresh(req.user);
     }
 
-    @UseGuards(JwtAuthGuard)
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT, Role.ACCOUNTANT)
     @Post('logout')
     @HttpCode(HttpStatus.OK)
     @ApiBearerAuth()
@@ -48,11 +61,12 @@ export class AuthController {
         return { message: 'Logged out successfully' };
     }
 
-    @UseGuards(JwtAuthGuard)
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT, Role.ACCOUNTANT)
     @Get('profile')
     @ApiBearerAuth()
     @ApiOperation({ summary: 'Get current user profile' })
-    getProfile(@Request() req: { user: { userId: string; email: string; companyId: string; role: string } }) {
+    getProfile(@Request() req: AuthenticatedRequest) {
         return req.user;
     }
 
@@ -68,5 +82,27 @@ export class AuthController {
     @ApiOperation({ summary: 'Reset password using a valid token' })
     async resetPassword(@Body() dto: ResetPasswordDto) {
         return this.authService.resetPassword(dto.token, dto.newPassword);
+    }
+
+    @Post('impersonate')
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles(Role.SUPER_ADMIN)
+    @ApiBearerAuth()
+    @ApiOperation({ summary: 'Impersonate another user - SUPER_ADMIN only' })
+    async impersonate(@Request() req: AuthenticatedRequest, @Body() payload: ImpersonateDto) {
+        const { userId } = payload;
+        const user = await this.impersonateService.impersonate(userId);
+        this.logger.log(`User ${req.user.userId} impersonated user ${user.sub} (email: ${user.email})`);
+        const payload2 = {
+            email: user.email,
+            sub: user.sub,
+            companyId: user.companyId,
+            role: user.role,
+            impersonatedBy: req.user.userId,
+        };
+        return {
+            accessToken: this.authService.generateToken(payload2),
+            refreshToken: this.authService.generateToken(payload2, { expiresIn: '7d' }),
+        };
     }
 }
