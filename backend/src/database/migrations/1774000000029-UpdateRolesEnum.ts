@@ -1,4 +1,4 @@
-import { MigrationInterface, QueryRunner } from "typeorm";
+import { MigrationInterface, QueryRunner } from 'typeorm';
 
 export class UpdateRolesEnum1774000000029 implements MigrationInterface {
     name = 'UpdateRolesEnum1774000000029';
@@ -13,5 +13,6 @@ export class UpdateRolesEnum1774000000029 implements MigrationInterface {
         // PostgreSQL does not support removing enum values
         // If this migration needs to be reverted, the app version
         // should be compatible with the 6-value enum.
+        void queryRunner;
     }
 }
