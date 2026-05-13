@@ -52,12 +52,14 @@ export default class SessionService extends Service {
   }
 
   establish(authData) {
-    this.data.authenticated = {
-      user: authData.user,
-      accessToken: authData.accessToken,
-      refreshToken: authData.refreshToken,
-      regions: authData.regions || [],
-      defaultRegionCode: authData.defaultRegionCode || null,
+    this.data = {
+      authenticated: {
+        user: authData.user,
+        accessToken: authData.accessToken,
+        refreshToken: authData.refreshToken,
+        regions: authData.regions || [],
+        defaultRegionCode: authData.defaultRegionCode || null,
+      },
     };
     this.isAuthenticated = true;
     this.saveToStorage();

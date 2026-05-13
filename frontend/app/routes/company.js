@@ -6,6 +6,11 @@ export default class CompanyRoute extends AuthenticatedRoute {
   @service region;
 
   async model() {
+    if (this.auth.currentUser?.role === 'super_admin') {
+      this.transitionTo('not-found');
+      return;
+    }
+
     const companyId = this.auth.currentUser?.companyId;
     if (!companyId) return null;
 

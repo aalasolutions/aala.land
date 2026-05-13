@@ -50,6 +50,7 @@ export class UsersService {
     async findAll(companyId: string | null | undefined, page = 1, limit = 20): Promise<{ data: User[]; total: number; page: number; limit: number }> {
         const [data, total] = await this.userRepository.findAndCount({
             where: companyId ? { companyId, role: Not(Role.SUPER_ADMIN) } : {},
+            relations: ['company'],
             ...paginationOptions(page, limit),
             order: { createdAt: 'DESC' },
         });

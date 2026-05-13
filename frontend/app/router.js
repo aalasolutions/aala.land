@@ -38,4 +38,5 @@ Router.map(function () {
   this.route('audit');
   this.route('profile');
   this.route('company');
+  this.route('not-found', { path: '/*path' });
 });

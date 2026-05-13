@@ -237,9 +237,11 @@
               <span class="notification-badge">{{this.unreadCount}}</span>
             {{/if}}
           </button>
-          <LinkTo @route="company" class="topbar-icon-btn" aria-label="Company settings">
-            <Ph @icon="building-office" @size="20px" />
-          </LinkTo>
+          {{#unless this.isSuperAdmin}}
+            <LinkTo @route="company" class="topbar-icon-btn" aria-label="Company settings">
+              <Ph @icon="building-office" @size="20px" />
+            </LinkTo>
+          {{/unless}}
           <LinkTo @route="profile" class="topbar-icon-btn" aria-label="My profile">
             <Ph @icon="user" @size="20px" />
           </LinkTo>

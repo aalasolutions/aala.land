@@ -27,6 +27,9 @@
               <th>Name</th>
               <th>Email</th>
               <th>Role</th>
+              {{#if this.isSuperAdmin}}
+                <th>Company</th>
+              {{/if}}
               <th>Status</th>
               <th>Actions</th>
             </tr>
@@ -37,6 +40,9 @@
                 <td class="font-bold">{{user.name}}</td>
                 <td class="text-muted">{{user.email}}</td>
                 <td><span class="status-badge">{{format-role user.role}}</span></td>
+                {{#if this.isSuperAdmin}}
+                  <td class="text-muted">{{or user.company.name "—"}}</td>
+                {{/if}}
                 <td>
                   {{#if user.isActive}}
                     <span class="status-badge status-completed">Active</span>
