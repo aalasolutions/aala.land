@@ -8,6 +8,7 @@ import { InviteUserDto } from './dto/invite-user.dto';
 import * as bcrypt from 'bcryptjs';
 import * as crypto from 'crypto';
 import { paginationOptions } from '../../shared/utils/pagination.util';
+import { getRoleLevel } from '../../shared/utils/auth.util';
 import { MailService } from '../../shared/services/mail.service';
 import { EmailTemplatesService } from '../email-templates/email-templates.service';
 import { EmailTemplateCategory } from '../email-templates/entities/email-template.entity';
@@ -26,12 +27,8 @@ export class UsersService {
 
     async create(dto: CreateUserDto, companyId: string, requesterRole: Role): Promise<User> {
         if (dto.role) {
-            const roleHierarchy = [Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT, Role.ACCOUNTANT];
-            const requesterLevel = roleHierarchy.indexOf(requesterRole);
-            const assignedLevel = roleHierarchy.indexOf(dto.role);
-            if (requesterLevel === -1 || assignedLevel === -1) {
-                throw new ForbiddenException('Invalid role');
-            }
+            const requesterLevel = getRoleLevel(requesterRole);
+            const assignedLevel = getRoleLevel(dto.role);
             if (requesterRole !== Role.SUPER_ADMIN && assignedLevel <= requesterLevel) {
                 throw new ForbiddenException('You are only allowed to assign roles with lower privilege than your own');
             }
@@ -87,24 +84,7 @@ export class UsersService {
         requesterId: string,
         ): Promise<User> {
 
-        const roleHierarchy = [
-            Role.SUPER_ADMIN,
-            Role.COMPANY_ADMIN,
-            Role.ADMIN,
-            Role.MANAGER,
-            Role.AGENT,
-            Role.ACCOUNTANT,
-        ];
-
-        const getLevel = (role: Role) => {
-            const level = roleHierarchy.indexOf(role);
-            if (level === -1) {
-            throw new ForbiddenException(`Invalid role detected: ${role}`);
-            }
-            return level;
-        };
-
-        const requesterLevel = getLevel(requesterRole as Role);
+        const requesterLevel = getRoleLevel(requesterRole as Role);
 
         const user = await this.userRepository.findOne({
             where: { id: targetUserId, ...(companyId ? { companyId } : {}) },
@@ -114,7 +94,7 @@ export class UsersService {
             throw new NotFoundException('User not found');
         }
 
-        const targetLevel = getLevel(user.role as Role);
+        const targetLevel = getRoleLevel(user.role as Role);
         const isSelfUpdate = targetUserId === requesterId;
 
         // 🔒 Prevent unauthorized updates (except SUPER_ADMIN override and self-updates)
@@ -130,7 +110,7 @@ export class UsersService {
                 throw new ForbiddenException('You cannot change your own role');
             }
 
-            const newRoleLevel = getLevel(updates.role);
+            const newRoleLevel = getRoleLevel(updates.role);
 
             if (requesterRole !== Role.SUPER_ADMIN && newRoleLevel <= requesterLevel) {
                 throw new ForbiddenException(
@@ -155,13 +135,8 @@ export class UsersService {
             throw new NotFoundException('User not found');
         }
 
-        const roleHierarchy = [Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT, Role.ACCOUNTANT];
-        const requesterLevel = roleHierarchy.indexOf(requesterRole as Role);
-        const targetLevel = roleHierarchy.indexOf(user.role as Role);
-
-        if (requesterLevel === -1 || targetLevel === -1) {
-            throw new ForbiddenException('Invalid role hierarchy state');
-        }
+        const requesterLevel = getRoleLevel(requesterRole as Role);
+        const targetLevel = getRoleLevel(user.role as Role);
 
         if (targetLevel <= requesterLevel && requesterRole !== Role.SUPER_ADMIN) {
             throw new ForbiddenException('You do not have permission to delete this user');
@@ -209,12 +184,8 @@ export class UsersService {
 
     async inviteUser(companyId: string, dto: InviteUserDto, requesterRole: Role): Promise<User> {
         if (dto.role) {
-            const roleHierarchy = [Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT, Role.ACCOUNTANT];
-            const requesterLevel = roleHierarchy.indexOf(requesterRole);
-            const assignedLevel = roleHierarchy.indexOf(dto.role);
-            if (requesterLevel === -1 || assignedLevel === -1) {
-                throw new ForbiddenException('Invalid role');
-            }
+            const requesterLevel = getRoleLevel(requesterRole);
+            const assignedLevel = getRoleLevel(dto.role);
             if (requesterRole !== Role.SUPER_ADMIN && assignedLevel <= requesterLevel) {
                 throw new ForbiddenException('You are only allowed to assign roles with lower privilege than your own');
             }
