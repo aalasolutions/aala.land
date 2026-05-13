@@ -17,6 +17,7 @@ export default class SessionService extends Service {
       defaultRegionCode: null,
     },
   };
+  @tracked _impersonationKey = 0;
 
   constructor() {
     super(...arguments);
@@ -65,6 +66,32 @@ export default class SessionService extends Service {
       authData.regions || [],
       authData.defaultRegionCode || null,
     );
+  }
+
+  get isImpersonating() {
+    this._impersonationKey; // eslint-disable-line no-unused-expressions
+    return !!localStorage.getItem('aala-impersonator-session') && this.isAuthenticated;
+  }
+
+  impersonate(authData) {
+    const currentSession = localStorage.getItem('aala-session');
+    if (currentSession) {
+      localStorage.setItem('aala-impersonator-session', currentSession);
+    }
+    this._impersonationKey++;
+    this.establish(authData);
+  }
+
+  exitImpersonation() {
+    const saved = localStorage.getItem('aala-impersonator-session');
+    if (!saved) return;
+    try {
+      const session = JSON.parse(saved);
+      this.establish(session.data.authenticated);
+    } finally {
+      localStorage.removeItem('aala-impersonator-session');
+      this._impersonationKey++;
+    }
   }
 
   async authenticate(method, email, password) {
@@ -117,6 +144,7 @@ export default class SessionService extends Service {
       },
     };
     localStorage.removeItem('aala-session');
+    localStorage.removeItem('aala-impersonator-session');
     this.region.clear();
   }
 

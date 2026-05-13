@@ -282,4 +282,58 @@ describe('AuthService', () => {
       expect(usersService.updateResetToken).toHaveBeenCalledWith('user-uuid-1', null, null);
     });
   });
+
+  describe('impersonateLogin', () => {
+    it('returns full login-shape response with impersonatedBy in token', async () => {
+      const impersonateUser = {
+        email: 'agent@company.com',
+        sub: 'agent-uuid-1',
+        name: 'Jane Agent',
+        companyId: 'company-uuid-1',
+        role: 'agent',
+      };
+
+      companiesService.findOne.mockResolvedValue(mockCompany as any);
+      jwtService.sign.mockReturnValue('impersonate-jwt-token');
+
+      const result = await service.impersonateLogin(impersonateUser, 'admin-uuid-1');
+
+      expect(jwtService.sign).toHaveBeenCalledWith(
+        expect.objectContaining({
+          email: 'agent@company.com',
+          sub: 'agent-uuid-1',
+          companyId: 'company-uuid-1',
+          role: 'agent',
+          impersonatedBy: 'admin-uuid-1',
+        }),
+      );
+      expect(result.user).toEqual({
+        id: 'agent-uuid-1',
+        name: 'Jane Agent',
+        email: 'agent@company.com',
+        role: 'agent',
+        companyId: 'company-uuid-1',
+      });
+      expect(result.accessToken).toBe('impersonate-jwt-token');
+      expect(result.refreshToken).toBe('impersonate-jwt-token');
+      expect(result.defaultRegionCode).toBe('dubai');
+      expect(result.regions).toBeDefined();
+    });
+
+    it('returns empty regions when user has no companyId', async () => {
+      const impersonateUser = {
+        email: 'super@admin.com',
+        sub: 'super-uuid-1',
+        name: 'Super Admin',
+        companyId: null,
+        role: 'super_admin',
+      };
+
+      const result = await service.impersonateLogin(impersonateUser, 'admin-uuid-1');
+
+      expect(companiesService.findOne).not.toHaveBeenCalled();
+      expect(result.regions).toEqual([]);
+      expect(result.defaultRegionCode).toBe('');
+    });
+  });
 });

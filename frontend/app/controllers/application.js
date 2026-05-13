@@ -3,7 +3,7 @@ import { service } from '@ember/service';
 import { action } from '@ember/object';
 import { tracked } from '@glimmer/tracking';
 import { cancel, later } from '@ember/runloop';
-import { isAdminRole, getVisibleGroups } from '../utils/roles';
+import { isAdminRole, getVisibleGroups, canSwitchRegion } from '../utils/roles';
 
 export default class ApplicationController extends Controller {
   @service session;
@@ -47,7 +47,11 @@ export default class ApplicationController extends Controller {
   _searchTimer = null;
 
   get showRegionSwitcher() {
-    return this.region.regions.length > 1;
+    return canSwitchRegion(this.auth.currentUser?.role) && this.region.regions.length > 1;
+  }
+
+  get showRegionLabel() {
+    return !canSwitchRegion(this.auth.currentUser?.role) && this.region.regions.length > 0;
   }
 
   routeGroupMap = {
@@ -403,5 +407,10 @@ export default class ApplicationController extends Controller {
     await this.auth.logout();
     this.teardownSocket();
     this.router.transitionTo('login');
+  }
+
+  @action
+  exitImpersonation() {
+    this.auth.exitImpersonation();
   }
 }

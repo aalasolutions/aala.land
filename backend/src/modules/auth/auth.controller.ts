@@ -93,16 +93,6 @@ export class AuthController {
         const { userId } = payload;
         const user = await this.impersonateService.impersonate(userId);
         this.logger.log(`User ${req.user.userId} impersonated user ${user.sub} (email: ${user.email})`);
-        const payload2 = {
-            email: user.email,
-            sub: user.sub,
-            companyId: user.companyId,
-            role: user.role,
-            impersonatedBy: req.user.userId,
-        };
-        return {
-            accessToken: this.authService.generateToken(payload2),
-            refreshToken: this.authService.generateToken(payload2, { expiresIn: '7d' }),
-        };
+        return this.authService.impersonateLogin(user, req.user.userId);
     }
 }
