@@ -22,14 +22,14 @@ export class ReminderRulesController {
   constructor(private readonly reminderRulesService: ReminderRulesService) {}
 
   @Post()
-  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER)
+  @Roles(Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER)
   @ApiOperation({ summary: 'Create a reminder rule (ADMIN+)' })
   create(@Body() dto: CreateReminderRuleDto, @Request() req: AuthenticatedRequest) {
     return this.reminderRulesService.create(requireCompanyId(req.user), dto);
   }
 
   @Get()
-  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER)
+  @Roles(Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER)
   @ApiOperation({ summary: 'List reminder rules for current company (paginated)' })
   @ApiQuery({ name: 'page', required: false, type: Number })
   @ApiQuery({ name: 'limit', required: false, type: Number })
@@ -42,14 +42,14 @@ export class ReminderRulesController {
   }
 
   @Get(':id')
-  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER)
+  @Roles(Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER)
   @ApiOperation({ summary: 'Get a reminder rule by ID' })
   findOne(@Param('id', ParseUUIDPipe) id: string, @Request() req: AuthenticatedRequest) {
     return this.reminderRulesService.findOne(id, requireCompanyId(req.user));
   }
 
   @Patch(':id')
-  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER)
+  @Roles(Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER)
   @ApiOperation({ summary: 'Update a reminder rule (ADMIN+)' })
   update(
     @Param('id', ParseUUIDPipe) id: string,
@@ -60,7 +60,7 @@ export class ReminderRulesController {
   }
 
   @Delete(':id')
-  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN)
+  @Roles(Role.COMPANY_ADMIN, Role.ADMIN)
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Soft-delete a reminder rule (sets isActive=false)' })
   remove(@Param('id', ParseUUIDPipe) id: string, @Request() req: AuthenticatedRequest) {

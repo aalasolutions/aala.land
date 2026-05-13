@@ -30,41 +30,42 @@ export class PropertiesController {
     ) { }
 
     @Post('media/presigned-url')
+    @Roles(Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT)
     @ApiOperation({ summary: 'Get S3 presigned URL for uploading property photos' })
     getPresignedUrl(@Body() dto: PresignedUrlDto, @Request() req: AuthenticatedRequest) {
         return this.mediaService.getPresignedUploadUrl(requireCompanyId(req.user), dto);
     }
 
     @Post('media')
-    @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT)
+    @Roles(Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT)
     @ApiOperation({ summary: 'Create a media record after S3 upload. Generates thumbnail for images. (ADMIN+, AGENT)' })
     createMedia(@Body() dto: CreateMediaDto, @Request() req: AuthenticatedRequest) {
         return this.mediaService.createMedia(requireCompanyId(req.user), dto);
     }
 
     @Get('units/:unitId/media')
-    @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT, Role.ACCOUNTANT)
+    @Roles(Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT, Role.ACCOUNTANT)
     @ApiOperation({ summary: 'List all media for a unit' })
     findUnitMedia(@Param('unitId', ParseUUIDPipe) unitId: string, @Request() req: AuthenticatedRequest) {
         return this.mediaService.findByUnit(requireCompanyId(req.user), unitId);
     }
 
     @Get('assets/:assetId/media')
-    @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT, Role.ACCOUNTANT)
+    @Roles(Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT, Role.ACCOUNTANT)
     @ApiOperation({ summary: 'List all media for an asset' })
     findAssetMedia(@Param('assetId', ParseUUIDPipe) assetId: string, @Request() req: AuthenticatedRequest) {
         return this.mediaService.findByAsset(requireCompanyId(req.user), assetId);
     }
 
     @Patch('media/:id/set-primary')
-    @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT)
+    @Roles(Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT)
     @ApiOperation({ summary: 'Set a media item as primary (unsets others for the same unit/asset) (ADMIN+, AGENT)' })
     setPrimary(@Param('id', ParseUUIDPipe) id: string, @Request() req: AuthenticatedRequest) {
         return this.mediaService.setPrimary(id, requireCompanyId(req.user));
     }
 
     @Delete('media/:id')
-    @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN)
+    @Roles(Role.COMPANY_ADMIN, Role.ADMIN)
     @HttpCode(HttpStatus.NO_CONTENT)
     @ApiOperation({ summary: 'Delete a media item and its S3 files' })
     deleteMedia(@Param('id', ParseUUIDPipe) id: string, @Request() req: AuthenticatedRequest) {
@@ -72,7 +73,7 @@ export class PropertiesController {
     }
 
     @Post('bulk-import')
-    @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT)
+    @Roles(Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT)
     @ApiOperation({ summary: 'Bulk import units from CSV (ADMIN+, AGENT)' })
     bulkImport(@Body('csv') csv: string, @Request() req: AuthenticatedRequest) {
         return this.propertiesService.bulkImportUnits(requireCompanyId(req.user), csv);
@@ -80,7 +81,7 @@ export class PropertiesController {
 
     // Areas (deprecated, kept for backward compat)
     @Post('areas')
-    @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT)
+    @Roles(Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT)
     @ApiOperation({ summary: 'Create a new property area (ADMIN+, AGENT)' })
     @ApiQuery({ name: 'regionCode', required: false, type: String })
     createArea(@Body() dto: CreateAreaDto, @Request() req: AuthenticatedRequest, @Query('regionCode') regionCode?: string) {
@@ -89,7 +90,7 @@ export class PropertiesController {
     }
 
     @Get('areas')
-    @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT, Role.ACCOUNTANT)
+    @Roles(Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT, Role.ACCOUNTANT)
     @ApiOperation({ summary: 'List all property areas (paginated)' })
     @ApiQuery({ name: 'page', required: false, type: Number })
     @ApiQuery({ name: 'limit', required: false, type: Number })
@@ -104,21 +105,21 @@ export class PropertiesController {
     }
 
     @Get('areas/:id')
-    @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT, Role.ACCOUNTANT)
+    @Roles(Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT, Role.ACCOUNTANT)
     @ApiOperation({ summary: 'Get area by ID' })
     findOneArea(@Param('id', ParseUUIDPipe) id: string, @Request() req: AuthenticatedRequest) {
         return this.propertiesService.findOneArea(id, requireCompanyId(req.user));
     }
 
     @Patch('areas/:id')
-    @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT)
+    @Roles(Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT)
     @ApiOperation({ summary: 'Update area (ADMIN+, AGENT)' })
     updateArea(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateAreaDto, @Request() req: AuthenticatedRequest) {
         return this.propertiesService.updateArea(id, requireCompanyId(req.user), dto);
     }
 
     @Delete('areas/:id')
-    @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN)
+    @Roles(Role.COMPANY_ADMIN, Role.ADMIN)
     @HttpCode(HttpStatus.NO_CONTENT)
     @ApiOperation({ summary: 'Delete area (COMPANY_ADMIN+)' })
     removeArea(@Param('id', ParseUUIDPipe) id: string, @Request() req: AuthenticatedRequest) {
@@ -136,14 +137,14 @@ export class PropertiesController {
     }
 
     @Post('assets')
-    @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER)
+    @Roles(Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER)
     @ApiOperation({ summary: 'Create a new asset (tower, villa, mall, etc.)' })
     createAsset(@Body() dto: CreateAssetDto, @Request() req: AuthenticatedRequest) {
         return this.propertiesService.createAsset(requireCompanyId(req.user), dto);
     }
 
     @Get('assets')
-    @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT, Role.ACCOUNTANT)
+    @Roles(Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT, Role.ACCOUNTANT)
     @ApiOperation({ summary: 'List assets where company has units (paginated)' })
     @ApiQuery({ name: 'page', required: false, type: Number })
     @ApiQuery({ name: 'limit', required: false, type: Number })
@@ -156,7 +157,7 @@ export class PropertiesController {
     }
 
     @Get('localities/:localityId/assets')
-    @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT, Role.ACCOUNTANT)
+    @Roles(Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT, Role.ACCOUNTANT)
     @ApiOperation({ summary: 'List assets in a locality where company has units (paginated)' })
     @ApiQuery({ name: 'page', required: false, type: Number })
     @ApiQuery({ name: 'limit', required: false, type: Number })
@@ -193,7 +194,7 @@ export class PropertiesController {
 
     // Units
     @Get('units')
-    @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT, Role.ACCOUNTANT)
+    @Roles(Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT, Role.ACCOUNTANT)
     @ApiOperation({ summary: 'List all units (paginated, filterable). Supports amenities, propertyType, status, price range, bedrooms, localityId, and regionCode.' })
     @ApiQuery({ name: 'page', required: false, type: Number })
     @ApiQuery({ name: 'limit', required: false, type: Number })
@@ -235,21 +236,21 @@ export class PropertiesController {
     }
 
     @Get('units/:id')
-    @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT, Role.ACCOUNTANT)
+    @Roles(Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT, Role.ACCOUNTANT)
     @ApiOperation({ summary: 'Get unit by ID with asset, locality, and owner relations' })
     findOneUnit(@Param('id', ParseUUIDPipe) id: string, @Request() req: AuthenticatedRequest) {
         return this.propertiesService.findOneUnit(id, requireCompanyId(req.user));
     }
 
     @Post('units')
-    @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT)
+    @Roles(Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT)
     @ApiOperation({ summary: 'Create a new unit (ADMIN+, AGENT)' })
     createUnit(@Body() dto: CreateUnitDto, @Request() req: AuthenticatedRequest) {
         return this.propertiesService.createUnit(requireCompanyId(req.user), dto);
     }
 
     @Get('assets/:assetId/units')
-    @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT, Role.ACCOUNTANT)
+    @Roles(Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT, Role.ACCOUNTANT)
     @ApiOperation({ summary: 'List units in an asset (paginated)' })
     @ApiQuery({ name: 'page', required: false, type: Number })
     @ApiQuery({ name: 'limit', required: false, type: Number })
@@ -263,14 +264,14 @@ export class PropertiesController {
     }
 
     @Patch('units/:id')
-    @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT)
+    @Roles(Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT)
     @ApiOperation({ summary: 'Update unit (ADMIN+, AGENT)' })
     updateUnit(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateUnitDto, @Request() req: AuthenticatedRequest) {
         return this.propertiesService.updateUnit(id, requireCompanyId(req.user), dto);
     }
 
     @Delete('units/:id')
-    @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN)
+    @Roles(Role.COMPANY_ADMIN, Role.ADMIN)
     @HttpCode(HttpStatus.NO_CONTENT)
     @ApiOperation({ summary: 'Delete unit (COMPANY_ADMIN+)' })
     removeUnit(@Param('id', ParseUUIDPipe) id: string, @Request() req: AuthenticatedRequest) {
@@ -278,7 +279,7 @@ export class PropertiesController {
     }
 
     @Get('occupancy')
-    @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT, Role.ACCOUNTANT)
+    @Roles(Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT, Role.ACCOUNTANT)
     @ApiOperation({ summary: 'Asset-level occupancy rates' })
     getOccupancy(@Request() req: AuthenticatedRequest) {
         return this.propertiesService.getAssetOccupancy(requireCompanyId(req.user));
@@ -286,14 +287,14 @@ export class PropertiesController {
 
     // Listings
     @Post('listings')
-    @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT)
+    @Roles(Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT)
     @ApiOperation({ summary: 'Create a property listing (ADMIN+, AGENT)' })
     createListing(@Body() dto: CreateListingDto, @Request() req: AuthenticatedRequest) {
         return this.propertiesService.createListing(requireCompanyId(req.user), dto);
     }
 
     @Get('listings')
-    @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT, Role.ACCOUNTANT)
+    @Roles(Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT, Role.ACCOUNTANT)
     @ApiOperation({ summary: 'List all property listings (paginated)' })
     @ApiQuery({ name: 'page', required: false, type: Number })
     @ApiQuery({ name: 'limit', required: false, type: Number })
@@ -306,21 +307,21 @@ export class PropertiesController {
     }
 
     @Get('listings/:id')
-    @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT, Role.ACCOUNTANT)
+    @Roles(Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT, Role.ACCOUNTANT)
     @ApiOperation({ summary: 'Get a listing by ID' })
     findOneListing(@Param('id', ParseUUIDPipe) id: string, @Request() req: AuthenticatedRequest) {
         return this.propertiesService.findOneListing(id, requireCompanyId(req.user));
     }
 
     @Patch('listings/:id')
-    @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT)
+    @Roles(Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT)
     @ApiOperation({ summary: 'Update a listing (ADMIN+, AGENT)' })
     updateListing(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateListingDto, @Request() req: AuthenticatedRequest) {
         return this.propertiesService.updateListing(id, requireCompanyId(req.user), dto);
     }
 
     @Delete('listings/:id')
-    @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN)
+    @Roles(Role.COMPANY_ADMIN, Role.ADMIN)
     @HttpCode(HttpStatus.NO_CONTENT)
     @ApiOperation({ summary: 'Delete a listing' })
     removeListing(@Param('id', ParseUUIDPipe) id: string, @Request() req: AuthenticatedRequest) {

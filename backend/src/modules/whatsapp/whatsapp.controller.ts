@@ -37,9 +37,9 @@ export class WhatsappController {
 
   @Post('send')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT)
+  @Roles(Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Send a WhatsApp message (ADMIN+ or Agent)' })
+  @ApiOperation({ summary: 'Send a WhatsApp message (MANAGER+ or AGENT)' })
   async send(@Body() dto: SendMessageDto, @Request() req: AuthenticatedRequest) {
     return this.whatsappService.sendMessage(requireCompanyId(req.user), dto);
   }
@@ -86,9 +86,9 @@ export class WhatsappController {
 
   @Get()
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT)
+  @Roles(Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'List WhatsApp messages for company (ADMIN+ or Agent)' })
+  @ApiOperation({ summary: 'List WhatsApp messages for company (MANAGER+ or AGENT)' })
   @ApiQuery({ name: 'page', required: false })
   @ApiQuery({ name: 'limit', required: false })
   async findAll(
@@ -101,9 +101,9 @@ export class WhatsappController {
 
   @Get('lead/:leadId')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT)
+  @Roles(Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'List WhatsApp messages for a specific lead (ADMIN+ or Agent)' })
+  @ApiOperation({ summary: 'List WhatsApp messages for a specific lead (MANAGER+ or AGENT)' })
   async findByLead(
     @Param('leadId', ParseUUIDPipe) leadId: string,
     @Request() req: AuthenticatedRequest,
@@ -115,9 +115,9 @@ export class WhatsappController {
 
   @Get(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT)
+  @Roles(Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Get a specific WhatsApp message (ADMIN+ or Agent)' })
+  @ApiOperation({ summary: 'Get a specific WhatsApp message (MANAGER+ or AGENT)' })
   async findOne(@Param('id', ParseUUIDPipe) id: string, @Request() req: AuthenticatedRequest) {
     return this.whatsappService.findOne(id, requireCompanyId(req.user));
   }
