@@ -43,11 +43,16 @@ export class CompaniesService {
         return { data, total, page, limit };
     }
 
-    async findOne(id: string): Promise<Company & { email: string | null }> {
+    async findOne(id: string): Promise<Company> {
         const company = await this.companyRepository.findOne({ where: { id } });
         if (!company) {
             throw new NotFoundException(`Company with ID ${id} not found`);
         }
+        return company;
+    }
+
+    async findOneWithAdminEmail(id: string): Promise<Company & { email: string | null }> {
+        const company = await this.findOne(id);
         const admin = await this.userRepository.findOne({
             where: { companyId: id, role: Role.COMPANY_ADMIN },
             select: ['email'],

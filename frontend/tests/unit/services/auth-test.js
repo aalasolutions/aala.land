@@ -3,7 +3,7 @@ import { setupTest } from 'frontend/tests/helpers';
 import Service from '@ember/service';
 
 class MockSessionService extends Service {
-  isAuthenticated = false;
+  isAuthenticated = true;
   isImpersonating = false;
   data = { authenticated: { accessToken: 'test-token', refreshToken: null, user: null, regions: [], defaultRegionCode: null } };
   async authenticate() {}
@@ -32,7 +32,7 @@ module('Unit | Service | auth', function (hooks) {
 
   test('isAuthenticated delegates to session service', function (assert) {
     const service = this.owner.lookup('service:auth');
-    assert.strictEqual(service.isAuthenticated, false);
+    assert.strictEqual(service.isAuthenticated, true);
   });
 
   test('token returns accessToken from session data', function (assert) {
