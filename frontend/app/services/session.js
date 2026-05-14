@@ -84,7 +84,11 @@ export default class SessionService extends Service {
 
   async exitImpersonation() {
     const saved = localStorage.getItem('aala-impersonator-session');
-    if (!saved) return;
+    if (!saved) {
+      this.isImpersonating = false;
+      localStorage.removeItem('aala-impersonator-session');
+      return;
+    }
 
     localStorage.removeItem('aala-impersonator-session');
     this.isImpersonating = false;
