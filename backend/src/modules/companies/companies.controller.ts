@@ -55,7 +55,7 @@ export class CompaniesController {
         if (req.user.role !== Role.SUPER_ADMIN && requireCompanyId(req.user) !== id) {
             throw new ForbiddenException('You do not have access to this company');
         }
-        return this.companiesService.findOneWithAdminEmail(id);
+        return this.companiesService.findOne(id);
     }
 
     @Patch(':id')
