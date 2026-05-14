@@ -105,14 +105,14 @@ module('Unit | Service | auth', function (hooks) {
     }
   });
 
-  test('exitImpersonation calls session.exitImpersonation', function (assert) {
+  test('exitImpersonation calls session.exitImpersonation', async function (assert) {
     const service = this.owner.lookup('service:auth');
     const session = this.owner.lookup('service:session');
 
     let exitCalled = false;
     session.exitImpersonation = () => { exitCalled = true; };
 
-    service.exitImpersonation();
+    await service.exitImpersonation();
     assert.true(exitCalled, 'session.exitImpersonation was called');
   });
 });
