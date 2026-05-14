@@ -73,10 +73,11 @@ export default class SessionService extends Service {
   }
 
   impersonate(authData) {
-    const currentSession = localStorage.getItem('aala-session');
-    if (currentSession) {
-      localStorage.setItem('aala-impersonator-session', currentSession);
-    }
+    const snapshot = JSON.stringify({
+      data: this.data,
+      isAuthenticated: this.isAuthenticated,
+    });
+    localStorage.setItem('aala-impersonator-session', snapshot);
     this.isImpersonating = true;
     this.establish(authData);
   }
