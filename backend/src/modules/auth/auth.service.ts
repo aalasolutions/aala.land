@@ -25,6 +25,14 @@ interface RefreshUser {
     role: string;
 }
 
+interface ImpersonateUser {
+    email: string;
+    sub: string;
+    name: string;
+    companyId: string | null;
+    role: string;
+}
+
 interface LoginResponse {
     accessToken: string;
     refreshToken: string;
@@ -107,6 +115,34 @@ export class AuthService {
         };
         return {
             accessToken: this.jwtService.sign(payload),
+        };
+    }
+
+    async impersonateLogin(user: ImpersonateUser, impersonatedBy: string): Promise<LoginResponse> {
+        const payload: JwtPayload = {
+            email: user.email,
+            sub: user.sub,
+            companyId: user.companyId,
+            role: user.role,
+            impersonatedBy,
+        };
+
+        const company = user.companyId
+            ? await this.companiesService.findOne(user.companyId)
+            : null;
+
+        return {
+            accessToken: this.jwtService.sign(payload),
+            refreshToken: this.jwtService.sign(payload, { expiresIn: '7d' }),
+            user: {
+                id: user.sub,
+                name: user.name,
+                email: user.email,
+                role: user.role,
+                companyId: user.companyId,
+            },
+            regions: company ? resolveRegions(company.activeRegions) : [],
+            defaultRegionCode: company?.defaultRegionCode ?? '',
         };
     }
 

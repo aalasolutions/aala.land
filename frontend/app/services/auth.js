@@ -34,6 +34,10 @@ export default class AuthService extends Service {
     return this.session.data?.authenticated?.refreshToken ?? null;
   }
 
+  get isImpersonating() {
+    return this.session.isImpersonating;
+  }
+
   async login(email, password) {
     await this.session.authenticate('authenticator:credentials', email, password);
   }
@@ -89,6 +93,26 @@ export default class AuthService extends Service {
   async logout() {
     this.socket.disconnect();
     await this.session.invalidate();
+  }
+
+  async impersonate(userId) {
+    const response = await this.authorizedFetch(`${this.apiBase}/auth/impersonate`, {
+      method: 'POST',
+      body: JSON.stringify({ userId }),
+    });
+
+    if (!response.ok) {
+      throw new Error(await parseErrorResponse(response, 'Impersonation failed'));
+    }
+
+    const { data } = await response.json();
+    this.session.impersonate(data);
+    this.router.transitionTo('dashboard');
+  }
+
+  async exitImpersonation() {
+    await this.session.exitImpersonation();
+    this.router.transitionTo('team');
   }
 
   async refresh() {

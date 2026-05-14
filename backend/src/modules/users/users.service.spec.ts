@@ -177,6 +177,7 @@ describe('UsersService', () => {
 
       expect(repo.findAndCount).toHaveBeenCalledWith({
         where: {},
+        relations: ['company'],
         skip: 0,
         take: 20,
         order: { createdAt: 'DESC' },

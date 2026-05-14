@@ -2,6 +2,7 @@ import { Injectable, NotFoundException, BadRequestException } from '@nestjs/comm
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Company, SubscriptionTier, TIER_LIMITS } from './entities/company.entity';
+import { User } from '../users/entities/user.entity';
 import { CreateCompanyDto } from './dto/create-company.dto';
 import { UpdateCompanyDto } from './dto/update-company.dto';
 import { REGIONS, getRegionByCode } from '@shared/constants/regions';
@@ -13,6 +14,8 @@ export class CompaniesService {
     constructor(
         @InjectRepository(Company)
         private readonly companyRepository: Repository<Company>,
+        @InjectRepository(User)
+        private readonly userRepository: Repository<User>,
     ) { }
 
     async create(dto: CreateCompanyDto): Promise<Company> {
@@ -46,6 +49,15 @@ export class CompaniesService {
             throw new NotFoundException(`Company with ID ${id} not found`);
         }
         return company;
+    }
+
+    async findOneWithAdminEmail(id: string): Promise<Company & { email: string | null }> {
+        const company = await this.findOne(id);
+        const admin = await this.userRepository.findOne({
+            where: { companyId: id, role: Role.COMPANY_ADMIN },
+            select: ['email'],
+        });
+        return { ...company, email: admin?.email ?? null };
     }
 
     async update(id: string, dto: UpdateCompanyDto, role?: string): Promise<Company> {

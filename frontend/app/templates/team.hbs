@@ -27,8 +27,11 @@
               <th>Name</th>
               <th>Email</th>
               <th>Role</th>
+              {{#if this.isSuperAdmin}}
+                <th>Company</th>
+              {{/if}}
               <th>Status</th>
-              {{#unless this.isSuperAdmin}}<th>Actions</th>{{/unless}}
+              <th>Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -37,6 +40,9 @@
                 <td class="font-bold">{{user.name}}</td>
                 <td class="text-muted">{{user.email}}</td>
                 <td><span class="status-badge">{{format-role user.role}}</span></td>
+                {{#if this.isSuperAdmin}}
+                  <td class="text-muted">{{or user.company.name "—"}}</td>
+                {{/if}}
                 <td>
                   {{#if user.isActive}}
                     <span class="status-badge status-completed">Active</span>
@@ -44,18 +50,33 @@
                     <span class="status-badge status-pending">Inactive</span>
                   {{/if}}
                 </td>
-                {{#unless this.isSuperAdmin}}
-                  <td>
-                    <div class="flex gap-2">
-                      <button type="button" class="btn btn-secondary btn-xs" data-test-edit-user {{on "click" (fn this.openEdit user)}}>
-                        <Ph @icon="pencil-simple" /> Edit
-                      </button>
-                      <button type="button" class="btn btn-danger btn-xs" data-test-delete-user {{on "click" (fn this.openDelete user)}}>
-                        <Ph @icon="trash" /> Remove
-                      </button>
-                    </div>
-                  </td>
-                {{/unless}}
+                <td>
+                  <div class="flex gap-2">
+                    <button type="button" class="btn btn-secondary btn-xs" data-test-edit-user {{on "click" (fn this.openEdit user)}}>
+                      <Ph @icon="pencil-simple" /> Edit
+                    </button>
+                    <button type="button" class="btn btn-danger btn-xs" data-test-delete-user {{on "click" (fn this.openDelete user)}}>
+                      <Ph @icon="trash" /> Remove
+                    </button>
+                    {{#if this.isSuperAdmin}}
+                      {{#unless (eq user.role "super_admin")}}
+                        <button
+                          type="button"
+                          class="btn btn-secondary btn-xs"
+                          disabled={{or (eq user.isActive false) this.isImpersonating (eq this.impersonatingUserId user.id)}}
+                          data-test-impersonate-user
+                          {{on "click" (fn this.impersonateUser user)}}
+                        >
+                          {{#if (eq this.impersonatingUserId user.id)}}
+                            <Ph @icon="circle-notch" /> Impersonating...
+                          {{else}}
+                            <Ph @icon="user-switch" /> Impersonate
+                          {{/if}}
+                        </button>
+                      {{/unless}}
+                    {{/if}}
+                  </div>
+                </td>
               </tr>
             {{/each}}
           </tbody>

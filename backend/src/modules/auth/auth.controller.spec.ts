@@ -3,10 +3,12 @@ import { UnauthorizedException, BadRequestException } from '@nestjs/common';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { ImpersonateService } from './impersonate.service';
 
 describe('AuthController', () => {
   let controller: AuthController;
   let authService: jest.Mocked<AuthService>;
+  let impersonateService: jest.Mocked<ImpersonateService>;
 
   const mockLoginResponse = {
     accessToken: 'mock-jwt-token',
@@ -36,6 +38,13 @@ describe('AuthController', () => {
             refresh: jest.fn(),
             forgotPassword: jest.fn(),
             resetPassword: jest.fn(),
+            impersonateLogin: jest.fn(),
+          },
+        },
+        {
+          provide: ImpersonateService,
+          useValue: {
+            impersonate: jest.fn(),
           },
         },
       ],
@@ -46,6 +55,7 @@ describe('AuthController', () => {
 
     controller = module.get<AuthController>(AuthController);
     authService = module.get(AuthService);
+    impersonateService = module.get(ImpersonateService);
   });
 
   it('should be defined', () => {
@@ -101,8 +111,8 @@ describe('AuthController', () => {
 
   describe('getProfile', () => {
     it('returns user from request', () => {
-      const req = { user: { userId: 'user-uuid-1', email: 'admin@test.com' } };
-      const result = controller.getProfile(req);
+      const req = { user: { userId: 'user-uuid-1', email: 'admin@test.com', companyId: 'company-uuid-1', role: 'admin' } };
+      const result = controller.getProfile(req as any);
       expect(result.email).toBe('admin@test.com');
     });
   });
@@ -145,6 +155,39 @@ describe('AuthController', () => {
       await expect(
         controller.resetPassword({ token: 'bad-token', newPassword: 'NewPass123!' }),
       ).rejects.toThrow(BadRequestException);
+    });
+  });
+
+  describe('impersonate', () => {
+    it('returns full login response when SUPER_ADMIN impersonates a user', async () => {
+      const mockImpersonateUser = {
+        email: 'agent@company.com',
+        sub: 'agent-uuid-1',
+        name: 'Jane Agent',
+        companyId: 'company-uuid-1',
+        role: 'agent',
+      };
+
+      const mockImpersonateResponse = {
+        ...mockLoginResponse,
+        user: {
+          id: 'agent-uuid-1',
+          name: 'Jane Agent',
+          email: 'agent@company.com',
+          role: 'agent',
+          companyId: 'company-uuid-1',
+        },
+      };
+
+      impersonateService.impersonate.mockResolvedValue(mockImpersonateUser as any);
+      (authService as any).impersonateLogin.mockResolvedValue(mockImpersonateResponse);
+
+      const req = { user: { userId: 'super-admin-uuid', email: 'super@admin.com', companyId: null, role: 'super_admin' } };
+      const result = await controller.impersonate(req as any, { userId: 'agent-uuid-1' });
+
+      expect(impersonateService.impersonate).toHaveBeenCalledWith('agent-uuid-1');
+      expect((authService as any).impersonateLogin).toHaveBeenCalledWith(mockImpersonateUser, 'super-admin-uuid');
+      expect(result).toEqual(mockImpersonateResponse);
     });
   });
 });

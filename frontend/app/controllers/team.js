@@ -38,9 +38,14 @@ export default class TeamController extends PaginatedController {
   @tracked showDeleteModal = false;
   @tracked userToDelete = null;
   @tracked isDeleting = false;
+  @tracked impersonatingUserId = null;
 
   get isSuperAdmin() {
     return this.auth.currentUser?.role === 'super_admin';
+  }
+
+  get isImpersonating() {
+    return this.auth.isImpersonating;
   }
 
   get roles() {
@@ -167,5 +172,17 @@ export default class TeamController extends PaginatedController {
       successMessage: 'Team member removed',
       refreshRoute: 'team',
     });
+  }
+
+  @action async impersonateUser(user) {
+    if (this.impersonatingUserId) return;
+    this.impersonatingUserId = user.id;
+    try {
+      await this.auth.impersonate(user.id);
+    } catch (e) {
+      this.notifications.error(e.message || 'Failed to impersonate user');
+    } finally {
+      this.impersonatingUserId = null;
+    }
   }
 }

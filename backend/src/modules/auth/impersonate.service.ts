@@ -1,11 +1,12 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { UsersService } from '../users/users.service';
+import { Role } from '@shared/enums/roles.enum';
 
 @Injectable()
 export class ImpersonateService {
   constructor(private readonly usersService: UsersService) {}
 
-  async impersonate(userId: string): Promise<{ email: string; sub: string; companyId: string | null; role: string }> {
+  async impersonate(userId: string): Promise<{ email: string; sub: string; name: string; companyId: string | null; role: string }> {
     const user = await this.usersService.findByIdWithoutCompany(userId);
     if (!user) {
       throw new BadRequestException('User not found');
@@ -19,7 +20,7 @@ export class ImpersonateService {
       throw new BadRequestException('User is inactive');
     }
 
-    if (user.role !== 'SUPER_ADMIN') {
+    if (user.role !== Role.SUPER_ADMIN) {
       if (!user.companyId || !userStatus.company) {
         throw new BadRequestException('User company not found');
       }
@@ -31,6 +32,7 @@ export class ImpersonateService {
     return {
       email: user.email,
       sub: user.id,
+      name: user.name,
       companyId: user.companyId,
       role: user.role,
     };

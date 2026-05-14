@@ -45,11 +45,15 @@ export class UsersService {
     }
 
     async findAll(companyId: string | null | undefined, page = 1, limit = 20): Promise<{ data: User[]; total: number; page: number; limit: number }> {
-        const [data, total] = await this.userRepository.findAndCount({
+        const findOptions = {
             where: companyId ? { companyId, role: Not(Role.SUPER_ADMIN) } : {},
             ...paginationOptions(page, limit),
-            order: { createdAt: 'DESC' },
-        });
+            order: { createdAt: 'DESC' as const },
+        };
+        if (!companyId) {
+            Object.assign(findOptions, { relations: ['company'] });
+        }
+        const [data, total] = await this.userRepository.findAndCount(findOptions);
         return { data, total, page, limit };
     }
 

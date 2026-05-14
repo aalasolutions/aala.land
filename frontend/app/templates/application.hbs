@@ -117,30 +117,32 @@
         </LinkTo>
         {{/if}}
 
-        {{!-- Admin Group --}}
-        {{#if (or this.sidebarGroups.admin this.sidebarGroups.team)}}
+        {{!-- Team (direct link for Company Admin and Admin) --}}
+        {{#if this.sidebarGroups.team}}
+          {{#unless this.isSuperAdmin}}
+          <LinkTo @route="team" class="sidebar-link" data-test-nav-team>
+            <Ph @icon="users-three" /> <span class="sidebar-label">Team</span>
+          </LinkTo>
+          {{/unless}}
+        {{/if}}
+
+        {{!-- Admin Group (Super Admin only) --}}
+        {{#if this.sidebarGroups.admin}}
         <div class="sidebar-group {{if (or (eq this.expandedGroup 'admin') (eq this.activeGroup 'admin')) 'expanded'}}">
           <button type="button" class="sidebar-group-toggle {{if (eq this.activeGroup 'admin') 'sidebar-group-active'}}" {{on "click" (fn this.toggleGroup "admin")}}>
             <Ph @icon="gear" /> <span class="sidebar-label">Admin</span>
             <Ph @icon="caret-down" class="sidebar-chevron" />
           </button>
           <div class="sidebar-group-items">
-
-            {{!-- Team --}}
-            {{#if this.sidebarGroups.team}}
             <LinkTo @route="team" class="sidebar-sublink" data-test-nav-team>
               <span class="sidebar-label">Team</span>
             </LinkTo>
-            {{/if}}
-
-            {{#if this.sidebarGroups.admin}}
             <LinkTo @route="documents" class="sidebar-sublink" data-test-nav-documents>
               <span class="sidebar-label">Documents</span>
             </LinkTo>
             <LinkTo @route="audit" class="sidebar-sublink" data-test-nav-audit>
               <span class="sidebar-label">Audit Log</span>
             </LinkTo>
-            {{/if}}
           </div>
         </div>
         {{/if}}
@@ -156,6 +158,22 @@
 
     {{!-- Main Content --}}
     <main class="main-content">
+      {{#if this.session.isImpersonating}}
+        <div class="impersonation-banner" data-test-impersonation-banner>
+          <span>
+            Impersonating <strong>{{this.session.data.authenticated.user.name}}</strong>
+            ({{this.session.data.authenticated.user.email}})
+          </span>
+          <button
+            type="button"
+            class="btn btn-warning btn-sm"
+            data-test-exit-impersonation
+            {{on "click" this.exitImpersonation}}
+          >
+            Exit Impersonation
+          </button>
+        </div>
+      {{/if}}
       {{!-- Top Bar --}}
       <header class="topbar">
         <div class="search-box">
@@ -207,6 +225,11 @@
                 </div>
               {{/if}}
             </div>
+          {{else if this.showRegionLabel}}
+            <div class="region-label" data-test-region-label>
+              <Ph @icon="globe" @size="18px" />
+              <span class="region-name">{{this.region.activeRegion.name}}</span>
+            </div>
           {{/if}}
           <button type="button" class="notification-bell" aria-label="Notifications" {{on "click" this.toggleNotifications}}>
             <Ph @icon="bell" @size="22px" />
@@ -214,9 +237,11 @@
               <span class="notification-badge">{{this.unreadCount}}</span>
             {{/if}}
           </button>
-          <LinkTo @route="company" class="topbar-icon-btn" aria-label="Company settings">
-            <Ph @icon="building-office" @size="20px" />
-          </LinkTo>
+          {{#unless this.isSuperAdmin}}
+            <LinkTo @route="company" class="topbar-icon-btn" aria-label="Company settings">
+              <Ph @icon="building-office" @size="20px" />
+            </LinkTo>
+          {{/unless}}
           <LinkTo @route="profile" class="topbar-icon-btn" aria-label="My profile">
             <Ph @icon="user" @size="20px" />
           </LinkTo>
