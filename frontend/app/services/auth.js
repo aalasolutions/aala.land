@@ -110,8 +110,8 @@ export default class AuthService extends Service {
     this.router.transitionTo('dashboard');
   }
 
-  exitImpersonation() {
-    this.session.exitImpersonation();
+  async exitImpersonation() {
+    await this.session.exitImpersonation();
     this.router.transitionTo('team');
   }
 

@@ -410,7 +410,7 @@ export default class ApplicationController extends Controller {
   }
 
   @action
-  exitImpersonation() {
-    this.auth.exitImpersonation();
+  async exitImpersonation() {
+    await this.auth.exitImpersonation();
   }
 }

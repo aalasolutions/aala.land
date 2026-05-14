@@ -1,5 +1,4 @@
-import Service from '@ember/service';
-import { service } from '@ember/service';
+import Service, { service } from '@ember/service';
 import { tracked } from '@glimmer/tracking';
 import config from 'frontend/config/environment';
 
@@ -8,6 +7,7 @@ export default class SessionService extends Service {
   @service region;
 
   @tracked isAuthenticated = false;
+  @tracked isImpersonating = false;
   @tracked data = {
     authenticated: {
       user: null,
@@ -17,7 +17,6 @@ export default class SessionService extends Service {
       defaultRegionCode: null,
     },
   };
-  @tracked _impersonationKey = 0;
 
   constructor() {
     super(...arguments);
@@ -29,17 +28,20 @@ export default class SessionService extends Service {
     if (stored) {
       try {
         const session = JSON.parse(stored);
+        if (!session?.data?.authenticated) throw new Error('Invalid session structure');
         this.data = session.data;
-        this.isAuthenticated = session.isAuthenticated;
+        this.isAuthenticated = !!session.isAuthenticated;
 
         const authData = this.data.authenticated;
         if (authData.regions) {
           this.region.initialize(authData.regions, authData.defaultRegionCode || null);
         }
+        this.isImpersonating = !!localStorage.getItem('aala-impersonator-session');
       } catch (error) {
         // If restore fails, clear corrupt data and start fresh
         localStorage.removeItem('aala-session');
         localStorage.removeItem('aala-region');
+        localStorage.removeItem('aala-impersonator-session');
       }
     }
   }
@@ -70,29 +72,29 @@ export default class SessionService extends Service {
     );
   }
 
-  get isImpersonating() {
-    this._impersonationKey; // eslint-disable-line no-unused-expressions
-    return !!localStorage.getItem('aala-impersonator-session') && this.isAuthenticated;
-  }
-
   impersonate(authData) {
     const currentSession = localStorage.getItem('aala-session');
     if (currentSession) {
       localStorage.setItem('aala-impersonator-session', currentSession);
     }
-    this._impersonationKey++;
+    this.isImpersonating = true;
     this.establish(authData);
   }
 
-  exitImpersonation() {
+  async exitImpersonation() {
     const saved = localStorage.getItem('aala-impersonator-session');
     if (!saved) return;
+
+    localStorage.removeItem('aala-impersonator-session');
+    this.isImpersonating = false;
+
     try {
       const session = JSON.parse(saved);
-      this.establish(session.data.authenticated);
-    } finally {
-      localStorage.removeItem('aala-impersonator-session');
-      this._impersonationKey++;
+      const authData = session?.data?.authenticated;
+      if (!authData?.accessToken) throw new Error('Invalid session shape');
+      this.establish(authData);
+    } catch {
+      await this.invalidate();
     }
   }
 
@@ -136,6 +138,7 @@ export default class SessionService extends Service {
     }
 
     this.isAuthenticated = false;
+    this.isImpersonating = false;
     this.data = {
       authenticated: {
         user: null,
