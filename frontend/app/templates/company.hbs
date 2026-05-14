@@ -85,7 +85,14 @@
     {{/if}}
   </div>
 {{else}}
-  <div class="empty-state">
-    <p class="text-muted">No company associated with your account.</p>
+  <div class="flex col gap-4 x-center y-center" style="min-height: 40vh; text-align: center;">
+    <Ph @icon="buildings" @size="56px" @color="var(--text-muted)" />
+    <div>
+      <h3 class="font-xl font-bold">No Company Data</h3>
+      <p class="text-muted mt-2">Super Admins are not associated with any company.<br>To view a specific company's settings, impersonate a Company Admin.</p>
+    </div>
+    <LinkTo @route="team" class="btn btn-primary">
+      <Ph @icon="users" /> Go to Team
+    </LinkTo>
   </div>
 {{/if}}

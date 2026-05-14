@@ -1,5 +1,6 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { UsersService } from '../users/users.service';
+import { Role } from '@shared/enums/roles.enum';
 
 @Injectable()
 export class ImpersonateService {
@@ -19,7 +20,7 @@ export class ImpersonateService {
       throw new BadRequestException('User is inactive');
     }
 
-    if (user.role !== 'SUPER_ADMIN') {
+    if (user.role !== Role.SUPER_ADMIN) {
       if (!user.companyId || !userStatus.company) {
         throw new BadRequestException('User company not found');
       }
