@@ -34,6 +34,7 @@ Router.map(function () {
   this.route('contacts');
   this.route('documents');
   this.route('email-templates');
+  this.route('whatsapp');
   this.route('reports');
   this.route('audit');
   this.route('profile');
