@@ -1,124 +1,125 @@
+// backend/src/modules/whatsapp/whatsapp.controller.ts
 import {
-  Controller,
-  Post,
-  Get,
-  Body,
-  Param,
-  Query,
-  Headers,
-  UseGuards,
-  Request,
-  ParseIntPipe,
-  ParseUUIDPipe,
-  DefaultValuePipe,
-  HttpCode,
-  HttpStatus,
-  ForbiddenException,
-  RawBodyRequest,
-  Logger,
+  Controller, Get, Post, Body, Param,
+  UseGuards, Res,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
+import { Response } from 'express';
+import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { resolve, join, sep } from 'path';
+import { existsSync } from 'fs';
 import { WhatsappService } from './whatsapp.service';
-import { SendMessageDto } from './dto/send-message.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '@shared/guards/roles.guard';
 import { Roles } from '@shared/decorators/roles.decorator';
 import { Role } from '@shared/enums/roles.enum';
-import { AuthenticatedRequest } from '@shared/interfaces/authenticated-request.interface';
-import { requireCompanyId } from '@shared/utils/auth.util';
-import * as crypto from 'crypto';
+import { SendWaMessageDto, SendWaMediaDto, TypingDto, AiToggleDto } from './dto/send-wa-message.dto';
 
 @ApiTags('whatsapp')
+@ApiBearerAuth()
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles(Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT)
 @Controller('whatsapp')
 export class WhatsappController {
-  private readonly logger = new Logger(WhatsappController.name);
+  constructor(private readonly wa: WhatsappService) {}
 
-  constructor(private readonly whatsappService: WhatsappService) { }
+  // ── Connection ────────────────────────────────────────────────────────
+
+  @Get('connection')
+  @ApiOperation({ summary: 'WhatsApp connection status' })
+  getConnection() { return this.wa.getConnection(); }
+
+  @Get('qr')
+  @ApiOperation({ summary: 'Current QR code (base64 PNG data URL or null if paired)' })
+  getQR() { return this.wa.getQR(); }
+
+  @Post('logout')
+  @ApiOperation({ summary: 'Clear session and generate a new QR code' })
+  logout() { return this.wa.logout(); }
+
+  // ── Chats / Messages ──────────────────────────────────────────────────
+
+  @Get('chats')
+  @ApiOperation({ summary: 'Chat list with last-message preview' })
+  getChats() { return { chats: this.wa.getChats() }; }
+
+  @Get('messages')
+  @ApiOperation({ summary: 'All stored messages' })
+  getAllMessages() { return { messages: this.wa.getAllMessages() }; }
+
+  @Get('messages/:chatId')
+  @ApiOperation({ summary: 'Messages for a specific chat' })
+  getMessages(@Param('chatId') chatId: string) {
+    return { messages: this.wa.getMessagesForChat(decodeURIComponent(chatId)) };
+  }
+
+  // ── Sending ───────────────────────────────────────────────────────────
 
   @Post('send')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT)
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Send a WhatsApp message (MANAGER+ or AGENT)' })
-  async send(@Body() dto: SendMessageDto, @Request() req: AuthenticatedRequest) {
-    return this.whatsappService.sendMessage(requireCompanyId(req.user), dto);
+  @ApiOperation({ summary: 'Send a text message' })
+  send(@Body() dto: SendWaMessageDto) {
+    return this.wa.send(dto.chatId, dto.message, dto.replyTo);
   }
 
-  @Post('webhook')
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Receive WhatsApp webhook events from Meta' })
-  async webhook(
-    @Body() payload: Record<string, unknown>,
-    @Query('company_id') companyId: string,
-    @Headers('x-hub-signature-256') signature: string,
-    @Request() req: RawBodyRequest<Request>,
+  @Post('send-media')
+  @ApiOperation({ summary: 'Send a media message' })
+  sendMedia(@Body() dto: SendWaMediaDto) {
+    return this.wa.sendMedia(dto.chatId, dto.filePath, {
+      mediaType: dto.mediaType, caption: dto.caption, fileName: dto.fileName,
+    });
+  }
+
+  @Post('typing')
+  @ApiOperation({ summary: 'Send typing indicator' })
+  typing(@Body() dto: TypingDto) { return this.wa.typing(dto.chatId); }
+
+  // ── AI ────────────────────────────────────────────────────────────────
+
+  @Get('ai')
+  @ApiOperation({ summary: 'AI config and enabled state' })
+  getAi() { return this.wa.getAiConfig(); }
+
+  @Post('ai/toggle')
+  @ApiOperation({ summary: 'Toggle or set AI auto-reply' })
+  toggleAi(@Body() dto: AiToggleDto) { return this.wa.toggleAi(dto.enabled); }
+
+  @Get('ai/history/:chatId')
+  @ApiOperation({ summary: 'AI conversation history for a chat' })
+  getAiHistory(@Param('chatId') chatId: string) {
+    return { chatId, history: this.wa.getAiHistory(decodeURIComponent(chatId)) };
+  }
+
+  @Post('ai/clear')
+  @ApiOperation({ summary: 'Clear AI history for one or all chats' })
+  clearAi(@Body() body: { chatId?: string }) {
+    return this.wa.clearAiHistory(body.chatId);
+  }
+
+  // ── Media serving ─────────────────────────────────────────────────────
+
+  @Get('media/:type/:filename')
+  @ApiOperation({ summary: 'Serve downloaded media file' })
+  serveMedia(
+    @Param('type') type: string,
+    @Param('filename') filename: string,
+    @Res() res: Response,
   ) {
-    const appSecret = process.env.WHATSAPP_APP_SECRET;
-    if (!appSecret) {
-      this.logger.error('WHATSAPP_APP_SECRET not configured - webhook rejected');
-      throw new ForbiddenException('WhatsApp webhook not configured');
+    const dirs = this.wa.getMediaDirs();
+    const dirMap: Record<string, string> = {
+      images: dirs.IMAGE_DIR,
+      videos: dirs.VIDEO_DIR,
+      audio: dirs.AUDIO_DIR,
+      documents: dirs.DOCUMENT_DIR,
+    };
+    const dir = dirMap[type];
+    if (!dir) return res.status(400).json({ error: 'Invalid media type' });
+
+    const root = resolve(dir);
+    const filePath = resolve(join(root, filename));
+    if (filePath !== root && !filePath.startsWith(root + sep)) {
+      return res.status(403).json({ error: 'Access denied' });
     }
-    if (req.rawBody) {
-      const expectedSig =
-        'sha256=' +
-        crypto.createHmac('sha256', appSecret).update(req.rawBody).digest('hex');
-      if (signature !== expectedSig) {
-        throw new ForbiddenException('Invalid webhook signature');
-      }
-    }
-    return this.whatsappService.handleWebhook(companyId ?? 'system', payload);
-  }
+    if (!existsSync(filePath)) return res.status(404).json({ error: 'Not found' });
 
-  @Get('webhook')
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Verify WhatsApp webhook with Meta' })
-  webhookVerify(
-    @Query('hub.mode') mode: string,
-    @Query('hub.verify_token') verifyToken: string,
-    @Query('hub.challenge') challenge: string,
-  ) {
-    const configuredToken = process.env.WHATSAPP_WEBHOOK_VERIFY_TOKEN;
-    if (mode === 'subscribe' && verifyToken === configuredToken) {
-      return challenge;
-    }
-    return { error: 'Verification failed' };
-  }
-
-  @Get()
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT)
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'List WhatsApp messages for company (MANAGER+ or AGENT)' })
-  @ApiQuery({ name: 'page', required: false })
-  @ApiQuery({ name: 'limit', required: false })
-  async findAll(
-    @Request() req: AuthenticatedRequest,
-    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
-    @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
-  ) {
-    return this.whatsappService.findMessages(requireCompanyId(req.user), page, limit);
-  }
-
-  @Get('lead/:leadId')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT)
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'List WhatsApp messages for a specific lead (MANAGER+ or AGENT)' })
-  async findByLead(
-    @Param('leadId', ParseUUIDPipe) leadId: string,
-    @Request() req: AuthenticatedRequest,
-    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
-    @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
-  ) {
-    return this.whatsappService.findMessagesByLead(leadId, requireCompanyId(req.user), page, limit);
-  }
-
-  @Get(':id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT)
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Get a specific WhatsApp message (MANAGER+ or AGENT)' })
-  async findOne(@Param('id', ParseUUIDPipe) id: string, @Request() req: AuthenticatedRequest) {
-    return this.whatsappService.findOne(id, requireCompanyId(req.user));
+    return res.sendFile(filePath);
   }
 }
