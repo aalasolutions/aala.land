@@ -1,157 +1,115 @@
-import { Injectable, NotFoundException, Logger } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { WhatsappMessage, MessageDirection, MessageStatus } from './entities/whatsapp-message.entity';
-import { SendMessageDto } from './dto/send-message.dto';
-import { paginationOptions } from '../../shared/utils/pagination.util';
+// backend/src/modules/whatsapp/whatsapp.service.ts
+import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
+import { BaileysService } from './baileys.service';
+import { MessageStoreService } from './message-store.service';
+import { WhatsappAiService } from './whatsapp-ai.service';
+import { WhatsappGateway } from './whatsapp.gateway';
 
 @Injectable()
-export class WhatsappService {
+export class WhatsappService implements OnModuleInit {
   private readonly logger = new Logger(WhatsappService.name);
 
   constructor(
-    @InjectRepository(WhatsappMessage)
-    private readonly messageRepository: Repository<WhatsappMessage>,
-  ) { }
+    private readonly baileys: BaileysService,
+    private readonly store: MessageStoreService,
+    private readonly ai: WhatsappAiService,
+    private readonly gateway: WhatsappGateway,
+  ) {}
 
-  async sendMessage(companyId: string, dto: SendMessageDto): Promise<WhatsappMessage> {
-    const record = this.messageRepository.create({
-      companyId,
-      phoneNumber: dto.phoneNumber,
-      message: dto.message,
-      leadId: dto.leadId ?? null,
-      mediaUrl: dto.mediaUrl ?? null,
-      direction: MessageDirection.OUTBOUND,
-      status: MessageStatus.QUEUED,
-    });
+  onModuleInit() {
+    this.baileys.emitter.on('status', data => this.gateway.emitStatus(data));
+    this.baileys.emitter.on('qr',     data => this.gateway.emitQR(data));
+    this.baileys.emitter.on('message', msg => {
+      this.store.addMessage(msg);
+      this.gateway.emitMessage(msg);
 
-    const saved = await this.messageRepository.save(record);
-
-    try {
-      await this.dispatchToWhatsAppApi(dto.phoneNumber, dto.message, dto.mediaUrl);
-      saved.status = MessageStatus.SENT;
-      await this.messageRepository.save(saved);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      this.logger.error(`WhatsApp dispatch failed for ${dto.phoneNumber}: ${message}`);
-      saved.status = MessageStatus.FAILED;
-      await this.messageRepository.save(saved);
-    }
-
-    return saved;
-  }
-
-  async handleWebhook(companyId: string, payload: Record<string, unknown>): Promise<{ received: boolean }> {
-    try {
-      const entry = payload['entry'] as Record<string, unknown>[] | undefined;
-      if (!entry?.length) {
-        return { received: true };
+      if (!msg.fromMe) {
+        this.ai.handleIncomingMessage(msg, async (chatId, message) => {
+          const result = await this.baileys.sendMessage(chatId, message);
+          const aiMsg = {
+            id: result.messageId ?? `ai-${Date.now()}`,
+            chatId,
+            senderId: this.baileys.getStatus().me?.id ?? 'me',
+            senderName: 'You',
+            chatName: msg.chatName,
+            isGroup: chatId.endsWith('@g.us'),
+            body: message,
+            hasMedia: false, mediaType: '', mediaUrls: [],
+            mentionedIds: [], quotedParticipant: '',
+            fromMe: true, aiGenerated: true,
+            timestamp: Math.floor(Date.now() / 1000),
+          };
+          this.store.addMessage(aiMsg);
+          this.gateway.emitMessage(aiMsg);
+          this.ai.recordAssistantTurn(chatId, message);
+          return result;
+        }).catch(err => this.logger.error('AI handler error', err));
       }
-
-      for (const item of entry) {
-        const changes = item['changes'] as Record<string, unknown>[] | undefined;
-        if (!changes?.length) continue;
-
-        for (const change of changes) {
-          const value = change['value'] as Record<string, unknown> | undefined;
-          const messages = value?.['messages'] as Record<string, unknown>[] | undefined;
-          if (!messages?.length) continue;
-
-          for (const msg of messages) {
-            const phone = msg['from'] as string | undefined;
-            const text = (msg['text'] as Record<string, unknown> | undefined)?.['body'] as string | undefined;
-            const wamid = msg['id'] as string | undefined;
-
-            if (phone && text) {
-              const record = this.messageRepository.create({
-                companyId,
-                phoneNumber: phone,
-                message: text,
-                direction: MessageDirection.INBOUND,
-                status: MessageStatus.DELIVERED,
-                externalId: wamid ?? null,
-                leadId: null,
-                mediaUrl: null,
-              });
-              await this.messageRepository.save(record);
-            }
-          }
-        }
-      }
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      this.logger.error(`Webhook processing error: ${message}`);
-    }
-
-    return { received: true };
-  }
-
-  async findMessages(
-    companyId: string,
-    page = 1,
-    limit = 20,
-  ): Promise<{ data: WhatsappMessage[]; total: number; page: number; limit: number }> {
-    const [data, total] = await this.messageRepository.findAndCount({
-      where: { companyId },
-      ...paginationOptions(page, limit),
-      order: { createdAt: 'DESC' },
     });
-    return { data, total, page, limit };
   }
 
-  async findMessagesByLead(
-    leadId: string,
-    companyId: string,
-    page = 1,
-    limit = 20,
-  ): Promise<{ data: WhatsappMessage[]; total: number; page: number; limit: number }> {
-    const [data, total] = await this.messageRepository.findAndCount({
-      where: { leadId, companyId },
-      ...paginationOptions(page, limit),
-      order: { createdAt: 'DESC' },
-    });
-    return { data, total, page, limit };
+  // ── Connection ────────────────────────────────────────────────────────
+
+  getConnection() { return this.baileys.getStatus(); }
+
+  getQR() {
+    const s = this.baileys.getStatus();
+    return { qr: s.qr, hasCredentials: s.hasCredentials, connection: s.connection };
   }
 
-  async findOne(id: string, companyId: string): Promise<WhatsappMessage> {
-    const msg = await this.messageRepository.findOne({ where: { id, companyId } });
-    if (!msg) {
-      throw new NotFoundException('WhatsApp message not found');
+  async logout() {
+    await this.baileys.logout();
+    await this.baileys.start();
+    return { success: true };
+  }
+
+  // ── Messages / Chats ──────────────────────────────────────────────────
+
+  getChats()                             { return this.store.getChatList(); }
+  getAllMessages()                        { return this.store.getAllMessages(); }
+  getMessagesForChat(chatId: string)     { return this.store.getMessagesForChat(chatId); }
+
+  async send(chatId: string, message: string, replyTo?: string) {
+    const result = await this.baileys.sendMessage(chatId, message, { replyTo });
+    if (result.messageId) {
+      const { me } = this.baileys.getStatus();
+      this.store.addMessage({
+        id: result.messageId,
+        chatId,
+        senderId: me?.id ?? 'me',
+        senderName: 'You',
+        chatName: chatId.split('@')[0],
+        isGroup: chatId.endsWith('@g.us'),
+        body: message,
+        hasMedia: false, mediaType: '', mediaUrls: [],
+        mentionedIds: [], quotedParticipant: '',
+        fromMe: true, aiGenerated: false,
+        timestamp: Math.floor(Date.now() / 1000),
+      });
+      this.ai.recordAssistantTurn(chatId, message);
     }
-    return msg;
+    return result;
   }
 
-  private async dispatchToWhatsAppApi(phone: string, message: string, mediaUrl?: string): Promise<void> {
-    const token = process.env.WHATSAPP_API_TOKEN;
-    const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
-
-    if (!token || !phoneNumberId) {
-      this.logger.warn('WhatsApp API credentials not configured. Message stored but not sent.');
-      return;
-    }
-
-    const body: Record<string, unknown> = {
-      messaging_product: 'whatsapp',
-      to: phone,
-      type: 'text',
-      text: { body: message },
-    };
-
-    const response = await fetch(
-      `https://graph.facebook.com/v18.0/${phoneNumberId}/messages`,
-      {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(body),
-      },
-    );
-
-    if (!response.ok) {
-      const err = await response.text();
-      throw new Error(`WhatsApp API error: ${err}`);
-    }
+  async sendMedia(chatId: string, filePath: string, opts: any) {
+    return this.baileys.sendMedia(chatId, filePath, opts);
   }
+
+  async typing(chatId: string) { return this.baileys.sendTyping(chatId); }
+
+  // ── AI ────────────────────────────────────────────────────────────────
+
+  getAiConfig()              { return this.ai.getConfig(); }
+  getAiHistory(chatId: string) { return this.ai.getHistoryFor(chatId); }
+  clearAiHistory(chatId?: string) { this.ai.clearHistory(chatId); return { success: true }; }
+
+  toggleAi(enabled?: boolean) {
+    const next = typeof enabled === 'boolean' ? this.ai.setEnabled(enabled) : this.ai.setEnabled(!this.ai.isEnabled());
+    this.gateway.emitAi({ enabled: next, keyConfigured: this.ai.getConfig().keyConfigured });
+    return { enabled: next };
+  }
+
+  // ── Media ─────────────────────────────────────────────────────────────
+
+  getMediaDirs() { return this.baileys.getMediaDirs(); }
 }
