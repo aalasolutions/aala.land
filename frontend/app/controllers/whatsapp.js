@@ -68,16 +68,60 @@ export default class WhatsappController extends Controller {
       this.aiKeyConfigured = ai.keyConfigured ?? false;
 
       if (this.connection !== 'connected' && !this.hasCredentials) {
-        const qrData = await this.whatsapp.getQR();
-        this.qr = (qrData.data ?? qrData).qr ?? null;
+        this.pollForQR();
       }
+
+      this.startPolling();
     } catch (err) {
       console.error('WhatsApp setup failed', err);
     }
   }
 
+  async pollForQR() {
+    for (let i = 0; i < 40; i++) {
+      await new Promise(r => setTimeout(r, 1500));
+      if (this.connection === 'connected') return;
+      try {
+        const connData = await this.whatsapp.getConnection();
+        const conn = connData.data ?? connData;
+        if (conn.connection === 'connected') {
+          this.connection = 'connected';
+          this.hasCredentials = conn.hasCredentials ?? true;
+          this.me = conn.me ?? this.me;
+          this.qr = null;
+          return;
+        }
+        if (!this.qr) {
+          const qrData = await this.whatsapp.getQR();
+          const qr = (qrData.data ?? qrData).qr ?? null;
+          if (qr) this.qr = qr;
+        }
+      } catch { /* ignore */ }
+    }
+  }
+
   teardown() {
     this.whatsapp.disconnectSocket();
+    this.stopPolling();
+  }
+
+  startPolling() {
+    this.stopPolling();
+    this._pollTimer = setInterval(() => this.pollUpdates(), 3000);
+  }
+
+  stopPolling() {
+    if (this._pollTimer) { clearInterval(this._pollTimer); this._pollTimer = null; }
+  }
+
+  async pollUpdates() {
+    if (!this.isConnected) return;
+    try {
+      if (this.currentChatId) {
+        const msgsData = await this.whatsapp.getMessages(this.currentChatId);
+        this.ingestMessages(msgsData.data?.messages ?? msgsData.messages ?? []);
+      }
+    } catch { /* ignore */ }
   }
 
   // ── Socket events ─────────────────────────────────────────────────────

@@ -129,6 +129,13 @@
           {{/unless}}
         {{/if}}
 
+        {{!-- Settings (Company Admin only) --}}
+        {{#if this.isCompanyAdmin}}
+        <LinkTo @route="settings.whatsapp" class="sidebar-link" data-test-nav-settings-whatsapp>
+          <Ph @icon="gear" /> <span class="sidebar-label">WhatsApp Settings</span>
+        </LinkTo>
+        {{/if}}
+
         {{!-- Admin Group (Super Admin only) --}}
         {{#if this.sidebarGroups.admin}}
         <div class="sidebar-group {{if (or (eq this.expandedGroup 'admin') (eq this.activeGroup 'admin')) 'expanded'}}">

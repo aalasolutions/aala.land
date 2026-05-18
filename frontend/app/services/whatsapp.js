@@ -23,6 +23,14 @@ export default class WhatsappService extends Service {
       auth: { token: this.auth.token },
     });
 
+    // Join the user-specific room so events are scoped
+    this._socket.on('connect', () => {
+      const userId = this.auth.currentUser?.userId;
+      if (userId) {
+        this._socket.emit('join', { userId });
+      }
+    });
+
     this._socket.on('whatsapp:status',  data => onEvent('status', data));
     this._socket.on('whatsapp:qr',      data => onEvent('qr', data));
     this._socket.on('whatsapp:message', data => onEvent('message', data));
@@ -46,6 +54,7 @@ export default class WhatsappService extends Service {
   getAllMessages()          { return this.auth.fetchJson('/whatsapp/messages'); }
   getMessages(chatId)      { return this.auth.fetchJson(`/whatsapp/messages/${encodeURIComponent(chatId)}`); }
   getAi()                  { return this.auth.fetchJson('/whatsapp/ai'); }
+  getSettings()            { return this.auth.fetchJson('/whatsapp/settings'); }
 
   logout() {
     return this.auth.fetchJson('/whatsapp/logout', { method: 'POST' });
@@ -62,6 +71,13 @@ export default class WhatsappService extends Service {
     return this.auth.fetchJson('/whatsapp/ai/toggle', {
       method: 'POST',
       body: JSON.stringify({ enabled }),
+    });
+  }
+
+  updateSettings(aiPrompt) {
+    return this.auth.fetchJson('/whatsapp/settings', {
+      method: 'PATCH',
+      body: JSON.stringify({ aiPrompt: aiPrompt || null }),
     });
   }
 

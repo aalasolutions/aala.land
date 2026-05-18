@@ -4,17 +4,24 @@ import { WaMessage, WaChat } from './wa-types';
 
 @Injectable()
 export class MessageStoreService {
-  private messages: WaMessage[] = [];
-  private chats = new Map<string, WaChat>();
+  private stores = new Map<string, { messages: WaMessage[]; chats: Map<string, WaChat> }>();
 
-  addMessage(msg: WaMessage): void {
-    if (this.messages.some(m => m.id === msg.id)) return;
-    this.messages.push(msg);
-    if (this.messages.length > 2000) this.messages.shift();
+  private getStore(userId: string) {
+    if (!this.stores.has(userId)) {
+      this.stores.set(userId, { messages: [], chats: new Map() });
+    }
+    return this.stores.get(userId)!;
+  }
 
-    const existing = this.chats.get(msg.chatId);
+  addMessage(userId: string, msg: WaMessage): void {
+    const store = this.getStore(userId);
+    if (store.messages.some(m => m.id === msg.id)) return;
+    store.messages.push(msg);
+    if (store.messages.length > 2000) store.messages.shift();
+
+    const existing = store.chats.get(msg.chatId);
     const isNewer = (msg.timestamp ?? 0) >= (existing?.lastTs ?? 0);
-    this.chats.set(msg.chatId, {
+    store.chats.set(msg.chatId, {
       chatId: msg.chatId,
       chatName: msg.chatName || existing?.chatName || msg.chatId,
       isGroup: msg.isGroup ?? existing?.isGroup ?? false,
@@ -24,15 +31,19 @@ export class MessageStoreService {
     });
   }
 
-  getAllMessages(limit = 500): WaMessage[] {
-    return this.messages.slice(-limit);
+  getAllMessages(userId: string, limit = 500): WaMessage[] {
+    return this.getStore(userId).messages.slice(-limit);
   }
 
-  getMessagesForChat(chatId: string, limit = 200): WaMessage[] {
-    return this.messages.filter(m => m.chatId === chatId).slice(-limit);
+  getMessagesForChat(userId: string, chatId: string, limit = 200): WaMessage[] {
+    return this.getStore(userId).messages.filter(m => m.chatId === chatId).slice(-limit);
   }
 
-  getChatList(): WaChat[] {
-    return Array.from(this.chats.values()).sort((a, b) => b.lastTs - a.lastTs);
+  getChatList(userId: string): WaChat[] {
+    return Array.from(this.getStore(userId).chats.values()).sort((a, b) => b.lastTs - a.lastTs);
+  }
+
+  clearAll(userId: string): void {
+    this.stores.delete(userId);
   }
 }

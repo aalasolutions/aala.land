@@ -62,6 +62,7 @@ export default class ApplicationController extends Controller {
     'email-templates': 'outreach',
     maintenance: 'operations', vendors: 'operations',
     team: 'admin', audit: 'admin',
+    'settings.whatsapp': 'settings',
   };
 
   get activeGroup() {
