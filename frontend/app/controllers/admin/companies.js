@@ -2,7 +2,6 @@ import Controller from '@ember/controller';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
-import { TIER_LIMITS } from '../../utils/subscription-plans';
 
 export default class AdminCompaniesController extends Controller {
   @service auth;
@@ -54,12 +53,8 @@ export default class AdminCompaniesController extends Controller {
   async saveEdit() {
     if (this.isSaving) return;
     this.isSaving = true;
-    const limits = TIER_LIMITS[this.editTier];
     const body = {
       subscriptionTier: this.editTier,
-      maxUsers: limits.maxUsers,
-      maxCountries: limits.maxCountries,
-      maxProperties: limits.maxProperties,
       subscriptionExpiresAt: this.editExpiry || null,
     };
 

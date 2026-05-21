@@ -83,13 +83,15 @@ export class CompaniesService {
     async update(id: string, dto: UpdateCompanyDto, role?: string): Promise<Company> {
         const company = await this.findOne(id);
 
-        if (role === Role.COMPANY_ADMIN) {
+        if (role === Role.SUPER_ADMIN) {
+            // no restrictions
+        } else if (role === Role.COMPANY_ADMIN || role === Role.ADMIN) {
             const superAdminOnlyFields = ['subscriptionTier', 'maxUsers', 'maxCountries', 'maxProperties', 'subscriptionExpiresAt'];
             const attempted = superAdminOnlyFields.filter(f => f in dto);
             if (attempted.length) {
                 throw new ForbiddenException(`You are not allowed to update: ${attempted.join(', ')}`);
             }
-        } else if (role !== Role.SUPER_ADMIN) {
+        } else {
             const restrictedFields = ['activeRegions', 'defaultRegionCode', 'subscriptionTier', 'maxUsers', 'maxCountries', 'maxProperties', 'subscriptionExpiresAt'];
             const attempted = restrictedFields.filter(f => f in dto);
             if (attempted.length) {
@@ -106,13 +108,14 @@ export class CompaniesService {
 
         // Enforce country limit based on subscription tier
         if (dto.activeRegions) {
-            const limits = TIER_LIMITS[company.subscriptionTier] || TIER_LIMITS[SubscriptionTier.FREE];
+            const effectiveTier = dto.subscriptionTier ?? company.subscriptionTier;
+            const limits = TIER_LIMITS[effectiveTier] || TIER_LIMITS[SubscriptionTier.FREE];
             const uniqueCountries = new Set(
                 dto.activeRegions.map(code => getRegionByCode(code)?.country).filter(Boolean),
             );
             if (uniqueCountries.size > limits.maxCountries) {
                 throw new BadRequestException(
-                    `Your ${company.subscriptionTier} plan allows up to ${limits.maxCountries} country. Upgrade to add more.`,
+                    `Your ${effectiveTier} plan allows up to ${limits.maxCountries} country. Upgrade to add more.`,
                 );
             }
         }
