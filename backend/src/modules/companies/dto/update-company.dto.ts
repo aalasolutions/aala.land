@@ -35,19 +35,19 @@ export class UpdateCompanyDto {
 
   @ApiPropertyOptional({ example: 5 })
   @IsInt()
-  @Min(0)
+  @Min(1)
   @IsOptional()
   maxUsers?: number;
 
   @ApiPropertyOptional({ example: 1 })
   @IsInt()
-  @Min(0)
+  @Min(1)
   @IsOptional()
   maxCountries?: number;
 
   @ApiPropertyOptional({ example: 100 })
   @IsInt()
-  @Min(0)
+  @Min(1)
   @IsOptional()
   maxProperties?: number;
 

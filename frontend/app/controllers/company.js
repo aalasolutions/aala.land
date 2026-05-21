@@ -113,7 +113,8 @@ export default class CompanyController extends Controller {
       const regionCountry = regionObj?.country;
 
       if (!this.selectedCountries.includes(regionCountry) && !this.canAddMoreCountries) {
-        this.notifications.error(`Your ${this.company?.subscriptionTier || 'FREE'} plan allows ${this.maxCountries} country. Upgrade to add more.`);
+        const limit = this.maxCountries;
+        this.notifications.error(`Your ${this.company?.subscriptionTier || 'FREE'} plan allows ${limit} ${limit === 1 ? 'country' : 'countries'}. Upgrade to add more.`);
         return;
       }
 
@@ -132,6 +133,12 @@ export default class CompanyController extends Controller {
     }
 
     if (this.isSaving) return;
+
+    if (this.formActiveRegions.length === 0) {
+      this.errorMsg = 'At least one region must be selected.';
+      return;
+    }
+
     this.isSaving = true;
     this.errorMsg = '';
 
@@ -142,10 +149,8 @@ export default class CompanyController extends Controller {
         method: 'PATCH',
         body: JSON.stringify({
           name: this.formName,
-          ...(this.formActiveRegions.length > 0 ? {
-            activeRegions: this.formActiveRegions,
-            defaultRegionCode: this.formDefaultRegionCode,
-          } : {}),
+          activeRegions: this.formActiveRegions,
+          defaultRegionCode: this.formDefaultRegionCode,
         }),
       });
 

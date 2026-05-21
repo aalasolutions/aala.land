@@ -86,7 +86,7 @@ export class CompaniesService {
         if (role === Role.SUPER_ADMIN) {
             // no restrictions
         } else if (role === Role.COMPANY_ADMIN || role === Role.ADMIN) {
-            const superAdminOnlyFields = ['subscriptionTier', 'maxUsers', 'maxCountries', 'maxProperties', 'subscriptionExpiresAt'];
+            const superAdminOnlyFields = ['isActive', 'subscriptionTier', 'maxUsers', 'maxCountries', 'maxProperties', 'subscriptionExpiresAt'];
             const attempted = superAdminOnlyFields.filter(f => f in dto);
             if (attempted.length) {
                 throw new ForbiddenException(`You are not allowed to update: ${attempted.join(', ')}`);
@@ -108,11 +108,13 @@ export class CompaniesService {
 
         // Enforce country limit — use stored company limit, but respect tier upgrade and explicit override
         if (dto.activeRegions) {
+            const storedMaxCountries = company.maxCountries
+                ?? (TIER_LIMITS[company.subscriptionTier] ?? TIER_LIMITS[SubscriptionTier.FREE]).maxCountries;
             const effectiveMaxCountries: number =
                 ('maxCountries' in dto ? dto.maxCountries : undefined) ??
                 (dto.subscriptionTier && dto.subscriptionTier !== company.subscriptionTier
                     ? (TIER_LIMITS[dto.subscriptionTier] ?? TIER_LIMITS[SubscriptionTier.FREE]).maxCountries
-                    : company.maxCountries);
+                    : storedMaxCountries);
             const uniqueCountries = new Set(
                 dto.activeRegions.map(code => getRegionByCode(code)?.country).filter(Boolean),
             );

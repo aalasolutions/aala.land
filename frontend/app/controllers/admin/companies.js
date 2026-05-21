@@ -32,6 +32,8 @@ export default class AdminCompaniesController extends Controller {
   @action
   closeEdit() {
     this.editingCompany = null;
+    this.editTier = '';
+    this.editExpiry = '';
   }
 
   @action

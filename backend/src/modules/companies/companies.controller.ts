@@ -50,12 +50,18 @@ export class CompaniesController {
     @UseGuards(JwtAuthGuard, RolesGuard)
     @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT, Role.ACCOUNTANT)
     @ApiOperation({ summary: 'Get company by ID' })
-    findOne(@Param('id', ParseUUIDPipe) id: string, @Request() req: AuthenticatedRequest) {
+    async findOne(@Param('id', ParseUUIDPipe) id: string, @Request() req: AuthenticatedRequest) {
         // Users can only view their own company, SUPER_ADMIN can view any
         if (req.user.role !== Role.SUPER_ADMIN && requireCompanyId(req.user) !== id) {
             throw new ForbiddenException('You do not have access to this company');
         }
-        return this.companiesService.findOneWithAdminEmail(id);
+        const result = await this.companiesService.findOneWithAdminEmail(id);
+        const canSeeAdminEmail = [Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN].includes(req.user.role as Role);
+        if (!canSeeAdminEmail) {
+            const { email: _email, ...rest } = result;
+            return rest;
+        }
+        return result;
     }
 
     @Patch(':id')
