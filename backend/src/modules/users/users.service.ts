@@ -1,4 +1,4 @@
-import { Injectable, Logger, NotFoundException, ConflictException, ForbiddenException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, ConflictException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In, Not } from 'typeorm';
 import { User } from './entities/user.entity';
@@ -13,6 +13,7 @@ import { MailService } from '../../shared/services/mail.service';
 import { EmailTemplatesService } from '../email-templates/email-templates.service';
 import { EmailTemplateCategory } from '../email-templates/entities/email-template.entity';
 import { Role } from '../../shared/enums/roles.enum';
+import { Company } from '../companies/entities/company.entity';
 
 @Injectable()
 export class UsersService {
@@ -21,6 +22,8 @@ export class UsersService {
     constructor(
         @InjectRepository(User)
         private readonly userRepository: Repository<User>,
+        @InjectRepository(Company)
+        private readonly companyRepository: Repository<Company>,
         private readonly mailService: MailService,
         private readonly emailTemplatesService: EmailTemplatesService,
     ) { }
@@ -33,6 +36,8 @@ export class UsersService {
                 throw new ForbiddenException('You are only allowed to assign roles with lower privilege than your own');
             }
         }
+
+        await this.enforceUserLimit(companyId);
 
         const existing = await this.userRepository.findOne({ where: { email: dto.email } });
         if (existing) {
@@ -194,6 +199,8 @@ export class UsersService {
             }
         }
 
+        await this.enforceUserLimit(companyId);
+
         const existing = await this.userRepository.findOne({ where: { email: dto.email } });
         if (existing) {
             throw new ConflictException('Email already exists');
@@ -222,6 +229,20 @@ export class UsersService {
         });
 
         return saved;
+    }
+
+    private async enforceUserLimit(companyId: string | undefined): Promise<void> {
+        if (!companyId) return;
+        const company = await this.companyRepository.findOne({ where: { id: companyId } });
+        if (!company) {
+            throw new NotFoundException(`Company ${companyId} not found`);
+        }
+        const currentCount = await this.userRepository.count({ where: { companyId } });
+        if (currentCount >= company.maxUsers) {
+            throw new BadRequestException(
+                `Your ${company.subscriptionTier} plan allows up to ${company.maxUsers} user${company.maxUsers === 1 ? '' : 's'}. Upgrade to add more.`,
+            );
+        }
     }
 
     private async sendInviteEmail(

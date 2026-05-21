@@ -3,17 +3,13 @@ import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateCol
 export enum SubscriptionTier {
     FREE = 'FREE',
     STARTER = 'STARTER',
-    GROWTH = 'GROWTH',
-    SCALE = 'SCALE',
-    ENTERPRISE = 'ENTERPRISE',
+    PRO = 'PRO',
 }
 
-export const TIER_LIMITS: Record<SubscriptionTier, { maxUsers: number; maxCountries: number }> = {
-    [SubscriptionTier.FREE]: { maxUsers: 1, maxCountries: 1 },
-    [SubscriptionTier.STARTER]: { maxUsers: 5, maxCountries: 1 },
-    [SubscriptionTier.GROWTH]: { maxUsers: 20, maxCountries: 2 },
-    [SubscriptionTier.SCALE]: { maxUsers: 999, maxCountries: 999 },
-    [SubscriptionTier.ENTERPRISE]: { maxUsers: 999, maxCountries: 999 },
+export const TIER_LIMITS: Record<SubscriptionTier, { maxUsers: number; maxCountries: number; maxProperties: number }> = {
+    [SubscriptionTier.FREE]:    { maxUsers: 1,   maxCountries: 1,   maxProperties: 25  },
+    [SubscriptionTier.STARTER]: { maxUsers: 5,   maxCountries: 1,   maxProperties: 100 },
+    [SubscriptionTier.PRO]:     { maxUsers: 999, maxCountries: 999, maxProperties: 999 },
 };
 
 @Entity('companies')
@@ -32,8 +28,8 @@ export class Company {
 
     @Column({
         name: 'subscription_tier',
-        type: 'enum',
-        enum: SubscriptionTier,
+        type: 'varchar',
+        length: 50,
         default: SubscriptionTier.FREE,
     })
     subscriptionTier: SubscriptionTier;
@@ -44,14 +40,17 @@ export class Company {
     @Column({ name: 'max_countries', type: 'int', default: 1 })
     maxCountries: number;
 
+    @Column({ name: 'max_properties', type: 'int', default: 25 })
+    maxProperties: number;
+
     @Column({ name: 'subscription_expires_at', type: 'timestamptz', nullable: true })
-    subscriptionExpiresAt: Date;
+    subscriptionExpiresAt: Date | null;
 
-    @Column({ name: 'active_regions', type: 'jsonb' })
-    activeRegions: string[];
+    @Column({ name: 'active_regions', type: 'jsonb', nullable: true })
+    activeRegions: string[] | null;
 
-    @Column({ name: 'default_region_code', type: 'varchar', length: 50 })
-    defaultRegionCode: string;
+    @Column({ name: 'default_region_code', type: 'varchar', length: 50, nullable: true })
+    defaultRegionCode: string | null;
 
     @CreateDateColumn({ name: 'created_at' })
     createdAt: Date;

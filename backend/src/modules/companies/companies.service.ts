@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Company, SubscriptionTier, TIER_LIMITS } from './entities/company.entity';
@@ -35,11 +35,28 @@ export class CompaniesService {
         return this.companyRepository.save(company);
     }
 
-    async findAll(page = 1, limit = 20): Promise<{ data: Company[]; total: number; page: number; limit: number }> {
-        const [data, total] = await this.companyRepository.findAndCount({
+    async findAll(page = 1, limit = 20): Promise<{ data: (Company & { usersCount: number })[]; total: number; page: number; limit: number }> {
+        const [companies, total] = await this.companyRepository.findAndCount({
             ...paginationOptions(page, limit),
             order: { createdAt: 'DESC' },
         });
+
+        if (companies.length === 0) {
+            return { data: [], total, page, limit };
+        }
+
+        const companyIds = companies.map(c => c.id);
+        const countRows = await this.userRepository
+            .createQueryBuilder('u')
+            .select('u.companyId', 'companyId')
+            .addSelect('COUNT(*)', 'count')
+            .where('u.companyId IN (:...ids)', { ids: companyIds })
+            .groupBy('u.companyId')
+            .getRawMany<{ companyId: string; count: string }>();
+
+        const countMap = new Map(countRows.map(r => [r.companyId, parseInt(r.count, 10)]));
+        const data = companies.map(c => ({ ...c, usersCount: countMap.get(c.id) ?? 0 }));
+
         return { data, total, page, limit };
     }
 
@@ -51,25 +68,32 @@ export class CompaniesService {
         return company;
     }
 
-    async findOneWithAdminEmail(id: string): Promise<Company & { email: string | null }> {
+    async findOneWithAdminEmail(id: string): Promise<Company & { email: string | null; usersCount: number }> {
         const company = await this.findOne(id);
-        const admin = await this.userRepository.findOne({
-            where: { companyId: id, role: Role.COMPANY_ADMIN },
-            select: ['email'],
-        });
-        return { ...company, email: admin?.email ?? null };
+        const [admin, usersCount] = await Promise.all([
+            this.userRepository.findOne({
+                where: { companyId: id, role: Role.COMPANY_ADMIN },
+                select: ['email'],
+            }),
+            this.userRepository.count({ where: { companyId: id } }),
+        ]);
+        return { ...company, email: admin?.email ?? null, usersCount };
     }
 
     async update(id: string, dto: UpdateCompanyDto, role?: string): Promise<Company> {
         const company = await this.findOne(id);
 
-        const restrictedFields = ['activeRegions', 'subscriptionTier', 'maxUsers', 'maxCountries', 'subscriptionExpiresAt'];
-
-        if (role === Role.ADMIN) {
-            for (const field of restrictedFields) {
-                if (field in dto) {
-                    delete (dto as Record<string, unknown>)[field];
-                }
+        if (role === Role.COMPANY_ADMIN) {
+            const superAdminOnlyFields = ['subscriptionTier', 'maxUsers', 'maxCountries', 'maxProperties', 'subscriptionExpiresAt'];
+            const attempted = superAdminOnlyFields.filter(f => f in dto);
+            if (attempted.length) {
+                throw new ForbiddenException(`You are not allowed to update: ${attempted.join(', ')}`);
+            }
+        } else if (role !== Role.SUPER_ADMIN) {
+            const restrictedFields = ['activeRegions', 'defaultRegionCode', 'subscriptionTier', 'maxUsers', 'maxCountries', 'maxProperties', 'subscriptionExpiresAt'];
+            const attempted = restrictedFields.filter(f => f in dto);
+            if (attempted.length) {
+                throw new ForbiddenException(`You are not allowed to update: ${attempted.join(', ')}`);
             }
         }
 
@@ -96,7 +120,7 @@ export class CompaniesService {
         // Cross-validate: defaultRegionCode must be in activeRegions
         const finalActiveRegions = dto.activeRegions ?? company.activeRegions;
         const finalDefaultRegion = dto.defaultRegionCode ?? company.defaultRegionCode;
-        if (!finalActiveRegions.includes(finalDefaultRegion)) {
+        if (finalActiveRegions && finalDefaultRegion && !finalActiveRegions.includes(finalDefaultRegion)) {
             throw new BadRequestException('defaultRegionCode must be included in activeRegions');
         }
 

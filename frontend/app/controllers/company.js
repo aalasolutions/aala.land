@@ -39,13 +39,36 @@ export default class CompanyController extends Controller {
     return tier && tier !== 'FREE';
   }
 
+  get planTierClass() {
+    const tier = (this.company?.subscriptionTier || 'FREE').toLowerCase();
+    return `plan-banner--${tier}`;
+  }
+
+  get planNameClass() {
+    const tier = (this.company?.subscriptionTier || 'FREE').toLowerCase();
+    return `plan-banner__name--${tier}`;
+  }
+
+  get planLimits() {
+    const c = this.company;
+    if (!c) return '';
+    const users = c.maxUsers >= 999 ? '∞' : c.maxUsers;
+    const countries = c.maxCountries >= 999 ? '∞' : c.maxCountries;
+    const props = c.maxProperties >= 999 ? '∞' : c.maxProperties;
+    const used = c.usersCount ?? '?';
+    return `${used} / ${users} users · ${countries} countr${countries === 1 ? 'y' : 'ies'} · ${props} properties`;
+  }
+
   get isAdmin() {
     return isAdminRole(this.auth.currentUser?.role);
   }
 
+  get isCompanyAdmin() {
+    return this.auth.currentUser?.role === 'company_admin';
+  }
+
   get maxCountries() {
-    const limits = { FREE: 1, STARTER: 1, GROWTH: 2, SCALE: 999, ENTERPRISE: 999 };
-    return limits[this.company?.subscriptionTier] || 1;
+    return this.company?.maxCountries ?? 1;
   }
 
   get selectedCountries() {

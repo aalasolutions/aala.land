@@ -1,0 +1,62 @@
+<h2>Company Admin — Plan Display</h2>
+<p class="subtitle">How should a company_admin see their current plan and limits?</p>
+
+<div class="cards">
+  <div class="card" data-choice="banner" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mockup">
+        <div class="mockup-header">Company Settings</div>
+        <div class="mockup-body" style="padding:12px; font-size:12px;">
+          <div style="background:linear-gradient(135deg,#1e3a1e,#2a4a2a); border:1px solid #3a6a3a; border-radius:8px; padding:12px; margin-bottom:12px; display:flex; justify-content:space-between; align-items:center;">
+            <div>
+              <div style="color:#7dbb73; font-size:13px; font-weight:600; margin-bottom:2px;">PRO Plan</div>
+              <div style="color:#aaa; font-size:11px;">Unlimited users · Unlimited countries · Unlimited properties</div>
+            </div>
+            <div style="text-align:right;">
+              <div style="color:#aaa; font-size:10px;">Expires</div>
+              <div style="font-size:11px;">2027-01-01</div>
+            </div>
+          </div>
+          <div style="background:#1a1a1a; border-radius:6px; padding:10px; font-size:11px;">
+            <div style="color:#aaa; font-size:10px; margin-bottom:6px;">COMPANY INFORMATION</div>
+            <div class="mock-input" style="margin-bottom:6px; padding:5px 8px;">Aamir Properties</div>
+            <div class="mock-input" style="padding:5px 8px; color:#666;">admin@aamir.com</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A — Plan banner at top</h3>
+      <p>A coloured banner above the form showing plan name, limits, and expiry. Subtle and always visible.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="sidebar-card" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mockup">
+        <div class="mockup-header">Company Settings</div>
+        <div class="mockup-body" style="padding:12px; font-size:12px; display:flex; gap:10px;">
+          <div style="flex:1; background:#1a1a1a; border-radius:6px; padding:10px;">
+            <div style="color:#aaa; font-size:10px; margin-bottom:6px;">COMPANY INFORMATION</div>
+            <div class="mock-input" style="margin-bottom:6px; padding:5px 8px; font-size:11px;">Aamir Properties</div>
+            <div class="mock-input" style="padding:5px 8px; font-size:11px; color:#666;">admin@aamir.com</div>
+            <button class="mock-button" style="margin-top:8px; font-size:10px; width:100%;">Save Changes</button>
+          </div>
+          <div style="width:140px;">
+            <div style="background:linear-gradient(135deg,#1e3a1e,#2a4a2a); border:1px solid #3a6a3a; border-radius:8px; padding:10px; text-align:center; margin-bottom:8px;">
+              <div style="color:#7dbb73; font-size:13px; font-weight:700; margin-bottom:4px;">PRO</div>
+              <div style="color:#aaa; font-size:10px; line-height:1.5;">∞ users<br>∞ countries<br>∞ properties</div>
+            </div>
+            <div style="background:#1a1a1a; border-radius:6px; padding:8px; font-size:10px; color:#aaa; text-align:center;">
+              Expires<br><span style="color:#ddd;">2027-01-01</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B — Plan card alongside form</h3>
+      <p>Plan info as a separate card sitting next to the company info form. Keeps info separate and glanceable.</p>
+    </div>
+  </div>
+</div>

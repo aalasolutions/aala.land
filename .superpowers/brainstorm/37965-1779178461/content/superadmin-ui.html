@@ -1,0 +1,93 @@
+<h2>Super Admin — Companies Page</h2>
+<p class="subtitle">How should the company plan management page look? Pick a layout.</p>
+
+<div class="cards">
+  <div class="card" data-choice="table" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mockup">
+        <div class="mockup-header">Admin › Companies</div>
+        <div class="mockup-body" style="padding: 12px; font-size: 12px;">
+          <div style="display:flex; gap:8px; margin-bottom:10px; align-items:center;">
+            <div class="mock-input" style="flex:1; font-size:11px; padding:4px 8px;">Search companies...</div>
+          </div>
+          <table style="width:100%; border-collapse:collapse; font-size:11px;">
+            <thead>
+              <tr style="border-bottom:1px solid #444; color:#aaa; text-align:left;">
+                <th style="padding:4px 8px;">Company</th>
+                <th style="padding:4px 8px;">Plan</th>
+                <th style="padding:4px 8px;">Users</th>
+                <th style="padding:4px 8px;">Expires</th>
+                <th style="padding:4px 8px;"></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr style="border-bottom:1px solid #333;">
+                <td style="padding:6px 8px;">Aamir Properties</td>
+                <td style="padding:6px 8px;"><span style="background:#2d5a27;color:#7dbb73;padding:2px 6px;border-radius:10px;font-size:10px;">PRO</span></td>
+                <td style="padding:6px 8px;">8 / ∞</td>
+                <td style="padding:6px 8px;">2027-01-01</td>
+                <td style="padding:6px 8px;"><button class="mock-button" style="font-size:10px;padding:2px 8px;">Edit</button></td>
+              </tr>
+              <tr style="border-bottom:1px solid #333;">
+                <td style="padding:6px 8px;">Dubai Homes</td>
+                <td style="padding:6px 8px;"><span style="background:#4a3a10;color:#c9a227;padding:2px 6px;border-radius:10px;font-size:10px;">STARTER</span></td>
+                <td style="padding:6px 8px;">3 / 5</td>
+                <td style="padding:6px 8px;">—</td>
+                <td style="padding:6px 8px;"><button class="mock-button" style="font-size:10px;padding:2px 8px;">Edit</button></td>
+              </tr>
+              <tr>
+                <td style="padding:6px 8px;">Al Barari</td>
+                <td style="padding:6px 8px;"><span style="background:#2a2a2a;color:#888;padding:2px 6px;border-radius:10px;font-size:10px;">FREE</span></td>
+                <td style="padding:6px 8px;">1 / 1</td>
+                <td style="padding:6px 8px;">—</td>
+                <td style="padding:6px 8px;"><button class="mock-button" style="font-size:10px;padding:2px 8px;">Edit</button></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A — Table with inline Edit</h3>
+      <p>All companies in a table. Click Edit → small modal/panel to change plan + expiry. Clean, scannable.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="detail" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mockup">
+        <div class="mockup-header">Admin › Companies › Aamir Properties</div>
+        <div class="mockup-body" style="padding:12px; font-size:12px;">
+          <div style="display:flex; gap:8px; margin-bottom:10px;">
+            <div style="flex:1; background:#1a1a1a; border-radius:6px; padding:8px;">
+              <div style="color:#aaa; font-size:10px; margin-bottom:4px;">COMPANY</div>
+              <div>Aamir Properties</div>
+            </div>
+            <div style="flex:1; background:#1a1a1a; border-radius:6px; padding:8px;">
+              <div style="color:#aaa; font-size:10px; margin-bottom:4px;">CURRENT PLAN</div>
+              <div style="color:#7dbb73;">PRO</div>
+            </div>
+            <div style="flex:1; background:#1a1a1a; border-radius:6px; padding:8px;">
+              <div style="color:#aaa; font-size:10px; margin-bottom:4px;">USERS</div>
+              <div>8 / ∞</div>
+            </div>
+          </div>
+          <div style="background:#1a1a1a; border-radius:6px; padding:10px; margin-top:8px;">
+            <div style="color:#aaa; font-size:10px; margin-bottom:6px;">CHANGE PLAN</div>
+            <div style="display:flex; gap:6px; margin-bottom:8px;">
+              <button class="mock-button" style="font-size:10px; opacity:0.5;">FREE</button>
+              <button class="mock-button" style="font-size:10px; opacity:0.5;">STARTER</button>
+              <button class="mock-button" style="font-size:10px; background:#4a7a4a;">PRO ✓</button>
+            </div>
+            <input class="mock-input" placeholder="Expiry date (optional)" style="width:100%; font-size:11px; margin-bottom:8px;" />
+            <button class="mock-button" style="font-size:11px;">Save Changes</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B — List + Detail Panel</h3>
+      <p>Click a company → slide open a detail panel with plan selector + expiry date + save. More room to show full info.</p>
+    </div>
+  </div>
+</div>

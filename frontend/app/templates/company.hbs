@@ -8,6 +8,17 @@
 </div>
 
 {{#if this.company}}
+  <div class="plan-banner {{this.planTierClass}}">
+    <div>
+      <div class="plan-banner__name {{this.planNameClass}}">{{or this.company.subscriptionTier "FREE"}}</div>
+      <div class="plan-banner__limits">{{this.planLimits}}</div>
+    </div>
+    {{#if this.company.subscriptionExpiresAt}}
+      <div class="plan-banner__expiry">
+        Expires {{format-date this.company.subscriptionExpiresAt}}
+      </div>
+    {{/if}}
+  </div>
   <div class="company-settings-grid">
     {{! Left: Company Info }}
     <div class="glass-panel p-6">
