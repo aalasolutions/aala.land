@@ -127,6 +127,13 @@ export class CompaniesService {
             throw new BadRequestException('defaultRegionCode must be included in activeRegions');
         }
 
+        if (dto.subscriptionTier && dto.subscriptionTier !== company.subscriptionTier) {
+            const tierLimits = TIER_LIMITS[dto.subscriptionTier] || TIER_LIMITS[SubscriptionTier.FREE];
+            if (!('maxUsers' in dto))      company.maxUsers      = tierLimits.maxUsers;
+            if (!('maxCountries' in dto))  company.maxCountries  = tierLimits.maxCountries;
+            if (!('maxProperties' in dto)) company.maxProperties = tierLimits.maxProperties;
+        }
+
         Object.assign(company, dto);
         return this.companyRepository.save(company);
     }
