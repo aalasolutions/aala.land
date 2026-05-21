@@ -106,16 +106,19 @@ export class CompaniesService {
             this.validateRegionCode(dto.defaultRegionCode);
         }
 
-        // Enforce country limit based on subscription tier
+        // Enforce country limit — use stored company limit, but respect tier upgrade and explicit override
         if (dto.activeRegions) {
-            const effectiveTier = dto.subscriptionTier ?? company.subscriptionTier;
-            const limits = TIER_LIMITS[effectiveTier] || TIER_LIMITS[SubscriptionTier.FREE];
+            const effectiveMaxCountries: number =
+                ('maxCountries' in dto ? dto.maxCountries : undefined) ??
+                (dto.subscriptionTier && dto.subscriptionTier !== company.subscriptionTier
+                    ? (TIER_LIMITS[dto.subscriptionTier] ?? TIER_LIMITS[SubscriptionTier.FREE]).maxCountries
+                    : company.maxCountries);
             const uniqueCountries = new Set(
                 dto.activeRegions.map(code => getRegionByCode(code)?.country).filter(Boolean),
             );
-            if (uniqueCountries.size > limits.maxCountries) {
+            if (uniqueCountries.size > effectiveMaxCountries) {
                 throw new BadRequestException(
-                    `Your ${effectiveTier} plan allows up to ${limits.maxCountries} country. Upgrade to add more.`,
+                    `Your plan allows up to ${effectiveMaxCountries} countr${effectiveMaxCountries === 1 ? 'y' : 'ies'}. Upgrade to add more.`,
                 );
             }
         }
@@ -129,9 +132,12 @@ export class CompaniesService {
 
         if (dto.subscriptionTier && dto.subscriptionTier !== company.subscriptionTier) {
             const tierLimits = TIER_LIMITS[dto.subscriptionTier] || TIER_LIMITS[SubscriptionTier.FREE];
-            if (!('maxUsers' in dto))      company.maxUsers      = tierLimits.maxUsers;
-            if (!('maxCountries' in dto))  company.maxCountries  = tierLimits.maxCountries;
-            if (!('maxProperties' in dto)) company.maxProperties = tierLimits.maxProperties;
+            if (!('maxUsers' in dto) && tierLimits.maxUsers > company.maxUsers)
+                company.maxUsers = tierLimits.maxUsers;
+            if (!('maxCountries' in dto) && tierLimits.maxCountries > company.maxCountries)
+                company.maxCountries = tierLimits.maxCountries;
+            if (!('maxProperties' in dto) && tierLimits.maxProperties > company.maxProperties)
+                company.maxProperties = tierLimits.maxProperties;
         }
 
         Object.assign(company, dto);

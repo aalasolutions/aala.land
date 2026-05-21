@@ -8,7 +8,7 @@ export default class AdminCompaniesRoute extends AuthenticatedRoute {
   beforeModel() {
     super.beforeModel(...arguments);
     if (this.auth.currentUser?.role !== 'super_admin') {
-      this.router.transitionTo('dashboard');
+      return this.router.transitionTo('dashboard');
     }
   }
 
