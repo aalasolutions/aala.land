@@ -46,6 +46,15 @@ export class Company {
     @Column({ name: 'subscription_expires_at', type: 'timestamptz', nullable: true })
     subscriptionExpiresAt: Date | null;
 
+    @Column({ name: 'stripe_customer_id', type: 'varchar', length: 255, nullable: true })
+    stripeCustomerId: string | null;
+
+    @Column({ name: 'stripe_subscription_id', type: 'varchar', length: 255, nullable: true })
+    stripeSubscriptionId: string | null;
+
+    @Column({ name: 'stripe_subscription_status', type: 'varchar', length: 50, nullable: true })
+    stripeSubscriptionStatus: string | null;
+
     @Column({ name: 'active_regions', type: 'jsonb', nullable: true })
     activeRegions: string[] | null;
 

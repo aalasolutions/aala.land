@@ -30,6 +30,7 @@ import { ReminderRulesModule } from '@modules/reminder-rules/reminder-rules.modu
 import { DocumentsModule } from '@modules/documents/documents.module';
 import { LocationsModule } from '@modules/locations/locations.module';
 import { SearchModule } from '@modules/search/search.module';
+import { BillingModule } from '@modules/billing/billing.module';
 
 @Module({
   imports: [
@@ -82,6 +83,7 @@ import { SearchModule } from '@modules/search/search.module';
     DocumentsModule,
     LocationsModule,
     SearchModule,
+    BillingModule,
   ],
   controllers: [AppController],
   providers: [
