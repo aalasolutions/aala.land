@@ -141,13 +141,16 @@ describe('BillingService', () => {
             repo.findOne.mockResolvedValue({
                 ...mockCompanyFree,
                 subscriptionTier: SubscriptionTier.STARTER,
+                stripeSubscriptionStatus: 'active',
                 stripeSubscriptionId: 'sub_existing',
                 stripeCustomerId: 'cus_existing',
             } as Company);
             mockStripe.subscriptions.retrieve.mockResolvedValue({
-                items: { data: [{ id: 'si_item123' }] },
+                items: { data: [{ id: 'si_item123', current_period_end: periodEnd }] },
             });
-            mockStripe.subscriptions.update.mockResolvedValue({ current_period_end: periodEnd });
+            mockStripe.subscriptions.update.mockResolvedValue({
+                items: { data: [{ current_period_end: periodEnd }] },
+            });
 
             const result = await service.createCheckoutSession('company-uuid-1', 'PRO');
 
@@ -161,6 +164,23 @@ describe('BillingService', () => {
                 subscriptionExpiresAt: new Date(periodEnd * 1000),
             }));
             expect(result).toEqual({ url: null });
+        });
+
+        it('falls through to checkout session when subscription is past_due', async () => {
+            repo.findOne.mockResolvedValue({
+                ...mockCompanyFree,
+                subscriptionTier: SubscriptionTier.STARTER,
+                stripeSubscriptionStatus: 'past_due',
+                stripeSubscriptionId: 'sub_existing',
+                stripeCustomerId: 'cus_existing',
+            } as Company);
+            mockStripe.checkout.sessions.create.mockResolvedValue({ url: 'https://checkout.stripe.com/pay/cs_test_abc' });
+
+            const result = await service.createCheckoutSession('company-uuid-1', 'PRO');
+
+            expect(mockStripe.subscriptions.update).not.toHaveBeenCalled();
+            expect(mockStripe.checkout.sessions.create).toHaveBeenCalled();
+            expect(result.url).toBeTruthy();
         });
     });
 
@@ -223,6 +243,7 @@ describe('BillingService', () => {
 
         it('handles checkout.session.completed — updates tier and subscription fields', async () => {
             const periodEnd = 1800000000;
+            repo.findOne.mockResolvedValue({ ...mockCompanyFree } as Company);
             mockStripe.webhooks.constructEvent.mockReturnValue({
                 type: 'checkout.session.completed',
                 data: {
@@ -232,7 +253,9 @@ describe('BillingService', () => {
                     },
                 },
             });
-            mockStripe.subscriptions.retrieve.mockResolvedValue({ current_period_end: periodEnd });
+            mockStripe.subscriptions.retrieve.mockResolvedValue({
+                items: { data: [{ current_period_end: periodEnd }] },
+            });
 
             await service.handleWebhook(rawBody, sig);
 
@@ -245,6 +268,23 @@ describe('BillingService', () => {
                 maxCountries: 1,
                 maxProperties: 100,
             });
+        });
+
+        it('handles checkout.session.completed — does nothing when company is not found', async () => {
+            repo.findOne.mockResolvedValue(null);
+            mockStripe.webhooks.constructEvent.mockReturnValue({
+                type: 'checkout.session.completed',
+                data: {
+                    object: {
+                        metadata: { companyId: 'deleted-company', tier: 'STARTER' },
+                        subscription: 'sub_new123',
+                    },
+                },
+            });
+
+            await service.handleWebhook(rawBody, sig);
+
+            expect(repo.update).not.toHaveBeenCalled();
         });
 
         it('handles checkout.session.completed — does nothing when metadata is missing', async () => {
@@ -269,7 +309,7 @@ describe('BillingService', () => {
             mockStripe.webhooks.constructEvent.mockReturnValue({
                 type: 'customer.subscription.updated',
                 data: {
-                    object: { id: 'sub_abc', status: 'past_due', customer: 'cus_123', current_period_end: periodEnd },
+                    object: { id: 'sub_abc', status: 'past_due', customer: 'cus_123', items: { data: [{ current_period_end: periodEnd }] } },
                 },
             });
 
@@ -323,6 +363,18 @@ describe('BillingService', () => {
             await service.handleWebhook(rawBody, sig);
 
             expect(repo.update).toHaveBeenCalledWith('company-uuid-1', { stripeSubscriptionStatus: 'past_due' });
+        });
+
+        it('handles invoice.payment_succeeded — clears past_due status', async () => {
+            repo.findOne.mockResolvedValue({ ...mockCompanyFree, id: 'company-uuid-1', stripeCustomerId: 'cus_123' } as Company);
+            mockStripe.webhooks.constructEvent.mockReturnValue({
+                type: 'invoice.payment_succeeded',
+                data: { object: { customer: 'cus_123' } },
+            });
+
+            await service.handleWebhook(rawBody, sig);
+
+            expect(repo.update).toHaveBeenCalledWith('company-uuid-1', { stripeSubscriptionStatus: 'active' });
         });
 
         it('ignores unhandled event types without error', async () => {
