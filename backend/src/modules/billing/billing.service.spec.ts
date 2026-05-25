@@ -9,7 +9,7 @@ import { Company, SubscriptionTier } from '../companies/entities/company.entity'
 const mockStripe = {
     customers: { create: jest.fn() },
     checkout: { sessions: { create: jest.fn() } },
-    subscriptions: { cancel: jest.fn(), retrieve: jest.fn() },
+    subscriptions: { cancel: jest.fn(), retrieve: jest.fn(), update: jest.fn() },
     webhooks: { constructEvent: jest.fn() },
 };
 
@@ -134,6 +134,33 @@ describe('BillingService', () => {
             expect(mockStripe.checkout.sessions.create).toHaveBeenCalledWith(
                 expect.objectContaining({ line_items: [{ price: 'price_pro', quantity: 1 }] }),
             );
+        });
+
+        it('upgrades in place when company already has an active subscription', async () => {
+            const periodEnd = Math.floor(Date.now() / 1000) + 86400 * 30;
+            repo.findOne.mockResolvedValue({
+                ...mockCompanyFree,
+                subscriptionTier: SubscriptionTier.STARTER,
+                stripeSubscriptionId: 'sub_existing',
+                stripeCustomerId: 'cus_existing',
+            } as Company);
+            mockStripe.subscriptions.retrieve.mockResolvedValue({
+                items: { data: [{ id: 'si_item123' }] },
+            });
+            mockStripe.subscriptions.update.mockResolvedValue({ current_period_end: periodEnd });
+
+            const result = await service.createCheckoutSession('company-uuid-1', 'PRO');
+
+            expect(mockStripe.subscriptions.update).toHaveBeenCalledWith('sub_existing', {
+                items: [{ id: 'si_item123', price: 'price_pro' }],
+                proration_behavior: 'create_prorations',
+            });
+            expect(repo.update).toHaveBeenCalledWith('company-uuid-1', expect.objectContaining({
+                subscriptionTier: SubscriptionTier.PRO,
+                stripeSubscriptionStatus: 'active',
+                subscriptionExpiresAt: new Date(periodEnd * 1000),
+            }));
+            expect(result).toEqual({ url: null });
         });
     });
 

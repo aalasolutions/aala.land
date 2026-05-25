@@ -145,10 +145,11 @@ export class BillingService {
     private async handleSubscriptionUpdated(subscription: any): Promise<void> {
         const company = await this.companyRepository.findOne({ where: { stripeSubscriptionId: subscription.id } });
         if (!company) return;
-        await this.companyRepository.update(company.id, {
-            stripeSubscriptionStatus: subscription.status,
-            subscriptionExpiresAt: new Date(subscription.current_period_end * 1000),
-        });
+        const patch: Record<string, any> = { stripeSubscriptionStatus: subscription.status };
+        if (subscription.current_period_end) {
+            patch.subscriptionExpiresAt = new Date(subscription.current_period_end * 1000);
+        }
+        await this.companyRepository.update(company.id, patch);
     }
 
     private async handleSubscriptionDeleted(subscription: any): Promise<void> {
