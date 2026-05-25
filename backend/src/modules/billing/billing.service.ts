@@ -74,7 +74,10 @@ export class BillingService {
             throw new BadRequestException('No active subscription to cancel');
         }
 
-        await this.stripe.subscriptions.cancel(company.stripeSubscriptionId);
+        const stripeSubscription = await this.stripe.subscriptions.retrieve(company.stripeSubscriptionId);
+        if (stripeSubscription.status !== 'canceled') {
+            await this.stripe.subscriptions.cancel(company.stripeSubscriptionId);
+        }
 
         const freeLimits = TIER_LIMITS[SubscriptionTier.FREE];
         await this.companyRepository.update(companyId, {
