@@ -59,7 +59,12 @@ export default class AdminCompaniesController extends Controller {
     if (this.editTier !== this.editingCompany.subscriptionTier) {
       body.subscriptionTier = this.editTier;
     }
-    body.subscriptionExpiresAt = this.editExpiry || null;
+    const currentExpiry = this.editingCompany.subscriptionExpiresAt
+      ? this.editingCompany.subscriptionExpiresAt.slice(0, 10)
+      : '';
+    if (this.editExpiry !== currentExpiry) {
+      body.subscriptionExpiresAt = this.editExpiry || null;
+    }
 
     try {
       await this.auth.fetchJson(`/companies/${this.editingCompany.id}`, {
