@@ -247,6 +247,22 @@ describe('BillingService', () => {
             });
         });
 
+        it('handles checkout.session.completed — does nothing when metadata is missing', async () => {
+            mockStripe.webhooks.constructEvent.mockReturnValue({
+                type: 'checkout.session.completed',
+                data: {
+                    object: {
+                        metadata: null,
+                        subscription: 'sub_new123',
+                    },
+                },
+            });
+
+            await service.handleWebhook(rawBody, sig);
+
+            expect(repo.update).not.toHaveBeenCalled();
+        });
+
         it('handles customer.subscription.updated — syncs status and expiry', async () => {
             const periodEnd = 1800000000;
             repo.findOne.mockResolvedValue({ ...mockCompanyFree, id: 'company-uuid-1', stripeSubscriptionId: 'sub_abc' } as Company);

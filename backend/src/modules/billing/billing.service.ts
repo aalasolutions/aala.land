@@ -127,6 +127,7 @@ export class BillingService {
 
     private async handleCheckoutCompleted(session: any): Promise<void> {
         if (!session.subscription) return;
+        if (!session.metadata) return;
         const { companyId, tier } = session.metadata;
         const limits = TIER_LIMITS[tier as SubscriptionTier];
         if (!limits) return;
