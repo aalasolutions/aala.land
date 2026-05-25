@@ -28,13 +28,14 @@ export class BillingService {
         // Company already has an active subscription — update the price in place
         if (company.stripeSubscriptionId) {
             const subscription = await this.stripe.subscriptions.retrieve(company.stripeSubscriptionId);
-            await this.stripe.subscriptions.update(company.stripeSubscriptionId, {
+            const updated = await this.stripe.subscriptions.update(company.stripeSubscriptionId, {
                 items: [{ id: subscription.items.data[0].id, price: priceId }],
                 proration_behavior: 'create_prorations',
             });
             const limits = TIER_LIMITS[tier as SubscriptionTier];
             await this.companyRepository.update(companyId, {
                 subscriptionTier: tier as SubscriptionTier,
+                subscriptionExpiresAt: new Date(updated.current_period_end * 1000),
                 maxUsers: limits.maxUsers,
                 maxCountries: limits.maxCountries,
                 maxProperties: limits.maxProperties,
@@ -74,6 +75,17 @@ export class BillingService {
         }
 
         await this.stripe.subscriptions.cancel(company.stripeSubscriptionId);
+
+        const freeLimits = TIER_LIMITS[SubscriptionTier.FREE];
+        await this.companyRepository.update(companyId, {
+            subscriptionTier: SubscriptionTier.FREE,
+            stripeSubscriptionId: null,
+            stripeSubscriptionStatus: 'canceled',
+            subscriptionExpiresAt: null,
+            maxUsers: freeLimits.maxUsers,
+            maxCountries: freeLimits.maxCountries,
+            maxProperties: freeLimits.maxProperties,
+        });
     }
 
     async handleWebhook(rawBody: Buffer, signature: string): Promise<void> {

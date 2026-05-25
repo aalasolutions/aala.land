@@ -132,6 +132,7 @@ export default class CompanyController extends Controller {
       }
     } catch (e) {
       this.notifications.error(e.message || 'Failed to start checkout');
+    } finally {
       this.isUpgrading = false;
     }
   }
