@@ -206,15 +206,17 @@ export class BillingService {
     }
 
     private async handlePaymentFailed(invoice: any): Promise<void> {
-        if (!invoice.subscription) return;
-        const company = await this.companyRepository.findOne({ where: { stripeSubscriptionId: invoice.subscription as string } });
+        const subscriptionId = invoice.parent?.subscription_details?.subscription as string | undefined;
+        if (!subscriptionId) return;
+        const company = await this.companyRepository.findOne({ where: { stripeSubscriptionId: subscriptionId } });
         if (!company) return;
         await this.companyRepository.update(company.id, { stripeSubscriptionStatus: 'past_due' });
     }
 
     private async handlePaymentSucceeded(invoice: any): Promise<void> {
-        if (!invoice.subscription) return;
-        const company = await this.companyRepository.findOne({ where: { stripeSubscriptionId: invoice.subscription as string } });
+        const subscriptionId = invoice.parent?.subscription_details?.subscription as string | undefined;
+        if (!subscriptionId) return;
+        const company = await this.companyRepository.findOne({ where: { stripeSubscriptionId: subscriptionId } });
         if (!company) return;
         await this.companyRepository.update(company.id, { stripeSubscriptionStatus: 'active' });
     }

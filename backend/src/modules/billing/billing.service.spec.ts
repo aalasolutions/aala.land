@@ -357,7 +357,7 @@ describe('BillingService', () => {
             repo.findOne.mockResolvedValue({ ...mockCompanyFree, id: 'company-uuid-1', stripeSubscriptionId: 'sub_abc123' } as Company);
             mockStripe.webhooks.constructEvent.mockReturnValue({
                 type: 'invoice.payment_failed',
-                data: { object: { customer: 'cus_123', subscription: 'sub_abc123' } },
+                data: { object: { customer: 'cus_123', parent: { subscription_details: { subscription: 'sub_abc123' } } } },
             });
 
             await service.handleWebhook(rawBody, sig);
@@ -368,7 +368,7 @@ describe('BillingService', () => {
         it('handles invoice.payment_failed — does nothing for non-subscription invoice', async () => {
             mockStripe.webhooks.constructEvent.mockReturnValue({
                 type: 'invoice.payment_failed',
-                data: { object: { customer: 'cus_123', subscription: null } },
+                data: { object: { customer: 'cus_123', parent: null } },
             });
 
             await service.handleWebhook(rawBody, sig);
@@ -380,7 +380,7 @@ describe('BillingService', () => {
             repo.findOne.mockResolvedValue({ ...mockCompanyFree, id: 'company-uuid-1', stripeSubscriptionId: 'sub_abc123' } as Company);
             mockStripe.webhooks.constructEvent.mockReturnValue({
                 type: 'invoice.payment_succeeded',
-                data: { object: { customer: 'cus_123', subscription: 'sub_abc123' } },
+                data: { object: { customer: 'cus_123', parent: { subscription_details: { subscription: 'sub_abc123' } } } },
             });
 
             await service.handleWebhook(rawBody, sig);
@@ -391,7 +391,7 @@ describe('BillingService', () => {
         it('handles invoice.payment_succeeded — does nothing for non-subscription invoice', async () => {
             mockStripe.webhooks.constructEvent.mockReturnValue({
                 type: 'invoice.payment_succeeded',
-                data: { object: { customer: 'cus_123', subscription: null } },
+                data: { object: { customer: 'cus_123', parent: null } },
             });
 
             await service.handleWebhook(rawBody, sig);
