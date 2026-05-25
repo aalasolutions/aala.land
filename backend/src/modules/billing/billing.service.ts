@@ -21,6 +21,11 @@ export class BillingService {
             throw new BadRequestException(`Already on ${tier} plan`);
         }
 
+        const tierOrder: Record<string, number> = { FREE: 0, STARTER: 1, PRO: 2 };
+        if (tierOrder[tier] < tierOrder[company.subscriptionTier]) {
+            throw new BadRequestException('Use the cancel endpoint to downgrade your subscription');
+        }
+
         const priceId = tier === 'STARTER'
             ? this.configService.get<string>('STRIPE_STARTER_PRICE_ID')!
             : this.configService.get<string>('STRIPE_PRO_PRICE_ID')!;
@@ -35,6 +40,7 @@ export class BillingService {
             const limits = TIER_LIMITS[tier as SubscriptionTier];
             await this.companyRepository.update(companyId, {
                 subscriptionTier: tier as SubscriptionTier,
+                stripeSubscriptionStatus: 'active',
                 subscriptionExpiresAt: new Date(updated.current_period_end * 1000),
                 maxUsers: limits.maxUsers,
                 maxCountries: limits.maxCountries,
@@ -120,8 +126,10 @@ export class BillingService {
     }
 
     private async handleCheckoutCompleted(session: any): Promise<void> {
+        if (!session.subscription) return;
         const { companyId, tier } = session.metadata;
         const limits = TIER_LIMITS[tier as SubscriptionTier];
+        if (!limits) return;
         const subscription = await this.stripe.subscriptions.retrieve(session.subscription as string);
         await this.companyRepository.update(companyId, {
             subscriptionTier: tier as SubscriptionTier,

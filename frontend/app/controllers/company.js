@@ -150,7 +150,7 @@ export default class CompanyController extends Controller {
     this.isCanceling = true;
     try {
       await this.auth.fetchJson('/billing/cancel', { method: 'POST' });
-      this.notifications.success('Cancellation requested. Your plan will be downgraded to FREE shortly.');
+      this.notifications.success('Subscription cancelled. Your plan has been downgraded to FREE.');
       this.showCancelConfirm = false;
       this.router.refresh('company');
     } catch (e) {

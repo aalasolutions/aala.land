@@ -153,6 +153,7 @@ describe('BillingService', () => {
                 ...mockCompanyFree,
                 stripeSubscriptionId: 'sub_abc123',
             } as Company);
+            mockStripe.subscriptions.retrieve.mockResolvedValue({ status: 'active' });
             mockStripe.subscriptions.cancel.mockResolvedValue({ id: 'sub_abc123', status: 'canceled' });
 
             await service.cancelSubscription('company-uuid-1');
@@ -160,16 +161,25 @@ describe('BillingService', () => {
             expect(mockStripe.subscriptions.cancel).toHaveBeenCalledWith('sub_abc123');
         });
 
-        it('does NOT update the company tier (webhook handles that)', async () => {
+        it('immediately downgrades company to FREE and clears subscription data', async () => {
             repo.findOne.mockResolvedValue({
                 ...mockCompanyFree,
                 stripeSubscriptionId: 'sub_abc123',
             } as Company);
+            mockStripe.subscriptions.retrieve.mockResolvedValue({ status: 'active' });
             mockStripe.subscriptions.cancel.mockResolvedValue({ id: 'sub_abc123', status: 'canceled' });
 
             await service.cancelSubscription('company-uuid-1');
 
-            expect(repo.update).not.toHaveBeenCalled();
+            expect(repo.update).toHaveBeenCalledWith('company-uuid-1', {
+                subscriptionTier: SubscriptionTier.FREE,
+                stripeSubscriptionId: null,
+                stripeSubscriptionStatus: 'canceled',
+                subscriptionExpiresAt: null,
+                maxUsers: 1,
+                maxCountries: 1,
+                maxProperties: 25,
+            });
         });
     });
 

@@ -66,6 +66,12 @@ export default class AdminCompaniesController extends Controller {
       body.subscriptionExpiresAt = this.editExpiry || null;
     }
 
+    if (Object.keys(body).length === 0) {
+      this.closeEdit();
+      this.isSaving = false;
+      return;
+    }
+
     try {
       await this.auth.fetchJson(`/companies/${this.editingCompany.id}`, {
         method: 'PATCH',
