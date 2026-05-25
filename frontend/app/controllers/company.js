@@ -123,7 +123,13 @@ export default class CompanyController extends Controller {
         method: 'POST',
         body: JSON.stringify({ tier }),
       });
-      window.location.href = response.data.url;
+      if (response.data.url) {
+        window.location.href = response.data.url;
+      } else {
+        this.notifications.success('Plan upgraded successfully.');
+        this.showUpgradeModal = false;
+        this.router.refresh('company');
+      }
     } catch (e) {
       this.notifications.error(e.message || 'Failed to start checkout');
       this.isUpgrading = false;
@@ -143,7 +149,7 @@ export default class CompanyController extends Controller {
     this.isCanceling = true;
     try {
       await this.auth.fetchJson('/billing/cancel', { method: 'POST' });
-      this.notifications.success('Subscription cancelled. Your plan has been downgraded to FREE.');
+      this.notifications.success('Cancellation requested. Your plan will be downgraded to FREE shortly.');
       this.showCancelConfirm = false;
       this.router.refresh('company');
     } catch (e) {

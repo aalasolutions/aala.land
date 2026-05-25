@@ -13,12 +13,33 @@ export class BillingService {
         @Inject('STRIPE') private readonly stripe: any,
     ) {}
 
-    async createCheckoutSession(companyId: string, tier: 'STARTER' | 'PRO'): Promise<{ url: string }> {
+    async createCheckoutSession(companyId: string, tier: 'STARTER' | 'PRO'): Promise<{ url: string | null }> {
         const company = await this.companyRepository.findOne({ where: { id: companyId } });
         if (!company) throw new ForbiddenException('Company not found');
 
         if (company.subscriptionTier === tier) {
             throw new BadRequestException(`Already on ${tier} plan`);
+        }
+
+        const priceId = tier === 'STARTER'
+            ? this.configService.get<string>('STRIPE_STARTER_PRICE_ID')!
+            : this.configService.get<string>('STRIPE_PRO_PRICE_ID')!;
+
+        // Company already has an active subscription — update the price in place
+        if (company.stripeSubscriptionId) {
+            const subscription = await this.stripe.subscriptions.retrieve(company.stripeSubscriptionId);
+            await this.stripe.subscriptions.update(company.stripeSubscriptionId, {
+                items: [{ id: subscription.items.data[0].id, price: priceId }],
+                proration_behavior: 'create_prorations',
+            });
+            const limits = TIER_LIMITS[tier as SubscriptionTier];
+            await this.companyRepository.update(companyId, {
+                subscriptionTier: tier as SubscriptionTier,
+                maxUsers: limits.maxUsers,
+                maxCountries: limits.maxCountries,
+                maxProperties: limits.maxProperties,
+            });
+            return { url: null };
         }
 
         let customerId = company.stripeCustomerId;
@@ -29,10 +50,6 @@ export class BillingService {
             customerId = customer.id;
             await this.companyRepository.update(company.id, { stripeCustomerId: customerId });
         }
-
-        const priceId = tier === 'STARTER'
-            ? this.configService.get<string>('STRIPE_STARTER_PRICE_ID')!
-            : this.configService.get<string>('STRIPE_PRO_PRICE_ID')!;
 
         const frontendUrl = this.configService.get<string>('FRONTEND_URL') || 'http://localhost:4200';
 
