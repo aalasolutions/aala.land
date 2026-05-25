@@ -354,10 +354,10 @@ describe('BillingService', () => {
         });
 
         it('handles invoice.payment_failed — sets past_due status', async () => {
-            repo.findOne.mockResolvedValue({ ...mockCompanyFree, id: 'company-uuid-1', stripeCustomerId: 'cus_123' } as Company);
+            repo.findOne.mockResolvedValue({ ...mockCompanyFree, id: 'company-uuid-1', stripeSubscriptionId: 'sub_abc123' } as Company);
             mockStripe.webhooks.constructEvent.mockReturnValue({
                 type: 'invoice.payment_failed',
-                data: { object: { customer: 'cus_123' } },
+                data: { object: { customer: 'cus_123', subscription: 'sub_abc123' } },
             });
 
             await service.handleWebhook(rawBody, sig);
@@ -365,16 +365,38 @@ describe('BillingService', () => {
             expect(repo.update).toHaveBeenCalledWith('company-uuid-1', { stripeSubscriptionStatus: 'past_due' });
         });
 
+        it('handles invoice.payment_failed — does nothing for non-subscription invoice', async () => {
+            mockStripe.webhooks.constructEvent.mockReturnValue({
+                type: 'invoice.payment_failed',
+                data: { object: { customer: 'cus_123', subscription: null } },
+            });
+
+            await service.handleWebhook(rawBody, sig);
+
+            expect(repo.update).not.toHaveBeenCalled();
+        });
+
         it('handles invoice.payment_succeeded — clears past_due status', async () => {
-            repo.findOne.mockResolvedValue({ ...mockCompanyFree, id: 'company-uuid-1', stripeCustomerId: 'cus_123' } as Company);
+            repo.findOne.mockResolvedValue({ ...mockCompanyFree, id: 'company-uuid-1', stripeSubscriptionId: 'sub_abc123' } as Company);
             mockStripe.webhooks.constructEvent.mockReturnValue({
                 type: 'invoice.payment_succeeded',
-                data: { object: { customer: 'cus_123' } },
+                data: { object: { customer: 'cus_123', subscription: 'sub_abc123' } },
             });
 
             await service.handleWebhook(rawBody, sig);
 
             expect(repo.update).toHaveBeenCalledWith('company-uuid-1', { stripeSubscriptionStatus: 'active' });
+        });
+
+        it('handles invoice.payment_succeeded — does nothing for non-subscription invoice', async () => {
+            mockStripe.webhooks.constructEvent.mockReturnValue({
+                type: 'invoice.payment_succeeded',
+                data: { object: { customer: 'cus_123', subscription: null } },
+            });
+
+            await service.handleWebhook(rawBody, sig);
+
+            expect(repo.update).not.toHaveBeenCalled();
         });
 
         it('ignores unhandled event types without error', async () => {
