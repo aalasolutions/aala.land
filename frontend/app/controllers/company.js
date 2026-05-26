@@ -44,7 +44,7 @@ export default class CompanyController extends Controller {
   }
 
   get maxCountries() {
-    const limits = { FREE: 1, STARTER: 1, GROWTH: 2, SCALE: 999, ENTERPRISE: 999 };
+    const limits = { FREE: 1, STARTER: 1, PRO: 999 };
     return limits[this.company?.subscriptionTier] || 1;
   }
 
