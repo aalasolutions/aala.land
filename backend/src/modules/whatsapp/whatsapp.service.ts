@@ -1,5 +1,7 @@
 // backend/src/modules/whatsapp/whatsapp.service.ts
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { existsSync, readFileSync, writeFileSync } from 'fs';
+import { join } from 'path';
 import { BaileysManagerService, BaileysInstance } from './baileys-manager.service';
 import { MessageStoreService } from './message-store.service';
 import { WhatsappAiService } from './whatsapp-ai.service';
@@ -7,9 +9,10 @@ import { WhatsappGateway } from './whatsapp.gateway';
 import { AiHistoryMessage, WaChat, WaMessage, WaStatus } from './wa-types';
 
 @Injectable()
-export class WhatsappService {
+export class WhatsappService implements OnModuleInit {
   private readonly logger = new Logger(WhatsappService.name);
   private wiredUsers = new Set<string>();
+  private readonly dataDir = process.env.WHATSAPP_DATA_DIR ?? join(process.cwd(), 'data', 'whatsapp');
 
   constructor(
     private readonly manager: BaileysManagerService,
@@ -18,15 +21,43 @@ export class WhatsappService {
     private readonly gateway: WhatsappGateway,
   ) {}
 
+  // ── Boot wiring ────────────────────────────────────────────────────────
+
+  async onModuleInit(): Promise<void> {
+    // BaileysManagerService.onModuleInit already ran — wire any pre-started instances
+    for (const [userId, inst] of this.manager.getAll()) {
+      const companyId = this.readPersistedCompanyId(userId);
+      if (companyId) {
+        this.wireInstance(userId, companyId, inst);
+        this.wiredUsers.add(userId);
+        this.logger.log(`Auto-wired AI for user ${userId}`);
+      }
+    }
+  }
+
   // ── Instance wiring ────────────────────────────────────────────────────
 
   private async ensureInstance(userId: string, companyId: string): Promise<BaileysInstance> {
     const inst = await this.manager.getOrCreate(userId);
     if (!this.wiredUsers.has(userId)) {
+      this.persistCompanyId(userId, companyId);
       this.wireInstance(userId, companyId, inst);
       this.wiredUsers.add(userId);
     }
     return inst;
+  }
+
+  private persistCompanyId(userId: string, companyId: string): void {
+    try {
+      writeFileSync(join(this.dataDir, 'sessions', userId, 'company_id'), companyId, 'utf8');
+    } catch { /* non-fatal */ }
+  }
+
+  private readPersistedCompanyId(userId: string): string | null {
+    try {
+      const p = join(this.dataDir, 'sessions', userId, 'company_id');
+      return existsSync(p) ? readFileSync(p, 'utf8').trim() : null;
+    } catch { return null; }
   }
 
   private wireInstance(userId: string, companyId: string, inst: BaileysInstance): void {
@@ -144,7 +175,7 @@ export class WhatsappService {
     return { success: true };
   }
 
-  toggleAi(userId: string, companyId: string, enabled?: boolean): { enabled: boolean } {
+  toggleAi(userId: string, _companyId: string, enabled?: boolean): { enabled: boolean } {
     const next = typeof enabled === 'boolean'
       ? this.ai.setEnabled(userId, enabled)
       : this.ai.setEnabled(userId, !this.ai.isEnabled(userId));
@@ -155,14 +186,13 @@ export class WhatsappService {
   // ── Media ─────────────────────────────────────────────────────────────
 
   async getMediaDirs(userId: string, companyId: string): Promise<Record<string, string>> {
-    const inst = await this.ensureInstance(userId, companyId);
-    // BaileysInstance does not expose mediaDirs directly; derive from known pattern
-    const dataDir = process.env.WHATSAPP_DATA_DIR ?? require('path').join(process.cwd(), 'data', 'whatsapp');
+    await this.ensureInstance(userId, companyId);
+    const mediaBase = join(this.dataDir, 'media', userId);
     return {
-      IMAGE_DIR: require('path').join(dataDir, 'media', userId, 'images'),
-      VIDEO_DIR: require('path').join(dataDir, 'media', userId, 'videos'),
-      AUDIO_DIR: require('path').join(dataDir, 'media', userId, 'audio'),
-      DOCUMENT_DIR: require('path').join(dataDir, 'media', userId, 'documents'),
+      IMAGE_DIR: join(mediaBase, 'images'),
+      VIDEO_DIR: join(mediaBase, 'videos'),
+      AUDIO_DIR: join(mediaBase, 'audio'),
+      DOCUMENT_DIR: join(mediaBase, 'documents'),
     };
   }
 }

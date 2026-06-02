@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { AiHistoryMessage } from './wa-types';
 import { WhatsappSettings } from './entities/whatsapp-settings.entity';
+import { WhatsappContextService } from './whatsapp-context.service';
 
 interface PromptCacheEntry {
   prompt: string | null;
@@ -20,6 +21,7 @@ export class WhatsappAiService {
   constructor(
     @InjectRepository(WhatsappSettings)
     private readonly settingsRepo: Repository<WhatsappSettings>,
+    private readonly contextService: WhatsappContextService,
   ) {}
 
   getConfig(userId: string) {
@@ -51,6 +53,7 @@ export class WhatsappAiService {
 
   clearPromptCache(companyId?: string): void {
     companyId ? this.promptCache.delete(companyId) : this.promptCache.clear();
+    this.contextService.clearCache(companyId);
   }
 
   recordAssistantTurn(chatId: string, content: string): void {
@@ -76,8 +79,14 @@ export class WhatsappAiService {
     this.trimHistory(evt.chatId, history);
 
     try {
-      const systemPrompt = await this.getCompanyPrompt(companyId);
-      const reply = await this.callLLM([{ role: 'system', content: systemPrompt }, ...history]);
+      const [systemPrompt, contextBlock] = await Promise.all([
+        this.getCompanyPrompt(companyId),
+        this.contextService.getContextBlock(companyId),
+      ]);
+      const fullSystemPrompt = contextBlock
+        ? `${systemPrompt}\n\n${contextBlock}`
+        : systemPrompt;
+      const reply = await this.callLLM([{ role: 'system', content: fullSystemPrompt }, ...history]);
       if (!reply) return;
 
       history.push({ role: 'assistant', content: reply });
@@ -129,6 +138,10 @@ export class WhatsappAiService {
         signal: controller.signal,
       });
       const data = await res.json() as any;
+      if (!res.ok) {
+        this.logger.error(`LLM API error ${res.status}: ${data?.error?.message ?? JSON.stringify(data)}`);
+        return null;
+      }
       return data?.choices?.[0]?.message?.content ?? null;
     } finally {
       clearTimeout(timer);

@@ -329,7 +329,7 @@ export class BaileysManagerService implements OnModuleInit, OnModuleDestroy {
       makeWASocket: b.default,
       useMultiFileAuthState: b.useMultiFileAuthState,
       DisconnectReason: b.DisconnectReason as unknown as Record<string, number>,
-      downloadMediaMessage: b.downloadMediaMessage,
+      downloadMediaMessage: b.downloadMediaMessage as (msg: any, type: string, opts: any) => Promise<any>,
       jidNormalizedUser: b.jidNormalizedUser,
     };
 
@@ -385,6 +385,10 @@ export class BaileysManagerService implements OnModuleInit, OnModuleDestroy {
 
   get(userId: string): BaileysInstance | undefined {
     return this.instances.get(userId);
+  }
+
+  getAll(): Map<string, BaileysInstance> {
+    return this.instances;
   }
 
   async remove(userId: string): Promise<void> {

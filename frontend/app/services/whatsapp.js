@@ -1,6 +1,4 @@
-// frontend/app/services/whatsapp.js
-import Service from '@ember/service';
-import { service } from '@ember/service';
+import Service, { service } from '@ember/service';
 import { io } from 'socket.io-client';
 import ENV from 'frontend/config/environment';
 
@@ -14,8 +12,6 @@ export default class WhatsappService extends Service {
     return ENV.APP.API_URL || new URL(base).origin;
   }
 
-  // ── Socket ────────────────────────────────────────────────────────────
-
   connectSocket(onEvent) {
     if (this._socket) return this._socket;
 
@@ -25,7 +21,7 @@ export default class WhatsappService extends Service {
 
     // Join the user-specific room so events are scoped
     this._socket.on('connect', () => {
-      const userId = this.auth.currentUser?.userId;
+      const userId = this.auth.currentUser?.id;
       if (userId) {
         this._socket.emit('join', { userId });
       }
@@ -45,8 +41,6 @@ export default class WhatsappService extends Service {
       this._socket = null;
     }
   }
-
-  // ── REST helpers ──────────────────────────────────────────────────────
 
   getConnection()          { return this.auth.fetchJson('/whatsapp/connection'); }
   getQR()                  { return this.auth.fetchJson('/whatsapp/qr'); }
