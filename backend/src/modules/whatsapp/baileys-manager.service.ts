@@ -23,6 +23,7 @@ export class BaileysInstance {
 
   private sock: any = null;
   private shouldReconnect = true;
+  private reconnectPending = false;
   private connectedAt = 0;
   private status: WaStatus = {
     connection: 'disconnected',
@@ -42,6 +43,16 @@ export class BaileysInstance {
   // ── Lifecycle ───────────────────────────────────────────────────────────
 
   async start(): Promise<void> {
+    // Clean up any existing socket BEFORE creating a new one.
+    // Without this, the old socket's event handlers keep firing after reconnect,
+    // triggering another close → another reconnect → infinite loop.
+    if (this.sock) {
+      const old = this.sock;
+      this.sock = null;
+      old.ev.removeAllListeners();
+      await old.end(undefined).catch(() => {});
+    }
+
     this.status.connection = 'connecting';
     this.status.qr = null;
     this.emitter.emit('status', { ...this.status });
@@ -73,6 +84,7 @@ export class BaileysInstance {
       if (connection === 'close') {
         const code = lastDisconnect?.error?.output?.statusCode;
         const loggedOut = code === this.baileysFns.DisconnectReason.loggedOut;
+        this.logger.log(`[${this.userId}] Disconnected — code ${code ?? 'unknown'}${loggedOut ? ' (logged out)' : ''}`);
         this.status = {
           ...this.status,
           connection: 'disconnected',
@@ -80,8 +92,12 @@ export class BaileysInstance {
           hasCredentials: !loggedOut,
         };
         this.emitter.emit('status', { ...this.status });
-        if (!loggedOut && this.shouldReconnect) {
-          setTimeout(() => this.start(), 3000);
+        if (!loggedOut && this.shouldReconnect && !this.reconnectPending) {
+          this.reconnectPending = true;
+          setTimeout(() => {
+            this.reconnectPending = false;
+            void this.start();
+          }, 3000);
         }
       } else if (connection === 'open') {
         this.connectedAt = Math.floor(Date.now() / 1000);
@@ -122,6 +138,7 @@ export class BaileysInstance {
   }
 
   async stop(): Promise<void> {
+    this.reconnectPending = false;
     if (this.sock) {
       this.sock.ev.removeAllListeners();
       await this.sock.end(undefined).catch(() => {});

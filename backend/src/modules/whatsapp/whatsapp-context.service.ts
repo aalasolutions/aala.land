@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { Company } from '../companies/entities/company.entity';
 import { Listing, ListingStatus } from '../properties/entities/listing.entity';
 import { Unit, UnitStatus } from '../properties/entities/unit.entity';
+import { REGIONS } from '../../shared/constants/regions';
 
 interface ContextCacheEntry {
   block: string;
@@ -58,6 +59,8 @@ export class WhatsappContextService {
 
     const parts: string[] = [];
 
+    const currency = REGIONS.find(r => (company?.activeRegions ?? []).includes(r.code))?.currency ?? '';
+
     if (company) {
       const regions = (company.activeRegions ?? []).join(', ');
       parts.push(
@@ -81,7 +84,7 @@ export class WhatsappContextService {
         const contact = [l.contactPhone, l.contactEmail].filter(Boolean).join(' / ');
 
         const rows = [
-          `${i + 1}. [${l.type}] ${l.title} — AED ${Number(l.price).toLocaleString()}`,
+          `${i + 1}. [${l.type}] ${l.title} — ${currency} ${Number(l.price).toLocaleString()}`,
           `   Location: ${location || 'N/A'}`,
           asset?.address ? `   Address: ${asset.address}` : '',
           `   Size: ${[beds, baths, sqft].filter(Boolean).join(' | ')}`,
@@ -114,7 +117,7 @@ export class WhatsappContextService {
           const sqft = u.sqFt ? `${u.sqFt} sqft` : '';
           const amenities = (u.amenities ?? []).join(', ');
           const photos = (u.photos ?? []).slice(0, 3);
-          const price = u.price ? `PKR ${Number(u.price).toLocaleString()}` : 'Price on request';
+          const price = u.price ? `${currency} ${Number(u.price).toLocaleString()}` : 'Price on request';
 
           const rows = [
             `${i + 1}. Unit ${u.unitNumber} — ${price}`,
@@ -136,9 +139,10 @@ export class WhatsappContextService {
 
     parts.push(
       `[RULES]\n` +
-      `- Only share data from the COMPANY INFO and AVAILABLE PROPERTIES sections above.\n` +
-      `- Never reveal or discuss: tenant details, lease agreements, cheque/payment records, owner details, user accounts, or any other private records.\n` +
-      `- If asked for private information, politely decline and suggest contacting the office directly.`,
+      `- Only answer using information from the COMPANY INFO and AVAILABLE PROPERTIES sections above.\n` +
+      `- If you do not have the requested information, say "I don't have that information — please contact our office directly" and nothing more. Do not make up details, teams, departments, or promises.\n` +
+      `- You cannot book appointments, forward requests, or take any action — you only answer questions.\n` +
+      `- Do not discuss: tenant details, lease agreements, cheque/payment records, owner details, or user accounts.`,
     );
 
     return parts.join('\n\n');
