@@ -80,10 +80,11 @@ export class WhatsappController {
   sendMedia(@Request() req: AuthenticatedRequest, @Body() dto: SendWaMediaDto) {
     const dataDir = process.env.WHATSAPP_DATA_DIR ?? join(process.cwd(), 'data', 'whatsapp');
     const mediaBase = join(dataDir, 'media', req.user.userId);
-    if (!this.isPathInside(mediaBase, resolve(dto.filePath))) {
+    const resolvedPath = resolve(dto.filePath);
+    if (!this.isPathInside(mediaBase, resolvedPath)) {
       throw new ForbiddenException('filePath must be within your media directory');
     }
-    return this.wa.sendMedia(req.user.userId, req.user.companyId!, dto.chatId, dto.filePath, {
+    return this.wa.sendMedia(req.user.userId, req.user.companyId!, dto.chatId, resolvedPath, {
       mediaType: dto.mediaType, caption: dto.caption, fileName: dto.fileName,
     });
   }

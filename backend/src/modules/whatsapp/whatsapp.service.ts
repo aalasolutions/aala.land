@@ -40,9 +40,9 @@ export class WhatsappService implements OnModuleInit {
   private async ensureInstance(userId: string, companyId: string): Promise<BaileysInstance> {
     const inst = await this.manager.getOrCreate(userId);
     if (!this.wiredUsers.has(userId)) {
+      this.wiredUsers.add(userId);
       this.persistCompanyId(userId, companyId);
       this.wireInstance(userId, companyId, inst);
-      this.wiredUsers.add(userId);
     }
     return inst;
   }
@@ -109,6 +109,7 @@ export class WhatsappService implements OnModuleInit {
     this.store.clearAll(userId);
     this.ai.clearUserState(userId);
     this.wiredUsers.delete(userId);
+    inst.emitter.removeAllListeners();
     await this.manager.remove(userId);
     return { success: true };
   }

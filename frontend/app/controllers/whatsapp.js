@@ -255,6 +255,7 @@ export default class WhatsappController extends Controller {
       this.connection = 'disconnected';
       this.hasCredentials = false;
       this.qr = null;
+      this.pollForQR();
     } catch (err) {
       this.errorMsg = 'Re-pair failed.';
     }

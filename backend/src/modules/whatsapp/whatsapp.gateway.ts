@@ -3,6 +3,10 @@ import { WebSocketGateway, WebSocketServer, OnGatewayInit, OnGatewayConnection, 
 import { Server, Socket } from 'socket.io';
 import { Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { User } from '../users/entities/user.entity';
+import { Company } from '../companies/entities/company.entity';
 
 const corsOrigins = process.env.CORS_ORIGIN
   ? process.env.CORS_ORIGIN.split(',').map(o => o.trim())
@@ -13,7 +17,11 @@ export class WhatsappGateway implements OnGatewayInit, OnGatewayConnection, OnGa
   @WebSocketServer() server: Server;
   private readonly logger = new Logger(WhatsappGateway.name);
 
-  constructor(private readonly jwtService: JwtService) {}
+  constructor(
+    private readonly jwtService: JwtService,
+    @InjectRepository(User) private readonly usersRepo: Repository<User>,
+    @InjectRepository(Company) private readonly companiesRepo: Repository<Company>,
+  ) {}
 
   afterInit() { this.logger.log('WhatsApp WebSocket gateway ready on /whatsapp'); }
 
@@ -24,6 +32,21 @@ export class WhatsappGateway implements OnGatewayInit, OnGatewayConnection, OnGa
         throw new Error('Missing socket auth token');
       }
       const payload = await this.jwtService.verifyAsync<{ sub: string }>(token);
+
+      const user = await this.usersRepo.findOne({
+        where: { id: payload.sub },
+        select: { id: true, isActive: true, companyId: true },
+      });
+      if (!user?.isActive) throw new Error('User inactive or not found');
+
+      if (user.companyId) {
+        const company = await this.companiesRepo.findOne({
+          where: { id: user.companyId },
+          select: { id: true, isActive: true },
+        });
+        if (!company?.isActive) throw new Error('Company inactive or not found');
+      }
+
       socket.data.userId = payload.sub;
       socket.join('user:' + payload.sub);
       this.logger.debug(`Socket ${socket.id} authenticated and joined room user:${payload.sub}`);

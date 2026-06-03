@@ -11,13 +11,14 @@ import { WhatsappService } from './whatsapp.service';
 import { WhatsappController } from './whatsapp.controller';
 import { WhatsappSettingsController } from './whatsapp-settings.controller';
 import { WhatsappSettings } from './entities/whatsapp-settings.entity';
+import { User } from '../users/entities/user.entity';
 import { Company } from '../companies/entities/company.entity';
 import { Listing } from '../properties/entities/listing.entity';
 import { Unit } from '../properties/entities/unit.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([WhatsappSettings, Company, Listing, Unit]),
+    TypeOrmModule.forFeature([WhatsappSettings, User, Company, Listing, Unit]),
     JwtModule.registerAsync({
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => ({
