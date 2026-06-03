@@ -266,7 +266,7 @@ export class BaileysInstance {
               ? this.mediaDirs.AUDIO_DIR
               : this.mediaDirs.DOCUMENT_DIR;
         const ext = this.mediaExtension(mediaType, msg);
-        const safeId = basename(key.id ?? String(Date.now()));
+        const safeId = basename(key.id ?? '') || String(Date.now());
         const filePath = join(subdir, `${safeId}.${ext}`);
         const buffer = await this.baileysFns.downloadMediaMessage(raw, 'buffer', {});
         writeFileSync(filePath, buffer as Buffer);
