@@ -4,13 +4,18 @@ const makeMockRepo = (aiPrompt: string | null = null) => ({
   findOne: jest.fn().mockResolvedValue(aiPrompt !== null ? { aiPrompt } : null),
 });
 
+const makeMockContextService = () => ({
+  getContextBlock: jest.fn().mockResolvedValue(''),
+  clearCache: jest.fn(),
+});
+
 describe('WhatsappAiService', () => {
   let service: WhatsappAiService;
 
   beforeEach(() => {
     delete process.env.OLLAMA_API_KEY;
     delete process.env.AI_ENABLED;
-    service = new WhatsappAiService(makeMockRepo() as any);
+    service = new WhatsappAiService(makeMockRepo() as any, makeMockContextService() as any);
   });
 
   it('is enabled by default', () => {
@@ -33,27 +38,23 @@ describe('WhatsappAiService', () => {
     expect(service.getConfig('user-1').keyConfigured).toBe(false);
   });
 
-  it('recordAssistantTurn stores turn in history', () => {
-    service.recordAssistantTurn('chat-1', 'Hello');
-    const history = service.getHistoryFor('chat-1');
+  it('recordAssistantTurn stores turn in history scoped to userId', () => {
+    service.recordAssistantTurn('user-1', 'chat-1', 'Hello');
+    const history = service.getHistoryFor('user-1', 'chat-1');
     expect(history).toHaveLength(1);
     expect(history[0]).toEqual({ role: 'assistant', content: 'Hello' });
   });
 
-  it('clearHistory by chatId removes only that chat', () => {
-    service.recordAssistantTurn('chat-1', 'A');
-    service.recordAssistantTurn('chat-2', 'B');
-    service.clearHistory('chat-1');
-    expect(service.getHistoryFor('chat-1')).toHaveLength(0);
-    expect(service.getHistoryFor('chat-2')).toHaveLength(1);
+  it('histories are isolated per userId for the same chatId', () => {
+    service.recordAssistantTurn('user-1', 'chat-1', 'User1 message');
+    service.recordAssistantTurn('user-2', 'chat-1', 'User2 message');
+    expect(service.getHistoryFor('user-1', 'chat-1')).toHaveLength(1);
+    expect(service.getHistoryFor('user-1', 'chat-1')[0].content).toBe('User1 message');
+    expect(service.getHistoryFor('user-2', 'chat-1')[0].content).toBe('User2 message');
   });
 
-  it('clearHistory with no arg clears all', () => {
-    service.recordAssistantTurn('chat-1', 'A');
-    service.recordAssistantTurn('chat-2', 'B');
-    service.clearHistory();
-    expect(service.getHistoryFor('chat-1')).toHaveLength(0);
-    expect(service.getHistoryFor('chat-2')).toHaveLength(0);
+  it('getHistoryFor returns empty array for unknown userId+chatId', () => {
+    expect(service.getHistoryFor('unknown-user', 'unknown-chat')).toEqual([]);
   });
 
   it('handleIncomingMessage skips when no API key', async () => {
@@ -68,7 +69,7 @@ describe('WhatsappAiService', () => {
 
   it('handleIncomingMessage skips fromMe messages', async () => {
     process.env.OLLAMA_API_KEY = 'test-key';
-    service = new WhatsappAiService(makeMockRepo() as any);
+    service = new WhatsappAiService(makeMockRepo() as any, makeMockContextService() as any);
     const mockSend = jest.fn();
     await service.handleIncomingMessage(
       { chatId: 'c1', body: 'hi', fromMe: true, isGroup: false, timestamp: Math.floor(Date.now() / 1000), senderId: 's1' },
@@ -80,7 +81,7 @@ describe('WhatsappAiService', () => {
 
   it('handleIncomingMessage skips group messages', async () => {
     process.env.OLLAMA_API_KEY = 'test-key';
-    service = new WhatsappAiService(makeMockRepo() as any);
+    service = new WhatsappAiService(makeMockRepo() as any, makeMockContextService() as any);
     const mockSend = jest.fn();
     await service.handleIncomingMessage(
       { chatId: 'c1@g.us', body: 'hi', fromMe: false, isGroup: true, timestamp: Math.floor(Date.now() / 1000), senderId: 's1' },
@@ -114,10 +115,8 @@ describe('WhatsappAiService', () => {
 
     it('fetches prompt from DB when settings row exists', async () => {
       const mockRepo = { findOne: jest.fn().mockResolvedValue({ aiPrompt: 'DB prompt' }) };
-      service = new WhatsappAiService(mockRepo as any);
+      service = new WhatsappAiService(mockRepo as any, makeMockContextService() as any);
 
-      // Mock fetch to capture the system prompt used
-      let capturedMessages: any[] = [];
       global.fetch = jest.fn().mockResolvedValue({
         ok: true,
         json: async () => ({ choices: [{ message: { content: 'reply' } }] }),
@@ -128,15 +127,14 @@ describe('WhatsappAiService', () => {
 
       const fetchCall = (global.fetch as jest.Mock).mock.calls[0];
       const body = JSON.parse(fetchCall[1].body);
-      capturedMessages = body.messages;
 
-      expect(capturedMessages[0]).toEqual({ role: 'system', content: 'DB prompt' });
+      expect(body.messages[0]).toEqual({ role: 'system', content: 'DB prompt' });
       expect(mockRepo.findOne).toHaveBeenCalledWith({ where: { companyId: 'company-1' } });
     });
 
     it('uses defaultPrompt when no settings row exists', async () => {
       const mockRepo = { findOne: jest.fn().mockResolvedValue(null) };
-      service = new WhatsappAiService(mockRepo as any);
+      service = new WhatsappAiService(mockRepo as any, makeMockContextService() as any);
 
       global.fetch = jest.fn().mockResolvedValue({
         ok: true,
@@ -154,7 +152,7 @@ describe('WhatsappAiService', () => {
 
     it('uses cached prompt on second call without re-fetching DB', async () => {
       const mockRepo = { findOne: jest.fn().mockResolvedValue({ aiPrompt: 'Cached prompt' }) };
-      service = new WhatsappAiService(mockRepo as any);
+      service = new WhatsappAiService(mockRepo as any, makeMockContextService() as any);
 
       global.fetch = jest.fn().mockResolvedValue({
         ok: true,
@@ -163,12 +161,30 @@ describe('WhatsappAiService', () => {
 
       const mockSend = jest.fn().mockResolvedValue({ messageId: 'msg-1' });
 
-      // First call — populates cache
       await service.handleIncomingMessage(baseEvt, 'company-1', 'user-1', mockSend);
-      // Second call — should use cache
       await service.handleIncomingMessage({ ...baseEvt, chatId: 'c2' }, 'company-1', 'user-1', mockSend);
 
       expect(mockRepo.findOne).toHaveBeenCalledTimes(1);
+    });
+
+    it('histories are scoped per user in handleIncomingMessage', async () => {
+      const mockRepo = { findOne: jest.fn().mockResolvedValue({ aiPrompt: 'prompt' }) };
+      service = new WhatsappAiService(mockRepo as any, makeMockContextService() as any);
+
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ choices: [{ message: { content: 'AI reply' } }] }),
+      }) as any;
+
+      const mockSend = jest.fn().mockResolvedValue({ messageId: 'msg-1' });
+
+      await service.handleIncomingMessage(baseEvt, 'company-1', 'user-1', mockSend);
+      await service.handleIncomingMessage(baseEvt, 'company-1', 'user-2', mockSend);
+
+      // Each user has their own separate history
+      expect(service.getHistoryFor('user-1', 'c1')).toHaveLength(2); // user + assistant
+      expect(service.getHistoryFor('user-2', 'c1')).toHaveLength(2);
+      expect(service.getHistoryFor('user-1', 'c1')).not.toBe(service.getHistoryFor('user-2', 'c1'));
     });
   });
 });

@@ -43,12 +43,8 @@ export class WhatsappAiService {
     return value;
   }
 
-  getHistoryFor(chatId: string): AiHistoryMessage[] {
-    return this.histories.get(chatId) ?? [];
-  }
-
-  clearHistory(chatId?: string): void {
-    chatId ? this.histories.delete(chatId) : this.histories.clear();
+  getHistoryFor(userId: string, chatId: string): AiHistoryMessage[] {
+    return this.histories.get(`${userId}:${chatId}`) ?? [];
   }
 
   clearPromptCache(companyId?: string): void {
@@ -56,10 +52,11 @@ export class WhatsappAiService {
     this.contextService.clearCache(companyId);
   }
 
-  recordAssistantTurn(chatId: string, content: string): void {
-    const history = this.histories.get(chatId) ?? [];
+  recordAssistantTurn(userId: string, chatId: string, content: string): void {
+    const key = `${userId}:${chatId}`;
+    const history = this.histories.get(key) ?? [];
     history.push({ role: 'assistant', content });
-    this.trimHistory(chatId, history);
+    this.trimHistory(userId, chatId, history);
   }
 
   async handleIncomingMessage(
@@ -74,11 +71,12 @@ export class WhatsappAiService {
     const maxAge = parseInt(process.env.AI_MESSAGE_MAX_AGE_S ?? '120', 10);
     if (Math.floor(Date.now() / 1000) - evt.timestamp > maxAge) return;
 
-    const history = this.histories.get(evt.chatId) ?? [];
+    const histKey = `${userId}:${evt.chatId}`;
+    const history = this.histories.get(histKey) ?? [];
 
     try {
       history.push({ role: 'user', content: evt.body });
-      this.trimHistory(evt.chatId, history);
+      this.trimHistory(userId, evt.chatId, history);
 
       const [systemPrompt, contextBlock] = await Promise.all([
         this.getCompanyPrompt(companyId),
@@ -94,7 +92,7 @@ export class WhatsappAiService {
       }
 
       history.push({ role: 'assistant', content: reply });
-      this.trimHistory(evt.chatId, history);
+      this.trimHistory(userId, evt.chatId, history);
 
       await send(evt.chatId, reply);
     } catch (err) {
@@ -116,10 +114,10 @@ export class WhatsappAiService {
     return this.defaultPrompt();
   }
 
-  private trimHistory(chatId: string, history: AiHistoryMessage[]): void {
+  private trimHistory(userId: string, chatId: string, history: AiHistoryMessage[]): void {
     const limit = parseInt(process.env.AI_HISTORY_LIMIT ?? '40', 10);
     if (history.length > limit) history.splice(0, history.length - limit);
-    this.histories.set(chatId, history);
+    this.histories.set(`${userId}:${chatId}`, history);
   }
 
   private async callLLM(messages: AiHistoryMessage[]): Promise<string | null> {

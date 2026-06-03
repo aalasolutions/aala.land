@@ -164,13 +164,8 @@ export class WhatsappService implements OnModuleInit {
     return this.ai.getConfig(userId);
   }
 
-  getAiHistory(chatId: string): AiHistoryMessage[] {
-    return this.ai.getHistoryFor(chatId);
-  }
-
-  clearAiHistory(chatId?: string): { success: boolean } {
-    this.ai.clearHistory(chatId);
-    return { success: true };
+  getAiHistory(userId: string, chatId: string): AiHistoryMessage[] {
+    return this.ai.getHistoryFor(userId, chatId);
   }
 
   toggleAi(userId: string, _companyId: string, enabled?: boolean): { enabled: boolean } {
@@ -183,8 +178,7 @@ export class WhatsappService implements OnModuleInit {
 
   // ── Media ─────────────────────────────────────────────────────────────
 
-  async getMediaDirs(userId: string, companyId: string): Promise<Record<string, string>> {
-    await this.ensureInstance(userId, companyId);
+  getMediaDirs(userId: string): Record<string, string> {
     const mediaBase = join(this.dataDir, 'media', userId);
     return {
       IMAGE_DIR: join(mediaBase, 'images'),

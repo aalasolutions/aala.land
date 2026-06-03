@@ -105,27 +105,21 @@ export class WhatsappController {
 
   @Get('ai/history/:chatId')
   @ApiOperation({ summary: 'AI conversation history for a chat' })
-  getAiHistory(@Param('chatId') chatId: string) {
-    return { chatId, history: this.wa.getAiHistory(decodeURIComponent(chatId)) };
-  }
-
-  @Post('ai/clear')
-  @ApiOperation({ summary: 'Clear AI history for one or all chats' })
-  clearAi(@Body() body: { chatId?: string }) {
-    return this.wa.clearAiHistory(body.chatId);
+  getAiHistory(@Request() req: AuthenticatedRequest, @Param('chatId') chatId: string) {
+    return { chatId, history: this.wa.getAiHistory(req.user.userId, decodeURIComponent(chatId)) };
   }
 
   // ── Media serving ─────────────────────────────────────────────────────
 
   @Get('media/:type/:filename')
   @ApiOperation({ summary: 'Serve downloaded media file' })
-  async serveMedia(
+  serveMedia(
     @Request() req: AuthenticatedRequest,
     @Param('type') type: string,
     @Param('filename') filename: string,
     @Res() res: Response,
   ) {
-    const dirs = await this.wa.getMediaDirs(req.user.userId, req.user.companyId!);
+    const dirs = this.wa.getMediaDirs(req.user.userId);
     const dirMap: Record<string, string> = {
       images: dirs.IMAGE_DIR,
       videos: dirs.VIDEO_DIR,

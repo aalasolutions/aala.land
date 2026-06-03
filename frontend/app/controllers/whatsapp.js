@@ -91,11 +91,9 @@ export default class WhatsappController extends Controller {
           this.qr = null;
           return;
         }
-        if (!this.qr) {
-          const qrData = await this.whatsapp.getQR();
-          const qr = (qrData.data ?? qrData).qr ?? null;
-          if (qr) this.qr = qr;
-        }
+        const qrData = await this.whatsapp.getQR();
+        const qr = (qrData.data ?? qrData).qr ?? null;
+        if (qr) this.qr = qr;
       } catch { /* ignore */ }
     }
   }
