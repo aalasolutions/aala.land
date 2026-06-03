@@ -23,6 +23,10 @@ import { AuthenticatedRequest } from '@shared/interfaces/authenticated-request.i
 export class WhatsappController {
   constructor(private readonly wa: WhatsappService) {}
 
+  private isPathInside(root: string, candidate: string): boolean {
+    return candidate.startsWith(resolve(root) + sep);
+  }
+
   // ── Connection ────────────────────────────────────────────────────────
 
   @Get('connection')
@@ -75,9 +79,8 @@ export class WhatsappController {
   @ApiOperation({ summary: 'Send a media message' })
   sendMedia(@Request() req: AuthenticatedRequest, @Body() dto: SendWaMediaDto) {
     const dataDir = process.env.WHATSAPP_DATA_DIR ?? join(process.cwd(), 'data', 'whatsapp');
-    const mediaBase = resolve(join(dataDir, 'media', req.user.userId));
-    const resolvedFilePath = resolve(dto.filePath);
-    if (!resolvedFilePath.startsWith(mediaBase + sep)) {
+    const mediaBase = join(dataDir, 'media', req.user.userId);
+    if (!this.isPathInside(mediaBase, resolve(dto.filePath))) {
       throw new ForbiddenException('filePath must be within your media directory');
     }
     return this.wa.sendMedia(req.user.userId, req.user.companyId!, dto.chatId, dto.filePath, {
@@ -129,9 +132,8 @@ export class WhatsappController {
     const dir = dirMap[type];
     if (!dir) return res.status(400).json({ error: 'Invalid media type' });
 
-    const root = resolve(dir);
-    const filePath = resolve(join(root, filename));
-    if (!filePath.startsWith(root + sep)) {
+    const filePath = resolve(join(dir, filename));
+    if (!this.isPathInside(dir, filePath)) {
       return res.status(403).json({ error: 'Access denied' });
     }
     if (!existsSync(filePath)) return res.status(404).json({ error: 'Not found' });

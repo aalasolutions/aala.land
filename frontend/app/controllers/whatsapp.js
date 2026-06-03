@@ -82,18 +82,16 @@ export default class WhatsappController extends Controller {
       await new Promise(r => setTimeout(r, 1500));
       if (this.connection === 'connected') return;
       try {
-        const connData = await this.whatsapp.getConnection();
-        const conn = connData.data ?? connData;
-        if (conn.connection === 'connected') {
+        const qrData = await this.whatsapp.getQR();
+        const data = qrData.data ?? qrData;
+        if (data.connection === 'connected') {
           this.connection = 'connected';
-          this.hasCredentials = conn.hasCredentials ?? true;
-          this.me = conn.me ?? this.me;
+          this.hasCredentials = data.hasCredentials ?? true;
+          this.me = data.me ?? this.me;
           this.qr = null;
           return;
         }
-        const qrData = await this.whatsapp.getQR();
-        const qr = (qrData.data ?? qrData).qr ?? null;
-        if (qr) this.qr = qr;
+        if (data.qr) this.qr = data.qr;
       } catch { /* ignore */ }
     }
   }
@@ -140,13 +138,20 @@ export default class WhatsappController extends Controller {
   }
 
   ingestMessages(msgs) {
-    for (const m of msgs) this.ingestMessage(m);
+    const existingIds = new Set(this.messages.map(m => m.id));
+    const newMsgs = msgs.filter(m => !existingIds.has(m.id));
+    if (!newMsgs.length) return;
+    this.messages = [...this.messages, ...newMsgs];
+    for (const m of newMsgs) this._updateChat(m);
   }
 
   ingestMessage(msg) {
     if (this.messages.some(m => m.id === msg.id)) return;
     this.messages = [...this.messages, msg];
+    this._updateChat(msg);
+  }
 
+  _updateChat(msg) {
     const existingIdx = this.chats.findIndex(c => c.chatId === msg.chatId);
     const isNewer = (msg.timestamp ?? 0) >= (this.chats[existingIdx]?.lastTs ?? 0);
     if (existingIdx >= 0 && isNewer) {

@@ -9,7 +9,7 @@ export default class WhatsappService extends Service {
 
   get apiUrl() {
     const base = ENV.APP.API_BASE || 'http://localhost:3010/v1';
-    return ENV.APP.API_URL || new URL(base).origin;
+    return ENV.APP.API_URL || new URL(base, window.location.origin).origin;
   }
 
   connectSocket(onEvent) {
@@ -17,14 +17,6 @@ export default class WhatsappService extends Service {
 
     this._socket = io(`${this.apiUrl}/whatsapp`, {
       auth: { token: this.auth.token },
-    });
-
-    // Join the user-specific room so events are scoped
-    this._socket.on('connect', () => {
-      const userId = this.auth.currentUser?.id;
-      if (userId) {
-        this._socket.emit('join', { userId });
-      }
     });
 
     this._socket.on('whatsapp:status',  data => onEvent('status', data));

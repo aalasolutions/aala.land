@@ -107,6 +107,7 @@ export class WhatsappService implements OnModuleInit {
     const inst = await this.ensureInstance(userId, companyId);
     await inst.logout();
     this.store.clearAll(userId);
+    this.ai.clearUserState(userId);
     this.wiredUsers.delete(userId);
     await this.manager.remove(userId);
     return { success: true };

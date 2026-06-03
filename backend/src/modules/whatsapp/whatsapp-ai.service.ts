@@ -52,11 +52,11 @@ export class WhatsappAiService {
     this.contextService.clearCache(companyId);
   }
 
-  recordAssistantTurn(userId: string, chatId: string, content: string): void {
-    const key = `${userId}:${chatId}`;
-    const history = this.histories.get(key) ?? [];
-    history.push({ role: 'assistant', content });
-    this.trimHistory(userId, chatId, history);
+  clearUserState(userId: string): void {
+    for (const key of this.histories.keys()) {
+      if (key.startsWith(`${userId}:`)) this.histories.delete(key);
+    }
+    this.enabledByUser.delete(userId);
   }
 
   async handleIncomingMessage(

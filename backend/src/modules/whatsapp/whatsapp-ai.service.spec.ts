@@ -38,21 +38,6 @@ describe('WhatsappAiService', () => {
     expect(service.getConfig('user-1').keyConfigured).toBe(false);
   });
 
-  it('recordAssistantTurn stores turn in history scoped to userId', () => {
-    service.recordAssistantTurn('user-1', 'chat-1', 'Hello');
-    const history = service.getHistoryFor('user-1', 'chat-1');
-    expect(history).toHaveLength(1);
-    expect(history[0]).toEqual({ role: 'assistant', content: 'Hello' });
-  });
-
-  it('histories are isolated per userId for the same chatId', () => {
-    service.recordAssistantTurn('user-1', 'chat-1', 'User1 message');
-    service.recordAssistantTurn('user-2', 'chat-1', 'User2 message');
-    expect(service.getHistoryFor('user-1', 'chat-1')).toHaveLength(1);
-    expect(service.getHistoryFor('user-1', 'chat-1')[0].content).toBe('User1 message');
-    expect(service.getHistoryFor('user-2', 'chat-1')[0].content).toBe('User2 message');
-  });
-
   it('getHistoryFor returns empty array for unknown userId+chatId', () => {
     expect(service.getHistoryFor('unknown-user', 'unknown-chat')).toEqual([]);
   });
