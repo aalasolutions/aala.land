@@ -24,6 +24,7 @@ export class BaileysInstance {
   private sock: any = null;
   private shouldReconnect = true;
   private reconnectPending = false;
+  private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private connectedAt = 0;
   private status: WaStatus = {
     connection: 'disconnected',
@@ -94,7 +95,8 @@ export class BaileysInstance {
         this.emitter.emit('status', { ...this.status });
         if (!loggedOut && this.shouldReconnect && !this.reconnectPending) {
           this.reconnectPending = true;
-          setTimeout(() => {
+          this.reconnectTimer = setTimeout(() => {
+            this.reconnectTimer = null;
             this.reconnectPending = false;
             void this.start();
           }, 3000);
@@ -138,6 +140,8 @@ export class BaileysInstance {
   }
 
   async stop(): Promise<void> {
+    this.shouldReconnect = false;
+    if (this.reconnectTimer) { clearTimeout(this.reconnectTimer); this.reconnectTimer = null; }
     this.reconnectPending = false;
     if (this.sock) {
       this.sock.ev.removeAllListeners();
@@ -163,10 +167,12 @@ export class BaileysInstance {
 
   // ── Sending ─────────────────────────────────────────────────────────────
 
-  async sendMessage(chatId: string, message: string, opts: { replyTo?: string } = {}) {
+  async sendMessage(chatId: string, message: string, _opts: { replyTo?: string } = {}) {
     this.assertConnected();
     const content: any = { text: message };
-    if (opts.replyTo) content.quoted = { key: { id: opts.replyTo, remoteJid: chatId } };
+    // opts.replyTo is accepted by the API but silently dropped here: Baileys requires a full
+    // WAProto.IWebMessageInfo object for `quoted`, and we don't store raw protos.
+    // Passing only { key: {...} } crashes normalizeMessageContent with a TypeError.
     const result = await this.sock.sendMessage(chatId, content);
     return { success: true, messageId: result?.key?.id as string | undefined };
   }

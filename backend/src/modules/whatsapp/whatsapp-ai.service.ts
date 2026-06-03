@@ -75,10 +75,11 @@ export class WhatsappAiService {
     if (Math.floor(Date.now() / 1000) - evt.timestamp > maxAge) return;
 
     const history = this.histories.get(evt.chatId) ?? [];
-    history.push({ role: 'user', content: evt.body });
-    this.trimHistory(evt.chatId, history);
 
     try {
+      history.push({ role: 'user', content: evt.body });
+      this.trimHistory(evt.chatId, history);
+
       const [systemPrompt, contextBlock] = await Promise.all([
         this.getCompanyPrompt(companyId),
         this.contextService.getContextBlock(companyId),
@@ -87,13 +88,17 @@ export class WhatsappAiService {
         ? `${systemPrompt}\n\n${contextBlock}`
         : systemPrompt;
       const reply = await this.callLLM([{ role: 'system', content: fullSystemPrompt }, ...history]);
-      if (!reply) return;
+      if (!reply) {
+        history.pop();  // remove orphaned user turn
+        return;
+      }
 
       history.push({ role: 'assistant', content: reply });
       this.trimHistory(evt.chatId, history);
 
       await send(evt.chatId, reply);
     } catch (err) {
+      history.pop();  // remove orphaned user turn on error
       this.logger.error('AI call failed', err instanceof Error ? err.message : err);
     }
   }

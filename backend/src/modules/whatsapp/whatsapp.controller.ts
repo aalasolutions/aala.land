@@ -1,7 +1,7 @@
 // backend/src/modules/whatsapp/whatsapp.controller.ts
 import {
   Controller, Get, Post, Body, Param,
-  UseGuards, Res, Request,
+  UseGuards, Res, Request, ForbiddenException,
 } from '@nestjs/common';
 import { Response } from 'express';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
@@ -74,6 +74,12 @@ export class WhatsappController {
   @Post('send-media')
   @ApiOperation({ summary: 'Send a media message' })
   sendMedia(@Request() req: AuthenticatedRequest, @Body() dto: SendWaMediaDto) {
+    const dataDir = process.env.WHATSAPP_DATA_DIR ?? join(process.cwd(), 'data', 'whatsapp');
+    const mediaBase = resolve(join(dataDir, 'media', req.user.userId));
+    const resolvedFilePath = resolve(dto.filePath);
+    if (!resolvedFilePath.startsWith(mediaBase + sep)) {
+      throw new ForbiddenException('filePath must be within your media directory');
+    }
     return this.wa.sendMedia(req.user.userId, req.user.companyId!, dto.chatId, dto.filePath, {
       mediaType: dto.mediaType, caption: dto.caption, fileName: dto.fileName,
     });
@@ -131,7 +137,7 @@ export class WhatsappController {
 
     const root = resolve(dir);
     const filePath = resolve(join(root, filename));
-    if (filePath !== root && !filePath.startsWith(root + sep)) {
+    if (!filePath.startsWith(root + sep)) {
       return res.status(403).json({ error: 'Access denied' });
     }
     if (!existsSync(filePath)) return res.status(404).json({ error: 'Not found' });

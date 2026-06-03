@@ -84,7 +84,6 @@ export class WhatsappService implements OnModuleInit {
           };
           this.store.addMessage(userId, aiMsg);
           this.gateway.emitMessage(userId, aiMsg);
-          this.ai.recordAssistantTurn(chatId, message);
           return result;
         }).catch(err => this.logger.error('AI handler error', err));
       }
@@ -145,7 +144,6 @@ export class WhatsappService implements OnModuleInit {
         fromMe: true, aiGenerated: false,
         timestamp: Math.floor(Date.now() / 1000),
       });
-      this.ai.recordAssistantTurn(chatId, message);
     }
     return result;
   }

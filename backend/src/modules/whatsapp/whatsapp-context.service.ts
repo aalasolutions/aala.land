@@ -59,7 +59,7 @@ export class WhatsappContextService {
 
     const parts: string[] = [];
 
-    const currency = REGIONS.find(r => (company?.activeRegions ?? []).includes(r.code))?.currency ?? '';
+    const fallbackCurrency = REGIONS.find(r => (company?.activeRegions ?? []).includes(r.code))?.currency ?? '';
 
     if (company) {
       const regions = (company.activeRegions ?? []).join(', ');
@@ -74,6 +74,8 @@ export class WhatsappContextService {
         const asset = u?.asset;
         const locality = asset?.locality;
         const city = (locality as any)?.city;
+        const cityRegionCode = (city as any)?.regionCode;
+        const listingCurrency = (cityRegionCode ? REGIONS.find(r => r.code === cityRegionCode)?.currency : undefined) ?? fallbackCurrency;
         const location = [asset?.name, locality?.name, city?.name].filter(Boolean).join(', ');
         const beds = u?.bedrooms ? `${u.bedrooms} Bed` : 'Studio';
         const baths = u?.bathrooms ? `${u.bathrooms} Bath` : '';
@@ -84,7 +86,7 @@ export class WhatsappContextService {
         const contact = [l.contactPhone, l.contactEmail].filter(Boolean).join(' / ');
 
         const rows = [
-          `${i + 1}. [${l.type}] ${l.title} — ${currency} ${Number(l.price).toLocaleString()}`,
+          `${i + 1}. [${l.type}] ${l.title} — ${listingCurrency} ${Number(l.price).toLocaleString()}`,
           `   Location: ${location || 'N/A'}`,
           asset?.address ? `   Address: ${asset.address}` : '',
           `   Size: ${[beds, baths, sqft].filter(Boolean).join(' | ')}`,
@@ -111,13 +113,15 @@ export class WhatsappContextService {
           const asset = u.asset;
           const locality = asset?.locality;
           const city = (locality as any)?.city;
+          const cityRegionCode = (city as any)?.regionCode;
+          const unitCurrency = (cityRegionCode ? REGIONS.find(r => r.code === cityRegionCode)?.currency : undefined) ?? fallbackCurrency;
           const location = [asset?.name, locality?.name, city?.name].filter(Boolean).join(', ');
           const beds = u.bedrooms ? `${u.bedrooms} Bed` : 'Studio';
           const baths = u.bathrooms ? `${u.bathrooms} Bath` : '';
           const sqft = u.sqFt ? `${u.sqFt} sqft` : '';
           const amenities = (u.amenities ?? []).join(', ');
           const photos = (u.photos ?? []).slice(0, 3);
-          const price = u.price ? `${currency} ${Number(u.price).toLocaleString()}` : 'Price on request';
+          const price = u.price ? `${unitCurrency} ${Number(u.price).toLocaleString()}` : 'Price on request';
 
           const rows = [
             `${i + 1}. Unit ${u.unitNumber} — ${price}`,

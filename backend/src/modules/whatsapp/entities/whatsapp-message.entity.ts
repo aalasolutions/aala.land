@@ -14,6 +14,10 @@ export enum MessageStatus {
   FAILED = 'FAILED',
 }
 
+// NOTE: This entity was designed for a prior Twilio-based integration and is NOT
+// currently used by the Baileys WhatsApp module. The MessageStoreService uses
+// an in-memory store instead. Before re-wiring, this entity's schema must be
+// updated to match WaMessage (add chatId, fromMe, mediaType, etc.).
 @Entity('whatsapp_messages')
 export class WhatsappMessage {
   @PrimaryGeneratedColumn('uuid')

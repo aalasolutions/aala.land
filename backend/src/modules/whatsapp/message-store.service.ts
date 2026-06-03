@@ -3,6 +3,10 @@ import { Injectable } from '@nestjs/common';
 import { WaMessage, WaChat } from './wa-types';
 
 @Injectable()
+// Messages are kept in a bounded in-memory ring buffer (max 2000/user).
+// They are intentionally NOT persisted to the database because the WhatsappMessage
+// entity schema (designed for a prior Twilio integration) does not match the
+// Baileys WaMessage shape. Re-wiring requires a schema migration; tracked as tech-debt.
 export class MessageStoreService {
   private stores = new Map<string, { messages: WaMessage[]; chats: Map<string, WaChat> }>();
 
