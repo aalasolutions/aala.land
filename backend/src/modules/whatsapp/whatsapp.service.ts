@@ -104,12 +104,14 @@ export class WhatsappService implements OnModuleInit {
   }
 
   async logout(userId: string, companyId: string): Promise<{ success: boolean }> {
-    const inst = await this.ensureInstance(userId, companyId);
-    await inst.logout();
+    const inst = this.manager.get(userId);
+    if (inst) {
+      await inst.logout();
+      inst.emitter.removeAllListeners();
+    }
     this.store.clearAll(userId);
     this.ai.clearUserState(userId);
     this.wiredUsers.delete(userId);
-    inst.emitter.removeAllListeners();
     await this.manager.remove(userId);
     return { success: true };
   }

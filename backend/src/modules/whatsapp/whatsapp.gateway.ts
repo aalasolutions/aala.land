@@ -38,14 +38,13 @@ export class WhatsappGateway implements OnGatewayInit, OnGatewayConnection, OnGa
         select: { id: true, isActive: true, companyId: true },
       });
       if (!user?.isActive) throw new Error('User inactive or not found');
+      if (!user.companyId) throw new Error('No company associated with this user');
 
-      if (user.companyId) {
-        const company = await this.companiesRepo.findOne({
-          where: { id: user.companyId },
-          select: { id: true, isActive: true },
-        });
-        if (!company?.isActive) throw new Error('Company inactive or not found');
-      }
+      const company = await this.companiesRepo.findOne({
+        where: { id: user.companyId },
+        select: { id: true, isActive: true },
+      });
+      if (!company?.isActive) throw new Error('Company inactive or not found');
 
       socket.data.userId = payload.sub;
       socket.join('user:' + payload.sub);

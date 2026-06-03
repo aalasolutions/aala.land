@@ -2,7 +2,7 @@
 import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { EventEmitter } from 'events';
 import { existsSync, mkdirSync, readdirSync, rmSync, writeFileSync } from 'fs';
-import { join } from 'path';
+import { join, basename } from 'path';
 import * as QRCode from 'qrcode';
 import { WaMessage, WaStatus } from './wa-types';
 
@@ -266,7 +266,8 @@ export class BaileysInstance {
               ? this.mediaDirs.AUDIO_DIR
               : this.mediaDirs.DOCUMENT_DIR;
         const ext = this.mediaExtension(mediaType, msg);
-        const filePath = join(subdir, `${key.id ?? Date.now()}.${ext}`);
+        const safeId = basename(key.id ?? String(Date.now()));
+        const filePath = join(subdir, `${safeId}.${ext}`);
         const buffer = await this.baileysFns.downloadMediaMessage(raw, 'buffer', {});
         writeFileSync(filePath, buffer as Buffer);
         mediaUrls = [filePath];

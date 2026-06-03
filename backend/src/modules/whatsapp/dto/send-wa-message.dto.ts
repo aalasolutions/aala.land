@@ -1,5 +1,5 @@
 // backend/src/modules/whatsapp/dto/send-wa-message.dto.ts
-import { IsString, IsNotEmpty, IsOptional } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, IsIn } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class SendWaMessageDto {
@@ -25,8 +25,8 @@ export class SendWaMediaDto {
   @IsString() @IsNotEmpty()
   filePath: string;
 
-  @ApiProperty({ required: false })
-  @IsOptional() @IsString()
+  @ApiProperty({ required: false, enum: ['image', 'video', 'audio', 'document'] })
+  @IsOptional() @IsIn(['image', 'video', 'audio', 'document'])
   mediaType?: string;
 
   @ApiProperty({ required: false })

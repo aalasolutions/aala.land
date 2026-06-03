@@ -25,6 +25,8 @@ export default class WhatsappController extends Controller {
   @tracked isSending = false;
   @tracked errorMsg = '';
 
+  _pollQRAbort = false;
+
   // ── Computed ──────────────────────────────────────────────────────────
 
   get isConnected() { return this.connection === 'connected'; }
@@ -78,9 +80,10 @@ export default class WhatsappController extends Controller {
   }
 
   async pollForQR() {
+    this._pollQRAbort = false;
     for (let i = 0; i < 40; i++) {
       await new Promise(r => setTimeout(r, 1500));
-      if (this.connection === 'connected') return;
+      if (this._pollQRAbort || this.connection === 'connected') return;
       try {
         const qrData = await this.whatsapp.getQR();
         const data = qrData.data ?? qrData;
@@ -97,6 +100,7 @@ export default class WhatsappController extends Controller {
   }
 
   teardown() {
+    this._pollQRAbort = true;
     this.whatsapp.disconnectSocket();
     this.stopPolling();
   }
@@ -255,6 +259,7 @@ export default class WhatsappController extends Controller {
       this.connection = 'disconnected';
       this.hasCredentials = false;
       this.qr = null;
+      this._pollQRAbort = true;
       this.pollForQR();
     } catch (err) {
       this.errorMsg = 'Re-pair failed.';
