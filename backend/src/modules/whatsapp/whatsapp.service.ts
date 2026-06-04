@@ -1,6 +1,6 @@
 // backend/src/modules/whatsapp/whatsapp.service.ts
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
-import { existsSync, readFileSync, writeFileSync } from 'fs';
+import { existsSync, readFileSync, rmSync, writeFileSync } from 'fs';
 import { join } from 'path';
 import { BaileysManagerService, BaileysInstance } from './baileys-manager.service';
 import { MessageStoreService } from './message-store.service';
@@ -39,9 +39,9 @@ export class WhatsappService implements OnModuleInit {
 
   private async ensureInstance(userId: string, companyId: string): Promise<BaileysInstance> {
     const inst = await this.manager.getOrCreate(userId);
+    this.persistCompanyId(userId, companyId);
     if (!this.wiredUsers.has(userId)) {
       this.wiredUsers.add(userId);
-      this.persistCompanyId(userId, companyId);
       this.wireInstance(userId, companyId, inst);
     }
     return inst;
@@ -103,11 +103,14 @@ export class WhatsappService implements OnModuleInit {
     return { qr: s.qr, hasCredentials: s.hasCredentials, connection: s.connection };
   }
 
-  async logout(userId: string, companyId: string): Promise<{ success: boolean }> {
+  async logout(userId: string, _companyId: string): Promise<{ success: boolean }> {
     const inst = this.manager.get(userId);
     if (inst) {
       await inst.logout();
       inst.emitter.removeAllListeners();
+    } else {
+      const sessionDir = join(this.dataDir, 'sessions', userId);
+      if (existsSync(sessionDir)) rmSync(sessionDir, { recursive: true, force: true });
     }
     this.store.clearAll(userId);
     this.ai.clearUserState(userId);

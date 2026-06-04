@@ -74,6 +74,7 @@ export class WhatsappAiService {
     const histKey = `${userId}:${evt.chatId}`;
     const history = this.histories.get(histKey) ?? [];
 
+    let assistantPushed = false;
     try {
       history.push({ role: 'user', content: evt.body });
       this.trimHistory(userId, evt.chatId, history);
@@ -93,10 +94,12 @@ export class WhatsappAiService {
 
       history.push({ role: 'assistant', content: reply });
       this.trimHistory(userId, evt.chatId, history);
+      assistantPushed = true;
 
       await send(evt.chatId, reply);
     } catch (err) {
-      history.pop();  // remove orphaned user turn on error
+      if (assistantPushed) history.splice(-2, 2); // remove user + assistant
+      else history.pop();                          // remove user only
       this.logger.error('AI call failed', err instanceof Error ? err.message : err);
     }
   }
@@ -107,11 +110,9 @@ export class WhatsappAiService {
       return cached.prompt ?? this.defaultPrompt();
     }
     const settings = await this.settingsRepo.findOne({ where: { companyId } });
-    if (settings?.aiPrompt) {
-      this.promptCache.set(companyId, { prompt: settings.aiPrompt, cachedAt: Date.now() });
-      return settings.aiPrompt;
-    }
-    return this.defaultPrompt();
+    const prompt = settings?.aiPrompt || null;
+    this.promptCache.set(companyId, { prompt, cachedAt: Date.now() });
+    return prompt ?? this.defaultPrompt();
   }
 
   private trimHistory(userId: string, chatId: string, history: AiHistoryMessage[]): void {
