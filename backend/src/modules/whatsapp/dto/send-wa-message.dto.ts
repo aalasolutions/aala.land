@@ -1,5 +1,5 @@
 // backend/src/modules/whatsapp/dto/send-wa-message.dto.ts
-import { IsString, IsNotEmpty, IsOptional, IsIn } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, IsIn, IsBoolean } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class SendWaMessageDto {
@@ -46,6 +46,6 @@ export class TypingDto {
 
 export class AiToggleDto {
   @ApiProperty({ required: false })
-  @IsOptional()
+  @IsOptional() @IsBoolean()
   enabled?: boolean;
 }

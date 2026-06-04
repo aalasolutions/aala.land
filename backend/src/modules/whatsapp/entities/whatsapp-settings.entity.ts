@@ -19,6 +19,9 @@ export class WhatsappSettings {
   @Column({ name: 'ai_prompt', type: 'text', nullable: true })
   aiPrompt: string | null;
 
+  @Column({ name: 'ai_enabled', type: 'boolean', nullable: true, default: null })
+  aiEnabled: boolean | null;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 

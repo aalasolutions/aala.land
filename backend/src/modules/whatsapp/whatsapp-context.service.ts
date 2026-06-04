@@ -81,7 +81,7 @@ export class WhatsappContextService {
         const baths = u?.bathrooms ? `${u.bathrooms} Bath` : '';
         const sqft = u?.sqFt ? `${u.sqFt} sqft` : '';
         const amenities = (u?.amenities ?? []).join(', ');
-        const allPhotos = l.photos.length ? l.photos : (u?.photos ?? []);
+        const allPhotos = (l.photos ?? []).length ? l.photos : (u?.photos ?? []);
         const photos = allPhotos.slice(0, 3);
         const contact = [l.contactPhone, l.contactEmail].filter(Boolean).join(' / ');
 

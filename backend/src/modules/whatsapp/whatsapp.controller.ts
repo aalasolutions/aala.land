@@ -103,7 +103,7 @@ export class WhatsappController {
 
   @Post('ai/toggle')
   @ApiOperation({ summary: 'Toggle or set AI auto-reply' })
-  toggleAi(@Request() req: AuthenticatedRequest, @Body() dto: AiToggleDto) {
+  async toggleAi(@Request() req: AuthenticatedRequest, @Body() dto: AiToggleDto) {
     return this.wa.toggleAi(req.user.userId, req.user.companyId!, dto.enabled);
   }
 

@@ -47,6 +47,7 @@ export default class WhatsappController extends Controller {
   // ── Lifecycle ─────────────────────────────────────────────────────────
 
   async setup() {
+    const setupGen = this._pollQRGeneration;
     this.whatsapp.connectSocket((type, data) => this.handleSocketEvent(type, data));
 
     try {
@@ -56,6 +57,8 @@ export default class WhatsappController extends Controller {
         this.whatsapp.getAllMessages(),
         this.whatsapp.getAi(),
       ]);
+
+      if (setupGen !== this._pollQRGeneration) return; // navigated away mid-fetch
 
       const conn = connData.data ?? connData;
       this.connection = conn.connection ?? 'disconnected';

@@ -45,6 +45,25 @@ export class WhatsappAiService {
     return value;
   }
 
+  async persistEnabled(userId: string, companyId: string, value: boolean): Promise<void> {
+    this.enabledByUser.set(userId, value);
+    try {
+      await this.settingsRepo.upsert({ companyId, aiEnabled: value }, ['companyId']);
+    } catch (err) {
+      this.logger.error('Failed to persist aiEnabled', err instanceof Error ? err.message : err);
+    }
+  }
+
+  async loadEnabledState(userId: string, companyId: string): Promise<void> {
+    if (this.enabledByUser.has(userId)) return;
+    try {
+      const row = await this.settingsRepo.findOne({ where: { companyId }, select: { aiEnabled: true } });
+      if (row?.aiEnabled !== null && row?.aiEnabled !== undefined) {
+        this.enabledByUser.set(userId, row.aiEnabled);
+      }
+    } catch { /* non-fatal — env default applies */ }
+  }
+
   getHistoryFor(userId: string, chatId: string): AiHistoryMessage[] {
     return this.histories.get(`${userId}:${chatId}`) ?? [];
   }

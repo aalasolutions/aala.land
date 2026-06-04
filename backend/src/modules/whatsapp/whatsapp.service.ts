@@ -64,6 +64,7 @@ export class WhatsappService implements OnModuleInit {
   }
 
   private wireInstance(userId: string, companyId: string, inst: BaileysInstance): void {
+    void this.ai.loadEnabledState(userId, companyId);
     inst.emitter.on('status', data => this.gateway.emitStatus(userId, data));
     inst.emitter.on('qr',     data => this.gateway.emitQR(userId, data));
     inst.emitter.on('message', (msg: WaMessage) => {
@@ -180,10 +181,9 @@ export class WhatsappService implements OnModuleInit {
     return this.ai.getHistoryFor(userId, chatId);
   }
 
-  toggleAi(userId: string, _companyId: string, enabled?: boolean): { enabled: boolean } {
-    const next = typeof enabled === 'boolean'
-      ? this.ai.setEnabled(userId, enabled)
-      : this.ai.setEnabled(userId, !this.ai.isEnabled(userId));
+  async toggleAi(userId: string, companyId: string, enabled?: boolean): Promise<{ enabled: boolean }> {
+    const next = typeof enabled === 'boolean' ? enabled : !this.ai.isEnabled(userId);
+    await this.ai.persistEnabled(userId, companyId, next);
     this.gateway.emitAi(userId, { enabled: next, keyConfigured: this.ai.getConfig(userId).keyConfigured });
     return { enabled: next };
   }
