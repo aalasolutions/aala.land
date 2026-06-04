@@ -12,6 +12,7 @@ import { AiHistoryMessage, WaChat, WaMessage, WaStatus } from './wa-types';
 export class WhatsappService implements OnModuleInit {
   private readonly logger = new Logger(WhatsappService.name);
   private wiredUsers = new Set<string>();
+  private readonly persistedCompanyIds = new Map<string, string>();
   private readonly dataDir = process.env.WHATSAPP_DATA_DIR ?? join(process.cwd(), 'data', 'whatsapp');
 
   constructor(
@@ -48,6 +49,8 @@ export class WhatsappService implements OnModuleInit {
   }
 
   private persistCompanyId(userId: string, companyId: string): void {
+    if (this.persistedCompanyIds.get(userId) === companyId) return;
+    this.persistedCompanyIds.set(userId, companyId);
     try {
       writeFileSync(join(this.dataDir, 'sessions', userId, 'company_id'), companyId, 'utf8');
     } catch { /* non-fatal */ }
@@ -103,7 +106,7 @@ export class WhatsappService implements OnModuleInit {
     return { qr: s.qr, hasCredentials: s.hasCredentials, connection: s.connection };
   }
 
-  async logout(userId: string, _companyId: string): Promise<{ success: boolean }> {
+  async logout(userId: string, companyId: string): Promise<{ success: boolean }> {
     const inst = this.manager.get(userId);
     if (inst) {
       await inst.logout();
@@ -114,6 +117,8 @@ export class WhatsappService implements OnModuleInit {
     }
     this.store.clearAll(userId);
     this.ai.clearUserState(userId);
+    this.ai.clearPromptCache(companyId);
+    this.persistedCompanyIds.delete(userId);
     this.wiredUsers.delete(userId);
     await this.manager.remove(userId);
     return { success: true };

@@ -8,6 +8,7 @@ import { WhatsappContextService } from './whatsapp-context.service';
 interface PromptCacheEntry {
   prompt: string | null;
   cachedAt: number;
+  ttl: number;
 }
 
 @Injectable()
@@ -15,7 +16,8 @@ export class WhatsappAiService {
   private readonly logger = new Logger(WhatsappAiService.name);
   private histories = new Map<string, AiHistoryMessage[]>();
   private promptCache = new Map<string, PromptCacheEntry>();
-  private readonly CACHE_TTL_MS = 5 * 60 * 1000;
+  private readonly CACHE_TTL_MS = 2 * 60 * 1000;
+  private readonly NULL_CACHE_TTL_MS = 30 * 1000;
   private enabledByUser = new Map<string, boolean>();
 
   constructor(
@@ -72,12 +74,12 @@ export class WhatsappAiService {
     if (Math.floor(Date.now() / 1000) - evt.timestamp > maxAge) return;
 
     const histKey = `${userId}:${evt.chatId}`;
-    const history = this.histories.get(histKey) ?? [];
+    let history = this.histories.get(histKey);
+    if (!history) { history = []; this.histories.set(histKey, history); }
 
     let assistantPushed = false;
     try {
       history.push({ role: 'user', content: evt.body });
-      this.trimHistory(userId, evt.chatId, history);
 
       const [systemPrompt, contextBlock] = await Promise.all([
         this.getCompanyPrompt(companyId),
@@ -93,7 +95,7 @@ export class WhatsappAiService {
       }
 
       history.push({ role: 'assistant', content: reply });
-      this.trimHistory(userId, evt.chatId, history);
+      this.trimHistory(userId, evt.chatId, history);  // single trim after both pushes
       assistantPushed = true;
 
       await send(evt.chatId, reply);
@@ -106,12 +108,13 @@ export class WhatsappAiService {
 
   private async getCompanyPrompt(companyId: string): Promise<string> {
     const cached = this.promptCache.get(companyId);
-    if (cached && Date.now() - cached.cachedAt < this.CACHE_TTL_MS) {
+    if (cached && Date.now() - cached.cachedAt < cached.ttl) {
       return cached.prompt ?? this.defaultPrompt();
     }
     const settings = await this.settingsRepo.findOne({ where: { companyId } });
     const prompt = settings?.aiPrompt || null;
-    this.promptCache.set(companyId, { prompt, cachedAt: Date.now() });
+    const ttl = prompt ? this.CACHE_TTL_MS : this.NULL_CACHE_TTL_MS;
+    this.promptCache.set(companyId, { prompt, cachedAt: Date.now(), ttl });
     return prompt ?? this.defaultPrompt();
   }
 
