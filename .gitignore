@@ -42,6 +42,9 @@ yarn-error.log*
 playwright-report/
 test-results/
 
+# Superpowers
+.superpowers/
+
 # Private / research
 /-extinct-dont-read-private
 /dark/
