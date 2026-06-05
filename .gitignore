@@ -57,6 +57,7 @@ test-results/
 .claude/settings.local.json
 .claude/*
 docs
+PROJECT_OVERVIEW.md
 
 # TypeScript
 *.tsbuildinfo
