@@ -11,8 +11,9 @@
       <div class="flex gap-2 x-center">
         <button
           type="button"
-          class="wa-ai-toggle {{if this.aiEnabled 'active'}} {{unless this.aiKeyConfigured 'disabled'}}"
-          title={{if this.aiKeyConfigured "Toggle AI auto-reply" "No AI key configured"}}
+          class="wa-ai-toggle {{if this.aiEnabled 'active'}} {{if (or (not this.isCompanyAdmin) (not this.aiKeyConfigured)) 'disabled'}}"
+          title={{if (not this.isCompanyAdmin) "Only Company Admin can toggle AI" (if this.aiKeyConfigured "Toggle AI auto-reply" "No AI key configured")}}
+          disabled={{not this.isCompanyAdmin}}
           {{on "click" this.toggleAi}}
         >
           AI: {{if this.aiEnabled "on" "off"}}
@@ -133,14 +134,13 @@
             <p class="wa-error">{{this.errorMsg}}</p>
           {{/if}}
           <div class="wa-input-row">
-            <textarea
+            <Textarea
+              @value={{this.messageText}}
               class="wa-input"
               placeholder="Type a message..."
               rows="1"
-              value={{this.messageText}}
-              {{on "input" this.setMessageText}}
               {{on "keydown" this.handleKeydown}}
-            ></textarea>
+            />
             <button type="button" class="wa-send-btn" disabled={{this.isSending}} {{on "click" this.sendMessage}}>
               Send
             </button>

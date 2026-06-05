@@ -35,6 +35,9 @@ yarn-error.log*
 **/coverage/
 **/testem.log
 
+# Superpowers
+.superpowers/
+
 # E2E (skipping from repo)
 /e2e/
 
@@ -54,6 +57,7 @@ test-results/
 .claude/settings.local.json
 .claude/*
 docs
+PROJECT_OVERVIEW.md
 
 # TypeScript
 *.tsbuildinfo

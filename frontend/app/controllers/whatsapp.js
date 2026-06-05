@@ -6,6 +6,11 @@ import { action } from '@ember/object';
 
 export default class WhatsappController extends Controller {
   @service whatsapp;
+  @service auth;
+
+  get isCompanyAdmin() {
+    return this.auth.currentUser?.role === 'company_admin';
+  }
 
   // ── State ─────────────────────────────────────────────────────────────
 

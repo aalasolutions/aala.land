@@ -9,6 +9,7 @@ export class AddWhatsappSettings1779083947008 implements MigrationInterface {
         "id"         uuid        NOT NULL DEFAULT uuid_generate_v4(),
         "company_id" uuid        NOT NULL,
         "ai_prompt"  text,
+        "ai_enabled" boolean     DEFAULT NULL,
         "created_at" TIMESTAMP   NOT NULL DEFAULT now(),
         "updated_at" TIMESTAMP   NOT NULL DEFAULT now(),
         CONSTRAINT "UQ_whatsapp_settings_company" UNIQUE ("company_id"),

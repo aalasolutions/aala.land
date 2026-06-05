@@ -64,7 +64,7 @@ export class WhatsappController {
   @Get('messages/:chatId')
   @ApiOperation({ summary: 'Messages for a specific chat' })
   getMessages(@Request() req: AuthenticatedRequest, @Param('chatId') chatId: string) {
-    return { messages: this.wa.getMessagesForChat(req.user.userId, decodeURIComponent(chatId)) };
+    return { messages: this.wa.getMessagesForChat(req.user.userId, chatId) };
   }
 
   // ── Sending ───────────────────────────────────────────────────────────
@@ -102,6 +102,7 @@ export class WhatsappController {
   getAi(@Request() req: AuthenticatedRequest) { return this.wa.getAiConfig(req.user.userId); }
 
   @Post('ai/toggle')
+  @Roles(Role.COMPANY_ADMIN)
   @ApiOperation({ summary: 'Toggle or set AI auto-reply' })
   async toggleAi(@Request() req: AuthenticatedRequest, @Body() dto: AiToggleDto) {
     return this.wa.toggleAi(req.user.userId, req.user.companyId!, dto.enabled);
@@ -110,7 +111,7 @@ export class WhatsappController {
   @Get('ai/history/:chatId')
   @ApiOperation({ summary: 'AI conversation history for a chat' })
   getAiHistory(@Request() req: AuthenticatedRequest, @Param('chatId') chatId: string) {
-    return { chatId, history: this.wa.getAiHistory(req.user.userId, decodeURIComponent(chatId)) };
+    return { chatId, history: this.wa.getAiHistory(req.user.userId, chatId) };
   }
 
   // ── Media serving ─────────────────────────────────────────────────────
