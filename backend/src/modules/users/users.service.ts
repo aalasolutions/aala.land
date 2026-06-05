@@ -13,7 +13,7 @@ import { MailService } from '../../shared/services/mail.service';
 import { EmailTemplatesService } from '../email-templates/email-templates.service';
 import { EmailTemplateCategory } from '../email-templates/entities/email-template.entity';
 import { Role } from '../../shared/enums/roles.enum';
-import { Company } from '../companies/entities/company.entity';
+import { Company, TIER_LIMITS } from '../companies/entities/company.entity';
 
 @Injectable()
 export class UsersService {
@@ -79,7 +79,7 @@ export class UsersService {
 
     async findByEmail(email: string): Promise<User | null> {
         return this.userRepository.findOne({
-            where: { email },
+            where: { email, isActive: true },
             select: ['id', 'email', 'password', 'name', 'role', 'companyId'],
         });
     }
@@ -237,10 +237,12 @@ export class UsersService {
         if (!company) {
             throw new NotFoundException(`Company ${companyId} not found`);
         }
-        const currentCount = await this.userRepository.count({ where: { companyId } });
+        const currentCount = await this.userRepository.count({ where: { companyId, isActive: true } });
         if (currentCount >= company.maxUsers) {
+            const isUnlimited = company.maxUsers >= TIER_LIMITS.PRO.maxUsers;
+            const limitDisplay = isUnlimited ? 'unlimited users' : `up to ${company.maxUsers} user${company.maxUsers === 1 ? '' : 's'}`;
             throw new BadRequestException(
-                `Your ${company.subscriptionTier} plan allows up to ${company.maxUsers} user${company.maxUsers === 1 ? '' : 's'}. Upgrade to add more.`,
+                `Your ${company.subscriptionTier} plan allows ${limitDisplay}. Upgrade to add more.`,
             );
         }
     }

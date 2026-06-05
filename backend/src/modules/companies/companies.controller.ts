@@ -58,7 +58,7 @@ export class CompaniesController {
         const result = await this.companiesService.findOneWithAdminEmail(id);
         const canSeeAdminEmail = [Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN].includes(req.user.role as Role);
         if (!canSeeAdminEmail) {
-            const { email: _email, ...rest } = result;
+            const { adminEmail: _adminEmail, ...rest } = result;
             return rest;
         }
         return result;
