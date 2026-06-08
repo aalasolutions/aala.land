@@ -13,7 +13,7 @@ import { MailService } from '../../shared/services/mail.service';
 import { EmailTemplatesService } from '../email-templates/email-templates.service';
 import { EmailTemplateCategory } from '../email-templates/entities/email-template.entity';
 import { Role } from '../../shared/enums/roles.enum';
-import { Company } from '../companies/entities/company.entity';
+import { Company, TIER_LIMITS } from '../companies/entities/company.entity';
 
 @Injectable()
 export class UsersService {
