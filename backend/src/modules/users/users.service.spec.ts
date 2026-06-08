@@ -112,6 +112,7 @@ describe('UsersService', () => {
       repo.findOne.mockResolvedValue(mockUser);
       const mockCompany = { id: companyId, subscriptionTier: 'STARTER', maxUsers: 5 } as any;
       companyRepo.findOne.mockResolvedValue(mockCompany);
+      repo.count.mockResolvedValue(2);
 
       const dto = { name: 'Test', email: 'agent@test.com', password: 'pass123', companyId, role: Role.AGENT };
       await expect(service.create(dto as any, companyId, Role.COMPANY_ADMIN)).rejects.toThrow(ConflictException);

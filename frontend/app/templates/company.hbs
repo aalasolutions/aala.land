@@ -134,7 +134,7 @@
           <button
             type="button"
             class="btn btn-secondary w-full mt-2"
-            disabled={{or (eq this.company.subscriptionTier 'STARTER') this.isUpgrading}}
+            disabled={{or (eq this.company.subscriptionTier 'STARTER') (eq this.company.subscriptionTier 'PRO') this.isUpgrading}}
             {{on "click" (fn this.upgrade "STARTER")}}
           >
             {{if this.isUpgrading "Redirecting…" "Select STARTER"}}

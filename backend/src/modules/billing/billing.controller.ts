@@ -1,6 +1,7 @@
 import {
     Controller, Post, Body, Req, HttpCode, UseGuards, Request,
 } from '@nestjs/common';
+import { Request as ExpressRequest } from 'express';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { SkipThrottle } from '@nestjs/throttler';
 import { RawBodyRequest } from '@nestjs/common';
@@ -46,7 +47,7 @@ export class BillingController {
     @SkipThrottle()
     @HttpCode(200)
     @ApiOperation({ summary: 'Stripe webhook receiver (public, verified by signature)' })
-    handleWebhook(@Req() req: RawBodyRequest<Request>) {
+    handleWebhook(@Req() req: RawBodyRequest<ExpressRequest>) {
         const sig = (req.headers as unknown as Record<string, string>)['stripe-signature'];
         return this.billingService.handleWebhook(req.rawBody!, sig);
     }

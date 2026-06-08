@@ -237,6 +237,7 @@ export class UsersService {
         if (!company) {
             throw new NotFoundException(`Company ${companyId} not found`);
         }
+        if (company.maxUsers >= TIER_LIMITS.PRO.maxUsers) return;
         const currentCount = await this.userRepository.count({ where: { companyId } });
         if (currentCount >= company.maxUsers) {
             throw new BadRequestException(

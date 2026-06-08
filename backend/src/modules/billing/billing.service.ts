@@ -191,7 +191,7 @@ export class BillingService {
     }
 
     private async handleSubscriptionDeleted(subscription: any): Promise<void> {
-        const company = await this.companyRepository.findOne({ where: { stripeCustomerId: subscription.customer as string } });
+        const company = await this.companyRepository.findOne({ where: { stripeSubscriptionId: subscription.id } });
         if (!company) return;
         const freeLimits = TIER_LIMITS[SubscriptionTier.FREE];
         await this.companyRepository.update(company.id, {
