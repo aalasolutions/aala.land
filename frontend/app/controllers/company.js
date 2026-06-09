@@ -143,12 +143,13 @@ export default class CompanyController extends Controller {
     const companyId = this.auth.currentUser?.companyId;
 
     try {
+      const defaultRegionCode = this.formDefaultRegionCode || this.formActiveRegions[0];
       await this.auth.fetchJson(`/companies/${companyId}`, {
         method: 'PATCH',
         body: JSON.stringify({
           name: this.formName,
           activeRegions: this.formActiveRegions,
-          defaultRegionCode: this.formDefaultRegionCode,
+          defaultRegionCode,
         }),
       });
 

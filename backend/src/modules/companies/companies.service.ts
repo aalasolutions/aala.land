@@ -156,7 +156,11 @@ export class CompaniesService {
             if (!('maxProperties' in dto)) company.maxProperties = tierLimits.maxProperties;
         }
 
-        Object.assign(company, dto);
+        const { subscriptionExpiresAt, ...rest } = dto;
+        Object.assign(company, rest);
+        if ('subscriptionExpiresAt' in dto) {
+            company.subscriptionExpiresAt = subscriptionExpiresAt ? new Date(subscriptionExpiresAt) : null;
+        }
         return this.companyRepository.save(company);
     }
 
