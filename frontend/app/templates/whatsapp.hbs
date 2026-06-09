@@ -13,7 +13,7 @@
           type="button"
           class="wa-ai-toggle {{if this.aiEnabled 'active'}} {{if (or (not this.isCompanyAdmin) (not this.aiKeyConfigured)) 'disabled'}}"
           title={{if (not this.isCompanyAdmin) "Only Company Admin can toggle AI" (if this.aiKeyConfigured "Toggle AI auto-reply" "No AI key configured")}}
-          disabled={{not this.isCompanyAdmin}}
+          disabled={{or (not this.isCompanyAdmin) (not this.aiKeyConfigured)}}
           {{on "click" this.toggleAi}}
         >
           AI: {{if this.aiEnabled "on" "off"}}
