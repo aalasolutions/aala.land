@@ -68,7 +68,7 @@ export default class AdminCompaniesController extends Controller {
     if (this.editTier !== this.editingCompany.subscriptionTier) {
       body.subscriptionTier = this.editTier;
     }
-    body.subscriptionExpiresAt = this.editExpiry || null;
+    body.subscriptionExpiresAt = this.editExpiry ? new Date(this.editExpiry).toISOString() : null;
 
     try {
       await this.auth.fetchJson(`/companies/${this.editingCompany.id}`, {
