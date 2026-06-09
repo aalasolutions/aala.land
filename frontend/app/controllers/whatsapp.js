@@ -229,7 +229,10 @@ export default class WhatsappController extends Controller {
       const result = await this.whatsapp.sendMessage(this.currentChatId, text);
       const realId = (result.data ?? result).messageId;
       if (realId) {
-        this.messages = this.messages.map(m => m.id === tempId ? { ...m, id: realId } : m);
+        const alreadyPresent = this.messages.some(m => m.id === realId);
+        this.messages = alreadyPresent
+          ? this.messages.filter(m => m.id !== tempId)
+          : this.messages.map(m => m.id === tempId ? { ...m, id: realId } : m);
       }
     } catch (err) {
       this.messages = this.messages.filter(m => m.id !== tempId);
