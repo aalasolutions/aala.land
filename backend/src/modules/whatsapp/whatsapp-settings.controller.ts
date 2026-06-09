@@ -38,11 +38,12 @@ export class WhatsappSettingsController {
     @Body() body: UpdateWhatsappSettingsDto,
   ) {
     const companyId = req.user.companyId!;
-    const aiPrompt = typeof body.aiPrompt === 'string' && body.aiPrompt.trim() !== ''
-      ? body.aiPrompt.trim()
-      : null;
-
     const existing = await this.settingsRepo.findOne({ where: { companyId } });
+    const aiPrompt = body.aiPrompt === undefined
+      ? (existing?.aiPrompt ?? null)
+      : (typeof body.aiPrompt === 'string' && body.aiPrompt.trim() !== ''
+        ? body.aiPrompt.trim()
+        : null);
     const entity = this.settingsRepo.create({ ...existing, companyId, aiPrompt });
     const saved = await this.settingsRepo.save(entity);
     this.aiService.clearPromptCache(companyId);

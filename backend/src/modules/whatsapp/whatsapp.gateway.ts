@@ -9,7 +9,7 @@ import { User } from '../users/entities/user.entity';
 import { Company } from '../companies/entities/company.entity';
 
 const corsOrigins = process.env.CORS_ORIGIN
-  ? process.env.CORS_ORIGIN.split(',').map(o => o.trim())
+  ? process.env.CORS_ORIGIN.split(',').map(o => o.trim()).filter(Boolean)
   : ['http://localhost:4200'];
 
 @WebSocketGateway({ namespace: 'whatsapp', cors: { origin: corsOrigins, credentials: true } })
