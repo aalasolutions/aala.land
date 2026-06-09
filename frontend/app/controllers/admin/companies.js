@@ -85,8 +85,4 @@ export default class AdminCompaniesController extends Controller {
     }
   }
 
-  @action
-  stopPropagation(e) {
-    e.stopPropagation();
-  }
 }

@@ -65,10 +65,6 @@ export default class CompanyController extends Controller {
     return isAdminRole(this.auth.currentUser?.role);
   }
 
-  get isCompanyAdmin() {
-    return this.auth.currentUser?.role === 'company_admin';
-  }
-
   get maxCountries() {
     return this.company?.maxCountries ?? 1;
   }

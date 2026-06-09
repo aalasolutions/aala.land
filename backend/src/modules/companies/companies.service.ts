@@ -35,7 +35,7 @@ export class CompaniesService {
         return this.companyRepository.save(company);
     }
 
-    async findAll(page = 1, limit = 20): Promise<{ data: (Company & { usersCount: number })[]; total: number; page: number; limit: number }> {
+    async findAll(page = 1, limit = 20): Promise<{ data: (Company & { usersCount: number; inactiveUsersCount: number })[]; total: number; page: number; limit: number }> {
         const [companies, total] = await this.companyRepository.findAndCount({
             ...paginationOptions(page, limit),
             order: { createdAt: 'DESC' },
