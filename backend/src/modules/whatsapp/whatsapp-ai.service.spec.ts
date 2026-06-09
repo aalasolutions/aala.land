@@ -11,11 +11,16 @@ const makeMockContextService = () => ({
 
 describe('WhatsappAiService', () => {
   let service: WhatsappAiService;
+  const originalFetch = global.fetch;
 
   beforeEach(() => {
     delete process.env.OLLAMA_API_KEY;
     delete process.env.AI_ENABLED;
     service = new WhatsappAiService(makeMockRepo() as any, makeMockContextService() as any);
+  });
+
+  afterEach(() => {
+    global.fetch = originalFetch;
   });
 
   it('is enabled by default', () => {

@@ -46,7 +46,7 @@
     "@nestjs/throttler": "^6.5.0",
     "@nestjs/typeorm": "^11.0.0",
     "@nestjs/websockets": "^11.1.19",
-    "@whiskeysockets/baileys": "7.0.0-rc11",
+    "@whiskeysockets/baileys": "7.0.0-rc13",
     "bcryptjs": "^3.0.3",
     "bullmq": "^5.66.5",
     "class-transformer": "^0.5.1",

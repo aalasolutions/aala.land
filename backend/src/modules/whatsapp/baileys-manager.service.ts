@@ -295,7 +295,7 @@ export class BaileysInstance {
       isGroup,
       fromMe,
       body: text || (mediaType ? `[${mediaType}]` : ''),
-      hasMedia: !!mediaType,
+      hasMedia: mediaUrls.length > 0,
       mediaType,
       mediaUrls,
       mentionedIds: msg.extendedTextMessage?.contextInfo?.mentionedJid ?? [],
