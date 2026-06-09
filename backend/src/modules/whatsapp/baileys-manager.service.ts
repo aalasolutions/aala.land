@@ -305,7 +305,8 @@ export class BaileysInstance {
   }
 
   private mediaExtension(mediaType: string, msg: any): string {
-    if (['image', 'sticker'].includes(mediaType)) return 'jpg';
+    if (mediaType === 'sticker') return 'webp';
+    if (mediaType === 'image') return 'jpg';
     if (mediaType === 'video') return 'mp4';
     if (['audio', 'ptt'].includes(mediaType)) return 'ogg';
     if (mediaType === 'document') {

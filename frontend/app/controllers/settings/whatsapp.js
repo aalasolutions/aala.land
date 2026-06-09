@@ -11,10 +11,6 @@ export default class SettingsWhatsappController extends Controller {
   @tracked successMsg = '';
   @tracked errorMsg = '';
 
-  get promptValue() {
-    return this.aiPrompt || this.model?.aiPrompt || '';
-  }
-
   @action
   setup() {
     this.aiPrompt = this.model?.aiPrompt ?? '';
