@@ -37,8 +37,11 @@
               </span>
             </td>
             <td>
-              {{company.usersCount}} / {{if (eq company.maxUsers this.unlimitedValue) "∞" company.maxUsers}}
+              {{company.usersCount}} / {{if (or (eq company.maxUsers this.unlimitedValue) (gt company.maxUsers this.unlimitedValue)) "∞" company.maxUsers}}
               {{#if company.inactiveUsersCount}}
+                <span class="text-muted">({{company.inactiveUsersCount}} inactive)</span>
+              {{/if}}
+            </td>
                 <span class="text-muted">({{company.inactiveUsersCount}} inactive)</span>
               {{/if}}
             </td>
