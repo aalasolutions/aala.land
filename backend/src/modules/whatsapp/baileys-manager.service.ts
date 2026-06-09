@@ -90,6 +90,7 @@ export class BaileysInstance {
           ...this.status,
           connection: 'disconnected',
           me: null,
+          qr: null,
           hasCredentials: !loggedOut,
         };
         this.emitter.emit('status', { ...this.status });
@@ -310,7 +311,8 @@ export class BaileysInstance {
     if (mediaType === 'video') return 'mp4';
     if (['audio', 'ptt'].includes(mediaType)) return 'ogg';
     if (mediaType === 'document') {
-      const ext = (msg.documentMessage?.fileName ?? '').split('.').pop();
+      const raw = (msg.documentMessage?.fileName ?? '').split('.').pop() ?? '';
+      const ext = raw.replace(/[^a-zA-Z0-9]/g, '');
       return ext && ext.length <= 5 ? ext : 'bin';
     }
     return 'bin';
