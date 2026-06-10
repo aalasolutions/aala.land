@@ -237,12 +237,11 @@ export class UsersService {
         if (!company) {
             throw new NotFoundException(`Company ${companyId} not found`);
         }
+        if (company.maxUsers >= TIER_LIMITS.PRO.maxUsers) return;
         const currentCount = await this.userRepository.count({ where: { companyId, isActive: true } });
         if (currentCount >= company.maxUsers) {
-            const isUnlimited = company.maxUsers >= TIER_LIMITS.PRO.maxUsers;
-            const limitDisplay = isUnlimited ? 'unlimited users' : `up to ${company.maxUsers} user${company.maxUsers === 1 ? '' : 's'}`;
             throw new BadRequestException(
-                `Your ${company.subscriptionTier} plan allows ${limitDisplay}. Upgrade to add more.`,
+                `Your ${company.subscriptionTier} plan allows up to ${company.maxUsers} user${company.maxUsers === 1 ? '' : 's'}. Upgrade to add more.`,
             );
         }
     }
