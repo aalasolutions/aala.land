@@ -5,9 +5,9 @@ import { service } from '@ember/service';
 export default class WhatsappRoute extends AuthenticatedRoute {
   @service whatsapp;
 
-  async setupController(controller) {
+  setupController(controller) {
     super.setupController(...arguments);
-    await controller.setup();
+    controller.setup();
   }
 
   resetController(controller, isExiting) {

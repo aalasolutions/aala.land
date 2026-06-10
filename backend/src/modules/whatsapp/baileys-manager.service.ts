@@ -268,10 +268,11 @@ export class BaileysInstance {
               : this.mediaDirs.DOCUMENT_DIR;
         const ext = this.mediaExtension(mediaType, msg);
         const safeId = basename(key.id ?? '') || String(Date.now());
-        const filePath = join(subdir, `${safeId}.${ext}`);
+        const fileName = `${safeId}.${ext}`;
+        const filePath = join(subdir, fileName);
         const buffer = await this.baileysFns.downloadMediaMessage(raw, 'buffer', {});
         writeFileSync(filePath, buffer as Buffer);
-        mediaUrls = [filePath];
+        mediaUrls = [fileName];
       } catch {
         this.logger.warn(`[${this.userId}] Media download failed for ${key.id}`);
       }

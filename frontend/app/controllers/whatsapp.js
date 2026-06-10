@@ -209,6 +209,7 @@ export default class WhatsappController extends Controller {
     this.isSending = true;
     this.errorMsg = '';
     const tempId = `pending-${Date.now()}`;
+    const prevChat = this.chats.find(c => c.chatId === this.currentChatId);
 
     this.ingestMessage({
       id: tempId,
@@ -236,6 +237,14 @@ export default class WhatsappController extends Controller {
       }
     } catch (err) {
       this.messages = this.messages.filter(m => m.id !== tempId);
+      if (prevChat) {
+        const idx = this.chats.findIndex(c => c.chatId === this.currentChatId);
+        if (idx >= 0) {
+          const updated = [...this.chats];
+          updated[idx] = prevChat;
+          this.chats = updated.sort((a, b) => (b.lastTs ?? 0) - (a.lastTs ?? 0));
+        }
+      }
       this.errorMsg = 'Send failed. Please try again.';
     } finally {
       this.isSending = false;
