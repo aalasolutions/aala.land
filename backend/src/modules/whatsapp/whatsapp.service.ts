@@ -1,157 +1,202 @@
-import { Injectable, NotFoundException, Logger } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { WhatsappMessage, MessageDirection, MessageStatus } from './entities/whatsapp-message.entity';
-import { SendMessageDto } from './dto/send-message.dto';
-import { paginationOptions } from '../../shared/utils/pagination.util';
+// backend/src/modules/whatsapp/whatsapp.service.ts
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { existsSync, readFileSync, rmSync, writeFileSync } from 'fs';
+import { join } from 'path';
+import { BaileysManagerService, BaileysInstance } from './baileys-manager.service';
+import { MessageStoreService } from './message-store.service';
+import { WhatsappAiService } from './whatsapp-ai.service';
+import { WhatsappGateway } from './whatsapp.gateway';
+import { AiHistoryMessage, WaChat, WaMessage, WaStatus } from './wa-types';
 
 @Injectable()
-export class WhatsappService {
+export class WhatsappService implements OnModuleInit {
   private readonly logger = new Logger(WhatsappService.name);
+  private wiredUsers = new Set<string>();
+  private readonly persistedCompanyIds = new Map<string, string>();
+  private readonly dataDir = process.env.WHATSAPP_DATA_DIR ?? join(process.cwd(), 'data', 'whatsapp');
 
   constructor(
-    @InjectRepository(WhatsappMessage)
-    private readonly messageRepository: Repository<WhatsappMessage>,
-  ) { }
+    private readonly manager: BaileysManagerService,
+    private readonly store: MessageStoreService,
+    private readonly ai: WhatsappAiService,
+    private readonly gateway: WhatsappGateway,
+  ) {}
 
-  async sendMessage(companyId: string, dto: SendMessageDto): Promise<WhatsappMessage> {
-    const record = this.messageRepository.create({
-      companyId,
-      phoneNumber: dto.phoneNumber,
-      message: dto.message,
-      leadId: dto.leadId ?? null,
-      mediaUrl: dto.mediaUrl ?? null,
-      direction: MessageDirection.OUTBOUND,
-      status: MessageStatus.QUEUED,
-    });
+  // ── Boot wiring ────────────────────────────────────────────────────────
 
-    const saved = await this.messageRepository.save(record);
-
-    try {
-      await this.dispatchToWhatsAppApi(dto.phoneNumber, dto.message, dto.mediaUrl);
-      saved.status = MessageStatus.SENT;
-      await this.messageRepository.save(saved);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      this.logger.error(`WhatsApp dispatch failed for ${dto.phoneNumber}: ${message}`);
-      saved.status = MessageStatus.FAILED;
-      await this.messageRepository.save(saved);
-    }
-
-    return saved;
-  }
-
-  async handleWebhook(companyId: string, payload: Record<string, unknown>): Promise<{ received: boolean }> {
-    try {
-      const entry = payload['entry'] as Record<string, unknown>[] | undefined;
-      if (!entry?.length) {
-        return { received: true };
+  async onModuleInit(): Promise<void> {
+    // BaileysManagerService.onModuleInit already ran — wire any pre-started instances
+    for (const [userId, inst] of this.manager.getAll()) {
+      const companyId = this.readPersistedCompanyId(userId);
+      if (companyId) {
+        this.wireInstance(userId, companyId, inst);
+        this.wiredUsers.add(userId);
+        this.logger.log(`Auto-wired AI for user ${userId}`);
       }
+    }
+  }
 
-      for (const item of entry) {
-        const changes = item['changes'] as Record<string, unknown>[] | undefined;
-        if (!changes?.length) continue;
+  // ── Instance wiring ────────────────────────────────────────────────────
 
-        for (const change of changes) {
-          const value = change['value'] as Record<string, unknown> | undefined;
-          const messages = value?.['messages'] as Record<string, unknown>[] | undefined;
-          if (!messages?.length) continue;
+  private async ensureInstance(userId: string, companyId: string): Promise<BaileysInstance> {
+    const inst = await this.manager.getOrCreate(userId);
+    this.persistCompanyId(userId, companyId);
+    if (!this.wiredUsers.has(userId)) {
+      this.wiredUsers.add(userId);
+      this.wireInstance(userId, companyId, inst);
+    }
+    return inst;
+  }
 
-          for (const msg of messages) {
-            const phone = msg['from'] as string | undefined;
-            const text = (msg['text'] as Record<string, unknown> | undefined)?.['body'] as string | undefined;
-            const wamid = msg['id'] as string | undefined;
+  private persistCompanyId(userId: string, companyId: string): void {
+    if (this.persistedCompanyIds.get(userId) === companyId) return;
+    this.persistedCompanyIds.set(userId, companyId);
+    try {
+      writeFileSync(join(this.dataDir, 'sessions', userId, 'company_id'), companyId, 'utf8');
+    } catch { /* non-fatal */ }
+  }
 
-            if (phone && text) {
-              const record = this.messageRepository.create({
-                companyId,
-                phoneNumber: phone,
-                message: text,
-                direction: MessageDirection.INBOUND,
-                status: MessageStatus.DELIVERED,
-                externalId: wamid ?? null,
-                leadId: null,
-                mediaUrl: null,
-              });
-              await this.messageRepository.save(record);
-            }
-          }
-        }
+  private readPersistedCompanyId(userId: string): string | null {
+    try {
+      const p = join(this.dataDir, 'sessions', userId, 'company_id');
+      return existsSync(p) ? readFileSync(p, 'utf8').trim() : null;
+    } catch { return null; }
+  }
+
+  private wireInstance(userId: string, companyId: string, inst: BaileysInstance): void {
+    void this.ai.loadEnabledState(userId, companyId);
+    inst.emitter.on('status', data => this.gateway.emitStatus(userId, data));
+    inst.emitter.on('qr',     data => this.gateway.emitQR(userId, data));
+    inst.emitter.on('message', (msg: WaMessage) => {
+      this.store.addMessage(userId, msg);
+      this.gateway.emitMessage(userId, msg);
+      if (!msg.fromMe) {
+        this.ai.handleIncomingMessage(msg, companyId, userId, async (chatId, message) => {
+          const result = await inst.sendMessage(chatId, message);
+          const aiMsg: WaMessage = {
+            id: result.messageId ?? `ai-${Date.now()}`,
+            chatId,
+            senderId: inst.getStatus().me?.id ?? 'me',
+            senderName: 'You',
+            chatName: msg.chatName,
+            isGroup: chatId.endsWith('@g.us'),
+            body: message,
+            hasMedia: false, mediaType: '', mediaUrls: [],
+            mentionedIds: [], quotedParticipant: '',
+            fromMe: true, aiGenerated: true,
+            timestamp: Math.floor(Date.now() / 1000),
+          };
+          this.store.addMessage(userId, aiMsg);
+          this.gateway.emitMessage(userId, aiMsg);
+          return result;
+        }).catch(err => this.logger.error('AI handler error', err));
       }
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      this.logger.error(`Webhook processing error: ${message}`);
-    }
-
-    return { received: true };
-  }
-
-  async findMessages(
-    companyId: string,
-    page = 1,
-    limit = 20,
-  ): Promise<{ data: WhatsappMessage[]; total: number; page: number; limit: number }> {
-    const [data, total] = await this.messageRepository.findAndCount({
-      where: { companyId },
-      ...paginationOptions(page, limit),
-      order: { createdAt: 'DESC' },
     });
-    return { data, total, page, limit };
   }
 
-  async findMessagesByLead(
-    leadId: string,
-    companyId: string,
-    page = 1,
-    limit = 20,
-  ): Promise<{ data: WhatsappMessage[]; total: number; page: number; limit: number }> {
-    const [data, total] = await this.messageRepository.findAndCount({
-      where: { leadId, companyId },
-      ...paginationOptions(page, limit),
-      order: { createdAt: 'DESC' },
-    });
-    return { data, total, page, limit };
+  // ── Connection ────────────────────────────────────────────────────────
+
+  async getConnection(userId: string, companyId: string): Promise<WaStatus> {
+    const inst = await this.ensureInstance(userId, companyId);
+    return inst.getStatus();
   }
 
-  async findOne(id: string, companyId: string): Promise<WhatsappMessage> {
-    const msg = await this.messageRepository.findOne({ where: { id, companyId } });
-    if (!msg) {
-      throw new NotFoundException('WhatsApp message not found');
+  async getQR(userId: string, companyId: string): Promise<{ qr: string | null; hasCredentials: boolean; connection: string }> {
+    const inst = await this.ensureInstance(userId, companyId);
+    const s = inst.getStatus();
+    return { qr: s.qr, hasCredentials: s.hasCredentials, connection: s.connection };
+  }
+
+  async logout(userId: string, companyId: string): Promise<{ success: boolean }> {
+    const inst = this.manager.get(userId);
+    if (inst) {
+      await inst.logout();
+      inst.emitter.removeAllListeners();
+    } else {
+      const sessionDir = join(this.dataDir, 'sessions', userId);
+      if (existsSync(sessionDir)) rmSync(sessionDir, { recursive: true, force: true });
     }
-    return msg;
+    this.store.clearAll(userId);
+    this.ai.clearUserState(userId);
+    this.ai.clearPromptCache(companyId);
+    this.persistedCompanyIds.delete(userId);
+    this.wiredUsers.delete(userId);
+    await this.manager.remove(userId);
+    return { success: true };
   }
 
-  private async dispatchToWhatsAppApi(phone: string, message: string, mediaUrl?: string): Promise<void> {
-    const token = process.env.WHATSAPP_API_TOKEN;
-    const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
+  // ── Messages / Chats ──────────────────────────────────────────────────
 
-    if (!token || !phoneNumberId) {
-      this.logger.warn('WhatsApp API credentials not configured. Message stored but not sent.');
-      return;
+  getChats(userId: string): WaChat[] {
+    return this.store.getChatList(userId);
+  }
+
+  getAllMessages(userId: string): WaMessage[] {
+    return this.store.getAllMessages(userId);
+  }
+
+  getMessagesForChat(userId: string, chatId: string): WaMessage[] {
+    return this.store.getMessagesForChat(userId, chatId);
+  }
+
+  async send(userId: string, companyId: string, chatId: string, message: string, replyTo?: string) {
+    const inst = await this.ensureInstance(userId, companyId);
+    const result = await inst.sendMessage(chatId, message, { replyTo });
+    if (result.messageId) {
+      const { me } = inst.getStatus();
+      this.store.addMessage(userId, {
+        id: result.messageId,
+        chatId,
+        senderId: me?.id ?? 'me',
+        senderName: 'You',
+        chatName: chatId.split('@')[0],
+        isGroup: chatId.endsWith('@g.us'),
+        body: message,
+        hasMedia: false, mediaType: '', mediaUrls: [],
+        mentionedIds: [], quotedParticipant: '',
+        fromMe: true, aiGenerated: false,
+        timestamp: Math.floor(Date.now() / 1000),
+      });
     }
+    return result;
+  }
 
-    const body: Record<string, unknown> = {
-      messaging_product: 'whatsapp',
-      to: phone,
-      type: 'text',
-      text: { body: message },
+  async sendMedia(userId: string, companyId: string, chatId: string, filePath: string, opts: any) {
+    const inst = await this.ensureInstance(userId, companyId);
+    return inst.sendMedia(chatId, filePath, opts);
+  }
+
+  async typing(userId: string, companyId: string, chatId: string) {
+    const inst = await this.ensureInstance(userId, companyId);
+    return inst.sendTyping(chatId);
+  }
+
+  // ── AI ────────────────────────────────────────────────────────────────
+
+  getAiConfig(userId: string): ReturnType<WhatsappAiService['getConfig']> {
+    return this.ai.getConfig(userId);
+  }
+
+  getAiHistory(userId: string, chatId: string): AiHistoryMessage[] {
+    return this.ai.getHistoryFor(userId, chatId);
+  }
+
+  async toggleAi(userId: string, companyId: string, enabled?: boolean): Promise<{ enabled: boolean }> {
+    const next = typeof enabled === 'boolean' ? enabled : !this.ai.isEnabled(userId);
+    await this.ai.persistEnabled(userId, companyId, next);
+    this.gateway.emitAi(userId, { enabled: next, keyConfigured: this.ai.getConfig(userId).keyConfigured });
+    return { enabled: next };
+  }
+
+  // ── Media ─────────────────────────────────────────────────────────────
+
+  getMediaDirs(userId: string): Record<string, string> {
+    const mediaBase = join(this.dataDir, 'media', userId);
+    return {
+      IMAGE_DIR: join(mediaBase, 'images'),
+      VIDEO_DIR: join(mediaBase, 'videos'),
+      AUDIO_DIR: join(mediaBase, 'audio'),
+      DOCUMENT_DIR: join(mediaBase, 'documents'),
     };
-
-    const response = await fetch(
-      `https://graph.facebook.com/v18.0/${phoneNumberId}/messages`,
-      {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(body),
-      },
-    );
-
-    if (!response.ok) {
-      const err = await response.text();
-      throw new Error(`WhatsApp API error: ${err}`);
-    }
   }
 }
