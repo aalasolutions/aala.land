@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository, Not } from 'typeorm';
-import { NotFoundException, ConflictException, ForbiddenException } from '@nestjs/common';
+import { NotFoundException, ConflictException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { User } from './entities/user.entity';
 import { Role } from '@shared/enums/roles.enum';
@@ -9,6 +9,7 @@ import * as bcrypt from 'bcryptjs';
 import * as crypto from 'crypto';
 import { MailService } from '../../shared/services/mail.service';
 import { EmailTemplatesService } from '../email-templates/email-templates.service';
+import { Company } from '../companies/entities/company.entity';
 
 jest.mock('bcryptjs');
 jest.mock('crypto');
@@ -16,6 +17,7 @@ jest.mock('crypto');
 describe('UsersService', () => {
   let service: UsersService;
   let repo: jest.Mocked<Repository<User>>;
+  let companyRepo: jest.Mocked<Pick<Repository<Company>, 'findOne'>>;
   let mailService: jest.Mocked<Pick<MailService, 'sendMail'>>;
   let emailTemplatesService: jest.Mocked<Pick<EmailTemplatesService, 'findAll' | 'render'>>;
 
@@ -51,11 +53,17 @@ describe('UsersService', () => {
           useValue: {
             findOne: jest.fn(),
             findAndCount: jest.fn(),
+            find: jest.fn(),
+            count: jest.fn(),
             create: jest.fn(),
             save: jest.fn(),
             remove: jest.fn(),
             update: jest.fn(),
           },
+        },
+        {
+          provide: getRepositoryToken(Company),
+          useValue: { findOne: jest.fn() },
         },
         {
           provide: MailService,
@@ -73,6 +81,7 @@ describe('UsersService', () => {
 
     service = module.get<UsersService>(UsersService);
     repo = module.get(getRepositoryToken(User));
+    companyRepo = module.get(getRepositoryToken(Company));
     mailService = module.get(MailService);
     emailTemplatesService = module.get(EmailTemplatesService);
 
@@ -88,6 +97,9 @@ describe('UsersService', () => {
       repo.findOne.mockResolvedValue(null);
       repo.create.mockReturnValue(mockUser);
       repo.save.mockResolvedValue(mockUser);
+      const mockCompany = { id: companyId, subscriptionTier: 'STARTER', maxUsers: 5 } as any;
+      companyRepo.findOne.mockResolvedValue(mockCompany);
+      repo.count.mockResolvedValue(2);
 
       const dto = { name: 'Test Agent', email: 'agent@test.com', password: 'pass123', companyId, role: Role.AGENT };
       const result = await service.create(dto as any, companyId, Role.COMPANY_ADMIN);
@@ -98,6 +110,8 @@ describe('UsersService', () => {
 
     it('throws ConflictException when email already exists', async () => {
       repo.findOne.mockResolvedValue(mockUser);
+      const mockCompany = { id: companyId, subscriptionTier: 'STARTER', maxUsers: 5 } as any;
+      companyRepo.findOne.mockResolvedValue(mockCompany);
 
       const dto = { name: 'Test', email: 'agent@test.com', password: 'pass123', companyId, role: Role.AGENT };
       await expect(service.create(dto as any, companyId, Role.COMPANY_ADMIN)).rejects.toThrow(ConflictException);
@@ -118,6 +132,9 @@ describe('UsersService', () => {
       const superAdminUser = { ...mockUser, role: Role.SUPER_ADMIN };
       repo.create.mockReturnValue(superAdminUser);
       repo.save.mockResolvedValue(superAdminUser);
+      const mockCompany = { id: companyId, subscriptionTier: 'STARTER', maxUsers: 5 } as any;
+      companyRepo.findOne.mockResolvedValue(mockCompany);
+      repo.count.mockResolvedValue(2);
 
       const dto = { name: 'Another SA', email: 'sa2@test.com', password: 'pass123', companyId, role: Role.SUPER_ADMIN };
       await expect(service.create(dto as any, companyId, Role.SUPER_ADMIN)).resolves.not.toThrow();
@@ -280,10 +297,54 @@ describe('UsersService', () => {
     });
   });
 
+  describe('create - user limit enforcement', () => {
+    it('should throw BadRequestException when company user limit is reached', async () => {
+      const mockCompany = { id: companyId, subscriptionTier: 'FREE', maxUsers: 1 } as any;
+      companyRepo.findOne.mockResolvedValue(mockCompany);
+      repo.count.mockResolvedValue(1); // already at limit
+      repo.findOne.mockResolvedValue(null); // email not taken
+
+      await expect(
+        service.create({ email: 'new@test.com', password: 'pass', name: 'New', role: Role.AGENT }, companyId, Role.COMPANY_ADMIN)
+      ).rejects.toThrow('Your FREE plan allows up to 1 user');
+    });
+
+    it('should allow creation when under user limit', async () => {
+      const mockCompany = { id: companyId, subscriptionTier: 'STARTER', maxUsers: 5 } as any;
+      companyRepo.findOne.mockResolvedValue(mockCompany);
+      repo.count.mockResolvedValue(3);
+      repo.findOne.mockResolvedValue(null);
+      (bcrypt.hash as jest.Mock).mockResolvedValue('hashed');
+      repo.create.mockReturnValue(mockUser);
+      repo.save.mockResolvedValue(mockUser);
+
+      const result = await service.create(
+        { email: 'new@test.com', password: 'pass', name: 'New', role: Role.AGENT },
+        companyId,
+        Role.COMPANY_ADMIN,
+      );
+      expect(result).toEqual(mockUser);
+    });
+
+    it('should throw NotFoundException when company is not found', async () => {
+      companyRepo.findOne.mockResolvedValue(null);
+
+      await expect(
+        service.create({ email: 'new@test.com', password: 'pass', name: 'New', role: Role.AGENT }, companyId, Role.COMPANY_ADMIN)
+      ).rejects.toThrow(NotFoundException);
+    });
+  });
+
   describe('inviteUser', () => {
     beforeEach(() => {
       const mockRandomBytes = { toString: jest.fn().mockReturnValue('abc123temppassword') };
       (crypto.randomBytes as jest.Mock).mockReturnValue(mockRandomBytes);
+
+      // Default: company exists with room to spare
+      companyRepo.findOne.mockResolvedValue(
+        { id: companyId, subscriptionTier: 'STARTER', maxUsers: 10 } as any,
+      );
+      repo.count.mockResolvedValue(2);
     });
 
     it('creates a user with temporary password and mustChangePassword=true', async () => {
@@ -327,6 +388,33 @@ describe('UsersService', () => {
         lastName: 'User',
       };
       await expect(service.inviteUser(companyId, dto, Role.COMPANY_ADMIN)).rejects.toThrow(ConflictException);
+    });
+
+    it('throws BadRequestException when company user limit is reached', async () => {
+      const mockCompany = { id: companyId, subscriptionTier: 'FREE', maxUsers: 1 } as any;
+      companyRepo.findOne.mockResolvedValue(mockCompany);
+      repo.count.mockResolvedValue(1);
+
+      const dto = { email: 'new@test.com', firstName: 'New', lastName: 'User', role: Role.AGENT };
+      await expect(service.inviteUser(companyId, dto, Role.COMPANY_ADMIN)).rejects.toThrow(BadRequestException);
+    });
+
+    it('throws BadRequestException with correct message when limit is reached', async () => {
+      const mockCompany = { id: companyId, subscriptionTier: 'STARTER', maxUsers: 5 } as any;
+      companyRepo.findOne.mockResolvedValue(mockCompany);
+      repo.count.mockResolvedValue(5);
+
+      const dto = { email: 'new@test.com', firstName: 'New', lastName: 'User', role: Role.AGENT };
+      await expect(service.inviteUser(companyId, dto, Role.COMPANY_ADMIN)).rejects.toThrow(
+        'Your STARTER plan allows up to 5 users. Upgrade to add more.',
+      );
+    });
+
+    it('throws NotFoundException when company is not found during invite', async () => {
+      companyRepo.findOne.mockResolvedValue(null);
+
+      const dto = { email: 'new@test.com', firstName: 'New', lastName: 'User', role: Role.AGENT };
+      await expect(service.inviteUser(companyId, dto, Role.COMPANY_ADMIN)).rejects.toThrow(NotFoundException);
     });
 
     it('combines firstName and lastName into name', async () => {
