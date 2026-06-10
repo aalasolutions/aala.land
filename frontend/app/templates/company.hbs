@@ -8,6 +8,17 @@
 </div>
 
 {{#if this.company}}
+  <div class="plan-banner {{this.planTierClass}}">
+    <div>
+      <div class="plan-banner__name {{this.planNameClass}}">{{or this.company.subscriptionTier "FREE"}}</div>
+      <div class="plan-banner__limits">{{this.planLimits}}</div>
+    </div>
+    {{#if this.company.subscriptionExpiresAt}}
+      <div class="plan-banner__expiry">
+        Expires {{format-date this.company.subscriptionExpiresAt}}
+      </div>
+    {{/if}}
+  </div>
   <div class="company-settings-grid">
     {{! Left: Company Info }}
     <div class="glass-panel p-6">
@@ -15,7 +26,9 @@
       <form class="flex col gap-4" {{on "submit" this.saveCompany}}>
         <FormInput @label="Company Name" @id="company-name" @type="text" @value={{or this.formName this.company.name}} @onChange={{fn this.setField "formName"}} @required={{true}} @readonly={{not this.isAdmin}} />
 
-        <FormInput @label="Email" @id="company-email" @type="email" @value={{this.company.email}} @disabled={{true}} />
+        {{#if this.company.adminEmail}}
+          <FormInput @label="Admin Email" @id="company-email" @type="email" @value={{this.company.adminEmail}} @disabled={{true}} />
+        {{/if}}
 
         <FormInput @label="Plan" @id="company-plan" @type="text" @value={{or this.company.subscriptionTier "FREE"}} @disabled={{true}} />
 
