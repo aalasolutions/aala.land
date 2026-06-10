@@ -1,28 +1,15 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { Reflector } from '@nestjs/core';
 import { WhatsappController } from './whatsapp.controller';
 import { WhatsappService } from './whatsapp.service';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { MessageDirection, MessageStatus } from './entities/whatsapp-message.entity';
-import * as crypto from 'crypto';
+import { Role } from '@shared/enums/roles.enum';
 
 describe('WhatsappController', () => {
   let controller: WhatsappController;
-  let service: jest.Mocked<WhatsappService>;
+  let wa: jest.Mocked<WhatsappService>;
 
-  const companyId = 'company-uuid-1';
-  const mockReq = { user: { companyId, userId: 'user-uuid-1' } };
-
-  const mockMessage = {
-    id: 'msg-uuid-1',
-    companyId,
-    phoneNumber: '+971501234567',
-    message: 'Hello from AALA',
-    direction: MessageDirection.OUTBOUND,
-    status: MessageStatus.SENT,
-    leadId: null,
-  };
-
-  const paginated = { data: [mockMessage], total: 1, page: 1, limit: 20 };
+  const makeReq = (userId: string, companyId: string) =>
+    ({ user: { userId, companyId, role: Role.COMPANY_ADMIN, email: 'a@b.com' } } as any);
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -31,125 +18,72 @@ describe('WhatsappController', () => {
         {
           provide: WhatsappService,
           useValue: {
-            sendMessage: jest.fn(),
-            handleWebhook: jest.fn(),
-            findMessages: jest.fn(),
-            findMessagesByLead: jest.fn(),
-            findOne: jest.fn(),
+            getConnection: jest.fn(),
+            getQR: jest.fn(),
+            logout: jest.fn(),
+            getChats: jest.fn(),
+            getAllMessages: jest.fn(),
+            getMessagesForChat: jest.fn(),
+            send: jest.fn(),
+            sendMedia: jest.fn(),
+            typing: jest.fn(),
+            getAiConfig: jest.fn(),
+            toggleAi: jest.fn(),
+            getAiHistory: jest.fn(),
+            getMediaDirs: jest.fn(),
           },
         },
       ],
-    })
-      .overrideGuard(JwtAuthGuard)
-      .useValue({ canActivate: () => true })
-      .compile();
+    }).compile();
 
-    controller = module.get<WhatsappController>(WhatsappController);
-    service = module.get(WhatsappService);
+    controller = module.get(WhatsappController);
+    wa = module.get(WhatsappService);
   });
 
-  it('should be defined', () => {
-    expect(controller).toBeDefined();
-  });
+  describe('POST ai/toggle', () => {
+    it('calls wa.toggleAi with correct params and returns result', async () => {
+      wa.toggleAi.mockResolvedValue({ enabled: true } as any);
+      const req = makeReq('u1', 'c1');
 
-  describe('send', () => {
-    it('sends message scoped to company', async () => {
-      service.sendMessage.mockResolvedValue(mockMessage as any);
+      const result = await controller.toggleAi(req, { enabled: true });
 
-      const dto = { phoneNumber: '+971501234567', message: 'Hello from AALA' };
-      const result = await controller.send(dto as any, mockReq);
-
-      expect(service.sendMessage).toHaveBeenCalledWith(companyId, dto);
-      expect(result).toEqual(mockMessage);
-    });
-  });
-
-  describe('webhook', () => {
-    const originalEnv = process.env;
-
-    beforeEach(() => {
-      process.env = { ...originalEnv, WHATSAPP_APP_SECRET: 'test-app-secret' };
+      expect(wa.toggleAi).toHaveBeenCalledWith('u1', 'c1', true);
+      expect(result).toEqual({ enabled: true });
     });
 
-    afterEach(() => {
-      process.env = originalEnv;
-    });
-
-    it('processes incoming webhook', async () => {
-      service.handleWebhook.mockResolvedValue({ received: true });
-
-      const payload = { object: 'whatsapp_business_account', entry: [] };
-      const rawBody = Buffer.from(JSON.stringify(payload));
-      const signature = 'sha256=' + crypto.createHmac('sha256', 'test-app-secret').update(rawBody).digest('hex');
-      const mockReq = { rawBody } as any;
-      const result = await controller.webhook(payload, companyId, signature, mockReq);
-
-      expect(service.handleWebhook).toHaveBeenCalledWith(companyId, payload);
-      expect(result).toEqual({ received: true });
-    });
-
-    it('uses system as fallback when no company_id query param', async () => {
-      service.handleWebhook.mockResolvedValue({ received: true });
-
-      const rawBody = Buffer.from('{}');
-      const signature = 'sha256=' + crypto.createHmac('sha256', 'test-app-secret').update(rawBody).digest('hex');
-      const mockReq = { rawBody } as any;
-      await controller.webhook({}, undefined as any, signature, mockReq);
-
-      expect(service.handleWebhook).toHaveBeenCalledWith('system', {});
+    it('has COMPANY_ADMIN role restriction on toggleAi method', () => {
+      const reflector = new Reflector();
+      const roles = reflector.get<Role[]>('roles', controller.toggleAi);
+      expect(roles).toEqual([Role.COMPANY_ADMIN]);
     });
   });
 
-  describe('webhookVerify', () => {
-    const originalEnv = process.env;
+  describe('GET media/:type/:filename path traversal protection', () => {
+    const mockDirs = {
+      IMAGE_DIR: '/data/whatsapp/u1/images',
+      VIDEO_DIR: '/data/whatsapp/u1/videos',
+      AUDIO_DIR: '/data/whatsapp/u1/audio',
+      DOCUMENT_DIR: '/data/whatsapp/u1/documents',
+    };
 
-    beforeEach(() => {
-      process.env = { ...originalEnv, WHATSAPP_WEBHOOK_VERIFY_TOKEN: 'test-token-123' };
+    it('returns 403 for path traversal attempt', () => {
+      wa.getMediaDirs.mockReturnValue(mockDirs as any);
+      const req = makeReq('u1', 'c1');
+      const res = { status: jest.fn().mockReturnThis(), json: jest.fn(), sendFile: jest.fn() } as any;
+
+      controller.serveMedia(req, 'images', '../../../etc/passwd', res);
+
+      expect(res.status).toHaveBeenCalledWith(403);
     });
 
-    afterEach(() => {
-      process.env = originalEnv;
-    });
+    it('returns 400 for invalid media type', () => {
+      wa.getMediaDirs.mockReturnValue(mockDirs as any);
+      const req = makeReq('u1', 'c1');
+      const res = { status: jest.fn().mockReturnThis(), json: jest.fn(), sendFile: jest.fn() } as any;
 
-    it('returns challenge when token matches', () => {
-      const result = controller.webhookVerify('subscribe', 'test-token-123', 'challenge-abc');
-      expect(result).toBe('challenge-abc');
-    });
+      controller.serveMedia(req, 'invalid-type', 'file.jpg', res);
 
-    it('returns error when token mismatches', () => {
-      const result = controller.webhookVerify('subscribe', 'wrong-token', 'challenge-abc');
-      expect(result).toEqual({ error: 'Verification failed' });
-    });
-  });
-
-  describe('findAll', () => {
-    it('returns paginated messages', async () => {
-      service.findMessages.mockResolvedValue(paginated as any);
-
-      const result = await controller.findAll(mockReq, 1, 20);
-
-      expect(service.findMessages).toHaveBeenCalledWith(companyId, 1, 20, undefined);
-      expect(result).toEqual(paginated);
-    });
-  });
-
-  describe('findByLead', () => {
-    it('returns messages for lead', async () => {
-      service.findMessagesByLead.mockResolvedValue(paginated as any);
-
-      const result = await controller.findByLead('lead-uuid-1', mockReq, 1, 20);
-
-      expect(service.findMessagesByLead).toHaveBeenCalledWith('lead-uuid-1', companyId, 1, 20);
-    });
-  });
-
-  describe('findOne', () => {
-    it('returns single message', async () => {
-      service.findOne.mockResolvedValue(mockMessage as any);
-
-      const result = await controller.findOne('msg-uuid-1', mockReq);
-
-      expect(service.findOne).toHaveBeenCalledWith('msg-uuid-1', companyId);
+      expect(res.status).toHaveBeenCalledWith(400);
     });
   });
 });

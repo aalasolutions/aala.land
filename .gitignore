@@ -35,6 +35,9 @@ yarn-error.log*
 **/coverage/
 **/testem.log
 
+# Superpowers
+.superpowers/
+
 # E2E (skipping from repo)
 /e2e/
 
