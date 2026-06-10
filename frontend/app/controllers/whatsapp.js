@@ -154,7 +154,9 @@ export default class WhatsappController extends Controller {
 
   ingestMessages(msgs) {
     const existingIds = new Set(this.messages.map(m => m.id));
-    const newMsgs = msgs.filter(m => !existingIds.has(m.id));
+    const newMsgs = msgs
+      .filter(m => !existingIds.has(m.id))
+      .map(m => ({ ...m, timestamp: m.timestamp ? m.timestamp * 1000 : m.timestamp }));
     if (!newMsgs.length) return;
     this.messages = [...this.messages, ...newMsgs];
     for (const m of newMsgs) this._updateChat(m);
