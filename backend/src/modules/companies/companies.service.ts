@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Company, SubscriptionTier, TIER_LIMITS } from './entities/company.entity';
@@ -35,11 +35,44 @@ export class CompaniesService {
         return this.companyRepository.save(company);
     }
 
-    async findAll(page = 1, limit = 20): Promise<{ data: Company[]; total: number; page: number; limit: number }> {
-        const [data, total] = await this.companyRepository.findAndCount({
+    async findAll(page = 1, limit = 20): Promise<{ data: (Company & { usersCount: number; inactiveUsersCount: number })[]; total: number; page: number; limit: number }> {
+        const [companies, total] = await this.companyRepository.findAndCount({
             ...paginationOptions(page, limit),
             order: { createdAt: 'DESC' },
         });
+
+        if (companies.length === 0) {
+            return { data: [], total, page, limit };
+        }
+
+        const companyIds = companies.map(c => c.id);
+        const [activeRows, inactiveRows] = await Promise.all([
+            this.userRepository
+                .createQueryBuilder('u')
+                .select('u.companyId', 'companyId')
+                .addSelect('COUNT(*)', 'count')
+                .where('u.companyId IN (:...ids)', { ids: companyIds })
+                .andWhere('u.isActive = true')
+                .groupBy('u.companyId')
+                .getRawMany<{ companyId: string; count: string }>(),
+            this.userRepository
+                .createQueryBuilder('u')
+                .select('u.companyId', 'companyId')
+                .addSelect('COUNT(*)', 'count')
+                .where('u.companyId IN (:...ids)', { ids: companyIds })
+                .andWhere('u.isActive = false')
+                .groupBy('u.companyId')
+                .getRawMany<{ companyId: string; count: string }>(),
+        ]);
+
+        const activeMap = new Map(activeRows.map(r => [r.companyId, parseInt(r.count, 10)]));
+        const inactiveMap = new Map(inactiveRows.map(r => [r.companyId, parseInt(r.count, 10)]));
+        const data = companies.map(c => ({
+            ...c,
+            usersCount: activeMap.get(c.id) ?? 0,
+            inactiveUsersCount: inactiveMap.get(c.id) ?? 0,
+        }));
+
         return { data, total, page, limit };
     }
 
@@ -51,25 +84,35 @@ export class CompaniesService {
         return company;
     }
 
-    async findOneWithAdminEmail(id: string): Promise<Company & { email: string | null }> {
+    async findOneWithAdminEmail(id: string): Promise<Company & { adminEmail: string | null; usersCount: number; inactiveUsersCount: number }> {
         const company = await this.findOne(id);
-        const admin = await this.userRepository.findOne({
-            where: { companyId: id, role: Role.COMPANY_ADMIN },
-            select: ['email'],
-        });
-        return { ...company, email: admin?.email ?? null };
+        const [admin, usersCount, inactiveUsersCount] = await Promise.all([
+            this.userRepository.findOne({
+                where: { companyId: id, role: Role.COMPANY_ADMIN, isActive: true },
+                select: ['email'],
+            }),
+            this.userRepository.count({ where: { companyId: id, isActive: true } }),
+            this.userRepository.count({ where: { companyId: id, isActive: false } }),
+        ]);
+        return { ...company, adminEmail: admin?.email ?? null, usersCount, inactiveUsersCount };
     }
 
     async update(id: string, dto: UpdateCompanyDto, role?: string): Promise<Company> {
         const company = await this.findOne(id);
 
-        const restrictedFields = ['activeRegions', 'subscriptionTier', 'maxUsers', 'maxCountries', 'subscriptionExpiresAt'];
-
-        if (role === Role.ADMIN) {
-            for (const field of restrictedFields) {
-                if (field in dto) {
-                    delete (dto as Record<string, unknown>)[field];
-                }
+        if (role === Role.SUPER_ADMIN) {
+            // no restrictions
+        } else if (role === Role.COMPANY_ADMIN || role === Role.ADMIN) {
+            const superAdminOnlyFields = ['isActive', 'subscriptionTier', 'maxUsers', 'maxCountries', 'maxProperties', 'subscriptionExpiresAt'];
+            const attempted = superAdminOnlyFields.filter(f => f in dto);
+            if (attempted.length) {
+                throw new ForbiddenException(`You are not allowed to update: ${attempted.join(', ')}`);
+            }
+        } else {
+            const restrictedFields = ['activeRegions', 'defaultRegionCode', 'subscriptionTier', 'maxUsers', 'maxCountries', 'maxProperties', 'subscriptionExpiresAt'];
+            const attempted = restrictedFields.filter(f => f in dto);
+            if (attempted.length) {
+                throw new ForbiddenException(`You are not allowed to update: ${attempted.join(', ')}`);
             }
         }
 
@@ -80,15 +123,21 @@ export class CompaniesService {
             this.validateRegionCode(dto.defaultRegionCode);
         }
 
-        // Enforce country limit based on subscription tier
+        // Enforce country limit — use stored company limit, but respect tier upgrade and explicit override
         if (dto.activeRegions) {
-            const limits = TIER_LIMITS[company.subscriptionTier] || TIER_LIMITS[SubscriptionTier.FREE];
+            const storedMaxCountries = company.maxCountries
+                ?? (TIER_LIMITS[company.subscriptionTier] ?? TIER_LIMITS[SubscriptionTier.FREE]).maxCountries;
+            const effectiveMaxCountries: number =
+                ('maxCountries' in dto ? dto.maxCountries : undefined) ??
+                (dto.subscriptionTier && dto.subscriptionTier !== company.subscriptionTier
+                    ? (TIER_LIMITS[dto.subscriptionTier] ?? TIER_LIMITS[SubscriptionTier.FREE]).maxCountries
+                    : storedMaxCountries);
             const uniqueCountries = new Set(
                 dto.activeRegions.map(code => getRegionByCode(code)?.country).filter(Boolean),
             );
-            if (uniqueCountries.size > limits.maxCountries) {
+            if (uniqueCountries.size > effectiveMaxCountries) {
                 throw new BadRequestException(
-                    `Your ${company.subscriptionTier} plan allows up to ${limits.maxCountries} country. Upgrade to add more.`,
+                    `Your plan allows up to ${effectiveMaxCountries} countr${effectiveMaxCountries === 1 ? 'y' : 'ies'}. Upgrade to add more.`,
                 );
             }
         }
@@ -96,11 +145,22 @@ export class CompaniesService {
         // Cross-validate: defaultRegionCode must be in activeRegions
         const finalActiveRegions = dto.activeRegions ?? company.activeRegions;
         const finalDefaultRegion = dto.defaultRegionCode ?? company.defaultRegionCode;
-        if (!finalActiveRegions.includes(finalDefaultRegion)) {
+        if (finalActiveRegions && finalDefaultRegion && !finalActiveRegions.includes(finalDefaultRegion)) {
             throw new BadRequestException('defaultRegionCode must be included in activeRegions');
         }
 
-        Object.assign(company, dto);
+        if (dto.subscriptionTier && dto.subscriptionTier !== company.subscriptionTier) {
+            const tierLimits = TIER_LIMITS[dto.subscriptionTier] || TIER_LIMITS[SubscriptionTier.FREE];
+            if (!('maxUsers' in dto)) company.maxUsers = tierLimits.maxUsers;
+            if (!('maxCountries' in dto)) company.maxCountries = tierLimits.maxCountries;
+            if (!('maxProperties' in dto)) company.maxProperties = tierLimits.maxProperties;
+        }
+
+        const { subscriptionExpiresAt, ...rest } = dto;
+        Object.assign(company, rest);
+        if ('subscriptionExpiresAt' in dto) {
+            company.subscriptionExpiresAt = subscriptionExpiresAt ? new Date(subscriptionExpiresAt) : null;
+        }
         return this.companyRepository.save(company);
     }
 

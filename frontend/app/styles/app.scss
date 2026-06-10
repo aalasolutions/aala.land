@@ -4308,3 +4308,42 @@ textarea {
 .wa-chat-time { font-size: 10px; color: #555; flex-shrink: 0; margin-left: 8px; }
 .wa-chat-header-id { font-size: 11px; color: #666; }
 .wa-error { color: #f87171; font-size: 11px; margin-bottom: 6px; }
+// Plan badges
+.plan-badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 10px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+
+  &--pro     { background: #2d5a27; color: #7dbb73; }
+  &--starter { background: #4a3a10; color: #c9a227; }
+  &--free    { background: #2a2a2a; color: #888; }
+}
+
+// Plan banner (company settings)
+.plan-banner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-radius: 8px;
+  padding: 14px 18px;
+  margin-bottom: 1.5rem;
+
+  &--pro     { background: linear-gradient(135deg, #1e3a1e, #2a4a2a); border: 1px solid #3a6a3a; }
+  &--starter { background: linear-gradient(135deg, #3a2800, #4a3810); border: 1px solid #6a5a20; }
+  &--free    { background: #1e1e1e; border: 1px solid #333; }
+
+  .plan-banner__name {
+    font-size: 1rem;
+    font-weight: 700;
+    margin-bottom: 2px;
+    &--pro     { color: #7dbb73; }
+    &--starter { color: #c9a227; }
+    &--free    { color: #888; }
+  }
+
+  .plan-banner__limits { color: var(--text-muted); font-size: 0.85rem; }
+  .plan-banner__expiry { text-align: right; font-size: 0.8rem; color: var(--text-muted); }
+}

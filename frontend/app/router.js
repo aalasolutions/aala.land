@@ -42,4 +42,7 @@ Router.map(function () {
   this.route('settings', function () {
     this.route('whatsapp');
   });
+  this.route('admin', function () {
+    this.route('companies');
+  });
 });

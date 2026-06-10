@@ -3,6 +3,7 @@ import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
 import { isAdminRole } from '../utils/roles';
+import { TIER_LIMITS } from '../utils/subscription-plans';
 
 export default class CompanyController extends Controller {
   @service auth;
@@ -39,13 +40,33 @@ export default class CompanyController extends Controller {
     return tier && tier !== 'FREE';
   }
 
+  get planTierClass() {
+    const tier = (this.company?.subscriptionTier || 'FREE').toLowerCase();
+    return `plan-banner--${tier}`;
+  }
+
+  get planNameClass() {
+    const tier = (this.company?.subscriptionTier || 'FREE').toLowerCase();
+    return `plan-banner__name--${tier}`;
+  }
+
+  get planLimits() {
+    const c = this.company;
+    if (!c) return '';
+    const unlimited = TIER_LIMITS.PRO.maxUsers;
+    const users = c.maxUsers >= unlimited ? '∞' : c.maxUsers;
+    const countries = c.maxCountries >= unlimited ? '∞' : c.maxCountries;
+    const props = c.maxProperties >= unlimited ? '∞' : c.maxProperties;
+    const used = c.usersCount ?? '?';
+    return `${used} / ${users} users · ${countries} countr${countries === 1 ? 'y' : 'ies'} · ${props} properties`;
+  }
+
   get isAdmin() {
     return isAdminRole(this.auth.currentUser?.role);
   }
 
   get maxCountries() {
-    const limits = { FREE: 1, STARTER: 1, GROWTH: 2, SCALE: 999, ENTERPRISE: 999 };
-    return limits[this.company?.subscriptionTier] || 1;
+    return this.company?.maxCountries ?? 1;
   }
 
   get selectedCountries() {
@@ -90,7 +111,8 @@ export default class CompanyController extends Controller {
       const regionCountry = regionObj?.country;
 
       if (!this.selectedCountries.includes(regionCountry) && !this.canAddMoreCountries) {
-        this.notifications.error(`Your ${this.company?.subscriptionTier || 'FREE'} plan allows ${this.maxCountries} country. Upgrade to add more.`);
+        const limit = this.maxCountries;
+        this.notifications.error(`Your ${this.company?.subscriptionTier || 'FREE'} plan allows ${limit} ${limit === 1 ? 'country' : 'countries'}. Upgrade to add more.`);
         return;
       }
 
@@ -109,20 +131,25 @@ export default class CompanyController extends Controller {
     }
 
     if (this.isSaving) return;
+
+    if (this.formActiveRegions.length === 0) {
+      this.errorMsg = 'At least one region must be selected.';
+      return;
+    }
+
     this.isSaving = true;
     this.errorMsg = '';
 
     const companyId = this.auth.currentUser?.companyId;
 
     try {
+      const defaultRegionCode = this.formDefaultRegionCode || this.formActiveRegions[0];
       await this.auth.fetchJson(`/companies/${companyId}`, {
         method: 'PATCH',
         body: JSON.stringify({
           name: this.formName,
-          ...(this.formActiveRegions.length > 0 ? {
-            activeRegions: this.formActiveRegions,
-            defaultRegionCode: this.formDefaultRegionCode,
-          } : {}),
+          activeRegions: this.formActiveRegions,
+          defaultRegionCode,
         }),
       });
 
