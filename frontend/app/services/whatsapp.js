@@ -8,8 +8,8 @@ export default class WhatsappService extends Service {
   _socket = null;
 
   get apiUrl() {
-    const base = ENV.APP.API_BASE || 'http://localhost:3010/v1';
-    return ENV.APP.API_URL || new URL(base, window.location.origin).origin;
+    const base = ENV.APP.API_URL || ENV.APP.API_BASE || 'http://localhost:3010/v1';
+    return new URL(base, window.location.origin).origin;
   }
 
   connectSocket(onEvent) {
