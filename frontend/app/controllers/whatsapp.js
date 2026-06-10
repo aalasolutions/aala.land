@@ -70,7 +70,10 @@ export default class WhatsappController extends Controller {
       this.hasCredentials = conn.hasCredentials ?? false;
       this.me = conn.me ?? null;
 
-      this.chats = (chatsData.data?.chats ?? chatsData.chats ?? []);
+      this.chats = (chatsData.data?.chats ?? chatsData.chats ?? []).map(c => ({
+        ...c,
+        lastTs: c.lastTs ? c.lastTs * 1000 : c.lastTs,
+      }));
       this.ingestMessages(msgsData.data?.messages ?? msgsData.messages ?? []);
 
       const ai = aiData.data ?? aiData;
@@ -159,8 +162,9 @@ export default class WhatsappController extends Controller {
 
   ingestMessage(msg) {
     if (this.messages.some(m => m.id === msg.id)) return;
-    this.messages = [...this.messages, msg];
-    this._updateChat(msg);
+    const normalized = { ...msg, timestamp: msg.timestamp ? msg.timestamp * 1000 : msg.timestamp };
+    this.messages = [...this.messages, normalized];
+    this._updateChat(normalized);
   }
 
   _updateChat(msg) {
