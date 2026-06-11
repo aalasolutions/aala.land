@@ -94,7 +94,14 @@ export class BaileysInstance {
           hasCredentials: !loggedOut,
         };
         this.emitter.emit('status', { ...this.status });
-        if (!loggedOut && this.shouldReconnect && !this.reconnectPending) {
+        if (this.shouldReconnect && !this.reconnectPending) {
+          if (loggedOut) {
+            // Clear stale credentials so the next start() generates a fresh QR
+            try {
+              rmSync(this.sessionDir, { recursive: true, force: true });
+              mkdirSync(this.sessionDir, { recursive: true });
+            } catch { /* non-fatal */ }
+          }
           this.reconnectPending = true;
           this.reconnectTimer = setTimeout(() => {
             this.reconnectTimer = null;
