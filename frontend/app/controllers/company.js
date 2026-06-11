@@ -17,6 +17,10 @@ export default class CompanyController extends Controller {
   @tracked formDefaultRegionCode = '';
   @tracked isSaving = false;
   @tracked errorMsg = '';
+  @tracked showUpgradeModal = false;
+  @tracked isUpgrading = false;
+  @tracked showCancelConfirm = false;
+  @tracked isCanceling = false;
   @tracked expandedCountries = [];
 
   @action toggleCountry(countryCode) {
@@ -65,6 +69,14 @@ export default class CompanyController extends Controller {
     return isAdminRole(this.auth.currentUser?.role);
   }
 
+  get isCompanyAdmin() {
+    return this.auth.currentUser?.role === 'company_admin';
+  }
+
+  get isPastDue() {
+    return this.company?.stripeSubscriptionStatus === 'past_due';
+  }
+
   get maxCountries() {
     return this.company?.maxCountries ?? 1;
   }
@@ -96,6 +108,59 @@ export default class CompanyController extends Controller {
   }
 
   @action setField(fieldName, e) { this[fieldName] = e.target.value; }
+
+  @action openUpgradeModal() {
+    this.showUpgradeModal = true;
+  }
+
+  @action closeUpgradeModal() {
+    this.showUpgradeModal = false;
+  }
+
+  @action async upgrade(tier) {
+    if (this.isUpgrading) return;
+    this.isUpgrading = true;
+    try {
+      const response = await this.auth.fetchJson('/billing/checkout', {
+        method: 'POST',
+        body: JSON.stringify({ tier }),
+      });
+      if (response.data.url) {
+        window.location.href = response.data.url;
+      } else {
+        this.notifications.success('Plan upgraded successfully.');
+        this.showUpgradeModal = false;
+        this.router.refresh('company');
+      }
+    } catch (e) {
+      this.notifications.error(e.message || 'Failed to start checkout');
+    } finally {
+      this.isUpgrading = false;
+    }
+  }
+
+  @action confirmCancel() {
+    this.showCancelConfirm = true;
+  }
+
+  @action dismissCancel() {
+    this.showCancelConfirm = false;
+  }
+
+  @action async cancelSubscription() {
+    if (this.isCanceling) return;
+    this.isCanceling = true;
+    try {
+      await this.auth.fetchJson('/billing/cancel', { method: 'POST' });
+      this.notifications.success('Subscription cancelled. Your plan has been downgraded to FREE.');
+      this.showCancelConfirm = false;
+      this.router.refresh('company');
+    } catch (e) {
+      this.notifications.error(e.message || 'Failed to cancel subscription');
+    } finally {
+      this.isCanceling = false;
+    }
+  }
 
   @action toggleRegion(code) {
     if (!this.isAdmin) return;
