@@ -65,7 +65,10 @@ export class WhatsappService implements OnModuleInit {
 
   private wireInstance(userId: string, companyId: string, inst: BaileysInstance): void {
     void this.ai.loadEnabledState(userId, companyId);
-    inst.emitter.on('status', data => this.gateway.emitStatus(userId, data));
+    inst.emitter.on('status', data => {
+      this.gateway.emitStatus(userId, data);
+      if (!data.hasCredentials) this.store.clearAll(userId);
+    });
     inst.emitter.on('qr',     data => this.gateway.emitQR(userId, data));
     inst.emitter.on('message', (msg: WaMessage) => {
       this.store.addMessage(userId, msg);
