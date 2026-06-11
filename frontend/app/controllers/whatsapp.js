@@ -142,6 +142,11 @@ export default class WhatsappController extends Controller {
       this.connection = data.connection ?? 'disconnected';
       this.hasCredentials = data.hasCredentials ?? false;
       this.me = data.me ?? null;
+      if (this.connection !== 'connected' && !this.hasCredentials) {
+        this.chats = [];
+        this.messages = [];
+        this.currentChatId = null;
+      }
     } else if (type === 'qr') {
       this.qr = data.dataUrl ?? null;
     } else if (type === 'message') {
@@ -156,6 +161,7 @@ export default class WhatsappController extends Controller {
     const existingIds = new Set(this.messages.map(m => m.id));
     const newMsgs = msgs
       .filter(m => !existingIds.has(m.id))
+      .filter(m => m.body || m.hasMedia)
       .map(m => ({ ...m, timestamp: m.timestamp ? m.timestamp * 1000 : m.timestamp }));
     if (!newMsgs.length) return;
     this.messages = [...this.messages, ...newMsgs];
@@ -164,6 +170,7 @@ export default class WhatsappController extends Controller {
 
   ingestMessage(msg) {
     if (this.messages.some(m => m.id === msg.id)) return;
+    if (!msg.body && !msg.hasMedia) return;
     const normalized = { ...msg, timestamp: msg.timestamp ? msg.timestamp * 1000 : msg.timestamp };
     this.messages = [...this.messages, normalized];
     this._updateChat(normalized);
