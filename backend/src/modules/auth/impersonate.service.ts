@@ -7,7 +7,7 @@ export class ImpersonateService {
   constructor(private readonly usersService: UsersService) {}
 
   async impersonate(userId: string): Promise<{ email: string; sub: string; name: string; companyId: string | null; role: string }> {
-    const user = await this.usersService.findByIdWithoutCompany(userId);
+    const user = await this.usersService.findByIdWithCompany(userId);
     if (!user) {
       throw new BadRequestException('User not found');
     }

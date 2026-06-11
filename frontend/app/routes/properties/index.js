@@ -17,4 +17,11 @@ export default class PropertiesIndexRoute extends AuthenticatedRoute {
       return [];
     }
   }
+
+  setupController(controller, model) {
+    super.setupController(controller, model);
+    if (controller.currentView === 'browse' && controller.browseUnits.length === 0) {
+      controller.loadBrowseUnits();
+    }
+  }
 }

@@ -70,10 +70,10 @@ export class UsersService {
         return user;
     }
 
-    async findByIdWithoutCompany(id: string): Promise<User | null> {
+    async findByIdWithCompany(id: string): Promise<User | null> {
         return this.userRepository.findOne({
             where: { id },
-            select: ['id', 'email', 'name', 'role', 'companyId', 'isActive'],
+            relations: ['company'],
         });
     }
 
