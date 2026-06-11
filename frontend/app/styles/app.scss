@@ -197,6 +197,14 @@ body {
     color: var(--text-muted);
 }
 
+.brand-logo-collapsed {
+    width: 36px;
+    height: 36px;
+    object-fit: contain;
+    display: block;
+    margin: 0 auto;
+}
+
 .brand-subtitle {
     font-size: var(--font-xs);
     color: var(--text-muted);
@@ -350,12 +358,6 @@ body {
         padding: var(--space-4) var(--space-2);
     }
 
-    .brand-title {
-        font-size: var(--font-sm);
-        text-align: center;
-    }
-
-    .brand-subtitle,
     .sidebar-label,
     .sidebar-chevron {
         display: none;
