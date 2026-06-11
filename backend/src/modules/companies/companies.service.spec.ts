@@ -46,6 +46,7 @@ describe('CompaniesService', () => {
               select: jest.fn().mockReturnThis(),
               addSelect: jest.fn().mockReturnThis(),
               where: jest.fn().mockReturnThis(),
+              andWhere: jest.fn().mockReturnThis(),
               groupBy: jest.fn().mockReturnThis(),
               getRawMany: jest.fn().mockResolvedValue([]),
             })),
@@ -163,20 +164,22 @@ describe('CompaniesService', () => {
     it('returns company with admin email when admin exists', async () => {
       repo.findOne.mockResolvedValue(mockCompany);
       userRepo.findOne.mockResolvedValue({ email: 'admin@test.com' } as any);
+      userRepo.count.mockResolvedValueOnce(5).mockResolvedValueOnce(2);
 
       const result = await service.findOneWithAdminEmail('company-uuid-1');
 
-      expect(result.email).toBe('admin@test.com');
+      expect(result.adminEmail).toBe('admin@test.com');
       expect(result.id).toBe(mockCompany.id);
     });
 
     it('returns company with null email when no admin exists', async () => {
       repo.findOne.mockResolvedValue(mockCompany);
       userRepo.findOne.mockResolvedValue(null);
+      userRepo.count.mockResolvedValueOnce(0).mockResolvedValueOnce(0);
 
       const result = await service.findOneWithAdminEmail('company-uuid-1');
 
-      expect(result.email).toBeNull();
+      expect(result.adminEmail).toBeNull();
     });
 
     it('throws NotFoundException when company not found', async () => {
@@ -189,12 +192,16 @@ describe('CompaniesService', () => {
       const mockCompany = { id: 'c1', name: 'Test Co', subscriptionTier: 'FREE', maxUsers: 1 } as any;
       jest.spyOn(service, 'findOne').mockResolvedValue(mockCompany);
       userRepo.findOne.mockResolvedValue({ email: 'admin@test.com' } as any);
-      userRepo.count.mockResolvedValue(3);
+      userRepo.count
+        .mockResolvedValueOnce(3)
+        .mockResolvedValueOnce(1);
 
       const result = await service.findOneWithAdminEmail('c1');
 
       expect(result.usersCount).toBe(3);
-      expect(userRepo.count).toHaveBeenCalledWith({ where: { companyId: 'c1' } });
+      expect(result.inactiveUsersCount).toBe(1);
+      expect(userRepo.count).toHaveBeenCalledWith({ where: { companyId: 'c1', isActive: true } });
+      expect(userRepo.count).toHaveBeenCalledWith({ where: { companyId: 'c1', isActive: false } });
     });
   });
 

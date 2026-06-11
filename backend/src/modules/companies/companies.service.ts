@@ -35,7 +35,7 @@ export class CompaniesService {
         return this.companyRepository.save(company);
     }
 
-    async findAll(page = 1, limit = 20): Promise<{ data: (Company & { usersCount: number })[]; total: number; page: number; limit: number }> {
+    async findAll(page = 1, limit = 20): Promise<{ data: (Company & { usersCount: number; inactiveUsersCount: number })[]; total: number; page: number; limit: number }> {
         const [companies, total] = await this.companyRepository.findAndCount({
             ...paginationOptions(page, limit),
             order: { createdAt: 'DESC' },
@@ -46,16 +46,32 @@ export class CompaniesService {
         }
 
         const companyIds = companies.map(c => c.id);
-        const countRows = await this.userRepository
-            .createQueryBuilder('u')
-            .select('u.companyId', 'companyId')
-            .addSelect('COUNT(*)', 'count')
-            .where('u.companyId IN (:...ids)', { ids: companyIds })
-            .groupBy('u.companyId')
-            .getRawMany<{ companyId: string; count: string }>();
+        const [activeRows, inactiveRows] = await Promise.all([
+            this.userRepository
+                .createQueryBuilder('u')
+                .select('u.companyId', 'companyId')
+                .addSelect('COUNT(*)', 'count')
+                .where('u.companyId IN (:...ids)', { ids: companyIds })
+                .andWhere('u.isActive = true')
+                .groupBy('u.companyId')
+                .getRawMany<{ companyId: string; count: string }>(),
+            this.userRepository
+                .createQueryBuilder('u')
+                .select('u.companyId', 'companyId')
+                .addSelect('COUNT(*)', 'count')
+                .where('u.companyId IN (:...ids)', { ids: companyIds })
+                .andWhere('u.isActive = false')
+                .groupBy('u.companyId')
+                .getRawMany<{ companyId: string; count: string }>(),
+        ]);
 
-        const countMap = new Map(countRows.map(r => [r.companyId, parseInt(r.count, 10)]));
-        const data = companies.map(c => ({ ...c, usersCount: countMap.get(c.id) ?? 0 }));
+        const activeMap = new Map(activeRows.map(r => [r.companyId, parseInt(r.count, 10)]));
+        const inactiveMap = new Map(inactiveRows.map(r => [r.companyId, parseInt(r.count, 10)]));
+        const data = companies.map(c => ({
+            ...c,
+            usersCount: activeMap.get(c.id) ?? 0,
+            inactiveUsersCount: inactiveMap.get(c.id) ?? 0,
+        }));
 
         return { data, total, page, limit };
     }
@@ -68,16 +84,17 @@ export class CompaniesService {
         return company;
     }
 
-    async findOneWithAdminEmail(id: string): Promise<Company & { email: string | null; usersCount: number }> {
+    async findOneWithAdminEmail(id: string): Promise<Company & { adminEmail: string | null; usersCount: number; inactiveUsersCount: number }> {
         const company = await this.findOne(id);
-        const [admin, usersCount] = await Promise.all([
+        const [admin, usersCount, inactiveUsersCount] = await Promise.all([
             this.userRepository.findOne({
-                where: { companyId: id, role: Role.COMPANY_ADMIN },
+                where: { companyId: id, role: Role.COMPANY_ADMIN, isActive: true },
                 select: ['email'],
             }),
-            this.userRepository.count({ where: { companyId: id } }),
+            this.userRepository.count({ where: { companyId: id, isActive: true } }),
+            this.userRepository.count({ where: { companyId: id, isActive: false } }),
         ]);
-        return { ...company, email: admin?.email ?? null, usersCount };
+        return { ...company, adminEmail: admin?.email ?? null, usersCount, inactiveUsersCount };
     }
 
     async update(id: string, dto: UpdateCompanyDto, role?: string): Promise<Company> {
@@ -134,15 +151,16 @@ export class CompaniesService {
 
         if (dto.subscriptionTier && dto.subscriptionTier !== company.subscriptionTier) {
             const tierLimits = TIER_LIMITS[dto.subscriptionTier] || TIER_LIMITS[SubscriptionTier.FREE];
-            if (!('maxUsers' in dto) && tierLimits.maxUsers > company.maxUsers)
-                company.maxUsers = tierLimits.maxUsers;
-            if (!('maxCountries' in dto) && tierLimits.maxCountries > company.maxCountries)
-                company.maxCountries = tierLimits.maxCountries;
-            if (!('maxProperties' in dto) && tierLimits.maxProperties > company.maxProperties)
-                company.maxProperties = tierLimits.maxProperties;
+            if (!('maxUsers' in dto)) company.maxUsers = tierLimits.maxUsers;
+            if (!('maxCountries' in dto)) company.maxCountries = tierLimits.maxCountries;
+            if (!('maxProperties' in dto)) company.maxProperties = tierLimits.maxProperties;
         }
 
-        Object.assign(company, dto);
+        const { subscriptionExpiresAt, ...rest } = dto;
+        Object.assign(company, rest);
+        if ('subscriptionExpiresAt' in dto) {
+            company.subscriptionExpiresAt = subscriptionExpiresAt ? new Date(subscriptionExpiresAt) : null;
+        }
         return this.companyRepository.save(company);
     }
 

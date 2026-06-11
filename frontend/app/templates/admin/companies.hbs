@@ -37,7 +37,12 @@
                 {{or company.subscriptionTier "FREE"}}
               </span>
             </td>
-            <td>{{company.usersCount}} / {{if (eq company.maxUsers 999) "∞" company.maxUsers}}</td>
+            <td>
+              {{company.usersCount}} / {{if (or (eq company.maxUsers this.unlimitedValue) (gt company.maxUsers this.unlimitedValue)) "∞" company.maxUsers}}
+              {{#if company.inactiveUsersCount}}
+                <span class="text-muted">({{company.inactiveUsersCount}} inactive)</span>
+              {{/if}}
+            </td>
             <td>{{if company.subscriptionExpiresAt (format-date company.subscriptionExpiresAt) "—"}}</td>
             <td>
               <button type="button" class="btn btn-secondary btn-xs" {{on "click" (fn this.openEdit company)}}>
@@ -65,7 +70,7 @@
     <div>
       <p class="form-label mb-2">Plan</p>
       <div class="flex gap-2">
-        {{#each (array "FREE" "STARTER" "PRO") as |tier|}}
+        {{#each this.tierOptions as |tier|}}
           <button
             type="button"
             class="btn {{if (eq this.editTier tier) 'btn-primary' 'btn-secondary'}}"

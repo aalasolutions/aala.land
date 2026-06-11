@@ -43,7 +43,9 @@
       <form class="flex col gap-4" {{on "submit" this.saveCompany}}>
         <FormInput @label="Company Name" @id="company-name" @type="text" @value={{or this.formName this.company.name}} @onChange={{fn this.setField "formName"}} @required={{true}} @readonly={{not this.isAdmin}} />
 
-        <FormInput @label="Email" @id="company-email" @type="email" @value={{this.company.email}} @disabled={{true}} />
+        {{#if this.company.adminEmail}}
+          <FormInput @label="Admin Email" @id="company-email" @type="email" @value={{this.company.adminEmail}} @disabled={{true}} />
+        {{/if}}
 
         <FormInput @label="Plan" @id="company-plan" @type="text" @value={{or this.company.subscriptionTier "FREE"}} @disabled={{true}} />
 

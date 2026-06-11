@@ -3,6 +3,7 @@ import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
 import { isAdminRole } from '../utils/roles';
+import { TIER_LIMITS } from '../utils/subscription-plans';
 
 export default class CompanyController extends Controller {
   @service auth;
@@ -56,9 +57,10 @@ export default class CompanyController extends Controller {
   get planLimits() {
     const c = this.company;
     if (!c) return '';
-    const users = c.maxUsers >= 999 ? '∞' : c.maxUsers;
-    const countries = c.maxCountries >= 999 ? '∞' : c.maxCountries;
-    const props = c.maxProperties >= 999 ? '∞' : c.maxProperties;
+    const unlimited = TIER_LIMITS.PRO.maxUsers;
+    const users = c.maxUsers >= unlimited ? '∞' : c.maxUsers;
+    const countries = c.maxCountries >= unlimited ? '∞' : c.maxCountries;
+    const props = c.maxProperties >= unlimited ? '∞' : c.maxProperties;
     const used = c.usersCount ?? '?';
     return `${used} / ${users} users · ${countries} countr${countries === 1 ? 'y' : 'ies'} · ${props} properties`;
   }
@@ -206,12 +208,13 @@ export default class CompanyController extends Controller {
     const companyId = this.auth.currentUser?.companyId;
 
     try {
+      const defaultRegionCode = this.formDefaultRegionCode || this.formActiveRegions[0];
       await this.auth.fetchJson(`/companies/${companyId}`, {
         method: 'PATCH',
         body: JSON.stringify({
           name: this.formName,
           activeRegions: this.formActiveRegions,
-          defaultRegionCode: this.formDefaultRegionCode,
+          defaultRegionCode,
         }),
       });
 

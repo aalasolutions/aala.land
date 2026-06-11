@@ -2,6 +2,7 @@ import Controller from '@ember/controller';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
+import { TIER_LIMITS } from '../../utils/subscription-plans';
 
 export default class AdminCompaniesController extends Controller {
   @service auth;
@@ -13,6 +14,14 @@ export default class AdminCompaniesController extends Controller {
   @tracked editTier = '';
   @tracked editExpiry = '';
   @tracked isSaving = false;
+
+  get tierOptions() {
+    return Object.keys(TIER_LIMITS);
+  }
+
+  get unlimitedValue() {
+    return TIER_LIMITS.PRO.maxUsers;
+  }
 
   get filteredCompanies() {
     const q = this.search.toLowerCase();
@@ -63,7 +72,7 @@ export default class AdminCompaniesController extends Controller {
       ? this.editingCompany.subscriptionExpiresAt.slice(0, 10)
       : '';
     if (this.editExpiry !== currentExpiry) {
-      body.subscriptionExpiresAt = this.editExpiry || null;
+      body.subscriptionExpiresAt = this.editExpiry ? new Date(this.editExpiry).toISOString() : null;
     }
 
     if (Object.keys(body).length === 0) {
@@ -87,8 +96,4 @@ export default class AdminCompaniesController extends Controller {
     }
   }
 
-  @action
-  stopPropagation(e) {
-    e.stopPropagation();
-  }
 }
