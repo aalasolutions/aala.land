@@ -35,7 +35,7 @@ export default class WhatsappController extends Controller {
   // ── Computed ──────────────────────────────────────────────────────────
 
   get isConnected() { return this.connection === 'connected'; }
-  get showQR()      { return this.connection !== 'connected' && !this.hasCredentials; }
+  get showQR()      { return this.connection !== 'connected' && (!this.hasCredentials || this.qr !== null); }
 
   get currentChatMessages() {
     if (!this.currentChatId) return [];
@@ -80,7 +80,7 @@ export default class WhatsappController extends Controller {
       this.aiEnabled = ai.enabled ?? false;
       this.aiKeyConfigured = ai.keyConfigured ?? false;
 
-      if (this.connection !== 'connected' && !this.hasCredentials) {
+      if (this.connection !== 'connected') {
         this.pollForQR();
       }
 
@@ -105,6 +105,7 @@ export default class WhatsappController extends Controller {
           this.qr = null;
           return;
         }
+        if (typeof data.hasCredentials === 'boolean') this.hasCredentials = data.hasCredentials;
         if (data.qr) this.qr = data.qr;
       } catch { /* ignore */ }
     }
@@ -142,10 +143,13 @@ export default class WhatsappController extends Controller {
       this.connection = data.connection ?? 'disconnected';
       this.hasCredentials = data.hasCredentials ?? false;
       this.me = data.me ?? null;
-      if (this.connection !== 'connected' && !this.hasCredentials) {
-        this.chats = [];
-        this.messages = [];
-        this.currentChatId = null;
+      if (this.connection !== 'connected') {
+        if (!this.hasCredentials) {
+          this.chats = [];
+          this.messages = [];
+          this.currentChatId = null;
+        }
+        this.pollForQR();
       }
     } else if (type === 'qr') {
       this.qr = data.dataUrl ?? null;
