@@ -65,6 +65,9 @@ export class WhatsappService implements OnModuleInit {
 
   private wireInstance(userId: string, companyId: string, inst: BaileysInstance): void {
     void this.ai.loadEnabledState(userId, companyId);
+    // Track message IDs sent by AI so when Baileys re-emits them as fromMe events
+    // we don't mistakenly treat them as a human reply and trigger the silence window.
+    const aiSentIds = new Set<string>();
     inst.emitter.on('status', data => {
       this.gateway.emitStatus(userId, data);
       if (!data.hasCredentials) this.store.clearAll(userId);
@@ -73,9 +76,16 @@ export class WhatsappService implements OnModuleInit {
     inst.emitter.on('message', (msg: WaMessage) => {
       this.store.addMessage(userId, msg);
       this.gateway.emitMessage(userId, msg);
+      if (msg.fromMe && !aiSentIds.has(msg.id)) {
+        this.ai.recordHumanReply(userId, msg.chatId);
+      }
       if (!msg.fromMe) {
         this.ai.handleIncomingMessage(msg, companyId, userId, async (chatId, message) => {
           const result = await inst.sendMessage(chatId, message);
+          if (result.messageId) {
+            aiSentIds.add(result.messageId);
+            setTimeout(() => aiSentIds.delete(result.messageId!), 60_000);
+          }
           const aiMsg: WaMessage = {
             id: result.messageId ?? `ai-${Date.now()}`,
             chatId,
