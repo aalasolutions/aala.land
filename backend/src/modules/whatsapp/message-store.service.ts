@@ -44,7 +44,9 @@ export class MessageStoreService {
   }
 
   getChatList(userId: string): WaChat[] {
-    return Array.from(this.getStore(userId).chats.values()).sort((a, b) => b.lastTs - a.lastTs);
+    return Array.from(this.getStore(userId).chats.values())
+      .filter(c => !c.isGroup)
+      .sort((a, b) => b.lastTs - a.lastTs);
   }
 
   clearAll(userId: string): void {
