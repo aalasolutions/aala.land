@@ -16,16 +16,28 @@ export default class SettingsWhatsappRoute extends AuthenticatedRoute {
 
   async model() {
     try {
-      const json = await this.whatsapp.getSettings();
-      return { aiPrompt: json?.data?.aiPrompt ?? json?.aiPrompt ?? null };
+      const [settings, ai] = await Promise.all([
+        this.whatsapp.getSettings(),
+        this.whatsapp.getAi(),
+      ]);
+      const aiData = ai?.data ?? ai;
+      return {
+        aiPrompt: settings?.data?.aiPrompt ?? settings?.aiPrompt ?? null,
+        weeklyLimit: aiData?.weeklyLimit ?? null,
+        weeklyUsed: aiData?.weeklyUsed ?? null,
+        weeklyResetsAt: aiData?.weeklyResetsAt ?? null,
+      };
     } catch {
-      return { aiPrompt: null };
+      return { aiPrompt: null, weeklyLimit: null, weeklyUsed: null, weeklyResetsAt: null };
     }
   }
 
   setupController(controller, model) {
     super.setupController(controller, model);
     controller.aiPrompt = model?.aiPrompt ?? '';
+    controller.weeklyLimit = model?.weeklyLimit ?? null;
+    controller.weeklyUsed = model?.weeklyUsed ?? null;
+    controller.weeklyResetsAt = model?.weeklyResetsAt ?? null;
     controller.successMsg = '';
     controller.errorMsg = '';
   }

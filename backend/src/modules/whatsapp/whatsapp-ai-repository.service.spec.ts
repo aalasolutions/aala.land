@@ -132,6 +132,84 @@ describe('WhatsappAiRepositoryService', () => {
     });
   });
 
+  describe('checkLimitAndIncrement', () => {
+    it('allows and increments when no settings row exists (fresh start)', async () => {
+      repos.settingsRepo.findOne.mockResolvedValue(null);
+      const result = await service.checkLimitAndIncrement('c1', 10);
+      expect(result.allowed).toBe(true);
+      expect(repos.settingsRepo.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({ companyId: 'c1', aiWeeklyCount: 1 }),
+        ['companyId'],
+      );
+    });
+
+    it('denies when count has reached the limit', async () => {
+      repos.settingsRepo.findOne.mockResolvedValue({
+        aiWeeklyCount: 10,
+        aiWeeklyWindowStart: new Date(),
+      });
+      const result = await service.checkLimitAndIncrement('c1', 10);
+      expect(result.allowed).toBe(false);
+      expect(repos.settingsRepo.upsert).not.toHaveBeenCalled();
+    });
+
+    it('allows and increments when count is below limit', async () => {
+      repos.settingsRepo.findOne.mockResolvedValue({
+        aiWeeklyCount: 4,
+        aiWeeklyWindowStart: new Date(),
+      });
+      const result = await service.checkLimitAndIncrement('c1', 10);
+      expect(result.allowed).toBe(true);
+      expect(repos.settingsRepo.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({ companyId: 'c1', aiWeeklyCount: 5 }),
+        ['companyId'],
+      );
+    });
+
+    it('resets window and allows when 7 days have passed', async () => {
+      const eightDaysAgo = new Date(Date.now() - 8 * 24 * 60 * 60 * 1000);
+      repos.settingsRepo.findOne.mockResolvedValue({
+        aiWeeklyCount: 10,
+        aiWeeklyWindowStart: eightDaysAgo,
+      });
+      const result = await service.checkLimitAndIncrement('c1', 10);
+      expect(result.allowed).toBe(true);
+      expect(repos.settingsRepo.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({ companyId: 'c1', aiWeeklyCount: 1 }),
+        ['companyId'],
+      );
+    });
+  });
+
+  describe('getWeeklyUsage', () => {
+    it('returns count 0 and windowStart null when no settings row', async () => {
+      repos.settingsRepo.findOne.mockResolvedValue(null);
+      const result = await service.getWeeklyUsage('c1');
+      expect(result).toEqual({ count: 0, windowStart: null });
+    });
+
+    it('returns count 0 when window has expired', async () => {
+      const eightDaysAgo = new Date(Date.now() - 8 * 24 * 60 * 60 * 1000);
+      repos.settingsRepo.findOne.mockResolvedValue({
+        aiWeeklyCount: 7,
+        aiWeeklyWindowStart: eightDaysAgo,
+      });
+      const result = await service.getWeeklyUsage('c1');
+      expect(result).toEqual({ count: 0, windowStart: null });
+    });
+
+    it('returns current count and windowStart when window is active', async () => {
+      const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
+      repos.settingsRepo.findOne.mockResolvedValue({
+        aiWeeklyCount: 5,
+        aiWeeklyWindowStart: yesterday,
+      });
+      const result = await service.getWeeklyUsage('c1');
+      expect(result.count).toBe(5);
+      expect(result.windowStart).toBeInstanceOf(Date);
+    });
+  });
+
   describe('loadAiEnabled', () => {
     it('returns null when no settings row', async () => {
       const result = await service.loadAiEnabled('c1');

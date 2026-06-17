@@ -1,14 +1,17 @@
 import { WhatsappAiService } from './whatsapp-ai.service';
 import { DIRECT_CONTACT_RESPONSE } from './whatsapp-ai-filter';
+import { SubscriptionTier } from '../companies/entities/company.entity';
 
-const makeMockRepo = (customPrompt: string | null = null) => ({
-  getCompanyAndListings: jest.fn().mockResolvedValue({ company: null, listings: [] }),
+const makeMockRepo = (customPrompt: string | null = null, tier: SubscriptionTier = SubscriptionTier.FREE) => ({
+  getCompanyAndListings: jest.fn().mockResolvedValue({ company: { subscriptionTier: tier }, listings: [] }),
   getAvailableUnits: jest.fn().mockResolvedValue([]),
   getCompanyPrompt: jest.fn().mockResolvedValue(customPrompt),
   persistAiEnabled: jest.fn().mockResolvedValue(undefined),
   loadAiEnabled: jest.fn().mockResolvedValue(null),
   clearContextCache: jest.fn(),
   clearPromptCache: jest.fn(),
+  checkLimitAndIncrement: jest.fn().mockResolvedValue({ allowed: true }),
+  getWeeklyUsage: jest.fn().mockResolvedValue({ count: 0, windowStart: null }),
 });
 
 const makeMockBuilder = (fullPrompt = 'default system prompt for AALA.LAND') => ({
@@ -337,6 +340,89 @@ describe('WhatsappAiService', () => {
       expect(service.getHistoryFor('user-1', 'c1')).toHaveLength(2);
       expect(service.getHistoryFor('user-2', 'c1')).toHaveLength(2);
       expect(service.getHistoryFor('user-1', 'c1')).not.toBe(service.getHistoryFor('user-2', 'c1'));
+    });
+  });
+
+  describe('weekly message limit', () => {
+    beforeEach(() => {
+      process.env.OLLAMA_API_KEY = 'test-key';
+      process.env.OLLAMA_HOST = 'http://localhost:11434';
+      process.env.OLLAMA_MODEL = 'test-model';
+      process.env.AI_DEBOUNCE_MS = '100';
+    });
+
+    it('does not send when weekly limit is reached (allowed: false)', async () => {
+      const mockRepo = makeMockRepo(null, SubscriptionTier.FREE);
+      mockRepo.checkLimitAndIncrement.mockResolvedValue({ allowed: false });
+      service = new WhatsappAiService(mockRepo as any, makeMockBuilder() as any);
+      global.fetch = jest.fn() as any;
+
+      const mockSend = jest.fn().mockResolvedValue({});
+      await service.handleIncomingMessage(baseEvt(), 'company-1', 'user-1', mockSend);
+      await jest.runAllTimersAsync();
+
+      expect(mockSend).not.toHaveBeenCalled();
+      expect(global.fetch).not.toHaveBeenCalled();
+    });
+
+    it('calls checkLimitAndIncrement with correct companyId for FREE tier', async () => {
+      const mockRepo = makeMockRepo(null, SubscriptionTier.FREE);
+      service = new WhatsappAiService(mockRepo as any, makeMockBuilder() as any);
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ choices: [{ message: { content: 'reply' } }] }),
+      }) as any;
+
+      await service.handleIncomingMessage(baseEvt(), 'company-1', 'user-1', jest.fn().mockResolvedValue({}));
+      await jest.runAllTimersAsync();
+
+      expect(mockRepo.checkLimitAndIncrement).toHaveBeenCalledWith('company-1', 10);
+    });
+
+    it('calls checkLimitAndIncrement with 50 for STARTER tier', async () => {
+      const mockRepo = makeMockRepo(null, SubscriptionTier.STARTER);
+      service = new WhatsappAiService(mockRepo as any, makeMockBuilder() as any);
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ choices: [{ message: { content: 'reply' } }] }),
+      }) as any;
+
+      await service.handleIncomingMessage(baseEvt(), 'company-1', 'user-1', jest.fn().mockResolvedValue({}));
+      await jest.runAllTimersAsync();
+
+      expect(mockRepo.checkLimitAndIncrement).toHaveBeenCalledWith('company-1', 50);
+    });
+
+    it('skips limit check entirely for PRO tier', async () => {
+      const mockRepo = makeMockRepo(null, SubscriptionTier.PRO);
+      service = new WhatsappAiService(mockRepo as any, makeMockBuilder() as any);
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ choices: [{ message: { content: 'reply' } }] }),
+      }) as any;
+
+      const mockSend = jest.fn().mockResolvedValue({});
+      await service.handleIncomingMessage(baseEvt(), 'company-1', 'user-1', mockSend);
+      await jest.runAllTimersAsync();
+
+      expect(mockRepo.checkLimitAndIncrement).not.toHaveBeenCalled();
+      expect(mockSend).toHaveBeenCalledTimes(1);
+    });
+
+    it('allows message when checkLimitAndIncrement throws (fail-open)', async () => {
+      const mockRepo = makeMockRepo(null, SubscriptionTier.FREE);
+      mockRepo.checkLimitAndIncrement.mockRejectedValue(new Error('DB error'));
+      service = new WhatsappAiService(mockRepo as any, makeMockBuilder() as any);
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ choices: [{ message: { content: 'reply' } }] }),
+      }) as any;
+
+      const mockSend = jest.fn().mockResolvedValue({});
+      await service.handleIncomingMessage(baseEvt(), 'company-1', 'user-1', mockSend);
+      await jest.runAllTimersAsync();
+
+      expect(mockSend).toHaveBeenCalledTimes(1);
     });
   });
 });

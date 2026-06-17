@@ -10,6 +10,23 @@ export default class SettingsWhatsappController extends Controller {
   @tracked isSaving = false;
   @tracked successMsg = '';
   @tracked errorMsg = '';
+  @tracked weeklyLimit = null;
+  @tracked weeklyUsed = null;
+  @tracked weeklyResetsAt = null;
+
+  get weeklyUsageLabel() {
+    if (this.weeklyLimit === null) return null;
+    const used = this.weeklyUsed ?? 0;
+    let suffix = '';
+    if (this.weeklyResetsAt) {
+      const resetDate = new Date(this.weeklyResetsAt);
+      const daysLeft = Math.ceil((resetDate - Date.now()) / 86400000);
+      const day = resetDate.toLocaleDateString('en-US', { weekday: 'short' });
+      const time = resetDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+      suffix = ` - resets in ${daysLeft}d (${day} - ${time})`;
+    }
+    return `You've used ${used}/${this.weeklyLimit} AI messages this week${suffix}`;
+  }
 
   @action
   setPrompt(event) {

@@ -3,6 +3,7 @@ import { AiHistoryMessage } from './wa-types';
 import { WhatsappAiRepositoryService } from './whatsapp-ai-repository.service';
 import { WhatsappAiPromptBuilderService } from './whatsapp-ai-prompt-builder.service';
 import { sanitizeInput, parseResponse, DIRECT_CONTACT_RESPONSE } from './whatsapp-ai-filter';
+import { SubscriptionTier, TIER_LIMITS } from '../companies/entities/company.entity';
 
 type SendFn = (chatId: string, message: string) => Promise<{ messageId?: string }>;
 
@@ -35,6 +36,33 @@ export class WhatsappAiService {
       model: process.env.OLLAMA_MODEL ?? '',
       host: process.env.OLLAMA_HOST ?? '',
     };
+  }
+
+  async getWeeklyCount(companyId: string): Promise<{ used: number; limit: number } | null> {
+    const { company } = await this.repo.getCompanyAndListings(companyId);
+    const tier = company?.subscriptionTier ?? SubscriptionTier.FREE;
+    const weeklyLimit = TIER_LIMITS[tier].aiWeeklyMessages;
+    if (weeklyLimit === Infinity) return null;
+    const { count } = await this.repo.getWeeklyUsage(companyId);
+    return { used: count, limit: weeklyLimit };
+  }
+
+  async getConfigWithUsage(userId: string, companyId: string) {
+    const base = this.getConfig(userId);
+    const { company } = await this.repo.getCompanyAndListings(companyId);
+    const tier = company?.subscriptionTier ?? SubscriptionTier.FREE;
+    const weeklyLimit = TIER_LIMITS[tier].aiWeeklyMessages;
+
+    if (weeklyLimit === Infinity) {
+      return { ...base, weeklyLimit: null, weeklyUsed: null, weeklyResetsAt: null };
+    }
+
+    const { count, windowStart } = await this.repo.getWeeklyUsage(companyId);
+    const weeklyResetsAt = windowStart
+      ? new Date(windowStart.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString()
+      : null;
+
+    return { ...base, weeklyLimit, weeklyUsed: count, weeklyResetsAt };
   }
 
   isEnabled(userId: string): boolean {
@@ -177,6 +205,20 @@ export class WhatsappAiService {
         this.repo.getCompanyPrompt(companyId),
         this.repo.getCompanyAndListings(companyId),
       ]);
+
+      const tier = company?.subscriptionTier ?? SubscriptionTier.FREE;
+      const weeklyLimit = TIER_LIMITS[tier].aiWeeklyMessages;
+      if (weeklyLimit !== Infinity) {
+        try {
+          const { allowed } = await this.repo.checkLimitAndIncrement(companyId, weeklyLimit);
+          if (!allowed) {
+            history.pop();
+            return;
+          }
+        } catch (err) {
+          this.logger.error('Weekly limit check failed — allowing message', err instanceof Error ? err.message : err);
+        }
+      }
       const units = listings.length === 0 ? await this.repo.getAvailableUnits(companyId) : [];
       const contextBlock = this.promptBuilder.buildContextBlock(company, listings, units);
       const fullSystemPrompt = this.promptBuilder.buildFullPrompt(customPrompt, contextBlock);

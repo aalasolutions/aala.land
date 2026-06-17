@@ -101,6 +101,9 @@ export class WhatsappService implements OnModuleInit {
           };
           this.store.addMessage(userId, aiMsg);
           this.gateway.emitMessage(userId, aiMsg);
+          void this.ai.getWeeklyCount(companyId).then(usage => {
+            if (usage) this.gateway.emitAi(userId, { weeklyUsed: usage.used });
+          }).catch(() => {});
           return result;
         }).catch(err => this.logger.error('AI handler error', err));
       }
@@ -186,8 +189,8 @@ export class WhatsappService implements OnModuleInit {
 
   // ── AI ────────────────────────────────────────────────────────────────
 
-  getAiConfig(userId: string): ReturnType<WhatsappAiService['getConfig']> {
-    return this.ai.getConfig(userId);
+  getAiConfig(userId: string, companyId: string) {
+    return this.ai.getConfigWithUsage(userId, companyId);
   }
 
   getAiHistory(userId: string, chatId: string): AiHistoryMessage[] {
@@ -197,7 +200,7 @@ export class WhatsappService implements OnModuleInit {
   async toggleAi(userId: string, companyId: string, enabled?: boolean): Promise<{ enabled: boolean }> {
     const next = typeof enabled === 'boolean' ? enabled : !this.ai.isEnabled(userId);
     await this.ai.persistEnabled(userId, companyId, next);
-    this.gateway.emitAi(userId, { enabled: next, keyConfigured: this.ai.getConfig(userId).keyConfigured });
+    this.gateway.emitAi(userId, { enabled: next, keyConfigured: !!(process.env.OLLAMA_API_KEY) });
     return { enabled: next };
   }
 

@@ -85,6 +85,44 @@ export class WhatsappAiRepositoryService {
     return row?.aiEnabled ?? null;
   }
 
+  async checkLimitAndIncrement(companyId: string, limit: number): Promise<{ allowed: boolean }> {
+    const row = await this.settingsRepo.findOne({ where: { companyId } });
+    const now = new Date();
+    const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
+
+    const windowExpired = !row?.aiWeeklyWindowStart ||
+      now.getTime() - new Date(row.aiWeeklyWindowStart).getTime() >= sevenDaysMs;
+
+    const currentCount = windowExpired ? 0 : (row?.aiWeeklyCount ?? 0);
+
+    if (currentCount >= limit) return { allowed: false };
+
+    await this.settingsRepo.upsert(
+      {
+        companyId,
+        aiWeeklyCount: currentCount + 1,
+        aiWeeklyWindowStart: windowExpired ? now : (row!.aiWeeklyWindowStart ?? now),
+      },
+      ['companyId'],
+    );
+
+    return { allowed: true };
+  }
+
+  async getWeeklyUsage(companyId: string): Promise<{ count: number; windowStart: Date | null }> {
+    const row = await this.settingsRepo.findOne({
+      where: { companyId },
+      select: { aiWeeklyCount: true, aiWeeklyWindowStart: true },
+    });
+    if (!row?.aiWeeklyWindowStart) return { count: 0, windowStart: null };
+
+    const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
+    const expired = Date.now() - new Date(row.aiWeeklyWindowStart).getTime() >= sevenDaysMs;
+    if (expired) return { count: 0, windowStart: null };
+
+    return { count: row.aiWeeklyCount, windowStart: new Date(row.aiWeeklyWindowStart) };
+  }
+
   clearContextCache(companyId?: string): void {
     companyId ? this.contextCache.delete(companyId) : this.contextCache.clear();
   }
