@@ -80,6 +80,8 @@ export default class WhatsappController extends Controller {
 
       this.chats = (chatsData.data?.chats ?? chatsData.chats ?? [])
         .filter(c => !c.isGroup)
+        .filter(c => c.chatId !== this.me?.id)
+        .filter(c => !c.chatId?.endsWith('@newsletter'))
         .map(c => ({
           ...c,
           lastTs: c.lastTs ? c.lastTs * 1000 : c.lastTs,
@@ -128,6 +130,7 @@ export default class WhatsappController extends Controller {
     this._pollQRGeneration++;
     this.whatsapp.disconnectSocket();
     this.stopPolling();
+    this.currentChatId = null;
   }
 
   startPolling() {
@@ -196,6 +199,8 @@ export default class WhatsappController extends Controller {
 
   _updateChat(msg) {
     if (msg.isGroup) return;
+    if (this.me?.id && msg.chatId === this.me.id) return;
+    if (msg.chatId?.endsWith('@newsletter')) return;
     const existingIdx = this.chats.findIndex(c => c.chatId === msg.chatId);
     const isNewer = (msg.timestamp ?? 0) >= (this.chats[existingIdx]?.lastTs ?? 0);
     if (existingIdx >= 0 && isNewer) {
