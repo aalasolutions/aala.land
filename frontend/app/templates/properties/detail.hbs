@@ -253,8 +253,7 @@
         <FormDropdown @label="Status" @id="u-status" @value={{this.formUnitStatus}} @onChange={{fn this.setField "formUnitStatus"}} @options={{this.statusOptions}} @placeholder="Select status..." />
       </div>
     </div>
-    <FormDropdown @label="Property Type" @id="u-property-type" @value={{this.formUnitPropertyType}} @onChange={{fn this.setField "formUnitPropertyType"}} @options={{this.propertyTypeOptions}} @placeholder="Inherit" />
-    <p class="font-xs text-muted">Leave as "Inherit" to use the asset's default type.</p>
+    <FormDropdown @label="Property Type" @id="u-property-type" @value={{this.formUnitPropertyType}} @onChange={{fn this.setField "formUnitPropertyType"}} @options={{this.propertyTypeOptions}} @placeholder="Select type..." />
     <div class="flex gap-4">
       <div class="flex col gap-2 flex-1">
         <label class="font-sm text-muted" for="u-price">Price</label>
