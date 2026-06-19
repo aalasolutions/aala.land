@@ -34,6 +34,9 @@
                 <p class="text-muted font-sm">{{asset.units.length}} Units</p>
               </div>
               <div class="flex gap-2">
+                <button type="button" class="btn btn-secondary btn-sm" {{on "click" (fn this.openEditAsset asset)}}>
+                  <Ph @icon="pencil-simple" /> Edit
+                </button>
                 <button type="button" class="btn btn-primary btn-sm" {{on "click" (fn this.openCreateUnit asset.id)}}>
                   <Ph @icon="plus" /> Add Unit
                 </button>
@@ -51,7 +54,7 @@
                         <p class="font-bold font-md">Unit {{unit.unitNumber}}</p>
                       </div>
                       {{#if unit.propertyType}}
-                        <span class="type-badge type-{{lowercase unit.propertyType}}">{{if (eq unit.propertyType 'FOR_SALE') 'Sale' 'Rent'}}</span>
+                        <span class="type-badge type-{{lowercase unit.propertyType}}">{{if (eq unit.propertyType 'FOR_SALE') 'For Sale' (if (eq unit.propertyType 'RENTAL') 'For Rent' 'Not Listed')}}</span>
                       {{/if}}
                     </div>
 
@@ -130,7 +133,7 @@
                   <td><span class="status-badge status-{{unit.status}}">{{capitalize unit.status}}</span></td>
                   <td>
                     {{#if unit.propertyType}}
-                      <span class="type-badge type-{{lowercase unit.propertyType}}">{{if (eq unit.propertyType 'FOR_SALE') 'Sale' 'Rent'}}</span>
+                      <span class="type-badge type-{{lowercase unit.propertyType}}">{{if (eq unit.propertyType 'FOR_SALE') 'For Sale' (if (eq unit.propertyType 'RENTAL') 'For Rent' 'Not Listed')}}</span>
                     {{/if}}
                   </td>
                   <td>{{unit.bedrooms}}</td>
@@ -250,7 +253,7 @@
         <FormDropdown @label="Status" @id="u-status" @value={{this.formUnitStatus}} @onChange={{fn this.setField "formUnitStatus"}} @options={{this.statusOptions}} @placeholder="Select status..." />
       </div>
     </div>
-    <FormDropdown @label="Property Type" @id="u-property-type" @value={{this.formUnitPropertyType}} @onChange={{fn this.setField "formUnitPropertyType"}} @options={{this.propertyTypeOptions}} @placeholder="Inherit from Asset" />
+    <FormDropdown @label="Property Type" @id="u-property-type" @value={{this.formUnitPropertyType}} @onChange={{fn this.setField "formUnitPropertyType"}} @options={{this.propertyTypeOptions}} @placeholder="Inherit" />
     <p class="font-xs text-muted">Leave as "Inherit" to use the asset's default type.</p>
     <div class="flex gap-4">
       <div class="flex col gap-2 flex-1">
