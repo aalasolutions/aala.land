@@ -6,10 +6,10 @@ export enum SubscriptionTier {
     PRO = 'PRO',
 }
 
-export const TIER_LIMITS: Record<SubscriptionTier, { maxUsers: number; maxCountries: number; maxProperties: number }> = {
-    [SubscriptionTier.FREE]:    { maxUsers: 1,   maxCountries: 1,   maxProperties: 25  },
-    [SubscriptionTier.STARTER]: { maxUsers: 5,   maxCountries: 1,   maxProperties: 100 },
-    [SubscriptionTier.PRO]:     { maxUsers: 999, maxCountries: 999, maxProperties: 999 },
+export const TIER_LIMITS: Record<SubscriptionTier, { maxUsers: number; maxCountries: number; maxProperties: number; aiWeeklyMessages: number }> = {
+    [SubscriptionTier.FREE]:    { maxUsers: 1,   maxCountries: 1,   maxProperties: 25,  aiWeeklyMessages: 10  },
+    [SubscriptionTier.STARTER]: { maxUsers: 5,   maxCountries: 1,   maxProperties: 100, aiWeeklyMessages: 50  },
+    [SubscriptionTier.PRO]:     { maxUsers: 999, maxCountries: 999, maxProperties: 999, aiWeeklyMessages: Infinity },
 };
 
 @Entity('companies')

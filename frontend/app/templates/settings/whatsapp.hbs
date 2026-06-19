@@ -10,6 +10,12 @@
   </div>
 </div>
 
+{{#if this.weeklyUsageLabel}}
+  <div class="glass-panel p-4 max-w-lg mb-4 text-muted font-sm">
+    {{this.weeklyUsageLabel}}
+  </div>
+{{/if}}
+
 <div class="glass-panel p-6 max-w-lg">
   <form {{on "submit" this.save}}>
     <div class="form-group">
