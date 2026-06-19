@@ -14,8 +14,8 @@ const PROPERTY_STATUS_OPTIONS = [
 ];
 
 const PROPERTY_TYPE_OPTIONS = [
-  { value: '', label: 'Not set' },
-  { value: 'RENTAL', label: 'Rental' },
+  { value: '', label: 'Not Listed' },
+  { value: 'RENTAL', label: 'For Rent' },
   { value: 'FOR_SALE', label: 'For Sale' },
 ];
 
