@@ -79,22 +79,11 @@
         </div>
         {{/if}}
 
-        {{!-- Outreach Group --}}
+        {{!-- WhatsApp (direct link) --}}
         {{#if this.sidebarGroups.outreach}}
-        <div class="sidebar-group {{if (or (eq this.expandedGroup 'outreach') (eq this.activeGroup 'outreach')) 'expanded'}}">
-          <button type="button" class="sidebar-group-toggle {{if (eq this.activeGroup 'outreach') 'sidebar-group-active'}}" {{on "click" (fn this.toggleGroup "outreach")}}>
-            <Ph @icon="chats-circle" /> <span class="sidebar-label">Outreach</span>
-            <Ph @icon="caret-down" class="sidebar-chevron" />
-          </button>
-          <div class="sidebar-group-items">
-            <LinkTo @route="email-templates" class="sidebar-sublink" data-test-nav-templates>
-              <span class="sidebar-label">Email Templates</span>
-            </LinkTo>
-            <LinkTo @route="whatsapp" class="sidebar-sublink" data-test-nav-whatsapp>
-              <span class="sidebar-label">WhatsApp</span>
-            </LinkTo>
-          </div>
-        </div>
+        <LinkTo @route="whatsapp" class="sidebar-link" data-test-nav-whatsapp>
+          <Ph @icon="whatsapp-logo" /> <span class="sidebar-label">WhatsApp</span>
+        </LinkTo>
         {{/if}}
 
         {{!-- Operations Group --}}
@@ -131,12 +120,6 @@
           {{/unless}}
         {{/if}}
 
-        {{!-- Settings (Company Admin only) --}}
-        {{#if this.isCompanyAdmin}}
-        <LinkTo @route="settings.whatsapp" class="sidebar-link" data-test-nav-settings-whatsapp>
-          <Ph @icon="gear" /> <span class="sidebar-label">WhatsApp Settings</span>
-        </LinkTo>
-        {{/if}}
 
         {{!-- Admin Group (Super Admin only) --}}
         {{#if this.sidebarGroups.admin}}
