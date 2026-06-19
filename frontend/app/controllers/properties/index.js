@@ -6,8 +6,8 @@ import { AMENITY_OPTIONS } from '../../constants/amenities';
 
 const FILTER_TYPE_OPTIONS = [
   { value: '', label: 'All' },
-  { value: 'RENTAL', label: 'Rent' },
-  { value: 'FOR_SALE', label: 'Sale' },
+  { value: 'RENTAL', label: 'For Rent' },
+  { value: 'FOR_SALE', label: 'For Sale' },
 ];
 
 const PROPERTY_FILTER_STATUS_OPTIONS = [
@@ -28,8 +28,8 @@ const FILTER_BEDS_OPTIONS = [
 ];
 
 const PROPERTY_TYPE_OPTIONS = [
-  { value: '', label: 'Not set' },
-  { value: 'RENTAL', label: 'Rental' },
+  { value: '', label: 'Not Listed' },
+  { value: 'RENTAL', label: 'For Rent' },
   { value: 'FOR_SALE', label: 'For Sale' },
 ];
 
