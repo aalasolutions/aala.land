@@ -59,10 +59,8 @@ export default class ApplicationController extends Controller {
     owners: 'properties', 'owners.index': 'properties', 'owners.detail': 'properties',
     leads: 'crm', contacts: 'crm',
     leases: 'finance', financials: 'finance', cheques: 'finance', commissions: 'finance',
-    'email-templates': 'outreach', whatsapp: 'outreach',
     maintenance: 'operations', vendors: 'operations',
     team: 'admin', audit: 'admin',
-    'settings.whatsapp': 'settings',
   };
 
   get activeGroup() {

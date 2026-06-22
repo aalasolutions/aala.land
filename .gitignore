@@ -61,6 +61,7 @@ test-results/
 .claude/*
 docs/
 PROJECT_OVERVIEW.md
+PRODUCT_GUIDE.md
 
 # TypeScript
 *.tsbuildinfo
