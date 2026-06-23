@@ -1,10 +1,18 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Between, LessThanOrEqual, MoreThanOrEqual, Repository } from 'typeorm';
 import { Company } from '../companies/entities/company.entity';
-import { Listing, ListingStatus } from '../properties/entities/listing.entity';
+import { Listing, ListingStatus, ListingType } from '../properties/entities/listing.entity';
 import { Unit, UnitStatus } from '../properties/entities/unit.entity';
 import { WhatsappSettings } from './entities/whatsapp-settings.entity';
+
+interface PropertySearchFilters {
+  bedrooms?: number;
+  minPrice?: number;
+  maxPrice?: number;
+  city?: string;
+  type?: string;
+}
 
 interface ContextCache {
   company: Company | null;
@@ -62,6 +70,40 @@ export class WhatsappAiRepositoryService {
       order: { createdAt: 'DESC' },
       take: 40,
     });
+  }
+
+  async searchProperties(companyId: string, filters: PropertySearchFilters): Promise<Listing[]> {
+    const where: Record<string, any> = { companyId, status: ListingStatus.ACTIVE };
+
+    if (filters.type) {
+      where['type'] = ListingType[filters.type.toUpperCase() as keyof typeof ListingType] ?? filters.type;
+    }
+    if (filters.minPrice !== undefined && filters.maxPrice !== undefined) {
+      where['price'] = Between(filters.minPrice, filters.maxPrice);
+    } else if (filters.minPrice !== undefined) {
+      where['price'] = MoreThanOrEqual(filters.minPrice);
+    } else if (filters.maxPrice !== undefined) {
+      where['price'] = LessThanOrEqual(filters.maxPrice);
+    }
+
+    const listings = await this.listingRepo.find({
+      where,
+      relations: ['unit', 'unit.asset', 'unit.asset.locality', 'unit.asset.locality.city'],
+      order: { featured: 'DESC', createdAt: 'DESC' },
+      take: 20,
+    });
+
+    if (filters.bedrooms !== undefined) {
+      return listings.filter(l => l.unit?.bedrooms === filters.bedrooms);
+    }
+    if (filters.city) {
+      const cityLower = filters.city.toLowerCase();
+      return listings.filter(l => {
+        const city = (l.unit?.asset?.locality as any)?.city?.name ?? '';
+        return city.toLowerCase().includes(cityLower);
+      });
+    }
+    return listings;
   }
 
   async getCompanyPrompt(companyId: string): Promise<string | null> {

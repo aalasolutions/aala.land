@@ -26,58 +26,54 @@ describe('WhatsappAiPromptBuilderService', () => {
       expect(block).not.toContain('[COMPANY INFO]');
     });
 
-    it('shows "No available properties" when both listings and units are empty', () => {
-      const block = service.buildContextBlock(makeCompany(), [], []);
-      expect(block).toContain('No available properties at this time');
-    });
-
     it('always includes RULES_BLOCK', () => {
       const block = service.buildContextBlock(null, [], []);
       expect(block).toContain('[RULES]');
     });
 
-    it('uses listings when provided, ignores units', () => {
+    it('does not include property listings in context block', () => {
       const listing = {
         type: 'SALE', title: 'Nice Apt', price: '1000000', featured: false,
         photos: [], contactPhone: null, contactEmail: null, description: null,
+        unit: { bedrooms: 2, bathrooms: 1, sqFt: 900, amenities: [], photos: [], asset: null },
+      };
+      const block = service.buildContextBlock(makeCompany(), [listing as any], []);
+      expect(block).not.toContain('Nice Apt');
+      expect(block).not.toContain('[AVAILABLE PROPERTIES]');
+    });
+  });
+
+  describe('formatToolResult', () => {
+    it('returns no-results message for empty array', () => {
+      expect(service.formatToolResult([])).toBe('No properties found matching your criteria.');
+    });
+
+    it('returns formatted listing string for non-empty array', () => {
+      // Call buildContextBlock first to set fallbackCurrency
+      service.buildContextBlock(makeCompany({ activeRegions: ['AE-DU'] }), [], []);
+      const listing = {
+        type: 'RENT',
+        title: 'Nice Flat',
+        price: '25000',
+        featured: false,
+        photos: [],
+        contactPhone: '03001234567',
+        contactEmail: null,
+        description: 'A nice flat',
         unit: {
           bedrooms: 2, bathrooms: 1, sqFt: 900, amenities: [], photos: [],
           asset: {
-            name: 'Tower A', address: null,
-            locality: { name: 'JBR', city: { name: 'Dubai', regionCode: 'AE-DU' } },
+            name: 'Sunset Tower', address: '12 Main St',
+            locality: { name: 'DHA', city: { name: 'Karachi', regionCode: 'PK' } },
           },
         },
       };
-      const unit = { unitNumber: 'U1', price: '500000' } as any;
-      const block = service.buildContextBlock(makeCompany({ activeRegions: ['AE-DU'] }), [listing as any], [unit]);
-      expect(block).toContain('Nice Apt');
-      expect(block).not.toContain('U1');
-    });
-
-    it('falls back to units when listings are empty', () => {
-      const unit = {
-        unitNumber: 'U1', price: '500000', bedrooms: 1, bathrooms: 1,
-        sqFt: 600, amenities: [], photos: [], description: null,
-        asset: {
-          name: 'Tower B', address: null,
-          locality: { name: 'Downtown', city: { name: 'Dubai', regionCode: 'AE-DU' } },
-        },
-      };
-      const block = service.buildContextBlock(makeCompany({ activeRegions: ['AE-DU'] }), [], [unit as any]);
-      expect(block).toContain('U1');
-    });
-
-    it('includes listing contact info when available', () => {
-      const listing = {
-        type: 'RENT', title: 'Studio', price: '50000', featured: false,
-        photos: [], contactPhone: '+971501234567', contactEmail: null, description: null,
-        unit: {
-          bedrooms: 0, bathrooms: 1, sqFt: 400, amenities: [], photos: [],
-          asset: { name: 'Bldg', address: null, locality: { name: 'JLT', city: { name: 'Dubai', regionCode: null } } },
-        },
-      };
-      const block = service.buildContextBlock(makeCompany(), [listing as any], []);
-      expect(block).toContain('+971501234567');
+      const result = service.formatToolResult([listing as any]);
+      expect(typeof result).toBe('string');
+      expect(result).toContain('Nice Flat');
+      expect(result).toContain('25,000');
+      expect(result).toContain('2 Bed');
+      expect(result).toContain('03001234567');
     });
   });
 

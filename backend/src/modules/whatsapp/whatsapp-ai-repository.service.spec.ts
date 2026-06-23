@@ -1,5 +1,5 @@
 import { WhatsappAiRepositoryService } from './whatsapp-ai-repository.service';
-import { ListingStatus } from '../properties/entities/listing.entity';
+import { ListingStatus, ListingType } from '../properties/entities/listing.entity';
 import { UnitStatus } from '../properties/entities/unit.entity';
 
 const makeRepos = () => ({
@@ -226,6 +226,62 @@ describe('WhatsappAiRepositoryService', () => {
       );
       const result = await service.loadAiEnabled('c1');
       expect(result).toBe(false);
+    });
+  });
+
+  describe('searchProperties', () => {
+    it('queries ACTIVE listings for the company with no filters', async () => {
+      await service.searchProperties('c1', {});
+      expect(repos.listingRepo.find).toHaveBeenCalledWith(expect.objectContaining({
+        where: expect.objectContaining({ companyId: 'c1', status: ListingStatus.ACTIVE }),
+      }));
+    });
+
+    it('includes type filter when provided in uppercase', async () => {
+      await service.searchProperties('c1', { type: 'RENT' });
+      expect(repos.listingRepo.find).toHaveBeenCalledWith(expect.objectContaining({
+        where: expect.objectContaining({ type: ListingType.RENT }),
+      }));
+    });
+
+    it('normalizes lowercase type to enum value', async () => {
+      await service.searchProperties('c1', { type: 'sale' });
+      expect(repos.listingRepo.find).toHaveBeenCalledWith(expect.objectContaining({
+        where: expect.objectContaining({ type: ListingType.SALE }),
+      }));
+    });
+
+    it('does not include type in where when not provided', async () => {
+      await service.searchProperties('c1', {});
+      const call = repos.listingRepo.find.mock.calls[0][0];
+      expect(call.where).not.toHaveProperty('type');
+    });
+
+    it('returns listings from listingRepo', async () => {
+      const fakeListings = [{ id: 'l1', title: 'Test', unit: { bedrooms: 2 } }];
+      repos.listingRepo.find.mockResolvedValue(fakeListings);
+      const result = await service.searchProperties('c1', {});
+      expect(result).toEqual(fakeListings);
+    });
+
+    it('filters by bedrooms after DB query', async () => {
+      repos.listingRepo.find.mockResolvedValue([
+        { id: 'l1', unit: { bedrooms: 2 } },
+        { id: 'l2', unit: { bedrooms: 3 } },
+      ]);
+      const result = await service.searchProperties('c1', { bedrooms: 2 });
+      expect(result).toHaveLength(1);
+      expect(result[0]).toMatchObject({ id: 'l1' });
+    });
+
+    it('filters by city (case-insensitive) after DB query', async () => {
+      repos.listingRepo.find.mockResolvedValue([
+        { id: 'l1', unit: { asset: { locality: { city: { name: 'Karachi' } } } } },
+        { id: 'l2', unit: { asset: { locality: { city: { name: 'Lahore' } } } } },
+      ]);
+      const result = await service.searchProperties('c1', { city: 'karachi' });
+      expect(result).toHaveLength(1);
+      expect(result[0]).toMatchObject({ id: 'l1' });
     });
   });
 });

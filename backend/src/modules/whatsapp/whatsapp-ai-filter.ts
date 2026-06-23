@@ -30,3 +30,18 @@ export function parseResponse(raw: any): string | null {
   if (!content || typeof content !== 'string' || !content.trim()) return null;
   return content.trim();
 }
+
+export function parseToolCall(raw: any): { name: string; args: Record<string, unknown>; id: string } | null {
+  const toolCalls = raw?.choices?.[0]?.message?.tool_calls;
+  if (!Array.isArray(toolCalls) || toolCalls.length === 0) return null;
+  const first = toolCalls[0];
+  try {
+    const args = JSON.parse(first?.function?.arguments ?? '{}') as Record<string, unknown>;
+    const name = first?.function?.name;
+    const id = first?.id;
+    if (!name || !id) return null;
+    return { name, args, id };
+  } catch {
+    return null;
+  }
+}

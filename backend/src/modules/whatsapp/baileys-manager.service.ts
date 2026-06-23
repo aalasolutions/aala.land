@@ -26,6 +26,7 @@ export class BaileysInstance {
   private reconnectPending = false;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private connectedAt = 0;
+  private contactNames = new Map<string, string>();
   private status: WaStatus = {
     connection: 'disconnected',
     hasCredentials: false,
@@ -122,6 +123,22 @@ export class BaileysInstance {
           : null;
         this.emitter.emit('status', { ...this.status });
         this.logger.log(`[${this.userId}] Connected as ${this.status.me?.id}`);
+      }
+    });
+
+    this.sock.ev.on('contacts.upsert', (contacts: any[]) => {
+      for (const c of contacts) {
+        const jid = c.id;
+        const name = c.name ?? c.notify ?? c.verifiedName;
+        if (jid && name) this.contactNames.set(jid, name);
+      }
+    });
+
+    this.sock.ev.on('contacts.update', (updates: any[]) => {
+      for (const c of updates) {
+        const jid = c.id;
+        const name = c.name ?? c.notify ?? c.verifiedName;
+        if (jid && name) this.contactNames.set(jid, name);
       }
     });
 
@@ -287,12 +304,10 @@ export class BaileysInstance {
 
     const isGroup = chatId.endsWith('@g.us');
     const senderId = fromMe ? (this.status.me?.id ?? 'me') : (key.participant ?? chatId);
-    const senderName = fromMe ? 'You' : (raw.pushName ?? senderId.split('@')[0]);
-    const chatName = isGroup
-      ? chatId.split('@')[0]
-      : fromMe
-        ? (this.status.me?.id?.split('@')[0] ?? 'You')
-        : senderName;
+    const contactJid = fromMe ? chatId : senderId;
+    const contactName = this.contactNames.get(contactJid) ?? raw.pushName ?? contactJid.split('@')[0];
+    const senderName = fromMe ? 'You' : contactName;
+    const chatName = isGroup ? chatId.split('@')[0] : contactName;
 
     return {
       id: key.id ?? String(Date.now()),

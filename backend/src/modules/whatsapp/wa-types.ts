@@ -35,6 +35,8 @@ export interface WaStatus {
 }
 
 export interface AiHistoryMessage {
-  role: 'user' | 'assistant' | 'system';
-  content: string;
+  role: 'user' | 'assistant' | 'system' | 'tool';
+  content: string | null;
+  tool_call_id?: string;
+  tool_calls?: any[];
 }

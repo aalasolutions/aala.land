@@ -2,7 +2,8 @@ import { Injectable, Logger } from '@nestjs/common';
 import { AiHistoryMessage } from './wa-types';
 import { WhatsappAiRepositoryService } from './whatsapp-ai-repository.service';
 import { WhatsappAiPromptBuilderService } from './whatsapp-ai-prompt-builder.service';
-import { sanitizeInput, parseResponse, DIRECT_CONTACT_RESPONSE } from './whatsapp-ai-filter';
+import { sanitizeInput, parseResponse, parseToolCall, DIRECT_CONTACT_RESPONSE } from './whatsapp-ai-filter';
+import { TOOL_DEFINITIONS, executeTool } from './whatsapp-ai-tools';
 import { SubscriptionTier, TIER_LIMITS } from '../companies/entities/company.entity';
 
 type SendFn = (chatId: string, message: string) => Promise<{ messageId?: string }>;
@@ -212,6 +213,7 @@ export class WhatsappAiService {
         try {
           const { allowed } = await this.repo.checkLimitAndIncrement(companyId, weeklyLimit);
           if (!allowed) {
+            this.logger.warn(`Weekly AI limit exceeded for company ${companyId} (limit: ${weeklyLimit})`);
             history.pop();
             return;
           }
@@ -219,12 +221,46 @@ export class WhatsappAiService {
           this.logger.error('Weekly limit check failed — allowing message', err instanceof Error ? err.message : err);
         }
       }
+
       const units = listings.length === 0 ? await this.repo.getAvailableUnits(companyId) : [];
       const contextBlock = this.promptBuilder.buildContextBlock(company, listings, units);
       const fullSystemPrompt = this.promptBuilder.buildFullPrompt(customPrompt, contextBlock);
+      const systemMessages: AiHistoryMessage[] = [{ role: 'system', content: fullSystemPrompt }];
 
-      const rawResponse = await this.callLLM([{ role: 'system', content: fullSystemPrompt }, ...history]);
-      const reply = parseResponse(rawResponse);
+      const firstRaw = await this.callLLM([...systemMessages, ...history], TOOL_DEFINITIONS);
+      const toolCall = parseToolCall(firstRaw);
+
+      if (toolCall) {
+        this.logger.log('Executing tool', { toolName: toolCall.name, args: toolCall.args, companyId });
+        const result = await executeTool(
+          toolCall.name, toolCall.args, companyId, this.repo, this.promptBuilder,
+        );
+        this.logger.log('Tool execution result', { toolName: toolCall.name, result });
+
+        const firstMsg = firstRaw.choices[0].message;
+        const assistantToolMsg: AiHistoryMessage = {
+          role: 'assistant',
+          content: firstMsg.content ?? null,
+          tool_calls: firstMsg.tool_calls,
+        };
+        const toolResultMsg: AiHistoryMessage = { role: 'tool', content: result, tool_call_id: toolCall.id };
+
+        const secondRaw = await this.callLLM([...systemMessages, ...history, assistantToolMsg, toolResultMsg]);
+        const reply = parseResponse(secondRaw);
+        if (!reply) {
+          this.logger.warn('Second LLM call returned no text content after tool execution', { toolName: toolCall.name, companyId });
+          history.pop();
+          return;
+        }
+
+        history.push({ role: 'assistant', content: reply });
+        this.trimHistory(userId, chatId, history);
+        assistantPushed = true;
+        await send(chatId, reply);
+        return;
+      }
+
+      const reply = parseResponse(firstRaw);
       if (!reply) {
         history.pop();
         return;
@@ -233,12 +269,14 @@ export class WhatsappAiService {
       history.push({ role: 'assistant', content: reply });
       this.trimHistory(userId, chatId, history);
       assistantPushed = true;
-
       await send(chatId, reply);
+
     } catch (err) {
       if (assistantPushed) history.splice(-2, 2);
       else history.pop();
-      this.logger.error('AI call failed', err instanceof Error ? err.message : err);
+      const cause = (err as any)?.cause;
+      const causeStr = cause instanceof Error ? ` | cause: ${cause.name}: ${cause.message}` : '';
+      this.logger.error(`AI call failed${causeStr}`, err instanceof Error ? `${err.message}\n${err.stack}` : String(err));
     }
   }
 
@@ -248,33 +286,114 @@ export class WhatsappAiService {
     this.histories.set(`${userId}:${chatId}`, history);
   }
 
-  private async callLLM(messages: AiHistoryMessage[]): Promise<any> {
+  private async callLLM(messages: AiHistoryMessage[], tools?: any[]): Promise<any> {
     const { OLLAMA_HOST: host, OLLAMA_API_KEY: key, OLLAMA_MODEL: model } = process.env;
     if (!host || !key || !model) return null;
 
-    const timeout = parseInt(process.env.AI_REQUEST_TIMEOUT_MS ?? '30000', 10);
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), timeout);
+    const timeout = parseInt(process.env.AI_REQUEST_TIMEOUT_MS ?? '300000', 10);
+    const maxRetries = 5;
+    const TRANSIENT_CODES = new Set(['EAI_AGAIN', 'ECONNRESET', 'ETIMEDOUT', 'ECONNREFUSED']);
 
-    try {
-      const res = await fetch(`${host}/chat/completions`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
-        body: JSON.stringify({
-          model, messages,
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), timeout);
+
+      try {
+        const body: Record<string, any> = {
+          model, messages, stream: true,
           temperature: parseFloat(process.env.AI_TEMPERATURE ?? '0.7'),
           top_p: parseFloat(process.env.AI_TOP_P ?? '0.9'),
-        }),
-        signal: controller.signal,
-      });
-      const data = await res.json() as any;
-      if (!res.ok) {
-        this.logger.error(`LLM API error ${res.status}: ${data?.error?.message ?? JSON.stringify(data)}`);
-        return null;
+        };
+        if (tools && tools.length > 0) body['tools'] = tools;
+
+        const res = await fetch(`${host}/chat/completions`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
+          body: JSON.stringify(body),
+          signal: controller.signal,
+        });
+
+        if (!res.ok) {
+          clearTimeout(timer);
+          const rawText = await res.text();
+          this.logger.error(`LLM API error ${res.status} ${res.statusText}: ${rawText.slice(0, 500)}`);
+          return null;
+        }
+
+        // Stream SSE chunks and accumulate into a single response object
+        const reader = res.body?.getReader();
+        if (!reader) { clearTimeout(timer); return null; }
+
+        const decoder = new TextDecoder();
+        let buf = '';
+        let content = '';
+        const toolCallMap: Record<number, { id: string; type: string; function: { name: string; arguments: string } }> = {};
+
+        try {
+          outer: while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            buf += decoder.decode(value, { stream: true });
+
+            const lines = buf.split('\n');
+            buf = lines.pop() ?? '';
+
+            for (const line of lines) {
+              if (!line.startsWith('data: ')) continue;
+              const data = line.slice(6).trim();
+              if (data === '[DONE]') break outer;
+              try {
+                const parsed = JSON.parse(data);
+                const delta = parsed.choices?.[0]?.delta;
+                if (!delta) continue;
+
+                if (typeof delta.content === 'string') content += delta.content;
+
+                if (Array.isArray(delta.tool_calls)) {
+                  for (const tc of delta.tool_calls) {
+                    const idx: number = tc.index ?? 0;
+                    if (!toolCallMap[idx]) {
+                      toolCallMap[idx] = { id: '', type: 'function', function: { name: '', arguments: '' } };
+                    }
+                    // id and name arrive only in the first delta chunk — assign once
+                    if (tc.id && !toolCallMap[idx].id) toolCallMap[idx].id = tc.id;
+                    if (tc.function?.name && !toolCallMap[idx].function.name) toolCallMap[idx].function.name = tc.function.name;
+                    // arguments are streamed across multiple chunks — concatenate
+                    if (tc.function?.arguments) toolCallMap[idx].function.arguments += tc.function.arguments;
+                  }
+                }
+              } catch { /* malformed SSE chunk — skip */ }
+            }
+          }
+        } finally {
+          clearTimeout(timer);
+          reader.releaseLock();
+        }
+
+        const tool_calls = Object.values(toolCallMap);
+        return {
+          choices: [{
+            message: {
+              role: 'assistant',
+              content: content || null,
+              ...(tool_calls.length > 0 ? { tool_calls } : {}),
+            },
+          }],
+        };
+
+      } catch (err) {
+        clearTimeout(timer);
+        const cause = (err as any)?.cause;
+        const isTransient = cause && TRANSIENT_CODES.has((cause as any).code);
+
+        if (isTransient && attempt < maxRetries) {
+          const delayMs = 500 * (attempt + 1);
+          this.logger.warn(`LLM call failed (attempt ${attempt + 1}/${maxRetries + 1}): ${cause.message} — retrying in ${delayMs}ms`);
+          await new Promise(r => setTimeout(r, delayMs));
+          continue;
+        }
+        throw err;
       }
-      return data;
-    } finally {
-      clearTimeout(timer);
     }
   }
 }

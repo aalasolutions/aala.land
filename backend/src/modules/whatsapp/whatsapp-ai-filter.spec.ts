@@ -1,4 +1,4 @@
-import { sanitizeInput, parseResponse, DIRECT_CONTACT_RESPONSE } from './whatsapp-ai-filter';
+import { sanitizeInput, parseResponse, DIRECT_CONTACT_RESPONSE, parseToolCall } from './whatsapp-ai-filter';
 
 describe('sanitizeInput', () => {
   it('returns unchanged message with needsDirectContact false for normal input', () => {
@@ -98,5 +98,66 @@ describe('parseResponse', () => {
 
   it('returns null when choices is missing', () => {
     expect(parseResponse({})).toBeNull();
+  });
+});
+
+describe('parseToolCall', () => {
+  it('returns null for null input', () => {
+    expect(parseToolCall(null)).toBeNull();
+  });
+
+  it('returns null when choices is missing', () => {
+    expect(parseToolCall({})).toBeNull();
+  });
+
+  it('returns null when no tool_calls in message', () => {
+    const raw = { choices: [{ message: { content: 'Hello', tool_calls: null } }] };
+    expect(parseToolCall(raw)).toBeNull();
+  });
+
+  it('returns null when tool_calls array is empty', () => {
+    const raw = { choices: [{ message: { tool_calls: [] } }] };
+    expect(parseToolCall(raw)).toBeNull();
+  });
+
+  it('parses first tool call name, id, and arguments', () => {
+    const raw = {
+      choices: [{
+        message: {
+          tool_calls: [{
+            id: 'call_abc123',
+            function: { name: 'search_properties', arguments: '{"city":"Karachi"}' },
+          }],
+        },
+      }],
+    };
+    expect(parseToolCall(raw)).toEqual({ name: 'search_properties', args: { city: 'Karachi' }, id: 'call_abc123' });
+  });
+
+  it('returns null when arguments JSON is invalid', () => {
+    const raw = {
+      choices: [{
+        message: {
+          tool_calls: [{ id: 'call_1', function: { name: 'search_properties', arguments: 'not-json' } }],
+        },
+      }],
+    };
+    expect(parseToolCall(raw)).toBeNull();
+  });
+
+  it('returns only the first tool call when multiple are present', () => {
+    const raw = {
+      choices: [{
+        message: {
+          tool_calls: [
+            { id: 'call_1', function: { name: 'search_properties', arguments: '{}' } },
+            { id: 'call_2', function: { name: 'escalate_to_human', arguments: '{}' } },
+          ],
+        },
+      }],
+    };
+    const result = parseToolCall(raw);
+    expect(result?.name).toBe('search_properties');
+    expect(result?.id).toBe('call_1');
   });
 });
