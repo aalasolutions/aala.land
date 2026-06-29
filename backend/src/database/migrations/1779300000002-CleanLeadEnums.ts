@@ -4,6 +4,12 @@ export class CleanLeadEnums1779300000002 implements MigrationInterface {
   name = 'CleanLeadEnums1779300000002';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
+    // Normalise casing before recreating enums (safe no-op if already uppercase)
+    await queryRunner.query(`UPDATE "leads" SET "status" = UPPER("status"::text) WHERE "status"::text != UPPER("status"::text)`);
+    await queryRunner.query(`UPDATE "leads" SET "temperature" = UPPER("temperature"::text) WHERE "temperature"::text != UPPER("temperature"::text)`);
+    await queryRunner.query(`UPDATE "leads" SET "source" = UPPER("source"::text) WHERE "source"::text != UPPER("source"::text)`);
+    await queryRunner.query(`UPDATE "lead_activities" SET "type" = UPPER("type"::text) WHERE "type"::text != UPPER("type"::text)`);
+
     // --- leads_status_enum ---
     await queryRunner.query(`ALTER TABLE "leads" ALTER COLUMN "status" DROP DEFAULT`);
     await queryRunner.query(`ALTER TYPE "public"."leads_status_enum" RENAME TO "leads_status_enum_old"`);

@@ -22,14 +22,14 @@ export class Listing {
     @Column({ name: 'unit_id', type: 'uuid' })
     unitId: string;
 
-    @ManyToOne(() => Unit)
+    @ManyToOne(() => Unit, { onDelete: 'CASCADE' })
     @JoinColumn({ name: 'unit_id' })
     unit: Unit;
 
     @Column({ name: 'company_id', type: 'uuid' })
     companyId: string;
 
-    @ManyToOne(() => Company)
+    @ManyToOne(() => Company, { onDelete: 'CASCADE' })
     @JoinColumn({ name: 'company_id' })
     company: Company;
 

@@ -1,6 +1,6 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, FindOptionsWhere, In, Not } from 'typeorm';
+import { DataSource, Repository, FindOptionsWhere, In, Not } from 'typeorm';
 import { PropertyArea } from './entities/property-area.entity';
 import { Asset } from './entities/asset.entity';
 import { Unit, UnitStatus } from './entities/unit.entity';
@@ -30,6 +30,7 @@ export class PropertiesService {
         private readonly listingRepository: Repository<Listing>,
         @InjectRepository(PropertyMedia)
         private readonly mediaRepository: Repository<PropertyMedia>,
+        private readonly dataSource: DataSource,
     ) { }
 
     // Areas
@@ -366,6 +367,23 @@ export class PropertiesService {
 
     async removeUnit(id: string, companyId: string): Promise<void> {
         const unit = await this.findOneUnit(id, companyId);
+
+        const [leadsRow] = await this.dataSource.query<[{ count: string }]>(
+            `SELECT COUNT(*) FROM leads WHERE unit_id = $1`,
+            [id],
+        );
+        if (parseInt(leadsRow.count, 10) > 0) {
+            throw new ConflictException('This unit cannot be deleted because it is linked to one or more leads. Please unlink the leads first.');
+        }
+
+        const [leasesRow] = await this.dataSource.query<[{ count: string }]>(
+            `SELECT COUNT(*) FROM leases WHERE unit_id = $1`,
+            [id],
+        );
+        if (parseInt(leasesRow.count, 10) > 0) {
+            throw new ConflictException('This unit cannot be deleted because it has associated leases. Please remove the leases first.');
+        }
+
         await this.unitRepository.remove(unit);
     }
 

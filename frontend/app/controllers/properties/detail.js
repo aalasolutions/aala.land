@@ -4,6 +4,7 @@ import { action } from '@ember/object';
 import { service } from '@ember/service';
 import { AMENITY_OPTIONS } from '../../constants/amenities';
 import { toggleArrayItem } from '../../utils/toggle-array-item';
+import { openDeleteModal, closeDeleteModal, confirmDeleteModal } from '../../utils/delete-modal';
 
 const PROPERTY_STATUS_OPTIONS = [
   { value: 'available', label: 'Available' },
@@ -184,6 +185,11 @@ export default class PropertiesDetailController extends Controller {
   @tracked isSavingUnit = false;
   @tracked unitError = '';
 
+  // Unit delete
+  @tracked showDeleteModal = false;
+  @tracked unitToDelete = null;
+  @tracked isDeleting = false;
+
   amenityOptions = AMENITY_OPTIONS;
 
   @action setField(fieldName, e) { this[fieldName] = e.target.value; }
@@ -339,5 +345,22 @@ export default class PropertiesDetailController extends Controller {
     } finally {
       this.isSavingUnit = false;
     }
+  }
+
+  @action openDeleteUnit(unit) {
+    openDeleteModal(this, 'unitToDelete', unit);
+  }
+
+  @action closeDeleteUnit() {
+    closeDeleteModal(this, 'unitToDelete');
+  }
+
+  @action async confirmDeleteUnit() {
+    await confirmDeleteModal(this, {
+      itemKey: 'unitToDelete',
+      resourcePath: '/properties/units',
+      successMessage: 'Unit deleted',
+      refreshRoute: 'properties.detail',
+    });
   }
 }
