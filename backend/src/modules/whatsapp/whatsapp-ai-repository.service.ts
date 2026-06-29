@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Between, LessThanOrEqual, MoreThanOrEqual, Repository } from 'typeorm';
+import { Between, ILike, LessThanOrEqual, MoreThanOrEqual, Repository } from 'typeorm';
 import { Company } from '../companies/entities/company.entity';
 import { Listing, ListingStatus, ListingType } from '../properties/entities/listing.entity';
 import { Unit, UnitStatus } from '../properties/entities/unit.entity';
@@ -26,6 +26,8 @@ interface PromptCache {
   ttl: number;
 }
 
+// NOTE: Single-instance only — caches below are process-local.
+// On multi-instance deploys, prompt edits will be stale on other replicas until TTL expires.
 @Injectable()
 export class WhatsappAiRepositoryService {
   private contextCache = new Map<string, ContextCache>();
@@ -86,24 +88,23 @@ export class WhatsappAiRepositoryService {
       where['price'] = LessThanOrEqual(filters.maxPrice);
     }
 
-    const listings = await this.listingRepo.find({
+    const unitWhere: Record<string, any> = {};
+    if (filters.bedrooms !== undefined) {
+      unitWhere['bedrooms'] = filters.bedrooms;
+    }
+    if (filters.city) {
+      unitWhere['asset'] = { locality: { city: { name: ILike(`%${filters.city}%`) } } };
+    }
+    if (Object.keys(unitWhere).length > 0) {
+      where['unit'] = unitWhere;
+    }
+
+    return this.listingRepo.find({
       where,
       relations: ['unit', 'unit.asset', 'unit.asset.locality', 'unit.asset.locality.city'],
       order: { featured: 'DESC', createdAt: 'DESC' },
       take: 20,
     });
-
-    if (filters.bedrooms !== undefined) {
-      return listings.filter(l => l.unit?.bedrooms === filters.bedrooms);
-    }
-    if (filters.city) {
-      const cityLower = filters.city.toLowerCase();
-      return listings.filter(l => {
-        const city = (l.unit?.asset?.locality as any)?.city?.name ?? '';
-        return city.toLowerCase().includes(cityLower);
-      });
-    }
-    return listings;
   }
 
   async getCompanyPrompt(companyId: string): Promise<string | null> {
@@ -128,27 +129,45 @@ export class WhatsappAiRepositoryService {
   }
 
   async checkLimitAndIncrement(companyId: string, limit: number): Promise<{ allowed: boolean }> {
-    const row = await this.settingsRepo.findOne({ where: { companyId } });
-    const now = new Date();
-    const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
+    return this.settingsRepo.manager.transaction(async (manager) => {
+      const repo = manager.getRepository(WhatsappSettings);
+      const row = await repo
+        .createQueryBuilder('ws')
+        .setLock('pessimistic_write')
+        .where('ws.companyId = :companyId', { companyId })
+        .getOne();
 
-    const windowExpired = !row?.aiWeeklyWindowStart ||
-      now.getTime() - new Date(row.aiWeeklyWindowStart).getTime() >= sevenDaysMs;
+      const now = new Date();
+      const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
 
-    const currentCount = windowExpired ? 0 : (row?.aiWeeklyCount ?? 0);
+      const windowExpired =
+        !row?.aiWeeklyWindowStart ||
+        now.getTime() - new Date(row.aiWeeklyWindowStart).getTime() >= sevenDaysMs;
 
-    if (currentCount >= limit) return { allowed: false };
+      const currentCount = windowExpired ? 0 : (row?.aiWeeklyCount ?? 0);
 
-    await this.settingsRepo.upsert(
-      {
-        companyId,
-        aiWeeklyCount: currentCount + 1,
-        aiWeeklyWindowStart: windowExpired ? now : (row!.aiWeeklyWindowStart ?? now),
-      },
-      ['companyId'],
-    );
+      if (currentCount >= limit) return { allowed: false };
 
-    return { allowed: true };
+      await repo.upsert(
+        {
+          companyId,
+          aiWeeklyCount: currentCount + 1,
+          aiWeeklyWindowStart: windowExpired ? now : (row!.aiWeeklyWindowStart ?? now),
+        },
+        ['companyId'],
+      );
+
+      return { allowed: true };
+    });
+  }
+
+  async decrementWeeklyCount(companyId: string): Promise<void> {
+    await this.settingsRepo
+      .createQueryBuilder()
+      .update()
+      .set({ aiWeeklyCount: () => 'GREATEST(ai_weekly_count - 1, 0)' })
+      .where('company_id = :companyId', { companyId })
+      .execute();
   }
 
   async getWeeklyUsage(companyId: string): Promise<{ count: number; windowStart: Date | null }> {

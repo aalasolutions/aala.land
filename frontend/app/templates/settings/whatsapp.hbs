@@ -22,6 +22,7 @@
       <label class="form-label" for="wa-ai-prompt">AI System Prompt</label>
       <textarea
         id="wa-ai-prompt"
+        data-test-ai-prompt
         class="form-input"
         rows="10"
         placeholder="Leave empty to use the default prompt"
@@ -41,11 +42,12 @@
     {{/if}}
 
     <div class="flex gap-3 mt-4">
-      <button type="submit" class="btn btn-primary" disabled={{this.isSaving}}>
+      <button type="submit" data-test-save-prompt class="btn btn-primary" disabled={{this.isSaving}}>
         {{#if this.isSaving}}Saving…{{else}}Save{{/if}}
       </button>
       <button
         type="button"
+        data-test-restore-prompt
         class="btn btn-secondary"
         disabled={{this.isSaving}}
         {{on "click" this.restoreDefault}}

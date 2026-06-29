@@ -1,8 +1,8 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { AiHistoryMessage } from './wa-types';
 import { WhatsappAiRepositoryService } from './whatsapp-ai-repository.service';
 import { WhatsappAiPromptBuilderService } from './whatsapp-ai-prompt-builder.service';
-import { sanitizeInput, parseResponse, parseToolCall, DIRECT_CONTACT_RESPONSE } from './whatsapp-ai-filter';
+import { sanitizeInput, parseResponse, parseToolCall, DIRECT_CONTACT_RESPONSE, ChatCompletion, ToolDefinition } from './whatsapp-ai-filter';
 import { TOOL_DEFINITIONS, executeTool } from './whatsapp-ai-tools';
 import { SubscriptionTier, TIER_LIMITS } from '../companies/entities/company.entity';
 
@@ -17,18 +17,42 @@ interface PendingChat {
   timer: ReturnType<typeof setTimeout>;
 }
 
+// NOTE: Single-instance only — all Maps below are process-local and not shared across replicas.
+// If horizontal scaling is needed, move histories/humanReplyAt to the shared Redis store.
 @Injectable()
-export class WhatsappAiService {
+export class WhatsappAiService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(WhatsappAiService.name);
   private histories = new Map<string, AiHistoryMessage[]>();
   private enabledByUser = new Map<string, boolean>();
   private pendingByChat = new Map<string, PendingChat>();
   private humanReplyAt = new Map<string, number>();
+  private lastActivityAt = new Map<string, number>();
+  private readonly AI_STATE_TTL_MS = 24 * 60 * 60 * 1000;
+  private sweepInterval: ReturnType<typeof setInterval> | null = null;
 
   constructor(
     private readonly repo: WhatsappAiRepositoryService,
     private readonly promptBuilder: WhatsappAiPromptBuilderService,
   ) {}
+
+  onModuleInit(): void {
+    this.sweepInterval = setInterval(() => this.sweepStaleState(), 60 * 60 * 1000);
+  }
+
+  onModuleDestroy(): void {
+    if (this.sweepInterval) clearInterval(this.sweepInterval);
+  }
+
+  private sweepStaleState(): void {
+    const cutoff = Date.now() - this.AI_STATE_TTL_MS;
+    for (const [key, lastActive] of this.lastActivityAt.entries()) {
+      if (lastActive < cutoff) {
+        this.histories.delete(key);
+        this.humanReplyAt.delete(key);
+        this.lastActivityAt.delete(key);
+      }
+    }
+  }
 
   getConfig(userId: string) {
     return {
@@ -199,6 +223,7 @@ export class WhatsappAiService {
     if (!history) { history = []; this.histories.set(histKey, history); }
 
     let assistantPushed = false;
+    let quotaIncremented = false;
     try {
       history.push({ role: 'user', content: cleaned });
 
@@ -212,6 +237,7 @@ export class WhatsappAiService {
       if (weeklyLimit !== Infinity) {
         try {
           const { allowed } = await this.repo.checkLimitAndIncrement(companyId, weeklyLimit);
+          if (allowed) quotaIncremented = true;
           if (!allowed) {
             this.logger.warn(`Weekly AI limit exceeded for company ${companyId} (limit: ${weeklyLimit})`);
             history.pop();
@@ -222,20 +248,22 @@ export class WhatsappAiService {
         }
       }
 
-      const units = listings.length === 0 ? await this.repo.getAvailableUnits(companyId) : [];
-      const contextBlock = this.promptBuilder.buildContextBlock(company, listings, units);
+      const { block: contextBlock, fallbackCurrency } = this.promptBuilder.buildContextBlock(company);
       const fullSystemPrompt = this.promptBuilder.buildFullPrompt(customPrompt, contextBlock);
       const systemMessages: AiHistoryMessage[] = [{ role: 'system', content: fullSystemPrompt }];
 
       const firstRaw = await this.callLLM([...systemMessages, ...history], TOOL_DEFINITIONS);
+      if (!firstRaw) { history.pop(); return; }
       const toolCall = parseToolCall(firstRaw);
 
       if (toolCall) {
-        this.logger.log('Executing tool', { toolName: toolCall.name, args: toolCall.args, companyId });
+        this.logger.log('Executing tool', { toolName: toolCall.name, companyId });
+        this.logger.debug('Tool args', { toolName: toolCall.name, args: toolCall.args });
         const result = await executeTool(
-          toolCall.name, toolCall.args, companyId, this.repo, this.promptBuilder,
+          toolCall.name, toolCall.args, companyId, this.repo, this.promptBuilder, fallbackCurrency,
         );
-        this.logger.log('Tool execution result', { toolName: toolCall.name, result });
+        this.logger.log('Tool executed', { toolName: toolCall.name, resultSize: result.length });
+        this.logger.debug('Tool result', { toolName: toolCall.name, result });
 
         const firstMsg = firstRaw.choices[0].message;
         const assistantToolMsg: AiHistoryMessage = {
@@ -272,6 +300,9 @@ export class WhatsappAiService {
       await send(chatId, reply);
 
     } catch (err) {
+      if (quotaIncremented && !assistantPushed) {
+        this.repo.decrementWeeklyCount(companyId).catch(() => undefined);
+      }
       if (assistantPushed) history.splice(-2, 2);
       else history.pop();
       const cause = (err as any)?.cause;
@@ -283,10 +314,12 @@ export class WhatsappAiService {
   private trimHistory(userId: string, chatId: string, history: AiHistoryMessage[]): void {
     const limit = parseInt(process.env.AI_HISTORY_LIMIT ?? '40', 10);
     if (history.length > limit) history.splice(0, history.length - limit);
-    this.histories.set(`${userId}:${chatId}`, history);
+    const key = `${userId}:${chatId}`;
+    this.histories.set(key, history);
+    this.lastActivityAt.set(key, Date.now());
   }
 
-  private async callLLM(messages: AiHistoryMessage[], tools?: any[]): Promise<any> {
+  private async callLLM(messages: AiHistoryMessage[], tools?: ToolDefinition[]): Promise<ChatCompletion | null> {
     const { OLLAMA_HOST: host, OLLAMA_API_KEY: key, OLLAMA_MODEL: model } = process.env;
     if (!host || !key || !model) return null;
 
@@ -395,5 +428,6 @@ export class WhatsappAiService {
         throw err;
       }
     }
+    return null;
   }
 }

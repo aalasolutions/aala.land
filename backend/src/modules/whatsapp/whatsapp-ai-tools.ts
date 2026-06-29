@@ -1,5 +1,6 @@
 import { WhatsappAiRepositoryService } from './whatsapp-ai-repository.service';
 import { WhatsappAiPromptBuilderService } from './whatsapp-ai-prompt-builder.service';
+import type { ToolDefinition } from './whatsapp-ai-filter';
 
 export interface PropertySearchFilters {
   bedrooms?: number;
@@ -9,7 +10,7 @@ export interface PropertySearchFilters {
   type?: string;
 }
 
-export const TOOL_DEFINITIONS = [
+export const TOOL_DEFINITIONS: ToolDefinition[] = [
   {
     type: 'function',
     function: {
@@ -44,13 +45,14 @@ export async function executeTool(
   companyId: string,
   repo: WhatsappAiRepositoryService,
   promptBuilder: WhatsappAiPromptBuilderService,
+  fallbackCurrency: string,
 ): Promise<string> {
   if (name === 'escalate_to_human') {
     return 'Escalation successful. Inform the customer that their request has been noted and a human agent will follow up with them shortly.';
   }
   if (name === 'search_properties') {
     const listings = await repo.searchProperties(companyId, args as PropertySearchFilters);
-    return promptBuilder.formatToolResult(listings);
+    return promptBuilder.formatToolResult(listings, fallbackCurrency);
   }
   return 'Unknown tool.';
 }

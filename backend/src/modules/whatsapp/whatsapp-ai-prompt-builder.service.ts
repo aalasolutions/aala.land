@@ -1,17 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { Company } from '../companies/entities/company.entity';
 import { Listing } from '../properties/entities/listing.entity';
-import type { Unit } from '../properties/entities/unit.entity';
 import { REGIONS } from '../../shared/constants/regions';
 import { DEFAULT_PROMPT, RULES_BLOCK } from './whatsapp-ai-prompts';
 
 @Injectable()
 export class WhatsappAiPromptBuilderService {
-  private fallbackCurrency = '';
-
-  buildContextBlock(company: Company | null, _listings: Listing[], _units: Unit[]): string {
+  buildContextBlock(company: Company | null): { block: string; fallbackCurrency: string } {
     const parts: string[] = [];
-    this.fallbackCurrency = REGIONS.find(r => (company?.activeRegions ?? []).includes(r.code))?.currency ?? '';
+    const fallbackCurrency = REGIONS.find(r => (company?.activeRegions ?? []).includes(r.code))?.currency ?? '';
 
     if (company) {
       const regions = (company.activeRegions ?? []).join(', ');
@@ -19,7 +16,7 @@ export class WhatsappAiPromptBuilderService {
     }
 
     parts.push(RULES_BLOCK);
-    return parts.join('\n\n');
+    return { block: parts.join('\n\n'), fallbackCurrency };
   }
 
   buildFullPrompt(customPrompt: string | null, contextBlock: string): string {
@@ -27,9 +24,9 @@ export class WhatsappAiPromptBuilderService {
     return contextBlock ? `${base}\n\n${contextBlock}` : base;
   }
 
-  formatToolResult(listings: Listing[]): string {
+  formatToolResult(listings: Listing[], fallbackCurrency: string): string {
     if (listings.length === 0) return 'No properties found matching your criteria.';
-    return this.formatListings(listings, this.fallbackCurrency).join('\n\n');
+    return this.formatListings(listings, fallbackCurrency).join('\n\n');
   }
 
   private formatListings(listings: Listing[], fallbackCurrency: string): string[] {
@@ -37,8 +34,8 @@ export class WhatsappAiPromptBuilderService {
       const u = l.unit;
       const asset = u?.asset;
       const locality = asset?.locality;
-      const city = (locality as any)?.city;
-      const cityRegionCode = (city as any)?.regionCode;
+      const city = locality?.city;
+      const cityRegionCode = city?.regionCode;
       const currency = (cityRegionCode ? REGIONS.find(r => r.code === cityRegionCode)?.currency : undefined) ?? fallbackCurrency;
       const location = [asset?.name, locality?.name, city?.name].filter(Boolean).join(', ');
       const beds = u?.bedrooms ? `${u.bedrooms} Bed` : 'Studio';
