@@ -6,7 +6,7 @@ export default class NotificationsService extends Service {
 
   #nextId = 0;
 
-  add(message, type = 'info', duration = 6000) {
+  add(message, type = 'info', duration = 4000) {
     const id = ++this.#nextId;
     this.toasts = [...this.toasts, { id, message, type }];
 
