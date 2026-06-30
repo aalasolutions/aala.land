@@ -340,5 +340,4 @@ export default class PropertiesDetailController extends Controller {
       this.isSavingUnit = false;
     }
   }
-
 }
