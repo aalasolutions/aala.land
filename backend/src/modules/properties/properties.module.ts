@@ -8,6 +8,7 @@ import { Asset } from './entities/asset.entity';
 import { Unit } from './entities/unit.entity';
 import { PropertyMedia } from './entities/property-media.entity';
 import { PropertyDocument } from './entities/property-document.entity';
+import { Company } from '../companies/entities/company.entity';
 
 @Module({
   imports: [
@@ -17,10 +18,11 @@ import { PropertyDocument } from './entities/property-document.entity';
       Unit,
       PropertyMedia,
       PropertyDocument,
+      Company,
     ]),
   ],
   controllers: [PropertiesController],
   providers: [PropertiesService, MediaService],
   exports: [PropertiesService, MediaService],
 })
-export class PropertiesModule { }
+export class PropertiesModule {}

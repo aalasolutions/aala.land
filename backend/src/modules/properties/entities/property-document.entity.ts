@@ -86,6 +86,12 @@ export class PropertyDocument {
     @Column({ name: 'uploaded_by', type: 'uuid', nullable: true })
     uploadedBy: string | null;
 
+    @Column({ name: 'file_size', type: 'integer', nullable: true })
+    fileSize: number | null;
+
+    @Column({ name: 's3_key', type: 'varchar', length: 500, nullable: true })
+    s3Key: string | null;
+
     @CreateDateColumn({ name: 'created_at' })
     createdAt: Date;
 

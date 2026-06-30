@@ -12,7 +12,7 @@ describe('DocumentsController', () => {
   const companyId = 'company-uuid-1';
   const userId = 'user-uuid-1';
   const role = 'company_admin';
-  const mockReq = { user: { companyId, userId, role } };
+  const mockReq = { user: { companyId, userId, role, email: 'test@example.com' } } as any;
 
   const mockDoc = {
     id: 'doc-uuid-1',
@@ -36,7 +36,7 @@ describe('DocumentsController', () => {
         {
           provide: DocumentsService,
           useValue: {
-            create: jest.fn(),
+            uploadAndCreate: jest.fn(),
             findAll: jest.fn(),
             findOne: jest.fn(),
             update: jest.fn(),
@@ -47,7 +47,8 @@ describe('DocumentsController', () => {
         {
           provide: MediaService,
           useValue: {
-            getPresignedUploadUrl: jest.fn(),
+            uploadDocumentToStorage: jest.fn(),
+            deleteDocumentFromStorage: jest.fn(),
           },
         },
       ],
@@ -64,14 +65,34 @@ describe('DocumentsController', () => {
     expect(controller).toBeDefined();
   });
 
-  describe('create', () => {
-    it('creates a document scoped to company', async () => {
-      service.create.mockResolvedValue(mockDoc as any);
+  describe('uploadDocument', () => {
+    it('calls documentsService.uploadAndCreate with companyId, userId, file, dto, mediaService', async () => {
+      service.uploadAndCreate.mockResolvedValue(mockDoc as any);
 
-      const dto = { name: 'Lease Agreement.pdf', url: 'https://s3.example.com/docs/lease.pdf' };
-      await controller.create(dto as any, mockReq);
+      const mockFile = {
+        buffer:       Buffer.from('pdf content'),
+        mimetype:     'application/pdf',
+        originalname: 'contract.pdf',
+        size:         51200,
+      } as Express.Multer.File;
+      const dto = { name: 'Service Contract', category: DocumentCategory.LEASE };
 
-      expect(service.create).toHaveBeenCalledWith(companyId, userId, dto);
+      const result = await controller.uploadDocument(mockFile, dto as any, mockReq);
+
+      expect(service.uploadAndCreate).toHaveBeenCalledWith(
+        companyId,
+        userId,
+        mockFile,
+        dto,
+        expect.anything(),
+      );
+      expect(result).toEqual(mockDoc);
+    });
+
+    it('throws BadRequestException when no file is provided', async () => {
+      await expect(
+        controller.uploadDocument(undefined as any, { name: 'test' } as any, mockReq),
+      ).rejects.toThrow('No file provided');
     });
   });
 
@@ -124,12 +145,17 @@ describe('DocumentsController', () => {
   });
 
   describe('remove', () => {
-    it('removes a document', async () => {
+    it('removes a document passing mediaService', async () => {
       service.remove.mockResolvedValue(undefined);
 
       await controller.remove('doc-uuid-1', mockReq);
 
-      expect(service.remove).toHaveBeenCalledWith('doc-uuid-1', companyId, role);
+      expect(service.remove).toHaveBeenCalledWith(
+        'doc-uuid-1',
+        companyId,
+        role,
+        expect.anything(),
+      );
     });
   });
 });

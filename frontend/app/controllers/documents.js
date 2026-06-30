@@ -56,6 +56,13 @@ export default class DocumentsController extends PaginatedController {
 
   accessLevels = ACCESS_LEVELS;
 
+  get selectedFileSizeLabel() {
+    const bytes = this.selectedFile?.size ?? 0;
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  }
+
   @action setField(fieldName, e) {
     this[fieldName] = e.target.value;
   }
@@ -115,61 +122,47 @@ export default class DocumentsController extends PaginatedController {
     const isEdit = !!this.editDocument;
 
     try {
-      let url = isEdit ? this.editDocument.url : null;
-      let fileType = isEdit ? this.editDocument.fileType : null;
-
-      // Upload file if selected
-      if (this.selectedFile) {
-        this.uploadProgress = 'Getting upload URL...';
-        const presigned = await this.auth.fetchJson('/documents/presigned-url', {
-          method: 'POST',
-          body: JSON.stringify({
-            fileName: this.selectedFile.name,
-            contentType: this.selectedFile.type,
-          }),
+      if (isEdit) {
+        // Edit path: metadata-only PATCH. File replacement is out of scope.
+        const body = {
+          name:        this.formName,
+          category:    this.formCategory,
+          accessLevel: this.formAccessLevel,
+        };
+        await this.auth.fetchJson(`/documents/${this.editDocument.id}`, {
+          method: 'PATCH',
+          body: JSON.stringify(body),
         });
-
-        const { uploadUrl, fileUrl } = presigned.data;
-
-        this.uploadProgress = 'Uploading file...';
-        const uploadRes = await fetch(uploadUrl, {
-          method: 'PUT',
-          body: this.selectedFile,
-          headers: { 'Content-Type': this.selectedFile.type },
-        });
-
-        if (!uploadRes.ok) {
-          throw new Error('File upload to storage failed');
+        this.notifications.success('Document updated');
+      } else {
+        // Create path: single multipart POST.
+        if (!this.selectedFile) {
+          throw new Error('Please select a file to upload');
         }
+        this.uploadProgress = 'Uploading...';
 
-        url = fileUrl;
-        fileType = this.selectedFile.type;
-        this.uploadProgress = 'Saving record...';
+        const formData = new FormData();
+        formData.append('file', this.selectedFile);
+        formData.append('name', this.formName);
+        formData.append('category', this.formCategory);
+        formData.append('accessLevel', this.formAccessLevel);
+
+        await this.auth.fetchJson('/documents/upload', {
+          method: 'POST',
+          body: formData,
+        });
+        this.notifications.success('Document uploaded');
       }
 
-      if (!url && !isEdit) {
-        throw new Error('Please select a file to upload');
-      }
-
-      const body = {
-        name: this.formName,
-        category: this.formCategory,
-        accessLevel: this.formAccessLevel,
-        ...(url ? { url } : {}),
-        ...(fileType ? { fileType } : {}),
-      };
-
-      const path = isEdit ? `/documents/${this.editDocument.id}` : '/documents';
-      await this.auth.fetchJson(path, {
-        method: isEdit ? 'PATCH' : 'POST',
-        body: JSON.stringify(body),
-      });
-
-      this.notifications.success(isEdit ? 'Document updated' : 'Document uploaded');
       this.closeModal();
       this.router.refresh('documents');
-    } catch (e) {
-      this.errorMsg = e.message;
+    } catch (err) {
+      if (err.message?.toLowerCase().includes('storage quota')) {
+        this.errorMsg =
+          'Storage quota exceeded. Add a seat or top up storage to upload more files.';
+      } else {
+        this.errorMsg = err.message || 'Save failed';
+      }
     } finally {
       this.isSaving = false;
       this.uploadProgress = '';

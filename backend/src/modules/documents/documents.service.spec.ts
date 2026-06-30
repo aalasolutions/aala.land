@@ -28,7 +28,7 @@ describe('DocumentsService', () => {
     previousVersionId: null,
     uploadedBy: userId,
     unitId: null,
-    buildingId: null,
+    assetId: null,
   };
 
   beforeEach(async () => {
@@ -66,20 +66,51 @@ describe('DocumentsService', () => {
     expect(service).toBeDefined();
   });
 
-  describe('create', () => {
-    it('creates a document with company and user IDs', async () => {
+  describe('uploadAndCreate', () => {
+    it('calls mediaService.uploadDocumentToStorage and creates a document record', async () => {
+      const mockUploadResult = {
+        url:      'https://s3.us-east-005.backblazeb2.com/aala-cloud/companies/c1/doc.pdf',
+        s3Key:    'companies/c1/documents/123-doc.pdf',
+        fileSize: 51200,
+      };
+      const mockMediaService = {
+        uploadDocumentToStorage: jest.fn().mockResolvedValue(mockUploadResult),
+      } as unknown as any;
+
       repo.create.mockReturnValue(mockDoc);
       repo.save.mockResolvedValue(mockDoc);
 
-      const dto = { name: 'Lease Agreement.pdf', url: 'https://s3.example.com/docs/lease.pdf' };
-      const result = await service.create(companyId, userId, dto as any);
+      const mockFile = {
+        buffer:       Buffer.from('pdf'),
+        mimetype:     'application/pdf',
+        originalname: 'contract.pdf',
+        size:         51200,
+      } as Express.Multer.File;
+      const dto = { name: 'Service Contract', category: DocumentCategory.LEASE };
 
-      expect(repo.create).toHaveBeenCalledWith({
-        ...dto,
+      const result = await service.uploadAndCreate(
         companyId,
-        uploadedBy: userId,
-        version: 1,
-      });
+        userId,
+        mockFile,
+        dto as any,
+        mockMediaService,
+      );
+
+      expect(mockMediaService.uploadDocumentToStorage).toHaveBeenCalledWith(
+        companyId,
+        mockFile,
+      );
+      expect(repo.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name:       'Service Contract',
+          url:        mockUploadResult.url,
+          s3Key:      mockUploadResult.s3Key,
+          fileSize:   mockUploadResult.fileSize,
+          companyId,
+          uploadedBy: userId,
+          version:    1,
+        }),
+      );
       expect(result).toEqual(mockDoc);
     });
   });

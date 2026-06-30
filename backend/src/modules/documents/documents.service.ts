@@ -2,8 +2,9 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { PropertyDocument, DocumentCategory, DocumentAccessLevel } from '../properties/entities/property-document.entity';
-import { CreateDocumentDto } from './dto/create-document.dto';
 import { UpdateDocumentDto } from './dto/update-document.dto';
+import { MediaService } from '../properties/media.service';
+import { UploadDocumentDto } from './dto/upload-document.dto';
 import { Role } from '@shared/enums/roles.enum';
 
 @Injectable()
@@ -13,9 +14,28 @@ export class DocumentsService {
     private readonly documentRepository: Repository<PropertyDocument>,
   ) {}
 
-  async create(companyId: string, userId: string, dto: CreateDocumentDto): Promise<PropertyDocument> {
+  async uploadAndCreate(
+    companyId: string,
+    userId: string,
+    file: Express.Multer.File,
+    dto: UploadDocumentDto,
+    mediaService: MediaService,
+  ): Promise<PropertyDocument> {
+    const { url, s3Key, fileSize } = await mediaService.uploadDocumentToStorage(
+      companyId,
+      file,
+    );
+
     const doc = this.documentRepository.create({
-      ...dto,
+      name: dto.name,
+      url,
+      s3Key,
+      fileSize,
+      fileType: dto.fileType ?? file.mimetype,
+      unitId: dto.unitId ?? null,
+      assetId: dto.assetId ?? null, // persists to building_id column (legacy naming)
+      category: dto.category,
+      accessLevel: dto.accessLevel,
       companyId,
       uploadedBy: userId,
       version: 1,
@@ -97,8 +117,21 @@ export class DocumentsService {
     return this.documentRepository.save(existing);
   }
 
-  async remove(id: string, companyId: string, userRole: string): Promise<void> {
+  async remove(
+    id: string,
+    companyId: string,
+    userRole: string,
+    mediaService?: MediaService,
+  ): Promise<void> {
     const doc = await this.findOne(id, companyId, userRole);
+
+    // Delete from B2 only when the document was uploaded via the server-side flow
+    // (has s3Key). Pre-refactor documents without s3Key skip S3 cleanup; DB record
+    // is still removed.
+    if (doc.s3Key && mediaService) {
+      await mediaService.deleteDocumentFromStorage(doc.s3Key, companyId, doc.fileSize);
+    }
+
     await this.documentRepository.remove(doc);
   }
 

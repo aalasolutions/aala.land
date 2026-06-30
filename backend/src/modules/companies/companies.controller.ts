@@ -10,6 +10,15 @@ import { Role } from '@shared/enums/roles.enum';
 import { REGIONS, getRegionsGroupedByCountry } from '@shared/constants/regions';
 import { AuthenticatedRequest } from '@shared/interfaces/authenticated-request.interface';
 import { requireCompanyId } from '@shared/utils/auth.util';
+import { getStorageQuotaBytes } from '@shared/utils/storage-quota.util';
+
+interface StorageUsageResponse {
+  usedBytes: number;
+  quotaBytes: number;
+  percentUsed: number;
+  tier: string;
+  purchasedSeats: number;
+}
 
 @ApiTags('Companies')
 @Controller('companies')
@@ -62,6 +71,38 @@ export class CompaniesController {
             return rest;
         }
         return result;
+    }
+
+    @Get(':id/storage-usage')
+    @ApiOperation({
+        summary:
+            'Return storage usage for a company. ' +
+            'Own company or SUPER_ADMIN only.',
+    })
+    @ApiBearerAuth()
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT, Role.ACCOUNTANT)
+    async getStorageUsage(
+        @Param('id', ParseUUIDPipe) id: string,
+        @Request() req: AuthenticatedRequest,
+    ): Promise<StorageUsageResponse> {
+        const { role, companyId } = req.user;
+        if (role !== Role.SUPER_ADMIN && companyId !== id) {
+            throw new ForbiddenException('Access denied');
+        }
+        const company = await this.companiesService.findOne(id);
+        const usedBytes = Number(company.storageUsedBytes ?? 0);
+        const quotaBytes = getStorageQuotaBytes(company);
+        const percentUsed =
+            quotaBytes > 0 ? Math.min(100, Math.round((usedBytes / quotaBytes) * 100)) : 0;
+
+        return {
+            usedBytes,
+            quotaBytes,
+            percentUsed,
+            tier: company.subscriptionTier,
+            purchasedSeats: company.purchasedSeats ?? 1,
+        };
     }
 
     @Patch(':id')

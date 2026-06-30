@@ -40,6 +40,34 @@
           <p class="text-danger">{{this.errorMsg}}</p>
         {{/if}}
 
+        {{#if this.storageUsage}}
+          <div class="storage-usage-section" data-test-storage-usage>
+            <h3 class="font-sm font-bold uppercase text-muted mb-2">Storage Usage</h3>
+            <p
+              class="font-sm mb-2"
+              data-test-storage-label
+            >
+              {{format-bytes this.storageUsage.usedBytes}}
+              of
+              {{format-bytes this.storageUsage.quotaBytes}}
+              used
+              ({{this.storageUsage.percentUsed}}%)
+            </p>
+            <div class="storage-bar" data-test-storage-bar>
+              <div
+                class="storage-bar__fill
+                  {{if (gte this.storageUsage.percentUsed 90) 'storage-bar__fill-warning'}}"
+                style="width: {{this.storageUsage.percentUsed}}%"
+              ></div>
+            </div>
+            <p class="font-xs text-muted mt-1">
+              Tier: {{this.storageUsage.tier}} /
+              {{this.storageUsage.purchasedSeats}}
+              {{if (eq this.storageUsage.purchasedSeats 1) "seat" "seats"}}
+            </p>
+          </div>
+        {{/if}}
+
         <div class="form-actions">
           <AppButton @variant="primary" @buttonType="submit" @text="Save Changes" @loading={{this.isSaving}} @loadingText="Saving..." @disabled={{not this.isAdmin}} />
         </div>

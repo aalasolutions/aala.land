@@ -46,7 +46,11 @@ describe('PropertiesController', () => {
         {
           provide: MediaService,
           useValue: {
-            getPresignedUploadUrl: jest.fn(),
+            uploadImage: jest.fn(),
+            findByUnit: jest.fn(),
+            findByAsset: jest.fn(),
+            setPrimary: jest.fn(),
+            deleteMedia: jest.fn(),
           },
         },
       ],
@@ -150,21 +154,36 @@ describe('PropertiesController', () => {
     });
   });
 
-  describe('getPresignedUrl', () => {
-    it('returns presigned URL for upload', async () => {
-      const mockResult = {
-        uploadUrl: 'https://bucket.s3.amazonaws.com/...',
-        fileUrl: 'https://bucket.s3.amazonaws.com/path/file.jpg',
-        key: 'companies/company-uuid-1/properties/unit-1/file.jpg',
-        expiresIn: 300,
+  describe('uploadMedia', () => {
+    it('calls mediaService.uploadImage with companyId, file, and dto', async () => {
+      const mockMedia = {
+        id:            'media-uuid-1',
+        url:           'https://s3.us-east-005.backblazeb2.com/aala-cloud/companies/c1/photo.jpg',
+        thumbnailUrl:  'https://s3.us-east-005.backblazeb2.com/aala-cloud/companies/c1/thumbs/thumb-photo.jpg',
+        fileSize:      204800,
+        thumbnailSize: 12288,
+        companyId,
       };
-      mediaService.getPresignedUploadUrl.mockResolvedValue(mockResult);
+      mediaService.uploadImage.mockResolvedValue(mockMedia as any);
 
-      const dto = { fileName: 'photo.jpg', contentType: 'image/jpeg' };
-      const result = await controller.getPresignedUrl(dto as any, mockReq);
+      const mockFile = {
+        buffer:       Buffer.from('fake-image'),
+        mimetype:     'image/jpeg',
+        originalname: 'photo.jpg',
+        size:         204800,
+      } as Express.Multer.File;
+      const dto = { unitId: 'unit-uuid-1', type: 'image' as any };
 
-      expect(mediaService.getPresignedUploadUrl).toHaveBeenCalledWith(companyId, dto);
-      expect(result).toEqual(mockResult);
+      const result = await controller.uploadMedia(mockFile, dto as any, mockReq);
+
+      expect(mediaService.uploadImage).toHaveBeenCalledWith(companyId, mockFile, dto);
+      expect(result).toEqual(mockMedia);
+    });
+
+    it('throws BadRequestException when no file is provided', async () => {
+      await expect(
+        controller.uploadMedia(undefined as any, {} as any, mockReq),
+      ).rejects.toThrow('No file provided');
     });
   });
 

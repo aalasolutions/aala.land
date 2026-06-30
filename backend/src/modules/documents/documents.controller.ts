@@ -1,10 +1,13 @@
 import {
   Controller, Get, Post, Patch, Delete, Body, Param,
-  Query, UseGuards, Request, ParseIntPipe, ParseUUIDPipe, DefaultValuePipe, HttpCode, HttpStatus,
+  Query, UseGuards, Request, ParseIntPipe, ParseUUIDPipe,
+  DefaultValuePipe, HttpCode, HttpStatus,
+  UseInterceptors, UploadedFile, BadRequestException,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
+import {
+  ApiTags, ApiOperation, ApiBearerAuth, ApiQuery, ApiConsumes, ApiBody,
+} from '@nestjs/swagger';
 import { DocumentsService } from './documents.service';
-import { CreateDocumentDto } from './dto/create-document.dto';
 import { UpdateDocumentDto } from './dto/update-document.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '@shared/guards/roles.guard';
@@ -14,7 +17,9 @@ import { AuthenticatedRequest } from '@shared/interfaces/authenticated-request.i
 import { requireCompanyId } from '@shared/utils/auth.util';
 import { DocumentCategory } from '../properties/entities/property-document.entity';
 import { MediaService } from '../properties/media.service';
-import { PresignedUrlDto } from '../properties/dto/presigned-url.dto';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { memoryStorage } from 'multer';
+import { UploadDocumentDto } from './dto/upload-document.dto';
 
 @ApiTags('documents')
 @Controller('documents')
@@ -26,18 +31,59 @@ export class DocumentsController {
     private readonly mediaService: MediaService,
   ) {}
 
-  @Post('presigned-url')
+  @Post('upload')
   @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER)
-  @ApiOperation({ summary: 'Get S3 presigned URL for uploading a document' })
-  getPresignedUrl(@Body() dto: PresignedUrlDto, @Request() req: AuthenticatedRequest) {
-    return this.mediaService.getDocumentPresignedUrl(requireCompanyId(req.user), dto);
-  }
-
-  @Post()
-  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER)
-  @ApiOperation({ summary: 'Upload a document record (ADMIN+)' })
-  create(@Body() dto: CreateDocumentDto, @Request() req: AuthenticatedRequest) {
-    return this.documentsService.create(requireCompanyId(req.user), req.user.userId, dto);
+  @ApiOperation({ summary: 'Upload a document file and create its DB record in one request.' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        file: {
+          type: 'string',
+          format: 'binary',
+          description: 'Document file. Multipart field name must be "file".',
+        },
+        name:        { type: 'string' },
+        unitId:      { type: 'string', format: 'uuid' },
+        assetId:     { type: 'string', format: 'uuid' },
+        category: {
+          type: 'string',
+          enum: Object.values(DocumentCategory),
+        },
+        accessLevel: {
+          type: 'string',
+          enum: ['PUBLIC', 'COMPANY', 'OWNER_ONLY', 'ADMIN_ONLY'],
+        },
+      },
+      required: ['file', 'name'],
+    },
+  })
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: memoryStorage(),
+      limits: { fileSize: 50 * 1024 * 1024 }, // 50 MB
+      fileFilter: (_req, _file, cb) => cb(null, true), // All MIME types accepted.
+    }),
+  )
+  async uploadDocument(
+    @UploadedFile() file: Express.Multer.File,
+    @Body() dto: UploadDocumentDto,
+    @Request() req: AuthenticatedRequest,
+  ) {
+    if (!file) {
+      throw new BadRequestException(
+        'No file provided. Send the document in a multipart/form-data field named "file".',
+      );
+    }
+    const companyId = requireCompanyId(req.user);
+    return this.documentsService.uploadAndCreate(
+      companyId,
+      req.user.userId,
+      file,
+      dto,
+      this.mediaService,
+    );
   }
 
   @Get()
@@ -85,6 +131,11 @@ export class DocumentsController {
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Delete a document (SUPER_ADMIN, COMPANY_ADMIN, ADMIN)' })
   remove(@Param('id', ParseUUIDPipe) id: string, @Request() req: AuthenticatedRequest) {
-    return this.documentsService.remove(id, requireCompanyId(req.user), req.user.role);
+    return this.documentsService.remove(
+      id,
+      requireCompanyId(req.user),
+      req.user.role,
+      this.mediaService,
+    );
   }
 }
