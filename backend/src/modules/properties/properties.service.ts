@@ -379,6 +379,10 @@ export class PropertiesService {
             throw new ConflictException('This unit cannot be deleted because it has associated leases. Please remove the leases first.');
         }
 
+        // TODO (next PR - soft delete): Before removing, inject MediaService and call deleteMedia()
+        // for each property_media and property_document of this unit so S3/MinIO objects are
+        // cleaned up. Currently DB rows cascade-delete but S3 files are orphaned permanently.
+        // Also add guards for transactions, cheques, and work_orders (or cascade-delete them).
         await this.unitRepository.remove(unit);
     }
 
