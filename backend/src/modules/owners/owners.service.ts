@@ -1,7 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Owner } from './entities/owner.entity';
+import { Unit } from '../properties/entities/unit.entity';
 import { CreateOwnerDto } from './dto/create-owner.dto';
 import { UpdateOwnerDto } from './dto/update-owner.dto';
 import { paginationOptions } from '../../shared/utils/pagination.util';
@@ -11,6 +12,8 @@ export class OwnersService {
   constructor(
     @InjectRepository(Owner)
     private readonly ownerRepository: Repository<Owner>,
+    @InjectRepository(Unit)
+    private readonly unitRepository: Repository<Unit>,
   ) {}
 
   async create(dto: CreateOwnerDto, companyId: string): Promise<Owner> {
@@ -47,6 +50,12 @@ export class OwnersService {
 
   async remove(id: string, companyId: string): Promise<void> {
     const owner = await this.findOne(id, companyId);
+    const linkedUnitsCount = await this.unitRepository.count({ where: { ownerId: id } });
+    if (linkedUnitsCount > 0) {
+      throw new BadRequestException(
+        `Cannot delete owner — ${linkedUnitsCount} unit(s) are still linked. Unlink them first.`,
+      );
+    }
     await this.ownerRepository.remove(owner);
   }
 }
