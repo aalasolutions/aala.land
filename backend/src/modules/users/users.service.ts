@@ -238,7 +238,7 @@ export class UsersService {
             throw new NotFoundException(`Company ${companyId} not found`);
         }
         if (company.maxUsers >= TIER_LIMITS.PRO.maxUsers) return;
-        const currentCount = await this.userRepository.count({ where: { companyId, isActive: true } });
+            const currentCount = await this.userRepository.count({ where: { companyId, isActive: true } });
         if (currentCount >= company.maxUsers) {
             throw new BadRequestException(
                 `Your ${company.subscriptionTier} plan allows up to ${company.maxUsers} user${company.maxUsers === 1 ? '' : 's'}. Upgrade to add more.`,

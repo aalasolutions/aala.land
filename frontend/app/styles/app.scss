@@ -4349,3 +4349,42 @@ textarea {
   .plan-banner__limits { color: var(--text-muted); font-size: 0.85rem; }
   .plan-banner__expiry { text-align: right; font-size: 0.8rem; color: var(--text-muted); }
 }
+
+// Plan upgrade modal cards
+.plan-option-card {
+  flex: 1;
+  border: 1px solid var(--border-color, rgba(255,255,255,0.1));
+  border-radius: 8px;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+
+  &.is-current {
+    border-color: var(--color-primary, #7dbb73);
+    opacity: 0.6;
+  }
+
+  &__name {
+    font-weight: 700;
+    font-size: 1rem;
+    margin-bottom: 0.25rem;
+  }
+
+  &__price {
+    font-size: 1.25rem;
+    font-weight: 700;
+    margin-bottom: 0.75rem;
+    color: var(--text-primary);
+  }
+
+  &__features {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 auto;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+
+    li + li { margin-top: 0.35rem; }
+    li::before { content: "✓  "; color: var(--color-success, #7dbb73); }
+  }
+}

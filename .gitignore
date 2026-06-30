@@ -54,6 +54,7 @@ test-results/
 /.agent/
 /.codex/
 /scripts/codex.sh
+/.superpowers/
 
 # Claude Code (memory is private, agents/commands are shared)
 .claude/memory/

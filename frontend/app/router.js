@@ -45,4 +45,8 @@ Router.map(function () {
   this.route('admin', function () {
     this.route('companies');
   });
+  this.route('billing', function () {
+    this.route('success');
+    this.route('cancel');
+  });
 });
