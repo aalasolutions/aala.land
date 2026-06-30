@@ -1,7 +1,7 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class AddFileSizeAndS3KeyToDocuments1779083947010 implements MigrationInterface {
-  name = 'AddFileSizeAndS3KeyToDocuments1779083947010';
+export class AddFileSizeAndS3KeyToDocuments1779300000008 implements MigrationInterface {
+  name = 'AddFileSizeAndS3KeyToDocuments1779300000008';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     const cols: Array<{ column_name: string }> = await queryRunner.query(`

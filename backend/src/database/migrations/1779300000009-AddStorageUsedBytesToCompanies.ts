@@ -1,7 +1,7 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class AddStorageUsedBytesToCompanies1779083947011 implements MigrationInterface {
-  name = 'AddStorageUsedBytesToCompanies1779083947011';
+export class AddStorageUsedBytesToCompanies1779300000009 implements MigrationInterface {
+  name = 'AddStorageUsedBytesToCompanies1779300000009';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     const cols: Array<{ column_name: string }> = await queryRunner.query(`

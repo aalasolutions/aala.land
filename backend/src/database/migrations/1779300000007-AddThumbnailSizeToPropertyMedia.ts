@@ -1,7 +1,7 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class AddThumbnailSizeToPropertyMedia1779083947009 implements MigrationInterface {
-  name = 'AddThumbnailSizeToPropertyMedia1779083947009';
+export class AddThumbnailSizeToPropertyMedia1779300000007 implements MigrationInterface {
+  name = 'AddThumbnailSizeToPropertyMedia1779300000007';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     const colExists = await queryRunner.query(`
