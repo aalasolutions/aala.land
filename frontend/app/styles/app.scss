@@ -1545,6 +1545,32 @@ textarea {
     padding: var(--space-10);
 }
 
+.signup-owner-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.4rem 0.7rem;
+    color: darken($color-primary, 8%);
+    background: rgba($color-primary, 0.08);
+    border: 1px solid rgba($color-primary, 0.16);
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 700;
+    line-height: 1;
+
+    svg {
+        flex: 0 0 auto;
+        color: $color-primary;
+    }
+}
+
+.signup-invite-note {
+    margin: 0.55rem auto 0;
+    color: $text-muted;
+    font-size: 0.82rem;
+    line-height: 1.35;
+}
+
 // =================================
 // CARDS
 // =================================
