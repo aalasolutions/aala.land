@@ -16,6 +16,7 @@ module.exports = function (environment) {
 
     APP: {
       API_BASE: 'http://localhost:3010/v1',
+      GOOGLE_CLIENT_ID: '531024821660-cima6s3kcsaj16cli9h3b4g7ek7kvq71.apps.googleusercontent.com',
     },
   };
 
@@ -41,6 +42,7 @@ module.exports = function (environment) {
 
   if (environment === 'production') {
     ENV.APP.API_BASE = process.env.API_BASE || '/v1';
+    ENV.APP.GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '531024821660-cima6s3kcsaj16cli9h3b4g7ek7kvq71.apps.googleusercontent.com';
   }
 
   return ENV;

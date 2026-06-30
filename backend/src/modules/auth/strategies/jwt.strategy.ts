@@ -40,11 +40,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
             throw new UnauthorizedException('User no longer exists or is inactive');
         }
 
-        if (user.role !== Role.SUPER_ADMIN) {
-            if (!user.companyId) {
-                throw new UnauthorizedException('User is not associated with a company');
-            }
-
+        if (user.role !== Role.SUPER_ADMIN && user.companyId) {
             const company = await this.companiesRepository.findOne({
                 where: { id: user.companyId },
                 select: {

@@ -56,6 +56,20 @@ export class UsersController {
         return this.usersService.findOne(req.user.userId, req.user.companyId ?? undefined);
     }
 
+    @Patch('me')
+    @UseGuards(JwtAuthGuard)
+    @ApiOperation({ summary: 'Update current user profile' })
+    updateMyProfile(@Body() updateUserDto: UpdateUserDto, @Request() req: AuthenticatedRequest) {
+        const { name, password } = updateUserDto;
+        return this.usersService.update(
+            req.user.userId,
+            req.user.companyId ?? undefined,
+            { name, password },
+            req.user.role,
+            req.user.userId,
+        );
+    }
+
     @Get()
     @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN)
     @ApiOperation({

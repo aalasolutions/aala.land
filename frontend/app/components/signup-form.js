@@ -2,10 +2,14 @@ import Component from '@glimmer/component';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
+import config from 'frontend/config/environment';
+import parseErrorResponse from 'frontend/utils/parse-error-response';
 
 export default class SignupFormComponent extends Component {
   @service auth;
   @service router;
+  @service session;
+  @service googleAuth;
 
   @tracked companyName = '';
   @tracked companySlug = '';
@@ -15,6 +19,7 @@ export default class SignupFormComponent extends Component {
   @tracked confirmPassword = '';
   @tracked selectedRegion = '';
   @tracked isLoading = false;
+  @tracked isGoogleLoading = false;
   @tracked errorMessage = '';
 
   get regionOptions() {
@@ -37,6 +42,10 @@ export default class SignupFormComponent extends Component {
       this.password === this.confirmPassword &&
       this.selectedRegion
     );
+  }
+
+  get canGoogleSignup() {
+    return this.companyName.trim() && this.selectedRegion;
   }
 
   @action
@@ -94,6 +103,67 @@ export default class SignupFormComponent extends Component {
       this.errorMessage = err.message || 'Something went wrong. Please try again.';
     } finally {
       this.isLoading = false;
+    }
+  }
+
+  @action
+  async renderGoogleButton(element) {
+    if (window.google?.accounts?.id) {
+      window.google.accounts.id.cancel();
+    }
+
+    try {
+      const idToken = await this.googleAuth.renderButton(element);
+      await this.signupWithGoogle(idToken);
+    } catch (err) {
+      if (!this.errorMessage) {
+        this.errorMessage = err.message || 'Failed to load Google Sign-in button';
+      }
+    }
+  }
+
+  @action
+  showGoogleSignupRequirements() {
+    if (!this.companyName.trim() && !this.selectedRegion) {
+      this.errorMessage = 'Company name and region are required for Google signup';
+    } else if (!this.companyName.trim()) {
+      this.errorMessage = 'Company name is required for Google signup';
+    } else {
+      this.errorMessage = 'Please select a region for Google signup';
+    }
+  }
+
+  async signupWithGoogle(idToken) {
+    if (!this.canGoogleSignup) {
+      this.errorMessage = 'Company name and region are required for Google signup';
+      return;
+    }
+
+    this.isGoogleLoading = true;
+    this.errorMessage = '';
+
+    try {
+      const response = await fetch(`${config.APP.API_BASE}/auth/google/signup`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          idToken,
+          companyName: this.companyName.trim(),
+          regionCode: this.selectedRegion,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(await parseErrorResponse(response, 'Google signup failed'));
+      }
+
+      const { data } = await response.json();
+      this.session.establish(data);
+      this.router.transitionTo('dashboard');
+    } catch (err) {
+      this.errorMessage = err.message || 'Google signup failed. Please try again.';
+    } finally {
+      this.isGoogleLoading = false;
     }
   }
 }

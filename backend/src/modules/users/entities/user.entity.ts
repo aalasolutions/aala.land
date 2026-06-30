@@ -2,6 +2,11 @@ import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateCol
 import { Company } from '../../companies/entities/company.entity';
 import { Role } from '../../../shared/enums/roles.enum';
 
+export enum AuthProvider {
+    LOCAL = 'local',
+    GOOGLE = 'google',
+}
+
 @Entity('users')
 export class User {
     @PrimaryGeneratedColumn('uuid')
@@ -13,8 +18,20 @@ export class User {
     @Column({ type: 'varchar', length: 255, unique: true })
     email: string;
 
-    @Column({ type: 'varchar', length: 255, select: false })
-    password: string;
+    @Column({ type: 'varchar', length: 255, nullable: true, select: false })
+    password: string | null;
+
+    @Index()
+    @Column({ name: 'google_id', type: 'varchar', length: 255, nullable: true, unique: true })
+    googleId: string | null;
+
+    @Column({
+        name: 'auth_provider',
+        type: 'enum',
+        enum: AuthProvider,
+        default: AuthProvider.LOCAL,
+    })
+    authProvider: AuthProvider;
 
     @Column({
         type: 'enum',

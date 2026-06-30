@@ -1,12 +1,6 @@
 import Service, { service } from '@ember/service';
 import config from 'frontend/config/environment';
-
-async function parseErrorResponse(response, fallbackMessage) {
-  const err = await response.json().catch(() => ({}));
-  return Array.isArray(err.message)
-    ? err.message.join(', ')
-    : (err.message ?? fallbackMessage);
-}
+import parseErrorResponse from 'frontend/utils/parse-error-response';
 
 export default class AuthService extends Service {
   @service session;

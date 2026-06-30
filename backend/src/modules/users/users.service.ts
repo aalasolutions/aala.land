@@ -1,7 +1,7 @@
 import { Injectable, Logger, NotFoundException, ConflictException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In, Not } from 'typeorm';
-import { User } from './entities/user.entity';
+import { User, AuthProvider } from './entities/user.entity';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { InviteUserDto } from './dto/invite-user.dto';
@@ -80,7 +80,21 @@ export class UsersService {
     async findByEmail(email: string): Promise<User | null> {
         return this.userRepository.findOne({
             where: { email },
-            select: ['id', 'email', 'password', 'name', 'role', 'companyId'],
+            select: ['id', 'email', 'password', 'name', 'role', 'companyId', 'googleId', 'authProvider'],
+        });
+    }
+
+    async findByGoogleId(googleId: string): Promise<User | null> {
+        return this.userRepository.findOne({
+            where: { googleId },
+            select: ['id', 'email', 'password', 'name', 'role', 'companyId', 'googleId', 'authProvider'],
+        });
+    }
+
+    async findByEmailOrGoogleId(email: string, googleId: string): Promise<User | null> {
+        return this.userRepository.findOne({
+            where: [{ email }, { googleId }],
+            select: ['id', 'email', 'password', 'name', 'role', 'companyId', 'googleId', 'authProvider'],
         });
     }
 
