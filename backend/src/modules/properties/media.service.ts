@@ -345,7 +345,9 @@ export class MediaService {
       contentType:   'image/jpeg',
       fileSize:      actualOriginalBytes,
       thumbnailSize: actualThumbBytes,
-      type:          dto.type ?? MediaType.IMAGE,
+      // This endpoint always processes and stores a JPEG image — dto.type is
+      // ignored so a caller can't persist a video/virtual_tour record here.
+      type:          MediaType.IMAGE,
       isPrimary:     dto.isPrimary ?? false,
       unitId:        dto.unitId,
       assetId:       dto.assetId,

@@ -18,6 +18,7 @@ export default class CompanyController extends Controller {
   @tracked isSaving = false;
   @tracked errorMsg = '';
   @tracked expandedCountries = [];
+  @tracked storageUsage = null;
 
   @action toggleCountry(countryCode) {
     if (this.expandedCountries.includes(countryCode)) {
