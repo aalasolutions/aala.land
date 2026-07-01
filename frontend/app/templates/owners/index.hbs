@@ -13,7 +13,7 @@
   {{#each this.model.owners as |owner|}}
     <div class="list-item" data-test-owner-id={{owner.id}}>
       <div class="owner-info">
-        <div class="owner-avatar">{{get-initial owner.name}}</div>
+        <div class="owner-avatar">{{uc-first owner.name}}</div>
         <div class="owner-details">
           <p class="owner-name">{{owner.name}}</p>
           <p class="owner-contact">{{owner.phone}}</p>
