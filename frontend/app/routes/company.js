@@ -1,5 +1,6 @@
 import AuthenticatedRoute from './authenticated';
 import { service } from '@ember/service';
+import { safeJson } from '../utils/safe-json';
 
 export default class CompanyRoute extends AuthenticatedRoute {
   @service auth;
@@ -10,9 +11,10 @@ export default class CompanyRoute extends AuthenticatedRoute {
     const companyId = this.auth.currentUser?.companyId;
     if (!companyId) return null;
 
-    const [companyResult, regionsResponse] = await Promise.all([
+    const [companyResult, regionsResponse, storageUsage] = await Promise.all([
       this.auth.fetchJson(`/companies/${companyId}`),
       fetch(`${this.auth.apiBase}/companies/regions`).then((r) => r.json()).catch(() => ({ data: [] })),
+      safeJson(this.auth, `/companies/${companyId}/storage-usage`, 'COMPANY'),
     ]);
 
     const company = companyResult.data || null;
@@ -20,7 +22,7 @@ export default class CompanyRoute extends AuthenticatedRoute {
     const regions = regionsData.flat || regionsData || [];
     const groupedRegions = regionsData.grouped || [];
 
-    return { company, regions, groupedRegions };
+    return { company, regions, groupedRegions, storageUsage };
   }
 
   setupController(controller, model) {
@@ -31,5 +33,6 @@ export default class CompanyRoute extends AuthenticatedRoute {
       controller.formActiveRegions = c.activeRegions || [];
       controller.formDefaultRegionCode = c.defaultRegionCode || null;
     }
+    controller.storageUsage = model.storageUsage?.data ?? null;
   }
 }

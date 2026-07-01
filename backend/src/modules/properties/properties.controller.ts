@@ -1,9 +1,13 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param, Query, ParseIntPipe, ParseUUIDPipe, DefaultValuePipe, UseGuards, Request, HttpCode, HttpStatus } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
+import {
+  Controller, Get, Post, Patch, Delete, Body, Param, Query,
+  ParseIntPipe, ParseUUIDPipe, DefaultValuePipe, UseGuards, Request,
+  HttpCode, HttpStatus, UseInterceptors, UploadedFile, BadRequestException,
+} from '@nestjs/common';
+import {
+  ApiTags, ApiOperation, ApiBearerAuth, ApiQuery, ApiConsumes, ApiBody,
+} from '@nestjs/swagger';
 import { PropertiesService } from './properties.service';
 import { MediaService } from './media.service';
-import { PresignedUrlDto } from './dto/presigned-url.dto';
-import { CreateMediaDto } from './dto/create-media.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '@shared/guards/roles.guard';
 import { Roles } from '@shared/decorators/roles.decorator';
@@ -16,6 +20,9 @@ import { CreateUnitDto } from './dto/create-unit.dto';
 import { UpdateUnitDto } from './dto/update-unit.dto';
 import { AuthenticatedRequest } from '@shared/interfaces/authenticated-request.interface';
 import { requireCompanyId } from '@shared/utils/auth.util';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { memoryStorage } from 'multer';
+import { UploadMediaDto } from './dto/upload-media.dto';
 
 @ApiTags('Properties')
 @ApiBearerAuth()
@@ -27,18 +34,63 @@ export class PropertiesController {
         private readonly mediaService: MediaService,
     ) { }
 
-    @Post('media/presigned-url')
+    @Post('media/upload')
     @Roles(Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT)
-    @ApiOperation({ summary: 'Get S3 presigned URL for uploading property photos' })
-    getPresignedUrl(@Body() dto: PresignedUrlDto, @Request() req: AuthenticatedRequest) {
-        return this.mediaService.getPresignedUploadUrl(requireCompanyId(req.user), dto);
-    }
-
-    @Post('media')
-    @Roles(Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT)
-    @ApiOperation({ summary: 'Create a media record after S3 upload. Generates thumbnail for images. (ADMIN+, AGENT)' })
-    createMedia(@Body() dto: CreateMediaDto, @Request() req: AuthenticatedRequest) {
-        return this.mediaService.createMedia(requireCompanyId(req.user), dto);
+    @ApiOperation({
+      summary:
+        'Upload a property photo (server-side). Compressed and re-encoded via sharp ' +
+        '(2560 px max, JPEG quality 80, EXIF stripped). Thumbnail 400x400. ' +
+        'Stored to Backblaze B2. Max 5 MB. Accepted: image/jpeg, image/png, image/webp.',
+    })
+    @ApiConsumes('multipart/form-data')
+    @ApiBody({
+      schema: {
+        type: 'object',
+        properties: {
+          file: {
+            type: 'string',
+            format: 'binary',
+            description: 'Image file. Multipart field name must be "file".',
+          },
+          unitId:    { type: 'string', format: 'uuid' },
+          assetId:   { type: 'string', format: 'uuid' },
+          type:      { type: 'string', enum: ['image', 'video', 'virtual_tour'] },
+          isPrimary: { type: 'boolean' },
+        },
+        required: ['file'],
+      },
+    })
+    @UseInterceptors(
+      FileInterceptor('file', {
+        storage: memoryStorage(),
+        limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB
+        fileFilter: (_req, file, cb) => {
+          const allowed = ['image/jpeg', 'image/png', 'image/webp'];
+          if (allowed.includes(file.mimetype)) {
+            cb(null, true);
+          } else {
+            cb(
+              new BadRequestException(
+                `File type "${file.mimetype}" is not allowed. ` +
+                `Accepted: ${allowed.join(', ')}`,
+              ),
+              false,
+            );
+          }
+        },
+      }),
+    )
+    async uploadMedia(
+      @UploadedFile() file: Express.Multer.File,
+      @Body() dto: UploadMediaDto,
+      @Request() req: AuthenticatedRequest,
+    ) {
+      if (!file) {
+        throw new BadRequestException(
+          'No file provided. Send the image in a multipart/form-data field named "file".',
+        );
+      }
+      return this.mediaService.uploadImage(requireCompanyId(req.user), file, dto);
     }
 
     @Get('units/:unitId/media')

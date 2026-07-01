@@ -50,10 +50,10 @@
                     <button type="button" class="btn btn-secondary btn-xs" data-test-download-btn {{on "click" (fn this.downloadDocument doc)}}>
                       <Ph @icon="download-simple" />
                     </button>
-                    <button type="button" class="btn btn-secondary btn-xs" {{on "click" (fn this.openEdit doc)}}>
+                    <button type="button" class="btn btn-secondary btn-xs" data-test-edit-btn {{on "click" (fn this.openEdit doc)}}>
                       <Ph @icon="pencil-simple" />
                     </button>
-                    <button type="button" class="btn btn-danger btn-xs" {{on "click" (fn this.openDelete doc)}}>
+                    <button type="button" class="btn btn-danger btn-xs" data-test-delete-btn {{on "click" (fn this.openDelete doc)}}>
                       <Ph @icon="trash" />
                     </button>
                   </div>
@@ -110,7 +110,9 @@
         accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.webp,.gif"
         {{on "change" this.onFileSelect}} />
       {{#if this.selectedFile}}
-        <p class="font-xs text-muted">Selected: {{this.selectedFile.name}} ({{this.selectedFile.size}} bytes)</p>
+        <p class="font-xs text-muted" data-test-selected-file>
+          Selected: {{this.selectedFile.name}} ({{this.selectedFileSizeLabel}})
+        </p>
       {{/if}}
     </div>
 
@@ -126,7 +128,7 @@
     </div>
 
     {{#if this.uploadProgress}}
-      <p class="font-sm text-muted">{{this.uploadProgress}}</p>
+      <p class="font-sm text-muted" data-test-upload-progress>{{this.uploadProgress}}</p>
     {{/if}}
 
     {{#if this.errorMsg}}
