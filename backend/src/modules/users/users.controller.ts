@@ -50,10 +50,22 @@ export class UsersController {
     }
 
     @Get('me')
-    @UseGuards(JwtAuthGuard)
     @ApiOperation({ summary: 'Get current user profile' })
     getMyProfile(@Request() req: AuthenticatedRequest) {
         return this.usersService.findOne(req.user.userId, req.user.companyId ?? undefined);
+    }
+
+    @Patch('me')
+    @ApiOperation({ summary: 'Update current user profile' })
+    updateMyProfile(@Body() updateUserDto: UpdateUserDto, @Request() req: AuthenticatedRequest) {
+        const { name, password } = updateUserDto;
+        return this.usersService.update(
+            req.user.userId,
+            req.user.companyId ?? undefined,
+            { name, password },
+            req.user.role,
+            req.user.userId,
+        );
     }
 
     @Get()

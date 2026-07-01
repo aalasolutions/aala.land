@@ -1,8 +1,8 @@
-import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ForbiddenException, ConflictException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import { Company, SubscriptionTier, TIER_LIMITS } from './entities/company.entity';
-import { User } from '../users/entities/user.entity';
+import { User, AuthProvider } from '../users/entities/user.entity';
 import { CreateCompanyDto } from './dto/create-company.dto';
 import { UpdateCompanyDto } from './dto/update-company.dto';
 import { REGIONS, getRegionByCode } from '@shared/constants/regions';
@@ -16,6 +16,7 @@ export class CompaniesService {
         private readonly companyRepository: Repository<Company>,
         @InjectRepository(User)
         private readonly userRepository: Repository<User>,
+        private readonly dataSource: DataSource,
     ) { }
 
     async create(dto: CreateCompanyDto): Promise<Company> {
@@ -170,6 +171,82 @@ export class CompaniesService {
             throw new NotFoundException(`Company with slug ${slug} not found`);
         }
         return company;
+    }
+
+    async createGoogleCompanyAdmin(dto: {
+        companyName: string;
+        slug: string;
+        regionCode: string;
+        googleId: string;
+        email: string;
+        name: string;
+    }): Promise<Pick<User, 'id' | 'name' | 'email' | 'role' | 'companyId'>> {
+        this.validateRegionCode(dto.regionCode);
+
+        try {
+            return await this.dataSource.transaction(async (manager) => {
+                const companyRepo = manager.getRepository(Company);
+                const userRepo = manager.getRepository(User);
+
+                const existingSlug = await companyRepo.findOne({
+                    where: { slug: dto.slug },
+                    select: { id: true },
+                });
+                if (existingSlug) {
+                    throw new ConflictException(
+                        'This company name is already taken. Please choose a different one.',
+                    );
+                }
+
+                const company = companyRepo.create({
+                    name: dto.companyName,
+                    slug: dto.slug,
+                    defaultRegionCode: dto.regionCode,
+                    activeRegions: [dto.regionCode],
+                });
+                const savedCompany = await companyRepo.save(company);
+
+                const user = userRepo.create({
+                    googleId: dto.googleId,
+                    email: dto.email,
+                    name: dto.name,
+                    authProvider: AuthProvider.GOOGLE,
+                    password: null,
+                    role: Role.COMPANY_ADMIN,
+                    companyId: savedCompany.id,
+                });
+                const savedUser = await userRepo.save(user);
+
+                return {
+                    id: savedUser.id,
+                    name: savedUser.name,
+                    email: savedUser.email,
+                    role: savedUser.role,
+                    companyId: savedCompany.id,
+                };
+            });
+        } catch (error) {
+            if (error instanceof ConflictException) {
+                throw error;
+            }
+            const dbError = error as { code?: string; constraint?: string };
+            if (dbError.code === '23505') {
+                if (dbError.constraint === 'UQ_b28b07d25e4324eee577de5496d') {
+                    throw new ConflictException(
+                        'This company name is already taken. Please choose a different one.',
+                    );
+                }
+                if (
+                    dbError.constraint === 'UQ_97672ac88f789774dd47f7c8be3' ||
+                    dbError.constraint === 'IDX_users_google_id'
+                ) {
+                    throw new ConflictException(
+                        'An account with this email/Google account already exists.',
+                    );
+                }
+            }
+            throw error;
+        }
     }
 
     private validateRegionCode(code: string): void {

@@ -15,7 +15,8 @@ module.exports = function (environment) {
     },
 
     APP: {
-      API_BASE: 'http://localhost:3010/v1',
+      API_BASE: process.env.API_BASE || 'http://localhost:3010/v1',
+      GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID || '',
     },
   };
 
@@ -40,7 +41,9 @@ module.exports = function (environment) {
   }
 
   if (environment === 'production') {
-    ENV.APP.API_BASE = process.env.API_BASE || '/v1';
+    if (!process.env.GOOGLE_CLIENT_ID) {
+      throw new Error('GOOGLE_CLIENT_ID is required for production builds');
+    }
   }
 
   return ENV;
