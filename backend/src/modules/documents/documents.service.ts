@@ -88,31 +88,10 @@ export class DocumentsService {
   async update(
     id: string,
     companyId: string,
-    userId: string,
     userRole: string,
     dto: UpdateDocumentDto,
   ): Promise<PropertyDocument> {
     const existing = await this.findOne(id, companyId, userRole);
-
-    // If URL changes, create a new version
-    if (dto.url && dto.url !== existing.url) {
-      const newVersion = this.documentRepository.create({
-        name: dto.name ?? existing.name,
-        url: dto.url,
-        fileType: dto.fileType ?? existing.fileType,
-        category: dto.category ?? existing.category,
-        accessLevel: dto.accessLevel ?? existing.accessLevel,
-        unitId: existing.unitId,
-        assetId: existing.assetId,
-        companyId,
-        uploadedBy: userId,
-        version: existing.version + 1,
-        previousVersionId: existing.id,
-      });
-      return this.documentRepository.save(newVersion);
-    }
-
-    // Otherwise just update in place
     Object.assign(existing, dto);
     return this.documentRepository.save(existing);
   }
@@ -129,6 +108,19 @@ export class DocumentsService {
     }
 
     await this.documentRepository.remove(doc);
+  }
+
+  async downloadStream(
+    id: string,
+    companyId: string,
+    userRole: string,
+  ): Promise<{ stream: NodeJS.ReadableStream; doc: PropertyDocument }> {
+    const doc = await this.findOne(id, companyId, userRole); // re-checks accessLevel
+    if (!doc.s3Key) {
+      throw new NotFoundException('Document has no associated file in storage');
+    }
+    const stream = await this.mediaService.getDocumentStream(doc.s3Key);
+    return { stream, doc };
   }
 
   async getVersionHistory(id: string, companyId: string, userRole: string): Promise<PropertyDocument[]> {

@@ -41,6 +41,7 @@ describe('DocumentsController', () => {
             update:             jest.fn(),
             remove:             jest.fn(),
             getVersionHistory:  jest.fn(),
+            downloadStream:     jest.fn(),
           },
         },
       ],
@@ -125,13 +126,106 @@ describe('DocumentsController', () => {
     });
   });
 
+  describe('download', () => {
+    it('streams the document with headers set from the re-checked doc metadata', async () => {
+      const fakeStream = { pipe: jest.fn(), on: jest.fn() };
+      service.downloadStream.mockResolvedValue({ stream: fakeStream as any, doc: mockDoc as any });
+
+      const res = {
+        setHeader: jest.fn(),
+      } as any;
+
+      await controller.download('doc-uuid-1', mockReq, res);
+
+      expect(service.downloadStream).toHaveBeenCalledWith('doc-uuid-1', companyId, role);
+      expect(res.setHeader).toHaveBeenCalledWith('Content-Type', 'application/pdf');
+      expect(res.setHeader).toHaveBeenCalledWith(
+        'Content-Disposition',
+        'attachment; filename="Lease Agreement.pdf"',
+      );
+      expect(res.setHeader).toHaveBeenCalledWith('X-Content-Type-Options', 'nosniff');
+      expect(fakeStream.pipe).toHaveBeenCalledWith(res);
+    });
+
+    it('sanitizes quotes in the filename to prevent header injection', async () => {
+      const fakeStream = { pipe: jest.fn(), on: jest.fn() };
+      service.downloadStream.mockResolvedValue({
+        stream: fakeStream as any,
+        doc: { ...mockDoc, name: 'weird"name.pdf' } as any,
+      });
+
+      const res = { setHeader: jest.fn() } as any;
+      await controller.download('doc-uuid-1', mockReq, res);
+
+      expect(res.setHeader).toHaveBeenCalledWith(
+        'Content-Disposition',
+        'attachment; filename="weird_name.pdf"',
+      );
+    });
+
+    it('sanitizes CR/LF in the filename to prevent header injection', async () => {
+      const fakeStream = { pipe: jest.fn(), on: jest.fn() };
+      service.downloadStream.mockResolvedValue({
+        stream: fakeStream as any,
+        doc: { ...mockDoc, name: 'evil\r\nX-Injected: 1.pdf' } as any,
+      });
+
+      const res = { setHeader: jest.fn() } as any;
+      await controller.download('doc-uuid-1', mockReq, res);
+
+      expect(res.setHeader).toHaveBeenCalledWith(
+        'Content-Disposition',
+        'attachment; filename="evil__X-Injected: 1.pdf"',
+      );
+    });
+
+    it('responds with 500 and does not crash when the stream errors before headers are flushed', async () => {
+      let errorHandler: (err: Error) => void = () => {};
+      const fakeStream = {
+        pipe: jest.fn(),
+        on: jest.fn((event: string, handler: (err: Error) => void) => {
+          if (event === 'error') errorHandler = handler;
+        }),
+      };
+      service.downloadStream.mockResolvedValue({ stream: fakeStream as any, doc: mockDoc as any });
+
+      const res = { setHeader: jest.fn(), headersSent: false, status: jest.fn().mockReturnThis(), json: jest.fn(), destroy: jest.fn() } as any;
+      await controller.download('doc-uuid-1', mockReq, res);
+
+      errorHandler(new Error('connection reset'));
+
+      expect(res.status).toHaveBeenCalledWith(500);
+      expect(res.destroy).not.toHaveBeenCalled();
+    });
+
+    it('destroys the response instead of setting a status when headers were already sent', async () => {
+      let errorHandler: (err: Error) => void = () => {};
+      const fakeStream = {
+        pipe: jest.fn(),
+        on: jest.fn((event: string, handler: (err: Error) => void) => {
+          if (event === 'error') errorHandler = handler;
+        }),
+      };
+      service.downloadStream.mockResolvedValue({ stream: fakeStream as any, doc: mockDoc as any });
+
+      const res = { setHeader: jest.fn(), headersSent: true, status: jest.fn().mockReturnThis(), json: jest.fn(), destroy: jest.fn() } as any;
+      await controller.download('doc-uuid-1', mockReq, res);
+
+      const err = new Error('connection reset');
+      errorHandler(err);
+
+      expect(res.destroy).toHaveBeenCalledWith(err);
+      expect(res.status).not.toHaveBeenCalled();
+    });
+  });
+
   describe('update', () => {
     it('updates a document', async () => {
       service.update.mockResolvedValue({ ...mockDoc, name: 'Renamed.pdf' } as any);
 
       await controller.update('doc-uuid-1', { name: 'Renamed.pdf' }, mockReq);
 
-      expect(service.update).toHaveBeenCalledWith('doc-uuid-1', companyId, userId, role, { name: 'Renamed.pdf' });
+      expect(service.update).toHaveBeenCalledWith('doc-uuid-1', companyId, role, { name: 'Renamed.pdf' });
     });
   });
 

@@ -11,6 +11,7 @@ import {
   S3Client,
   PutObjectCommand,
   DeleteObjectCommand,
+  GetObjectCommand,
 } from '@aws-sdk/client-s3';
 import { PropertyMedia, MediaType } from './entities/property-media.entity';
 import { Unit } from './entities/unit.entity';
@@ -20,6 +21,9 @@ import { UploadMediaDto } from './dto/upload-media.dto';
 import { reserveStorage } from '@shared/utils/storage-quota.util';
 import sharp from 'sharp';
 // file-type v21 is pure ESM. Dynamic import() is required from a CommonJS NestJS context.
+
+// All object keys live under this root folder in every bucket (media + documents).
+export const BUCKET_ROOT_FOLDER = 'land';
 
 const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const;
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;   // 5 MB hard cap
@@ -88,15 +92,24 @@ export class MediaService {
     return this.s3Client;
   }
 
-  private getBucket(): string {
+  // Public, property photos/thumbnails only.
+  private getMediaBucket(): string {
     const bucket = process.env.AWS_S3_BUCKET;
     if (!bucket) throw new BadRequestException('AWS_S3_BUCKET is not configured.');
     return bucket;
   }
 
-  private buildFileUrl(key: string): string {
+  // Private — documents only. Must never be made public-read; the app serves
+  // documents exclusively through DocumentsService.downloadStream, which
+  // re-checks accessLevel before this bucket is touched.
+  private getDocumentsBucket(): string {
+    const bucket = process.env.AWS_S3_DOCUMENTS_BUCKET;
+    if (!bucket) throw new BadRequestException('AWS_S3_DOCUMENTS_BUCKET is not configured.');
+    return bucket;
+  }
+
+  private buildFileUrl(bucket: string, key: string): string {
     const endpoint = process.env.S3_ENDPOINT;
-    const bucket = this.getBucket();
     const region = process.env.AWS_REGION ?? 'us-east-005';
     return endpoint
       ? `${endpoint}/${bucket}/${key}`
@@ -269,13 +282,13 @@ export class MediaService {
       .replace(/[^a-zA-Z0-9._-]/g, '_')
       .slice(0, 200);
     const folder      = dto.unitId ?? dto.assetId!;
-    const originalKey = `companies/${companyId}/properties/${folder}/${timestamp}-${safeName}`;
+    const originalKey = `${BUCKET_ROOT_FOLDER}/companies/${companyId}/properties/${folder}/${timestamp}-${safeName}`;
     const thumbKey    = this.getThumbnailKey(originalKey);
 
     // 10. Upload original and thumbnail to B2.
     //     Output is always JPEG regardless of input format — record it as such.
     const client = this.getClient();
-    const bucket = this.getBucket();
+    const bucket = this.getMediaBucket();
     let originalUploaded = false;
 
     try {
@@ -325,8 +338,8 @@ export class MediaService {
     // 12. Save media record. Output is always JPEG — store the actual content type.
     //     PropertyMedia.assetId persists to building_id column (intentional legacy naming).
     const media = this.mediaRepository.create({
-      url:           this.buildFileUrl(originalKey),
-      thumbnailUrl:  this.buildFileUrl(thumbKey),
+      url:           this.buildFileUrl(bucket, originalKey),
+      thumbnailUrl:  this.buildFileUrl(bucket, thumbKey),
       fileName:      file.originalname,
       s3Key:         originalKey,
       contentType:   'image/jpeg',
@@ -384,12 +397,12 @@ export class MediaService {
     await reserveStorage(this.companyRepository, companyId, file.size);
 
     const client = this.getClient();
-    const bucket = this.getBucket();
+    const bucket = this.getDocumentsBucket();
     const timestamp = Date.now();
     const safeName = file.originalname
       .replace(/[^a-zA-Z0-9._-]/g, '_')
       .slice(0, 200);
-    const key = `companies/${companyId}/documents/${timestamp}-${safeName}`;
+    const key = `${BUCKET_ROOT_FOLDER}/companies/${companyId}/documents/${timestamp}-${safeName}`;
 
     try {
       await client.send(
@@ -411,7 +424,7 @@ export class MediaService {
       throw new InternalServerErrorException(`Document upload failed: ${msg}`);
     }
 
-    return { url: this.buildFileUrl(key), s3Key: key, fileSize: file.size };
+    return { url: this.buildFileUrl(bucket, key), s3Key: key, fileSize: file.size };
   }
 
   // Find and set-primary
@@ -457,7 +470,7 @@ export class MediaService {
     if (!media) throw new NotFoundException('Media not found');
 
     const client = this.getClient();
-    const bucket = this.getBucket();
+    const bucket = this.getMediaBucket();
     let bytesFreed = 0;
 
     if (media.s3Key) {
@@ -507,7 +520,7 @@ export class MediaService {
     if (!s3Key) return;
 
     const client = this.getClient();
-    const bucket = this.getBucket();
+    const bucket = this.getDocumentsBucket();
 
     try {
       await client.send(
@@ -526,5 +539,29 @@ export class MediaService {
       this.logger.error(`Failed to delete document B2 object ${s3Key}: ${msg}`);
       throw new InternalServerErrorException(`Could not delete document from storage: ${msg}`);
     }
+  }
+
+  // Streams a document's bytes from the private documents bucket. Callers must go
+  // through DocumentsService.downloadStream, which re-checks accessLevel before
+  // this runs.
+  async getDocumentStream(s3Key: string): Promise<NodeJS.ReadableStream> {
+    const client = this.getClient();
+    const bucket = this.getDocumentsBucket();
+
+    const result = await client
+      .send(new GetObjectCommand({ Bucket: bucket, Key: s3Key }))
+      .catch((err) => {
+        if (err instanceof Error && err.name === 'NoSuchKey') {
+          throw new NotFoundException('Document not found in storage');
+        }
+        const msg = err instanceof Error ? err.message : String(err);
+        this.logger.error(`Failed to fetch document B2 object ${s3Key}: ${msg}`);
+        throw new InternalServerErrorException(`Could not fetch document from storage: ${msg}`);
+      });
+
+    if (!result.Body) {
+      throw new NotFoundException('Document not found in storage');
+    }
+    return result.Body as NodeJS.ReadableStream;
   }
 }

@@ -7,6 +7,7 @@ import { Unit } from './entities/unit.entity';
 import { Asset } from './entities/asset.entity';
 import { Company, SubscriptionTier, FREE_STORAGE_BYTES } from '../companies/entities/company.entity';
 import { fileTypeFromBuffer } from 'file-type';
+import { PutObjectCommand, DeleteObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
 
 // Mock sharp so tests run without native binaries
 jest.mock('sharp', () => {
@@ -28,6 +29,7 @@ jest.mock('@aws-sdk/client-s3', () => ({
   S3Client:            jest.fn(() => ({ send: mockSend })),
   PutObjectCommand:    jest.fn(),
   DeleteObjectCommand: jest.fn(),
+  GetObjectCommand:    jest.fn(),
 }));
 
 const makeFile = (overrides: Partial<Express.Multer.File> = {}): Express.Multer.File => ({
@@ -62,10 +64,11 @@ describe('MediaService', () => {
   };
 
   beforeEach(async () => {
-    process.env.AWS_ACCESS_KEY_ID     = 'test-key';
-    process.env.AWS_SECRET_ACCESS_KEY = 'test-secret';
-    process.env.AWS_S3_BUCKET         = 'test-bucket';
-    process.env.S3_ENDPOINT           = 'https://s3.example.com';
+    process.env.AWS_ACCESS_KEY_ID       = 'test-key';
+    process.env.AWS_SECRET_ACCESS_KEY   = 'test-secret';
+    process.env.AWS_S3_BUCKET           = 'test-media-bucket';
+    process.env.AWS_S3_DOCUMENTS_BUCKET = 'test-documents-bucket';
+    process.env.S3_ENDPOINT             = 'https://s3.example.com';
 
     mockSend.mockResolvedValue({});
 
@@ -307,6 +310,104 @@ describe('MediaService', () => {
       ).rejects.toThrow(InternalServerErrorException);
 
       expect(releaseSpy).toHaveBeenCalledWith(companyId, 1024);
+    });
+  });
+
+  describe('getDocumentStream', () => {
+    it('returns the S3 object Body for a valid key', async () => {
+      const fakeBody = { pipe: jest.fn() };
+      mockSend.mockResolvedValueOnce({ Body: fakeBody });
+
+      const result = await service.getDocumentStream('companies/c1/documents/123-doc.pdf');
+
+      expect(result).toBe(fakeBody);
+    });
+
+    it('throws NotFoundException when the S3 object has no Body', async () => {
+      mockSend.mockResolvedValueOnce({});
+
+      await expect(
+        service.getDocumentStream('companies/c1/documents/missing.pdf'),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('throws NotFoundException when S3 reports the key does not exist', async () => {
+      const notFoundErr = Object.assign(new Error('The specified key does not exist.'), {
+        name: 'NoSuchKey',
+      });
+      mockSend.mockRejectedValueOnce(notFoundErr);
+
+      await expect(
+        service.getDocumentStream('companies/c1/documents/missing.pdf'),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('throws InternalServerErrorException when the S3 fetch fails for another reason', async () => {
+      mockSend.mockRejectedValueOnce(new Error('S3 unavailable'));
+
+      await expect(
+        service.getDocumentStream('companies/c1/documents/123-doc.pdf'),
+      ).rejects.toThrow(InternalServerErrorException);
+    });
+
+    it('fetches from the documents bucket, not the media bucket', async () => {
+      mockSend.mockResolvedValueOnce({ Body: { pipe: jest.fn() } });
+
+      await service.getDocumentStream('companies/c1/documents/123-doc.pdf');
+
+      expect(GetObjectCommand).toHaveBeenCalledWith(
+        expect.objectContaining({ Bucket: 'test-documents-bucket' }),
+      );
+    });
+  });
+
+  describe('bucket separation', () => {
+    it('uploads property photos and thumbnails to the media bucket', async () => {
+      await service.uploadImage(companyId, makeFile(), { unitId });
+
+      const putCalls = (PutObjectCommand as unknown as jest.Mock).mock.calls;
+      expect(putCalls.length).toBeGreaterThanOrEqual(2);
+      putCalls.forEach(([arg]) => expect(arg.Bucket).toBe('test-media-bucket'));
+    });
+
+    it('uploads documents to the documents bucket', async () => {
+      await service.uploadDocumentToStorage(companyId, makeFile({ mimetype: 'application/pdf' }));
+
+      expect(PutObjectCommand).toHaveBeenCalledWith(
+        expect.objectContaining({ Bucket: 'test-documents-bucket' }),
+      );
+    });
+
+    it('prefixes every generated key with land/, for both photos and documents', async () => {
+      await service.uploadImage(companyId, makeFile(), { unitId });
+      await service.uploadDocumentToStorage(companyId, makeFile({ mimetype: 'application/pdf' }));
+
+      const putCalls = (PutObjectCommand as unknown as jest.Mock).mock.calls;
+      putCalls.forEach(([arg]) => expect(arg.Key).toMatch(/^land\//));
+    });
+
+    it('deletes media (photo + thumbnail) from the media bucket', async () => {
+      mediaRepo.findOne.mockResolvedValue({
+        id: 'media-1',
+        companyId,
+        s3Key: 'companies/c1/properties/u1/123-photo.jpg',
+        fileSize: 100,
+        thumbnailSize: 50,
+      });
+
+      await service.deleteMedia('media-1', companyId);
+
+      const deleteCalls = (DeleteObjectCommand as unknown as jest.Mock).mock.calls;
+      expect(deleteCalls.length).toBe(2);
+      deleteCalls.forEach(([arg]) => expect(arg.Bucket).toBe('test-media-bucket'));
+    });
+
+    it('deletes documents from the documents bucket', async () => {
+      await service.deleteDocumentFromStorage('companies/c1/documents/123-doc.pdf', companyId, 100);
+
+      expect(DeleteObjectCommand).toHaveBeenCalledWith(
+        expect.objectContaining({ Bucket: 'test-documents-bucket' }),
+      );
     });
   });
 });

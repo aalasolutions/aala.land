@@ -1,9 +1,10 @@
 import {
   Controller, Get, Post, Patch, Delete, Body, Param,
-  Query, UseGuards, Request, ParseIntPipe, ParseUUIDPipe,
-  DefaultValuePipe, HttpCode, HttpStatus,
+  Query, UseGuards, Request, Res, ParseIntPipe, ParseUUIDPipe,
+  DefaultValuePipe, HttpCode, HttpStatus, Logger,
   UseInterceptors, UploadedFile, BadRequestException,
 } from '@nestjs/common';
+import { Response } from 'express';
 import {
   ApiTags, ApiOperation, ApiBearerAuth, ApiQuery, ApiConsumes, ApiBody,
 } from '@nestjs/swagger';
@@ -26,6 +27,8 @@ import { UploadDocumentDto } from './dto/upload-document.dto';
 @UseGuards(JwtAuthGuard, RolesGuard)
 @ApiBearerAuth()
 export class DocumentsController {
+  private readonly logger = new Logger(DocumentsController.name);
+
   constructor(
     private readonly documentsService: DocumentsService,
   ) {}
@@ -124,15 +127,54 @@ export class DocumentsController {
     return this.documentsService.getVersionHistory(id, requireCompanyId(req.user), req.user.role);
   }
 
+  @Get(':id/download')
+  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.ACCOUNTANT)
+  @ApiOperation({
+    summary:
+      'Stream a document\'s file bytes. Re-checks accessLevel before serving — ' +
+      'the S3 URL is never exposed to the client.',
+  })
+  async download(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Request() req: AuthenticatedRequest,
+    @Res() res: Response,
+  ): Promise<void> {
+    const { stream, doc } = await this.documentsService.downloadStream(
+      id,
+      requireCompanyId(req.user),
+      req.user.role,
+    );
+    // Strip quotes and control characters (including CR/LF) so a document name
+    // can never inject extra headers or break the Content-Disposition value.
+    const safeFileName = (doc.name || 'document').replace(/[\x00-\x1f\x7f"]/g, '_');
+    res.setHeader('Content-Type', doc.fileType || 'application/octet-stream');
+    res.setHeader('Content-Disposition', `attachment; filename="${safeFileName}"`);
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    stream.on('error', (err) => {
+      this.logger.error(`Document stream failed for ${id}: ${err.message}`);
+      if (!res.headersSent) {
+        res.status(500).json({
+          success: false,
+          message: 'Failed to stream document',
+          error: 'Internal Server Error',
+          statusCode: 500,
+        });
+      } else {
+        res.destroy(err);
+      }
+    });
+    stream.pipe(res);
+  }
+
   @Patch(':id')
   @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER)
-  @ApiOperation({ summary: 'Update a document (ADMIN+). Changing URL creates a new version.' })
+  @ApiOperation({ summary: 'Update a document\'s metadata (ADMIN+). Replacing the file itself requires a new upload.' })
   update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateDocumentDto,
     @Request() req: AuthenticatedRequest,
   ) {
-    return this.documentsService.update(id, requireCompanyId(req.user), req.user.userId, req.user.role, dto);
+    return this.documentsService.update(id, requireCompanyId(req.user), req.user.role, dto);
   }
 
   @Delete(':id')

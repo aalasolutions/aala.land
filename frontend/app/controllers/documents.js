@@ -186,7 +186,27 @@ export default class DocumentsController extends PaginatedController {
     });
   }
 
-  @action downloadDocument(doc) {
-    window.open(doc.url, '_blank', 'noopener');
+  @action async downloadDocument(doc) {
+    try {
+      const res = await this.auth.authorizedFetch(`${this.auth.apiBase}/documents/${doc.id}/download`);
+      if (!res.ok) {
+        throw new Error('Download failed');
+      }
+
+      // The endpoint re-checks accessLevel and streams bytes directly — the S3 URL
+      // is never exposed to the client, so a blob download replaces window.open(doc.url).
+      const blob = await res.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = doc.name || 'document';
+      link.rel = 'noopener';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(blobUrl);
+    } catch (err) {
+      this.notifications.error(err.message || 'Download failed');
+    }
   }
 }

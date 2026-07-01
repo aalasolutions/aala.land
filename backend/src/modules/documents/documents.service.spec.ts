@@ -13,7 +13,7 @@ import { Role } from '@shared/enums/roles.enum';
 describe('DocumentsService', () => {
   let service: DocumentsService;
   let repo: any;
-  let mockMediaService: jest.Mocked<Pick<MediaService, 'uploadDocumentToStorage' | 'deleteDocumentFromStorage'>>;
+  let mockMediaService: jest.Mocked<Pick<MediaService, 'uploadDocumentToStorage' | 'deleteDocumentFromStorage' | 'getDocumentStream'>>;
 
   const companyId = 'company-uuid-1';
   const userId = 'user-uuid-1';
@@ -39,6 +39,7 @@ describe('DocumentsService', () => {
     mockMediaService = {
       uploadDocumentToStorage: jest.fn(),
       deleteDocumentFromStorage: jest.fn(),
+      getDocumentStream: jest.fn(),
     };
 
     const mockQueryBuilder = {
@@ -156,28 +157,14 @@ describe('DocumentsService', () => {
   });
 
   describe('update', () => {
-    it('updates document in place when URL does not change', async () => {
+    it('updates document metadata in place', async () => {
       const updated = { ...mockDoc, name: 'Updated Name' };
       repo.save.mockResolvedValue(updated);
 
-      const result = await service.update('doc-uuid-1', companyId, userId, Role.COMPANY_ADMIN, { name: 'Updated Name' });
+      const result = await service.update('doc-uuid-1', companyId, Role.COMPANY_ADMIN, { name: 'Updated Name' });
 
       expect(result.name).toBe('Updated Name');
-    });
-
-    it('creates new version when URL changes', async () => {
-      const newVersion = { ...mockDoc, id: 'doc-uuid-2', version: 2, previousVersionId: 'doc-uuid-1', url: 'https://s3.example.com/docs/lease-v2.pdf' };
-      repo.create.mockReturnValue(newVersion);
-      repo.save.mockResolvedValue(newVersion);
-
-      const result = await service.update('doc-uuid-1', companyId, userId, Role.COMPANY_ADMIN, { url: 'https://s3.example.com/docs/lease-v2.pdf' });
-
-      expect(repo.create).toHaveBeenCalledWith(expect.objectContaining({
-        version: 2,
-        previousVersionId: 'doc-uuid-1',
-        url: 'https://s3.example.com/docs/lease-v2.pdf',
-      }));
-      expect(result.version).toBe(2);
+      expect(repo.create).not.toHaveBeenCalled();
     });
   });
 
@@ -287,6 +274,39 @@ describe('DocumentsService', () => {
           ],
         },
       );
+    });
+  });
+
+  describe('downloadStream', () => {
+    it('re-checks access via findOne and returns the media stream', async () => {
+      const fakeStream = {} as NodeJS.ReadableStream;
+      mockMediaService.getDocumentStream.mockResolvedValue(fakeStream);
+
+      const result = await service.downloadStream('doc-uuid-1', companyId, Role.COMPANY_ADMIN);
+
+      expect(mockMediaService.getDocumentStream).toHaveBeenCalledWith(mockDoc.s3Key);
+      expect(result.stream).toBe(fakeStream);
+      expect(result.doc).toEqual(mockDoc);
+    });
+
+    it('throws NotFoundException when the caller role cannot see the document (accessLevel filtered)', async () => {
+      const qb = repo.createQueryBuilder();
+      qb.getOne.mockResolvedValue(null);
+
+      await expect(
+        service.downloadStream('doc-uuid-1', companyId, Role.ACCOUNTANT),
+      ).rejects.toThrow(NotFoundException);
+      expect(mockMediaService.getDocumentStream).not.toHaveBeenCalled();
+    });
+
+    it('throws NotFoundException when the document has no s3Key', async () => {
+      const qb = repo.createQueryBuilder();
+      qb.getOne.mockResolvedValue({ ...mockDoc, s3Key: null });
+
+      await expect(
+        service.downloadStream('doc-uuid-1', companyId, Role.COMPANY_ADMIN),
+      ).rejects.toThrow(NotFoundException);
+      expect(mockMediaService.getDocumentStream).not.toHaveBeenCalled();
     });
   });
 

@@ -31,7 +31,8 @@
     "db:sync": "ts-node -r tsconfig-paths/register ./node_modules/typeorm/cli.js -d src/data-source.ts schema:sync",
     "db:reset": "pnpm run db:drop && pnpm run db:migration:run",
     "db:seed": "pnpm exec ts-node -r tsconfig-paths/register ./src/database/seeds/run-all-seeds.ts",
-    "seed:test": "NODE_ENV=test pnpm exec ts-node -r tsconfig-paths/register ./src/database/seeds/run-all-seeds.ts"
+    "seed:test": "NODE_ENV=test pnpm exec ts-node -r tsconfig-paths/register ./src/database/seeds/run-all-seeds.ts",
+    "db:migrate-documents-bucket": "pnpm exec ts-node -r tsconfig-paths/register ./src/database/scripts/migrate-documents-to-private-bucket.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1002.0",
