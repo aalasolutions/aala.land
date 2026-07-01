@@ -2,12 +2,9 @@ import Component from '@glimmer/component';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
-import config from 'frontend/config/environment';
-import parseErrorResponse from 'frontend/utils/parse-error-response';
 
 export default class LoginFormComponent extends Component {
   @service auth;
-  @service session;
   @service router;
   @service googleAuth;
 
@@ -72,19 +69,7 @@ export default class LoginFormComponent extends Component {
     this.isGoogleLoading = true;
 
     try {
-      const response = await fetch(`${config.APP.API_BASE}/auth/google`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ idToken }),
-      });
-
-      if (!response.ok) {
-        throw new Error(await parseErrorResponse(response, 'Google authentication failed'));
-      }
-
-      const { data } = await response.json();
-
-      this.session.establish(data);
+      await this.auth.loginWithGoogle(idToken);
       this.router.transitionTo('dashboard');
     } catch (err) {
       this.errorMessage = err.message || 'Google sign-in failed. Please try again.';

@@ -2,13 +2,10 @@ import Component from '@glimmer/component';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
-import config from 'frontend/config/environment';
-import parseErrorResponse from 'frontend/utils/parse-error-response';
 
 export default class SignupFormComponent extends Component {
   @service auth;
   @service router;
-  @service session;
   @service googleAuth;
 
   @tracked companyName = '';
@@ -33,7 +30,7 @@ export default class SignupFormComponent extends Component {
   }
 
   get canSubmit() {
-    return (
+    return Boolean(
       this.companyName.trim() &&
       this.companySlug.trim() &&
       this.userName.trim() &&
@@ -45,7 +42,7 @@ export default class SignupFormComponent extends Component {
   }
 
   get canGoogleSignup() {
-    return this.companyName.trim() && this.selectedRegion;
+    return Boolean(this.companyName.trim() && this.selectedRegion);
   }
 
   @action
@@ -143,22 +140,11 @@ export default class SignupFormComponent extends Component {
     this.errorMessage = '';
 
     try {
-      const response = await fetch(`${config.APP.API_BASE}/auth/google/signup`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          idToken,
-          companyName: this.companyName.trim(),
-          regionCode: this.selectedRegion,
-        }),
+      await this.auth.signupWithGoogle({
+        idToken,
+        companyName: this.companyName.trim(),
+        regionCode: this.selectedRegion,
       });
-
-      if (!response.ok) {
-        throw new Error(await parseErrorResponse(response, 'Google signup failed'));
-      }
-
-      const { data } = await response.json();
-      this.session.establish(data);
       this.router.transitionTo('dashboard');
     } catch (err) {
       this.errorMessage = err.message || 'Google signup failed. Please try again.';

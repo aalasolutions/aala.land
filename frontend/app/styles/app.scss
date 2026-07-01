@@ -1203,8 +1203,25 @@ textarea {
     }
 }
 
+$google-logo-svg: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Cpath fill='%23EA4335' d='M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z'/%3E%3Cpath fill='%234285F4' d='M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z'/%3E%3Cpath fill='%23FBBC05' d='M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z'/%3E%3Cpath fill='%2334A853' d='M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z'/%3E%3C/svg%3E";
+$google-text-color: #172033;
+$google-neutral-border: #dadce0;
+$google-neutral-border-hover: #c6cbd1;
+
+@mixin google-host-fill {
+    *,
+    > div,
+    iframe,
+    [role="button"] {
+        width: 100% !important;
+        height: 100% !important;
+        max-width: 100% !important;
+        cursor: pointer !important;
+    }
+}
+
 .signup-slug-field {
-    display: none !important;
+    display: none;
 }
 
 .connected-account {
@@ -1228,8 +1245,8 @@ textarea {
     padding: 0.95rem;
     margin-top: 0.25rem;
     margin-bottom: 1rem;
-    background: #f8fafc;
-    border: 1px solid #e2e8f0;
+    background: $bg-base;
+    border: 1px solid $border-light;
     border-radius: 0.75rem;
 }
 
@@ -1246,12 +1263,12 @@ textarea {
     width: 34px;
     height: 34px;
     border-radius: 50%;
-    background-color: #ffffff;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Cpath fill='%23EA4335' d='M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z'/%3E%3Cpath fill='%234285F4' d='M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z'/%3E%3Cpath fill='%23FBBC05' d='M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z'/%3E%3Cpath fill='%2334A853' d='M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z'/%3E%3C/svg%3E");
+    background-color: $bg-surface;
+    background-image: url($google-logo-svg);
     background-position: center;
     background-repeat: no-repeat;
     background-size: 18px 18px;
-    border: 1px solid #e2e8f0;
+    border: 1px solid $border-light;
 }
 
 .profile-connection-text {
@@ -1287,9 +1304,9 @@ textarea {
     width: 100%;
     min-height: 38px;
     padding: 0 1rem;
-    color: #172033;
-    background: #ffffff;
-    border: 1px solid #edf1f5;
+    color: $google-text-color;
+    background: $bg-surface;
+    border: 1px solid $border-light;
     border-radius: 0.55rem;
     font-size: 0.875rem;
     font-weight: 700;
@@ -1302,8 +1319,8 @@ textarea {
     }
 
     &:hover {
-        background: #fbfcfe;
-        border-color: #dde4ec;
+        background: $bg-base;
+        border-color: $border-medium;
     }
 
     &:focus-within {
@@ -1320,15 +1337,7 @@ textarea {
         display: block;
         min-height: 0;
 
-        *,
-        > div,
-        iframe,
-        [role="button"] {
-            width: 100% !important;
-            height: 100% !important;
-            max-width: 100% !important;
-            cursor: pointer !important;
-        }
+        @include google-host-fill;
     }
 }
 
@@ -1375,10 +1384,10 @@ textarea {
     align-items: center;
     width: 100%;
     min-height: 52px;
-    border: 1px solid #edf1f5;
+    border: 1px solid $border-light;
     border-radius: 0.875rem;
-    background: #ffffff;
-    color: #172033;
+    background: $bg-surface;
+    color: $google-text-color;
     cursor: pointer;
     overflow: hidden;
     transition:
@@ -1393,12 +1402,12 @@ textarea {
         width: 30px;
         height: 30px;
         border-radius: 0.625rem;
-        background-color: #fbfcfe;
-        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Cpath fill='%23EA4335' d='M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z'/%3E%3Cpath fill='%234285F4' d='M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z'/%3E%3Cpath fill='%23FBBC05' d='M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z'/%3E%3Cpath fill='%2334A853' d='M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z'/%3E%3C/svg%3E");
+        background-color: $bg-base;
+        background-image: url($google-logo-svg);
         background-position: center;
         background-repeat: no-repeat;
         background-size: 18px 18px;
-        border: 1px solid #f0f3f7;
+        border: 1px solid $border-light;
         transform: translateY(-50%);
         z-index: 2;
         pointer-events: none;
@@ -1408,7 +1417,7 @@ textarea {
         content: 'Continue with Google';
         position: relative;
         z-index: 2;
-        color: #172033;
+        color: $google-text-color;
         font-size: 0.96rem;
         font-weight: 700;
         letter-spacing: 0;
@@ -1416,8 +1425,8 @@ textarea {
     }
 
     &:hover {
-        background: #fbfcfe;
-        border-color: #dde4ec;
+        background: $bg-base;
+        border-color: $border-medium;
     }
 
     &:focus-within {
@@ -1434,15 +1443,7 @@ textarea {
         display: block;
         min-height: 0;
 
-        *,
-        > div,
-        iframe,
-        [role="button"] {
-            width: 100% !important;
-            height: 100% !important;
-            max-width: 100% !important;
-            cursor: pointer !important;
-        }
+        @include google-host-fill;
     }
 }
 
@@ -1458,9 +1459,9 @@ textarea {
     width: 100%;
     min-height: 44px;
     padding: 0.75rem 1rem;
-    background: #ffffff;
-    color: #1f2937;
-    border: 1px solid #dadce0;
+    background: $bg-surface;
+    color: $text-primary;
+    border: 1px solid $google-neutral-border;
     border-radius: 4px;
     font-size: 0.9375rem;
     font-weight: 500;
@@ -1469,8 +1470,8 @@ textarea {
     transition: background-color 0.16s ease, border-color 0.16s ease;
 
     &:hover {
-        background: #f8fafc;
-        border-color: #c6cbd1;
+        background: $bg-base;
+        border-color: $google-neutral-border-hover;
     }
 
     &:focus-visible {
@@ -1483,7 +1484,7 @@ textarea {
         flex: 0 0 20px;
         width: 20px;
         height: 20px;
-        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Cpath fill='%23EA4335' d='M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z'/%3E%3Cpath fill='%234285F4' d='M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z'/%3E%3Cpath fill='%23FBBC05' d='M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z'/%3E%3Cpath fill='%2334A853' d='M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z'/%3E%3C/svg%3E");
+        background-image: url($google-logo-svg);
         background-size: contain;
         background-repeat: no-repeat;
         background-position: center;
@@ -1494,21 +1495,21 @@ textarea {
         content: 'Continue with Google';
         font-weight: 500;
         font-size: 0.9375rem;
-        color: #1f2937;
+        color: $text-primary;
         z-index: 2;
     }
 }
 
 .btn--google--blocked {
-    border-color: #dadce0;
-    color: #1f2937;
+    border-color: $google-neutral-border;
+    color: $text-primary;
 }
 
 .btn--google--loading {
     pointer-events: none;
     cursor: wait;
-    background: #f8fafc;
-    border-color: #dadce0;
+    background: $bg-base;
+    border-color: $google-neutral-border;
 
     &::before {
         display: none;
@@ -1522,7 +1523,7 @@ textarea {
         display: inline-block;
         width: 18px;
         height: 18px;
-        border: 2px solid #e2e8f0;
+        border: 2px solid $border-light;
         border-top-color: $color-primary;
         border-radius: 50%;
         animation: spin 0.8s linear infinite;
@@ -1533,6 +1534,13 @@ textarea {
 @keyframes spin {
     to {
         transform: rotate(360deg);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .google-spinner {
+        animation-duration: 0.01ms;
+        animation-iteration-count: 1;
     }
 }
 

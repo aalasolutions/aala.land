@@ -63,8 +63,7 @@ export class AuthController {
         );
     }
 
-    @UseGuards(JwtAuthGuard, RolesGuard)
-    @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT, Role.ACCOUNTANT)
+    @UseGuards(JwtAuthGuard)
     @Post('google/link')
     @HttpCode(HttpStatus.OK)
     @ApiBearerAuth()
@@ -76,8 +75,7 @@ export class AuthController {
         return this.googleService.linkGoogleAccount(req.user.userId, dto.idToken);
     }
 
-    @UseGuards(JwtAuthGuard, RolesGuard)
-    @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT, Role.ACCOUNTANT)
+    @UseGuards(JwtAuthGuard)
     @Post('refresh')
     @HttpCode(HttpStatus.OK)
     @ApiBearerAuth()
@@ -86,8 +84,7 @@ export class AuthController {
         return this.authService.refresh(req.user);
     }
 
-    @UseGuards(JwtAuthGuard, RolesGuard)
-    @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT, Role.ACCOUNTANT)
+    @UseGuards(JwtAuthGuard)
     @Post('logout')
     @HttpCode(HttpStatus.OK)
     @ApiBearerAuth()
@@ -96,8 +93,7 @@ export class AuthController {
         return { message: 'Logged out successfully' };
     }
 
-    @UseGuards(JwtAuthGuard, RolesGuard)
-    @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT, Role.ACCOUNTANT)
+    @UseGuards(JwtAuthGuard)
     @Get('profile')
     @ApiBearerAuth()
     @ApiOperation({ summary: 'Get current user profile' })

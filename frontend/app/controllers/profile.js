@@ -2,7 +2,6 @@ import Controller from '@ember/controller';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
-import parseErrorResponse from 'frontend/utils/parse-error-response';
 
 export default class ProfileController extends Controller {
   @service auth;
@@ -80,15 +79,7 @@ export default class ProfileController extends Controller {
     this.errorMsg = '';
 
     try {
-      const response = await this.auth.authorizedFetch(`${this.auth.apiBase}/auth/google/link`, {
-        method: 'POST',
-        body: JSON.stringify({ idToken }),
-      });
-
-      if (!response.ok) {
-        throw new Error(await parseErrorResponse(response, 'Unable to link Google account'));
-      }
-
+      await this.auth.linkGoogleAccount(idToken);
       this.notifications.success('Google account linked');
       this.router.refresh('profile');
     } catch (e) {
