@@ -104,7 +104,7 @@
             <span class="status-badge status-{{@model.unit.status}}">{{capitalize @model.unit.status}}</span>
             {{#if @model.unit.propertyType}}
               <span class="type-badge type-{{lowercase @model.unit.propertyType}}">
-                {{if (eq @model.unit.propertyType "FOR_SALE") "For Sale" "Rental"}}
+                {{if (eq @model.unit.propertyType "FOR_SALE") "For Sale" "For Rent"}}
               </span>
             {{/if}}
           </div>
@@ -209,7 +209,7 @@
       </div>
     </div>
 
-    <FormDropdown @label="Listing Type" @id="u-property-type" @value={{this.formPropertyType}} @onChange={{fn this.setField "formPropertyType"}} @options={{this.propertyTypeOptions}} @placeholder="Not set" data-test-field-property-type />
+    <FormDropdown @label="Listing Type" @id="u-property-type" @value={{this.formPropertyType}} @onChange={{fn this.setField "formPropertyType"}} @options={{this.propertyTypeOptions}} @placeholder="Not Listed" data-test-field-property-type />
 
     <div class="flex gap-4">
       <div class="flex col gap-2 flex-1">

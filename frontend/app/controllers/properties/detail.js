@@ -13,8 +13,8 @@ const PROPERTY_STATUS_OPTIONS = [
 ];
 
 const PROPERTY_TYPE_INHERIT_OPTIONS = [
-  { value: '', label: 'Inherit from Asset' },
-  { value: 'RENTAL', label: 'Rental' },
+  { value: '', label: 'Not Listed' },
+  { value: 'RENTAL', label: 'For Rent' },
   { value: 'FOR_SALE', label: 'For Sale' },
 ];
 

@@ -81,7 +81,7 @@
 
       <div class="flex gap-4 items-start">
         <div class="flex-1">
-          <FormDropdown @label="Lease Type" @id="lease-type" @value={{this.formType}} @onChange={{fn this.setField "formType"}} @options={{this.leaseTypeOptions}} @placeholder="Select lease type..." />
+          <FormDropdown @label="Property Type" @id="lease-type" @value={{this.formType}} @onChange={{fn this.setField "formType"}} @options={{this.leaseTypeOptions}} @placeholder="Select property type..." />
         </div>
         <div class="flex-1">
           <FormInput @label="Number of Cheques" @id="lease-cheques" @type="number" @value={{this.formNumberOfCheques}} @onChange={{fn this.setField "formNumberOfCheques"}} @min={{1}} @max={{12}} />
