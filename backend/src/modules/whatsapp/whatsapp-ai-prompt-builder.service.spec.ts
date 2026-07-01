@@ -1,9 +1,27 @@
 import { WhatsappAiPromptBuilderService } from './whatsapp-ai-prompt-builder.service';
+import { PropertyType } from '../properties/entities/property-type.enum';
 import { DEFAULT_PROMPT, RULES_BLOCK } from './whatsapp-ai-prompts';
 
 const makeCompany = (overrides = {}) => ({
   name: 'Test Co',
   activeRegions: [],
+  ...overrides,
+} as any);
+
+const makeUnit = (overrides = {}) => ({
+  unitNumber: '1A',
+  bedrooms: 2,
+  bathrooms: 1,
+  sqFt: 900,
+  amenities: [],
+  description: null,
+  propertyType: PropertyType.RENTAL,
+  price: '25000',
+  asset: {
+    name: 'Sunset Tower',
+    address: '12 Main St',
+    locality: { name: 'DHA', city: { name: 'Karachi', regionCode: 'PK' } },
+  },
   ...overrides,
 } as any);
 
@@ -16,64 +34,43 @@ describe('WhatsappAiPromptBuilderService', () => {
 
   describe('buildContextBlock', () => {
     it('includes [COMPANY INFO] section when company exists', () => {
-      const block = service.buildContextBlock(makeCompany(), [], []);
+      const { block } = service.buildContextBlock(makeCompany());
       expect(block).toContain('[COMPANY INFO]');
       expect(block).toContain('Test Co');
     });
 
     it('skips [COMPANY INFO] when company is null', () => {
-      const block = service.buildContextBlock(null, [], []);
+      const { block } = service.buildContextBlock(null);
       expect(block).not.toContain('[COMPANY INFO]');
     });
 
     it('always includes RULES_BLOCK', () => {
-      const block = service.buildContextBlock(null, [], []);
-      expect(block).toContain('[RULES]');
-    });
-
-    it('does not include property listings in context block', () => {
-      const listing = {
-        type: 'SALE', title: 'Nice Apt', price: '1000000', featured: false,
-        photos: [], contactPhone: null, contactEmail: null, description: null,
-        unit: { bedrooms: 2, bathrooms: 1, sqFt: 900, amenities: [], photos: [], asset: null },
-      };
-      const block = service.buildContextBlock(makeCompany(), [listing as any], []);
-      expect(block).not.toContain('Nice Apt');
-      expect(block).not.toContain('[AVAILABLE PROPERTIES]');
+      const { block } = service.buildContextBlock(null);
+      expect(block).toContain(RULES_BLOCK);
     });
   });
 
   describe('formatToolResult', () => {
     it('returns no-results message for empty array', () => {
-      expect(service.formatToolResult([])).toBe('No properties found matching your criteria.');
+      expect(service.formatToolResult([], '')).toBe('No properties found matching your criteria.');
     });
 
-    it('returns formatted listing string for non-empty array', () => {
-      // Call buildContextBlock first to set fallbackCurrency
-      service.buildContextBlock(makeCompany({ activeRegions: ['AE-DU'] }), [], []);
-      const listing = {
-        type: 'RENT',
-        title: 'Nice Flat',
-        price: '25000',
-        featured: false,
-        photos: [],
-        contactPhone: '03001234567',
-        contactEmail: null,
-        description: 'A nice flat',
-        unit: {
-          bedrooms: 2, bathrooms: 1, sqFt: 900, amenities: [], photos: [],
-          asset: {
-            name: 'Sunset Tower', address: '12 Main St',
-            locality: { name: 'DHA', city: { name: 'Karachi', regionCode: 'PK' } },
-          },
-        },
-      };
-      const result = service.formatToolResult([listing as any]);
+    it('returns formatted unit string for non-empty array', () => {
+      const { fallbackCurrency } = service.buildContextBlock(makeCompany({ activeRegions: ['AE-DU'] }));
+      const unit = makeUnit();
+      const result = service.formatToolResult([unit], fallbackCurrency);
       expect(typeof result).toBe('string');
-      expect(result).toContain('Nice Flat');
+      expect(result).toContain('Sunset Tower');
+      expect(result).toContain('Unit 1A');
       expect(result).toContain('25,000');
       expect(result).toContain('2 Bed');
-      expect(result).toContain('03001234567');
+      expect(result).toContain('[RENT]');
+    });
+
+    it('labels FOR_SALE units as SALE', () => {
+      const unit = makeUnit({ propertyType: PropertyType.FOR_SALE });
+      const result = service.formatToolResult([unit], '');
+      expect(result).toContain('[SALE]');
     });
   });
 

@@ -26,8 +26,7 @@ function mockToolCallResponse(id: string, name: string, args = '{}') {
 }
 
 const makeMockRepo = (customPrompt: string | null = null, tier: SubscriptionTier = SubscriptionTier.FREE) => ({
-  getCompanyAndListings: jest.fn().mockResolvedValue({ company: { subscriptionTier: tier }, listings: [] }),
-  getAvailableUnits: jest.fn().mockResolvedValue([]),
+  getCompanyAndUnits: jest.fn().mockResolvedValue({ company: { subscriptionTier: tier }, units: [] }),
   getCompanyPrompt: jest.fn().mockResolvedValue(customPrompt),
   persistAiEnabled: jest.fn().mockResolvedValue(undefined),
   loadAiEnabled: jest.fn().mockResolvedValue(null),
@@ -39,7 +38,7 @@ const makeMockRepo = (customPrompt: string | null = null, tier: SubscriptionTier
 });
 
 const makeMockBuilder = (fullPrompt = 'default system prompt for AALA.LAND') => ({
-  buildContextBlock: jest.fn().mockReturnValue(''),
+  buildContextBlock: jest.fn().mockReturnValue({ block: '', fallbackCurrency: '' }),
   buildFullPrompt: jest.fn().mockReturnValue(fullPrompt),
   formatToolResult: jest.fn().mockReturnValue('Formatted listings'),
 });
@@ -374,7 +373,7 @@ describe('WhatsappAiService', () => {
       await service.handleIncomingMessage(baseEvt(), 'company-1', 'user-1', jest.fn().mockResolvedValue({}));
       await jest.runAllTimersAsync();
 
-      expect(mockRepo.checkLimitAndIncrement).toHaveBeenCalledWith('company-1', 100);
+      expect(mockRepo.checkLimitAndIncrement).toHaveBeenCalledWith('company-1', 10);
     });
 
     it('calls checkLimitAndIncrement with 50 for STARTER tier', async () => {

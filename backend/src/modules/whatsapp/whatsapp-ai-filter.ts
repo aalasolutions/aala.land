@@ -29,11 +29,21 @@ const PROMPT_INJECTION_PATTERNS: RegExp[] = [
   /\bact\s+as\b/gi,
 ];
 
+const DANGEROUS_WORD_PATTERNS: RegExp[] = [
+  /\bdrop\b/gi,
+  /\bdelete\b/gi,
+  /\bremove\b/gi,
+  /--/g,
+];
+
 export const DIRECT_CONTACT_RESPONSE = "I'm unable to process this request. Please contact our office directly.";
 
 export function sanitizeInput(message: string): { cleaned: string; needsDirectContact: boolean } {
   let cleaned = message;
   for (const pattern of PROMPT_INJECTION_PATTERNS) {
+    cleaned = cleaned.replace(pattern, '');
+  }
+  for (const pattern of DANGEROUS_WORD_PATTERNS) {
     cleaned = cleaned.replace(pattern, '');
   }
   cleaned = cleaned.replace(/\s+/g, ' ').trim();

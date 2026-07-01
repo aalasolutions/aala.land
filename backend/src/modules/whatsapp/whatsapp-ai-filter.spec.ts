@@ -65,22 +65,22 @@ describe('sanitizeInput', () => {
 
 describe('parseResponse', () => {
   it('extracts content from valid LLM response', () => {
-    const raw = { choices: [{ message: { content: 'Hello!' } }] };
+    const raw = { choices: [{ message: { role: 'assistant', content: 'Hello!' } }] };
     expect(parseResponse(raw)).toBe('Hello!');
   });
 
   it('trims whitespace from content', () => {
-    const raw = { choices: [{ message: { content: '  Hello!  ' } }] };
+    const raw = { choices: [{ message: { role: 'assistant', content: '  Hello!  ' } }] };
     expect(parseResponse(raw)).toBe('Hello!');
   });
 
   it('returns null for empty content string', () => {
-    const raw = { choices: [{ message: { content: '' } }] };
+    const raw = { choices: [{ message: { role: 'assistant', content: '' } }] };
     expect(parseResponse(raw)).toBeNull();
   });
 
   it('returns null for whitespace-only content', () => {
-    const raw = { choices: [{ message: { content: '   ' } }] };
+    const raw = { choices: [{ message: { role: 'assistant', content: '   ' } }] };
     expect(parseResponse(raw)).toBeNull();
   });
 
@@ -89,7 +89,7 @@ describe('parseResponse', () => {
   });
 
   it('returns null for undefined input', () => {
-    expect(parseResponse(undefined)).toBeNull();
+    expect(parseResponse(undefined as any)).toBeNull();
   });
 
   it('returns null for empty choices array', () => {
@@ -97,7 +97,7 @@ describe('parseResponse', () => {
   });
 
   it('returns null when choices is missing', () => {
-    expect(parseResponse({})).toBeNull();
+    expect(parseResponse({} as any)).toBeNull();
   });
 });
 
@@ -107,16 +107,16 @@ describe('parseToolCall', () => {
   });
 
   it('returns null when choices is missing', () => {
-    expect(parseToolCall({})).toBeNull();
+    expect(parseToolCall({} as any)).toBeNull();
   });
 
   it('returns null when no tool_calls in message', () => {
-    const raw = { choices: [{ message: { content: 'Hello', tool_calls: null } }] };
-    expect(parseToolCall(raw)).toBeNull();
+    const raw = { choices: [{ message: { role: 'assistant', content: 'Hello', tool_calls: null } }] };
+    expect(parseToolCall(raw as any)).toBeNull();
   });
 
   it('returns null when tool_calls array is empty', () => {
-    const raw = { choices: [{ message: { tool_calls: [] } }] };
+    const raw = { choices: [{ message: { role: 'assistant', content: null, tool_calls: [] } }] };
     expect(parseToolCall(raw)).toBeNull();
   });
 
@@ -124,8 +124,11 @@ describe('parseToolCall', () => {
     const raw = {
       choices: [{
         message: {
+          role: 'assistant',
+          content: null,
           tool_calls: [{
             id: 'call_abc123',
+            type: 'function',
             function: { name: 'search_properties', arguments: '{"city":"Karachi"}' },
           }],
         },
@@ -138,7 +141,9 @@ describe('parseToolCall', () => {
     const raw = {
       choices: [{
         message: {
-          tool_calls: [{ id: 'call_1', function: { name: 'search_properties', arguments: 'not-json' } }],
+          role: 'assistant',
+          content: null,
+          tool_calls: [{ id: 'call_1', type: 'function', function: { name: 'search_properties', arguments: 'not-json' } }],
         },
       }],
     };
@@ -149,9 +154,11 @@ describe('parseToolCall', () => {
     const raw = {
       choices: [{
         message: {
+          role: 'assistant',
+          content: null,
           tool_calls: [
-            { id: 'call_1', function: { name: 'search_properties', arguments: '{}' } },
-            { id: 'call_2', function: { name: 'escalate_to_human', arguments: '{}' } },
+            { id: 'call_1', type: 'function', function: { name: 'search_properties', arguments: '{}' } },
+            { id: 'call_2', type: 'function', function: { name: 'escalate_to_human', arguments: '{}' } },
           ],
         },
       }],

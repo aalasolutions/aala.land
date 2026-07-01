@@ -2,8 +2,8 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Between, ILike, LessThanOrEqual, MoreThanOrEqual, Repository } from 'typeorm';
 import { Company } from '../companies/entities/company.entity';
-import { Listing, ListingStatus, ListingType } from '../properties/entities/listing.entity';
 import { Unit, UnitStatus } from '../properties/entities/unit.entity';
+import { PropertyType } from '../properties/entities/property-type.enum';
 import { WhatsappSettings } from './entities/whatsapp-settings.entity';
 
 interface PropertySearchFilters {
@@ -16,7 +16,7 @@ interface PropertySearchFilters {
 
 interface ContextCache {
   company: Company | null;
-  listings: Listing[];
+  units: Unit[];
   cachedAt: number;
 }
 
@@ -39,46 +39,37 @@ export class WhatsappAiRepositoryService {
   constructor(
     @InjectRepository(Company)
     private readonly companyRepo: Repository<Company>,
-    @InjectRepository(Listing)
-    private readonly listingRepo: Repository<Listing>,
     @InjectRepository(Unit)
     private readonly unitRepo: Repository<Unit>,
     @InjectRepository(WhatsappSettings)
     private readonly settingsRepo: Repository<WhatsappSettings>,
   ) {}
 
-  async getCompanyAndListings(companyId: string): Promise<{ company: Company | null; listings: Listing[] }> {
+  async getCompanyAndUnits(companyId: string): Promise<{ company: Company | null; units: Unit[] }> {
     const cached = this.contextCache.get(companyId);
     if (cached && Date.now() - cached.cachedAt < this.CONTEXT_TTL_MS) {
-      return { company: cached.company, listings: cached.listings };
+      return { company: cached.company, units: cached.units };
     }
-    const [company, listings] = await Promise.all([
+    const [company, units] = await Promise.all([
       this.companyRepo.findOne({ where: { id: companyId } }),
-      this.listingRepo.find({
-        where: { companyId, status: ListingStatus.ACTIVE },
-        relations: ['unit', 'unit.asset', 'unit.asset.locality', 'unit.asset.locality.city'],
-        order: { featured: 'DESC', createdAt: 'DESC' },
+      this.unitRepo.find({
+        where: { companyId, status: UnitStatus.AVAILABLE },
+        relations: ['asset', 'asset.locality', 'asset.locality.city'],
+        order: { createdAt: 'DESC' },
         take: 40,
       }),
     ]);
-    this.contextCache.set(companyId, { company, listings, cachedAt: Date.now() });
-    return { company, listings };
+    this.contextCache.set(companyId, { company, units, cachedAt: Date.now() });
+    return { company, units };
   }
 
-  async getAvailableUnits(companyId: string): Promise<Unit[]> {
-    return this.unitRepo.find({
-      where: { companyId, status: UnitStatus.AVAILABLE },
-      relations: ['asset', 'asset.locality', 'asset.locality.city'],
-      order: { createdAt: 'DESC' },
-      take: 40,
-    });
-  }
-
-  async searchProperties(companyId: string, filters: PropertySearchFilters): Promise<Listing[]> {
-    const where: Record<string, any> = { companyId, status: ListingStatus.ACTIVE };
+  async searchProperties(companyId: string, filters: PropertySearchFilters): Promise<Unit[]> {
+    const where: Record<string, any> = { companyId, status: UnitStatus.AVAILABLE };
 
     if (filters.type) {
-      where['type'] = ListingType[filters.type.toUpperCase() as keyof typeof ListingType] ?? filters.type;
+      const normalized = filters.type.toUpperCase();
+      if (normalized === 'RENT') where['propertyType'] = PropertyType.RENTAL;
+      else if (normalized === 'SALE') where['propertyType'] = PropertyType.FOR_SALE;
     }
     if (filters.minPrice !== undefined && filters.maxPrice !== undefined) {
       where['price'] = Between(filters.minPrice, filters.maxPrice);
@@ -87,22 +78,17 @@ export class WhatsappAiRepositoryService {
     } else if (filters.maxPrice !== undefined) {
       where['price'] = LessThanOrEqual(filters.maxPrice);
     }
-
-    const unitWhere: Record<string, any> = {};
     if (filters.bedrooms !== undefined) {
-      unitWhere['bedrooms'] = filters.bedrooms;
+      where['bedrooms'] = filters.bedrooms;
     }
     if (filters.city) {
-      unitWhere['asset'] = { locality: { city: { name: ILike(`%${filters.city}%`) } } };
-    }
-    if (Object.keys(unitWhere).length > 0) {
-      where['unit'] = unitWhere;
+      where['asset'] = { locality: { city: { name: ILike(`%${filters.city}%`) } } };
     }
 
-    return this.listingRepo.find({
+    return this.unitRepo.find({
       where,
-      relations: ['unit', 'unit.asset', 'unit.asset.locality', 'unit.asset.locality.city'],
-      order: { featured: 'DESC', createdAt: 'DESC' },
+      relations: ['asset', 'asset.locality', 'asset.locality.city'],
+      order: { createdAt: 'DESC' },
       take: 20,
     });
   }

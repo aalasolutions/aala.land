@@ -64,7 +64,7 @@ export class WhatsappAiService implements OnModuleInit, OnModuleDestroy {
   }
 
   async getWeeklyCount(companyId: string): Promise<{ used: number; limit: number } | null> {
-    const { company } = await this.repo.getCompanyAndListings(companyId);
+    const { company } = await this.repo.getCompanyAndUnits(companyId);
     const tier = company?.subscriptionTier ?? SubscriptionTier.FREE;
     const weeklyLimit = TIER_LIMITS[tier].aiWeeklyMessages;
     if (weeklyLimit === Infinity) return null;
@@ -74,7 +74,7 @@ export class WhatsappAiService implements OnModuleInit, OnModuleDestroy {
 
   async getConfigWithUsage(userId: string, companyId: string) {
     const base = this.getConfig(userId);
-    const { company } = await this.repo.getCompanyAndListings(companyId);
+    const { company } = await this.repo.getCompanyAndUnits(companyId);
     const tier = company?.subscriptionTier ?? SubscriptionTier.FREE;
     const weeklyLimit = TIER_LIMITS[tier].aiWeeklyMessages;
 
@@ -227,9 +227,9 @@ export class WhatsappAiService implements OnModuleInit, OnModuleDestroy {
     try {
       history.push({ role: 'user', content: cleaned });
 
-      const [customPrompt, { company, listings }] = await Promise.all([
+      const [customPrompt, { company }] = await Promise.all([
         this.repo.getCompanyPrompt(companyId),
-        this.repo.getCompanyAndListings(companyId),
+        this.repo.getCompanyAndUnits(companyId),
       ]);
 
       const tier = company?.subscriptionTier ?? SubscriptionTier.FREE;
