@@ -25,6 +25,9 @@ export default class WhatsappController extends Controller {
 
   @tracked aiEnabled = false;
   @tracked aiKeyConfigured = false;
+  @tracked weeklyLimit = null;
+  @tracked weeklyUsed = null;
+  @tracked weeklyResetsAt = null;
 
   @tracked messageText = '';
   @tracked isSending = false;
@@ -36,6 +39,11 @@ export default class WhatsappController extends Controller {
 
   get isConnected() { return this.connection === 'connected'; }
   get showQR()      { return this.connection !== 'connected' && (!this.hasCredentials || this.qr !== null); }
+
+  get weeklyUsageLabel() {
+    if (this.weeklyLimit === null) return null;
+    return `${this.weeklyUsed ?? 0}/${this.weeklyLimit}`;
+  }
 
   get currentChatMessages() {
     if (!this.currentChatId) return [];
@@ -70,15 +78,22 @@ export default class WhatsappController extends Controller {
       this.hasCredentials = conn.hasCredentials ?? false;
       this.me = conn.me ?? null;
 
-      this.chats = (chatsData.data?.chats ?? chatsData.chats ?? []).map(c => ({
-        ...c,
-        lastTs: c.lastTs ? c.lastTs * 1000 : c.lastTs,
-      }));
+      this.chats = (chatsData.data?.chats ?? chatsData.chats ?? [])
+        .filter(c => !c.isGroup)
+        .filter(c => c.chatId !== this.me?.id)
+        .filter(c => !c.chatId?.endsWith('@newsletter'))
+        .map(c => ({
+          ...c,
+          lastTs: c.lastTs ? c.lastTs * 1000 : c.lastTs,
+        }));
       this.ingestMessages(msgsData.data?.messages ?? msgsData.messages ?? []);
 
       const ai = aiData.data ?? aiData;
       this.aiEnabled = ai.enabled ?? false;
       this.aiKeyConfigured = ai.keyConfigured ?? false;
+      this.weeklyLimit = ai.weeklyLimit ?? null;
+      this.weeklyUsed = ai.weeklyUsed ?? null;
+      this.weeklyResetsAt = ai.weeklyResetsAt ?? null;
 
       if (this.connection !== 'connected') {
         this.pollForQR();
@@ -115,6 +130,7 @@ export default class WhatsappController extends Controller {
     this._pollQRGeneration++;
     this.whatsapp.disconnectSocket();
     this.stopPolling();
+    this.currentChatId = null;
   }
 
   startPolling() {
@@ -156,8 +172,9 @@ export default class WhatsappController extends Controller {
     } else if (type === 'message') {
       this.ingestMessage(data);
     } else if (type === 'ai') {
-      this.aiEnabled = data.enabled ?? false;
-      this.aiKeyConfigured = data.keyConfigured ?? false;
+      if (data.enabled !== undefined) this.aiEnabled = data.enabled;
+      if (data.keyConfigured !== undefined) this.aiKeyConfigured = data.keyConfigured;
+      if (data.weeklyUsed !== undefined) this.weeklyUsed = data.weeklyUsed;
     }
   }
 
@@ -181,6 +198,9 @@ export default class WhatsappController extends Controller {
   }
 
   _updateChat(msg) {
+    if (msg.isGroup) return;
+    if (this.me?.id && msg.chatId === this.me.id) return;
+    if (msg.chatId?.endsWith('@newsletter')) return;
     const existingIdx = this.chats.findIndex(c => c.chatId === msg.chatId);
     const isNewer = (msg.timestamp ?? 0) >= (this.chats[existingIdx]?.lastTs ?? 0);
     if (existingIdx >= 0 && isNewer) {

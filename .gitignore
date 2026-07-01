@@ -59,7 +59,7 @@ test-results/
 .claude/memory/
 .claude/settings.local.json
 .claude/*
-docs
+docs/
 PROJECT_OVERVIEW.md
 PRODUCT_GUIDE.md
 
