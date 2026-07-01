@@ -229,10 +229,21 @@ export class CompaniesService {
             if (error instanceof ConflictException) {
                 throw error;
             }
-            if ((error as { code?: string })?.code === '23505') {
-                throw new ConflictException(
-                    'This company name is already taken. Please choose a different one.',
-                );
+            const dbError = error as { code?: string; constraint?: string };
+            if (dbError.code === '23505') {
+                if (dbError.constraint === 'UQ_b28b07d25e4324eee577de5496d') {
+                    throw new ConflictException(
+                        'This company name is already taken. Please choose a different one.',
+                    );
+                }
+                if (
+                    dbError.constraint === 'UQ_97672ac88f789774dd47f7c8be3' ||
+                    dbError.constraint === 'IDX_users_google_id'
+                ) {
+                    throw new ConflictException(
+                        'An account with this email/Google account already exists.',
+                    );
+                }
             }
             throw error;
         }
