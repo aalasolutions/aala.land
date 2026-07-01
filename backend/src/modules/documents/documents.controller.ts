@@ -19,7 +19,9 @@ import { requireCompanyId } from '@shared/utils/auth.util';
 import { DocumentCategory } from '../properties/entities/property-document.entity';
 import { ALLOWED_DOCUMENT_TYPES } from '../properties/media.service';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { memoryStorage } from 'multer';
+import { diskStorage } from 'multer';
+import { tmpdir } from 'os';
+import { randomUUID } from 'crypto';
 import { UploadDocumentDto } from './dto/upload-document.dto';
 
 @ApiTags('documents')
@@ -63,7 +65,13 @@ export class DocumentsController {
   })
   @UseInterceptors(
     FileInterceptor('file', {
-      storage: memoryStorage(),
+      // Spooled to a temp file on disk rather than buffered in RAM — with a 50 MB
+      // limit, buffering in memory lets concurrent uploads add up to significant
+      // process memory pressure.
+      storage: diskStorage({
+        destination: tmpdir(),
+        filename: (_req, file, cb) => cb(null, `doc-upload-${randomUUID()}-${file.originalname}`),
+      }),
       limits: { fileSize: 50 * 1024 * 1024 }, // 50 MB
       fileFilter: (_req, file, cb) => {
         if (!(ALLOWED_DOCUMENT_TYPES as readonly string[]).includes(file.mimetype)) {

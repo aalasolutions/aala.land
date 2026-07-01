@@ -19,6 +19,8 @@ import { Asset } from './entities/asset.entity';
 import { Company } from '../companies/entities/company.entity';
 import { UploadMediaDto } from './dto/upload-media.dto';
 import { reserveStorage } from '@shared/utils/storage-quota.util';
+import { createReadStream } from 'fs';
+import { unlink } from 'fs/promises';
 import sharp from 'sharp';
 // file-type v21 is pure ESM. Dynamic import() is required from a CommonJS NestJS context.
 
@@ -374,6 +376,22 @@ export class MediaService {
     companyId: string,
     file: Express.Multer.File,
   ): Promise<DocumentUploadResult> {
+    // Documents are spooled to a temp file on disk by multer (see
+    // documents.controller.ts), not buffered in memory — the temp file must be
+    // removed on every exit path once this function is done with it.
+    try {
+      return await this.uploadDocumentFile(companyId, file);
+    } finally {
+      await unlink(file.path).catch((e) => {
+        this.logger.error(`Failed to remove temp upload file ${file.path}: ${e instanceof Error ? e.message : String(e)}`);
+      });
+    }
+  }
+
+  private async uploadDocumentFile(
+    companyId: string,
+    file: Express.Multer.File,
+  ): Promise<DocumentUploadResult> {
     // 1. MIME allowlist check (client-supplied header).
     if (!(ALLOWED_DOCUMENT_TYPES as readonly string[]).includes(file.mimetype)) {
       throw new BadRequestException(
@@ -383,8 +401,8 @@ export class MediaService {
     }
 
     // 2. Magic-byte validation — confirms file bytes match the declared MIME type.
-    const { fileTypeFromBuffer } = await import('file-type');
-    const detected = await fileTypeFromBuffer(file.buffer);
+    const { fileTypeFromFile } = await import('file-type');
+    const detected = await fileTypeFromFile(file.path);
     // PDFs and Office formats have recognisable magic bytes; plain text/CSV do not.
     // Only reject when file-type detects a type that conflicts with the declared MIME.
     if (detected && !(ALLOWED_DOCUMENT_TYPES as readonly string[]).includes(detected.mime)) {
@@ -406,12 +424,20 @@ export class MediaService {
       .slice(0, 200);
     const key = `${BUCKET_ROOT_FOLDER}/companies/${companyId}/documents/${timestamp}-${safeName}`;
 
+    // Attach an error listener before handing the stream to the SDK — an
+    // unlistened 'error' event on a Readable crashes the process, and we don't
+    // control exactly when/whether the SDK's internal pipe consumes this stream.
+    const bodyStream = createReadStream(file.path);
+    bodyStream.on('error', (err) => {
+      this.logger.error(`Document upload stream error for ${file.path}: ${err.message}`);
+    });
+
     try {
       await client.send(
         new PutObjectCommand({
           Bucket:             bucket,
           Key:                key,
-          Body:               file.buffer,
+          Body:               bodyStream,
           ContentType:        file.mimetype,
           ContentLength:      file.size,
           ContentDisposition: `attachment; filename="${file.originalname.replace(/"/g, '_')}"`,

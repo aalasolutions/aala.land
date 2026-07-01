@@ -6,8 +6,12 @@ import { PropertyMedia } from './entities/property-media.entity';
 import { Unit } from './entities/unit.entity';
 import { Asset } from './entities/asset.entity';
 import { Company, SubscriptionTier, FREE_STORAGE_BYTES } from '../companies/entities/company.entity';
-import { fileTypeFromBuffer } from 'file-type';
+import { fileTypeFromBuffer, fileTypeFromFile } from 'file-type';
 import { PutObjectCommand, DeleteObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
+import { writeFileSync } from 'fs';
+import { tmpdir } from 'os';
+import { join } from 'path';
+import { randomUUID } from 'crypto';
 
 // Mock sharp so tests run without native binaries
 jest.mock('sharp', () => {
@@ -32,19 +36,26 @@ jest.mock('@aws-sdk/client-s3', () => ({
   GetObjectCommand:    jest.fn(),
 }));
 
-const makeFile = (overrides: Partial<Express.Multer.File> = {}): Express.Multer.File => ({
-  buffer:       Buffer.from('fake-image-data'),
-  mimetype:     'image/jpeg',
-  originalname: 'photo.jpg',
-  size:         1024,
-  fieldname:    'file',
-  encoding:     '7bit',
-  stream:       null as any,
-  destination:  '',
-  filename:     '',
-  path:         '',
-  ...overrides,
-});
+// Document uploads are spooled to a real temp file by multer (see
+// documents.controller.ts), so makeFile() writes an actual file to disk —
+// createReadStream/unlink in uploadDocumentToStorage need a real path to act on.
+const makeFile = (overrides: Partial<Express.Multer.File> = {}): Express.Multer.File => {
+  const path = overrides.path ?? join(tmpdir(), `media-service-spec-${randomUUID()}`);
+  if (!overrides.path) writeFileSync(path, overrides.buffer ?? Buffer.from('fake-image-data'));
+  return {
+    buffer:       Buffer.from('fake-image-data'),
+    mimetype:     'image/jpeg',
+    originalname: 'photo.jpg',
+    size:         1024,
+    fieldname:    'file',
+    encoding:     '7bit',
+    stream:       null as any,
+    destination:  '',
+    filename:     '',
+    path,
+    ...overrides,
+  };
+};
 
 describe('MediaService', () => {
   let service: MediaService;
@@ -257,7 +268,7 @@ describe('MediaService', () => {
     });
 
     it('rejects when magic bytes conflict with the declared MIME type', async () => {
-      (fileTypeFromBuffer as jest.Mock).mockResolvedValue({ mime: 'application/zip', ext: 'zip' });
+      (fileTypeFromFile as jest.Mock).mockResolvedValue({ mime: 'application/zip', ext: 'zip' });
 
       await expect(
         service.uploadDocumentToStorage(
@@ -268,7 +279,7 @@ describe('MediaService', () => {
     });
 
     it('accepts a PDF with matching magic bytes and returns upload result', async () => {
-      (fileTypeFromBuffer as jest.Mock).mockResolvedValue({ mime: 'application/pdf', ext: 'pdf' });
+      (fileTypeFromFile as jest.Mock).mockResolvedValue({ mime: 'application/pdf', ext: 'pdf' });
 
       const result = await service.uploadDocumentToStorage(
         companyId,
