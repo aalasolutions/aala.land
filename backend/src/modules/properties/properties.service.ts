@@ -355,7 +355,12 @@ export class PropertiesService {
 
     async updateUnit(id: string, companyId: string, dto: UpdateUnitDto): Promise<Unit> {
         const unit = await this.findOneUnit(id, companyId);
-        Object.assign(unit, dto);
+        const { ownerId, ...rest } = dto;
+        Object.assign(unit, rest);
+        if ('ownerId' in dto) {
+            unit.ownerId = ownerId ?? null;
+            unit.owner = null; // clear stale relation so TypeORM uses the updated FK column
+        }
         return this.unitRepository.save(unit);
     }
 
