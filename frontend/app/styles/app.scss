@@ -440,7 +440,8 @@ body {
     margin-bottom: var(--space-3);
 }
 
-.agent-avatar {
+.agent-avatar,
+.owner-avatar {
     width: 36px;
     height: 36px;
     border-radius: 50%;
@@ -1340,6 +1341,18 @@ textarea {
 
 .list-item:hover {
     box-shadow: var(--shadow-md);
+}
+
+.owners-list .list-item {
+    gap: var(--space-4);
+}
+
+.owner-info {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    flex: 1;
+    min-width: 0;
 }
 
 // =================================
