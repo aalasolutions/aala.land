@@ -65,6 +65,14 @@ export default class CompanyController extends Controller {
     return isAdminRole(this.auth.currentUser?.role);
   }
 
+  get isStorageWarning() {
+    return (this.storageUsage?.percentUsed ?? 0) >= 90;
+  }
+
+  get seatLabel() {
+    return this.storageUsage?.purchasedSeats === 1 ? 'seat' : 'seats';
+  }
+
   get maxCountries() {
     return this.company?.maxCountries ?? 1;
   }

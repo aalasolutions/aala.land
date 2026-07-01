@@ -23,7 +23,17 @@ export function getStorageQuotaBytes(company: Company): number {
   return Math.max(company.purchasedSeats, 1) * BYTES_PER_SEAT;
 }
 
-export async function assertStorageQuota(
+/**
+ * Atomically checks and reserves storage for a company: the quota comparison and
+ * the counter increment happen in a single conditional UPDATE, so two concurrent
+ * uploads can never both read the same pre-upload usage, both pass, and jointly
+ * push the company over quota. If the update matches zero rows, the reservation
+ * was rejected and storageUsedBytes was left untouched.
+ *
+ * Callers that fail after reserving (e.g. the S3 PUT throws) must roll back with
+ * their own decrement helper — this function only ever adds.
+ */
+export async function reserveStorage(
   companyRepository: Repository<Company>,
   companyId: string,
   incomingBytes: number,
@@ -32,12 +42,19 @@ export async function assertStorageQuota(
   if (!company) throw new NotFoundException('Company not found');
 
   const quotaBytes = getStorageQuotaBytes(company);
-  const currentUsage = Number(company.storageUsedBytes);
-  const projectedUsage = currentUsage + incomingBytes;
 
-  if (projectedUsage > quotaBytes) {
-    const usedGB  = (currentUsage / (1024 * 1024 * 1024)).toFixed(2);
-    const quotaGB = (quotaBytes   / (1024 * 1024 * 1024)).toFixed(2);
+  const result = await companyRepository
+    .createQueryBuilder()
+    .update(Company)
+    .set({ storageUsedBytes: () => '"storage_used_bytes" + :incomingBytes' })
+    .where('id = :companyId', { companyId })
+    .andWhere('"storage_used_bytes" + :incomingBytes <= :quotaBytes')
+    .setParameters({ incomingBytes, quotaBytes })
+    .execute();
+
+  if (!result.affected) {
+    const usedGB  = (Number(company.storageUsedBytes) / (1024 * 1024 * 1024)).toFixed(2);
+    const quotaGB = (quotaBytes / (1024 * 1024 * 1024)).toFixed(2);
     throw new HttpException(
       {
         message:

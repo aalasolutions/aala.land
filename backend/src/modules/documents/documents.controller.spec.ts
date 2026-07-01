@@ -1,7 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { DocumentsController } from './documents.controller';
 import { DocumentsService } from './documents.service';
-import { MediaService } from '../properties/media.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { DocumentCategory, DocumentAccessLevel } from '../properties/entities/property-document.entity';
 
@@ -36,19 +35,12 @@ describe('DocumentsController', () => {
         {
           provide: DocumentsService,
           useValue: {
-            uploadAndCreate: jest.fn(),
-            findAll: jest.fn(),
-            findOne: jest.fn(),
-            update: jest.fn(),
-            remove: jest.fn(),
-            getVersionHistory: jest.fn(),
-          },
-        },
-        {
-          provide: MediaService,
-          useValue: {
-            uploadDocumentToStorage: jest.fn(),
-            deleteDocumentFromStorage: jest.fn(),
+            uploadAndCreate:    jest.fn(),
+            findAll:            jest.fn(),
+            findOne:            jest.fn(),
+            update:             jest.fn(),
+            remove:             jest.fn(),
+            getVersionHistory:  jest.fn(),
           },
         },
       ],
@@ -58,7 +50,7 @@ describe('DocumentsController', () => {
       .compile();
 
     controller = module.get<DocumentsController>(DocumentsController);
-    service = module.get(DocumentsService);
+    service    = module.get(DocumentsService);
   });
 
   it('should be defined', () => {
@@ -66,7 +58,7 @@ describe('DocumentsController', () => {
   });
 
   describe('uploadDocument', () => {
-    it('calls documentsService.uploadAndCreate with companyId, userId, file, dto, mediaService', async () => {
+    it('calls documentsService.uploadAndCreate with companyId, userId, file, dto', async () => {
       service.uploadAndCreate.mockResolvedValue(mockDoc as any);
 
       const mockFile = {
@@ -84,7 +76,6 @@ describe('DocumentsController', () => {
         userId,
         mockFile,
         dto,
-        expect.anything(),
       );
       expect(result).toEqual(mockDoc);
     });
@@ -100,7 +91,7 @@ describe('DocumentsController', () => {
     it('returns paginated documents', async () => {
       service.findAll.mockResolvedValue(paginated as any);
 
-      const result = await controller.findAll(mockReq, 1, 20);
+      await controller.findAll(mockReq, 1, 20);
 
       expect(service.findAll).toHaveBeenCalledWith(companyId, role, 1, 20, undefined);
     });
@@ -145,17 +136,12 @@ describe('DocumentsController', () => {
   });
 
   describe('remove', () => {
-    it('removes a document passing mediaService', async () => {
+    it('removes a document', async () => {
       service.remove.mockResolvedValue(undefined);
 
       await controller.remove('doc-uuid-1', mockReq);
 
-      expect(service.remove).toHaveBeenCalledWith(
-        'doc-uuid-1',
-        companyId,
-        role,
-        expect.anything(),
-      );
+      expect(service.remove).toHaveBeenCalledWith('doc-uuid-1', companyId, role);
     });
   });
 });

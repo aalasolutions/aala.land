@@ -187,6 +187,6 @@ export default class DocumentsController extends PaginatedController {
   }
 
   @action downloadDocument(doc) {
-    window.open(doc.url, '_blank');
+    window.open(doc.url, '_blank', 'noopener');
   }
 }

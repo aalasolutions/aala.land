@@ -56,14 +56,14 @@
             <div class="storage-bar" data-test-storage-bar>
               <div
                 class="storage-bar__fill
-                  {{if (gte this.storageUsage.percentUsed 90) 'storage-bar__fill-warning'}}"
+                  {{if this.isStorageWarning 'storage-bar__fill-warning'}}"
                 style="width: {{this.storageUsage.percentUsed}}%"
               ></div>
             </div>
             <p class="font-xs text-muted mt-1">
               Tier: {{this.storageUsage.tier}} /
               {{this.storageUsage.purchasedSeats}}
-              {{if (eq this.storageUsage.purchasedSeats 1) "seat" "seats"}}
+              {{this.seatLabel}}
             </p>
           </div>
         {{/if}}

@@ -17,7 +17,7 @@ import { Unit } from './entities/unit.entity';
 import { Asset } from './entities/asset.entity';
 import { Company } from '../companies/entities/company.entity';
 import { UploadMediaDto } from './dto/upload-media.dto';
-import { assertStorageQuota } from '@shared/utils/storage-quota.util';
+import { reserveStorage } from '@shared/utils/storage-quota.util';
 import sharp from 'sharp';
 // file-type v21 is pure ESM. Dynamic import() is required from a CommonJS NestJS context.
 
@@ -27,6 +27,18 @@ const MAX_IMAGE_DIMENSION = 10_000;          // decompression bomb guard
 const MAX_OUTPUT_DIMENSION = 2560;           // longest dimension cap for stored original
 const THUMBNAIL_WIDTH = 400;
 const THUMBNAIL_HEIGHT = 400;
+
+export const ALLOWED_DOCUMENT_TYPES = [
+  'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'image/gif',
+] as const;
 
 export interface DocumentUploadResult {
   url: string;
@@ -104,23 +116,15 @@ export class MediaService {
 
   // Storage counter helpers
 
-  private async incrementStorage(companyId: string, bytes: number): Promise<void> {
-    await this.companyRepository
-      .createQueryBuilder()
-      .update(Company)
-      .set({ storageUsedBytes: () => `"storage_used_bytes" + ${bytes}` })
-      .where('id = :companyId', { companyId })
-      .execute();
-  }
-
   async decrementStorage(companyId: string, bytes: number): Promise<void> {
     if (bytes <= 0) return;
     await this.companyRepository
       .createQueryBuilder()
       .update(Company)
       .set({
-        storageUsedBytes: () => `GREATEST("storage_used_bytes" - ${bytes}, 0)`,
+        storageUsedBytes: () => 'GREATEST("storage_used_bytes" - :bytes, 0)',
       })
+      .setParameter('bytes', bytes)
       .where('id = :companyId', { companyId })
       .execute();
   }
@@ -221,17 +225,10 @@ export class MediaService {
       );
     }
 
-    // 7. Assert storage quota before any S3 PUT.
-    await assertStorageQuota(
-      this.companyRepository,
-      companyId,
-      file.size,
-    );
-
-    // 8. Process with sharp.
+    // 7. Process with sharp.
     //    Original: rotate() corrects orientation and strips EXIF, resize() caps the
-    //    longest dimension at 2560 px (never upscales), jpeg/webp re-encode at quality
-    //    80 so the stored file is smaller than the 5 MB input.
+    //    longest dimension at 2560 px (never upscales). All images are re-encoded
+    //    as JPEG at quality 80 — PNG/WebP inputs lose transparency (flattened to white).
     //    Thumbnail: 400x400 cover crop, JPEG quality 80.
     //    Both are generated from the raw in-memory buffer; B2 is never re-downloaded.
     let processedBuffer: Buffer;
@@ -259,6 +256,13 @@ export class MediaService {
     const actualThumbBytes    = thumbnailBuffer.length;
     const totalActualBytes    = actualOriginalBytes + actualThumbBytes;
 
+    // 8. Atomically reserve storage using actual post-processing bytes (more accurate
+    //    than raw file.size, which excludes the thumbnail and may differ from the JPEG
+    //    output). Reserving before any S3 PUT closes the TOCTOU gap between the quota
+    //    check and the counter update — the check and increment are one conditional
+    //    UPDATE, so concurrent uploads cannot both pass and overshoot the quota.
+    await reserveStorage(this.companyRepository, companyId, totalActualBytes);
+
     // 9. Build S3 keys. safeName truncated to 200 chars to stay under s3Key varchar(500).
     const timestamp  = Date.now();
     const safeName   = file.originalname
@@ -268,7 +272,8 @@ export class MediaService {
     const originalKey = `companies/${companyId}/properties/${folder}/${timestamp}-${safeName}`;
     const thumbKey    = this.getThumbnailKey(originalKey);
 
-    // 10. Upload original to B2.
+    // 10. Upload original and thumbnail to B2.
+    //     Output is always JPEG regardless of input format — record it as such.
     const client = this.getClient();
     const bucket = this.getBucket();
     let originalUploaded = false;
@@ -279,7 +284,7 @@ export class MediaService {
           Bucket:        bucket,
           Key:           originalKey,
           Body:          processedBuffer,
-          ContentType:   file.mimetype,
+          ContentType:   'image/jpeg',
           ContentLength: actualOriginalBytes,
         }),
       );
@@ -309,18 +314,22 @@ export class MediaService {
             );
           });
       }
+      // Release the reservation made in step 8 — no bytes actually landed in storage.
+      await this.decrementStorage(companyId, totalActualBytes).catch((e) => {
+        this.logger.error(`Failed to release storage reservation for company ${companyId}: ${e instanceof Error ? e.message : String(e)}`);
+      });
       const msg = uploadErr instanceof Error ? uploadErr.message : String(uploadErr);
       throw new InternalServerErrorException(`Storage upload failed: ${msg}`);
     }
 
-    // 12. Save media record.
+    // 12. Save media record. Output is always JPEG — store the actual content type.
     //     PropertyMedia.assetId persists to building_id column (intentional legacy naming).
     const media = this.mediaRepository.create({
       url:           this.buildFileUrl(originalKey),
       thumbnailUrl:  this.buildFileUrl(thumbKey),
       fileName:      file.originalname,
       s3Key:         originalKey,
-      contentType:   file.mimetype,
+      contentType:   'image/jpeg',
       fileSize:      actualOriginalBytes,
       thumbnailSize: actualThumbBytes,
       type:          dto.type ?? MediaType.IMAGE,
@@ -330,28 +339,18 @@ export class MediaService {
       companyId,
     });
 
-    let saved: PropertyMedia;
     try {
-      saved = await this.mediaRepository.save(media);
+      return await this.mediaRepository.save(media);
     } catch (dbErr) {
-      // Both S3 objects are now orphaned. Log keys for manual B2 cleanup.
-      this.logger.error(
-        `DB save failed after S3 upload. Manual cleanup required. ` +
-        `originalKey=${originalKey} thumbKey=${thumbKey}`,
-      );
+      // Roll back S3 objects and storage counter since the DB record was never persisted.
+      await this.decrementStorage(companyId, totalActualBytes).catch((e) => {
+        this.logger.error(`Failed to decrement storage after DB failure for company ${companyId}: ${e instanceof Error ? e.message : String(e)}`);
+      });
+      await client.send(new DeleteObjectCommand({ Bucket: bucket, Key: originalKey })).catch(() => {});
+      await client.send(new DeleteObjectCommand({ Bucket: bucket, Key: thumbKey })).catch(() => {});
       const msg = dbErr instanceof Error ? dbErr.message : String(dbErr);
       throw new InternalServerErrorException(`Failed to save media record: ${msg}`);
     }
-
-    // 13. Increment storage counter. Fire-and-forget; quota was asserted before upload.
-    this.incrementStorage(companyId, totalActualBytes).catch((err) => {
-      this.logger.error(
-        `Failed to increment storage counter for company ${companyId}: ` +
-        (err instanceof Error ? err.message : String(err)),
-      );
-    });
-
-    return saved;
   }
 
   // Document upload to storage (secondary scope)
@@ -360,11 +359,29 @@ export class MediaService {
     companyId: string,
     file: Express.Multer.File,
   ): Promise<DocumentUploadResult> {
-    await assertStorageQuota(
-      this.companyRepository,
-      companyId,
-      file.size,
-    );
+    // 1. MIME allowlist check (client-supplied header).
+    if (!(ALLOWED_DOCUMENT_TYPES as readonly string[]).includes(file.mimetype)) {
+      throw new BadRequestException(
+        `File type "${file.mimetype}" is not allowed. ` +
+        `Accepted: ${ALLOWED_DOCUMENT_TYPES.join(', ')}`,
+      );
+    }
+
+    // 2. Magic-byte validation — confirms file bytes match the declared MIME type.
+    const { fileTypeFromBuffer } = await import('file-type');
+    const detected = await fileTypeFromBuffer(file.buffer);
+    // PDFs and Office formats have recognisable magic bytes; plain text/CSV do not.
+    // Only reject when file-type detects a type that conflicts with the declared MIME.
+    if (detected && !(ALLOWED_DOCUMENT_TYPES as readonly string[]).includes(detected.mime)) {
+      throw new BadRequestException(
+        `File content does not match an allowed document type. ` +
+        `Detected: ${detected.mime}. Accepted: ${ALLOWED_DOCUMENT_TYPES.join(', ')}`,
+      );
+    }
+
+    // 3. Atomically reserve storage before any S3 PUT (TOCTOU-safe — see
+    //    reserveStorage). Closing this gap here mirrors the fix in uploadImage.
+    await reserveStorage(this.companyRepository, companyId, file.size);
 
     const client = this.getClient();
     const bucket = this.getBucket();
@@ -386,16 +403,13 @@ export class MediaService {
         }),
       );
     } catch (err) {
+      // Release the reservation — no bytes actually landed in storage.
+      await this.decrementStorage(companyId, file.size).catch((e) => {
+        this.logger.error(`Failed to release storage reservation for company ${companyId}: ${e instanceof Error ? e.message : String(e)}`);
+      });
       const msg = err instanceof Error ? err.message : String(err);
       throw new InternalServerErrorException(`Document upload failed: ${msg}`);
     }
-
-    this.incrementStorage(companyId, file.size).catch((err) => {
-      this.logger.error(
-        `Failed to increment storage counter for document upload, company ${companyId}: ` +
-        (err instanceof Error ? err.message : String(err)),
-      );
-    });
 
     return { url: this.buildFileUrl(key), s3Key: key, fileSize: file.size };
   }

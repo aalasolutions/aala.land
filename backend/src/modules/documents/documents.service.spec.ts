@@ -7,11 +7,13 @@ import {
   DocumentCategory,
   DocumentAccessLevel,
 } from '../properties/entities/property-document.entity';
+import { MediaService } from '../properties/media.service';
 import { Role } from '@shared/enums/roles.enum';
 
 describe('DocumentsService', () => {
   let service: DocumentsService;
   let repo: any;
+  let mockMediaService: jest.Mocked<Pick<MediaService, 'uploadDocumentToStorage' | 'deleteDocumentFromStorage'>>;
 
   const companyId = 'company-uuid-1';
   const userId = 'user-uuid-1';
@@ -21,6 +23,8 @@ describe('DocumentsService', () => {
     companyId,
     name: 'Lease Agreement.pdf',
     url: 'https://s3.example.com/docs/lease.pdf',
+    s3Key: 'companies/company-uuid-1/documents/123-lease.pdf',
+    fileSize: 51200,
     fileType: 'application/pdf',
     category: DocumentCategory.LEASE,
     accessLevel: DocumentAccessLevel.COMPANY,
@@ -32,6 +36,11 @@ describe('DocumentsService', () => {
   };
 
   beforeEach(async () => {
+    mockMediaService = {
+      uploadDocumentToStorage: jest.fn(),
+      deleteDocumentFromStorage: jest.fn(),
+    };
+
     const mockQueryBuilder = {
       where: jest.fn().mockReturnThis(),
       andWhere: jest.fn().mockReturnThis(),
@@ -55,6 +64,10 @@ describe('DocumentsService', () => {
             createQueryBuilder: jest.fn().mockReturnValue(mockQueryBuilder),
           },
         },
+        {
+          provide: MediaService,
+          useValue: mockMediaService,
+        },
       ],
     }).compile();
 
@@ -73,9 +86,7 @@ describe('DocumentsService', () => {
         s3Key:    'companies/c1/documents/123-doc.pdf',
         fileSize: 51200,
       };
-      const mockMediaService = {
-        uploadDocumentToStorage: jest.fn().mockResolvedValue(mockUploadResult),
-      } as unknown as any;
+      mockMediaService.uploadDocumentToStorage.mockResolvedValue(mockUploadResult);
 
       repo.create.mockReturnValue(mockDoc);
       repo.save.mockResolvedValue(mockDoc);
@@ -93,7 +104,6 @@ describe('DocumentsService', () => {
         userId,
         mockFile,
         dto as any,
-        mockMediaService,
       );
 
       expect(mockMediaService.uploadDocumentToStorage).toHaveBeenCalledWith(
@@ -172,12 +182,30 @@ describe('DocumentsService', () => {
   });
 
   describe('remove', () => {
-    it('removes the document', async () => {
+    it('calls deleteDocumentFromStorage when s3Key is present, then removes record', async () => {
+      mockMediaService.deleteDocumentFromStorage.mockResolvedValue(undefined);
       repo.remove.mockResolvedValue(mockDoc);
 
       await service.remove('doc-uuid-1', companyId, Role.COMPANY_ADMIN);
 
+      expect(mockMediaService.deleteDocumentFromStorage).toHaveBeenCalledWith(
+        mockDoc.s3Key,
+        companyId,
+        mockDoc.fileSize,
+      );
       expect(repo.remove).toHaveBeenCalledWith(mockDoc);
+    });
+
+    it('skips storage cleanup when s3Key is absent', async () => {
+      const docWithoutKey = { ...mockDoc, s3Key: null };
+      const qb = repo.createQueryBuilder();
+      qb.getOne.mockResolvedValue(docWithoutKey);
+      repo.remove.mockResolvedValue(docWithoutKey);
+
+      await service.remove('doc-uuid-1', companyId, Role.COMPANY_ADMIN);
+
+      expect(mockMediaService.deleteDocumentFromStorage).not.toHaveBeenCalled();
+      expect(repo.remove).toHaveBeenCalledWith(docWithoutKey);
     });
   });
 

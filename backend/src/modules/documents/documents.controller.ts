@@ -16,7 +16,7 @@ import { Role } from '@shared/enums/roles.enum';
 import { AuthenticatedRequest } from '@shared/interfaces/authenticated-request.interface';
 import { requireCompanyId } from '@shared/utils/auth.util';
 import { DocumentCategory } from '../properties/entities/property-document.entity';
-import { MediaService } from '../properties/media.service';
+import { ALLOWED_DOCUMENT_TYPES } from '../properties/media.service';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import { UploadDocumentDto } from './dto/upload-document.dto';
@@ -28,7 +28,6 @@ import { UploadDocumentDto } from './dto/upload-document.dto';
 export class DocumentsController {
   constructor(
     private readonly documentsService: DocumentsService,
-    private readonly mediaService: MediaService,
   ) {}
 
   @Post('upload')
@@ -63,7 +62,18 @@ export class DocumentsController {
     FileInterceptor('file', {
       storage: memoryStorage(),
       limits: { fileSize: 50 * 1024 * 1024 }, // 50 MB
-      fileFilter: (_req, _file, cb) => cb(null, true), // All MIME types accepted.
+      fileFilter: (_req, file, cb) => {
+        if (!(ALLOWED_DOCUMENT_TYPES as readonly string[]).includes(file.mimetype)) {
+          return cb(
+            new BadRequestException(
+              `File type "${file.mimetype}" is not allowed. ` +
+              `Accepted: ${ALLOWED_DOCUMENT_TYPES.join(', ')}`,
+            ),
+            false,
+          );
+        }
+        cb(null, true);
+      },
     }),
   )
   async uploadDocument(
@@ -82,7 +92,6 @@ export class DocumentsController {
       req.user.userId,
       file,
       dto,
-      this.mediaService,
     );
   }
 
@@ -135,7 +144,6 @@ export class DocumentsController {
       id,
       requireCompanyId(req.user),
       req.user.role,
-      this.mediaService,
     );
   }
 }

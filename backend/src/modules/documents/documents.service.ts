@@ -12,6 +12,7 @@ export class DocumentsService {
   constructor(
     @InjectRepository(PropertyDocument)
     private readonly documentRepository: Repository<PropertyDocument>,
+    private readonly mediaService: MediaService,
   ) {}
 
   async uploadAndCreate(
@@ -19,9 +20,8 @@ export class DocumentsService {
     userId: string,
     file: Express.Multer.File,
     dto: UploadDocumentDto,
-    mediaService: MediaService,
   ): Promise<PropertyDocument> {
-    const { url, s3Key, fileSize } = await mediaService.uploadDocumentToStorage(
+    const { url, s3Key, fileSize } = await this.mediaService.uploadDocumentToStorage(
       companyId,
       file,
     );
@@ -121,15 +121,11 @@ export class DocumentsService {
     id: string,
     companyId: string,
     userRole: string,
-    mediaService?: MediaService,
   ): Promise<void> {
     const doc = await this.findOne(id, companyId, userRole);
 
-    // Delete from B2 only when the document was uploaded via the server-side flow
-    // (has s3Key). Pre-refactor documents without s3Key skip S3 cleanup; DB record
-    // is still removed.
-    if (doc.s3Key && mediaService) {
-      await mediaService.deleteDocumentFromStorage(doc.s3Key, companyId, doc.fileSize);
+    if (doc.s3Key) {
+      await this.mediaService.deleteDocumentFromStorage(doc.s3Key, companyId, doc.fileSize);
     }
 
     await this.documentRepository.remove(doc);

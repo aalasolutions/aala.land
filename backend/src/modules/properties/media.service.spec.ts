@@ -1,0 +1,312 @@
+import { Test, TestingModule } from '@nestjs/testing';
+import { getRepositoryToken } from '@nestjs/typeorm';
+import { BadRequestException, InternalServerErrorException, NotFoundException } from '@nestjs/common';
+import { MediaService } from './media.service';
+import { PropertyMedia } from './entities/property-media.entity';
+import { Unit } from './entities/unit.entity';
+import { Asset } from './entities/asset.entity';
+import { Company, SubscriptionTier, FREE_STORAGE_BYTES } from '../companies/entities/company.entity';
+import { fileTypeFromBuffer } from 'file-type';
+
+// Mock sharp so tests run without native binaries
+jest.mock('sharp', () => {
+  const sharpChain = {
+    metadata: jest.fn().mockResolvedValue({ width: 800, height: 600 }),
+    rotate:   jest.fn().mockReturnThis(),
+    resize:   jest.fn().mockReturnThis(),
+    jpeg:     jest.fn().mockReturnThis(),
+    toBuffer: jest.fn().mockResolvedValue(Buffer.from('processed')),
+  };
+  const sharpFn: any = jest.fn(() => sharpChain);
+  sharpFn.__chain = sharpChain;
+  return sharpFn;
+});
+
+// Mock @aws-sdk/client-s3
+const mockSend = jest.fn().mockResolvedValue({});
+jest.mock('@aws-sdk/client-s3', () => ({
+  S3Client:            jest.fn(() => ({ send: mockSend })),
+  PutObjectCommand:    jest.fn(),
+  DeleteObjectCommand: jest.fn(),
+}));
+
+const makeFile = (overrides: Partial<Express.Multer.File> = {}): Express.Multer.File => ({
+  buffer:       Buffer.from('fake-image-data'),
+  mimetype:     'image/jpeg',
+  originalname: 'photo.jpg',
+  size:         1024,
+  fieldname:    'file',
+  encoding:     '7bit',
+  stream:       null as any,
+  destination:  '',
+  filename:     '',
+  path:         '',
+  ...overrides,
+});
+
+describe('MediaService', () => {
+  let service: MediaService;
+  let companyRepo: any;
+  let mediaRepo: any;
+  let unitRepo: any;
+  let mockQb: any;
+
+  const companyId = 'company-uuid-1';
+  const unitId    = 'unit-uuid-1';
+
+  const mockCompany: Partial<Company> = {
+    id:               companyId,
+    storageUsedBytes: 0 as any,
+    purchasedSeats:   1,
+    subscriptionTier: SubscriptionTier.FREE,
+  };
+
+  beforeEach(async () => {
+    process.env.AWS_ACCESS_KEY_ID     = 'test-key';
+    process.env.AWS_SECRET_ACCESS_KEY = 'test-secret';
+    process.env.AWS_S3_BUCKET         = 'test-bucket';
+    process.env.S3_ENDPOINT           = 'https://s3.example.com';
+
+    mockSend.mockResolvedValue({});
+
+    mockQb = {
+      update:        jest.fn().mockReturnThis(),
+      set:           jest.fn().mockReturnThis(),
+      setParameter:  jest.fn().mockReturnThis(),
+      setParameters: jest.fn().mockReturnThis(),
+      where:         jest.fn().mockReturnThis(),
+      andWhere:      jest.fn().mockReturnThis(),
+      execute:       jest.fn().mockResolvedValue({ affected: 1 }),
+    };
+
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        MediaService,
+        {
+          provide: getRepositoryToken(PropertyMedia),
+          useValue: {
+            create:  jest.fn().mockReturnValue({ id: 'media-1' }),
+            save:    jest.fn().mockResolvedValue({ id: 'media-1' }),
+            find:    jest.fn().mockResolvedValue([]),
+            findOne: jest.fn().mockResolvedValue(null),
+            update:  jest.fn().mockResolvedValue({}),
+            remove:  jest.fn().mockResolvedValue({}),
+          },
+        },
+        {
+          provide: getRepositoryToken(Company),
+          useValue: {
+            findOne:            jest.fn().mockResolvedValue(mockCompany),
+            createQueryBuilder: jest.fn().mockReturnValue(mockQb),
+          },
+        },
+        {
+          provide: getRepositoryToken(Unit),
+          useValue: {
+            findOne: jest.fn().mockResolvedValue({ id: unitId, companyId }),
+          },
+        },
+        {
+          provide: getRepositoryToken(Asset),
+          useValue: { findOne: jest.fn().mockResolvedValue(null) },
+        },
+      ],
+    }).compile();
+
+    service     = module.get<MediaService>(MediaService);
+    companyRepo = module.get(getRepositoryToken(Company));
+    mediaRepo   = module.get(getRepositoryToken(PropertyMedia));
+    unitRepo    = module.get(getRepositoryToken(Unit));
+
+    // Default: file-type confirms JPEG
+    (fileTypeFromBuffer as jest.Mock).mockResolvedValue({ mime: 'image/jpeg', ext: 'jpg' });
+  });
+
+  afterEach(() => jest.clearAllMocks());
+
+  describe('uploadImage — validation', () => {
+    it('rejects when neither unitId nor assetId is provided', async () => {
+      await expect(
+        service.uploadImage(companyId, makeFile(), {}),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('rejects a disallowed MIME type (client header)', async () => {
+      await expect(
+        service.uploadImage(companyId, makeFile({ mimetype: 'application/pdf' }), { unitId }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('rejects when file size exceeds 5 MB', async () => {
+      await expect(
+        service.uploadImage(companyId, makeFile({ size: 6 * 1024 * 1024 }), { unitId }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('rejects when magic bytes do not match an allowed type', async () => {
+      (fileTypeFromBuffer as jest.Mock).mockResolvedValue({ mime: 'application/zip', ext: 'zip' });
+
+      await expect(
+        service.uploadImage(companyId, makeFile(), { unitId }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('rejects when dimensions exceed the decompression-bomb limit', async () => {
+      const sharp = require('sharp');
+      sharp.__chain.metadata.mockResolvedValueOnce({ width: 15_000, height: 15_000 });
+
+      await expect(
+        service.uploadImage(companyId, makeFile(), { unitId }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('throws 507 when storage quota is exceeded', async () => {
+      companyRepo.findOne.mockResolvedValue({
+        ...mockCompany,
+        storageUsedBytes: FREE_STORAGE_BYTES,
+        subscriptionTier: SubscriptionTier.FREE,
+      });
+      // Simulates the real atomic UPDATE's WHERE clause failing to match any row
+      // because storage_used_bytes + incomingBytes > quotaBytes.
+      mockQb.execute.mockResolvedValueOnce({ affected: 0 });
+
+      await expect(
+        service.uploadImage(companyId, makeFile(), { unitId }),
+      ).rejects.toMatchObject({ status: 507 });
+    });
+
+    it('does not reserve storage when the quota check is rejected', async () => {
+      companyRepo.findOne.mockResolvedValue({
+        ...mockCompany,
+        storageUsedBytes: FREE_STORAGE_BYTES,
+        subscriptionTier: SubscriptionTier.FREE,
+      });
+      mockQb.execute.mockResolvedValueOnce({ affected: 0 });
+
+      await expect(
+        service.uploadImage(companyId, makeFile(), { unitId }),
+      ).rejects.toMatchObject({ status: 507 });
+
+      // Only the failed reservation attempt touched the counter — no S3 PUT happened.
+      expect(mockSend).not.toHaveBeenCalled();
+    });
+
+    it('throws NotFoundException when unit does not belong to company', async () => {
+      unitRepo.findOne.mockResolvedValue(null);
+
+      await expect(
+        service.uploadImage(companyId, makeFile(), { unitId }),
+      ).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('uploadImage — S3 rollback on thumbnail failure', () => {
+    it('deletes the original object when thumbnail PUT fails', async () => {
+      mockSend
+        .mockResolvedValueOnce({})              // original PUT succeeds
+        .mockRejectedValueOnce(new Error('S3 timeout')) // thumbnail PUT fails
+        .mockResolvedValueOnce({});             // rollback DELETE
+
+      await expect(
+        service.uploadImage(companyId, makeFile(), { unitId }),
+      ).rejects.toThrow(InternalServerErrorException);
+
+      // send() was called 3 times: original PUT, thumbnail PUT (fails), rollback DELETE
+      expect(mockSend).toHaveBeenCalledTimes(3);
+    });
+
+    it('releases the storage reservation when the thumbnail PUT fails', async () => {
+      const releaseSpy = jest.spyOn(service, 'decrementStorage').mockResolvedValue(undefined);
+      mockSend
+        .mockResolvedValueOnce({})
+        .mockRejectedValueOnce(new Error('S3 timeout'))
+        .mockResolvedValueOnce({});
+
+      await expect(
+        service.uploadImage(companyId, makeFile(), { unitId }),
+      ).rejects.toThrow(InternalServerErrorException);
+
+      expect(releaseSpy).toHaveBeenCalledWith(companyId, expect.any(Number));
+    });
+  });
+
+  describe('uploadImage — stored content type', () => {
+    it('saves contentType as image/jpeg even when input MIME is image/png', async () => {
+      (fileTypeFromBuffer as jest.Mock).mockResolvedValue({ mime: 'image/png', ext: 'png' });
+
+      await service.uploadImage(
+        companyId,
+        makeFile({ mimetype: 'image/png', originalname: 'photo.png' }),
+        { unitId },
+      );
+
+      expect(mediaRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({ contentType: 'image/jpeg' }),
+      );
+    });
+  });
+
+  describe('uploadDocumentToStorage — validation', () => {
+    it('rejects a disallowed MIME type', async () => {
+      await expect(
+        service.uploadDocumentToStorage(companyId, makeFile({ mimetype: 'text/html' })),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('rejects when magic bytes conflict with the declared MIME type', async () => {
+      (fileTypeFromBuffer as jest.Mock).mockResolvedValue({ mime: 'application/zip', ext: 'zip' });
+
+      await expect(
+        service.uploadDocumentToStorage(
+          companyId,
+          makeFile({ mimetype: 'application/pdf' }),
+        ),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('accepts a PDF with matching magic bytes and returns upload result', async () => {
+      (fileTypeFromBuffer as jest.Mock).mockResolvedValue({ mime: 'application/pdf', ext: 'pdf' });
+
+      const result = await service.uploadDocumentToStorage(
+        companyId,
+        makeFile({ mimetype: 'application/pdf', originalname: 'contract.pdf' }),
+      );
+
+      expect(result).toHaveProperty('s3Key');
+      expect(result).toHaveProperty('url');
+      expect(result).toHaveProperty('fileSize', 1024);
+    });
+
+    it('throws 507 when storage quota is exceeded', async () => {
+      companyRepo.findOne.mockResolvedValue({
+        ...mockCompany,
+        storageUsedBytes: FREE_STORAGE_BYTES,
+        subscriptionTier: SubscriptionTier.FREE,
+      });
+      mockQb.execute.mockResolvedValueOnce({ affected: 0 });
+
+      await expect(
+        service.uploadDocumentToStorage(
+          companyId,
+          makeFile({ mimetype: 'application/pdf', originalname: 'contract.pdf' }),
+        ),
+      ).rejects.toMatchObject({ status: 507 });
+
+      expect(mockSend).not.toHaveBeenCalled();
+    });
+
+    it('releases the storage reservation when the S3 PUT fails', async () => {
+      const releaseSpy = jest.spyOn(service, 'decrementStorage').mockResolvedValue(undefined);
+      mockSend.mockRejectedValueOnce(new Error('S3 timeout'));
+
+      await expect(
+        service.uploadDocumentToStorage(
+          companyId,
+          makeFile({ mimetype: 'application/pdf', originalname: 'contract.pdf' }),
+        ),
+      ).rejects.toThrow(InternalServerErrorException);
+
+      expect(releaseSpy).toHaveBeenCalledWith(companyId, 1024);
+    });
+  });
+});

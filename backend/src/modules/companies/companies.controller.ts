@@ -86,8 +86,7 @@ export class CompaniesController {
         @Param('id', ParseUUIDPipe) id: string,
         @Request() req: AuthenticatedRequest,
     ): Promise<StorageUsageResponse> {
-        const { role, companyId } = req.user;
-        if (role !== Role.SUPER_ADMIN && companyId !== id) {
+        if (req.user.role !== Role.SUPER_ADMIN && requireCompanyId(req.user) !== id) {
             throw new ForbiddenException('Access denied');
         }
         const company = await this.companiesService.findOne(id);
