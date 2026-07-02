@@ -33,9 +33,11 @@
         <button type="button" class="btn btn-secondary" data-test-edit-owner {{on "click" (fn this.openEdit owner)}}>
           <Ph @icon="pencil-simple" /> Edit
         </button>
-        <button type="button" class="btn btn-secondary text-danger" data-test-delete-owner {{on "click" (fn this.openDelete owner)}}>
-          <Ph @icon="trash" /> Remove
-        </button>
+        {{#if this.canDeleteOwners}}
+          <button type="button" class="btn btn-secondary text-danger" data-test-delete-owner {{on "click" (fn this.openDelete owner)}}>
+            <Ph @icon="trash" /> Remove
+          </button>
+        {{/if}}
       </div>
     </div>
   {{else}}

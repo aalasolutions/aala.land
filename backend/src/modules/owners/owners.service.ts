@@ -1,6 +1,6 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Not, Raw, Repository } from 'typeorm';
 import { Owner } from './entities/owner.entity';
 import { CreateOwnerDto } from './dto/create-owner.dto';
 import { UpdateOwnerDto } from './dto/update-owner.dto';
@@ -14,7 +14,11 @@ export class OwnersService {
   ) {}
 
   async create(dto: CreateOwnerDto, companyId: string): Promise<Owner> {
-    const owner = this.ownerRepository.create({ ...dto, companyId });
+    const ownerData = this.sanitizeOwnerInput(dto);
+
+    await this.ensureNoDuplicateOwner(companyId, ownerData);
+
+    const owner = this.ownerRepository.create({ ...ownerData, companyId });
     return this.ownerRepository.save(owner);
   }
 
@@ -41,12 +45,55 @@ export class OwnersService {
 
   async update(id: string, companyId: string, dto: UpdateOwnerDto): Promise<Owner> {
     const owner = await this.findOne(id, companyId);
-    Object.assign(owner, dto);
+    const ownerData = this.sanitizeOwnerInput(dto);
+
+    await this.ensureNoDuplicateOwner(companyId, ownerData, id);
+
+    Object.assign(owner, ownerData);
     return this.ownerRepository.save(owner);
   }
 
   async remove(id: string, companyId: string): Promise<void> {
     const owner = await this.findOne(id, companyId);
     await this.ownerRepository.remove(owner);
+  }
+
+  private sanitizeOwnerInput<T extends CreateOwnerDto | UpdateOwnerDto>(dto: T): T {
+    const email = dto.email?.trim().toLowerCase();
+    const phone = dto.phone?.trim();
+
+    return {
+      ...dto,
+      ...(dto.email !== undefined ? { email: email || undefined } : {}),
+      ...(dto.phone !== undefined ? { phone: phone || undefined } : {}),
+    };
+  }
+
+  private async ensureNoDuplicateOwner(companyId: string, dto: CreateOwnerDto | UpdateOwnerDto, excludeId?: string): Promise<void> {
+    if (dto.email) {
+      const duplicate = await this.ownerRepository.findOne({
+        where: {
+          companyId,
+          email: Raw((alias) => `LOWER(${alias}) = :email`, { email: dto.email }),
+          ...(excludeId ? { id: Not(excludeId) } : {}),
+        },
+      });
+      if (duplicate) {
+        throw new ConflictException('An owner with this email already exists.');
+      }
+    }
+
+    if (dto.phone) {
+      const duplicate = await this.ownerRepository.findOne({
+        where: {
+          companyId,
+          phone: dto.phone,
+          ...(excludeId ? { id: Not(excludeId) } : {}),
+        },
+      });
+      if (duplicate) {
+        throw new ConflictException('An owner with this phone already exists.');
+      }
+    }
   }
 }
