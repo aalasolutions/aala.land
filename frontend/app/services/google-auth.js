@@ -8,7 +8,6 @@ export default class GoogleAuthService extends Service {
   googleClientId = config.APP.GOOGLE_CLIENT_ID;
 
   get isConfigured() {
-    console.log('Google Client ID:', config.APP);
     return Boolean(this.googleClientId);
   }
 

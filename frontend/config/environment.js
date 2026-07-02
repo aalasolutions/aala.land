@@ -1,6 +1,6 @@
 'use strict';
 
-require('dotenv').config();
+require('dotenv').config({ quiet: true });
 
 module.exports = function (environment) {
   const ENV = {
@@ -44,9 +44,7 @@ module.exports = function (environment) {
 
   if (environment === 'production') {
     ENV.APP.API_BASE = process.env.API_BASE || '/v1';
-    if (!process.env.GOOGLE_CLIENT_ID) {
-      throw new Error('GOOGLE_CLIENT_ID is required for production builds');
-    }
+    ENV.APP.GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';
   }
 
   return ENV;

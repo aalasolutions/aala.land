@@ -61,7 +61,7 @@ export class AuthGoogleService {
     const existingUser = await this.usersService.findByEmailOrGoogleId(email, googleId);
 
     if (existingUser) {
-      throw new ConflictException('Email already registered');
+      throw new ConflictException('An account with this email or Google account already exists');
     }
 
     const trimmedCompanyName = companyName.trim();

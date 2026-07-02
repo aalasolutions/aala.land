@@ -117,11 +117,11 @@
       </button>
     </div>
 
-    <div class="divider">
-      <span class="text-muted font-sm">OR</span>
-    </div>
-
     {{#if this.googleAuth.isConfigured}}
+      <div class="divider">
+        <span class="text-muted font-sm">OR</span>
+      </div>
+
       <div class="google-signin-section {{unless this.isGoogleLoading 'auth-google-button'}}">
         {{#if this.isGoogleLoading}}
           <button type="button" class="btn btn--google btn--google--loading" disabled>

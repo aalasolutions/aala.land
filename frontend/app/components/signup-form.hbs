@@ -114,12 +114,11 @@
     {{/if}}
   </button>
 
-  <div class="divider">
-    <span class="text-muted font-sm">OR</span>
-  </div>
-
-
   {{#if this.googleAuth.isConfigured}}
+    <div class="divider">
+      <span class="text-muted font-sm">OR</span>
+    </div>
+
     {{#if this.canGoogleSignup}}
       <div class="google-signin-section {{unless this.isGoogleLoading 'auth-google-button'}}">
         {{#if this.isGoogleLoading}}
