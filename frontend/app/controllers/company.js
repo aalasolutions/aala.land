@@ -82,6 +82,8 @@ export default class CompanyController extends Controller {
 
   get seatLabel() {
     return this.storageUsage?.purchasedSeats === 1 ? 'seat' : 'seats';
+  }
+
   get isCompanyAdmin() {
     return this.auth.currentUser?.role === 'company_admin';
   }
