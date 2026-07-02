@@ -59,13 +59,21 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
     container_name: aala-land-frontend
     ports:
-      - "${FRONTEND_PORT:-4200}:80"
+      - "${FRONTEND_PORT:-4200}:8080"
     depends_on:
       backend:
         condition: service_healthy
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
 
 volumes:
   postgres_data:
