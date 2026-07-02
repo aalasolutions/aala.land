@@ -55,6 +55,13 @@
         </div>
         {{/if}}
 
+        {{!-- Documents (direct link) --}}
+        {{#if this.sidebarGroups.documents}}
+        <LinkTo @route="documents" class="sidebar-link" data-test-nav-documents>
+          <Ph @icon="files" /> <span class="sidebar-label">Documents</span>
+        </LinkTo>
+        {{/if}}
+
         {{!-- Finance Group --}}
         {{#if this.sidebarGroups.finance}}
         <div class="sidebar-group {{if (or (eq this.expandedGroup 'finance') (eq this.activeGroup 'finance')) 'expanded'}}">

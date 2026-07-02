@@ -9,12 +9,6 @@ export class UpdateDocumentDto {
   @MaxLength(255)
   name?: string;
 
-  @ApiProperty({ required: false, description: 'New URL creates a new version of the document' })
-  @IsOptional()
-  @IsString()
-  @MaxLength(255)
-  url?: string;
-
   @ApiProperty({ required: false })
   @IsOptional()
   @IsString()

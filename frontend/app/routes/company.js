@@ -1,5 +1,6 @@
 import AuthenticatedRoute from './authenticated';
 import { service } from '@ember/service';
+import { safeJson } from '../utils/safe-json';
 
 export default class CompanyRoute extends AuthenticatedRoute {
   @service auth;
@@ -13,9 +14,10 @@ export default class CompanyRoute extends AuthenticatedRoute {
 
     const isCompanyAdmin = this.auth.currentUser?.role === 'company_admin';
 
-    const [companyResult, regionsResponse, aiSettings] = await Promise.all([
+    const [companyResult, regionsResponse, storageUsage, aiSettings] = await Promise.all([
       this.auth.fetchJson(`/companies/${companyId}`),
       fetch(`${this.auth.apiBase}/companies/regions`).then((r) => r.json()).catch(() => ({ data: [] })),
+      safeJson(this.auth, `/companies/${companyId}/storage-usage`, 'COMPANY'),
       isCompanyAdmin
         ? Promise.all([
             this.whatsapp.getSettings().catch(() => null),
@@ -41,7 +43,7 @@ export default class CompanyRoute extends AuthenticatedRoute {
       };
     }
 
-    return { company, regions, groupedRegions, ai };
+    return { company, regions, groupedRegions, storageUsage, ai };
   }
 
   setupController(controller, model) {
@@ -52,6 +54,7 @@ export default class CompanyRoute extends AuthenticatedRoute {
       controller.formActiveRegions = c.activeRegions || [];
       controller.formDefaultRegionCode = c.defaultRegionCode || null;
     }
+    controller.storageUsage = model.storageUsage?.data ?? null;
     controller.activeTab = 'general';
     controller.aiPrompt = model?.ai?.aiPrompt ?? '';
     controller.weeklyLimit = model?.ai?.weeklyLimit ?? null;

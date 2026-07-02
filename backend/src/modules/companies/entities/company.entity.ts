@@ -12,6 +12,9 @@ export const TIER_LIMITS: Record<SubscriptionTier, { maxUsers: number; maxCountr
     [SubscriptionTier.PRO]:     { maxUsers: 999, maxCountries: 999, maxProperties: 999, aiWeeklyMessages: Infinity },
 };
 
+export const FREE_STORAGE_BYTES  = 2 * 1024 * 1024 * 1024;  // 2 GB flat (FREE tier)
+export const BYTES_PER_SEAT      = 5 * 1024 * 1024 * 1024;  // 5 GB per purchased seat (paid tiers)
+
 @Entity('companies')
 export class Company {
     @PrimaryGeneratedColumn('uuid')
@@ -51,6 +54,20 @@ export class Company {
 
     @Column({ name: 'default_region_code', type: 'varchar', length: 50, nullable: true })
     defaultRegionCode: string | null;
+
+    @Column({
+      name: 'storage_used_bytes',
+      type: 'bigint',
+      default: 0,
+      transformer: {
+        to: (v: number) => v,
+        from: (v: string | null) => Number(v ?? '0'),
+      },
+    })
+    storageUsedBytes: number;
+
+    @Column({ name: 'purchased_seats', type: 'integer', default: 1 })
+    purchasedSeats: number;
 
     @CreateDateColumn({ name: 'created_at' })
     createdAt: Date;

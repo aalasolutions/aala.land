@@ -19,6 +19,7 @@ export default class CompanyController extends Controller {
   @tracked isSaving = false;
   @tracked errorMsg = '';
   @tracked expandedCountries = [];
+  @tracked storageUsage = null;
 
   @tracked activeTab = 'general';
   @tracked aiPrompt = '';
@@ -73,6 +74,14 @@ export default class CompanyController extends Controller {
 
   get isAdmin() {
     return isAdminRole(this.auth.currentUser?.role);
+  }
+
+  get isStorageWarning() {
+    return (this.storageUsage?.percentUsed ?? 0) >= 90;
+  }
+
+  get seatLabel() {
+    return this.storageUsage?.purchasedSeats === 1 ? 'seat' : 'seats';
   }
 
   get isCompanyAdmin() {

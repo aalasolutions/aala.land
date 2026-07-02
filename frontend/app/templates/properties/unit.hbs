@@ -23,11 +23,28 @@
       <div class="glass-panel p-6 flex col gap-4">
         <div class="flex between x-center mb-2">
           <h4 class="font-sm font-bold uppercase text-muted">Photos</h4>
-          <label class="btn btn-primary btn-sm {{if this.isUploading 'disabled'}}" data-test-upload-photo-btn>
-            <Ph @icon="camera-plus" /> {{if this.isUploading this.uploadStatus "Add Photo"}}
-            <input type="file" class="sr-only" accept="image/jpeg,image/png,image/webp,image/gif" {{on "change" this.uploadPhoto}} />
+          <label
+            class="btn btn-primary btn-sm {{if this.isUploading 'disabled'}}"
+            data-test-upload-photo-btn
+          >
+            <Ph @icon="camera-plus" />
+            {{if this.isUploading this.uploadStatus "Add Photo"}}
+            <input
+              type="file"
+              class="sr-only"
+              accept="image/jpeg,image/png,image/webp"
+              {{on "change" this.uploadPhoto}}
+            />
           </label>
         </div>
+
+        {{#if this.isUploading}}
+          <div class="upload-progress" data-test-upload-progress>
+            <div class="upload-progress-bar">
+              <div class="upload-progress-bar__track"></div>
+            </div>
+          </div>
+        {{/if}}
 
         {{#if @model.media.length}}
           {{#let (object-at @model.media 0) as |primary|}}
@@ -37,20 +54,43 @@
           {{/let}}
           <div class="flex gap-2 wrap">
             {{#each @model.media as |media|}}
-              <div class="unit-thumb {{if media.isPrimary 'unit-thumb-primary'}}" data-test-photo-thumb>
+              <div
+                class="unit-thumb {{if media.isPrimary 'unit-thumb-primary'}}"
+                data-test-photo-thumb
+              >
                 <img src={{or media.thumbnailUrl media.url}} alt={{media.fileName}} />
                 <div class="unit-thumb-actions">
                   {{#unless media.isPrimary}}
-                    <button type="button" class="btn-icon" title="Set as primary" {{on "click" (fn this.setPrimaryPhoto media)}}>
+                    <button
+                      type="button"
+                      class="btn-icon"
+                      title="Set as primary"
+                      {{on "click" (fn this.setPrimaryPhoto media)}}
+                    >
                       <Ph @icon="star" />
                     </button>
                   {{/unless}}
-                  <button type="button" class="btn-icon btn-icon-danger" title="Delete" {{on "click" (fn this.openDeletePhoto media)}}>
+                  <button
+                    type="button"
+                    class="btn-icon btn-icon-danger"
+                    title="Delete"
+                    {{on "click" (fn this.openDeletePhoto media)}}
+                  >
                     <Ph @icon="trash" />
                   </button>
                 </div>
               </div>
             {{/each}}
+
+            {{#if this.previewUrl}}
+              <div class="unit-thumb upload-preview-thumb" data-test-upload-preview>
+                <img src={{this.previewUrl}} alt="Uploading preview" />
+              </div>
+            {{/if}}
+          </div>
+        {{else if this.previewUrl}}
+          <div class="unit-main-photo upload-preview-active" data-test-upload-preview>
+            <img src={{this.previewUrl}} alt="Uploading preview" />
           </div>
         {{else}}
           <div class="unit-photo-placeholder" data-test-photo-placeholder>
