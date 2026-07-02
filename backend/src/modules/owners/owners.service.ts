@@ -50,7 +50,7 @@ export class OwnersService {
 
   async remove(id: string, companyId: string): Promise<void> {
     const owner = await this.findOne(id, companyId);
-    const linkedUnitsCount = await this.unitRepository.count({ where: { ownerId: id } });
+    const linkedUnitsCount = await this.unitRepository.count({ where: { ownerId: id, companyId } });
     if (linkedUnitsCount > 0) {
       throw new BadRequestException(
         `Cannot delete owner — ${linkedUnitsCount} unit(s) are still linked. Unlink them first.`,
