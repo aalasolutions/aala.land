@@ -63,8 +63,7 @@ export default class ProfileController extends Controller {
     }
 
     try {
-      const idToken = await this.googleAuth.renderButton(element);
-      await this.linkGoogleAccount(idToken);
+      await this.googleAuth.renderButton(element, (idToken) => this.linkGoogleAccount(idToken));
     } catch (err) {
       if (!this.errorMsg) {
         this.errorMsg = err.message || 'Failed to load Google button';

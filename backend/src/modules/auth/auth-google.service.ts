@@ -72,6 +72,8 @@ export class AuthGoogleService {
     const slug = trimmedCompanyName
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '')
+      .slice(0, 100)
       .replace(/^-|-$/g, '');
 
     if (!slug) {

@@ -110,8 +110,7 @@ export default class SignupFormComponent extends Component {
     }
 
     try {
-      const idToken = await this.googleAuth.renderButton(element);
-      await this.signupWithGoogle(idToken);
+      await this.googleAuth.renderButton(element, (idToken) => this.signupWithGoogle(idToken));
     } catch (err) {
       if (!this.errorMessage) {
         this.errorMessage = err.message || 'Failed to load Google Sign-in button';

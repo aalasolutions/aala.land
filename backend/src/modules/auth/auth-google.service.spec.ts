@@ -101,6 +101,17 @@ describe('AuthGoogleService', () => {
     });
   });
 
+  it('truncates generated company slugs to the database limit', async () => {
+    usersService.findByEmailOrGoogleId.mockResolvedValue(null);
+    companiesService.createGoogleCompanyAdmin.mockResolvedValue(user as any);
+
+    await service.googleSignup('id-token', `${'Long Company Name '.repeat(10)}Dubai`, 'dubai');
+
+    const createArg = companiesService.createGoogleCompanyAdmin.mock.calls[0][0];
+    expect(createArg.slug).toHaveLength(100);
+    expect(createArg.slug).not.toMatch(/^-|-$/);
+  });
+
   it('rejects linking when Google email does not match the user email', async () => {
     usersService.findByIdForAuth.mockResolvedValue({
       ...user,

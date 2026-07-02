@@ -67,32 +67,24 @@ export default class GoogleAuthService extends Service {
     return this.initializationPromise;
   }
 
-  async renderButton(element) {
+  async renderButton(element, onCredential) {
     await this.initialize();
 
-    return new Promise((resolve, reject) => {
-      try {
-        window.google.accounts.id.initialize({
-          client_id: this.googleClientId,
-          callback: (response) => {
-            if (response.credential) {
-              resolve(response.credential);
-            } else {
-              reject(new Error('No credential received from Google'));
-            }
-          },
-        });
+    window.google.accounts.id.initialize({
+      client_id: this.googleClientId,
+      callback: (response) => {
+        if (response.credential) {
+          onCredential(response.credential);
+        }
+      },
+    });
 
-        window.google.accounts.id.renderButton(element, {
-          theme: 'outline',
-          size: 'large',
-          text: 'continue_with',
-          shape: 'rectangular',
-          width: element.offsetWidth || 320,
-        });
-      } catch (error) {
-        reject(error);
-      }
+    window.google.accounts.id.renderButton(element, {
+      theme: 'outline',
+      size: 'large',
+      text: 'continue_with',
+      shape: 'rectangular',
+      width: element.offsetWidth || 320,
     });
   }
 
