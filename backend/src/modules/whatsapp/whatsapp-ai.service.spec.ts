@@ -2,9 +2,31 @@ import { WhatsappAiService } from './whatsapp-ai.service';
 import { DIRECT_CONTACT_RESPONSE } from './whatsapp-ai-filter';
 import { SubscriptionTier } from '../companies/entities/company.entity';
 
+function sseStream(chunks: object[]): ReadableStream<Uint8Array> {
+  const encoder = new TextEncoder();
+  const lines = chunks.map(c => `data: ${JSON.stringify(c)}\n\n`).join('') + 'data: [DONE]\n\n';
+  return new ReadableStream({ start(ctrl) { ctrl.enqueue(encoder.encode(lines)); ctrl.close(); } });
+}
+
+function mockTextResponse(content: string) {
+  return {
+    ok: true,
+    body: sseStream([{ choices: [{ delta: { role: 'assistant', content } }] }]),
+  };
+}
+
+function mockToolCallResponse(id: string, name: string, args = '{}') {
+  return {
+    ok: true,
+    body: sseStream([
+      { choices: [{ delta: { role: 'assistant', content: null, tool_calls: [{ index: 0, id, type: 'function', function: { name, arguments: '' } }] } }] },
+      { choices: [{ delta: { tool_calls: [{ index: 0, function: { arguments: args } }] } }] },
+    ]),
+  };
+}
+
 const makeMockRepo = (customPrompt: string | null = null, tier: SubscriptionTier = SubscriptionTier.FREE) => ({
-  getCompanyAndListings: jest.fn().mockResolvedValue({ company: { subscriptionTier: tier }, listings: [] }),
-  getAvailableUnits: jest.fn().mockResolvedValue([]),
+  getCompanyAndUnits: jest.fn().mockResolvedValue({ company: { subscriptionTier: tier }, units: [] }),
   getCompanyPrompt: jest.fn().mockResolvedValue(customPrompt),
   persistAiEnabled: jest.fn().mockResolvedValue(undefined),
   loadAiEnabled: jest.fn().mockResolvedValue(null),
@@ -12,11 +34,13 @@ const makeMockRepo = (customPrompt: string | null = null, tier: SubscriptionTier
   clearPromptCache: jest.fn(),
   checkLimitAndIncrement: jest.fn().mockResolvedValue({ allowed: true }),
   getWeeklyUsage: jest.fn().mockResolvedValue({ count: 0, windowStart: null }),
+  searchProperties: jest.fn().mockResolvedValue([]),
 });
 
 const makeMockBuilder = (fullPrompt = 'default system prompt for AALA.LAND') => ({
-  buildContextBlock: jest.fn().mockReturnValue(''),
+  buildContextBlock: jest.fn().mockReturnValue({ block: '', fallbackCurrency: '' }),
   buildFullPrompt: jest.fn().mockReturnValue(fullPrompt),
+  formatToolResult: jest.fn().mockReturnValue('Formatted listings'),
 });
 
 const baseEvt = (overrides: Partial<{ chatId: string; body: string; fromMe: boolean; isGroup: boolean; timestamp: number }> = {}) => ({
@@ -122,10 +146,7 @@ describe('WhatsappAiService', () => {
       const mockRepo = makeMockRepo(null);
       service = new WhatsappAiService(mockRepo as any, makeMockBuilder() as any);
 
-      global.fetch = jest.fn().mockResolvedValue({
-        ok: true,
-        json: async () => ({ choices: [{ message: { content: 'AI reply' } }] }),
-      }) as any;
+      global.fetch = jest.fn().mockImplementation(() => Promise.resolve(mockTextResponse('AI reply'))) as any;
 
       const mockSend = jest.fn().mockResolvedValue({});
       const ts = Math.floor(Date.now() / 1000);
@@ -150,10 +171,7 @@ describe('WhatsappAiService', () => {
     it('resets debounce timer when a new message arrives', async () => {
       service = new WhatsappAiService(makeMockRepo() as any, makeMockBuilder() as any);
 
-      global.fetch = jest.fn().mockResolvedValue({
-        ok: true,
-        json: async () => ({ choices: [{ message: { content: 'reply' } }] }),
-      }) as any;
+      global.fetch = jest.fn().mockImplementation(() => Promise.resolve(mockTextResponse('reply'))) as any;
 
       const mockSend = jest.fn().mockResolvedValue({});
       const ts = Math.floor(Date.now() / 1000);
@@ -174,10 +192,7 @@ describe('WhatsappAiService', () => {
     it('separate chats debounce independently', async () => {
       service = new WhatsappAiService(makeMockRepo() as any, makeMockBuilder() as any);
 
-      global.fetch = jest.fn().mockResolvedValue({
-        ok: true,
-        json: async () => ({ choices: [{ message: { content: 'reply' } }] }),
-      }) as any;
+      global.fetch = jest.fn().mockImplementation(() => Promise.resolve(mockTextResponse('reply'))) as any;
 
       const mockSend = jest.fn().mockResolvedValue({});
       const ts = Math.floor(Date.now() / 1000);
@@ -217,10 +232,7 @@ describe('WhatsappAiService', () => {
 
     it('responds again after silence window expires', async () => {
       service = new WhatsappAiService(makeMockRepo() as any, makeMockBuilder() as any);
-      global.fetch = jest.fn().mockResolvedValue({
-        ok: true,
-        json: async () => ({ choices: [{ message: { content: 'reply' } }] }),
-      }) as any;
+      global.fetch = jest.fn().mockImplementation(() => Promise.resolve(mockTextResponse('reply'))) as any;
 
       const mockSend = jest.fn().mockResolvedValue({});
 
@@ -256,10 +268,7 @@ describe('WhatsappAiService', () => {
 
     it('human silence is per-chat — other chats still respond', async () => {
       service = new WhatsappAiService(makeMockRepo() as any, makeMockBuilder() as any);
-      global.fetch = jest.fn().mockResolvedValue({
-        ok: true,
-        json: async () => ({ choices: [{ message: { content: 'reply' } }] }),
-      }) as any;
+      global.fetch = jest.fn().mockImplementation(() => Promise.resolve(mockTextResponse('reply'))) as any;
 
       const mockSend = jest.fn().mockResolvedValue({});
       const ts = Math.floor(Date.now() / 1000);
@@ -292,10 +301,7 @@ describe('WhatsappAiService', () => {
       const mockBuilder = makeMockBuilder('DB prompt');
       service = new WhatsappAiService(mockRepo as any, mockBuilder as any);
 
-      global.fetch = jest.fn().mockResolvedValue({
-        ok: true,
-        json: async () => ({ choices: [{ message: { content: 'reply' } }] }),
-      }) as any;
+      global.fetch = jest.fn().mockImplementation(() => Promise.resolve(mockTextResponse('reply'))) as any;
 
       await service.handleIncomingMessage(baseEvt(), 'company-1', 'user-1', jest.fn().mockResolvedValue({}));
       await jest.runAllTimersAsync();
@@ -309,10 +315,7 @@ describe('WhatsappAiService', () => {
       const mockBuilder = makeMockBuilder('default system prompt for AALA.LAND');
       service = new WhatsappAiService(mockRepo as any, mockBuilder as any);
 
-      global.fetch = jest.fn().mockResolvedValue({
-        ok: true,
-        json: async () => ({ choices: [{ message: { content: 'reply' } }] }),
-      }) as any;
+      global.fetch = jest.fn().mockImplementation(() => Promise.resolve(mockTextResponse('reply'))) as any;
 
       await service.handleIncomingMessage(baseEvt(), 'company-1', 'user-1', jest.fn().mockResolvedValue({}));
       await jest.runAllTimersAsync();
@@ -327,10 +330,7 @@ describe('WhatsappAiService', () => {
       const mockRepo = makeMockRepo('prompt');
       service = new WhatsappAiService(mockRepo as any, makeMockBuilder() as any);
 
-      global.fetch = jest.fn().mockResolvedValue({
-        ok: true,
-        json: async () => ({ choices: [{ message: { content: 'AI reply' } }] }),
-      }) as any;
+      global.fetch = jest.fn().mockImplementation(() => Promise.resolve(mockTextResponse('AI reply'))) as any;
 
       const mockSend = jest.fn().mockResolvedValue({ messageId: 'msg-1' });
       await service.handleIncomingMessage(baseEvt(), 'company-1', 'user-1', mockSend);
@@ -368,10 +368,7 @@ describe('WhatsappAiService', () => {
     it('calls checkLimitAndIncrement with correct companyId for FREE tier', async () => {
       const mockRepo = makeMockRepo(null, SubscriptionTier.FREE);
       service = new WhatsappAiService(mockRepo as any, makeMockBuilder() as any);
-      global.fetch = jest.fn().mockResolvedValue({
-        ok: true,
-        json: async () => ({ choices: [{ message: { content: 'reply' } }] }),
-      }) as any;
+      global.fetch = jest.fn().mockImplementation(() => Promise.resolve(mockTextResponse('reply'))) as any;
 
       await service.handleIncomingMessage(baseEvt(), 'company-1', 'user-1', jest.fn().mockResolvedValue({}));
       await jest.runAllTimersAsync();
@@ -382,10 +379,7 @@ describe('WhatsappAiService', () => {
     it('calls checkLimitAndIncrement with 50 for STARTER tier', async () => {
       const mockRepo = makeMockRepo(null, SubscriptionTier.STARTER);
       service = new WhatsappAiService(mockRepo as any, makeMockBuilder() as any);
-      global.fetch = jest.fn().mockResolvedValue({
-        ok: true,
-        json: async () => ({ choices: [{ message: { content: 'reply' } }] }),
-      }) as any;
+      global.fetch = jest.fn().mockImplementation(() => Promise.resolve(mockTextResponse('reply'))) as any;
 
       await service.handleIncomingMessage(baseEvt(), 'company-1', 'user-1', jest.fn().mockResolvedValue({}));
       await jest.runAllTimersAsync();
@@ -396,10 +390,7 @@ describe('WhatsappAiService', () => {
     it('skips limit check entirely for PRO tier', async () => {
       const mockRepo = makeMockRepo(null, SubscriptionTier.PRO);
       service = new WhatsappAiService(mockRepo as any, makeMockBuilder() as any);
-      global.fetch = jest.fn().mockResolvedValue({
-        ok: true,
-        json: async () => ({ choices: [{ message: { content: 'reply' } }] }),
-      }) as any;
+      global.fetch = jest.fn().mockImplementation(() => Promise.resolve(mockTextResponse('reply'))) as any;
 
       const mockSend = jest.fn().mockResolvedValue({});
       await service.handleIncomingMessage(baseEvt(), 'company-1', 'user-1', mockSend);
@@ -413,16 +404,106 @@ describe('WhatsappAiService', () => {
       const mockRepo = makeMockRepo(null, SubscriptionTier.FREE);
       mockRepo.checkLimitAndIncrement.mockRejectedValue(new Error('DB error'));
       service = new WhatsappAiService(mockRepo as any, makeMockBuilder() as any);
-      global.fetch = jest.fn().mockResolvedValue({
-        ok: true,
-        json: async () => ({ choices: [{ message: { content: 'reply' } }] }),
-      }) as any;
+      global.fetch = jest.fn().mockImplementation(() => Promise.resolve(mockTextResponse('reply'))) as any;
 
       const mockSend = jest.fn().mockResolvedValue({});
       await service.handleIncomingMessage(baseEvt(), 'company-1', 'user-1', mockSend);
       await jest.runAllTimersAsync();
 
       expect(mockSend).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('tool calling', () => {
+    beforeEach(() => {
+      process.env.OLLAMA_API_KEY = 'test-key';
+      process.env.OLLAMA_HOST = 'http://localhost:11434';
+      process.env.OLLAMA_MODEL = 'test-model';
+      process.env.AI_DEBOUNCE_MS = '100';
+    });
+
+    it('sends direct reply when LLM returns no tool_calls', async () => {
+      service = new WhatsappAiService(makeMockRepo() as any, makeMockBuilder() as any);
+      global.fetch = jest.fn().mockResolvedValue(mockTextResponse('Hello!')) as any;
+
+      const mockSend = jest.fn().mockResolvedValue({});
+      await service.handleIncomingMessage(baseEvt({ body: 'hi' }), 'comp1', 'user1', mockSend);
+      await jest.runAllTimersAsync();
+
+      expect(global.fetch).toHaveBeenCalledTimes(1);
+      expect(mockSend).toHaveBeenCalledWith('c1', 'Hello!');
+    });
+
+    it('passes TOOL_DEFINITIONS and stream:true in first LLM call body', async () => {
+      service = new WhatsappAiService(makeMockRepo() as any, makeMockBuilder() as any);
+      global.fetch = jest.fn().mockImplementation(() => Promise.resolve(mockTextResponse('reply'))) as any;
+
+      await service.handleIncomingMessage(baseEvt({ body: 'hi' }), 'comp1', 'user1', jest.fn().mockResolvedValue({}));
+      await jest.runAllTimersAsync();
+
+      const body = JSON.parse((global.fetch as jest.Mock).mock.calls[0][1].body);
+      expect(body.tools).toBeDefined();
+      expect(Array.isArray(body.tools)).toBe(true);
+      expect(body.tools.length).toBeGreaterThan(0);
+      expect(body.stream).toBe(true);
+    });
+
+    it('executes search_properties and makes second LLM call', async () => {
+      const mockRepo = makeMockRepo();
+      mockRepo.searchProperties.mockResolvedValue([{ id: 'l1', title: 'Test' }]);
+      service = new WhatsappAiService(mockRepo as any, makeMockBuilder() as any);
+
+      (global.fetch as jest.Mock) = jest.fn()
+        .mockResolvedValueOnce(mockToolCallResponse('call_1', 'search_properties', '{"city":"Karachi"}'))
+        .mockResolvedValueOnce(mockTextResponse('Here are properties in Karachi.'));
+
+      const mockSend = jest.fn().mockResolvedValue({});
+      await service.handleIncomingMessage(baseEvt({ body: 'properties in karachi' }), 'comp1', 'user1', mockSend);
+      await jest.runAllTimersAsync();
+
+      expect(global.fetch).toHaveBeenCalledTimes(2);
+      expect(mockSend).toHaveBeenCalledWith('c1', 'Here are properties in Karachi.');
+    });
+
+    it('makes second LLM call with escalate_to_human result and sends AI reply', async () => {
+      service = new WhatsappAiService(makeMockRepo() as any, makeMockBuilder() as any);
+      (global.fetch as jest.Mock) = jest.fn()
+        .mockResolvedValueOnce(mockToolCallResponse('call_2', 'escalate_to_human', '{}'))
+        .mockResolvedValueOnce(mockTextResponse('I have escalated your request to a human agent.'));
+
+      const mockSend = jest.fn().mockResolvedValue({});
+      await service.handleIncomingMessage(baseEvt({ body: 'talk to human' }), 'comp1', 'user1', mockSend);
+      await jest.runAllTimersAsync();
+
+      expect(global.fetch).toHaveBeenCalledTimes(2);
+      expect(mockSend).toHaveBeenCalledWith('c1', 'I have escalated your request to a human agent.');
+    });
+
+    it('accumulates content correctly when SSE chunks arrive split across multiple reads', async () => {
+      service = new WhatsappAiService(makeMockRepo() as any, makeMockBuilder() as any);
+
+      // Split the SSE body across two separate Uint8Array chunks mid-line
+      const encoder = new TextEncoder();
+      const full = 'data: {"choices":[{"delta":{"role":"assistant","content":"Hello"}}]}\n\ndata: {"choices":[{"delta":{"content":" world"}}]}\n\ndata: [DONE]\n\n';
+      const half = Math.floor(full.length / 2);
+      const chunk1 = encoder.encode(full.slice(0, half));
+      const chunk2 = encoder.encode(full.slice(half));
+
+      const splitStream = new ReadableStream<Uint8Array>({
+        start(ctrl) {
+          ctrl.enqueue(chunk1);
+          ctrl.enqueue(chunk2);
+          ctrl.close();
+        },
+      });
+
+      global.fetch = jest.fn().mockResolvedValue({ ok: true, body: splitStream }) as any;
+
+      const mockSend = jest.fn().mockResolvedValue({});
+      await service.handleIncomingMessage(baseEvt({ body: 'hi' }), 'comp1', 'user1', mockSend);
+      await jest.runAllTimersAsync();
+
+      expect(mockSend).toHaveBeenCalledWith('c1', 'Hello world');
     });
   });
 });

@@ -3,25 +3,25 @@
   class="flex col gap-4 w-full"
   {{on "submit" this.submit}}
 >
-  <div class="grid cols-2 gap-4">
-    <FormInput 
-      @label="Company Name" 
-      @id="signup-company" 
-      @type="text" 
-      @placeholder="Acme Real Estate" 
-      @value={{this.companyName}} 
+  <div class="grid col gap-4">
+    <FormInput
+      @label="Company Name"
+      @id="signup-company"
+      @type="text"
+      @placeholder="Acme Real Estate"
+      @value={{this.companyName}}
       @required={{true}}
       @onChange={{fn this.updateField "companyName"}}
       data-test-company-name
     />
 
-    <div class="flex col gap-1">
-      <FormInput 
-        @label="Company URL Slug" 
-        @id="signup-slug" 
-        @type="text" 
-        @placeholder="acme-real-estate" 
-        @value={{this.companySlug}} 
+    <div class="flex col gap-1" style="display:none">
+      <FormInput
+        @label="Company URL Slug"
+        @id="signup-slug"
+        @type="text"
+        @placeholder="acme-real-estate"
+        @value={{this.companySlug}}
         @required={{true}}
         @onChange={{fn this.updateField "companySlug"}}
         data-test-company-slug

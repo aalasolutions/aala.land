@@ -25,7 +25,7 @@ export class CreateUnitDto {
   @IsOptional()
   status?: UnitStatus;
 
-  @ApiPropertyOptional({ enum: PropertyType, description: 'Overrides asset default. Null = inherit from asset' })
+  @ApiPropertyOptional({ enum: PropertyType, description: 'Overrides asset default. Null = not listed' })
   @IsEnum(PropertyType)
   @IsOptional()
   propertyType?: PropertyType;

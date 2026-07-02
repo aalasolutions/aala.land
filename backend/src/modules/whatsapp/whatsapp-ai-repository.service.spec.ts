@@ -1,16 +1,36 @@
 import { WhatsappAiRepositoryService } from './whatsapp-ai-repository.service';
-import { ListingStatus } from '../properties/entities/listing.entity';
 import { UnitStatus } from '../properties/entities/unit.entity';
+import { PropertyType } from '../properties/entities/property-type.enum';
 
-const makeRepos = () => ({
-  companyRepo: { findOne: jest.fn().mockResolvedValue({ id: 'c1', name: 'Test Co', activeRegions: [] }) },
-  listingRepo: { find: jest.fn().mockResolvedValue([]) },
-  unitRepo: { find: jest.fn().mockResolvedValue([]) },
-  settingsRepo: {
-    findOne: jest.fn().mockResolvedValue(null),
+const makeRepos = () => {
+  const qb = {
+    setLock: jest.fn().mockReturnThis(),
+    where: jest.fn().mockReturnThis(),
+    getOne: jest.fn().mockResolvedValue(null),
+    insert: jest.fn().mockReturnThis(),
+    into: jest.fn().mockReturnThis(),
+    values: jest.fn().mockReturnThis(),
+    orIgnore: jest.fn().mockReturnThis(),
+    execute: jest.fn().mockResolvedValue(undefined),
+  };
+  const txRepo = {
+    createQueryBuilder: jest.fn().mockReturnValue(qb),
     upsert: jest.fn().mockResolvedValue(undefined),
-  },
-});
+  };
+  return {
+    companyRepo: { findOne: jest.fn().mockResolvedValue({ id: 'c1', name: 'Test Co', activeRegions: [] }) },
+    unitRepo: { find: jest.fn().mockResolvedValue([]) },
+    settingsRepo: {
+      findOne: jest.fn().mockResolvedValue(null),
+      upsert: jest.fn().mockResolvedValue(undefined),
+      manager: {
+        transaction: jest.fn((cb: any) => cb({ getRepository: () => txRepo })),
+      },
+    },
+    qb,
+    txRepo,
+  };
+};
 
 describe('WhatsappAiRepositoryService', () => {
   let service: WhatsappAiRepositoryService;
@@ -20,54 +40,43 @@ describe('WhatsappAiRepositoryService', () => {
     repos = makeRepos();
     service = new WhatsappAiRepositoryService(
       repos.companyRepo as any,
-      repos.listingRepo as any,
       repos.unitRepo as any,
       repos.settingsRepo as any,
     );
   });
 
-  describe('getCompanyAndListings', () => {
+  describe('getCompanyAndUnits', () => {
     it('returns company from companyRepo', async () => {
-      const result = await service.getCompanyAndListings('c1');
+      const result = await service.getCompanyAndUnits('c1');
       expect(result.company).toEqual({ id: 'c1', name: 'Test Co', activeRegions: [] });
     });
 
-    it('queries listings with ACTIVE status for the given company', async () => {
-      await service.getCompanyAndListings('c1');
-      expect(repos.listingRepo.find).toHaveBeenCalledWith(expect.objectContaining({
-        where: { companyId: 'c1', status: ListingStatus.ACTIVE },
+    it('queries units with AVAILABLE status for the given company', async () => {
+      await service.getCompanyAndUnits('c1');
+      expect(repos.unitRepo.find).toHaveBeenCalledWith(expect.objectContaining({
+        where: { companyId: 'c1', status: UnitStatus.AVAILABLE },
         take: 40,
       }));
     });
 
     it('returns cached result on second call without hitting DB again', async () => {
-      await service.getCompanyAndListings('c1');
-      await service.getCompanyAndListings('c1');
+      await service.getCompanyAndUnits('c1');
+      await service.getCompanyAndUnits('c1');
       expect(repos.companyRepo.findOne).toHaveBeenCalledTimes(1);
-      expect(repos.listingRepo.find).toHaveBeenCalledTimes(1);
+      expect(repos.unitRepo.find).toHaveBeenCalledTimes(1);
     });
 
     it('re-fetches after clearContextCache', async () => {
-      await service.getCompanyAndListings('c1');
+      await service.getCompanyAndUnits('c1');
       service.clearContextCache('c1');
-      await service.getCompanyAndListings('c1');
+      await service.getCompanyAndUnits('c1');
       expect(repos.companyRepo.findOne).toHaveBeenCalledTimes(2);
     });
 
     it('cache is scoped per companyId', async () => {
-      await service.getCompanyAndListings('c1');
-      await service.getCompanyAndListings('c2');
+      await service.getCompanyAndUnits('c1');
+      await service.getCompanyAndUnits('c2');
       expect(repos.companyRepo.findOne).toHaveBeenCalledTimes(2);
-    });
-  });
-
-  describe('getAvailableUnits', () => {
-    it('queries units with AVAILABLE status for the given company', async () => {
-      await service.getAvailableUnits('c1');
-      expect(repos.unitRepo.find).toHaveBeenCalledWith(expect.objectContaining({
-        where: { companyId: 'c1', status: UnitStatus.AVAILABLE },
-        take: 40,
-      }));
     });
   });
 
@@ -81,7 +90,6 @@ describe('WhatsappAiRepositoryService', () => {
       repos.settingsRepo.findOne.mockResolvedValue({ aiPrompt: 'Custom prompt' });
       service = new WhatsappAiRepositoryService(
         repos.companyRepo as any,
-        repos.listingRepo as any,
         repos.unitRepo as any,
         repos.settingsRepo as any,
       );
@@ -93,7 +101,6 @@ describe('WhatsappAiRepositoryService', () => {
       repos.settingsRepo.findOne.mockResolvedValue({ aiPrompt: '' });
       service = new WhatsappAiRepositoryService(
         repos.companyRepo as any,
-        repos.listingRepo as any,
         repos.unitRepo as any,
         repos.settingsRepo as any,
       );
@@ -105,7 +112,6 @@ describe('WhatsappAiRepositoryService', () => {
       repos.settingsRepo.findOne.mockResolvedValue({ aiPrompt: 'Cached' });
       service = new WhatsappAiRepositoryService(
         repos.companyRepo as any,
-        repos.listingRepo as any,
         repos.unitRepo as any,
         repos.settingsRepo as any,
       );
@@ -134,33 +140,33 @@ describe('WhatsappAiRepositoryService', () => {
 
   describe('checkLimitAndIncrement', () => {
     it('allows and increments when no settings row exists (fresh start)', async () => {
-      repos.settingsRepo.findOne.mockResolvedValue(null);
+      repos.qb.getOne.mockResolvedValue(null);
       const result = await service.checkLimitAndIncrement('c1', 10);
       expect(result.allowed).toBe(true);
-      expect(repos.settingsRepo.upsert).toHaveBeenCalledWith(
+      expect(repos.txRepo.upsert).toHaveBeenCalledWith(
         expect.objectContaining({ companyId: 'c1', aiWeeklyCount: 1 }),
         ['companyId'],
       );
     });
 
     it('denies when count has reached the limit', async () => {
-      repos.settingsRepo.findOne.mockResolvedValue({
+      repos.qb.getOne.mockResolvedValue({
         aiWeeklyCount: 10,
         aiWeeklyWindowStart: new Date(),
       });
       const result = await service.checkLimitAndIncrement('c1', 10);
       expect(result.allowed).toBe(false);
-      expect(repos.settingsRepo.upsert).not.toHaveBeenCalled();
+      expect(repos.txRepo.upsert).not.toHaveBeenCalled();
     });
 
     it('allows and increments when count is below limit', async () => {
-      repos.settingsRepo.findOne.mockResolvedValue({
+      repos.qb.getOne.mockResolvedValue({
         aiWeeklyCount: 4,
         aiWeeklyWindowStart: new Date(),
       });
       const result = await service.checkLimitAndIncrement('c1', 10);
       expect(result.allowed).toBe(true);
-      expect(repos.settingsRepo.upsert).toHaveBeenCalledWith(
+      expect(repos.txRepo.upsert).toHaveBeenCalledWith(
         expect.objectContaining({ companyId: 'c1', aiWeeklyCount: 5 }),
         ['companyId'],
       );
@@ -168,13 +174,13 @@ describe('WhatsappAiRepositoryService', () => {
 
     it('resets window and allows when 7 days have passed', async () => {
       const eightDaysAgo = new Date(Date.now() - 8 * 24 * 60 * 60 * 1000);
-      repos.settingsRepo.findOne.mockResolvedValue({
+      repos.qb.getOne.mockResolvedValue({
         aiWeeklyCount: 10,
         aiWeeklyWindowStart: eightDaysAgo,
       });
       const result = await service.checkLimitAndIncrement('c1', 10);
       expect(result.allowed).toBe(true);
-      expect(repos.settingsRepo.upsert).toHaveBeenCalledWith(
+      expect(repos.txRepo.upsert).toHaveBeenCalledWith(
         expect.objectContaining({ companyId: 'c1', aiWeeklyCount: 1 }),
         ['companyId'],
       );
@@ -220,12 +226,60 @@ describe('WhatsappAiRepositoryService', () => {
       repos.settingsRepo.findOne.mockResolvedValue({ aiEnabled: false });
       service = new WhatsappAiRepositoryService(
         repos.companyRepo as any,
-        repos.listingRepo as any,
         repos.unitRepo as any,
         repos.settingsRepo as any,
       );
       const result = await service.loadAiEnabled('c1');
       expect(result).toBe(false);
+    });
+  });
+
+  describe('searchProperties', () => {
+    it('queries AVAILABLE units for the company with no filters', async () => {
+      await service.searchProperties('c1', {});
+      expect(repos.unitRepo.find).toHaveBeenCalledWith(expect.objectContaining({
+        where: expect.objectContaining({ companyId: 'c1', status: UnitStatus.AVAILABLE }),
+      }));
+    });
+
+    it('maps RENT type filter (uppercase) to PropertyType.RENTAL', async () => {
+      await service.searchProperties('c1', { type: 'RENT' });
+      expect(repos.unitRepo.find).toHaveBeenCalledWith(expect.objectContaining({
+        where: expect.objectContaining({ propertyType: PropertyType.RENTAL }),
+      }));
+    });
+
+    it('normalizes lowercase "sale" type filter to PropertyType.FOR_SALE', async () => {
+      await service.searchProperties('c1', { type: 'sale' });
+      expect(repos.unitRepo.find).toHaveBeenCalledWith(expect.objectContaining({
+        where: expect.objectContaining({ propertyType: PropertyType.FOR_SALE }),
+      }));
+    });
+
+    it('does not include propertyType in where when not provided', async () => {
+      await service.searchProperties('c1', {});
+      const call = repos.unitRepo.find.mock.calls[0][0];
+      expect(call.where).not.toHaveProperty('propertyType');
+    });
+
+    it('includes bedrooms filter directly in where', async () => {
+      await service.searchProperties('c1', { bedrooms: 2 });
+      expect(repos.unitRepo.find).toHaveBeenCalledWith(expect.objectContaining({
+        where: expect.objectContaining({ bedrooms: 2 }),
+      }));
+    });
+
+    it('includes city filter nested under asset.locality.city', async () => {
+      await service.searchProperties('c1', { city: 'karachi' });
+      const call = repos.unitRepo.find.mock.calls[0][0];
+      expect(call.where.asset?.locality?.city?.name).toBeDefined();
+    });
+
+    it('returns units from unitRepo', async () => {
+      const fakeUnits = [{ id: 'u1', bedrooms: 2 }];
+      repos.unitRepo.find.mockResolvedValue(fakeUnits);
+      const result = await service.searchProperties('c1', {});
+      expect(result).toEqual(fakeUnits);
     });
   });
 });

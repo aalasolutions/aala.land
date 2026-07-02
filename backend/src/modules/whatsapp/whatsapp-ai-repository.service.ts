@@ -1,14 +1,22 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Between, ILike, LessThanOrEqual, MoreThanOrEqual, Repository } from 'typeorm';
 import { Company } from '../companies/entities/company.entity';
-import { Listing, ListingStatus } from '../properties/entities/listing.entity';
 import { Unit, UnitStatus } from '../properties/entities/unit.entity';
+import { PropertyType } from '../properties/entities/property-type.enum';
 import { WhatsappSettings } from './entities/whatsapp-settings.entity';
+
+interface PropertySearchFilters {
+  bedrooms?: number;
+  minPrice?: number;
+  maxPrice?: number;
+  city?: string;
+  type?: string;
+}
 
 interface ContextCache {
   company: Company | null;
-  listings: Listing[];
+  units: Unit[];
   cachedAt: number;
 }
 
@@ -18,6 +26,8 @@ interface PromptCache {
   ttl: number;
 }
 
+// NOTE: Single-instance only — caches below are process-local.
+// On multi-instance deploys, prompt edits will be stale on other replicas until TTL expires.
 @Injectable()
 export class WhatsappAiRepositoryService {
   private contextCache = new Map<string, ContextCache>();
@@ -29,38 +39,57 @@ export class WhatsappAiRepositoryService {
   constructor(
     @InjectRepository(Company)
     private readonly companyRepo: Repository<Company>,
-    @InjectRepository(Listing)
-    private readonly listingRepo: Repository<Listing>,
     @InjectRepository(Unit)
     private readonly unitRepo: Repository<Unit>,
     @InjectRepository(WhatsappSettings)
     private readonly settingsRepo: Repository<WhatsappSettings>,
   ) {}
 
-  async getCompanyAndListings(companyId: string): Promise<{ company: Company | null; listings: Listing[] }> {
+  async getCompanyAndUnits(companyId: string): Promise<{ company: Company | null; units: Unit[] }> {
     const cached = this.contextCache.get(companyId);
     if (cached && Date.now() - cached.cachedAt < this.CONTEXT_TTL_MS) {
-      return { company: cached.company, listings: cached.listings };
+      return { company: cached.company, units: cached.units };
     }
-    const [company, listings] = await Promise.all([
+    const [company, units] = await Promise.all([
       this.companyRepo.findOne({ where: { id: companyId } }),
-      this.listingRepo.find({
-        where: { companyId, status: ListingStatus.ACTIVE },
-        relations: ['unit', 'unit.asset', 'unit.asset.locality', 'unit.asset.locality.city'],
-        order: { featured: 'DESC', createdAt: 'DESC' },
+      this.unitRepo.find({
+        where: { companyId, status: UnitStatus.AVAILABLE },
+        relations: ['asset', 'asset.locality', 'asset.locality.city'],
+        order: { createdAt: 'DESC' },
         take: 40,
       }),
     ]);
-    this.contextCache.set(companyId, { company, listings, cachedAt: Date.now() });
-    return { company, listings };
+    this.contextCache.set(companyId, { company, units, cachedAt: Date.now() });
+    return { company, units };
   }
 
-  async getAvailableUnits(companyId: string): Promise<Unit[]> {
+  async searchProperties(companyId: string, filters: PropertySearchFilters): Promise<Unit[]> {
+    const where: Record<string, any> = { companyId, status: UnitStatus.AVAILABLE };
+
+    if (filters.type) {
+      const normalized = filters.type.toUpperCase();
+      if (normalized === 'RENT') where['propertyType'] = PropertyType.RENTAL;
+      else if (normalized === 'SALE') where['propertyType'] = PropertyType.FOR_SALE;
+    }
+    if (filters.minPrice !== undefined && filters.maxPrice !== undefined) {
+      where['price'] = Between(filters.minPrice, filters.maxPrice);
+    } else if (filters.minPrice !== undefined) {
+      where['price'] = MoreThanOrEqual(filters.minPrice);
+    } else if (filters.maxPrice !== undefined) {
+      where['price'] = LessThanOrEqual(filters.maxPrice);
+    }
+    if (filters.bedrooms !== undefined) {
+      where['bedrooms'] = filters.bedrooms;
+    }
+    if (filters.city) {
+      where['asset'] = { locality: { city: { name: ILike(`%${filters.city}%`) } } };
+    }
+
     return this.unitRepo.find({
-      where: { companyId, status: UnitStatus.AVAILABLE },
+      where,
       relations: ['asset', 'asset.locality', 'asset.locality.city'],
       order: { createdAt: 'DESC' },
-      take: 40,
+      take: 20,
     });
   }
 
@@ -86,27 +115,56 @@ export class WhatsappAiRepositoryService {
   }
 
   async checkLimitAndIncrement(companyId: string, limit: number): Promise<{ allowed: boolean }> {
-    const row = await this.settingsRepo.findOne({ where: { companyId } });
-    const now = new Date();
-    const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
+    return this.settingsRepo.manager.transaction(async (manager) => {
+      const repo = manager.getRepository(WhatsappSettings);
 
-    const windowExpired = !row?.aiWeeklyWindowStart ||
-      now.getTime() - new Date(row.aiWeeklyWindowStart).getTime() >= sevenDaysMs;
+      // Ensure a row exists before locking it — otherwise concurrent first-time
+      // callers can each see no row and both upsert aiWeeklyCount=1, undercounting usage.
+      await repo
+        .createQueryBuilder()
+        .insert()
+        .into(WhatsappSettings)
+        .values({ companyId })
+        .orIgnore()
+        .execute();
 
-    const currentCount = windowExpired ? 0 : (row?.aiWeeklyCount ?? 0);
+      const row = await repo
+        .createQueryBuilder('ws')
+        .setLock('pessimistic_write')
+        .where('ws.companyId = :companyId', { companyId })
+        .getOne();
 
-    if (currentCount >= limit) return { allowed: false };
+      const now = new Date();
+      const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
 
-    await this.settingsRepo.upsert(
-      {
-        companyId,
-        aiWeeklyCount: currentCount + 1,
-        aiWeeklyWindowStart: windowExpired ? now : (row!.aiWeeklyWindowStart ?? now),
-      },
-      ['companyId'],
-    );
+      const windowExpired =
+        !row?.aiWeeklyWindowStart ||
+        now.getTime() - new Date(row.aiWeeklyWindowStart).getTime() >= sevenDaysMs;
 
-    return { allowed: true };
+      const currentCount = windowExpired ? 0 : (row?.aiWeeklyCount ?? 0);
+
+      if (currentCount >= limit) return { allowed: false };
+
+      await repo.upsert(
+        {
+          companyId,
+          aiWeeklyCount: currentCount + 1,
+          aiWeeklyWindowStart: windowExpired ? now : (row!.aiWeeklyWindowStart ?? now),
+        },
+        ['companyId'],
+      );
+
+      return { allowed: true };
+    });
+  }
+
+  async decrementWeeklyCount(companyId: string): Promise<void> {
+    await this.settingsRepo
+      .createQueryBuilder()
+      .update()
+      .set({ aiWeeklyCount: () => 'GREATEST(ai_weekly_count - 1, 0)' })
+      .where('company_id = :companyId', { companyId })
+      .execute();
   }
 
   async getWeeklyUsage(companyId: string): Promise<{ count: number; windowStart: Date | null }> {
