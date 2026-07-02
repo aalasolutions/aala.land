@@ -6,6 +6,8 @@ export default class GoogleAuthService extends Service {
   @tracked isInitialized = false;
 
   googleClientId = config.APP.GOOGLE_CLIENT_ID;
+  googleScriptId = 'google-identity-services-script';
+  initializationPromise = null;
 
   get isConfigured() {
     return Boolean(this.googleClientId);
@@ -18,29 +20,51 @@ export default class GoogleAuthService extends Service {
       throw new Error('Google Sign-In is not configured (missing GOOGLE_CLIENT_ID)');
     }
 
-    return new Promise((resolve, reject) => {
+    if (this.initializationPromise) return this.initializationPromise;
+
+    this.initializationPromise = new Promise((resolve, reject) => {
       if (window.google?.accounts?.id) {
         this.isInitialized = true;
         resolve();
         return;
       }
 
-      const script = document.createElement('script');
-      script.src = 'https://accounts.google.com/gsi/client';
-      script.async = true;
-      script.defer = true;
+      let script = document.getElementById(this.googleScriptId);
+      let shouldAppendScript = false;
 
-      script.onload = () => {
+      const handleLoad = () => {
+        if (!window.google?.accounts?.id) {
+          handleError();
+          return;
+        }
+
         this.isInitialized = true;
         resolve();
       };
 
-      script.onerror = () => {
+      const handleError = () => {
+        this.initializationPromise = null;
         reject(new Error('Failed to load Google Sign-In library'));
       };
 
-      document.head.appendChild(script);
+      if (!script) {
+        script = document.createElement('script');
+        script.id = this.googleScriptId;
+        script.src = 'https://accounts.google.com/gsi/client';
+        script.async = true;
+        script.defer = true;
+        shouldAppendScript = true;
+      }
+
+      script.addEventListener('load', handleLoad, { once: true });
+      script.addEventListener('error', handleError, { once: true });
+
+      if (shouldAppendScript) {
+        document.head.appendChild(script);
+      }
     });
+
+    return this.initializationPromise;
   }
 
   async renderButton(element) {

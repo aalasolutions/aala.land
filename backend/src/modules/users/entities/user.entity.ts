@@ -21,8 +21,8 @@ export class User {
     @Column({ type: 'varchar', length: 255, nullable: true, select: false })
     password: string | null;
 
-    @Index()
-    @Column({ name: 'google_id', type: 'varchar', length: 255, nullable: true, unique: true })
+    @Index('IDX_users_google_id', { unique: true, where: '"google_id" IS NOT NULL' })
+    @Column({ name: 'google_id', type: 'varchar', length: 255, nullable: true })
     googleId: string | null;
 
     @Column({

@@ -23,7 +23,7 @@ export class AuthGoogleService {
     private readonly companiesService: CompaniesService,
   ) {
     this.googleClient = new OAuth2Client(
-      this.configService.getOrThrow<string>('GOOGLE_CLIENT_ID'),
+      this.configService.get<string>('GOOGLE_CLIENT_ID') ?? '',
     );
   }
 
@@ -128,9 +128,14 @@ export class AuthGoogleService {
 
   private async verifyGoogleToken(idToken: string) {
     try {
+      const googleClientId = this.configService.get<string>('GOOGLE_CLIENT_ID');
+      if (!googleClientId) {
+        throw new BadRequestException('Google Sign-In is not configured');
+      }
+
       const ticket = await this.googleClient.verifyIdToken({
         idToken,
-        audience: this.configService.getOrThrow<string>('GOOGLE_CLIENT_ID'),
+        audience: googleClientId,
       });
 
       const payload = ticket.getPayload();

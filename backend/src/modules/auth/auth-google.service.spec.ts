@@ -53,7 +53,7 @@ describe('AuthGoogleService', () => {
     };
 
     service = new AuthGoogleService(
-      { getOrThrow: jest.fn().mockReturnValue('google-client-id') } as unknown as ConfigService,
+      { get: jest.fn().mockReturnValue('google-client-id') } as unknown as ConfigService,
       usersService as unknown as UsersService,
       authService as unknown as AuthService,
       companiesService as unknown as CompaniesService,
@@ -131,6 +131,23 @@ describe('AuthGoogleService', () => {
 
     await expect(service.googleLogin('id-token')).rejects.toThrow(BadRequestException);
     expect(usersService.findByGoogleId).not.toHaveBeenCalled();
+  });
+
+  it('rejects clearly when Google Sign-In is not configured', async () => {
+    service = new AuthGoogleService(
+      { get: jest.fn().mockReturnValue('') } as unknown as ConfigService,
+      usersService as unknown as UsersService,
+      authService as unknown as AuthService,
+      companiesService as unknown as CompaniesService,
+    );
+    (service as unknown as { googleClient: { verifyIdToken: jest.Mock } }).googleClient = {
+      verifyIdToken,
+    };
+
+    await expect(service.googleLogin('id-token')).rejects.toThrow(
+      'Google Sign-In is not configured',
+    );
+    expect(verifyIdToken).not.toHaveBeenCalled();
   });
 
   it('does not expose raw Google verifier errors to clients', async () => {
