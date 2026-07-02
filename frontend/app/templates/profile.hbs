@@ -69,7 +69,7 @@
             <Ph @icon="check-circle" @size="18px" />
             <span>Google account connected</span>
           </div>
-        {{else}}
+        {{else if this.googleAuth.isConfigured}}
           <div class="profile-google-action google-signin-section {{unless this.isLinkingGoogle 'profile-google-button'}}">
             {{#if this.isLinkingGoogle}}
               <button type="button" class="profile-google-button profile-google-button--loading" disabled>

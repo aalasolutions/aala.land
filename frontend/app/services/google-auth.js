@@ -7,8 +7,17 @@ export default class GoogleAuthService extends Service {
 
   googleClientId = config.APP.GOOGLE_CLIENT_ID;
 
+  get isConfigured() {
+    console.log('Google Client ID:', config.APP);
+    return Boolean(this.googleClientId);
+  }
+
   async initialize() {
     if (this.isInitialized) return Promise.resolve();
+
+    if (!this.isConfigured) {
+      throw new Error('Google Sign-In is not configured (missing GOOGLE_CLIENT_ID)');
+    }
 
     return new Promise((resolve, reject) => {
       if (window.google?.accounts?.id) {
