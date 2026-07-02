@@ -253,7 +253,11 @@ export class WhatsappAiService implements OnModuleInit, OnModuleDestroy {
       const systemMessages: AiHistoryMessage[] = [{ role: 'system', content: fullSystemPrompt }];
 
       const firstRaw = await this.callLLM([...systemMessages, ...history], TOOL_DEFINITIONS);
-      if (!firstRaw) { history.pop(); return; }
+      if (!firstRaw) {
+        this.revertQuotaIfNeeded(companyId, quotaIncremented);
+        history.pop();
+        return;
+      }
       const toolCall = parseToolCall(firstRaw);
 
       if (toolCall) {
@@ -277,6 +281,7 @@ export class WhatsappAiService implements OnModuleInit, OnModuleDestroy {
         const reply = parseResponse(secondRaw);
         if (!reply) {
           this.logger.warn('Second LLM call returned no text content after tool execution', { toolName: toolCall.name, companyId });
+          this.revertQuotaIfNeeded(companyId, quotaIncremented);
           history.pop();
           return;
         }
@@ -290,6 +295,7 @@ export class WhatsappAiService implements OnModuleInit, OnModuleDestroy {
 
       const reply = parseResponse(firstRaw);
       if (!reply) {
+        this.revertQuotaIfNeeded(companyId, quotaIncremented);
         history.pop();
         return;
       }
@@ -300,15 +306,18 @@ export class WhatsappAiService implements OnModuleInit, OnModuleDestroy {
       await send(chatId, reply);
 
     } catch (err) {
-      if (quotaIncremented && !assistantPushed) {
-        this.repo.decrementWeeklyCount(companyId).catch(() => undefined);
-      }
+      if (!assistantPushed) this.revertQuotaIfNeeded(companyId, quotaIncremented);
       if (assistantPushed) history.splice(-2, 2);
       else history.pop();
       const cause = (err as any)?.cause;
       const causeStr = cause instanceof Error ? ` | cause: ${cause.name}: ${cause.message}` : '';
       this.logger.error(`AI call failed${causeStr}`, err instanceof Error ? `${err.message}\n${err.stack}` : String(err));
     }
+  }
+
+  private revertQuotaIfNeeded(companyId: string, quotaIncremented: boolean): void {
+    if (!quotaIncremented) return;
+    this.repo.decrementWeeklyCount(companyId).catch(err => this.logger.error('Failed to revert weekly quota', err instanceof Error ? err.message : err));
   }
 
   private trimHistory(userId: string, chatId: string, history: AiHistoryMessage[]): void {

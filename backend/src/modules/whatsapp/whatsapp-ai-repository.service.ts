@@ -117,6 +117,17 @@ export class WhatsappAiRepositoryService {
   async checkLimitAndIncrement(companyId: string, limit: number): Promise<{ allowed: boolean }> {
     return this.settingsRepo.manager.transaction(async (manager) => {
       const repo = manager.getRepository(WhatsappSettings);
+
+      // Ensure a row exists before locking it — otherwise concurrent first-time
+      // callers can each see no row and both upsert aiWeeklyCount=1, undercounting usage.
+      await repo
+        .createQueryBuilder()
+        .insert()
+        .into(WhatsappSettings)
+        .values({ companyId })
+        .orIgnore()
+        .execute();
+
       const row = await repo
         .createQueryBuilder('ws')
         .setLock('pessimistic_write')

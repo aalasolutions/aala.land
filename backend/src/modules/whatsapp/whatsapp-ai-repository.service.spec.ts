@@ -7,6 +7,11 @@ const makeRepos = () => {
     setLock: jest.fn().mockReturnThis(),
     where: jest.fn().mockReturnThis(),
     getOne: jest.fn().mockResolvedValue(null),
+    insert: jest.fn().mockReturnThis(),
+    into: jest.fn().mockReturnThis(),
+    values: jest.fn().mockReturnThis(),
+    orIgnore: jest.fn().mockReturnThis(),
+    execute: jest.fn().mockResolvedValue(undefined),
   };
   const txRepo = {
     createQueryBuilder: jest.fn().mockReturnValue(qb),

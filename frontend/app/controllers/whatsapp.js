@@ -79,9 +79,7 @@ export default class WhatsappController extends Controller {
       this.me = conn.me ?? null;
 
       this.chats = (chatsData.data?.chats ?? chatsData.chats ?? [])
-        .filter(c => !c.isGroup)
-        .filter(c => c.chatId !== this.me?.id)
-        .filter(c => !c.chatId?.endsWith('@newsletter'))
+        .filter(c => !this._isIgnoredChat(c))
         .map(c => ({
           ...c,
           lastTs: c.lastTs ? c.lastTs * 1000 : c.lastTs,
@@ -183,6 +181,7 @@ export default class WhatsappController extends Controller {
     const newMsgs = msgs
       .filter(m => !existingIds.has(m.id))
       .filter(m => m.body || m.hasMedia)
+      .filter(m => !this._isIgnoredChat(m))
       .map(m => ({ ...m, timestamp: m.timestamp ? m.timestamp * 1000 : m.timestamp }));
     if (!newMsgs.length) return;
     this.messages = [...this.messages, ...newMsgs];
@@ -192,15 +191,20 @@ export default class WhatsappController extends Controller {
   ingestMessage(msg) {
     if (this.messages.some(m => m.id === msg.id)) return;
     if (!msg.body && !msg.hasMedia) return;
+    if (this._isIgnoredChat(msg)) return;
     const normalized = { ...msg, timestamp: msg.timestamp ? msg.timestamp * 1000 : msg.timestamp };
     this.messages = [...this.messages, normalized];
     this._updateChat(normalized);
   }
 
+  _isIgnoredChat(msg) {
+    if (msg.isGroup) return true;
+    if (this.me?.id && msg.chatId === this.me.id) return true;
+    if (msg.chatId?.endsWith('@newsletter')) return true;
+    return false;
+  }
+
   _updateChat(msg) {
-    if (msg.isGroup) return;
-    if (this.me?.id && msg.chatId === this.me.id) return;
-    if (msg.chatId?.endsWith('@newsletter')) return;
     const existingIdx = this.chats.findIndex(c => c.chatId === msg.chatId);
     const isNewer = (msg.timestamp ?? 0) >= (this.chats[existingIdx]?.lastTs ?? 0);
     if (existingIdx >= 0 && isNewer) {

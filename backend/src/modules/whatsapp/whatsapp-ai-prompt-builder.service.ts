@@ -45,8 +45,9 @@ export class WhatsappAiPromptBuilderService {
       const typeLabel = u.propertyType === PropertyType.RENTAL ? 'RENT' : u.propertyType === PropertyType.FOR_SALE ? 'SALE' : 'N/A';
       const title = asset?.name ? `${asset.name} — Unit ${u.unitNumber}` : `Unit ${u.unitNumber}`;
 
+      const priceLabel = u.price != null ? `${currency} ${Number(u.price).toLocaleString()}` : 'Price on request';
       const rows = [
-        `${i + 1}. [${typeLabel}] ${title} — ${currency} ${Number(u.price).toLocaleString()}`,
+        `${i + 1}. [${typeLabel}] ${title} — ${priceLabel}`,
         `   Location: ${location || 'N/A'}`,
         asset?.address ? `   Address: ${asset.address}` : '',
         `   Size: ${[beds, baths, sqft].filter(Boolean).join(' | ')}`,
