@@ -57,4 +57,37 @@ module('Integration | Component | login-form', function (hooks) {
     assert.dom('[data-test-error-message]').exists();
     assert.dom('[data-test-error-message]').hasText('Invalid credentials');
   });
+
+  test('renders configured Google sign-in and handles credential callback', async function (assert) {
+    assert.expect(4);
+
+    class AuthService extends Service {
+      async loginWithGoogle(idToken) {
+        assert.strictEqual(idToken, 'google-id-token');
+      }
+    }
+
+    class RouterService extends Service {
+      transitionTo(routeName) {
+        assert.strictEqual(routeName, 'dashboard');
+      }
+    }
+
+    class GoogleAuthService extends Service {
+      isConfigured = true;
+
+      async renderButton(element, onCredential) {
+        assert.strictEqual(element.id, 'google-signin-button');
+        onCredential('google-id-token');
+      }
+    }
+
+    this.owner.register('service:auth', AuthService);
+    this.owner.register('service:router', RouterService);
+    this.owner.register('service:google-auth', GoogleAuthService);
+
+    await render(hbs`<LoginForm />`);
+
+    assert.dom('#google-signin-button').exists();
+  });
 });

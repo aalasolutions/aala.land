@@ -5,6 +5,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
+import { AuthGoogleService } from './auth-google.service';
 import { UsersModule } from '../users/users.module';
 import { CompaniesModule } from '../companies/companies.module';
 import { JwtStrategy } from './strategies/jwt.strategy';
@@ -30,7 +31,7 @@ import { ImpersonateService } from './impersonate.service';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy, ImpersonateService],
+  providers: [AuthService, JwtStrategy, ImpersonateService, AuthGoogleService],
   exports: [AuthService],
 })
 export class AuthModule { }
