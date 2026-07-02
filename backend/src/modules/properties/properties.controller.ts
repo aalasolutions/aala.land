@@ -14,8 +14,6 @@ import { CreateAssetDto } from './dto/create-asset.dto';
 import { UpdateAssetDto } from './dto/update-asset.dto';
 import { CreateUnitDto } from './dto/create-unit.dto';
 import { UpdateUnitDto } from './dto/update-unit.dto';
-import { CreateListingDto } from './dto/create-listing.dto';
-import { UpdateListingDto } from './dto/update-listing.dto';
 import { AuthenticatedRequest } from '@shared/interfaces/authenticated-request.interface';
 import { requireCompanyId } from '@shared/utils/auth.util';
 
@@ -285,46 +283,4 @@ export class PropertiesController {
         return this.propertiesService.getAssetOccupancy(requireCompanyId(req.user));
     }
 
-    // Listings
-    @Post('listings')
-    @Roles(Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT)
-    @ApiOperation({ summary: 'Create a property listing (ADMIN+, AGENT)' })
-    createListing(@Body() dto: CreateListingDto, @Request() req: AuthenticatedRequest) {
-        return this.propertiesService.createListing(requireCompanyId(req.user), dto);
-    }
-
-    @Get('listings')
-    @Roles(Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT, Role.ACCOUNTANT)
-    @ApiOperation({ summary: 'List all property listings (paginated)' })
-    @ApiQuery({ name: 'page', required: false, type: Number })
-    @ApiQuery({ name: 'limit', required: false, type: Number })
-    findAllListings(
-        @Request() req: AuthenticatedRequest,
-        @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
-        @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
-    ) {
-        return this.propertiesService.findAllListings(requireCompanyId(req.user), page, limit);
-    }
-
-    @Get('listings/:id')
-    @Roles(Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT, Role.ACCOUNTANT)
-    @ApiOperation({ summary: 'Get a listing by ID' })
-    findOneListing(@Param('id', ParseUUIDPipe) id: string, @Request() req: AuthenticatedRequest) {
-        return this.propertiesService.findOneListing(id, requireCompanyId(req.user));
-    }
-
-    @Patch('listings/:id')
-    @Roles(Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT)
-    @ApiOperation({ summary: 'Update a listing (ADMIN+, AGENT)' })
-    updateListing(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateListingDto, @Request() req: AuthenticatedRequest) {
-        return this.propertiesService.updateListing(id, requireCompanyId(req.user), dto);
-    }
-
-    @Delete('listings/:id')
-    @Roles(Role.COMPANY_ADMIN, Role.ADMIN)
-    @HttpCode(HttpStatus.NO_CONTENT)
-    @ApiOperation({ summary: 'Delete a listing' })
-    removeListing(@Param('id', ParseUUIDPipe) id: string, @Request() req: AuthenticatedRequest) {
-        return this.propertiesService.removeListing(id, requireCompanyId(req.user));
-    }
 }

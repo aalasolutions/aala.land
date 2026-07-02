@@ -2,7 +2,6 @@ import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Company } from '../companies/entities/company.entity';
-import { Listing, ListingStatus } from '../properties/entities/listing.entity';
 import { Unit, UnitStatus } from '../properties/entities/unit.entity';
 import { REGIONS } from '../../shared/constants/regions';
 
@@ -20,8 +19,6 @@ export class WhatsappContextService {
   constructor(
     @InjectRepository(Company)
     private readonly companyRepo: Repository<Company>,
-    @InjectRepository(Listing)
-    private readonly listingRepo: Repository<Listing>,
     @InjectRepository(Unit)
     private readonly unitRepo: Repository<Unit>,
   ) {}
@@ -47,15 +44,7 @@ export class WhatsappContextService {
   }
 
   private async buildContextBlock(companyId: string): Promise<string> {
-    const [company, listings] = await Promise.all([
-      this.companyRepo.findOne({ where: { id: companyId } }),
-      this.listingRepo.find({
-        where: { companyId, status: ListingStatus.ACTIVE },
-        relations: ['unit', 'unit.asset', 'unit.asset.locality', 'unit.asset.locality.city'],
-        order: { featured: 'DESC', createdAt: 'DESC' },
-        take: 40,
-      }),
-    ]);
+    const company = await this.companyRepo.findOne({ where: { id: companyId } });
 
     const parts: string[] = [];
 
@@ -68,39 +57,7 @@ export class WhatsappContextService {
       );
     }
 
-    if (listings.length > 0) {
-      const lines = listings.map((l, i) => {
-        const u = l.unit;
-        const asset = u?.asset;
-        const locality = asset?.locality;
-        const city = (locality as any)?.city;
-        const cityRegionCode = (city as any)?.regionCode;
-        const listingCurrency = (cityRegionCode ? REGIONS.find(r => r.code === cityRegionCode)?.currency : undefined) ?? fallbackCurrency;
-        const location = [asset?.name, locality?.name, city?.name].filter(Boolean).join(', ');
-        const beds = u?.bedrooms ? `${u.bedrooms} Bed` : 'Studio';
-        const baths = u?.bathrooms ? `${u.bathrooms} Bath` : '';
-        const sqft = u?.sqFt ? `${u.sqFt} sqft` : '';
-        const amenities = (u?.amenities ?? []).join(', ');
-        const allPhotos = (l.photos ?? []).length ? l.photos : (u?.photos ?? []);
-        const photos = allPhotos.slice(0, 3);
-        const contact = [l.contactPhone, l.contactEmail].filter(Boolean).join(' / ');
-
-        const rows = [
-          `${i + 1}. [${l.type}] ${l.title} — ${listingCurrency} ${Number(l.price).toLocaleString()}`,
-          `   Location: ${location || 'N/A'}`,
-          asset?.address ? `   Address: ${asset.address}` : '',
-          `   Size: ${[beds, baths, sqft].filter(Boolean).join(' | ')}`,
-        ].filter(Boolean);
-        if (amenities) rows.push(`   Amenities: ${amenities}`);
-        if (photos.length) rows.push(`   Photos: ${photos.join(', ')}`);
-        if (contact) rows.push(`   Contact: ${contact}`);
-        if (l.description) rows.push(`   Details: ${l.description.slice(0, 200)}`);
-        return rows.join('\n');
-      });
-
-      parts.push(`[AVAILABLE PROPERTIES]\n${lines.join('\n\n')}`);
-    } else {
-      // No formal listings — fall back to available units
+    {
       const units = await this.unitRepo.find({
         where: { companyId, status: UnitStatus.AVAILABLE },
         relations: ['asset', 'asset.locality', 'asset.locality.city'],

@@ -6,7 +6,6 @@ import { PropertiesService } from './properties.service';
 import { PropertyArea } from './entities/property-area.entity';
 import { Asset } from './entities/asset.entity';
 import { Unit } from './entities/unit.entity';
-import { Listing } from './entities/listing.entity';
 import { PropertyMedia } from './entities/property-media.entity';
 
 describe('PropertiesService', () => {
@@ -66,10 +65,6 @@ describe('PropertiesService', () => {
         {
           provide: getRepositoryToken(Unit),
           useValue: createRepositoryMock<Unit>(),
-        },
-        {
-          provide: getRepositoryToken(Listing),
-          useValue: createRepositoryMock<Listing>(),
         },
         {
           provide: getRepositoryToken(PropertyMedia),

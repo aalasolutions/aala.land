@@ -5,15 +5,12 @@ import { PropertyArea } from './entities/property-area.entity';
 import { Asset } from './entities/asset.entity';
 import { Unit, UnitStatus } from './entities/unit.entity';
 import { PropertyMedia } from './entities/property-media.entity';
-import { Listing, ListingStatus } from './entities/listing.entity';
 import { CreateAreaDto } from './dto/create-area.dto';
 import { UpdateAreaDto } from './dto/update-area.dto';
 import { CreateAssetDto } from './dto/create-asset.dto';
 import { UpdateAssetDto } from './dto/update-asset.dto';
 import { CreateUnitDto } from './dto/create-unit.dto';
 import { UpdateUnitDto } from './dto/update-unit.dto';
-import { CreateListingDto } from './dto/create-listing.dto';
-import { UpdateListingDto } from './dto/update-listing.dto';
 import { paginationOptions, pageSkip } from '../../shared/utils/pagination.util';
 import { normalizedNameSql, normalizedNameWhere, sanitizeName, isUniqueViolation } from '../../shared/utils/name-normalization.util';
 
@@ -26,8 +23,6 @@ export class PropertiesService {
         private readonly assetRepository: Repository<Asset>,
         @InjectRepository(Unit)
         private readonly unitRepository: Repository<Unit>,
-        @InjectRepository(Listing)
-        private readonly listingRepository: Repository<Listing>,
         @InjectRepository(PropertyMedia)
         private readonly mediaRepository: Repository<PropertyMedia>,
     ) { }
@@ -472,42 +467,4 @@ export class PropertiesService {
         }));
     }
 
-    // Listings
-    async createListing(companyId: string, dto: CreateListingDto): Promise<Listing> {
-        const listing = this.listingRepository.create({ ...dto, companyId });
-        return this.listingRepository.save(listing);
-    }
-
-    async findAllListings(companyId: string, page = 1, limit = 20) {
-        const [data, total] = await this.listingRepository.findAndCount({
-            where: { companyId },
-            relations: ['unit'],
-            ...paginationOptions(page, limit),
-            order: { createdAt: 'DESC' },
-        });
-        return { data, total, page, limit };
-    }
-
-    async findOneListing(id: string, companyId: string): Promise<Listing> {
-        const listing = await this.listingRepository.findOne({
-            where: { id, companyId },
-            relations: ['unit'],
-        });
-        if (!listing) throw new NotFoundException('Listing not found');
-        return listing;
-    }
-
-    async updateListing(id: string, companyId: string, dto: UpdateListingDto): Promise<Listing> {
-        const listing = await this.findOneListing(id, companyId);
-        if (dto.status === ListingStatus.ACTIVE && !listing.publishedAt) {
-            listing.publishedAt = new Date();
-        }
-        Object.assign(listing, dto);
-        return this.listingRepository.save(listing);
-    }
-
-    async removeListing(id: string, companyId: string): Promise<void> {
-        const listing = await this.findOneListing(id, companyId);
-        await this.listingRepository.remove(listing);
-    }
 }
