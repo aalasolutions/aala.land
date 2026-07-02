@@ -13,7 +13,7 @@ export class UpdateUnitDto {
   @ApiPropertyOptional({ example: 'uuid-of-owner' })
   @IsUUID()
   @IsOptional()
-  ownerId?: string;
+  ownerId?: string | null;
 
   @ApiPropertyOptional({ enum: UnitStatus })
   @IsEnum(UnitStatus)
