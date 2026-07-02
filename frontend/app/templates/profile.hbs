@@ -28,9 +28,8 @@
           id="profile-email"
           type="email"
           class="form-input"
-          value={{or this.formEmail this.model.email}}
-          {{on "input" (fn this.setField "formEmail")}}
-          required
+          value={{this.model.email}}
+          disabled
         />
       </div>
 
@@ -55,6 +54,33 @@
           value={{format-role this.model.role}}
           disabled
         />
+      </div>
+
+      <div class="profile-connection-card">
+        <div class="profile-connection-heading">
+          <div class="profile-connection-icon" aria-hidden="true"></div>
+          <div class="profile-connection-text">
+            <div class="profile-connection-title">Connect your Google account</div>
+            <p class="profile-connection-copy">Use your existing account email to sign in with Google next time.</p>
+          </div>
+        </div>
+        {{#if this.isGoogleLinked}}
+          <div class="connected-account">
+            <Ph @icon="check-circle" @size="18px" />
+            <span>Google account connected</span>
+          </div>
+        {{else if this.googleAuth.isConfigured}}
+          <div class="profile-google-action google-signin-section {{unless this.isLinkingGoogle 'profile-google-button'}}">
+            {{#if this.isLinkingGoogle}}
+              <button type="button" class="profile-google-button profile-google-button--loading" disabled>
+                <span class="google-spinner"></span>
+                Linking...
+              </button>
+            {{else}}
+              <div id="google-link-button" class="google-button-host" {{did-insert this.renderGoogleLinkButton}}></div>
+            {{/if}}
+          </div>
+        {{/if}}
       </div>
 
       {{#if this.errorMsg}}

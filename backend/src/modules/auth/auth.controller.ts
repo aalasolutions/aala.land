@@ -2,6 +2,7 @@ import { Controller, Post, Body, UnauthorizedException, Get, UseGuards, Request,
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { ImpersonateService } from './impersonate.service';
+import { AuthGoogleService } from './auth-google.service';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { RolesGuard } from '@shared/guards/roles.guard';
 import { Roles } from '@shared/decorators/roles.decorator';
@@ -11,6 +12,8 @@ import { RegisterDto } from './dto/register.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { ImpersonateDto } from './dto/impersonate.dto';
+import { GoogleLoginDto } from './dto/google-login.dto';
+import { GoogleSignupDto } from './dto/google-signup.dto';
 import { AuthenticatedRequest } from '@shared/interfaces/authenticated-request.interface';
 
 @ApiTags('Authentication')
@@ -21,6 +24,7 @@ export class AuthController {
     constructor(
         private readonly authService: AuthService,
         private readonly impersonateService: ImpersonateService,
+        private readonly googleService: AuthGoogleService,
     ) { }
 
     @Post('register')
@@ -41,8 +45,37 @@ export class AuthController {
         return this.authService.login(user);
     }
 
-    @UseGuards(JwtAuthGuard, RolesGuard)
-    @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT, Role.ACCOUNTANT)
+    @Post('google')
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({ summary: 'Login with Google ID token for an existing account' })
+    async googleLogin(@Body() dto: GoogleLoginDto) {
+        return this.googleService.googleLogin(dto.idToken);
+    }
+
+    @Post('google/signup')
+    @HttpCode(HttpStatus.CREATED)
+    @ApiOperation({ summary: 'Sign up with Google and create a company admin account' })
+    async googleSignup(@Body() dto: GoogleSignupDto) {
+        return this.googleService.googleSignup(
+            dto.idToken,
+            dto.companyName,
+            dto.regionCode,
+        );
+    }
+
+    @UseGuards(JwtAuthGuard)
+    @Post('google/link')
+    @HttpCode(HttpStatus.OK)
+    @ApiBearerAuth()
+    @ApiOperation({ summary: 'Link Google account to current user' })
+    async linkGoogleAccount(
+        @Request() req: AuthenticatedRequest,
+        @Body() dto: GoogleLoginDto,
+    ) {
+        return this.googleService.linkGoogleAccount(req.user.userId, dto.idToken);
+    }
+
+    @UseGuards(JwtAuthGuard)
     @Post('refresh')
     @HttpCode(HttpStatus.OK)
     @ApiBearerAuth()
@@ -51,8 +84,7 @@ export class AuthController {
         return this.authService.refresh(req.user);
     }
 
-    @UseGuards(JwtAuthGuard, RolesGuard)
-    @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT, Role.ACCOUNTANT)
+    @UseGuards(JwtAuthGuard)
     @Post('logout')
     @HttpCode(HttpStatus.OK)
     @ApiBearerAuth()
@@ -61,8 +93,7 @@ export class AuthController {
         return { message: 'Logged out successfully' };
     }
 
-    @UseGuards(JwtAuthGuard, RolesGuard)
-    @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT, Role.ACCOUNTANT)
+    @UseGuards(JwtAuthGuard)
     @Get('profile')
     @ApiBearerAuth()
     @ApiOperation({ summary: 'Get current user profile' })
