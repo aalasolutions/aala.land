@@ -126,21 +126,20 @@ export class BaileysInstance {
       }
     });
 
-    this.sock.ev.on('contacts.upsert', (contacts: any[]) => {
-      for (const c of contacts) {
-        const jid = c.id;
-        const name = c.name ?? c.notify ?? c.verifiedName;
-        if (jid && name) this.contactNames.set(jid, name);
+    const upsertContactNames = (items: any[]) => {
+      for (const c of items) {
+        const jid = c?.id;
+        const name = c?.name ?? c?.notify ?? c?.verifiedName;
+        if (typeof jid === 'string' && typeof name === 'string' && name.trim()) {
+          this.contactNames.set(jid, name);
+        }
       }
-    });
+      // Safety cap to avoid unbounded growth on long-lived processes
+      if (this.contactNames.size > 5000) this.contactNames.clear();
+    };
 
-    this.sock.ev.on('contacts.update', (updates: any[]) => {
-      for (const c of updates) {
-        const jid = c.id;
-        const name = c.name ?? c.notify ?? c.verifiedName;
-        if (jid && name) this.contactNames.set(jid, name);
-      }
-    });
+    this.sock.ev.on('contacts.upsert', upsertContactNames);
+    this.sock.ev.on('contacts.update', upsertContactNames);
 
     this.sock.ev.on('messages.upsert', async ({ messages, type }: any) => {
       if (type !== 'notify' && type !== 'append') return;
