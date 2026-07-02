@@ -96,7 +96,7 @@
               <tr data-test-agent-row data-test-agent-id={{agent.agentId}}>
                 <td>
                   <div class="flex x-center gap-2">
-                    <div class="agent-avatar">{{get-initial agent.agentName}}</div>
+                    <div class="agent-avatar">{{uc-first agent.agentName}}</div>
                     <span class="font-sm">{{if agent.agentName agent.agentName (truncate-id agent.agentId)}}</span>
                   </div>
                 </td>
