@@ -34,7 +34,7 @@ export class AuthGoogleService {
 
     if (!user) {
       throw new UnauthorizedException(
-        'No linked account found for this Google account. Please sign in with email and link Gmail from your profile.',
+        'No linked account found for this Google account. Please sign in with email and link Google from your profile.',
       );
     }
 

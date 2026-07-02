@@ -273,14 +273,15 @@ describe('CompaniesService', () => {
       }
     });
 
-    it('does not relabel unknown unique violations', async () => {
-      const error = {
+    it('maps unknown unique violations to a generic conflict', async () => {
+      dataSource.transaction.mockRejectedValue({
         code: '23505',
         constraint: 'some_other_unique_constraint',
-      };
-      dataSource.transaction.mockRejectedValue(error);
+      });
 
-      await expect(service.createGoogleCompanyAdmin(dto)).rejects.toBe(error);
+      await expect(service.createGoogleCompanyAdmin(dto)).rejects.toThrow(
+        'Unable to create account due to a conflict. Please verify the company name and email.',
+      );
     });
 
     it('propagates explicit conflict exceptions from the transaction', async () => {

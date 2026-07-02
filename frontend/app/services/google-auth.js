@@ -44,6 +44,7 @@ export default class GoogleAuthService extends Service {
 
       const handleError = () => {
         this.initializationPromise = null;
+        script?.remove();
         reject(new Error('Failed to load Google Sign-In library'));
       };
 

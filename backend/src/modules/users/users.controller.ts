@@ -59,10 +59,14 @@ export class UsersController {
     @ApiOperation({ summary: 'Update current user profile' })
     updateMyProfile(@Body() updateUserDto: UpdateUserDto, @Request() req: AuthenticatedRequest) {
         const { name, password } = updateUserDto;
+        const safeUpdates: Pick<UpdateUserDto, 'name' | 'password'> = {};
+        if (name !== undefined) safeUpdates.name = name;
+        if (password !== undefined) safeUpdates.password = password;
+
         return this.usersService.update(
             req.user.userId,
             req.user.companyId ?? undefined,
-            { name, password },
+            safeUpdates,
             req.user.role,
             req.user.userId,
         );

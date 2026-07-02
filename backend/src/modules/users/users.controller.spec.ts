@@ -129,7 +129,7 @@ describe('UsersController', () => {
       expect(service.update).toHaveBeenCalledWith(
         'admin-uuid-1',
         companyId,
-        { name: 'Updated Self', password: undefined },
+        { name: 'Updated Self' },
         Role.COMPANY_ADMIN,
         'admin-uuid-1',
       );

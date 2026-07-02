@@ -244,6 +244,9 @@ export class CompaniesService {
                         'An account with this email/Google account already exists.',
                     );
                 }
+                throw new ConflictException(
+                    'Unable to create account due to a conflict. Please verify the company name and email.',
+                );
             }
             throw error;
         }
