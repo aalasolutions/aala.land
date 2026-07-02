@@ -1,7 +1,12 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
+import { DataSource, Repository } from 'typeorm';
+import {
+  NotFoundException,
+  BadRequestException,
+  ForbiddenException,
+  ConflictException,
+} from '@nestjs/common';
 import { CompaniesService } from './companies.service';
 import { Company } from './entities/company.entity';
 import { User } from '../users/entities/user.entity';
@@ -11,6 +16,7 @@ describe('CompaniesService', () => {
   let service: CompaniesService;
   let repo: jest.Mocked<Repository<Company>>;
   let userRepo: jest.Mocked<Repository<User>>;
+  let dataSource: jest.Mocked<DataSource>;
 
   const mockCompany: Company = {
     id: 'company-uuid-1',
@@ -52,12 +58,19 @@ describe('CompaniesService', () => {
             })),
           },
         },
+        {
+          provide: DataSource,
+          useValue: {
+            transaction: jest.fn(),
+          },
+        },
       ],
     }).compile();
 
     service = module.get<CompaniesService>(CompaniesService);
     repo = module.get(getRepositoryToken(Company));
     userRepo = module.get(getRepositoryToken(User));
+    dataSource = module.get(DataSource);
   });
 
   it('should be defined', () => {
@@ -218,6 +231,64 @@ describe('CompaniesService', () => {
       repo.findOne.mockResolvedValue(null);
 
       await expect(service.findBySlug('bad')).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('createGoogleCompanyAdmin', () => {
+    const dto = {
+      companyName: 'Test Company',
+      slug: 'test-company',
+      regionCode: 'dubai',
+      googleId: 'google-1',
+      email: 'admin@test.com',
+      name: 'Admin',
+    };
+
+    it('maps company slug unique violations to company-name conflicts', async () => {
+      dataSource.transaction.mockRejectedValue({
+        code: '23505',
+        constraint: 'UQ_b28b07d25e4324eee577de5496d',
+      });
+
+      await expect(service.createGoogleCompanyAdmin(dto)).rejects.toThrow(
+        'This company name is already taken. Please choose a different one.',
+      );
+    });
+
+    it('maps user account unique violations to account conflicts', async () => {
+      const accountConstraints = [
+        'UQ_97672ac88f789774dd47f7c8be3',
+        'IDX_users_google_id',
+      ];
+
+      for (const constraint of accountConstraints) {
+        dataSource.transaction.mockRejectedValueOnce({
+          code: '23505',
+          constraint,
+        });
+
+        await expect(service.createGoogleCompanyAdmin(dto)).rejects.toThrow(
+          'An account with this email/Google account already exists.',
+        );
+      }
+    });
+
+    it('maps unknown unique violations to a generic conflict', async () => {
+      dataSource.transaction.mockRejectedValue({
+        code: '23505',
+        constraint: 'some_other_unique_constraint',
+      });
+
+      await expect(service.createGoogleCompanyAdmin(dto)).rejects.toThrow(
+        'Unable to create account due to a conflict. Please verify the company name and email.',
+      );
+    });
+
+    it('propagates explicit conflict exceptions from the transaction', async () => {
+      const error = new ConflictException('explicit conflict');
+      dataSource.transaction.mockRejectedValue(error);
+
+      await expect(service.createGoogleCompanyAdmin(dto)).rejects.toBe(error);
     });
   });
 });

@@ -99,7 +99,7 @@ export class WhatsappController {
 
   @Get('ai')
   @ApiOperation({ summary: 'AI config and enabled state' })
-  getAi(@Request() req: AuthenticatedRequest) { return this.wa.getAiConfig(req.user.userId); }
+  getAi(@Request() req: AuthenticatedRequest) { return this.wa.getAiConfig(req.user.userId, req.user.companyId!); }
 
   @Post('ai/toggle')
   @Roles(Role.COMPANY_ADMIN)
