@@ -181,8 +181,8 @@ export class MediaService {
     dto: UploadMediaDto,
   ): Promise<PropertyMedia> {
     // 1. Require exactly one of unitId or assetId.
-    if (!dto.unitId && !dto.assetId) {
-      throw new BadRequestException('Either unitId or assetId is required.');
+    if ((dto.unitId && dto.assetId) || (!dto.unitId && !dto.assetId)) {
+      throw new BadRequestException('Provide either unitId or assetId (but not both).');
     }
 
     // 2. Validate content-type against allowlist (client-supplied MIME).
@@ -255,11 +255,13 @@ export class MediaService {
           fit: 'inside',
           withoutEnlargement: true,
         })
+        .flatten({ background: '#ffffff' })
         .jpeg({ quality: 80 })
         .toBuffer();
       thumbnailBuffer = await sharp(file.buffer)
         .rotate()
         .resize(THUMBNAIL_WIDTH, THUMBNAIL_HEIGHT, { fit: 'cover', position: 'centre' })
+        .flatten({ background: '#ffffff' })
         .jpeg({ quality: 80 })
         .toBuffer();
     } catch (err) {
@@ -403,12 +405,9 @@ export class MediaService {
     // 2. Magic-byte validation — confirms file bytes match the declared MIME type.
     const { fileTypeFromFile } = await import('file-type');
     const detected = await fileTypeFromFile(file.path);
-    // PDFs and Office formats have recognisable magic bytes; plain text/CSV do not.
-    // Only reject when file-type detects a type that conflicts with the declared MIME.
-    if (detected && !(ALLOWED_DOCUMENT_TYPES as readonly string[]).includes(detected.mime)) {
+    if (detected && detected.mime !== file.mimetype) {
       throw new BadRequestException(
-        `File content does not match an allowed document type. ` +
-        `Detected: ${detected.mime}. Accepted: ${ALLOWED_DOCUMENT_TYPES.join(', ')}`,
+        `File content (${detected.mime}) does not match the declared type (${file.mimetype}).`,
       );
     }
 

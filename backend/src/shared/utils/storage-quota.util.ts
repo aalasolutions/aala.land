@@ -38,6 +38,17 @@ export async function reserveStorage(
   companyId: string,
   incomingBytes: number,
 ): Promise<void> {
+  if (!Number.isFinite(incomingBytes) || incomingBytes <= 0) {
+    throw new HttpException(
+      {
+        message: 'incomingBytes must be a positive number',
+        error: 'Bad Request',
+        statusCode: HttpStatus.BAD_REQUEST,
+      },
+      HttpStatus.BAD_REQUEST,
+    );
+  }
+
   const company = await companyRepository.findOne({ where: { id: companyId } });
   if (!company) throw new NotFoundException('Company not found');
 
