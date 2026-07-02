@@ -65,6 +65,9 @@ export class WhatsappService implements OnModuleInit {
 
   private wireInstance(userId: string, companyId: string, inst: BaileysInstance): void {
     void this.ai.loadEnabledState(userId, companyId);
+    // Track message IDs sent by AI so when Baileys re-emits them as fromMe events
+    // we don't mistakenly treat them as a human reply and trigger the silence window.
+    const aiSentIds = new Set<string>();
     inst.emitter.on('status', data => {
       this.gateway.emitStatus(userId, data);
       if (!data.hasCredentials) this.store.clearAll(userId);
@@ -73,9 +76,16 @@ export class WhatsappService implements OnModuleInit {
     inst.emitter.on('message', (msg: WaMessage) => {
       this.store.addMessage(userId, msg);
       this.gateway.emitMessage(userId, msg);
+      if (msg.fromMe && !aiSentIds.has(msg.id)) {
+        this.ai.recordHumanReply(userId, msg.chatId);
+      }
       if (!msg.fromMe) {
         this.ai.handleIncomingMessage(msg, companyId, userId, async (chatId, message) => {
           const result = await inst.sendMessage(chatId, message);
+          if (result.messageId) {
+            aiSentIds.add(result.messageId);
+            setTimeout(() => aiSentIds.delete(result.messageId!), 60_000);
+          }
           const aiMsg: WaMessage = {
             id: result.messageId ?? `ai-${Date.now()}`,
             chatId,
@@ -91,6 +101,9 @@ export class WhatsappService implements OnModuleInit {
           };
           this.store.addMessage(userId, aiMsg);
           this.gateway.emitMessage(userId, aiMsg);
+          void this.ai.getWeeklyCount(companyId).then(usage => {
+            if (usage) this.gateway.emitAi(userId, { weeklyUsed: usage.used });
+          }).catch(() => {});
           return result;
         }).catch(err => this.logger.error('AI handler error', err));
       }
@@ -176,8 +189,8 @@ export class WhatsappService implements OnModuleInit {
 
   // ── AI ────────────────────────────────────────────────────────────────
 
-  getAiConfig(userId: string): ReturnType<WhatsappAiService['getConfig']> {
-    return this.ai.getConfig(userId);
+  getAiConfig(userId: string, companyId: string) {
+    return this.ai.getConfigWithUsage(userId, companyId);
   }
 
   getAiHistory(userId: string, chatId: string): AiHistoryMessage[] {
@@ -187,7 +200,7 @@ export class WhatsappService implements OnModuleInit {
   async toggleAi(userId: string, companyId: string, enabled?: boolean): Promise<{ enabled: boolean }> {
     const next = typeof enabled === 'boolean' ? enabled : !this.ai.isEnabled(userId);
     await this.ai.persistEnabled(userId, companyId, next);
-    this.gateway.emitAi(userId, { enabled: next, keyConfigured: this.ai.getConfig(userId).keyConfigured });
+    this.gateway.emitAi(userId, { enabled: next, keyConfigured: !!(process.env.OLLAMA_API_KEY) });
     return { enabled: next };
   }
 

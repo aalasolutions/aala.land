@@ -843,6 +843,31 @@ body {
     }
 }
 
+.settings-tabs {
+    display: flex;
+    gap: var(--space-2);
+    border-bottom: 1px solid var(--border-light);
+}
+
+.settings-tab {
+    padding: var(--space-2) var(--space-4);
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    font-weight: 600;
+    color: var(--text-muted);
+    cursor: pointer;
+
+    &:hover {
+        color: var(--text-primary);
+    }
+
+    &.active {
+        color: var(--accent-primary, var(--text-primary));
+        border-bottom-color: var(--accent-primary, var(--text-primary));
+    }
+}
+
 .region-country-group {
     border: 1px solid var(--border-light);
     border-radius: var(--radius-sm);
@@ -4065,6 +4090,14 @@ textarea {
   align-items: center;
   justify-content: space-between;
   .font-bold { color: #25D366; font-size: 15px; }
+}
+
+.wa-weekly-usage {
+  font-size: 10px;
+  color: #888;
+  padding: 4px 16px 6px;
+  background: #111;
+  border-bottom: 1px solid #1f1f1f;
 }
 
 .wa-status-bar {

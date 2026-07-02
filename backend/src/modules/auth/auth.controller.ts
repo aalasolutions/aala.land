@@ -91,6 +91,7 @@ export class AuthController {
     @ApiOperation({ summary: 'Impersonate another user - SUPER_ADMIN only' })
     async impersonate(@Request() req: AuthenticatedRequest, @Body() payload: ImpersonateDto) {
         const { userId } = payload;
+        this.logger.log(`Impersonate request: userId="${userId}" by ${req.user.userId}`);
         const user = await this.impersonateService.impersonate(userId);
         this.logger.log(`User ${req.user.userId} impersonated user ${user.sub} (email: ${user.email})`);
         return this.authService.impersonateLogin(user, req.user.userId);

@@ -27,7 +27,7 @@ export class MessageStoreService {
     const isNewer = (msg.timestamp ?? 0) >= (existing?.lastTs ?? 0);
     store.chats.set(msg.chatId, {
       chatId: msg.chatId,
-      chatName: msg.chatName || existing?.chatName || msg.chatId,
+      chatName: existing?.chatName || msg.chatName || msg.chatId,
       isGroup: msg.isGroup ?? existing?.isGroup ?? false,
       lastBody: isNewer ? msg.body : (existing?.lastBody ?? ''),
       lastTs: isNewer ? msg.timestamp : (existing?.lastTs ?? 0),
@@ -44,7 +44,9 @@ export class MessageStoreService {
   }
 
   getChatList(userId: string): WaChat[] {
-    return Array.from(this.getStore(userId).chats.values()).sort((a, b) => b.lastTs - a.lastTs);
+    return Array.from(this.getStore(userId).chats.values())
+      .filter(c => !c.isGroup)
+      .sort((a, b) => b.lastTs - a.lastTs);
   }
 
   clearAll(userId: string): void {
