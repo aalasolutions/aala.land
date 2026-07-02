@@ -111,7 +111,7 @@
         {{on "change" this.onFileSelect}} />
       {{#if this.selectedFile}}
         <p class="font-xs text-muted" data-test-selected-file>
-          Selected: {{this.selectedFile.name}} ({{this.selectedFileSizeLabel}})
+          Selected: {{this.selectedFile.name}} ({{format-bytes this.selectedFile.size}})
         </p>
       {{/if}}
     </div>

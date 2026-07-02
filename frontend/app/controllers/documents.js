@@ -56,13 +56,6 @@ export default class DocumentsController extends PaginatedController {
 
   accessLevels = ACCESS_LEVELS;
 
-  get selectedFileSizeLabel() {
-    const bytes = this.selectedFile?.size ?? 0;
-    if (bytes < 1024) return `${bytes} B`;
-    if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
-    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-  }
-
   @action setField(fieldName, e) {
     this[fieldName] = e.target.value;
   }
