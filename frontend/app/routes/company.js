@@ -17,7 +17,10 @@ export default class CompanyRoute extends AuthenticatedRoute {
       this.auth.fetchJson(`/companies/${companyId}`),
       fetch(`${this.auth.apiBase}/companies/regions`).then((r) => r.json()).catch(() => ({ data: [] })),
       isCompanyAdmin
-        ? Promise.all([this.whatsapp.getSettings(), this.whatsapp.getAi()]).catch(() => null)
+        ? Promise.all([
+            this.whatsapp.getSettings().catch(() => null),
+            this.whatsapp.getAi().catch(() => null),
+          ])
         : Promise.resolve(null),
     ]);
 

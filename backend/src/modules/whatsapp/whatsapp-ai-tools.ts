@@ -51,7 +51,18 @@ export async function executeTool(
     return 'Escalation successful. Inform the customer that their request has been noted and a human agent will follow up with them shortly.';
   }
   if (name === 'search_properties') {
-    const listings = await repo.searchProperties(companyId, args as PropertySearchFilters);
+    const raw = args as any;
+    const toNumber = (v: unknown) => (typeof v === 'number' ? v : (typeof v === 'string' && v.trim() ? Number(v) : undefined));
+    const filters: PropertySearchFilters = {};
+    const bedrooms = toNumber(raw.bedrooms);
+    if (Number.isFinite(bedrooms)) filters.bedrooms = Math.max(0, Math.floor(bedrooms as number));
+    const minPrice = toNumber(raw.minPrice);
+    if (Number.isFinite(minPrice)) filters.minPrice = minPrice as number;
+    const maxPrice = toNumber(raw.maxPrice);
+    if (Number.isFinite(maxPrice)) filters.maxPrice = maxPrice as number;
+    if (typeof raw.city === 'string' && raw.city.trim()) filters.city = raw.city.trim().slice(0, 100);
+    if (raw.type === 'RENT' || raw.type === 'SALE') filters.type = raw.type;
+    const listings = await repo.searchProperties(companyId, filters);
     return promptBuilder.formatToolResult(listings, fallbackCurrency);
   }
   return 'Unknown tool.';
