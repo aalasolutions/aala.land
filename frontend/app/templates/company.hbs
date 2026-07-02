@@ -19,11 +19,72 @@
       </div>
     {{/if}}
   </div>
+
+  {{#if this.isCompanyAdmin}}
+    <div class="settings-tabs mb-4">
+      <button type="button" class="settings-tab {{if (eq this.activeTab 'general') 'active'}}" {{on "click" (fn this.setTab "general")}}>
+        General
+      </button>
+      <button type="button" class="settings-tab {{if (eq this.activeTab 'ai') 'active'}}" {{on "click" (fn this.setTab "ai")}}>
+        AI Settings
+      </button>
+    </div>
+  {{/if}}
+
+  {{#if (eq this.activeTab "ai")}}
+    {{#if this.weeklyUsageLabel}}
+      <div class="glass-panel p-4 max-w-lg mb-4 text-muted font-sm">
+        {{this.weeklyUsageLabel}}
+      </div>
+    {{/if}}
+
+    <div class="glass-panel p-6 max-w-lg">
+      <form aria-label="AI Settings" {{on "submit" this.saveAISettings}}>
+        <div class="form-group">
+          <label class="form-label" for="company-ai-prompt">AI System Prompt</label>
+          <textarea
+            id="company-ai-prompt"
+            data-test-ai-prompt
+            class="form-input"
+            rows="10"
+            placeholder="Leave empty to use the default prompt"
+            {{on "input" this.setAIPrompt}}
+          >{{this.aiPrompt}}</textarea>
+          <p class="text-muted font-sm">
+            This prompt tells the AI how to respond on behalf of your company.
+            Leave blank to use the built-in default.
+          </p>
+        </div>
+
+        {{#if this.aiSuccessMsg}}
+          <p class="text-success font-sm">{{this.aiSuccessMsg}}</p>
+        {{/if}}
+        {{#if this.aiErrorMsg}}
+          <p class="text-danger font-sm">{{this.aiErrorMsg}}</p>
+        {{/if}}
+
+        <div class="flex gap-3 mt-4">
+          <button type="submit" data-test-save-prompt class="btn btn-primary" disabled={{this.isSavingAI}}>
+            {{#if this.isSavingAI}}Saving…{{else}}Save{{/if}}
+          </button>
+          <button
+            type="button"
+            data-test-restore-prompt
+            class="btn btn-secondary"
+            disabled={{this.isSavingAI}}
+            {{on "click" this.restoreDefaultPrompt}}
+          >
+            Restore Default
+          </button>
+        </div>
+      </form>
+    </div>
+  {{else}}
   <div class="company-settings-grid">
     {{! Left: Company Info }}
     <div class="glass-panel p-6">
       <h3 class="font-lg font-bold mb-4">Company Information</h3>
-      <form class="flex col gap-4" {{on "submit" this.saveCompany}}>
+      <form aria-label="Company Information" class="flex col gap-4" {{on "submit" this.saveCompany}}>
         <FormInput @label="Company Name" @id="company-name" @type="text" @value={{or this.formName this.company.name}} @onChange={{fn this.setField "formName"}} @required={{true}} @readonly={{not this.isAdmin}} />
 
         {{#if this.company.adminEmail}}
@@ -125,6 +186,7 @@
       </div>
     {{/if}}
   </div>
+  {{/if}}
 {{else}}
   <div class="flex col gap-4 x-center y-center" style="min-height: 40vh; text-align: center;">
     <Ph @icon="buildings" @size="56px" @color="var(--text-muted)" />

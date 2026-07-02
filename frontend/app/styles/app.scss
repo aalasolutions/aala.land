@@ -440,7 +440,8 @@ body {
     margin-bottom: var(--space-3);
 }
 
-.agent-avatar {
+.agent-avatar,
+.owner-avatar {
     width: 36px;
     height: 36px;
     border-radius: 50%;
@@ -839,6 +840,31 @@ body {
 
     @media (max-width: 768px) {
         grid-template-columns: 1fr;
+    }
+}
+
+.settings-tabs {
+    display: flex;
+    gap: var(--space-2);
+    border-bottom: 1px solid var(--border-light);
+}
+
+.settings-tab {
+    padding: var(--space-2) var(--space-4);
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    font-weight: 600;
+    color: var(--text-muted);
+    cursor: pointer;
+
+    &:hover {
+        color: var(--text-primary);
+    }
+
+    &.active {
+        color: var(--accent-primary, var(--text-primary));
+        border-bottom-color: var(--accent-primary, var(--text-primary));
     }
 }
 
@@ -1340,6 +1366,18 @@ textarea {
 
 .list-item:hover {
     box-shadow: var(--shadow-md);
+}
+
+.owners-list .list-item {
+    gap: var(--space-4);
+}
+
+.owner-info {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    flex: 1;
+    min-width: 0;
 }
 
 // =================================
@@ -4139,6 +4177,14 @@ textarea {
   align-items: center;
   justify-content: space-between;
   .font-bold { color: #25D366; font-size: 15px; }
+}
+
+.wa-weekly-usage {
+  font-size: 10px;
+  color: #888;
+  padding: 4px 16px 6px;
+  background: #111;
+  border-bottom: 1px solid #1f1f1f;
 }
 
 .wa-status-bar {

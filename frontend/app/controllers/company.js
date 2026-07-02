@@ -11,6 +11,7 @@ export default class CompanyController extends Controller {
   @service router;
   @service region;
   @service session;
+  @service whatsapp;
 
   @tracked formName = '';
   @tracked formActiveRegions = [];
@@ -19,6 +20,15 @@ export default class CompanyController extends Controller {
   @tracked errorMsg = '';
   @tracked expandedCountries = [];
   @tracked storageUsage = null;
+
+  @tracked activeTab = 'general';
+  @tracked aiPrompt = '';
+  @tracked isSavingAI = false;
+  @tracked aiSuccessMsg = '';
+  @tracked aiErrorMsg = '';
+  @tracked weeklyLimit = null;
+  @tracked weeklyUsed = null;
+  @tracked weeklyResetsAt = null;
 
   @action toggleCountry(countryCode) {
     if (this.expandedCountries.includes(countryCode)) {
@@ -72,6 +82,22 @@ export default class CompanyController extends Controller {
 
   get seatLabel() {
     return this.storageUsage?.purchasedSeats === 1 ? 'seat' : 'seats';
+  get isCompanyAdmin() {
+    return this.auth.currentUser?.role === 'company_admin';
+  }
+
+  get weeklyUsageLabel() {
+    if (this.weeklyLimit === null) return null;
+    const used = this.weeklyUsed ?? 0;
+    let suffix = '';
+    if (this.weeklyResetsAt) {
+      const resetDate = new Date(this.weeklyResetsAt);
+      const daysLeft = Math.ceil((resetDate - Date.now()) / 86400000);
+      const day = resetDate.toLocaleDateString('en-US', { weekday: 'short' });
+      const time = resetDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+      suffix = ` - resets in ${daysLeft}d (${day} - ${time})`;
+    }
+    return `You've used ${used}/${this.weeklyLimit} AI messages this week${suffix}`;
   }
 
   get maxCountries() {
@@ -105,6 +131,51 @@ export default class CompanyController extends Controller {
   }
 
   @action setField(fieldName, e) { this[fieldName] = e.target.value; }
+
+  @action setTab(tab) { this.activeTab = tab; }
+
+  @action setAIPrompt(event) {
+    this.aiPrompt = event.target.value;
+    this.aiSuccessMsg = '';
+    this.aiErrorMsg = '';
+  }
+
+  @action async saveAISettings(event) {
+    if (event) event.preventDefault();
+    if (!this.isCompanyAdmin || this.isSavingAI) return;
+
+    this.isSavingAI = true;
+    this.aiSuccessMsg = '';
+    this.aiErrorMsg = '';
+
+    try {
+      const promptToSave = this.aiPrompt.trim() || null;
+      await this.whatsapp.updateSettings(promptToSave);
+      this.aiSuccessMsg = 'Settings saved.';
+    } catch {
+      this.aiErrorMsg = 'Failed to save. Please try again.';
+    } finally {
+      this.isSavingAI = false;
+    }
+  }
+
+  @action async restoreDefaultPrompt() {
+    if (!this.isCompanyAdmin || this.isSavingAI) return;
+
+    this.aiPrompt = '';
+    this.isSavingAI = true;
+    this.aiSuccessMsg = '';
+    this.aiErrorMsg = '';
+
+    try {
+      await this.whatsapp.updateSettings(null);
+      this.aiSuccessMsg = 'Restored to default prompt.';
+    } catch {
+      this.aiErrorMsg = 'Failed to restore. Please try again.';
+    } finally {
+      this.isSavingAI = false;
+    }
+  }
 
   @action toggleRegion(code) {
     if (!this.isAdmin) return;

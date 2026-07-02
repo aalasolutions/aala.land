@@ -5,16 +5,25 @@ import { safeJson } from '../utils/safe-json';
 export default class CompanyRoute extends AuthenticatedRoute {
   @service auth;
   @service region;
+  @service whatsapp;
 
   async model() {
     if (this.auth.currentUser?.role === 'super_admin') return null;
     const companyId = this.auth.currentUser?.companyId;
     if (!companyId) return null;
 
-    const [companyResult, regionsResponse, storageUsage] = await Promise.all([
+    const isCompanyAdmin = this.auth.currentUser?.role === 'company_admin';
+
+    const [companyResult, regionsResponse, storageUsage, aiSettings] = await Promise.all([
       this.auth.fetchJson(`/companies/${companyId}`),
       fetch(`${this.auth.apiBase}/companies/regions`).then((r) => r.json()).catch(() => ({ data: [] })),
       safeJson(this.auth, `/companies/${companyId}/storage-usage`, 'COMPANY'),
+      isCompanyAdmin
+        ? Promise.all([
+            this.whatsapp.getSettings().catch(() => null),
+            this.whatsapp.getAi().catch(() => null),
+          ])
+        : Promise.resolve(null),
     ]);
 
     const company = companyResult.data || null;
@@ -22,7 +31,19 @@ export default class CompanyRoute extends AuthenticatedRoute {
     const regions = regionsData.flat || regionsData || [];
     const groupedRegions = regionsData.grouped || [];
 
-    return { company, regions, groupedRegions, storageUsage };
+    let ai = { aiPrompt: null, weeklyLimit: null, weeklyUsed: null, weeklyResetsAt: null };
+    if (aiSettings) {
+      const [settings, aiData] = aiSettings;
+      const aiInfo = aiData?.data ?? aiData;
+      ai = {
+        aiPrompt: settings?.data?.aiPrompt ?? settings?.aiPrompt ?? null,
+        weeklyLimit: aiInfo?.weeklyLimit ?? null,
+        weeklyUsed: aiInfo?.weeklyUsed ?? null,
+        weeklyResetsAt: aiInfo?.weeklyResetsAt ?? null,
+      };
+    }
+
+    return { company, regions, groupedRegions, storageUsage, ai };
   }
 
   setupController(controller, model) {
@@ -34,5 +55,12 @@ export default class CompanyRoute extends AuthenticatedRoute {
       controller.formDefaultRegionCode = c.defaultRegionCode || null;
     }
     controller.storageUsage = model.storageUsage?.data ?? null;
+    controller.activeTab = 'general';
+    controller.aiPrompt = model?.ai?.aiPrompt ?? '';
+    controller.weeklyLimit = model?.ai?.weeklyLimit ?? null;
+    controller.weeklyUsed = model?.ai?.weeklyUsed ?? null;
+    controller.weeklyResetsAt = model?.ai?.weeklyResetsAt ?? null;
+    controller.aiSuccessMsg = '';
+    controller.aiErrorMsg = '';
   }
 }
