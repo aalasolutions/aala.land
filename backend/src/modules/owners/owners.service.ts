@@ -1,7 +1,8 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Not, QueryFailedError, Raw, Repository } from 'typeorm';
 import { Owner } from './entities/owner.entity';
+import { Unit } from '../properties/entities/unit.entity';
 import { CreateOwnerDto } from './dto/create-owner.dto';
 import { UpdateOwnerDto } from './dto/update-owner.dto';
 import { paginationOptions } from '../../shared/utils/pagination.util';
@@ -11,6 +12,8 @@ export class OwnersService {
   constructor(
     @InjectRepository(Owner)
     private readonly ownerRepository: Repository<Owner>,
+    @InjectRepository(Unit)
+    private readonly unitRepository: Repository<Unit>,
   ) {}
 
   async create(dto: CreateOwnerDto, companyId: string): Promise<Owner> {
@@ -62,8 +65,29 @@ export class OwnersService {
   }
 
   async remove(id: string, companyId: string): Promise<void> {
-    const owner = await this.findOne(id, companyId);
-    await this.ownerRepository.remove(owner);
+    const owner = await this.ownerRepository.findOne({ where: { id, companyId } });
+    if (!owner) {
+      throw new NotFoundException('Owner not found');
+    }
+
+    const linkedUnitsCount = await this.unitRepository.count({ where: { ownerId: id, companyId } });
+    if (linkedUnitsCount > 0) {
+      throw new BadRequestException(
+        `Cannot delete owner — ${linkedUnitsCount} unit(s) are still linked. Unlink them first.`,
+      );
+    }
+
+    try {
+      await this.ownerRepository.remove(owner);
+    } catch (error) {
+      if (error instanceof QueryFailedError) {
+        const driverError = error.driverError as { code?: string } | undefined;
+        if (driverError?.code === '23503') {
+          throw new BadRequestException('Cannot delete owner — one or more units are still linked. Unlink them first.');
+        }
+      }
+      throw error;
+    }
   }
 
   private sanitizeOwnerInput<T extends CreateOwnerDto | UpdateOwnerDto>(dto: T): T {
