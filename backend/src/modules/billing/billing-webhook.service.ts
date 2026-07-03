@@ -1,0 +1,210 @@
+import {
+    BadRequestException,
+    Inject,
+    Injectable,
+    InternalServerErrorException,
+    Logger,
+    OnModuleInit,
+} from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import {
+    Company,
+    SubscriptionTier,
+    TIER_LIMITS,
+} from '../companies/entities/company.entity';
+import { StripeEvent } from './entities/stripe-event.entity';
+import {
+    BILLING_PROVIDER,
+    BillingPlan,
+    BillingProvider,
+    ProviderWebhookEvent,
+} from './provider/billing-provider.interface';
+import { BillingEventDispatcher } from './events/billing-event-dispatcher';
+import {
+    PaymentFailedEvent,
+    PaymentSucceededEvent,
+    PlanChangedEvent,
+    SeatQuantityChangedEvent,
+    SubscriptionActivatedEvent,
+    SubscriptionCanceledEvent,
+    SubscriptionUpdatedEvent,
+} from './events/billing-events';
+
+/**
+ * Maps a billing plan to a subscription tier. ENTERPRISE joins the enum in
+ * unit 3 (migration 1779500000021) and resolves automatically here once it does;
+ * until then it degrades to PRO. No Enterprise subscription can exist before
+ * unit 3 ships checkout, so the fallback is a safety net, not a live path.
+ */
+export function planToTier(plan: BillingPlan): SubscriptionTier {
+    const tier = (SubscriptionTier as Record<string, SubscriptionTier>)[plan];
+    return tier ?? SubscriptionTier.PRO;
+}
+
+function isUniqueViolation(err: unknown): boolean {
+    const e = err as { code?: string; driverError?: { code?: string } };
+    return e?.code === '23505' || e?.driverError?.code === '23505';
+}
+
+@Injectable()
+export class BillingWebhookService implements OnModuleInit {
+    private readonly logger = new Logger(BillingWebhookService.name);
+
+    constructor(
+        @InjectRepository(StripeEvent)
+        private readonly eventRepo: Repository<StripeEvent>,
+        @InjectRepository(Company)
+        private readonly companyRepo: Repository<Company>,
+        @Inject(BILLING_PROVIDER)
+        private readonly provider: BillingProvider,
+        private readonly dispatcher: BillingEventDispatcher,
+    ) {}
+
+    onModuleInit(): void {
+        this.dispatcher.register('SubscriptionActivated', (e) => this.onSubscriptionActivated(e));
+        this.dispatcher.register('SubscriptionUpdated', (e) => this.onSubscriptionUpdated(e));
+        this.dispatcher.register('SeatQuantityChanged', (e) => this.onSeatQuantityChanged(e));
+        this.dispatcher.register('PlanChanged', (e) => this.onPlanChanged(e));
+        this.dispatcher.register('SubscriptionCanceled', (e) => this.onSubscriptionCanceled(e));
+        this.dispatcher.register('PaymentSucceeded', (e) => this.onPaymentSucceeded(e));
+        this.dispatcher.register('PaymentFailed', (e) => this.onPaymentFailed(e));
+    }
+
+    async handleWebhook(
+        rawBody: Buffer | undefined,
+        signature: string | undefined,
+    ): Promise<{ received: true }> {
+        if (!rawBody || !signature) {
+            throw new BadRequestException('Missing webhook payload or signature');
+        }
+
+        let parsed: ProviderWebhookEvent;
+        try {
+            parsed = await this.provider.parseWebhook(rawBody, signature);
+        } catch (err) {
+            // Never log the raw body. The error message is enough for diagnosis.
+            this.logger.warn(`Webhook rejected: ${(err as Error).message}`);
+            throw new BadRequestException('Webhook signature verification failed');
+        }
+
+        // Insert-first idempotency (contract section 6, rule 2). A duplicate
+        // provider_event_id hits the UNIQUE constraint: already received, ack and stop.
+        try {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            await this.eventRepo.insert({
+                providerEventId: parsed.providerEventId,
+                type: parsed.providerEventType,
+                payload: parsed.payload,
+            } as any);
+        } catch (err) {
+            if (isUniqueViolation(err)) {
+                this.logger.log(
+                    `Duplicate webhook ${parsed.providerEventId} (${parsed.providerEventType}), skipping`,
+                );
+                return { received: true };
+            }
+            throw err; // 500: the provider retries a transient insert failure.
+        }
+
+        try {
+            for (const event of parsed.events) {
+                await this.dispatcher.dispatch(event);
+            }
+        } catch (err) {
+            // processed_at stays NULL for inspection (contract section 6, rule 3).
+            this.logger.error(
+                `Handler failed for ${parsed.providerEventId} (${parsed.providerEventType}): ${(err as Error).message}`,
+            );
+            throw new InternalServerErrorException('Webhook processing failed');
+        }
+
+        await this.eventRepo.update(
+            { providerEventId: parsed.providerEventId },
+            { processedAt: new Date() },
+        );
+        return { received: true };
+    }
+
+    // ---- Company sync handlers (contract section 8) -------------------------
+    // These are the ONLY writers of purchasedSeats, billingStatus, and
+    // billingSubscriptionId in the codebase.
+
+    private async onSubscriptionActivated(event: SubscriptionActivatedEvent): Promise<void> {
+        const tier = planToTier(event.plan);
+        const limits = TIER_LIMITS[tier];
+        await this.updateCompany(event.companyId, event.name, {
+            billingSubscriptionId: event.subscriptionId,
+            billingStatus: event.status,
+            subscriptionTier: tier,
+            purchasedSeats: Math.max(event.quantity, 1),
+            maxUsers: limits.maxUsers,
+            maxCountries: limits.maxCountries,
+            maxProperties: limits.maxProperties,
+        });
+    }
+
+    private async onSubscriptionUpdated(event: SubscriptionUpdatedEvent): Promise<void> {
+        await this.updateCompany(event.companyId, event.name, {
+            purchasedSeats: Math.max(event.quantity, 1),
+            billingStatus: event.status,
+        });
+    }
+
+    private async onSeatQuantityChanged(event: SeatQuantityChangedEvent): Promise<void> {
+        await this.updateCompany(event.companyId, event.name, {
+            purchasedSeats: Math.max(event.quantity, 1),
+        });
+    }
+
+    private async onPlanChanged(event: PlanChangedEvent): Promise<void> {
+        const tier = planToTier(event.plan);
+        const limits = TIER_LIMITS[tier];
+        await this.updateCompany(event.companyId, event.name, {
+            subscriptionTier: tier,
+            maxUsers: limits.maxUsers,
+            maxCountries: limits.maxCountries,
+            maxProperties: limits.maxProperties,
+        });
+    }
+
+    private async onSubscriptionCanceled(event: SubscriptionCanceledEvent): Promise<void> {
+        // External cancels bypass the unit 3 downgrade gate by design (contract
+        // section 8): the tier drops to FREE even with more than 1 active user.
+        // Excess users stay active; the synced FREE caps block further adds.
+        const limits = TIER_LIMITS[SubscriptionTier.FREE];
+        await this.updateCompany(event.companyId, event.name, {
+            subscriptionTier: SubscriptionTier.FREE,
+            billingSubscriptionId: null,
+            billingStatus: 'canceled',
+            maxUsers: limits.maxUsers,
+            maxCountries: limits.maxCountries,
+            maxProperties: limits.maxProperties,
+        });
+    }
+
+    private async onPaymentSucceeded(event: PaymentSucceededEvent): Promise<void> {
+        // One-off invoices (future top-ups) carry no subscription: not our status.
+        if (!event.subscriptionId) return;
+        await this.updateCompany(event.companyId, event.name, { billingStatus: 'active' });
+    }
+
+    private async onPaymentFailed(event: PaymentFailedEvent): Promise<void> {
+        if (!event.subscriptionId) return;
+        await this.updateCompany(event.companyId, event.name, { billingStatus: 'past_due' });
+    }
+
+    private async updateCompany(
+        companyId: string,
+        eventName: string,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        patch: Record<string, any>,
+    ): Promise<void> {
+        const result = await this.companyRepo.update(companyId, patch);
+        if (!result.affected) {
+            // A retry cannot conjure a missing company row; warn and move on so
+            // the event is still marked processed.
+            this.logger.warn(`${eventName}: company ${companyId} not found, nothing updated`);
+        }
+    }
+}

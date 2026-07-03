@@ -10,7 +10,9 @@ import { AuditService } from './audit.service';
 import { AuditAction } from './dto/query-audit-logs.dto';
 
 // Path segments that should never be audited (matched against normalized path)
-const SKIP_SEGMENTS = ['auth/refresh', 'health', 'docs'];
+// billing/webhook: public provider callback with no user context and large raw
+// payloads; the billing module persists every event in stripe_events instead.
+const SKIP_SEGMENTS = ['auth/refresh', 'health', 'docs', 'billing/webhook'];
 
 // Map special sub-paths to audit actions
 const ACTION_OVERRIDES: Record<string, AuditAction> = {
