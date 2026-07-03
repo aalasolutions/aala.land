@@ -3,6 +3,7 @@ import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
 import { closeDeleteModal, confirmDeleteModal, openDeleteModal } from '../../utils/delete-modal';
+import { isAdminRole } from '../../utils/roles';
 
 export default class OwnersIndexController extends Controller {
   @service auth;
@@ -51,6 +52,10 @@ export default class OwnersIndexController extends Controller {
         label: agent.name
       }))
     ];
+  }
+
+  get canDeleteOwners() {
+    return isAdminRole(this.auth.currentUser?.role);
   }
 
   @action setField(fieldName, e) { this[fieldName] = e.target.value; }
