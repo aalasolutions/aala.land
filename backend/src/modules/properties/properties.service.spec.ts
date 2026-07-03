@@ -251,7 +251,7 @@ describe('PropertiesService', () => {
   describe('bulkImportUnits', () => {
     it('creates units from valid CSV', async () => {
       unitRepo.create.mockImplementation((data) => data as Unit);
-      unitRepo.save.mockResolvedValue([mockUnit] as unknown as Unit);
+      unitRepo.save.mockResolvedValue([mockUnit] as unknown as Unit[]);
 
       const csv = 'unitNumber,assetId,bedrooms,bathrooms\n101,asset-1,2,1\n102,asset-1,3,2';
       const result = await service.bulkImportUnits(companyId, csv);
