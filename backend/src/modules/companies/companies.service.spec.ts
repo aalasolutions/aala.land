@@ -11,8 +11,10 @@ import { CompaniesService } from './companies.service';
 import { Company } from './entities/company.entity';
 import { User } from '../users/entities/user.entity';
 import { Role } from '@shared/enums/roles.enum';
+import { BillingService } from '../billing/billing.service';
 
 describe('CompaniesService', () => {
+  let module: TestingModule;
   let service: CompaniesService;
   let repo: jest.Mocked<Repository<Company>>;
   let userRepo: jest.Mocked<Repository<User>>;
@@ -30,7 +32,7 @@ describe('CompaniesService', () => {
   } as Company;
 
   beforeEach(async () => {
-    const module: TestingModule = await Test.createTestingModule({
+    module = await Test.createTestingModule({
       providers: [
         CompaniesService,
         {
@@ -64,6 +66,12 @@ describe('CompaniesService', () => {
             transaction: jest.fn(),
           },
         },
+        {
+          provide: BillingService,
+          useValue: {
+            ensureCompanyCustomer: jest.fn().mockResolvedValue('cus_test'),
+          },
+        },
       ],
     }).compile();
 
@@ -86,6 +94,18 @@ describe('CompaniesService', () => {
 
       expect(repo.create).toHaveBeenCalled();
       expect(repo.save).toHaveBeenCalledWith(mockCompany);
+      expect(result).toEqual(mockCompany);
+    });
+
+    it('still returns the saved company when ensureCompanyCustomer rejects (fire-and-forget)', async () => {
+      repo.create.mockReturnValue(mockCompany);
+      repo.save.mockResolvedValue(mockCompany);
+
+      const billingService = module.get<BillingService>(BillingService);
+      jest.spyOn(billingService, 'ensureCompanyCustomer').mockRejectedValueOnce(new Error('Stripe down'));
+
+      const result = await service.create({ name: 'Test Company', slug: 'test-company', defaultRegionCode: 'dubai' });
+
       expect(result).toEqual(mockCompany);
     });
   });
@@ -289,6 +309,26 @@ describe('CompaniesService', () => {
       dataSource.transaction.mockRejectedValue(error);
 
       await expect(service.createGoogleCompanyAdmin(dto)).rejects.toBe(error);
+    });
+
+    it('returns the user projection and calls ensureCompanyCustomer after commit on happy path', async () => {
+      const savedCompany = { id: 'new-company-id', name: 'Test Company' } as Company;
+      const userProjection = {
+        id: 'new-user-id',
+        name: 'Admin',
+        email: 'admin@test.com',
+        role: Role.COMPANY_ADMIN,
+        companyId: 'new-company-id',
+      };
+
+      dataSource.transaction.mockResolvedValue({ user: userProjection, company: savedCompany });
+
+      const billingService = module.get<BillingService>(BillingService);
+
+      const result = await service.createGoogleCompanyAdmin(dto);
+
+      expect(result).toEqual(userProjection);
+      expect(billingService.ensureCompanyCustomer).toHaveBeenCalledWith(savedCompany);
     });
   });
 });

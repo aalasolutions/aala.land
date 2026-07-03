@@ -69,6 +69,21 @@ export class Company {
     @Column({ name: 'purchased_seats', type: 'integer', default: 1 })
     purchasedSeats: number;
 
+    @Column({ name: 'billing_provider', type: 'varchar', length: 32, default: 'stripe' })
+    billingProvider: string;
+
+    @Column({ name: 'billing_customer_id', type: 'varchar', length: 255, nullable: true })
+    billingCustomerId: string | null;
+
+    @Column({ name: 'billing_subscription_id', type: 'varchar', length: 255, nullable: true })
+    billingSubscriptionId: string | null;
+
+    @Column({ name: 'billing_status', type: 'varchar', length: 50, nullable: true })
+    billingStatus: string | null;
+
+    @Column({ name: 'billing_meta', type: 'jsonb', nullable: true })
+    billingMeta: Record<string, unknown> | null;
+
     @CreateDateColumn({ name: 'created_at' })
     createdAt: Date;
 
