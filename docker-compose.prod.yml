@@ -39,9 +39,11 @@ services:
       dockerfile: Dockerfile
     container_name: aala-land-backend
     ports:
-      - "${PORT:-3010}:3010"
+      - "${BACKEND_HOST_PORT:-3010}:3010"
     env_file:
       - ./backend/.env
+    environment:
+      PORT: 3010
     depends_on:
       postgres:
         condition: service_healthy
