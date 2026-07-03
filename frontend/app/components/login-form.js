@@ -6,6 +6,7 @@ import { service } from '@ember/service';
 export default class LoginFormComponent extends Component {
   @service auth;
   @service router;
+  @service googleAuth;
 
   @tracked email = '';
   @tracked password = '';
@@ -17,6 +18,8 @@ export default class LoginFormComponent extends Component {
   @tracked resetSent = false;
   @tracked resetLoading = false;
   @tracked resetError = '';
+
+  @tracked isGoogleLoading = false;
 
   @action
   updateEmail(event) {
@@ -45,6 +48,32 @@ export default class LoginFormComponent extends Component {
       this.errorMessage = err.message ?? 'Login failed. Check your credentials.';
     } finally {
       this.isLoading = false;
+    }
+  }
+
+  @action
+  async renderGoogleButton(element) {
+    if (window.google?.accounts?.id) {
+      window.google.accounts.id.cancel();
+    }
+
+    try {
+      await this.googleAuth.renderButton(element, (idToken) => this.loginWithGoogle(idToken));
+    } catch (err) {
+      this.errorMessage = err.message || 'Failed to load Google Sign-in button';
+    }
+  }
+
+  async loginWithGoogle(idToken) {
+    this.isGoogleLoading = true;
+
+    try {
+      await this.auth.loginWithGoogle(idToken);
+      this.router.transitionTo('dashboard');
+    } catch (err) {
+      this.errorMessage = err.message || 'Google sign-in failed. Please try again.';
+    } finally {
+      this.isGoogleLoading = false;
     }
   }
 

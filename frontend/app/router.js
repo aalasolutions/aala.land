@@ -39,9 +39,6 @@ Router.map(function () {
   this.route('audit');
   this.route('profile');
   this.route('company');
-  this.route('settings', function () {
-    this.route('whatsapp');
-  });
   this.route('admin', function () {
     this.route('companies');
   });

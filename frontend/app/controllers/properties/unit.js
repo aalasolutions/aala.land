@@ -32,6 +32,7 @@ export default class PropertiesUnitController extends Controller {
   // Photo upload state
   @tracked isUploading = false;
   @tracked uploadStatus = '';
+  @tracked previewUrl = null;
 
   // Delete confirmation state
   @tracked showDeleteModal = false;
@@ -123,58 +124,64 @@ export default class PropertiesUnitController extends Controller {
     const unit = this.model?.unit;
     if (!unit) return;
 
+    // Client-side type guard mirrors backend allowlist. GIF excluded.
+    const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+    if (!ALLOWED_TYPES.includes(file.type)) {
+      this.notifications.error('Only JPEG, PNG, and WebP images are allowed');
+      e.target.value = '';
+      return;
+    }
+
+    // Client-side size guard mirrors backend 5 MB limit.
+    if (file.size > 5 * 1024 * 1024) {
+      this.notifications.error('Image must be 5 MB or smaller');
+      e.target.value = '';
+      return;
+    }
+
+    // Show immediate client-side preview while upload is in progress.
+    this.revokePreview();
+    this.previewUrl = URL.createObjectURL(file);
+
     this.isUploading = true;
-    this.uploadStatus = 'Getting upload URL...';
+    this.uploadStatus = 'Uploading...';
 
     try {
-      // Step 1: Get presigned URL
-      const presigned = await this.auth.fetchJson('/properties/media/presigned-url', {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('unitId', unit.id);
+      formData.append('type', 'image'); // lowercase matches MediaType.IMAGE = 'image'
+
+      // Do NOT set Content-Type in the options object when sending FormData.
+      // The browser sets multipart/form-data with the boundary automatically.
+      await this.auth.fetchJson('/properties/media/upload', {
         method: 'POST',
-        body: JSON.stringify({
-          fileName: file.name,
-          contentType: file.type,
-          unitId: unit.id,
-        }),
-      });
-
-      const { uploadUrl, fileUrl, key } = presigned.data;
-
-      // Step 2: Upload file directly to S3/MinIO
-      this.uploadStatus = 'Uploading photo...';
-      const uploadRes = await fetch(uploadUrl, {
-        method: 'PUT',
-        body: file,
-        headers: { 'Content-Type': file.type },
-      });
-
-      if (!uploadRes.ok) {
-        throw new Error('File upload to storage failed');
-      }
-
-      // Step 3: Create media record in DB
-      this.uploadStatus = 'Saving record...';
-      await this.auth.fetchJson('/properties/media', {
-        method: 'POST',
-        body: JSON.stringify({
-          url: fileUrl,
-          s3Key: key,
-          fileName: file.name,
-          contentType: file.type,
-          fileSize: file.size,
-          unitId: unit.id,
-          type: 'image',
-        }),
+        body: formData,
       });
 
       this.notifications.success('Photo uploaded');
+      this.revokePreview();
       this.router.refresh('properties.unit');
     } catch (err) {
-      this.notifications.error(err.message || 'Upload failed');
+      if (err.message?.toLowerCase().includes('storage quota')) {
+        this.notifications.error(
+          'Storage quota exceeded. Add a seat or top up storage to upload more photos.',
+        );
+      } else {
+        this.notifications.error(err.message || 'Upload failed');
+      }
+      this.revokePreview();
     } finally {
       this.isUploading = false;
       this.uploadStatus = '';
-      // Reset the file input
       e.target.value = '';
+    }
+  }
+
+  revokePreview() {
+    if (this.previewUrl) {
+      URL.revokeObjectURL(this.previewUrl);
+      this.previewUrl = null;
     }
   }
 

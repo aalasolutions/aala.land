@@ -15,6 +15,7 @@ const config: Config = {
     '^@modules/(.*)$': '<rootDir>/modules/$1',
     '^@shared/(.*)$': '<rootDir>/shared/$1',
     '^@/(.*)$': '<rootDir>/$1',
+    '^file-type$': '<rootDir>/__mocks__/file-type.ts',
   },
   collectCoverageFrom: ['**/*.(t|j)s'],
   coverageDirectory: '../coverage',

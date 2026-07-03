@@ -1,12 +1,6 @@
 import Service, { service } from '@ember/service';
 import config from 'frontend/config/environment';
-
-async function parseErrorResponse(response, fallbackMessage) {
-  const err = await response.json().catch(() => ({}));
-  return Array.isArray(err.message)
-    ? err.message.join(', ')
-    : (err.message ?? fallbackMessage);
-}
+import parseErrorResponse from 'frontend/utils/parse-error-response';
 
 export default class AuthService extends Service {
   @service session;
@@ -60,6 +54,32 @@ export default class AuthService extends Service {
     return data;
   }
 
+  async loginWithGoogle(idToken) {
+    const data = await this.postAuthJson('/auth/google', { idToken }, 'Google authentication failed');
+    this.session.establish(data);
+    return data;
+  }
+
+  async signupWithGoogle(payload) {
+    const data = await this.postAuthJson('/auth/google/signup', payload, 'Google signup failed');
+    this.session.establish(data);
+    return data;
+  }
+
+  async linkGoogleAccount(idToken) {
+    const response = await this.authorizedFetch(`${this.apiBase}/auth/google/link`, {
+      method: 'POST',
+      body: JSON.stringify({ idToken }),
+    });
+
+    if (!response.ok) {
+      throw new Error(await parseErrorResponse(response, 'Unable to link Google account'));
+    }
+
+    const { data } = await response.json();
+    return data;
+  }
+
   async requestPasswordReset(email) {
     const response = await fetch(`${this.apiBase}/auth/forgot-password`, {
       method: 'POST',
@@ -84,6 +104,21 @@ export default class AuthService extends Service {
 
     if (!response.ok) {
       throw new Error(await parseErrorResponse(response, 'Unable to reset password'));
+    }
+
+    const { data } = await response.json();
+    return data;
+  }
+
+  async postAuthJson(path, body, fallbackMessage) {
+    const response = await fetch(`${this.apiBase}${path}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+
+    if (!response.ok) {
+      throw new Error(await parseErrorResponse(response, fallbackMessage));
     }
 
     const { data } = await response.json();

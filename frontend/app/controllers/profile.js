@@ -7,15 +7,20 @@ export default class ProfileController extends Controller {
   @service auth;
   @service notifications;
   @service router;
+  @service googleAuth;
 
   @tracked formName = '';
-  @tracked formEmail = '';
   @tracked formPassword = '';
   @tracked isSaving = false;
+  @tracked isLinkingGoogle = false;
   @tracked errorMsg = '';
 
   get user() {
     return this.model;
+  }
+
+  get isGoogleLinked() {
+    return Boolean(this.user?.googleId);
   }
 
   @action setField(fieldName, e) { this[fieldName] = e.target.value; }
@@ -26,8 +31,6 @@ export default class ProfileController extends Controller {
     this.isSaving = true;
     this.errorMsg = '';
 
-    const userId = this.auth.currentUser?.id;
-
     try {
       const body = {
         name: this.formName || this.user.name,
@@ -37,7 +40,7 @@ export default class ProfileController extends Controller {
         body.password = this.formPassword;
       }
 
-      await this.auth.fetchJson(`/users/${userId}`, {
+      await this.auth.fetchJson('/users/me', {
         method: 'PATCH',
         body: JSON.stringify(body),
       });
@@ -48,6 +51,40 @@ export default class ProfileController extends Controller {
       this.errorMsg = e.message;
     } finally {
       this.isSaving = false;
+    }
+  }
+
+  @action
+  async renderGoogleLinkButton(element) {
+    if (this.isGoogleLinked) return;
+
+    if (window.google?.accounts?.id) {
+      window.google.accounts.id.cancel();
+    }
+
+    try {
+      await this.googleAuth.renderButton(element, (idToken) => this.linkGoogleAccount(idToken));
+    } catch (err) {
+      if (!this.errorMsg) {
+        this.errorMsg = err.message || 'Failed to load Google button';
+      }
+    }
+  }
+
+  async linkGoogleAccount(idToken) {
+    if (this.isLinkingGoogle) return;
+
+    this.isLinkingGoogle = true;
+    this.errorMsg = '';
+
+    try {
+      await this.auth.linkGoogleAccount(idToken);
+      this.notifications.success('Google account linked');
+      this.router.refresh('profile');
+    } catch (e) {
+      this.errorMsg = e.message || 'Unable to link Google account';
+    } finally {
+      this.isLinkingGoogle = false;
     }
   }
 }
