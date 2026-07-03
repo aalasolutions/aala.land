@@ -8,6 +8,7 @@ import { Asset } from './entities/asset.entity';
 import { Unit } from './entities/unit.entity';
 import { PropertyMedia } from './entities/property-media.entity';
 import { PropertyDocument } from './entities/property-document.entity';
+import { Owner } from '../owners/entities/owner.entity';
 import { Company } from '../companies/entities/company.entity';
 
 @Module({
@@ -18,6 +19,7 @@ import { Company } from '../companies/entities/company.entity';
       Unit,
       PropertyMedia,
       PropertyDocument,
+      Owner,
       Company,
     ]),
   ],

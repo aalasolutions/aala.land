@@ -322,7 +322,7 @@ export default class PropertiesDetailController extends Controller {
       ...(this.formUnitSqFt ? { sqFt: parseFloat(this.formUnitSqFt) } : {}),
       ...(this.formUnitBedrooms ? { bedrooms: parseInt(this.formUnitBedrooms, 10) } : {}),
       ...(this.formUnitBathrooms ? { bathrooms: parseInt(this.formUnitBathrooms, 10) } : {}),
-      ...(this.formUnitOwnerId ? { ownerId: this.formUnitOwnerId } : {}),
+      ownerId: this.formUnitOwnerId || null,
       amenities: this.formUnitAmenities,
     };
 
