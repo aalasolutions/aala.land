@@ -10,7 +10,7 @@ export class UpdateUnitDto {
   @MaxLength(50)
   unitNumber?: string;
 
-  @ApiPropertyOptional({ example: 'uuid-of-owner' })
+  @ApiPropertyOptional({ example: 'uuid-of-owner', nullable: true })
   @IsUUID()
   @IsOptional()
   ownerId?: string | null;

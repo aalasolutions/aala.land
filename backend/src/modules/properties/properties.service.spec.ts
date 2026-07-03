@@ -1,4 +1,4 @@
-import { ConflictException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { QueryFailedError, Repository } from 'typeorm';
@@ -7,12 +7,14 @@ import { PropertyArea } from './entities/property-area.entity';
 import { Asset } from './entities/asset.entity';
 import { Unit } from './entities/unit.entity';
 import { PropertyMedia } from './entities/property-media.entity';
+import { Owner } from '../owners/entities/owner.entity';
 
 describe('PropertiesService', () => {
   let service: PropertiesService;
   let areaRepo: jest.Mocked<Repository<PropertyArea>>;
   let assetRepo: jest.Mocked<Repository<Asset>>;
   let unitRepo: jest.Mocked<Repository<Unit>>;
+  let ownerRepo: jest.Mocked<Repository<Owner>>;
 
   const companyId = 'company-uuid-1';
 
@@ -34,6 +36,12 @@ describe('PropertiesService', () => {
     id: 'unit-uuid-1',
     unitNumber: '1A',
     assetId: 'asset-uuid-1',
+    companyId,
+  };
+
+  const mockOwner: Partial<Owner> = {
+    id: 'owner-uuid-1',
+    name: 'John Doe',
     companyId,
   };
 
@@ -70,6 +78,10 @@ describe('PropertiesService', () => {
           provide: getRepositoryToken(PropertyMedia),
           useValue: createRepositoryMock<PropertyMedia>(),
         },
+        {
+          provide: getRepositoryToken(Owner),
+          useValue: createRepositoryMock<Owner>(),
+        },
       ],
     }).compile();
 
@@ -77,6 +89,7 @@ describe('PropertiesService', () => {
     areaRepo = module.get(getRepositoryToken(PropertyArea));
     assetRepo = module.get(getRepositoryToken(Asset));
     unitRepo = module.get(getRepositoryToken(Unit));
+    ownerRepo = module.get(getRepositoryToken(Owner));
   });
 
   it('should be defined', () => {
@@ -133,7 +146,11 @@ describe('PropertiesService', () => {
 
     it('returns the existing asset when a unique violation races with another create', async () => {
       const duplicate = { ...mockAsset, id: 'asset-uuid-2' } as Asset;
-      const uniqueViolation = new QueryFailedError('INSERT INTO buildings ...', [], { code: '23505' });
+      const uniqueViolation = new QueryFailedError(
+        'INSERT INTO buildings ...',
+        [],
+        Object.assign(new Error('unique violation'), { code: '23505' }),
+      );
 
       assetRepo.findOne.mockResolvedValueOnce(null).mockResolvedValueOnce(duplicate);
       assetRepo.create.mockReturnValue({ ...duplicate, id: 'new-asset' } as Asset);
@@ -185,10 +202,56 @@ describe('PropertiesService', () => {
     });
   });
 
+  describe('updateUnit', () => {
+    it('assigns the verified owner and ownerId when a valid ownerId is provided', async () => {
+      unitRepo.findOne.mockResolvedValue({ ...mockUnit } as Unit);
+      ownerRepo.findOne.mockResolvedValue(mockOwner as Owner);
+      unitRepo.save.mockImplementation(async (u: Unit) => u);
+
+      const result = await service.updateUnit('unit-uuid-1', companyId, { ownerId: 'owner-uuid-1' });
+
+      expect(ownerRepo.findOne).toHaveBeenCalledWith({
+        where: { id: 'owner-uuid-1', companyId },
+      });
+      expect(unitRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ owner: mockOwner, ownerId: 'owner-uuid-1' }),
+      );
+      expect(result.owner).toEqual(mockOwner);
+    });
+
+    it('clears the owner and ownerId when ownerId is set to null', async () => {
+      unitRepo.findOne.mockResolvedValue({
+        ...mockUnit,
+        ownerId: 'owner-uuid-1',
+        owner: mockOwner,
+      } as Unit);
+      unitRepo.save.mockImplementation(async (u: Unit) => u);
+
+      const result = await service.updateUnit('unit-uuid-1', companyId, { ownerId: null });
+
+      expect(ownerRepo.findOne).not.toHaveBeenCalled();
+      expect(unitRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ owner: null, ownerId: null }),
+      );
+      expect(result.owner).toBeNull();
+    });
+
+    it('throws BadRequestException when ownerId does not belong to the company', async () => {
+      unitRepo.findOne.mockResolvedValue({ ...mockUnit } as Unit);
+      ownerRepo.findOne.mockResolvedValue(null);
+
+      await expect(
+        service.updateUnit('unit-uuid-1', companyId, { ownerId: 'other-company-owner' }),
+      ).rejects.toThrow(BadRequestException);
+
+      expect(unitRepo.save).not.toHaveBeenCalled();
+    });
+  });
+
   describe('bulkImportUnits', () => {
     it('creates units from valid CSV', async () => {
       unitRepo.create.mockImplementation((data) => data as Unit);
-      unitRepo.save.mockResolvedValue([mockUnit] as Unit[]);
+      unitRepo.save.mockResolvedValue([mockUnit] as unknown as Unit);
 
       const csv = 'unitNumber,assetId,bedrooms,bathrooms\n101,asset-1,2,1\n102,asset-1,3,2';
       const result = await service.bulkImportUnits(companyId, csv);

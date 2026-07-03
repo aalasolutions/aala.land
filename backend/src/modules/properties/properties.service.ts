@@ -364,18 +364,16 @@ export class PropertiesService {
         const { ownerId, ...rest } = dto;
         Object.assign(unit, rest);
         if ('ownerId' in dto) {
-            if (ownerId) {
-                await this.verifyOwnerBelongsToCompany(ownerId, companyId);
-            }
+            unit.owner = ownerId ? await this.verifyOwnerBelongsToCompany(ownerId, companyId) : null;
             unit.ownerId = ownerId ?? null;
-            unit.owner = null; // clear stale relation so TypeORM uses the updated FK column
         }
         return this.unitRepository.save(unit);
     }
 
-    private async verifyOwnerBelongsToCompany(ownerId: string, companyId: string): Promise<void> {
+    private async verifyOwnerBelongsToCompany(ownerId: string, companyId: string): Promise<Owner> {
         const owner = await this.ownerRepository.findOne({ where: { id: ownerId, companyId } });
         if (!owner) throw new BadRequestException('Owner not found');
+        return owner;
     }
 
     async removeUnit(id: string, companyId: string): Promise<void> {
