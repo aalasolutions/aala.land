@@ -88,6 +88,7 @@ export class OwnersService {
       }
       throw error;
     }
+  }
 
   private sanitizeOwnerInput<T extends CreateOwnerDto | UpdateOwnerDto>(dto: T): T {
     const email = dto.email?.trim().toLowerCase();
