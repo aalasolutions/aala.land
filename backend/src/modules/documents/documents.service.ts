@@ -2,8 +2,9 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { PropertyDocument, DocumentCategory, DocumentAccessLevel } from '../properties/entities/property-document.entity';
-import { CreateDocumentDto } from './dto/create-document.dto';
 import { UpdateDocumentDto } from './dto/update-document.dto';
+import { MediaService } from '../properties/media.service';
+import { UploadDocumentDto } from './dto/upload-document.dto';
 import { Role } from '@shared/enums/roles.enum';
 
 @Injectable()
@@ -11,11 +12,30 @@ export class DocumentsService {
   constructor(
     @InjectRepository(PropertyDocument)
     private readonly documentRepository: Repository<PropertyDocument>,
+    private readonly mediaService: MediaService,
   ) {}
 
-  async create(companyId: string, userId: string, dto: CreateDocumentDto): Promise<PropertyDocument> {
+  async uploadAndCreate(
+    companyId: string,
+    userId: string,
+    file: Express.Multer.File,
+    dto: UploadDocumentDto,
+  ): Promise<PropertyDocument> {
+    const { url, s3Key, fileSize } = await this.mediaService.uploadDocumentToStorage(
+      companyId,
+      file,
+    );
+
     const doc = this.documentRepository.create({
-      ...dto,
+      name: dto.name,
+      url,
+      s3Key,
+      fileSize,
+      fileType: dto.fileType ?? file.mimetype,
+      unitId: dto.unitId ?? null,
+      assetId: dto.assetId ?? null, // persists to building_id column (legacy naming)
+      category: dto.category,
+      accessLevel: dto.accessLevel,
       companyId,
       uploadedBy: userId,
       version: 1,
@@ -68,38 +88,39 @@ export class DocumentsService {
   async update(
     id: string,
     companyId: string,
-    userId: string,
     userRole: string,
     dto: UpdateDocumentDto,
   ): Promise<PropertyDocument> {
     const existing = await this.findOne(id, companyId, userRole);
-
-    // If URL changes, create a new version
-    if (dto.url && dto.url !== existing.url) {
-      const newVersion = this.documentRepository.create({
-        name: dto.name ?? existing.name,
-        url: dto.url,
-        fileType: dto.fileType ?? existing.fileType,
-        category: dto.category ?? existing.category,
-        accessLevel: dto.accessLevel ?? existing.accessLevel,
-        unitId: existing.unitId,
-        assetId: existing.assetId,
-        companyId,
-        uploadedBy: userId,
-        version: existing.version + 1,
-        previousVersionId: existing.id,
-      });
-      return this.documentRepository.save(newVersion);
-    }
-
-    // Otherwise just update in place
     Object.assign(existing, dto);
     return this.documentRepository.save(existing);
   }
 
-  async remove(id: string, companyId: string, userRole: string): Promise<void> {
+  async remove(
+    id: string,
+    companyId: string,
+    userRole: string,
+  ): Promise<void> {
     const doc = await this.findOne(id, companyId, userRole);
+
+    if (doc.s3Key) {
+      await this.mediaService.deleteDocumentFromStorage(doc.s3Key, companyId, doc.fileSize);
+    }
+
     await this.documentRepository.remove(doc);
+  }
+
+  async downloadStream(
+    id: string,
+    companyId: string,
+    userRole: string,
+  ): Promise<{ stream: NodeJS.ReadableStream; doc: PropertyDocument }> {
+    const doc = await this.findOne(id, companyId, userRole); // re-checks accessLevel
+    if (!doc.s3Key) {
+      throw new NotFoundException('Document has no associated file in storage');
+    }
+    const stream = await this.mediaService.getDocumentStream(doc.s3Key);
+    return { stream, doc };
   }
 
   async getVersionHistory(id: string, companyId: string, userRole: string): Promise<PropertyDocument[]> {

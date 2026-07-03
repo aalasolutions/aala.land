@@ -3,7 +3,7 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository, Not } from 'typeorm';
 import { NotFoundException, ConflictException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { UsersService } from './users.service';
-import { User } from './entities/user.entity';
+import { User, AuthProvider } from './entities/user.entity';
 import { Role } from '@shared/enums/roles.enum';
 import * as bcrypt from 'bcryptjs';
 import * as crypto from 'crypto';
@@ -28,6 +28,8 @@ describe('UsersService', () => {
     name: 'Test Agent',
     email: 'agent@test.com',
     password: 'hashed-password',
+    googleId: null,
+    authProvider: AuthProvider.LOCAL,
     role: Role.AGENT,
     companyId,
     phone: null,

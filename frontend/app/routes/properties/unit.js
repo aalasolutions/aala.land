@@ -24,4 +24,10 @@ export default class PropertiesUnitRoute extends AuthenticatedRoute {
       return { unit: null, leases: [], owners: [], media: [], areaId: area_id };
     }
   }
+
+  resetController(controller, isExiting) {
+    if (isExiting) {
+      controller.revokePreview();
+    }
+  }
 }

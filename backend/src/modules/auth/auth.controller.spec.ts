@@ -4,11 +4,13 @@ import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { ImpersonateService } from './impersonate.service';
+import { AuthGoogleService } from './auth-google.service';
 
 describe('AuthController', () => {
   let controller: AuthController;
   let authService: jest.Mocked<AuthService>;
   let impersonateService: jest.Mocked<ImpersonateService>;
+  let googleService: jest.Mocked<AuthGoogleService>;
 
   const mockLoginResponse = {
     accessToken: 'mock-jwt-token',
@@ -47,6 +49,14 @@ describe('AuthController', () => {
             impersonate: jest.fn(),
           },
         },
+        {
+          provide: AuthGoogleService,
+          useValue: {
+            googleLogin: jest.fn(),
+            googleSignup: jest.fn(),
+            linkGoogleAccount: jest.fn(),
+          },
+        },
       ],
     })
       .overrideGuard(JwtAuthGuard)
@@ -56,6 +66,7 @@ describe('AuthController', () => {
     controller = module.get<AuthController>(AuthController);
     authService = module.get(AuthService);
     impersonateService = module.get(ImpersonateService);
+    googleService = module.get(AuthGoogleService);
   });
 
   it('should be defined', () => {
@@ -99,6 +110,51 @@ describe('AuthController', () => {
       const result = await controller.refresh(req) as any;
 
       expect(result.accessToken).toBe('new-token');
+    });
+  });
+
+  describe('googleLogin', () => {
+    it('delegates Google login to AuthGoogleService', async () => {
+      googleService.googleLogin.mockResolvedValue(mockLoginResponse as any);
+
+      const result = await controller.googleLogin({ idToken: 'google-id-token' });
+
+      expect(googleService.googleLogin).toHaveBeenCalledWith('google-id-token');
+      expect(result).toEqual(mockLoginResponse);
+    });
+  });
+
+  describe('googleSignup', () => {
+    it('delegates Google signup with company name and region', async () => {
+      googleService.googleSignup.mockResolvedValue(mockLoginResponse as any);
+
+      const result = await controller.googleSignup({
+        idToken: 'google-id-token',
+        companyName: 'Acme Real Estate',
+        regionCode: 'dubai',
+      });
+
+      expect(googleService.googleSignup).toHaveBeenCalledWith(
+        'google-id-token',
+        'Acme Real Estate',
+        'dubai',
+      );
+      expect(result).toEqual(mockLoginResponse);
+    });
+  });
+
+  describe('linkGoogleAccount', () => {
+    it('delegates Google account linking for the current user', async () => {
+      googleService.linkGoogleAccount.mockResolvedValue({
+        message: 'Google account linked successfully',
+        googleLinked: true,
+      });
+
+      const req = { user: { userId: 'user-uuid-1', email: 'admin@test.com', companyId: 'c1', role: 'admin' } };
+      const result = await controller.linkGoogleAccount(req as any, { idToken: 'google-id-token' });
+
+      expect(googleService.linkGoogleAccount).toHaveBeenCalledWith('user-uuid-1', 'google-id-token');
+      expect(result.googleLinked).toBe(true);
     });
   });
 

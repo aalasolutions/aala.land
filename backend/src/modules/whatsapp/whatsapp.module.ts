@@ -5,7 +5,8 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { BaileysManagerService } from './baileys-manager.service';
 import { MessageStoreService } from './message-store.service';
 import { WhatsappAiService } from './whatsapp-ai.service';
-import { WhatsappContextService } from './whatsapp-context.service';
+import { WhatsappAiRepositoryService } from './whatsapp-ai-repository.service';
+import { WhatsappAiPromptBuilderService } from './whatsapp-ai-prompt-builder.service';
 import { WhatsappGateway } from './whatsapp.gateway';
 import { WhatsappService } from './whatsapp.service';
 import { WhatsappController } from './whatsapp.controller';
@@ -30,8 +31,9 @@ import { Unit } from '../properties/entities/unit.entity';
   providers: [
     BaileysManagerService,
     MessageStoreService,
+    WhatsappAiRepositoryService,
+    WhatsappAiPromptBuilderService,
     WhatsappAiService,
-    WhatsappContextService,
     WhatsappGateway,
     WhatsappService,
   ],

@@ -22,7 +22,14 @@ describe('UsersController', () => {
     updatedAt: new Date(),
   };
 
-  const mockReq = { user: { companyId } };
+  const mockReq = {
+    user: {
+      userId: 'admin-uuid-1',
+      email: 'admin@test.com',
+      companyId,
+      role: Role.COMPANY_ADMIN,
+    },
+  };
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -59,7 +66,7 @@ describe('UsersController', () => {
       const dto = { name: 'Test Agent', email: 'agent@test.com', password: 'pass123', companyId };
       const result = await controller.create(dto as any, mockReq);
 
-      expect(service.create).toHaveBeenCalledWith(dto, companyId);
+      expect(service.create).toHaveBeenCalledWith(dto, companyId, Role.COMPANY_ADMIN);
       expect(result).toEqual(mockUser);
     });
   });
@@ -71,7 +78,7 @@ describe('UsersController', () => {
 
       const result = await controller.findAll(mockReq, 1, 20);
 
-      expect(service.findAll).toHaveBeenCalledWith(companyId, 1, 20, undefined);
+      expect(service.findAll).toHaveBeenCalledWith(companyId, 1, 20);
       expect(result).toEqual(paginated);
     });
   });
@@ -99,8 +106,34 @@ describe('UsersController', () => {
 
       const result = await controller.update('user-uuid-1', { name: 'Updated' } as any, mockReq);
 
-      expect(service.update).toHaveBeenCalledWith('user-uuid-1', companyId, { name: 'Updated' });
+      expect(service.update).toHaveBeenCalledWith(
+        'user-uuid-1',
+        companyId,
+        { name: 'Updated' },
+        Role.COMPANY_ADMIN,
+        'admin-uuid-1',
+      );
       expect(result.name).toBe('Updated');
+    });
+  });
+
+  describe('updateMyProfile', () => {
+    it('updates only safe self-profile fields', async () => {
+      service.update.mockResolvedValue({ ...mockUser, name: 'Updated Self' } as any);
+
+      const result = await controller.updateMyProfile(
+        { name: 'Updated Self', role: Role.SUPER_ADMIN, isActive: false } as any,
+        mockReq,
+      );
+
+      expect(service.update).toHaveBeenCalledWith(
+        'admin-uuid-1',
+        companyId,
+        { name: 'Updated Self' },
+        Role.COMPANY_ADMIN,
+        'admin-uuid-1',
+      );
+      expect(result.name).toBe('Updated Self');
     });
   });
 
@@ -110,7 +143,7 @@ describe('UsersController', () => {
 
       await controller.remove('user-uuid-1', mockReq);
 
-      expect(service.remove).toHaveBeenCalledWith('user-uuid-1', companyId);
+      expect(service.remove).toHaveBeenCalledWith('user-uuid-1', companyId, Role.COMPANY_ADMIN);
     });
   });
 });

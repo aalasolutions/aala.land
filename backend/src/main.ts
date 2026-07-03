@@ -3,6 +3,7 @@ import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { ResponseInterceptor } from './shared/interceptors/response.interceptor';
+import { MulterExceptionFilter } from './shared/filters/multer-exception.filter';
 import helmet from 'helmet';
 import { AppDataSource } from './data-source';
 
@@ -29,6 +30,7 @@ async function bootstrap() {
 
   // Global Response Interceptor
   app.useGlobalInterceptors(new ResponseInterceptor());
+  app.useGlobalFilters(new MulterExceptionFilter());
 
   // Global Validation
   app.useGlobalPipes(

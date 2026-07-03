@@ -22,6 +22,9 @@
           Re-pair
         </button>
       </div>
+      {{#if this.weeklyUsageLabel}}
+        <div class="wa-weekly-usage">{{this.weeklyUsageLabel}}</div>
+      {{/if}}
     </div>
 
     {{!-- Connection status --}}
