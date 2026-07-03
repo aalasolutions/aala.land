@@ -77,8 +77,17 @@ export class OwnersService {
       );
     }
 
-    await this.ownerRepository.remove(owner);
-  }
+    try {
+      await this.ownerRepository.remove(owner);
+    } catch (error) {
+      if (error instanceof QueryFailedError) {
+        const driverError = error.driverError as { code?: string } | undefined;
+        if (driverError?.code === '23503') {
+          throw new BadRequestException('Cannot delete owner — one or more units are still linked. Unlink them first.');
+        }
+      }
+      throw error;
+    }
 
   private sanitizeOwnerInput<T extends CreateOwnerDto | UpdateOwnerDto>(dto: T): T {
     const email = dto.email?.trim().toLowerCase();
