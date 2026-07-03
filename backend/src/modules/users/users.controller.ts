@@ -109,8 +109,10 @@ export class UsersController {
     @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN)
     @ApiOperation({ summary: 'Update a user (ADMIN+)' })
     update(@Param('id', ParseUUIDPipe) id: string, @Body() updateUserDto: UpdateUserDto, @Request() req: AuthenticatedRequest) {
-        const companyId = req.user.role === Role.SUPER_ADMIN ? undefined : (req.user.companyId ?? undefined);
-        return this.usersService.update(id, companyId, updateUserDto, req.user.role, req.user.userId);
+        const isImpersonating = !!req.user.impersonatedBy;
+        const effectiveRole = isImpersonating ? Role.SUPER_ADMIN : req.user.role;
+        const companyId = effectiveRole === Role.SUPER_ADMIN ? undefined : (req.user.companyId ?? undefined);
+        return this.usersService.update(id, companyId, updateUserDto, effectiveRole, req.user.userId);
     }
 
     @Delete(':id')
