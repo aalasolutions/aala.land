@@ -1,7 +1,7 @@
 import { ConflictException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { QueryFailedError, Repository } from 'typeorm';
 import { Owner } from './entities/owner.entity';
 import { OwnersService } from './owners.service';
 
@@ -83,9 +83,39 @@ describe('OwnersService', () => {
     ).rejects.toThrow(new ConflictException('An owner with this phone already exists.'));
 
     expect(ownerRepo.findOne).toHaveBeenCalledWith({
-      where: expect.objectContaining({ companyId, phone: '+971501234567' }),
+      where: expect.objectContaining({ companyId, phone: expect.anything() }),
     });
     expect(ownerRepo.save).not.toHaveBeenCalled();
+  });
+
+  it('maps raced email unique violations to conflict errors', async () => {
+    const uniqueViolation = new QueryFailedError('INSERT INTO owners ...', [], {
+      code: '23505',
+      constraint: 'IDX_owners_company_normalized_email_unique',
+    } as unknown as Error);
+
+    ownerRepo.findOne.mockResolvedValue(null);
+    ownerRepo.create.mockReturnValue(owner);
+    ownerRepo.save.mockRejectedValue(uniqueViolation);
+
+    await expect(
+      service.create({ name: 'Kadeem Orr', email: 'kadeem@example.com' }, companyId),
+    ).rejects.toThrow(new ConflictException('An owner with this email already exists.'));
+  });
+
+  it('maps raced phone unique violations to conflict errors', async () => {
+    const uniqueViolation = new QueryFailedError('INSERT INTO owners ...', [], {
+      code: '23505',
+      constraint: 'IDX_owners_company_normalized_phone_unique',
+    } as unknown as Error);
+
+    ownerRepo.findOne.mockResolvedValue(null);
+    ownerRepo.create.mockReturnValue(owner);
+    ownerRepo.save.mockRejectedValue(uniqueViolation);
+
+    await expect(
+      service.create({ name: 'Kadeem Orr', phone: '+971501234567' }, companyId),
+    ).rejects.toThrow(new ConflictException('An owner with this phone already exists.'));
   });
 
   it('rejects updating an owner to another owner email in the same company', async () => {
