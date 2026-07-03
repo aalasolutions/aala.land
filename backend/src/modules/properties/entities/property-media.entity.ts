@@ -32,6 +32,9 @@ export class PropertyMedia {
     @Column({ name: 'file_size', type: 'integer', nullable: true })
     fileSize: number | null;
 
+    @Column({ name: 'thumbnail_size', type: 'integer', nullable: true })
+    thumbnailSize: number | null;
+
     @Column({
         type: 'enum',
         enum: MediaType,

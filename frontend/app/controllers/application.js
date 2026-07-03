@@ -57,6 +57,7 @@ export default class ApplicationController extends Controller {
   routeGroupMap = {
     properties: 'properties', 'properties.index': 'properties', 'properties.detail': 'properties',
     owners: 'properties', 'owners.index': 'properties', 'owners.detail': 'properties',
+    documents: 'documents',
     leads: 'crm', contacts: 'crm',
     leases: 'finance', financials: 'finance', cheques: 'finance', commissions: 'finance',
     maintenance: 'operations', vendors: 'operations',

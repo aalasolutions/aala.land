@@ -126,6 +126,16 @@ describe('AuthService', () => {
 
       expect(result).toBeNull();
     });
+
+    it('returns null when user is inactive', async () => {
+      usersService.findByEmail.mockResolvedValue({ ...mockUser, isActive: false } as any);
+      (bcrypt.compare as jest.Mock).mockClear();
+
+      const result = await service.validateUser('admin@test.com', 'correct-password');
+
+      expect(result).toBeNull();
+      expect(bcrypt.compare).not.toHaveBeenCalled();
+    });
   });
 
   describe('login', () => {
