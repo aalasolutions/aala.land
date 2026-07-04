@@ -5,8 +5,12 @@ import {
     BillingPlan,
     BillingPriceKind,
     BillingProvider,
+    ChangePlanInput,
+    CreateSubscriptionInput,
+    CreateSubscriptionResult,
     EnsureCustomerInput,
     ProviderWebhookEvent,
+    SubscriptionRef,
 } from './billing-provider.interface';
 import {
     NormalizedBillingEvent,
@@ -328,5 +332,100 @@ export class StripeBillingProvider implements BillingProvider {
         this.logger.log(`Created Stripe product ${product.id}`);
         this.productIdCache = product.id;
         return product.id;
+    }
+
+    // -------------------------------------------------------------------------
+    // Subscription lifecycle methods (unit 3)
+    // -------------------------------------------------------------------------
+
+    async createSubscription(input: CreateSubscriptionInput): Promise<CreateSubscriptionResult> {
+        const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = [
+            { price: input.seatPriceId, quantity: input.quantity },
+        ];
+        if (input.basePriceId) {
+            // ENTERPRISE: flat base fee ($250) billed as quantity 1 on a separate line item.
+            lineItems.push({ price: input.basePriceId, quantity: 1 });
+        }
+
+        const session = await this.stripe.checkout.sessions.create({
+            mode: 'subscription',
+            customer: input.customerId,
+            line_items: lineItems,
+            subscription_data: {
+                metadata: { companyId: input.companyId },
+            },
+            success_url: input.successUrl,
+            cancel_url: input.cancelUrl,
+        });
+
+        return { checkoutUrl: session.url!, subscriptionId: null };
+    }
+
+    async updateSeatQuantity(ref: SubscriptionRef, quantity: number): Promise<void> {
+        const item = await this.findSeatItem(ref.subscriptionId);
+        await this.stripe.subscriptionItems.update(item.id, { quantity });
+    }
+
+    async changePlan(input: ChangePlanInput): Promise<void> {
+        const sub = await this.stripe.subscriptions.retrieve(input.subscriptionId, {
+            expand: ['items'],
+        }) as unknown as { items: { data: { id: string; price: { metadata?: Record<string, string> } }[] } };
+
+        const items: Stripe.SubscriptionUpdateParams.Item[] = [];
+        const currentBaseItem = sub.items.data.find(
+            (i) => i.price?.metadata?.kind === 'ENTERPRISE_BASE',
+        );
+        const currentSeatItem = sub.items.data.find(
+            (i) => i.price?.metadata?.kind === 'SEAT',
+        );
+
+        // Always update the seat item to the new price + preserve quantity.
+        if (currentSeatItem) {
+            items.push({ id: currentSeatItem.id, price: input.seatPriceId, quantity: input.quantity });
+        }
+
+        if (input.basePriceId) {
+            if (currentBaseItem) {
+                // Switching from PRO->ENTERPRISE or updating ENTERPRISE base price.
+                items.push({ id: currentBaseItem.id, price: input.basePriceId, quantity: 1 });
+            } else {
+                // PRO->ENTERPRISE: add the base line item.
+                items.push({ price: input.basePriceId, quantity: 1 });
+            }
+        } else if (currentBaseItem) {
+            // ENTERPRISE->PRO: remove the base line item.
+            items.push({ id: currentBaseItem.id, deleted: true });
+        }
+
+        await this.stripe.subscriptions.update(input.subscriptionId, { items });
+    }
+
+    async cancel(ref: SubscriptionRef): Promise<void> {
+        await this.stripe.subscriptions.update(ref.subscriptionId, {
+            cancel_at_period_end: true,
+        });
+    }
+
+    // -------------------------------------------------------------------------
+    // Private helpers
+    // -------------------------------------------------------------------------
+
+    /** Retrieve the SEAT line item for a subscription. Throws if not found. */
+    private async findSeatItem(
+        subscriptionId: string,
+    ): Promise<{ id: string }> {
+        const sub = await this.stripe.subscriptions.retrieve(subscriptionId, {
+            expand: ['items'],
+        }) as unknown as { items: { data: { id: string; price?: { metadata?: Record<string, string> } }[] } };
+        const item =
+            sub.items.data.find((i) => i.price?.metadata?.kind === 'SEAT') ??
+            sub.items.data[0];
+        if (!item) throw new Error(`No subscription items found on ${subscriptionId}`);
+        return { id: item.id };
+    }
+
+    /** Thin SubscriptionRef builder for internal use. */
+    private toRef(subscriptionId: string, customerId: string): SubscriptionRef {
+        return { subscriptionId, customerId };
     }
 }

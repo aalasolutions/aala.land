@@ -20,6 +20,9 @@ export default class CompanyController extends Controller {
   @tracked errorMsg = '';
   @tracked expandedCountries = [];
   @tracked storageUsage = null;
+  @tracked billing = null;
+  @tracked isBillingBusy = false;
+  @tracked showDowngradeConfirm = false;
 
   @tracked activeTab = 'general';
   @tracked aiPrompt = '';
@@ -82,6 +85,20 @@ export default class CompanyController extends Controller {
 
   get seatLabel() {
     return this.storageUsage?.purchasedSeats === 1 ? 'seat' : 'seats';
+  }
+
+  get isFreeTier() {
+    return (this.company?.subscriptionTier || 'FREE') === 'FREE';
+  }
+
+  get billingSeatLabel() {
+    return this.billing?.purchasedSeats === 1 ? 'seat' : 'seats';
+  }
+
+  get seatPriceLabel() {
+    if (!this.billing?.seatAmount || !this.billing?.currency) return null;
+    const amount = this.billing.seatAmount / 100;
+    return `${amount} ${this.billing.currency.toUpperCase()} per seat per month`;
   }
 
   get isCompanyAdmin() {
@@ -176,6 +193,49 @@ export default class CompanyController extends Controller {
       this.aiErrorMsg = 'Failed to restore. Please try again.';
     } finally {
       this.isSavingAI = false;
+    }
+  }
+
+  @action async upgradeToPro() {
+    if (!this.isCompanyAdmin || this.isBillingBusy) return;
+    this.isBillingBusy = true;
+    try {
+      const res = await this.auth.fetchJson('/billing/checkout', { method: 'POST' });
+      const url = res?.data?.checkoutUrl;
+      if (url) {
+        window.location.assign(url);
+      } else {
+        this.notifications.error('Could not start checkout. Please try again.');
+        this.isBillingBusy = false;
+      }
+    } catch (e) {
+      this.notifications.error(e.message);
+      this.isBillingBusy = false;
+    }
+    // Deliberately not cleared on success: the browser is navigating to Stripe.
+  }
+
+  @action openDowngradeConfirm() {
+    this.showDowngradeConfirm = true;
+  }
+
+  @action closeDowngradeConfirm() {
+    this.showDowngradeConfirm = false;
+  }
+
+  @action async confirmDowngrade() {
+    if (this.isBillingBusy) return;
+    this.isBillingBusy = true;
+    try {
+      await this.auth.fetchJson('/billing/cancel', { method: 'POST' });
+      this.showDowngradeConfirm = false;
+      this.notifications.success('Subscription will end at the close of the current billing period.');
+      this.router.refresh('company');
+    } catch (e) {
+      // 409 carries the active-user-count message from the backend gate.
+      this.notifications.error(e.message);
+    } finally {
+      this.isBillingBusy = false;
     }
   }
 

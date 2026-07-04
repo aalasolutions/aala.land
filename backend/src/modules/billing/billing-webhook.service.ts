@@ -32,10 +32,10 @@ import {
 } from './events/billing-events';
 
 /**
- * Maps a billing plan to a subscription tier. ENTERPRISE joins the enum in
- * unit 3 (migration 1779500000021) and resolves automatically here once it does;
- * until then it degrades to PRO. No Enterprise subscription can exist before
- * unit 3 ships checkout, so the fallback is a safety net, not a live path.
+ * Maps a billing plan to a subscription tier. Unit 3 added ENTERPRISE to the
+ * enum, so this dynamic lookup now resolves both PRO and ENTERPRISE. The
+ * fallback (??  PRO) is a safety net for any unrecognised future plan string
+ * arriving from the webhook before the backend is updated.
  */
 export function planToTier(plan: BillingPlan): SubscriptionTier {
     const tier = (SubscriptionTier as Record<string, SubscriptionTier>)[plan];

@@ -28,7 +28,7 @@ export class UpdateCompanyDto {
   @Validate(IsValidRegionCode)
   defaultRegionCode?: string;
 
-  @ApiPropertyOptional({ example: 'STARTER', enum: SubscriptionTier })
+  @ApiPropertyOptional({ example: 'PRO', enum: SubscriptionTier })
   @IsEnum(SubscriptionTier)
   @IsOptional()
   subscriptionTier?: SubscriptionTier;

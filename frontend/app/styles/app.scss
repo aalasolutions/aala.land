@@ -4864,3 +4864,11 @@ $google-neutral-border-hover: #c6cbd1;
   .plan-banner__limits { color: var(--text-muted); font-size: 0.85rem; }
   .plan-banner__expiry { text-align: right; font-size: 0.8rem; color: var(--text-muted); }
 }
+
+// Billing (company settings billing tab)
+.billing-plan-card {
+  padding: 1.25rem;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  background: var(--surface-2, rgba(0, 0, 0, 0.02));
+}

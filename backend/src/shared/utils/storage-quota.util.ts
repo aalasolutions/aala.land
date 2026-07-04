@@ -5,21 +5,29 @@ import {
   SubscriptionTier,
   FREE_STORAGE_BYTES,
   BYTES_PER_SEAT,
+  ENTERPRISE_BYTES_PER_SEAT,
 } from '@modules/companies/entities/company.entity';
 
 /**
  * Returns the total storage quota in bytes for a given company.
  * Pure function, no I/O. Safe to call from any module that has the Company object.
  *
- * FREE tier:  2 GB flat, regardless of seat count.
- * Paid tiers: purchasedSeats * 5 GB. purchasedSeats defaults to 1 and will be
- *             synced from the Stripe subscription quantity when billing ships.
+ * FREE tier:       2 GB flat, regardless of seat count.
+ * PRO tier:        purchasedSeats * 5 GB.
+ * ENTERPRISE tier: purchasedSeats * 10 GB.
+ *
+ * purchasedSeats defaults to 1 and is synced from the Stripe subscription
+ * quantity by the webhook handler (unit 4).
  */
 export function getStorageQuotaBytes(company: Company): number {
   const tier = company.subscriptionTier as SubscriptionTier;
   if (tier === SubscriptionTier.FREE) {
     return FREE_STORAGE_BYTES;
   }
+  if (tier === SubscriptionTier.ENTERPRISE) {
+    return Math.max(company.purchasedSeats, 1) * ENTERPRISE_BYTES_PER_SEAT;
+  }
+  // PRO (and any future unknown tier): 5 GB/seat
   return Math.max(company.purchasedSeats, 1) * BYTES_PER_SEAT;
 }
 

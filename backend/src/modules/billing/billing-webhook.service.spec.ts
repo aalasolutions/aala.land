@@ -305,8 +305,35 @@ describe('BillingWebhookService', () => {
             expect(planToTier('PRO')).toBe(SubscriptionTier.PRO);
         });
 
-        it('degrades ENTERPRISE to PRO until unit 3 adds the enum member', () => {
-            expect(planToTier('ENTERPRISE')).toBe(SubscriptionTier.PRO);
+        it('maps ENTERPRISE to the ENTERPRISE tier (unit 3 added the enum member)', () => {
+            expect(planToTier('ENTERPRISE')).toBe(SubscriptionTier.ENTERPRISE);
+        });
+    });
+
+    describe('company sync handlers — ENTERPRISE', () => {
+        it('SubscriptionActivated for ENTERPRISE writes ENTERPRISE tier and cap columns', async () => {
+            provider.parseWebhook.mockResolvedValue(
+                parsedWith([
+                    {
+                        name: 'SubscriptionActivated',
+                        ...baseEvent,
+                        plan: 'ENTERPRISE',
+                        quantity: 5,
+                        status: 'active',
+                        currentPeriodEnd: null,
+                    },
+                ]),
+            );
+            await service.handleWebhook(rawBody, signature);
+            expect(companyRepo.update).toHaveBeenCalledWith(companyId, {
+                billingSubscriptionId: 'sub_1',
+                billingStatus: 'active',
+                subscriptionTier: SubscriptionTier.ENTERPRISE,
+                purchasedSeats: 5,
+                maxUsers: TIER_LIMITS[SubscriptionTier.ENTERPRISE].maxUsers,
+                maxCountries: TIER_LIMITS[SubscriptionTier.ENTERPRISE].maxCountries,
+                maxProperties: TIER_LIMITS[SubscriptionTier.ENTERPRISE].maxProperties,
+            });
         });
     });
 });

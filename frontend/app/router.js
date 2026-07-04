@@ -39,6 +39,10 @@ Router.map(function () {
   this.route('audit');
   this.route('profile');
   this.route('company');
+  this.route('billing', function () {
+    this.route('success');
+    this.route('cancel');
+  });
   this.route('admin', function () {
     this.route('companies');
   });

@@ -1,5 +1,11 @@
 import { getStorageQuotaBytes, reserveStorage } from './storage-quota.util';
-import { Company, SubscriptionTier, FREE_STORAGE_BYTES, BYTES_PER_SEAT } from '@modules/companies/entities/company.entity';
+import {
+  Company,
+  SubscriptionTier,
+  FREE_STORAGE_BYTES,
+  BYTES_PER_SEAT,
+  ENTERPRISE_BYTES_PER_SEAT,
+} from '@modules/companies/entities/company.entity';
 
 const makeCompany = (overrides: Partial<Company> = {}): Company =>
   ({
@@ -16,19 +22,24 @@ describe('getStorageQuotaBytes', () => {
     expect(getStorageQuotaBytes(company)).toBe(FREE_STORAGE_BYTES);
   });
 
-  it('returns purchasedSeats * BYTES_PER_SEAT for STARTER tier', () => {
-    const company = makeCompany({ subscriptionTier: SubscriptionTier.STARTER, purchasedSeats: 3 });
-    expect(getStorageQuotaBytes(company)).toBe(3 * BYTES_PER_SEAT);
-  });
-
   it('returns purchasedSeats * BYTES_PER_SEAT for PRO tier', () => {
     const company = makeCompany({ subscriptionTier: SubscriptionTier.PRO, purchasedSeats: 5 });
     expect(getStorageQuotaBytes(company)).toBe(5 * BYTES_PER_SEAT);
   });
 
-  it('treats purchasedSeats < 1 as 1 seat for paid tiers', () => {
-    const company = makeCompany({ subscriptionTier: SubscriptionTier.STARTER, purchasedSeats: 0 });
+  it('returns purchasedSeats * ENTERPRISE_BYTES_PER_SEAT for ENTERPRISE tier', () => {
+    const company = makeCompany({ subscriptionTier: SubscriptionTier.ENTERPRISE, purchasedSeats: 3 });
+    expect(getStorageQuotaBytes(company)).toBe(3 * ENTERPRISE_BYTES_PER_SEAT);
+  });
+
+  it('treats purchasedSeats < 1 as 1 seat for PRO tier', () => {
+    const company = makeCompany({ subscriptionTier: SubscriptionTier.PRO, purchasedSeats: 0 });
     expect(getStorageQuotaBytes(company)).toBe(BYTES_PER_SEAT);
+  });
+
+  it('treats purchasedSeats < 1 as 1 seat for ENTERPRISE tier', () => {
+    const company = makeCompany({ subscriptionTier: SubscriptionTier.ENTERPRISE, purchasedSeats: 0 });
+    expect(getStorageQuotaBytes(company)).toBe(ENTERPRISE_BYTES_PER_SEAT);
   });
 });
 

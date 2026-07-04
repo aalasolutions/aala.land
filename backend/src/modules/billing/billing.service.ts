@@ -1,9 +1,37 @@
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import {
+    BadRequestException,
+    ConflictException,
+    Inject,
+    Injectable,
+    Logger,
+    NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Company } from '../companies/entities/company.entity';
+import { Company, SubscriptionTier } from '../companies/entities/company.entity';
+import { User } from '../users/entities/user.entity';
 import { BillingPrice } from './entities/billing-price.entity';
-import { BillingProvider, BILLING_PROVIDER } from './provider/billing-provider.interface';
+import {
+    BillingPlan,
+    BillingProvider,
+    BILLING_PROVIDER,
+} from './provider/billing-provider.interface';
+import { resolveBillingCurrency } from './billing-currency.util';
+
+/** Shape returned by getSubscriptionState. */
+export interface SubscriptionState {
+    tier: SubscriptionTier;
+    billingStatus: string | null;
+    billingSubscriptionId: string | null;
+    purchasedSeats: number;
+}
+
+/** Shape returned by startCheckout / adminCheckout. */
+export interface CheckoutResult {
+    checkoutUrl: string;
+    /** Always null: subscriptionId arrives via webhook (single writer). */
+    subscriptionId: null;
+}
 
 @Injectable()
 export class BillingService {
@@ -12,8 +40,13 @@ export class BillingService {
     constructor(
         @InjectRepository(Company) private readonly companyRepo: Repository<Company>,
         @InjectRepository(BillingPrice) private readonly priceRepo: Repository<BillingPrice>,
+        @InjectRepository(User) private readonly userRepo: Repository<User>,
         @Inject(BILLING_PROVIDER) private readonly provider: BillingProvider,
     ) {}
+
+    // -------------------------------------------------------------------------
+    // Unit 1 methods (unchanged)
+    // -------------------------------------------------------------------------
 
     /** Idempotent: returns the existing customer id or creates one. Safe to call again at subscribe time. */
     async ensureCompanyCustomer(company: Company): Promise<string> {
@@ -40,5 +73,174 @@ export class BillingService {
             synced++;
         }
         return { synced, total: rows.length };
+    }
+
+    // -------------------------------------------------------------------------
+    // Unit 3 methods (subscription lifecycle)
+    // -------------------------------------------------------------------------
+
+    /** Return the current billing-relevant snapshot for a company. */
+    getSubscriptionState(company: Company): SubscriptionState {
+        return {
+            tier: company.subscriptionTier,
+            billingStatus: company.billingStatus ?? null,
+            billingSubscriptionId: company.billingSubscriptionId ?? null,
+            purchasedSeats: company.purchasedSeats,
+        };
+    }
+
+    /**
+     * Open a hosted Checkout session for PRO (self-serve, COMPANY_ADMIN).
+     *
+     * CONTRACT INVARIANTS:
+     * - ENTERPRISE is gated to SUPER_ADMIN only (enforced in the controller).
+     * - ensureCompanyCustomer is called here to satisfy the CUSTOMER PRECONDITION.
+     * - The subscription id is null; it arrives via the SubscriptionActivated webhook.
+     * - quantity is set to the current active user count (minimum 1).
+     */
+    async startCheckout(
+        companyId: string,
+        successUrl: string,
+        cancelUrl: string,
+    ): Promise<CheckoutResult> {
+        const company = await this.findCompany(companyId);
+        const customerId = await this.ensureCompanyCustomer(company);
+        const currency = resolveBillingCurrency(company.defaultRegionCode);
+        const quantity = Math.max(await this.countActiveUsers(companyId), 1);
+
+        const seatPriceId = await this.getProviderPriceId('SEAT', currency);
+
+        const result = await this.provider.createSubscription({
+            customerId,
+            seatPriceId,
+            basePriceId: null,
+            quantity,
+            successUrl,
+            cancelUrl,
+            companyId,
+        });
+        return result;
+    }
+
+    /**
+     * Open a hosted Checkout session for any plan (SUPER_ADMIN only).
+     * ENTERPRISE requires basePriceId; PRO does not.
+     */
+    async adminStartCheckout(
+        companyId: string,
+        plan: BillingPlan,
+        quantity: number,
+        successUrl: string,
+        cancelUrl: string,
+    ): Promise<CheckoutResult> {
+        const company = await this.findCompany(companyId);
+        const customerId = await this.ensureCompanyCustomer(company);
+        const currency = resolveBillingCurrency(company.defaultRegionCode);
+
+        const seatPriceId = await this.getProviderPriceId('SEAT', currency);
+        const basePriceId =
+            plan === 'ENTERPRISE' ? await this.getProviderPriceId('ENTERPRISE_BASE', currency) : null;
+
+        const result = await this.provider.createSubscription({
+            customerId,
+            seatPriceId,
+            basePriceId,
+            quantity,
+            successUrl,
+            cancelUrl,
+            companyId,
+        });
+        return result;
+    }
+
+    /**
+     * Change plan for a company (PRO <-> ENTERPRISE). SUPER_ADMIN only.
+     * Quantity is preserved (contract section 12).
+     */
+    async changePlanForCompany(companyId: string, plan: BillingPlan): Promise<void> {
+        const company = await this.findCompany(companyId);
+        if (!company.billingSubscriptionId || !company.billingCustomerId) {
+            throw new BadRequestException('Company does not have an active subscription');
+        }
+        const currency = resolveBillingCurrency(company.defaultRegionCode);
+        const seatPriceId = await this.getProviderPriceId('SEAT', currency);
+        const basePriceId =
+            plan === 'ENTERPRISE' ? await this.getProviderPriceId('ENTERPRISE_BASE', currency) : null;
+
+        await this.provider.changePlan({
+            subscriptionId: company.billingSubscriptionId,
+            customerId: company.billingCustomerId,
+            plan,
+            seatPriceId,
+            basePriceId,
+            quantity: company.purchasedSeats,
+        });
+    }
+
+    /**
+     * Cancel the subscription at period end (COMPANY_ADMIN or SUPER_ADMIN).
+     *
+     * Downgrade to FREE is blocked with 409 when the company has more than
+     * 1 active user (they must be removed or deactivated first via unit 5).
+     */
+    async cancelSubscription(companyId: string): Promise<void> {
+        const company = await this.findCompany(companyId);
+        if (!company.billingSubscriptionId || !company.billingCustomerId) {
+            throw new BadRequestException('Company does not have an active subscription to cancel');
+        }
+
+        const activeUsers = await this.countActiveUsers(companyId);
+        if (activeUsers > 1) {
+            throw new ConflictException(
+                `Cannot cancel: company has ${activeUsers} active users. ` +
+                `Remove or deactivate all but 1 before downgrading to FREE.`,
+            );
+        }
+
+        await this.provider.cancel({
+            subscriptionId: company.billingSubscriptionId,
+            customerId: company.billingCustomerId,
+        });
+    }
+
+    // -------------------------------------------------------------------------
+    // Private helpers
+    // -------------------------------------------------------------------------
+
+    private async findCompany(companyId: string): Promise<Company> {
+        const company = await this.companyRepo.findOne({ where: { id: companyId } });
+        if (!company) throw new NotFoundException(`Company ${companyId} not found`);
+        return company;
+    }
+
+    /** Count active (isActive=true) users for a company. */
+    private async countActiveUsers(companyId: string): Promise<number> {
+        return this.userRepo.count({ where: { companyId, isActive: true } });
+    }
+
+    /**
+     * Resolve the provider price id for (kind, currency). Throws if not found or
+     * not yet synced to Stripe (providerPriceId is null).
+     */
+    private async getProviderPriceId(
+        kind: 'SEAT' | 'ENTERPRISE_BASE',
+        currency: string,
+    ): Promise<string> {
+        const row = await this.priceRepo.findOne({
+            where: { kind, currency, active: true },
+        });
+        if (!row) {
+            throw new BadRequestException(
+                `No active ${kind} price found for currency ${currency}. ` +
+                `Run POST /billing/prices/sync first.`,
+            );
+        }
+        if (!row.providerPriceId) {
+            throw new BadRequestException(
+                `${kind} price for ${currency} has not been synced to Stripe yet. ` +
+                `Run POST /billing/prices/sync first.`,
+            );
+        }
+        return row.providerPriceId;
     }
 }

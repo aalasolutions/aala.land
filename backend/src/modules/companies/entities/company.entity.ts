@@ -2,18 +2,24 @@ import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateCol
 
 export enum SubscriptionTier {
     FREE = 'FREE',
-    STARTER = 'STARTER',
     PRO = 'PRO',
+    ENTERPRISE = 'ENTERPRISE',
 }
 
+// Caps live on Free only. 999 is the frozen finite "uncapped" sentinel (contract
+// section 11): the webhook cap-column sync writes these values into int NOT NULL
+// columns, so Infinity is permitted ONLY for aiWeeklyMessages, which is never
+// synced to a column. aiWeeklyMessages is the interim AI limiter until the
+// credit ledger lands (parked behind the WhatsApp PR).
 export const TIER_LIMITS: Record<SubscriptionTier, { maxUsers: number; maxCountries: number; maxProperties: number; aiWeeklyMessages: number }> = {
-    [SubscriptionTier.FREE]:    { maxUsers: 1,   maxCountries: 1,   maxProperties: 25,  aiWeeklyMessages: 10  },
-    [SubscriptionTier.STARTER]: { maxUsers: 5,   maxCountries: 1,   maxProperties: 100, aiWeeklyMessages: 50  },
-    [SubscriptionTier.PRO]:     { maxUsers: 999, maxCountries: 999, maxProperties: 999, aiWeeklyMessages: Infinity },
+    [SubscriptionTier.FREE]:       { maxUsers: 1,   maxCountries: 1,   maxProperties: 25,  aiWeeklyMessages: 10 },
+    [SubscriptionTier.PRO]:        { maxUsers: 999, maxCountries: 999, maxProperties: 999, aiWeeklyMessages: Infinity },
+    [SubscriptionTier.ENTERPRISE]: { maxUsers: 999, maxCountries: 999, maxProperties: 999, aiWeeklyMessages: Infinity },
 };
 
-export const FREE_STORAGE_BYTES  = 2 * 1024 * 1024 * 1024;  // 2 GB flat (FREE tier)
-export const BYTES_PER_SEAT      = 5 * 1024 * 1024 * 1024;  // 5 GB per purchased seat (paid tiers)
+export const FREE_STORAGE_BYTES        = 2 * 1024 * 1024 * 1024;   // 2 GB flat (FREE tier)
+export const BYTES_PER_SEAT            = 5 * 1024 * 1024 * 1024;   // 5 GB per purchased seat (PRO)
+export const ENTERPRISE_BYTES_PER_SEAT = 10 * 1024 * 1024 * 1024;  // 10 GB per purchased seat (ENTERPRISE)
 
 @Entity('companies')
 export class Company {
