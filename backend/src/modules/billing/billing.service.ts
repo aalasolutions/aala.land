@@ -22,8 +22,12 @@ import { resolveBillingCurrency } from './billing-currency.util';
 export interface SubscriptionState {
     tier: SubscriptionTier;
     billingStatus: string | null;
-    billingSubscriptionId: string | null;
+    hasSubscription: boolean;
     purchasedSeats: number;
+    activeUsers: number;
+    currency: string;
+    seatAmount: number | null;
+    canDowngradeToFree: boolean;
 }
 
 /** Shape returned by startCheckout / adminCheckout. */
@@ -80,12 +84,22 @@ export class BillingService {
     // -------------------------------------------------------------------------
 
     /** Return the current billing-relevant snapshot for a company. */
-    getSubscriptionState(company: Company): SubscriptionState {
+    async getSubscriptionState(companyId: string): Promise<SubscriptionState> {
+        const company = await this.findCompany(companyId);
+        const currency = resolveBillingCurrency(company.defaultRegionCode);
+        const [seatPrice, activeUsers] = await Promise.all([
+            this.priceRepo.findOne({ where: { kind: 'SEAT', currency, active: true } }),
+            this.countActiveUsers(companyId),
+        ]);
         return {
             tier: company.subscriptionTier,
             billingStatus: company.billingStatus ?? null,
-            billingSubscriptionId: company.billingSubscriptionId ?? null,
+            hasSubscription: !!company.billingSubscriptionId,
             purchasedSeats: company.purchasedSeats,
+            activeUsers,
+            currency,
+            seatAmount: seatPrice?.unitAmount ?? null,
+            canDowngradeToFree: activeUsers <= 1,
         };
     }
 
@@ -104,6 +118,9 @@ export class BillingService {
         cancelUrl: string,
     ): Promise<CheckoutResult> {
         const company = await this.findCompany(companyId);
+        if (company.billingSubscriptionId) {
+            throw new ConflictException('This company already has an active subscription.');
+        }
         const customerId = await this.ensureCompanyCustomer(company);
         const currency = resolveBillingCurrency(company.defaultRegionCode);
         const quantity = Math.max(await this.countActiveUsers(companyId), 1);
@@ -134,6 +151,11 @@ export class BillingService {
         cancelUrl: string,
     ): Promise<CheckoutResult> {
         const company = await this.findCompany(companyId);
+        if (company.billingSubscriptionId) {
+            throw new ConflictException(
+                'Company already has a subscription. Use admin/change-plan to switch plans.',
+            );
+        }
         const customerId = await this.ensureCompanyCustomer(company);
         const currency = resolveBillingCurrency(company.defaultRegionCode);
 
@@ -155,7 +177,9 @@ export class BillingService {
 
     /**
      * Change plan for a company (PRO <-> ENTERPRISE). SUPER_ADMIN only.
-     * Quantity is preserved (contract section 12).
+     * Quantity is preserved: the provider carries over the LIVE quantity already
+     * on the subscription, not company.purchasedSeats (that column is a
+     * webhook-synced read model and may be stale, see ChangePlanInput).
      */
     async changePlanForCompany(companyId: string, plan: BillingPlan): Promise<void> {
         const company = await this.findCompany(companyId);
@@ -173,7 +197,6 @@ export class BillingService {
             plan,
             seatPriceId,
             basePriceId,
-            quantity: company.purchasedSeats,
         });
     }
 

@@ -1,4 +1,4 @@
-import { REGIONS, getRegionByCode } from '@shared/constants/regions';
+import { getRegionByCode } from '@shared/constants/regions';
 
 /**
  * Resolve the Stripe billing currency for a company based on its default region.
@@ -24,6 +24,3 @@ export function resolveBillingCurrency(defaultRegionCode: string | null | undefi
         default:   return 'usd';
     }
 }
-
-// Re-export so callers can pull both from one place.
-export { REGIONS, getRegionByCode };

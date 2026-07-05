@@ -159,17 +159,17 @@ describe('StripeBillingProvider webhook parsing', () => {
         expect(parsed.events.map((e) => e.name)).toEqual(['SubscriptionActivated']);
     });
 
-    it('normalizes a plain subscription.updated into SubscriptionUpdated plus SeatQuantityChanged', async () => {
-        stripe.webhooks.constructEvent.mockReturnValue(subscriptionEvent());
+    it('normalizes a pure status update into SubscriptionUpdated only (no items change)', async () => {
+        // trialing -> active is not a "became active" transition: both are
+        // already active-like statuses (ACTIVE_SUBSCRIPTION_STATUSES).
+        stripe.webhooks.constructEvent.mockReturnValue(
+            subscriptionEvent({ previous: { status: 'trialing' } }),
+        );
         const parsed = await provider.parseWebhook(rawBody, signature);
-        expect(parsed.events.map((e) => e.name)).toEqual([
-            'SubscriptionUpdated',
-            'SeatQuantityChanged',
-        ]);
-        expect(parsed.events[1]).toMatchObject({ quantity: 3 });
+        expect(parsed.events.map((e) => e.name)).toEqual(['SubscriptionUpdated']);
     });
 
-    it('adds PlanChanged when previous_attributes contains items', async () => {
+    it('emits both SeatQuantityChanged and PlanChanged when previous items are present but not fully resolvable', async () => {
         stripe.webhooks.constructEvent.mockReturnValue(
             subscriptionEvent({ previous: { items: {} } }),
         );
@@ -179,6 +179,47 @@ describe('StripeBillingProvider webhook parsing', () => {
             'SeatQuantityChanged',
             'PlanChanged',
         ]);
+    });
+
+    it('emits SeatQuantityChanged only when the previous seat quantity actually differs', async () => {
+        stripe.webhooks.constructEvent.mockReturnValue(
+            subscriptionEvent({
+                previous: { items: { data: [{ ...seatItem, quantity: 2 }] } },
+            }),
+        );
+        const parsed = await provider.parseWebhook(rawBody, signature);
+        expect(parsed.events.map((e) => e.name)).toEqual([
+            'SubscriptionUpdated',
+            'SeatQuantityChanged',
+        ]);
+    });
+
+    it('emits PlanChanged only when the previous plan actually differs', async () => {
+        stripe.webhooks.constructEvent.mockReturnValue(
+            subscriptionEvent({
+                items: [baseItem, seatItem],
+                previous: { items: { data: [seatItem] } },
+            }),
+        );
+        const parsed = await provider.parseWebhook(rawBody, signature);
+        expect(parsed.events.map((e) => e.name)).toEqual([
+            'SubscriptionUpdated',
+            'PlanChanged',
+        ]);
+    });
+
+    it('suppresses both when previous items resolve to the same plan and quantity (e.g. price rotation)', async () => {
+        stripe.webhooks.constructEvent.mockReturnValue(
+            subscriptionEvent({
+                previous: {
+                    items: {
+                        data: [{ ...seatItem, price: { id: 'price_seat_old', metadata: { kind: 'SEAT' } } }],
+                    },
+                },
+            }),
+        );
+        const parsed = await provider.parseWebhook(rawBody, signature);
+        expect(parsed.events.map((e) => e.name)).toEqual(['SubscriptionUpdated']);
     });
 
     it('detects the ENTERPRISE plan from an ENTERPRISE_BASE line item', async () => {

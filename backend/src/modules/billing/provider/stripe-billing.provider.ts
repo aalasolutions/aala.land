@@ -227,16 +227,37 @@ export class StripeBillingProvider implements BillingProvider {
             status: sub.status,
             currentPeriodEnd,
         };
-        const seatChanged: SeatQuantityChangedEvent = {
-            name: 'SeatQuantityChanged',
-            ...base,
-            quantity,
-        };
-        const out: NormalizedBillingEvent[] = [updated, seatChanged];
+        const out: NormalizedBillingEvent[] = [updated];
 
-        if (previous && 'items' in previous) {
-            const planChanged: PlanChangedEvent = { name: 'PlanChanged', ...base, plan, quantity };
-            out.push(planChanged);
+        // Stripe only includes `items` in previous_attributes when the line items
+        // actually changed (seat quantity, plan swap, or a same-kind price
+        // rotation, e.g. unit 1's create-and-supersede). Derive the prior shape to
+        // emit SeatQuantityChanged/PlanChanged only for what really changed; a
+        // pure status update (no items key at all) emits neither. When the prior
+        // item data is present but incomplete, fall back to emitting both rather
+        // than silently dropping a real change we cannot detect.
+        const previousItems =
+            previous && 'items' in previous
+                ? (previous as { items?: { data?: StripeSubscriptionItemLike[] } }).items
+                : undefined;
+
+        if (previousItems !== undefined) {
+            const previousShape = previousItems?.data?.length
+                ? deriveSubscriptionShape({ ...sub, items: previousItems })
+                : null;
+
+            if (!previousShape || previousShape.quantity !== quantity) {
+                const seatChanged: SeatQuantityChangedEvent = {
+                    name: 'SeatQuantityChanged',
+                    ...base,
+                    quantity,
+                };
+                out.push(seatChanged);
+            }
+            if (!previousShape || previousShape.plan !== plan) {
+                const planChanged: PlanChangedEvent = { name: 'PlanChanged', ...base, plan, quantity };
+                out.push(planChanged);
+            }
         }
         return out;
     }
@@ -369,7 +390,9 @@ export class StripeBillingProvider implements BillingProvider {
     async changePlan(input: ChangePlanInput): Promise<void> {
         const sub = await this.stripe.subscriptions.retrieve(input.subscriptionId, {
             expand: ['items'],
-        }) as unknown as { items: { data: { id: string; price: { metadata?: Record<string, string> } }[] } };
+        }) as unknown as {
+            items: { data: { id: string; quantity?: number | null; price: { metadata?: Record<string, string> } }[] };
+        };
 
         const items: Stripe.SubscriptionUpdateParams.Item[] = [];
         const currentBaseItem = sub.items.data.find(
@@ -379,9 +402,12 @@ export class StripeBillingProvider implements BillingProvider {
             (i) => i.price?.metadata?.kind === 'SEAT',
         );
 
-        // Always update the seat item to the new price + preserve quantity.
+        // Always update the seat item to the new price, preserving the LIVE
+        // quantity already on the subscription (never re-assert a DB-derived
+        // value here; see the ChangePlanInput contract note).
         if (currentSeatItem) {
-            items.push({ id: currentSeatItem.id, price: input.seatPriceId, quantity: input.quantity });
+            const quantity = Math.max(currentSeatItem.quantity ?? 1, 1);
+            items.push({ id: currentSeatItem.id, price: input.seatPriceId, quantity });
         }
 
         if (input.basePriceId) {
@@ -422,10 +448,5 @@ export class StripeBillingProvider implements BillingProvider {
             sub.items.data[0];
         if (!item) throw new Error(`No subscription items found on ${subscriptionId}`);
         return { id: item.id };
-    }
-
-    /** Thin SubscriptionRef builder for internal use. */
-    private toRef(subscriptionId: string, customerId: string): SubscriptionRef {
-        return { subscriptionId, customerId };
     }
 }

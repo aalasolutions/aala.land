@@ -200,7 +200,12 @@ export default class CompanyController extends Controller {
     if (!this.isCompanyAdmin || this.isBillingBusy) return;
     this.isBillingBusy = true;
     try {
-      const res = await this.auth.fetchJson('/billing/checkout', { method: 'POST' });
+      const successUrl = `${window.location.origin}${this.router.urlFor('billing.success')}`;
+      const cancelUrl = `${window.location.origin}${this.router.urlFor('billing.cancel')}`;
+      const res = await this.auth.fetchJson('/billing/checkout', {
+        method: 'POST',
+        body: JSON.stringify({ successUrl, cancelUrl }),
+      });
       const url = res?.data?.checkoutUrl;
       if (url) {
         window.location.assign(url);

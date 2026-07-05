@@ -54,6 +54,7 @@ describe('BillingWebhookService', () => {
                     useValue: {
                         insert: jest.fn().mockResolvedValue({}),
                         update: jest.fn().mockResolvedValue({}),
+                        findOne: jest.fn(),
                     },
                 },
                 {
@@ -108,11 +109,12 @@ describe('BillingWebhookService', () => {
     });
 
     describe('idempotency', () => {
-        it('acks a duplicate event (23505) without dispatching or marking processed', async () => {
+        it('acks an already-processed duplicate event (23505) without re-dispatching', async () => {
             provider.parseWebhook.mockResolvedValue(
                 parsedWith([{ name: 'SeatQuantityChanged', ...baseEvent, quantity: 3 }]),
             );
             eventRepo.insert.mockRejectedValue({ driverError: { code: '23505' } });
+            eventRepo.findOne.mockResolvedValue({ processedAt: new Date() } as StripeEvent);
             const dispatchSpy = jest.spyOn(dispatcher, 'dispatch');
 
             await expect(service.handleWebhook(rawBody, signature)).resolves.toEqual({
@@ -121,6 +123,25 @@ describe('BillingWebhookService', () => {
             expect(dispatchSpy).not.toHaveBeenCalled();
             expect(eventRepo.update).not.toHaveBeenCalled();
             expect(companyRepo.update).not.toHaveBeenCalled();
+        });
+
+        it('re-dispatches a duplicate event whose prior insert never finished processing', async () => {
+            provider.parseWebhook.mockResolvedValue(
+                parsedWith([{ name: 'SeatQuantityChanged', ...baseEvent, quantity: 3 }]),
+            );
+            eventRepo.insert.mockRejectedValue({ driverError: { code: '23505' } });
+            eventRepo.findOne.mockResolvedValue({ processedAt: null } as unknown as StripeEvent);
+            const dispatchSpy = jest.spyOn(dispatcher, 'dispatch');
+
+            await expect(service.handleWebhook(rawBody, signature)).resolves.toEqual({
+                received: true,
+            });
+            expect(dispatchSpy).toHaveBeenCalled();
+            expect(companyRepo.update).toHaveBeenCalledWith(companyId, { purchasedSeats: 3 });
+            expect(eventRepo.update).toHaveBeenCalledWith(
+                { providerEventId: 'evt_1' },
+                { processedAt: expect.any(Date) },
+            );
         });
 
         it('rethrows a non-duplicate insert failure so the provider retries', async () => {

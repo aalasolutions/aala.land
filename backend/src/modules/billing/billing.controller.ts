@@ -16,7 +16,7 @@ import { Roles } from '@shared/decorators/roles.decorator';
 import { Role } from '@shared/enums/roles.enum';
 import { AuthenticatedRequest } from '@shared/interfaces/authenticated-request.interface';
 import { BillingService } from './billing.service';
-import { AdminCheckoutDto, AdminChangePlanDto } from './dto/admin-plan.dto';
+import { AdminCheckoutDto, AdminChangePlanDto, AdminCancelDto } from './dto/admin-plan.dto';
 
 /** Inline DTO used only for self-serve checkout (COMPANY_ADMIN). */
 class StartCheckoutDto {
@@ -52,11 +52,14 @@ export class BillingController {
     // -------------------------------------------------------------------------
 
     @Get('subscription')
-    @UseGuards(JwtAuthGuard)
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles(Role.COMPANY_ADMIN)
     @ApiOperation({ summary: 'Return current subscription state for the caller company' })
     async getSubscription(@Request() req: AuthenticatedRequest) {
-        const company = await (this.billingService as any).findCompany(req.user.companyId);
-        return this.billingService.getSubscriptionState(company);
+        if (!req.user.companyId) {
+            throw new BadRequestException('No company context on the authenticated user');
+        }
+        return this.billingService.getSubscriptionState(req.user.companyId);
     }
 
     @Post('checkout')
@@ -127,7 +130,7 @@ export class BillingController {
     @UseGuards(JwtAuthGuard, RolesGuard)
     @Roles(Role.SUPER_ADMIN)
     @ApiOperation({ summary: 'Cancel a subscription on behalf of a company (SUPER_ADMIN)' })
-    adminCancel(@Body('companyId') companyId: string) {
-        return this.billingService.cancelSubscription(companyId);
+    adminCancel(@Body() dto: AdminCancelDto) {
+        return this.billingService.cancelSubscription(dto.companyId);
     }
 }

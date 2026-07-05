@@ -115,7 +115,12 @@ export class CompaniesService {
         const company = await this.findOne(id);
 
         if (role === Role.SUPER_ADMIN) {
-            // no restrictions
+            // No restrictions. NOTE: subscriptionTier is intentionally settable
+            // here without touching Stripe -- this is the SUPER_ADMIN comp /
+            // entitlement override (free or discounted tier grants), not a bug.
+            // It is the one deliberate exception to the billing single-writer
+            // rule (contract section 8); it can desync from a live Stripe
+            // subscription by design when used for a comp account.
         } else if (role === Role.COMPANY_ADMIN || role === Role.ADMIN) {
             const superAdminOnlyFields = ['isActive', 'subscriptionTier', 'maxUsers', 'maxCountries', 'maxProperties', 'subscriptionExpiresAt'];
             const attempted = superAdminOnlyFields.filter(f => f in dto);

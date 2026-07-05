@@ -63,11 +63,12 @@ export interface ChangePlanInput extends SubscriptionRef {
     seatPriceId: string;
     /** New ENTERPRISE_BASE price id; null when switching TO PRO. */
     basePriceId: string | null;
-    /**
-     * Seat quantity to carry over. Contract section 12: PRO<->ENTERPRISE switch
-     * preserves quantity; only the base line item is toggled.
-     */
-    quantity: number;
+    // Seat quantity is intentionally NOT an input here (contract section 12: the
+    // PRO<->ENTERPRISE switch preserves quantity). The provider reads the LIVE
+    // quantity off the subscription it already retrieves and carries it over,
+    // rather than trusting a DB-derived value: purchasedSeats is a webhook-synced
+    // read model, and re-asserting it here would invert the single-writer rule
+    // and could clobber an in-flight seat change whose webhook has not landed yet.
 }
 
 export interface BillingProvider {

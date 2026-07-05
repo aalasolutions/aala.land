@@ -34,3 +34,9 @@ export class AdminChangePlanDto {
     @IsEnum(['PRO', 'ENTERPRISE'] as const)
     plan: BillingPlan;
 }
+
+export class AdminCancelDto {
+    @ApiProperty({ description: 'Company to cancel for', format: 'uuid' })
+    @IsUUID()
+    companyId: string;
+}

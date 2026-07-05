@@ -89,7 +89,10 @@ export class BillingWebhookService implements OnModuleInit {
         }
 
         // Insert-first idempotency (contract section 6, rule 2). A duplicate
-        // provider_event_id hits the UNIQUE constraint: already received, ack and stop.
+        // provider_event_id hits the UNIQUE constraint. If that prior row already
+        // finished processing, ack and stop. If it never finished (a crash, or a
+        // handler failure that left processed_at NULL), fall through and
+        // re-dispatch instead of silently dropping the event on Stripe's retry.
         try {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             await this.eventRepo.insert({
@@ -98,13 +101,21 @@ export class BillingWebhookService implements OnModuleInit {
                 payload: parsed.payload,
             } as any);
         } catch (err) {
-            if (isUniqueViolation(err)) {
+            if (!isUniqueViolation(err)) {
+                throw err; // 500: the provider retries a transient insert failure.
+            }
+            const existing = await this.eventRepo.findOne({
+                where: { providerEventId: parsed.providerEventId },
+            });
+            if (existing?.processedAt) {
                 this.logger.log(
-                    `Duplicate webhook ${parsed.providerEventId} (${parsed.providerEventType}), skipping`,
+                    `Duplicate webhook ${parsed.providerEventId} (${parsed.providerEventType}), already processed, skipping`,
                 );
                 return { received: true };
             }
-            throw err; // 500: the provider retries a transient insert failure.
+            this.logger.warn(
+                `Webhook ${parsed.providerEventId} (${parsed.providerEventType}) was received but never finished processing; re-dispatching`,
+            );
         }
 
         try {

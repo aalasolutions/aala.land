@@ -168,31 +168,55 @@ describe('BillingService', () => {
     // -------------------------------------------------------------------------
 
     describe('getSubscriptionState', () => {
-        it('returns the billing snapshot for a FREE company', () => {
-            const company = makeCompany();
-            const state = service.getSubscriptionState(company);
+        it('returns the rich billing snapshot for a FREE company with no subscription', async () => {
+            companyRepo.findOne.mockResolvedValue(makeCompany());
+            priceRepo.findOne.mockResolvedValue({ unitAmount: 9500 } as any);
+            userRepo.count.mockResolvedValue(1);
+
+            const state = await service.getSubscriptionState(companyId);
+
             expect(state).toEqual({
                 tier: SubscriptionTier.FREE,
                 billingStatus: null,
-                billingSubscriptionId: null,
+                hasSubscription: false,
                 purchasedSeats: 1,
+                activeUsers: 1,
+                currency: 'aed',
+                seatAmount: 9500,
+                canDowngradeToFree: true,
             });
+            expect(state).not.toHaveProperty('billingSubscriptionId');
         });
 
-        it('returns the billing snapshot for a PRO company', () => {
-            const company = makeCompany({
-                subscriptionTier: SubscriptionTier.PRO,
-                billingStatus: 'active',
-                billingSubscriptionId: 'sub_123',
-                purchasedSeats: 4,
-            });
-            const state = service.getSubscriptionState(company);
-            expect(state).toEqual({
-                tier: SubscriptionTier.PRO,
-                billingStatus: 'active',
-                billingSubscriptionId: 'sub_123',
-                purchasedSeats: 4,
-            });
+        it('reports hasSubscription and blocks downgrade with more than 1 active user', async () => {
+            companyRepo.findOne.mockResolvedValue(
+                makeCompany({
+                    subscriptionTier: SubscriptionTier.PRO,
+                    billingStatus: 'active',
+                    billingSubscriptionId: 'sub_123',
+                    purchasedSeats: 4,
+                }),
+            );
+            priceRepo.findOne.mockResolvedValue({ unitAmount: 9500 } as any);
+            userRepo.count.mockResolvedValue(3);
+
+            const state = await service.getSubscriptionState(companyId);
+
+            expect(state.tier).toBe(SubscriptionTier.PRO);
+            expect(state.hasSubscription).toBe(true);
+            expect(state.activeUsers).toBe(3);
+            expect(state.canDowngradeToFree).toBe(false);
+            expect(state.seatAmount).toBe(9500);
+            expect(state.currency).toBe('aed');
+        });
+
+        it('returns seatAmount null when no active SEAT price exists', async () => {
+            companyRepo.findOne.mockResolvedValue(makeCompany());
+            priceRepo.findOne.mockResolvedValue(null);
+            userRepo.count.mockResolvedValue(1);
+
+            const state = await service.getSubscriptionState(companyId);
+            expect(state.seatAmount).toBeNull();
         });
     });
 
@@ -290,7 +314,6 @@ describe('BillingService', () => {
                 plan: 'ENTERPRISE',
                 seatPriceId: 'price_aed_seat',
                 basePriceId: 'price_aed_base',
-                quantity: 3,
             });
         });
 
