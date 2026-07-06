@@ -91,8 +91,18 @@ export default class CompanyController extends Controller {
     return (this.company?.subscriptionTier || 'FREE') === 'FREE';
   }
 
-  get billingSeatLabel() {
-    return this.billing?.purchasedSeats === 1 ? 'seat' : 'seats';
+  get seatSummaryLabel() {
+    const seats = this.billing?.purchasedSeats ?? 1;
+    const activeUsers = this.billing?.activeUsers ?? 0;
+    const seatWord = seats === 1 ? 'seat' : 'seats';
+    const userWord = activeUsers === 1 ? 'user' : 'users';
+    // "purchased" only when there is a real paid subscription. FREE and
+    // comped/admin-set tiers have seats but did not buy them, so the word
+    // would misread as "you are paying for these".
+    const seatPhrase = this.billing?.hasSubscription
+      ? `${seats} ${seatWord} purchased`
+      : `${seats} ${seatWord}`;
+    return `${seatPhrase}, ${activeUsers} active ${userWord}`;
   }
 
   get seatPriceLabel() {

@@ -97,8 +97,7 @@
             {{/if}}
           </div>
           <p class="font-sm text-muted mt-2" data-test-seat-count>
-            {{this.billing.purchasedSeats}} {{this.billingSeatLabel}} purchased,
-            {{this.billing.activeUsers}} active {{if (eq this.billing.activeUsers 1) "user" "users"}}
+            {{this.seatSummaryLabel}}
           </p>
           {{#if this.seatPriceLabel}}
             <p class="font-sm text-muted" data-test-seat-price>{{this.seatPriceLabel}}</p>
