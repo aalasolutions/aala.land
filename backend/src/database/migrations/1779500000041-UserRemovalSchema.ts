@@ -19,9 +19,31 @@ export class UserRemovalSchema1779500000041 implements MigrationInterface {
     //    so discover and drop them dynamically, then add a named replacement.
     await this.repointUserFk(queryRunner, 'lead_activities', 'performed_by', 'FK_lead_activities_performed_by_users');
     await this.repointUserFk(queryRunner, 'audit_logs', 'user_id', 'FK_audit_logs_user_id_users');
+
+    // 4. Composite indexes matching the reassignment WHERE clause
+    //    (<owner_col> = :fromUserId AND company_id = :companyId) and the
+    //    delete-block commission count. These three tables index neither the
+    //    owner column nor company_id, so without this the reassignment UPDATEs
+    //    degrade to a full-table scan on every user removal, deactivation, and
+    //    trim. leads.assigned_to and owners.assigned_agent_id already have a
+    //    company_id index (tenant-bounded), so they are left as is.
+    await queryRunner.query(
+      `CREATE INDEX IF NOT EXISTS "IDX_commissions_company_agent" ON "commissions" ("company_id", "agent_id")`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX IF NOT EXISTS "IDX_work_orders_company_assigned" ON "work_orders" ("company_id", "assigned_to")`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX IF NOT EXISTS "IDX_property_documents_company_uploaded" ON "property_documents" ("company_id", "uploaded_by")`,
+    );
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
+    // Drop the reassignment composite indexes.
+    await queryRunner.query(`DROP INDEX IF EXISTS "IDX_property_documents_company_uploaded"`);
+    await queryRunner.query(`DROP INDEX IF EXISTS "IDX_work_orders_company_assigned"`);
+    await queryRunner.query(`DROP INDEX IF EXISTS "IDX_commissions_company_agent"`);
+
     // Restore plain NO ACTION FKs.
     await queryRunner.query(`ALTER TABLE "lead_activities" DROP CONSTRAINT IF EXISTS "FK_lead_activities_performed_by_users"`);
     await queryRunner.query(`

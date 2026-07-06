@@ -261,7 +261,10 @@ export class BillingService {
      * (contract section 9 ordering).
      *
      * FREE companies: no provider call, returns null (enforceUserLimit already capped them).
-     * Paid tier with no subscription (or no customer): HTTP 402 pointing to checkout (unit 3).
+     * Paid tier with no subscription (or no customer): no provider call, returns null. This is a
+     * comp account a SUPER_ADMIN set to a paid tier without checkout; it manages users freely with
+     * no billing (owner decision 2026-07-07). A deliberate "must pay" lock is the separate Dunning
+     * feature, NOT the absence of a subscription.
      * Paid tier with a subscription: provider quantity goes to purchasedSeats + 1; a provider
      * failure maps to HTTP 402 and nothing local may be written by the caller.
      *
@@ -277,15 +280,7 @@ export class BillingService {
         const subscriptionId = company.billingSubscriptionId;
         const customerId = company.billingCustomerId;
         if (!subscriptionId || !customerId) {
-            throw new HttpException(
-                {
-                    message:
-                        'Your plan has no active subscription yet. Complete checkout before adding team members.',
-                    error: 'Payment Required',
-                    statusCode: HttpStatus.PAYMENT_REQUIRED,
-                },
-                HttpStatus.PAYMENT_REQUIRED,
-            );
+            return null;
         }
 
         const ref = { subscriptionId, customerId };

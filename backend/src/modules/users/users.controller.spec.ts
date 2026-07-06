@@ -144,7 +144,7 @@ describe('UsersController', () => {
     const dto = { reassignToUserId: 'user-uuid-3', reason: 'left' };
     const reqAdmin = { user: { userId: 'requester-uuid', companyId: 'company-uuid-1', role: 'company_admin' } };
 
-    it('DELETE /users/:id forwards to deleteUserWithReassignment with the requester context', async () => {
+    it('POST /users/:id/delete forwards to deleteUserWithReassignment with the requester context', async () => {
       await controller.remove('user-uuid-2', dto as never, reqAdmin as never);
       expect(service.deleteUserWithReassignment).toHaveBeenCalledWith(
         'user-uuid-2', 'requester-uuid', 'company-uuid-1', 'company_admin', dto,

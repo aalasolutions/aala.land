@@ -234,13 +234,11 @@ export class UsersService {
     private async decrementSeatBeforeRemoval(
         company: Company,
     ): Promise<{ compensate: () => Promise<void> } | null> {
-        if (!this.isPaidTier(company)) return null;
-        if (!company.billingSubscriptionId) {
-            throw new HttpException(
-                'This company has a paid plan but no active subscription. Complete checkout before removing users.',
-                HttpStatus.PAYMENT_REQUIRED,
-            );
-        }
+        // No provider call unless the company is a paid tier WITH a live subscription.
+        // A comp account (paid tier set by SUPER_ADMIN without checkout) has no
+        // subscription to bill and manages users freely (owner decision 2026-07-07,
+        // Option B). This mirrors trimToOneActiveUser and reactivateUser.
+        if (!this.isPaidTier(company) || !company.billingSubscriptionId) return null;
         const previous = company.purchasedSeats;
         const target = Math.max(previous - 1, 1);
         await this.callProviderSeatUpdate(company, target);
@@ -429,14 +427,13 @@ export class UsersService {
      * one active user remains).
      *
      * Provider handling: one call setting the seat quantity to 1, provider
-     * FIRST, only when a subscription exists. A paid-tier company WITHOUT a
-     * subscription (a comp account: SUPER_ADMIN tier PATCH without checkout)
-     * skips the provider call instead of throwing the section 9 HTTP 402,
-     * because there is no provider quantity to change and a 402 would
-     * dead-end the downgrade gate for exactly those companies. Post
-     * external-cancel companies are already FREE (contract section 8) and
-     * take the FREE branch; they never reach this skip. Contract exception
-     * recorded in section 9 and section 16, pending owner ratification.
+     * FIRST, only when the company is a paid tier WITH a live subscription. A
+     * comp account (paid tier, no subscription) skips the provider call and
+     * trims freely. This is now the uniform rule across every seat operation
+     * (create, invite, reactivate, decrement, trim) after the owner decision
+     * of 2026-07-07 (Option B): comps manage users without Stripe; a deliberate
+     * "must pay" lock is the separate Dunning feature. Post external-cancel
+     * companies are already FREE (contract section 8) and take the FREE branch.
      */
     async trimToOneActiveUser(
         companyId: string,
@@ -540,14 +537,13 @@ export class UsersService {
             throw new NotFoundException(`Company ${target.companyId} not found`);
         }
 
+        // Provider seat +1 only on a paid tier WITH a live subscription. A comp
+        // account (paid tier, no subscription) skips the provider call and
+        // reactivates freely (owner decision 2026-07-07, Option B; mirrors
+        // decrementSeatBeforeRemoval and trimToOneActiveUser). FREE tiers are
+        // gated by the same active-user cap as create and invite.
         let compensate: (() => Promise<void>) | null = null;
-        if (this.isPaidTier(company)) {
-            if (!company.billingSubscriptionId) {
-                throw new HttpException(
-                    'This company has a paid plan but no active subscription. Complete checkout before reactivating users.',
-                    HttpStatus.PAYMENT_REQUIRED,
-                );
-            }
+        if (this.isPaidTier(company) && company.billingSubscriptionId) {
             const previous = company.purchasedSeats;
             await this.callProviderSeatUpdate(company, previous + 1);
             compensate = async () => {
@@ -559,7 +555,7 @@ export class UsersService {
                     );
                 }
             };
-        } else {
+        } else if (!this.isPaidTier(company)) {
             const activeCount = await this.userRepository.count({
                 where: { companyId: target.companyId, isActive: true },
             });

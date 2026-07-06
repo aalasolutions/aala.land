@@ -5,7 +5,6 @@ import {
     Body,
     Param,
     Patch,
-    Delete,
     UseGuards,
     Request,
     Query,
@@ -130,11 +129,13 @@ export class UsersController {
         return this.usersService.update(id, companyId, updateUserDto, req.user.role, req.user.userId);
     }
 
-    @Delete(':id')
+    @Post(':id/delete')
     @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN)
     @ApiOperation({
         summary: 'Permanently delete a user after reassigning owned records to a named user (ADMIN+)',
-        description: 'Blocked with 409 when the user has approved, paid, or cancelled commissions; deactivate instead. Returns the ReassignmentReport.',
+        description:
+            'POST (not DELETE) because the reassignToUserId + reason payload must be carried in the body, and DELETE bodies are stripped by some proxies and HTTP clients. ' +
+            'Blocked with 409 when the user has approved, paid, or cancelled commissions; deactivate instead. Returns the ReassignmentReport.',
     })
     remove(
         @Param('id', ParseUUIDPipe) id: string,

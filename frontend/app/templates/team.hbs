@@ -252,6 +252,10 @@
         data-test-remove-target
       />
 
+      {{#if this.candidateListTruncated}}
+        <p class="font-sm text-muted" data-test-remove-truncated>Showing the first 100 active members.</p>
+      {{/if}}
+
       <FormTextarea
         @label="Reason"
         @id="remove-reason"
@@ -329,6 +333,10 @@
         @required={{true}}
         data-test-trim-keep
       />
+
+      {{#if this.candidateListTruncated}}
+        <p class="font-sm text-muted" data-test-trim-truncated>Showing the first 100 active members.</p>
+      {{/if}}
 
       <FormTextarea
         @label="Reason"

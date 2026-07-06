@@ -430,16 +430,14 @@ describe('BillingService', () => {
             expect(provider.updateSeatQuantity).not.toHaveBeenCalled();
         });
 
-        it('throws HTTP 402 when a paid company has no subscription, without calling the provider', async () => {
+        it('returns null and never calls the provider for a paid comp company with no subscription (Option B)', async () => {
             const unsubscribed = makeCompany({
                 subscriptionTier: SubscriptionTier.PRO,
                 billingSubscriptionId: null,
                 billingCustomerId: null,
             });
-            const err = await service.reserveSeat(unsubscribed).catch((e) => e);
-            expect(err).toBeInstanceOf(HttpException);
-            expect(err.getStatus()).toBe(HttpStatus.PAYMENT_REQUIRED);
-            expect(err.getResponse()).toMatchObject({ message: expect.stringContaining('Complete checkout') });
+            const result = await service.reserveSeat(unsubscribed);
+            expect(result).toBeNull();
             expect(provider.updateSeatQuantity).not.toHaveBeenCalled();
         });
 

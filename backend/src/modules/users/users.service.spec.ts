@@ -381,12 +381,12 @@ describe('UsersService', () => {
       expect(dataSourceMock.transaction).toHaveBeenCalled();
     });
 
-    it('throws 402 for a paid company with no subscription and performs no local write', async () => {
+    it('skips the provider for a paid comp company with no subscription and still deactivates (Option B)', async () => {
       primeRemovalLookups(proCompanyNoSub);
-      await expect(
-        service.deactivateUser('user-uuid-2', 'requester-uuid', companyId, Role.COMPANY_ADMIN, removeDto),
-      ).rejects.toMatchObject({ status: 402 });
-      expect(dataSourceMock.transaction).not.toHaveBeenCalled();
+      await service.deactivateUser('user-uuid-2', 'requester-uuid', companyId, Role.COMPANY_ADMIN, removeDto);
+      expect(billingServiceMock.setSeatQuantity).not.toHaveBeenCalled();
+      expect(dataSourceMock.transaction).toHaveBeenCalled();
+      expect(managerMock.update).toHaveBeenCalledWith(User, 'user-uuid-2', { isActive: false });
     });
 
     it('compensates the seat quantity when the local transaction fails and rethrows the original error', async () => {
@@ -539,6 +539,18 @@ describe('UsersService', () => {
       await service.reactivateUser('user-uuid-2', companyId, Role.COMPANY_ADMIN);
 
       expect(billingServiceMock.setSeatQuantity).toHaveBeenCalledWith(proCompany, 6);
+      expect(repo.update).toHaveBeenCalledWith('user-uuid-2', { isActive: true });
+    });
+
+    it('skips the provider for a paid comp company with no subscription and still reactivates (Option B)', async () => {
+      repo.findOne.mockResolvedValueOnce({ ...targetUser, isActive: false } as User);
+      companyRepo.findOne.mockResolvedValue(proCompanyNoSub as Company);
+      repo.update = jest.fn().mockResolvedValue({});
+      jest.spyOn(service, 'findOne').mockResolvedValue(targetUser as User);
+
+      await service.reactivateUser('user-uuid-2', companyId, Role.COMPANY_ADMIN);
+
+      expect(billingServiceMock.setSeatQuantity).not.toHaveBeenCalled();
       expect(repo.update).toHaveBeenCalledWith('user-uuid-2', { isActive: true });
     });
 

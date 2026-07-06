@@ -58,6 +58,10 @@ export default class TeamController extends PaginatedController {
 
   @tracked reactivatingUserId = null;
 
+  // True when the active-user fetch behind the reassign/trim pickers hit its
+  // 100-row page and more active users exist than are shown.
+  @tracked candidateListTruncated = false;
+
   get isSuperAdmin() {
     return this.auth.currentUser?.role === 'super_admin';
   }
@@ -74,7 +78,14 @@ export default class TeamController extends PaginatedController {
   }
 
   get canTrim() {
-    return this.auth.currentUser?.role === 'company_admin' && (this.model?.total ?? 0) > 1;
+    // Trim exists to prepare a paid -> Free downgrade, so it is meaningless on
+    // Free. Only hide the button when we positively know the tier is FREE; if
+    // seatInfo failed to load we still show it (the server enforces the gate).
+    return (
+      this.auth.currentUser?.role === 'company_admin' &&
+      (this.model?.total ?? 0) > 1 &&
+      this.model?.seatInfo?.tier !== 'FREE'
+    );
   }
 
   get reassignOptions() {
@@ -104,8 +115,10 @@ export default class TeamController extends PaginatedController {
   }
 
   async loadActiveUsers({ excludeId = null, companyId = null } = {}) {
-    const json = await this.auth.fetchJson('/users?page=1&limit=100');
+    const PAGE_LIMIT = 100;
+    const json = await this.auth.fetchJson(`/users?page=1&limit=${PAGE_LIMIT}`);
     const users = json.data?.data || [];
+    this.candidateListTruncated = (json.data?.total ?? users.length) > PAGE_LIMIT;
     return users.filter(
       (u) =>
         u.isActive &&
@@ -279,12 +292,12 @@ export default class TeamController extends PaginatedController {
     });
     const isDelete = this.removeMode === 'delete';
     const path = isDelete
-      ? `/users/${this.userToRemove.id}`
+      ? `/users/${this.userToRemove.id}/delete`
       : `/users/${this.userToRemove.id}/deactivate`;
 
     try {
       const json = await this.auth.fetchJson(path, {
-        method: isDelete ? 'DELETE' : 'POST',
+        method: 'POST',
         body,
       });
       const report = json?.data;
@@ -339,6 +352,10 @@ export default class TeamController extends PaginatedController {
   @action continueTrim() {
     if (!this.trimKeepId) {
       this.trimError = 'Choose the company admin who stays active.';
+      return;
+    }
+    if (this.trimOthersCount === 0) {
+      this.trimError = 'You already have only one active user. Nothing to trim.';
       return;
     }
     if (!this.trimReason.trim()) {
