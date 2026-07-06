@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { Repository, Not } from 'typeorm';
+import { DataSource, Repository, Not } from 'typeorm';
 import { NotFoundException, ConflictException, ForbiddenException, BadRequestException, HttpException, HttpStatus } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { User, AuthProvider } from './entities/user.entity';
@@ -9,11 +9,26 @@ import * as bcrypt from 'bcryptjs';
 import * as crypto from 'crypto';
 import { MailService } from '../../shared/services/mail.service';
 import { EmailTemplatesService } from '../email-templates/email-templates.service';
-import { Company } from '../companies/entities/company.entity';
+import { Company, SubscriptionTier } from '../companies/entities/company.entity';
 import { BillingService } from '../billing/billing.service';
+import { UserReassignmentService } from './reassignment/user-reassignment.service';
+import { OWNERSHIP_TRANSFER_RECORDER } from './reassignment/ownership-transfer-recorder';
 
 jest.mock('bcryptjs');
 jest.mock('crypto');
+
+let managerMock: { update: jest.Mock; delete: jest.Mock; query: jest.Mock };
+let commissionRepoMock: { count: jest.Mock };
+let dataSourceMock: { transaction: jest.Mock; getRepository: jest.Mock };
+let billingServiceMock: { reserveSeat: jest.Mock; setSeatQuantity: jest.Mock };
+let reassignmentServiceMock: { reassignOwnedRecords: jest.Mock };
+
+const emptyReport = {
+  fromUserId: 'user-uuid-2',
+  toUserId: 'user-uuid-3',
+  reason: 'left',
+  entities: [],
+};
 
 describe('UsersService', () => {
   let service: UsersService;
@@ -21,7 +36,7 @@ describe('UsersService', () => {
   let companyRepo: jest.Mocked<Pick<Repository<Company>, 'findOne' | 'update'>>;
   let mailService: jest.Mocked<Pick<MailService, 'sendMail'>>;
   let emailTemplatesService: jest.Mocked<Pick<EmailTemplatesService, 'findAll' | 'render'>>;
-  let billingService: jest.Mocked<Pick<BillingService, 'reserveSeat'>>;
+  let billingService: jest.Mocked<Pick<BillingService, 'reserveSeat' | 'setSeatQuantity'>>;
 
   const companyId = 'company-uuid-1';
 
@@ -48,7 +63,39 @@ describe('UsersService', () => {
     company: null as any,
   };
 
+  const targetUser = { ...mockUser, id: 'user-uuid-2', role: Role.AGENT, isActive: true };
+  const reassignee = { ...mockUser, id: 'user-uuid-3', role: Role.AGENT, isActive: true };
+  const removeDto = { reassignToUserId: 'user-uuid-3', reason: 'left' };
+
+  const freeCompany = {
+    id: companyId, subscriptionTier: SubscriptionTier.FREE, maxUsers: 1,
+    purchasedSeats: 1, billingSubscriptionId: null,
+  } as unknown as Company;
+  const proCompany = {
+    id: companyId, subscriptionTier: SubscriptionTier.PRO, maxUsers: 999,
+    purchasedSeats: 5, billingSubscriptionId: 'sub_123',
+  } as unknown as Company;
+  const proCompanyNoSub = { ...proCompany, billingSubscriptionId: null } as unknown as Company;
+
+  function primeRemovalLookups(company: Company, target = targetUser, recipient = reassignee) {
+    repo.findOne
+      .mockResolvedValueOnce(target as User)      // target lookup
+      .mockResolvedValueOnce(recipient as User);  // reassignee lookup
+    companyRepo.findOne.mockResolvedValue(company as Company);
+  }
+
   beforeEach(async () => {
+    jest.clearAllMocks();
+
+    managerMock = { update: jest.fn(), delete: jest.fn(), query: jest.fn() };
+    commissionRepoMock = { count: jest.fn().mockResolvedValue(0) };
+    dataSourceMock = {
+      transaction: jest.fn(async (cb: (m: unknown) => Promise<unknown>) => cb(managerMock)),
+      getRepository: jest.fn().mockReturnValue(commissionRepoMock),
+    };
+    billingServiceMock = { reserveSeat: jest.fn().mockResolvedValue(null), setSeatQuantity: jest.fn().mockResolvedValue({}) };
+    reassignmentServiceMock = { reassignOwnedRecords: jest.fn().mockResolvedValue(emptyReport) };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         UsersService,
@@ -70,8 +117,20 @@ describe('UsersService', () => {
           useValue: { findOne: jest.fn(), update: jest.fn() },
         },
         {
+          provide: DataSource,
+          useValue: dataSourceMock,
+        },
+        {
           provide: BillingService,
-          useValue: { reserveSeat: jest.fn().mockResolvedValue(null) },
+          useValue: billingServiceMock,
+        },
+        {
+          provide: UserReassignmentService,
+          useValue: reassignmentServiceMock,
+        },
+        {
+          provide: OWNERSHIP_TRANSFER_RECORDER,
+          useValue: undefined,
         },
         {
           provide: MailService,
@@ -289,20 +348,215 @@ describe('UsersService', () => {
     });
   });
 
-  describe('remove', () => {
-    it('removes user', async () => {
-      repo.findOne.mockResolvedValue(mockUser);
-      repo.remove.mockResolvedValue(mockUser);
+  describe('deactivateUser', () => {
+    it('calls the provider BEFORE the transaction with max(purchasedSeats - 1, 1) on paid plans', async () => {
+      primeRemovalLookups(proCompany);
+      const order: string[] = [];
+      billingServiceMock.setSeatQuantity.mockImplementation(async () => { order.push('provider'); });
+      dataSourceMock.transaction.mockImplementation(async (cb: (m: unknown) => Promise<unknown>) => {
+        order.push('transaction');
+        return cb(managerMock);
+      });
 
-      await service.remove('user-uuid-1', companyId, Role.COMPANY_ADMIN);
+      await service.deactivateUser('user-uuid-2', 'requester-uuid', companyId, Role.COMPANY_ADMIN, removeDto);
 
-      expect(repo.remove).toHaveBeenCalledWith(mockUser);
+      expect(billingServiceMock.setSeatQuantity).toHaveBeenCalledWith(proCompany, 4);
+      expect(order).toEqual(['provider', 'transaction']);
+      expect(managerMock.update).toHaveBeenCalledWith(User, 'user-uuid-2', { isActive: false });
+      expect(reassignmentServiceMock.reassignOwnedRecords).toHaveBeenCalledWith(
+        managerMock, companyId, 'user-uuid-2', 'user-uuid-3', 'left',
+      );
     });
 
-    it('throws NotFoundException when user not found', async () => {
-      repo.findOne.mockResolvedValue(null);
+    it('never calls the provider with a quantity below 1', async () => {
+      primeRemovalLookups({ ...proCompany, purchasedSeats: 1 } as unknown as Company);
+      await service.deactivateUser('user-uuid-2', 'requester-uuid', companyId, Role.COMPANY_ADMIN, removeDto);
+      expect(billingServiceMock.setSeatQuantity).toHaveBeenCalledWith(expect.anything(), 1);
+    });
 
-      await expect(service.remove('bad-id', companyId, Role.COMPANY_ADMIN)).rejects.toThrow(NotFoundException);
+    it('makes no provider call on FREE companies', async () => {
+      primeRemovalLookups(freeCompany);
+      await service.deactivateUser('user-uuid-2', 'requester-uuid', companyId, Role.COMPANY_ADMIN, removeDto);
+      expect(billingServiceMock.setSeatQuantity).not.toHaveBeenCalled();
+      expect(dataSourceMock.transaction).toHaveBeenCalled();
+    });
+
+    it('throws 402 for a paid company with no subscription and performs no local write', async () => {
+      primeRemovalLookups(proCompanyNoSub);
+      await expect(
+        service.deactivateUser('user-uuid-2', 'requester-uuid', companyId, Role.COMPANY_ADMIN, removeDto),
+      ).rejects.toMatchObject({ status: 402 });
+      expect(dataSourceMock.transaction).not.toHaveBeenCalled();
+    });
+
+    it('compensates the seat quantity when the local transaction fails and rethrows the original error', async () => {
+      primeRemovalLookups(proCompany);
+      dataSourceMock.transaction.mockRejectedValue(new Error('db down'));
+
+      await expect(
+        service.deactivateUser('user-uuid-2', 'requester-uuid', companyId, Role.COMPANY_ADMIN, removeDto),
+      ).rejects.toThrow('db down');
+
+      expect(billingServiceMock.setSeatQuantity).toHaveBeenNthCalledWith(1, proCompany, 4);
+      expect(billingServiceMock.setSeatQuantity).toHaveBeenNthCalledWith(2, proCompany, 5);
+    });
+
+    it('rejects self-removal', async () => {
+      await expect(
+        service.deactivateUser('requester-uuid', 'requester-uuid', companyId, Role.COMPANY_ADMIN, removeDto),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('rejects when the reassignment target equals the removed user', async () => {
+      await expect(
+        service.deactivateUser('user-uuid-2', 'requester-uuid', companyId, Role.COMPANY_ADMIN, {
+          reassignToUserId: 'user-uuid-2', reason: 'left',
+        }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('rejects removing an equal-or-higher role for non super admins', async () => {
+      repo.findOne.mockResolvedValueOnce({ ...targetUser, role: Role.COMPANY_ADMIN } as User);
+      await expect(
+        service.deactivateUser('user-uuid-2', 'requester-uuid', companyId, Role.COMPANY_ADMIN, removeDto),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('rejects an inactive reassignment target', async () => {
+      repo.findOne
+        .mockResolvedValueOnce(targetUser as User)
+        .mockResolvedValueOnce(null);
+      await expect(
+        service.deactivateUser('user-uuid-2', 'requester-uuid', companyId, Role.COMPANY_ADMIN, removeDto),
+      ).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('deleteUserWithReassignment', () => {
+    it('blocks deletion with 409 when non PENDING commissions exist', async () => {
+      primeRemovalLookups(proCompany);
+      commissionRepoMock.count.mockResolvedValue(2);
+      await expect(
+        service.deleteUserWithReassignment('user-uuid-2', 'requester-uuid', companyId, Role.COMPANY_ADMIN, removeDto),
+      ).rejects.toThrow(ConflictException);
+      expect(billingServiceMock.setSeatQuantity).not.toHaveBeenCalled();
+      expect(dataSourceMock.transaction).not.toHaveBeenCalled();
+    });
+
+    it('reassigns, nulls email template authorship, deletes notifications, then deletes the row', async () => {
+      primeRemovalLookups(proCompany);
+      await service.deleteUserWithReassignment('user-uuid-2', 'requester-uuid', companyId, Role.COMPANY_ADMIN, removeDto);
+
+      expect(reassignmentServiceMock.reassignOwnedRecords).toHaveBeenCalledWith(
+        managerMock, companyId, 'user-uuid-2', 'user-uuid-3', 'left',
+      );
+      expect(managerMock.query).toHaveBeenCalledWith(
+        expect.stringContaining('UPDATE "email_templates" SET "created_by" = NULL'),
+        ['user-uuid-2', companyId],
+      );
+      expect(managerMock.query).toHaveBeenCalledWith(
+        expect.stringContaining('DELETE FROM "notifications"'),
+        ['user-uuid-2'],
+      );
+      expect(managerMock.delete).toHaveBeenCalledWith(User, { id: 'user-uuid-2' });
+    });
+
+    it('does not decrement the seat again when deleting an already deactivated user', async () => {
+      primeRemovalLookups(proCompany, { ...targetUser, isActive: false });
+      await service.deleteUserWithReassignment('user-uuid-2', 'requester-uuid', companyId, Role.COMPANY_ADMIN, removeDto);
+      expect(billingServiceMock.setSeatQuantity).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('trimToOneActiveUser', () => {
+    const keeper = { ...mockUser, id: 'keeper-uuid', role: Role.COMPANY_ADMIN, isActive: true };
+    const trimDto = { keepUserId: 'keeper-uuid', reason: 'Downgrading to the Free plan' };
+
+    it('sets the seat quantity to 1, then deactivates and reassigns every other active user', async () => {
+      repo.findOne.mockResolvedValueOnce(keeper as User);
+      companyRepo.findOne.mockResolvedValue(proCompany as Company);
+      repo.find.mockResolvedValue([
+        { ...mockUser, id: 'u-a' }, { ...mockUser, id: 'u-b' },
+      ] as User[]);
+
+      const result = await service.trimToOneActiveUser(companyId, 'keeper-uuid', trimDto);
+
+      expect(billingServiceMock.setSeatQuantity).toHaveBeenCalledWith(proCompany, 1);
+      expect(managerMock.update).toHaveBeenCalledWith(User, 'u-a', { isActive: false });
+      expect(managerMock.update).toHaveBeenCalledWith(User, 'u-b', { isActive: false });
+      expect(reassignmentServiceMock.reassignOwnedRecords).toHaveBeenCalledTimes(2);
+      expect(result.deactivatedCount).toBe(2);
+      expect(result.reports).toHaveLength(2);
+    });
+
+    it('skips the provider call when the company has no subscription', async () => {
+      repo.findOne.mockResolvedValueOnce(keeper as User);
+      companyRepo.findOne.mockResolvedValue(proCompanyNoSub as Company);
+      repo.find.mockResolvedValue([{ ...mockUser, id: 'u-a' }] as User[]);
+
+      const result = await service.trimToOneActiveUser(companyId, 'keeper-uuid', trimDto);
+      expect(billingServiceMock.setSeatQuantity).not.toHaveBeenCalled();
+      expect(result.deactivatedCount).toBe(1);
+    });
+
+    it('rejects a keeper who is not a company admin', async () => {
+      repo.findOne.mockResolvedValueOnce({ ...keeper, role: Role.AGENT } as User);
+      await expect(
+        service.trimToOneActiveUser(companyId, 'keeper-uuid', trimDto),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('is a no-op when only the keeper is active', async () => {
+      repo.findOne.mockResolvedValueOnce(keeper as User);
+      companyRepo.findOne.mockResolvedValue(proCompany as Company);
+      repo.find.mockResolvedValue([]);
+      const result = await service.trimToOneActiveUser(companyId, 'keeper-uuid', trimDto);
+      expect(result).toEqual({ deactivatedCount: 0, reports: [] });
+      expect(billingServiceMock.setSeatQuantity).not.toHaveBeenCalled();
+    });
+
+    it('compensates the seat quantity when the bulk transaction fails', async () => {
+      repo.findOne.mockResolvedValueOnce(keeper as User);
+      companyRepo.findOne.mockResolvedValue(proCompany as Company);
+      repo.find.mockResolvedValue([{ ...mockUser, id: 'u-a' }] as User[]);
+      dataSourceMock.transaction.mockRejectedValue(new Error('db down'));
+
+      await expect(
+        service.trimToOneActiveUser(companyId, 'keeper-uuid', trimDto),
+      ).rejects.toThrow('db down');
+      expect(billingServiceMock.setSeatQuantity).toHaveBeenNthCalledWith(1, proCompany, 1);
+      expect(billingServiceMock.setSeatQuantity).toHaveBeenNthCalledWith(2, proCompany, 5);
+    });
+  });
+
+  describe('reactivateUser', () => {
+    it('increments the seat before activating on paid plans', async () => {
+      repo.findOne.mockResolvedValueOnce({ ...targetUser, isActive: false } as User);
+      companyRepo.findOne.mockResolvedValue(proCompany as Company);
+      repo.update = jest.fn().mockResolvedValue({});
+      jest.spyOn(service, 'findOne').mockResolvedValue(targetUser as User);
+
+      await service.reactivateUser('user-uuid-2', companyId, Role.COMPANY_ADMIN);
+
+      expect(billingServiceMock.setSeatQuantity).toHaveBeenCalledWith(proCompany, 6);
+      expect(repo.update).toHaveBeenCalledWith('user-uuid-2', { isActive: true });
+    });
+
+    it('enforces the FREE active-user cap', async () => {
+      repo.findOne.mockResolvedValueOnce({ ...targetUser, isActive: false } as User);
+      companyRepo.findOne.mockResolvedValue(freeCompany as Company);
+      repo.count.mockResolvedValue(1);
+      await expect(
+        service.reactivateUser('user-uuid-2', companyId, Role.COMPANY_ADMIN),
+      ).rejects.toThrow(BadRequestException);
+      expect(billingServiceMock.setSeatQuantity).not.toHaveBeenCalled();
+    });
+
+    it('rejects reactivating an already active user', async () => {
+      repo.findOne.mockResolvedValueOnce(targetUser as User);
+      await expect(
+        service.reactivateUser('user-uuid-2', companyId, Role.COMPANY_ADMIN),
+      ).rejects.toThrow(BadRequestException);
     });
   });
 

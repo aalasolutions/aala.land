@@ -1,4 +1,19 @@
-import { Controller, Get, Post, Body, Param, Patch, Delete, UseGuards, Request, Query, ParseIntPipe, ParseUUIDPipe, DefaultValuePipe, HttpCode, HttpStatus, BadRequestException } from '@nestjs/common';
+import {
+    Controller,
+    Get,
+    Post,
+    Body,
+    Param,
+    Patch,
+    Delete,
+    UseGuards,
+    Request,
+    Query,
+    ParseIntPipe,
+    ParseUUIDPipe,
+    DefaultValuePipe,
+    BadRequestException,
+} from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { UsersService } from './users.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -8,6 +23,8 @@ import { Role } from '@shared/enums/roles.enum';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { InviteUserDto } from './dto/invite-user.dto';
+import { RemoveUserDto } from './dto/remove-user.dto';
+import { TrimCompanyUsersDto } from './dto/trim-company-users.dto';
 import { AuthenticatedRequest } from '@shared/interfaces/authenticated-request.interface';
 
 @ApiTags('Users')
@@ -115,10 +132,52 @@ export class UsersController {
 
     @Delete(':id')
     @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN)
-    @HttpCode(HttpStatus.NO_CONTENT)
-    @ApiOperation({ summary: 'Delete a user (ADMIN+)' })
-    remove(@Param('id', ParseUUIDPipe) id: string, @Request() req: AuthenticatedRequest) {
+    @ApiOperation({
+        summary: 'Permanently delete a user after reassigning owned records to a named user (ADMIN+)',
+        description: 'Blocked with 409 when the user has approved, paid, or cancelled commissions; deactivate instead. Returns the ReassignmentReport.',
+    })
+    remove(
+        @Param('id', ParseUUIDPipe) id: string,
+        @Body() dto: RemoveUserDto,
+        @Request() req: AuthenticatedRequest,
+    ) {
         const companyId = req.user.role === Role.SUPER_ADMIN ? undefined : (req.user.companyId ?? undefined);
-        return this.usersService.remove(id, companyId, req.user.role);
+        return this.usersService.deleteUserWithReassignment(id, req.user.userId, companyId, req.user.role as Role, dto);
+    }
+
+    @Post(':id/deactivate')
+    @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN)
+    @ApiOperation({
+        summary: 'Deactivate a user, reassign owned records to a named user, decrement the seat on paid plans (ADMIN+)',
+        description: 'Returns the ReassignmentReport. Reversible via POST /users/:id/reactivate.',
+    })
+    deactivate(
+        @Param('id', ParseUUIDPipe) id: string,
+        @Body() dto: RemoveUserDto,
+        @Request() req: AuthenticatedRequest,
+    ) {
+        const companyId = req.user.role === Role.SUPER_ADMIN ? undefined : (req.user.companyId ?? undefined);
+        return this.usersService.deactivateUser(id, req.user.userId, companyId, req.user.role as Role, dto);
+    }
+
+    @Post(':id/reactivate')
+    @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN)
+    @ApiOperation({ summary: 'Reactivate a deactivated user, incrementing the seat on paid plans (ADMIN+)' })
+    reactivate(@Param('id', ParseUUIDPipe) id: string, @Request() req: AuthenticatedRequest) {
+        const companyId = req.user.role === Role.SUPER_ADMIN ? undefined : (req.user.companyId ?? undefined);
+        return this.usersService.reactivateUser(id, companyId, req.user.role as Role);
+    }
+
+    @Post('trim-to-one')
+    @Roles(Role.COMPANY_ADMIN)
+    @ApiOperation({
+        summary: 'Deactivate every active user except one company admin and reassign their records (COMPANY_ADMIN only)',
+        description: 'Downgrade preparation: satisfies the downgrade-to-Free gate, which requires exactly one active user.',
+    })
+    trimToOne(@Body() dto: TrimCompanyUsersDto, @Request() req: AuthenticatedRequest) {
+        if (!req.user.companyId) {
+            throw new BadRequestException('companyId is required');
+        }
+        return this.usersService.trimToOneActiveUser(req.user.companyId, req.user.userId, dto);
     }
 }

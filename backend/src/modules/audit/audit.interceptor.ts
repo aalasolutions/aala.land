@@ -33,6 +33,9 @@ const ACTION_OVERRIDES: Record<string, AuditAction> = {
   'forgot-password': AuditAction.UPDATE,
   'reset-password': AuditAction.UPDATE,
   send: AuditAction.CREATE,
+  deactivate: AuditAction.UPDATE,
+  reactivate: AuditAction.UPDATE,
+  'trim-to-one': AuditAction.BULK_UPDATE,
 };
 
 // Map URL segments to clean entity type names

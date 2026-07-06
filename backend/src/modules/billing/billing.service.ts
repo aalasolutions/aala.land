@@ -18,6 +18,7 @@ import {
     BillingPlan,
     BillingProvider,
     BILLING_PROVIDER,
+    SubscriptionRef,
 } from './provider/billing-provider.interface';
 import { resolveBillingCurrency } from './billing-currency.util';
 
@@ -326,6 +327,23 @@ export class BillingService {
                 }
             },
         };
+    }
+
+    /**
+     * Sets the absolute seat quantity on the company's subscription.
+     * Contract section 9: callers order this BEFORE their local transaction.
+     * Does NOT write purchasedSeats; the SeatQuantityChanged webhook does (section 8).
+     */
+    async setSeatQuantity(company: Company, quantity: number): Promise<SubscriptionRef> {
+        if (!company.billingSubscriptionId || !company.billingCustomerId) {
+            throw new HttpException(
+                'This company has a paid plan but no active subscription. Complete checkout first.',
+                HttpStatus.PAYMENT_REQUIRED,
+            );
+        }
+        const ref = { subscriptionId: company.billingSubscriptionId, customerId: company.billingCustomerId };
+        await this.provider.updateSeatQuantity(ref, quantity);
+        return ref;
     }
 
     // -------------------------------------------------------------------------

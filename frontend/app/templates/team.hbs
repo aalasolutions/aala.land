@@ -8,6 +8,11 @@
     </div>
     {{#unless this.isSuperAdmin}}
       <div class="flex gap-3">
+        {{#if this.canTrim}}
+          <button type="button" class="btn btn-secondary" data-test-trim-users {{on "click" this.openTrim}}>
+            <Ph @icon="arrows-in-simple" /> Prepare Downgrade
+          </button>
+        {{/if}}
         <button type="button" class="btn btn-secondary" data-test-invite-member {{on "click" this.openInvite}}>
           <Ph @icon="envelope" /> Invite
         </button>
@@ -55,9 +60,24 @@
                     <button type="button" class="btn btn-secondary btn-xs" data-test-edit-user {{on "click" (fn this.openEdit user)}}>
                       <Ph @icon="pencil-simple" /> Edit
                     </button>
-                    <button type="button" class="btn btn-danger btn-xs" data-test-delete-user {{on "click" (fn this.openDelete user)}}>
-                      <Ph @icon="trash" /> Remove
-                    </button>
+                    {{#if user.isActive}}
+                      <button type="button" class="btn btn-danger btn-xs" data-test-remove-user {{on "click" (fn this.openRemove user)}}>
+                        <Ph @icon="user-minus" /> Remove
+                      </button>
+                    {{else}}
+                      <button
+                        type="button"
+                        class="btn btn-secondary btn-xs"
+                        disabled={{eq this.reactivatingUserId user.id}}
+                        data-test-reactivate-user
+                        {{on "click" (fn this.reactivateUser user)}}
+                      >
+                        <Ph @icon="user-plus" /> {{if (eq this.reactivatingUserId user.id) "Reactivating..." "Reactivate"}}
+                      </button>
+                      <button type="button" class="btn btn-danger btn-xs" data-test-remove-user {{on "click" (fn this.openRemove user)}}>
+                        <Ph @icon="trash" /> Delete
+                      </button>
+                    {{/if}}
                     {{#if this.isSuperAdmin}}
                       {{#unless (eq user.role "super_admin")}}
                         <button
@@ -181,15 +201,183 @@
   </form>
 </Modal>
 
-<ConfirmModal
-  @isOpen={{this.showDeleteModal}}
-  @title="Remove Team Member"
-  @message="Are you sure you want to remove {{this.userToDelete.name}}? This action cannot be undone."
-  @confirmText="Remove"
-  @cancelText="Cancel"
-  @confirmType="btn-danger"
-  @isConfirming={{this.isDeleting}}
-  @confirmingText="Removing..."
-  @onClose={{this.closeDeleteModal}}
-  @onConfirm={{this.confirmDelete}}
-/>
+{{! Remove flow: step 1 configures, step 2 confirms }}
+<Modal
+  @isOpen={{this.showRemoveModal}}
+  @title={{if (eq this.removeStep 1) "Remove Team Member" "Confirm Removal"}}
+  @onClose={{this.closeRemoveModal}}
+  @showClose={{true}}
+>
+  {{#if (eq this.removeStep 1)}}
+    <div class="flex col gap-4" data-test-remove-step-1>
+      <p class="text-muted font-sm">
+        Removing <strong>{{this.userToRemove.name}}</strong>. Their leads, documents, owners, pending
+        commissions, work orders, and contacts must be handed to another active team member first.
+      </p>
+
+      <div class="flex col gap-2">
+        <span class="font-sm text-muted">Action</span>
+        <label class="flex gap-2 x-center">
+          <input
+            type="radio"
+            name="remove-mode"
+            value="deactivate"
+            checked={{eq this.removeMode "deactivate"}}
+            data-test-remove-mode-deactivate
+            {{on "change" (fn this.setRemoveMode "deactivate")}}
+          />
+          <span><strong>Deactivate</strong> (recommended): the member loses access and frees the seat. History and financial records stay. Reversible.</span>
+        </label>
+        <label class="flex gap-2 x-center">
+          <input
+            type="radio"
+            name="remove-mode"
+            value="delete"
+            checked={{eq this.removeMode "delete"}}
+            data-test-remove-mode-delete
+            {{on "change" (fn this.setRemoveMode "delete")}}
+          />
+          <span><strong>Delete permanently</strong>: the account is erased. Not available for members with approved or paid commissions. Irreversible.</span>
+        </label>
+      </div>
+
+      <FormDropdown
+        @label="Reassign records to"
+        @id="remove-target"
+        @value={{this.removeTargetId}}
+        @onChange={{fn this.setField "removeTargetId"}}
+        @options={{this.reassignOptions}}
+        @placeholder="Select a team member..."
+        @required={{true}}
+        data-test-remove-target
+      />
+
+      <FormTextarea
+        @label="Reason"
+        @id="remove-reason"
+        @rows="2"
+        @placeholder="e.g. Agent left the company"
+        @value={{this.removeReason}}
+        @onChange={{fn this.setField "removeReason"}}
+        @required={{true}}
+        data-test-remove-reason
+      />
+
+      {{#if this.removeError}}
+        <p class="font-sm text-danger" data-test-remove-error>{{this.removeError}}</p>
+      {{/if}}
+
+      <div class="flex gap-3 mt-2">
+        <AppButton @variant="secondary" @text="Cancel" @onClick={{this.closeRemoveModal}} />
+        <AppButton @variant="primary" @text="Continue" @onClick={{this.continueRemove}} data-test-remove-continue />
+      </div>
+    </div>
+  {{else}}
+    <div class="flex col gap-4" data-test-remove-step-2>
+      <p>
+        You are about to <strong>{{if (eq this.removeMode "delete") "permanently delete" "deactivate"}}</strong>
+        <strong>{{this.userToRemove.name}}</strong>. Everything they own transfers to
+        <strong>{{this.removeTargetName}}</strong>.
+        {{#if (eq this.removeMode "delete")}}
+          This cannot be undone.
+        {{else}}
+          You can reactivate them later; transferred records stay with the new owner.
+        {{/if}}
+      </p>
+
+      {{#if this.removeError}}
+        <p class="font-sm text-danger" data-test-remove-error>{{this.removeError}}</p>
+      {{/if}}
+
+      <div class="flex gap-3 mt-2">
+        <AppButton @variant="secondary" @text="Back" @onClick={{this.backToRemoveOptions}} data-test-remove-back />
+        <button
+          type="button"
+          class="btn btn-danger"
+          disabled={{this.isRemoving}}
+          data-test-remove-confirm
+          {{on "click" this.confirmRemove}}
+        >
+          {{if this.isRemoving "Working..." (if (eq this.removeMode "delete") "Delete Permanently" "Deactivate Member")}}
+        </button>
+      </div>
+    </div>
+  {{/if}}
+</Modal>
+
+{{! Trim-to-one flow: downgrade preparation }}
+<Modal
+  @isOpen={{this.showTrimModal}}
+  @title={{if (eq this.trimStep 1) "Prepare Downgrade" "Confirm Trim"}}
+  @onClose={{this.closeTrimModal}}
+  @showClose={{true}}
+>
+  {{#if (eq this.trimStep 1)}}
+    <div class="flex col gap-4" data-test-trim-step-1>
+      <p class="text-muted font-sm">
+        Downgrading to the Free plan requires exactly one active user. Every other member will be
+        deactivated and their records handed to the member who stays.
+      </p>
+
+      <FormDropdown
+        @label="Member who stays active (must be a company admin)"
+        @id="trim-keep"
+        @value={{this.trimKeepId}}
+        @onChange={{fn this.setField "trimKeepId"}}
+        @options={{this.trimKeepOptions}}
+        @placeholder="Select a company admin..."
+        @required={{true}}
+        data-test-trim-keep
+      />
+
+      <FormTextarea
+        @label="Reason"
+        @id="trim-reason"
+        @rows="2"
+        @value={{this.trimReason}}
+        @onChange={{fn this.setField "trimReason"}}
+        @required={{true}}
+        data-test-trim-reason
+      />
+
+      {{#if this.trimError}}
+        <p class="font-sm text-danger" data-test-trim-error>{{this.trimError}}</p>
+      {{/if}}
+
+      <div class="flex gap-3 mt-2">
+        <AppButton @variant="secondary" @text="Cancel" @onClick={{this.closeTrimModal}} />
+        <AppButton @variant="primary" @text="Continue" @onClick={{this.continueTrim}} data-test-trim-continue />
+      </div>
+    </div>
+  {{else}}
+    <div class="flex col gap-4" data-test-trim-step-2>
+      <p>
+        <strong>{{this.trimOthersCount}}</strong> member{{if (eq this.trimOthersCount 1) "" "s"}} will be
+        deactivated. All of their records transfer to <strong>{{this.trimKeepName}}</strong>.
+      </p>
+      {{#if this.trimKeeperIsNotMe}}
+        <p class="font-sm text-danger">
+          Warning: you selected someone else to stay. Your own account will be deactivated and you
+          will be signed out immediately.
+        </p>
+      {{/if}}
+
+      {{#if this.trimError}}
+        <p class="font-sm text-danger" data-test-trim-error>{{this.trimError}}</p>
+      {{/if}}
+
+      <div class="flex gap-3 mt-2">
+        <AppButton @variant="secondary" @text="Back" @onClick={{this.backToTrimOptions}} data-test-trim-back />
+        <button
+          type="button"
+          class="btn btn-danger"
+          disabled={{this.isTrimming}}
+          data-test-trim-confirm
+          {{on "click" this.confirmTrim}}
+        >
+          {{if this.isTrimming "Trimming..." "Deactivate Everyone Else"}}
+        </button>
+      </div>
+    </div>
+  {{/if}}
+</Modal>

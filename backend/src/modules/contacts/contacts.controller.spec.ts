@@ -9,7 +9,7 @@ describe('ContactsController', () => {
   let service: jest.Mocked<ContactsService>;
 
   const companyId = 'company-uuid-1';
-  const mockReq = { user: { companyId, userId: 'user-uuid-1' } };
+  const mockReq = { user: { companyId, userId: 'user-uuid-1', email: 'agent@test.com', role: 'company_admin' } };
 
   const mockContact = {
     id: 'contact-uuid-1',
@@ -53,13 +53,13 @@ describe('ContactsController', () => {
   });
 
   describe('create', () => {
-    it('creates contact scoped to company', async () => {
+    it('creates contact scoped to company with createdBy', async () => {
       service.create.mockResolvedValue(mockContact as any);
 
       const dto = { firstName: 'Ahmed', lastName: 'Al-Rashid', email: 'ahmed@example.com' };
       const result = await controller.create(dto as any, mockReq);
 
-      expect(service.create).toHaveBeenCalledWith(companyId, dto);
+      expect(service.create).toHaveBeenCalledWith(companyId, dto, 'user-uuid-1');
       expect(result).toEqual(mockContact);
     });
   });
