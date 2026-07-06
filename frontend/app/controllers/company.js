@@ -105,6 +105,13 @@ export default class CompanyController extends Controller {
     return this.auth.currentUser?.role === 'company_admin';
   }
 
+  // Downgrade is blocked while a billing request is in flight, or when the
+  // backend gate would 409 (more than 1 active user). Disabling here avoids a
+  // guaranteed-fail request and a pointless confirmation modal.
+  get isDowngradeDisabled() {
+    return this.isBillingBusy || !this.billing?.canDowngradeToFree;
+  }
+
   get weeklyUsageLabel() {
     if (this.weeklyLimit === null) return null;
     const used = this.weeklyUsed ?? 0;

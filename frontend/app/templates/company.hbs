@@ -125,7 +125,7 @@
             type="button"
             class="btn btn-danger"
             data-test-downgrade-free
-            disabled={{this.isBillingBusy}}
+            disabled={{this.isDowngradeDisabled}}
             {{on "click" this.openDowngradeConfirm}}
           >
             Downgrade to Free

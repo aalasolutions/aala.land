@@ -379,7 +379,10 @@ export class StripeBillingProvider implements BillingProvider {
             cancel_url: input.cancelUrl,
         });
 
-        return { checkoutUrl: session.url!, subscriptionId: null };
+        if (!session.url) {
+            throw new Error('Stripe Checkout session did not return a redirect URL');
+        }
+        return { checkoutUrl: session.url, subscriptionId: null };
     }
 
     async updateSeatQuantity(ref: SubscriptionRef, quantity: number): Promise<void> {
@@ -394,13 +397,20 @@ export class StripeBillingProvider implements BillingProvider {
             items: { data: { id: string; quantity?: number | null; price: { metadata?: Record<string, string> } }[] };
         };
 
+        if (!sub.items.data.length) {
+            throw new Error(`Subscription ${input.subscriptionId} has no line items to change plan`);
+        }
+
         const items: Stripe.SubscriptionUpdateParams.Item[] = [];
         const currentBaseItem = sub.items.data.find(
             (i) => i.price?.metadata?.kind === 'ENTERPRISE_BASE',
         );
-        const currentSeatItem = sub.items.data.find(
-            (i) => i.price?.metadata?.kind === 'SEAT',
-        );
+        // Prefer the SEAT-metadata item; fall back to the first non-base item so a
+        // subscription created with unmetadata'd prices (older config / fixtures)
+        // still has its seat line updated instead of silently skipped.
+        const currentSeatItem =
+            sub.items.data.find((i) => i.price?.metadata?.kind === 'SEAT') ??
+            sub.items.data.find((i) => i !== currentBaseItem);
 
         // Always update the seat item to the new price, preserving the LIVE
         // quantity already on the subscription (never re-assert a DB-derived
