@@ -24,6 +24,7 @@ import { UpdateUserDto } from './dto/update-user.dto';
 import { InviteUserDto } from './dto/invite-user.dto';
 import { RemoveUserDto } from './dto/remove-user.dto';
 import { TrimCompanyUsersDto } from './dto/trim-company-users.dto';
+import { ReassignmentReport } from './reassignment/reassignment-report';
 import { AuthenticatedRequest } from '@shared/interfaces/authenticated-request.interface';
 
 @ApiTags('Users')
@@ -137,13 +138,15 @@ export class UsersController {
             'POST (not DELETE) because the reassignToUserId + reason payload must be carried in the body, and DELETE bodies are stripped by some proxies and HTTP clients. ' +
             'Blocked with 409 when the user has approved, paid, or cancelled commissions; deactivate instead. Returns the ReassignmentReport.',
     })
-    remove(
+    deleteUser(
         @Param('id', ParseUUIDPipe) id: string,
         @Body() dto: RemoveUserDto,
         @Request() req: AuthenticatedRequest,
     ) {
         const companyId = req.user.role === Role.SUPER_ADMIN ? undefined : (req.user.companyId ?? undefined);
-        return this.usersService.deleteUserWithReassignment(id, req.user.userId, companyId, req.user.role as Role, dto);
+        return this.usersService
+            .deleteUserWithReassignment(id, req.user.userId, companyId, req.user.role as Role, dto)
+            .then((report) => this.toClientReport(report));
     }
 
     @Post(':id/deactivate')
@@ -158,7 +161,9 @@ export class UsersController {
         @Request() req: AuthenticatedRequest,
     ) {
         const companyId = req.user.role === Role.SUPER_ADMIN ? undefined : (req.user.companyId ?? undefined);
-        return this.usersService.deactivateUser(id, req.user.userId, companyId, req.user.role as Role, dto);
+        return this.usersService
+            .deactivateUser(id, req.user.userId, companyId, req.user.role as Role, dto)
+            .then((report) => this.toClientReport(report));
     }
 
     @Post(':id/reactivate')
@@ -179,6 +184,25 @@ export class UsersController {
         if (!req.user.companyId) {
             throw new BadRequestException('companyId is required');
         }
-        return this.usersService.trimToOneActiveUser(req.user.companyId, req.user.userId, dto);
+        return this.usersService
+            .trimToOneActiveUser(req.user.companyId, req.user.userId, dto)
+            .then((result) => ({
+                deactivatedCount: result.deactivatedCount,
+                reports: result.reports.map((report) => this.toClientReport(report)),
+            }));
+    }
+
+    /**
+     * Strip the per-record ids from a reassignment report before returning it to the
+     * client. The ids can be thousands of UUIDs on a large tenant and the UI only needs
+     * the counts; the full report (with ids) still reaches the OwnershipTransferRecorder
+     * server-side inside the removal transaction.
+     */
+    private toClientReport(report: ReassignmentReport) {
+        if (!report?.entities) return report;
+        return {
+            ...report,
+            entities: report.entities.map(({ type, count }) => ({ type, count })),
+        };
     }
 }

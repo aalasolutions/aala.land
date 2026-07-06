@@ -143,9 +143,24 @@ describe('UsersController', () => {
   describe('removal endpoints', () => {
     const dto = { reassignToUserId: 'user-uuid-3', reason: 'left' };
     const reqAdmin = { user: { userId: 'requester-uuid', companyId: 'company-uuid-1', role: 'company_admin' } };
+    const sampleReport = {
+      fromUserId: 'user-uuid-2', toUserId: 'user-uuid-3', reason: 'left',
+      entities: [{ type: 'lead', count: 2, ids: ['id-1', 'id-2'] }],
+    };
+
+    beforeEach(() => {
+      service.deleteUserWithReassignment.mockResolvedValue(sampleReport as never);
+      service.deactivateUser.mockResolvedValue(sampleReport as never);
+      service.trimToOneActiveUser.mockResolvedValue({ deactivatedCount: 1, reports: [sampleReport] } as never);
+    });
+
+    it('strips the reassignment record ids from the response, keeping counts only', async () => {
+      const res = await controller.deleteUser('user-uuid-2', dto as never, reqAdmin as never);
+      expect(res.entities).toEqual([{ type: 'lead', count: 2 }]);
+    });
 
     it('POST /users/:id/delete forwards to deleteUserWithReassignment with the requester context', async () => {
-      await controller.remove('user-uuid-2', dto as never, reqAdmin as never);
+      await controller.deleteUser('user-uuid-2', dto as never, reqAdmin as never);
       expect(service.deleteUserWithReassignment).toHaveBeenCalledWith(
         'user-uuid-2', 'requester-uuid', 'company-uuid-1', 'company_admin', dto,
       );
@@ -172,7 +187,7 @@ describe('UsersController', () => {
 
     it('SUPER_ADMIN passes an undefined companyId so the service resolves scope from the target', async () => {
       const reqSa = { user: { userId: 'sa-uuid', companyId: null, role: 'super_admin' } };
-      await controller.remove('user-uuid-2', dto as never, reqSa as never);
+      await controller.deleteUser('user-uuid-2', dto as never, reqSa as never);
       expect(service.deleteUserWithReassignment).toHaveBeenCalledWith(
         'user-uuid-2', 'sa-uuid', undefined, 'super_admin', dto,
       );

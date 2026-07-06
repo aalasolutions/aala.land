@@ -238,7 +238,7 @@ export class UsersService {
         // A comp account (paid tier set by SUPER_ADMIN without checkout) has no
         // subscription to bill and manages users freely (owner decision 2026-07-07,
         // Option B). This mirrors trimToOneActiveUser and reactivateUser.
-        if (!this.isPaidTier(company) || !company.billingSubscriptionId) return null;
+        if (!this.isPaidTier(company) || !company.billingSubscriptionId || !company.billingCustomerId) return null;
         const previous = company.purchasedSeats;
         const target = Math.max(previous - 1, 1);
         await this.callProviderSeatUpdate(company, target);
@@ -464,7 +464,7 @@ export class UsersService {
         }
 
         let compensate: (() => Promise<void>) | null = null;
-        if (this.isPaidTier(company) && company.billingSubscriptionId) {
+        if (this.isPaidTier(company) && company.billingSubscriptionId && company.billingCustomerId) {
             const previous = company.purchasedSeats;
             await this.callProviderSeatUpdate(company, 1);
             compensate = async () => {
@@ -543,7 +543,7 @@ export class UsersService {
         // decrementSeatBeforeRemoval and trimToOneActiveUser). FREE tiers are
         // gated by the same active-user cap as create and invite.
         let compensate: (() => Promise<void>) | null = null;
-        if (this.isPaidTier(company) && company.billingSubscriptionId) {
+        if (this.isPaidTier(company) && company.billingSubscriptionId && company.billingCustomerId) {
             const previous = company.purchasedSeats;
             await this.callProviderSeatUpdate(company, previous + 1);
             compensate = async () => {

@@ -74,7 +74,7 @@
                       >
                         <Ph @icon="user-plus" /> {{if (eq this.reactivatingUserId user.id) "Reactivating..." "Reactivate"}}
                       </button>
-                      <button type="button" class="btn btn-danger btn-xs" data-test-remove-user {{on "click" (fn this.openRemove user)}}>
+                      <button type="button" class="btn btn-danger btn-xs" data-test-delete-user {{on "click" (fn this.openRemove user)}}>
                         <Ph @icon="trash" /> Delete
                       </button>
                     {{/if}}
@@ -237,7 +237,7 @@
             data-test-remove-mode-delete
             {{on "change" (fn this.setRemoveMode "delete")}}
           />
-          <span><strong>Delete permanently</strong>: the account is erased. Not available for members with approved or paid commissions. Irreversible.</span>
+          <span><strong>Delete permanently</strong>: the account is erased. Not available for members with approved, paid, or cancelled commissions. Irreversible.</span>
         </label>
       </div>
 
@@ -253,7 +253,7 @@
       />
 
       {{#if this.candidateListTruncated}}
-        <p class="font-sm text-muted" data-test-remove-truncated>Showing the first 100 active members.</p>
+        <p class="font-sm text-muted" data-test-remove-truncated>Showing up to 100 members.</p>
       {{/if}}
 
       <FormTextarea
@@ -335,7 +335,7 @@
       />
 
       {{#if this.candidateListTruncated}}
-        <p class="font-sm text-muted" data-test-trim-truncated>Showing the first 100 active members.</p>
+        <p class="font-sm text-muted" data-test-trim-truncated>Showing up to 100 members.</p>
       {{/if}}
 
       <FormTextarea

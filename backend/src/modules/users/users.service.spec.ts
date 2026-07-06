@@ -73,7 +73,7 @@ describe('UsersService', () => {
   } as unknown as Company;
   const proCompany = {
     id: companyId, subscriptionTier: SubscriptionTier.PRO, maxUsers: 999,
-    purchasedSeats: 5, billingSubscriptionId: 'sub_123',
+    purchasedSeats: 5, billingSubscriptionId: 'sub_123', billingCustomerId: 'cus_123',
   } as unknown as Company;
   const proCompanyNoSub = { ...proCompany, billingSubscriptionId: null } as unknown as Company;
 
