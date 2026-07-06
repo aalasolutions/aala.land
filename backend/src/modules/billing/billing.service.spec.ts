@@ -1,4 +1,5 @@
 import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -73,6 +74,14 @@ describe('BillingService', () => {
                 {
                     provide: BILLING_PROVIDER,
                     useValue: { ...mockProviderMethods },
+                },
+                {
+                    provide: ConfigService,
+                    useValue: {
+                        get: jest.fn((key: string) =>
+                            key === 'CORS_ORIGIN' ? 'http://localhost:4200' : undefined,
+                        ),
+                    },
                 },
             ],
         }).compile();
@@ -237,15 +246,15 @@ describe('BillingService', () => {
         });
 
         it('calls createSubscription with the resolved currency, seat price, and active user count', async () => {
-            const result = await service.startCheckout(companyId, 'https://ok', 'https://cancel');
+            const result = await service.startCheckout(companyId, 'http://localhost:4200/billing/success', 'http://localhost:4200/billing/cancel');
 
             expect(provider.createSubscription).toHaveBeenCalledWith({
                 customerId: 'cus_1',
                 seatPriceId: 'price_aed_seat',
                 basePriceId: null,
                 quantity: 2,
-                successUrl: 'https://ok',
-                cancelUrl: 'https://cancel',
+                successUrl: 'http://localhost:4200/billing/success',
+                cancelUrl: 'http://localhost:4200/billing/cancel',
                 companyId,
             });
             expect(result.checkoutUrl).toBe('https://checkout.stripe.com/test');
@@ -255,27 +264,48 @@ describe('BillingService', () => {
         it('uses quantity 1 when company has no active users', async () => {
             userRepo.count.mockResolvedValue(0);
             (provider.createSubscription as jest.Mock).mockClear();
-            await service.startCheckout(companyId, 'https://ok', 'https://cancel');
+            await service.startCheckout(companyId, 'http://localhost:4200/billing/success', 'http://localhost:4200/billing/cancel');
             const call = (provider.createSubscription as jest.Mock).mock.calls[0][0];
             expect(call.quantity).toBe(1);
         });
 
         it('throws NotFoundException when company does not exist', async () => {
             companyRepo.findOne.mockResolvedValue(null);
-            await expect(service.startCheckout(companyId, 'https://ok', 'https://cancel'))
+            await expect(service.startCheckout(companyId, 'http://localhost:4200/billing/success', 'http://localhost:4200/billing/cancel'))
                 .rejects.toBeInstanceOf(NotFoundException);
         });
 
         it('throws BadRequestException when no active SEAT price is found', async () => {
             priceRepo.findOne.mockResolvedValue(null);
-            await expect(service.startCheckout(companyId, 'https://ok', 'https://cancel'))
+            await expect(service.startCheckout(companyId, 'http://localhost:4200/billing/success', 'http://localhost:4200/billing/cancel'))
                 .rejects.toBeInstanceOf(BadRequestException);
         });
 
         it('throws BadRequestException when SEAT price is not yet synced to Stripe', async () => {
             priceRepo.findOne.mockResolvedValue({ ...seatPriceRow, providerPriceId: null } as BillingPrice);
-            await expect(service.startCheckout(companyId, 'https://ok', 'https://cancel'))
+            await expect(service.startCheckout(companyId, 'http://localhost:4200/billing/success', 'http://localhost:4200/billing/cancel'))
                 .rejects.toBeInstanceOf(BadRequestException);
+        });
+
+        it('throws ConflictException when the company is not on the FREE plan', async () => {
+            companyRepo.findOne.mockResolvedValue(
+                makeCompany({ subscriptionTier: SubscriptionTier.PRO, billingCustomerId: 'cus_1' }),
+            );
+            await expect(service.startCheckout(companyId, 'http://localhost:4200/billing/success', 'http://localhost:4200/billing/cancel'))
+                .rejects.toBeInstanceOf(ConflictException);
+            expect(provider.createSubscription).not.toHaveBeenCalled();
+        });
+
+        it('throws BadRequestException when a redirect URL is on a disallowed origin', async () => {
+            await expect(service.startCheckout(companyId, 'https://evil.example.com/success', 'http://localhost:4200/billing/cancel'))
+                .rejects.toBeInstanceOf(BadRequestException);
+            expect(provider.createSubscription).not.toHaveBeenCalled();
+        });
+
+        it('throws BadRequestException when a redirect URL is not absolute', async () => {
+            await expect(service.startCheckout(companyId, '/billing/success', 'http://localhost:4200/billing/cancel'))
+                .rejects.toBeInstanceOf(BadRequestException);
+            expect(provider.createSubscription).not.toHaveBeenCalled();
         });
     });
 

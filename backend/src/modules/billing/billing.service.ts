@@ -6,6 +6,7 @@ import {
     Logger,
     NotFoundException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Company, SubscriptionTier } from '../companies/entities/company.entity';
@@ -46,6 +47,7 @@ export class BillingService {
         @InjectRepository(BillingPrice) private readonly priceRepo: Repository<BillingPrice>,
         @InjectRepository(User) private readonly userRepo: Repository<User>,
         @Inject(BILLING_PROVIDER) private readonly provider: BillingProvider,
+        private readonly config: ConfigService,
     ) {}
 
     // -------------------------------------------------------------------------
@@ -121,6 +123,14 @@ export class BillingService {
         if (company.billingSubscriptionId) {
             throw new ConflictException('This company already has an active subscription.');
         }
+        // Self-serve checkout is the FREE -> PRO upgrade path only. A comped
+        // PRO/ENTERPRISE company (tier set manually with no subscription) must not
+        // be able to open a fresh checkout that the webhook would then re-tier.
+        if (company.subscriptionTier !== SubscriptionTier.FREE) {
+            throw new ConflictException('Checkout is only available for companies on the FREE plan.');
+        }
+        this.assertAllowedRedirectUrl(successUrl, 'successUrl');
+        this.assertAllowedRedirectUrl(cancelUrl, 'cancelUrl');
         const customerId = await this.ensureCompanyCustomer(company);
         const currency = resolveBillingCurrency(company.defaultRegionCode);
         const quantity = Math.max(await this.countActiveUsers(companyId), 1);
@@ -156,6 +166,8 @@ export class BillingService {
                 'Company already has a subscription. Use admin/change-plan to switch plans.',
             );
         }
+        this.assertAllowedRedirectUrl(successUrl, 'successUrl');
+        this.assertAllowedRedirectUrl(cancelUrl, 'cancelUrl');
         const customerId = await this.ensureCompanyCustomer(company);
         const currency = resolveBillingCurrency(company.defaultRegionCode);
 
@@ -234,6 +246,36 @@ export class BillingService {
         const company = await this.companyRepo.findOne({ where: { id: companyId } });
         if (!company) throw new NotFoundException(`Company ${companyId} not found`);
         return company;
+    }
+
+    /** Allowed redirect origins for hosted-checkout return URLs (same source as CORS). */
+    private getAllowedOrigins(): string[] {
+        const raw = this.config.get<string>('CORS_ORIGIN');
+        const origins = raw
+            ? raw.split(',').map((o) => o.trim()).filter(Boolean)
+            : ['http://localhost:4200'];
+        return origins.map((o) => o.replace(/\/+$/, ''));
+    }
+
+    /**
+     * Guard the success/cancel URLs handed to the billing provider. They are
+     * client-supplied, so an unvalidated value is an open-redirect / phishing
+     * vector: reject anything that is not an absolute http(s) URL on an allowed
+     * origin (the same allowlist used for CORS).
+     */
+    private assertAllowedRedirectUrl(url: string, field: string): void {
+        let parsed: URL;
+        try {
+            parsed = new URL(url);
+        } catch {
+            throw new BadRequestException(`${field} must be an absolute http(s) URL`);
+        }
+        if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+            throw new BadRequestException(`${field} must be an http(s) URL`);
+        }
+        if (!this.getAllowedOrigins().includes(parsed.origin)) {
+            throw new BadRequestException(`${field} is not an allowed redirect origin`);
+        }
     }
 
     /** Count active (isActive=true) users for a company. */

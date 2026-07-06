@@ -1,4 +1,4 @@
-import { IsEnum, IsInt, IsString, IsUUID, Min } from 'class-validator';
+import { IsIn, IsInt, IsString, IsUUID, Min } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { BillingPlan } from '../provider/billing-provider.interface';
 
@@ -8,7 +8,7 @@ export class AdminCheckoutDto {
     companyId: string;
 
     @ApiProperty({ description: 'Plan to subscribe to', enum: ['PRO', 'ENTERPRISE'] })
-    @IsEnum(['PRO', 'ENTERPRISE'] as const)
+    @IsIn(['PRO', 'ENTERPRISE'])
     plan: BillingPlan;
 
     @ApiProperty({ description: 'Initial seat quantity', minimum: 1, example: 3 })
@@ -31,7 +31,7 @@ export class AdminChangePlanDto {
     companyId: string;
 
     @ApiProperty({ description: 'Target plan', enum: ['PRO', 'ENTERPRISE'] })
-    @IsEnum(['PRO', 'ENTERPRISE'] as const)
+    @IsIn(['PRO', 'ENTERPRISE'])
     plan: BillingPlan;
 }
 
