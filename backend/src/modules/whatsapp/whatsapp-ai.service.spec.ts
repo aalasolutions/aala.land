@@ -376,15 +376,16 @@ describe('WhatsappAiService', () => {
       expect(mockRepo.checkLimitAndIncrement).toHaveBeenCalledWith('company-1', 10);
     });
 
-    it('calls checkLimitAndIncrement with 50 for STARTER tier', async () => {
-      const mockRepo = makeMockRepo(null, SubscriptionTier.STARTER);
+    it('skips limit check entirely for ENTERPRISE tier', async () => {
+      const mockRepo = makeMockRepo(null, SubscriptionTier.ENTERPRISE);
       service = new WhatsappAiService(mockRepo as any, makeMockBuilder() as any);
       global.fetch = jest.fn().mockImplementation(() => Promise.resolve(mockTextResponse('reply'))) as any;
 
-      await service.handleIncomingMessage(baseEvt(), 'company-1', 'user-1', jest.fn().mockResolvedValue({}));
+      const mockSend = jest.fn().mockResolvedValue({});
+      await service.handleIncomingMessage(baseEvt(), 'company-1', 'user-1', mockSend);
       await jest.runAllTimersAsync();
 
-      expect(mockRepo.checkLimitAndIncrement).toHaveBeenCalledWith('company-1', 50);
+      expect(mockRepo.checkLimitAndIncrement).not.toHaveBeenCalled();
     });
 
     it('skips limit check entirely for PRO tier', async () => {

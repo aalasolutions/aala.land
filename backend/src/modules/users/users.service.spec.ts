@@ -99,7 +99,7 @@ describe('UsersService', () => {
       repo.findOne.mockResolvedValue(null);
       repo.create.mockReturnValue(mockUser);
       repo.save.mockResolvedValue(mockUser);
-      const mockCompany = { id: companyId, subscriptionTier: 'STARTER', maxUsers: 5 } as any;
+      const mockCompany = { id: companyId, subscriptionTier: 'FREE', maxUsers: 5 } as any;
       companyRepo.findOne.mockResolvedValue(mockCompany);
       repo.count.mockResolvedValue(2);
 
@@ -112,7 +112,7 @@ describe('UsersService', () => {
 
     it('throws ConflictException when email already exists', async () => {
       repo.findOne.mockResolvedValue(mockUser);
-      const mockCompany = { id: companyId, subscriptionTier: 'STARTER', maxUsers: 5 } as any;
+      const mockCompany = { id: companyId, subscriptionTier: 'FREE', maxUsers: 5 } as any;
       companyRepo.findOne.mockResolvedValue(mockCompany);
 
       const dto = { name: 'Test', email: 'agent@test.com', password: 'pass123', companyId, role: Role.AGENT };
@@ -134,7 +134,7 @@ describe('UsersService', () => {
       const superAdminUser = { ...mockUser, role: Role.SUPER_ADMIN };
       repo.create.mockReturnValue(superAdminUser);
       repo.save.mockResolvedValue(superAdminUser);
-      const mockCompany = { id: companyId, subscriptionTier: 'STARTER', maxUsers: 5 } as any;
+      const mockCompany = { id: companyId, subscriptionTier: 'PRO', maxUsers: 999 } as any;
       companyRepo.findOne.mockResolvedValue(mockCompany);
       repo.count.mockResolvedValue(2);
 
@@ -312,7 +312,7 @@ describe('UsersService', () => {
     });
 
     it('should allow creation when under user limit', async () => {
-      const mockCompany = { id: companyId, subscriptionTier: 'STARTER', maxUsers: 5 } as any;
+      const mockCompany = { id: companyId, subscriptionTier: 'PRO', maxUsers: 999 } as any;
       companyRepo.findOne.mockResolvedValue(mockCompany);
       repo.count.mockResolvedValue(3);
       repo.findOne.mockResolvedValue(null);
@@ -344,7 +344,7 @@ describe('UsersService', () => {
 
       // Default: company exists with room to spare
       companyRepo.findOne.mockResolvedValue(
-        { id: companyId, subscriptionTier: 'STARTER', maxUsers: 10 } as any,
+        { id: companyId, subscriptionTier: 'PRO', maxUsers: 999 } as any,
       );
       repo.count.mockResolvedValue(2);
     });
@@ -402,13 +402,13 @@ describe('UsersService', () => {
     });
 
     it('throws BadRequestException with correct message when limit is reached', async () => {
-      const mockCompany = { id: companyId, subscriptionTier: 'STARTER', maxUsers: 5 } as any;
+      const mockCompany = { id: companyId, subscriptionTier: 'FREE', maxUsers: 1 } as any;
       companyRepo.findOne.mockResolvedValue(mockCompany);
-      repo.count.mockResolvedValue(5);
+      repo.count.mockResolvedValue(1);
 
       const dto = { email: 'new@test.com', firstName: 'New', lastName: 'User', role: Role.AGENT };
       await expect(service.inviteUser(companyId, dto, Role.COMPANY_ADMIN)).rejects.toThrow(
-        'Your STARTER plan allows up to 5 users. Upgrade to add more.',
+        'Your FREE plan allows up to 1 user',
       );
     });
 

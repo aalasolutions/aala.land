@@ -28,7 +28,13 @@ export class UpdateCompanyDto {
   @Validate(IsValidRegionCode)
   defaultRegionCode?: string;
 
-  @ApiPropertyOptional({ example: 'STARTER', enum: SubscriptionTier })
+  /**
+   * SUPER_ADMIN only (enforced in CompaniesService.update). Deliberate manual
+   * override for comp / entitlement grants that bypasses Stripe entirely -- the
+   * one intended exception to the billing single-writer rule. Can desync from a
+   * live Stripe subscription by design; not a webhook-synced field.
+   */
+  @ApiPropertyOptional({ example: 'PRO', enum: SubscriptionTier })
   @IsEnum(SubscriptionTier)
   @IsOptional()
   subscriptionTier?: SubscriptionTier;

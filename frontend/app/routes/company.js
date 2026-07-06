@@ -14,7 +14,7 @@ export default class CompanyRoute extends AuthenticatedRoute {
 
     const isCompanyAdmin = this.auth.currentUser?.role === 'company_admin';
 
-    const [companyResult, regionsResponse, storageUsage, aiSettings] = await Promise.all([
+    const [companyResult, regionsResponse, storageUsage, aiSettings, billingResult] = await Promise.all([
       this.auth.fetchJson(`/companies/${companyId}`),
       fetch(`${this.auth.apiBase}/companies/regions`).then((r) => r.json()).catch(() => ({ data: [] })),
       safeJson(this.auth, `/companies/${companyId}/storage-usage`, 'COMPANY'),
@@ -24,6 +24,7 @@ export default class CompanyRoute extends AuthenticatedRoute {
             this.whatsapp.getAi().catch(() => null),
           ])
         : Promise.resolve(null),
+      isCompanyAdmin ? safeJson(this.auth, '/billing/subscription', 'COMPANY') : Promise.resolve(null),
     ]);
 
     const company = companyResult.data || null;
@@ -43,7 +44,7 @@ export default class CompanyRoute extends AuthenticatedRoute {
       };
     }
 
-    return { company, regions, groupedRegions, storageUsage, ai };
+    return { company, regions, groupedRegions, storageUsage, ai, billing: billingResult };
   }
 
   setupController(controller, model) {
@@ -55,6 +56,7 @@ export default class CompanyRoute extends AuthenticatedRoute {
       controller.formDefaultRegionCode = c.defaultRegionCode || null;
     }
     controller.storageUsage = model.storageUsage?.data ?? null;
+    controller.billing = model.billing?.data ?? null;
     controller.activeTab = 'general';
     controller.aiPrompt = model?.ai?.aiPrompt ?? '';
     controller.weeklyLimit = model?.ai?.weeklyLimit ?? null;

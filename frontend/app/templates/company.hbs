@@ -25,6 +25,9 @@
       <button type="button" class="settings-tab {{if (eq this.activeTab 'general') 'active'}}" {{on "click" (fn this.setTab "general")}}>
         General
       </button>
+      <button type="button" class="settings-tab {{if (eq this.activeTab 'billing') 'active'}}" data-test-billing-tab {{on "click" (fn this.setTab "billing")}}>
+        Billing
+      </button>
       <button type="button" class="settings-tab {{if (eq this.activeTab 'ai') 'active'}}" {{on "click" (fn this.setTab "ai")}}>
         AI Settings
       </button>
@@ -79,6 +82,81 @@
         </div>
       </form>
     </div>
+  {{else if (eq this.activeTab "billing")}}
+    <div class="glass-panel p-6 max-w-lg" data-test-billing-panel>
+      <h3 class="font-lg font-bold mb-4">Plan and Billing</h3>
+
+      {{#if this.billing}}
+        <div class="billing-plan-card mb-4" data-test-plan-card>
+          <div class="flex between x-center">
+            <div class="font-xl font-bold" data-test-plan-name>{{this.billing.tier}}</div>
+            {{#if this.billing.billingStatus}}
+              <span class="status-badge status-{{lowercase this.billing.billingStatus}}" data-test-billing-status>
+                {{this.billing.billingStatus}}
+              </span>
+            {{/if}}
+          </div>
+          <p class="font-sm text-muted mt-2" data-test-seat-count>
+            {{this.seatSummaryLabel}}
+          </p>
+          {{#if this.seatPriceLabel}}
+            <p class="font-sm text-muted" data-test-seat-price>{{this.seatPriceLabel}}</p>
+          {{/if}}
+        </div>
+
+        {{#if this.isFreeTier}}
+          <button
+            type="button"
+            class="btn btn-primary"
+            data-test-upgrade-pro
+            disabled={{this.isBillingBusy}}
+            {{on "click" this.upgradeToPro}}
+          >
+            {{#if this.isBillingBusy}}Starting checkout...{{else}}Upgrade to Pro{{/if}}
+          </button>
+          <p class="font-sm text-muted mt-3">
+            Every Pro seat adds 5 GB of storage. Need white-label, ERP integration,
+            or dedicated infrastructure?
+            <a href="mailto:info@aalasolutions.com?subject=AALA%20Enterprise" data-test-contact-enterprise>Contact us about Enterprise</a>.
+          </p>
+        {{else if this.billing.hasSubscription}}
+          <button
+            type="button"
+            class="btn btn-danger"
+            data-test-downgrade-free
+            disabled={{this.isDowngradeDisabled}}
+            {{on "click" this.openDowngradeConfirm}}
+          >
+            Downgrade to Free
+          </button>
+          {{#unless this.billing.canDowngradeToFree}}
+            <p class="font-sm text-muted mt-2" data-test-downgrade-blocked-hint>
+              Downgrading requires exactly 1 active user. You currently have {{this.billing.activeUsers}}.
+              Deactivate the other team members first.
+            </p>
+          {{/unless}}
+        {{else}}
+          <p class="font-sm text-muted" data-test-billing-managed>
+            Your plan is managed by AALA. Contact support to make changes.
+          </p>
+        {{/if}}
+      {{else}}
+        <p class="text-muted" data-test-billing-unavailable>Billing information is unavailable right now.</p>
+      {{/if}}
+    </div>
+
+    <ConfirmModal
+      @isOpen={{this.showDowngradeConfirm}}
+      @title="Downgrade to Free"
+      @message="Your subscription will be canceled at the end of the current billing period. Paid features, extra seats, and per-seat storage go away when it ends. Nothing is deleted, but uploads beyond the Free 2 GB quota will be blocked."
+      @confirmText="Downgrade to Free"
+      @confirmingText="Canceling..."
+      @confirmType="btn-danger"
+      @cancelText="Keep my plan"
+      @isConfirming={{this.isBillingBusy}}
+      @onClose={{this.closeDowngradeConfirm}}
+      @onConfirm={{this.confirmDowngrade}}
+    />
   {{else}}
   <div class="company-settings-grid">
     {{! Left: Company Info }}

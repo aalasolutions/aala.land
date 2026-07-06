@@ -9,7 +9,14 @@ describe('CompaniesController', () => {
   let controller: CompaniesController;
   let service: jest.Mocked<CompaniesService>;
 
-  const mockReq = { user: { companyId: 'company-uuid-1', role: 'company_admin' } };
+  const mockReq = {
+    user: {
+      userId: 'user-uuid-1',
+      email: 'admin@test.com',
+      companyId: 'company-uuid-1',
+      role: 'company_admin',
+    },
+  };
 
   const mockCompany = {
     id: 'company-uuid-1',
@@ -34,6 +41,7 @@ describe('CompaniesController', () => {
             create: jest.fn(),
             findAll: jest.fn(),
             findOne: jest.fn(),
+            findOneWithAdminEmail: jest.fn(),
             update: jest.fn(),
           },
         },
@@ -57,9 +65,10 @@ describe('CompaniesController', () => {
     it('creates and returns a company', async () => {
       service.create.mockResolvedValue(mockCompany as any);
 
-      const result = await controller.create({ name: 'Test Company', slug: 'test-company' });
+      const createDto = { name: 'Test Company', slug: 'test-company', defaultRegionCode: 'dubai' };
+      const result = await controller.create(createDto);
 
-      expect(service.create).toHaveBeenCalledWith({ name: 'Test Company', slug: 'test-company' });
+      expect(service.create).toHaveBeenCalledWith(createDto);
       expect(result).toEqual(mockCompany);
     });
   });
@@ -76,17 +85,19 @@ describe('CompaniesController', () => {
   });
 
   describe('findOne', () => {
-    it('returns a company by id', async () => {
-      service.findOne.mockResolvedValue(mockCompany as any);
+    const mockCompanyWithEmail = { ...mockCompany, adminEmail: 'admin@test.com', usersCount: 1, inactiveUsersCount: 0 };
+
+    it('returns a company by id (with admin email for privileged roles)', async () => {
+      service.findOneWithAdminEmail.mockResolvedValue(mockCompanyWithEmail as any);
 
       const result = await controller.findOne('company-uuid-1', mockReq);
 
-      expect(service.findOne).toHaveBeenCalledWith('company-uuid-1');
-      expect(result).toEqual(mockCompany);
+      expect(service.findOneWithAdminEmail).toHaveBeenCalledWith('company-uuid-1');
+      expect(result).toEqual(mockCompanyWithEmail);
     });
 
     it('propagates NotFoundException when company not found', async () => {
-      service.findOne.mockRejectedValue(new NotFoundException());
+      service.findOneWithAdminEmail.mockRejectedValue(new NotFoundException());
 
       await expect(controller.findOne('company-uuid-1', mockReq)).rejects.toThrow(NotFoundException);
     });
@@ -98,18 +109,19 @@ describe('CompaniesController', () => {
 
       const result = await controller.update('company-uuid-1', { name: 'Updated' }, mockReq);
 
-      expect(service.update).toHaveBeenCalledWith('company-uuid-1', { name: 'Updated' });
+      expect(service.update).toHaveBeenCalledWith('company-uuid-1', { name: 'Updated' }, 'company_admin');
       expect(result.name).toBe('Updated');
     });
   });
 
   describe('getRegions', () => {
-    it('returns the REGIONS array', () => {
+    it('returns the REGIONS array under flat, plus a grouped view', () => {
       const result = controller.getRegions();
 
-      expect(Array.isArray(result)).toBe(true);
-      expect(result.length).toBeGreaterThan(0);
-      const dubai = result.find((r: any) => r.code === 'dubai');
+      expect(Array.isArray(result.flat)).toBe(true);
+      expect(result.flat.length).toBeGreaterThan(0);
+      expect(Array.isArray(result.grouped)).toBe(true);
+      const dubai = result.flat.find((r: any) => r.code === 'dubai');
       expect(dubai).toBeDefined();
       if (dubai) {
         expect(dubai.currency).toBe('AED');

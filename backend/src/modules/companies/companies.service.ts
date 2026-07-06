@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException, ForbiddenException, ConflictException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, BadRequestException, ForbiddenException, ConflictException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import { Company, SubscriptionTier, TIER_LIMITS } from './entities/company.entity';
@@ -8,15 +8,19 @@ import { UpdateCompanyDto } from './dto/update-company.dto';
 import { REGIONS, getRegionByCode } from '@shared/constants/regions';
 import { paginationOptions } from '../../shared/utils/pagination.util';
 import { Role } from '@shared/enums/roles.enum';
+import { BillingService } from '../billing/billing.service';
 
 @Injectable()
 export class CompaniesService {
+    private readonly logger = new Logger(CompaniesService.name);
+
     constructor(
         @InjectRepository(Company)
         private readonly companyRepository: Repository<Company>,
         @InjectRepository(User)
         private readonly userRepository: Repository<User>,
         private readonly dataSource: DataSource,
+        private readonly billingService: BillingService,
     ) { }
 
     async create(dto: CreateCompanyDto): Promise<Company> {
@@ -33,7 +37,16 @@ export class CompaniesService {
         }
 
         const company = this.companyRepository.create(dto);
-        return this.companyRepository.save(company);
+        const saved = await this.companyRepository.save(company);
+
+        // fire-and-forget: never block signup on the billing provider
+        this.billingService
+            .ensureCompanyCustomer(saved)
+            .catch((err) =>
+                this.logger.error(`billing customer creation failed for company ${saved.id}: ${(err as Error).message}`),
+            );
+
+        return saved;
     }
 
     async findAll(page = 1, limit = 20): Promise<{ data: (Company & { usersCount: number; inactiveUsersCount: number })[]; total: number; page: number; limit: number }> {
@@ -102,7 +115,12 @@ export class CompaniesService {
         const company = await this.findOne(id);
 
         if (role === Role.SUPER_ADMIN) {
-            // no restrictions
+            // No restrictions. NOTE: subscriptionTier is intentionally settable
+            // here without touching Stripe -- this is the SUPER_ADMIN comp /
+            // entitlement override (free or discounted tier grants), not a bug.
+            // It is the one deliberate exception to the billing single-writer
+            // rule (contract section 8); it can desync from a live Stripe
+            // subscription by design when used for a comp account.
         } else if (role === Role.COMPANY_ADMIN || role === Role.ADMIN) {
             const superAdminOnlyFields = ['isActive', 'subscriptionTier', 'maxUsers', 'maxCountries', 'maxProperties', 'subscriptionExpiresAt'];
             const attempted = superAdminOnlyFields.filter(f => f in dto);
@@ -184,7 +202,7 @@ export class CompaniesService {
         this.validateRegionCode(dto.regionCode);
 
         try {
-            return await this.dataSource.transaction(async (manager) => {
+            const { user, company: savedCompanyOut } = await this.dataSource.transaction(async (manager) => {
                 const companyRepo = manager.getRepository(Company);
                 const userRepo = manager.getRepository(User);
 
@@ -206,7 +224,7 @@ export class CompaniesService {
                 });
                 const savedCompany = await companyRepo.save(company);
 
-                const user = userRepo.create({
+                const userEntity = userRepo.create({
                     googleId: dto.googleId,
                     email: dto.email,
                     name: dto.name,
@@ -215,16 +233,28 @@ export class CompaniesService {
                     role: Role.COMPANY_ADMIN,
                     companyId: savedCompany.id,
                 });
-                const savedUser = await userRepo.save(user);
+                const savedUser = await userRepo.save(userEntity);
 
                 return {
-                    id: savedUser.id,
-                    name: savedUser.name,
-                    email: savedUser.email,
-                    role: savedUser.role,
-                    companyId: savedCompany.id,
+                    user: {
+                        id: savedUser.id,
+                        name: savedUser.name,
+                        email: savedUser.email,
+                        role: savedUser.role,
+                        companyId: savedCompany.id,
+                    },
+                    company: savedCompany,
                 };
             });
+
+            // fire-and-forget, AFTER the transaction has committed
+            this.billingService
+                .ensureCompanyCustomer(savedCompanyOut)
+                .catch((err) =>
+                    this.logger.error(`billing customer creation failed for company ${savedCompanyOut.id}: ${(err as Error).message}`),
+                );
+
+            return user;
         } catch (error) {
             if (error instanceof ConflictException) {
                 throw error;
