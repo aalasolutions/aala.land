@@ -1,6 +1,7 @@
 import AuthenticatedRoute from './authenticated';
 import { service } from '@ember/service';
 import { canManageUsers } from '../utils/roles';
+import { safeJson } from '../utils/safe-json';
 
 export default class TeamRoute extends AuthenticatedRoute {
   @service router;
@@ -27,20 +28,25 @@ export default class TeamRoute extends AuthenticatedRoute {
       limit: String(limit),
     });
 
-    try {
-      const json = await this.auth.fetchJson(`/users?${params.toString()}`);
+    const companyId = this.auth.currentUser?.companyId;
 
-      return {
-        users: json.data?.data || [],
-        total: json.data?.total || 0,
-        page: json.data?.page || 1,
-      };
-    } catch {
-      return {
-        users: [],
-        total: 0,
-        page: 1,
-      };
-    }
+    const [usersJson, usage] = await Promise.all([
+      safeJson(this.auth, `/users?${params.toString()}`, 'TEAM'),
+      companyId
+        ? safeJson(this.auth, `/companies/${companyId}/storage-usage`, 'TEAM')
+        : Promise.resolve(null),
+    ]);
+
+    return {
+      users: usersJson?.data?.data || [],
+      total: usersJson?.data?.total || 0,
+      page: usersJson?.data?.page || 1,
+      seatInfo: usage?.data
+        ? {
+            purchasedSeats: usage.data.purchasedSeats ?? 1,
+            tier: usage.data.tier ?? 'FREE',
+          }
+        : null,
+    };
   }
 }

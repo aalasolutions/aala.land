@@ -6,9 +6,10 @@ import { User } from './entities/user.entity';
 import { Company } from '../companies/entities/company.entity';
 import { EmailTemplatesModule } from '../email-templates/email-templates.module';
 import { MailService } from '../../shared/services/mail.service';
+import { BillingModule } from '../billing/billing.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([User, Company]), EmailTemplatesModule],
+  imports: [TypeOrmModule.forFeature([User, Company]), EmailTemplatesModule, BillingModule],
   controllers: [UsersController],
   providers: [UsersService, MailService],
   exports: [UsersService],

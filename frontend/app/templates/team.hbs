@@ -117,6 +117,9 @@
   @onClose={{this.closeModal}}
   @showClose={{true}}
 >
+  {{#unless this.editUser}}
+    <SeatNote @seatInfo={{this.model.seatInfo}} />
+  {{/unless}}
   <form class="flex col gap-4" {{on "submit" this.saveUser}}>
     <FormInput @label="Name" @id="t-name" @type="text" @value={{this.formName}} @onChange={{fn this.setField "formName"}} @required={{true}} data-test-input-name />
 
@@ -148,6 +151,7 @@
   @showClose={{true}}
 >
   <p class="text-muted font-sm">Send an invitation with a temporary password. The new member will receive login credentials.</p>
+  <SeatNote @seatInfo={{this.model.seatInfo}} />
   <form class="flex col gap-4" {{on "submit" this.sendInvite}}>
     <div class="flex gap-4">
       <div class="flex col gap-2 flex-1">

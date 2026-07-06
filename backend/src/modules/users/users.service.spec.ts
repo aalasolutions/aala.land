@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository, Not } from 'typeorm';
-import { NotFoundException, ConflictException, ForbiddenException, BadRequestException } from '@nestjs/common';
+import { NotFoundException, ConflictException, ForbiddenException, BadRequestException, HttpException, HttpStatus } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { User, AuthProvider } from './entities/user.entity';
 import { Role } from '@shared/enums/roles.enum';
@@ -10,6 +10,7 @@ import * as crypto from 'crypto';
 import { MailService } from '../../shared/services/mail.service';
 import { EmailTemplatesService } from '../email-templates/email-templates.service';
 import { Company } from '../companies/entities/company.entity';
+import { BillingService } from '../billing/billing.service';
 
 jest.mock('bcryptjs');
 jest.mock('crypto');
@@ -17,9 +18,10 @@ jest.mock('crypto');
 describe('UsersService', () => {
   let service: UsersService;
   let repo: jest.Mocked<Repository<User>>;
-  let companyRepo: jest.Mocked<Pick<Repository<Company>, 'findOne'>>;
+  let companyRepo: jest.Mocked<Pick<Repository<Company>, 'findOne' | 'update'>>;
   let mailService: jest.Mocked<Pick<MailService, 'sendMail'>>;
   let emailTemplatesService: jest.Mocked<Pick<EmailTemplatesService, 'findAll' | 'render'>>;
+  let billingService: jest.Mocked<Pick<BillingService, 'reserveSeat'>>;
 
   const companyId = 'company-uuid-1';
 
@@ -65,7 +67,11 @@ describe('UsersService', () => {
         },
         {
           provide: getRepositoryToken(Company),
-          useValue: { findOne: jest.fn() },
+          useValue: { findOne: jest.fn(), update: jest.fn() },
+        },
+        {
+          provide: BillingService,
+          useValue: { reserveSeat: jest.fn().mockResolvedValue(null) },
         },
         {
           provide: MailService,
@@ -86,6 +92,7 @@ describe('UsersService', () => {
     companyRepo = module.get(getRepositoryToken(Company));
     mailService = module.get(MailService);
     emailTemplatesService = module.get(EmailTemplatesService);
+    billingService = module.get(BillingService);
 
     (bcrypt.hash as jest.Mock).mockResolvedValue('hashed-password');
   });
@@ -529,6 +536,134 @@ describe('UsersService', () => {
 
       expect(result).toBeDefined();
       expect(result.email).toBe('jane@company.com');
+    });
+
+    it('reserves a seat before saving the invited user', async () => {
+      repo.findOne.mockResolvedValue(null);
+      const invitedUser = { ...mockUser, name: 'Jane Smith', email: 'jane@company.com', mustChangePassword: true };
+      repo.create.mockReturnValue(invitedUser as User);
+      repo.save.mockResolvedValue(invitedUser as User);
+      const release = jest.fn().mockResolvedValue(undefined);
+      billingService.reserveSeat.mockResolvedValue({ subscriptionId: 'sub_test_1', targetQuantity: 3, release });
+
+      const dto = { email: 'jane@company.com', firstName: 'Jane', lastName: 'Smith', role: Role.AGENT };
+      const result = await service.inviteUser(companyId, dto, Role.COMPANY_ADMIN);
+
+      expect(billingService.reserveSeat.mock.invocationCallOrder[0]).toBeLessThan(
+        repo.save.mock.invocationCallOrder[0],
+      );
+      expect(release).not.toHaveBeenCalled();
+      expect(result.mustChangePassword).toBe(true);
+    });
+
+    it('creates no invite when the provider rejects the seat change', async () => {
+      repo.findOne.mockResolvedValue(null);
+      billingService.reserveSeat.mockRejectedValue(
+        new HttpException(
+          { message: 'Payment required', error: 'Payment Required', statusCode: HttpStatus.PAYMENT_REQUIRED },
+          HttpStatus.PAYMENT_REQUIRED,
+        ),
+      );
+
+      const dto = { email: 'jane@company.com', firstName: 'Jane', lastName: 'Smith', role: Role.AGENT };
+      const err = await service.inviteUser(companyId, dto, Role.COMPANY_ADMIN).catch((e) => e);
+
+      expect(err).toBeInstanceOf(HttpException);
+      expect(err.getStatus()).toBe(HttpStatus.PAYMENT_REQUIRED);
+      expect(repo.save).not.toHaveBeenCalled();
+      expect(mailService.sendMail).not.toHaveBeenCalled();
+    });
+
+    it('releases the seat when the invited user save fails', async () => {
+      repo.findOne.mockResolvedValue(null);
+      repo.create.mockReturnValue(mockUser);
+      repo.save.mockRejectedValue(new Error('insert failed'));
+      const release = jest.fn().mockResolvedValue(undefined);
+      billingService.reserveSeat.mockResolvedValue({ subscriptionId: 'sub_test_1', targetQuantity: 3, release });
+
+      const dto = { email: 'jane@company.com', firstName: 'Jane', lastName: 'Smith', role: Role.AGENT };
+      await expect(service.inviteUser(companyId, dto, Role.COMPANY_ADMIN)).rejects.toThrow('insert failed');
+      expect(release).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('create - seat gate (paid plans)', () => {
+    const paidCompany = {
+      id: companyId,
+      subscriptionTier: 'PRO',
+      maxUsers: 999,
+      purchasedSeats: 3,
+      billingSubscriptionId: 'sub_test_123',
+    } as any;
+    const dto = { name: 'Paid Agent', email: 'paid@test.com', password: 'pass123', role: Role.AGENT };
+
+    beforeEach(() => {
+      companyRepo.findOne.mockResolvedValue(paidCompany);
+      repo.findOne.mockResolvedValue(null);
+      repo.create.mockReturnValue(mockUser);
+      repo.save.mockResolvedValue(mockUser);
+    });
+
+    it('reserves a seat with the provider before saving the user', async () => {
+      const release = jest.fn().mockResolvedValue(undefined);
+      billingService.reserveSeat.mockResolvedValue({ subscriptionId: 'sub_test_123', targetQuantity: 4, release });
+
+      const result = await service.create(dto as any, companyId, Role.COMPANY_ADMIN);
+
+      expect(billingService.reserveSeat).toHaveBeenCalledWith(paidCompany);
+      expect(billingService.reserveSeat.mock.invocationCallOrder[0]).toBeLessThan(
+        repo.save.mock.invocationCallOrder[0],
+      );
+      expect(release).not.toHaveBeenCalled();
+      expect(result).toEqual(mockUser);
+    });
+
+    it('creates no user when the provider rejects the seat change', async () => {
+      billingService.reserveSeat.mockRejectedValue(
+        new HttpException(
+          { message: 'The billing provider rejected the seat change. No user was created.', error: 'Payment Required', statusCode: HttpStatus.PAYMENT_REQUIRED },
+          HttpStatus.PAYMENT_REQUIRED,
+        ),
+      );
+
+      const err = await service.create(dto as any, companyId, Role.COMPANY_ADMIN).catch((e) => e);
+
+      expect(err).toBeInstanceOf(HttpException);
+      expect(err.getStatus()).toBe(HttpStatus.PAYMENT_REQUIRED);
+      expect(repo.save).not.toHaveBeenCalled();
+    });
+
+    it('releases the reserved seat when the local insert fails, then rethrows the original error', async () => {
+      const release = jest.fn().mockResolvedValue(undefined);
+      billingService.reserveSeat.mockResolvedValue({ subscriptionId: 'sub_test_123', targetQuantity: 4, release });
+      repo.save.mockRejectedValue(new Error('duplicate key value violates unique constraint'));
+
+      await expect(service.create(dto as any, companyId, Role.COMPANY_ADMIN)).rejects.toThrow('duplicate key');
+      expect(release).toHaveBeenCalledTimes(1);
+    });
+
+    it('never writes purchasedSeats locally (webhook is the single writer)', async () => {
+      billingService.reserveSeat.mockResolvedValue({
+        subscriptionId: 'sub_test_123',
+        targetQuantity: 4,
+        release: jest.fn().mockResolvedValue(undefined),
+      });
+
+      await service.create(dto as any, companyId, Role.COMPANY_ADMIN);
+
+      expect(companyRepo.update).not.toHaveBeenCalled();
+    });
+
+    it('creates a FREE user under the cap; reserveSeat no-ops via null', async () => {
+      const freeCompany = { id: companyId, subscriptionTier: 'FREE', maxUsers: 1 } as any;
+      companyRepo.findOne.mockResolvedValue(freeCompany);
+      repo.count.mockResolvedValue(0);
+      billingService.reserveSeat.mockResolvedValue(null);
+
+      const result = await service.create(dto as any, companyId, Role.COMPANY_ADMIN);
+
+      expect(billingService.reserveSeat).toHaveBeenCalledWith(freeCompany);
+      expect(result).toEqual(mockUser);
     });
   });
 });

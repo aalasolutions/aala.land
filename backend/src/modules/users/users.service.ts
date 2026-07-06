@@ -13,7 +13,8 @@ import { MailService } from '../../shared/services/mail.service';
 import { EmailTemplatesService } from '../email-templates/email-templates.service';
 import { EmailTemplateCategory } from '../email-templates/entities/email-template.entity';
 import { Role } from '../../shared/enums/roles.enum';
-import { Company, TIER_LIMITS } from '../companies/entities/company.entity';
+import { Company, SubscriptionTier } from '../companies/entities/company.entity';
+import { BillingService, SeatReservation } from '../billing/billing.service';
 
 @Injectable()
 export class UsersService {
@@ -26,6 +27,7 @@ export class UsersService {
         private readonly companyRepository: Repository<Company>,
         private readonly mailService: MailService,
         private readonly emailTemplatesService: EmailTemplatesService,
+        private readonly billingService: BillingService,
     ) { }
 
     async create(dto: CreateUserDto, companyId: string, requesterRole: Role): Promise<User> {
@@ -37,7 +39,7 @@ export class UsersService {
             }
         }
 
-        await this.enforceUserLimit(companyId);
+        const company = await this.enforceUserLimit(companyId);
 
         const existing = await this.userRepository.findOne({ where: { email: dto.email } });
         if (existing) {
@@ -45,8 +47,18 @@ export class UsersService {
         }
 
         const hashedPassword = await bcrypt.hash(dto.password, 12);
-        const user = this.userRepository.create({ ...dto, password: hashedPassword, companyId });
-        return this.userRepository.save(user);
+
+        // Provider-first seat gate (contract section 9). All cheap local validations above run
+        // BEFORE the provider call so an obvious rejection never churns the subscription.
+        const seat: SeatReservation | null = company ? await this.billingService.reserveSeat(company) : null;
+
+        try {
+            const user = this.userRepository.create({ ...dto, password: hashedPassword, companyId });
+            return await this.userRepository.save(user);
+        } catch (err) {
+            if (seat) await seat.release();
+            throw err;
+        }
     }
 
     async findAll(companyId: string | null | undefined, page = 1, limit = 20): Promise<{ data: User[]; total: number; page: number; limit: number }> {
@@ -227,7 +239,7 @@ export class UsersService {
             }
         }
 
-        await this.enforceUserLimit(companyId);
+        const company = await this.enforceUserLimit(companyId);
 
         const existing = await this.userRepository.findOne({ where: { email: dto.email } });
         if (existing) {
@@ -246,7 +258,18 @@ export class UsersService {
             mustChangePassword: true,
         });
 
-        const saved = await this.userRepository.save(user);
+        // Provider-first seat gate (contract section 9). The compensation boundary is the user
+        // save ONLY: once the row exists, the billed seat correctly mirrors a real user, so a
+        // later token or email failure must NOT release the seat.
+        const seat: SeatReservation | null = company ? await this.billingService.reserveSeat(company) : null;
+
+        let saved: User;
+        try {
+            saved = await this.userRepository.save(user);
+        } catch (err) {
+            if (seat) await seat.release();
+            throw err;
+        }
 
         const inviteToken = crypto.randomBytes(32).toString('hex');
         const inviteExpires = new Date(Date.now() + 72 * 60 * 60 * 1000);
@@ -259,19 +282,29 @@ export class UsersService {
         return saved;
     }
 
-    private async enforceUserLimit(companyId: string | undefined): Promise<void> {
-        if (!companyId) return;
+    /**
+     * Caps apply on FREE only (contract section 11): paid tiers are billed per seat by the
+     * gate in create/inviteUser instead of being capped. FREE keeps reading the maxUsers
+     * COLUMN (not the TIER_LIMITS constant) so the existing SUPER_ADMIN PATCH override for
+     * comp accounts keeps working. Returns the loaded company so callers can hand it to
+     * BillingService.reserveSeat without a second fetch; null when there is no companyId.
+     */
+    private async enforceUserLimit(companyId: string | undefined): Promise<Company | null> {
+        if (!companyId) return null;
         const company = await this.companyRepository.findOne({ where: { id: companyId } });
         if (!company) {
             throw new NotFoundException(`Company ${companyId} not found`);
         }
-        if (company.maxUsers >= TIER_LIMITS.PRO.maxUsers) return;
+        if (company.subscriptionTier !== SubscriptionTier.FREE) {
+            return company;
+        }
         const currentCount = await this.userRepository.count({ where: { companyId, isActive: true } });
         if (currentCount >= company.maxUsers) {
             throw new BadRequestException(
-                `Your ${company.subscriptionTier} plan allows up to ${company.maxUsers} user${company.maxUsers === 1 ? '' : 's'}. Upgrade to add more.`,
+                `Your FREE plan allows up to ${company.maxUsers} user${company.maxUsers === 1 ? '' : 's'}. Upgrade to Pro to add team members.`,
             );
         }
+        return company;
     }
 
     private async sendInviteEmail(
