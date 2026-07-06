@@ -98,5 +98,39 @@ describe('UserReassignmentService', () => {
                 'contact',
             ]);
         });
+
+        it('collects ids via RETURNING when collectIds is true', async () => {
+            const qb = {
+                update: jest.fn().mockReturnThis(),
+                set: jest.fn().mockReturnThis(),
+                where: jest.fn().mockReturnThis(),
+                returning: jest.fn().mockReturnThis(),
+                execute: jest.fn().mockResolvedValue({ raw: [{ id: 'x1' }, { id: 'x2' }], affected: 2 }),
+            };
+            const manager = { createQueryBuilder: jest.fn().mockReturnValue(qb) } as unknown as jest.Mocked<EntityManager>;
+
+            const report = await service.reassignOwnedRecords(
+                manager, COMPANY_ID, FROM_USER, TO_USER, REASON, { collectIds: true },
+            );
+
+            expect(qb.returning).toHaveBeenCalledWith('id');
+            expect(report.entities.every((e) => e.count === 2 && e.ids.length === 2)).toBe(true);
+        });
+
+        it('uses affected counts and skips RETURNING when collectIds is false (default)', async () => {
+            const qb = {
+                update: jest.fn().mockReturnThis(),
+                set: jest.fn().mockReturnThis(),
+                where: jest.fn().mockReturnThis(),
+                returning: jest.fn().mockReturnThis(),
+                execute: jest.fn().mockResolvedValue({ raw: [{ id: 'x1' }], affected: 3 }),
+            };
+            const manager = { createQueryBuilder: jest.fn().mockReturnValue(qb) } as unknown as jest.Mocked<EntityManager>;
+
+            const report = await service.reassignOwnedRecords(manager, COMPANY_ID, FROM_USER, TO_USER, REASON);
+
+            expect(qb.returning).not.toHaveBeenCalled();
+            expect(report.entities.every((e) => e.count === 3 && e.ids.length === 0)).toBe(true);
+        });
     });
 });

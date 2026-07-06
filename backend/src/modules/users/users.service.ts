@@ -334,6 +334,7 @@ export class UsersService {
                 await manager.update(User, target.id, { isActive: false });
                 const report = await this.reassignmentService.reassignOwnedRecords(
                     manager, company.id, target.id, reassignee.id, dto.reason,
+                    { collectIds: !!this.transferRecorder },
                 );
                 if (this.transferRecorder) {
                     await this.transferRecorder.record(manager, company.id, report);
@@ -387,6 +388,7 @@ export class UsersService {
             return await this.dataSource.transaction(async (manager) => {
                 const report = await this.reassignmentService.reassignOwnedRecords(
                     manager, company.id, target.id, reassignee.id, dto.reason,
+                    { collectIds: !!this.transferRecorder },
                 );
                 if (this.transferRecorder) {
                     await this.transferRecorder.record(manager, company.id, report);
@@ -485,6 +487,7 @@ export class UsersService {
                     await manager.update(User, user.id, { isActive: false });
                     const report = await this.reassignmentService.reassignOwnedRecords(
                         manager, companyId, user.id, keeper.id, dto.reason,
+                        { collectIds: !!this.transferRecorder },
                     );
                     if (this.transferRecorder) {
                         await this.transferRecorder.record(manager, companyId, report);

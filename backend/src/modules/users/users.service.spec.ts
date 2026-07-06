@@ -365,6 +365,7 @@ describe('UsersService', () => {
       expect(managerMock.update).toHaveBeenCalledWith(User, 'user-uuid-2', { isActive: false });
       expect(reassignmentServiceMock.reassignOwnedRecords).toHaveBeenCalledWith(
         managerMock, companyId, 'user-uuid-2', 'user-uuid-3', 'left',
+        { collectIds: false },
       );
     });
 
@@ -449,6 +450,7 @@ describe('UsersService', () => {
 
       expect(reassignmentServiceMock.reassignOwnedRecords).toHaveBeenCalledWith(
         managerMock, companyId, 'user-uuid-2', 'user-uuid-3', 'left',
+        { collectIds: false },
       );
       expect(managerMock.query).toHaveBeenCalledWith(
         expect.stringContaining('UPDATE "email_templates" SET "created_by" = NULL'),

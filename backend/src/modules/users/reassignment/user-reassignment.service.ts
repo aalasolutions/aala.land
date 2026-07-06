@@ -52,23 +52,32 @@ export class UserReassignmentService {
         fromUserId: string,
         toUserId: string,
         reason: string,
+        options: { collectIds?: boolean } = {},
     ): Promise<ReassignmentReport> {
+        // Only materialize the reassigned row ids when a recorder will consume them.
+        // Otherwise rely on the driver's affected-row count, so a large tenant does not
+        // pull tens of thousands of UUIDs into memory for a payload nobody reads.
+        const collectIds = options.collectIds ?? false;
         const entities: ReassignmentReport['entities'] = [];
 
         for (const target of REASSIGNMENT_TARGETS) {
-            const result = await manager
+            const query = manager
                 .createQueryBuilder()
                 .update(target.entity)
                 .set({ [target.setProperty]: toUserId })
                 .where(
                     `${target.column} = :fromUserId AND company_id = :companyId ${target.extraWhere ?? ''}`,
                     { fromUserId, companyId, ...(target.extraParams ?? {}) },
-                )
-                .returning('id')
-                .execute();
+                );
 
-            const ids = (result.raw as Array<{ id: string }>).map((row) => row.id);
-            entities.push({ type: target.type, count: ids.length, ids });
+            const result = await (collectIds ? query.returning('id') : query).execute();
+
+            if (collectIds) {
+                const ids = (result.raw as Array<{ id: string }>).map((row) => row.id);
+                entities.push({ type: target.type, count: ids.length, ids });
+            } else {
+                entities.push({ type: target.type, count: result.affected ?? 0, ids: [] });
+            }
         }
 
         const summary = entities.map((e) => `${e.type}=${e.count}`).join(', ');

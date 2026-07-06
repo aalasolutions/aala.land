@@ -24,7 +24,7 @@ import { UpdateUserDto } from './dto/update-user.dto';
 import { InviteUserDto } from './dto/invite-user.dto';
 import { RemoveUserDto } from './dto/remove-user.dto';
 import { TrimCompanyUsersDto } from './dto/trim-company-users.dto';
-import { ReassignmentReport } from './reassignment/reassignment-report';
+import { ReassignmentReport, ClientReassignmentReport } from './reassignment/reassignment-report';
 import { AuthenticatedRequest } from '@shared/interfaces/authenticated-request.interface';
 
 @ApiTags('Users')
@@ -198,10 +198,11 @@ export class UsersController {
      * the counts; the full report (with ids) still reaches the OwnershipTransferRecorder
      * server-side inside the removal transaction.
      */
-    private toClientReport(report: ReassignmentReport) {
-        if (!report?.entities) return report;
+    private toClientReport(report: ReassignmentReport): ClientReassignmentReport {
         return {
-            ...report,
+            fromUserId: report.fromUserId,
+            toUserId: report.toUserId,
+            reason: report.reason,
             entities: report.entities.map(({ type, count }) => ({ type, count })),
         };
     }

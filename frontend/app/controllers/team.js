@@ -235,11 +235,13 @@ export default class TeamController extends PaginatedController {
   @action async openRemove(user) {
     this.userToRemove = user;
     this.removeStep = 1;
-    this.removeMode = 'deactivate';
+    // Inactive users can only be deleted; deactivate would 400 ("already inactive").
+    this.removeMode = user?.isActive ? 'deactivate' : 'delete';
     this.removeTargetId = '';
     this.removeReason = '';
     this.removeError = '';
     this.reassignCandidates = [];
+    this.candidateListTruncated = false;
     this.showRemoveModal = true;
     try {
       this.reassignCandidates = await this.loadActiveUsers({
@@ -336,6 +338,7 @@ export default class TeamController extends PaginatedController {
     this.trimReason = 'Downgrading to the Free plan';
     this.trimError = '';
     this.trimCandidates = [];
+    this.candidateListTruncated = false;
     this.showTrimModal = true;
     try {
       this.trimCandidates = await this.loadActiveUsers();

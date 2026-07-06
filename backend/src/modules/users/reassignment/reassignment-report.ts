@@ -12,3 +12,15 @@ export interface ReassignmentReport {
     reason: string;
     entities: Array<{ type: ReassignedEntityType; count: number; ids: string[] }>;
 }
+
+/**
+ * Client-facing shape returned by the removal endpoints: same as ReassignmentReport
+ * but with the per-record ids dropped. The UI only needs counts; the full report with
+ * ids stays server-side for the OwnershipTransferRecorder.
+ */
+export interface ClientReassignmentReport {
+    fromUserId: string;
+    toUserId: string;
+    reason: string;
+    entities: Array<{ type: ReassignedEntityType; count: number }>;
+}
