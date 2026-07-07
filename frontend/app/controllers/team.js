@@ -115,17 +115,17 @@ export default class TeamController extends PaginatedController {
   }
 
   async loadActiveUsers({ excludeId = null, companyId = null } = {}) {
-    const PAGE_LIMIT = 100;
-    const json = await this.auth.fetchJson(`/users?page=1&limit=${PAGE_LIMIT}`);
-    const users = json.data?.data || [];
-    this.candidateListTruncated = (json.data?.total ?? users.length) > PAGE_LIMIT;
-    return users.filter(
-      (u) =>
-        u.isActive &&
-        u.role !== 'super_admin' &&
-        (!excludeId || u.id !== excludeId) &&
-        (!companyId || u.companyId === companyId),
-    );
+    // The server scopes to active, non-super-admin members of the company, so the
+    // pickers can't miss a valid candidate the way a client-side filter over a single
+    // /users page could. Capped at 500 server-side; only the removed user is excluded here.
+    const MEMBER_CAP = 500;
+    const path = companyId
+      ? `/users/active-members?companyId=${encodeURIComponent(companyId)}`
+      : '/users/active-members';
+    const json = await this.auth.fetchJson(path);
+    const users = json.data || [];
+    this.candidateListTruncated = users.length >= MEMBER_CAP;
+    return excludeId ? users.filter((u) => u.id !== excludeId) : users;
   }
 
   @action setField(fieldName, e) { this[fieldName] = e.target.value; }

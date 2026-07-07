@@ -41,6 +41,7 @@ describe('UsersController', () => {
             create: jest.fn(),
             findAll: jest.fn(),
             findOne: jest.fn(),
+            findActiveMembers: jest.fn(),
             update: jest.fn(),
             deactivateUser: jest.fn(),
             reactivateUser: jest.fn(),
@@ -137,6 +138,19 @@ describe('UsersController', () => {
         'admin-uuid-1',
       );
       expect(result.name).toBe('Updated Self');
+    });
+  });
+
+  describe('findActiveMembers', () => {
+    it('scopes a COMPANY_ADMIN to their own company and ignores the query companyId', async () => {
+      await controller.findActiveMembers(mockReq as never, 'other-company');
+      expect(service.findActiveMembers).toHaveBeenCalledWith(companyId);
+    });
+
+    it('lets a SUPER_ADMIN scope to the company passed in the query', async () => {
+      const reqSa = { user: { userId: 'sa', email: 'sa@test.com', companyId: null, role: Role.SUPER_ADMIN } };
+      await controller.findActiveMembers(reqSa as never, 'target-company');
+      expect(service.findActiveMembers).toHaveBeenCalledWith('target-company');
     });
   });
 

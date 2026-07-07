@@ -223,6 +223,7 @@
             name="remove-mode"
             value="deactivate"
             checked={{eq this.removeMode "deactivate"}}
+            disabled={{not this.userToRemove.isActive}}
             data-test-remove-mode-deactivate
             {{on "change" (fn this.setRemoveMode "deactivate")}}
           />
@@ -253,7 +254,7 @@
       />
 
       {{#if this.candidateListTruncated}}
-        <p class="font-sm text-muted" data-test-remove-truncated>Showing up to 100 members.</p>
+        <p class="font-sm text-muted" data-test-remove-truncated>Showing the first 500 members.</p>
       {{/if}}
 
       <FormTextarea
@@ -335,7 +336,7 @@
       />
 
       {{#if this.candidateListTruncated}}
-        <p class="font-sm text-muted" data-test-trim-truncated>Showing up to 100 members.</p>
+        <p class="font-sm text-muted" data-test-trim-truncated>Showing the first 500 members.</p>
       {{/if}}
 
       <FormTextarea

@@ -604,6 +604,24 @@ export class UsersService {
         });
     }
 
+    /**
+     * Active, non-super-admin members of a company, for the reassignment and trim
+     * pickers. Filtering by isActive and company on the SERVER means the pickers never
+     * miss a valid candidate the way a client-side filter over a single /users page
+     * could (a company with many inactive users, or a SUPER_ADMIN viewing one company).
+     * Capped at 500 as a safety bound.
+     */
+    async findActiveMembers(companyId: string | undefined): Promise<User[]> {
+        return this.userRepository.find({
+            where: companyId
+                ? { companyId, isActive: true, role: Not(Role.SUPER_ADMIN) }
+                : { isActive: true, role: Not(Role.SUPER_ADMIN) },
+            select: ['id', 'name', 'email', 'role', 'companyId'],
+            order: { name: 'ASC' },
+            take: 500,
+        });
+    }
+
     async findAdmins(companyId: string): Promise<User[]> {
         return this.userRepository.find({
             where: {

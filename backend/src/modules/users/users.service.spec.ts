@@ -574,6 +574,22 @@ describe('UsersService', () => {
     });
   });
 
+  describe('findActiveMembers', () => {
+    it('queries active non-super-admin members scoped to the company, capped at 500', async () => {
+      repo.find.mockResolvedValue([{ id: 'u1' }] as User[]);
+
+      const result = await service.findActiveMembers(companyId);
+
+      expect(repo.find).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ companyId, isActive: true }),
+          take: 500,
+        }),
+      );
+      expect(result).toEqual([{ id: 'u1' }]);
+    });
+  });
+
   describe('create - user limit enforcement', () => {
     it('should throw BadRequestException when company user limit is reached', async () => {
       const mockCompany = { id: companyId, subscriptionTier: 'FREE', maxUsers: 1 } as any;

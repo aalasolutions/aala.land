@@ -114,6 +114,19 @@ export class UsersController {
         return this.usersService.findAgents(companyId);
     }
 
+    @Get('active-members')
+    @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN)
+    @ApiOperation({ summary: 'Active company members for the reassignment/trim pickers (ADMIN+)' })
+    @ApiQuery({ name: 'companyId', required: false, type: String, description: 'SUPER_ADMIN only; scopes to a specific company.' })
+    findActiveMembers(@Request() req: AuthenticatedRequest, @Query('companyId') companyId?: string) {
+        // COMPANY_ADMIN/ADMIN are always scoped to their own company; only SUPER_ADMIN
+        // may target another company via the query param.
+        const scoped = req.user.role === Role.SUPER_ADMIN
+            ? (companyId ?? undefined)
+            : (req.user.companyId ?? undefined);
+        return this.usersService.findActiveMembers(scoped);
+    }
+
     @Get(':id')
     @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN)
     @ApiOperation({ summary: 'Get a user by ID (scoped to company)' })
