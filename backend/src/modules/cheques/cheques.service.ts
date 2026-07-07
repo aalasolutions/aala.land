@@ -85,6 +85,15 @@ export class ChequesService {
       throw new BadRequestException(`Cannot change the status of a cheque that is already ${cheque.status}`);
     }
 
+    const hasRealChanges = Object.keys(dto).some(key => {
+      const k = key as keyof UpdateChequeDto;
+      return dto[k] !== undefined && dto[k] !== cheque[k];
+    });
+
+    if (!hasRealChanges) {
+      return cheque; // Exit early: nothing actually changed
+    }
+
     const oldStatus = cheque.status;
     const expectedVersion = cheque.version;
     Object.assign(cheque, dto);
