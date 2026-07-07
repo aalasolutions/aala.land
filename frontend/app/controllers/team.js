@@ -66,6 +66,12 @@ export default class TeamController extends PaginatedController {
     return this.auth.isImpersonating;
   }
 
+  // Any reactivation in flight. The handler blocks concurrent reactivations, so every
+  // Reactivate button is disabled while one runs (not just the clicked row).
+  get isReactivating() {
+    return !!this.reactivatingUserId;
+  }
+
   get roles() {
     const myRole = this.auth.currentUser?.role;
     const myLevel = ROLE_HIERARCHY.indexOf(myRole);

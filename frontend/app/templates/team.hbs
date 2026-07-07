@@ -68,7 +68,7 @@
                       <button
                         type="button"
                         class="btn btn-secondary btn-xs"
-                        disabled={{eq this.reactivatingUserId user.id}}
+                        disabled={{this.isReactivating}}
                         data-test-reactivate-user
                         {{on "click" (fn this.reactivateUser user)}}
                       >
@@ -238,7 +238,7 @@
             data-test-remove-mode-delete
             {{on "change" (fn this.setRemoveMode "delete")}}
           />
-          <span><strong>Delete permanently</strong>: the account is erased. Not available for members with approved, paid, or cancelled commissions. Irreversible.</span>
+          <span><strong>Delete permanently</strong>: the account is erased. If the member has approved, paid, or cancelled commissions, deletion is blocked and you must deactivate instead. Irreversible.</span>
         </label>
       </div>
 
