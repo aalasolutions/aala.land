@@ -120,10 +120,14 @@ export class UsersController {
     @ApiQuery({ name: 'companyId', required: false, type: String, description: 'SUPER_ADMIN only; scopes to a specific company.' })
     findActiveMembers(@Request() req: AuthenticatedRequest, @Query('companyId') companyId?: string) {
         // COMPANY_ADMIN/ADMIN are always scoped to their own company; only SUPER_ADMIN
-        // may target another company via the query param.
+        // may target another company via the query param. A non-super-admin without a
+        // company context must be rejected, never fall through to an all-company list.
+        if (req.user.role !== Role.SUPER_ADMIN && !req.user.companyId) {
+            throw new BadRequestException('This endpoint requires a company context');
+        }
         const scoped = req.user.role === Role.SUPER_ADMIN
             ? (companyId ?? undefined)
-            : (req.user.companyId ?? undefined);
+            : req.user.companyId!;
         return this.usersService.findActiveMembers(scoped);
     }
 

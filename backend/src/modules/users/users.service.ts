@@ -36,6 +36,9 @@ import {
     OWNERSHIP_TRANSFER_RECORDER,
 } from './reassignment/ownership-transfer-recorder';
 
+/** Safety bound on the reassignment/trim picker list. Realistic teams are far smaller. */
+const ACTIVE_MEMBERS_LIMIT = 500;
+
 @Injectable()
 export class UsersService {
     private readonly logger = new Logger(UsersService.name);
@@ -618,7 +621,7 @@ export class UsersService {
                 : { isActive: true, role: Not(Role.SUPER_ADMIN) },
             select: ['id', 'name', 'email', 'role', 'companyId'],
             order: { name: 'ASC' },
-            take: 500,
+            take: ACTIVE_MEMBERS_LIMIT,
         });
     }
 

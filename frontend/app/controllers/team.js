@@ -58,10 +58,6 @@ export default class TeamController extends PaginatedController {
 
   @tracked reactivatingUserId = null;
 
-  // True when the active-user fetch behind the reassign/trim pickers hit its
-  // 100-row page and more active users exist than are shown.
-  @tracked candidateListTruncated = false;
-
   get isSuperAdmin() {
     return this.auth.currentUser?.role === 'super_admin';
   }
@@ -115,16 +111,14 @@ export default class TeamController extends PaginatedController {
   }
 
   async loadActiveUsers({ excludeId = null, companyId = null } = {}) {
-    // The server scopes to active, non-super-admin members of the company, so the
-    // pickers can't miss a valid candidate the way a client-side filter over a single
-    // /users page could. Capped at 500 server-side; only the removed user is excluded here.
-    const MEMBER_CAP = 500;
+    // The server scopes to active, non-super-admin members of the company (and caps the
+    // list), so the pickers can't miss a valid candidate the way a client-side filter
+    // over a single /users page could. Only the removed user is excluded here.
     const path = companyId
       ? `/users/active-members?companyId=${encodeURIComponent(companyId)}`
       : '/users/active-members';
     const json = await this.auth.fetchJson(path);
     const users = json.data || [];
-    this.candidateListTruncated = users.length >= MEMBER_CAP;
     return excludeId ? users.filter((u) => u.id !== excludeId) : users;
   }
 
@@ -241,7 +235,6 @@ export default class TeamController extends PaginatedController {
     this.removeReason = '';
     this.removeError = '';
     this.reassignCandidates = [];
-    this.candidateListTruncated = false;
     this.showRemoveModal = true;
     try {
       this.reassignCandidates = await this.loadActiveUsers({
@@ -338,7 +331,6 @@ export default class TeamController extends PaginatedController {
     this.trimReason = 'Downgrading to the Free plan';
     this.trimError = '';
     this.trimCandidates = [];
-    this.candidateListTruncated = false;
     this.showTrimModal = true;
     try {
       this.trimCandidates = await this.loadActiveUsers();

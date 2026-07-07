@@ -12,6 +12,11 @@ export class UserRemovalSchema1779500000041 implements MigrationInterface {
     await queryRunner.query(`
       CREATE INDEX IF NOT EXISTS "IDX_contacts_created_by" ON "contacts" ("created_by")
     `);
+    // Composite matching the reassignment WHERE (created_by = :from AND company_id = :co),
+    // consistent with the other reassignment-target indexes added below.
+    await queryRunner.query(
+      `CREATE INDEX IF NOT EXISTS "IDX_contacts_company_created_by" ON "contacts" ("company_id", "created_by")`,
+    );
 
     // 2 and 3. Repoint history FKs to ON DELETE SET NULL so hard delete is
     //    physically possible while history rows stay unreassigned.
@@ -57,6 +62,7 @@ export class UserRemovalSchema1779500000041 implements MigrationInterface {
         ADD CONSTRAINT "FK_audit_logs_user_id_users"
         FOREIGN KEY ("user_id") REFERENCES "users"("id")
     `);
+    await queryRunner.query(`DROP INDEX IF EXISTS "IDX_contacts_company_created_by"`);
     await queryRunner.query(`DROP INDEX IF EXISTS "IDX_contacts_created_by"`);
     await queryRunner.query(`ALTER TABLE "contacts" DROP COLUMN IF EXISTS "created_by"`);
   }
