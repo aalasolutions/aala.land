@@ -168,6 +168,16 @@ describe('CompaniesService', () => {
       await expect(service.update('company-uuid-1', dto, Role.ADMIN)).rejects.toThrow(ForbiddenException);
     });
 
+    it('blocks a COMPANY_ADMIN from self-upgrading subscriptionTier (no free PRO via PATCH)', async () => {
+      // Only SUPER_ADMIN may set a paid tier. This is the guard that keeps a
+      // self-signup company_admin from granting itself a comp PRO account and
+      // then exploiting the Option-B "paid, no subscription = free" seat path.
+      repo.findOne.mockResolvedValue(mockCompany);
+      await expect(
+        service.update('company-uuid-1', { subscriptionTier: 'PRO' } as any, Role.COMPANY_ADMIN),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
     it('allows restricted fields for COMPANY_ADMIN', async () => {
       const dto: any = {
         name: 'Updated Company',

@@ -1,0 +1,15 @@
+{{#if @seatInfo}}
+  {{#if (eq @seatInfo.tier "FREE")}}
+    <p class="text-muted font-sm" data-test-seat-note-free>
+      The Free plan is limited to a single user by default. Upgrade to Pro to add team members.
+    </p>
+  {{else}}
+    <p class="text-muted font-sm" data-test-seat-note>
+      Your plan currently bills
+      <span class="font-bold" data-test-seat-count>{{@seatInfo.purchasedSeats}}</span>
+      {{if (eq @seatInfo.purchasedSeats 1) "seat" "seats"}}.
+      Adding a member adds one seat to your subscription and the charge for the current billing
+      period is prorated automatically.
+    </p>
+  {{/if}}
+{{/if}}

@@ -67,6 +67,10 @@ export class Contact {
   @JoinColumn({ name: 'lead_id' })
   lead: Lead;
 
+  @Index('IDX_contacts_created_by')
+  @Column({ name: 'created_by', type: 'uuid', nullable: true })
+  createdBy: string | null;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 

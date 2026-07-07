@@ -21,7 +21,7 @@ export class ContactsController {
   @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT)
   @ApiOperation({ summary: 'Create a new contact (ADMIN+, AGENT)' })
   create(@Body() dto: CreateContactDto, @Request() req: AuthenticatedRequest) {
-    return this.contactsService.create(requireCompanyId(req.user), dto);
+    return this.contactsService.create(requireCompanyId(req.user), dto, req.user.userId);
   }
 
   @Get()

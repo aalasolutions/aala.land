@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, HttpException, HttpStatus, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
@@ -409,6 +409,78 @@ describe('BillingService', () => {
             companyRepo.findOne.mockResolvedValue(null);
             await expect(service.cancelSubscription(companyId))
                 .rejects.toBeInstanceOf(NotFoundException);
+        });
+    });
+
+    // -------------------------------------------------------------------------
+    // Unit 4 tests
+    // -------------------------------------------------------------------------
+
+    describe('reserveSeat', () => {
+        const baseCompany = makeCompany({
+            subscriptionTier: SubscriptionTier.PRO,
+            purchasedSeats: 3,
+            billingSubscriptionId: 'sub_test_123',
+            billingCustomerId: 'cus_test_1',
+        });
+
+        it('returns null and never calls the provider for FREE companies', async () => {
+            const result = await service.reserveSeat(makeCompany());
+            expect(result).toBeNull();
+            expect(provider.updateSeatQuantity).not.toHaveBeenCalled();
+        });
+
+        it('returns null and never calls the provider for a paid comp company with no subscription (Option B)', async () => {
+            const unsubscribed = makeCompany({
+                subscriptionTier: SubscriptionTier.PRO,
+                billingSubscriptionId: null,
+                billingCustomerId: null,
+            });
+            const result = await service.reserveSeat(unsubscribed);
+            expect(result).toBeNull();
+            expect(provider.updateSeatQuantity).not.toHaveBeenCalled();
+        });
+
+        it('calls updateSeatQuantity with the SubscriptionRef and purchasedSeats + 1', async () => {
+            (provider.updateSeatQuantity as jest.Mock).mockResolvedValue(undefined);
+            const reservation = await service.reserveSeat(baseCompany);
+            expect(provider.updateSeatQuantity).toHaveBeenCalledWith(
+                { subscriptionId: 'sub_test_123', customerId: 'cus_test_1' },
+                4,
+            );
+            expect(reservation).toMatchObject({ subscriptionId: 'sub_test_123', targetQuantity: 4 });
+        });
+
+        it('maps a provider rejection to HTTP 402', async () => {
+            (provider.updateSeatQuantity as jest.Mock).mockRejectedValue(new Error('card declined'));
+            const err = await service.reserveSeat(baseCompany).catch((e) => e);
+            expect(err).toBeInstanceOf(HttpException);
+            expect(err.getStatus()).toBe(HttpStatus.PAYMENT_REQUIRED);
+            expect(err.getResponse()).toMatchObject({ message: expect.stringContaining('No user was created') });
+        });
+
+        it('release() issues the compensating call back to targetQuantity - 1', async () => {
+            (provider.updateSeatQuantity as jest.Mock).mockResolvedValue(undefined);
+            const reservation = await service.reserveSeat(baseCompany);
+            (provider.updateSeatQuantity as jest.Mock).mockClear();
+            await reservation!.release();
+            expect(provider.updateSeatQuantity).toHaveBeenCalledWith(
+                { subscriptionId: 'sub_test_123', customerId: 'cus_test_1' },
+                3,
+            );
+        });
+
+        it('release() swallows provider errors instead of throwing', async () => {
+            (provider.updateSeatQuantity as jest.Mock).mockResolvedValueOnce(undefined);
+            const reservation = await service.reserveSeat(baseCompany);
+            (provider.updateSeatQuantity as jest.Mock).mockRejectedValueOnce(new Error('provider down'));
+            await expect(reservation!.release()).resolves.toBeUndefined();
+        });
+
+        it('never writes any Company column (single-writer rule)', async () => {
+            (provider.updateSeatQuantity as jest.Mock).mockResolvedValue(undefined);
+            await service.reserveSeat(baseCompany);
+            expect(companyRepo.update).not.toHaveBeenCalled();
         });
     });
 });

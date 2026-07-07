@@ -1,4 +1,18 @@
-import { Controller, Get, Post, Body, Param, Patch, Delete, UseGuards, Request, Query, ParseIntPipe, ParseUUIDPipe, DefaultValuePipe, HttpCode, HttpStatus, BadRequestException } from '@nestjs/common';
+import {
+    Controller,
+    Get,
+    Post,
+    Body,
+    Param,
+    Patch,
+    UseGuards,
+    Request,
+    Query,
+    ParseIntPipe,
+    ParseUUIDPipe,
+    DefaultValuePipe,
+    BadRequestException,
+} from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { UsersService } from './users.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -8,7 +22,11 @@ import { Role } from '@shared/enums/roles.enum';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { InviteUserDto } from './dto/invite-user.dto';
+import { RemoveUserDto } from './dto/remove-user.dto';
+import { TrimCompanyUsersDto } from './dto/trim-company-users.dto';
+import { ReassignmentReport, ClientReassignmentReport } from './reassignment/reassignment-report';
 import { AuthenticatedRequest } from '@shared/interfaces/authenticated-request.interface';
+import { scopedCompanyId } from '@shared/utils/auth.util';
 
 @ApiTags('Users')
 @ApiBearerAuth()
@@ -85,7 +103,7 @@ export class UsersController {
         @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
         @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
     ) {
-        const companyId = req.user.role === Role.SUPER_ADMIN ? undefined : (req.user.companyId ?? undefined);
+        const companyId = scopedCompanyId(req.user);
         return this.usersService.findAll(companyId, page, limit);
     }
 
@@ -93,15 +111,32 @@ export class UsersController {
     @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT, Role.ACCOUNTANT)
     @ApiOperation({ summary: 'List all agents for current company (for lead assignment)' })
     findAgents(@Request() req: AuthenticatedRequest) {
-        const companyId = req.user.role === Role.SUPER_ADMIN ? undefined : (req.user.companyId ?? undefined);
+        const companyId = scopedCompanyId(req.user);
         return this.usersService.findAgents(companyId);
+    }
+
+    @Get('active-members')
+    @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN)
+    @ApiOperation({ summary: 'Active company members for the reassignment/trim pickers (ADMIN+)' })
+    @ApiQuery({ name: 'companyId', required: false, type: String, description: 'SUPER_ADMIN only; scopes to a specific company.' })
+    findActiveMembers(@Request() req: AuthenticatedRequest, @Query('companyId') companyId?: string) {
+        // COMPANY_ADMIN/ADMIN are always scoped to their own company; only SUPER_ADMIN
+        // may target another company via the query param. A non-super-admin without a
+        // company context must be rejected, never fall through to an all-company list.
+        if (req.user.role !== Role.SUPER_ADMIN && !req.user.companyId) {
+            throw new BadRequestException('This endpoint requires a company context');
+        }
+        const scoped = req.user.role === Role.SUPER_ADMIN
+            ? (companyId ?? undefined)
+            : req.user.companyId!;
+        return this.usersService.findActiveMembers(scoped);
     }
 
     @Get(':id')
     @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN)
     @ApiOperation({ summary: 'Get a user by ID (scoped to company)' })
     findOne(@Param('id', ParseUUIDPipe) id: string, @Request() req: AuthenticatedRequest) {
-        const companyId = req.user.role === Role.SUPER_ADMIN ? undefined : (req.user.companyId ?? undefined);
+        const companyId = scopedCompanyId(req.user);
         return this.usersService.findOne(id, companyId);
     }
 
@@ -109,16 +144,84 @@ export class UsersController {
     @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN)
     @ApiOperation({ summary: 'Update a user (ADMIN+)' })
     update(@Param('id', ParseUUIDPipe) id: string, @Body() updateUserDto: UpdateUserDto, @Request() req: AuthenticatedRequest) {
-        const companyId = req.user.role === Role.SUPER_ADMIN ? undefined : (req.user.companyId ?? undefined);
+        const companyId = scopedCompanyId(req.user);
         return this.usersService.update(id, companyId, updateUserDto, req.user.role, req.user.userId);
     }
 
-    @Delete(':id')
+    @Post(':id/delete')
     @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN)
-    @HttpCode(HttpStatus.NO_CONTENT)
-    @ApiOperation({ summary: 'Delete a user (ADMIN+)' })
-    remove(@Param('id', ParseUUIDPipe) id: string, @Request() req: AuthenticatedRequest) {
-        const companyId = req.user.role === Role.SUPER_ADMIN ? undefined : (req.user.companyId ?? undefined);
-        return this.usersService.remove(id, companyId, req.user.role);
+    @ApiOperation({
+        summary: 'Permanently delete a user after reassigning owned records to a named user (ADMIN+)',
+        description:
+            'POST (not DELETE) because the reassignToUserId + reason payload must be carried in the body, and DELETE bodies are stripped by some proxies and HTTP clients. ' +
+            'Blocked with 409 when the user has approved, paid, or cancelled commissions; deactivate instead. Returns the ReassignmentReport.',
+    })
+    deleteUser(
+        @Param('id', ParseUUIDPipe) id: string,
+        @Body() dto: RemoveUserDto,
+        @Request() req: AuthenticatedRequest,
+    ) {
+        const companyId = scopedCompanyId(req.user);
+        return this.usersService
+            .deleteUserWithReassignment(id, req.user.userId, companyId, req.user.role as Role, dto)
+            .then((report) => this.toClientReport(report));
+    }
+
+    @Post(':id/deactivate')
+    @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN)
+    @ApiOperation({
+        summary: 'Deactivate a user, reassign owned records to a named user, decrement the seat on paid plans (ADMIN+)',
+        description: 'Returns the ReassignmentReport. Reversible via POST /users/:id/reactivate.',
+    })
+    deactivate(
+        @Param('id', ParseUUIDPipe) id: string,
+        @Body() dto: RemoveUserDto,
+        @Request() req: AuthenticatedRequest,
+    ) {
+        const companyId = scopedCompanyId(req.user);
+        return this.usersService
+            .deactivateUser(id, req.user.userId, companyId, req.user.role as Role, dto)
+            .then((report) => this.toClientReport(report));
+    }
+
+    @Post(':id/reactivate')
+    @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN)
+    @ApiOperation({ summary: 'Reactivate a deactivated user, incrementing the seat on paid plans (ADMIN+)' })
+    reactivate(@Param('id', ParseUUIDPipe) id: string, @Request() req: AuthenticatedRequest) {
+        const companyId = scopedCompanyId(req.user);
+        return this.usersService.reactivateUser(id, companyId, req.user.role as Role);
+    }
+
+    @Post('trim-to-one')
+    @Roles(Role.COMPANY_ADMIN)
+    @ApiOperation({
+        summary: 'Deactivate every active user except one company admin and reassign their records (COMPANY_ADMIN only)',
+        description: 'Downgrade preparation: satisfies the downgrade-to-Free gate, which requires exactly one active user.',
+    })
+    trimToOne(@Body() dto: TrimCompanyUsersDto, @Request() req: AuthenticatedRequest) {
+        if (!req.user.companyId) {
+            throw new BadRequestException('companyId is required');
+        }
+        return this.usersService
+            .trimToOneActiveUser(req.user.companyId, req.user.userId, dto)
+            .then((result) => ({
+                deactivatedCount: result.deactivatedCount,
+                reports: result.reports.map((report) => this.toClientReport(report)),
+            }));
+    }
+
+    /**
+     * Strip the per-record ids from a reassignment report before returning it to the
+     * client. The ids can be thousands of UUIDs on a large tenant and the UI only needs
+     * the counts; the full report (with ids) still reaches the OwnershipTransferRecorder
+     * server-side inside the removal transaction.
+     */
+    private toClientReport(report: ReassignmentReport): ClientReassignmentReport {
+        return {
+            fromUserId: report.fromUserId,
+            toUserId: report.toUserId,
+            reason: report.reason,
+            entities: report.entities.map(({ type, count }) => ({ type, count })),
+        };
     }
 }

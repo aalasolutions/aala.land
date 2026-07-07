@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { NotFoundException } from '@nestjs/common';
 import { ContactsService } from './contacts.service';
 import { Contact, ContactType } from './entities/contact.entity';
+import { CreateContactDto } from './dto/create-contact.dto';
 
 describe('ContactsService', () => {
   let service: ContactsService;
@@ -56,7 +57,7 @@ describe('ContactsService', () => {
   });
 
   describe('create', () => {
-    it('creates and returns a contact', async () => {
+    it('creates and returns a contact with createdBy', async () => {
       const dto = {
         firstName: 'Ahmed',
         lastName: 'Al-Rashid',
@@ -64,15 +65,25 @@ describe('ContactsService', () => {
         phone: '+971501234567',
         type: ContactType.OTHER,
       };
+      const createdBy = 'user-uuid-1';
 
       repo.create.mockReturnValue(mockContact as Contact);
       repo.save.mockResolvedValue(mockContact as Contact);
 
-      const result = await service.create(companyId, dto as any);
+      const result = await service.create(companyId, dto as any, createdBy);
 
-      expect(repo.create).toHaveBeenCalledWith({ ...dto, companyId });
+      expect(repo.create).toHaveBeenCalledWith({ ...dto, companyId, createdBy });
       expect(repo.save).toHaveBeenCalledWith(mockContact);
       expect(result).toEqual(mockContact);
+    });
+
+    it('stamps createdBy from the authenticated user on create', async () => {
+      repo.create.mockReturnValue({} as Contact);
+      repo.save.mockResolvedValue({} as Contact);
+      await service.create('company-uuid-1', { firstName: 'A' } as CreateContactDto, 'user-uuid-1');
+      expect(repo.create).toHaveBeenCalledWith(
+        expect.objectContaining({ companyId: 'company-uuid-1', createdBy: 'user-uuid-1' }),
+      );
     });
   });
 

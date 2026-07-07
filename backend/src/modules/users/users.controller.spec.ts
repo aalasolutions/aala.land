@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { NotFoundException } from '@nestjs/common';
+import { NotFoundException, BadRequestException } from '@nestjs/common';
 import { UsersController } from './users.controller';
 import { UsersService } from './users.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -41,8 +41,12 @@ describe('UsersController', () => {
             create: jest.fn(),
             findAll: jest.fn(),
             findOne: jest.fn(),
+            findActiveMembers: jest.fn(),
             update: jest.fn(),
-            remove: jest.fn(),
+            deactivateUser: jest.fn(),
+            reactivateUser: jest.fn(),
+            deleteUserWithReassignment: jest.fn(),
+            trimToOneActiveUser: jest.fn(),
           },
         },
       ],
@@ -122,7 +126,7 @@ describe('UsersController', () => {
       service.update.mockResolvedValue({ ...mockUser, name: 'Updated Self' } as any);
 
       const result = await controller.updateMyProfile(
-        { name: 'Updated Self', role: Role.SUPER_ADMIN, isActive: false } as any,
+        { name: 'Updated Self', role: Role.SUPER_ADMIN } as any,
         mockReq,
       );
 
@@ -137,13 +141,76 @@ describe('UsersController', () => {
     });
   });
 
-  describe('remove', () => {
-    it('removes user', async () => {
-      service.remove.mockResolvedValue(undefined);
+  describe('findActiveMembers', () => {
+    it('scopes a COMPANY_ADMIN to their own company and ignores the query companyId', async () => {
+      await controller.findActiveMembers(mockReq as never, 'other-company');
+      expect(service.findActiveMembers).toHaveBeenCalledWith(companyId);
+    });
 
-      await controller.remove('user-uuid-1', mockReq);
+    it('lets a SUPER_ADMIN scope to the company passed in the query', async () => {
+      const reqSa = { user: { userId: 'sa', email: 'sa@test.com', companyId: null, role: Role.SUPER_ADMIN } };
+      await controller.findActiveMembers(reqSa as never, 'target-company');
+      expect(service.findActiveMembers).toHaveBeenCalledWith('target-company');
+    });
+  });
 
-      expect(service.remove).toHaveBeenCalledWith('user-uuid-1', companyId, Role.COMPANY_ADMIN);
+  describe('removal endpoints', () => {
+    const dto = { reassignToUserId: 'user-uuid-3', reason: 'left' };
+    const reqAdmin = { user: { userId: 'requester-uuid', companyId: 'company-uuid-1', role: 'company_admin' } };
+    const sampleReport = {
+      fromUserId: 'user-uuid-2', toUserId: 'user-uuid-3', reason: 'left',
+      entities: [{ type: 'lead', count: 2, ids: ['id-1', 'id-2'] }],
+    };
+
+    beforeEach(() => {
+      service.deleteUserWithReassignment.mockResolvedValue(sampleReport as never);
+      service.deactivateUser.mockResolvedValue(sampleReport as never);
+      service.trimToOneActiveUser.mockResolvedValue({ deactivatedCount: 1, reports: [sampleReport] } as never);
+    });
+
+    it('strips the reassignment record ids from the response, keeping counts only', async () => {
+      const res = await controller.deleteUser('user-uuid-2', dto as never, reqAdmin as never);
+      expect(res.entities).toEqual([{ type: 'lead', count: 2 }]);
+    });
+
+    it('POST /users/:id/delete forwards to deleteUserWithReassignment with the requester context', async () => {
+      await controller.deleteUser('user-uuid-2', dto as never, reqAdmin as never);
+      expect(service.deleteUserWithReassignment).toHaveBeenCalledWith(
+        'user-uuid-2', 'requester-uuid', 'company-uuid-1', 'company_admin', dto,
+      );
+    });
+
+    it('POST /users/:id/deactivate forwards to deactivateUser', async () => {
+      await controller.deactivate('user-uuid-2', dto as never, reqAdmin as never);
+      expect(service.deactivateUser).toHaveBeenCalledWith(
+        'user-uuid-2', 'requester-uuid', 'company-uuid-1', 'company_admin', dto,
+      );
+    });
+
+    it('POST /users/:id/reactivate forwards to reactivateUser', async () => {
+      await controller.reactivate('user-uuid-2', reqAdmin as never);
+      expect(service.reactivateUser).toHaveBeenCalledWith('user-uuid-2', 'company-uuid-1', 'company_admin');
+    });
+
+    it('rejects a non-super-admin request with no company context before touching the service', () => {
+      const reqNoCompany = { user: { userId: 'u', email: 'e', companyId: null, role: Role.COMPANY_ADMIN } };
+      expect(() => controller.reactivate('user-uuid-2', reqNoCompany as never)).toThrow(BadRequestException);
+      expect(service.reactivateUser).not.toHaveBeenCalled();
+    });
+
+    it('POST /users/trim-to-one requires a company context', async () => {
+      const reqNoCompany = { user: { userId: 'sa', companyId: null, role: 'super_admin' } };
+      expect(() =>
+        controller.trimToOne({ keepUserId: 'k', reason: 'r' } as never, reqNoCompany as never),
+      ).toThrow(BadRequestException);
+    });
+
+    it('SUPER_ADMIN passes an undefined companyId so the service resolves scope from the target', async () => {
+      const reqSa = { user: { userId: 'sa-uuid', companyId: null, role: 'super_admin' } };
+      await controller.deleteUser('user-uuid-2', dto as never, reqSa as never);
+      expect(service.deleteUserWithReassignment).toHaveBeenCalledWith(
+        'user-uuid-2', 'sa-uuid', undefined, 'super_admin', dto,
+      );
     });
   });
 });

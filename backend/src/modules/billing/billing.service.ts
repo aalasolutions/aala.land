@@ -1,6 +1,8 @@
 import {
     BadRequestException,
     ConflictException,
+    HttpException,
+    HttpStatus,
     Inject,
     Injectable,
     Logger,
@@ -16,8 +18,20 @@ import {
     BillingPlan,
     BillingProvider,
     BILLING_PROVIDER,
+    SubscriptionRef,
 } from './provider/billing-provider.interface';
 import { resolveBillingCurrency } from './billing-currency.util';
+
+/**
+ * Handle returned by reserveSeat for a successful provider-side seat increment.
+ * The caller performs its local write and calls release() ONLY if that write fails.
+ */
+export interface SeatReservation {
+    subscriptionId: string;
+    targetQuantity: number;
+    /** Best-effort compensating call: sets quantity back to targetQuantity - 1. Never throws. */
+    release(): Promise<void>;
+}
 
 /** Shape returned by getSubscriptionState. */
 export interface SubscriptionState {
@@ -236,6 +250,95 @@ export class BillingService {
             subscriptionId: company.billingSubscriptionId,
             customerId: company.billingCustomerId,
         });
+    }
+
+    // -------------------------------------------------------------------------
+    // Unit 4 methods (seat lifecycle)
+    // -------------------------------------------------------------------------
+
+    /**
+     * Reserve one additional seat with the billing provider BEFORE a local user write
+     * (contract section 9 ordering).
+     *
+     * FREE companies: no provider call, returns null (enforceUserLimit already capped them).
+     * Paid tier with no subscription (or no customer): no provider call, returns null. This is a
+     * comp account a SUPER_ADMIN set to a paid tier without checkout; it manages users freely with
+     * no billing (owner decision 2026-07-07). A deliberate "must pay" lock is the separate Dunning
+     * feature, NOT the absence of a subscription.
+     * Paid tier with a subscription: provider quantity goes to purchasedSeats + 1; a provider
+     * failure maps to HTTP 402 and nothing local may be written by the caller.
+     *
+     * NEVER writes Company.purchasedSeats or any Company column. The unit 2 SeatQuantityChanged
+     * webhook handler is the single writer (contract section 8); the gap between this call and the
+     * webhook is accepted eventual consistency.
+     */
+    async reserveSeat(company: Company): Promise<SeatReservation | null> {
+        if (company.subscriptionTier === SubscriptionTier.FREE) {
+            return null;
+        }
+
+        const subscriptionId = company.billingSubscriptionId;
+        const customerId = company.billingCustomerId;
+        if (!subscriptionId || !customerId) {
+            return null;
+        }
+
+        const ref = { subscriptionId, customerId };
+        const targetQuantity = company.purchasedSeats + 1;
+
+        try {
+            await this.provider.updateSeatQuantity(ref, targetQuantity);
+        } catch (err) {
+            this.logger.error(
+                `Seat increment rejected by billing provider for company ${company.id} ` +
+                `(subscription ${subscriptionId}, target ${targetQuantity}): ` +
+                `${err instanceof Error ? err.message : String(err)}`,
+            );
+            throw new HttpException(
+                {
+                    message:
+                        'The billing provider rejected the seat change. No user was created. ' +
+                        'Check the payment method on file and try again.',
+                    error: 'Payment Required',
+                    statusCode: HttpStatus.PAYMENT_REQUIRED,
+                },
+                HttpStatus.PAYMENT_REQUIRED,
+            );
+        }
+
+        return {
+            subscriptionId,
+            targetQuantity,
+            release: async (): Promise<void> => {
+                try {
+                    await this.provider.updateSeatQuantity(ref, targetQuantity - 1);
+                } catch (rollbackErr) {
+                    this.logger.error(
+                        `Compensating seat rollback FAILED for company ${company.id} ` +
+                        `(subscription ${subscriptionId}, quantity ${targetQuantity - 1}): ` +
+                        `${rollbackErr instanceof Error ? rollbackErr.message : String(rollbackErr)}. ` +
+                        `Reconcile manually against the provider dashboard.`,
+                    );
+                }
+            },
+        };
+    }
+
+    /**
+     * Sets the absolute seat quantity on the company's subscription.
+     * Contract section 9: callers order this BEFORE their local transaction.
+     * Does NOT write purchasedSeats; the SeatQuantityChanged webhook does (section 8).
+     */
+    async setSeatQuantity(company: Company, quantity: number): Promise<SubscriptionRef> {
+        if (!company.billingSubscriptionId || !company.billingCustomerId) {
+            throw new HttpException(
+                'This company has a paid plan but no active subscription. Complete checkout first.',
+                HttpStatus.PAYMENT_REQUIRED,
+            );
+        }
+        const ref = { subscriptionId: company.billingSubscriptionId, customerId: company.billingCustomerId };
+        await this.provider.updateSeatQuantity(ref, quantity);
+        return ref;
     }
 
     // -------------------------------------------------------------------------

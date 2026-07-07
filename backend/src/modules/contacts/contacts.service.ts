@@ -13,8 +13,8 @@ export class ContactsService {
     private readonly contactRepository: Repository<Contact>,
   ) {}
 
-  async create(companyId: string, dto: CreateContactDto): Promise<Contact> {
-    const contact = this.contactRepository.create({ ...dto, companyId });
+  async create(companyId: string, dto: CreateContactDto, createdBy: string): Promise<Contact> {
+    const contact = this.contactRepository.create({ ...dto, companyId, createdBy });
     return this.contactRepository.save(contact);
   }
 
