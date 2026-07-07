@@ -5,6 +5,8 @@ import { StripeBillingProvider } from './stripe-billing.provider';
 const mockCreate = jest.fn();
 const mockSearch = jest.fn();
 const mockPricesCreate = jest.fn();
+const mockSubRetrieve = jest.fn();
+const mockSubItemUpdate = jest.fn();
 
 const mockStripeClient = {
     customers: {
@@ -16,6 +18,12 @@ const mockStripeClient = {
     },
     prices: {
         create: mockPricesCreate,
+    },
+    subscriptions: {
+        retrieve: mockSubRetrieve,
+    },
+    subscriptionItems: {
+        update: mockSubItemUpdate,
     },
 };
 
@@ -56,12 +64,31 @@ describe('StripeBillingProvider', () => {
                 email: 'admin@test.com',
             });
 
-            expect(mockCreate).toHaveBeenCalledWith({
-                name: 'Test Company',
-                email: 'admin@test.com',
-                metadata: { companyId: 'company-uuid-1' },
-            });
+            expect(mockCreate).toHaveBeenCalledWith(
+                {
+                    name: 'Test Company',
+                    email: 'admin@test.com',
+                    metadata: { companyId: 'company-uuid-1' },
+                },
+                // No idempotency key supplied -> no second-arg options.
+                undefined,
+            );
             expect(result).toBe('cus_test123');
+        });
+
+        it('passes a Stripe idempotency key as the second arg when supplied (P5 dedupe)', async () => {
+            mockCreate.mockResolvedValue({ id: 'cus_idem' });
+
+            await provider.ensureCustomer({
+                companyId: 'company-uuid-9',
+                companyName: 'Idem Co',
+                idempotencyKey: 'ensure-customer:company-uuid-9',
+            });
+
+            expect(mockCreate).toHaveBeenCalledWith(
+                expect.objectContaining({ metadata: { companyId: 'company-uuid-9' } }),
+                { idempotencyKey: 'ensure-customer:company-uuid-9' },
+            );
         });
 
         it('omits email when not provided', async () => {
@@ -74,6 +101,7 @@ describe('StripeBillingProvider', () => {
 
             expect(mockCreate).toHaveBeenCalledWith(
                 expect.objectContaining({ email: undefined }),
+                undefined,
             );
         });
 
@@ -88,6 +116,7 @@ describe('StripeBillingProvider', () => {
 
             expect(mockCreate).toHaveBeenCalledWith(
                 expect.objectContaining({ email: undefined }),
+                undefined,
             );
         });
     });
@@ -141,6 +170,53 @@ describe('StripeBillingProvider', () => {
             expect(mockPricesCreate).toHaveBeenCalledWith(
                 expect.objectContaining({ currency: 'usd' }),
             );
+        });
+    });
+
+    describe('getSeatQuantity', () => {
+        const ref = { subscriptionId: 'sub_1', customerId: 'cus_1' };
+
+        it('returns the live quantity from the SEAT-metadata line item', async () => {
+            mockSubRetrieve.mockResolvedValue({
+                items: {
+                    data: [
+                        { id: 'si_base', quantity: 1, price: { metadata: { kind: 'ENTERPRISE_BASE' } } },
+                        { id: 'si_seat', quantity: 6, price: { metadata: { kind: 'SEAT' } } },
+                    ],
+                },
+            });
+
+            const qty = await provider.getSeatQuantity(ref);
+
+            expect(mockSubRetrieve).toHaveBeenCalledWith('sub_1', { expand: ['items'] });
+            expect(qty).toBe(6);
+        });
+
+        it('falls back to the first line item and floors at 1 for metadata-less subscriptions', async () => {
+            mockSubRetrieve.mockResolvedValue({
+                items: { data: [{ id: 'si_only', quantity: undefined, price: {} }] },
+            });
+
+            const qty = await provider.getSeatQuantity(ref);
+            expect(qty).toBe(1);
+        });
+
+        it('throws when the subscription has no line items', async () => {
+            mockSubRetrieve.mockResolvedValue({ items: { data: [] } });
+            await expect(provider.getSeatQuantity(ref)).rejects.toThrow('No subscription items found');
+        });
+    });
+
+    describe('updateSeatQuantity', () => {
+        it('updates the resolved SEAT item to the given quantity', async () => {
+            mockSubRetrieve.mockResolvedValue({
+                items: { data: [{ id: 'si_seat', quantity: 3, price: { metadata: { kind: 'SEAT' } } }] },
+            });
+            mockSubItemUpdate.mockResolvedValue({});
+
+            await provider.updateSeatQuantity({ subscriptionId: 'sub_1', customerId: 'cus_1' }, 4);
+
+            expect(mockSubItemUpdate).toHaveBeenCalledWith('si_seat', { quantity: 4 });
         });
     });
 });

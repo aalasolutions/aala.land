@@ -33,6 +33,7 @@ const makeMockRepo = (customPrompt: string | null = null, tier: SubscriptionTier
   clearContextCache: jest.fn(),
   clearPromptCache: jest.fn(),
   checkLimitAndIncrement: jest.fn().mockResolvedValue({ allowed: true }),
+  decrementWeeklyCount: jest.fn().mockResolvedValue(undefined),
   getWeeklyUsage: jest.fn().mockResolvedValue({ count: 0, windowStart: null }),
   searchProperties: jest.fn().mockResolvedValue([]),
 });
@@ -263,6 +264,55 @@ describe('WhatsappAiService', () => {
       // Timers fire — but pending was cancelled by recordHumanReply
       await jest.runAllTimersAsync();
 
+      expect(mockSend).not.toHaveBeenCalled();
+    });
+
+    it('aborts the send and reverts quota when the human replies mid-stream (after the turn started)', async () => {
+      const mockRepo = makeMockRepo();
+      service = new WhatsappAiService(mockRepo as any, makeMockBuilder() as any);
+
+      // The human replies WHILE the LLM is streaming: the fetch mock records the human
+      // reply before resolving the LLM response, mimicking a phone reply mid-turn.
+      global.fetch = jest.fn().mockImplementation(() => {
+        service.recordHumanReply('u1', 'c1');
+        return Promise.resolve(mockTextResponse('AI reply'));
+      }) as any;
+
+      const mockSend = jest.fn().mockResolvedValue({});
+      const ts = Math.floor(Date.now() / 1000);
+
+      await service.handleIncomingMessage(baseEvt({ body: 'Hello?', timestamp: ts }), 'co', 'u1', mockSend);
+      await jest.runAllTimersAsync();
+
+      // LLM was called (turn started before the human reply), but the send was aborted.
+      expect(global.fetch).toHaveBeenCalledTimes(1);
+      expect(mockSend).not.toHaveBeenCalled();
+      // The FREE-tier quota debit is refunded since no reply was actually sent.
+      expect(mockRepo.decrementWeeklyCount).toHaveBeenCalledWith('co');
+      // The aborted assistant reply is not retained in history.
+      expect(service.getHistoryFor('u1', 'c1')).toEqual([]);
+    });
+
+    it('aborts the send when the human replies mid-tool-flow', async () => {
+      const mockRepo = makeMockRepo();
+      mockRepo.searchProperties.mockResolvedValue([{ id: 'l1', title: 'Test' }]);
+      service = new WhatsappAiService(mockRepo as any, makeMockBuilder() as any);
+
+      // First call returns a tool call; the human replies during the SECOND LLM call.
+      (global.fetch as jest.Mock) = jest.fn()
+        .mockResolvedValueOnce(mockToolCallResponse('call_1', 'search_properties', '{"city":"Karachi"}'))
+        .mockImplementationOnce(() => {
+          service.recordHumanReply('u1', 'c1');
+          return Promise.resolve(mockTextResponse('Here are properties.'));
+        });
+
+      const mockSend = jest.fn().mockResolvedValue({});
+      const ts = Math.floor(Date.now() / 1000);
+
+      await service.handleIncomingMessage(baseEvt({ body: 'properties in karachi', timestamp: ts }), 'co', 'u1', mockSend);
+      await jest.runAllTimersAsync();
+
+      expect(global.fetch).toHaveBeenCalledTimes(2);
       expect(mockSend).not.toHaveBeenCalled();
     });
 

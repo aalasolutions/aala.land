@@ -144,7 +144,9 @@ export class BillingWebhookService implements OnModuleInit {
     private async onSubscriptionActivated(event: SubscriptionActivatedEvent): Promise<void> {
         const tier = planToTier(event.plan);
         const limits = TIER_LIMITS[tier];
-        await this.updateCompany(event.companyId, event.name, {
+        // Seat-bearing event: guard purchasedSeats against stale/out-of-order
+        // delivery via billing_last_event_at (race audit 2026-07-07, P1c).
+        await this.applySeatSync(event.companyId, event.name, event.occurredAt, {
             billingSubscriptionId: event.subscriptionId,
             billingStatus: event.status,
             subscriptionTier: tier,
@@ -156,14 +158,14 @@ export class BillingWebhookService implements OnModuleInit {
     }
 
     private async onSubscriptionUpdated(event: SubscriptionUpdatedEvent): Promise<void> {
-        await this.updateCompany(event.companyId, event.name, {
+        await this.applySeatSync(event.companyId, event.name, event.occurredAt, {
             purchasedSeats: Math.max(event.quantity, 1),
             billingStatus: event.status,
         });
     }
 
     private async onSeatQuantityChanged(event: SeatQuantityChangedEvent): Promise<void> {
-        await this.updateCompany(event.companyId, event.name, {
+        await this.applySeatSync(event.companyId, event.name, event.occurredAt, {
             purchasedSeats: Math.max(event.quantity, 1),
         });
     }
@@ -216,6 +218,52 @@ export class BillingWebhookService implements OnModuleInit {
             // A retry cannot conjure a missing company row; warn and move on so
             // the event is still marked processed.
             this.logger.warn(`${eventName}: company ${companyId} not found, nothing updated`);
+        }
+    }
+
+    /**
+     * Apply a seat-bearing sync, guarding purchasedSeats (and the other columns
+     * in the patch) against stale or out-of-order Stripe delivery (race audit
+     * 2026-07-07, P1c).
+     *
+     * A single conditional UPDATE advances billing_last_event_at to the event's
+     * created time and applies the patch ONLY when this event is at least as new
+     * as the last one applied (`billing_last_event_at IS NULL OR <= :occurredAt`).
+     * Doing the compare-and-set in one statement is atomic under READ COMMITTED,
+     * so two events for the same company delivered concurrently cannot let the
+     * older one win. A strictly-older event affects 0 rows and is skipped; that
+     * is distinguished from a genuinely missing company by a follow-up existence
+     * check, so the event is still acked either way.
+     */
+    private async applySeatSync(
+        companyId: string,
+        eventName: string,
+        occurredAt: Date,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        patch: Record<string, any>,
+    ): Promise<void> {
+        const result = await this.companyRepo
+            .createQueryBuilder()
+            .update(Company)
+            .set({ ...patch, billingLastEventAt: occurredAt })
+            .where('id = :companyId', { companyId })
+            .andWhere(
+                '(billing_last_event_at IS NULL OR billing_last_event_at <= :occurredAt)',
+                { occurredAt },
+            )
+            .execute();
+
+        if (result.affected) return;
+
+        // 0 rows: either the company is gone, or a newer event already landed.
+        const exists = await this.companyRepo.exists({ where: { id: companyId } });
+        if (!exists) {
+            this.logger.warn(`${eventName}: company ${companyId} not found, nothing updated`);
+        } else {
+            this.logger.warn(
+                `${eventName}: skipped stale/out-of-order event for company ${companyId} ` +
+                `(event time ${occurredAt.toISOString()} is older than the last applied sync)`,
+            );
         }
     }
 }

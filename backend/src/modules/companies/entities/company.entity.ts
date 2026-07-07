@@ -90,6 +90,16 @@ export class Company {
     @Column({ name: 'billing_meta', type: 'jsonb', nullable: true })
     billingMeta: Record<string, unknown> | null;
 
+    /**
+     * Stripe event.created timestamp of the last seat/subscription sync applied
+     * to this company. The webhook uses it as a recency guard so an out-of-order
+     * or retried event cannot overwrite purchasedSeats/status with a stale value
+     * (race audit 2026-07-07, P1c). Written only by the webhook, alongside the
+     * other billing_* columns it owns.
+     */
+    @Column({ name: 'billing_last_event_at', type: 'timestamptz', nullable: true })
+    billingLastEventAt: Date | null;
+
     @CreateDateColumn({ name: 'created_at' })
     createdAt: Date;
 

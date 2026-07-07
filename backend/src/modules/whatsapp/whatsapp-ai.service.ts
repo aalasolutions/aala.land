@@ -203,6 +203,16 @@ export class WhatsappAiService implements OnModuleInit, OnModuleDestroy {
     return Date.now() - lastReply < silenceMs;
   }
 
+  // A human reply that landed AFTER this AI turn started reading the chat means the
+  // operator has taken over mid-stream. The initial isHumanSilenceActive() check at the
+  // top of processMessage happens before several seconds of LLM awaits, so we must
+  // re-check immediately before each send() and abort if the human jumped in.
+  private humanTookOverSince(userId: string, chatId: string, flushStartedAt: number): boolean {
+    if (this.isHumanSilenceActive(userId, chatId)) return true;
+    const lastReply = this.humanReplyAt.get(`${userId}:${chatId}`);
+    return lastReply !== undefined && lastReply > flushStartedAt;
+  }
+
   private async processMessage(
     text: string,
     chatId: string,
@@ -211,6 +221,9 @@ export class WhatsappAiService implements OnModuleInit, OnModuleDestroy {
     send: SendFn,
   ): Promise<void> {
     if (this.isHumanSilenceActive(userId, chatId)) return;
+
+    // Baseline for detecting a human reply that lands mid-turn (after the awaits below).
+    const flushStartedAt = Date.now();
 
     const { cleaned, needsDirectContact } = sanitizeInput(text);
     if (needsDirectContact) {
@@ -286,6 +299,12 @@ export class WhatsappAiService implements OnModuleInit, OnModuleDestroy {
           return;
         }
 
+        if (this.humanTookOverSince(userId, chatId, flushStartedAt)) {
+          this.revertQuotaIfNeeded(companyId, quotaIncremented);
+          history.pop();
+          return;
+        }
+
         history.push({ role: 'assistant', content: reply });
         this.trimHistory(userId, chatId, history);
         assistantPushed = true;
@@ -295,6 +314,12 @@ export class WhatsappAiService implements OnModuleInit, OnModuleDestroy {
 
       const reply = parseResponse(firstRaw);
       if (!reply) {
+        this.revertQuotaIfNeeded(companyId, quotaIncremented);
+        history.pop();
+        return;
+      }
+
+      if (this.humanTookOverSince(userId, chatId, flushStartedAt)) {
         this.revertQuotaIfNeeded(companyId, quotaIncremented);
         history.pop();
         return;

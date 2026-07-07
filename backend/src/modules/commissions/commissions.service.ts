@@ -1,6 +1,7 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, FindOptionsWhere } from 'typeorm';
+import { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity';
 import { Commission, CommissionStatus } from './entities/commission.entity';
 import { CreateCommissionDto } from './dto/create-commission.dto';
 import { UpdateCommissionDto } from './dto/update-commission.dto';
@@ -72,33 +73,64 @@ export class CommissionsService {
   }
 
   async update(id: string, companyId: string, dto: UpdateCommissionDto): Promise<Commission> {
+    // Confirm existence + tenant scope, and give a NotFound (not a silent no-op) for a bad id.
     const commission = await this.findOne(id, companyId);
-    Object.assign(commission, dto);
 
+    // Only persist the columns this DTO can change, so a concurrent state
+    // transition (approve/pay) is not clobbered by a stale whole-entity save.
+    const patch: QueryDeepPartialEntity<Commission> = {};
+    if (dto.status !== undefined) patch.status = dto.status;
+    if (dto.notes !== undefined) patch.notes = dto.notes;
     if (dto.status === CommissionStatus.PAID && !commission.paidAt) {
-      commission.paidAt = new Date();
+      patch.paidAt = new Date();
     }
 
-    return this.commissionRepository.save(commission);
+    if (Object.keys(patch).length > 0) {
+      await this.commissionRepository.update({ id, companyId }, patch);
+    }
+
+    return this.findOne(id, companyId);
   }
 
   async approve(id: string, companyId: string): Promise<Commission> {
-    const commission = await this.findOne(id, companyId);
-    if (commission.status !== CommissionStatus.PENDING) {
-      throw new BadRequestException('Only PENDING commissions can be approved');
+    // Guarded conditional transition: only flips PENDING -> APPROVED atomically.
+    const result = await this.commissionRepository.update(
+      { id, companyId, status: CommissionStatus.PENDING },
+      { status: CommissionStatus.APPROVED },
+    );
+
+    if (result.affected !== 1) {
+      await this.assertExists(id, companyId);
+      throw new ConflictException('Only PENDING commissions can be approved');
     }
-    commission.status = CommissionStatus.APPROVED;
-    return this.commissionRepository.save(commission);
+
+    return this.findOne(id, companyId);
   }
 
   async pay(id: string, companyId: string): Promise<Commission> {
-    const commission = await this.findOne(id, companyId);
-    if (commission.status !== CommissionStatus.APPROVED) {
-      throw new BadRequestException('Only APPROVED commissions can be marked as paid');
+    // Guarded conditional transition: only flips APPROVED -> PAID atomically,
+    // stamping paidAt in the same statement so amount edits cannot be clobbered.
+    const result = await this.commissionRepository.update(
+      { id, companyId, status: CommissionStatus.APPROVED },
+      { status: CommissionStatus.PAID, paidAt: new Date() },
+    );
+
+    if (result.affected !== 1) {
+      await this.assertExists(id, companyId);
+      throw new ConflictException('Only APPROVED commissions can be marked as paid');
     }
-    commission.status = CommissionStatus.PAID;
-    commission.paidAt = new Date();
-    return this.commissionRepository.save(commission);
+
+    return this.findOne(id, companyId);
+  }
+
+  private async assertExists(id: string, companyId: string): Promise<void> {
+    const exists = await this.commissionRepository.findOne({
+      where: { id, companyId },
+      select: { id: true },
+    });
+    if (!exists) {
+      throw new NotFoundException('Commission not found');
+    }
   }
 
   async getSummary(agentId: string, companyId: string): Promise<{

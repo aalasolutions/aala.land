@@ -10,6 +10,7 @@ import * as crypto from 'crypto';
 import { MailService } from '../../shared/services/mail.service';
 import { EmailTemplatesService } from '../email-templates/email-templates.service';
 import { Company, SubscriptionTier } from '../companies/entities/company.entity';
+import { Commission } from '../commissions/entities/commission.entity';
 import { BillingService } from '../billing/billing.service';
 import { UserReassignmentService } from './reassignment/user-reassignment.service';
 import { OWNERSHIP_TRANSFER_RECORDER } from './reassignment/ownership-transfer-recorder';
@@ -17,10 +18,31 @@ import { OWNERSHIP_TRANSFER_RECORDER } from './reassignment/ownership-transfer-r
 jest.mock('bcryptjs');
 jest.mock('crypto');
 
-let managerMock: { update: jest.Mock; delete: jest.Mock; query: jest.Mock };
+// The transactional EntityManager. Reads (findOne/count/find/getRepository)
+// delegate to the same repo mocks the tests already drive, so existing
+// mockResolvedValueOnce sequencing keeps working now that create/invite/removal
+// run inside withCompanyLock. Writes (update/delete/query/create/save) are the
+// manager's own spies; create/save delegate to the User repo so behavior mocks
+// and call-order assertions on repo.save still hold.
+let managerMock: {
+    update: jest.Mock;
+    delete: jest.Mock;
+    query: jest.Mock;
+    findOne: jest.Mock;
+    count: jest.Mock;
+    find: jest.Mock;
+    create: jest.Mock;
+    save: jest.Mock;
+    getRepository: jest.Mock;
+};
 let commissionRepoMock: { count: jest.Mock };
 let dataSourceMock: { transaction: jest.Mock; getRepository: jest.Mock };
-let billingServiceMock: { reserveSeat: jest.Mock; setSeatQuantity: jest.Mock };
+let billingServiceMock: {
+    reserveSeat: jest.Mock;
+    setSeatQuantity: jest.Mock;
+    decrementSeat: jest.Mock;
+    getLiveSeatQuantity: jest.Mock;
+};
 let reassignmentServiceMock: { reassignOwnedRecords: jest.Mock };
 
 const emptyReport = {
@@ -77,23 +99,59 @@ describe('UsersService', () => {
   } as unknown as Company;
   const proCompanyNoSub = { ...proCompany, billingSubscriptionId: null } as unknown as Company;
 
+  // Removal flows resolve the lock company id from the requester's own company
+  // when present (the COMPANY_ADMIN case these tests use), so no pre-lock read
+  // happens; only the locked target + reassignee loads hit repo.findOne, and the
+  // company load hits companyRepo.findOne. (A SUPER_ADMIN caller with no company
+  // context would add one pre-lock repo.findOne to resolve the target's company.)
   function primeRemovalLookups(company: Company, target = targetUser, recipient = reassignee) {
     repo.findOne
-      .mockResolvedValueOnce(target as User)      // target lookup
-      .mockResolvedValueOnce(recipient as User);  // reassignee lookup
+      .mockResolvedValueOnce(target as User)      // locked target load
+      .mockResolvedValueOnce(recipient as User);  // locked reassignee load
     companyRepo.findOne.mockResolvedValue(company as Company);
   }
 
   beforeEach(async () => {
     jest.clearAllMocks();
 
-    managerMock = { update: jest.fn(), delete: jest.fn(), query: jest.fn() };
+    const userRepoMock = {
+      findOne: jest.fn(),
+      findAndCount: jest.fn(),
+      find: jest.fn(),
+      count: jest.fn(),
+      create: jest.fn(),
+      save: jest.fn(),
+      remove: jest.fn(),
+      update: jest.fn(),
+    };
+    const companyRepoMock = { findOne: jest.fn(), update: jest.fn() };
     commissionRepoMock = { count: jest.fn().mockResolvedValue(0) };
+
+    // manager reads delegate to the repo mocks by entity type; writes are the
+    // manager's own spies (removal tests assert on manager.update/delete/query).
+    managerMock = {
+      update: jest.fn(),
+      delete: jest.fn(),
+      query: jest.fn().mockResolvedValue(undefined),
+      findOne: jest.fn((entity: unknown, opts: unknown) =>
+        entity === Company ? companyRepoMock.findOne(opts) : userRepoMock.findOne(opts),
+      ),
+      count: jest.fn((_entity: unknown, opts: unknown) => userRepoMock.count(opts)),
+      find: jest.fn((_entity: unknown, opts: unknown) => userRepoMock.find(opts)),
+      create: jest.fn((_entity: unknown, x: unknown) => userRepoMock.create(x)),
+      save: jest.fn((x: unknown) => userRepoMock.save(x)),
+      getRepository: jest.fn().mockReturnValue(commissionRepoMock),
+    };
     dataSourceMock = {
       transaction: jest.fn(async (cb: (m: unknown) => Promise<unknown>) => cb(managerMock)),
       getRepository: jest.fn().mockReturnValue(commissionRepoMock),
     };
-    billingServiceMock = { reserveSeat: jest.fn().mockResolvedValue(null), setSeatQuantity: jest.fn().mockResolvedValue({}) };
+    billingServiceMock = {
+      reserveSeat: jest.fn().mockResolvedValue(null),
+      setSeatQuantity: jest.fn().mockResolvedValue({}),
+      decrementSeat: jest.fn().mockResolvedValue(null),
+      getLiveSeatQuantity: jest.fn().mockResolvedValue(0),
+    };
     reassignmentServiceMock = { reassignOwnedRecords: jest.fn().mockResolvedValue(emptyReport) };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -101,20 +159,11 @@ describe('UsersService', () => {
         UsersService,
         {
           provide: getRepositoryToken(User),
-          useValue: {
-            findOne: jest.fn(),
-            findAndCount: jest.fn(),
-            find: jest.fn(),
-            count: jest.fn(),
-            create: jest.fn(),
-            save: jest.fn(),
-            remove: jest.fn(),
-            update: jest.fn(),
-          },
+          useValue: userRepoMock,
         },
         {
           provide: getRepositoryToken(Company),
-          useValue: { findOne: jest.fn(), update: jest.fn() },
+          useValue: companyRepoMock,
         },
         {
           provide: DataSource,
@@ -349,57 +398,55 @@ describe('UsersService', () => {
   });
 
   describe('deactivateUser', () => {
-    it('calls the provider BEFORE the transaction with max(purchasedSeats - 1, 1) on paid plans', async () => {
+    it('decrements the seat (live-derived) and reassigns inside the locked transaction on paid plans', async () => {
       primeRemovalLookups(proCompany);
       const order: string[] = [];
-      billingServiceMock.setSeatQuantity.mockImplementation(async () => { order.push('provider'); });
-      dataSourceMock.transaction.mockImplementation(async (cb: (m: unknown) => Promise<unknown>) => {
-        order.push('transaction');
-        return cb(managerMock);
-      });
+      managerMock.query.mockImplementation(async () => { order.push('lock'); });
+      const compensate = jest.fn().mockResolvedValue(undefined);
+      billingServiceMock.decrementSeat.mockImplementation(async () => { order.push('decrement'); return { compensate }; });
+      managerMock.update.mockImplementation(async () => { order.push('write'); });
 
       await service.deactivateUser('user-uuid-2', 'requester-uuid', companyId, Role.COMPANY_ADMIN, removeDto);
 
-      expect(billingServiceMock.setSeatQuantity).toHaveBeenCalledWith(proCompany, 4);
-      expect(order).toEqual(['provider', 'transaction']);
+      expect(billingServiceMock.decrementSeat).toHaveBeenCalledWith(proCompany);
+      // Advisory lock is taken before the provider decrement, which is before the local write.
+      expect(order).toEqual(['lock', 'decrement', 'write']);
+      expect(managerMock.query).toHaveBeenCalledWith('SELECT pg_advisory_xact_lock(hashtext($1))', [companyId]);
       expect(managerMock.update).toHaveBeenCalledWith(User, 'user-uuid-2', { isActive: false });
+      expect(compensate).not.toHaveBeenCalled();
       expect(reassignmentServiceMock.reassignOwnedRecords).toHaveBeenCalledWith(
         managerMock, companyId, 'user-uuid-2', 'user-uuid-3', 'left',
         { collectIds: false },
       );
     });
 
-    it('never calls the provider with a quantity below 1', async () => {
-      primeRemovalLookups({ ...proCompany, purchasedSeats: 1 } as unknown as Company);
-      await service.deactivateUser('user-uuid-2', 'requester-uuid', companyId, Role.COMPANY_ADMIN, removeDto);
-      expect(billingServiceMock.setSeatQuantity).toHaveBeenCalledWith(expect.anything(), 1);
-    });
-
     it('makes no provider call on FREE companies', async () => {
       primeRemovalLookups(freeCompany);
       await service.deactivateUser('user-uuid-2', 'requester-uuid', companyId, Role.COMPANY_ADMIN, removeDto);
-      expect(billingServiceMock.setSeatQuantity).not.toHaveBeenCalled();
-      expect(dataSourceMock.transaction).toHaveBeenCalled();
+      // decrementSeat returns null for FREE (its default mock); no compensation path.
+      expect(billingServiceMock.decrementSeat).toHaveBeenCalledWith(freeCompany);
+      expect(managerMock.update).toHaveBeenCalledWith(User, 'user-uuid-2', { isActive: false });
     });
 
     it('skips the provider for a paid comp company with no subscription and still deactivates (Option B)', async () => {
       primeRemovalLookups(proCompanyNoSub);
+      // decrementSeat is the single decision point for Option B; it returns null.
+      billingServiceMock.decrementSeat.mockResolvedValue(null);
       await service.deactivateUser('user-uuid-2', 'requester-uuid', companyId, Role.COMPANY_ADMIN, removeDto);
-      expect(billingServiceMock.setSeatQuantity).not.toHaveBeenCalled();
-      expect(dataSourceMock.transaction).toHaveBeenCalled();
       expect(managerMock.update).toHaveBeenCalledWith(User, 'user-uuid-2', { isActive: false });
     });
 
-    it('compensates the seat quantity when the local transaction fails and rethrows the original error', async () => {
+    it('compensates the seat when the local write fails and rethrows the original error', async () => {
       primeRemovalLookups(proCompany);
-      dataSourceMock.transaction.mockRejectedValue(new Error('db down'));
+      const compensate = jest.fn().mockResolvedValue(undefined);
+      billingServiceMock.decrementSeat.mockResolvedValue({ compensate });
+      managerMock.update.mockRejectedValue(new Error('db down'));
 
       await expect(
         service.deactivateUser('user-uuid-2', 'requester-uuid', companyId, Role.COMPANY_ADMIN, removeDto),
       ).rejects.toThrow('db down');
 
-      expect(billingServiceMock.setSeatQuantity).toHaveBeenNthCalledWith(1, proCompany, 4);
-      expect(billingServiceMock.setSeatQuantity).toHaveBeenNthCalledWith(2, proCompany, 5);
+      expect(compensate).toHaveBeenCalledTimes(1);
     });
 
     it('rejects self-removal', async () => {
@@ -417,6 +464,7 @@ describe('UsersService', () => {
     });
 
     it('rejects removing an equal-or-higher role for non super admins', async () => {
+      // Locked target load returns a COMPANY_ADMIN (equal privilege to requester).
       repo.findOne.mockResolvedValueOnce({ ...targetUser, role: Role.COMPANY_ADMIN } as User);
       await expect(
         service.deactivateUser('user-uuid-2', 'requester-uuid', companyId, Role.COMPANY_ADMIN, removeDto),
@@ -425,8 +473,8 @@ describe('UsersService', () => {
 
     it('rejects an inactive reassignment target', async () => {
       repo.findOne
-        .mockResolvedValueOnce(targetUser as User)
-        .mockResolvedValueOnce(null);
+        .mockResolvedValueOnce(targetUser as User)   // locked target load
+        .mockResolvedValueOnce(null);                 // locked reassignee load: inactive/missing
       await expect(
         service.deactivateUser('user-uuid-2', 'requester-uuid', companyId, Role.COMPANY_ADMIN, removeDto),
       ).rejects.toThrow(NotFoundException);
@@ -434,14 +482,17 @@ describe('UsersService', () => {
   });
 
   describe('deleteUserWithReassignment', () => {
-    it('blocks deletion with 409 when non PENDING commissions exist', async () => {
+    it('blocks deletion with 409 (re-checked inside the locked txn) when non PENDING commissions exist', async () => {
       primeRemovalLookups(proCompany);
       commissionRepoMock.count.mockResolvedValue(2);
       await expect(
         service.deleteUserWithReassignment('user-uuid-2', 'requester-uuid', companyId, Role.COMPANY_ADMIN, removeDto),
       ).rejects.toThrow(ConflictException);
-      expect(billingServiceMock.setSeatQuantity).not.toHaveBeenCalled();
-      expect(dataSourceMock.transaction).not.toHaveBeenCalled();
+      // The check now runs inside the transaction, so no seat mutation and no row delete.
+      expect(billingServiceMock.decrementSeat).not.toHaveBeenCalled();
+      expect(managerMock.delete).not.toHaveBeenCalled();
+      // Commission count was performed on the transaction manager's repository.
+      expect(managerMock.getRepository).toHaveBeenCalledWith(Commission);
     });
 
     it('reassigns, nulls email template authorship, deletes notifications, then deletes the row', async () => {
@@ -463,10 +514,10 @@ describe('UsersService', () => {
       expect(managerMock.delete).toHaveBeenCalledWith(User, { id: 'user-uuid-2' });
     });
 
-    it('does not decrement the seat again when deleting an already deactivated user', async () => {
+    it('does not decrement the seat when deleting an already deactivated user', async () => {
       primeRemovalLookups(proCompany, { ...targetUser, isActive: false });
       await service.deleteUserWithReassignment('user-uuid-2', 'requester-uuid', companyId, Role.COMPANY_ADMIN, removeDto);
-      expect(billingServiceMock.setSeatQuantity).not.toHaveBeenCalled();
+      expect(billingServiceMock.decrementSeat).not.toHaveBeenCalled();
     });
   });
 
@@ -474,15 +525,19 @@ describe('UsersService', () => {
     const keeper = { ...mockUser, id: 'keeper-uuid', role: Role.COMPANY_ADMIN, isActive: true };
     const trimDto = { keepUserId: 'keeper-uuid', reason: 'Downgrading to the Free plan' };
 
-    it('sets the seat quantity to 1, then deactivates and reassigns every other active user', async () => {
+    it('sets the seat quantity to 1 (live baseline captured), then deactivates and reassigns every other active user', async () => {
       repo.findOne.mockResolvedValueOnce(keeper as User);
       companyRepo.findOne.mockResolvedValue(proCompany as Company);
       repo.find.mockResolvedValue([
         { ...mockUser, id: 'u-a' }, { ...mockUser, id: 'u-b' },
       ] as User[]);
+      billingServiceMock.getLiveSeatQuantity.mockResolvedValue(5);
+      repo.count.mockResolvedValue(1); // backstop: exactly one active remains
 
       const result = await service.trimToOneActiveUser(companyId, 'keeper-uuid', trimDto);
 
+      expect(managerMock.query).toHaveBeenCalledWith('SELECT pg_advisory_xact_lock(hashtext($1))', [companyId]);
+      expect(billingServiceMock.getLiveSeatQuantity).toHaveBeenCalledWith(proCompany);
       expect(billingServiceMock.setSeatQuantity).toHaveBeenCalledWith(proCompany, 1);
       expect(managerMock.update).toHaveBeenCalledWith(User, 'u-a', { isActive: false });
       expect(managerMock.update).toHaveBeenCalledWith(User, 'u-b', { isActive: false });
@@ -491,12 +546,29 @@ describe('UsersService', () => {
       expect(result.reports).toHaveLength(2);
     });
 
+    it('aborts (409) when more than one active user remains at the end of the trim', async () => {
+      repo.findOne.mockResolvedValueOnce(keeper as User);
+      companyRepo.findOne.mockResolvedValue(proCompany as Company);
+      repo.find.mockResolvedValue([{ ...mockUser, id: 'u-a' }] as User[]);
+      billingServiceMock.getLiveSeatQuantity.mockResolvedValue(5);
+      repo.count.mockResolvedValue(2); // a concurrent add slipped in
+
+      await expect(
+        service.trimToOneActiveUser(companyId, 'keeper-uuid', trimDto),
+      ).rejects.toThrow(ConflictException);
+      // Seat was moved to 1, so the abort must compensate back to the captured baseline.
+      expect(billingServiceMock.setSeatQuantity).toHaveBeenNthCalledWith(1, proCompany, 1);
+      expect(billingServiceMock.setSeatQuantity).toHaveBeenNthCalledWith(2, proCompany, 5);
+    });
+
     it('skips the provider call when the company has no subscription', async () => {
       repo.findOne.mockResolvedValueOnce(keeper as User);
       companyRepo.findOne.mockResolvedValue(proCompanyNoSub as Company);
       repo.find.mockResolvedValue([{ ...mockUser, id: 'u-a' }] as User[]);
+      repo.count.mockResolvedValue(1);
 
       const result = await service.trimToOneActiveUser(companyId, 'keeper-uuid', trimDto);
+      expect(billingServiceMock.getLiveSeatQuantity).not.toHaveBeenCalled();
       expect(billingServiceMock.setSeatQuantity).not.toHaveBeenCalled();
       expect(result.deactivatedCount).toBe(1);
     });
@@ -521,7 +593,8 @@ describe('UsersService', () => {
       repo.findOne.mockResolvedValueOnce(keeper as User);
       companyRepo.findOne.mockResolvedValue(proCompany as Company);
       repo.find.mockResolvedValue([{ ...mockUser, id: 'u-a' }] as User[]);
-      dataSourceMock.transaction.mockRejectedValue(new Error('db down'));
+      billingServiceMock.getLiveSeatQuantity.mockResolvedValue(5);
+      managerMock.update.mockRejectedValue(new Error('db down'));
 
       await expect(
         service.trimToOneActiveUser(companyId, 'keeper-uuid', trimDto),
@@ -532,32 +605,38 @@ describe('UsersService', () => {
   });
 
   describe('reactivateUser', () => {
-    it('increments the seat before activating on paid plans', async () => {
-      repo.findOne.mockResolvedValueOnce({ ...targetUser, isActive: false } as User);
+    const inactiveTarget = { ...targetUser, isActive: false };
+
+    it('increments the seat (live baseline + 1) before activating on paid plans', async () => {
+      repo.findOne
+        .mockResolvedValueOnce(inactiveTarget as User)  // locked target load
+        .mockResolvedValueOnce(targetUser as User);     // refreshed row after activation
       companyRepo.findOne.mockResolvedValue(proCompany as Company);
-      repo.update = jest.fn().mockResolvedValue({});
-      jest.spyOn(service, 'findOne').mockResolvedValue(targetUser as User);
+      billingServiceMock.getLiveSeatQuantity.mockResolvedValue(5);
 
       await service.reactivateUser('user-uuid-2', companyId, Role.COMPANY_ADMIN);
 
+      expect(managerMock.query).toHaveBeenCalledWith('SELECT pg_advisory_xact_lock(hashtext($1))', [companyId]);
+      expect(billingServiceMock.getLiveSeatQuantity).toHaveBeenCalledWith(proCompany);
       expect(billingServiceMock.setSeatQuantity).toHaveBeenCalledWith(proCompany, 6);
-      expect(repo.update).toHaveBeenCalledWith('user-uuid-2', { isActive: true });
+      expect(managerMock.update).toHaveBeenCalledWith(User, 'user-uuid-2', { isActive: true });
     });
 
     it('skips the provider for a paid comp company with no subscription and still reactivates (Option B)', async () => {
-      repo.findOne.mockResolvedValueOnce({ ...targetUser, isActive: false } as User);
+      repo.findOne
+        .mockResolvedValueOnce(inactiveTarget as User)  // locked target load
+        .mockResolvedValueOnce(targetUser as User);     // refreshed row
       companyRepo.findOne.mockResolvedValue(proCompanyNoSub as Company);
-      repo.update = jest.fn().mockResolvedValue({});
-      jest.spyOn(service, 'findOne').mockResolvedValue(targetUser as User);
 
       await service.reactivateUser('user-uuid-2', companyId, Role.COMPANY_ADMIN);
 
+      expect(billingServiceMock.getLiveSeatQuantity).not.toHaveBeenCalled();
       expect(billingServiceMock.setSeatQuantity).not.toHaveBeenCalled();
-      expect(repo.update).toHaveBeenCalledWith('user-uuid-2', { isActive: true });
+      expect(managerMock.update).toHaveBeenCalledWith(User, 'user-uuid-2', { isActive: true });
     });
 
-    it('enforces the FREE active-user cap', async () => {
-      repo.findOne.mockResolvedValueOnce({ ...targetUser, isActive: false } as User);
+    it('enforces the FREE active-user cap (counted inside the lock)', async () => {
+      repo.findOne.mockResolvedValueOnce(inactiveTarget as User); // locked target load
       companyRepo.findOne.mockResolvedValue(freeCompany as Company);
       repo.count.mockResolvedValue(1);
       await expect(
@@ -567,7 +646,7 @@ describe('UsersService', () => {
     });
 
     it('rejects reactivating an already active user', async () => {
-      repo.findOne.mockResolvedValueOnce(targetUser as User);
+      repo.findOne.mockResolvedValueOnce(targetUser as User); // locked load: already active
       await expect(
         service.reactivateUser('user-uuid-2', companyId, Role.COMPANY_ADMIN),
       ).rejects.toThrow(BadRequestException);

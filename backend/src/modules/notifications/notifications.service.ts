@@ -12,6 +12,7 @@ import { User } from '../users/entities/user.entity';
 import { Lead, LeadStatus } from '../leads/entities/lead.entity';
 import { Role } from '../../shared/enums/roles.enum';
 import { paginationOptions } from '../../shared/utils/pagination.util';
+import { isUniqueViolation } from '../../shared/utils/name-normalization.util';
 import { NotificationsGateway } from './notifications.gateway';
 
 export interface NotificationResult {
@@ -503,7 +504,23 @@ export class NotificationsService {
           continue;
         }
 
-        await this.create(item.companyId, buildDto(item, admin));
+        // The in-memory key set above deduplicates within a single process. The
+        // UQ_notifications_reminder_dedup_daily partial unique index is the
+        // cross-replica backstop: if another instance's cron inserted the same
+        // reminder concurrently, our INSERT loses with a 23505 which we swallow
+        // and treat as "already sent" (single-instance behaviour is unchanged
+        // because the key set short-circuits before we ever reach the INSERT).
+        try {
+          await this.create(item.companyId, buildDto(item, admin));
+        } catch (err) {
+          if (isUniqueViolation(err)) {
+            this.logger.debug(
+              `Reminder ${type} for entity ${item.id}/admin ${admin.id} already created by another instance; skipping.`,
+            );
+          } else {
+            throw err;
+          }
+        }
         existingReminderKeys.add(reminderKey);
       }
     }

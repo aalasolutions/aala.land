@@ -59,6 +59,7 @@ describe('NotificationsService', () => {
             save: jest.fn(),
             findOne: jest.fn(),
             findAndCount: jest.fn(),
+            find: jest.fn().mockResolvedValue([]),
             count: jest.fn(),
             update: jest.fn(),
           },
@@ -66,6 +67,7 @@ describe('NotificationsService', () => {
         {
           provide: getRepositoryToken(Cheque),
           useValue: {
+            find: jest.fn().mockResolvedValue([]),
             createQueryBuilder: jest.fn().mockReturnValue({ ...mockQueryBuilder }),
           },
         },
@@ -84,13 +86,13 @@ describe('NotificationsService', () => {
         {
           provide: getRepositoryToken(User),
           useValue: {
-            find: jest.fn(),
+            find: jest.fn().mockResolvedValue([]),
           },
         },
         {
           provide: getRepositoryToken(Lead),
           useValue: {
-            find: jest.fn(),
+            find: jest.fn().mockResolvedValue([]),
           },
         },
         {
@@ -558,10 +560,15 @@ describe('NotificationsService', () => {
 
   describe('runDailyReminders', () => {
     it('should have a cron expression set to EVERY_DAY_AT_9AM', () => {
-      const cronMeta = Reflect.getMetadata('schedule:schedules', service.runDailyReminders);
+      // @nestjs/schedule's @Cron stores { cronTime } under SCHEDULE_CRON_OPTIONS
+      // on the prototype method.
+      const cronMeta = Reflect.getMetadata(
+        'SCHEDULE_CRON_OPTIONS',
+        Object.getPrototypeOf(service).runDailyReminders,
+      );
 
       expect(cronMeta).toBeDefined();
-      expect(cronMeta).toBe(CronExpression.EVERY_DAY_AT_9AM);
+      expect(cronMeta.cronTime).toBe(CronExpression.EVERY_DAY_AT_9AM);
     });
 
     it('runs all reminder methods when triggered (no crash)', async () => {
@@ -581,10 +588,13 @@ describe('NotificationsService', () => {
 
   describe('notifyUpcomingCheques', () => {
     const today = new Date();
+    // The service queries startOfDay(now + 3 days), so the expected target date
+    // is midnight-normalized to match.
     const threeDaysFromNow = new Date(today);
     threeDaysFromNow.setDate(threeDaysFromNow.getDate() + 3);
+    threeDaysFromNow.setHours(0, 0, 0, 0);
 
-    const mockAdmin: User = {
+    const mockAdmin = {
       id: 'admin-uuid-1',
       companyId,
       name: 'Admin One',
@@ -608,7 +618,10 @@ describe('NotificationsService', () => {
     beforeEach(() => {
       repo.save.mockReset();
       repo.create.mockReset();
-      (module.get(getRepositoryToken(Lead)).find as jest.Mock).mockReset();
+      (repo.find as jest.Mock).mockResolvedValue([]);
+      // Reset call history but keep a safe empty default: runDailyReminders runs
+      // notifyUnassignedLeads too, which would otherwise .map over undefined.
+      (module.get(getRepositoryToken(Lead)).find as jest.Mock).mockReset().mockResolvedValue([]);
     });
 
     it('creates notifications for PENDING cheques due in 3 days', async () => {
@@ -645,26 +658,43 @@ describe('NotificationsService', () => {
       });
     });
 
+    it('swallows a unique-violation from create (cross-replica dedup backstop) without crashing the cron', async () => {
+      const { QueryFailedError } = require('typeorm');
+      const chequeRepo = module.get(getRepositoryToken(Cheque));
+      (chequeRepo.find as jest.Mock).mockResolvedValue([mockUpcomingCheque as Cheque]);
+      (module.get(getRepositoryToken(User)).find as jest.Mock).mockResolvedValue([mockAdmin]);
+      (repo.find as jest.Mock).mockResolvedValue([]);
+
+      // Another replica inserted the same reminder first; our INSERT hits the
+      // UQ_notifications_reminder_dedup_daily partial unique index -> 23505.
+      const uniqueViolation = new QueryFailedError('insert', [], {
+        code: '23505',
+      } as any);
+      repo.create.mockReturnValue({ id: 'notif-1' } as Notification);
+      repo.save.mockRejectedValue(uniqueViolation);
+
+      // Must not throw: the losing replica silently skips.
+      await expect(service.runDailyReminders()).resolves.not.toThrow();
+      expect(repo.save).toHaveBeenCalled();
+    });
+
+    it('re-throws non-unique-violation errors from create', async () => {
+      const chequeRepo = module.get(getRepositoryToken(Cheque));
+      (chequeRepo.find as jest.Mock).mockResolvedValue([mockUpcomingCheque as Cheque]);
+      (module.get(getRepositoryToken(User)).find as jest.Mock).mockResolvedValue([mockAdmin]);
+      (repo.find as jest.Mock).mockResolvedValue([]);
+
+      repo.create.mockReturnValue({ id: 'notif-1' } as Notification);
+      repo.save.mockRejectedValue(new Error('connection reset'));
+
+      await expect(service.runDailyReminders()).rejects.toThrow('connection reset');
+    });
+
     it('deduplicates notifications per admin per entity per day', async () => {
       const chequeRepo = module.get(getRepositoryToken(Cheque));
       (chequeRepo.find as jest.Mock).mockResolvedValue([mockUpcomingCheque as Cheque]);
+      (repo.find as jest.Mock).mockResolvedValue([]);
 
-      // Simulate one admin already having a reminder for this cheque today
-      const existingExisting = {
-        id: 'existing-notif',
-        companyId,
-        userId: mockAdmin.id,
-        type: NotificationType.CHEQUE_DUE,
-        entityId: 'upcoming-uuid-1',
-        createdAt: new Date(),
-      } as Notification;
-      repo.find.mockReturnValue((function () {
-        class SetLikeArray extends Array {
-          has(key: string) { return false; }
-        }
-        return new SetLikeArray([existingExisting]);
-      })());
-      (repo.find as any).mockReturnValue({ has: () => false });
       const findAdminsSpy = jest.spyOn(service as any, 'findAdminsByCompanyIds').mockResolvedValue(
         new Map([[companyId, [mockAdmin]]]),
       );
@@ -674,13 +704,15 @@ describe('NotificationsService', () => {
 
       await service.runDailyReminders();
 
-      // After verifying the dedup uses the key set correctly
+      // The reminder-key set drives dedup; verify the lookup ran.
       expect(findExistingSpy).toHaveBeenCalled();
+      findAdminsSpy.mockRestore();
+      findExistingSpy.mockRestore();
     });
   });
 
   describe('notifyDelayedCheques', () => {
-    const mockAdmin: User = {
+    const mockAdmin = {
       id: 'admin-uuid-1',
       companyId,
       name: 'Admin One',
@@ -758,7 +790,7 @@ describe('NotificationsService', () => {
   });
 
   describe('notifyOverdueCheques', () => {
-    const mockAdmin: User = {
+    const mockAdmin = {
       id: 'admin-uuid-1',
       companyId,
       name: 'Admin One',
@@ -812,14 +844,20 @@ describe('NotificationsService', () => {
 
       await service.runDailyReminders();
 
-      const findCall = (chequeRepo.find as jest.Mock).mock.calls[0][0];
-      const dueDate = findCall.where.dueDate;
+      // Find the overdue-cheque query (status PENDING + a LessThan due-date
+      // operator). Multiple cheque.find calls run in the cron; pick the one
+      // whose dueDate is a FindOperator (not the exact-date upcoming query).
+      const overdueCall = (chequeRepo.find as jest.Mock).mock.calls
+        .map((call) => call[0])
+        .find(
+          (arg) =>
+            arg?.where?.status === ChequeStatus.PENDING &&
+            arg?.where?.dueDate?.type === 'lessThan',
+        );
 
-      // The where clause should use LessThan, meaning a cheque due today would NOT match
-      // We verify the LessThan constraint is used, so today itself is excluded
-      const todayMidnight = new Date();
-      todayMidnight.setHours(0, 0, 0, 0);
-      expect(dueDate.lessThan).toBeDefined();
+      // The where clause must use LessThan, so a cheque due today is excluded.
+      expect(overdueCall).toBeDefined();
+      expect(overdueCall.where.dueDate.type).toBe('lessThan');
     });
 
     it('does NOT include non-PENDING cheques', async () => {
@@ -845,7 +883,7 @@ describe('NotificationsService', () => {
   });
 
   describe('notifyUnassignedLeads', () => {
-    const mockAdmin: User = {
+    const mockAdmin = {
       id: 'admin-uuid-1',
       companyId,
       name: 'Admin One',
@@ -1010,7 +1048,7 @@ describe('NotificationsService', () => {
 
     it('creates notifications for multiple admins but each only once per entity', async () => {
       const leadRepo = module.get(getRepositoryToken(Lead));
-      const admin2: User = {
+      const admin2 = {
         id: 'admin-uuid-2',
         companyId,
         name: 'Admin Two',

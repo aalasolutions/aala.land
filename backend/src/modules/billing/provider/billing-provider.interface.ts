@@ -7,6 +7,12 @@ export interface EnsureCustomerInput {
     companyId: string;
     companyName: string;
     email?: string | null;
+    /**
+     * Provider idempotency key so a retried/racing create resolves to the SAME
+     * customer instead of a duplicate (race audit 2026-07-07, P5). Derived from
+     * the companyId by the caller.
+     */
+    idempotencyKey?: string;
 }
 
 export interface ProviderWebhookEvent {
@@ -87,6 +93,14 @@ export interface BillingProvider {
      * SubscriptionActivated webhook event after the user completes checkout.
      */
     createSubscription(input: CreateSubscriptionInput): Promise<CreateSubscriptionResult>;
+
+    /**
+     * Read the LIVE seat quantity from the subscription's SEAT line item. Every
+     * seat mutation derives its target from this authoritative value ± the exact
+     * delta, never from the webhook-synced (and possibly stale) purchasedSeats
+     * column (race audit 2026-07-07, P1). Throws if the SEAT item is not found.
+     */
+    getSeatQuantity(ref: SubscriptionRef): Promise<number>;
 
     /**
      * Update the seat quantity on an existing subscription's SEAT line item.

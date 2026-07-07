@@ -23,16 +23,26 @@ describe('BillingWebhookService', () => {
     let eventRepo: jest.Mocked<Repository<StripeEvent>>;
     let companyRepo: jest.Mocked<Repository<Company>>;
     let provider: jest.Mocked<Pick<BillingProvider, 'parseWebhook'>>;
+    // Captures the last conditional-update QueryBuilder so seat-sync assertions
+    // can read the .set() patch and .execute() affected count.
+    let seatUpdateQB: {
+        update: jest.Mock;
+        set: jest.Mock;
+        where: jest.Mock;
+        andWhere: jest.Mock;
+        execute: jest.Mock;
+    };
 
     const rawBody = Buffer.from('{"id":"evt_1"}');
     const signature = 't=1,v1=abc';
     const companyId = 'company-uuid-1';
 
+    const occurredAt = new Date('2026-07-02T00:00:00Z');
     const baseEvent = {
         companyId,
         customerId: 'cus_1',
         subscriptionId: 'sub_1' as string | null,
-        occurredAt: new Date('2026-07-02T00:00:00Z'),
+        occurredAt,
     };
 
     function parsedWith(events: NormalizedBillingEvent[]): ProviderWebhookEvent {
@@ -45,6 +55,13 @@ describe('BillingWebhookService', () => {
     }
 
     beforeEach(async () => {
+        seatUpdateQB = {
+            update: jest.fn().mockReturnThis(),
+            set: jest.fn().mockReturnThis(),
+            where: jest.fn().mockReturnThis(),
+            andWhere: jest.fn().mockReturnThis(),
+            execute: jest.fn().mockResolvedValue({ affected: 1 }),
+        };
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 BillingWebhookService,
@@ -61,6 +78,8 @@ describe('BillingWebhookService', () => {
                     provide: getRepositoryToken(Company),
                     useValue: {
                         update: jest.fn().mockResolvedValue({ affected: 1 }),
+                        createQueryBuilder: jest.fn(() => seatUpdateQB),
+                        exists: jest.fn().mockResolvedValue(true),
                     },
                 },
                 {
@@ -79,6 +98,14 @@ describe('BillingWebhookService', () => {
         // The bare testing module does not run lifecycle hooks; register handlers.
         service.onModuleInit();
     });
+
+    /** The patch passed to the conditional seat-sync update (excludes billingLastEventAt). */
+    function seatSyncPatch(): Record<string, unknown> {
+        expect(seatUpdateQB.set).toHaveBeenCalled();
+        const { billingLastEventAt, ...patch } = seatUpdateQB.set.mock.calls[0][0];
+        expect(billingLastEventAt).toEqual(occurredAt);
+        return patch;
+    }
 
     describe('input guards', () => {
         it('rejects a missing raw body with 400 and never calls the provider', async () => {
@@ -137,7 +164,7 @@ describe('BillingWebhookService', () => {
                 received: true,
             });
             expect(dispatchSpy).toHaveBeenCalled();
-            expect(companyRepo.update).toHaveBeenCalledWith(companyId, { purchasedSeats: 3 });
+            expect(seatSyncPatch()).toEqual({ purchasedSeats: 3 });
             expect(eventRepo.update).toHaveBeenCalledWith(
                 { providerEventId: 'evt_1' },
                 { processedAt: expect.any(Date) },
@@ -176,12 +203,18 @@ describe('BillingWebhookService', () => {
     });
 
     describe('company sync handlers', () => {
-        it('SeatQuantityChanged syncs purchasedSeats from the absolute quantity', async () => {
+        it('SeatQuantityChanged syncs purchasedSeats from the absolute quantity via the recency-guarded update', async () => {
             provider.parseWebhook.mockResolvedValue(
                 parsedWith([{ name: 'SeatQuantityChanged', ...baseEvent, quantity: 7 }]),
             );
             await service.handleWebhook(rawBody, signature);
-            expect(companyRepo.update).toHaveBeenCalledWith(companyId, { purchasedSeats: 7 });
+            expect(seatSyncPatch()).toEqual({ purchasedSeats: 7 });
+            // Recency guard: filtered by id AND the last-event-at comparison.
+            expect(seatUpdateQB.where).toHaveBeenCalledWith('id = :companyId', { companyId });
+            expect(seatUpdateQB.andWhere).toHaveBeenCalledWith(
+                '(billing_last_event_at IS NULL OR billing_last_event_at <= :occurredAt)',
+                { occurredAt },
+            );
         });
 
         it('SubscriptionActivated writes subscription id, status, tier, seats, and cap columns', async () => {
@@ -198,7 +231,7 @@ describe('BillingWebhookService', () => {
                 ]),
             );
             await service.handleWebhook(rawBody, signature);
-            expect(companyRepo.update).toHaveBeenCalledWith(companyId, {
+            expect(seatSyncPatch()).toEqual({
                 billingSubscriptionId: 'sub_1',
                 billingStatus: 'active',
                 subscriptionTier: SubscriptionTier.PRO,
@@ -223,10 +256,25 @@ describe('BillingWebhookService', () => {
                 ]),
             );
             await service.handleWebhook(rawBody, signature);
-            expect(companyRepo.update).toHaveBeenCalledWith(companyId, {
+            expect(seatSyncPatch()).toEqual({
                 purchasedSeats: 5,
                 billingStatus: 'active',
             });
+        });
+
+        it('skips a stale/out-of-order seat event (0 rows affected) but still acks and marks it processed', async () => {
+            seatUpdateQB.execute.mockResolvedValue({ affected: 0 });
+            companyRepo.exists.mockResolvedValue(true); // company exists -> stale, not missing
+            provider.parseWebhook.mockResolvedValue(
+                parsedWith([{ name: 'SeatQuantityChanged', ...baseEvent, quantity: 6 }]),
+            );
+            await expect(service.handleWebhook(rawBody, signature)).resolves.toEqual({
+                received: true,
+            });
+            expect(eventRepo.update).toHaveBeenCalledWith(
+                { providerEventId: 'evt_1' },
+                { processedAt: expect.any(Date) },
+            );
         });
 
         it('PlanChanged writes the tier and cap columns only', async () => {
@@ -294,7 +342,8 @@ describe('BillingWebhookService', () => {
         });
 
         it('warns and still marks the event processed when the company row is missing', async () => {
-            companyRepo.update.mockResolvedValue({ affected: 0 } as never);
+            seatUpdateQB.execute.mockResolvedValue({ affected: 0 });
+            companyRepo.exists.mockResolvedValue(false); // truly missing, not just stale
             provider.parseWebhook.mockResolvedValue(
                 parsedWith([{ name: 'SeatQuantityChanged', ...baseEvent, quantity: 2 }]),
             );
@@ -313,7 +362,7 @@ describe('BillingWebhookService', () => {
             provider.parseWebhook.mockResolvedValue(
                 parsedWith([{ name: 'SeatQuantityChanged', ...baseEvent, quantity: 2 }]),
             );
-            companyRepo.update.mockRejectedValue(new Error('db down'));
+            seatUpdateQB.execute.mockRejectedValue(new Error('db down'));
             await expect(service.handleWebhook(rawBody, signature)).rejects.toBeInstanceOf(
                 InternalServerErrorException,
             );
@@ -346,7 +395,7 @@ describe('BillingWebhookService', () => {
                 ]),
             );
             await service.handleWebhook(rawBody, signature);
-            expect(companyRepo.update).toHaveBeenCalledWith(companyId, {
+            expect(seatSyncPatch()).toEqual({
                 billingSubscriptionId: 'sub_1',
                 billingStatus: 'active',
                 subscriptionTier: SubscriptionTier.ENTERPRISE,

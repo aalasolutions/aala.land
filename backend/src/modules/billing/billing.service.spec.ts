@@ -2,7 +2,7 @@ import { BadRequestException, ConflictException, HttpException, HttpStatus, NotF
 import { ConfigService } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import { BillingService } from './billing.service';
 import { BillingPrice } from './entities/billing-price.entity';
 import {
@@ -32,10 +32,18 @@ const mockProviderMethods = {
     ensureCustomer: jest.fn(),
     ensurePrice: jest.fn(),
     createSubscription: jest.fn(),
+    getSeatQuantity: jest.fn(),
     updateSeatQuantity: jest.fn(),
     changePlan: jest.fn(),
     cancel: jest.fn(),
     parseWebhook: jest.fn(),
+};
+
+// EntityManager surface the advisory-lock helper drives inside a transaction.
+let managerMock: {
+    query: jest.Mock;
+    findOne: jest.Mock;
+    update: jest.Mock;
 };
 
 describe('BillingService', () => {
@@ -47,6 +55,14 @@ describe('BillingService', () => {
 
     beforeEach(async () => {
         jest.clearAllMocks();
+        managerMock = {
+            query: jest.fn().mockResolvedValue(undefined),
+            findOne: jest.fn(),
+            update: jest.fn().mockResolvedValue({ affected: 1 }),
+        };
+        const dataSourceMock = {
+            transaction: jest.fn(async (cb: (m: unknown) => Promise<unknown>) => cb(managerMock)),
+        };
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 BillingService,
@@ -83,6 +99,10 @@ describe('BillingService', () => {
                         ),
                     },
                 },
+                {
+                    provide: DataSource,
+                    useValue: dataSourceMock,
+                },
             ],
         }).compile();
 
@@ -98,26 +118,49 @@ describe('BillingService', () => {
     // -------------------------------------------------------------------------
 
     describe('ensureCompanyCustomer', () => {
-        it('returns existing customerId without calling provider when billingCustomerId is set', async () => {
+        it('returns existing customerId without locking or calling provider when set on the snapshot', async () => {
             const company = makeCompany({ billingCustomerId: 'cus_existing123' });
             const result = await service.ensureCompanyCustomer(company);
 
             expect(provider.ensureCustomer).not.toHaveBeenCalled();
+            // Fast path: no lock transaction opened.
+            expect(managerMock.query).not.toHaveBeenCalled();
             expect(result).toBe('cus_existing123');
         });
 
-        it('calls provider and updates company when billingCustomerId is null', async () => {
+        it('re-reads under the lock and returns the customerId set by a concurrent writer without creating a duplicate', async () => {
             const company = makeCompany();
-            (provider.ensureCustomer as jest.Mock).mockResolvedValue('cus_new456');
-            (companyRepo.update as jest.Mock).mockResolvedValue({ affected: 1 });
+            // Snapshot had null, but a racing writer already set it: the locked re-read finds it.
+            managerMock.findOne.mockResolvedValue(makeCompany({ billingCustomerId: 'cus_race' }));
 
             const result = await service.ensureCompanyCustomer(company);
 
+            expect(managerMock.query).toHaveBeenCalledWith(
+                'SELECT pg_advisory_xact_lock(hashtext($1))',
+                [companyId],
+            );
+            expect(provider.ensureCustomer).not.toHaveBeenCalled();
+            expect(managerMock.update).not.toHaveBeenCalled();
+            expect(result).toBe('cus_race');
+        });
+
+        it('locks, creates with an idempotency key, and updates when still null under the lock', async () => {
+            const company = makeCompany();
+            managerMock.findOne.mockResolvedValue(makeCompany());
+            (provider.ensureCustomer as jest.Mock).mockResolvedValue('cus_new456');
+
+            const result = await service.ensureCompanyCustomer(company);
+
+            expect(managerMock.query).toHaveBeenCalledWith(
+                'SELECT pg_advisory_xact_lock(hashtext($1))',
+                [companyId],
+            );
             expect(provider.ensureCustomer).toHaveBeenCalledWith({
                 companyId,
                 companyName: 'Test Company',
+                idempotencyKey: `ensure-customer:${companyId}`,
             });
-            expect(companyRepo.update).toHaveBeenCalledWith(companyId, {
+            expect(managerMock.update).toHaveBeenCalledWith(Company, companyId, {
                 billingCustomerId: 'cus_new456',
                 billingProvider: 'stripe',
             });
@@ -125,8 +168,9 @@ describe('BillingService', () => {
         });
 
         it('propagates provider errors upward', async () => {
-            (provider.ensureCustomer as jest.Mock).mockRejectedValue(new Error('Stripe API down'));
             const company = makeCompany();
+            managerMock.findOne.mockResolvedValue(makeCompany());
+            (provider.ensureCustomer as jest.Mock).mockRejectedValue(new Error('Stripe API down'));
             await expect(service.ensureCompanyCustomer(company)).rejects.toThrow('Stripe API down');
         });
     });
@@ -419,14 +463,21 @@ describe('BillingService', () => {
     describe('reserveSeat', () => {
         const baseCompany = makeCompany({
             subscriptionTier: SubscriptionTier.PRO,
-            purchasedSeats: 3,
+            // purchasedSeats is deliberately STALE (5) vs the live provider quantity
+            // (7) to prove the target derives from the live value, not this column.
+            purchasedSeats: 5,
             billingSubscriptionId: 'sub_test_123',
             billingCustomerId: 'cus_test_1',
+        });
+
+        beforeEach(() => {
+            (provider.getSeatQuantity as jest.Mock).mockResolvedValue(7);
         });
 
         it('returns null and never calls the provider for FREE companies', async () => {
             const result = await service.reserveSeat(makeCompany());
             expect(result).toBeNull();
+            expect(provider.getSeatQuantity).not.toHaveBeenCalled();
             expect(provider.updateSeatQuantity).not.toHaveBeenCalled();
         });
 
@@ -438,17 +489,21 @@ describe('BillingService', () => {
             });
             const result = await service.reserveSeat(unsubscribed);
             expect(result).toBeNull();
+            expect(provider.getSeatQuantity).not.toHaveBeenCalled();
             expect(provider.updateSeatQuantity).not.toHaveBeenCalled();
         });
 
-        it('calls updateSeatQuantity with the SubscriptionRef and purchasedSeats + 1', async () => {
+        it('sets updateSeatQuantity to the LIVE quantity + 1, ignoring the stale purchasedSeats column', async () => {
             (provider.updateSeatQuantity as jest.Mock).mockResolvedValue(undefined);
             const reservation = await service.reserveSeat(baseCompany);
+            expect(provider.getSeatQuantity).toHaveBeenCalledWith(
+                { subscriptionId: 'sub_test_123', customerId: 'cus_test_1' },
+            );
             expect(provider.updateSeatQuantity).toHaveBeenCalledWith(
                 { subscriptionId: 'sub_test_123', customerId: 'cus_test_1' },
-                4,
+                8,
             );
-            expect(reservation).toMatchObject({ subscriptionId: 'sub_test_123', targetQuantity: 4 });
+            expect(reservation).toMatchObject({ subscriptionId: 'sub_test_123', targetQuantity: 8 });
         });
 
         it('maps a provider rejection to HTTP 402', async () => {
@@ -459,14 +514,22 @@ describe('BillingService', () => {
             expect(err.getResponse()).toMatchObject({ message: expect.stringContaining('No user was created') });
         });
 
-        it('release() issues the compensating call back to targetQuantity - 1', async () => {
+        it('maps a failed live-quantity read to HTTP 402 and never increments', async () => {
+            (provider.getSeatQuantity as jest.Mock).mockRejectedValue(new Error('stripe unavailable'));
+            const err = await service.reserveSeat(baseCompany).catch((e) => e);
+            expect(err).toBeInstanceOf(HttpException);
+            expect(err.getStatus()).toBe(HttpStatus.PAYMENT_REQUIRED);
+            expect(provider.updateSeatQuantity).not.toHaveBeenCalled();
+        });
+
+        it('release() restores the captured pre-increment live quantity', async () => {
             (provider.updateSeatQuantity as jest.Mock).mockResolvedValue(undefined);
             const reservation = await service.reserveSeat(baseCompany);
             (provider.updateSeatQuantity as jest.Mock).mockClear();
             await reservation!.release();
             expect(provider.updateSeatQuantity).toHaveBeenCalledWith(
                 { subscriptionId: 'sub_test_123', customerId: 'cus_test_1' },
-                3,
+                7,
             );
         });
 
@@ -481,6 +544,69 @@ describe('BillingService', () => {
             (provider.updateSeatQuantity as jest.Mock).mockResolvedValue(undefined);
             await service.reserveSeat(baseCompany);
             expect(companyRepo.update).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('decrementSeat', () => {
+        const baseCompany = makeCompany({
+            subscriptionTier: SubscriptionTier.PRO,
+            purchasedSeats: 5, // stale on purpose
+            billingSubscriptionId: 'sub_test_123',
+            billingCustomerId: 'cus_test_1',
+        });
+
+        it('returns null for FREE and for a paid comp with no subscription (Option B)', async () => {
+            expect(await service.decrementSeat(makeCompany())).toBeNull();
+            expect(
+                await service.decrementSeat(
+                    makeCompany({ subscriptionTier: SubscriptionTier.PRO, billingSubscriptionId: null }),
+                ),
+            ).toBeNull();
+            expect(provider.getSeatQuantity).not.toHaveBeenCalled();
+        });
+
+        it('sets updateSeatQuantity to max(live - 1, 1) from the live quantity', async () => {
+            (provider.getSeatQuantity as jest.Mock).mockResolvedValue(4);
+            (provider.updateSeatQuantity as jest.Mock).mockResolvedValue(undefined);
+            const handle = await service.decrementSeat(baseCompany);
+            expect(provider.updateSeatQuantity).toHaveBeenCalledWith(
+                { subscriptionId: 'sub_test_123', customerId: 'cus_test_1' },
+                3,
+            );
+            expect(handle).not.toBeNull();
+        });
+
+        it('never sets the quantity below 1', async () => {
+            (provider.getSeatQuantity as jest.Mock).mockResolvedValue(1);
+            (provider.updateSeatQuantity as jest.Mock).mockResolvedValue(undefined);
+            await service.decrementSeat(baseCompany);
+            expect(provider.updateSeatQuantity).toHaveBeenCalledWith(expect.anything(), 1);
+        });
+
+        it('compensate() restores the captured live quantity and swallows errors', async () => {
+            (provider.getSeatQuantity as jest.Mock).mockResolvedValue(4);
+            (provider.updateSeatQuantity as jest.Mock).mockResolvedValue(undefined);
+            const handle = await service.decrementSeat(baseCompany);
+            (provider.updateSeatQuantity as jest.Mock).mockClear();
+            (provider.updateSeatQuantity as jest.Mock).mockRejectedValueOnce(new Error('down'));
+            await expect(handle!.compensate()).resolves.toBeUndefined();
+            expect(provider.updateSeatQuantity).toHaveBeenCalledWith(expect.anything(), 4);
+        });
+    });
+
+    describe('getLiveSeatQuantity', () => {
+        it('returns the provider live quantity', async () => {
+            (provider.getSeatQuantity as jest.Mock).mockResolvedValue(6);
+            const qty = await service.getLiveSeatQuantity(
+                makeCompany({ billingSubscriptionId: 'sub_1', billingCustomerId: 'cus_1' }),
+            );
+            expect(qty).toBe(6);
+        });
+
+        it('throws HTTP 402 when the company has no live subscription', async () => {
+            const err = await service.getLiveSeatQuantity(makeCompany()).catch((e) => e);
+            expect(err).toBeInstanceOf(HttpException);
+            expect(err.getStatus()).toBe(HttpStatus.PAYMENT_REQUIRED);
         });
     });
 });

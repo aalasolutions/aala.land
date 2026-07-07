@@ -119,7 +119,10 @@ export class UsersController {
     @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN)
     @ApiOperation({ summary: 'Active company members for the reassignment/trim pickers (ADMIN+)' })
     @ApiQuery({ name: 'companyId', required: false, type: String, description: 'SUPER_ADMIN only; scopes to a specific company.' })
-    findActiveMembers(@Request() req: AuthenticatedRequest, @Query('companyId') companyId?: string) {
+    findActiveMembers(
+        @Request() req: AuthenticatedRequest,
+        @Query('companyId', new ParseUUIDPipe({ optional: true })) companyId?: string,
+    ) {
         // COMPANY_ADMIN/ADMIN are always scoped to their own company; only SUPER_ADMIN
         // may target another company via the query param. A non-super-admin without a
         // company context must be rejected, never fall through to an all-company list.

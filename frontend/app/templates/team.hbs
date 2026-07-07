@@ -60,23 +60,26 @@
                     <button type="button" class="btn btn-secondary btn-xs" data-test-edit-user {{on "click" (fn this.openEdit user)}}>
                       <Ph @icon="pencil-simple" /> Edit
                     </button>
-                    {{#if user.isActive}}
-                      <button type="button" class="btn btn-danger btn-xs" data-test-remove-user {{on "click" (fn this.openRemove user)}}>
-                        <Ph @icon="user-minus" /> Remove
-                      </button>
-                    {{else}}
-                      <button
-                        type="button"
-                        class="btn btn-secondary btn-xs"
-                        disabled={{this.isReactivating}}
-                        data-test-reactivate-user
-                        {{on "click" (fn this.reactivateUser user)}}
-                      >
-                        <Ph @icon="user-plus" /> {{if (eq this.reactivatingUserId user.id) "Reactivating..." "Reactivate"}}
-                      </button>
-                      <button type="button" class="btn btn-danger btn-xs" data-test-delete-user {{on "click" (fn this.openRemove user)}}>
-                        <Ph @icon="trash" /> Delete
-                      </button>
+                    {{! Removal flows require a company context; the backend rejects a user with no companyId (e.g. SUPER_ADMIN rows). }}
+                    {{#if user.companyId}}
+                      {{#if user.isActive}}
+                        <button type="button" class="btn btn-danger btn-xs" data-test-remove-user {{on "click" (fn this.openRemove user)}}>
+                          <Ph @icon="user-minus" /> Remove
+                        </button>
+                      {{else}}
+                        <button
+                          type="button"
+                          class="btn btn-secondary btn-xs"
+                          disabled={{this.isReactivating}}
+                          data-test-reactivate-user
+                          {{on "click" (fn this.reactivateUser user)}}
+                        >
+                          <Ph @icon="user-plus" /> {{if (eq this.reactivatingUserId user.id) "Reactivating..." "Reactivate"}}
+                        </button>
+                        <button type="button" class="btn btn-danger btn-xs" data-test-delete-user {{on "click" (fn this.openRemove user)}}>
+                          <Ph @icon="trash" /> Delete
+                        </button>
+                      {{/if}}
                     {{/if}}
                     {{#if this.isSuperAdmin}}
                       {{#unless (eq user.role "super_admin")}}

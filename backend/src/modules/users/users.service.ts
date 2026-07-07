@@ -5,13 +5,12 @@ import {
     ConflictException,
     ForbiddenException,
     BadRequestException,
-    HttpException,
-    HttpStatus,
     Inject,
     Optional,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, In, Not, DataSource } from 'typeorm';
+import { Repository, In, Not, DataSource, EntityManager } from 'typeorm';
+import { withCompanyLock } from '@shared/utils/company-lock.util';
 import { User, AuthProvider } from './entities/user.entity';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -66,26 +65,33 @@ export class UsersService {
             }
         }
 
-        const company = await this.enforceUserLimit(companyId);
-
-        const existing = await this.userRepository.findOne({ where: { email: dto.email } });
-        if (existing) {
-            throw new ConflictException('Email already exists');
-        }
-
         const hashedPassword = await bcrypt.hash(dto.password, 12);
 
-        // Provider-first seat gate (contract section 9). All cheap local validations above run
-        // BEFORE the provider call so an obvious rejection never churns the subscription.
-        const seat: SeatReservation | null = company ? await this.billingService.reserveSeat(company) : null;
+        // Serialize the whole cap-check -> seat-reserve -> save critical section per
+        // company (race audit 2026-07-07, P1/P2): otherwise two concurrent adds both
+        // pass the FREE cap or both derive the same seat quantity. The email UNIQUE
+        // index is the DB backstop for the email dup; the advisory lock is the
+        // backstop for the active-user count and the seat counter.
+        return withCompanyLock(this.dataSource, companyId, async (manager) => {
+            const company = await this.enforceUserLimit(companyId, manager);
 
-        try {
-            const user = this.userRepository.create({ ...dto, password: hashedPassword, companyId });
-            return await this.userRepository.save(user);
-        } catch (err) {
-            if (seat) await seat.release();
-            throw err;
-        }
+            const existing = await manager.findOne(User, { where: { email: dto.email } });
+            if (existing) {
+                throw new ConflictException('Email already exists');
+            }
+
+            // Provider-first seat gate (contract section 9), now inside the held lock so
+            // the live seat quantity read + increment cannot interleave with another add.
+            const seat: SeatReservation | null = company ? await this.billingService.reserveSeat(company) : null;
+
+            try {
+                const user = manager.create(User, { ...dto, password: hashedPassword, companyId });
+                return await manager.save(user);
+            } catch (err) {
+                if (seat) await seat.release();
+                throw err;
+            }
+        });
     }
 
     async findAll(companyId: string | null | undefined, page = 1, limit = 20): Promise<{ data: User[]; total: number; page: number; limit: number }> {
@@ -206,6 +212,17 @@ export class UsersService {
 
     // ------------------------------------------------------------------
     // Removal lifecycle helpers (billing unit 5)
+    //
+    // CONCURRENCY (race audit 2026-07-07, P1/P3): every removal below runs its
+    // validation, seat mutation, and local writes inside ONE withCompanyLock
+    // transaction. The target and reassignee are re-loaded FOR UPDATE inside that
+    // transaction, and the delete's non-PENDING commission count is re-checked
+    // there too, so a commission that flips PENDING->APPROVED mid-flight, or a
+    // concurrent deactivate of the reassignee, cannot slip past a stale pre-check.
+    // The seat provider call is issued inside the held lock and derives its target
+    // from the LIVE provider quantity (billing.decrementSeat / setSeatQuantity),
+    // never from the lagged purchasedSeats. purchasedSeats itself is written only
+    // by the unit 2 webhook.
     // ------------------------------------------------------------------
 
     private isPaidTier(company: Company): boolean {
@@ -213,57 +230,32 @@ export class UsersService {
     }
 
     /**
-     * Wraps the Part 12 seat helper so any provider error surfaces as a clear
-     * HTTP 402 billing message (contract section 9) instead of a raw 500.
+     * Resolve the companyId to lock on. For a company-scoped requester it is the
+     * requester's own company; for SUPER_ADMIN (no company context) it is the
+     * target user's company, resolved with a cheap immutable read. Returns null
+     * only when the target does not exist or carries no company, in which case the
+     * caller runs its validation without a lock to surface the correct error.
      */
-    private async callProviderSeatUpdate(company: Company, quantity: number): Promise<void> {
-        try {
-            await this.billingService.setSeatQuantity(company, quantity);
-        } catch (err) {
-            if (err instanceof HttpException) throw err;
-            throw new HttpException(
-                `The billing provider rejected the seat change: ${err instanceof Error ? err.message : String(err)}`,
-                HttpStatus.PAYMENT_REQUIRED,
-            );
-        }
+    private async resolveRemovalLockCompanyId(
+        targetUserId: string,
+        requesterCompanyId: string | undefined,
+    ): Promise<string | null> {
+        if (requesterCompanyId) return requesterCompanyId;
+        const target = await this.userRepository.findOne({
+            where: { id: targetUserId },
+            select: ['id', 'companyId'],
+        });
+        return target?.companyId ?? null;
     }
 
     /**
-     * Provider-FIRST seat decrement (contract section 9).
-     * Returns a compensator to run if the subsequent local transaction fails,
-     * or null when no provider call was made (FREE tier).
-     * purchasedSeats itself is only ever written by the unit 2 webhook.
-     */
-    private async decrementSeatBeforeRemoval(
-        company: Company,
-    ): Promise<{ compensate: () => Promise<void> } | null> {
-        // No provider call unless the company is a paid tier WITH a live subscription.
-        // A comp account (paid tier set by SUPER_ADMIN without checkout) has no
-        // subscription to bill and manages users freely (owner decision 2026-07-07,
-        // Option B). This mirrors trimToOneActiveUser and reactivateUser.
-        if (!this.isPaidTier(company) || !company.billingSubscriptionId || !company.billingCustomerId) return null;
-        const previous = company.purchasedSeats;
-        const target = Math.max(previous - 1, 1);
-        await this.callProviderSeatUpdate(company, target);
-        return {
-            compensate: async () => {
-                try {
-                    await this.callProviderSeatUpdate(company, previous);
-                } catch (err) {
-                    this.logger.error(
-                        `Seat compensation to ${previous} failed for company ${company.id}: ${err instanceof Error ? err.message : String(err)}`,
-                    );
-                }
-            },
-        };
-    }
-
-    /**
-     * Shared validation for deactivate and delete. Resolves the target, the
-     * reassignment recipient, and the company; enforces self, company-scope,
-     * and role-hierarchy rules.
+     * Shared validation for deactivate and delete, run INSIDE the locked
+     * transaction. Re-loads the target and reassignee FOR UPDATE so their state
+     * (isActive, company, role) is the state at write time, and enforces self,
+     * company-scope, and role-hierarchy rules.
      */
     private async loadRemovalContext(
+        manager: EntityManager,
         targetUserId: string,
         requesterId: string,
         requesterCompanyId: string | undefined,
@@ -278,8 +270,9 @@ export class UsersService {
             throw new BadRequestException('The reassignment target must be a different user');
         }
 
-        const target = await this.userRepository.findOne({
+        const target = await manager.findOne(User, {
             where: { id: targetUserId, ...(requesterCompanyId ? { companyId: requesterCompanyId } : {}) },
+            lock: { mode: 'pessimistic_write' },
         });
         if (!target) {
             throw new NotFoundException('User not found');
@@ -297,14 +290,18 @@ export class UsersService {
             throw new ForbiddenException('You do not have permission to remove this user');
         }
 
-        const reassignee = await this.userRepository.findOne({
+        // Re-load + lock the reassignee inside the txn and assert it is still
+        // active, so a concurrent deactivate of the recipient cannot land records
+        // on an inactive user (race audit P3).
+        const reassignee = await manager.findOne(User, {
             where: { id: dto.reassignToUserId, companyId: target.companyId, isActive: true },
+            lock: { mode: 'pessimistic_write' },
         });
         if (!reassignee) {
             throw new NotFoundException('Reassignment target not found, inactive, or in a different company');
         }
 
-        const company = await this.companyRepository.findOne({ where: { id: target.companyId } });
+        const company = await manager.findOne(Company, { where: { id: target.companyId } });
         if (!company) {
             throw new NotFoundException(`Company ${target.companyId} not found`);
         }
@@ -324,16 +321,17 @@ export class UsersService {
         requesterRole: Role,
         dto: RemoveUserDto,
     ): Promise<ReassignmentReport> {
-        const { target, reassignee, company } = await this.loadRemovalContext(
-            targetUserId, requesterId, requesterCompanyId, requesterRole, dto,
-            { requireActiveTarget: true },
-        );
+        const lockCompanyId = await this.resolveRemovalLockCompanyId(targetUserId, requesterCompanyId);
+        return this.runRemoval(lockCompanyId, async (manager) => {
+            const { target, reassignee, company } = await this.loadRemovalContext(
+                manager, targetUserId, requesterId, requesterCompanyId, requesterRole, dto,
+                { requireActiveTarget: true },
+            );
 
-        // Contract section 9: provider FIRST, then the local transaction.
-        const seat = await this.decrementSeatBeforeRemoval(company);
+            // Seat -1 inside the lock, derived from the live provider quantity.
+            const seat = await this.billingService.decrementSeat(company);
 
-        try {
-            return await this.dataSource.transaction(async (manager) => {
+            try {
                 await manager.update(User, target.id, { isActive: false });
                 const report = await this.reassignmentService.reassignOwnedRecords(
                     manager, company.id, target.id, reassignee.id, dto.reason,
@@ -343,11 +341,11 @@ export class UsersService {
                     await this.transferRecorder.record(manager, company.id, report);
                 }
                 return report;
-            });
-        } catch (err) {
-            if (seat) await seat.compensate();
-            throw err;
-        }
+            } catch (err) {
+                if (seat) await seat.compensate();
+                throw err;
+            }
+        });
     }
 
     /**
@@ -364,31 +362,36 @@ export class UsersService {
         requesterRole: Role,
         dto: RemoveUserDto,
     ): Promise<ReassignmentReport> {
-        const { target, reassignee, company } = await this.loadRemovalContext(
-            targetUserId, requesterId, requesterCompanyId, requesterRole, dto,
-            { requireActiveTarget: false },
-        );
-
-        const lockedCommissions = await this.dataSource.getRepository(Commission).count({
-            where: {
-                agentId: target.id,
-                companyId: company.id,
-                status: Not(CommissionStatus.PENDING),
-            },
-        });
-        if (lockedCommissions > 0) {
-            throw new ConflictException(
-                `This user has ${lockedCommissions} approved, paid, or cancelled commission record${lockedCommissions === 1 ? '' : 's'} that must keep their agent attribution. Deactivate the user instead.`,
+        const lockCompanyId = await this.resolveRemovalLockCompanyId(targetUserId, requesterCompanyId);
+        return this.runRemoval(lockCompanyId, async (manager) => {
+            const { target, reassignee, company } = await this.loadRemovalContext(
+                manager, targetUserId, requesterId, requesterCompanyId, requesterRole, dto,
+                { requireActiveTarget: false },
             );
-        }
 
-        // Seat -1 only if the user still occupies a seat. Deleting an already
-        // deactivated user must not decrement a second time (the deactivation
-        // already did).
-        const seat = target.isActive ? await this.decrementSeatBeforeRemoval(company) : null;
+            // Re-check the non-PENDING commission block INSIDE the locked txn: a
+            // commission that flipped PENDING->APPROVED (or a new one) after any
+            // earlier read would otherwise keep agent_id pointing at the deleted
+            // user (race audit P3). Counted on the txn manager for consistency.
+            const lockedCommissions = await manager.getRepository(Commission).count({
+                where: {
+                    agentId: target.id,
+                    companyId: company.id,
+                    status: Not(CommissionStatus.PENDING),
+                },
+            });
+            if (lockedCommissions > 0) {
+                throw new ConflictException(
+                    `This user has ${lockedCommissions} approved, paid, or cancelled commission record${lockedCommissions === 1 ? '' : 's'} that must keep their agent attribution. Deactivate the user instead.`,
+                );
+            }
 
-        try {
-            return await this.dataSource.transaction(async (manager) => {
+            // Seat -1 only if the user still occupies a seat. Deleting an already
+            // deactivated user must not decrement a second time (the deactivation
+            // already did).
+            const seat = target.isActive ? await this.billingService.decrementSeat(company) : null;
+
+            try {
                 const report = await this.reassignmentService.reassignOwnedRecords(
                     manager, company.id, target.id, reassignee.id, dto.reason,
                     { collectIds: !!this.transferRecorder },
@@ -418,73 +421,79 @@ export class UsersService {
                 await manager.delete(User, { id: target.id });
 
                 return report;
-            });
-        } catch (err) {
-            if (seat) await seat.compensate();
-            throw err;
-        }
+            } catch (err) {
+                if (seat) await seat.compensate();
+                throw err;
+            }
+        });
     }
 
     /**
      * Downgrade preparation: deactivate every active user except keepUserId
-     * and reassign all their records to that user, in one transaction. This
-     * is what satisfies the unit 3 downgrade-to-Free gate (409 until exactly
+     * and reassign all their records to that user, in one locked transaction.
+     * This is what satisfies the unit 3 downgrade-to-Free gate (409 until exactly
      * one active user remains).
      *
-     * Provider handling: one call setting the seat quantity to 1, provider
-     * FIRST, only when the company is a paid tier WITH a live subscription. A
-     * comp account (paid tier, no subscription) skips the provider call and
-     * trims freely. This is now the uniform rule across every seat operation
-     * (create, invite, reactivate, decrement, trim) after the owner decision
-     * of 2026-07-07 (Option B): comps manage users without Stripe; a deliberate
-     * "must pay" lock is the separate Dunning feature. Post external-cancel
-     * companies are already FREE (contract section 8) and take the FREE branch.
+     * Provider handling: one call setting the seat quantity to 1, only when the
+     * company is a paid tier WITH a live subscription. A comp account (paid tier,
+     * no subscription) skips the provider call and trims freely (owner decision
+     * 2026-07-07, Option B). Post external-cancel companies are already FREE
+     * (contract section 8) and take the FREE branch.
+     *
+     * The keeper, the "others" set, and the final active-count are all read
+     * inside the lock, so a user created or invited mid-trim (which takes the
+     * same company lock) cannot survive undetected and break the one-active-user
+     * invariant (race audit P3).
      */
     async trimToOneActiveUser(
         companyId: string,
         requesterId: string,
         dto: TrimCompanyUsersDto,
     ): Promise<{ deactivatedCount: number; reports: ReassignmentReport[] }> {
-        const keeper = await this.userRepository.findOne({
-            where: { id: dto.keepUserId, companyId, isActive: true },
-        });
-        if (!keeper) {
-            throw new NotFoundException('The user to keep was not found or is inactive');
-        }
-        if (keeper.role !== Role.COMPANY_ADMIN) {
-            throw new BadRequestException('The remaining user must be a company admin so the account can still be managed');
-        }
+        return withCompanyLock(this.dataSource, companyId, async (manager) => {
+            const keeper = await manager.findOne(User, {
+                where: { id: dto.keepUserId, companyId, isActive: true },
+                lock: { mode: 'pessimistic_write' },
+            });
+            if (!keeper) {
+                throw new NotFoundException('The user to keep was not found or is inactive');
+            }
+            if (keeper.role !== Role.COMPANY_ADMIN) {
+                throw new BadRequestException('The remaining user must be a company admin so the account can still be managed');
+            }
 
-        const company = await this.companyRepository.findOne({ where: { id: companyId } });
-        if (!company) {
-            throw new NotFoundException(`Company ${companyId} not found`);
-        }
+            const company = await manager.findOne(Company, { where: { id: companyId } });
+            if (!company) {
+                throw new NotFoundException(`Company ${companyId} not found`);
+            }
 
-        const others = await this.userRepository.find({
-            where: { companyId, isActive: true, id: Not(dto.keepUserId) },
-            order: { createdAt: 'ASC' },
-        });
-        if (others.length === 0) {
-            return { deactivatedCount: 0, reports: [] };
-        }
+            const others = await manager.find(User, {
+                where: { companyId, isActive: true, id: Not(dto.keepUserId) },
+                order: { createdAt: 'ASC' },
+                lock: { mode: 'pessimistic_write' },
+            });
+            if (others.length === 0) {
+                return { deactivatedCount: 0, reports: [] };
+            }
 
-        let compensate: (() => Promise<void>) | null = null;
-        if (this.isPaidTier(company) && company.billingSubscriptionId && company.billingCustomerId) {
-            const previous = company.purchasedSeats;
-            await this.callProviderSeatUpdate(company, 1);
-            compensate = async () => {
-                try {
-                    await this.callProviderSeatUpdate(company, previous);
-                } catch (err) {
-                    this.logger.error(
-                        `Trim seat compensation to ${previous} failed for company ${company.id}: ${err instanceof Error ? err.message : String(err)}`,
-                    );
-                }
-            };
-        }
+            // Seat -> 1 inside the lock (absolute target; the keeper is the one
+            // remaining active seat). Comp accounts with no subscription skip it.
+            let compensate: (() => Promise<void>) | null = null;
+            if (this.isPaidTier(company) && company.billingSubscriptionId && company.billingCustomerId) {
+                const previous = await this.billingService.getLiveSeatQuantity(company);
+                await this.billingService.setSeatQuantity(company, 1);
+                compensate = async () => {
+                    try {
+                        await this.billingService.setSeatQuantity(company, previous);
+                    } catch (err) {
+                        this.logger.error(
+                            `Trim seat compensation to ${previous} failed for company ${company.id}: ${err instanceof Error ? err.message : String(err)}`,
+                        );
+                    }
+                };
+            }
 
-        try {
-            const reports = await this.dataSource.transaction(async (manager) => {
+            try {
                 const collected: ReassignmentReport[] = [];
                 for (const user of others) {
                     await manager.update(User, user.id, { isActive: false });
@@ -497,88 +506,126 @@ export class UsersService {
                     }
                     collected.push(report);
                 }
-                return collected;
-            });
-            this.logger.log(
-                `Trimmed company ${companyId} to one active user (${keeper.id}) on request of ${requesterId}; deactivated ${others.length}`,
-            );
-            return { deactivatedCount: others.length, reports };
-        } catch (err) {
-            if (compensate) await compensate();
-            throw err;
-        }
+
+                // Backstop: confirm exactly one active user remains before commit.
+                // Anything else means a concurrent add slipped in (should be
+                // impossible under the shared lock) and the downgrade invariant
+                // would be broken, so abort and roll back.
+                const remainingActive = await manager.count(User, {
+                    where: { companyId, isActive: true },
+                });
+                if (remainingActive > 1) {
+                    throw new ConflictException(
+                        'Another active user was added while trimming; please retry the downgrade.',
+                    );
+                }
+
+                this.logger.log(
+                    `Trimmed company ${companyId} to one active user (${keeper.id}) on request of ${requesterId}; deactivated ${others.length}`,
+                );
+                return { deactivatedCount: others.length, reports: collected };
+            } catch (err) {
+                if (compensate) await compensate();
+                throw err;
+            }
+        });
     }
 
     /**
      * Reactivate a deactivated user. Mirror of deactivateUser: on paid plans
-     * the provider seat +1 happens FIRST, then the local write; FREE plans
-     * are gated by the same active-user cap as create and invite.
+     * the provider seat +1 happens inside the lock (derived from the live
+     * quantity) before the local write; FREE plans are gated by the same
+     * active-user cap as create and invite, counted inside the lock.
      */
     async reactivateUser(
         targetUserId: string,
         requesterCompanyId: string | undefined,
         requesterRole: Role,
     ): Promise<User> {
-        const target = await this.userRepository.findOne({
-            where: { id: targetUserId, ...(requesterCompanyId ? { companyId: requesterCompanyId } : {}) },
-        });
-        if (!target) {
-            throw new NotFoundException('User not found');
-        }
-        if (target.isActive) {
-            throw new BadRequestException('User is already active');
-        }
-        if (!target.companyId) {
-            throw new BadRequestException('Users without a company cannot be reactivated through this flow');
-        }
+        const lockCompanyId = await this.resolveRemovalLockCompanyId(targetUserId, requesterCompanyId);
+        return this.runRemoval(lockCompanyId, async (manager) => {
+            const target = await manager.findOne(User, {
+                where: { id: targetUserId, ...(requesterCompanyId ? { companyId: requesterCompanyId } : {}) },
+                lock: { mode: 'pessimistic_write' },
+            });
+            if (!target) {
+                throw new NotFoundException('User not found');
+            }
+            if (target.isActive) {
+                throw new BadRequestException('User is already active');
+            }
+            if (!target.companyId) {
+                throw new BadRequestException('Users without a company cannot be reactivated through this flow');
+            }
 
-        const requesterLevel = getRoleLevel(requesterRole);
-        const targetLevel = getRoleLevel(target.role);
-        if (targetLevel <= requesterLevel && requesterRole !== Role.SUPER_ADMIN) {
-            throw new ForbiddenException('You do not have permission to reactivate this user');
-        }
+            const requesterLevel = getRoleLevel(requesterRole);
+            const targetLevel = getRoleLevel(target.role);
+            if (targetLevel <= requesterLevel && requesterRole !== Role.SUPER_ADMIN) {
+                throw new ForbiddenException('You do not have permission to reactivate this user');
+            }
 
-        const company = await this.companyRepository.findOne({ where: { id: target.companyId } });
-        if (!company) {
-            throw new NotFoundException(`Company ${target.companyId} not found`);
-        }
+            const company = await manager.findOne(Company, { where: { id: target.companyId } });
+            if (!company) {
+                throw new NotFoundException(`Company ${target.companyId} not found`);
+            }
 
-        // Provider seat +1 only on a paid tier WITH a live subscription. A comp
-        // account (paid tier, no subscription) skips the provider call and
-        // reactivates freely (owner decision 2026-07-07, Option B; mirrors
-        // decrementSeatBeforeRemoval and trimToOneActiveUser). FREE tiers are
-        // gated by the same active-user cap as create and invite.
-        let compensate: (() => Promise<void>) | null = null;
-        if (this.isPaidTier(company) && company.billingSubscriptionId && company.billingCustomerId) {
-            const previous = company.purchasedSeats;
-            await this.callProviderSeatUpdate(company, previous + 1);
-            compensate = async () => {
-                try {
-                    await this.callProviderSeatUpdate(company, previous);
-                } catch (err) {
-                    this.logger.error(
-                        `Reactivation seat compensation failed for company ${company.id}: ${err instanceof Error ? err.message : String(err)}`,
+            // Provider seat +1 (live-derived) on a paid tier WITH a live
+            // subscription; comp accounts (paid tier, no subscription) skip it
+            // (Option B). FREE tiers are gated by the active-user cap, counted
+            // inside the lock so it cannot race a concurrent add/reactivate.
+            let compensate: (() => Promise<void>) | null = null;
+            if (this.isPaidTier(company) && company.billingSubscriptionId && company.billingCustomerId) {
+                const previous = await this.billingService.getLiveSeatQuantity(company);
+                await this.billingService.setSeatQuantity(company, previous + 1);
+                compensate = async () => {
+                    try {
+                        await this.billingService.setSeatQuantity(company, previous);
+                    } catch (err) {
+                        this.logger.error(
+                            `Reactivation seat compensation failed for company ${company.id}: ${err instanceof Error ? err.message : String(err)}`,
+                        );
+                    }
+                };
+            } else if (!this.isPaidTier(company)) {
+                const activeCount = await manager.count(User, {
+                    where: { companyId: target.companyId, isActive: true },
+                });
+                if (activeCount >= company.maxUsers) {
+                    throw new BadRequestException(
+                        `Your ${company.subscriptionTier} plan allows up to ${company.maxUsers} active user${company.maxUsers === 1 ? '' : 's'}. Upgrade to reactivate.`,
                     );
                 }
-            };
-        } else if (!this.isPaidTier(company)) {
-            const activeCount = await this.userRepository.count({
-                where: { companyId: target.companyId, isActive: true },
-            });
-            if (activeCount >= company.maxUsers) {
-                throw new BadRequestException(
-                    `Your ${company.subscriptionTier} plan allows up to ${company.maxUsers} active user${company.maxUsers === 1 ? '' : 's'}. Upgrade to reactivate.`,
-                );
             }
-        }
 
-        try {
-            await this.userRepository.update(target.id, { isActive: true });
-        } catch (err) {
-            if (compensate) await compensate();
-            throw err;
+            try {
+                await manager.update(User, target.id, { isActive: true });
+            } catch (err) {
+                if (compensate) await compensate();
+                throw err;
+            }
+            const refreshed = await manager.findOne(User, { where: { id: target.id } });
+            if (!refreshed) {
+                throw new NotFoundException('User not found');
+            }
+            return refreshed;
+        });
+    }
+
+    /**
+     * Run a single-target removal/reactivation critical section under the company
+     * advisory lock. When the lock company could not be resolved (target missing
+     * or company-less), run without the advisory lock so the inner validation
+     * still throws the correct NotFound/BadRequest; a FOR UPDATE row lock inside
+     * the transaction still applies in that path.
+     */
+    private runRemoval<T>(
+        lockCompanyId: string | null,
+        fn: (manager: EntityManager) => Promise<T>,
+    ): Promise<T> {
+        if (lockCompanyId) {
+            return withCompanyLock(this.dataSource, lockCompanyId, fn);
         }
-        return this.findOne(target.id, requesterCompanyId);
+        return this.dataSource.transaction(fn);
     }
 
     async findByResetToken(token: string): Promise<User | null> {
@@ -645,37 +692,39 @@ export class UsersService {
             }
         }
 
-        const company = await this.enforceUserLimit(companyId);
-
-        const existing = await this.userRepository.findOne({ where: { email: dto.email } });
-        if (existing) {
-            throw new ConflictException('Email already exists');
-        }
-
         const placeholderPassword = await bcrypt.hash(crypto.randomBytes(32).toString('hex'), 12);
         const name = `${dto.firstName} ${dto.lastName}`;
 
-        const user = this.userRepository.create({
-            name,
-            email: dto.email,
-            password: placeholderPassword,
-            role: dto.role,
-            companyId,
-            mustChangePassword: true,
+        // Same serialized cap-check -> seat-reserve -> save section as create()
+        // (race audit 2026-07-07, P1/P2). Token generation and the invite email run
+        // AFTER the lock: once the row exists the billed seat correctly mirrors a real
+        // user, so a later token or email failure must NOT release the seat.
+        const saved: User = await withCompanyLock(this.dataSource, companyId, async (manager) => {
+            const company = await this.enforceUserLimit(companyId, manager);
+
+            const existing = await manager.findOne(User, { where: { email: dto.email } });
+            if (existing) {
+                throw new ConflictException('Email already exists');
+            }
+
+            const user = manager.create(User, {
+                name,
+                email: dto.email,
+                password: placeholderPassword,
+                role: dto.role,
+                companyId,
+                mustChangePassword: true,
+            });
+
+            const seat: SeatReservation | null = company ? await this.billingService.reserveSeat(company) : null;
+
+            try {
+                return await manager.save(user);
+            } catch (err) {
+                if (seat) await seat.release();
+                throw err;
+            }
         });
-
-        // Provider-first seat gate (contract section 9). The compensation boundary is the user
-        // save ONLY: once the row exists, the billed seat correctly mirrors a real user, so a
-        // later token or email failure must NOT release the seat.
-        const seat: SeatReservation | null = company ? await this.billingService.reserveSeat(company) : null;
-
-        let saved: User;
-        try {
-            saved = await this.userRepository.save(user);
-        } catch (err) {
-            if (seat) await seat.release();
-            throw err;
-        }
 
         const inviteToken = crypto.randomBytes(32).toString('hex');
         const inviteExpires = new Date(Date.now() + 72 * 60 * 60 * 1000);
@@ -694,17 +743,21 @@ export class UsersService {
      * COLUMN (not the TIER_LIMITS constant) so the existing SUPER_ADMIN PATCH override for
      * comp accounts keeps working. Returns the loaded company so callers can hand it to
      * BillingService.reserveSeat without a second fetch; null when there is no companyId.
+     *
+     * Callers pass the locked transaction's manager so the count + subsequent save run
+     * serialized behind the company advisory lock (race audit 2026-07-07, P2): a plain
+     * unlocked count-then-save lets two different-email adds both pass a cap of 1.
      */
-    private async enforceUserLimit(companyId: string | undefined): Promise<Company | null> {
+    private async enforceUserLimit(companyId: string | undefined, manager: EntityManager): Promise<Company | null> {
         if (!companyId) return null;
-        const company = await this.companyRepository.findOne({ where: { id: companyId } });
+        const company = await manager.findOne(Company, { where: { id: companyId } });
         if (!company) {
             throw new NotFoundException(`Company ${companyId} not found`);
         }
         if (company.subscriptionTier !== SubscriptionTier.FREE) {
             return company;
         }
-        const currentCount = await this.userRepository.count({ where: { companyId, isActive: true } });
+        const currentCount = await manager.count(User, { where: { companyId, isActive: true } });
         if (currentCount >= company.maxUsers) {
             throw new BadRequestException(
                 `Your FREE plan allows up to ${company.maxUsers} user${company.maxUsers === 1 ? '' : 's'}. Upgrade to Pro to add team members.`,

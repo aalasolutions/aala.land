@@ -79,7 +79,9 @@ export class ChequesService {
     const cheque = await this.findOne(id, companyId);
 
     const terminalStatuses = [ChequeStatus.CLEARED, ChequeStatus.CANCELLED, ChequeStatus.REPLACED];
-    if (terminalStatuses.includes(cheque.status) && dto.status && dto.status !== cheque.status) {
+    const isStatusChange = dto.status !== undefined && dto.status !== cheque.status;
+
+    if (terminalStatuses.includes(cheque.status) && isStatusChange) {
       throw new BadRequestException(`Cannot change the status of a cheque that is already ${cheque.status}`);
     }
 
@@ -90,7 +92,45 @@ export class ChequesService {
       cheque.depositDate = new Date();
     }
 
-    const saved = await this.chequeRepository.save(cheque);
+    let saved: Cheque;
+
+    if (isStatusChange) {
+      // Guarded conditional UPDATE: only transition if the row is still in the
+      // status we read (oldStatus) and is not terminal. This serializes two
+      // concurrent transitions that both observed the same non-terminal status
+      // (e.g. both read DEPOSITED) so only the first commits; the loser sees
+      // affected === 0 and is rejected instead of silently last-write-wins.
+      const result = await this.chequeRepository
+        .createQueryBuilder()
+        .update(Cheque)
+        .set({
+          status: cheque.status,
+          depositDate: cheque.depositDate,
+          dueDate: cheque.dueDate,
+          amount: cheque.amount,
+          chequeNumber: cheque.chequeNumber,
+          bankName: cheque.bankName,
+          unitId: cheque.unitId,
+          type: cheque.type,
+          notes: cheque.notes,
+        })
+        .where('id = :id', { id })
+        .andWhere('company_id = :companyId', { companyId })
+        .andWhere('status = :oldStatus', { oldStatus })
+        .andWhere('status NOT IN (:...terminalStatuses)', { terminalStatuses })
+        .execute();
+
+      if (!result.affected) {
+        // Another request changed the status between our read and write.
+        throw new BadRequestException(
+          'Cheque status changed concurrently. Please refresh and try again.',
+        );
+      }
+
+      saved = await this.findOne(id, companyId);
+    } else {
+      saved = await this.chequeRepository.save(cheque);
+    }
 
     this.notificationsGateway.broadcastToCompany(companyId, 'chequeUpdated', {
       id: saved.id,
@@ -165,12 +205,30 @@ export class ChequesService {
   }
 
   async bounce(id: string, companyId: string, dto: BounceChequeDto, userId?: string): Promise<Cheque> {
-    const cheque = await this.findOne(id, companyId);
-    cheque.bounceCount = (cheque.bounceCount || 0) + 1;
-    cheque.bounceReason = dto.bounceReason || null;
-    cheque.lastBounceDate = new Date();
-    cheque.status = ChequeStatus.BOUNCED;
-    const saved = await this.chequeRepository.save(cheque);
+    // Existence + tenant check.
+    await this.findOne(id, companyId);
+
+    // Atomic increment: compute bounce_count in the database (SET col = col + 1)
+    // so concurrent bounces do not lose increments via a JS read-modify-write.
+    // The other bounce fields are written in the same UPDATE statement.
+    const result = await this.chequeRepository
+      .createQueryBuilder()
+      .update(Cheque)
+      .set({
+        bounceCount: () => 'bounce_count + 1',
+        bounceReason: dto.bounceReason || null,
+        lastBounceDate: new Date(),
+        status: ChequeStatus.BOUNCED,
+      })
+      .where('id = :id', { id })
+      .andWhere('company_id = :companyId', { companyId })
+      .execute();
+
+    if (!result.affected) {
+      throw new NotFoundException('Cheque not found');
+    }
+
+    const saved = await this.findOne(id, companyId);
 
     this.notificationsGateway.broadcastToCompany(companyId, 'chequeUpdated', {
       id: saved.id,
