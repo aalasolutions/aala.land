@@ -86,51 +86,59 @@ export class ChequesService {
     }
 
     const oldStatus = cheque.status;
+    const expectedVersion = cheque.version;
     Object.assign(cheque, dto);
 
     if (cheque.status === ChequeStatus.DEPOSITED && !cheque.depositDate) {
       cheque.depositDate = new Date();
     }
 
-    let saved: Cheque;
+    // Single guarded conditional UPDATE for BOTH status and non-status edits.
+    // The optimistic-lock version guard (WHERE version = :expectedVersion,
+    // SET version = version + 1) rejects any concurrent edit in either
+    // direction: a concurrent non-status edit that leaves status unchanged
+    // no longer wins last-write, and a concurrent status transition still
+    // fails the version compare-and-set. When this IS a status change we also
+    // re-assert the previously-read status and terminal exclusion, so a status
+    // move can only commit from the exact state we validated.
+    const qb = this.chequeRepository
+      .createQueryBuilder()
+      .update(Cheque)
+      .set({
+        status: cheque.status,
+        depositDate: cheque.depositDate,
+        dueDate: cheque.dueDate,
+        amount: cheque.amount,
+        chequeNumber: cheque.chequeNumber,
+        bankName: cheque.bankName,
+        unitId: cheque.unitId,
+        type: cheque.type,
+        notes: cheque.notes,
+        version: () => 'version + 1',
+        updatedAt: () => 'now()',
+      })
+      .where('id = :id', { id })
+      .andWhere('company_id = :companyId', { companyId })
+      .andWhere('version = :expectedVersion', { expectedVersion });
 
     if (isStatusChange) {
-      // Guarded conditional UPDATE: only transition if the row is still in the
-      // status we read (oldStatus) and is not terminal. This serializes two
-      // concurrent transitions that both observed the same non-terminal status
-      // (e.g. both read DEPOSITED) so only the first commits; the loser sees
-      // affected === 0 and is rejected instead of silently last-write-wins.
-      const result = await this.chequeRepository
-        .createQueryBuilder()
-        .update(Cheque)
-        .set({
-          status: cheque.status,
-          depositDate: cheque.depositDate,
-          dueDate: cheque.dueDate,
-          amount: cheque.amount,
-          chequeNumber: cheque.chequeNumber,
-          bankName: cheque.bankName,
-          unitId: cheque.unitId,
-          type: cheque.type,
-          notes: cheque.notes,
-        })
-        .where('id = :id', { id })
-        .andWhere('company_id = :companyId', { companyId })
-        .andWhere('status = :oldStatus', { oldStatus })
-        .andWhere('status NOT IN (:...terminalStatuses)', { terminalStatuses })
-        .execute();
-
-      if (!result.affected) {
-        // Another request changed the status between our read and write.
-        throw new BadRequestException(
-          'Cheque status changed concurrently. Please refresh and try again.',
-        );
-      }
-
-      saved = await this.findOne(id, companyId);
-    } else {
-      saved = await this.chequeRepository.save(cheque);
+      qb.andWhere('status = :oldStatus', { oldStatus }).andWhere(
+        'status NOT IN (:...terminalStatuses)',
+        { terminalStatuses },
+      );
     }
+
+    const result = await qb.execute();
+
+    if (!result.affected) {
+      // The row changed (status or any other column) between our read and
+      // write, so the version no longer matches.
+      throw new BadRequestException(
+        'Cheque was modified concurrently. Please refresh and try again.',
+      );
+    }
+
+    const saved = await this.findOne(id, companyId);
 
     this.notificationsGateway.broadcastToCompany(companyId, 'chequeUpdated', {
       id: saved.id,
@@ -219,6 +227,9 @@ export class ChequesService {
         bounceReason: dto.bounceReason || null,
         lastBounceDate: new Date(),
         status: ChequeStatus.BOUNCED,
+        // Bump the optimistic-lock version so a concurrent update() that read an
+        // older version fails its version guard and cannot revert this BOUNCED row.
+        version: () => 'version + 1',
       })
       .where('id = :id', { id })
       .andWhere('company_id = :companyId', { companyId })

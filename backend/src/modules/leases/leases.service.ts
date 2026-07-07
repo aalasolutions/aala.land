@@ -1,11 +1,18 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, EntityManager, Repository } from 'typeorm';
+import { DataSource, EntityManager, QueryFailedError, Repository } from 'typeorm';
 import { Lease, LeaseStatus } from './entities/lease.entity';
 import { CreateLeaseDto } from './dto/create-lease.dto';
 import { UpdateLeaseDto } from './dto/update-lease.dto';
 import { REGION_FILTER_SUBQUERY } from '../../shared/utils/region-filter.util';
 import { paginationOptions } from '../../shared/utils/pagination.util';
+
+/**
+ * Partial unique index name from migration 1779500000043
+ * (leases(unit_id) WHERE status='ACTIVE'). The DB backstop that makes a second
+ * ACTIVE lease on a unit physically impossible.
+ */
+const ACTIVE_LEASE_UNIQUE_INDEX = 'UQ_leases_active_unit';
 
 @Injectable()
 export class LeasesService {
@@ -42,6 +49,39 @@ export class LeasesService {
       .getCount();
     if (existing > 0) {
       throw new BadRequestException('This unit already has an active lease');
+    }
+  }
+
+  /**
+   * Save a lease that is (or is becoming) ACTIVE, mapping the partial-unique-index
+   * violation to a clean 400.
+   *
+   * assertNoOtherActiveLease + the FOR UPDATE lock serialize transitions on ONE
+   * lease row, but two renews driven by DIFFERENT old leases lock different rows
+   * and each creates a successor pointed at the SAME unit: neither count sees the
+   * other's uncommitted successor, so both pass the guard and the second COMMIT
+   * trips UQ_leases_active_unit with a raw 23505 (race audit 2026-07-07, P4-lease
+   * follow-up). Translate that unique violation on the active-lease index into the
+   * same BadRequestException the in-transaction guard raises, so callers get a 400
+   * instead of a 500. Any other error is rethrown untouched.
+   */
+  private async saveActiveLease(manager: EntityManager, lease: Lease): Promise<Lease> {
+    try {
+      return await manager.save(Lease, lease);
+    } catch (error) {
+      if (error instanceof QueryFailedError) {
+        const driverError = error.driverError as
+          | { code?: string; constraint?: string; detail?: string }
+          | undefined;
+        const hitsActiveLeaseIndex =
+          driverError?.constraint === ACTIVE_LEASE_UNIQUE_INDEX ||
+          (driverError?.detail?.includes(ACTIVE_LEASE_UNIQUE_INDEX) ?? false) ||
+          error.message.includes(ACTIVE_LEASE_UNIQUE_INDEX);
+        if (driverError?.code === '23505' && hitsActiveLeaseIndex) {
+          throw new BadRequestException('This unit already has an active lease');
+        }
+      }
+      throw error;
     }
   }
 
@@ -122,6 +162,7 @@ export class LeasesService {
       // index leases(unit_id) WHERE status='ACTIVE').
       if (lease.status === LeaseStatus.ACTIVE) {
         await this.assertNoOtherActiveLease(manager, lease.unitId, companyId, id);
+        return this.saveActiveLease(manager, lease);
       }
 
       return manager.save(Lease, lease);
@@ -150,10 +191,13 @@ export class LeasesService {
       // The successor is ACTIVE only if the DTO says so (default DRAFT). Guard
       // against a second ACTIVE lease landing on the same unit under this lock.
       const newLease = manager.create(Lease, { ...dto, companyId });
+      let savedNewLease: Lease;
       if (newLease.status === LeaseStatus.ACTIVE) {
         await this.assertNoOtherActiveLease(manager, newLease.unitId, companyId, id);
+        savedNewLease = await this.saveActiveLease(manager, newLease);
+      } else {
+        savedNewLease = await manager.save(Lease, newLease);
       }
-      const savedNewLease = await manager.save(Lease, newLease);
 
       return { oldLease: savedOldLease, newLease: savedNewLease };
     });

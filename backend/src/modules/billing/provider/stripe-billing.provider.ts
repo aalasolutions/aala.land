@@ -111,7 +111,15 @@ export class StripeBillingProvider implements BillingProvider {
     private productIdCache: string | null = null;
 
     constructor(private readonly config: ConfigService) {
-        this.stripe = new Stripe(this.config.getOrThrow<string>('STRIPE_SECRET_KEY'));
+        // Per-company seat mutations hold a Postgres advisory lock across these
+        // Stripe calls (race audit 2026-07-07, MEDIUM Stripe-timeout). Without an
+        // explicit request timeout a hung Stripe call would pin that lock
+        // indefinitely and block every other seat op for the company. Cap each
+        // request at 8s and disable network retries so the lock is released fast.
+        this.stripe = new Stripe(this.config.getOrThrow<string>('STRIPE_SECRET_KEY'), {
+            timeout: 8000,
+            maxNetworkRetries: 0,
+        });
     }
 
     async ensureCustomer(input: EnsureCustomerInput): Promise<string> {

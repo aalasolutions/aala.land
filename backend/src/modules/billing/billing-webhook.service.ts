@@ -146,7 +146,7 @@ export class BillingWebhookService implements OnModuleInit {
         const limits = TIER_LIMITS[tier];
         // Seat-bearing event: guard purchasedSeats against stale/out-of-order
         // delivery via billing_last_event_at (race audit 2026-07-07, P1c).
-        await this.applySeatSync(event.companyId, event.name, event.occurredAt, {
+        await this.applyRecencyGuardedSync(event.companyId, event.name, event.occurredAt, {
             billingSubscriptionId: event.subscriptionId,
             billingStatus: event.status,
             subscriptionTier: tier,
@@ -158,14 +158,14 @@ export class BillingWebhookService implements OnModuleInit {
     }
 
     private async onSubscriptionUpdated(event: SubscriptionUpdatedEvent): Promise<void> {
-        await this.applySeatSync(event.companyId, event.name, event.occurredAt, {
+        await this.applyRecencyGuardedSync(event.companyId, event.name, event.occurredAt, {
             purchasedSeats: Math.max(event.quantity, 1),
             billingStatus: event.status,
         });
     }
 
     private async onSeatQuantityChanged(event: SeatQuantityChangedEvent): Promise<void> {
-        await this.applySeatSync(event.companyId, event.name, event.occurredAt, {
+        await this.applyRecencyGuardedSync(event.companyId, event.name, event.occurredAt, {
             purchasedSeats: Math.max(event.quantity, 1),
         });
     }
@@ -173,7 +173,10 @@ export class BillingWebhookService implements OnModuleInit {
     private async onPlanChanged(event: PlanChangedEvent): Promise<void> {
         const tier = planToTier(event.plan);
         const limits = TIER_LIMITS[tier];
-        await this.updateCompany(event.companyId, event.name, {
+        // PlanChanged writes subscriptionTier + caps, so it MUST go through the
+        // recency guard too (race audit 2026-07-07, MEDIUM webhook-recency): an
+        // out-of-order/retried plan swap would otherwise clobber newer tier state.
+        await this.applyRecencyGuardedSync(event.companyId, event.name, event.occurredAt, {
             subscriptionTier: tier,
             maxUsers: limits.maxUsers,
             maxCountries: limits.maxCountries,
@@ -185,8 +188,12 @@ export class BillingWebhookService implements OnModuleInit {
         // External cancels bypass the unit 3 downgrade gate by design (contract
         // section 8): the tier drops to FREE even with more than 1 active user.
         // Excess users stay active; the synced FREE caps block further adds.
+        // Routed through the recency guard (race audit 2026-07-07, MEDIUM
+        // webhook-recency): this clears billingSubscriptionId and drops the tier,
+        // so a stale/retried cancel delivered after a newer resubscribe must NOT
+        // win last-write.
         const limits = TIER_LIMITS[SubscriptionTier.FREE];
-        await this.updateCompany(event.companyId, event.name, {
+        await this.applyRecencyGuardedSync(event.companyId, event.name, event.occurredAt, {
             subscriptionTier: SubscriptionTier.FREE,
             billingSubscriptionId: null,
             billingStatus: 'canceled',
@@ -222,20 +229,26 @@ export class BillingWebhookService implements OnModuleInit {
     }
 
     /**
-     * Apply a seat-bearing sync, guarding purchasedSeats (and the other columns
-     * in the patch) against stale or out-of-order Stripe delivery (race audit
-     * 2026-07-07, P1c).
+     * Apply a company-state sync, guarding every column in the patch against
+     * stale or out-of-order Stripe delivery (race audit 2026-07-07, P1c and the
+     * MEDIUM webhook-recency follow-up). Used by ALL handlers that write
+     * ordering-sensitive state: purchasedSeats, subscriptionTier,
+     * billingSubscriptionId, billingStatus, and the cap columns.
      *
      * A single conditional UPDATE advances billing_last_event_at to the event's
-     * created time and applies the patch ONLY when this event is at least as new
-     * as the last one applied (`billing_last_event_at IS NULL OR <= :occurredAt`).
-     * Doing the compare-and-set in one statement is atomic under READ COMMITTED,
-     * so two events for the same company delivered concurrently cannot let the
-     * older one win. A strictly-older event affects 0 rows and is skipped; that
-     * is distinguished from a genuinely missing company by a follow-up existence
-     * check, so the event is still acked either way.
+     * created time and applies the patch when this event is NOT OLDER than the last
+     * one applied (`billing_last_event_at IS NULL OR <= :occurredAt`). We use `<=`
+     * (not `<`) because Stripe `event.created` is SECOND-granularity and one Stripe
+     * event normalizes into several internal events that share the same timestamp
+     * (e.g. PlanChanged + SeatQuantityChanged); strict `<` would drop all but the
+     * first and a plan swap would never sync tier/caps. A genuinely re-delivered
+     * whole event is already blocked upstream by the stripe_events UNIQUE table, so
+     * `<=` never re-applies anything harmful. The compare-and-set is atomic under
+     * READ COMMITTED, so a strictly older out-of-order event affects 0 rows and is
+     * skipped; that is distinguished from a genuinely missing company by a follow-up
+     * existence check, so the event is still acked either way.
      */
-    private async applySeatSync(
+    private async applyRecencyGuardedSync(
         companyId: string,
         eventName: string,
         occurredAt: Date,

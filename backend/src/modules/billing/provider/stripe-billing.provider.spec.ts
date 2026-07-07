@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
+import Stripe from 'stripe';
 import { StripeBillingProvider } from './stripe-billing.provider';
 
 const mockCreate = jest.fn();
@@ -52,6 +53,18 @@ describe('StripeBillingProvider', () => {
         }).compile();
 
         provider = module.get<StripeBillingProvider>(StripeBillingProvider);
+    });
+
+    describe('client construction', () => {
+        it('constructs the Stripe client with a short request timeout and no network retries (race audit MEDIUM Stripe-timeout)', () => {
+            // The per-company advisory lock is held across Stripe calls, so a hung
+            // request must not pin the lock indefinitely: 8s timeout, 0 retries.
+            const StripeMock = Stripe as unknown as jest.Mock;
+            expect(StripeMock).toHaveBeenCalledWith(
+                'sk_test_fake_key',
+                expect.objectContaining({ timeout: 8000, maxNetworkRetries: 0 }),
+            );
+        });
     });
 
     describe('ensureCustomer', () => {

@@ -709,6 +709,45 @@ describe('NotificationsService', () => {
       findAdminsSpy.mockRestore();
       findExistingSpy.mockRestore();
     });
+
+    it('scopes the dedup lookup window to UTC start-of-day (matches the fixed-UTC index bucket)', async () => {
+      const chequeRepo = module.get(getRepositoryToken(Cheque));
+      (chequeRepo.find as jest.Mock).mockResolvedValue([mockUpcomingCheque as Cheque]);
+      (repo.find as jest.Mock).mockResolvedValue([]);
+
+      const findAdminsSpy = jest.spyOn(service as any, 'findAdminsByCompanyIds').mockResolvedValue(
+        new Map([[companyId, [mockAdmin]]]),
+      );
+      const findExistingSpy = jest
+        .spyOn(service as any, 'findExistingReminderKeys')
+        .mockResolvedValue(new Set());
+      repo.create.mockReturnValue({ id: 'notif-1' } as Notification);
+      repo.save.mockResolvedValue({ id: 'notif-1' } as Notification);
+
+      await service.runDailyReminders();
+
+      // The `since` boundary must be UTC midnight of today, NOT app-server-local
+      // midnight, so it lines up with the index bucket (created_at)::date
+      // (created_at is a plain timestamp storing the UTC wall-clock).
+      const now = new Date();
+      const expectedUtcMidnight = new Date(
+        Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
+      );
+
+      expect(findExistingSpy).toHaveBeenCalled();
+      const sinceArgs = findExistingSpy.mock.calls.map((call: any[]) => call[0].since as Date);
+      for (const since of sinceArgs) {
+        expect(since.getTime()).toBe(expectedUtcMidnight.getTime());
+        // A UTC start-of-day has zeroed UTC time-of-day components.
+        expect(since.getUTCHours()).toBe(0);
+        expect(since.getUTCMinutes()).toBe(0);
+        expect(since.getUTCSeconds()).toBe(0);
+        expect(since.getUTCMilliseconds()).toBe(0);
+      }
+
+      findAdminsSpy.mockRestore();
+      findExistingSpy.mockRestore();
+    });
   });
 
   describe('notifyDelayedCheques', () => {

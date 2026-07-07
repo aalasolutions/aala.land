@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { DataSource, EntityManager, Repository } from 'typeorm';
+import { DataSource, EntityManager, QueryFailedError, Repository } from 'typeorm';
 import { NotFoundException, BadRequestException } from '@nestjs/common';
 import { LeasesService } from './leases.service';
 import { Lease, LeaseStatus, LeaseType } from './entities/lease.entity';
@@ -19,6 +19,19 @@ describe('LeasesService', () => {
   let activeLeaseCount: number;
 
   const companyId = 'company-uuid-1';
+
+  // Build a QueryFailedError shaped like a Postgres unique-index violation, with
+  // an optional driver `code`/`constraint` and message so the service's 23505
+  // mapping can be exercised.
+  const makeUniqueViolation = (
+    driverError: { code?: string; constraint?: string; detail?: string },
+    message = 'duplicate key value violates unique constraint',
+  ): QueryFailedError => {
+    const err = new QueryFailedError('save', [], driverError as unknown as Error);
+    (err as unknown as { driverError: unknown }).driverError = driverError;
+    Object.defineProperty(err, 'message', { value: message, configurable: true });
+    return err;
+  };
 
   const mockLease: Partial<Lease> = {
     id: 'lease-uuid-1',
@@ -194,6 +207,32 @@ describe('LeasesService', () => {
       ).rejects.toThrow(BadRequestException);
       expect(manager.save).not.toHaveBeenCalled();
     });
+
+    it('maps the active-lease unique-index violation to a 400 when flipping to ACTIVE', async () => {
+      // The count guard passes (no committed ACTIVE lease seen) but the racing
+      // concurrent transition already committed, so the save trips
+      // UQ_leases_active_unit with a raw 23505.
+      manager.findOne.mockResolvedValue({ ...mockLease, status: LeaseStatus.DRAFT } as Lease);
+      activeLeaseCount = 0;
+      manager.save.mockRejectedValue(
+        makeUniqueViolation({ code: '23505', constraint: 'UQ_leases_active_unit' }),
+      );
+
+      await expect(
+        service.update('lease-uuid-1', companyId, { status: LeaseStatus.ACTIVE }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('rethrows a non-active-lease unique violation on flip to ACTIVE', async () => {
+      manager.findOne.mockResolvedValue({ ...mockLease, status: LeaseStatus.DRAFT } as Lease);
+      activeLeaseCount = 0;
+      const other = makeUniqueViolation({ code: '23505', constraint: 'some_other_index' });
+      manager.save.mockRejectedValue(other);
+
+      await expect(
+        service.update('lease-uuid-1', companyId, { status: LeaseStatus.ACTIVE }),
+      ).rejects.toBe(other);
+    });
   });
 
   describe('renew', () => {
@@ -261,6 +300,80 @@ describe('LeasesService', () => {
         service.renew('lease-uuid-1', companyId, {} as any),
       ).rejects.toThrow(BadRequestException);
       expect(manager.save).not.toHaveBeenCalled();
+    });
+
+    it('maps the successor unique-index violation to a 400 (two renews, same unit, different old leases)', async () => {
+      // Both renews lock their own (different) old-lease rows, so neither sees the
+      // other's uncommitted ACTIVE successor and both pass assertNoOtherActiveLease.
+      // The losing successor save then trips UQ_leases_active_unit; that raw 23505
+      // must surface as a 400, not a 500.
+      const activeLease = { ...mockLease, status: LeaseStatus.ACTIVE } as Lease;
+      const activeSuccessor = {
+        unitId: 'unit-uuid-1',
+        companyId,
+        status: LeaseStatus.ACTIVE,
+      } as unknown as Lease;
+
+      manager.findOne.mockResolvedValue(activeLease);
+      manager.create.mockReturnValue(activeSuccessor);
+      activeLeaseCount = 0; // guard passes; the DB backstop is what fires
+      manager.save
+        .mockResolvedValueOnce({ ...activeLease, status: LeaseStatus.RENEWED } as Lease)
+        .mockRejectedValueOnce(
+          makeUniqueViolation({ code: '23505', constraint: 'UQ_leases_active_unit' }),
+        );
+
+      await expect(
+        service.renew('lease-uuid-1', companyId, { status: LeaseStatus.ACTIVE } as any),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('maps the successor unique violation reported via detail (index in detail, no constraint field)', async () => {
+      // Postgres reports a standalone unique-index violation with the index name in
+      // `detail` and may leave `constraint` empty; the mapping must still catch it.
+      const activeLease = { ...mockLease, status: LeaseStatus.ACTIVE } as Lease;
+      const activeSuccessor = {
+        unitId: 'unit-uuid-1',
+        companyId,
+        status: LeaseStatus.ACTIVE,
+      } as unknown as Lease;
+
+      manager.findOne.mockResolvedValue(activeLease);
+      manager.create.mockReturnValue(activeSuccessor);
+      activeLeaseCount = 0;
+      manager.save
+        .mockResolvedValueOnce({ ...activeLease, status: LeaseStatus.RENEWED } as Lease)
+        .mockRejectedValueOnce(
+          makeUniqueViolation(
+            { code: '23505', detail: 'Key (unit_id)=(unit-uuid-1) already exists.' },
+            'duplicate key value violates unique constraint "UQ_leases_active_unit"',
+          ),
+        );
+
+      await expect(
+        service.renew('lease-uuid-1', companyId, { status: LeaseStatus.ACTIVE } as any),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('rethrows a non-active-lease unique violation from the successor save', async () => {
+      const activeLease = { ...mockLease, status: LeaseStatus.ACTIVE } as Lease;
+      const activeSuccessor = {
+        unitId: 'unit-uuid-1',
+        companyId,
+        status: LeaseStatus.ACTIVE,
+      } as unknown as Lease;
+
+      manager.findOne.mockResolvedValue(activeLease);
+      manager.create.mockReturnValue(activeSuccessor);
+      activeLeaseCount = 0;
+      const other = makeUniqueViolation({ code: '23505', constraint: 'some_other_index' });
+      manager.save
+        .mockResolvedValueOnce({ ...activeLease, status: LeaseStatus.RENEWED } as Lease)
+        .mockRejectedValueOnce(other);
+
+      await expect(
+        service.renew('lease-uuid-1', companyId, { status: LeaseStatus.ACTIVE } as any),
+      ).rejects.toBe(other);
     });
 
     it('throws BadRequestException when lease is TERMINATED', async () => {

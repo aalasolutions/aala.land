@@ -519,6 +519,31 @@ describe('UsersService', () => {
       await service.deleteUserWithReassignment('user-uuid-2', 'requester-uuid', companyId, Role.COMPANY_ADMIN, removeDto);
       expect(billingServiceMock.decrementSeat).not.toHaveBeenCalled();
     });
+
+    it('maps a commissions.agent_id FK violation (23503) from the row delete to a 409', async () => {
+      // A commission flipped PENDING->APPROVED after the in-txn count but before
+      // the delete; the ON DELETE RESTRICT FK raises 23503. TypeORM surfaces it as
+      // a QueryFailedError carrying the SQLSTATE on driverError.code.
+      const fkError = Object.assign(new Error('update or delete on table "users" violates foreign key constraint'), {
+        code: '23503',
+        driverError: { code: '23503' },
+      });
+      managerMock.delete.mockRejectedValue(fkError);
+
+      primeRemovalLookups(proCompany);
+      const first = service.deleteUserWithReassignment('user-uuid-2', 'requester-uuid', companyId, Role.COMPANY_ADMIN, removeDto);
+      await expect(first).rejects.toThrow(ConflictException);
+      await expect(first).rejects.toThrow('deactivate instead');
+    });
+
+    it('does not swallow a non-FK error from the row delete', async () => {
+      primeRemovalLookups(proCompany);
+      managerMock.delete.mockRejectedValue(new Error('connection reset'));
+
+      await expect(
+        service.deleteUserWithReassignment('user-uuid-2', 'requester-uuid', companyId, Role.COMPANY_ADMIN, removeDto),
+      ).rejects.toThrow('connection reset');
+    });
   });
 
   describe('trimToOneActiveUser', () => {

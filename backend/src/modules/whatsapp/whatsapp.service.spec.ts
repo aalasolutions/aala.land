@@ -130,4 +130,42 @@ describe('WhatsappService echo suppression', () => {
     emitter.emit('message', baseMsg({ id: 'e2', fromMe: true, body: 'duplicate text' }));
     expect(ai.recordHumanReply).toHaveBeenCalledWith('u1', 'c1');
   });
+
+  it('matches N identical AI sends with N echoes (counter, not a collapsing Set)', async () => {
+    // Both sends return without a messageId — only the content fingerprint can match, so
+    // this is exactly the collapse case a Set would get wrong.
+    sendMessage.mockResolvedValue({ success: true, messageId: undefined });
+    await wire();
+
+    let capturedSend: any;
+    ai.handleIncomingMessage.mockImplementation((_msg: any, _co: string, _u: string, send: any) => {
+      capturedSend = send;
+      return Promise.resolve();
+    });
+    emitter.emit('message', baseMsg({ fromMe: false, body: 'question' }));
+
+    // AI sends the SAME canned line twice within the window (counter → 2).
+    await capturedSend('c1', 'Hello! How can I help?');
+    await capturedSend('c1', 'Hello! How can I help?');
+
+    // Two fromMe echoes of that identical line: BOTH are AI echoes, neither is a takeover.
+    emitter.emit('message', baseMsg({ id: 'echo-1', fromMe: true, body: 'Hello! How can I help?' }));
+    emitter.emit('message', baseMsg({ id: 'echo-2', fromMe: true, body: 'Hello! How can I help?' }));
+    expect(ai.recordHumanReply).not.toHaveBeenCalled();
+
+    // A THIRD identical fromMe (counter drained to 0) is a genuine human takeover.
+    emitter.emit('message', baseMsg({ id: 'echo-3', fromMe: true, body: 'Hello! How can I help?' }));
+    expect(ai.recordHumanReply).toHaveBeenCalledTimes(1);
+    expect(ai.recordHumanReply).toHaveBeenCalledWith('u1', 'c1');
+  });
+
+  it('does not throw when a fromMe echo has an undefined body', async () => {
+    await wire();
+    // A fromMe media re-emission with no text body must not crash the fingerprint build.
+    expect(() =>
+      emitter.emit('message', baseMsg({ fromMe: true, body: undefined as any })),
+    ).not.toThrow();
+    // With no matching AI send, an undefined-body human message is still a human reply.
+    expect(ai.recordHumanReply).toHaveBeenCalledWith('u1', 'c1');
+  });
 });

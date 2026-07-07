@@ -27,6 +27,12 @@ export class WhatsappAiService implements OnModuleInit, OnModuleDestroy {
   private pendingByChat = new Map<string, PendingChat>();
   private humanReplyAt = new Map<string, number>();
   private lastActivityAt = new Map<string, number>();
+  // Serializes AI turns per chat (keyed by `${userId}:${chatId}`). Each turn chains
+  // after the previous one for the same key, so only ONE processMessage runs at a time
+  // per chat. This prevents two concurrent turns from interleaving push/pop/splice on the
+  // shared history array or double-counting the weekly quota when a follow-up message
+  // arrives mid-turn (after the pending entry was already flushed).
+  private chatLocks = new Map<string, Promise<void>>();
   private readonly AI_STATE_TTL_MS = 24 * 60 * 60 * 1000;
   private sweepInterval: ReturnType<typeof setInterval> | null = null;
 
@@ -161,7 +167,7 @@ export class WhatsappAiService implements OnModuleInit, OnModuleDestroy {
     send: SendFn,
   ): Promise<void> {
     if (!this.isEnabled(userId) || !process.env.OLLAMA_API_KEY) return;
-    if (evt.fromMe || evt.isGroup || !evt.body.trim()) return;
+    if (evt.fromMe || evt.isGroup || !(evt.body ?? '').trim()) return;
 
     const maxAge = parseInt(process.env.AI_MESSAGE_MAX_AGE_S ?? '120', 10);
     if (Math.floor(Date.now() / 1000) - evt.timestamp > maxAge) return;
@@ -193,7 +199,27 @@ export class WhatsappAiService implements OnModuleInit, OnModuleDestroy {
     if (!pending) return;
 
     const combinedText = pending.messages.join('\n');
-    await this.processMessage(combinedText, pending.chatId, pending.companyId, pending.userId, pending.send);
+    await this.runSerializedPerChat(
+      `${pending.userId}:${pending.chatId}`,
+      () => this.processMessage(combinedText, pending.chatId, pending.companyId, pending.userId, pending.send),
+    );
+  }
+
+  // Runs `task` after any in-flight turn for the same chat key has settled, so turns for
+  // one chat never overlap. The chain link is stored back in `chatLocks`; the map entry is
+  // cleaned up once this link is the tail (nothing else queued behind it).
+  private runSerializedPerChat(key: string, task: () => Promise<void>): Promise<void> {
+    const prior = this.chatLocks.get(key) ?? Promise.resolve();
+    // Wait for the prior turn to finish (regardless of its outcome), then run this one.
+    const run = prior.catch(() => undefined).then(task);
+    // Never let a rejection poison the chain for the next turn.
+    const link = run.catch(() => undefined);
+    this.chatLocks.set(key, link);
+    void link.then(() => {
+      // Only clear if no newer turn has replaced us as the tail.
+      if (this.chatLocks.get(key) === link) this.chatLocks.delete(key);
+    });
+    return run;
   }
 
   private isHumanSilenceActive(userId: string, chatId: string): boolean {
@@ -227,6 +253,9 @@ export class WhatsappAiService implements OnModuleInit, OnModuleDestroy {
 
     const { cleaned, needsDirectContact } = sanitizeInput(text);
     if (needsDirectContact) {
+      // Same mid-turn human-takeover guard the other send paths use: if the operator
+      // jumped in after this turn started, do not send the canned direct-contact reply.
+      if (this.humanTookOverSince(userId, chatId, flushStartedAt)) return;
       await send(chatId, DIRECT_CONTACT_RESPONSE);
       return;
     }
@@ -234,6 +263,13 @@ export class WhatsappAiService implements OnModuleInit, OnModuleDestroy {
     const histKey = `${userId}:${chatId}`;
     let history = this.histories.get(histKey);
     if (!history) { history = []; this.histories.set(histKey, history); }
+
+    // Index-safe recovery baseline: the number of messages present BEFORE this turn
+    // appended anything. On any early-return or error we truncate back to exactly this
+    // length, removing only what this turn added — never the "last N" (which a concurrent
+    // turn could have contributed). Serialization already prevents overlap, but this makes
+    // the recovery correct even if the assumption is ever violated.
+    const historyLenBefore = history.length;
 
     let assistantPushed = false;
     let quotaIncremented = false;
@@ -253,7 +289,7 @@ export class WhatsappAiService implements OnModuleInit, OnModuleDestroy {
           if (allowed) quotaIncremented = true;
           if (!allowed) {
             this.logger.warn(`Weekly AI limit exceeded for company ${companyId} (limit: ${weeklyLimit})`);
-            history.pop();
+            this.rollbackTurn(history, historyLenBefore);
             return;
           }
         } catch (err) {
@@ -268,7 +304,7 @@ export class WhatsappAiService implements OnModuleInit, OnModuleDestroy {
       const firstRaw = await this.callLLM([...systemMessages, ...history], TOOL_DEFINITIONS);
       if (!firstRaw) {
         this.revertQuotaIfNeeded(companyId, quotaIncremented);
-        history.pop();
+        this.rollbackTurn(history, historyLenBefore);
         return;
       }
       const toolCall = parseToolCall(firstRaw);
@@ -295,13 +331,13 @@ export class WhatsappAiService implements OnModuleInit, OnModuleDestroy {
         if (!reply) {
           this.logger.warn('Second LLM call returned no text content after tool execution', { toolName: toolCall.name, companyId });
           this.revertQuotaIfNeeded(companyId, quotaIncremented);
-          history.pop();
+          this.rollbackTurn(history, historyLenBefore);
           return;
         }
 
         if (this.humanTookOverSince(userId, chatId, flushStartedAt)) {
           this.revertQuotaIfNeeded(companyId, quotaIncremented);
-          history.pop();
+          this.rollbackTurn(history, historyLenBefore);
           return;
         }
 
@@ -315,13 +351,13 @@ export class WhatsappAiService implements OnModuleInit, OnModuleDestroy {
       const reply = parseResponse(firstRaw);
       if (!reply) {
         this.revertQuotaIfNeeded(companyId, quotaIncremented);
-        history.pop();
+        this.rollbackTurn(history, historyLenBefore);
         return;
       }
 
       if (this.humanTookOverSince(userId, chatId, flushStartedAt)) {
         this.revertQuotaIfNeeded(companyId, quotaIncremented);
-        history.pop();
+        this.rollbackTurn(history, historyLenBefore);
         return;
       }
 
@@ -331,13 +367,23 @@ export class WhatsappAiService implements OnModuleInit, OnModuleDestroy {
       await send(chatId, reply);
 
     } catch (err) {
+      // On failure, the quota is only reverted if the send never happened.
       if (!assistantPushed) this.revertQuotaIfNeeded(companyId, quotaIncremented);
-      if (assistantPushed) history.splice(-2, 2);
-      else history.pop();
+      // Index-safe rollback: remove exactly what this turn appended (the user message, and
+      // the assistant reply if it was pushed) by truncating to the captured baseline,
+      // instead of assuming this turn's messages are the last -2 entries.
+      this.rollbackTurn(history, historyLenBefore);
       const cause = (err as any)?.cause;
       const causeStr = cause instanceof Error ? ` | cause: ${cause.name}: ${cause.message}` : '';
       this.logger.error(`AI call failed${causeStr}`, err instanceof Error ? `${err.message}\n${err.stack}` : String(err));
     }
+  }
+
+  // Truncates `history` back to `lenBefore`, discarding everything this turn appended.
+  // Safe even if trimHistory shifted indices: if the history was trimmed below the
+  // baseline it is left untouched (nothing this turn added still remains to remove).
+  private rollbackTurn(history: AiHistoryMessage[], lenBefore: number): void {
+    if (history.length > lenBefore) history.length = lenBefore;
   }
 
   private revertQuotaIfNeeded(companyId: string, quotaIncremented: boolean): void {

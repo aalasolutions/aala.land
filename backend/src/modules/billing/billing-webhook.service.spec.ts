@@ -209,7 +209,9 @@ describe('BillingWebhookService', () => {
             );
             await service.handleWebhook(rawBody, signature);
             expect(seatSyncPatch()).toEqual({ purchasedSeats: 7 });
-            // Recency guard: filtered by id AND the last-event-at comparison.
+            // Recency guard: filtered by id AND the last-event-at comparison. `<=`
+            // (not `<`) so several internal events sharing one Stripe second-granular
+            // event.created all apply; whole-event redelivery is deduped upstream.
             expect(seatUpdateQB.where).toHaveBeenCalledWith('id = :companyId', { companyId });
             expect(seatUpdateQB.andWhere).toHaveBeenCalledWith(
                 '(billing_last_event_at IS NULL OR billing_last_event_at <= :occurredAt)',
@@ -277,25 +279,32 @@ describe('BillingWebhookService', () => {
             );
         });
 
-        it('PlanChanged writes the tier and cap columns only', async () => {
+        it('PlanChanged writes tier + caps THROUGH the recency guard (not a bare update)', async () => {
             provider.parseWebhook.mockResolvedValue(
                 parsedWith([{ name: 'PlanChanged', ...baseEvent, plan: 'PRO', quantity: 5 }]),
             );
             await service.handleWebhook(rawBody, signature);
-            expect(companyRepo.update).toHaveBeenCalledWith(companyId, {
+            // Must be routed through the recency-guarded conditional UPDATE so an
+            // out-of-order/retried plan swap cannot clobber newer tier state.
+            expect(seatSyncPatch()).toEqual({
                 subscriptionTier: SubscriptionTier.PRO,
                 maxUsers: TIER_LIMITS[SubscriptionTier.PRO].maxUsers,
                 maxCountries: TIER_LIMITS[SubscriptionTier.PRO].maxCountries,
                 maxProperties: TIER_LIMITS[SubscriptionTier.PRO].maxProperties,
             });
+            expect(seatUpdateQB.andWhere).toHaveBeenCalledWith(
+                '(billing_last_event_at IS NULL OR billing_last_event_at <= :occurredAt)',
+                { occurredAt },
+            );
+            expect(companyRepo.update).not.toHaveBeenCalled();
         });
 
-        it('SubscriptionCanceled drops to FREE, clears the subscription id, syncs FREE caps', async () => {
+        it('SubscriptionCanceled drops to FREE, clears the subscription id, syncs FREE caps THROUGH the recency guard', async () => {
             provider.parseWebhook.mockResolvedValue(
                 parsedWith([{ name: 'SubscriptionCanceled', ...baseEvent, endedAt: null }]),
             );
             await service.handleWebhook(rawBody, signature);
-            expect(companyRepo.update).toHaveBeenCalledWith(companyId, {
+            expect(seatSyncPatch()).toEqual({
                 subscriptionTier: SubscriptionTier.FREE,
                 billingSubscriptionId: null,
                 billingStatus: 'canceled',
@@ -303,6 +312,28 @@ describe('BillingWebhookService', () => {
                 maxCountries: TIER_LIMITS[SubscriptionTier.FREE].maxCountries,
                 maxProperties: TIER_LIMITS[SubscriptionTier.FREE].maxProperties,
             });
+            expect(seatUpdateQB.andWhere).toHaveBeenCalledWith(
+                '(billing_last_event_at IS NULL OR billing_last_event_at <= :occurredAt)',
+                { occurredAt },
+            );
+            expect(companyRepo.update).not.toHaveBeenCalled();
+        });
+
+        it('skips a stale/out-of-order cancel (0 rows) but still acks and marks it processed', async () => {
+            // A retried/late SubscriptionCanceled delivered after a newer
+            // resubscribe must NOT win last-write; the guard yields 0 rows.
+            seatUpdateQB.execute.mockResolvedValue({ affected: 0 });
+            companyRepo.exists.mockResolvedValue(true);
+            provider.parseWebhook.mockResolvedValue(
+                parsedWith([{ name: 'SubscriptionCanceled', ...baseEvent, endedAt: null }]),
+            );
+            await expect(service.handleWebhook(rawBody, signature)).resolves.toEqual({
+                received: true,
+            });
+            expect(eventRepo.update).toHaveBeenCalledWith(
+                { providerEventId: 'evt_1' },
+                { processedAt: expect.any(Date) },
+            );
         });
 
         it('PaymentFailed writes past_due when a subscription id is present', async () => {

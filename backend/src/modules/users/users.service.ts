@@ -230,6 +230,17 @@ export class UsersService {
     }
 
     /**
+     * True when the error is a Postgres foreign-key violation (SQLSTATE 23503).
+     * TypeORM wraps the pg error in a QueryFailedError whose `code`/`driverError.code`
+     * carries the SQLSTATE, so check both shapes.
+     */
+    private isForeignKeyViolation(err: unknown): boolean {
+        if (typeof err !== 'object' || err === null) return false;
+        const e = err as { code?: string; driverError?: { code?: string } };
+        return e.code === '23503' || e.driverError?.code === '23503';
+    }
+
+    /**
      * Resolve the companyId to lock on. For a company-scoped requester it is the
      * requester's own company; for SUPER_ADMIN (no company context) it is the
      * target user's company, resolved with a cheap immutable read. Returns null
@@ -418,7 +429,24 @@ export class UsersService {
                 // lead_activities.performed_by and audit_logs.user_id are handled by
                 // the database itself (ON DELETE SET NULL, migration 1779500000041).
                 // leads.previous_agent is a plain history column and stays as is.
-                await manager.delete(User, { id: target.id });
+                //
+                // commissions.agent_id is a NOT NULL FK with ON DELETE RESTRICT
+                // (migration 1779500000045). The in-txn non-PENDING count above is
+                // the fast path, but a commission that flipped PENDING->APPROVED
+                // between that count and this delete would still reference the user;
+                // the FK then raises 23503, which we surface as a clean 409 rather
+                // than a raw 500. The whole txn (including the isActive/reassignment
+                // writes) rolls back, so nothing is orphaned.
+                try {
+                    await manager.delete(User, { id: target.id });
+                } catch (err) {
+                    if (this.isForeignKeyViolation(err)) {
+                        throw new ConflictException(
+                            'This user still has records that reference them (for example commissions) and cannot be deleted; deactivate instead.',
+                        );
+                    }
+                    throw err;
+                }
 
                 return report;
             } catch (err) {

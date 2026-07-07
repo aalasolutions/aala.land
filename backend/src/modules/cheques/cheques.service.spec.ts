@@ -48,6 +48,7 @@ describe('ChequesService', () => {
     type: ChequeType.RENT,
     ocrProcessed: false,
     ocrData: null,
+    version: 1,
   };
 
   beforeEach(async () => {
@@ -173,9 +174,17 @@ describe('ChequesService', () => {
       expect(updateBuilder.andWhere).toHaveBeenCalledWith('status = :oldStatus', {
         oldStatus: ChequeStatus.PENDING,
       });
+      // Optimistic-lock version guard: compare-and-set on the read version.
+      expect(updateBuilder.andWhere).toHaveBeenCalledWith('version = :expectedVersion', {
+        expectedVersion: 1,
+      });
+      // SET bumps the version so a stale-version writer loses.
+      const setArg = updateBuilder.set.mock.calls[0][0];
+      expect(typeof setArg.version).toBe('function');
+      expect(setArg.version()).toBe('version + 1');
     });
 
-    it('rejects the transition when a concurrent update already changed the status (affected === 0)', async () => {
+    it('rejects a status change when a concurrent edit already bumped the version (affected === 0)', async () => {
       repo.findOne.mockResolvedValueOnce({ ...mockCheque } as Cheque);
       updateBuilder = makeUpdateBuilder(0);
       repo.createQueryBuilder.mockReturnValue(updateBuilder as any);
@@ -185,6 +194,32 @@ describe('ChequesService', () => {
       ).rejects.toThrow(BadRequestException);
 
       // No re-read, no notifications after a lost race.
+      expect(repo.findOne).toHaveBeenCalledTimes(1);
+    });
+
+    it('rejects a NON-status edit when a concurrent edit already bumped the version (lost-update closed)', async () => {
+      // A concurrent amount/notes edit committed first (version moved 1 -> 2),
+      // so this edit's version = 1 guard matches no rows: affected === 0.
+      repo.findOne.mockResolvedValueOnce({ ...mockCheque } as Cheque);
+      updateBuilder = makeUpdateBuilder(0);
+      repo.createQueryBuilder.mockReturnValue(updateBuilder as any);
+
+      await expect(
+        service.update('cheque-uuid-1', companyId, { amount: 20000 } as any),
+      ).rejects.toThrow(BadRequestException);
+
+      // Non-status edits are NOT status changes, so the status/terminal guards
+      // are absent; only the version guard is applied.
+      expect(updateBuilder.andWhere).toHaveBeenCalledWith('version = :expectedVersion', {
+        expectedVersion: 1,
+      });
+      expect(updateBuilder.andWhere).not.toHaveBeenCalledWith(
+        'status = :oldStatus',
+        expect.anything(),
+      );
+      // repo.save is never used; the lost-update branch is gone.
+      expect(repo.save).not.toHaveBeenCalled();
+      // No re-read after a lost race.
       expect(repo.findOne).toHaveBeenCalledTimes(1);
     });
 
@@ -207,11 +242,16 @@ describe('ChequesService', () => {
     it('broadcasts chequeUpdated event even when status does not change', async () => {
       const gateway = module.get(NotificationsGateway) as any;
       const updated = { ...mockCheque, bankName: 'New Bank' } as Cheque;
-      repo.findOne.mockResolvedValue({ ...mockCheque } as Cheque);
-      repo.save.mockResolvedValue(updated);
+      // Pre-check read, then re-read after the guarded conditional UPDATE.
+      repo.findOne
+        .mockResolvedValueOnce({ ...mockCheque } as Cheque)
+        .mockResolvedValueOnce(updated);
 
       await service.update('cheque-uuid-1', companyId, { bankName: 'New Bank' } as any);
 
+      // Non-status edit also goes through the version-guarded UPDATE, not save.
+      expect(updateBuilder.execute).toHaveBeenCalledTimes(1);
+      expect(repo.save).not.toHaveBeenCalled();
       expect(gateway.broadcastToCompany).toHaveBeenCalledWith(companyId, 'chequeUpdated', expect.objectContaining({
         id: 'cheque-uuid-1',
         status: ChequeStatus.PENDING,
@@ -361,8 +401,9 @@ describe('ChequesService', () => {
     it('does not create notifications when status does not change', async () => {
       const notificationsService = module.get(NotificationsService) as any;
       const updated = { ...mockCheque, bankName: 'New Bank Name' } as Cheque;
-      repo.findOne.mockResolvedValue({ ...mockCheque } as Cheque);
-      repo.save.mockResolvedValue(updated);
+      repo.findOne
+        .mockResolvedValueOnce({ ...mockCheque } as Cheque)
+        .mockResolvedValueOnce(updated);
       (module.get(UsersService).findAdmins as jest.Mock).mockResolvedValue([
         { id: 'admin-x', name: 'Admin X', email: 'adminx@test.com' },
       ]);
@@ -445,6 +486,10 @@ describe('ChequesService', () => {
       expect(setArg.bounceReason).toBe('Insufficient funds');
       expect(setArg.lastBounceDate).toBeInstanceOf(Date);
       expect(setArg.status).toBe(ChequeStatus.BOUNCED);
+      // Bounce bumps the optimistic-lock version so a concurrent stale update()
+      // cannot revert this BOUNCED row.
+      expect(typeof setArg.version).toBe('function');
+      expect(setArg.version()).toBe('version + 1');
 
       // repo.save is never used for the mutation.
       expect(repo.save).not.toHaveBeenCalled();
