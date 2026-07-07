@@ -192,6 +192,12 @@ describe('UsersController', () => {
       expect(service.reactivateUser).toHaveBeenCalledWith('user-uuid-2', 'company-uuid-1', 'company_admin');
     });
 
+    it('rejects a non-super-admin request with no company context before touching the service', () => {
+      const reqNoCompany = { user: { userId: 'u', email: 'e', companyId: null, role: Role.COMPANY_ADMIN } };
+      expect(() => controller.reactivate('user-uuid-2', reqNoCompany as never)).toThrow(BadRequestException);
+      expect(service.reactivateUser).not.toHaveBeenCalled();
+    });
+
     it('POST /users/trim-to-one requires a company context', async () => {
       const reqNoCompany = { user: { userId: 'sa', companyId: null, role: 'super_admin' } };
       expect(() =>

@@ -26,6 +26,7 @@ import { RemoveUserDto } from './dto/remove-user.dto';
 import { TrimCompanyUsersDto } from './dto/trim-company-users.dto';
 import { ReassignmentReport, ClientReassignmentReport } from './reassignment/reassignment-report';
 import { AuthenticatedRequest } from '@shared/interfaces/authenticated-request.interface';
+import { scopedCompanyId } from '@shared/utils/auth.util';
 
 @ApiTags('Users')
 @ApiBearerAuth()
@@ -102,7 +103,7 @@ export class UsersController {
         @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
         @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
     ) {
-        const companyId = req.user.role === Role.SUPER_ADMIN ? undefined : (req.user.companyId ?? undefined);
+        const companyId = scopedCompanyId(req.user);
         return this.usersService.findAll(companyId, page, limit);
     }
 
@@ -110,7 +111,7 @@ export class UsersController {
     @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT, Role.ACCOUNTANT)
     @ApiOperation({ summary: 'List all agents for current company (for lead assignment)' })
     findAgents(@Request() req: AuthenticatedRequest) {
-        const companyId = req.user.role === Role.SUPER_ADMIN ? undefined : (req.user.companyId ?? undefined);
+        const companyId = scopedCompanyId(req.user);
         return this.usersService.findAgents(companyId);
     }
 
@@ -135,7 +136,7 @@ export class UsersController {
     @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN)
     @ApiOperation({ summary: 'Get a user by ID (scoped to company)' })
     findOne(@Param('id', ParseUUIDPipe) id: string, @Request() req: AuthenticatedRequest) {
-        const companyId = req.user.role === Role.SUPER_ADMIN ? undefined : (req.user.companyId ?? undefined);
+        const companyId = scopedCompanyId(req.user);
         return this.usersService.findOne(id, companyId);
     }
 
@@ -143,7 +144,7 @@ export class UsersController {
     @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN)
     @ApiOperation({ summary: 'Update a user (ADMIN+)' })
     update(@Param('id', ParseUUIDPipe) id: string, @Body() updateUserDto: UpdateUserDto, @Request() req: AuthenticatedRequest) {
-        const companyId = req.user.role === Role.SUPER_ADMIN ? undefined : (req.user.companyId ?? undefined);
+        const companyId = scopedCompanyId(req.user);
         return this.usersService.update(id, companyId, updateUserDto, req.user.role, req.user.userId);
     }
 
@@ -160,7 +161,7 @@ export class UsersController {
         @Body() dto: RemoveUserDto,
         @Request() req: AuthenticatedRequest,
     ) {
-        const companyId = req.user.role === Role.SUPER_ADMIN ? undefined : (req.user.companyId ?? undefined);
+        const companyId = scopedCompanyId(req.user);
         return this.usersService
             .deleteUserWithReassignment(id, req.user.userId, companyId, req.user.role as Role, dto)
             .then((report) => this.toClientReport(report));
@@ -177,7 +178,7 @@ export class UsersController {
         @Body() dto: RemoveUserDto,
         @Request() req: AuthenticatedRequest,
     ) {
-        const companyId = req.user.role === Role.SUPER_ADMIN ? undefined : (req.user.companyId ?? undefined);
+        const companyId = scopedCompanyId(req.user);
         return this.usersService
             .deactivateUser(id, req.user.userId, companyId, req.user.role as Role, dto)
             .then((report) => this.toClientReport(report));
@@ -187,7 +188,7 @@ export class UsersController {
     @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN)
     @ApiOperation({ summary: 'Reactivate a deactivated user, incrementing the seat on paid plans (ADMIN+)' })
     reactivate(@Param('id', ParseUUIDPipe) id: string, @Request() req: AuthenticatedRequest) {
-        const companyId = req.user.role === Role.SUPER_ADMIN ? undefined : (req.user.companyId ?? undefined);
+        const companyId = scopedCompanyId(req.user);
         return this.usersService.reactivateUser(id, companyId, req.user.role as Role);
     }
 
