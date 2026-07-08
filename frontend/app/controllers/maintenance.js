@@ -2,40 +2,9 @@ import PaginatedController from './paginated-base';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
-
-const STATUS_OPTIONS = [
-  { value: '', label: 'All Status' },
-  { value: 'OPEN', label: 'Open' },
-  { value: 'IN_PROGRESS', label: 'In Progress' },
-  { value: 'PENDING_APPROVAL', label: 'Pending Approval' },
-  { value: 'COMPLETED', label: 'Completed' },
-  { value: 'CANCELLED', label: 'Cancelled' },
-];
-
-const MONTH_OPTIONS = [
-  { value: '', label: 'All Time' },
-  { value: 'this_month', label: 'This Month' },
-  { value: 'last_month', label: 'Last Month' },
-  { value: 'last_3_months', label: 'Last 3 Months' },
-];
-
-const PRIORITY_OPTIONS = [
-  { value: 'LOW', label: 'Low' },
-  { value: 'MEDIUM', label: 'Medium' },
-  { value: 'HIGH', label: 'High' },
-  { value: 'URGENT', label: 'Urgent' },
-];
-
-const CATEGORY_OPTIONS = [
-  { value: 'PLUMBING', label: 'Plumbing' },
-  { value: 'ELECTRICAL', label: 'Electrical' },
-  { value: 'HVAC', label: 'HVAC' },
-  { value: 'STRUCTURAL', label: 'Structural' },
-  { value: 'CLEANING', label: 'Cleaning' },
-  { value: 'PEST_CONTROL', label: 'Pest Control' },
-  { value: 'APPLIANCE', label: 'Appliance' },
-  { value: 'OTHER', label: 'Other' },
-];
+import { STATUS_OPTIONS, MONTH_OPTIONS,
+  PRIORITY_OPTIONS, MAINTENANCE_CATEGORY_OPTIONS
+ } from 'land/constants';
 
 export default class MaintenanceController extends PaginatedController {
   @service auth;
@@ -71,7 +40,7 @@ export default class MaintenanceController extends PaginatedController {
 
   priorityOptions = PRIORITY_OPTIONS;
 
-  categoryOptions = CATEGORY_OPTIONS;
+  categoryOptions = MAINTENANCE_CATEGORY_OPTIONS;
 
   get unitOptions() {
     return [

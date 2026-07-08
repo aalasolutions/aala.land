@@ -16,15 +16,15 @@
       <nav data-test-sidebar-nav class="sidebar-nav">
         {{!-- Dashboard (direct link) --}}
         <LinkTo @route="dashboard" class="sidebar-link" data-test-nav-dashboard>
-          <Ph @icon="gauge" /> <span class="sidebar-label">Dashboard</span>
+          <Ui::Ph @icon="gauge" /> <span class="sidebar-label">Dashboard</span>
         </LinkTo>
 
         {{!-- Properties Group --}}
         {{#if this.sidebarGroups.properties}}
         <div class="sidebar-group {{if (or (eq this.expandedGroup 'properties') (eq this.activeGroup 'properties')) 'expanded'}}">
           <button type="button" class="sidebar-group-toggle {{if (eq this.activeGroup 'properties') 'sidebar-group-active'}}" {{on "click" (fn this.toggleGroup "properties")}}>
-            <Ph @icon="buildings" /> <span class="sidebar-label">Properties</span>
-            <Ph @icon="caret-down" class="sidebar-chevron" />
+            <Ui::Ph @icon="buildings" /> <span class="sidebar-label">Properties</span>
+            <Ui::Ph @icon="caret-down" class="sidebar-chevron" />
           </button>
           <div class="sidebar-group-items">
             <LinkTo @route="properties" class="sidebar-sublink" data-test-nav-properties>
@@ -41,8 +41,8 @@
         {{#if this.sidebarGroups.crm}}
         <div class="sidebar-group {{if (or (eq this.expandedGroup 'crm') (eq this.activeGroup 'crm')) 'expanded'}}">
           <button type="button" class="sidebar-group-toggle {{if (eq this.activeGroup 'crm') 'sidebar-group-active'}}" {{on "click" (fn this.toggleGroup "crm")}}>
-            <Ph @icon="funnel" /> <span class="sidebar-label">Leads</span>
-            <Ph @icon="caret-down" class="sidebar-chevron" />
+            <Ui::Ph @icon="funnel" /> <span class="sidebar-label">Leads</span>
+            <Ui::Ph @icon="caret-down" class="sidebar-chevron" />
           </button>
           <div class="sidebar-group-items">
             <LinkTo @route="leads" class="sidebar-sublink" data-test-nav-leads>
@@ -58,7 +58,7 @@
         {{!-- Documents (direct link) --}}
         {{#if this.sidebarGroups.documents}}
         <LinkTo @route="documents" class="sidebar-link" data-test-nav-documents>
-          <Ph @icon="files" /> <span class="sidebar-label">Documents</span>
+          <Ui::Ph @icon="files" /> <span class="sidebar-label">Documents</span>
         </LinkTo>
         {{/if}}
 
@@ -66,8 +66,8 @@
         {{#if this.sidebarGroups.finance}}
         <div class="sidebar-group {{if (or (eq this.expandedGroup 'finance') (eq this.activeGroup 'finance')) 'expanded'}}">
           <button type="button" class="sidebar-group-toggle {{if (eq this.activeGroup 'finance') 'sidebar-group-active'}}" {{on "click" (fn this.toggleGroup "finance")}}>
-            <Ph @icon="currency-circle-dollar" /> <span class="sidebar-label">Finance</span>
-            <Ph @icon="caret-down" class="sidebar-chevron" />
+            <Ui::Ph @icon="currency-circle-dollar" /> <span class="sidebar-label">Finance</span>
+            <Ui::Ph @icon="caret-down" class="sidebar-chevron" />
           </button>
           <div class="sidebar-group-items">
             <LinkTo @route="leases" class="sidebar-sublink" data-test-nav-leases>
@@ -89,7 +89,7 @@
         {{!-- WhatsApp (direct link) --}}
         {{#if this.sidebarGroups.outreach}}
         <LinkTo @route="whatsapp" class="sidebar-link" data-test-nav-whatsapp>
-          <Ph @icon="whatsapp-logo" /> <span class="sidebar-label">WhatsApp</span>
+          <Ui::Ph @icon="whatsapp-logo" /> <span class="sidebar-label">WhatsApp</span>
         </LinkTo>
         {{/if}}
 
@@ -97,8 +97,8 @@
         {{#if this.sidebarGroups.operations}}
         <div class="sidebar-group {{if (or (eq this.expandedGroup 'operations') (eq this.activeGroup 'operations')) 'expanded'}}">
           <button type="button" class="sidebar-group-toggle {{if (eq this.activeGroup 'operations') 'sidebar-group-active'}}" {{on "click" (fn this.toggleGroup "operations")}}>
-            <Ph @icon="wrench" /> <span class="sidebar-label">Operations</span>
-            <Ph @icon="caret-down" class="sidebar-chevron" />
+            <Ui::Ph @icon="wrench" /> <span class="sidebar-label">Operations</span>
+            <Ui::Ph @icon="caret-down" class="sidebar-chevron" />
           </button>
           <div class="sidebar-group-items">
             <LinkTo @route="maintenance" class="sidebar-sublink" data-test-nav-maintenance>
@@ -114,7 +114,7 @@
         {{!-- Reports (direct link) --}}
         {{#if this.sidebarGroups.reports}}
         <LinkTo @route="reports" class="sidebar-link" data-test-nav-reports>
-          <Ph @icon="chart-bar" /> <span class="sidebar-label">Reports</span>
+          <Ui::Ph @icon="chart-bar" /> <span class="sidebar-label">Reports</span>
         </LinkTo>
         {{/if}}
 
@@ -122,7 +122,7 @@
         {{#if this.sidebarGroups.team}}
           {{#unless this.isSuperAdmin}}
           <LinkTo @route="team" class="sidebar-link" data-test-nav-team>
-            <Ph @icon="users-three" /> <span class="sidebar-label">Team</span>
+            <Ui::Ph @icon="users-three" /> <span class="sidebar-label">Team</span>
           </LinkTo>
           {{/unless}}
         {{/if}}
@@ -132,8 +132,8 @@
         {{#if this.sidebarGroups.admin}}
         <div class="sidebar-group {{if (or (eq this.expandedGroup 'admin') (eq this.activeGroup 'admin')) 'expanded'}}">
           <button type="button" class="sidebar-group-toggle {{if (eq this.activeGroup 'admin') 'sidebar-group-active'}}" {{on "click" (fn this.toggleGroup "admin")}}>
-            <Ph @icon="gear" /> <span class="sidebar-label">Admin</span>
-            <Ph @icon="caret-down" class="sidebar-chevron" />
+            <Ui::Ph @icon="gear" /> <span class="sidebar-label">Admin</span>
+            <Ui::Ph @icon="caret-down" class="sidebar-chevron" />
           </button>
           <div class="sidebar-group-items">
             <LinkTo @route="team" class="sidebar-sublink" data-test-nav-team>
@@ -157,7 +157,7 @@
 
       {{!-- Collapse toggle --}}
       <button type="button" class="sidebar-collapse-btn" aria-label="Toggle sidebar" {{on "click" this.toggleSidebar}}>
-        <Ph @icon={{if this.sidebarCollapsed "caret-double-right" "caret-double-left"}} />
+        <Ui::Ph @icon={{if this.sidebarCollapsed "caret-double-right" "caret-double-left"}} />
       </button>
     </aside>
 
@@ -187,9 +187,7 @@
             autocomplete="off"
             aria-label="Search"
             placeholder="Search..."
-            class="search-input"
-            role="combobox"
-            aria-autocomplete="list"
+            class="search-input" aria-autocomplete="list"
             aria-haspopup="listbox"
             aria-expanded={{if this.showSearchDropdown "true" "false"}}
             aria-controls="search-results"
@@ -214,9 +212,9 @@
           {{#if this.showRegionSwitcher}}
             <div class="region-switcher" data-test-region-switcher>
               <button type="button" class="region-btn" {{on "click" this.toggleRegionDropdown}}>
-                <Ph @icon="globe" @size="18px" />
+                <Ui::Ph @icon="globe" @size="18px" />
                 <span class="region-name">{{this.region.activeRegion.name}}</span>
-                <Ph @icon="caret-down" @size="12px" />
+                <Ui::Ph @icon="caret-down" @size="12px" />
               </button>
               {{#if this.showRegionDropdown}}
                 <button type="button" class="region-overlay" {{on "click" this.closeRegionDropdown}}></button>
@@ -232,23 +230,23 @@
             </div>
           {{else if this.showRegionLabel}}
             <div class="region-label" data-test-region-label>
-              <Ph @icon="globe" @size="18px" />
+              <Ui::Ph @icon="globe" @size="18px" />
               <span class="region-name">{{this.region.activeRegion.name}}</span>
             </div>
           {{/if}}
           <button type="button" class="notification-bell" aria-label="Notifications" {{on "click" this.toggleNotifications}}>
-            <Ph @icon="bell" @size="22px" />
+            <Ui::Ph @icon="bell" @size="22px" />
             {{#if this.unreadCount}}
               <span class="notification-badge">{{this.unreadCount}}</span>
             {{/if}}
           </button>
           {{#unless this.isSuperAdmin}}
             <LinkTo @route="company" class="topbar-icon-btn" aria-label="Company settings">
-              <Ph @icon="building-office" @size="20px" />
+              <Ui::Ph @icon="building-office" @size="20px" />
             </LinkTo>
           {{/unless}}
           <LinkTo @route="profile" class="topbar-icon-btn" aria-label="My profile">
-            <Ph @icon="user" @size="20px" />
+            <Ui::Ph @icon="user" @size="20px" />
           </LinkTo>
           <button
             data-test-logout-button
@@ -257,7 +255,7 @@
             aria-label="Logout"
             {{on "click" this.logout}}
           >
-            <Ph @icon="sign-out" @size="20px" />
+            <Ui::Ph @icon="sign-out" @size="20px" />
           </button>
         </div>
       </header>
@@ -276,7 +274,7 @@
             {{#each this.notifications as |notif|}}
               <button type="button" class="notification-item {{unless notif.isRead 'unread'}}" {{on "click" (fn this.markAsRead notif)}}>
                 <div class="notification-icon {{notif.type}}">
-                  <Ph @icon={{get-notification-icon notif.type}} @size="18px" />
+                  <Ui::Ph @icon={{get-notification-icon notif.type}} @size="18px" />
                 </div>
                 <div class="notification-content">
                   <span class="notification-title">{{notif.title}}</span>
@@ -289,7 +287,7 @@
               </button>
             {{else}}
               <div class="notification-empty">
-                <Ph @icon="bell-slash" @size="24px" @color="var(--text-muted)" />
+                <Ui::Ph @icon="bell-slash" @size="24px" @color="var(--text-muted)" />
                 <p class="font-xs text-muted mt-2">No notifications</p>
               </div>
             {{/each}}
@@ -307,7 +305,7 @@
   {{outlet}}
 {{/if}}
 
-<ToastContainer />
+<Ui::ToastContainer />
 
 <ConfirmModal
   @isOpen={{this.showLogoutModal}}

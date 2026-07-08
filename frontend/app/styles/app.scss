@@ -1,5 +1,7 @@
 @use 'nuvoui' as *;
 @use './_variables.scss' as *;
+@use 'sass:color';
+
 
 // =================================
 // CSS CUSTOM PROPERTIES (Design Tokens)
@@ -273,12 +275,11 @@ body {
 }
 
 .sidebar-group-active {
-    background: lighten($color-primary, 38%);
+    background: color.adjust($color-primary, $lightness: 38%);
     color: $color-primary;
 }
-
 .sidebar-group-active:hover {
-    background: lighten($color-primary, 34%);
+    background: color.adjust($color-primary, $lightness: 34%);
     color: $color-primary;
 }
 
@@ -1584,7 +1585,7 @@ $google-neutral-border-hover: #c6cbd1;
     align-items: center;
     gap: 0.45rem;
     padding: 0.4rem 0.7rem;
-    color: darken($color-primary, 8%);
+    color: color.adjust($color-primary, $lightness: -8%);
     background: rgba($color-primary, 0.08);
     border: 1px solid rgba($color-primary, 0.16);
     border-radius: 999px;

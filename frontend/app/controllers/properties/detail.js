@@ -2,21 +2,9 @@ import Controller from '@ember/controller';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
-import { AMENITY_OPTIONS } from '../../constants/amenities';
+import { AMENITY_OPTIONS, PROPERTY_STATUS_OPTIONS, PROPERTY_TYPE_OPTIONS } from 'land/constants';
 import { toggleArrayItem } from '../../utils/toggle-array-item';
 
-const PROPERTY_STATUS_OPTIONS = [
-  { value: 'available', label: 'Available' },
-  { value: 'rented', label: 'Rented' },
-  { value: 'sold', label: 'Sold' },
-  { value: 'maintenance', label: 'Maintenance' },
-];
-
-const PROPERTY_TYPE_INHERIT_OPTIONS = [
-  { value: '', label: 'Not Listed' },
-  { value: 'RENTAL', label: 'For Rent' },
-  { value: 'FOR_SALE', label: 'For Sale' },
-];
 
 export default class PropertiesDetailController extends Controller {
   @service auth;
@@ -110,7 +98,7 @@ export default class PropertiesDetailController extends Controller {
 
   statusOptions = PROPERTY_STATUS_OPTIONS;
 
-  propertyTypeOptions = PROPERTY_TYPE_INHERIT_OPTIONS;
+  propertyTypeOptions = PROPERTY_TYPE_OPTIONS;
 
   get ownerOptions() {
     return [

@@ -1,5 +1,5 @@
 import Base from 'ember-simple-auth/authenticators/base';
-import config from 'frontend/config/environment';
+import config from 'land/config/environment';
 
 export default class CredentialsAuthenticator extends Base {
   async authenticate(email, password) {

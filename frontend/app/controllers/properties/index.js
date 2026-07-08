@@ -2,43 +2,14 @@ import Controller from '@ember/controller';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
-import { AMENITY_OPTIONS } from '../../constants/amenities';
+import { AMENITY_OPTIONS,
+  PROPERTY_FILTER_STATUS_OPTIONS,
+  FILTER_TYPE_OPTIONS,
+  FILTER_BEDS_OPTIONS,
+  PROPERTY_TYPE_OPTIONS,
+  PROPERTY_STATUS_OPTIONS
+ } from 'land/constants';
 
-const FILTER_TYPE_OPTIONS = [
-  { value: '', label: 'All' },
-  { value: 'RENTAL', label: 'For Rent' },
-  { value: 'FOR_SALE', label: 'For Sale' },
-];
-
-const PROPERTY_FILTER_STATUS_OPTIONS = [
-  { value: '', label: 'All' },
-  { value: 'available', label: 'Available' },
-  { value: 'rented', label: 'Rented' },
-  { value: 'sold', label: 'Sold' },
-  { value: 'maintenance', label: 'Maintenance' },
-];
-
-const FILTER_BEDS_OPTIONS = [
-  { value: '', label: 'Any' },
-  { value: '0', label: 'Studio' },
-  { value: '1', label: '1' },
-  { value: '2', label: '2' },
-  { value: '3', label: '3' },
-  { value: '4', label: '4+' },
-];
-
-const PROPERTY_TYPE_OPTIONS = [
-  { value: '', label: 'Not Listed' },
-  { value: 'RENTAL', label: 'For Rent' },
-  { value: 'FOR_SALE', label: 'For Sale' },
-];
-
-const PROPERTY_STATUS_OPTIONS = [
-  { value: 'available', label: 'Available' },
-  { value: 'rented', label: 'Rented' },
-  { value: 'sold', label: 'Sold' },
-  { value: 'maintenance', label: 'Maintenance' },
-];
 
 export default class PropertiesIndexController extends Controller {
   @service auth;

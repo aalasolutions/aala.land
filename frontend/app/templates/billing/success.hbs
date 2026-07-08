@@ -1,7 +1,7 @@
 {{page-title "Checkout Complete"}}
 
 <div class="flex col gap-4 x-center y-center" style="min-height: 50vh; text-align: center;" data-test-billing-success>
-  <Ph @icon="check-circle" @size="56px" @color="var(--color-success)" />
+  <Ui::Ph @icon="check-circle" @size="56px" @color="var(--color-success)" />
   <div>
     <h2 class="font-xl font-bold">Payment received</h2>
     <p class="text-muted mt-2">
@@ -10,6 +10,6 @@
     </p>
   </div>
   <LinkTo @route="company" class="btn btn-primary" data-test-billing-back-to-settings>
-    <Ph @icon="building-office" /> Back to Company Settings
+    <Ui::Ph @icon="building-office" /> Back to Company Settings
   </LinkTo>
 </div>

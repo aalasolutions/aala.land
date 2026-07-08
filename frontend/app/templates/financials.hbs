@@ -3,26 +3,26 @@
 <div data-test-financials-page class="flex col gap-6">
   <div class="flex between x-center">
     <div>
-      <h2 class="font-3xl font-bold"><Ph @icon="currency-dollar" @size="28px" /> Financial Overview</h2>
+      <h2 class="font-3xl font-bold"><Ui::Ph @icon="currency-dollar" @size="28px" /> Financial Overview</h2>
       <p class="text-muted mt-1">Transactions, revenue, and payment tracking.</p>
     </div>
     <button type="button" class="btn btn-primary" {{on "click" this.openCreate}}>
-      <Ph @icon="plus" /> New Transaction
+      <Ui::Ph @icon="plus" /> New Transaction
     </button>
   </div>
 
   {{#if @model.summary}}
     <div class="grid cols-3 gap-4">
       <div data-test-summary="total-income" class="glass-panel p-5">
-        <p class="text-muted font-sm uppercase tracking-wider mb-1"><Ph @icon="trend-up" /> Total Income</p>
+        <p class="text-muted font-sm uppercase tracking-wider mb-1"><Ui::Ph @icon="trend-up" /> Total Income</p>
         <h3 class="font-3xl font-bold text-success">{{format-currency @model.summary.totalIncome}}</h3>
       </div>
       <div data-test-summary="total-expense" class="glass-panel p-5">
-        <p class="text-muted font-sm uppercase tracking-wider mb-1"><Ph @icon="trend-down" /> Total Expenses</p>
+        <p class="text-muted font-sm uppercase tracking-wider mb-1"><Ui::Ph @icon="trend-down" /> Total Expenses</p>
         <h3 class="font-3xl font-bold text-danger">{{format-currency @model.summary.totalExpense}}</h3>
       </div>
       <div data-test-summary="net" class="glass-panel p-5">
-        <p class="text-muted font-sm uppercase tracking-wider mb-1"><Ph @icon="scale" /> Net Balance</p>
+        <p class="text-muted font-sm uppercase tracking-wider mb-1"><Ui::Ph @icon="scale" /> Net Balance</p>
         <h3 class="font-3xl font-bold">{{format-currency @model.summary.net}}</h3>
       </div>
     </div>
@@ -30,7 +30,7 @@
 
   {{#if @model.depositReminders.length}}
     <div class="glass-panel p-5">
-      <h4 class="font-lg font-bold mb-3"><Ph @icon="bell-ringing" /> Deposit Reminders</h4>
+      <h4 class="font-lg font-bold mb-3"><Ui::Ph @icon="bell-ringing" /> Deposit Reminders</h4>
       <div class="flex col gap-2">
         {{#each @model.depositReminders as |reminder|}}
           <div class="flex between x-center p-3 rounded bg-white@02 border border-white@05">
@@ -81,7 +81,7 @@
                 <td class="font-xs">{{tx.transactionDate}}</td>
                 <td>
                   <button type="button" class="btn btn-secondary btn-xs" {{on "click" (fn this.openEdit tx)}}>
-                    <Ph @icon="pencil-simple" /> Edit
+                    <Ui::Ph @icon="pencil-simple" /> Edit
                   </button>
                 </td>
               </tr>
@@ -90,7 +90,7 @@
         </table>
       </div>
 
-      <Pagination
+      <Ui::Pagination
         @selectId="financials-limit"
         @page={{this.page}}
         @limit={{this.limit}}
@@ -104,7 +104,7 @@
         <p class="text-muted text-center py-4">
           No transactions on this page with current filters. Adjust filters or navigate to find transactions.
         </p>
-        <Pagination
+        <Ui::Pagination
           @selectId="financials-limit"
           @page={{this.page}}
           @limit={{this.limit}}
@@ -122,7 +122,7 @@
   </div>
 </div>
 
-<Modal
+<Ui::Modal
   @isOpen={{this.showModal}}
   @title={{if this.editTransaction "Edit Transaction" "New Transaction"}}
   @onClose={{this.closeModal}}
@@ -131,35 +131,35 @@
   <form class="flex col gap-4" {{on "submit" this.saveTx}}>
       <div class="flex gap-4">
         <div class="flex col gap-2 flex-1">
-          <FormDropdown @label="Type" @id="tx-type" @value={{this.formType}} @onChange={{fn this.setField "formType"}} @options={{this.transactionTypeOptions}} @placeholder="Select type..." @required={{true}} />
+          <Ui::FormDropdown @label="Type" @id="tx-type" @value={{this.formType}} @onChange={{fn this.setField "formType"}} @options={{this.transactionTypeOptions}} @placeholder="Select type..." @required={{true}} />
         </div>
         <div class="flex col gap-2 flex-1">
-          <FormDropdown @label="Category" @id="tx-category" @value={{this.formCategory}} @onChange={{fn this.setField "formCategory"}} @options={{this.categoryOptions}} @placeholder="Select category..." @required={{true}} />
+          <Ui::FormDropdown @label="Category" @id="tx-category" @value={{this.formCategory}} @onChange={{fn this.setField "formCategory"}} @options={{this.categoryOptions}} @placeholder="Select category..." @required={{true}} />
         </div>
       </div>
       <div class="flex gap-4">
         <div class="flex col gap-2 flex-1">
-          <FormInput @label="Amount" @id="tx-amount" @type="number" @min={{0}} @step={{0.01}} @placeholder="e.g. 15000" @value={{this.formAmount}} @onChange={{fn this.setField "formAmount"}} @required={{true}} />
+          <Ui::FormInput @label="Amount" @id="tx-amount" @type="number" @min={{0}} @step={{0.01}} @placeholder="e.g. 15000" @value={{this.formAmount}} @onChange={{fn this.setField "formAmount"}} @required={{true}} />
         </div>
         <div class="flex col gap-2 flex-1">
-          <FormDropdown @label="Payment Method" @id="tx-payment" @value={{this.formPaymentMethod}} @onChange={{fn this.setField "formPaymentMethod"}} @options={{this.paymentMethodOptions}} @placeholder="Select payment method..." @required={{true}} />
+          <Ui::FormDropdown @label="Payment Method" @id="tx-payment" @value={{this.formPaymentMethod}} @onChange={{fn this.setField "formPaymentMethod"}} @options={{this.paymentMethodOptions}} @placeholder="Select payment method..." @required={{true}} />
         </div>
       </div>
-      <FormInput @label="Description" @id="tx-desc" @type="text" @placeholder="e.g. Monthly rent payment" @value={{this.formDescription}} @onChange={{fn this.setField "formDescription"}} />
+      <Ui::FormInput @label="Description" @id="tx-desc" @type="text" @placeholder="e.g. Monthly rent payment" @value={{this.formDescription}} @onChange={{fn this.setField "formDescription"}} />
       <div class="flex gap-4">
         <div class="flex col gap-2 flex-1">
-          <FormInput @label="Date" @id="tx-date" @type="date" @value={{this.formDate}} @onChange={{fn this.setField "formDate"}} />
+          <Ui::FormInput @label="Date" @id="tx-date" @type="date" @value={{this.formDate}} @onChange={{fn this.setField "formDate"}} />
         </div>
         <div class="flex col gap-2 flex-1">
-          <FormDropdown @label="Status" @id="tx-status" @value={{this.formStatus}} @onChange={{fn this.setField "formStatus"}} @options={{this.statusOptions}} @placeholder="Select status..." @required={{true}} />
+          <Ui::FormDropdown @label="Status" @id="tx-status" @value={{this.formStatus}} @onChange={{fn this.setField "formStatus"}} @options={{this.statusOptions}} @placeholder="Select status..." @required={{true}} />
         </div>
       </div>
       {{#if this.errorMsg}}
         <p class="font-sm text-danger">{{this.errorMsg}}</p>
       {{/if}}
       <div class="flex gap-3 mt-2">
-        <AppButton @variant="secondary" @text="Cancel" @onClick={{this.closeModal}} />
-        <AppButton @variant="primary" @buttonType="submit" @text={{if this.editTransaction "Update" "Create"}} @loading={{this.isSaving}} @loadingText="Saving..." />
+        <Ui::AppButton @variant="secondary" @text="Cancel" @onClick={{this.closeModal}} />
+        <Ui::AppButton @variant="primary" @buttonType="submit" @text={{if this.editTransaction "Update" "Create"}} @loading={{this.isSaving}} @loadingText="Saving..." />
       </div>
     </form>
-</Modal>
+</Ui::Modal>

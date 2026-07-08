@@ -3,18 +3,7 @@ import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
 import { closeDeleteModal, confirmDeleteModal, openDeleteModal } from '../utils/delete-modal';
-
-const SPECIALTY_OPTIONS = [
-  { value: 'PLUMBING', label: 'Plumbing' },
-  { value: 'ELECTRICAL', label: 'Electrical' },
-  { value: 'HVAC', label: 'HVAC' },
-  { value: 'STRUCTURAL', label: 'Structural' },
-  { value: 'CLEANING', label: 'Cleaning' },
-  { value: 'PEST_CONTROL', label: 'Pest Control' },
-  { value: 'APPLIANCE', label: 'Appliance' },
-  { value: 'PAINTING', label: 'Painting' },
-  { value: 'GENERAL', label: 'General' },
-];
+import { MAINTENANCE_CATEGORY_OPTIONS } from 'land/constants';
 
 export default class VendorsController extends PaginatedController {
   @service auth;
@@ -53,7 +42,7 @@ export default class VendorsController extends PaginatedController {
     }));
   }
 
-  specialtyOptions = SPECIALTY_OPTIONS;
+  specialtyOptions = MAINTENANCE_CATEGORY_OPTIONS;
 
   @action setField(fieldName, e) { this[fieldName] = e.target.value; }
 

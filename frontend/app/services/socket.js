@@ -2,7 +2,7 @@ import Service from '@ember/service';
 import { service } from '@ember/service';
 import { io } from 'socket.io-client';
 import { tracked } from '@glimmer/tracking';
-import ENV from 'frontend/config/environment';
+import ENV from 'land/config/environment';
 
 export default class SocketService extends Service {
   @service auth;

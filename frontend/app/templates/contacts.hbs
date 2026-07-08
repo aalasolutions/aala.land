@@ -3,12 +3,12 @@
 <div data-test-contacts class="flex col gap-6">
   <div class="flex between x-center">
     <div class="flex x-center gap-3">
-      <Ph @icon="address-book" @size="24px" />
+      <Ui::Ph @icon="address-book" @size="24px" />
       <h2 class="font-2xl font-bold">Contacts</h2>
       <span class="text-muted font-sm">({{format-number @model.total}})</span>
     </div>
     <button type="button" class="btn btn-primary" {{on "click" this.openCreate}}>
-      <Ph @icon="plus" /> New Contact
+      <Ui::Ph @icon="plus" /> New Contact
     </button>
   </div>
 
@@ -43,10 +43,10 @@
                 <td>
                   <div class="flex gap-2">
                     <button type="button" class="btn btn-secondary btn-xs" {{on "click" (fn this.openEdit contact)}}>
-                      <Ph @icon="pencil-simple" /> Edit
+                      <Ui::Ph @icon="pencil-simple" /> Edit
                     </button>
                     <button type="button" class="btn btn-danger btn-xs" {{on "click" (fn this.openDelete contact)}}>
-                      <Ph @icon="trash" />
+                      <Ui::Ph @icon="trash" />
                     </button>
                   </div>
                 </td>
@@ -56,7 +56,7 @@
         </table>
       </div>
 
-      <Pagination
+      <Ui::Pagination
         @selectId="contacts-limit"
         @page={{this.page}}
         @limit={{this.limit}}
@@ -70,7 +70,7 @@
         <div class="glass-panel p-8 text-center">
           <p class="text-muted mt-3">No contacts on page {{this.page}}. Navigate back to find contacts or adjust your search.</p>
         </div>
-        <Pagination
+        <Ui::Pagination
           @selectId="contacts-limit"
           @page={{this.page}}
           @limit={{this.limit}}
@@ -81,7 +81,7 @@
         />
       {{else}}
         <div class="glass-panel p-8 text-center">
-          <Ph @icon="address-book" @size="48px" @color="var(--text-muted)" />
+          <Ui::Ph @icon="address-book" @size="48px" @color="var(--text-muted)" />
           <p class="text-muted mt-3">No contacts yet. Add your first contact above.</p>
         </div>
       {{/if}}
@@ -89,7 +89,7 @@
   </div>
 </div>
 
-<Modal
+<Ui::Modal
   @isOpen={{this.showModal}}
   @title={{if this.editContact "Edit Contact" "New Contact"}}
   @onClose={{this.closeModal}}
@@ -98,54 +98,54 @@
   <form class="flex col gap-4" {{on "submit" this.saveContact}}>
       <div class="flex gap-4">
         <div class="flex col gap-2 flex-1">
-          <FormInput @label="First Name" @id="c-fname" @type="text" @placeholder="Ahmed" @value={{this.formFirstName}} @onChange={{fn this.setField "formFirstName"}} @required={{true}} />
+          <Ui::FormInput @label="First Name" @id="c-fname" @type="text" @placeholder="Ahmed" @value={{this.formFirstName}} @onChange={{fn this.setField "formFirstName"}} @required={{true}} />
         </div>
         <div class="flex col gap-2 flex-1">
-          <FormInput @label="Last Name" @id="c-lname" @type="text" @placeholder="Al-Rashid" @value={{this.formLastName}} @onChange={{fn this.setField "formLastName"}} />
+          <Ui::FormInput @label="Last Name" @id="c-lname" @type="text" @placeholder="Al-Rashid" @value={{this.formLastName}} @onChange={{fn this.setField "formLastName"}} />
         </div>
       </div>
 
       <div class="flex gap-4">
         <div class="flex col gap-2 flex-1">
-          <FormInput @label="Email" @id="c-email" @type="email" @placeholder="ahmed@example.com" @value={{this.formEmail}} @onChange={{fn this.setField "formEmail"}} />
+          <Ui::FormInput @label="Email" @id="c-email" @type="email" @placeholder="ahmed@example.com" @value={{this.formEmail}} @onChange={{fn this.setField "formEmail"}} />
         </div>
         <div class="flex col gap-2 flex-1">
-          <FormDropdown @label="Type" @id="c-type" @value={{this.formType}} @onChange={{fn this.setField "formType"}} @options={{this.contactTypes}} @placeholder="Select type..." />
+          <Ui::FormDropdown @label="Type" @id="c-type" @value={{this.formType}} @onChange={{fn this.setField "formType"}} @options={{this.contactTypes}} @placeholder="Select type..." />
         </div>
       </div>
 
       <div class="flex gap-4">
         <div class="flex col gap-2 flex-1">
-          <FormInput @label="Phone" @id="c-phone" @type="text" @placeholder="+971501234567" @value={{this.formPhone}} @onChange={{fn this.setField "formPhone"}} />
+          <Ui::FormInput @label="Phone" @id="c-phone" @type="text" @placeholder="+971501234567" @value={{this.formPhone}} @onChange={{fn this.setField "formPhone"}} />
         </div>
         <div class="flex col gap-2 flex-1">
-          <FormInput @label="WhatsApp" @id="c-whatsapp" @type="text" @placeholder="+971501234567" @value={{this.formWhatsappNumber}} @onChange={{fn this.setField "formWhatsappNumber"}} />
+          <Ui::FormInput @label="WhatsApp" @id="c-whatsapp" @type="text" @placeholder="+971501234567" @value={{this.formWhatsappNumber}} @onChange={{fn this.setField "formWhatsappNumber"}} />
         </div>
       </div>
 
       <div class="flex gap-4">
         <div class="flex col gap-2 flex-1">
-          <FormInput @label="Company" @id="c-company" @type="text" @placeholder="Emaar Properties" @value={{this.formContactCompany}} @onChange={{fn this.setField "formContactCompany"}} />
+          <Ui::FormInput @label="Company" @id="c-company" @type="text" @placeholder="Emaar Properties" @value={{this.formContactCompany}} @onChange={{fn this.setField "formContactCompany"}} />
         </div>
         <div class="flex col gap-2 flex-1">
-          <FormInput @label="Job Title" @id="c-job" @type="text" @placeholder="Property Manager" @value={{this.formJobTitle}} @onChange={{fn this.setField "formJobTitle"}} />
+          <Ui::FormInput @label="Job Title" @id="c-job" @type="text" @placeholder="Property Manager" @value={{this.formJobTitle}} @onChange={{fn this.setField "formJobTitle"}} />
         </div>
       </div>
 
-      <FormInput @label="Address" @id="c-address" @type="text" @placeholder="e.g. Gulberg, Lahore" @value={{this.formAddress}} @onChange={{fn this.setField "formAddress"}} />
+      <Ui::FormInput @label="Address" @id="c-address" @type="text" @placeholder="e.g. Gulberg, Lahore" @value={{this.formAddress}} @onChange={{fn this.setField "formAddress"}} />
 
-      <FormTextarea @label="Notes" @id="c-notes" @placeholder="Additional notes..." @rows={{3}} @value={{this.formNotes}} @onChange={{fn this.setField "formNotes"}} />
+      <Ui::FormTextarea @label="Notes" @id="c-notes" @placeholder="Additional notes..." @rows={{3}} @value={{this.formNotes}} @onChange={{fn this.setField "formNotes"}} />
 
       {{#if this.errorMsg}}
         <p class="font-sm text-danger">{{this.errorMsg}}</p>
       {{/if}}
 
       <div class="flex gap-3 mt-2">
-        <AppButton @variant="secondary" @text="Cancel" @onClick={{this.closeModal}} />
-        <AppButton @variant="primary" @buttonType="submit" @text={{if this.editContact "Update" "Create Contact"}} @loading={{this.isSaving}} @loadingText="Saving..." />
+        <Ui::AppButton @variant="secondary" @text="Cancel" @onClick={{this.closeModal}} />
+        <Ui::AppButton @variant="primary" @buttonType="submit" @text={{if this.editContact "Update" "Create Contact"}} @loading={{this.isSaving}} @loadingText="Saving..." />
       </div>
     </form>
-</Modal>
+</Ui::Modal>
 
 <ConfirmModal
   @isOpen={{this.showDeleteModal}}

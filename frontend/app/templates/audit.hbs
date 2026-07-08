@@ -1,15 +1,15 @@
 {{page-title "Audit Log"}}
 <div class="page-header">
-  <h1 class="page-title"><Ph @icon="clipboard-text" @size="28px" /> Audit Logs</h1>
+  <h1 class="page-title"><Ui::Ph @icon="clipboard-text" @size="28px" /> Audit Logs</h1>
   <p class="page-subtitle">Track all changes across your account</p>
 </div>
 
 <div class="glass-panel card">
   <div class="card-header">
     <div class="flex gap-2 items-center flex-wrap">
-      <FormDropdown @id="audit-action-filter" @label="" @value={{this.filterAction}} @onChange={{this.setFilterAction}} @options={{this.model.auditActions}} @placeholder="All Actions" />
+      <Ui::FormDropdown @id="audit-action-filter" @label="" @value={{this.filterAction}} @onChange={{this.setFilterAction}} @options={{this.model.auditActions}} @placeholder="All Actions" />
 
-      <FormDropdown @id="audit-entity-filter" @label="" @value={{this.filterEntityType}} @onChange={{this.setFilterEntityType}} @options={{this.model.entityTypes}} @placeholder="All Entities" />
+      <Ui::FormDropdown @id="audit-entity-filter" @label="" @value={{this.filterEntityType}} @onChange={{this.setFilterEntityType}} @options={{this.model.entityTypes}} @placeholder="All Entities" />
 
       {{#if (or this.filterAction this.filterEntityType)}}
         <button type="button" class="btn btn-secondary" {{on "click" this.clearFilters}}>
@@ -18,7 +18,7 @@
       {{/if}}
 
       <button type="button" class="btn btn-danger" {{on "click" this.openPurge}} data-test-purge-btn>
-        <Ph @icon="trash" @size="16px" /> Purge Old Logs
+        <Ui::Ph @icon="trash" @size="16px" /> Purge Old Logs
       </button>
     </div>
   </div>
@@ -26,7 +26,7 @@
   <div class="card-content">
     {{#if this.model.forbidden}}
       <div class="alert alert-error">
-        <Ph @icon="warning" @size="20px" />
+        <Ui::Ph @icon="warning" @size="20px" />
         <span>You don't have permission to view audit logs.</span>
       </div>
     {{else}}
@@ -75,7 +75,7 @@
         </div>
       {{else}}
         <div class="empty-state">
-          <Ph @icon="clock" @size="64px" />
+          <Ui::Ph @icon="clock" @size="64px" />
           <p>No audit logs found</p>
         </div>
       {{/if}}
@@ -83,7 +83,7 @@
   </div>
 </div>
 
-<Modal
+<Ui::Modal
   @isOpen={{this.showPurgeModal}}
   @title="Purge Audit Logs"
   @onClose={{this.closePurge}}
@@ -102,4 +102,4 @@
       {{if this.isPurging "Purging..." "Purge"}}
     </button>
   </div>
-</Modal>
+</Ui::Modal>

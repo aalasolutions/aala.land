@@ -2,7 +2,7 @@
   {{#if this.resetSent}}
     <div data-test-reset-success class="flex col gap-5 w-full text-center">
       <div class="flex col gap-2">
-        <Ph @icon="check-circle" @size="48px" />
+        <Ui::Ph @icon="check-circle" @size="48px" />
         <p class="font-sm text-muted">
           If an account exists with that email, you will receive a password reset link.
         </p>
@@ -22,7 +22,7 @@
       class="flex col gap-5 w-full"
       {{on "submit" this.submitForgotPassword}}
     >
-      <FormInput
+      <Ui::FormInput
         @label="Email"
         @id="reset-email"
         @type="email"
@@ -40,7 +40,7 @@
         </p>
       {{/if}}
 
-      <AppButton
+      <Ui::AppButton
         @variant="primary"
         @buttonType="submit"
         @text="Send Reset Link"
@@ -67,7 +67,7 @@
     class="flex col gap-5 w-full"
     {{on "submit" this.submit}}
   >
-    <FormInput
+    <Ui::FormInput
       @label="Email"
       @id="login-email"
       @type="email"
@@ -79,7 +79,7 @@
       data-test-email-input
     />
 
-    <FormInput
+    <Ui::FormInput
       @label="Password"
       @id="login-password"
       @type="password"
@@ -97,7 +97,7 @@
       </p>
     {{/if}}
 
-    <AppButton
+    <Ui::AppButton
       @variant="primary"
       @buttonType="submit"
       @text="Sign In"

@@ -1,4 +1,4 @@
-// frontend/app/controllers/whatsapp.js
+// land/app/controllers/whatsapp.js
 import Controller from '@ember/controller';
 import { service } from '@ember/service';
 import { tracked } from '@glimmer/tracking';

@@ -1,5 +1,5 @@
 import { module, test } from 'qunit';
-import { setupTest } from 'frontend/tests/helpers';
+import { setupTest } from 'land/tests/helpers';
 import Service from '@ember/service';
 
 class MockRegionService extends Service {

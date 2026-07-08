@@ -2,7 +2,7 @@
 
 <div data-test-reports-page class="flex col gap-6">
   <div>
-    <h2 class="font-3xl font-bold"><Ph @icon="chart-bar" @size="28px" /> Boss Dashboard</h2>
+    <h2 class="font-3xl font-bold"><Ui::Ph @icon="chart-bar" @size="28px" /> Boss Dashboard</h2>
     <p class="text-muted mt-1">Real-time performance and business intelligence.</p>
   </div>
 
@@ -39,7 +39,7 @@
   {{!-- Red Flag Alerts --}}
   {{#if @model.redFlags.length}}
     <div class="glass-panel p-5">
-      <h4 class="font-lg font-bold mb-4"><Ph @icon="warning" @size="20px" /> Red Flag Alerts</h4>
+      <h4 class="font-lg font-bold mb-4"><Ui::Ph @icon="warning" @size="20px" /> Red Flag Alerts</h4>
       <div class="flex col gap-2">
         {{#each @model.redFlags as |flag|}}
           <div class="flex between x-center p-3 rounded-lg red-flag-{{lowercase flag.severity}}">
@@ -63,7 +63,7 @@
   {{!-- Pipeline Funnel --}}
   {{#if @model.funnel.length}}
     <div class="glass-panel p-5">
-      <h4 class="font-lg font-bold mb-4"><Ph @icon="funnel" @size="20px" /> Pipeline Funnel</h4>
+      <h4 class="font-lg font-bold mb-4"><Ui::Ph @icon="funnel" @size="20px" /> Pipeline Funnel</h4>
       <div class="funnel-grid">
         {{#each @model.funnel as |stage|}}
           <div class="funnel-stage text-center">
@@ -78,7 +78,7 @@
   {{!-- Agent Performance --}}
   {{#if @model.agents.length}}
     <div class="glass-panel p-5">
-      <h4 class="font-lg font-bold mb-4"><Ph @icon="users-three" @size="20px" /> Agent Performance</h4>
+      <h4 class="font-lg font-bold mb-4"><Ui::Ph @icon="users-three" @size="20px" /> Agent Performance</h4>
       <div class="data-table-wrapper">
         <table class="data-table">
           <thead>
@@ -124,7 +124,7 @@
   {{!-- Activity Feed --}}
   {{#if @model.activity.length}}
     <div class="glass-panel p-5">
-      <h4 class="font-lg font-bold mb-4"><Ph @icon="clock-counter-clockwise" @size="20px" /> Recent Activity</h4>
+      <h4 class="font-lg font-bold mb-4"><Ui::Ph @icon="clock-counter-clockwise" @size="20px" /> Recent Activity</h4>
       <div class="flex col gap-2">
         {{#each @model.activity as |item|}}
           <div class="flex between x-center p-3 rounded-lg activity-row">

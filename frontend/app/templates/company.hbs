@@ -2,7 +2,7 @@
 
 <div class="page-header">
   <div class="page-title-section">
-    <h2 class="page-title"><Ph @icon="building-office" @size="28px" /> Company Settings</h2>
+    <h2 class="page-title"><Ui::Ph @icon="building-office" @size="28px" /> Company Settings</h2>
     <p class="page-subtitle">Manage your company information.</p>
   </div>
 </div>
@@ -163,13 +163,13 @@
     <div class="glass-panel p-6">
       <h3 class="font-lg font-bold mb-4">Company Information</h3>
       <form aria-label="Company Information" class="flex col gap-4" {{on "submit" this.saveCompany}}>
-        <FormInput @label="Company Name" @id="company-name" @type="text" @value={{or this.formName this.company.name}} @onChange={{fn this.setField "formName"}} @required={{true}} @readonly={{not this.isAdmin}} />
+        <Ui::FormInput @label="Company Name" @id="company-name" @type="text" @value={{or this.formName this.company.name}} @onChange={{fn this.setField "formName"}} @required={{true}} @readonly={{not this.isAdmin}} />
 
         {{#if this.company.adminEmail}}
-          <FormInput @label="Admin Email" @id="company-email" @type="email" @value={{this.company.adminEmail}} @disabled={{true}} />
+          <Ui::FormInput @label="Admin Email" @id="company-email" @type="email" @value={{this.company.adminEmail}} @disabled={{true}} />
         {{/if}}
 
-        <FormInput @label="Plan" @id="company-plan" @type="text" @value={{or this.company.subscriptionTier "FREE"}} @disabled={{true}} />
+        <Ui::FormInput @label="Plan" @id="company-plan" @type="text" @value={{or this.company.subscriptionTier "FREE"}} @disabled={{true}} />
 
         {{#unless this.isAdmin}}
           <p class="font-sm text-muted">Only company admins and super admins can change these settings.</p>
@@ -208,7 +208,7 @@
         {{/if}}
 
         <div class="form-actions">
-          <AppButton @variant="primary" @buttonType="submit" @text="Save Changes" @loading={{this.isSaving}} @loadingText="Saving..." @disabled={{not this.isAdmin}} />
+          <Ui::AppButton @variant="primary" @buttonType="submit" @text="Save Changes" @loading={{this.isSaving}} @loadingText="Saving..." @disabled={{not this.isAdmin}} />
         </div>
       </form>
     </div>
@@ -224,7 +224,7 @@
         {{! Default Region (above the list) }}
         {{#if this.formActiveRegions.length}}
           <div class="mb-4">
-            <FormDropdown @label="Default Region" @id="default-region" @value={{this.formDefaultRegionCode}} @onChange={{fn this.setField "formDefaultRegionCode"}} @options={{this.activeRegionOptions}} @placeholder="Select default region..." @disabled={{not this.isAdmin}} data-test-default-region />
+            <Ui::FormDropdown @label="Default Region" @id="default-region" @value={{this.formDefaultRegionCode}} @onChange={{fn this.setField "formDefaultRegionCode"}} @options={{this.activeRegionOptions}} @placeholder="Select default region..." @disabled={{not this.isAdmin}} data-test-default-region />
           </div>
         {{/if}}
 
@@ -242,7 +242,7 @@
                 {{/let}}
                 <span class="region-total">{{group.regions.length}} states</span>
               </span>
-              <Ph @icon={{if (includes this.expandedCountries group.country) "caret-up" "caret-down"}} @size="16" />
+              <Ui::Ph @icon={{if (includes this.expandedCountries group.country) "caret-up" "caret-down"}} @size="16" />
             </button>
             {{#if (includes this.expandedCountries group.country)}}
               <div class="region-grid mt-2 mb-2 ml-2">
@@ -267,13 +267,13 @@
   {{/if}}
 {{else}}
   <div class="flex col gap-4 x-center y-center" style="min-height: 40vh; text-align: center;">
-    <Ph @icon="buildings" @size="56px" @color="var(--text-muted)" />
+    <Ui::Ph @icon="buildings" @size="56px" @color="var(--text-muted)" />
     <div>
       <h3 class="font-xl font-bold">No Company Data</h3>
       <p class="text-muted mt-2">Super Admins are not associated with any company.<br>To view a specific company's settings, impersonate a Company Admin.</p>
     </div>
     <LinkTo @route="team" class="btn btn-primary">
-      <Ph @icon="users" /> Go to Team
+      <Ui::Ph @icon="users" /> Go to Team
     </LinkTo>
   </div>
 {{/if}}

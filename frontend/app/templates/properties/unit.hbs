@@ -27,7 +27,7 @@
             class="btn btn-primary btn-sm {{if this.isUploading 'disabled'}}"
             data-test-upload-photo-btn
           >
-            <Ph @icon="camera-plus" />
+            <Ui::Ph @icon="camera-plus" />
             {{if this.isUploading this.uploadStatus "Add Photo"}}
             <input
               type="file"
@@ -67,7 +67,7 @@
                       title="Set as primary"
                       {{on "click" (fn this.setPrimaryPhoto media)}}
                     >
-                      <Ph @icon="star" />
+                      <Ui::Ph @icon="star" />
                     </button>
                   {{/unless}}
                   <button
@@ -76,7 +76,7 @@
                     title="Delete"
                     {{on "click" (fn this.openDeletePhoto media)}}
                   >
-                    <Ph @icon="trash" />
+                    <Ui::Ph @icon="trash" />
                   </button>
                 </div>
               </div>
@@ -94,7 +94,7 @@
           </div>
         {{else}}
           <div class="unit-photo-placeholder" data-test-photo-placeholder>
-            <Ph @icon="image" />
+            <Ui::Ph @icon="image" />
             <p class="text-muted mt-2 font-sm">No photos uploaded yet</p>
           </div>
         {{/if}}
@@ -106,7 +106,7 @@
           <div class="flex between x-center">
             <h2 data-test-unit-title class="font-2xl font-bold">Unit {{@model.unit.unitNumber}}</h2>
             <button type="button" class="btn btn-secondary btn-sm" data-test-edit-btn {{on "click" this.openEdit}}>
-              <Ph @icon="pencil-simple" /> Edit
+              <Ui::Ph @icon="pencil-simple" /> Edit
             </button>
           </div>
 
@@ -126,16 +126,16 @@
           {{! Specs row }}
           <div class="flex gap-4 font-sm flex wrap" data-test-unit-specs>
             {{#if @model.unit.bedrooms}}
-              <span class="flex x-center gap-1"><Ph @icon="bed" /> {{@model.unit.bedrooms}} Beds</span>
+              <span class="flex x-center gap-1"><Ui::Ph @icon="bed" /> {{@model.unit.bedrooms}} Beds</span>
             {{/if}}
             {{#if @model.unit.bathrooms}}
-              <span class="flex x-center gap-1"><Ph @icon="bathtub" /> {{@model.unit.bathrooms}} Baths</span>
+              <span class="flex x-center gap-1"><Ui::Ph @icon="bathtub" /> {{@model.unit.bathrooms}} Baths</span>
             {{/if}}
             {{#if @model.unit.sqFt}}
-              <span class="flex x-center gap-1"><Ph @icon="ruler" /> {{format-number @model.unit.sqFt}} sqft</span>
+              <span class="flex x-center gap-1"><Ui::Ph @icon="ruler" /> {{format-number @model.unit.sqFt}} sqft</span>
             {{/if}}
             {{#if @model.unit.floor}}
-              <span class="flex x-center gap-1"><Ph @icon="stairs" /> Floor {{@model.unit.floor}}</span>
+              <span class="flex x-center gap-1"><Ui::Ph @icon="stairs" /> Floor {{@model.unit.floor}}</span>
             {{/if}}
           </div>
 
@@ -152,7 +152,7 @@
           {{! Owner }}
           {{#if @model.unit.owner}}
             <div class="flex x-center gap-2 font-sm" data-test-unit-owner>
-              <Ph @icon="user" />
+              <Ui::Ph @icon="user" />
               <span class="text-muted">Owner:</span>
               <LinkTo @route="owners.detail" @model={{@model.unit.owner.id}} class="text-primary owner-link">
                 {{@model.unit.owner.name}}
@@ -162,17 +162,10 @@
         </div>
 
         {{! Amenities card }}
-        {{#if this.unitAmenities.length}}
+        {{#if @model.unit.amenities.length}}
           <div class="glass-panel p-5" data-test-amenities-card>
             <h4 class="font-sm font-bold uppercase text-muted mb-3">Amenities</h4>
-            <div class="flex gap-2 wrap">
-              {{#each this.unitAmenities as |amenity|}}
-                <span class="amenity-tag">
-                  <Ph @icon={{amenity.icon}} />
-                  {{amenity.label}}
-                </span>
-              {{/each}}
-            </div>
+            <Unit::AmenitiesPrint @amenities={{@model.unit.amenities}} />
           </div>
         {{/if}}
       </div>
@@ -181,14 +174,14 @@
     {{! Description }}
     {{#if @model.unit.description}}
       <div class="glass-panel p-6" data-test-description>
-        <h4 class="font-md font-bold mb-3"><Ph @icon="text-align-left" /> Description</h4>
+        <h4 class="font-md font-bold mb-3"><Ui::Ph @icon="text-align-left" /> Description</h4>
         <p class="text-muted">{{@model.unit.description}}</p>
       </div>
     {{/if}}
 
     {{! Lease History }}
     <div class="glass-panel p-6" data-test-lease-history>
-      <h4 class="font-md font-bold mb-3"><Ph @icon="file-text" /> Lease History</h4>
+      <h4 class="font-md font-bold mb-3"><Ui::Ph @icon="file-text" /> Lease History</h4>
       {{#if @model.leases.length}}
         <div class="data-table-wrapper">
           <table class="data-table">
@@ -218,10 +211,9 @@
         <p class="text-muted font-sm">No lease history for this unit.</p>
       {{/if}}
     </div>
-
   {{else}}
     <div class="glass-panel p-8 text-center" data-test-unit-not-found>
-      <Ph @icon="warning" />
+      <Ui::Ph @icon="warning" />
       <p class="text-muted mt-2">Unit not found.</p>
       <LinkTo @route="properties" class="btn btn-primary mt-4">Back to Properties</LinkTo>
     </div>
@@ -229,7 +221,7 @@
 </div>
 
 {{! Edit Modal }}
-<Modal
+<Ui::Modal
   @isOpen={{this.showEditModal}}
   @title="Edit Unit"
   @onClose={{this.closeEdit}}
@@ -245,11 +237,11 @@
           placeholder="e.g. 101" value={{this.formUnitNumber}} required {{on "input" (fn this.setField "formUnitNumber")}} />
       </div>
       <div class="flex col gap-2 flex-1">
-        <FormDropdown @label="Status" @id="u-status" @value={{this.formStatus}} @onChange={{fn this.setField "formStatus"}} @options={{this.statusOptions}} @placeholder="Select status..." data-test-field-status />
+        <Ui::FormDropdown @label="Status" @id="u-status" @value={{this.formStatus}} @onChange={{fn this.setField "formStatus"}} @options={{this.statusOptions}} @placeholder="Select status..." data-test-field-status />
       </div>
     </div>
 
-    <FormDropdown @label="Listing Type" @id="u-property-type" @value={{this.formPropertyType}} @onChange={{fn this.setField "formPropertyType"}} @options={{this.propertyTypeOptions}} @placeholder="Not Listed" data-test-field-property-type />
+    <Ui::FormDropdown @label="Listing Type" @id="u-property-type" @value={{this.formPropertyType}} @onChange={{fn this.setField "formPropertyType"}} @options={{this.propertyTypeOptions}} @placeholder="Not Listed" data-test-field-property-type />
 
     <div class="flex gap-4">
       <div class="flex col gap-2 flex-1">
@@ -303,7 +295,7 @@
         {{on "input" (fn this.setField "formDescription")}}>{{this.formDescription}}</textarea>
     </div>
 
-    <FormDropdown @label="Owner" @id="u-owner" @value={{this.formOwnerId}} @onChange={{fn this.setField "formOwnerId"}} @options={{this.ownerOptions}} @placeholder="Unassigned" data-test-field-owner />
+    <Ui::FormDropdown @label="Owner" @id="u-owner" @value={{this.formOwnerId}} @onChange={{fn this.setField "formOwnerId"}} @options={{this.ownerOptions}} @placeholder="Unassigned" data-test-field-owner />
 
     <div class="flex col gap-2">
       <label class="font-sm text-muted">Amenities</label>
@@ -315,7 +307,7 @@
             data-test-amenity={{opt.key}}
             {{on "click" (fn this.toggleAmenity opt.key)}}
           >
-            <Ph @icon={{opt.icon}} /> {{opt.label}}
+            <Ui::Ph @icon={{opt.icon}} /> {{opt.label}}
           </button>
         {{/each}}
       </div>
@@ -332,7 +324,7 @@
       </button>
     </div>
   </form>
-</Modal>
+</Ui::Modal>
 
 <ConfirmModal
   @isOpen={{this.showDeleteModal}}

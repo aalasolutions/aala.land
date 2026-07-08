@@ -2,19 +2,7 @@ import PaginatedController from './paginated-base';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
-
-const FILTER_STATUS_OPTIONS = [
-  { value: '', label: 'All' },
-  { value: 'PENDING', label: 'Pending' },
-  { value: 'APPROVED', label: 'Approved' },
-  { value: 'PAID', label: 'Paid' },
-];
-
-const COMMISSION_TYPE_OPTIONS = [
-  { value: 'SALE', label: 'Sale' },
-  { value: 'RENTAL', label: 'Rental' },
-  { value: 'REFERRAL', label: 'Referral' },
-];
+import { FILTER_STATUS_OPTIONS, COMMISSION_TYPE_OPTIONS } from 'land/constants';
 
 export default class CommissionsController extends PaginatedController {
   @service auth;

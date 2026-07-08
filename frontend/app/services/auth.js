@@ -1,6 +1,6 @@
 import Service, { service } from '@ember/service';
-import config from 'frontend/config/environment';
-import parseErrorResponse from 'frontend/utils/parse-error-response';
+import config from 'land/config/environment';
+import parseErrorResponse from 'land/utils/parse-error-response';
 
 export default class AuthService extends Service {
   @service session;

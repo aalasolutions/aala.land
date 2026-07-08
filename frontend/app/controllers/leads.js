@@ -2,31 +2,10 @@ import Controller from '@ember/controller';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
+import { LEAD_STAGES, TEMPERATURE_STAGES,
+  LEAD_STATUS_OPTIONS, TEMPERATURE_OPTIONS, NONE_OPTION
+ } from 'land/constants';
 
-const PIPELINE_STAGES = [
-  { status: 'NEW', label: 'New' },
-  { status: 'CONTACTED', label: 'Contacted' },
-  { status: 'VIEWING', label: 'Viewing' },
-  { status: 'NEGOTIATING', label: 'Negotiating' },
-  { status: 'WON', label: 'Won' },
-  { status: 'LOST', label: 'Lost' },
-];
-
-const TEMPERATURE_STAGES = [
-  { temperature: 'HOT', label: 'Hot', icon: 'fire' },
-  { temperature: 'WARM', label: 'Warm', icon: 'sun' },
-  { temperature: 'COLD', label: 'Cold', icon: 'snowflake' },
-  { temperature: 'DEAD', label: 'Dead', icon: 'skull' },
-];
-
-const STATUS_OPTIONS = PIPELINE_STAGES.map(({ status, label }) => ({ value: status, label }));
-
-const TEMPERATURE_OPTIONS = TEMPERATURE_STAGES.map(({ temperature, label }) => ({
-  value: temperature,
-  label,
-}));
-
-const NONE_OPTION = { value: '', label: '-- None --' };
 
 export default class LeadsController extends Controller {
   @service auth;
@@ -108,7 +87,7 @@ export default class LeadsController extends Controller {
     return this.region.regions.length > 1;
   }
 
-  statusOptions = STATUS_OPTIONS;
+  statusOptions = LEAD_STATUS_OPTIONS;
 
   temperatureOptions = TEMPERATURE_OPTIONS;
 
@@ -168,7 +147,7 @@ export default class LeadsController extends Controller {
   }
 
   get columns() {
-    return PIPELINE_STAGES.map((stage) => ({
+    return LEAD_STAGES.map((stage) => ({
       ...stage,
       leads: this.filteredLeads.filter((l) => l.status === stage.status),
     }));

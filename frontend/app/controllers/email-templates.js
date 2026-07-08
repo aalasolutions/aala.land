@@ -3,21 +3,8 @@ import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
 import { closeDeleteModal, confirmDeleteModal, openDeleteModal } from '../utils/delete-modal';
+import { EMAIL_CATEGORIES, EMAIL_FILTER_CATEGORIES } from 'land/constants';
 
-const CATEGORIES = [
-  { value: 'FOLLOW_UP', label: 'Follow Up' },
-  { value: 'WELCOME', label: 'Welcome' },
-  { value: 'LEASE_RENEWAL', label: 'Lease Renewal' },
-  { value: 'PAYMENT_REMINDER', label: 'Payment Reminder' },
-  { value: 'MAINTENANCE_UPDATE', label: 'Maintenance Update' },
-  { value: 'MARKETING', label: 'Marketing' },
-  { value: 'CUSTOM', label: 'Custom' },
-];
-
-const FILTER_CATEGORIES = [
-  { value: '', label: 'All Categories' },
-  ...CATEGORIES,
-];
 
 export default class EmailTemplatesController extends Controller {
   @service auth;
@@ -49,11 +36,11 @@ export default class EmailTemplatesController extends Controller {
   @tracked isDeleting = false;
 
   get categories() {
-    return CATEGORIES;
+    return EMAIL_CATEGORIES;
   }
 
   get filterCategories() {
-    return FILTER_CATEGORIES;
+    return EMAIL_FILTER_CATEGORIES;
   }
 
   @action setField(fieldName, e) {

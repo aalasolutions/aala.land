@@ -3,9 +3,9 @@ const CACHE_NAME = 'aala-land-v1';
 const STATIC_ASSETS = [
   '/',
   '/assets/vendor.css',
-  '/assets/frontend.css',
+  '/assets/land.css',
   '/assets/vendor.js',
-  '/assets/frontend.js',
+  '/assets/land.js',
 ];
 
 self.addEventListener('install', (event) => {

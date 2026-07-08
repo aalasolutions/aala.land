@@ -3,27 +3,7 @@ import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
 import { closeDeleteModal, confirmDeleteModal, openDeleteModal } from '../utils/delete-modal';
-
-const CATEGORIES = [
-  { value: '', label: 'All Categories' },
-  { value: 'LEASE', label: 'Lease' },
-  { value: 'EJARI', label: 'Ejari' },
-  { value: 'TITLE_DEED', label: 'Title Deed' },
-  { value: 'ID_COPY', label: 'ID Copy' },
-  { value: 'NOC', label: 'NOC' },
-  { value: 'INSURANCE', label: 'Insurance' },
-  { value: 'MAINTENANCE', label: 'Maintenance' },
-  { value: 'INVOICE', label: 'Invoice' },
-  { value: 'RECEIPT', label: 'Receipt' },
-  { value: 'OTHER', label: 'Other' },
-];
-
-const ACCESS_LEVELS = [
-  { value: 'PUBLIC', label: 'Public' },
-  { value: 'COMPANY', label: 'Company' },
-  { value: 'OWNER_ONLY', label: 'Owner Only' },
-  { value: 'ADMIN_ONLY', label: 'Admin Only' },
-];
+import { CATEGORIES, ACCESS_LEVELS } from 'land/constants';
 
 export default class DocumentsController extends PaginatedController {
   @service auth;

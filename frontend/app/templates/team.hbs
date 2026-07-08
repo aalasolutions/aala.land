@@ -3,21 +3,21 @@
 <div data-test-team-page class="flex col gap-6">
   <div class="flex between x-center">
     <div>
-      <h2 class="font-3xl font-bold"><Ph @icon="users-three" @size="28px" /> Team</h2>
+      <h2 class="font-3xl font-bold"><Ui::Ph @icon="users-three" @size="28px" /> Team</h2>
       <p class="text-muted mt-1">Manage your team members and their roles.</p>
     </div>
     {{#unless this.isSuperAdmin}}
       <div class="flex gap-3">
         {{#if this.canTrim}}
           <button type="button" class="btn btn-secondary" data-test-trim-users {{on "click" this.openTrim}}>
-            <Ph @icon="arrows-in-simple" /> Prepare Downgrade
+            <Ui::Ph @icon="arrows-in-simple" /> Prepare Downgrade
           </button>
         {{/if}}
         <button type="button" class="btn btn-secondary" data-test-invite-member {{on "click" this.openInvite}}>
-          <Ph @icon="envelope" /> Invite
+          <Ui::Ph @icon="envelope" /> Invite
         </button>
         <button type="button" class="btn btn-primary" data-test-add-member {{on "click" this.openCreate}}>
-          <Ph @icon="plus" /> Add Member
+          <Ui::Ph @icon="plus" /> Add Member
         </button>
       </div>
     {{/unless}}
@@ -58,13 +58,13 @@
                 <td>
                   <div class="flex gap-2">
                     <button type="button" class="btn btn-secondary btn-xs" data-test-edit-user {{on "click" (fn this.openEdit user)}}>
-                      <Ph @icon="pencil-simple" /> Edit
+                      <Ui::Ph @icon="pencil-simple" /> Edit
                     </button>
                     {{! Removal flows require a company context; the backend rejects a user with no companyId (e.g. SUPER_ADMIN rows). }}
                     {{#if user.companyId}}
                       {{#if user.isActive}}
                         <button type="button" class="btn btn-danger btn-xs" data-test-remove-user {{on "click" (fn this.openRemove user)}}>
-                          <Ph @icon="user-minus" /> Remove
+                          <Ui::Ph @icon="user-minus" /> Remove
                         </button>
                       {{else}}
                         <button
@@ -74,10 +74,10 @@
                           data-test-reactivate-user
                           {{on "click" (fn this.reactivateUser user)}}
                         >
-                          <Ph @icon="user-plus" /> {{if (eq this.reactivatingUserId user.id) "Reactivating..." "Reactivate"}}
+                          <Ui::Ph @icon="user-plus" /> {{if (eq this.reactivatingUserId user.id) "Reactivating..." "Reactivate"}}
                         </button>
                         <button type="button" class="btn btn-danger btn-xs" data-test-delete-user {{on "click" (fn this.openRemove user)}}>
-                          <Ph @icon="trash" /> Delete
+                          <Ui::Ph @icon="trash" /> Delete
                         </button>
                       {{/if}}
                     {{/if}}
@@ -91,9 +91,9 @@
                           {{on "click" (fn this.impersonateUser user)}}
                         >
                           {{#if (eq this.impersonatingUserId user.id)}}
-                            <Ph @icon="circle-notch" /> Impersonating...
+                            <Ui::Ph @icon="circle-notch" /> Impersonating...
                           {{else}}
-                            <Ph @icon="user-switch" /> Impersonate
+                            <Ui::Ph @icon="user-switch" /> Impersonate
                           {{/if}}
                         </button>
                       {{/unless}}
@@ -106,7 +106,7 @@
         </table>
       </div>
 
-      <Pagination
+      <Ui::Pagination
         @selectId="team-limit"
         @page={{this.page}}
         @limit={{this.limit}}
@@ -118,7 +118,7 @@
     {{else}}
       {{#if @model.total}}
         <p class="text-muted text-center py-8">No team members on page {{this.page}}. Navigate back to find members.</p>
-        <Pagination
+        <Ui::Pagination
           @selectId="team-limit"
           @page={{this.page}}
           @limit={{this.limit}}
@@ -134,7 +134,7 @@
   </div>
 </div>
 
-<Modal
+<Ui::Modal
   @isOpen={{this.showModal}}
   @title={{if this.editUser "Edit Team Member" "Add Team Member"}}
   @onClose={{this.closeModal}}
@@ -144,16 +144,16 @@
     <SeatNote @seatInfo={{this.model.seatInfo}} />
   {{/unless}}
   <form class="flex col gap-4" {{on "submit" this.saveUser}}>
-    <FormInput @label="Name" @id="t-name" @type="text" @value={{this.formName}} @onChange={{fn this.setField "formName"}} @required={{true}} data-test-input-name />
+    <Ui::FormInput @label="Name" @id="t-name" @type="text" @value={{this.formName}} @onChange={{fn this.setField "formName"}} @required={{true}} data-test-input-name />
 
-    <FormInput @label="Email" @id="t-email" @type="email" @value={{this.formEmail}} @onChange={{fn this.setField "formEmail"}} @required={{true}} data-test-input-email />
+    <Ui::FormInput @label="Email" @id="t-email" @type="email" @value={{this.formEmail}} @onChange={{fn this.setField "formEmail"}} @required={{true}} data-test-input-email />
 
     {{#unless this.editUser}}
-      <FormInput @label="Password" @id="t-password" @type="password" @value={{this.formPassword}} @onChange={{fn this.setField "formPassword"}} @required={{true}} data-test-input-password />
+      <Ui::FormInput @label="Password" @id="t-password" @type="password" @value={{this.formPassword}} @onChange={{fn this.setField "formPassword"}} @required={{true}} data-test-input-password />
     {{/unless}}
 
     <div class="flex col gap-2">
-      <FormDropdown @label="Role" @id="t-role" @value={{this.formRole}} @onChange={{fn this.setField "formRole"}} @options={{this.roles}} @placeholder="Select role..." data-test-input-role />
+      <Ui::FormDropdown @label="Role" @id="t-role" @value={{this.formRole}} @onChange={{fn this.setField "formRole"}} @options={{this.roles}} @placeholder="Select role..." data-test-input-role />
     </div>
 
     {{#if this.errorMsg}}
@@ -161,13 +161,13 @@
     {{/if}}
 
     <div class="flex gap-3 mt-2">
-      <AppButton @variant="secondary" @text="Cancel" @onClick={{this.closeModal}} />
-      <AppButton @variant="primary" @buttonType="submit" @text={{if this.editUser "Update" "Create"}} @loading={{this.isSaving}} @loadingText="Saving..." />
+      <Ui::AppButton @variant="secondary" @text="Cancel" @onClick={{this.closeModal}} />
+      <Ui::AppButton @variant="primary" @buttonType="submit" @text={{if this.editUser "Update" "Create"}} @loading={{this.isSaving}} @loadingText="Saving..." />
     </div>
   </form>
-</Modal>
+</Ui::Modal>
 
-<Modal
+<Ui::Modal
   @isOpen={{this.showInviteModal}}
   @title="Invite Team Member"
   @onClose={{this.closeInvite}}
@@ -178,17 +178,17 @@
   <form class="flex col gap-4" {{on "submit" this.sendInvite}}>
     <div class="flex gap-4">
       <div class="flex col gap-2 flex-1">
-        <FormInput @label="First Name" @id="i-fname" @type="text" @placeholder="e.g. Jane" @value={{this.inviteFirstName}} @onChange={{fn this.setField "inviteFirstName"}} @required={{true}} data-test-invite-first />
+        <Ui::FormInput @label="First Name" @id="i-fname" @type="text" @placeholder="e.g. Jane" @value={{this.inviteFirstName}} @onChange={{fn this.setField "inviteFirstName"}} @required={{true}} data-test-invite-first />
       </div>
       <div class="flex col gap-2 flex-1">
-        <FormInput @label="Last Name" @id="i-lname" @type="text" @placeholder="e.g. Smith" @value={{this.inviteLastName}} @onChange={{fn this.setField "inviteLastName"}} @required={{true}} data-test-invite-last />
+        <Ui::FormInput @label="Last Name" @id="i-lname" @type="text" @placeholder="e.g. Smith" @value={{this.inviteLastName}} @onChange={{fn this.setField "inviteLastName"}} @required={{true}} data-test-invite-last />
       </div>
     </div>
 
-    <FormInput @label="Email" @id="i-email" @type="email" @placeholder="e.g. jane@company.com" @value={{this.inviteEmail}} @onChange={{fn this.setField "inviteEmail"}} @required={{true}} data-test-invite-email />
+    <Ui::FormInput @label="Email" @id="i-email" @type="email" @placeholder="e.g. jane@company.com" @value={{this.inviteEmail}} @onChange={{fn this.setField "inviteEmail"}} @required={{true}} data-test-invite-email />
 
     <div class="flex col gap-2">
-      <FormDropdown @label="Role" @id="i-role" @value={{this.inviteRole}} @onChange={{fn this.setField "inviteRole"}} @options={{this.roles}} @placeholder="Select role..." data-test-invite-role />
+      <Ui::FormDropdown @label="Role" @id="i-role" @value={{this.inviteRole}} @onChange={{fn this.setField "inviteRole"}} @options={{this.roles}} @placeholder="Select role..." data-test-invite-role />
     </div>
 
     {{#if this.inviteErrorMsg}}
@@ -202,10 +202,10 @@
       </button>
     </div>
   </form>
-</Modal>
+</Ui::Modal>
 
 {{! Remove flow: step 1 configures, step 2 confirms }}
-<Modal
+<Ui::Modal
   @isOpen={{this.showRemoveModal}}
   @title={{if (eq this.removeStep 1) "Remove Team Member" "Confirm Removal"}}
   @onClose={{this.closeRemoveModal}}
@@ -245,7 +245,7 @@
         </label>
       </div>
 
-      <FormDropdown
+      <Ui::FormDropdown
         @label="Reassign records to"
         @id="remove-target"
         @value={{this.removeTargetId}}
@@ -256,7 +256,7 @@
         data-test-remove-target
       />
 
-      <FormTextarea
+      <Ui::FormTextarea
         @label="Reason"
         @id="remove-reason"
         @rows="2"
@@ -272,8 +272,8 @@
       {{/if}}
 
       <div class="flex gap-3 mt-2">
-        <AppButton @variant="secondary" @text="Cancel" @onClick={{this.closeRemoveModal}} />
-        <AppButton @variant="primary" @text="Continue" @onClick={{this.continueRemove}} data-test-remove-continue />
+        <Ui::AppButton @variant="secondary" @text="Cancel" @onClick={{this.closeRemoveModal}} />
+        <Ui::AppButton @variant="primary" @text="Continue" @onClick={{this.continueRemove}} data-test-remove-continue />
       </div>
     </div>
   {{else}}
@@ -294,7 +294,7 @@
       {{/if}}
 
       <div class="flex gap-3 mt-2">
-        <AppButton @variant="secondary" @text="Back" @onClick={{this.backToRemoveOptions}} data-test-remove-back />
+        <Ui::AppButton @variant="secondary" @text="Back" @onClick={{this.backToRemoveOptions}} data-test-remove-back />
         <button
           type="button"
           class="btn btn-danger"
@@ -307,10 +307,10 @@
       </div>
     </div>
   {{/if}}
-</Modal>
+</Ui::Modal>
 
 {{! Trim-to-one flow: downgrade preparation }}
-<Modal
+<Ui::Modal
   @isOpen={{this.showTrimModal}}
   @title={{if (eq this.trimStep 1) "Prepare Downgrade" "Confirm Trim"}}
   @onClose={{this.closeTrimModal}}
@@ -323,7 +323,7 @@
         deactivated and their records handed to the member who stays.
       </p>
 
-      <FormDropdown
+      <Ui::FormDropdown
         @label="Member who stays active (must be a company admin)"
         @id="trim-keep"
         @value={{this.trimKeepId}}
@@ -334,7 +334,7 @@
         data-test-trim-keep
       />
 
-      <FormTextarea
+      <Ui::FormTextarea
         @label="Reason"
         @id="trim-reason"
         @rows="2"
@@ -349,8 +349,8 @@
       {{/if}}
 
       <div class="flex gap-3 mt-2">
-        <AppButton @variant="secondary" @text="Cancel" @onClick={{this.closeTrimModal}} />
-        <AppButton @variant="primary" @text="Continue" @onClick={{this.continueTrim}} data-test-trim-continue />
+        <Ui::AppButton @variant="secondary" @text="Cancel" @onClick={{this.closeTrimModal}} />
+        <Ui::AppButton @variant="primary" @text="Continue" @onClick={{this.continueTrim}} data-test-trim-continue />
       </div>
     </div>
   {{else}}
@@ -371,7 +371,7 @@
       {{/if}}
 
       <div class="flex gap-3 mt-2">
-        <AppButton @variant="secondary" @text="Back" @onClick={{this.backToTrimOptions}} data-test-trim-back />
+        <Ui::AppButton @variant="secondary" @text="Back" @onClick={{this.backToTrimOptions}} data-test-trim-back />
         <button
           type="button"
           class="btn btn-danger"
@@ -384,4 +384,4 @@
       </div>
     </div>
   {{/if}}
-</Modal>
+</Ui::Modal>

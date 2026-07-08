@@ -3,14 +3,7 @@ import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
 import { closeDeleteModal, confirmDeleteModal, openDeleteModal } from '../utils/delete-modal';
-
-const CONTACT_TYPES = [
-  { value: 'LEAD', label: 'Lead' },
-  { value: 'TENANT', label: 'Tenant' },
-  { value: 'OWNER', label: 'Owner' },
-  { value: 'VENDOR', label: 'Vendor' },
-  { value: 'OTHER', label: 'Other' },
-];
+import { CONTACT_TYPES } from 'land/constants';
 
 export default class ContactsController extends PaginatedController {
   @service auth;

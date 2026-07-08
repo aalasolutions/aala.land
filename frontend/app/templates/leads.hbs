@@ -3,7 +3,7 @@
 <div data-test-leads-page class="flex col gap-6">
   <div class="flex between x-center">
     <div>
-      <h2 class="font-3xl font-bold"><Ph @icon="funnel" @size="28px" /> Lead Pipeline</h2>
+      <h2 class="font-3xl font-bold"><Ui::Ph @icon="funnel" @size="28px" /> Lead Pipeline</h2>
       <p class="text-muted mt-1">Track and manage your leads through the pipeline.</p>
     </div>
     <div class="flex gap-3 x-center">
@@ -12,26 +12,26 @@
         <button type="button"
           class="view-toggle-btn {{if (eq this.viewMode 'pipeline') 'active'}}"
           {{on "click" (fn this.setViewMode "pipeline")}}>
-          <Ph @icon="squares-four" /> Pipeline
+          <Ui::Ph @icon="squares-four" /> Pipeline
         </button>
         <button type="button"
           class="view-toggle-btn {{if (eq this.viewMode 'temperature') 'active'}}"
           {{on "click" (fn this.setViewMode "temperature")}}>
-          <Ph @icon="thermometer" /> Temperature
+          <Ui::Ph @icon="thermometer" /> Temperature
         </button>
         <button type="button"
           class="view-toggle-btn {{if (eq this.viewMode 'agent') 'active'}}"
           {{on "click" (fn this.setViewMode "agent")}}>
-          <Ph @icon="users" /> Agent
+          <Ui::Ph @icon="users" /> Agent
         </button>
         <button type="button"
           class="view-toggle-btn {{if (eq this.viewMode 'list') 'active'}}"
           {{on "click" (fn this.setViewMode "list")}}>
-          <Ph @icon="list" /> List
+          <Ui::Ph @icon="list" /> List
         </button>
       </div>
       <button type="button" class="btn btn-primary" data-test-add-lead {{on "click" this.openCreate}}>
-        <Ph @icon="plus" /> New Lead
+        <Ui::Ph @icon="plus" /> New Lead
       </button>
     </div>
   </div>
@@ -86,16 +86,16 @@
                 <p class="text-muted font-xs">{{lead.phone}}</p>
                 {{#if lead.phone}}
                   <a href={{wa-link lead.phone}} target="_blank" rel="noopener noreferrer" class="wa-link" data-test-wa-link {{on "click" this.stopPropagation}}>
-                    <Ph @icon="whatsapp-logo" @size="14px" />
+                    <Ui::Ph @icon="whatsapp-logo" @size="14px" />
                   </a>
                 {{/if}}
               </div>
               <p class="text-muted font-xs">{{lead.email}}</p>
               {{#if lead.property}}
-                <p class="text-primary font-xs flex gap-1 x-center"><Ph @icon="buildings" /> {{lead.property.name}}</p>
+                <p class="text-primary font-xs flex gap-1 x-center"><Ui::Ph @icon="buildings" /> {{lead.property.name}}</p>
               {{/if}}
               {{#if lead.unit}}
-                <p class="text-info font-xs flex gap-1 x-center"><Ph @icon="house" /> Unit {{lead.unit.unitNumber}}</p>
+                <p class="text-info font-xs flex gap-1 x-center"><Ui::Ph @icon="house" /> Unit {{lead.unit.unitNumber}}</p>
               {{/if}}
               {{#if lead.assignedAgentName}}
                 <p class="assign-badge">{{lead.assignedAgentName}}</p>
@@ -134,7 +134,7 @@
         >
           <div class="flex between x-center px-3 py-2 rounded-lg temp-column-header temp-column-{{lowercase column.temperature}}">
             <span class="font-sm font-bold flex gap-2 x-center">
-              <Ph @icon={{column.icon}} /> {{column.label}}
+              <Ui::Ph @icon={{column.icon}} /> {{column.label}}
             </span>
             <span class="font-xs temp-column-count">{{column.leads.length}}</span>
           </div>
@@ -156,13 +156,13 @@
                 <p class="text-muted font-xs">{{lead.phone}}</p>
                 {{#if lead.phone}}
                   <a href={{wa-link lead.phone}} target="_blank" rel="noopener noreferrer" class="wa-link" data-test-wa-link {{on "click" this.stopPropagation}}>
-                    <Ph @icon="whatsapp-logo" @size="14px" />
+                    <Ui::Ph @icon="whatsapp-logo" @size="14px" />
                   </a>
                 {{/if}}
               </div>
               <p class="text-muted font-xs">{{lead.email}}</p>
               {{#if lead.property}}
-                <p class="text-primary font-xs flex gap-1 x-center"><Ph @icon="buildings" /> {{lead.property.name}}</p>
+                <p class="text-primary font-xs flex gap-1 x-center"><Ui::Ph @icon="buildings" /> {{lead.property.name}}</p>
               {{/if}}
               {{#if lead.assignedAgentName}}
                 <p class="assign-badge">{{lead.assignedAgentName}}</p>
@@ -201,7 +201,7 @@
         >
           <div class="flex between x-center px-3 py-2 rounded-lg agent-column-header">
             <span class="font-sm font-bold flex gap-2 x-center">
-              <Ph @icon={{if column.agentId "user" "user-minus"}} />
+              <Ui::Ph @icon={{if column.agentId "user" "user-minus"}} />
               {{column.agentName}}
             </span>
             <span class="agent-load-count">{{column.leads.length}}</span>
@@ -229,13 +229,13 @@
                 <p class="text-muted font-xs">{{lead.phone}}</p>
                 {{#if lead.phone}}
                   <a href={{wa-link lead.phone}} target="_blank" rel="noopener noreferrer" class="wa-link" data-test-wa-link {{on "click" this.stopPropagation}}>
-                    <Ph @icon="whatsapp-logo" @size="14px" />
+                    <Ui::Ph @icon="whatsapp-logo" @size="14px" />
                   </a>
                 {{/if}}
               </div>
               <span class="status-badge status-{{lowercase lead.status}}">{{lead.status}}</span>
               {{#if lead.property}}
-                <p class="text-primary font-xs flex gap-1 x-center"><Ph @icon="buildings" /> {{lead.property.name}}</p>
+                <p class="text-primary font-xs flex gap-1 x-center"><Ui::Ph @icon="buildings" /> {{lead.property.name}}</p>
               {{/if}}
               <div class="flex between x-center mt-1">
                 <span class="font-xs text-muted">{{format-date lead.createdAt}}</span>
@@ -284,7 +284,7 @@
                     <span class="font-xs">{{lead.phone}}</span>
                     {{#if lead.phone}}
                       <a href={{wa-link lead.phone}} target="_blank" rel="noopener noreferrer" class="wa-link" data-test-wa-link {{on "click" this.stopPropagation}}>
-                        <Ph @icon="whatsapp-logo" @size="14px" />
+                        <Ui::Ph @icon="whatsapp-logo" @size="14px" />
                       </a>
                     {{/if}}
                   </div>
@@ -342,7 +342,7 @@
 </div>
 
 {{!-- Edit Modal --}}
-<Modal
+<Ui::Modal
   @isOpen={{this.showModal}}
   @title={{if this.editLead "Edit Lead" "New Lead"}}
   @onClose={{this.closeModal}}
@@ -350,42 +350,42 @@
 >
   <form class="flex col gap-4" {{on "submit" this.saveLead}}>
     {{#if this.showRegionField}}
-      <FormDropdown @label="Region" @id="lead-region" @value={{this.formRegionCode}} @onChange={{this.setRegionCode}} @options={{this.regionOptions}} @placeholder="Select region..." data-test-region-select />
+      <Ui::FormDropdown @label="Region" @id="lead-region" @value={{this.formRegionCode}} @onChange={{this.setRegionCode}} @options={{this.regionOptions}} @placeholder="Select region..." data-test-region-select />
     {{/if}}
     <div class="flex gap-4">
       <div class="flex-1">
-        <FormInput @label="First Name" @id="lead-first-name" @type="text" @placeholder="e.g. Ahmed" @value={{this.formFirstName}} @onChange={{fn this.setField "formFirstName"}} @required={{true}} />
+        <Ui::FormInput @label="First Name" @id="lead-first-name" @type="text" @placeholder="e.g. Ahmed" @value={{this.formFirstName}} @onChange={{fn this.setField "formFirstName"}} @required={{true}} />
       </div>
       <div class="flex-1">
-        <FormInput @label="Last Name" @id="lead-last-name" @type="text" @placeholder="e.g. Al Mansouri" @value={{this.formLastName}} @onChange={{fn this.setField "formLastName"}} />
+        <Ui::FormInput @label="Last Name" @id="lead-last-name" @type="text" @placeholder="e.g. Al Mansouri" @value={{this.formLastName}} @onChange={{fn this.setField "formLastName"}} />
       </div>
     </div>
-    <FormInput @label="Email" @id="lead-email" @type="email" @placeholder="ahmed@example.com" @value={{this.formEmail}} @onChange={{fn this.setField "formEmail"}} />
-    <FormInput @label="Phone" @id="lead-phone" @type="text" @placeholder="+971501234567" @value={{this.formPhone}} @onChange={{fn this.setField "formPhone"}} />
+    <Ui::FormInput @label="Email" @id="lead-email" @type="email" @placeholder="ahmed@example.com" @value={{this.formEmail}} @onChange={{fn this.setField "formEmail"}} />
+    <Ui::FormInput @label="Phone" @id="lead-phone" @type="text" @placeholder="+971501234567" @value={{this.formPhone}} @onChange={{fn this.setField "formPhone"}} />
     <div class="flex gap-4">
       <div class="flex-1">
-        <FormDropdown @label="Status" @id="lead-status" @value={{this.formStatus}} @onChange={{fn this.setField "formStatus"}} @options={{this.statusOptions}} @placeholder="Select status..." />
+        <Ui::FormDropdown @label="Status" @id="lead-status" @value={{this.formStatus}} @onChange={{fn this.setField "formStatus"}} @options={{this.statusOptions}} @placeholder="Select status..." />
       </div>
       <div class="flex-1">
-        <FormDropdown @label="Temperature" @id="lead-temp" @value={{this.formTemperature}} @onChange={{fn this.setField "formTemperature"}} @options={{this.temperatureOptions}} @placeholder="Select temperature..." />
+        <Ui::FormDropdown @label="Temperature" @id="lead-temp" @value={{this.formTemperature}} @onChange={{fn this.setField "formTemperature"}} @options={{this.temperatureOptions}} @placeholder="Select temperature..." />
       </div>
     </div>
-    <FormDropdown @label="Property Area" @id="lead-property" @value={{this.formPropertyId}} @onChange={{this.setPropertyId}} @options={{this.propertyOptions}} @placeholder="-- None --" />
+    <Ui::FormDropdown @label="Property Area" @id="lead-property" @value={{this.formPropertyId}} @onChange={{this.setPropertyId}} @options={{this.propertyOptions}} @placeholder="-- None --" />
     {{#if this.formPropertyId}}
-      <FormDropdown @label="Unit" @id="lead-unit" @value={{this.formUnitId}} @onChange={{fn this.setField "formUnitId"}} @options={{this.unitOptions}} @placeholder="-- None --" />
+      <Ui::FormDropdown @label="Unit" @id="lead-unit" @value={{this.formUnitId}} @onChange={{fn this.setField "formUnitId"}} @options={{this.unitOptions}} @placeholder="-- None --" />
     {{/if}}
     {{#if this.errorMsg}}
       <p class="text-danger">{{this.errorMsg}}</p>
     {{/if}}
     <div class="flex gap-3 mt-2">
-      <AppButton @variant="secondary" @text="Cancel" @onClick={{this.closeModal}} />
-      <AppButton @variant="primary" @buttonType="submit" @text={{if this.editLead "Update" "Create Lead"}} @loading={{this.isSaving}} @loadingText="Saving..." />
+      <Ui::AppButton @variant="secondary" @text="Cancel" @onClick={{this.closeModal}} />
+      <Ui::AppButton @variant="primary" @buttonType="submit" @text={{if this.editLead "Update" "Create Lead"}} @loading={{this.isSaving}} @loadingText="Saving..." />
     </div>
   </form>
-</Modal>
+</Ui::Modal>
 
 {{!-- Assign Modal --}}
-<Modal
+<Ui::Modal
   @isOpen={{this.showAssignModal}}
   @title="Assign Lead"
   @onClose={{this.closeAssignModal}}
@@ -393,16 +393,16 @@
 >
   <form class="flex col gap-4" {{on "submit" this.assignToAgent}}>
     <p class="text-muted">Select an agent to assign <strong>{{this.assignLead.firstName}}</strong> to:</p>
-    <FormDropdown @label="Agent" @id="agent-select" @value={{this.selectedAgentId}} @onChange={{fn this.setField "selectedAgentId"}} @options={{this.agentOptions}} @placeholder="-- Select Agent --" />
+    <Ui::FormDropdown @label="Agent" @id="agent-select" @value={{this.selectedAgentId}} @onChange={{fn this.setField "selectedAgentId"}} @options={{this.agentOptions}} @placeholder="-- Select Agent --" />
     <div class="flex gap-3 mt-2">
-      <AppButton @variant="secondary" @text="Cancel" @onClick={{this.closeAssignModal}} />
-      <AppButton @variant="primary" @buttonType="submit" @text="Assign" />
+      <Ui::AppButton @variant="secondary" @text="Cancel" @onClick={{this.closeAssignModal}} />
+      <Ui::AppButton @variant="primary" @buttonType="submit" @text="Assign" />
     </div>
   </form>
-</Modal>
+</Ui::Modal>
 
 {{!-- Lead Detail Modal --}}
-<Modal
+<Ui::Modal
   @isOpen={{this.showDetailModal}}
   @title={{if this.detailLead (concat this.detailLead.firstName (if this.detailLead.lastName (concat " " this.detailLead.lastName) "")) "Lead Details"}}
   @onClose={{this.closeDetailModal}}
@@ -422,21 +422,21 @@
           <h4 class="font-sm font-bold text-muted mb-2">Contact Info</h4>
           <div class="flex col gap-2">
             <div class="flex gap-2 x-center">
-              <span><Ph @icon="phone" /></span>
+              <span><Ui::Ph @icon="phone" /></span>
               <span>{{or this.detailLead.phone 'N/A'}}</span>
               {{#if this.detailLead.phone}}
                 <a href={{wa-link this.detailLead.phone}} target="_blank" rel="noopener noreferrer" class="wa-link" data-test-wa-link title="Open WhatsApp">
-                  <Ph @icon="whatsapp-logo" @size="16px" />
+                  <Ui::Ph @icon="whatsapp-logo" @size="16px" />
                 </a>
               {{/if}}
             </div>
             <div class="flex gap-2 x-center">
-              <span><Ph @icon="envelope" /></span>
+              <span><Ui::Ph @icon="envelope" /></span>
               <span>{{or this.detailLead.email 'N/A'}}</span>
             </div>
             {{#if this.detailLead.whatsappNumber}}
               <div class="flex gap-2 x-center">
-                <span><Ph @icon="whatsapp-logo" /></span>
+                <span><Ui::Ph @icon="whatsapp-logo" /></span>
                 <a href={{wa-link this.detailLead.whatsappNumber}} target="_blank" rel="noopener noreferrer" class="wa-link-text" data-test-wa-link>
                   {{this.detailLead.whatsappNumber}}
                 </a>
@@ -449,12 +449,12 @@
           <h4 class="font-sm font-bold text-muted mb-2">Property Interest</h4>
           {{#if this.detailLead.property}}
             <div class="flex gap-2 x-center">
-              <span><Ph @icon="buildings" /></span>
+              <span><Ui::Ph @icon="buildings" /></span>
               <span>{{this.detailLead.property.name}}</span>
             </div>
             {{#if this.detailLead.unit}}
               <div class="flex gap-2 x-center mt-1">
-                <span><Ph @icon="house" /></span>
+                <span><Ui::Ph @icon="house" /></span>
                 <span>Unit {{this.detailLead.unit.unitNumber}}</span>
               </div>
             {{/if}}
@@ -503,7 +503,7 @@
             <div class="activity-item" data-test-activity-id={{activity.id}}>
               <div class="activity-side">
                 <div class="activity-icon">
-                  <Ph @icon={{get-activity-icon activity.type}} @size="16px" />
+                  <Ui::Ph @icon={{get-activity-icon activity.type}} @size="16px" />
                 </div>
                 <div class="activity-summary">
                   <span class="activity-type">{{activity.type}}</span>
@@ -525,4 +525,4 @@
         </div>
       </div>
     </div>
-</Modal>
+</Ui::Modal>

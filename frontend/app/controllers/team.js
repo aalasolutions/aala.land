@@ -3,14 +3,8 @@ import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
 import { ROLE_HIERARCHY } from '../utils/roles';
+import { ALL_ROLES } from 'land/constants';
 
-const ALL_ROLES = [
-  { value: 'company_admin', label: 'Company Admin' },
-  { value: 'admin', label: 'Admin' },
-  { value: 'manager', label: 'Manager' },
-  { value: 'agent', label: 'Agent' },
-  { value: 'accountant', label: 'Accountant' },
-];
 
 export default class TeamController extends PaginatedController {
   @service auth;

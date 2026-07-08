@@ -4,7 +4,7 @@ require('dotenv').config({ quiet: true });
 
 module.exports = function (environment) {
   const ENV = {
-    modulePrefix: 'frontend',
+    modulePrefix: 'land',
     environment,
     rootURL: '/',
     locationType: 'history',

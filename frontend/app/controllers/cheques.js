@@ -3,15 +3,7 @@ import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
 import { canManageFinancials } from '../utils/roles';
-
-const CHEQUE_TYPE_OPTIONS = [
-  { value: 'RENT', label: 'Rent' },
-  { value: 'SECURITY_DEPOSIT', label: 'Security Deposit' },
-  { value: 'MAINTENANCE', label: 'Maintenance' },
-  { value: 'OTHER', label: 'Other' },
-];
-
-const EMPTY_UNIT_OPTION = { value: '', label: 'No property linked' };
+import { CHEQUE_TYPE_OPTIONS, EMPTY_UNIT_OPTION } from 'land/constants';
 
 export default class ChequesController extends PaginatedController {
   @service auth;

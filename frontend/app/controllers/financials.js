@@ -2,35 +2,9 @@ import PaginatedController from './paginated-base';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
-
-const TRANSACTION_TYPE_OPTIONS = [
-  { value: 'INCOME', label: 'Income' },
-  { value: 'EXPENSE', label: 'Expense' },
-];
-
-const CATEGORY_OPTIONS = [
-  { value: 'RENT', label: 'Rent' },
-  { value: 'SALE', label: 'Sale' },
-  { value: 'DEPOSIT', label: 'Deposit' },
-  { value: 'MAINTENANCE', label: 'Maintenance' },
-  { value: 'COMMISSION', label: 'Commission' },
-  { value: 'OTHER', label: 'Other' },
-];
-
-const PAYMENT_METHOD_OPTIONS = [
-  { value: 'CASH', label: 'Cash' },
-  { value: 'CHEQUE', label: 'Cheque' },
-  { value: 'BANK_TRANSFER', label: 'Bank Transfer' },
-  { value: 'CREDIT_CARD', label: 'Credit Card' },
-  { value: 'ONLINE', label: 'Online' },
-];
-
-const STATUS_OPTIONS = [
-  { value: 'PENDING', label: 'Pending' },
-  { value: 'COMPLETED', label: 'Completed' },
-  { value: 'CANCELLED', label: 'Cancelled' },
-  { value: 'FAILED', label: 'Failed' },
-];
+import { TRANSACTION_TYPE_OPTIONS, TRANSACTION_CATEGORY_OPTIONS,
+  PAYMENT_METHOD_OPTIONS, TRANSACTION_STATUS_OPTIONS
+ } from 'land/constants';
 
 export default class FinancialsController extends PaginatedController {
   @service auth;
@@ -52,11 +26,11 @@ export default class FinancialsController extends PaginatedController {
 
   transactionTypeOptions = TRANSACTION_TYPE_OPTIONS;
 
-  categoryOptions = CATEGORY_OPTIONS;
+  categoryOptions = TRANSACTION_CATEGORY_OPTIONS;
 
   paymentMethodOptions = PAYMENT_METHOD_OPTIONS;
 
-  statusOptions = STATUS_OPTIONS;
+  statusOptions = TRANSACTION_STATUS_OPTIONS;
 
   get filteredTransactions() {
     return this.model?.transactions ?? [];

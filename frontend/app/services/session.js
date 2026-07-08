@@ -1,6 +1,6 @@
 import Service, { service } from '@ember/service';
 import { tracked } from '@glimmer/tracking';
-import config from 'frontend/config/environment';
+import config from 'land/config/environment';
 
 export default class SessionService extends Service {
   @service router;

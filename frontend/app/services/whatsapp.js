@@ -1,6 +1,6 @@
 import Service, { service } from '@ember/service';
 import { io } from 'socket.io-client';
-import ENV from 'frontend/config/environment';
+import ENV from 'land/config/environment';
 
 export default class WhatsappService extends Service {
   @service auth;

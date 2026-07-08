@@ -2,7 +2,7 @@
 
 <div class="page-header">
   <div class="page-title-section">
-    <h2 class="page-title"><Ph @icon="user" @size="28px" /> My Profile</h2>
+    <h2 class="page-title"><Ui::Ph @icon="user" @size="28px" /> My Profile</h2>
     <p class="page-subtitle">Manage your account settings.</p>
   </div>
 </div>
@@ -66,7 +66,7 @@
         </div>
         {{#if this.isGoogleLinked}}
           <div class="connected-account">
-            <Ph @icon="check-circle" @size="18px" />
+            <Ui::Ph @icon="check-circle" @size="18px" />
             <span>Google account connected</span>
           </div>
         {{else if this.googleAuth.isConfigured}}

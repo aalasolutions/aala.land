@@ -1,8 +1,8 @@
 {
-  "name": "frontend",
-  "version": "0.0.0",
+  "name": "land",
+  "version": "0.1.0",
   "private": true,
-  "description": "Small description for frontend goes here",
+  "description": "AALA.LAND - A Property Management SaaS platform.",
   "repository": "",
   "license": "MIT",
   "author": "",

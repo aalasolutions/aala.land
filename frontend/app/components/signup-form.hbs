@@ -4,7 +4,7 @@
   {{on "submit" this.submit}}
 >
   <div class="grid col gap-4">
-    <FormInput
+    <Ui::FormInput
       @label="Company Name"
       @id="signup-company"
       @type="text"
@@ -16,7 +16,7 @@
     />
 
     <div class="flex col gap-1 signup-slug-field">
-      <FormInput
+      <Ui::FormInput
         @label="Company URL Slug"
         @id="signup-slug"
         @type="text"
@@ -30,11 +30,11 @@
     </div>
   </div>
 
-  <FormDropdown 
-    @label="Primary Operating Region" 
+  <Ui::FormDropdown
+    @label="Primary Operating Region"
     @id="signup-region"
-    @value={{this.selectedRegion}} 
-    @options={{this.regionOptions}} 
+    @value={{this.selectedRegion}}
+    @options={{this.regionOptions}}
     @onChange={{this.selectRegion}}
     @placeholder="Select your region..."
     @required={{true}}
@@ -44,23 +44,23 @@
   <hr class="border-white@10 my-1" />
 
   <div class="grid cols-2 gap-4">
-    <FormInput 
-      @label="Your Name" 
-      @id="signup-name" 
-      @type="text" 
-      @placeholder="Jane Smith" 
-      @value={{this.userName}} 
+    <Ui::FormInput
+      @label="Your Name"
+      @id="signup-name"
+      @type="text"
+      @placeholder="Jane Smith"
+      @value={{this.userName}}
       @required={{true}}
       @onChange={{fn this.updateField "userName"}}
       data-test-user-name
     />
 
-    <FormInput 
-      @label="Email Address" 
-      @id="signup-email" 
-      @type="email" 
-      @placeholder="jane@company.com" 
-      @value={{this.email}} 
+    <Ui::FormInput
+      @label="Email Address"
+      @id="signup-email"
+      @type="email"
+      @placeholder="jane@company.com"
+      @value={{this.email}}
       @required={{true}}
       @autocomplete="email"
       @onChange={{fn this.updateField "email"}}
@@ -69,23 +69,23 @@
   </div>
 
   <div class="grid cols-2 gap-4">
-    <FormInput 
-      @label="Password" 
-      @id="signup-password" 
-      @type="password" 
-      @placeholder="Min 8 characters" 
-      @value={{this.password}} 
+    <Ui::FormInput
+      @label="Password"
+      @id="signup-password"
+      @type="password"
+      @placeholder="Min 8 characters"
+      @value={{this.password}}
       @required={{true}}
       @autocomplete="new-password"
       @onChange={{fn this.updateField "password"}}
       data-test-password-input
     />
-    <FormInput 
-      @label="Confirm Password" 
-      @id="signup-confirm" 
-      @type="password" 
-      @placeholder="••••••••" 
-      @value={{this.confirmPassword}} 
+    <Ui::FormInput
+      @label="Confirm Password"
+      @id="signup-confirm"
+      @type="password"
+      @placeholder="••••••••"
+      @value={{this.confirmPassword}}
       @required={{true}}
       @autocomplete="new-password"
       @onChange={{fn this.updateField "confirmPassword"}}
@@ -107,7 +107,7 @@
   >
     {{#if this.isLoading}}
       <span class="flex x-center center gap-2">
-        <Ph @icon="circle-notch" class="animate-spin" /> Creating Account...
+        <Ui::Ph @icon="circle-notch" class="animate-spin" /> Creating Account...
       </span>
     {{else}}
       Create Workspace with Email

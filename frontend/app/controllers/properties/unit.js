@@ -2,22 +2,10 @@ import Controller from '@ember/controller';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
-import { AMENITY_OPTIONS } from '../../constants/amenities';
 import { closeDeleteModal, confirmDeleteModal, openDeleteModal } from '../../utils/delete-modal';
 import { toggleArrayItem } from '../../utils/toggle-array-item';
+import { PROPERTY_STATUS_OPTIONS, PROPERTY_TYPE_OPTIONS } from 'land/constants';
 
-const PROPERTY_STATUS_OPTIONS = [
-  { value: 'available', label: 'Available' },
-  { value: 'rented', label: 'Rented' },
-  { value: 'sold', label: 'Sold' },
-  { value: 'maintenance', label: 'Maintenance' },
-];
-
-const PROPERTY_TYPE_OPTIONS = [
-  { value: '', label: 'Not Listed' },
-  { value: 'RENTAL', label: 'For Rent' },
-  { value: 'FOR_SALE', label: 'For Sale' },
-];
 
 export default class PropertiesUnitController extends Controller {
   @service auth;
@@ -52,28 +40,9 @@ export default class PropertiesUnitController extends Controller {
   @tracked formOwnerId = '';
   @tracked formAmenities = [];
 
-  amenityOptions = AMENITY_OPTIONS;
-
   statusOptions = PROPERTY_STATUS_OPTIONS;
 
   propertyTypeOptions = PROPERTY_TYPE_OPTIONS;
-
-  get unitAmenities() {
-    const amenities = this.model?.unit?.amenities;
-    const amenityList = Array.isArray(amenities) ? amenities : [];
-
-    return amenityList.map((key) => {
-      const option = AMENITY_OPTIONS.find((opt) => opt.key === key);
-      if (option) return option;
-
-      const label = String(key)
-        .split('_')
-        .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-        .join(' ');
-
-      return { label, icon: 'circle' };
-    });
-  }
 
   get ownerOptions() {
     return [
