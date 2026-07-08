@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { NotFoundException, BadRequestException } from '@nestjs/common';
+import { NotFoundException, ConflictException } from '@nestjs/common';
 import { CommissionsService } from './commissions.service';
 import { Commission, CommissionStatus, CommissionType } from './entities/commission.entity';
 import { Company } from '../companies/entities/company.entity';
@@ -36,9 +36,11 @@ describe('CommissionsService', () => {
           useValue: {
             create: jest.fn(),
             save: jest.fn(),
+            update: jest.fn(),
             findOne: jest.fn(),
             findAndCount: jest.fn(),
             find: jest.fn(),
+            createQueryBuilder: jest.fn(),
           },
         },
         {
@@ -145,47 +147,95 @@ describe('CommissionsService', () => {
   });
 
   describe('update', () => {
-    it('updates commission status to APPROVED', async () => {
-      const updated = { ...mockCommission, status: CommissionStatus.APPROVED } as Commission;
-      repo.findOne.mockResolvedValue({ ...mockCommission } as Commission);
-      repo.save.mockResolvedValue(updated);
+    it('persists only the changed columns (no whole-entity save)', async () => {
+      // findOne is called twice: once for existence, once to return the fresh row.
+      repo.findOne
+        .mockResolvedValueOnce({ ...mockCommission } as Commission)
+        .mockResolvedValueOnce({ ...mockCommission, status: CommissionStatus.APPROVED } as Commission);
+      repo.update.mockResolvedValue({ affected: 1 } as any);
 
       const result = await service.update('commission-uuid-1', companyId, { status: CommissionStatus.APPROVED });
+
+      expect(repo.update).toHaveBeenCalledWith(
+        { id: 'commission-uuid-1', companyId },
+        { status: CommissionStatus.APPROVED },
+      );
+      // Whole-entity save must not be used (that is the lost-update bug).
+      expect(repo.save).not.toHaveBeenCalled();
       expect(result.status).toBe(CommissionStatus.APPROVED);
     });
 
-    it('sets paidAt when status changed to PAID', async () => {
-      const unpaid = { ...mockCommission, paidAt: null } as Commission;
-      repo.findOne.mockResolvedValue(unpaid);
-      repo.save.mockImplementation(async (c) => c as Commission);
+    it('sets paidAt when status changed to PAID and not already paid', async () => {
+      repo.findOne
+        .mockResolvedValueOnce({ ...mockCommission, paidAt: null } as Commission)
+        .mockResolvedValueOnce({ ...mockCommission, status: CommissionStatus.PAID } as Commission);
+      repo.update.mockResolvedValue({ affected: 1 } as any);
 
       await service.update('commission-uuid-1', companyId, { status: CommissionStatus.PAID });
 
-      expect(unpaid.paidAt).not.toBeNull();
+      const patch = repo.update.mock.calls[0][1];
+      expect(patch.status).toBe(CommissionStatus.PAID);
+      expect(patch.paidAt).toBeInstanceOf(Date);
+    });
+
+    it('does not overwrite an existing paidAt', async () => {
+      const alreadyPaidAt = new Date('2026-01-01T00:00:00Z');
+      repo.findOne
+        .mockResolvedValueOnce({ ...mockCommission, status: CommissionStatus.PAID, paidAt: alreadyPaidAt } as Commission)
+        .mockResolvedValueOnce({ ...mockCommission, status: CommissionStatus.PAID, paidAt: alreadyPaidAt } as Commission);
+      repo.update.mockResolvedValue({ affected: 1 } as any);
+
+      await service.update('commission-uuid-1', companyId, { status: CommissionStatus.PAID });
+
+      const patch = repo.update.mock.calls[0][1];
+      expect(patch.paidAt).toBeUndefined();
+    });
+
+    it('does not call update when the DTO changes nothing', async () => {
+      repo.findOne
+        .mockResolvedValueOnce({ ...mockCommission } as Commission)
+        .mockResolvedValueOnce({ ...mockCommission } as Commission);
+
+      await service.update('commission-uuid-1', companyId, {});
+
+      expect(repo.update).not.toHaveBeenCalled();
+    });
+
+    it('throws NotFoundException when commission not found', async () => {
+      repo.findOne.mockResolvedValue(null);
+
+      await expect(
+        service.update('bad-id', companyId, { status: CommissionStatus.APPROVED }),
+      ).rejects.toThrow(NotFoundException);
+      expect(repo.update).not.toHaveBeenCalled();
     });
   });
 
   describe('approve', () => {
-    it('approves a PENDING commission', async () => {
-      const pending = { ...mockCommission, status: CommissionStatus.PENDING } as Commission;
-      const approved = { ...pending, status: CommissionStatus.APPROVED } as Commission;
-      repo.findOne.mockResolvedValue(pending);
-      repo.save.mockResolvedValue(approved);
+    it('approves a PENDING commission via a guarded conditional UPDATE', async () => {
+      repo.update.mockResolvedValue({ affected: 1 } as any);
+      repo.findOne.mockResolvedValue({ ...mockCommission, status: CommissionStatus.APPROVED } as Commission);
 
       const result = await service.approve('commission-uuid-1', companyId);
 
+      expect(repo.update).toHaveBeenCalledWith(
+        { id: 'commission-uuid-1', companyId, status: CommissionStatus.PENDING },
+        { status: CommissionStatus.APPROVED },
+      );
+      expect(repo.save).not.toHaveBeenCalled();
       expect(result.status).toBe(CommissionStatus.APPROVED);
-      expect(repo.save).toHaveBeenCalledWith(expect.objectContaining({ status: CommissionStatus.APPROVED }));
     });
 
-    it('throws BadRequestException when commission is not PENDING', async () => {
-      const approved = { ...mockCommission, status: CommissionStatus.APPROVED } as Commission;
-      repo.findOne.mockResolvedValue(approved);
+    it('throws ConflictException when commission exists but is not PENDING', async () => {
+      repo.update.mockResolvedValue({ affected: 0 } as any);
+      // assertExists finds the row -> it exists, so the conflict is the state guard.
+      repo.findOne.mockResolvedValue({ ...mockCommission, status: CommissionStatus.APPROVED } as Commission);
 
-      await expect(service.approve('commission-uuid-1', companyId)).rejects.toThrow(BadRequestException);
+      await expect(service.approve('commission-uuid-1', companyId)).rejects.toThrow(ConflictException);
     });
 
     it('throws NotFoundException when commission not found', async () => {
+      repo.update.mockResolvedValue({ affected: 0 } as any);
       repo.findOne.mockResolvedValue(null);
 
       await expect(service.approve('bad-id', companyId)).rejects.toThrow(NotFoundException);
@@ -193,32 +243,37 @@ describe('CommissionsService', () => {
   });
 
   describe('pay', () => {
-    it('marks an APPROVED commission as PAID and sets paidAt', async () => {
-      const approved = { ...mockCommission, status: CommissionStatus.APPROVED, paidAt: null } as Commission;
-      repo.findOne.mockResolvedValue(approved);
-      repo.save.mockImplementation(async (c) => c as Commission);
+    it('marks an APPROVED commission as PAID via a guarded conditional UPDATE', async () => {
+      repo.update.mockResolvedValue({ affected: 1 } as any);
+      repo.findOne.mockResolvedValue({ ...mockCommission, status: CommissionStatus.PAID, paidAt: new Date() } as Commission);
 
       const result = await service.pay('commission-uuid-1', companyId);
 
+      expect(repo.update).toHaveBeenCalledWith(
+        { id: 'commission-uuid-1', companyId, status: CommissionStatus.APPROVED },
+        expect.objectContaining({ status: CommissionStatus.PAID, paidAt: expect.any(Date) }),
+      );
+      expect(repo.save).not.toHaveBeenCalled();
       expect(result.status).toBe(CommissionStatus.PAID);
       expect(result.paidAt).toBeInstanceOf(Date);
     });
 
-    it('throws BadRequestException when commission is not APPROVED', async () => {
-      const pending = { ...mockCommission, status: CommissionStatus.PENDING } as Commission;
-      repo.findOne.mockResolvedValue(pending);
+    it('throws ConflictException when commission exists but is not APPROVED', async () => {
+      repo.update.mockResolvedValue({ affected: 0 } as any);
+      repo.findOne.mockResolvedValue({ ...mockCommission, status: CommissionStatus.PENDING } as Commission);
 
-      await expect(service.pay('commission-uuid-1', companyId)).rejects.toThrow(BadRequestException);
+      await expect(service.pay('commission-uuid-1', companyId)).rejects.toThrow(ConflictException);
     });
 
-    it('throws BadRequestException when commission is already PAID', async () => {
-      const paid = { ...mockCommission, status: CommissionStatus.PAID } as Commission;
-      repo.findOne.mockResolvedValue(paid);
+    it('throws ConflictException when commission is already PAID', async () => {
+      repo.update.mockResolvedValue({ affected: 0 } as any);
+      repo.findOne.mockResolvedValue({ ...mockCommission, status: CommissionStatus.PAID } as Commission);
 
-      await expect(service.pay('commission-uuid-1', companyId)).rejects.toThrow(BadRequestException);
+      await expect(service.pay('commission-uuid-1', companyId)).rejects.toThrow(ConflictException);
     });
 
     it('throws NotFoundException when commission not found', async () => {
+      repo.update.mockResolvedValue({ affected: 0 } as any);
       repo.findOne.mockResolvedValue(null);
 
       await expect(service.pay('bad-id', companyId)).rejects.toThrow(NotFoundException);
@@ -226,17 +281,27 @@ describe('CommissionsService', () => {
   });
 
   describe('getSummary', () => {
-    it('aggregates commission stats for agent', async () => {
-      const commissions: Partial<Commission>[] = [
-        { ...mockCommission, status: CommissionStatus.PAID, commissionAmount: 10000 },
-        { ...mockCommission, status: CommissionStatus.PENDING, commissionAmount: 5000 },
-        { ...mockCommission, status: CommissionStatus.APPROVED, commissionAmount: 3000 },
-      ];
-
-      repo.find.mockResolvedValue(commissions as Commission[]);
+    it('aggregates commission stats for agent via SQL', async () => {
+      // Service aggregates in SQL (SUM/COUNT), returning a single raw row.
+      const qb = {
+        select: jest.fn().mockReturnThis(),
+        addSelect: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        setParameters: jest.fn().mockReturnThis(),
+        getRawOne: jest.fn().mockResolvedValue({
+          totalEarned: '18000',
+          totalPaid: '10000',
+          totalPending: '8000',
+          count: '3',
+        }),
+      };
+      repo.createQueryBuilder.mockReturnValue(qb as any);
 
       const result = await service.getSummary(agentId, companyId);
 
+      expect(qb.where).toHaveBeenCalledWith('c.agentId = :agentId', { agentId });
+      expect(qb.andWhere).toHaveBeenCalledWith('c.companyId = :companyId', { companyId });
       expect(result.totalEarned).toBe(18000);
       expect(result.totalPaid).toBe(10000);
       expect(result.totalPending).toBe(8000);

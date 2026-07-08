@@ -79,18 +79,75 @@ export class ChequesService {
     const cheque = await this.findOne(id, companyId);
 
     const terminalStatuses = [ChequeStatus.CLEARED, ChequeStatus.CANCELLED, ChequeStatus.REPLACED];
-    if (terminalStatuses.includes(cheque.status) && dto.status && dto.status !== cheque.status) {
+    const isStatusChange = dto.status !== undefined && dto.status !== cheque.status;
+
+    if (terminalStatuses.includes(cheque.status) && isStatusChange) {
       throw new BadRequestException(`Cannot change the status of a cheque that is already ${cheque.status}`);
     }
 
+    const hasRealChanges = Object.keys(dto).some(key => {
+      const k = key as keyof UpdateChequeDto;
+      return dto[k] !== undefined && dto[k] !== cheque[k];
+    });
+
+    if (!hasRealChanges) {
+      return cheque; // Exit early: nothing actually changed
+    }
+
     const oldStatus = cheque.status;
+    const expectedVersion = cheque.version;
     Object.assign(cheque, dto);
 
     if (cheque.status === ChequeStatus.DEPOSITED && !cheque.depositDate) {
       cheque.depositDate = new Date();
     }
 
-    const saved = await this.chequeRepository.save(cheque);
+    // Single guarded conditional UPDATE for BOTH status and non-status edits.
+    // The optimistic-lock version guard (WHERE version = :expectedVersion,
+    // SET version = version + 1) rejects any concurrent edit in either
+    // direction: a concurrent non-status edit that leaves status unchanged
+    // no longer wins last-write, and a concurrent status transition still
+    // fails the version compare-and-set. When this IS a status change we also
+    // re-assert the previously-read status and terminal exclusion, so a status
+    // move can only commit from the exact state we validated.
+    const qb = this.chequeRepository
+      .createQueryBuilder()
+      .update(Cheque)
+      .set({
+        status: cheque.status,
+        depositDate: cheque.depositDate,
+        dueDate: cheque.dueDate,
+        amount: cheque.amount,
+        chequeNumber: cheque.chequeNumber,
+        bankName: cheque.bankName,
+        unitId: cheque.unitId,
+        type: cheque.type,
+        notes: cheque.notes,
+        version: () => 'version + 1',
+        updatedAt: () => 'now()',
+      })
+      .where('id = :id', { id })
+      .andWhere('company_id = :companyId', { companyId })
+      .andWhere('version = :expectedVersion', { expectedVersion });
+
+    if (isStatusChange) {
+      qb.andWhere('status = :oldStatus', { oldStatus }).andWhere(
+        'status NOT IN (:...terminalStatuses)',
+        { terminalStatuses },
+      );
+    }
+
+    const result = await qb.execute();
+
+    if (!result.affected) {
+      // The row changed (status or any other column) between our read and
+      // write, so the version no longer matches.
+      throw new BadRequestException(
+        'Cheque was modified concurrently. Please refresh and try again.',
+      );
+    }
+
+    const saved = await this.findOne(id, companyId);
 
     this.notificationsGateway.broadcastToCompany(companyId, 'chequeUpdated', {
       id: saved.id,
@@ -165,12 +222,34 @@ export class ChequesService {
   }
 
   async bounce(id: string, companyId: string, dto: BounceChequeDto, userId?: string): Promise<Cheque> {
-    const cheque = await this.findOne(id, companyId);
-    cheque.bounceCount = (cheque.bounceCount || 0) + 1;
-    cheque.bounceReason = dto.bounceReason || null;
-    cheque.lastBounceDate = new Date();
-    cheque.status = ChequeStatus.BOUNCED;
-    const saved = await this.chequeRepository.save(cheque);
+    // Existence + tenant check.
+    await this.findOne(id, companyId);
+
+    // Atomic increment: compute bounce_count in the database (SET col = col + 1)
+    // so concurrent bounces do not lose increments via a JS read-modify-write.
+    // The other bounce fields are written in the same UPDATE statement.
+    const result = await this.chequeRepository
+      .createQueryBuilder()
+      .update(Cheque)
+      .set({
+        bounceCount: () => 'bounce_count + 1',
+        bounceReason: dto.bounceReason || null,
+        lastBounceDate: new Date(),
+        status: ChequeStatus.BOUNCED,
+        // Bump the optimistic-lock version so a concurrent update() that read an
+        // older version fails its version guard and cannot revert this BOUNCED row.
+        version: () => 'version + 1',
+        updatedAt: () => 'now()',
+      })
+      .where('id = :id', { id })
+      .andWhere('company_id = :companyId', { companyId })
+      .execute();
+
+    if (!result.affected) {
+      throw new NotFoundException('Cheque not found');
+    }
+
+    const saved = await this.findOne(id, companyId);
 
     this.notificationsGateway.broadcastToCompany(companyId, 'chequeUpdated', {
       id: saved.id,

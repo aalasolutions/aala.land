@@ -111,15 +111,28 @@ export class StripeBillingProvider implements BillingProvider {
     private productIdCache: string | null = null;
 
     constructor(private readonly config: ConfigService) {
-        this.stripe = new Stripe(this.config.getOrThrow<string>('STRIPE_SECRET_KEY'));
+        // Per-company seat mutations hold a Postgres advisory lock across these
+        // Stripe calls (race audit 2026-07-07, MEDIUM Stripe-timeout). Without an
+        // explicit request timeout a hung Stripe call would pin that lock
+        // indefinitely and block every other seat op for the company. Cap each
+        // request at 8s and disable network retries so the lock is released fast.
+        this.stripe = new Stripe(this.config.getOrThrow<string>('STRIPE_SECRET_KEY'), {
+            timeout: 8000,
+            maxNetworkRetries: 0,
+        });
     }
 
     async ensureCustomer(input: EnsureCustomerInput): Promise<string> {
-        const customer = await this.stripe.customers.create({
-            name: input.companyName,
-            email: input.email ?? undefined,
-            metadata: { companyId: input.companyId },
-        });
+        const customer = await this.stripe.customers.create(
+            {
+                name: input.companyName,
+                email: input.email ?? undefined,
+                metadata: { companyId: input.companyId },
+            },
+            // Idempotency key (when supplied) collapses a retried/racing create
+            // onto the same customer instead of minting a duplicate (P5).
+            input.idempotencyKey ? { idempotencyKey: input.idempotencyKey } : undefined,
+        );
         return customer.id;
     }
 
@@ -385,6 +398,11 @@ export class StripeBillingProvider implements BillingProvider {
         return { checkoutUrl: session.url, subscriptionId: null };
     }
 
+    async getSeatQuantity(ref: SubscriptionRef): Promise<number> {
+        const item = await this.findSeatItem(ref.subscriptionId);
+        return Math.max(item.quantity ?? 1, 1);
+    }
+
     async updateSeatQuantity(ref: SubscriptionRef, quantity: number): Promise<void> {
         const item = await this.findSeatItem(ref.subscriptionId);
         await this.stripe.subscriptionItems.update(item.id, { quantity });
@@ -446,17 +464,17 @@ export class StripeBillingProvider implements BillingProvider {
     // Private helpers
     // -------------------------------------------------------------------------
 
-    /** Retrieve the SEAT line item for a subscription. Throws if not found. */
+    /** Retrieve the SEAT line item (id + live quantity) for a subscription. Throws if not found. */
     private async findSeatItem(
         subscriptionId: string,
-    ): Promise<{ id: string }> {
+    ): Promise<{ id: string; quantity?: number | null }> {
         const sub = await this.stripe.subscriptions.retrieve(subscriptionId, {
             expand: ['items'],
-        }) as unknown as { items: { data: { id: string; price?: { metadata?: Record<string, string> } }[] } };
+        }) as unknown as { items: { data: { id: string; quantity?: number | null; price?: { metadata?: Record<string, string> } }[] } };
         const item =
             sub.items.data.find((i) => i.price?.metadata?.kind === 'SEAT') ??
             sub.items.data[0];
         if (!item) throw new Error(`No subscription items found on ${subscriptionId}`);
-        return { id: item.id };
+        return { id: item.id, quantity: item.quantity };
     }
 }

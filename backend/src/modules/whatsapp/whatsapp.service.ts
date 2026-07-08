@@ -68,6 +68,27 @@ export class WhatsappService implements OnModuleInit {
     // Track message IDs sent by AI so when Baileys re-emits them as fromMe events
     // we don't mistakenly treat them as a human reply and trigger the silence window.
     const aiSentIds = new Set<string>();
+    // Content fallback: Baileys sendMessage may return without a key.id, so the echo
+    // can't be matched by id. Track a short-lived (chatId + body) fingerprint of each
+    // AI send so we still recognise the echo and don't treat it as a human reply.
+    // A Map counter (not a Set) so N identical AI sends within the window are matched by
+    // exactly N echoes: two identical sends must not collapse to one entry (which would
+    // let the second echo be misread as a human reply and falsely mute the AI).
+    const aiSentFingerprints = new Map<string, number>();
+    const fingerprint = (chatId: string, body: string) => `${chatId} ${body ?? ''}`;
+    // Increment the fingerprint counter for one AI send.
+    const addFingerprint = (fp: string) => {
+      aiSentFingerprints.set(fp, (aiSentFingerprints.get(fp) ?? 0) + 1);
+      setTimeout(() => decrementFingerprint(fp), 60_000);
+    };
+    // Consume one matching echo: decrement, delete the key when the count reaches 0.
+    const decrementFingerprint = (fp: string): boolean => {
+      const count = aiSentFingerprints.get(fp);
+      if (!count) return false;
+      if (count <= 1) aiSentFingerprints.delete(fp);
+      else aiSentFingerprints.set(fp, count - 1);
+      return true;
+    };
     inst.emitter.on('status', data => {
       this.gateway.emitStatus(userId, data);
       if (!data.hasCredentials) this.store.clearAll(userId);
@@ -76,11 +97,24 @@ export class WhatsappService implements OnModuleInit {
     inst.emitter.on('message', (msg: WaMessage) => {
       this.store.addMessage(userId, msg);
       this.gateway.emitMessage(userId, msg);
-      if (msg.fromMe && !aiSentIds.has(msg.id)) {
-        this.ai.recordHumanReply(userId, msg.chatId);
+      if (msg.fromMe) {
+        const fp = fingerprint(msg.chatId, msg.body);
+        // messageId match is the PRIMARY signal; the fingerprint counter is the fallback
+        // for sends with no messageId. Consume exactly one fingerprint slot per matched
+        // echo (whether matched by id or by fingerprint) so N identical AI sends are
+        // matched by N echoes and a genuine later human message with identical text
+        // (count already drained to 0) is still recorded as a human reply.
+        const idMatch = aiSentIds.has(msg.id);
+        const fpMatch = decrementFingerprint(fp);
+        const isAiEcho = idMatch || fpMatch;
+        if (!isAiEcho) this.ai.recordHumanReply(userId, msg.chatId);
       }
       if (!msg.fromMe) {
         this.ai.handleIncomingMessage(msg, companyId, userId, async (chatId, message) => {
+          // Register the echo fingerprint BEFORE sending so the fromMe re-emission
+          // (which can arrive before or without a messageId) is always recognised.
+          const fp = fingerprint(chatId, message);
+          addFingerprint(fp);
           const result = await inst.sendMessage(chatId, message);
           if (result.messageId) {
             aiSentIds.add(result.messageId);

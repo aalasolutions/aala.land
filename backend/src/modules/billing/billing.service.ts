@@ -10,7 +10,8 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { DataSource, EntityManager, Repository } from 'typeorm';
+import { withCompanyLock } from '@shared/utils/company-lock.util';
 import { Company, SubscriptionTier } from '../companies/entities/company.entity';
 import { User } from '../users/entities/user.entity';
 import { BillingPrice } from './entities/billing-price.entity';
@@ -62,24 +63,43 @@ export class BillingService {
         @InjectRepository(User) private readonly userRepo: Repository<User>,
         @Inject(BILLING_PROVIDER) private readonly provider: BillingProvider,
         private readonly config: ConfigService,
+        private readonly dataSource: DataSource,
     ) {}
 
     // -------------------------------------------------------------------------
     // Unit 1 methods (unchanged)
     // -------------------------------------------------------------------------
 
-    /** Idempotent: returns the existing customer id or creates one. Safe to call again at subscribe time. */
+    /**
+     * Idempotent: returns the existing customer id or creates one. Safe to call
+     * again at subscribe time, and safe under concurrency (race audit
+     * 2026-07-07, P5): the create is serialized behind the company advisory lock
+     * and re-reads billingCustomerId INSIDE the lock, so a signup and a
+     * near-simultaneous checkout cannot both mint a Stripe customer. A Stripe
+     * idempotency key derived from the companyId, plus the partial UNIQUE index
+     * on billing_customer_id, are the two further backstops.
+     */
     async ensureCompanyCustomer(company: Company): Promise<string> {
+        // Fast path: already resolved on the passed-in snapshot, no lock needed.
         if (company.billingCustomerId) return company.billingCustomerId;
-        const customerId = await this.provider.ensureCustomer({
-            companyId: company.id,
-            companyName: company.name,
+
+        return withCompanyLock(this.dataSource, company.id, async (manager: EntityManager) => {
+            // Re-read under the lock: another writer may have set it since the
+            // snapshot was loaded.
+            const fresh = await manager.findOne(Company, { where: { id: company.id } });
+            if (fresh?.billingCustomerId) return fresh.billingCustomerId;
+
+            const customerId = await this.provider.ensureCustomer({
+                companyId: company.id,
+                companyName: company.name,
+                idempotencyKey: `ensure-customer:${company.id}`,
+            });
+            await manager.update(Company, company.id, {
+                billingCustomerId: customerId,
+                billingProvider: 'stripe',
+            });
+            return customerId;
         });
-        await this.companyRepo.update(company.id, {
-            billingCustomerId: customerId,
-            billingProvider: 'stripe',
-        });
-        return customerId;
     }
 
     /** Creates the provider Price for any active row that has no provider_price_id yet. */
@@ -254,44 +274,44 @@ export class BillingService {
 
     // -------------------------------------------------------------------------
     // Unit 4 methods (seat lifecycle)
+    //
+    // CONCURRENCY (race audit 2026-07-07, P1): every seat mutation here derives
+    // its target from the LIVE provider quantity (getSeatQuantity) plus/minus the
+    // exact delta, NEVER from Company.purchasedSeats (a webhook-synced read model
+    // that lags). Callers MUST invoke these from inside withCompanyLock so the
+    // live-read -> provider-set -> local-write sequence is serialized per company;
+    // otherwise two concurrent adds both read the same live value and one paid
+    // seat silently vanishes. These methods still write NO Company column (the
+    // unit 2 webhook is the single writer of purchasedSeats/billingStatus/
+    // billingSubscriptionId, contract section 8).
     // -------------------------------------------------------------------------
 
     /**
      * Reserve one additional seat with the billing provider BEFORE a local user write
-     * (contract section 9 ordering).
+     * (contract section 9 ordering). MUST run inside withCompanyLock (see above).
      *
      * FREE companies: no provider call, returns null (enforceUserLimit already capped them).
      * Paid tier with no subscription (or no customer): no provider call, returns null. This is a
      * comp account a SUPER_ADMIN set to a paid tier without checkout; it manages users freely with
-     * no billing (owner decision 2026-07-07). A deliberate "must pay" lock is the separate Dunning
-     * feature, NOT the absence of a subscription.
-     * Paid tier with a subscription: provider quantity goes to purchasedSeats + 1; a provider
+     * no billing (owner decision 2026-07-07, Option B). A deliberate "must pay" lock is the separate
+     * Dunning feature, NOT the absence of a subscription.
+     * Paid tier with a subscription: reads the live seat quantity and sets it to live + 1; a provider
      * failure maps to HTTP 402 and nothing local may be written by the caller.
-     *
-     * NEVER writes Company.purchasedSeats or any Company column. The unit 2 SeatQuantityChanged
-     * webhook handler is the single writer (contract section 8); the gap between this call and the
-     * webhook is accepted eventual consistency.
      */
     async reserveSeat(company: Company): Promise<SeatReservation | null> {
-        if (company.subscriptionTier === SubscriptionTier.FREE) {
-            return null;
-        }
+        const ctx = this.seatContext(company);
+        if (!ctx) return null;
+        const { ref } = ctx;
 
-        const subscriptionId = company.billingSubscriptionId;
-        const customerId = company.billingCustomerId;
-        if (!subscriptionId || !customerId) {
-            return null;
-        }
-
-        const ref = { subscriptionId, customerId };
-        const targetQuantity = company.purchasedSeats + 1;
+        const liveQuantity = await this.readLiveSeatQuantity(ref, company.id);
+        const targetQuantity = liveQuantity + 1;
 
         try {
             await this.provider.updateSeatQuantity(ref, targetQuantity);
         } catch (err) {
             this.logger.error(
                 `Seat increment rejected by billing provider for company ${company.id} ` +
-                `(subscription ${subscriptionId}, target ${targetQuantity}): ` +
+                `(subscription ${ref.subscriptionId}, target ${targetQuantity}): ` +
                 `${err instanceof Error ? err.message : String(err)}`,
             );
             throw new HttpException(
@@ -307,27 +327,64 @@ export class BillingService {
         }
 
         return {
-            subscriptionId,
+            subscriptionId: ref.subscriptionId,
             targetQuantity,
+            // Best-effort compensation: restore the exact pre-increment value we
+            // captured. Safe because the caller holds the company lock, so nothing
+            // else moved the counter between our read and this rollback.
             release: async (): Promise<void> => {
-                try {
-                    await this.provider.updateSeatQuantity(ref, targetQuantity - 1);
-                } catch (rollbackErr) {
-                    this.logger.error(
-                        `Compensating seat rollback FAILED for company ${company.id} ` +
-                        `(subscription ${subscriptionId}, quantity ${targetQuantity - 1}): ` +
-                        `${rollbackErr instanceof Error ? rollbackErr.message : String(rollbackErr)}. ` +
-                        `Reconcile manually against the provider dashboard.`,
-                    );
-                }
+                await this.compensateSeat(ref, liveQuantity, company.id);
             },
         };
     }
 
     /**
-     * Sets the absolute seat quantity on the company's subscription.
-     * Contract section 9: callers order this BEFORE their local transaction.
-     * Does NOT write purchasedSeats; the SeatQuantityChanged webhook does (section 8).
+     * Decrement the seat quantity by one on user removal (deactivate/delete).
+     * MUST run inside withCompanyLock. Reads the live quantity and sets it to
+     * max(live - 1, 1). Returns a compensator that restores the captured live
+     * value, or null when no provider call was made (FREE / comp with no
+     * subscription, Option B).
+     */
+    async decrementSeat(company: Company): Promise<{ compensate: () => Promise<void> } | null> {
+        const ctx = this.seatContext(company);
+        if (!ctx) return null;
+        const { ref } = ctx;
+
+        const liveQuantity = await this.readLiveSeatQuantity(ref, company.id);
+        const targetQuantity = Math.max(liveQuantity - 1, 1);
+        await this.callSeatUpdate(ref, targetQuantity, company.id);
+
+        return {
+            compensate: async () => {
+                await this.compensateSeat(ref, liveQuantity, company.id);
+            },
+        };
+    }
+
+    /**
+     * Read the current live seat quantity for a company that bills per seat.
+     * Used by the trim/reactivate paths to capture a compensation baseline before
+     * an absolute setSeatQuantity, so a rollback restores the true prior value
+     * (not the lagged purchasedSeats). MUST run inside withCompanyLock. Throws
+     * HTTP 402 when the company has a paid tier but no live subscription.
+     */
+    async getLiveSeatQuantity(company: Company): Promise<number> {
+        if (!company.billingSubscriptionId || !company.billingCustomerId) {
+            throw new HttpException(
+                'This company has a paid plan but no active subscription. Complete checkout first.',
+                HttpStatus.PAYMENT_REQUIRED,
+            );
+        }
+        const ref = { subscriptionId: company.billingSubscriptionId, customerId: company.billingCustomerId };
+        return this.readLiveSeatQuantity(ref, company.id);
+    }
+
+    /**
+     * Sets the absolute seat quantity on the company's subscription. Used by the
+     * trim-to-one downgrade path where the target is a fixed value (1), not a
+     * relative delta. MUST run inside withCompanyLock. Does NOT write
+     * purchasedSeats; the SeatQuantityChanged webhook does (section 8).
+     * Throws HTTP 402 when the company has a paid tier but no live subscription.
      */
     async setSeatQuantity(company: Company, quantity: number): Promise<SubscriptionRef> {
         if (!company.billingSubscriptionId || !company.billingCustomerId) {
@@ -339,6 +396,72 @@ export class BillingService {
         const ref = { subscriptionId: company.billingSubscriptionId, customerId: company.billingCustomerId };
         await this.provider.updateSeatQuantity(ref, quantity);
         return ref;
+    }
+
+    /**
+     * Resolve the (subscriptionId, customerId) ref when the company actually bills
+     * per seat: paid tier with a live subscription and customer. Returns null for
+     * FREE and for a paid comp account with no subscription (Option B), which both
+     * skip the provider entirely.
+     */
+    private seatContext(company: Company): { ref: SubscriptionRef } | null {
+        if (company.subscriptionTier === SubscriptionTier.FREE) return null;
+        const subscriptionId = company.billingSubscriptionId;
+        const customerId = company.billingCustomerId;
+        if (!subscriptionId || !customerId) return null;
+        return { ref: { subscriptionId, customerId } };
+    }
+
+    /** Read the authoritative live seat quantity from the provider. */
+    private async readLiveSeatQuantity(ref: SubscriptionRef, companyId: string): Promise<number> {
+        try {
+            return await this.provider.getSeatQuantity(ref);
+        } catch (err) {
+            this.logger.error(
+                `Failed to read live seat quantity for company ${companyId} ` +
+                `(subscription ${ref.subscriptionId}): ${err instanceof Error ? err.message : String(err)}`,
+            );
+            throw new HttpException(
+                {
+                    message:
+                        'The billing provider is unavailable and the seat change could not be verified. ' +
+                        'No user was changed. Please try again.',
+                    error: 'Payment Required',
+                    statusCode: HttpStatus.PAYMENT_REQUIRED,
+                },
+                HttpStatus.PAYMENT_REQUIRED,
+            );
+        }
+    }
+
+    /** Set the seat quantity, surfacing a provider rejection as HTTP 402. */
+    private async callSeatUpdate(ref: SubscriptionRef, quantity: number, companyId: string): Promise<void> {
+        try {
+            await this.provider.updateSeatQuantity(ref, quantity);
+        } catch (err) {
+            this.logger.error(
+                `Seat update to ${quantity} rejected by billing provider for company ${companyId} ` +
+                `(subscription ${ref.subscriptionId}): ${err instanceof Error ? err.message : String(err)}`,
+            );
+            throw new HttpException(
+                `The billing provider rejected the seat change: ${err instanceof Error ? err.message : String(err)}`,
+                HttpStatus.PAYMENT_REQUIRED,
+            );
+        }
+    }
+
+    /** Best-effort restore of a captured seat quantity. Never throws. */
+    private async compensateSeat(ref: SubscriptionRef, quantity: number, companyId: string): Promise<void> {
+        try {
+            await this.provider.updateSeatQuantity(ref, quantity);
+        } catch (rollbackErr) {
+            this.logger.error(
+                `Compensating seat rollback FAILED for company ${companyId} ` +
+                `(subscription ${ref.subscriptionId}, quantity ${quantity}): ` +
+                `${rollbackErr instanceof Error ? rollbackErr.message : String(rollbackErr)}. ` +
+                `Reconcile manually against the provider dashboard.`,
+            );
+        }
     }
 
     // -------------------------------------------------------------------------
