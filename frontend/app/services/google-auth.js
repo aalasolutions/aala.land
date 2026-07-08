@@ -1,6 +1,6 @@
 import Service from '@ember/service';
 import { tracked } from '@glimmer/tracking';
-import config from 'frontend/config/environment';
+import config from 'land/config/environment';
 
 export default class GoogleAuthService extends Service {
   @tracked isInitialized = false;
@@ -17,7 +17,9 @@ export default class GoogleAuthService extends Service {
     if (this.isInitialized) return Promise.resolve();
 
     if (!this.isConfigured) {
-      throw new Error('Google Sign-In is not configured (missing GOOGLE_CLIENT_ID)');
+      throw new Error(
+        'Google Sign-In is not configured (missing GOOGLE_CLIENT_ID)',
+      );
     }
 
     if (this.initializationPromise) return this.initializationPromise;
@@ -88,5 +90,4 @@ export default class GoogleAuthService extends Service {
       width: element.offsetWidth || 320,
     });
   }
-
 }

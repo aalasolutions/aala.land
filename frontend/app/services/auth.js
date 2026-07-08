@@ -1,6 +1,6 @@
 import Service, { service } from '@ember/service';
-import config from 'frontend/config/environment';
-import parseErrorResponse from 'frontend/utils/parse-error-response';
+import config from 'land/config/environment';
+import parseErrorResponse from 'land/utils/parse-error-response';
 
 export default class AuthService extends Service {
   @service session;
@@ -33,7 +33,11 @@ export default class AuthService extends Service {
   }
 
   async login(email, password) {
-    await this.session.authenticate('authenticator:credentials', email, password);
+    await this.session.authenticate(
+      'authenticator:credentials',
+      email,
+      password,
+    );
   }
 
   async register(registrationData) {
@@ -44,7 +48,9 @@ export default class AuthService extends Service {
     });
 
     if (!response.ok) {
-      throw new Error(await parseErrorResponse(response, 'Registration failed'));
+      throw new Error(
+        await parseErrorResponse(response, 'Registration failed'),
+      );
     }
 
     const { data } = await response.json();
@@ -55,25 +61,38 @@ export default class AuthService extends Service {
   }
 
   async loginWithGoogle(idToken) {
-    const data = await this.postAuthJson('/auth/google', { idToken }, 'Google authentication failed');
+    const data = await this.postAuthJson(
+      '/auth/google',
+      { idToken },
+      'Google authentication failed',
+    );
     this.session.establish(data);
     return data;
   }
 
   async signupWithGoogle(payload) {
-    const data = await this.postAuthJson('/auth/google/signup', payload, 'Google signup failed');
+    const data = await this.postAuthJson(
+      '/auth/google/signup',
+      payload,
+      'Google signup failed',
+    );
     this.session.establish(data);
     return data;
   }
 
   async linkGoogleAccount(idToken) {
-    const response = await this.authorizedFetch(`${this.apiBase}/auth/google/link`, {
-      method: 'POST',
-      body: JSON.stringify({ idToken }),
-    });
+    const response = await this.authorizedFetch(
+      `${this.apiBase}/auth/google/link`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ idToken }),
+      },
+    );
 
     if (!response.ok) {
-      throw new Error(await parseErrorResponse(response, 'Unable to link Google account'));
+      throw new Error(
+        await parseErrorResponse(response, 'Unable to link Google account'),
+      );
     }
 
     const { data } = await response.json();
@@ -88,7 +107,9 @@ export default class AuthService extends Service {
     });
 
     if (!response.ok) {
-      throw new Error(await parseErrorResponse(response, 'Unable to send reset link'));
+      throw new Error(
+        await parseErrorResponse(response, 'Unable to send reset link'),
+      );
     }
 
     const { data } = await response.json();
@@ -103,7 +124,9 @@ export default class AuthService extends Service {
     });
 
     if (!response.ok) {
-      throw new Error(await parseErrorResponse(response, 'Unable to reset password'));
+      throw new Error(
+        await parseErrorResponse(response, 'Unable to reset password'),
+      );
     }
 
     const { data } = await response.json();
@@ -131,13 +154,18 @@ export default class AuthService extends Service {
   }
 
   async impersonate(userId) {
-    const response = await this.authorizedFetch(`${this.apiBase}/auth/impersonate`, {
-      method: 'POST',
-      body: JSON.stringify({ userId }),
-    });
+    const response = await this.authorizedFetch(
+      `${this.apiBase}/auth/impersonate`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ userId }),
+      },
+    );
 
     if (!response.ok) {
-      throw new Error(await parseErrorResponse(response, 'Impersonation failed'));
+      throw new Error(
+        await parseErrorResponse(response, 'Impersonation failed'),
+      );
     }
 
     const { data } = await response.json();
@@ -208,12 +236,19 @@ export default class AuthService extends Service {
 
   async fetchJson(path, options = {}) {
     let finalPath = path;
-    if (this.region.activeRegion && !path.startsWith('/auth/') && !path.includes('regionCode=')) {
+    if (
+      this.region.activeRegion &&
+      !path.startsWith('/auth/') &&
+      !path.includes('regionCode=')
+    ) {
       const separator = path.includes('?') ? '&' : '?';
       finalPath = `${path}${separator}regionCode=${this.region.regionCode}`;
     }
 
-    const res = await this.authorizedFetch(`${this.apiBase}${finalPath}`, options);
+    const res = await this.authorizedFetch(
+      `${this.apiBase}${finalPath}`,
+      options,
+    );
     if (!res.ok) {
       throw new Error(await parseErrorResponse(res, 'Request failed'));
     }

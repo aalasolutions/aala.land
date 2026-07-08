@@ -3,11 +3,17 @@
 <div data-test-leases-page class="flex col gap-6">
   <div class="flex between x-center">
     <div>
-      <h2 class="font-3xl font-bold"><Ph @icon="file-text" @size="28px" /> Lease Agreements</h2>
+      <h2 class="font-3xl font-bold"><Ui::Ph @icon="file-text" @size="28px" />
+        Lease Agreements</h2>
       <p class="text-muted mt-1">Manage tenant lease contracts and renewals.</p>
     </div>
-    <button type="button" class="btn btn-primary" {{on "click" this.openCreate}}>
-      <Ph @icon="plus" /> New Lease
+    <button
+      type="button"
+      class="btn btn-primary"
+      {{on "click" this.openCreate}}
+    >
+      <Ui::Ph @icon="plus" />
+      New Lease
     </button>
   </div>
 
@@ -15,28 +21,60 @@
     {{#if @model.leases.length}}
       <div class="flex col gap-3">
         {{#each @model.leases as |lease|}}
-          <div data-test-lease-row class="flex between x-center p-4 rounded-xl bg-white@02 border border-white@05">
+          <div
+            data-test-lease-row
+            class="flex between x-center p-4 rounded-xl bg-white@02 border border-white@05"
+          >
             <div class="flex col gap-1">
               <p class="font-sm font-bold">{{lease.tenantName}}</p>
-              <p class="text-muted font-xs">{{lease.type}} - {{format-currency lease.monthlyRent}}/mo</p>
-              <p class="text-muted font-xs">{{lease.startDate}} to {{lease.endDate}}</p>
+              <p class="text-muted font-xs">{{lease.type}}
+                -
+                {{format-currency lease.monthlyRent}}/mo</p>
+              <p class="text-muted font-xs">{{lease.startDate}}
+                to
+                {{lease.endDate}}</p>
             </div>
             <div class="flex x-center gap-3">
-              <span class="font-xs px-2 py-1 rounded bg-white@05">{{lease.status}}</span>
-              <button type="button" class="btn btn-secondary btn-sm" {{on "click" (fn this.openEdit lease)}}>
-                <Ph @icon="pencil-simple" /> Edit
+              <span
+                class="font-xs px-2 py-1 rounded bg-white@05"
+              >{{lease.status}}</span>
+              <button
+                type="button"
+                class="btn btn-secondary btn-sm"
+                {{on "click" (fn this.openEdit lease)}}
+              >
+                <Ui::Ph @icon="pencil-simple" />
+                Edit
               </button>
               {{#if (eq lease.status "ACTIVE")}}
-                <button data-test-renew-lease type="button" class="btn btn-secondary btn-sm" {{on "click" (fn this.renewLease lease)}}>
-                  <Ph @icon="arrows-clockwise" /> Renew
+                <button
+                  data-test-renew-lease
+                  type="button"
+                  class="btn btn-secondary btn-sm"
+                  {{on "click" (fn this.renewLease lease)}}
+                >
+                  <Ui::Ph @icon="arrows-clockwise" />
+                  Renew
                 </button>
-                <button data-test-terminate-lease type="button" class="btn btn-danger btn-sm" {{on "click" (fn this.openTerminate lease)}}>
-                  <Ph @icon="x-circle" /> Terminate
+                <button
+                  data-test-terminate-lease
+                  type="button"
+                  class="btn btn-danger btn-sm"
+                  {{on "click" (fn this.openTerminate lease)}}
+                >
+                  <Ui::Ph @icon="x-circle" />
+                  Terminate
                 </button>
               {{/if}}
               {{#if (eq lease.status "EXPIRED")}}
-                <button data-test-renew-lease type="button" class="btn btn-secondary btn-sm" {{on "click" (fn this.renewLease lease)}}>
-                  <Ph @icon="arrows-clockwise" /> Renew
+                <button
+                  data-test-renew-lease
+                  type="button"
+                  class="btn btn-secondary btn-sm"
+                  {{on "click" (fn this.renewLease lease)}}
+                >
+                  <Ui::Ph @icon="arrows-clockwise" />
+                  Renew
                 </button>
               {{/if}}
             </div>
@@ -44,80 +82,184 @@
         {{/each}}
       </div>
     {{else}}
-      <p class="text-muted text-center py-8">No leases yet. Create your first lease agreement.</p>
+      <p class="text-muted text-center py-8">No leases yet. Create your first
+        lease agreement.</p>
     {{/if}}
   </div>
 </div>
 
-<Modal
+<Ui::Modal
   @isOpen={{this.showModal}}
-  @title={{if this.editLease "Edit Lease" (if this.renewingLeaseId "Renew Lease" "New Lease")}}
+  @title={{if
+    this.editLease
+    "Edit Lease"
+    (if this.renewingLeaseId "Renew Lease" "New Lease")
+  }}
   @onClose={{this.closeModal}}
   @showClose={{true}}
 >
   <form class="flex col gap-4" {{on "submit" this.saveLease}}>
-      <FormDropdown @label="Unit" @id="lease-unit-id" @value={{this.formUnitId}} @onChange={{fn this.setField "formUnitId"}} @options={{this.unitOptions}} @placeholder="Select a unit..." @required={{true}} />
+    <Ui::FormDropdown
+      @label="Unit"
+      @id="lease-unit-id"
+      @value={{this.formUnitId}}
+      @onChange={{fn this.setField "formUnitId"}}
+      @options={{this.unitOptions}}
+      @placeholder="Select a unit..."
+      @required={{true}}
+    />
 
-      {{#if this.editLease}}
-        <FormDropdown
-          @label="Status"
-          @id="lease-status"
-          @value={{this.formStatus}}
-          @onChange={{fn this.setField "formStatus"}}
-          @options={{this.validNextStatuses}}
+    {{#if this.editLease}}
+      <Ui::FormDropdown
+        @label="Status"
+        @id="lease-status"
+        @value={{this.formStatus}}
+        @onChange={{fn this.setField "formStatus"}}
+        @options={{this.validNextStatuses}}
+      />
+    {{/if}}
+
+    <Ui::FormInput
+      @label="Tenant Name"
+      @id="lease-tenant-name"
+      @type="text"
+      @placeholder="e.g. Ahmed Al Mansouri"
+      @value={{this.formTenantName}}
+      @onChange={{fn this.setField "formTenantName"}}
+      @required={{true}}
+    />
+
+    <div class="flex gap-4 items-start">
+      <div class="flex-1">
+        <Ui::FormInput
+          @label="Email"
+          @id="lease-tenant-email"
+          @type="email"
+          @placeholder="ahmed@example.com"
+          @value={{this.formTenantEmail}}
+          @onChange={{fn this.setField "formTenantEmail"}}
         />
-      {{/if}}
-
-      <FormInput @label="Tenant Name" @id="lease-tenant-name" @type="text" @placeholder="e.g. Ahmed Al Mansouri" @value={{this.formTenantName}} @onChange={{fn this.setField "formTenantName"}} @required={{true}} />
-
-      <div class="flex gap-4 items-start">
-        <div class="flex-1">
-          <FormInput @label="Email" @id="lease-tenant-email" @type="email" @placeholder="ahmed@example.com" @value={{this.formTenantEmail}} @onChange={{fn this.setField "formTenantEmail"}} />
-        </div>
-        <div class="flex-1">
-          <FormInput @label="Phone" @id="lease-tenant-phone" @type="text" @placeholder="+971501234567" @value={{this.formTenantPhone}} @onChange={{fn this.setField "formTenantPhone"}} />
-        </div>
       </div>
-
-      <div class="flex gap-4 items-start">
-        <div class="flex-1">
-          <FormDropdown @label="Property Type" @id="lease-type" @value={{this.formType}} @onChange={{fn this.setField "formType"}} @options={{this.leaseTypeOptions}} @placeholder="Select property type..." />
-        </div>
-        <div class="flex-1">
-          <FormInput @label="Number of Cheques" @id="lease-cheques" @type="number" @value={{this.formNumberOfCheques}} @onChange={{fn this.setField "formNumberOfCheques"}} @min={{1}} @max={{12}} />
-        </div>
+      <div class="flex-1">
+        <Ui::FormInput
+          @label="Phone"
+          @id="lease-tenant-phone"
+          @type="text"
+          @placeholder="+971501234567"
+          @value={{this.formTenantPhone}}
+          @onChange={{fn this.setField "formTenantPhone"}}
+        />
       </div>
+    </div>
 
-      <div class="flex gap-4 items-start">
-        <div class="flex-1">
-          <FormInput @label="Start Date" @id="lease-start" @type="date" @value={{this.formStartDate}} @onChange={{fn this.setField "formStartDate"}} @required={{true}} />
-        </div>
-        <div class="flex-1">
-          <FormInput @label="End Date" @id="lease-end" @type="date" @value={{this.formEndDate}} @onChange={{fn this.setField "formEndDate"}} @required={{true}} />
-        </div>
+    <div class="flex gap-4 items-start">
+      <div class="flex-1">
+        <Ui::FormDropdown
+          @label="Property Type"
+          @id="lease-type"
+          @value={{this.formType}}
+          @onChange={{fn this.setField "formType"}}
+          @options={{this.leaseTypeOptions}}
+          @placeholder="Select property type..."
+        />
       </div>
-
-      <div class="flex gap-4 items-start">
-        <div class="flex-1">
-          <FormInput @label="Monthly Rent" @id="lease-rent" @type="number" @placeholder="e.g. 8500" @value={{this.formMonthlyRent}} @onChange={{fn this.setField "formMonthlyRent"}} @required={{true}} @min={{0}} @step={{0.01}} />
-        </div>
-        <div class="flex-1">
-          <FormInput @label="Security Deposit" @id="lease-deposit" @type="number" @placeholder="e.g. 17000" @value={{this.formSecurityDeposit}} @onChange={{fn this.setField "formSecurityDeposit"}} @min={{0}} @step={{0.01}} />
-        </div>
+      <div class="flex-1">
+        <Ui::FormInput
+          @label="Number of Cheques"
+          @id="lease-cheques"
+          @type="number"
+          @value={{this.formNumberOfCheques}}
+          @onChange={{fn this.setField "formNumberOfCheques"}}
+          @min={{1}}
+          @max={{12}}
+        />
       </div>
+    </div>
 
-      <FormInput @label="Ejari Number" @id="lease-ejari" @type="text" @placeholder="e.g. EJARI-2026-00001" @value={{this.formEjariNumber}} @onChange={{fn this.setField "formEjariNumber"}} />
-
-      {{#if this.errorMsg}}
-        <p class="font-sm text-danger">{{this.errorMsg}}</p>
-      {{/if}}
-
-      <div class="flex gap-3">
-        <AppButton @variant="secondary" @text="Cancel" @onClick={{this.closeModal}} />
-        <AppButton @variant="primary" @buttonType="submit" @text={{if this.editLease "Update" (if this.renewingLeaseId "Renew Lease" "Create Lease")}} @loading={{this.isSaving}} @loadingText="Saving..." />
+    <div class="flex gap-4 items-start">
+      <div class="flex-1">
+        <Ui::FormInput
+          @label="Start Date"
+          @id="lease-start"
+          @type="date"
+          @value={{this.formStartDate}}
+          @onChange={{fn this.setField "formStartDate"}}
+          @required={{true}}
+        />
       </div>
-    </form>
-</Modal>
+      <div class="flex-1">
+        <Ui::FormInput
+          @label="End Date"
+          @id="lease-end"
+          @type="date"
+          @value={{this.formEndDate}}
+          @onChange={{fn this.setField "formEndDate"}}
+          @required={{true}}
+        />
+      </div>
+    </div>
+
+    <div class="flex gap-4 items-start">
+      <div class="flex-1">
+        <Ui::FormInput
+          @label="Monthly Rent"
+          @id="lease-rent"
+          @type="number"
+          @placeholder="e.g. 8500"
+          @value={{this.formMonthlyRent}}
+          @onChange={{fn this.setField "formMonthlyRent"}}
+          @required={{true}}
+          @min={{0}}
+          @step={{0.01}}
+        />
+      </div>
+      <div class="flex-1">
+        <Ui::FormInput
+          @label="Security Deposit"
+          @id="lease-deposit"
+          @type="number"
+          @placeholder="e.g. 17000"
+          @value={{this.formSecurityDeposit}}
+          @onChange={{fn this.setField "formSecurityDeposit"}}
+          @min={{0}}
+          @step={{0.01}}
+        />
+      </div>
+    </div>
+
+    <Ui::FormInput
+      @label="Ejari Number"
+      @id="lease-ejari"
+      @type="text"
+      @placeholder="e.g. EJARI-2026-00001"
+      @value={{this.formEjariNumber}}
+      @onChange={{fn this.setField "formEjariNumber"}}
+    />
+
+    {{#if this.errorMsg}}
+      <p class="font-sm text-danger">{{this.errorMsg}}</p>
+    {{/if}}
+
+    <div class="flex gap-3">
+      <Ui::AppButton
+        @variant="secondary"
+        @text="Cancel"
+        @onClick={{this.closeModal}}
+      />
+      <Ui::AppButton
+        @variant="primary"
+        @buttonType="submit"
+        @text={{if
+          this.editLease
+          "Update"
+          (if this.renewingLeaseId "Renew Lease" "Create Lease")
+        }}
+        @loading={{this.isSaving}}
+        @loadingText="Saving..."
+      />
+    </div>
+  </form>
+</Ui::Modal>
 
 <ConfirmModal
   @isOpen={{this.showTerminateModal}}

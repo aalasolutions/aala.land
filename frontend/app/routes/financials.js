@@ -34,7 +34,15 @@ export default class FinancialsRoute extends AuthenticatedRoute {
         activeTab,
       };
     } catch {
-      return { transactions: [], total: 0, summary: null, depositReminders: [], page, limit, activeTab };
+      return {
+        transactions: [],
+        total: 0,
+        summary: null,
+        depositReminders: [],
+        page,
+        limit,
+        activeTab,
+      };
     }
   }
 }

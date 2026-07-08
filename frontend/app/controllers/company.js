@@ -35,14 +35,17 @@ export default class CompanyController extends Controller {
 
   @action toggleCountry(countryCode) {
     if (this.expandedCountries.includes(countryCode)) {
-      this.expandedCountries = this.expandedCountries.filter(c => c !== countryCode);
+      this.expandedCountries = this.expandedCountries.filter(
+        (c) => c !== countryCode,
+      );
     } else {
       this.expandedCountries = [...this.expandedCountries, countryCode];
     }
   }
 
   @action selectedCountInGroup(regions) {
-    return regions.filter(r => this.formActiveRegions.includes(r.code)).length;
+    return regions.filter((r) => this.formActiveRegions.includes(r.code))
+      .length;
   }
 
   get company() {
@@ -130,7 +133,11 @@ export default class CompanyController extends Controller {
       const resetDate = new Date(this.weeklyResetsAt);
       const daysLeft = Math.ceil((resetDate - Date.now()) / 86400000);
       const day = resetDate.toLocaleDateString('en-US', { weekday: 'short' });
-      const time = resetDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+      const time = resetDate.toLocaleTimeString('en-US', {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+      });
       suffix = ` - resets in ${daysLeft}d (${day} - ${time})`;
     }
     return `You've used ${used}/${this.weeklyLimit} AI messages this week${suffix}`;
@@ -144,7 +151,7 @@ export default class CompanyController extends Controller {
     const regions = this.model?.regions || [];
     const countries = new Set();
     for (const code of this.formActiveRegions) {
-      const r = regions.find(reg => reg.code === code);
+      const r = regions.find((reg) => reg.code === code);
       if (r) countries.add(r.country);
     }
     return [...countries];
@@ -160,15 +167,19 @@ export default class CompanyController extends Controller {
   }
 
   get activeRegionOptions() {
-    return this.activeRegionObjects.map(r => ({
+    return this.activeRegionObjects.map((r) => ({
       value: r.code,
-      label: `${r.name} (${r.currency})`
+      label: `${r.name} (${r.currency})`,
     }));
   }
 
-  @action setField(fieldName, e) { this[fieldName] = e.target.value; }
+  @action setField(fieldName, e) {
+    this[fieldName] = e.target.value;
+  }
 
-  @action setTab(tab) { this.activeTab = tab; }
+  @action setTab(tab) {
+    this.activeTab = tab;
+  }
 
   @action setAIPrompt(event) {
     this.aiPrompt = event.target.value;
@@ -251,7 +262,9 @@ export default class CompanyController extends Controller {
     try {
       await this.auth.fetchJson('/billing/cancel', { method: 'POST' });
       this.showDowngradeConfirm = false;
-      this.notifications.success('Subscription will end at the close of the current billing period.');
+      this.notifications.success(
+        'Subscription will end at the close of the current billing period.',
+      );
       this.router.refresh('company');
     } catch (e) {
       // 409 carries the active-user-count message from the backend gate.
@@ -271,12 +284,17 @@ export default class CompanyController extends Controller {
       }
     } else {
       const regions = this.model?.regions || [];
-      const regionObj = regions.find(r => r.code === code);
+      const regionObj = regions.find((r) => r.code === code);
       const regionCountry = regionObj?.country;
 
-      if (!this.selectedCountries.includes(regionCountry) && !this.canAddMoreCountries) {
+      if (
+        !this.selectedCountries.includes(regionCountry) &&
+        !this.canAddMoreCountries
+      ) {
         const limit = this.maxCountries;
-        this.notifications.error(`Your ${this.company?.subscriptionTier || 'FREE'} plan allows ${limit} ${limit === 1 ? 'country' : 'countries'}. Upgrade to add more.`);
+        this.notifications.error(
+          `Your ${this.company?.subscriptionTier || 'FREE'} plan allows ${limit} ${limit === 1 ? 'country' : 'countries'}. Upgrade to add more.`,
+        );
         return;
       }
 
@@ -290,7 +308,8 @@ export default class CompanyController extends Controller {
   @action async saveCompany(event) {
     event.preventDefault();
     if (!this.isAdmin) {
-      this.errorMsg = 'Only company admins and super admins can update company settings.';
+      this.errorMsg =
+        'Only company admins and super admins can update company settings.';
       return;
     }
 
@@ -307,7 +326,8 @@ export default class CompanyController extends Controller {
     const companyId = this.auth.currentUser?.companyId;
 
     try {
-      const defaultRegionCode = this.formDefaultRegionCode || this.formActiveRegions[0];
+      const defaultRegionCode =
+        this.formDefaultRegionCode || this.formActiveRegions[0];
       await this.auth.fetchJson(`/companies/${companyId}`, {
         method: 'PATCH',
         body: JSON.stringify({
@@ -319,12 +339,15 @@ export default class CompanyController extends Controller {
 
       // Re-initialize region service with updated active regions
       const allRegions = this.model?.regions || [];
-      const newActiveRegions = allRegions.filter((r) => this.formActiveRegions.includes(r.code));
+      const newActiveRegions = allRegions.filter((r) =>
+        this.formActiveRegions.includes(r.code),
+      );
       this.region.initialize(newActiveRegions, this.formDefaultRegionCode);
 
       // Persist to session storage so hard reload keeps the new regions
       this.session.data.authenticated.regions = newActiveRegions;
-      this.session.data.authenticated.defaultRegionCode = this.formDefaultRegionCode;
+      this.session.data.authenticated.defaultRegionCode =
+        this.formDefaultRegionCode;
       this.session.saveToStorage();
 
       this.notifications.success('Company updated');

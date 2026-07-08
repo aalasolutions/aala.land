@@ -3,15 +3,7 @@ import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
 import { canManageFinancials } from '../utils/roles';
-
-const CHEQUE_TYPE_OPTIONS = [
-  { value: 'RENT', label: 'Rent' },
-  { value: 'SECURITY_DEPOSIT', label: 'Security Deposit' },
-  { value: 'MAINTENANCE', label: 'Maintenance' },
-  { value: 'OTHER', label: 'Other' },
-];
-
-const EMPTY_UNIT_OPTION = { value: '', label: 'No property linked' };
+import { CHEQUE_TYPE_OPTIONS, EMPTY_UNIT_OPTION } from 'land/constants';
 
 export default class ChequesController extends PaginatedController {
   @service auth;
@@ -74,16 +66,20 @@ export default class ChequesController extends PaginatedController {
   get unitOptions() {
     return [
       EMPTY_UNIT_OPTION,
-      ...(this.model.units || []).map(unit => ({
+      ...(this.model.units || []).map((unit) => ({
         value: unit.id,
-        label: `${unit.areaName} - ${unit.assetName} - Unit ${unit.unitNumber}`
-      }))
+        label: `${unit.areaName} - ${unit.assetName} - Unit ${unit.unitNumber}`,
+      })),
     ];
   }
 
-  @action setField(fieldName, e) { this[fieldName] = e.target.value; }
+  @action setField(fieldName, e) {
+    this[fieldName] = e.target.value;
+  }
 
-  @action setTab(tab) { this.activeTab = tab; }
+  @action setTab(tab) {
+    this.activeTab = tab;
+  }
 
   @action openCreate() {
     this.formChequeNumber = '';
@@ -193,7 +189,9 @@ export default class ChequesController extends PaginatedController {
     try {
       await this.auth.fetchJson(`/cheques/${this.bounceChequeItem.id}/bounce`, {
         method: 'POST',
-        body: JSON.stringify({ bounceReason: this.formBounceReason || undefined }),
+        body: JSON.stringify({
+          bounceReason: this.formBounceReason || undefined,
+        }),
       });
       this.notifications.success('Cheque marked as bounced');
       this.closeBounceModal();

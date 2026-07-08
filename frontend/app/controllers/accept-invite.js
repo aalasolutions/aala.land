@@ -2,7 +2,7 @@ import Controller from '@ember/controller';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
-import config from 'frontend/config/environment';
+import config from 'land/config/environment';
 
 export default class AcceptInviteController extends Controller {
   queryParams = ['token'];

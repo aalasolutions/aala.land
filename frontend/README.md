@@ -2,7 +2,7 @@
 
 This is the Ember.js app for AALA.LAND.
 
-**Repo location:** `Main/frontend`
+**Repo location:** `Main/land/`
 **Backend API (dev):** `http://localhost:3010/v1` (see `config/environment.js`)
 
 ## Prerequisites
@@ -16,7 +16,7 @@ You will need the following things properly installed on your computer.
 
 ## Installation
 
-- `cd Main/frontend`
+- `cd Main/land/`
 - `pnpm install`
 
 ## Quickstart (Local Dev)
@@ -24,7 +24,7 @@ You will need the following things properly installed on your computer.
 1. Start infra containers (Postgres, Dragonfly, MinIO) from `Main/`:
    - `cd Main && docker compose up -d`
 2. Start the backend API from `Main/backend` (serves `http://localhost:3010/v1`)
-3. Start the frontend from `Main/frontend`:
+3. Start the land/ from `Main/land/`:
    - `pnpm start`
 4. Visit:
    - App: `http://localhost:4200`

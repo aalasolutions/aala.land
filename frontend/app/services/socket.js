@@ -2,7 +2,7 @@ import Service from '@ember/service';
 import { service } from '@ember/service';
 import { io } from 'socket.io-client';
 import { tracked } from '@glimmer/tracking';
-import ENV from 'frontend/config/environment';
+import ENV from 'land/config/environment';
 
 export default class SocketService extends Service {
   @service auth;
@@ -15,12 +15,13 @@ export default class SocketService extends Service {
     if (this.socket || !this.auth.currentUser) return;
 
     const apiBase = ENV.APP.API_BASE || 'http://localhost:3010/v1';
-    const apiUrl = ENV.APP.API_URL || new URL(apiBase, window.location.origin).origin;
+    const apiUrl =
+      ENV.APP.API_URL || new URL(apiBase, window.location.origin).origin;
     const token = this.auth.token;
     if (!token) return;
 
     this.socket = io(apiUrl, {
-      auth: { token }
+      auth: { token },
     });
 
     this.socket.on('connect', () => {

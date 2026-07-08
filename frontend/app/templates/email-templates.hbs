@@ -3,17 +3,30 @@
 <div data-test-email-templates class="flex col gap-6">
   <div class="flex between x-center">
     <div class="flex x-center gap-3">
-      <Ph @icon="envelope-simple" @size="24px" />
+      <Ui::Ph @icon="envelope-simple" @size="24px" />
       <h2 class="font-2xl font-bold">Email Templates</h2>
       <span class="text-muted font-sm">({{format-number @model.total}})</span>
     </div>
-    <button type="button" class="btn btn-primary" {{on "click" this.openCreate}}>
-      <Ph @icon="plus" /> New Template
+    <button
+      type="button"
+      class="btn btn-primary"
+      {{on "click" this.openCreate}}
+    >
+      <Ui::Ph @icon="plus" />
+      New Template
     </button>
   </div>
 
   <div class="flex gap-3">
-    <FormDropdown @id="email-template-category-filter" @label="" @value={{this.category}} @onChange={{this.filterCategory}} @options={{this.filterCategories}} @placeholder="All Categories" data-test-category-filter />
+    <Ui::FormDropdown
+      @id="email-template-category-filter"
+      @label=""
+      @value={{this.category}}
+      @onChange={{this.filterCategory}}
+      @options={{this.filterCategories}}
+      @placeholder="All Categories"
+      data-test-category-filter
+    />
   </div>
 
   {{#if @model.templates.length}}
@@ -22,14 +35,16 @@
         <div data-test-template-card class="glass-panel p-5 flex col gap-3">
           <div class="flex between x-center">
             <div class="flex x-center gap-2">
-              <Ph @icon="envelope-simple" />
+              <Ui::Ph @icon="envelope-simple" />
               <h4 class="font-md font-bold">{{template.name}}</h4>
             </div>
             <div class="flex gap-1 x-center">
               {{#unless template.isActive}}
                 <span class="type-badge type-inactive">Inactive</span>
               {{/unless}}
-              <span class="type-badge type-{{lowercase template.category}}">{{template.category}}</span>
+              <span
+                class="type-badge type-{{lowercase template.category}}"
+              >{{template.category}}</span>
             </div>
           </div>
           <p class="text-muted font-sm">Subject: {{template.subject}}</p>
@@ -41,14 +56,28 @@
             </div>
           {{/if}}
           <div class="flex gap-2 mt-auto">
-            <button type="button" class="btn btn-secondary btn-sm" {{on "click" (fn this.openPreview template)}}>
-              <Ph @icon="eye" /> Preview
+            <button
+              type="button"
+              class="btn btn-secondary btn-sm"
+              {{on "click" (fn this.openPreview template)}}
+            >
+              <Ui::Ph @icon="eye" />
+              Preview
             </button>
-            <button type="button" class="btn btn-secondary btn-sm" {{on "click" (fn this.openEdit template)}}>
-              <Ph @icon="pencil-simple" /> Edit
+            <button
+              type="button"
+              class="btn btn-secondary btn-sm"
+              {{on "click" (fn this.openEdit template)}}
+            >
+              <Ui::Ph @icon="pencil-simple" />
+              Edit
             </button>
-            <button type="button" class="btn btn-danger btn-sm" {{on "click" (fn this.openDelete template)}}>
-              <Ph @icon="trash" />
+            <button
+              type="button"
+              class="btn btn-danger btn-sm"
+              {{on "click" (fn this.openDelete template)}}
+            >
+              <Ui::Ph @icon="trash" />
             </button>
           </div>
         </div>
@@ -56,13 +85,14 @@
     </div>
   {{else}}
     <div class="glass-panel p-8 text-center">
-      <Ph @icon="envelope-simple" @size="48px" @color="var(--text-muted)" />
-      <p class="text-muted mt-3">No email templates yet. Create your first template above.</p>
+      <Ui::Ph @icon="envelope-simple" @size="48px" @color="var(--text-muted)" />
+      <p class="text-muted mt-3">No email templates yet. Create your first
+        template above.</p>
     </div>
   {{/if}}
 </div>
 
-<Modal
+<Ui::Modal
   @isOpen={{this.showModal}}
   @title={{if this.editTemplate "Edit Template" "New Template"}}
   @onClose={{this.closeModal}}
@@ -71,33 +101,87 @@
   <form class="flex col gap-4" {{on "submit" this.saveTemplate}}>
     <div class="flex gap-4">
       <div class="flex col gap-2 flex-1">
-        <FormInput @label="Template Name" @id="t-name" @type="text" @placeholder="Welcome New Tenant" @value={{this.formName}} @onChange={{fn this.setField "formName"}} @required={{true}} />
+        <Ui::FormInput
+          @label="Template Name"
+          @id="t-name"
+          @type="text"
+          @placeholder="Welcome New Tenant"
+          @value={{this.formName}}
+          @onChange={{fn this.setField "formName"}}
+          @required={{true}}
+        />
       </div>
       <div class="flex col gap-2 flex-1">
-        <FormDropdown @label="Category" @id="t-category" @value={{this.formCategory}} @onChange={{fn this.setField "formCategory"}} @options={{this.categories}} @placeholder="Select category..." />
+        <Ui::FormDropdown
+          @label="Category"
+          @id="t-category"
+          @value={{this.formCategory}}
+          @onChange={{fn this.setField "formCategory"}}
+          @options={{this.categories}}
+          @placeholder="Select category..."
+        />
       </div>
     </div>
-    <FormInput @label="Subject" @id="t-subject" @type="text" @placeholder="Welcome to your new home!" @value={{this.formSubject}} @onChange={{fn this.setField "formSubject"}} @required={{true}} />
-    <FormTextarea @label="Body (HTML)" @id="t-body" @placeholder="Use curly braces for variables, e.g. first name" @rows={{8}} @value={{this.formBody}} @onChange={{fn this.setField "formBody"}} @required={{true}} />
+    <Ui::FormInput
+      @label="Subject"
+      @id="t-subject"
+      @type="text"
+      @placeholder="Welcome to your new home!"
+      @value={{this.formSubject}}
+      @onChange={{fn this.setField "formSubject"}}
+      @required={{true}}
+    />
+    <Ui::FormTextarea
+      @label="Body (HTML)"
+      @id="t-body"
+      @placeholder="Use curly braces for variables, e.g. first name"
+      @rows={{8}}
+      @value={{this.formBody}}
+      @onChange={{fn this.setField "formBody"}}
+      @required={{true}}
+    />
     <div class="flex col gap-2">
-      <FormInput @label="Variables (comma-separated)" @id="t-vars" @type="text" @placeholder="firstName, lastName, propertyName" @value={{this.formVariables}} @onChange={{fn this.setField "formVariables"}} />
-      <p class="font-xs text-muted">Use double curly braces in subject/body to reference variables.</p>
+      <Ui::FormInput
+        @label="Variables (comma-separated)"
+        @id="t-vars"
+        @type="text"
+        @placeholder="firstName, lastName, propertyName"
+        @value={{this.formVariables}}
+        @onChange={{fn this.setField "formVariables"}}
+      />
+      <p class="font-xs text-muted">Use double curly braces in subject/body to
+        reference variables.</p>
     </div>
     <div class="flex x-center gap-2">
-      <input id="t-active" type="checkbox" checked={{this.formIsActive}} {{on "change" (fn this.setField "formIsActive")}} />
+      <input
+        id="t-active"
+        type="checkbox"
+        checked={{this.formIsActive}}
+        {{on "change" (fn this.setField "formIsActive")}}
+      />
       <label class="font-sm" for="t-active">Active</label>
     </div>
     {{#if this.errorMsg}}
       <p class="font-sm text-danger">{{this.errorMsg}}</p>
     {{/if}}
     <div class="flex gap-3 mt-2">
-      <AppButton @variant="secondary" @text="Cancel" @onClick={{this.closeModal}} />
-      <AppButton @variant="primary" @buttonType="submit" @text={{if this.editTemplate "Update" "Create Template"}} @loading={{this.isSaving}} @loadingText="Saving..." />
+      <Ui::AppButton
+        @variant="secondary"
+        @text="Cancel"
+        @onClick={{this.closeModal}}
+      />
+      <Ui::AppButton
+        @variant="primary"
+        @buttonType="submit"
+        @text={{if this.editTemplate "Update" "Create Template"}}
+        @loading={{this.isSaving}}
+        @loadingText="Saving..."
+      />
     </div>
   </form>
-</Modal>
+</Ui::Modal>
 
-<Modal
+<Ui::Modal
   @isOpen={{this.showPreview}}
   @title="Template Preview"
   @onClose={{this.closePreview}}
@@ -113,11 +197,17 @@
     {{/if}}
     <div class="flex col gap-1">
       <p class="font-sm text-muted">Body:</p>
-      <pre class="p-4 bg-white rounded-lg border font-sm whitespace-pre-wrap text-xs">{{this.previewBody}}</pre>
+      <pre
+        class="p-4 bg-white rounded-lg border font-sm whitespace-pre-wrap text-xs"
+      >{{this.previewBody}}</pre>
     </div>
   </div>
-  <button type="button" class="btn btn-secondary" {{on "click" this.closePreview}}>Close</button>
-</Modal>
+  <button
+    type="button"
+    class="btn btn-secondary"
+    {{on "click" this.closePreview}}
+  >Close</button>
+</Ui::Modal>
 
 <ConfirmModal
   @isOpen={{this.showDeleteModal}}

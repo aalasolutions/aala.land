@@ -1,5 +1,5 @@
 import { module, test } from 'qunit';
-import { setupRenderingTest } from 'frontend/tests/helpers';
+import { setupRenderingTest } from 'land/tests/helpers';
 import { render, fillIn, click } from '@ember/test-helpers';
 import { hbs } from 'ember-cli-htmlbars';
 import Service from '@ember/service';
@@ -21,9 +21,12 @@ module('Integration | Component | login-form', function (hooks) {
   });
 
   test('it renders email and password inputs', async function (assert) {
-    this.owner.register('service:auth', class extends Service {
-      async login() {}
-    });
+    this.owner.register(
+      'service:auth',
+      class extends Service {
+        async login() {}
+      },
+    );
 
     await render(hbs`<LoginForm />`);
 
@@ -34,20 +37,26 @@ module('Integration | Component | login-form', function (hooks) {
   });
 
   test('no error message shown initially', async function (assert) {
-    this.owner.register('service:auth', class extends Service {
-      async login() {}
-    });
+    this.owner.register(
+      'service:auth',
+      class extends Service {
+        async login() {}
+      },
+    );
 
     await render(hbs`<LoginForm />`);
     assert.dom('[data-test-error-message]').doesNotExist();
   });
 
   test('shows error message on failed login', async function (assert) {
-    this.owner.register('service:auth', class extends Service {
-      async login() {
-        throw new Error('Invalid credentials');
-      }
-    });
+    this.owner.register(
+      'service:auth',
+      class extends Service {
+        async login() {
+          throw new Error('Invalid credentials');
+        }
+      },
+    );
 
     await render(hbs`<LoginForm />`);
     await fillIn('[data-test-email-input]', 'wrong@test.com');

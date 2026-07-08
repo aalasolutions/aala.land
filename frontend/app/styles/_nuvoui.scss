@@ -1,48 +1,66 @@
 // AALA.LAND NuvoUI Configuration
 // Light Theme - Professional Property Management
 
-@forward '@nuvoui/core/src/styles/index' with (
-    // === AALA.LAND Brand Colors ===
-    $primary: #1AB5A5,        // Teal - matches landing page brand
-    $secondary: #0284C7,      // Blue
-    $success: #059669,        // Green
-    $danger: #DC2626,         // Red
-    $warning: #D97706,        // Amber
-    $info: #0284C7,           // Blue
+@forward "@nuvoui/core/src/styles/index" with (
+  // === AALA.LAND Brand Colors ===
+  $primary: #1ab5a5,
+  // Teal - matches landing page brand
+  $secondary: #0284c7,
+  // Blue
+  $success: #059669,
+  // Green
+  $danger: #dc2626,
+  // Red
+  $warning: #d97706,
+  // Amber
+  $info: #0284c7,
 
-    // === LIGHT THEME (Primary) ===
-    $enable-dark-mode: false,
+  // Blue
+  // === LIGHT THEME (Primary) ===
+  $enable-dark-mode: false,
 
-    $light-theme: (
-        "bg-base": #F8FAFC,       // Light gray base
-        "bg-surface": #FFFFFF,    // White cards
-        "bg-alternate": #F1F5F9,  // Subtle gray sections
-        "text-color": #0F172A,    // Near black
-        "text-muted": #64748B,    // Gray
-        "border-base": #E2E8F0,   // Light border
+  $light-theme: (
+    "bg-base": #f8fafc,
+    // Light gray base
+    "bg-surface": #ffffff,
+    // White cards
+    "bg-alternate": #f1f5f9,
+    // Subtle gray sections
+    "text-color": #0f172a,
+    // Near black
+    "text-muted": #64748b,
+    // Gray
+    "border-base": #e2e8f0,
+    // Light border
+  ),
+
+  // === Typography ===
+  $font-family: (
+      "Inter",
+      -apple-system,
+      BlinkMacSystemFont,
+      "Segoe UI",
+      Roboto,
+      sans-serif
+    ),
+  // === Breakpoints ===
+  $breakpoints: (
+      "xs": 480px,
+      "sm": 640px,
+      "md": 768px,
+      "lg": 1024px,
+      "xl": 1280px,
+      "2xl": 1536px
     ),
 
-    // === Typography ===
-    $font-family: ("Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif),
-
-    // === Breakpoints ===
-    $breakpoints: (
-        "xs": 480px,
-        "sm": 640px,
-        "md": 768px,
-        "lg": 1024px,
-        "xl": 1280px,
-        "2xl": 1536px,
+  // === Shadow System (Lighter for light theme) ===
+  $shadow-colors: (
+      "default": rgba(0, 0, 0, 0.05),
+      "dark": rgba(0, 0, 0, 0.1),
+      "darker": rgba(0, 0, 0, 0.15),
+      "darkest": rgba(0, 0, 0, 0.2)
     ),
 
-    // === Shadow System (Lighter for light theme) ===
-    $shadow-colors: (
-        "default": rgba(0, 0, 0, 0.05),
-        "dark": rgba(0, 0, 0, 0.1),
-        "darker": rgba(0, 0, 0, 0.15),
-        "darkest": rgba(0, 0, 0, 0.2),
-    ),
-
-    // === Configuration Flags ===
-    $generate-utility-classes: true,
+  // === Configuration Flags ===
+  $generate-utility-classes: true
 );

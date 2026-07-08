@@ -4,12 +4,14 @@
   {{! Header }}
   <div class="dashboard-header">
     <div>
-      <h2 class="dashboard-title"><Ph @icon="squares-four" @size="28px" /> Command Center</h2>
+      <h2 class="dashboard-title"><Ui::Ph @icon="squares-four" @size="28px" />
+        Command Center</h2>
       <p class="dashboard-subtitle">Live overview of your property operation.</p>
     </div>
     <div class="dashboard-header-right">
       <span class="dashboard-region-badge">
-        <Ph @icon="globe" @size="14px" /> {{this.regionLabel}}
+        <Ui::Ph @icon="globe" @size="14px" />
+        {{this.regionLabel}}
       </span>
     </div>
   </div>
@@ -18,22 +20,36 @@
   {{#if @model.kpis}}
     <div class="kpi-grid">
       <div data-test-kpi="total-units" class="kpi-card kpi-primary">
-        <div class="kpi-icon-wrap kpi-icon-primary"><Ph @icon="buildings" @size="20px" /></div>
+        <div class="kpi-icon-wrap kpi-icon-primary"><Ui::Ph
+            @icon="buildings"
+            @size="20px"
+          /></div>
         <p class="kpi-label">Total Units</p>
         <h3 class="kpi-value">{{format-number @model.kpis.totalUnits}}</h3>
       </div>
       <div data-test-kpi="total-leads" class="kpi-card kpi-coral">
-        <div class="kpi-icon-wrap kpi-icon-coral"><Ph @icon="funnel" @size="20px" /></div>
+        <div class="kpi-icon-wrap kpi-icon-coral"><Ui::Ph
+            @icon="funnel"
+            @size="20px"
+          /></div>
         <p class="kpi-label">Active Leads</p>
         <h3 class="kpi-value">{{format-number @model.kpis.totalLeads}}</h3>
       </div>
       <div data-test-kpi="monthly-revenue" class="kpi-card kpi-primary">
-        <div class="kpi-icon-wrap kpi-icon-primary"><Ph @icon="currency-dollar" @size="20px" /></div>
+        <div class="kpi-icon-wrap kpi-icon-primary"><Ui::Ph
+            @icon="currency-dollar"
+            @size="20px"
+          /></div>
         <p class="kpi-label">Monthly Revenue</p>
-        <h3 class="kpi-value">{{format-currency @model.kpis.monthlyRevenue}}</h3>
+        <h3 class="kpi-value">{{format-currency
+            @model.kpis.monthlyRevenue
+          }}</h3>
       </div>
       <div data-test-kpi="occupancy" class="kpi-card kpi-success">
-        <div class="kpi-icon-wrap kpi-icon-success"><Ph @icon="chart-pie" @size="20px" /></div>
+        <div class="kpi-icon-wrap kpi-icon-success"><Ui::Ph
+            @icon="chart-pie"
+            @size="20px"
+          /></div>
         <p class="kpi-label">Occupancy Rate</p>
         <h3 class="kpi-value">
           {{#if @model.kpis.totalUnits}}
@@ -48,17 +64,26 @@
     {{! Second row: Won + Leases + Cheques }}
     <div class="kpi-grid kpi-grid-3">
       <div data-test-kpi="won-leads" class="kpi-card kpi-success">
-        <div class="kpi-icon-wrap kpi-icon-success"><Ph @icon="trophy" @size="20px" /></div>
+        <div class="kpi-icon-wrap kpi-icon-success"><Ui::Ph
+            @icon="trophy"
+            @size="20px"
+          /></div>
         <p class="kpi-label">Deals Won</p>
         <h3 class="kpi-value">{{format-number @model.kpis.wonLeads}}</h3>
       </div>
       <div data-test-kpi="active-leases" class="kpi-card kpi-primary">
-        <div class="kpi-icon-wrap kpi-icon-primary"><Ph @icon="file-text" @size="20px" /></div>
+        <div class="kpi-icon-wrap kpi-icon-primary"><Ui::Ph
+            @icon="file-text"
+            @size="20px"
+          /></div>
         <p class="kpi-label">Active Leases</p>
         <h3 class="kpi-value">{{format-number @model.kpis.activeLeases}}</h3>
       </div>
       <div data-test-kpi="pending-cheques" class="kpi-card kpi-warning">
-        <div class="kpi-icon-wrap kpi-icon-warning"><Ph @icon="checks" @size="20px" /></div>
+        <div class="kpi-icon-wrap kpi-icon-warning"><Ui::Ph
+            @icon="checks"
+            @size="20px"
+          /></div>
         <p class="kpi-label">Pending Cheques</p>
         <h3 class="kpi-value">{{format-number @model.kpis.pendingCheques}}</h3>
       </div>
@@ -74,20 +99,28 @@
     {{! Activity Feed }}
     <div class="dashboard-panel">
       <div class="panel-header">
-        <h3 class="panel-title"><Ph @icon="lightning" @size="18px" /> Recent Activity</h3>
+        <h3 class="panel-title"><Ui::Ph @icon="lightning" @size="18px" />
+          Recent Activity</h3>
       </div>
       <div class="activity-feed">
         {{#each @model.activity as |item|}}
           <div class="dashboard-activity-item">
-            <span class="dashboard-activity-dot dashboard-activity-dot-{{this.activityColor item.entityType}}"></span>
+            <span
+              class="dashboard-activity-dot dashboard-activity-dot-{{this.activityColor
+                  item.entityType
+                }}"
+            ></span>
             <div class="dashboard-activity-content">
-              <span class="dashboard-activity-text">{{item.action}} {{item.entityType}}</span>
-              <span class="dashboard-activity-time">{{this.timeAgo item.createdAt}}</span>
+              <span class="dashboard-activity-text">{{item.action}}
+                {{item.entityType}}</span>
+              <span class="dashboard-activity-time">{{this.timeAgo
+                  item.createdAt
+                }}</span>
             </div>
           </div>
         {{else}}
           <div class="activity-empty">
-            <Ph @icon="clock" @size="24px" />
+            <Ui::Ph @icon="clock" @size="24px" />
             <p>No recent activity</p>
           </div>
         {{/each}}
@@ -97,7 +130,8 @@
     {{! Pipeline Funnel }}
     <div class="dashboard-panel">
       <div class="panel-header">
-        <h3 class="panel-title"><Ph @icon="funnel" @size="18px" /> Lead Pipeline</h3>
+        <h3 class="panel-title"><Ui::Ph @icon="funnel" @size="18px" />
+          Lead Pipeline</h3>
       </div>
       <div class="pipeline-bars">
         {{#each @model.pipeline as |stage|}}
@@ -108,14 +142,16 @@
             </div>
             <div class="pipeline-bar-track">
               <div
-                class="pipeline-bar-fill pipeline-bar-{{this.pipelineColor stage.stage}}"
+                class="pipeline-bar-fill pipeline-bar-{{this.pipelineColor
+                    stage.stage
+                  }}"
                 style={{this.pipelineBarStyle stage.count}}
               ></div>
             </div>
           </div>
         {{else}}
           <div class="activity-empty">
-            <Ph @icon="funnel" @size="24px" />
+            <Ui::Ph @icon="funnel" @size="24px" />
             <p>No leads in pipeline</p>
           </div>
         {{/each}}

@@ -8,13 +8,16 @@ export function closeDeleteModal(controller, itemKey) {
   controller[itemKey] = null;
 }
 
-export async function confirmDeleteModal(controller, {
-  itemKey,
-  resourcePath,
-  successMessage,
-  refreshRoute,
-  errorMessage = 'Delete failed',
-}) {
+export async function confirmDeleteModal(
+  controller,
+  {
+    itemKey,
+    resourcePath,
+    successMessage,
+    refreshRoute,
+    errorMessage = 'Delete failed',
+  },
+) {
   const item = controller[itemKey];
 
   if (!item || controller.isDeleting) {
@@ -24,7 +27,9 @@ export async function confirmDeleteModal(controller, {
   controller.isDeleting = true;
 
   try {
-    await controller.auth.fetchJson(`${resourcePath}/${item.id}`, { method: 'DELETE' });
+    await controller.auth.fetchJson(`${resourcePath}/${item.id}`, {
+      method: 'DELETE',
+    });
     controller.notifications.success(successMessage);
     closeDeleteModal(controller, itemKey);
     controller.router.refresh(refreshRoute);

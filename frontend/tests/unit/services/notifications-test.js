@@ -1,5 +1,5 @@
 import { module, test } from 'qunit';
-import { setupTest } from 'frontend/tests/helpers';
+import { setupTest } from 'land/tests/helpers';
 
 module('Unit | Service | notifications', function (hooks) {
   setupTest(hooks);

@@ -14,9 +14,17 @@ export default class CompanyRoute extends AuthenticatedRoute {
 
     const isCompanyAdmin = this.auth.currentUser?.role === 'company_admin';
 
-    const [companyResult, regionsResponse, storageUsage, aiSettings, billingResult] = await Promise.all([
+    const [
+      companyResult,
+      regionsResponse,
+      storageUsage,
+      aiSettings,
+      billingResult,
+    ] = await Promise.all([
       this.auth.fetchJson(`/companies/${companyId}`),
-      fetch(`${this.auth.apiBase}/companies/regions`).then((r) => r.json()).catch(() => ({ data: [] })),
+      fetch(`${this.auth.apiBase}/companies/regions`)
+        .then((r) => r.json())
+        .catch(() => ({ data: [] })),
       safeJson(this.auth, `/companies/${companyId}/storage-usage`, 'COMPANY'),
       isCompanyAdmin
         ? Promise.all([
@@ -24,7 +32,9 @@ export default class CompanyRoute extends AuthenticatedRoute {
             this.whatsapp.getAi().catch(() => null),
           ])
         : Promise.resolve(null),
-      isCompanyAdmin ? safeJson(this.auth, '/billing/subscription', 'COMPANY') : Promise.resolve(null),
+      isCompanyAdmin
+        ? safeJson(this.auth, '/billing/subscription', 'COMPANY')
+        : Promise.resolve(null),
     ]);
 
     const company = companyResult.data || null;
@@ -32,7 +42,12 @@ export default class CompanyRoute extends AuthenticatedRoute {
     const regions = regionsData.flat || regionsData || [];
     const groupedRegions = regionsData.grouped || [];
 
-    let ai = { aiPrompt: null, weeklyLimit: null, weeklyUsed: null, weeklyResetsAt: null };
+    let ai = {
+      aiPrompt: null,
+      weeklyLimit: null,
+      weeklyUsed: null,
+      weeklyResetsAt: null,
+    };
     if (aiSettings) {
       const [settings, aiData] = aiSettings;
       const aiInfo = aiData?.data ?? aiData;
@@ -44,7 +59,14 @@ export default class CompanyRoute extends AuthenticatedRoute {
       };
     }
 
-    return { company, regions, groupedRegions, storageUsage, ai, billing: billingResult };
+    return {
+      company,
+      regions,
+      groupedRegions,
+      storageUsage,
+      ai,
+      billing: billingResult,
+    };
   }
 
   setupController(controller, model) {

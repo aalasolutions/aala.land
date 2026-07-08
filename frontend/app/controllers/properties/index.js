@@ -2,43 +2,14 @@ import Controller from '@ember/controller';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
-import { AMENITY_OPTIONS } from '../../constants/amenities';
-
-const FILTER_TYPE_OPTIONS = [
-  { value: '', label: 'All' },
-  { value: 'RENTAL', label: 'For Rent' },
-  { value: 'FOR_SALE', label: 'For Sale' },
-];
-
-const PROPERTY_FILTER_STATUS_OPTIONS = [
-  { value: '', label: 'All' },
-  { value: 'available', label: 'Available' },
-  { value: 'rented', label: 'Rented' },
-  { value: 'sold', label: 'Sold' },
-  { value: 'maintenance', label: 'Maintenance' },
-];
-
-const FILTER_BEDS_OPTIONS = [
-  { value: '', label: 'Any' },
-  { value: '0', label: 'Studio' },
-  { value: '1', label: '1' },
-  { value: '2', label: '2' },
-  { value: '3', label: '3' },
-  { value: '4', label: '4+' },
-];
-
-const PROPERTY_TYPE_OPTIONS = [
-  { value: '', label: 'Not Listed' },
-  { value: 'RENTAL', label: 'For Rent' },
-  { value: 'FOR_SALE', label: 'For Sale' },
-];
-
-const PROPERTY_STATUS_OPTIONS = [
-  { value: 'available', label: 'Available' },
-  { value: 'rented', label: 'Rented' },
-  { value: 'sold', label: 'Sold' },
-  { value: 'maintenance', label: 'Maintenance' },
-];
+import {
+  AMENITY_OPTIONS,
+  PROPERTY_FILTER_STATUS_OPTIONS,
+  FILTER_TYPE_OPTIONS,
+  FILTER_BEDS_OPTIONS,
+  PROPERTY_TYPE_OPTIONS,
+  PROPERTY_STATUS_OPTIONS,
+} from 'land/constants';
 
 export default class PropertiesIndexController extends Controller {
   @service auth;
@@ -81,7 +52,9 @@ export default class PropertiesIndexController extends Controller {
     return this.browseTotal > this.browsePage * 20;
   }
 
-  @action setField(fieldName, e) { this[fieldName] = e.target.value; }
+  @action setField(fieldName, e) {
+    this[fieldName] = e.target.value;
+  }
 
   @action switchView(view) {
     this.activeView = view;
@@ -91,9 +64,18 @@ export default class PropertiesIndexController extends Controller {
     }
   }
 
-  @action setFilterType(e) { this.filterType = e.target.value; this.applyFilters(); }
-  @action setFilterStatus(e) { this.filterStatus = e.target.value; this.applyFilters(); }
-  @action setFilterBeds(e) { this.filterBeds = e.target.value; this.applyFilters(); }
+  @action setFilterType(e) {
+    this.filterType = e.target.value;
+    this.applyFilters();
+  }
+  @action setFilterStatus(e) {
+    this.filterStatus = e.target.value;
+    this.applyFilters();
+  }
+  @action setFilterBeds(e) {
+    this.filterBeds = e.target.value;
+    this.applyFilters();
+  }
 
   @action applyFilters() {
     this.browsePage = 1;
@@ -149,7 +131,8 @@ export default class PropertiesIndexController extends Controller {
         params += `&minBeds=${this.filterBeds}`;
         params += `&maxBeds=${this.filterBeds === '4' ? '99' : this.filterBeds}`;
       }
-      if (this.filterAmenities.length) params += `&amenities=${this.filterAmenities.join(',')}`;
+      if (this.filterAmenities.length)
+        params += `&amenities=${this.filterAmenities.join(',')}`;
       const json = await this.auth.fetchJson(`/properties/units?${params}`);
       this.browseUnits = json.data?.data ?? [];
       this.browseTotal = json.data?.total ?? 0;
@@ -184,7 +167,9 @@ export default class PropertiesIndexController extends Controller {
   }
 
   get localitySearchUrl() {
-    return this.selectedCity ? `/locations/localities/search?cityId=${this.selectedCity.id}` : null;
+    return this.selectedCity
+      ? `/locations/localities/search?cityId=${this.selectedCity.id}`
+      : null;
   }
 
   get localityCreatePayload() {
@@ -192,11 +177,15 @@ export default class PropertiesIndexController extends Controller {
   }
 
   get assetSearchUrl() {
-    return this.selectedLocality ? `/properties/assets/search?localityId=${this.selectedLocality.id}` : null;
+    return this.selectedLocality
+      ? `/properties/assets/search?localityId=${this.selectedLocality.id}`
+      : null;
   }
 
   get assetCreatePayload() {
-    return this.selectedLocality ? { localityId: this.selectedLocality.id } : {};
+    return this.selectedLocality
+      ? { localityId: this.selectedLocality.id }
+      : {};
   }
 
   @action selectCity(city) {
@@ -270,8 +259,12 @@ export default class PropertiesIndexController extends Controller {
       status: this.newUnitStatus,
       ...(this.newUnitType ? { propertyType: this.newUnitType } : {}),
       ...(this.newUnitPrice ? { price: parseFloat(this.newUnitPrice) } : {}),
-      ...(this.newUnitBedrooms ? { bedrooms: parseInt(this.newUnitBedrooms, 10) } : {}),
-      ...(this.newUnitBathrooms ? { bathrooms: parseInt(this.newUnitBathrooms, 10) } : {}),
+      ...(this.newUnitBedrooms
+        ? { bedrooms: parseInt(this.newUnitBedrooms, 10) }
+        : {}),
+      ...(this.newUnitBathrooms
+        ? { bathrooms: parseInt(this.newUnitBathrooms, 10) }
+        : {}),
     };
 
     try {

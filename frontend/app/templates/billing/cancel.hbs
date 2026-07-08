@@ -1,12 +1,22 @@
 {{page-title "Checkout Canceled"}}
 
-<div class="flex col gap-4 x-center y-center" style="min-height: 50vh; text-align: center;" data-test-billing-cancel>
-  <Ph @icon="x-circle" @size="56px" @color="var(--text-muted)" />
+<div
+  class="flex col gap-4 x-center y-center"
+  style="min-height: 50vh; text-align: center;"
+  data-test-billing-cancel
+>
+  <Ui::Ph @icon="x-circle" @size="56px" @color="var(--text-muted)" />
   <div>
     <h2 class="font-xl font-bold">Checkout canceled</h2>
-    <p class="text-muted mt-2">No charge was made. You can restart the upgrade any time.</p>
+    <p class="text-muted mt-2">No charge was made. You can restart the upgrade
+      any time.</p>
   </div>
-  <LinkTo @route="company" class="btn btn-primary" data-test-billing-back-to-settings>
-    <Ph @icon="building-office" /> Back to Company Settings
+  <LinkTo
+    @route="company"
+    class="btn btn-primary"
+    data-test-billing-back-to-settings
+  >
+    <Ui::Ph @icon="building-office" />
+    Back to Company Settings
   </LinkTo>
 </div>

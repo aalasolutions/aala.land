@@ -14,7 +14,11 @@ export default class OwnersIndexRoute extends AuthenticatedRoute {
 
     try {
       const json = await this.auth.fetchJson(`/owners?${params.toString()}`);
-      return { owners: json.data?.data || [], total: json.data?.total || 0, page: json.data?.page || 1 };
+      return {
+        owners: json.data?.data || [],
+        total: json.data?.total || 0,
+        page: json.data?.page || 1,
+      };
     } catch {
       return { owners: [], total: 0, page: 1 };
     }

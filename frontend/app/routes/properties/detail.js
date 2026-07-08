@@ -6,7 +6,9 @@ export default class PropertiesDetailRoute extends AuthenticatedRoute {
 
   async model({ area_id }) {
     try {
-      const assetsJson = await this.auth.fetchJson(`/properties/localities/${area_id}/assets?limit=100`);
+      const assetsJson = await this.auth.fetchJson(
+        `/properties/localities/${area_id}/assets?limit=100`,
+      );
 
       const assets = assetsJson.data?.data ?? [];
 

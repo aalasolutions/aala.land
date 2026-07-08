@@ -3,23 +3,40 @@
 <div data-test-cheques-page class="flex col gap-6">
   <div class="flex between x-center">
     <div>
-      <h2 class="font-3xl font-bold"><Ph @icon="checks" @size="28px" /> Cheque Management</h2>
+      <h2 class="font-3xl font-bold"><Ui::Ph @icon="checks" @size="28px" />
+        Cheque Management</h2>
       <p class="text-muted mt-1">Track post-dated cheques and payment schedules.</p>
-      <p class="text-muted font-sm mt-1">{{format-number @model.total}} cheque records</p>
+      <p class="text-muted font-sm mt-1">{{format-number @model.total}}
+        cheque records</p>
     </div>
     {{#if this.isAdmin}}
-      <button type="button" class="btn btn-primary" {{on "click" this.openCreate}}>
-        <Ph @icon="plus" /> New Cheque
+      <button
+        type="button"
+        class="btn btn-primary"
+        {{on "click" this.openCreate}}
+      >
+        <Ui::Ph @icon="plus" />
+        New Cheque
       </button>
     {{/if}}
   </div>
 
   <div class="tabs">
-    <button type="button" class="tab-btn {{if (eq this.activeTab 'cheques') 'active'}}" {{on "click" (fn this.setTab 'cheques')}}>
-      <Ph @icon="list-checks" /> Cheques
+    <button
+      type="button"
+      class="tab-btn {{if (eq this.activeTab 'cheques') 'active'}}"
+      {{on "click" (fn this.setTab "cheques")}}
+    >
+      <Ui::Ph @icon="list-checks" />
+      Cheques
     </button>
-    <button type="button" class="tab-btn {{if (eq this.activeTab 'schedule') 'active'}}" {{on "click" (fn this.setTab 'schedule')}}>
-      <Ph @icon="calendar-check" /> Collection Schedule
+    <button
+      type="button"
+      class="tab-btn {{if (eq this.activeTab 'schedule') 'active'}}"
+      {{on "click" (fn this.setTab "schedule")}}
+    >
+      <Ui::Ph @icon="calendar-check" />
+      Collection Schedule
     </button>
   </div>
 
@@ -48,33 +65,78 @@
                   <td>{{cheque.accountHolder}}</td>
                   <td class="font-bold">{{format-currency cheque.amount}}</td>
                   <td>{{cheque.dueDate}}</td>
-                  <td><span class="type-badge type-{{lowercase cheque.type}}">{{cheque.type}}</span></td>
-                  <td><span class="status-badge status-{{lowercase cheque.status}}">{{cheque.status}}</span></td>
+                  <td><span
+                      class="type-badge type-{{lowercase cheque.type}}"
+                    >{{cheque.type}}</span></td>
+                  <td><span
+                      class="status-badge status-{{lowercase cheque.status}}"
+                    >{{cheque.status}}</span></td>
                   <td>
                     <div class="flex gap-2">
                       {{#if this.isAdmin}}
-                        <button type="button" class="btn btn-secondary btn-xs" {{on "click" (fn this.openEdit cheque)}}>
-                          <Ph @icon="pencil-simple" /> Edit
+                        <button
+                          type="button"
+                          class="btn btn-secondary btn-xs"
+                          {{on "click" (fn this.openEdit cheque)}}
+                        >
+                          <Ui::Ph @icon="pencil-simple" />
+                          Edit
                         </button>
                         {{#if (eq cheque.status "PENDING")}}
-                          <button type="button" class="btn btn-success btn-xs" {{on "click" (fn this.updateStatus cheque "DEPOSITED")}}>
-                            <Ph @icon="bank" /> Deposit
+                          <button
+                            type="button"
+                            class="btn btn-success btn-xs"
+                            {{on
+                              "click"
+                              (fn this.updateStatus cheque "DEPOSITED")
+                            }}
+                          >
+                            <Ui::Ph @icon="bank" />
+                            Deposit
                           </button>
-                          <button type="button" class="btn btn-danger btn-xs" data-test-bounce {{on "click" (fn this.openBounceModal cheque)}}>
-                            <Ph @icon="x-circle" /> Bounce
+                          <button
+                            type="button"
+                            class="btn btn-danger btn-xs"
+                            data-test-bounce
+                            {{on "click" (fn this.openBounceModal cheque)}}
+                          >
+                            <Ui::Ph @icon="x-circle" />
+                            Bounce
                           </button>
                         {{/if}}
                         {{#if (eq cheque.status "DEPOSITED")}}
-                          <button type="button" class="btn btn-success btn-xs" {{on "click" (fn this.updateStatus cheque "CLEARED")}}>
-                            <Ph @icon="check-circle" /> Clear
+                          <button
+                            type="button"
+                            class="btn btn-success btn-xs"
+                            {{on
+                              "click"
+                              (fn this.updateStatus cheque "CLEARED")
+                            }}
+                          >
+                            <Ui::Ph @icon="check-circle" />
+                            Clear
                           </button>
-                          <button type="button" class="btn btn-danger btn-xs" data-test-bounce {{on "click" (fn this.openBounceModal cheque)}}>
-                            <Ph @icon="x-circle" /> Bounce
+                          <button
+                            type="button"
+                            class="btn btn-danger btn-xs"
+                            data-test-bounce
+                            {{on "click" (fn this.openBounceModal cheque)}}
+                          >
+                            <Ui::Ph @icon="x-circle" />
+                            Bounce
                           </button>
                         {{/if}}
                         {{#if (eq cheque.status "BOUNCED")}}
-                          <button type="button" class="btn btn-secondary btn-xs" {{on "click" (fn this.updateStatus cheque "REPLACED")}}>
-                            <Ph @icon="arrows-clockwise" /> Replace
+                          <button
+                            type="button"
+                            class="btn btn-secondary btn-xs"
+                            {{on
+                              "click"
+                              (fn this.updateStatus cheque "REPLACED")
+                            }}
+                          >
+                            <Ui::Ph @icon="arrows-clockwise" />
+                            Replace
                           </button>
                         {{/if}}
                       {{/if}}
@@ -86,7 +148,7 @@
           </table>
         </div>
 
-        <Pagination
+        <Ui::Pagination
           @selectId="cheques-limit"
           @page={{this.page}}
           @limit={{this.limit}}
@@ -97,8 +159,9 @@
         />
       {{else}}
         {{#if @model.total}}
-          <p class="text-muted text-center py-8">No cheques on this page. Navigate to find cheques or adjust filters.</p>
-          <Pagination
+          <p class="text-muted text-center py-8">No cheques on this page.
+            Navigate to find cheques or adjust filters.</p>
+          <Ui::Pagination
             @selectId="cheques-limit"
             @page={{this.page}}
             @limit={{this.limit}}
@@ -108,7 +171,8 @@
             @onNext={{this.goToNextPage}}
           />
         {{else}}
-          <p class="text-muted text-center py-8">No cheques yet. Add your first cheque record.</p>
+          <p class="text-muted text-center py-8">No cheques yet. Add your first
+            cheque record.</p>
         {{/if}}
       {{/if}}
     </div>
@@ -116,90 +180,181 @@
 
   {{#if (eq this.activeTab "schedule")}}
     <div class="glass-panel p-5">
-      <h4 class="font-lg font-bold mb-4"><Ph @icon="calendar" /> Collection Schedule</h4>
+      <h4 class="font-lg font-bold mb-4"><Ui::Ph @icon="calendar" />
+        Collection Schedule</h4>
       {{#if @model.collectionSchedule.length}}
         <div class="flex col gap-4">
           {{#each @model.collectionSchedule as |group|}}
             <div class="glass-panel p-4">
-              <h5 class="font-sm font-bold uppercase tracking-wider text-muted mb-3">{{group.period}}</h5>
+              <h5
+                class="font-sm font-bold uppercase tracking-wider text-muted mb-3"
+              >{{group.period}}</h5>
               <div class="flex col gap-2">
                 {{#each group.cheques as |cheque|}}
-                  <div class="flex between x-center p-3 rounded bg-white@02 border border-white@05">
+                  <div
+                    class="flex between x-center p-3 rounded bg-white@02 border border-white@05"
+                  >
                     <div>
-                      <p class="font-sm font-bold">{{cheque.chequeNumber}} - {{cheque.bankName}}</p>
-                      <p class="text-muted font-xs">{{cheque.accountHolder}} - Due: {{cheque.dueDate}}</p>
+                      <p class="font-sm font-bold">{{cheque.chequeNumber}}
+                        -
+                        {{cheque.bankName}}</p>
+                      <p class="text-muted font-xs">{{cheque.accountHolder}}
+                        - Due:
+                        {{cheque.dueDate}}</p>
                     </div>
-                    <p class="font-sm font-bold">{{format-currency cheque.amount}}</p>
+                    <p class="font-sm font-bold">{{format-currency
+                        cheque.amount
+                      }}</p>
                   </div>
                 {{/each}}
               </div>
               {{#if group.totalAmount}}
-                <p class="font-sm font-bold text-right mt-2">Total: {{format-currency group.totalAmount}}</p>
+                <p class="font-sm font-bold text-right mt-2">Total:
+                  {{format-currency group.totalAmount}}</p>
               {{/if}}
             </div>
           {{/each}}
         </div>
       {{else}}
-        <p class="text-muted text-center py-8">No upcoming cheques in the collection schedule.</p>
+        <p class="text-muted text-center py-8">No upcoming cheques in the
+          collection schedule.</p>
       {{/if}}
     </div>
   {{/if}}
 </div>
 
-<Modal
+<Ui::Modal
   @isOpen={{this.showModal}}
   @title={{if this.editCheque "Edit Cheque" "New Cheque"}}
   @onClose={{this.closeModal}}
   @showClose={{true}}
 >
   <form class="flex col gap-4" {{on "submit" this.saveCheque}}>
-      <div class="flex gap-4">
-        <div class="flex col gap-2 flex-1">
-          <FormInput @label="Cheque Number" @id="chq-number" @type="text" @placeholder="e.g. 000123" @value={{this.formChequeNumber}} @onChange={{fn this.setField "formChequeNumber"}} @required={{true}} />
-        </div>
-        <div class="flex col gap-2 flex-1">
-          <FormDropdown @label="Type" @id="chq-type" @value={{this.formType}} @onChange={{fn this.setField "formType"}} @options={{this.chequeTypeOptions}} @placeholder="Select type..." />
-        </div>
+    <div class="flex gap-4">
+      <div class="flex col gap-2 flex-1">
+        <Ui::FormInput
+          @label="Cheque Number"
+          @id="chq-number"
+          @type="text"
+          @placeholder="e.g. 000123"
+          @value={{this.formChequeNumber}}
+          @onChange={{fn this.setField "formChequeNumber"}}
+          @required={{true}}
+        />
       </div>
-      <FormInput @label="Bank Name" @id="chq-bank" @type="text" @placeholder="e.g. Emirates NBD" @value={{this.formBankName}} @onChange={{fn this.setField "formBankName"}} @required={{true}} />
-      <FormInput @label="Account Holder" @id="chq-holder" @type="text" @placeholder="e.g. Ahmed Al Mansouri" @value={{this.formAccountHolder}} @onChange={{fn this.setField "formAccountHolder"}} @required={{true}} />
-      <FormDropdown @label="Property (Unit)" @id="chq-unit" @value={{this.formUnitId}} @onChange={{fn this.setField "formUnitId"}} @options={{this.unitOptions}} @placeholder="No property linked" />
-      <div class="flex gap-4">
-        <div class="flex col gap-2 flex-1">
-          <FormInput @label="Amount" @id="chq-amount" @type="number" @min={{0}} @step={{0.01}} @placeholder="e.g. 8500" @value={{this.formAmount}} @onChange={{fn this.setField "formAmount"}} @required={{true}} />
-        </div>
-        <div class="flex col gap-2 flex-1">
-          <label class="font-sm text-muted" for="chq-due">Due Date *</label>
-          <input id="chq-due" type="date"
-            class="form-input"
-            value={{this.formDueDate}} required {{on "change" (fn this.setField "formDueDate")}} />
-        </div>
+      <div class="flex col gap-2 flex-1">
+        <Ui::FormDropdown
+          @label="Type"
+          @id="chq-type"
+          @value={{this.formType}}
+          @onChange={{fn this.setField "formType"}}
+          @options={{this.chequeTypeOptions}}
+          @placeholder="Select type..."
+        />
       </div>
-      {{#if this.errorMsg}}
-        <p class="font-sm text-danger">{{this.errorMsg}}</p>
-      {{/if}}
-      <div class="flex gap-3 mt-2">
-        <AppButton @variant="secondary" @text="Cancel" @onClick={{this.closeModal}} />
-        <AppButton @variant="primary" @buttonType="submit" @text={{if this.editCheque "Update" "Create Cheque"}} @loading={{this.isSaving}} @loadingText="Saving..." />
+    </div>
+    <Ui::FormInput
+      @label="Bank Name"
+      @id="chq-bank"
+      @type="text"
+      @placeholder="e.g. Emirates NBD"
+      @value={{this.formBankName}}
+      @onChange={{fn this.setField "formBankName"}}
+      @required={{true}}
+    />
+    <Ui::FormInput
+      @label="Account Holder"
+      @id="chq-holder"
+      @type="text"
+      @placeholder="e.g. Ahmed Al Mansouri"
+      @value={{this.formAccountHolder}}
+      @onChange={{fn this.setField "formAccountHolder"}}
+      @required={{true}}
+    />
+    <Ui::FormDropdown
+      @label="Property (Unit)"
+      @id="chq-unit"
+      @value={{this.formUnitId}}
+      @onChange={{fn this.setField "formUnitId"}}
+      @options={{this.unitOptions}}
+      @placeholder="No property linked"
+    />
+    <div class="flex gap-4">
+      <div class="flex col gap-2 flex-1">
+        <Ui::FormInput
+          @label="Amount"
+          @id="chq-amount"
+          @type="number"
+          @min={{0}}
+          @step={{0.01}}
+          @placeholder="e.g. 8500"
+          @value={{this.formAmount}}
+          @onChange={{fn this.setField "formAmount"}}
+          @required={{true}}
+        />
       </div>
-    </form>
-</Modal>
+      <div class="flex col gap-2 flex-1">
+        <label class="font-sm text-muted" for="chq-due">Due Date *</label>
+        <input
+          id="chq-due"
+          type="date"
+          class="form-input"
+          value={{this.formDueDate}}
+          required
+          {{on "change" (fn this.setField "formDueDate")}}
+        />
+      </div>
+    </div>
+    {{#if this.errorMsg}}
+      <p class="font-sm text-danger">{{this.errorMsg}}</p>
+    {{/if}}
+    <div class="flex gap-3 mt-2">
+      <Ui::AppButton
+        @variant="secondary"
+        @text="Cancel"
+        @onClick={{this.closeModal}}
+      />
+      <Ui::AppButton
+        @variant="primary"
+        @buttonType="submit"
+        @text={{if this.editCheque "Update" "Create Cheque"}}
+        @loading={{this.isSaving}}
+        @loadingText="Saving..."
+      />
+    </div>
+  </form>
+</Ui::Modal>
 
-<Modal
+<Ui::Modal
   @isOpen={{this.showBounceModal}}
   @title="Bounce Cheque"
   @onClose={{this.closeBounceModal}}
   @showClose={{true}}
 >
-  <p class="text-muted">Mark cheque {{this.bounceChequeItem.chequeNumber}} as bounced?</p>
+  <p class="text-muted">Mark cheque
+    {{this.bounceChequeItem.chequeNumber}}
+    as bounced?</p>
   <div class="flex col gap-2">
     <label class="font-sm text-muted" for="bounce-reason">Reason (optional)</label>
-    <input id="bounce-reason" type="text"
+    <input
+      id="bounce-reason"
+      type="text"
       class="form-input"
-      placeholder="e.g. Insufficient funds" value={{this.formBounceReason}} {{on "input" (fn this.setField "formBounceReason")}} />
+      placeholder="e.g. Insufficient funds"
+      value={{this.formBounceReason}}
+      {{on "input" (fn this.setField "formBounceReason")}}
+    />
   </div>
   <div class="flex gap-3">
-    <AppButton @variant="secondary" @text="Cancel" @onClick={{this.closeBounceModal}} />
-    <AppButton @variant="danger" @text="Confirm Bounce" @onClick={{this.confirmBounce}} />
+    <Ui::AppButton
+      @variant="secondary"
+      @text="Cancel"
+      @onClick={{this.closeBounceModal}}
+    />
+    <Ui::AppButton
+      @variant="danger"
+      @text="Confirm Bounce"
+      @onClick={{this.confirmBounce}}
+    />
   </div>
-</Modal>
+</Ui::Modal>

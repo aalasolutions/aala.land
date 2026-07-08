@@ -47,21 +47,37 @@ export default class ApplicationController extends Controller {
   _searchTimer = null;
 
   get showRegionSwitcher() {
-    return canSwitchRegion(this.auth.currentUser?.role) && this.region.regions.length > 1;
+    return (
+      canSwitchRegion(this.auth.currentUser?.role) &&
+      this.region.regions.length > 1
+    );
   }
 
   get showRegionLabel() {
-    return !canSwitchRegion(this.auth.currentUser?.role) && this.region.regions.length > 0;
+    return (
+      !canSwitchRegion(this.auth.currentUser?.role) &&
+      this.region.regions.length > 0
+    );
   }
 
   routeGroupMap = {
-    properties: 'properties', 'properties.index': 'properties', 'properties.detail': 'properties',
-    owners: 'properties', 'owners.index': 'properties', 'owners.detail': 'properties',
+    properties: 'properties',
+    'properties.index': 'properties',
+    'properties.detail': 'properties',
+    owners: 'properties',
+    'owners.index': 'properties',
+    'owners.detail': 'properties',
     documents: 'documents',
-    leads: 'crm', contacts: 'crm',
-    leases: 'finance', financials: 'finance', cheques: 'finance', commissions: 'finance',
-    maintenance: 'operations', vendors: 'operations',
-    team: 'admin', audit: 'admin',
+    leads: 'crm',
+    contacts: 'crm',
+    leases: 'finance',
+    financials: 'finance',
+    cheques: 'finance',
+    commissions: 'finance',
+    maintenance: 'operations',
+    vendors: 'operations',
+    team: 'admin',
+    audit: 'admin',
   };
 
   get activeGroup() {
@@ -83,7 +99,9 @@ export default class ApplicationController extends Controller {
   }
 
   get activeSearchResultId() {
-    return this.activeSearchIndex >= 0 ? `search-result-item-${this.activeSearchIndex}` : undefined;
+    return this.activeSearchIndex >= 0
+      ? `search-result-item-${this.activeSearchIndex}`
+      : undefined;
   }
 
   scrollActiveSearchResultIntoView() {
@@ -91,12 +109,21 @@ export default class ApplicationController extends Controller {
       return;
     }
 
-    later(this, () => {
-      const activeElement = document.getElementById(this.activeSearchResultId);
-      if (activeElement) {
-        activeElement.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-      }
-    }, 0);
+    later(
+      this,
+      () => {
+        const activeElement = document.getElementById(
+          this.activeSearchResultId,
+        );
+        if (activeElement) {
+          activeElement.scrollIntoView({
+            block: 'nearest',
+            behavior: 'smooth',
+          });
+        }
+      },
+      0,
+    );
   }
 
   constructor() {
@@ -135,7 +162,12 @@ export default class ApplicationController extends Controller {
   }
 
   setupSocket() {
-    if (!this.session.isAuthenticated || this.notificationHandler || this.socketConnectHandler) return;
+    if (
+      !this.session.isAuthenticated ||
+      this.notificationHandler ||
+      this.socketConnectHandler
+    )
+      return;
 
     this.notificationHandler = (notification) => {
       this.unreadCount++;
@@ -203,7 +235,9 @@ export default class ApplicationController extends Controller {
     this.showNotifications = !this.showNotifications;
     if (this.showNotifications) {
       try {
-        const result = await this.auth.fetchJson('/notifications?page=1&limit=10');
+        const result = await this.auth.fetchJson(
+          '/notifications?page=1&limit=10',
+        );
         this.notifications = result.data?.data ?? [];
       } catch (e) {
         console.error('[APP-CTRL] Failed to load notifications:', e.message);
@@ -220,7 +254,9 @@ export default class ApplicationController extends Controller {
   @action
   async markAsRead(notification) {
     try {
-      await this.auth.fetchJson(`/notifications/${notification.id}/read`, { method: 'PATCH' });
+      await this.auth.fetchJson(`/notifications/${notification.id}/read`, {
+        method: 'PATCH',
+      });
       notification.isRead = true;
       this.unreadCount = Math.max(0, this.unreadCount - 1);
       this.notifications = [...this.notifications];
@@ -228,7 +264,10 @@ export default class ApplicationController extends Controller {
       // Smart Navigation
       this.handleNotificationNavigation(notification);
     } catch (e) {
-      console.error('[APP-CTRL] Failed to mark notification as read:', e.message);
+      console.error(
+        '[APP-CTRL] Failed to mark notification as read:',
+        e.message,
+      );
     }
   }
 
@@ -252,9 +291,15 @@ export default class ApplicationController extends Controller {
     try {
       await this.auth.fetchJson('/notifications/read-all', { method: 'PATCH' });
       this.unreadCount = 0;
-      this.notifications = this.notifications.map(n => ({ ...n, isRead: true }));
+      this.notifications = this.notifications.map((n) => ({
+        ...n,
+        isRead: true,
+      }));
     } catch (e) {
-      console.error('[APP-CTRL] Failed to mark all notifications as read:', e.message);
+      console.error(
+        '[APP-CTRL] Failed to mark all notifications as read:',
+        e.message,
+      );
     }
   }
 
@@ -280,7 +325,8 @@ export default class ApplicationController extends Controller {
     const hasDynamicSegment = Object.keys(params).length > 0;
 
     if (hasDynamicSegment) {
-      const parentRoute = currentRoute.split('.').slice(0, -1).join('.') || 'dashboard';
+      const parentRoute =
+        currentRoute.split('.').slice(0, -1).join('.') || 'dashboard';
       this.router.transitionTo(parentRoute);
     } else {
       this.router.refresh();
@@ -304,30 +350,36 @@ export default class ApplicationController extends Controller {
       return;
     }
 
-    this._searchTimer = later(this, async() => {
-      const queryAtTimeOfRequest = this.searchQuery;
-      this.isSearching = true;
-      this.showSearchDropdown = true;
-      this.searchError = false;
-      try {
-        const result = await this.auth.fetchJson(`/search?q=${encodeURIComponent(queryAtTimeOfRequest)}`);
-        if (queryAtTimeOfRequest === this.searchQuery) {
-          this.searchResults = result?.data ?? result;
-          this.activeSearchIndex = -1;
+    this._searchTimer = later(
+      this,
+      async () => {
+        const queryAtTimeOfRequest = this.searchQuery;
+        this.isSearching = true;
+        this.showSearchDropdown = true;
+        this.searchError = false;
+        try {
+          const result = await this.auth.fetchJson(
+            `/search?q=${encodeURIComponent(queryAtTimeOfRequest)}`,
+          );
+          if (queryAtTimeOfRequest === this.searchQuery) {
+            this.searchResults = result?.data ?? result;
+            this.activeSearchIndex = -1;
+          }
+        } catch {
+          if (queryAtTimeOfRequest === this.searchQuery) {
+            this.searchError = true;
+            this.searchResults = null;
+            this.activeSearchIndex = -1;
+          }
+        } finally {
+          if (queryAtTimeOfRequest === this.searchQuery) {
+            this.isSearching = false;
+          }
         }
-      } catch {
-        if (queryAtTimeOfRequest === this.searchQuery) {
-          this.searchError = true;
-          this.searchResults = null;
-          this.activeSearchIndex = -1;
-        }
-      } finally {
-        if (queryAtTimeOfRequest === this.searchQuery) {
-          this.isSearching = false;
-        }
-      }
-      this._searchTimer = null;
-    }, 300);
+        this._searchTimer = null;
+      },
+      300,
+    );
   }
 
   @action
@@ -345,7 +397,10 @@ export default class ApplicationController extends Controller {
     switch (e.key) {
       case 'ArrowDown':
         e.preventDefault();
-        this.activeSearchIndex = Math.min(this.activeSearchIndex + 1, results.length - 1);
+        this.activeSearchIndex = Math.min(
+          this.activeSearchIndex + 1,
+          results.length - 1,
+        );
         this.scrollActiveSearchResultIntoView();
         break;
       case 'ArrowUp':

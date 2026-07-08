@@ -1,5 +1,5 @@
 import { module, test } from 'qunit';
-import { setupRenderingTest } from 'frontend/tests/helpers';
+import { setupRenderingTest } from 'land/tests/helpers';
 import { render, settled } from '@ember/test-helpers';
 import { hbs } from 'ember-cli-htmlbars';
 
@@ -17,7 +17,7 @@ module('Integration | Component | pagination', function (hooks) {
     });
 
     await render(hbs`
-      <Pagination
+      <Ui::Pagination
         @page={{this.page}}
         @limit={{this.limit}}
         @total={{this.total}}
@@ -54,7 +54,7 @@ module('Integration | Component | pagination', function (hooks) {
     });
 
     await render(hbs`
-      <Pagination
+      <Ui::Pagination
         @page={{this.page}}
         @limit={{this.limit}}
         @total={{this.total}}
@@ -83,7 +83,7 @@ module('Integration | Component | pagination', function (hooks) {
     });
 
     await render(hbs`
-      <Pagination
+      <Ui::Pagination
         @page={{this.page}}
         @total={{this.total}}
         @limitOptions={{this.limitOptions}}

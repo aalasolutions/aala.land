@@ -2,7 +2,8 @@
 
 <div class="page-header">
   <div class="page-title-section">
-    <h2 class="page-title"><Ph @icon="building-office" @size="28px" /> Company Settings</h2>
+    <h2 class="page-title"><Ui::Ph @icon="building-office" @size="28px" />
+      Company Settings</h2>
     <p class="page-subtitle">Manage your company information.</p>
   </div>
 </div>
@@ -10,25 +11,42 @@
 {{#if this.company}}
   <div class="plan-banner {{this.planTierClass}}">
     <div>
-      <div class="plan-banner__name {{this.planNameClass}}">{{or this.company.subscriptionTier "FREE"}}</div>
+      <div class="plan-banner__name {{this.planNameClass}}">{{or
+          this.company.subscriptionTier
+          "FREE"
+        }}</div>
       <div class="plan-banner__limits">{{this.planLimits}}</div>
     </div>
     {{#if this.company.subscriptionExpiresAt}}
       <div class="plan-banner__expiry">
-        Expires {{format-date this.company.subscriptionExpiresAt}}
+        Expires
+        {{format-date this.company.subscriptionExpiresAt}}
       </div>
     {{/if}}
   </div>
 
   {{#if this.isCompanyAdmin}}
     <div class="settings-tabs mb-4">
-      <button type="button" class="settings-tab {{if (eq this.activeTab 'general') 'active'}}" {{on "click" (fn this.setTab "general")}}>
+      <button
+        type="button"
+        class="settings-tab {{if (eq this.activeTab 'general') 'active'}}"
+        {{on "click" (fn this.setTab "general")}}
+      >
         General
       </button>
-      <button type="button" class="settings-tab {{if (eq this.activeTab 'billing') 'active'}}" data-test-billing-tab {{on "click" (fn this.setTab "billing")}}>
+      <button
+        type="button"
+        class="settings-tab {{if (eq this.activeTab 'billing') 'active'}}"
+        data-test-billing-tab
+        {{on "click" (fn this.setTab "billing")}}
+      >
         Billing
       </button>
-      <button type="button" class="settings-tab {{if (eq this.activeTab 'ai') 'active'}}" {{on "click" (fn this.setTab "ai")}}>
+      <button
+        type="button"
+        class="settings-tab {{if (eq this.activeTab 'ai') 'active'}}"
+        {{on "click" (fn this.setTab "ai")}}
+      >
         AI Settings
       </button>
     </div>
@@ -67,7 +85,12 @@
         {{/if}}
 
         <div class="flex gap-3 mt-4">
-          <button type="submit" data-test-save-prompt class="btn btn-primary" disabled={{this.isSavingAI}}>
+          <button
+            type="submit"
+            data-test-save-prompt
+            class="btn btn-primary"
+            disabled={{this.isSavingAI}}
+          >
             {{#if this.isSavingAI}}Saving…{{else}}Save{{/if}}
           </button>
           <button
@@ -89,9 +112,17 @@
       {{#if this.billing}}
         <div class="billing-plan-card mb-4" data-test-plan-card>
           <div class="flex between x-center">
-            <div class="font-xl font-bold" data-test-plan-name>{{this.billing.tier}}</div>
+            <div
+              class="font-xl font-bold"
+              data-test-plan-name
+            >{{this.billing.tier}}</div>
             {{#if this.billing.billingStatus}}
-              <span class="status-badge status-{{lowercase this.billing.billingStatus}}" data-test-billing-status>
+              <span
+                class="status-badge status-{{lowercase
+                    this.billing.billingStatus
+                  }}"
+                data-test-billing-status
+              >
                 {{this.billing.billingStatus}}
               </span>
             {{/if}}
@@ -100,7 +131,10 @@
             {{this.seatSummaryLabel}}
           </p>
           {{#if this.seatPriceLabel}}
-            <p class="font-sm text-muted" data-test-seat-price>{{this.seatPriceLabel}}</p>
+            <p
+              class="font-sm text-muted"
+              data-test-seat-price
+            >{{this.seatPriceLabel}}</p>
           {{/if}}
         </div>
 
@@ -115,9 +149,12 @@
             {{#if this.isBillingBusy}}Starting checkout...{{else}}Upgrade to Pro{{/if}}
           </button>
           <p class="font-sm text-muted mt-3">
-            Every Pro seat adds 5 GB of storage. Need white-label, ERP integration,
-            or dedicated infrastructure?
-            <a href="mailto:info@aalasolutions.com?subject=AALA%20Enterprise" data-test-contact-enterprise>Contact us about Enterprise</a>.
+            Every Pro seat adds 5 GB of storage. Need white-label, ERP
+            integration, or dedicated infrastructure?
+            <a
+              href="mailto:info@aalasolutions.com?subject=AALA%20Enterprise"
+              data-test-contact-enterprise
+            >Contact us about Enterprise</a>.
           </p>
         {{else if this.billing.hasSubscription}}
           <button
@@ -131,8 +168,9 @@
           </button>
           {{#unless this.billing.canDowngradeToFree}}
             <p class="font-sm text-muted mt-2" data-test-downgrade-blocked-hint>
-              Downgrading requires exactly 1 active user. You currently have {{this.billing.activeUsers}}.
-              Deactivate the other team members first.
+              Downgrading requires exactly 1 active user. You currently have
+              {{this.billing.activeUsers}}. Deactivate the other team members
+              first.
             </p>
           {{/unless}}
         {{else}}
@@ -141,7 +179,8 @@
           </p>
         {{/if}}
       {{else}}
-        <p class="text-muted" data-test-billing-unavailable>Billing information is unavailable right now.</p>
+        <p class="text-muted" data-test-billing-unavailable>Billing information
+          is unavailable right now.</p>
       {{/if}}
     </div>
 
@@ -158,122 +197,209 @@
       @onConfirm={{this.confirmDowngrade}}
     />
   {{else}}
-  <div class="company-settings-grid">
-    {{! Left: Company Info }}
-    <div class="glass-panel p-6">
-      <h3 class="font-lg font-bold mb-4">Company Information</h3>
-      <form aria-label="Company Information" class="flex col gap-4" {{on "submit" this.saveCompany}}>
-        <FormInput @label="Company Name" @id="company-name" @type="text" @value={{or this.formName this.company.name}} @onChange={{fn this.setField "formName"}} @required={{true}} @readonly={{not this.isAdmin}} />
+    <div class="company-settings-grid">
+      {{! Left: Company Info }}
+      <div class="glass-panel p-6">
+        <h3 class="font-lg font-bold mb-4">Company Information</h3>
+        <form
+          aria-label="Company Information"
+          class="flex col gap-4"
+          {{on "submit" this.saveCompany}}
+        >
+          <Ui::FormInput
+            @label="Company Name"
+            @id="company-name"
+            @type="text"
+            @value={{or this.formName this.company.name}}
+            @onChange={{fn this.setField "formName"}}
+            @required={{true}}
+            @readonly={{not this.isAdmin}}
+          />
 
-        {{#if this.company.adminEmail}}
-          <FormInput @label="Admin Email" @id="company-email" @type="email" @value={{this.company.adminEmail}} @disabled={{true}} />
-        {{/if}}
+          {{#if this.company.adminEmail}}
+            <Ui::FormInput
+              @label="Admin Email"
+              @id="company-email"
+              @type="email"
+              @value={{this.company.adminEmail}}
+              @disabled={{true}}
+            />
+          {{/if}}
 
-        <FormInput @label="Plan" @id="company-plan" @type="text" @value={{or this.company.subscriptionTier "FREE"}} @disabled={{true}} />
+          <Ui::FormInput
+            @label="Plan"
+            @id="company-plan"
+            @type="text"
+            @value={{or this.company.subscriptionTier "FREE"}}
+            @disabled={{true}}
+          />
 
-        {{#unless this.isAdmin}}
-          <p class="font-sm text-muted">Only company admins and super admins can change these settings.</p>
-        {{/unless}}
+          {{#unless this.isAdmin}}
+            <p class="font-sm text-muted">Only company admins and super admins
+              can change these settings.</p>
+          {{/unless}}
 
-        {{#if this.errorMsg}}
-          <p class="text-danger">{{this.errorMsg}}</p>
-        {{/if}}
+          {{#if this.errorMsg}}
+            <p class="text-danger">{{this.errorMsg}}</p>
+          {{/if}}
 
-        {{#if this.storageUsage}}
-          <div class="storage-usage-section" data-test-storage-usage>
-            <h3 class="font-sm font-bold uppercase text-muted mb-2">Storage Usage</h3>
-            <p
-              class="font-sm mb-2"
-              data-test-storage-label
-            >
-              {{format-bytes this.storageUsage.usedBytes}}
-              of
-              {{format-bytes this.storageUsage.quotaBytes}}
-              used
-              ({{this.storageUsage.percentUsed}}%)
-            </p>
-            <div class="storage-bar" data-test-storage-bar>
-              <div
-                class="storage-bar__fill
-                  {{if this.isStorageWarning 'storage-bar__fill-warning'}}"
-                style="width: {{this.storageUsage.percentUsed}}%"
-              ></div>
-            </div>
-            <p class="font-xs text-muted mt-1">
-              Tier: {{this.storageUsage.tier}} /
-              {{this.storageUsage.purchasedSeats}}
-              {{this.seatLabel}}
-            </p>
-          </div>
-        {{/if}}
-
-        <div class="form-actions">
-          <AppButton @variant="primary" @buttonType="submit" @text="Save Changes" @loading={{this.isSaving}} @loadingText="Saving..." @disabled={{not this.isAdmin}} />
-        </div>
-      </form>
-    </div>
-
-    {{! Right: Operating Regions }}
-    {{#if this.model.regions.length}}
-      <div class="glass-panel p-6 {{unless this.isAdmin 'region-settings-readonly'}}" data-test-region-settings>
-        <h3 class="font-lg font-bold mb-2">Operating Regions</h3>
-        <p class="font-sm text-muted mb-4">
-          Select states where your company operates. Your {{or this.company.subscriptionTier "FREE"}} plan includes {{if (eq this.maxCountries 999) "unlimited countries" (if (eq this.maxCountries 1) "1 country" (concat this.maxCountries " countries"))}}.
-        </p>
-
-        {{! Default Region (above the list) }}
-        {{#if this.formActiveRegions.length}}
-          <div class="mb-4">
-            <FormDropdown @label="Default Region" @id="default-region" @value={{this.formDefaultRegionCode}} @onChange={{fn this.setField "formDefaultRegionCode"}} @options={{this.activeRegionOptions}} @placeholder="Select default region..." @disabled={{not this.isAdmin}} data-test-default-region />
-          </div>
-        {{/if}}
-
-        <p class="font-sm font-bold text-muted uppercase mb-3">Available Regions</p>
-
-        {{#each this.model.groupedRegions as |group|}}
-          <div class="region-country-group mb-2 {{unless this.isAdmin 'is-readonly'}}" data-test-country-group={{group.country}}>
-            <button type="button" class="region-country-header" {{on "click" (fn this.toggleCountry group.country)}}>
-              <span class="country-name">{{group.countryName}}</span>
-              <span class="country-meta">
-                {{#let (this.selectedCountInGroup group.regions) as |count|}}
-                  {{#if count}}
-                    <span class="region-selected-badge">{{count}} selected</span>
-                  {{/if}}
-                {{/let}}
-                <span class="region-total">{{group.regions.length}} states</span>
-              </span>
-              <Ph @icon={{if (includes this.expandedCountries group.country) "caret-up" "caret-down"}} @size="16" />
-            </button>
-            {{#if (includes this.expandedCountries group.country)}}
-              <div class="region-grid mt-2 mb-2 ml-2">
-                {{#each group.regions as |r|}}
-                  <div class="region-checkbox {{unless this.isAdmin 'is-readonly'}}" data-test-region-checkbox={{r.code}}>
-                    <input type="checkbox" id={{r.code}}
-                      checked={{includes this.formActiveRegions r.code}}
-                      disabled={{not this.isAdmin}}
-                      {{on "change" (fn this.toggleRegion r.code)}} />
-                    <label for={{r.code}} class="region-check-label">
-                      {{r.name}} <span class="text-muted font-xs">({{r.currency}})</span>
-                    </label>
-                  </div>
-                {{/each}}
+          {{#if this.storageUsage}}
+            <div class="storage-usage-section" data-test-storage-usage>
+              <h3 class="font-sm font-bold uppercase text-muted mb-2">Storage
+                Usage</h3>
+              <p class="font-sm mb-2" data-test-storage-label>
+                {{format-bytes this.storageUsage.usedBytes}}
+                of
+                {{format-bytes this.storageUsage.quotaBytes}}
+                used ({{this.storageUsage.percentUsed}}%)
+              </p>
+              <div class="storage-bar" data-test-storage-bar>
+                <div
+                  class="storage-bar__fill
+                    {{if this.isStorageWarning 'storage-bar__fill-warning'}}"
+                  style="width: {{this.storageUsage.percentUsed}}%"
+                ></div>
               </div>
-            {{/if}}
+              <p class="font-xs text-muted mt-1">
+                Tier:
+                {{this.storageUsage.tier}}
+                /
+                {{this.storageUsage.purchasedSeats}}
+                {{this.seatLabel}}
+              </p>
+            </div>
+          {{/if}}
+
+          <div class="form-actions">
+            <Ui::AppButton
+              @variant="primary"
+              @buttonType="submit"
+              @text="Save Changes"
+              @loading={{this.isSaving}}
+              @loadingText="Saving..."
+              @disabled={{not this.isAdmin}}
+            />
           </div>
-        {{/each}}
+        </form>
       </div>
-    {{/if}}
-  </div>
+
+      {{! Right: Operating Regions }}
+      {{#if this.model.regions.length}}
+        <div
+          class="glass-panel p-6
+            {{unless this.isAdmin 'region-settings-readonly'}}"
+          data-test-region-settings
+        >
+          <h3 class="font-lg font-bold mb-2">Operating Regions</h3>
+          <p class="font-sm text-muted mb-4">
+            Select states where your company operates. Your
+            {{or this.company.subscriptionTier "FREE"}}
+            plan includes
+            {{if
+              (eq this.maxCountries 999)
+              "unlimited countries"
+              (if
+                (eq this.maxCountries 1)
+                "1 country"
+                (concat this.maxCountries " countries")
+              )
+            }}.
+          </p>
+
+          {{! Default Region (above the list) }}
+          {{#if this.formActiveRegions.length}}
+            <div class="mb-4">
+              <Ui::FormDropdown
+                @label="Default Region"
+                @id="default-region"
+                @value={{this.formDefaultRegionCode}}
+                @onChange={{fn this.setField "formDefaultRegionCode"}}
+                @options={{this.activeRegionOptions}}
+                @placeholder="Select default region..."
+                @disabled={{not this.isAdmin}}
+                data-test-default-region
+              />
+            </div>
+          {{/if}}
+
+          <p class="font-sm font-bold text-muted uppercase mb-3">Available
+            Regions</p>
+
+          {{#each this.model.groupedRegions as |group|}}
+            <div
+              class="region-country-group mb-2
+                {{unless this.isAdmin 'is-readonly'}}"
+              data-test-country-group={{group.country}}
+            >
+              <button
+                type="button"
+                class="region-country-header"
+                {{on "click" (fn this.toggleCountry group.country)}}
+              >
+                <span class="country-name">{{group.countryName}}</span>
+                <span class="country-meta">
+                  {{#let (this.selectedCountInGroup group.regions) as |count|}}
+                    {{#if count}}
+                      <span class="region-selected-badge">{{count}}
+                        selected</span>
+                    {{/if}}
+                  {{/let}}
+                  <span class="region-total">{{group.regions.length}}
+                    states</span>
+                </span>
+                <Ui::Ph
+                  @icon={{if
+                    (includes this.expandedCountries group.country)
+                    "caret-up"
+                    "caret-down"
+                  }}
+                  @size="16"
+                />
+              </button>
+              {{#if (includes this.expandedCountries group.country)}}
+                <div class="region-grid mt-2 mb-2 ml-2">
+                  {{#each group.regions as |r|}}
+                    <div
+                      class="region-checkbox
+                        {{unless this.isAdmin 'is-readonly'}}"
+                      data-test-region-checkbox={{r.code}}
+                    >
+                      <input
+                        type="checkbox"
+                        id={{r.code}}
+                        checked={{includes this.formActiveRegions r.code}}
+                        disabled={{not this.isAdmin}}
+                        {{on "change" (fn this.toggleRegion r.code)}}
+                      />
+                      <label for={{r.code}} class="region-check-label">
+                        {{r.name}}
+                        <span class="text-muted font-xs">({{r.currency}})</span>
+                      </label>
+                    </div>
+                  {{/each}}
+                </div>
+              {{/if}}
+            </div>
+          {{/each}}
+        </div>
+      {{/if}}
+    </div>
   {{/if}}
 {{else}}
-  <div class="flex col gap-4 x-center y-center" style="min-height: 40vh; text-align: center;">
-    <Ph @icon="buildings" @size="56px" @color="var(--text-muted)" />
+  <div
+    class="flex col gap-4 x-center y-center"
+    style="min-height: 40vh; text-align: center;"
+  >
+    <Ui::Ph @icon="buildings" @size="56px" @color="var(--text-muted)" />
     <div>
       <h3 class="font-xl font-bold">No Company Data</h3>
-      <p class="text-muted mt-2">Super Admins are not associated with any company.<br>To view a specific company's settings, impersonate a Company Admin.</p>
+      <p class="text-muted mt-2">Super Admins are not associated with any
+        company.<br />To view a specific company's settings, impersonate a
+        Company Admin.</p>
     </div>
     <LinkTo @route="team" class="btn btn-primary">
-      <Ph @icon="users" /> Go to Team
+      <Ui::Ph @icon="users" />
+      Go to Team
     </LinkTo>
   </div>
 {{/if}}

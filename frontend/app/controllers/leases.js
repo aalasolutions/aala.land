@@ -2,12 +2,7 @@ import Controller from '@ember/controller';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
-
-const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-const LEASE_TYPE_OPTIONS = [
-  { value: 'COMMERCIAL', label: 'Commercial' },
-  { value: 'RESIDENTIAL', label: 'Residential' },
-];
+import { UUID_PATTERN, LEASE_TYPE_OPTIONS } from 'land/constants';
 
 export default class LeasesController extends Controller {
   @service auth;
@@ -40,27 +35,29 @@ export default class LeasesController extends Controller {
   get unitOptions() {
     return [
       { value: '', label: 'Select a unit...' },
-      ...(this.model.units || []).map(unit => ({
+      ...(this.model.units || []).map((unit) => ({
         value: unit.id,
-        label: `${unit.areaName} - ${unit.assetName} - Unit ${unit.unitNumber}${unit.floorNumber ? ` (Floor ${unit.floorNumber})` : ''}`
-      }))
+        label: `${unit.areaName} - ${unit.assetName} - Unit ${unit.unitNumber}${unit.floorNumber ? ` (Floor ${unit.floorNumber})` : ''}`,
+      })),
     ];
   }
 
   get validNextStatuses() {
     const current = this.editLease?.status;
     const map = {
-      DRAFT:      ['DRAFT', 'ACTIVE'],
-      ACTIVE:     ['DRAFT', 'ACTIVE', 'EXPIRED'],
-      EXPIRED:    ['ACTIVE', 'EXPIRED'],
+      DRAFT: ['DRAFT', 'ACTIVE'],
+      ACTIVE: ['DRAFT', 'ACTIVE', 'EXPIRED'],
+      EXPIRED: ['ACTIVE', 'EXPIRED'],
       TERMINATED: ['TERMINATED'],
-      RENEWED:    ['RENEWED'],
+      RENEWED: ['RENEWED'],
     };
     const statuses = map[current] ?? (current ? [current] : []);
-    return statuses.map(s => ({ value: s, label: s }));
+    return statuses.map((s) => ({ value: s, label: s }));
   }
 
-  @action setField(fieldName, e) { this[fieldName] = e.target.value; }
+  @action setField(fieldName, e) {
+    this[fieldName] = e.target.value;
+  }
 
   @action openCreate() {
     this.formTenantName = '';
@@ -90,7 +87,9 @@ export default class LeasesController extends Controller {
     this.formStartDate = lease.startDate ? lease.startDate.split('T')[0] : '';
     this.formEndDate = lease.endDate ? lease.endDate.split('T')[0] : '';
     this.formMonthlyRent = String(lease.monthlyRent);
-    this.formSecurityDeposit = lease.securityDeposit ? String(lease.securityDeposit) : '';
+    this.formSecurityDeposit = lease.securityDeposit
+      ? String(lease.securityDeposit)
+      : '';
     this.formNumberOfCheques = String(lease.numberOfCheques ?? 4);
     this.formEjariNumber = lease.ejariNumber ?? '';
     this.editLease = lease;
@@ -138,29 +137,45 @@ export default class LeasesController extends Controller {
     const body = isEdit
       ? {
           tenantName: this.formTenantName,
-          ...(this.formTenantEmail ? { tenantEmail: this.formTenantEmail } : {}),
-          ...(this.formTenantPhone ? { tenantPhone: this.formTenantPhone } : {}),
+          ...(this.formTenantEmail
+            ? { tenantEmail: this.formTenantEmail }
+            : {}),
+          ...(this.formTenantPhone
+            ? { tenantPhone: this.formTenantPhone }
+            : {}),
           type: this.formType,
           startDate: this.formStartDate,
           endDate: this.formEndDate,
           monthlyRent: parseFloat(this.formMonthlyRent),
-          ...(this.formSecurityDeposit ? { securityDeposit: parseFloat(this.formSecurityDeposit) } : {}),
+          ...(this.formSecurityDeposit
+            ? { securityDeposit: parseFloat(this.formSecurityDeposit) }
+            : {}),
           numberOfCheques: parseInt(this.formNumberOfCheques, 10),
-          ...(this.formEjariNumber ? { ejariNumber: this.formEjariNumber } : {}),
+          ...(this.formEjariNumber
+            ? { ejariNumber: this.formEjariNumber }
+            : {}),
           status: this.formStatus,
         }
       : {
           tenantName: this.formTenantName,
-          ...(this.formTenantEmail ? { tenantEmail: this.formTenantEmail } : {}),
-          ...(this.formTenantPhone ? { tenantPhone: this.formTenantPhone } : {}),
+          ...(this.formTenantEmail
+            ? { tenantEmail: this.formTenantEmail }
+            : {}),
+          ...(this.formTenantPhone
+            ? { tenantPhone: this.formTenantPhone }
+            : {}),
           ...(this.formUnitId ? { unitId: this.formUnitId } : {}),
           type: this.formType,
           startDate: this.formStartDate,
           endDate: this.formEndDate,
           monthlyRent: parseFloat(this.formMonthlyRent),
-          ...(this.formSecurityDeposit ? { securityDeposit: parseFloat(this.formSecurityDeposit) } : {}),
+          ...(this.formSecurityDeposit
+            ? { securityDeposit: parseFloat(this.formSecurityDeposit) }
+            : {}),
           numberOfCheques: parseInt(this.formNumberOfCheques, 10),
-          ...(this.formEjariNumber ? { ejariNumber: this.formEjariNumber } : {}),
+          ...(this.formEjariNumber
+            ? { ejariNumber: this.formEjariNumber }
+            : {}),
         };
 
     let successMsg = 'Lease created';
@@ -191,7 +206,9 @@ export default class LeasesController extends Controller {
     this.formStartDate = lease.endDate ? lease.endDate.split('T')[0] : '';
     this.formEndDate = '';
     this.formMonthlyRent = String(lease.monthlyRent);
-    this.formSecurityDeposit = lease.securityDeposit ? String(lease.securityDeposit) : '';
+    this.formSecurityDeposit = lease.securityDeposit
+      ? String(lease.securityDeposit)
+      : '';
     this.formNumberOfCheques = String(lease.numberOfCheques ?? 4);
     this.formEjariNumber = '';
     this.editLease = null;
@@ -215,7 +232,10 @@ export default class LeasesController extends Controller {
 
     this.isTerminating = true;
     try {
-      await this.auth.fetchJson(`/leases/${this.leaseToTerminate.id}/terminate`, { method: 'POST' });
+      await this.auth.fetchJson(
+        `/leases/${this.leaseToTerminate.id}/terminate`,
+        { method: 'POST' },
+      );
       this.notifications.success('Lease terminated');
       this.closeTerminateModal();
       this.router.refresh('leases');

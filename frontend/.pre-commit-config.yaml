@@ -1,0 +1,9 @@
+repos:
+  - repo: local
+    hooks:
+      - id: ember-lint-fix
+        name: Ember Lint Fix
+        entry: pnpm lint:fix
+        language: system
+        files: \.(js|ts|hbs)$
+        pass_filenames: false

@@ -62,17 +62,19 @@ export default class LocationTypeaheadComponent extends Component {
       return true;
     }
 
-    return this.uniqueResults.some((item) => normalizeName(item.name) === normalizedQuery);
+    return this.uniqueResults.some(
+      (item) => normalizeName(item.name) === normalizedQuery,
+    );
   }
 
   get canCreate() {
     return Boolean(
       this.args.createUrl &&
-        this.trimmedQuery.length >= 2 &&
-        this.query === this.trimmedQuery &&
-        !this.isSearching &&
-        this.hasLoadedResults &&
-        !this.hasExactMatch
+      this.trimmedQuery.length >= 2 &&
+      this.query === this.trimmedQuery &&
+      !this.isSearching &&
+      this.hasLoadedResults &&
+      !this.hasExactMatch,
     );
   }
 
@@ -83,7 +85,7 @@ export default class LocationTypeaheadComponent extends Component {
 
     let { top, left, width, maxHeight } = this.dropdownPosition;
     return htmlSafe(
-      `position:fixed;top:${top}px;left:${left}px;width:${width}px;max-height:${maxHeight}px;z-index:2000;`
+      `position:fixed;top:${top}px;left:${left}px;width:${width}px;max-height:${maxHeight}px;z-index:2000;`,
     );
   }
 
@@ -105,8 +107,14 @@ export default class LocationTypeaheadComponent extends Component {
     let dropdownHeight = 260;
     let spaceBelow = window.innerHeight - triggerRect.bottom;
     let spaceAbove = triggerRect.top;
-    let availableBelow = Math.max(0, window.innerHeight - viewportPadding - (triggerRect.bottom + dropdownGap));
-    let availableAbove = Math.max(0, triggerRect.top - viewportPadding - dropdownGap);
+    let availableBelow = Math.max(
+      0,
+      window.innerHeight - viewportPadding - (triggerRect.bottom + dropdownGap),
+    );
+    let availableAbove = Math.max(
+      0,
+      triggerRect.top - viewportPadding - dropdownGap,
+    );
     let openUpward =
       (!!modalPanel && spaceBelow < 170 && spaceAbove > spaceBelow) ||
       (availableBelow < 120 && availableAbove > availableBelow);
@@ -115,13 +123,25 @@ export default class LocationTypeaheadComponent extends Component {
       : Math.min(dropdownHeight, availableBelow);
     let top = openUpward
       ? Math.max(viewportPadding, triggerRect.top - dropdownGap - maxHeight)
-      : Math.min(triggerRect.bottom + dropdownGap, window.innerHeight - viewportPadding - maxHeight);
+      : Math.min(
+          triggerRect.bottom + dropdownGap,
+          window.innerHeight - viewportPadding - maxHeight,
+        );
 
     this.isInModal = !!modalPanel;
     this.dropdownPosition = {
       top,
-      left: Math.max(viewportPadding, Math.min(triggerRect.left, window.innerWidth - triggerRect.width - viewportPadding)),
-      width: Math.min(triggerRect.width, window.innerWidth - viewportPadding * 2),
+      left: Math.max(
+        viewportPadding,
+        Math.min(
+          triggerRect.left,
+          window.innerWidth - triggerRect.width - viewportPadding,
+        ),
+      ),
+      width: Math.min(
+        triggerRect.width,
+        window.innerWidth - viewportPadding * 2,
+      ),
       maxHeight,
     };
   }

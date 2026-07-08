@@ -1,5 +1,5 @@
 import { module, test } from 'qunit';
-import { setupTest } from 'frontend/tests/helpers';
+import { setupTest } from 'land/tests/helpers';
 import Service from '@ember/service';
 
 class MockRegionService extends Service {
@@ -28,11 +28,25 @@ module('Unit | Service | session', function (hooks) {
 
   test('isImpersonating returns true when impersonator session exists on restore', function (assert) {
     const validSession = JSON.stringify({
-      data: { authenticated: { user: null, accessToken: 'tok', refreshToken: null, regions: [], defaultRegionCode: null } },
+      data: {
+        authenticated: {
+          user: null,
+          accessToken: 'tok',
+          refreshToken: null,
+          regions: [],
+          defaultRegionCode: null,
+        },
+      },
       isAuthenticated: true,
     });
     localStorage.setItem('aala-session', validSession);
-    localStorage.setItem('aala-impersonator-session', JSON.stringify({ data: { authenticated: { accessToken: 'admin-tok' } }, isAuthenticated: true }));
+    localStorage.setItem(
+      'aala-impersonator-session',
+      JSON.stringify({
+        data: { authenticated: { accessToken: 'admin-tok' } },
+        isAuthenticated: true,
+      }),
+    );
 
     const service = this.owner.lookup('service:session');
     assert.strictEqual(service.isImpersonating, true);
@@ -40,7 +54,15 @@ module('Unit | Service | session', function (hooks) {
 
   test('impersonate saves current in-memory session to impersonator slot and establishes new session', function (assert) {
     const originalSession = JSON.stringify({
-      data: { authenticated: { user: { name: 'Admin' }, accessToken: 'admin-token', refreshToken: 'admin-refresh', regions: [], defaultRegionCode: null } },
+      data: {
+        authenticated: {
+          user: { name: 'Admin' },
+          accessToken: 'admin-token',
+          refreshToken: 'admin-refresh',
+          regions: [],
+          defaultRegionCode: null,
+        },
+      },
       isAuthenticated: true,
     });
     localStorage.setItem('aala-session', originalSession);
@@ -57,8 +79,16 @@ module('Unit | Service | session', function (hooks) {
 
     service.impersonate(newAuthData);
 
-    assert.strictEqual(localStorage.getItem('aala-impersonator-session'), originalSession, 'original session saved to impersonator slot');
-    assert.strictEqual(service.data.authenticated.accessToken, 'agent-token', 'active session updated to impersonated user');
+    assert.strictEqual(
+      localStorage.getItem('aala-impersonator-session'),
+      originalSession,
+      'original session saved to impersonator slot',
+    );
+    assert.strictEqual(
+      service.data.authenticated.accessToken,
+      'agent-token',
+      'active session updated to impersonated user',
+    );
     assert.true(service.isAuthenticated);
     assert.true(service.isImpersonating);
   });
@@ -81,8 +111,16 @@ module('Unit | Service | session', function (hooks) {
 
     await service.exitImpersonation();
 
-    assert.strictEqual(service.data.authenticated.accessToken, 'admin-token', 'admin token restored');
-    assert.strictEqual(localStorage.getItem('aala-impersonator-session'), null, 'impersonator slot cleared');
+    assert.strictEqual(
+      service.data.authenticated.accessToken,
+      'admin-token',
+      'admin token restored',
+    );
+    assert.strictEqual(
+      localStorage.getItem('aala-impersonator-session'),
+      null,
+      'impersonator slot cleared',
+    );
     assert.false(service.isImpersonating);
   });
 

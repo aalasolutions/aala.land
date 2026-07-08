@@ -23,7 +23,9 @@ export default class ProfileController extends Controller {
     return Boolean(this.user?.googleId);
   }
 
-  @action setField(fieldName, e) { this[fieldName] = e.target.value; }
+  @action setField(fieldName, e) {
+    this[fieldName] = e.target.value;
+  }
 
   @action async saveProfile(event) {
     event.preventDefault();
@@ -63,7 +65,9 @@ export default class ProfileController extends Controller {
     }
 
     try {
-      await this.googleAuth.renderButton(element, (idToken) => this.linkGoogleAccount(idToken));
+      await this.googleAuth.renderButton(element, (idToken) =>
+        this.linkGoogleAccount(idToken),
+      );
     } catch (err) {
       if (!this.errorMsg) {
         this.errorMsg = err.message || 'Failed to load Google button';

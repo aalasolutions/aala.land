@@ -21,7 +21,11 @@ export default class ResetPasswordFormComponent extends Component {
   }
 
   get canSubmit() {
-    return this.hasToken && this.password.length > 0 && this.confirmPassword.length > 0;
+    return (
+      this.hasToken &&
+      this.password.length > 0 &&
+      this.confirmPassword.length > 0
+    );
   }
 
   @action
@@ -63,7 +67,8 @@ export default class ResetPasswordFormComponent extends Component {
       this.password = '';
       this.confirmPassword = '';
     } catch (err) {
-      this.errorMessage = err.message || 'Unable to reset password. Please try again.';
+      this.errorMessage =
+        err.message || 'Unable to reset password. Please try again.';
     } finally {
       this.isLoading = false;
     }

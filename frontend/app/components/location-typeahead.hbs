@@ -18,7 +18,8 @@
 
   {{#if this.showDropdown}}
     <div
-      class="typeahead-dropdown {{if this.isInModal 'typeahead-dropdown--floating'}}"
+      class="typeahead-dropdown
+        {{if this.isInModal 'typeahead-dropdown--floating'}}"
       data-test-typeahead-dropdown
       style={{this.dropdownStyle}}
     >
@@ -31,11 +32,17 @@
           {{on "mousedown" this.createNew}}
         >
           {{#if this.isCreating}}
-            <span class="typeahead-item-name typeahead-item-name--create">Creating...</span>
+            <span
+              class="typeahead-item-name typeahead-item-name--create"
+            >Creating...</span>
           {{else}}
             <span class="typeahead-item-name typeahead-item-name--create">
               <span class="typeahead-item-name-emphasis">Add </span>
-              <span class="typeahead-item-name-emphasis">"</span>{{this.trimmedQuery}}<span class="typeahead-item-name-emphasis">"</span>
+              <span
+                class="typeahead-item-name-emphasis"
+              >"</span>{{this.trimmedQuery}}<span
+                class="typeahead-item-name-emphasis"
+              >"</span>
             </span>
           {{/if}}
         </button>
@@ -48,7 +55,9 @@
           data-test-typeahead-item={{item.id}}
           {{on "mousedown" (fn this.selectItem item)}}
         >
-          <span class="typeahead-item-name typeahead-item-name--result">{{item.name}}</span>
+          <span
+            class="typeahead-item-name typeahead-item-name--result"
+          >{{item.name}}</span>
         </button>
       {{/each}}
 

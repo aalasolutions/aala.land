@@ -15,7 +15,9 @@ export default class ContactsRoute extends AuthenticatedRoute {
       const params = new URLSearchParams({ page, limit });
       if (search) params.set('search', search);
 
-      const result = await this.auth.fetchJson(`/contacts?${params.toString()}`);
+      const result = await this.auth.fetchJson(
+        `/contacts?${params.toString()}`,
+      );
       return {
         contacts: result.data?.data || [],
         total: result.data?.total || 0,

@@ -2,31 +2,13 @@ import Controller from '@ember/controller';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
-
-const PIPELINE_STAGES = [
-  { status: 'NEW', label: 'New' },
-  { status: 'CONTACTED', label: 'Contacted' },
-  { status: 'VIEWING', label: 'Viewing' },
-  { status: 'NEGOTIATING', label: 'Negotiating' },
-  { status: 'WON', label: 'Won' },
-  { status: 'LOST', label: 'Lost' },
-];
-
-const TEMPERATURE_STAGES = [
-  { temperature: 'HOT', label: 'Hot', icon: 'fire' },
-  { temperature: 'WARM', label: 'Warm', icon: 'sun' },
-  { temperature: 'COLD', label: 'Cold', icon: 'snowflake' },
-  { temperature: 'DEAD', label: 'Dead', icon: 'skull' },
-];
-
-const STATUS_OPTIONS = PIPELINE_STAGES.map(({ status, label }) => ({ value: status, label }));
-
-const TEMPERATURE_OPTIONS = TEMPERATURE_STAGES.map(({ temperature, label }) => ({
-  value: temperature,
-  label,
-}));
-
-const NONE_OPTION = { value: '', label: '-- None --' };
+import {
+  LEAD_STAGES,
+  TEMPERATURE_STAGES,
+  LEAD_STATUS_OPTIONS,
+  TEMPERATURE_OPTIONS,
+  NONE_OPTION,
+} from 'land/constants';
 
 export default class LeadsController extends Controller {
   @service auth;
@@ -93,7 +75,9 @@ export default class LeadsController extends Controller {
     if (this._viewMode) return this._viewMode;
     return this.preferences.get('leads-view-mode', 'pipeline');
   }
-  set viewMode(val) { this._viewMode = val; }
+  set viewMode(val) {
+    this._viewMode = val;
+  }
 
   @tracked filterType = 'all';
   @tracked agents = [];
@@ -108,44 +92,44 @@ export default class LeadsController extends Controller {
     return this.region.regions.length > 1;
   }
 
-  statusOptions = STATUS_OPTIONS;
+  statusOptions = LEAD_STATUS_OPTIONS;
 
   temperatureOptions = TEMPERATURE_OPTIONS;
 
   get regionOptions() {
-    return this.region.regions.map(r => ({
+    return this.region.regions.map((r) => ({
       value: r.code,
-      label: `${r.name} (${r.currency})`
+      label: `${r.name} (${r.currency})`,
     }));
   }
 
   get propertyOptions() {
     return [
       NONE_OPTION,
-      ...(this.properties || []).map(property => ({
+      ...(this.properties || []).map((property) => ({
         value: property.id,
-        label: property.name
-      }))
+        label: property.name,
+      })),
     ];
   }
 
   get unitOptions() {
     return [
       NONE_OPTION,
-      ...(this.filteredUnits || []).map(unit => ({
+      ...(this.filteredUnits || []).map((unit) => ({
         value: unit.id,
-        label: `Unit ${unit.unitNumber} (${unit.status})`
-      }))
+        label: `Unit ${unit.unitNumber} (${unit.status})`,
+      })),
     ];
   }
 
   get agentOptions() {
     return [
       { value: '', label: '-- Select Agent --' },
-      ...(this.agents || []).map(agent => ({
+      ...(this.agents || []).map((agent) => ({
         value: agent.id,
-        label: agent.name
-      }))
+        label: agent.name,
+      })),
     ];
   }
 
@@ -160,7 +144,9 @@ export default class LeadsController extends Controller {
       return leads.filter((l) => l.assignedTo === currentUserId);
     } else if (this.filterType === 'others') {
       const currentUserId = this.auth.currentUser?.id;
-      return leads.filter((l) => l.assignedTo && l.assignedTo !== currentUserId);
+      return leads.filter(
+        (l) => l.assignedTo && l.assignedTo !== currentUserId,
+      );
     } else if (this.filterType === 'unassigned') {
       return leads.filter((l) => !l.assignedTo);
     }
@@ -168,7 +154,7 @@ export default class LeadsController extends Controller {
   }
 
   get columns() {
-    return PIPELINE_STAGES.map((stage) => ({
+    return LEAD_STAGES.map((stage) => ({
       ...stage,
       leads: this.filteredLeads.filter((l) => l.status === stage.status),
     }));
@@ -177,7 +163,9 @@ export default class LeadsController extends Controller {
   get temperatureColumns() {
     return TEMPERATURE_STAGES.map((stage) => ({
       ...stage,
-      leads: this.filteredLeads.filter((l) => l.temperature === stage.temperature),
+      leads: this.filteredLeads.filter(
+        (l) => l.temperature === stage.temperature,
+      ),
     }));
   }
 
@@ -210,7 +198,9 @@ export default class LeadsController extends Controller {
     }
   }
 
-  @action setField(fieldName, e) { this[fieldName] = e.target.value; }
+  @action setField(fieldName, e) {
+    this[fieldName] = e.target.value;
+  }
 
   @action setRegionCode(e) {
     this.formRegionCode = e.target.value;
@@ -324,7 +314,9 @@ export default class LeadsController extends Controller {
     e.stopPropagation();
   }
 
-  @action async loadProperties(regionCode = this.formRegionCode || this.region.regionCode) {
+  @action async loadProperties(
+    regionCode = this.formRegionCode || this.region.regionCode,
+  ) {
     try {
       const params = new URLSearchParams();
       if (regionCode) {
@@ -343,7 +335,10 @@ export default class LeadsController extends Controller {
     }
   }
 
-  @action async loadUnits(propertyId, regionCode = this.formRegionCode || this.region.regionCode) {
+  @action async loadUnits(
+    propertyId,
+    regionCode = this.formRegionCode || this.region.regionCode,
+  ) {
     try {
       const params = new URLSearchParams({
         localityId: propertyId,
@@ -354,7 +349,9 @@ export default class LeadsController extends Controller {
         params.set('regionCode', regionCode);
       }
 
-      const json = await this.auth.fetchJson(`/properties/units?${params.toString()}`);
+      const json = await this.auth.fetchJson(
+        `/properties/units?${params.toString()}`,
+      );
       this.filteredUnits = json.data?.data || [];
     } catch (e) {
       console.error('Failed to load units:', e);
@@ -428,7 +425,9 @@ export default class LeadsController extends Controller {
         body: JSON.stringify({ temperature: newTemperature }),
       });
 
-      this.notifications.success(`Lead temperature changed to ${newTemperature}`);
+      this.notifications.success(
+        `Lead temperature changed to ${newTemperature}`,
+      );
       this.router.refresh('leads');
     } catch (e) {
       this.notifications.error(e.message);
@@ -509,7 +508,8 @@ export default class LeadsController extends Controller {
     const path = isEdit ? `/leads/${this.editLead.id}` : '/leads';
 
     try {
-      const originalPropertyId = this.editLead?.property?.id ?? this.editLead?.propertyId ?? '';
+      const originalPropertyId =
+        this.editLead?.property?.id ?? this.editLead?.propertyId ?? '';
       const originalUnitId = this.editLead?.unitId ?? '';
       const originalRegionCode = this.editLead?.regionCode ?? '';
 
@@ -535,9 +535,13 @@ export default class LeadsController extends Controller {
                   : {}),
               }
             : {
-                ...(this.formPropertyId ? { propertyId: this.formPropertyId } : {}),
+                ...(this.formPropertyId
+                  ? { propertyId: this.formPropertyId }
+                  : {}),
                 ...(this.formUnitId ? { unitId: this.formUnitId } : {}),
-                ...(this.formRegionCode ? { regionCode: this.formRegionCode } : {}),
+                ...(this.formRegionCode
+                  ? { regionCode: this.formRegionCode }
+                  : {}),
               }),
         }),
       });
