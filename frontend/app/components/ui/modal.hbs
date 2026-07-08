@@ -8,17 +8,19 @@
       {{on "click" this.stopPropagation}}
       ...attributes
     >
-      {{#if @showClose}}
+       {{#if (or @title @showClose)}}
         <div class="modal-header">
           <h2 id="modal-title">{{@title}}</h2>
-          <button
-            type="button"
-            class="modal-close-btn"
-            aria-label="Close"
-            {{on "click" this.close}}
-          >
-            <Ui::Ph @icon="x" @size="20px" />
-          </button>
+          {{#if @showClose}}
+            <button
+              type="button"
+              class="modal-close-btn"
+              aria-label="Close"
+              {{on "click" this.close}}
+            >
+              <Ui::Ph @icon="x" @size="20px" />
+            </button>
+          {{/if}}
         </div>
       {{/if}}
 
