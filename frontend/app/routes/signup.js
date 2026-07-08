@@ -23,7 +23,7 @@ export default class SignupRoute extends Route {
       return {
         regions: data.flat || [],
         grouped: grouped,
-        countries: grouped.map(g => g.countryName)
+        countries: grouped.map((g) => g.countryName),
       };
     } catch {
       return { regions: [], grouped: [], countries: [] };

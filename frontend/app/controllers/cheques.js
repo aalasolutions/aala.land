@@ -66,16 +66,20 @@ export default class ChequesController extends PaginatedController {
   get unitOptions() {
     return [
       EMPTY_UNIT_OPTION,
-      ...(this.model.units || []).map(unit => ({
+      ...(this.model.units || []).map((unit) => ({
         value: unit.id,
-        label: `${unit.areaName} - ${unit.assetName} - Unit ${unit.unitNumber}`
-      }))
+        label: `${unit.areaName} - ${unit.assetName} - Unit ${unit.unitNumber}`,
+      })),
     ];
   }
 
-  @action setField(fieldName, e) { this[fieldName] = e.target.value; }
+  @action setField(fieldName, e) {
+    this[fieldName] = e.target.value;
+  }
 
-  @action setTab(tab) { this.activeTab = tab; }
+  @action setTab(tab) {
+    this.activeTab = tab;
+  }
 
   @action openCreate() {
     this.formChequeNumber = '';
@@ -185,7 +189,9 @@ export default class ChequesController extends PaginatedController {
     try {
       await this.auth.fetchJson(`/cheques/${this.bounceChequeItem.id}/bounce`, {
         method: 'POST',
-        body: JSON.stringify({ bounceReason: this.formBounceReason || undefined }),
+        body: JSON.stringify({
+          bounceReason: this.formBounceReason || undefined,
+        }),
       });
       this.notifications.success('Cheque marked as bounced');
       this.closeBounceModal();

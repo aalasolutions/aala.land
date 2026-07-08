@@ -1,7 +1,8 @@
 {{page-title "Companies"}}
 
 <div class="page-header">
-  <h1 class="page-title"><Ui::Ph @icon="buildings" @size="28px" /> Companies</h1>
+  <h1 class="page-title"><Ui::Ph @icon="buildings" @size="28px" />
+    Companies</h1>
   <p class="page-subtitle">Manage subscription plans for all companies.</p>
 </div>
 
@@ -32,26 +33,49 @@
           <tr>
             <td>{{company.name}}</td>
             <td>
-              <span class="plan-badge plan-badge--{{lowercase (or company.subscriptionTier "free")}}">
+              <span
+                class="plan-badge plan-badge--{{lowercase
+                    (or company.subscriptionTier 'free')
+                  }}"
+              >
                 {{or company.subscriptionTier "FREE"}}
               </span>
             </td>
             <td>
-              {{company.usersCount}} / {{if (or (eq company.maxUsers this.unlimitedValue) (gt company.maxUsers this.unlimitedValue)) "∞" company.maxUsers}}
+              {{company.usersCount}}
+              /
+              {{if
+                (or
+                  (eq company.maxUsers this.unlimitedValue)
+                  (gt company.maxUsers this.unlimitedValue)
+                )
+                "∞"
+                company.maxUsers
+              }}
               {{#if company.inactiveUsersCount}}
-                <span class="text-muted">({{company.inactiveUsersCount}} inactive)</span>
+                <span class="text-muted">({{company.inactiveUsersCount}}
+                  inactive)</span>
               {{/if}}
             </td>
-            <td>{{if company.subscriptionExpiresAt (format-date company.subscriptionExpiresAt) "—"}}</td>
+            <td>{{if
+                company.subscriptionExpiresAt
+                (format-date company.subscriptionExpiresAt)
+                "—"
+              }}</td>
             <td>
-              <button type="button" class="btn btn-secondary btn-xs" {{on "click" (fn this.openEdit company)}}>
+              <button
+                type="button"
+                class="btn btn-secondary btn-xs"
+                {{on "click" (fn this.openEdit company)}}
+              >
                 Edit
               </button>
             </td>
           </tr>
         {{else}}
           <tr>
-            <td colspan="5" class="text-muted text-center p-4">No companies found.</td>
+            <td colspan="5" class="text-muted text-center p-4">No companies
+              found.</td>
           </tr>
         {{/each}}
       </tbody>
@@ -72,7 +96,8 @@
         {{#each this.tierOptions as |tier|}}
           <button
             type="button"
-            class="btn {{if (eq this.editTier tier) 'btn-primary' 'btn-secondary'}}"
+            class="btn
+              {{if (eq this.editTier tier) 'btn-primary' 'btn-secondary'}}"
             {{on "click" (fn this.selectTier tier)}}
           >
             {{tier}}
@@ -92,8 +117,17 @@
     </div>
   </div>
   <div class="modal-actions">
-    <button type="button" class="btn btn-secondary" {{on "click" this.closeEdit}}>Cancel</button>
-    <button type="button" class="btn btn-primary" disabled={{this.isSaving}} {{on "click" this.saveEdit}}>
+    <button
+      type="button"
+      class="btn btn-secondary"
+      {{on "click" this.closeEdit}}
+    >Cancel</button>
+    <button
+      type="button"
+      class="btn btn-primary"
+      disabled={{this.isSaving}}
+      {{on "click" this.saveEdit}}
+    >
       {{if this.isSaving "Saving…" "Save"}}
     </button>
   </div>

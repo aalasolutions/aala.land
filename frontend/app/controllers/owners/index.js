@@ -2,7 +2,11 @@ import Controller from '@ember/controller';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
-import { closeDeleteModal, confirmDeleteModal, openDeleteModal } from '../../utils/delete-modal';
+import {
+  closeDeleteModal,
+  confirmDeleteModal,
+  openDeleteModal,
+} from '../../utils/delete-modal';
 import { isAdminRole } from '../../utils/roles';
 
 export default class OwnersIndexController extends Controller {
@@ -47,10 +51,10 @@ export default class OwnersIndexController extends Controller {
   get agentOptions() {
     return [
       { value: '', label: 'Unassigned' },
-      ...this.agents.map(agent => ({
+      ...this.agents.map((agent) => ({
         value: agent.id,
-        label: agent.name
-      }))
+        label: agent.name,
+      })),
     ];
   }
 
@@ -58,7 +62,9 @@ export default class OwnersIndexController extends Controller {
     return isAdminRole(this.auth.currentUser?.role);
   }
 
-  @action setField(fieldName, e) { this[fieldName] = e.target.value; }
+  @action setField(fieldName, e) {
+    this[fieldName] = e.target.value;
+  }
 
   @action openCreate() {
     this.formName = '';
@@ -108,7 +114,8 @@ export default class OwnersIndexController extends Controller {
       if (this.formNationalityId) body.nationalityId = this.formNationalityId;
       if (this.formAddress) body.address = this.formAddress;
       if (this.formNotes) body.notes = this.formNotes;
-      if (this.formAssignedAgentId) body.assignedAgentId = this.formAssignedAgentId;
+      if (this.formAssignedAgentId)
+        body.assignedAgentId = this.formAssignedAgentId;
 
       await this.auth.fetchJson(path, {
         method: isEdit ? 'PATCH' : 'POST',

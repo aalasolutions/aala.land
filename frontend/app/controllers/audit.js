@@ -82,7 +82,9 @@ export default class AuditController extends Controller {
     return date.toLocaleString();
   }
 
-  @action setField(fieldName, e) { this[fieldName] = e.target.value; }
+  @action setField(fieldName, e) {
+    this[fieldName] = e.target.value;
+  }
 
   @action openPurge() {
     this.purgeDays = 90;
@@ -102,11 +104,16 @@ export default class AuditController extends Controller {
     this.isPurging = true;
 
     try {
-      const result = await this.auth.fetchJson(`/audit-logs/purge?olderThanDays=${this.purgeDays}`, {
-        method: 'DELETE',
-      });
+      const result = await this.auth.fetchJson(
+        `/audit-logs/purge?olderThanDays=${this.purgeDays}`,
+        {
+          method: 'DELETE',
+        },
+      );
       const deleted = result.data?.deleted || 0;
-      this.notifications.success(`Purged ${deleted} audit log${deleted !== 1 ? 's' : ''}`);
+      this.notifications.success(
+        `Purged ${deleted} audit log${deleted !== 1 ? 's' : ''}`,
+      );
       this.closePurge();
       this.router.refresh('audit');
     } catch (e) {

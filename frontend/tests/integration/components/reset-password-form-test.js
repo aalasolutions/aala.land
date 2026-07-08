@@ -8,11 +8,14 @@ module('Integration | Component | reset-password-form', function (hooks) {
   setupRenderingTest(hooks);
 
   test('it shows a validation error and does not submit invalid passwords', async function (assert) {
-    this.owner.register('service:auth', class extends Service {
-      async resetPassword() {
-        assert.step('resetPassword called');
-      }
-    });
+    this.owner.register(
+      'service:auth',
+      class extends Service {
+        async resetPassword() {
+          assert.step('resetPassword called');
+        }
+      },
+    );
 
     await render(hbs`<ResetPasswordForm @token="valid-token" />`);
 
@@ -20,23 +23,31 @@ module('Integration | Component | reset-password-form', function (hooks) {
     await fillIn('[data-test-reset-password-confirm-input]', 'different123');
     await click('[data-test-reset-password-submit]');
 
-    assert.verifySteps([], 'auth.resetPassword is not called for invalid input');
+    assert.verifySteps(
+      [],
+      'auth.resetPassword is not called for invalid input',
+    );
     assert.dom('[data-test-reset-password-error]').exists();
-    assert.dom('[data-test-reset-password-error]').hasText('Passwords do not match.');
+    assert
+      .dom('[data-test-reset-password-error]')
+      .hasText('Passwords do not match.');
   });
 
   test('it submits successfully and shows the success state', async function (assert) {
-    this.owner.register('service:auth', class extends Service {
-      async resetPassword(payload) {
-        assert.step('resetPassword called');
-        assert.deepEqual(payload, {
-          token: 'valid-token',
-          newPassword: 'password123',
-        });
+    this.owner.register(
+      'service:auth',
+      class extends Service {
+        async resetPassword(payload) {
+          assert.step('resetPassword called');
+          assert.deepEqual(payload, {
+            token: 'valid-token',
+            newPassword: 'password123',
+          });
 
-        return { success: true };
-      }
-    });
+          return { success: true };
+        }
+      },
+    );
 
     await render(hbs`<ResetPasswordForm @token="  valid-token  " />`);
 

@@ -15,12 +15,13 @@ export default class SocketService extends Service {
     if (this.socket || !this.auth.currentUser) return;
 
     const apiBase = ENV.APP.API_BASE || 'http://localhost:3010/v1';
-    const apiUrl = ENV.APP.API_URL || new URL(apiBase, window.location.origin).origin;
+    const apiUrl =
+      ENV.APP.API_URL || new URL(apiBase, window.location.origin).origin;
     const token = this.auth.token;
     if (!token) return;
 
     this.socket = io(apiUrl, {
-      auth: { token }
+      auth: { token },
     });
 
     this.socket.on('connect', () => {

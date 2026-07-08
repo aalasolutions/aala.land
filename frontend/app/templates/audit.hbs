@@ -1,24 +1,49 @@
 {{page-title "Audit Log"}}
 <div class="page-header">
-  <h1 class="page-title"><Ui::Ph @icon="clipboard-text" @size="28px" /> Audit Logs</h1>
+  <h1 class="page-title"><Ui::Ph @icon="clipboard-text" @size="28px" />
+    Audit Logs</h1>
   <p class="page-subtitle">Track all changes across your account</p>
 </div>
 
 <div class="glass-panel card">
   <div class="card-header">
     <div class="flex gap-2 items-center flex-wrap">
-      <Ui::FormDropdown @id="audit-action-filter" @label="" @value={{this.filterAction}} @onChange={{this.setFilterAction}} @options={{this.model.auditActions}} @placeholder="All Actions" />
+      <Ui::FormDropdown
+        @id="audit-action-filter"
+        @label=""
+        @value={{this.filterAction}}
+        @onChange={{this.setFilterAction}}
+        @options={{this.model.auditActions}}
+        @placeholder="All Actions"
+      />
 
-      <Ui::FormDropdown @id="audit-entity-filter" @label="" @value={{this.filterEntityType}} @onChange={{this.setFilterEntityType}} @options={{this.model.entityTypes}} @placeholder="All Entities" />
+      <Ui::FormDropdown
+        @id="audit-entity-filter"
+        @label=""
+        @value={{this.filterEntityType}}
+        @onChange={{this.setFilterEntityType}}
+        @options={{this.model.entityTypes}}
+        @placeholder="All Entities"
+      />
 
       {{#if (or this.filterAction this.filterEntityType)}}
-        <button type="button" class="btn btn-secondary" {{on "click" this.clearFilters}}>
+        <button
+          type="button"
+          class="btn btn-secondary"
+          {{on "click" this.clearFilters}}
+        >
           Clear Filters
         </button>
       {{/if}}
 
-      <button type="button" class="btn btn-danger" {{on "click" this.openPurge}} data-test-purge-btn>
-        <Ui::Ph @icon="trash" @size="16px" /> Purge Old Logs
+      <button
+        type="button"
+        class="btn btn-danger"
+        {{on "click" this.openPurge}}
+        data-test-purge-btn
+      >
+        <Ui::Ph @icon="trash" @size="16px" />
+        Purge Old Logs
       </button>
     </div>
   </div>
@@ -34,16 +59,33 @@
         <div class="audit-list">
           {{#each this.model.logs as |log|}}
             <div class="audit-item">
-              <div class="audit-summary" {{on "click" (fn this.toggleExpand log.id)}}>
-                <span class="audit-badge {{this.getActionBadgeClass log.action}}">
+              <div
+                class="audit-summary"
+                {{on "click" (fn this.toggleExpand log.id)}}
+              >
+                <span
+                  class="audit-badge {{this.getActionBadgeClass log.action}}"
+                >
                   {{log.action}}
                 </span>
                 <span class="audit-entity">{{log.entityType}}</span>
                 <span class="audit-entity-id">{{log.entityId}}</span>
                 <span class="audit-user">{{log.userEmail}}</span>
-                <span class="audit-date">{{this.formatDate log.createdAt}}</span>
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="chevron {{if (eq this.expandedLogId log.id) 'expanded'}}">
-                  <polyline points="6 9 12 15 18 9"/>
+                <span class="audit-date">{{this.formatDate
+                    log.createdAt
+                  }}</span>
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  class="chevron
+                    {{if (eq this.expandedLogId log.id) 'expanded'}}"
+                >
+                  <polyline points="6 9 12 15 18 9" />
                 </svg>
               </div>
               {{#if (eq this.expandedLogId log.id)}}
@@ -54,18 +96,24 @@
                   </div>
                   <div class="audit-detail-row">
                     <span class="audit-detail-label">User Agent:</span>
-                    <span class="audit-detail-value text-muted">{{log.userAgent}}</span>
+                    <span
+                      class="audit-detail-value text-muted"
+                    >{{log.userAgent}}</span>
                   </div>
                   {{#if log.oldValue}}
                     <div class="audit-detail-section">
                       <span class="audit-detail-label">Old Value:</span>
-                      <pre class="audit-json">{{this.formatJson log.oldValue}}</pre>
+                      <pre class="audit-json">{{this.formatJson
+                          log.oldValue
+                        }}</pre>
                     </div>
                   {{/if}}
                   {{#if log.newValue}}
                     <div class="audit-detail-section">
                       <span class="audit-detail-label">New Value:</span>
-                      <pre class="audit-json">{{this.formatJson log.newValue}}</pre>
+                      <pre class="audit-json">{{this.formatJson
+                          log.newValue
+                        }}</pre>
                     </div>
                   {{/if}}
                 </div>
@@ -89,16 +137,34 @@
   @onClose={{this.closePurge}}
   @showClose={{true}}
 >
-  <p class="text-muted">Permanently delete audit logs older than the specified number of days. Minimum retention is 30 days.</p>
+  <p class="text-muted">Permanently delete audit logs older than the specified
+    number of days. Minimum retention is 30 days.</p>
 
   <div class="flex col gap-2">
     <label class="font-sm text-muted">Delete logs older than (days)</label>
-    <input type="number" class="form-input" min="30" value={{this.purgeDays}} {{on "input" (fn this.setField "purgeDays")}} data-test-purge-days />
+    <input
+      type="number"
+      class="form-input"
+      min="30"
+      value={{this.purgeDays}}
+      {{on "input" (fn this.setField "purgeDays")}}
+      data-test-purge-days
+    />
   </div>
 
   <div class="flex gap-2 end">
-    <button type="button" class="btn btn-secondary" {{on "click" this.closePurge}}>Cancel</button>
-    <button type="button" class="btn btn-danger" {{on "click" this.confirmPurge}} disabled={{this.isPurging}} data-test-purge-confirm>
+    <button
+      type="button"
+      class="btn btn-secondary"
+      {{on "click" this.closePurge}}
+    >Cancel</button>
+    <button
+      type="button"
+      class="btn btn-danger"
+      {{on "click" this.confirmPurge}}
+      disabled={{this.isPurging}}
+      data-test-purge-confirm
+    >
       {{if this.isPurging "Purging..." "Purge"}}
     </button>
   </div>

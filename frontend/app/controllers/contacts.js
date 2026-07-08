@@ -2,7 +2,11 @@ import PaginatedController from './paginated-base';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
-import { closeDeleteModal, confirmDeleteModal, openDeleteModal } from '../utils/delete-modal';
+import {
+  closeDeleteModal,
+  confirmDeleteModal,
+  openDeleteModal,
+} from '../utils/delete-modal';
 import { CONTACT_TYPES } from 'land/constants';
 
 export default class ContactsController extends PaginatedController {
@@ -33,13 +37,14 @@ export default class ContactsController extends PaginatedController {
 
   contactTypes = CONTACT_TYPES;
 
-  @action setField(fieldName, e) { this[fieldName] = e.target.value; }
+  @action setField(fieldName, e) {
+    this[fieldName] = e.target.value;
+  }
 
   @action updateSearch(e) {
     this.search = e.target.value;
     this.page = 1;
   }
-
 
   @action openCreate() {
     this.formFirstName = '';
@@ -93,9 +98,13 @@ export default class ContactsController extends PaginatedController {
       ...(this.formLastName ? { lastName: this.formLastName } : {}),
       ...(this.formEmail ? { email: this.formEmail } : {}),
       ...(this.formPhone ? { phone: this.formPhone } : {}),
-      ...(this.formWhatsappNumber ? { whatsappNumber: this.formWhatsappNumber } : {}),
+      ...(this.formWhatsappNumber
+        ? { whatsappNumber: this.formWhatsappNumber }
+        : {}),
       type: this.formType,
-      ...(this.formContactCompany ? { contactCompany: this.formContactCompany } : {}),
+      ...(this.formContactCompany
+        ? { contactCompany: this.formContactCompany }
+        : {}),
       ...(this.formJobTitle ? { jobTitle: this.formJobTitle } : {}),
       ...(this.formAddress ? { address: this.formAddress } : {}),
       ...(this.formNotes ? { notes: this.formNotes } : {}),
@@ -106,7 +115,9 @@ export default class ContactsController extends PaginatedController {
         method: isEdit ? 'PATCH' : 'POST',
         body: JSON.stringify(body),
       });
-      this.notifications.success(isEdit ? 'Contact updated' : 'Contact created');
+      this.notifications.success(
+        isEdit ? 'Contact updated' : 'Contact created',
+      );
       this.closeModal();
       this.router.refresh('contacts');
     } catch (e) {

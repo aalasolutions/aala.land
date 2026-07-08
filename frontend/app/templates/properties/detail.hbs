@@ -1,92 +1,193 @@
-{{page-title (if @model.assets.length (get (get @model.assets "0") "locality.name") "Location Detail")}}
+{{page-title
+  (if
+    @model.assets.length
+    (get (get @model.assets "0") "locality.name")
+    "Location Detail"
+  )
+}}
 
 <div data-test-property-detail class="flex col gap-6">
   <div class="flex between x-center">
     <div class="flex x-center gap-3">
       <LinkTo @route="properties" class="text-muted font-sm">Properties</LinkTo>
       <span class="text-muted">/</span>
-      <h2 class="font-2xl font-bold">{{if @model.assets.length (get (get @model.assets "0") "locality.name") "Location"}}</h2>
+      <h2 class="font-2xl font-bold">{{if
+          @model.assets.length
+          (get (get @model.assets "0") "locality.name")
+          "Location"
+        }}</h2>
     </div>
     <div class="flex gap-3 x-center">
       <div class="flex gap-1">
-        <button type="button" class="btn btn-sm {{if (eq this.currentDetailView 'cards') 'btn-primary' 'btn-secondary'}}" {{on "click" (fn this.switchDetailView "cards")}}>
-          <Ui::Ph @icon="squares-four" /> Cards
+        <button
+          type="button"
+          class="btn btn-sm
+            {{if
+              (eq this.currentDetailView 'cards')
+              'btn-primary'
+              'btn-secondary'
+            }}"
+          {{on "click" (fn this.switchDetailView "cards")}}
+        >
+          <Ui::Ph @icon="squares-four" />
+          Cards
         </button>
-        <button type="button" class="btn btn-sm {{if (eq this.currentDetailView 'list') 'btn-primary' 'btn-secondary'}}" {{on "click" (fn this.switchDetailView "list")}}>
-          <Ui::Ph @icon="list" /> List
+        <button
+          type="button"
+          class="btn btn-sm
+            {{if
+              (eq this.currentDetailView 'list')
+              'btn-primary'
+              'btn-secondary'
+            }}"
+          {{on "click" (fn this.switchDetailView "list")}}
+        >
+          <Ui::Ph @icon="list" />
+          List
         </button>
       </div>
-      <button type="button" class="btn btn-primary" {{on "click" this.openCreateAsset}}>
-        <Ui::Ph @icon="plus" /> New Asset
+      <button
+        type="button"
+        class="btn btn-primary"
+        {{on "click" this.openCreateAsset}}
+      >
+        <Ui::Ph @icon="plus" />
+        New Asset
       </button>
     </div>
   </div>
 
   {{#if this.assetsWithHistory.length}}
     {{#if (eq this.currentDetailView "cards")}}
-      {{!-- CARDS VIEW --}}
+      {{! CARDS VIEW }}
       <div class="flex col gap-4">
         {{#each this.assetsWithHistory as |asset|}}
-          <div data-test-asset-card class="glass-panel p-6 flex col gap-5 relative overflow-hidden">
+          <div
+            data-test-asset-card
+            class="glass-panel p-6 flex col gap-5 relative overflow-hidden"
+          >
             <div class="flex between x-center">
               <div class="flex col gap-1">
-                <h4 class="font-lg font-bold flex x-center gap-2"><Ui::Ph @icon="buildings" class="text-primary" /> {{asset.name}}</h4>
+                <h4 class="font-lg font-bold flex x-center gap-2"><Ui::Ph
+                    @icon="buildings"
+                    class="text-primary"
+                  />
+                  {{asset.name}}</h4>
                 <p class="text-muted font-sm">{{asset.units.length}} Units</p>
               </div>
               <div class="flex gap-2">
-                <button type="button" class="btn btn-secondary btn-sm" {{on "click" (fn this.openEditAsset asset)}}>
-                  <Ui::Ph @icon="pencil-simple" /> Edit
+                <button
+                  type="button"
+                  class="btn btn-secondary btn-sm"
+                  {{on "click" (fn this.openEditAsset asset)}}
+                >
+                  <Ui::Ph @icon="pencil-simple" />
+                  Edit
                 </button>
-                <button type="button" class="btn btn-primary btn-sm" {{on "click" (fn this.openCreateUnit asset.id)}}>
-                  <Ui::Ph @icon="plus" /> Add Unit
+                <button
+                  type="button"
+                  class="btn btn-primary btn-sm"
+                  {{on "click" (fn this.openCreateUnit asset.id)}}
+                >
+                  <Ui::Ph @icon="plus" />
+                  Add Unit
                 </button>
               </div>
             </div>
             {{#if asset.units.length}}
               <div class="grid-cols-3">
                 {{#each asset.units as |unit|}}
-                  <div data-test-unit-card data-test-unit-id={{unit.id}} class="unit-card-premium flex col gap-3">
-                    <div class="flex between x-center border-b border-light pb-2">
+                  <div
+                    data-test-unit-card
+                    data-test-unit-id={{unit.id}}
+                    class="unit-card-premium flex col gap-3"
+                  >
+                    <div
+                      class="flex between x-center border-b border-light pb-2"
+                    >
                       <div class="flex x-center gap-2">
                         <div class="unit-card-icon-box">
                           <Ui::Ph @icon="door" />
                         </div>
-                        <p class="font-bold font-md">Unit {{unit.unitNumber}}</p>
+                        <p class="font-bold font-md">Unit
+                          {{unit.unitNumber}}</p>
                       </div>
                       {{#if unit.propertyType}}
-                        <span class="type-badge type-{{lowercase unit.propertyType}}">{{if (eq unit.propertyType 'FOR_SALE') 'For Sale' (if (eq unit.propertyType 'RENTAL') 'For Rent' 'Not Listed')}}</span>
+                        <span
+                          class="type-badge type-{{lowercase
+                              unit.propertyType
+                            }}"
+                        >{{if
+                            (eq unit.propertyType "FOR_SALE")
+                            "For Sale"
+                            (if
+                              (eq unit.propertyType "RENTAL")
+                              "For Rent"
+                              "Not Listed"
+                            )
+                          }}</span>
                       {{/if}}
                     </div>
 
                     <div class="flex between x-center">
                       <p class="text-muted font-sm flex x-center gap-1">
-                        <span class="status-badge status-{{unit.status}}">{{capitalize unit.status}}</span>
+                        <span
+                          class="status-badge status-{{unit.status}}"
+                        >{{capitalize unit.status}}</span>
                       </p>
                       {{#if unit.price}}
-                        <p class="text-success font-bold font-md">{{format-currency unit.price}}</p>
+                        <p
+                          class="text-success font-bold font-md"
+                        >{{format-currency unit.price}}</p>
                       {{/if}}
                     </div>
 
                     <div class="unit-amenities-strip">
-                      <span class="flex x-center gap-1 {{unless (has-value unit.bedrooms) 'opacity-50'}}">
-                        <Ui::Ph @icon="bed" /> {{if (has-value unit.bedrooms) unit.bedrooms "-"}}
+                      <span
+                        class="flex x-center gap-1
+                          {{unless (has-value unit.bedrooms) 'opacity-50'}}"
+                      >
+                        <Ui::Ph @icon="bed" />
+                        {{if (has-value unit.bedrooms) unit.bedrooms "-"}}
                       </span>
-                      <span class="flex x-center gap-1 {{unless (has-value unit.bathrooms) 'opacity-50'}}">
-                        <Ui::Ph @icon="bathtub" /> {{if (has-value unit.bathrooms) unit.bathrooms "-"}}
+                      <span
+                        class="flex x-center gap-1
+                          {{unless (has-value unit.bathrooms) 'opacity-50'}}"
+                      >
+                        <Ui::Ph @icon="bathtub" />
+                        {{if (has-value unit.bathrooms) unit.bathrooms "-"}}
                       </span>
-                      <span class="flex x-center gap-1 {{unless (has-value unit.sqFt) 'opacity-50'}}">
-                        <Ui::Ph @icon="selection" /> {{if (has-value unit.sqFt) (format-number unit.sqFt) "-"}}
+                      <span
+                        class="flex x-center gap-1
+                          {{unless (has-value unit.sqFt) 'opacity-50'}}"
+                      >
+                        <Ui::Ph @icon="selection" />
+                        {{if
+                          (has-value unit.sqFt)
+                          (format-number unit.sqFt)
+                          "-"
+                        }}
                       </span>
                     </div>
 
                     <Unit::AmenitiesPrint @amenities={{unit.amenities}} />
 
-
                     <div class="flex gap-2 pt-1">
-                      <LinkTo @route="properties.unit" @models={{array @model.localityId unit.id}} class="btn btn-primary btn-sm flex-1 justify-center" data-test-view-unit>
+                      <LinkTo
+                        @route="properties.unit"
+                        @models={{array @model.localityId unit.id}}
+                        class="btn btn-primary btn-sm flex-1 justify-center"
+                        data-test-view-unit
+                      >
                         View Details
                       </LinkTo>
-                      <button type="button" class="btn btn-secondary btn-sm" aria-label="Edit unit" title="Edit unit" {{on "click" (fn this.openEditUnit unit asset.id)}}>
+                      <button
+                        type="button"
+                        class="btn btn-secondary btn-sm"
+                        aria-label="Edit unit"
+                        title="Edit unit"
+                        {{on "click" (fn this.openEditUnit unit asset.id)}}
+                      >
                         <Ui::Ph @icon="pencil" />
                       </button>
                     </div>
@@ -100,10 +201,16 @@
                 </div>
                 <div class="text-center">
                   <h5 class="font-md font-bold">No units yet</h5>
-                  <p class="text-muted font-sm">Start by adding the first unit to this asset.</p>
+                  <p class="text-muted font-sm">Start by adding the first unit
+                    to this asset.</p>
                 </div>
-                <button type="button" class="btn btn-primary btn-sm px-6" {{on "click" (fn this.openCreateUnit asset.id)}}>
-                  <Ui::Ph @icon="plus" /> Add First Unit
+                <button
+                  type="button"
+                  class="btn btn-primary btn-sm px-6"
+                  {{on "click" (fn this.openCreateUnit asset.id)}}
+                >
+                  <Ui::Ph @icon="plus" />
+                  Add First Unit
                 </button>
               </div>
             {{/if}}
@@ -111,7 +218,7 @@
         {{/each}}
       </div>
     {{else}}
-      {{!-- LIST VIEW --}}
+      {{! LIST VIEW }}
       <div class="data-table-wrapper">
         <table class="data-table">
           <thead>
@@ -133,20 +240,48 @@
                 <tr>
                   <td class="font-bold">{{asset.name}}</td>
                   <td>{{unit.unitNumber}}</td>
-                  <td><span class="status-badge status-{{unit.status}}">{{capitalize unit.status}}</span></td>
+                  <td><span
+                      class="status-badge status-{{unit.status}}"
+                    >{{capitalize unit.status}}</span></td>
                   <td>
                     {{#if unit.propertyType}}
-                      <span class="type-badge type-{{lowercase unit.propertyType}}">{{if (eq unit.propertyType 'FOR_SALE') 'For Sale' (if (eq unit.propertyType 'RENTAL') 'For Rent' 'Not Listed')}}</span>
+                      <span
+                        class="type-badge type-{{lowercase unit.propertyType}}"
+                      >{{if
+                          (eq unit.propertyType "FOR_SALE")
+                          "For Sale"
+                          (if
+                            (eq unit.propertyType "RENTAL")
+                            "For Rent"
+                            "Not Listed"
+                          )
+                        }}</span>
                     {{/if}}
                   </td>
                   <td>{{unit.bedrooms}}</td>
                   <td>{{unit.bathrooms}}</td>
-                  <td>{{if unit.sqFt (concat (format-number unit.sqFt) " sqft") ""}}</td>
-                  <td class="text-success">{{if unit.price (format-currency unit.price) ""}}</td>
+                  <td>{{if
+                      unit.sqFt
+                      (concat (format-number unit.sqFt) " sqft")
+                      ""
+                    }}</td>
+                  <td class="text-success">{{if
+                      unit.price
+                      (format-currency unit.price)
+                      ""
+                    }}</td>
                   <td class="text-right">
                     <div class="flex gap-1">
-                      <LinkTo @route="properties.unit" @models={{array @model.localityId unit.id}} class="btn btn-primary btn-xs">View</LinkTo>
-                      <button type="button" class="btn btn-secondary btn-xs" {{on "click" (fn this.openEditUnit unit asset.id)}}>Edit</button>
+                      <LinkTo
+                        @route="properties.unit"
+                        @models={{array @model.localityId unit.id}}
+                        class="btn btn-primary btn-xs"
+                      >View</LinkTo>
+                      <button
+                        type="button"
+                        class="btn btn-secondary btn-xs"
+                        {{on "click" (fn this.openEditUnit unit asset.id)}}
+                      >Edit</button>
                     </div>
                   </td>
                 </tr>
@@ -155,14 +290,25 @@
                   <td colspan="9" class="p-0">
                     <div class="property-empty-state-box empty-state-flat">
                       <div class="icon-holder">
-                        <Ui::Ph @icon="door" @size="32px" class="text-muted opacity-50" />
+                        <Ui::Ph
+                          @icon="door"
+                          @size="32px"
+                          class="text-muted opacity-50"
+                        />
                       </div>
                       <div class="text-center">
-                        <p class="font-bold font-md">No units in {{asset.name}}</p>
-                        <p class="text-muted font-sm">Add your first unit to start managing this asset.</p>
+                        <p class="font-bold font-md">No units in
+                          {{asset.name}}</p>
+                        <p class="text-muted font-sm">Add your first unit to
+                          start managing this asset.</p>
                       </div>
-                      <button type="button" class="btn btn-primary btn-xs px-6 mt-2" {{on "click" (fn this.openCreateUnit asset.id)}}>
-                        <Ui::Ph @icon="plus" /> Add First Unit
+                      <button
+                        type="button"
+                        class="btn btn-primary btn-xs px-6 mt-2"
+                        {{on "click" (fn this.openCreateUnit asset.id)}}
+                      >
+                        <Ui::Ph @icon="plus" />
+                        Add First Unit
                       </button>
                     </div>
                   </td>
@@ -182,14 +328,24 @@
         <h3 class="font-xl font-bold">No assets found</h3>
         <p class="text-muted">There are no assets or units in this location yet.</p>
       </div>
-      <button type="button" class="btn btn-primary px-8" {{on "click" this.openCreateAsset}}>
-        <Ui::Ph @icon="plus" /> Create First Asset
+      <button
+        type="button"
+        class="btn btn-primary px-8"
+        {{on "click" this.openCreateAsset}}
+      >
+        <Ui::Ph @icon="plus" />
+        Create First Asset
       </button>
     </div>
   {{/if}}
 </div>
 
-<Ui::Modal @isOpen={{this.showAssetModal}} @title={{if this.editAsset "Edit Asset" "New Asset"}} @onClose={{this.closeAssetModal}} @showClose={{true}}>
+<Ui::Modal
+  @isOpen={{this.showAssetModal}}
+  @title={{if this.editAsset "Edit Asset" "New Asset"}}
+  @onClose={{this.closeAssetModal}}
+  @showClose={{true}}
+>
   <form class="flex col gap-4" {{on "submit" this.saveAsset}}>
     {{#unless this.editAsset}}
       <div class="flex col gap-2">
@@ -221,81 +377,165 @@
     {{/unless}}
     <div class="flex col gap-2">
       <label class="font-sm text-muted" for="b-name">Asset Name *</label>
-      <input id="b-name" type="text"
+      <input
+        id="b-name"
+        type="text"
         class="form-input"
-        placeholder="e.g. Tower A" value={{this.formAssetName}} required {{on "input" (fn this.setField "formAssetName")}} />
+        placeholder="e.g. Tower A"
+        value={{this.formAssetName}}
+        required
+        {{on "input" (fn this.setField "formAssetName")}}
+      />
     </div>
     <div class="flex col gap-2">
       <label class="font-sm text-muted" for="b-address">Address</label>
-      <input id="b-address" type="text"
+      <input
+        id="b-address"
+        type="text"
         class="form-input"
-        placeholder="e.g. 123 Sheikh Zayed Road" value={{this.formAssetAddress}} {{on "input" (fn this.setField "formAssetAddress")}} />
+        placeholder="e.g. 123 Sheikh Zayed Road"
+        value={{this.formAssetAddress}}
+        {{on "input" (fn this.setField "formAssetAddress")}}
+      />
     </div>
     {{#if this.assetError}}
       <p class="font-sm text-danger">{{this.assetError}}</p>
     {{/if}}
     <div class="flex gap-3 mt-2">
-      <button type="button" class="btn btn-secondary" {{on "click" this.closeAssetModal}}>Cancel</button>
-      <button type="submit" class="btn btn-primary" disabled={{this.isSavingAsset}}>
-        {{if this.isSavingAsset "Saving..." (if this.editAsset "Update" "Create Asset")}}
+      <button
+        type="button"
+        class="btn btn-secondary"
+        {{on "click" this.closeAssetModal}}
+      >Cancel</button>
+      <button
+        type="submit"
+        class="btn btn-primary"
+        disabled={{this.isSavingAsset}}
+      >
+        {{if
+          this.isSavingAsset
+          "Saving..."
+          (if this.editAsset "Update" "Create Asset")
+        }}
       </button>
     </div>
   </form>
 </Ui::Modal>
 
-<Ui::Modal @isOpen={{this.showUnitModal}} @title={{if this.editUnit "Edit Unit" "New Unit"}} @onClose={{this.closeUnitModal}} @showClose={{true}}>
+<Ui::Modal
+  @isOpen={{this.showUnitModal}}
+  @title={{if this.editUnit "Edit Unit" "New Unit"}}
+  @onClose={{this.closeUnitModal}}
+  @showClose={{true}}
+>
   <form class="flex col gap-4" {{on "submit" this.saveUnit}}>
     <div class="flex gap-4">
       <div class="flex col gap-2 flex-1">
         <label class="font-sm text-muted" for="u-number">Unit Number *</label>
-        <input id="u-number" type="text"
+        <input
+          id="u-number"
+          type="text"
           class="form-input"
-          placeholder="e.g. 101" value={{this.formUnitNumber}} required {{on "input" (fn this.setField "formUnitNumber")}} />
+          placeholder="e.g. 101"
+          value={{this.formUnitNumber}}
+          required
+          {{on "input" (fn this.setField "formUnitNumber")}}
+        />
       </div>
       <div class="flex col gap-2 flex-1">
-        <Ui::FormDropdown @label="Status" @id="u-status" @value={{this.formUnitStatus}} @onChange={{fn this.setField "formUnitStatus"}} @options={{this.statusOptions}} @placeholder="Select status..." />
+        <Ui::FormDropdown
+          @label="Status"
+          @id="u-status"
+          @value={{this.formUnitStatus}}
+          @onChange={{fn this.setField "formUnitStatus"}}
+          @options={{this.statusOptions}}
+          @placeholder="Select status..."
+        />
       </div>
     </div>
-    <Ui::FormDropdown @label="Property Type" @id="u-property-type" @value={{this.formUnitPropertyType}} @onChange={{fn this.setField "formUnitPropertyType"}} @options={{this.propertyTypeOptions}} @placeholder="Select type..." />
+    <Ui::FormDropdown
+      @label="Property Type"
+      @id="u-property-type"
+      @value={{this.formUnitPropertyType}}
+      @onChange={{fn this.setField "formUnitPropertyType"}}
+      @options={{this.propertyTypeOptions}}
+      @placeholder="Select type..."
+    />
     <div class="flex gap-4">
       <div class="flex col gap-2 flex-1">
         <label class="font-sm text-muted" for="u-price">Price</label>
-        <input id="u-price" type="number" min="0"
+        <input
+          id="u-price"
+          type="number"
+          min="0"
           class="form-input"
-          placeholder="e.g. 150000" value={{this.formUnitPrice}} {{on "input" (fn this.setField "formUnitPrice")}} />
+          placeholder="e.g. 150000"
+          value={{this.formUnitPrice}}
+          {{on "input" (fn this.setField "formUnitPrice")}}
+        />
       </div>
       <div class="flex col gap-2 flex-1">
         <label class="font-sm text-muted" for="u-sqft">Sq Ft</label>
-        <input id="u-sqft" type="number" min="0"
+        <input
+          id="u-sqft"
+          type="number"
+          min="0"
           class="form-input"
-          placeholder="e.g. 850" value={{this.formUnitSqFt}} {{on "input" (fn this.setField "formUnitSqFt")}} />
+          placeholder="e.g. 850"
+          value={{this.formUnitSqFt}}
+          {{on "input" (fn this.setField "formUnitSqFt")}}
+        />
       </div>
     </div>
     <div class="flex gap-4">
       <div class="flex col gap-2 flex-1">
         <label class="font-sm text-muted" for="u-beds">Bedrooms</label>
-        <input id="u-beds" type="number" min="0"
+        <input
+          id="u-beds"
+          type="number"
+          min="0"
           class="form-input"
-          placeholder="e.g. 2" value={{this.formUnitBedrooms}} {{on "input" (fn this.setField "formUnitBedrooms")}} />
+          placeholder="e.g. 2"
+          value={{this.formUnitBedrooms}}
+          {{on "input" (fn this.setField "formUnitBedrooms")}}
+        />
       </div>
       <div class="flex col gap-2 flex-1">
         <label class="font-sm text-muted" for="u-baths">Bathrooms</label>
-        <input id="u-baths" type="number" min="0"
+        <input
+          id="u-baths"
+          type="number"
+          min="0"
           class="form-input"
-          placeholder="e.g. 2" value={{this.formUnitBathrooms}} {{on "input" (fn this.setField "formUnitBathrooms")}} />
+          placeholder="e.g. 2"
+          value={{this.formUnitBathrooms}}
+          {{on "input" (fn this.setField "formUnitBathrooms")}}
+        />
       </div>
     </div>
-    <Ui::FormDropdown @label="Owner" @id="u-owner" @value={{this.formUnitOwnerId}} @onChange={{fn this.setField "formUnitOwnerId"}} @options={{this.ownerOptions}} @placeholder="Unassigned" />
+    <Ui::FormDropdown
+      @label="Owner"
+      @id="u-owner"
+      @value={{this.formUnitOwnerId}}
+      @onChange={{fn this.setField "formUnitOwnerId"}}
+      @options={{this.ownerOptions}}
+      @placeholder="Unassigned"
+    />
     <div class="flex col gap-2">
       <label class="font-sm text-muted">Amenities</label>
       <div class="amenities-grid">
         {{#each this.amenityOptions as |opt|}}
           <button
             type="button"
-            class="amenity-chip {{if (includes this.formUnitAmenities opt.key) 'amenity-chip-active'}}"
+            class="amenity-chip
+              {{if
+                (includes this.formUnitAmenities opt.key)
+                'amenity-chip-active'
+              }}"
             {{on "click" (fn this.toggleAmenity opt.key)}}
           >
-            <Ui::Ph @icon={{opt.icon}} /> {{opt.label}}
+            <Ui::Ph @icon={{opt.icon}} />
+            {{opt.label}}
           </button>
         {{/each}}
       </div>
@@ -304,9 +544,21 @@
       <p class="font-sm text-danger">{{this.unitError}}</p>
     {{/if}}
     <div class="flex gap-3 mt-2">
-      <button type="button" class="btn btn-secondary" {{on "click" this.closeUnitModal}}>Cancel</button>
-      <button type="submit" class="btn btn-primary" disabled={{this.isSavingUnit}}>
-        {{if this.isSavingUnit "Saving..." (if this.editUnit "Update" "Create Unit")}}
+      <button
+        type="button"
+        class="btn btn-secondary"
+        {{on "click" this.closeUnitModal}}
+      >Cancel</button>
+      <button
+        type="submit"
+        class="btn btn-primary"
+        disabled={{this.isSavingUnit}}
+      >
+        {{if
+          this.isSavingUnit
+          "Saving..."
+          (if this.editUnit "Update" "Create Unit")
+        }}
       </button>
     </div>
   </form>

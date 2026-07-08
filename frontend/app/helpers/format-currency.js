@@ -6,7 +6,8 @@ export default class FormatCurrency extends Helper {
 
   compute([value]) {
     const num = Number(value);
-    if (isNaN(num) || value === null || value === undefined || value === '') return '';
+    if (isNaN(num) || value === null || value === undefined || value === '')
+      return '';
 
     const currency = this.region.currencyCode;
     const locale = navigator.language || 'en';

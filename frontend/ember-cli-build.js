@@ -15,9 +15,7 @@ module.exports = function (defaults) {
     },
     sassOptions: {
       extension: 'scss',
-      includePaths: [
-        'node_modules/@nuvoui/core',
-      ],
+      includePaths: ['node_modules/@nuvoui/core'],
     },
   });
 

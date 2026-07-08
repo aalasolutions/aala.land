@@ -8,10 +8,15 @@
         <Ui::Ph @icon="briefcase" @size="14px" />
         <span>Company owners only</span>
       </div>
-      <p class="signup-invite-note">Agents and team members join from an invite link.</p>
+      <p class="signup-invite-note">Agents and team members join from an invite
+        link.</p>
     </div>
 
-    <SignupForm @regions={{this.model.regions}} @grouped={{this.model.grouped}} @countries={{this.model.countries}} />
+    <SignupForm
+      @regions={{this.model.regions}}
+      @grouped={{this.model.grouped}}
+      @countries={{this.model.countries}}
+    />
 
     <div class="text-center">
       <p class="font-sm text-muted">

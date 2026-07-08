@@ -44,7 +44,9 @@ export default class AuditRoute extends AuthenticatedRoute {
     if (entityType) queryParams.set('entityType', entityType);
 
     try {
-      const json = await this.auth.fetchJson(`/audit-logs?${queryParams.toString()}`);
+      const json = await this.auth.fetchJson(
+        `/audit-logs?${queryParams.toString()}`,
+      );
       return {
         logs: json.data?.data || [],
         total: json.data?.total || 0,

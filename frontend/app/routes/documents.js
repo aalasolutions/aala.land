@@ -15,7 +15,9 @@ export default class DocumentsRoute extends AuthenticatedRoute {
       const params = new URLSearchParams({ page, limit });
       if (category) params.set('category', category);
 
-      const result = await this.auth.fetchJson(`/documents?${params.toString()}`);
+      const result = await this.auth.fetchJson(
+        `/documents?${params.toString()}`,
+      );
       return {
         documents: result.data?.data || [],
         total: result.data?.total || 0,

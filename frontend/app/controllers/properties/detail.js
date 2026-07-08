@@ -2,9 +2,12 @@ import Controller from '@ember/controller';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
-import { AMENITY_OPTIONS, PROPERTY_STATUS_OPTIONS, PROPERTY_TYPE_OPTIONS } from 'land/constants';
+import {
+  AMENITY_OPTIONS,
+  PROPERTY_STATUS_OPTIONS,
+  PROPERTY_TYPE_OPTIONS,
+} from 'land/constants';
 import { toggleArrayItem } from '../../utils/toggle-array-item';
-
 
 export default class PropertiesDetailController extends Controller {
   @service auth;
@@ -42,7 +45,9 @@ export default class PropertiesDetailController extends Controller {
       }
     }
 
-    await Promise.all(unitIds.map(unitId => this._loadTenantHistoryForUnit(unitId)));
+    await Promise.all(
+      unitIds.map((unitId) => this._loadTenantHistoryForUnit(unitId)),
+    );
     this._historyVersion = (this._historyVersion || 0) + 1;
   }
 
@@ -65,11 +70,17 @@ export default class PropertiesDetailController extends Controller {
       const leases = result.data || [];
 
       const tenantHistory = leases
-        .filter(lease => lease.status === 'COMPLETED' || lease.status === 'EXPIRED')
-        .map(lease => ({
+        .filter(
+          (lease) => lease.status === 'COMPLETED' || lease.status === 'EXPIRED',
+        )
+        .map((lease) => ({
           tenantName: lease.tenantName,
-          startDate: lease.startDate ? new Date(lease.startDate).toLocaleDateString() : 'N/A',
-          endDate: lease.endDate ? new Date(lease.endDate).toLocaleDateString() : 'Present',
+          startDate: lease.startDate
+            ? new Date(lease.startDate).toLocaleDateString()
+            : 'N/A',
+          endDate: lease.endDate
+            ? new Date(lease.endDate).toLocaleDateString()
+            : 'Present',
         }));
 
       this.tenantHistoryCache.set(unitId, tenantHistory);
@@ -87,9 +98,9 @@ export default class PropertiesDetailController extends Controller {
     const version = this._historyVersion;
     const assets = this.model?.assets || [];
 
-    return assets.map(asset => ({
+    return assets.map((asset) => ({
       ...asset,
-      units: (asset.units || []).map(unit => ({
+      units: (asset.units || []).map((unit) => ({
         ...unit,
         tenantHistory: this.getTenantHistory(unit.id),
       })),
@@ -103,10 +114,10 @@ export default class PropertiesDetailController extends Controller {
   get ownerOptions() {
     return [
       { value: '', label: 'Unassigned' },
-      ...(this.owners || []).map(owner => ({
+      ...(this.owners || []).map((owner) => ({
         value: owner.id,
-        label: owner.name
-      }))
+        label: owner.name,
+      })),
     ];
   }
 
@@ -131,7 +142,9 @@ export default class PropertiesDetailController extends Controller {
   }
 
   get localitySearchUrl() {
-    return this.selectedCity ? `/locations/localities/search?cityId=${this.selectedCity.id}` : null;
+    return this.selectedCity
+      ? `/locations/localities/search?cityId=${this.selectedCity.id}`
+      : null;
   }
 
   get localityCreatePayload() {
@@ -174,7 +187,9 @@ export default class PropertiesDetailController extends Controller {
 
   amenityOptions = AMENITY_OPTIONS;
 
-  @action setField(fieldName, e) { this[fieldName] = e.target.value; }
+  @action setField(fieldName, e) {
+    this[fieldName] = e.target.value;
+  }
 
   @action toggleAmenity(key) {
     this.formUnitAmenities = toggleArrayItem(this.formUnitAmenities, key);
@@ -276,9 +291,12 @@ export default class PropertiesDetailController extends Controller {
     this.formUnitPrice = unit.price ? String(unit.price) : '';
     this.formUnitSqFt = unit.sqFt ? String(unit.sqFt) : '';
     this.formUnitBedrooms = unit.bedrooms != null ? String(unit.bedrooms) : '';
-    this.formUnitBathrooms = unit.bathrooms != null ? String(unit.bathrooms) : '';
+    this.formUnitBathrooms =
+      unit.bathrooms != null ? String(unit.bathrooms) : '';
     this.formUnitOwnerId = unit.ownerId || '';
-    this.formUnitAmenities = Array.isArray(unit.amenities) ? [...unit.amenities] : [];
+    this.formUnitAmenities = Array.isArray(unit.amenities)
+      ? [...unit.amenities]
+      : [];
     this.editUnit = unit;
     this.unitError = '';
     this.showUnitModal = true;
@@ -305,11 +323,19 @@ export default class PropertiesDetailController extends Controller {
       unitNumber: this.formUnitNumber,
       status: this.formUnitStatus,
       ...(!isEdit ? { assetId: this.activeAssetId } : {}),
-      ...(this.formUnitPropertyType ? { propertyType: this.formUnitPropertyType } : (isEdit ? { propertyType: null } : {})),
+      ...(this.formUnitPropertyType
+        ? { propertyType: this.formUnitPropertyType }
+        : isEdit
+          ? { propertyType: null }
+          : {}),
       ...(this.formUnitPrice ? { price: parseFloat(this.formUnitPrice) } : {}),
       ...(this.formUnitSqFt ? { sqFt: parseFloat(this.formUnitSqFt) } : {}),
-      ...(this.formUnitBedrooms ? { bedrooms: parseInt(this.formUnitBedrooms, 10) } : {}),
-      ...(this.formUnitBathrooms ? { bathrooms: parseInt(this.formUnitBathrooms, 10) } : {}),
+      ...(this.formUnitBedrooms
+        ? { bedrooms: parseInt(this.formUnitBedrooms, 10) }
+        : {}),
+      ...(this.formUnitBathrooms
+        ? { bathrooms: parseInt(this.formUnitBathrooms, 10) }
+        : {}),
       ownerId: this.formUnitOwnerId || null,
       amenities: this.formUnitAmenities,
     };

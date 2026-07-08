@@ -21,13 +21,18 @@ export default class MaintenanceRoute extends AuthenticatedRoute {
       maintenanceParams.set('period', filterMonth);
     }
 
-    const [mainJson, vendorsJson, costJson, upcomingJson, unitsJson] = await Promise.all([
-      safeJson(this.auth, `/maintenance?${maintenanceParams.toString()}`, 'MAINT'),
-      safeJson(this.auth, '/vendors?page=1&limit=100', 'MAINT'),
-      safeJson(this.auth, '/maintenance/cost-summary', 'MAINT'),
-      safeJson(this.auth, '/maintenance/upcoming', 'MAINT'),
-      safeJson(this.auth, '/properties/units?page=1&limit=500', 'MAINT'),
-    ]);
+    const [mainJson, vendorsJson, costJson, upcomingJson, unitsJson] =
+      await Promise.all([
+        safeJson(
+          this.auth,
+          `/maintenance?${maintenanceParams.toString()}`,
+          'MAINT',
+        ),
+        safeJson(this.auth, '/vendors?page=1&limit=100', 'MAINT'),
+        safeJson(this.auth, '/maintenance/cost-summary', 'MAINT'),
+        safeJson(this.auth, '/maintenance/upcoming', 'MAINT'),
+        safeJson(this.auth, '/properties/units?page=1&limit=500', 'MAINT'),
+      ]);
 
     return {
       workOrders: mainJson?.data?.data ?? [],

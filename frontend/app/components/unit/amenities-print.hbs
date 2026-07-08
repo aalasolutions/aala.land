@@ -1,8 +1,8 @@
 <div class="flex gap-2 wrap">
-    {{#each this.prettyAmenities as |amenity|}}
+  {{#each this.prettyAmenities as |amenity|}}
     <span class="amenity-tag">
-        <Ui::Ph @icon={{amenity.icon}} />
-        {{amenity.label}}
+      <Ui::Ph @icon={{amenity.icon}} />
+      {{amenity.label}}
     </span>
-    {{/each}}
+  {{/each}}
 </div>

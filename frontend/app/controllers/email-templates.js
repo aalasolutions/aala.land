@@ -2,9 +2,12 @@ import Controller from '@ember/controller';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
-import { closeDeleteModal, confirmDeleteModal, openDeleteModal } from '../utils/delete-modal';
+import {
+  closeDeleteModal,
+  confirmDeleteModal,
+  openDeleteModal,
+} from '../utils/delete-modal';
 import { EMAIL_CATEGORIES, EMAIL_FILTER_CATEGORIES } from 'land/constants';
-
 
 export default class EmailTemplatesController extends Controller {
   @service auth;
@@ -73,7 +76,9 @@ export default class EmailTemplatesController extends Controller {
     this.formSubject = template.subject ?? '';
     this.formBody = template.body ?? '';
     this.formCategory = template.category ?? 'CUSTOM';
-    this.formVariables = Array.isArray(template.variables) ? template.variables.join(', ') : '';
+    this.formVariables = Array.isArray(template.variables)
+      ? template.variables.join(', ')
+      : '';
     this.formIsActive = template.isActive !== false;
     this.editTemplate = template;
     this.errorMsg = '';
@@ -93,10 +98,15 @@ export default class EmailTemplatesController extends Controller {
     this.errorMsg = '';
 
     const isEdit = !!this.editTemplate;
-    const path = isEdit ? `/email-templates/${this.editTemplate.id}` : '/email-templates';
+    const path = isEdit
+      ? `/email-templates/${this.editTemplate.id}`
+      : '/email-templates';
 
     const variables = this.formVariables
-      ? this.formVariables.split(',').map(v => v.trim()).filter(Boolean)
+      ? this.formVariables
+          .split(',')
+          .map((v) => v.trim())
+          .filter(Boolean)
       : [];
 
     const body = {
@@ -113,7 +123,9 @@ export default class EmailTemplatesController extends Controller {
         method: isEdit ? 'PATCH' : 'POST',
         body: JSON.stringify(body),
       });
-      this.notifications.success(isEdit ? 'Template updated' : 'Template created');
+      this.notifications.success(
+        isEdit ? 'Template updated' : 'Template created',
+      );
       this.closeModal();
       this.router.refresh('email-templates');
     } catch (e) {
@@ -152,10 +164,13 @@ export default class EmailTemplatesController extends Controller {
     }
 
     try {
-      const result = await this.auth.fetchJson(`/email-templates/${template.id}/render`, {
-        method: 'POST',
-        body: JSON.stringify({ variables: sampleVars }),
-      });
+      const result = await this.auth.fetchJson(
+        `/email-templates/${template.id}/render`,
+        {
+          method: 'POST',
+          body: JSON.stringify({ variables: sampleVars }),
+        },
+      );
       this.previewSubject = result.data?.subject || template.subject;
       this.previewBody = result.data?.body || template.body;
       this.previewVars = vars.join(', ');

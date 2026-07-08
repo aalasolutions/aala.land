@@ -2,10 +2,13 @@ import Controller from '@ember/controller';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
-import { closeDeleteModal, confirmDeleteModal, openDeleteModal } from '../../utils/delete-modal';
+import {
+  closeDeleteModal,
+  confirmDeleteModal,
+  openDeleteModal,
+} from '../../utils/delete-modal';
 import { toggleArrayItem } from '../../utils/toggle-array-item';
 import { PROPERTY_STATUS_OPTIONS, PROPERTY_TYPE_OPTIONS } from 'land/constants';
-
 
 export default class PropertiesUnitController extends Controller {
   @service auth;
@@ -47,10 +50,10 @@ export default class PropertiesUnitController extends Controller {
   get ownerOptions() {
     return [
       { value: '', label: 'Unassigned' },
-      ...(this.model.owners || []).map(owner => ({
+      ...(this.model.owners || []).map((owner) => ({
         value: owner.id,
-        label: owner.name
-      }))
+        label: owner.name,
+      })),
     ];
   }
 
@@ -76,7 +79,9 @@ export default class PropertiesUnitController extends Controller {
     this.formFloor = unit.floor != null ? String(unit.floor) : '';
     this.formDescription = unit.description ?? '';
     this.formOwnerId = unit.ownerId || '';
-    this.formAmenities = Array.isArray(unit.amenities) ? [...unit.amenities] : [];
+    this.formAmenities = Array.isArray(unit.amenities)
+      ? [...unit.amenities]
+      : [];
     this.errorMsg = '';
     this.showEditModal = true;
   }
@@ -174,7 +179,9 @@ export default class PropertiesUnitController extends Controller {
 
   @action async setPrimaryPhoto(media) {
     try {
-      await this.auth.fetchJson(`/properties/media/${media.id}/set-primary`, { method: 'PATCH' });
+      await this.auth.fetchJson(`/properties/media/${media.id}/set-primary`, {
+        method: 'PATCH',
+      });
       this.notifications.success('Primary photo updated');
       this.router.refresh('properties.unit');
     } catch (err) {
@@ -194,11 +201,17 @@ export default class PropertiesUnitController extends Controller {
     const body = {
       unitNumber: this.formUnitNumber,
       status: this.formStatus,
-      ...(this.formPropertyType ? { propertyType: this.formPropertyType } : { propertyType: null }),
+      ...(this.formPropertyType
+        ? { propertyType: this.formPropertyType }
+        : { propertyType: null }),
       ...(this.formPrice ? { price: parseFloat(this.formPrice) } : {}),
       ...(this.formSqFt ? { sqFt: parseFloat(this.formSqFt) } : {}),
-      ...(this.formBedrooms ? { bedrooms: parseInt(this.formBedrooms, 10) } : {}),
-      ...(this.formBathrooms ? { bathrooms: parseInt(this.formBathrooms, 10) } : {}),
+      ...(this.formBedrooms
+        ? { bedrooms: parseInt(this.formBedrooms, 10) }
+        : {}),
+      ...(this.formBathrooms
+        ? { bathrooms: parseInt(this.formBathrooms, 10) }
+        : {}),
       ...(this.formFloor ? { floor: this.formFloor } : {}),
       ...(this.formDescription ? { description: this.formDescription } : {}),
       ownerId: this.formOwnerId || null,

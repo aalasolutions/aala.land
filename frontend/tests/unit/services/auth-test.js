@@ -5,7 +5,15 @@ import Service from '@ember/service';
 class MockSessionService extends Service {
   isAuthenticated = true;
   isImpersonating = false;
-  data = { authenticated: { accessToken: 'test-token', refreshToken: null, user: null, regions: [], defaultRegionCode: null } };
+  data = {
+    authenticated: {
+      accessToken: 'test-token',
+      refreshToken: null,
+      user: null,
+      regions: [],
+      defaultRegionCode: null,
+    },
+  };
   async authenticate() {}
   async invalidate() {}
   requireAuthentication() {}
@@ -87,19 +95,33 @@ module('Unit | Service | auth', function (hooks) {
     const mockResponse = {
       accessToken: 'imp-token',
       refreshToken: 'imp-refresh',
-      user: { id: 'u1', name: 'Jane', email: 'jane@co.com', role: 'agent', companyId: 'c1' },
+      user: {
+        id: 'u1',
+        name: 'Jane',
+        email: 'jane@co.com',
+        role: 'agent',
+        companyId: 'c1',
+      },
       regions: [],
       defaultRegionCode: 'dubai',
     };
 
     const originalFetch = globalThis.fetch;
     globalThis.fetch = (_url, _options) =>
-      Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ data: mockResponse }) });
+      Promise.resolve({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve({ data: mockResponse }),
+      });
 
     try {
       await service.impersonate('user-uuid-1');
       assert.true(impersonateCalled, 'session.impersonate was called');
-      assert.deepEqual(capturedAuthData, mockResponse, 'session.impersonate received response data');
+      assert.deepEqual(
+        capturedAuthData,
+        mockResponse,
+        'session.impersonate received response data',
+      );
     } finally {
       globalThis.fetch = originalFetch;
     }
@@ -110,7 +132,9 @@ module('Unit | Service | auth', function (hooks) {
     const session = this.owner.lookup('service:session');
 
     let exitCalled = false;
-    session.exitImpersonation = () => { exitCalled = true; };
+    session.exitImpersonation = () => {
+      exitCalled = true;
+    };
 
     await service.exitImpersonation();
     assert.true(exitCalled, 'session.exitImpersonation was called');

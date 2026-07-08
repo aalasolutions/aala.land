@@ -21,7 +21,6 @@ export const AMENITY_OPTIONS = [
   { key: 'study_room', label: 'Study Room', icon: 'book-open' },
 ];
 
-
 export const PROPERTY_STATUS_OPTIONS = [
   { value: 'available', label: 'Available' },
   { value: 'rented', label: 'Rented' },
@@ -31,7 +30,7 @@ export const PROPERTY_STATUS_OPTIONS = [
 
 export const PROPERTY_FILTER_STATUS_OPTIONS = [
   { value: '', label: 'All' },
-  ...PROPERTY_STATUS_OPTIONS
+  ...PROPERTY_STATUS_OPTIONS,
 ];
 
 export const PROPERTY_TYPE_OPTIONS = [
@@ -51,13 +50,11 @@ export const PROPERTY_SUB_TYPES = [
   { value: 'LAND_PLOT', label: 'Plot of Land' },
 ];
 
-
 export const FILTER_TYPE_OPTIONS = [
   { value: '', label: 'All' },
   { value: 'RENTAL', label: 'For Rent' },
   { value: 'FOR_SALE', label: 'For Sale' },
 ];
-
 
 export const FILTER_BEDS_OPTIONS = [
   { value: '', label: 'Any' },
@@ -67,8 +64,6 @@ export const FILTER_BEDS_OPTIONS = [
   { value: '3', label: '3' },
   { value: '4', label: '4+' },
 ];
-
-
 
 export const CHEQUE_TYPE_OPTIONS = [
   { value: 'RENT', label: 'Rent' },
@@ -83,7 +78,6 @@ export const CHEQUE_TYPE_OPTIONS = [
 
 export const EMPTY_UNIT_OPTION = { value: '', label: 'No property linked' };
 
-
 export const FILTER_STATUS_OPTIONS = [
   { value: '', label: 'All' },
   { value: 'PENDING', label: 'Pending' },
@@ -96,7 +90,6 @@ export const COMMISSION_TYPE_OPTIONS = [
   { value: 'RENTAL', label: 'Rental' },
   { value: 'REFERRAL', label: 'Referral' },
 ];
-
 
 export const CONTACT_TYPES = [
   { value: 'LEAD', label: 'Lead / Prospect' },
@@ -111,7 +104,6 @@ export const CONTACT_TYPES = [
   { value: 'PROPERTY_MANAGER', label: 'Property Manager' },
   { value: 'OTHER', label: 'Other' },
 ];
-
 
 export const CATEGORIES = [
   { value: '', label: 'All Categories' },
@@ -157,9 +149,6 @@ export const ACCESS_LEVELS = [
   { value: 'ADMIN_ONLY', label: 'Admin Only' },
 ];
 
-
-
-
 export const EMAIL_CATEGORIES = [
   { value: 'FOLLOW_UP', label: 'Follow Up' },
   { value: 'WELCOME', label: 'Welcome' },
@@ -174,11 +163,6 @@ export const EMAIL_FILTER_CATEGORIES = [
   { value: '', label: 'All Categories' },
   ...EMAIL_CATEGORIES,
 ];
-
-
-
-
-
 
 export const TRANSACTION_TYPE_OPTIONS = [
   // --- Standard P&L Cash Flows ---
@@ -226,7 +210,10 @@ export const TRANSACTION_CATEGORY_OPTIONS = [
   { value: 'CLEANING_TURNOVER', label: 'Cleaning & Move-out Turnover' },
 
   // --- Government & Legal Fees ---
-  { value: 'GOVT_REGISTRATION', label: 'Government Fees (Ejari/DLD/Title Deed)' },
+  {
+    value: 'GOVT_REGISTRATION',
+    label: 'Government Fees (Ejari/DLD/Title Deed)',
+  },
   { value: 'LEGAL_DISPUTE', label: 'Legal & RDC Tribunal Fees' },
   { value: 'TAX_VAT', label: 'VAT / Tax Payments' },
 
@@ -236,7 +223,6 @@ export const TRANSACTION_CATEGORY_OPTIONS = [
 
   { value: 'OTHER', label: 'Other Miscellaneous' },
 ];
-
 
 export const PAYMENT_METHOD_OPTIONS = [
   // --- Traditional Physical Methods ---
@@ -258,7 +244,6 @@ export const PAYMENT_METHOD_OPTIONS = [
   // --- Internal Adjustments ---
   { value: 'LEDGER_SETTLEMENT', label: 'Ledger Offset / Contra Account' },
 ];
-
 
 export const TRANSACTION_STATUS_OPTIONS = [
   // --- Initialization States ---
@@ -282,7 +267,6 @@ export const TRANSACTION_STATUS_OPTIONS = [
   { value: 'DISPUTED', label: 'Disputed / Chargeback' },
 ];
 
-
 export const LEAD_STAGES = [
   { status: 'NEW', label: 'New Lead' },
   { status: 'QUALIFYING', label: 'Qualifying / Screening' },
@@ -297,26 +281,29 @@ export const LEAD_STAGES = [
 ];
 
 export const TEMPERATURE_STAGES = [
-  { temperature: 'HOT', label: 'Hot', icon: 'fire' },            // High intent, immediate mover, financing ready
-  { temperature: 'WARM', label: 'Warm', icon: 'sun' },           // Active buyer/tenant, still exploring options
-  { temperature: 'COLD', label: 'Cold', icon: 'snowflake' },     // Low engagement, browsing, timeline > 6 months
-  { temperature: 'NURTURE', label: 'Nurture', icon: 'sprout' },   // Not ready now, but good future prospect (replaced 'DEAD')
-  { temperature: 'LOST_DEAD', label: 'Dead', icon: 'skull' },    // Invalid data, bought elsewhere, completely unresponsive
+  { temperature: 'HOT', label: 'Hot', icon: 'fire' }, // High intent, immediate mover, financing ready
+  { temperature: 'WARM', label: 'Warm', icon: 'sun' }, // Active buyer/tenant, still exploring options
+  { temperature: 'COLD', label: 'Cold', icon: 'snowflake' }, // Low engagement, browsing, timeline > 6 months
+  { temperature: 'NURTURE', label: 'Nurture', icon: 'sprout' }, // Not ready now, but good future prospect (replaced 'DEAD')
+  { temperature: 'LOST_DEAD', label: 'Dead', icon: 'skull' }, // Invalid data, bought elsewhere, completely unresponsive
 ];
 
-
-export const LEAD_STATUS_OPTIONS = LEAD_STAGES.map(({ status, label }) => ({ value: status, label }));
-
-export const TEMPERATURE_OPTIONS = TEMPERATURE_STAGES.map(({ temperature, label }) => ({
-  value: temperature,
+export const LEAD_STATUS_OPTIONS = LEAD_STAGES.map(({ status, label }) => ({
+  value: status,
   label,
 }));
 
+export const TEMPERATURE_OPTIONS = TEMPERATURE_STAGES.map(
+  ({ temperature, label }) => ({
+    value: temperature,
+    label,
+  }),
+);
+
 export const NONE_OPTION = { value: '', label: '-- None --' };
 
-
-
-export const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+export const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 export const LEASE_TYPE_OPTIONS = [
   // --- Standard Long-Term Leases ---
   { value: 'RESIDENTIAL', label: 'Residential (Long-Term)' },
@@ -351,7 +338,6 @@ export const MAINTENANCE_STATUS_OPTIONS = [
   { value: 'COMPLETED', label: 'Completed & Closed' },
   { value: 'CANCELLED', label: 'Cancelled' },
 ];
-
 
 export const MONTH_OPTIONS = [
   { value: '', label: 'All Time' },
@@ -401,8 +387,6 @@ export const MAINTENANCE_CATEGORY_OPTIONS = [
   { value: 'OTHER', label: 'Other Miscellaneous' },
 ];
 
-
-
 export const SPECIALTY_OPTIONS = [
   { value: 'PLUMBING', label: 'Plumbing' },
   { value: 'ELECTRICAL', label: 'Electrical' },
@@ -415,7 +399,6 @@ export const SPECIALTY_OPTIONS = [
   { value: 'GENERAL', label: 'General' },
 ];
 
-
 export const ALL_ROLES = [
   { value: 'company_admin', label: 'Company Admin' },
   { value: 'admin', label: 'Admin' },
@@ -423,5 +406,3 @@ export const ALL_ROLES = [
   { value: 'agent', label: 'Agent' },
   { value: 'accountant', label: 'Accountant' },
 ];
-
-

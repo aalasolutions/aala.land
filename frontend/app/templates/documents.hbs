@@ -7,13 +7,27 @@
       <h2 class="font-2xl font-bold">Documents</h2>
       <span class="text-muted font-sm">({{format-number @model.total}})</span>
     </div>
-    <button type="button" class="btn btn-primary" data-test-upload-btn {{on "click" this.openCreate}}>
-      <Ui::Ph @icon="upload-simple" /> Upload Document
+    <button
+      type="button"
+      class="btn btn-primary"
+      data-test-upload-btn
+      {{on "click" this.openCreate}}
+    >
+      <Ui::Ph @icon="upload-simple" />
+      Upload Document
     </button>
   </div>
 
   <div class="flex gap-3">
-    <Ui::FormDropdown @id="document-category-filter" @label="" @value={{this.category}} @onChange={{this.setCategory}} @options={{this.categories}} @placeholder="All Categories" data-test-category-filter />
+    <Ui::FormDropdown
+      @id="document-category-filter"
+      @label=""
+      @value={{this.category}}
+      @onChange={{this.setCategory}}
+      @options={{this.categories}}
+      @placeholder="All Categories"
+      data-test-category-filter
+    />
   </div>
 
   {{#if @model.documents.length}}
@@ -40,20 +54,41 @@
                     <span class="font-bold">{{doc.name}}</span>
                   </div>
                 </td>
-                <td><span class="type-badge type-{{lowercase doc.category}}">{{doc.category}}</span></td>
-                <td><span class="status-badge status-{{lowercase doc.accessLevel}}">{{doc.accessLevel}}</span></td>
+                <td><span
+                    class="type-badge type-{{lowercase doc.category}}"
+                  >{{doc.category}}</span></td>
+                <td><span
+                    class="status-badge status-{{lowercase doc.accessLevel}}"
+                  >{{doc.accessLevel}}</span></td>
                 <td class="font-sm text-muted">{{doc.fileType}}</td>
                 <td class="font-sm">v{{doc.version}}</td>
-                <td class="font-sm text-muted">{{format-date doc.createdAt}}</td>
+                <td class="font-sm text-muted">{{format-date
+                    doc.createdAt
+                  }}</td>
                 <td>
                   <div class="flex gap-2">
-                    <button type="button" class="btn btn-secondary btn-xs" data-test-download-btn {{on "click" (fn this.downloadDocument doc)}}>
+                    <button
+                      type="button"
+                      class="btn btn-secondary btn-xs"
+                      data-test-download-btn
+                      {{on "click" (fn this.downloadDocument doc)}}
+                    >
                       <Ui::Ph @icon="download-simple" />
                     </button>
-                    <button type="button" class="btn btn-secondary btn-xs" data-test-edit-btn {{on "click" (fn this.openEdit doc)}}>
+                    <button
+                      type="button"
+                      class="btn btn-secondary btn-xs"
+                      data-test-edit-btn
+                      {{on "click" (fn this.openEdit doc)}}
+                    >
                       <Ui::Ph @icon="pencil-simple" />
                     </button>
-                    <button type="button" class="btn btn-danger btn-xs" data-test-delete-btn {{on "click" (fn this.openDelete doc)}}>
+                    <button
+                      type="button"
+                      class="btn btn-danger btn-xs"
+                      data-test-delete-btn
+                      {{on "click" (fn this.openDelete doc)}}
+                    >
                       <Ui::Ph @icon="trash" />
                     </button>
                   </div>
@@ -77,7 +112,8 @@
   {{else}}
     {{#if @model.total}}
       <div class="glass-panel p-8 text-center">
-        <p class="text-muted mt-3">No documents on page {{this.page}}. Navigate back to find documents.</p>
+        <p class="text-muted mt-3">No documents on page
+          {{this.page}}. Navigate back to find documents.</p>
       </div>
       <Ui::Pagination
         @selectId="documents-limit"
@@ -91,7 +127,8 @@
     {{else}}
       <div class="glass-panel p-8 text-center">
         <Ui::Ph @icon="file-arrow-up" @size="48px" @color="var(--text-muted)" />
-        <p class="text-muted mt-3">No documents yet. Upload your first document above.</p>
+        <p class="text-muted mt-3">No documents yet. Upload your first document
+          above.</p>
       </div>
     {{/if}}
   {{/if}}
@@ -105,30 +142,66 @@
 >
   <form class="flex col gap-4" {{on "submit" this.saveDocument}}>
     <div class="flex col gap-2">
-      <label class="font-sm text-muted" for="d-file">File {{unless this.editDocument "*"}}</label>
-      <input id="d-file" type="file" class="form-input" data-test-file-input
+      <label class="font-sm text-muted" for="d-file">File
+        {{unless this.editDocument "*"}}</label>
+      <input
+        id="d-file"
+        type="file"
+        class="form-input"
+        data-test-file-input
         accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.webp,.gif"
-        {{on "change" this.onFileSelect}} />
+        {{on "change" this.onFileSelect}}
+      />
       {{#if this.selectedFile}}
         <p class="font-xs text-muted" data-test-selected-file>
-          Selected: {{this.selectedFile.name}} ({{format-bytes this.selectedFile.size}})
+          Selected:
+          {{this.selectedFile.name}}
+          ({{format-bytes this.selectedFile.size}})
         </p>
       {{/if}}
     </div>
 
-    <Ui::FormInput @label="Document Name" @id="d-name" @type="text" @placeholder="Lease Agreement Q1 2026" @value={{this.formName}} @onChange={{fn this.setField "formName"}} @required={{true}} data-test-field-name />
+    <Ui::FormInput
+      @label="Document Name"
+      @id="d-name"
+      @type="text"
+      @placeholder="Lease Agreement Q1 2026"
+      @value={{this.formName}}
+      @onChange={{fn this.setField "formName"}}
+      @required={{true}}
+      data-test-field-name
+    />
 
     <div class="flex gap-4">
       <div class="flex col gap-2 flex-1">
-        <Ui::FormDropdown @label="Category" @id="d-category" @value={{this.formCategory}} @onChange={{fn this.setField "formCategory"}} @options={{this.categoryOptions}} @placeholder="Select category..." data-test-field-category />
+        <Ui::FormDropdown
+          @label="Category"
+          @id="d-category"
+          @value={{this.formCategory}}
+          @onChange={{fn this.setField "formCategory"}}
+          @options={{this.categoryOptions}}
+          @placeholder="Select category..."
+          data-test-field-category
+        />
       </div>
       <div class="flex col gap-2 flex-1">
-        <Ui::FormDropdown @label="Access Level" @id="d-access" @value={{this.formAccessLevel}} @onChange={{fn this.setField "formAccessLevel"}} @options={{this.accessLevels}} @placeholder="Select access level..." data-test-field-access />
+        <Ui::FormDropdown
+          @label="Access Level"
+          @id="d-access"
+          @value={{this.formAccessLevel}}
+          @onChange={{fn this.setField "formAccessLevel"}}
+          @options={{this.accessLevels}}
+          @placeholder="Select access level..."
+          data-test-field-access
+        />
       </div>
     </div>
 
     {{#if this.uploadProgress}}
-      <p class="font-sm text-muted" data-test-upload-progress>{{this.uploadProgress}}</p>
+      <p
+        class="font-sm text-muted"
+        data-test-upload-progress
+      >{{this.uploadProgress}}</p>
     {{/if}}
 
     {{#if this.errorMsg}}
@@ -136,8 +209,19 @@
     {{/if}}
 
     <div class="flex gap-3 mt-2">
-      <Ui::AppButton @variant="secondary" @text="Cancel" @onClick={{this.closeModal}} />
-      <Ui::AppButton @variant="primary" @buttonType="submit" @text={{if this.editDocument "Update" "Upload"}} @loading={{this.isSaving}} @loadingText="Uploading..." data-test-save-btn />
+      <Ui::AppButton
+        @variant="secondary"
+        @text="Cancel"
+        @onClick={{this.closeModal}}
+      />
+      <Ui::AppButton
+        @variant="primary"
+        @buttonType="submit"
+        @text={{if this.editDocument "Update" "Upload"}}
+        @loading={{this.isSaving}}
+        @loadingText="Uploading..."
+        data-test-save-btn
+      />
     </div>
   </form>
 </Ui::Modal>

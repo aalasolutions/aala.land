@@ -3,35 +3,64 @@
 <div data-test-properties-page class="flex col gap-6">
   <div class="flex between x-center">
     <div>
-      <h2 class="font-3xl font-bold"><Ui::Ph @icon="buildings" @size="28px" /> Properties</h2>
+      <h2 class="font-3xl font-bold"><Ui::Ph @icon="buildings" @size="28px" />
+        Properties</h2>
       <p class="text-muted mt-1">Locations, assets, and units.</p>
     </div>
     <div class="flex gap-3 x-center">
       <div class="flex gap-1" data-test-view-toggle>
-        <button type="button" class="btn btn-sm {{if (eq this.currentView 'cards') 'btn-primary' 'btn-secondary'}}" {{on "click" (fn this.switchView "cards")}}>
-          <Ui::Ph @icon="squares-four" /> Cards
+        <button
+          type="button"
+          class="btn btn-sm
+            {{if (eq this.currentView 'cards') 'btn-primary' 'btn-secondary'}}"
+          {{on "click" (fn this.switchView "cards")}}
+        >
+          <Ui::Ph @icon="squares-four" />
+          Cards
         </button>
-        <button type="button" class="btn btn-sm {{if (eq this.currentView 'list') 'btn-primary' 'btn-secondary'}}" {{on "click" (fn this.switchView "list")}}>
-          <Ui::Ph @icon="list" /> List
+        <button
+          type="button"
+          class="btn btn-sm
+            {{if (eq this.currentView 'list') 'btn-primary' 'btn-secondary'}}"
+          {{on "click" (fn this.switchView "list")}}
+        >
+          <Ui::Ph @icon="list" />
+          List
         </button>
-        <button type="button" class="btn btn-sm {{if (eq this.currentView 'browse') 'btn-primary' 'btn-secondary'}}" {{on "click" (fn this.switchView "browse")}}>
-          <Ui::Ph @icon="grid-four" /> Browse Units
+        <button
+          type="button"
+          class="btn btn-sm
+            {{if (eq this.currentView 'browse') 'btn-primary' 'btn-secondary'}}"
+          {{on "click" (fn this.switchView "browse")}}
+        >
+          <Ui::Ph @icon="grid-four" />
+          Browse Units
         </button>
       </div>
       {{#unless (eq this.currentView "browse")}}
-        <button type="button" class="btn btn-primary" {{on "click" this.openNewUnitModal}} data-test-new-unit>
-          <Ui::Ph @icon="plus" /> New Unit
+        <button
+          type="button"
+          class="btn btn-primary"
+          {{on "click" this.openNewUnitModal}}
+          data-test-new-unit
+        >
+          <Ui::Ph @icon="plus" />
+          New Unit
         </button>
       {{/unless}}
     </div>
   </div>
 
   {{#if (eq this.currentView "cards")}}
-    {{!-- CARDS VIEW --}}
+    {{! CARDS VIEW }}
     {{#if @model.length}}
       <div class="flex col gap-3">
         {{#each @model as |loc|}}
-          <LinkTo @route="properties.detail" @model={{loc.id}} class="glass-panel p-5 flex between x-center hover-lift">
+          <LinkTo
+            @route="properties.detail"
+            @model={{loc.id}}
+            class="glass-panel p-5 flex between x-center hover-lift"
+          >
             <div class="flex gap-6">
               <div>
                 <h4 class="font-md font-bold">{{loc.name}}</h4>
@@ -48,11 +77,12 @@
       </div>
     {{else}}
       <div class="glass-panel p-8 text-center">
-        <p class="text-muted">No assets yet. Click "New Unit" to add your first property.</p>
+        <p class="text-muted">No assets yet. Click "New Unit" to add your first
+          property.</p>
       </div>
     {{/if}}
   {{else if (eq this.currentView "list")}}
-    {{!-- LIST VIEW --}}
+    {{! LIST VIEW }}
     {{#if @model.length}}
       <div class="data-table-wrapper">
         <table class="data-table">
@@ -73,7 +103,11 @@
                 <td>{{loc.assetCount}}</td>
                 <td>{{loc.unitCount}}</td>
                 <td class="text-right">
-                  <LinkTo @route="properties.detail" @model={{loc.id}} class="btn btn-primary btn-xs">
+                  <LinkTo
+                    @route="properties.detail"
+                    @model={{loc.id}}
+                    class="btn btn-primary btn-xs"
+                  >
                     View
                   </LinkTo>
                 </td>
@@ -84,27 +118,73 @@
       </div>
     {{else}}
       <div class="glass-panel p-8 text-center">
-        <p class="text-muted">No assets yet. Click "New Unit" to add your first property.</p>
+        <p class="text-muted">No assets yet. Click "New Unit" to add your first
+          property.</p>
       </div>
     {{/if}}
   {{else}}
-    {{!-- BROWSE UNITS VIEW --}}
+    {{! BROWSE UNITS VIEW }}
     <div class="glass-panel p-4 flex col gap-4" data-test-browse-filters>
       <div class="flex gap-4 wrap x-center">
-        <Ui::FormDropdown @id="browse-type-filter" @label="Type" @value={{this.filterType}} @onChange={{this.setFilterType}} @options={{this.filterTypeOptions}} @placeholder="All" data-test-filter-type />
-        <Ui::FormDropdown @id="browse-status-filter" @label="Status" @value={{this.filterStatus}} @onChange={{this.setFilterStatus}} @options={{this.filterStatusOptions}} @placeholder="All" data-test-filter-status />
-        <Ui::FormDropdown @id="browse-beds-filter" @label="Bedrooms" @value={{this.filterBeds}} @onChange={{this.setFilterBeds}} @options={{this.filterBedsOptions}} @placeholder="Any" data-test-filter-beds />
+        <Ui::FormDropdown
+          @id="browse-type-filter"
+          @label="Type"
+          @value={{this.filterType}}
+          @onChange={{this.setFilterType}}
+          @options={{this.filterTypeOptions}}
+          @placeholder="All"
+          data-test-filter-type
+        />
+        <Ui::FormDropdown
+          @id="browse-status-filter"
+          @label="Status"
+          @value={{this.filterStatus}}
+          @onChange={{this.setFilterStatus}}
+          @options={{this.filterStatusOptions}}
+          @placeholder="All"
+          data-test-filter-status
+        />
+        <Ui::FormDropdown
+          @id="browse-beds-filter"
+          @label="Bedrooms"
+          @value={{this.filterBeds}}
+          @onChange={{this.setFilterBeds}}
+          @options={{this.filterBedsOptions}}
+          @placeholder="Any"
+          data-test-filter-beds
+        />
         <div class="flex col gap-1">
           <label class="font-xs text-muted">Min Price</label>
-          <input type="number" class="form-input form-input--price-range" placeholder="Min" value={{this.filterMinPrice}} data-test-filter-min-price {{on "input" (fn this.setField "filterMinPrice")}} {{on "change" this.applyFilters}} />
+          <input
+            type="number"
+            class="form-input form-input--price-range"
+            placeholder="Min"
+            value={{this.filterMinPrice}}
+            data-test-filter-min-price
+            {{on "input" (fn this.setField "filterMinPrice")}}
+            {{on "change" this.applyFilters}}
+          />
         </div>
         <div class="flex col gap-1">
           <label class="font-xs text-muted">Max Price</label>
-          <input type="number" class="form-input form-input--price-range" placeholder="Max" value={{this.filterMaxPrice}} data-test-filter-max-price {{on "input" (fn this.setField "filterMaxPrice")}} {{on "change" this.applyFilters}} />
+          <input
+            type="number"
+            class="form-input form-input--price-range"
+            placeholder="Max"
+            value={{this.filterMaxPrice}}
+            data-test-filter-max-price
+            {{on "input" (fn this.setField "filterMaxPrice")}}
+            {{on "change" this.applyFilters}}
+          />
         </div>
         <div class="flex col gap-1">
           <label class="font-xs text-muted">&nbsp;</label>
-          <button class="btn btn-secondary btn-sm" data-test-clear-filters type="button" {{on "click" this.clearFilters}}>Clear</button>
+          <button
+            class="btn btn-secondary btn-sm"
+            data-test-clear-filters
+            type="button"
+            {{on "click" this.clearFilters}}
+          >Clear</button>
         </div>
       </div>
 
@@ -112,15 +192,28 @@
         <label class="font-xs text-muted mb-1">Amenities</label>
         <div class="flex gap-2 wrap">
           {{#each this.amenityOptions as |opt|}}
-            <button type="button" class="amenity-chip {{if (includes this.filterAmenities opt.key) 'amenity-chip-active'}}" data-test-amenity-filter={{opt.key}} {{on "click" (fn this.toggleBrowseAmenity opt.key)}}>
-              <Ui::Ph @icon={{opt.icon}} /> {{opt.label}}
+            <button
+              type="button"
+              class="amenity-chip
+                {{if
+                  (includes this.filterAmenities opt.key)
+                  'amenity-chip-active'
+                }}"
+              data-test-amenity-filter={{opt.key}}
+              {{on "click" (fn this.toggleBrowseAmenity opt.key)}}
+            >
+              <Ui::Ph @icon={{opt.icon}} />
+              {{opt.label}}
             </button>
           {{/each}}
         </div>
       </div>
     </div>
 
-    <p class="text-muted font-sm" data-test-browse-count>{{format-number this.browseTotal}} units found</p>
+    <p class="text-muted font-sm" data-test-browse-count>{{format-number
+        this.browseTotal
+      }}
+      units found</p>
 
     {{#if this.isLoadingBrowse}}
       <div class="glass-panel p-8 text-center">
@@ -129,33 +222,58 @@
     {{else if this.browseUnits.length}}
       <div class="browse-unit-grid" data-test-browse-grid>
         {{#each this.browseUnits as |unit|}}
-          <LinkTo @route="properties.unit" @models={{array unit.areaId unit.id}} class="unit-browse-card glass-panel" data-test-browse-unit={{unit.id}}>
+          <LinkTo
+            @route="properties.unit"
+            @models={{array unit.areaId unit.id}}
+            class="unit-browse-card glass-panel"
+            data-test-browse-unit={{unit.id}}
+          >
             <div class="unit-card-photo">
               {{#if unit.photos.length}}
-                <img src={{object-at unit.photos 0}} alt="Unit {{unit.unitNumber}}" />
+                <img
+                  src={{object-at unit.photos 0}}
+                  alt="Unit {{unit.unitNumber}}"
+                />
               {{else}}
-                <div class="unit-card-photo-empty"><Ui::Ph @icon="buildings" /></div>
+                <div class="unit-card-photo-empty"><Ui::Ph
+                    @icon="buildings"
+                  /></div>
               {{/if}}
             </div>
             <div class="p-4 flex col gap-2">
               <div class="flex between x-center">
                 <p class="font-bold">Unit {{unit.unitNumber}}</p>
-                <span class="status-badge status-{{unit.status}}">{{capitalize unit.status}}</span>
+                <span class="status-badge status-{{unit.status}}">{{capitalize
+                    unit.status
+                  }}</span>
               </div>
-              <p class="font-xs text-muted">{{unit.assetName}} &middot; {{unit.areaName}}</p>
+              <p class="font-xs text-muted">{{unit.assetName}}
+                &middot;
+                {{unit.areaName}}</p>
               {{#if unit.price}}
-                <p class="font-lg font-bold text-success">{{format-currency unit.price}}</p>
+                <p class="font-lg font-bold text-success">{{format-currency
+                    unit.price
+                  }}</p>
               {{/if}}
               <div class="flex gap-3 font-xs text-muted">
-                {{#if unit.bedrooms}}<span><Ui::Ph @icon="bed" /> {{unit.bedrooms}} bed</span>{{/if}}
-                {{#if unit.bathrooms}}<span><Ui::Ph @icon="bathtub" /> {{unit.bathrooms}} bath</span>{{/if}}
-                {{#if unit.sqFt}}<span><Ui::Ph @icon="ruler" /> {{format-number unit.sqFt}} sqft</span>{{/if}}
+                {{#if unit.bedrooms}}<span><Ui::Ph @icon="bed" />
+                    {{unit.bedrooms}}
+                    bed</span>{{/if}}
+                {{#if unit.bathrooms}}<span><Ui::Ph @icon="bathtub" />
+                    {{unit.bathrooms}}
+                    bath</span>{{/if}}
+                {{#if unit.sqFt}}<span><Ui::Ph @icon="ruler" />
+                    {{format-number unit.sqFt}}
+                    sqft</span>{{/if}}
               </div>
               {{#if unit.ownerName}}
-                <p class="font-xs text-muted"><Ui::Ph @icon="user" /> {{unit.ownerName}}</p>
+                <p class="font-xs text-muted"><Ui::Ph @icon="user" />
+                  {{unit.ownerName}}</p>
               {{/if}}
               {{#if unit.propertyType}}
-                <span class="type-badge type-{{lowercase unit.propertyType}}">{{if (eq unit.propertyType "FOR_SALE") "Sale" "Rent"}}</span>
+                <span
+                  class="type-badge type-{{lowercase unit.propertyType}}"
+                >{{if (eq unit.propertyType "FOR_SALE") "Sale" "Rent"}}</span>
               {{/if}}
             </div>
           </LinkTo>
@@ -164,13 +282,26 @@
 
       {{#if this.browseHasNextPage}}
         <div class="flex center gap-4" data-test-browse-pagination>
-          <button class="btn btn-secondary btn-sm" disabled={{eq this.browsePage 1}} type="button" {{on "click" this.browsePrevPage}}>Previous</button>
+          <button
+            class="btn btn-secondary btn-sm"
+            disabled={{eq this.browsePage 1}}
+            type="button"
+            {{on "click" this.browsePrevPage}}
+          >Previous</button>
           <span class="font-sm text-muted">Page {{this.browsePage}}</span>
-          <button class="btn btn-secondary btn-sm" type="button" {{on "click" this.browseNextPage}}>Next</button>
+          <button
+            class="btn btn-secondary btn-sm"
+            type="button"
+            {{on "click" this.browseNextPage}}
+          >Next</button>
         </div>
       {{else if (gt this.browsePage 1)}}
         <div class="flex center gap-4" data-test-browse-pagination>
-          <button class="btn btn-secondary btn-sm" type="button" {{on "click" this.browsePrevPage}}>Previous</button>
+          <button
+            class="btn btn-secondary btn-sm"
+            type="button"
+            {{on "click" this.browsePrevPage}}
+          >Previous</button>
           <span class="font-sm text-muted">Page {{this.browsePage}}</span>
         </div>
       {{/if}}
@@ -183,8 +314,13 @@
   {{/if}}
 </div>
 
-{{!-- New Unit modal (cascading: city > location > asset > unit) --}}
-<Ui::Modal @isOpen={{this.showNewUnitModal}} @title="New Unit" @onClose={{this.closeNewUnitModal}} @showClose={{true}}>
+{{! New Unit modal (cascading: city > location > asset > unit) }}
+<Ui::Modal
+  @isOpen={{this.showNewUnitModal}}
+  @title="New Unit"
+  @onClose={{this.closeNewUnitModal}}
+  @showClose={{true}}
+>
   <form class="flex col gap-4" {{on "submit" this.saveNewUnit}}>
     <div class="flex col gap-2">
       <label class="font-sm text-muted">City *</label>
@@ -228,52 +364,124 @@
     {{/if}}
     {{#if this.selectedAsset}}
       <hr class="border-t border-light" />
-      <Ui::FormInput @label="Unit Number" @id="nu-number" @type="text" @placeholder="e.g. 101, Villa A" @value={{this.newUnitNumber}} @onChange={{fn this.setField "newUnitNumber"}} @required={{true}} />
+      <Ui::FormInput
+        @label="Unit Number"
+        @id="nu-number"
+        @type="text"
+        @placeholder="e.g. 101, Villa A"
+        @value={{this.newUnitNumber}}
+        @onChange={{fn this.setField "newUnitNumber"}}
+        @required={{true}}
+      />
 
       <div class="flex gap-4">
         <div class="flex col gap-2 flex-1">
-          <Ui::FormDropdown @label="Listing Type" @id="nu-type" @value={{this.newUnitType}} @onChange={{fn this.setField "newUnitType"}} @options={{this.unitTypeOptions}} @placeholder="Not Listed" />
+          <Ui::FormDropdown
+            @label="Listing Type"
+            @id="nu-type"
+            @value={{this.newUnitType}}
+            @onChange={{fn this.setField "newUnitType"}}
+            @options={{this.unitTypeOptions}}
+            @placeholder="Not Listed"
+          />
         </div>
         <div class="flex col gap-2 flex-1">
-          <Ui::FormDropdown @label="Status" @id="nu-status" @value={{this.newUnitStatus}} @onChange={{fn this.setField "newUnitStatus"}} @options={{this.unitStatusOptions}} @placeholder="Select status..." />
+          <Ui::FormDropdown
+            @label="Status"
+            @id="nu-status"
+            @value={{this.newUnitStatus}}
+            @onChange={{fn this.setField "newUnitStatus"}}
+            @options={{this.unitStatusOptions}}
+            @placeholder="Select status..."
+          />
         </div>
       </div>
 
       <div class="flex gap-4">
         <div class="flex col gap-2 flex-1">
-          <Ui::FormInput @label="Price" @id="nu-price" @type="number" @placeholder="0" @value={{this.newUnitPrice}} @onChange={{fn this.setField "newUnitPrice"}} @min={{0}} />
+          <Ui::FormInput
+            @label="Price"
+            @id="nu-price"
+            @type="number"
+            @placeholder="0"
+            @value={{this.newUnitPrice}}
+            @onChange={{fn this.setField "newUnitPrice"}}
+            @min={{0}}
+          />
         </div>
         <div class="flex col gap-2 flex-1">
-          <Ui::FormInput @label="Bedrooms" @id="nu-beds" @type="number" @placeholder="0" @value={{this.newUnitBedrooms}} @onChange={{fn this.setField "newUnitBedrooms"}} @min={{0}} />
+          <Ui::FormInput
+            @label="Bedrooms"
+            @id="nu-beds"
+            @type="number"
+            @placeholder="0"
+            @value={{this.newUnitBedrooms}}
+            @onChange={{fn this.setField "newUnitBedrooms"}}
+            @min={{0}}
+          />
         </div>
       </div>
 
-      <Ui::FormInput @label="Bathrooms" @id="nu-baths" @type="number" @placeholder="0" @value={{this.newUnitBathrooms}} @onChange={{fn this.setField "newUnitBathrooms"}} @min={{0}} />
+      <Ui::FormInput
+        @label="Bathrooms"
+        @id="nu-baths"
+        @type="number"
+        @placeholder="0"
+        @value={{this.newUnitBathrooms}}
+        @onChange={{fn this.setField "newUnitBathrooms"}}
+        @min={{0}}
+      />
     {{/if}}
     {{#if this.newUnitError}}
       <p class="font-sm text-danger">{{this.newUnitError}}</p>
     {{/if}}
     <div class="flex gap-3 mt-2">
-      <Ui::AppButton @variant="secondary" @text="Cancel" @onClick={{this.closeNewUnitModal}} />
+      <Ui::AppButton
+        @variant="secondary"
+        @text="Cancel"
+        @onClick={{this.closeNewUnitModal}}
+      />
       {{#if this.selectedAsset}}
-        <Ui::AppButton @variant="primary" @buttonType="submit" @text="Create Unit" @loading={{this.isSavingNewUnit}} @loadingText="Creating..." />
+        <Ui::AppButton
+          @variant="primary"
+          @buttonType="submit"
+          @text="Create Unit"
+          @loading={{this.isSavingNewUnit}}
+          @loadingText="Creating..."
+        />
       {{/if}}
     </div>
   </form>
 </Ui::Modal>
 
-{{!-- Bulk import modal --}}
-<Ui::Modal @isOpen={{this.showImportModal}} @title="Bulk Import Properties" @onClose={{this.closeImportModal}} @showClose={{true}} @panelClass="modal-md">
+{{! Bulk import modal }}
+<Ui::Modal
+  @isOpen={{this.showImportModal}}
+  @title="Bulk Import Properties"
+  @onClose={{this.closeImportModal}}
+  @showClose={{true}}
+  @panelClass="modal-md"
+>
   <div class="flex col gap-4">
     <p class="text-muted">Import multiple property areas from a CSV file.</p>
 
-    <button type="button" class="btn btn-secondary" {{on "click" this.downloadTemplate}}>
+    <button
+      type="button"
+      class="btn btn-secondary"
+      {{on "click" this.downloadTemplate}}
+    >
       Download CSV Template
     </button>
 
     <div class="flex col gap-2">
       <label class="font-sm text-muted" for="import-file">Select CSV File *</label>
-      <input id="import-file" type="file" accept=".csv" class="form-input" {{on "change" this.handleFileSelect}} />
+      <input
+        id="import-file"
+        type="file"
+        accept=".csv"
+        class="form-input"
+        {{on "change" this.handleFileSelect}}
+      />
     </div>
 
     {{#if this.importPreview}}
@@ -290,9 +498,11 @@
     {{#if this.importResults}}
       <div class="import-results">
         <p class="font-sm font-bold">Import Results:</p>
-        <p class="font-sm text-success">{{this.importResults.created}} areas created</p>
+        <p class="font-sm text-success">{{this.importResults.created}}
+          areas created</p>
         {{#if this.importResults.failed}}
-          <p class="font-sm text-danger">{{this.importResults.failed}} failed</p>
+          <p class="font-sm text-danger">{{this.importResults.failed}}
+            failed</p>
         {{/if}}
         {{#if this.importResults.errors}}
           <div class="import-errors mt-2">
@@ -306,10 +516,19 @@
     {{/if}}
 
     <div class="flex gap-3 mt-2">
-      <button type="button" class="btn btn-secondary" {{on "click" this.closeImportModal}}>
+      <button
+        type="button"
+        class="btn btn-secondary"
+        {{on "click" this.closeImportModal}}
+      >
         Cancel
       </button>
-      <button type="button" class="btn btn-primary" disabled={{or this.isImporting (not this.importFile)}} {{on "click" this.importProperties}}>
+      <button
+        type="button"
+        class="btn btn-primary"
+        disabled={{or this.isImporting (not this.importFile)}}
+        {{on "click" this.importProperties}}
+      >
         {{if this.isImporting "Importing..." "Import"}}
       </button>
     </div>

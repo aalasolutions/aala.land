@@ -2,11 +2,13 @@ import Component from '@glimmer/component';
 
 export default class PaginationComponent extends Component {
   get resolvedLimitOptions() {
-    return this.args.limitOptions ?? [
-      { value: '10', label: '10 rows' },
-      { value: '20', label: '20 rows' },
-      { value: '50', label: '50 rows' },
-    ];
+    return (
+      this.args.limitOptions ?? [
+        { value: '10', label: '10 rows' },
+        { value: '20', label: '20 rows' },
+        { value: '50', label: '50 rows' },
+      ]
+    );
   }
 
   get selectId() {
@@ -18,7 +20,11 @@ export default class PaginationComponent extends Component {
   }
 
   get limit() {
-    return Number(this.args.limit) || Number(this.resolvedLimitOptions[0]?.value) || 10;
+    return (
+      Number(this.args.limit) ||
+      Number(this.resolvedLimitOptions[0]?.value) ||
+      10
+    );
   }
 
   get total() {

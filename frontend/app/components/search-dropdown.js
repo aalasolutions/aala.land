@@ -14,7 +14,7 @@ export default class SearchDropdownComponent extends Component {
       groups.push({
         label: 'Properties',
         groupId: 'search-group-properties-label',
-        items: results.properties.map(result => ({
+        items: results.properties.map((result) => ({
           id: `search-result-item-${index}`,
           index: index++,
           value: result,
@@ -26,7 +26,7 @@ export default class SearchDropdownComponent extends Component {
       groups.push({
         label: 'Agents',
         groupId: 'search-group-agents-label',
-        items: results.agents.map(agent => ({
+        items: results.agents.map((agent) => ({
           id: `search-result-item-${index}`,
           index: index++,
           value: agent,

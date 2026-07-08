@@ -8,7 +8,8 @@ export default class WhatsappService extends Service {
   _socket = null;
 
   get apiUrl() {
-    const base = ENV.APP.API_URL || ENV.APP.API_BASE || 'http://localhost:3010/v1';
+    const base =
+      ENV.APP.API_URL || ENV.APP.API_BASE || 'http://localhost:3010/v1';
     return new URL(base, window.location.origin).origin;
   }
 
@@ -19,10 +20,10 @@ export default class WhatsappService extends Service {
       auth: { token: this.auth.token },
     });
 
-    this._socket.on('whatsapp:status',  data => onEvent('status', data));
-    this._socket.on('whatsapp:qr',      data => onEvent('qr', data));
-    this._socket.on('whatsapp:message', data => onEvent('message', data));
-    this._socket.on('whatsapp:ai',      data => onEvent('ai', data));
+    this._socket.on('whatsapp:status', (data) => onEvent('status', data));
+    this._socket.on('whatsapp:qr', (data) => onEvent('qr', data));
+    this._socket.on('whatsapp:message', (data) => onEvent('message', data));
+    this._socket.on('whatsapp:ai', (data) => onEvent('ai', data));
 
     return this._socket;
   }
@@ -34,13 +35,29 @@ export default class WhatsappService extends Service {
     }
   }
 
-  getConnection()          { return this.auth.fetchJson('/whatsapp/connection'); }
-  getQR()                  { return this.auth.fetchJson('/whatsapp/qr'); }
-  getChats()               { return this.auth.fetchJson('/whatsapp/chats'); }
-  getAllMessages()          { return this.auth.fetchJson('/whatsapp/messages'); }
-  getMessages(chatId)      { return this.auth.fetchJson(`/whatsapp/messages/${encodeURIComponent(chatId)}`); }
-  getAi()                  { return this.auth.fetchJson('/whatsapp/ai'); }
-  getSettings()            { return this.auth.fetchJson('/whatsapp/settings'); }
+  getConnection() {
+    return this.auth.fetchJson('/whatsapp/connection');
+  }
+  getQR() {
+    return this.auth.fetchJson('/whatsapp/qr');
+  }
+  getChats() {
+    return this.auth.fetchJson('/whatsapp/chats');
+  }
+  getAllMessages() {
+    return this.auth.fetchJson('/whatsapp/messages');
+  }
+  getMessages(chatId) {
+    return this.auth.fetchJson(
+      `/whatsapp/messages/${encodeURIComponent(chatId)}`,
+    );
+  }
+  getAi() {
+    return this.auth.fetchJson('/whatsapp/ai');
+  }
+  getSettings() {
+    return this.auth.fetchJson('/whatsapp/settings');
+  }
 
   logout() {
     return this.auth.fetchJson('/whatsapp/logout', { method: 'POST' });
@@ -68,7 +85,14 @@ export default class WhatsappService extends Service {
   }
 
   mediaUrl(type, filename) {
-    const typeMap = { image: 'images', sticker: 'images', video: 'videos', audio: 'audio', ptt: 'audio', document: 'documents' };
+    const typeMap = {
+      image: 'images',
+      sticker: 'images',
+      video: 'videos',
+      audio: 'audio',
+      ptt: 'audio',
+      document: 'documents',
+    };
     const subdir = typeMap[type] ?? 'documents';
     return `${this.apiUrl}/v1/whatsapp/media/${subdir}/${encodeURIComponent(filename.split(/[/\\]/).pop())}`;
   }

@@ -5,7 +5,6 @@ import { service } from '@ember/service';
 import { ROLE_HIERARCHY } from '../utils/roles';
 import { ALL_ROLES } from 'land/constants';
 
-
 export default class TeamController extends PaginatedController {
   @service auth;
   @service notifications;
@@ -85,11 +84,17 @@ export default class TeamController extends PaginatedController {
   }
 
   get reassignOptions() {
-    return this.reassignCandidates.map((u) => ({ value: u.id, label: `${u.name} (${u.email})` }));
+    return this.reassignCandidates.map((u) => ({
+      value: u.id,
+      label: `${u.name} (${u.email})`,
+    }));
   }
 
   get removeTargetName() {
-    return this.reassignCandidates.find((u) => u.id === this.removeTargetId)?.name ?? '';
+    return (
+      this.reassignCandidates.find((u) => u.id === this.removeTargetId)?.name ??
+      ''
+    );
   }
 
   get trimKeepOptions() {
@@ -99,7 +104,9 @@ export default class TeamController extends PaginatedController {
   }
 
   get trimKeepName() {
-    return this.trimCandidates.find((u) => u.id === this.trimKeepId)?.name ?? '';
+    return (
+      this.trimCandidates.find((u) => u.id === this.trimKeepId)?.name ?? ''
+    );
   }
 
   get trimOthersCount() {
@@ -122,7 +129,9 @@ export default class TeamController extends PaginatedController {
     return excludeId ? users.filter((u) => u.id !== excludeId) : users;
   }
 
-  @action setField(fieldName, e) { this[fieldName] = e.target.value; }
+  @action setField(fieldName, e) {
+    this[fieldName] = e.target.value;
+  }
 
   @action openCreate() {
     this.formName = '';
@@ -214,7 +223,9 @@ export default class TeamController extends PaginatedController {
         body: JSON.stringify(body),
       });
 
-      this.notifications.success(isEdit ? 'Team member updated' : 'Team member created');
+      this.notifications.success(
+        isEdit ? 'Team member updated' : 'Team member created',
+      );
       this.closeModal();
       this.router.refresh('team');
     } catch (e) {
@@ -242,7 +253,8 @@ export default class TeamController extends PaginatedController {
         companyId: user.companyId ?? null,
       });
       if (this.reassignCandidates.length === 0) {
-        this.removeError = 'No other active user is available to receive this member’s records.';
+        this.removeError =
+          'No other active user is available to receive this member’s records.';
       }
     } catch (e) {
       this.removeError = e.message;
@@ -296,7 +308,10 @@ export default class TeamController extends PaginatedController {
         body,
       });
       const report = json?.data;
-      const moved = (report?.entities || []).reduce((sum, e) => sum + e.count, 0);
+      const moved = (report?.entities || []).reduce(
+        (sum, e) => sum + e.count,
+        0,
+      );
       this.notifications.success(
         `${this.userToRemove.name} ${isDelete ? 'deleted' : 'deactivated'}. ${moved} record${moved === 1 ? '' : 's'} reassigned.`,
       );
@@ -313,7 +328,9 @@ export default class TeamController extends PaginatedController {
     if (this.reactivatingUserId) return;
     this.reactivatingUserId = user.id;
     try {
-      await this.auth.fetchJson(`/users/${user.id}/reactivate`, { method: 'POST' });
+      await this.auth.fetchJson(`/users/${user.id}/reactivate`, {
+        method: 'POST',
+      });
       this.notifications.success(`${user.name} reactivated`);
       this.router.refresh('team');
     } catch (e) {
@@ -350,7 +367,8 @@ export default class TeamController extends PaginatedController {
       return;
     }
     if (this.trimOthersCount === 0) {
-      this.trimError = 'You already have only one active user. Nothing to trim.';
+      this.trimError =
+        'You already have only one active user. Nothing to trim.';
       return;
     }
     if (!this.trimReason.trim()) {

@@ -45,7 +45,8 @@ export default class LoginFormComponent extends Component {
       await this.auth.login(this.email, this.password);
       this.router.transitionTo('dashboard');
     } catch (err) {
-      this.errorMessage = err.message ?? 'Login failed. Check your credentials.';
+      this.errorMessage =
+        err.message ?? 'Login failed. Check your credentials.';
     } finally {
       this.isLoading = false;
     }
@@ -58,7 +59,9 @@ export default class LoginFormComponent extends Component {
     }
 
     try {
-      await this.googleAuth.renderButton(element, (idToken) => this.loginWithGoogle(idToken));
+      await this.googleAuth.renderButton(element, (idToken) =>
+        this.loginWithGoogle(idToken),
+      );
     } catch (err) {
       this.errorMessage = err.message || 'Failed to load Google Sign-in button';
     }
@@ -71,7 +74,8 @@ export default class LoginFormComponent extends Component {
       await this.auth.loginWithGoogle(idToken);
       this.router.transitionTo('dashboard');
     } catch (err) {
-      this.errorMessage = err.message || 'Google sign-in failed. Please try again.';
+      this.errorMessage =
+        err.message || 'Google sign-in failed. Please try again.';
     } finally {
       this.isGoogleLoading = false;
     }
@@ -101,7 +105,8 @@ export default class LoginFormComponent extends Component {
       await this.auth.requestPasswordReset(this.resetEmail);
       this.resetSent = true;
     } catch (err) {
-      this.resetError = err.message || 'Something went wrong. Please try again.';
+      this.resetError =
+        err.message || 'Something went wrong. Please try again.';
     } finally {
       this.resetLoading = false;
     }

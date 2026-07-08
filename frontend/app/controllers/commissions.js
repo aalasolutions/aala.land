@@ -27,9 +27,9 @@ export default class CommissionsController extends PaginatedController {
   commissionTypeOptions = COMMISSION_TYPE_OPTIONS;
 
   get agentOptions() {
-    return (this.model.agents || []).map(agent => ({
+    return (this.model.agents || []).map((agent) => ({
       value: agent.id,
-      label: agent.name
+      label: agent.name,
     }));
   }
 
@@ -45,7 +45,6 @@ export default class CommissionsController extends PaginatedController {
     this.filterStatus = e.target.value;
     this.page = 1;
   }
-
 
   @action openCreate() {
     this.formAgentId = '';

@@ -2,7 +2,11 @@ import PaginatedController from './paginated-base';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
-import { closeDeleteModal, confirmDeleteModal, openDeleteModal } from '../utils/delete-modal';
+import {
+  closeDeleteModal,
+  confirmDeleteModal,
+  openDeleteModal,
+} from '../utils/delete-modal';
 import { CATEGORIES, ACCESS_LEVELS } from 'land/constants';
 
 export default class DocumentsController extends PaginatedController {
@@ -44,7 +48,6 @@ export default class DocumentsController extends PaginatedController {
     this.category = e.target.value;
     this.page = 1;
   }
-
 
   @action onFileSelect(e) {
     const file = e.target.files?.[0];
@@ -98,8 +101,8 @@ export default class DocumentsController extends PaginatedController {
       if (isEdit) {
         // Edit path: metadata-only PATCH. File replacement is out of scope.
         const body = {
-          name:        this.formName,
-          category:    this.formCategory,
+          name: this.formName,
+          category: this.formCategory,
           accessLevel: this.formAccessLevel,
         };
         await this.auth.fetchJson(`/documents/${this.editDocument.id}`, {
@@ -161,7 +164,9 @@ export default class DocumentsController extends PaginatedController {
 
   @action async downloadDocument(doc) {
     try {
-      const res = await this.auth.authorizedFetch(`${this.auth.apiBase}/documents/${doc.id}/download`);
+      const res = await this.auth.authorizedFetch(
+        `${this.auth.apiBase}/documents/${doc.id}/download`,
+      );
       if (!res.ok) {
         throw new Error('Download failed');
       }

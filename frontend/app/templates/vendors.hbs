@@ -3,11 +3,18 @@
 <div data-test-vendors-page class="flex col gap-6">
   <div class="flex between x-center">
     <div>
-      <h2 class="font-3xl font-bold"><Ui::Ph @icon="toolbox" @size="28px" /> Vendors</h2>
+      <h2 class="font-3xl font-bold"><Ui::Ph @icon="toolbox" @size="28px" />
+        Vendors</h2>
       <p class="text-muted mt-1">Manage service providers and contractors.</p>
     </div>
-    <button data-test-new-vendor type="button" class="btn btn-primary" {{on "click" this.openCreate}}>
-      <Ui::Ph @icon="plus" /> New Vendor
+    <button
+      data-test-new-vendor
+      type="button"
+      class="btn btn-primary"
+      {{on "click" this.openCreate}}
+    >
+      <Ui::Ph @icon="plus" />
+      New Vendor
     </button>
   </div>
   <div>
@@ -32,22 +39,36 @@
                 <td>
                   <span class="font-bold">{{vendor.name}}</span>
                 </td>
-                <td><span class="type-badge type-{{lowercase vendor.specialty}}">{{vendor.specialty}}</span></td>
+                <td><span
+                    class="type-badge type-{{lowercase vendor.specialty}}"
+                  >{{vendor.specialty}}</span></td>
                 <td>{{vendor.phone}}</td>
                 <td>{{vendor.email}}</td>
                 <td>{{vendor.companyName}}</td>
                 <td>{{format-currency vendor.hourlyRate}}</td>
                 <td>
                   {{#if vendor.rating}}
-                    {{vendor.rating}} / 5
+                    {{vendor.rating}}
+                    / 5
                   {{/if}}
                 </td>
                 <td>
                   <div class="flex gap-2">
-                    <button data-test-edit-vendor type="button" class="btn btn-secondary btn-xs" {{on "click" (fn this.openEdit vendor)}}>
-                      <Ui::Ph @icon="pencil-simple" /> Edit
+                    <button
+                      data-test-edit-vendor
+                      type="button"
+                      class="btn btn-secondary btn-xs"
+                      {{on "click" (fn this.openEdit vendor)}}
+                    >
+                      <Ui::Ph @icon="pencil-simple" />
+                      Edit
                     </button>
-                    <button data-test-delete-vendor type="button" class="btn btn-danger btn-xs" {{on "click" (fn this.openDelete vendor)}}>
+                    <button
+                      data-test-delete-vendor
+                      type="button"
+                      class="btn btn-danger btn-xs"
+                      {{on "click" (fn this.openDelete vendor)}}
+                    >
                       <Ui::Ph @icon="trash" />
                     </button>
                   </div>
@@ -70,7 +91,8 @@
     {{else}}
       {{#if @model.total}}
         <div class="glass-panel p-8 text-center">
-          <p class="text-muted mt-3">No vendors on page {{this.page}}. Navigate back to find vendors.</p>
+          <p class="text-muted mt-3">No vendors on page
+            {{this.page}}. Navigate back to find vendors.</p>
         </div>
         <Ui::Pagination
           @selectId="vendors-limit"
@@ -84,7 +106,8 @@
       {{else}}
         <div class="glass-panel p-8 text-center">
           <Ui::Ph @icon="toolbox" @size="48px" @color="var(--text-muted)" />
-          <p class="text-muted mt-3">No vendors yet. Add your first vendor above.</p>
+          <p class="text-muted mt-3">No vendors yet. Add your first vendor
+            above.</p>
         </div>
       {{/if}}
     {{/if}}
@@ -98,59 +121,155 @@
   @showClose={{true}}
 >
   <form class="flex col gap-4" {{on "submit" this.saveVendor}}>
-      {{#if this.showRegionField}}
-        <div class="flex col gap-2">
-          <Ui::FormDropdown @label="Region" @id="vendor-region" @value={{this.formRegionCode}} @onChange={{fn this.setField "formRegionCode"}} @options={{this.regionOptions}} @placeholder="Select region..." data-test-region-select />
-        </div>
-      {{/if}}
-
-      <div class="flex gap-4">
-        <div class="flex col gap-2 flex-1">
-          <Ui::FormInput @label="Name" @id="v-name" @type="text" @placeholder="Ahmed Al-Rashid" @value={{this.formName}} @onChange={{fn this.setField "formName"}} @required={{true}} data-test-vendor-name />
-        </div>
-        <div class="flex col gap-2 flex-1">
-          <Ui::FormDropdown @label="Specialty" @id="vendor-specialty" @value={{this.formSpecialty}} @onChange={{fn this.setField "formSpecialty"}} @options={{this.specialtyOptions}} @placeholder="Select specialty..." data-test-vendor-specialty />
-        </div>
+    {{#if this.showRegionField}}
+      <div class="flex col gap-2">
+        <Ui::FormDropdown
+          @label="Region"
+          @id="vendor-region"
+          @value={{this.formRegionCode}}
+          @onChange={{fn this.setField "formRegionCode"}}
+          @options={{this.regionOptions}}
+          @placeholder="Select region..."
+          data-test-region-select
+        />
       </div>
+    {{/if}}
 
-      <div class="flex gap-4">
-        <div class="flex col gap-2 flex-1">
-          <Ui::FormInput @label="Email" @id="v-email" @type="email" @placeholder="vendor@example.com" @value={{this.formEmail}} @onChange={{fn this.setField "formEmail"}} data-test-vendor-email />
-        </div>
-        <div class="flex col gap-2 flex-1">
-          <Ui::FormInput @label="Phone" @id="v-phone" @type="text" @placeholder="+971501234567" @value={{this.formPhone}} @onChange={{fn this.setField "formPhone"}} data-test-vendor-phone />
-        </div>
+    <div class="flex gap-4">
+      <div class="flex col gap-2 flex-1">
+        <Ui::FormInput
+          @label="Name"
+          @id="v-name"
+          @type="text"
+          @placeholder="Ahmed Al-Rashid"
+          @value={{this.formName}}
+          @onChange={{fn this.setField "formName"}}
+          @required={{true}}
+          data-test-vendor-name
+        />
       </div>
-
-      <div class="flex gap-4">
-        <div class="flex col gap-2 flex-1">
-          <Ui::FormInput @label="Company Name" @id="v-company" @type="text" @placeholder="Al-Rashid Maintenance LLC" @value={{this.formCompanyName}} @onChange={{fn this.setField "formCompanyName"}} data-test-vendor-company />
-        </div>
-        <div class="flex col gap-2 flex-1">
-          <Ui::FormInput @label="Hourly Rate" @id="v-rate" @type="number" @placeholder="150" @value={{this.formHourlyRate}} @onChange={{fn this.setField "formHourlyRate"}} @min={{0}} @step={{0.01}} data-test-vendor-rate />
-        </div>
+      <div class="flex col gap-2 flex-1">
+        <Ui::FormDropdown
+          @label="Specialty"
+          @id="vendor-specialty"
+          @value={{this.formSpecialty}}
+          @onChange={{fn this.setField "formSpecialty"}}
+          @options={{this.specialtyOptions}}
+          @placeholder="Select specialty..."
+          data-test-vendor-specialty
+        />
       </div>
+    </div>
 
-      <div class="flex gap-4">
-        <div class="flex col gap-2 flex-1">
-          <Ui::FormInput @label="Address" @id="v-address" @type="text" @placeholder="e.g. Industrial Area, Karachi" @value={{this.formAddress}} @onChange={{fn this.setField "formAddress"}} data-test-vendor-address />
-        </div>
-        <div class="flex col gap-2 flex-1">
-          <Ui::FormInput @label="Rating (1-5)" @id="v-rating" @type="number" @placeholder="5" @value={{this.formRating}} @onChange={{fn this.setField "formRating"}} @min={{1}} @max={{5}} @step={{1}} data-test-vendor-rating />
-        </div>
+    <div class="flex gap-4">
+      <div class="flex col gap-2 flex-1">
+        <Ui::FormInput
+          @label="Email"
+          @id="v-email"
+          @type="email"
+          @placeholder="vendor@example.com"
+          @value={{this.formEmail}}
+          @onChange={{fn this.setField "formEmail"}}
+          data-test-vendor-email
+        />
       </div>
-
-      <Ui::FormTextarea @label="Notes" @id="v-notes" @placeholder="Additional notes about this vendor..." @rows={{3}} @value={{this.formNotes}} @onChange={{fn this.setField "formNotes"}} data-test-vendor-notes />
-
-      {{#if this.errorMsg}}
-        <p class="font-sm text-danger">{{this.errorMsg}}</p>
-      {{/if}}
-
-      <div class="flex gap-3 mt-2">
-        <Ui::AppButton @variant="secondary" @text="Cancel" @onClick={{this.closeModal}} />
-        <Ui::AppButton @variant="primary" @buttonType="submit" @text={{if this.editVendor "Update" "Create Vendor"}} @loading={{this.isSaving}} @loadingText="Saving..." />
+      <div class="flex col gap-2 flex-1">
+        <Ui::FormInput
+          @label="Phone"
+          @id="v-phone"
+          @type="text"
+          @placeholder="+971501234567"
+          @value={{this.formPhone}}
+          @onChange={{fn this.setField "formPhone"}}
+          data-test-vendor-phone
+        />
       </div>
-    </form>
+    </div>
+
+    <div class="flex gap-4">
+      <div class="flex col gap-2 flex-1">
+        <Ui::FormInput
+          @label="Company Name"
+          @id="v-company"
+          @type="text"
+          @placeholder="Al-Rashid Maintenance LLC"
+          @value={{this.formCompanyName}}
+          @onChange={{fn this.setField "formCompanyName"}}
+          data-test-vendor-company
+        />
+      </div>
+      <div class="flex col gap-2 flex-1">
+        <Ui::FormInput
+          @label="Hourly Rate"
+          @id="v-rate"
+          @type="number"
+          @placeholder="150"
+          @value={{this.formHourlyRate}}
+          @onChange={{fn this.setField "formHourlyRate"}}
+          @min={{0}}
+          @step={{0.01}}
+          data-test-vendor-rate
+        />
+      </div>
+    </div>
+
+    <div class="flex gap-4">
+      <div class="flex col gap-2 flex-1">
+        <Ui::FormInput
+          @label="Address"
+          @id="v-address"
+          @type="text"
+          @placeholder="e.g. Industrial Area, Karachi"
+          @value={{this.formAddress}}
+          @onChange={{fn this.setField "formAddress"}}
+          data-test-vendor-address
+        />
+      </div>
+      <div class="flex col gap-2 flex-1">
+        <Ui::FormInput
+          @label="Rating (1-5)"
+          @id="v-rating"
+          @type="number"
+          @placeholder="5"
+          @value={{this.formRating}}
+          @onChange={{fn this.setField "formRating"}}
+          @min={{1}}
+          @max={{5}}
+          @step={{1}}
+          data-test-vendor-rating
+        />
+      </div>
+    </div>
+
+    <Ui::FormTextarea
+      @label="Notes"
+      @id="v-notes"
+      @placeholder="Additional notes about this vendor..."
+      @rows={{3}}
+      @value={{this.formNotes}}
+      @onChange={{fn this.setField "formNotes"}}
+      data-test-vendor-notes
+    />
+
+    {{#if this.errorMsg}}
+      <p class="font-sm text-danger">{{this.errorMsg}}</p>
+    {{/if}}
+
+    <div class="flex gap-3 mt-2">
+      <Ui::AppButton
+        @variant="secondary"
+        @text="Cancel"
+        @onClick={{this.closeModal}}
+      />
+      <Ui::AppButton
+        @variant="primary"
+        @buttonType="submit"
+        @text={{if this.editVendor "Update" "Create Vendor"}}
+        @loading={{this.isSaving}}
+        @loadingText="Saving..."
+      />
+    </div>
+  </form>
 </Ui::Modal>
 
 <ConfirmModal

@@ -94,7 +94,9 @@
   </div>
 
   {{#if this.errorMessage}}
-    <div class="p-3 rounded-lg bg-danger@10 border border-danger@20 text-danger text-center font-sm">
+    <div
+      class="p-3 rounded-lg bg-danger@10 border border-danger@20 text-danger text-center font-sm"
+    >
       {{this.errorMessage}}
     </div>
   {{/if}}
@@ -107,7 +109,8 @@
   >
     {{#if this.isLoading}}
       <span class="flex x-center center gap-2">
-        <Ui::Ph @icon="circle-notch" class="animate-spin" /> Creating Account...
+        <Ui::Ph @icon="circle-notch" class="animate-spin" />
+        Creating Account...
       </span>
     {{else}}
       Create Workspace with Email
@@ -120,13 +123,24 @@
     </div>
 
     {{#if this.canGoogleSignup}}
-      <div class="google-signin-section {{unless this.isGoogleLoading 'auth-google-button'}}">
+      <div
+        class="google-signin-section
+          {{unless this.isGoogleLoading 'auth-google-button'}}"
+      >
         {{#if this.isGoogleLoading}}
-          <button type="button" class="btn btn--google btn--google--loading" disabled>
+          <button
+            type="button"
+            class="btn btn--google btn--google--loading"
+            disabled
+          >
             <span class="google-spinner"></span>
           </button>
         {{else}}
-          <div id="google-signup-button" class="google-button-host" {{did-insert this.renderGoogleButton}}></div>
+          <div
+            id="google-signup-button"
+            class="google-button-host"
+            {{did-insert this.renderGoogleButton}}
+          ></div>
         {{/if}}
       </div>
     {{else}}

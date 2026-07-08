@@ -6,81 +6,87 @@
 // =================================
 
 // Primary brand colors (teal - matches landing page)
-$color-primary: #1AB5A5;
-$color-primary-light: #5DD3C8;
-$color-primary-dark: #14897D;
+$color-primary: #1ab5a5;
+$color-primary-light: #5dd3c8;
+$color-primary-dark: #14897d;
 
 // Accent color
-$color-coral: #F07070;
+$color-coral: #f07070;
 
 // Semantic colors
-$color-success: #059669;        // Green
-$color-danger: #DC2626;         // Red
-$color-warning: #D97706;        // Amber
-$color-info: #0284C7;           // Blue
+$color-success: #059669; // Green
+$color-danger: #dc2626; // Red
+$color-warning: #d97706; // Amber
+$color-info: #0284c7; // Blue
 
 // Light theme backgrounds
-$bg-base: #F8FAFC;              // Light gray base
-$bg-surface: #FFFFFF;           // White cards
-$bg-muted: #F1F5F9;             // Subtle gray sections
-$bg-sidebar: #FFFFFF;           // White sidebar
+$bg-base: #f8fafc; // Light gray base
+$bg-surface: #ffffff; // White cards
+$bg-muted: #f1f5f9; // Subtle gray sections
+$bg-sidebar: #ffffff; // White sidebar
 
 // Text colors
-$text-primary: #0F172A;         // Near black
-$text-secondary: #475569;       // Gray
-$text-muted: #94A3B8;           // Light gray
-$text-inverse: #FFFFFF;         // White (for dark backgrounds)
+$text-primary: #0f172a; // Near black
+$text-secondary: #475569; // Gray
+$text-muted: #94a3b8; // Light gray
+$text-inverse: #ffffff; // White (for dark backgrounds)
 
 // Border colors
-$border-light: #E2E8F0;
-$border-medium: #CBD5E1;
-$border-dark: #94A3B8;
+$border-light: #e2e8f0;
+$border-medium: #cbd5e1;
+$border-dark: #94a3b8;
 
 // =================================
 // SPACING TOKENS
 // =================================
 
-$space-1: 0.25rem;    // 4px
-$space-2: 0.5rem;     // 8px
-$space-3: 0.75rem;    // 12px
-$space-4: 1rem;       // 16px
-$space-5: 1.25rem;    // 20px
-$space-6: 1.5rem;     // 24px
-$space-8: 2rem;       // 32px
-$space-10: 2.5rem;    // 40px
-$space-12: 3rem;      // 48px
+$space-1: 0.25rem; // 4px
+$space-2: 0.5rem; // 8px
+$space-3: 0.75rem; // 12px
+$space-4: 1rem; // 16px
+$space-5: 1.25rem; // 20px
+$space-6: 1.5rem; // 24px
+$space-8: 2rem; // 32px
+$space-10: 2.5rem; // 40px
+$space-12: 3rem; // 48px
 
 // =================================
 // BORDER TOKENS
 // =================================
 
-$radius-sm: 0.375rem;   // 6px
-$radius-md: 0.5rem;     // 8px
-$radius-lg: 0.75rem;    // 12px
-$radius-xl: 1rem;       // 16px
-$radius-2xl: 1.5rem;    // 24px
+$radius-sm: 0.375rem; // 6px
+$radius-md: 0.5rem; // 8px
+$radius-lg: 0.75rem; // 12px
+$radius-xl: 1rem; // 16px
+$radius-2xl: 1.5rem; // 24px
 
 // =================================
 // SHADOW TOKENS
 // =================================
 
 $shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-$shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-$shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-$shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+$shadow-md:
+  0 4px 6px -1px rgba(0, 0, 0, 0.1),
+  0 2px 4px -1px rgba(0, 0, 0, 0.06);
+$shadow-lg:
+  0 10px 15px -3px rgba(0, 0, 0, 0.1),
+  0 4px 6px -2px rgba(0, 0, 0, 0.05);
+$shadow-xl:
+  0 20px 25px -5px rgba(0, 0, 0, 0.1),
+  0 10px 10px -5px rgba(0, 0, 0, 0.04);
 
 // =================================
 // TYPOGRAPHY TOKENS
 // =================================
 
-$font-xs: 0.75rem;      // 12px
-$font-sm: 0.875rem;     // 14px
-$font-md: 1rem;         // 16px
-$font-lg: 1.125rem;     // 18px
-$font-xl: 1.25rem;      // 20px
-$font-2xl: 1.5rem;      // 24px
-$font-3xl: 1.875rem;    // 30px
-$font-4xl: 2.25rem;     // 36px
+$font-xs: 0.75rem; // 12px
+$font-sm: 0.875rem; // 14px
+$font-md: 1rem; // 16px
+$font-lg: 1.125rem; // 18px
+$font-xl: 1.25rem; // 20px
+$font-2xl: 1.5rem; // 24px
+$font-3xl: 1.875rem; // 30px
+$font-4xl: 2.25rem; // 36px
 
 // =================================
 // Z-INDEX TOKENS

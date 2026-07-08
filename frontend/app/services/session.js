@@ -28,15 +28,21 @@ export default class SessionService extends Service {
     if (stored) {
       try {
         const session = JSON.parse(stored);
-        if (!session?.data?.authenticated) throw new Error('Invalid session structure');
+        if (!session?.data?.authenticated)
+          throw new Error('Invalid session structure');
         this.data = session.data;
         this.isAuthenticated = !!session.isAuthenticated;
 
         const authData = this.data.authenticated;
         if (authData.regions) {
-          this.region.initialize(authData.regions, authData.defaultRegionCode || null);
+          this.region.initialize(
+            authData.regions,
+            authData.defaultRegionCode || null,
+          );
         }
-        this.isImpersonating = !!localStorage.getItem('aala-impersonator-session');
+        this.isImpersonating = !!localStorage.getItem(
+          'aala-impersonator-session',
+        );
       } catch (error) {
         // If restore fails, clear corrupt data and start fresh
         localStorage.removeItem('aala-session');
@@ -47,10 +53,13 @@ export default class SessionService extends Service {
   }
 
   saveToStorage() {
-    localStorage.setItem('aala-session', JSON.stringify({
-      data: this.data,
-      isAuthenticated: this.isAuthenticated,
-    }));
+    localStorage.setItem(
+      'aala-session',
+      JSON.stringify({
+        data: this.data,
+        isAuthenticated: this.isAuthenticated,
+      }),
+    );
   }
 
   establish(authData) {
@@ -135,7 +144,9 @@ export default class SessionService extends Service {
             'Content-Type': 'application/json',
             Authorization: `Bearer ${this.data.authenticated.accessToken}`,
           },
-          body: JSON.stringify({ refreshToken: this.data.authenticated.refreshToken }),
+          body: JSON.stringify({
+            refreshToken: this.data.authenticated.refreshToken,
+          }),
         });
       } catch {
         // Ignore backend logout errors - proceed with local cleanup

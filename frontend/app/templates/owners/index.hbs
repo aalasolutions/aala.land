@@ -1,11 +1,19 @@
 {{page-title "Owners"}}
 <div class="page-header">
   <div class="page-title-section">
-    <h2 class="page-title"><Ui::Ph @icon="user-circle" @size="28px" /> Property Owners</h2>
-    <p class="page-subtitle">Manage property owners and their contact information.</p>
+    <h2 class="page-title"><Ui::Ph @icon="user-circle" @size="28px" />
+      Property Owners</h2>
+    <p class="page-subtitle">Manage property owners and their contact
+      information.</p>
   </div>
-  <button type="button" class="btn btn-primary" data-test-add-owner {{on "click" this.openCreate}}>
-    <Ui::Ph @icon="plus" /> Add Owner
+  <button
+    type="button"
+    class="btn btn-primary"
+    data-test-add-owner
+    {{on "click" this.openCreate}}
+  >
+    <Ui::Ph @icon="plus" />
+    Add Owner
   </button>
 </div>
 
@@ -27,15 +35,33 @@
         <span class="owner-units">{{owner.units.length}} Units</span>
       </div>
       <div class="owner-actions">
-        <button type="button" class="btn btn-secondary" data-test-view-owner {{on "click" (fn this.viewOwner owner)}}>
-          <Ui::Ph @icon="eye" /> View
+        <button
+          type="button"
+          class="btn btn-secondary"
+          data-test-view-owner
+          {{on "click" (fn this.viewOwner owner)}}
+        >
+          <Ui::Ph @icon="eye" />
+          View
         </button>
-        <button type="button" class="btn btn-secondary" data-test-edit-owner {{on "click" (fn this.openEdit owner)}}>
-          <Ui::Ph @icon="pencil-simple" /> Edit
+        <button
+          type="button"
+          class="btn btn-secondary"
+          data-test-edit-owner
+          {{on "click" (fn this.openEdit owner)}}
+        >
+          <Ui::Ph @icon="pencil-simple" />
+          Edit
         </button>
         {{#if this.canDeleteOwners}}
-          <button type="button" class="btn btn-secondary text-danger" data-test-delete-owner {{on "click" (fn this.openDelete owner)}}>
-            <Ui::Ph @icon="trash" /> Remove
+          <button
+            type="button"
+            class="btn btn-secondary text-danger"
+            data-test-delete-owner
+            {{on "click" (fn this.openDelete owner)}}
+          >
+            <Ui::Ph @icon="trash" />
+            Remove
           </button>
         {{/if}}
       </div>
@@ -48,7 +74,11 @@
 </div>
 
 <p class="text-muted mt-4">
-  Showing {{format-number this.model.owners.length}} of {{format-number this.model.total}} owners
+  Showing
+  {{format-number this.model.owners.length}}
+  of
+  {{format-number this.model.total}}
+  owners
 </p>
 
 <Ui::Modal
@@ -61,32 +91,94 @@
     <p class="error-message" data-test-error>{{this.errorMsg}}</p>
   {{/if}}
   <form {{on "submit" this.saveOwner}}>
-      <div class="form-group">
-        <Ui::FormInput @label="Name" @id="o-name" @type="text" @value={{this.formName}} @onChange={{fn this.setField "formName"}} @required={{true}} data-test-input-name />
-      </div>
-      <div class="form-group">
-        <Ui::FormInput @label="Email" @id="o-email" @type="email" @value={{this.formEmail}} @onChange={{fn this.setField "formEmail"}} data-test-input-email />
-      </div>
-      <div class="form-group">
-        <Ui::FormInput @label="Phone" @id="o-phone" @type="tel" @value={{this.formPhone}} @onChange={{fn this.setField "formPhone"}} data-test-input-phone />
-      </div>
-      <div class="form-group">
-        <Ui::FormInput @label="Nationality ID" @id="o-nid" @type="text" @value={{this.formNationalityId}} @onChange={{fn this.setField "formNationalityId"}} data-test-input-nationality-id />
-      </div>
-      <div class="form-group">
-        <Ui::FormTextarea @label="Address" @id="o-address" @rows={{3}} @value={{this.formAddress}} @onChange={{fn this.setField "formAddress"}} data-test-input-address />
-      </div>
-      <div class="form-group">
-        <Ui::FormDropdown @id="owner-agent-id" @label="Assigned Agent" @value={{this.formAssignedAgentId}} @onChange={{fn this.setField "formAssignedAgentId"}} @options={{this.agentOptions}} @placeholder="Unassigned" data-test-input-agent />
-      </div>
-      <div class="form-group">
-        <Ui::FormTextarea @label="Notes" @id="o-notes" @rows={{3}} @value={{this.formNotes}} @onChange={{fn this.setField "formNotes"}} data-test-input-notes />
-      </div>
-      <div class="modal-actions">
-        <Ui::AppButton @variant="secondary" @text="Cancel" @onClick={{this.closeModal}} />
-        <Ui::AppButton @variant="primary" @buttonType="submit" @text={{if this.editOwner "Update" "Create"}} @loading={{this.isSaving}} @loadingText="Saving..." data-test-save-owner />
-      </div>
-    </form>
+    <div class="form-group">
+      <Ui::FormInput
+        @label="Name"
+        @id="o-name"
+        @type="text"
+        @value={{this.formName}}
+        @onChange={{fn this.setField "formName"}}
+        @required={{true}}
+        data-test-input-name
+      />
+    </div>
+    <div class="form-group">
+      <Ui::FormInput
+        @label="Email"
+        @id="o-email"
+        @type="email"
+        @value={{this.formEmail}}
+        @onChange={{fn this.setField "formEmail"}}
+        data-test-input-email
+      />
+    </div>
+    <div class="form-group">
+      <Ui::FormInput
+        @label="Phone"
+        @id="o-phone"
+        @type="tel"
+        @value={{this.formPhone}}
+        @onChange={{fn this.setField "formPhone"}}
+        data-test-input-phone
+      />
+    </div>
+    <div class="form-group">
+      <Ui::FormInput
+        @label="Nationality ID"
+        @id="o-nid"
+        @type="text"
+        @value={{this.formNationalityId}}
+        @onChange={{fn this.setField "formNationalityId"}}
+        data-test-input-nationality-id
+      />
+    </div>
+    <div class="form-group">
+      <Ui::FormTextarea
+        @label="Address"
+        @id="o-address"
+        @rows={{3}}
+        @value={{this.formAddress}}
+        @onChange={{fn this.setField "formAddress"}}
+        data-test-input-address
+      />
+    </div>
+    <div class="form-group">
+      <Ui::FormDropdown
+        @id="owner-agent-id"
+        @label="Assigned Agent"
+        @value={{this.formAssignedAgentId}}
+        @onChange={{fn this.setField "formAssignedAgentId"}}
+        @options={{this.agentOptions}}
+        @placeholder="Unassigned"
+        data-test-input-agent
+      />
+    </div>
+    <div class="form-group">
+      <Ui::FormTextarea
+        @label="Notes"
+        @id="o-notes"
+        @rows={{3}}
+        @value={{this.formNotes}}
+        @onChange={{fn this.setField "formNotes"}}
+        data-test-input-notes
+      />
+    </div>
+    <div class="modal-actions">
+      <Ui::AppButton
+        @variant="secondary"
+        @text="Cancel"
+        @onClick={{this.closeModal}}
+      />
+      <Ui::AppButton
+        @variant="primary"
+        @buttonType="submit"
+        @text={{if this.editOwner "Update" "Create"}}
+        @loading={{this.isSaving}}
+        @loadingText="Saving..."
+        data-test-save-owner
+      />
+    </div>
+  </form>
 </Ui::Modal>
 
 <ConfirmModal

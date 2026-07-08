@@ -3,27 +3,40 @@
 <div data-test-maintenance-page class="flex col gap-6">
   <div class="flex between x-center">
     <div>
-      <h2 class="font-3xl font-bold"><Ui::Ph @icon="wrench" @size="28px" /> Maintenance</h2>
+      <h2 class="font-3xl font-bold"><Ui::Ph @icon="wrench" @size="28px" />
+        Maintenance</h2>
       <p class="text-muted mt-1">Track and manage property work orders.</p>
     </div>
-    <button type="button" class="btn btn-primary" {{on "click" this.openCreate}}>
-      <Ui::Ph @icon="plus" /> New Work Order
+    <button
+      type="button"
+      class="btn btn-primary"
+      {{on "click" this.openCreate}}
+    >
+      <Ui::Ph @icon="plus" />
+      New Work Order
     </button>
   </div>
 
   {{#if @model.costSummary}}
     <div class="grid cols-4 gap-4">
       <div class="glass-panel p-4">
-        <p class="text-muted font-xs uppercase tracking-wider mb-1">Total Estimated</p>
-        <h4 class="font-xl font-bold">{{format-currency @model.costSummary.totalEstimated}}</h4>
+        <p class="text-muted font-xs uppercase tracking-wider mb-1">Total
+          Estimated</p>
+        <h4 class="font-xl font-bold">{{format-currency
+            @model.costSummary.totalEstimated
+          }}</h4>
       </div>
       <div class="glass-panel p-4">
         <p class="text-muted font-xs uppercase tracking-wider mb-1">Total Actual</p>
-        <h4 class="font-xl font-bold">{{format-currency @model.costSummary.totalActual}}</h4>
+        <h4 class="font-xl font-bold">{{format-currency
+            @model.costSummary.totalActual
+          }}</h4>
       </div>
       <div class="glass-panel p-4">
         <p class="text-muted font-xs uppercase tracking-wider mb-1">Pending Cost</p>
-        <h4 class="font-xl font-bold text-warning">{{format-currency @model.costSummary.pendingCost}}</h4>
+        <h4 class="font-xl font-bold text-warning">{{format-currency
+            @model.costSummary.pendingCost
+          }}</h4>
       </div>
       <div class="glass-panel p-4">
         <p class="text-muted font-xs uppercase tracking-wider mb-1">Work Orders</p>
@@ -33,18 +46,42 @@
   {{/if}}
 
   <div class="tabs">
-    <button type="button" class="tab-btn {{if (eq this.activeSection 'orders') 'active'}}" {{on "click" (fn this.setSection 'orders')}}>
-      <Ui::Ph @icon="list-checks" /> Work Orders
+    <button
+      type="button"
+      class="tab-btn {{if (eq this.activeSection 'orders') 'active'}}"
+      {{on "click" (fn this.setSection "orders")}}
+    >
+      <Ui::Ph @icon="list-checks" />
+      Work Orders
     </button>
-    <button type="button" class="tab-btn {{if (eq this.activeSection 'upcoming') 'active'}}" {{on "click" (fn this.setSection 'upcoming')}}>
-      <Ui::Ph @icon="calendar-check" /> Upcoming Preventive
+    <button
+      type="button"
+      class="tab-btn {{if (eq this.activeSection 'upcoming') 'active'}}"
+      {{on "click" (fn this.setSection "upcoming")}}
+    >
+      <Ui::Ph @icon="calendar-check" />
+      Upcoming Preventive
     </button>
   </div>
 
   {{#if (eq this.activeSection "orders")}}
     <div class="flex gap-4 x-center">
-      <Ui::FormDropdown @id="maintenance-status-filter" @label="Status" @value={{this.filterStatus}} @onChange={{this.setStatusFilter}} @options={{this.statusOptions}} @placeholder="All" />
-      <Ui::FormDropdown @id="maintenance-period-filter" @label="Period" @value={{this.filterMonth}} @onChange={{this.setMonthFilter}} @options={{this.monthOptions}} @placeholder="All" />
+      <Ui::FormDropdown
+        @id="maintenance-status-filter"
+        @label="Status"
+        @value={{this.filterStatus}}
+        @onChange={{this.setStatusFilter}}
+        @options={{this.statusOptions}}
+        @placeholder="All"
+      />
+      <Ui::FormDropdown
+        @id="maintenance-period-filter"
+        @label="Period"
+        @value={{this.filterMonth}}
+        @onChange={{this.setMonthFilter}}
+        @options={{this.monthOptions}}
+        @placeholder="All"
+      />
     </div>
 
     <div class="glass-panel p-5">
@@ -69,24 +106,48 @@
                 <tr data-test-work-order>
                   <td>
                     <p class="font-sm font-bold">{{wo.title}}</p>
-                    {{#if wo.vendorId}}<p class="text-muted font-xs"><Ui::Ph @icon="toolbox" /> Vendor assigned</p>{{/if}}
+                    {{#if wo.vendorId}}<p class="text-muted font-xs"><Ui::Ph
+                          @icon="toolbox"
+                        />
+                        Vendor assigned</p>{{/if}}
                   </td>
                   <td class="font-sm text-muted">
                     {{#if wo.unitNumber}}
-                      {{wo.areaName}} / {{wo.assetName}} / {{wo.unitNumber}}
+                      {{wo.areaName}}
+                      /
+                      {{wo.assetName}}
+                      /
+                      {{wo.unitNumber}}
                     {{else}}
                       <span class="text-muted">-</span>
                     {{/if}}
                   </td>
-                  <td><span class="type-badge type-{{lowercase wo.category}}">{{wo.category}}</span></td>
-                  <td><span class="status-badge status-{{lowercase wo.priority}}">{{wo.priority}}</span></td>
-                  <td>{{#if wo.estimatedCost}}{{format-currency wo.estimatedCost}}{{else}}-{{/if}}</td>
-                  <td>{{#if wo.actualCost}}{{format-currency wo.actualCost}}{{else}}-{{/if}}</td>
-                  <td class="font-xs">{{#if wo.scheduledDate}}{{wo.scheduledDate}}{{else}}-{{/if}}</td>
-                  <td><span class="status-badge status-{{lowercase wo.status}}">{{wo.status}}</span></td>
+                  <td><span
+                      class="type-badge type-{{lowercase wo.category}}"
+                    >{{wo.category}}</span></td>
+                  <td><span
+                      class="status-badge status-{{lowercase wo.priority}}"
+                    >{{wo.priority}}</span></td>
+                  <td>{{#if wo.estimatedCost}}{{format-currency
+                        wo.estimatedCost
+                      }}{{else}}-{{/if}}</td>
+                  <td>{{#if wo.actualCost}}{{format-currency
+                        wo.actualCost
+                      }}{{else}}-{{/if}}</td>
+                  <td class="font-xs">{{#if
+                      wo.scheduledDate
+                    }}{{wo.scheduledDate}}{{else}}-{{/if}}</td>
+                  <td><span
+                      class="status-badge status-{{lowercase wo.status}}"
+                    >{{wo.status}}</span></td>
                   <td>
-                    <button type="button" class="btn btn-secondary btn-xs" {{on "click" (fn this.openEdit wo)}}>
-                      <Ui::Ph @icon="pencil-simple" /> Edit
+                    <button
+                      type="button"
+                      class="btn btn-secondary btn-xs"
+                      {{on "click" (fn this.openEdit wo)}}
+                    >
+                      <Ui::Ph @icon="pencil-simple" />
+                      Edit
                     </button>
                   </td>
                 </tr>
@@ -106,7 +167,8 @@
         />
       {{else}}
         {{#if @model.total}}
-          <p class="text-muted text-center py-8">No work orders on this page with current filters. Navigate to find orders or adjust filters.</p>
+          <p class="text-muted text-center py-8">No work orders on this page
+            with current filters. Navigate to find orders or adjust filters.</p>
           <Ui::Pagination
             @selectId="maintenance-limit"
             @page={{this.page}}
@@ -117,7 +179,8 @@
             @onNext={{this.goToNextPage}}
           />
         {{else}}
-          <p class="text-muted text-center py-8">No work orders match your filters.</p>
+          <p class="text-muted text-center py-8">No work orders match your
+            filters.</p>
         {{/if}}
       {{/if}}
     </div>
@@ -125,26 +188,39 @@
 
   {{#if (eq this.activeSection "upcoming")}}
     <div class="glass-panel p-5">
-      <h4 class="font-lg font-bold mb-3"><Ui::Ph @icon="clock-countdown" /> Preventive Maintenance (Next 30 Days)</h4>
+      <h4 class="font-lg font-bold mb-3"><Ui::Ph @icon="clock-countdown" />
+        Preventive Maintenance (Next 30 Days)</h4>
       {{#if @model.upcoming.length}}
         <div class="flex col gap-3">
           {{#each @model.upcoming as |wo|}}
-            <div class="flex between x-center p-4 rounded bg-white@02 border border-white@05">
+            <div
+              class="flex between x-center p-4 rounded bg-white@02 border border-white@05"
+            >
               <div class="flex col gap-1">
                 <p class="font-sm font-bold">{{wo.title}}</p>
-                <p class="text-muted font-xs">{{wo.category}} - Scheduled: {{wo.scheduledDate}}</p>
+                <p class="text-muted font-xs">{{wo.category}}
+                  - Scheduled:
+                  {{wo.scheduledDate}}</p>
               </div>
               <div class="flex x-center gap-3">
-                <span class="status-badge status-{{lowercase wo.priority}}">{{wo.priority}}</span>
-                <button type="button" class="btn btn-secondary btn-xs" {{on "click" (fn this.openEdit wo)}}>
-                  <Ui::Ph @icon="pencil-simple" /> Edit
+                <span
+                  class="status-badge status-{{lowercase wo.priority}}"
+                >{{wo.priority}}</span>
+                <button
+                  type="button"
+                  class="btn btn-secondary btn-xs"
+                  {{on "click" (fn this.openEdit wo)}}
+                >
+                  <Ui::Ph @icon="pencil-simple" />
+                  Edit
                 </button>
               </div>
             </div>
           {{/each}}
         </div>
       {{else}}
-        <p class="text-muted text-center py-8">No preventive maintenance scheduled for the next 30 days.</p>
+        <p class="text-muted text-center py-8">No preventive maintenance
+          scheduled for the next 30 days.</p>
       {{/if}}
     </div>
   {{/if}}
@@ -158,54 +234,153 @@
 >
   <form class="flex col gap-4" {{on "submit" this.saveWorkOrder}}>
     {{#unless this.editWorkOrder}}
-      <Ui::FormDropdown @label="Unit" @id="wo-unit" @value={{this.formUnitId}} @onChange={{fn this.setField "formUnitId"}} @options={{this.unitOptions}} @placeholder="No unit assigned" data-test-wo-unit />
+      <Ui::FormDropdown
+        @label="Unit"
+        @id="wo-unit"
+        @value={{this.formUnitId}}
+        @onChange={{fn this.setField "formUnitId"}}
+        @options={{this.unitOptions}}
+        @placeholder="No unit assigned"
+        data-test-wo-unit
+      />
     {{/unless}}
 
-    <Ui::FormInput @label="Title" @id="wo-title" @type="text" @placeholder="e.g. Fix leaking pipe in unit 302" @value={{this.formTitle}} @onChange={{fn this.setField "formTitle"}} @required={{true}} />
+    <Ui::FormInput
+      @label="Title"
+      @id="wo-title"
+      @type="text"
+      @placeholder="e.g. Fix leaking pipe in unit 302"
+      @value={{this.formTitle}}
+      @onChange={{fn this.setField "formTitle"}}
+      @required={{true}}
+    />
 
-    <Ui::FormTextarea @label="Description" @id="wo-desc" @placeholder="Describe the issue in detail..." @rows={{3}} @value={{this.formDescription}} @onChange={{fn this.setField "formDescription"}} @required={{true}} />
+    <Ui::FormTextarea
+      @label="Description"
+      @id="wo-desc"
+      @placeholder="Describe the issue in detail..."
+      @rows={{3}}
+      @value={{this.formDescription}}
+      @onChange={{fn this.setField "formDescription"}}
+      @required={{true}}
+    />
 
     <div class="flex gap-4">
       <div class="flex col gap-2 flex-1">
-        <Ui::FormDropdown @label="Priority" @id="wo-priority" @value={{this.formPriority}} @onChange={{fn this.setField "formPriority"}} @options={{this.priorityOptions}} @placeholder="Select priority..." />
+        <Ui::FormDropdown
+          @label="Priority"
+          @id="wo-priority"
+          @value={{this.formPriority}}
+          @onChange={{fn this.setField "formPriority"}}
+          @options={{this.priorityOptions}}
+          @placeholder="Select priority..."
+        />
       </div>
       <div class="flex col gap-2 flex-1">
-        <Ui::FormDropdown @label="Category" @id="wo-category" @value={{this.formCategory}} @onChange={{fn this.setField "formCategory"}} @options={{this.categoryOptions}} @placeholder="Select category..." />
+        <Ui::FormDropdown
+          @label="Category"
+          @id="wo-category"
+          @value={{this.formCategory}}
+          @onChange={{fn this.setField "formCategory"}}
+          @options={{this.categoryOptions}}
+          @placeholder="Select category..."
+        />
       </div>
     </div>
 
     {{#if this.editWorkOrder}}
-      <Ui::FormDropdown @label="Status" @id="wo-status" @value={{this.formStatus}} @onChange={{fn this.setField "formStatus"}} @options={{this.statusOptions}} @placeholder="Select status..." />
+      <Ui::FormDropdown
+        @label="Status"
+        @id="wo-status"
+        @value={{this.formStatus}}
+        @onChange={{fn this.setField "formStatus"}}
+        @options={{this.statusOptions}}
+        @placeholder="Select status..."
+      />
     {{/if}}
 
     {{#if this.editWorkOrder}}
-      <Ui::FormInput @label="Estimated Cost" @id="wo-est-cost" @type="number" @placeholder="e.g. 500" @value={{this.formEstimatedCost}} @onChange={{fn this.setField "formEstimatedCost"}} @min={{0}} @step={{0.01}} />
+      <Ui::FormInput
+        @label="Estimated Cost"
+        @id="wo-est-cost"
+        @type="number"
+        @placeholder="e.g. 500"
+        @value={{this.formEstimatedCost}}
+        @onChange={{fn this.setField "formEstimatedCost"}}
+        @min={{0}}
+        @step={{0.01}}
+      />
     {{else}}
       <div class="flex gap-4">
         <div class="flex col gap-2 flex-1">
-          <Ui::FormInput @label="Reported By" @id="wo-reported-by" @type="text" @placeholder="Tenant or staff name" @value={{this.formReportedBy}} @onChange={{fn this.setField "formReportedBy"}} />
+          <Ui::FormInput
+            @label="Reported By"
+            @id="wo-reported-by"
+            @type="text"
+            @placeholder="Tenant or staff name"
+            @value={{this.formReportedBy}}
+            @onChange={{fn this.setField "formReportedBy"}}
+          />
         </div>
         <div class="flex col gap-2 flex-1">
-          <Ui::FormInput @label="Estimated Cost" @id="wo-est-cost" @type="number" @placeholder="e.g. 500" @value={{this.formEstimatedCost}} @onChange={{fn this.setField "formEstimatedCost"}} @min={{0}} @step={{0.01}} />
+          <Ui::FormInput
+            @label="Estimated Cost"
+            @id="wo-est-cost"
+            @type="number"
+            @placeholder="e.g. 500"
+            @value={{this.formEstimatedCost}}
+            @onChange={{fn this.setField "formEstimatedCost"}}
+            @min={{0}}
+            @step={{0.01}}
+          />
         </div>
       </div>
     {{/if}}
 
     <div class="flex gap-4">
       <div class="flex col gap-2 flex-1">
-        <Ui::FormInput @label="Actual Cost" @id="wo-act-cost" @type="number" @placeholder="e.g. 450" @value={{this.formActualCost}} @onChange={{fn this.setField "formActualCost"}} @min={{0}} @step={{0.01}} />
+        <Ui::FormInput
+          @label="Actual Cost"
+          @id="wo-act-cost"
+          @type="number"
+          @placeholder="e.g. 450"
+          @value={{this.formActualCost}}
+          @onChange={{fn this.setField "formActualCost"}}
+          @min={{0}}
+          @step={{0.01}}
+        />
       </div>
       <div class="flex col gap-2 flex-1">
-        <Ui::FormInput @label="Cost Notes" @id="wo-cost-notes" @type="text" @placeholder="e.g. Parts + labor" @value={{this.formCostNotes}} @onChange={{fn this.setField "formCostNotes"}} />
+        <Ui::FormInput
+          @label="Cost Notes"
+          @id="wo-cost-notes"
+          @type="text"
+          @placeholder="e.g. Parts + labor"
+          @value={{this.formCostNotes}}
+          @onChange={{fn this.setField "formCostNotes"}}
+        />
       </div>
     </div>
 
     <div class="flex gap-4">
       <div class="flex col gap-2 flex-1">
-        <Ui::FormInput @label="Scheduled Date" @id="wo-scheduled" @type="date" @value={{this.formScheduledDate}} @onChange={{fn this.setField "formScheduledDate"}} />
+        <Ui::FormInput
+          @label="Scheduled Date"
+          @id="wo-scheduled"
+          @type="date"
+          @value={{this.formScheduledDate}}
+          @onChange={{fn this.setField "formScheduledDate"}}
+        />
       </div>
       <div class="flex col gap-2 flex-1">
-        <Ui::FormDropdown @label="Vendor" @id="wo-vendor" @value={{this.formVendorId}} @onChange={{fn this.setField "formVendorId"}} @options={{this.vendorOptions}} @placeholder="No vendor assigned" />
+        <Ui::FormDropdown
+          @label="Vendor"
+          @id="wo-vendor"
+          @value={{this.formVendorId}}
+          @onChange={{fn this.setField "formVendorId"}}
+          @options={{this.vendorOptions}}
+          @placeholder="No vendor assigned"
+        />
       </div>
     </div>
 
@@ -214,8 +389,18 @@
     {{/if}}
 
     <div class="flex gap-3 mt-2">
-      <Ui::AppButton @variant="secondary" @text="Cancel" @onClick={{this.closeModal}} />
-      <Ui::AppButton @variant="primary" @buttonType="submit" @text={{if this.editWorkOrder "Update" "Create Work Order"}} @loading={{this.isSaving}} @loadingText="Saving..." />
+      <Ui::AppButton
+        @variant="secondary"
+        @text="Cancel"
+        @onClick={{this.closeModal}}
+      />
+      <Ui::AppButton
+        @variant="primary"
+        @buttonType="submit"
+        @text={{if this.editWorkOrder "Update" "Create Work Order"}}
+        @loading={{this.isSaving}}
+        @loadingText="Saving..."
+      />
     </div>
   </form>
 </Ui::Modal>

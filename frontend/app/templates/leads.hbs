@@ -3,60 +3,98 @@
 <div data-test-leads-page class="flex col gap-6">
   <div class="flex between x-center">
     <div>
-      <h2 class="font-3xl font-bold"><Ui::Ph @icon="funnel" @size="28px" /> Lead Pipeline</h2>
-      <p class="text-muted mt-1">Track and manage your leads through the pipeline.</p>
+      <h2 class="font-3xl font-bold"><Ui::Ph @icon="funnel" @size="28px" />
+        Lead Pipeline</h2>
+      <p class="text-muted mt-1">Track and manage your leads through the
+        pipeline.</p>
     </div>
     <div class="flex gap-3 x-center">
-      {{!-- View Toggle --}}
+      {{! View Toggle }}
       <div class="view-toggle" data-test-view-toggle>
-        <button type="button"
+        <button
+          type="button"
           class="view-toggle-btn {{if (eq this.viewMode 'pipeline') 'active'}}"
-          {{on "click" (fn this.setViewMode "pipeline")}}>
-          <Ui::Ph @icon="squares-four" /> Pipeline
+          {{on "click" (fn this.setViewMode "pipeline")}}
+        >
+          <Ui::Ph @icon="squares-four" />
+          Pipeline
         </button>
-        <button type="button"
-          class="view-toggle-btn {{if (eq this.viewMode 'temperature') 'active'}}"
-          {{on "click" (fn this.setViewMode "temperature")}}>
-          <Ui::Ph @icon="thermometer" /> Temperature
+        <button
+          type="button"
+          class="view-toggle-btn
+            {{if (eq this.viewMode 'temperature') 'active'}}"
+          {{on "click" (fn this.setViewMode "temperature")}}
+        >
+          <Ui::Ph @icon="thermometer" />
+          Temperature
         </button>
-        <button type="button"
+        <button
+          type="button"
           class="view-toggle-btn {{if (eq this.viewMode 'agent') 'active'}}"
-          {{on "click" (fn this.setViewMode "agent")}}>
-          <Ui::Ph @icon="users" /> Agent
+          {{on "click" (fn this.setViewMode "agent")}}
+        >
+          <Ui::Ph @icon="users" />
+          Agent
         </button>
-        <button type="button"
+        <button
+          type="button"
           class="view-toggle-btn {{if (eq this.viewMode 'list') 'active'}}"
-          {{on "click" (fn this.setViewMode "list")}}>
-          <Ui::Ph @icon="list" /> List
+          {{on "click" (fn this.setViewMode "list")}}
+        >
+          <Ui::Ph @icon="list" />
+          List
         </button>
       </div>
-      <button type="button" class="btn btn-primary" data-test-add-lead {{on "click" this.openCreate}}>
-        <Ui::Ph @icon="plus" /> New Lead
+      <button
+        type="button"
+        class="btn btn-primary"
+        data-test-add-lead
+        {{on "click" this.openCreate}}
+      >
+        <Ui::Ph @icon="plus" />
+        New Lead
       </button>
     </div>
   </div>
 
-  {{!-- Filter Buttons --}}
+  {{! Filter Buttons }}
   <div class="kanban-filters">
-    <button type="button" class="filter-btn {{if (eq this.filterType 'all') 'active'}}" {{on "click" (fn this.setFilter "all")}}>
+    <button
+      type="button"
+      class="filter-btn {{if (eq this.filterType 'all') 'active'}}"
+      {{on "click" (fn this.setFilter "all")}}
+    >
       All
     </button>
-    <button type="button" class="filter-btn {{if (eq this.filterType 'mine') 'active'}}" {{on "click" (fn this.setFilter "mine")}}>
+    <button
+      type="button"
+      class="filter-btn {{if (eq this.filterType 'mine') 'active'}}"
+      {{on "click" (fn this.setFilter "mine")}}
+    >
       Assigned to Me
     </button>
-    <button type="button" class="filter-btn {{if (eq this.filterType 'others') 'active'}}" {{on "click" (fn this.setFilter "others")}}>
+    <button
+      type="button"
+      class="filter-btn {{if (eq this.filterType 'others') 'active'}}"
+      {{on "click" (fn this.setFilter "others")}}
+    >
       Others
     </button>
-    <button type="button" class="filter-btn {{if (eq this.filterType 'unassigned') 'active'}}" {{on "click" (fn this.setFilter "unassigned")}}>
+    <button
+      type="button"
+      class="filter-btn {{if (eq this.filterType 'unassigned') 'active'}}"
+      {{on "click" (fn this.setFilter "unassigned")}}
+    >
       Unassigned
     </button>
   </div>
 
-  {{!-- PIPELINE KANBAN VIEW --}}
-  {{#if (eq this.viewMode 'pipeline')}}
+  {{! PIPELINE KANBAN VIEW }}
+  {{#if (eq this.viewMode "pipeline")}}
     <div class="kanban-board kanban-board--pipeline">
       {{#each this.columns as |column|}}
-        <div data-test-kanban-column
+        <div
+          data-test-kanban-column
           data-test-column-status={{column.status}}
           class="kanban-column flex col gap-3"
           role="button"
@@ -79,34 +117,62 @@
               {{on "click" (fn this.openDetailModal lead)}}
             >
               <div class="flex between x-center">
-                <p class="font-sm font-bold">{{lead.firstName}}{{#if lead.lastName}} {{lead.lastName}}{{/if}}</p>
-                <span class="temp-badge temp-{{lowercase lead.temperature}}">{{lead.temperature}}</span>
+                <p class="font-sm font-bold">{{lead.firstName}}{{#if
+                    lead.lastName
+                  }} {{lead.lastName}}{{/if}}</p>
+                <span
+                  class="temp-badge temp-{{lowercase lead.temperature}}"
+                >{{lead.temperature}}</span>
               </div>
               <div class="flex gap-2 x-center">
                 <p class="text-muted font-xs">{{lead.phone}}</p>
                 {{#if lead.phone}}
-                  <a href={{wa-link lead.phone}} target="_blank" rel="noopener noreferrer" class="wa-link" data-test-wa-link {{on "click" this.stopPropagation}}>
+                  <a
+                    href={{wa-link lead.phone}}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="wa-link"
+                    data-test-wa-link
+                    {{on "click" this.stopPropagation}}
+                  >
                     <Ui::Ph @icon="whatsapp-logo" @size="14px" />
                   </a>
                 {{/if}}
               </div>
               <p class="text-muted font-xs">{{lead.email}}</p>
               {{#if lead.property}}
-                <p class="text-primary font-xs flex gap-1 x-center"><Ui::Ph @icon="buildings" /> {{lead.property.name}}</p>
+                <p class="text-primary font-xs flex gap-1 x-center"><Ui::Ph
+                    @icon="buildings"
+                  />
+                  {{lead.property.name}}</p>
               {{/if}}
               {{#if lead.unit}}
-                <p class="text-info font-xs flex gap-1 x-center"><Ui::Ph @icon="house" /> Unit {{lead.unit.unitNumber}}</p>
+                <p class="text-info font-xs flex gap-1 x-center"><Ui::Ph
+                    @icon="house"
+                  />
+                  Unit
+                  {{lead.unit.unitNumber}}</p>
               {{/if}}
               {{#if lead.assignedAgentName}}
                 <p class="assign-badge">{{lead.assignedAgentName}}</p>
               {{/if}}
               <div class="flex between x-center mt-1">
-                <span class="font-xs text-muted">{{format-date lead.createdAt}}</span>
+                <span class="font-xs text-muted">{{format-date
+                    lead.createdAt
+                  }}</span>
                 <div class="flex gap-2" {{on "click" this.stopPropagation}}>
-                  <button type="button" class="btn btn-secondary btn-xs" {{on "click" (fn this.openEdit lead)}}>
+                  <button
+                    type="button"
+                    class="btn btn-secondary btn-xs"
+                    {{on "click" (fn this.openEdit lead)}}
+                  >
                     Edit
                   </button>
-                  <button type="button" class="btn btn-secondary btn-xs" {{on "click" (fn this.openAssignModal lead)}}>
+                  <button
+                    type="button"
+                    class="btn btn-secondary btn-xs"
+                    {{on "click" (fn this.openAssignModal lead)}}
+                  >
                     Assign
                   </button>
                 </div>
@@ -122,21 +188,32 @@
     </div>
   {{/if}}
 
-  {{!-- TEMPERATURE BOARD VIEW --}}
-  {{#if (eq this.viewMode 'temperature')}}
-    <div data-test-temperature-board class="kanban-board kanban-board--temperature">
+  {{! TEMPERATURE BOARD VIEW }}
+  {{#if (eq this.viewMode "temperature")}}
+    <div
+      data-test-temperature-board
+      class="kanban-board kanban-board--temperature"
+    >
       {{#each this.temperatureColumns as |column|}}
-        <div data-test-kanban-column
+        <div
+          data-test-kanban-column
           data-test-column-temp={{column.temperature}}
           class="kanban-column flex col gap-3"
           {{on "dragover" (fn this.handleTempDragOver column.temperature)}}
           {{on "drop" (fn this.handleTempDrop column.temperature)}}
         >
-          <div class="flex between x-center px-3 py-2 rounded-lg temp-column-header temp-column-{{lowercase column.temperature}}">
+          <div
+            class="flex between x-center px-3 py-2 rounded-lg temp-column-header temp-column-{{lowercase
+                column.temperature
+              }}"
+          >
             <span class="font-sm font-bold flex gap-2 x-center">
-              <Ui::Ph @icon={{column.icon}} /> {{column.label}}
+              <Ui::Ph @icon={{column.icon}} />
+              {{column.label}}
             </span>
-            <span class="font-xs temp-column-count">{{column.leads.length}}</span>
+            <span
+              class="font-xs temp-column-count"
+            >{{column.leads.length}}</span>
           </div>
 
           {{#each column.leads as |lead|}}
@@ -149,31 +226,55 @@
               {{on "click" (fn this.openDetailModal lead)}}
             >
               <div class="flex between x-center">
-                <p class="font-sm font-bold">{{lead.firstName}}{{#if lead.lastName}} {{lead.lastName}}{{/if}}</p>
-                <span class="status-badge status-{{lowercase lead.status}}">{{lead.status}}</span>
+                <p class="font-sm font-bold">{{lead.firstName}}{{#if
+                    lead.lastName
+                  }} {{lead.lastName}}{{/if}}</p>
+                <span
+                  class="status-badge status-{{lowercase lead.status}}"
+                >{{lead.status}}</span>
               </div>
               <div class="flex gap-2 x-center">
                 <p class="text-muted font-xs">{{lead.phone}}</p>
                 {{#if lead.phone}}
-                  <a href={{wa-link lead.phone}} target="_blank" rel="noopener noreferrer" class="wa-link" data-test-wa-link {{on "click" this.stopPropagation}}>
+                  <a
+                    href={{wa-link lead.phone}}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="wa-link"
+                    data-test-wa-link
+                    {{on "click" this.stopPropagation}}
+                  >
                     <Ui::Ph @icon="whatsapp-logo" @size="14px" />
                   </a>
                 {{/if}}
               </div>
               <p class="text-muted font-xs">{{lead.email}}</p>
               {{#if lead.property}}
-                <p class="text-primary font-xs flex gap-1 x-center"><Ui::Ph @icon="buildings" /> {{lead.property.name}}</p>
+                <p class="text-primary font-xs flex gap-1 x-center"><Ui::Ph
+                    @icon="buildings"
+                  />
+                  {{lead.property.name}}</p>
               {{/if}}
               {{#if lead.assignedAgentName}}
                 <p class="assign-badge">{{lead.assignedAgentName}}</p>
               {{/if}}
               <div class="flex between x-center mt-1">
-                <span class="font-xs text-muted">{{format-date lead.createdAt}}</span>
+                <span class="font-xs text-muted">{{format-date
+                    lead.createdAt
+                  }}</span>
                 <div class="flex gap-2" {{on "click" this.stopPropagation}}>
-                  <button type="button" class="btn btn-secondary btn-xs" {{on "click" (fn this.openEdit lead)}}>
+                  <button
+                    type="button"
+                    class="btn btn-secondary btn-xs"
+                    {{on "click" (fn this.openEdit lead)}}
+                  >
                     Edit
                   </button>
-                  <button type="button" class="btn btn-secondary btn-xs" {{on "click" (fn this.openAssignModal lead)}}>
+                  <button
+                    type="button"
+                    class="btn btn-secondary btn-xs"
+                    {{on "click" (fn this.openAssignModal lead)}}
+                  >
                     Assign
                   </button>
                 </div>
@@ -189,17 +290,20 @@
     </div>
   {{/if}}
 
-  {{!-- AGENT BOARD VIEW --}}
-  {{#if (eq this.viewMode 'agent')}}
+  {{! AGENT BOARD VIEW }}
+  {{#if (eq this.viewMode "agent")}}
     <div data-test-agent-board class="kanban-board kanban-board--agent">
       {{#each this.agentColumns as |column|}}
-        <div data-test-kanban-column
+        <div
+          data-test-kanban-column
           data-test-column-agent={{or column.agentId "unassigned"}}
           class="kanban-column flex col gap-3"
           {{on "dragover" (fn this.handleAgentDragOver column.agentId)}}
           {{on "drop" (fn this.handleAgentDrop column.agentId)}}
         >
-          <div class="flex between x-center px-3 py-2 rounded-lg agent-column-header">
+          <div
+            class="flex between x-center px-3 py-2 rounded-lg agent-column-header"
+          >
             <span class="font-sm font-bold flex gap-2 x-center">
               <Ui::Ph @icon={{if column.agentId "user" "user-minus"}} />
               {{column.agentName}}
@@ -207,9 +311,16 @@
             <span class="agent-load-count">{{column.leads.length}}</span>
           </div>
 
-          {{!-- Load indicator bar --}}
+          {{! Load indicator bar }}
           <div class="agent-load-bar">
-            <div class="agent-load-fill {{if (gt column.leads.length 8) 'load-high' (if (gt column.leads.length 4) 'load-medium' 'load-low')}}"></div>
+            <div
+              class="agent-load-fill
+                {{if
+                  (gt column.leads.length 8)
+                  'load-high'
+                  (if (gt column.leads.length 4) 'load-medium' 'load-low')
+                }}"
+            ></div>
           </div>
 
           {{#each column.leads as |lead|}}
@@ -222,25 +333,47 @@
               {{on "click" (fn this.openDetailModal lead)}}
             >
               <div class="flex between x-center">
-                <p class="font-sm font-bold">{{lead.firstName}}{{#if lead.lastName}} {{lead.lastName}}{{/if}}</p>
-                <span class="temp-badge temp-{{lowercase lead.temperature}}">{{lead.temperature}}</span>
+                <p class="font-sm font-bold">{{lead.firstName}}{{#if
+                    lead.lastName
+                  }} {{lead.lastName}}{{/if}}</p>
+                <span
+                  class="temp-badge temp-{{lowercase lead.temperature}}"
+                >{{lead.temperature}}</span>
               </div>
               <div class="flex gap-2 x-center">
                 <p class="text-muted font-xs">{{lead.phone}}</p>
                 {{#if lead.phone}}
-                  <a href={{wa-link lead.phone}} target="_blank" rel="noopener noreferrer" class="wa-link" data-test-wa-link {{on "click" this.stopPropagation}}>
+                  <a
+                    href={{wa-link lead.phone}}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="wa-link"
+                    data-test-wa-link
+                    {{on "click" this.stopPropagation}}
+                  >
                     <Ui::Ph @icon="whatsapp-logo" @size="14px" />
                   </a>
                 {{/if}}
               </div>
-              <span class="status-badge status-{{lowercase lead.status}}">{{lead.status}}</span>
+              <span
+                class="status-badge status-{{lowercase lead.status}}"
+              >{{lead.status}}</span>
               {{#if lead.property}}
-                <p class="text-primary font-xs flex gap-1 x-center"><Ui::Ph @icon="buildings" /> {{lead.property.name}}</p>
+                <p class="text-primary font-xs flex gap-1 x-center"><Ui::Ph
+                    @icon="buildings"
+                  />
+                  {{lead.property.name}}</p>
               {{/if}}
               <div class="flex between x-center mt-1">
-                <span class="font-xs text-muted">{{format-date lead.createdAt}}</span>
+                <span class="font-xs text-muted">{{format-date
+                    lead.createdAt
+                  }}</span>
                 <div class="flex gap-2" {{on "click" this.stopPropagation}}>
-                  <button type="button" class="btn btn-secondary btn-xs" {{on "click" (fn this.openEdit lead)}}>
+                  <button
+                    type="button"
+                    class="btn btn-secondary btn-xs"
+                    {{on "click" (fn this.openEdit lead)}}
+                  >
                     Edit
                   </button>
                 </div>
@@ -256,8 +389,8 @@
     </div>
   {{/if}}
 
-  {{!-- LIST VIEW --}}
-  {{#if (eq this.viewMode 'list')}}
+  {{! LIST VIEW }}
+  {{#if (eq this.viewMode "list")}}
     <div class="leads-list-view">
       <table class="data-table">
         <thead>
@@ -274,16 +407,29 @@
         </thead>
         <tbody>
           {{#each this.filteredLeads as |lead|}}
-            <tr data-test-lead-row data-test-lead-id={{lead.id}} class="lead-row-clickable" {{on "click" (fn this.openDetailModal lead)}}>
+            <tr
+              data-test-lead-row
+              data-test-lead-id={{lead.id}}
+              class="lead-row-clickable"
+              {{on "click" (fn this.openDetailModal lead)}}
+            >
               <td>
-                <span class="font-bold">{{lead.firstName}}{{#if lead.lastName}} {{lead.lastName}}{{/if}}</span>
+                <span class="font-bold">{{lead.firstName}}{{#if lead.lastName}}
+                    {{lead.lastName}}{{/if}}</span>
               </td>
               <td>
                 <div class="flex col gap-1">
                   <div class="flex gap-2 x-center">
                     <span class="font-xs">{{lead.phone}}</span>
                     {{#if lead.phone}}
-                      <a href={{wa-link lead.phone}} target="_blank" rel="noopener noreferrer" class="wa-link" data-test-wa-link {{on "click" this.stopPropagation}}>
+                      <a
+                        href={{wa-link lead.phone}}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="wa-link"
+                        data-test-wa-link
+                        {{on "click" this.stopPropagation}}
+                      >
                         <Ui::Ph @icon="whatsapp-logo" @size="14px" />
                       </a>
                     {{/if}}
@@ -292,16 +438,22 @@
                 </div>
               </td>
               <td>
-                <span class="status-badge status-{{lowercase lead.status}}">{{lead.status}}</span>
+                <span
+                  class="status-badge status-{{lowercase lead.status}}"
+                >{{lead.status}}</span>
               </td>
               <td>
-                <span class="temp-badge temp-{{lowercase lead.temperature}}">{{lead.temperature}}</span>
+                <span
+                  class="temp-badge temp-{{lowercase lead.temperature}}"
+                >{{lead.temperature}}</span>
               </td>
               <td>
                 {{#if lead.property}}
                   <span>{{lead.property.name}}</span>
                   {{#if lead.unit}}
-                    <span class="text-muted font-xs"> - Unit {{lead.unit.unitNumber}}</span>
+                    <span class="text-muted font-xs">
+                      - Unit
+                      {{lead.unit.unitNumber}}</span>
                   {{/if}}
                 {{else}}
                   <span class="text-muted">-</span>
@@ -309,20 +461,32 @@
               </td>
               <td>
                 {{#if lead.assignedAgentName}}
-                  <span class="assign-badge-sm">{{lead.assignedAgentName}}</span>
+                  <span
+                    class="assign-badge-sm"
+                  >{{lead.assignedAgentName}}</span>
                 {{else}}
                   <span class="text-muted">Unassigned</span>
                 {{/if}}
               </td>
               <td>
-                <span class="font-xs text-muted">{{format-date lead.createdAt}}</span>
+                <span class="font-xs text-muted">{{format-date
+                    lead.createdAt
+                  }}</span>
               </td>
               <td>
                 <div class="flex gap-2" {{on "click" this.stopPropagation}}>
-                  <button type="button" class="btn btn-secondary btn-xs" {{on "click" (fn this.openEdit lead)}}>
+                  <button
+                    type="button"
+                    class="btn btn-secondary btn-xs"
+                    {{on "click" (fn this.openEdit lead)}}
+                  >
                     Edit
                   </button>
-                  <button type="button" class="btn btn-secondary btn-xs" {{on "click" (fn this.openAssignModal lead)}}>
+                  <button
+                    type="button"
+                    class="btn btn-secondary btn-xs"
+                    {{on "click" (fn this.openAssignModal lead)}}
+                  >
                     Assign
                   </button>
                 </div>
@@ -341,7 +505,7 @@
   {{/if}}
 </div>
 
-{{!-- Edit Modal --}}
+{{! Edit Modal }}
 <Ui::Modal
   @isOpen={{this.showModal}}
   @title={{if this.editLead "Edit Lead" "New Lead"}}
@@ -350,41 +514,116 @@
 >
   <form class="flex col gap-4" {{on "submit" this.saveLead}}>
     {{#if this.showRegionField}}
-      <Ui::FormDropdown @label="Region" @id="lead-region" @value={{this.formRegionCode}} @onChange={{this.setRegionCode}} @options={{this.regionOptions}} @placeholder="Select region..." data-test-region-select />
+      <Ui::FormDropdown
+        @label="Region"
+        @id="lead-region"
+        @value={{this.formRegionCode}}
+        @onChange={{this.setRegionCode}}
+        @options={{this.regionOptions}}
+        @placeholder="Select region..."
+        data-test-region-select
+      />
     {{/if}}
     <div class="flex gap-4">
       <div class="flex-1">
-        <Ui::FormInput @label="First Name" @id="lead-first-name" @type="text" @placeholder="e.g. Ahmed" @value={{this.formFirstName}} @onChange={{fn this.setField "formFirstName"}} @required={{true}} />
+        <Ui::FormInput
+          @label="First Name"
+          @id="lead-first-name"
+          @type="text"
+          @placeholder="e.g. Ahmed"
+          @value={{this.formFirstName}}
+          @onChange={{fn this.setField "formFirstName"}}
+          @required={{true}}
+        />
       </div>
       <div class="flex-1">
-        <Ui::FormInput @label="Last Name" @id="lead-last-name" @type="text" @placeholder="e.g. Al Mansouri" @value={{this.formLastName}} @onChange={{fn this.setField "formLastName"}} />
+        <Ui::FormInput
+          @label="Last Name"
+          @id="lead-last-name"
+          @type="text"
+          @placeholder="e.g. Al Mansouri"
+          @value={{this.formLastName}}
+          @onChange={{fn this.setField "formLastName"}}
+        />
       </div>
     </div>
-    <Ui::FormInput @label="Email" @id="lead-email" @type="email" @placeholder="ahmed@example.com" @value={{this.formEmail}} @onChange={{fn this.setField "formEmail"}} />
-    <Ui::FormInput @label="Phone" @id="lead-phone" @type="text" @placeholder="+971501234567" @value={{this.formPhone}} @onChange={{fn this.setField "formPhone"}} />
+    <Ui::FormInput
+      @label="Email"
+      @id="lead-email"
+      @type="email"
+      @placeholder="ahmed@example.com"
+      @value={{this.formEmail}}
+      @onChange={{fn this.setField "formEmail"}}
+    />
+    <Ui::FormInput
+      @label="Phone"
+      @id="lead-phone"
+      @type="text"
+      @placeholder="+971501234567"
+      @value={{this.formPhone}}
+      @onChange={{fn this.setField "formPhone"}}
+    />
     <div class="flex gap-4">
       <div class="flex-1">
-        <Ui::FormDropdown @label="Status" @id="lead-status" @value={{this.formStatus}} @onChange={{fn this.setField "formStatus"}} @options={{this.statusOptions}} @placeholder="Select status..." />
+        <Ui::FormDropdown
+          @label="Status"
+          @id="lead-status"
+          @value={{this.formStatus}}
+          @onChange={{fn this.setField "formStatus"}}
+          @options={{this.statusOptions}}
+          @placeholder="Select status..."
+        />
       </div>
       <div class="flex-1">
-        <Ui::FormDropdown @label="Temperature" @id="lead-temp" @value={{this.formTemperature}} @onChange={{fn this.setField "formTemperature"}} @options={{this.temperatureOptions}} @placeholder="Select temperature..." />
+        <Ui::FormDropdown
+          @label="Temperature"
+          @id="lead-temp"
+          @value={{this.formTemperature}}
+          @onChange={{fn this.setField "formTemperature"}}
+          @options={{this.temperatureOptions}}
+          @placeholder="Select temperature..."
+        />
       </div>
     </div>
-    <Ui::FormDropdown @label="Property Area" @id="lead-property" @value={{this.formPropertyId}} @onChange={{this.setPropertyId}} @options={{this.propertyOptions}} @placeholder="-- None --" />
+    <Ui::FormDropdown
+      @label="Property Area"
+      @id="lead-property"
+      @value={{this.formPropertyId}}
+      @onChange={{this.setPropertyId}}
+      @options={{this.propertyOptions}}
+      @placeholder="-- None --"
+    />
     {{#if this.formPropertyId}}
-      <Ui::FormDropdown @label="Unit" @id="lead-unit" @value={{this.formUnitId}} @onChange={{fn this.setField "formUnitId"}} @options={{this.unitOptions}} @placeholder="-- None --" />
+      <Ui::FormDropdown
+        @label="Unit"
+        @id="lead-unit"
+        @value={{this.formUnitId}}
+        @onChange={{fn this.setField "formUnitId"}}
+        @options={{this.unitOptions}}
+        @placeholder="-- None --"
+      />
     {{/if}}
     {{#if this.errorMsg}}
       <p class="text-danger">{{this.errorMsg}}</p>
     {{/if}}
     <div class="flex gap-3 mt-2">
-      <Ui::AppButton @variant="secondary" @text="Cancel" @onClick={{this.closeModal}} />
-      <Ui::AppButton @variant="primary" @buttonType="submit" @text={{if this.editLead "Update" "Create Lead"}} @loading={{this.isSaving}} @loadingText="Saving..." />
+      <Ui::AppButton
+        @variant="secondary"
+        @text="Cancel"
+        @onClick={{this.closeModal}}
+      />
+      <Ui::AppButton
+        @variant="primary"
+        @buttonType="submit"
+        @text={{if this.editLead "Update" "Create Lead"}}
+        @loading={{this.isSaving}}
+        @loadingText="Saving..."
+      />
     </div>
   </form>
 </Ui::Modal>
 
-{{!-- Assign Modal --}}
+{{! Assign Modal }}
 <Ui::Modal
   @isOpen={{this.showAssignModal}}
   @title="Assign Lead"
@@ -392,137 +631,187 @@
   @showClose={{true}}
 >
   <form class="flex col gap-4" {{on "submit" this.assignToAgent}}>
-    <p class="text-muted">Select an agent to assign <strong>{{this.assignLead.firstName}}</strong> to:</p>
-    <Ui::FormDropdown @label="Agent" @id="agent-select" @value={{this.selectedAgentId}} @onChange={{fn this.setField "selectedAgentId"}} @options={{this.agentOptions}} @placeholder="-- Select Agent --" />
+    <p class="text-muted">Select an agent to assign
+      <strong>{{this.assignLead.firstName}}</strong>
+      to:</p>
+    <Ui::FormDropdown
+      @label="Agent"
+      @id="agent-select"
+      @value={{this.selectedAgentId}}
+      @onChange={{fn this.setField "selectedAgentId"}}
+      @options={{this.agentOptions}}
+      @placeholder="-- Select Agent --"
+    />
     <div class="flex gap-3 mt-2">
-      <Ui::AppButton @variant="secondary" @text="Cancel" @onClick={{this.closeAssignModal}} />
+      <Ui::AppButton
+        @variant="secondary"
+        @text="Cancel"
+        @onClick={{this.closeAssignModal}}
+      />
       <Ui::AppButton @variant="primary" @buttonType="submit" @text="Assign" />
     </div>
   </form>
 </Ui::Modal>
 
-{{!-- Lead Detail Modal --}}
+{{! Lead Detail Modal }}
 <Ui::Modal
   @isOpen={{this.showDetailModal}}
-  @title={{if this.detailLead (concat this.detailLead.firstName (if this.detailLead.lastName (concat " " this.detailLead.lastName) "")) "Lead Details"}}
+  @title={{if
+    this.detailLead
+    (concat
+      this.detailLead.firstName
+      (if this.detailLead.lastName (concat " " this.detailLead.lastName) "")
+    )
+    "Lead Details"
+  }}
   @onClose={{this.closeDetailModal}}
   @showClose={{true}}
   @panelClass="modal-lg"
 >
-    <div class="flex gap-4 x-center">
-      <span class="temp-badge temp-{{lowercase this.detailLead.temperature}}">{{this.detailLead.temperature}}</span>
-      <span class="status-badge status-{{lowercase this.detailLead.status}}">{{this.detailLead.status}}</span>
-    </div>
+  <div class="flex gap-4 x-center">
+    <span
+      class="temp-badge temp-{{lowercase this.detailLead.temperature}}"
+    >{{this.detailLead.temperature}}</span>
+    <span
+      class="status-badge status-{{lowercase this.detailLead.status}}"
+    >{{this.detailLead.status}}</span>
+  </div>
 
-    {{!-- Content --}}
-    <div class="detail-modal-content flex gap-6">
-      {{!-- Left: Lead Info --}}
-      <div class="detail-info flex col gap-4">
-        <div class="info-section">
-          <h4 class="font-sm font-bold text-muted mb-2">Contact Info</h4>
-          <div class="flex col gap-2">
-            <div class="flex gap-2 x-center">
-              <span><Ui::Ph @icon="phone" /></span>
-              <span>{{or this.detailLead.phone 'N/A'}}</span>
-              {{#if this.detailLead.phone}}
-                <a href={{wa-link this.detailLead.phone}} target="_blank" rel="noopener noreferrer" class="wa-link" data-test-wa-link title="Open WhatsApp">
-                  <Ui::Ph @icon="whatsapp-logo" @size="16px" />
-                </a>
-              {{/if}}
-            </div>
-            <div class="flex gap-2 x-center">
-              <span><Ui::Ph @icon="envelope" /></span>
-              <span>{{or this.detailLead.email 'N/A'}}</span>
-            </div>
-            {{#if this.detailLead.whatsappNumber}}
-              <div class="flex gap-2 x-center">
-                <span><Ui::Ph @icon="whatsapp-logo" /></span>
-                <a href={{wa-link this.detailLead.whatsappNumber}} target="_blank" rel="noopener noreferrer" class="wa-link-text" data-test-wa-link>
-                  {{this.detailLead.whatsappNumber}}
-                </a>
-              </div>
+  {{! Content }}
+  <div class="detail-modal-content flex gap-6">
+    {{! Left: Lead Info }}
+    <div class="detail-info flex col gap-4">
+      <div class="info-section">
+        <h4 class="font-sm font-bold text-muted mb-2">Contact Info</h4>
+        <div class="flex col gap-2">
+          <div class="flex gap-2 x-center">
+            <span><Ui::Ph @icon="phone" /></span>
+            <span>{{or this.detailLead.phone "N/A"}}</span>
+            {{#if this.detailLead.phone}}
+              <a
+                href={{wa-link this.detailLead.phone}}
+                target="_blank"
+                rel="noopener noreferrer"
+                class="wa-link"
+                data-test-wa-link
+                title="Open WhatsApp"
+              >
+                <Ui::Ph @icon="whatsapp-logo" @size="16px" />
+              </a>
             {{/if}}
           </div>
-        </div>
-
-        <div class="info-section">
-          <h4 class="font-sm font-bold text-muted mb-2">Property Interest</h4>
-          {{#if this.detailLead.property}}
+          <div class="flex gap-2 x-center">
+            <span><Ui::Ph @icon="envelope" /></span>
+            <span>{{or this.detailLead.email "N/A"}}</span>
+          </div>
+          {{#if this.detailLead.whatsappNumber}}
             <div class="flex gap-2 x-center">
-              <span><Ui::Ph @icon="buildings" /></span>
-              <span>{{this.detailLead.property.name}}</span>
+              <span><Ui::Ph @icon="whatsapp-logo" /></span>
+              <a
+                href={{wa-link this.detailLead.whatsappNumber}}
+                target="_blank"
+                rel="noopener noreferrer"
+                class="wa-link-text"
+                data-test-wa-link
+              >
+                {{this.detailLead.whatsappNumber}}
+              </a>
             </div>
-            {{#if this.detailLead.unit}}
-              <div class="flex gap-2 x-center mt-1">
-                <span><Ui::Ph @icon="house" /></span>
-                <span>Unit {{this.detailLead.unit.unitNumber}}</span>
-              </div>
-            {{/if}}
-          {{else}}
-            <span class="text-muted">No property selected</span>
           {{/if}}
-        </div>
-
-        <div class="info-section">
-          <h4 class="font-sm font-bold text-muted mb-2">Budget</h4>
-          {{#if this.detailLead.budgetMin}}
-            <span>{{format-currency this.detailLead.budgetMin}}</span>
-            {{#if this.detailLead.budgetMax}}
-              <span> - {{format-currency this.detailLead.budgetMax}}</span>
-            {{/if}}
-          {{else}}
-            <span class="text-muted">Not specified</span>
-          {{/if}}
-        </div>
-
-        <div class="info-section">
-          <h4 class="font-sm font-bold text-muted mb-2">Notes</h4>
-          <p class="text-sm">{{or this.detailLead.notes 'No notes'}}</p>
-        </div>
-
-        <div class="info-section">
-          <h4 class="font-sm font-bold text-muted mb-2">Source</h4>
-          <span>{{or this.detailLead.source 'Unknown'}}</span>
-        </div>
-
-        <div class="flex gap-2 mt-2">
-          <button type="button" class="btn btn-secondary btn-sm flex-1" {{on "click" (fn this.openEdit this.detailLead)}}>
-            Edit
-          </button>
-          <button type="button" class="btn btn-secondary btn-sm flex-1" {{on "click" (fn this.openAssignModal this.detailLead)}}>
-            Assign
-          </button>
         </div>
       </div>
 
-      {{!-- Right: Activity Timeline --}}
-      <div class="detail-timeline flex-1">
-        <h4 class="font-sm font-bold text-muted mb-4">Activity History</h4>
-        <div class="activity-timeline flex col gap-3">
-          {{#each this.leadActivities as |activity|}}
-            <div class="activity-item" data-test-activity-id={{activity.id}}>
-              <div class="activity-side">
-                <div class="activity-icon">
-                  <Ui::Ph @icon={{get-activity-icon activity.type}} @size="16px" />
-                </div>
-                <div class="activity-summary">
-                  <span class="activity-type">{{activity.type}}</span>
-                  <span class="activity-date">{{format-date-time activity.createdAt}}</span>
-                </div>
-              </div>
-              <div class="activity-content">
-                <p class="activity-notes">{{activity.notes}}</p>
-                {{#if activity.performedByName}}
-                  <p class="activity-meta">by {{activity.performedByName}}</p>
-                {{/if}}
-              </div>
+      <div class="info-section">
+        <h4 class="font-sm font-bold text-muted mb-2">Property Interest</h4>
+        {{#if this.detailLead.property}}
+          <div class="flex gap-2 x-center">
+            <span><Ui::Ph @icon="buildings" /></span>
+            <span>{{this.detailLead.property.name}}</span>
+          </div>
+          {{#if this.detailLead.unit}}
+            <div class="flex gap-2 x-center mt-1">
+              <span><Ui::Ph @icon="house" /></span>
+              <span>Unit {{this.detailLead.unit.unitNumber}}</span>
             </div>
-          {{else}}
-            <div class="text-center text-muted py-8">
-              <p>No activity recorded yet</p>
-            </div>
-          {{/each}}
-        </div>
+          {{/if}}
+        {{else}}
+          <span class="text-muted">No property selected</span>
+        {{/if}}
+      </div>
+
+      <div class="info-section">
+        <h4 class="font-sm font-bold text-muted mb-2">Budget</h4>
+        {{#if this.detailLead.budgetMin}}
+          <span>{{format-currency this.detailLead.budgetMin}}</span>
+          {{#if this.detailLead.budgetMax}}
+            <span> - {{format-currency this.detailLead.budgetMax}}</span>
+          {{/if}}
+        {{else}}
+          <span class="text-muted">Not specified</span>
+        {{/if}}
+      </div>
+
+      <div class="info-section">
+        <h4 class="font-sm font-bold text-muted mb-2">Notes</h4>
+        <p class="text-sm">{{or this.detailLead.notes "No notes"}}</p>
+      </div>
+
+      <div class="info-section">
+        <h4 class="font-sm font-bold text-muted mb-2">Source</h4>
+        <span>{{or this.detailLead.source "Unknown"}}</span>
+      </div>
+
+      <div class="flex gap-2 mt-2">
+        <button
+          type="button"
+          class="btn btn-secondary btn-sm flex-1"
+          {{on "click" (fn this.openEdit this.detailLead)}}
+        >
+          Edit
+        </button>
+        <button
+          type="button"
+          class="btn btn-secondary btn-sm flex-1"
+          {{on "click" (fn this.openAssignModal this.detailLead)}}
+        >
+          Assign
+        </button>
       </div>
     </div>
+
+    {{! Right: Activity Timeline }}
+    <div class="detail-timeline flex-1">
+      <h4 class="font-sm font-bold text-muted mb-4">Activity History</h4>
+      <div class="activity-timeline flex col gap-3">
+        {{#each this.leadActivities as |activity|}}
+          <div class="activity-item" data-test-activity-id={{activity.id}}>
+            <div class="activity-side">
+              <div class="activity-icon">
+                <Ui::Ph
+                  @icon={{get-activity-icon activity.type}}
+                  @size="16px"
+                />
+              </div>
+              <div class="activity-summary">
+                <span class="activity-type">{{activity.type}}</span>
+                <span class="activity-date">{{format-date-time
+                    activity.createdAt
+                  }}</span>
+              </div>
+            </div>
+            <div class="activity-content">
+              <p class="activity-notes">{{activity.notes}}</p>
+              {{#if activity.performedByName}}
+                <p class="activity-meta">by {{activity.performedByName}}</p>
+              {{/if}}
+            </div>
+          </div>
+        {{else}}
+          <div class="text-center text-muted py-8">
+            <p>No activity recorded yet</p>
+          </div>
+        {{/each}}
+      </div>
+    </div>
+  </div>
 </Ui::Modal>

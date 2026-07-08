@@ -2,9 +2,12 @@ import PaginatedController from './paginated-base';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
-import { TRANSACTION_TYPE_OPTIONS, TRANSACTION_CATEGORY_OPTIONS,
-  PAYMENT_METHOD_OPTIONS, TRANSACTION_STATUS_OPTIONS
- } from 'land/constants';
+import {
+  TRANSACTION_TYPE_OPTIONS,
+  TRANSACTION_CATEGORY_OPTIONS,
+  PAYMENT_METHOD_OPTIONS,
+  TRANSACTION_STATUS_OPTIONS,
+} from 'land/constants';
 
 export default class FinancialsController extends PaginatedController {
   @service auth;
@@ -41,7 +44,9 @@ export default class FinancialsController extends PaginatedController {
     this.page = 1;
   }
 
-  @action setField(fieldName, e) { this[fieldName] = e.target.value; }
+  @action setField(fieldName, e) {
+    this[fieldName] = e.target.value;
+  }
 
   @action openCreate() {
     this.formType = 'INCOME';
@@ -91,7 +96,9 @@ export default class FinancialsController extends PaginatedController {
           amount: parseFloat(this.formAmount),
           status: this.formStatus,
           paymentMethod: this.formPaymentMethod,
-          ...(this.formDescription ? { description: this.formDescription } : {}),
+          ...(this.formDescription
+            ? { description: this.formDescription }
+            : {}),
         }
       : {
           type: this.formType,
@@ -99,7 +106,9 @@ export default class FinancialsController extends PaginatedController {
           amount: parseFloat(this.formAmount),
           status: this.formStatus,
           paymentMethod: this.formPaymentMethod,
-          ...(this.formDescription ? { description: this.formDescription } : {}),
+          ...(this.formDescription
+            ? { description: this.formDescription }
+            : {}),
           ...(this.formDate ? { transactionDate: this.formDate } : {}),
         };
 
@@ -108,7 +117,9 @@ export default class FinancialsController extends PaginatedController {
         method: isEdit ? 'PATCH' : 'POST',
         body: JSON.stringify(body),
       });
-      this.notifications.success(isEdit ? 'Transaction updated' : 'Transaction created');
+      this.notifications.success(
+        isEdit ? 'Transaction updated' : 'Transaction created',
+      );
       this.closeModal();
       this.router.refresh('financials');
     } catch (e) {

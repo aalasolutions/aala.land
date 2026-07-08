@@ -16,11 +16,22 @@ export function canManageUsers(role) {
 }
 
 export function canAccessWhatsapp(role) {
-  return [ROLES.COMPANY_ADMIN, ROLES.ADMIN, ROLES.MANAGER, ROLES.AGENT].includes(role);
+  return [
+    ROLES.COMPANY_ADMIN,
+    ROLES.ADMIN,
+    ROLES.MANAGER,
+    ROLES.AGENT,
+  ].includes(role);
 }
 
 export function canManageFinancials(role) {
-  return [ROLES.SUPER_ADMIN, ROLES.COMPANY_ADMIN, ROLES.ADMIN, ROLES.MANAGER, ROLES.ACCOUNTANT].includes(role);
+  return [
+    ROLES.SUPER_ADMIN,
+    ROLES.COMPANY_ADMIN,
+    ROLES.ADMIN,
+    ROLES.MANAGER,
+    ROLES.ACCOUNTANT,
+  ].includes(role);
 }
 
 export function canDelete(role) {
@@ -28,13 +39,42 @@ export function canDelete(role) {
 }
 
 export const SIDEBAR_ROLES = {
-  properties: [ROLES.COMPANY_ADMIN, ROLES.ADMIN, ROLES.MANAGER, ROLES.AGENT, ROLES.ACCOUNTANT],
-  documents: [ROLES.COMPANY_ADMIN, ROLES.ADMIN, ROLES.MANAGER, ROLES.AGENT, ROLES.ACCOUNTANT],
-  crm: [ROLES.COMPANY_ADMIN, ROLES.ADMIN, ROLES.MANAGER, ROLES.AGENT, ROLES.ACCOUNTANT],
+  properties: [
+    ROLES.COMPANY_ADMIN,
+    ROLES.ADMIN,
+    ROLES.MANAGER,
+    ROLES.AGENT,
+    ROLES.ACCOUNTANT,
+  ],
+  documents: [
+    ROLES.COMPANY_ADMIN,
+    ROLES.ADMIN,
+    ROLES.MANAGER,
+    ROLES.AGENT,
+    ROLES.ACCOUNTANT,
+  ],
+  crm: [
+    ROLES.COMPANY_ADMIN,
+    ROLES.ADMIN,
+    ROLES.MANAGER,
+    ROLES.AGENT,
+    ROLES.ACCOUNTANT,
+  ],
   finance: [ROLES.COMPANY_ADMIN, ROLES.ADMIN, ROLES.MANAGER, ROLES.ACCOUNTANT],
   outreach: [ROLES.COMPANY_ADMIN, ROLES.ADMIN, ROLES.MANAGER],
-  operations: [ROLES.COMPANY_ADMIN, ROLES.ADMIN, ROLES.MANAGER, ROLES.ACCOUNTANT],
-  reports: [ROLES.COMPANY_ADMIN, ROLES.ADMIN, ROLES.MANAGER, ROLES.AGENT, ROLES.ACCOUNTANT],
+  operations: [
+    ROLES.COMPANY_ADMIN,
+    ROLES.ADMIN,
+    ROLES.MANAGER,
+    ROLES.ACCOUNTANT,
+  ],
+  reports: [
+    ROLES.COMPANY_ADMIN,
+    ROLES.ADMIN,
+    ROLES.MANAGER,
+    ROLES.AGENT,
+    ROLES.ACCOUNTANT,
+  ],
   team: [ROLES.SUPER_ADMIN, ROLES.COMPANY_ADMIN, ROLES.ADMIN],
   admin: [ROLES.SUPER_ADMIN],
 };
@@ -52,9 +92,7 @@ export function canUpdateUser(role, targetRole) {
   const currentRoleIndex = ROLE_HIERARCHY.indexOf(role);
   const targetRoleIndex = ROLE_HIERARCHY.indexOf(targetRole);
 
-  const hasValidRoles =
-    currentRoleIndex !== -1 &&
-    targetRoleIndex !== -1;
+  const hasValidRoles = currentRoleIndex !== -1 && targetRoleIndex !== -1;
 
   if (!hasValidRoles) {
     return false;

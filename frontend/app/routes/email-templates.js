@@ -15,7 +15,9 @@ export default class EmailTemplatesRoute extends AuthenticatedRoute {
       const params = new URLSearchParams({ page, limit });
       if (category) params.set('category', category);
 
-      const result = await this.auth.fetchJson(`/email-templates?${params.toString()}`);
+      const result = await this.auth.fetchJson(
+        `/email-templates?${params.toString()}`,
+      );
       return {
         templates: result.data?.data || [],
         total: result.data?.total || 0,

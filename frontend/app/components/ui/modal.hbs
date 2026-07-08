@@ -11,7 +11,12 @@
       {{#if @showClose}}
         <div class="modal-header">
           <h2 id="modal-title">{{@title}}</h2>
-          <button type="button" class="modal-close-btn" aria-label="Close" {{on "click" this.close}}>
+          <button
+            type="button"
+            class="modal-close-btn"
+            aria-label="Close"
+            {{on "click" this.close}}
+          >
             <Ui::Ph @icon="x" @size="20px" />
           </button>
         </div>

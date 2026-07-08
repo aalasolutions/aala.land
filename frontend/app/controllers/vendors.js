@@ -2,7 +2,11 @@ import PaginatedController from './paginated-base';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
-import { closeDeleteModal, confirmDeleteModal, openDeleteModal } from '../utils/delete-modal';
+import {
+  closeDeleteModal,
+  confirmDeleteModal,
+  openDeleteModal,
+} from '../utils/delete-modal';
 import { MAINTENANCE_CATEGORY_OPTIONS } from 'land/constants';
 
 export default class VendorsController extends PaginatedController {
@@ -36,15 +40,17 @@ export default class VendorsController extends PaginatedController {
   }
 
   get regionOptions() {
-    return this.region.regions.map(r => ({
+    return this.region.regions.map((r) => ({
       value: r.code,
-      label: `${r.name} (${r.currency})`
+      label: `${r.name} (${r.currency})`,
     }));
   }
 
   specialtyOptions = MAINTENANCE_CATEGORY_OPTIONS;
 
-  @action setField(fieldName, e) { this[fieldName] = e.target.value; }
+  @action setField(fieldName, e) {
+    this[fieldName] = e.target.value;
+  }
 
   @action openCreate() {
     this.formName = '';
@@ -99,10 +105,14 @@ export default class VendorsController extends PaginatedController {
       ...(this.formPhone ? { phone: this.formPhone } : {}),
       ...(this.formCompanyName ? { companyName: this.formCompanyName } : {}),
       ...(this.formAddress ? { address: this.formAddress } : {}),
-      ...(this.formHourlyRate ? { hourlyRate: parseFloat(this.formHourlyRate) } : {}),
+      ...(this.formHourlyRate
+        ? { hourlyRate: parseFloat(this.formHourlyRate) }
+        : {}),
       ...(this.formRating ? { rating: parseInt(this.formRating, 10) } : {}),
       ...(this.formNotes ? { notes: this.formNotes } : {}),
-      ...(!isEdit && this.formRegionCode ? { regionCode: this.formRegionCode } : {}),
+      ...(!isEdit && this.formRegionCode
+        ? { regionCode: this.formRegionCode }
+        : {}),
     };
 
     try {

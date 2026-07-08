@@ -9,7 +9,7 @@ export default class AppButtonComponent extends Component {
       secondary: 'btn-secondary',
       success: 'btn-success',
       danger: 'btn-danger',
-      warning: 'btn-warning'
+      warning: 'btn-warning',
     };
 
     return variantMap[variant] || 'btn-secondary';

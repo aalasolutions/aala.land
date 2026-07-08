@@ -37,8 +37,15 @@ export default class WhatsappController extends Controller {
 
   // ── Computed ──────────────────────────────────────────────────────────
 
-  get isConnected() { return this.connection === 'connected'; }
-  get showQR()      { return this.connection !== 'connected' && (!this.hasCredentials || this.qr !== null); }
+  get isConnected() {
+    return this.connection === 'connected';
+  }
+  get showQR() {
+    return (
+      this.connection !== 'connected' &&
+      (!this.hasCredentials || this.qr !== null)
+    );
+  }
 
   get weeklyUsageLabel() {
     if (this.weeklyLimit === null) return null;
@@ -48,12 +55,12 @@ export default class WhatsappController extends Controller {
   get currentChatMessages() {
     if (!this.currentChatId) return [];
     return this.messages
-      .filter(m => m.chatId === this.currentChatId)
+      .filter((m) => m.chatId === this.currentChatId)
       .sort((a, b) => (a.timestamp ?? 0) - (b.timestamp ?? 0));
   }
 
   get currentChatName() {
-    const chat = this.chats.find(c => c.chatId === this.currentChatId);
+    const chat = this.chats.find((c) => c.chatId === this.currentChatId);
     return chat?.chatName ?? this.currentChatId?.split('@')[0] ?? '';
   }
 
@@ -61,7 +68,9 @@ export default class WhatsappController extends Controller {
 
   async setup() {
     const setupGen = this._pollQRGeneration;
-    this.whatsapp.connectSocket((type, data) => this.handleSocketEvent(type, data));
+    this.whatsapp.connectSocket((type, data) =>
+      this.handleSocketEvent(type, data),
+    );
 
     try {
       const [connData, chatsData, msgsData, aiData] = await Promise.all([
@@ -79,8 +88,8 @@ export default class WhatsappController extends Controller {
       this.me = conn.me ?? null;
 
       this.chats = (chatsData.data?.chats ?? chatsData.chats ?? [])
-        .filter(c => !this._isIgnoredChat(c))
-        .map(c => ({
+        .filter((c) => !this._isIgnoredChat(c))
+        .map((c) => ({
           ...c,
           lastTs: c.lastTs ? c.lastTs * 1000 : c.lastTs,
         }));
@@ -106,8 +115,9 @@ export default class WhatsappController extends Controller {
   async pollForQR() {
     const myGen = ++this._pollQRGeneration;
     for (let i = 0; i < 40; i++) {
-      await new Promise(r => setTimeout(r, 1500));
-      if (myGen !== this._pollQRGeneration || this.connection === 'connected') return;
+      await new Promise((r) => setTimeout(r, 1500));
+      if (myGen !== this._pollQRGeneration || this.connection === 'connected')
+        return;
       try {
         const qrData = await this.whatsapp.getQR();
         const data = qrData.data ?? qrData;
@@ -118,9 +128,12 @@ export default class WhatsappController extends Controller {
           this.qr = null;
           return;
         }
-        if (typeof data.hasCredentials === 'boolean') this.hasCredentials = data.hasCredentials;
+        if (typeof data.hasCredentials === 'boolean')
+          this.hasCredentials = data.hasCredentials;
         if (data.qr) this.qr = data.qr;
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
     }
   }
 
@@ -137,7 +150,10 @@ export default class WhatsappController extends Controller {
   }
 
   stopPolling() {
-    if (this._pollTimer) { clearInterval(this._pollTimer); this._pollTimer = null; }
+    if (this._pollTimer) {
+      clearInterval(this._pollTimer);
+      this._pollTimer = null;
+    }
   }
 
   async pollUpdates() {
@@ -147,7 +163,9 @@ export default class WhatsappController extends Controller {
         const msgsData = await this.whatsapp.getMessages(this.currentChatId);
         this.ingestMessages(msgsData.data?.messages ?? msgsData.messages ?? []);
       }
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
   }
 
   // ── Socket events ─────────────────────────────────────────────────────
@@ -171,28 +189,35 @@ export default class WhatsappController extends Controller {
       this.ingestMessage(data);
     } else if (type === 'ai') {
       if (data.enabled !== undefined) this.aiEnabled = data.enabled;
-      if (data.keyConfigured !== undefined) this.aiKeyConfigured = data.keyConfigured;
+      if (data.keyConfigured !== undefined)
+        this.aiKeyConfigured = data.keyConfigured;
       if (data.weeklyUsed !== undefined) this.weeklyUsed = data.weeklyUsed;
     }
   }
 
   ingestMessages(msgs) {
-    const existingIds = new Set(this.messages.map(m => m.id));
+    const existingIds = new Set(this.messages.map((m) => m.id));
     const newMsgs = msgs
-      .filter(m => !existingIds.has(m.id))
-      .filter(m => m.body || m.hasMedia)
-      .filter(m => !this._isIgnoredChat(m))
-      .map(m => ({ ...m, timestamp: m.timestamp ? m.timestamp * 1000 : m.timestamp }));
+      .filter((m) => !existingIds.has(m.id))
+      .filter((m) => m.body || m.hasMedia)
+      .filter((m) => !this._isIgnoredChat(m))
+      .map((m) => ({
+        ...m,
+        timestamp: m.timestamp ? m.timestamp * 1000 : m.timestamp,
+      }));
     if (!newMsgs.length) return;
     this.messages = [...this.messages, ...newMsgs];
     for (const m of newMsgs) this._updateChat(m);
   }
 
   ingestMessage(msg) {
-    if (this.messages.some(m => m.id === msg.id)) return;
+    if (this.messages.some((m) => m.id === msg.id)) return;
     if (!msg.body && !msg.hasMedia) return;
     if (this._isIgnoredChat(msg)) return;
-    const normalized = { ...msg, timestamp: msg.timestamp ? msg.timestamp * 1000 : msg.timestamp };
+    const normalized = {
+      ...msg,
+      timestamp: msg.timestamp ? msg.timestamp * 1000 : msg.timestamp,
+    };
     this.messages = [...this.messages, normalized];
     this._updateChat(normalized);
   }
@@ -205,8 +230,9 @@ export default class WhatsappController extends Controller {
   }
 
   _updateChat(msg) {
-    const existingIdx = this.chats.findIndex(c => c.chatId === msg.chatId);
-    const isNewer = (msg.timestamp ?? 0) >= (this.chats[existingIdx]?.lastTs ?? 0);
+    const existingIdx = this.chats.findIndex((c) => c.chatId === msg.chatId);
+    const isNewer =
+      (msg.timestamp ?? 0) >= (this.chats[existingIdx]?.lastTs ?? 0);
     if (existingIdx >= 0 && isNewer) {
       const updated = [...this.chats];
       updated[existingIdx] = {
@@ -217,14 +243,17 @@ export default class WhatsappController extends Controller {
       };
       this.chats = updated.sort((a, b) => (b.lastTs ?? 0) - (a.lastTs ?? 0));
     } else if (existingIdx < 0) {
-      this.chats = [{
-        chatId: msg.chatId,
-        chatName: msg.chatName || msg.chatId.split('@')[0],
-        isGroup: msg.isGroup ?? false,
-        lastBody: msg.body,
-        lastTs: msg.timestamp,
-        lastFromMe: msg.fromMe,
-      }, ...this.chats];
+      this.chats = [
+        {
+          chatId: msg.chatId,
+          chatName: msg.chatName || msg.chatId.split('@')[0],
+          isGroup: msg.isGroup ?? false,
+          lastBody: msg.body,
+          lastTs: msg.timestamp,
+          lastFromMe: msg.fromMe,
+        },
+        ...this.chats,
+      ];
     }
   }
 
@@ -250,7 +279,7 @@ export default class WhatsappController extends Controller {
     this.isSending = true;
     this.errorMsg = '';
     const tempId = `pending-${Date.now()}`;
-    const prevChat = this.chats.find(c => c.chatId === this.currentChatId);
+    const prevChat = this.chats.find((c) => c.chatId === this.currentChatId);
 
     this.ingestMessage({
       id: tempId,
@@ -260,9 +289,13 @@ export default class WhatsappController extends Controller {
       chatName: this.currentChatName,
       isGroup: this.currentChatId.endsWith('@g.us'),
       body: text,
-      hasMedia: false, mediaType: '', mediaUrls: [],
-      mentionedIds: [], quotedParticipant: '',
-      fromMe: true, aiGenerated: false,
+      hasMedia: false,
+      mediaType: '',
+      mediaUrls: [],
+      mentionedIds: [],
+      quotedParticipant: '',
+      fromMe: true,
+      aiGenerated: false,
       timestamp: Math.floor(Date.now() / 1000),
     });
     this.messageText = '';
@@ -271,19 +304,25 @@ export default class WhatsappController extends Controller {
       const result = await this.whatsapp.sendMessage(this.currentChatId, text);
       const realId = (result.data ?? result).messageId;
       if (realId) {
-        const alreadyPresent = this.messages.some(m => m.id === realId);
+        const alreadyPresent = this.messages.some((m) => m.id === realId);
         this.messages = alreadyPresent
-          ? this.messages.filter(m => m.id !== tempId)
-          : this.messages.map(m => m.id === tempId ? { ...m, id: realId } : m);
+          ? this.messages.filter((m) => m.id !== tempId)
+          : this.messages.map((m) =>
+              m.id === tempId ? { ...m, id: realId } : m,
+            );
       }
     } catch (err) {
-      this.messages = this.messages.filter(m => m.id !== tempId);
+      this.messages = this.messages.filter((m) => m.id !== tempId);
       if (prevChat) {
-        const idx = this.chats.findIndex(c => c.chatId === this.currentChatId);
+        const idx = this.chats.findIndex(
+          (c) => c.chatId === this.currentChatId,
+        );
         if (idx >= 0) {
           const updated = [...this.chats];
           updated[idx] = prevChat;
-          this.chats = updated.sort((a, b) => (b.lastTs ?? 0) - (a.lastTs ?? 0));
+          this.chats = updated.sort(
+            (a, b) => (b.lastTs ?? 0) - (a.lastTs ?? 0),
+          );
         }
       }
       this.errorMsg = 'Send failed. Please try again.';
@@ -306,12 +345,17 @@ export default class WhatsappController extends Controller {
     try {
       const result = await this.whatsapp.toggleAi(!this.aiEnabled);
       this.aiEnabled = (result.data ?? result).enabled ?? this.aiEnabled;
-    } catch { /* gateway will emit ai-status */ }
+    } catch {
+      /* gateway will emit ai-status */
+    }
   }
 
   @action
   async repairWhatsapp() {
-    if (!confirm('Re-pair your WhatsApp? Your current session will be cleared.')) return;
+    if (
+      !confirm('Re-pair your WhatsApp? Your current session will be cleared.')
+    )
+      return;
     try {
       await this.whatsapp.logout();
       this.messages = [];

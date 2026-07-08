@@ -1,7 +1,11 @@
 {{page-title "Owner Detail"}}
 <div class="page-header">
   <div class="page-title-section owner-detail-title-section">
-    <button type="button" class="btn btn-secondary btn-back" {{on "click" this.goBack}}>
+    <button
+      type="button"
+      class="btn btn-secondary btn-back"
+      {{on "click" this.goBack}}
+    >
       <Ui::Ph @icon="arrow-left" @size="16px" />
       <span class="btn-back-label">Back</span>
     </button>
@@ -17,19 +21,27 @@
     <h3 class="card-title">Contact Information</h3>
     <div class="info-row">
       <span class="info-label">Email:</span>
-      <span class="info-value">{{#if this.model.owner.email}}{{this.model.owner.email}}{{else}}N/A{{/if}}</span>
+      <span class="info-value">{{#if
+          this.model.owner.email
+        }}{{this.model.owner.email}}{{else}}N/A{{/if}}</span>
     </div>
     <div class="info-row">
       <span class="info-label">Phone:</span>
-      <span class="info-value">{{#if this.model.owner.phone}}{{this.model.owner.phone}}{{else}}N/A{{/if}}</span>
+      <span class="info-value">{{#if
+          this.model.owner.phone
+        }}{{this.model.owner.phone}}{{else}}N/A{{/if}}</span>
     </div>
     <div class="info-row">
       <span class="info-label">Nationality ID:</span>
-      <span class="info-value">{{#if this.model.owner.nationalityId}}{{this.model.owner.nationalityId}}{{else}}N/A{{/if}}</span>
+      <span class="info-value">{{#if
+          this.model.owner.nationalityId
+        }}{{this.model.owner.nationalityId}}{{else}}N/A{{/if}}</span>
     </div>
     <div class="info-row">
       <span class="info-label">Address:</span>
-      <span class="info-value">{{#if this.model.owner.address}}{{this.model.owner.address}}{{else}}N/A{{/if}}</span>
+      <span class="info-value">{{#if
+          this.model.owner.address
+        }}{{this.model.owner.address}}{{else}}N/A{{/if}}</span>
     </div>
     {{#if this.model.owner.assignedAgent}}
       <div class="info-row">
@@ -53,10 +65,16 @@
     <div class="units-grid">
       {{#each this.model.owner.units as |unit|}}
         {{#if unit.asset}}
-          <LinkTo @route="properties.unit" @models={{array unit.asset.localityId unit.id}} class="unit-card unit-card-link">
+          <LinkTo
+            @route="properties.unit"
+            @models={{array unit.asset.localityId unit.id}}
+            class="unit-card unit-card-link"
+          >
             <p class="unit-number">{{unit.unitNumber}}</p>
             {{#if unit.asset.locality}}
-              <p class="unit-building">{{unit.asset.locality.name}} - {{unit.asset.name}}</p>
+              <p class="unit-building">{{unit.asset.locality.name}}
+                -
+                {{unit.asset.name}}</p>
             {{else}}
               <p class="unit-building">{{unit.asset.name}}</p>
             {{/if}}

@@ -2,23 +2,40 @@
 
 <div data-test-whatsapp-page class="wa-page">
 
-  {{!-- ── Left sidebar ─────────────────────────────────────────────── --}}
+  {{! ── Left sidebar ─────────────────────────────────────────────── }}
   <aside class="wa-sidebar">
 
-    {{!-- Header --}}
+    {{! Header }}
     <div class="wa-sidebar-header">
       <span class="font-bold">WhatsApp</span>
       <div class="flex gap-2 x-center">
         <button
           type="button"
-          class="wa-ai-toggle {{if this.aiEnabled 'active'}} {{if (or (not this.isCompanyAdmin) (not this.aiKeyConfigured)) 'disabled'}}"
-          title={{if this.isCompanyAdmin (if this.aiKeyConfigured "Toggle AI auto-reply" "No AI key configured") "Only Company Admin can toggle AI"}}
+          class="wa-ai-toggle
+            {{if this.aiEnabled 'active'}}
+            {{if
+              (or (not this.isCompanyAdmin) (not this.aiKeyConfigured))
+              'disabled'
+            }}"
+          title={{if
+            this.isCompanyAdmin
+            (if
+              this.aiKeyConfigured "Toggle AI auto-reply" "No AI key configured"
+            )
+            "Only Company Admin can toggle AI"
+          }}
           disabled={{or (not this.isCompanyAdmin) (not this.aiKeyConfigured)}}
           {{on "click" this.toggleAi}}
         >
-          AI: {{if this.aiEnabled "on" "off"}}
+          AI:
+          {{if this.aiEnabled "on" "off"}}
         </button>
-        <button type="button" class="wa-repairBtn" title="Re-pair device" {{on "click" this.repairWhatsapp}}>
+        <button
+          type="button"
+          class="wa-repairBtn"
+          title="Re-pair device"
+          {{on "click" this.repairWhatsapp}}
+        >
           Re-pair
         </button>
       </div>
@@ -27,7 +44,7 @@
       {{/if}}
     </div>
 
-    {{!-- Connection status --}}
+    {{! Connection status }}
     <div class="wa-status-bar">
       <span class="wa-dot {{this.connection}}"></span>
       <span>
@@ -41,7 +58,7 @@
       </span>
     </div>
 
-    {{!-- QR pane --}}
+    {{! QR pane }}
     {{#if this.showQR}}
       <div class="wa-qr-pane">
         <p class="font-bold">Connect your WhatsApp</p>
@@ -63,18 +80,21 @@
       </div>
     {{/if}}
 
-    {{!-- Chat list --}}
+    {{! Chat list }}
     {{#unless this.showQR}}
       <div class="wa-chat-list">
         {{#each this.chats as |chat|}}
           <button
             type="button"
-            class="wa-chat-item {{if (eq this.currentChatId chat.chatId) 'active'}}"
+            class="wa-chat-item
+              {{if (eq this.currentChatId chat.chatId) 'active'}}"
             {{on "click" (fn this.selectChat chat.chatId)}}
           >
             <div class="flex between x-center">
               <span class="wa-chat-name">
-                {{#if chat.isGroup}}<span class="wa-group-tag">group</span>{{/if}}
+                {{#if chat.isGroup}}<span
+                    class="wa-group-tag"
+                  >group</span>{{/if}}
                 {{chat.chatName}}
               </span>
               <span class="wa-chat-time">{{format-date-time chat.lastTs}}</span>
@@ -93,12 +113,12 @@
 
   </aside>
 
-  {{!-- ── Main chat area ────────────────────────────────────────────── --}}
+  {{! ── Main chat area ────────────────────────────────────────────── }}
   <main class="wa-chat-area">
 
     {{#if this.currentChatId}}
 
-      {{!-- Chat header --}}
+      {{! Chat header }}
       <div class="wa-chat-header">
         <div>
           <div class="font-bold">{{this.currentChatName}}</div>
@@ -106,19 +126,46 @@
         </div>
       </div>
 
-      {{!-- Messages --}}
+      {{! Messages }}
       <div class="wa-messages" id="wa-messages-container">
         {{#each this.currentChatMessages as |msg|}}
-          <div class="wa-message {{if msg.fromMe 'outgoing' 'incoming'}} {{if msg.aiGenerated 'ai'}}">
+          <div
+            class="wa-message
+              {{if msg.fromMe 'outgoing' 'incoming'}}
+              {{if msg.aiGenerated 'ai'}}"
+          >
             {{#unless msg.fromMe}}
               <div class="wa-sender-tag">{{msg.senderName}}</div>
             {{/unless}}
-            <div class="wa-bubble" dir="auto">{{~#if msg.hasMedia~}}{{~#if (or (eq msg.mediaType "image") (eq msg.mediaType "sticker"))~}}<img src={{this.mediaUrl msg}} alt="image" class="wa-media-img" loading="lazy" />{{~else if (eq msg.mediaType "video")~}}<video src={{this.mediaUrl msg}} controls class="wa-media-video"></video>{{~else if (or (eq msg.mediaType "audio") (eq msg.mediaType "ptt"))~}}<audio src={{this.mediaUrl msg}} controls class="wa-media-audio"></audio>{{~else if (eq msg.mediaType "document")~}}<a href={{this.mediaUrl msg}} target="_blank" rel="noopener noreferrer" class="wa-media-doc">{{msg.body}}</a>{{~/if~}}{{~else~}}{{msg.body}}{{~/if~}}</div>
+            <div class="wa-bubble" dir="auto">{{~#if msg.hasMedia~}}{{~#if
+                  (or (eq msg.mediaType "image") (eq msg.mediaType "sticker"))
+                ~}}<img
+                    src={{this.mediaUrl msg}}
+                    alt="image"
+                    class="wa-media-img"
+                    loading="lazy"
+                  />{{~else if (eq msg.mediaType "video")~}}<video
+                    src={{this.mediaUrl msg}}
+                    controls
+                    class="wa-media-video"
+                  ></video>{{~else if
+                  (or (eq msg.mediaType "audio") (eq msg.mediaType "ptt"))
+                ~}}<audio
+                    src={{this.mediaUrl msg}}
+                    controls
+                    class="wa-media-audio"
+                  ></audio>{{~else if (eq msg.mediaType "document")~}}<a
+                    href={{this.mediaUrl msg}}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="wa-media-doc"
+                  >{{msg.body}}</a>{{~/if~}}{{~else~}}{{msg.body}}{{~/if~}}</div>
             <div class="wa-meta">
               {{format-date-time msg.timestamp}}
               {{#if msg.fromMe}}
                 {{#if msg.aiGenerated}}
-                  · <span class="wa-ai-tag">AI</span>
+                  ·
+                  <span class="wa-ai-tag">AI</span>
                 {{else}}
                   · You
                 {{/if}}
@@ -130,7 +177,7 @@
         {{/each}}
       </div>
 
-      {{!-- Input --}}
+      {{! Input }}
       {{#if this.isConnected}}
         <div class="wa-input-area">
           {{#if this.errorMsg}}
@@ -144,7 +191,12 @@
               rows="1"
               {{on "keydown" this.handleKeydown}}
             />
-            <button type="button" class="wa-send-btn" disabled={{this.isSending}} {{on "click" this.sendMessage}}>
+            <button
+              type="button"
+              class="wa-send-btn"
+              disabled={{this.isSending}}
+              {{on "click" this.sendMessage}}
+            >
               Send
             </button>
           </div>
@@ -153,9 +205,13 @@
 
     {{else}}
 
-      {{!-- Empty state --}}
+      {{! Empty state }}
       <div class="wa-empty-state">
-        {{if this.isConnected "Select a chat from the sidebar to start messaging." "Pair your WhatsApp to begin."}}
+        {{if
+          this.isConnected
+          "Select a chat from the sidebar to start messaging."
+          "Pair your WhatsApp to begin."
+        }}
       </div>
 
     {{/if}}

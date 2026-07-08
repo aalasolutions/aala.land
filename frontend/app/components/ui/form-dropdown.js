@@ -20,9 +20,17 @@ export default class FormDropdownComponent extends Component {
   }
 
   get displayText() {
-    if (this.args.value !== undefined && this.args.value !== null && this.args.options) {
-      const selectedOption = this.args.options.find(opt => opt.value === this.args.value);
-      return selectedOption ? selectedOption.label : this.args.placeholder || 'Select...';
+    if (
+      this.args.value !== undefined &&
+      this.args.value !== null &&
+      this.args.options
+    ) {
+      const selectedOption = this.args.options.find(
+        (opt) => opt.value === this.args.value,
+      );
+      return selectedOption
+        ? selectedOption.label
+        : this.args.placeholder || 'Select...';
     }
     return this.args.placeholder || 'Select...';
   }
@@ -34,8 +42,8 @@ export default class FormDropdownComponent extends Component {
     }
 
     const searchLower = this.searchText.toLowerCase();
-    return options.filter(opt =>
-      (opt.label || '').toLowerCase().includes(searchLower)
+    return options.filter((opt) =>
+      (opt.label || '').toLowerCase().includes(searchLower),
     );
   }
 
@@ -52,13 +60,17 @@ export default class FormDropdownComponent extends Component {
 
     const { top, left, width } = this.dropdownPosition;
     return htmlSafe(
-      `position:fixed;top:${top}px;left:${left}px;width:${width}px;z-index:2000;max-height:300px;`
+      `position:fixed;top:${top}px;left:${left}px;width:${width}px;z-index:2000;max-height:300px;`,
     );
   }
 
   setupClickOutsideHandler() {
     this.clickOutsideHandler = (event) => {
-      if (this.isOpen && this.dropdownElement && !this.dropdownElement.contains(event.target)) {
+      if (
+        this.isOpen &&
+        this.dropdownElement &&
+        !this.dropdownElement.contains(event.target)
+      ) {
         this.closeDropdown();
       }
     };
@@ -85,7 +97,7 @@ export default class FormDropdownComponent extends Component {
     let position = {
       left: triggerRect.left,
       width: triggerRect.width,
-      openUpward: false
+      openUpward: false,
     };
 
     if (this.isInModal) {
@@ -98,7 +110,8 @@ export default class FormDropdownComponent extends Component {
         position.top = triggerRect.bottom + 4;
       }
     } else {
-      position.openUpward = spaceBelow < dropdownHeight && spaceAbove > spaceBelow;
+      position.openUpward =
+        spaceBelow < dropdownHeight && spaceAbove > spaceBelow;
       position.top = position.openUpward
         ? triggerRect.top - dropdownHeight - 4
         : triggerRect.bottom + 4;
@@ -116,7 +129,9 @@ export default class FormDropdownComponent extends Component {
       return;
     }
 
-    const triggerElement = event?.currentTarget?.closest('.dropdown-container')?.querySelector('.dropdown-trigger');
+    const triggerElement = event?.currentTarget
+      ?.closest('.dropdown-container')
+      ?.querySelector('.dropdown-trigger');
     this.dropdownElement = triggerElement?.closest('.form-dropdown') ?? null;
     this.dropdownPosition = triggerElement
       ? this.calculateDropdownPosition(triggerElement)
@@ -152,7 +167,11 @@ export default class FormDropdownComponent extends Component {
   @action
   handleKeydown(event) {
     if (!this.isOpen) {
-      if (event.key === 'ArrowDown' || event.key === 'ArrowUp' || event.key === 'Enter') {
+      if (
+        event.key === 'ArrowDown' ||
+        event.key === 'ArrowUp' ||
+        event.key === 'Enter'
+      ) {
         event.preventDefault();
         this.toggleDropdown(event);
       }
@@ -169,12 +188,16 @@ export default class FormDropdownComponent extends Component {
         break;
       case 'ArrowUp':
         event.preventDefault();
-        this.highlightedIndex = (this.highlightedIndex - 1 + optionsCount) % optionsCount;
+        this.highlightedIndex =
+          (this.highlightedIndex - 1 + optionsCount) % optionsCount;
         this.scrollToHighlighted();
         break;
       case 'Enter':
         event.preventDefault();
-        if (this.highlightedIndex >= 0 && this.highlightedIndex < optionsCount) {
+        if (
+          this.highlightedIndex >= 0 &&
+          this.highlightedIndex < optionsCount
+        ) {
           this.selectOption(this.filteredOptions[this.highlightedIndex]);
         }
         break;
@@ -190,7 +213,9 @@ export default class FormDropdownComponent extends Component {
 
   scrollToHighlighted() {
     setTimeout(() => {
-      const activeElement = document.querySelector('.dropdown-option.highlighted');
+      const activeElement = document.querySelector(
+        '.dropdown-option.highlighted',
+      );
       if (activeElement) {
         activeElement.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
       }

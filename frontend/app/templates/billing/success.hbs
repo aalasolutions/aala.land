@@ -1,6 +1,10 @@
 {{page-title "Checkout Complete"}}
 
-<div class="flex col gap-4 x-center y-center" style="min-height: 50vh; text-align: center;" data-test-billing-success>
+<div
+  class="flex col gap-4 x-center y-center"
+  style="min-height: 50vh; text-align: center;"
+  data-test-billing-success
+>
   <Ui::Ph @icon="check-circle" @size="56px" @color="var(--color-success)" />
   <div>
     <h2 class="font-xl font-bold">Payment received</h2>
@@ -9,7 +13,12 @@
       automatically within a minute of payment confirmation.
     </p>
   </div>
-  <LinkTo @route="company" class="btn btn-primary" data-test-billing-back-to-settings>
-    <Ui::Ph @icon="building-office" /> Back to Company Settings
+  <LinkTo
+    @route="company"
+    class="btn btn-primary"
+    data-test-billing-back-to-settings
+  >
+    <Ui::Ph @icon="building-office" />
+    Back to Company Settings
   </LinkTo>
 </div>

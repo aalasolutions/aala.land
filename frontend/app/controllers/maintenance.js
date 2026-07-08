@@ -2,9 +2,12 @@ import PaginatedController from './paginated-base';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
-import { STATUS_OPTIONS, MONTH_OPTIONS,
-  PRIORITY_OPTIONS, MAINTENANCE_CATEGORY_OPTIONS
- } from 'land/constants';
+import {
+  STATUS_OPTIONS,
+  MONTH_OPTIONS,
+  PRIORITY_OPTIONS,
+  MAINTENANCE_CATEGORY_OPTIONS,
+} from 'land/constants';
 
 export default class MaintenanceController extends PaginatedController {
   @service auth;
@@ -45,20 +48,20 @@ export default class MaintenanceController extends PaginatedController {
   get unitOptions() {
     return [
       { value: '', label: 'No unit assigned' },
-      ...(this.model.units || []).map(unit => ({
+      ...(this.model.units || []).map((unit) => ({
         value: unit.id,
-        label: `${unit.areaName} / ${unit.assetName} / Unit ${unit.unitNumber}`
-      }))
+        label: `${unit.areaName} / ${unit.assetName} / Unit ${unit.unitNumber}`,
+      })),
     ];
   }
 
   get vendorOptions() {
     return [
       { value: '', label: 'No vendor assigned' },
-      ...(this.model.vendors || []).map(vendor => ({
+      ...(this.model.vendors || []).map((vendor) => ({
         value: vendor.id,
-        label: `${vendor.name} (${vendor.specialty})`
-      }))
+        label: `${vendor.name} (${vendor.specialty})`,
+      })),
     ];
   }
 
@@ -66,9 +69,13 @@ export default class MaintenanceController extends PaginatedController {
     return this.model?.workOrders || [];
   }
 
-  @action setField(fieldName, e) { this[fieldName] = e.target.value; }
+  @action setField(fieldName, e) {
+    this[fieldName] = e.target.value;
+  }
 
-  @action setSection(section) { this.activeSection = section; }
+  @action setSection(section) {
+    this.activeSection = section;
+  }
 
   @action setStatusFilter(e) {
     this.filterStatus = e.target.value;
@@ -79,7 +86,6 @@ export default class MaintenanceController extends PaginatedController {
     this.filterMonth = e.target.value;
     this.page = 1;
   }
-
 
   @action openCreate() {
     this.formTitle = '';
@@ -108,7 +114,9 @@ export default class MaintenanceController extends PaginatedController {
     this.formEstimatedCost = wo.estimatedCost ? String(wo.estimatedCost) : '';
     this.formActualCost = wo.actualCost ? String(wo.actualCost) : '';
     this.formCostNotes = wo.costNotes ?? '';
-    this.formScheduledDate = wo.scheduledDate ? wo.scheduledDate.split('T')[0] : '';
+    this.formScheduledDate = wo.scheduledDate
+      ? wo.scheduledDate.split('T')[0]
+      : '';
     this.formUnitId = wo.unitId ?? '';
     this.formVendorId = wo.vendorId ?? '';
     this.formStatus = wo.status || 'OPEN';
@@ -130,7 +138,9 @@ export default class MaintenanceController extends PaginatedController {
     this.errorMsg = '';
 
     const isEdit = !!this.editWorkOrder;
-    const path = isEdit ? `/maintenance/${this.editWorkOrder.id}` : '/maintenance';
+    const path = isEdit
+      ? `/maintenance/${this.editWorkOrder.id}`
+      : '/maintenance';
 
     const body = {
       title: this.formTitle,
@@ -138,10 +148,16 @@ export default class MaintenanceController extends PaginatedController {
       priority: this.formPriority,
       category: this.formCategory,
       ...(isEdit ? { status: this.formStatus } : {}),
-      ...(this.formEstimatedCost ? { estimatedCost: parseFloat(this.formEstimatedCost) } : {}),
-      ...(this.formActualCost ? { actualCost: parseFloat(this.formActualCost) } : {}),
+      ...(this.formEstimatedCost
+        ? { estimatedCost: parseFloat(this.formEstimatedCost) }
+        : {}),
+      ...(this.formActualCost
+        ? { actualCost: parseFloat(this.formActualCost) }
+        : {}),
       ...(this.formCostNotes ? { costNotes: this.formCostNotes } : {}),
-      ...(this.formScheduledDate ? { scheduledDate: this.formScheduledDate } : {}),
+      ...(this.formScheduledDate
+        ? { scheduledDate: this.formScheduledDate }
+        : {}),
       ...(this.formVendorId ? { vendorId: this.formVendorId } : {}),
     };
 
@@ -155,7 +171,9 @@ export default class MaintenanceController extends PaginatedController {
         method: isEdit ? 'PATCH' : 'POST',
         body: JSON.stringify(body),
       });
-      this.notifications.success(isEdit ? 'Work order updated' : 'Work order created');
+      this.notifications.success(
+        isEdit ? 'Work order updated' : 'Work order created',
+      );
       this.closeModal();
       this.router.refresh('maintenance');
     } catch (e) {
