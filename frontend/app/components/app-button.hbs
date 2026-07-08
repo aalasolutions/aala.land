@@ -1,9 +1,0 @@
-<button
-  type={{if @buttonType @buttonType "button"}}
-  class={{this.buttonClass}}
-  disabled={{this.isDisabled}}
-  {{on "click" this.onClickHandler}}
-  ...attributes
->
-  {{this.buttonText}}
-</button>

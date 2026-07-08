@@ -239,6 +239,7 @@ export class ChequesService {
         // Bump the optimistic-lock version so a concurrent update() that read an
         // older version fails its version guard and cannot revert this BOUNCED row.
         version: () => 'version + 1',
+        updatedAt: () => 'now()',
       })
       .where('id = :id', { id })
       .andWhere('company_id = :companyId', { companyId })

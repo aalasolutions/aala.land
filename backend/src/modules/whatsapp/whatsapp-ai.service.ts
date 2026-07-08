@@ -342,9 +342,9 @@ export class WhatsappAiService implements OnModuleInit, OnModuleDestroy {
         }
 
         history.push({ role: 'assistant', content: reply });
-        this.trimHistory(userId, chatId, history);
         assistantPushed = true;
         await send(chatId, reply);
+        this.trimHistory(userId, chatId, history);
         return;
       }
 
@@ -362,9 +362,9 @@ export class WhatsappAiService implements OnModuleInit, OnModuleDestroy {
       }
 
       history.push({ role: 'assistant', content: reply });
-      this.trimHistory(userId, chatId, history);
       assistantPushed = true;
       await send(chatId, reply);
+      this.trimHistory(userId, chatId, history);
 
     } catch (err) {
       // On failure, the quota is only reverted if the send never happened.
@@ -379,9 +379,6 @@ export class WhatsappAiService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  // Truncates `history` back to `lenBefore`, discarding everything this turn appended.
-  // Safe even if trimHistory shifted indices: if the history was trimmed below the
-  // baseline it is left untouched (nothing this turn added still remains to remove).
   private rollbackTurn(history: AiHistoryMessage[], lenBefore: number): void {
     if (history.length > lenBefore) history.length = lenBefore;
   }
