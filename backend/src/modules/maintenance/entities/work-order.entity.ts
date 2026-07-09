@@ -1,40 +1,22 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  UpdateDateColumn,
+  ManyToOne,
+  JoinColumn,
+} from 'typeorm';
 import { Company } from '../../companies/entities/company.entity';
 import { Vendor } from '../../vendors/entities/vendor.entity';
 import { User } from '../../users/entities/user.entity';
 import { Unit } from '../../properties/entities/unit.entity';
-
-export enum WorkOrderStatus {
-  OPEN = 'OPEN',
-  IN_PROGRESS = 'IN_PROGRESS',
-  PENDING_APPROVAL = 'PENDING_APPROVAL',
-  COMPLETED = 'COMPLETED',
-  CANCELLED = 'CANCELLED',
-}
 
 export enum WorkOrderPriority {
   LOW = 'LOW',
   MEDIUM = 'MEDIUM',
   HIGH = 'HIGH',
   URGENT = 'URGENT',
-}
-
-export enum WorkOrderCategory {
-  PLUMBING = 'PLUMBING',
-  ELECTRICAL = 'ELECTRICAL',
-  HVAC = 'HVAC',
-  STRUCTURAL = 'STRUCTURAL',
-  CLEANING = 'CLEANING',
-  PEST_CONTROL = 'PEST_CONTROL',
-  APPLIANCE = 'APPLIANCE',
-  OTHER = 'OTHER',
-}
-
-export enum ScheduleFrequency {
-  WEEKLY = 'WEEKLY',
-  MONTHLY = 'MONTHLY',
-  QUARTERLY = 'QUARTERLY',
-  ANNUALLY = 'ANNUALLY',
 }
 
 @Entity('work_orders')
@@ -63,11 +45,11 @@ export class WorkOrder {
   description: string;
 
   @Column({
-    type: 'enum',
-    enum: WorkOrderStatus,
-    default: WorkOrderStatus.OPEN,
+    type: 'varchar',
+    length: 100,
+    default: 'OPEN',
   })
-  status: WorkOrderStatus;
+  status: string;
 
   @Column({
     type: 'enum',
@@ -77,11 +59,11 @@ export class WorkOrder {
   priority: WorkOrderPriority;
 
   @Column({
-    type: 'enum',
-    enum: WorkOrderCategory,
-    default: WorkOrderCategory.OTHER,
+    type: 'varchar',
+    length: 100,
+    default: 'OTHER',
   })
-  category: WorkOrderCategory;
+  category: string;
 
   @Column({ name: 'assigned_to', type: 'uuid', nullable: true })
   assignedTo: string | null;
@@ -100,10 +82,22 @@ export class WorkOrder {
   @Column({ name: 'reported_by', type: 'varchar', length: 255, nullable: true })
   reportedBy: string | null;
 
-  @Column({ name: 'estimated_cost', type: 'decimal', precision: 12, scale: 2, nullable: true })
+  @Column({
+    name: 'estimated_cost',
+    type: 'decimal',
+    precision: 12,
+    scale: 2,
+    nullable: true,
+  })
   estimatedCost: number | null;
 
-  @Column({ name: 'actual_cost', type: 'decimal', precision: 12, scale: 2, nullable: true })
+  @Column({
+    name: 'actual_cost',
+    type: 'decimal',
+    precision: 12,
+    scale: 2,
+    nullable: true,
+  })
   actualCost: number | null;
 
   @Column({ type: 'varchar', length: 3, default: 'AED' })
@@ -129,11 +123,11 @@ export class WorkOrder {
 
   @Column({
     name: 'schedule_frequency',
-    type: 'enum',
-    enum: ScheduleFrequency,
+    type: 'varchar',
+    length: 100,
     nullable: true,
   })
-  scheduleFrequency: ScheduleFrequency | null;
+  scheduleFrequency: string | null;
 
   @Column({ name: 'next_scheduled_date', type: 'timestamp', nullable: true })
   nextScheduledDate: Date | null;

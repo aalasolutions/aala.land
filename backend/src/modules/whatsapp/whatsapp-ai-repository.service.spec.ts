@@ -1,6 +1,4 @@
 import { WhatsappAiRepositoryService } from './whatsapp-ai-repository.service';
-import { UnitStatus } from '../properties/entities/unit.entity';
-import { PropertyType } from '../properties/entities/property-type.enum';
 
 const makeRepos = () => {
   const qb = {
@@ -18,7 +16,11 @@ const makeRepos = () => {
     upsert: jest.fn().mockResolvedValue(undefined),
   };
   return {
-    companyRepo: { findOne: jest.fn().mockResolvedValue({ id: 'c1', name: 'Test Co', activeRegions: [] }) },
+    companyRepo: {
+      findOne: jest
+        .fn()
+        .mockResolvedValue({ id: 'c1', name: 'Test Co', activeRegions: [] }),
+    },
     unitRepo: { find: jest.fn().mockResolvedValue([]) },
     settingsRepo: {
       findOne: jest.fn().mockResolvedValue(null),
@@ -48,15 +50,21 @@ describe('WhatsappAiRepositoryService', () => {
   describe('getCompanyAndUnits', () => {
     it('returns company from companyRepo', async () => {
       const result = await service.getCompanyAndUnits('c1');
-      expect(result.company).toEqual({ id: 'c1', name: 'Test Co', activeRegions: [] });
+      expect(result.company).toEqual({
+        id: 'c1',
+        name: 'Test Co',
+        activeRegions: [],
+      });
     });
 
     it('queries units with AVAILABLE status for the given company', async () => {
       await service.getCompanyAndUnits('c1');
-      expect(repos.unitRepo.find).toHaveBeenCalledWith(expect.objectContaining({
-        where: { companyId: 'c1', status: UnitStatus.AVAILABLE },
-        take: 40,
-      }));
+      expect(repos.unitRepo.find).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { companyId: 'c1', status: 'available' },
+          take: 40,
+        }),
+      );
     });
 
     it('returns cached result on second call without hitting DB again', async () => {
@@ -87,7 +95,9 @@ describe('WhatsappAiRepositoryService', () => {
     });
 
     it('returns aiPrompt string when settings row exists', async () => {
-      repos.settingsRepo.findOne.mockResolvedValue({ aiPrompt: 'Custom prompt' });
+      repos.settingsRepo.findOne.mockResolvedValue({
+        aiPrompt: 'Custom prompt',
+      });
       service = new WhatsappAiRepositoryService(
         repos.companyRepo as any,
         repos.unitRepo as any,
@@ -237,23 +247,32 @@ describe('WhatsappAiRepositoryService', () => {
   describe('searchProperties', () => {
     it('queries AVAILABLE units for the company with no filters', async () => {
       await service.searchProperties('c1', {});
-      expect(repos.unitRepo.find).toHaveBeenCalledWith(expect.objectContaining({
-        where: expect.objectContaining({ companyId: 'c1', status: UnitStatus.AVAILABLE }),
-      }));
+      expect(repos.unitRepo.find).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            companyId: 'c1',
+            status: 'available',
+          }),
+        }),
+      );
     });
 
-    it('maps RENT type filter (uppercase) to PropertyType.RENTAL', async () => {
+    it('maps RENT type filter (uppercase) to RENTAL', async () => {
       await service.searchProperties('c1', { type: 'RENT' });
-      expect(repos.unitRepo.find).toHaveBeenCalledWith(expect.objectContaining({
-        where: expect.objectContaining({ propertyType: PropertyType.RENTAL }),
-      }));
+      expect(repos.unitRepo.find).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ propertyType: 'RENTAL' }),
+        }),
+      );
     });
 
-    it('normalizes lowercase "sale" type filter to PropertyType.FOR_SALE', async () => {
+    it('normalizes lowercase "sale" type filter to FOR_SALE', async () => {
       await service.searchProperties('c1', { type: 'sale' });
-      expect(repos.unitRepo.find).toHaveBeenCalledWith(expect.objectContaining({
-        where: expect.objectContaining({ propertyType: PropertyType.FOR_SALE }),
-      }));
+      expect(repos.unitRepo.find).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ propertyType: 'FOR_SALE' }),
+        }),
+      );
     });
 
     it('does not include propertyType in where when not provided', async () => {
@@ -264,9 +283,11 @@ describe('WhatsappAiRepositoryService', () => {
 
     it('includes bedrooms filter directly in where', async () => {
       await service.searchProperties('c1', { bedrooms: 2 });
-      expect(repos.unitRepo.find).toHaveBeenCalledWith(expect.objectContaining({
-        where: expect.objectContaining({ bedrooms: 2 }),
-      }));
+      expect(repos.unitRepo.find).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ bedrooms: 2 }),
+        }),
+      );
     });
 
     it('includes city filter nested under asset.locality.city', async () => {

@@ -1,12 +1,12 @@
-import { IsString, IsOptional, IsEnum } from 'class-validator';
+import { IsString, IsOptional, IsEnum, IsIn } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
-import { CommissionStatus } from '../entities/commission.entity';
+import { COMMISSION_STATUS_VALUES } from '../../../shared/taxonomies';
 
 export class UpdateCommissionDto {
-  @ApiProperty({ enum: CommissionStatus, required: false })
+  @ApiProperty({ enum: COMMISSION_STATUS_VALUES, required: false })
   @IsOptional()
-  @IsEnum(CommissionStatus)
-  status?: CommissionStatus;
+  @IsIn(COMMISSION_STATUS_VALUES)
+  status?: string;
 
   @ApiProperty({ required: false })
   @IsOptional()

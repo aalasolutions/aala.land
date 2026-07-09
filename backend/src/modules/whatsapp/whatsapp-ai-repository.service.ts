@@ -1,9 +1,15 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Between, ILike, LessThanOrEqual, MoreThanOrEqual, Repository } from 'typeorm';
+import {
+  Between,
+  ILike,
+  LessThanOrEqual,
+  MoreThanOrEqual,
+  Repository,
+} from 'typeorm';
 import { Company } from '../companies/entities/company.entity';
-import { Unit, UnitStatus } from '../properties/entities/unit.entity';
-import { PropertyType } from '../properties/entities/property-type.enum';
+import { Unit } from '../properties/entities/unit.entity';
+
 import { WhatsappSettings } from './entities/whatsapp-settings.entity';
 
 interface PropertySearchFilters {
@@ -45,7 +51,9 @@ export class WhatsappAiRepositoryService {
     private readonly settingsRepo: Repository<WhatsappSettings>,
   ) {}
 
-  async getCompanyAndUnits(companyId: string): Promise<{ company: Company | null; units: Unit[] }> {
+  async getCompanyAndUnits(
+    companyId: string,
+  ): Promise<{ company: Company | null; units: Unit[] }> {
     const cached = this.contextCache.get(companyId);
     if (cached && Date.now() - cached.cachedAt < this.CONTEXT_TTL_MS) {
       return { company: cached.company, units: cached.units };
@@ -53,7 +61,7 @@ export class WhatsappAiRepositoryService {
     const [company, units] = await Promise.all([
       this.companyRepo.findOne({ where: { id: companyId } }),
       this.unitRepo.find({
-        where: { companyId, status: UnitStatus.AVAILABLE },
+        where: { companyId, status: 'available' },
         relations: ['asset', 'asset.locality', 'asset.locality.city'],
         order: { createdAt: 'DESC' },
         take: 40,
@@ -63,13 +71,16 @@ export class WhatsappAiRepositoryService {
     return { company, units };
   }
 
-  async searchProperties(companyId: string, filters: PropertySearchFilters): Promise<Unit[]> {
-    const where: Record<string, any> = { companyId, status: UnitStatus.AVAILABLE };
+  async searchProperties(
+    companyId: string,
+    filters: PropertySearchFilters,
+  ): Promise<Unit[]> {
+    const where: Record<string, any> = { companyId, status: 'available' };
 
     if (filters.type) {
       const normalized = filters.type.toUpperCase();
-      if (normalized === 'RENT') where['propertyType'] = PropertyType.RENTAL;
-      else if (normalized === 'SALE') where['propertyType'] = PropertyType.FOR_SALE;
+      if (normalized === 'RENT') where['propertyType'] = 'RENTAL';
+      else if (normalized === 'SALE') where['propertyType'] = 'FOR_SALE';
     }
     if (filters.minPrice !== undefined && filters.maxPrice !== undefined) {
       where['price'] = Between(filters.minPrice, filters.maxPrice);
@@ -82,7 +93,9 @@ export class WhatsappAiRepositoryService {
       where['bedrooms'] = filters.bedrooms;
     }
     if (filters.city) {
-      where['asset'] = { locality: { city: { name: ILike(`%${filters.city}%`) } } };
+      where['asset'] = {
+        locality: { city: { name: ILike(`%${filters.city}%`) } },
+      };
     }
 
     return this.unitRepo.find({
@@ -106,15 +119,23 @@ export class WhatsappAiRepositoryService {
   }
 
   async persistAiEnabled(companyId: string, value: boolean): Promise<void> {
-    await this.settingsRepo.upsert({ companyId, aiEnabled: value }, ['companyId']);
+    await this.settingsRepo.upsert({ companyId, aiEnabled: value }, [
+      'companyId',
+    ]);
   }
 
   async loadAiEnabled(companyId: string): Promise<boolean | null> {
-    const row = await this.settingsRepo.findOne({ where: { companyId }, select: { aiEnabled: true } });
+    const row = await this.settingsRepo.findOne({
+      where: { companyId },
+      select: { aiEnabled: true },
+    });
     return row?.aiEnabled ?? null;
   }
 
-  async checkLimitAndIncrement(companyId: string, limit: number): Promise<{ allowed: boolean }> {
+  async checkLimitAndIncrement(
+    companyId: string,
+    limit: number,
+  ): Promise<{ allowed: boolean }> {
     return this.settingsRepo.manager.transaction(async (manager) => {
       const repo = manager.getRepository(WhatsappSettings);
 
@@ -139,7 +160,8 @@ export class WhatsappAiRepositoryService {
 
       const windowExpired =
         !row?.aiWeeklyWindowStart ||
-        now.getTime() - new Date(row.aiWeeklyWindowStart).getTime() >= sevenDaysMs;
+        now.getTime() - new Date(row.aiWeeklyWindowStart).getTime() >=
+          sevenDaysMs;
 
       const currentCount = windowExpired ? 0 : (row?.aiWeeklyCount ?? 0);
 
@@ -149,7 +171,9 @@ export class WhatsappAiRepositoryService {
         {
           companyId,
           aiWeeklyCount: currentCount + 1,
-          aiWeeklyWindowStart: windowExpired ? now : (row!.aiWeeklyWindowStart ?? now),
+          aiWeeklyWindowStart: windowExpired
+            ? now
+            : (row!.aiWeeklyWindowStart ?? now),
         },
         ['companyId'],
       );
@@ -167,7 +191,9 @@ export class WhatsappAiRepositoryService {
       .execute();
   }
 
-  async getWeeklyUsage(companyId: string): Promise<{ count: number; windowStart: Date | null }> {
+  async getWeeklyUsage(
+    companyId: string,
+  ): Promise<{ count: number; windowStart: Date | null }> {
     const row = await this.settingsRepo.findOne({
       where: { companyId },
       select: { aiWeeklyCount: true, aiWeeklyWindowStart: true },
@@ -175,10 +201,14 @@ export class WhatsappAiRepositoryService {
     if (!row?.aiWeeklyWindowStart) return { count: 0, windowStart: null };
 
     const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
-    const expired = Date.now() - new Date(row.aiWeeklyWindowStart).getTime() >= sevenDaysMs;
+    const expired =
+      Date.now() - new Date(row.aiWeeklyWindowStart).getTime() >= sevenDaysMs;
     if (expired) return { count: 0, windowStart: null };
 
-    return { count: row.aiWeeklyCount, windowStart: new Date(row.aiWeeklyWindowStart) };
+    return {
+      count: row.aiWeeklyCount,
+      windowStart: new Date(row.aiWeeklyWindowStart),
+    };
   }
 
   clearContextCache(companyId?: string): void {

@@ -1,0 +1,63 @@
+import {
+  CHEQUE_TYPE_OPTIONS,
+  CHEQUE_STATUS_OPTIONS,
+  CONTACT_TYPES,
+  CATEGORIES,
+  TRANSACTION_TYPE_OPTIONS,
+  TRANSACTION_CATEGORY_OPTIONS,
+  PAYMENT_METHOD_OPTIONS,
+  TRANSACTION_STATUS_OPTIONS,
+  LEAD_STAGES,
+  TEMPERATURE_STAGES,
+  LEAD_SOURCE_OPTIONS,
+  LEASE_TYPE_OPTIONS,
+  LEASE_STATUS_OPTIONS,
+  MAINTENANCE_STATUS_OPTIONS,
+  MAINTENANCE_CATEGORY_OPTIONS,
+  SCHEDULE_FREQUENCY_OPTIONS,
+  COMMISSION_TYPE_OPTIONS,
+  COMMISSION_STATUS_OPTIONS,
+  PROPERTY_STATUS_OPTIONS,
+  EMAIL_CATEGORIES,
+  PROPERTY_TYPE_OPTIONS,
+  NOTIFICATION_TYPES,
+  ACTIVITY_TYPE_OPTIONS,
+} from '@land/taxonomies';
+
+// Single backend entry point for taxonomy value lists. DTOs and services
+// import the `*_VALUES` arrays here for @IsIn validation. The source of truth
+// is @land/taxonomies; this file only flattens {value,label} -> string[] and
+// drops the empty '' sentinel (a UI filter placeholder, never a stored value).
+const val = (opts: ReadonlyArray<{ value: string }>): string[] =>
+  opts.map((o) => o.value).filter((v) => v !== '');
+
+// LEAD_STAGES / TEMPERATURE_STAGES use `status` / `temperature` keys.
+export const LEAD_STATUS_VALUES = LEAD_STAGES.map((s) => s.status);
+export const LEAD_TEMPERATURE_VALUES = TEMPERATURE_STAGES.map(
+  (s) => s.temperature,
+);
+
+export const CHEQUE_TYPE_VALUES = val(CHEQUE_TYPE_OPTIONS);
+export const CHEQUE_STATUS_VALUES = val(CHEQUE_STATUS_OPTIONS);
+export const CONTACT_TYPE_VALUES = val(CONTACT_TYPES);
+export const DOCUMENT_CATEGORY_VALUES = val(CATEGORIES);
+export const TRANSACTION_TYPE_VALUES = val(TRANSACTION_TYPE_OPTIONS);
+export const TRANSACTION_CATEGORY_VALUES = val(TRANSACTION_CATEGORY_OPTIONS);
+export const PAYMENT_METHOD_VALUES = val(PAYMENT_METHOD_OPTIONS);
+export const TRANSACTION_STATUS_VALUES = val(TRANSACTION_STATUS_OPTIONS);
+export const LEAD_SOURCE_VALUES = val(LEAD_SOURCE_OPTIONS);
+export const LEASE_TYPE_VALUES = val(LEASE_TYPE_OPTIONS);
+export const LEASE_STATUS_VALUES = val(LEASE_STATUS_OPTIONS);
+export const WORK_ORDER_STATUS_VALUES = val(MAINTENANCE_STATUS_OPTIONS);
+export const WORK_ORDER_CATEGORY_VALUES = val(MAINTENANCE_CATEGORY_OPTIONS);
+export const SCHEDULE_FREQUENCY_VALUES = val(SCHEDULE_FREQUENCY_OPTIONS);
+export const COMMISSION_TYPE_VALUES = val(COMMISSION_TYPE_OPTIONS);
+export const COMMISSION_STATUS_VALUES = val(COMMISSION_STATUS_OPTIONS);
+export const UNIT_STATUS_VALUES = val(PROPERTY_STATUS_OPTIONS);
+export const EMAIL_CATEGORY_VALUES = val(EMAIL_CATEGORIES);
+export const PROPERTY_TYPE_VALUES = val(PROPERTY_TYPE_OPTIONS);
+export const NOTIFICATION_TYPE_VALUES = val(NOTIFICATION_TYPES);
+export const ACTIVITY_TYPE_VALUES = val(ACTIVITY_TYPE_OPTIONS);
+
+// vendors.specialty is unified with work_orders.category (single shared list).
+export const VENDOR_SPECIALTY_VALUES = WORK_ORDER_CATEGORY_VALUES;

@@ -1,17 +1,30 @@
-import { IsString, IsOptional, IsEnum, IsNumber, Min, IsDateString, IsInt, MaxLength } from 'class-validator';
+import {
+  IsString,
+  IsOptional,
+  IsEnum,
+  IsIn,
+  IsNumber,
+  Min,
+  IsDateString,
+  IsInt,
+  MaxLength,
+} from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
-import { LeaseStatus, LeaseType } from '../entities/lease.entity';
+import {
+  LEASE_STATUS_VALUES,
+  LEASE_TYPE_VALUES,
+} from '../../../shared/taxonomies';
 
 export class UpdateLeaseDto {
-  @ApiProperty({ enum: LeaseStatus, required: false })
+  @ApiProperty({ enum: LEASE_STATUS_VALUES, required: false })
   @IsOptional()
-  @IsEnum(LeaseStatus)
-  status?: LeaseStatus;
+  @IsIn(LEASE_STATUS_VALUES)
+  status?: string;
 
-  @ApiProperty({ enum: LeaseType, required: false })
+  @ApiProperty({ enum: LEASE_TYPE_VALUES, required: false })
   @IsOptional()
-  @IsEnum(LeaseType)
-  type?: LeaseType;
+  @IsIn(LEASE_TYPE_VALUES)
+  type?: string;
 
   @ApiProperty({ required: false })
   @IsOptional()

@@ -3,7 +3,7 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { NotFoundException } from '@nestjs/common';
 import { VendorsService } from './vendors.service';
-import { Vendor, VendorSpecialty } from './entities/vendor.entity';
+import { Vendor } from './entities/vendor.entity';
 import { Company } from '../companies/entities/company.entity';
 
 describe('VendorsService', () => {
@@ -19,7 +19,7 @@ describe('VendorsService', () => {
     name: 'Al Futtaim Maintenance',
     email: 'info@alfuttaim.ae',
     phone: '+971501234567',
-    specialty: VendorSpecialty.HVAC,
+    specialty: 'HVAC',
     companyName: 'Al Futtaim Group',
     address: 'Dubai Festival City',
     rating: 4.5,
@@ -64,12 +64,14 @@ describe('VendorsService', () => {
 
   describe('create', () => {
     it('creates and returns a vendor', async () => {
-      companyRepo.findOne.mockResolvedValue({ defaultRegionCode: 'dubai' } as Company);
+      companyRepo.findOne.mockResolvedValue({
+        defaultRegionCode: 'dubai',
+      } as Company);
       const dto = {
         name: 'Al Futtaim Maintenance',
         email: 'info@alfuttaim.ae',
         phone: '+971501234567',
-        specialty: VendorSpecialty.HVAC,
+        specialty: 'HVAC',
       };
 
       repo.create.mockReturnValue(mockVendor as Vendor);
@@ -77,7 +79,11 @@ describe('VendorsService', () => {
 
       const result = await service.create(companyId, dto as any);
 
-      expect(repo.create).toHaveBeenCalledWith({ ...dto, companyId, regionCode: 'dubai' });
+      expect(repo.create).toHaveBeenCalledWith({
+        ...dto,
+        companyId,
+        regionCode: 'dubai',
+      });
       expect(repo.save).toHaveBeenCalledWith(mockVendor);
       expect(result).toEqual(mockVendor);
     });
@@ -118,10 +124,10 @@ describe('VendorsService', () => {
     it('returns vendors filtered by specialty', async () => {
       repo.findAndCount.mockResolvedValue([[mockVendor as Vendor], 1]);
 
-      const result = await service.findAll(companyId, 1, 20, undefined, VendorSpecialty.HVAC);
+      const result = await service.findAll(companyId, 1, 20, undefined, 'HVAC');
 
       expect(repo.findAndCount).toHaveBeenCalledWith({
-        where: [{ companyId, specialty: VendorSpecialty.HVAC }],
+        where: [{ companyId, specialty: 'HVAC' }],
         skip: 0,
         take: 20,
         order: { createdAt: 'DESC' },
@@ -132,12 +138,12 @@ describe('VendorsService', () => {
     it('returns vendors filtered by both search and specialty', async () => {
       repo.findAndCount.mockResolvedValue([[mockVendor as Vendor], 1]);
 
-      await service.findAll(companyId, 1, 20, 'Futtaim', VendorSpecialty.HVAC);
+      await service.findAll(companyId, 1, 20, 'Futtaim', 'HVAC');
 
       const callArgs = repo.findAndCount.mock.calls[0]![0]!;
       expect((callArgs as any).where).toHaveLength(4);
       expect((callArgs as any).where[0]).toHaveProperty('specialty');
-      expect((callArgs as any).where[0].specialty).toBe(VendorSpecialty.HVAC);
+      expect((callArgs as any).where[0].specialty).toBe('HVAC');
     });
 
     it('calculates correct skip for page 2', async () => {
@@ -166,13 +172,17 @@ describe('VendorsService', () => {
     it('throws NotFoundException when not found', async () => {
       repo.findOne.mockResolvedValue(null);
 
-      await expect(service.findOne('bad-id', companyId)).rejects.toThrow(NotFoundException);
+      await expect(service.findOne('bad-id', companyId)).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('throws NotFoundException for wrong company', async () => {
       repo.findOne.mockResolvedValue(null);
 
-      await expect(service.findOne('vendor-uuid-1', 'other-company')).rejects.toThrow(NotFoundException);
+      await expect(
+        service.findOne('vendor-uuid-1', 'other-company'),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 
@@ -182,7 +192,9 @@ describe('VendorsService', () => {
       repo.findOne.mockResolvedValue({ ...mockVendor } as Vendor);
       repo.save.mockResolvedValue(updated);
 
-      const result = await service.update('vendor-uuid-1', companyId, { name: 'Updated Vendor' });
+      const result = await service.update('vendor-uuid-1', companyId, {
+        name: 'Updated Vendor',
+      });
 
       expect(result.name).toBe('Updated Vendor');
     });
@@ -211,7 +223,9 @@ describe('VendorsService', () => {
     it('throws NotFoundException when vendor does not exist', async () => {
       repo.findOne.mockResolvedValue(null);
 
-      await expect(service.remove('bad-id', companyId)).rejects.toThrow(NotFoundException);
+      await expect(service.remove('bad-id', companyId)).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 });

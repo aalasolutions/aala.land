@@ -3,7 +3,7 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { NotFoundException } from '@nestjs/common';
 import { FinancialService } from './financial.service';
-import { Transaction, TransactionType, TransactionStatus, PaymentMethod } from './entities/transaction.entity';
+import { Transaction } from './entities/transaction.entity';
 
 describe('FinancialService', () => {
   let service: FinancialService;
@@ -14,8 +14,8 @@ describe('FinancialService', () => {
   const mockTransaction: Partial<Transaction> = {
     id: 'txn-uuid-1',
     companyId,
-    type: TransactionType.INCOME,
-    status: TransactionStatus.PENDING,
+    type: 'INCOME',
+    status: 'PENDING',
     amount: 15000,
     currency: 'AED',
     description: 'Monthly rent',
@@ -53,7 +53,7 @@ describe('FinancialService', () => {
       repo.create.mockReturnValue(mockTransaction as Transaction);
       repo.save.mockResolvedValue(mockTransaction as Transaction);
 
-      const dto = { type: TransactionType.INCOME, amount: 15000 };
+      const dto = { type: 'INCOME', amount: 15000 };
       const result = await service.create(companyId, dto as any);
 
       expect(repo.create).toHaveBeenCalledWith({ ...dto, companyId });
@@ -63,7 +63,10 @@ describe('FinancialService', () => {
 
   describe('findAll', () => {
     it('returns paginated transactions for company', async () => {
-      repo.findAndCount.mockResolvedValue([[mockTransaction as Transaction], 1]);
+      repo.findAndCount.mockResolvedValue([
+        [mockTransaction as Transaction],
+        1,
+      ]);
 
       const result = await service.findAll(companyId, 1, 20);
 
@@ -85,39 +88,53 @@ describe('FinancialService', () => {
 
       const result = await service.findOne('txn-uuid-1', companyId);
 
-      expect(repo.findOne).toHaveBeenCalledWith({ where: { id: 'txn-uuid-1', companyId } });
+      expect(repo.findOne).toHaveBeenCalledWith({
+        where: { id: 'txn-uuid-1', companyId },
+      });
       expect(result).toEqual(mockTransaction);
     });
 
     it('throws NotFoundException when not found', async () => {
       repo.findOne.mockResolvedValue(null);
 
-      await expect(service.findOne('bad-id', companyId)).rejects.toThrow(NotFoundException);
+      await expect(service.findOne('bad-id', companyId)).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('throws NotFoundException when wrong company', async () => {
       repo.findOne.mockResolvedValue(null);
 
-      await expect(service.findOne('txn-uuid-1', 'other-company')).rejects.toThrow(NotFoundException);
+      await expect(
+        service.findOne('txn-uuid-1', 'other-company'),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 
   describe('update', () => {
     it('updates transaction status', async () => {
       repo.findOne.mockResolvedValue({ ...mockTransaction } as Transaction);
-      repo.save.mockResolvedValue({ ...mockTransaction, status: TransactionStatus.COMPLETED } as Transaction);
+      repo.save.mockResolvedValue({
+        ...mockTransaction,
+        status: 'COMPLETED',
+      } as Transaction);
 
-      const result = await service.update('txn-uuid-1', companyId, { status: TransactionStatus.COMPLETED });
+      const result = await service.update('txn-uuid-1', companyId, {
+        status: 'COMPLETED',
+      });
 
-      expect(result.status).toBe(TransactionStatus.COMPLETED);
+      expect(result.status).toBe('COMPLETED');
     });
 
     it('sets paidAt when status is COMPLETED', async () => {
-      const txnWithoutPaidAt = { ...mockTransaction, paidAt: null } as unknown as Transaction;
+      const txnWithoutPaidAt = {
+        ...mockTransaction,
+        paidAt: null,
+      } as unknown as Transaction;
       repo.findOne.mockResolvedValue(txnWithoutPaidAt);
       repo.save.mockImplementation(async (t) => t as Transaction);
 
-      await service.update('txn-uuid-1', companyId, { status: TransactionStatus.COMPLETED });
+      await service.update('txn-uuid-1', companyId, { status: 'COMPLETED' });
 
       expect(repo.save).toHaveBeenCalledWith(
         expect.objectContaining({ paidAt: expect.any(Date) }),
@@ -128,8 +145,18 @@ describe('FinancialService', () => {
   describe('getSummary', () => {
     it('returns totalIncome, totalExpense, and net', async () => {
       const transactions = [
-        { ...mockTransaction, type: TransactionType.INCOME, status: TransactionStatus.COMPLETED, amount: 15000 },
-        { ...mockTransaction, type: TransactionType.EXPENSE, status: TransactionStatus.PENDING, amount: 3000 },
+        {
+          ...mockTransaction,
+          type: 'INCOME',
+          status: 'COMPLETED',
+          amount: 15000,
+        },
+        {
+          ...mockTransaction,
+          type: 'EXPENSE',
+          status: 'PENDING',
+          amount: 3000,
+        },
       ] as Transaction[];
       repo.find.mockResolvedValue(transactions);
 
@@ -143,10 +170,23 @@ describe('FinancialService', () => {
 
   describe('getDepositReminders', () => {
     it('returns transactions grouped by due date proximity', async () => {
-      const overdueTransaction = { ...mockTransaction, id: 'txn-overdue', dueDate: new Date('2025-01-01') } as Transaction;
-      const todayTransaction = { ...mockTransaction, id: 'txn-today' } as Transaction;
-      const weekTransaction = { ...mockTransaction, id: 'txn-week' } as Transaction;
-      const monthTransaction = { ...mockTransaction, id: 'txn-month' } as Transaction;
+      const overdueTransaction = {
+        ...mockTransaction,
+        id: 'txn-overdue',
+        dueDate: new Date('2025-01-01'),
+      } as Transaction;
+      const todayTransaction = {
+        ...mockTransaction,
+        id: 'txn-today',
+      } as Transaction;
+      const weekTransaction = {
+        ...mockTransaction,
+        id: 'txn-week',
+      } as Transaction;
+      const monthTransaction = {
+        ...mockTransaction,
+        id: 'txn-month',
+      } as Transaction;
 
       repo.find
         .mockResolvedValueOnce([overdueTransaction])
@@ -182,8 +222,8 @@ describe('FinancialService', () => {
       for (const call of repo.find.mock.calls) {
         const where = (call[0] as any).where;
         expect(where.companyId).toBe(companyId);
-        expect(where.type).toBe(TransactionType.INCOME);
-        expect(where.status).toBe(TransactionStatus.PENDING);
+        expect(where.type).toBe('INCOME');
+        expect(where.status).toBe('PENDING');
       }
     });
   });

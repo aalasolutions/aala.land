@@ -1,11 +1,14 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, LessThan, Between, FindOptionsWhere } from 'typeorm';
-import { Transaction, TransactionType, TransactionStatus } from './entities/transaction.entity';
+import { Transaction } from './entities/transaction.entity';
 import { CreateTransactionDto } from './dto/create-transaction.dto';
 import { UpdateTransactionDto } from './dto/update-transaction.dto';
 import { REGION_FILTER_SUBQUERY } from '../../shared/utils/region-filter.util';
-import { paginationOptions, pageSkip } from '../../shared/utils/pagination.util';
+import {
+  paginationOptions,
+  pageSkip,
+} from '../../shared/utils/pagination.util';
 
 export interface TransactionSummary {
   totalIncome: number;
@@ -18,14 +21,32 @@ export class FinancialService {
   constructor(
     @InjectRepository(Transaction)
     private readonly transactionRepository: Repository<Transaction>,
-  ) { }
+  ) {}
 
-  async create(companyId: string, dto: CreateTransactionDto): Promise<Transaction> {
-    const transaction = this.transactionRepository.create({ ...dto, companyId });
+  async create(
+    companyId: string,
+    dto: CreateTransactionDto,
+  ): Promise<Transaction> {
+    const transaction = this.transactionRepository.create({
+      ...dto,
+      companyId,
+    });
     return this.transactionRepository.save(transaction);
   }
 
-  async findAll(companyId: string, page = 1, limit = 20, type?: string, ownerId?: string, regionCode?: string): Promise<{ data: Transaction[]; total: number; page: number; limit: number }> {
+  async findAll(
+    companyId: string,
+    page = 1,
+    limit = 20,
+    type?: string,
+    ownerId?: string,
+    regionCode?: string,
+  ): Promise<{
+    data: Transaction[];
+    total: number;
+    page: number;
+    limit: number;
+  }> {
     if (regionCode) {
       // Show transactions that either belong to a unit in the region OR have no unit linked
       const qb = this.transactionRepository
@@ -45,9 +66,7 @@ export class FinancialService {
         qb.andWhere('t.type = :type', { type });
       }
 
-      qb.skip(pageSkip(page, limit))
-        .take(limit)
-        .orderBy('t.createdAt', 'DESC');
+      qb.skip(pageSkip(page, limit)).take(limit).orderBy('t.createdAt', 'DESC');
 
       const [data, total] = await qb.getManyAndCount();
       return { data, total, page, limit };
@@ -60,7 +79,7 @@ export class FinancialService {
     }
 
     if (type) {
-      where.type = type as TransactionType;
+      where.type = type as string;
     }
 
     const [data, total] = await this.transactionRepository.findAndCount({
@@ -73,17 +92,23 @@ export class FinancialService {
   }
 
   async findOne(id: string, companyId: string): Promise<Transaction> {
-    const transaction = await this.transactionRepository.findOne({ where: { id, companyId } });
+    const transaction = await this.transactionRepository.findOne({
+      where: { id, companyId },
+    });
     if (!transaction) {
       throw new NotFoundException('Transaction not found');
     }
     return transaction;
   }
 
-  async update(id: string, companyId: string, dto: UpdateTransactionDto): Promise<Transaction> {
+  async update(
+    id: string,
+    companyId: string,
+    dto: UpdateTransactionDto,
+  ): Promise<Transaction> {
     const transaction = await this.findOne(id, companyId);
 
-    if (dto.status === TransactionStatus.COMPLETED && !transaction.paidAt) {
+    if (dto.status === 'COMPLETED' && !transaction.paidAt) {
       transaction.paidAt = new Date();
     }
 
@@ -95,15 +120,18 @@ export class FinancialService {
     const result = await this.transactionRepository
       .createQueryBuilder('t')
       .select(
-        "COALESCE(SUM(CASE WHEN t.type = :income THEN t.amount ELSE 0 END), 0)",
-        'totalIncome'
+        'COALESCE(SUM(CASE WHEN t.type = :income THEN t.amount ELSE 0 END), 0)',
+        'totalIncome',
       )
       .addSelect(
-        "COALESCE(SUM(CASE WHEN t.type = :expense THEN t.amount ELSE 0 END), 0)",
-        'totalExpense'
+        'COALESCE(SUM(CASE WHEN t.type = :expense THEN t.amount ELSE 0 END), 0)',
+        'totalExpense',
       )
-      .where('t.companyId = :companyId AND t.status NOT IN (:...excludedStatuses)', { companyId, excludedStatuses: [TransactionStatus.CANCELLED, TransactionStatus.FAILED] })
-      .setParameters({ income: TransactionType.INCOME, expense: TransactionType.EXPENSE })
+      .where(
+        't.companyId = :companyId AND t.status NOT IN (:...excludedStatuses)',
+        { companyId, excludedStatuses: ['CANCELLED', 'FAILED'] },
+      )
+      .setParameters({ income: 'INCOME', expense: 'EXPENSE' })
       .getRawOne();
 
     const totalIncome = Number(result?.totalIncome ?? 0);
@@ -132,8 +160,8 @@ export class FinancialService {
 
     const baseWhere = {
       companyId,
-      type: TransactionType.INCOME,
-      status: TransactionStatus.PENDING,
+      type: 'INCOME',
+      status: 'PENDING',
     };
 
     const [overdue, dueToday, dueThisWeek, dueThisMonth] = await Promise.all([

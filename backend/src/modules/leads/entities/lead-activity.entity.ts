@@ -1,17 +1,14 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  ManyToOne,
+  JoinColumn,
+} from 'typeorm';
 import { Lead } from './lead.entity';
 import { Company } from '../../companies/entities/company.entity';
 import { User } from '../../users/entities/user.entity';
-
-export enum ActivityType {
-  CALL = 'CALL',
-  EMAIL = 'EMAIL',
-  WHATSAPP = 'WHATSAPP',
-  VIEWING = 'VIEWING',
-  NOTE = 'NOTE',
-  STATUS_CHANGE = 'STATUS_CHANGE',
-  ASSIGNMENT = 'ASSIGNMENT',
-}
 
 @Entity('lead_activities')
 export class LeadActivity {
@@ -33,11 +30,11 @@ export class LeadActivity {
   lead?: Lead;
 
   @Column({
-    type: 'enum',
-    enum: ActivityType,
-    default: ActivityType.NOTE,
+    type: 'varchar',
+    length: 100,
+    default: 'NOTE',
   })
-  type: ActivityType;
+  type: string;
 
   @Column({ type: 'text', nullable: true })
   notes: string;

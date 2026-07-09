@@ -1,6 +1,23 @@
-import { IsString, IsNotEmpty, IsOptional, IsEmail, IsEnum, IsInt, IsNumber, Min, Max, MaxLength, IsUUID } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  IsOptional,
+  IsEmail,
+  IsEnum,
+  IsIn,
+  IsInt,
+  IsNumber,
+  Min,
+  Max,
+  MaxLength,
+  IsUUID,
+} from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { LeadStatus, LeadTemperature, LeadSource } from '../entities/lead.entity';
+import {
+  LEAD_SOURCE_VALUES,
+  LEAD_STATUS_VALUES,
+  LEAD_TEMPERATURE_VALUES,
+} from '../../../shared/taxonomies';
 
 export class CreateLeadDto {
   @ApiProperty({ example: 'Ahmed' })
@@ -32,20 +49,20 @@ export class CreateLeadDto {
   @MaxLength(50)
   whatsappNumber?: string;
 
-  @ApiPropertyOptional({ enum: LeadStatus, default: LeadStatus.NEW })
-  @IsEnum(LeadStatus)
+  @ApiPropertyOptional({ enum: LEAD_STATUS_VALUES, default: 'NEW' })
+  @IsIn(LEAD_STATUS_VALUES)
   @IsOptional()
-  status?: LeadStatus;
+  status?: string;
 
-  @ApiPropertyOptional({ enum: LeadTemperature, default: LeadTemperature.WARM })
-  @IsEnum(LeadTemperature)
+  @ApiPropertyOptional({ enum: LEAD_TEMPERATURE_VALUES, default: 'WARM' })
+  @IsIn(LEAD_TEMPERATURE_VALUES)
   @IsOptional()
-  temperature?: LeadTemperature;
+  temperature?: string;
 
-  @ApiPropertyOptional({ enum: LeadSource, default: LeadSource.OTHER })
-  @IsEnum(LeadSource)
+  @ApiPropertyOptional({ enum: LEAD_SOURCE_VALUES, default: 'OTHER' })
+  @IsIn(LEAD_SOURCE_VALUES)
   @IsOptional()
-  source?: LeadSource;
+  source?: string;
 
   @ApiPropertyOptional({ example: 50, minimum: 0, maximum: 100 })
   @IsInt()
@@ -84,7 +101,10 @@ export class CreateLeadDto {
   @IsOptional()
   unitId?: string;
 
-  @ApiPropertyOptional({ example: 'dubai', description: 'Region code for multi-region filtering' })
+  @ApiPropertyOptional({
+    example: 'dubai',
+    description: 'Region code for multi-region filtering',
+  })
   @IsString()
   @IsOptional()
   regionCode?: string;

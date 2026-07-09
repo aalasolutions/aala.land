@@ -1,6 +1,15 @@
-import { IsString, IsNotEmpty, IsOptional, IsEnum, IsArray, IsBoolean, MaxLength } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  IsOptional,
+  IsEnum,
+  IsIn,
+  IsArray,
+  IsBoolean,
+  MaxLength,
+} from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { EmailTemplateCategory } from '../entities/email-template.entity';
+import { EMAIL_CATEGORY_VALUES } from '../../../shared/taxonomies';
 
 export class CreateEmailTemplateDto {
   @ApiProperty({ example: 'Welcome New Tenant' })
@@ -15,15 +24,18 @@ export class CreateEmailTemplateDto {
   @MaxLength(500)
   subject: string;
 
-  @ApiProperty({ example: '<h1>Welcome {{firstName}}</h1><p>Your lease for {{propertyName}} starts on {{startDate}}.</p>' })
+  @ApiProperty({
+    example:
+      '<h1>Welcome {{firstName}}</h1><p>Your lease for {{propertyName}} starts on {{startDate}}.</p>',
+  })
   @IsString()
   @IsNotEmpty()
   body: string;
 
-  @ApiPropertyOptional({ enum: EmailTemplateCategory, default: EmailTemplateCategory.CUSTOM })
-  @IsEnum(EmailTemplateCategory)
+  @ApiPropertyOptional({ enum: EMAIL_CATEGORY_VALUES, default: 'CUSTOM' })
+  @IsIn(EMAIL_CATEGORY_VALUES)
   @IsOptional()
-  category?: EmailTemplateCategory;
+  category?: string;
 
   @ApiPropertyOptional({ example: ['firstName', 'propertyName', 'startDate'] })
   @IsArray()

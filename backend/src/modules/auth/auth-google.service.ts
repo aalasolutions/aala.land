@@ -51,17 +51,18 @@ export class AuthGoogleService {
     return this.authService.login(user);
   }
 
-  async googleSignup(
-    idToken: string,
-    companyName: string,
-    regionCode: string,
-  ) {
+  async googleSignup(idToken: string, companyName: string, regionCode: string) {
     const { googleId, email, name } = await this.verifyGoogleToken(idToken);
 
-    const existingUser = await this.usersService.findByEmailOrGoogleId(email, googleId);
+    const existingUser = await this.usersService.findByEmailOrGoogleId(
+      email,
+      googleId,
+    );
 
     if (existingUser) {
-      throw new ConflictException('An account with this email or Google account already exists');
+      throw new ConflictException(
+        'An account with this email or Google account already exists',
+      );
     }
 
     const trimmedCompanyName = companyName.trim();
@@ -77,7 +78,9 @@ export class AuthGoogleService {
       .replace(/^-|-$/g, '');
 
     if (!slug) {
-      throw new BadRequestException('Company name must contain letters or numbers');
+      throw new BadRequestException(
+        'Company name must contain letters or numbers',
+      );
     }
 
     const loginUser = await this.companiesService.createGoogleCompanyAdmin({

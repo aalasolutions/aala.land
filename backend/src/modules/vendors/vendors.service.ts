@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, ILike, FindOptionsWhere } from 'typeorm';
-import { Vendor, VendorSpecialty } from './entities/vendor.entity';
+import { Vendor } from './entities/vendor.entity';
 import { CreateVendorDto } from './dto/create-vendor.dto';
 import { UpdateVendorDto } from './dto/update-vendor.dto';
 import { Company } from '../companies/entities/company.entity';
@@ -18,8 +18,16 @@ export class VendorsService {
   ) {}
 
   async create(companyId: string, dto: CreateVendorDto): Promise<Vendor> {
-    const regionCode = await resolveRegionCode(this.companyRepository, companyId, dto.regionCode);
-    const vendor = this.vendorRepository.create({ ...dto, companyId, regionCode });
+    const regionCode = await resolveRegionCode(
+      this.companyRepository,
+      companyId,
+      dto.regionCode,
+    );
+    const vendor = this.vendorRepository.create({
+      ...dto,
+      companyId,
+      regionCode,
+    });
     return this.vendorRepository.save(vendor);
   }
 
@@ -28,7 +36,7 @@ export class VendorsService {
     page = 1,
     limit = 20,
     search?: string,
-    specialty?: VendorSpecialty,
+    specialty?: string,
     regionCode?: string,
   ): Promise<{ data: Vendor[]; total: number; page: number; limit: number }> {
     const where: FindOptionsWhere<Vendor>[] = [];
@@ -76,7 +84,11 @@ export class VendorsService {
     return vendor;
   }
 
-  async update(id: string, companyId: string, dto: UpdateVendorDto): Promise<Vendor> {
+  async update(
+    id: string,
+    companyId: string,
+    dto: UpdateVendorDto,
+  ): Promise<Vendor> {
     const vendor = await this.findOne(id, companyId);
     Object.assign(vendor, dto);
     return this.vendorRepository.save(vendor);

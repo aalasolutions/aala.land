@@ -1,16 +1,31 @@
-import { IsEnum, IsNumber, IsOptional, IsString, IsUUID, IsDateString, MaxLength, Min } from 'class-validator';
+import {
+  IsEnum,
+  IsIn,
+  IsNumber,
+  IsOptional,
+  IsString,
+  IsUUID,
+  IsDateString,
+  MaxLength,
+  Min,
+} from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { TransactionType, TransactionCategory, TransactionStatus, PaymentMethod } from '../entities/transaction.entity';
+import {
+  PAYMENT_METHOD_VALUES,
+  TRANSACTION_CATEGORY_VALUES,
+  TRANSACTION_STATUS_VALUES,
+  TRANSACTION_TYPE_VALUES,
+} from '../../../shared/taxonomies';
 
 export class CreateTransactionDto {
-  @ApiProperty({ enum: TransactionType, example: TransactionType.INCOME })
-  @IsEnum(TransactionType)
-  type: TransactionType;
+  @ApiProperty({ enum: TRANSACTION_TYPE_VALUES, example: 'INCOME' })
+  @IsIn(TRANSACTION_TYPE_VALUES)
+  type: string;
 
-  @ApiPropertyOptional({ enum: TransactionCategory, example: TransactionCategory.RENT })
-  @IsEnum(TransactionCategory)
+  @ApiPropertyOptional({ enum: TRANSACTION_CATEGORY_VALUES, example: 'RENT' })
+  @IsIn(TRANSACTION_CATEGORY_VALUES)
   @IsOptional()
-  category?: TransactionCategory;
+  category?: string;
 
   @ApiProperty({ example: 15000 })
   @IsNumber()
@@ -44,15 +59,15 @@ export class CreateTransactionDto {
   @IsOptional()
   unitId?: string;
 
-  @ApiPropertyOptional({ enum: TransactionStatus, default: TransactionStatus.PENDING })
-  @IsEnum(TransactionStatus)
+  @ApiPropertyOptional({ enum: TRANSACTION_STATUS_VALUES, default: 'PENDING' })
+  @IsIn(TRANSACTION_STATUS_VALUES)
   @IsOptional()
-  status?: TransactionStatus;
+  status?: string;
 
-  @ApiPropertyOptional({ enum: PaymentMethod, default: PaymentMethod.CASH })
-  @IsEnum(PaymentMethod)
+  @ApiPropertyOptional({ enum: PAYMENT_METHOD_VALUES, default: 'CASH' })
+  @IsIn(PAYMENT_METHOD_VALUES)
   @IsOptional()
-  paymentMethod?: PaymentMethod;
+  paymentMethod?: string;
 
   @ApiPropertyOptional({ example: '2026-02-15' })
   @IsDateString()

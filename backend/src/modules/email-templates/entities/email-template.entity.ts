@@ -1,15 +1,14 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn, Index } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  UpdateDateColumn,
+  ManyToOne,
+  JoinColumn,
+  Index,
+} from 'typeorm';
 import { Company } from '../../companies/entities/company.entity';
-
-export enum EmailTemplateCategory {
-  FOLLOW_UP = 'FOLLOW_UP',
-  WELCOME = 'WELCOME',
-  LEASE_RENEWAL = 'LEASE_RENEWAL',
-  PAYMENT_REMINDER = 'PAYMENT_REMINDER',
-  MAINTENANCE_UPDATE = 'MAINTENANCE_UPDATE',
-  MARKETING = 'MARKETING',
-  CUSTOM = 'CUSTOM',
-}
 
 @Entity('email_templates')
 export class EmailTemplate {
@@ -34,11 +33,11 @@ export class EmailTemplate {
   body: string;
 
   @Column({
-    type: 'enum',
-    enum: EmailTemplateCategory,
-    default: EmailTemplateCategory.CUSTOM,
+    type: 'varchar',
+    length: 100,
+    default: 'CUSTOM',
   })
-  category: EmailTemplateCategory;
+  category: string;
 
   @Column({ type: 'jsonb', default: '[]' })
   variables: string[];

@@ -1,6 +1,14 @@
-import { IsString, IsOptional, IsEnum, IsArray, IsBoolean, MaxLength } from 'class-validator';
+import {
+  IsString,
+  IsOptional,
+  IsEnum,
+  IsIn,
+  IsArray,
+  IsBoolean,
+  MaxLength,
+} from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { EmailTemplateCategory } from '../entities/email-template.entity';
+import { EMAIL_CATEGORY_VALUES } from '../../../shared/taxonomies';
 
 export class UpdateEmailTemplateDto {
   @ApiPropertyOptional({ example: 'Updated Template Name' })
@@ -20,10 +28,10 @@ export class UpdateEmailTemplateDto {
   @IsOptional()
   body?: string;
 
-  @ApiPropertyOptional({ enum: EmailTemplateCategory })
-  @IsEnum(EmailTemplateCategory)
+  @ApiPropertyOptional({ enum: EMAIL_CATEGORY_VALUES })
+  @IsIn(EMAIL_CATEGORY_VALUES)
   @IsOptional()
-  category?: EmailTemplateCategory;
+  category?: string;
 
   @ApiPropertyOptional({ example: ['firstName', 'amount'] })
   @IsArray()

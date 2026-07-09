@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, FindOptionsWhere } from 'typeorm';
-import { EmailTemplate, EmailTemplateCategory } from './entities/email-template.entity';
+import { EmailTemplate } from './entities/email-template.entity';
 import { CreateEmailTemplateDto } from './dto/create-email-template.dto';
 import { UpdateEmailTemplateDto } from './dto/update-email-template.dto';
 import { paginationOptions } from '../../shared/utils/pagination.util';
@@ -11,10 +11,18 @@ export class EmailTemplatesService {
   constructor(
     @InjectRepository(EmailTemplate)
     private readonly templateRepository: Repository<EmailTemplate>,
-  ) { }
+  ) {}
 
-  async create(companyId: string, dto: CreateEmailTemplateDto, createdBy?: string): Promise<EmailTemplate> {
-    const template = this.templateRepository.create({ ...dto, companyId, createdBy });
+  async create(
+    companyId: string,
+    dto: CreateEmailTemplateDto,
+    createdBy?: string,
+  ): Promise<EmailTemplate> {
+    const template = this.templateRepository.create({
+      ...dto,
+      companyId,
+      createdBy,
+    });
     return this.templateRepository.save(template);
   }
 
@@ -22,8 +30,13 @@ export class EmailTemplatesService {
     companyId: string,
     page = 1,
     limit = 20,
-    category?: EmailTemplateCategory,
-  ): Promise<{ data: EmailTemplate[]; total: number; page: number; limit: number }> {
+    category?: string,
+  ): Promise<{
+    data: EmailTemplate[];
+    total: number;
+    page: number;
+    limit: number;
+  }> {
     const where: FindOptionsWhere<EmailTemplate> = { companyId };
     if (category) {
       where.category = category;
@@ -38,14 +51,20 @@ export class EmailTemplatesService {
   }
 
   async findOne(id: string, companyId: string): Promise<EmailTemplate> {
-    const template = await this.templateRepository.findOne({ where: { id, companyId } });
+    const template = await this.templateRepository.findOne({
+      where: { id, companyId },
+    });
     if (!template) {
       throw new NotFoundException('Email template not found');
     }
     return template;
   }
 
-  async update(id: string, companyId: string, dto: UpdateEmailTemplateDto): Promise<EmailTemplate> {
+  async update(
+    id: string,
+    companyId: string,
+    dto: UpdateEmailTemplateDto,
+  ): Promise<EmailTemplate> {
     const template = await this.findOne(id, companyId);
     Object.assign(template, dto);
     return this.templateRepository.save(template);

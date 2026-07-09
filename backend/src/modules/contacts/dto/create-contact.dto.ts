@@ -1,6 +1,16 @@
-import { IsString, IsNotEmpty, IsOptional, IsEmail, IsEnum, IsArray, IsUUID, MaxLength } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  IsOptional,
+  IsEmail,
+  IsEnum,
+  IsIn,
+  IsArray,
+  IsUUID,
+  MaxLength,
+} from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { ContactType } from '../entities/contact.entity';
+import { CONTACT_TYPE_VALUES } from '../../../shared/taxonomies';
 
 export class CreateContactDto {
   @ApiProperty({ example: 'Ahmed' })
@@ -32,10 +42,10 @@ export class CreateContactDto {
   @MaxLength(50)
   whatsappNumber?: string;
 
-  @ApiPropertyOptional({ enum: ContactType, default: ContactType.OTHER })
-  @IsEnum(ContactType)
+  @ApiPropertyOptional({ enum: CONTACT_TYPE_VALUES, default: 'OTHER' })
+  @IsIn(CONTACT_TYPE_VALUES)
   @IsOptional()
-  type?: ContactType;
+  type?: string;
 
   @ApiPropertyOptional({ example: 'Emaar Properties' })
   @IsString()

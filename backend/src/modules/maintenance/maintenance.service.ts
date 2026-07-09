@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { WorkOrder, WorkOrderStatus } from './entities/work-order.entity';
+import { WorkOrder } from './entities/work-order.entity';
 import { CreateWorkOrderDto } from './dto/create-work-order.dto';
 import { UpdateWorkOrderDto } from './dto/update-work-order.dto';
 import { REGION_FILTER_SUBQUERY } from '../../shared/utils/region-filter.util';
@@ -19,7 +19,7 @@ export class MaintenanceService {
   constructor(
     @InjectRepository(WorkOrder)
     private readonly workOrderRepository: Repository<WorkOrder>,
-  ) { }
+  ) {}
 
   async create(companyId: string, dto: CreateWorkOrderDto): Promise<WorkOrder> {
     const order = this.workOrderRepository.create({ ...dto, companyId });
@@ -39,10 +39,7 @@ export class MaintenanceService {
       .where('wo.company_id = :companyId', { companyId });
 
     if (regionCode) {
-      qb.andWhere(
-        `wo.unit_id IN (${REGION_FILTER_SUBQUERY})`,
-        { regionCode },
-      );
+      qb.andWhere(`wo.unit_id IN (${REGION_FILTER_SUBQUERY})`, { regionCode });
     }
 
     if (status) {
@@ -66,9 +63,12 @@ export class MaintenanceService {
       );
     } else if (period === 'last_3_months') {
       const threeMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 3, 1);
-      qb.andWhere('COALESCE(wo.scheduled_date, wo.created_at) >= :threeMonthsAgo', {
-        threeMonthsAgo,
-      });
+      qb.andWhere(
+        'COALESCE(wo.scheduled_date, wo.created_at) >= :threeMonthsAgo',
+        {
+          threeMonthsAgo,
+        },
+      );
     }
 
     qb.skip((page - 1) * limit)
@@ -77,8 +77,11 @@ export class MaintenanceService {
 
     const [orders, total] = await qb.getManyAndCount();
 
-    const orderIds = orders.map(o => o.id);
-    let unitMap: Record<string, { unitNumber: string; assetName: string; areaName: string }> = {};
+    const orderIds = orders.map((o) => o.id);
+    let unitMap: Record<
+      string,
+      { unitNumber: string; assetName: string; areaName: string }
+    > = {};
     if (orderIds.length) {
       const unitInfo = await this.workOrderRepository.query(
         `SELECT wo.id AS "woId", u.unit_number AS "unitNumber", ast.name AS "assetName", loc.name AS "areaName"
@@ -90,11 +93,25 @@ export class MaintenanceService {
         [orderIds],
       );
       unitMap = Object.fromEntries(
-        unitInfo.map((r: { woId: string; unitNumber: string; assetName: string; areaName: string }) => [r.woId, { unitNumber: r.unitNumber, assetName: r.assetName, areaName: r.areaName }]),
+        unitInfo.map(
+          (r: {
+            woId: string;
+            unitNumber: string;
+            assetName: string;
+            areaName: string;
+          }) => [
+            r.woId,
+            {
+              unitNumber: r.unitNumber,
+              assetName: r.assetName,
+              areaName: r.areaName,
+            },
+          ],
+        ),
       );
     }
 
-    const data = orders.map(o => ({
+    const data = orders.map((o) => ({
       ...o,
       unitNumber: unitMap[o.id]?.unitNumber ?? null,
       assetName: unitMap[o.id]?.assetName ?? null,
@@ -105,18 +122,24 @@ export class MaintenanceService {
   }
 
   async findOne(id: string, companyId: string): Promise<WorkOrder> {
-    const order = await this.workOrderRepository.findOne({ where: { id, companyId } });
+    const order = await this.workOrderRepository.findOne({
+      where: { id, companyId },
+    });
     if (!order) {
       throw new NotFoundException('Work order not found');
     }
     return order;
   }
 
-  async update(id: string, companyId: string, dto: UpdateWorkOrderDto): Promise<WorkOrder> {
+  async update(
+    id: string,
+    companyId: string,
+    dto: UpdateWorkOrderDto,
+  ): Promise<WorkOrder> {
     const order = await this.findOne(id, companyId);
     Object.assign(order, dto);
 
-    if (dto.status === WorkOrderStatus.COMPLETED && !order.completedAt) {
+    if (dto.status === 'COMPLETED' && !order.completedAt) {
       order.completedAt = new Date();
     }
 
@@ -128,7 +151,10 @@ export class MaintenanceService {
     await this.workOrderRepository.remove(order);
   }
 
-  async getCostSummary(companyId: string, regionCode?: string): Promise<CostSummary> {
+  async getCostSummary(
+    companyId: string,
+    regionCode?: string,
+  ): Promise<CostSummary> {
     const qb = this.workOrderRepository
       .createQueryBuilder('wo')
       .select('COALESCE(SUM(wo.estimated_cost), 0)', 'totalEstimated')
@@ -137,10 +163,7 @@ export class MaintenanceService {
       .where('wo.company_id = :companyId', { companyId });
 
     if (regionCode) {
-      qb.andWhere(
-        `wo.unit_id IN (${REGION_FILTER_SUBQUERY})`,
-        { regionCode },
-      );
+      qb.andWhere(`wo.unit_id IN (${REGION_FILTER_SUBQUERY})`, { regionCode });
     }
 
     const result = await qb.getRawOne();
@@ -158,7 +181,10 @@ export class MaintenanceService {
     };
   }
 
-  async getUpcoming(companyId: string, regionCode?: string): Promise<WorkOrder[]> {
+  async getUpcoming(
+    companyId: string,
+    regionCode?: string,
+  ): Promise<WorkOrder[]> {
     const thirtyDaysFromNow = new Date();
     thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
 
@@ -166,14 +192,13 @@ export class MaintenanceService {
       .createQueryBuilder('wo')
       .where('wo.company_id = :companyId', { companyId })
       .andWhere('wo.is_preventive = true')
-      .andWhere('wo.next_scheduled_date <= :thirtyDays', { thirtyDays: thirtyDaysFromNow })
+      .andWhere('wo.next_scheduled_date <= :thirtyDays', {
+        thirtyDays: thirtyDaysFromNow,
+      })
       .orderBy('wo.next_scheduled_date', 'ASC');
 
     if (regionCode) {
-      qb.andWhere(
-        `wo.unit_id IN (${REGION_FILTER_SUBQUERY})`,
-        { regionCode },
-      );
+      qb.andWhere(`wo.unit_id IN (${REGION_FILTER_SUBQUERY})`, { regionCode });
     }
 
     return qb.take(100).getMany();

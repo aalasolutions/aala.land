@@ -1,6 +1,17 @@
-import { IsString, IsOptional, IsEnum, IsNumber, Min, Max, MaxLength, IsEmail, IsBoolean } from 'class-validator';
+import {
+  IsString,
+  IsOptional,
+  IsEnum,
+  IsIn,
+  IsNumber,
+  Min,
+  Max,
+  MaxLength,
+  IsEmail,
+  IsBoolean,
+} from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
-import { VendorSpecialty } from '../entities/vendor.entity';
+import { VENDOR_SPECIALTY_VALUES } from '../../../shared/taxonomies';
 
 export class UpdateVendorDto {
   @ApiProperty({ required: false })
@@ -21,10 +32,10 @@ export class UpdateVendorDto {
   @MaxLength(50)
   phone?: string;
 
-  @ApiProperty({ enum: VendorSpecialty, required: false })
+  @ApiProperty({ enum: VENDOR_SPECIALTY_VALUES, required: false })
   @IsOptional()
-  @IsEnum(VendorSpecialty)
-  specialty?: VendorSpecialty;
+  @IsIn(VENDOR_SPECIALTY_VALUES)
+  specialty?: string;
 
   @ApiProperty({ required: false })
   @IsOptional()

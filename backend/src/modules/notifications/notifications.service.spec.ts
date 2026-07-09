@@ -4,13 +4,19 @@ import { Repository, IsNull, MoreThanOrEqual } from 'typeorm';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { CronExpression } from '@nestjs/schedule';
 import { NotificationsService } from './notifications.service';
-import { Notification, NotificationType } from './entities/notification.entity';
-import { NotificationChannel, NotificationStatus } from './dto/send-notification.dto';
-import { Cheque, ChequeStatus, ChequeType } from '../cheques/entities/cheque.entity';
-import { Lease, LeaseStatus, LeaseType } from '../leases/entities/lease.entity';
-import { WorkOrder, WorkOrderStatus, WorkOrderPriority, WorkOrderCategory } from '../maintenance/entities/work-order.entity';
+import { Notification } from './entities/notification.entity';
+import {
+  NotificationChannel,
+  NotificationStatus,
+} from './dto/send-notification.dto';
+import { Cheque } from '../cheques/entities/cheque.entity';
+import { Lease } from '../leases/entities/lease.entity';
+import {
+  WorkOrder,
+  WorkOrderPriority,
+} from '../maintenance/entities/work-order.entity';
 import { User } from '../users/entities/user.entity';
-import { Lead, LeadStatus, LeadTemperature, LeadSource } from '../leads/entities/lead.entity';
+import { Lead } from '../leads/entities/lead.entity';
 import { NotificationsGateway } from './notifications.gateway';
 
 describe('NotificationsService', () => {
@@ -28,7 +34,7 @@ describe('NotificationsService', () => {
     userId,
     title: 'New Lead Assigned',
     message: 'Lead Ahmed Al-Rashid has been assigned to you',
-    type: NotificationType.LEAD_ASSIGNED,
+    type: 'LEAD_ASSIGNED',
     entityType: 'lead',
     entityId: 'lead-uuid-1',
     isRead: false,
@@ -68,19 +74,25 @@ describe('NotificationsService', () => {
           provide: getRepositoryToken(Cheque),
           useValue: {
             find: jest.fn().mockResolvedValue([]),
-            createQueryBuilder: jest.fn().mockReturnValue({ ...mockQueryBuilder }),
+            createQueryBuilder: jest
+              .fn()
+              .mockReturnValue({ ...mockQueryBuilder }),
           },
         },
         {
           provide: getRepositoryToken(Lease),
           useValue: {
-            createQueryBuilder: jest.fn().mockReturnValue({ ...mockQueryBuilder }),
+            createQueryBuilder: jest
+              .fn()
+              .mockReturnValue({ ...mockQueryBuilder }),
           },
         },
         {
           provide: getRepositoryToken(WorkOrder),
           useValue: {
-            createQueryBuilder: jest.fn().mockReturnValue({ ...mockQueryBuilder }),
+            createQueryBuilder: jest
+              .fn()
+              .mockReturnValue({ ...mockQueryBuilder }),
           },
         },
         {
@@ -129,7 +141,7 @@ describe('NotificationsService', () => {
         userId,
         title: 'New Lead Assigned',
         message: 'Lead Ahmed Al-Rashid has been assigned to you',
-        type: NotificationType.LEAD_ASSIGNED,
+        type: 'LEAD_ASSIGNED',
         entityType: 'lead',
         entityId: 'lead-uuid-1',
       };
@@ -137,7 +149,10 @@ describe('NotificationsService', () => {
 
       expect(repo.create).toHaveBeenCalledWith({ ...dto, companyId });
       expect(repo.save).toHaveBeenCalled();
-      expect(gateway.sendNotificationToUser).toHaveBeenCalledWith(userId, mockNotification);
+      expect(gateway.sendNotificationToUser).toHaveBeenCalledWith(
+        userId,
+        mockNotification,
+      );
       expect(result).toEqual(mockNotification);
     });
 
@@ -148,12 +163,14 @@ describe('NotificationsService', () => {
         throw new Error('socket unavailable');
       });
 
-      const loggerErrorSpy = jest.spyOn((service as any).logger, 'error').mockImplementation();
+      const loggerErrorSpy = jest
+        .spyOn((service as any).logger, 'error')
+        .mockImplementation();
       const dto = {
         userId,
         title: 'New Lead Assigned',
         message: 'Lead Ahmed Al-Rashid has been assigned to you',
-        type: NotificationType.LEAD_ASSIGNED,
+        type: 'LEAD_ASSIGNED',
         entityType: 'lead',
         entityId: 'lead-uuid-1',
       };
@@ -161,7 +178,10 @@ describe('NotificationsService', () => {
       const result = await service.create(companyId, dto);
 
       expect(result).toEqual(mockNotification);
-      expect(gateway.sendNotificationToUser).toHaveBeenCalledWith(userId, mockNotification);
+      expect(gateway.sendNotificationToUser).toHaveBeenCalledWith(
+        userId,
+        mockNotification,
+      );
       expect(loggerErrorSpy).toHaveBeenCalledWith(
         'Failed to emit notification via socket: socket unavailable',
       );
@@ -170,7 +190,10 @@ describe('NotificationsService', () => {
 
   describe('findAll', () => {
     it('returns paginated notifications for company and user', async () => {
-      repo.findAndCount.mockResolvedValue([[mockNotification as Notification], 1]);
+      repo.findAndCount.mockResolvedValue([
+        [mockNotification as Notification],
+        1,
+      ]);
 
       const result = await service.findAll(companyId, userId, 1, 20);
 
@@ -204,9 +227,17 @@ describe('NotificationsService', () => {
     it('marks a notification as read', async () => {
       const unread = { ...mockNotification, isRead: false } as Notification;
       repo.findOne.mockResolvedValue(unread);
-      repo.save.mockResolvedValue({ ...unread, isRead: true, readAt: expect.any(Date) } as Notification);
+      repo.save.mockResolvedValue({
+        ...unread,
+        isRead: true,
+        readAt: expect.any(Date),
+      } as Notification);
 
-      const result = await service.markAsRead('notif-uuid-1', companyId, userId);
+      const result = await service.markAsRead(
+        'notif-uuid-1',
+        companyId,
+        userId,
+      );
 
       expect(repo.findOne).toHaveBeenCalledWith({
         where: { id: 'notif-uuid-1', companyId, userId },
@@ -218,19 +249,27 @@ describe('NotificationsService', () => {
     it('throws NotFoundException when notification not found', async () => {
       repo.findOne.mockResolvedValue(null);
 
-      await expect(service.markAsRead('bad-id', companyId, userId)).rejects.toThrow(NotFoundException);
+      await expect(
+        service.markAsRead('bad-id', companyId, userId),
+      ).rejects.toThrow(NotFoundException);
     });
 
     it('throws NotFoundException for wrong company', async () => {
       repo.findOne.mockResolvedValue(null);
 
-      await expect(service.markAsRead('notif-uuid-1', 'other-company', userId)).rejects.toThrow(NotFoundException);
+      await expect(
+        service.markAsRead('notif-uuid-1', 'other-company', userId),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 
   describe('markAllRead', () => {
     it('marks all unread notifications as read for user', async () => {
-      repo.update.mockResolvedValue({ affected: 5, raw: [], generatedMaps: [] });
+      repo.update.mockResolvedValue({
+        affected: 5,
+        raw: [],
+        generatedMaps: [],
+      });
 
       const result = await service.markAllRead(companyId, userId);
 
@@ -242,7 +281,11 @@ describe('NotificationsService', () => {
     });
 
     it('returns 0 when no unread notifications', async () => {
-      repo.update.mockResolvedValue({ affected: 0, raw: [], generatedMaps: [] });
+      repo.update.mockResolvedValue({
+        affected: 0,
+        raw: [],
+        generatedMaps: [],
+      });
 
       const result = await service.markAllRead(companyId, userId);
 
@@ -323,7 +366,9 @@ describe('NotificationsService', () => {
     it('returns FAILED when SendGrid request errors', async () => {
       process.env.SENDGRID_API_KEY = 'sg-test-key';
 
-      global.fetch = jest.fn().mockRejectedValue(new Error('Network error')) as any;
+      global.fetch = jest
+        .fn()
+        .mockRejectedValue(new Error('Network error')) as any;
 
       const result = await service.send({
         channel: NotificationChannel.EMAIL,
@@ -390,7 +435,9 @@ describe('NotificationsService', () => {
       process.env.TWILIO_AUTH_TOKEN = 'token123';
       process.env.TWILIO_FROM_NUMBER = '+15005550006';
 
-      global.fetch = jest.fn().mockRejectedValue(new Error('Twilio error')) as any;
+      global.fetch = jest
+        .fn()
+        .mockRejectedValue(new Error('Twilio error')) as any;
 
       const result = await service.send({
         channel: NotificationChannel.SMS,
@@ -417,7 +464,7 @@ describe('NotificationsService', () => {
         currency: 'AED',
         dueDate: tomorrow,
         accountHolder: 'Ahmed Al-Rashid',
-        status: ChequeStatus.PENDING,
+        status: 'PENDING',
         companyId,
       };
 
@@ -466,7 +513,7 @@ describe('NotificationsService', () => {
         unitId: 'unit-uuid-1',
         tenantName: 'Fatima Hassan',
         endDate,
-        status: LeaseStatus.ACTIVE,
+        status: 'ACTIVE',
         companyId,
       };
 
@@ -515,7 +562,7 @@ describe('NotificationsService', () => {
         title: 'HVAC Filter Replacement',
         unitId: 'unit-uuid-1',
         nextScheduledDate: nextDate,
-        category: WorkOrderCategory.HVAC,
+        category: 'HVAC',
         priority: WorkOrderPriority.MEDIUM,
         isPreventive: true,
         companyId,
@@ -572,10 +619,18 @@ describe('NotificationsService', () => {
     });
 
     it('runs all reminder methods when triggered (no crash)', async () => {
-      const notifyUpcomingSpy = jest.spyOn(service as any, 'notifyUpcomingCheques').mockResolvedValue(undefined);
-      const notifyOverdueSpy = jest.spyOn(service as any, 'notifyOverdueCheques').mockResolvedValue(undefined);
-      const notifyDelayedSpy = jest.spyOn(service as any, 'notifyDelayedCheques').mockResolvedValue(undefined);
-      const notifyUnassignedSpy = jest.spyOn(service as any, 'notifyUnassignedLeads').mockResolvedValue(undefined);
+      const notifyUpcomingSpy = jest
+        .spyOn(service as any, 'notifyUpcomingCheques')
+        .mockResolvedValue(undefined);
+      const notifyOverdueSpy = jest
+        .spyOn(service as any, 'notifyOverdueCheques')
+        .mockResolvedValue(undefined);
+      const notifyDelayedSpy = jest
+        .spyOn(service as any, 'notifyDelayedCheques')
+        .mockResolvedValue(undefined);
+      const notifyUnassignedSpy = jest
+        .spyOn(service as any, 'notifyUnassignedLeads')
+        .mockResolvedValue(undefined);
 
       await service.runDailyReminders();
 
@@ -612,7 +667,7 @@ describe('NotificationsService', () => {
       currency: 'AED',
       dueDate: threeDaysFromNow,
       accountHolder: 'Test Holder',
-      status: ChequeStatus.PENDING,
+      status: 'PENDING',
     };
 
     beforeEach(() => {
@@ -621,26 +676,32 @@ describe('NotificationsService', () => {
       (repo.find as jest.Mock).mockResolvedValue([]);
       // Reset call history but keep a safe empty default: runDailyReminders runs
       // notifyUnassignedLeads too, which would otherwise .map over undefined.
-      (module.get(getRepositoryToken(Lead)).find as jest.Mock).mockReset().mockResolvedValue([]);
+      (module.get(getRepositoryToken(Lead)).find as jest.Mock)
+        .mockReset()
+        .mockResolvedValue([]);
     });
 
     it('creates notifications for PENDING cheques due in 3 days', async () => {
       const chequeRepo = module.get(getRepositoryToken(Cheque));
-      (chequeRepo.find as jest.Mock).mockResolvedValue([mockUpcomingCheque as Cheque]);
-      (module.get(getRepositoryToken(User)).find as jest.Mock).mockResolvedValue([mockAdmin]);
+      (chequeRepo.find as jest.Mock).mockResolvedValue([
+        mockUpcomingCheque as Cheque,
+      ]);
+      (
+        module.get(getRepositoryToken(User)).find as jest.Mock
+      ).mockResolvedValue([mockAdmin]);
       repo.create.mockReturnValue({ id: 'notif-1' } as Notification);
       repo.save.mockResolvedValue({ id: 'notif-1' } as Notification);
 
       await service.runDailyReminders();
 
       expect(module.get(getRepositoryToken(Cheque)).find).toHaveBeenCalledWith({
-        where: { status: ChequeStatus.PENDING, dueDate: threeDaysFromNow },
+        where: { status: 'PENDING', dueDate: threeDaysFromNow },
       });
       expect(repo.create).toHaveBeenCalledWith(
         expect.objectContaining({
           userId: mockAdmin.id,
           title: 'Upcoming Cheque',
-          type: NotificationType.CHEQUE_DUE,
+          type: 'CHEQUE_DUE',
           entityType: 'cheque',
           entityId: 'upcoming-uuid-1',
         }),
@@ -654,15 +715,19 @@ describe('NotificationsService', () => {
       await service.runDailyReminders();
 
       expect(module.get(getRepositoryToken(Cheque)).find).toHaveBeenCalledWith({
-        where: { status: ChequeStatus.PENDING, dueDate: threeDaysFromNow },
+        where: { status: 'PENDING', dueDate: threeDaysFromNow },
       });
     });
 
     it('swallows a unique-violation from create (cross-replica dedup backstop) without crashing the cron', async () => {
       const { QueryFailedError } = require('typeorm');
       const chequeRepo = module.get(getRepositoryToken(Cheque));
-      (chequeRepo.find as jest.Mock).mockResolvedValue([mockUpcomingCheque as Cheque]);
-      (module.get(getRepositoryToken(User)).find as jest.Mock).mockResolvedValue([mockAdmin]);
+      (chequeRepo.find as jest.Mock).mockResolvedValue([
+        mockUpcomingCheque as Cheque,
+      ]);
+      (
+        module.get(getRepositoryToken(User)).find as jest.Mock
+      ).mockResolvedValue([mockAdmin]);
       (repo.find as jest.Mock).mockResolvedValue([]);
 
       // Another replica inserted the same reminder first; our INSERT hits the
@@ -680,25 +745,35 @@ describe('NotificationsService', () => {
 
     it('re-throws non-unique-violation errors from create', async () => {
       const chequeRepo = module.get(getRepositoryToken(Cheque));
-      (chequeRepo.find as jest.Mock).mockResolvedValue([mockUpcomingCheque as Cheque]);
-      (module.get(getRepositoryToken(User)).find as jest.Mock).mockResolvedValue([mockAdmin]);
+      (chequeRepo.find as jest.Mock).mockResolvedValue([
+        mockUpcomingCheque as Cheque,
+      ]);
+      (
+        module.get(getRepositoryToken(User)).find as jest.Mock
+      ).mockResolvedValue([mockAdmin]);
       (repo.find as jest.Mock).mockResolvedValue([]);
 
       repo.create.mockReturnValue({ id: 'notif-1' } as Notification);
       repo.save.mockRejectedValue(new Error('connection reset'));
 
-      await expect(service.runDailyReminders()).rejects.toThrow('connection reset');
+      await expect(service.runDailyReminders()).rejects.toThrow(
+        'connection reset',
+      );
     });
 
     it('deduplicates notifications per admin per entity per day', async () => {
       const chequeRepo = module.get(getRepositoryToken(Cheque));
-      (chequeRepo.find as jest.Mock).mockResolvedValue([mockUpcomingCheque as Cheque]);
+      (chequeRepo.find as jest.Mock).mockResolvedValue([
+        mockUpcomingCheque as Cheque,
+      ]);
       (repo.find as jest.Mock).mockResolvedValue([]);
 
-      const findAdminsSpy = jest.spyOn(service as any, 'findAdminsByCompanyIds').mockResolvedValue(
-        new Map([[companyId, [mockAdmin]]]),
-      );
-      const findExistingSpy = jest.spyOn(service as any, 'findExistingReminderKeys').mockResolvedValue(new Set());
+      const findAdminsSpy = jest
+        .spyOn(service as any, 'findAdminsByCompanyIds')
+        .mockResolvedValue(new Map([[companyId, [mockAdmin]]]));
+      const findExistingSpy = jest
+        .spyOn(service as any, 'findExistingReminderKeys')
+        .mockResolvedValue(new Set());
       repo.create.mockReturnValue({ id: 'notif-1' } as Notification);
       repo.save.mockResolvedValue({ id: 'notif-1' } as Notification);
 
@@ -712,12 +787,14 @@ describe('NotificationsService', () => {
 
     it('scopes the dedup lookup window to UTC start-of-day (matches the fixed-UTC index bucket)', async () => {
       const chequeRepo = module.get(getRepositoryToken(Cheque));
-      (chequeRepo.find as jest.Mock).mockResolvedValue([mockUpcomingCheque as Cheque]);
+      (chequeRepo.find as jest.Mock).mockResolvedValue([
+        mockUpcomingCheque as Cheque,
+      ]);
       (repo.find as jest.Mock).mockResolvedValue([]);
 
-      const findAdminsSpy = jest.spyOn(service as any, 'findAdminsByCompanyIds').mockResolvedValue(
-        new Map([[companyId, [mockAdmin]]]),
-      );
+      const findAdminsSpy = jest
+        .spyOn(service as any, 'findAdminsByCompanyIds')
+        .mockResolvedValue(new Map([[companyId, [mockAdmin]]]));
       const findExistingSpy = jest
         .spyOn(service as any, 'findExistingReminderKeys')
         .mockResolvedValue(new Set());
@@ -735,7 +812,9 @@ describe('NotificationsService', () => {
       );
 
       expect(findExistingSpy).toHaveBeenCalled();
-      const sinceArgs = findExistingSpy.mock.calls.map((call: any[]) => call[0].since as Date);
+      const sinceArgs = findExistingSpy.mock.calls.map(
+        (call: any[]) => call[0].since as Date,
+      );
       for (const since of sinceArgs) {
         expect(since.getTime()).toBe(expectedUtcMidnight.getTime());
         // A UTC start-of-day has zeroed UTC time-of-day components.
@@ -773,15 +852,19 @@ describe('NotificationsService', () => {
       dueDate: new Date(),
       depositDate: threeDaysAgo,
       accountHolder: 'Test Holder',
-      status: ChequeStatus.DEPOSITED,
+      status: 'DEPOSITED',
     };
 
     it('selects DEPOSITED cheques not cleared for more than 3 days', async () => {
       const chequeRepo = module.get(getRepositoryToken(Cheque));
       const { LessThanOrEqual } = require('typeorm');
 
-      (chequeRepo.find as jest.Mock).mockResolvedValue([mockDelayedCheque as Cheque]);
-      (module.get(getRepositoryToken(User)).find as jest.Mock).mockResolvedValue([mockAdmin]);
+      (chequeRepo.find as jest.Mock).mockResolvedValue([
+        mockDelayedCheque as Cheque,
+      ]);
+      (
+        module.get(getRepositoryToken(User)).find as jest.Mock
+      ).mockResolvedValue([mockAdmin]);
       repo.create.mockReturnValue({ id: 'notif-1' } as Notification);
       repo.save.mockResolvedValue({ id: 'notif-1' } as Notification);
 
@@ -789,7 +872,7 @@ describe('NotificationsService', () => {
 
       expect(module.get(getRepositoryToken(Cheque)).find).toHaveBeenCalledWith({
         where: {
-          status: ChequeStatus.DEPOSITED,
+          status: 'DEPOSITED',
           depositDate: LessThanOrEqual(expect.any(Date)),
         },
       });
@@ -798,7 +881,9 @@ describe('NotificationsService', () => {
     it('skips cheques with non-DEPOSITED status', async () => {
       const chequeRepo = module.get(getRepositoryToken(Cheque));
       (chequeRepo.find as jest.Mock).mockResolvedValue([]);
-      (module.get(getRepositoryToken(User)).find as jest.Mock).mockResolvedValue([]);
+      (
+        module.get(getRepositoryToken(User)).find as jest.Mock
+      ).mockResolvedValue([]);
 
       await service.runDailyReminders();
 
@@ -817,10 +902,14 @@ describe('NotificationsService', () => {
         amount: 5000,
         currency: 'AED',
         depositDate: yesterday,
-        status: ChequeStatus.DEPOSITED,
+        status: 'DEPOSITED',
       };
-      (chequeRepo.find as jest.Mock).mockResolvedValue([recentCheque as Cheque]);
-      (module.get(getRepositoryToken(User)).find as jest.Mock).mockResolvedValue([]);
+      (chequeRepo.find as jest.Mock).mockResolvedValue([
+        recentCheque as Cheque,
+      ]);
+      (
+        module.get(getRepositoryToken(User)).find as jest.Mock
+      ).mockResolvedValue([]);
 
       await service.runDailyReminders();
 
@@ -850,7 +939,7 @@ describe('NotificationsService', () => {
       currency: 'AED',
       dueDate: yesterday,
       accountHolder: 'Test Holder',
-      status: ChequeStatus.PENDING,
+      status: 'PENDING',
     };
 
     const todayMidnight = new Date();
@@ -860,8 +949,12 @@ describe('NotificationsService', () => {
       const chequeRepo = module.get(getRepositoryToken(Cheque));
       const { LessThan } = require('typeorm');
 
-      (chequeRepo.find as jest.Mock).mockResolvedValue([mockOverdueCheque as Cheque]);
-      (module.get(getRepositoryToken(User)).find as jest.Mock).mockResolvedValue([mockAdmin]);
+      (chequeRepo.find as jest.Mock).mockResolvedValue([
+        mockOverdueCheque as Cheque,
+      ]);
+      (
+        module.get(getRepositoryToken(User)).find as jest.Mock
+      ).mockResolvedValue([mockAdmin]);
       repo.create.mockReturnValue({ id: 'notif-1' } as Notification);
       repo.save.mockResolvedValue({ id: 'notif-1' } as Notification);
 
@@ -870,7 +963,7 @@ describe('NotificationsService', () => {
       // Verify it uses LessThan, not LessThanOrEqual
       expect(module.get(getRepositoryToken(Cheque)).find).toHaveBeenCalledWith({
         where: {
-          status: ChequeStatus.PENDING,
+          status: 'PENDING',
           dueDate: LessThan(todayMidnight),
         },
       });
@@ -879,7 +972,9 @@ describe('NotificationsService', () => {
     it('does NOT include cheques due today', async () => {
       const chequeRepo = module.get(getRepositoryToken(Cheque));
       (chequeRepo.find as jest.Mock).mockResolvedValue([]);
-      (module.get(getRepositoryToken(User)).find as jest.Mock).mockResolvedValue([]);
+      (
+        module.get(getRepositoryToken(User)).find as jest.Mock
+      ).mockResolvedValue([]);
 
       await service.runDailyReminders();
 
@@ -890,7 +985,7 @@ describe('NotificationsService', () => {
         .map((call) => call[0])
         .find(
           (arg) =>
-            arg?.where?.status === ChequeStatus.PENDING &&
+            arg?.where?.status === 'PENDING' &&
             arg?.where?.dueDate?.type === 'lessThan',
         );
 
@@ -908,15 +1003,19 @@ describe('NotificationsService', () => {
         amount: 5000,
         currency: 'AED',
         dueDate: yesterday,
-        status: ChequeStatus.CLEARED,
+        status: 'CLEARED',
       };
-      (chequeRepo.find as jest.Mock).mockResolvedValue([clearedCheque as Cheque]);
-      (module.get(getRepositoryToken(User)).find as jest.Mock).mockResolvedValue([]);
+      (chequeRepo.find as jest.Mock).mockResolvedValue([
+        clearedCheque as Cheque,
+      ]);
+      (
+        module.get(getRepositoryToken(User)).find as jest.Mock
+      ).mockResolvedValue([]);
 
       await service.runDailyReminders();
 
       expect(module.get(getRepositoryToken(Cheque)).find).toHaveBeenCalledWith({
-        where: { status: ChequeStatus.PENDING, dueDate: expect.anything() },
+        where: { status: 'PENDING', dueDate: expect.anything() },
       });
     });
   });
@@ -938,17 +1037,21 @@ describe('NotificationsService', () => {
       firstName: 'John',
       lastName: 'Doe',
       email: 'john@example.com',
-      status: LeadStatus.NEW,
+      status: 'NEW',
       assignedTo: null,
-      source: LeadSource.WEBSITE,
-      temperature: LeadTemperature.WARM,
+      source: 'WEBSITE',
+      temperature: 'WARM',
       score: 0,
     };
 
     it('selects leads with NEW status and no assignedTo', async () => {
       const leadRepo = module.get(getRepositoryToken(Lead));
-      (leadRepo.find as jest.Mock).mockResolvedValue([mockUnassignedLead as Lead]);
-      (module.get(getRepositoryToken(User)).find as jest.Mock).mockResolvedValue([mockAdmin]);
+      (leadRepo.find as jest.Mock).mockResolvedValue([
+        mockUnassignedLead as Lead,
+      ]);
+      (
+        module.get(getRepositoryToken(User)).find as jest.Mock
+      ).mockResolvedValue([mockAdmin]);
       repo.create.mockReturnValue({ id: 'notif-1' } as Notification);
       repo.save.mockResolvedValue({ id: 'notif-1' } as Notification);
 
@@ -956,7 +1059,7 @@ describe('NotificationsService', () => {
 
       expect(module.get(getRepositoryToken(Lead)).find).toHaveBeenCalledWith({
         where: {
-          status: LeadStatus.NEW,
+          status: 'NEW',
           assignedTo: IsNull(),
         },
       });
@@ -970,20 +1073,22 @@ describe('NotificationsService', () => {
         firstName: 'Jane',
         lastName: 'Smith',
         email: 'jane@example.com',
-        status: LeadStatus.NEW,
+        status: 'NEW',
         assignedTo: 'agent-uuid-1',
-        source: LeadSource.WEBSITE,
-        temperature: LeadTemperature.COLD,
+        source: 'WEBSITE',
+        temperature: 'COLD',
         score: 0,
       };
       (leadRepo.find as jest.Mock).mockResolvedValue([assignedLead as Lead]);
-      (module.get(getRepositoryToken(User)).find as jest.Mock).mockResolvedValue([]);
+      (
+        module.get(getRepositoryToken(User)).find as jest.Mock
+      ).mockResolvedValue([]);
 
       await service.runDailyReminders();
 
       expect(module.get(getRepositoryToken(Lead)).find).toHaveBeenCalledWith({
         where: {
-          status: LeadStatus.NEW,
+          status: 'NEW',
           assignedTo: IsNull(),
         },
       });
@@ -997,20 +1102,22 @@ describe('NotificationsService', () => {
         firstName: 'Bob',
         lastName: '',
         email: 'bob@example.com',
-        status: LeadStatus.CONTACTED,
+        status: 'CONTACTED',
         assignedTo: null,
-        source: LeadSource.REFERRAL,
-        temperature: LeadTemperature.HOT,
+        source: 'REFERRAL',
+        temperature: 'HOT',
         score: 80,
       };
       (leadRepo.find as jest.Mock).mockResolvedValue([contactedLead as Lead]);
-      (module.get(getRepositoryToken(User)).find as jest.Mock).mockResolvedValue([]);
+      (
+        module.get(getRepositoryToken(User)).find as jest.Mock
+      ).mockResolvedValue([]);
 
       await service.runDailyReminders();
 
       expect(module.get(getRepositoryToken(Lead)).find).toHaveBeenCalledWith({
         where: {
-          status: LeadStatus.NEW,
+          status: 'NEW',
           assignedTo: IsNull(),
         },
       });
@@ -1024,10 +1131,10 @@ describe('NotificationsService', () => {
         firstName: 'Fatima',
         lastName: '',
         email: 'fatima@example.com',
-        status: LeadStatus.NEW,
+        status: 'NEW',
         assignedTo: null,
-        source: LeadSource.WHATSAPP,
-        temperature: LeadTemperature.WARM,
+        source: 'WHATSAPP',
+        temperature: 'WARM',
         score: 0,
       };
       const leadWithBothNames: Partial<Lead> = {
@@ -1036,18 +1143,25 @@ describe('NotificationsService', () => {
         firstName: 'Ahmed',
         lastName: 'Hassan',
         email: 'ahmed@example.com',
-        status: LeadStatus.NEW,
+        status: 'NEW',
         assignedTo: null,
-        source: LeadSource.SOCIAL_MEDIA,
-        temperature: LeadTemperature.HOT,
+        source: 'SOCIAL_MEDIA',
+        temperature: 'HOT',
         score: 0,
       };
-      (leadRepo.find as jest.Mock).mockResolvedValue([leadWithMissingLastName as Lead, leadWithBothNames as Lead]);
-      (module.get(getRepositoryToken(User)).find as jest.Mock).mockResolvedValue([mockAdmin]);
+      (leadRepo.find as jest.Mock).mockResolvedValue([
+        leadWithMissingLastName as Lead,
+        leadWithBothNames as Lead,
+      ]);
+      (
+        module.get(getRepositoryToken(User)).find as jest.Mock
+      ).mockResolvedValue([mockAdmin]);
       repo.create.mockReturnValue({ id: 'notif-1' } as Notification);
       repo.save.mockResolvedValue({ id: 'notif-1' } as Notification);
 
-      const loggerLogSpy = jest.spyOn((service as any).logger, 'log').mockImplementation(() => {});
+      const loggerLogSpy = jest
+        .spyOn((service as any).logger, 'log')
+        .mockImplementation(() => {});
 
       await service.runDailyReminders();
 
@@ -1059,15 +1173,18 @@ describe('NotificationsService', () => {
 
     it('does not create duplicate notifications per admin per lead per day', async () => {
       const leadRepo = module.get(getRepositoryToken(Lead));
-      (leadRepo.find as jest.Mock).mockResolvedValue([mockUnassignedLead as Lead]);
+      (leadRepo.find as jest.Mock).mockResolvedValue([
+        mockUnassignedLead as Lead,
+      ]);
 
-      const findAdminSpy = jest.spyOn(service as any, 'findAdminsByCompanyIds').mockResolvedValue(
-        new Map([[companyId, [mockAdmin]]]),
-      );
+      const findAdminSpy = jest
+        .spyOn(service as any, 'findAdminsByCompanyIds')
+        .mockResolvedValue(new Map([[companyId, [mockAdmin]]]));
 
       // Pre-existing notification key for this admin+lead
       const existingKeys = new Set(['admin-uuid-1:unassigned-uuid-1']);
-      const findExistingSpy = jest.spyOn(service as any, 'findExistingReminderKeys')
+      const findExistingSpy = jest
+        .spyOn(service as any, 'findExistingReminderKeys')
         .mockResolvedValue(existingKeys);
 
       repo.create.mockReturnValue({ id: 'notif-duplicate' } as Notification);
@@ -1077,8 +1194,8 @@ describe('NotificationsService', () => {
 
       // The notification should NOT be created because a reminder already exists for admin-uuid-1 + unassigned-uuid-1 today
       // Find the calls to create within the notifyUnassignedLeads flow
-      const createCalls = repo.create.mock.calls.map(c => c[0]);
-      const userIds = createCalls.map(c => c.userId);
+      const createCalls = repo.create.mock.calls.map((c) => c[0]);
+      const userIds = createCalls.map((c) => c.userId);
       expect(userIds).not.toContain(mockAdmin.id);
 
       findAdminSpy.mockRestore();
@@ -1096,8 +1213,12 @@ describe('NotificationsService', () => {
         isActive: true,
         password: 'hashed',
       };
-      (leadRepo.find as jest.Mock).mockResolvedValue([mockUnassignedLead as Lead]);
-      (module.get(getRepositoryToken(User)).find as jest.Mock).mockResolvedValue([mockAdmin, admin2]);
+      (leadRepo.find as jest.Mock).mockResolvedValue([
+        mockUnassignedLead as Lead,
+      ]);
+      (
+        module.get(getRepositoryToken(User)).find as jest.Mock
+      ).mockResolvedValue([mockAdmin, admin2]);
       repo.create.mockReturnValue({ id: 'notif-1' } as Notification);
       repo.save.mockResolvedValue({ id: 'notif-1' } as Notification);
 
@@ -1105,7 +1226,7 @@ describe('NotificationsService', () => {
 
       expect(repo.create).toHaveBeenCalledWith(
         expect.objectContaining({
-          type: NotificationType.LEAD_UNASSIGNED,
+          type: 'LEAD_UNASSIGNED',
           entityType: 'lead',
           entityId: 'unassigned-uuid-1',
         }),

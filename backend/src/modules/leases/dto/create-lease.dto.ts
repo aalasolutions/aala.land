@@ -1,9 +1,18 @@
 import {
-  IsString, IsNotEmpty, IsOptional, IsUUID, IsEnum,
-  IsNumber, Min, IsDateString, IsInt, MaxLength,
+  IsString,
+  IsNotEmpty,
+  IsOptional,
+  IsUUID,
+  IsEnum,
+  IsIn,
+  IsNumber,
+  Min,
+  IsDateString,
+  IsInt,
+  MaxLength,
 } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
-import { LeaseType } from '../entities/lease.entity';
+import { LEASE_TYPE_VALUES } from '../../../shared/taxonomies';
 
 export class CreateLeaseDto {
   @ApiProperty()
@@ -34,10 +43,10 @@ export class CreateLeaseDto {
   @MaxLength(50)
   tenantNationalId?: string;
 
-  @ApiProperty({ enum: LeaseType, default: LeaseType.RESIDENTIAL })
+  @ApiProperty({ enum: LEASE_TYPE_VALUES, default: 'RESIDENTIAL' })
   @IsOptional()
-  @IsEnum(LeaseType)
-  type?: LeaseType;
+  @IsIn(LEASE_TYPE_VALUES)
+  type?: string;
 
   @ApiProperty({ description: 'Start date (ISO 8601)' })
   @IsDateString()

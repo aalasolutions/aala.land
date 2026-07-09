@@ -2,7 +2,6 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { LeasesController } from './leases.controller';
 import { LeasesService } from './leases.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { LeaseStatus, LeaseType } from './entities/lease.entity';
 
 describe('LeasesController', () => {
   let controller: LeasesController;
@@ -16,8 +15,8 @@ describe('LeasesController', () => {
     companyId,
     unitId: 'unit-uuid-1',
     tenantName: 'Ahmed Al-Rashid',
-    type: LeaseType.RESIDENTIAL,
-    status: LeaseStatus.ACTIVE,
+    type: 'RESIDENTIAL',
+    status: 'ACTIVE',
     monthlyRent: 5000,
   };
 
@@ -56,7 +55,13 @@ describe('LeasesController', () => {
     it('creates lease scoped to company', async () => {
       service.create.mockResolvedValue(mockLease as any);
 
-      const dto = { unitId: 'unit-uuid-1', tenantName: 'Ahmed', startDate: '2026-01-01', endDate: '2026-12-31', monthlyRent: 5000 };
+      const dto = {
+        unitId: 'unit-uuid-1',
+        tenantName: 'Ahmed',
+        startDate: '2026-01-01',
+        endDate: '2026-12-31',
+        monthlyRent: 5000,
+      };
       const result = await controller.create(dto as any, mockReq);
 
       expect(service.create).toHaveBeenCalledWith(companyId, dto);
@@ -96,11 +101,16 @@ describe('LeasesController', () => {
 
   describe('update', () => {
     it('updates lease', async () => {
-      service.update.mockResolvedValue({ ...mockLease, status: LeaseStatus.EXPIRED } as any);
+      service.update.mockResolvedValue({
+        ...mockLease,
+        status: 'EXPIRED',
+      } as any);
 
-      await controller.update('lease-uuid-1', { status: LeaseStatus.EXPIRED }, mockReq);
+      await controller.update('lease-uuid-1', { status: 'EXPIRED' }, mockReq);
 
-      expect(service.update).toHaveBeenCalledWith('lease-uuid-1', companyId, { status: LeaseStatus.EXPIRED });
+      expect(service.update).toHaveBeenCalledWith('lease-uuid-1', companyId, {
+        status: 'EXPIRED',
+      });
     });
   });
 

@@ -1,12 +1,24 @@
-import { IsEnum, IsNumber, IsOptional, IsString, IsDateString, MaxLength, Min } from 'class-validator';
+import {
+  IsEnum,
+  IsIn,
+  IsNumber,
+  IsOptional,
+  IsString,
+  IsDateString,
+  MaxLength,
+  Min,
+} from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { TransactionStatus, PaymentMethod } from '../entities/transaction.entity';
+import {
+  PAYMENT_METHOD_VALUES,
+  TRANSACTION_STATUS_VALUES,
+} from '../../../shared/taxonomies';
 
 export class UpdateTransactionDto {
-  @ApiPropertyOptional({ enum: TransactionStatus })
-  @IsEnum(TransactionStatus)
+  @ApiPropertyOptional({ enum: TRANSACTION_STATUS_VALUES })
+  @IsIn(TRANSACTION_STATUS_VALUES)
   @IsOptional()
-  status?: TransactionStatus;
+  status?: string;
 
   @ApiPropertyOptional({ example: 15500 })
   @IsNumber()
@@ -25,10 +37,10 @@ export class UpdateTransactionDto {
   @IsOptional()
   referenceNumber?: string;
 
-  @ApiPropertyOptional({ enum: PaymentMethod })
-  @IsEnum(PaymentMethod)
+  @ApiPropertyOptional({ enum: PAYMENT_METHOD_VALUES })
+  @IsIn(PAYMENT_METHOD_VALUES)
   @IsOptional()
-  paymentMethod?: PaymentMethod;
+  paymentMethod?: string;
 
   @ApiPropertyOptional({ example: '2026-02-15' })
   @IsDateString()

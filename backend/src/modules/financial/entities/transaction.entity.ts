@@ -1,35 +1,15 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn, Index } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  UpdateDateColumn,
+  ManyToOne,
+  JoinColumn,
+  Index,
+} from 'typeorm';
 import { Company } from '../../companies/entities/company.entity';
 import { Unit } from '../../properties/entities/unit.entity';
-
-export enum TransactionType {
-  INCOME = 'INCOME',
-  EXPENSE = 'EXPENSE',
-}
-
-export enum TransactionCategory {
-  RENT = 'RENT',
-  SALE = 'SALE',
-  DEPOSIT = 'DEPOSIT',
-  MAINTENANCE = 'MAINTENANCE',
-  COMMISSION = 'COMMISSION',
-  OTHER = 'OTHER',
-}
-
-export enum TransactionStatus {
-  PENDING = 'PENDING',
-  COMPLETED = 'COMPLETED',
-  CANCELLED = 'CANCELLED',
-  FAILED = 'FAILED',
-}
-
-export enum PaymentMethod {
-  CASH = 'CASH',
-  CHEQUE = 'CHEQUE',
-  BANK_TRANSFER = 'BANK_TRANSFER',
-  CREDIT_CARD = 'CREDIT_CARD',
-  ONLINE = 'ONLINE',
-}
 
 @Entity('transactions')
 export class Transaction {
@@ -45,26 +25,26 @@ export class Transaction {
   company: Company;
 
   @Column({
-    type: 'enum',
-    enum: TransactionType,
-    default: TransactionType.INCOME,
+    type: 'varchar',
+    length: 100,
+    default: 'INCOME',
   })
-  type: TransactionType;
+  type: string;
 
   @Column({
-    type: 'enum',
-    enum: TransactionCategory,
-    default: TransactionCategory.OTHER,
+    type: 'varchar',
+    length: 100,
+    default: 'OTHER',
     nullable: true,
   })
-  category: TransactionCategory;
+  category: string;
 
   @Column({
-    type: 'enum',
-    enum: TransactionStatus,
-    default: TransactionStatus.PENDING,
+    type: 'varchar',
+    length: 100,
+    default: 'PENDING',
   })
-  status: TransactionStatus;
+  status: string;
 
   @Column({ type: 'decimal', precision: 12, scale: 2 })
   amount: number;
@@ -74,17 +54,22 @@ export class Transaction {
 
   @Column({
     name: 'payment_method',
-    type: 'enum',
-    enum: PaymentMethod,
-    default: PaymentMethod.CASH,
+    type: 'varchar',
+    length: 100,
+    default: 'CASH',
     nullable: true,
   })
-  paymentMethod: PaymentMethod;
+  paymentMethod: string;
 
   @Column({ type: 'text', nullable: true })
   description: string;
 
-  @Column({ name: 'reference_number', type: 'varchar', length: 100, nullable: true })
+  @Column({
+    name: 'reference_number',
+    type: 'varchar',
+    length: 100,
+    nullable: true,
+  })
   referenceNumber: string;
 
   @Column({ name: 'unit_id', type: 'uuid', nullable: true })

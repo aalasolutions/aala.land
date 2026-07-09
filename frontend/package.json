@@ -89,6 +89,7 @@
     "edition": "octane"
   },
   "dependencies": {
+    "@land/taxonomies": "file:../shared",
     "socket.io-client": "^4.8.3"
   }
 }

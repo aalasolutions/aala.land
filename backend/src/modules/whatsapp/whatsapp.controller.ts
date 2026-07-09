@@ -1,7 +1,14 @@
 // backend/src/modules/whatsapp/whatsapp.controller.ts
 import {
-  Controller, Get, Post, Body, Param,
-  UseGuards, Res, Request, ForbiddenException,
+  Controller,
+  Get,
+  Post,
+  Body,
+  Param,
+  UseGuards,
+  Res,
+  Request,
+  ForbiddenException,
 } from '@nestjs/common';
 import { Response } from 'express';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
@@ -12,7 +19,12 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '@shared/guards/roles.guard';
 import { Roles } from '@shared/decorators/roles.decorator';
 import { Role } from '@shared/enums/roles.enum';
-import { SendWaMessageDto, SendWaMediaDto, TypingDto, AiToggleDto } from './dto/send-wa-message.dto';
+import {
+  SendWaMessageDto,
+  SendWaMediaDto,
+  TypingDto,
+  AiToggleDto,
+} from './dto/send-wa-message.dto';
 import { AuthenticatedRequest } from '@shared/interfaces/authenticated-request.interface';
 
 @ApiTags('whatsapp')
@@ -36,7 +48,9 @@ export class WhatsappController {
   }
 
   @Get('qr')
-  @ApiOperation({ summary: 'Current QR code (base64 PNG data URL or null if paired)' })
+  @ApiOperation({
+    summary: 'Current QR code (base64 PNG data URL or null if paired)',
+  })
   getQR(@Request() req: AuthenticatedRequest) {
     return this.wa.getQR(req.user.userId, req.user.companyId!);
   }
@@ -63,7 +77,10 @@ export class WhatsappController {
 
   @Get('messages/:chatId')
   @ApiOperation({ summary: 'Messages for a specific chat' })
-  getMessages(@Request() req: AuthenticatedRequest, @Param('chatId') chatId: string) {
+  getMessages(
+    @Request() req: AuthenticatedRequest,
+    @Param('chatId') chatId: string,
+  ) {
     return { messages: this.wa.getMessagesForChat(req.user.userId, chatId) };
   }
 
@@ -72,21 +89,38 @@ export class WhatsappController {
   @Post('send')
   @ApiOperation({ summary: 'Send a text message' })
   send(@Request() req: AuthenticatedRequest, @Body() dto: SendWaMessageDto) {
-    return this.wa.send(req.user.userId, req.user.companyId!, dto.chatId, dto.message, dto.replyTo);
+    return this.wa.send(
+      req.user.userId,
+      req.user.companyId!,
+      dto.chatId,
+      dto.message,
+      dto.replyTo,
+    );
   }
 
   @Post('send-media')
   @ApiOperation({ summary: 'Send a media message' })
   sendMedia(@Request() req: AuthenticatedRequest, @Body() dto: SendWaMediaDto) {
-    const dataDir = process.env.WHATSAPP_DATA_DIR ?? join(process.cwd(), 'data', 'whatsapp');
+    const dataDir =
+      process.env.WHATSAPP_DATA_DIR ?? join(process.cwd(), 'data', 'whatsapp');
     const mediaBase = join(dataDir, 'media', req.user.userId);
     const resolvedPath = resolve(dto.filePath);
     if (!this.isPathInside(mediaBase, resolvedPath)) {
-      throw new ForbiddenException('filePath must be within your media directory');
+      throw new ForbiddenException(
+        'filePath must be within your media directory',
+      );
     }
-    return this.wa.sendMedia(req.user.userId, req.user.companyId!, dto.chatId, resolvedPath, {
-      mediaType: dto.mediaType, caption: dto.caption, fileName: dto.fileName,
-    });
+    return this.wa.sendMedia(
+      req.user.userId,
+      req.user.companyId!,
+      dto.chatId,
+      resolvedPath,
+      {
+        mediaType: dto.mediaType,
+        caption: dto.caption,
+        fileName: dto.fileName,
+      },
+    );
   }
 
   @Post('typing')
@@ -99,18 +133,26 @@ export class WhatsappController {
 
   @Get('ai')
   @ApiOperation({ summary: 'AI config and enabled state' })
-  getAi(@Request() req: AuthenticatedRequest) { return this.wa.getAiConfig(req.user.userId, req.user.companyId!); }
+  getAi(@Request() req: AuthenticatedRequest) {
+    return this.wa.getAiConfig(req.user.userId, req.user.companyId!);
+  }
 
   @Post('ai/toggle')
   @Roles(Role.COMPANY_ADMIN)
   @ApiOperation({ summary: 'Toggle or set AI auto-reply' })
-  async toggleAi(@Request() req: AuthenticatedRequest, @Body() dto: AiToggleDto) {
+  async toggleAi(
+    @Request() req: AuthenticatedRequest,
+    @Body() dto: AiToggleDto,
+  ) {
     return this.wa.toggleAi(req.user.userId, req.user.companyId!, dto.enabled);
   }
 
   @Get('ai/history/:chatId')
   @ApiOperation({ summary: 'AI conversation history for a chat' })
-  getAiHistory(@Request() req: AuthenticatedRequest, @Param('chatId') chatId: string) {
+  getAiHistory(
+    @Request() req: AuthenticatedRequest,
+    @Param('chatId') chatId: string,
+  ) {
     return { chatId, history: this.wa.getAiHistory(req.user.userId, chatId) };
   }
 
@@ -138,7 +180,8 @@ export class WhatsappController {
     if (!this.isPathInside(dir, filePath)) {
       return res.status(403).json({ error: 'Access denied' });
     }
-    if (!existsSync(filePath)) return res.status(404).json({ error: 'Not found' });
+    if (!existsSync(filePath))
+      return res.status(404).json({ error: 'Not found' });
 
     return res.sendFile(filePath);
   }

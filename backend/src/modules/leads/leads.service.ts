@@ -1,8 +1,13 @@
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, FindOptionsWhere } from 'typeorm';
-import { Lead, LeadStatus } from './entities/lead.entity';
-import { LeadActivity, ActivityType } from './entities/lead-activity.entity';
+import { Lead } from './entities/lead.entity';
+import { LeadActivity } from './entities/lead-activity.entity';
 import { CreateLeadDto } from './dto/create-lead.dto';
 import { UpdateLeadDto } from './dto/update-lead.dto';
 import { CreateLeadActivityDto } from './dto/create-lead-activity.dto';
@@ -15,7 +20,7 @@ import { paginationOptions } from '../../shared/utils/pagination.util';
 import { Role } from '../../shared/enums/roles.enum';
 import { NotificationsService } from '../notifications/notifications.service';
 import { UsersService } from '../users/users.service';
-import { NotificationType } from '../notifications/entities/notification.entity';
+
 import { NotificationsGateway } from '../notifications/notifications.gateway';
 
 export type LeadResponse = Omit<Lead, 'assignedAgent'> & {
@@ -51,16 +56,30 @@ export class LeadsService {
     private readonly notificationsService: NotificationsService,
     private readonly usersService: UsersService,
     private readonly notificationsGateway: NotificationsGateway,
-  ) { }
+  ) {}
 
-  async create(companyId: string, dto: CreateLeadDto, userId?: string): Promise<Lead> {
+  async create(
+    companyId: string,
+    dto: CreateLeadDto,
+    userId?: string,
+  ): Promise<Lead> {
     const { propertyId, unitId, regionCode: dtoRegionCode, ...rest } = dto;
 
     if (propertyId) await this.validateLocalityExists(propertyId);
     if (unitId) await this.validateUnitOwnership(unitId, companyId);
 
-    const regionCode = await resolveRegionCode(this.companyRepository, companyId, dtoRegionCode);
-    const lead = this.leadRepository.create({ ...rest, propertyId, unitId, companyId, regionCode });
+    const regionCode = await resolveRegionCode(
+      this.companyRepository,
+      companyId,
+      dtoRegionCode,
+    );
+    const lead = this.leadRepository.create({
+      ...rest,
+      propertyId,
+      unitId,
+      companyId,
+      regionCode,
+    });
     const saved = await this.leadRepository.save(lead);
 
     const clientName = `${saved.firstName} ${saved.lastName || ''}`.trim();
@@ -84,7 +103,7 @@ export class LeadsService {
           userId: admin.id,
           title: 'New Unassigned Lead',
           message: `A new lead for ${clientName} has been created and needs assignment.`,
-          type: NotificationType.LEAD_UNASSIGNED,
+          type: 'LEAD_UNASSIGNED',
           entityType: 'lead',
           entityId: saved.id,
         });
@@ -95,7 +114,7 @@ export class LeadsService {
           userId: saved.assignedTo,
           title: 'New Lead Assigned',
           message: `You have been assigned a new lead: ${clientName}`,
-          type: NotificationType.LEAD_ASSIGNED,
+          type: 'LEAD_ASSIGNED',
           entityType: 'lead',
           entityId: saved.id,
         });
@@ -105,7 +124,12 @@ export class LeadsService {
     return saved;
   }
 
-  async findAll(companyId: string, page = 1, limit = 20, regionCode?: string): Promise<PaginatedLeadResponse> {
+  async findAll(
+    companyId: string,
+    page = 1,
+    limit = 20,
+    regionCode?: string,
+  ): Promise<PaginatedLeadResponse> {
     const where: FindOptionsWhere<Lead> = { companyId };
     if (regionCode) where.regionCode = regionCode;
 
@@ -128,7 +152,13 @@ export class LeadsService {
     return this.serializeLead(lead);
   }
 
-  async update(id: string, companyId: string, dto: UpdateLeadDto, userId?: string, userRole?: string): Promise<LeadResponse> {
+  async update(
+    id: string,
+    companyId: string,
+    dto: UpdateLeadDto,
+    userId?: string,
+    userRole?: string,
+  ): Promise<LeadResponse> {
     const lead = await this.findLeadEntityOrThrow(id, companyId);
 
     if (dto.propertyId && dto.propertyId !== lead.propertyId) {
@@ -149,17 +179,23 @@ export class LeadsService {
     let assignedAgent: Pick<User, 'id' | 'name'> | null = null;
     if (hasAssignmentUpdate) {
       if (!this.canManageAssignments(userRole)) {
-        throw new ForbiddenException('Only company admins can change lead assignment');
+        throw new ForbiddenException(
+          'Only company admins can change lead assignment',
+        );
       }
 
       if (dto.assignedTo) {
-        assignedAgent = await this.findAssignableAgentOrThrow(dto.assignedTo, companyId);
+        assignedAgent = await this.findAssignableAgentOrThrow(
+          dto.assignedTo,
+          companyId,
+        );
       }
     }
 
     const previousStatus = lead.status;
     const statusChanged = hasStatusUpdate && dto.status !== previousStatus;
-    const assignmentChanged = hasAssignmentUpdate && dto.assignedTo !== previousAssignedTo;
+    const assignmentChanged =
+      hasAssignmentUpdate && dto.assignedTo !== previousAssignedTo;
 
     Object.assign(lead, dto);
 
@@ -198,7 +234,7 @@ export class LeadsService {
         this.activityRepository.create({
           leadId: id,
           companyId,
-          type: ActivityType.STATUS_CHANGE,
+          type: 'STATUS_CHANGE',
           notes: `Status changed from ${previousStatus} to ${dto.status}`,
           performedBy: userId,
         }),
@@ -210,7 +246,7 @@ export class LeadsService {
           userId: lead.assignedTo,
           title: 'Lead Status Updated',
           message: `Lead ${clientName} status changed to ${lead.status}`,
-          type: NotificationType.LEAD_STATUS_CHANGED,
+          type: 'LEAD_STATUS_CHANGED',
           entityType: 'lead',
           entityId: lead.id,
         });
@@ -222,8 +258,10 @@ export class LeadsService {
         this.activityRepository.create({
           leadId: id,
           companyId,
-          type: ActivityType.ASSIGNMENT,
-          notes: assignedAgent ? `Lead assigned to agent ${assignedAgent.name}` : 'Lead unassigned',
+          type: 'ASSIGNMENT',
+          notes: assignedAgent
+            ? `Lead assigned to agent ${assignedAgent.name}`
+            : 'Lead unassigned',
           performedBy: userId,
         }),
       );
@@ -233,7 +271,7 @@ export class LeadsService {
           userId: dto.assignedTo,
           title: 'New Lead Assigned',
           message: `You have been assigned a lead: ${clientName}`,
-          type: NotificationType.LEAD_ASSIGNED,
+          type: 'LEAD_ASSIGNED',
           entityType: 'lead',
           entityId: lead.id,
         });
@@ -246,7 +284,7 @@ export class LeadsService {
               userId: admin.id,
               title: 'Lead Unassigned',
               message: `Lead for ${clientName} is now unassigned.`,
-              type: NotificationType.LEAD_UNASSIGNED,
+              type: 'LEAD_UNASSIGNED',
               entityType: 'lead',
               entityId: lead.id,
             });
@@ -258,7 +296,13 @@ export class LeadsService {
     return this.findOne(id, companyId);
   }
 
-  async assign(id: string, companyId: string, agentId: string, performedBy?: string, reason?: string): Promise<LeadResponse> {
+  async assign(
+    id: string,
+    companyId: string,
+    agentId: string,
+    performedBy?: string,
+    reason?: string,
+  ): Promise<LeadResponse> {
     const lead = await this.findLeadEntityOrThrow(id, companyId);
     const agent = await this.findAssignableAgentOrThrow(agentId, companyId);
 
@@ -292,7 +336,7 @@ export class LeadsService {
       this.activityRepository.create({
         leadId: id,
         companyId,
-        type: ActivityType.ASSIGNMENT,
+        type: 'ASSIGNMENT',
         notes: activityNotes,
         performedBy,
       }),
@@ -303,7 +347,7 @@ export class LeadsService {
         userId: agentId,
         title: 'New Lead Assigned',
         message: `You have been assigned a lead: ${clientName}`,
-        type: NotificationType.LEAD_ASSIGNED,
+        type: 'LEAD_ASSIGNED',
         entityType: 'lead',
         entityId: lead.id,
       });
@@ -312,10 +356,14 @@ export class LeadsService {
     return this.findOne(id, companyId);
   }
 
-  async convert(id: string, companyId: string, performedBy?: string): Promise<Lead> {
+  async convert(
+    id: string,
+    companyId: string,
+    performedBy?: string,
+  ): Promise<Lead> {
     const lead = await this.findLeadEntityOrThrow(id, companyId);
     const previousStatus = lead.status;
-    lead.status = LeadStatus.WON;
+    lead.status = 'WON';
     const updated = await this.leadRepository.save(lead);
 
     // Broadcast update to all users in the company
@@ -330,8 +378,8 @@ export class LeadsService {
       this.activityRepository.create({
         leadId: id,
         companyId,
-        type: ActivityType.STATUS_CHANGE,
-        notes: `Lead converted: status changed from ${previousStatus} to ${LeadStatus.WON}`,
+        type: 'STATUS_CHANGE',
+        notes: `Lead converted: status changed from ${previousStatus} to ${'WON'}`,
         performedBy,
       }),
     );
@@ -339,7 +387,12 @@ export class LeadsService {
     return updated;
   }
 
-  async addActivity(leadId: string, companyId: string, dto: CreateLeadActivityDto, performedBy?: string): Promise<LeadActivity> {
+  async addActivity(
+    leadId: string,
+    companyId: string,
+    dto: CreateLeadActivityDto,
+    performedBy?: string,
+  ): Promise<LeadActivity> {
     await this.findLeadEntityOrThrow(leadId, companyId);
 
     const activity = this.activityRepository.create({
@@ -351,7 +404,10 @@ export class LeadsService {
     return this.activityRepository.save(activity);
   }
 
-  async findActivities(leadId: string, companyId: string): Promise<LeadActivityResponse[]> {
+  async findActivities(
+    leadId: string,
+    companyId: string,
+  ): Promise<LeadActivityResponse[]> {
     await this.findLeadEntityOrThrow(leadId, companyId);
 
     const activities = await this.activityRepository.find({
@@ -367,7 +423,10 @@ export class LeadsService {
     }));
   }
 
-  private async findLeadEntityOrThrow(id: string, companyId: string): Promise<Lead> {
+  private async findLeadEntityOrThrow(
+    id: string,
+    companyId: string,
+  ): Promise<Lead> {
     const lead = await this.leadRepository.findOne({
       where: { id, companyId },
       relations: ['property', 'unit', 'assignedAgent'],
@@ -383,7 +442,10 @@ export class LeadsService {
     return userRole === Role.COMPANY_ADMIN || userRole === Role.SUPER_ADMIN;
   }
 
-  private async findAssignableAgentOrThrow(agentId: string, companyId: string): Promise<Pick<User, 'id' | 'name'>> {
+  private async findAssignableAgentOrThrow(
+    agentId: string,
+    companyId: string,
+  ): Promise<Pick<User, 'id' | 'name'>> {
     const agent = await this.userRepository.findOne({
       where: { id: agentId, companyId },
       select: { id: true, name: true },
@@ -405,7 +467,10 @@ export class LeadsService {
     }
   }
 
-  private async validateUnitOwnership(unitId: string, companyId: string): Promise<void> {
+  private async validateUnitOwnership(
+    unitId: string,
+    companyId: string,
+  ): Promise<void> {
     const unit = await this.unitRepository.findOne({
       where: { id: unitId, companyId },
     });

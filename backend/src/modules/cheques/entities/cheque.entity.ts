@@ -1,23 +1,15 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  UpdateDateColumn,
+  ManyToOne,
+  JoinColumn,
+} from 'typeorm';
 import { Company } from '../../companies/entities/company.entity';
 import { Lease } from '../../leases/entities/lease.entity';
 import { Unit } from '../../properties/entities/unit.entity';
-
-export enum ChequeStatus {
-  PENDING = 'PENDING',
-  DEPOSITED = 'DEPOSITED',
-  CLEARED = 'CLEARED',
-  BOUNCED = 'BOUNCED',
-  CANCELLED = 'CANCELLED',
-  REPLACED = 'REPLACED',
-}
-
-export enum ChequeType {
-  RENT = 'RENT',
-  SECURITY_DEPOSIT = 'SECURITY_DEPOSIT',
-  MAINTENANCE = 'MAINTENANCE',
-  OTHER = 'OTHER',
-}
 
 @Entity('cheques')
 export class Cheque {
@@ -67,18 +59,18 @@ export class Cheque {
   depositDate: Date | null;
 
   @Column({
-    type: 'enum',
-    enum: ChequeStatus,
-    default: ChequeStatus.PENDING,
+    type: 'varchar',
+    length: 100,
+    default: 'PENDING',
   })
-  status: ChequeStatus;
+  status: string;
 
   @Column({
-    type: 'enum',
-    enum: ChequeType,
-    default: ChequeType.RENT,
+    type: 'varchar',
+    length: 100,
+    default: 'RENT',
   })
-  type: ChequeType;
+  type: string;
 
   @Column({ name: 'ocr_image_url', type: 'varchar', nullable: true })
   ocrImageUrl: string | null;
@@ -92,7 +84,12 @@ export class Cheque {
   @Column({ name: 'bounce_count', type: 'int', default: 0 })
   bounceCount: number;
 
-  @Column({ name: 'bounce_reason', type: 'varchar', length: 500, nullable: true })
+  @Column({
+    name: 'bounce_reason',
+    type: 'varchar',
+    length: 500,
+    nullable: true,
+  })
   bounceReason: string | null;
 
   @Column({ name: 'last_bounce_date', type: 'timestamp', nullable: true })

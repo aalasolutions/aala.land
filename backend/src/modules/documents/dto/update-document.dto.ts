@@ -1,6 +1,7 @@
-import { IsString, IsOptional, IsEnum, MaxLength } from 'class-validator';
+import { IsString, IsOptional, IsEnum, IsIn, MaxLength } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
-import { DocumentCategory, DocumentAccessLevel } from '../../properties/entities/property-document.entity';
+import { DocumentAccessLevel } from '../../properties/entities/property-document.entity';
+import { DOCUMENT_CATEGORY_VALUES } from '../../../shared/taxonomies';
 
 export class UpdateDocumentDto {
   @ApiProperty({ required: false })
@@ -15,10 +16,10 @@ export class UpdateDocumentDto {
   @MaxLength(50)
   fileType?: string;
 
-  @ApiProperty({ enum: DocumentCategory, required: false })
+  @ApiProperty({ enum: DOCUMENT_CATEGORY_VALUES, required: false })
   @IsOptional()
-  @IsEnum(DocumentCategory)
-  category?: DocumentCategory;
+  @IsIn(DOCUMENT_CATEGORY_VALUES)
+  category?: string;
 
   @ApiProperty({ enum: DocumentAccessLevel, required: false })
   @IsOptional()

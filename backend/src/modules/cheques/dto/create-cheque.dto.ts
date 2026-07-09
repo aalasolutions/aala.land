@@ -1,6 +1,17 @@
-import { IsString, IsNotEmpty, IsOptional, IsUUID, IsEnum, IsNumber, Min, IsDateString, MaxLength } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  IsOptional,
+  IsUUID,
+  IsEnum,
+  IsIn,
+  IsNumber,
+  Min,
+  IsDateString,
+  MaxLength,
+} from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
-import { ChequeType } from '../entities/cheque.entity';
+import { CHEQUE_TYPE_VALUES } from '../../../shared/taxonomies';
 
 export class CreateChequeDto {
   @ApiProperty()
@@ -36,17 +47,20 @@ export class CreateChequeDto {
   @IsDateString()
   dueDate: string;
 
-  @ApiProperty({ enum: ChequeType, default: ChequeType.RENT })
+  @ApiProperty({ enum: CHEQUE_TYPE_VALUES, default: 'RENT' })
   @IsOptional()
-  @IsEnum(ChequeType)
-  type?: ChequeType;
+  @IsIn(CHEQUE_TYPE_VALUES)
+  type?: string;
 
   @ApiProperty({ required: false })
   @IsOptional()
   @IsUUID()
   leaseId?: string;
 
-  @ApiProperty({ required: false, description: 'Link cheque to a property unit' })
+  @ApiProperty({
+    required: false,
+    description: 'Link cheque to a property unit',
+  })
   @IsOptional()
   @IsUUID()
   unitId?: string;

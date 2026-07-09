@@ -3,7 +3,7 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { NotFoundException } from '@nestjs/common';
 import { MaintenanceService } from './maintenance.service';
-import { WorkOrder, WorkOrderStatus, WorkOrderPriority, WorkOrderCategory, ScheduleFrequency } from './entities/work-order.entity';
+import { WorkOrder, WorkOrderPriority } from './entities/work-order.entity';
 
 describe('MaintenanceService', () => {
   let service: MaintenanceService;
@@ -17,9 +17,9 @@ describe('MaintenanceService', () => {
     unitId: 'unit-uuid-1',
     title: 'Fix AC',
     description: 'AC not cooling properly',
-    status: WorkOrderStatus.OPEN,
+    status: 'OPEN',
     priority: WorkOrderPriority.HIGH,
-    category: WorkOrderCategory.HVAC,
+    category: 'HVAC',
     completedAt: null,
     photos: [],
     isPreventive: false,
@@ -67,7 +67,12 @@ describe('MaintenanceService', () => {
       repo.create.mockReturnValue(mockOrder as WorkOrder);
       repo.save.mockResolvedValue(mockOrder as WorkOrder);
 
-      const dto = { title: 'Fix AC', description: 'AC not cooling', priority: WorkOrderPriority.HIGH, category: WorkOrderCategory.HVAC };
+      const dto = {
+        title: 'Fix AC',
+        description: 'AC not cooling',
+        priority: WorkOrderPriority.HIGH,
+        category: 'HVAC',
+      };
       const result = await service.create(companyId, dto as any);
 
       expect(repo.create).toHaveBeenCalledWith({ ...dto, companyId });
@@ -102,25 +107,31 @@ describe('MaintenanceService', () => {
     it('throws NotFoundException when not found', async () => {
       repo.findOne.mockResolvedValue(null);
 
-      await expect(service.findOne('bad-id', companyId)).rejects.toThrow(NotFoundException);
+      await expect(service.findOne('bad-id', companyId)).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('throws NotFoundException for wrong company', async () => {
       repo.findOne.mockResolvedValue(null);
 
-      await expect(service.findOne('order-uuid-1', 'other-company')).rejects.toThrow(NotFoundException);
+      await expect(
+        service.findOne('order-uuid-1', 'other-company'),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 
   describe('update', () => {
     it('updates work order fields', async () => {
-      const updated = { ...mockOrder, status: WorkOrderStatus.IN_PROGRESS } as WorkOrder;
+      const updated = { ...mockOrder, status: 'IN_PROGRESS' } as WorkOrder;
       repo.findOne.mockResolvedValue({ ...mockOrder } as WorkOrder);
       repo.save.mockResolvedValue(updated);
 
-      const result = await service.update('order-uuid-1', companyId, { status: WorkOrderStatus.IN_PROGRESS });
+      const result = await service.update('order-uuid-1', companyId, {
+        status: 'IN_PROGRESS',
+      });
 
-      expect(result.status).toBe(WorkOrderStatus.IN_PROGRESS);
+      expect(result.status).toBe('IN_PROGRESS');
     });
 
     it('sets completedAt when status changed to COMPLETED', async () => {
@@ -128,7 +139,7 @@ describe('MaintenanceService', () => {
       repo.findOne.mockResolvedValue(openOrder);
       repo.save.mockImplementation(async (o) => o as WorkOrder);
 
-      await service.update('order-uuid-1', companyId, { status: WorkOrderStatus.COMPLETED });
+      await service.update('order-uuid-1', companyId, { status: 'COMPLETED' });
 
       expect(openOrder.completedAt).not.toBeNull();
     });
@@ -181,7 +192,7 @@ describe('MaintenanceService', () => {
       const preventiveOrder = {
         ...mockOrder,
         isPreventive: true,
-        scheduleFrequency: ScheduleFrequency.MONTHLY,
+        scheduleFrequency: 'MONTHLY',
         nextScheduledDate: new Date(),
       };
       repo.find.mockResolvedValue([preventiveOrder]);
@@ -189,13 +200,15 @@ describe('MaintenanceService', () => {
       const result = await service.getUpcoming(companyId);
 
       expect(result).toHaveLength(1);
-      expect(repo.find).toHaveBeenCalledWith(expect.objectContaining({
-        where: expect.objectContaining({
-          companyId,
-          isPreventive: true,
+      expect(repo.find).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            companyId,
+            isPreventive: true,
+          }),
+          order: { nextScheduledDate: 'ASC' },
         }),
-        order: { nextScheduledDate: 'ASC' },
-      }));
+      );
     });
 
     it('returns empty array when no preventive orders exist', async () => {

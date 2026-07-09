@@ -28,9 +28,9 @@ import sharp from 'sharp';
 export const BUCKET_ROOT_FOLDER = 'land';
 
 const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const;
-const MAX_IMAGE_BYTES = 5 * 1024 * 1024;   // 5 MB hard cap
-const MAX_IMAGE_DIMENSION = 10_000;          // decompression bomb guard
-const MAX_OUTPUT_DIMENSION = 2560;           // longest dimension cap for stored original
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024; // 5 MB hard cap
+const MAX_IMAGE_DIMENSION = 10_000; // decompression bomb guard
+const MAX_OUTPUT_DIMENSION = 2560; // longest dimension cap for stored original
 const THUMBNAIL_WIDTH = 400;
 const THUMBNAIL_HEIGHT = 400;
 
@@ -97,7 +97,8 @@ export class MediaService {
   // Public, property photos/thumbnails only.
   private getMediaBucket(): string {
     const bucket = process.env.AWS_S3_BUCKET;
-    if (!bucket) throw new BadRequestException('AWS_S3_BUCKET is not configured.');
+    if (!bucket)
+      throw new BadRequestException('AWS_S3_BUCKET is not configured.');
     return bucket;
   }
 
@@ -106,7 +107,10 @@ export class MediaService {
   // re-checks accessLevel before this bucket is touched.
   private getDocumentsBucket(): string {
     const bucket = process.env.AWS_S3_DOCUMENTS_BUCKET;
-    if (!bucket) throw new BadRequestException('AWS_S3_DOCUMENTS_BUCKET is not configured.');
+    if (!bucket)
+      throw new BadRequestException(
+        'AWS_S3_DOCUMENTS_BUCKET is not configured.',
+      );
     return bucket;
   }
 
@@ -150,7 +154,9 @@ export class MediaService {
     unitId: string,
     companyId: string,
   ): Promise<void> {
-    const unit = await this.unitRepository.findOne({ where: { id: unitId, companyId } });
+    const unit = await this.unitRepository.findOne({
+      where: { id: unitId, companyId },
+    });
     if (!unit) {
       throw new NotFoundException(
         'Unit not found or does not belong to this company',
@@ -165,7 +171,9 @@ export class MediaService {
     // Assets are shared (community-seeded); no companyId on Asset entity.
     // Verify company has at least one unit whose assetId (DB: building_id) matches.
     // Unit.assetId maps to DB column building_id (unit.entity.ts line 22).
-    const unit = await this.unitRepository.findOne({ where: { assetId, companyId } });
+    const unit = await this.unitRepository.findOne({
+      where: { assetId, companyId },
+    });
     if (!unit) {
       throw new NotFoundException(
         'Asset not found or company has no units in this asset',
@@ -182,14 +190,16 @@ export class MediaService {
   ): Promise<PropertyMedia> {
     // 1. Require exactly one of unitId or assetId.
     if ((dto.unitId && dto.assetId) || (!dto.unitId && !dto.assetId)) {
-      throw new BadRequestException('Provide either unitId or assetId (but not both).');
+      throw new BadRequestException(
+        'Provide either unitId or assetId (but not both).',
+      );
     }
 
     // 2. Validate content-type against allowlist (client-supplied MIME).
     if (!(ALLOWED_IMAGE_TYPES as readonly string[]).includes(file.mimetype)) {
       throw new BadRequestException(
         `File type "${file.mimetype}" is not allowed. ` +
-        `Accepted: ${ALLOWED_IMAGE_TYPES.join(', ')}`,
+          `Accepted: ${ALLOWED_IMAGE_TYPES.join(', ')}`,
       );
     }
 
@@ -197,7 +207,7 @@ export class MediaService {
     if (file.size > MAX_IMAGE_BYTES) {
       throw new BadRequestException(
         `Image must be under 5 MB. ` +
-        `Received ${(file.size / 1_048_576).toFixed(1)} MB.`,
+          `Received ${(file.size / 1_048_576).toFixed(1)} MB.`,
       );
     }
 
@@ -210,8 +220,8 @@ export class MediaService {
     ) {
       throw new BadRequestException(
         `File content does not match an allowed image type. ` +
-        `Detected: ${detected?.mime ?? 'unknown'}. ` +
-        `Accepted: ${ALLOWED_IMAGE_TYPES.join(', ')}`,
+          `Detected: ${detected?.mime ?? 'unknown'}. ` +
+          `Accepted: ${ALLOWED_IMAGE_TYPES.join(', ')}`,
       );
     }
 
@@ -236,7 +246,7 @@ export class MediaService {
     ) {
       throw new BadRequestException(
         `Image dimensions (${meta.width}x${meta.height}) exceed the ` +
-        `${MAX_IMAGE_DIMENSION}px limit on either axis.`,
+          `${MAX_IMAGE_DIMENSION}px limit on either axis.`,
       );
     }
 
@@ -260,7 +270,10 @@ export class MediaService {
         .toBuffer();
       thumbnailBuffer = await sharp(file.buffer)
         .rotate()
-        .resize(THUMBNAIL_WIDTH, THUMBNAIL_HEIGHT, { fit: 'cover', position: 'centre' })
+        .resize(THUMBNAIL_WIDTH, THUMBNAIL_HEIGHT, {
+          fit: 'cover',
+          position: 'centre',
+        })
         .flatten({ background: '#ffffff' })
         .jpeg({ quality: 80 })
         .toBuffer();
@@ -270,8 +283,8 @@ export class MediaService {
     }
 
     const actualOriginalBytes = processedBuffer.length;
-    const actualThumbBytes    = thumbnailBuffer.length;
-    const totalActualBytes    = actualOriginalBytes + actualThumbBytes;
+    const actualThumbBytes = thumbnailBuffer.length;
+    const totalActualBytes = actualOriginalBytes + actualThumbBytes;
 
     // 8. Atomically reserve storage using actual post-processing bytes (more accurate
     //    than raw file.size, which excludes the thumbnail and may differ from the JPEG
@@ -281,13 +294,13 @@ export class MediaService {
     await reserveStorage(this.companyRepository, companyId, totalActualBytes);
 
     // 9. Build S3 keys. safeName truncated to 200 chars to stay under s3Key varchar(500).
-    const timestamp  = Date.now();
-    const safeName   = file.originalname
+    const timestamp = Date.now();
+    const safeName = file.originalname
       .replace(/[^a-zA-Z0-9._-]/g, '_')
       .slice(0, 200);
-    const folder      = dto.unitId ?? dto.assetId!;
+    const folder = dto.unitId ?? dto.assetId!;
     const originalKey = `${BUCKET_ROOT_FOLDER}/companies/${companyId}/properties/${folder}/${timestamp}-${safeName}`;
-    const thumbKey    = this.getThumbnailKey(originalKey);
+    const thumbKey = this.getThumbnailKey(originalKey);
 
     // 10. Upload original and thumbnail to B2.
     //     Output is always JPEG regardless of input format — record it as such.
@@ -298,10 +311,10 @@ export class MediaService {
     try {
       await client.send(
         new PutObjectCommand({
-          Bucket:        bucket,
-          Key:           originalKey,
-          Body:          processedBuffer,
-          ContentType:   'image/jpeg',
+          Bucket: bucket,
+          Key: originalKey,
+          Body: processedBuffer,
+          ContentType: 'image/jpeg',
           ContentLength: actualOriginalBytes,
         }),
       );
@@ -310,10 +323,10 @@ export class MediaService {
       // 11. Upload thumbnail. If this fails, roll back the original.
       await client.send(
         new PutObjectCommand({
-          Bucket:        bucket,
-          Key:           thumbKey,
-          Body:          thumbnailBuffer,
-          ContentType:   'image/jpeg',
+          Bucket: bucket,
+          Key: thumbKey,
+          Body: thumbnailBuffer,
+          ContentType: 'image/jpeg',
           ContentLength: actualThumbBytes,
         }),
       );
@@ -324,37 +337,40 @@ export class MediaService {
           .catch((rollbackErr) => {
             this.logger.error(
               `Orphaned B2 object after thumbnail PUT failure. Manual cleanup required. ` +
-              `key=${originalKey} rollbackError=` +
-              (rollbackErr instanceof Error
-                ? rollbackErr.message
-                : String(rollbackErr)),
+                `key=${originalKey} rollbackError=` +
+                (rollbackErr instanceof Error
+                  ? rollbackErr.message
+                  : String(rollbackErr)),
             );
           });
       }
       // Release the reservation made in step 8 — no bytes actually landed in storage.
       await this.decrementStorage(companyId, totalActualBytes).catch((e) => {
-        this.logger.error(`Failed to release storage reservation for company ${companyId}: ${e instanceof Error ? e.message : String(e)}`);
+        this.logger.error(
+          `Failed to release storage reservation for company ${companyId}: ${e instanceof Error ? e.message : String(e)}`,
+        );
       });
-      const msg = uploadErr instanceof Error ? uploadErr.message : String(uploadErr);
+      const msg =
+        uploadErr instanceof Error ? uploadErr.message : String(uploadErr);
       throw new InternalServerErrorException(`Storage upload failed: ${msg}`);
     }
 
     // 12. Save media record. Output is always JPEG — store the actual content type.
     //     PropertyMedia.assetId persists to building_id column (intentional legacy naming).
     const media = this.mediaRepository.create({
-      url:           this.buildFileUrl(bucket, originalKey),
-      thumbnailUrl:  this.buildFileUrl(bucket, thumbKey),
-      fileName:      file.originalname,
-      s3Key:         originalKey,
-      contentType:   'image/jpeg',
-      fileSize:      actualOriginalBytes,
+      url: this.buildFileUrl(bucket, originalKey),
+      thumbnailUrl: this.buildFileUrl(bucket, thumbKey),
+      fileName: file.originalname,
+      s3Key: originalKey,
+      contentType: 'image/jpeg',
+      fileSize: actualOriginalBytes,
       thumbnailSize: actualThumbBytes,
       // This endpoint always processes and stores a JPEG image — dto.type is
       // ignored so a caller can't persist a video/virtual_tour record here.
-      type:          MediaType.IMAGE,
-      isPrimary:     dto.isPrimary ?? false,
-      unitId:        dto.unitId,
-      assetId:       dto.assetId,
+      type: MediaType.IMAGE,
+      isPrimary: dto.isPrimary ?? false,
+      unitId: dto.unitId,
+      assetId: dto.assetId,
       companyId,
     });
 
@@ -363,12 +379,20 @@ export class MediaService {
     } catch (dbErr) {
       // Roll back S3 objects and storage counter since the DB record was never persisted.
       await this.decrementStorage(companyId, totalActualBytes).catch((e) => {
-        this.logger.error(`Failed to decrement storage after DB failure for company ${companyId}: ${e instanceof Error ? e.message : String(e)}`);
+        this.logger.error(
+          `Failed to decrement storage after DB failure for company ${companyId}: ${e instanceof Error ? e.message : String(e)}`,
+        );
       });
-      await client.send(new DeleteObjectCommand({ Bucket: bucket, Key: originalKey })).catch(() => {});
-      await client.send(new DeleteObjectCommand({ Bucket: bucket, Key: thumbKey })).catch(() => {});
+      await client
+        .send(new DeleteObjectCommand({ Bucket: bucket, Key: originalKey }))
+        .catch(() => {});
+      await client
+        .send(new DeleteObjectCommand({ Bucket: bucket, Key: thumbKey }))
+        .catch(() => {});
       const msg = dbErr instanceof Error ? dbErr.message : String(dbErr);
-      throw new InternalServerErrorException(`Failed to save media record: ${msg}`);
+      throw new InternalServerErrorException(
+        `Failed to save media record: ${msg}`,
+      );
     }
   }
 
@@ -385,7 +409,9 @@ export class MediaService {
       return await this.uploadDocumentFile(companyId, file);
     } finally {
       await unlink(file.path).catch((e) => {
-        this.logger.error(`Failed to remove temp upload file ${file.path}: ${e instanceof Error ? e.message : String(e)}`);
+        this.logger.error(
+          `Failed to remove temp upload file ${file.path}: ${e instanceof Error ? e.message : String(e)}`,
+        );
       });
     }
   }
@@ -395,10 +421,12 @@ export class MediaService {
     file: Express.Multer.File,
   ): Promise<DocumentUploadResult> {
     // 1. MIME allowlist check (client-supplied header).
-    if (!(ALLOWED_DOCUMENT_TYPES as readonly string[]).includes(file.mimetype)) {
+    if (
+      !(ALLOWED_DOCUMENT_TYPES as readonly string[]).includes(file.mimetype)
+    ) {
       throw new BadRequestException(
         `File type "${file.mimetype}" is not allowed. ` +
-        `Accepted: ${ALLOWED_DOCUMENT_TYPES.join(', ')}`,
+          `Accepted: ${ALLOWED_DOCUMENT_TYPES.join(', ')}`,
       );
     }
 
@@ -428,42 +456,56 @@ export class MediaService {
     // control exactly when/whether the SDK's internal pipe consumes this stream.
     const bodyStream = createReadStream(file.path);
     bodyStream.on('error', (err) => {
-      this.logger.error(`Document upload stream error for ${file.path}: ${err.message}`);
+      this.logger.error(
+        `Document upload stream error for ${file.path}: ${err.message}`,
+      );
     });
 
     try {
       await client.send(
         new PutObjectCommand({
-          Bucket:             bucket,
-          Key:                key,
-          Body:               bodyStream,
-          ContentType:        file.mimetype,
-          ContentLength:      file.size,
+          Bucket: bucket,
+          Key: key,
+          Body: bodyStream,
+          ContentType: file.mimetype,
+          ContentLength: file.size,
           ContentDisposition: `attachment; filename="${file.originalname.replace(/"/g, '_')}"`,
         }),
       );
     } catch (err) {
       // Release the reservation — no bytes actually landed in storage.
       await this.decrementStorage(companyId, file.size).catch((e) => {
-        this.logger.error(`Failed to release storage reservation for company ${companyId}: ${e instanceof Error ? e.message : String(e)}`);
+        this.logger.error(
+          `Failed to release storage reservation for company ${companyId}: ${e instanceof Error ? e.message : String(e)}`,
+        );
       });
       const msg = err instanceof Error ? err.message : String(err);
       throw new InternalServerErrorException(`Document upload failed: ${msg}`);
     }
 
-    return { url: this.buildFileUrl(bucket, key), s3Key: key, fileSize: file.size };
+    return {
+      url: this.buildFileUrl(bucket, key),
+      s3Key: key,
+      fileSize: file.size,
+    };
   }
 
   // Find and set-primary
 
-  async findByUnit(companyId: string, unitId: string): Promise<PropertyMedia[]> {
+  async findByUnit(
+    companyId: string,
+    unitId: string,
+  ): Promise<PropertyMedia[]> {
     return this.mediaRepository.find({
       where: { companyId, unitId },
       order: { isPrimary: 'DESC', createdAt: 'DESC' },
     });
   }
 
-  async findByAsset(companyId: string, assetId: string): Promise<PropertyMedia[]> {
+  async findByAsset(
+    companyId: string,
+    assetId: string,
+  ): Promise<PropertyMedia[]> {
     return this.mediaRepository.find({
       where: { companyId, assetId },
       order: { isPrimary: 'DESC', createdAt: 'DESC' },
@@ -471,7 +513,9 @@ export class MediaService {
   }
 
   async setPrimary(id: string, companyId: string): Promise<PropertyMedia> {
-    const media = await this.mediaRepository.findOne({ where: { id, companyId } });
+    const media = await this.mediaRepository.findOne({
+      where: { id, companyId },
+    });
     if (!media) throw new NotFoundException('Media not found');
 
     if (media.unitId) {
@@ -493,7 +537,9 @@ export class MediaService {
   // Delete
 
   async deleteMedia(id: string, companyId: string): Promise<void> {
-    const media = await this.mediaRepository.findOne({ where: { id, companyId } });
+    const media = await this.mediaRepository.findOne({
+      where: { id, companyId },
+    });
     if (!media) throw new NotFoundException('Media not found');
 
     const client = this.getClient();
@@ -509,7 +555,9 @@ export class MediaService {
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
         this.logger.error(`Failed to delete B2 object ${media.s3Key}: ${msg}`);
-        throw new InternalServerErrorException(`Could not delete file from storage: ${msg}`);
+        throw new InternalServerErrorException(
+          `Could not delete file from storage: ${msg}`,
+        );
       }
 
       const thumbKey = this.getThumbnailKey(media.s3Key);
@@ -522,7 +570,7 @@ export class MediaService {
         // Thumbnail delete failure is non-fatal — log and continue.
         this.logger.warn(
           `Failed to delete thumbnail ${thumbKey}: ` +
-          (err instanceof Error ? err.message : String(err)),
+            (err instanceof Error ? err.message : String(err)),
         );
       }
     }
@@ -533,7 +581,7 @@ export class MediaService {
       this.decrementStorage(companyId, bytesFreed).catch((err) => {
         this.logger.error(
           `Failed to decrement storage on media delete for company ${companyId}: ` +
-          (err instanceof Error ? err.message : String(err)),
+            (err instanceof Error ? err.message : String(err)),
         );
       });
     }
@@ -557,14 +605,16 @@ export class MediaService {
         this.decrementStorage(companyId, fileSize).catch((err) => {
           this.logger.error(
             `Failed to decrement storage on document delete for company ${companyId}: ` +
-            (err instanceof Error ? err.message : String(err)),
+              (err instanceof Error ? err.message : String(err)),
           );
         });
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       this.logger.error(`Failed to delete document B2 object ${s3Key}: ${msg}`);
-      throw new InternalServerErrorException(`Could not delete document from storage: ${msg}`);
+      throw new InternalServerErrorException(
+        `Could not delete document from storage: ${msg}`,
+      );
     }
   }
 
@@ -582,8 +632,12 @@ export class MediaService {
           throw new NotFoundException('Document not found in storage');
         }
         const msg = err instanceof Error ? err.message : String(err);
-        this.logger.error(`Failed to fetch document B2 object ${s3Key}: ${msg}`);
-        throw new InternalServerErrorException(`Could not fetch document from storage: ${msg}`);
+        this.logger.error(
+          `Failed to fetch document B2 object ${s3Key}: ${msg}`,
+        );
+        throw new InternalServerErrorException(
+          `Could not fetch document from storage: ${msg}`,
+        );
       });
 
     if (!result.Body) {

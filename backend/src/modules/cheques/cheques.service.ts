@@ -1,15 +1,23 @@
-import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  Logger,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, LessThan, Between } from 'typeorm';
-import { Cheque, ChequeStatus } from './entities/cheque.entity';
+import { Cheque } from './entities/cheque.entity';
 import { CreateChequeDto } from './dto/create-cheque.dto';
 import { UpdateChequeDto } from './dto/update-cheque.dto';
 import { BounceChequeDto } from './dto/bounce-cheque.dto';
 import { REGION_FILTER_SUBQUERY } from '../../shared/utils/region-filter.util';
-import { paginationOptions, pageSkip } from '../../shared/utils/pagination.util';
+import {
+  paginationOptions,
+  pageSkip,
+} from '../../shared/utils/pagination.util';
 import { NotificationsService } from '../notifications/notifications.service';
 import { UsersService } from '../users/users.service';
-import { NotificationType } from '../notifications/entities/notification.entity';
+
 import { NotificationsGateway } from '../notifications/notifications.gateway';
 
 @Injectable()
@@ -22,9 +30,13 @@ export class ChequesService {
     private readonly notificationsService: NotificationsService,
     private readonly usersService: UsersService,
     private readonly notificationsGateway: NotificationsGateway,
-  ) { }
+  ) {}
 
-  async create(companyId: string, dto: CreateChequeDto, userId?: string): Promise<Cheque> {
+  async create(
+    companyId: string,
+    dto: CreateChequeDto,
+    userId?: string,
+  ): Promise<Cheque> {
     const cheque = this.chequeRepository.create({ ...dto, companyId });
     const saved = await this.chequeRepository.save(cheque);
 
@@ -47,10 +59,7 @@ export class ChequesService {
       const qb = this.chequeRepository
         .createQueryBuilder('c')
         .where('c.companyId = :companyId', { companyId })
-        .andWhere(
-          `c.unitId IN (${REGION_FILTER_SUBQUERY})`,
-          { regionCode },
-        )
+        .andWhere(`c.unitId IN (${REGION_FILTER_SUBQUERY})`, { regionCode })
         .skip(pageSkip(page, limit))
         .take(limit)
         .orderBy('c.dueDate', 'ASC');
@@ -68,24 +77,34 @@ export class ChequesService {
   }
 
   async findOne(id: string, companyId: string): Promise<Cheque> {
-    const cheque = await this.chequeRepository.findOne({ where: { id, companyId } });
+    const cheque = await this.chequeRepository.findOne({
+      where: { id, companyId },
+    });
     if (!cheque) {
       throw new NotFoundException('Cheque not found');
     }
     return cheque;
   }
 
-  async update(id: string, companyId: string, dto: UpdateChequeDto, userId?: string): Promise<Cheque> {
+  async update(
+    id: string,
+    companyId: string,
+    dto: UpdateChequeDto,
+    userId?: string,
+  ): Promise<Cheque> {
     const cheque = await this.findOne(id, companyId);
 
-    const terminalStatuses = [ChequeStatus.CLEARED, ChequeStatus.CANCELLED, ChequeStatus.REPLACED];
-    const isStatusChange = dto.status !== undefined && dto.status !== cheque.status;
+    const terminalStatuses = ['CLEARED', 'CANCELLED', 'REPLACED'];
+    const isStatusChange =
+      dto.status !== undefined && dto.status !== cheque.status;
 
     if (terminalStatuses.includes(cheque.status) && isStatusChange) {
-      throw new BadRequestException(`Cannot change the status of a cheque that is already ${cheque.status}`);
+      throw new BadRequestException(
+        `Cannot change the status of a cheque that is already ${cheque.status}`,
+      );
     }
 
-    const hasRealChanges = Object.keys(dto).some(key => {
+    const hasRealChanges = Object.keys(dto).some((key) => {
       const k = key as keyof UpdateChequeDto;
       return dto[k] !== undefined && dto[k] !== cheque[k];
     });
@@ -98,7 +117,7 @@ export class ChequesService {
     const expectedVersion = cheque.version;
     Object.assign(cheque, dto);
 
-    if (cheque.status === ChequeStatus.DEPOSITED && !cheque.depositDate) {
+    if (cheque.status === 'DEPOSITED' && !cheque.depositDate) {
       cheque.depositDate = new Date();
     }
 
@@ -162,24 +181,24 @@ export class ChequesService {
           continue;
         }
 
-        let notificationType = NotificationType.SYSTEM;
+        let notificationType = 'SYSTEM';
         let title = 'Cheque Status Updated';
         let message = `Cheque #${saved.chequeNumber} for ${saved.amount} ${saved.currency} status changed to ${saved.status}`;
 
-        if (saved.status === ChequeStatus.DEPOSITED) {
-          notificationType = NotificationType.CHEQUE_DEPOSITED;
+        if (saved.status === 'DEPOSITED') {
+          notificationType = 'CHEQUE_DEPOSITED';
           title = 'Cheque Deposited';
           message = `Cheque #${saved.chequeNumber} for ${saved.amount} ${saved.currency} has been marked as DEPOSITED.`;
-        } else if (saved.status === ChequeStatus.CLEARED) {
-          notificationType = NotificationType.PAYMENT_RECEIVED;
+        } else if (saved.status === 'CLEARED') {
+          notificationType = 'PAYMENT_RECEIVED';
           title = 'Cheque Cleared';
           message = `Cheque #${saved.chequeNumber} for ${saved.amount} ${saved.currency} has been CLEARED. Payment received.`;
-        } else if (saved.status === ChequeStatus.CANCELLED) {
-          notificationType = NotificationType.SYSTEM;
+        } else if (saved.status === 'CANCELLED') {
+          notificationType = 'SYSTEM';
           title = 'Cheque Cancelled';
           message = `Cheque #${saved.chequeNumber} for ${saved.amount} ${saved.currency} has been CANCELLED.`;
-        } else if (saved.status === ChequeStatus.BOUNCED) {
-          notificationType = NotificationType.CHEQUE_BOUNCED;
+        } else if (saved.status === 'BOUNCED') {
+          notificationType = 'CHEQUE_BOUNCED';
           title = 'Cheque Bounced';
           message = `Cheque #${saved.chequeNumber} for ${saved.amount} ${saved.currency} has been marked as BOUNCED.`;
         }
@@ -194,8 +213,11 @@ export class ChequesService {
             entityId: saved.id,
           });
         } catch (error) {
-          const messageText = error instanceof Error ? error.message : String(error);
-          this.logger.error(`Failed to create cheque status notification for cheque ${saved.id}: ${messageText}`);
+          const messageText =
+            error instanceof Error ? error.message : String(error);
+          this.logger.error(
+            `Failed to create cheque status notification for cheque ${saved.id}: ${messageText}`,
+          );
         }
       }
     }
@@ -203,7 +225,11 @@ export class ChequesService {
     return saved;
   }
 
-  async processOcr(id: string, companyId: string, imageUrl: string): Promise<Cheque> {
+  async processOcr(
+    id: string,
+    companyId: string,
+    imageUrl: string,
+  ): Promise<Cheque> {
     const cheque = await this.findOne(id, companyId);
     cheque.ocrImageUrl = imageUrl;
 
@@ -221,7 +247,12 @@ export class ChequesService {
     return this.chequeRepository.save(cheque);
   }
 
-  async bounce(id: string, companyId: string, dto: BounceChequeDto, userId?: string): Promise<Cheque> {
+  async bounce(
+    id: string,
+    companyId: string,
+    dto: BounceChequeDto,
+    userId?: string,
+  ): Promise<Cheque> {
     // Existence + tenant check.
     await this.findOne(id, companyId);
 
@@ -235,7 +266,7 @@ export class ChequesService {
         bounceCount: () => 'bounce_count + 1',
         bounceReason: dto.bounceReason || null,
         lastBounceDate: new Date(),
-        status: ChequeStatus.BOUNCED,
+        status: 'BOUNCED',
         // Bump the optimistic-lock version so a concurrent update() that read an
         // older version fails its version guard and cannot revert this BOUNCED row.
         version: () => 'version + 1',
@@ -268,13 +299,16 @@ export class ChequesService {
           userId: admin.id,
           title: 'Cheque Bounced!',
           message: `Cheque #${saved.chequeNumber} from ${saved.accountHolder} for ${saved.amount} ${saved.currency} has bounced. Reason: ${saved.bounceReason || 'Not specified'}`,
-          type: NotificationType.CHEQUE_BOUNCED,
+          type: 'CHEQUE_BOUNCED',
           entityType: 'cheque',
           entityId: saved.id,
         });
       } catch (error) {
-        const messageText = error instanceof Error ? error.message : String(error);
-        this.logger.error(`Failed to create cheque bounce notification for cheque ${saved.id}: ${messageText}`);
+        const messageText =
+          error instanceof Error ? error.message : String(error);
+        this.logger.error(
+          `Failed to create cheque bounce notification for cheque ${saved.id}: ${messageText}`,
+        );
       }
     }
 
@@ -295,7 +329,7 @@ export class ChequesService {
     endOfNextWeek.setDate(endOfNextWeek.getDate() + 7);
     const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
 
-    const baseWhere = { companyId, status: ChequeStatus.PENDING };
+    const baseWhere = { companyId, status: 'PENDING' };
 
     const [overdue, thisWeek, nextWeek, thisMonth] = await Promise.all([
       this.chequeRepository.find({
@@ -328,7 +362,9 @@ export class ChequesService {
     await this.chequeRepository.remove(cheque);
   }
 
-  private async runOcrExtraction(imageUrl: string): Promise<Record<string, unknown>> {
+  private async runOcrExtraction(
+    imageUrl: string,
+  ): Promise<Record<string, unknown>> {
     const apiKey = process.env.OCR_API_KEY;
 
     if (!apiKey) {
@@ -338,8 +374,15 @@ export class ChequesService {
 
     const response = await fetch('https://api.ocr.space/parse/imageurl', {
       method: 'POST',
-      headers: { apikey: apiKey, 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({ url: imageUrl, language: 'eng', isTable: 'true' }).toString(),
+      headers: {
+        apikey: apiKey,
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({
+        url: imageUrl,
+        language: 'eng',
+        isTable: 'true',
+      }).toString(),
     });
 
     if (!response.ok) {

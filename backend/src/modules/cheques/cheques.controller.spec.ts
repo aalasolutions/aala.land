@@ -2,7 +2,6 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ChequesController } from './cheques.controller';
 import { ChequesService } from './cheques.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { ChequeStatus, ChequeType } from './entities/cheque.entity';
 
 describe('ChequesController', () => {
   let controller: ChequesController;
@@ -17,8 +16,8 @@ describe('ChequesController', () => {
     chequeNumber: 'CHQ001',
     bankName: 'Emirates NBD',
     amount: 15000,
-    status: ChequeStatus.PENDING,
-    type: ChequeType.RENT,
+    status: 'PENDING',
+    type: 'RENT',
   };
 
   const paginated = { data: [mockCheque], total: 1, page: 1, limit: 20 };
@@ -58,10 +57,20 @@ describe('ChequesController', () => {
     it('creates cheque scoped to company', async () => {
       service.create.mockResolvedValue(mockCheque as any);
 
-      const dto = { chequeNumber: 'CHQ001', bankName: 'Emirates NBD', accountHolder: 'Ahmed', amount: 15000, dueDate: '2026-03-01' };
+      const dto = {
+        chequeNumber: 'CHQ001',
+        bankName: 'Emirates NBD',
+        accountHolder: 'Ahmed',
+        amount: 15000,
+        dueDate: '2026-03-01',
+      };
       const result = await controller.create(dto as any, mockReq);
 
-      expect(service.create).toHaveBeenCalledWith(companyId, dto, 'user-uuid-1');
+      expect(service.create).toHaveBeenCalledWith(
+        companyId,
+        dto,
+        'user-uuid-1',
+      );
     });
   });
 
@@ -87,23 +96,40 @@ describe('ChequesController', () => {
 
   describe('update', () => {
     it('updates cheque', async () => {
-      service.update.mockResolvedValue({ ...mockCheque, status: ChequeStatus.DEPOSITED } as any);
+      service.update.mockResolvedValue({
+        ...mockCheque,
+        status: 'DEPOSITED',
+      } as any);
 
-      await controller.update('cheque-uuid-1', { status: ChequeStatus.DEPOSITED }, mockReq);
+      await controller.update(
+        'cheque-uuid-1',
+        { status: 'DEPOSITED' },
+        mockReq,
+      );
 
-      expect(service.update).toHaveBeenCalledWith('cheque-uuid-1', companyId, { status: ChequeStatus.DEPOSITED }, 'user-uuid-1');
+      expect(service.update).toHaveBeenCalledWith(
+        'cheque-uuid-1',
+        companyId,
+        { status: 'DEPOSITED' },
+        'user-uuid-1',
+      );
     });
   });
 
   describe('bounce', () => {
     it('records a cheque bounce', async () => {
-      const bounced = { ...mockCheque, status: ChequeStatus.BOUNCED, bounceCount: 1 };
+      const bounced = { ...mockCheque, status: 'BOUNCED', bounceCount: 1 };
       service.bounce.mockResolvedValue(bounced as any);
 
       const dto = { bounceReason: 'Insufficient funds' };
       await controller.bounce('cheque-uuid-1', dto, mockReq);
 
-      expect(service.bounce).toHaveBeenCalledWith('cheque-uuid-1', companyId, dto, 'user-uuid-1');
+      expect(service.bounce).toHaveBeenCalledWith(
+        'cheque-uuid-1',
+        companyId,
+        dto,
+        'user-uuid-1',
+      );
     });
   });
 
@@ -126,11 +152,22 @@ describe('ChequesController', () => {
 
   describe('processOcr', () => {
     it('triggers OCR processing', async () => {
-      service.processOcr.mockResolvedValue({ ...mockCheque, ocrProcessed: true } as any);
+      service.processOcr.mockResolvedValue({
+        ...mockCheque,
+        ocrProcessed: true,
+      } as any);
 
-      await controller.processOcr('cheque-uuid-1', 'https://example.com/cheque.jpg', mockReq);
+      await controller.processOcr(
+        'cheque-uuid-1',
+        'https://example.com/cheque.jpg',
+        mockReq,
+      );
 
-      expect(service.processOcr).toHaveBeenCalledWith('cheque-uuid-1', companyId, 'https://example.com/cheque.jpg');
+      expect(service.processOcr).toHaveBeenCalledWith(
+        'cheque-uuid-1',
+        companyId,
+        'https://example.com/cheque.jpg',
+      );
     });
   });
 

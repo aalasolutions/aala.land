@@ -1,21 +1,16 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  UpdateDateColumn,
+  ManyToOne,
+  JoinColumn,
+} from 'typeorm';
 import { Company } from '../../companies/entities/company.entity';
 import { User } from '../../users/entities/user.entity';
 import { Lead } from '../../leads/entities/lead.entity';
 import { Transaction } from '../../financial/entities/transaction.entity';
-
-export enum CommissionStatus {
-  PENDING = 'PENDING',
-  APPROVED = 'APPROVED',
-  PAID = 'PAID',
-  CANCELLED = 'CANCELLED',
-}
-
-export enum CommissionType {
-  SALE = 'SALE',
-  RENTAL = 'RENTAL',
-  REFERRAL = 'REFERRAL',
-}
 
 const decimalTransformer = {
   to: (v: number) => v,
@@ -56,26 +51,44 @@ export class Commission {
   transaction: Transaction | null;
 
   @Column({
-    type: 'enum',
-    enum: CommissionType,
-    default: CommissionType.SALE,
+    type: 'varchar',
+    length: 100,
+    default: 'SALE',
   })
-  type: CommissionType;
+  type: string;
 
   @Column({
-    type: 'enum',
-    enum: CommissionStatus,
-    default: CommissionStatus.PENDING,
+    type: 'varchar',
+    length: 100,
+    default: 'PENDING',
   })
-  status: CommissionStatus;
+  status: string;
 
-  @Column({ name: 'gross_amount', type: 'decimal', precision: 12, scale: 2, transformer: decimalTransformer })
+  @Column({
+    name: 'gross_amount',
+    type: 'decimal',
+    precision: 12,
+    scale: 2,
+    transformer: decimalTransformer,
+  })
   grossAmount: number;
 
-  @Column({ name: 'commission_rate', type: 'decimal', precision: 5, scale: 2, transformer: decimalTransformer })
+  @Column({
+    name: 'commission_rate',
+    type: 'decimal',
+    precision: 5,
+    scale: 2,
+    transformer: decimalTransformer,
+  })
   commissionRate: number;
 
-  @Column({ name: 'commission_amount', type: 'decimal', precision: 12, scale: 2, transformer: decimalTransformer })
+  @Column({
+    name: 'commission_amount',
+    type: 'decimal',
+    precision: 12,
+    scale: 2,
+    transformer: decimalTransformer,
+  })
   commissionAmount: number;
 
   @Column({ type: 'varchar', length: 3, default: 'AED' })

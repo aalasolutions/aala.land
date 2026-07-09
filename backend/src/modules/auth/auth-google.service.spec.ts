@@ -12,12 +12,19 @@ import { Role } from '@shared/enums/roles.enum';
 
 describe('AuthGoogleService', () => {
   let service: AuthGoogleService;
-  let usersService: jest.Mocked<Pick<
-    UsersService,
-    'findByGoogleId' | 'findByEmailOrGoogleId' | 'findByIdForAuth' | 'linkGoogleAccount'
-  >>;
+  let usersService: jest.Mocked<
+    Pick<
+      UsersService,
+      | 'findByGoogleId'
+      | 'findByEmailOrGoogleId'
+      | 'findByIdForAuth'
+      | 'linkGoogleAccount'
+    >
+  >;
   let authService: jest.Mocked<Pick<AuthService, 'login'>>;
-  let companiesService: jest.Mocked<Pick<CompaniesService, 'createGoogleCompanyAdmin'>>;
+  let companiesService: jest.Mocked<
+    Pick<CompaniesService, 'createGoogleCompanyAdmin'>
+  >;
   let verifyIdToken: jest.Mock;
 
   const payload = {
@@ -53,7 +60,9 @@ describe('AuthGoogleService', () => {
     };
 
     service = new AuthGoogleService(
-      { get: jest.fn().mockReturnValue('google-client-id') } as unknown as ConfigService,
+      {
+        get: jest.fn().mockReturnValue('google-client-id'),
+      } as unknown as ConfigService,
       usersService as unknown as UsersService,
       authService as unknown as AuthService,
       companiesService as unknown as CompaniesService,
@@ -62,7 +71,9 @@ describe('AuthGoogleService', () => {
     verifyIdToken = jest.fn().mockResolvedValue({
       getPayload: jest.fn().mockReturnValue(payload),
     });
-    (service as unknown as { googleClient: { verifyIdToken: jest.Mock } }).googleClient = {
+    (
+      service as unknown as { googleClient: { verifyIdToken: jest.Mock } }
+    ).googleClient = {
       verifyIdToken,
     };
   });
@@ -70,22 +81,31 @@ describe('AuthGoogleService', () => {
   it('rejects Google login when no linked account exists', async () => {
     usersService.findByGoogleId.mockResolvedValue(null);
 
-    await expect(service.googleLogin('id-token')).rejects.toThrow(UnauthorizedException);
+    await expect(service.googleLogin('id-token')).rejects.toThrow(
+      UnauthorizedException,
+    );
     expect(usersService.findByGoogleId).toHaveBeenCalledWith('google-123');
     expect(authService.login).not.toHaveBeenCalled();
   });
 
   it('rejects Google login for an inactive user', async () => {
-    usersService.findByGoogleId.mockResolvedValue({ ...user, isActive: false } as any);
+    usersService.findByGoogleId.mockResolvedValue({
+      ...user,
+      isActive: false,
+    } as any);
 
-    await expect(service.googleLogin('id-token')).rejects.toThrow('Account is deactivated');
+    await expect(service.googleLogin('id-token')).rejects.toThrow(
+      'Account is deactivated',
+    );
     expect(authService.login).not.toHaveBeenCalled();
   });
 
   it('propagates signup slug conflicts from company creation', async () => {
     usersService.findByEmailOrGoogleId.mockResolvedValue(null);
     companiesService.createGoogleCompanyAdmin.mockRejectedValue(
-      new ConflictException('This company name is already taken. Please choose a different one.'),
+      new ConflictException(
+        'This company name is already taken. Please choose a different one.',
+      ),
     );
 
     await expect(
@@ -105,9 +125,14 @@ describe('AuthGoogleService', () => {
     usersService.findByEmailOrGoogleId.mockResolvedValue(null);
     companiesService.createGoogleCompanyAdmin.mockResolvedValue(user as any);
 
-    await service.googleSignup('id-token', `${'Long Company Name '.repeat(10)}Dubai`, 'dubai');
+    await service.googleSignup(
+      'id-token',
+      `${'Long Company Name '.repeat(10)}Dubai`,
+      'dubai',
+    );
 
-    const createArg = companiesService.createGoogleCompanyAdmin.mock.calls[0][0];
+    const createArg =
+      companiesService.createGoogleCompanyAdmin.mock.calls[0][0];
     expect(createArg.slug).toHaveLength(100);
     expect(createArg.slug).not.toMatch(/^-|-$/);
   });
@@ -119,28 +144,38 @@ describe('AuthGoogleService', () => {
       googleId: null,
     } as any);
 
-    await expect(service.linkGoogleAccount('user-1', 'id-token')).rejects.toThrow(
-      BadRequestException,
-    );
+    await expect(
+      service.linkGoogleAccount('user-1', 'id-token'),
+    ).rejects.toThrow(BadRequestException);
     expect(usersService.linkGoogleAccount).not.toHaveBeenCalled();
   });
 
   it('rejects linking when another user already owns the Google account', async () => {
-    usersService.findByIdForAuth.mockResolvedValue({ ...user, googleId: null } as any);
-    usersService.findByGoogleId.mockResolvedValue({ ...user, id: 'other-user' } as any);
+    usersService.findByIdForAuth.mockResolvedValue({
+      ...user,
+      googleId: null,
+    } as any);
+    usersService.findByGoogleId.mockResolvedValue({
+      ...user,
+      id: 'other-user',
+    } as any);
 
-    await expect(service.linkGoogleAccount('user-1', 'id-token')).rejects.toThrow(
-      ConflictException,
-    );
+    await expect(
+      service.linkGoogleAccount('user-1', 'id-token'),
+    ).rejects.toThrow(ConflictException);
     expect(usersService.linkGoogleAccount).not.toHaveBeenCalled();
   });
 
   it('preserves the email-not-verified domain error', async () => {
     verifyIdToken.mockResolvedValue({
-      getPayload: jest.fn().mockReturnValue({ ...payload, email_verified: false }),
+      getPayload: jest
+        .fn()
+        .mockReturnValue({ ...payload, email_verified: false }),
     });
 
-    await expect(service.googleLogin('id-token')).rejects.toThrow(BadRequestException);
+    await expect(service.googleLogin('id-token')).rejects.toThrow(
+      BadRequestException,
+    );
     expect(usersService.findByGoogleId).not.toHaveBeenCalled();
   });
 
@@ -151,7 +186,9 @@ describe('AuthGoogleService', () => {
       authService as unknown as AuthService,
       companiesService as unknown as CompaniesService,
     );
-    (service as unknown as { googleClient: { verifyIdToken: jest.Mock } }).googleClient = {
+    (
+      service as unknown as { googleClient: { verifyIdToken: jest.Mock } }
+    ).googleClient = {
       verifyIdToken,
     };
 
@@ -162,7 +199,9 @@ describe('AuthGoogleService', () => {
   });
 
   it('does not expose raw Google verifier errors to clients', async () => {
-    verifyIdToken.mockRejectedValue(new Error('Wrong recipient, payload audience mismatch'));
+    verifyIdToken.mockRejectedValue(
+      new Error('Wrong recipient, payload audience mismatch'),
+    );
 
     await expect(service.googleLogin('id-token')).rejects.toMatchObject({
       message: 'Invalid Google token',

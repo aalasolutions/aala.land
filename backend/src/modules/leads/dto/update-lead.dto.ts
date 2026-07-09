@@ -1,6 +1,22 @@
-import { IsString, IsOptional, IsEmail, IsEnum, IsInt, Min, Max, MaxLength, IsUUID, IsNotEmpty, ValidateIf } from 'class-validator';
+import {
+  IsString,
+  IsOptional,
+  IsEmail,
+  IsEnum,
+  IsIn,
+  IsInt,
+  Min,
+  Max,
+  MaxLength,
+  IsUUID,
+  IsNotEmpty,
+  ValidateIf,
+} from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { LeadStatus, LeadTemperature } from '../entities/lead.entity';
+import {
+  LEAD_STATUS_VALUES,
+  LEAD_TEMPERATURE_VALUES,
+} from '../../../shared/taxonomies';
 
 export class UpdateLeadDto {
   @ApiPropertyOptional()
@@ -25,15 +41,15 @@ export class UpdateLeadDto {
   @IsOptional()
   phone?: string;
 
-  @ApiPropertyOptional({ enum: LeadStatus })
+  @ApiPropertyOptional({ enum: LEAD_STATUS_VALUES })
   @ValidateIf((_obj, value) => value !== undefined)
-  @IsEnum(LeadStatus)
-  status?: LeadStatus;
+  @IsIn(LEAD_STATUS_VALUES)
+  status?: string;
 
-  @ApiPropertyOptional({ enum: LeadTemperature })
-  @IsEnum(LeadTemperature)
+  @ApiPropertyOptional({ enum: LEAD_TEMPERATURE_VALUES })
+  @IsIn(LEAD_TEMPERATURE_VALUES)
   @IsOptional()
-  temperature?: LeadTemperature;
+  temperature?: string;
 
   @ApiPropertyOptional({ minimum: 0, maximum: 100 })
   @IsInt()

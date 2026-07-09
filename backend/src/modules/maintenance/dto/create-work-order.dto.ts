@@ -1,6 +1,23 @@
-import { IsString, IsNotEmpty, IsOptional, IsUUID, IsEnum, IsNumber, Min, IsDateString, MaxLength, IsArray, IsBoolean } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  IsOptional,
+  IsUUID,
+  IsEnum,
+  IsIn,
+  IsNumber,
+  Min,
+  IsDateString,
+  MaxLength,
+  IsArray,
+  IsBoolean,
+} from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
-import { WorkOrderPriority, WorkOrderCategory, ScheduleFrequency } from '../entities/work-order.entity';
+import { WorkOrderPriority } from '../entities/work-order.entity';
+import {
+  SCHEDULE_FREQUENCY_VALUES,
+  WORK_ORDER_CATEGORY_VALUES,
+} from '../../../shared/taxonomies';
 
 export class CreateWorkOrderDto {
   @ApiProperty()
@@ -19,10 +36,10 @@ export class CreateWorkOrderDto {
   @IsEnum(WorkOrderPriority)
   priority?: WorkOrderPriority;
 
-  @ApiProperty({ enum: WorkOrderCategory, default: WorkOrderCategory.OTHER })
+  @ApiProperty({ enum: WORK_ORDER_CATEGORY_VALUES, default: 'OTHER' })
   @IsOptional()
-  @IsEnum(WorkOrderCategory)
-  category?: WorkOrderCategory;
+  @IsIn(WORK_ORDER_CATEGORY_VALUES)
+  category?: string;
 
   @ApiProperty({ required: false })
   @IsOptional()
@@ -83,10 +100,10 @@ export class CreateWorkOrderDto {
   @IsBoolean()
   isPreventive?: boolean;
 
-  @ApiProperty({ enum: ScheduleFrequency, required: false })
+  @ApiProperty({ enum: SCHEDULE_FREQUENCY_VALUES, required: false })
   @IsOptional()
-  @IsEnum(ScheduleFrequency)
-  scheduleFrequency?: ScheduleFrequency;
+  @IsIn(SCHEDULE_FREQUENCY_VALUES)
+  scheduleFrequency?: string;
 
   @ApiProperty({ required: false })
   @IsOptional()

@@ -1,7 +1,21 @@
-import { IsString, IsNotEmpty, IsOptional, IsUUID, IsEnum, IsNumber, IsInt, IsArray, Min, MaxLength } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  IsOptional,
+  IsUUID,
+  IsEnum,
+  IsIn,
+  IsNumber,
+  IsInt,
+  IsArray,
+  Min,
+  MaxLength,
+} from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { UnitStatus } from '../entities/unit.entity';
-import { PropertyType } from '../entities/property-type.enum';
+import {
+  PROPERTY_TYPE_VALUES,
+  UNIT_STATUS_VALUES,
+} from '../../../shared/taxonomies';
 
 export class CreateUnitDto {
   @ApiProperty({ example: '1A' })
@@ -20,15 +34,18 @@ export class CreateUnitDto {
   @IsOptional()
   ownerId?: string;
 
-  @ApiPropertyOptional({ enum: UnitStatus, default: UnitStatus.AVAILABLE })
-  @IsEnum(UnitStatus)
+  @ApiPropertyOptional({ enum: UNIT_STATUS_VALUES, default: 'available' })
+  @IsIn(UNIT_STATUS_VALUES)
   @IsOptional()
-  status?: UnitStatus;
+  status?: string;
 
-  @ApiPropertyOptional({ enum: PropertyType, description: 'Overrides asset default. Null = not listed' })
-  @IsEnum(PropertyType)
+  @ApiPropertyOptional({
+    enum: PROPERTY_TYPE_VALUES,
+    description: 'Overrides asset default. Null = not listed',
+  })
+  @IsIn(PROPERTY_TYPE_VALUES)
   @IsOptional()
-  propertyType?: PropertyType;
+  propertyType?: string;
 
   @ApiPropertyOptional({ example: 150000 })
   @IsNumber()
@@ -52,7 +69,10 @@ export class CreateUnitDto {
   @IsOptional()
   bathrooms?: number;
 
-  @ApiPropertyOptional({ example: ['free_parking', 'gym', 'pool'], description: 'List of amenity keys' })
+  @ApiPropertyOptional({
+    example: ['free_parking', 'gym', 'pool'],
+    description: 'List of amenity keys',
+  })
   @IsArray()
   @IsString({ each: true })
   @IsOptional()

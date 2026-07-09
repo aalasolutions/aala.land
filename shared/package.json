@@ -1,0 +1,21 @@
+{
+  "name": "@land/taxonomies",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Shared taxonomy constants for AALA.LAND. Single source of truth for frontend and backend.",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./index.js",
+  "types": "./index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "import": "./index.js",
+      "require": "./dist/index.cjs",
+      "default": "./index.js"
+    }
+  },
+  "scripts": {
+    "build": "node build.mjs"
+  }
+}

@@ -1,7 +1,10 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { PropertyDocument, DocumentCategory, DocumentAccessLevel } from '../properties/entities/property-document.entity';
+import {
+  PropertyDocument,
+  DocumentAccessLevel,
+} from '../properties/entities/property-document.entity';
 import { UpdateDocumentDto } from './dto/update-document.dto';
 import { MediaService } from '../properties/media.service';
 import { UploadDocumentDto } from './dto/upload-document.dto';
@@ -21,10 +24,8 @@ export class DocumentsService {
     file: Express.Multer.File,
     dto: UploadDocumentDto,
   ): Promise<PropertyDocument> {
-    const { url, s3Key, fileSize } = await this.mediaService.uploadDocumentToStorage(
-      companyId,
-      file,
-    );
+    const { url, s3Key, fileSize } =
+      await this.mediaService.uploadDocumentToStorage(companyId, file);
 
     const doc = this.documentRepository.create({
       name: dto.name,
@@ -48,8 +49,13 @@ export class DocumentsService {
     userRole: string,
     page = 1,
     limit = 20,
-    category?: DocumentCategory,
-  ): Promise<{ data: PropertyDocument[]; total: number; page: number; limit: number }> {
+    category?: string,
+  ): Promise<{
+    data: PropertyDocument[];
+    total: number;
+    page: number;
+    limit: number;
+  }> {
     const allowedLevels = this.getAllowedAccessLevels(userRole);
 
     const qb = this.documentRepository
@@ -69,7 +75,11 @@ export class DocumentsService {
     return { data, total, page, limit };
   }
 
-  async findOne(id: string, companyId: string, userRole: string): Promise<PropertyDocument> {
+  async findOne(
+    id: string,
+    companyId: string,
+    userRole: string,
+  ): Promise<PropertyDocument> {
     const allowedLevels = this.getAllowedAccessLevels(userRole);
 
     const doc = await this.documentRepository
@@ -96,15 +106,15 @@ export class DocumentsService {
     return this.documentRepository.save(existing);
   }
 
-  async remove(
-    id: string,
-    companyId: string,
-    userRole: string,
-  ): Promise<void> {
+  async remove(id: string, companyId: string, userRole: string): Promise<void> {
     const doc = await this.findOne(id, companyId, userRole);
 
     if (doc.s3Key) {
-      await this.mediaService.deleteDocumentFromStorage(doc.s3Key, companyId, doc.fileSize);
+      await this.mediaService.deleteDocumentFromStorage(
+        doc.s3Key,
+        companyId,
+        doc.fileSize,
+      );
     }
 
     await this.documentRepository.remove(doc);
@@ -123,7 +133,11 @@ export class DocumentsService {
     return { stream, doc };
   }
 
-  async getVersionHistory(id: string, companyId: string, userRole: string): Promise<PropertyDocument[]> {
+  async getVersionHistory(
+    id: string,
+    companyId: string,
+    userRole: string,
+  ): Promise<PropertyDocument[]> {
     const doc = await this.findOne(id, companyId, userRole);
     const versions: PropertyDocument[] = [doc];
 
@@ -157,10 +171,7 @@ export class DocumentsService {
           DocumentAccessLevel.ADMIN_ONLY,
         ];
       case Role.AGENT:
-        return [
-          DocumentAccessLevel.PUBLIC,
-          DocumentAccessLevel.COMPANY,
-        ];
+        return [DocumentAccessLevel.PUBLIC, DocumentAccessLevel.COMPANY];
       case Role.ACCOUNTANT:
         return [DocumentAccessLevel.PUBLIC];
       case Role.MANAGER:
