@@ -289,16 +289,15 @@
   <form class="flex col gap-4" {{on "submit" this.save}}>
     <div class="flex gap-4">
       <div class="flex col gap-2 flex-1">
-        <label class="font-sm text-muted" for="u-number">Unit Number *</label>
-        <input
-          id="u-number"
-          type="text"
-          class="form-input"
+        <Ui::FormInput
+          @label="Unit Number"
+          @id="u-number"
+          @type="text"
+          @placeholder="e.g. 101"
+          @value={{this.formUnitNumber}}
+          @onChange={{fn this.setField "formUnitNumber"}}
+          @required={{true}}
           data-test-field-unit-number
-          placeholder="e.g. 101"
-          value={{this.formUnitNumber}}
-          required
-          {{on "input" (fn this.setField "formUnitNumber")}}
         />
       </div>
       <div class="flex col gap-2 flex-1">
@@ -326,75 +325,68 @@
 
     <div class="flex gap-4">
       <div class="flex col gap-2 flex-1">
-        <label class="font-sm text-muted" for="u-price">Price</label>
-        <input
-          id="u-price"
-          type="number"
-          min="0"
-          class="form-input"
+        <Ui::FormInput
+          @label="Price"
+          @id="u-price"
+          @type="number"
+          @min="0"
+          @placeholder="e.g. 150000"
+          @value={{this.formPrice}}
+          @onChange={{fn this.setField "formPrice"}}
           data-test-field-price
-          placeholder="e.g. 150000"
-          value={{this.formPrice}}
-          {{on "input" (fn this.setField "formPrice")}}
         />
       </div>
       <div class="flex col gap-2 flex-1">
-        <label class="font-sm text-muted" for="u-sqft">Sq Ft</label>
-        <input
-          id="u-sqft"
-          type="number"
-          min="0"
-          class="form-input"
+        <Ui::FormInput
+          @label="Sq Ft"
+          @id="u-sqft"
+          @type="number"
+          @min="0"
+          @placeholder="e.g. 850"
+          @value={{this.formSqFt}}
+          @onChange={{fn this.setField "formSqFt"}}
           data-test-field-sqft
-          placeholder="e.g. 850"
-          value={{this.formSqFt}}
-          {{on "input" (fn this.setField "formSqFt")}}
         />
       </div>
     </div>
 
     <div class="flex gap-4">
       <div class="flex col gap-2 flex-1">
-        <label class="font-sm text-muted" for="u-beds">Bedrooms</label>
-        <input
-          id="u-beds"
-          type="number"
-          min="0"
-          class="form-input"
+        <Ui::FormInput
+          @label="Bedrooms"
+          @id="u-beds"
+          @type="number"
+          @min="0"
+          @placeholder="e.g. 2"
+          @value={{this.formBedrooms}}
+          @onChange={{fn this.setField "formBedrooms"}}
           data-test-field-bedrooms
-          placeholder="e.g. 2"
-          value={{this.formBedrooms}}
-          {{on "input" (fn this.setField "formBedrooms")}}
         />
       </div>
       <div class="flex col gap-2 flex-1">
-        <label class="font-sm text-muted" for="u-baths">Bathrooms</label>
-        <input
-          id="u-baths"
-          type="number"
-          min="0"
-          class="form-input"
+        <Ui::FormInput
+          @label="Bathrooms"
+          @id="u-baths"
+          @type="number"
+          @min="0"
+          @placeholder="e.g. 2"
+          @value={{this.formBathrooms}}
+          @onChange={{fn this.setField "formBathrooms"}}
           data-test-field-bathrooms
-          placeholder="e.g. 2"
-          value={{this.formBathrooms}}
-          {{on "input" (fn this.setField "formBathrooms")}}
         />
       </div>
     </div>
 
-    <div class="flex col gap-2">
-      <label class="font-sm text-muted" for="u-floor">Floor</label>
-      <input
-        id="u-floor"
-        type="number"
-        min="0"
-        class="form-input"
-        data-test-field-floor
-        placeholder="e.g. 5"
-        value={{this.formFloor}}
-        {{on "input" (fn this.setField "formFloor")}}
-      />
-    </div>
+    <Ui::FormInput
+      @label="Floor"
+      @id="u-floor"
+      @type="number"
+      @min="0"
+      @placeholder="e.g. 5"
+      @value={{this.formFloor}}
+      @onChange={{fn this.setField "formFloor"}}
+      data-test-field-floor
+    />
 
     <div class="flex col gap-2">
       <label class="font-sm text-muted" for="u-desc">Description</label>

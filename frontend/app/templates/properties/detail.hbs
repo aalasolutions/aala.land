@@ -375,29 +375,23 @@
         </div>
       {{/if}}
     {{/unless}}
-    <div class="flex col gap-2">
-      <label class="font-sm text-muted" for="b-name">Asset Name *</label>
-      <input
-        id="b-name"
-        type="text"
-        class="form-input"
-        placeholder="e.g. Tower A"
-        value={{this.formAssetName}}
-        required
-        {{on "input" (fn this.setField "formAssetName")}}
-      />
-    </div>
-    <div class="flex col gap-2">
-      <label class="font-sm text-muted" for="b-address">Address</label>
-      <input
-        id="b-address"
-        type="text"
-        class="form-input"
-        placeholder="e.g. 123 Sheikh Zayed Road"
-        value={{this.formAssetAddress}}
-        {{on "input" (fn this.setField "formAssetAddress")}}
-      />
-    </div>
+    <Ui::FormInput
+      @label="Asset Name"
+      @id="b-name"
+      @type="text"
+      @placeholder="e.g. Tower A"
+      @value={{this.formAssetName}}
+      @onChange={{fn this.setField "formAssetName"}}
+      @required={{true}}
+    />
+    <Ui::FormInput
+      @label="Address"
+      @id="b-address"
+      @type="text"
+      @placeholder="e.g. 123 Sheikh Zayed Road"
+      @value={{this.formAssetAddress}}
+      @onChange={{fn this.setField "formAssetAddress"}}
+    />
     {{#if this.assetError}}
       <p class="font-sm text-danger">{{this.assetError}}</p>
     {{/if}}
@@ -431,15 +425,14 @@
   <form class="flex col gap-4" {{on "submit" this.saveUnit}}>
     <div class="flex gap-4">
       <div class="flex col gap-2 flex-1">
-        <label class="font-sm text-muted" for="u-number">Unit Number *</label>
-        <input
-          id="u-number"
-          type="text"
-          class="form-input"
-          placeholder="e.g. 101"
-          value={{this.formUnitNumber}}
-          required
-          {{on "input" (fn this.setField "formUnitNumber")}}
+        <Ui::FormInput
+          @label="Unit Number"
+          @id="u-number"
+          @type="text"
+          @placeholder="e.g. 101"
+          @value={{this.formUnitNumber}}
+          @onChange={{fn this.setField "formUnitNumber"}}
+          @required={{true}}
         />
       </div>
       <div class="flex col gap-2 flex-1">
@@ -463,53 +456,49 @@
     />
     <div class="flex gap-4">
       <div class="flex col gap-2 flex-1">
-        <label class="font-sm text-muted" for="u-price">Price</label>
-        <input
-          id="u-price"
-          type="number"
-          min="0"
-          class="form-input"
-          placeholder="e.g. 150000"
-          value={{this.formUnitPrice}}
-          {{on "input" (fn this.setField "formUnitPrice")}}
+        <Ui::FormInput
+          @label="Price"
+          @id="u-price"
+          @type="number"
+          @min="0"
+          @placeholder="e.g. 150000"
+          @value={{this.formUnitPrice}}
+          @onChange={{fn this.setField "formUnitPrice"}}
         />
       </div>
       <div class="flex col gap-2 flex-1">
-        <label class="font-sm text-muted" for="u-sqft">Sq Ft</label>
-        <input
-          id="u-sqft"
-          type="number"
-          min="0"
-          class="form-input"
-          placeholder="e.g. 850"
-          value={{this.formUnitSqFt}}
-          {{on "input" (fn this.setField "formUnitSqFt")}}
+        <Ui::FormInput
+          @label="Sq Ft"
+          @id="u-sqft"
+          @type="number"
+          @min="0"
+          @placeholder="e.g. 850"
+          @value={{this.formUnitSqFt}}
+          @onChange={{fn this.setField "formUnitSqFt"}}
         />
       </div>
     </div>
     <div class="flex gap-4">
       <div class="flex col gap-2 flex-1">
-        <label class="font-sm text-muted" for="u-beds">Bedrooms</label>
-        <input
-          id="u-beds"
-          type="number"
-          min="0"
-          class="form-input"
-          placeholder="e.g. 2"
-          value={{this.formUnitBedrooms}}
-          {{on "input" (fn this.setField "formUnitBedrooms")}}
+        <Ui::FormInput
+          @label="Bedrooms"
+          @id="u-beds"
+          @type="number"
+          @min="0"
+          @placeholder="e.g. 2"
+          @value={{this.formUnitBedrooms}}
+          @onChange={{fn this.setField "formUnitBedrooms"}}
         />
       </div>
       <div class="flex col gap-2 flex-1">
-        <label class="font-sm text-muted" for="u-baths">Bathrooms</label>
-        <input
-          id="u-baths"
-          type="number"
-          min="0"
-          class="form-input"
-          placeholder="e.g. 2"
-          value={{this.formUnitBathrooms}}
-          {{on "input" (fn this.setField "formUnitBathrooms")}}
+        <Ui::FormInput
+          @label="Bathrooms"
+          @id="u-baths"
+          @type="number"
+          @min="0"
+          @placeholder="e.g. 2"
+          @value={{this.formUnitBathrooms}}
+          @onChange={{fn this.setField "formUnitBathrooms"}}
         />
       </div>
     </div>
