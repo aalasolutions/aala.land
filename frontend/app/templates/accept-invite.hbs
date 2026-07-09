@@ -22,30 +22,24 @@
       </div>
     {{else}}
       <form class="flex col gap-4" {{on "submit" this.submit}}>
-        <div class="flex col gap-2">
-          <label class="font-sm text-muted" for="ai-password">New Password</label>
-          <input
-            id="ai-password"
-            type="password"
-            class="form-input"
-            placeholder="At least 8 characters"
-            value={{this.password}}
-            {{on "input" (fn this.setField "password")}}
-            required
-          />
-        </div>
-        <div class="flex col gap-2">
-          <label class="font-sm text-muted" for="ai-confirm">Confirm Password</label>
-          <input
-            id="ai-confirm"
-            type="password"
-            class="form-input"
-            placeholder="Repeat your password"
-            value={{this.confirmPassword}}
-            {{on "input" (fn this.setField "confirmPassword")}}
-            required
-          />
-        </div>
+        <Ui::FormInput
+          @label="New Password"
+          @id="ai-password"
+          @type="password"
+          @placeholder="At least 8 characters"
+          @value={{this.password}}
+          @onChange={{fn this.setField "password"}}
+          @required={{true}}
+        />
+        <Ui::FormInput
+          @label="Confirm Password"
+          @id="ai-confirm"
+          @type="password"
+          @placeholder="Repeat your password"
+          @value={{this.confirmPassword}}
+          @onChange={{fn this.setField "confirmPassword"}}
+          @required={{true}}
+        />
 
         {{#if this.errorMsg}}
           <p class="font-sm text-danger">{{this.errorMsg}}</p>

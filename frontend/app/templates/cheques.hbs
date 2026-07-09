@@ -294,14 +294,13 @@
         />
       </div>
       <div class="flex col gap-2 flex-1">
-        <label class="font-sm text-muted" for="chq-due">Due Date *</label>
-        <input
-          id="chq-due"
-          type="date"
-          class="form-input"
-          value={{this.formDueDate}}
-          required
-          {{on "change" (fn this.setField "formDueDate")}}
+        <Ui::FormInput
+          @label="Due Date"
+          @id="chq-due"
+          @type="date"
+          @value={{this.formDueDate}}
+          @onChange={{fn this.setField "formDueDate"}}
+          @required={{true}}
         />
       </div>
     </div>
@@ -334,17 +333,14 @@
   <p class="text-muted">Mark cheque
     {{this.bounceChequeItem.chequeNumber}}
     as bounced?</p>
-  <div class="flex col gap-2">
-    <label class="font-sm text-muted" for="bounce-reason">Reason (optional)</label>
-    <input
-      id="bounce-reason"
-      type="text"
-      class="form-input"
-      placeholder="e.g. Insufficient funds"
-      value={{this.formBounceReason}}
-      {{on "input" (fn this.setField "formBounceReason")}}
-    />
-  </div>
+  <Ui::FormInput
+    @label="Reason (optional)"
+    @id="bounce-reason"
+    @type="text"
+    @placeholder="e.g. Insufficient funds"
+    @value={{this.formBounceReason}}
+    @onChange={{fn this.setField "formBounceReason"}}
+  />
   <div class="flex gap-3">
     <Ui::AppButton
       @variant="secondary"
