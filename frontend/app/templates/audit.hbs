@@ -75,19 +75,12 @@
                     log.createdAt
                     withSeconds=true
                   }}</span>
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
+                <Ui::Ph
+                  @icon="caret-down"
+                  @size="16px"
                   class="chevron
                     {{if (eq this.expandedLogId log.id) 'expanded'}}"
-                >
-                  <polyline points="6 9 12 15 18 9" />
-                </svg>
+                />
               </div>
               {{#if (eq this.expandedLogId log.id)}}
                 <div class="audit-details">
