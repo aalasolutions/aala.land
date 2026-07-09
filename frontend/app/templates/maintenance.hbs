@@ -136,7 +136,7 @@
                       }}{{else}}-{{/if}}</td>
                   <td class="font-xs">{{#if
                       wo.scheduledDate
-                    }}{{wo.scheduledDate}}{{else}}-{{/if}}</td>
+                    }}{{format-date wo.scheduledDate}}{{else}}-{{/if}}</td>
                   <td><span
                       class="status-badge status-{{lowercase wo.status}}"
                     >{{wo.status}}</span></td>
@@ -200,7 +200,7 @@
                 <p class="font-sm font-bold">{{wo.title}}</p>
                 <p class="text-muted font-xs">{{wo.category}}
                   - Scheduled:
-                  {{wo.scheduledDate}}</p>
+                  {{format-date wo.scheduledDate}}</p>
               </div>
               <div class="flex x-center gap-3">
                 <span

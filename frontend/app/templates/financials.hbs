@@ -64,7 +64,7 @@
             <div>
               <p class="font-sm font-bold">{{reminder.description}}</p>
               <p class="text-muted font-xs">Due:
-                {{reminder.dueDate}}
+                {{format-date reminder.dueDate}}
                 -
                 {{reminder.category}}</p>
             </div>
@@ -127,7 +127,7 @@
                 <td><span
                     class="status-badge status-{{lowercase tx.status}}"
                   >{{tx.status}}</span></td>
-                <td class="font-xs">{{tx.transactionDate}}</td>
+                <td class="font-xs">{{format-date tx.transactionDate}}</td>
                 <td>
                   <button
                     type="button"

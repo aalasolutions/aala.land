@@ -30,9 +30,9 @@
               <p class="text-muted font-xs">{{lease.type}}
                 -
                 {{format-currency lease.monthlyRent}}/mo</p>
-              <p class="text-muted font-xs">{{lease.startDate}}
+              <p class="text-muted font-xs">{{format-date lease.startDate}}
                 to
-                {{lease.endDate}}</p>
+                {{format-date lease.endDate}}</p>
             </div>
             <div class="flex x-center gap-3">
               <span

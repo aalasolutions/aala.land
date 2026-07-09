@@ -64,7 +64,7 @@
                   <td>{{cheque.bankName}}</td>
                   <td>{{cheque.accountHolder}}</td>
                   <td class="font-bold">{{format-currency cheque.amount}}</td>
-                  <td>{{cheque.dueDate}}</td>
+                  <td>{{format-date cheque.dueDate}}</td>
                   <td><span
                       class="type-badge type-{{lowercase cheque.type}}"
                     >{{cheque.type}}</span></td>
@@ -200,7 +200,7 @@
                         {{cheque.bankName}}</p>
                       <p class="text-muted font-xs">{{cheque.accountHolder}}
                         - Due:
-                        {{cheque.dueDate}}</p>
+                        {{format-date cheque.dueDate}}</p>
                     </div>
                     <p class="font-sm font-bold">{{format-currency
                         cheque.amount

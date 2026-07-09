@@ -76,12 +76,6 @@ export default class AuditController extends Controller {
     return classes[action] || 'bg-gray-100 text-gray-800';
   }
 
-  @action formatDate(dateStr) {
-    if (!dateStr) return '-';
-    const date = new Date(dateStr);
-    return date.toLocaleString();
-  }
-
   @action setField(fieldName, e) {
     this[fieldName] = e.target.value;
   }

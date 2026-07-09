@@ -71,8 +71,9 @@
                 <span class="audit-entity">{{log.entityType}}</span>
                 <span class="audit-entity-id">{{log.entityId}}</span>
                 <span class="audit-user">{{log.userEmail}}</span>
-                <span class="audit-date">{{this.formatDate
+                <span class="audit-date">{{format-date-time
                     log.createdAt
+                    withSeconds=true
                   }}</span>
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
