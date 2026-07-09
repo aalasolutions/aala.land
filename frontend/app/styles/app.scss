@@ -3481,7 +3481,7 @@ $google-neutral-border-hover: #c6cbd1;
 // =================================
 
 .kanban-board {
-  display: grid;
+  display: flex;
   gap: var(--space-4);
   overflow-x: auto;
   padding-bottom: var(--space-4);
@@ -3489,16 +3489,12 @@ $google-neutral-border-hover: #c6cbd1;
 }
 
 .kanban-board--pipeline {
-  grid-template-columns: repeat(6, minmax(280px, 1fr));
 }
 
 .kanban-board--temperature {
-  grid-template-columns: repeat(4, minmax(250px, 1fr));
 }
 
 .kanban-board--agent {
-  grid-auto-flow: column;
-  grid-auto-columns: minmax(250px, 320px);
 }
 
 .kanban-column {
