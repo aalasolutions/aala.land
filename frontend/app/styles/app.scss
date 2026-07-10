@@ -157,6 +157,8 @@ body {
   color: var(--text-primary);
   min-height: 100vh;
   line-height: 1.5;
+
+  font-size: 0.8rem;
 }
 
 // =================================
@@ -288,11 +290,11 @@ body {
 
 .sidebar-group-active {
   background: color.adjust($color-primary, $lightness: 38%);
-  color: $color-primary;
+  // color: $color-primary;
 }
 .sidebar-group-active:hover {
   background: color.adjust($color-primary, $lightness: 34%);
-  color: $color-primary;
+  // color: $color-primary;
 }
 
 // Chevron rotation
@@ -4328,6 +4330,7 @@ $google-neutral-border-hover: #c6cbd1;
 
 .form-dropdown {
   width: 100%;
+  font-size: 12px;
 
   .dropdown-container {
     position: relative;
@@ -4408,6 +4411,11 @@ $google-neutral-border-hover: #c6cbd1;
       padding: 8px;
       border-bottom: 1px solid var(--border-light);
       flex-shrink: 0;
+
+      .form-input {
+        padding: var(--space-1) var(--space-2);
+        border-radius: var(--radius-sm);
+      }
     }
 
     .dropdown-options {
@@ -4465,6 +4473,8 @@ $google-neutral-border-hover: #c6cbd1;
       font-size: 14px;
     }
   }
+
+
 }
 
 // =================================

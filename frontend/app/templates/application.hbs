@@ -60,6 +60,13 @@
               >
                 <span class="sidebar-label">Owners</span>
               </LinkTo>
+              <LinkTo
+                @route="leases"
+                class="sidebar-sublink"
+                data-test-nav-leases
+              >
+                <span class="sidebar-label">Leases</span>
+              </LinkTo>
             </div>
           </div>
         {{/if}}
@@ -137,13 +144,6 @@
               <Ui::Ph @icon="caret-down" class="sidebar-chevron" />
             </button>
             <div class="sidebar-group-items">
-              <LinkTo
-                @route="leases"
-                class="sidebar-sublink"
-                data-test-nav-leases
-              >
-                <span class="sidebar-label">Leases</span>
-              </LinkTo>
               <LinkTo
                 @route="financials"
                 class="sidebar-sublink"
