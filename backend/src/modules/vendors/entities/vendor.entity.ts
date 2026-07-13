@@ -35,12 +35,8 @@ export class Vendor {
   @Column({ type: 'varchar', length: 50, nullable: true })
   phone: string | null;
 
-  @Column({
-    type: 'enum',
-    enum: VendorSpecialty,
-    default: VendorSpecialty.GENERAL,
-  })
-  specialty: VendorSpecialty;
+  @Column({ type: 'jsonb', default: '[]' })
+  specialties: VendorSpecialty[];
 
   @Column({ name: 'company_name', type: 'varchar', length: 255, nullable: true })
   companyName: string | null;

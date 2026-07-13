@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, ILike, FindOptionsWhere } from 'typeorm';
+import { Repository, ILike, FindOptionsWhere, Raw } from 'typeorm';
 import { Vendor, VendorSpecialty } from './entities/vendor.entity';
 import { CreateVendorDto } from './dto/create-vendor.dto';
 import { UpdateVendorDto } from './dto/update-vendor.dto';
@@ -32,16 +32,24 @@ export class VendorsService {
     regionCode?: string,
   ): Promise<{ data: Vendor[]; total: number; page: number; limit: number }> {
     const where: FindOptionsWhere<Vendor>[] = [];
-    const base: FindOptionsWhere<Vendor> = { companyId };
+    // isActive: true hides soft-deleted vendors (remove() sets isActive=false)
+    const base: FindOptionsWhere<Vendor> = { companyId, isActive: true };
     if (regionCode) base.regionCode = regionCode;
+
+    // specialties is a jsonb array, so filter by "contains this specialty" via @>
+    const specialtyFilter: FindOptionsWhere<Vendor> = specialty
+      ? ({
+          specialties: Raw((alias) => `${alias} @> :spec::jsonb`, { spec: JSON.stringify([specialty]) }),
+        } as unknown as FindOptionsWhere<Vendor>)
+      : {};
 
     if (search && specialty) {
       const pattern = `%${search}%`;
       where.push(
-        { ...base, specialty, name: ILike(pattern) },
-        { ...base, specialty, email: ILike(pattern) },
-        { ...base, specialty, phone: ILike(pattern) },
-        { ...base, specialty, companyName: ILike(pattern) },
+        { ...base, ...specialtyFilter, name: ILike(pattern) },
+        { ...base, ...specialtyFilter, email: ILike(pattern) },
+        { ...base, ...specialtyFilter, phone: ILike(pattern) },
+        { ...base, ...specialtyFilter, companyName: ILike(pattern) },
       );
     } else if (search) {
       const pattern = `%${search}%`;
@@ -52,7 +60,7 @@ export class VendorsService {
         { ...base, companyName: ILike(pattern) },
       );
     } else if (specialty) {
-      where.push({ ...base, specialty });
+      where.push({ ...base, ...specialtyFilter });
     } else {
       where.push(base);
     }
