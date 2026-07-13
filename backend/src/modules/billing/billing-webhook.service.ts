@@ -152,7 +152,7 @@ export class BillingWebhookService implements OnModuleInit {
             subscriptionTier: tier,
             purchasedSeats: Math.max(event.quantity, 1),
             maxUsers: limits.maxUsers,
-            maxCountries: limits.maxCountries,
+            maxRegions: limits.maxRegions,
             maxProperties: limits.maxProperties,
         });
     }
@@ -179,7 +179,7 @@ export class BillingWebhookService implements OnModuleInit {
         await this.applyRecencyGuardedSync(event.companyId, event.name, event.occurredAt, {
             subscriptionTier: tier,
             maxUsers: limits.maxUsers,
-            maxCountries: limits.maxCountries,
+            maxRegions: limits.maxRegions,
             maxProperties: limits.maxProperties,
         });
     }
@@ -198,7 +198,7 @@ export class BillingWebhookService implements OnModuleInit {
             billingSubscriptionId: null,
             billingStatus: 'canceled',
             maxUsers: limits.maxUsers,
-            maxCountries: limits.maxCountries,
+            maxRegions: limits.maxRegions,
             maxProperties: limits.maxProperties,
         });
     }

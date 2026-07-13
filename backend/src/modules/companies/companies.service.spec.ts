@@ -201,6 +201,36 @@ describe('CompaniesService', () => {
         service.update('company-uuid-1', { activeRegions: ['invalid'] }, Role.SUPER_ADMIN),
       ).rejects.toThrow(BadRequestException);
     });
+
+    it('rejects a FREE company selecting more than one region (two emirates = one country, two regions)', async () => {
+      // The whole point of the region cap: two UAE emirates are a single country
+      // but two regions, so a FREE company (maxRegions 1) must be blocked.
+      repo.findOne.mockResolvedValue(mockCompany);
+
+      await expect(
+        service.update('company-uuid-1', { activeRegions: ['dubai', 'abu-dhabi'] }, Role.SUPER_ADMIN),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('allows a FREE company to keep exactly one region', async () => {
+      repo.findOne.mockResolvedValue(mockCompany);
+      repo.save.mockResolvedValue(mockCompany);
+
+      await expect(
+        service.update('company-uuid-1', { activeRegions: ['dubai'] }, Role.SUPER_ADMIN),
+      ).resolves.toBeDefined();
+    });
+
+    it('counts duplicate region codes once against the cap', async () => {
+      // A payload repeating the same code must not trip the cap; the limit
+      // counts unique regions, matching the pre-rename dedup behaviour.
+      repo.findOne.mockResolvedValue(mockCompany);
+      repo.save.mockResolvedValue(mockCompany);
+
+      await expect(
+        service.update('company-uuid-1', { activeRegions: ['dubai', 'dubai'] }, Role.SUPER_ADMIN),
+      ).resolves.toBeDefined();
+    });
   });
 
   describe('findOneWithAdminEmail', () => {

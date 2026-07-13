@@ -11,10 +11,10 @@ export enum SubscriptionTier {
 // columns, so Infinity is permitted ONLY for aiWeeklyMessages, which is never
 // synced to a column. aiWeeklyMessages is the interim AI limiter until the
 // credit ledger lands (parked behind the WhatsApp PR).
-export const TIER_LIMITS: Record<SubscriptionTier, { maxUsers: number; maxCountries: number; maxProperties: number; aiWeeklyMessages: number }> = {
-    [SubscriptionTier.FREE]:       { maxUsers: 1,   maxCountries: 1,   maxProperties: 25,  aiWeeklyMessages: 10 },
-    [SubscriptionTier.PRO]:        { maxUsers: 999, maxCountries: 999, maxProperties: 999, aiWeeklyMessages: Infinity },
-    [SubscriptionTier.ENTERPRISE]: { maxUsers: 999, maxCountries: 999, maxProperties: 999, aiWeeklyMessages: Infinity },
+export const TIER_LIMITS: Record<SubscriptionTier, { maxUsers: number; maxRegions: number; maxProperties: number; aiWeeklyMessages: number }> = {
+    [SubscriptionTier.FREE]:       { maxUsers: 1,   maxRegions: 1,   maxProperties: 25,  aiWeeklyMessages: 10 },
+    [SubscriptionTier.PRO]:        { maxUsers: 999, maxRegions: 999, maxProperties: 999, aiWeeklyMessages: Infinity },
+    [SubscriptionTier.ENTERPRISE]: { maxUsers: 999, maxRegions: 999, maxProperties: 999, aiWeeklyMessages: Infinity },
 };
 
 export const FREE_STORAGE_BYTES        = 2 * 1024 * 1024 * 1024;   // 2 GB flat (FREE tier)
@@ -46,8 +46,8 @@ export class Company {
     @Column({ name: 'max_users', type: 'int', default: 1 })
     maxUsers: number;
 
-    @Column({ name: 'max_countries', type: 'int', default: 1 })
-    maxCountries: number;
+    @Column({ name: 'max_regions', type: 'int', default: 1 })
+    maxRegions: number;
 
     @Column({ name: 'max_properties', type: 'int', default: 25 })
     maxProperties: number;
