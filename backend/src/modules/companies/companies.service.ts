@@ -152,7 +152,8 @@ export class CompaniesService {
                 (dto.subscriptionTier && dto.subscriptionTier !== company.subscriptionTier
                     ? (TIER_LIMITS[dto.subscriptionTier] ?? TIER_LIMITS[SubscriptionTier.FREE]).maxRegions
                     : storedMaxRegions);
-            if (dto.activeRegions.length > effectiveMaxRegions) {
+            const uniqueRegionCount = new Set(dto.activeRegions).size;
+            if (uniqueRegionCount > effectiveMaxRegions) {
                 throw new BadRequestException(
                     `Your plan allows up to ${effectiveMaxRegions} region${effectiveMaxRegions === 1 ? '' : 's'}. Upgrade to add more.`,
                 );

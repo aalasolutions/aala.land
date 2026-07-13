@@ -75,7 +75,7 @@ export default class CompanyController extends Controller {
     const regions = c.maxRegions >= unlimited ? '∞' : c.maxRegions;
     const props = c.maxProperties >= unlimited ? '∞' : c.maxProperties;
     const used = c.usersCount ?? '?';
-    return `${used} / ${users} users · ${regions} state${regions === 1 ? '' : 's'} · ${props} properties`;
+    return `${used} / ${users} users · ${regions} region${regions === 1 ? '' : 's'} · ${props} properties`;
   }
 
   get isAdmin() {
@@ -276,7 +276,7 @@ export default class CompanyController extends Controller {
       if (!this.canAddMoreRegions) {
         const limit = this.maxRegions;
         this.notifications.error(
-          `Your ${this.company?.subscriptionTier || 'FREE'} plan allows ${limit} ${limit === 1 ? 'state' : 'states'}. Upgrade to add more.`,
+          `Your ${this.company?.subscriptionTier || 'FREE'} plan allows ${limit} ${limit === 1 ? 'region' : 'regions'}. Upgrade to add more.`,
         );
         return;
       }

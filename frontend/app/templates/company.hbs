@@ -292,16 +292,16 @@
         >
           <h3 class="font-lg font-bold mb-2">Operating Regions</h3>
           <p class="font-sm text-muted mb-4">
-            Select states where your company operates. Your
+            Select regions where your company operates. Your
             {{or this.company.subscriptionTier "FREE"}}
             plan includes
             {{if
               (eq this.maxRegions 999)
-              "unlimited states"
+              "unlimited regions"
               (if
                 (eq this.maxRegions 1)
-                "1 state"
-                (concat this.maxRegions " states")
+                "1 region"
+                (concat this.maxRegions " regions")
               )
             }}.
           </p>
@@ -345,7 +345,7 @@
                     {{/if}}
                   {{/let}}
                   <span class="region-total">{{group.regions.length}}
-                    states</span>
+                    regions</span>
                 </span>
                 <Ui::Ph
                   @icon={{if
