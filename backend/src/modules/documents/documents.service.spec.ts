@@ -35,6 +35,12 @@ describe('DocumentsService', () => {
     assetId: null,
   };
 
+  // Client-facing shape: the service strips the private storage pointers
+  // (url, s3Key) from every document it returns to a caller.
+  const sanitizedMockDoc: Partial<PropertyDocument> = { ...mockDoc };
+  delete sanitizedMockDoc.url;
+  delete sanitizedMockDoc.s3Key;
+
   beforeEach(async () => {
     mockMediaService = {
       uploadDocumentToStorage: jest.fn(),
@@ -122,7 +128,9 @@ describe('DocumentsService', () => {
           version:    1,
         }),
       );
-      expect(result).toEqual(mockDoc);
+      expect(result).toEqual(sanitizedMockDoc);
+      expect(result).not.toHaveProperty('url');
+      expect(result).not.toHaveProperty('s3Key');
     });
   });
 
@@ -130,7 +138,8 @@ describe('DocumentsService', () => {
     it('returns paginated documents for COMPANY_ADMIN', async () => {
       const result = await service.findAll(companyId, Role.COMPANY_ADMIN, 1, 20);
 
-      expect(result.data).toEqual([mockDoc]);
+      expect(result.data).toEqual([sanitizedMockDoc]);
+      expect(result.data[0]).not.toHaveProperty('s3Key');
       expect(result.total).toBe(1);
     });
 
@@ -143,9 +152,11 @@ describe('DocumentsService', () => {
   });
 
   describe('findOne', () => {
-    it('returns document when found', async () => {
+    it('returns document when found, with storage pointers stripped', async () => {
       const result = await service.findOne('doc-uuid-1', companyId, Role.COMPANY_ADMIN);
-      expect(result).toEqual(mockDoc);
+      expect(result).toEqual(sanitizedMockDoc);
+      expect(result).not.toHaveProperty('url');
+      expect(result).not.toHaveProperty('s3Key');
     });
 
     it('throws NotFoundException when not found', async () => {
