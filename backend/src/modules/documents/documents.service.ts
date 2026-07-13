@@ -7,6 +7,12 @@ import { MediaService } from '../properties/media.service';
 import { UploadDocumentDto } from './dto/upload-document.dto';
 import { Role } from '@shared/enums/roles.enum';
 
+// Client-facing shape: the internal storage pointers (url, s3Key) are never
+// serialized to the client. Documents are served only through the streaming
+// download endpoint, so these fields have no use outside the service and would
+// only leak the private bucket's path structure.
+export type SanitizedDocument = Omit<PropertyDocument, 'url' | 's3Key'>;
+
 @Injectable()
 export class DocumentsService {
   constructor(
@@ -20,7 +26,7 @@ export class DocumentsService {
     userId: string,
     file: Express.Multer.File,
     dto: UploadDocumentDto,
-  ): Promise<PropertyDocument> {
+  ): Promise<SanitizedDocument> {
     const { url, s3Key, fileSize } = await this.mediaService.uploadDocumentToStorage(
       companyId,
       file,
@@ -40,7 +46,7 @@ export class DocumentsService {
       uploadedBy: userId,
       version: 1,
     });
-    return this.documentRepository.save(doc);
+    return this.sanitize(await this.documentRepository.save(doc));
   }
 
   async findAll(
@@ -49,7 +55,7 @@ export class DocumentsService {
     page = 1,
     limit = 20,
     category?: DocumentCategory,
-  ): Promise<{ data: PropertyDocument[]; total: number; page: number; limit: number }> {
+  ): Promise<{ data: SanitizedDocument[]; total: number; page: number; limit: number }> {
     const allowedLevels = this.getAllowedAccessLevels(userRole);
 
     const qb = this.documentRepository
@@ -66,10 +72,18 @@ export class DocumentsService {
       .orderBy('doc.created_at', 'DESC');
 
     const [data, total] = await qb.getManyAndCount();
-    return { data, total, page, limit };
+    return { data: data.map((d) => this.sanitize(d)), total, page, limit };
   }
 
-  async findOne(id: string, companyId: string, userRole: string): Promise<PropertyDocument> {
+  // Client-facing single fetch — strips the storage pointers.
+  async findOne(id: string, companyId: string, userRole: string): Promise<SanitizedDocument> {
+    return this.sanitize(await this.findOneEntity(id, companyId, userRole));
+  }
+
+  // Internal full-entity fetch (keeps url/s3Key) for callers that touch storage:
+  // update (save), remove (delete object), downloadStream (read object),
+  // getVersionHistory (walk the chain). Never returned to the client directly.
+  private async findOneEntity(id: string, companyId: string, userRole: string): Promise<PropertyDocument> {
     const allowedLevels = this.getAllowedAccessLevels(userRole);
 
     const doc = await this.documentRepository
@@ -90,10 +104,10 @@ export class DocumentsService {
     companyId: string,
     userRole: string,
     dto: UpdateDocumentDto,
-  ): Promise<PropertyDocument> {
-    const existing = await this.findOne(id, companyId, userRole);
+  ): Promise<SanitizedDocument> {
+    const existing = await this.findOneEntity(id, companyId, userRole);
     Object.assign(existing, dto);
-    return this.documentRepository.save(existing);
+    return this.sanitize(await this.documentRepository.save(existing));
   }
 
   async remove(
@@ -101,7 +115,7 @@ export class DocumentsService {
     companyId: string,
     userRole: string,
   ): Promise<void> {
-    const doc = await this.findOne(id, companyId, userRole);
+    const doc = await this.findOneEntity(id, companyId, userRole);
 
     if (doc.s3Key) {
       await this.mediaService.deleteDocumentFromStorage(doc.s3Key, companyId, doc.fileSize);
@@ -115,7 +129,7 @@ export class DocumentsService {
     companyId: string,
     userRole: string,
   ): Promise<{ stream: NodeJS.ReadableStream; doc: PropertyDocument }> {
-    const doc = await this.findOne(id, companyId, userRole); // re-checks accessLevel
+    const doc = await this.findOneEntity(id, companyId, userRole); // re-checks accessLevel
     if (!doc.s3Key) {
       throw new NotFoundException('Document has no associated file in storage');
     }
@@ -123,8 +137,8 @@ export class DocumentsService {
     return { stream, doc };
   }
 
-  async getVersionHistory(id: string, companyId: string, userRole: string): Promise<PropertyDocument[]> {
-    const doc = await this.findOne(id, companyId, userRole);
+  async getVersionHistory(id: string, companyId: string, userRole: string): Promise<SanitizedDocument[]> {
+    const doc = await this.findOneEntity(id, companyId, userRole);
     const versions: PropertyDocument[] = [doc];
 
     let current = doc;
@@ -137,7 +151,17 @@ export class DocumentsService {
       current = prev;
     }
 
-    return versions;
+    return versions.map((v) => this.sanitize(v));
+  }
+
+  // Strips the private storage pointers (url, s3Key) from a document before it
+  // is returned to the client. Mirrors the omit-by-rest pattern used elsewhere
+  // (e.g. companies.controller adminEmail).
+  private sanitize(doc: PropertyDocument): SanitizedDocument {
+    const rest = { ...doc };
+    delete (rest as Partial<PropertyDocument>).url;
+    delete (rest as Partial<PropertyDocument>).s3Key;
+    return rest;
   }
 
   private getAllowedAccessLevels(userRole: string): DocumentAccessLevel[] {
