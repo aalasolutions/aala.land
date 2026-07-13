@@ -188,6 +188,15 @@ export const TEMPERATURE_OPTIONS = TEMPERATURE_STAGES.map(
   }),
 );
 
+export const LEAD_SOURCE_OPTIONS = [
+  { value: 'WEBSITE', label: 'Website' },
+  { value: 'WHATSAPP', label: 'WhatsApp' },
+  { value: 'REFERRAL', label: 'Referral' },
+  { value: 'SOCIAL_MEDIA', label: 'Social Media' },
+  { value: 'WALK_IN', label: 'Walk-in' },
+  { value: 'OTHER', label: 'Other' },
+];
+
 export const NONE_OPTION = { value: '', label: '-- None --' };
 
 export const UUID_PATTERN =

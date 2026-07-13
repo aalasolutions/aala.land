@@ -533,6 +533,14 @@
       </div>
     </div>
     <Ui::FormDropdown
+      @label="Source"
+      @id="lead-source"
+      @value={{this.formSource}}
+      @onChange={{fn this.setField "formSource"}}
+      @options={{this.sourceOptions}}
+      @placeholder="Select source..."
+    />
+    <Ui::FormDropdown
       @label="Property Area"
       @id="lead-property"
       @value={{this.formPropertyId}}

@@ -7,6 +7,7 @@ import {
   TEMPERATURE_STAGES,
   LEAD_STATUS_OPTIONS,
   TEMPERATURE_OPTIONS,
+  LEAD_SOURCE_OPTIONS,
   NONE_OPTION,
 } from 'land/constants';
 
@@ -62,6 +63,7 @@ export default class LeadsController extends Controller {
   @tracked formPhone = '';
   @tracked formStatus = 'NEW';
   @tracked formTemperature = 'WARM';
+  @tracked formSource = 'OTHER';
   @tracked formPropertyId = '';
   @tracked formUnitId = '';
   @tracked isSaving = false;
@@ -109,6 +111,8 @@ export default class LeadsController extends Controller {
   statusOptions = LEAD_STATUS_OPTIONS;
 
   temperatureOptions = TEMPERATURE_OPTIONS;
+
+  sourceOptions = LEAD_SOURCE_OPTIONS;
 
   get regionOptions() {
     return this.region.regions.map((r) => ({
@@ -240,6 +244,7 @@ export default class LeadsController extends Controller {
     this.formPhone = '';
     this.formStatus = 'NEW';
     this.formTemperature = 'WARM';
+    this.formSource = 'OTHER';
     this.formPropertyId = '';
     this.formUnitId = '';
     this.formRegionCode = this.region.regionCode;
@@ -261,6 +266,7 @@ export default class LeadsController extends Controller {
     this.formPhone = lead.phone ?? '';
     this.formStatus = lead.status ?? 'NEW';
     this.formTemperature = lead.temperature ?? 'WARM';
+    this.formSource = lead.source ?? 'OTHER';
     this.formRegionCode = lead.regionCode ?? this.region.regionCode;
     const propertyId = lead.property?.id ?? lead.propertyId ?? '';
     this.formPropertyId = propertyId;
@@ -536,6 +542,7 @@ export default class LeadsController extends Controller {
           ...(this.formPhone ? { phone: this.formPhone } : {}),
           status: this.formStatus,
           temperature: this.formTemperature,
+          source: this.formSource,
           ...(isEdit
             ? {
                 ...(this.formPropertyId !== originalPropertyId
