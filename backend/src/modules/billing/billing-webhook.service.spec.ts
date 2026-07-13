@@ -239,7 +239,7 @@ describe('BillingWebhookService', () => {
                 subscriptionTier: SubscriptionTier.PRO,
                 purchasedSeats: 4,
                 maxUsers: TIER_LIMITS[SubscriptionTier.PRO].maxUsers,
-                maxCountries: TIER_LIMITS[SubscriptionTier.PRO].maxCountries,
+                maxRegions: TIER_LIMITS[SubscriptionTier.PRO].maxRegions,
                 maxProperties: TIER_LIMITS[SubscriptionTier.PRO].maxProperties,
             });
         });
@@ -289,7 +289,7 @@ describe('BillingWebhookService', () => {
             expect(seatSyncPatch()).toEqual({
                 subscriptionTier: SubscriptionTier.PRO,
                 maxUsers: TIER_LIMITS[SubscriptionTier.PRO].maxUsers,
-                maxCountries: TIER_LIMITS[SubscriptionTier.PRO].maxCountries,
+                maxRegions: TIER_LIMITS[SubscriptionTier.PRO].maxRegions,
                 maxProperties: TIER_LIMITS[SubscriptionTier.PRO].maxProperties,
             });
             expect(seatUpdateQB.andWhere).toHaveBeenCalledWith(
@@ -309,7 +309,7 @@ describe('BillingWebhookService', () => {
                 billingSubscriptionId: null,
                 billingStatus: 'canceled',
                 maxUsers: TIER_LIMITS[SubscriptionTier.FREE].maxUsers,
-                maxCountries: TIER_LIMITS[SubscriptionTier.FREE].maxCountries,
+                maxRegions: TIER_LIMITS[SubscriptionTier.FREE].maxRegions,
                 maxProperties: TIER_LIMITS[SubscriptionTier.FREE].maxProperties,
             });
             expect(seatUpdateQB.andWhere).toHaveBeenCalledWith(
@@ -432,7 +432,7 @@ describe('BillingWebhookService', () => {
                 subscriptionTier: SubscriptionTier.ENTERPRISE,
                 purchasedSeats: 5,
                 maxUsers: TIER_LIMITS[SubscriptionTier.ENTERPRISE].maxUsers,
-                maxCountries: TIER_LIMITS[SubscriptionTier.ENTERPRISE].maxCountries,
+                maxRegions: TIER_LIMITS[SubscriptionTier.ENTERPRISE].maxRegions,
                 maxProperties: TIER_LIMITS[SubscriptionTier.ENTERPRISE].maxProperties,
             });
         });

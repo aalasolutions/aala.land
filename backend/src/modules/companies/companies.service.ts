@@ -5,7 +5,7 @@ import { Company, SubscriptionTier, TIER_LIMITS } from './entities/company.entit
 import { User, AuthProvider } from '../users/entities/user.entity';
 import { CreateCompanyDto } from './dto/create-company.dto';
 import { UpdateCompanyDto } from './dto/update-company.dto';
-import { REGIONS, getRegionByCode } from '@shared/constants/regions';
+import { REGIONS } from '@shared/constants/regions';
 import { paginationOptions } from '../../shared/utils/pagination.util';
 import { Role } from '@shared/enums/roles.enum';
 import { BillingService } from '../billing/billing.service';
@@ -122,13 +122,13 @@ export class CompaniesService {
             // rule (contract section 8); it can desync from a live Stripe
             // subscription by design when used for a comp account.
         } else if (role === Role.COMPANY_ADMIN || role === Role.ADMIN) {
-            const superAdminOnlyFields = ['isActive', 'subscriptionTier', 'maxUsers', 'maxCountries', 'maxProperties', 'subscriptionExpiresAt'];
+            const superAdminOnlyFields = ['isActive', 'subscriptionTier', 'maxUsers', 'maxRegions', 'maxProperties', 'subscriptionExpiresAt'];
             const attempted = superAdminOnlyFields.filter(f => f in dto);
             if (attempted.length) {
                 throw new ForbiddenException(`You are not allowed to update: ${attempted.join(', ')}`);
             }
         } else {
-            const restrictedFields = ['activeRegions', 'defaultRegionCode', 'subscriptionTier', 'maxUsers', 'maxCountries', 'maxProperties', 'subscriptionExpiresAt'];
+            const restrictedFields = ['activeRegions', 'defaultRegionCode', 'subscriptionTier', 'maxUsers', 'maxRegions', 'maxProperties', 'subscriptionExpiresAt'];
             const attempted = restrictedFields.filter(f => f in dto);
             if (attempted.length) {
                 throw new ForbiddenException(`You are not allowed to update: ${attempted.join(', ')}`);
@@ -142,21 +142,19 @@ export class CompaniesService {
             this.validateRegionCode(dto.defaultRegionCode);
         }
 
-        // Enforce country limit — use stored company limit, but respect tier upgrade and explicit override
+        // Enforce region limit — use stored company limit, but respect tier upgrade and explicit override.
+        // FREE caps to a single region (one state/emirate); paid tiers are effectively unlimited.
         if (dto.activeRegions) {
-            const storedMaxCountries = company.maxCountries
-                ?? (TIER_LIMITS[company.subscriptionTier] ?? TIER_LIMITS[SubscriptionTier.FREE]).maxCountries;
-            const effectiveMaxCountries: number =
-                ('maxCountries' in dto ? dto.maxCountries : undefined) ??
+            const storedMaxRegions = company.maxRegions
+                ?? (TIER_LIMITS[company.subscriptionTier] ?? TIER_LIMITS[SubscriptionTier.FREE]).maxRegions;
+            const effectiveMaxRegions: number =
+                ('maxRegions' in dto ? dto.maxRegions : undefined) ??
                 (dto.subscriptionTier && dto.subscriptionTier !== company.subscriptionTier
-                    ? (TIER_LIMITS[dto.subscriptionTier] ?? TIER_LIMITS[SubscriptionTier.FREE]).maxCountries
-                    : storedMaxCountries);
-            const uniqueCountries = new Set(
-                dto.activeRegions.map(code => getRegionByCode(code)?.country).filter(Boolean),
-            );
-            if (uniqueCountries.size > effectiveMaxCountries) {
+                    ? (TIER_LIMITS[dto.subscriptionTier] ?? TIER_LIMITS[SubscriptionTier.FREE]).maxRegions
+                    : storedMaxRegions);
+            if (dto.activeRegions.length > effectiveMaxRegions) {
                 throw new BadRequestException(
-                    `Your plan allows up to ${effectiveMaxCountries} countr${effectiveMaxCountries === 1 ? 'y' : 'ies'}. Upgrade to add more.`,
+                    `Your plan allows up to ${effectiveMaxRegions} region${effectiveMaxRegions === 1 ? '' : 's'}. Upgrade to add more.`,
                 );
             }
         }
@@ -171,7 +169,7 @@ export class CompaniesService {
         if (dto.subscriptionTier && dto.subscriptionTier !== company.subscriptionTier) {
             const tierLimits = TIER_LIMITS[dto.subscriptionTier] || TIER_LIMITS[SubscriptionTier.FREE];
             if (!('maxUsers' in dto)) company.maxUsers = tierLimits.maxUsers;
-            if (!('maxCountries' in dto)) company.maxCountries = tierLimits.maxCountries;
+            if (!('maxRegions' in dto)) company.maxRegions = tierLimits.maxRegions;
             if (!('maxProperties' in dto)) company.maxProperties = tierLimits.maxProperties;
         }
 

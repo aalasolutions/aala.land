@@ -49,7 +49,7 @@ export class UpdateCompanyDto {
   @IsInt()
   @Min(1)
   @IsOptional()
-  maxCountries?: number;
+  maxRegions?: number;
 
   @ApiPropertyOptional({ example: 100 })
   @IsInt()

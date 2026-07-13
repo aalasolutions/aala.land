@@ -72,10 +72,10 @@ export default class CompanyController extends Controller {
     if (!c) return '';
     const unlimited = TIER_LIMITS.PRO.maxUsers;
     const users = c.maxUsers >= unlimited ? '∞' : c.maxUsers;
-    const countries = c.maxCountries >= unlimited ? '∞' : c.maxCountries;
+    const regions = c.maxRegions >= unlimited ? '∞' : c.maxRegions;
     const props = c.maxProperties >= unlimited ? '∞' : c.maxProperties;
     const used = c.usersCount ?? '?';
-    return `${used} / ${users} users · ${countries} countr${countries === 1 ? 'y' : 'ies'} · ${props} properties`;
+    return `${used} / ${users} users · ${regions} state${regions === 1 ? '' : 's'} · ${props} properties`;
   }
 
   get isAdmin() {
@@ -143,22 +143,12 @@ export default class CompanyController extends Controller {
     return `You've used ${used}/${this.weeklyLimit} AI messages this week${suffix}`;
   }
 
-  get maxCountries() {
-    return this.company?.maxCountries ?? 1;
+  get maxRegions() {
+    return this.company?.maxRegions ?? 1;
   }
 
-  get selectedCountries() {
-    const regions = this.model?.regions || [];
-    const countries = new Set();
-    for (const code of this.formActiveRegions) {
-      const r = regions.find((reg) => reg.code === code);
-      if (r) countries.add(r.country);
-    }
-    return [...countries];
-  }
-
-  get canAddMoreCountries() {
-    return this.selectedCountries.length < this.maxCountries;
+  get canAddMoreRegions() {
+    return this.formActiveRegions.length < this.maxRegions;
   }
 
   get activeRegionObjects() {
@@ -283,17 +273,10 @@ export default class CompanyController extends Controller {
         this.formDefaultRegionCode = this.formActiveRegions[0] || '';
       }
     } else {
-      const regions = this.model?.regions || [];
-      const regionObj = regions.find((r) => r.code === code);
-      const regionCountry = regionObj?.country;
-
-      if (
-        !this.selectedCountries.includes(regionCountry) &&
-        !this.canAddMoreCountries
-      ) {
-        const limit = this.maxCountries;
+      if (!this.canAddMoreRegions) {
+        const limit = this.maxRegions;
         this.notifications.error(
-          `Your ${this.company?.subscriptionTier || 'FREE'} plan allows ${limit} ${limit === 1 ? 'country' : 'countries'}. Upgrade to add more.`,
+          `Your ${this.company?.subscriptionTier || 'FREE'} plan allows ${limit} ${limit === 1 ? 'state' : 'states'}. Upgrade to add more.`,
         );
         return;
       }
