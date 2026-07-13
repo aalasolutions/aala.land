@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsOptional, IsEnum, IsNumber, Min, Max, MaxLength, IsEmail, IsBoolean, IsArray } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, IsEnum, IsNumber, Min, Max, MaxLength, IsEmail, IsBoolean, IsArray, ArrayNotEmpty } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { VendorSpecialty } from '../entities/vendor.entity';
 
@@ -24,6 +24,7 @@ export class CreateVendorDto {
   @ApiProperty({ enum: VendorSpecialty, isArray: true, required: false, description: 'One or more specialties' })
   @IsOptional()
   @IsArray()
+  @ArrayNotEmpty()
   @IsEnum(VendorSpecialty, { each: true })
   specialties?: VendorSpecialty[];
 

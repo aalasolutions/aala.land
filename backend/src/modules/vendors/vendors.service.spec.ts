@@ -125,7 +125,7 @@ describe('VendorsService', () => {
       expect((callArgs as any).where[0].companyId).toBe(companyId);
       // specialties filter is a Raw FindOperator (jsonb @>), not a plain value
       expect((callArgs as any).where[0].specialties).toBeDefined();
-      expect((callArgs as any).where[0].specialties.constructor.name).toBe('FindOperator');
+      expect((callArgs as any).where[0].specialties.type).toBe('raw');
       expect(result.total).toBe(1);
     });
 
@@ -137,7 +137,7 @@ describe('VendorsService', () => {
       const callArgs = repo.findAndCount.mock.calls[0]![0]!;
       expect((callArgs as any).where).toHaveLength(4);
       expect((callArgs as any).where[0]).toHaveProperty('specialties');
-      expect((callArgs as any).where[0].specialties.constructor.name).toBe('FindOperator');
+      expect((callArgs as any).where[0].specialties.type).toBe('raw');
       expect((callArgs as any).where[0]).toHaveProperty('name');
     });
 

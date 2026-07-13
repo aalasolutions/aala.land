@@ -3,7 +3,7 @@ import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
 import {
-  STATUS_OPTIONS,
+  MAINTENANCE_STATUS_OPTIONS,
   MONTH_OPTIONS,
   PRIORITY_OPTIONS,
   MAINTENANCE_CATEGORY_OPTIONS,
@@ -37,7 +37,11 @@ export default class MaintenanceController extends PaginatedController {
   @tracked errorMsg = '';
   @tracked activeSection = 'orders';
 
-  statusOptions = STATUS_OPTIONS;
+  statusOptions = MAINTENANCE_STATUS_OPTIONS;
+
+  get workOrderStatusOptions() {
+    return this.statusOptions.filter((o) => o.value);
+  }
 
   monthOptions = MONTH_OPTIONS;
 

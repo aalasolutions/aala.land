@@ -155,11 +155,12 @@
     </div>
 
     <div class="flex col gap-2">
-      <label for="vendor-specialty" class="font-sm text-muted">Specialty (select
-        one or more)</label>
+      <span id="vendor-specialty-label" class="font-sm text-muted">Specialty
+        (select one or more)</span>
       <div
-        id="vendor-specialty"
         class="flex gap-2 wrap"
+        role="group"
+        aria-labelledby="vendor-specialty-label"
         data-test-vendor-specialty
       >
         {{#each this.specialtyOptions as |opt|}}
