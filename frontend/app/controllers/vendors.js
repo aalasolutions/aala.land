@@ -7,7 +7,8 @@ import {
   confirmDeleteModal,
   openDeleteModal,
 } from '../utils/delete-modal';
-import { MAINTENANCE_CATEGORY_OPTIONS } from 'land/constants';
+import { SPECIALTY_OPTIONS } from 'land/constants';
+import { toggleArrayItem } from '../utils/toggle-array-item';
 
 export default class VendorsController extends PaginatedController {
   @service auth;
@@ -22,7 +23,7 @@ export default class VendorsController extends PaginatedController {
   @tracked formName = '';
   @tracked formEmail = '';
   @tracked formPhone = '';
-  @tracked formSpecialty = 'GENERAL';
+  @tracked formSpecialties = [];
   @tracked formCompanyName = '';
   @tracked formAddress = '';
   @tracked formHourlyRate = '';
@@ -46,17 +47,21 @@ export default class VendorsController extends PaginatedController {
     }));
   }
 
-  specialtyOptions = MAINTENANCE_CATEGORY_OPTIONS;
+  specialtyOptions = SPECIALTY_OPTIONS;
 
   @action setField(fieldName, e) {
     this[fieldName] = e.target.value;
+  }
+
+  @action toggleSpecialty(value) {
+    this.formSpecialties = toggleArrayItem(this.formSpecialties, value);
   }
 
   @action openCreate() {
     this.formName = '';
     this.formEmail = '';
     this.formPhone = '';
-    this.formSpecialty = 'GENERAL';
+    this.formSpecialties = [];
     this.formCompanyName = '';
     this.formAddress = '';
     this.formHourlyRate = '';
@@ -72,7 +77,9 @@ export default class VendorsController extends PaginatedController {
     this.formName = vendor.name ?? '';
     this.formEmail = vendor.email ?? '';
     this.formPhone = vendor.phone ?? '';
-    this.formSpecialty = vendor.specialty ?? 'GENERAL';
+    this.formSpecialties = Array.isArray(vendor.specialties)
+      ? [...vendor.specialties]
+      : [];
     this.formCompanyName = vendor.companyName ?? '';
     this.formAddress = vendor.address ?? '';
     this.formHourlyRate = vendor.hourlyRate ? String(vendor.hourlyRate) : '';
@@ -92,6 +99,10 @@ export default class VendorsController extends PaginatedController {
   @action async saveVendor(event) {
     event.preventDefault();
     if (this.isSaving) return;
+    if (!this.formSpecialties.length) {
+      this.errorMsg = 'Select at least one specialty.';
+      return;
+    }
     this.isSaving = true;
     this.errorMsg = '';
 
@@ -100,7 +111,7 @@ export default class VendorsController extends PaginatedController {
 
     const body = {
       name: this.formName,
-      specialty: this.formSpecialty,
+      specialties: this.formSpecialties,
       ...(this.formEmail ? { email: this.formEmail } : {}),
       ...(this.formPhone ? { phone: this.formPhone } : {}),
       ...(this.formCompanyName ? { companyName: this.formCompanyName } : {}),

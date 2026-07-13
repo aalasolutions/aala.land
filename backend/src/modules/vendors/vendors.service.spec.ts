@@ -19,7 +19,7 @@ describe('VendorsService', () => {
     name: 'Al Futtaim Maintenance',
     email: 'info@alfuttaim.ae',
     phone: '+971501234567',
-    specialty: VendorSpecialty.HVAC,
+    specialties: [VendorSpecialty.HVAC],
     companyName: 'Al Futtaim Group',
     address: 'Dubai Festival City',
     rating: 4.5,
@@ -69,7 +69,7 @@ describe('VendorsService', () => {
         name: 'Al Futtaim Maintenance',
         email: 'info@alfuttaim.ae',
         phone: '+971501234567',
-        specialty: VendorSpecialty.HVAC,
+        specialties: [VendorSpecialty.HVAC],
       };
 
       repo.create.mockReturnValue(mockVendor as Vendor);
@@ -90,7 +90,7 @@ describe('VendorsService', () => {
       const result = await service.findAll(companyId, 1, 20);
 
       expect(repo.findAndCount).toHaveBeenCalledWith({
-        where: [{ companyId }],
+        where: [{ companyId, isActive: true }],
         skip: 0,
         take: 20,
         order: { createdAt: 'DESC' },
@@ -115,17 +115,17 @@ describe('VendorsService', () => {
       expect(result.total).toBe(1);
     });
 
-    it('returns vendors filtered by specialty', async () => {
+    it('returns vendors filtered by specialty (jsonb containment)', async () => {
       repo.findAndCount.mockResolvedValue([[mockVendor as Vendor], 1]);
 
       const result = await service.findAll(companyId, 1, 20, undefined, VendorSpecialty.HVAC);
 
-      expect(repo.findAndCount).toHaveBeenCalledWith({
-        where: [{ companyId, specialty: VendorSpecialty.HVAC }],
-        skip: 0,
-        take: 20,
-        order: { createdAt: 'DESC' },
-      });
+      const callArgs = repo.findAndCount.mock.calls[0]![0]!;
+      expect((callArgs as any).where).toHaveLength(1);
+      expect((callArgs as any).where[0].companyId).toBe(companyId);
+      // specialties filter is a Raw FindOperator (jsonb @>), not a plain value
+      expect((callArgs as any).where[0].specialties).toBeDefined();
+      expect((callArgs as any).where[0].specialties.constructor.name).toBe('FindOperator');
       expect(result.total).toBe(1);
     });
 
@@ -136,8 +136,9 @@ describe('VendorsService', () => {
 
       const callArgs = repo.findAndCount.mock.calls[0]![0]!;
       expect((callArgs as any).where).toHaveLength(4);
-      expect((callArgs as any).where[0]).toHaveProperty('specialty');
-      expect((callArgs as any).where[0].specialty).toBe(VendorSpecialty.HVAC);
+      expect((callArgs as any).where[0]).toHaveProperty('specialties');
+      expect((callArgs as any).where[0].specialties.constructor.name).toBe('FindOperator');
+      expect((callArgs as any).where[0]).toHaveProperty('name');
     });
 
     it('calculates correct skip for page 2', async () => {

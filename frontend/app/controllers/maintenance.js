@@ -60,7 +60,9 @@ export default class MaintenanceController extends PaginatedController {
       { value: '', label: 'No vendor assigned' },
       ...(this.model.vendors || []).map((vendor) => ({
         value: vendor.id,
-        label: `${vendor.name} (${vendor.specialty})`,
+        label: vendor.specialties?.length
+          ? `${vendor.name} (${vendor.specialties.join(', ')})`
+          : vendor.name,
       })),
     ];
   }

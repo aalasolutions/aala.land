@@ -39,9 +39,15 @@
                 <td>
                   <span class="font-bold">{{vendor.name}}</span>
                 </td>
-                <td><span
-                    class="type-badge type-{{lowercase vendor.specialty}}"
-                  >{{vendor.specialty}}</span></td>
+                <td>
+                  <div class="flex gap-2 wrap">
+                    {{#each vendor.specialties as |sp|}}
+                      <span
+                        class="type-badge type-{{lowercase sp}}"
+                      >{{sp}}</span>
+                    {{/each}}
+                  </div>
+                </td>
                 <td>{{vendor.phone}}</td>
                 <td>{{vendor.email}}</td>
                 <td>{{vendor.companyName}}</td>
@@ -135,29 +141,39 @@
       </div>
     {{/if}}
 
-    <div class="flex gap-4">
-      <div class="flex col gap-2 flex-1">
-        <Ui::FormInput
-          @label="Name"
-          @id="v-name"
-          @type="text"
-          @placeholder="Ahmed Al-Rashid"
-          @value={{this.formName}}
-          @onChange={{fn this.setField "formName"}}
-          @required={{true}}
-          data-test-vendor-name
-        />
-      </div>
-      <div class="flex col gap-2 flex-1">
-        <Ui::FormDropdown
-          @label="Specialty"
-          @id="vendor-specialty"
-          @value={{this.formSpecialty}}
-          @onChange={{fn this.setField "formSpecialty"}}
-          @options={{this.specialtyOptions}}
-          @placeholder="Select specialty..."
-          data-test-vendor-specialty
-        />
+    <div class="flex col gap-2">
+      <Ui::FormInput
+        @label="Name"
+        @id="v-name"
+        @type="text"
+        @placeholder="Ahmed Al-Rashid"
+        @value={{this.formName}}
+        @onChange={{fn this.setField "formName"}}
+        @required={{true}}
+        data-test-vendor-name
+      />
+    </div>
+
+    <div class="flex col gap-2">
+      <label for="vendor-specialty" class="font-sm text-muted">Specialty (select
+        one or more)</label>
+      <div
+        id="vendor-specialty"
+        class="flex gap-2 wrap"
+        data-test-vendor-specialty
+      >
+        {{#each this.specialtyOptions as |opt|}}
+          <button
+            type="button"
+            class="amenity-chip
+              {{if
+                (includes this.formSpecialties opt.value)
+                'amenity-chip-active'
+              }}"
+            data-test-specialty-chip={{opt.value}}
+            {{on "click" (fn this.toggleSpecialty opt.value)}}
+          >{{opt.label}}</button>
+        {{/each}}
       </div>
     </div>
 
