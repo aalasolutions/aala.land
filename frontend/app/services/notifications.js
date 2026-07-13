@@ -1,5 +1,6 @@
 import Service from '@ember/service';
 import { tracked } from '@glimmer/tracking';
+import { runTask } from 'ember-lifeline';
 
 export default class NotificationsService extends Service {
   @tracked toasts = [];
@@ -11,7 +12,7 @@ export default class NotificationsService extends Service {
     this.toasts = [...this.toasts, { id, message, type }];
 
     if (duration > 0) {
-      setTimeout(() => this.remove(id), duration);
+      runTask(this, () => this.remove(id), duration);
     }
 
     return id;

@@ -10,41 +10,12 @@
     </div>
     <div class="flex gap-3 x-center">
       {{! View Toggle }}
-      <div class="view-toggle" data-test-view-toggle>
-        <button
-          type="button"
-          class="view-toggle-btn {{if (eq this.viewMode 'pipeline') 'active'}}"
-          {{on "click" (fn this.setViewMode "pipeline")}}
-        >
-          <Ui::Ph @icon="squares-four" />
-          Pipeline
-        </button>
-        <button
-          type="button"
-          class="view-toggle-btn
-            {{if (eq this.viewMode 'temperature') 'active'}}"
-          {{on "click" (fn this.setViewMode "temperature")}}
-        >
-          <Ui::Ph @icon="thermometer" />
-          Temperature
-        </button>
-        <button
-          type="button"
-          class="view-toggle-btn {{if (eq this.viewMode 'agent') 'active'}}"
-          {{on "click" (fn this.setViewMode "agent")}}
-        >
-          <Ui::Ph @icon="users" />
-          Agent
-        </button>
-        <button
-          type="button"
-          class="view-toggle-btn {{if (eq this.viewMode 'list') 'active'}}"
-          {{on "click" (fn this.setViewMode "list")}}
-        >
-          <Ui::Ph @icon="list" />
-          List
-        </button>
-      </div>
+      <Ui::Tabs
+        @tabs={{this.viewTabs}}
+        @active={{this.viewMode}}
+        @onChange={{this.setViewMode}}
+        data-test-view-toggle
+      />
       <button
         type="button"
         class="btn btn-primary"
@@ -58,36 +29,12 @@
   </div>
 
   {{! Filter Buttons }}
-  <div class="kanban-filters">
-    <button
-      type="button"
-      class="filter-btn {{if (eq this.filterType 'all') 'active'}}"
-      {{on "click" (fn this.setFilter "all")}}
-    >
-      All
-    </button>
-    <button
-      type="button"
-      class="filter-btn {{if (eq this.filterType 'mine') 'active'}}"
-      {{on "click" (fn this.setFilter "mine")}}
-    >
-      Assigned to Me
-    </button>
-    <button
-      type="button"
-      class="filter-btn {{if (eq this.filterType 'others') 'active'}}"
-      {{on "click" (fn this.setFilter "others")}}
-    >
-      Others
-    </button>
-    <button
-      type="button"
-      class="filter-btn {{if (eq this.filterType 'unassigned') 'active'}}"
-      {{on "click" (fn this.setFilter "unassigned")}}
-    >
-      Unassigned
-    </button>
-  </div>
+  <Ui::Tabs
+    @tabs={{this.filterTabs}}
+    @active={{this.filterType}}
+    @onChange={{this.setFilter}}
+    data-test-lead-filters
+  />
 
   {{! PIPELINE KANBAN VIEW }}
   {{#if (eq this.viewMode "pipeline")}}

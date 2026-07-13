@@ -51,6 +51,11 @@ export default class ChequesController extends PaginatedController {
   @tracked errorMsg = '';
 
   @tracked activeTab = 'cheques';
+
+  tabs = [
+    { value: 'cheques', label: 'Cheques', icon: 'list-checks' },
+    { value: 'schedule', label: 'Collection Schedule', icon: 'calendar-check' },
+  ];
   @tracked showBounceModal = false;
   @tracked bounceChequeItem = null;
   @tracked formBounceReason = '';

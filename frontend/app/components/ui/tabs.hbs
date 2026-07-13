@@ -1,0 +1,17 @@
+{{! Shared tab bar. Controlled: parent owns the active value and updates it via @onChange. }}
+{{! @tabs = array of { value, label, icon? }. @active = current value. @onChange = (fn) called with the clicked value. }}
+<div class="tabs" ...attributes>
+  {{#each @tabs as |tab|}}
+    <button
+      type="button"
+      class="tab-btn {{if (eq @active tab.value) 'active'}}"
+      data-test-tab={{tab.value}}
+      {{on "click" (fn @onChange tab.value)}}
+    >
+      {{#if tab.icon}}
+        <Ui::Ph @icon={{tab.icon}} />
+      {{/if}}
+      {{tab.label}}
+    </button>
+  {{/each}}
+</div>

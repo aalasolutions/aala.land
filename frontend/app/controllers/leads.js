@@ -79,6 +79,20 @@ export default class LeadsController extends Controller {
     this._viewMode = val;
   }
 
+  viewTabs = [
+    { value: 'pipeline', label: 'Pipeline', icon: 'squares-four' },
+    { value: 'temperature', label: 'Temperature', icon: 'thermometer' },
+    { value: 'agent', label: 'Agent', icon: 'users' },
+    { value: 'list', label: 'List', icon: 'list' },
+  ];
+
+  filterTabs = [
+    { value: 'all', label: 'All' },
+    { value: 'mine', label: 'Assigned to Me' },
+    { value: 'others', label: 'Others' },
+    { value: 'unassigned', label: 'Unassigned' },
+  ];
+
   @tracked filterType = 'all';
   @tracked agents = [];
   @tracked draggedLead = null;

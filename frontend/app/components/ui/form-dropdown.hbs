@@ -46,17 +46,24 @@
 
           <div class="dropdown-options" role="listbox" aria-labelledby={{@id}}>
             {{#if this.filteredOptions.length}}
-              {{#each this.filteredOptions as |opt index|}}
-                <div
-                  class="dropdown-option
-                    {{if (eq @value opt.value) 'selected'}}
-                    {{if (eq this.highlightedIndex index) 'highlighted'}}"
-                  role="option"
-                  aria-selected={{if (eq @value opt.value) "true" "false"}}
-                  {{on "click" (fn this.selectOption opt)}}
-                >
-                  {{opt.label}}
-                </div>
+              {{#each this.groupedOptions as |grp|}}
+                {{#if grp.group}}
+                  <div class="dropdown-group-label" role="presentation">
+                    {{grp.group}}
+                  </div>
+                {{/if}}
+                {{#each grp.options as |row|}}
+                  <div
+                    class="dropdown-option
+                      {{if (eq @value row.option.value) 'selected'}}
+                      {{if (eq this.highlightedIndex row.index) 'highlighted'}}"
+                    role="option"
+                    aria-selected={{if (eq @value row.option.value) "true" "false"}}
+                    {{on "click" (fn this.selectOption row.option)}}
+                  >
+                    {{row.option.label}}
+                  </div>
+                {{/each}}
               {{/each}}
             {{else}}
               <div class="dropdown-no-results">

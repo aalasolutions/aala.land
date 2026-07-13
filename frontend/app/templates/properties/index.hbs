@@ -8,35 +8,12 @@
       <p class="text-muted mt-1">Locations, assets, and units.</p>
     </div>
     <div class="flex gap-3 x-center">
-      <div class="flex gap-1" data-test-view-toggle>
-        <button
-          type="button"
-          class="btn btn-sm
-            {{if (eq this.currentView 'cards') 'btn-primary' 'btn-secondary'}}"
-          {{on "click" (fn this.switchView "cards")}}
-        >
-          <Ui::Ph @icon="squares-four" />
-          Cards
-        </button>
-        <button
-          type="button"
-          class="btn btn-sm
-            {{if (eq this.currentView 'list') 'btn-primary' 'btn-secondary'}}"
-          {{on "click" (fn this.switchView "list")}}
-        >
-          <Ui::Ph @icon="list" />
-          List
-        </button>
-        <button
-          type="button"
-          class="btn btn-sm
-            {{if (eq this.currentView 'browse') 'btn-primary' 'btn-secondary'}}"
-          {{on "click" (fn this.switchView "browse")}}
-        >
-          <Ui::Ph @icon="grid-four" />
-          Browse Units
-        </button>
-      </div>
+      <Ui::Tabs
+        @tabs={{this.viewTabs}}
+        @active={{this.currentView}}
+        @onChange={{this.switchView}}
+        data-test-view-toggle
+      />
       {{#unless (eq this.currentView "browse")}}
         <button
           type="button"

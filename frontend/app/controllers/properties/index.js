@@ -24,6 +24,12 @@ export default class PropertiesIndexController extends Controller {
     if (this.activeView) return this.activeView;
     return this.preferences.get('properties-index-view', 'cards');
   }
+
+  viewTabs = [
+    { value: 'cards', label: 'Cards', icon: 'squares-four' },
+    { value: 'list', label: 'List', icon: 'list' },
+    { value: 'browse', label: 'Browse Units', icon: 'grid-four' },
+  ];
   @tracked browseUnits = [];
   @tracked browseTotal = 0;
   @tracked browsePage = 1;

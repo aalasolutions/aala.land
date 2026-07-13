@@ -21,24 +21,11 @@
     {{/if}}
   </div>
 
-  <div class="tabs">
-    <button
-      type="button"
-      class="tab-btn {{if (eq this.activeTab 'cheques') 'active'}}"
-      {{on "click" (fn this.setTab "cheques")}}
-    >
-      <Ui::Ph @icon="list-checks" />
-      Cheques
-    </button>
-    <button
-      type="button"
-      class="tab-btn {{if (eq this.activeTab 'schedule') 'active'}}"
-      {{on "click" (fn this.setTab "schedule")}}
-    >
-      <Ui::Ph @icon="calendar-check" />
-      Collection Schedule
-    </button>
-  </div>
+  <Ui::Tabs
+    @tabs={{this.tabs}}
+    @active={{this.activeTab}}
+    @onChange={{this.setTab}}
+  />
 
   {{#if (eq this.activeTab "cheques")}}
     <div class="glass-panel p-5">

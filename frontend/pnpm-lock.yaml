@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      ember-lifeline:
+        specifier: ^7.1.0
+        version: 7.1.0(@ember/test-helpers@5.4.1(@babel/core@7.28.6))
       socket.io-client:
         specifier: ^4.8.3
         version: 4.8.3
@@ -3344,6 +3347,15 @@ packages:
   ember-fetch@8.1.2:
     resolution: {integrity: sha512-TVx24/jrvDIuPL296DV0hBwp7BWLcSMf0I8464KGz01sPytAB+ZAePbc9ooBTJDkKZEGFgatJa4nj3yF1S9Bpw==}
     engines: {node: '>= 10'}
+
+  ember-lifeline@7.1.0:
+    resolution: {integrity: sha512-hd3r0jwZLgXNn3l2YSX6wVnD1KD5h+WUG6P/xo4rJXFboy7nOwix38fZt9SbuO66QVZSkdqMeUqW6Z/NPWa9kg==}
+    engines: {node: 16.* || >= 18}
+    peerDependencies:
+      '@ember/test-helpers': '>= 1.0.0'
+    peerDependenciesMeta:
+      '@ember/test-helpers':
+        optional: true
 
   ember-load-initializers@3.0.1:
     resolution: {integrity: sha512-qV3vxJKw5+7TVDdtdLPy8PhVsh58MlK8jwzqh5xeOwJPNP7o0+BlhvwoIlLYTPzGaHdfjEIFCgVSyMRGd74E1g==}
@@ -9173,7 +9185,7 @@ snapshots:
 
   async@2.6.4:
     dependencies:
-      lodash: 4.17.21
+      lodash: 4.18.1
 
   async@3.2.6: {}
 
@@ -10876,6 +10888,14 @@ snapshots:
       - encoding
       - supports-color
 
+  ember-lifeline@7.1.0(@ember/test-helpers@5.4.1(@babel/core@7.28.6)):
+    dependencies:
+      '@embroider/addon-shim': 1.10.3
+    optionalDependencies:
+      '@ember/test-helpers': 5.4.1(@babel/core@7.28.6)
+    transitivePeerDependencies:
+      - supports-color
+
   ember-load-initializers@3.0.1(ember-source@6.4.0(@glimmer/component@2.0.0)(rsvp@4.8.5)):
     dependencies:
       ember-source: 6.4.0(@glimmer/component@2.0.0)(rsvp@4.8.5)
@@ -11918,7 +11938,7 @@ snapshots:
     dependencies:
       inflight: 1.0.6
       inherits: 2.0.4
-      minimatch: 3.1.2
+      minimatch: 3.1.5
       once: 1.4.0
       path-is-absolute: 1.0.1
 
@@ -12752,7 +12772,7 @@ snapshots:
 
   matcher-collection@1.1.2:
     dependencies:
-      minimatch: 3.1.2
+      minimatch: 3.1.5
 
   matcher-collection@2.0.1:
     dependencies:

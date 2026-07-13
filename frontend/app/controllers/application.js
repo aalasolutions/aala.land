@@ -2,7 +2,7 @@ import Controller from '@ember/controller';
 import { service } from '@ember/service';
 import { action } from '@ember/object';
 import { tracked } from '@glimmer/tracking';
-import { cancel, later } from '@ember/runloop';
+import { cancelDebounce, debounceTask, runTask } from 'ember-lifeline';
 import { isAdminRole, getVisibleGroups, canSwitchRegion } from '../utils/roles';
 
 export default class ApplicationController extends Controller {
@@ -44,7 +44,6 @@ export default class ApplicationController extends Controller {
   @tracked isSearching = false;
   @tracked searchError = false;
   @tracked activeSearchIndex = -1;
-  _searchTimer = null;
 
   get showRegionSwitcher() {
     return (
@@ -109,12 +108,10 @@ export default class ApplicationController extends Controller {
       return;
     }
 
-    later(
+    runTask(
       this,
       () => {
-        const activeElement = document.getElementById(
-          this.activeSearchResultId,
-        );
+        const activeElement = document.getElementById(this.activeSearchResultId);
         if (activeElement) {
           activeElement.scrollIntoView({
             block: 'nearest',
@@ -210,11 +207,6 @@ export default class ApplicationController extends Controller {
     if (this.routeDidChangeHandler) {
       this.router.off('routeDidChange', this.routeDidChangeHandler);
       this.routeDidChangeHandler = null;
-    }
-
-    if (this._searchTimer) {
-      cancel(this._searchTimer);
-      this._searchTimer = null;
     }
 
     super.willDestroy(...arguments);
@@ -337,12 +329,9 @@ export default class ApplicationController extends Controller {
   onSearchInput(e) {
     this.searchQuery = e.target.value;
     this.activeSearchIndex = -1;
-    if (this._searchTimer) {
-      cancel(this._searchTimer);
-      this._searchTimer = null;
-    }
 
     if (this.searchQuery.length < 2) {
+      cancelDebounce(this, 'performSearch');
       this.showSearchDropdown = false;
       this.searchResults = null;
       this.searchError = false;
@@ -350,36 +339,33 @@ export default class ApplicationController extends Controller {
       return;
     }
 
-    this._searchTimer = later(
-      this,
-      async () => {
-        const queryAtTimeOfRequest = this.searchQuery;
-        this.isSearching = true;
-        this.showSearchDropdown = true;
-        this.searchError = false;
-        try {
-          const result = await this.auth.fetchJson(
-            `/search?q=${encodeURIComponent(queryAtTimeOfRequest)}`,
-          );
-          if (queryAtTimeOfRequest === this.searchQuery) {
-            this.searchResults = result?.data ?? result;
-            this.activeSearchIndex = -1;
-          }
-        } catch {
-          if (queryAtTimeOfRequest === this.searchQuery) {
-            this.searchError = true;
-            this.searchResults = null;
-            this.activeSearchIndex = -1;
-          }
-        } finally {
-          if (queryAtTimeOfRequest === this.searchQuery) {
-            this.isSearching = false;
-          }
-        }
-        this._searchTimer = null;
-      },
-      300,
-    );
+    debounceTask(this, 'performSearch', 300);
+  }
+
+  async performSearch() {
+    const queryAtTimeOfRequest = this.searchQuery;
+    this.isSearching = true;
+    this.showSearchDropdown = true;
+    this.searchError = false;
+    try {
+      const result = await this.auth.fetchJson(
+        `/search?q=${encodeURIComponent(queryAtTimeOfRequest)}`,
+      );
+      if (queryAtTimeOfRequest === this.searchQuery) {
+        this.searchResults = result?.data ?? result;
+        this.activeSearchIndex = -1;
+      }
+    } catch {
+      if (queryAtTimeOfRequest === this.searchQuery) {
+        this.searchError = true;
+        this.searchResults = null;
+        this.activeSearchIndex = -1;
+      }
+    } finally {
+      if (queryAtTimeOfRequest === this.searchQuery) {
+        this.isSearching = false;
+      }
+    }
   }
 
   @action
@@ -425,10 +411,7 @@ export default class ApplicationController extends Controller {
     this.searchError = false;
     this.isSearching = false;
     this.activeSearchIndex = -1;
-    if (this._searchTimer) {
-      cancel(this._searchTimer);
-      this._searchTimer = null;
-    }
+    cancelDebounce(this, 'performSearch');
   }
 
   @action

@@ -3,6 +3,7 @@ import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
 import { htmlSafe } from '@ember/template';
+import { cancelDebounce, debounceTask, runTask } from 'ember-lifeline';
 
 function normalizeName(input) {
   return (input || '').trim().replace(/\s+/g, ' ').toLowerCase();
@@ -20,7 +21,6 @@ export default class LocationTypeaheadComponent extends Component {
   @tracked isInModal = false;
   @tracked hasLoadedResults = false;
 
-  _debounceTimer = null;
   _inputElement = null;
   _pendingSearches = 0;
 
@@ -156,9 +156,8 @@ export default class LocationTypeaheadComponent extends Component {
       this.args.onClear();
     }
 
-    clearTimeout(this._debounceTimer);
-
     if (this.trimmedQuery.length < 2) {
+      cancelDebounce(this, 'search');
       this._pendingSearches = 0;
       this.isSearching = false;
       this.results = [];
@@ -168,7 +167,7 @@ export default class LocationTypeaheadComponent extends Component {
 
     this.results = [];
     this.hideDropdown();
-    this._debounceTimer = setTimeout(() => this.search(), 300);
+    debounceTask(this, 'search', 300);
   }
 
   @action
@@ -184,9 +183,7 @@ export default class LocationTypeaheadComponent extends Component {
   @action
   onBlur() {
     // Delay to allow click on dropdown item
-    setTimeout(() => {
-      this.hideDropdown();
-    }, 200);
+    runTask(this, this.hideDropdown, 200);
   }
 
   async search() {

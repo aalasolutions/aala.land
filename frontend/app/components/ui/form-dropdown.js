@@ -2,6 +2,7 @@ import Component from '@glimmer/component';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { registerDestructor } from '@ember/destroyable';
+import { runTask } from 'ember-lifeline';
 import { htmlSafe } from '@ember/template';
 
 export default class FormDropdownComponent extends Component {
@@ -25,6 +26,7 @@ export default class FormDropdownComponent extends Component {
       this.args.value !== null &&
       this.args.options
     ) {
+
       const selectedOption = this.args.options.find(
         (opt) => opt.value === this.args.value,
       );
@@ -35,16 +37,53 @@ export default class FormDropdownComponent extends Component {
     return this.args.placeholder || 'Select...';
   }
 
+  get hasGroups() {
+    return (this.args.options || []).some((opt) => opt && opt.group);
+  }
+
   get filteredOptions() {
     const options = this.args.options || [];
-    if (!this.searchText) {
-      return options;
+    const searchLower = this.searchText.toLowerCase();
+    const filtered = this.searchText
+      ? options.filter(
+          (opt) =>
+            (opt.label || '').toLowerCase().includes(searchLower) ||
+            (opt.group || '').toLowerCase().includes(searchLower),
+        )
+      : options.slice();
+
+    if (!this.hasGroups) {
+      return filtered;
     }
 
-    const searchLower = this.searchText.toLowerCase();
-    return options.filter((opt) =>
-      (opt.label || '').toLowerCase().includes(searchLower),
-    );
+    // Keep same-group options contiguous so the visual (grouped) order
+    // matches the flat keyboard-navigation order. First-seen group order
+    // and in-group option order are preserved.
+    const order = [];
+    const byGroup = new Map();
+    filtered.forEach((opt) => {
+      const key = opt.group || '';
+      if (!byGroup.has(key)) {
+        byGroup.set(key, []);
+        order.push(key);
+      }
+      byGroup.get(key).push(opt);
+    });
+    return order.flatMap((key) => byGroup.get(key));
+  }
+
+  get groupedOptions() {
+    const groups = [];
+    let current = null;
+    this.filteredOptions.forEach((opt, index) => {
+      const groupName = opt.group || null;
+      if (!current || current.group !== groupName) {
+        current = { group: groupName, options: [] };
+        groups.push(current);
+      }
+      current.options.push({ option: opt, index });
+    });
+    return groups;
   }
 
   get showSearch() {
@@ -138,6 +177,22 @@ export default class FormDropdownComponent extends Component {
       : null;
     this.isOpen = true;
     this.highlightedIndex = -1;
+    this.focusSearchInput();
+  }
+
+  focusSearchInput() {
+    runTask(
+      this,
+      () => {
+        const searchInput = this.dropdownElement?.querySelector(
+          '.dropdown-search input',
+        );
+        if (searchInput) {
+          searchInput.focus();
+        }
+      },
+      0,
+    );
   }
 
   @action
@@ -212,13 +267,17 @@ export default class FormDropdownComponent extends Component {
   }
 
   scrollToHighlighted() {
-    setTimeout(() => {
-      const activeElement = document.querySelector(
-        '.dropdown-option.highlighted',
-      );
-      if (activeElement) {
-        activeElement.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-      }
-    }, 0);
+    runTask(
+      this,
+      () => {
+        const activeElement = document.querySelector(
+          '.dropdown-option.highlighted',
+        );
+        if (activeElement) {
+          activeElement.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        }
+      },
+      0,
+    );
   }
 }
