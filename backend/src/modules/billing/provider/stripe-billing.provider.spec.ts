@@ -490,4 +490,31 @@ describe('StripeBillingProvider', () => {
             ).rejects.toThrow('no line items');
         });
     });
+
+    describe('getCancellationState', () => {
+        const ref = { subscriptionId: 'sub_1', customerId: 'cus_1' };
+
+        it('reads current_period_end off the expanded line item for the cancel date', async () => {
+            mockSubRetrieve.mockResolvedValue({
+                cancel_at_period_end: true,
+                cancel_at: null,
+                items: {
+                    data: [
+                        {
+                            current_period_end: 1782600000,
+                            price: { metadata: { kind: 'SEAT' } },
+                        },
+                    ],
+                },
+            });
+
+            const state = await provider.getCancellationState(ref);
+
+            expect(mockSubRetrieve).toHaveBeenCalledWith('sub_1', {
+                expand: ['items'],
+            });
+            expect(state.cancelAtPeriodEnd).toBe(true);
+            expect(state.cancelAt).toEqual(new Date(1782600000 * 1000));
+        });
+    });
 });

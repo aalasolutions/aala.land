@@ -590,12 +590,13 @@ export class StripeBillingProvider implements BillingProvider {
     ): Promise<{ cancelAtPeriodEnd: boolean; cancelAt: Date | null }> {
         const sub = (await this.stripe.subscriptions.retrieve(
             ref.subscriptionId,
+            { expand: ['items'] },
         )) as unknown as StripeSubscriptionLike;
+        // current_period_end lives on the line item on current API versions, so read it via the shared deriver.
+        const { currentPeriodEnd } = deriveSubscriptionShape(sub);
         return {
             cancelAtPeriodEnd: sub.cancel_at_period_end === true,
-            cancelAt:
-                epochToDate(sub.cancel_at) ??
-                epochToDate(sub.current_period_end),
+            cancelAt: epochToDate(sub.cancel_at) ?? currentPeriodEnd,
         };
     }
 
