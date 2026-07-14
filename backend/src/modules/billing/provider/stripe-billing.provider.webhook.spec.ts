@@ -29,14 +29,16 @@ describe('StripeBillingProvider webhook parsing', () => {
         price: { id: 'price_base', metadata: { kind: 'ENTERPRISE_BASE' } },
     };
 
-    function subscriptionEvent(overrides: {
-        type?: string;
-        status?: string;
-        previous?: Record<string, unknown>;
-        items?: unknown[];
-        metadata?: Record<string, string> | null;
-        endedAt?: number;
-    } = {}): Record<string, unknown> {
+    function subscriptionEvent(
+        overrides: {
+            type?: string;
+            status?: string;
+            previous?: Record<string, unknown>;
+            items?: unknown[];
+            metadata?: Record<string, string> | null;
+            endedAt?: number;
+        } = {},
+    ): Record<string, unknown> {
         return {
             id: 'evt_sub_1',
             type: overrides.type ?? 'customer.subscription.updated',
@@ -72,7 +74,9 @@ describe('StripeBillingProvider webhook parsing', () => {
                     amount_due: 7500,
                     attempt_count: 2,
                     subscription: 'sub_1',
-                    subscription_details: { metadata: { companyId: 'company-uuid-1' } },
+                    subscription_details: {
+                        metadata: { companyId: 'company-uuid-1' },
+                    },
                 },
             },
         };
@@ -86,7 +90,9 @@ describe('StripeBillingProvider webhook parsing', () => {
                     provide: ConfigService,
                     useValue: {
                         getOrThrow: jest.fn((key: string) =>
-                            key === 'STRIPE_WEBHOOK_SECRET' ? 'whsec_test' : 'sk_test_dummy',
+                            key === 'STRIPE_WEBHOOK_SECRET'
+                                ? 'whsec_test'
+                                : 'sk_test_dummy',
                         ),
                     },
                 },
@@ -119,7 +125,9 @@ describe('StripeBillingProvider webhook parsing', () => {
 
     it('throws when the signature does not verify', async () => {
         stripe.webhooks.constructEvent.mockImplementation(() => {
-            throw new Error('No signatures found matching the expected signature for payload');
+            throw new Error(
+                'No signatures found matching the expected signature for payload',
+            );
         });
         await expect(provider.parseWebhook(rawBody, signature)).rejects.toThrow(
             'No signatures found',
@@ -128,7 +136,10 @@ describe('StripeBillingProvider webhook parsing', () => {
 
     it('normalizes an active subscription.created into SubscriptionActivated', async () => {
         stripe.webhooks.constructEvent.mockReturnValue(
-            subscriptionEvent({ type: 'customer.subscription.created', status: 'active' }),
+            subscriptionEvent({
+                type: 'customer.subscription.created',
+                status: 'active',
+            }),
         );
         const parsed = await provider.parseWebhook(rawBody, signature);
         expect(parsed.events).toHaveLength(1);
@@ -138,6 +149,7 @@ describe('StripeBillingProvider webhook parsing', () => {
             customerId: 'cus_1',
             subscriptionId: 'sub_1',
             plan: 'PRO',
+            // PRO reports every seat: seatItem.quantity (3).
             quantity: 3,
             status: 'active',
         });
@@ -145,7 +157,10 @@ describe('StripeBillingProvider webhook parsing', () => {
 
     it('emits nothing for an incomplete subscription.created', async () => {
         stripe.webhooks.constructEvent.mockReturnValue(
-            subscriptionEvent({ type: 'customer.subscription.created', status: 'incomplete' }),
+            subscriptionEvent({
+                type: 'customer.subscription.created',
+                status: 'incomplete',
+            }),
         );
         const parsed = await provider.parseWebhook(rawBody, signature);
         expect(parsed.events).toEqual([]);
@@ -153,10 +168,15 @@ describe('StripeBillingProvider webhook parsing', () => {
 
     it('normalizes a transition into active on subscription.updated as SubscriptionActivated', async () => {
         stripe.webhooks.constructEvent.mockReturnValue(
-            subscriptionEvent({ status: 'active', previous: { status: 'incomplete' } }),
+            subscriptionEvent({
+                status: 'active',
+                previous: { status: 'incomplete' },
+            }),
         );
         const parsed = await provider.parseWebhook(rawBody, signature);
-        expect(parsed.events.map((e) => e.name)).toEqual(['SubscriptionActivated']);
+        expect(parsed.events.map((e) => e.name)).toEqual([
+            'SubscriptionActivated',
+        ]);
     });
 
     it('normalizes a pure status update into SubscriptionUpdated only (no items change)', async () => {
@@ -166,7 +186,9 @@ describe('StripeBillingProvider webhook parsing', () => {
             subscriptionEvent({ previous: { status: 'trialing' } }),
         );
         const parsed = await provider.parseWebhook(rawBody, signature);
-        expect(parsed.events.map((e) => e.name)).toEqual(['SubscriptionUpdated']);
+        expect(parsed.events.map((e) => e.name)).toEqual([
+            'SubscriptionUpdated',
+        ]);
     });
 
     it('emits both SeatQuantityChanged and PlanChanged when previous items are present but not fully resolvable', async () => {
@@ -195,10 +217,32 @@ describe('StripeBillingProvider webhook parsing', () => {
     });
 
     it('emits PlanChanged only when the previous plan actually differs', async () => {
+        // Current: base + SEAT(3) -> ENTERPRISE +1 -> 4. Previous: SEAT(4) -> PRO -> 4.
+        // Totals match so only the plan change is reported.
         stripe.webhooks.constructEvent.mockReturnValue(
             subscriptionEvent({
                 items: [baseItem, seatItem],
-                previous: { items: { data: [seatItem] } },
+                previous: { items: { data: [{ ...seatItem, quantity: 4 }] } },
+            }),
+        );
+        const parsed = await provider.parseWebhook(rawBody, signature);
+        expect(parsed.events.map((e) => e.name)).toEqual([
+            'SubscriptionUpdated',
+            'PlanChanged',
+        ]);
+    });
+
+    it('detects a metadata-tagged plan switch (changePlan) using the previous plan tag', async () => {
+        // changePlan sets the NEW plan on metadata and toggles the base line; the prior
+        // shape must read previous_attributes.metadata (old plan) to see the switch.
+        stripe.webhooks.constructEvent.mockReturnValue(
+            subscriptionEvent({
+                metadata: { companyId: 'company-uuid-1', plan: 'ENTERPRISE' },
+                items: [baseItem, seatItem],
+                previous: {
+                    items: { data: [{ ...seatItem, quantity: 4 }] },
+                    metadata: { plan: 'PRO' },
+                },
             }),
         );
         const parsed = await provider.parseWebhook(rawBody, signature);
@@ -213,13 +257,23 @@ describe('StripeBillingProvider webhook parsing', () => {
             subscriptionEvent({
                 previous: {
                     items: {
-                        data: [{ ...seatItem, price: { id: 'price_seat_old', metadata: { kind: 'SEAT' } } }],
+                        data: [
+                            {
+                                ...seatItem,
+                                price: {
+                                    id: 'price_seat_old',
+                                    metadata: { kind: 'SEAT' },
+                                },
+                            },
+                        ],
                     },
                 },
             }),
         );
         const parsed = await provider.parseWebhook(rawBody, signature);
-        expect(parsed.events.map((e) => e.name)).toEqual(['SubscriptionUpdated']);
+        expect(parsed.events.map((e) => e.name)).toEqual([
+            'SubscriptionUpdated',
+        ]);
     });
 
     it('detects the ENTERPRISE plan from an ENTERPRISE_BASE line item', async () => {
@@ -227,7 +281,10 @@ describe('StripeBillingProvider webhook parsing', () => {
             subscriptionEvent({ items: [baseItem, seatItem] }),
         );
         const parsed = await provider.parseWebhook(rawBody, signature);
-        expect(parsed.events[0]).toMatchObject({ plan: 'ENTERPRISE', quantity: 3 });
+        expect(parsed.events[0]).toMatchObject({
+            plan: 'ENTERPRISE',
+            quantity: 4,
+        });
     });
 
     it('normalizes subscription.deleted into SubscriptionCanceled with endedAt', async () => {
@@ -247,7 +304,9 @@ describe('StripeBillingProvider webhook parsing', () => {
     });
 
     it('normalizes invoice.payment_failed into PaymentFailed', async () => {
-        stripe.webhooks.constructEvent.mockReturnValue(invoiceEvent('invoice.payment_failed'));
+        stripe.webhooks.constructEvent.mockReturnValue(
+            invoiceEvent('invoice.payment_failed'),
+        );
         const parsed = await provider.parseWebhook(rawBody, signature);
         expect(parsed.events).toHaveLength(1);
         expect(parsed.events[0]).toMatchObject({
@@ -261,9 +320,14 @@ describe('StripeBillingProvider webhook parsing', () => {
     });
 
     it('normalizes invoice.paid into PaymentSucceeded', async () => {
-        stripe.webhooks.constructEvent.mockReturnValue(invoiceEvent('invoice.paid'));
+        stripe.webhooks.constructEvent.mockReturnValue(
+            invoiceEvent('invoice.paid'),
+        );
         const parsed = await provider.parseWebhook(rawBody, signature);
-        expect(parsed.events[0]).toMatchObject({ name: 'PaymentSucceeded', amount: 7500 });
+        expect(parsed.events[0]).toMatchObject({
+            name: 'PaymentSucceeded',
+            amount: 7500,
+        });
     });
 
     it('returns zero events for an unrelated event type', async () => {
@@ -278,7 +342,9 @@ describe('StripeBillingProvider webhook parsing', () => {
     });
 
     it('falls back to the customer metadata lookup when subscription metadata is empty', async () => {
-        stripe.webhooks.constructEvent.mockReturnValue(subscriptionEvent({ metadata: null }));
+        stripe.webhooks.constructEvent.mockReturnValue(
+            subscriptionEvent({ metadata: null }),
+        );
         stripe.customers.retrieve.mockResolvedValue({
             id: 'cus_1',
             metadata: { companyId: 'company-uuid-1' },
@@ -289,8 +355,13 @@ describe('StripeBillingProvider webhook parsing', () => {
     });
 
     it('emits zero events when companyId cannot be resolved', async () => {
-        stripe.webhooks.constructEvent.mockReturnValue(subscriptionEvent({ metadata: null }));
-        stripe.customers.retrieve.mockResolvedValue({ id: 'cus_1', metadata: {} });
+        stripe.webhooks.constructEvent.mockReturnValue(
+            subscriptionEvent({ metadata: null }),
+        );
+        stripe.customers.retrieve.mockResolvedValue({
+            id: 'cus_1',
+            metadata: {},
+        });
         const parsed = await provider.parseWebhook(rawBody, signature);
         expect(parsed.events).toEqual([]);
     });
@@ -315,7 +386,9 @@ describe('normalizer helpers', () => {
             id: 'sub_x',
             status: 'active',
             customer: 'cus_1',
-            items: { data: [{ quantity: undefined, price: { id: 'price_x' } }] },
+            items: {
+                data: [{ quantity: undefined, price: { id: 'price_x' } }],
+            },
         });
         expect(shape.plan).toBe('PRO');
         expect(shape.quantity).toBe(1);

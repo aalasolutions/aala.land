@@ -2714,6 +2714,12 @@ $google-neutral-border-hover: #c6cbd1;
   color: var(--badge-red-text);
 }
 
+.alert-warning {
+  background: var(--badge-amber-bg);
+  color: var(--badge-amber-text);
+  align-items: flex-start;
+}
+
 .form-field {
   width: 100%;
   padding: var(--space-3) var(--space-4);
@@ -4485,8 +4491,6 @@ $google-neutral-border-hover: #c6cbd1;
       font-size: 14px;
     }
   }
-
-
 }
 
 // =================================

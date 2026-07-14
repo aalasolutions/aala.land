@@ -110,6 +110,19 @@
       <h3 class="font-lg font-bold mb-4">Plan and Billing</h3>
 
       {{#if this.billing}}
+        {{#if this.isScheduledToCancel}}
+          <div class="alert alert-warning mb-4" data-test-cancel-scheduled>
+            <div>
+              <div class="font-bold">Scheduled to move to the Free plan</div>
+              <p class="font-sm mt-1">
+                Your Pro plan is set to end on
+                <strong>{{this.cancelDateLabel}}</strong>. You have already paid
+                through that date, so keep enjoying Pro until then. It switches
+                to Free automatically. Changed your mind? Reactivate Pro below.
+              </p>
+            </div>
+          </div>
+        {{/if}}
         <div class="billing-plan-card mb-4" data-test-plan-card>
           <div class="flex between x-center">
             <div
@@ -157,22 +170,37 @@
             >Contact us about Enterprise</a>.
           </p>
         {{else if this.billing.hasSubscription}}
-          <button
-            type="button"
-            class="btn btn-danger"
-            data-test-downgrade-free
-            disabled={{this.isDowngradeDisabled}}
-            {{on "click" this.openDowngradeConfirm}}
-          >
-            Downgrade to Free
-          </button>
-          {{#unless this.billing.canDowngradeToFree}}
-            <p class="font-sm text-muted mt-2" data-test-downgrade-blocked-hint>
-              Downgrading requires exactly 1 active user. You currently have
-              {{this.billing.activeUsers}}. Deactivate the other team members
-              first.
-            </p>
-          {{/unless}}
+          {{#if this.isScheduledToCancel}}
+            <button
+              type="button"
+              class="btn btn-primary"
+              data-test-reactivate-pro
+              disabled={{this.isBillingBusy}}
+              {{on "click" this.reactivatePro}}
+            >
+              {{#if this.isBillingBusy}}Working...{{else}}Reactivate Pro{{/if}}
+            </button>
+          {{else}}
+            <button
+              type="button"
+              class="btn btn-danger"
+              data-test-downgrade-free
+              disabled={{this.isDowngradeDisabled}}
+              {{on "click" this.openDowngradeConfirm}}
+            >
+              Downgrade to Free
+            </button>
+            {{#unless this.billing.canDowngradeToFree}}
+              <p
+                class="font-sm text-muted mt-2"
+                data-test-downgrade-blocked-hint
+              >
+                Downgrading requires exactly 1 active user. You currently have
+                {{this.billing.activeUsers}}. Deactivate the other team members
+                first.
+              </p>
+            {{/unless}}
+          {{/if}}
         {{else}}
           <p class="font-sm text-muted" data-test-billing-managed>
             Your plan is managed by AALA. Contact support to make changes.

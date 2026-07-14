@@ -109,9 +109,15 @@ export default class CompanyController extends Controller {
   }
 
   get seatPriceLabel() {
-    if (!this.billing?.seatAmount || !this.billing?.currency) return null;
-    const amount = this.billing.seatAmount / 100;
-    return `${amount} ${this.billing.currency.toUpperCase()} per seat per month`;
+    const currency = this.billing?.currency?.toUpperCase();
+    const seat = this.billing?.seatAmount ? this.billing.seatAmount / 100 : null;
+    const tier = this.billing?.tier || this.company?.subscriptionTier || 'FREE';
+    if (!currency || !seat) return null;
+    // FREE is $0; the Upgrade section explains Pro pricing, so no price line here.
+    if (tier === 'FREE') return null;
+    if (tier === 'ENTERPRISE') return 'Custom Enterprise pricing';
+    // PRO is pure per-seat with no base fee; the owner is the first paid seat.
+    return `${seat} ${currency} per seat per month`;
   }
 
   get isCompanyAdmin() {
@@ -123,6 +129,22 @@ export default class CompanyController extends Controller {
   // guaranteed-fail request and a pointless confirmation modal.
   get isDowngradeDisabled() {
     return this.isBillingBusy || !this.billing?.canDowngradeToFree;
+  }
+
+  // A queued downgrade: the subscription is set to end at period close and reverts
+  // to FREE then. Drives the scheduled-cancellation banner and the Reactivate Pro
+  // button in place of Downgrade to Free.
+  get isScheduledToCancel() {
+    return !!this.billing?.cancelAtPeriodEnd;
+  }
+
+  get cancelDateLabel() {
+    if (!this.billing?.cancelAt) return null;
+    return new Date(this.billing.cancelAt).toLocaleDateString(undefined, {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
   }
 
   get weeklyUsageLabel() {
@@ -258,6 +280,22 @@ export default class CompanyController extends Controller {
       this.router.refresh('company');
     } catch (e) {
       // 409 carries the active-user-count message from the backend gate.
+      this.notifications.error(e.message);
+    } finally {
+      this.isBillingBusy = false;
+    }
+  }
+
+  @action async reactivatePro() {
+    if (this.isBillingBusy) return;
+    this.isBillingBusy = true;
+    try {
+      await this.auth.fetchJson('/billing/resume', { method: 'POST' });
+      this.notifications.success(
+        'Your Pro plan will keep renewing. The scheduled downgrade is cancelled.',
+      );
+      this.router.refresh('company');
+    } catch (e) {
       this.notifications.error(e.message);
     } finally {
       this.isBillingBusy = false;

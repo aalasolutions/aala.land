@@ -7,7 +7,10 @@ const mockCreate = jest.fn();
 const mockSearch = jest.fn();
 const mockPricesCreate = jest.fn();
 const mockSubRetrieve = jest.fn();
+const mockSubUpdate = jest.fn();
 const mockSubItemUpdate = jest.fn();
+const mockSubItemCreate = jest.fn();
+const mockSubItemDel = jest.fn();
 
 const mockStripeClient = {
     customers: {
@@ -22,9 +25,12 @@ const mockStripeClient = {
     },
     subscriptions: {
         retrieve: mockSubRetrieve,
+        update: mockSubUpdate,
     },
     subscriptionItems: {
         update: mockSubItemUpdate,
+        create: mockSubItemCreate,
+        del: mockSubItemDel,
     },
 };
 
@@ -38,7 +44,9 @@ describe('StripeBillingProvider', () => {
 
         // Reset product cache between tests by resetting the mock for search
         mockSearch.mockResolvedValue({ data: [] });
-        mockStripeClient.products.create = jest.fn().mockResolvedValue({ id: 'prod_test123' });
+        mockStripeClient.products.create = jest
+            .fn()
+            .mockResolvedValue({ id: 'prod_test123' });
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -46,7 +54,9 @@ describe('StripeBillingProvider', () => {
                 {
                     provide: ConfigService,
                     useValue: {
-                        getOrThrow: jest.fn().mockReturnValue('sk_test_fake_key'),
+                        getOrThrow: jest
+                            .fn()
+                            .mockReturnValue('sk_test_fake_key'),
                     },
                 },
             ],
@@ -62,7 +72,10 @@ describe('StripeBillingProvider', () => {
             const StripeMock = Stripe as unknown as jest.Mock;
             expect(StripeMock).toHaveBeenCalledWith(
                 'sk_test_fake_key',
-                expect.objectContaining({ timeout: 8000, maxNetworkRetries: 0 }),
+                expect.objectContaining({
+                    timeout: 8000,
+                    maxNetworkRetries: 0,
+                }),
             );
         });
     });
@@ -99,7 +112,9 @@ describe('StripeBillingProvider', () => {
             });
 
             expect(mockCreate).toHaveBeenCalledWith(
-                expect.objectContaining({ metadata: { companyId: 'company-uuid-9' } }),
+                expect.objectContaining({
+                    metadata: { companyId: 'company-uuid-9' },
+                }),
                 { idempotencyKey: 'ensure-customer:company-uuid-9' },
             );
         });
@@ -165,7 +180,9 @@ describe('StripeBillingProvider', () => {
 
         it('uses existing product when found via search', async () => {
             mockSearch.mockResolvedValue({ data: [{ id: 'prod_existing' }] });
-            mockPricesCreate.mockResolvedValue({ id: 'price_for_existing_product' });
+            mockPricesCreate.mockResolvedValue({
+                id: 'price_for_existing_product',
+            });
 
             await provider.ensurePrice('ENTERPRISE_BASE', 'usd', 25000);
 
@@ -193,43 +210,284 @@ describe('StripeBillingProvider', () => {
             mockSubRetrieve.mockResolvedValue({
                 items: {
                     data: [
-                        { id: 'si_base', quantity: 1, price: { metadata: { kind: 'ENTERPRISE_BASE' } } },
-                        { id: 'si_seat', quantity: 6, price: { metadata: { kind: 'SEAT' } } },
+                        {
+                            id: 'si_base',
+                            quantity: 1,
+                            price: { metadata: { kind: 'ENTERPRISE_BASE' } },
+                        },
+                        {
+                            id: 'si_seat',
+                            quantity: 6,
+                            price: { metadata: { kind: 'SEAT' } },
+                        },
                     ],
                 },
             });
 
             const qty = await provider.getSeatQuantity(ref);
 
-            expect(mockSubRetrieve).toHaveBeenCalledWith('sub_1', { expand: ['items'] });
+            expect(mockSubRetrieve).toHaveBeenCalledWith('sub_1', {
+                expand: ['items'],
+            });
             expect(qty).toBe(6);
         });
 
-        it('falls back to the first line item and floors at 1 for metadata-less subscriptions', async () => {
+        it('returns 0 when there is no SEAT-metadata item (no fallback to the first line item, e.g. a solo ENTERPRISE whose base covers the only seat)', async () => {
             mockSubRetrieve.mockResolvedValue({
-                items: { data: [{ id: 'si_only', quantity: undefined, price: {} }] },
+                items: {
+                    data: [
+                        {
+                            id: 'si_base',
+                            quantity: 1,
+                            price: { metadata: { kind: 'ENTERPRISE_BASE' } },
+                        },
+                    ],
+                },
             });
 
             const qty = await provider.getSeatQuantity(ref);
-            expect(qty).toBe(1);
+            expect(qty).toBe(0);
         });
 
-        it('throws when the subscription has no line items', async () => {
+        it('returns 0 when the subscription has no line items (never throws)', async () => {
             mockSubRetrieve.mockResolvedValue({ items: { data: [] } });
-            await expect(provider.getSeatQuantity(ref)).rejects.toThrow('No subscription items found');
+            await expect(provider.getSeatQuantity(ref)).resolves.toBe(0);
         });
     });
 
     describe('updateSeatQuantity', () => {
-        it('updates the resolved SEAT item to the given quantity', async () => {
+        const ref = { subscriptionId: 'sub_1', customerId: 'cus_1' };
+
+        it('updates the resolved SEAT item to the given quantity with immediate proration', async () => {
             mockSubRetrieve.mockResolvedValue({
-                items: { data: [{ id: 'si_seat', quantity: 3, price: { metadata: { kind: 'SEAT' } } }] },
+                items: {
+                    data: [
+                        {
+                            id: 'si_seat',
+                            quantity: 3,
+                            price: { metadata: { kind: 'SEAT' } },
+                        },
+                    ],
+                },
             });
             mockSubItemUpdate.mockResolvedValue({});
 
-            await provider.updateSeatQuantity({ subscriptionId: 'sub_1', customerId: 'cus_1' }, 4);
+            await provider.updateSeatQuantity(ref, 4);
 
-            expect(mockSubItemUpdate).toHaveBeenCalledWith('si_seat', { quantity: 4 });
+            expect(mockSubItemUpdate).toHaveBeenCalledWith('si_seat', {
+                quantity: 4,
+                proration_behavior: 'create_prorations',
+            });
+            expect(mockSubItemCreate).not.toHaveBeenCalled();
+            expect(mockSubItemDel).not.toHaveBeenCalled();
+        });
+
+        it('creates a new SEAT item using the supplied seat price id when none exists yet and quantity > 0 (first extra seat on a solo ENTERPRISE)', async () => {
+            mockSubRetrieve.mockResolvedValue({
+                items: {
+                    data: [
+                        {
+                            id: 'si_base',
+                            quantity: 1,
+                            price: { metadata: { kind: 'ENTERPRISE_BASE' } },
+                        },
+                    ],
+                },
+            });
+            mockSubItemCreate.mockResolvedValue({});
+
+            await provider.updateSeatQuantity(ref, 2, 'price_seat_new');
+
+            expect(mockSubItemCreate).toHaveBeenCalledWith({
+                subscription: 'sub_1',
+                price: 'price_seat_new',
+                quantity: 2,
+                proration_behavior: 'create_prorations',
+            });
+            expect(mockSubItemUpdate).not.toHaveBeenCalled();
+        });
+
+        it('throws when quantity > 0, no SEAT item exists, and no seatPriceId is supplied', async () => {
+            mockSubRetrieve.mockResolvedValue({ items: { data: [] } });
+
+            await expect(provider.updateSeatQuantity(ref, 2)).rejects.toThrow(
+                'no existing SEAT item and no seat price id supplied',
+            );
+            expect(mockSubItemCreate).not.toHaveBeenCalled();
+        });
+
+        it('deletes the SEAT item when quantity <= 0 and a SEAT item exists (back to a solo owner)', async () => {
+            mockSubRetrieve.mockResolvedValue({
+                items: {
+                    data: [
+                        {
+                            id: 'si_seat',
+                            quantity: 1,
+                            price: { metadata: { kind: 'SEAT' } },
+                        },
+                    ],
+                },
+            });
+            mockSubItemDel.mockResolvedValue({});
+
+            await provider.updateSeatQuantity(ref, 0);
+
+            expect(mockSubItemDel).toHaveBeenCalledWith('si_seat', {
+                proration_behavior: 'create_prorations',
+            });
+        });
+
+        it('is a no-op when quantity <= 0 and no SEAT item exists', async () => {
+            mockSubRetrieve.mockResolvedValue({
+                items: {
+                    data: [
+                        {
+                            id: 'si_base',
+                            quantity: 1,
+                            price: { metadata: { kind: 'ENTERPRISE_BASE' } },
+                        },
+                    ],
+                },
+            });
+
+            await provider.updateSeatQuantity(ref, 0);
+
+            expect(mockSubItemDel).not.toHaveBeenCalled();
+            expect(mockSubItemUpdate).not.toHaveBeenCalled();
+            expect(mockSubItemCreate).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('changePlan', () => {
+        const ref = { subscriptionId: 'sub_1', customerId: 'cus_1' };
+
+        function retrieved(items: unknown[]) {
+            mockSubRetrieve.mockResolvedValue({
+                metadata: { companyId: 'c1' },
+                items: { data: items },
+            });
+            mockSubUpdate.mockResolvedValue({});
+        }
+
+        it('PRO -> ENTERPRISE: drops the seat line by 1, adds the base, tags the plan', async () => {
+            retrieved([
+                {
+                    id: 'si_seat',
+                    quantity: 3,
+                    price: { metadata: { kind: 'SEAT' } },
+                },
+            ]);
+
+            await provider.changePlan({
+                ...ref,
+                plan: 'ENTERPRISE',
+                seatPriceId: 'price_seat',
+                basePriceId: 'price_base',
+            });
+
+            expect(mockSubUpdate).toHaveBeenCalledWith('sub_1', {
+                items: [
+                    { id: 'si_seat', price: 'price_seat', quantity: 2 },
+                    { price: 'price_base', quantity: 1 },
+                ],
+                metadata: { companyId: 'c1', plan: 'ENTERPRISE' },
+                proration_behavior: 'create_prorations',
+            });
+        });
+
+        it('PRO solo -> ENTERPRISE: deletes the seat line (base covers the seat), adds the base', async () => {
+            retrieved([
+                {
+                    id: 'si_seat',
+                    quantity: 1,
+                    price: { metadata: { kind: 'SEAT' } },
+                },
+            ]);
+
+            await provider.changePlan({
+                ...ref,
+                plan: 'ENTERPRISE',
+                seatPriceId: 'price_seat',
+                basePriceId: 'price_base',
+            });
+
+            expect(mockSubUpdate).toHaveBeenCalledWith('sub_1', {
+                items: [
+                    { id: 'si_seat', deleted: true },
+                    { price: 'price_base', quantity: 1 },
+                ],
+                metadata: { companyId: 'c1', plan: 'ENTERPRISE' },
+                proration_behavior: 'create_prorations',
+            });
+        });
+
+        it('ENTERPRISE -> PRO: raises the seat line by 1, removes the base, tags the plan', async () => {
+            retrieved([
+                {
+                    id: 'si_base',
+                    quantity: 1,
+                    price: { metadata: { kind: 'ENTERPRISE_BASE' } },
+                },
+                {
+                    id: 'si_seat',
+                    quantity: 2,
+                    price: { metadata: { kind: 'SEAT' } },
+                },
+            ]);
+
+            await provider.changePlan({
+                ...ref,
+                plan: 'PRO',
+                seatPriceId: 'price_seat',
+                basePriceId: null,
+            });
+
+            expect(mockSubUpdate).toHaveBeenCalledWith('sub_1', {
+                items: [
+                    { id: 'si_seat', price: 'price_seat', quantity: 3 },
+                    { id: 'si_base', deleted: true },
+                ],
+                metadata: { companyId: 'c1', plan: 'PRO' },
+                proration_behavior: 'create_prorations',
+            });
+        });
+
+        it('ENTERPRISE solo -> PRO: creates a seat line (the freed base seat), removes the base', async () => {
+            retrieved([
+                {
+                    id: 'si_base',
+                    quantity: 1,
+                    price: { metadata: { kind: 'ENTERPRISE_BASE' } },
+                },
+            ]);
+
+            await provider.changePlan({
+                ...ref,
+                plan: 'PRO',
+                seatPriceId: 'price_seat',
+                basePriceId: null,
+            });
+
+            expect(mockSubUpdate).toHaveBeenCalledWith('sub_1', {
+                items: [
+                    { price: 'price_seat', quantity: 1 },
+                    { id: 'si_base', deleted: true },
+                ],
+                metadata: { companyId: 'c1', plan: 'PRO' },
+                proration_behavior: 'create_prorations',
+            });
+        });
+
+        it('throws when the subscription has no line items', async () => {
+            retrieved([]);
+            await expect(
+                provider.changePlan({
+                    ...ref,
+                    plan: 'PRO',
+                    seatPriceId: 'price_seat',
+                    basePriceId: null,
+                }),
+            ).rejects.toThrow('no line items');
         });
     });
 });

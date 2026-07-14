@@ -504,12 +504,14 @@ export class UsersService {
                 return { deactivatedCount: 0, reports: [] };
             }
 
-            // Seat -> 1 inside the lock (absolute target; the keeper is the one
-            // remaining active seat). Comp accounts with no subscription skip it.
+            // Seat line -> the target for a single remaining user, inside the lock.
+            // ENTERPRISE's $250 base covers that keeper (0 extra seats); PRO bills it
+            // (1 seat). Comp accounts with no subscription skip it.
             let compensate: (() => Promise<void>) | null = null;
             if (this.isPaidTier(company) && company.billingSubscriptionId && company.billingCustomerId) {
                 const previous = await this.billingService.getLiveSeatQuantity(company);
-                await this.billingService.setSeatQuantity(company, 1);
+                const trimmedSeats = company.subscriptionTier === SubscriptionTier.ENTERPRISE ? 0 : 1;
+                await this.billingService.setSeatQuantity(company, trimmedSeats);
                 compensate = async () => {
                     try {
                         await this.billingService.setSeatQuantity(company, previous);

@@ -100,6 +100,17 @@ export class BillingController {
         return this.billingService.cancelSubscription(req.user.companyId);
     }
 
+    @Post('resume')
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles(Role.COMPANY_ADMIN)
+    @ApiOperation({ summary: 'Undo a queued downgrade so the subscription keeps renewing.' })
+    resumeSubscription(@Request() req: AuthenticatedRequest) {
+        if (!req.user.companyId) {
+            throw new BadRequestException('No company context on the authenticated user');
+        }
+        return this.billingService.resumeSubscription(req.user.companyId);
+    }
+
     // -------------------------------------------------------------------------
     // SUPER_ADMIN endpoints (admin-initiated checkout / plan management)
     // -------------------------------------------------------------------------
