@@ -115,10 +115,11 @@
             <div>
               <div class="font-bold">Scheduled to move to the Free plan</div>
               <p class="font-sm mt-1">
-                Your Pro plan is set to end on
+                Your paid plan is set to end on
                 <strong>{{this.cancelDateLabel}}</strong>. You have already paid
-                through that date, so keep enjoying Pro until then. It switches
-                to Free automatically. Changed your mind? Reactivate Pro below.
+                through that date, so you keep full access until then. It
+                switches to Free automatically. Changed your mind? Reactivate
+                below.
               </p>
             </div>
           </div>
@@ -178,7 +179,7 @@
               disabled={{this.isBillingBusy}}
               {{on "click" this.reactivatePro}}
             >
-              {{#if this.isBillingBusy}}Working...{{else}}Reactivate Pro{{/if}}
+              {{#if this.isBillingBusy}}Working...{{else}}Reactivate plan{{/if}}
             </button>
           {{else}}
             <button

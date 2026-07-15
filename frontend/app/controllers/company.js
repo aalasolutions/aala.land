@@ -292,7 +292,7 @@ export default class CompanyController extends Controller {
     try {
       await this.auth.fetchJson('/billing/resume', { method: 'POST' });
       this.notifications.success(
-        'Your Pro plan will keep renewing. The scheduled downgrade is cancelled.',
+        'Your subscription will keep renewing. The scheduled downgrade is canceled.',
       );
       this.router.refresh('company');
     } catch (e) {

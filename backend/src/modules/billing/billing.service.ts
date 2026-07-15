@@ -329,8 +329,8 @@ export class BillingService {
     }
 
     /**
-     * Undo a queued downgrade (COMPANY_ADMIN or SUPER_ADMIN): clears
-     * cancel_at_period_end so the subscription keeps renewing and the plan stays.
+     * Undo a queued downgrade (COMPANY_ADMIN): clears cancel_at_period_end so the
+     * subscription keeps renewing and the plan stays.
      */
     async resumeSubscription(companyId: string): Promise<void> {
         const company = await this.findCompany(companyId);
@@ -497,7 +497,7 @@ export class BillingService {
 
     /**
      * The SEAT ($25) provider price id for a company's billing currency. Required to
-     * create the seat line the first time a solo PRO adds an extra seat.
+     * create the seat line the first time a solo ENTERPRISE adds an extra seat.
      */
     private async resolveSeatPriceId(company: Company): Promise<string> {
         return this.getProviderPriceId(
