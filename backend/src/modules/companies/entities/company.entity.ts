@@ -87,6 +87,14 @@ export class Company {
     @Column({ name: 'billing_status', type: 'varchar', length: 50, nullable: true })
     billingStatus: string | null;
 
+    /**
+     * Currency the subscription is billed in (lowercase ISO: usd/aed/sar).
+     * Webhook-pinned from Stripe; null until subscribed (reads fall back to the
+     * region default). Decoupled from defaultRegionCode.
+     */
+    @Column({ name: 'billing_currency', type: 'varchar', length: 3, nullable: true })
+    billingCurrency: string | null;
+
     @Column({ name: 'billing_meta', type: 'jsonb', nullable: true })
     billingMeta: Record<string, unknown> | null;
 

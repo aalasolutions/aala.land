@@ -1,4 +1,4 @@
-import { IsIn, IsInt, IsString, IsUUID, Min } from 'class-validator';
+import { IsIn, IsInt, IsOptional, IsString, IsUUID, Min } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { BillingPlan } from '../provider/billing-provider.interface';
 
@@ -23,6 +23,17 @@ export class AdminCheckoutDto {
     @ApiProperty({ description: 'Stripe-format cancel redirect URL' })
     @IsString()
     cancelUrl: string;
+
+    @ApiProperty({
+        description:
+            'Payment currency for the company; charged and pinned. Defaults to USD.',
+        enum: ['usd', 'aed', 'sar'],
+        required: false,
+        default: 'usd',
+    })
+    @IsOptional()
+    @IsIn(['usd', 'aed', 'sar'])
+    currency?: string;
 }
 
 export class AdminChangePlanDto {

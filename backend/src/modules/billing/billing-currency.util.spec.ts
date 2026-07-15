@@ -1,6 +1,30 @@
-import { resolveBillingCurrency } from './billing-currency.util';
+import {
+    BILLING_CURRENCIES,
+    isBillingCurrency,
+    resolveBillingCurrency,
+} from './billing-currency.util';
 
-describe('resolveBillingCurrency', () => {
+describe('BILLING_CURRENCIES', () => {
+    it('is USD-first (the checkout default) and holds the three supported currencies', () => {
+        expect(BILLING_CURRENCIES).toEqual(['usd', 'aed', 'sar']);
+    });
+});
+
+describe('isBillingCurrency', () => {
+    it('accepts the supported currencies', () => {
+        expect(isBillingCurrency('usd')).toBe(true);
+        expect(isBillingCurrency('aed')).toBe(true);
+        expect(isBillingCurrency('sar')).toBe(true);
+    });
+
+    it('rejects unsupported or wrong-case values', () => {
+        expect(isBillingCurrency('eur')).toBe(false);
+        expect(isBillingCurrency('USD')).toBe(false);
+        expect(isBillingCurrency('')).toBe(false);
+    });
+});
+
+describe('resolveBillingCurrency (fallback-only default)', () => {
     it('returns aed for a UAE region (dubai)', () => {
         expect(resolveBillingCurrency('dubai')).toBe('aed');
     });

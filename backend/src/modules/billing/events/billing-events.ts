@@ -26,6 +26,8 @@ export interface SubscriptionActivatedEvent extends BillingEventBase {
     quantity: number;
     /** Provider-native status string, stored raw in billing_status. */
     status: string;
+    /** Subscription currency (lowercase ISO 4217); the webhook pins it onto the company. */
+    currency: string;
     currentPeriodEnd: Date | null;
 }
 

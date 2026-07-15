@@ -24,7 +24,11 @@ import {
     BILLING_PROVIDER,
     SubscriptionRef,
 } from './provider/billing-provider.interface';
-import { resolveBillingCurrency } from './billing-currency.util';
+import {
+    BILLING_CURRENCIES,
+    isBillingCurrency,
+    resolveBillingCurrency,
+} from './billing-currency.util';
 
 /**
  * Handle returned by reserveSeat for a successful provider-side seat increment.
@@ -44,10 +48,13 @@ export interface SubscriptionState {
     hasSubscription: boolean;
     purchasedSeats: number;
     activeUsers: number;
+    /** Pinned billing currency for a subscribed company; the region-derived fallback otherwise. */
     currency: string;
     seatAmount: number | null;
     /** The $250 base-fee amount (minor units) that covers the first ENTERPRISE seat; null if none for the currency. */
     baseAmount: number | null;
+    /** Per-currency seat prices for the checkout selector; empty once subscribed. */
+    currencyOptions: { currency: string; seatAmount: number }[];
     canDowngradeToFree: boolean;
     /** True when the subscription is scheduled to cancel at period end (a queued downgrade to FREE). */
     cancelAtPeriodEnd: boolean;
@@ -138,16 +145,31 @@ export class BillingService {
     /** Return the current billing-relevant snapshot for a company. */
     async getSubscriptionState(companyId: string): Promise<SubscriptionState> {
         const company = await this.findCompany(companyId);
-        const currency = resolveBillingCurrency(company.defaultRegionCode);
-        const [seatPrice, basePrice, activeUsers] = await Promise.all([
-            this.priceRepo.findOne({
-                where: { kind: 'SEAT', currency, active: true },
-            }),
-            this.priceRepo.findOne({
-                where: { kind: 'ENTERPRISE_BASE', currency, active: true },
-            }),
-            this.countActiveUsers(companyId),
-        ]);
+        const currency = this.effectiveBillingCurrency(company);
+        const hasSubscription = !!company.billingSubscriptionId;
+        const [seatPrice, basePrice, seatPrices, activeUsers] =
+            await Promise.all([
+                this.priceRepo.findOne({
+                    where: { kind: 'SEAT', currency, active: true },
+                }),
+                this.priceRepo.findOne({
+                    where: { kind: 'ENTERPRISE_BASE', currency, active: true },
+                }),
+                // Selector options are only needed before the currency is locked.
+                hasSubscription
+                    ? Promise.resolve<BillingPrice[]>([])
+                    : this.priceRepo.find({
+                          where: { kind: 'SEAT', active: true },
+                      }),
+                this.countActiveUsers(companyId),
+            ]);
+        const seatByCurrency = new Map(
+            (seatPrices ?? []).map((p) => [p.currency, p.unitAmount]),
+        );
+        const currencyOptions = BILLING_CURRENCIES.flatMap((c) => {
+            const amount = seatByCurrency.get(c);
+            return amount != null ? [{ currency: c, seatAmount: amount }] : [];
+        });
         // Not mirrored on Company; ask the provider live.
         let cancelAtPeriodEnd = false;
         let cancelAt: string | null = null;
@@ -171,12 +193,13 @@ export class BillingService {
         return {
             tier: company.subscriptionTier,
             billingStatus: company.billingStatus ?? null,
-            hasSubscription: !!company.billingSubscriptionId,
+            hasSubscription,
             purchasedSeats: company.purchasedSeats,
             activeUsers,
             currency,
             seatAmount: seatPrice?.unitAmount ?? null,
             baseAmount: basePrice?.unitAmount ?? null,
+            currencyOptions,
             canDowngradeToFree: activeUsers <= 1,
             cancelAtPeriodEnd,
             cancelAt,
@@ -192,6 +215,7 @@ export class BillingService {
         companyId: string,
         successUrl: string,
         cancelUrl: string,
+        currencyChoice?: string,
     ): Promise<CheckoutResult> {
         const company = await this.findCompany(companyId);
         if (company.billingSubscriptionId) {
@@ -208,8 +232,9 @@ export class BillingService {
         }
         this.assertAllowedRedirectUrl(successUrl, 'successUrl');
         this.assertAllowedRedirectUrl(cancelUrl, 'cancelUrl');
+        // User-selected currency (default USD), validated before any side effect.
+        const currency = this.normalizeCheckoutCurrency(currencyChoice);
         const customerId = await this.ensureCompanyCustomer(company);
-        const currency = resolveBillingCurrency(company.defaultRegionCode);
         // PRO: pure per-seat, no base. Solo PRO = 1 seat.
         const quantity = Math.max(await this.countActiveUsers(companyId), 1);
 
@@ -238,6 +263,7 @@ export class BillingService {
         quantity: number,
         successUrl: string,
         cancelUrl: string,
+        currencyChoice?: string,
     ): Promise<CheckoutResult> {
         const company = await this.findCompany(companyId);
         if (company.billingSubscriptionId) {
@@ -247,8 +273,9 @@ export class BillingService {
         }
         this.assertAllowedRedirectUrl(successUrl, 'successUrl');
         this.assertAllowedRedirectUrl(cancelUrl, 'cancelUrl');
+        // Admin-picked currency (default USD), validated before any side effect.
+        const currency = this.normalizeCheckoutCurrency(currencyChoice);
         const customerId = await this.ensureCompanyCustomer(company);
-        const currency = resolveBillingCurrency(company.defaultRegionCode);
 
         const seatPriceId = await this.getProviderPriceId('SEAT', currency);
         // ENTERPRISE base covers seat 1, so SEAT units = quantity - 1; PRO bills every seat.
@@ -286,7 +313,8 @@ export class BillingService {
                 'Company does not have an active subscription',
             );
         }
-        const currency = resolveBillingCurrency(company.defaultRegionCode);
+        // Currency is fixed at checkout and pinned; a plan switch keeps it.
+        const currency = this.effectiveBillingCurrency(company);
         const seatPriceId = await this.getProviderPriceId('SEAT', currency);
         const basePriceId =
             plan === 'ENTERPRISE'
@@ -502,8 +530,29 @@ export class BillingService {
     private async resolveSeatPriceId(company: Company): Promise<string> {
         return this.getProviderPriceId(
             'SEAT',
-            resolveBillingCurrency(company.defaultRegionCode),
+            this.effectiveBillingCurrency(company),
         );
+    }
+
+    /** Pinned billing currency, or the region-derived fallback when none is pinned. */
+    private effectiveBillingCurrency(company: Company): string {
+        return (
+            company.billingCurrency ??
+            resolveBillingCurrency(company.defaultRegionCode)
+        );
+    }
+
+    /** Validate the selected currency; default USD, 400 on an unsupported value. */
+    private normalizeCheckoutCurrency(currencyChoice?: string): string {
+        if (currencyChoice == null) return 'usd';
+        const currency = currencyChoice.toLowerCase();
+        if (!isBillingCurrency(currency)) {
+            throw new BadRequestException(
+                `Unsupported payment currency "${currencyChoice}". ` +
+                    `Choose one of: ${BILLING_CURRENCIES.join(', ')}.`,
+            );
+        }
+        return currency;
     }
 
     /** Read the authoritative live seat quantity from the provider. */

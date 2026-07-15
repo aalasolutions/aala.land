@@ -8,7 +8,7 @@ import {
     UseGuards,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiBody } from '@nestjs/swagger';
-import { IsString } from 'class-validator';
+import { IsIn, IsOptional, IsString } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { JwtAuthGuard } from '@modules/auth/guards/jwt-auth.guard';
 import { RolesGuard } from '@shared/guards/roles.guard';
@@ -27,6 +27,17 @@ class StartCheckoutDto {
     @ApiProperty({ description: 'URL Stripe redirects to on cancel' })
     @IsString()
     cancelUrl: string;
+
+    @ApiProperty({
+        description:
+            'Payment currency the user selected; charged and pinned to the company. Defaults to USD.',
+        enum: ['usd', 'aed', 'sar'],
+        required: false,
+        default: 'usd',
+    })
+    @IsOptional()
+    @IsIn(['usd', 'aed', 'sar'])
+    currency?: string;
 }
 
 @ApiTags('Billing')
@@ -82,6 +93,7 @@ export class BillingController {
             req.user.companyId,
             dto.successUrl,
             dto.cancelUrl,
+            dto.currency,
         );
     }
 
@@ -126,6 +138,7 @@ export class BillingController {
             dto.quantity,
             dto.successUrl,
             dto.cancelUrl,
+            dto.currency,
         );
     }
 
