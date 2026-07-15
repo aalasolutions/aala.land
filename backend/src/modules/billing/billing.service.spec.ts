@@ -1,4 +1,10 @@
-import { BadRequestException, ConflictException, HttpException, HttpStatus, NotFoundException } from '@nestjs/common';
+import {
+    BadRequestException,
+    ConflictException,
+    HttpException,
+    HttpStatus,
+    NotFoundException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
@@ -9,7 +15,10 @@ import {
     BILLING_PROVIDER,
     BillingProvider,
 } from './provider/billing-provider.interface';
-import { Company, SubscriptionTier } from '../companies/entities/company.entity';
+import {
+    Company,
+    SubscriptionTier,
+} from '../companies/entities/company.entity';
 import { User } from '../users/entities/user.entity';
 
 const companyId = 'company-uuid-1';
@@ -26,7 +35,7 @@ const makeCompany = (overrides: Partial<Company> = {}): Company =>
         purchasedSeats: 1,
         defaultRegionCode: 'dubai',
         ...overrides,
-    } as Company);
+    }) as Company;
 
 const mockProviderMethods = {
     ensureCustomer: jest.fn(),
@@ -36,6 +45,10 @@ const mockProviderMethods = {
     updateSeatQuantity: jest.fn(),
     changePlan: jest.fn(),
     cancel: jest.fn(),
+    getCancellationState: jest
+        .fn()
+        .mockResolvedValue({ cancelAtPeriodEnd: false, cancelAt: null }),
+    resume: jest.fn(),
     parseWebhook: jest.fn(),
 };
 
@@ -61,7 +74,9 @@ describe('BillingService', () => {
             update: jest.fn().mockResolvedValue({ affected: 1 }),
         };
         const dataSourceMock = {
-            transaction: jest.fn(async (cb: (m: unknown) => Promise<unknown>) => cb(managerMock)),
+            transaction: jest.fn(async (cb: (m: unknown) => Promise<unknown>) =>
+                cb(managerMock),
+            ),
         };
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -95,7 +110,9 @@ describe('BillingService', () => {
                     provide: ConfigService,
                     useValue: {
                         get: jest.fn((key: string) =>
-                            key === 'CORS_ORIGIN' ? 'http://localhost:4200' : undefined,
+                            key === 'CORS_ORIGIN'
+                                ? 'http://localhost:4200'
+                                : undefined,
                         ),
                     },
                 },
@@ -119,7 +136,9 @@ describe('BillingService', () => {
 
     describe('ensureCompanyCustomer', () => {
         it('returns existing customerId without locking or calling provider when set on the snapshot', async () => {
-            const company = makeCompany({ billingCustomerId: 'cus_existing123' });
+            const company = makeCompany({
+                billingCustomerId: 'cus_existing123',
+            });
             const result = await service.ensureCompanyCustomer(company);
 
             expect(provider.ensureCustomer).not.toHaveBeenCalled();
@@ -131,7 +150,9 @@ describe('BillingService', () => {
         it('re-reads under the lock and returns the customerId set by a concurrent writer without creating a duplicate', async () => {
             const company = makeCompany();
             // Snapshot had null, but a racing writer already set it: the locked re-read finds it.
-            managerMock.findOne.mockResolvedValue(makeCompany({ billingCustomerId: 'cus_race' }));
+            managerMock.findOne.mockResolvedValue(
+                makeCompany({ billingCustomerId: 'cus_race' }),
+            );
 
             const result = await service.ensureCompanyCustomer(company);
 
@@ -147,7 +168,9 @@ describe('BillingService', () => {
         it('locks, creates with an idempotency key, and updates when still null under the lock', async () => {
             const company = makeCompany();
             managerMock.findOne.mockResolvedValue(makeCompany());
-            (provider.ensureCustomer as jest.Mock).mockResolvedValue('cus_new456');
+            (provider.ensureCustomer as jest.Mock).mockResolvedValue(
+                'cus_new456',
+            );
 
             const result = await service.ensureCompanyCustomer(company);
 
@@ -160,26 +183,48 @@ describe('BillingService', () => {
                 companyName: 'Test Company',
                 idempotencyKey: `ensure-customer:${companyId}`,
             });
-            expect(managerMock.update).toHaveBeenCalledWith(Company, companyId, {
-                billingCustomerId: 'cus_new456',
-                billingProvider: 'stripe',
-            });
+            expect(managerMock.update).toHaveBeenCalledWith(
+                Company,
+                companyId,
+                {
+                    billingCustomerId: 'cus_new456',
+                    billingProvider: 'stripe',
+                },
+            );
             expect(result).toBe('cus_new456');
         });
 
         it('propagates provider errors upward', async () => {
             const company = makeCompany();
             managerMock.findOne.mockResolvedValue(makeCompany());
-            (provider.ensureCustomer as jest.Mock).mockRejectedValue(new Error('Stripe API down'));
-            await expect(service.ensureCompanyCustomer(company)).rejects.toThrow('Stripe API down');
+            (provider.ensureCustomer as jest.Mock).mockRejectedValue(
+                new Error('Stripe API down'),
+            );
+            await expect(
+                service.ensureCompanyCustomer(company),
+            ).rejects.toThrow('Stripe API down');
         });
     });
 
     describe('syncPrices', () => {
         it('skips rows that already have providerPriceId and returns correct counts', async () => {
             const rows: Partial<BillingPrice>[] = [
-                { id: 'bp-1', kind: 'SEAT', currency: 'usd', unitAmount: 2500, active: true, providerPriceId: 'price_existing' },
-                { id: 'bp-2', kind: 'SEAT', currency: 'aed', unitAmount: 9500, active: true, providerPriceId: 'price_existing2' },
+                {
+                    id: 'bp-1',
+                    kind: 'SEAT',
+                    currency: 'usd',
+                    unitAmount: 2500,
+                    active: true,
+                    providerPriceId: 'price_existing',
+                },
+                {
+                    id: 'bp-2',
+                    kind: 'SEAT',
+                    currency: 'aed',
+                    unitAmount: 9500,
+                    active: true,
+                    providerPriceId: 'price_existing2',
+                },
             ];
             (priceRepo.find as jest.Mock).mockResolvedValue(rows);
 
@@ -191,9 +236,30 @@ describe('BillingService', () => {
 
         it('creates provider prices for rows without providerPriceId and returns counts', async () => {
             const rows: Partial<BillingPrice>[] = [
-                { id: 'bp-1', kind: 'SEAT', currency: 'usd', unitAmount: 2500, active: true, providerPriceId: null },
-                { id: 'bp-2', kind: 'SEAT', currency: 'aed', unitAmount: 9500, active: true, providerPriceId: 'price_existing' },
-                { id: 'bp-3', kind: 'ENTERPRISE_BASE', currency: 'usd', unitAmount: 25000, active: true, providerPriceId: null },
+                {
+                    id: 'bp-1',
+                    kind: 'SEAT',
+                    currency: 'usd',
+                    unitAmount: 2500,
+                    active: true,
+                    providerPriceId: null,
+                },
+                {
+                    id: 'bp-2',
+                    kind: 'SEAT',
+                    currency: 'aed',
+                    unitAmount: 9500,
+                    active: true,
+                    providerPriceId: 'price_existing',
+                },
+                {
+                    id: 'bp-3',
+                    kind: 'ENTERPRISE_BASE',
+                    currency: 'usd',
+                    unitAmount: 25000,
+                    active: true,
+                    providerPriceId: null,
+                },
             ];
             (priceRepo.find as jest.Mock).mockResolvedValue(rows);
             (provider.ensurePrice as jest.Mock)
@@ -204,8 +270,16 @@ describe('BillingService', () => {
             const result = await service.syncPrices();
 
             expect(provider.ensurePrice).toHaveBeenCalledTimes(2);
-            expect(provider.ensurePrice).toHaveBeenCalledWith('SEAT', 'usd', 2500);
-            expect(provider.ensurePrice).toHaveBeenCalledWith('ENTERPRISE_BASE', 'usd', 25000);
+            expect(provider.ensurePrice).toHaveBeenCalledWith(
+                'SEAT',
+                'usd',
+                2500,
+            );
+            expect(provider.ensurePrice).toHaveBeenCalledWith(
+                'ENTERPRISE_BASE',
+                'usd',
+                25000,
+            );
             expect(result).toEqual({ synced: 2, total: 3 });
         });
 
@@ -236,9 +310,37 @@ describe('BillingService', () => {
                 activeUsers: 1,
                 currency: 'aed',
                 seatAmount: 9500,
+                baseAmount: 9500,
                 canDowngradeToFree: true,
+                cancelAtPeriodEnd: false,
+                cancelAt: null,
             });
+            expect(provider.getCancellationState).not.toHaveBeenCalled();
             expect(state).not.toHaveProperty('billingSubscriptionId');
+        });
+
+        it('reads cancellation state from the provider when the company has a live subscription', async () => {
+            companyRepo.findOne.mockResolvedValue(
+                makeCompany({
+                    billingSubscriptionId: 'sub_123',
+                    billingCustomerId: 'cus_1',
+                }),
+            );
+            priceRepo.findOne.mockResolvedValue({ unitAmount: 9500 } as any);
+            userRepo.count.mockResolvedValue(1);
+            (provider.getCancellationState as jest.Mock).mockResolvedValue({
+                cancelAtPeriodEnd: true,
+                cancelAt: new Date('2026-08-01T00:00:00.000Z'),
+            });
+
+            const state = await service.getSubscriptionState(companyId);
+
+            expect(provider.getCancellationState).toHaveBeenCalledWith({
+                subscriptionId: 'sub_123',
+                customerId: 'cus_1',
+            });
+            expect(state.cancelAtPeriodEnd).toBe(true);
+            expect(state.cancelAt).toBe('2026-08-01T00:00:00.000Z');
         });
 
         it('reports hasSubscription and blocks downgrade with more than 1 active user', async () => {
@@ -275,13 +377,34 @@ describe('BillingService', () => {
 
     describe('startCheckout', () => {
         const seatPriceRow: Partial<BillingPrice> = {
-            id: 'bp-1', kind: 'SEAT', currency: 'aed', unitAmount: 9500,
-            active: true, providerPriceId: 'price_aed_seat',
+            id: 'bp-1',
+            kind: 'SEAT',
+            currency: 'aed',
+            unitAmount: 9500,
+            active: true,
+            providerPriceId: 'price_aed_seat',
+        };
+        const basePriceRow: Partial<BillingPrice> = {
+            id: 'bp-2',
+            kind: 'ENTERPRISE_BASE',
+            currency: 'aed',
+            unitAmount: 95000,
+            active: true,
+            providerPriceId: 'price_aed_base',
         };
 
         beforeEach(() => {
-            companyRepo.findOne.mockResolvedValue(makeCompany({ billingCustomerId: 'cus_1' }));
-            priceRepo.findOne.mockResolvedValue(seatPriceRow as BillingPrice);
+            companyRepo.findOne.mockResolvedValue(
+                makeCompany({ billingCustomerId: 'cus_1' }),
+            );
+            priceRepo.findOne.mockImplementation(
+                (options: any) =>
+                    Promise.resolve(
+                        options?.where?.kind === 'SEAT'
+                            ? seatPriceRow
+                            : basePriceRow,
+                    ) as any,
+            );
             userRepo.count.mockResolvedValue(2);
             (provider.createSubscription as jest.Mock).mockResolvedValue({
                 checkoutUrl: 'https://checkout.stripe.com/test',
@@ -289,13 +412,18 @@ describe('BillingService', () => {
             });
         });
 
-        it('calls createSubscription with the resolved currency, seat price, and active user count', async () => {
-            const result = await service.startCheckout(companyId, 'http://localhost:4200/billing/success', 'http://localhost:4200/billing/cancel');
+        it('calls createSubscription with the seat price, PRO plan, no base, and all-seats quantity', async () => {
+            const result = await service.startCheckout(
+                companyId,
+                'http://localhost:4200/billing/success',
+                'http://localhost:4200/billing/cancel',
+            );
 
             expect(provider.createSubscription).toHaveBeenCalledWith({
                 customerId: 'cus_1',
                 seatPriceId: 'price_aed_seat',
                 basePriceId: null,
+                plan: 'PRO',
                 quantity: 2,
                 successUrl: 'http://localhost:4200/billing/success',
                 cancelUrl: 'http://localhost:4200/billing/cancel',
@@ -305,62 +433,113 @@ describe('BillingService', () => {
             expect(result.subscriptionId).toBeNull();
         });
 
-        it('uses quantity 1 when company has no active users', async () => {
+        it('uses quantity 1 (the solo owner seat) when company has no active users', async () => {
             userRepo.count.mockResolvedValue(0);
             (provider.createSubscription as jest.Mock).mockClear();
-            await service.startCheckout(companyId, 'http://localhost:4200/billing/success', 'http://localhost:4200/billing/cancel');
-            const call = (provider.createSubscription as jest.Mock).mock.calls[0][0];
+            await service.startCheckout(
+                companyId,
+                'http://localhost:4200/billing/success',
+                'http://localhost:4200/billing/cancel',
+            );
+            const call = (provider.createSubscription as jest.Mock).mock
+                .calls[0][0];
             expect(call.quantity).toBe(1);
+            expect(call.basePriceId).toBeNull();
+            expect(call.plan).toBe('PRO');
         });
 
         it('throws NotFoundException when company does not exist', async () => {
             companyRepo.findOne.mockResolvedValue(null);
-            await expect(service.startCheckout(companyId, 'http://localhost:4200/billing/success', 'http://localhost:4200/billing/cancel'))
-                .rejects.toBeInstanceOf(NotFoundException);
+            await expect(
+                service.startCheckout(
+                    companyId,
+                    'http://localhost:4200/billing/success',
+                    'http://localhost:4200/billing/cancel',
+                ),
+            ).rejects.toBeInstanceOf(NotFoundException);
         });
 
         it('throws BadRequestException when no active SEAT price is found', async () => {
             priceRepo.findOne.mockResolvedValue(null);
-            await expect(service.startCheckout(companyId, 'http://localhost:4200/billing/success', 'http://localhost:4200/billing/cancel'))
-                .rejects.toBeInstanceOf(BadRequestException);
+            await expect(
+                service.startCheckout(
+                    companyId,
+                    'http://localhost:4200/billing/success',
+                    'http://localhost:4200/billing/cancel',
+                ),
+            ).rejects.toBeInstanceOf(BadRequestException);
         });
 
         it('throws BadRequestException when SEAT price is not yet synced to Stripe', async () => {
-            priceRepo.findOne.mockResolvedValue({ ...seatPriceRow, providerPriceId: null } as BillingPrice);
-            await expect(service.startCheckout(companyId, 'http://localhost:4200/billing/success', 'http://localhost:4200/billing/cancel'))
-                .rejects.toBeInstanceOf(BadRequestException);
+            priceRepo.findOne.mockResolvedValue({
+                ...seatPriceRow,
+                providerPriceId: null,
+            } as BillingPrice);
+            await expect(
+                service.startCheckout(
+                    companyId,
+                    'http://localhost:4200/billing/success',
+                    'http://localhost:4200/billing/cancel',
+                ),
+            ).rejects.toBeInstanceOf(BadRequestException);
         });
 
         it('throws ConflictException when the company is not on the FREE plan', async () => {
             companyRepo.findOne.mockResolvedValue(
-                makeCompany({ subscriptionTier: SubscriptionTier.PRO, billingCustomerId: 'cus_1' }),
+                makeCompany({
+                    subscriptionTier: SubscriptionTier.PRO,
+                    billingCustomerId: 'cus_1',
+                }),
             );
-            await expect(service.startCheckout(companyId, 'http://localhost:4200/billing/success', 'http://localhost:4200/billing/cancel'))
-                .rejects.toBeInstanceOf(ConflictException);
+            await expect(
+                service.startCheckout(
+                    companyId,
+                    'http://localhost:4200/billing/success',
+                    'http://localhost:4200/billing/cancel',
+                ),
+            ).rejects.toBeInstanceOf(ConflictException);
             expect(provider.createSubscription).not.toHaveBeenCalled();
         });
 
         it('throws BadRequestException when a redirect URL is on a disallowed origin', async () => {
-            await expect(service.startCheckout(companyId, 'https://evil.example.com/success', 'http://localhost:4200/billing/cancel'))
-                .rejects.toBeInstanceOf(BadRequestException);
+            await expect(
+                service.startCheckout(
+                    companyId,
+                    'https://evil.example.com/success',
+                    'http://localhost:4200/billing/cancel',
+                ),
+            ).rejects.toBeInstanceOf(BadRequestException);
             expect(provider.createSubscription).not.toHaveBeenCalled();
         });
 
         it('throws BadRequestException when a redirect URL is not absolute', async () => {
-            await expect(service.startCheckout(companyId, '/billing/success', 'http://localhost:4200/billing/cancel'))
-                .rejects.toBeInstanceOf(BadRequestException);
+            await expect(
+                service.startCheckout(
+                    companyId,
+                    '/billing/success',
+                    'http://localhost:4200/billing/cancel',
+                ),
+            ).rejects.toBeInstanceOf(BadRequestException);
             expect(provider.createSubscription).not.toHaveBeenCalled();
         });
     });
 
     describe('changePlanForCompany', () => {
         const seatPriceRow: Partial<BillingPrice> = {
-            id: 'bp-1', kind: 'SEAT', currency: 'aed', unitAmount: 9500,
-            active: true, providerPriceId: 'price_aed_seat',
+            id: 'bp-1',
+            kind: 'SEAT',
+            currency: 'aed',
+            unitAmount: 9500,
+            active: true,
+            providerPriceId: 'price_aed_seat',
         };
         const basePriceRow: Partial<BillingPrice> = {
-            id: 'bp-2', kind: 'ENTERPRISE_BASE', currency: 'aed', unitAmount: 95000,
-            active: true, providerPriceId: 'price_aed_base',
+            id: 'bp-2',
+            kind: 'ENTERPRISE_BASE',
+            currency: 'aed',
+            unitAmount: 95000,
+            active: true,
+            providerPriceId: 'price_aed_base',
         };
 
         const proCompany = makeCompany({
@@ -410,8 +589,9 @@ describe('BillingService', () => {
 
         it('throws BadRequestException when company has no active subscription', async () => {
             companyRepo.findOne.mockResolvedValue(makeCompany());
-            await expect(service.changePlanForCompany(companyId, 'ENTERPRISE'))
-                .rejects.toBeInstanceOf(BadRequestException);
+            await expect(
+                service.changePlanForCompany(companyId, 'ENTERPRISE'),
+            ).rejects.toBeInstanceOf(BadRequestException);
         });
     });
 
@@ -438,21 +618,53 @@ describe('BillingService', () => {
 
         it('throws ConflictException (409) when company has more than 1 active user', async () => {
             userRepo.count.mockResolvedValue(3);
-            await expect(service.cancelSubscription(companyId))
-                .rejects.toBeInstanceOf(ConflictException);
+            await expect(
+                service.cancelSubscription(companyId),
+            ).rejects.toBeInstanceOf(ConflictException);
             expect(provider.cancel).not.toHaveBeenCalled();
         });
 
         it('throws BadRequestException when company has no active subscription', async () => {
             companyRepo.findOne.mockResolvedValue(makeCompany());
-            await expect(service.cancelSubscription(companyId))
-                .rejects.toBeInstanceOf(BadRequestException);
+            await expect(
+                service.cancelSubscription(companyId),
+            ).rejects.toBeInstanceOf(BadRequestException);
         });
 
         it('throws NotFoundException when company does not exist', async () => {
             companyRepo.findOne.mockResolvedValue(null);
-            await expect(service.cancelSubscription(companyId))
-                .rejects.toBeInstanceOf(NotFoundException);
+            await expect(
+                service.cancelSubscription(companyId),
+            ).rejects.toBeInstanceOf(NotFoundException);
+        });
+    });
+
+    describe('resumeSubscription', () => {
+        const activeCompany = makeCompany({
+            subscriptionTier: SubscriptionTier.PRO,
+            billingSubscriptionId: 'sub_pro',
+            billingCustomerId: 'cus_1',
+        });
+
+        beforeEach(() => {
+            companyRepo.findOne.mockResolvedValue(activeCompany);
+            (provider.resume as jest.Mock).mockResolvedValue(undefined);
+        });
+
+        it('calls provider.resume with the subscription ref to clear a queued downgrade', async () => {
+            await service.resumeSubscription(companyId);
+            expect(provider.resume).toHaveBeenCalledWith({
+                subscriptionId: 'sub_pro',
+                customerId: 'cus_1',
+            });
+        });
+
+        it('throws BadRequestException when company has no active subscription', async () => {
+            companyRepo.findOne.mockResolvedValue(makeCompany());
+            await expect(
+                service.resumeSubscription(companyId),
+            ).rejects.toBeInstanceOf(BadRequestException);
+            expect(provider.resume).not.toHaveBeenCalled();
         });
     });
 
@@ -461,6 +673,14 @@ describe('BillingService', () => {
     // -------------------------------------------------------------------------
 
     describe('reserveSeat', () => {
+        const seatPriceRow: Partial<BillingPrice> = {
+            id: 'bp-1',
+            kind: 'SEAT',
+            currency: 'aed',
+            unitAmount: 9500,
+            active: true,
+            providerPriceId: 'price_aed_seat',
+        };
         const baseCompany = makeCompany({
             subscriptionTier: SubscriptionTier.PRO,
             // purchasedSeats is deliberately STALE (5) vs the live provider quantity
@@ -472,6 +692,9 @@ describe('BillingService', () => {
 
         beforeEach(() => {
             (provider.getSeatQuantity as jest.Mock).mockResolvedValue(7);
+            // reserveSeat now resolves the SEAT price id FIRST (getProviderPriceId),
+            // before reading the live quantity, so every scenario needs it mocked.
+            priceRepo.findOne.mockResolvedValue(seatPriceRow as BillingPrice);
         });
 
         it('returns null and never calls the provider for FREE companies', async () => {
@@ -494,28 +717,41 @@ describe('BillingService', () => {
         });
 
         it('sets updateSeatQuantity to the LIVE quantity + 1, ignoring the stale purchasedSeats column', async () => {
-            (provider.updateSeatQuantity as jest.Mock).mockResolvedValue(undefined);
-            const reservation = await service.reserveSeat(baseCompany);
-            expect(provider.getSeatQuantity).toHaveBeenCalledWith(
-                { subscriptionId: 'sub_test_123', customerId: 'cus_test_1' },
+            (provider.updateSeatQuantity as jest.Mock).mockResolvedValue(
+                undefined,
             );
+            const reservation = await service.reserveSeat(baseCompany);
+            expect(provider.getSeatQuantity).toHaveBeenCalledWith({
+                subscriptionId: 'sub_test_123',
+                customerId: 'cus_test_1',
+            });
             expect(provider.updateSeatQuantity).toHaveBeenCalledWith(
                 { subscriptionId: 'sub_test_123', customerId: 'cus_test_1' },
                 8,
+                'price_aed_seat',
             );
-            expect(reservation).toMatchObject({ subscriptionId: 'sub_test_123', targetQuantity: 8 });
+            expect(reservation).toMatchObject({
+                subscriptionId: 'sub_test_123',
+                targetQuantity: 8,
+            });
         });
 
         it('maps a provider rejection to HTTP 402', async () => {
-            (provider.updateSeatQuantity as jest.Mock).mockRejectedValue(new Error('card declined'));
+            (provider.updateSeatQuantity as jest.Mock).mockRejectedValue(
+                new Error('card declined'),
+            );
             const err = await service.reserveSeat(baseCompany).catch((e) => e);
             expect(err).toBeInstanceOf(HttpException);
             expect(err.getStatus()).toBe(HttpStatus.PAYMENT_REQUIRED);
-            expect(err.getResponse()).toMatchObject({ message: expect.stringContaining('No user was created') });
+            expect(err.getResponse()).toMatchObject({
+                message: expect.stringContaining('No user was created'),
+            });
         });
 
         it('maps a failed live-quantity read to HTTP 402 and never increments', async () => {
-            (provider.getSeatQuantity as jest.Mock).mockRejectedValue(new Error('stripe unavailable'));
+            (provider.getSeatQuantity as jest.Mock).mockRejectedValue(
+                new Error('stripe unavailable'),
+            );
             const err = await service.reserveSeat(baseCompany).catch((e) => e);
             expect(err).toBeInstanceOf(HttpException);
             expect(err.getStatus()).toBe(HttpStatus.PAYMENT_REQUIRED);
@@ -523,31 +759,48 @@ describe('BillingService', () => {
         });
 
         it('release() restores the captured pre-increment live quantity', async () => {
-            (provider.updateSeatQuantity as jest.Mock).mockResolvedValue(undefined);
+            (provider.updateSeatQuantity as jest.Mock).mockResolvedValue(
+                undefined,
+            );
             const reservation = await service.reserveSeat(baseCompany);
             (provider.updateSeatQuantity as jest.Mock).mockClear();
             await reservation!.release();
             expect(provider.updateSeatQuantity).toHaveBeenCalledWith(
                 { subscriptionId: 'sub_test_123', customerId: 'cus_test_1' },
                 7,
+                'price_aed_seat',
             );
         });
 
         it('release() swallows provider errors instead of throwing', async () => {
-            (provider.updateSeatQuantity as jest.Mock).mockResolvedValueOnce(undefined);
+            (provider.updateSeatQuantity as jest.Mock).mockResolvedValueOnce(
+                undefined,
+            );
             const reservation = await service.reserveSeat(baseCompany);
-            (provider.updateSeatQuantity as jest.Mock).mockRejectedValueOnce(new Error('provider down'));
+            (provider.updateSeatQuantity as jest.Mock).mockRejectedValueOnce(
+                new Error('provider down'),
+            );
             await expect(reservation!.release()).resolves.toBeUndefined();
         });
 
         it('never writes any Company column (single-writer rule)', async () => {
-            (provider.updateSeatQuantity as jest.Mock).mockResolvedValue(undefined);
+            (provider.updateSeatQuantity as jest.Mock).mockResolvedValue(
+                undefined,
+            );
             await service.reserveSeat(baseCompany);
             expect(companyRepo.update).not.toHaveBeenCalled();
         });
     });
 
     describe('decrementSeat', () => {
+        const seatPriceRow: Partial<BillingPrice> = {
+            id: 'bp-1',
+            kind: 'SEAT',
+            currency: 'aed',
+            unitAmount: 9500,
+            active: true,
+            providerPriceId: 'price_aed_seat',
+        };
         const baseCompany = makeCompany({
             subscriptionTier: SubscriptionTier.PRO,
             purchasedSeats: 5, // stale on purpose
@@ -555,42 +808,85 @@ describe('BillingService', () => {
             billingCustomerId: 'cus_test_1',
         });
 
+        beforeEach(() => {
+            priceRepo.findOne.mockResolvedValue(seatPriceRow as BillingPrice);
+        });
+
         it('returns null for FREE and for a paid comp with no subscription (Option B)', async () => {
             expect(await service.decrementSeat(makeCompany())).toBeNull();
             expect(
                 await service.decrementSeat(
-                    makeCompany({ subscriptionTier: SubscriptionTier.PRO, billingSubscriptionId: null }),
+                    makeCompany({
+                        subscriptionTier: SubscriptionTier.PRO,
+                        billingSubscriptionId: null,
+                    }),
                 ),
             ).toBeNull();
             expect(provider.getSeatQuantity).not.toHaveBeenCalled();
         });
 
-        it('sets updateSeatQuantity to max(live - 1, 1) from the live quantity', async () => {
+        it('sets updateSeatQuantity to live - 1 for a PRO company', async () => {
             (provider.getSeatQuantity as jest.Mock).mockResolvedValue(4);
-            (provider.updateSeatQuantity as jest.Mock).mockResolvedValue(undefined);
+            (provider.updateSeatQuantity as jest.Mock).mockResolvedValue(
+                undefined,
+            );
             const handle = await service.decrementSeat(baseCompany);
             expect(provider.updateSeatQuantity).toHaveBeenCalledWith(
                 { subscriptionId: 'sub_test_123', customerId: 'cus_test_1' },
                 3,
+                'price_aed_seat',
             );
             expect(handle).not.toBeNull();
         });
 
-        it('never sets the quantity below 1', async () => {
+        it('floors a PRO company at 1 (the owner keeps a seat)', async () => {
             (provider.getSeatQuantity as jest.Mock).mockResolvedValue(1);
-            (provider.updateSeatQuantity as jest.Mock).mockResolvedValue(undefined);
+            (provider.updateSeatQuantity as jest.Mock).mockResolvedValue(
+                undefined,
+            );
             await service.decrementSeat(baseCompany);
-            expect(provider.updateSeatQuantity).toHaveBeenCalledWith(expect.anything(), 1);
+            expect(provider.updateSeatQuantity).toHaveBeenCalledWith(
+                expect.anything(),
+                1,
+                'price_aed_seat',
+            );
+        });
+
+        it('floors an ENTERPRISE company at 0 (base covers the last seat)', async () => {
+            const entCompany = makeCompany({
+                subscriptionTier: SubscriptionTier.ENTERPRISE,
+                purchasedSeats: 2,
+                billingSubscriptionId: 'sub_ent_123',
+                billingCustomerId: 'cus_ent_1',
+            });
+            (provider.getSeatQuantity as jest.Mock).mockResolvedValue(1);
+            (provider.updateSeatQuantity as jest.Mock).mockResolvedValue(
+                undefined,
+            );
+            await service.decrementSeat(entCompany);
+            expect(provider.updateSeatQuantity).toHaveBeenCalledWith(
+                { subscriptionId: 'sub_ent_123', customerId: 'cus_ent_1' },
+                0,
+                'price_aed_seat',
+            );
         });
 
         it('compensate() restores the captured live quantity and swallows errors', async () => {
             (provider.getSeatQuantity as jest.Mock).mockResolvedValue(4);
-            (provider.updateSeatQuantity as jest.Mock).mockResolvedValue(undefined);
+            (provider.updateSeatQuantity as jest.Mock).mockResolvedValue(
+                undefined,
+            );
             const handle = await service.decrementSeat(baseCompany);
             (provider.updateSeatQuantity as jest.Mock).mockClear();
-            (provider.updateSeatQuantity as jest.Mock).mockRejectedValueOnce(new Error('down'));
+            (provider.updateSeatQuantity as jest.Mock).mockRejectedValueOnce(
+                new Error('down'),
+            );
             await expect(handle!.compensate()).resolves.toBeUndefined();
-            expect(provider.updateSeatQuantity).toHaveBeenCalledWith(expect.anything(), 4);
+            expect(provider.updateSeatQuantity).toHaveBeenCalledWith(
+                expect.anything(),
+                4,
+                'price_aed_seat',
+            );
         });
     });
 
@@ -598,13 +894,18 @@ describe('BillingService', () => {
         it('returns the provider live quantity', async () => {
             (provider.getSeatQuantity as jest.Mock).mockResolvedValue(6);
             const qty = await service.getLiveSeatQuantity(
-                makeCompany({ billingSubscriptionId: 'sub_1', billingCustomerId: 'cus_1' }),
+                makeCompany({
+                    billingSubscriptionId: 'sub_1',
+                    billingCustomerId: 'cus_1',
+                }),
             );
             expect(qty).toBe(6);
         });
 
         it('throws HTTP 402 when the company has no live subscription', async () => {
-            const err = await service.getLiveSeatQuantity(makeCompany()).catch((e) => e);
+            const err = await service
+                .getLiveSeatQuantity(makeCompany())
+                .catch((e) => e);
             expect(err).toBeInstanceOf(HttpException);
             expect(err.getStatus()).toBe(HttpStatus.PAYMENT_REQUIRED);
         });

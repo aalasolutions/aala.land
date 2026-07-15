@@ -550,7 +550,7 @@ describe('UsersService', () => {
     const keeper = { ...mockUser, id: 'keeper-uuid', role: Role.COMPANY_ADMIN, isActive: true };
     const trimDto = { keepUserId: 'keeper-uuid', reason: 'Downgrading to the Free plan' };
 
-    it('sets the seat quantity to 1 (live baseline captured), then deactivates and reassigns every other active user', async () => {
+    it('sets the seat quantity to 1 for PRO (the keeper seat), then deactivates and reassigns every other active user', async () => {
       repo.findOne.mockResolvedValueOnce(keeper as User);
       companyRepo.findOne.mockResolvedValue(proCompany as Company);
       repo.find.mockResolvedValue([

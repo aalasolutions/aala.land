@@ -7,11 +7,7 @@ export interface EnsureCustomerInput {
     companyId: string;
     companyName: string;
     email?: string | null;
-    /**
-     * Provider idempotency key so a retried/racing create resolves to the SAME
-     * customer instead of a duplicate (race audit 2026-07-07, P5). Derived from
-     * the companyId by the caller.
-     */
+    /** Idempotency key (from companyId) so a racing/retried create resolves to the same customer. Race audit 2026-07-07 P5. */
     idempotencyKey?: string;
 }
 
@@ -31,11 +27,13 @@ export interface ProviderWebhookEvent {
 export interface CreateSubscriptionInput {
     /** Stripe customer id (must already exist). */
     customerId: string;
-    /** BillingPrice.providerPriceId for the SEAT price in this currency. */
+    /** BillingPrice.providerPriceId for the SEAT price ($25) in this currency. */
     seatPriceId: string;
-    /** BillingPrice.providerPriceId for the ENTERPRISE_BASE flat fee (ENTERPRISE only, null for PRO). */
+    /** ENTERPRISE_BASE price id ($250, includes first seat), null for PRO (no base). */
     basePriceId: string | null;
-    /** Number of seats. Must be >= 1. */
+    /** Target plan, stamped on subscription metadata for the webhook. */
+    plan: BillingPlan;
+    /** SEAT units: PRO = all active users (min 1). ENTERPRISE = active users - 1 (0 omits the seat line). */
     quantity: number;
     /** Stripe-format success URL (?session_id={CHECKOUT_SESSION_ID} appended by provider). */
     successUrl: string;
@@ -48,10 +46,7 @@ export interface CreateSubscriptionInput {
 export interface CreateSubscriptionResult {
     /** Hosted Checkout URL. Frontend redirects the user here. */
     checkoutUrl: string;
-    /**
-     * null on Checkout mode: the real subscriptionId arrives via the
-     * SubscriptionActivated webhook event. Persist it there (single writer).
-     */
+    /** Always null: real subscriptionId arrives via SubscriptionActivated webhook (single writer). */
     subscriptionId: null;
 }
 
@@ -65,16 +60,12 @@ export interface SubscriptionRef {
 export interface ChangePlanInput extends SubscriptionRef {
     /** Target plan. */
     plan: BillingPlan;
-    /** New SEAT price id (may differ from current if currency changed — contract: currency fixed at checkout). */
+    /** New SEAT price id (currency is fixed at checkout, so normally unchanged). */
     seatPriceId: string;
     /** New ENTERPRISE_BASE price id; null when switching TO PRO. */
     basePriceId: string | null;
-    // Seat quantity is intentionally NOT an input here (contract section 12: the
-    // PRO<->ENTERPRISE switch preserves quantity). The provider reads the LIVE
-    // quantity off the subscription it already retrieves and carries it over,
-    // rather than trusting a DB-derived value: purchasedSeats is a webhook-synced
-    // read model, and re-asserting it here would invert the single-writer rule
-    // and could clobber an in-flight seat change whose webhook has not landed yet.
+    // No quantity input: provider reads the LIVE seat line and shifts it by 1
+    // (Model A). Never derive from purchasedSeats; that would break single-writer.
 }
 
 export interface BillingProvider {
@@ -82,45 +73,49 @@ export interface BillingProvider {
     ensureCustomer(input: EnsureCustomerInput): Promise<string>;
 
     /** Create a recurring monthly Price for (kind, currency, amount); returns the provider price id. */
-    ensurePrice(kind: BillingPriceKind, currency: string, unitAmount: number): Promise<string>;
+    ensurePrice(
+        kind: BillingPriceKind,
+        currency: string,
+        unitAmount: number,
+    ): Promise<string>;
 
     /** Verify the signature and translate the raw webhook into normalized events. Throws on bad signature. */
-    parseWebhook(rawBody: Buffer, signature: string): Promise<ProviderWebhookEvent>;
+    parseWebhook(
+        rawBody: Buffer,
+        signature: string,
+    ): Promise<ProviderWebhookEvent>;
+
+    /** Open hosted Checkout (subscription mode). subscriptionId always arrives later via webhook. */
+    createSubscription(
+        input: CreateSubscriptionInput,
+    ): Promise<CreateSubscriptionResult>;
 
     /**
-     * Open a hosted Stripe Checkout session (subscription mode). Returns the URL
-     * to redirect the user to. subscriptionId is always null: it arrives via the
-     * SubscriptionActivated webhook event after the user completes checkout.
-     */
-    createSubscription(input: CreateSubscriptionInput): Promise<CreateSubscriptionResult>;
-
-    /**
-     * Read the LIVE seat quantity from the subscription's SEAT line item. Every
-     * seat mutation derives its target from this authoritative value ± the exact
-     * delta, never from the webhook-synced (and possibly stale) purchasedSeats
-     * column (race audit 2026-07-07, P1). Throws if the SEAT item is not found.
+     * Read the LIVE SEAT unit count, not the DB purchasedSeats (which is webhook-synced
+     * and can be stale; race audit 2026-07-07 P1). 0 for a solo ENTERPRISE.
      */
     getSeatQuantity(ref: SubscriptionRef): Promise<number>;
 
-    /**
-     * Update the seat quantity on an existing subscription's SEAT line item.
-     * Used by the unit-4 seat-add flow. Proration is immediate.
-     */
-    updateSeatQuantity(ref: SubscriptionRef, quantity: number): Promise<void>;
+    /** Set SEAT units: creates the line if absent, updates in place, or deletes at 0. Immediate proration. */
+    updateSeatQuantity(
+        ref: SubscriptionRef,
+        quantity: number,
+        seatPriceId?: string,
+    ): Promise<void>;
 
-    /**
-     * Swap the subscription's price items for a plan change (PRO <-> ENTERPRISE).
-     * Quantity is preserved. The plan swap takes effect at next period unless the
-     * provider supports immediate proration (Stripe does).
-     */
+    /** PRO <-> ENTERPRISE: toggle the base line and shift the SEAT line by 1 (Model A). Immediate proration. */
     changePlan(input: ChangePlanInput): Promise<void>;
 
-    /**
-     * Cancel the subscription at the end of the current period
-     * (cancel_at_period_end = true). The SubscriptionCanceled webhook fires when
-     * the period ends and is the SINGLE WRITER that drops the tier to FREE.
-     */
+    /** Cancel at period end. SubscriptionCanceled webhook is the single writer that drops the tier to FREE. */
     cancel(ref: SubscriptionRef): Promise<void>;
+
+    /** Read whether the subscription is scheduled to cancel at period end, and the date it takes effect. */
+    getCancellationState(
+        ref: SubscriptionRef,
+    ): Promise<{ cancelAtPeriodEnd: boolean; cancelAt: Date | null }>;
+
+    /** Undo a scheduled cancellation (cancel_at_period_end = false); the plan keeps renewing. */
+    resume(ref: SubscriptionRef): Promise<void>;
 }
 
 export const BILLING_PROVIDER = Symbol('BILLING_PROVIDER');
