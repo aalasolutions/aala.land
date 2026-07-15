@@ -33,6 +33,8 @@ interface StripeSubscriptionItemLike {
 interface StripeSubscriptionLike {
     id: string;
     status: string;
+    /** Subscription currency (lowercase ISO 4217); all prices on a sub share it. */
+    currency?: string | null;
     customer: string | { id: string } | null;
     metadata?: Record<string, string> | null;
     items?: { data?: StripeSubscriptionItemLike[] } | null;
@@ -254,6 +256,7 @@ export class StripeBillingProvider implements BillingProvider {
                 plan,
                 quantity,
                 status: sub.status,
+                currency: (sub.currency ?? 'usd').toLowerCase(),
                 currentPeriodEnd,
             };
             return [activated];

@@ -150,9 +150,29 @@
               data-test-seat-price
             >{{this.seatPriceLabel}}</p>
           {{/if}}
+          {{#if this.purchasedCurrency}}
+            <p class="font-sm text-muted" data-test-billed-currency>
+              Billed in {{this.purchasedCurrency}}, locked to your account.
+            </p>
+          {{/if}}
         </div>
 
         {{#if this.isFreeTier}}
+          {{#if this.paymentCurrencyOptions.length}}
+            <div class="mb-3" data-test-currency-select>
+              <Ui::FormDropdown
+                @label="Select your Payment currency"
+                @id="billing-currency"
+                @value={{this.selectedCurrency}}
+                @onChange={{fn this.setField "selectedCurrency"}}
+                @options={{this.paymentCurrencyOptions}}
+              />
+              <p
+                class="font-sm text-muted mt-1"
+                data-test-currency-lock-note
+              >Locked to your account once you subscribe.</p>
+            </div>
+          {{/if}}
           <button
             type="button"
             class="btn btn-primary"

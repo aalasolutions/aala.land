@@ -151,6 +151,8 @@ export class BillingWebhookService implements OnModuleInit {
             billingStatus: event.status,
             subscriptionTier: tier,
             purchasedSeats: Math.max(event.quantity, 1),
+            // Pin the subscription currency here (webhook is the single writer).
+            billingCurrency: event.currency,
             maxUsers: limits.maxUsers,
             maxRegions: limits.maxRegions,
             maxProperties: limits.maxProperties,

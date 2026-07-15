@@ -298,6 +298,11 @@ describe('BillingService', () => {
         it('returns the rich billing snapshot for a FREE company with no subscription', async () => {
             companyRepo.findOne.mockResolvedValue(makeCompany());
             priceRepo.findOne.mockResolvedValue({ unitAmount: 9500 } as any);
+            priceRepo.find.mockResolvedValue([
+                { currency: 'usd', unitAmount: 2500 },
+                { currency: 'aed', unitAmount: 9500 },
+                { currency: 'sar', unitAmount: 9500 },
+            ] as any);
             userRepo.count.mockResolvedValue(1);
 
             const state = await service.getSubscriptionState(companyId);
@@ -311,6 +316,11 @@ describe('BillingService', () => {
                 currency: 'aed',
                 seatAmount: 9500,
                 baseAmount: 9500,
+                currencyOptions: [
+                    { currency: 'usd', seatAmount: 2500 },
+                    { currency: 'aed', seatAmount: 9500 },
+                    { currency: 'sar', seatAmount: 9500 },
+                ],
                 canDowngradeToFree: true,
                 cancelAtPeriodEnd: false,
                 cancelAt: null,
@@ -363,6 +373,31 @@ describe('BillingService', () => {
             expect(state.canDowngradeToFree).toBe(false);
             expect(state.seatAmount).toBe(9500);
             expect(state.currency).toBe('aed');
+            // Once subscribed the currency is locked: no selector options offered.
+            expect(state.currencyOptions).toEqual([]);
+        });
+
+        it('reads the PINNED billing currency, not the mutable region, once set', async () => {
+            // billingCurrency usd but region dubai (would derive aed): the pin wins,
+            // proving a later region change cannot re-price the live subscription.
+            companyRepo.findOne.mockResolvedValue(
+                makeCompany({
+                    subscriptionTier: SubscriptionTier.PRO,
+                    billingSubscriptionId: 'sub_123',
+                    billingCustomerId: 'cus_1',
+                    billingCurrency: 'usd',
+                    defaultRegionCode: 'dubai',
+                }),
+            );
+            priceRepo.findOne.mockResolvedValue({ unitAmount: 2500 } as any);
+            userRepo.count.mockResolvedValue(1);
+
+            const state = await service.getSubscriptionState(companyId);
+
+            expect(state.currency).toBe('usd');
+            expect(priceRepo.findOne).toHaveBeenCalledWith({
+                where: { kind: 'SEAT', currency: 'usd', active: true },
+            });
         });
 
         it('returns seatAmount null when no active SEAT price exists', async () => {
@@ -446,6 +481,42 @@ describe('BillingService', () => {
             expect(call.quantity).toBe(1);
             expect(call.basePriceId).toBeNull();
             expect(call.plan).toBe('PRO');
+        });
+
+        it('uses the user-selected payment currency for the seat price lookup', async () => {
+            await service.startCheckout(
+                companyId,
+                'http://localhost:4200/billing/success',
+                'http://localhost:4200/billing/cancel',
+                'sar',
+            );
+            expect(priceRepo.findOne).toHaveBeenCalledWith({
+                where: { kind: 'SEAT', currency: 'sar', active: true },
+            });
+        });
+
+        it('defaults to USD when no currency is selected', async () => {
+            await service.startCheckout(
+                companyId,
+                'http://localhost:4200/billing/success',
+                'http://localhost:4200/billing/cancel',
+            );
+            expect(priceRepo.findOne).toHaveBeenCalledWith({
+                where: { kind: 'SEAT', currency: 'usd', active: true },
+            });
+        });
+
+        it('rejects an unsupported payment currency with 400 before any side effect', async () => {
+            await expect(
+                service.startCheckout(
+                    companyId,
+                    'http://localhost:4200/billing/success',
+                    'http://localhost:4200/billing/cancel',
+                    'eur',
+                ),
+            ).rejects.toBeInstanceOf(BadRequestException);
+            expect(provider.ensureCustomer).not.toHaveBeenCalled();
+            expect(provider.createSubscription).not.toHaveBeenCalled();
         });
 
         it('throws NotFoundException when company does not exist', async () => {

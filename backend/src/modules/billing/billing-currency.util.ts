@@ -1,18 +1,19 @@
 import { getRegionByCode } from '@shared/constants/regions';
 
+/** Supported billing currencies, all same value (~$25 = AED 95 = SAR 95). USD default, ordered default-first. */
+export const BILLING_CURRENCIES = ['usd', 'aed', 'sar'] as const;
+export type BillingCurrency = (typeof BILLING_CURRENCIES)[number];
+
+/** Type guard for a supported billing currency. */
+export function isBillingCurrency(value: string): value is BillingCurrency {
+    return (BILLING_CURRENCIES as readonly string[]).includes(value);
+}
+
 /**
- * Resolve the Stripe billing currency for a company based on its default region.
- *
- * Contract section 10 (frozen):
- *   AE country code  ->  'aed'
- *   SA country code  ->  'sar'
- *   anything else    ->  'usd'
- *
- * NOTE: this intentionally does NOT use Region.currency (which is the display
- * currency symbol for the UI). The billing currency is a three-letter ISO code
- * used for Stripe price selection. They happen to match for AED/SAR but must
- * stay on separate code paths so a future display-currency change does not
- * accidentally flip the billing currency.
+ * Fallback currency from a company's region: AE=aed, SA=sar, else usd. Not used
+ * to price checkout (the user picks); only fills in when billingCurrency is
+ * unpinned (legacy / pre-subscription). Read as
+ * `company.billingCurrency ?? resolveBillingCurrency(company.defaultRegionCode)`.
  */
 export function resolveBillingCurrency(defaultRegionCode: string | null | undefined): string {
     if (!defaultRegionCode) return 'usd';

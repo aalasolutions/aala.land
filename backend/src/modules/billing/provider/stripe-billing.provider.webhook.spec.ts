@@ -37,6 +37,7 @@ describe('StripeBillingProvider webhook parsing', () => {
             items?: unknown[];
             metadata?: Record<string, string> | null;
             endedAt?: number;
+            currency?: string;
         } = {},
     ): Record<string, unknown> {
         return {
@@ -47,6 +48,7 @@ describe('StripeBillingProvider webhook parsing', () => {
                 object: {
                     id: 'sub_1',
                     status: overrides.status ?? 'active',
+                    currency: overrides.currency ?? 'usd',
                     customer: 'cus_1',
                     metadata:
                         overrides.metadata === undefined
@@ -152,6 +154,23 @@ describe('StripeBillingProvider webhook parsing', () => {
             // PRO reports every seat: seatItem.quantity (3).
             quantity: 3,
             status: 'active',
+            // Carries the real Stripe subscription currency for the webhook to pin.
+            currency: 'usd',
+        });
+    });
+
+    it('carries the real subscription currency (e.g. sar) onto SubscriptionActivated', async () => {
+        stripe.webhooks.constructEvent.mockReturnValue(
+            subscriptionEvent({
+                type: 'customer.subscription.created',
+                status: 'active',
+                currency: 'sar',
+            }),
+        );
+        const parsed = await provider.parseWebhook(rawBody, signature);
+        expect(parsed.events[0]).toMatchObject({
+            name: 'SubscriptionActivated',
+            currency: 'sar',
         });
     });
 

@@ -23,6 +23,8 @@ export default class CompanyController extends Controller {
   @tracked billing = null;
   @tracked isBillingBusy = false;
   @tracked showDowngradeConfirm = false;
+  // Selected payment currency (default USD), sent at checkout.
+  @tracked selectedCurrency = 'usd';
 
   @tracked activeTab = 'general';
   @tracked aiPrompt = '';
@@ -120,8 +122,23 @@ export default class CompanyController extends Controller {
     return `${seat} ${currency} per seat per month`;
   }
 
+  // The locked payment currency, shown once the company has a subscription.
+  get purchasedCurrency() {
+    if (!this.billing?.hasSubscription) return null;
+    return this.billing?.currency?.toUpperCase() ?? null;
+  }
+
   get isCompanyAdmin() {
     return this.auth.currentUser?.role === 'company_admin';
+  }
+
+  // Currency choices for the upgrade selector; backend returns [] once subscribed.
+  get paymentCurrencyOptions() {
+    const options = this.billing?.currencyOptions ?? [];
+    return options.map((o) => ({
+      value: o.currency,
+      label: `${o.currency.toUpperCase()}: ${o.seatAmount / 100} per seat / month`,
+    }));
   }
 
   // Downgrade is blocked while a billing request is in flight, or when the
@@ -244,7 +261,11 @@ export default class CompanyController extends Controller {
       const cancelUrl = `${window.location.origin}${this.router.urlFor('billing.cancel')}`;
       const res = await this.auth.fetchJson('/billing/checkout', {
         method: 'POST',
-        body: JSON.stringify({ successUrl, cancelUrl }),
+        body: JSON.stringify({
+          successUrl,
+          cancelUrl,
+          currency: this.selectedCurrency,
+        }),
       });
       const url = res?.data?.checkoutUrl;
       if (url) {
