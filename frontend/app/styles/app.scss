@@ -213,7 +213,7 @@ body {
   width: 36px;
   height: 36px;
   object-fit: contain;
-  display: block;
+  display: none; // shown only in icon-only mode (see sidebar-icon-only mixin)
   margin: 0 auto;
 }
 
@@ -377,6 +377,20 @@ body {
     padding: var(--space-4) var(--space-2);
   }
 
+  // Brand shrinks to the logo mark
+  .sidebar-header {
+    padding: 0;
+    text-align: center;
+  }
+
+  .brand-full {
+    display: none;
+  }
+
+  .brand-logo-collapsed {
+    display: block;
+  }
+
   .sidebar-label,
   .sidebar-chevron {
     display: none;
@@ -446,6 +460,11 @@ body {
   .sidebar {
     width: 60px;
   }
+}
+
+// Mobile overlay backdrop (only visible under the responsive breakpoint)
+.sidebar-backdrop {
+  display: none;
 }
 
 .sidebar-footer {
@@ -823,12 +842,29 @@ body {
   top: calc(100% + 4px);
   right: 0;
   min-width: 200px;
+  max-height: 320px;
+  overflow-y: auto;
   background: var(--bg-surface);
   border: 1px solid var(--border-light);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-float);
   z-index: 1040;
   padding: 4px 0;
+}
+
+.region-group-label {
+  padding: 6px 16px 2px;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+
+  &:not(:first-child) {
+    margin-top: 4px;
+    border-top: 1px solid var(--border-light);
+    padding-top: 8px;
+  }
 }
 
 .region-option {
@@ -2531,18 +2567,35 @@ $google-neutral-border-hover: #c6cbd1;
 // =================================
 
 @media (max-width: 1024px) {
-  @include sidebar-icon-only;
-
-  .sidebar-collapse-btn {
-    display: none;
-  }
-
+  // Content sits beside the 60px rail; expanding overlays it, never pushes.
   .main-content {
     margin-left: 60px;
   }
 
-  .sidebar {
-    width: 60px;
+  // Rail by default; the full sidebar shows only when the overlay is open.
+  .app-layout:not(.sidebar-mobile-open) {
+    @include sidebar-icon-only;
+
+    .sidebar-collapse-btn {
+      align-self: center;
+    }
+  }
+
+  // Expanded overlay floats above the content and the backdrop.
+  .sidebar-mobile-open .sidebar {
+    box-shadow: var(--shadow-float);
+    z-index: 200;
+  }
+
+  .sidebar-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 150;
+    border: none;
+    padding: 0;
+    background: rgba(0, 0, 0, 0.45);
+    cursor: pointer;
   }
 
   .grid-cols-3 {
@@ -2707,18 +2760,20 @@ $google-neutral-border-hover: #c6cbd1;
   gap: var(--space-3);
   padding: var(--space-4);
   border-radius: var(--radius-lg);
+
+
+  &.alert-error {
+    background: var(--badge-red-bg);
+    color: var(--badge-red-text);
+  }
+
+  &.alert-warning {
+    background: var(--badge-amber-bg);
+    color: var(--badge-amber-text);
+    align-items: flex-start;
+  }
 }
 
-.alert-error {
-  background: var(--badge-red-bg);
-  color: var(--badge-red-text);
-}
-
-.alert-warning {
-  background: var(--badge-amber-bg);
-  color: var(--badge-amber-text);
-  align-items: flex-start;
-}
 
 .form-field {
   width: 100%;

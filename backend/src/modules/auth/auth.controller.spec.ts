@@ -41,6 +41,7 @@ describe('AuthController', () => {
             forgotPassword: jest.fn(),
             resetPassword: jest.fn(),
             impersonateLogin: jest.fn(),
+            getBootstrap: jest.fn(),
           },
         },
         {
@@ -166,10 +167,21 @@ describe('AuthController', () => {
   });
 
   describe('getProfile', () => {
-    it('returns user from request', () => {
+    it('returns a fresh bootstrap bundle for the current user', async () => {
+      const bootstrap = {
+        user: { id: 'user-uuid-1', name: 'Test Admin', email: 'admin@test.com', role: 'admin', companyId: 'company-uuid-1' },
+        regions: mockLoginResponse.regions,
+        defaultRegionCode: 'dubai',
+        subscriptionTier: 'FREE',
+      };
+      authService.getBootstrap.mockResolvedValue(bootstrap as any);
+
       const req = { user: { userId: 'user-uuid-1', email: 'admin@test.com', companyId: 'company-uuid-1', role: 'admin' } };
-      const result = controller.getProfile(req as any);
-      expect(result.email).toBe('admin@test.com');
+      const result = await controller.getProfile(req as any);
+
+      expect(authService.getBootstrap).toHaveBeenCalledWith('user-uuid-1', 'company-uuid-1');
+      expect(result.user.email).toBe('admin@test.com');
+      expect(result.subscriptionTier).toBe('FREE');
     });
   });
 

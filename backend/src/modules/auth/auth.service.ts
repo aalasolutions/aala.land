@@ -6,6 +6,7 @@ import { User } from '../users/entities/user.entity';
 import { Region, resolveRegions } from '@shared/constants/regions';
 import { RegisterDto } from './dto/register.dto';
 import { Role } from '@shared/enums/roles.enum';
+import { SubscriptionTier } from '../companies/entities/company.entity';
 import { DataSource } from 'typeorm';
 import * as bcrypt from 'bcryptjs';
 import * as crypto from 'crypto';
@@ -45,6 +46,26 @@ interface LoginResponse {
     };
     regions: Region[];
     defaultRegionCode: string;
+    subscriptionTier: SubscriptionTier | null;
+}
+
+interface BootstrapResponse {
+    user: {
+        id: string;
+        name: string;
+        email: string;
+        role: string;
+        companyId: string | null;
+    };
+    regions: Region[];
+    defaultRegionCode: string;
+    subscriptionTier: SubscriptionTier | null;
+}
+
+interface CompanyContext {
+    regions: Region[];
+    defaultRegionCode: string;
+    subscriptionTier: SubscriptionTier | null;
 }
 
 interface JwtPayload {
@@ -79,6 +100,15 @@ export class AuthService {
         return null;
     }
 
+    private async resolveCompanyContext(companyId: string | null): Promise<CompanyContext> {
+        const company = companyId ? await this.companiesService.findOne(companyId) : null;
+        return {
+            regions: company ? resolveRegions(company.activeRegions) : [],
+            defaultRegionCode: company?.defaultRegionCode ?? '',
+            subscriptionTier: company?.subscriptionTier ?? null,
+        };
+    }
+
     async login(user: LoginUser): Promise<LoginResponse> {
         const payload: JwtPayload = {
             email: user.email,
@@ -87,9 +117,7 @@ export class AuthService {
             role: user.role,
         };
 
-        const company = user.companyId
-            ? await this.companiesService.findOne(user.companyId)
-            : null;
+        const context = await this.resolveCompanyContext(user.companyId);
 
         return {
             accessToken: this.jwtService.sign(payload),
@@ -101,8 +129,23 @@ export class AuthService {
                 role: user.role,
                 companyId: user.companyId,
             },
-            regions: company ? resolveRegions(company.activeRegions) : [],
-            defaultRegionCode: company?.defaultRegionCode ?? '',
+            ...context,
+        };
+    }
+
+    async getBootstrap(userId: string, companyId: string | null): Promise<BootstrapResponse> {
+        const user = await this.usersService.findOne(userId, companyId ?? undefined);
+        const context = await this.resolveCompanyContext(user.companyId);
+
+        return {
+            user: {
+                id: user.id,
+                name: user.name,
+                email: user.email,
+                role: user.role,
+                companyId: user.companyId,
+            },
+            ...context,
         };
     }
 
@@ -127,9 +170,7 @@ export class AuthService {
             impersonatedBy,
         };
 
-        const company = user.companyId
-            ? await this.companiesService.findOne(user.companyId)
-            : null;
+        const context = await this.resolveCompanyContext(user.companyId);
 
         return {
             accessToken: this.jwtService.sign(payload),
@@ -141,8 +182,7 @@ export class AuthService {
                 role: user.role,
                 companyId: user.companyId,
             },
-            regions: company ? resolveRegions(company.activeRegions) : [],
-            defaultRegionCode: company?.defaultRegionCode ?? '',
+            ...context,
         };
     }
 
@@ -237,6 +277,7 @@ export class AuthService {
                 },
                 regions: resolveRegions(savedCompany.activeRegions),
                 defaultRegionCode: savedCompany.defaultRegionCode,
+                subscriptionTier: savedCompany.subscriptionTier,
             };
         });
     }
