@@ -1,3 +1,20 @@
+# Backend stack: Postgres + Dragonfly + backend. backend/.env is the single
+# source of config, feeding two SEPARATE channels:
+#   - ${...} interpolation (postgres creds, ports): Compose auto-loads the .env
+#     from the directory you invoke it in, so run compose from HERE (cd backend).
+#     deploy.sh and deploy/deploy-backend.sh both do exactly that.
+#   - the backend container's env: injected by the EXPLICIT `env_file: ./.env` on
+#     the backend service below. This is not automatic; without that line the
+#     container would get nothing.
+# To change the app's port, set PORT in backend/.env: the published mapping and
+# the healthcheck below both track it via ${PORT}, so they can't drift from it.
+#
+# Public self-host: run the whole file. Owner/external-infra: prune the postgres
+# and/or dragonfly service in a skip-worktree copy and point DB_HOST/REDIS_HOST
+# in backend/.env at the managed endpoints.
+#
+# `name` fixes the project (and thus the network `aala-land_default`) so the
+# frontend compose can join it by name.
 name: aala-land
 
 services:
@@ -35,15 +52,13 @@ services:
 
   backend:
     build:
-      context: ./backend
+      context: .
       dockerfile: Dockerfile
     container_name: aala-land-backend
     ports:
-      - "${BACKEND_HOST_PORT:-3010}:3010"
+      - "${BACKEND_HOST_PORT:-3010}:${PORT:-3010}"
     env_file:
-      - ./backend/.env
-    environment:
-      PORT: 3010
+      - ./.env
     depends_on:
       postgres:
         condition: service_healthy
@@ -51,31 +66,11 @@ services:
         condition: service_healthy
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:3010/v1/health"]
+      test: ["CMD", "wget", "-qO-", "http://localhost:${PORT:-3010}/v1/health"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 30s
-
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-      args:
-        GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
-    container_name: aala-land-frontend
-    ports:
-      - "${FRONTEND_PORT:-4200}:8080"
-    depends_on:
-      backend:
-        condition: service_healthy
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:8080/"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 10s
 
 volumes:
   postgres_data:

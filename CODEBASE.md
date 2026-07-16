@@ -129,7 +129,9 @@ Browser / Mobile (Capacitor)
 | `frontend/app/services/region.js` | Active region / currency logic |
 | `frontend/app/services/session.js` | Authenticated user state |
 | `docker-compose.yml` | Local dev: PostgreSQL 5480, Dragonfly 6470 |
-| `docker-compose.prod.yml` | Production Docker setup |
+| `backend/docker-compose.yml` | Production backend stack (Postgres + Dragonfly + backend), colocated with `backend/.env` |
+| `frontend/docker-compose.yml` | Production frontend (nginx serving the build) |
+| `deploy.sh` | One-shot production deploy |
 
 ---
 
