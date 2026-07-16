@@ -140,6 +140,8 @@ pnpm run db:seed
 pnpm run db:reset
 ```
 
+The `db:migration:run`, `db:migration:revert`, and `db:migration:show` scripts pick the compiled data-source (`dist/data-source.js`) when it exists and fall back to `ts-node` against `src/data-source.ts` otherwise. That selection uses POSIX shell, so run these on Linux or macOS (the deploy and build scripts target the same). The production container is Linux, so in-container use works as expected.
+
 ## API
 
 All endpoints prefixed with `/v1/`. Standard response format:
