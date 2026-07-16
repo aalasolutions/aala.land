@@ -75,11 +75,13 @@ describe('MediaService', () => {
   };
 
   beforeEach(async () => {
-    process.env.AWS_ACCESS_KEY_ID       = 'test-key';
-    process.env.AWS_SECRET_ACCESS_KEY   = 'test-secret';
-    process.env.AWS_S3_BUCKET           = 'test-media-bucket';
-    process.env.AWS_S3_DOCUMENTS_BUCKET = 'test-documents-bucket';
-    process.env.S3_ENDPOINT             = 'https://s3.example.com';
+    process.env.AWS_ACCESS_KEY_ID            = 'test-key';
+    process.env.AWS_SECRET_ACCESS_KEY        = 'test-secret';
+    process.env.AWS_S3_BUCKET                = 'test-media-bucket';
+    process.env.AWS_S3_DOCUMENTS_BUCKET      = 'test-documents-bucket';
+    process.env.AWS_DOCUMENTS_ACCESS_KEY_ID     = 'test-documents-key';
+    process.env.AWS_DOCUMENTS_SECRET_ACCESS_KEY = 'test-documents-secret';
+    process.env.S3_ENDPOINT                  = 'https://s3.example.com';
 
     mockSend.mockResolvedValue({});
 
