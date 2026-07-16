@@ -100,8 +100,10 @@ aala.land/
       services/           Auth, session, region, notifications
       helpers/            Template helpers (currency, dates, etc.)
       components/         Reusable UI components
-  docker-compose.yml      Local dev infrastructure
-  docker-compose.prod.yml Production configuration
+  docker-compose.yml      Local dev infrastructure (Postgres, Dragonfly, MinIO)
+  backend/docker-compose.yml   Production backend stack (Postgres + Dragonfly + backend)
+  frontend/docker-compose.yml  Production frontend (nginx serving the build)
+  deploy.sh               One-shot production deploy
   LICENSE
 ```
 
@@ -205,17 +207,27 @@ Log in at **http://localhost:4200** with your credentials.
 
 ## Production Deployment
 
-A production-ready Docker setup is included:
+Configure `backend/.env` (copy from `backend/.env.example`), then run the one-shot deploy:
 
 ```bash
-# Build and start
-docker compose -f docker-compose.prod.yml up -d
+./deploy.sh
+```
 
-# Environment variables to set:
-# DB_SYNC=false (always)
-# JWT_SECRET=<strong random string>
-# CORS_ORIGIN=https://your-domain.com
-# NODE_ENV=production
+It brings up the backend stack (`backend/docker-compose.yml`: Postgres + Dragonfly +
+backend), waits for health, runs migrations, then builds and serves the frontend
+(`frontend/docker-compose.yml`). Both images build inside Docker, so the host needs
+only Docker, no Node or pnpm.
+
+`backend/.env` is the single source of config for the backend stack. Because
+`backend/docker-compose.yml` sits next to it, Compose loads it for both `${...}`
+interpolation and the container env, so nothing is duplicated. Key values to set:
+
+```env
+DB_SYNC=false           # always, in production
+JWT_SECRET=<strong random string>
+CORS_ORIGIN=https://your-domain.com
+NODE_ENV=production
+DB_HOST=postgres        # the compose service name (not localhost)
 ```
 
 See `backend/Dockerfile` for the multi-stage build configuration.

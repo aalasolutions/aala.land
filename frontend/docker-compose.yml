@@ -1,16 +1,21 @@
 services:
   aala-land-frontend:
-    image: nginx:alpine
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        # Baked into the Ember bundle at build time (the build runs inside the
+        # image, so the host needs no node/pnpm). Single-sourced in backend/.env;
+        # deploy.sh / deploy-frontend.sh export it before building.
+        GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+    image: aala-land-frontend
     container_name: aala-land-frontend
     restart: always
     ports:
       - "7102:8080"
-    volumes:
-      - ./dist:/usr/share/nginx/html:ro
-      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
 
 # Join the backend's compose network so nginx.conf's `proxy_pass http://backend:3010`
-# (for /v1 and /socket.io) resolves. The network is created by docker-compose.prod.yml
+# (for /v1 and /socket.io) resolves. The network is created by backend/docker-compose.yml
 # (project name: aala-land). Verify with: docker network ls | grep aala-land
 networks:
   default:
