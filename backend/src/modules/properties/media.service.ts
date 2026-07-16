@@ -101,13 +101,11 @@ export class MediaService {
     return this.mediaClient;
   }
 
-  // Falls back to the media key so a single-key setup keeps working until a
-  // documents-scoped key is configured.
   private getDocumentsClient(): S3Client {
     if (!this.documentsClient) {
       this.documentsClient = this.buildClient(
-        process.env.AWS_DOCUMENTS_ACCESS_KEY_ID ?? process.env.AWS_ACCESS_KEY_ID,
-        process.env.AWS_DOCUMENTS_SECRET_ACCESS_KEY ?? process.env.AWS_SECRET_ACCESS_KEY,
+        process.env.AWS_DOCUMENTS_ACCESS_KEY_ID,
+        process.env.AWS_DOCUMENTS_SECRET_ACCESS_KEY,
         'AWS_DOCUMENTS_ACCESS_KEY_ID and AWS_DOCUMENTS_SECRET_ACCESS_KEY',
       );
     }

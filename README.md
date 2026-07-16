@@ -152,12 +152,12 @@ JWT_SECRET=your-secret-key      # Generate: openssl rand -base64 64
 
 # Optional (for full functionality)
 WHATSAPP_TOKEN=your-meta-token
-AWS_ACCESS_KEY_ID=your-key            # media (public) bucket; also documents if the keys below are unset
-AWS_SECRET_ACCESS_KEY=your-secret
+AWS_ACCESS_KEY_ID=your-media-key      # key scoped to the media (public) bucket only
+AWS_SECRET_ACCESS_KEY=your-media-secret
 AWS_S3_BUCKET=aala-land-media         # public: property photos/thumbnails
 AWS_S3_DOCUMENTS_BUCKET=aala-land-documents   # private: documents (leases, IDs); never public-read
-AWS_DOCUMENTS_ACCESS_KEY_ID=          # optional key scoped to the documents bucket only
-AWS_DOCUMENTS_SECRET_ACCESS_KEY=      # (falls back to AWS_ACCESS_KEY_ID/SECRET when unset)
+AWS_DOCUMENTS_ACCESS_KEY_ID=your-documents-key      # key scoped to the documents bucket only (required for uploads/downloads)
+AWS_DOCUMENTS_SECRET_ACCESS_KEY=your-documents-secret
 ```
 
 Run database migrations, then start the backend:
