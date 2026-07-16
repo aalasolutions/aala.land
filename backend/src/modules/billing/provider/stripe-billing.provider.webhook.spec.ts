@@ -361,6 +361,20 @@ describe('StripeBillingProvider webhook parsing', () => {
         });
     });
 
+    it('nulls a non-https invoice url instead of carrying it through', async () => {
+        const evt = invoiceEvent('invoice.paid');
+        const obj = (evt.data as { object: Record<string, unknown> }).object;
+        obj.hosted_invoice_url = 'javascript:alert(1)';
+        obj.invoice_pdf = 'http://insecure.example.com/x.pdf';
+        stripe.webhooks.constructEvent.mockReturnValue(evt);
+        const parsed = await provider.parseWebhook(rawBody, signature);
+        expect(parsed.events[0]).toMatchObject({
+            name: 'PaymentSucceeded',
+            hostedInvoiceUrl: null,
+            invoicePdfUrl: null,
+        });
+    });
+
     it('returns zero events for an unrelated event type', async () => {
         stripe.webhooks.constructEvent.mockReturnValue({
             id: 'evt_x',

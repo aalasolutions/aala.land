@@ -76,6 +76,18 @@ export function idOf(
     return typeof ref === 'string' ? ref : (ref.id ?? null);
 }
 
+/** Keep only https URLs; anything else (javascript:, data:, http:, junk) becomes
+ *  null so a compromised/misrouted payload can never be persisted or rendered
+ *  into an href. Stripe invoice URLs are always https. */
+export function httpsUrlOrNull(value: string | null | undefined): string | null {
+    if (typeof value !== 'string') return null;
+    try {
+        return new URL(value).protocol === 'https:' ? value : null;
+    } catch {
+        return null;
+    }
+}
+
 /** Stripe timestamps are epoch seconds. */
 export function epochToDate(
     epochSeconds: number | null | undefined,
@@ -375,9 +387,10 @@ export class StripeBillingProvider implements BillingProvider {
         }
         const currency = (invoice.currency ?? 'usd').toLowerCase();
         // Invoice detail for billing history, carried on both outcomes.
+        // URLs are https-guarded before they can be persisted / rendered into an href.
         const detail = {
-            hostedInvoiceUrl: invoice.hosted_invoice_url ?? null,
-            invoicePdfUrl: invoice.invoice_pdf ?? null,
+            hostedInvoiceUrl: httpsUrlOrNull(invoice.hosted_invoice_url),
+            invoicePdfUrl: httpsUrlOrNull(invoice.invoice_pdf),
             periodStart: epochToDate(invoice.period_start),
             periodEnd: epochToDate(invoice.period_end),
         };
