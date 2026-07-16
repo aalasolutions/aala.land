@@ -7,7 +7,7 @@ import { Unit } from './entities/unit.entity';
 import { Asset } from './entities/asset.entity';
 import { Company, SubscriptionTier, FREE_STORAGE_BYTES } from '../companies/entities/company.entity';
 import { fileTypeFromBuffer, fileTypeFromFile } from 'file-type';
-import { PutObjectCommand, DeleteObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand, DeleteObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
 import { writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
@@ -67,6 +67,8 @@ describe('MediaService', () => {
   const companyId = 'company-uuid-1';
   const unitId    = 'unit-uuid-1';
 
+  const originalEnv = process.env;
+
   const mockCompany: Partial<Company> = {
     id:               companyId,
     storageUsedBytes: 0 as any,
@@ -75,11 +77,14 @@ describe('MediaService', () => {
   };
 
   beforeEach(async () => {
-    process.env.AWS_ACCESS_KEY_ID       = 'test-key';
-    process.env.AWS_SECRET_ACCESS_KEY   = 'test-secret';
-    process.env.AWS_S3_BUCKET           = 'test-media-bucket';
-    process.env.AWS_S3_DOCUMENTS_BUCKET = 'test-documents-bucket';
-    process.env.S3_ENDPOINT             = 'https://s3.example.com';
+    process.env = { ...originalEnv };
+    process.env.AWS_ACCESS_KEY_ID            = 'test-key';
+    process.env.AWS_SECRET_ACCESS_KEY        = 'test-secret';
+    process.env.AWS_S3_BUCKET                = 'test-media-bucket';
+    process.env.AWS_S3_DOCUMENTS_BUCKET      = 'test-documents-bucket';
+    process.env.AWS_DOCUMENTS_ACCESS_KEY_ID     = 'test-documents-key';
+    process.env.AWS_DOCUMENTS_SECRET_ACCESS_KEY = 'test-documents-secret';
+    process.env.S3_ENDPOINT                  = 'https://s3.example.com';
 
     mockSend.mockResolvedValue({});
 
@@ -136,7 +141,10 @@ describe('MediaService', () => {
     (fileTypeFromBuffer as jest.Mock).mockResolvedValue({ mime: 'image/jpeg', ext: 'jpg' });
   });
 
-  afterEach(() => jest.clearAllMocks());
+  afterEach(() => {
+    process.env = originalEnv;
+    jest.clearAllMocks();
+  });
 
   describe('uploadImage — validation', () => {
     it('rejects when neither unitId nor assetId is provided', async () => {
@@ -419,6 +427,50 @@ describe('MediaService', () => {
       expect(DeleteObjectCommand).toHaveBeenCalledWith(
         expect.objectContaining({ Bucket: 'test-documents-bucket' }),
       );
+    });
+  });
+
+  describe('per-bucket credential scoping', () => {
+    const s3Configs = () =>
+      (S3Client as unknown as jest.Mock).mock.calls.map(([cfg]) => cfg);
+
+    it('builds the documents client with the documents-scoped key, never the media key', async () => {
+      await service.uploadDocumentToStorage(companyId, makeFile({ mimetype: 'application/pdf' }));
+
+      const configs = s3Configs();
+      expect(configs).toContainEqual(
+        expect.objectContaining({
+          credentials: { accessKeyId: 'test-documents-key', secretAccessKey: 'test-documents-secret' },
+        }),
+      );
+      configs.forEach((cfg) => expect(cfg.credentials.accessKeyId).not.toBe('test-key'));
+    });
+
+    it('builds the media client with the media-scoped key', async () => {
+      mediaRepo.findOne.mockResolvedValue({
+        id: 'media-1',
+        companyId,
+        s3Key: 'companies/c1/properties/u1/123-photo.jpg',
+        fileSize: 100,
+        thumbnailSize: 50,
+      });
+
+      await service.deleteMedia('media-1', companyId);
+
+      expect(s3Configs()).toContainEqual(
+        expect.objectContaining({
+          credentials: { accessKeyId: 'test-key', secretAccessKey: 'test-secret' },
+        }),
+      );
+    });
+
+    it('throws instead of falling back to the media key when the documents key is unset', async () => {
+      delete process.env.AWS_DOCUMENTS_ACCESS_KEY_ID;
+      delete process.env.AWS_DOCUMENTS_SECRET_ACCESS_KEY;
+
+      await expect(
+        service.uploadDocumentToStorage(companyId, makeFile({ mimetype: 'application/pdf' })),
+      ).rejects.toThrow(BadRequestException);
     });
   });
 });

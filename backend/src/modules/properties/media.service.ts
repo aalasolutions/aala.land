@@ -55,7 +55,8 @@ export interface DocumentUploadResult {
 @Injectable()
 export class MediaService {
   private readonly logger = new Logger(MediaService.name);
-  private s3Client: S3Client | null = null;
+  private mediaClient: S3Client | null = null;
+  private documentsClient: S3Client | null = null;
 
   constructor(
     @InjectRepository(PropertyMedia)
@@ -70,28 +71,45 @@ export class MediaService {
 
   // S3 plumbing
 
-  private getClient(): S3Client {
-    if (!this.s3Client) {
-      const region = process.env.AWS_REGION ?? 'us-east-005';
-      const accessKeyId = process.env.AWS_ACCESS_KEY_ID;
-      const secretAccessKey = process.env.AWS_SECRET_ACCESS_KEY;
-      const endpoint = process.env.S3_ENDPOINT;
-
-      if (!accessKeyId || !secretAccessKey) {
-        throw new BadRequestException(
-          'S3 is not configured. Set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY.',
-        );
-      }
-
-      this.s3Client = new S3Client({
-        region,
-        credentials: { accessKeyId, secretAccessKey },
-        requestChecksumCalculation: 'WHEN_REQUIRED',
-        responseChecksumValidation: 'WHEN_REQUIRED',
-        ...(endpoint ? { endpoint, forcePathStyle: true } : {}),
-      });
+  private buildClient(
+    accessKeyId: string | undefined,
+    secretAccessKey: string | undefined,
+    label: string,
+  ): S3Client {
+    if (!accessKeyId || !secretAccessKey) {
+      throw new BadRequestException(`S3 is not configured. Set ${label}.`);
     }
-    return this.s3Client;
+    const region = process.env.AWS_REGION ?? 'us-east-005';
+    const endpoint = process.env.S3_ENDPOINT;
+    return new S3Client({
+      region,
+      credentials: { accessKeyId, secretAccessKey },
+      requestChecksumCalculation: 'WHEN_REQUIRED',
+      responseChecksumValidation: 'WHEN_REQUIRED',
+      ...(endpoint ? { endpoint, forcePathStyle: true } : {}),
+    });
+  }
+
+  private getMediaClient(): S3Client {
+    if (!this.mediaClient) {
+      this.mediaClient = this.buildClient(
+        process.env.AWS_ACCESS_KEY_ID,
+        process.env.AWS_SECRET_ACCESS_KEY,
+        'AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY',
+      );
+    }
+    return this.mediaClient;
+  }
+
+  private getDocumentsClient(): S3Client {
+    if (!this.documentsClient) {
+      this.documentsClient = this.buildClient(
+        process.env.AWS_DOCUMENTS_ACCESS_KEY_ID,
+        process.env.AWS_DOCUMENTS_SECRET_ACCESS_KEY,
+        'AWS_DOCUMENTS_ACCESS_KEY_ID and AWS_DOCUMENTS_SECRET_ACCESS_KEY',
+      );
+    }
+    return this.documentsClient;
   }
 
   // Public, property photos/thumbnails only.
@@ -108,6 +126,16 @@ export class MediaService {
     const bucket = process.env.AWS_S3_DOCUMENTS_BUCKET;
     if (!bucket) throw new BadRequestException('AWS_S3_DOCUMENTS_BUCKET is not configured.');
     return bucket;
+  }
+
+  // Pair each bucket with its own credentials so an operation can never use the
+  // wrong key for a bucket.
+  private mediaTarget(): { client: S3Client; bucket: string } {
+    return { client: this.getMediaClient(), bucket: this.getMediaBucket() };
+  }
+
+  private documentsTarget(): { client: S3Client; bucket: string } {
+    return { client: this.getDocumentsClient(), bucket: this.getDocumentsBucket() };
   }
 
   private buildFileUrl(bucket: string, key: string): string {
@@ -291,8 +319,7 @@ export class MediaService {
 
     // 10. Upload original and thumbnail to B2.
     //     Output is always JPEG regardless of input format — record it as such.
-    const client = this.getClient();
-    const bucket = this.getMediaBucket();
+    const { client, bucket } = this.mediaTarget();
     let originalUploaded = false;
 
     try {
@@ -415,8 +442,7 @@ export class MediaService {
     //    reserveStorage). Closing this gap here mirrors the fix in uploadImage.
     await reserveStorage(this.companyRepository, companyId, file.size);
 
-    const client = this.getClient();
-    const bucket = this.getDocumentsBucket();
+    const { client, bucket } = this.documentsTarget();
     const timestamp = Date.now();
     const safeName = file.originalname
       .replace(/[^a-zA-Z0-9._-]/g, '_')
@@ -496,8 +522,7 @@ export class MediaService {
     const media = await this.mediaRepository.findOne({ where: { id, companyId } });
     if (!media) throw new NotFoundException('Media not found');
 
-    const client = this.getClient();
-    const bucket = this.getMediaBucket();
+    const { client, bucket } = this.mediaTarget();
     let bytesFreed = 0;
 
     if (media.s3Key) {
@@ -546,8 +571,7 @@ export class MediaService {
   ): Promise<void> {
     if (!s3Key) return;
 
-    const client = this.getClient();
-    const bucket = this.getDocumentsBucket();
+    const { client, bucket } = this.documentsTarget();
 
     try {
       await client.send(
@@ -572,8 +596,7 @@ export class MediaService {
   // through DocumentsService.downloadStream, which re-checks accessLevel before
   // this runs.
   async getDocumentStream(s3Key: string): Promise<NodeJS.ReadableStream> {
-    const client = this.getClient();
-    const bucket = this.getDocumentsBucket();
+    const { client, bucket } = this.documentsTarget();
 
     const result = await client
       .send(new GetObjectCommand({ Bucket: bucket, Key: s3Key }))

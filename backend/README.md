@@ -96,9 +96,12 @@ JWT_SECRET=your-secret-key      # Generate: openssl rand -base64 64
 
 # Optional
 WHATSAPP_TOKEN=your-meta-token
-AWS_ACCESS_KEY_ID=your-key
-AWS_SECRET_ACCESS_KEY=your-secret
-AWS_S3_BUCKET=aala-land-media
+AWS_ACCESS_KEY_ID=your-media-key      # key scoped to the media (public) bucket only
+AWS_SECRET_ACCESS_KEY=your-media-secret
+AWS_S3_BUCKET=aala-land-media         # public: property photos/thumbnails
+AWS_S3_DOCUMENTS_BUCKET=aala-land-documents   # private: documents (leases, IDs); never public-read
+AWS_DOCUMENTS_ACCESS_KEY_ID=your-documents-key      # key scoped to the documents bucket only (required for uploads/downloads)
+AWS_DOCUMENTS_SECRET_ACCESS_KEY=your-documents-secret
 ```
 
 ### Run
@@ -136,6 +139,8 @@ pnpm run db:seed
 # Drop and rebuild (destructive)
 pnpm run db:reset
 ```
+
+The `db:migration:run`, `db:migration:revert`, and `db:migration:show` scripts pick the compiled data-source (`dist/data-source.js`) when it exists and fall back to `ts-node` against `src/data-source.ts` otherwise. That selection uses POSIX shell, so run these on Linux or macOS (the deploy and build scripts target the same). The production container is Linux, so in-container use works as expected.
 
 ## API
 
