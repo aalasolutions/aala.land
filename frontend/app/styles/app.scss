@@ -2071,6 +2071,11 @@ $google-neutral-border-hover: #c6cbd1;
     color: var(--badge-green-text);
   }
 
+  &.status-failed {
+    background: var(--badge-red-bg);
+    color: var(--badge-red-text);
+  }
+
   &.status-cancelled {
     background: var(--badge-gray-bg);
     color: var(--badge-gray-text);

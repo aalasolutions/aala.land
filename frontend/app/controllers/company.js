@@ -35,6 +35,13 @@ export default class CompanyController extends Controller {
   @tracked weeklyUsed = null;
   @tracked weeklyResetsAt = null;
 
+  // Billing history (payment/invoice records), paginated in place.
+  @tracked billingHistory = [];
+  @tracked billingHistoryTotal = 0;
+  @tracked billingHistoryPage = 1;
+  @tracked billingHistoryLimit = 10;
+  @tracked isLoadingHistory = false;
+
   @action toggleCountry(countryCode) {
     if (this.expandedCountries.includes(countryCode)) {
       this.expandedCountries = this.expandedCountries.filter(
@@ -321,6 +328,59 @@ export default class CompanyController extends Controller {
     } finally {
       this.isBillingBusy = false;
     }
+  }
+
+  // -- Billing history pagination (in place, no query params) --------------
+
+  get billingHistoryHasNext() {
+    return (
+      this.billingHistoryPage * this.billingHistoryLimit <
+      this.billingHistoryTotal
+    );
+  }
+
+  get billingHistoryHasPrevious() {
+    return this.billingHistoryPage > 1;
+  }
+
+  async fetchBillingHistory(page, limit) {
+    if (this.isLoadingHistory) return;
+    this.isLoadingHistory = true;
+    try {
+      const res = await this.auth.fetchJson(
+        `/billing/history?page=${page}&limit=${limit}`,
+      );
+      const payload = res?.data ?? {};
+      this.billingHistory = payload.data ?? [];
+      this.billingHistoryTotal = payload.total ?? 0;
+      this.billingHistoryPage = payload.page ?? page;
+      this.billingHistoryLimit = payload.limit ?? limit;
+    } catch (e) {
+      this.notifications.error(e.message);
+    } finally {
+      this.isLoadingHistory = false;
+    }
+  }
+
+  @action billingHistoryNext() {
+    if (!this.billingHistoryHasNext) return;
+    this.fetchBillingHistory(
+      this.billingHistoryPage + 1,
+      this.billingHistoryLimit,
+    );
+  }
+
+  @action billingHistoryPrevious() {
+    if (!this.billingHistoryHasPrevious) return;
+    this.fetchBillingHistory(
+      this.billingHistoryPage - 1,
+      this.billingHistoryLimit,
+    );
+  }
+
+  @action setBillingHistoryLimit(e) {
+    // Ui::Pagination binds this to the <select>'s change event, not a value.
+    this.fetchBillingHistory(1, Number(e?.target?.value) || 10);
   }
 
   @action toggleRegion(code) {

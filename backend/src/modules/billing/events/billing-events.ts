@@ -56,7 +56,20 @@ export interface SubscriptionCanceledEvent extends BillingEventBase {
     endedAt: Date | null;
 }
 
-export interface PaymentSucceededEvent extends BillingEventBase {
+/** Invoice detail carried on payment events, sourced straight from the Stripe
+ *  invoice object. Used to record billing history; all fields default null when
+ *  Stripe omits them. */
+export interface InvoiceDetail {
+    /** Stripe hosted invoice page (view / download link). */
+    hostedInvoiceUrl: string | null;
+    /** Stripe-generated invoice PDF link. */
+    invoicePdfUrl: string | null;
+    /** Invoice billing period bounds. */
+    periodStart: Date | null;
+    periodEnd: Date | null;
+}
+
+export interface PaymentSucceededEvent extends BillingEventBase, InvoiceDetail {
     name: 'PaymentSucceeded';
     /** Minor units (cents / fils / halalas). */
     amount: number;
@@ -65,7 +78,7 @@ export interface PaymentSucceededEvent extends BillingEventBase {
     invoiceId: string | null;
 }
 
-export interface PaymentFailedEvent extends BillingEventBase {
+export interface PaymentFailedEvent extends BillingEventBase, InvoiceDetail {
     name: 'PaymentFailed';
     amount: number;
     currency: string;

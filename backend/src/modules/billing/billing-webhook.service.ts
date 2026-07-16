@@ -21,6 +21,7 @@ import {
     ProviderWebhookEvent,
 } from './provider/billing-provider.interface';
 import { BillingEventDispatcher } from './events/billing-event-dispatcher';
+import { BillingHistoryService } from './billing-history.service';
 import {
     PaymentFailedEvent,
     PaymentSucceededEvent,
@@ -59,6 +60,7 @@ export class BillingWebhookService implements OnModuleInit {
         @Inject(BILLING_PROVIDER)
         private readonly provider: BillingProvider,
         private readonly dispatcher: BillingEventDispatcher,
+        private readonly history: BillingHistoryService,
     ) {}
 
     onModuleInit(): void {
@@ -206,12 +208,15 @@ export class BillingWebhookService implements OnModuleInit {
     }
 
     private async onPaymentSucceeded(event: PaymentSucceededEvent): Promise<void> {
+        // Record the invoice regardless of subscription (future top-ups included).
+        await this.history.recordPayment(event);
         // One-off invoices (future top-ups) carry no subscription: not our status.
         if (!event.subscriptionId) return;
         await this.updateCompany(event.companyId, event.name, { billingStatus: 'active' });
     }
 
     private async onPaymentFailed(event: PaymentFailedEvent): Promise<void> {
+        await this.history.recordPayment(event);
         if (!event.subscriptionId) return;
         await this.updateCompany(event.companyId, event.name, { billingStatus: 'past_due' });
     }

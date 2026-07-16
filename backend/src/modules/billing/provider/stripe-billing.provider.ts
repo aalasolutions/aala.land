@@ -52,6 +52,10 @@ interface StripeInvoiceLike {
     amount_paid?: number | null;
     amount_due?: number | null;
     attempt_count?: number | null;
+    hosted_invoice_url?: string | null;
+    invoice_pdf?: string | null;
+    period_start?: number | null;
+    period_end?: number | null;
     subscription?: string | { id: string } | null;
     subscription_details?: { metadata?: Record<string, string> } | null;
     parent?: {
@@ -70,6 +74,18 @@ export function idOf(
 ): string | null {
     if (!ref) return null;
     return typeof ref === 'string' ? ref : (ref.id ?? null);
+}
+
+/** Keep only https URLs; anything else (javascript:, data:, http:, junk) becomes
+ *  null so a compromised/misrouted payload can never be persisted or rendered
+ *  into an href. Stripe invoice URLs are always https. */
+export function httpsUrlOrNull(value: string | null | undefined): string | null {
+    if (typeof value !== 'string') return null;
+    try {
+        return new URL(value).protocol === 'https:' ? value : null;
+    } catch {
+        return null;
+    }
 }
 
 /** Stripe timestamps are epoch seconds. */
@@ -353,12 +369,37 @@ export class StripeBillingProvider implements BillingProvider {
         }
 
         const base = { companyId, customerId, subscriptionId, occurredAt };
+        // Warn (don't fail) if a money-bearing field is absent: recording it as
+        // 0/usd is indistinguishable from a real $0 invoice, so surface the drift.
+        if (invoice.currency == null) {
+            this.logger.warn(
+                `Webhook ${event.id} (${event.type}): invoice ${invoice.id ?? '?'} has no currency; defaulting to usd`,
+            );
+        }
+        const amountField =
+            (event.type as string) === 'invoice.payment_failed'
+                ? invoice.amount_due
+                : invoice.amount_paid;
+        if (amountField == null) {
+            this.logger.warn(
+                `Webhook ${event.id} (${event.type}): invoice ${invoice.id ?? '?'} has no amount; defaulting to 0`,
+            );
+        }
         const currency = (invoice.currency ?? 'usd').toLowerCase();
+        // Invoice detail for billing history, carried on both outcomes.
+        // URLs are https-guarded before they can be persisted / rendered into an href.
+        const detail = {
+            hostedInvoiceUrl: httpsUrlOrNull(invoice.hosted_invoice_url),
+            invoicePdfUrl: httpsUrlOrNull(invoice.invoice_pdf),
+            periodStart: epochToDate(invoice.period_start),
+            periodEnd: epochToDate(invoice.period_end),
+        };
 
         if ((event.type as string) === 'invoice.payment_failed') {
             const failed: PaymentFailedEvent = {
                 name: 'PaymentFailed',
                 ...base,
+                ...detail,
                 amount: invoice.amount_due ?? 0,
                 currency,
                 invoiceId: invoice.id ?? null,
@@ -370,6 +411,7 @@ export class StripeBillingProvider implements BillingProvider {
         const succeeded: PaymentSucceededEvent = {
             name: 'PaymentSucceeded',
             ...base,
+            ...detail,
             amount: invoice.amount_paid ?? 0,
             currency,
             invoiceId: invoice.id ?? null,

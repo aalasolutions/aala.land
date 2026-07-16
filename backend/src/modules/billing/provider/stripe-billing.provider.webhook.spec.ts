@@ -75,6 +75,10 @@ describe('StripeBillingProvider webhook parsing', () => {
                     amount_paid: 7500,
                     amount_due: 7500,
                     attempt_count: 2,
+                    hosted_invoice_url: 'https://pay.stripe.com/invoice/in_1',
+                    invoice_pdf: 'https://pay.stripe.com/invoice/in_1/pdf',
+                    period_start: 1780000000,
+                    period_end: 1782592000,
                     subscription: 'sub_1',
                     subscription_details: {
                         metadata: { companyId: 'company-uuid-1' },
@@ -335,10 +339,14 @@ describe('StripeBillingProvider webhook parsing', () => {
             invoiceId: 'in_1',
             attemptCount: 2,
             subscriptionId: 'sub_1',
+            hostedInvoiceUrl: 'https://pay.stripe.com/invoice/in_1',
+            invoicePdfUrl: 'https://pay.stripe.com/invoice/in_1/pdf',
+            periodStart: new Date(1780000000 * 1000),
+            periodEnd: new Date(1782592000 * 1000),
         });
     });
 
-    it('normalizes invoice.paid into PaymentSucceeded', async () => {
+    it('normalizes invoice.paid into PaymentSucceeded with invoice detail', async () => {
         stripe.webhooks.constructEvent.mockReturnValue(
             invoiceEvent('invoice.paid'),
         );
@@ -346,6 +354,24 @@ describe('StripeBillingProvider webhook parsing', () => {
         expect(parsed.events[0]).toMatchObject({
             name: 'PaymentSucceeded',
             amount: 7500,
+            hostedInvoiceUrl: 'https://pay.stripe.com/invoice/in_1',
+            invoicePdfUrl: 'https://pay.stripe.com/invoice/in_1/pdf',
+            periodStart: new Date(1780000000 * 1000),
+            periodEnd: new Date(1782592000 * 1000),
+        });
+    });
+
+    it('nulls a non-https invoice url instead of carrying it through', async () => {
+        const evt = invoiceEvent('invoice.paid');
+        const obj = (evt.data as { object: Record<string, unknown> }).object;
+        obj.hosted_invoice_url = 'javascript:alert(1)';
+        obj.invoice_pdf = 'http://insecure.example.com/x.pdf';
+        stripe.webhooks.constructEvent.mockReturnValue(evt);
+        const parsed = await provider.parseWebhook(rawBody, signature);
+        expect(parsed.events[0]).toMatchObject({
+            name: 'PaymentSucceeded',
+            hostedInvoiceUrl: null,
+            invoicePdfUrl: null,
         });
     });
 
