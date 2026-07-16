@@ -51,6 +51,7 @@ describe('AuthService', () => {
             findByResetToken: jest.fn(),
             updateResetToken: jest.fn(),
             updatePassword: jest.fn(),
+            findOne: jest.fn(),
           },
         },
         {
@@ -344,6 +345,39 @@ describe('AuthService', () => {
       expect(companiesService.findOne).not.toHaveBeenCalled();
       expect(result.regions).toEqual([]);
       expect(result.defaultRegionCode).toBe('');
+    });
+  });
+
+  describe('getBootstrap', () => {
+    it('returns fresh user, regions, defaultRegionCode, and subscriptionTier', async () => {
+      usersService.findOne.mockResolvedValue(mockUser as any);
+      companiesService.findOne.mockResolvedValue({ ...mockCompany, subscriptionTier: 'PRO' } as any);
+
+      const result = await service.getBootstrap('user-uuid-1', 'company-uuid-1');
+
+      expect(usersService.findOne).toHaveBeenCalledWith('user-uuid-1', 'company-uuid-1');
+      expect(result.user).toEqual({
+        id: 'user-uuid-1',
+        name: 'Test Admin',
+        email: 'admin@test.com',
+        role: 'admin',
+        companyId: 'company-uuid-1',
+      });
+      expect(result.regions).toBeDefined();
+      expect(result.defaultRegionCode).toBe('dubai');
+      expect(result.subscriptionTier).toBe('PRO');
+    });
+
+    it('returns empty regions and null subscriptionTier for a super admin with no companyId', async () => {
+      usersService.findOne.mockResolvedValue({ ...mockUser, companyId: null } as any);
+
+      const result = await service.getBootstrap('super-uuid-1', null);
+
+      expect(usersService.findOne).toHaveBeenCalledWith('super-uuid-1', undefined);
+      expect(companiesService.findOne).not.toHaveBeenCalled();
+      expect(result.regions).toEqual([]);
+      expect(result.defaultRegionCode).toBe('');
+      expect(result.subscriptionTier).toBeNull();
     });
   });
 });

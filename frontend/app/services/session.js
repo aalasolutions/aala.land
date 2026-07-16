@@ -15,6 +15,7 @@ export default class SessionService extends Service {
       refreshToken: null,
       regions: [],
       defaultRegionCode: null,
+      subscriptionTier: null,
     },
   };
 
@@ -70,6 +71,7 @@ export default class SessionService extends Service {
         refreshToken: authData.refreshToken,
         regions: authData.regions || [],
         defaultRegionCode: authData.defaultRegionCode || null,
+        subscriptionTier: authData.subscriptionTier ?? null,
       },
     };
     this.isAuthenticated = true;
@@ -78,6 +80,27 @@ export default class SessionService extends Service {
     this.region.initialize(
       authData.regions || [],
       authData.defaultRegionCode || null,
+    );
+  }
+
+  // Refreshes user/regions/tier from a fresh /auth/profile fetch without
+  // touching the tokens. Keeps the app in sync with server-side changes
+  // (role, regions, tier) made outside the current session.
+  hydrate(bundle) {
+    this.data = {
+      authenticated: {
+        ...this.data.authenticated,
+        user: bundle.user,
+        regions: bundle.regions || [],
+        defaultRegionCode: bundle.defaultRegionCode || null,
+        subscriptionTier: bundle.subscriptionTier ?? null,
+      },
+    };
+    this.saveToStorage();
+
+    this.region.initialize(
+      bundle.regions || [],
+      bundle.defaultRegionCode || null,
     );
   }
 
@@ -162,6 +185,7 @@ export default class SessionService extends Service {
         refreshToken: null,
         regions: [],
         defaultRegionCode: null,
+        subscriptionTier: null,
       },
     };
     localStorage.removeItem('aala-session');

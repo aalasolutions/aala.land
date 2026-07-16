@@ -1,16 +1,19 @@
 {{page-title "AALA.LAND"}}
 
 {{#if this.session.isAuthenticated}}
-  <div class="app-layout {{if this.sidebarCollapsed 'sidebar-collapsed'}}">
+  <div
+    class="app-layout
+      {{if this.desktopCollapsed 'sidebar-collapsed'}}
+      {{if this.sidebarMobileOpen 'sidebar-mobile-open'}}"
+  >
     {{! Sidebar }}
     <aside class="sidebar" data-test-sidebar>
       <div class="sidebar-header">
-        {{#if this.sidebarCollapsed}}
-          <img src="/Logo.png" alt="AALA.LAND" class="brand-logo-collapsed" />
-        {{else}}
+        <img src="/Logo.png" alt="AALA.LAND" class="brand-logo-collapsed" />
+        <div class="brand-full">
           <h1 class="brand-title">AALA<span class="brand-dot">.</span>LAND</h1>
           <p class="brand-subtitle">Property Management</p>
-        {{/if}}
+        </div>
       </div>
 
       <nav data-test-sidebar-nav class="sidebar-nav">
@@ -301,13 +304,23 @@
       >
         <Ui::Ph
           @icon={{if
-            this.sidebarCollapsed
+            this.sidebarRailed
             "caret-double-right"
             "caret-double-left"
           }}
         />
       </button>
     </aside>
+
+    {{#if this.sidebarMobileOpen}}
+      <button
+        type="button"
+        class="sidebar-backdrop"
+        aria-label="Close menu"
+        data-test-sidebar-backdrop
+        {{on "click" this.closeMobileSidebar}}
+      ></button>
+    {{/if}}
 
     {{! Main Content }}
     <main class="main-content">
@@ -384,20 +397,26 @@
                   {{on "click" this.closeRegionDropdown}}
                 ></button>
                 <div class="region-dropdown" data-test-region-dropdown>
-                  {{#each this.region.regions as |r|}}
-                    <button
-                      type="button"
-                      class="region-option
-                        {{if
-                          (eq r.code this.region.activeRegion.code)
-                          'active'
-                        }}"
-                      data-test-region-option={{r.code}}
-                      {{on "click" (fn this.selectRegion r)}}
-                    >
-                      <span>{{r.name}}</span>
-                      <span class="region-currency-tag">{{r.currency}}</span>
-                    </button>
+                  {{#each this.groupedRegions as |grp|}}
+                    <div
+                      class="region-group-label"
+                      data-test-region-group={{grp.countryName}}
+                    >{{grp.countryName}}</div>
+                    {{#each grp.regions as |r|}}
+                      <button
+                        type="button"
+                        class="region-option
+                          {{if
+                            (eq r.code this.region.activeRegion.code)
+                            'active'
+                          }}"
+                        data-test-region-option={{r.code}}
+                        {{on "click" (fn this.selectRegion r)}}
+                      >
+                        <span>{{r.name}}</span>
+                        <span class="region-currency-tag">{{r.currency}}</span>
+                      </button>
+                    {{/each}}
                   {{/each}}
                 </div>
               {{/if}}

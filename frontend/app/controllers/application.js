@@ -28,15 +28,30 @@ export default class ApplicationController extends Controller {
     return getVisibleGroups(this.auth.currentUser?.role);
   }
 
+  // Desktop collapse (icon rail) only applies above the responsive breakpoint.
+  // Below it the sidebar is always a rail that expands as an overlay instead.
+  get desktopCollapsed() {
+    return this.sidebarCollapsed && !this.isNarrow;
+  }
+
+  // True when the sidebar is visually a rail (drives the toggle button caret).
+  get sidebarRailed() {
+    return this.isNarrow ? !this.sidebarMobileOpen : this.sidebarCollapsed;
+  }
+
   @tracked unreadCount = 0;
   @tracked showNotifications = false;
   @tracked notifications = [];
   @tracked expandedGroup = null;
   @tracked sidebarCollapsed = false;
+  @tracked sidebarMobileOpen = false;
+  @tracked isNarrow = false;
   @tracked showRegionDropdown = false;
   notificationHandler = null;
   socketConnectHandler = null;
   routeDidChangeHandler = null;
+  sidebarMedia = null;
+  sidebarMediaHandler = null;
 
   @tracked searchQuery = '';
   @tracked searchResults = null;
@@ -57,6 +72,22 @@ export default class ApplicationController extends Controller {
       !canSwitchRegion(this.auth.currentUser?.role) &&
       this.region.regions.length > 0
     );
+  }
+
+  // Regions grouped by country for the switcher, sorted by country then region.
+  get groupedRegions() {
+    const groups = new Map();
+    for (const r of this.region.regions) {
+      const countryName = r.countryName || r.country || 'Other';
+      if (!groups.has(countryName)) groups.set(countryName, []);
+      groups.get(countryName).push(r);
+    }
+    return [...groups.entries()]
+      .map(([countryName, regions]) => ({
+        countryName,
+        regions: regions.slice().sort((a, b) => a.name.localeCompare(b.name)),
+      }))
+      .sort((a, b) => a.countryName.localeCompare(b.countryName));
   }
 
   routeGroupMap = {
@@ -128,6 +159,8 @@ export default class ApplicationController extends Controller {
     this.routeDidChangeHandler = () => {
       const group = this.activeGroup;
       if (group) this.expandedGroup = group;
+      // Close the mobile overlay after navigating.
+      this.sidebarMobileOpen = false;
 
       if (this.session.isAuthenticated) {
         this.setupSocket();
@@ -137,6 +170,19 @@ export default class ApplicationController extends Controller {
     };
 
     this.router.on('routeDidChange', this.routeDidChangeHandler);
+
+    // Track the responsive breakpoint. Must mirror the sidebar rail media query
+    // in app.scss (max-width: 1024px).
+    if (typeof window !== 'undefined' && window.matchMedia) {
+      this.sidebarMedia = window.matchMedia('(max-width: 1024px)');
+      this.isNarrow = this.sidebarMedia.matches;
+      this.sidebarMediaHandler = (e) => {
+        this.isNarrow = e.matches;
+        // Leaving mobile: drop the overlay so desktop state stays clean.
+        if (!e.matches) this.sidebarMobileOpen = false;
+      };
+      this.sidebarMedia.addEventListener('change', this.sidebarMediaHandler);
+    }
 
     if (this.session.isAuthenticated) {
       this.setupSocket();
@@ -152,10 +198,20 @@ export default class ApplicationController extends Controller {
 
   @action
   toggleSidebar() {
+    // Below the breakpoint the toggle drives the overlay; above it, the rail.
+    if (this.isNarrow) {
+      this.sidebarMobileOpen = !this.sidebarMobileOpen;
+      return;
+    }
     this.sidebarCollapsed = !this.sidebarCollapsed;
     if (this.sidebarCollapsed) {
       this.expandedGroup = null;
     }
+  }
+
+  @action
+  closeMobileSidebar() {
+    this.sidebarMobileOpen = false;
   }
 
   setupSocket() {
@@ -207,6 +263,10 @@ export default class ApplicationController extends Controller {
     if (this.routeDidChangeHandler) {
       this.router.off('routeDidChange', this.routeDidChangeHandler);
       this.routeDidChangeHandler = null;
+    }
+    if (this.sidebarMedia && this.sidebarMediaHandler) {
+      this.sidebarMedia.removeEventListener('change', this.sidebarMediaHandler);
+      this.sidebarMediaHandler = null;
     }
 
     super.willDestroy(...arguments);

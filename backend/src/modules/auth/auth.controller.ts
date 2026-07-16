@@ -96,9 +96,9 @@ export class AuthController {
     @UseGuards(JwtAuthGuard)
     @Get('profile')
     @ApiBearerAuth()
-    @ApiOperation({ summary: 'Get current user profile' })
-    getProfile(@Request() req: AuthenticatedRequest) {
-        return req.user;
+    @ApiOperation({ summary: 'Get fresh account bootstrap bundle: user, role, regions, subscription tier' })
+    async getProfile(@Request() req: AuthenticatedRequest) {
+        return this.authService.getBootstrap(req.user.userId, req.user.companyId);
     }
 
     @Post('forgot-password')
