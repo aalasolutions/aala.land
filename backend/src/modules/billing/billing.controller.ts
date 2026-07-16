@@ -83,7 +83,7 @@ export class BillingController {
 
     @Get('history')
     @UseGuards(JwtAuthGuard, RolesGuard)
-    @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN)
+    @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN)
     @ApiOperation({
         summary:
             'Paginated payment history (invoices) for the caller company. ' +
@@ -98,7 +98,7 @@ export class BillingController {
         @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
         @Query('companyId', new ParseUUIDPipe({ optional: true })) companyId?: string,
     ) {
-        // COMPANY_ADMIN/ADMIN are always scoped to their own company; only SUPER_ADMIN
+        // COMPANY_ADMIN is always scoped to its own company; only SUPER_ADMIN
         // may target another company (or all companies) via the query param. A
         // non-super-admin without a company context is rejected, never allowed to
         // fall through to an all-company list.

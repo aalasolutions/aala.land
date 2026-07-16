@@ -32,9 +32,13 @@ export class CreateBillingHistory1779500000050 implements MigrationInterface {
         await queryRunner.query(
             `CREATE INDEX IF NOT EXISTS "IDX_billing_history_company_occurred" ON "billing_history" ("company_id", "occurred_at" DESC)`,
         );
+        await queryRunner.query(
+            `CREATE INDEX IF NOT EXISTS "IDX_billing_history_occurred" ON "billing_history" ("occurred_at" DESC)`,
+        );
     }
 
     public async down(queryRunner: QueryRunner): Promise<void> {
+        await queryRunner.query(`DROP INDEX IF EXISTS "IDX_billing_history_occurred"`);
         await queryRunner.query(`DROP INDEX IF EXISTS "IDX_billing_history_company_occurred"`);
         await queryRunner.query(`DROP INDEX IF EXISTS "UQ_billing_history_invoice_type"`);
         await queryRunner.query(`DROP TABLE IF EXISTS "billing_history"`);

@@ -22,6 +22,7 @@ export type BillingHistoryType = 'payment_succeeded' | 'payment_failed';
 @Entity('billing_history')
 @Index('UQ_billing_history_invoice_type', ['stripeInvoiceId', 'type'], { unique: true })
 @Index('IDX_billing_history_company_occurred', ['companyId', 'occurredAt'])
+@Index('IDX_billing_history_occurred', ['occurredAt'])
 export class BillingHistory {
     @PrimaryGeneratedColumn('uuid')
     id: string;
