@@ -26,7 +26,7 @@
     "db:migration:create": "ts-node -r tsconfig-paths/register ./node_modules/typeorm/cli.js migration:create",
     "db:migration:show": "node ./node_modules/typeorm/cli.js -d dist/data-source.js migration:show || ts-node -r tsconfig-paths/register ./node_modules/typeorm/cli.js -d src/data-source.ts migration:show",
     "db:migration:revert": "node ./node_modules/typeorm/cli.js -d dist/data-source.js migration:revert || ts-node -r tsconfig-paths/register ./node_modules/typeorm/cli.js -d src/data-source.ts migration:revert",
-    "db:migration:run": "ts-node -r tsconfig-paths/register ./node_modules/typeorm/cli.js -d src/data-source.ts migration:run",
+    "db:migration:run": "node ./node_modules/typeorm/cli.js -d dist/data-source.js migration:run || ts-node -r tsconfig-paths/register ./node_modules/typeorm/cli.js -d src/data-source.ts migration:run",
     "db:drop": "ts-node -r tsconfig-paths/register ./src/database/drop-schema.ts",
     "db:sync": "ts-node -r tsconfig-paths/register ./node_modules/typeorm/cli.js -d src/data-source.ts schema:sync",
     "db:reset": "pnpm run db:drop && pnpm run db:migration:run",

@@ -1,0 +1,18 @@
+services:
+  aala-land-frontend:
+    image: nginx:alpine
+    container_name: aala-land-frontend
+    restart: always
+    ports:
+      - "7102:8080"
+    volumes:
+      - ./dist:/usr/share/nginx/html:ro
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+
+# Join the backend's compose network so nginx.conf's `proxy_pass http://backend:3010`
+# (for /v1 and /socket.io) resolves. The network is created by docker-compose.prod.yml
+# (project name: aala-land). Verify with: docker network ls | grep aala-land
+networks:
+  default:
+    name: aala-land_default
+    external: true
