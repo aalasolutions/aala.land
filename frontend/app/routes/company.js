@@ -82,9 +82,9 @@ export default class CompanyRoute extends AuthenticatedRoute {
       controller.formActiveRegions = c.activeRegions || [];
       controller.formDefaultRegionCode = c.defaultRegionCode || null;
     }
-    controller.storageUsage = model.storageUsage?.data ?? null;
-    controller.billing = model.billing?.data ?? null;
-    const history = model.billingHistory?.data ?? null;
+    controller.storageUsage = model?.storageUsage?.data ?? null;
+    controller.billing = model?.billing?.data ?? null;
+    const history = model?.billingHistory?.data ?? null;
     controller.billingHistory = history?.data ?? [];
     controller.billingHistoryTotal = history?.total ?? 0;
     controller.billingHistoryPage = history?.page ?? 1;
