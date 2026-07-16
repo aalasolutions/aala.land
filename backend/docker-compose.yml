@@ -1,7 +1,13 @@
-# Backend stack: Postgres + Dragonfly + backend, colocated with backend/.env.
-# Because this compose file sits next to backend/.env, Compose auto-loads that
-# ONE file for both channels: ${...} interpolation (postgres creds, host port)
-# AND the backend container's env (env_file: .env). So every value lives once.
+# Backend stack: Postgres + Dragonfly + backend. backend/.env is the single
+# source of config, feeding two SEPARATE channels:
+#   - ${...} interpolation (postgres creds, ports): Compose auto-loads the .env
+#     from the directory you invoke it in, so run compose from HERE (cd backend).
+#     deploy.sh and deploy/deploy-backend.sh both do exactly that.
+#   - the backend container's env: injected by the EXPLICIT `env_file: ./.env` on
+#     the backend service below. This is not automatic; without that line the
+#     container would get nothing.
+# To change the app's port, set PORT in backend/.env: the published mapping and
+# the healthcheck below both track it via ${PORT}, so they can't drift from it.
 #
 # Public self-host: run the whole file. Owner/external-infra: prune the postgres
 # and/or dragonfly service in a skip-worktree copy and point DB_HOST/REDIS_HOST
@@ -50,7 +56,7 @@ services:
       dockerfile: Dockerfile
     container_name: aala-land-backend
     ports:
-      - "${BACKEND_HOST_PORT:-3010}:3010"
+      - "${BACKEND_HOST_PORT:-3010}:${PORT:-3010}"
     env_file:
       - ./.env
     depends_on:
@@ -60,7 +66,7 @@ services:
         condition: service_healthy
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:3010/v1/health"]
+      test: ["CMD", "wget", "-qO-", "http://localhost:${PORT:-3010}/v1/health"]
       interval: 30s
       timeout: 10s
       retries: 3
