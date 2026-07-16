@@ -2,12 +2,16 @@ import {
     BadRequestException,
     Body,
     Controller,
+    DefaultValuePipe,
     Get,
+    ParseIntPipe,
+    ParseUUIDPipe,
     Post,
+    Query,
     Request,
     UseGuards,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth, ApiBody } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiBearerAuth, ApiBody, ApiQuery } from '@nestjs/swagger';
 import { IsIn, IsOptional, IsString } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { JwtAuthGuard } from '@modules/auth/guards/jwt-auth.guard';
@@ -16,6 +20,7 @@ import { Roles } from '@shared/decorators/roles.decorator';
 import { Role } from '@shared/enums/roles.enum';
 import { AuthenticatedRequest } from '@shared/interfaces/authenticated-request.interface';
 import { BillingService } from './billing.service';
+import { BillingHistoryService } from './billing-history.service';
 import { AdminCheckoutDto, AdminChangePlanDto, AdminCancelDto } from './dto/admin-plan.dto';
 
 /** Inline DTO used only for self-serve checkout (COMPANY_ADMIN). */
@@ -44,7 +49,10 @@ class StartCheckoutDto {
 @ApiBearerAuth()
 @Controller('billing')
 export class BillingController {
-    constructor(private readonly billingService: BillingService) {}
+    constructor(
+        private readonly billingService: BillingService,
+        private readonly billingHistoryService: BillingHistoryService,
+    ) {}
 
     // -------------------------------------------------------------------------
     // Unit 1 endpoint (unchanged)
@@ -71,6 +79,37 @@ export class BillingController {
             throw new BadRequestException('No company context on the authenticated user');
         }
         return this.billingService.getSubscriptionState(req.user.companyId);
+    }
+
+    @Get('history')
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN)
+    @ApiOperation({
+        summary:
+            'Paginated payment history (invoices) for the caller company. ' +
+            'SUPER_ADMIN may target any company via companyId, or omit it for all companies.',
+    })
+    @ApiQuery({ name: 'page', required: false, type: Number })
+    @ApiQuery({ name: 'limit', required: false, type: Number })
+    @ApiQuery({ name: 'companyId', required: false, type: String, description: 'SUPER_ADMIN only; scopes to a specific company.' })
+    getHistory(
+        @Request() req: AuthenticatedRequest,
+        @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+        @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
+        @Query('companyId', new ParseUUIDPipe({ optional: true })) companyId?: string,
+    ) {
+        // COMPANY_ADMIN/ADMIN are always scoped to their own company; only SUPER_ADMIN
+        // may target another company (or all companies) via the query param. A
+        // non-super-admin without a company context is rejected, never allowed to
+        // fall through to an all-company list.
+        if (req.user.role !== Role.SUPER_ADMIN && !req.user.companyId) {
+            throw new BadRequestException('This endpoint requires a company context');
+        }
+        const scoped =
+            req.user.role === Role.SUPER_ADMIN
+                ? (companyId ?? undefined)
+                : req.user.companyId!;
+        return this.billingHistoryService.listBillingHistory(scoped, page, limit);
     }
 
     @Post('checkout')

@@ -233,6 +233,79 @@
       {{/if}}
     </div>
 
+    {{#if this.billing}}
+      <div class="glass-panel p-6 mt-4" data-test-billing-history-panel>
+        <h3 class="font-lg font-bold mb-4">Billing History</h3>
+        {{#if this.billingHistory.length}}
+          <div class="data-table-wrapper data-table-wrapper--with-pagination">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Amount</th>
+                  <th>Status</th>
+                  <th>Invoice</th>
+                </tr>
+              </thead>
+              <tbody>
+                {{#each this.billingHistory as |record|}}
+                  <tr data-test-billing-history-row>
+                    <td>{{format-date record.occurredAt "medium"}}</td>
+                    <td
+                      class="font-bold"
+                    >{{format-money record.amount record.currency}}</td>
+                    <td>
+                      {{#if (eq record.type "payment_succeeded")}}
+                        <span
+                          class="status-badge status-paid"
+                          data-test-history-status
+                        >Paid</span>
+                      {{else}}
+                        <span
+                          class="status-badge status-failed"
+                          data-test-history-status
+                        >Failed</span>
+                      {{/if}}
+                    </td>
+                    <td>
+                      {{#if record.hostedInvoiceUrl}}
+                        <a
+                          href={{record.hostedInvoiceUrl}}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          class="link"
+                          data-test-history-invoice-link
+                        >
+                          <Ui::Ph @icon="receipt" />
+                          View
+                        </a>
+                      {{else}}
+                        <span class="text-muted">&mdash;</span>
+                      {{/if}}
+                    </td>
+                  </tr>
+                {{/each}}
+              </tbody>
+            </table>
+          </div>
+          <Ui::Pagination
+            @selectId="billing-history-limit"
+            @page={{this.billingHistoryPage}}
+            @limit={{this.billingHistoryLimit}}
+            @total={{this.billingHistoryTotal}}
+            @onLimitChange={{this.setBillingHistoryLimit}}
+            @onPrevious={{this.billingHistoryPrevious}}
+            @onNext={{this.billingHistoryNext}}
+          />
+        {{else}}
+          <p
+            class="text-muted"
+            data-test-billing-history-empty
+          >No payments yet. Invoices appear here after your first charge.</p>
+        {{/if}}
+      </div>
+    {{/if}}
+
     <ConfirmModal
       @isOpen={{this.showDowngradeConfirm}}
       @title="Downgrade to Free"

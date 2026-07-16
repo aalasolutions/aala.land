@@ -20,6 +20,7 @@ export default class CompanyRoute extends AuthenticatedRoute {
       storageUsage,
       aiSettings,
       billingResult,
+      billingHistoryResult,
     ] = await Promise.all([
       this.auth.fetchJson(`/companies/${companyId}`),
       fetch(`${this.auth.apiBase}/companies/regions`)
@@ -34,6 +35,9 @@ export default class CompanyRoute extends AuthenticatedRoute {
         : Promise.resolve(null),
       isCompanyAdmin
         ? safeJson(this.auth, '/billing/subscription', 'COMPANY')
+        : Promise.resolve(null),
+      isCompanyAdmin
+        ? safeJson(this.auth, '/billing/history?page=1&limit=10', 'COMPANY')
         : Promise.resolve(null),
     ]);
 
@@ -66,6 +70,7 @@ export default class CompanyRoute extends AuthenticatedRoute {
       storageUsage,
       ai,
       billing: billingResult,
+      billingHistory: billingHistoryResult,
     };
   }
 
@@ -79,6 +84,11 @@ export default class CompanyRoute extends AuthenticatedRoute {
     }
     controller.storageUsage = model.storageUsage?.data ?? null;
     controller.billing = model.billing?.data ?? null;
+    const history = model.billingHistory?.data ?? null;
+    controller.billingHistory = history?.data ?? [];
+    controller.billingHistoryTotal = history?.total ?? 0;
+    controller.billingHistoryPage = history?.page ?? 1;
+    controller.billingHistoryLimit = history?.limit ?? 10;
     controller.activeTab = 'general';
     controller.aiPrompt = model?.ai?.aiPrompt ?? '';
     controller.weeklyLimit = model?.ai?.weeklyLimit ?? null;

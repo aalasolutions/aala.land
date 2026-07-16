@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { BadRequestException, InternalServerErrorException } from '@nestjs/common';
 import { BillingWebhookService, planToTier } from './billing-webhook.service';
 import { BillingEventDispatcher } from './events/billing-event-dispatcher';
+import { BillingHistoryService } from './billing-history.service';
 import { StripeEvent } from './entities/stripe-event.entity';
 import {
     Company,
@@ -23,6 +24,7 @@ describe('BillingWebhookService', () => {
     let eventRepo: jest.Mocked<Repository<StripeEvent>>;
     let companyRepo: jest.Mocked<Repository<Company>>;
     let provider: jest.Mocked<Pick<BillingProvider, 'parseWebhook'>>;
+    let historyService: jest.Mocked<Pick<BillingHistoryService, 'recordPayment'>>;
     // Captures the last conditional-update QueryBuilder so seat-sync assertions
     // can read the .set() patch and .execute() affected count.
     let seatUpdateQB: {
@@ -43,6 +45,13 @@ describe('BillingWebhookService', () => {
         customerId: 'cus_1',
         subscriptionId: 'sub_1' as string | null,
         occurredAt,
+    };
+    // Invoice detail carried on every payment event (null when Stripe omits it).
+    const paymentDetail = {
+        hostedInvoiceUrl: null,
+        invoicePdfUrl: null,
+        periodStart: null,
+        periodEnd: null,
     };
 
     function parsedWith(events: NormalizedBillingEvent[]): ProviderWebhookEvent {
@@ -86,6 +95,10 @@ describe('BillingWebhookService', () => {
                     provide: BILLING_PROVIDER,
                     useValue: { parseWebhook: jest.fn() },
                 },
+                {
+                    provide: BillingHistoryService,
+                    useValue: { recordPayment: jest.fn().mockResolvedValue(undefined) },
+                },
             ],
         }).compile();
 
@@ -94,6 +107,7 @@ describe('BillingWebhookService', () => {
         eventRepo = module.get(getRepositoryToken(StripeEvent));
         companyRepo = module.get(getRepositoryToken(Company));
         provider = module.get(BILLING_PROVIDER);
+        historyService = module.get(BillingHistoryService);
 
         // The bare testing module does not run lifecycle hooks; register handlers.
         service.onModuleInit();
@@ -338,39 +352,54 @@ describe('BillingWebhookService', () => {
             );
         });
 
-        it('PaymentFailed writes past_due when a subscription id is present', async () => {
-            provider.parseWebhook.mockResolvedValue(
-                parsedWith([
-                    {
-                        name: 'PaymentFailed',
-                        ...baseEvent,
-                        amount: 2500,
-                        currency: 'usd',
-                        invoiceId: 'in_1',
-                        attemptCount: 2,
-                    },
-                ]),
-            );
+        it('PaymentFailed records history and writes past_due when a subscription id is present', async () => {
+            const failed = {
+                name: 'PaymentFailed' as const,
+                ...baseEvent,
+                ...paymentDetail,
+                amount: 2500,
+                currency: 'usd',
+                invoiceId: 'in_1',
+                attemptCount: 2,
+            };
+            provider.parseWebhook.mockResolvedValue(parsedWith([failed]));
             await service.handleWebhook(rawBody, signature);
+            expect(historyService.recordPayment).toHaveBeenCalledWith(failed);
             expect(companyRepo.update).toHaveBeenCalledWith(companyId, {
                 billingStatus: 'past_due',
             });
         });
 
-        it('PaymentSucceeded with a null subscription id writes nothing', async () => {
-            provider.parseWebhook.mockResolvedValue(
-                parsedWith([
-                    {
-                        name: 'PaymentSucceeded',
-                        ...baseEvent,
-                        subscriptionId: null,
-                        amount: 2000,
-                        currency: 'usd',
-                        invoiceId: 'in_2',
-                    },
-                ]),
-            );
+        it('PaymentSucceeded records history and writes active when a subscription id is present', async () => {
+            const succeeded = {
+                name: 'PaymentSucceeded' as const,
+                ...baseEvent,
+                ...paymentDetail,
+                amount: 2500,
+                currency: 'usd',
+                invoiceId: 'in_3',
+            };
+            provider.parseWebhook.mockResolvedValue(parsedWith([succeeded]));
             await service.handleWebhook(rawBody, signature);
+            expect(historyService.recordPayment).toHaveBeenCalledWith(succeeded);
+            expect(companyRepo.update).toHaveBeenCalledWith(companyId, {
+                billingStatus: 'active',
+            });
+        });
+
+        it('PaymentSucceeded with a null subscription id records history but does not touch company status', async () => {
+            const succeeded = {
+                name: 'PaymentSucceeded' as const,
+                ...baseEvent,
+                ...paymentDetail,
+                subscriptionId: null,
+                amount: 2000,
+                currency: 'usd',
+                invoiceId: 'in_2',
+            };
+            provider.parseWebhook.mockResolvedValue(parsedWith([succeeded]));
+            await service.handleWebhook(rawBody, signature);
+            expect(historyService.recordPayment).toHaveBeenCalledWith(succeeded);
             expect(companyRepo.update).not.toHaveBeenCalled();
         });
 

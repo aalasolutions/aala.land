@@ -52,6 +52,10 @@ interface StripeInvoiceLike {
     amount_paid?: number | null;
     amount_due?: number | null;
     attempt_count?: number | null;
+    hosted_invoice_url?: string | null;
+    invoice_pdf?: string | null;
+    period_start?: number | null;
+    period_end?: number | null;
     subscription?: string | { id: string } | null;
     subscription_details?: { metadata?: Record<string, string> } | null;
     parent?: {
@@ -353,12 +357,36 @@ export class StripeBillingProvider implements BillingProvider {
         }
 
         const base = { companyId, customerId, subscriptionId, occurredAt };
+        // Warn (don't fail) if a money-bearing field is absent: recording it as
+        // 0/usd is indistinguishable from a real $0 invoice, so surface the drift.
+        if (invoice.currency == null) {
+            this.logger.warn(
+                `Webhook ${event.id} (${event.type}): invoice ${invoice.id ?? '?'} has no currency; defaulting to usd`,
+            );
+        }
+        const amountField =
+            (event.type as string) === 'invoice.payment_failed'
+                ? invoice.amount_due
+                : invoice.amount_paid;
+        if (amountField == null) {
+            this.logger.warn(
+                `Webhook ${event.id} (${event.type}): invoice ${invoice.id ?? '?'} has no amount; defaulting to 0`,
+            );
+        }
         const currency = (invoice.currency ?? 'usd').toLowerCase();
+        // Invoice detail for billing history, carried on both outcomes.
+        const detail = {
+            hostedInvoiceUrl: invoice.hosted_invoice_url ?? null,
+            invoicePdfUrl: invoice.invoice_pdf ?? null,
+            periodStart: epochToDate(invoice.period_start),
+            periodEnd: epochToDate(invoice.period_end),
+        };
 
         if ((event.type as string) === 'invoice.payment_failed') {
             const failed: PaymentFailedEvent = {
                 name: 'PaymentFailed',
                 ...base,
+                ...detail,
                 amount: invoice.amount_due ?? 0,
                 currency,
                 invoiceId: invoice.id ?? null,
@@ -370,6 +398,7 @@ export class StripeBillingProvider implements BillingProvider {
         const succeeded: PaymentSucceededEvent = {
             name: 'PaymentSucceeded',
             ...base,
+            ...detail,
             amount: invoice.amount_paid ?? 0,
             currency,
             invoiceId: invoice.id ?? null,
