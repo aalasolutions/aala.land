@@ -250,7 +250,7 @@
               <tbody>
                 {{#each this.billingHistory as |record|}}
                   <tr data-test-billing-history-row>
-                    <td>{{format-date record.occurredAt "medium"}}</td>
+                    <td>{{format-date record.occurredAt}}</td>
                     <td
                       class="font-bold"
                     >{{format-money record.amount record.currency}}</td>

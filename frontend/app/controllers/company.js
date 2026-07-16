@@ -378,8 +378,9 @@ export default class CompanyController extends Controller {
     );
   }
 
-  @action setBillingHistoryLimit(limit) {
-    this.fetchBillingHistory(1, Number(limit) || 10);
+  @action setBillingHistoryLimit(e) {
+    // Ui::Pagination binds this to the <select>'s change event, not a value.
+    this.fetchBillingHistory(1, Number(e?.target?.value) || 10);
   }
 
   @action toggleRegion(code) {

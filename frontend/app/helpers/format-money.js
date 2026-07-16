@@ -13,16 +13,19 @@ export default helper(function formatMoney([minorAmount, currency]) {
   if (isNaN(num) || minorAmount === null || minorAmount === undefined) return '';
 
   const code = (currency || 'usd').toUpperCase();
-  const major = num / 100;
   const locale = navigator.language || 'en';
 
   try {
-    return new Intl.NumberFormat(locale, {
+    const formatter = new Intl.NumberFormat(locale, {
       style: 'currency',
       currency: code,
-    }).format(major);
+    });
+    // Minor-to-major divisor is currency-specific: 2 decimals for USD/AED/SAR,
+    // 0 for JPY, 3 for KWD/BHD. Derive it rather than assuming /100.
+    const digits = formatter.resolvedOptions().maximumFractionDigits ?? 2;
+    return formatter.format(num / 10 ** digits);
   } catch {
-    return `${code} ${major.toLocaleString(locale, {
+    return `${code} ${(num / 100).toLocaleString(locale, {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     })}`;
