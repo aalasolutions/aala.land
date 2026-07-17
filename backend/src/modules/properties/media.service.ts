@@ -430,9 +430,19 @@ export class MediaService {
     }
 
     // 2. Magic-byte validation — confirms file bytes match the declared MIME type.
+    // Every ALLOWED_DOCUMENT_TYPE is a binary format with a detectable signature,
+    // so a file whose content cannot be identified (undefined) is a mismatch too:
+    // e.g. an HTML/SVG/script payload uploaded as innocent.pdf with an
+    // application/pdf header would otherwise slip past the `detected &&` guard.
     const { fileTypeFromFile } = await import('file-type');
     const detected = await fileTypeFromFile(file.path);
-    if (detected && detected.mime !== file.mimetype) {
+    if (!detected) {
+      throw new BadRequestException(
+        `File content could not be verified as "${file.mimetype}". ` +
+        `Only genuine ${ALLOWED_DOCUMENT_TYPES.join(', ')} files are accepted.`,
+      );
+    }
+    if (detected.mime !== file.mimetype) {
       throw new BadRequestException(
         `File content (${detected.mime}) does not match the declared type (${file.mimetype}).`,
       );

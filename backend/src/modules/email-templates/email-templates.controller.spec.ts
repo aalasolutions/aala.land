@@ -9,7 +9,7 @@ describe('EmailTemplatesController', () => {
   let service: jest.Mocked<EmailTemplatesService>;
 
   const companyId = 'company-uuid-1';
-  const mockReq = { user: { companyId, userId: 'user-uuid-1' } };
+  const mockReq = { user: { companyId, userId: 'user-uuid-1', email: 'admin@test.com', role: 'company_admin' } };
 
   const mockTemplate = {
     id: 'template-uuid-1',

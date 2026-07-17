@@ -8,7 +8,7 @@ describe('ReportsController', () => {
   let service: jest.Mocked<ReportsService>;
 
   const companyId = 'company-uuid-1';
-  const mockReq = { user: { companyId } };
+  const mockReq = { user: { companyId, userId: 'user-uuid-1', email: 'admin@test.com', role: 'company_admin' } };
 
   const mockKpis = {
     totalLeads: 10,

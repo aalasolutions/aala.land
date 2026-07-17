@@ -1,5 +1,6 @@
 import { Controller, Post, Body, UnauthorizedException, Get, UseGuards, Request, HttpCode, HttpStatus, Logger } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import { ImpersonateService } from './impersonate.service';
 import { AuthGoogleService } from './auth-google.service';
@@ -27,7 +28,11 @@ export class AuthController {
         private readonly googleService: AuthGoogleService,
     ) { }
 
+    // Auth endpoints get a stricter per-IP throttle than the global 100/min so
+    // credential stuffing, signup spam, and reset-email bombing are curbed. This
+    // is app-level (IP-based) so it still applies when the origin is hit directly.
     @Post('register')
+    @Throttle({ default: { limit: 5, ttl: 60000 } })
     @HttpCode(HttpStatus.CREATED)
     @ApiOperation({ summary: 'Register a new company and admin user' })
     async register(@Body() registerDto: RegisterDto) {
@@ -35,6 +40,7 @@ export class AuthController {
     }
 
     @Post('login')
+    @Throttle({ default: { limit: 10, ttl: 60000 } })
     @HttpCode(HttpStatus.OK)
     @ApiOperation({ summary: 'Login with email and password' })
     async login(@Body() loginDto: LoginDto) {
@@ -102,6 +108,7 @@ export class AuthController {
     }
 
     @Post('forgot-password')
+    @Throttle({ default: { limit: 5, ttl: 60000 } })
     @HttpCode(HttpStatus.OK)
     @ApiOperation({ summary: 'Request a password reset token' })
     async forgotPassword(@Body() dto: ForgotPasswordDto) {

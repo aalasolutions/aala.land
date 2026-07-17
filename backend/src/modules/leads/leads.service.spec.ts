@@ -48,7 +48,7 @@ describe('LeadsService', () => {
   };
 
   beforeEach(async () => {
-    const module: TestingModule = await Test.createTestingModule({
+    module = await Test.createTestingModule({
       providers: [
         LeadsService,
         {
@@ -268,7 +268,7 @@ describe('LeadsService', () => {
 
       await service.create(companyId, { firstName: 'Omar' } as any);
 
-      expect(notificationsService.create).toHaveBeenCalledWith(expect.objectContaining({
+      expect(notificationsService.create).toHaveBeenCalledWith(companyId, expect.objectContaining({
         userId: 'agent-uuid-2',
         type: NotificationType.LEAD_ASSIGNED,
       }));
@@ -323,7 +323,7 @@ describe('LeadsService', () => {
 
       await service.create(companyId, { firstName: 'Layla' } as any, 'creator-user-id');
 
-      expect(notificationsService.create).toHaveBeenCalledWith(expect.objectContaining({
+      expect(notificationsService.create).toHaveBeenCalledWith(companyId, expect.objectContaining({
         userId: 'admin-not-creator',
         title: 'New Unassigned Lead',
         message: 'A new lead for Layla Ibrahim has been created and needs assignment.',
@@ -331,7 +331,7 @@ describe('LeadsService', () => {
         entityType: 'lead',
         entityId: 'lead-unassigned-multi',
       }));
-      expect(notificationsService.create).toHaveBeenCalledWith(expect.objectContaining({
+      expect(notificationsService.create).toHaveBeenCalledWith(companyId, expect.objectContaining({
         userId: 'admin2-also-not',
         title: 'New Unassigned Lead',
         type: NotificationType.LEAD_UNASSIGNED,
@@ -358,7 +358,7 @@ describe('LeadsService', () => {
 
       await service.create(companyId, { firstName: 'Salma' } as any);
 
-      expect(notificationsService.create).toHaveBeenCalledWith(expect.objectContaining({
+      expect(notificationsService.create).toHaveBeenCalledWith(companyId, expect.objectContaining({
         userId: 'agent-uuid-1',
         message: 'You have been assigned a new lead: Salma',
         type: NotificationType.LEAD_ASSIGNED,

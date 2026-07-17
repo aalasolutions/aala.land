@@ -11,7 +11,7 @@ describe('LeadsController', () => {
   let service: jest.Mocked<LeadsService>;
 
   const companyId = 'company-uuid-1';
-  const mockReq = { user: { companyId, userId: 'user-uuid-1', role: Role.COMPANY_ADMIN } };
+  const mockReq = { user: { companyId, userId: 'user-uuid-1', email: 'admin@test.com', role: Role.COMPANY_ADMIN } };
 
   const mockLead = {
     id: 'lead-uuid-1',

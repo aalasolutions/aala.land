@@ -10,14 +10,14 @@ describe('PropertiesController', () => {
   let mediaService: jest.Mocked<MediaService>;
 
   const companyId = 'company-uuid-1';
-  const mockReq = { user: { companyId } };
+  const mockReq = { user: { companyId, userId: 'user-uuid-1', email: 'admin@test.com', role: 'company_admin' } };
 
-  const mockArea = { id: 'area-uuid-1', name: 'Downtown Dubai', companyId, buildings: [] };
-  const mockBuilding = { id: 'building-uuid-1', name: 'Burj View', areaId: 'area-uuid-1', companyId, units: [] };
-  const mockUnit = { id: 'unit-uuid-1', unitNumber: '1A', buildingId: 'building-uuid-1', companyId };
+  const mockArea = { id: 'area-uuid-1', name: 'Downtown Dubai', companyId };
+  const mockAsset = { id: 'asset-uuid-1', name: 'Burj View', localityId: 'locality-uuid-1', units: [] };
+  const mockUnit = { id: 'unit-uuid-1', unitNumber: '1A', assetId: 'asset-uuid-1', companyId };
 
   const paginatedAreas = { data: [mockArea], total: 1, page: 1, limit: 20 };
-  const paginatedBuildings = { data: [mockBuilding], total: 1, page: 1, limit: 20 };
+  const paginatedAssets = { data: [mockAsset], total: 1, page: 1, limit: 20 };
   const paginatedUnits = { data: [mockUnit], total: 1, page: 1, limit: 20 };
 
   beforeEach(async () => {
@@ -32,12 +32,12 @@ describe('PropertiesController', () => {
             findOneArea: jest.fn(),
             updateArea: jest.fn(),
             removeArea: jest.fn(),
-            createBuilding: jest.fn(),
-            findBuildingsByArea: jest.fn(),
-            updateBuilding: jest.fn(),
-            removeBuilding: jest.fn(),
+            createAsset: jest.fn(),
+            findAssetsByLocality: jest.fn(),
+            updateAsset: jest.fn(),
+            removeAsset: jest.fn(),
             createUnit: jest.fn(),
-            findUnitsByBuilding: jest.fn(),
+            findUnitsByAsset: jest.fn(),
             updateUnit: jest.fn(),
             removeUnit: jest.fn(),
             bulkImportUnits: jest.fn(),
@@ -90,25 +90,25 @@ describe('PropertiesController', () => {
     });
   });
 
-  describe('createBuilding', () => {
-    it('creates building with companyId from request', async () => {
-      service.createBuilding.mockResolvedValue(mockBuilding as any);
+  describe('createAsset', () => {
+    it('creates asset with companyId from request', async () => {
+      service.createAsset.mockResolvedValue(mockAsset as any);
 
-      const result = await controller.createBuilding({ name: 'Burj View', areaId: 'area-uuid-1' }, mockReq);
+      const result = await controller.createAsset({ name: 'Burj View', localityId: 'locality-uuid-1' }, mockReq);
 
-      expect(service.createBuilding).toHaveBeenCalledWith(companyId, { name: 'Burj View', areaId: 'area-uuid-1' });
-      expect(result).toEqual(mockBuilding);
+      expect(service.createAsset).toHaveBeenCalledWith(companyId, { name: 'Burj View', localityId: 'locality-uuid-1' });
+      expect(result).toEqual(mockAsset);
     });
   });
 
-  describe('findBuildings', () => {
-    it('returns paginated buildings for area and company', async () => {
-      service.findBuildingsByArea.mockResolvedValue(paginatedBuildings as any);
+  describe('findAssetsByLocality', () => {
+    it('returns paginated assets for locality and company', async () => {
+      service.findAssetsByLocality.mockResolvedValue(paginatedAssets as any);
 
-      const result = await controller.findBuildings('area-uuid-1', mockReq, 1, 20);
+      const result = await controller.findAssetsByLocality('locality-uuid-1', mockReq, 1, 20);
 
-      expect(service.findBuildingsByArea).toHaveBeenCalledWith('area-uuid-1', companyId, 1, 20);
-      expect(result).toEqual(paginatedBuildings);
+      expect(service.findAssetsByLocality).toHaveBeenCalledWith('locality-uuid-1', companyId, 1, 20);
+      expect(result).toEqual(paginatedAssets);
     });
   });
 
@@ -116,20 +116,20 @@ describe('PropertiesController', () => {
     it('creates unit with companyId from request', async () => {
       service.createUnit.mockResolvedValue(mockUnit as any);
 
-      const result = await controller.createUnit({ unitNumber: '1A', buildingId: 'building-uuid-1' }, mockReq);
+      const result = await controller.createUnit({ unitNumber: '1A', assetId: 'asset-uuid-1' } as any, mockReq);
 
-      expect(service.createUnit).toHaveBeenCalledWith(companyId, { unitNumber: '1A', buildingId: 'building-uuid-1' });
+      expect(service.createUnit).toHaveBeenCalledWith(companyId, { unitNumber: '1A', assetId: 'asset-uuid-1' });
       expect(result).toEqual(mockUnit);
     });
   });
 
-  describe('findUnits', () => {
-    it('returns paginated units for building and company', async () => {
-      service.findUnitsByBuilding.mockResolvedValue(paginatedUnits as any);
+  describe('findUnitsByAsset', () => {
+    it('returns paginated units for asset and company', async () => {
+      service.findUnitsByAsset.mockResolvedValue(paginatedUnits as any);
 
-      const result = await controller.findUnits('building-uuid-1', mockReq, 1, 20);
+      const result = await controller.findUnitsByAsset('asset-uuid-1', mockReq, 1, 20);
 
-      expect(service.findUnitsByBuilding).toHaveBeenCalledWith('building-uuid-1', companyId, 1, 20);
+      expect(service.findUnitsByAsset).toHaveBeenCalledWith('asset-uuid-1', companyId, 1, 20);
       expect(result).toEqual(paginatedUnits);
     });
   });
@@ -192,7 +192,7 @@ describe('PropertiesController', () => {
       const importResult = { created: 2, failed: 0, errors: [] };
       service.bulkImportUnits.mockResolvedValue(importResult);
 
-      const csv = 'unitNumber,buildingId\n101,building-uuid-1\n102,building-uuid-1';
+      const csv = 'unitNumber,assetId\n101,asset-uuid-1\n102,asset-uuid-1';
       const result = await controller.bulkImport(csv, mockReq);
 
       expect(service.bulkImportUnits).toHaveBeenCalledWith(companyId, csv);

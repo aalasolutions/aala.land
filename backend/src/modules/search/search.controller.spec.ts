@@ -2,8 +2,9 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { SearchController } from './search.controller';
 import { SearchService } from './search.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '@shared/guards/roles.guard';
 import { INestApplication } from '@nestjs/common';
-import * as request from 'supertest';
+import request from 'supertest';
 
 describe('SearchController', () => {
   let app: INestApplication;
@@ -42,6 +43,8 @@ describe('SearchController', () => {
     })
     .overrideGuard(JwtAuthGuard)
     .useValue(mockJwtAuthGuard)
+    .overrideGuard(RolesGuard)
+    .useValue({ canActivate: () => true })
     .compile();
 
     app = module.createNestApplication();

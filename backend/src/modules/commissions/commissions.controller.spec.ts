@@ -10,7 +10,7 @@ describe('CommissionsController', () => {
 
   const companyId = 'company-uuid-1';
   const agentId = 'agent-uuid-1';
-  const mockReq = { user: { companyId, userId: 'user-uuid-1' } };
+  const mockReq = { user: { companyId, userId: 'user-uuid-1', email: 'admin@test.com', role: 'company_admin' } };
 
   const mockCommission = {
     id: 'commission-uuid-1',

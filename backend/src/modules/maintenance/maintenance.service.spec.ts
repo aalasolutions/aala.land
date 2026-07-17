@@ -32,7 +32,13 @@ describe('MaintenanceService', () => {
     select: jest.fn().mockReturnThis(),
     addSelect: jest.fn().mockReturnThis(),
     where: jest.fn().mockReturnThis(),
+    andWhere: jest.fn().mockReturnThis(),
+    skip: jest.fn().mockReturnThis(),
+    take: jest.fn().mockReturnThis(),
+    orderBy: jest.fn().mockReturnThis(),
     getRawOne: jest.fn(),
+    getManyAndCount: jest.fn(),
+    getMany: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -48,6 +54,7 @@ describe('MaintenanceService', () => {
             findAndCount: jest.fn(),
             find: jest.fn(),
             remove: jest.fn(),
+            query: jest.fn(),
             createQueryBuilder: jest.fn().mockReturnValue(mockQueryBuilder),
           },
         },
@@ -77,17 +84,23 @@ describe('MaintenanceService', () => {
 
   describe('findAll', () => {
     it('returns paginated work orders', async () => {
-      repo.findAndCount.mockResolvedValue([[mockOrder as WorkOrder], 1]);
+      mockQueryBuilder.getManyAndCount.mockResolvedValue([[mockOrder as WorkOrder], 1]);
+      repo.query.mockResolvedValue([]);
 
       const result = await service.findAll(companyId, 1, 20);
 
-      expect(repo.findAndCount).toHaveBeenCalledWith({
-        where: { companyId },
-        skip: 0,
-        take: 20,
-        order: { createdAt: 'DESC' },
-      });
+      expect(repo.createQueryBuilder).toHaveBeenCalledWith('wo');
+      expect(mockQueryBuilder.where).toHaveBeenCalledWith('wo.company_id = :companyId', { companyId });
+      expect(mockQueryBuilder.skip).toHaveBeenCalledWith(0);
+      expect(mockQueryBuilder.take).toHaveBeenCalledWith(20);
+      expect(mockQueryBuilder.orderBy).toHaveBeenCalledWith('wo.created_at', 'DESC');
       expect(result.total).toBe(1);
+      expect(result.data[0]).toEqual({
+        ...mockOrder,
+        unitNumber: null,
+        assetName: null,
+        areaName: null,
+      });
     });
   });
 
@@ -184,22 +197,20 @@ describe('MaintenanceService', () => {
         scheduleFrequency: ScheduleFrequency.MONTHLY,
         nextScheduledDate: new Date(),
       };
-      repo.find.mockResolvedValue([preventiveOrder]);
+      mockQueryBuilder.getMany.mockResolvedValue([preventiveOrder]);
 
       const result = await service.getUpcoming(companyId);
 
       expect(result).toHaveLength(1);
-      expect(repo.find).toHaveBeenCalledWith(expect.objectContaining({
-        where: expect.objectContaining({
-          companyId,
-          isPreventive: true,
-        }),
-        order: { nextScheduledDate: 'ASC' },
-      }));
+      expect(repo.createQueryBuilder).toHaveBeenCalledWith('wo');
+      expect(mockQueryBuilder.where).toHaveBeenCalledWith('wo.company_id = :companyId', { companyId });
+      expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith('wo.is_preventive = true');
+      expect(mockQueryBuilder.orderBy).toHaveBeenCalledWith('wo.next_scheduled_date', 'ASC');
+      expect(mockQueryBuilder.take).toHaveBeenCalledWith(100);
     });
 
     it('returns empty array when no preventive orders exist', async () => {
-      repo.find.mockResolvedValue([]);
+      mockQueryBuilder.getMany.mockResolvedValue([]);
 
       const result = await service.getUpcoming(companyId);
 

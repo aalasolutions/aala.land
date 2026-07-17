@@ -26,7 +26,12 @@ export class SearchService {
         const term = `${query.toLowerCase()}%`;
         const [cities, localities, assets, agents] = await Promise.all([
             this.queryWithOptionalRegion(
-                `SELECT DISTINCT c.id, c.name
+                // LOWER(c.name) is aliased into the SELECT so it can be used in
+                // ORDER BY under SELECT DISTINCT (Postgres requires DISTINCT
+                // ORDER BY expressions to appear in the select list, else the
+                // whole /v1/search request 500s). The extra column is ignored
+                // by the result mapper below.
+                `SELECT DISTINCT c.id, c.name, LOWER(c.name) AS name_lower
                  FROM cities c
                  INNER JOIN localities l ON l.city_id = c.id
                  INNER JOIN buildings b ON b.locality_id = l.id
@@ -34,7 +39,7 @@ export class SearchService {
                     /* REGION_FILTER */
                     AND (b.company_id = $2
                          OR EXISTS (SELECT 1 FROM units u WHERE u.building_id = b.id AND u.company_id = $2))
-                    ORDER BY LOWER(c.name)
+                    ORDER BY name_lower
                     LIMIT 5`,
 
                 [term, companyId],

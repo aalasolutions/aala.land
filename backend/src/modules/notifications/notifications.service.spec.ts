@@ -87,6 +87,7 @@ describe('NotificationsService', () => {
           provide: getRepositoryToken(User),
           useValue: {
             find: jest.fn().mockResolvedValue([]),
+            findOne: jest.fn().mockResolvedValue({ id: userId }),
           },
         },
         {
@@ -165,6 +166,21 @@ describe('NotificationsService', () => {
       expect(loggerErrorSpy).toHaveBeenCalledWith(
         'Failed to emit notification via socket: socket unavailable',
       );
+    });
+
+    it('rejects a target user outside the caller company (cross-tenant guard)', async () => {
+      const userRepo = module.get(getRepositoryToken(User));
+      (userRepo.findOne as jest.Mock).mockResolvedValueOnce(null);
+
+      const dto = {
+        userId: 'user-in-another-company',
+        title: 'Injected',
+        message: 'Should not be delivered',
+      };
+
+      await expect(service.create(companyId, dto)).rejects.toThrow(NotFoundException);
+      expect(repo.save).not.toHaveBeenCalled();
+      expect(gateway.sendNotificationToUser).not.toHaveBeenCalled();
     });
   });
 

@@ -35,6 +35,7 @@ describe('FinancialService', () => {
             findOne: jest.fn(),
             findAndCount: jest.fn(),
             find: jest.fn(),
+            createQueryBuilder: jest.fn(),
           },
         },
       ],
@@ -127,11 +128,14 @@ describe('FinancialService', () => {
 
   describe('getSummary', () => {
     it('returns totalIncome, totalExpense, and net', async () => {
-      const transactions = [
-        { ...mockTransaction, type: TransactionType.INCOME, status: TransactionStatus.COMPLETED, amount: 15000 },
-        { ...mockTransaction, type: TransactionType.EXPENSE, status: TransactionStatus.PENDING, amount: 3000 },
-      ] as Transaction[];
-      repo.find.mockResolvedValue(transactions);
+      const qb: any = {
+        select: jest.fn().mockReturnThis(),
+        addSelect: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        setParameters: jest.fn().mockReturnThis(),
+        getRawOne: jest.fn().mockResolvedValue({ totalIncome: '15000', totalExpense: '3000' }),
+      };
+      (repo.createQueryBuilder as jest.Mock).mockReturnValue(qb);
 
       const result = await service.getSummary(companyId);
 

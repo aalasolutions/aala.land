@@ -9,7 +9,7 @@ describe('MaintenanceController', () => {
   let service: jest.Mocked<MaintenanceService>;
 
   const companyId = 'company-uuid-1';
-  const mockReq = { user: { companyId, userId: 'user-uuid-1' } };
+  const mockReq = { user: { companyId, userId: 'user-uuid-1', email: 'admin@test.com', role: 'company_admin' } };
 
   const mockOrder = {
     id: 'order-uuid-1',
@@ -98,7 +98,7 @@ describe('MaintenanceController', () => {
 
       const result = await controller.getUpcoming(mockReq);
 
-      expect(service.getUpcoming).toHaveBeenCalledWith(companyId);
+      expect(service.getUpcoming).toHaveBeenCalledWith(companyId, undefined);
       expect(result).toHaveLength(1);
     });
   });

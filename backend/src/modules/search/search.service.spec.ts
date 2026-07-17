@@ -4,7 +4,7 @@ import { DataSource } from 'typeorm';
 
 describe('SearchService', () => {
   let service: SearchService;
-  let dataSource: Partial<Record<keyof DataSource, jest.Mock>>;
+  let dataSource: { query: jest.Mock } & Partial<Record<keyof DataSource, jest.Mock>>;
 
   beforeEach(async () => {
     dataSource = {
