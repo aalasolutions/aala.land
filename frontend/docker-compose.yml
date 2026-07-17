@@ -12,7 +12,7 @@ services:
     container_name: aala-land-frontend
     restart: always
     ports:
-      - "7102:8080"
+      - "${FRONTEND_HOST_PORT:-7102}:8080"
 
 # Join the backend's compose network so nginx.conf's `proxy_pass http://backend:3010`
 # (for /v1 and /socket.io) resolves. The network is created by backend/docker-compose.yml
