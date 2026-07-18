@@ -1,4 +1,14 @@
-import { IsString, IsOptional, IsEnum, IsNumber, IsInt, IsArray, Min, MaxLength, IsUUID } from 'class-validator';
+import {
+  IsString,
+  IsOptional,
+  IsEnum,
+  IsNumber,
+  IsInt,
+  IsArray,
+  Min,
+  MaxLength,
+  IsUUID,
+} from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { UnitStatus } from '../entities/unit.entity';
 import { PropertyType } from '../entities/property-type.enum';
@@ -20,7 +30,10 @@ export class UpdateUnitDto {
   @IsOptional()
   status?: UnitStatus;
 
-  @ApiPropertyOptional({ enum: PropertyType, description: 'Overrides asset default. Null = not listed' })
+  @ApiPropertyOptional({
+    enum: PropertyType,
+    description: 'Overrides asset default. Null = not listed',
+  })
   @IsEnum(PropertyType)
   @IsOptional()
   propertyType?: PropertyType;
@@ -47,7 +60,10 @@ export class UpdateUnitDto {
   @IsOptional()
   bathrooms?: number;
 
-  @ApiPropertyOptional({ example: ['free_parking', 'gym', 'pool'], description: 'List of amenity keys' })
+  @ApiPropertyOptional({
+    example: ['free_parking', 'gym', 'pool'],
+    description: 'List of amenity keys',
+  })
   @IsArray()
   @IsString({ each: true })
   @IsOptional()

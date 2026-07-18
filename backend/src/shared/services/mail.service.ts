@@ -34,11 +34,16 @@ export class MailService {
     } else if (this.smtpTransporter) {
       await this.sendViaSmtp(options);
     } else {
-      this.logger.warn('No email transport configured (SENDGRID_API_KEY or SMTP_HOST). Email not sent.');
+      this.logger.warn(
+        'No email transport configured (SENDGRID_API_KEY or SMTP_HOST). Email not sent.',
+      );
     }
   }
 
-  private async sendViaSendGrid(options: MailOptions, apiKey: string): Promise<void> {
+  private async sendViaSendGrid(
+    options: MailOptions,
+    apiKey: string,
+  ): Promise<void> {
     const from = process.env.SENDGRID_FROM_EMAIL || 'noreply@aala.land';
 
     try {
@@ -54,7 +59,9 @@ export class MailService {
           subject: options.subject,
           content: [
             { type: 'text/plain', value: options.text },
-            ...(options.html ? [{ type: 'text/html', value: options.html }] : []),
+            ...(options.html
+              ? [{ type: 'text/html', value: options.html }]
+              : []),
           ],
         }),
       });

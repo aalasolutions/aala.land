@@ -3,14 +3,24 @@ import { NotFoundException } from '@nestjs/common';
 import { FinancialController } from './financial.controller';
 import { FinancialService } from './financial.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { TransactionType, TransactionStatus } from './entities/transaction.entity';
+import {
+  TransactionType,
+  TransactionStatus,
+} from './entities/transaction.entity';
 
 describe('FinancialController', () => {
   let controller: FinancialController;
   let service: jest.Mocked<FinancialService>;
 
   const companyId = 'company-uuid-1';
-  const mockReq = { user: { companyId, userId: 'user-uuid-1', email: 'admin@test.com', role: 'company_admin' } };
+  const mockReq = {
+    user: {
+      companyId,
+      userId: 'user-uuid-1',
+      email: 'admin@test.com',
+      role: 'company_admin',
+    },
+  };
 
   const mockTransaction = {
     id: 'txn-uuid-1',
@@ -70,14 +80,26 @@ describe('FinancialController', () => {
 
       const result = await controller.findAll(mockReq, 1, 20);
 
-      expect(service.findAll).toHaveBeenCalledWith(companyId, 1, 20, undefined, undefined, undefined);
+      expect(service.findAll).toHaveBeenCalledWith(
+        companyId,
+        1,
+        20,
+        undefined,
+        undefined,
+        undefined,
+      );
       expect(result).toEqual(paginated);
     });
   });
 
   describe('getSummary', () => {
     it('returns financial summary', async () => {
-      const summary = { totalIncome: 15000, totalExpense: 0, net: 15000, currency: 'AED' };
+      const summary = {
+        totalIncome: 15000,
+        totalExpense: 0,
+        net: 15000,
+        currency: 'AED',
+      };
       service.getSummary.mockResolvedValue(summary as any);
 
       const result = await controller.getSummary(mockReq);
@@ -100,17 +122,28 @@ describe('FinancialController', () => {
     it('propagates NotFoundException', async () => {
       service.findOne.mockRejectedValue(new NotFoundException());
 
-      await expect(controller.findOne('bad-id', mockReq)).rejects.toThrow(NotFoundException);
+      await expect(controller.findOne('bad-id', mockReq)).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
   describe('update', () => {
     it('updates transaction', async () => {
-      service.update.mockResolvedValue({ ...mockTransaction, status: TransactionStatus.COMPLETED } as any);
+      service.update.mockResolvedValue({
+        ...mockTransaction,
+        status: TransactionStatus.COMPLETED,
+      } as any);
 
-      const result = await controller.update('txn-uuid-1', { status: TransactionStatus.COMPLETED }, mockReq);
+      const result = await controller.update(
+        'txn-uuid-1',
+        { status: TransactionStatus.COMPLETED },
+        mockReq,
+      );
 
-      expect(service.update).toHaveBeenCalledWith('txn-uuid-1', companyId, { status: TransactionStatus.COMPLETED });
+      expect(service.update).toHaveBeenCalledWith('txn-uuid-1', companyId, {
+        status: TransactionStatus.COMPLETED,
+      });
     });
   });
 

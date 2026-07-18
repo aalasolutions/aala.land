@@ -34,7 +34,11 @@ export class ReminderRule {
   @Column({ type: 'varchar', length: 255 })
   name: string;
 
-  @Column({ type: 'enum', enum: ReminderRuleType, default: ReminderRuleType.CUSTOM })
+  @Column({
+    type: 'enum',
+    enum: ReminderRuleType,
+    default: ReminderRuleType.CUSTOM,
+  })
   type: ReminderRuleType;
 
   @Column({ name: 'trigger_days_before', type: 'int' })

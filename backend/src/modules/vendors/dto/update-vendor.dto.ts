@@ -1,4 +1,16 @@
-import { IsString, IsOptional, IsEnum, IsNumber, Min, Max, MaxLength, IsEmail, IsBoolean, IsArray, ArrayNotEmpty } from 'class-validator';
+import {
+  IsString,
+  IsOptional,
+  IsEnum,
+  IsNumber,
+  Min,
+  Max,
+  MaxLength,
+  IsEmail,
+  IsBoolean,
+  IsArray,
+  ArrayNotEmpty,
+} from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { VendorSpecialty } from '../entities/vendor.entity';
 

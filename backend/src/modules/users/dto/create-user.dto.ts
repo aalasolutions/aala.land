@@ -1,4 +1,13 @@
-import { IsString, IsEmail, IsNotEmpty, IsOptional, IsEnum, MinLength, MaxLength, IsUUID } from 'class-validator';
+import {
+  IsString,
+  IsEmail,
+  IsNotEmpty,
+  IsOptional,
+  IsEnum,
+  MinLength,
+  MaxLength,
+  IsUUID,
+} from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Role } from '../../../shared/enums/roles.enum';
 
@@ -49,7 +58,11 @@ export class CreateUserDto {
   @MaxLength(50)
   timezone?: string;
 
-  @ApiPropertyOptional({ example: '550e8400-e29b-41d4-a716-446655440000', description: 'companyId extracted from JWT for company admins. Required for SUPER_ADMIN to assign user to a company.' })
+  @ApiPropertyOptional({
+    example: '550e8400-e29b-41d4-a716-446655440000',
+    description:
+      'companyId extracted from JWT for company admins. Required for SUPER_ADMIN to assign user to a company.',
+  })
   @IsOptional()
   @IsUUID()
   companyId?: string;

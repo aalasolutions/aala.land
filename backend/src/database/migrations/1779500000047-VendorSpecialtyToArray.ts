@@ -11,8 +11,12 @@ export class VendorSpecialtyToArray1779500000047 implements MigrationInterface {
 
     // Add the jsonb array column, backfill each existing single specialty as a one-element array,
     // then drop the old enum column and its type.
-    await queryRunner.query(`ALTER TABLE "vendors" ADD COLUMN "specialties" jsonb NOT NULL DEFAULT '[]'`);
-    await queryRunner.query(`UPDATE "vendors" SET "specialties" = jsonb_build_array("specialty"::text)`);
+    await queryRunner.query(
+      `ALTER TABLE "vendors" ADD COLUMN "specialties" jsonb NOT NULL DEFAULT '[]'`,
+    );
+    await queryRunner.query(
+      `UPDATE "vendors" SET "specialties" = jsonb_build_array("specialty"::text)`,
+    );
     await queryRunner.query(`ALTER TABLE "vendors" DROP COLUMN "specialty"`);
     await queryRunner.query(`DROP TYPE IF EXISTS "vendors_specialty_enum"`);
   }
@@ -31,7 +35,9 @@ export class VendorSpecialtyToArray1779500000047 implements MigrationInterface {
         'CLEANING', 'PEST_CONTROL', 'APPLIANCE', 'PAINTING', 'GENERAL'
       )
     `);
-    await queryRunner.query(`ALTER TABLE "vendors" ADD COLUMN "specialty" "vendors_specialty_enum" NOT NULL DEFAULT 'GENERAL'`);
+    await queryRunner.query(
+      `ALTER TABLE "vendors" ADD COLUMN "specialty" "vendors_specialty_enum" NOT NULL DEFAULT 'GENERAL'`,
+    );
     // Restore the first specialty when it maps to a valid enum value, otherwise keep the GENERAL default.
     await queryRunner.query(`
       UPDATE "vendors"

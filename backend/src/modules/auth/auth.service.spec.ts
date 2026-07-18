@@ -105,7 +105,10 @@ describe('AuthService', () => {
       usersService.findByEmail.mockResolvedValue(mockUser as any);
       (bcrypt.compare as jest.Mock).mockResolvedValue(true);
 
-      const result = await service.validateUser('admin@test.com', 'correct-password');
+      const result = await service.validateUser(
+        'admin@test.com',
+        'correct-password',
+      );
 
       expect(result).not.toHaveProperty('password');
       expect(result!.email).toBe('admin@test.com');
@@ -114,7 +117,10 @@ describe('AuthService', () => {
     it('returns null when user not found', async () => {
       usersService.findByEmail.mockResolvedValue(null);
 
-      const result = await service.validateUser('notfound@test.com', 'password');
+      const result = await service.validateUser(
+        'notfound@test.com',
+        'password',
+      );
 
       expect(result).toBeNull();
     });
@@ -123,16 +129,25 @@ describe('AuthService', () => {
       usersService.findByEmail.mockResolvedValue(mockUser as any);
       (bcrypt.compare as jest.Mock).mockResolvedValue(false);
 
-      const result = await service.validateUser('admin@test.com', 'wrong-password');
+      const result = await service.validateUser(
+        'admin@test.com',
+        'wrong-password',
+      );
 
       expect(result).toBeNull();
     });
 
     it('returns null when user is inactive', async () => {
-      usersService.findByEmail.mockResolvedValue({ ...mockUser, isActive: false } as any);
+      usersService.findByEmail.mockResolvedValue({
+        ...mockUser,
+        isActive: false,
+      } as any);
       (bcrypt.compare as jest.Mock).mockClear();
 
-      const result = await service.validateUser('admin@test.com', 'correct-password');
+      const result = await service.validateUser(
+        'admin@test.com',
+        'correct-password',
+      );
 
       expect(result).toBeNull();
       expect(bcrypt.compare).not.toHaveBeenCalled();
@@ -186,7 +201,9 @@ describe('AuthService', () => {
     const fakeToken = 'a'.repeat(64);
 
     beforeEach(() => {
-      (crypto.randomBytes as jest.Mock).mockReturnValue({ toString: () => fakeToken });
+      (crypto.randomBytes as jest.Mock).mockReturnValue({
+        toString: () => fakeToken,
+      });
     });
 
     it('generates token and saves it when email exists', async () => {
@@ -217,7 +234,8 @@ describe('AuthService', () => {
 
       await service.forgotPassword('admin@test.com');
 
-      const savedExpiry = (usersService.updateResetToken as jest.Mock).mock.calls[0][2] as Date;
+      const savedExpiry = (usersService.updateResetToken as jest.Mock).mock
+        .calls[0][2] as Date;
       const diffMs = savedExpiry.getTime() - Date.now();
       // Should be roughly 1 hour (3600000ms), allow 5 second tolerance
       expect(diffMs).toBeGreaterThan(3595000);
@@ -243,16 +261,24 @@ describe('AuthService', () => {
 
       expect(usersService.findByResetToken).toHaveBeenCalledWith(validToken);
       expect(bcrypt.hash).toHaveBeenCalledWith('NewPass123!', 12);
-      expect(usersService.updatePassword).toHaveBeenCalledWith('user-uuid-1', 'new-hashed-password');
-      expect(usersService.updateResetToken).toHaveBeenCalledWith('user-uuid-1', null, null);
+      expect(usersService.updatePassword).toHaveBeenCalledWith(
+        'user-uuid-1',
+        'new-hashed-password',
+      );
+      expect(usersService.updateResetToken).toHaveBeenCalledWith(
+        'user-uuid-1',
+        null,
+        null,
+      );
       expect(result.message).toContain('reset successfully');
     });
 
     it('throws BadRequestException when token not found', async () => {
       usersService.findByResetToken.mockResolvedValue(null);
 
-      await expect(service.resetPassword('bad-token', 'NewPass123!'))
-        .rejects.toThrow(BadRequestException);
+      await expect(
+        service.resetPassword('bad-token', 'NewPass123!'),
+      ).rejects.toThrow(BadRequestException);
     });
 
     it('throws BadRequestException when token is expired', async () => {
@@ -263,8 +289,9 @@ describe('AuthService', () => {
         resetPasswordExpires: pastDate,
       } as any);
 
-      await expect(service.resetPassword(validToken, 'NewPass123!'))
-        .rejects.toThrow(BadRequestException);
+      await expect(
+        service.resetPassword(validToken, 'NewPass123!'),
+      ).rejects.toThrow(BadRequestException);
     });
 
     it('throws BadRequestException when resetPasswordExpires is null', async () => {
@@ -275,8 +302,9 @@ describe('AuthService', () => {
         resetPasswordExpires: null,
       } as any);
 
-      await expect(service.resetPassword(validToken, 'NewPass123!'))
-        .rejects.toThrow(BadRequestException);
+      await expect(
+        service.resetPassword(validToken, 'NewPass123!'),
+      ).rejects.toThrow(BadRequestException);
     });
 
     it('clears token fields after successful reset', async () => {
@@ -290,7 +318,11 @@ describe('AuthService', () => {
 
       await service.resetPassword(validToken, 'NewPass123!');
 
-      expect(usersService.updateResetToken).toHaveBeenCalledWith('user-uuid-1', null, null);
+      expect(usersService.updateResetToken).toHaveBeenCalledWith(
+        'user-uuid-1',
+        null,
+        null,
+      );
     });
   });
 
@@ -307,7 +339,10 @@ describe('AuthService', () => {
       companiesService.findOne.mockResolvedValue(mockCompany as any);
       jwtService.sign.mockReturnValue('impersonate-jwt-token');
 
-      const result = await service.impersonateLogin(impersonateUser, 'admin-uuid-1');
+      const result = await service.impersonateLogin(
+        impersonateUser,
+        'admin-uuid-1',
+      );
 
       expect(jwtService.sign).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -340,7 +375,10 @@ describe('AuthService', () => {
         role: 'super_admin',
       };
 
-      const result = await service.impersonateLogin(impersonateUser, 'admin-uuid-1');
+      const result = await service.impersonateLogin(
+        impersonateUser,
+        'admin-uuid-1',
+      );
 
       expect(companiesService.findOne).not.toHaveBeenCalled();
       expect(result.regions).toEqual([]);
@@ -351,11 +389,20 @@ describe('AuthService', () => {
   describe('getBootstrap', () => {
     it('returns fresh user, regions, defaultRegionCode, and subscriptionTier', async () => {
       usersService.findOne.mockResolvedValue(mockUser as any);
-      companiesService.findOne.mockResolvedValue({ ...mockCompany, subscriptionTier: 'PRO' } as any);
+      companiesService.findOne.mockResolvedValue({
+        ...mockCompany,
+        subscriptionTier: 'PRO',
+      } as any);
 
-      const result = await service.getBootstrap('user-uuid-1', 'company-uuid-1');
+      const result = await service.getBootstrap(
+        'user-uuid-1',
+        'company-uuid-1',
+      );
 
-      expect(usersService.findOne).toHaveBeenCalledWith('user-uuid-1', 'company-uuid-1');
+      expect(usersService.findOne).toHaveBeenCalledWith(
+        'user-uuid-1',
+        'company-uuid-1',
+      );
       expect(result.user).toEqual({
         id: 'user-uuid-1',
         name: 'Test Admin',
@@ -369,11 +416,17 @@ describe('AuthService', () => {
     });
 
     it('returns empty regions and null subscriptionTier for a super admin with no companyId', async () => {
-      usersService.findOne.mockResolvedValue({ ...mockUser, companyId: null } as any);
+      usersService.findOne.mockResolvedValue({
+        ...mockUser,
+        companyId: null,
+      } as any);
 
       const result = await service.getBootstrap('super-uuid-1', null);
 
-      expect(usersService.findOne).toHaveBeenCalledWith('super-uuid-1', undefined);
+      expect(usersService.findOne).toHaveBeenCalledWith(
+        'super-uuid-1',
+        undefined,
+      );
       expect(companiesService.findOne).not.toHaveBeenCalled();
       expect(result.regions).toEqual([]);
       expect(result.defaultRegionCode).toBe('');

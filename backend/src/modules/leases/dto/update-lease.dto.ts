@@ -1,4 +1,13 @@
-import { IsString, IsOptional, IsEnum, IsNumber, Min, IsDateString, IsInt, MaxLength } from 'class-validator';
+import {
+  IsString,
+  IsOptional,
+  IsEnum,
+  IsNumber,
+  Min,
+  IsDateString,
+  IsInt,
+  MaxLength,
+} from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { LeaseStatus, LeaseType } from '../entities/lease.entity';
 

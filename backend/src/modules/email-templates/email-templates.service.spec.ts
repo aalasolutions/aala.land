@@ -3,7 +3,10 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { NotFoundException } from '@nestjs/common';
 import { EmailTemplatesService } from './email-templates.service';
-import { EmailTemplate, EmailTemplateCategory } from './entities/email-template.entity';
+import {
+  EmailTemplate,
+  EmailTemplateCategory,
+} from './entities/email-template.entity';
 
 describe('EmailTemplatesService', () => {
   let service: EmailTemplatesService;
@@ -64,7 +67,11 @@ describe('EmailTemplatesService', () => {
       };
       const result = await service.create(companyId, dto as any, 'user-uuid-1');
 
-      expect(repo.create).toHaveBeenCalledWith({ ...dto, companyId, createdBy: 'user-uuid-1' });
+      expect(repo.create).toHaveBeenCalledWith({
+        ...dto,
+        companyId,
+        createdBy: 'user-uuid-1',
+      });
       expect(result).toEqual(mockTemplate);
     });
   });
@@ -113,22 +120,31 @@ describe('EmailTemplatesService', () => {
     it('throws NotFoundException when template not found', async () => {
       repo.findOne.mockResolvedValue(null);
 
-      await expect(service.findOne('bad-id', companyId)).rejects.toThrow(NotFoundException);
+      await expect(service.findOne('bad-id', companyId)).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('throws NotFoundException when template belongs to different company', async () => {
       repo.findOne.mockResolvedValue(null);
 
-      await expect(service.findOne('template-uuid-1', 'other-company')).rejects.toThrow(NotFoundException);
+      await expect(
+        service.findOne('template-uuid-1', 'other-company'),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 
   describe('update', () => {
     it('updates template fields', async () => {
       repo.findOne.mockResolvedValue({ ...mockTemplate } as EmailTemplate);
-      repo.save.mockResolvedValue({ ...mockTemplate, name: 'Updated Name' } as EmailTemplate);
+      repo.save.mockResolvedValue({
+        ...mockTemplate,
+        name: 'Updated Name',
+      } as EmailTemplate);
 
-      const result = await service.update('template-uuid-1', companyId, { name: 'Updated Name' });
+      const result = await service.update('template-uuid-1', companyId, {
+        name: 'Updated Name',
+      });
 
       expect(result.name).toBe('Updated Name');
     });
@@ -155,7 +171,9 @@ describe('EmailTemplatesService', () => {
     it('throws NotFoundException when removing non-existent template', async () => {
       repo.findOne.mockResolvedValue(null);
 
-      await expect(service.remove('bad-id', companyId)).rejects.toThrow(NotFoundException);
+      await expect(service.remove('bad-id', companyId)).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -170,7 +188,9 @@ describe('EmailTemplatesService', () => {
       });
 
       expect(result.subject).toBe('Welcome to Marina Tower, Ahmed!');
-      expect(result.body).toBe('<h1>Hello Ahmed</h1><p>Your lease for Marina Tower begins on 2026-04-01.</p>');
+      expect(result.body).toBe(
+        '<h1>Hello Ahmed</h1><p>Your lease for Marina Tower begins on 2026-04-01.</p>',
+      );
     });
 
     it('leaves unmatched placeholders as-is', async () => {

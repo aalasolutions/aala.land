@@ -18,8 +18,16 @@ export class VendorsService {
   ) {}
 
   async create(companyId: string, dto: CreateVendorDto): Promise<Vendor> {
-    const regionCode = await resolveRegionCode(this.companyRepository, companyId, dto.regionCode);
-    const vendor = this.vendorRepository.create({ ...dto, companyId, regionCode });
+    const regionCode = await resolveRegionCode(
+      this.companyRepository,
+      companyId,
+      dto.regionCode,
+    );
+    const vendor = this.vendorRepository.create({
+      ...dto,
+      companyId,
+      regionCode,
+    });
     return this.vendorRepository.save(vendor);
   }
 
@@ -39,7 +47,9 @@ export class VendorsService {
     // specialties is a jsonb array, so filter by "contains this specialty" via @>
     const specialtyFilter: FindOptionsWhere<Vendor> = specialty
       ? ({
-          specialties: Raw((alias) => `${alias} @> :spec::jsonb`, { spec: JSON.stringify([specialty]) }),
+          specialties: Raw((alias) => `${alias} @> :spec::jsonb`, {
+            spec: JSON.stringify([specialty]),
+          }),
         } as unknown as FindOptionsWhere<Vendor>)
       : {};
 
@@ -84,7 +94,11 @@ export class VendorsService {
     return vendor;
   }
 
-  async update(id: string, companyId: string, dto: UpdateVendorDto): Promise<Vendor> {
+  async update(
+    id: string,
+    companyId: string,
+    dto: UpdateVendorDto,
+  ): Promise<Vendor> {
     const vendor = await this.findOne(id, companyId);
     Object.assign(vendor, dto);
     return this.vendorRepository.save(vendor);

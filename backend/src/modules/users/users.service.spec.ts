@@ -1,7 +1,14 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { DataSource, Repository, Not } from 'typeorm';
-import { NotFoundException, ConflictException, ForbiddenException, BadRequestException, HttpException, HttpStatus } from '@nestjs/common';
+import {
+  NotFoundException,
+  ConflictException,
+  ForbiddenException,
+  BadRequestException,
+  HttpException,
+  HttpStatus,
+} from '@nestjs/common';
 import { UsersService } from './users.service';
 import { User, AuthProvider } from './entities/user.entity';
 import { Role } from '@shared/enums/roles.enum';
@@ -9,7 +16,10 @@ import * as bcrypt from 'bcryptjs';
 import * as crypto from 'crypto';
 import { MailService } from '../../shared/services/mail.service';
 import { EmailTemplatesService } from '../email-templates/email-templates.service';
-import { Company, SubscriptionTier } from '../companies/entities/company.entity';
+import {
+  Company,
+  SubscriptionTier,
+} from '../companies/entities/company.entity';
 import { Commission } from '../commissions/entities/commission.entity';
 import { BillingService } from '../billing/billing.service';
 import { UserReassignmentService } from './reassignment/user-reassignment.service';
@@ -25,23 +35,23 @@ jest.mock('crypto');
 // manager's own spies; create/save delegate to the User repo so behavior mocks
 // and call-order assertions on repo.save still hold.
 let managerMock: {
-    update: jest.Mock;
-    delete: jest.Mock;
-    query: jest.Mock;
-    findOne: jest.Mock;
-    count: jest.Mock;
-    find: jest.Mock;
-    create: jest.Mock;
-    save: jest.Mock;
-    getRepository: jest.Mock;
+  update: jest.Mock;
+  delete: jest.Mock;
+  query: jest.Mock;
+  findOne: jest.Mock;
+  count: jest.Mock;
+  find: jest.Mock;
+  create: jest.Mock;
+  save: jest.Mock;
+  getRepository: jest.Mock;
 };
 let commissionRepoMock: { count: jest.Mock };
 let dataSourceMock: { transaction: jest.Mock; getRepository: jest.Mock };
 let billingServiceMock: {
-    reserveSeat: jest.Mock;
-    setSeatQuantity: jest.Mock;
-    decrementSeat: jest.Mock;
-    getLiveSeatQuantity: jest.Mock;
+  reserveSeat: jest.Mock;
+  setSeatQuantity: jest.Mock;
+  decrementSeat: jest.Mock;
+  getLiveSeatQuantity: jest.Mock;
 };
 let reassignmentServiceMock: { reassignOwnedRecords: jest.Mock };
 
@@ -57,8 +67,12 @@ describe('UsersService', () => {
   let repo: jest.Mocked<Repository<User>>;
   let companyRepo: jest.Mocked<Pick<Repository<Company>, 'findOne' | 'update'>>;
   let mailService: jest.Mocked<Pick<MailService, 'sendMail'>>;
-  let emailTemplatesService: jest.Mocked<Pick<EmailTemplatesService, 'findAll' | 'render'>>;
-  let billingService: jest.Mocked<Pick<BillingService, 'reserveSeat' | 'setSeatQuantity'>>;
+  let emailTemplatesService: jest.Mocked<
+    Pick<EmailTemplatesService, 'findAll' | 'render'>
+  >;
+  let billingService: jest.Mocked<
+    Pick<BillingService, 'reserveSeat' | 'setSeatQuantity'>
+  >;
 
   const companyId = 'company-uuid-1';
 
@@ -85,29 +99,53 @@ describe('UsersService', () => {
     company: null as any,
   };
 
-  const targetUser = { ...mockUser, id: 'user-uuid-2', role: Role.AGENT, isActive: true };
-  const reassignee = { ...mockUser, id: 'user-uuid-3', role: Role.AGENT, isActive: true };
+  const targetUser = {
+    ...mockUser,
+    id: 'user-uuid-2',
+    role: Role.AGENT,
+    isActive: true,
+  };
+  const reassignee = {
+    ...mockUser,
+    id: 'user-uuid-3',
+    role: Role.AGENT,
+    isActive: true,
+  };
   const removeDto = { reassignToUserId: 'user-uuid-3', reason: 'left' };
 
   const freeCompany = {
-    id: companyId, subscriptionTier: SubscriptionTier.FREE, maxUsers: 1,
-    purchasedSeats: 1, billingSubscriptionId: null,
+    id: companyId,
+    subscriptionTier: SubscriptionTier.FREE,
+    maxUsers: 1,
+    purchasedSeats: 1,
+    billingSubscriptionId: null,
   } as unknown as Company;
   const proCompany = {
-    id: companyId, subscriptionTier: SubscriptionTier.PRO, maxUsers: 999,
-    purchasedSeats: 5, billingSubscriptionId: 'sub_123', billingCustomerId: 'cus_123',
+    id: companyId,
+    subscriptionTier: SubscriptionTier.PRO,
+    maxUsers: 999,
+    purchasedSeats: 5,
+    billingSubscriptionId: 'sub_123',
+    billingCustomerId: 'cus_123',
   } as unknown as Company;
-  const proCompanyNoSub = { ...proCompany, billingSubscriptionId: null } as unknown as Company;
+  const proCompanyNoSub = {
+    ...proCompany,
+    billingSubscriptionId: null,
+  } as unknown as Company;
 
   // Removal flows resolve the lock company id from the requester's own company
   // when present (the COMPANY_ADMIN case these tests use), so no pre-lock read
   // happens; only the locked target + reassignee loads hit repo.findOne, and the
   // company load hits companyRepo.findOne. (A SUPER_ADMIN caller with no company
   // context would add one pre-lock repo.findOne to resolve the target's company.)
-  function primeRemovalLookups(company: Company, target = targetUser, recipient = reassignee) {
+  function primeRemovalLookups(
+    company: Company,
+    target = targetUser,
+    recipient = reassignee,
+  ) {
     repo.findOne
-      .mockResolvedValueOnce(target as User)      // locked target load
-      .mockResolvedValueOnce(recipient as User);  // locked reassignee load
+      .mockResolvedValueOnce(target as User) // locked target load
+      .mockResolvedValueOnce(recipient as User); // locked reassignee load
     companyRepo.findOne.mockResolvedValue(company as Company);
   }
 
@@ -134,16 +172,24 @@ describe('UsersService', () => {
       delete: jest.fn(),
       query: jest.fn().mockResolvedValue(undefined),
       findOne: jest.fn((entity: unknown, opts: unknown) =>
-        entity === Company ? companyRepoMock.findOne(opts) : userRepoMock.findOne(opts),
+        entity === Company
+          ? companyRepoMock.findOne(opts)
+          : userRepoMock.findOne(opts),
       ),
-      count: jest.fn((_entity: unknown, opts: unknown) => userRepoMock.count(opts)),
-      find: jest.fn((_entity: unknown, opts: unknown) => userRepoMock.find(opts)),
+      count: jest.fn((_entity: unknown, opts: unknown) =>
+        userRepoMock.count(opts),
+      ),
+      find: jest.fn((_entity: unknown, opts: unknown) =>
+        userRepoMock.find(opts),
+      ),
       create: jest.fn((_entity: unknown, x: unknown) => userRepoMock.create(x)),
       save: jest.fn((x: unknown) => userRepoMock.save(x)),
       getRepository: jest.fn().mockReturnValue(commissionRepoMock),
     };
     dataSourceMock = {
-      transaction: jest.fn(async (cb: (m: unknown) => Promise<unknown>) => cb(managerMock)),
+      transaction: jest.fn(async (cb: (m: unknown) => Promise<unknown>) =>
+        cb(managerMock),
+      ),
       getRepository: jest.fn().mockReturnValue(commissionRepoMock),
     };
     billingServiceMock = {
@@ -152,7 +198,9 @@ describe('UsersService', () => {
       decrementSeat: jest.fn().mockResolvedValue(null),
       getLiveSeatQuantity: jest.fn().mockResolvedValue(0),
     };
-    reassignmentServiceMock = { reassignOwnedRecords: jest.fn().mockResolvedValue(emptyReport) };
+    reassignmentServiceMock = {
+      reassignOwnedRecords: jest.fn().mockResolvedValue(emptyReport),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -188,7 +236,9 @@ describe('UsersService', () => {
         {
           provide: EmailTemplatesService,
           useValue: {
-            findAll: jest.fn().mockResolvedValue({ data: [], total: 0, page: 1, limit: 20 }),
+            findAll: jest
+              .fn()
+              .mockResolvedValue({ data: [], total: 0, page: 1, limit: 20 }),
             render: jest.fn(),
           },
         },
@@ -214,12 +264,26 @@ describe('UsersService', () => {
       repo.findOne.mockResolvedValue(null);
       repo.create.mockReturnValue(mockUser);
       repo.save.mockResolvedValue(mockUser);
-      const mockCompany = { id: companyId, subscriptionTier: 'FREE', maxUsers: 5 } as any;
+      const mockCompany = {
+        id: companyId,
+        subscriptionTier: 'FREE',
+        maxUsers: 5,
+      } as any;
       companyRepo.findOne.mockResolvedValue(mockCompany);
       repo.count.mockResolvedValue(2);
 
-      const dto = { name: 'Test Agent', email: 'agent@test.com', password: 'pass123', companyId, role: Role.AGENT };
-      const result = await service.create(dto as any, companyId, Role.COMPANY_ADMIN);
+      const dto = {
+        name: 'Test Agent',
+        email: 'agent@test.com',
+        password: 'pass123',
+        companyId,
+        role: Role.AGENT,
+      };
+      const result = await service.create(
+        dto as any,
+        companyId,
+        Role.COMPANY_ADMIN,
+      );
 
       expect(bcrypt.hash).toHaveBeenCalledWith('pass123', 12);
       expect(result).toEqual(mockUser);
@@ -227,21 +291,49 @@ describe('UsersService', () => {
 
     it('throws ConflictException when email already exists', async () => {
       repo.findOne.mockResolvedValue(mockUser);
-      const mockCompany = { id: companyId, subscriptionTier: 'FREE', maxUsers: 5 } as any;
+      const mockCompany = {
+        id: companyId,
+        subscriptionTier: 'FREE',
+        maxUsers: 5,
+      } as any;
       companyRepo.findOne.mockResolvedValue(mockCompany);
 
-      const dto = { name: 'Test', email: 'agent@test.com', password: 'pass123', companyId, role: Role.AGENT };
-      await expect(service.create(dto as any, companyId, Role.COMPANY_ADMIN)).rejects.toThrow(ConflictException);
+      const dto = {
+        name: 'Test',
+        email: 'agent@test.com',
+        password: 'pass123',
+        companyId,
+        role: Role.AGENT,
+      };
+      await expect(
+        service.create(dto as any, companyId, Role.COMPANY_ADMIN),
+      ).rejects.toThrow(ConflictException);
     });
 
     it('throws ForbiddenException when assigning a role equal to requester role', async () => {
-      const dto = { name: 'Test', email: 'new@test.com', password: 'pass123', companyId, role: Role.ADMIN };
-      await expect(service.create(dto as any, companyId, Role.ADMIN)).rejects.toThrow(ForbiddenException);
+      const dto = {
+        name: 'Test',
+        email: 'new@test.com',
+        password: 'pass123',
+        companyId,
+        role: Role.ADMIN,
+      };
+      await expect(
+        service.create(dto as any, companyId, Role.ADMIN),
+      ).rejects.toThrow(ForbiddenException);
     });
 
     it('throws ForbiddenException when assigning a role higher than requester role', async () => {
-      const dto = { name: 'Test', email: 'new@test.com', password: 'pass123', companyId, role: Role.COMPANY_ADMIN };
-      await expect(service.create(dto as any, companyId, Role.ADMIN)).rejects.toThrow(ForbiddenException);
+      const dto = {
+        name: 'Test',
+        email: 'new@test.com',
+        password: 'pass123',
+        companyId,
+        role: Role.COMPANY_ADMIN,
+      };
+      await expect(
+        service.create(dto as any, companyId, Role.ADMIN),
+      ).rejects.toThrow(ForbiddenException);
     });
 
     it('allows SUPER_ADMIN to assign any role including equal privilege', async () => {
@@ -249,12 +341,24 @@ describe('UsersService', () => {
       const superAdminUser = { ...mockUser, role: Role.SUPER_ADMIN };
       repo.create.mockReturnValue(superAdminUser);
       repo.save.mockResolvedValue(superAdminUser);
-      const mockCompany = { id: companyId, subscriptionTier: 'PRO', maxUsers: 999 } as any;
+      const mockCompany = {
+        id: companyId,
+        subscriptionTier: 'PRO',
+        maxUsers: 999,
+      } as any;
       companyRepo.findOne.mockResolvedValue(mockCompany);
       repo.count.mockResolvedValue(2);
 
-      const dto = { name: 'Another SA', email: 'sa2@test.com', password: 'pass123', companyId, role: Role.SUPER_ADMIN };
-      await expect(service.create(dto as any, companyId, Role.SUPER_ADMIN)).resolves.not.toThrow();
+      const dto = {
+        name: 'Another SA',
+        email: 'sa2@test.com',
+        password: 'pass123',
+        companyId,
+        role: Role.SUPER_ADMIN,
+      };
+      await expect(
+        service.create(dto as any, companyId, Role.SUPER_ADMIN),
+      ).resolves.not.toThrow();
     });
   });
 
@@ -317,7 +421,11 @@ describe('UsersService', () => {
         order: { createdAt: 'DESC' },
       });
       expect(result.data.length).toBe(2);
-      expect(result.data.every(u => u.role !== Role.SUPER_ADMIN || u.companyId == null)).toBe(true);
+      expect(
+        result.data.every(
+          (u) => u.role !== Role.SUPER_ADMIN || u.companyId == null,
+        ),
+      ).toBe(true);
     });
   });
 
@@ -327,20 +435,26 @@ describe('UsersService', () => {
 
       const result = await service.findOne('user-uuid-1', companyId);
 
-      expect(repo.findOne).toHaveBeenCalledWith({ where: { id: 'user-uuid-1', companyId } });
+      expect(repo.findOne).toHaveBeenCalledWith({
+        where: { id: 'user-uuid-1', companyId },
+      });
       expect(result).toEqual(mockUser);
     });
 
     it('throws NotFoundException when user not found', async () => {
       repo.findOne.mockResolvedValue(null);
 
-      await expect(service.findOne('bad-id', companyId)).rejects.toThrow(NotFoundException);
+      await expect(service.findOne('bad-id', companyId)).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('throws NotFoundException when user belongs to different company', async () => {
       repo.findOne.mockResolvedValue(null);
 
-      await expect(service.findOne('user-uuid-1', 'other-company')).rejects.toThrow(NotFoundException);
+      await expect(
+        service.findOne('user-uuid-1', 'other-company'),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 
@@ -358,7 +472,13 @@ describe('UsersService', () => {
       repo.findOne.mockResolvedValue(mockUser);
       repo.save.mockResolvedValue({ ...mockUser, name: 'Updated Name' });
 
-      const result = await service.update('user-uuid-1', companyId, { name: 'Updated Name' } as any, Role.COMPANY_ADMIN, 'ca-uuid');
+      const result = await service.update(
+        'user-uuid-1',
+        companyId,
+        { name: 'Updated Name' } as any,
+        Role.COMPANY_ADMIN,
+        'ca-uuid',
+      );
 
       expect(result.name).toBe('Updated Name');
     });
@@ -367,7 +487,13 @@ describe('UsersService', () => {
       repo.findOne.mockResolvedValue(mockUser);
       repo.save.mockResolvedValue(mockUser);
 
-      await service.update('user-uuid-1', companyId, { password: 'new-password' } as any, Role.COMPANY_ADMIN, 'ca-uuid');
+      await service.update(
+        'user-uuid-1',
+        companyId,
+        { password: 'new-password' } as any,
+        Role.COMPANY_ADMIN,
+        'ca-uuid',
+      );
 
       expect(bcrypt.hash).toHaveBeenCalledWith('new-password', 12);
     });
@@ -376,7 +502,13 @@ describe('UsersService', () => {
       repo.findOne.mockResolvedValue(mockUser);
 
       await expect(
-        service.update('user-uuid-1', companyId, { role: Role.MANAGER } as any, Role.AGENT, 'agent-uuid'),
+        service.update(
+          'user-uuid-1',
+          companyId,
+          { role: Role.MANAGER } as any,
+          Role.AGENT,
+          'agent-uuid',
+        ),
       ).rejects.toThrow(ForbiddenException);
     });
 
@@ -391,7 +523,13 @@ describe('UsersService', () => {
       repo.findOne.mockResolvedValue(target);
       repo.save.mockResolvedValue({ ...target, role: Role.COMPANY_ADMIN });
 
-      const result = await service.update('admin-uuid', companyId, { role: Role.COMPANY_ADMIN } as any, Role.SUPER_ADMIN, 'super-admin-uuid');
+      const result = await service.update(
+        'admin-uuid',
+        companyId,
+        { role: Role.COMPANY_ADMIN } as any,
+        Role.SUPER_ADMIN,
+        'super-admin-uuid',
+      );
 
       expect(result.role).toBe(Role.COMPANY_ADMIN);
     });
@@ -401,39 +539,79 @@ describe('UsersService', () => {
     it('decrements the seat (live-derived) and reassigns inside the locked transaction on paid plans', async () => {
       primeRemovalLookups(proCompany);
       const order: string[] = [];
-      managerMock.query.mockImplementation(async () => { order.push('lock'); });
+      managerMock.query.mockImplementation(async () => {
+        order.push('lock');
+      });
       const compensate = jest.fn().mockResolvedValue(undefined);
-      billingServiceMock.decrementSeat.mockImplementation(async () => { order.push('decrement'); return { compensate }; });
-      managerMock.update.mockImplementation(async () => { order.push('write'); });
+      billingServiceMock.decrementSeat.mockImplementation(async () => {
+        order.push('decrement');
+        return { compensate };
+      });
+      managerMock.update.mockImplementation(async () => {
+        order.push('write');
+      });
 
-      await service.deactivateUser('user-uuid-2', 'requester-uuid', companyId, Role.COMPANY_ADMIN, removeDto);
+      await service.deactivateUser(
+        'user-uuid-2',
+        'requester-uuid',
+        companyId,
+        Role.COMPANY_ADMIN,
+        removeDto,
+      );
 
       expect(billingServiceMock.decrementSeat).toHaveBeenCalledWith(proCompany);
       // Advisory lock is taken before the provider decrement, which is before the local write.
       expect(order).toEqual(['lock', 'decrement', 'write']);
-      expect(managerMock.query).toHaveBeenCalledWith('SELECT pg_advisory_xact_lock(hashtext($1))', [companyId]);
-      expect(managerMock.update).toHaveBeenCalledWith(User, 'user-uuid-2', { isActive: false });
+      expect(managerMock.query).toHaveBeenCalledWith(
+        'SELECT pg_advisory_xact_lock(hashtext($1))',
+        [companyId],
+      );
+      expect(managerMock.update).toHaveBeenCalledWith(User, 'user-uuid-2', {
+        isActive: false,
+      });
       expect(compensate).not.toHaveBeenCalled();
       expect(reassignmentServiceMock.reassignOwnedRecords).toHaveBeenCalledWith(
-        managerMock, companyId, 'user-uuid-2', 'user-uuid-3', 'left',
+        managerMock,
+        companyId,
+        'user-uuid-2',
+        'user-uuid-3',
+        'left',
         { collectIds: false },
       );
     });
 
     it('makes no provider call on FREE companies', async () => {
       primeRemovalLookups(freeCompany);
-      await service.deactivateUser('user-uuid-2', 'requester-uuid', companyId, Role.COMPANY_ADMIN, removeDto);
+      await service.deactivateUser(
+        'user-uuid-2',
+        'requester-uuid',
+        companyId,
+        Role.COMPANY_ADMIN,
+        removeDto,
+      );
       // decrementSeat returns null for FREE (its default mock); no compensation path.
-      expect(billingServiceMock.decrementSeat).toHaveBeenCalledWith(freeCompany);
-      expect(managerMock.update).toHaveBeenCalledWith(User, 'user-uuid-2', { isActive: false });
+      expect(billingServiceMock.decrementSeat).toHaveBeenCalledWith(
+        freeCompany,
+      );
+      expect(managerMock.update).toHaveBeenCalledWith(User, 'user-uuid-2', {
+        isActive: false,
+      });
     });
 
     it('skips the provider for a paid comp company with no subscription and still deactivates (Option B)', async () => {
       primeRemovalLookups(proCompanyNoSub);
       // decrementSeat is the single decision point for Option B; it returns null.
       billingServiceMock.decrementSeat.mockResolvedValue(null);
-      await service.deactivateUser('user-uuid-2', 'requester-uuid', companyId, Role.COMPANY_ADMIN, removeDto);
-      expect(managerMock.update).toHaveBeenCalledWith(User, 'user-uuid-2', { isActive: false });
+      await service.deactivateUser(
+        'user-uuid-2',
+        'requester-uuid',
+        companyId,
+        Role.COMPANY_ADMIN,
+        removeDto,
+      );
+      expect(managerMock.update).toHaveBeenCalledWith(User, 'user-uuid-2', {
+        isActive: false,
+      });
     });
 
     it('compensates the seat when the local write fails and rethrows the original error', async () => {
@@ -443,7 +621,13 @@ describe('UsersService', () => {
       managerMock.update.mockRejectedValue(new Error('db down'));
 
       await expect(
-        service.deactivateUser('user-uuid-2', 'requester-uuid', companyId, Role.COMPANY_ADMIN, removeDto),
+        service.deactivateUser(
+          'user-uuid-2',
+          'requester-uuid',
+          companyId,
+          Role.COMPANY_ADMIN,
+          removeDto,
+        ),
       ).rejects.toThrow('db down');
 
       expect(compensate).toHaveBeenCalledTimes(1);
@@ -451,32 +635,60 @@ describe('UsersService', () => {
 
     it('rejects self-removal', async () => {
       await expect(
-        service.deactivateUser('requester-uuid', 'requester-uuid', companyId, Role.COMPANY_ADMIN, removeDto),
+        service.deactivateUser(
+          'requester-uuid',
+          'requester-uuid',
+          companyId,
+          Role.COMPANY_ADMIN,
+          removeDto,
+        ),
       ).rejects.toThrow(BadRequestException);
     });
 
     it('rejects when the reassignment target equals the removed user', async () => {
       await expect(
-        service.deactivateUser('user-uuid-2', 'requester-uuid', companyId, Role.COMPANY_ADMIN, {
-          reassignToUserId: 'user-uuid-2', reason: 'left',
-        }),
+        service.deactivateUser(
+          'user-uuid-2',
+          'requester-uuid',
+          companyId,
+          Role.COMPANY_ADMIN,
+          {
+            reassignToUserId: 'user-uuid-2',
+            reason: 'left',
+          },
+        ),
       ).rejects.toThrow(BadRequestException);
     });
 
     it('rejects removing an equal-or-higher role for non super admins', async () => {
       // Locked target load returns a COMPANY_ADMIN (equal privilege to requester).
-      repo.findOne.mockResolvedValueOnce({ ...targetUser, role: Role.COMPANY_ADMIN } as User);
+      repo.findOne.mockResolvedValueOnce({
+        ...targetUser,
+        role: Role.COMPANY_ADMIN,
+      } as User);
       await expect(
-        service.deactivateUser('user-uuid-2', 'requester-uuid', companyId, Role.COMPANY_ADMIN, removeDto),
+        service.deactivateUser(
+          'user-uuid-2',
+          'requester-uuid',
+          companyId,
+          Role.COMPANY_ADMIN,
+          removeDto,
+        ),
       ).rejects.toThrow(ForbiddenException);
     });
 
     it('rejects an inactive reassignment target', async () => {
       repo.findOne
-        .mockResolvedValueOnce(targetUser as User)   // locked target load
-        .mockResolvedValueOnce(null);                 // locked reassignee load: inactive/missing
+        .mockResolvedValueOnce(targetUser as User) // locked target load
+        .mockResolvedValueOnce(null); // locked reassignee load: inactive/missing
       await expect(
-        service.deactivateUser('user-uuid-2', 'requester-uuid', companyId, Role.COMPANY_ADMIN, removeDto),
+        service.deactivateUser(
+          'user-uuid-2',
+          'requester-uuid',
+          companyId,
+          Role.COMPANY_ADMIN,
+          removeDto,
+        ),
       ).rejects.toThrow(NotFoundException);
     });
   });
@@ -486,7 +698,13 @@ describe('UsersService', () => {
       primeRemovalLookups(proCompany);
       commissionRepoMock.count.mockResolvedValue(2);
       await expect(
-        service.deleteUserWithReassignment('user-uuid-2', 'requester-uuid', companyId, Role.COMPANY_ADMIN, removeDto),
+        service.deleteUserWithReassignment(
+          'user-uuid-2',
+          'requester-uuid',
+          companyId,
+          Role.COMPANY_ADMIN,
+          removeDto,
+        ),
       ).rejects.toThrow(ConflictException);
       // The check now runs inside the transaction, so no seat mutation and no row delete.
       expect(billingServiceMock.decrementSeat).not.toHaveBeenCalled();
@@ -497,26 +715,46 @@ describe('UsersService', () => {
 
     it('reassigns, nulls email template authorship, deletes notifications, then deletes the row', async () => {
       primeRemovalLookups(proCompany);
-      await service.deleteUserWithReassignment('user-uuid-2', 'requester-uuid', companyId, Role.COMPANY_ADMIN, removeDto);
+      await service.deleteUserWithReassignment(
+        'user-uuid-2',
+        'requester-uuid',
+        companyId,
+        Role.COMPANY_ADMIN,
+        removeDto,
+      );
 
       expect(reassignmentServiceMock.reassignOwnedRecords).toHaveBeenCalledWith(
-        managerMock, companyId, 'user-uuid-2', 'user-uuid-3', 'left',
+        managerMock,
+        companyId,
+        'user-uuid-2',
+        'user-uuid-3',
+        'left',
         { collectIds: false },
       );
       expect(managerMock.query).toHaveBeenCalledWith(
-        expect.stringContaining('UPDATE "email_templates" SET "created_by" = NULL'),
+        expect.stringContaining(
+          'UPDATE "email_templates" SET "created_by" = NULL',
+        ),
         ['user-uuid-2', companyId],
       );
       expect(managerMock.query).toHaveBeenCalledWith(
         expect.stringContaining('DELETE FROM "notifications"'),
         ['user-uuid-2'],
       );
-      expect(managerMock.delete).toHaveBeenCalledWith(User, { id: 'user-uuid-2' });
+      expect(managerMock.delete).toHaveBeenCalledWith(User, {
+        id: 'user-uuid-2',
+      });
     });
 
     it('does not decrement the seat when deleting an already deactivated user', async () => {
       primeRemovalLookups(proCompany, { ...targetUser, isActive: false });
-      await service.deleteUserWithReassignment('user-uuid-2', 'requester-uuid', companyId, Role.COMPANY_ADMIN, removeDto);
+      await service.deleteUserWithReassignment(
+        'user-uuid-2',
+        'requester-uuid',
+        companyId,
+        Role.COMPANY_ADMIN,
+        removeDto,
+      );
       expect(billingServiceMock.decrementSeat).not.toHaveBeenCalled();
     });
 
@@ -524,14 +762,25 @@ describe('UsersService', () => {
       // A commission flipped PENDING->APPROVED after the in-txn count but before
       // the delete; the ON DELETE RESTRICT FK raises 23503. TypeORM surfaces it as
       // a QueryFailedError carrying the SQLSTATE on driverError.code.
-      const fkError = Object.assign(new Error('update or delete on table "users" violates foreign key constraint'), {
-        code: '23503',
-        driverError: { code: '23503' },
-      });
+      const fkError = Object.assign(
+        new Error(
+          'update or delete on table "users" violates foreign key constraint',
+        ),
+        {
+          code: '23503',
+          driverError: { code: '23503' },
+        },
+      );
       managerMock.delete.mockRejectedValue(fkError);
 
       primeRemovalLookups(proCompany);
-      const first = service.deleteUserWithReassignment('user-uuid-2', 'requester-uuid', companyId, Role.COMPANY_ADMIN, removeDto);
+      const first = service.deleteUserWithReassignment(
+        'user-uuid-2',
+        'requester-uuid',
+        companyId,
+        Role.COMPANY_ADMIN,
+        removeDto,
+      );
       await expect(first).rejects.toThrow(ConflictException);
       await expect(first).rejects.toThrow('deactivate instead');
     });
@@ -541,32 +790,65 @@ describe('UsersService', () => {
       managerMock.delete.mockRejectedValue(new Error('connection reset'));
 
       await expect(
-        service.deleteUserWithReassignment('user-uuid-2', 'requester-uuid', companyId, Role.COMPANY_ADMIN, removeDto),
+        service.deleteUserWithReassignment(
+          'user-uuid-2',
+          'requester-uuid',
+          companyId,
+          Role.COMPANY_ADMIN,
+          removeDto,
+        ),
       ).rejects.toThrow('connection reset');
     });
   });
 
   describe('trimToOneActiveUser', () => {
-    const keeper = { ...mockUser, id: 'keeper-uuid', role: Role.COMPANY_ADMIN, isActive: true };
-    const trimDto = { keepUserId: 'keeper-uuid', reason: 'Downgrading to the Free plan' };
+    const keeper = {
+      ...mockUser,
+      id: 'keeper-uuid',
+      role: Role.COMPANY_ADMIN,
+      isActive: true,
+    };
+    const trimDto = {
+      keepUserId: 'keeper-uuid',
+      reason: 'Downgrading to the Free plan',
+    };
 
     it('sets the seat quantity to 1 for PRO (the keeper seat), then deactivates and reassigns every other active user', async () => {
       repo.findOne.mockResolvedValueOnce(keeper as User);
       companyRepo.findOne.mockResolvedValue(proCompany as Company);
       repo.find.mockResolvedValue([
-        { ...mockUser, id: 'u-a' }, { ...mockUser, id: 'u-b' },
+        { ...mockUser, id: 'u-a' },
+        { ...mockUser, id: 'u-b' },
       ] as User[]);
       billingServiceMock.getLiveSeatQuantity.mockResolvedValue(5);
       repo.count.mockResolvedValue(1); // backstop: exactly one active remains
 
-      const result = await service.trimToOneActiveUser(companyId, 'keeper-uuid', trimDto);
+      const result = await service.trimToOneActiveUser(
+        companyId,
+        'keeper-uuid',
+        trimDto,
+      );
 
-      expect(managerMock.query).toHaveBeenCalledWith('SELECT pg_advisory_xact_lock(hashtext($1))', [companyId]);
-      expect(billingServiceMock.getLiveSeatQuantity).toHaveBeenCalledWith(proCompany);
-      expect(billingServiceMock.setSeatQuantity).toHaveBeenCalledWith(proCompany, 1);
-      expect(managerMock.update).toHaveBeenCalledWith(User, 'u-a', { isActive: false });
-      expect(managerMock.update).toHaveBeenCalledWith(User, 'u-b', { isActive: false });
-      expect(reassignmentServiceMock.reassignOwnedRecords).toHaveBeenCalledTimes(2);
+      expect(managerMock.query).toHaveBeenCalledWith(
+        'SELECT pg_advisory_xact_lock(hashtext($1))',
+        [companyId],
+      );
+      expect(billingServiceMock.getLiveSeatQuantity).toHaveBeenCalledWith(
+        proCompany,
+      );
+      expect(billingServiceMock.setSeatQuantity).toHaveBeenCalledWith(
+        proCompany,
+        1,
+      );
+      expect(managerMock.update).toHaveBeenCalledWith(User, 'u-a', {
+        isActive: false,
+      });
+      expect(managerMock.update).toHaveBeenCalledWith(User, 'u-b', {
+        isActive: false,
+      });
+      expect(
+        reassignmentServiceMock.reassignOwnedRecords,
+      ).toHaveBeenCalledTimes(2);
       expect(result.deactivatedCount).toBe(2);
       expect(result.reports).toHaveLength(2);
     });
@@ -582,8 +864,16 @@ describe('UsersService', () => {
         service.trimToOneActiveUser(companyId, 'keeper-uuid', trimDto),
       ).rejects.toThrow(ConflictException);
       // Seat was moved to 1, so the abort must compensate back to the captured baseline.
-      expect(billingServiceMock.setSeatQuantity).toHaveBeenNthCalledWith(1, proCompany, 1);
-      expect(billingServiceMock.setSeatQuantity).toHaveBeenNthCalledWith(2, proCompany, 5);
+      expect(billingServiceMock.setSeatQuantity).toHaveBeenNthCalledWith(
+        1,
+        proCompany,
+        1,
+      );
+      expect(billingServiceMock.setSeatQuantity).toHaveBeenNthCalledWith(
+        2,
+        proCompany,
+        5,
+      );
     });
 
     it('skips the provider call when the company has no subscription', async () => {
@@ -592,14 +882,21 @@ describe('UsersService', () => {
       repo.find.mockResolvedValue([{ ...mockUser, id: 'u-a' }] as User[]);
       repo.count.mockResolvedValue(1);
 
-      const result = await service.trimToOneActiveUser(companyId, 'keeper-uuid', trimDto);
+      const result = await service.trimToOneActiveUser(
+        companyId,
+        'keeper-uuid',
+        trimDto,
+      );
       expect(billingServiceMock.getLiveSeatQuantity).not.toHaveBeenCalled();
       expect(billingServiceMock.setSeatQuantity).not.toHaveBeenCalled();
       expect(result.deactivatedCount).toBe(1);
     });
 
     it('rejects a keeper who is not a company admin', async () => {
-      repo.findOne.mockResolvedValueOnce({ ...keeper, role: Role.AGENT } as User);
+      repo.findOne.mockResolvedValueOnce({
+        ...keeper,
+        role: Role.AGENT,
+      } as User);
       await expect(
         service.trimToOneActiveUser(companyId, 'keeper-uuid', trimDto),
       ).rejects.toThrow(BadRequestException);
@@ -609,7 +906,11 @@ describe('UsersService', () => {
       repo.findOne.mockResolvedValueOnce(keeper as User);
       companyRepo.findOne.mockResolvedValue(proCompany as Company);
       repo.find.mockResolvedValue([]);
-      const result = await service.trimToOneActiveUser(companyId, 'keeper-uuid', trimDto);
+      const result = await service.trimToOneActiveUser(
+        companyId,
+        'keeper-uuid',
+        trimDto,
+      );
       expect(result).toEqual({ deactivatedCount: 0, reports: [] });
       expect(billingServiceMock.setSeatQuantity).not.toHaveBeenCalled();
     });
@@ -624,8 +925,16 @@ describe('UsersService', () => {
       await expect(
         service.trimToOneActiveUser(companyId, 'keeper-uuid', trimDto),
       ).rejects.toThrow('db down');
-      expect(billingServiceMock.setSeatQuantity).toHaveBeenNthCalledWith(1, proCompany, 1);
-      expect(billingServiceMock.setSeatQuantity).toHaveBeenNthCalledWith(2, proCompany, 5);
+      expect(billingServiceMock.setSeatQuantity).toHaveBeenNthCalledWith(
+        1,
+        proCompany,
+        1,
+      );
+      expect(billingServiceMock.setSeatQuantity).toHaveBeenNthCalledWith(
+        2,
+        proCompany,
+        5,
+      );
     });
   });
 
@@ -634,30 +943,50 @@ describe('UsersService', () => {
 
     it('increments the seat (live baseline + 1) before activating on paid plans', async () => {
       repo.findOne
-        .mockResolvedValueOnce(inactiveTarget as User)  // locked target load
-        .mockResolvedValueOnce(targetUser as User);     // refreshed row after activation
+        .mockResolvedValueOnce(inactiveTarget as User) // locked target load
+        .mockResolvedValueOnce(targetUser as User); // refreshed row after activation
       companyRepo.findOne.mockResolvedValue(proCompany as Company);
       billingServiceMock.getLiveSeatQuantity.mockResolvedValue(5);
 
-      await service.reactivateUser('user-uuid-2', companyId, Role.COMPANY_ADMIN);
+      await service.reactivateUser(
+        'user-uuid-2',
+        companyId,
+        Role.COMPANY_ADMIN,
+      );
 
-      expect(managerMock.query).toHaveBeenCalledWith('SELECT pg_advisory_xact_lock(hashtext($1))', [companyId]);
-      expect(billingServiceMock.getLiveSeatQuantity).toHaveBeenCalledWith(proCompany);
-      expect(billingServiceMock.setSeatQuantity).toHaveBeenCalledWith(proCompany, 6);
-      expect(managerMock.update).toHaveBeenCalledWith(User, 'user-uuid-2', { isActive: true });
+      expect(managerMock.query).toHaveBeenCalledWith(
+        'SELECT pg_advisory_xact_lock(hashtext($1))',
+        [companyId],
+      );
+      expect(billingServiceMock.getLiveSeatQuantity).toHaveBeenCalledWith(
+        proCompany,
+      );
+      expect(billingServiceMock.setSeatQuantity).toHaveBeenCalledWith(
+        proCompany,
+        6,
+      );
+      expect(managerMock.update).toHaveBeenCalledWith(User, 'user-uuid-2', {
+        isActive: true,
+      });
     });
 
     it('skips the provider for a paid comp company with no subscription and still reactivates (Option B)', async () => {
       repo.findOne
-        .mockResolvedValueOnce(inactiveTarget as User)  // locked target load
-        .mockResolvedValueOnce(targetUser as User);     // refreshed row
+        .mockResolvedValueOnce(inactiveTarget as User) // locked target load
+        .mockResolvedValueOnce(targetUser as User); // refreshed row
       companyRepo.findOne.mockResolvedValue(proCompanyNoSub as Company);
 
-      await service.reactivateUser('user-uuid-2', companyId, Role.COMPANY_ADMIN);
+      await service.reactivateUser(
+        'user-uuid-2',
+        companyId,
+        Role.COMPANY_ADMIN,
+      );
 
       expect(billingServiceMock.getLiveSeatQuantity).not.toHaveBeenCalled();
       expect(billingServiceMock.setSeatQuantity).not.toHaveBeenCalled();
-      expect(managerMock.update).toHaveBeenCalledWith(User, 'user-uuid-2', { isActive: true });
+      expect(managerMock.update).toHaveBeenCalledWith(User, 'user-uuid-2', {
+        isActive: true,
+      });
     });
 
     it('enforces the FREE active-user cap (counted inside the lock)', async () => {
@@ -696,18 +1025,35 @@ describe('UsersService', () => {
 
   describe('create - user limit enforcement', () => {
     it('should throw BadRequestException when company user limit is reached', async () => {
-      const mockCompany = { id: companyId, subscriptionTier: 'FREE', maxUsers: 1 } as any;
+      const mockCompany = {
+        id: companyId,
+        subscriptionTier: 'FREE',
+        maxUsers: 1,
+      } as any;
       companyRepo.findOne.mockResolvedValue(mockCompany);
       repo.count.mockResolvedValue(1); // already at limit
       repo.findOne.mockResolvedValue(null); // email not taken
 
       await expect(
-        service.create({ email: 'new@test.com', password: 'pass', name: 'New', role: Role.AGENT }, companyId, Role.COMPANY_ADMIN)
+        service.create(
+          {
+            email: 'new@test.com',
+            password: 'pass',
+            name: 'New',
+            role: Role.AGENT,
+          },
+          companyId,
+          Role.COMPANY_ADMIN,
+        ),
       ).rejects.toThrow('Your FREE plan allows up to 1 user');
     });
 
     it('should allow creation when under user limit', async () => {
-      const mockCompany = { id: companyId, subscriptionTier: 'PRO', maxUsers: 999 } as any;
+      const mockCompany = {
+        id: companyId,
+        subscriptionTier: 'PRO',
+        maxUsers: 999,
+      } as any;
       companyRepo.findOne.mockResolvedValue(mockCompany);
       repo.count.mockResolvedValue(3);
       repo.findOne.mockResolvedValue(null);
@@ -716,7 +1062,12 @@ describe('UsersService', () => {
       repo.save.mockResolvedValue(mockUser);
 
       const result = await service.create(
-        { email: 'new@test.com', password: 'pass', name: 'New', role: Role.AGENT },
+        {
+          email: 'new@test.com',
+          password: 'pass',
+          name: 'New',
+          role: Role.AGENT,
+        },
         companyId,
         Role.COMPANY_ADMIN,
       );
@@ -727,20 +1078,33 @@ describe('UsersService', () => {
       companyRepo.findOne.mockResolvedValue(null);
 
       await expect(
-        service.create({ email: 'new@test.com', password: 'pass', name: 'New', role: Role.AGENT }, companyId, Role.COMPANY_ADMIN)
+        service.create(
+          {
+            email: 'new@test.com',
+            password: 'pass',
+            name: 'New',
+            role: Role.AGENT,
+          },
+          companyId,
+          Role.COMPANY_ADMIN,
+        ),
       ).rejects.toThrow(NotFoundException);
     });
   });
 
   describe('inviteUser', () => {
     beforeEach(() => {
-      const mockRandomBytes = { toString: jest.fn().mockReturnValue('abc123temppassword') };
+      const mockRandomBytes = {
+        toString: jest.fn().mockReturnValue('abc123temppassword'),
+      };
       (crypto.randomBytes as jest.Mock).mockReturnValue(mockRandomBytes);
 
       // Default: company exists with room to spare
-      companyRepo.findOne.mockResolvedValue(
-        { id: companyId, subscriptionTier: 'PRO', maxUsers: 999 } as any,
-      );
+      companyRepo.findOne.mockResolvedValue({
+        id: companyId,
+        subscriptionTier: 'PRO',
+        maxUsers: 999,
+      } as any);
       repo.count.mockResolvedValue(2);
     });
 
@@ -761,7 +1125,11 @@ describe('UsersService', () => {
         lastName: 'Smith',
         role: Role.AGENT,
       };
-      const result = await service.inviteUser(companyId, dto, Role.COMPANY_ADMIN);
+      const result = await service.inviteUser(
+        companyId,
+        dto,
+        Role.COMPANY_ADMIN,
+      );
 
       expect(crypto.randomBytes).toHaveBeenCalledWith(32);
       expect(bcrypt.hash).toHaveBeenCalledWith('abc123temppassword', 12);
@@ -784,39 +1152,72 @@ describe('UsersService', () => {
         firstName: 'Duplicate',
         lastName: 'User',
       };
-      await expect(service.inviteUser(companyId, dto, Role.COMPANY_ADMIN)).rejects.toThrow(ConflictException);
+      await expect(
+        service.inviteUser(companyId, dto, Role.COMPANY_ADMIN),
+      ).rejects.toThrow(ConflictException);
     });
 
     it('throws BadRequestException when company user limit is reached', async () => {
-      const mockCompany = { id: companyId, subscriptionTier: 'FREE', maxUsers: 1 } as any;
+      const mockCompany = {
+        id: companyId,
+        subscriptionTier: 'FREE',
+        maxUsers: 1,
+      } as any;
       companyRepo.findOne.mockResolvedValue(mockCompany);
       repo.count.mockResolvedValue(1);
 
-      const dto = { email: 'new@test.com', firstName: 'New', lastName: 'User', role: Role.AGENT };
-      await expect(service.inviteUser(companyId, dto, Role.COMPANY_ADMIN)).rejects.toThrow(BadRequestException);
+      const dto = {
+        email: 'new@test.com',
+        firstName: 'New',
+        lastName: 'User',
+        role: Role.AGENT,
+      };
+      await expect(
+        service.inviteUser(companyId, dto, Role.COMPANY_ADMIN),
+      ).rejects.toThrow(BadRequestException);
     });
 
     it('throws BadRequestException with correct message when limit is reached', async () => {
-      const mockCompany = { id: companyId, subscriptionTier: 'FREE', maxUsers: 1 } as any;
+      const mockCompany = {
+        id: companyId,
+        subscriptionTier: 'FREE',
+        maxUsers: 1,
+      } as any;
       companyRepo.findOne.mockResolvedValue(mockCompany);
       repo.count.mockResolvedValue(1);
 
-      const dto = { email: 'new@test.com', firstName: 'New', lastName: 'User', role: Role.AGENT };
-      await expect(service.inviteUser(companyId, dto, Role.COMPANY_ADMIN)).rejects.toThrow(
-        'Your FREE plan allows up to 1 user',
-      );
+      const dto = {
+        email: 'new@test.com',
+        firstName: 'New',
+        lastName: 'User',
+        role: Role.AGENT,
+      };
+      await expect(
+        service.inviteUser(companyId, dto, Role.COMPANY_ADMIN),
+      ).rejects.toThrow('Your FREE plan allows up to 1 user');
     });
 
     it('throws NotFoundException when company is not found during invite', async () => {
       companyRepo.findOne.mockResolvedValue(null);
 
-      const dto = { email: 'new@test.com', firstName: 'New', lastName: 'User', role: Role.AGENT };
-      await expect(service.inviteUser(companyId, dto, Role.COMPANY_ADMIN)).rejects.toThrow(NotFoundException);
+      const dto = {
+        email: 'new@test.com',
+        firstName: 'New',
+        lastName: 'User',
+        role: Role.AGENT,
+      };
+      await expect(
+        service.inviteUser(companyId, dto, Role.COMPANY_ADMIN),
+      ).rejects.toThrow(NotFoundException);
     });
 
     it('combines firstName and lastName into name', async () => {
       repo.findOne.mockResolvedValue(null);
-      const invitedUser = { ...mockUser, name: 'Ahmed Al-Rashid', mustChangePassword: true };
+      const invitedUser = {
+        ...mockUser,
+        name: 'Ahmed Al-Rashid',
+        mustChangePassword: true,
+      };
       repo.create.mockReturnValue(invitedUser as User);
       repo.save.mockResolvedValue(invitedUser as User);
 
@@ -834,23 +1235,39 @@ describe('UsersService', () => {
 
     it('calls MailService.sendMail with plaintext fallback when no WELCOME template exists', async () => {
       repo.findOne.mockResolvedValue(null);
-      const invitedUser = { ...mockUser, name: 'Jane Smith', email: 'jane@company.com', mustChangePassword: true };
+      const invitedUser = {
+        ...mockUser,
+        name: 'Jane Smith',
+        email: 'jane@company.com',
+        mustChangePassword: true,
+      };
       repo.create.mockReturnValue(invitedUser as User);
       repo.save.mockResolvedValue(invitedUser as User);
-      (emailTemplatesService.findAll as jest.Mock).mockResolvedValue({ data: [], total: 0, page: 1, limit: 20 });
+      (emailTemplatesService.findAll as jest.Mock).mockResolvedValue({
+        data: [],
+        total: 0,
+        page: 1,
+        limit: 20,
+      });
 
-      const mockRandomBytes = { toString: jest.fn().mockReturnValue('abc123temppassword') };
+      const mockRandomBytes = {
+        toString: jest.fn().mockReturnValue('abc123temppassword'),
+      };
       (crypto.randomBytes as jest.Mock).mockReturnValue(mockRandomBytes);
 
-      await service.inviteUser(companyId, {
-        email: 'jane@company.com',
-        firstName: 'Jane',
-        lastName: 'Smith',
-        role: Role.AGENT,
-      }, Role.COMPANY_ADMIN);
+      await service.inviteUser(
+        companyId,
+        {
+          email: 'jane@company.com',
+          firstName: 'Jane',
+          lastName: 'Smith',
+          role: Role.AGENT,
+        },
+        Role.COMPANY_ADMIN,
+      );
 
       // Wait for fire-and-forget to complete
-      await new Promise(resolve => setImmediate(resolve));
+      await new Promise((resolve) => setImmediate(resolve));
 
       expect(mailService.sendMail).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -863,28 +1280,48 @@ describe('UsersService', () => {
 
     it('calls MailService.sendMail with rendered template when WELCOME template exists', async () => {
       repo.findOne.mockResolvedValue(null);
-      const invitedUser = { ...mockUser, name: 'Jane Smith', email: 'jane@company.com', mustChangePassword: true };
+      const invitedUser = {
+        ...mockUser,
+        name: 'Jane Smith',
+        email: 'jane@company.com',
+        mustChangePassword: true,
+      };
       repo.create.mockReturnValue(invitedUser as User);
       repo.save.mockResolvedValue(invitedUser as User);
 
-      const mockTemplate = { id: 'tpl-1', subject: 'Welcome {{name}}', body: 'Password: {{password}}' };
-      (emailTemplatesService.findAll as jest.Mock).mockResolvedValue({ data: [mockTemplate], total: 1, page: 1, limit: 1 });
+      const mockTemplate = {
+        id: 'tpl-1',
+        subject: 'Welcome {{name}}',
+        body: 'Password: {{password}}',
+      };
+      (emailTemplatesService.findAll as jest.Mock).mockResolvedValue({
+        data: [mockTemplate],
+        total: 1,
+        page: 1,
+        limit: 1,
+      });
       (emailTemplatesService.render as jest.Mock).mockResolvedValue({
         subject: 'Welcome Jane Smith',
         body: 'Password: abc123temppassword',
       });
 
-      const mockRandomBytes = { toString: jest.fn().mockReturnValue('abc123temppassword') };
+      const mockRandomBytes = {
+        toString: jest.fn().mockReturnValue('abc123temppassword'),
+      };
       (crypto.randomBytes as jest.Mock).mockReturnValue(mockRandomBytes);
 
-      await service.inviteUser(companyId, {
-        email: 'jane@company.com',
-        firstName: 'Jane',
-        lastName: 'Smith',
-        role: Role.AGENT,
-      }, Role.COMPANY_ADMIN);
+      await service.inviteUser(
+        companyId,
+        {
+          email: 'jane@company.com',
+          firstName: 'Jane',
+          lastName: 'Smith',
+          role: Role.AGENT,
+        },
+        Role.COMPANY_ADMIN,
+      );
 
-      await new Promise(resolve => setImmediate(resolve));
+      await new Promise((resolve) => setImmediate(resolve));
 
       expect(emailTemplatesService.render).toHaveBeenCalledWith(
         'tpl-1',
@@ -906,21 +1343,39 @@ describe('UsersService', () => {
 
     it('still returns saved user even when MailService.sendMail throws', async () => {
       repo.findOne.mockResolvedValue(null);
-      const invitedUser = { ...mockUser, name: 'Jane Smith', email: 'jane@company.com', mustChangePassword: true };
+      const invitedUser = {
+        ...mockUser,
+        name: 'Jane Smith',
+        email: 'jane@company.com',
+        mustChangePassword: true,
+      };
       repo.create.mockReturnValue(invitedUser as User);
       repo.save.mockResolvedValue(invitedUser as User);
-      (emailTemplatesService.findAll as jest.Mock).mockResolvedValue({ data: [], total: 0, page: 1, limit: 20 });
-      (mailService.sendMail as jest.Mock).mockRejectedValue(new Error('transport error'));
+      (emailTemplatesService.findAll as jest.Mock).mockResolvedValue({
+        data: [],
+        total: 0,
+        page: 1,
+        limit: 20,
+      });
+      (mailService.sendMail as jest.Mock).mockRejectedValue(
+        new Error('transport error'),
+      );
 
-      const mockRandomBytes = { toString: jest.fn().mockReturnValue('abc123temppassword') };
+      const mockRandomBytes = {
+        toString: jest.fn().mockReturnValue('abc123temppassword'),
+      };
       (crypto.randomBytes as jest.Mock).mockReturnValue(mockRandomBytes);
 
-      const result = await service.inviteUser(companyId, {
-        email: 'jane@company.com',
-        firstName: 'Jane',
-        lastName: 'Smith',
-        role: Role.AGENT,
-      }, Role.COMPANY_ADMIN);
+      const result = await service.inviteUser(
+        companyId,
+        {
+          email: 'jane@company.com',
+          firstName: 'Jane',
+          lastName: 'Smith',
+          role: Role.AGENT,
+        },
+        Role.COMPANY_ADMIN,
+      );
 
       expect(result).toBeDefined();
       expect(result.email).toBe('jane@company.com');
@@ -928,18 +1383,36 @@ describe('UsersService', () => {
 
     it('reserves a seat before saving the invited user', async () => {
       repo.findOne.mockResolvedValue(null);
-      const invitedUser = { ...mockUser, name: 'Jane Smith', email: 'jane@company.com', mustChangePassword: true };
+      const invitedUser = {
+        ...mockUser,
+        name: 'Jane Smith',
+        email: 'jane@company.com',
+        mustChangePassword: true,
+      };
       repo.create.mockReturnValue(invitedUser as User);
       repo.save.mockResolvedValue(invitedUser as User);
       const release = jest.fn().mockResolvedValue(undefined);
-      billingService.reserveSeat.mockResolvedValue({ subscriptionId: 'sub_test_1', targetQuantity: 3, release });
+      billingService.reserveSeat.mockResolvedValue({
+        subscriptionId: 'sub_test_1',
+        targetQuantity: 3,
+        release,
+      });
 
-      const dto = { email: 'jane@company.com', firstName: 'Jane', lastName: 'Smith', role: Role.AGENT };
-      const result = await service.inviteUser(companyId, dto, Role.COMPANY_ADMIN);
-
-      expect(billingService.reserveSeat.mock.invocationCallOrder[0]).toBeLessThan(
-        repo.save.mock.invocationCallOrder[0],
+      const dto = {
+        email: 'jane@company.com',
+        firstName: 'Jane',
+        lastName: 'Smith',
+        role: Role.AGENT,
+      };
+      const result = await service.inviteUser(
+        companyId,
+        dto,
+        Role.COMPANY_ADMIN,
       );
+
+      expect(
+        billingService.reserveSeat.mock.invocationCallOrder[0],
+      ).toBeLessThan(repo.save.mock.invocationCallOrder[0]);
       expect(release).not.toHaveBeenCalled();
       expect(result.mustChangePassword).toBe(true);
     });
@@ -948,13 +1421,24 @@ describe('UsersService', () => {
       repo.findOne.mockResolvedValue(null);
       billingService.reserveSeat.mockRejectedValue(
         new HttpException(
-          { message: 'Payment required', error: 'Payment Required', statusCode: HttpStatus.PAYMENT_REQUIRED },
+          {
+            message: 'Payment required',
+            error: 'Payment Required',
+            statusCode: HttpStatus.PAYMENT_REQUIRED,
+          },
           HttpStatus.PAYMENT_REQUIRED,
         ),
       );
 
-      const dto = { email: 'jane@company.com', firstName: 'Jane', lastName: 'Smith', role: Role.AGENT };
-      const err = await service.inviteUser(companyId, dto, Role.COMPANY_ADMIN).catch((e) => e);
+      const dto = {
+        email: 'jane@company.com',
+        firstName: 'Jane',
+        lastName: 'Smith',
+        role: Role.AGENT,
+      };
+      const err = await service
+        .inviteUser(companyId, dto, Role.COMPANY_ADMIN)
+        .catch((e) => e);
 
       expect(err).toBeInstanceOf(HttpException);
       expect(err.getStatus()).toBe(HttpStatus.PAYMENT_REQUIRED);
@@ -967,10 +1451,21 @@ describe('UsersService', () => {
       repo.create.mockReturnValue(mockUser);
       repo.save.mockRejectedValue(new Error('insert failed'));
       const release = jest.fn().mockResolvedValue(undefined);
-      billingService.reserveSeat.mockResolvedValue({ subscriptionId: 'sub_test_1', targetQuantity: 3, release });
+      billingService.reserveSeat.mockResolvedValue({
+        subscriptionId: 'sub_test_1',
+        targetQuantity: 3,
+        release,
+      });
 
-      const dto = { email: 'jane@company.com', firstName: 'Jane', lastName: 'Smith', role: Role.AGENT };
-      await expect(service.inviteUser(companyId, dto, Role.COMPANY_ADMIN)).rejects.toThrow('insert failed');
+      const dto = {
+        email: 'jane@company.com',
+        firstName: 'Jane',
+        lastName: 'Smith',
+        role: Role.AGENT,
+      };
+      await expect(
+        service.inviteUser(companyId, dto, Role.COMPANY_ADMIN),
+      ).rejects.toThrow('insert failed');
       expect(release).toHaveBeenCalledTimes(1);
     });
   });
@@ -983,7 +1478,12 @@ describe('UsersService', () => {
       purchasedSeats: 3,
       billingSubscriptionId: 'sub_test_123',
     } as any;
-    const dto = { name: 'Paid Agent', email: 'paid@test.com', password: 'pass123', role: Role.AGENT };
+    const dto = {
+      name: 'Paid Agent',
+      email: 'paid@test.com',
+      password: 'pass123',
+      role: Role.AGENT,
+    };
 
     beforeEach(() => {
       companyRepo.findOne.mockResolvedValue(paidCompany);
@@ -994,14 +1494,22 @@ describe('UsersService', () => {
 
     it('reserves a seat with the provider before saving the user', async () => {
       const release = jest.fn().mockResolvedValue(undefined);
-      billingService.reserveSeat.mockResolvedValue({ subscriptionId: 'sub_test_123', targetQuantity: 4, release });
+      billingService.reserveSeat.mockResolvedValue({
+        subscriptionId: 'sub_test_123',
+        targetQuantity: 4,
+        release,
+      });
 
-      const result = await service.create(dto as any, companyId, Role.COMPANY_ADMIN);
+      const result = await service.create(
+        dto as any,
+        companyId,
+        Role.COMPANY_ADMIN,
+      );
 
       expect(billingService.reserveSeat).toHaveBeenCalledWith(paidCompany);
-      expect(billingService.reserveSeat.mock.invocationCallOrder[0]).toBeLessThan(
-        repo.save.mock.invocationCallOrder[0],
-      );
+      expect(
+        billingService.reserveSeat.mock.invocationCallOrder[0],
+      ).toBeLessThan(repo.save.mock.invocationCallOrder[0]);
       expect(release).not.toHaveBeenCalled();
       expect(result).toEqual(mockUser);
     });
@@ -1009,12 +1517,19 @@ describe('UsersService', () => {
     it('creates no user when the provider rejects the seat change', async () => {
       billingService.reserveSeat.mockRejectedValue(
         new HttpException(
-          { message: 'The billing provider rejected the seat change. No user was created.', error: 'Payment Required', statusCode: HttpStatus.PAYMENT_REQUIRED },
+          {
+            message:
+              'The billing provider rejected the seat change. No user was created.',
+            error: 'Payment Required',
+            statusCode: HttpStatus.PAYMENT_REQUIRED,
+          },
           HttpStatus.PAYMENT_REQUIRED,
         ),
       );
 
-      const err = await service.create(dto as any, companyId, Role.COMPANY_ADMIN).catch((e) => e);
+      const err = await service
+        .create(dto as any, companyId, Role.COMPANY_ADMIN)
+        .catch((e) => e);
 
       expect(err).toBeInstanceOf(HttpException);
       expect(err.getStatus()).toBe(HttpStatus.PAYMENT_REQUIRED);
@@ -1023,10 +1538,18 @@ describe('UsersService', () => {
 
     it('releases the reserved seat when the local insert fails, then rethrows the original error', async () => {
       const release = jest.fn().mockResolvedValue(undefined);
-      billingService.reserveSeat.mockResolvedValue({ subscriptionId: 'sub_test_123', targetQuantity: 4, release });
-      repo.save.mockRejectedValue(new Error('duplicate key value violates unique constraint'));
+      billingService.reserveSeat.mockResolvedValue({
+        subscriptionId: 'sub_test_123',
+        targetQuantity: 4,
+        release,
+      });
+      repo.save.mockRejectedValue(
+        new Error('duplicate key value violates unique constraint'),
+      );
 
-      await expect(service.create(dto as any, companyId, Role.COMPANY_ADMIN)).rejects.toThrow('duplicate key');
+      await expect(
+        service.create(dto as any, companyId, Role.COMPANY_ADMIN),
+      ).rejects.toThrow('duplicate key');
       expect(release).toHaveBeenCalledTimes(1);
     });
 
@@ -1043,12 +1566,20 @@ describe('UsersService', () => {
     });
 
     it('creates a FREE user under the cap; reserveSeat no-ops via null', async () => {
-      const freeCompany = { id: companyId, subscriptionTier: 'FREE', maxUsers: 1 } as any;
+      const freeCompany = {
+        id: companyId,
+        subscriptionTier: 'FREE',
+        maxUsers: 1,
+      } as any;
       companyRepo.findOne.mockResolvedValue(freeCompany);
       repo.count.mockResolvedValue(0);
       billingService.reserveSeat.mockResolvedValue(null);
 
-      const result = await service.create(dto as any, companyId, Role.COMPANY_ADMIN);
+      const result = await service.create(
+        dto as any,
+        companyId,
+        Role.COMPANY_ADMIN,
+      );
 
       expect(billingService.reserveSeat).toHaveBeenCalledWith(freeCompany);
       expect(result).toEqual(mockUser);

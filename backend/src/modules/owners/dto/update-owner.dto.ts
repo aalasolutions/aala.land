@@ -1,4 +1,10 @@
-import { IsString, IsEmail, IsOptional, IsUUID, MaxLength } from 'class-validator';
+import {
+  IsString,
+  IsEmail,
+  IsOptional,
+  IsUUID,
+  MaxLength,
+} from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
 export class UpdateOwnerDto {
@@ -30,7 +36,9 @@ export class UpdateOwnerDto {
   @IsOptional()
   address?: string;
 
-  @ApiPropertyOptional({ example: 'Prefers email communication. Key decision maker.' })
+  @ApiPropertyOptional({
+    example: 'Prefers email communication. Key decision maker.',
+  })
   @IsString()
   @IsOptional()
   notes?: string;

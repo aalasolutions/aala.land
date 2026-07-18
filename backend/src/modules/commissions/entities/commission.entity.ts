@@ -1,4 +1,12 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  UpdateDateColumn,
+  ManyToOne,
+  JoinColumn,
+} from 'typeorm';
 import { Company } from '../../companies/entities/company.entity';
 import { User } from '../../users/entities/user.entity';
 import { Lead } from '../../leads/entities/lead.entity';
@@ -69,13 +77,31 @@ export class Commission {
   })
   status: CommissionStatus;
 
-  @Column({ name: 'gross_amount', type: 'decimal', precision: 12, scale: 2, transformer: decimalTransformer })
+  @Column({
+    name: 'gross_amount',
+    type: 'decimal',
+    precision: 12,
+    scale: 2,
+    transformer: decimalTransformer,
+  })
   grossAmount: number;
 
-  @Column({ name: 'commission_rate', type: 'decimal', precision: 5, scale: 2, transformer: decimalTransformer })
+  @Column({
+    name: 'commission_rate',
+    type: 'decimal',
+    precision: 5,
+    scale: 2,
+    transformer: decimalTransformer,
+  })
   commissionRate: number;
 
-  @Column({ name: 'commission_amount', type: 'decimal', precision: 12, scale: 2, transformer: decimalTransformer })
+  @Column({
+    name: 'commission_amount',
+    type: 'decimal',
+    precision: 12,
+    scale: 2,
+    transformer: decimalTransformer,
+  })
   commissionAmount: number;
 
   @Column({ type: 'varchar', length: 3, default: 'AED' })

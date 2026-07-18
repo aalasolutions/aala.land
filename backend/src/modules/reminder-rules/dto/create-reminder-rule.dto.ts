@@ -1,4 +1,13 @@
-import { IsString, IsNotEmpty, IsOptional, IsEnum, IsInt, Min, IsBoolean, MaxLength } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  IsOptional,
+  IsEnum,
+  IsInt,
+  Min,
+  IsBoolean,
+  MaxLength,
+} from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { ReminderRuleType } from '../entities/reminder-rule.entity';
 
@@ -14,7 +23,10 @@ export class CreateReminderRuleDto {
   @IsNotEmpty()
   type: ReminderRuleType;
 
-  @ApiProperty({ example: 3, description: 'Number of days before the event to trigger the reminder' })
+  @ApiProperty({
+    example: 3,
+    description: 'Number of days before the event to trigger the reminder',
+  })
   @IsInt()
   @Min(1)
   triggerDaysBefore: number;
@@ -24,7 +36,9 @@ export class CreateReminderRuleDto {
   @IsOptional()
   isActive?: boolean;
 
-  @ApiPropertyOptional({ example: 'Rent payment of {{amount}} AED is due on {{date}}' })
+  @ApiPropertyOptional({
+    example: 'Rent payment of {{amount}} AED is due on {{date}}',
+  })
   @IsString()
   @IsOptional()
   @MaxLength(1000)

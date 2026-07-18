@@ -8,6 +8,8 @@ export class DropUserCurrencyColumn1779300000004 implements MigrationInterface {
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`ALTER TABLE "users" ADD "currency" varchar(3) NOT NULL DEFAULT 'AED'`);
+    await queryRunner.query(
+      `ALTER TABLE "users" ADD "currency" varchar(3) NOT NULL DEFAULT 'AED'`,
+    );
   }
 }

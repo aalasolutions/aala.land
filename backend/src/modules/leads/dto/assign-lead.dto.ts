@@ -1,4 +1,10 @@
-import { IsUUID, IsNotEmpty, IsOptional, IsString, MaxLength } from 'class-validator';
+import {
+  IsUUID,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  MaxLength,
+} from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class AssignLeadDto {
@@ -7,7 +13,10 @@ export class AssignLeadDto {
   @IsNotEmpty()
   agentId: string;
 
-  @ApiPropertyOptional({ description: 'Reason for transferring the lead', example: 'Client prefers Arabic speaker' })
+  @ApiPropertyOptional({
+    description: 'Reason for transferring the lead',
+    example: 'Client prefers Arabic speaker',
+  })
   @IsString()
   @IsOptional()
   @MaxLength(500)

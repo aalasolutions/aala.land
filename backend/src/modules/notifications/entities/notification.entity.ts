@@ -48,7 +48,11 @@ export class Notification {
   @Column({ type: 'text' })
   message: string;
 
-  @Column({ type: 'enum', enum: NotificationType, default: NotificationType.SYSTEM })
+  @Column({
+    type: 'enum',
+    enum: NotificationType,
+    default: NotificationType.SYSTEM,
+  })
   type: NotificationType;
 
   @Column({ name: 'entity_type', type: 'varchar', length: 100, nullable: true })

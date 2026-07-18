@@ -7,7 +7,9 @@ export class CreateLeadActivityDto {
   @IsEnum(ActivityType)
   type: ActivityType;
 
-  @ApiPropertyOptional({ example: 'Called the lead, they are interested in 2BR apartments' })
+  @ApiPropertyOptional({
+    example: 'Called the lead, they are interested in 2BR apartments',
+  })
   @IsString()
   @IsOptional()
   notes?: string;

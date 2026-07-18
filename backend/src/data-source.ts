@@ -10,7 +10,9 @@ dotenv.config({ path: envPath });
 if (process.env.NODE_ENV !== 'production') {
   console.log(`[DataSource] DB_HOST: ${process.env.DB_HOST || 'localhost'}`);
   console.log(`[DataSource] DB_PORT: ${process.env.DB_PORT || '5480'}`);
-  console.log(`[DataSource] DB_DATABASE: ${process.env.DB_DATABASE || 'aala_land'}`);
+  console.log(
+    `[DataSource] DB_DATABASE: ${process.env.DB_DATABASE || 'aala_land'}`,
+  );
   console.log(`[DataSource] NODE_ENV: ${process.env.NODE_ENV || 'not set'}`);
 }
 
@@ -19,9 +21,7 @@ const entityPaths = [
   join(__dirname, '/shared/**/*.entity{.ts,.js}'),
 ];
 
-const migrationPaths = [
-  join(__dirname, '/database/migrations/*{.ts,.js}'),
-];
+const migrationPaths = [join(__dirname, '/database/migrations/*{.ts,.js}')];
 
 export const AppDataSource = new DataSource({
   type: 'postgres',

@@ -1,4 +1,11 @@
-import { Controller, Get, Patch, Body, Request, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Patch,
+  Body,
+  Request,
+  UseGuards,
+} from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -32,19 +39,26 @@ export class WhatsappSettingsController {
   }
 
   @Patch()
-  @ApiOperation({ summary: 'Update WhatsApp settings for the caller\'s company' })
+  @ApiOperation({
+    summary: "Update WhatsApp settings for the caller's company",
+  })
   async updateSettings(
     @Request() req: AuthenticatedRequest,
     @Body() body: UpdateWhatsappSettingsDto,
   ) {
     const companyId = req.user.companyId!;
     const existing = await this.settingsRepo.findOne({ where: { companyId } });
-    const aiPrompt = body.aiPrompt === undefined
-      ? (existing?.aiPrompt ?? null)
-      : (typeof body.aiPrompt === 'string' && body.aiPrompt.trim() !== ''
-        ? body.aiPrompt.trim()
-        : null);
-    const entity = this.settingsRepo.create({ ...existing, companyId, aiPrompt });
+    const aiPrompt =
+      body.aiPrompt === undefined
+        ? (existing?.aiPrompt ?? null)
+        : typeof body.aiPrompt === 'string' && body.aiPrompt.trim() !== ''
+          ? body.aiPrompt.trim()
+          : null;
+    const entity = this.settingsRepo.create({
+      ...existing,
+      companyId,
+      aiPrompt,
+    });
     const saved = await this.settingsRepo.save(entity);
     this.aiService.clearPromptCache(companyId);
     return { aiPrompt: saved.aiPrompt ?? null };

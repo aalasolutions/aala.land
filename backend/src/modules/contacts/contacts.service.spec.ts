@@ -72,7 +72,11 @@ describe('ContactsService', () => {
 
       const result = await service.create(companyId, dto as any, createdBy);
 
-      expect(repo.create).toHaveBeenCalledWith({ ...dto, companyId, createdBy });
+      expect(repo.create).toHaveBeenCalledWith({
+        ...dto,
+        companyId,
+        createdBy,
+      });
       expect(repo.save).toHaveBeenCalledWith(mockContact);
       expect(result).toEqual(mockContact);
     });
@@ -80,9 +84,16 @@ describe('ContactsService', () => {
     it('stamps createdBy from the authenticated user on create', async () => {
       repo.create.mockReturnValue({} as Contact);
       repo.save.mockResolvedValue({} as Contact);
-      await service.create('company-uuid-1', { firstName: 'A' } as CreateContactDto, 'user-uuid-1');
+      await service.create(
+        'company-uuid-1',
+        { firstName: 'A' } as CreateContactDto,
+        'user-uuid-1',
+      );
       expect(repo.create).toHaveBeenCalledWith(
-        expect.objectContaining({ companyId: 'company-uuid-1', createdBy: 'user-uuid-1' }),
+        expect.objectContaining({
+          companyId: 'company-uuid-1',
+          createdBy: 'user-uuid-1',
+        }),
       );
     });
   });
@@ -146,13 +157,17 @@ describe('ContactsService', () => {
     it('throws NotFoundException when not found', async () => {
       repo.findOne.mockResolvedValue(null);
 
-      await expect(service.findOne('bad-id', companyId)).rejects.toThrow(NotFoundException);
+      await expect(service.findOne('bad-id', companyId)).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('throws NotFoundException for wrong company', async () => {
       repo.findOne.mockResolvedValue(null);
 
-      await expect(service.findOne('contact-uuid-1', 'other-company')).rejects.toThrow(NotFoundException);
+      await expect(
+        service.findOne('contact-uuid-1', 'other-company'),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 
@@ -162,7 +177,9 @@ describe('ContactsService', () => {
       repo.findOne.mockResolvedValue({ ...mockContact } as Contact);
       repo.save.mockResolvedValue(updated);
 
-      const result = await service.update('contact-uuid-1', companyId, { firstName: 'Khalid' });
+      const result = await service.update('contact-uuid-1', companyId, {
+        firstName: 'Khalid',
+      });
 
       expect(result.firstName).toBe('Khalid');
     });
@@ -189,7 +206,9 @@ describe('ContactsService', () => {
     it('throws NotFoundException when contact does not exist', async () => {
       repo.findOne.mockResolvedValue(null);
 
-      await expect(service.remove('bad-id', companyId)).rejects.toThrow(NotFoundException);
+      await expect(service.remove('bad-id', companyId)).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 });

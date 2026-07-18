@@ -1,6 +1,22 @@
-import { IsString, IsNotEmpty, IsOptional, IsEmail, IsEnum, IsInt, IsNumber, Min, Max, MaxLength, IsUUID } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  IsOptional,
+  IsEmail,
+  IsEnum,
+  IsInt,
+  IsNumber,
+  Min,
+  Max,
+  MaxLength,
+  IsUUID,
+} from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { LeadStatus, LeadTemperature, LeadSource } from '../entities/lead.entity';
+import {
+  LeadStatus,
+  LeadTemperature,
+  LeadSource,
+} from '../entities/lead.entity';
 
 export class CreateLeadDto {
   @ApiProperty({ example: 'Ahmed' })
@@ -84,7 +100,10 @@ export class CreateLeadDto {
   @IsOptional()
   unitId?: string;
 
-  @ApiPropertyOptional({ example: 'dubai', description: 'Region code for multi-region filtering' })
+  @ApiPropertyOptional({
+    example: 'dubai',
+    description: 'Region code for multi-region filtering',
+  })
   @IsString()
   @IsOptional()
   regionCode?: string;

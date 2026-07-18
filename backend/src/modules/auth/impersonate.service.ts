@@ -6,7 +6,15 @@ import { Role } from '@shared/enums/roles.enum';
 export class ImpersonateService {
   constructor(private readonly usersService: UsersService) {}
 
-  async impersonate(userId: string): Promise<{ email: string; sub: string; name: string; companyId: string | null; role: string }> {
+  async impersonate(
+    userId: string,
+  ): Promise<{
+    email: string;
+    sub: string;
+    name: string;
+    companyId: string | null;
+    role: string;
+  }> {
     const user = await this.usersService.findByIdWithCompany(userId);
     if (!user) {
       throw new BadRequestException('User not found');
@@ -24,7 +32,10 @@ export class ImpersonateService {
       if (!user.companyId || !userStatus.company) {
         throw new BadRequestException('User company not found');
       }
-      if (userStatus.company.isActive === false || userStatus.company.active === false) {
+      if (
+        userStatus.company.isActive === false ||
+        userStatus.company.active === false
+      ) {
         throw new BadRequestException('User company is inactive');
       }
     }

@@ -1,5 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication, ValidationPipe, NotFoundException } from '@nestjs/common';
+import {
+  INestApplication,
+  ValidationPipe,
+  NotFoundException,
+} from '@nestjs/common';
 import request from 'supertest';
 import { AuditController } from './audit.controller';
 import { AuditService } from './audit.service';
@@ -116,10 +120,13 @@ describe('AuditController (e2e)', () => {
       expect(response.body.data.limit).toBe(20);
       expect(response.body.data.data).toHaveLength(1);
       expect(response.body.data.data[0].id).toBe(mockAuditLog.id);
-      expect(mockAuditService.findAll).toHaveBeenCalledWith(mockUser.companyId, {
-        page: 1,
-        limit: 20,
-      });
+      expect(mockAuditService.findAll).toHaveBeenCalledWith(
+        mockUser.companyId,
+        {
+          page: 1,
+          limit: 20,
+        },
+      );
     });
 
     it('should filter audit logs by action', async () => {
@@ -135,11 +142,14 @@ describe('AuditController (e2e)', () => {
         .expect(200);
 
       expect(response.body.success).toBe(true);
-      expect(mockAuditService.findAll).toHaveBeenCalledWith(mockUser.companyId, {
-        page: 1,
-        limit: 20,
-        action: AuditAction.CREATE,
-      });
+      expect(mockAuditService.findAll).toHaveBeenCalledWith(
+        mockUser.companyId,
+        {
+          page: 1,
+          limit: 20,
+          action: AuditAction.CREATE,
+        },
+      );
     });
 
     it('should filter audit logs by entityType', async () => {
@@ -155,11 +165,14 @@ describe('AuditController (e2e)', () => {
         .expect(200);
 
       expect(response.body.success).toBe(true);
-      expect(mockAuditService.findAll).toHaveBeenCalledWith(mockUser.companyId, {
-        page: 1,
-        limit: 20,
-        entityType: 'lead',
-      });
+      expect(mockAuditService.findAll).toHaveBeenCalledWith(
+        mockUser.companyId,
+        {
+          page: 1,
+          limit: 20,
+          entityType: 'lead',
+        },
+      );
     });
 
     it('should filter audit logs by entityId', async () => {
@@ -175,11 +188,14 @@ describe('AuditController (e2e)', () => {
         .expect(200);
 
       expect(response.body.success).toBe(true);
-      expect(mockAuditService.findAll).toHaveBeenCalledWith(mockUser.companyId, {
-        page: 1,
-        limit: 20,
-        entityId: mockAuditLog.entityId,
-      });
+      expect(mockAuditService.findAll).toHaveBeenCalledWith(
+        mockUser.companyId,
+        {
+          page: 1,
+          limit: 20,
+          entityId: mockAuditLog.entityId,
+        },
+      );
     });
 
     it('should filter audit logs by userId', async () => {
@@ -195,11 +211,14 @@ describe('AuditController (e2e)', () => {
         .expect(200);
 
       expect(response.body.success).toBe(true);
-      expect(mockAuditService.findAll).toHaveBeenCalledWith(mockUser.companyId, {
-        page: 1,
-        limit: 20,
-        userId: mockAuditLog.userId,
-      });
+      expect(mockAuditService.findAll).toHaveBeenCalledWith(
+        mockUser.companyId,
+        {
+          page: 1,
+          limit: 20,
+          userId: mockAuditLog.userId,
+        },
+      );
     });
 
     it('should apply pagination', async () => {
@@ -215,10 +234,13 @@ describe('AuditController (e2e)', () => {
         .expect(200);
 
       expect(response.body.success).toBe(true);
-      expect(mockAuditService.findAll).toHaveBeenCalledWith(mockUser.companyId, {
-        page: 2,
-        limit: 10,
-      });
+      expect(mockAuditService.findAll).toHaveBeenCalledWith(
+        mockUser.companyId,
+        {
+          page: 2,
+          limit: 10,
+        },
+      );
     });
   });
 

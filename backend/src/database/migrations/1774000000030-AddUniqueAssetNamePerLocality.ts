@@ -1,15 +1,15 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
 export class AddUniqueAssetNamePerLocality1774000000030 implements MigrationInterface {
-    name = 'AddUniqueAssetNamePerLocality1774000000030';
+  name = 'AddUniqueAssetNamePerLocality1774000000030';
 
-    public async up(queryRunner: QueryRunner): Promise<void> {
-        await queryRunner.query(`
+  public async up(queryRunner: QueryRunner): Promise<void> {
+    await queryRunner.query(`
             UPDATE "buildings"
             SET "name" = regexp_replace(BTRIM("name"), '\\s+', ' ', 'g')
         `);
 
-        await queryRunner.query(`
+    await queryRunner.query(`
             WITH ranked AS (
                 SELECT
                     "id",
@@ -30,7 +30,7 @@ export class AddUniqueAssetNamePerLocality1774000000030 implements MigrationInte
             WHERE u."building_id" = d.duplicate_id
         `);
 
-        await queryRunner.query(`
+    await queryRunner.query(`
             WITH ranked AS (
                 SELECT
                     "id",
@@ -51,7 +51,7 @@ export class AddUniqueAssetNamePerLocality1774000000030 implements MigrationInte
             WHERE pm."building_id" = d.duplicate_id
         `);
 
-        await queryRunner.query(`
+    await queryRunner.query(`
             WITH ranked AS (
                 SELECT
                     "id",
@@ -72,7 +72,7 @@ export class AddUniqueAssetNamePerLocality1774000000030 implements MigrationInte
             WHERE pd."building_id" = d.duplicate_id
         `);
 
-        await queryRunner.query(`
+    await queryRunner.query(`
             WITH ranked AS (
                 SELECT
                     "id",
@@ -92,16 +92,18 @@ export class AddUniqueAssetNamePerLocality1774000000030 implements MigrationInte
             WHERE b."id" = d.duplicate_id
         `);
 
-        await queryRunner.query(`
+    await queryRunner.query(`
             CREATE UNIQUE INDEX "IDX_buildings_locality_normalized_name_unique"
             ON "buildings" (
                 "locality_id",
                 (LOWER(regexp_replace(BTRIM("name"), '\\s+', ' ', 'g')))
             )
         `);
-    }
+  }
 
-    public async down(queryRunner: QueryRunner): Promise<void> {
-        await queryRunner.query(`DROP INDEX IF EXISTS "IDX_buildings_locality_normalized_name_unique"`);
-    }
+  public async down(queryRunner: QueryRunner): Promise<void> {
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS "IDX_buildings_locality_normalized_name_unique"`,
+    );
+  }
 }

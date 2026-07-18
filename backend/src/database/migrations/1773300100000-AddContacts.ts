@@ -1,19 +1,19 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
 export class AddContacts1773300100000 implements MigrationInterface {
-    public async up(queryRunner: QueryRunner): Promise<void> {
-        const hasTable = await queryRunner.query(
-            `SELECT 1 FROM information_schema.tables WHERE table_name = 'contacts'`,
-        );
-        if (hasTable.length) {
-            return;
-        }
+  public async up(queryRunner: QueryRunner): Promise<void> {
+    const hasTable = await queryRunner.query(
+      `SELECT 1 FROM information_schema.tables WHERE table_name = 'contacts'`,
+    );
+    if (hasTable.length) {
+      return;
+    }
 
-        await queryRunner.query(`
+    await queryRunner.query(`
             CREATE TYPE "contacts_type_enum" AS ENUM ('LEAD', 'TENANT', 'OWNER', 'VENDOR', 'OTHER')
         `);
 
-        await queryRunner.query(`
+    await queryRunner.query(`
             CREATE TABLE "contacts" (
                 "id" uuid NOT NULL DEFAULT uuid_generate_v4(),
                 "company_id" uuid NOT NULL,
@@ -37,12 +37,14 @@ export class AddContacts1773300100000 implements MigrationInterface {
             )
         `);
 
-        await queryRunner.query(`CREATE INDEX "IDX_contacts_company_id" ON "contacts" ("company_id")`);
-    }
+    await queryRunner.query(
+      `CREATE INDEX "IDX_contacts_company_id" ON "contacts" ("company_id")`,
+    );
+  }
 
-    public async down(queryRunner: QueryRunner): Promise<void> {
-        await queryRunner.query(`DROP INDEX IF EXISTS "IDX_contacts_company_id"`);
-        await queryRunner.query(`DROP TABLE IF EXISTS "contacts"`);
-        await queryRunner.query(`DROP TYPE IF EXISTS "contacts_type_enum"`);
-    }
+  public async down(queryRunner: QueryRunner): Promise<void> {
+    await queryRunner.query(`DROP INDEX IF EXISTS "IDX_contacts_company_id"`);
+    await queryRunner.query(`DROP TABLE IF EXISTS "contacts"`);
+    await queryRunner.query(`DROP TYPE IF EXISTS "contacts_type_enum"`);
+  }
 }

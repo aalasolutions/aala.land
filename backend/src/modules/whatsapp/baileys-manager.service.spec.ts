@@ -1,6 +1,9 @@
 // backend/src/modules/whatsapp/baileys-manager.service.spec.ts
 import { Logger } from '@nestjs/common';
-import { BaileysManagerService, BaileysInstance } from './baileys-manager.service';
+import {
+  BaileysManagerService,
+  BaileysInstance,
+} from './baileys-manager.service';
 import { mkdirSync, rmSync } from 'fs';
 import { join } from 'path';
 import * as os from 'os';

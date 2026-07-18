@@ -2,10 +2,20 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, LessThan } from 'typeorm';
 import { Lead, LeadStatus } from '../leads/entities/lead.entity';
-import { LeadActivity, ActivityType } from '../leads/entities/lead-activity.entity';
-import { Transaction, TransactionStatus, TransactionType } from '../financial/entities/transaction.entity';
+import {
+  LeadActivity,
+  ActivityType,
+} from '../leads/entities/lead-activity.entity';
+import {
+  Transaction,
+  TransactionStatus,
+  TransactionType,
+} from '../financial/entities/transaction.entity';
 import { Unit, UnitStatus } from '../properties/entities/unit.entity';
-import { Commission, CommissionStatus } from '../commissions/entities/commission.entity';
+import {
+  Commission,
+  CommissionStatus,
+} from '../commissions/entities/commission.entity';
 import { Lease, LeaseStatus } from '../leases/entities/lease.entity';
 import { Cheque, ChequeStatus } from '../cheques/entities/cheque.entity';
 import { AuditLog } from '../audit/entities/audit-log.entity';
@@ -113,7 +123,10 @@ export class ReportsService {
     private readonly userRepository: Repository<User>,
   ) {}
 
-  async getDashboardKpis(companyId: string, regionCode?: string): Promise<DashboardKpis> {
+  async getDashboardKpis(
+    companyId: string,
+    regionCode?: string,
+  ): Promise<DashboardKpis> {
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
@@ -182,19 +195,31 @@ export class ReportsService {
         .andWhere('t.status = :status', { status: TransactionStatus.COMPLETED })
         .andWhere('t.createdAt >= :startOfMonth', { startOfMonth })
         .getRawOne();
-      activeLeasesPromise = this.leaseRepository.count({ where: { companyId, status: LeaseStatus.ACTIVE } });
-      pendingChequesPromise = this.chequeRepository.count({ where: { companyId, status: ChequeStatus.PENDING } });
+      activeLeasesPromise = this.leaseRepository.count({
+        where: { companyId, status: LeaseStatus.ACTIVE },
+      });
+      pendingChequesPromise = this.chequeRepository.count({
+        where: { companyId, status: ChequeStatus.PENDING },
+      });
     }
 
-    const [totalLeads, wonLeads, totalUnits, revenueResult, activeLeases, pendingCheques] =
-      await Promise.all([
-        this.leadRepository.count({ where: leadWhere }),
-        this.leadRepository.count({ where: { ...leadWhere, status: LeadStatus.WON } }),
-        totalUnitsPromise,
-        revenuePromise,
-        activeLeasesPromise,
-        pendingChequesPromise,
-      ]);
+    const [
+      totalLeads,
+      wonLeads,
+      totalUnits,
+      revenueResult,
+      activeLeases,
+      pendingCheques,
+    ] = await Promise.all([
+      this.leadRepository.count({ where: leadWhere }),
+      this.leadRepository.count({
+        where: { ...leadWhere, status: LeadStatus.WON },
+      }),
+      totalUnitsPromise,
+      revenuePromise,
+      activeLeasesPromise,
+      pendingChequesPromise,
+    ]);
 
     return {
       totalLeads,
@@ -206,19 +231,29 @@ export class ReportsService {
     };
   }
 
-  async getAgentPerformance(companyId: string, regionCode?: string): Promise<AgentPerformance[]> {
+  async getAgentPerformance(
+    companyId: string,
+    regionCode?: string,
+  ): Promise<AgentPerformance[]> {
     const leadQb = this.leadRepository
       .createQueryBuilder('l')
       .select('l.assignedTo', 'agentId')
       .addSelect('COUNT(*)::int', 'leadsAssigned')
-      .addSelect("SUM(CASE WHEN l.status = :won THEN 1 ELSE 0 END)::int", 'leadsWon')
-      .addSelect("SUM(CASE WHEN l.status = :lost THEN 1 ELSE 0 END)::int", 'leadsLost')
+      .addSelect(
+        'SUM(CASE WHEN l.status = :won THEN 1 ELSE 0 END)::int',
+        'leadsWon',
+      )
+      .addSelect(
+        'SUM(CASE WHEN l.status = :lost THEN 1 ELSE 0 END)::int',
+        'leadsLost',
+      )
       .where('l.companyId = :companyId', { companyId })
       .andWhere('l.assignedTo IS NOT NULL')
       .setParameter('won', LeadStatus.WON)
       .setParameter('lost', LeadStatus.LOST);
 
-    if (regionCode) leadQb.andWhere('l.regionCode = :regionCode', { regionCode });
+    if (regionCode)
+      leadQb.andWhere('l.regionCode = :regionCode', { regionCode });
     leadQb.groupBy('l.assignedTo');
 
     const commQb = this.commissionRepository
@@ -230,7 +265,8 @@ export class ReportsService {
         commStatuses: [CommissionStatus.APPROVED, CommissionStatus.PAID],
       });
 
-    if (regionCode) commQb.andWhere('c.regionCode = :regionCode', { regionCode });
+    if (regionCode)
+      commQb.andWhere('c.regionCode = :regionCode', { regionCode });
     commQb.groupBy('c.agentId');
 
     const [leadStats, commissionStats] = await Promise.all([
@@ -254,7 +290,9 @@ export class ReportsService {
 
     for (const row of commissionStats) {
       if (agentMap.has(row.agentId)) {
-        agentMap.get(row.agentId)!.commissionsEarned = Number(row.commissionsEarned);
+        agentMap.get(row.agentId)!.commissionsEarned = Number(
+          row.commissionsEarned,
+        );
       } else {
         agentMap.set(row.agentId, {
           agentId: row.agentId,
@@ -288,12 +326,16 @@ export class ReportsService {
       const closed = p.leadsWon + p.leadsLost;
       return {
         ...p,
-        conversionRate: closed > 0 ? Math.round((p.leadsWon / closed) * 100) : 0,
+        conversionRate:
+          closed > 0 ? Math.round((p.leadsWon / closed) * 100) : 0,
       };
     });
   }
 
-  async getRedFlags(companyId: string, regionCode?: string): Promise<RedFlag[]> {
+  async getRedFlags(
+    companyId: string,
+    regionCode?: string,
+  ): Promise<RedFlag[]> {
     const now = new Date();
     const hours24Ago = new Date(now.getTime() - 24 * 60 * 60 * 1000);
     const hours48Ago = new Date(now.getTime() - 48 * 60 * 60 * 1000);
@@ -314,7 +356,8 @@ export class ReportsService {
         statuses: [LeadStatus.CONTACTED, LeadStatus.VIEWING],
       })
       .andWhere('l.updatedAt < :days7Ago', { days7Ago });
-    if (regionCode) overdueQb.andWhere('l.regionCode = :regionCode', { regionCode });
+    if (regionCode)
+      overdueQb.andWhere('l.regionCode = :regionCode', { regionCode });
     overdueQb.take(20);
 
     // Vacant units (inherit region through FK)
@@ -393,7 +436,8 @@ export class ReportsService {
       flags.push({
         type: 'UNTOUCHED_LEAD_48H',
         severity: 'HIGH',
-        message: `${lead.firstName} ${lead.lastName || ''} untouched for 48+ hours`.trim(),
+        message:
+          `${lead.firstName} ${lead.lastName || ''} untouched for 48+ hours`.trim(),
         entityType: 'Lead',
         entityId: lead.id,
         createdAt: lead.createdAt,
@@ -407,7 +451,8 @@ export class ReportsService {
       flags.push({
         type: 'UNTOUCHED_LEAD_24H',
         severity: 'MEDIUM',
-        message: `${lead.firstName} ${lead.lastName || ''} untouched for 24+ hours`.trim(),
+        message:
+          `${lead.firstName} ${lead.lastName || ''} untouched for 24+ hours`.trim(),
         entityType: 'Lead',
         entityId: lead.id,
         createdAt: lead.createdAt,
@@ -418,7 +463,8 @@ export class ReportsService {
       flags.push({
         type: 'STALLED_PIPELINE',
         severity: 'MEDIUM',
-        message: `${lead.firstName} ${lead.lastName || ''} stuck in ${lead.status} for 14+ days`.trim(),
+        message:
+          `${lead.firstName} ${lead.lastName || ''} stuck in ${lead.status} for 14+ days`.trim(),
         entityType: 'Lead',
         entityId: lead.id,
         createdAt: lead.updatedAt,
@@ -429,7 +475,8 @@ export class ReportsService {
       flags.push({
         type: 'OVERDUE_FOLLOWUP',
         severity: 'MEDIUM',
-        message: `${lead.firstName} ${lead.lastName || ''} in ${lead.status}, no update for 7+ days`.trim(),
+        message:
+          `${lead.firstName} ${lead.lastName || ''} in ${lead.status}, no update for 7+ days`.trim(),
         entityType: 'Lead',
         entityId: lead.id,
         createdAt: lead.updatedAt,
@@ -450,7 +497,8 @@ export class ReportsService {
     // Sort by severity (HIGH first) then by date (oldest first)
     const severityOrder = { HIGH: 0, MEDIUM: 1, LOW: 2 };
     flags.sort((a, b) => {
-      const sevDiff = (severityOrder[a.severity] ?? 3) - (severityOrder[b.severity] ?? 3);
+      const sevDiff =
+        (severityOrder[a.severity] ?? 3) - (severityOrder[b.severity] ?? 3);
       if (sevDiff !== 0) return sevDiff;
       return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
     });
@@ -458,7 +506,10 @@ export class ReportsService {
     return flags;
   }
 
-  async getActivityFeed(companyId: string, _regionCode?: string): Promise<ActivityFeedItem[]> {
+  async getActivityFeed(
+    companyId: string,
+    _regionCode?: string,
+  ): Promise<ActivityFeedItem[]> {
     const logs = await this.auditLogRepository.find({
       where: { companyId },
       order: { createdAt: 'DESC' },
@@ -476,7 +527,10 @@ export class ReportsService {
     }));
   }
 
-  async getPipelineFunnel(companyId: string, regionCode?: string): Promise<PipelineFunnel[]> {
+  async getPipelineFunnel(
+    companyId: string,
+    regionCode?: string,
+  ): Promise<PipelineFunnel[]> {
     const qb = this.leadRepository
       .createQueryBuilder('l')
       .select('l.status', 'stage')
@@ -505,7 +559,10 @@ export class ReportsService {
     }));
   }
 
-  async getBottlenecks(companyId: string, regionCode?: string): Promise<StageBottleneck[]> {
+  async getBottlenecks(
+    companyId: string,
+    regionCode?: string,
+  ): Promise<StageBottleneck[]> {
     const now = new Date();
 
     // Get active leads (not WON/LOST) with stageEnteredAt set, grouped by status
@@ -543,7 +600,10 @@ export class ReportsService {
     }));
   }
 
-  async getResponseTimeMetrics(companyId: string, _regionCode?: string): Promise<AgentResponseTime[]> {
+  async getResponseTimeMetrics(
+    companyId: string,
+    _regionCode?: string,
+  ): Promise<AgentResponseTime[]> {
     // Find the first STATUS_CHANGE activity per lead, then calculate diff from lead.createdAt
     // Uses lead_activities table for historical accuracy
     const results = await this.activityRepository
@@ -568,7 +628,9 @@ export class ReportsService {
         'first_activity.lead_id = a.lead_id',
       )
       .where('a.company_id = :companyId', { companyId })
-      .andWhere('a.type = :statusChangeType', { statusChangeType: ActivityType.STATUS_CHANGE })
+      .andWhere('a.type = :statusChangeType', {
+        statusChangeType: ActivityType.STATUS_CHANGE,
+      })
       .andWhere('l.assigned_to IS NOT NULL')
       .setParameter('companyId', companyId)
       .setParameter('statusChangeType', ActivityType.STATUS_CHANGE)
@@ -582,15 +644,20 @@ export class ReportsService {
     }));
   }
 
-  async getAchievements(companyId: string, regionCode?: string): Promise<Achievement[]> {
+  async getAchievements(
+    companyId: string,
+    regionCode?: string,
+  ): Promise<Achievement[]> {
     const agents = await this.getAgentPerformance(companyId, regionCode);
     const achievements: Achievement[] = [];
 
     if (agents.length === 0) return achievements;
 
     // Best conversion rate
-    const bestConverter = agents.reduce((best, a) =>
-      a.conversionRate > best.conversionRate ? a : best, agents[0]);
+    const bestConverter = agents.reduce(
+      (best, a) => (a.conversionRate > best.conversionRate ? a : best),
+      agents[0],
+    );
     if (bestConverter.conversionRate > 0) {
       achievements.push({
         type: 'BEST_CONVERSION',
@@ -601,8 +668,10 @@ export class ReportsService {
     }
 
     // Most leads won
-    const mostWins = agents.reduce((best, a) =>
-      a.leadsWon > best.leadsWon ? a : best, agents[0]);
+    const mostWins = agents.reduce(
+      (best, a) => (a.leadsWon > best.leadsWon ? a : best),
+      agents[0],
+    );
     if (mostWins.leadsWon > 0) {
       achievements.push({
         type: 'MOST_WINS',
@@ -613,8 +682,10 @@ export class ReportsService {
     }
 
     // Top earner
-    const topEarner = agents.reduce((best, a) =>
-      a.commissionsEarned > best.commissionsEarned ? a : best, agents[0]);
+    const topEarner = agents.reduce(
+      (best, a) => (a.commissionsEarned > best.commissionsEarned ? a : best),
+      agents[0],
+    );
     if (topEarner.commissionsEarned > 0) {
       achievements.push({
         type: 'TOP_EARNER',
@@ -625,8 +696,10 @@ export class ReportsService {
     }
 
     // Most active (most leads assigned)
-    const mostActive = agents.reduce((best, a) =>
-      a.leadsAssigned > best.leadsAssigned ? a : best, agents[0]);
+    const mostActive = agents.reduce(
+      (best, a) => (a.leadsAssigned > best.leadsAssigned ? a : best),
+      agents[0],
+    );
     if (mostActive.leadsAssigned > 0) {
       achievements.push({
         type: 'MOST_ACTIVE',
@@ -639,12 +712,16 @@ export class ReportsService {
     return achievements;
   }
 
-  async getAgentComparison(companyId: string, regionCode?: string): Promise<AgentComparison[]> {
+  async getAgentComparison(
+    companyId: string,
+    regionCode?: string,
+  ): Promise<AgentComparison[]> {
     const agents = await this.getAgentPerformance(companyId, regionCode);
 
     // Rank by conversion rate, then by leads won as tiebreaker
     const sorted = [...agents].sort((a, b) => {
-      if (b.conversionRate !== a.conversionRate) return b.conversionRate - a.conversionRate;
+      if (b.conversionRate !== a.conversionRate)
+        return b.conversionRate - a.conversionRate;
       return b.leadsWon - a.leadsWon;
     });
 

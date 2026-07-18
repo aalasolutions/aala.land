@@ -1,8 +1,26 @@
 import {
-  Controller, Get, Post, Patch, Delete, Body, Param,
-  Query, UseGuards, Request, ParseIntPipe, ParseUUIDPipe, DefaultValuePipe, HttpCode, HttpStatus,
+  Controller,
+  Get,
+  Post,
+  Patch,
+  Delete,
+  Body,
+  Param,
+  Query,
+  UseGuards,
+  Request,
+  ParseIntPipe,
+  ParseUUIDPipe,
+  DefaultValuePipe,
+  HttpCode,
+  HttpStatus,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiBearerAuth,
+  ApiQuery,
+} from '@nestjs/swagger';
 import { MaintenanceService } from './maintenance.service';
 import { CreateWorkOrderDto } from './dto/create-work-order.dto';
 import { UpdateWorkOrderDto } from './dto/update-work-order.dto';
@@ -18,22 +36,39 @@ import { requireCompanyId } from '@shared/utils/auth.util';
 @UseGuards(JwtAuthGuard, RolesGuard)
 @ApiBearerAuth()
 export class MaintenanceController {
-  constructor(private readonly maintenanceService: MaintenanceService) { }
+  constructor(private readonly maintenanceService: MaintenanceService) {}
 
   @Post()
   @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER)
   @ApiOperation({ summary: 'Create a maintenance work order (ADMIN+)' })
-  create(@Body() dto: CreateWorkOrderDto, @Request() req: AuthenticatedRequest) {
+  create(
+    @Body() dto: CreateWorkOrderDto,
+    @Request() req: AuthenticatedRequest,
+  ) {
     return this.maintenanceService.create(requireCompanyId(req.user), dto);
   }
 
   @Get()
-  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.ACCOUNTANT)
+  @Roles(
+    Role.SUPER_ADMIN,
+    Role.COMPANY_ADMIN,
+    Role.ADMIN,
+    Role.MANAGER,
+    Role.ACCOUNTANT,
+  )
   @ApiOperation({ summary: 'List work orders (paginated)' })
   @ApiQuery({ name: 'page', required: false })
   @ApiQuery({ name: 'limit', required: false })
-  @ApiQuery({ name: 'status', required: false, enum: ['OPEN', 'IN_PROGRESS', 'PENDING_APPROVAL', 'COMPLETED', 'CANCELLED'] })
-  @ApiQuery({ name: 'period', required: false, enum: ['this_month', 'last_month', 'last_3_months'] })
+  @ApiQuery({
+    name: 'status',
+    required: false,
+    enum: ['OPEN', 'IN_PROGRESS', 'PENDING_APPROVAL', 'COMPLETED', 'CANCELLED'],
+  })
+  @ApiQuery({
+    name: 'period',
+    required: false,
+    enum: ['this_month', 'last_month', 'last_3_months'],
+  })
   @ApiQuery({ name: 'regionCode', required: false, type: String })
   findAll(
     @Request() req: AuthenticatedRequest,
@@ -43,36 +78,80 @@ export class MaintenanceController {
     @Query('period') period?: string,
     @Query('regionCode') regionCode?: string,
   ) {
-    return this.maintenanceService.findAll(requireCompanyId(req.user), page, limit, regionCode, status, period);
+    return this.maintenanceService.findAll(
+      requireCompanyId(req.user),
+      page,
+      limit,
+      regionCode,
+      status,
+      period,
+    );
   }
 
   @Get('cost-summary')
-  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.ACCOUNTANT)
+  @Roles(
+    Role.SUPER_ADMIN,
+    Role.COMPANY_ADMIN,
+    Role.ADMIN,
+    Role.MANAGER,
+    Role.ACCOUNTANT,
+  )
   @ApiOperation({ summary: 'Get cost summary for all work orders' })
   @ApiQuery({ name: 'regionCode', required: false, type: String })
-  getCostSummary(@Request() req: AuthenticatedRequest, @Query('regionCode') regionCode?: string) {
-    return this.maintenanceService.getCostSummary(requireCompanyId(req.user), regionCode);
+  getCostSummary(
+    @Request() req: AuthenticatedRequest,
+    @Query('regionCode') regionCode?: string,
+  ) {
+    return this.maintenanceService.getCostSummary(
+      requireCompanyId(req.user),
+      regionCode,
+    );
   }
 
   @Get('upcoming')
-  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.ACCOUNTANT)
+  @Roles(
+    Role.SUPER_ADMIN,
+    Role.COMPANY_ADMIN,
+    Role.ADMIN,
+    Role.MANAGER,
+    Role.ACCOUNTANT,
+  )
   @ApiOperation({ summary: 'Get preventive maintenance due in next 30 days' })
   @ApiQuery({ name: 'regionCode', required: false, type: String })
-  getUpcoming(@Request() req: AuthenticatedRequest, @Query('regionCode') regionCode?: string) {
-    return this.maintenanceService.getUpcoming(requireCompanyId(req.user), regionCode);
+  getUpcoming(
+    @Request() req: AuthenticatedRequest,
+    @Query('regionCode') regionCode?: string,
+  ) {
+    return this.maintenanceService.getUpcoming(
+      requireCompanyId(req.user),
+      regionCode,
+    );
   }
 
   @Get(':id')
-  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.ACCOUNTANT)
+  @Roles(
+    Role.SUPER_ADMIN,
+    Role.COMPANY_ADMIN,
+    Role.ADMIN,
+    Role.MANAGER,
+    Role.ACCOUNTANT,
+  )
   @ApiOperation({ summary: 'Get a work order by ID' })
-  findOne(@Param('id', ParseUUIDPipe) id: string, @Request() req: AuthenticatedRequest) {
+  findOne(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Request() req: AuthenticatedRequest,
+  ) {
     return this.maintenanceService.findOne(id, requireCompanyId(req.user));
   }
 
   @Patch(':id')
   @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER)
   @ApiOperation({ summary: 'Update a work order (ADMIN+)' })
-  update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateWorkOrderDto, @Request() req: AuthenticatedRequest) {
+  update(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateWorkOrderDto,
+    @Request() req: AuthenticatedRequest,
+  ) {
     return this.maintenanceService.update(id, requireCompanyId(req.user), dto);
   }
 
@@ -80,7 +159,10 @@ export class MaintenanceController {
   @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN)
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Delete a work order (COMPANY_ADMIN+)' })
-  remove(@Param('id', ParseUUIDPipe) id: string, @Request() req: AuthenticatedRequest) {
+  remove(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Request() req: AuthenticatedRequest,
+  ) {
     return this.maintenanceService.remove(id, requireCompanyId(req.user));
   }
 }

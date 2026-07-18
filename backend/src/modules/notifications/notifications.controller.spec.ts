@@ -3,7 +3,10 @@ import { NotificationsController } from './notifications.controller';
 import { NotificationsService } from './notifications.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '@shared/guards/roles.guard';
-import { NotificationChannel, NotificationStatus } from './dto/send-notification.dto';
+import {
+  NotificationChannel,
+  NotificationStatus,
+} from './dto/send-notification.dto';
 import { NotificationType } from './entities/notification.entity';
 
 describe('NotificationsController', () => {
@@ -12,7 +15,9 @@ describe('NotificationsController', () => {
 
   const companyId = 'company-uuid-1';
   const userId = 'user-uuid-1';
-  const mockReq = { user: { companyId, userId, email: 'admin@test.com', role: 'company_admin' } };
+  const mockReq = {
+    user: { companyId, userId, email: 'admin@test.com', role: 'company_admin' },
+  };
 
   const mockNotification = {
     id: 'notif-uuid-1',
@@ -112,12 +117,20 @@ describe('NotificationsController', () => {
 
   describe('markAsRead', () => {
     it('marks a single notification as read', async () => {
-      const readNotif = { ...mockNotification, isRead: true, readAt: new Date() };
+      const readNotif = {
+        ...mockNotification,
+        isRead: true,
+        readAt: new Date(),
+      };
       service.markAsRead.mockResolvedValue(readNotif as any);
 
       const result = await controller.markAsRead('notif-uuid-1', mockReq);
 
-      expect(service.markAsRead).toHaveBeenCalledWith('notif-uuid-1', companyId, userId);
+      expect(service.markAsRead).toHaveBeenCalledWith(
+        'notif-uuid-1',
+        companyId,
+        userId,
+      );
       expect(result.isRead).toBe(true);
     });
   });

@@ -67,10 +67,19 @@ describe('UsersController', () => {
     it('creates a user', async () => {
       service.create.mockResolvedValue(mockUser as any);
 
-      const dto = { name: 'Test Agent', email: 'agent@test.com', password: 'pass123', companyId };
+      const dto = {
+        name: 'Test Agent',
+        email: 'agent@test.com',
+        password: 'pass123',
+        companyId,
+      };
       const result = await controller.create(dto as any, mockReq);
 
-      expect(service.create).toHaveBeenCalledWith(dto, companyId, Role.COMPANY_ADMIN);
+      expect(service.create).toHaveBeenCalledWith(
+        dto,
+        companyId,
+        Role.COMPANY_ADMIN,
+      );
       expect(result).toEqual(mockUser);
     });
   });
@@ -100,7 +109,9 @@ describe('UsersController', () => {
     it('propagates NotFoundException', async () => {
       service.findOne.mockRejectedValue(new NotFoundException());
 
-      await expect(controller.findOne('bad-id', mockReq)).rejects.toThrow(NotFoundException);
+      await expect(controller.findOne('bad-id', mockReq)).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -108,7 +119,11 @@ describe('UsersController', () => {
     it('updates user', async () => {
       service.update.mockResolvedValue({ ...mockUser, name: 'Updated' } as any);
 
-      const result = await controller.update('user-uuid-1', { name: 'Updated' } as any, mockReq);
+      const result = await controller.update(
+        'user-uuid-1',
+        { name: 'Updated' } as any,
+        mockReq,
+      );
 
       expect(service.update).toHaveBeenCalledWith(
         'user-uuid-1',
@@ -123,7 +138,10 @@ describe('UsersController', () => {
 
   describe('updateMyProfile', () => {
     it('updates only safe self-profile fields', async () => {
-      service.update.mockResolvedValue({ ...mockUser, name: 'Updated Self' } as any);
+      service.update.mockResolvedValue({
+        ...mockUser,
+        name: 'Updated Self',
+      } as any);
 
       const result = await controller.updateMyProfile(
         { name: 'Updated Self', role: Role.SUPER_ADMIN } as any,
@@ -148,7 +166,14 @@ describe('UsersController', () => {
     });
 
     it('lets a SUPER_ADMIN scope to the company passed in the query', async () => {
-      const reqSa = { user: { userId: 'sa', email: 'sa@test.com', companyId: null, role: Role.SUPER_ADMIN } };
+      const reqSa = {
+        user: {
+          userId: 'sa',
+          email: 'sa@test.com',
+          companyId: null,
+          role: Role.SUPER_ADMIN,
+        },
+      };
       await controller.findActiveMembers(reqSa as never, 'target-company');
       expect(service.findActiveMembers).toHaveBeenCalledWith('target-company');
     });
@@ -156,60 +181,117 @@ describe('UsersController', () => {
 
   describe('removal endpoints', () => {
     const dto = { reassignToUserId: 'user-uuid-3', reason: 'left' };
-    const reqAdmin = { user: { userId: 'requester-uuid', companyId: 'company-uuid-1', role: 'company_admin' } };
+    const reqAdmin = {
+      user: {
+        userId: 'requester-uuid',
+        companyId: 'company-uuid-1',
+        role: 'company_admin',
+      },
+    };
     const sampleReport = {
-      fromUserId: 'user-uuid-2', toUserId: 'user-uuid-3', reason: 'left',
+      fromUserId: 'user-uuid-2',
+      toUserId: 'user-uuid-3',
+      reason: 'left',
       entities: [{ type: 'lead', count: 2, ids: ['id-1', 'id-2'] }],
     };
 
     beforeEach(() => {
-      service.deleteUserWithReassignment.mockResolvedValue(sampleReport as never);
+      service.deleteUserWithReassignment.mockResolvedValue(
+        sampleReport as never,
+      );
       service.deactivateUser.mockResolvedValue(sampleReport as never);
-      service.trimToOneActiveUser.mockResolvedValue({ deactivatedCount: 1, reports: [sampleReport] } as never);
+      service.trimToOneActiveUser.mockResolvedValue({
+        deactivatedCount: 1,
+        reports: [sampleReport],
+      } as never);
     });
 
     it('strips the reassignment record ids from the response, keeping counts only', async () => {
-      const res = await controller.deleteUser('user-uuid-2', dto as never, reqAdmin as never);
+      const res = await controller.deleteUser(
+        'user-uuid-2',
+        dto as never,
+        reqAdmin as never,
+      );
       expect(res.entities).toEqual([{ type: 'lead', count: 2 }]);
     });
 
     it('POST /users/:id/delete forwards to deleteUserWithReassignment with the requester context', async () => {
-      await controller.deleteUser('user-uuid-2', dto as never, reqAdmin as never);
+      await controller.deleteUser(
+        'user-uuid-2',
+        dto as never,
+        reqAdmin as never,
+      );
       expect(service.deleteUserWithReassignment).toHaveBeenCalledWith(
-        'user-uuid-2', 'requester-uuid', 'company-uuid-1', 'company_admin', dto,
+        'user-uuid-2',
+        'requester-uuid',
+        'company-uuid-1',
+        'company_admin',
+        dto,
       );
     });
 
     it('POST /users/:id/deactivate forwards to deactivateUser', async () => {
-      await controller.deactivate('user-uuid-2', dto as never, reqAdmin as never);
+      await controller.deactivate(
+        'user-uuid-2',
+        dto as never,
+        reqAdmin as never,
+      );
       expect(service.deactivateUser).toHaveBeenCalledWith(
-        'user-uuid-2', 'requester-uuid', 'company-uuid-1', 'company_admin', dto,
+        'user-uuid-2',
+        'requester-uuid',
+        'company-uuid-1',
+        'company_admin',
+        dto,
       );
     });
 
     it('POST /users/:id/reactivate forwards to reactivateUser', async () => {
       await controller.reactivate('user-uuid-2', reqAdmin as never);
-      expect(service.reactivateUser).toHaveBeenCalledWith('user-uuid-2', 'company-uuid-1', 'company_admin');
+      expect(service.reactivateUser).toHaveBeenCalledWith(
+        'user-uuid-2',
+        'company-uuid-1',
+        'company_admin',
+      );
     });
 
     it('rejects a non-super-admin request with no company context before touching the service', () => {
-      const reqNoCompany = { user: { userId: 'u', email: 'e', companyId: null, role: Role.COMPANY_ADMIN } };
-      expect(() => controller.reactivate('user-uuid-2', reqNoCompany as never)).toThrow(BadRequestException);
+      const reqNoCompany = {
+        user: {
+          userId: 'u',
+          email: 'e',
+          companyId: null,
+          role: Role.COMPANY_ADMIN,
+        },
+      };
+      expect(() =>
+        controller.reactivate('user-uuid-2', reqNoCompany as never),
+      ).toThrow(BadRequestException);
       expect(service.reactivateUser).not.toHaveBeenCalled();
     });
 
     it('POST /users/trim-to-one requires a company context', async () => {
-      const reqNoCompany = { user: { userId: 'sa', companyId: null, role: 'super_admin' } };
+      const reqNoCompany = {
+        user: { userId: 'sa', companyId: null, role: 'super_admin' },
+      };
       expect(() =>
-        controller.trimToOne({ keepUserId: 'k', reason: 'r' } as never, reqNoCompany as never),
+        controller.trimToOne(
+          { keepUserId: 'k', reason: 'r' } as never,
+          reqNoCompany as never,
+        ),
       ).toThrow(BadRequestException);
     });
 
     it('SUPER_ADMIN passes an undefined companyId so the service resolves scope from the target', async () => {
-      const reqSa = { user: { userId: 'sa-uuid', companyId: null, role: 'super_admin' } };
+      const reqSa = {
+        user: { userId: 'sa-uuid', companyId: null, role: 'super_admin' },
+      };
       await controller.deleteUser('user-uuid-2', dto as never, reqSa as never);
       expect(service.deleteUserWithReassignment).toHaveBeenCalledWith(
-        'user-uuid-2', 'sa-uuid', undefined, 'super_admin', dto,
+        'user-uuid-2',
+        'sa-uuid',
+        undefined,
+        'super_admin',
+        dto,
       );
     });
   });

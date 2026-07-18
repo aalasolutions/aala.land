@@ -1,4 +1,12 @@
-import { IsString, IsOptional, IsEnum, IsInt, Min, IsBoolean, MaxLength } from 'class-validator';
+import {
+  IsString,
+  IsOptional,
+  IsEnum,
+  IsInt,
+  Min,
+  IsBoolean,
+  MaxLength,
+} from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { ReminderRuleType } from '../entities/reminder-rule.entity';
 

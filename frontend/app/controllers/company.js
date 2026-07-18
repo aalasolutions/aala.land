@@ -119,7 +119,9 @@ export default class CompanyController extends Controller {
 
   get seatPriceLabel() {
     const currency = this.billing?.currency?.toUpperCase();
-    const seat = this.billing?.seatAmount ? this.billing.seatAmount / 100 : null;
+    const seat = this.billing?.seatAmount
+      ? this.billing.seatAmount / 100
+      : null;
     const tier = this.billing?.tier || this.company?.subscriptionTier || 'FREE';
     if (!currency || !seat) return null;
     // FREE is $0; the Upgrade section explains Pro pricing, so no price line here.

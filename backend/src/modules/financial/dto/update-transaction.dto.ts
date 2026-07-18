@@ -1,6 +1,17 @@
-import { IsEnum, IsNumber, IsOptional, IsString, IsDateString, MaxLength, Min } from 'class-validator';
+import {
+  IsEnum,
+  IsNumber,
+  IsOptional,
+  IsString,
+  IsDateString,
+  MaxLength,
+  Min,
+} from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { TransactionStatus, PaymentMethod } from '../entities/transaction.entity';
+import {
+  TransactionStatus,
+  PaymentMethod,
+} from '../entities/transaction.entity';
 
 export class UpdateTransactionDto {
   @ApiPropertyOptional({ enum: TransactionStatus })

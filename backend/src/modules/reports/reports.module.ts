@@ -13,7 +13,19 @@ import { AuditLog } from '../audit/entities/audit-log.entity';
 import { User } from '../users/entities/user.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Lead, LeadActivity, Transaction, Unit, Commission, Lease, Cheque, AuditLog, User])],
+  imports: [
+    TypeOrmModule.forFeature([
+      Lead,
+      LeadActivity,
+      Transaction,
+      Unit,
+      Commission,
+      Lease,
+      Cheque,
+      AuditLog,
+      User,
+    ]),
+  ],
   controllers: [ReportsController],
   providers: [ReportsService],
 })

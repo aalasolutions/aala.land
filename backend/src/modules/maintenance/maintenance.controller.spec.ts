@@ -2,14 +2,26 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { MaintenanceController } from './maintenance.controller';
 import { MaintenanceService } from './maintenance.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { WorkOrderStatus, WorkOrderPriority, WorkOrderCategory, ScheduleFrequency } from './entities/work-order.entity';
+import {
+  WorkOrderStatus,
+  WorkOrderPriority,
+  WorkOrderCategory,
+  ScheduleFrequency,
+} from './entities/work-order.entity';
 
 describe('MaintenanceController', () => {
   let controller: MaintenanceController;
   let service: jest.Mocked<MaintenanceService>;
 
   const companyId = 'company-uuid-1';
-  const mockReq = { user: { companyId, userId: 'user-uuid-1', email: 'admin@test.com', role: 'company_admin' } };
+  const mockReq = {
+    user: {
+      companyId,
+      userId: 'user-uuid-1',
+      email: 'admin@test.com',
+      role: 'company_admin',
+    },
+  };
 
   const mockOrder = {
     id: 'order-uuid-1',
@@ -57,7 +69,11 @@ describe('MaintenanceController', () => {
     it('creates work order scoped to company', async () => {
       service.create.mockResolvedValue(mockOrder as any);
 
-      const dto = { title: 'Fix AC', description: 'AC not cooling', priority: WorkOrderPriority.HIGH };
+      const dto = {
+        title: 'Fix AC',
+        description: 'AC not cooling',
+        priority: WorkOrderPriority.HIGH,
+      };
       await controller.create(dto as any, mockReq);
 
       expect(service.create).toHaveBeenCalledWith(companyId, dto);
@@ -70,13 +86,26 @@ describe('MaintenanceController', () => {
 
       await controller.findAll(mockReq, 1, 20);
 
-      expect(service.findAll).toHaveBeenCalledWith(companyId, 1, 20, undefined, undefined, undefined);
+      expect(service.findAll).toHaveBeenCalledWith(
+        companyId,
+        1,
+        20,
+        undefined,
+        undefined,
+        undefined,
+      );
     });
   });
 
   describe('getCostSummary', () => {
     it('returns cost summary for company', async () => {
-      const summary = { totalEstimated: 15000, totalActual: 12000, variance: 3000, workOrderCount: 5, avgCostPerOrder: 2400 };
+      const summary = {
+        totalEstimated: 15000,
+        totalActual: 12000,
+        variance: 3000,
+        workOrderCount: 5,
+        avgCostPerOrder: 2400,
+      };
       service.getCostSummary.mockResolvedValue(summary);
 
       const result = await controller.getCostSummary(mockReq);
@@ -115,11 +144,20 @@ describe('MaintenanceController', () => {
 
   describe('update', () => {
     it('updates work order', async () => {
-      service.update.mockResolvedValue({ ...mockOrder, status: WorkOrderStatus.COMPLETED } as any);
+      service.update.mockResolvedValue({
+        ...mockOrder,
+        status: WorkOrderStatus.COMPLETED,
+      } as any);
 
-      await controller.update('order-uuid-1', { status: WorkOrderStatus.COMPLETED }, mockReq);
+      await controller.update(
+        'order-uuid-1',
+        { status: WorkOrderStatus.COMPLETED },
+        mockReq,
+      );
 
-      expect(service.update).toHaveBeenCalledWith('order-uuid-1', companyId, { status: WorkOrderStatus.COMPLETED });
+      expect(service.update).toHaveBeenCalledWith('order-uuid-1', companyId, {
+        status: WorkOrderStatus.COMPLETED,
+      });
     });
   });
 

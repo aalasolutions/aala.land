@@ -10,4 +10,4 @@ import { EmailTemplate } from './entities/email-template.entity';
   providers: [EmailTemplatesService],
   exports: [EmailTemplatesService],
 })
-export class EmailTemplatesModule { }
+export class EmailTemplatesModule {}

@@ -1,4 +1,12 @@
-import { IsString, IsOptional, IsEmail, IsEnum, IsArray, IsUUID, MaxLength } from 'class-validator';
+import {
+  IsString,
+  IsOptional,
+  IsEmail,
+  IsEnum,
+  IsArray,
+  IsUUID,
+  MaxLength,
+} from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { ContactType } from '../entities/contact.entity';
 

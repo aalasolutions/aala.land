@@ -1,4 +1,12 @@
-import { IsString, IsOptional, IsUUID, IsEnum, IsNumber, Min, Max } from 'class-validator';
+import {
+  IsString,
+  IsOptional,
+  IsUUID,
+  IsEnum,
+  IsNumber,
+  Min,
+  Max,
+} from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { CommissionType } from '../entities/commission.entity';
 
@@ -26,7 +34,9 @@ export class CreateCommissionDto {
   @Min(0)
   grossAmount: number;
 
-  @ApiProperty({ description: 'Commission rate as percentage (e.g. 2.5 for 2.5%)' })
+  @ApiProperty({
+    description: 'Commission rate as percentage (e.g. 2.5 for 2.5%)',
+  })
   @IsNumber()
   @Min(0)
   @Max(100)
@@ -42,7 +52,11 @@ export class CreateCommissionDto {
   @IsString()
   notes?: string;
 
-  @ApiProperty({ required: false, example: 'dubai', description: 'Region code for multi-region filtering' })
+  @ApiProperty({
+    required: false,
+    example: 'dubai',
+    description: 'Region code for multi-region filtering',
+  })
   @IsOptional()
   @IsString()
   regionCode?: string;

@@ -1,9 +1,26 @@
 import {
-  Controller, Get, Post, Patch, Delete, Body, Param, Query,
-  UseGuards, Request, ParseIntPipe, ParseUUIDPipe, DefaultValuePipe,
-  HttpCode, HttpStatus,
+  Controller,
+  Get,
+  Post,
+  Patch,
+  Delete,
+  Body,
+  Param,
+  Query,
+  UseGuards,
+  Request,
+  ParseIntPipe,
+  ParseUUIDPipe,
+  DefaultValuePipe,
+  HttpCode,
+  HttpStatus,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiBearerAuth,
+  ApiQuery,
+} from '@nestjs/swagger';
 import { ReminderRulesService } from './reminder-rules.service';
 import { CreateReminderRuleDto } from './dto/create-reminder-rule.dto';
 import { UpdateReminderRuleDto } from './dto/update-reminder-rule.dto';
@@ -24,13 +41,18 @@ export class ReminderRulesController {
   @Post()
   @Roles(Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER)
   @ApiOperation({ summary: 'Create a reminder rule (ADMIN+)' })
-  create(@Body() dto: CreateReminderRuleDto, @Request() req: AuthenticatedRequest) {
+  create(
+    @Body() dto: CreateReminderRuleDto,
+    @Request() req: AuthenticatedRequest,
+  ) {
     return this.reminderRulesService.create(requireCompanyId(req.user), dto);
   }
 
   @Get()
   @Roles(Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER)
-  @ApiOperation({ summary: 'List reminder rules for current company (paginated)' })
+  @ApiOperation({
+    summary: 'List reminder rules for current company (paginated)',
+  })
   @ApiQuery({ name: 'page', required: false, type: Number })
   @ApiQuery({ name: 'limit', required: false, type: Number })
   findAll(
@@ -38,13 +60,20 @@ export class ReminderRulesController {
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
     @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
   ) {
-    return this.reminderRulesService.findAll(requireCompanyId(req.user), page, limit);
+    return this.reminderRulesService.findAll(
+      requireCompanyId(req.user),
+      page,
+      limit,
+    );
   }
 
   @Get(':id')
   @Roles(Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER)
   @ApiOperation({ summary: 'Get a reminder rule by ID' })
-  findOne(@Param('id', ParseUUIDPipe) id: string, @Request() req: AuthenticatedRequest) {
+  findOne(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Request() req: AuthenticatedRequest,
+  ) {
     return this.reminderRulesService.findOne(id, requireCompanyId(req.user));
   }
 
@@ -56,14 +85,23 @@ export class ReminderRulesController {
     @Body() dto: UpdateReminderRuleDto,
     @Request() req: AuthenticatedRequest,
   ) {
-    return this.reminderRulesService.update(id, requireCompanyId(req.user), dto);
+    return this.reminderRulesService.update(
+      id,
+      requireCompanyId(req.user),
+      dto,
+    );
   }
 
   @Delete(':id')
   @Roles(Role.COMPANY_ADMIN, Role.ADMIN)
   @HttpCode(HttpStatus.NO_CONTENT)
-  @ApiOperation({ summary: 'Soft-delete a reminder rule (sets isActive=false)' })
-  remove(@Param('id', ParseUUIDPipe) id: string, @Request() req: AuthenticatedRequest) {
+  @ApiOperation({
+    summary: 'Soft-delete a reminder rule (sets isActive=false)',
+  })
+  remove(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Request() req: AuthenticatedRequest,
+  ) {
     return this.reminderRulesService.remove(id, requireCompanyId(req.user));
   }
 }

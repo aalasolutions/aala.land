@@ -1,5 +1,10 @@
 // backend/src/modules/whatsapp/baileys-manager.service.ts
-import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  OnModuleDestroy,
+  OnModuleInit,
+} from '@nestjs/common';
 import { EventEmitter } from 'events';
 import { existsSync, mkdirSync, readdirSync, rmSync, writeFileSync } from 'fs';
 import { join, basename } from 'path';
@@ -10,7 +15,9 @@ import { WaMessage, WaStatus } from './wa-types';
 
 interface BaileysFns {
   makeWASocket: (opts: any) => any;
-  useMultiFileAuthState: (dir: string) => Promise<{ state: any; saveCreds: () => Promise<void> }>;
+  useMultiFileAuthState: (
+    dir: string,
+  ) => Promise<{ state: any; saveCreds: () => Promise<void> }>;
   DisconnectReason: Record<string, number>;
   downloadMediaMessage: (msg: any, type: string, opts: any) => Promise<any>;
   jidNormalizedUser: (jid: string) => string;
@@ -59,7 +66,9 @@ export class BaileysInstance {
     this.status.qr = null;
     this.emitter.emit('status', { ...this.status });
 
-    const { state, saveCreds } = await this.baileysFns.useMultiFileAuthState(this.sessionDir);
+    const { state, saveCreds } = await this.baileysFns.useMultiFileAuthState(
+      this.sessionDir,
+    );
 
     this.sock = this.baileysFns.makeWASocket({
       auth: state,
@@ -86,7 +95,9 @@ export class BaileysInstance {
       if (connection === 'close') {
         const code = lastDisconnect?.error?.output?.statusCode;
         const loggedOut = code === this.baileysFns.DisconnectReason.loggedOut;
-        this.logger.log(`[${this.userId}] Disconnected — code ${code ?? 'unknown'}${loggedOut ? ' (logged out)' : ''}`);
+        this.logger.log(
+          `[${this.userId}] Disconnected — code ${code ?? 'unknown'}${loggedOut ? ' (logged out)' : ''}`,
+        );
         this.status = {
           ...this.status,
           connection: 'disconnected',
@@ -101,7 +112,9 @@ export class BaileysInstance {
             try {
               rmSync(this.sessionDir, { recursive: true, force: true });
               mkdirSync(this.sessionDir, { recursive: true });
-            } catch { /* non-fatal */ }
+            } catch {
+              /* non-fatal */
+            }
           }
           this.reconnectPending = true;
           this.reconnectTimer = setTimeout(() => {
@@ -130,7 +143,11 @@ export class BaileysInstance {
       for (const c of items) {
         const jid = c?.id;
         const name = c?.name ?? c?.notify ?? c?.verifiedName;
-        if (typeof jid === 'string' && typeof name === 'string' && name.trim()) {
+        if (
+          typeof jid === 'string' &&
+          typeof name === 'string' &&
+          name.trim()
+        ) {
           this.contactNames.set(jid, name);
         }
       }
@@ -165,7 +182,10 @@ export class BaileysInstance {
 
   async stop(): Promise<void> {
     this.shouldReconnect = false;
-    if (this.reconnectTimer) { clearTimeout(this.reconnectTimer); this.reconnectTimer = null; }
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
     this.reconnectPending = false;
     if (this.sock) {
       this.sock.ev.removeAllListeners();
@@ -179,19 +199,32 @@ export class BaileysInstance {
     await this.stop();
     rmSync(this.sessionDir, { recursive: true, force: true });
     mkdirSync(this.sessionDir, { recursive: true });
-    this.status = { connection: 'disconnected', hasCredentials: false, me: null, qr: null };
+    this.status = {
+      connection: 'disconnected',
+      hasCredentials: false,
+      me: null,
+      qr: null,
+    };
     this.emitter.emit('status', { ...this.status });
     this.shouldReconnect = true;
   }
 
   // ── Status ──────────────────────────────────────────────────────────────
 
-  getStatus(): WaStatus { return { ...this.status }; }
-  hasCredentials(): boolean { return this.status.hasCredentials; }
+  getStatus(): WaStatus {
+    return { ...this.status };
+  }
+  hasCredentials(): boolean {
+    return this.status.hasCredentials;
+  }
 
   // ── Sending ─────────────────────────────────────────────────────────────
 
-  async sendMessage(chatId: string, message: string, _opts: { replyTo?: string } = {}) {
+  async sendMessage(
+    chatId: string,
+    message: string,
+    _opts: { replyTo?: string } = {},
+  ) {
     this.assertConnected();
     const content: any = { text: message };
     // opts.replyTo is accepted by the API but silently dropped here: Baileys requires a full
@@ -214,7 +247,8 @@ export class BaileysInstance {
     }
     const type = opts.mediaType ?? 'document';
     const content: any = { [type]: { url: filePath }, caption: opts.caption };
-    if (type === 'document') content.fileName = opts.fileName ?? filePath.split('/').pop();
+    if (type === 'document')
+      content.fileName = opts.fileName ?? filePath.split('/').pop();
     const result = await this.sock.sendMessage(chatId, content);
     return { success: true, messageId: result?.key?.id as string | undefined };
   }
@@ -235,7 +269,11 @@ export class BaileysInstance {
   }
 
   async getChatInfo(chatId: string) {
-    return { chatId, isGroup: chatId.endsWith('@g.us'), name: chatId.split('@')[0] };
+    return {
+      chatId,
+      isGroup: chatId.endsWith('@g.us'),
+      name: chatId.split('@')[0],
+    };
   }
 
   // ── Internal ────────────────────────────────────────────────────────────
@@ -293,18 +331,29 @@ export class BaileysInstance {
         const safeId = basename(key.id ?? '') || String(Date.now());
         const fileName = `${safeId}.${ext}`;
         const filePath = join(subdir, fileName);
-        const buffer = await this.baileysFns.downloadMediaMessage(raw, 'buffer', {});
+        const buffer = await this.baileysFns.downloadMediaMessage(
+          raw,
+          'buffer',
+          {},
+        );
         writeFileSync(filePath, buffer as Buffer);
         mediaUrls = [fileName];
       } catch {
-        this.logger.warn(`[${this.userId}] Media download failed for ${key.id}`);
+        this.logger.warn(
+          `[${this.userId}] Media download failed for ${key.id}`,
+        );
       }
     }
 
     const isGroup = chatId.endsWith('@g.us');
-    const senderId = fromMe ? (this.status.me?.id ?? 'me') : (key.participant ?? chatId);
+    const senderId = fromMe
+      ? (this.status.me?.id ?? 'me')
+      : (key.participant ?? chatId);
     const contactJid = fromMe ? chatId : senderId;
-    const contactName = this.contactNames.get(contactJid) ?? raw.pushName ?? contactJid.split('@')[0];
+    const contactName =
+      this.contactNames.get(contactJid) ??
+      raw.pushName ??
+      contactJid.split('@')[0];
     const senderName = fromMe ? 'You' : contactName;
     const chatName = isGroup ? chatId.split('@')[0] : contactName;
 
@@ -321,9 +370,12 @@ export class BaileysInstance {
       mediaType,
       mediaUrls,
       mentionedIds: msg.extendedTextMessage?.contextInfo?.mentionedJid ?? [],
-      quotedParticipant: msg.extendedTextMessage?.contextInfo?.participant ?? '',
+      quotedParticipant:
+        msg.extendedTextMessage?.contextInfo?.participant ?? '',
       aiGenerated: false,
-      timestamp: raw.messageTimestamp ? Number(raw.messageTimestamp) : Math.floor(Date.now() / 1000),
+      timestamp: raw.messageTimestamp
+        ? Number(raw.messageTimestamp)
+        : Math.floor(Date.now() / 1000),
     };
   }
 
@@ -367,7 +419,8 @@ export class BaileysManagerService implements OnModuleInit, OnModuleDestroy {
 
   // Resolved once in onModuleInit; may be pre-injected in tests
   private baileysFns: BaileysFns | null = null;
-  private dataDir: string = process.env.WHATSAPP_DATA_DIR ?? join(process.cwd(), 'data', 'whatsapp');
+  private dataDir: string =
+    process.env.WHATSAPP_DATA_DIR ?? join(process.cwd(), 'data', 'whatsapp');
 
   // ── Lifecycle ───────────────────────────────────────────────────────────
 
@@ -378,7 +431,11 @@ export class BaileysManagerService implements OnModuleInit, OnModuleDestroy {
       makeWASocket: b.default,
       useMultiFileAuthState: b.useMultiFileAuthState,
       DisconnectReason: b.DisconnectReason as unknown as Record<string, number>,
-      downloadMediaMessage: b.downloadMediaMessage as (msg: any, type: string, opts: any) => Promise<any>,
+      downloadMediaMessage: b.downloadMediaMessage as (
+        msg: any,
+        type: string,
+        opts: any,
+      ) => Promise<any>,
       jidNormalizedUser: b.jidNormalizedUser,
     };
 
@@ -398,15 +455,23 @@ export class BaileysManagerService implements OnModuleInit, OnModuleDestroy {
         }
       }
     } catch (err) {
-      this.logger.warn('Could not scan sessions directory', err instanceof Error ? err.message : err);
+      this.logger.warn(
+        'Could not scan sessions directory',
+        err instanceof Error ? err.message : err,
+      );
     }
   }
 
   async onModuleDestroy(): Promise<void> {
-    const stops = [...this.instances.values()].map(inst =>
-      inst.stop().catch(err =>
-        this.logger.error(`Error stopping instance ${inst.userId}`, err instanceof Error ? err.message : err),
-      ),
+    const stops = [...this.instances.values()].map((inst) =>
+      inst
+        .stop()
+        .catch((err) =>
+          this.logger.error(
+            `Error stopping instance ${inst.userId}`,
+            err instanceof Error ? err.message : err,
+          ),
+        ),
     );
     await Promise.all(stops);
     this.instances.clear();
@@ -443,9 +508,14 @@ export class BaileysManagerService implements OnModuleInit, OnModuleDestroy {
   async remove(userId: string): Promise<void> {
     const inst = this.instances.get(userId);
     if (inst) {
-      await inst.stop().catch(err =>
-        this.logger.error(`Error stopping instance ${userId}`, err instanceof Error ? err.message : err),
-      );
+      await inst
+        .stop()
+        .catch((err) =>
+          this.logger.error(
+            `Error stopping instance ${userId}`,
+            err instanceof Error ? err.message : err,
+          ),
+        );
       this.instances.delete(userId);
     }
   }
@@ -454,7 +524,9 @@ export class BaileysManagerService implements OnModuleInit, OnModuleDestroy {
 
   private async _create(userId: string): Promise<BaileysInstance> {
     if (!this.baileysFns) {
-      throw new Error('BaileysManagerService: baileysFns not initialized — did onModuleInit run?');
+      throw new Error(
+        'BaileysManagerService: baileysFns not initialized — did onModuleInit run?',
+      );
     }
 
     const sessionDir = join(this.dataDir, 'sessions', userId);

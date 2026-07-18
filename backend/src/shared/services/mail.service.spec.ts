@@ -2,7 +2,9 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { MailService } from './mail.service';
 
 const mockSendMail = jest.fn();
-const mockCreateTransport = jest.fn().mockReturnValue({ sendMail: mockSendMail });
+const mockCreateTransport = jest
+  .fn()
+  .mockReturnValue({ sendMail: mockSendMail });
 
 jest.mock('nodemailer', () => ({
   createTransport: (...args: any[]) => mockCreateTransport(...args),
@@ -72,13 +74,17 @@ describe('MailService', () => {
 
       const loggerErrorSpy = jest.spyOn(service['logger'], 'error');
 
-      await expect(service.sendMail({
-        to: 'user@example.com',
-        subject: 'Test',
-        text: 'Body',
-      })).resolves.not.toThrow();
+      await expect(
+        service.sendMail({
+          to: 'user@example.com',
+          subject: 'Test',
+          text: 'Body',
+        }),
+      ).resolves.not.toThrow();
 
-      expect(loggerErrorSpy).toHaveBeenCalledWith(expect.stringContaining('user@example.com'));
+      expect(loggerErrorSpy).toHaveBeenCalledWith(
+        expect.stringContaining('user@example.com'),
+      );
     });
   });
 
@@ -132,13 +138,17 @@ describe('MailService', () => {
 
       const loggerErrorSpy = jest.spyOn(service['logger'], 'error');
 
-      await expect(service.sendMail({
-        to: 'user@example.com',
-        subject: 'Test',
-        text: 'Body',
-      })).resolves.not.toThrow();
+      await expect(
+        service.sendMail({
+          to: 'user@example.com',
+          subject: 'Test',
+          text: 'Body',
+        }),
+      ).resolves.not.toThrow();
 
-      expect(loggerErrorSpy).toHaveBeenCalledWith(expect.stringContaining('user@example.com'));
+      expect(loggerErrorSpy).toHaveBeenCalledWith(
+        expect.stringContaining('user@example.com'),
+      );
     });
   });
 
@@ -158,11 +168,13 @@ describe('MailService', () => {
     });
 
     it('logs warning and resolves without sending', async () => {
-      await expect(service.sendMail({
-        to: 'user@example.com',
-        subject: 'Test',
-        text: 'Body',
-      })).resolves.not.toThrow();
+      await expect(
+        service.sendMail({
+          to: 'user@example.com',
+          subject: 'Test',
+          text: 'Body',
+        }),
+      ).resolves.not.toThrow();
 
       expect(global.fetch).not.toHaveBeenCalled();
       expect(mockCreateTransport).not.toHaveBeenCalled();

@@ -9,7 +9,14 @@ describe('LeasesController', () => {
   let service: jest.Mocked<LeasesService>;
 
   const companyId = 'company-uuid-1';
-  const mockReq = { user: { companyId, userId: 'user-uuid-1', email: 'admin@test.com', role: 'company_admin' } };
+  const mockReq = {
+    user: {
+      companyId,
+      userId: 'user-uuid-1',
+      email: 'admin@test.com',
+      role: 'company_admin',
+    },
+  };
 
   const mockLease = {
     id: 'lease-uuid-1',
@@ -56,7 +63,13 @@ describe('LeasesController', () => {
     it('creates lease scoped to company', async () => {
       service.create.mockResolvedValue(mockLease as any);
 
-      const dto = { unitId: 'unit-uuid-1', tenantName: 'Ahmed', startDate: '2026-01-01', endDate: '2026-12-31', monthlyRent: 5000 };
+      const dto = {
+        unitId: 'unit-uuid-1',
+        tenantName: 'Ahmed',
+        startDate: '2026-01-01',
+        endDate: '2026-12-31',
+        monthlyRent: 5000,
+      };
       const result = await controller.create(dto as any, mockReq);
 
       expect(service.create).toHaveBeenCalledWith(companyId, dto);
@@ -96,11 +109,20 @@ describe('LeasesController', () => {
 
   describe('update', () => {
     it('updates lease', async () => {
-      service.update.mockResolvedValue({ ...mockLease, status: LeaseStatus.EXPIRED } as any);
+      service.update.mockResolvedValue({
+        ...mockLease,
+        status: LeaseStatus.EXPIRED,
+      } as any);
 
-      await controller.update('lease-uuid-1', { status: LeaseStatus.EXPIRED }, mockReq);
+      await controller.update(
+        'lease-uuid-1',
+        { status: LeaseStatus.EXPIRED },
+        mockReq,
+      );
 
-      expect(service.update).toHaveBeenCalledWith('lease-uuid-1', companyId, { status: LeaseStatus.EXPIRED });
+      expect(service.update).toHaveBeenCalledWith('lease-uuid-1', companyId, {
+        status: LeaseStatus.EXPIRED,
+      });
     });
   });
 

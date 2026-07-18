@@ -1,4 +1,13 @@
-import { Controller, Get, Post, Body, Param, Query, UseGuards, Request } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Param,
+  Query,
+  UseGuards,
+  Request,
+} from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { LocationsService } from './locations.service';
 import { SearchCityDto } from './dto/search-city.dto';
@@ -17,54 +26,103 @@ import { requireCompanyId } from '@shared/utils/auth.util';
 @Controller('locations')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class LocationsController {
-    constructor(private readonly locationsService: LocationsService) { }
+  constructor(private readonly locationsService: LocationsService) {}
 
-    @Get('cities/search')
-    @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT, Role.ACCOUNTANT)
-    @ApiOperation({ summary: 'Fuzzy search cities by name within a region' })
-    searchCities(@Query() dto: SearchCityDto) {
-        return this.locationsService.searchCities(dto);
-    }
+  @Get('cities/search')
+  @Roles(
+    Role.SUPER_ADMIN,
+    Role.COMPANY_ADMIN,
+    Role.ADMIN,
+    Role.MANAGER,
+    Role.AGENT,
+    Role.ACCOUNTANT,
+  )
+  @ApiOperation({ summary: 'Fuzzy search cities by name within a region' })
+  searchCities(@Query() dto: SearchCityDto) {
+    return this.locationsService.searchCities(dto);
+  }
 
-    @Post('cities')
-    @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER)
-    @ApiOperation({ summary: 'Create a new city (ADMIN+)' })
-    createCity(@Body() dto: CreateCityDto, @Request() req: AuthenticatedRequest) {
-        return this.locationsService.createCity(dto, requireCompanyId(req.user));
-    }
+  @Post('cities')
+  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER)
+  @ApiOperation({ summary: 'Create a new city (ADMIN+)' })
+  createCity(@Body() dto: CreateCityDto, @Request() req: AuthenticatedRequest) {
+    return this.locationsService.createCity(dto, requireCompanyId(req.user));
+  }
 
-    @Get('cities/:regionCode')
-    @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT, Role.ACCOUNTANT)
-    @ApiOperation({ summary: 'List all cities for a region' })
-    getCitiesByRegion(@Param('regionCode') regionCode: string) {
-        return this.locationsService.getCitiesByRegion(regionCode);
-    }
+  @Get('cities/:regionCode')
+  @Roles(
+    Role.SUPER_ADMIN,
+    Role.COMPANY_ADMIN,
+    Role.ADMIN,
+    Role.MANAGER,
+    Role.AGENT,
+    Role.ACCOUNTANT,
+  )
+  @ApiOperation({ summary: 'List all cities for a region' })
+  getCitiesByRegion(@Param('regionCode') regionCode: string) {
+    return this.locationsService.getCitiesByRegion(regionCode);
+  }
 
-    @Get('localities/search')
-    @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT, Role.ACCOUNTANT)
-    @ApiOperation({ summary: 'Fuzzy search localities by name within a city' })
-    searchLocalities(@Query() dto: SearchLocalityDto) {
-        return this.locationsService.searchLocalities(dto);
-    }
+  @Get('localities/search')
+  @Roles(
+    Role.SUPER_ADMIN,
+    Role.COMPANY_ADMIN,
+    Role.ADMIN,
+    Role.MANAGER,
+    Role.AGENT,
+    Role.ACCOUNTANT,
+  )
+  @ApiOperation({ summary: 'Fuzzy search localities by name within a city' })
+  searchLocalities(@Query() dto: SearchLocalityDto) {
+    return this.locationsService.searchLocalities(dto);
+  }
 
-    @Post('localities')
-    @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER)
-    @ApiOperation({ summary: 'Create a new locality (ADMIN+)' })
-    createLocality(@Body() dto: CreateLocalityDto, @Request() req: AuthenticatedRequest) {
-        return this.locationsService.createLocality(dto, requireCompanyId(req.user));
-    }
+  @Post('localities')
+  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER)
+  @ApiOperation({ summary: 'Create a new locality (ADMIN+)' })
+  createLocality(
+    @Body() dto: CreateLocalityDto,
+    @Request() req: AuthenticatedRequest,
+  ) {
+    return this.locationsService.createLocality(
+      dto,
+      requireCompanyId(req.user),
+    );
+  }
 
-    @Get('localities/:cityId')
-    @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT, Role.ACCOUNTANT)
-    @ApiOperation({ summary: 'List all localities for a city' })
-    getLocalitiesByCity(@Param('cityId') cityId: string) {
-        return this.locationsService.getLocalitiesByCity(cityId);
-    }
+  @Get('localities/:cityId')
+  @Roles(
+    Role.SUPER_ADMIN,
+    Role.COMPANY_ADMIN,
+    Role.ADMIN,
+    Role.MANAGER,
+    Role.AGENT,
+    Role.ACCOUNTANT,
+  )
+  @ApiOperation({ summary: 'List all localities for a city' })
+  getLocalitiesByCity(@Param('cityId') cityId: string) {
+    return this.locationsService.getLocalitiesByCity(cityId);
+  }
 
-    @Get('company/localities')
-    @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT, Role.ACCOUNTANT)
-    @ApiOperation({ summary: 'List localities that have assets for the current company' })
-    getCompanyLocalities(@Request() req: AuthenticatedRequest, @Query('regionCode') regionCode?: string) {
-        return this.locationsService.getCompanyLocalities(requireCompanyId(req.user), regionCode);
-    }
+  @Get('company/localities')
+  @Roles(
+    Role.SUPER_ADMIN,
+    Role.COMPANY_ADMIN,
+    Role.ADMIN,
+    Role.MANAGER,
+    Role.AGENT,
+    Role.ACCOUNTANT,
+  )
+  @ApiOperation({
+    summary: 'List localities that have assets for the current company',
+  })
+  getCompanyLocalities(
+    @Request() req: AuthenticatedRequest,
+    @Query('regionCode') regionCode?: string,
+  ) {
+    return this.locationsService.getCompanyLocalities(
+      requireCompanyId(req.user),
+      regionCode,
+    );
+  }
 }

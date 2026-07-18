@@ -74,7 +74,9 @@ export class AddReminderRulesAndUserInvite1773500000002 implements MigrationInte
     );
     const userColumnNames = userCols.map((row: any) => row.column_name);
     if (userColumnNames.includes('must_change_password')) {
-      await queryRunner.query(`ALTER TABLE "users" DROP COLUMN "must_change_password"`);
+      await queryRunner.query(
+        `ALTER TABLE "users" DROP COLUMN "must_change_password"`,
+      );
     }
   }
 }

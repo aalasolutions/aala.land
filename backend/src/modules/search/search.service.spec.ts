@@ -4,7 +4,9 @@ import { DataSource } from 'typeorm';
 
 describe('SearchService', () => {
   let service: SearchService;
-  let dataSource: { query: jest.Mock } & Partial<Record<keyof DataSource, jest.Mock>>;
+  let dataSource: { query: jest.Mock } & Partial<
+    Record<keyof DataSource, jest.Mock>
+  >;
 
   beforeEach(async () => {
     dataSource = {
@@ -12,10 +14,7 @@ describe('SearchService', () => {
     };
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        SearchService,
-        { provide: DataSource, useValue: dataSource },
-      ],
+      providers: [SearchService, { provide: DataSource, useValue: dataSource }],
     }).compile();
 
     service = module.get<SearchService>(SearchService);
@@ -28,7 +27,9 @@ describe('SearchService', () => {
   it('should return properties and agents when results are found', async () => {
     const mockCities = [{ id: '1', name: 'Dubai' }];
     const mockLocalities = [{ id: '2', name: 'JBR', cityName: 'Dubai' }];
-    const mockAssets = [{ id: '3', name: 'Marina Towers', localityId: '2', localityName: 'JBR' }];
+    const mockAssets = [
+      { id: '3', name: 'Marina Towers', localityId: '2', localityName: 'JBR' },
+    ];
     const mockAgents = [{ id: 'a1', name: 'John Doe', role: 'agent' }];
 
     dataSource.query
@@ -41,10 +42,31 @@ describe('SearchService', () => {
 
     expect(result.properties).toHaveLength(3);
     expect(result.agents).toHaveLength(1);
-    expect(result.properties[0]).toEqual({ type: 'city', id: '1', name: 'Dubai', subtitle: 'City' });
-    expect(result.properties[1]).toEqual({ type: 'locality', id: '2', name: 'JBR', subtitle: 'Dubai' });
-    expect(result.properties[2]).toEqual({ type: 'asset', id: '3', name: 'Marina Towers', subtitle: 'JBR', localityId: '2' });
-    expect(result.agents[0]).toEqual({ type: 'agent', id: 'a1', name: 'John Doe', subtitle: 'agent' });
+    expect(result.properties[0]).toEqual({
+      type: 'city',
+      id: '1',
+      name: 'Dubai',
+      subtitle: 'City',
+    });
+    expect(result.properties[1]).toEqual({
+      type: 'locality',
+      id: '2',
+      name: 'JBR',
+      subtitle: 'Dubai',
+    });
+    expect(result.properties[2]).toEqual({
+      type: 'asset',
+      id: '3',
+      name: 'Marina Towers',
+      subtitle: 'JBR',
+      localityId: '2',
+    });
+    expect(result.agents[0]).toEqual({
+      type: 'agent',
+      id: 'a1',
+      name: 'John Doe',
+      subtitle: 'agent',
+    });
     expect(dataSource.query).toHaveBeenCalledTimes(4);
   });
 
@@ -68,7 +90,10 @@ describe('SearchService', () => {
     await service.search(q, companyId);
 
     // Verify companyId is passed to all queries (checking one example is sufficient)
-    expect(dataSource.query).toHaveBeenCalledWith(expect.stringContaining('company_id = $2'), expect.arrayContaining([term, companyId]));
+    expect(dataSource.query).toHaveBeenCalledWith(
+      expect.stringContaining('company_id = $2'),
+      expect.arrayContaining([term, companyId]),
+    );
   });
 
   it('should filter by regionCode when provided', async () => {
@@ -82,9 +107,15 @@ describe('SearchService', () => {
     await service.search(q, companyId, regionCode);
 
     // Verify regionCode is passed to relevant queries
-    expect(dataSource.query).toHaveBeenCalledWith(expect.stringContaining('region_code = $3'), expect.arrayContaining([term, companyId, regionCode]));
+    expect(dataSource.query).toHaveBeenCalledWith(
+      expect.stringContaining('region_code = $3'),
+      expect.arrayContaining([term, companyId, regionCode]),
+    );
     // The agent query does not use regionCode, so it should not be in its parameters
-    expect(dataSource.query).toHaveBeenCalledWith(expect.stringContaining('users'), expect.arrayContaining([term, companyId]));
+    expect(dataSource.query).toHaveBeenCalledWith(
+      expect.stringContaining('users'),
+      expect.arrayContaining([term, companyId]),
+    );
   });
 
   it('should handle different query parameters for regionCode present/absent', async () => {
@@ -96,12 +127,18 @@ describe('SearchService', () => {
 
     // Test without regionCode
     await service.search(q, companyId);
-    expect(dataSource.query).toHaveBeenCalledWith(expect.not.stringContaining('region_code'), expect.arrayContaining([term, companyId]));
+    expect(dataSource.query).toHaveBeenCalledWith(
+      expect.not.stringContaining('region_code'),
+      expect.arrayContaining([term, companyId]),
+    );
 
     // Test with regionCode
     dataSource.query.mockClear();
     await service.search(q, companyId, 'dubai');
-    expect(dataSource.query).toHaveBeenCalledWith(expect.stringContaining('region_code'), expect.arrayContaining([term, companyId, 'dubai']));
+    expect(dataSource.query).toHaveBeenCalledWith(
+      expect.stringContaining('region_code'),
+      expect.arrayContaining([term, companyId, 'dubai']),
+    );
   });
 
   it('should exclude super_admin users from agent search results', async () => {
@@ -116,7 +153,7 @@ describe('SearchService', () => {
     // Verify the agents query excludes super_admin users
     expect(dataSource.query).toHaveBeenCalledWith(
       expect.stringContaining("role != 'super_admin'"),
-      expect.arrayContaining([term, companyId])
+      expect.arrayContaining([term, companyId]),
     );
   });
 });

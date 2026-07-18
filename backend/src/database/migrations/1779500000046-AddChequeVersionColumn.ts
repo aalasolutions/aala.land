@@ -24,6 +24,8 @@ export class AddChequeVersionColumn1779500000046 implements MigrationInterface {
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`ALTER TABLE "cheques" DROP COLUMN IF EXISTS "version"`);
+    await queryRunner.query(
+      `ALTER TABLE "cheques" DROP COLUMN IF EXISTS "version"`,
+    );
   }
 }

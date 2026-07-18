@@ -9,7 +9,9 @@ describe('WhatsappController', () => {
   let wa: jest.Mocked<WhatsappService>;
 
   const makeReq = (userId: string, companyId: string) =>
-    ({ user: { userId, companyId, role: Role.COMPANY_ADMIN, email: 'a@b.com' } } as any);
+    ({
+      user: { userId, companyId, role: Role.COMPANY_ADMIN, email: 'a@b.com' },
+    }) as any;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -69,7 +71,11 @@ describe('WhatsappController', () => {
     it('returns 403 for path traversal attempt', () => {
       wa.getMediaDirs.mockReturnValue(mockDirs as any);
       const req = makeReq('u1', 'c1');
-      const res = { status: jest.fn().mockReturnThis(), json: jest.fn(), sendFile: jest.fn() } as any;
+      const res = {
+        status: jest.fn().mockReturnThis(),
+        json: jest.fn(),
+        sendFile: jest.fn(),
+      } as any;
 
       controller.serveMedia(req, 'images', '../../../etc/passwd', res);
 
@@ -79,7 +85,11 @@ describe('WhatsappController', () => {
     it('returns 400 for invalid media type', () => {
       wa.getMediaDirs.mockReturnValue(mockDirs as any);
       const req = makeReq('u1', 'c1');
-      const res = { status: jest.fn().mockReturnThis(), json: jest.fn(), sendFile: jest.fn() } as any;
+      const res = {
+        status: jest.fn().mockReturnThis(),
+        json: jest.fn(),
+        sendFile: jest.fn(),
+      } as any;
 
       controller.serveMedia(req, 'invalid-type', 'file.jpg', res);
 

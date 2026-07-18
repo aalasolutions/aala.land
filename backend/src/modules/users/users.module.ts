@@ -10,7 +10,11 @@ import { BillingModule } from '../billing/billing.module';
 import { UserReassignmentService } from './reassignment/user-reassignment.service';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([User, Company]), EmailTemplatesModule, BillingModule],
+  imports: [
+    TypeOrmModule.forFeature([User, Company]),
+    EmailTemplatesModule,
+    BillingModule,
+  ],
   controllers: [UsersController],
   providers: [UsersService, MailService, UserReassignmentService],
   exports: [UsersService],

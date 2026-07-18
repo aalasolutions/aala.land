@@ -1,4 +1,9 @@
-import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Not, QueryFailedError, Raw, Repository } from 'typeorm';
 import { Owner } from './entities/owner.entity';
@@ -29,7 +34,11 @@ export class OwnersService {
     }
   }
 
-  async findAll(companyId: string, page = 1, limit = 20): Promise<{ data: Owner[]; total: number; page: number; limit: number }> {
+  async findAll(
+    companyId: string,
+    page = 1,
+    limit = 20,
+  ): Promise<{ data: Owner[]; total: number; page: number; limit: number }> {
     const [data, total] = await this.ownerRepository.findAndCount({
       where: { companyId },
       relations: ['assignedAgent', 'units'],
@@ -42,7 +51,12 @@ export class OwnersService {
   async findOne(id: string, companyId: string): Promise<Owner> {
     const owner = await this.ownerRepository.findOne({
       where: { id, companyId },
-      relations: ['assignedAgent', 'units', 'units.asset', 'units.asset.locality'],
+      relations: [
+        'assignedAgent',
+        'units',
+        'units.asset',
+        'units.asset.locality',
+      ],
     });
     if (!owner) {
       throw new NotFoundException('Owner not found');
@@ -50,7 +64,11 @@ export class OwnersService {
     return owner;
   }
 
-  async update(id: string, companyId: string, dto: UpdateOwnerDto): Promise<Owner> {
+  async update(
+    id: string,
+    companyId: string,
+    dto: UpdateOwnerDto,
+  ): Promise<Owner> {
     const owner = await this.findOne(id, companyId);
     const ownerData = this.sanitizeOwnerInput(dto);
 
@@ -65,12 +83,16 @@ export class OwnersService {
   }
 
   async remove(id: string, companyId: string): Promise<void> {
-    const owner = await this.ownerRepository.findOne({ where: { id, companyId } });
+    const owner = await this.ownerRepository.findOne({
+      where: { id, companyId },
+    });
     if (!owner) {
       throw new NotFoundException('Owner not found');
     }
 
-    const linkedUnitsCount = await this.unitRepository.count({ where: { ownerId: id, companyId } });
+    const linkedUnitsCount = await this.unitRepository.count({
+      where: { ownerId: id, companyId },
+    });
     if (linkedUnitsCount > 0) {
       throw new BadRequestException(
         `Cannot delete owner — ${linkedUnitsCount} unit(s) are still linked. Unlink them first.`,
@@ -83,14 +105,18 @@ export class OwnersService {
       if (error instanceof QueryFailedError) {
         const driverError = error.driverError as { code?: string } | undefined;
         if (driverError?.code === '23503') {
-          throw new BadRequestException('Cannot delete owner — one or more units are still linked. Unlink them first.');
+          throw new BadRequestException(
+            'Cannot delete owner — one or more units are still linked. Unlink them first.',
+          );
         }
       }
       throw error;
     }
   }
 
-  private sanitizeOwnerInput<T extends CreateOwnerDto | UpdateOwnerDto>(dto: T): T {
+  private sanitizeOwnerInput<T extends CreateOwnerDto | UpdateOwnerDto>(
+    dto: T,
+  ): T {
     const email = dto.email?.trim().toLowerCase();
     const phone = dto.phone?.trim();
 
@@ -101,12 +127,18 @@ export class OwnersService {
     };
   }
 
-  private async ensureNoDuplicateOwner(companyId: string, dto: CreateOwnerDto | UpdateOwnerDto, excludeId?: string): Promise<void> {
+  private async ensureNoDuplicateOwner(
+    companyId: string,
+    dto: CreateOwnerDto | UpdateOwnerDto,
+    excludeId?: string,
+  ): Promise<void> {
     if (dto.email) {
       const duplicate = await this.ownerRepository.findOne({
         where: {
           companyId,
-          email: Raw((alias) => `LOWER(BTRIM(${alias})) = :email`, { email: dto.email }),
+          email: Raw((alias) => `LOWER(BTRIM(${alias})) = :email`, {
+            email: dto.email,
+          }),
           ...(excludeId ? { id: Not(excludeId) } : {}),
         },
       });
@@ -119,7 +151,9 @@ export class OwnersService {
       const duplicate = await this.ownerRepository.findOne({
         where: {
           companyId,
-          phone: Raw((alias) => `BTRIM(${alias}) = :phone`, { phone: dto.phone }),
+          phone: Raw((alias) => `BTRIM(${alias}) = :phone`, {
+            phone: dto.phone,
+          }),
           ...(excludeId ? { id: Not(excludeId) } : {}),
         },
       });
@@ -131,18 +165,32 @@ export class OwnersService {
 
   private handleOwnerUniqueViolation(error: unknown): never {
     if (error instanceof QueryFailedError) {
-      const driverError = error.driverError as { code?: string; constraint?: string } | undefined;
+      const driverError = error.driverError as
+        | { code?: string; constraint?: string }
+        | undefined;
 
       if (driverError?.code === '23505') {
-        if (driverError.constraint === 'IDX_owners_company_normalized_email_unique') {
-          throw new ConflictException('An owner with this email already exists.');
+        if (
+          driverError.constraint ===
+          'IDX_owners_company_normalized_email_unique'
+        ) {
+          throw new ConflictException(
+            'An owner with this email already exists.',
+          );
         }
 
-        if (driverError.constraint === 'IDX_owners_company_normalized_phone_unique') {
-          throw new ConflictException('An owner with this phone already exists.');
+        if (
+          driverError.constraint ===
+          'IDX_owners_company_normalized_phone_unique'
+        ) {
+          throw new ConflictException(
+            'An owner with this phone already exists.',
+          );
         }
 
-        throw new ConflictException('An owner with this email or phone already exists.');
+        throw new ConflictException(
+          'An owner with this email or phone already exists.',
+        );
       }
     }
 

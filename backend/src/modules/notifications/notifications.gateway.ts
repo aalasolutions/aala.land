@@ -12,7 +12,9 @@ import { Repository } from 'typeorm';
 import { User } from '../users/entities/user.entity';
 
 const websocketCorsOrigins = process.env.CORS_ORIGIN
-  ? process.env.CORS_ORIGIN.split(',').map((origin) => origin.trim()).filter(Boolean)
+  ? process.env.CORS_ORIGIN.split(',')
+      .map((origin) => origin.trim())
+      .filter(Boolean)
   : ['http://localhost:4200'];
 
 @WebSocketGateway({
@@ -21,7 +23,9 @@ const websocketCorsOrigins = process.env.CORS_ORIGIN
     credentials: true,
   },
 })
-export class NotificationsGateway implements OnGatewayConnection, OnGatewayDisconnect {
+export class NotificationsGateway
+  implements OnGatewayConnection, OnGatewayDisconnect
+{
   @WebSocketServer()
   server: Server;
 
@@ -36,9 +40,16 @@ export class NotificationsGateway implements OnGatewayConnection, OnGatewayDisco
   async handleConnection(client: Socket) {
     try {
       const token = this.getSocketToken(client);
-      const payload = await this.jwtService.verifyAsync<{ sub: string; companyId: string }>(token);
+      const payload = await this.jwtService.verifyAsync<{
+        sub: string;
+        companyId: string;
+      }>(token);
       const user = await this.usersRepository.findOne({
-        where: { id: payload.sub, companyId: payload.companyId, isActive: true },
+        where: {
+          id: payload.sub,
+          companyId: payload.companyId,
+          isActive: true,
+        },
         select: {
           id: true,
           companyId: true,
@@ -52,10 +63,14 @@ export class NotificationsGateway implements OnGatewayConnection, OnGatewayDisco
 
       client.join(`user_${user.id}`);
       client.join(`company_${user.companyId}`);
-      this.logger.log(`Client connected: ${client.id}, joined user_${user.id} and company_${user.companyId}`);
+      this.logger.log(
+        `Client connected: ${client.id}, joined user_${user.id} and company_${user.companyId}`,
+      );
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
-      this.logger.warn(`Socket authentication failed for client ${client.id}: ${message}`);
+      this.logger.warn(
+        `Socket authentication failed for client ${client.id}: ${message}`,
+      );
       client.disconnect();
     }
   }

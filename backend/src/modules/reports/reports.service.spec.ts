@@ -3,7 +3,10 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ReportsService } from './reports.service';
 import { Lead, LeadStatus } from '../leads/entities/lead.entity';
-import { LeadActivity, ActivityType } from '../leads/entities/lead-activity.entity';
+import {
+  LeadActivity,
+  ActivityType,
+} from '../leads/entities/lead-activity.entity';
 import { Transaction } from '../financial/entities/transaction.entity';
 import { Unit } from '../properties/entities/unit.entity';
 import { Commission } from '../commissions/entities/commission.entity';
@@ -127,9 +130,7 @@ describe('ReportsService', () => {
 
   describe('getDashboardKpis', () => {
     it('returns correct flat KPIs', async () => {
-      leadRepo.count
-        .mockResolvedValueOnce(10)
-        .mockResolvedValueOnce(3);
+      leadRepo.count.mockResolvedValueOnce(10).mockResolvedValueOnce(3);
 
       const txnQb = createMockQueryBuilder({ total: '15000' });
       transactionRepo.createQueryBuilder.mockReturnValue(txnQb);
@@ -198,10 +199,20 @@ describe('ReportsService', () => {
 
       leadRepo.find
         .mockResolvedValueOnce([
-          { id: 'l1', firstName: 'Ahmed', lastName: 'Ali', createdAt: hours49Ago },
+          {
+            id: 'l1',
+            firstName: 'Ahmed',
+            lastName: 'Ali',
+            createdAt: hours49Ago,
+          },
         ])
         .mockResolvedValueOnce([
-          { id: 'l1', firstName: 'Ahmed', lastName: 'Ali', createdAt: hours49Ago },
+          {
+            id: 'l1',
+            firstName: 'Ahmed',
+            lastName: 'Ali',
+            createdAt: hours49Ago,
+          },
         ])
         .mockResolvedValueOnce([]);
 
@@ -221,7 +232,14 @@ describe('ReportsService', () => {
   describe('getActivityFeed', () => {
     it('returns recent activity feed', async () => {
       const mockLogs = [
-        { id: 'a1', action: 'CREATE', entityType: 'Lead', entityId: 'l1', userId: 'u1', createdAt: new Date() },
+        {
+          id: 'a1',
+          action: 'CREATE',
+          entityType: 'Lead',
+          entityId: 'l1',
+          userId: 'u1',
+          createdAt: new Date(),
+        },
       ];
       auditLogRepo.find.mockResolvedValue(mockLogs);
 
@@ -257,8 +275,18 @@ describe('ReportsService', () => {
   describe('getBottlenecks', () => {
     it('returns bottleneck data sorted by avgDays descending', async () => {
       const leadQb = createMockQueryBuilder([
-        { stage: LeadStatus.NEGOTIATING, avgDays: '8.5', count: 3, slowestLeadDays: '14.2' },
-        { stage: LeadStatus.CONTACTED, avgDays: '2.1', count: 5, slowestLeadDays: '5.0' },
+        {
+          stage: LeadStatus.NEGOTIATING,
+          avgDays: '8.5',
+          count: 3,
+          slowestLeadDays: '14.2',
+        },
+        {
+          stage: LeadStatus.CONTACTED,
+          avgDays: '2.1',
+          count: 5,
+          slowestLeadDays: '5.0',
+        },
       ]);
       leadRepo.createQueryBuilder.mockReturnValue(leadQb);
 
@@ -286,8 +314,16 @@ describe('ReportsService', () => {
   describe('getResponseTimeMetrics', () => {
     it('returns response time per agent', async () => {
       const activityQb = createMockQueryBuilder([
-        { agentId: 'agent-1', totalLeadsHandled: 5, avgResponseMinutes: '120.5' },
-        { agentId: 'agent-2', totalLeadsHandled: 3, avgResponseMinutes: '45.0' },
+        {
+          agentId: 'agent-1',
+          totalLeadsHandled: 5,
+          avgResponseMinutes: '120.5',
+        },
+        {
+          agentId: 'agent-2',
+          totalLeadsHandled: 3,
+          avgResponseMinutes: '45.0',
+        },
       ]);
       activityRepo.createQueryBuilder.mockReturnValue(activityQb);
 

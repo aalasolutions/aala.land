@@ -6,7 +6,7 @@ export type BillingCurrency = (typeof BILLING_CURRENCIES)[number];
 
 /** Type guard for a supported billing currency. */
 export function isBillingCurrency(value: string): value is BillingCurrency {
-    return (BILLING_CURRENCIES as readonly string[]).includes(value);
+  return (BILLING_CURRENCIES as readonly string[]).includes(value);
 }
 
 /**
@@ -15,13 +15,18 @@ export function isBillingCurrency(value: string): value is BillingCurrency {
  * unpinned (legacy / pre-subscription). Read as
  * `company.billingCurrency ?? resolveBillingCurrency(company.defaultRegionCode)`.
  */
-export function resolveBillingCurrency(defaultRegionCode: string | null | undefined): string {
-    if (!defaultRegionCode) return 'usd';
-    const region = getRegionByCode(defaultRegionCode);
-    if (!region) return 'usd';
-    switch (region.country) {
-        case 'AE': return 'aed';
-        case 'SA': return 'sar';
-        default:   return 'usd';
-    }
+export function resolveBillingCurrency(
+  defaultRegionCode: string | null | undefined,
+): string {
+  if (!defaultRegionCode) return 'usd';
+  const region = getRegionByCode(defaultRegionCode);
+  if (!region) return 'usd';
+  switch (region.country) {
+    case 'AE':
+      return 'aed';
+    case 'SA':
+      return 'sar';
+    default:
+      return 'usd';
+  }
 }

@@ -1,11 +1,13 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
 export class PointLeadPropertyToLocalities1774000000023 implements MigrationInterface {
-    name = 'PointLeadPropertyToLocalities1774000000023';
+  name = 'PointLeadPropertyToLocalities1774000000023';
 
-    public async up(queryRunner: QueryRunner): Promise<void> {
-        await queryRunner.query(`ALTER TABLE "leads" DROP CONSTRAINT IF EXISTS "fk_leads_property"`);
-        await queryRunner.query(`
+  public async up(queryRunner: QueryRunner): Promise<void> {
+    await queryRunner.query(
+      `ALTER TABLE "leads" DROP CONSTRAINT IF EXISTS "fk_leads_property"`,
+    );
+    await queryRunner.query(`
             WITH locality_matches AS (
                 SELECT
                     pa.id AS property_area_id,
@@ -25,7 +27,7 @@ export class PointLeadPropertyToLocalities1774000000023 implements MigrationInte
               AND ld.company_id = locality_matches.company_id
               AND locality_matches.locality_id IS NOT NULL
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             UPDATE "leads" ld
             SET "property_id" = NULL
             WHERE ld.property_id IS NOT NULL
@@ -35,17 +37,21 @@ export class PointLeadPropertyToLocalities1774000000023 implements MigrationInte
                 WHERE l.id = ld.property_id
               )
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             ALTER TABLE "leads"
             ADD CONSTRAINT "fk_leads_property"
             FOREIGN KEY ("property_id") REFERENCES "localities"("id") NOT VALID
         `);
-        await queryRunner.query(`ALTER TABLE "leads" VALIDATE CONSTRAINT "fk_leads_property"`);
-    }
+    await queryRunner.query(
+      `ALTER TABLE "leads" VALIDATE CONSTRAINT "fk_leads_property"`,
+    );
+  }
 
-    public async down(queryRunner: QueryRunner): Promise<void> {
-        await queryRunner.query(`ALTER TABLE "leads" DROP CONSTRAINT IF EXISTS "fk_leads_property"`);
-        await queryRunner.query(`
+  public async down(queryRunner: QueryRunner): Promise<void> {
+    await queryRunner.query(
+      `ALTER TABLE "leads" DROP CONSTRAINT IF EXISTS "fk_leads_property"`,
+    );
+    await queryRunner.query(`
             WITH property_area_matches AS (
                 SELECT
                     l.id AS locality_id,
@@ -66,7 +72,7 @@ export class PointLeadPropertyToLocalities1774000000023 implements MigrationInte
               AND ld.company_id = property_area_matches.company_id
               AND property_area_matches.property_area_id IS NOT NULL
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             UPDATE "leads" ld
             SET "property_id" = NULL
             WHERE ld.property_id IS NOT NULL
@@ -76,11 +82,13 @@ export class PointLeadPropertyToLocalities1774000000023 implements MigrationInte
                 WHERE pa.id = ld.property_id
               )
         `);
-        await queryRunner.query(`
+    await queryRunner.query(`
             ALTER TABLE "leads"
             ADD CONSTRAINT "fk_leads_property"
             FOREIGN KEY ("property_id") REFERENCES "property_areas"("id") NOT VALID
         `);
-        await queryRunner.query(`ALTER TABLE "leads" VALIDATE CONSTRAINT "fk_leads_property"`);
-    }
+    await queryRunner.query(
+      `ALTER TABLE "leads" VALIDATE CONSTRAINT "fk_leads_property"`,
+    );
+  }
 }

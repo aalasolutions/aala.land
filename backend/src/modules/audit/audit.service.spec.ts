@@ -88,12 +88,17 @@ describe('AuditService', () => {
         getManyAndCount: jest.fn().mockResolvedValue([[mockAuditLog], 1]),
       };
 
-      mockRepository.createQueryBuilder.mockReturnValue(mockQueryBuilder as any);
+      mockRepository.createQueryBuilder.mockReturnValue(
+        mockQueryBuilder as any,
+      );
 
-      const result = await service.findAll('123e4567-e89b-12d3-a456-426614174001', {
-        page: 1,
-        limit: 20,
-      });
+      const result = await service.findAll(
+        '123e4567-e89b-12d3-a456-426614174001',
+        {
+          page: 1,
+          limit: 20,
+        },
+      );
 
       expect(result).toEqual({
         data: [mockAuditLog],
@@ -101,10 +106,15 @@ describe('AuditService', () => {
         page: 1,
         limit: 20,
       });
-      expect(mockRepository.createQueryBuilder).toHaveBeenCalledWith('auditLog');
-      expect(mockQueryBuilder.where).toHaveBeenCalledWith('auditLog.companyId = :companyId', {
-        companyId: '123e4567-e89b-12d3-a456-426614174001',
-      });
+      expect(mockRepository.createQueryBuilder).toHaveBeenCalledWith(
+        'auditLog',
+      );
+      expect(mockQueryBuilder.where).toHaveBeenCalledWith(
+        'auditLog.companyId = :companyId',
+        {
+          companyId: '123e4567-e89b-12d3-a456-426614174001',
+        },
+      );
     });
 
     it('should filter by action when provided', async () => {
@@ -118,7 +128,9 @@ describe('AuditService', () => {
         getManyAndCount: jest.fn().mockResolvedValue([[mockAuditLog], 1]),
       };
 
-      mockRepository.createQueryBuilder.mockReturnValue(mockQueryBuilder as any);
+      mockRepository.createQueryBuilder.mockReturnValue(
+        mockQueryBuilder as any,
+      );
 
       await service.findAll('123e4567-e89b-12d3-a456-426614174001', {
         page: 1,
@@ -126,9 +138,12 @@ describe('AuditService', () => {
         action: AuditAction.CREATE,
       });
 
-      expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith('auditLog.action = :action', {
-        action: AuditAction.CREATE,
-      });
+      expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
+        'auditLog.action = :action',
+        {
+          action: AuditAction.CREATE,
+        },
+      );
     });
 
     it('should filter by entityType when provided', async () => {
@@ -142,7 +157,9 @@ describe('AuditService', () => {
         getManyAndCount: jest.fn().mockResolvedValue([[mockAuditLog], 1]),
       };
 
-      mockRepository.createQueryBuilder.mockReturnValue(mockQueryBuilder as any);
+      mockRepository.createQueryBuilder.mockReturnValue(
+        mockQueryBuilder as any,
+      );
 
       await service.findAll('123e4567-e89b-12d3-a456-426614174001', {
         page: 1,
@@ -150,9 +167,12 @@ describe('AuditService', () => {
         entityType: 'lead',
       });
 
-      expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith('auditLog.entityType = :entityType', {
-        entityType: 'lead',
-      });
+      expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
+        'auditLog.entityType = :entityType',
+        {
+          entityType: 'lead',
+        },
+      );
     });
 
     it('should filter by entityId when provided', async () => {
@@ -166,7 +186,9 @@ describe('AuditService', () => {
         getManyAndCount: jest.fn().mockResolvedValue([[mockAuditLog], 1]),
       };
 
-      mockRepository.createQueryBuilder.mockReturnValue(mockQueryBuilder as any);
+      mockRepository.createQueryBuilder.mockReturnValue(
+        mockQueryBuilder as any,
+      );
 
       await service.findAll('123e4567-e89b-12d3-a456-426614174001', {
         page: 1,
@@ -174,9 +196,12 @@ describe('AuditService', () => {
         entityId: '123e4567-e89b-12d3-a456-426614174003',
       });
 
-      expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith('auditLog.entityId = :entityId', {
-        entityId: '123e4567-e89b-12d3-a456-426614174003',
-      });
+      expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
+        'auditLog.entityId = :entityId',
+        {
+          entityId: '123e4567-e89b-12d3-a456-426614174003',
+        },
+      );
     });
 
     it('should filter by userId when provided', async () => {
@@ -190,7 +215,9 @@ describe('AuditService', () => {
         getManyAndCount: jest.fn().mockResolvedValue([[mockAuditLog], 1]),
       };
 
-      mockRepository.createQueryBuilder.mockReturnValue(mockQueryBuilder as any);
+      mockRepository.createQueryBuilder.mockReturnValue(
+        mockQueryBuilder as any,
+      );
 
       await service.findAll('123e4567-e89b-12d3-a456-426614174001', {
         page: 1,
@@ -198,9 +225,12 @@ describe('AuditService', () => {
         userId: '123e4567-e89b-12d3-a456-426614174002',
       });
 
-      expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith('auditLog.userId = :userId', {
-        userId: '123e4567-e89b-12d3-a456-426614174002',
-      });
+      expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
+        'auditLog.userId = :userId',
+        {
+          userId: '123e4567-e89b-12d3-a456-426614174002',
+        },
+      );
     });
   });
 
@@ -208,11 +238,17 @@ describe('AuditService', () => {
     it('should return an audit log by ID', async () => {
       mockRepository.findOne.mockResolvedValue(mockAuditLog);
 
-      const result = await service.findOne('123e4567-e89b-12d3-a456-426614174000', '123e4567-e89b-12d3-a456-426614174001');
+      const result = await service.findOne(
+        '123e4567-e89b-12d3-a456-426614174000',
+        '123e4567-e89b-12d3-a456-426614174001',
+      );
 
       expect(result).toEqual(mockAuditLog);
       expect(mockRepository.findOne).toHaveBeenCalledWith({
-        where: { id: '123e4567-e89b-12d3-a456-426614174000', companyId: '123e4567-e89b-12d3-a456-426614174001' },
+        where: {
+          id: '123e4567-e89b-12d3-a456-426614174000',
+          companyId: '123e4567-e89b-12d3-a456-426614174001',
+        },
         relations: ['user', 'company'],
       });
     });
@@ -221,7 +257,10 @@ describe('AuditService', () => {
       mockRepository.findOne.mockResolvedValue(null);
 
       await expect(
-        service.findOne('non-existent-id', '123e4567-e89b-12d3-a456-426614174001'),
+        service.findOne(
+          'non-existent-id',
+          '123e4567-e89b-12d3-a456-426614174001',
+        ),
       ).rejects.toThrow(NotFoundException);
     });
 
@@ -229,7 +268,10 @@ describe('AuditService', () => {
       mockRepository.findOne.mockResolvedValue(null);
 
       await expect(
-        service.findOne('123e4567-e89b-12d3-a456-426614174000', 'different-company-id'),
+        service.findOne(
+          '123e4567-e89b-12d3-a456-426614174000',
+          'different-company-id',
+        ),
       ).rejects.toThrow(NotFoundException);
     });
   });

@@ -152,7 +152,8 @@
           {{/if}}
           {{#if this.purchasedCurrency}}
             <p class="font-sm text-muted" data-test-billed-currency>
-              Billed in {{this.purchasedCurrency}}, locked to your account.
+              Billed in
+              {{this.purchasedCurrency}}, locked to your account.
             </p>
           {{/if}}
         </div>
@@ -251,9 +252,10 @@
                 {{#each this.billingHistory as |record|}}
                   <tr data-test-billing-history-row>
                     <td>{{format-date record.occurredAt}}</td>
-                    <td
-                      class="font-bold"
-                    >{{format-money record.amount record.currency}}</td>
+                    <td class="font-bold">{{format-money
+                        record.amount
+                        record.currency
+                      }}</td>
                     <td>
                       {{#if (eq record.type "payment_succeeded")}}
                         <span
@@ -298,10 +300,8 @@
             @onNext={{this.billingHistoryNext}}
           />
         {{else}}
-          <p
-            class="text-muted"
-            data-test-billing-history-empty
-          >No payments yet. Invoices appear here after your first charge.</p>
+          <p class="text-muted" data-test-billing-history-empty>No payments yet.
+            Invoices appear here after your first charge.</p>
         {{/if}}
       </div>
     {{/if}}

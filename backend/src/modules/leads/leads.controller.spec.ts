@@ -2,7 +2,11 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { LeadsController } from './leads.controller';
 import { LeadsService } from './leads.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { LeadStatus, LeadTemperature, LeadSource } from './entities/lead.entity';
+import {
+  LeadStatus,
+  LeadTemperature,
+  LeadSource,
+} from './entities/lead.entity';
 import { ActivityType } from './entities/lead-activity.entity';
 import { Role } from '@shared/enums/roles.enum';
 
@@ -11,7 +15,14 @@ describe('LeadsController', () => {
   let service: jest.Mocked<LeadsService>;
 
   const companyId = 'company-uuid-1';
-  const mockReq = { user: { companyId, userId: 'user-uuid-1', email: 'admin@test.com', role: Role.COMPANY_ADMIN } };
+  const mockReq = {
+    user: {
+      companyId,
+      userId: 'user-uuid-1',
+      email: 'admin@test.com',
+      role: Role.COMPANY_ADMIN,
+    },
+  };
 
   const mockLead = {
     id: 'lead-uuid-1',
@@ -70,7 +81,11 @@ describe('LeadsController', () => {
       const dto = { firstName: 'Ahmed' };
       const result = await controller.create(dto as any, mockReq);
 
-      expect(service.create).toHaveBeenCalledWith(companyId, dto, 'user-uuid-1');
+      expect(service.create).toHaveBeenCalledWith(
+        companyId,
+        dto,
+        'user-uuid-1',
+      );
       expect(result).toEqual(mockLead);
     });
   });
@@ -101,40 +116,86 @@ describe('LeadsController', () => {
       service.update.mockResolvedValue({ ...mockLead, score: 75 } as any);
 
       const dto = { score: 75 };
-      const result = await controller.update('lead-uuid-1', dto as any, mockReq);
+      const result = await controller.update(
+        'lead-uuid-1',
+        dto as any,
+        mockReq,
+      );
 
-      expect(service.update).toHaveBeenCalledWith('lead-uuid-1', companyId, dto, 'user-uuid-1', Role.COMPANY_ADMIN);
+      expect(service.update).toHaveBeenCalledWith(
+        'lead-uuid-1',
+        companyId,
+        dto,
+        'user-uuid-1',
+        Role.COMPANY_ADMIN,
+      );
       expect(result).toEqual({ ...mockLead, score: 75 });
     });
   });
 
   describe('assign', () => {
     it('assigns lead to agent without reason', async () => {
-      service.assign.mockResolvedValue({ ...mockLead, assignedTo: 'agent-uuid-1' } as any);
+      service.assign.mockResolvedValue({
+        ...mockLead,
+        assignedTo: 'agent-uuid-1',
+      } as any);
 
       const dto = { agentId: 'agent-uuid-1' };
-      const result = await controller.assign('lead-uuid-1', dto as any, mockReq);
+      const result = await controller.assign(
+        'lead-uuid-1',
+        dto as any,
+        mockReq,
+      );
 
-      expect(service.assign).toHaveBeenCalledWith('lead-uuid-1', companyId, 'agent-uuid-1', 'user-uuid-1', undefined);
+      expect(service.assign).toHaveBeenCalledWith(
+        'lead-uuid-1',
+        companyId,
+        'agent-uuid-1',
+        'user-uuid-1',
+        undefined,
+      );
     });
 
     it('assigns lead to agent with transfer reason', async () => {
-      service.assign.mockResolvedValue({ ...mockLead, assignedTo: 'agent-uuid-1' } as any);
+      service.assign.mockResolvedValue({
+        ...mockLead,
+        assignedTo: 'agent-uuid-1',
+      } as any);
 
-      const dto = { agentId: 'agent-uuid-1', reason: 'Client prefers Arabic speaker' };
-      const result = await controller.assign('lead-uuid-1', dto as any, mockReq);
+      const dto = {
+        agentId: 'agent-uuid-1',
+        reason: 'Client prefers Arabic speaker',
+      };
+      const result = await controller.assign(
+        'lead-uuid-1',
+        dto as any,
+        mockReq,
+      );
 
-      expect(service.assign).toHaveBeenCalledWith('lead-uuid-1', companyId, 'agent-uuid-1', 'user-uuid-1', 'Client prefers Arabic speaker');
+      expect(service.assign).toHaveBeenCalledWith(
+        'lead-uuid-1',
+        companyId,
+        'agent-uuid-1',
+        'user-uuid-1',
+        'Client prefers Arabic speaker',
+      );
     });
   });
 
   describe('convert', () => {
     it('converts lead to WON', async () => {
-      service.convert.mockResolvedValue({ ...mockLead, status: LeadStatus.WON } as any);
+      service.convert.mockResolvedValue({
+        ...mockLead,
+        status: LeadStatus.WON,
+      } as any);
 
       await controller.convert('lead-uuid-1', mockReq);
 
-      expect(service.convert).toHaveBeenCalledWith('lead-uuid-1', companyId, 'user-uuid-1');
+      expect(service.convert).toHaveBeenCalledWith(
+        'lead-uuid-1',
+        companyId,
+        'user-uuid-1',
+      );
     });
   });
 
@@ -145,7 +206,12 @@ describe('LeadsController', () => {
       const dto = { type: ActivityType.NOTE, description: 'First contact' };
       const result = await controller.addActivity('lead-uuid-1', dto, mockReq);
 
-      expect(service.addActivity).toHaveBeenCalledWith('lead-uuid-1', companyId, dto, 'user-uuid-1');
+      expect(service.addActivity).toHaveBeenCalledWith(
+        'lead-uuid-1',
+        companyId,
+        dto,
+        'user-uuid-1',
+      );
     });
   });
 
@@ -155,7 +221,10 @@ describe('LeadsController', () => {
 
       const result = await controller.findActivities('lead-uuid-1', mockReq);
 
-      expect(service.findActivities).toHaveBeenCalledWith('lead-uuid-1', companyId);
+      expect(service.findActivities).toHaveBeenCalledWith(
+        'lead-uuid-1',
+        companyId,
+      );
     });
   });
 });

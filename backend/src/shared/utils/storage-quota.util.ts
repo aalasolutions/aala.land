@@ -72,7 +72,10 @@ export async function reserveStorage(
     .execute();
 
   if (!result.affected) {
-    const usedGB  = (Number(company.storageUsedBytes) / (1024 * 1024 * 1024)).toFixed(2);
+    const usedGB = (
+      Number(company.storageUsedBytes) /
+      (1024 * 1024 * 1024)
+    ).toFixed(2);
     const quotaGB = (quotaBytes / (1024 * 1024 * 1024)).toFixed(2);
     throw new HttpException(
       {

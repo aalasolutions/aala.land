@@ -42,7 +42,9 @@ export class AddLeadPipelineAnalytics1773500000001 implements MigrationInterface
       WHERE table_name = 'leads' AND column_name = 'previous_agent'
     `);
     if (hasPreviousAgent.length > 0) {
-      await queryRunner.query(`ALTER TABLE "leads" DROP COLUMN "previous_agent"`);
+      await queryRunner.query(
+        `ALTER TABLE "leads" DROP COLUMN "previous_agent"`,
+      );
     }
 
     const hasTransferReason = await queryRunner.query(`
@@ -50,7 +52,9 @@ export class AddLeadPipelineAnalytics1773500000001 implements MigrationInterface
       WHERE table_name = 'leads' AND column_name = 'transfer_reason'
     `);
     if (hasTransferReason.length > 0) {
-      await queryRunner.query(`ALTER TABLE "leads" DROP COLUMN "transfer_reason"`);
+      await queryRunner.query(
+        `ALTER TABLE "leads" DROP COLUMN "transfer_reason"`,
+      );
     }
 
     const hasStageEnteredAt = await queryRunner.query(`
@@ -58,7 +62,9 @@ export class AddLeadPipelineAnalytics1773500000001 implements MigrationInterface
       WHERE table_name = 'leads' AND column_name = 'stage_entered_at'
     `);
     if (hasStageEnteredAt.length > 0) {
-      await queryRunner.query(`ALTER TABLE "leads" DROP COLUMN "stage_entered_at"`);
+      await queryRunner.query(
+        `ALTER TABLE "leads" DROP COLUMN "stage_entered_at"`,
+      );
     }
   }
 }

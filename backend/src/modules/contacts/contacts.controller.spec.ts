@@ -9,7 +9,14 @@ describe('ContactsController', () => {
   let service: jest.Mocked<ContactsService>;
 
   const companyId = 'company-uuid-1';
-  const mockReq = { user: { companyId, userId: 'user-uuid-1', email: 'agent@test.com', role: 'company_admin' } };
+  const mockReq = {
+    user: {
+      companyId,
+      userId: 'user-uuid-1',
+      email: 'agent@test.com',
+      role: 'company_admin',
+    },
+  };
 
   const mockContact = {
     id: 'contact-uuid-1',
@@ -56,10 +63,18 @@ describe('ContactsController', () => {
     it('creates contact scoped to company with createdBy', async () => {
       service.create.mockResolvedValue(mockContact as any);
 
-      const dto = { firstName: 'Ahmed', lastName: 'Al-Rashid', email: 'ahmed@example.com' };
+      const dto = {
+        firstName: 'Ahmed',
+        lastName: 'Al-Rashid',
+        email: 'ahmed@example.com',
+      };
       const result = await controller.create(dto as any, mockReq);
 
-      expect(service.create).toHaveBeenCalledWith(companyId, dto, 'user-uuid-1');
+      expect(service.create).toHaveBeenCalledWith(
+        companyId,
+        dto,
+        'user-uuid-1',
+      );
       expect(result).toEqual(mockContact);
     });
   });
@@ -99,9 +114,15 @@ describe('ContactsController', () => {
       const updated = { ...mockContact, firstName: 'Khalid' };
       service.update.mockResolvedValue(updated as any);
 
-      const result = await controller.update('contact-uuid-1', { firstName: 'Khalid' }, mockReq);
+      const result = await controller.update(
+        'contact-uuid-1',
+        { firstName: 'Khalid' },
+        mockReq,
+      );
 
-      expect(service.update).toHaveBeenCalledWith('contact-uuid-1', companyId, { firstName: 'Khalid' });
+      expect(service.update).toHaveBeenCalledWith('contact-uuid-1', companyId, {
+        firstName: 'Khalid',
+      });
       expect(result.firstName).toBe('Khalid');
     });
   });

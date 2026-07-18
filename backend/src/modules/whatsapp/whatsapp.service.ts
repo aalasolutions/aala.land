@@ -2,7 +2,10 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { existsSync, readFileSync, rmSync, writeFileSync } from 'fs';
 import { join } from 'path';
-import { BaileysManagerService, BaileysInstance } from './baileys-manager.service';
+import {
+  BaileysManagerService,
+  BaileysInstance,
+} from './baileys-manager.service';
 import { MessageStoreService } from './message-store.service';
 import { WhatsappAiService } from './whatsapp-ai.service';
 import { WhatsappGateway } from './whatsapp.gateway';
@@ -13,7 +16,8 @@ export class WhatsappService implements OnModuleInit {
   private readonly logger = new Logger(WhatsappService.name);
   private wiredUsers = new Set<string>();
   private readonly persistedCompanyIds = new Map<string, string>();
-  private readonly dataDir = process.env.WHATSAPP_DATA_DIR ?? join(process.cwd(), 'data', 'whatsapp');
+  private readonly dataDir =
+    process.env.WHATSAPP_DATA_DIR ?? join(process.cwd(), 'data', 'whatsapp');
 
   constructor(
     private readonly manager: BaileysManagerService,
@@ -38,7 +42,10 @@ export class WhatsappService implements OnModuleInit {
 
   // ── Instance wiring ────────────────────────────────────────────────────
 
-  private async ensureInstance(userId: string, companyId: string): Promise<BaileysInstance> {
+  private async ensureInstance(
+    userId: string,
+    companyId: string,
+  ): Promise<BaileysInstance> {
     const inst = await this.manager.getOrCreate(userId);
     this.persistCompanyId(userId, companyId);
     if (!this.wiredUsers.has(userId)) {
@@ -52,18 +59,30 @@ export class WhatsappService implements OnModuleInit {
     if (this.persistedCompanyIds.get(userId) === companyId) return;
     this.persistedCompanyIds.set(userId, companyId);
     try {
-      writeFileSync(join(this.dataDir, 'sessions', userId, 'company_id'), companyId, 'utf8');
-    } catch { /* non-fatal */ }
+      writeFileSync(
+        join(this.dataDir, 'sessions', userId, 'company_id'),
+        companyId,
+        'utf8',
+      );
+    } catch {
+      /* non-fatal */
+    }
   }
 
   private readPersistedCompanyId(userId: string): string | null {
     try {
       const p = join(this.dataDir, 'sessions', userId, 'company_id');
       return existsSync(p) ? readFileSync(p, 'utf8').trim() : null;
-    } catch { return null; }
+    } catch {
+      return null;
+    }
   }
 
-  private wireInstance(userId: string, companyId: string, inst: BaileysInstance): void {
+  private wireInstance(
+    userId: string,
+    companyId: string,
+    inst: BaileysInstance,
+  ): void {
     void this.ai.loadEnabledState(userId, companyId);
     // Track message IDs sent by AI so when Baileys re-emits them as fromMe events
     // we don't mistakenly treat them as a human reply and trigger the silence window.
@@ -75,7 +94,8 @@ export class WhatsappService implements OnModuleInit {
     // exactly N echoes: two identical sends must not collapse to one entry (which would
     // let the second echo be misread as a human reply and falsely mute the AI).
     const aiSentFingerprints = new Map<string, number>();
-    const fingerprint = (chatId: string, body: string) => `${chatId} ${body ?? ''}`;
+    const fingerprint = (chatId: string, body: string) =>
+      `${chatId} ${body ?? ''}`;
     // Increment the fingerprint counter for one AI send.
     const addFingerprint = (fp: string) => {
       aiSentFingerprints.set(fp, (aiSentFingerprints.get(fp) ?? 0) + 1);
@@ -89,11 +109,11 @@ export class WhatsappService implements OnModuleInit {
       else aiSentFingerprints.set(fp, count - 1);
       return true;
     };
-    inst.emitter.on('status', data => {
+    inst.emitter.on('status', (data) => {
       this.gateway.emitStatus(userId, data);
       if (!data.hasCredentials) this.store.clearAll(userId);
     });
-    inst.emitter.on('qr',     data => this.gateway.emitQR(userId, data));
+    inst.emitter.on('qr', (data) => this.gateway.emitQR(userId, data));
     inst.emitter.on('message', (msg: WaMessage) => {
       this.store.addMessage(userId, msg);
       this.gateway.emitMessage(userId, msg);
@@ -110,36 +130,51 @@ export class WhatsappService implements OnModuleInit {
         if (!isAiEcho) this.ai.recordHumanReply(userId, msg.chatId);
       }
       if (!msg.fromMe) {
-        this.ai.handleIncomingMessage(msg, companyId, userId, async (chatId, message) => {
-          // Register the echo fingerprint BEFORE sending so the fromMe re-emission
-          // (which can arrive before or without a messageId) is always recognised.
-          const fp = fingerprint(chatId, message);
-          addFingerprint(fp);
-          const result = await inst.sendMessage(chatId, message);
-          if (result.messageId) {
-            aiSentIds.add(result.messageId);
-            setTimeout(() => aiSentIds.delete(result.messageId!), 60_000);
-          }
-          const aiMsg: WaMessage = {
-            id: result.messageId ?? `ai-${Date.now()}`,
-            chatId,
-            senderId: inst.getStatus().me?.id ?? 'me',
-            senderName: 'You',
-            chatName: msg.chatName,
-            isGroup: chatId.endsWith('@g.us'),
-            body: message,
-            hasMedia: false, mediaType: '', mediaUrls: [],
-            mentionedIds: [], quotedParticipant: '',
-            fromMe: true, aiGenerated: true,
-            timestamp: Math.floor(Date.now() / 1000),
-          };
-          this.store.addMessage(userId, aiMsg);
-          this.gateway.emitMessage(userId, aiMsg);
-          void this.ai.getWeeklyCount(companyId).then(usage => {
-            if (usage) this.gateway.emitAi(userId, { weeklyUsed: usage.used });
-          }).catch(() => {});
-          return result;
-        }).catch(err => this.logger.error('AI handler error', err));
+        this.ai
+          .handleIncomingMessage(
+            msg,
+            companyId,
+            userId,
+            async (chatId, message) => {
+              // Register the echo fingerprint BEFORE sending so the fromMe re-emission
+              // (which can arrive before or without a messageId) is always recognised.
+              const fp = fingerprint(chatId, message);
+              addFingerprint(fp);
+              const result = await inst.sendMessage(chatId, message);
+              if (result.messageId) {
+                aiSentIds.add(result.messageId);
+                setTimeout(() => aiSentIds.delete(result.messageId!), 60_000);
+              }
+              const aiMsg: WaMessage = {
+                id: result.messageId ?? `ai-${Date.now()}`,
+                chatId,
+                senderId: inst.getStatus().me?.id ?? 'me',
+                senderName: 'You',
+                chatName: msg.chatName,
+                isGroup: chatId.endsWith('@g.us'),
+                body: message,
+                hasMedia: false,
+                mediaType: '',
+                mediaUrls: [],
+                mentionedIds: [],
+                quotedParticipant: '',
+                fromMe: true,
+                aiGenerated: true,
+                timestamp: Math.floor(Date.now() / 1000),
+              };
+              this.store.addMessage(userId, aiMsg);
+              this.gateway.emitMessage(userId, aiMsg);
+              void this.ai
+                .getWeeklyCount(companyId)
+                .then((usage) => {
+                  if (usage)
+                    this.gateway.emitAi(userId, { weeklyUsed: usage.used });
+                })
+                .catch(() => {});
+              return result;
+            },
+          )
+          .catch((err) => this.logger.error('AI handler error', err));
       }
     });
   }
@@ -151,20 +186,35 @@ export class WhatsappService implements OnModuleInit {
     return inst.getStatus();
   }
 
-  async getQR(userId: string, companyId: string): Promise<{ qr: string | null; hasCredentials: boolean; connection: string }> {
+  async getQR(
+    userId: string,
+    companyId: string,
+  ): Promise<{
+    qr: string | null;
+    hasCredentials: boolean;
+    connection: string;
+  }> {
     const inst = await this.ensureInstance(userId, companyId);
     const s = inst.getStatus();
-    return { qr: s.qr, hasCredentials: s.hasCredentials, connection: s.connection };
+    return {
+      qr: s.qr,
+      hasCredentials: s.hasCredentials,
+      connection: s.connection,
+    };
   }
 
-  async logout(userId: string, companyId: string): Promise<{ success: boolean }> {
+  async logout(
+    userId: string,
+    companyId: string,
+  ): Promise<{ success: boolean }> {
     const inst = this.manager.get(userId);
     if (inst) {
       await inst.logout();
       inst.emitter.removeAllListeners();
     } else {
       const sessionDir = join(this.dataDir, 'sessions', userId);
-      if (existsSync(sessionDir)) rmSync(sessionDir, { recursive: true, force: true });
+      if (existsSync(sessionDir))
+        rmSync(sessionDir, { recursive: true, force: true });
     }
     this.store.clearAll(userId);
     this.ai.clearUserState(userId);
@@ -189,7 +239,13 @@ export class WhatsappService implements OnModuleInit {
     return this.store.getMessagesForChat(userId, chatId);
   }
 
-  async send(userId: string, companyId: string, chatId: string, message: string, replyTo?: string) {
+  async send(
+    userId: string,
+    companyId: string,
+    chatId: string,
+    message: string,
+    replyTo?: string,
+  ) {
     const inst = await this.ensureInstance(userId, companyId);
     const result = await inst.sendMessage(chatId, message, { replyTo });
     if (result.messageId) {
@@ -202,16 +258,26 @@ export class WhatsappService implements OnModuleInit {
         chatName: chatId.split('@')[0],
         isGroup: chatId.endsWith('@g.us'),
         body: message,
-        hasMedia: false, mediaType: '', mediaUrls: [],
-        mentionedIds: [], quotedParticipant: '',
-        fromMe: true, aiGenerated: false,
+        hasMedia: false,
+        mediaType: '',
+        mediaUrls: [],
+        mentionedIds: [],
+        quotedParticipant: '',
+        fromMe: true,
+        aiGenerated: false,
         timestamp: Math.floor(Date.now() / 1000),
       });
     }
     return result;
   }
 
-  async sendMedia(userId: string, companyId: string, chatId: string, filePath: string, opts: any) {
+  async sendMedia(
+    userId: string,
+    companyId: string,
+    chatId: string,
+    filePath: string,
+    opts: any,
+  ) {
     const inst = await this.ensureInstance(userId, companyId);
     return inst.sendMedia(chatId, filePath, opts);
   }
@@ -231,10 +297,18 @@ export class WhatsappService implements OnModuleInit {
     return this.ai.getHistoryFor(userId, chatId);
   }
 
-  async toggleAi(userId: string, companyId: string, enabled?: boolean): Promise<{ enabled: boolean }> {
-    const next = typeof enabled === 'boolean' ? enabled : !this.ai.isEnabled(userId);
+  async toggleAi(
+    userId: string,
+    companyId: string,
+    enabled?: boolean,
+  ): Promise<{ enabled: boolean }> {
+    const next =
+      typeof enabled === 'boolean' ? enabled : !this.ai.isEnabled(userId);
     await this.ai.persistEnabled(userId, companyId, next);
-    this.gateway.emitAi(userId, { enabled: next, keyConfigured: !!(process.env.OLLAMA_API_KEY) });
+    this.gateway.emitAi(userId, {
+      enabled: next,
+      keyConfigured: !!process.env.OLLAMA_API_KEY,
+    });
     return { enabled: next };
   }
 

@@ -16,4 +16,4 @@ import { UsersModule } from '../users/users.module';
   providers: [ChequesService],
   exports: [ChequesService],
 })
-export class ChequesModule { }
+export class ChequesModule {}

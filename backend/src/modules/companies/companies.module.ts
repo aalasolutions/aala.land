@@ -12,4 +12,4 @@ import { BillingModule } from '../billing/billing.module';
   providers: [CompaniesService],
   exports: [CompaniesService],
 })
-export class CompaniesModule { }
+export class CompaniesModule {}

@@ -29,7 +29,11 @@ export class BillingConcurrencyGuards1779500000042 implements MigrationInterface
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`DROP INDEX IF EXISTS "UQ_companies_billing_customer_id"`);
-    await queryRunner.query(`ALTER TABLE "companies" DROP COLUMN IF EXISTS "billing_last_event_at"`);
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS "UQ_companies_billing_customer_id"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "companies" DROP COLUMN IF EXISTS "billing_last_event_at"`,
+    );
   }
 }

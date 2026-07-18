@@ -41,12 +41,19 @@ describe('WhatsappService echo suppression', () => {
 
   beforeEach(() => {
     emitter = new EventEmitter();
-    sendMessage = jest.fn().mockResolvedValue({ success: true, messageId: 'ai-msg-1' });
+    sendMessage = jest
+      .fn()
+      .mockResolvedValue({ success: true, messageId: 'ai-msg-1' });
 
     const inst = {
       emitter,
       sendMessage,
-      getStatus: () => ({ connection: 'connected', hasCredentials: true, me: { id: 'me', name: 'Me' }, qr: null }),
+      getStatus: () => ({
+        connection: 'connected',
+        hasCredentials: true,
+        me: { id: 'me', name: 'Me' },
+        qr: null,
+      }),
     };
 
     manager = {
@@ -55,8 +62,19 @@ describe('WhatsappService echo suppression', () => {
       get: jest.fn().mockReturnValue(inst),
       remove: jest.fn(),
     };
-    store = { addMessage: jest.fn(), clearAll: jest.fn(), getChatList: jest.fn(), getAllMessages: jest.fn(), getMessagesForChat: jest.fn() };
-    gateway = { emitStatus: jest.fn(), emitQR: jest.fn(), emitMessage: jest.fn(), emitAi: jest.fn() };
+    store = {
+      addMessage: jest.fn(),
+      clearAll: jest.fn(),
+      getChatList: jest.fn(),
+      getAllMessages: jest.fn(),
+      getMessagesForChat: jest.fn(),
+    };
+    gateway = {
+      emitStatus: jest.fn(),
+      emitQR: jest.fn(),
+      emitMessage: jest.fn(),
+      emitAi: jest.fn(),
+    };
     ai = {
       loadEnabledState: jest.fn(),
       recordHumanReply: jest.fn(),
@@ -71,7 +89,10 @@ describe('WhatsappService echo suppression', () => {
 
   it('treats a genuine human fromMe message as a human reply', async () => {
     await wire();
-    emitter.emit('message', baseMsg({ fromMe: true, body: 'human typed this' }));
+    emitter.emit(
+      'message',
+      baseMsg({ fromMe: true, body: 'human typed this' }),
+    );
     expect(ai.recordHumanReply).toHaveBeenCalledWith('u1', 'c1');
   });
 
@@ -80,15 +101,20 @@ describe('WhatsappService echo suppression', () => {
 
     // AI sends a message (records id ai-msg-1 + fingerprint).
     let capturedSend: any;
-    ai.handleIncomingMessage.mockImplementation((_msg: any, _co: string, _u: string, send: any) => {
-      capturedSend = send;
-      return Promise.resolve();
-    });
+    ai.handleIncomingMessage.mockImplementation(
+      (_msg: any, _co: string, _u: string, send: any) => {
+        capturedSend = send;
+        return Promise.resolve();
+      },
+    );
     emitter.emit('message', baseMsg({ fromMe: false, body: 'question' }));
     await capturedSend('c1', 'ai answer');
 
     // Baileys re-emits the AI message as fromMe with the same id.
-    emitter.emit('message', baseMsg({ id: 'ai-msg-1', fromMe: true, body: 'ai answer' }));
+    emitter.emit(
+      'message',
+      baseMsg({ id: 'ai-msg-1', fromMe: true, body: 'ai answer' }),
+    );
     expect(ai.recordHumanReply).not.toHaveBeenCalled();
   });
 
@@ -98,15 +124,20 @@ describe('WhatsappService echo suppression', () => {
     await wire();
 
     let capturedSend: any;
-    ai.handleIncomingMessage.mockImplementation((_msg: any, _co: string, _u: string, send: any) => {
-      capturedSend = send;
-      return Promise.resolve();
-    });
+    ai.handleIncomingMessage.mockImplementation(
+      (_msg: any, _co: string, _u: string, send: any) => {
+        capturedSend = send;
+        return Promise.resolve();
+      },
+    );
     emitter.emit('message', baseMsg({ fromMe: false, body: 'question' }));
     await capturedSend('c1', 'ai answer no id');
 
     // Echo comes back with a DIFFERENT id (assigned late by Baileys) but same content.
-    emitter.emit('message', baseMsg({ id: 'late-id', fromMe: true, body: 'ai answer no id' }));
+    emitter.emit(
+      'message',
+      baseMsg({ id: 'late-id', fromMe: true, body: 'ai answer no id' }),
+    );
     expect(ai.recordHumanReply).not.toHaveBeenCalled();
   });
 
@@ -115,19 +146,27 @@ describe('WhatsappService echo suppression', () => {
     await wire();
 
     let capturedSend: any;
-    ai.handleIncomingMessage.mockImplementation((_msg: any, _co: string, _u: string, send: any) => {
-      capturedSend = send;
-      return Promise.resolve();
-    });
+    ai.handleIncomingMessage.mockImplementation(
+      (_msg: any, _co: string, _u: string, send: any) => {
+        capturedSend = send;
+        return Promise.resolve();
+      },
+    );
     emitter.emit('message', baseMsg({ fromMe: false, body: 'question' }));
     await capturedSend('c1', 'duplicate text');
 
     // First fromMe with that text = the AI echo, suppressed.
-    emitter.emit('message', baseMsg({ id: 'e1', fromMe: true, body: 'duplicate text' }));
+    emitter.emit(
+      'message',
+      baseMsg({ id: 'e1', fromMe: true, body: 'duplicate text' }),
+    );
     expect(ai.recordHumanReply).not.toHaveBeenCalled();
 
     // A later human message with the SAME text must be treated as a human reply.
-    emitter.emit('message', baseMsg({ id: 'e2', fromMe: true, body: 'duplicate text' }));
+    emitter.emit(
+      'message',
+      baseMsg({ id: 'e2', fromMe: true, body: 'duplicate text' }),
+    );
     expect(ai.recordHumanReply).toHaveBeenCalledWith('u1', 'c1');
   });
 
@@ -138,10 +177,12 @@ describe('WhatsappService echo suppression', () => {
     await wire();
 
     let capturedSend: any;
-    ai.handleIncomingMessage.mockImplementation((_msg: any, _co: string, _u: string, send: any) => {
-      capturedSend = send;
-      return Promise.resolve();
-    });
+    ai.handleIncomingMessage.mockImplementation(
+      (_msg: any, _co: string, _u: string, send: any) => {
+        capturedSend = send;
+        return Promise.resolve();
+      },
+    );
     emitter.emit('message', baseMsg({ fromMe: false, body: 'question' }));
 
     // AI sends the SAME canned line twice within the window (counter → 2).
@@ -149,12 +190,21 @@ describe('WhatsappService echo suppression', () => {
     await capturedSend('c1', 'Hello! How can I help?');
 
     // Two fromMe echoes of that identical line: BOTH are AI echoes, neither is a takeover.
-    emitter.emit('message', baseMsg({ id: 'echo-1', fromMe: true, body: 'Hello! How can I help?' }));
-    emitter.emit('message', baseMsg({ id: 'echo-2', fromMe: true, body: 'Hello! How can I help?' }));
+    emitter.emit(
+      'message',
+      baseMsg({ id: 'echo-1', fromMe: true, body: 'Hello! How can I help?' }),
+    );
+    emitter.emit(
+      'message',
+      baseMsg({ id: 'echo-2', fromMe: true, body: 'Hello! How can I help?' }),
+    );
     expect(ai.recordHumanReply).not.toHaveBeenCalled();
 
     // A THIRD identical fromMe (counter drained to 0) is a genuine human takeover.
-    emitter.emit('message', baseMsg({ id: 'echo-3', fromMe: true, body: 'Hello! How can I help?' }));
+    emitter.emit(
+      'message',
+      baseMsg({ id: 'echo-3', fromMe: true, body: 'Hello! How can I help?' }),
+    );
     expect(ai.recordHumanReply).toHaveBeenCalledTimes(1);
     expect(ai.recordHumanReply).toHaveBeenCalledWith('u1', 'c1');
   });
@@ -163,7 +213,10 @@ describe('WhatsappService echo suppression', () => {
     await wire();
     // A fromMe media re-emission with no text body must not crash the fingerprint build.
     expect(() =>
-      emitter.emit('message', baseMsg({ fromMe: true, body: undefined as any })),
+      emitter.emit(
+        'message',
+        baseMsg({ fromMe: true, body: undefined as any }),
+      ),
     ).not.toThrow();
     // With no matching AI send, an undefined-body human message is still a human reply.
     expect(ai.recordHumanReply).toHaveBeenCalledWith('u1', 'c1');

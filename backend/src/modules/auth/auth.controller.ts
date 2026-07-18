@@ -1,4 +1,15 @@
-import { Controller, Post, Body, UnauthorizedException, Get, UseGuards, Request, HttpCode, HttpStatus, Logger } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  UnauthorizedException,
+  Get,
+  UseGuards,
+  Request,
+  HttpCode,
+  HttpStatus,
+  Logger,
+} from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
@@ -20,118 +31,135 @@ import { AuthenticatedRequest } from '@shared/interfaces/authenticated-request.i
 @ApiTags('Authentication')
 @Controller('auth')
 export class AuthController {
-    private readonly logger = new Logger(AuthController.name);
+  private readonly logger = new Logger(AuthController.name);
 
-    constructor(
-        private readonly authService: AuthService,
-        private readonly impersonateService: ImpersonateService,
-        private readonly googleService: AuthGoogleService,
-    ) { }
+  constructor(
+    private readonly authService: AuthService,
+    private readonly impersonateService: ImpersonateService,
+    private readonly googleService: AuthGoogleService,
+  ) {}
 
-    // Auth endpoints get a stricter per-IP throttle than the global 100/min so
-    // credential stuffing, signup spam, and reset-email bombing are curbed. This
-    // is app-level (IP-based) so it still applies when the origin is hit directly.
-    @Post('register')
-    @Throttle({ default: { limit: 5, ttl: 60000 } })
-    @HttpCode(HttpStatus.CREATED)
-    @ApiOperation({ summary: 'Register a new company and admin user' })
-    async register(@Body() registerDto: RegisterDto) {
-        return this.authService.register(registerDto);
+  // Auth endpoints get a stricter per-IP throttle than the global 100/min so
+  // credential stuffing, signup spam, and reset-email bombing are curbed. This
+  // is app-level (IP-based) so it still applies when the origin is hit directly.
+  @Post('register')
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Register a new company and admin user' })
+  async register(@Body() registerDto: RegisterDto) {
+    return this.authService.register(registerDto);
+  }
+
+  @Post('login')
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Login with email and password' })
+  async login(@Body() loginDto: LoginDto) {
+    const user = await this.authService.validateUser(
+      loginDto.email,
+      loginDto.password,
+    );
+    if (!user) {
+      throw new UnauthorizedException('Invalid credentials');
     }
+    return this.authService.login(user);
+  }
 
-    @Post('login')
-    @Throttle({ default: { limit: 10, ttl: 60000 } })
-    @HttpCode(HttpStatus.OK)
-    @ApiOperation({ summary: 'Login with email and password' })
-    async login(@Body() loginDto: LoginDto) {
-        const user = await this.authService.validateUser(loginDto.email, loginDto.password);
-        if (!user) {
-            throw new UnauthorizedException('Invalid credentials');
-        }
-        return this.authService.login(user);
-    }
+  @Post('google')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Login with Google ID token for an existing account',
+  })
+  async googleLogin(@Body() dto: GoogleLoginDto) {
+    return this.googleService.googleLogin(dto.idToken);
+  }
 
-    @Post('google')
-    @HttpCode(HttpStatus.OK)
-    @ApiOperation({ summary: 'Login with Google ID token for an existing account' })
-    async googleLogin(@Body() dto: GoogleLoginDto) {
-        return this.googleService.googleLogin(dto.idToken);
-    }
+  @Post('google/signup')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({
+    summary: 'Sign up with Google and create a company admin account',
+  })
+  async googleSignup(@Body() dto: GoogleSignupDto) {
+    return this.googleService.googleSignup(
+      dto.idToken,
+      dto.companyName,
+      dto.regionCode,
+    );
+  }
 
-    @Post('google/signup')
-    @HttpCode(HttpStatus.CREATED)
-    @ApiOperation({ summary: 'Sign up with Google and create a company admin account' })
-    async googleSignup(@Body() dto: GoogleSignupDto) {
-        return this.googleService.googleSignup(
-            dto.idToken,
-            dto.companyName,
-            dto.regionCode,
-        );
-    }
+  @UseGuards(JwtAuthGuard)
+  @Post('google/link')
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Link Google account to current user' })
+  async linkGoogleAccount(
+    @Request() req: AuthenticatedRequest,
+    @Body() dto: GoogleLoginDto,
+  ) {
+    return this.googleService.linkGoogleAccount(req.user.userId, dto.idToken);
+  }
 
-    @UseGuards(JwtAuthGuard)
-    @Post('google/link')
-    @HttpCode(HttpStatus.OK)
-    @ApiBearerAuth()
-    @ApiOperation({ summary: 'Link Google account to current user' })
-    async linkGoogleAccount(
-        @Request() req: AuthenticatedRequest,
-        @Body() dto: GoogleLoginDto,
-    ) {
-        return this.googleService.linkGoogleAccount(req.user.userId, dto.idToken);
-    }
+  @UseGuards(JwtAuthGuard)
+  @Post('refresh')
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Refresh access token' })
+  async refresh(@Request() req: AuthenticatedRequest) {
+    return this.authService.refresh(req.user);
+  }
 
-    @UseGuards(JwtAuthGuard)
-    @Post('refresh')
-    @HttpCode(HttpStatus.OK)
-    @ApiBearerAuth()
-    @ApiOperation({ summary: 'Refresh access token' })
-    async refresh(@Request() req: AuthenticatedRequest) {
-        return this.authService.refresh(req.user);
-    }
+  @UseGuards(JwtAuthGuard)
+  @Post('logout')
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Logout (client should discard token)' })
+  async logout() {
+    return { message: 'Logged out successfully' };
+  }
 
-    @UseGuards(JwtAuthGuard)
-    @Post('logout')
-    @HttpCode(HttpStatus.OK)
-    @ApiBearerAuth()
-    @ApiOperation({ summary: 'Logout (client should discard token)' })
-    async logout() {
-        return { message: 'Logged out successfully' };
-    }
+  @UseGuards(JwtAuthGuard)
+  @Get('profile')
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary:
+      'Get fresh account bootstrap bundle: user, role, regions, subscription tier',
+  })
+  async getProfile(@Request() req: AuthenticatedRequest) {
+    return this.authService.getBootstrap(req.user.userId, req.user.companyId);
+  }
 
-    @UseGuards(JwtAuthGuard)
-    @Get('profile')
-    @ApiBearerAuth()
-    @ApiOperation({ summary: 'Get fresh account bootstrap bundle: user, role, regions, subscription tier' })
-    async getProfile(@Request() req: AuthenticatedRequest) {
-        return this.authService.getBootstrap(req.user.userId, req.user.companyId);
-    }
+  @Post('forgot-password')
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Request a password reset token' })
+  async forgotPassword(@Body() dto: ForgotPasswordDto) {
+    return this.authService.forgotPassword(dto.email);
+  }
 
-    @Post('forgot-password')
-    @Throttle({ default: { limit: 5, ttl: 60000 } })
-    @HttpCode(HttpStatus.OK)
-    @ApiOperation({ summary: 'Request a password reset token' })
-    async forgotPassword(@Body() dto: ForgotPasswordDto) {
-        return this.authService.forgotPassword(dto.email);
-    }
+  @Post('reset-password')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Reset password using a valid token' })
+  async resetPassword(@Body() dto: ResetPasswordDto) {
+    return this.authService.resetPassword(dto.token, dto.newPassword);
+  }
 
-    @Post('reset-password')
-    @HttpCode(HttpStatus.OK)
-    @ApiOperation({ summary: 'Reset password using a valid token' })
-    async resetPassword(@Body() dto: ResetPasswordDto) {
-        return this.authService.resetPassword(dto.token, dto.newPassword);
-    }
-
-    @Post('impersonate')
-    @UseGuards(JwtAuthGuard, RolesGuard)
-    @Roles(Role.SUPER_ADMIN)
-    @ApiBearerAuth()
-    @ApiOperation({ summary: 'Impersonate another user - SUPER_ADMIN only' })
-    async impersonate(@Request() req: AuthenticatedRequest, @Body() payload: ImpersonateDto) {
-        const { userId } = payload;
-        this.logger.log(`Impersonate request: userId="${userId}" by ${req.user.userId}`);
-        const user = await this.impersonateService.impersonate(userId);
-        this.logger.log(`User ${req.user.userId} impersonated user ${user.sub} (email: ${user.email})`);
-        return this.authService.impersonateLogin(user, req.user.userId);
-    }
+  @Post('impersonate')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.SUPER_ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Impersonate another user - SUPER_ADMIN only' })
+  async impersonate(
+    @Request() req: AuthenticatedRequest,
+    @Body() payload: ImpersonateDto,
+  ) {
+    const { userId } = payload;
+    this.logger.log(
+      `Impersonate request: userId="${userId}" by ${req.user.userId}`,
+    );
+    const user = await this.impersonateService.impersonate(userId);
+    this.logger.log(
+      `User ${req.user.userId} impersonated user ${user.sub} (email: ${user.email})`,
+    );
+    return this.authService.impersonateLogin(user, req.user.userId);
+  }
 }

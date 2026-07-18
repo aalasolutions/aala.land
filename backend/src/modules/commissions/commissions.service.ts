@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ConflictException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, FindOptionsWhere } from 'typeorm';
 import { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity';
@@ -16,11 +20,18 @@ export class CommissionsService {
     private readonly commissionRepository: Repository<Commission>,
     @InjectRepository(Company)
     private readonly companyRepository: Repository<Company>,
-  ) { }
+  ) {}
 
-  async create(companyId: string, dto: CreateCommissionDto): Promise<Commission> {
+  async create(
+    companyId: string,
+    dto: CreateCommissionDto,
+  ): Promise<Commission> {
     const commissionAmount = (dto.grossAmount * dto.commissionRate) / 100;
-    const regionCode = await resolveRegionCode(this.companyRepository, companyId, dto.regionCode);
+    const regionCode = await resolveRegionCode(
+      this.companyRepository,
+      companyId,
+      dto.regionCode,
+    );
 
     const commission = this.commissionRepository.create({
       ...dto,
@@ -37,7 +48,12 @@ export class CommissionsService {
     limit = 20,
     status?: string,
     regionCode?: string,
-  ): Promise<{ data: Commission[]; total: number; page: number; limit: number }> {
+  ): Promise<{
+    data: Commission[];
+    total: number;
+    page: number;
+    limit: number;
+  }> {
     const where: FindOptionsWhere<Commission> = { companyId };
     if (status) where.status = status as CommissionStatus;
     if (regionCode) where.regionCode = regionCode;
@@ -55,7 +71,12 @@ export class CommissionsService {
     companyId: string,
     page = 1,
     limit = 20,
-  ): Promise<{ data: Commission[]; total: number; page: number; limit: number }> {
+  ): Promise<{
+    data: Commission[];
+    total: number;
+    page: number;
+    limit: number;
+  }> {
     const [data, total] = await this.commissionRepository.findAndCount({
       where: { agentId, companyId },
       ...paginationOptions(page, limit),
@@ -65,14 +86,20 @@ export class CommissionsService {
   }
 
   async findOne(id: string, companyId: string): Promise<Commission> {
-    const commission = await this.commissionRepository.findOne({ where: { id, companyId } });
+    const commission = await this.commissionRepository.findOne({
+      where: { id, companyId },
+    });
     if (!commission) {
       throw new NotFoundException('Commission not found');
     }
     return commission;
   }
 
-  async update(id: string, companyId: string, dto: UpdateCommissionDto): Promise<Commission> {
+  async update(
+    id: string,
+    companyId: string,
+    dto: UpdateCommissionDto,
+  ): Promise<Commission> {
     // Confirm existence + tenant scope, and give a NotFound (not a silent no-op) for a bad id.
     const commission = await this.findOne(id, companyId);
 
@@ -117,7 +144,9 @@ export class CommissionsService {
 
     if (result.affected !== 1) {
       await this.assertExists(id, companyId);
-      throw new ConflictException('Only APPROVED commissions can be marked as paid');
+      throw new ConflictException(
+        'Only APPROVED commissions can be marked as paid',
+      );
     }
 
     return this.findOne(id, companyId);
@@ -133,7 +162,10 @@ export class CommissionsService {
     }
   }
 
-  async getSummary(agentId: string, companyId: string): Promise<{
+  async getSummary(
+    agentId: string,
+    companyId: string,
+  ): Promise<{
     totalEarned: number;
     totalPaid: number;
     totalPending: number;
@@ -143,17 +175,20 @@ export class CommissionsService {
       .createQueryBuilder('c')
       .select('COALESCE(SUM(c.commissionAmount), 0)', 'totalEarned')
       .addSelect(
-        "COALESCE(SUM(CASE WHEN c.status = :paid THEN c.commissionAmount ELSE 0 END), 0)",
-        'totalPaid'
+        'COALESCE(SUM(CASE WHEN c.status = :paid THEN c.commissionAmount ELSE 0 END), 0)',
+        'totalPaid',
       )
       .addSelect(
-        "COALESCE(SUM(CASE WHEN c.status IN (:...pending) THEN c.commissionAmount ELSE 0 END), 0)",
-        'totalPending'
+        'COALESCE(SUM(CASE WHEN c.status IN (:...pending) THEN c.commissionAmount ELSE 0 END), 0)',
+        'totalPending',
       )
       .addSelect('COUNT(c.id)', 'count')
       .where('c.agentId = :agentId', { agentId })
       .andWhere('c.companyId = :companyId', { companyId })
-      .setParameters({ paid: CommissionStatus.PAID, pending: [CommissionStatus.PENDING, CommissionStatus.APPROVED] })
+      .setParameters({
+        paid: CommissionStatus.PAID,
+        pending: [CommissionStatus.PENDING, CommissionStatus.APPROVED],
+      })
       .getRawOne();
 
     return {

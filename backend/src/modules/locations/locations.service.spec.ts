@@ -83,8 +83,20 @@ describe('LocationsService', () => {
   describe('searchCities', () => {
     it('returns cities matching fuzzy query ordered by score DESC, limited to 5', async () => {
       const searchResults = [
-        { id: 'city-1', name: 'Lahore', regionCode: 'punjab', country: 'PK', score: 0.8 },
-        { id: 'city-2', name: 'Lahore Cantonment', regionCode: 'punjab', country: 'PK', score: 0.5 },
+        {
+          id: 'city-1',
+          name: 'Lahore',
+          regionCode: 'punjab',
+          country: 'PK',
+          score: 0.8,
+        },
+        {
+          id: 'city-2',
+          name: 'Lahore Cantonment',
+          regionCode: 'punjab',
+          country: 'PK',
+          score: 0.5,
+        },
       ];
       dataSource.query.mockResolvedValue(searchResults);
 
@@ -116,10 +128,10 @@ describe('LocationsService', () => {
       await service.searchCities(dto);
 
       // Verify the query was called with the correct regionCode parameter
-      expect(dataSource.query).toHaveBeenCalledWith(
-        expect.any(String),
-        ['lahor', 'sindh'],
-      );
+      expect(dataSource.query).toHaveBeenCalledWith(expect.any(String), [
+        'lahor',
+        'sindh',
+      ]);
     });
   });
 
@@ -130,12 +142,25 @@ describe('LocationsService', () => {
   describe('searchLocalities', () => {
     it('returns localities matching fuzzy query ordered by score DESC, limited to 5', async () => {
       const searchResults = [
-        { id: 'loc-1', name: 'Business Bay', cityId: 'city-uuid-1', score: 0.7 },
-        { id: 'loc-2', name: 'Business Park', cityId: 'city-uuid-1', score: 0.5 },
+        {
+          id: 'loc-1',
+          name: 'Business Bay',
+          cityId: 'city-uuid-1',
+          score: 0.7,
+        },
+        {
+          id: 'loc-2',
+          name: 'Business Park',
+          cityId: 'city-uuid-1',
+          score: 0.5,
+        },
       ];
       dataSource.query.mockResolvedValue(searchResults);
 
-      const dto: SearchLocalityDto = { q: 'busness bay', cityId: 'city-uuid-1' };
+      const dto: SearchLocalityDto = {
+        q: 'busness bay',
+        cityId: 'city-uuid-1',
+      };
       const result = await service.searchLocalities(dto);
 
       expect(dataSource.query).toHaveBeenCalledWith(
@@ -161,10 +186,10 @@ describe('LocationsService', () => {
       const dto: SearchLocalityDto = { q: 'marina', cityId: 'city-uuid-2' };
       await service.searchLocalities(dto);
 
-      expect(dataSource.query).toHaveBeenCalledWith(
-        expect.any(String),
-        ['marina', 'city-uuid-2'],
-      );
+      expect(dataSource.query).toHaveBeenCalledWith(expect.any(String), [
+        'marina',
+        'city-uuid-2',
+      ]);
     });
   });
 
@@ -197,7 +222,10 @@ describe('LocationsService', () => {
       cityRepo.create.mockReturnValue(createdCity);
       cityRepo.save.mockResolvedValue(createdCity);
 
-      const dto: CreateCityDto = { name: '  Business   Bay  ', regionCode: 'dubai' };
+      const dto: CreateCityDto = {
+        name: '  Business   Bay  ',
+        regionCode: 'dubai',
+      };
       await service.createCity(dto, 'company-uuid-1');
 
       expect(cityRepo.create).toHaveBeenCalledWith(
@@ -230,10 +258,15 @@ describe('LocationsService', () => {
       localityRepo.create.mockReturnValue(createdLocality);
       localityRepo.save.mockResolvedValue(createdLocality);
 
-      const dto: CreateLocalityDto = { name: 'DHA Phase 5', cityId: 'city-uuid-1' };
+      const dto: CreateLocalityDto = {
+        name: 'DHA Phase 5',
+        cityId: 'city-uuid-1',
+      };
       const result = await service.createLocality(dto, 'company-uuid-1');
 
-      expect(cityRepo.findOne).toHaveBeenCalledWith({ where: { id: 'city-uuid-1' } });
+      expect(cityRepo.findOne).toHaveBeenCalledWith({
+        where: { id: 'city-uuid-1' },
+      });
       expect(localityRepo.create).toHaveBeenCalledWith(
         expect.objectContaining({
           name: 'DHA Phase 5',
@@ -248,10 +281,13 @@ describe('LocationsService', () => {
     it('throws NotFoundException when city does not exist', async () => {
       cityRepo.findOne.mockResolvedValue(null);
 
-      const dto: CreateLocalityDto = { name: 'Some Locality', cityId: 'nonexistent-city-id' };
-      await expect(service.createLocality(dto, 'company-uuid-1')).rejects.toThrow(
-        NotFoundException,
-      );
+      const dto: CreateLocalityDto = {
+        name: 'Some Locality',
+        cityId: 'nonexistent-city-id',
+      };
+      await expect(
+        service.createLocality(dto, 'company-uuid-1'),
+      ).rejects.toThrow(NotFoundException);
     });
 
     it('sanitizes the name by trimming and normalizing whitespace', async () => {
@@ -260,7 +296,10 @@ describe('LocationsService', () => {
       localityRepo.create.mockReturnValue(createdLocality);
       localityRepo.save.mockResolvedValue(createdLocality);
 
-      const dto: CreateLocalityDto = { name: '  Business   Bay  ', cityId: 'city-uuid-1' };
+      const dto: CreateLocalityDto = {
+        name: '  Business   Bay  ',
+        cityId: 'city-uuid-1',
+      };
       await service.createLocality(dto, 'company-uuid-1');
 
       expect(localityRepo.create).toHaveBeenCalledWith(
@@ -274,7 +313,10 @@ describe('LocationsService', () => {
       cityRepo.findOne.mockResolvedValue(mockCity);
       localityRepo.findOne.mockResolvedValue(mockLocality);
 
-      const dto: CreateLocalityDto = { name: '  business bay  ', cityId: 'city-uuid-1' };
+      const dto: CreateLocalityDto = {
+        name: '  business bay  ',
+        cityId: 'city-uuid-1',
+      };
       const result = await service.createLocality(dto, 'company-uuid-1');
 
       expect(localityRepo.findOne).toHaveBeenCalled();
@@ -292,7 +334,10 @@ describe('LocationsService', () => {
       cityRepo.create.mockReturnValue(mockCity);
       cityRepo.save.mockResolvedValue(mockCity);
 
-      await service.createCity({ name: '  Lahore  ', regionCode: 'punjab' }, 'company-uuid-1');
+      await service.createCity(
+        { name: '  Lahore  ', regionCode: 'punjab' },
+        'company-uuid-1',
+      );
 
       expect(cityRepo.create).toHaveBeenCalledWith(
         expect.objectContaining({ name: 'Lahore' }),
@@ -318,7 +363,10 @@ describe('LocationsService', () => {
       cityRepo.create.mockReturnValue(arabicCity);
       cityRepo.save.mockResolvedValue(arabicCity);
 
-      await service.createCity({ name: 'دبي', regionCode: 'dubai' }, 'company-uuid-1');
+      await service.createCity(
+        { name: 'دبي', regionCode: 'dubai' },
+        'company-uuid-1',
+      );
 
       expect(cityRepo.create).toHaveBeenCalledWith(
         expect.objectContaining({ name: 'دبي' }),
@@ -331,7 +379,10 @@ describe('LocationsService', () => {
       cityRepo.save.mockResolvedValue(arabicCity);
 
       // TODO: Adjust the input if the actual implementation strips differently
-      await service.createCity({ name: '  دبي  ', regionCode: 'dubai' }, 'company-uuid-1');
+      await service.createCity(
+        { name: '  دبي  ', regionCode: 'dubai' },
+        'company-uuid-1',
+      );
 
       expect(cityRepo.create).toHaveBeenCalledWith(
         expect.objectContaining({ name: 'دبي' }),

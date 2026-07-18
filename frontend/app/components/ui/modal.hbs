@@ -8,7 +8,7 @@
       {{on "click" this.stopPropagation}}
       ...attributes
     >
-       {{#if (or @title @showClose)}}
+      {{#if (or @title @showClose)}}
         <div class="modal-header">
           <h2 id="modal-title">{{@title}}</h2>
           {{#if @showClose}}

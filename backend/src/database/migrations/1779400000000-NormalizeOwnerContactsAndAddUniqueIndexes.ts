@@ -1,17 +1,17 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
 export class NormalizeOwnerContactsAndAddUniqueIndexes1779400000000 implements MigrationInterface {
-    name = 'NormalizeOwnerContactsAndAddUniqueIndexes1779400000000';
+  name = 'NormalizeOwnerContactsAndAddUniqueIndexes1779400000000';
 
-    public async up(queryRunner: QueryRunner): Promise<void> {
-        await queryRunner.query(`
+  public async up(queryRunner: QueryRunner): Promise<void> {
+    await queryRunner.query(`
             UPDATE "owners"
             SET
                 "email" = NULLIF(LOWER(BTRIM("email")), ''),
                 "phone" = NULLIF(BTRIM("phone"), '')
         `);
 
-        await queryRunner.query(`
+    await queryRunner.query(`
             WITH ranked AS (
                 SELECT
                     "id",
@@ -33,7 +33,7 @@ export class NormalizeOwnerContactsAndAddUniqueIndexes1779400000000 implements M
             WHERE u."owner_id" = d.duplicate_id
         `);
 
-        await queryRunner.query(`
+    await queryRunner.query(`
             WITH ranked AS (
                 SELECT
                     "id",
@@ -54,7 +54,7 @@ export class NormalizeOwnerContactsAndAddUniqueIndexes1779400000000 implements M
             WHERE o."id" = d.duplicate_id
         `);
 
-        await queryRunner.query(`
+    await queryRunner.query(`
             WITH ranked AS (
                 SELECT
                     "id",
@@ -76,7 +76,7 @@ export class NormalizeOwnerContactsAndAddUniqueIndexes1779400000000 implements M
             WHERE u."owner_id" = d.duplicate_id
         `);
 
-        await queryRunner.query(`
+    await queryRunner.query(`
             WITH ranked AS (
                 SELECT
                     "id",
@@ -97,7 +97,7 @@ export class NormalizeOwnerContactsAndAddUniqueIndexes1779400000000 implements M
             WHERE o."id" = d.duplicate_id
         `);
 
-        await queryRunner.query(`
+    await queryRunner.query(`
             CREATE UNIQUE INDEX "IDX_owners_company_normalized_email_unique"
             ON "owners" (
                 "company_id",
@@ -106,7 +106,7 @@ export class NormalizeOwnerContactsAndAddUniqueIndexes1779400000000 implements M
             WHERE "email" IS NOT NULL
         `);
 
-        await queryRunner.query(`
+    await queryRunner.query(`
             CREATE UNIQUE INDEX "IDX_owners_company_normalized_phone_unique"
             ON "owners" (
                 "company_id",
@@ -114,10 +114,14 @@ export class NormalizeOwnerContactsAndAddUniqueIndexes1779400000000 implements M
             )
             WHERE "phone" IS NOT NULL
         `);
-    }
+  }
 
-    public async down(queryRunner: QueryRunner): Promise<void> {
-        await queryRunner.query(`DROP INDEX IF EXISTS "IDX_owners_company_normalized_phone_unique"`);
-        await queryRunner.query(`DROP INDEX IF EXISTS "IDX_owners_company_normalized_email_unique"`);
-    }
+  public async down(queryRunner: QueryRunner): Promise<void> {
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS "IDX_owners_company_normalized_phone_unique"`,
+    );
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS "IDX_owners_company_normalized_email_unique"`,
+    );
+  }
 }

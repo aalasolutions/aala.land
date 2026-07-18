@@ -1,23 +1,23 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
 export class AddNormalizedLocationNameUniqueIndexes1774000000026 implements MigrationInterface {
-    name = 'AddNormalizedLocationNameUniqueIndexes1774000000026';
+  name = 'AddNormalizedLocationNameUniqueIndexes1774000000026';
 
-    public async up(queryRunner: QueryRunner): Promise<void> {
-        await queryRunner.query(`DROP INDEX IF EXISTS "IDX_localities_name_city"`);
-        await queryRunner.query(`DROP INDEX IF EXISTS "IDX_cities_name_region"`);
+  public async up(queryRunner: QueryRunner): Promise<void> {
+    await queryRunner.query(`DROP INDEX IF EXISTS "IDX_localities_name_city"`);
+    await queryRunner.query(`DROP INDEX IF EXISTS "IDX_cities_name_region"`);
 
-        await queryRunner.query(`
+    await queryRunner.query(`
             UPDATE "cities"
             SET "name" = regexp_replace(BTRIM("name"), '\\s+', ' ', 'g')
         `);
 
-        await queryRunner.query(`
+    await queryRunner.query(`
             UPDATE "localities"
             SET "name" = regexp_replace(BTRIM("name"), '\\s+', ' ', 'g')
         `);
 
-        await queryRunner.query(`
+    await queryRunner.query(`
             WITH ranked AS (
                 SELECT
                     "id",
@@ -38,7 +38,7 @@ export class AddNormalizedLocationNameUniqueIndexes1774000000026 implements Migr
             WHERE l."city_id" = d.duplicate_id
         `);
 
-        await queryRunner.query(`
+    await queryRunner.query(`
             WITH ranked AS (
                 SELECT
                     "id",
@@ -58,7 +58,7 @@ export class AddNormalizedLocationNameUniqueIndexes1774000000026 implements Migr
             WHERE c."id" = d.duplicate_id
         `);
 
-        await queryRunner.query(`
+    await queryRunner.query(`
             WITH ranked AS (
                 SELECT
                     "id",
@@ -79,7 +79,7 @@ export class AddNormalizedLocationNameUniqueIndexes1774000000026 implements Migr
             WHERE b."locality_id" = d.duplicate_id
         `);
 
-        await queryRunner.query(`
+    await queryRunner.query(`
             WITH ranked AS (
                 SELECT
                     "id",
@@ -100,7 +100,7 @@ export class AddNormalizedLocationNameUniqueIndexes1774000000026 implements Migr
             WHERE ld."property_id" = d.duplicate_id
         `);
 
-        await queryRunner.query(`
+    await queryRunner.query(`
             WITH ranked AS (
                 SELECT
                     "id",
@@ -120,7 +120,7 @@ export class AddNormalizedLocationNameUniqueIndexes1774000000026 implements Migr
             WHERE l."id" = d.duplicate_id
         `);
 
-        await queryRunner.query(`
+    await queryRunner.query(`
             CREATE UNIQUE INDEX "IDX_cities_region_normalized_name_unique"
             ON "cities" (
                 "region_code",
@@ -128,25 +128,29 @@ export class AddNormalizedLocationNameUniqueIndexes1774000000026 implements Migr
             )
         `);
 
-        await queryRunner.query(`
+    await queryRunner.query(`
             CREATE UNIQUE INDEX "IDX_localities_city_normalized_name_unique"
             ON "localities" (
                 "city_id",
                 (LOWER(regexp_replace(BTRIM("name"), '\\s+', ' ', 'g')))
             )
         `);
-    }
+  }
 
-    public async down(queryRunner: QueryRunner): Promise<void> {
-        await queryRunner.query(`DROP INDEX IF EXISTS "IDX_localities_city_normalized_name_unique"`);
-        await queryRunner.query(`DROP INDEX IF EXISTS "IDX_cities_region_normalized_name_unique"`);
+  public async down(queryRunner: QueryRunner): Promise<void> {
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS "IDX_localities_city_normalized_name_unique"`,
+    );
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS "IDX_cities_region_normalized_name_unique"`,
+    );
 
-        await queryRunner.query(`
+    await queryRunner.query(`
             CREATE UNIQUE INDEX "IDX_cities_name_region" ON "cities" ("name", "region_code")
         `);
 
-        await queryRunner.query(`
+    await queryRunner.query(`
             CREATE UNIQUE INDEX "IDX_localities_name_city" ON "localities" ("name", "city_id")
         `);
-    }
+  }
 }

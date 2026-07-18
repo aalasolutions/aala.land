@@ -2,28 +2,30 @@ import { WhatsappAiPromptBuilderService } from './whatsapp-ai-prompt-builder.ser
 import { PropertyType } from '../properties/entities/property-type.enum';
 import { DEFAULT_PROMPT, RULES_BLOCK } from './whatsapp-ai-prompts';
 
-const makeCompany = (overrides = {}) => ({
-  name: 'Test Co',
-  activeRegions: [],
-  ...overrides,
-} as any);
+const makeCompany = (overrides = {}) =>
+  ({
+    name: 'Test Co',
+    activeRegions: [],
+    ...overrides,
+  }) as any;
 
-const makeUnit = (overrides = {}) => ({
-  unitNumber: '1A',
-  bedrooms: 2,
-  bathrooms: 1,
-  sqFt: 900,
-  amenities: [],
-  description: null,
-  propertyType: PropertyType.RENTAL,
-  price: '25000',
-  asset: {
-    name: 'Sunset Tower',
-    address: '12 Main St',
-    locality: { name: 'DHA', city: { name: 'Karachi', regionCode: 'PK' } },
-  },
-  ...overrides,
-} as any);
+const makeUnit = (overrides = {}) =>
+  ({
+    unitNumber: '1A',
+    bedrooms: 2,
+    bathrooms: 1,
+    sqFt: 900,
+    amenities: [],
+    description: null,
+    propertyType: PropertyType.RENTAL,
+    price: '25000',
+    asset: {
+      name: 'Sunset Tower',
+      address: '12 Main St',
+      locality: { name: 'DHA', city: { name: 'Karachi', regionCode: 'PK' } },
+    },
+    ...overrides,
+  }) as any;
 
 describe('WhatsappAiPromptBuilderService', () => {
   let service: WhatsappAiPromptBuilderService;
@@ -52,11 +54,15 @@ describe('WhatsappAiPromptBuilderService', () => {
 
   describe('formatToolResult', () => {
     it('returns no-results message for empty array', () => {
-      expect(service.formatToolResult([], '')).toBe('No properties found matching your criteria.');
+      expect(service.formatToolResult([], '')).toBe(
+        'No properties found matching your criteria.',
+      );
     });
 
     it('returns formatted unit string for non-empty array', () => {
-      const { fallbackCurrency } = service.buildContextBlock(makeCompany({ activeRegions: ['AE-DU'] }));
+      const { fallbackCurrency } = service.buildContextBlock(
+        makeCompany({ activeRegions: ['AE-DU'] }),
+      );
       const unit = makeUnit();
       const result = service.formatToolResult([unit], fallbackCurrency);
       expect(typeof result).toBe('string');

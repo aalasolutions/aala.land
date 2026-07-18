@@ -1,4 +1,8 @@
-import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  NotFoundException,
+} from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { QueryFailedError, Repository } from 'typeorm';
@@ -101,9 +105,14 @@ describe('PropertiesService', () => {
       areaRepo.create.mockReturnValue(mockArea as PropertyArea);
       areaRepo.save.mockResolvedValue(mockArea as PropertyArea);
 
-      const result = await service.createArea(companyId, { name: 'Downtown Dubai' });
+      const result = await service.createArea(companyId, {
+        name: 'Downtown Dubai',
+      });
 
-      expect(areaRepo.create).toHaveBeenCalledWith({ name: 'Downtown Dubai', companyId });
+      expect(areaRepo.create).toHaveBeenCalledWith({
+        name: 'Downtown Dubai',
+        companyId,
+      });
       expect(result).toEqual(mockArea);
     });
   });
@@ -152,8 +161,13 @@ describe('PropertiesService', () => {
         Object.assign(new Error('unique violation'), { code: '23505' }),
       );
 
-      assetRepo.findOne.mockResolvedValueOnce(null).mockResolvedValueOnce(duplicate);
-      assetRepo.create.mockReturnValue({ ...duplicate, id: 'new-asset' } as Asset);
+      assetRepo.findOne
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(duplicate);
+      assetRepo.create.mockReturnValue({
+        ...duplicate,
+        id: 'new-asset',
+      } as Asset);
       assetRepo.save.mockRejectedValue(uniqueViolation);
 
       const result = await service.createAsset(companyId, {
@@ -182,10 +196,14 @@ describe('PropertiesService', () => {
       const existingAsset = { ...mockAsset, name: 'Old Name' } as Asset;
       const savedAsset = { ...existingAsset, name: 'Bay Tower' } as Asset;
 
-      assetRepo.findOne.mockResolvedValueOnce(existingAsset).mockResolvedValueOnce(null);
+      assetRepo.findOne
+        .mockResolvedValueOnce(existingAsset)
+        .mockResolvedValueOnce(null);
       assetRepo.save.mockResolvedValue(savedAsset);
 
-      const result = await service.updateAsset('asset-uuid-1', { name: '  Bay   Tower  ' });
+      const result = await service.updateAsset('asset-uuid-1', {
+        name: '  Bay   Tower  ',
+      });
 
       expect(assetRepo.save).toHaveBeenCalledWith(
         expect.objectContaining({ id: 'asset-uuid-1', name: 'Bay Tower' }),
@@ -196,9 +214,9 @@ describe('PropertiesService', () => {
     it('throws NotFoundException when the asset does not exist', async () => {
       assetRepo.findOne.mockResolvedValue(null);
 
-      await expect(service.updateAsset('missing-asset', { name: 'Bay Tower' })).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(
+        service.updateAsset('missing-asset', { name: 'Bay Tower' }),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 
@@ -208,7 +226,9 @@ describe('PropertiesService', () => {
       ownerRepo.findOne.mockResolvedValue(mockOwner as Owner);
       unitRepo.save.mockImplementation(async (u: Unit) => u);
 
-      const result = await service.updateUnit('unit-uuid-1', companyId, { ownerId: 'owner-uuid-1' });
+      const result = await service.updateUnit('unit-uuid-1', companyId, {
+        ownerId: 'owner-uuid-1',
+      });
 
       expect(ownerRepo.findOne).toHaveBeenCalledWith({
         where: { id: 'owner-uuid-1', companyId },
@@ -227,7 +247,9 @@ describe('PropertiesService', () => {
       } as Unit);
       unitRepo.save.mockImplementation(async (u: Unit) => u);
 
-      const result = await service.updateUnit('unit-uuid-1', companyId, { ownerId: null });
+      const result = await service.updateUnit('unit-uuid-1', companyId, {
+        ownerId: null,
+      });
 
       expect(ownerRepo.findOne).not.toHaveBeenCalled();
       expect(unitRepo.save).toHaveBeenCalledWith(
@@ -241,7 +263,9 @@ describe('PropertiesService', () => {
       ownerRepo.findOne.mockResolvedValue(null);
 
       await expect(
-        service.updateUnit('unit-uuid-1', companyId, { ownerId: 'other-company-owner' }),
+        service.updateUnit('unit-uuid-1', companyId, {
+          ownerId: 'other-company-owner',
+        }),
       ).rejects.toThrow(BadRequestException);
 
       expect(unitRepo.save).not.toHaveBeenCalled();
@@ -251,9 +275,12 @@ describe('PropertiesService', () => {
   describe('bulkImportUnits', () => {
     it('creates units from valid CSV', async () => {
       unitRepo.create.mockImplementation((data) => data as Unit);
-      (unitRepo.save as jest.Mock).mockResolvedValue([mockUnit] as unknown as Unit[]);
+      (unitRepo.save as jest.Mock).mockResolvedValue([
+        mockUnit,
+      ] as unknown as Unit[]);
 
-      const csv = 'unitNumber,assetId,bedrooms,bathrooms\n101,asset-1,2,1\n102,asset-1,3,2';
+      const csv =
+        'unitNumber,assetId,bedrooms,bathrooms\n101,asset-1,2,1\n102,asset-1,3,2';
       const result = await service.bulkImportUnits(companyId, csv);
 
       expect(result.created).toBe(2);

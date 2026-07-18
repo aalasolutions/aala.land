@@ -140,8 +140,7 @@ export class AuditInterceptor implements NestInterceptor {
 
           // Login: extract user info from response (may be wrapped by ResponseInterceptor)
           if (action === AuditAction.LOGIN) {
-            const userData =
-              responseData?.user || responseData?.data?.user;
+            const userData = responseData?.user || responseData?.data?.user;
             if (userData) {
               logCompanyId = userData.companyId;
               logUserId = userData.id;

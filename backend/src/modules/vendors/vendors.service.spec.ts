@@ -64,7 +64,9 @@ describe('VendorsService', () => {
 
   describe('create', () => {
     it('creates and returns a vendor', async () => {
-      companyRepo.findOne.mockResolvedValue({ defaultRegionCode: 'dubai' } as Company);
+      companyRepo.findOne.mockResolvedValue({
+        defaultRegionCode: 'dubai',
+      } as Company);
       const dto = {
         name: 'Al Futtaim Maintenance',
         email: 'info@alfuttaim.ae',
@@ -77,7 +79,11 @@ describe('VendorsService', () => {
 
       const result = await service.create(companyId, dto as any);
 
-      expect(repo.create).toHaveBeenCalledWith({ ...dto, companyId, regionCode: 'dubai' });
+      expect(repo.create).toHaveBeenCalledWith({
+        ...dto,
+        companyId,
+        regionCode: 'dubai',
+      });
       expect(repo.save).toHaveBeenCalledWith(mockVendor);
       expect(result).toEqual(mockVendor);
     });
@@ -118,7 +124,13 @@ describe('VendorsService', () => {
     it('returns vendors filtered by specialty (jsonb containment)', async () => {
       repo.findAndCount.mockResolvedValue([[mockVendor as Vendor], 1]);
 
-      const result = await service.findAll(companyId, 1, 20, undefined, VendorSpecialty.HVAC);
+      const result = await service.findAll(
+        companyId,
+        1,
+        20,
+        undefined,
+        VendorSpecialty.HVAC,
+      );
 
       const callArgs = repo.findAndCount.mock.calls[0]![0]!;
       expect((callArgs as any).where).toHaveLength(1);
@@ -167,13 +179,17 @@ describe('VendorsService', () => {
     it('throws NotFoundException when not found', async () => {
       repo.findOne.mockResolvedValue(null);
 
-      await expect(service.findOne('bad-id', companyId)).rejects.toThrow(NotFoundException);
+      await expect(service.findOne('bad-id', companyId)).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('throws NotFoundException for wrong company', async () => {
       repo.findOne.mockResolvedValue(null);
 
-      await expect(service.findOne('vendor-uuid-1', 'other-company')).rejects.toThrow(NotFoundException);
+      await expect(
+        service.findOne('vendor-uuid-1', 'other-company'),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 
@@ -183,7 +199,9 @@ describe('VendorsService', () => {
       repo.findOne.mockResolvedValue({ ...mockVendor } as Vendor);
       repo.save.mockResolvedValue(updated);
 
-      const result = await service.update('vendor-uuid-1', companyId, { name: 'Updated Vendor' });
+      const result = await service.update('vendor-uuid-1', companyId, {
+        name: 'Updated Vendor',
+      });
 
       expect(result.name).toBe('Updated Vendor');
     });
@@ -212,7 +230,9 @@ describe('VendorsService', () => {
     it('throws NotFoundException when vendor does not exist', async () => {
       repo.findOne.mockResolvedValue(null);
 
-      await expect(service.remove('bad-id', companyId)).rejects.toThrow(NotFoundException);
+      await expect(service.remove('bad-id', companyId)).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 });

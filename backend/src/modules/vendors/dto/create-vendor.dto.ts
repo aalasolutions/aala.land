@@ -1,4 +1,17 @@
-import { IsString, IsNotEmpty, IsOptional, IsEnum, IsNumber, Min, Max, MaxLength, IsEmail, IsBoolean, IsArray, ArrayNotEmpty } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  IsOptional,
+  IsEnum,
+  IsNumber,
+  Min,
+  Max,
+  MaxLength,
+  IsEmail,
+  IsBoolean,
+  IsArray,
+  ArrayNotEmpty,
+} from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { VendorSpecialty } from '../entities/vendor.entity';
 
@@ -21,7 +34,12 @@ export class CreateVendorDto {
   @MaxLength(50)
   phone?: string;
 
-  @ApiProperty({ enum: VendorSpecialty, isArray: true, required: false, description: 'One or more specialties' })
+  @ApiProperty({
+    enum: VendorSpecialty,
+    isArray: true,
+    required: false,
+    description: 'One or more specialties',
+  })
   @IsOptional()
   @IsArray()
   @ArrayNotEmpty()
@@ -68,7 +86,11 @@ export class CreateVendorDto {
   @IsString()
   notes?: string;
 
-  @ApiProperty({ required: false, example: 'dubai', description: 'Region code for multi-region filtering' })
+  @ApiProperty({
+    required: false,
+    example: 'dubai',
+    description: 'Region code for multi-region filtering',
+  })
   @IsOptional()
   @IsString()
   regionCode?: string;

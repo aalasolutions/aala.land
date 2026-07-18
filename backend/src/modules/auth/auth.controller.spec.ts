@@ -23,7 +23,14 @@ describe('AuthController', () => {
       companyId: 'company-uuid-1',
     },
     regions: [
-      { code: 'dubai', name: 'Dubai', country: 'AE', currency: 'AED', currencySymbol: '\u062F.\u0625', timezone: 'Asia/Dubai' },
+      {
+        code: 'dubai',
+        name: 'Dubai',
+        country: 'AE',
+        currency: 'AED',
+        currencySymbol: '\u062F.\u0625',
+        timezone: 'Asia/Dubai',
+      },
     ],
     defaultRegionCode: 'dubai',
   };
@@ -89,7 +96,10 @@ describe('AuthController', () => {
       } as any);
       authService.login.mockResolvedValue(mockLoginResponse as any);
 
-      const result = await controller.login({ email: 'admin@test.com', password: 'pass' });
+      const result = await controller.login({
+        email: 'admin@test.com',
+        password: 'pass',
+      });
 
       expect(result).toEqual(mockLoginResponse);
     });
@@ -105,10 +115,19 @@ describe('AuthController', () => {
 
   describe('refresh', () => {
     it('returns new accessToken', async () => {
-      authService.refresh.mockResolvedValue({ accessToken: 'new-token' } as any);
+      authService.refresh.mockResolvedValue({
+        accessToken: 'new-token',
+      } as any);
 
-      const req = { user: { userId: 'user-uuid-1', email: 'admin@test.com', companyId: 'c1', role: 'admin' } };
-      const result = await controller.refresh(req) as any;
+      const req = {
+        user: {
+          userId: 'user-uuid-1',
+          email: 'admin@test.com',
+          companyId: 'c1',
+          role: 'admin',
+        },
+      };
+      const result = (await controller.refresh(req)) as any;
 
       expect(result.accessToken).toBe('new-token');
     });
@@ -118,7 +137,9 @@ describe('AuthController', () => {
     it('delegates Google login to AuthGoogleService', async () => {
       googleService.googleLogin.mockResolvedValue(mockLoginResponse as any);
 
-      const result = await controller.googleLogin({ idToken: 'google-id-token' });
+      const result = await controller.googleLogin({
+        idToken: 'google-id-token',
+      });
 
       expect(googleService.googleLogin).toHaveBeenCalledWith('google-id-token');
       expect(result).toEqual(mockLoginResponse);
@@ -151,10 +172,22 @@ describe('AuthController', () => {
         googleLinked: true,
       });
 
-      const req = { user: { userId: 'user-uuid-1', email: 'admin@test.com', companyId: 'c1', role: 'admin' } };
-      const result = await controller.linkGoogleAccount(req as any, { idToken: 'google-id-token' });
+      const req = {
+        user: {
+          userId: 'user-uuid-1',
+          email: 'admin@test.com',
+          companyId: 'c1',
+          role: 'admin',
+        },
+      };
+      const result = await controller.linkGoogleAccount(req as any, {
+        idToken: 'google-id-token',
+      });
 
-      expect(googleService.linkGoogleAccount).toHaveBeenCalledWith('user-uuid-1', 'google-id-token');
+      expect(googleService.linkGoogleAccount).toHaveBeenCalledWith(
+        'user-uuid-1',
+        'google-id-token',
+      );
       expect(result.googleLinked).toBe(true);
     });
   });
@@ -169,17 +202,33 @@ describe('AuthController', () => {
   describe('getProfile', () => {
     it('returns a fresh bootstrap bundle for the current user', async () => {
       const bootstrap = {
-        user: { id: 'user-uuid-1', name: 'Test Admin', email: 'admin@test.com', role: 'admin', companyId: 'company-uuid-1' },
+        user: {
+          id: 'user-uuid-1',
+          name: 'Test Admin',
+          email: 'admin@test.com',
+          role: 'admin',
+          companyId: 'company-uuid-1',
+        },
         regions: mockLoginResponse.regions,
         defaultRegionCode: 'dubai',
         subscriptionTier: 'FREE',
       };
       authService.getBootstrap.mockResolvedValue(bootstrap as any);
 
-      const req = { user: { userId: 'user-uuid-1', email: 'admin@test.com', companyId: 'company-uuid-1', role: 'admin' } };
+      const req = {
+        user: {
+          userId: 'user-uuid-1',
+          email: 'admin@test.com',
+          companyId: 'company-uuid-1',
+          role: 'admin',
+        },
+      };
       const result = await controller.getProfile(req as any);
 
-      expect(authService.getBootstrap).toHaveBeenCalledWith('user-uuid-1', 'company-uuid-1');
+      expect(authService.getBootstrap).toHaveBeenCalledWith(
+        'user-uuid-1',
+        'company-uuid-1',
+      );
       expect(result.user.email).toBe('admin@test.com');
       expect(result.subscriptionTier).toBe('FREE');
     });
@@ -187,20 +236,28 @@ describe('AuthController', () => {
 
   describe('forgotPassword', () => {
     it('calls authService.forgotPassword and returns message', async () => {
-      const response = { message: 'If the email exists, a password reset link has been sent.' };
+      const response = {
+        message: 'If the email exists, a password reset link has been sent.',
+      };
       authService.forgotPassword.mockResolvedValue(response);
 
-      const result = await controller.forgotPassword({ email: 'admin@test.com' });
+      const result = await controller.forgotPassword({
+        email: 'admin@test.com',
+      });
 
       expect(authService.forgotPassword).toHaveBeenCalledWith('admin@test.com');
       expect(result.message).toContain('If the email exists');
     });
 
     it('returns success message even for non-existent email', async () => {
-      const response = { message: 'If the email exists, a password reset link has been sent.' };
+      const response = {
+        message: 'If the email exists, a password reset link has been sent.',
+      };
       authService.forgotPassword.mockResolvedValue(response);
 
-      const result = await controller.forgotPassword({ email: 'unknown@test.com' });
+      const result = await controller.forgotPassword({
+        email: 'unknown@test.com',
+      });
 
       expect(result.message).toContain('If the email exists');
     });
@@ -211,17 +268,28 @@ describe('AuthController', () => {
       const response = { message: 'Password has been reset successfully.' };
       authService.resetPassword.mockResolvedValue(response);
 
-      const result = await controller.resetPassword({ token: 'valid-token', newPassword: 'NewPass123!' });
+      const result = await controller.resetPassword({
+        token: 'valid-token',
+        newPassword: 'NewPass123!',
+      });
 
-      expect(authService.resetPassword).toHaveBeenCalledWith('valid-token', 'NewPass123!');
+      expect(authService.resetPassword).toHaveBeenCalledWith(
+        'valid-token',
+        'NewPass123!',
+      );
       expect(result.message).toContain('reset successfully');
     });
 
     it('propagates BadRequestException from service', async () => {
-      authService.resetPassword.mockRejectedValue(new BadRequestException('Invalid or expired reset token'));
+      authService.resetPassword.mockRejectedValue(
+        new BadRequestException('Invalid or expired reset token'),
+      );
 
       await expect(
-        controller.resetPassword({ token: 'bad-token', newPassword: 'NewPass123!' }),
+        controller.resetPassword({
+          token: 'bad-token',
+          newPassword: 'NewPass123!',
+        }),
       ).rejects.toThrow(BadRequestException);
     });
   });
@@ -247,14 +315,32 @@ describe('AuthController', () => {
         },
       };
 
-      impersonateService.impersonate.mockResolvedValue(mockImpersonateUser as any);
-      (authService as any).impersonateLogin.mockResolvedValue(mockImpersonateResponse);
+      impersonateService.impersonate.mockResolvedValue(
+        mockImpersonateUser as any,
+      );
+      (authService as any).impersonateLogin.mockResolvedValue(
+        mockImpersonateResponse,
+      );
 
-      const req = { user: { userId: 'super-admin-uuid', email: 'super@admin.com', companyId: null, role: 'super_admin' } };
-      const result = await controller.impersonate(req as any, { userId: 'agent-uuid-1' });
+      const req = {
+        user: {
+          userId: 'super-admin-uuid',
+          email: 'super@admin.com',
+          companyId: null,
+          role: 'super_admin',
+        },
+      };
+      const result = await controller.impersonate(req as any, {
+        userId: 'agent-uuid-1',
+      });
 
-      expect(impersonateService.impersonate).toHaveBeenCalledWith('agent-uuid-1');
-      expect((authService as any).impersonateLogin).toHaveBeenCalledWith(mockImpersonateUser, 'super-admin-uuid');
+      expect(impersonateService.impersonate).toHaveBeenCalledWith(
+        'agent-uuid-1',
+      );
+      expect((authService as any).impersonateLogin).toHaveBeenCalledWith(
+        mockImpersonateUser,
+        'super-admin-uuid',
+      );
       expect(result).toEqual(mockImpersonateResponse);
     });
   });

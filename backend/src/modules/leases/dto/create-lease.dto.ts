@@ -1,6 +1,14 @@
 import {
-  IsString, IsNotEmpty, IsOptional, IsUUID, IsEnum,
-  IsNumber, Min, IsDateString, IsInt, MaxLength,
+  IsString,
+  IsNotEmpty,
+  IsOptional,
+  IsUUID,
+  IsEnum,
+  IsNumber,
+  Min,
+  IsDateString,
+  IsInt,
+  MaxLength,
 } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { LeaseType } from '../entities/lease.entity';

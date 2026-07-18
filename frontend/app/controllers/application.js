@@ -142,7 +142,9 @@ export default class ApplicationController extends Controller {
     runTask(
       this,
       () => {
-        const activeElement = document.getElementById(this.activeSearchResultId);
+        const activeElement = document.getElementById(
+          this.activeSearchResultId,
+        );
         if (activeElement) {
           activeElement.scrollIntoView({
             block: 'nearest',

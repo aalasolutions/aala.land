@@ -1,5 +1,21 @@
-import { Controller, Get, Delete, Param, Query, UseGuards, Request, ParseUUIDPipe, ParseIntPipe, DefaultValuePipe } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
+import {
+  Controller,
+  Get,
+  Delete,
+  Param,
+  Query,
+  UseGuards,
+  Request,
+  ParseUUIDPipe,
+  ParseIntPipe,
+  DefaultValuePipe,
+} from '@nestjs/common';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiBearerAuth,
+  ApiQuery,
+} from '@nestjs/swagger';
 import { AuditService } from './audit.service';
 import { QueryAuditLogsDto } from './dto/query-audit-logs.dto';
 import { JwtAuthGuard } from '@modules/auth/guards/jwt-auth.guard';
@@ -19,17 +35,26 @@ export class AuditController {
   @Get()
   @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER)
   @ApiOperation({ summary: 'Get all audit logs for company' })
-  async findAll(@Request() req: AuthenticatedRequest, @Query() query: QueryAuditLogsDto) {
+  async findAll(
+    @Request() req: AuthenticatedRequest,
+    @Query() query: QueryAuditLogsDto,
+  ) {
     return this.auditService.findAll(requireCompanyId(req.user), query);
   }
 
   @Delete('purge')
   @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN)
   @ApiOperation({ summary: 'Purge audit logs older than N days (minimum 30)' })
-  @ApiQuery({ name: 'olderThanDays', required: false, type: Number, description: 'Delete logs older than this many days (min 30, default 90)' })
+  @ApiQuery({
+    name: 'olderThanDays',
+    required: false,
+    type: Number,
+    description: 'Delete logs older than this many days (min 30, default 90)',
+  })
   async purge(
     @Request() req: AuthenticatedRequest,
-    @Query('olderThanDays', new DefaultValuePipe(90), ParseIntPipe) olderThanDays: number,
+    @Query('olderThanDays', new DefaultValuePipe(90), ParseIntPipe)
+    olderThanDays: number,
   ) {
     return this.auditService.purge(requireCompanyId(req.user), olderThanDays);
   }
@@ -37,7 +62,10 @@ export class AuditController {
   @Get(':id')
   @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER)
   @ApiOperation({ summary: 'Get single audit log by ID' })
-  async findOne(@Param('id', ParseUUIDPipe) id: string, @Request() req: AuthenticatedRequest) {
+  async findOne(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Request() req: AuthenticatedRequest,
+  ) {
     return this.auditService.findOne(id, requireCompanyId(req.user));
   }
 }

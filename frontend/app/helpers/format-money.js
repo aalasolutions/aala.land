@@ -10,7 +10,8 @@ import { helper } from '@ember/component/helper';
  */
 export default helper(function formatMoney([minorAmount, currency]) {
   const num = Number(minorAmount);
-  if (isNaN(num) || minorAmount === null || minorAmount === undefined) return '';
+  if (isNaN(num) || minorAmount === null || minorAmount === undefined)
+    return '';
 
   const code = (currency || 'usd').toUpperCase();
   const locale = navigator.language || 'en';

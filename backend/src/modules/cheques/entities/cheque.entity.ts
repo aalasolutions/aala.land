@@ -1,4 +1,12 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  UpdateDateColumn,
+  ManyToOne,
+  JoinColumn,
+} from 'typeorm';
 import { Company } from '../../companies/entities/company.entity';
 import { Lease } from '../../leases/entities/lease.entity';
 import { Unit } from '../../properties/entities/unit.entity';
@@ -92,7 +100,12 @@ export class Cheque {
   @Column({ name: 'bounce_count', type: 'int', default: 0 })
   bounceCount: number;
 
-  @Column({ name: 'bounce_reason', type: 'varchar', length: 500, nullable: true })
+  @Column({
+    name: 'bounce_reason',
+    type: 'varchar',
+    length: 500,
+    nullable: true,
+  })
   bounceReason: string | null;
 
   @Column({ name: 'last_bounce_date', type: 'timestamp', nullable: true })

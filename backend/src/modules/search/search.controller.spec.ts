@@ -14,13 +14,17 @@ describe('SearchController', () => {
   const mockSearchService = {
     search: jest.fn().mockResolvedValue({
       properties: [{ type: 'city', id: '1', name: 'Dubai', subtitle: 'City' }],
-      agents: [{ type: 'agent', id: 'a1', name: 'John Doe', subtitle: 'agent' }],
+      agents: [
+        { type: 'agent', id: 'a1', name: 'John Doe', subtitle: 'agent' },
+      ],
     }),
   };
 
   const mockExecutionContext = {
     switchToHttp: jest.fn(() => ({
-      getRequest: jest.fn(() => ({ user: { userId: 1, companyId: 'company1' } })),
+      getRequest: jest.fn(() => ({
+        user: { userId: 1, companyId: 'company1' },
+      })),
     })),
   };
 
@@ -37,15 +41,13 @@ describe('SearchController', () => {
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [SearchController],
-      providers: [
-        { provide: SearchService, useValue: mockSearchService },
-      ],
+      providers: [{ provide: SearchService, useValue: mockSearchService }],
     })
-    .overrideGuard(JwtAuthGuard)
-    .useValue(mockJwtAuthGuard)
-    .overrideGuard(RolesGuard)
-    .useValue({ canActivate: () => true })
-    .compile();
+      .overrideGuard(JwtAuthGuard)
+      .useValue(mockJwtAuthGuard)
+      .overrideGuard(RolesGuard)
+      .useValue({ canActivate: () => true })
+      .compile();
 
     app = module.createNestApplication();
 
@@ -87,14 +89,22 @@ describe('SearchController', () => {
     it('should call SearchService.search with correct parameters', async () => {
       const req: any = { user: { companyId: 'company1' } };
       await searchController.search(req, 'test_query', 'dubai');
-      expect(searchService.search).toHaveBeenCalledWith('test_query', 'company1', 'dubai');
+      expect(searchService.search).toHaveBeenCalledWith(
+        'test_query',
+        'company1',
+        'dubai',
+      );
     });
 
     it('should return search results from SearchService', async () => {
       const req: any = { user: { companyId: 'company1' } };
       const expectedResults = {
-        properties: [{ type: 'city', id: '1', name: 'Dubai', subtitle: 'City' }],
-        agents: [{ type: 'agent', id: 'a1', name: 'John Doe', subtitle: 'agent' }],
+        properties: [
+          { type: 'city', id: '1', name: 'Dubai', subtitle: 'City' },
+        ],
+        agents: [
+          { type: 'agent', id: 'a1', name: 'John Doe', subtitle: 'agent' },
+        ],
       };
       mockSearchService.search.mockResolvedValueOnce(expectedResults);
 
@@ -110,8 +120,12 @@ describe('SearchController', () => {
 
     it('should return 200 for authenticated request', async () => {
       const expectedResults = {
-        properties: [{ type: 'city', id: '1', name: 'Dubai', subtitle: 'City' }],
-        agents: [{ type: 'agent', id: 'a1', name: 'John Doe', subtitle: 'agent' }],
+        properties: [
+          { type: 'city', id: '1', name: 'Dubai', subtitle: 'City' },
+        ],
+        agents: [
+          { type: 'agent', id: 'a1', name: 'John Doe', subtitle: 'agent' },
+        ],
       };
       mockSearchService.search.mockResolvedValue(expectedResults);
       mockJwtAuthGuard.canActivate.mockReturnValue(true);

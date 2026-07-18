@@ -6,10 +6,7 @@ import { PropertyDocument } from '../properties/entities/property-document.entit
 import { PropertiesModule } from '../properties/properties.module';
 
 @Module({
-  imports: [
-    TypeOrmModule.forFeature([PropertyDocument]),
-    PropertiesModule,
-  ],
+  imports: [TypeOrmModule.forFeature([PropertyDocument]), PropertiesModule],
   controllers: [DocumentsController],
   providers: [DocumentsService],
   exports: [DocumentsService],

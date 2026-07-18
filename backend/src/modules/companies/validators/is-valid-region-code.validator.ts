@@ -1,4 +1,8 @@
-import { ValidatorConstraint, ValidatorConstraintInterface, ValidationArguments } from 'class-validator';
+import {
+  ValidatorConstraint,
+  ValidatorConstraintInterface,
+  ValidationArguments,
+} from 'class-validator';
 import { getRegionByCode } from '../../../shared/constants/regions';
 
 @ValidatorConstraint({ name: 'IsValidRegionCode', async: false })

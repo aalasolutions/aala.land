@@ -25,7 +25,9 @@ export class AddWhatsappSettings1779083947008 implements MigrationInterface {
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`ALTER TABLE "whatsapp_settings" DROP CONSTRAINT "FK_whatsapp_settings_company"`);
+    await queryRunner.query(
+      `ALTER TABLE "whatsapp_settings" DROP CONSTRAINT "FK_whatsapp_settings_company"`,
+    );
     await queryRunner.query(`DROP TABLE "whatsapp_settings"`);
   }
 }

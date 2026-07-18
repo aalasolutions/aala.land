@@ -10,7 +10,14 @@ describe('CommissionsController', () => {
 
   const companyId = 'company-uuid-1';
   const agentId = 'agent-uuid-1';
-  const mockReq = { user: { companyId, userId: 'user-uuid-1', email: 'admin@test.com', role: 'company_admin' } };
+  const mockReq = {
+    user: {
+      companyId,
+      userId: 'user-uuid-1',
+      email: 'admin@test.com',
+      role: 'company_admin',
+    },
+  };
 
   const mockCommission = {
     id: 'commission-uuid-1',
@@ -58,7 +65,12 @@ describe('CommissionsController', () => {
     it('creates commission scoped to company', async () => {
       service.create.mockResolvedValue(mockCommission as any);
 
-      const dto = { agentId, type: CommissionType.SALE, grossAmount: 500000, commissionRate: 2 };
+      const dto = {
+        agentId,
+        type: CommissionType.SALE,
+        grossAmount: 500000,
+        commissionRate: 2,
+      };
       await controller.create(dto as any, mockReq);
 
       expect(service.create).toHaveBeenCalledWith(companyId, dto);
@@ -71,7 +83,13 @@ describe('CommissionsController', () => {
 
       await controller.findAll(mockReq, 1, 20);
 
-      expect(service.findAll).toHaveBeenCalledWith(companyId, 1, 20, undefined, undefined);
+      expect(service.findAll).toHaveBeenCalledWith(
+        companyId,
+        1,
+        20,
+        undefined,
+        undefined,
+      );
     });
   });
 
@@ -81,13 +99,23 @@ describe('CommissionsController', () => {
 
       await controller.findByAgent(agentId, mockReq, 1, 20);
 
-      expect(service.findByAgent).toHaveBeenCalledWith(agentId, companyId, 1, 20);
+      expect(service.findByAgent).toHaveBeenCalledWith(
+        agentId,
+        companyId,
+        1,
+        20,
+      );
     });
   });
 
   describe('getSummary', () => {
     it('returns summary for agent', async () => {
-      const summary = { totalEarned: 18000, totalPaid: 10000, totalPending: 8000, count: 3 };
+      const summary = {
+        totalEarned: 18000,
+        totalPaid: 10000,
+        totalPending: 8000,
+        count: 3,
+      };
       service.getSummary.mockResolvedValue(summary);
 
       const result = await controller.getSummary(agentId, mockReq);
@@ -98,11 +126,22 @@ describe('CommissionsController', () => {
 
   describe('update', () => {
     it('updates commission status', async () => {
-      service.update.mockResolvedValue({ ...mockCommission, status: CommissionStatus.APPROVED } as any);
+      service.update.mockResolvedValue({
+        ...mockCommission,
+        status: CommissionStatus.APPROVED,
+      } as any);
 
-      await controller.update('commission-uuid-1', { status: CommissionStatus.APPROVED }, mockReq);
+      await controller.update(
+        'commission-uuid-1',
+        { status: CommissionStatus.APPROVED },
+        mockReq,
+      );
 
-      expect(service.update).toHaveBeenCalledWith('commission-uuid-1', companyId, { status: CommissionStatus.APPROVED });
+      expect(service.update).toHaveBeenCalledWith(
+        'commission-uuid-1',
+        companyId,
+        { status: CommissionStatus.APPROVED },
+      );
     });
   });
 });

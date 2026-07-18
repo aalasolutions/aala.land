@@ -22,8 +22,18 @@ export class UserRemovalSchema1779500000041 implements MigrationInterface {
     //    physically possible while history rows stay unreassigned.
     //    Constraint names on existing databases are TypeORM-generated hashes,
     //    so discover and drop them dynamically, then add a named replacement.
-    await this.repointUserFk(queryRunner, 'lead_activities', 'performed_by', 'FK_lead_activities_performed_by_users');
-    await this.repointUserFk(queryRunner, 'audit_logs', 'user_id', 'FK_audit_logs_user_id_users');
+    await this.repointUserFk(
+      queryRunner,
+      'lead_activities',
+      'performed_by',
+      'FK_lead_activities_performed_by_users',
+    );
+    await this.repointUserFk(
+      queryRunner,
+      'audit_logs',
+      'user_id',
+      'FK_audit_logs_user_id_users',
+    );
 
     // 4. Composite indexes matching the reassignment WHERE clause
     //    (<owner_col> = :fromUserId AND company_id = :companyId) and the
@@ -45,26 +55,40 @@ export class UserRemovalSchema1779500000041 implements MigrationInterface {
 
   public async down(queryRunner: QueryRunner): Promise<void> {
     // Drop the reassignment composite indexes.
-    await queryRunner.query(`DROP INDEX IF EXISTS "IDX_property_documents_company_uploaded"`);
-    await queryRunner.query(`DROP INDEX IF EXISTS "IDX_work_orders_company_assigned"`);
-    await queryRunner.query(`DROP INDEX IF EXISTS "IDX_commissions_company_agent"`);
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS "IDX_property_documents_company_uploaded"`,
+    );
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS "IDX_work_orders_company_assigned"`,
+    );
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS "IDX_commissions_company_agent"`,
+    );
 
     // Restore plain NO ACTION FKs.
-    await queryRunner.query(`ALTER TABLE "lead_activities" DROP CONSTRAINT IF EXISTS "FK_lead_activities_performed_by_users"`);
+    await queryRunner.query(
+      `ALTER TABLE "lead_activities" DROP CONSTRAINT IF EXISTS "FK_lead_activities_performed_by_users"`,
+    );
     await queryRunner.query(`
       ALTER TABLE "lead_activities"
         ADD CONSTRAINT "FK_lead_activities_performed_by_users"
         FOREIGN KEY ("performed_by") REFERENCES "users"("id")
     `);
-    await queryRunner.query(`ALTER TABLE "audit_logs" DROP CONSTRAINT IF EXISTS "FK_audit_logs_user_id_users"`);
+    await queryRunner.query(
+      `ALTER TABLE "audit_logs" DROP CONSTRAINT IF EXISTS "FK_audit_logs_user_id_users"`,
+    );
     await queryRunner.query(`
       ALTER TABLE "audit_logs"
         ADD CONSTRAINT "FK_audit_logs_user_id_users"
         FOREIGN KEY ("user_id") REFERENCES "users"("id")
     `);
-    await queryRunner.query(`DROP INDEX IF EXISTS "IDX_contacts_company_created_by"`);
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS "IDX_contacts_company_created_by"`,
+    );
     await queryRunner.query(`DROP INDEX IF EXISTS "IDX_contacts_created_by"`);
-    await queryRunner.query(`ALTER TABLE "contacts" DROP COLUMN IF EXISTS "created_by"`);
+    await queryRunner.query(
+      `ALTER TABLE "contacts" DROP COLUMN IF EXISTS "created_by"`,
+    );
   }
 
   private async repointUserFk(
@@ -84,7 +108,9 @@ export class UserRemovalSchema1779500000041 implements MigrationInterface {
       [table, column],
     );
     for (const row of existing) {
-      await queryRunner.query(`ALTER TABLE "${table}" DROP CONSTRAINT "${row.conname}"`);
+      await queryRunner.query(
+        `ALTER TABLE "${table}" DROP CONSTRAINT "${row.conname}"`,
+      );
     }
     await queryRunner.query(`
       ALTER TABLE "${table}"

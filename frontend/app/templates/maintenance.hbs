@@ -134,9 +134,9 @@
                   <td>{{#if wo.actualCost}}{{format-currency
                         wo.actualCost
                       }}{{else}}-{{/if}}</td>
-                  <td class="font-xs">{{#if
-                      wo.scheduledDate
-                    }}{{format-date wo.scheduledDate}}{{else}}-{{/if}}</td>
+                  <td class="font-xs">{{#if wo.scheduledDate}}{{format-date
+                        wo.scheduledDate
+                      }}{{else}}-{{/if}}</td>
                   <td><span
                       class="status-badge status-{{lowercase wo.status}}"
                     >{{wo.status}}</span></td>

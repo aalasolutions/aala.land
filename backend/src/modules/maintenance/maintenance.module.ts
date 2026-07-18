@@ -10,4 +10,4 @@ import { WorkOrder } from './entities/work-order.entity';
   providers: [MaintenanceService],
   exports: [MaintenanceService],
 })
-export class MaintenanceModule { }
+export class MaintenanceModule {}

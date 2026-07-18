@@ -1,5 +1,23 @@
-import { Controller, Get, Post, Patch, Body, Param, Query, ParseIntPipe, ParseUUIDPipe, DefaultValuePipe, UseGuards, Request } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
+import {
+  Controller,
+  Get,
+  Post,
+  Patch,
+  Body,
+  Param,
+  Query,
+  ParseIntPipe,
+  ParseUUIDPipe,
+  DefaultValuePipe,
+  UseGuards,
+  Request,
+} from '@nestjs/common';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiBearerAuth,
+  ApiQuery,
+} from '@nestjs/swagger';
 import { LeadsService } from './leads.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '@shared/guards/roles.guard';
@@ -17,17 +35,37 @@ import { requireCompanyId } from '@shared/utils/auth.util';
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('leads')
 export class LeadsController {
-  constructor(private readonly leadsService: LeadsService) { }
+  constructor(private readonly leadsService: LeadsService) {}
 
   @Post()
-  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT)
-  @ApiOperation({ summary: 'Create a new lead (SUPER_ADMIN, COMPANY_ADMIN, ADMIN, MANAGER, AGENT)' })
+  @Roles(
+    Role.SUPER_ADMIN,
+    Role.COMPANY_ADMIN,
+    Role.ADMIN,
+    Role.MANAGER,
+    Role.AGENT,
+  )
+  @ApiOperation({
+    summary:
+      'Create a new lead (SUPER_ADMIN, COMPANY_ADMIN, ADMIN, MANAGER, AGENT)',
+  })
   create(@Body() dto: CreateLeadDto, @Request() req: AuthenticatedRequest) {
-    return this.leadsService.create(requireCompanyId(req.user), dto, req.user.userId);
+    return this.leadsService.create(
+      requireCompanyId(req.user),
+      dto,
+      req.user.userId,
+    );
   }
 
   @Get()
-  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT, Role.ACCOUNTANT)
+  @Roles(
+    Role.SUPER_ADMIN,
+    Role.COMPANY_ADMIN,
+    Role.ADMIN,
+    Role.MANAGER,
+    Role.AGENT,
+    Role.ACCOUNTANT,
+  )
   @ApiOperation({ summary: 'List all leads for company (paginated)' })
   @ApiQuery({ name: 'page', required: false, type: Number })
   @ApiQuery({ name: 'limit', required: false, type: Number })
@@ -38,48 +76,139 @@ export class LeadsController {
     @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
     @Query('regionCode') regionCode?: string,
   ) {
-    return this.leadsService.findAll(requireCompanyId(req.user), page, limit, regionCode);
+    return this.leadsService.findAll(
+      requireCompanyId(req.user),
+      page,
+      limit,
+      regionCode,
+    );
   }
 
   @Get(':id')
-  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT, Role.ACCOUNTANT)
+  @Roles(
+    Role.SUPER_ADMIN,
+    Role.COMPANY_ADMIN,
+    Role.ADMIN,
+    Role.MANAGER,
+    Role.AGENT,
+    Role.ACCOUNTANT,
+  )
   @ApiOperation({ summary: 'Get lead by ID' })
-  findOne(@Param('id', ParseUUIDPipe) id: string, @Request() req: AuthenticatedRequest) {
+  findOne(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Request() req: AuthenticatedRequest,
+  ) {
     return this.leadsService.findOne(id, requireCompanyId(req.user));
   }
 
   @Patch(':id')
-  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT)
+  @Roles(
+    Role.SUPER_ADMIN,
+    Role.COMPANY_ADMIN,
+    Role.ADMIN,
+    Role.MANAGER,
+    Role.AGENT,
+  )
   @ApiOperation({ summary: 'Update lead (ADMIN+, AGENT can update only)' })
-  update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateLeadDto, @Request() req: AuthenticatedRequest) {
-    return this.leadsService.update(id, requireCompanyId(req.user), dto, req.user.userId, req.user.role);
+  update(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateLeadDto,
+    @Request() req: AuthenticatedRequest,
+  ) {
+    return this.leadsService.update(
+      id,
+      requireCompanyId(req.user),
+      dto,
+      req.user.userId,
+      req.user.role,
+    );
   }
 
   @Post(':id/assign')
-  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT)
-  @ApiOperation({ summary: 'Assign lead to an agent (ADMIN+, AGENT can assign)' })
-  assign(@Param('id', ParseUUIDPipe) id: string, @Body() dto: AssignLeadDto, @Request() req: AuthenticatedRequest) {
-    return this.leadsService.assign(id, requireCompanyId(req.user), dto.agentId, req.user.userId, dto.reason);
+  @Roles(
+    Role.SUPER_ADMIN,
+    Role.COMPANY_ADMIN,
+    Role.ADMIN,
+    Role.MANAGER,
+    Role.AGENT,
+  )
+  @ApiOperation({
+    summary: 'Assign lead to an agent (ADMIN+, AGENT can assign)',
+  })
+  assign(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: AssignLeadDto,
+    @Request() req: AuthenticatedRequest,
+  ) {
+    return this.leadsService.assign(
+      id,
+      requireCompanyId(req.user),
+      dto.agentId,
+      req.user.userId,
+      dto.reason,
+    );
   }
 
   @Post(':id/convert')
-  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT)
-  @ApiOperation({ summary: 'Convert lead to WON status (ADMIN+, AGENT can convert)' })
-  convert(@Param('id', ParseUUIDPipe) id: string, @Request() req: AuthenticatedRequest) {
-    return this.leadsService.convert(id, requireCompanyId(req.user), req.user.userId);
+  @Roles(
+    Role.SUPER_ADMIN,
+    Role.COMPANY_ADMIN,
+    Role.ADMIN,
+    Role.MANAGER,
+    Role.AGENT,
+  )
+  @ApiOperation({
+    summary: 'Convert lead to WON status (ADMIN+, AGENT can convert)',
+  })
+  convert(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Request() req: AuthenticatedRequest,
+  ) {
+    return this.leadsService.convert(
+      id,
+      requireCompanyId(req.user),
+      req.user.userId,
+    );
   }
 
   @Post(':id/activities')
-  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT)
-  @ApiOperation({ summary: 'Add activity to lead (ADMIN+, AGENT can add activity)' })
-  addActivity(@Param('id', ParseUUIDPipe) id: string, @Body() dto: CreateLeadActivityDto, @Request() req: AuthenticatedRequest) {
-    return this.leadsService.addActivity(id, requireCompanyId(req.user), dto, req.user.userId);
+  @Roles(
+    Role.SUPER_ADMIN,
+    Role.COMPANY_ADMIN,
+    Role.ADMIN,
+    Role.MANAGER,
+    Role.AGENT,
+  )
+  @ApiOperation({
+    summary: 'Add activity to lead (ADMIN+, AGENT can add activity)',
+  })
+  addActivity(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: CreateLeadActivityDto,
+    @Request() req: AuthenticatedRequest,
+  ) {
+    return this.leadsService.addActivity(
+      id,
+      requireCompanyId(req.user),
+      dto,
+      req.user.userId,
+    );
   }
 
   @Get(':id/activities')
-  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT, Role.ACCOUNTANT)
+  @Roles(
+    Role.SUPER_ADMIN,
+    Role.COMPANY_ADMIN,
+    Role.ADMIN,
+    Role.MANAGER,
+    Role.AGENT,
+    Role.ACCOUNTANT,
+  )
   @ApiOperation({ summary: 'Get all activities for a lead' })
-  findActivities(@Param('id', ParseUUIDPipe) id: string, @Request() req: AuthenticatedRequest) {
+  findActivities(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Request() req: AuthenticatedRequest,
+  ) {
     return this.leadsService.findActivities(id, requireCompanyId(req.user));
   }
 }

@@ -7,7 +7,10 @@ export class UploadMediaDto {
   /**
    * Maps to PropertyMedia.unitId (DB column: unit_id).
    */
-  @ApiProperty({ description: 'Unit UUID this photo belongs to', required: false })
+  @ApiProperty({
+    description: 'Unit UUID this photo belongs to',
+    required: false,
+  })
   @Transform(({ value }) => value || undefined)
   @IsOptional()
   @IsUUID()
@@ -16,7 +19,10 @@ export class UploadMediaDto {
   /**
    * Maps to PropertyMedia.assetId (DB column: building_id). Intentional legacy naming.
    */
-  @ApiProperty({ description: 'Asset UUID this photo belongs to', required: false })
+  @ApiProperty({
+    description: 'Asset UUID this photo belongs to',
+    required: false,
+  })
   @Transform(({ value }) => value || undefined)
   @IsOptional()
   @IsUUID()

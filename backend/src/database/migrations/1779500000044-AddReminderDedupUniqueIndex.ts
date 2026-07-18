@@ -42,6 +42,8 @@ export class AddReminderDedupUniqueIndex1779500000044 implements MigrationInterf
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`DROP INDEX IF EXISTS "UQ_notifications_reminder_dedup_daily"`);
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS "UQ_notifications_reminder_dedup_daily"`,
+    );
   }
 }

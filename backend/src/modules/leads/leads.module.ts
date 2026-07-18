@@ -28,4 +28,4 @@ import { UsersModule } from '../users/users.module';
   providers: [LeadsService],
   exports: [LeadsService],
 })
-export class LeadsModule { }
+export class LeadsModule {}

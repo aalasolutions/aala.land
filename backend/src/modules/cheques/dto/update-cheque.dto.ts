@@ -1,4 +1,13 @@
-import { IsString, IsOptional, IsEnum, IsNumber, Min, IsDateString, MaxLength, IsUUID } from 'class-validator';
+import {
+  IsString,
+  IsOptional,
+  IsEnum,
+  IsNumber,
+  Min,
+  IsDateString,
+  MaxLength,
+  IsUUID,
+} from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { ChequeStatus, ChequeType } from '../entities/cheque.entity';
 
@@ -36,7 +45,10 @@ export class UpdateChequeDto {
   @MaxLength(255)
   bankName?: string;
 
-  @ApiProperty({ required: false, description: 'Link cheque to a property unit' })
+  @ApiProperty({
+    required: false,
+    description: 'Link cheque to a property unit',
+  })
   @IsOptional()
   @IsUUID()
   unitId?: string;

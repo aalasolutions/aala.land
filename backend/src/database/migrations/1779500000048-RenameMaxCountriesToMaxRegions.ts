@@ -12,7 +12,9 @@ export class RenameMaxCountriesToMaxRegions1779500000048 implements MigrationInt
       return;
     }
 
-    await queryRunner.query(`ALTER TABLE "companies" RENAME COLUMN "max_countries" TO "max_regions"`);
+    await queryRunner.query(
+      `ALTER TABLE "companies" RENAME COLUMN "max_countries" TO "max_regions"`,
+    );
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
@@ -23,6 +25,8 @@ export class RenameMaxCountriesToMaxRegions1779500000048 implements MigrationInt
       return;
     }
 
-    await queryRunner.query(`ALTER TABLE "companies" RENAME COLUMN "max_regions" TO "max_countries"`);
+    await queryRunner.query(
+      `ALTER TABLE "companies" RENAME COLUMN "max_regions" TO "max_countries"`,
+    );
   }
 }

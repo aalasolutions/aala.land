@@ -10,11 +10,28 @@ describe('PropertiesController', () => {
   let mediaService: jest.Mocked<MediaService>;
 
   const companyId = 'company-uuid-1';
-  const mockReq = { user: { companyId, userId: 'user-uuid-1', email: 'admin@test.com', role: 'company_admin' } };
+  const mockReq = {
+    user: {
+      companyId,
+      userId: 'user-uuid-1',
+      email: 'admin@test.com',
+      role: 'company_admin',
+    },
+  };
 
   const mockArea = { id: 'area-uuid-1', name: 'Downtown Dubai', companyId };
-  const mockAsset = { id: 'asset-uuid-1', name: 'Burj View', localityId: 'locality-uuid-1', units: [] };
-  const mockUnit = { id: 'unit-uuid-1', unitNumber: '1A', assetId: 'asset-uuid-1', companyId };
+  const mockAsset = {
+    id: 'asset-uuid-1',
+    name: 'Burj View',
+    localityId: 'locality-uuid-1',
+    units: [],
+  };
+  const mockUnit = {
+    id: 'unit-uuid-1',
+    unitNumber: '1A',
+    assetId: 'asset-uuid-1',
+    companyId,
+  };
 
   const paginatedAreas = { data: [mockArea], total: 1, page: 1, limit: 20 };
   const paginatedAssets = { data: [mockAsset], total: 1, page: 1, limit: 20 };
@@ -72,9 +89,14 @@ describe('PropertiesController', () => {
     it('creates area with companyId from request', async () => {
       service.createArea.mockResolvedValue(mockArea as any);
 
-      const result = await controller.createArea({ name: 'Downtown Dubai' }, mockReq);
+      const result = await controller.createArea(
+        { name: 'Downtown Dubai' },
+        mockReq,
+      );
 
-      expect(service.createArea).toHaveBeenCalledWith(companyId, { name: 'Downtown Dubai' });
+      expect(service.createArea).toHaveBeenCalledWith(companyId, {
+        name: 'Downtown Dubai',
+      });
       expect(result).toEqual(mockArea);
     });
   });
@@ -85,7 +107,12 @@ describe('PropertiesController', () => {
 
       const result = await controller.findAllAreas(mockReq, 1, 20);
 
-      expect(service.findAllAreas).toHaveBeenCalledWith(companyId, 1, 20, undefined);
+      expect(service.findAllAreas).toHaveBeenCalledWith(
+        companyId,
+        1,
+        20,
+        undefined,
+      );
       expect(result).toEqual(paginatedAreas);
     });
   });
@@ -94,9 +121,15 @@ describe('PropertiesController', () => {
     it('creates asset with companyId from request', async () => {
       service.createAsset.mockResolvedValue(mockAsset as any);
 
-      const result = await controller.createAsset({ name: 'Burj View', localityId: 'locality-uuid-1' }, mockReq);
+      const result = await controller.createAsset(
+        { name: 'Burj View', localityId: 'locality-uuid-1' },
+        mockReq,
+      );
 
-      expect(service.createAsset).toHaveBeenCalledWith(companyId, { name: 'Burj View', localityId: 'locality-uuid-1' });
+      expect(service.createAsset).toHaveBeenCalledWith(companyId, {
+        name: 'Burj View',
+        localityId: 'locality-uuid-1',
+      });
       expect(result).toEqual(mockAsset);
     });
   });
@@ -105,9 +138,19 @@ describe('PropertiesController', () => {
     it('returns paginated assets for locality and company', async () => {
       service.findAssetsByLocality.mockResolvedValue(paginatedAssets as any);
 
-      const result = await controller.findAssetsByLocality('locality-uuid-1', mockReq, 1, 20);
+      const result = await controller.findAssetsByLocality(
+        'locality-uuid-1',
+        mockReq,
+        1,
+        20,
+      );
 
-      expect(service.findAssetsByLocality).toHaveBeenCalledWith('locality-uuid-1', companyId, 1, 20);
+      expect(service.findAssetsByLocality).toHaveBeenCalledWith(
+        'locality-uuid-1',
+        companyId,
+        1,
+        20,
+      );
       expect(result).toEqual(paginatedAssets);
     });
   });
@@ -116,9 +159,15 @@ describe('PropertiesController', () => {
     it('creates unit with companyId from request', async () => {
       service.createUnit.mockResolvedValue(mockUnit as any);
 
-      const result = await controller.createUnit({ unitNumber: '1A', assetId: 'asset-uuid-1' } as any, mockReq);
+      const result = await controller.createUnit(
+        { unitNumber: '1A', assetId: 'asset-uuid-1' } as any,
+        mockReq,
+      );
 
-      expect(service.createUnit).toHaveBeenCalledWith(companyId, { unitNumber: '1A', assetId: 'asset-uuid-1' });
+      expect(service.createUnit).toHaveBeenCalledWith(companyId, {
+        unitNumber: '1A',
+        assetId: 'asset-uuid-1',
+      });
       expect(result).toEqual(mockUnit);
     });
   });
@@ -127,20 +176,41 @@ describe('PropertiesController', () => {
     it('returns paginated units for asset and company', async () => {
       service.findUnitsByAsset.mockResolvedValue(paginatedUnits as any);
 
-      const result = await controller.findUnitsByAsset('asset-uuid-1', mockReq, 1, 20);
+      const result = await controller.findUnitsByAsset(
+        'asset-uuid-1',
+        mockReq,
+        1,
+        20,
+      );
 
-      expect(service.findUnitsByAsset).toHaveBeenCalledWith('asset-uuid-1', companyId, 1, 20);
+      expect(service.findUnitsByAsset).toHaveBeenCalledWith(
+        'asset-uuid-1',
+        companyId,
+        1,
+        20,
+      );
       expect(result).toEqual(paginatedUnits);
     });
   });
 
   describe('updateArea', () => {
     it('updates area', async () => {
-      service.updateArea.mockResolvedValue({ ...mockArea, name: 'Updated' } as any);
+      service.updateArea.mockResolvedValue({
+        ...mockArea,
+        name: 'Updated',
+      } as any);
 
-      const result = await controller.updateArea('area-uuid-1', { name: 'Updated' }, mockReq);
+      const result = await controller.updateArea(
+        'area-uuid-1',
+        { name: 'Updated' },
+        mockReq,
+      );
 
-      expect(service.updateArea).toHaveBeenCalledWith('area-uuid-1', companyId, { name: 'Updated' });
+      expect(service.updateArea).toHaveBeenCalledWith(
+        'area-uuid-1',
+        companyId,
+        { name: 'Updated' },
+      );
     });
   });
 
@@ -157,26 +227,35 @@ describe('PropertiesController', () => {
   describe('uploadMedia', () => {
     it('calls mediaService.uploadImage with companyId, file, and dto', async () => {
       const mockMedia = {
-        id:            'media-uuid-1',
-        url:           'https://s3.us-east-005.backblazeb2.com/aala-cloud/companies/c1/photo.jpg',
-        thumbnailUrl:  'https://s3.us-east-005.backblazeb2.com/aala-cloud/companies/c1/thumbs/thumb-photo.jpg',
-        fileSize:      204800,
+        id: 'media-uuid-1',
+        url: 'https://s3.us-east-005.backblazeb2.com/aala-cloud/companies/c1/photo.jpg',
+        thumbnailUrl:
+          'https://s3.us-east-005.backblazeb2.com/aala-cloud/companies/c1/thumbs/thumb-photo.jpg',
+        fileSize: 204800,
         thumbnailSize: 12288,
         companyId,
       };
       mediaService.uploadImage.mockResolvedValue(mockMedia as any);
 
       const mockFile = {
-        buffer:       Buffer.from('fake-image'),
-        mimetype:     'image/jpeg',
+        buffer: Buffer.from('fake-image'),
+        mimetype: 'image/jpeg',
         originalname: 'photo.jpg',
-        size:         204800,
+        size: 204800,
       } as Express.Multer.File;
       const dto = { unitId: 'unit-uuid-1', type: 'image' as any };
 
-      const result = await controller.uploadMedia(mockFile, dto as any, mockReq);
+      const result = await controller.uploadMedia(
+        mockFile,
+        dto as any,
+        mockReq,
+      );
 
-      expect(mediaService.uploadImage).toHaveBeenCalledWith(companyId, mockFile, dto);
+      expect(mediaService.uploadImage).toHaveBeenCalledWith(
+        companyId,
+        mockFile,
+        dto,
+      );
       expect(result).toEqual(mockMedia);
     });
 

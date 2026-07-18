@@ -1,6 +1,9 @@
 import { IsString, IsOptional, IsEnum, MaxLength } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
-import { DocumentCategory, DocumentAccessLevel } from '../../properties/entities/property-document.entity';
+import {
+  DocumentCategory,
+  DocumentAccessLevel,
+} from '../../properties/entities/property-document.entity';
 
 export class UpdateDocumentDto {
   @ApiProperty({ required: false })

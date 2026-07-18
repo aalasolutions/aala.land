@@ -90,7 +90,11 @@ describe('CompaniesService', () => {
       repo.create.mockReturnValue(mockCompany);
       repo.save.mockResolvedValue(mockCompany);
 
-      const result = await service.create({ name: 'Test Company', slug: 'test-company', defaultRegionCode: 'dubai' });
+      const result = await service.create({
+        name: 'Test Company',
+        slug: 'test-company',
+        defaultRegionCode: 'dubai',
+      });
 
       expect(repo.create).toHaveBeenCalled();
       expect(repo.save).toHaveBeenCalledWith(mockCompany);
@@ -102,9 +106,15 @@ describe('CompaniesService', () => {
       repo.save.mockResolvedValue(mockCompany);
 
       const billingService = module.get<BillingService>(BillingService);
-      jest.spyOn(billingService, 'ensureCompanyCustomer').mockRejectedValueOnce(new Error('Stripe down'));
+      jest
+        .spyOn(billingService, 'ensureCompanyCustomer')
+        .mockRejectedValueOnce(new Error('Stripe down'));
 
-      const result = await service.create({ name: 'Test Company', slug: 'test-company', defaultRegionCode: 'dubai' });
+      const result = await service.create({
+        name: 'Test Company',
+        slug: 'test-company',
+        defaultRegionCode: 'dubai',
+      });
 
       expect(result).toEqual(mockCompany);
     });
@@ -141,7 +151,9 @@ describe('CompaniesService', () => {
     it('throws NotFoundException when company not found', async () => {
       repo.findOne.mockResolvedValue(null);
 
-      await expect(service.findOne('bad-id')).rejects.toThrow(NotFoundException);
+      await expect(service.findOne('bad-id')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -150,7 +162,9 @@ describe('CompaniesService', () => {
       repo.findOne.mockResolvedValue(mockCompany);
       repo.save.mockResolvedValue({ ...mockCompany, name: 'Updated Name' });
 
-      const result = await service.update('company-uuid-1', { name: 'Updated Name' });
+      const result = await service.update('company-uuid-1', {
+        name: 'Updated Name',
+      });
 
       expect(result.name).toBe('Updated Name');
     });
@@ -165,7 +179,9 @@ describe('CompaniesService', () => {
 
       repo.findOne.mockResolvedValue(mockCompany);
 
-      await expect(service.update('company-uuid-1', dto, Role.ADMIN)).rejects.toThrow(ForbiddenException);
+      await expect(
+        service.update('company-uuid-1', dto, Role.ADMIN),
+      ).rejects.toThrow(ForbiddenException);
     });
 
     it('blocks a COMPANY_ADMIN from self-upgrading subscriptionTier (no free PRO via PATCH)', async () => {
@@ -174,7 +190,11 @@ describe('CompaniesService', () => {
       // then exploiting the Option-B "paid, no subscription = free" seat path.
       repo.findOne.mockResolvedValue(mockCompany);
       await expect(
-        service.update('company-uuid-1', { subscriptionTier: 'PRO' } as any, Role.COMPANY_ADMIN),
+        service.update(
+          'company-uuid-1',
+          { subscriptionTier: 'PRO' } as any,
+          Role.COMPANY_ADMIN,
+        ),
       ).rejects.toThrow(ForbiddenException);
     });
 
@@ -198,7 +218,11 @@ describe('CompaniesService', () => {
       repo.findOne.mockResolvedValue(mockCompany);
 
       await expect(
-        service.update('company-uuid-1', { activeRegions: ['invalid'] }, Role.SUPER_ADMIN),
+        service.update(
+          'company-uuid-1',
+          { activeRegions: ['invalid'] },
+          Role.SUPER_ADMIN,
+        ),
       ).rejects.toThrow(BadRequestException);
     });
 
@@ -208,7 +232,11 @@ describe('CompaniesService', () => {
       repo.findOne.mockResolvedValue(mockCompany);
 
       await expect(
-        service.update('company-uuid-1', { activeRegions: ['dubai', 'abu-dhabi'] }, Role.SUPER_ADMIN),
+        service.update(
+          'company-uuid-1',
+          { activeRegions: ['dubai', 'abu-dhabi'] },
+          Role.SUPER_ADMIN,
+        ),
       ).rejects.toThrow(BadRequestException);
     });
 
@@ -217,7 +245,11 @@ describe('CompaniesService', () => {
       repo.save.mockResolvedValue(mockCompany);
 
       await expect(
-        service.update('company-uuid-1', { activeRegions: ['dubai'] }, Role.SUPER_ADMIN),
+        service.update(
+          'company-uuid-1',
+          { activeRegions: ['dubai'] },
+          Role.SUPER_ADMIN,
+        ),
       ).resolves.toBeDefined();
     });
 
@@ -228,7 +260,11 @@ describe('CompaniesService', () => {
       repo.save.mockResolvedValue(mockCompany);
 
       await expect(
-        service.update('company-uuid-1', { activeRegions: ['dubai', 'dubai'] }, Role.SUPER_ADMIN),
+        service.update(
+          'company-uuid-1',
+          { activeRegions: ['dubai', 'dubai'] },
+          Role.SUPER_ADMIN,
+        ),
       ).resolves.toBeDefined();
     });
   });
@@ -258,23 +294,32 @@ describe('CompaniesService', () => {
     it('throws NotFoundException when company not found', async () => {
       repo.findOne.mockResolvedValue(null);
 
-      await expect(service.findOneWithAdminEmail('bad-id')).rejects.toThrow(NotFoundException);
+      await expect(service.findOneWithAdminEmail('bad-id')).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('should include usersCount in findOneWithAdminEmail response', async () => {
-      const mockCompany = { id: 'c1', name: 'Test Co', subscriptionTier: 'FREE', maxUsers: 1 } as any;
+      const mockCompany = {
+        id: 'c1',
+        name: 'Test Co',
+        subscriptionTier: 'FREE',
+        maxUsers: 1,
+      } as any;
       jest.spyOn(service, 'findOne').mockResolvedValue(mockCompany);
       userRepo.findOne.mockResolvedValue({ email: 'admin@test.com' } as any);
-      userRepo.count
-        .mockResolvedValueOnce(3)
-        .mockResolvedValueOnce(1);
+      userRepo.count.mockResolvedValueOnce(3).mockResolvedValueOnce(1);
 
       const result = await service.findOneWithAdminEmail('c1');
 
       expect(result.usersCount).toBe(3);
       expect(result.inactiveUsersCount).toBe(1);
-      expect(userRepo.count).toHaveBeenCalledWith({ where: { companyId: 'c1', isActive: true } });
-      expect(userRepo.count).toHaveBeenCalledWith({ where: { companyId: 'c1', isActive: false } });
+      expect(userRepo.count).toHaveBeenCalledWith({
+        where: { companyId: 'c1', isActive: true },
+      });
+      expect(userRepo.count).toHaveBeenCalledWith({
+        where: { companyId: 'c1', isActive: false },
+      });
     });
   });
 
@@ -290,7 +335,9 @@ describe('CompaniesService', () => {
     it('throws when not found', async () => {
       repo.findOne.mockResolvedValue(null);
 
-      await expect(service.findBySlug('bad')).rejects.toThrow(NotFoundException);
+      await expect(service.findBySlug('bad')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -352,7 +399,10 @@ describe('CompaniesService', () => {
     });
 
     it('returns the user projection and calls ensureCompanyCustomer after commit on happy path', async () => {
-      const savedCompany = { id: 'new-company-id', name: 'Test Company' } as Company;
+      const savedCompany = {
+        id: 'new-company-id',
+        name: 'Test Company',
+      } as Company;
       const userProjection = {
         id: 'new-user-id',
         name: 'Admin',
@@ -361,14 +411,19 @@ describe('CompaniesService', () => {
         companyId: 'new-company-id',
       };
 
-      dataSource.transaction.mockResolvedValue({ user: userProjection, company: savedCompany });
+      dataSource.transaction.mockResolvedValue({
+        user: userProjection,
+        company: savedCompany,
+      });
 
       const billingService = module.get<BillingService>(BillingService);
 
       const result = await service.createGoogleCompanyAdmin(dto);
 
       expect(result).toEqual(userProjection);
-      expect(billingService.ensureCompanyCustomer).toHaveBeenCalledWith(savedCompany);
+      expect(billingService.ensureCompanyCustomer).toHaveBeenCalledWith(
+        savedCompany,
+      );
     });
   });
 });

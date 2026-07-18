@@ -12,23 +12,33 @@ export class AddUserProfileFields1773400000000 implements MigrationInterface {
     }
 
     if (!columns.includes('preferred_language')) {
-      await queryRunner.query(`ALTER TABLE "users" ADD "preferred_language" varchar(5) NOT NULL DEFAULT 'en'`);
+      await queryRunner.query(
+        `ALTER TABLE "users" ADD "preferred_language" varchar(5) NOT NULL DEFAULT 'en'`,
+      );
     }
 
     if (!columns.includes('date_format')) {
-      await queryRunner.query(`ALTER TABLE "users" ADD "date_format" varchar(20) NOT NULL DEFAULT 'DD/MM/YYYY'`);
+      await queryRunner.query(
+        `ALTER TABLE "users" ADD "date_format" varchar(20) NOT NULL DEFAULT 'DD/MM/YYYY'`,
+      );
     }
 
     if (!columns.includes('currency')) {
-      await queryRunner.query(`ALTER TABLE "users" ADD "currency" varchar(3) NOT NULL DEFAULT 'AED'`);
+      await queryRunner.query(
+        `ALTER TABLE "users" ADD "currency" varchar(3) NOT NULL DEFAULT 'AED'`,
+      );
     }
 
     if (!columns.includes('timezone')) {
-      await queryRunner.query(`ALTER TABLE "users" ADD "timezone" varchar(50) NOT NULL DEFAULT 'Asia/Dubai'`);
+      await queryRunner.query(
+        `ALTER TABLE "users" ADD "timezone" varchar(50) NOT NULL DEFAULT 'Asia/Dubai'`,
+      );
     }
 
     if (!columns.includes('last_login_at')) {
-      await queryRunner.query(`ALTER TABLE "users" ADD "last_login_at" TIMESTAMP`);
+      await queryRunner.query(
+        `ALTER TABLE "users" ADD "last_login_at" TIMESTAMP`,
+      );
     }
   }
 
@@ -42,7 +52,9 @@ export class AddUserProfileFields1773400000000 implements MigrationInterface {
       await queryRunner.query(`ALTER TABLE "users" DROP COLUMN "phone"`);
     }
     if (columns.includes('preferred_language')) {
-      await queryRunner.query(`ALTER TABLE "users" DROP COLUMN "preferred_language"`);
+      await queryRunner.query(
+        `ALTER TABLE "users" DROP COLUMN "preferred_language"`,
+      );
     }
     if (columns.includes('date_format')) {
       await queryRunner.query(`ALTER TABLE "users" DROP COLUMN "date_format"`);
@@ -54,7 +66,9 @@ export class AddUserProfileFields1773400000000 implements MigrationInterface {
       await queryRunner.query(`ALTER TABLE "users" DROP COLUMN "timezone"`);
     }
     if (columns.includes('last_login_at')) {
-      await queryRunner.query(`ALTER TABLE "users" DROP COLUMN "last_login_at"`);
+      await queryRunner.query(
+        `ALTER TABLE "users" DROP COLUMN "last_login_at"`,
+      );
     }
   }
 }

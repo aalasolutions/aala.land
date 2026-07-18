@@ -1,5 +1,11 @@
 // backend/src/modules/whatsapp/whatsapp.gateway.ts
-import { WebSocketGateway, WebSocketServer, OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect } from '@nestjs/websockets';
+import {
+  WebSocketGateway,
+  WebSocketServer,
+  OnGatewayInit,
+  OnGatewayConnection,
+  OnGatewayDisconnect,
+} from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
@@ -9,21 +15,31 @@ import { User } from '../users/entities/user.entity';
 import { Company } from '../companies/entities/company.entity';
 
 const corsOrigins = process.env.CORS_ORIGIN
-  ? process.env.CORS_ORIGIN.split(',').map(o => o.trim()).filter(Boolean)
+  ? process.env.CORS_ORIGIN.split(',')
+      .map((o) => o.trim())
+      .filter(Boolean)
   : ['http://localhost:4200'];
 
-@WebSocketGateway({ namespace: 'whatsapp', cors: { origin: corsOrigins, credentials: true } })
-export class WhatsappGateway implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect {
+@WebSocketGateway({
+  namespace: 'whatsapp',
+  cors: { origin: corsOrigins, credentials: true },
+})
+export class WhatsappGateway
+  implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect
+{
   @WebSocketServer() server: Server;
   private readonly logger = new Logger(WhatsappGateway.name);
 
   constructor(
     private readonly jwtService: JwtService,
     @InjectRepository(User) private readonly usersRepo: Repository<User>,
-    @InjectRepository(Company) private readonly companiesRepo: Repository<Company>,
+    @InjectRepository(Company)
+    private readonly companiesRepo: Repository<Company>,
   ) {}
 
-  afterInit() { this.logger.log('WhatsApp WebSocket gateway ready on /whatsapp'); }
+  afterInit() {
+    this.logger.log('WhatsApp WebSocket gateway ready on /whatsapp');
+  }
 
   async handleConnection(socket: Socket) {
     try {
@@ -38,7 +54,8 @@ export class WhatsappGateway implements OnGatewayInit, OnGatewayConnection, OnGa
         select: { id: true, isActive: true, companyId: true },
       });
       if (!user?.isActive) throw new Error('User inactive or not found');
-      if (!user.companyId) throw new Error('No company associated with this user');
+      if (!user.companyId)
+        throw new Error('No company associated with this user');
 
       const company = await this.companiesRepo.findOne({
         where: { id: user.companyId },
@@ -48,10 +65,14 @@ export class WhatsappGateway implements OnGatewayInit, OnGatewayConnection, OnGa
 
       socket.data.userId = payload.sub;
       socket.join('user:' + payload.sub);
-      this.logger.debug(`Socket ${socket.id} authenticated and joined room user:${payload.sub}`);
+      this.logger.debug(
+        `Socket ${socket.id} authenticated and joined room user:${payload.sub}`,
+      );
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
-      this.logger.warn(`WhatsApp socket authentication failed for client ${socket.id}: ${message}`);
+      this.logger.warn(
+        `WhatsApp socket authentication failed for client ${socket.id}: ${message}`,
+      );
       socket.disconnect();
     }
   }

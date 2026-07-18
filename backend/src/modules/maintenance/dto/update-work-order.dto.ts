@@ -1,6 +1,22 @@
-import { IsString, IsOptional, IsUUID, IsEnum, IsNumber, Min, IsDateString, MaxLength, IsArray, IsBoolean } from 'class-validator';
+import {
+  IsString,
+  IsOptional,
+  IsUUID,
+  IsEnum,
+  IsNumber,
+  Min,
+  IsDateString,
+  MaxLength,
+  IsArray,
+  IsBoolean,
+} from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
-import { WorkOrderStatus, WorkOrderPriority, WorkOrderCategory, ScheduleFrequency } from '../entities/work-order.entity';
+import {
+  WorkOrderStatus,
+  WorkOrderPriority,
+  WorkOrderCategory,
+  ScheduleFrequency,
+} from '../entities/work-order.entity';
 
 export class UpdateWorkOrderDto {
   @ApiProperty({ required: false })

@@ -26,7 +26,6 @@ export default class FormDropdownComponent extends Component {
       this.args.value !== null &&
       this.args.options
     ) {
-
       const selectedOption = this.args.options.find(
         (opt) => opt.value === this.args.value,
       );
@@ -274,7 +273,10 @@ export default class FormDropdownComponent extends Component {
           '.dropdown-option.highlighted',
         );
         if (activeElement) {
-          activeElement.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+          activeElement.scrollIntoView({
+            block: 'nearest',
+            behavior: 'smooth',
+          });
         }
       },
       0,

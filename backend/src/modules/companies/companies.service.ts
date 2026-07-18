@@ -1,7 +1,18 @@
-import { Injectable, Logger, NotFoundException, BadRequestException, ForbiddenException, ConflictException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  NotFoundException,
+  BadRequestException,
+  ForbiddenException,
+  ConflictException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
-import { Company, SubscriptionTier, TIER_LIMITS } from './entities/company.entity';
+import {
+  Company,
+  SubscriptionTier,
+  TIER_LIMITS,
+} from './entities/company.entity';
 import { User, AuthProvider } from '../users/entities/user.entity';
 import { CreateCompanyDto } from './dto/create-company.dto';
 import { UpdateCompanyDto } from './dto/update-company.dto';
@@ -12,285 +23,362 @@ import { BillingService } from '../billing/billing.service';
 
 @Injectable()
 export class CompaniesService {
-    private readonly logger = new Logger(CompaniesService.name);
+  private readonly logger = new Logger(CompaniesService.name);
 
-    constructor(
-        @InjectRepository(Company)
-        private readonly companyRepository: Repository<Company>,
-        @InjectRepository(User)
-        private readonly userRepository: Repository<User>,
-        private readonly dataSource: DataSource,
-        private readonly billingService: BillingService,
-    ) { }
+  constructor(
+    @InjectRepository(Company)
+    private readonly companyRepository: Repository<Company>,
+    @InjectRepository(User)
+    private readonly userRepository: Repository<User>,
+    private readonly dataSource: DataSource,
+    private readonly billingService: BillingService,
+  ) {}
 
-    async create(dto: CreateCompanyDto): Promise<Company> {
-        this.validateRegionCode(dto.defaultRegionCode);
+  async create(dto: CreateCompanyDto): Promise<Company> {
+    this.validateRegionCode(dto.defaultRegionCode);
 
-        // If activeRegions not provided, default to [defaultRegionCode]
-        if (!dto.activeRegions) {
-            dto.activeRegions = [dto.defaultRegionCode];
-        } else {
-            this.validateRegionCodes(dto.activeRegions);
-            if (!dto.activeRegions.includes(dto.defaultRegionCode)) {
-                throw new BadRequestException('defaultRegionCode must be included in activeRegions');
-            }
-        }
-
-        const company = this.companyRepository.create(dto);
-        const saved = await this.companyRepository.save(company);
-
-        // fire-and-forget: never block signup on the billing provider
-        this.billingService
-            .ensureCompanyCustomer(saved)
-            .catch((err) =>
-                this.logger.error(`billing customer creation failed for company ${saved.id}: ${(err as Error).message}`),
-            );
-
-        return saved;
+    // If activeRegions not provided, default to [defaultRegionCode]
+    if (!dto.activeRegions) {
+      dto.activeRegions = [dto.defaultRegionCode];
+    } else {
+      this.validateRegionCodes(dto.activeRegions);
+      if (!dto.activeRegions.includes(dto.defaultRegionCode)) {
+        throw new BadRequestException(
+          'defaultRegionCode must be included in activeRegions',
+        );
+      }
     }
 
-    async findAll(page = 1, limit = 20): Promise<{ data: (Company & { usersCount: number; inactiveUsersCount: number })[]; total: number; page: number; limit: number }> {
-        const [companies, total] = await this.companyRepository.findAndCount({
-            ...paginationOptions(page, limit),
-            order: { createdAt: 'DESC' },
+    const company = this.companyRepository.create(dto);
+    const saved = await this.companyRepository.save(company);
+
+    // fire-and-forget: never block signup on the billing provider
+    this.billingService
+      .ensureCompanyCustomer(saved)
+      .catch((err) =>
+        this.logger.error(
+          `billing customer creation failed for company ${saved.id}: ${(err as Error).message}`,
+        ),
+      );
+
+    return saved;
+  }
+
+  async findAll(
+    page = 1,
+    limit = 20,
+  ): Promise<{
+    data: (Company & { usersCount: number; inactiveUsersCount: number })[];
+    total: number;
+    page: number;
+    limit: number;
+  }> {
+    const [companies, total] = await this.companyRepository.findAndCount({
+      ...paginationOptions(page, limit),
+      order: { createdAt: 'DESC' },
+    });
+
+    if (companies.length === 0) {
+      return { data: [], total, page, limit };
+    }
+
+    const companyIds = companies.map((c) => c.id);
+    const [activeRows, inactiveRows] = await Promise.all([
+      this.userRepository
+        .createQueryBuilder('u')
+        .select('u.companyId', 'companyId')
+        .addSelect('COUNT(*)', 'count')
+        .where('u.companyId IN (:...ids)', { ids: companyIds })
+        .andWhere('u.isActive = true')
+        .groupBy('u.companyId')
+        .getRawMany<{ companyId: string; count: string }>(),
+      this.userRepository
+        .createQueryBuilder('u')
+        .select('u.companyId', 'companyId')
+        .addSelect('COUNT(*)', 'count')
+        .where('u.companyId IN (:...ids)', { ids: companyIds })
+        .andWhere('u.isActive = false')
+        .groupBy('u.companyId')
+        .getRawMany<{ companyId: string; count: string }>(),
+    ]);
+
+    const activeMap = new Map(
+      activeRows.map((r) => [r.companyId, parseInt(r.count, 10)]),
+    );
+    const inactiveMap = new Map(
+      inactiveRows.map((r) => [r.companyId, parseInt(r.count, 10)]),
+    );
+    const data = companies.map((c) => ({
+      ...c,
+      usersCount: activeMap.get(c.id) ?? 0,
+      inactiveUsersCount: inactiveMap.get(c.id) ?? 0,
+    }));
+
+    return { data, total, page, limit };
+  }
+
+  async findOne(id: string): Promise<Company> {
+    const company = await this.companyRepository.findOne({ where: { id } });
+    if (!company) {
+      throw new NotFoundException(`Company with ID ${id} not found`);
+    }
+    return company;
+  }
+
+  async findOneWithAdminEmail(
+    id: string,
+  ): Promise<
+    Company & {
+      adminEmail: string | null;
+      usersCount: number;
+      inactiveUsersCount: number;
+    }
+  > {
+    const company = await this.findOne(id);
+    const [admin, usersCount, inactiveUsersCount] = await Promise.all([
+      this.userRepository.findOne({
+        where: { companyId: id, role: Role.COMPANY_ADMIN, isActive: true },
+        select: ['email'],
+      }),
+      this.userRepository.count({ where: { companyId: id, isActive: true } }),
+      this.userRepository.count({ where: { companyId: id, isActive: false } }),
+    ]);
+    return {
+      ...company,
+      adminEmail: admin?.email ?? null,
+      usersCount,
+      inactiveUsersCount,
+    };
+  }
+
+  async update(
+    id: string,
+    dto: UpdateCompanyDto,
+    role?: string,
+  ): Promise<Company> {
+    const company = await this.findOne(id);
+
+    if (role === Role.SUPER_ADMIN) {
+      // No restrictions. NOTE: subscriptionTier is intentionally settable
+      // here without touching Stripe -- this is the SUPER_ADMIN comp /
+      // entitlement override (free or discounted tier grants), not a bug.
+      // It is the one deliberate exception to the billing single-writer
+      // rule (contract section 8); it can desync from a live Stripe
+      // subscription by design when used for a comp account.
+    } else if (role === Role.COMPANY_ADMIN || role === Role.ADMIN) {
+      const superAdminOnlyFields = [
+        'isActive',
+        'subscriptionTier',
+        'maxUsers',
+        'maxRegions',
+        'maxProperties',
+        'subscriptionExpiresAt',
+      ];
+      const attempted = superAdminOnlyFields.filter((f) => f in dto);
+      if (attempted.length) {
+        throw new ForbiddenException(
+          `You are not allowed to update: ${attempted.join(', ')}`,
+        );
+      }
+    } else {
+      const restrictedFields = [
+        'activeRegions',
+        'defaultRegionCode',
+        'subscriptionTier',
+        'maxUsers',
+        'maxRegions',
+        'maxProperties',
+        'subscriptionExpiresAt',
+      ];
+      const attempted = restrictedFields.filter((f) => f in dto);
+      if (attempted.length) {
+        throw new ForbiddenException(
+          `You are not allowed to update: ${attempted.join(', ')}`,
+        );
+      }
+    }
+
+    if (dto.activeRegions) {
+      this.validateRegionCodes(dto.activeRegions);
+    }
+    if (dto.defaultRegionCode) {
+      this.validateRegionCode(dto.defaultRegionCode);
+    }
+
+    // Enforce region limit — use stored company limit, but respect tier upgrade and explicit override.
+    // FREE caps to a single region (one state/emirate); paid tiers are effectively unlimited.
+    if (dto.activeRegions) {
+      const storedMaxRegions =
+        company.maxRegions ??
+        (
+          TIER_LIMITS[company.subscriptionTier] ??
+          TIER_LIMITS[SubscriptionTier.FREE]
+        ).maxRegions;
+      const effectiveMaxRegions: number =
+        ('maxRegions' in dto ? dto.maxRegions : undefined) ??
+        (dto.subscriptionTier &&
+        dto.subscriptionTier !== company.subscriptionTier
+          ? (
+              TIER_LIMITS[dto.subscriptionTier] ??
+              TIER_LIMITS[SubscriptionTier.FREE]
+            ).maxRegions
+          : storedMaxRegions);
+      const uniqueRegionCount = new Set(dto.activeRegions).size;
+      if (uniqueRegionCount > effectiveMaxRegions) {
+        throw new BadRequestException(
+          `Your plan allows up to ${effectiveMaxRegions} region${effectiveMaxRegions === 1 ? '' : 's'}. Upgrade to add more.`,
+        );
+      }
+    }
+
+    // Cross-validate: defaultRegionCode must be in activeRegions
+    const finalActiveRegions = dto.activeRegions ?? company.activeRegions;
+    const finalDefaultRegion =
+      dto.defaultRegionCode ?? company.defaultRegionCode;
+    if (
+      finalActiveRegions &&
+      finalDefaultRegion &&
+      !finalActiveRegions.includes(finalDefaultRegion)
+    ) {
+      throw new BadRequestException(
+        'defaultRegionCode must be included in activeRegions',
+      );
+    }
+
+    if (
+      dto.subscriptionTier &&
+      dto.subscriptionTier !== company.subscriptionTier
+    ) {
+      const tierLimits =
+        TIER_LIMITS[dto.subscriptionTier] || TIER_LIMITS[SubscriptionTier.FREE];
+      if (!('maxUsers' in dto)) company.maxUsers = tierLimits.maxUsers;
+      if (!('maxRegions' in dto)) company.maxRegions = tierLimits.maxRegions;
+      if (!('maxProperties' in dto))
+        company.maxProperties = tierLimits.maxProperties;
+    }
+
+    const { subscriptionExpiresAt, ...rest } = dto;
+    Object.assign(company, rest);
+    if ('subscriptionExpiresAt' in dto) {
+      company.subscriptionExpiresAt = subscriptionExpiresAt
+        ? new Date(subscriptionExpiresAt)
+        : null;
+    }
+    return this.companyRepository.save(company);
+  }
+
+  async findBySlug(slug: string): Promise<Company> {
+    const company = await this.companyRepository.findOne({ where: { slug } });
+    if (!company) {
+      throw new NotFoundException(`Company with slug ${slug} not found`);
+    }
+    return company;
+  }
+
+  async createGoogleCompanyAdmin(dto: {
+    companyName: string;
+    slug: string;
+    regionCode: string;
+    googleId: string;
+    email: string;
+    name: string;
+  }): Promise<Pick<User, 'id' | 'name' | 'email' | 'role' | 'companyId'>> {
+    this.validateRegionCode(dto.regionCode);
+
+    try {
+      const { user, company: savedCompanyOut } =
+        await this.dataSource.transaction(async (manager) => {
+          const companyRepo = manager.getRepository(Company);
+          const userRepo = manager.getRepository(User);
+
+          const existingSlug = await companyRepo.findOne({
+            where: { slug: dto.slug },
+            select: { id: true },
+          });
+          if (existingSlug) {
+            throw new ConflictException(
+              'This company name is already taken. Please choose a different one.',
+            );
+          }
+
+          const company = companyRepo.create({
+            name: dto.companyName,
+            slug: dto.slug,
+            defaultRegionCode: dto.regionCode,
+            activeRegions: [dto.regionCode],
+          });
+          const savedCompany = await companyRepo.save(company);
+
+          const userEntity = userRepo.create({
+            googleId: dto.googleId,
+            email: dto.email,
+            name: dto.name,
+            authProvider: AuthProvider.GOOGLE,
+            password: null,
+            role: Role.COMPANY_ADMIN,
+            companyId: savedCompany.id,
+          });
+          const savedUser = await userRepo.save(userEntity);
+
+          return {
+            user: {
+              id: savedUser.id,
+              name: savedUser.name,
+              email: savedUser.email,
+              role: savedUser.role,
+              companyId: savedCompany.id,
+            },
+            company: savedCompany,
+          };
         });
 
-        if (companies.length === 0) {
-            return { data: [], total, page, limit };
+      // fire-and-forget, AFTER the transaction has committed
+      this.billingService
+        .ensureCompanyCustomer(savedCompanyOut)
+        .catch((err) =>
+          this.logger.error(
+            `billing customer creation failed for company ${savedCompanyOut.id}: ${(err as Error).message}`,
+          ),
+        );
+
+      return user;
+    } catch (error) {
+      if (error instanceof ConflictException) {
+        throw error;
+      }
+      const dbError = error as { code?: string; constraint?: string };
+      if (dbError.code === '23505') {
+        if (dbError.constraint === 'UQ_b28b07d25e4324eee577de5496d') {
+          throw new ConflictException(
+            'This company name is already taken. Please choose a different one.',
+          );
         }
-
-        const companyIds = companies.map(c => c.id);
-        const [activeRows, inactiveRows] = await Promise.all([
-            this.userRepository
-                .createQueryBuilder('u')
-                .select('u.companyId', 'companyId')
-                .addSelect('COUNT(*)', 'count')
-                .where('u.companyId IN (:...ids)', { ids: companyIds })
-                .andWhere('u.isActive = true')
-                .groupBy('u.companyId')
-                .getRawMany<{ companyId: string; count: string }>(),
-            this.userRepository
-                .createQueryBuilder('u')
-                .select('u.companyId', 'companyId')
-                .addSelect('COUNT(*)', 'count')
-                .where('u.companyId IN (:...ids)', { ids: companyIds })
-                .andWhere('u.isActive = false')
-                .groupBy('u.companyId')
-                .getRawMany<{ companyId: string; count: string }>(),
-        ]);
-
-        const activeMap = new Map(activeRows.map(r => [r.companyId, parseInt(r.count, 10)]));
-        const inactiveMap = new Map(inactiveRows.map(r => [r.companyId, parseInt(r.count, 10)]));
-        const data = companies.map(c => ({
-            ...c,
-            usersCount: activeMap.get(c.id) ?? 0,
-            inactiveUsersCount: inactiveMap.get(c.id) ?? 0,
-        }));
-
-        return { data, total, page, limit };
+        if (
+          dbError.constraint === 'UQ_97672ac88f789774dd47f7c8be3' ||
+          dbError.constraint === 'IDX_users_google_id'
+        ) {
+          throw new ConflictException(
+            'An account with this email/Google account already exists.',
+          );
+        }
+        throw new ConflictException(
+          'Unable to create account due to a conflict. Please verify the company name and email.',
+        );
+      }
+      throw error;
     }
+  }
 
-    async findOne(id: string): Promise<Company> {
-        const company = await this.companyRepository.findOne({ where: { id } });
-        if (!company) {
-            throw new NotFoundException(`Company with ID ${id} not found`);
-        }
-        return company;
+  private validateRegionCode(code: string): void {
+    const valid = REGIONS.some((r) => r.code === code);
+    if (!valid) {
+      throw new BadRequestException(`Invalid region code: ${code}`);
     }
+  }
 
-    async findOneWithAdminEmail(id: string): Promise<Company & { adminEmail: string | null; usersCount: number; inactiveUsersCount: number }> {
-        const company = await this.findOne(id);
-        const [admin, usersCount, inactiveUsersCount] = await Promise.all([
-            this.userRepository.findOne({
-                where: { companyId: id, role: Role.COMPANY_ADMIN, isActive: true },
-                select: ['email'],
-            }),
-            this.userRepository.count({ where: { companyId: id, isActive: true } }),
-            this.userRepository.count({ where: { companyId: id, isActive: false } }),
-        ]);
-        return { ...company, adminEmail: admin?.email ?? null, usersCount, inactiveUsersCount };
+  private validateRegionCodes(codes: string[]): void {
+    for (const code of codes) {
+      this.validateRegionCode(code);
     }
-
-    async update(id: string, dto: UpdateCompanyDto, role?: string): Promise<Company> {
-        const company = await this.findOne(id);
-
-        if (role === Role.SUPER_ADMIN) {
-            // No restrictions. NOTE: subscriptionTier is intentionally settable
-            // here without touching Stripe -- this is the SUPER_ADMIN comp /
-            // entitlement override (free or discounted tier grants), not a bug.
-            // It is the one deliberate exception to the billing single-writer
-            // rule (contract section 8); it can desync from a live Stripe
-            // subscription by design when used for a comp account.
-        } else if (role === Role.COMPANY_ADMIN || role === Role.ADMIN) {
-            const superAdminOnlyFields = ['isActive', 'subscriptionTier', 'maxUsers', 'maxRegions', 'maxProperties', 'subscriptionExpiresAt'];
-            const attempted = superAdminOnlyFields.filter(f => f in dto);
-            if (attempted.length) {
-                throw new ForbiddenException(`You are not allowed to update: ${attempted.join(', ')}`);
-            }
-        } else {
-            const restrictedFields = ['activeRegions', 'defaultRegionCode', 'subscriptionTier', 'maxUsers', 'maxRegions', 'maxProperties', 'subscriptionExpiresAt'];
-            const attempted = restrictedFields.filter(f => f in dto);
-            if (attempted.length) {
-                throw new ForbiddenException(`You are not allowed to update: ${attempted.join(', ')}`);
-            }
-        }
-
-        if (dto.activeRegions) {
-            this.validateRegionCodes(dto.activeRegions);
-        }
-        if (dto.defaultRegionCode) {
-            this.validateRegionCode(dto.defaultRegionCode);
-        }
-
-        // Enforce region limit — use stored company limit, but respect tier upgrade and explicit override.
-        // FREE caps to a single region (one state/emirate); paid tiers are effectively unlimited.
-        if (dto.activeRegions) {
-            const storedMaxRegions = company.maxRegions
-                ?? (TIER_LIMITS[company.subscriptionTier] ?? TIER_LIMITS[SubscriptionTier.FREE]).maxRegions;
-            const effectiveMaxRegions: number =
-                ('maxRegions' in dto ? dto.maxRegions : undefined) ??
-                (dto.subscriptionTier && dto.subscriptionTier !== company.subscriptionTier
-                    ? (TIER_LIMITS[dto.subscriptionTier] ?? TIER_LIMITS[SubscriptionTier.FREE]).maxRegions
-                    : storedMaxRegions);
-            const uniqueRegionCount = new Set(dto.activeRegions).size;
-            if (uniqueRegionCount > effectiveMaxRegions) {
-                throw new BadRequestException(
-                    `Your plan allows up to ${effectiveMaxRegions} region${effectiveMaxRegions === 1 ? '' : 's'}. Upgrade to add more.`,
-                );
-            }
-        }
-
-        // Cross-validate: defaultRegionCode must be in activeRegions
-        const finalActiveRegions = dto.activeRegions ?? company.activeRegions;
-        const finalDefaultRegion = dto.defaultRegionCode ?? company.defaultRegionCode;
-        if (finalActiveRegions && finalDefaultRegion && !finalActiveRegions.includes(finalDefaultRegion)) {
-            throw new BadRequestException('defaultRegionCode must be included in activeRegions');
-        }
-
-        if (dto.subscriptionTier && dto.subscriptionTier !== company.subscriptionTier) {
-            const tierLimits = TIER_LIMITS[dto.subscriptionTier] || TIER_LIMITS[SubscriptionTier.FREE];
-            if (!('maxUsers' in dto)) company.maxUsers = tierLimits.maxUsers;
-            if (!('maxRegions' in dto)) company.maxRegions = tierLimits.maxRegions;
-            if (!('maxProperties' in dto)) company.maxProperties = tierLimits.maxProperties;
-        }
-
-        const { subscriptionExpiresAt, ...rest } = dto;
-        Object.assign(company, rest);
-        if ('subscriptionExpiresAt' in dto) {
-            company.subscriptionExpiresAt = subscriptionExpiresAt ? new Date(subscriptionExpiresAt) : null;
-        }
-        return this.companyRepository.save(company);
-    }
-
-    async findBySlug(slug: string): Promise<Company> {
-        const company = await this.companyRepository.findOne({ where: { slug } });
-        if (!company) {
-            throw new NotFoundException(`Company with slug ${slug} not found`);
-        }
-        return company;
-    }
-
-    async createGoogleCompanyAdmin(dto: {
-        companyName: string;
-        slug: string;
-        regionCode: string;
-        googleId: string;
-        email: string;
-        name: string;
-    }): Promise<Pick<User, 'id' | 'name' | 'email' | 'role' | 'companyId'>> {
-        this.validateRegionCode(dto.regionCode);
-
-        try {
-            const { user, company: savedCompanyOut } = await this.dataSource.transaction(async (manager) => {
-                const companyRepo = manager.getRepository(Company);
-                const userRepo = manager.getRepository(User);
-
-                const existingSlug = await companyRepo.findOne({
-                    where: { slug: dto.slug },
-                    select: { id: true },
-                });
-                if (existingSlug) {
-                    throw new ConflictException(
-                        'This company name is already taken. Please choose a different one.',
-                    );
-                }
-
-                const company = companyRepo.create({
-                    name: dto.companyName,
-                    slug: dto.slug,
-                    defaultRegionCode: dto.regionCode,
-                    activeRegions: [dto.regionCode],
-                });
-                const savedCompany = await companyRepo.save(company);
-
-                const userEntity = userRepo.create({
-                    googleId: dto.googleId,
-                    email: dto.email,
-                    name: dto.name,
-                    authProvider: AuthProvider.GOOGLE,
-                    password: null,
-                    role: Role.COMPANY_ADMIN,
-                    companyId: savedCompany.id,
-                });
-                const savedUser = await userRepo.save(userEntity);
-
-                return {
-                    user: {
-                        id: savedUser.id,
-                        name: savedUser.name,
-                        email: savedUser.email,
-                        role: savedUser.role,
-                        companyId: savedCompany.id,
-                    },
-                    company: savedCompany,
-                };
-            });
-
-            // fire-and-forget, AFTER the transaction has committed
-            this.billingService
-                .ensureCompanyCustomer(savedCompanyOut)
-                .catch((err) =>
-                    this.logger.error(`billing customer creation failed for company ${savedCompanyOut.id}: ${(err as Error).message}`),
-                );
-
-            return user;
-        } catch (error) {
-            if (error instanceof ConflictException) {
-                throw error;
-            }
-            const dbError = error as { code?: string; constraint?: string };
-            if (dbError.code === '23505') {
-                if (dbError.constraint === 'UQ_b28b07d25e4324eee577de5496d') {
-                    throw new ConflictException(
-                        'This company name is already taken. Please choose a different one.',
-                    );
-                }
-                if (
-                    dbError.constraint === 'UQ_97672ac88f789774dd47f7c8be3' ||
-                    dbError.constraint === 'IDX_users_google_id'
-                ) {
-                    throw new ConflictException(
-                        'An account with this email/Google account already exists.',
-                    );
-                }
-                throw new ConflictException(
-                    'Unable to create account due to a conflict. Please verify the company name and email.',
-                );
-            }
-            throw error;
-        }
-    }
-
-    private validateRegionCode(code: string): void {
-        const valid = REGIONS.some(r => r.code === code);
-        if (!valid) {
-            throw new BadRequestException(`Invalid region code: ${code}`);
-        }
-    }
-
-    private validateRegionCodes(codes: string[]): void {
-        for (const code of codes) {
-            this.validateRegionCode(code);
-        }
-    }
+  }
 }

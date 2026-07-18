@@ -1,4 +1,7 @@
-export function paginationOptions(page = 1, limit = 20): { skip: number; take: number } {
+export function paginationOptions(
+  page = 1,
+  limit = 20,
+): { skip: number; take: number } {
   return { skip: (page - 1) * limit, take: limit };
 }
 

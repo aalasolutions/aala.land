@@ -26,12 +26,14 @@ import { DataSource, EntityManager } from 'typeorm';
  * @param fn         Critical section; receives the transaction's EntityManager.
  */
 export function withCompanyLock<T>(
-    dataSource: DataSource,
-    companyId: string,
-    fn: (manager: EntityManager) => Promise<T>,
+  dataSource: DataSource,
+  companyId: string,
+  fn: (manager: EntityManager) => Promise<T>,
 ): Promise<T> {
-    return dataSource.transaction(async (manager) => {
-        await manager.query('SELECT pg_advisory_xact_lock(hashtext($1))', [companyId]);
-        return fn(manager);
-    });
+  return dataSource.transaction(async (manager) => {
+    await manager.query('SELECT pg_advisory_xact_lock(hashtext($1))', [
+      companyId,
+    ]);
+    return fn(manager);
+  });
 }

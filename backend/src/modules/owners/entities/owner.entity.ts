@@ -1,4 +1,14 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn, Index, OneToMany } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  UpdateDateColumn,
+  ManyToOne,
+  JoinColumn,
+  Index,
+  OneToMany,
+} from 'typeorm';
 import { Company } from '../../companies/entities/company.entity';
 import { User } from '../../users/entities/user.entity';
 import { Unit } from '../../properties/entities/unit.entity';
@@ -17,7 +27,12 @@ export class Owner {
   @Column({ type: 'varchar', length: 50, nullable: true })
   phone: string;
 
-  @Column({ name: 'nationality_id', type: 'varchar', length: 100, nullable: true })
+  @Column({
+    name: 'nationality_id',
+    type: 'varchar',
+    length: 100,
+    nullable: true,
+  })
   nationalityId: string;
 
   @Column({ type: 'text', nullable: true })

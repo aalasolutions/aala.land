@@ -1,4 +1,15 @@
-import { IsString, IsOptional, IsBoolean, IsArray, MaxLength, Validate, IsInt, Min, IsDateString, IsEnum } from 'class-validator';
+import {
+  IsString,
+  IsOptional,
+  IsBoolean,
+  IsArray,
+  MaxLength,
+  Validate,
+  IsInt,
+  Min,
+  IsDateString,
+  IsEnum,
+} from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { IsValidRegionCode } from '../validators/is-valid-region-code.validator';
 import { SubscriptionTier } from '../entities/company.entity';
@@ -15,13 +26,19 @@ export class UpdateCompanyDto {
   @IsOptional()
   isActive?: boolean;
 
-  @ApiPropertyOptional({ example: ['punjab', 'sindh'], description: 'Array of valid region codes' })
+  @ApiPropertyOptional({
+    example: ['punjab', 'sindh'],
+    description: 'Array of valid region codes',
+  })
   @IsArray()
   @IsString({ each: true })
   @IsOptional()
   activeRegions?: string[];
 
-  @ApiPropertyOptional({ example: 'punjab', description: 'Default region code, must be a valid region if provided' })
+  @ApiPropertyOptional({
+    example: 'punjab',
+    description: 'Default region code, must be a valid region if provided',
+  })
   @IsString()
   @IsOptional()
   @MaxLength(50)

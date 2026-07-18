@@ -1,12 +1,30 @@
-import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  OnModuleDestroy,
+  OnModuleInit,
+} from '@nestjs/common';
 import { AiHistoryMessage } from './wa-types';
 import { WhatsappAiRepositoryService } from './whatsapp-ai-repository.service';
 import { WhatsappAiPromptBuilderService } from './whatsapp-ai-prompt-builder.service';
-import { sanitizeInput, parseResponse, parseToolCall, DIRECT_CONTACT_RESPONSE, ChatCompletion, ToolDefinition } from './whatsapp-ai-filter';
+import {
+  sanitizeInput,
+  parseResponse,
+  parseToolCall,
+  DIRECT_CONTACT_RESPONSE,
+  ChatCompletion,
+  ToolDefinition,
+} from './whatsapp-ai-filter';
 import { TOOL_DEFINITIONS, executeTool } from './whatsapp-ai-tools';
-import { SubscriptionTier, TIER_LIMITS } from '../companies/entities/company.entity';
+import {
+  SubscriptionTier,
+  TIER_LIMITS,
+} from '../companies/entities/company.entity';
 
-type SendFn = (chatId: string, message: string) => Promise<{ messageId?: string }>;
+type SendFn = (
+  chatId: string,
+  message: string,
+) => Promise<{ messageId?: string }>;
 
 interface PendingChat {
   messages: string[];
@@ -42,7 +60,10 @@ export class WhatsappAiService implements OnModuleInit, OnModuleDestroy {
   ) {}
 
   onModuleInit(): void {
-    this.sweepInterval = setInterval(() => this.sweepStaleState(), 60 * 60 * 1000);
+    this.sweepInterval = setInterval(
+      () => this.sweepStaleState(),
+      60 * 60 * 1000,
+    );
   }
 
   onModuleDestroy(): void {
@@ -63,13 +84,15 @@ export class WhatsappAiService implements OnModuleInit, OnModuleDestroy {
   getConfig(userId: string) {
     return {
       enabled: this.isEnabled(userId),
-      keyConfigured: !!(process.env.OLLAMA_API_KEY),
+      keyConfigured: !!process.env.OLLAMA_API_KEY,
       model: process.env.OLLAMA_MODEL ?? '',
       host: process.env.OLLAMA_HOST ?? '',
     };
   }
 
-  async getWeeklyCount(companyId: string): Promise<{ used: number; limit: number } | null> {
+  async getWeeklyCount(
+    companyId: string,
+  ): Promise<{ used: number; limit: number } | null> {
     const { company } = await this.repo.getCompanyAndUnits(companyId);
     const tier = company?.subscriptionTier ?? SubscriptionTier.FREE;
     const weeklyLimit = TIER_LIMITS[tier].aiWeeklyMessages;
@@ -85,7 +108,12 @@ export class WhatsappAiService implements OnModuleInit, OnModuleDestroy {
     const weeklyLimit = TIER_LIMITS[tier].aiWeeklyMessages;
 
     if (weeklyLimit === Infinity) {
-      return { ...base, weeklyLimit: null, weeklyUsed: null, weeklyResetsAt: null };
+      return {
+        ...base,
+        weeklyLimit: null,
+        weeklyUsed: null,
+        weeklyResetsAt: null,
+      };
     }
 
     const { count, windowStart } = await this.repo.getWeeklyUsage(companyId);
@@ -106,12 +134,19 @@ export class WhatsappAiService implements OnModuleInit, OnModuleDestroy {
     return value;
   }
 
-  async persistEnabled(userId: string, companyId: string, value: boolean): Promise<void> {
+  async persistEnabled(
+    userId: string,
+    companyId: string,
+    value: boolean,
+  ): Promise<void> {
     this.enabledByUser.set(userId, value);
     try {
       await this.repo.persistAiEnabled(companyId, value);
     } catch (err) {
-      this.logger.error('Failed to persist aiEnabled', err instanceof Error ? err.message : err);
+      this.logger.error(
+        'Failed to persist aiEnabled',
+        err instanceof Error ? err.message : err,
+      );
     }
   }
 
@@ -120,7 +155,9 @@ export class WhatsappAiService implements OnModuleInit, OnModuleDestroy {
     try {
       const enabled = await this.repo.loadAiEnabled(companyId);
       if (enabled !== null) this.enabledByUser.set(userId, enabled);
-    } catch { /* non-fatal — env default applies */ }
+    } catch {
+      /* non-fatal — env default applies */
+    }
   }
 
   getHistoryFor(userId: string, chatId: string): AiHistoryMessage[] {
@@ -161,7 +198,14 @@ export class WhatsappAiService implements OnModuleInit, OnModuleDestroy {
   }
 
   async handleIncomingMessage(
-    evt: { chatId: string; body: string; fromMe: boolean; isGroup: boolean; timestamp: number; senderId: string },
+    evt: {
+      chatId: string;
+      body: string;
+      fromMe: boolean;
+      isGroup: boolean;
+      timestamp: number;
+      senderId: string;
+    },
     companyId: string,
     userId: string,
     send: SendFn,
@@ -179,9 +223,13 @@ export class WhatsappAiService implements OnModuleInit, OnModuleDestroy {
     if (existing) {
       clearTimeout(existing.timer);
       existing.messages.push(evt.body);
-      existing.timer = setTimeout(() => { void this.flushPending(pendingKey); }, debounceMs);
+      existing.timer = setTimeout(() => {
+        void this.flushPending(pendingKey);
+      }, debounceMs);
     } else {
-      const timer = setTimeout(() => { void this.flushPending(pendingKey); }, debounceMs);
+      const timer = setTimeout(() => {
+        void this.flushPending(pendingKey);
+      }, debounceMs);
       this.pendingByChat.set(pendingKey, {
         messages: [evt.body],
         chatId: evt.chatId,
@@ -199,16 +247,24 @@ export class WhatsappAiService implements OnModuleInit, OnModuleDestroy {
     if (!pending) return;
 
     const combinedText = pending.messages.join('\n');
-    await this.runSerializedPerChat(
-      `${pending.userId}:${pending.chatId}`,
-      () => this.processMessage(combinedText, pending.chatId, pending.companyId, pending.userId, pending.send),
+    await this.runSerializedPerChat(`${pending.userId}:${pending.chatId}`, () =>
+      this.processMessage(
+        combinedText,
+        pending.chatId,
+        pending.companyId,
+        pending.userId,
+        pending.send,
+      ),
     );
   }
 
   // Runs `task` after any in-flight turn for the same chat key has settled, so turns for
   // one chat never overlap. The chain link is stored back in `chatLocks`; the map entry is
   // cleaned up once this link is the tail (nothing else queued behind it).
-  private runSerializedPerChat(key: string, task: () => Promise<void>): Promise<void> {
+  private runSerializedPerChat(
+    key: string,
+    task: () => Promise<void>,
+  ): Promise<void> {
     const prior = this.chatLocks.get(key) ?? Promise.resolve();
     // Wait for the prior turn to finish (regardless of its outcome), then run this one.
     const run = prior.catch(() => undefined).then(task);
@@ -225,7 +281,8 @@ export class WhatsappAiService implements OnModuleInit, OnModuleDestroy {
   private isHumanSilenceActive(userId: string, chatId: string): boolean {
     const lastReply = this.humanReplyAt.get(`${userId}:${chatId}`);
     if (lastReply === undefined) return false;
-    const silenceMs = parseInt(process.env.AI_HUMAN_SILENCE_MINUTES ?? '20', 10) * 60 * 1000;
+    const silenceMs =
+      parseInt(process.env.AI_HUMAN_SILENCE_MINUTES ?? '20', 10) * 60 * 1000;
     return Date.now() - lastReply < silenceMs;
   }
 
@@ -233,7 +290,11 @@ export class WhatsappAiService implements OnModuleInit, OnModuleDestroy {
   // operator has taken over mid-stream. The initial isHumanSilenceActive() check at the
   // top of processMessage happens before several seconds of LLM awaits, so we must
   // re-check immediately before each send() and abort if the human jumped in.
-  private humanTookOverSince(userId: string, chatId: string, flushStartedAt: number): boolean {
+  private humanTookOverSince(
+    userId: string,
+    chatId: string,
+    flushStartedAt: number,
+  ): boolean {
     if (this.isHumanSilenceActive(userId, chatId)) return true;
     const lastReply = this.humanReplyAt.get(`${userId}:${chatId}`);
     return lastReply !== undefined && lastReply > flushStartedAt;
@@ -262,7 +323,10 @@ export class WhatsappAiService implements OnModuleInit, OnModuleDestroy {
 
     const histKey = `${userId}:${chatId}`;
     let history = this.histories.get(histKey);
-    if (!history) { history = []; this.histories.set(histKey, history); }
+    if (!history) {
+      history = [];
+      this.histories.set(histKey, history);
+    }
 
     // Index-safe recovery baseline: the number of messages present BEFORE this turn
     // appended anything. On any early-return or error we truncate back to exactly this
@@ -285,23 +349,40 @@ export class WhatsappAiService implements OnModuleInit, OnModuleDestroy {
       const weeklyLimit = TIER_LIMITS[tier].aiWeeklyMessages;
       if (weeklyLimit !== Infinity) {
         try {
-          const { allowed } = await this.repo.checkLimitAndIncrement(companyId, weeklyLimit);
+          const { allowed } = await this.repo.checkLimitAndIncrement(
+            companyId,
+            weeklyLimit,
+          );
           if (allowed) quotaIncremented = true;
           if (!allowed) {
-            this.logger.warn(`Weekly AI limit exceeded for company ${companyId} (limit: ${weeklyLimit})`);
+            this.logger.warn(
+              `Weekly AI limit exceeded for company ${companyId} (limit: ${weeklyLimit})`,
+            );
             this.rollbackTurn(history, historyLenBefore);
             return;
           }
         } catch (err) {
-          this.logger.error('Weekly limit check failed — allowing message', err instanceof Error ? err.message : err);
+          this.logger.error(
+            'Weekly limit check failed — allowing message',
+            err instanceof Error ? err.message : err,
+          );
         }
       }
 
-      const { block: contextBlock, fallbackCurrency } = this.promptBuilder.buildContextBlock(company);
-      const fullSystemPrompt = this.promptBuilder.buildFullPrompt(customPrompt, contextBlock);
-      const systemMessages: AiHistoryMessage[] = [{ role: 'system', content: fullSystemPrompt }];
+      const { block: contextBlock, fallbackCurrency } =
+        this.promptBuilder.buildContextBlock(company);
+      const fullSystemPrompt = this.promptBuilder.buildFullPrompt(
+        customPrompt,
+        contextBlock,
+      );
+      const systemMessages: AiHistoryMessage[] = [
+        { role: 'system', content: fullSystemPrompt },
+      ];
 
-      const firstRaw = await this.callLLM([...systemMessages, ...history], TOOL_DEFINITIONS);
+      const firstRaw = await this.callLLM(
+        [...systemMessages, ...history],
+        TOOL_DEFINITIONS,
+      );
       if (!firstRaw) {
         this.revertQuotaIfNeeded(companyId, quotaIncremented);
         this.rollbackTurn(history, historyLenBefore);
@@ -310,12 +391,26 @@ export class WhatsappAiService implements OnModuleInit, OnModuleDestroy {
       const toolCall = parseToolCall(firstRaw);
 
       if (toolCall) {
-        this.logger.log('Executing tool', { toolName: toolCall.name, companyId });
-        this.logger.debug('Tool args', { toolName: toolCall.name, args: toolCall.args });
+        this.logger.log('Executing tool', {
+          toolName: toolCall.name,
+          companyId,
+        });
+        this.logger.debug('Tool args', {
+          toolName: toolCall.name,
+          args: toolCall.args,
+        });
         const result = await executeTool(
-          toolCall.name, toolCall.args, companyId, this.repo, this.promptBuilder, fallbackCurrency,
+          toolCall.name,
+          toolCall.args,
+          companyId,
+          this.repo,
+          this.promptBuilder,
+          fallbackCurrency,
         );
-        this.logger.log('Tool executed', { toolName: toolCall.name, resultSize: result.length });
+        this.logger.log('Tool executed', {
+          toolName: toolCall.name,
+          resultSize: result.length,
+        });
         this.logger.debug('Tool result', { toolName: toolCall.name, result });
 
         const firstMsg = firstRaw.choices[0].message;
@@ -324,12 +419,24 @@ export class WhatsappAiService implements OnModuleInit, OnModuleDestroy {
           content: firstMsg.content ?? null,
           tool_calls: firstMsg.tool_calls,
         };
-        const toolResultMsg: AiHistoryMessage = { role: 'tool', content: result, tool_call_id: toolCall.id };
+        const toolResultMsg: AiHistoryMessage = {
+          role: 'tool',
+          content: result,
+          tool_call_id: toolCall.id,
+        };
 
-        const secondRaw = await this.callLLM([...systemMessages, ...history, assistantToolMsg, toolResultMsg]);
+        const secondRaw = await this.callLLM([
+          ...systemMessages,
+          ...history,
+          assistantToolMsg,
+          toolResultMsg,
+        ]);
         const reply = parseResponse(secondRaw);
         if (!reply) {
-          this.logger.warn('Second LLM call returned no text content after tool execution', { toolName: toolCall.name, companyId });
+          this.logger.warn(
+            'Second LLM call returned no text content after tool execution',
+            { toolName: toolCall.name, companyId },
+          );
           this.revertQuotaIfNeeded(companyId, quotaIncremented);
           this.rollbackTurn(history, historyLenBefore);
           return;
@@ -365,17 +472,23 @@ export class WhatsappAiService implements OnModuleInit, OnModuleDestroy {
       assistantPushed = true;
       await send(chatId, reply);
       this.trimHistory(userId, chatId, history);
-
     } catch (err) {
       // On failure, the quota is only reverted if the send never happened.
-      if (!assistantPushed) this.revertQuotaIfNeeded(companyId, quotaIncremented);
+      if (!assistantPushed)
+        this.revertQuotaIfNeeded(companyId, quotaIncremented);
       // Index-safe rollback: remove exactly what this turn appended (the user message, and
       // the assistant reply if it was pushed) by truncating to the captured baseline,
       // instead of assuming this turn's messages are the last -2 entries.
       this.rollbackTurn(history, historyLenBefore);
       const cause = (err as any)?.cause;
-      const causeStr = cause instanceof Error ? ` | cause: ${cause.name}: ${cause.message}` : '';
-      this.logger.error(`AI call failed${causeStr}`, err instanceof Error ? `${err.message}\n${err.stack}` : String(err));
+      const causeStr =
+        cause instanceof Error
+          ? ` | cause: ${cause.name}: ${cause.message}`
+          : '';
+      this.logger.error(
+        `AI call failed${causeStr}`,
+        err instanceof Error ? `${err.message}\n${err.stack}` : String(err),
+      );
     }
   }
 
@@ -383,12 +496,26 @@ export class WhatsappAiService implements OnModuleInit, OnModuleDestroy {
     if (history.length > lenBefore) history.length = lenBefore;
   }
 
-  private revertQuotaIfNeeded(companyId: string, quotaIncremented: boolean): void {
+  private revertQuotaIfNeeded(
+    companyId: string,
+    quotaIncremented: boolean,
+  ): void {
     if (!quotaIncremented) return;
-    this.repo.decrementWeeklyCount(companyId).catch(err => this.logger.error('Failed to revert weekly quota', err instanceof Error ? err.message : err));
+    this.repo
+      .decrementWeeklyCount(companyId)
+      .catch((err) =>
+        this.logger.error(
+          'Failed to revert weekly quota',
+          err instanceof Error ? err.message : err,
+        ),
+      );
   }
 
-  private trimHistory(userId: string, chatId: string, history: AiHistoryMessage[]): void {
+  private trimHistory(
+    userId: string,
+    chatId: string,
+    history: AiHistoryMessage[],
+  ): void {
     const limit = parseInt(process.env.AI_HISTORY_LIMIT ?? '40', 10);
     if (history.length > limit) history.splice(0, history.length - limit);
     const key = `${userId}:${chatId}`;
@@ -396,13 +523,25 @@ export class WhatsappAiService implements OnModuleInit, OnModuleDestroy {
     this.lastActivityAt.set(key, Date.now());
   }
 
-  private async callLLM(messages: AiHistoryMessage[], tools?: ToolDefinition[]): Promise<ChatCompletion | null> {
-    const { OLLAMA_HOST: host, OLLAMA_API_KEY: key, OLLAMA_MODEL: model } = process.env;
+  private async callLLM(
+    messages: AiHistoryMessage[],
+    tools?: ToolDefinition[],
+  ): Promise<ChatCompletion | null> {
+    const {
+      OLLAMA_HOST: host,
+      OLLAMA_API_KEY: key,
+      OLLAMA_MODEL: model,
+    } = process.env;
     if (!host || !key || !model) return null;
 
     const timeout = parseInt(process.env.AI_REQUEST_TIMEOUT_MS ?? '300000', 10);
     const maxRetries = 5;
-    const TRANSIENT_CODES = new Set(['EAI_AGAIN', 'ECONNRESET', 'ETIMEDOUT', 'ECONNREFUSED']);
+    const TRANSIENT_CODES = new Set([
+      'EAI_AGAIN',
+      'ECONNRESET',
+      'ETIMEDOUT',
+      'ECONNREFUSED',
+    ]);
 
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
       const controller = new AbortController();
@@ -410,7 +549,9 @@ export class WhatsappAiService implements OnModuleInit, OnModuleDestroy {
 
       try {
         const body: Record<string, any> = {
-          model, messages, stream: true,
+          model,
+          messages,
+          stream: true,
           temperature: parseFloat(process.env.AI_TEMPERATURE ?? '0.7'),
           top_p: parseFloat(process.env.AI_TOP_P ?? '0.9'),
         };
@@ -418,7 +559,10 @@ export class WhatsappAiService implements OnModuleInit, OnModuleDestroy {
 
         const res = await fetch(`${host}/chat/completions`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${key}`,
+          },
           body: JSON.stringify(body),
           signal: controller.signal,
         });
@@ -426,18 +570,30 @@ export class WhatsappAiService implements OnModuleInit, OnModuleDestroy {
         if (!res.ok) {
           clearTimeout(timer);
           const rawText = await res.text();
-          this.logger.error(`LLM API error ${res.status} ${res.statusText}: ${rawText.slice(0, 500)}`);
+          this.logger.error(
+            `LLM API error ${res.status} ${res.statusText}: ${rawText.slice(0, 500)}`,
+          );
           return null;
         }
 
         // Stream SSE chunks and accumulate into a single response object
         const reader = res.body?.getReader();
-        if (!reader) { clearTimeout(timer); return null; }
+        if (!reader) {
+          clearTimeout(timer);
+          return null;
+        }
 
         const decoder = new TextDecoder();
         let buf = '';
         let content = '';
-        const toolCallMap: Record<number, { id: string; type: string; function: { name: string; arguments: string } }> = {};
+        const toolCallMap: Record<
+          number,
+          {
+            id: string;
+            type: string;
+            function: { name: string; arguments: string };
+          }
+        > = {};
 
         try {
           outer: while (true) {
@@ -463,16 +619,26 @@ export class WhatsappAiService implements OnModuleInit, OnModuleDestroy {
                   for (const tc of delta.tool_calls) {
                     const idx: number = tc.index ?? 0;
                     if (!toolCallMap[idx]) {
-                      toolCallMap[idx] = { id: '', type: 'function', function: { name: '', arguments: '' } };
+                      toolCallMap[idx] = {
+                        id: '',
+                        type: 'function',
+                        function: { name: '', arguments: '' },
+                      };
                     }
                     // id and name arrive only in the first delta chunk — assign once
-                    if (tc.id && !toolCallMap[idx].id) toolCallMap[idx].id = tc.id;
-                    if (tc.function?.name && !toolCallMap[idx].function.name) toolCallMap[idx].function.name = tc.function.name;
+                    if (tc.id && !toolCallMap[idx].id)
+                      toolCallMap[idx].id = tc.id;
+                    if (tc.function?.name && !toolCallMap[idx].function.name)
+                      toolCallMap[idx].function.name = tc.function.name;
                     // arguments are streamed across multiple chunks — concatenate
-                    if (tc.function?.arguments) toolCallMap[idx].function.arguments += tc.function.arguments;
+                    if (tc.function?.arguments)
+                      toolCallMap[idx].function.arguments +=
+                        tc.function.arguments;
                   }
                 }
-              } catch { /* malformed SSE chunk — skip */ }
+              } catch {
+                /* malformed SSE chunk — skip */
+              }
             }
           }
         } finally {
@@ -482,15 +648,16 @@ export class WhatsappAiService implements OnModuleInit, OnModuleDestroy {
 
         const tool_calls = Object.values(toolCallMap);
         return {
-          choices: [{
-            message: {
-              role: 'assistant',
-              content: content || null,
-              ...(tool_calls.length > 0 ? { tool_calls } : {}),
+          choices: [
+            {
+              message: {
+                role: 'assistant',
+                content: content || null,
+                ...(tool_calls.length > 0 ? { tool_calls } : {}),
+              },
             },
-          }],
+          ],
         };
-
       } catch (err) {
         clearTimeout(timer);
         const cause = (err as any)?.cause;
@@ -498,8 +665,10 @@ export class WhatsappAiService implements OnModuleInit, OnModuleDestroy {
 
         if (isTransient && attempt < maxRetries) {
           const delayMs = 500 * (attempt + 1);
-          this.logger.warn(`LLM call failed (attempt ${attempt + 1}/${maxRetries + 1}): ${cause.message} — retrying in ${delayMs}ms`);
-          await new Promise(r => setTimeout(r, delayMs));
+          this.logger.warn(
+            `LLM call failed (attempt ${attempt + 1}/${maxRetries + 1}): ${cause.message} — retrying in ${delayMs}ms`,
+          );
+          await new Promise((r) => setTimeout(r, delayMs));
           continue;
         }
         throw err;

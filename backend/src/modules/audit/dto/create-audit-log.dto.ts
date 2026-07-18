@@ -1,4 +1,11 @@
-import { IsString, IsUUID, IsOptional, IsObject, IsEnum, MaxLength } from 'class-validator';
+import {
+  IsString,
+  IsUUID,
+  IsOptional,
+  IsObject,
+  IsEnum,
+  MaxLength,
+} from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { AuditAction } from './query-audit-logs.dto';
 

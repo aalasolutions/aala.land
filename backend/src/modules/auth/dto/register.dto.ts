@@ -1,4 +1,11 @@
-import { IsString, IsEmail, IsNotEmpty, MinLength, MaxLength, Validate } from 'class-validator';
+import {
+  IsString,
+  IsEmail,
+  IsNotEmpty,
+  MinLength,
+  MaxLength,
+  Validate,
+} from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { IsValidRegionCode } from '../../companies/validators/is-valid-region-code.validator';
 

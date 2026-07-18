@@ -3,7 +3,10 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { NotFoundException } from '@nestjs/common';
 import { ReminderRulesService } from './reminder-rules.service';
-import { ReminderRule, ReminderRuleType } from './entities/reminder-rule.entity';
+import {
+  ReminderRule,
+  ReminderRuleType,
+} from './entities/reminder-rule.entity';
 
 describe('ReminderRulesService', () => {
   let service: ReminderRulesService;
@@ -112,23 +115,32 @@ describe('ReminderRulesService', () => {
     it('throws NotFoundException when rule not found', async () => {
       repo.findOne.mockResolvedValue(null);
 
-      await expect(service.findOne('bad-id', companyId)).rejects.toThrow(NotFoundException);
+      await expect(service.findOne('bad-id', companyId)).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('throws NotFoundException for wrong company', async () => {
       repo.findOne.mockResolvedValue(null);
 
-      await expect(service.findOne('rule-uuid-1', 'other-company')).rejects.toThrow(NotFoundException);
+      await expect(
+        service.findOne('rule-uuid-1', 'other-company'),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 
   describe('update', () => {
     it('updates and returns the rule', async () => {
-      const updated = { ...mockRule, name: 'Rent Due 5 Days Before' } as ReminderRule;
+      const updated = {
+        ...mockRule,
+        name: 'Rent Due 5 Days Before',
+      } as ReminderRule;
       repo.findOne.mockResolvedValue({ ...mockRule } as ReminderRule);
       repo.save.mockResolvedValue(updated);
 
-      const result = await service.update('rule-uuid-1', companyId, { name: 'Rent Due 5 Days Before' });
+      const result = await service.update('rule-uuid-1', companyId, {
+        name: 'Rent Due 5 Days Before',
+      });
 
       expect(result.name).toBe('Rent Due 5 Days Before');
     });
@@ -157,7 +169,9 @@ describe('ReminderRulesService', () => {
     it('throws NotFoundException when rule does not exist', async () => {
       repo.findOne.mockResolvedValue(null);
 
-      await expect(service.remove('bad-id', companyId)).rejects.toThrow(NotFoundException);
+      await expect(service.remove('bad-id', companyId)).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -165,7 +179,10 @@ describe('ReminderRulesService', () => {
     it('returns active rules for a given type', async () => {
       repo.find.mockResolvedValue([mockRule as ReminderRule]);
 
-      const result = await service.findActiveByType(companyId, ReminderRuleType.RENT_DUE);
+      const result = await service.findActiveByType(
+        companyId,
+        ReminderRuleType.RENT_DUE,
+      );
 
       expect(repo.find).toHaveBeenCalledWith({
         where: { companyId, type: ReminderRuleType.RENT_DUE, isActive: true },
@@ -177,7 +194,10 @@ describe('ReminderRulesService', () => {
     it('returns empty array when no active rules of that type', async () => {
       repo.find.mockResolvedValue([]);
 
-      const result = await service.findActiveByType(companyId, ReminderRuleType.LEASE_EXPIRY);
+      const result = await service.findActiveByType(
+        companyId,
+        ReminderRuleType.LEASE_EXPIRY,
+      );
 
       expect(result).toEqual([]);
     });

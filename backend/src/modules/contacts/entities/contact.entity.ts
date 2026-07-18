@@ -1,4 +1,13 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn, Index } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  UpdateDateColumn,
+  ManyToOne,
+  JoinColumn,
+  Index,
+} from 'typeorm';
 import { Company } from '../../companies/entities/company.entity';
 import { Lead } from '../../leads/entities/lead.entity';
 
@@ -35,7 +44,12 @@ export class Contact {
   @Column({ type: 'varchar', length: 50, nullable: true })
   phone: string;
 
-  @Column({ name: 'whatsapp_number', type: 'varchar', length: 50, nullable: true })
+  @Column({
+    name: 'whatsapp_number',
+    type: 'varchar',
+    length: 50,
+    nullable: true,
+  })
   whatsappNumber: string;
 
   @Column({
@@ -45,7 +59,12 @@ export class Contact {
   })
   type: ContactType;
 
-  @Column({ name: 'contact_company', type: 'varchar', length: 200, nullable: true })
+  @Column({
+    name: 'contact_company',
+    type: 'varchar',
+    length: 200,
+    nullable: true,
+  })
   contactCompany: string;
 
   @Column({ name: 'job_title', type: 'varchar', length: 100, nullable: true })

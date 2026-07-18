@@ -7,13 +7,20 @@ import { DEFAULT_PROMPT, RULES_BLOCK } from './whatsapp-ai-prompts';
 
 @Injectable()
 export class WhatsappAiPromptBuilderService {
-  buildContextBlock(company: Company | null): { block: string; fallbackCurrency: string } {
+  buildContextBlock(company: Company | null): {
+    block: string;
+    fallbackCurrency: string;
+  } {
     const parts: string[] = [];
-    const fallbackCurrency = REGIONS.find(r => (company?.activeRegions ?? []).includes(r.code))?.currency ?? '';
+    const fallbackCurrency =
+      REGIONS.find((r) => (company?.activeRegions ?? []).includes(r.code))
+        ?.currency ?? '';
 
     if (company) {
       const regions = (company.activeRegions ?? []).join(', ');
-      parts.push(`[COMPANY INFO]\nName: ${company.name}\nActive Regions: ${regions || 'N/A'}`);
+      parts.push(
+        `[COMPANY INFO]\nName: ${company.name}\nActive Regions: ${regions || 'N/A'}`,
+      );
     }
 
     parts.push(RULES_BLOCK);
@@ -26,7 +33,8 @@ export class WhatsappAiPromptBuilderService {
   }
 
   formatToolResult(units: Unit[], fallbackCurrency: string): string {
-    if (units.length === 0) return 'No properties found matching your criteria.';
+    if (units.length === 0)
+      return 'No properties found matching your criteria.';
     return this.formatUnits(units, fallbackCurrency).join('\n\n');
   }
 
@@ -36,16 +44,31 @@ export class WhatsappAiPromptBuilderService {
       const locality = asset?.locality;
       const city = locality?.city;
       const cityRegionCode = city?.regionCode;
-      const currency = (cityRegionCode ? REGIONS.find(r => r.code === cityRegionCode)?.currency : undefined) ?? fallbackCurrency;
-      const location = [asset?.name, locality?.name, city?.name].filter(Boolean).join(', ');
+      const currency =
+        (cityRegionCode
+          ? REGIONS.find((r) => r.code === cityRegionCode)?.currency
+          : undefined) ?? fallbackCurrency;
+      const location = [asset?.name, locality?.name, city?.name]
+        .filter(Boolean)
+        .join(', ');
       const beds = u.bedrooms ? `${u.bedrooms} Bed` : 'Studio';
       const baths = u.bathrooms ? `${u.bathrooms} Bath` : '';
       const sqft = u.sqFt ? `${u.sqFt} sqft` : '';
       const amenities = (u.amenities ?? []).join(', ');
-      const typeLabel = u.propertyType === PropertyType.RENTAL ? 'RENT' : u.propertyType === PropertyType.FOR_SALE ? 'SALE' : 'N/A';
-      const title = asset?.name ? `${asset.name} — Unit ${u.unitNumber}` : `Unit ${u.unitNumber}`;
+      const typeLabel =
+        u.propertyType === PropertyType.RENTAL
+          ? 'RENT'
+          : u.propertyType === PropertyType.FOR_SALE
+            ? 'SALE'
+            : 'N/A';
+      const title = asset?.name
+        ? `${asset.name} — Unit ${u.unitNumber}`
+        : `Unit ${u.unitNumber}`;
 
-      const priceLabel = u.price != null ? `${currency} ${Number(u.price).toLocaleString()}` : 'Price on request';
+      const priceLabel =
+        u.price != null
+          ? `${currency} ${Number(u.price).toLocaleString()}`
+          : 'Price on request';
       const rows = [
         `${i + 1}. [${typeLabel}] ${title} — ${priceLabel}`,
         `   Location: ${location || 'N/A'}`,
@@ -53,7 +76,8 @@ export class WhatsappAiPromptBuilderService {
         `   Size: ${[beds, baths, sqft].filter(Boolean).join(' | ')}`,
       ].filter(Boolean);
       if (amenities) rows.push(`   Amenities: ${amenities}`);
-      if (u.description) rows.push(`   Details: ${u.description.slice(0, 200)}`);
+      if (u.description)
+        rows.push(`   Details: ${u.description.slice(0, 200)}`);
       return rows.join('\n');
     });
   }

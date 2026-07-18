@@ -8,7 +8,11 @@ import {
   openDeleteModal,
 } from '../../utils/delete-modal';
 import { toggleArrayItem } from '../../utils/toggle-array-item';
-import { PROPERTY_STATUS_OPTIONS, PROPERTY_TYPE_OPTIONS, AMENITY_OPTIONS } from 'land/constants';
+import {
+  PROPERTY_STATUS_OPTIONS,
+  PROPERTY_TYPE_OPTIONS,
+  AMENITY_OPTIONS,
+} from 'land/constants';
 
 export default class PropertiesUnitController extends Controller {
   @service auth;

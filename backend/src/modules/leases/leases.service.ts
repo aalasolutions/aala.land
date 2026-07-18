@@ -1,6 +1,15 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, EntityManager, QueryFailedError, Repository } from 'typeorm';
+import {
+  DataSource,
+  EntityManager,
+  QueryFailedError,
+  Repository,
+} from 'typeorm';
 import { Lease, LeaseStatus } from './entities/lease.entity';
 import { CreateLeaseDto } from './dto/create-lease.dto';
 import { UpdateLeaseDto } from './dto/update-lease.dto';
@@ -20,7 +29,7 @@ export class LeasesService {
     @InjectRepository(Lease)
     private readonly leaseRepository: Repository<Lease>,
     private readonly dataSource: DataSource,
-  ) { }
+  ) {}
 
   /**
    * Assert no other ACTIVE lease already exists on this unit, INSIDE the locked
@@ -65,7 +74,10 @@ export class LeasesService {
    * same BadRequestException the in-transaction guard raises, so callers get a 400
    * instead of a 500. Any other error is rethrown untouched.
    */
-  private async saveActiveLease(manager: EntityManager, lease: Lease): Promise<Lease> {
+  private async saveActiveLease(
+    manager: EntityManager,
+    lease: Lease,
+  ): Promise<Lease> {
     try {
       return await manager.save(Lease, lease);
     } catch (error) {
@@ -78,7 +90,9 @@ export class LeasesService {
           (driverError?.detail?.includes(ACTIVE_LEASE_UNIQUE_INDEX) ?? false) ||
           error.message.includes(ACTIVE_LEASE_UNIQUE_INDEX);
         if (driverError?.code === '23505' && hitsActiveLeaseIndex) {
-          throw new BadRequestException('This unit already has an active lease');
+          throw new BadRequestException(
+            'This unit already has an active lease',
+          );
         }
       }
       throw error;
@@ -100,10 +114,7 @@ export class LeasesService {
       const qb = this.leaseRepository
         .createQueryBuilder('l')
         .where('l.companyId = :companyId', { companyId })
-        .andWhere(
-          `l.unitId IN (${REGION_FILTER_SUBQUERY})`,
-          { regionCode },
-        )
+        .andWhere(`l.unitId IN (${REGION_FILTER_SUBQUERY})`, { regionCode })
         .skip((page - 1) * limit)
         .take(limit)
         .orderBy('l.createdAt', 'DESC');
@@ -121,7 +132,9 @@ export class LeasesService {
   }
 
   async findOne(id: string, companyId: string): Promise<Lease> {
-    const lease = await this.leaseRepository.findOne({ where: { id, companyId } });
+    const lease = await this.leaseRepository.findOne({
+      where: { id, companyId },
+    });
     if (!lease) {
       throw new NotFoundException('Lease not found');
     }
@@ -135,7 +148,11 @@ export class LeasesService {
     });
   }
 
-  async update(id: string, companyId: string, dto: UpdateLeaseDto): Promise<Lease> {
+  async update(
+    id: string,
+    companyId: string,
+    dto: UpdateLeaseDto,
+  ): Promise<Lease> {
     return this.dataSource.transaction(async (manager) => {
       const lease = await manager.findOne(Lease, {
         where: { id, companyId },
@@ -161,7 +178,12 @@ export class LeasesService {
       // two DRAFT->ACTIVE flips cannot both land (matches the partial unique
       // index leases(unit_id) WHERE status='ACTIVE').
       if (lease.status === LeaseStatus.ACTIVE) {
-        await this.assertNoOtherActiveLease(manager, lease.unitId, companyId, id);
+        await this.assertNoOtherActiveLease(
+          manager,
+          lease.unitId,
+          companyId,
+          id,
+        );
         return this.saveActiveLease(manager, lease);
       }
 
@@ -169,7 +191,11 @@ export class LeasesService {
     });
   }
 
-  async renew(id: string, companyId: string, dto: CreateLeaseDto): Promise<{ oldLease: Lease; newLease: Lease }> {
+  async renew(
+    id: string,
+    companyId: string,
+    dto: CreateLeaseDto,
+  ): Promise<{ oldLease: Lease; newLease: Lease }> {
     return this.dataSource.transaction(async (manager) => {
       // Lock the lease row FOR UPDATE, then re-check the status guard under the
       // lock: two concurrent renews serialize here, so only the first flips the
@@ -181,8 +207,13 @@ export class LeasesService {
       if (!oldLease) {
         throw new NotFoundException('Lease not found');
       }
-      if (oldLease.status !== LeaseStatus.ACTIVE && oldLease.status !== LeaseStatus.EXPIRED) {
-        throw new BadRequestException('Only ACTIVE or EXPIRED leases can be renewed');
+      if (
+        oldLease.status !== LeaseStatus.ACTIVE &&
+        oldLease.status !== LeaseStatus.EXPIRED
+      ) {
+        throw new BadRequestException(
+          'Only ACTIVE or EXPIRED leases can be renewed',
+        );
       }
 
       oldLease.status = LeaseStatus.RENEWED;
@@ -193,7 +224,12 @@ export class LeasesService {
       const newLease = manager.create(Lease, { ...dto, companyId });
       let savedNewLease: Lease;
       if (newLease.status === LeaseStatus.ACTIVE) {
-        await this.assertNoOtherActiveLease(manager, newLease.unitId, companyId, id);
+        await this.assertNoOtherActiveLease(
+          manager,
+          newLease.unitId,
+          companyId,
+          id,
+        );
         savedNewLease = await this.saveActiveLease(manager, newLease);
       } else {
         savedNewLease = await manager.save(Lease, newLease);

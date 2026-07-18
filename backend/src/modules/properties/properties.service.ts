@@ -1,4 +1,9 @@
-import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, FindOptionsWhere, In, Not } from 'typeorm';
 import { PropertyArea } from './entities/property-area.entity';
@@ -12,145 +17,177 @@ import { CreateAssetDto } from './dto/create-asset.dto';
 import { UpdateAssetDto } from './dto/update-asset.dto';
 import { CreateUnitDto } from './dto/create-unit.dto';
 import { UpdateUnitDto } from './dto/update-unit.dto';
-import { paginationOptions, pageSkip } from '../../shared/utils/pagination.util';
-import { normalizedNameSql, normalizedNameWhere, sanitizeName, isUniqueViolation } from '../../shared/utils/name-normalization.util';
+import {
+  paginationOptions,
+  pageSkip,
+} from '../../shared/utils/pagination.util';
+import {
+  normalizedNameSql,
+  normalizedNameWhere,
+  sanitizeName,
+  isUniqueViolation,
+} from '../../shared/utils/name-normalization.util';
 
 @Injectable()
 export class PropertiesService {
-    constructor(
-        @InjectRepository(PropertyArea)
-        private readonly areaRepository: Repository<PropertyArea>,
-        @InjectRepository(Asset)
-        private readonly assetRepository: Repository<Asset>,
-        @InjectRepository(Unit)
-        private readonly unitRepository: Repository<Unit>,
-        @InjectRepository(PropertyMedia)
-        private readonly mediaRepository: Repository<PropertyMedia>,
-        @InjectRepository(Owner)
-        private readonly ownerRepository: Repository<Owner>,
-    ) { }
+  constructor(
+    @InjectRepository(PropertyArea)
+    private readonly areaRepository: Repository<PropertyArea>,
+    @InjectRepository(Asset)
+    private readonly assetRepository: Repository<Asset>,
+    @InjectRepository(Unit)
+    private readonly unitRepository: Repository<Unit>,
+    @InjectRepository(PropertyMedia)
+    private readonly mediaRepository: Repository<PropertyMedia>,
+    @InjectRepository(Owner)
+    private readonly ownerRepository: Repository<Owner>,
+  ) {}
 
-    // Areas
-    async createArea(companyId: string, dto: CreateAreaDto): Promise<PropertyArea> {
-        const area = this.areaRepository.create({ ...dto, companyId });
-        return this.areaRepository.save(area);
+  // Areas
+  async createArea(
+    companyId: string,
+    dto: CreateAreaDto,
+  ): Promise<PropertyArea> {
+    const area = this.areaRepository.create({ ...dto, companyId });
+    return this.areaRepository.save(area);
+  }
+
+  async findAllAreas(
+    companyId: string,
+    page = 1,
+    limit = 20,
+    regionCode?: string,
+  ) {
+    const where: FindOptionsWhere<PropertyArea> = { companyId };
+    if (regionCode) where.regionCode = regionCode;
+
+    const [areas, total] = await this.areaRepository.findAndCount({
+      where,
+      ...paginationOptions(page, limit),
+      order: { createdAt: 'DESC' },
+    });
+
+    const data = areas.map((area) => ({
+      ...area,
+      assetCount: 0,
+      unitCount: 0,
+    }));
+
+    return { data, total, page, limit };
+  }
+
+  async findOneArea(id: string, companyId: string): Promise<PropertyArea> {
+    const area = await this.areaRepository.findOne({
+      where: { id, companyId },
+    });
+    if (!area) throw new NotFoundException(`Area not found`);
+    return area;
+  }
+
+  async updateArea(
+    id: string,
+    companyId: string,
+    dto: UpdateAreaDto,
+  ): Promise<PropertyArea> {
+    const area = await this.findOneArea(id, companyId);
+    Object.assign(area, dto);
+    return this.areaRepository.save(area);
+  }
+
+  async removeArea(id: string, companyId: string): Promise<void> {
+    const area = await this.findOneArea(id, companyId);
+    await this.areaRepository.remove(area);
+  }
+
+  // Assets
+  async createAsset(companyId: string, dto: CreateAssetDto): Promise<Asset> {
+    const sanitizedName = sanitizeName(dto.name);
+    if (!sanitizedName) {
+      throw new BadRequestException(
+        'Asset name is required and cannot be empty or whitespace-only',
+      );
     }
-
-    async findAllAreas(companyId: string, page = 1, limit = 20, regionCode?: string) {
-        const where: FindOptionsWhere<PropertyArea> = { companyId };
-        if (regionCode) where.regionCode = regionCode;
-
-        const [areas, total] = await this.areaRepository.findAndCount({
-            where,
-            ...paginationOptions(page, limit),
-            order: { createdAt: 'DESC' },
-        });
-
-        const data = areas.map(area => ({
-            ...area,
-            assetCount: 0,
-            unitCount: 0,
-        }));
-
-        return { data, total, page, limit };
+    const existing = await this.findAssetByNormalizedName(
+      dto.localityId,
+      sanitizedName,
+    );
+    if (existing) {
+      return existing;
     }
-
-    async findOneArea(id: string, companyId: string): Promise<PropertyArea> {
-        const area = await this.areaRepository.findOne({ where: { id, companyId } });
-        if (!area) throw new NotFoundException(`Area not found`);
-        return area;
-    }
-
-    async updateArea(id: string, companyId: string, dto: UpdateAreaDto): Promise<PropertyArea> {
-        const area = await this.findOneArea(id, companyId);
-        Object.assign(area, dto);
-        return this.areaRepository.save(area);
-    }
-
-    async removeArea(id: string, companyId: string): Promise<void> {
-        const area = await this.findOneArea(id, companyId);
-        await this.areaRepository.remove(area);
-    }
-
-    // Assets
-    async createAsset(companyId: string, dto: CreateAssetDto): Promise<Asset> {
-        const sanitizedName = sanitizeName(dto.name);
-        if (!sanitizedName) {
-            throw new BadRequestException('Asset name is required and cannot be empty or whitespace-only');
+    const asset = this.assetRepository.create({
+      ...dto,
+      name: sanitizedName,
+      createdByCompanyId: companyId,
+    });
+    try {
+      return await this.assetRepository.save(asset);
+    } catch (error) {
+      if (isUniqueViolation(error)) {
+        const duplicate = await this.findAssetByNormalizedName(
+          dto.localityId,
+          sanitizedName,
+        );
+        if (duplicate) {
+          return duplicate;
         }
-        const existing = await this.findAssetByNormalizedName(dto.localityId, sanitizedName);
-        if (existing) {
-            return existing;
-        }
-        const asset = this.assetRepository.create({
-            ...dto,
-            name: sanitizedName,
-            createdByCompanyId: companyId,
-        });
-        try {
-            return await this.assetRepository.save(asset);
-        } catch (error) {
-            if (isUniqueViolation(error)) {
-                const duplicate = await this.findAssetByNormalizedName(dto.localityId, sanitizedName);
-                if (duplicate) {
-                    return duplicate;
-                }
-            }
+      }
 
-            throw error;
-        }
+      throw error;
+    }
+  }
+
+  async findAssetsByLocality(
+    localityId: string,
+    companyId: string,
+    page = 1,
+    limit = 20,
+  ) {
+    const [data, total] = await this.assetRepository.findAndCount({
+      where: [
+        { localityId, units: { companyId } },
+        { localityId, createdByCompanyId: companyId },
+      ],
+      relations: ['locality', 'locality.city', 'units'],
+      ...paginationOptions(page, limit),
+      order: { createdAt: 'DESC' },
+    });
+
+    const filtered = data.map((a) => ({
+      ...a,
+      units: (a.units || []).filter((u) => u.companyId === companyId),
+    }));
+
+    return { data: filtered, total, page, limit };
+  }
+
+  async findAllAssets(companyId: string, page = 1, limit = 100) {
+    const [data, total] = await this.assetRepository.findAndCount({
+      where: [{ units: { companyId } }, { createdByCompanyId: companyId }],
+      relations: ['locality', 'locality.city', 'units'],
+      ...paginationOptions(page, limit),
+      order: { createdAt: 'DESC' },
+    });
+
+    const filtered = data.map((a) => ({
+      ...a,
+      units: (a.units || []).filter((u) => u.companyId === companyId),
+    }));
+
+    return { data: filtered, total, page, limit };
+  }
+
+  async searchAssets(localityId: string, q: string): Promise<any[]> {
+    if (typeof q !== 'string') {
+      return [];
     }
 
-    async findAssetsByLocality(localityId: string, companyId: string, page = 1, limit = 20) {
-        const [data, total] = await this.assetRepository.findAndCount({
-            where: [
-                { localityId, units: { companyId } },
-                { localityId, createdByCompanyId: companyId },
-            ],
-            relations: ['locality', 'locality.city', 'units'],
-            ...paginationOptions(page, limit),
-            order: { createdAt: 'DESC' },
-        });
-
-        const filtered = data.map(a => ({
-            ...a,
-            units: (a.units || []).filter(u => u.companyId === companyId),
-        }));
-
-        return { data: filtered, total, page, limit };
+    const query = sanitizeName(q);
+    if (!query) {
+      return [];
     }
 
-    async findAllAssets(companyId: string, page = 1, limit = 100) {
-        const [data, total] = await this.assetRepository.findAndCount({
-            where: [
-                { units: { companyId } },
-                { createdByCompanyId: companyId },
-            ],
-            relations: ['locality', 'locality.city', 'units'],
-            ...paginationOptions(page, limit),
-            order: { createdAt: 'DESC' },
-        });
-
-        const filtered = data.map(a => ({
-            ...a,
-            units: (a.units || []).filter(u => u.companyId === companyId),
-        }));
-
-        return { data: filtered, total, page, limit };
-    }
-
-    async searchAssets(localityId: string, q: string): Promise<any[]> {
-        if (typeof q !== 'string') {
-            return [];
-        }
-
-        const query = sanitizeName(q);
-        if (!query) {
-            return [];
-        }
-
-        const results = await this.assetRepository.query(
-            `SELECT *
+    const results = await this.assetRepository.query(
+      `SELECT *
              FROM (
                  SELECT DISTINCT ON (${normalizedNameSql('name')})
                      id,
@@ -164,319 +201,368 @@ export class PropertiesService {
              ) deduped
              ORDER BY score DESC, name ASC
              LIMIT 10`,
-            [query, localityId],
+      [query, localityId],
+    );
+    return results;
+  }
+
+  async findOneAsset(id: string): Promise<Asset> {
+    const asset = await this.assetRepository.findOne({
+      where: { id },
+      relations: ['locality'],
+    });
+    if (!asset) throw new NotFoundException(`Asset not found`);
+    return asset;
+  }
+
+  async updateAsset(id: string, dto: UpdateAssetDto): Promise<Asset> {
+    const asset = await this.assetRepository.findOne({ where: { id } });
+    if (!asset) throw new NotFoundException(`Asset not found`);
+
+    if (dto.name !== undefined) {
+      if (typeof dto.name !== 'string') {
+        throw new BadRequestException('Asset name must be a string');
+      }
+
+      const sanitizedName = sanitizeName(dto.name);
+      if (!sanitizedName) {
+        throw new BadRequestException(
+          'Asset name is required and cannot be empty or whitespace-only',
         );
-        return results;
+      }
+      const duplicate = await this.findAssetByNormalizedName(
+        asset.localityId,
+        sanitizedName,
+        id,
+      );
+      if (duplicate) {
+        throw new ConflictException('Asset already exists in this locality');
+      }
+
+      asset.name = sanitizedName;
     }
 
-    async findOneAsset(id: string): Promise<Asset> {
-        const asset = await this.assetRepository.findOne({
-            where: { id },
-            relations: ['locality'],
+    if (dto.address !== undefined) {
+      asset.address = dto.address;
+    }
+
+    try {
+      return await this.assetRepository.save(asset);
+    } catch (error) {
+      if (isUniqueViolation(error)) {
+        throw new ConflictException('Asset already exists in this locality');
+      }
+
+      throw error;
+    }
+  }
+
+  async removeAsset(id: string): Promise<void> {
+    const asset = await this.assetRepository.findOne({ where: { id } });
+    if (!asset) throw new NotFoundException(`Asset not found`);
+    await this.assetRepository.remove(asset);
+  }
+
+  private findAssetByNormalizedName(
+    localityId: string,
+    name: string,
+    excludeId?: string,
+  ): Promise<Asset | null> {
+    const where: FindOptionsWhere<Asset> = {
+      localityId,
+      name: normalizedNameWhere(name),
+    };
+
+    if (excludeId) {
+      where.id = Not(excludeId);
+    }
+
+    return this.assetRepository.findOne({ where });
+  }
+
+  // Units
+  async findAllUnits(
+    companyId: string,
+    page = 1,
+    limit = 100,
+    filters?: {
+      amenities?: string[];
+      propertyType?: string;
+      status?: string;
+      minPrice?: number;
+      maxPrice?: number;
+      minBeds?: number;
+      maxBeds?: number;
+      localityId?: string;
+      regionCode?: string;
+    },
+  ) {
+    const qb = this.unitRepository
+      .createQueryBuilder('u')
+      .innerJoin('u.asset', 'a')
+      .innerJoin('a.locality', 'loc')
+      .innerJoin('loc.city', 'ci')
+      .leftJoin('u.owner', 'o')
+      .addSelect([
+        'a.id',
+        'a.name',
+        'a.propertyType',
+        'loc.id',
+        'loc.name',
+        'o.id',
+        'o.name',
+      ])
+      .where('u.companyId = :companyId', { companyId });
+
+    if (filters?.amenities?.length) {
+      qb.andWhere('u.amenities @> :amenities', {
+        amenities: JSON.stringify(filters.amenities),
+      });
+    }
+    if (filters?.propertyType) {
+      qb.andWhere('u.propertyType = :propertyType', {
+        propertyType: filters.propertyType,
+      });
+    }
+    if (filters?.status) {
+      qb.andWhere('u.status = :status', { status: filters.status });
+    }
+    if (filters?.minPrice !== undefined) {
+      qb.andWhere('u.price >= :minPrice', { minPrice: filters.minPrice });
+    }
+    if (filters?.maxPrice !== undefined) {
+      qb.andWhere('u.price <= :maxPrice', { maxPrice: filters.maxPrice });
+    }
+    if (filters?.minBeds !== undefined) {
+      qb.andWhere('u.bedrooms >= :minBeds', { minBeds: filters.minBeds });
+    }
+    if (filters?.maxBeds !== undefined) {
+      qb.andWhere('u.bedrooms <= :maxBeds', { maxBeds: filters.maxBeds });
+    }
+    if (filters?.localityId) {
+      qb.andWhere('loc.id = :localityId', { localityId: filters.localityId });
+    }
+    if (filters?.regionCode) {
+      qb.andWhere('ci.regionCode = :regionCode', {
+        regionCode: filters.regionCode,
+      });
+    }
+
+    qb.skip(pageSkip(page, limit))
+      .take(limit)
+      .orderBy('loc.name', 'ASC')
+      .addOrderBy('a.name', 'ASC')
+      .addOrderBy('u.unitNumber', 'ASC');
+
+    const [units, total] = await qb.getManyAndCount();
+
+    const unitIds = units.map((u) => u.id);
+    const primaryPhotoMap = new Map<string, string>();
+    if (unitIds.length > 0) {
+      const mediaList = await this.mediaRepository.find({
+        where: { unitId: In(unitIds), companyId },
+        order: { isPrimary: 'DESC', createdAt: 'DESC' },
+        select: ['unitId', 'url', 'thumbnailUrl'],
+      });
+      for (const m of mediaList) {
+        if (!primaryPhotoMap.has(m.unitId)) {
+          primaryPhotoMap.set(m.unitId, m.thumbnailUrl ?? m.url);
+        }
+      }
+    }
+
+    const data = units.map((u) => ({
+      id: u.id,
+      unitNumber: u.unitNumber,
+      status: u.status,
+      price: u.price,
+      sqFt: u.sqFt,
+      bedrooms: u.bedrooms,
+      bathrooms: u.bathrooms,
+      propertyType: u.propertyType ?? null,
+      amenities: u.amenities,
+      photos: primaryPhotoMap.has(u.id) ? [primaryPhotoMap.get(u.id)!] : [],
+      floor: u.floor,
+      assetId: u.assetId,
+      assetName: u.asset?.name ?? '',
+      areaId: u.asset?.locality?.id ?? '',
+      areaName: u.asset?.locality?.name ?? '',
+      ownerName: u.owner?.name ?? null,
+    }));
+
+    return { data, total, page, limit };
+  }
+
+  async createUnit(companyId: string, dto: CreateUnitDto): Promise<Unit> {
+    if (dto.ownerId) {
+      await this.verifyOwnerBelongsToCompany(dto.ownerId, companyId);
+    }
+    const unit = this.unitRepository.create({ ...dto, companyId });
+    return this.unitRepository.save(unit);
+  }
+
+  async findUnitsByAsset(
+    assetId: string,
+    companyId: string,
+    page = 1,
+    limit = 20,
+  ) {
+    const [data, total] = await this.unitRepository.findAndCount({
+      where: { assetId, companyId },
+      relations: ['owner'],
+      ...paginationOptions(page, limit),
+      order: { createdAt: 'DESC' },
+    });
+    return { data, total, page, limit };
+  }
+
+  async findOneUnit(id: string, companyId: string): Promise<Unit> {
+    const unit = await this.unitRepository.findOne({
+      where: { id, companyId },
+      relations: ['asset', 'asset.locality', 'owner'],
+    });
+    if (!unit) throw new NotFoundException(`Unit not found`);
+    return unit;
+  }
+
+  async updateUnit(
+    id: string,
+    companyId: string,
+    dto: UpdateUnitDto,
+  ): Promise<Unit> {
+    const unit = await this.findOneUnit(id, companyId);
+    const { ownerId, ...rest } = dto;
+    Object.assign(unit, rest);
+    if ('ownerId' in dto) {
+      unit.owner = ownerId
+        ? await this.verifyOwnerBelongsToCompany(ownerId, companyId)
+        : null;
+      unit.ownerId = ownerId ?? null;
+    }
+    return this.unitRepository.save(unit);
+  }
+
+  private async verifyOwnerBelongsToCompany(
+    ownerId: string,
+    companyId: string,
+  ): Promise<Owner> {
+    const owner = await this.ownerRepository.findOne({
+      where: { id: ownerId, companyId },
+    });
+    if (!owner) throw new BadRequestException('Owner not found');
+    return owner;
+  }
+
+  async removeUnit(id: string, companyId: string): Promise<void> {
+    const unit = await this.findOneUnit(id, companyId);
+    await this.unitRepository.remove(unit);
+  }
+
+  async bulkImportUnits(
+    companyId: string,
+    csvContent: string,
+  ): Promise<{ created: number; failed: number; errors: string[] }> {
+    if (!csvContent || typeof csvContent !== 'string') {
+      return {
+        created: 0,
+        failed: 0,
+        errors: ['CSV content is required and must be a string'],
+      };
+    }
+
+    const lines = csvContent.trim().split('\n');
+    if (lines.length < 2) {
+      return {
+        created: 0,
+        failed: 0,
+        errors: ['CSV must have a header row and at least one data row'],
+      };
+    }
+
+    const headers = lines[0].split(',').map((h) => h.trim().toLowerCase());
+    const results = { created: 0, failed: 0, errors: [] as string[] };
+    const unitsToCreate: Unit[] = [];
+
+    for (let i = 1; i < lines.length; i++) {
+      const values = lines[i].split(',').map((v) => v.trim());
+      const row: Record<string, string> = {};
+      headers.forEach((h, idx) => {
+        row[h] = values[idx] ?? '';
+      });
+
+      if (!row['unitnumber'] || !row['assetid']) {
+        results.failed++;
+        results.errors.push(`Row ${i}: unitNumber and assetId are required`);
+        continue;
+      }
+
+      try {
+        const sqFt = parseFloat(row['sqft'] || '0') || undefined;
+        const price = parseFloat(row['price'] || '0') || undefined;
+        const unit = this.unitRepository.create({
+          companyId,
+          unitNumber: row['unitnumber'],
+          assetId: row['assetid'],
+          bedrooms: parseInt(row['bedrooms'] || '0', 10),
+          bathrooms: parseInt(row['bathrooms'] || '0', 10),
+          sqFt,
+          price,
+          status: (row['status'] as any) || 'available',
         });
-        if (!asset) throw new NotFoundException(`Asset not found`);
-        return asset;
+        unitsToCreate.push(unit);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        results.failed++;
+        results.errors.push(`Row ${i}: ${message}`);
+      }
     }
 
-    async updateAsset(id: string, dto: UpdateAssetDto): Promise<Asset> {
-        const asset = await this.assetRepository.findOne({ where: { id } });
-        if (!asset) throw new NotFoundException(`Asset not found`);
-
-        if (dto.name !== undefined) {
-            if (typeof dto.name !== 'string') {
-                throw new BadRequestException('Asset name must be a string');
-            }
-
-            const sanitizedName = sanitizeName(dto.name);
-            if (!sanitizedName) {
-                throw new BadRequestException('Asset name is required and cannot be empty or whitespace-only');
-            }
-            const duplicate = await this.findAssetByNormalizedName(asset.localityId, sanitizedName, id);
-            if (duplicate) {
-                throw new ConflictException('Asset already exists in this locality');
-            }
-
-            asset.name = sanitizedName;
-        }
-
-        if (dto.address !== undefined) {
-            asset.address = dto.address;
-        }
-
-        try {
-            return await this.assetRepository.save(asset);
-        } catch (error) {
-            if (isUniqueViolation(error)) {
-                throw new ConflictException('Asset already exists in this locality');
-            }
-
-            throw error;
-        }
+    if (unitsToCreate.length > 0) {
+      try {
+        await this.unitRepository.save(unitsToCreate);
+        results.created = unitsToCreate.length;
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        results.errors.push(`Batch insert failed: ${message}`);
+        results.failed += unitsToCreate.length;
+      }
     }
 
-    async removeAsset(id: string): Promise<void> {
-        const asset = await this.assetRepository.findOne({ where: { id } });
-        if (!asset) throw new NotFoundException(`Asset not found`);
-        await this.assetRepository.remove(asset);
-    }
+    return results;
+  }
 
-    private findAssetByNormalizedName(localityId: string, name: string, excludeId?: string): Promise<Asset | null> {
-        const where: FindOptionsWhere<Asset> = {
-            localityId,
-            name: normalizedNameWhere(name),
-        };
+  async getAssetOccupancy(companyId: string) {
+    const results = await this.unitRepository
+      .createQueryBuilder('u')
+      .innerJoin('u.asset', 'a')
+      .select('a.id', 'assetId')
+      .addSelect('a.name', 'assetName')
+      .addSelect('COUNT(*)::int', 'totalUnits')
+      .addSelect(
+        `SUM(CASE WHEN u.status = :rented THEN 1 ELSE 0 END)::int`,
+        'rentedUnits',
+      )
+      .addSelect(
+        `SUM(CASE WHEN u.status = :available THEN 1 ELSE 0 END)::int`,
+        'availableUnits',
+      )
+      .where('u.companyId = :companyId', { companyId })
+      .setParameter('rented', UnitStatus.RENTED)
+      .setParameter('available', UnitStatus.AVAILABLE)
+      .groupBy('a.id')
+      .addGroupBy('a.name')
+      .getRawMany();
 
-        if (excludeId) {
-            where.id = Not(excludeId);
-        }
-
-        return this.assetRepository.findOne({ where });
-    }
-
-    // Units
-    async findAllUnits(
-        companyId: string,
-        page = 1,
-        limit = 100,
-        filters?: {
-            amenities?: string[];
-            propertyType?: string;
-            status?: string;
-            minPrice?: number;
-            maxPrice?: number;
-            minBeds?: number;
-            maxBeds?: number;
-            localityId?: string;
-            regionCode?: string;
-        },
-    ) {
-        const qb = this.unitRepository
-            .createQueryBuilder('u')
-            .innerJoin('u.asset', 'a')
-            .innerJoin('a.locality', 'loc')
-            .innerJoin('loc.city', 'ci')
-            .leftJoin('u.owner', 'o')
-            .addSelect(['a.id', 'a.name', 'a.propertyType', 'loc.id', 'loc.name', 'o.id', 'o.name'])
-            .where('u.companyId = :companyId', { companyId });
-
-        if (filters?.amenities?.length) {
-            qb.andWhere('u.amenities @> :amenities', { amenities: JSON.stringify(filters.amenities) });
-        }
-        if (filters?.propertyType) {
-            qb.andWhere('u.propertyType = :propertyType', { propertyType: filters.propertyType });
-        }
-        if (filters?.status) {
-            qb.andWhere('u.status = :status', { status: filters.status });
-        }
-        if (filters?.minPrice !== undefined) {
-            qb.andWhere('u.price >= :minPrice', { minPrice: filters.minPrice });
-        }
-        if (filters?.maxPrice !== undefined) {
-            qb.andWhere('u.price <= :maxPrice', { maxPrice: filters.maxPrice });
-        }
-        if (filters?.minBeds !== undefined) {
-            qb.andWhere('u.bedrooms >= :minBeds', { minBeds: filters.minBeds });
-        }
-        if (filters?.maxBeds !== undefined) {
-            qb.andWhere('u.bedrooms <= :maxBeds', { maxBeds: filters.maxBeds });
-        }
-        if (filters?.localityId) {
-            qb.andWhere('loc.id = :localityId', { localityId: filters.localityId });
-        }
-        if (filters?.regionCode) {
-            qb.andWhere('ci.regionCode = :regionCode', { regionCode: filters.regionCode });
-        }
-
-        qb.skip(pageSkip(page, limit))
-            .take(limit)
-            .orderBy('loc.name', 'ASC')
-            .addOrderBy('a.name', 'ASC')
-            .addOrderBy('u.unitNumber', 'ASC');
-
-        const [units, total] = await qb.getManyAndCount();
-
-        const unitIds = units.map(u => u.id);
-        const primaryPhotoMap = new Map<string, string>();
-        if (unitIds.length > 0) {
-            const mediaList = await this.mediaRepository.find({
-                where: { unitId: In(unitIds), companyId },
-                order: { isPrimary: 'DESC', createdAt: 'DESC' },
-                select: ['unitId', 'url', 'thumbnailUrl'],
-            });
-            for (const m of mediaList) {
-                if (!primaryPhotoMap.has(m.unitId)) {
-                    primaryPhotoMap.set(m.unitId, m.thumbnailUrl ?? m.url);
-                }
-            }
-        }
-
-        const data = units.map(u => ({
-            id: u.id,
-            unitNumber: u.unitNumber,
-            status: u.status,
-            price: u.price,
-            sqFt: u.sqFt,
-            bedrooms: u.bedrooms,
-            bathrooms: u.bathrooms,
-            propertyType: u.propertyType ?? null,
-            amenities: u.amenities,
-            photos: primaryPhotoMap.has(u.id) ? [primaryPhotoMap.get(u.id)!] : [],
-            floor: u.floor,
-            assetId: u.assetId,
-            assetName: u.asset?.name ?? '',
-            areaId: u.asset?.locality?.id ?? '',
-            areaName: u.asset?.locality?.name ?? '',
-            ownerName: u.owner?.name ?? null,
-        }));
-
-        return { data, total, page, limit };
-    }
-
-    async createUnit(companyId: string, dto: CreateUnitDto): Promise<Unit> {
-        if (dto.ownerId) {
-            await this.verifyOwnerBelongsToCompany(dto.ownerId, companyId);
-        }
-        const unit = this.unitRepository.create({ ...dto, companyId });
-        return this.unitRepository.save(unit);
-    }
-
-    async findUnitsByAsset(assetId: string, companyId: string, page = 1, limit = 20) {
-        const [data, total] = await this.unitRepository.findAndCount({
-            where: { assetId, companyId },
-            relations: ['owner'],
-            ...paginationOptions(page, limit),
-            order: { createdAt: 'DESC' },
-        });
-        return { data, total, page, limit };
-    }
-
-    async findOneUnit(id: string, companyId: string): Promise<Unit> {
-        const unit = await this.unitRepository.findOne({
-            where: { id, companyId },
-            relations: ['asset', 'asset.locality', 'owner'],
-        });
-        if (!unit) throw new NotFoundException(`Unit not found`);
-        return unit;
-    }
-
-    async updateUnit(id: string, companyId: string, dto: UpdateUnitDto): Promise<Unit> {
-        const unit = await this.findOneUnit(id, companyId);
-        const { ownerId, ...rest } = dto;
-        Object.assign(unit, rest);
-        if ('ownerId' in dto) {
-            unit.owner = ownerId ? await this.verifyOwnerBelongsToCompany(ownerId, companyId) : null;
-            unit.ownerId = ownerId ?? null;
-        }
-        return this.unitRepository.save(unit);
-    }
-
-    private async verifyOwnerBelongsToCompany(ownerId: string, companyId: string): Promise<Owner> {
-        const owner = await this.ownerRepository.findOne({ where: { id: ownerId, companyId } });
-        if (!owner) throw new BadRequestException('Owner not found');
-        return owner;
-    }
-
-    async removeUnit(id: string, companyId: string): Promise<void> {
-        const unit = await this.findOneUnit(id, companyId);
-        await this.unitRepository.remove(unit);
-    }
-
-    async bulkImportUnits(
-        companyId: string,
-        csvContent: string,
-    ): Promise<{ created: number; failed: number; errors: string[] }> {
-        if (!csvContent || typeof csvContent !== 'string') {
-            return { created: 0, failed: 0, errors: ['CSV content is required and must be a string'] };
-        }
-
-        const lines = csvContent.trim().split('\n');
-        if (lines.length < 2) {
-            return { created: 0, failed: 0, errors: ['CSV must have a header row and at least one data row'] };
-        }
-
-        const headers = lines[0].split(',').map((h) => h.trim().toLowerCase());
-        const results = { created: 0, failed: 0, errors: [] as string[] };
-        const unitsToCreate: Unit[] = [];
-
-        for (let i = 1; i < lines.length; i++) {
-            const values = lines[i].split(',').map((v) => v.trim());
-            const row: Record<string, string> = {};
-            headers.forEach((h, idx) => { row[h] = values[idx] ?? ''; });
-
-            if (!row['unitnumber'] || !row['assetid']) {
-                results.failed++;
-                results.errors.push(`Row ${i}: unitNumber and assetId are required`);
-                continue;
-            }
-
-            try {
-                const sqFt = parseFloat(row['sqft'] || '0') || undefined;
-                const price = parseFloat(row['price'] || '0') || undefined;
-                const unit = this.unitRepository.create({
-                    companyId,
-                    unitNumber: row['unitnumber'],
-                    assetId: row['assetid'],
-                    bedrooms: parseInt(row['bedrooms'] || '0', 10),
-                    bathrooms: parseInt(row['bathrooms'] || '0', 10),
-                    sqFt,
-                    price,
-                    status: (row['status'] as any) || 'available',
-                });
-                unitsToCreate.push(unit);
-            } catch (err) {
-                const message = err instanceof Error ? err.message : String(err);
-                results.failed++;
-                results.errors.push(`Row ${i}: ${message}`);
-            }
-        }
-
-        if (unitsToCreate.length > 0) {
-            try {
-                await this.unitRepository.save(unitsToCreate);
-                results.created = unitsToCreate.length;
-            } catch (err) {
-                const message = err instanceof Error ? err.message : String(err);
-                results.errors.push(`Batch insert failed: ${message}`);
-                results.failed += unitsToCreate.length;
-            }
-        }
-
-        return results;
-    }
-
-    async getAssetOccupancy(companyId: string) {
-        const results = await this.unitRepository
-            .createQueryBuilder('u')
-            .innerJoin('u.asset', 'a')
-            .select('a.id', 'assetId')
-            .addSelect('a.name', 'assetName')
-            .addSelect('COUNT(*)::int', 'totalUnits')
-            .addSelect(
-                `SUM(CASE WHEN u.status = :rented THEN 1 ELSE 0 END)::int`,
-                'rentedUnits',
-            )
-            .addSelect(
-                `SUM(CASE WHEN u.status = :available THEN 1 ELSE 0 END)::int`,
-                'availableUnits',
-            )
-            .where('u.companyId = :companyId', { companyId })
-            .setParameter('rented', UnitStatus.RENTED)
-            .setParameter('available', UnitStatus.AVAILABLE)
-            .groupBy('a.id')
-            .addGroupBy('a.name')
-            .getRawMany();
-
-        return results.map((r) => ({
-            assetId: r.assetId,
-            assetName: r.assetName,
-            totalUnits: Number(r.totalUnits),
-            rentedUnits: Number(r.rentedUnits),
-            availableUnits: Number(r.availableUnits),
-            occupancyRate:
-                Number(r.totalUnits) > 0
-                    ? Math.round((Number(r.rentedUnits) / Number(r.totalUnits)) * 100)
-                    : 0,
-        }));
-    }
-
+    return results.map((r) => ({
+      assetId: r.assetId,
+      assetName: r.assetName,
+      totalUnits: Number(r.totalUnits),
+      rentedUnits: Number(r.rentedUnits),
+      availableUnits: Number(r.availableUnits),
+      occupancyRate:
+        Number(r.totalUnits) > 0
+          ? Math.round((Number(r.rentedUnits) / Number(r.totalUnits)) * 100)
+          : 0,
+    }));
+  }
 }

@@ -1,4 +1,12 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  UpdateDateColumn,
+  ManyToOne,
+  JoinColumn,
+} from 'typeorm';
 import { Company } from '../../companies/entities/company.entity';
 import { Vendor } from '../../vendors/entities/vendor.entity';
 import { User } from '../../users/entities/user.entity';
@@ -100,10 +108,22 @@ export class WorkOrder {
   @Column({ name: 'reported_by', type: 'varchar', length: 255, nullable: true })
   reportedBy: string | null;
 
-  @Column({ name: 'estimated_cost', type: 'decimal', precision: 12, scale: 2, nullable: true })
+  @Column({
+    name: 'estimated_cost',
+    type: 'decimal',
+    precision: 12,
+    scale: 2,
+    nullable: true,
+  })
   estimatedCost: number | null;
 
-  @Column({ name: 'actual_cost', type: 'decimal', precision: 12, scale: 2, nullable: true })
+  @Column({
+    name: 'actual_cost',
+    type: 'decimal',
+    precision: 12,
+    scale: 2,
+    nullable: true,
+  })
   actualCost: number | null;
 
   @Column({ type: 'varchar', length: 3, default: 'AED' })

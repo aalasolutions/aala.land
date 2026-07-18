@@ -1,4 +1,13 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn, Index } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  UpdateDateColumn,
+  ManyToOne,
+  JoinColumn,
+  Index,
+} from 'typeorm';
 import { Company } from '../../companies/entities/company.entity';
 
 export enum VendorSpecialty {
@@ -38,7 +47,12 @@ export class Vendor {
   @Column({ type: 'jsonb', default: '[]' })
   specialties: VendorSpecialty[];
 
-  @Column({ name: 'company_name', type: 'varchar', length: 255, nullable: true })
+  @Column({
+    name: 'company_name',
+    type: 'varchar',
+    length: 255,
+    nullable: true,
+  })
   companyName: string | null;
 
   @Column({ type: 'text', nullable: true })
@@ -47,7 +61,13 @@ export class Vendor {
   @Column({ type: 'decimal', precision: 3, scale: 2, nullable: true })
   rating: number | null;
 
-  @Column({ name: 'hourly_rate', type: 'decimal', precision: 10, scale: 2, nullable: true })
+  @Column({
+    name: 'hourly_rate',
+    type: 'decimal',
+    precision: 10,
+    scale: 2,
+    nullable: true,
+  })
   hourlyRate: number | null;
 
   @Column({ type: 'varchar', length: 3, default: 'AED' })

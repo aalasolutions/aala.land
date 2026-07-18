@@ -1,13 +1,30 @@
-import { IsEnum, IsNumber, IsOptional, IsString, IsUUID, IsDateString, MaxLength, Min } from 'class-validator';
+import {
+  IsEnum,
+  IsNumber,
+  IsOptional,
+  IsString,
+  IsUUID,
+  IsDateString,
+  MaxLength,
+  Min,
+} from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { TransactionType, TransactionCategory, TransactionStatus, PaymentMethod } from '../entities/transaction.entity';
+import {
+  TransactionType,
+  TransactionCategory,
+  TransactionStatus,
+  PaymentMethod,
+} from '../entities/transaction.entity';
 
 export class CreateTransactionDto {
   @ApiProperty({ enum: TransactionType, example: TransactionType.INCOME })
   @IsEnum(TransactionType)
   type: TransactionType;
 
-  @ApiPropertyOptional({ enum: TransactionCategory, example: TransactionCategory.RENT })
+  @ApiPropertyOptional({
+    enum: TransactionCategory,
+    example: TransactionCategory.RENT,
+  })
   @IsEnum(TransactionCategory)
   @IsOptional()
   category?: TransactionCategory;
@@ -44,7 +61,10 @@ export class CreateTransactionDto {
   @IsOptional()
   unitId?: string;
 
-  @ApiPropertyOptional({ enum: TransactionStatus, default: TransactionStatus.PENDING })
+  @ApiPropertyOptional({
+    enum: TransactionStatus,
+    default: TransactionStatus.PENDING,
+  })
   @IsEnum(TransactionStatus)
   @IsOptional()
   status?: TransactionStatus;

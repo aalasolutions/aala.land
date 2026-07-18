@@ -1,8 +1,24 @@
-import { Injectable, Logger, BadRequestException, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  BadRequestException,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, In, LessThan, LessThanOrEqual, IsNull, MoreThanOrEqual } from 'typeorm';
+import {
+  Repository,
+  In,
+  LessThan,
+  LessThanOrEqual,
+  IsNull,
+  MoreThanOrEqual,
+} from 'typeorm';
 import { Cron, CronExpression } from '@nestjs/schedule';
-import { SendNotificationDto, NotificationChannel, NotificationStatus } from './dto/send-notification.dto';
+import {
+  SendNotificationDto,
+  NotificationChannel,
+  NotificationStatus,
+} from './dto/send-notification.dto';
 import { Notification, NotificationType } from './entities/notification.entity';
 import { CreateNotificationDto } from './dto/create-notification.dto';
 import { Cheque, ChequeStatus } from '../cheques/entities/cheque.entity';
@@ -45,7 +61,10 @@ export class NotificationsService {
 
   // ---- Persistence methods ----
 
-  async create(companyId: string, dto: CreateNotificationDto): Promise<Notification> {
+  async create(
+    companyId: string,
+    dto: CreateNotificationDto,
+  ): Promise<Notification> {
     // Multi-tenant guard: the target user must belong to the caller's company.
     // Otherwise a notification (and its live socket push to `user_<id>`) could be
     // injected into another tenant's user by supplying their userId. NotFound
@@ -58,14 +77,19 @@ export class NotificationsService {
       throw new NotFoundException(`User with ID ${dto.userId} not found`);
     }
 
-    const notification = this.notificationRepository.create({ ...dto, companyId });
+    const notification = this.notificationRepository.create({
+      ...dto,
+      companyId,
+    });
     const saved = await this.notificationRepository.save(notification);
 
     try {
       this.notificationsGateway.sendNotificationToUser(dto.userId, saved);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : String(err);
-      this.logger.error(`Failed to emit notification via socket: ${errorMessage}`);
+      this.logger.error(
+        `Failed to emit notification via socket: ${errorMessage}`,
+      );
     }
 
     return saved;
@@ -76,7 +100,12 @@ export class NotificationsService {
     userId: string,
     page = 1,
     limit = 20,
-  ): Promise<{ data: Notification[]; total: number; page: number; limit: number }> {
+  ): Promise<{
+    data: Notification[];
+    total: number;
+    page: number;
+    limit: number;
+  }> {
     const [data, total] = await this.notificationRepository.findAndCount({
       where: { companyId, userId },
       ...paginationOptions(page, limit),
@@ -85,7 +114,11 @@ export class NotificationsService {
     return { data, total, page, limit };
   }
 
-  async markAsRead(id: string, companyId: string, userId: string): Promise<Notification> {
+  async markAsRead(
+    id: string,
+    companyId: string,
+    userId: string,
+  ): Promise<Notification> {
     const notification = await this.notificationRepository.findOne({
       where: { id, companyId, userId },
     });
@@ -99,7 +132,10 @@ export class NotificationsService {
     return this.notificationRepository.save(notification);
   }
 
-  async markAllRead(companyId: string, userId: string): Promise<{ updated: number }> {
+  async markAllRead(
+    companyId: string,
+    userId: string,
+  ): Promise<{ updated: number }> {
     const result = await this.notificationRepository.update(
       { companyId, userId, isRead: false },
       { isRead: true, readAt: new Date() },
@@ -107,7 +143,10 @@ export class NotificationsService {
     return { updated: result.affected || 0 };
   }
 
-  async getUnreadCount(companyId: string, userId: string): Promise<{ count: number }> {
+  async getUnreadCount(
+    companyId: string,
+    userId: string,
+  ): Promise<{ count: number }> {
     const count = await this.notificationRepository.count({
       where: { companyId, userId, isRead: false },
     });
@@ -123,7 +162,9 @@ export class NotificationsService {
     return this.sendSms(dto);
   }
 
-  private async sendEmail(dto: SendNotificationDto): Promise<NotificationResult> {
+  private async sendEmail(
+    dto: SendNotificationDto,
+  ): Promise<NotificationResult> {
     if (!dto.email) {
       throw new BadRequestException('email is required for EMAIL channel');
     }
@@ -149,7 +190,9 @@ export class NotificationsService {
         },
         body: JSON.stringify({
           personalizations: [{ to: [{ email: dto.email }] }],
-          from: { email: process.env.SENDGRID_FROM_EMAIL || 'noreply@aala.land' },
+          from: {
+            email: process.env.SENDGRID_FROM_EMAIL || 'noreply@aala.land',
+          },
           subject: dto.subject || 'Notification from AALA',
           content: [{ type: 'text/plain', value: dto.body }],
         }),
@@ -202,14 +245,18 @@ export class NotificationsService {
       },
     });
 
-    await this.notifyAdminsOncePerDay(upcomingCheques, NotificationType.CHEQUE_DUE, (cheque, admin) => ({
-      userId: admin.id,
-      title: 'Upcoming Cheque',
-      message: `Cheque #${cheque.chequeNumber} for ${cheque.amount} ${cheque.currency} is due in 3 days (${cheque.dueDate})`,
-      type: NotificationType.CHEQUE_DUE,
-      entityType: 'cheque',
-      entityId: cheque.id,
-    }));
+    await this.notifyAdminsOncePerDay(
+      upcomingCheques,
+      NotificationType.CHEQUE_DUE,
+      (cheque, admin) => ({
+        userId: admin.id,
+        title: 'Upcoming Cheque',
+        message: `Cheque #${cheque.chequeNumber} for ${cheque.amount} ${cheque.currency} is due in 3 days (${cheque.dueDate})`,
+        type: NotificationType.CHEQUE_DUE,
+        entityType: 'cheque',
+        entityId: cheque.id,
+      }),
+    );
   }
 
   private async notifyOverdueCheques() {
@@ -222,14 +269,18 @@ export class NotificationsService {
       },
     });
 
-    await this.notifyAdminsOncePerDay(overdueCheques, NotificationType.CHEQUE_OVERDUE, (cheque, admin) => ({
-      userId: admin.id,
-      title: 'Overdue Cheque!',
-      message: `Cheque #${cheque.chequeNumber} for ${cheque.amount} ${cheque.currency} was due on ${cheque.dueDate} and is still pending.`,
-      type: NotificationType.CHEQUE_OVERDUE,
-      entityType: 'cheque',
-      entityId: cheque.id,
-    }));
+    await this.notifyAdminsOncePerDay(
+      overdueCheques,
+      NotificationType.CHEQUE_OVERDUE,
+      (cheque, admin) => ({
+        userId: admin.id,
+        title: 'Overdue Cheque!',
+        message: `Cheque #${cheque.chequeNumber} for ${cheque.amount} ${cheque.currency} was due on ${cheque.dueDate} and is still pending.`,
+        type: NotificationType.CHEQUE_OVERDUE,
+        entityType: 'cheque',
+        entityId: cheque.id,
+      }),
+    );
   }
 
   private async notifyDelayedCheques() {
@@ -243,14 +294,18 @@ export class NotificationsService {
       },
     });
 
-    await this.notifyAdminsOncePerDay(delayedCheques, NotificationType.CHEQUE_DELAYED, (cheque, admin) => ({
-      userId: admin.id,
-      title: 'Delayed Cheque Clearing',
-      message: `Cheque #${cheque.chequeNumber} was deposited on ${cheque.depositDate} but hasn't cleared yet.`,
-      type: NotificationType.CHEQUE_DELAYED,
-      entityType: 'cheque',
-      entityId: cheque.id,
-    }));
+    await this.notifyAdminsOncePerDay(
+      delayedCheques,
+      NotificationType.CHEQUE_DELAYED,
+      (cheque, admin) => ({
+        userId: admin.id,
+        title: 'Delayed Cheque Clearing',
+        message: `Cheque #${cheque.chequeNumber} was deposited on ${cheque.depositDate} but hasn't cleared yet.`,
+        type: NotificationType.CHEQUE_DELAYED,
+        entityType: 'cheque',
+        entityId: cheque.id,
+      }),
+    );
   }
 
   private async notifyUnassignedLeads() {
@@ -261,17 +316,21 @@ export class NotificationsService {
       },
     });
 
-    await this.notifyAdminsOncePerDay(unassignedLeads, NotificationType.LEAD_UNASSIGNED, (lead, admin) => {
-      const clientName = `${lead.firstName} ${lead.lastName || ''}`.trim();
-      return {
-        userId: admin.id,
-        title: 'Pending Unassigned Lead',
-        message: `Lead for ${clientName} is still unassigned and needs attention.`,
-        type: NotificationType.LEAD_UNASSIGNED,
-        entityType: 'lead',
-        entityId: lead.id,
-      };
-    });
+    await this.notifyAdminsOncePerDay(
+      unassignedLeads,
+      NotificationType.LEAD_UNASSIGNED,
+      (lead, admin) => {
+        const clientName = `${lead.firstName} ${lead.lastName || ''}`.trim();
+        return {
+          userId: admin.id,
+          title: 'Pending Unassigned Lead',
+          message: `Lead for ${clientName} is still unassigned and needs attention.`,
+          type: NotificationType.LEAD_UNASSIGNED,
+          entityType: 'lead',
+          entityId: lead.id,
+        };
+      },
+    );
   }
 
   async checkRentDueReminders(
@@ -296,8 +355,12 @@ export class NotificationsService {
       .createQueryBuilder('cheque')
       .where('cheque.company_id = :companyId', { companyId })
       .andWhere('cheque.status = :status', { status: ChequeStatus.PENDING })
-      .andWhere('cheque.due_date >= :now', { now: now.toISOString().split('T')[0] })
-      .andWhere('cheque.due_date <= :futureDate', { futureDate: futureDate.toISOString().split('T')[0] })
+      .andWhere('cheque.due_date >= :now', {
+        now: now.toISOString().split('T')[0],
+      })
+      .andWhere('cheque.due_date <= :futureDate', {
+        futureDate: futureDate.toISOString().split('T')[0],
+      })
       .orderBy('cheque.due_date', 'ASC')
       .getMany();
 
@@ -338,8 +401,12 @@ export class NotificationsService {
       .createQueryBuilder('lease')
       .where('lease.company_id = :companyId', { companyId })
       .andWhere('lease.status = :status', { status: LeaseStatus.ACTIVE })
-      .andWhere('lease.end_date >= :now', { now: now.toISOString().split('T')[0] })
-      .andWhere('lease.end_date <= :futureDate', { futureDate: futureDate.toISOString().split('T')[0] })
+      .andWhere('lease.end_date >= :now', {
+        now: now.toISOString().split('T')[0],
+      })
+      .andWhere('lease.end_date <= :futureDate', {
+        futureDate: futureDate.toISOString().split('T')[0],
+      })
       .orderBy('lease.end_date', 'ASC')
       .getMany();
 
@@ -381,8 +448,12 @@ export class NotificationsService {
       .where('wo.company_id = :companyId', { companyId })
       .andWhere('wo.is_preventive = :isPreventive', { isPreventive: true })
       .andWhere('wo.next_scheduled_date IS NOT NULL')
-      .andWhere('wo.next_scheduled_date >= :now', { now: now.toISOString().split('T')[0] })
-      .andWhere('wo.next_scheduled_date <= :futureDate', { futureDate: futureDate.toISOString().split('T')[0] })
+      .andWhere('wo.next_scheduled_date >= :now', {
+        now: now.toISOString().split('T')[0],
+      })
+      .andWhere('wo.next_scheduled_date <= :futureDate', {
+        futureDate: futureDate.toISOString().split('T')[0],
+      })
       .orderBy('wo.next_scheduled_date', 'ASC')
       .getMany();
 
@@ -423,7 +494,9 @@ export class NotificationsService {
     }
 
     try {
-      const credentials = Buffer.from(`${accountSid}:${authToken}`).toString('base64');
+      const credentials = Buffer.from(`${accountSid}:${authToken}`).toString(
+        'base64',
+      );
       const response = await fetch(
         `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`,
         {
@@ -466,7 +539,9 @@ export class NotificationsService {
     }
   }
 
-  private async findAdminsByCompanyIds(companyIds: string[]): Promise<Map<string, User[]>> {
+  private async findAdminsByCompanyIds(
+    companyIds: string[],
+  ): Promise<Map<string, User[]>> {
     const uniqueCompanyIds = [...new Set(companyIds.filter(Boolean))];
     if (uniqueCompanyIds.length === 0) {
       return new Map();
@@ -491,7 +566,9 @@ export class NotificationsService {
     return adminsByCompanyId;
   }
 
-  private async notifyAdminsOncePerDay<T extends { id: string; companyId: string }>(
+  private async notifyAdminsOncePerDay<
+    T extends { id: string; companyId: string },
+  >(
     items: T[],
     type: NotificationType,
     buildDto: (item: T, admin: User) => CreateNotificationDto,
@@ -561,11 +638,19 @@ export class NotificationsService {
   }): Promise<Set<string>> {
     const uniqueCompanyIds = [...new Set(companyIds.filter(Boolean))];
     const uniqueEntityIds = [...new Set(entityIds.filter(Boolean))];
-    const userIds = [...new Set(
-      [...adminsByCompanyId.values()].flatMap((admins) => admins.map((admin) => admin.id)),
-    )];
+    const userIds = [
+      ...new Set(
+        [...adminsByCompanyId.values()].flatMap((admins) =>
+          admins.map((admin) => admin.id),
+        ),
+      ),
+    ];
 
-    if (uniqueCompanyIds.length === 0 || uniqueEntityIds.length === 0 || userIds.length === 0) {
+    if (
+      uniqueCompanyIds.length === 0 ||
+      uniqueEntityIds.length === 0 ||
+      userIds.length === 0
+    ) {
       return new Set();
     }
 
@@ -616,6 +701,8 @@ export class NotificationsService {
    */
   private startOfUtcToday(): Date {
     const now = new Date();
-    return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+    return new Date(
+      Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
+    );
   }
 }

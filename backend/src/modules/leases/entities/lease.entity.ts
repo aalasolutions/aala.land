@@ -1,4 +1,12 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  UpdateDateColumn,
+  ManyToOne,
+  JoinColumn,
+} from 'typeorm';
 import { Company } from '../../companies/entities/company.entity';
 import { Unit } from '../../properties/entities/unit.entity';
 
@@ -37,13 +45,23 @@ export class Lease {
   @Column({ name: 'tenant_name', length: 255 })
   tenantName: string;
 
-  @Column({ name: 'tenant_email', length: 255, nullable: true, type: 'varchar' })
+  @Column({
+    name: 'tenant_email',
+    length: 255,
+    nullable: true,
+    type: 'varchar',
+  })
   tenantEmail: string | null;
 
   @Column({ name: 'tenant_phone', length: 30, nullable: true, type: 'varchar' })
   tenantPhone: string | null;
 
-  @Column({ name: 'tenant_national_id', length: 50, nullable: true, type: 'varchar' })
+  @Column({
+    name: 'tenant_national_id',
+    length: 50,
+    nullable: true,
+    type: 'varchar',
+  })
   tenantNationalId: string | null;
 
   @Column({
@@ -72,13 +90,24 @@ export class Lease {
   @Column({ type: 'varchar', length: 3, default: 'AED' })
   currency: string;
 
-  @Column({ name: 'security_deposit', type: 'decimal', precision: 12, scale: 2, nullable: true })
+  @Column({
+    name: 'security_deposit',
+    type: 'decimal',
+    precision: 12,
+    scale: 2,
+    nullable: true,
+  })
   securityDeposit: number | null;
 
   @Column({ name: 'number_of_cheques', type: 'int', default: 1 })
   numberOfCheques: number;
 
-  @Column({ name: 'ejari_number', length: 100, nullable: true, type: 'varchar' })
+  @Column({
+    name: 'ejari_number',
+    length: 100,
+    nullable: true,
+    type: 'varchar',
+  })
   ejariNumber: string | null;
 
   @Column({ type: 'text', nullable: true })

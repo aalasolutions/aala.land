@@ -32,12 +32,18 @@ export class AddEmailTemplates1773300200000 implements MigrationInterface {
       )
     `);
 
-    await queryRunner.query(`CREATE INDEX IF NOT EXISTS "IDX_EMAIL_TEMPLATES_COMPANY_ID" ON "email_templates" ("company_id")`);
-    await queryRunner.query(`CREATE INDEX IF NOT EXISTS "IDX_EMAIL_TEMPLATES_CATEGORY" ON "email_templates" ("category")`);
+    await queryRunner.query(
+      `CREATE INDEX IF NOT EXISTS "IDX_EMAIL_TEMPLATES_COMPANY_ID" ON "email_templates" ("company_id")`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX IF NOT EXISTS "IDX_EMAIL_TEMPLATES_CATEGORY" ON "email_templates" ("category")`,
+    );
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`DROP TABLE IF EXISTS "email_templates"`);
-    await queryRunner.query(`DROP TYPE IF EXISTS "email_template_category_enum"`);
+    await queryRunner.query(
+      `DROP TYPE IF EXISTS "email_template_category_enum"`,
+    );
   }
 }

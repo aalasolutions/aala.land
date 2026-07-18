@@ -4,8 +4,15 @@ import { SubscriptionTier } from '../companies/entities/company.entity';
 
 function sseStream(chunks: object[]): ReadableStream<Uint8Array> {
   const encoder = new TextEncoder();
-  const lines = chunks.map(c => `data: ${JSON.stringify(c)}\n\n`).join('') + 'data: [DONE]\n\n';
-  return new ReadableStream({ start(ctrl) { ctrl.enqueue(encoder.encode(lines)); ctrl.close(); } });
+  const lines =
+    chunks.map((c) => `data: ${JSON.stringify(c)}\n\n`).join('') +
+    'data: [DONE]\n\n';
+  return new ReadableStream({
+    start(ctrl) {
+      ctrl.enqueue(encoder.encode(lines));
+      ctrl.close();
+    },
+  });
 }
 
 function mockTextResponse(content: string) {
@@ -19,14 +26,44 @@ function mockToolCallResponse(id: string, name: string, args = '{}') {
   return {
     ok: true,
     body: sseStream([
-      { choices: [{ delta: { role: 'assistant', content: null, tool_calls: [{ index: 0, id, type: 'function', function: { name, arguments: '' } }] } }] },
-      { choices: [{ delta: { tool_calls: [{ index: 0, function: { arguments: args } }] } }] },
+      {
+        choices: [
+          {
+            delta: {
+              role: 'assistant',
+              content: null,
+              tool_calls: [
+                {
+                  index: 0,
+                  id,
+                  type: 'function',
+                  function: { name, arguments: '' },
+                },
+              ],
+            },
+          },
+        ],
+      },
+      {
+        choices: [
+          {
+            delta: {
+              tool_calls: [{ index: 0, function: { arguments: args } }],
+            },
+          },
+        ],
+      },
     ]),
   };
 }
 
-const makeMockRepo = (customPrompt: string | null = null, tier: SubscriptionTier = SubscriptionTier.FREE) => ({
-  getCompanyAndUnits: jest.fn().mockResolvedValue({ company: { subscriptionTier: tier }, units: [] }),
+const makeMockRepo = (
+  customPrompt: string | null = null,
+  tier: SubscriptionTier = SubscriptionTier.FREE,
+) => ({
+  getCompanyAndUnits: jest
+    .fn()
+    .mockResolvedValue({ company: { subscriptionTier: tier }, units: [] }),
   getCompanyPrompt: jest.fn().mockResolvedValue(customPrompt),
   persistAiEnabled: jest.fn().mockResolvedValue(undefined),
   loadAiEnabled: jest.fn().mockResolvedValue(null),
@@ -38,15 +75,31 @@ const makeMockRepo = (customPrompt: string | null = null, tier: SubscriptionTier
   searchProperties: jest.fn().mockResolvedValue([]),
 });
 
-const makeMockBuilder = (fullPrompt = 'default system prompt for AALA.LAND') => ({
-  buildContextBlock: jest.fn().mockReturnValue({ block: '', fallbackCurrency: '' }),
+const makeMockBuilder = (
+  fullPrompt = 'default system prompt for AALA.LAND',
+) => ({
+  buildContextBlock: jest
+    .fn()
+    .mockReturnValue({ block: '', fallbackCurrency: '' }),
   buildFullPrompt: jest.fn().mockReturnValue(fullPrompt),
   formatToolResult: jest.fn().mockReturnValue('Formatted listings'),
 });
 
-const baseEvt = (overrides: Partial<{ chatId: string; body: string; fromMe: boolean; isGroup: boolean; timestamp: number }> = {}) => ({
-  chatId: 'c1', body: 'hello', fromMe: false,
-  isGroup: false, timestamp: Math.floor(Date.now() / 1000), senderId: 's1',
+const baseEvt = (
+  overrides: Partial<{
+    chatId: string;
+    body: string;
+    fromMe: boolean;
+    isGroup: boolean;
+    timestamp: number;
+  }> = {},
+) => ({
+  chatId: 'c1',
+  body: 'hello',
+  fromMe: false,
+  isGroup: false,
+  timestamp: Math.floor(Date.now() / 1000),
+  senderId: 's1',
   ...overrides,
 });
 
@@ -60,7 +113,10 @@ describe('WhatsappAiService', () => {
     delete process.env.AI_ENABLED;
     delete process.env.AI_DEBOUNCE_MS;
     delete process.env.AI_HUMAN_SILENCE_MINUTES;
-    service = new WhatsappAiService(makeMockRepo() as any, makeMockBuilder() as any);
+    service = new WhatsappAiService(
+      makeMockRepo() as any,
+      makeMockBuilder() as any,
+    );
   });
 
   afterEach(() => {
@@ -99,25 +155,46 @@ describe('WhatsappAiService', () => {
 
   it('handleIncomingMessage skips when no API key', async () => {
     const mockSend = jest.fn();
-    await service.handleIncomingMessage(baseEvt(), 'company-1', 'user-1', mockSend);
+    await service.handleIncomingMessage(
+      baseEvt(),
+      'company-1',
+      'user-1',
+      mockSend,
+    );
     await jest.runAllTimersAsync();
     expect(mockSend).not.toHaveBeenCalled();
   });
 
   it('handleIncomingMessage skips fromMe messages', async () => {
     process.env.OLLAMA_API_KEY = 'test-key';
-    service = new WhatsappAiService(makeMockRepo() as any, makeMockBuilder() as any);
+    service = new WhatsappAiService(
+      makeMockRepo() as any,
+      makeMockBuilder() as any,
+    );
     const mockSend = jest.fn();
-    await service.handleIncomingMessage(baseEvt({ fromMe: true }), 'company-1', 'user-1', mockSend);
+    await service.handleIncomingMessage(
+      baseEvt({ fromMe: true }),
+      'company-1',
+      'user-1',
+      mockSend,
+    );
     await jest.runAllTimersAsync();
     expect(mockSend).not.toHaveBeenCalled();
   });
 
   it('handleIncomingMessage skips group messages', async () => {
     process.env.OLLAMA_API_KEY = 'test-key';
-    service = new WhatsappAiService(makeMockRepo() as any, makeMockBuilder() as any);
+    service = new WhatsappAiService(
+      makeMockRepo() as any,
+      makeMockBuilder() as any,
+    );
     const mockSend = jest.fn();
-    await service.handleIncomingMessage(baseEvt({ chatId: 'c1@g.us', isGroup: true }), 'company-1', 'user-1', mockSend);
+    await service.handleIncomingMessage(
+      baseEvt({ chatId: 'c1@g.us', isGroup: true }),
+      'company-1',
+      'user-1',
+      mockSend,
+    );
     await jest.runAllTimersAsync();
     expect(mockSend).not.toHaveBeenCalled();
   });
@@ -125,11 +202,16 @@ describe('WhatsappAiService', () => {
   it('sends canned response when message contains only dangerous words', async () => {
     process.env.OLLAMA_API_KEY = 'test-key';
     process.env.AI_DEBOUNCE_MS = '100';
-    service = new WhatsappAiService(makeMockRepo() as any, makeMockBuilder() as any);
+    service = new WhatsappAiService(
+      makeMockRepo() as any,
+      makeMockBuilder() as any,
+    );
     const mockSend = jest.fn().mockResolvedValue({});
     await service.handleIncomingMessage(
       baseEvt({ body: 'DROP DELETE REMOVE' }),
-      'company-1', 'user-1', mockSend,
+      'company-1',
+      'user-1',
+      mockSend,
     );
     await jest.runAllTimersAsync();
     expect(mockSend).toHaveBeenCalledWith('c1', DIRECT_CONTACT_RESPONSE);
@@ -145,15 +227,32 @@ describe('WhatsappAiService', () => {
 
     it('queues messages and flushes combined text after debounce window', async () => {
       const mockRepo = makeMockRepo(null);
-      service = new WhatsappAiService(mockRepo as any, makeMockBuilder() as any);
+      service = new WhatsappAiService(
+        mockRepo as any,
+        makeMockBuilder() as any,
+      );
 
-      global.fetch = jest.fn().mockImplementation(() => Promise.resolve(mockTextResponse('AI reply'))) as any;
+      global.fetch = jest
+        .fn()
+        .mockImplementation(() =>
+          Promise.resolve(mockTextResponse('AI reply')),
+        ) as any;
 
       const mockSend = jest.fn().mockResolvedValue({});
       const ts = Math.floor(Date.now() / 1000);
 
-      await service.handleIncomingMessage(baseEvt({ body: 'Hello', timestamp: ts }), 'co', 'u1', mockSend);
-      await service.handleIncomingMessage(baseEvt({ body: 'I need help', timestamp: ts }), 'co', 'u1', mockSend);
+      await service.handleIncomingMessage(
+        baseEvt({ body: 'Hello', timestamp: ts }),
+        'co',
+        'u1',
+        mockSend,
+      );
+      await service.handleIncomingMessage(
+        baseEvt({ body: 'I need help', timestamp: ts }),
+        'co',
+        'u1',
+        mockSend,
+      );
 
       // No send yet — timer still pending
       expect(mockSend).not.toHaveBeenCalled();
@@ -163,24 +262,43 @@ describe('WhatsappAiService', () => {
       expect(mockSend).toHaveBeenCalledTimes(1);
 
       // Combined text sent to LLM as one user message
-      const body = JSON.parse((global.fetch as jest.Mock).mock.calls[0][1].body);
+      const body = JSON.parse(
+        (global.fetch as jest.Mock).mock.calls[0][1].body,
+      );
       const userMsg = body.messages.find((m: any) => m.role === 'user');
       // sanitizeInput normalises whitespace so \n becomes a space
       expect(userMsg.content).toBe('Hello I need help');
     });
 
     it('resets debounce timer when a new message arrives', async () => {
-      service = new WhatsappAiService(makeMockRepo() as any, makeMockBuilder() as any);
+      service = new WhatsappAiService(
+        makeMockRepo() as any,
+        makeMockBuilder() as any,
+      );
 
-      global.fetch = jest.fn().mockImplementation(() => Promise.resolve(mockTextResponse('reply'))) as any;
+      global.fetch = jest
+        .fn()
+        .mockImplementation(() =>
+          Promise.resolve(mockTextResponse('reply')),
+        ) as any;
 
       const mockSend = jest.fn().mockResolvedValue({});
       const ts = Math.floor(Date.now() / 1000);
 
-      await service.handleIncomingMessage(baseEvt({ body: 'msg1', timestamp: ts }), 'co', 'u1', mockSend);
+      await service.handleIncomingMessage(
+        baseEvt({ body: 'msg1', timestamp: ts }),
+        'co',
+        'u1',
+        mockSend,
+      );
       // Advance only 3 seconds — timer should still be running
       jest.advanceTimersByTime(3000);
-      await service.handleIncomingMessage(baseEvt({ body: 'msg2', timestamp: ts }), 'co', 'u1', mockSend);
+      await service.handleIncomingMessage(
+        baseEvt({ body: 'msg2', timestamp: ts }),
+        'co',
+        'u1',
+        mockSend,
+      );
       // Advance another 3 seconds — only 3s into the new timer, should NOT have fired
       jest.advanceTimersByTime(3000);
       expect(mockSend).not.toHaveBeenCalled();
@@ -191,15 +309,32 @@ describe('WhatsappAiService', () => {
     });
 
     it('separate chats debounce independently', async () => {
-      service = new WhatsappAiService(makeMockRepo() as any, makeMockBuilder() as any);
+      service = new WhatsappAiService(
+        makeMockRepo() as any,
+        makeMockBuilder() as any,
+      );
 
-      global.fetch = jest.fn().mockImplementation(() => Promise.resolve(mockTextResponse('reply'))) as any;
+      global.fetch = jest
+        .fn()
+        .mockImplementation(() =>
+          Promise.resolve(mockTextResponse('reply')),
+        ) as any;
 
       const mockSend = jest.fn().mockResolvedValue({});
       const ts = Math.floor(Date.now() / 1000);
 
-      await service.handleIncomingMessage(baseEvt({ chatId: 'chat-a', body: 'Hi', timestamp: ts }), 'co', 'u1', mockSend);
-      await service.handleIncomingMessage(baseEvt({ chatId: 'chat-b', body: 'Hey', timestamp: ts }), 'co', 'u1', mockSend);
+      await service.handleIncomingMessage(
+        baseEvt({ chatId: 'chat-a', body: 'Hi', timestamp: ts }),
+        'co',
+        'u1',
+        mockSend,
+      );
+      await service.handleIncomingMessage(
+        baseEvt({ chatId: 'chat-b', body: 'Hey', timestamp: ts }),
+        'co',
+        'u1',
+        mockSend,
+      );
 
       await jest.runAllTimersAsync();
 
@@ -218,7 +353,10 @@ describe('WhatsappAiService', () => {
     });
 
     it('does not respond when human replied recently', async () => {
-      service = new WhatsappAiService(makeMockRepo() as any, makeMockBuilder() as any);
+      service = new WhatsappAiService(
+        makeMockRepo() as any,
+        makeMockBuilder() as any,
+      );
       global.fetch = jest.fn() as any;
 
       const mockSend = jest.fn().mockResolvedValue({});
@@ -232,8 +370,15 @@ describe('WhatsappAiService', () => {
     });
 
     it('responds again after silence window expires', async () => {
-      service = new WhatsappAiService(makeMockRepo() as any, makeMockBuilder() as any);
-      global.fetch = jest.fn().mockImplementation(() => Promise.resolve(mockTextResponse('reply'))) as any;
+      service = new WhatsappAiService(
+        makeMockRepo() as any,
+        makeMockBuilder() as any,
+      );
+      global.fetch = jest
+        .fn()
+        .mockImplementation(() =>
+          Promise.resolve(mockTextResponse('reply')),
+        ) as any;
 
       const mockSend = jest.fn().mockResolvedValue({});
 
@@ -249,14 +394,22 @@ describe('WhatsappAiService', () => {
     });
 
     it('cancels pending debounced response when human replies', async () => {
-      service = new WhatsappAiService(makeMockRepo() as any, makeMockBuilder() as any);
+      service = new WhatsappAiService(
+        makeMockRepo() as any,
+        makeMockBuilder() as any,
+      );
       global.fetch = jest.fn() as any;
 
       const mockSend = jest.fn().mockResolvedValue({});
       const ts = Math.floor(Date.now() / 1000);
 
       // Customer sends a message (queued, debounce timer running)
-      await service.handleIncomingMessage(baseEvt({ body: 'Hello?', timestamp: ts }), 'co', 'u1', mockSend);
+      await service.handleIncomingMessage(
+        baseEvt({ body: 'Hello?', timestamp: ts }),
+        'co',
+        'u1',
+        mockSend,
+      );
 
       // Human manually replies BEFORE debounce timer fires
       service.recordHumanReply('u1', 'c1');
@@ -269,7 +422,10 @@ describe('WhatsappAiService', () => {
 
     it('aborts the send and reverts quota when the human replies mid-stream (after the turn started)', async () => {
       const mockRepo = makeMockRepo();
-      service = new WhatsappAiService(mockRepo as any, makeMockBuilder() as any);
+      service = new WhatsappAiService(
+        mockRepo as any,
+        makeMockBuilder() as any,
+      );
 
       // The human replies WHILE the LLM is streaming: the fetch mock records the human
       // reply before resolving the LLM response, mimicking a phone reply mid-turn.
@@ -281,7 +437,12 @@ describe('WhatsappAiService', () => {
       const mockSend = jest.fn().mockResolvedValue({});
       const ts = Math.floor(Date.now() / 1000);
 
-      await service.handleIncomingMessage(baseEvt({ body: 'Hello?', timestamp: ts }), 'co', 'u1', mockSend);
+      await service.handleIncomingMessage(
+        baseEvt({ body: 'Hello?', timestamp: ts }),
+        'co',
+        'u1',
+        mockSend,
+      );
       await jest.runAllTimersAsync();
 
       // LLM was called (turn started before the human reply), but the send was aborted.
@@ -295,12 +456,24 @@ describe('WhatsappAiService', () => {
 
     it('aborts the send when the human replies mid-tool-flow', async () => {
       const mockRepo = makeMockRepo();
-      mockRepo.searchProperties.mockResolvedValue([{ id: 'l1', title: 'Test' }]);
-      service = new WhatsappAiService(mockRepo as any, makeMockBuilder() as any);
+      mockRepo.searchProperties.mockResolvedValue([
+        { id: 'l1', title: 'Test' },
+      ]);
+      service = new WhatsappAiService(
+        mockRepo as any,
+        makeMockBuilder() as any,
+      );
 
       // First call returns a tool call; the human replies during the SECOND LLM call.
-      (global.fetch as jest.Mock) = jest.fn()
-        .mockResolvedValueOnce(mockToolCallResponse('call_1', 'search_properties', '{"city":"Karachi"}'))
+      (global.fetch as jest.Mock) = jest
+        .fn()
+        .mockResolvedValueOnce(
+          mockToolCallResponse(
+            'call_1',
+            'search_properties',
+            '{"city":"Karachi"}',
+          ),
+        )
         .mockImplementationOnce(() => {
           service.recordHumanReply('u1', 'c1');
           return Promise.resolve(mockTextResponse('Here are properties.'));
@@ -309,7 +482,12 @@ describe('WhatsappAiService', () => {
       const mockSend = jest.fn().mockResolvedValue({});
       const ts = Math.floor(Date.now() / 1000);
 
-      await service.handleIncomingMessage(baseEvt({ body: 'properties in karachi', timestamp: ts }), 'co', 'u1', mockSend);
+      await service.handleIncomingMessage(
+        baseEvt({ body: 'properties in karachi', timestamp: ts }),
+        'co',
+        'u1',
+        mockSend,
+      );
       await jest.runAllTimersAsync();
 
       expect(global.fetch).toHaveBeenCalledTimes(2);
@@ -317,8 +495,15 @@ describe('WhatsappAiService', () => {
     });
 
     it('human silence is per-chat — other chats still respond', async () => {
-      service = new WhatsappAiService(makeMockRepo() as any, makeMockBuilder() as any);
-      global.fetch = jest.fn().mockImplementation(() => Promise.resolve(mockTextResponse('reply'))) as any;
+      service = new WhatsappAiService(
+        makeMockRepo() as any,
+        makeMockBuilder() as any,
+      );
+      global.fetch = jest
+        .fn()
+        .mockImplementation(() =>
+          Promise.resolve(mockTextResponse('reply')),
+        ) as any;
 
       const mockSend = jest.fn().mockResolvedValue({});
       const ts = Math.floor(Date.now() / 1000);
@@ -327,8 +512,18 @@ describe('WhatsappAiService', () => {
       service.recordHumanReply('u1', 'chat-a');
 
       // Customer messages in chat-a (silenced) and chat-b (not silenced)
-      await service.handleIncomingMessage(baseEvt({ chatId: 'chat-a', timestamp: ts }), 'co', 'u1', mockSend);
-      await service.handleIncomingMessage(baseEvt({ chatId: 'chat-b', timestamp: ts }), 'co', 'u1', mockSend);
+      await service.handleIncomingMessage(
+        baseEvt({ chatId: 'chat-a', timestamp: ts }),
+        'co',
+        'u1',
+        mockSend,
+      );
+      await service.handleIncomingMessage(
+        baseEvt({ chatId: 'chat-b', timestamp: ts }),
+        'co',
+        'u1',
+        mockSend,
+      );
 
       await jest.runAllTimersAsync();
 
@@ -351,9 +546,18 @@ describe('WhatsappAiService', () => {
       const mockBuilder = makeMockBuilder('DB prompt');
       service = new WhatsappAiService(mockRepo as any, mockBuilder as any);
 
-      global.fetch = jest.fn().mockImplementation(() => Promise.resolve(mockTextResponse('reply'))) as any;
+      global.fetch = jest
+        .fn()
+        .mockImplementation(() =>
+          Promise.resolve(mockTextResponse('reply')),
+        ) as any;
 
-      await service.handleIncomingMessage(baseEvt(), 'company-1', 'user-1', jest.fn().mockResolvedValue({}));
+      await service.handleIncomingMessage(
+        baseEvt(),
+        'company-1',
+        'user-1',
+        jest.fn().mockResolvedValue({}),
+      );
       await jest.runAllTimersAsync();
 
       expect(mockRepo.getCompanyPrompt).toHaveBeenCalledWith('company-1');
@@ -362,34 +566,68 @@ describe('WhatsappAiService', () => {
 
     it('passes null customPrompt to builder when no settings row', async () => {
       const mockRepo = makeMockRepo(null);
-      const mockBuilder = makeMockBuilder('default system prompt for AALA.LAND');
+      const mockBuilder = makeMockBuilder(
+        'default system prompt for AALA.LAND',
+      );
       service = new WhatsappAiService(mockRepo as any, mockBuilder as any);
 
-      global.fetch = jest.fn().mockImplementation(() => Promise.resolve(mockTextResponse('reply'))) as any;
+      global.fetch = jest
+        .fn()
+        .mockImplementation(() =>
+          Promise.resolve(mockTextResponse('reply')),
+        ) as any;
 
-      await service.handleIncomingMessage(baseEvt(), 'company-1', 'user-1', jest.fn().mockResolvedValue({}));
+      await service.handleIncomingMessage(
+        baseEvt(),
+        'company-1',
+        'user-1',
+        jest.fn().mockResolvedValue({}),
+      );
       await jest.runAllTimersAsync();
 
       expect(mockBuilder.buildFullPrompt).toHaveBeenCalledWith(null, '');
 
-      const body = JSON.parse((global.fetch as jest.Mock).mock.calls[0][1].body);
-      expect(body.messages[0].content).toBe('default system prompt for AALA.LAND');
+      const body = JSON.parse(
+        (global.fetch as jest.Mock).mock.calls[0][1].body,
+      );
+      expect(body.messages[0].content).toBe(
+        'default system prompt for AALA.LAND',
+      );
     });
 
     it('histories are scoped per user', async () => {
       const mockRepo = makeMockRepo('prompt');
-      service = new WhatsappAiService(mockRepo as any, makeMockBuilder() as any);
+      service = new WhatsappAiService(
+        mockRepo as any,
+        makeMockBuilder() as any,
+      );
 
-      global.fetch = jest.fn().mockImplementation(() => Promise.resolve(mockTextResponse('AI reply'))) as any;
+      global.fetch = jest
+        .fn()
+        .mockImplementation(() =>
+          Promise.resolve(mockTextResponse('AI reply')),
+        ) as any;
 
       const mockSend = jest.fn().mockResolvedValue({ messageId: 'msg-1' });
-      await service.handleIncomingMessage(baseEvt(), 'company-1', 'user-1', mockSend);
-      await service.handleIncomingMessage(baseEvt(), 'company-1', 'user-2', mockSend);
+      await service.handleIncomingMessage(
+        baseEvt(),
+        'company-1',
+        'user-1',
+        mockSend,
+      );
+      await service.handleIncomingMessage(
+        baseEvt(),
+        'company-1',
+        'user-2',
+        mockSend,
+      );
       await jest.runAllTimersAsync();
 
       expect(service.getHistoryFor('user-1', 'c1')).toHaveLength(2);
       expect(service.getHistoryFor('user-2', 'c1')).toHaveLength(2);
-      expect(service.getHistoryFor('user-1', 'c1')).not.toBe(service.getHistoryFor('user-2', 'c1'));
+      expect(service.getHistoryFor('user-1', 'c1')).not.toBe(
+        service.getHistoryFor('user-2', 'c1'),
+      );
     });
   });
 
@@ -404,11 +642,19 @@ describe('WhatsappAiService', () => {
     it('does not send when weekly limit is reached (allowed: false)', async () => {
       const mockRepo = makeMockRepo(null, SubscriptionTier.FREE);
       mockRepo.checkLimitAndIncrement.mockResolvedValue({ allowed: false });
-      service = new WhatsappAiService(mockRepo as any, makeMockBuilder() as any);
+      service = new WhatsappAiService(
+        mockRepo as any,
+        makeMockBuilder() as any,
+      );
       global.fetch = jest.fn() as any;
 
       const mockSend = jest.fn().mockResolvedValue({});
-      await service.handleIncomingMessage(baseEvt(), 'company-1', 'user-1', mockSend);
+      await service.handleIncomingMessage(
+        baseEvt(),
+        'company-1',
+        'user-1',
+        mockSend,
+      );
       await jest.runAllTimersAsync();
 
       expect(mockSend).not.toHaveBeenCalled();
@@ -417,22 +663,49 @@ describe('WhatsappAiService', () => {
 
     it('calls checkLimitAndIncrement with correct companyId for FREE tier', async () => {
       const mockRepo = makeMockRepo(null, SubscriptionTier.FREE);
-      service = new WhatsappAiService(mockRepo as any, makeMockBuilder() as any);
-      global.fetch = jest.fn().mockImplementation(() => Promise.resolve(mockTextResponse('reply'))) as any;
+      service = new WhatsappAiService(
+        mockRepo as any,
+        makeMockBuilder() as any,
+      );
+      global.fetch = jest
+        .fn()
+        .mockImplementation(() =>
+          Promise.resolve(mockTextResponse('reply')),
+        ) as any;
 
-      await service.handleIncomingMessage(baseEvt(), 'company-1', 'user-1', jest.fn().mockResolvedValue({}));
+      await service.handleIncomingMessage(
+        baseEvt(),
+        'company-1',
+        'user-1',
+        jest.fn().mockResolvedValue({}),
+      );
       await jest.runAllTimersAsync();
 
-      expect(mockRepo.checkLimitAndIncrement).toHaveBeenCalledWith('company-1', 10);
+      expect(mockRepo.checkLimitAndIncrement).toHaveBeenCalledWith(
+        'company-1',
+        10,
+      );
     });
 
     it('skips limit check entirely for ENTERPRISE tier', async () => {
       const mockRepo = makeMockRepo(null, SubscriptionTier.ENTERPRISE);
-      service = new WhatsappAiService(mockRepo as any, makeMockBuilder() as any);
-      global.fetch = jest.fn().mockImplementation(() => Promise.resolve(mockTextResponse('reply'))) as any;
+      service = new WhatsappAiService(
+        mockRepo as any,
+        makeMockBuilder() as any,
+      );
+      global.fetch = jest
+        .fn()
+        .mockImplementation(() =>
+          Promise.resolve(mockTextResponse('reply')),
+        ) as any;
 
       const mockSend = jest.fn().mockResolvedValue({});
-      await service.handleIncomingMessage(baseEvt(), 'company-1', 'user-1', mockSend);
+      await service.handleIncomingMessage(
+        baseEvt(),
+        'company-1',
+        'user-1',
+        mockSend,
+      );
       await jest.runAllTimersAsync();
 
       expect(mockRepo.checkLimitAndIncrement).not.toHaveBeenCalled();
@@ -440,11 +713,23 @@ describe('WhatsappAiService', () => {
 
     it('skips limit check entirely for PRO tier', async () => {
       const mockRepo = makeMockRepo(null, SubscriptionTier.PRO);
-      service = new WhatsappAiService(mockRepo as any, makeMockBuilder() as any);
-      global.fetch = jest.fn().mockImplementation(() => Promise.resolve(mockTextResponse('reply'))) as any;
+      service = new WhatsappAiService(
+        mockRepo as any,
+        makeMockBuilder() as any,
+      );
+      global.fetch = jest
+        .fn()
+        .mockImplementation(() =>
+          Promise.resolve(mockTextResponse('reply')),
+        ) as any;
 
       const mockSend = jest.fn().mockResolvedValue({});
-      await service.handleIncomingMessage(baseEvt(), 'company-1', 'user-1', mockSend);
+      await service.handleIncomingMessage(
+        baseEvt(),
+        'company-1',
+        'user-1',
+        mockSend,
+      );
       await jest.runAllTimersAsync();
 
       expect(mockRepo.checkLimitAndIncrement).not.toHaveBeenCalled();
@@ -454,11 +739,23 @@ describe('WhatsappAiService', () => {
     it('allows message when checkLimitAndIncrement throws (fail-open)', async () => {
       const mockRepo = makeMockRepo(null, SubscriptionTier.FREE);
       mockRepo.checkLimitAndIncrement.mockRejectedValue(new Error('DB error'));
-      service = new WhatsappAiService(mockRepo as any, makeMockBuilder() as any);
-      global.fetch = jest.fn().mockImplementation(() => Promise.resolve(mockTextResponse('reply'))) as any;
+      service = new WhatsappAiService(
+        mockRepo as any,
+        makeMockBuilder() as any,
+      );
+      global.fetch = jest
+        .fn()
+        .mockImplementation(() =>
+          Promise.resolve(mockTextResponse('reply')),
+        ) as any;
 
       const mockSend = jest.fn().mockResolvedValue({});
-      await service.handleIncomingMessage(baseEvt(), 'company-1', 'user-1', mockSend);
+      await service.handleIncomingMessage(
+        baseEvt(),
+        'company-1',
+        'user-1',
+        mockSend,
+      );
       await jest.runAllTimersAsync();
 
       expect(mockSend).toHaveBeenCalledTimes(1);
@@ -474,11 +771,21 @@ describe('WhatsappAiService', () => {
     });
 
     it('sends direct reply when LLM returns no tool_calls', async () => {
-      service = new WhatsappAiService(makeMockRepo() as any, makeMockBuilder() as any);
-      global.fetch = jest.fn().mockResolvedValue(mockTextResponse('Hello!')) as any;
+      service = new WhatsappAiService(
+        makeMockRepo() as any,
+        makeMockBuilder() as any,
+      );
+      global.fetch = jest
+        .fn()
+        .mockResolvedValue(mockTextResponse('Hello!')) as any;
 
       const mockSend = jest.fn().mockResolvedValue({});
-      await service.handleIncomingMessage(baseEvt({ body: 'hi' }), 'comp1', 'user1', mockSend);
+      await service.handleIncomingMessage(
+        baseEvt({ body: 'hi' }),
+        'comp1',
+        'user1',
+        mockSend,
+      );
       await jest.runAllTimersAsync();
 
       expect(global.fetch).toHaveBeenCalledTimes(1);
@@ -486,13 +793,27 @@ describe('WhatsappAiService', () => {
     });
 
     it('passes TOOL_DEFINITIONS and stream:true in first LLM call body', async () => {
-      service = new WhatsappAiService(makeMockRepo() as any, makeMockBuilder() as any);
-      global.fetch = jest.fn().mockImplementation(() => Promise.resolve(mockTextResponse('reply'))) as any;
+      service = new WhatsappAiService(
+        makeMockRepo() as any,
+        makeMockBuilder() as any,
+      );
+      global.fetch = jest
+        .fn()
+        .mockImplementation(() =>
+          Promise.resolve(mockTextResponse('reply')),
+        ) as any;
 
-      await service.handleIncomingMessage(baseEvt({ body: 'hi' }), 'comp1', 'user1', jest.fn().mockResolvedValue({}));
+      await service.handleIncomingMessage(
+        baseEvt({ body: 'hi' }),
+        'comp1',
+        'user1',
+        jest.fn().mockResolvedValue({}),
+      );
       await jest.runAllTimersAsync();
 
-      const body = JSON.parse((global.fetch as jest.Mock).mock.calls[0][1].body);
+      const body = JSON.parse(
+        (global.fetch as jest.Mock).mock.calls[0][1].body,
+      );
       expect(body.tools).toBeDefined();
       expect(Array.isArray(body.tools)).toBe(true);
       expect(body.tools.length).toBeGreaterThan(0);
@@ -501,41 +822,83 @@ describe('WhatsappAiService', () => {
 
     it('executes search_properties and makes second LLM call', async () => {
       const mockRepo = makeMockRepo();
-      mockRepo.searchProperties.mockResolvedValue([{ id: 'l1', title: 'Test' }]);
-      service = new WhatsappAiService(mockRepo as any, makeMockBuilder() as any);
+      mockRepo.searchProperties.mockResolvedValue([
+        { id: 'l1', title: 'Test' },
+      ]);
+      service = new WhatsappAiService(
+        mockRepo as any,
+        makeMockBuilder() as any,
+      );
 
-      (global.fetch as jest.Mock) = jest.fn()
-        .mockResolvedValueOnce(mockToolCallResponse('call_1', 'search_properties', '{"city":"Karachi"}'))
-        .mockResolvedValueOnce(mockTextResponse('Here are properties in Karachi.'));
+      (global.fetch as jest.Mock) = jest
+        .fn()
+        .mockResolvedValueOnce(
+          mockToolCallResponse(
+            'call_1',
+            'search_properties',
+            '{"city":"Karachi"}',
+          ),
+        )
+        .mockResolvedValueOnce(
+          mockTextResponse('Here are properties in Karachi.'),
+        );
 
       const mockSend = jest.fn().mockResolvedValue({});
-      await service.handleIncomingMessage(baseEvt({ body: 'properties in karachi' }), 'comp1', 'user1', mockSend);
+      await service.handleIncomingMessage(
+        baseEvt({ body: 'properties in karachi' }),
+        'comp1',
+        'user1',
+        mockSend,
+      );
       await jest.runAllTimersAsync();
 
       expect(global.fetch).toHaveBeenCalledTimes(2);
-      expect(mockSend).toHaveBeenCalledWith('c1', 'Here are properties in Karachi.');
+      expect(mockSend).toHaveBeenCalledWith(
+        'c1',
+        'Here are properties in Karachi.',
+      );
     });
 
     it('makes second LLM call with escalate_to_human result and sends AI reply', async () => {
-      service = new WhatsappAiService(makeMockRepo() as any, makeMockBuilder() as any);
-      (global.fetch as jest.Mock) = jest.fn()
-        .mockResolvedValueOnce(mockToolCallResponse('call_2', 'escalate_to_human', '{}'))
-        .mockResolvedValueOnce(mockTextResponse('I have escalated your request to a human agent.'));
+      service = new WhatsappAiService(
+        makeMockRepo() as any,
+        makeMockBuilder() as any,
+      );
+      (global.fetch as jest.Mock) = jest
+        .fn()
+        .mockResolvedValueOnce(
+          mockToolCallResponse('call_2', 'escalate_to_human', '{}'),
+        )
+        .mockResolvedValueOnce(
+          mockTextResponse('I have escalated your request to a human agent.'),
+        );
 
       const mockSend = jest.fn().mockResolvedValue({});
-      await service.handleIncomingMessage(baseEvt({ body: 'talk to human' }), 'comp1', 'user1', mockSend);
+      await service.handleIncomingMessage(
+        baseEvt({ body: 'talk to human' }),
+        'comp1',
+        'user1',
+        mockSend,
+      );
       await jest.runAllTimersAsync();
 
       expect(global.fetch).toHaveBeenCalledTimes(2);
-      expect(mockSend).toHaveBeenCalledWith('c1', 'I have escalated your request to a human agent.');
+      expect(mockSend).toHaveBeenCalledWith(
+        'c1',
+        'I have escalated your request to a human agent.',
+      );
     });
 
     it('accumulates content correctly when SSE chunks arrive split across multiple reads', async () => {
-      service = new WhatsappAiService(makeMockRepo() as any, makeMockBuilder() as any);
+      service = new WhatsappAiService(
+        makeMockRepo() as any,
+        makeMockBuilder() as any,
+      );
 
       // Split the SSE body across two separate Uint8Array chunks mid-line
       const encoder = new TextEncoder();
-      const full = 'data: {"choices":[{"delta":{"role":"assistant","content":"Hello"}}]}\n\ndata: {"choices":[{"delta":{"content":" world"}}]}\n\ndata: [DONE]\n\n';
+      const full =
+        'data: {"choices":[{"delta":{"role":"assistant","content":"Hello"}}]}\n\ndata: {"choices":[{"delta":{"content":" world"}}]}\n\ndata: [DONE]\n\n';
       const half = Math.floor(full.length / 2);
       const chunk1 = encoder.encode(full.slice(0, half));
       const chunk2 = encoder.encode(full.slice(half));
@@ -548,10 +911,17 @@ describe('WhatsappAiService', () => {
         },
       });
 
-      global.fetch = jest.fn().mockResolvedValue({ ok: true, body: splitStream }) as any;
+      global.fetch = jest
+        .fn()
+        .mockResolvedValue({ ok: true, body: splitStream }) as any;
 
       const mockSend = jest.fn().mockResolvedValue({});
-      await service.handleIncomingMessage(baseEvt({ body: 'hi' }), 'comp1', 'user1', mockSend);
+      await service.handleIncomingMessage(
+        baseEvt({ body: 'hi' }),
+        'comp1',
+        'user1',
+        mockSend,
+      );
       await jest.runAllTimersAsync();
 
       expect(mockSend).toHaveBeenCalledWith('c1', 'Hello world');
@@ -571,34 +941,55 @@ describe('WhatsappAiService', () => {
     // interleave push/pop on the shared history array and double-count the weekly quota.
     it('does not interleave two turns on the same chat — history stays ordered, quota counted once per turn', async () => {
       const mockRepo = makeMockRepo(null, SubscriptionTier.FREE);
-      service = new WhatsappAiService(mockRepo as any, makeMockBuilder() as any);
+      service = new WhatsappAiService(
+        mockRepo as any,
+        makeMockBuilder() as any,
+      );
 
       // Gate every LLM call behind a manually-released resolver so we can hold turn 1
       // open while turn 2's flush timer fires.
       const releases: Array<(v: any) => void> = [];
       const fetchResolvedWith = (content: string) =>
-        new Promise(resolve => releases.push(() => resolve(mockTextResponse(content))));
+        new Promise((resolve) =>
+          releases.push(() => resolve(mockTextResponse(content))),
+        );
 
       let call = 0;
-      global.fetch = jest.fn().mockImplementation(() => fetchResolvedWith(`reply-${++call}`)) as any;
+      global.fetch = jest
+        .fn()
+        .mockImplementation(() => fetchResolvedWith(`reply-${++call}`)) as any;
 
       const mockSend = jest.fn().mockResolvedValue({});
       const ts = Math.floor(Date.now() / 1000);
 
       // Turn 1 queued + flushed → processMessage starts, blocks on the gated fetch.
-      await service.handleIncomingMessage(baseEvt({ body: 'first', timestamp: ts }), 'co', 'u1', mockSend);
+      await service.handleIncomingMessage(
+        baseEvt({ body: 'first', timestamp: ts }),
+        'co',
+        'u1',
+        mockSend,
+      );
       await jest.advanceTimersByTimeAsync(100);
       // Turn 1's fetch is now pending (blocked); its user message is in history.
       expect(releases.length).toBe(1);
-      expect(service.getHistoryFor('u1', 'c1').map(m => m.content)).toEqual(['first']);
+      expect(service.getHistoryFor('u1', 'c1').map((m) => m.content)).toEqual([
+        'first',
+      ]);
 
       // Turn 2 arrives WHILE turn 1 is mid-LLM (no pending entry exists anymore).
-      await service.handleIncomingMessage(baseEvt({ body: 'second', timestamp: ts }), 'co', 'u1', mockSend);
+      await service.handleIncomingMessage(
+        baseEvt({ body: 'second', timestamp: ts }),
+        'co',
+        'u1',
+        mockSend,
+      );
       await jest.advanceTimersByTimeAsync(100);
       // Serialization: turn 2 must be BLOCKED behind turn 1 — no second fetch yet, and
       // 'second' has NOT been pushed into history mid-turn-1.
       expect(releases.length).toBe(1);
-      expect(service.getHistoryFor('u1', 'c1').map(m => m.content)).toEqual(['first']);
+      expect(service.getHistoryFor('u1', 'c1').map((m) => m.content)).toEqual([
+        'first',
+      ]);
 
       // Release turn 1's LLM → it finishes and pushes its assistant reply.
       releases[0]('resolve');
@@ -609,8 +1000,11 @@ describe('WhatsappAiService', () => {
       await jest.runAllTimersAsync();
 
       // Final history is cleanly ordered, no interleaving, no lost/duplicated entries.
-      expect(service.getHistoryFor('u1', 'c1').map(m => m.content)).toEqual([
-        'first', 'reply-1', 'second', 'reply-2',
+      expect(service.getHistoryFor('u1', 'c1').map((m) => m.content)).toEqual([
+        'first',
+        'reply-1',
+        'second',
+        'reply-2',
       ]);
       expect(mockSend).toHaveBeenCalledTimes(2);
       // Quota incremented exactly once per turn (never interleaved).
@@ -621,23 +1015,46 @@ describe('WhatsappAiService', () => {
     // index — not a blind "-2"/pop that could strip an adjacent turn's message.
     it('on LLM failure removes only this turn user message, leaving prior turns intact', async () => {
       const mockRepo = makeMockRepo(null, SubscriptionTier.PRO);
-      service = new WhatsappAiService(mockRepo as any, makeMockBuilder() as any);
+      service = new WhatsappAiService(
+        mockRepo as any,
+        makeMockBuilder() as any,
+      );
 
       // Turn 1 succeeds, turn 2 throws inside the LLM call.
-      global.fetch = jest.fn()
-        .mockImplementationOnce(() => Promise.resolve(mockTextResponse('ok-reply')))
-        .mockImplementationOnce(() => Promise.reject(Object.assign(new Error('boom'), { cause: new Error('down') }))) as any;
+      global.fetch = jest
+        .fn()
+        .mockImplementationOnce(() =>
+          Promise.resolve(mockTextResponse('ok-reply')),
+        )
+        .mockImplementationOnce(() =>
+          Promise.reject(
+            Object.assign(new Error('boom'), { cause: new Error('down') }),
+          ),
+        ) as any;
 
       const mockSend = jest.fn().mockResolvedValue({});
       const ts = Math.floor(Date.now() / 1000);
 
-      await service.handleIncomingMessage(baseEvt({ body: 'good', timestamp: ts }), 'co', 'u1', mockSend);
+      await service.handleIncomingMessage(
+        baseEvt({ body: 'good', timestamp: ts }),
+        'co',
+        'u1',
+        mockSend,
+      );
       await jest.runAllTimersAsync();
-      await service.handleIncomingMessage(baseEvt({ body: 'bad', timestamp: ts }), 'co', 'u1', mockSend);
+      await service.handleIncomingMessage(
+        baseEvt({ body: 'bad', timestamp: ts }),
+        'co',
+        'u1',
+        mockSend,
+      );
       await jest.runAllTimersAsync();
 
       // Turn 1's user+assistant survive; turn 2's user message was rolled back cleanly.
-      expect(service.getHistoryFor('u1', 'c1').map(m => m.content)).toEqual(['good', 'ok-reply']);
+      expect(service.getHistoryFor('u1', 'c1').map((m) => m.content)).toEqual([
+        'good',
+        'ok-reply',
+      ]);
     });
   });
 
@@ -651,13 +1068,25 @@ describe('WhatsappAiService', () => {
     });
 
     it('does not throw and does not process when body is undefined (media message)', async () => {
-      service = new WhatsappAiService(makeMockRepo() as any, makeMockBuilder() as any);
+      service = new WhatsappAiService(
+        makeMockRepo() as any,
+        makeMockBuilder() as any,
+      );
       global.fetch = jest.fn() as any;
       const mockSend = jest.fn().mockResolvedValue({});
 
       // A media event with no text body must be skipped, not crash on body.trim().
-      const evt = { chatId: 'c1', body: undefined as any, fromMe: false, isGroup: false, timestamp: Math.floor(Date.now() / 1000), senderId: 's1' };
-      await expect(service.handleIncomingMessage(evt, 'co', 'u1', mockSend)).resolves.toBeUndefined();
+      const evt = {
+        chatId: 'c1',
+        body: undefined as any,
+        fromMe: false,
+        isGroup: false,
+        timestamp: Math.floor(Date.now() / 1000),
+        senderId: 's1',
+      };
+      await expect(
+        service.handleIncomingMessage(evt, 'co', 'u1', mockSend),
+      ).resolves.toBeUndefined();
       await jest.runAllTimersAsync();
 
       expect(mockSend).not.toHaveBeenCalled();
@@ -665,21 +1094,32 @@ describe('WhatsappAiService', () => {
     });
 
     it('sends the direct-contact reply when no human has taken over', async () => {
-      service = new WhatsappAiService(makeMockRepo() as any, makeMockBuilder() as any);
+      service = new WhatsappAiService(
+        makeMockRepo() as any,
+        makeMockBuilder() as any,
+      );
       global.fetch = jest.fn() as any;
       const mockSend = jest.fn().mockResolvedValue({});
       const ts = Math.floor(Date.now() / 1000);
 
       // Baseline: 'DROP DELETE REMOVE' trips needsDirectContact; with no takeover the
       // canned reply is sent (guard does not fire).
-      await service.handleIncomingMessage(baseEvt({ body: 'DROP DELETE REMOVE', timestamp: ts }), 'co', 'u1', mockSend);
+      await service.handleIncomingMessage(
+        baseEvt({ body: 'DROP DELETE REMOVE', timestamp: ts }),
+        'co',
+        'u1',
+        mockSend,
+      );
       await jest.runAllTimersAsync();
 
       expect(mockSend).toHaveBeenCalledWith('c1', DIRECT_CONTACT_RESPONSE);
     });
 
     it('skips the direct-contact reply when a human took over after the turn started', async () => {
-      service = new WhatsappAiService(makeMockRepo() as any, makeMockBuilder() as any);
+      service = new WhatsappAiService(
+        makeMockRepo() as any,
+        makeMockBuilder() as any,
+      );
       global.fetch = jest.fn() as any;
       const mockSend = jest.fn().mockResolvedValue({});
       const ts = Math.floor(Date.now() / 1000);
@@ -688,9 +1128,16 @@ describe('WhatsappAiService', () => {
       // between the top isHumanSilenceActive() check and the canned send, so a human
       // takeover in that window is forced here by making the mid-turn guard report true.
       // This asserts the guard is actually consulted before the direct-contact send.
-      const guardSpy = jest.spyOn(service as any, 'humanTookOverSince').mockReturnValue(true);
+      const guardSpy = jest
+        .spyOn(service as any, 'humanTookOverSince')
+        .mockReturnValue(true);
 
-      await service.handleIncomingMessage(baseEvt({ body: 'DROP DELETE REMOVE', timestamp: ts }), 'co', 'u1', mockSend);
+      await service.handleIncomingMessage(
+        baseEvt({ body: 'DROP DELETE REMOVE', timestamp: ts }),
+        'co',
+        'u1',
+        mockSend,
+      );
       await jest.runAllTimersAsync();
 
       expect(guardSpy).toHaveBeenCalled();

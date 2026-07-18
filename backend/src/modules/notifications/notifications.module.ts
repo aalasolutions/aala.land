@@ -14,7 +14,14 @@ import { Lead } from '../leads/entities/lead.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Notification, Cheque, Lease, WorkOrder, User, Lead]),
+    TypeOrmModule.forFeature([
+      Notification,
+      Cheque,
+      Lease,
+      WorkOrder,
+      User,
+      Lead,
+    ]),
     JwtModule.registerAsync({
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => ({

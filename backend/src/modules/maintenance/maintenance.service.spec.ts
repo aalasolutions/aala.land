@@ -3,7 +3,13 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { NotFoundException } from '@nestjs/common';
 import { MaintenanceService } from './maintenance.service';
-import { WorkOrder, WorkOrderStatus, WorkOrderPriority, WorkOrderCategory, ScheduleFrequency } from './entities/work-order.entity';
+import {
+  WorkOrder,
+  WorkOrderStatus,
+  WorkOrderPriority,
+  WorkOrderCategory,
+  ScheduleFrequency,
+} from './entities/work-order.entity';
 
 describe('MaintenanceService', () => {
   let service: MaintenanceService;
@@ -74,7 +80,12 @@ describe('MaintenanceService', () => {
       repo.create.mockReturnValue(mockOrder as WorkOrder);
       repo.save.mockResolvedValue(mockOrder as WorkOrder);
 
-      const dto = { title: 'Fix AC', description: 'AC not cooling', priority: WorkOrderPriority.HIGH, category: WorkOrderCategory.HVAC };
+      const dto = {
+        title: 'Fix AC',
+        description: 'AC not cooling',
+        priority: WorkOrderPriority.HIGH,
+        category: WorkOrderCategory.HVAC,
+      };
       const result = await service.create(companyId, dto as any);
 
       expect(repo.create).toHaveBeenCalledWith({ ...dto, companyId });
@@ -84,16 +95,25 @@ describe('MaintenanceService', () => {
 
   describe('findAll', () => {
     it('returns paginated work orders', async () => {
-      mockQueryBuilder.getManyAndCount.mockResolvedValue([[mockOrder as WorkOrder], 1]);
+      mockQueryBuilder.getManyAndCount.mockResolvedValue([
+        [mockOrder as WorkOrder],
+        1,
+      ]);
       repo.query.mockResolvedValue([]);
 
       const result = await service.findAll(companyId, 1, 20);
 
       expect(repo.createQueryBuilder).toHaveBeenCalledWith('wo');
-      expect(mockQueryBuilder.where).toHaveBeenCalledWith('wo.company_id = :companyId', { companyId });
+      expect(mockQueryBuilder.where).toHaveBeenCalledWith(
+        'wo.company_id = :companyId',
+        { companyId },
+      );
       expect(mockQueryBuilder.skip).toHaveBeenCalledWith(0);
       expect(mockQueryBuilder.take).toHaveBeenCalledWith(20);
-      expect(mockQueryBuilder.orderBy).toHaveBeenCalledWith('wo.created_at', 'DESC');
+      expect(mockQueryBuilder.orderBy).toHaveBeenCalledWith(
+        'wo.created_at',
+        'DESC',
+      );
       expect(result.total).toBe(1);
       expect(result.data[0]).toEqual({
         ...mockOrder,
@@ -115,23 +135,32 @@ describe('MaintenanceService', () => {
     it('throws NotFoundException when not found', async () => {
       repo.findOne.mockResolvedValue(null);
 
-      await expect(service.findOne('bad-id', companyId)).rejects.toThrow(NotFoundException);
+      await expect(service.findOne('bad-id', companyId)).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('throws NotFoundException for wrong company', async () => {
       repo.findOne.mockResolvedValue(null);
 
-      await expect(service.findOne('order-uuid-1', 'other-company')).rejects.toThrow(NotFoundException);
+      await expect(
+        service.findOne('order-uuid-1', 'other-company'),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 
   describe('update', () => {
     it('updates work order fields', async () => {
-      const updated = { ...mockOrder, status: WorkOrderStatus.IN_PROGRESS } as WorkOrder;
+      const updated = {
+        ...mockOrder,
+        status: WorkOrderStatus.IN_PROGRESS,
+      } as WorkOrder;
       repo.findOne.mockResolvedValue({ ...mockOrder } as WorkOrder);
       repo.save.mockResolvedValue(updated);
 
-      const result = await service.update('order-uuid-1', companyId, { status: WorkOrderStatus.IN_PROGRESS });
+      const result = await service.update('order-uuid-1', companyId, {
+        status: WorkOrderStatus.IN_PROGRESS,
+      });
 
       expect(result.status).toBe(WorkOrderStatus.IN_PROGRESS);
     });
@@ -141,7 +170,9 @@ describe('MaintenanceService', () => {
       repo.findOne.mockResolvedValue(openOrder);
       repo.save.mockImplementation(async (o) => o as WorkOrder);
 
-      await service.update('order-uuid-1', companyId, { status: WorkOrderStatus.COMPLETED });
+      await service.update('order-uuid-1', companyId, {
+        status: WorkOrderStatus.COMPLETED,
+      });
 
       expect(openOrder.completedAt).not.toBeNull();
     });
@@ -203,9 +234,17 @@ describe('MaintenanceService', () => {
 
       expect(result).toHaveLength(1);
       expect(repo.createQueryBuilder).toHaveBeenCalledWith('wo');
-      expect(mockQueryBuilder.where).toHaveBeenCalledWith('wo.company_id = :companyId', { companyId });
-      expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith('wo.is_preventive = true');
-      expect(mockQueryBuilder.orderBy).toHaveBeenCalledWith('wo.next_scheduled_date', 'ASC');
+      expect(mockQueryBuilder.where).toHaveBeenCalledWith(
+        'wo.company_id = :companyId',
+        { companyId },
+      );
+      expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
+        'wo.is_preventive = true',
+      );
+      expect(mockQueryBuilder.orderBy).toHaveBeenCalledWith(
+        'wo.next_scheduled_date',
+        'ASC',
+      );
       expect(mockQueryBuilder.take).toHaveBeenCalledWith(100);
     });
 

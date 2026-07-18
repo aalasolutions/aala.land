@@ -1,4 +1,14 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn, OneToMany, Index } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  UpdateDateColumn,
+  ManyToOne,
+  JoinColumn,
+  OneToMany,
+  Index,
+} from 'typeorm';
 import { Company } from '../../companies/entities/company.entity';
 import { Locality } from '../../locations/entities/locality.entity';
 import { Unit } from '../../properties/entities/unit.entity';
@@ -70,7 +80,12 @@ export class Lead {
   @Column({ type: 'varchar', length: 50, nullable: true })
   phone: string | null;
 
-  @Column({ name: 'whatsapp_number', type: 'varchar', length: 50, nullable: true })
+  @Column({
+    name: 'whatsapp_number',
+    type: 'varchar',
+    length: 50,
+    nullable: true,
+  })
   whatsappNumber: string | null;
 
   @Column({
@@ -110,16 +125,33 @@ export class Lead {
   @Column({ type: 'text', nullable: true })
   notes: string | null;
 
-  @Column({ name: 'budget_min', type: 'decimal', precision: 12, scale: 2, nullable: true })
+  @Column({
+    name: 'budget_min',
+    type: 'decimal',
+    precision: 12,
+    scale: 2,
+    nullable: true,
+  })
   budgetMin: number | null;
 
-  @Column({ name: 'budget_max', type: 'decimal', precision: 12, scale: 2, nullable: true })
+  @Column({
+    name: 'budget_max',
+    type: 'decimal',
+    precision: 12,
+    scale: 2,
+    nullable: true,
+  })
   budgetMax: number | null;
 
   @Column({ name: 'stage_entered_at', type: 'timestamptz', nullable: true })
   stageEnteredAt: Date | null;
 
-  @Column({ name: 'transfer_reason', type: 'varchar', length: 500, nullable: true })
+  @Column({
+    name: 'transfer_reason',
+    type: 'varchar',
+    length: 500,
+    nullable: true,
+  })
   transferReason: string | null;
 
   @Column({ name: 'previous_agent', type: 'uuid', nullable: true })

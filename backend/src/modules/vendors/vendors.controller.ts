@@ -1,8 +1,26 @@
 import {
-  Controller, Get, Post, Patch, Delete, Body, Param,
-  Query, UseGuards, Request, ParseIntPipe, ParseUUIDPipe, DefaultValuePipe, HttpCode, HttpStatus,
+  Controller,
+  Get,
+  Post,
+  Patch,
+  Delete,
+  Body,
+  Param,
+  Query,
+  UseGuards,
+  Request,
+  ParseIntPipe,
+  ParseUUIDPipe,
+  DefaultValuePipe,
+  HttpCode,
+  HttpStatus,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiBearerAuth,
+  ApiQuery,
+} from '@nestjs/swagger';
 import { VendorsService } from './vendors.service';
 import { CreateVendorDto } from './dto/create-vendor.dto';
 import { UpdateVendorDto } from './dto/update-vendor.dto';
@@ -30,7 +48,9 @@ export class VendorsController {
 
   @Get()
   @Roles(Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.ACCOUNTANT)
-  @ApiOperation({ summary: 'List vendors (paginated, searchable, filterable by specialty)' })
+  @ApiOperation({
+    summary: 'List vendors (paginated, searchable, filterable by specialty)',
+  })
   @ApiQuery({ name: 'page', required: false, type: Number })
   @ApiQuery({ name: 'limit', required: false, type: Number })
   @ApiQuery({ name: 'search', required: false, type: String })
@@ -44,20 +64,34 @@ export class VendorsController {
     @Query('specialty') specialty?: VendorSpecialty,
     @Query('regionCode') regionCode?: string,
   ) {
-    return this.vendorsService.findAll(requireCompanyId(req.user), page, limit, search, specialty, regionCode);
+    return this.vendorsService.findAll(
+      requireCompanyId(req.user),
+      page,
+      limit,
+      search,
+      specialty,
+      regionCode,
+    );
   }
 
   @Get(':id')
   @Roles(Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.ACCOUNTANT)
   @ApiOperation({ summary: 'Get a vendor by ID' })
-  findOne(@Param('id', ParseUUIDPipe) id: string, @Request() req: AuthenticatedRequest) {
+  findOne(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Request() req: AuthenticatedRequest,
+  ) {
     return this.vendorsService.findOne(id, requireCompanyId(req.user));
   }
 
   @Patch(':id')
   @Roles(Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER)
   @ApiOperation({ summary: 'Update a vendor (ADMIN+)' })
-  update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateVendorDto, @Request() req: AuthenticatedRequest) {
+  update(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateVendorDto,
+    @Request() req: AuthenticatedRequest,
+  ) {
     return this.vendorsService.update(id, requireCompanyId(req.user), dto);
   }
 
@@ -65,7 +99,10 @@ export class VendorsController {
   @Roles(Role.COMPANY_ADMIN, Role.ADMIN)
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Deactivate a vendor (ADMIN+)' })
-  remove(@Param('id', ParseUUIDPipe) id: string, @Request() req: AuthenticatedRequest) {
+  remove(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Request() req: AuthenticatedRequest,
+  ) {
     return this.vendorsService.remove(id, requireCompanyId(req.user));
   }
 }

@@ -11,4 +11,4 @@ import { Company } from '../companies/entities/company.entity';
   providers: [CommissionsService],
   exports: [CommissionsService],
 })
-export class CommissionsModule { }
+export class CommissionsModule {}

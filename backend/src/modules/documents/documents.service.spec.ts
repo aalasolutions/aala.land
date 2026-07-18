@@ -13,7 +13,14 @@ import { Role } from '@shared/enums/roles.enum';
 describe('DocumentsService', () => {
   let service: DocumentsService;
   let repo: any;
-  let mockMediaService: jest.Mocked<Pick<MediaService, 'uploadDocumentToStorage' | 'deleteDocumentFromStorage' | 'getDocumentStream'>>;
+  let mockMediaService: jest.Mocked<
+    Pick<
+      MediaService,
+      | 'uploadDocumentToStorage'
+      | 'deleteDocumentFromStorage'
+      | 'getDocumentStream'
+    >
+  >;
 
   const companyId = 'company-uuid-1';
   const userId = 'user-uuid-1';
@@ -89,22 +96,27 @@ describe('DocumentsService', () => {
   describe('uploadAndCreate', () => {
     it('calls mediaService.uploadDocumentToStorage and creates a document record', async () => {
       const mockUploadResult = {
-        url:      'https://s3.us-east-005.backblazeb2.com/aala-cloud/companies/c1/doc.pdf',
-        s3Key:    'companies/c1/documents/123-doc.pdf',
+        url: 'https://s3.us-east-005.backblazeb2.com/aala-cloud/companies/c1/doc.pdf',
+        s3Key: 'companies/c1/documents/123-doc.pdf',
         fileSize: 51200,
       };
-      mockMediaService.uploadDocumentToStorage.mockResolvedValue(mockUploadResult);
+      mockMediaService.uploadDocumentToStorage.mockResolvedValue(
+        mockUploadResult,
+      );
 
       repo.create.mockReturnValue(mockDoc);
       repo.save.mockResolvedValue(mockDoc);
 
       const mockFile = {
-        buffer:       Buffer.from('pdf'),
-        mimetype:     'application/pdf',
+        buffer: Buffer.from('pdf'),
+        mimetype: 'application/pdf',
         originalname: 'contract.pdf',
-        size:         51200,
+        size: 51200,
       } as Express.Multer.File;
-      const dto = { name: 'Service Contract', category: DocumentCategory.LEASE };
+      const dto = {
+        name: 'Service Contract',
+        category: DocumentCategory.LEASE,
+      };
 
       const result = await service.uploadAndCreate(
         companyId,
@@ -119,13 +131,13 @@ describe('DocumentsService', () => {
       );
       expect(repo.create).toHaveBeenCalledWith(
         expect.objectContaining({
-          name:       'Service Contract',
-          url:        mockUploadResult.url,
-          s3Key:      mockUploadResult.s3Key,
-          fileSize:   mockUploadResult.fileSize,
+          name: 'Service Contract',
+          url: mockUploadResult.url,
+          s3Key: mockUploadResult.s3Key,
+          fileSize: mockUploadResult.fileSize,
           companyId,
           uploadedBy: userId,
-          version:    1,
+          version: 1,
         }),
       );
       expect(result).toEqual(sanitizedMockDoc);
@@ -136,7 +148,12 @@ describe('DocumentsService', () => {
 
   describe('findAll', () => {
     it('returns paginated documents for COMPANY_ADMIN', async () => {
-      const result = await service.findAll(companyId, Role.COMPANY_ADMIN, 1, 20);
+      const result = await service.findAll(
+        companyId,
+        Role.COMPANY_ADMIN,
+        1,
+        20,
+      );
 
       expect(result.data).toEqual([sanitizedMockDoc]);
       expect(result.data[0]).not.toHaveProperty('s3Key');
@@ -145,15 +162,27 @@ describe('DocumentsService', () => {
 
     it('filters by category when provided', async () => {
       const qb = repo.createQueryBuilder();
-      await service.findAll(companyId, Role.COMPANY_ADMIN, 1, 20, DocumentCategory.LEASE);
+      await service.findAll(
+        companyId,
+        Role.COMPANY_ADMIN,
+        1,
+        20,
+        DocumentCategory.LEASE,
+      );
 
-      expect(qb.andWhere).toHaveBeenCalledWith('doc.category = :category', { category: DocumentCategory.LEASE });
+      expect(qb.andWhere).toHaveBeenCalledWith('doc.category = :category', {
+        category: DocumentCategory.LEASE,
+      });
     });
   });
 
   describe('findOne', () => {
     it('returns document when found, with storage pointers stripped', async () => {
-      const result = await service.findOne('doc-uuid-1', companyId, Role.COMPANY_ADMIN);
+      const result = await service.findOne(
+        'doc-uuid-1',
+        companyId,
+        Role.COMPANY_ADMIN,
+      );
       expect(result).toEqual(sanitizedMockDoc);
       expect(result).not.toHaveProperty('url');
       expect(result).not.toHaveProperty('s3Key');
@@ -163,7 +192,9 @@ describe('DocumentsService', () => {
       const qb = repo.createQueryBuilder();
       qb.getOne.mockResolvedValue(null);
 
-      await expect(service.findOne('bad-id', companyId, Role.COMPANY_ADMIN)).rejects.toThrow(NotFoundException);
+      await expect(
+        service.findOne('bad-id', companyId, Role.COMPANY_ADMIN),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 
@@ -172,7 +203,12 @@ describe('DocumentsService', () => {
       const updated = { ...mockDoc, name: 'Updated Name' };
       repo.save.mockResolvedValue(updated);
 
-      const result = await service.update('doc-uuid-1', companyId, Role.COMPANY_ADMIN, { name: 'Updated Name' });
+      const result = await service.update(
+        'doc-uuid-1',
+        companyId,
+        Role.COMPANY_ADMIN,
+        { name: 'Updated Name' },
+      );
 
       expect(result.name).toBe('Updated Name');
       expect(repo.create).not.toHaveBeenCalled();
@@ -224,7 +260,12 @@ describe('DocumentsService', () => {
       const qb = repo.createQueryBuilder();
       expect(qb.andWhere).toHaveBeenCalledWith(
         'doc.access_level IN (:...allowedLevels)',
-        { allowedLevels: [DocumentAccessLevel.PUBLIC, DocumentAccessLevel.COMPANY] },
+        {
+          allowedLevels: [
+            DocumentAccessLevel.PUBLIC,
+            DocumentAccessLevel.COMPANY,
+          ],
+        },
       );
     });
 
@@ -234,7 +275,12 @@ describe('DocumentsService', () => {
       const qb = repo.createQueryBuilder();
       expect(qb.andWhere).toHaveBeenCalledWith(
         'doc.access_level IN (:...allowedLevels)',
-        { allowedLevels: [DocumentAccessLevel.PUBLIC, DocumentAccessLevel.COMPANY] },
+        {
+          allowedLevels: [
+            DocumentAccessLevel.PUBLIC,
+            DocumentAccessLevel.COMPANY,
+          ],
+        },
       );
     });
 
@@ -293,9 +339,15 @@ describe('DocumentsService', () => {
       const fakeStream = {} as NodeJS.ReadableStream;
       mockMediaService.getDocumentStream.mockResolvedValue(fakeStream);
 
-      const result = await service.downloadStream('doc-uuid-1', companyId, Role.COMPANY_ADMIN);
+      const result = await service.downloadStream(
+        'doc-uuid-1',
+        companyId,
+        Role.COMPANY_ADMIN,
+      );
 
-      expect(mockMediaService.getDocumentStream).toHaveBeenCalledWith(mockDoc.s3Key);
+      expect(mockMediaService.getDocumentStream).toHaveBeenCalledWith(
+        mockDoc.s3Key,
+      );
       expect(result.stream).toBe(fakeStream);
       expect(result.doc).toEqual(mockDoc);
     });
@@ -323,14 +375,28 @@ describe('DocumentsService', () => {
 
   describe('getVersionHistory', () => {
     it('returns version chain', async () => {
-      const v1 = { ...mockDoc, id: 'doc-v1', version: 1, previousVersionId: null };
-      const v2 = { ...mockDoc, id: 'doc-v2', version: 2, previousVersionId: 'doc-v1' };
+      const v1 = {
+        ...mockDoc,
+        id: 'doc-v1',
+        version: 1,
+        previousVersionId: null,
+      };
+      const v2 = {
+        ...mockDoc,
+        id: 'doc-v2',
+        version: 2,
+        previousVersionId: 'doc-v1',
+      };
 
       const qb = repo.createQueryBuilder();
       qb.getOne.mockResolvedValue(v2);
       repo.findOne.mockResolvedValue(v1);
 
-      const result = await service.getVersionHistory('doc-v2', companyId, Role.COMPANY_ADMIN);
+      const result = await service.getVersionHistory(
+        'doc-v2',
+        companyId,
+        Role.COMPANY_ADMIN,
+      );
 
       expect(result).toHaveLength(2);
       expect(result[0].version).toBe(2);

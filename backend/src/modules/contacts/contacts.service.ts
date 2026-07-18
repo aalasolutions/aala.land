@@ -13,8 +13,16 @@ export class ContactsService {
     private readonly contactRepository: Repository<Contact>,
   ) {}
 
-  async create(companyId: string, dto: CreateContactDto, createdBy: string): Promise<Contact> {
-    const contact = this.contactRepository.create({ ...dto, companyId, createdBy });
+  async create(
+    companyId: string,
+    dto: CreateContactDto,
+    createdBy: string,
+  ): Promise<Contact> {
+    const contact = this.contactRepository.create({
+      ...dto,
+      companyId,
+      createdBy,
+    });
     return this.contactRepository.save(contact);
   }
 
@@ -58,7 +66,11 @@ export class ContactsService {
     return contact;
   }
 
-  async update(id: string, companyId: string, dto: UpdateContactDto): Promise<Contact> {
+  async update(
+    id: string,
+    companyId: string,
+    dto: UpdateContactDto,
+  ): Promise<Contact> {
     const contact = await this.findOne(id, companyId);
     Object.assign(contact, dto);
     return this.contactRepository.save(contact);

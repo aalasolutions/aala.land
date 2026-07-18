@@ -9,7 +9,14 @@ describe('WhatsappSettingsController', () => {
   let mockRepo: { findOne: jest.Mock; create: jest.Mock; save: jest.Mock };
 
   const makeReq = (companyId: string) =>
-    ({ user: { companyId, role: 'company_admin', userId: 'u1', email: 'a@b.com' } } as any);
+    ({
+      user: {
+        companyId,
+        role: 'company_admin',
+        userId: 'u1',
+        email: 'a@b.com',
+      },
+    }) as any;
 
   beforeEach(async () => {
     mockRepo = {
@@ -22,7 +29,10 @@ describe('WhatsappSettingsController', () => {
       controllers: [WhatsappSettingsController],
       providers: [
         { provide: getRepositoryToken(WhatsappSettings), useValue: mockRepo },
-        { provide: WhatsappAiService, useValue: { clearPromptCache: jest.fn() } },
+        {
+          provide: WhatsappAiService,
+          useValue: { clearPromptCache: jest.fn() },
+        },
       ],
     }).compile();
 
@@ -43,16 +53,23 @@ describe('WhatsappSettingsController', () => {
 
   it('PATCH saves prompt and returns updated value', async () => {
     mockRepo.save.mockResolvedValue({ aiPrompt: 'New prompt' });
-    const result = await controller.updateSettings(makeReq('company-1'), { aiPrompt: 'New prompt' });
+    const result = await controller.updateSettings(makeReq('company-1'), {
+      aiPrompt: 'New prompt',
+    });
     expect(mockRepo.save).toHaveBeenCalledWith(
-      expect.objectContaining({ companyId: 'company-1', aiPrompt: 'New prompt' }),
+      expect.objectContaining({
+        companyId: 'company-1',
+        aiPrompt: 'New prompt',
+      }),
     );
     expect(result).toEqual({ aiPrompt: 'New prompt' });
   });
 
   it('PATCH with null resets to default (null)', async () => {
     mockRepo.save.mockResolvedValue({ aiPrompt: null });
-    const result = await controller.updateSettings(makeReq('company-1'), { aiPrompt: null });
+    const result = await controller.updateSettings(makeReq('company-1'), {
+      aiPrompt: null,
+    });
     expect(mockRepo.save).toHaveBeenCalledWith(
       expect.objectContaining({ companyId: 'company-1', aiPrompt: null }),
     );
@@ -60,14 +77,27 @@ describe('WhatsappSettingsController', () => {
   });
 
   it('PATCH on second call updates existing row without duplicate key error', async () => {
-    const existingRow = { id: 'existing-uuid', companyId: 'company-1', aiPrompt: 'Old prompt' };
+    const existingRow = {
+      id: 'existing-uuid',
+      companyId: 'company-1',
+      aiPrompt: 'Old prompt',
+    };
     mockRepo.findOne.mockResolvedValue(existingRow);
-    mockRepo.save.mockResolvedValue({ ...existingRow, aiPrompt: 'Updated prompt' });
+    mockRepo.save.mockResolvedValue({
+      ...existingRow,
+      aiPrompt: 'Updated prompt',
+    });
 
-    const result = await controller.updateSettings(makeReq('company-1'), { aiPrompt: 'Updated prompt' });
+    const result = await controller.updateSettings(makeReq('company-1'), {
+      aiPrompt: 'Updated prompt',
+    });
 
     expect(mockRepo.save).toHaveBeenCalledWith(
-      expect.objectContaining({ id: 'existing-uuid', companyId: 'company-1', aiPrompt: 'Updated prompt' }),
+      expect.objectContaining({
+        id: 'existing-uuid',
+        companyId: 'company-1',
+        aiPrompt: 'Updated prompt',
+      }),
     );
     expect(result).toEqual({ aiPrompt: 'Updated prompt' });
   });

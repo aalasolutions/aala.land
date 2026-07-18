@@ -3,35 +3,39 @@ import { DataSource } from 'typeorm';
 
 @Injectable()
 export class SearchService {
-    constructor(private readonly dataSource: DataSource) {}
+  constructor(private readonly dataSource: DataSource) {}
 
-    private queryWithOptionalRegion(sql: string, params: unknown[], regionCode?: string) {
-        const paramIndex = regionCode ? params.length + 1 : 0;
-        const finalSql = sql.replace(
-            '/* REGION_FILTER */',
-            regionCode ? `AND c.region_code = $${paramIndex}` : '',
-        );
-        return this.dataSource.query(
-            finalSql,
-            regionCode ? [...params, regionCode] : params,
-        );
+  private queryWithOptionalRegion(
+    sql: string,
+    params: unknown[],
+    regionCode?: string,
+  ) {
+    const paramIndex = regionCode ? params.length + 1 : 0;
+    const finalSql = sql.replace(
+      '/* REGION_FILTER */',
+      regionCode ? `AND c.region_code = $${paramIndex}` : '',
+    );
+    return this.dataSource.query(
+      finalSql,
+      regionCode ? [...params, regionCode] : params,
+    );
+  }
+
+  async search(q: string, companyId: string, regionCode?: string) {
+    const query = q?.trim();
+    if (!query || query.length < 2) {
+      return { properties: [], agents: [] };
     }
 
-    async search(q: string, companyId: string, regionCode?: string) {
-        const query = q?.trim();
-        if (!query || query.length < 2) {
-            return { properties: [], agents: [] };
-        }
-
-        const term = `${query.toLowerCase()}%`;
-        const [cities, localities, assets, agents] = await Promise.all([
-            this.queryWithOptionalRegion(
-                // LOWER(c.name) is aliased into the SELECT so it can be used in
-                // ORDER BY under SELECT DISTINCT (Postgres requires DISTINCT
-                // ORDER BY expressions to appear in the select list, else the
-                // whole /v1/search request 500s). The extra column is ignored
-                // by the result mapper below.
-                `SELECT DISTINCT c.id, c.name, LOWER(c.name) AS name_lower
+    const term = `${query.toLowerCase()}%`;
+    const [cities, localities, assets, agents] = await Promise.all([
+      this.queryWithOptionalRegion(
+        // LOWER(c.name) is aliased into the SELECT so it can be used in
+        // ORDER BY under SELECT DISTINCT (Postgres requires DISTINCT
+        // ORDER BY expressions to appear in the select list, else the
+        // whole /v1/search request 500s). The extra column is ignored
+        // by the result mapper below.
+        `SELECT DISTINCT c.id, c.name, LOWER(c.name) AS name_lower
                  FROM cities c
                  INNER JOIN localities l ON l.city_id = c.id
                  INNER JOIN buildings b ON b.locality_id = l.id
@@ -42,11 +46,11 @@ export class SearchService {
                     ORDER BY name_lower
                     LIMIT 5`,
 
-                [term, companyId],
-                regionCode,
-            ),
-            this.queryWithOptionalRegion(
-                `SELECT l.id, l.name, c.name AS "cityName"
+        [term, companyId],
+        regionCode,
+      ),
+      this.queryWithOptionalRegion(
+        `SELECT l.id, l.name, c.name AS "cityName"
                  FROM localities l
                  INNER JOIN cities c ON c.id = l.city_id
                  INNER JOIN buildings b ON b.locality_id = l.id
@@ -57,11 +61,11 @@ export class SearchService {
                   GROUP BY l.id, l.name, c.name
                   ORDER BY LOWER(l.name)
                   LIMIT 5`,
-                [term, companyId],
-                regionCode,
-            ),
-            this.queryWithOptionalRegion(
-                `SELECT b.id, b.name, b.locality_id AS "localityId", l.name AS "localityName"
+        [term, companyId],
+        regionCode,
+      ),
+      this.queryWithOptionalRegion(
+        `SELECT b.id, b.name, b.locality_id AS "localityId", l.name AS "localityName"
                  FROM buildings b
                  INNER JOIN localities l ON l.id = b.locality_id
                  INNER JOIN cities c ON c.id = l.city_id
@@ -71,11 +75,11 @@ export class SearchService {
                          OR EXISTS (SELECT 1 FROM units u WHERE u.building_id = b.id AND u.company_id = $2))
                   ORDER BY LOWER(b.name)
                   LIMIT 5`,
-                [term, companyId],
-                regionCode,
-            ),
-            this.dataSource.query(
-                `SELECT id, name, role
+        [term, companyId],
+        regionCode,
+      ),
+      this.dataSource.query(
+        `SELECT id, name, role
                  FROM users
                   WHERE LOWER(name) LIKE $1
                     AND company_id = $2
@@ -83,17 +87,38 @@ export class SearchService {
                     AND role != 'super_admin'
                   ORDER BY LOWER(name)
                   LIMIT 5`,
-                [term, companyId],
-            ),
-        ]);
+        [term, companyId],
+      ),
+    ]);
 
-        return {
-            properties: [
-                ...cities.map((c: any) => ({ type: 'city', id: c.id, name: c.name, subtitle: 'City' })),
-                ...localities.map((l: any) => ({ type: 'locality', id: l.id, name: l.name, subtitle: l.cityName })),
-                ...assets.map((a: any) => ({ type: 'asset', id: a.id, name: a.name, subtitle: a.localityName, localityId: a.localityId })),
-            ],
-            agents: agents.map((u: any) => ({ type: 'agent', id: u.id, name: u.name, subtitle: u.role })),
-        };
-    }
+    return {
+      properties: [
+        ...cities.map((c: any) => ({
+          type: 'city',
+          id: c.id,
+          name: c.name,
+          subtitle: 'City',
+        })),
+        ...localities.map((l: any) => ({
+          type: 'locality',
+          id: l.id,
+          name: l.name,
+          subtitle: l.cityName,
+        })),
+        ...assets.map((a: any) => ({
+          type: 'asset',
+          id: a.id,
+          name: a.name,
+          subtitle: a.localityName,
+          localityId: a.localityId,
+        })),
+      ],
+      agents: agents.map((u: any) => ({
+        type: 'agent',
+        id: u.id,
+        name: u.name,
+        subtitle: u.role,
+      })),
+    };
+  }
 }

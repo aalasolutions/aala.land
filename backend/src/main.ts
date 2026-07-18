@@ -19,7 +19,9 @@ async function bootstrap() {
 
   // CORS - restrict to configured origins in production
   app.enableCors({
-    origin: process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',') : ['http://localhost:4200'],
+    origin: process.env.CORS_ORIGIN
+      ? process.env.CORS_ORIGIN.split(',')
+      : ['http://localhost:4200'],
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true,
@@ -45,7 +47,8 @@ async function bootstrap() {
   // Disabled in production unless explicitly opted in, so the full API surface
   // (every route + DTO) is not published publicly at /docs and /docs-json.
   const swaggerEnabled =
-    process.env.ENABLE_SWAGGER === 'true' || process.env.NODE_ENV !== 'production';
+    process.env.ENABLE_SWAGGER === 'true' ||
+    process.env.NODE_ENV !== 'production';
   if (swaggerEnabled) {
     const config = new DocumentBuilder()
       .setTitle('AALA.LAND API')

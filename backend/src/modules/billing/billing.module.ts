@@ -16,15 +16,24 @@ import { StripeBillingProvider } from './provider/stripe-billing.provider';
 import { BILLING_PROVIDER } from './provider/billing-provider.interface';
 
 @Module({
-    imports: [ConfigModule, TypeOrmModule.forFeature([Company, User, BillingPrice, StripeEvent, BillingHistory])],
-    controllers: [BillingController, BillingWebhookController],
-    providers: [
-        BillingService,
-        BillingHistoryService,
-        BillingWebhookService,
-        BillingEventDispatcher,
-        { provide: BILLING_PROVIDER, useClass: StripeBillingProvider },
-    ],
-    exports: [BillingService, BillingEventDispatcher],
+  imports: [
+    ConfigModule,
+    TypeOrmModule.forFeature([
+      Company,
+      User,
+      BillingPrice,
+      StripeEvent,
+      BillingHistory,
+    ]),
+  ],
+  controllers: [BillingController, BillingWebhookController],
+  providers: [
+    BillingService,
+    BillingHistoryService,
+    BillingWebhookService,
+    BillingEventDispatcher,
+    { provide: BILLING_PROVIDER, useClass: StripeBillingProvider },
+  ],
+  exports: [BillingService, BillingEventDispatcher],
 })
 export class BillingModule {}

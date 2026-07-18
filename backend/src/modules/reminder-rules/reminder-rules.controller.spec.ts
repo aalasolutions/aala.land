@@ -8,7 +8,14 @@ describe('ReminderRulesController', () => {
   let service: jest.Mocked<ReminderRulesService>;
 
   const companyId = 'company-uuid-1';
-  const mockReq = { user: { companyId, userId: 'user-uuid-1', email: 'admin@test.com', role: 'company_admin' } };
+  const mockReq = {
+    user: {
+      companyId,
+      userId: 'user-uuid-1',
+      email: 'admin@test.com',
+      role: 'company_admin',
+    },
+  };
 
   const mockRule = {
     id: 'rule-uuid-1',
@@ -92,9 +99,17 @@ describe('ReminderRulesController', () => {
       const updated = { ...mockRule, name: 'Updated Rule' };
       service.update.mockResolvedValue(updated as any);
 
-      const result = await controller.update('rule-uuid-1', dto as any, mockReq);
+      const result = await controller.update(
+        'rule-uuid-1',
+        dto as any,
+        mockReq,
+      );
 
-      expect(service.update).toHaveBeenCalledWith('rule-uuid-1', companyId, dto);
+      expect(service.update).toHaveBeenCalledWith(
+        'rule-uuid-1',
+        companyId,
+        dto,
+      );
       expect(result).toEqual(updated);
     });
   });

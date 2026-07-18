@@ -65,7 +65,11 @@ describe('CompaniesController', () => {
     it('creates and returns a company', async () => {
       service.create.mockResolvedValue(mockCompany as any);
 
-      const createDto = { name: 'Test Company', slug: 'test-company', defaultRegionCode: 'dubai' };
+      const createDto = {
+        name: 'Test Company',
+        slug: 'test-company',
+        defaultRegionCode: 'dubai',
+      };
       const result = await controller.create(createDto);
 
       expect(service.create).toHaveBeenCalledWith(createDto);
@@ -85,31 +89,53 @@ describe('CompaniesController', () => {
   });
 
   describe('findOne', () => {
-    const mockCompanyWithEmail = { ...mockCompany, adminEmail: 'admin@test.com', usersCount: 1, inactiveUsersCount: 0 };
+    const mockCompanyWithEmail = {
+      ...mockCompany,
+      adminEmail: 'admin@test.com',
+      usersCount: 1,
+      inactiveUsersCount: 0,
+    };
 
     it('returns a company by id (with admin email for privileged roles)', async () => {
-      service.findOneWithAdminEmail.mockResolvedValue(mockCompanyWithEmail as any);
+      service.findOneWithAdminEmail.mockResolvedValue(
+        mockCompanyWithEmail as any,
+      );
 
       const result = await controller.findOne('company-uuid-1', mockReq);
 
-      expect(service.findOneWithAdminEmail).toHaveBeenCalledWith('company-uuid-1');
+      expect(service.findOneWithAdminEmail).toHaveBeenCalledWith(
+        'company-uuid-1',
+      );
       expect(result).toEqual(mockCompanyWithEmail);
     });
 
     it('propagates NotFoundException when company not found', async () => {
       service.findOneWithAdminEmail.mockRejectedValue(new NotFoundException());
 
-      await expect(controller.findOne('company-uuid-1', mockReq)).rejects.toThrow(NotFoundException);
+      await expect(
+        controller.findOne('company-uuid-1', mockReq),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 
   describe('update', () => {
     it('updates a company', async () => {
-      service.update.mockResolvedValue({ ...mockCompany, name: 'Updated' } as any);
+      service.update.mockResolvedValue({
+        ...mockCompany,
+        name: 'Updated',
+      } as any);
 
-      const result = await controller.update('company-uuid-1', { name: 'Updated' }, mockReq);
+      const result = await controller.update(
+        'company-uuid-1',
+        { name: 'Updated' },
+        mockReq,
+      );
 
-      expect(service.update).toHaveBeenCalledWith('company-uuid-1', { name: 'Updated' }, 'company_admin');
+      expect(service.update).toHaveBeenCalledWith(
+        'company-uuid-1',
+        { name: 'Updated' },
+        'company_admin',
+      );
       expect(result.name).toBe('Updated');
     });
   });

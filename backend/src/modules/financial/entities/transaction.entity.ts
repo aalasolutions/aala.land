@@ -1,4 +1,13 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn, Index } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  UpdateDateColumn,
+  ManyToOne,
+  JoinColumn,
+  Index,
+} from 'typeorm';
 import { Company } from '../../companies/entities/company.entity';
 import { Unit } from '../../properties/entities/unit.entity';
 
@@ -84,7 +93,12 @@ export class Transaction {
   @Column({ type: 'text', nullable: true })
   description: string;
 
-  @Column({ name: 'reference_number', type: 'varchar', length: 100, nullable: true })
+  @Column({
+    name: 'reference_number',
+    type: 'varchar',
+    length: 100,
+    nullable: true,
+  })
   referenceNumber: string;
 
   @Column({ name: 'unit_id', type: 'uuid', nullable: true })

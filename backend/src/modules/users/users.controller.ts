@@ -1,19 +1,24 @@
 import {
-    Controller,
-    Get,
-    Post,
-    Body,
-    Param,
-    Patch,
-    UseGuards,
-    Request,
-    Query,
-    ParseIntPipe,
-    ParseUUIDPipe,
-    DefaultValuePipe,
-    BadRequestException,
+  Controller,
+  Get,
+  Post,
+  Body,
+  Param,
+  Patch,
+  UseGuards,
+  Request,
+  Query,
+  ParseIntPipe,
+  ParseUUIDPipe,
+  DefaultValuePipe,
+  BadRequestException,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiBearerAuth,
+  ApiQuery,
+} from '@nestjs/swagger';
 import { UsersService } from './users.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '@shared/guards/roles.guard';
@@ -24,7 +29,10 @@ import { UpdateUserDto } from './dto/update-user.dto';
 import { InviteUserDto } from './dto/invite-user.dto';
 import { RemoveUserDto } from './dto/remove-user.dto';
 import { TrimCompanyUsersDto } from './dto/trim-company-users.dto';
-import { ReassignmentReport, ClientReassignmentReport } from './reassignment/reassignment-report';
+import {
+  ReassignmentReport,
+  ClientReassignmentReport,
+} from './reassignment/reassignment-report';
 import { AuthenticatedRequest } from '@shared/interfaces/authenticated-request.interface';
 import { scopedCompanyId } from '@shared/utils/auth.util';
 
@@ -33,198 +41,288 @@ import { scopedCompanyId } from '@shared/utils/auth.util';
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('users')
 export class UsersController {
-    constructor(private readonly usersService: UsersService) { }
+  constructor(private readonly usersService: UsersService) {}
 
-    @Post()
-    @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN)
-    @ApiOperation({ summary: 'Create a new user (ADMIN+)' })
-    create(@Body() createUserDto: CreateUserDto, @Request() req: AuthenticatedRequest) {
-        if (req.user.role === Role.SUPER_ADMIN) {
-            if (!createUserDto.companyId) {
-                throw new BadRequestException('companyId is required for SUPER_ADMIN');
-            }
-            return this.usersService.create(createUserDto, createUserDto.companyId, req.user.role as Role);
-        }
-        if (!req.user.companyId) {
-            throw new BadRequestException('companyId is required');
-        }
-        return this.usersService.create(createUserDto, req.user.companyId, req.user.role as Role);
+  @Post()
+  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN)
+  @ApiOperation({ summary: 'Create a new user (ADMIN+)' })
+  create(
+    @Body() createUserDto: CreateUserDto,
+    @Request() req: AuthenticatedRequest,
+  ) {
+    if (req.user.role === Role.SUPER_ADMIN) {
+      if (!createUserDto.companyId) {
+        throw new BadRequestException('companyId is required for SUPER_ADMIN');
+      }
+      return this.usersService.create(
+        createUserDto,
+        createUserDto.companyId,
+        req.user.role as Role,
+      );
     }
-
-    @Post('invite')
-    @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN)
-    @ApiOperation({ summary: 'Invite a new user via temporary password (ADMIN+)' })
-    invite(@Body() dto: InviteUserDto, @Request() req: AuthenticatedRequest) {
-        if (req.user.role === Role.SUPER_ADMIN) {
-            if (!dto.companyId) {
-                throw new BadRequestException('companyId is required for SUPER_ADMIN');
-            }
-            return this.usersService.inviteUser(dto.companyId, dto, req.user.role as Role);
-        }
-        if (!req.user.companyId) {
-            throw new BadRequestException('companyId is required');
-        }
-        return this.usersService.inviteUser(req.user.companyId, dto, req.user.role as Role);
+    if (!req.user.companyId) {
+      throw new BadRequestException('companyId is required');
     }
+    return this.usersService.create(
+      createUserDto,
+      req.user.companyId,
+      req.user.role as Role,
+    );
+  }
 
-    @Get('me')
-    @ApiOperation({ summary: 'Get current user profile' })
-    getMyProfile(@Request() req: AuthenticatedRequest) {
-        return this.usersService.findOne(req.user.userId, req.user.companyId ?? undefined);
+  @Post('invite')
+  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN)
+  @ApiOperation({
+    summary: 'Invite a new user via temporary password (ADMIN+)',
+  })
+  invite(@Body() dto: InviteUserDto, @Request() req: AuthenticatedRequest) {
+    if (req.user.role === Role.SUPER_ADMIN) {
+      if (!dto.companyId) {
+        throw new BadRequestException('companyId is required for SUPER_ADMIN');
+      }
+      return this.usersService.inviteUser(
+        dto.companyId,
+        dto,
+        req.user.role as Role,
+      );
     }
-
-    @Patch('me')
-    @ApiOperation({ summary: 'Update current user profile' })
-    updateMyProfile(@Body() updateUserDto: UpdateUserDto, @Request() req: AuthenticatedRequest) {
-        const { name, password } = updateUserDto;
-        const safeUpdates: Pick<UpdateUserDto, 'name' | 'password'> = {};
-        if (name !== undefined) safeUpdates.name = name;
-        if (password !== undefined) safeUpdates.password = password;
-
-        return this.usersService.update(
-            req.user.userId,
-            req.user.companyId ?? undefined,
-            safeUpdates,
-            req.user.role,
-            req.user.userId,
-        );
+    if (!req.user.companyId) {
+      throw new BadRequestException('companyId is required');
     }
+    return this.usersService.inviteUser(
+      req.user.companyId,
+      dto,
+      req.user.role as Role,
+    );
+  }
 
-    @Get()
-    @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN)
-    @ApiOperation({
-        summary: 'List users (paginated)',
-        description: 'SUPER_ADMIN receives users across all companies. COMPANY_ADMIN and ADMIN are scoped to their own company.',
-    })
-    @ApiQuery({ name: 'page', required: false, type: Number })
-    @ApiQuery({ name: 'limit', required: false, type: Number })
-    findAll(
-        @Request() req: AuthenticatedRequest,
-        @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
-        @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
-    ) {
-        const companyId = scopedCompanyId(req.user);
-        return this.usersService.findAll(companyId, page, limit);
-    }
+  @Get('me')
+  @ApiOperation({ summary: 'Get current user profile' })
+  getMyProfile(@Request() req: AuthenticatedRequest) {
+    return this.usersService.findOne(
+      req.user.userId,
+      req.user.companyId ?? undefined,
+    );
+  }
 
-    @Get('agents')
-    @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT, Role.ACCOUNTANT)
-    @ApiOperation({ summary: 'List all agents for current company (for lead assignment)' })
-    findAgents(@Request() req: AuthenticatedRequest) {
-        const companyId = scopedCompanyId(req.user);
-        return this.usersService.findAgents(companyId);
-    }
+  @Patch('me')
+  @ApiOperation({ summary: 'Update current user profile' })
+  updateMyProfile(
+    @Body() updateUserDto: UpdateUserDto,
+    @Request() req: AuthenticatedRequest,
+  ) {
+    const { name, password } = updateUserDto;
+    const safeUpdates: Pick<UpdateUserDto, 'name' | 'password'> = {};
+    if (name !== undefined) safeUpdates.name = name;
+    if (password !== undefined) safeUpdates.password = password;
 
-    @Get('active-members')
-    @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN)
-    @ApiOperation({ summary: 'Active company members for the reassignment/trim pickers (ADMIN+)' })
-    @ApiQuery({ name: 'companyId', required: false, type: String, description: 'SUPER_ADMIN only; scopes to a specific company.' })
-    findActiveMembers(
-        @Request() req: AuthenticatedRequest,
-        @Query('companyId', new ParseUUIDPipe({ optional: true })) companyId?: string,
-    ) {
-        // COMPANY_ADMIN/ADMIN are always scoped to their own company; only SUPER_ADMIN
-        // may target another company via the query param. A non-super-admin without a
-        // company context must be rejected, never fall through to an all-company list.
-        if (req.user.role !== Role.SUPER_ADMIN && !req.user.companyId) {
-            throw new BadRequestException('This endpoint requires a company context');
-        }
-        const scoped = req.user.role === Role.SUPER_ADMIN
-            ? (companyId ?? undefined)
-            : req.user.companyId!;
-        return this.usersService.findActiveMembers(scoped);
-    }
+    return this.usersService.update(
+      req.user.userId,
+      req.user.companyId ?? undefined,
+      safeUpdates,
+      req.user.role,
+      req.user.userId,
+    );
+  }
 
-    @Get(':id')
-    @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN)
-    @ApiOperation({ summary: 'Get a user by ID (scoped to company)' })
-    findOne(@Param('id', ParseUUIDPipe) id: string, @Request() req: AuthenticatedRequest) {
-        const companyId = scopedCompanyId(req.user);
-        return this.usersService.findOne(id, companyId);
-    }
+  @Get()
+  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN)
+  @ApiOperation({
+    summary: 'List users (paginated)',
+    description:
+      'SUPER_ADMIN receives users across all companies. COMPANY_ADMIN and ADMIN are scoped to their own company.',
+  })
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  findAll(
+    @Request() req: AuthenticatedRequest,
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
+  ) {
+    const companyId = scopedCompanyId(req.user);
+    return this.usersService.findAll(companyId, page, limit);
+  }
 
-    @Patch(':id')
-    @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN)
-    @ApiOperation({ summary: 'Update a user (ADMIN+)' })
-    update(@Param('id', ParseUUIDPipe) id: string, @Body() updateUserDto: UpdateUserDto, @Request() req: AuthenticatedRequest) {
-        const companyId = scopedCompanyId(req.user);
-        return this.usersService.update(id, companyId, updateUserDto, req.user.role, req.user.userId);
-    }
+  @Get('agents')
+  @Roles(
+    Role.SUPER_ADMIN,
+    Role.COMPANY_ADMIN,
+    Role.ADMIN,
+    Role.MANAGER,
+    Role.AGENT,
+    Role.ACCOUNTANT,
+  )
+  @ApiOperation({
+    summary: 'List all agents for current company (for lead assignment)',
+  })
+  findAgents(@Request() req: AuthenticatedRequest) {
+    const companyId = scopedCompanyId(req.user);
+    return this.usersService.findAgents(companyId);
+  }
 
-    @Post(':id/delete')
-    @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN)
-    @ApiOperation({
-        summary: 'Permanently delete a user after reassigning owned records to a named user (ADMIN+)',
-        description:
-            'POST (not DELETE) because the reassignToUserId + reason payload must be carried in the body, and DELETE bodies are stripped by some proxies and HTTP clients. ' +
-            'Blocked with 409 when the user has approved, paid, or cancelled commissions; deactivate instead. Returns the ReassignmentReport.',
-    })
-    deleteUser(
-        @Param('id', ParseUUIDPipe) id: string,
-        @Body() dto: RemoveUserDto,
-        @Request() req: AuthenticatedRequest,
-    ) {
-        const companyId = scopedCompanyId(req.user);
-        return this.usersService
-            .deleteUserWithReassignment(id, req.user.userId, companyId, req.user.role as Role, dto)
-            .then((report) => this.toClientReport(report));
+  @Get('active-members')
+  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN)
+  @ApiOperation({
+    summary:
+      'Active company members for the reassignment/trim pickers (ADMIN+)',
+  })
+  @ApiQuery({
+    name: 'companyId',
+    required: false,
+    type: String,
+    description: 'SUPER_ADMIN only; scopes to a specific company.',
+  })
+  findActiveMembers(
+    @Request() req: AuthenticatedRequest,
+    @Query('companyId', new ParseUUIDPipe({ optional: true }))
+    companyId?: string,
+  ) {
+    // COMPANY_ADMIN/ADMIN are always scoped to their own company; only SUPER_ADMIN
+    // may target another company via the query param. A non-super-admin without a
+    // company context must be rejected, never fall through to an all-company list.
+    if (req.user.role !== Role.SUPER_ADMIN && !req.user.companyId) {
+      throw new BadRequestException('This endpoint requires a company context');
     }
+    const scoped =
+      req.user.role === Role.SUPER_ADMIN
+        ? (companyId ?? undefined)
+        : req.user.companyId!;
+    return this.usersService.findActiveMembers(scoped);
+  }
 
-    @Post(':id/deactivate')
-    @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN)
-    @ApiOperation({
-        summary: 'Deactivate a user, reassign owned records to a named user, decrement the seat on paid plans (ADMIN+)',
-        description: 'Returns the ReassignmentReport. Reversible via POST /users/:id/reactivate.',
-    })
-    deactivate(
-        @Param('id', ParseUUIDPipe) id: string,
-        @Body() dto: RemoveUserDto,
-        @Request() req: AuthenticatedRequest,
-    ) {
-        const companyId = scopedCompanyId(req.user);
-        return this.usersService
-            .deactivateUser(id, req.user.userId, companyId, req.user.role as Role, dto)
-            .then((report) => this.toClientReport(report));
-    }
+  @Get(':id')
+  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN)
+  @ApiOperation({ summary: 'Get a user by ID (scoped to company)' })
+  findOne(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Request() req: AuthenticatedRequest,
+  ) {
+    const companyId = scopedCompanyId(req.user);
+    return this.usersService.findOne(id, companyId);
+  }
 
-    @Post(':id/reactivate')
-    @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN)
-    @ApiOperation({ summary: 'Reactivate a deactivated user, incrementing the seat on paid plans (ADMIN+)' })
-    reactivate(@Param('id', ParseUUIDPipe) id: string, @Request() req: AuthenticatedRequest) {
-        const companyId = scopedCompanyId(req.user);
-        return this.usersService.reactivateUser(id, companyId, req.user.role as Role);
-    }
+  @Patch(':id')
+  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN)
+  @ApiOperation({ summary: 'Update a user (ADMIN+)' })
+  update(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() updateUserDto: UpdateUserDto,
+    @Request() req: AuthenticatedRequest,
+  ) {
+    const companyId = scopedCompanyId(req.user);
+    return this.usersService.update(
+      id,
+      companyId,
+      updateUserDto,
+      req.user.role,
+      req.user.userId,
+    );
+  }
 
-    @Post('trim-to-one')
-    @Roles(Role.COMPANY_ADMIN)
-    @ApiOperation({
-        summary: 'Deactivate every active user except one company admin and reassign their records (COMPANY_ADMIN only)',
-        description: 'Downgrade preparation: satisfies the downgrade-to-Free gate, which requires exactly one active user.',
-    })
-    trimToOne(@Body() dto: TrimCompanyUsersDto, @Request() req: AuthenticatedRequest) {
-        if (!req.user.companyId) {
-            throw new BadRequestException('companyId is required');
-        }
-        return this.usersService
-            .trimToOneActiveUser(req.user.companyId, req.user.userId, dto)
-            .then((result) => ({
-                deactivatedCount: result.deactivatedCount,
-                reports: result.reports.map((report) => this.toClientReport(report)),
-            }));
-    }
+  @Post(':id/delete')
+  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN)
+  @ApiOperation({
+    summary:
+      'Permanently delete a user after reassigning owned records to a named user (ADMIN+)',
+    description:
+      'POST (not DELETE) because the reassignToUserId + reason payload must be carried in the body, and DELETE bodies are stripped by some proxies and HTTP clients. ' +
+      'Blocked with 409 when the user has approved, paid, or cancelled commissions; deactivate instead. Returns the ReassignmentReport.',
+  })
+  deleteUser(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: RemoveUserDto,
+    @Request() req: AuthenticatedRequest,
+  ) {
+    const companyId = scopedCompanyId(req.user);
+    return this.usersService
+      .deleteUserWithReassignment(
+        id,
+        req.user.userId,
+        companyId,
+        req.user.role as Role,
+        dto,
+      )
+      .then((report) => this.toClientReport(report));
+  }
 
-    /**
-     * Strip the per-record ids from a reassignment report before returning it to the
-     * client. The ids can be thousands of UUIDs on a large tenant and the UI only needs
-     * the counts; the full report (with ids) still reaches the OwnershipTransferRecorder
-     * server-side inside the removal transaction.
-     */
-    private toClientReport(report: ReassignmentReport): ClientReassignmentReport {
-        return {
-            fromUserId: report.fromUserId,
-            toUserId: report.toUserId,
-            reason: report.reason,
-            entities: report.entities.map(({ type, count }) => ({ type, count })),
-        };
+  @Post(':id/deactivate')
+  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN)
+  @ApiOperation({
+    summary:
+      'Deactivate a user, reassign owned records to a named user, decrement the seat on paid plans (ADMIN+)',
+    description:
+      'Returns the ReassignmentReport. Reversible via POST /users/:id/reactivate.',
+  })
+  deactivate(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: RemoveUserDto,
+    @Request() req: AuthenticatedRequest,
+  ) {
+    const companyId = scopedCompanyId(req.user);
+    return this.usersService
+      .deactivateUser(
+        id,
+        req.user.userId,
+        companyId,
+        req.user.role as Role,
+        dto,
+      )
+      .then((report) => this.toClientReport(report));
+  }
+
+  @Post(':id/reactivate')
+  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN)
+  @ApiOperation({
+    summary:
+      'Reactivate a deactivated user, incrementing the seat on paid plans (ADMIN+)',
+  })
+  reactivate(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Request() req: AuthenticatedRequest,
+  ) {
+    const companyId = scopedCompanyId(req.user);
+    return this.usersService.reactivateUser(
+      id,
+      companyId,
+      req.user.role as Role,
+    );
+  }
+
+  @Post('trim-to-one')
+  @Roles(Role.COMPANY_ADMIN)
+  @ApiOperation({
+    summary:
+      'Deactivate every active user except one company admin and reassign their records (COMPANY_ADMIN only)',
+    description:
+      'Downgrade preparation: satisfies the downgrade-to-Free gate, which requires exactly one active user.',
+  })
+  trimToOne(
+    @Body() dto: TrimCompanyUsersDto,
+    @Request() req: AuthenticatedRequest,
+  ) {
+    if (!req.user.companyId) {
+      throw new BadRequestException('companyId is required');
     }
+    return this.usersService
+      .trimToOneActiveUser(req.user.companyId, req.user.userId, dto)
+      .then((result) => ({
+        deactivatedCount: result.deactivatedCount,
+        reports: result.reports.map((report) => this.toClientReport(report)),
+      }));
+  }
+
+  /**
+   * Strip the per-record ids from a reassignment report before returning it to the
+   * client. The ids can be thousands of UUIDs on a large tenant and the UI only needs
+   * the counts; the full report (with ids) still reaches the OwnershipTransferRecorder
+   * server-side inside the removal transaction.
+   */
+  private toClientReport(report: ReassignmentReport): ClientReassignmentReport {
+    return {
+      fromUserId: report.fromUserId,
+      toUserId: report.toUserId,
+      reason: report.reason,
+      entities: report.entities.map(({ type, count }) => ({ type, count })),
+    };
+  }
 }

@@ -1,4 +1,11 @@
-import { IsString, IsNotEmpty, IsOptional, IsUUID, IsEnum, MaxLength } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  IsOptional,
+  IsUUID,
+  IsEnum,
+  MaxLength,
+} from 'class-validator';
 import { Transform } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
 import {
@@ -37,7 +44,11 @@ export class UploadDocumentDto {
   @IsUUID()
   assetId?: string;
 
-  @ApiProperty({ enum: DocumentCategory, default: DocumentCategory.OTHER, required: false })
+  @ApiProperty({
+    enum: DocumentCategory,
+    default: DocumentCategory.OTHER,
+    required: false,
+  })
   @IsOptional()
   @IsEnum(DocumentCategory)
   category?: DocumentCategory;

@@ -34,4 +34,4 @@ import { ImpersonateService } from './impersonate.service';
   providers: [AuthService, JwtStrategy, ImpersonateService, AuthGoogleService],
   exports: [AuthService],
 })
-export class AuthModule { }
+export class AuthModule {}

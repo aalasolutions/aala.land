@@ -58,7 +58,11 @@
                       {{if (eq @value row.option.value) 'selected'}}
                       {{if (eq this.highlightedIndex row.index) 'highlighted'}}"
                     role="option"
-                    aria-selected={{if (eq @value row.option.value) "true" "false"}}
+                    aria-selected={{if
+                      (eq @value row.option.value)
+                      "true"
+                      "false"
+                    }}
                     {{on "click" (fn this.selectOption row.option)}}
                   >
                     {{row.option.label}}

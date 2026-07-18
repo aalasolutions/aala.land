@@ -1,4 +1,8 @@
-import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  NotFoundException,
+} from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { QueryFailedError, Repository } from 'typeorm';
@@ -57,7 +61,11 @@ describe('OwnersService', () => {
     ownerRepo.save.mockResolvedValue(owner);
 
     const result = await service.create(
-      { name: 'Kadeem Orr', email: '  Kadeem@Example.com  ', phone: ' +971501234567 ' },
+      {
+        name: 'Kadeem Orr',
+        email: '  Kadeem@Example.com  ',
+        phone: ' +971501234567 ',
+      },
       companyId,
     );
 
@@ -74,8 +82,13 @@ describe('OwnersService', () => {
     ownerRepo.findOne.mockResolvedValueOnce(owner);
 
     await expect(
-      service.create({ name: 'Another Owner', email: 'kadeem@example.com' }, companyId),
-    ).rejects.toThrow(new ConflictException('An owner with this email already exists.'));
+      service.create(
+        { name: 'Another Owner', email: 'kadeem@example.com' },
+        companyId,
+      ),
+    ).rejects.toThrow(
+      new ConflictException('An owner with this email already exists.'),
+    );
 
     expect(ownerRepo.findOne).toHaveBeenCalledWith({
       where: expect.objectContaining({ companyId }),
@@ -87,8 +100,13 @@ describe('OwnersService', () => {
     ownerRepo.findOne.mockResolvedValueOnce(owner);
 
     await expect(
-      service.create({ name: 'Another Owner', phone: '+971501234567' }, companyId),
-    ).rejects.toThrow(new ConflictException('An owner with this phone already exists.'));
+      service.create(
+        { name: 'Another Owner', phone: '+971501234567' },
+        companyId,
+      ),
+    ).rejects.toThrow(
+      new ConflictException('An owner with this phone already exists.'),
+    );
 
     expect(ownerRepo.findOne).toHaveBeenCalledWith({
       where: expect.objectContaining({ companyId, phone: expect.anything() }),
@@ -107,8 +125,13 @@ describe('OwnersService', () => {
     ownerRepo.save.mockRejectedValue(uniqueViolation);
 
     await expect(
-      service.create({ name: 'Kadeem Orr', email: 'kadeem@example.com' }, companyId),
-    ).rejects.toThrow(new ConflictException('An owner with this email already exists.'));
+      service.create(
+        { name: 'Kadeem Orr', email: 'kadeem@example.com' },
+        companyId,
+      ),
+    ).rejects.toThrow(
+      new ConflictException('An owner with this email already exists.'),
+    );
   });
 
   it('maps raced phone unique violations to conflict errors', async () => {
@@ -123,7 +146,9 @@ describe('OwnersService', () => {
 
     await expect(
       service.create({ name: 'Kadeem Orr', phone: '+971501234567' }, companyId),
-    ).rejects.toThrow(new ConflictException('An owner with this phone already exists.'));
+    ).rejects.toThrow(
+      new ConflictException('An owner with this phone already exists.'),
+    );
   });
 
   it('rejects updating an owner to another owner email in the same company', async () => {
@@ -133,7 +158,9 @@ describe('OwnersService', () => {
 
     await expect(
       service.update('owner-uuid-1', companyId, { email: 'other@example.com' }),
-    ).rejects.toThrow(new ConflictException('An owner with this email already exists.'));
+    ).rejects.toThrow(
+      new ConflictException('An owner with this email already exists.'),
+    );
 
     expect(ownerRepo.findOne).toHaveBeenLastCalledWith({
       where: expect.objectContaining({ companyId, id: expect.anything() }),
@@ -148,7 +175,9 @@ describe('OwnersService', () => {
 
     await expect(
       service.update('owner-uuid-1', companyId, { phone: '+971501234567' }),
-    ).rejects.toThrow(new ConflictException('An owner with this phone already exists.'));
+    ).rejects.toThrow(
+      new ConflictException('An owner with this phone already exists.'),
+    );
 
     expect(ownerRepo.save).not.toHaveBeenCalled();
   });
@@ -169,10 +198,14 @@ describe('OwnersService', () => {
     unitRepo.count.mockResolvedValue(2);
 
     await expect(service.remove(owner.id, companyId)).rejects.toThrow(
-      new BadRequestException('Cannot delete owner — 2 unit(s) are still linked. Unlink them first.'),
+      new BadRequestException(
+        'Cannot delete owner — 2 unit(s) are still linked. Unlink them first.',
+      ),
     );
 
-    expect(unitRepo.count).toHaveBeenCalledWith({ where: { ownerId: owner.id, companyId } });
+    expect(unitRepo.count).toHaveBeenCalledWith({
+      where: { ownerId: owner.id, companyId },
+    });
     expect(ownerRepo.remove).not.toHaveBeenCalled();
   });
 
@@ -195,7 +228,9 @@ describe('OwnersService', () => {
     ownerRepo.remove.mockRejectedValue(fkViolation);
 
     await expect(service.remove(owner.id, companyId)).rejects.toThrow(
-      new BadRequestException('Cannot delete owner — one or more units are still linked. Unlink them first.'),
+      new BadRequestException(
+        'Cannot delete owner — one or more units are still linked. Unlink them first.',
+      ),
     );
   });
 
@@ -205,6 +240,8 @@ describe('OwnersService', () => {
     const unexpectedError = new Error('connection lost');
     ownerRepo.remove.mockRejectedValue(unexpectedError);
 
-    await expect(service.remove(owner.id, companyId)).rejects.toThrow(unexpectedError);
+    await expect(service.remove(owner.id, companyId)).rejects.toThrow(
+      unexpectedError,
+    );
   });
 });

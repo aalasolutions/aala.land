@@ -19,7 +19,11 @@ export interface ToolDefinition {
   function: {
     name: string;
     description: string;
-    parameters: { type: string; properties: Record<string, unknown>; required: string[] };
+    parameters: {
+      type: string;
+      properties: Record<string, unknown>;
+      required: string[];
+    };
   };
 }
 
@@ -36,9 +40,13 @@ const DANGEROUS_WORD_PATTERNS: RegExp[] = [
   /--/g,
 ];
 
-export const DIRECT_CONTACT_RESPONSE = "I'm unable to process this request. Please contact our office directly.";
+export const DIRECT_CONTACT_RESPONSE =
+  "I'm unable to process this request. Please contact our office directly.";
 
-export function sanitizeInput(message: string): { cleaned: string; needsDirectContact: boolean } {
+export function sanitizeInput(message: string): {
+  cleaned: string;
+  needsDirectContact: boolean;
+} {
   let cleaned = message;
   for (const pattern of PROMPT_INJECTION_PATTERNS) {
     cleaned = cleaned.replace(pattern, '');
@@ -56,12 +64,17 @@ export function parseResponse(raw: ChatCompletion | null): string | null {
   return content.trim();
 }
 
-export function parseToolCall(raw: ChatCompletion | null): { name: string; args: Record<string, unknown>; id: string } | null {
+export function parseToolCall(
+  raw: ChatCompletion | null,
+): { name: string; args: Record<string, unknown>; id: string } | null {
   const toolCalls = raw?.choices?.[0]?.message?.tool_calls;
   if (!Array.isArray(toolCalls) || toolCalls.length === 0) return null;
   const first = toolCalls[0];
   try {
-    const args = JSON.parse(first?.function?.arguments ?? '{}') as Record<string, unknown>;
+    const args = JSON.parse(first?.function?.arguments ?? '{}') as Record<
+      string,
+      unknown
+    >;
     const name = first?.function?.name;
     const id = first?.id;
     if (!name || !id) return null;

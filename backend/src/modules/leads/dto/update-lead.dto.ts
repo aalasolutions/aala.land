@@ -1,6 +1,22 @@
-import { IsString, IsOptional, IsEmail, IsEnum, IsInt, Min, Max, MaxLength, IsUUID, IsNotEmpty, ValidateIf } from 'class-validator';
+import {
+  IsString,
+  IsOptional,
+  IsEmail,
+  IsEnum,
+  IsInt,
+  Min,
+  Max,
+  MaxLength,
+  IsUUID,
+  IsNotEmpty,
+  ValidateIf,
+} from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { LeadStatus, LeadTemperature, LeadSource } from '../entities/lead.entity';
+import {
+  LeadStatus,
+  LeadTemperature,
+  LeadSource,
+} from '../entities/lead.entity';
 
 export class UpdateLeadDto {
   @ApiPropertyOptional()
