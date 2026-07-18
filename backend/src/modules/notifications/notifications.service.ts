@@ -46,6 +46,18 @@ export class NotificationsService {
   // ---- Persistence methods ----
 
   async create(companyId: string, dto: CreateNotificationDto): Promise<Notification> {
+    // Multi-tenant guard: the target user must belong to the caller's company.
+    // Otherwise a notification (and its live socket push to `user_<id>`) could be
+    // injected into another tenant's user by supplying their userId. NotFound
+    // (not Forbidden) so a foreign userId is not confirmable across tenants.
+    const targetUser = await this.userRepository.findOne({
+      where: { id: dto.userId, companyId },
+      select: { id: true },
+    });
+    if (!targetUser) {
+      throw new NotFoundException(`User with ID ${dto.userId} not found`);
+    }
+
     const notification = this.notificationRepository.create({ ...dto, companyId });
     const saved = await this.notificationRepository.save(notification);
 

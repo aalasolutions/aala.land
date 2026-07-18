@@ -62,7 +62,8 @@ export class NotificationsController {
   }
 
   @Post('send')
-  @ApiOperation({ summary: 'Send an email or SMS notification' })
+  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN)
+  @ApiOperation({ summary: 'Send an email or SMS notification (SUPER_ADMIN / COMPANY_ADMIN only)' })
   send(@Body() dto: SendNotificationDto) {
     return this.notificationsService.send(dto);
   }

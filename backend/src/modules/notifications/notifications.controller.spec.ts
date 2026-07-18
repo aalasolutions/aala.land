@@ -12,7 +12,7 @@ describe('NotificationsController', () => {
 
   const companyId = 'company-uuid-1';
   const userId = 'user-uuid-1';
-  const mockReq = { user: { companyId, userId } };
+  const mockReq = { user: { companyId, userId, email: 'admin@test.com', role: 'company_admin' } };
 
   const mockNotification = {
     id: 'notif-uuid-1',

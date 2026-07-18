@@ -7,6 +7,7 @@ import { ChequesService } from './cheques.service';
 import { CreateChequeDto } from './dto/create-cheque.dto';
 import { UpdateChequeDto } from './dto/update-cheque.dto';
 import { BounceChequeDto } from './dto/bounce-cheque.dto';
+import { ProcessOcrDto } from './dto/process-ocr.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '@shared/guards/roles.guard';
 import { Roles } from '@shared/decorators/roles.decorator';
@@ -80,10 +81,10 @@ export class ChequesController {
   @ApiOperation({ summary: 'Trigger OCR processing for a cheque image' })
   processOcr(
     @Param('id', ParseUUIDPipe) id: string,
-    @Body('imageUrl') imageUrl: string,
+    @Body() dto: ProcessOcrDto,
     @Request() req: AuthenticatedRequest,
   ) {
-    return this.chequesService.processOcr(id, requireCompanyId(req.user), imageUrl);
+    return this.chequesService.processOcr(id, requireCompanyId(req.user), dto.imageUrl);
   }
 
   @Delete(':id')

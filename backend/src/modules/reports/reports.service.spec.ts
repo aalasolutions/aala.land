@@ -10,6 +10,7 @@ import { Commission } from '../commissions/entities/commission.entity';
 import { Lease } from '../leases/entities/lease.entity';
 import { Cheque } from '../cheques/entities/cheque.entity';
 import { AuditLog } from '../audit/entities/audit-log.entity';
+import { User } from '../users/entities/user.entity';
 
 function createMockQueryBuilder(result: any = []) {
   const qb: any = {
@@ -39,6 +40,7 @@ describe('ReportsService', () => {
   let leaseRepo: any;
   let chequeRepo: any;
   let auditLogRepo: any;
+  let userRepo: any;
 
   const companyId = 'company-uuid-1';
 
@@ -97,6 +99,12 @@ describe('ReportsService', () => {
             find: jest.fn(),
           },
         },
+        {
+          provide: getRepositoryToken(User),
+          useValue: {
+            createQueryBuilder: jest.fn(),
+          },
+        },
       ],
     }).compile();
 
@@ -109,6 +117,8 @@ describe('ReportsService', () => {
     leaseRepo = module.get(getRepositoryToken(Lease));
     chequeRepo = module.get(getRepositoryToken(Cheque));
     auditLogRepo = module.get(getRepositoryToken(AuditLog));
+    userRepo = module.get(getRepositoryToken(User));
+    userRepo.createQueryBuilder.mockReturnValue(createMockQueryBuilder([]));
   });
 
   it('should be defined', () => {

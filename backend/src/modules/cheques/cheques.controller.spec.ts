@@ -9,7 +9,7 @@ describe('ChequesController', () => {
   let service: jest.Mocked<ChequesService>;
 
   const companyId = 'company-uuid-1';
-  const mockReq = { user: { companyId, userId: 'user-uuid-1' } };
+  const mockReq = { user: { companyId, userId: 'user-uuid-1', email: 'admin@test.com', role: 'company_admin' } };
 
   const mockCheque = {
     id: 'cheque-uuid-1',
@@ -128,7 +128,7 @@ describe('ChequesController', () => {
     it('triggers OCR processing', async () => {
       service.processOcr.mockResolvedValue({ ...mockCheque, ocrProcessed: true } as any);
 
-      await controller.processOcr('cheque-uuid-1', 'https://example.com/cheque.jpg', mockReq);
+      await controller.processOcr('cheque-uuid-1', { imageUrl: 'https://example.com/cheque.jpg' }, mockReq);
 
       expect(service.processOcr).toHaveBeenCalledWith('cheque-uuid-1', companyId, 'https://example.com/cheque.jpg');
     });

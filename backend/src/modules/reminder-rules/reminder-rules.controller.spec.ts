@@ -8,7 +8,7 @@ describe('ReminderRulesController', () => {
   let service: jest.Mocked<ReminderRulesService>;
 
   const companyId = 'company-uuid-1';
-  const mockReq = { user: { companyId, userId: 'user-uuid-1' } };
+  const mockReq = { user: { companyId, userId: 'user-uuid-1', email: 'admin@test.com', role: 'company_admin' } };
 
   const mockRule = {
     id: 'rule-uuid-1',
@@ -70,7 +70,7 @@ describe('ReminderRulesController', () => {
 
       const result = await controller.findAll(mockReq, 1, 20);
 
-      expect(service.findAll).toHaveBeenCalledWith(companyId, 1, 20, undefined);
+      expect(service.findAll).toHaveBeenCalledWith(companyId, 1, 20);
       expect(result).toEqual(paginated);
     });
   });

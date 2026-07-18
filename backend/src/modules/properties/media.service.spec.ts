@@ -19,6 +19,7 @@ jest.mock('sharp', () => {
     metadata: jest.fn().mockResolvedValue({ width: 800, height: 600 }),
     rotate:   jest.fn().mockReturnThis(),
     resize:   jest.fn().mockReturnThis(),
+    flatten:  jest.fn().mockReturnThis(),
     jpeg:     jest.fn().mockReturnThis(),
     toBuffer: jest.fn().mockResolvedValue(Buffer.from('processed')),
   };
