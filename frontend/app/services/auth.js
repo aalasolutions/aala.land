@@ -242,8 +242,10 @@ export default class AuthService extends Service {
    */
   async refreshLockState() {
     try {
-      const res = await this.fetchJson('/auth/profile');
-      if (res?.data) this.session.hydrate(res.data);
+      const res = await this.authorizedFetch(`${this.apiBase}/auth/profile`);
+      if (!res.ok) return;
+      const body = await res.json();
+      if (body?.data) this.session.hydrate(body.data);
     } catch {
       // keep cached state
     }
