@@ -65,7 +65,7 @@
   {{! By region }}
   <div class="glass-panel p-6" data-test-overview-regions>
     <h3 class="font-lg font-bold mb-4">By region</h3>
-    {{#if this.regions}}
+    {{#if this.regions.length}}
       <div class="flex col gap-3">
         {{#each this.regions as |region|}}
           <div class="console-region-row">
@@ -88,7 +88,7 @@
   {{! Upcoming manual payments }}
   <div class="glass-panel p-6" data-test-overview-upcoming-payments>
     <h3 class="font-lg font-bold mb-4">Upcoming manual payments</h3>
-    {{#if this.upcomingRows}}
+    {{#if this.upcomingRows.length}}
       <div class="data-table-wrapper">
         <table class="data-table">
           <thead>

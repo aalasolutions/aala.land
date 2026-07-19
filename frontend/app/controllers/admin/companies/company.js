@@ -413,7 +413,7 @@ export default class AdminCompaniesCompanyController extends Controller {
       await this.auth.fetchJson(`/console/companies/${this.detail.id}/lift`, {
         method: 'POST',
         body: JSON.stringify({
-          liftUntil: new Date(this.liftDate).toISOString(),
+          liftUntil: new Date(`${this.liftDate}T23:59:59`).toISOString(),
         }),
       });
       this.notifications.success('Lock lifted');
@@ -577,7 +577,8 @@ export default class AdminCompaniesCompanyController extends Controller {
 
   @action
   openPaymentModal() {
-    const today = new Date().toISOString().slice(0, 10);
+    const now = new Date();
+    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
     this.payAmount = '';
     this.payCurrency = this.deal?.currency || this.billing?.currency || 'usd';
     this.payReceivedAt = today;
@@ -667,6 +668,9 @@ export default class AdminCompaniesCompanyController extends Controller {
     // Open the window synchronously inside the click gesture so popup
     // blockers allow it; the blob URL lands in it once fetched.
     const viewer = window.open('about:blank', '_blank');
+    // Cut the opener link; passing 'noopener' to window.open would return
+    // null and break the synchronous-open flow above.
+    if (viewer) viewer.opener = null;
     try {
       const res = await this.auth.authorizedFetch(
         `${this.auth.apiBase}/console/payments/${paymentId}/receipt`,

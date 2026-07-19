@@ -27,14 +27,23 @@ export default class AdminMarketersRoute extends Route {
   async loadCompanyNames() {
     const names = {};
     const limit = 200;
-    for (let page = 1; page <= 10; page++) {
-      const res = await this.auth.fetchJson(
-        `/console/companies?page=${page}&limit=${limit}`,
+    const first = await this.auth.fetchJson(
+      `/console/companies?page=1&limit=${limit}`,
+    );
+    for (const c of first?.data?.data ?? []) names[c.id] = c.name;
+    const total = first?.data?.total ?? 0;
+    const lastPage = Math.min(Math.ceil(total / limit), 10);
+    if (lastPage > 1) {
+      const rest = await Promise.all(
+        Array.from({ length: lastPage - 1 }, (_, i) =>
+          this.auth.fetchJson(
+            `/console/companies?page=${i + 2}&limit=${limit}`,
+          ),
+        ),
       );
-      const rows = res?.data?.data ?? [];
-      for (const c of rows) names[c.id] = c.name;
-      const total = res?.data?.total ?? 0;
-      if (rows.length === 0 || page * limit >= total) break;
+      for (const res of rest) {
+        for (const c of res?.data?.data ?? []) names[c.id] = c.name;
+      }
     }
     return names;
   }

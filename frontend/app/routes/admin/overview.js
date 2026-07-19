@@ -10,13 +10,19 @@ export default class AdminOverviewRoute extends Route {
   @service auth;
 
   async model() {
-    const [overviewRes, upcomingRes] = await Promise.all([
+    const [overviewRes, upcomingRes] = await Promise.allSettled([
       this.auth.fetchJson('/console/overview'),
       this.auth.fetchJson('/console/payments/upcoming?days=14'),
     ]);
     return {
-      overview: overviewRes?.data ?? null,
-      upcoming: upcomingRes?.data ?? { days: 14, rows: [] },
+      overview:
+        overviewRes.status === 'fulfilled'
+          ? (overviewRes.value?.data ?? null)
+          : null,
+      upcoming:
+        upcomingRes.status === 'fulfilled'
+          ? (upcomingRes.value?.data ?? { days: 14, rows: [] })
+          : { days: 14, rows: [] },
     };
   }
 }
