@@ -2,6 +2,9 @@ import Controller from '@ember/controller';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
+import { debounceTask } from 'ember-lifeline';
+
+const SEARCH_DEBOUNCE_MS = 500;
 
 const RAIL_OPTIONS = [
   { value: '', label: 'All rails' },
@@ -48,7 +51,11 @@ export default class AdminCompaniesIndexController extends Controller {
 
   @action
   setSearch(event) {
-    this.search = event.target.value;
+    debounceTask(this, 'applySearch', event.target.value, SEARCH_DEBOUNCE_MS);
+  }
+
+  applySearch(value) {
+    this.search = value;
     this.page = 1;
   }
 

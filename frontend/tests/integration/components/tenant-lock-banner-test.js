@@ -1,6 +1,6 @@
 import { module, test } from 'qunit';
 import { setupRenderingTest } from 'land/tests/helpers';
-import { render } from '@ember/test-helpers';
+import { render, settled } from '@ember/test-helpers';
 import { hbs } from 'ember-cli-htmlbars';
 
 module('Integration | Component | tenant-lock-banner', function (hooks) {
@@ -56,6 +56,7 @@ module('Integration | Component | tenant-lock-banner', function (hooks) {
     assert.dom('[data-test-tenant-grace-banner]').doesNotExist();
 
     this.set('lockState', null);
+    await settled();
     assert.dom('[data-test-tenant-lock-banner]').doesNotExist();
     assert.dom('[data-test-tenant-grace-banner]').doesNotExist();
   });
