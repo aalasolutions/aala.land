@@ -107,7 +107,7 @@ module('Unit | Service | auth', function (hooks) {
     };
 
     const originalFetch = globalThis.fetch;
-    globalThis.fetch = (_url, _options) =>
+    globalThis.fetch = () =>
       Promise.resolve({
         ok: true,
         status: 200,
@@ -138,5 +138,69 @@ module('Unit | Service | auth', function (hooks) {
 
     await service.exitImpersonation();
     assert.true(exitCalled, 'session.exitImpersonation was called');
+  });
+
+  test('fetchJson 423 toasts the lock message and refreshes lock state', async function (assert) {
+    let toasted = null;
+    this.owner.register(
+      'service:notifications',
+      class extends Service {
+        error(message) {
+          toasted = message;
+        }
+      },
+    );
+    const service = this.owner.lookup('service:auth');
+
+    let refreshed = 0;
+    service.refreshLockState = async () => {
+      refreshed++;
+    };
+    service.authorizedFetch = async () =>
+      new Response(
+        JSON.stringify({
+          message: 'You are over your limits. Reduce or pay to continue.',
+          code: 'COMPANY_LOCKED',
+        }),
+        { status: 423, headers: { 'Content-Type': 'application/json' } },
+      );
+
+    await assert.rejects(
+      service.fetchJson('/contacts', { method: 'POST', body: '{}' }),
+      /over your limits/,
+      'the lock message is thrown to the caller',
+    );
+    assert.strictEqual(
+      toasted,
+      'You are over your limits. Reduce or pay to continue.',
+      'the lock message is toasted',
+    );
+    assert.strictEqual(refreshed, 1, 'lock state refresh triggered');
+  });
+
+  test('fetchJson non-423 errors do not touch lock state', async function (assert) {
+    let toasted = 0;
+    this.owner.register(
+      'service:notifications',
+      class extends Service {
+        error() {
+          toasted++;
+        }
+      },
+    );
+    const service = this.owner.lookup('service:auth');
+    let refreshed = 0;
+    service.refreshLockState = async () => {
+      refreshed++;
+    };
+    service.authorizedFetch = async () =>
+      new Response(JSON.stringify({ message: 'nope' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+    await assert.rejects(service.fetchJson('/contacts', { method: 'POST' }));
+    assert.strictEqual(toasted, 0, 'no auto-toast for ordinary errors');
+    assert.strictEqual(refreshed, 0, 'no lock refresh for ordinary errors');
   });
 });

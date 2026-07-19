@@ -16,12 +16,18 @@ export default class SessionService extends Service {
       regions: [],
       defaultRegionCode: null,
       subscriptionTier: null,
+      lockState: null,
     },
   };
 
   constructor() {
     super(...arguments);
     this.restoreFromStorage();
+  }
+
+  /** Tenant write-lock state from the auth bundle (design 8.2 banner). */
+  get lockState() {
+    return this.data.authenticated?.lockState ?? null;
   }
 
   restoreFromStorage() {
@@ -44,7 +50,7 @@ export default class SessionService extends Service {
         this.isImpersonating = !!localStorage.getItem(
           'aala-impersonator-session',
         );
-      } catch (error) {
+      } catch {
         // If restore fails, clear corrupt data and start fresh
         localStorage.removeItem('aala-session');
         localStorage.removeItem('aala-region');
@@ -72,6 +78,7 @@ export default class SessionService extends Service {
         regions: authData.regions || [],
         defaultRegionCode: authData.defaultRegionCode || null,
         subscriptionTier: authData.subscriptionTier ?? null,
+        lockState: authData.lockState ?? null,
       },
     };
     this.isAuthenticated = true;
@@ -94,6 +101,7 @@ export default class SessionService extends Service {
         regions: bundle.regions || [],
         defaultRegionCode: bundle.defaultRegionCode || null,
         subscriptionTier: bundle.subscriptionTier ?? null,
+        lockState: bundle.lockState ?? null,
       },
     };
     this.saveToStorage();

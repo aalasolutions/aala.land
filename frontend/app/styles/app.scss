@@ -558,6 +558,15 @@ body {
   font-weight: 500;
 }
 
+// Tenant write-lock / grace banner (design 8.2): full-width strip above the
+// topbar, alert palette but banner geometry.
+.tenant-lock-banner {
+  border-radius: 0;
+  padding: var(--space-2) var(--space-8);
+  font-size: var(--font-sm);
+  font-weight: 500;
+}
+
 .topbar {
   height: 64px;
   padding: 0 var(--space-8);

@@ -362,6 +362,7 @@
           </button>
         </div>
       {{/if}}
+      <TenantLockBanner @lockState={{this.session.lockState}} />
       {{! Top Bar }}
       <header class="topbar">
         <div class="search-box">
