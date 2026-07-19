@@ -668,8 +668,6 @@ export default class AdminCompaniesCompanyController extends Controller {
     // Open the window synchronously inside the click gesture so popup
     // blockers allow it; the blob URL lands in it once fetched.
     const viewer = window.open('about:blank', '_blank');
-    // Cut the opener link; passing 'noopener' to window.open would return
-    // null and break the synchronous-open flow above.
     if (viewer) viewer.opener = null;
     try {
       const res = await this.auth.authorizedFetch(
