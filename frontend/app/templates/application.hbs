@@ -264,6 +264,27 @@
               <Ui::Ph @icon="caret-down" class="sidebar-chevron" />
             </button>
             <div class="sidebar-group-items">
+              <LinkTo
+                @route="admin.overview"
+                class="sidebar-sublink"
+                data-test-nav-overview
+              >
+                <span class="sidebar-label">Overview</span>
+              </LinkTo>
+              <LinkTo
+                @route="admin.companies"
+                class="sidebar-sublink"
+                data-test-nav-companies
+              >
+                <span class="sidebar-label">Companies</span>
+              </LinkTo>
+              <LinkTo
+                @route="admin.marketers"
+                class="sidebar-sublink"
+                data-test-nav-marketers
+              >
+                <span class="sidebar-label">Marketers</span>
+              </LinkTo>
               <LinkTo @route="team" class="sidebar-sublink" data-test-nav-team>
                 <span class="sidebar-label">Team</span>
               </LinkTo>
@@ -282,11 +303,11 @@
                 <span class="sidebar-label">Audit Log</span>
               </LinkTo>
               <LinkTo
-                @route="admin.companies"
+                @route="admin.system"
                 class="sidebar-sublink"
-                data-test-nav-companies
+                data-test-nav-system
               >
-                <span class="sidebar-label">Companies</span>
+                <span class="sidebar-label">System</span>
               </LinkTo>
             </div>
           </div>

@@ -160,6 +160,7 @@ describe('AuthController', () => {
         'google-id-token',
         'Acme Real Estate',
         'dubai',
+        undefined,
       );
       expect(result).toEqual(mockLoginResponse);
     });

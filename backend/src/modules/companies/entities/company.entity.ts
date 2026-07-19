@@ -162,6 +162,19 @@ export class Company {
   billingMeta: Record<string, unknown> | null;
 
   /**
+   * Marketer/referral attribution code. FIRST-TOUCH IMMUTABLE: written only
+   * by the two signup create paths (register, google-signup), absent from
+   * every update DTO. Payouts are manual (requirement 2.5).
+   */
+  @Column({
+    name: 'marketer_code',
+    type: 'varchar',
+    length: 64,
+    nullable: true,
+  })
+  marketerCode: string | null;
+
+  /**
    * Stripe event.created timestamp of the last seat/subscription sync applied
    * to this company. The webhook uses it as a recency guard so an out-of-order
    * or retried event cannot overwrite purchasedSeats/status with a stale value

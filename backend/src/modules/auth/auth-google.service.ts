@@ -51,7 +51,12 @@ export class AuthGoogleService {
     return this.authService.login(user);
   }
 
-  async googleSignup(idToken: string, companyName: string, regionCode: string) {
+  async googleSignup(
+    idToken: string,
+    companyName: string,
+    regionCode: string,
+    marketerCode?: string,
+  ) {
     const { googleId, email, name } = await this.verifyGoogleToken(idToken);
 
     const existingUser = await this.usersService.findByEmailOrGoogleId(
@@ -90,6 +95,7 @@ export class AuthGoogleService {
       googleId,
       email,
       name,
+      marketerCode,
     });
 
     return this.authService.login(loginUser);

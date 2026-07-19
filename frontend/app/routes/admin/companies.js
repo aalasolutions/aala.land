@@ -1,19 +1,8 @@
-import AuthenticatedRoute from '../authenticated';
-import { service } from '@ember/service';
+import Route from '@ember/routing/route';
 
-export default class AdminCompaniesRoute extends AuthenticatedRoute {
-  @service auth;
-  @service router;
-
-  beforeModel() {
-    super.beforeModel(...arguments);
-    if (this.auth.currentUser?.role !== 'super_admin') {
-      return this.router.transitionTo('dashboard');
-    }
-  }
-
-  async model() {
-    const response = await this.auth.fetchJson('/companies?limit=200');
-    return response?.data?.data || [];
-  }
-}
+/**
+ * Passthrough layout for the companies section: its template is a bare outlet
+ * so the list (index) and the full-page detail each own the whole screen. The
+ * super_admin gate is inherited from the parent admin route.
+ */
+export default class AdminCompaniesRoute extends Route {}

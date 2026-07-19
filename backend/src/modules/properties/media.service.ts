@@ -529,6 +529,72 @@ export class MediaService {
     };
   }
 
+  /**
+   * Operator console receipt image (manual payment proof). Same private
+   * documents bucket and magic-byte validation as tenant documents, but
+   * image-only and WITHOUT tenant storage-quota accounting: the upload is an
+   * operator artifact, and an over-quota company must never be able to block
+   * the recording of its own payment.
+   */
+  async uploadConsoleReceipt(
+    companyId: string,
+    file: Express.Multer.File,
+  ): Promise<{ s3Key: string; fileSize: number }> {
+    try {
+      const allowed: readonly string[] = [
+        'image/jpeg',
+        'image/png',
+        'image/webp',
+      ];
+      if (!allowed.includes(file.mimetype)) {
+        throw new BadRequestException(
+          `Receipt must be an image (${allowed.join(', ')}); got "${file.mimetype}"`,
+        );
+      }
+      const { fileTypeFromFile } = await import('file-type');
+      const detected = await fileTypeFromFile(file.path);
+      if (!detected || detected.mime !== file.mimetype) {
+        throw new BadRequestException(
+          `Receipt content (${detected?.mime ?? 'unknown'}) does not match the declared type (${file.mimetype}).`,
+        );
+      }
+
+      const { client, bucket } = this.documentsTarget();
+      const safeName = file.originalname
+        .replace(/[^a-zA-Z0-9._-]/g, '_')
+        .slice(0, 200);
+      const key = `${BUCKET_ROOT_FOLDER}/companies/${companyId}/console-receipts/${Date.now()}-${safeName}`;
+
+      const bodyStream = createReadStream(file.path);
+      bodyStream.on('error', (err) => {
+        this.logger.error(
+          `Receipt upload stream error for ${file.path}: ${err.message}`,
+        );
+      });
+      try {
+        await client.send(
+          new PutObjectCommand({
+            Bucket: bucket,
+            Key: key,
+            Body: bodyStream,
+            ContentType: file.mimetype,
+            ContentLength: file.size,
+          }),
+        );
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        throw new InternalServerErrorException(`Receipt upload failed: ${msg}`);
+      }
+      return { s3Key: key, fileSize: file.size };
+    } finally {
+      await unlink(file.path).catch((e) => {
+        this.logger.error(
+          `Failed to remove temp receipt file ${file.path}: ${e instanceof Error ? e.message : String(e)}`,
+        );
+      });
+    }
+  }
+
   // Find and set-primary
 
   async findByUnit(

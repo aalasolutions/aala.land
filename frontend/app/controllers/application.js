@@ -108,6 +108,12 @@ export default class ApplicationController extends Controller {
     vendors: 'operations',
     team: 'admin',
     audit: 'admin',
+    'admin.overview': 'admin',
+    'admin.companies': 'admin',
+    'admin.companies.index': 'admin',
+    'admin.companies.company': 'admin',
+    'admin.marketers': 'admin',
+    'admin.system': 'admin',
   };
 
   get activeGroup() {

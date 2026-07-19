@@ -5,6 +5,7 @@ import { DataSource } from 'typeorm';
 import { AuthService } from './auth.service';
 import { UsersService } from '../users/users.service';
 import { CompaniesService } from '../companies/companies.service';
+import { LockStateService, UNLOCKED } from '../lock/lock-state.service';
 import * as bcrypt from 'bcryptjs';
 import * as crypto from 'crypto';
 
@@ -64,6 +65,12 @@ describe('AuthService', () => {
           provide: CompaniesService,
           useValue: {
             findOne: jest.fn().mockResolvedValue(mockCompany),
+          },
+        },
+        {
+          provide: LockStateService,
+          useValue: {
+            getLockState: jest.fn().mockResolvedValue(UNLOCKED),
           },
         },
         {
@@ -413,6 +420,7 @@ describe('AuthService', () => {
       expect(result.regions).toBeDefined();
       expect(result.defaultRegionCode).toBe('dubai');
       expect(result.subscriptionTier).toBe('PRO');
+      expect(result.lockState).toEqual(UNLOCKED);
     });
 
     it('returns empty regions and null subscriptionTier for a super admin with no companyId', async () => {
@@ -431,6 +439,7 @@ describe('AuthService', () => {
       expect(result.regions).toEqual([]);
       expect(result.defaultRegionCode).toBe('');
       expect(result.subscriptionTier).toBeNull();
+      expect(result.lockState).toBeNull();
     });
   });
 });

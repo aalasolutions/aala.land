@@ -31,6 +31,8 @@ import { DocumentsModule } from '@modules/documents/documents.module';
 import { LocationsModule } from '@modules/locations/locations.module';
 import { SearchModule } from '@modules/search/search.module';
 import { BillingModule } from '@modules/billing/billing.module';
+import { LockModule } from '@modules/lock/lock.module';
+import { ConsoleModule } from '@modules/console/console.module';
 
 @Module({
   imports: [
@@ -84,6 +86,8 @@ import { BillingModule } from '@modules/billing/billing.module';
     LocationsModule,
     SearchModule,
     BillingModule,
+    LockModule,
+    ConsoleModule,
   ],
   controllers: [AppController],
   providers: [AppService, { provide: APP_GUARD, useClass: ThrottlerGuard }],

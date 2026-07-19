@@ -1,0 +1,137 @@
+{{page-title "Companies"}}
+
+<div class="page-header">
+  <div class="page-title-section">
+    <h1 class="page-title"><Ui::Ph @icon="buildings" @size="28px" />
+      Companies</h1>
+    <p class="page-subtitle">Every account, its rail, its deal, its lock state.</p>
+  </div>
+</div>
+
+<div class="glass-panel p-5">
+  <div class="console-list-filters mb-4">
+    <input
+      type="text"
+      class="form-input console-list-filters__search"
+      placeholder="Search companies..."
+      aria-label="Search companies"
+      value={{this.search}}
+      data-test-companies-search
+      {{on "input" this.setSearch}}
+    />
+    <select
+      class="form-input console-list-filters__select"
+      aria-label="Filter by rail"
+      data-test-companies-rail-filter
+      {{on "change" this.setRail}}
+    >
+      {{#each this.railOptions as |opt|}}
+        <option value={{opt.value}} selected={{eq this.railFilter opt.value}}>
+          {{opt.label}}
+        </option>
+      {{/each}}
+    </select>
+    <select
+      class="form-input console-list-filters__select"
+      aria-label="Filter by status"
+      data-test-companies-status-filter
+      {{on "change" this.setStatus}}
+    >
+      {{#each this.statusOptions as |opt|}}
+        <option value={{opt.value}} selected={{eq this.statusFilter opt.value}}>
+          {{opt.label}}
+        </option>
+      {{/each}}
+    </select>
+  </div>
+
+  <div class="data-table-wrapper data-table-wrapper--with-pagination">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Company</th>
+          <th>Plan</th>
+          <th>Rail</th>
+          <th>Seats</th>
+          <th>MRR</th>
+          <th>Status</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {{#each this.rows as |row|}}
+          {{! Whole-row click is the ratified affordance (design section 3);
+          keyboard users reach the detail via the company-name link below. }}
+          {{! template-lint-disable no-invalid-interactive }}
+          <tr
+            class="console-row"
+            data-test-companies-row={{row.id}}
+            {{on "click" (fn this.openCompany row.id)}}
+          >
+            <td class="font-bold">
+              <LinkTo
+                @route="admin.companies.company"
+                @model={{row.id}}
+                class="console-row__name-link"
+              >{{row.name}}</LinkTo>
+            </td>
+            <td>
+              <span class="plan-badge plan-badge--{{lowercase row.tier}}">
+                {{row.tier}}
+              </span>
+            </td>
+            <td>{{if row.rail row.rail "—"}}</td>
+            <td>{{row.seatsUsed}}/{{row.seatCap}}</td>
+            <td>
+              {{#if row.mrr}}
+                {{format-money row.mrr.amountMinor row.mrr.currency}}
+              {{else}}
+                <span class="text-muted">—</span>
+              {{/if}}
+            </td>
+            <td data-test-companies-status={{row.id}}>
+              {{#if (eq row.status "locked")}}
+                <span class="status-badge status-failed">LOCKED</span>
+              {{else if (eq row.status "lifted")}}
+                <span class="status-badge status-pending">
+                  lifted until
+                  {{format-date row.lockState.liftUntil}}
+                </span>
+              {{else if (eq row.status "deal")}}
+                <span class="status-badge status-pending">
+                  {{#if row.deal.lifetime}}
+                    lifetime deal
+                  {{else}}
+                    deal until
+                    {{format-date row.deal.untilDate}}
+                  {{/if}}
+                </span>
+              {{else}}
+                <span class="status-badge status-paid">active</span>
+              {{/if}}
+            </td>
+            <td class="text-right">
+              <Ui::Ph @icon="caret-right" @size="18px" />
+            </td>
+          </tr>
+        {{else}}
+          <tr>
+            <td colspan="7" class="text-muted text-center p-4">
+              No companies found.
+            </td>
+          </tr>
+        {{/each}}
+      </tbody>
+    </table>
+  </div>
+
+  <Ui::Pagination
+    @selectId="console-companies-limit"
+    @page={{this.page}}
+    @limit={{this.limit}}
+    @total={{this.total}}
+    @onPrevious={{this.previousPage}}
+    @onNext={{this.nextPage}}
+    @onLimitChange={{this.changeLimit}}
+  />
+</div>

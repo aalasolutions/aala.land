@@ -125,9 +125,7 @@ export class CompaniesService {
     return company;
   }
 
-  async findOneWithAdminEmail(
-    id: string,
-  ): Promise<
+  async findOneWithAdminEmail(id: string): Promise<
     Company & {
       adminEmail: string | null;
       usersCount: number;
@@ -282,6 +280,7 @@ export class CompaniesService {
     googleId: string;
     email: string;
     name: string;
+    marketerCode?: string;
   }): Promise<Pick<User, 'id' | 'name' | 'email' | 'role' | 'companyId'>> {
     this.validateRegionCode(dto.regionCode);
 
@@ -306,6 +305,8 @@ export class CompaniesService {
             slug: dto.slug,
             defaultRegionCode: dto.regionCode,
             activeRegions: [dto.regionCode],
+            // First-touch attribution; immutable after this write (requirement 2.5).
+            marketerCode: dto.marketerCode?.trim() || null,
           });
           const savedCompany = await companyRepo.save(company);
 

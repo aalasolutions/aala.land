@@ -649,6 +649,68 @@ export class StripeBillingProvider implements BillingProvider {
   }
 
   // -------------------------------------------------------------------------
+  // "Make it right" methods (operator console, requirement 2.3)
+  // -------------------------------------------------------------------------
+
+  async refundInvoicePayment(
+    invoiceId: string,
+    amountMinor: number | null,
+  ): Promise<{ refundId: string }> {
+    const invoice = (await this.stripe.invoices.retrieve(invoiceId, {
+      expand: ['payments'],
+    })) as unknown as {
+      payment_intent?: string | { id: string } | null;
+      payments?: {
+        data?: {
+          status?: string | null;
+          payment?: {
+            payment_intent?: string | { id: string } | null;
+          } | null;
+        }[];
+      } | null;
+    };
+
+    // Tolerant across API versions: classic invoice.payment_intent, or the
+    // newer payments list (prefer the paid entry).
+    let paymentIntentId = idOf(invoice.payment_intent ?? null);
+    if (!paymentIntentId) {
+      const payments = invoice.payments?.data ?? [];
+      const paid =
+        payments.find((p) => p.status === 'paid') ?? payments[0] ?? null;
+      paymentIntentId = idOf(paid?.payment?.payment_intent ?? null);
+    }
+    if (!paymentIntentId) {
+      throw new Error(
+        `Invoice ${invoiceId} has no payment to refund (no payment intent found)`,
+      );
+    }
+
+    const refund = await this.stripe.refunds.create({
+      payment_intent: paymentIntentId,
+      // Omitted amount = full refund of the remaining refundable balance.
+      ...(amountMinor != null ? { amount: amountMinor } : {}),
+    });
+    return { refundId: refund.id };
+  }
+
+  async creditCustomerBalance(
+    customerId: string,
+    amountMinor: number,
+    currency: string,
+  ): Promise<{ creditId: string }> {
+    // Negative balance transaction = credit applied against the next invoice.
+    const credit = await this.stripe.customers.createBalanceTransaction(
+      customerId,
+      {
+        amount: -Math.abs(amountMinor),
+        currency: currency.toLowerCase(),
+        description: 'AALA make-it-right: next-bill discount',
+      },
+    );
+    return { creditId: credit.id };
+  }
+
+  // -------------------------------------------------------------------------
   // Private helpers
   // -------------------------------------------------------------------------
 
