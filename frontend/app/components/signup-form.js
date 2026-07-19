@@ -95,6 +95,8 @@ export default class SignupFormComponent extends Component {
         userName: this.userName.trim(),
         email: this.email.trim(),
         password: this.password,
+        // First-touch marketer attribution from ?ref= (undefined drops from JSON)
+        marketerCode: this.args.marketerCode || undefined,
       });
 
       this.router.transitionTo('dashboard');
@@ -151,6 +153,7 @@ export default class SignupFormComponent extends Component {
         idToken,
         companyName: this.companyName.trim(),
         regionCode: this.selectedRegion,
+        marketerCode: this.args.marketerCode || undefined,
       });
       this.router.transitionTo('dashboard');
     } catch (err) {
