@@ -13,8 +13,7 @@
 # and/or dragonfly service in a skip-worktree copy and point DB_HOST/REDIS_HOST
 # in backend/.env at the managed endpoints.
 #
-# STACK_NAME namespaces project/containers/network/volumes so staging can run
-# beside prod on one host. Unset = aala-land (prod unchanged).
+# STACK_NAME namespaces the whole stack so staging can run beside prod. Unset = aala-land.
 name: ${STACK_NAME:-aala-land}
 
 services:

@@ -1,12 +1,12 @@
+# Per-stack project name so prod/staging don't manage each other's containers.
+name: ${STACK_NAME:-aala-land}
+
 services:
   aala-land-frontend:
     build:
       context: .
       dockerfile: Dockerfile
       args:
-        # Baked into the Ember bundle at build time (the build runs inside the
-        # image, so the host needs no node/pnpm). Single-sourced in backend/.env;
-        # deploy.sh / deploy-frontend.sh export it before building.
         GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
     image: ${STACK_NAME:-aala-land}-frontend
     container_name: ${STACK_NAME:-aala-land}-frontend
@@ -14,8 +14,7 @@ services:
     ports:
       - "${FRONTEND_HOST_PORT:-7102}:8080"
 
-# Join the backend stack's network so nginx.conf proxy_pass http://backend:3010
-# resolves. STACK_NAME must match backend; deploy scripts export it from backend/.env.
+# Backend stack's network; must match STACK_NAME (deploy scripts export it).
 networks:
   default:
     name: ${STACK_NAME:-aala-land}_default
