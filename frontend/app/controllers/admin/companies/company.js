@@ -225,8 +225,8 @@ export default class AdminCompaniesCompanyController extends Controller {
   @action
   selectTab(value) {
     this.activeTab = value;
-    if (value === 'payments' && !this.paymentsLoaded) this.loadPayments();
-    if (value === 'history' && !this.historyLoaded) this.loadHistory();
+    if (value === 'payments' && !this.paymentsLoaded) void this.loadPayments();
+    if (value === 'history' && !this.historyLoaded) void this.loadHistory();
   }
 
   @action
@@ -355,7 +355,7 @@ export default class AdminCompaniesCompanyController extends Controller {
       );
       this.dealModalOpen = false;
       await this.reloadDetail();
-      if (this.historyLoaded) this.reloadHistory();
+      if (this.historyLoaded) void this.reloadHistory();
     } catch (e) {
       this.notifications.error(e.message || 'Could not save the deal');
     } finally {
@@ -386,7 +386,7 @@ export default class AdminCompaniesCompanyController extends Controller {
       this.notifications.success('Deal ended');
       this.endDealConfirmOpen = false;
       await this.reloadDetail();
-      if (this.historyLoaded) this.reloadHistory();
+      if (this.historyLoaded) void this.reloadHistory();
     } catch (e) {
       this.notifications.error(e.message || 'Could not end the deal');
     } finally {
@@ -419,7 +419,7 @@ export default class AdminCompaniesCompanyController extends Controller {
       this.notifications.success('Lock lifted');
       this.liftDate = '';
       await this.reloadDetail();
-      if (this.historyLoaded) this.reloadHistory();
+      if (this.historyLoaded) void this.reloadHistory();
     } catch (e) {
       this.notifications.error(e.message || 'Could not lift the lock');
     } finally {
@@ -450,7 +450,7 @@ export default class AdminCompaniesCompanyController extends Controller {
       this.notifications.success('Lift ended, lock re-applied');
       this.endLiftConfirmOpen = false;
       await this.reloadDetail();
-      if (this.historyLoaded) this.reloadHistory();
+      if (this.historyLoaded) void this.reloadHistory();
     } catch (e) {
       this.notifications.error(e.message || 'Could not end the lift');
     } finally {
@@ -655,7 +655,7 @@ export default class AdminCompaniesCompanyController extends Controller {
       this.paymentModalOpen = false;
       await this.reloadPayments();
       await this.reloadDetail();
-      if (this.historyLoaded) this.reloadHistory();
+      if (this.historyLoaded) void this.reloadHistory();
     } catch (e) {
       this.notifications.error(e.message || 'Could not record the payment');
     } finally {
@@ -780,7 +780,7 @@ export default class AdminCompaniesCompanyController extends Controller {
       );
       this.remedyModalOpen = false;
       await this.reloadPayments();
-      if (this.historyLoaded) this.reloadHistory();
+      if (this.historyLoaded) void this.reloadHistory();
     } catch (e) {
       this.notifications.error(e.message || 'Could not apply the remedy');
     } finally {

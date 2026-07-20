@@ -22,8 +22,4 @@ export default class AdminMarketersController extends Controller {
   toggle(key) {
     this.expanded = this.expanded === key ? null : key;
   }
-
-  isExpanded(key) {
-    return this.expanded === key;
-  }
 }

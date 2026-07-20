@@ -272,7 +272,7 @@ export default class AuthService extends Service {
         // Write lock (COMPANY_LOCKED). Surface the reduce-or-pay message and
         // pull fresh lockState so the banner appears mid-session (design 8.2).
         this.notifications.error(message);
-        this.refreshLockState();
+        void this.refreshLockState();
       }
       throw new Error(message);
     }
