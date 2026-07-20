@@ -8,16 +8,15 @@ services:
         # image, so the host needs no node/pnpm). Single-sourced in backend/.env;
         # deploy.sh / deploy-frontend.sh export it before building.
         GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
-    image: aala-land-frontend
-    container_name: aala-land-frontend
+    image: ${STACK_NAME:-aala-land}-frontend
+    container_name: ${STACK_NAME:-aala-land}-frontend
     restart: always
     ports:
       - "${FRONTEND_HOST_PORT:-7102}:8080"
 
-# Join the backend's compose network so nginx.conf's `proxy_pass http://backend:3010`
-# (for /v1 and /socket.io) resolves. The network is created by backend/docker-compose.yml
-# (project name: aala-land). Verify with: docker network ls | grep aala-land
+# Join the backend stack's network so nginx.conf proxy_pass http://backend:3010
+# resolves. STACK_NAME must match backend; deploy scripts export it from backend/.env.
 networks:
   default:
-    name: aala-land_default
+    name: ${STACK_NAME:-aala-land}_default
     external: true

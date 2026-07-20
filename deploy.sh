@@ -22,9 +22,9 @@ echo "==> [backend] start the app, wait for healthy"
 ( cd backend && docker compose up -d --wait backend )
 
 echo "==> [frontend] build image (Ember build runs inside Docker) and serve"
-# GOOGLE_CLIENT_ID is single-sourced in backend/.env; export it so the compose
-# build arg picks it up. No node/pnpm needed on the host.
+# GOOGLE_CLIENT_ID (build arg) and STACK_NAME (network name) are read from backend/.env.
 export GOOGLE_CLIENT_ID="$(grep -E '^GOOGLE_CLIENT_ID=' backend/.env | cut -d= -f2- 2>/dev/null || true)"
+export STACK_NAME="$(grep -E '^STACK_NAME=' backend/.env | cut -d= -f2- 2>/dev/null || true)"
 ( cd frontend && docker compose up -d --build )
 
-echo "==> Deployed. Backend :${BACKEND_HOST_PORT:-3010}   Frontend :7102"
+echo "==> Deployed. Backend :${BACKEND_HOST_PORT:-3010}   Frontend :${FRONTEND_HOST_PORT:-7102}"
