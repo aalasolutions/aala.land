@@ -1,4 +1,4 @@
-{{page-title this.company.name}}
+{{page-title (if this.company this.company.name "Company")}}
 
 {{#if this.company}}
   {{! Header }}

@@ -679,7 +679,7 @@ export default class AdminCompaniesCompanyController extends Controller {
       if (viewer && !viewer.closed) {
         viewer.location = url;
       } else {
-        window.open(url, '_blank');
+        window.open(url, '_blank', 'noopener');
       }
       // Revoke once the viewer has had ample time to load the image.
       runTask(this, () => URL.revokeObjectURL(url), 60000);
