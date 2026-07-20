@@ -1,4 +1,10 @@
-import { IsString, IsNotEmpty, MaxLength, Validate } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  IsOptional,
+  MaxLength,
+  Validate,
+} from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { IsValidRegionCode } from '../../companies/validators/is-valid-region-code.validator';
 
@@ -19,4 +25,13 @@ export class GoogleSignupDto {
   @IsNotEmpty()
   @Validate(IsValidRegionCode)
   regionCode: string;
+
+  @ApiProperty({
+    required: false,
+    description: 'Marketer/referral code; first-touch, immutable after signup',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  marketerCode?: string;
 }

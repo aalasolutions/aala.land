@@ -558,6 +558,15 @@ body {
   font-weight: 500;
 }
 
+// Tenant write-lock / grace banner (design 8.2): full-width strip above the
+// topbar, alert palette but banner geometry.
+.tenant-lock-banner {
+  border-radius: 0;
+  padding: var(--space-2) var(--space-8);
+  font-size: var(--font-sm);
+  font-weight: 500;
+}
+
 .topbar {
   height: 64px;
   padding: 0 var(--space-8);
@@ -1789,6 +1798,23 @@ $google-neutral-border-hover: #c6cbd1;
 
 .btn-secondary:hover {
   background: var(--bg-muted);
+}
+
+// Solid red, primary geometry. Design law (console spec section 11): reserved
+// for actions where money leaves or access dies (Refund, End deal early, End
+// lift now, Downgrade to Free). Keyed to the existing --color-danger token.
+.btn-danger {
+  background: var(--color-danger);
+  color: var(--text-inverse);
+}
+
+.btn-danger:hover:not(:disabled) {
+  background: #b91c1c;
+}
+
+.btn-danger:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 // =================================
@@ -5202,6 +5228,10 @@ $google-neutral-border-hover: #c6cbd1;
     background: #2d5a27;
     color: #7dbb73;
   }
+  &--enterprise {
+    background: #1e3a5a;
+    color: #7db3d1;
+  }
   &--starter {
     background: #4a3a10;
     color: #c9a227;
@@ -5266,4 +5296,292 @@ $google-neutral-border-hover: #c6cbd1;
   border: 1px solid var(--border-light);
   border-radius: var(--radius-md);
   background: var(--surface-2, rgba(0, 0, 0, 0.02));
+}
+
+// =================================
+// OPERATOR CONSOLE (super-admin)
+// =================================
+
+// Provider billing statuses rendered verbatim (status-{{lowercase status}})
+// on the console detail and the tenant Billing tab; without these the
+// past_due/incomplete family fell through unstyled.
+.status-badge {
+  &.status-active,
+  &.status-trialing {
+    background: var(--badge-green-bg);
+    color: var(--badge-green-text);
+  }
+
+  &.status-past_due,
+  &.status-incomplete {
+    background: var(--badge-amber-bg);
+    color: var(--badge-amber-text);
+  }
+
+  &.status-incomplete_expired,
+  &.status-unpaid,
+  &.status-canceled {
+    background: var(--badge-red-bg);
+    color: var(--badge-red-text);
+  }
+}
+
+.flex-2 {
+  flex: 2;
+}
+
+.text-warning {
+  color: var(--color-warning);
+}
+
+// Overview hero band
+.console-hero {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-6);
+}
+
+.console-hero__figures {
+  display: flex;
+  gap: var(--space-8);
+}
+
+.console-hero__value {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.1;
+}
+
+.console-hero__unit {
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.console-hero__chips,
+.console-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.console-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-full);
+  background: var(--bg-muted);
+  font-size: var(--font-sm);
+  color: var(--text-secondary);
+}
+
+.console-chip__code {
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-primary);
+}
+
+// Overview rollups
+.console-rollups {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-6);
+}
+
+@media (max-width: 900px) {
+  .console-rollups {
+    grid-template-columns: 1fr;
+  }
+}
+
+.console-region-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.console-region-row__name {
+  width: 90px;
+  font-size: var(--font-sm);
+  color: var(--text-secondary);
+}
+
+.console-region-bar {
+  flex: 1;
+  height: 8px;
+  border-radius: var(--radius-full);
+  background: var(--bg-muted);
+  overflow: hidden;
+}
+
+.console-region-bar__fill {
+  display: block;
+  height: 100%;
+  border-radius: var(--radius-full);
+  background: var(--color-primary);
+}
+
+.console-region-row__count {
+  width: 32px;
+  text-align: right;
+  font-weight: 600;
+}
+
+// Companies list
+.console-list-filters {
+  display: flex;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.console-list-filters__search {
+  flex: 1;
+  min-width: 200px;
+}
+
+.console-list-filters__select {
+  width: auto;
+  min-width: 140px;
+}
+
+.console-row {
+  cursor: pointer;
+}
+
+.console-row:hover {
+  background: var(--bg-hover-subtle);
+}
+
+// Company detail header
+.console-detail-header {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
+}
+
+.console-detail-header__title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex: 1;
+}
+
+.console-detail-header__title .page-title {
+  margin: 0;
+}
+
+.btn-back {
+  padding: var(--space-2) var(--space-3);
+}
+
+.console-rail-tag {
+  font-size: var(--font-sm);
+  color: var(--text-muted);
+  text-transform: capitalize;
+}
+
+// Lock card
+.console-lock-card .w-full {
+  width: 100%;
+}
+
+.console-lock-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.console-lift-date {
+  width: auto;
+  max-width: 180px;
+}
+
+// Detail cards
+.console-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--space-5);
+  align-items: start;
+}
+
+.console-kv {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--space-2) var(--space-4);
+  margin: 0;
+}
+
+.console-kv dt {
+  color: var(--text-muted);
+  font-size: var(--font-sm);
+}
+
+.console-kv dd {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: var(--font-sm);
+}
+
+.console-empty {
+  text-align: center;
+  padding: var(--space-8);
+}
+
+// Console forms (modals)
+.console-form-row {
+  display: flex;
+  gap: var(--space-3);
+}
+
+.console-currency-input {
+  text-transform: uppercase;
+}
+
+.console-checkbox,
+.console-radio {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--font-sm);
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.console-anchor {
+  padding: var(--space-3) var(--space-4);
+  background: var(--bg-muted);
+  border-radius: var(--radius-md);
+  font-size: var(--font-sm);
+  font-weight: 600;
+}
+
+.console-notes-cell {
+  max-width: 220px;
+  white-space: normal;
+}
+
+.console-expand-row td {
+  background: var(--bg-muted);
+}
+
+.console-expand {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  padding: var(--space-2) 0;
+}
+
+.console-price-error {
+  margin-top: var(--space-1);
+}
+
+.modal-panel--wide {
+  max-width: 560px;
 }

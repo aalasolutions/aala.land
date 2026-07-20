@@ -12,9 +12,20 @@ const mockSubItemUpdate = jest.fn();
 const mockSubItemCreate = jest.fn();
 const mockSubItemDel = jest.fn();
 
+const mockInvoiceRetrieve = jest.fn();
+const mockRefundCreate = jest.fn();
+const mockBalanceTxCreate = jest.fn();
+
 const mockStripeClient = {
   customers: {
     create: mockCreate,
+    createBalanceTransaction: mockBalanceTxCreate,
+  },
+  invoices: {
+    retrieve: mockInvoiceRetrieve,
+  },
+  refunds: {
+    create: mockRefundCreate,
   },
   products: {
     search: mockSearch,
@@ -513,6 +524,66 @@ describe('StripeBillingProvider', () => {
       });
       expect(state.cancelAtPeriodEnd).toBe(true);
       expect(state.cancelAt).toEqual(new Date(1782600000 * 1000));
+    });
+  });
+
+  describe('refundInvoicePayment (make it right)', () => {
+    it('refunds via the classic invoice.payment_intent field, partial amount passed through', async () => {
+      mockInvoiceRetrieve.mockResolvedValue({ payment_intent: 'pi_123' });
+      mockRefundCreate.mockResolvedValue({ id: 're_1' });
+
+      const result = await provider.refundInvoicePayment('in_1', 500);
+
+      expect(mockInvoiceRetrieve).toHaveBeenCalledWith('in_1', {
+        expand: ['payments'],
+      });
+      expect(mockRefundCreate).toHaveBeenCalledWith({
+        payment_intent: 'pi_123',
+        amount: 500,
+      });
+      expect(result).toEqual({ refundId: 're_1' });
+    });
+
+    it('resolves the payment intent from the new payments list, preferring the paid entry, and omits amount for a full refund', async () => {
+      mockInvoiceRetrieve.mockResolvedValue({
+        payments: {
+          data: [
+            { status: 'open', payment: { payment_intent: 'pi_open' } },
+            { status: 'paid', payment: { payment_intent: { id: 'pi_paid' } } },
+          ],
+        },
+      });
+      mockRefundCreate.mockResolvedValue({ id: 're_2' });
+
+      const result = await provider.refundInvoicePayment('in_2', null);
+
+      expect(mockRefundCreate).toHaveBeenCalledWith({
+        payment_intent: 'pi_paid',
+      });
+      expect(result).toEqual({ refundId: 're_2' });
+    });
+
+    it('throws when the invoice has no payment intent anywhere', async () => {
+      mockInvoiceRetrieve.mockResolvedValue({ payments: { data: [] } });
+      await expect(provider.refundInvoicePayment('in_3', null)).rejects.toThrow(
+        'no payment to refund',
+      );
+      expect(mockRefundCreate).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('creditCustomerBalance (make it right)', () => {
+    it('creates a NEGATIVE balance transaction so the next invoice is reduced', async () => {
+      mockBalanceTxCreate.mockResolvedValue({ id: 'cbtxn_1' });
+
+      const result = await provider.creditCustomerBalance('cus_1', 2500, 'USD');
+
+      expect(mockBalanceTxCreate).toHaveBeenCalledWith('cus_1', {
+        amount: -2500,
+        currency: 'usd',
+        description: 'AALA make-it-right: next-bill discount',
+      });
+      expect(result).toEqual({ creditId: 'cbtxn_1' });
     });
   });
 });

@@ -7,7 +7,7 @@ module('Integration | Component | toast-container', function (hooks) {
   setupRenderingTest(hooks);
 
   test('renders toast container', async function (assert) {
-    await render(hbs`<ToastContainer />`);
+    await render(hbs`<Ui::ToastContainer />`);
     assert.dom('[data-test-toast-container]').exists();
   });
 
@@ -16,13 +16,13 @@ module('Integration | Component | toast-container', function (hooks) {
     notifications.success('Task complete!', 0);
     notifications.error('Something failed', 0);
 
-    await render(hbs`<ToastContainer />`);
+    await render(hbs`<Ui::ToastContainer />`);
 
     assert.dom('[data-test-toast]').exists({ count: 2 });
   });
 
   test('shows no toasts when service is empty', async function (assert) {
-    await render(hbs`<ToastContainer />`);
+    await render(hbs`<Ui::ToastContainer />`);
     assert.dom('[data-test-toast]').doesNotExist();
   });
 });

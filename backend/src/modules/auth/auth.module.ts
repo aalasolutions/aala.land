@@ -12,11 +12,13 @@ import { JwtStrategy } from './strategies/jwt.strategy';
 import { User } from '../users/entities/user.entity';
 import { Company } from '../companies/entities/company.entity';
 import { ImpersonateService } from './impersonate.service';
+import { LockModule } from '@modules/lock/lock.module';
 
 @Module({
   imports: [
     UsersModule,
     CompaniesModule,
+    LockModule,
     TypeOrmModule.forFeature([User, Company]),
     PassportModule,
     JwtModule.registerAsync({

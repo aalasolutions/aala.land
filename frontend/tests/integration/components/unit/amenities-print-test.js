@@ -6,21 +6,19 @@ import { hbs } from 'ember-cli-htmlbars';
 module('Integration | Component | unit/amenities-print', function (hooks) {
   setupRenderingTest(hooks);
 
-  test('it renders', async function (assert) {
-    // Set any properties with this.set('myProperty', 'value');
-    // Handle any actions with this.set('myAction', function(val) { ... });
+  test('renders a tag per amenity with a humanized label', async function (assert) {
+    await render(
+      hbs`<Unit::AmenitiesPrint @amenities={{array "private_dock" "rooftop_garden"}} />`,
+    );
 
+    assert.dom('.amenity-tag').exists({ count: 2 });
+    assert.dom().containsText('Private Dock');
+    assert.dom().containsText('Rooftop Garden');
+  });
+
+  test('renders no tags when no amenities are provided', async function (assert) {
     await render(hbs`<Unit::AmenitiesPrint />`);
 
-    assert.dom().hasText('');
-
-    // Template block usage:
-    await render(hbs`
-      <Unit::AmenitiesPrint>
-        template block text
-      </Unit::AmenitiesPrint>
-    `);
-
-    assert.dom().hasText('template block text');
+    assert.dom('.amenity-tag').doesNotExist();
   });
 });

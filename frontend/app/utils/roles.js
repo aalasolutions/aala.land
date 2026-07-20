@@ -11,6 +11,10 @@ export function isAdminRole(role) {
   return [ROLES.SUPER_ADMIN, ROLES.COMPANY_ADMIN, ROLES.ADMIN].includes(role);
 }
 
+export function isSuperAdmin(role) {
+  return role === ROLES.SUPER_ADMIN;
+}
+
 export function canManageUsers(role) {
   return [ROLES.SUPER_ADMIN, ROLES.COMPANY_ADMIN, ROLES.ADMIN].includes(role);
 }

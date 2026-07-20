@@ -116,6 +116,25 @@ export interface BillingProvider {
 
   /** Undo a scheduled cancellation (cancel_at_period_end = false); the plan keeps renewing. */
   resume(ref: SubscriptionRef): Promise<void>;
+
+  /**
+   * Refund a past invoice payment, partial (amountMinor) or full (null).
+   * Returns the provider-side refund id. "Make it right" fallback remedy.
+   */
+  refundInvoicePayment(
+    invoiceId: string,
+    amountMinor: number | null,
+  ): Promise<{ refundId: string }>;
+
+  /**
+   * Credit the customer's balance so the NEXT invoice is reduced by
+   * amountMinor. "Make it right" default remedy (next-bill discount).
+   */
+  creditCustomerBalance(
+    customerId: string,
+    amountMinor: number,
+    currency: string,
+  ): Promise<{ creditId: string }>;
 }
 
 export const BILLING_PROVIDER = Symbol('BILLING_PROVIDER');

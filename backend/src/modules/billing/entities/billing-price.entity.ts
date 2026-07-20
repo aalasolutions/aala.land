@@ -40,6 +40,13 @@ export class BillingPrice {
   @Column({ type: 'boolean', default: true })
   active: boolean;
 
+  /** Provider's last registration error, VERBATIM. Cleared on a successful sync. */
+  @Column({ name: 'last_sync_error', type: 'text', nullable: true })
+  lastSyncError: string | null;
+
+  @Column({ name: 'last_sync_error_at', type: 'timestamptz', nullable: true })
+  lastSyncErrorAt: Date | null;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 

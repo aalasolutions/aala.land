@@ -959,11 +959,14 @@ export class UsersService {
   }
 
   /**
-   * Caps apply on FREE only (contract section 11): paid tiers are billed per seat by the
-   * gate in create/inviteUser instead of being capped. FREE keeps reading the maxUsers
-   * COLUMN (not the TIER_LIMITS constant) so the existing SUPER_ADMIN PATCH override for
-   * comp accounts keeps working. Returns the loaded company so callers can hand it to
-   * BillingService.reserveSeat without a second fetch; null when there is no companyId.
+   * The maxUsers COLUMN caps FREE companies and paid companies WITHOUT a live
+   * subscription (comp/custom-deal accounts, where the column carries the deal
+   * seat cap; console S2702). Paid companies WITH a subscription are billed
+   * per seat by the gate in create/inviteUser instead of being capped. The
+   * column (not the TIER_LIMITS constant) is read so the SUPER_ADMIN override
+   * and the deal seat cap both keep working. Returns the loaded company so
+   * callers can hand it to BillingService.reserveSeat without a second fetch;
+   * null when there is no companyId.
    *
    * Callers pass the locked transaction's manager so the count + subsequent save run
    * serialized behind the company advisory lock (race audit 2026-07-07, P2): a plain
@@ -980,16 +983,23 @@ export class UsersService {
     if (!company) {
       throw new NotFoundException(`Company ${companyId} not found`);
     }
-    if (company.subscriptionTier !== SubscriptionTier.FREE) {
+    // Subscription-backed paid plan: the provider seat gate governs, no column cap.
+    if (
+      company.subscriptionTier !== SubscriptionTier.FREE &&
+      company.billingSubscriptionId &&
+      company.billingCustomerId
+    ) {
       return company;
     }
     const currentCount = await manager.count(User, {
       where: { companyId, isActive: true },
     });
     if (currentCount >= company.maxUsers) {
-      throw new BadRequestException(
-        `Your FREE plan allows up to ${company.maxUsers} user${company.maxUsers === 1 ? '' : 's'}. Upgrade to Pro to add team members.`,
-      );
+      const label =
+        company.subscriptionTier === SubscriptionTier.FREE
+          ? `Your FREE plan allows up to ${company.maxUsers} user${company.maxUsers === 1 ? '' : 's'}. Upgrade to Pro to add team members.`
+          : `Your plan allows up to ${company.maxUsers} user${company.maxUsers === 1 ? '' : 's'}. Contact us to extend your arrangement.`;
+      throw new BadRequestException(label);
     }
     return company;
   }

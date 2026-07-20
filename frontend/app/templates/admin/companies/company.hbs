@@ -1,0 +1,836 @@
+{{page-title (if this.company this.company.name "Company")}}
+
+{{#if this.company}}
+  {{! Header }}
+  <div class="console-detail-header">
+    <button
+      type="button"
+      class="btn btn-secondary btn-back"
+      data-test-company-back
+      {{on "click" this.goBack}}
+    >
+      <Ui::Ph @icon="caret-left" @size="16px" />
+      Companies
+    </button>
+    <div class="console-detail-header__title">
+      <h1 class="page-title">{{this.company.name}}</h1>
+      <span class="plan-badge plan-badge--{{lowercase this.company.tier}}">
+        {{this.company.tier}}
+      </span>
+      {{#if this.railLabel}}
+        <span class="console-rail-tag">{{this.railLabel}}</span>
+      {{/if}}
+      <span class="status-badge {{this.statusView.cls}}">
+        {{this.statusView.text}}
+      </span>
+    </div>
+    <div class="console-detail-header__actions">
+      {{#if this.adminUser}}
+        <button
+          type="button"
+          class="btn btn-secondary"
+          data-test-company-login-as
+          {{on "click" this.loginAs}}
+        >
+          <Ui::Ph @icon="sign-in" @size="16px" />
+          Login as admin
+        </button>
+      {{/if}}
+    </div>
+  </div>
+
+  {{! Lock card }}
+  {{#if this.showLockCard}}
+    {{#if this.isLocked}}
+      <div class="alert alert-error console-lock-card" data-test-lock-card>
+        <div class="flex col gap-3 w-full">
+          <div>
+            <div class="font-bold">Locked{{#if this.lock.dealExpiredAt}}, deal
+                expired
+                {{format-date this.lock.dealExpiredAt}}{{/if}}.</div>
+            <p class="font-sm mt-1">Writes are blocked; reads and export stay.
+              Their admin sees the "reduce or pay" banner.</p>
+          </div>
+          <div class="console-lock-actions">
+            <span class="font-sm">To unlock permanently:</span>
+            <button
+              type="button"
+              class="btn btn-secondary btn-xs"
+              {{on "click" this.openDealModal}}
+            >Give a new deal</button>
+            <button
+              type="button"
+              class="btn btn-secondary btn-xs"
+              {{on "click" this.openPaymentModal}}
+            >Record a payment</button>
+          </div>
+          <div class="console-lock-actions">
+            <span class="font-sm">To let them breathe:</span>
+            <input
+              type="date"
+              aria-label="Lift lock until"
+              class="form-input console-lift-date"
+              value={{this.liftDate}}
+              data-test-lock-lift-date
+              {{on "change" this.setLiftDate}}
+            />
+            <button
+              type="button"
+              class="btn btn-secondary btn-xs"
+              disabled={{this.liftBusy}}
+              data-test-lock-lift-submit
+              {{on "click" this.submitLift}}
+            >{{if this.liftBusy "Lifting…" "Lift"}}</button>
+          </div>
+        </div>
+      </div>
+    {{else}}
+      <div class="alert alert-warning console-lock-card" data-test-lock-card>
+        <div class="flex col gap-3 w-full">
+          <div>
+            <div class="font-bold">Lock lifted until
+              {{format-date this.lock.liftUntil}}.</div>
+            <p class="font-sm mt-1">Re-locks automatically then, unless a deal
+              or payment lands.</p>
+          </div>
+          <div class="console-lock-actions">
+            <input
+              type="date"
+              aria-label="Lift lock until"
+              class="form-input console-lift-date"
+              value={{this.liftDate}}
+              data-test-lock-lift-date
+              {{on "change" this.setLiftDate}}
+            />
+            <button
+              type="button"
+              class="btn btn-secondary btn-xs"
+              disabled={{this.liftBusy}}
+              data-test-lock-lift-submit
+              {{on "click" this.submitLift}}
+            >{{if this.liftBusy "Extending…" "Extend lift"}}</button>
+            <button
+              type="button"
+              class="btn btn-danger btn-xs"
+              data-test-lock-end-lift
+              {{on "click" this.openEndLiftConfirm}}
+            >End lift now</button>
+          </div>
+        </div>
+      </div>
+    {{/if}}
+  {{/if}}
+
+  {{! Tabs }}
+  <Ui::Tabs
+    @tabs={{this.tabs}}
+    @active={{this.activeTab}}
+    @onChange={{this.selectTab}}
+    class="mt-4 mb-4"
+  />
+
+  {{#if (eq this.activeTab "overview")}}
+    <div class="console-cards">
+      {{! Live billing state }}
+      <div class="glass-panel p-6" data-test-company-plan-card>
+        <h3 class="font-lg font-bold mb-4">Billing state</h3>
+        {{#if this.billing}}
+          <dl class="console-kv">
+            <dt>Tier</dt>
+            <dd>{{this.billing.tier}}</dd>
+            {{#if this.billing.billingStatus}}
+              <dt>Status</dt>
+              <dd><span
+                  class="status-badge status-{{lowercase
+                      this.billing.billingStatus
+                    }}"
+                >{{this.billing.billingStatus}}</span></dd>
+            {{/if}}
+            <dt>Seats</dt>
+            <dd>{{this.billing.activeUsers}}
+              active /
+              {{this.billing.purchasedSeats}}
+              purchased</dd>
+            <dt>Currency</dt>
+            <dd>{{this.billing.currency}}</dd>
+            {{#if this.billing.cancelAtPeriodEnd}}
+              <dt>Scheduled</dt>
+              <dd class="text-warning">Cancels
+                {{format-date this.billing.cancelAt}}</dd>
+            {{/if}}
+          </dl>
+        {{else}}
+          <p class="text-muted" data-test-company-billing-unavailable>Billing
+            state is unavailable right now.</p>
+        {{/if}}
+      </div>
+
+      {{! Active deal summary }}
+      {{#if this.deal}}
+        <div class="glass-panel p-6" data-test-company-deal-card>
+          <h3 class="font-lg font-bold mb-4">Active deal</h3>
+          <dl class="console-kv">
+            <dt>Price</dt>
+            <dd>{{this.dealPriceLabel}}</dd>
+            <dt>Seats included</dt>
+            <dd>{{this.deal.seatCap}}</dd>
+            <dt>Until</dt>
+            <dd>{{if
+                this.deal.lifetime
+                "Lifetime"
+                (format-date this.deal.untilDate)
+              }}</dd>
+            <dt>Why</dt>
+            <dd>{{this.deal.whyNote}}</dd>
+            <dt>Granted by</dt>
+            <dd>{{this.deal.grantedBy}}</dd>
+          </dl>
+        </div>
+      {{/if}}
+
+      {{! Limits }}
+      <div class="glass-panel p-6">
+        <div class="flex between x-center mb-4">
+          <h3 class="font-lg font-bold">Limits</h3>
+          <button
+            type="button"
+            class="btn btn-secondary btn-xs"
+            data-test-company-limits-edit
+            {{on "click" this.openLimitsModal}}
+          >Edit</button>
+        </div>
+        <dl class="console-kv">
+          <dt>Max users</dt>
+          <dd>{{this.company.limits.maxUsers}}</dd>
+          <dt>Max regions</dt>
+          <dd>{{this.company.limits.maxRegions}}</dd>
+          <dt>Max properties</dt>
+          <dd>{{this.company.limits.maxProperties}}</dd>
+        </dl>
+      </div>
+    </div>
+
+  {{else if (eq this.activeTab "deal")}}
+    {{#if this.deal}}
+      <div class="glass-panel p-6" data-test-company-deal-card>
+        <h3 class="font-lg font-bold mb-4">Active deal</h3>
+        <dl class="console-kv">
+          <dt>Price</dt>
+          <dd>{{this.dealPriceLabel}}</dd>
+          <dt>Seats included</dt>
+          <dd>{{this.deal.seatCap}}</dd>
+          <dt>Until</dt>
+          <dd>{{if
+              this.deal.lifetime
+              "Lifetime"
+              (format-date this.deal.untilDate)
+            }}</dd>
+          <dt>Why</dt>
+          <dd>{{this.deal.whyNote}}</dd>
+          <dt>Granted by</dt>
+          <dd>{{this.deal.grantedBy}}
+            on
+            {{format-date this.deal.grantedAt}}</dd>
+          {{#if this.deal.updatedBy}}
+            <dt>Last edited</dt>
+            <dd>{{this.deal.updatedBy}}
+              on
+              {{format-date this.deal.updatedAt}}</dd>
+          {{/if}}
+        </dl>
+        <div class="flex gap-3 mt-4">
+          <button
+            type="button"
+            class="btn btn-secondary"
+            data-test-deal-edit
+            {{on "click" this.openDealModal}}
+          >Edit</button>
+          <button
+            type="button"
+            class="btn btn-danger"
+            data-test-deal-end
+            {{on "click" this.openEndDealConfirm}}
+          >End deal early</button>
+        </div>
+      </div>
+    {{else}}
+      <div class="glass-panel p-6 console-empty">
+        <Ui::Ph @icon="handshake" @size="40px" />
+        <p class="text-muted mt-2">No deal on this company yet.</p>
+        <button
+          type="button"
+          class="btn btn-primary mt-3"
+          data-test-deal-give
+          {{on "click" this.openDealModal}}
+        >Give a deal</button>
+      </div>
+    {{/if}}
+
+  {{else if (eq this.activeTab "payments")}}
+    <div class="glass-panel p-6">
+      <div class="flex between x-center mb-4">
+        <h3 class="font-lg font-bold">Payments</h3>
+        <button
+          type="button"
+          class="btn btn-primary"
+          data-test-payment-record
+          {{on "click" this.openPaymentModal}}
+        >Record a payment</button>
+      </div>
+      {{#if this.paymentsLoading}}
+        <p class="text-muted">Loading payments…</p>
+      {{else if this.paymentRows}}
+        <div class="data-table-wrapper">
+          <table class="data-table" data-test-company-payments-table>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Amount</th>
+                <th>Covers</th>
+                <th>Source</th>
+                <th>Notes</th>
+                <th>Receipt</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {{#each this.paymentRows as |row|}}
+                <tr>
+                  <td>{{format-date row.date}}</td>
+                  <td class="font-bold">{{format-money
+                      row.amount
+                      row.currency
+                    }}</td>
+                  <td>{{row.coversLabel}}</td>
+                  <td>{{row.source}}</td>
+                  <td class="console-notes-cell">{{if
+                      row.notes
+                      row.notes
+                      "—"
+                    }}</td>
+                  <td>
+                    {{#if row.hasReceipt}}
+                      <button
+                        type="button"
+                        class="btn-link"
+                        {{on "click" (fn this.viewReceipt row.id)}}
+                      >View</button>
+                    {{else if row.invoiceUrl}}
+                      <a
+                        href={{row.invoiceUrl}}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="link"
+                      >Invoice</a>
+                    {{else}}
+                      <span class="text-muted">—</span>
+                    {{/if}}
+                  </td>
+                  <td class="text-right">
+                    {{#if row.paid}}
+                      <button
+                        type="button"
+                        class="btn btn-secondary btn-xs"
+                        data-test-company-make-right={{row.id}}
+                        {{on "click" (fn this.openRemedy row)}}
+                      >Make it right</button>
+                    {{/if}}
+                  </td>
+                </tr>
+              {{/each}}
+            </tbody>
+          </table>
+        </div>
+      {{else}}
+        <p class="text-muted">No payments recorded yet.</p>
+      {{/if}}
+    </div>
+
+  {{else if (eq this.activeTab "history")}}
+    <div class="glass-panel p-6">
+      <h3 class="font-lg font-bold mb-4">History</h3>
+      {{#if this.historyLoading}}
+        <p class="text-muted">Loading history…</p>
+      {{else if this.historyRows}}
+        <div class="data-table-wrapper">
+          <table class="data-table" data-test-company-history-table>
+            <thead>
+              <tr>
+                <th>When</th>
+                <th>Who</th>
+                <th>What</th>
+              </tr>
+            </thead>
+            <tbody>
+              {{#each this.historyRows as |row|}}
+                <tr>
+                  <td>{{format-date-time row.when}}</td>
+                  <td>{{row.who}}</td>
+                  <td>{{row.what}}</td>
+                </tr>
+              {{/each}}
+            </tbody>
+          </table>
+        </div>
+      {{else}}
+        <p class="text-muted">No operator events for this company yet.</p>
+      {{/if}}
+    </div>
+  {{/if}}
+
+  {{! ---- Deal modal ---- }}
+  <Ui::Modal
+    @isOpen={{this.dealModalOpen}}
+    @title="{{if this.dealEditing 'Edit' 'Give'}} {{this.company.name}} a deal"
+    @onClose={{this.closeDealModal}}
+    @showClose={{true}}
+    @panelClass="modal-panel--wide"
+  >
+    <div class="flex col gap-4" data-test-deal-form>
+      <div class="console-form-row">
+        <div class="flex col gap-2 flex-2">
+          <label class="font-sm text-muted" for="deal-price">Price</label>
+          <input
+            id="deal-price"
+            type="number"
+            min="0"
+            step="0.01"
+            class="form-input"
+            value={{this.dealPrice}}
+            data-test-deal-price
+            {{on "input" (fn this.setDealField "dealPrice")}}
+          />
+        </div>
+        <div class="flex col gap-2 flex-1">
+          <label class="font-sm text-muted" for="deal-currency">Currency</label>
+          <input
+            id="deal-currency"
+            type="text"
+            maxlength="3"
+            class="form-input console-currency-input"
+            value={{this.dealCurrency}}
+            data-test-deal-currency
+            {{on "input" (fn this.setDealField "dealCurrency")}}
+          />
+        </div>
+        <div class="flex col gap-2 flex-2">
+          <label class="font-sm text-muted" for="deal-basis">Basis</label>
+          <select
+            id="deal-basis"
+            class="form-input"
+            data-test-deal-basis
+            {{on "change" this.setDealBasis}}
+          >
+            {{#each this.basisOptions as |opt|}}
+              <option
+                value={{opt.value}}
+                selected={{eq this.dealBasis opt.value}}
+              >{{opt.label}}</option>
+            {{/each}}
+          </select>
+        </div>
+      </div>
+
+      <div class="flex col gap-2">
+        <label class="font-sm text-muted" for="deal-seats">Seats included</label>
+        <input
+          id="deal-seats"
+          type="number"
+          min="1"
+          step="1"
+          class="form-input"
+          value={{this.dealSeatCap}}
+          data-test-deal-seats
+          {{on "input" (fn this.setDealField "dealSeatCap")}}
+        />
+      </div>
+
+      <div class="console-form-row x-end">
+        <div class="flex col gap-2 flex-2">
+          <label class="font-sm text-muted" for="deal-until">Until</label>
+          <input
+            id="deal-until"
+            type="date"
+            class="form-input"
+            value={{this.dealUntil}}
+            disabled={{this.dealLifetime}}
+            data-test-deal-until
+            {{on "input" (fn this.setDealField "dealUntil")}}
+          />
+        </div>
+        <label class="console-checkbox flex-1">
+          <input
+            type="checkbox"
+            checked={{this.dealLifetime}}
+            data-test-deal-lifetime
+            {{on "change" this.toggleDealLifetime}}
+          />
+          Lifetime
+        </label>
+      </div>
+
+      <div class="flex col gap-2">
+        <label class="font-sm text-muted" for="deal-why">Why (required)</label>
+        <textarea
+          id="deal-why"
+          class="form-input"
+          rows="2"
+          data-test-deal-why
+          {{on "input" (fn this.setDealField "dealWhy")}}
+        >{{this.dealWhy}}</textarea>
+      </div>
+
+      <div class="alert alert-warning" data-test-deal-expiry-preview>
+        <div>
+          <div class="font-bold">What happens on expiry</div>
+          <p class="font-sm mt-1">{{this.expiryPreview}}</p>
+        </div>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button
+        type="button"
+        class="btn btn-secondary"
+        {{on "click" this.closeDealModal}}
+      >Cancel</button>
+      <button
+        type="button"
+        class="btn btn-primary"
+        disabled={{this.dealBusy}}
+        data-test-deal-submit
+        {{on "click" this.submitDeal}}
+      >{{if
+          this.dealBusy
+          "Saving…"
+          (if this.dealEditing "Save deal" "Give deal")
+        }}</button>
+    </div>
+  </Ui::Modal>
+
+  {{! ---- Record payment modal ---- }}
+  <Ui::Modal
+    @isOpen={{this.paymentModalOpen}}
+    @title="Record a payment from {{this.company.name}}"
+    @onClose={{this.closePaymentModal}}
+    @showClose={{true}}
+    @panelClass="modal-panel--wide"
+  >
+    <div class="flex col gap-4" data-test-payment-form>
+      <div class="console-form-row">
+        <div class="flex col gap-2 flex-2">
+          <label class="font-sm text-muted" for="pay-amount">Amount</label>
+          <input
+            id="pay-amount"
+            type="number"
+            min="0"
+            step="0.01"
+            class="form-input"
+            value={{this.payAmount}}
+            data-test-payment-amount
+            {{on "input" (fn this.setPayField "payAmount")}}
+          />
+        </div>
+        <div class="flex col gap-2 flex-1">
+          <label class="font-sm text-muted" for="pay-currency">Currency</label>
+          <input
+            id="pay-currency"
+            type="text"
+            maxlength="3"
+            class="form-input console-currency-input"
+            value={{this.payCurrency}}
+            data-test-payment-currency
+            {{on "input" (fn this.setPayField "payCurrency")}}
+          />
+        </div>
+      </div>
+
+      <div class="console-form-row">
+        <div class="flex col gap-2 flex-1">
+          <label class="font-sm text-muted" for="pay-received">Date received</label>
+          <input
+            id="pay-received"
+            type="date"
+            class="form-input"
+            value={{this.payReceivedAt}}
+            data-test-payment-date
+            {{on "input" (fn this.setPayField "payReceivedAt")}}
+          />
+        </div>
+        <div class="flex col gap-2 flex-1">
+          <label class="font-sm text-muted" for="pay-covers-start">Covers from</label>
+          <input
+            id="pay-covers-start"
+            type="date"
+            class="form-input"
+            value={{this.payCoversStart}}
+            data-test-payment-covers
+            {{on "input" (fn this.setPayField "payCoversStart")}}
+          />
+        </div>
+        <div class="flex col gap-2 flex-1">
+          <label class="font-sm text-muted" for="pay-covers-end">Covers to</label>
+          <input
+            id="pay-covers-end"
+            type="date"
+            class="form-input"
+            value={{this.payCoversEnd}}
+            data-test-payment-covers-end
+            {{on "input" (fn this.setPayField "payCoversEnd")}}
+          />
+        </div>
+      </div>
+
+      <div class="flex col gap-2">
+        <label class="font-sm text-muted" for="pay-notes">Notes</label>
+        <textarea
+          id="pay-notes"
+          class="form-input"
+          rows="2"
+          placeholder="JazzCash transfer, txn 8842"
+          data-test-payment-notes
+          {{on "input" (fn this.setPayField "payNotes")}}
+        >{{this.payNotes}}</textarea>
+      </div>
+
+      <div class="flex col gap-2">
+        <label class="font-sm text-muted" for="pay-receipt">Receipt image</label>
+        <input
+          id="pay-receipt"
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          class="form-input"
+          data-test-payment-receipt
+          {{on "change" this.setPayReceipt}}
+        />
+        {{#if this.payReceiptName}}
+          <span class="font-sm text-muted">{{this.payReceiptName}}</span>
+        {{/if}}
+      </div>
+      <p class="font-sm text-muted">Document it: notes or a receipt image is
+        required.</p>
+    </div>
+    <div class="modal-actions">
+      <button
+        type="button"
+        class="btn btn-secondary"
+        {{on "click" this.closePaymentModal}}
+      >Cancel</button>
+      <button
+        type="button"
+        class="btn btn-primary"
+        disabled={{this.payBusy}}
+        data-test-payment-submit
+        {{on "click" this.submitPayment}}
+      >{{if this.payBusy "Recording…" "Record"}}</button>
+    </div>
+  </Ui::Modal>
+
+  {{! ---- Make it right modal ---- }}
+  <Ui::Modal
+    @isOpen={{this.remedyModalOpen}}
+    @title="Make it right for {{this.company.name}}"
+    @onClose={{this.closeRemedy}}
+    @showClose={{true}}
+    @panelClass="modal-panel--wide"
+  >
+    <div class="flex col gap-4" data-test-remedy-form>
+      <div class="console-anchor">Payment: {{this.remedyAnchorLabel}}</div>
+
+      <div class="flex col gap-2">
+        <label class="console-radio">
+          <input
+            type="radio"
+            name="remedy-kind"
+            checked={{eq this.remedyKind "discount_next_bill"}}
+            data-test-remedy-discount
+            {{on "change" (fn this.setRemedyKind "discount_next_bill")}}
+          />
+          Discount the next bill
+        </label>
+        <label class="console-radio">
+          <input
+            type="radio"
+            name="remedy-kind"
+            checked={{eq this.remedyKind "refund"}}
+            data-test-remedy-refund
+            {{on "change" (fn this.setRemedyKind "refund")}}
+          />
+          Refund this payment
+        </label>
+      </div>
+
+      {{#if this.remedyIsRefund}}
+        <div class="flex gap-4">
+          <label class="console-radio">
+            <input
+              type="radio"
+              name="remedy-scope"
+              checked={{eq this.remedyScope "partial"}}
+              data-test-remedy-scope-partial
+              {{on "change" (fn this.setRemedyScope "partial")}}
+            />
+            Partial
+          </label>
+          <label class="console-radio">
+            <input
+              type="radio"
+              name="remedy-scope"
+              checked={{eq this.remedyScope "full"}}
+              data-test-remedy-scope-full
+              {{on "change" (fn this.setRemedyScope "full")}}
+            />
+            Full
+          </label>
+        </div>
+      {{/if}}
+
+      {{#if this.showRemedyAmount}}
+        <div class="flex col gap-2">
+          <label class="font-sm text-muted" for="remedy-amount">Amount</label>
+          <input
+            id="remedy-amount"
+            type="number"
+            min="0"
+            step="0.01"
+            class="form-input"
+            value={{this.remedyAmount}}
+            data-test-remedy-amount
+            data-test-remedy-partial-amount={{if this.remedyIsRefund true}}
+            {{on "input" (fn this.setRemedyField "remedyAmount")}}
+          />
+        </div>
+      {{/if}}
+
+      <div class="flex col gap-2">
+        <label class="font-sm text-muted" for="remedy-why">Why (required)</label>
+        <textarea
+          id="remedy-why"
+          class="form-input"
+          rows="2"
+          data-test-remedy-why
+          {{on "input" (fn this.setRemedyField "remedyWhy")}}
+        >{{this.remedyWhy}}</textarea>
+      </div>
+
+      {{#if this.remedyIsRefund}}
+        <div class="alert alert-warning" data-test-remedy-sla-alert>
+          <div>
+            <p class="font-sm">Refunds are initiated within 24 to 48 hours.
+              Money leaves the account. This is not undoable.</p>
+          </div>
+        </div>
+      {{/if}}
+    </div>
+    <div class="modal-actions">
+      <button
+        type="button"
+        class="btn btn-secondary"
+        {{on "click" this.closeRemedy}}
+      >Cancel</button>
+      <button
+        type="button"
+        class="btn {{if this.remedyIsRefund 'btn-danger' 'btn-primary'}}"
+        disabled={{this.remedyBusy}}
+        data-test-remedy-submit
+        {{on "click" this.submitRemedy}}
+      >{{if this.remedyBusy "Working…" this.remedyConfirmLabel}}</button>
+    </div>
+  </Ui::Modal>
+
+  {{! ---- Limits modal ---- }}
+  <Ui::Modal
+    @isOpen={{this.limitsModalOpen}}
+    @title="Edit limits"
+    @onClose={{this.closeLimitsModal}}
+    @showClose={{true}}
+  >
+    <div class="flex col gap-4">
+      <div class="flex col gap-2">
+        <label class="font-sm text-muted" for="limit-users">Max users</label>
+        <input
+          id="limit-users"
+          type="number"
+          min="1"
+          step="1"
+          class="form-input"
+          value={{this.limitMaxUsers}}
+          {{on "input" (fn this.setLimitField "limitMaxUsers")}}
+        />
+      </div>
+      <div class="flex col gap-2">
+        <label class="font-sm text-muted" for="limit-regions">Max regions</label>
+        <input
+          id="limit-regions"
+          type="number"
+          min="1"
+          step="1"
+          class="form-input"
+          value={{this.limitMaxRegions}}
+          {{on "input" (fn this.setLimitField "limitMaxRegions")}}
+        />
+      </div>
+      <div class="flex col gap-2">
+        <label class="font-sm text-muted" for="limit-properties">Max properties</label>
+        <input
+          id="limit-properties"
+          type="number"
+          min="1"
+          step="1"
+          class="form-input"
+          value={{this.limitMaxProperties}}
+          {{on "input" (fn this.setLimitField "limitMaxProperties")}}
+        />
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button
+        type="button"
+        class="btn btn-secondary"
+        {{on "click" this.closeLimitsModal}}
+      >Cancel</button>
+      <button
+        type="button"
+        class="btn btn-primary"
+        disabled={{this.limitsBusy}}
+        {{on "click" this.submitLimits}}
+      >{{if this.limitsBusy "Saving…" "Save"}}</button>
+    </div>
+  </Ui::Modal>
+
+  {{! ---- Confirms ---- }}
+  <ConfirmModal
+    @isOpen={{this.endDealConfirmOpen}}
+    @title="End this deal early?"
+    @message="{{this.company.name}} returns to standard pricing at the next cycle. This does not lock the account."
+    @confirmText="End deal early"
+    @confirmingText="Ending…"
+    @cancelText="Keep deal"
+    @confirmType="btn-danger"
+    @isConfirming={{this.endDealBusy}}
+    @onConfirm={{this.confirmEndDeal}}
+    @onClose={{this.closeEndDealConfirm}}
+  />
+
+  <ConfirmModal
+    @isOpen={{this.endLiftConfirmOpen}}
+    @title="End the lift now?"
+    @message="The write lock re-applies immediately. Their admin sees the 'reduce or pay' banner again."
+    @confirmText="End lift now"
+    @confirmingText="Ending…"
+    @cancelText="Keep lift"
+    @confirmType="btn-danger"
+    @isConfirming={{this.endLiftBusy}}
+    @onConfirm={{this.confirmEndLift}}
+    @onClose={{this.closeEndLiftConfirm}}
+  />
+
+{{else}}
+  <div class="glass-panel p-6 console-empty">
+    <p class="text-muted">This company could not be loaded.</p>
+    <button
+      type="button"
+      class="btn btn-secondary mt-3"
+      {{on "click" this.goBack}}
+    >Back to Companies</button>
+  </div>
+{{/if}}

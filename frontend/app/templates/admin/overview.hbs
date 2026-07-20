@@ -1,0 +1,135 @@
+{{page-title "Overview"}}
+
+<div class="page-header">
+  <div class="page-title-section">
+    <h1 class="page-title"><Ui::Ph @icon="gauge" @size="28px" /> Overview</h1>
+    <p class="page-subtitle">The business at a glance.</p>
+  </div>
+</div>
+
+{{! Hero band: MRR / ARR with per-currency chips }}
+<div class="glass-panel p-6 console-hero" data-test-overview-hero>
+  {{#if this.hasRevenue}}
+    <div class="console-hero__figures">
+      <div class="console-hero__figure">
+        <p class="kpi-label">MRR</p>
+        <h2 class="console-hero__value" data-test-overview-mrr>
+          {{format-money this.dominant.mrrMinor this.dominant.currency}}
+          <span class="console-hero__unit">/mo</span>
+        </h2>
+      </div>
+      <div class="console-hero__figure">
+        <p class="kpi-label">ARR</p>
+        <h2 class="console-hero__value" data-test-overview-arr>
+          {{format-money this.dominantArrMinor this.dominant.currency}}
+          <span class="console-hero__unit">/yr</span>
+        </h2>
+      </div>
+    </div>
+    {{#if this.showCurrencyChips}}
+      <div class="console-hero__chips">
+        {{#each this.mrrCurrencies as |band|}}
+          <span
+            class="console-chip"
+            data-test-overview-currency-chip={{band.currency}}
+          >
+            <strong class="console-chip__code">{{band.currency}}</strong>
+            {{format-money band.mrrMinor band.currency}}
+          </span>
+        {{/each}}
+      </div>
+    {{/if}}
+  {{else}}
+    <div class="console-hero__empty">
+      <p class="kpi-label">MRR</p>
+      <h2 class="console-hero__value">No revenue yet</h2>
+      <p class="font-sm text-muted mt-1">Close the first deal to light this up.</p>
+    </div>
+  {{/if}}
+</div>
+
+{{! Extensible tile grid }}
+<div class="kpi-grid mt-6">
+  {{#each this.tiles as |tile|}}
+    <div class="kpi-card {{tile.accent}}" data-test-overview-tile={{tile.key}}>
+      <div class="kpi-icon-wrap {{tile.iconAccent}}">
+        <Ui::Ph @icon={{tile.icon}} @size="22px" />
+      </div>
+      <p class="kpi-label">{{tile.label}}</p>
+      <h3 class="kpi-value">{{tile.value}}</h3>
+    </div>
+  {{/each}}
+</div>
+
+<div class="console-rollups mt-6">
+  {{! By region }}
+  <div class="glass-panel p-6" data-test-overview-regions>
+    <h3 class="font-lg font-bold mb-4">By region</h3>
+    {{#if this.regions.length}}
+      <div class="flex col gap-3">
+        {{#each this.regions as |region|}}
+          <div class="console-region-row">
+            <span class="console-region-row__name">{{region.label}}</span>
+            <span class="console-region-bar">
+              <span
+                class="console-region-bar__fill"
+                style={{region.barStyle}}
+              ></span>
+            </span>
+            <span class="console-region-row__count">{{region.customers}}</span>
+          </div>
+        {{/each}}
+      </div>
+    {{else}}
+      <p class="text-muted">No companies yet.</p>
+    {{/if}}
+  </div>
+
+  {{! Upcoming manual payments }}
+  <div class="glass-panel p-6" data-test-overview-upcoming-payments>
+    <h3 class="font-lg font-bold mb-4">Upcoming manual payments</h3>
+    {{#if this.upcomingRows.length}}
+      <div class="data-table-wrapper">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Company</th>
+              <th>Amount</th>
+              <th>Due</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {{#each this.upcomingRows as |row|}}
+              <tr data-test-overview-upcoming-row>
+                <td>{{row.companyName}}</td>
+                <td class="font-bold">{{format-money
+                    row.amount
+                    row.currency
+                  }}</td>
+                <td>
+                  {{#if row.overdue}}
+                    <span class="status-badge status-failed">Overdue</span>
+                  {{else}}
+                    {{format-date row.coversEnd}}
+                  {{/if}}
+                </td>
+                <td>
+                  <LinkTo
+                    @route="admin.companies.company"
+                    @model={{row.companyId}}
+                    class="link"
+                  >Open</LinkTo>
+                </td>
+              </tr>
+            {{/each}}
+          </tbody>
+        </table>
+      </div>
+    {{else}}
+      <p class="text-muted">No manual payments due in the next
+        {{this.upcomingDays}}
+        days.</p>
+    {{/if}}
+  </div>
+</div>

@@ -44,6 +44,11 @@ Router.map(function () {
     this.route('cancel');
   });
   this.route('admin', function () {
-    this.route('companies');
+    this.route('overview');
+    this.route('companies', function () {
+      this.route('company', { path: '/:company_id' });
+    });
+    this.route('marketers');
+    this.route('system');
   });
 });

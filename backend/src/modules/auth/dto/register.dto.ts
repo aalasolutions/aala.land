@@ -2,6 +2,7 @@ import {
   IsString,
   IsEmail,
   IsNotEmpty,
+  IsOptional,
   MinLength,
   MaxLength,
   Validate,
@@ -44,4 +45,14 @@ export class RegisterDto {
   @IsNotEmpty()
   @MinLength(8)
   password: string;
+
+  @ApiProperty({
+    example: 'BILAL01',
+    required: false,
+    description: 'Marketer/referral code; first-touch, immutable after signup',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  marketerCode?: string;
 }

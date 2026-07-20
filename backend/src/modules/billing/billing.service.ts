@@ -121,21 +121,48 @@ export class BillingService {
     );
   }
 
-  /** Creates the provider Price for any active row that has no provider_price_id yet. */
-  async syncPrices(): Promise<{ synced: number; total: number }> {
+  /**
+   * Creates the provider Price for any active row that has no
+   * provider_price_id yet. A per-row failure is persisted VERBATIM
+   * (last_sync_error + timestamp) and never aborts the other rows, so a
+   * failed registration is visible on the System screen instead of silent
+   * (design section 10). A later success clears the recorded error.
+   */
+  async syncPrices(): Promise<{
+    synced: number;
+    failed: number;
+    total: number;
+  }> {
     const rows = await this.priceRepo.find({ where: { active: true } });
     let synced = 0;
+    let failed = 0;
     for (const row of rows) {
       if (row.providerPriceId) continue;
-      const priceId = await this.provider.ensurePrice(
-        row.kind,
-        row.currency,
-        row.unitAmount,
-      );
-      await this.priceRepo.update(row.id, { providerPriceId: priceId });
-      synced++;
+      try {
+        const priceId = await this.provider.ensurePrice(
+          row.kind,
+          row.currency,
+          row.unitAmount,
+        );
+        await this.priceRepo.update(row.id, {
+          providerPriceId: priceId,
+          lastSyncError: null,
+          lastSyncErrorAt: null,
+        });
+        synced++;
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        this.logger.error(
+          `Price sync failed for ${row.kind}/${row.currency}: ${message}`,
+        );
+        await this.priceRepo.update(row.id, {
+          lastSyncError: message,
+          lastSyncErrorAt: new Date(),
+        });
+        failed++;
+      }
     }
-    return { synced, total: rows.length };
+    return { synced, failed, total: rows.length };
   }
 
   // -------------------------------------------------------------------------
@@ -601,6 +628,33 @@ export class BillingService {
           `Reconcile manually against the provider dashboard.`,
       );
     }
+  }
+
+  // -------------------------------------------------------------------------
+  // "Make it right" pass-throughs (operator console). Thin by design: the
+  // provider port stays confined to the billing module, so the console never
+  // holds the BILLING_PROVIDER token.
+  // -------------------------------------------------------------------------
+
+  /** Refund a past card payment (partial: amountMinor, full: null). */
+  async refundCardPayment(
+    invoiceId: string,
+    amountMinor: number | null,
+  ): Promise<{ refundId: string }> {
+    return this.provider.refundInvoicePayment(invoiceId, amountMinor);
+  }
+
+  /** Reduce the customer's NEXT invoice by amountMinor (default remedy). */
+  async creditNextBill(
+    customerId: string,
+    amountMinor: number,
+    currency: string,
+  ): Promise<{ creditId: string }> {
+    return this.provider.creditCustomerBalance(
+      customerId,
+      amountMinor,
+      currency,
+    );
   }
 
   // -------------------------------------------------------------------------

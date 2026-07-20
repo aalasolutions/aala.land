@@ -223,7 +223,7 @@ describe('BillingService', () => {
       const result = await service.syncPrices();
 
       expect(provider.ensurePrice).not.toHaveBeenCalled();
-      expect(result).toEqual({ synced: 0, total: 2 });
+      expect(result).toEqual({ synced: 0, failed: 0, total: 2 });
     });
 
     it('creates provider prices for rows without providerPriceId and returns counts', async () => {
@@ -268,13 +268,56 @@ describe('BillingService', () => {
         'usd',
         25000,
       );
-      expect(result).toEqual({ synced: 2, total: 3 });
+      expect(result).toEqual({ synced: 2, failed: 0, total: 3 });
     });
 
     it('returns zero counts when no active prices exist', async () => {
       (priceRepo.find as jest.Mock).mockResolvedValue([]);
       const result = await service.syncPrices();
-      expect(result).toEqual({ synced: 0, total: 0 });
+      expect(result).toEqual({ synced: 0, failed: 0, total: 0 });
+    });
+
+    it('persists a per-row provider error VERBATIM and keeps syncing the rest', async () => {
+      const rows: Partial<BillingPrice>[] = [
+        {
+          id: 'bp-1',
+          kind: 'SEAT',
+          currency: 'pkr',
+          unitAmount: 100000,
+          active: true,
+          providerPriceId: null,
+        },
+        {
+          id: 'bp-2',
+          kind: 'SEAT',
+          currency: 'usd',
+          unitAmount: 2500,
+          active: true,
+          providerPriceId: null,
+        },
+      ];
+      (priceRepo.find as jest.Mock).mockResolvedValue(rows);
+      (provider.ensurePrice as jest.Mock)
+        .mockRejectedValueOnce(
+          new Error('Invalid currency: pkr is not supported for this account'),
+        )
+        .mockResolvedValueOnce('price_new_usd');
+      (priceRepo.update as jest.Mock).mockResolvedValue({ affected: 1 });
+
+      const result = await service.syncPrices();
+
+      expect(result).toEqual({ synced: 1, failed: 1, total: 2 });
+      expect(priceRepo.update).toHaveBeenCalledWith('bp-1', {
+        lastSyncError:
+          'Invalid currency: pkr is not supported for this account',
+        lastSyncErrorAt: expect.any(Date),
+      });
+      // The success clears any previously recorded error.
+      expect(priceRepo.update).toHaveBeenCalledWith('bp-2', {
+        providerPriceId: 'price_new_usd',
+        lastSyncError: null,
+        lastSyncErrorAt: null,
+      });
     });
   });
 

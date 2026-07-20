@@ -84,6 +84,7 @@ export class AuthController {
       dto.idToken,
       dto.companyName,
       dto.regionCode,
+      dto.marketerCode,
     );
   }
 

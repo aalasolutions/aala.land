@@ -7,6 +7,7 @@ export default class AuthService extends Service {
   @service region;
   @service router;
   @service socket;
+  @service notifications;
 
   get apiBase() {
     return config.APP.API_BASE;
@@ -234,6 +235,22 @@ export default class AuthService extends Service {
     return response;
   }
 
+  /**
+   * Re-reads the bootstrap bundle so session.lockState (and tier/regions)
+   * reflect a lock applied or lifted while the tenant is logged in. Failures
+   * keep the cached state; the next 423 retries.
+   */
+  async refreshLockState() {
+    try {
+      const res = await this.authorizedFetch(`${this.apiBase}/auth/profile`);
+      if (!res.ok) return;
+      const body = await res.json();
+      if (body?.data) this.session.hydrate(body.data);
+    } catch {
+      // keep cached state
+    }
+  }
+
   async fetchJson(path, options = {}) {
     let finalPath = path;
     if (
@@ -250,7 +267,14 @@ export default class AuthService extends Service {
       options,
     );
     if (!res.ok) {
-      throw new Error(await parseErrorResponse(res, 'Request failed'));
+      const message = await parseErrorResponse(res, 'Request failed');
+      if (res.status === 423) {
+        // Write lock (COMPANY_LOCKED). Surface the reduce-or-pay message and
+        // pull fresh lockState so the banner appears mid-session (design 8.2).
+        this.notifications.error(message);
+        void this.refreshLockState();
+      }
+      throw new Error(message);
     }
 
     const contentType = res.headers.get('content-type');

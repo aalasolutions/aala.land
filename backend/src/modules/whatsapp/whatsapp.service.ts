@@ -40,6 +40,15 @@ export class WhatsappService implements OnModuleInit {
     }
   }
 
+  /** Live count of connected WhatsApp instances (operator scoreboard tile). */
+  countConnectedInstances(): number {
+    let connected = 0;
+    for (const [, inst] of this.manager.getAll()) {
+      if (inst.getStatus().connection === 'connected') connected++;
+    }
+    return connected;
+  }
+
   // ── Instance wiring ────────────────────────────────────────────────────
 
   private async ensureInstance(

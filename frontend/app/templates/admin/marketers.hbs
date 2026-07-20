@@ -1,0 +1,90 @@
+{{page-title "Marketers"}}
+
+<div class="page-header">
+  <div class="page-title-section">
+    <h1 class="page-title"><Ui::Ph @icon="megaphone" @size="28px" />
+      Marketers</h1>
+    <p class="page-subtitle">MRR by referral code. Numbers only.</p>
+  </div>
+</div>
+
+<div class="glass-panel p-5">
+  <div class="data-table-wrapper">
+    <table class="data-table" data-test-marketers-table>
+      <thead>
+        <tr>
+          <th></th>
+          <th>Code</th>
+          <th>Companies</th>
+          <th>Paying</th>
+          <th>MRR</th>
+          <th>Last signup</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{#each this.rows as |row|}}
+          <tr data-test-marketers-row={{row.key}}>
+            <td>
+              {{#if row.companyLinks.length}}
+                <button
+                  type="button"
+                  class="btn-link"
+                  data-test-marketers-expand={{row.key}}
+                  {{on "click" (fn this.toggle row.key)}}
+                >
+                  <Ui::Ph
+                    @icon={{if
+                      (eq this.expanded row.key)
+                      "caret-down"
+                      "caret-right"
+                    }}
+                    @size="16px"
+                  />
+                </button>
+              {{/if}}
+            </td>
+            <td class="font-bold">{{row.code}}</td>
+            <td>{{row.companies}}</td>
+            <td>{{row.paying}}</td>
+            <td>
+              {{#if row.mrr}}
+                <span class="console-chip-row">
+                  {{#each row.mrr as |band|}}
+                    <span class="console-chip">
+                      <strong
+                        class="console-chip__code"
+                      >{{band.currency}}</strong>
+                      {{format-money band.mrrMinor band.currency}}
+                    </span>
+                  {{/each}}
+                </span>
+              {{else}}
+                <span class="text-muted">—</span>
+              {{/if}}
+            </td>
+            <td>{{if row.lastSignupAt (format-date row.lastSignupAt) "—"}}</td>
+          </tr>
+          {{#if (eq this.expanded row.key)}}
+            <tr class="console-expand-row">
+              <td colspan="6">
+                <div class="console-expand">
+                  {{#each row.companyLinks as |company|}}
+                    <LinkTo
+                      @route="admin.companies.company"
+                      @model={{company.id}}
+                      class="link"
+                    >{{company.name}}</LinkTo>
+                  {{/each}}
+                </div>
+              </td>
+            </tr>
+          {{/if}}
+        {{else}}
+          <tr>
+            <td colspan="6" class="text-muted text-center p-4">No companies yet.</td>
+          </tr>
+        {{/each}}
+      </tbody>
+    </table>
+  </div>
+</div>

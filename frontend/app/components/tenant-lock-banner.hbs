@@ -1,0 +1,22 @@
+{{! Tenant write-lock / grace banner (design section 8.2, ruling 9).
+Locked: writes blocked server-side, reads and export stay. Lifted: grace
+until the lift date, then the lock re-applies automatically. }}
+{{#if @lockState.locked}}
+  <div
+    class="alert alert-error tenant-lock-banner"
+    data-test-tenant-lock-banner
+  >
+    <Ui::Ph @icon="lock" @size="18px" />
+    <span>You are over your limits. Reduce or pay to continue. Your data is safe
+      and stays readable and exportable.</span>
+  </div>
+{{else if @lockState.lifted}}
+  <div
+    class="alert alert-warning tenant-lock-banner"
+    data-test-tenant-grace-banner
+  >
+    <Ui::Ph @icon="clock" @size="18px" />
+    <span>Your account is active until
+      {{format-date @lockState.liftUntil}}. Settle before then to keep access.</span>
+  </div>
+{{/if}}

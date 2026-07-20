@@ -1,0 +1,84 @@
+{{page-title "System"}}
+
+<div class="page-header">
+  <div class="page-title-section">
+    <h1 class="page-title"><Ui::Ph @icon="gear-six" @size="28px" /> System</h1>
+    <p class="page-subtitle">Billing health and price catalogue.</p>
+  </div>
+</div>
+
+<div class="glass-panel p-6" data-test-system-price-health>
+  <div class="flex between x-center mb-4">
+    <div class="flex x-center gap-3">
+      <h3 class="font-lg font-bold">Price catalogue</h3>
+      <span
+        class="status-badge {{this.healthBadge.cls}}"
+        data-test-system-price-status
+      >{{this.healthBadge.text}}</span>
+    </div>
+    {{#if this.needsFix}}
+      <button
+        type="button"
+        class="btn btn-secondary"
+        disabled={{this.fixing}}
+        data-test-system-price-fix
+        {{on "click" this.fix}}
+      >{{if this.fixing "Syncing…" "Fix"}}</button>
+    {{/if}}
+  </div>
+
+  {{#if this.data.checkedAt}}
+    <p class="font-sm text-muted mb-4">Last checked
+      {{format-date-time this.data.checkedAt}}
+      (automatic).</p>
+  {{/if}}
+
+  {{#if this.rows.length}}
+    <div class="data-table-wrapper">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Price</th>
+            <th>Amount</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{#each this.rows as |row|}}
+            <tr data-test-system-price-row="{{row.kind}}-{{row.currency}}">
+              <td class="font-bold">{{row.label}}</td>
+              <td>{{format-money row.unitAmount row.currency}}</td>
+              <td>
+                {{#if (eq row.status "registered")}}
+                  <span class="status-badge status-paid">Registered</span>
+                {{else if (eq row.status "missing")}}
+                  <span class="status-badge status-pending">Not yet registered</span>
+                {{else}}
+                  <div class="flex col gap-2">
+                    <span class="status-badge status-failed">Failed</span>
+                    {{#if row.lastError}}
+                      <div
+                        class="alert alert-error console-price-error"
+                        data-test-system-price-error
+                      >
+                        <div>
+                          <p class="font-sm">{{row.lastError}}</p>
+                          {{#if row.lastErrorAt}}
+                            <p class="font-xs text-muted mt-1">Failed
+                              {{format-date-time row.lastErrorAt}}</p>
+                          {{/if}}
+                        </div>
+                      </div>
+                    {{/if}}
+                  </div>
+                {{/if}}
+              </td>
+            </tr>
+          {{/each}}
+        </tbody>
+      </table>
+    </div>
+  {{else}}
+    <p class="text-muted">No active price rows.</p>
+  {{/if}}
+</div>

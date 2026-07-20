@@ -12,6 +12,10 @@ import { Region, resolveRegions } from '@shared/constants/regions';
 import { RegisterDto } from './dto/register.dto';
 import { Role } from '@shared/enums/roles.enum';
 import { SubscriptionTier } from '../companies/entities/company.entity';
+import {
+  CompanyLockState,
+  LockStateService,
+} from '@modules/lock/lock-state.service';
 import { DataSource } from 'typeorm';
 import * as bcrypt from 'bcryptjs';
 import * as crypto from 'crypto';
@@ -52,6 +56,7 @@ interface LoginResponse {
   regions: Region[];
   defaultRegionCode: string;
   subscriptionTier: SubscriptionTier | null;
+  lockState: CompanyLockState | null;
 }
 
 interface BootstrapResponse {
@@ -65,12 +70,15 @@ interface BootstrapResponse {
   regions: Region[];
   defaultRegionCode: string;
   subscriptionTier: SubscriptionTier | null;
+  lockState: CompanyLockState | null;
 }
 
 interface CompanyContext {
   regions: Region[];
   defaultRegionCode: string;
   subscriptionTier: SubscriptionTier | null;
+  /** Write-lock/banner state for the tenant app (design 8.2); null without a company. */
+  lockState: CompanyLockState | null;
 }
 
 interface JwtPayload {
@@ -93,6 +101,7 @@ export class AuthService {
     private readonly usersService: UsersService,
     private readonly jwtService: JwtService,
     private readonly companiesService: CompaniesService,
+    private readonly lockStateService: LockStateService,
     private readonly dataSource: DataSource,
   ) {}
 
@@ -122,6 +131,10 @@ export class AuthService {
       regions: company ? resolveRegions(company.activeRegions) : [],
       defaultRegionCode: company?.defaultRegionCode ?? '',
       subscriptionTier: company?.subscriptionTier ?? null,
+      // Read-time evaluation; drives the tenant lock/grace banner (design 8.2).
+      lockState: companyId
+        ? await this.lockStateService.getLockState(companyId)
+        : null,
     };
   }
 
@@ -277,6 +290,8 @@ export class AuthService {
         slug: dto.companySlug,
         defaultRegionCode: dto.defaultRegionCode,
         activeRegions: [dto.defaultRegionCode],
+        // First-touch attribution; immutable after this write (requirement 2.5).
+        marketerCode: dto.marketerCode?.trim() || null,
       });
       const savedCompany = await companyRepo.save(company);
 
@@ -310,6 +325,8 @@ export class AuthService {
         regions: resolveRegions(savedCompany.activeRegions),
         defaultRegionCode: savedCompany.defaultRegionCode,
         subscriptionTier: savedCompany.subscriptionTier,
+        // A company created this instant cannot be locked.
+        lockState: null,
       };
     });
   }
