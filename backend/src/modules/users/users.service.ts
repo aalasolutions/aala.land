@@ -986,7 +986,8 @@ export class UsersService {
     // Subscription-backed paid plan: the provider seat gate governs, no column cap.
     if (
       company.subscriptionTier !== SubscriptionTier.FREE &&
-      company.billingSubscriptionId
+      company.billingSubscriptionId &&
+      company.billingCustomerId
     ) {
       return company;
     }
