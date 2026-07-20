@@ -13,16 +13,15 @@
 # and/or dragonfly service in a skip-worktree copy and point DB_HOST/REDIS_HOST
 # in backend/.env at the managed endpoints.
 #
-# `name` fixes the project (and thus the network `aala-land_default`) so the
-# frontend compose can join it by name.
-name: aala-land
+# STACK_NAME namespaces the whole stack so staging can run beside prod. Unset = aala-land.
+name: ${STACK_NAME:-aala-land}
 
 services:
   postgres:
     image: postgres:18-alpine
-    container_name: aala-land-postgres
+    container_name: ${STACK_NAME:-aala-land}-postgres
     ports:
-      - "5480:5432"
+      - "${DB_HOST_PORT:-5480}:5432"
     environment:
       POSTGRES_USER: ${DB_USERNAME}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
@@ -38,9 +37,9 @@ services:
 
   dragonfly:
     image: docker.dragonflydb.io/dragonflydb/dragonfly:latest
-    container_name: aala-land-dragonfly
+    container_name: ${STACK_NAME:-aala-land}-dragonfly
     ports:
-      - "6470:6379"
+      - "${REDIS_HOST_PORT:-6470}:6379"
     volumes:
       - dragonfly_data:/data
     healthcheck:
@@ -54,7 +53,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: aala-land-backend
+    container_name: ${STACK_NAME:-aala-land}-backend
     ports:
       - "${BACKEND_HOST_PORT:-3010}:${PORT:-3010}"
     env_file:
