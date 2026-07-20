@@ -79,12 +79,13 @@ export default class AdminCompaniesIndexController extends Controller {
 
   @action
   previousPage() {
-    if (this.page > 1) this.page = this.page - 1;
+    const page = Number(this.page) || 1;
+    if (page > 1) this.page = page - 1;
   }
 
   @action
   nextPage() {
-    this.page = this.page + 1;
+    this.page = (Number(this.page) || 1) + 1;
   }
 
   @action
