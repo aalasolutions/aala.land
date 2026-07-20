@@ -1,5 +1,5 @@
-# Per-stack project name so prod/staging don't manage each other's containers.
-name: ${STACK_NAME:-aala-land}
+# Own per-stack project, separate from the backend project (no cross orphans).
+name: ${STACK_NAME:-aala-land}-frontend
 
 services:
   aala-land-frontend:
