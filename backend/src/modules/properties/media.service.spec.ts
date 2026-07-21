@@ -6,6 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { MediaService } from './media.service';
+import { SystemEmailService } from '../email/system-email.service';
 import { PropertyMedia } from './entities/property-media.entity';
 import { Unit } from './entities/unit.entity';
 import { Asset } from './entities/asset.entity';
@@ -146,6 +147,10 @@ describe('MediaService', () => {
         {
           provide: getRepositoryToken(Asset),
           useValue: { findOne: jest.fn().mockResolvedValue(null) },
+        },
+        {
+          provide: SystemEmailService,
+          useValue: { sendQuotaExceededToCompany: jest.fn() },
         },
       ],
     }).compile();

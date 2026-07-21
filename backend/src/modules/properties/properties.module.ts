@@ -10,6 +10,7 @@ import { PropertyMedia } from './entities/property-media.entity';
 import { PropertyDocument } from './entities/property-document.entity';
 import { Owner } from '../owners/entities/owner.entity';
 import { Company } from '../companies/entities/company.entity';
+import { EmailModule } from '../email/email.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { Company } from '../companies/entities/company.entity';
       Owner,
       Company,
     ]),
+    EmailModule,
   ],
   controllers: [PropertiesController],
   providers: [PropertiesService, MediaService],

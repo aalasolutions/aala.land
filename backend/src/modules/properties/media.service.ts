@@ -4,6 +4,8 @@ import {
   BadRequestException,
   NotFoundException,
   InternalServerErrorException,
+  HttpException,
+  HttpStatus,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -18,7 +20,11 @@ import { Unit } from './entities/unit.entity';
 import { Asset } from './entities/asset.entity';
 import { Company } from '../companies/entities/company.entity';
 import { UploadMediaDto } from './dto/upload-media.dto';
-import { reserveStorage } from '@shared/utils/storage-quota.util';
+import {
+  getStorageQuotaBytes,
+  reserveStorage,
+} from '@shared/utils/storage-quota.util';
+import { SystemEmailService } from '../email/system-email.service';
 import { createReadStream } from 'fs';
 import { unlink } from 'fs/promises';
 import sharp from 'sharp';
@@ -67,7 +73,61 @@ export class MediaService {
     private readonly unitRepository: Repository<Unit>,
     @InjectRepository(Asset)
     private readonly assetRepository: Repository<Asset>,
+    private readonly systemEmail: SystemEmailService,
   ) {}
+
+  /**
+   * Reserve storage, and on an over-quota rejection notify the company billing
+   * contact (deduped to once per 24h) before rethrowing. The email is
+   * best-effort: a mail failure never masks the original 507.
+   */
+  private async reserveStorageOrNotify(
+    companyId: string,
+    bytes: number,
+  ): Promise<void> {
+    try {
+      await reserveStorage(this.companyRepository, companyId, bytes);
+    } catch (err) {
+      if (
+        err instanceof HttpException &&
+        err.getStatus() === HttpStatus.INSUFFICIENT_STORAGE
+      ) {
+        this.notifyStorageQuotaExceeded(companyId).catch((e) =>
+          this.logger.error(
+            `Quota email failed for company ${companyId}: ${e instanceof Error ? e.message : String(e)}`,
+          ),
+        );
+      }
+      throw err;
+    }
+  }
+
+  private async notifyStorageQuotaExceeded(companyId: string): Promise<void> {
+    // Atomically claim the 24h window; only the row that flips the timestamp
+    // sends the email, so concurrent rejections never double-send.
+    const claim = await this.companyRepository
+      .createQueryBuilder()
+      .update(Company)
+      .set({ storageQuotaNotifiedAt: () => 'now()' })
+      .where('id = :companyId', { companyId })
+      .andWhere(
+        "(storage_quota_notified_at IS NULL OR storage_quota_notified_at < now() - interval '24 hours')",
+      )
+      .execute();
+    if (!claim.affected) return;
+
+    const company = await this.companyRepository.findOne({
+      where: { id: companyId },
+    });
+    if (!company) return;
+    const quotaBytes = getStorageQuotaBytes(company);
+    const gb = (n: number) => (n / (1024 * 1024 * 1024)).toFixed(2);
+    await this.systemEmail.sendQuotaExceededToCompany(
+      companyId,
+      'storage',
+      `You have used ${gb(Number(company.storageUsedBytes))} GB of your ${gb(quotaBytes)} GB storage.`,
+    );
+  }
 
   // S3 plumbing
 
@@ -322,7 +382,7 @@ export class MediaService {
     //    output). Reserving before any S3 PUT closes the TOCTOU gap between the quota
     //    check and the counter update — the check and increment are one conditional
     //    UPDATE, so concurrent uploads cannot both pass and overshoot the quota.
-    await reserveStorage(this.companyRepository, companyId, totalActualBytes);
+    await this.reserveStorageOrNotify(companyId, totalActualBytes);
 
     // 9. Build S3 keys. safeName truncated to 200 chars to stay under s3Key varchar(500).
     const timestamp = Date.now();
@@ -481,7 +541,7 @@ export class MediaService {
 
     // 3. Atomically reserve storage before any S3 PUT (TOCTOU-safe — see
     //    reserveStorage). Closing this gap here mirrors the fix in uploadImage.
-    await reserveStorage(this.companyRepository, companyId, file.size);
+    await this.reserveStorageOrNotify(companyId, file.size);
 
     const { client, bucket } = this.documentsTarget();
     const timestamp = Date.now();

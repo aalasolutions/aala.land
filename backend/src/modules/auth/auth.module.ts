@@ -13,12 +13,14 @@ import { User } from '../users/entities/user.entity';
 import { Company } from '../companies/entities/company.entity';
 import { ImpersonateService } from './impersonate.service';
 import { LockModule } from '@modules/lock/lock.module';
+import { EmailModule } from '@modules/email/email.module';
 
 @Module({
   imports: [
     UsersModule,
     CompaniesModule,
     LockModule,
+    EmailModule,
     TypeOrmModule.forFeature([User, Company]),
     PassportModule,
     JwtModule.registerAsync({

@@ -21,9 +21,7 @@ import * as bcrypt from 'bcryptjs';
 import * as crypto from 'crypto';
 import { paginationOptions } from '../../shared/utils/pagination.util';
 import { getRoleLevel } from '../../shared/utils/auth.util';
-import { MailService } from '../../shared/services/mail.service';
-import { EmailTemplatesService } from '../email-templates/email-templates.service';
-import { EmailTemplateCategory } from '../email-templates/entities/email-template.entity';
+import { SystemEmailService } from '../email/system-email.service';
 import { Role } from '../../shared/enums/roles.enum';
 import {
   Company,
@@ -54,8 +52,7 @@ export class UsersService {
     @InjectRepository(Company)
     private readonly companyRepository: Repository<Company>,
     private readonly dataSource: DataSource,
-    private readonly mailService: MailService,
-    private readonly emailTemplatesService: EmailTemplatesService,
+    private readonly systemEmail: SystemEmailService,
     private readonly billingService: BillingService,
     private readonly reassignmentService: UserReassignmentService,
     @Optional()
@@ -1011,58 +1008,22 @@ export class UsersService {
     name: string,
     inviteToken: string,
   ): Promise<void> {
-    const appUrl = process.env.APP_URL || 'http://localhost:4200';
+    // Inviting a teammate is an ACCOUNT email, not tenant CRM outreach: it uses
+    // the fixed system-branded template, never a company-editable one.
+    const appUrl = (process.env.APP_URL || 'http://localhost:4200').replace(
+      /\/$/,
+      '',
+    );
     const inviteUrl = `${appUrl}/accept-invite?token=${inviteToken}`;
-    const variables = { role, name, email, inviteUrl };
-
-    let subject: string;
-    let text: string;
-
-    try {
-      const { data: templates } = await this.emailTemplatesService.findAll(
-        companyId,
-        1,
-        1,
-        EmailTemplateCategory.WELCOME,
-      );
-
-      if (templates.length > 0) {
-        const rendered = await this.emailTemplatesService.render(
-          templates[0].id,
-          companyId,
-          variables,
-        );
-        subject = rendered.subject;
-        text = rendered.body;
-      } else {
-        subject = 'You have been invited to AALA.LAND';
-        text = this.buildFallbackInviteText(variables);
-      }
-    } catch (err) {
-      this.logger.warn(
-        `Template lookup failed for invite to ${email}, using plaintext fallback: ${err instanceof Error ? err.message : String(err)}`,
-      );
-      subject = 'You have been invited to AALA.LAND';
-      text = this.buildFallbackInviteText(variables);
-    }
-
-    await this.mailService.sendMail({ to: email, subject, text });
-  }
-
-  private buildFallbackInviteText(vars: {
-    name: string;
-    email: string;
-    inviteUrl: string;
-  }): string {
-    return [
-      `Hi ${vars.name},`,
-      '',
-      'You have been invited to AALA.LAND.',
-      '',
-      'Click the link below to set your password and activate your account:',
-      vars.inviteUrl,
-      '',
-      'This link expires in 72 hours.',
-    ].join('\n');
+    const company = await this.companyRepository.findOne({
+      where: { id: companyId },
+      select: ['id', 'name'],
+    });
+    await this.systemEmail.sendInvite(
+      { email, name },
+      role,
+      company?.name ?? 'your team',
+      inviteUrl,
+    );
   }
 }
