@@ -81,6 +81,7 @@ describe('MediaService', () => {
   let companyRepo: any;
   let mediaRepo: any;
   let unitRepo: any;
+  let systemEmail: { sendQuotaExceededToCompany: jest.Mock };
   let mockQb: any;
 
   const companyId = 'company-uuid-1';
@@ -159,6 +160,7 @@ describe('MediaService', () => {
     companyRepo = module.get(getRepositoryToken(Company));
     mediaRepo = module.get(getRepositoryToken(PropertyMedia));
     unitRepo = module.get(getRepositoryToken(Unit));
+    systemEmail = module.get(SystemEmailService);
 
     // Default: file-type confirms JPEG
     (fileTypeFromBuffer as jest.Mock).mockResolvedValue({
@@ -249,6 +251,50 @@ describe('MediaService', () => {
 
       // Only the failed reservation attempt touched the counter — no S3 PUT happened.
       expect(mockSend).not.toHaveBeenCalled();
+    });
+
+    it('emails the company on the 507 path after claiming the 24h window', async () => {
+      companyRepo.findOne.mockResolvedValue({
+        ...mockCompany,
+        storageUsedBytes: FREE_STORAGE_BYTES,
+        subscriptionTier: SubscriptionTier.FREE,
+      });
+      // First execute() = reserveStorage's reservation UPDATE fails (over quota);
+      // the second = the notify dedup claim, which succeeds via the default mock.
+      mockQb.execute.mockResolvedValueOnce({ affected: 0 });
+
+      await expect(
+        service.uploadImage(companyId, makeFile(), { unitId }),
+      ).rejects.toMatchObject({ status: 507 });
+
+      // The quota email is fire-and-forget; let the microtask settle.
+      await new Promise((resolve) => setImmediate(resolve));
+
+      expect(systemEmail.sendQuotaExceededToCompany).toHaveBeenCalledWith(
+        companyId,
+        'storage',
+        expect.stringContaining('storage'),
+      );
+    });
+
+    it('does not email when the 24h dedup window is already claimed', async () => {
+      companyRepo.findOne.mockResolvedValue({
+        ...mockCompany,
+        storageUsedBytes: FREE_STORAGE_BYTES,
+        subscriptionTier: SubscriptionTier.FREE,
+      });
+      // Reservation fails (507); the dedup claim also matches 0 rows (already
+      // notified within 24h), so no email is sent.
+      mockQb.execute
+        .mockResolvedValueOnce({ affected: 0 })
+        .mockResolvedValueOnce({ affected: 0 });
+
+      await expect(
+        service.uploadImage(companyId, makeFile(), { unitId }),
+      ).rejects.toMatchObject({ status: 507 });
+      await new Promise((resolve) => setImmediate(resolve));
+
+      expect(systemEmail.sendQuotaExceededToCompany).not.toHaveBeenCalled();
     });
 
     it('throws NotFoundException when unit does not belong to company', async () => {

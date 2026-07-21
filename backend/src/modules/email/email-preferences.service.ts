@@ -25,8 +25,12 @@ export class EmailPreferencesService {
   ) {}
 
   private secret(): string {
-    // Reuse the app secret; the token only gates a preference toggle, not auth.
-    return process.env.JWT_SECRET || 'dev-insecure-secret';
+    // Reuse the app secret; no insecure fallback, or tokens become forgeable.
+    const secret = process.env.JWT_SECRET;
+    if (!secret) {
+      throw new Error('JWT_SECRET is required for email preference tokens');
+    }
+    return secret;
   }
 
   /** Stable, non-expiring token binding an unsubscribe link to one user. */
@@ -52,10 +56,14 @@ export class EmailPreferencesService {
       .createHmac('sha256', this.secret())
       .update(userId)
       .digest('base64url');
-    const got = parts[1];
+    // Compare BYTE lengths before timingSafeEqual: it throws on unequal-length
+    // buffers, and a crafted multi-byte token can match on char length while
+    // differing in bytes. Guarding here keeps an invalid token a clean null.
+    const expectedBuf = Buffer.from(expected);
+    const gotBuf = Buffer.from(parts[1]);
     if (
-      expected.length !== got.length ||
-      !crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(got))
+      expectedBuf.length !== gotBuf.length ||
+      !crypto.timingSafeEqual(expectedBuf, gotBuf)
     ) {
       return null;
     }

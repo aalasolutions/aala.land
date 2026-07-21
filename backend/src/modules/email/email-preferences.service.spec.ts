@@ -54,6 +54,18 @@ describe('EmailPreferencesService', () => {
       expect(service.verifyToken('not-a-token')).toBeNull();
       expect(service.verifyToken('')).toBeNull();
     });
+
+    it('returns null (never throws) for a multi-byte signature part', () => {
+      // A crafted sig whose char length can equal the expected but whose byte
+      // length differs; timingSafeEqual would throw on unequal buffers.
+      const token = service.signToken(userId);
+      const userPart = token.split('.')[0];
+      const multibyte = '€'.repeat(token.split('.')[1].length);
+      expect(() =>
+        service.verifyToken(`${userPart}.${multibyte}`),
+      ).not.toThrow();
+      expect(service.verifyToken(`${userPart}.${multibyte}`)).toBeNull();
+    });
   });
 
   describe('getByUserId', () => {
