@@ -6,6 +6,7 @@ import { AuthService } from './auth.service';
 import { UsersService } from '../users/users.service';
 import { CompaniesService } from '../companies/companies.service';
 import { LockStateService, UNLOCKED } from '../lock/lock-state.service';
+import { SystemEmailService } from '../email/system-email.service';
 import * as bcrypt from 'bcryptjs';
 import * as crypto from 'crypto';
 
@@ -77,6 +78,14 @@ describe('AuthService', () => {
           provide: DataSource,
           useValue: {
             transaction: jest.fn(),
+          },
+        },
+        {
+          provide: SystemEmailService,
+          useValue: {
+            sendWelcome: jest.fn(),
+            sendPasswordReset: jest.fn(),
+            sendInvite: jest.fn(),
           },
         },
       ],

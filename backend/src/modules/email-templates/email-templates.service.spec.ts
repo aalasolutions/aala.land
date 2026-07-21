@@ -1,18 +1,24 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { NotFoundException } from '@nestjs/common';
+import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { EmailTemplatesService } from './email-templates.service';
 import {
   EmailTemplate,
   EmailTemplateCategory,
 } from './entities/email-template.entity';
+import { Company, SubscriptionTier } from '../companies/entities/company.entity';
 
 describe('EmailTemplatesService', () => {
   let service: EmailTemplatesService;
   let repo: jest.Mocked<Repository<EmailTemplate>>;
+  let companyRepo: jest.Mocked<Repository<Company>>;
 
   const companyId = 'company-uuid-1';
+  const mockCompany: Partial<Company> = {
+    id: companyId,
+    subscriptionTier: SubscriptionTier.PRO,
+  };
 
   const mockTemplate: Partial<EmailTemplate> = {
     id: 'template-uuid-1',
@@ -42,11 +48,19 @@ describe('EmailTemplatesService', () => {
             remove: jest.fn(),
           },
         },
+        {
+          provide: getRepositoryToken(Company),
+          useValue: {
+            findOne: jest.fn(),
+          },
+        },
       ],
     }).compile();
 
     service = module.get<EmailTemplatesService>(EmailTemplatesService);
     repo = module.get(getRepositoryToken(EmailTemplate));
+    companyRepo = module.get(getRepositoryToken(Company));
+    companyRepo.findOne.mockResolvedValue(mockCompany as Company);
   });
 
   it('should be defined', () => {
@@ -226,6 +240,49 @@ describe('EmailTemplatesService', () => {
 
       expect(result.subject).toBe('Ahmed - Reminder');
       expect(result.body).toBe('Dear Ahmed, this is for Ahmed.');
+    });
+  });
+
+  describe('PRO gate', () => {
+    it('blocks FREE tier from creating templates', async () => {
+      companyRepo.findOne.mockResolvedValue({
+        id: companyId,
+        subscriptionTier: SubscriptionTier.FREE,
+      } as Company);
+
+      await expect(
+        service.create(companyId, {} as any, 'user-uuid-1'),
+      ).rejects.toThrow(ForbiddenException);
+      expect(repo.create).not.toHaveBeenCalled();
+    });
+
+    it('blocks FREE tier from listing templates', async () => {
+      companyRepo.findOne.mockResolvedValue({
+        id: companyId,
+        subscriptionTier: SubscriptionTier.FREE,
+      } as Company);
+
+      await expect(service.findAll(companyId, 1, 20)).rejects.toThrow(
+        ForbiddenException,
+      );
+    });
+
+    it('blocks a company with no record from any access', async () => {
+      companyRepo.findOne.mockResolvedValue(null);
+
+      await expect(service.findAll(companyId, 1, 20)).rejects.toThrow(
+        ForbiddenException,
+      );
+    });
+
+    it('allows ENTERPRISE tier the same as PRO', async () => {
+      companyRepo.findOne.mockResolvedValue({
+        id: companyId,
+        subscriptionTier: SubscriptionTier.ENTERPRISE,
+      } as Company);
+      repo.findAndCount.mockResolvedValue([[mockTemplate as EmailTemplate], 1]);
+
+      await expect(service.findAll(companyId, 1, 20)).resolves.toBeDefined();
     });
   });
 });

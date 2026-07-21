@@ -16,6 +16,19 @@ export enum AuthProvider {
   GOOGLE = 'google',
 }
 
+/** Suppressible email categories. Transactional/account emails ignore these. */
+export interface EmailPreferences {
+  billing: boolean;
+  productUpdates: boolean;
+  statsDigest: boolean;
+}
+
+export const DEFAULT_EMAIL_PREFERENCES: EmailPreferences = {
+  billing: true,
+  productUpdates: true,
+  statsDigest: true,
+};
+
 @Entity('users')
 export class User {
   @PrimaryGeneratedColumn('uuid')
@@ -90,6 +103,13 @@ export class User {
 
   @Column({ name: 'must_change_password', type: 'boolean', default: false })
   mustChangePassword: boolean;
+
+  @Column({
+    name: 'email_preferences',
+    type: 'jsonb',
+    default: () => `'${JSON.stringify(DEFAULT_EMAIL_PREFERENCES)}'`,
+  })
+  emailPreferences: EmailPreferences;
 
   @Column({
     name: 'reset_password_token',

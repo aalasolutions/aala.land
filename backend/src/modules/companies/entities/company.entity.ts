@@ -188,6 +188,17 @@ export class Company {
   })
   billingLastEventAt: Date | null;
 
+  /**
+   * When the company was last emailed about hitting storage quota. Claimed
+   * atomically to dedup the quota-exceeded email to at most once per 24h.
+   */
+  @Column({
+    name: 'storage_quota_notified_at',
+    type: 'timestamptz',
+    nullable: true,
+  })
+  storageQuotaNotifiedAt: Date | null;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 

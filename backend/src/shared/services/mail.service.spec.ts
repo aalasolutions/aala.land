@@ -66,6 +66,25 @@ describe('MailService', () => {
       expect(mockCreateTransport).not.toHaveBeenCalled();
     });
 
+    it('strips CR/LF from the subject to block header injection', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: true,
+        headers: { get: () => 'msg-id-123' },
+      });
+
+      await service.sendMail({
+        to: 'user@example.com',
+        subject: 'Welcome, Evil\r\nBcc: victim@example.com',
+        text: 'Hello',
+      });
+
+      const body = JSON.parse(
+        (global.fetch as jest.Mock).mock.calls[0][1].body as string,
+      );
+      expect(body.subject).toBe('Welcome, Evil Bcc: victim@example.com');
+      expect(body.subject).not.toMatch(/[\r\n]/);
+    });
+
     it('logs warning and does not throw when SendGrid returns error', async () => {
       (global.fetch as jest.Mock).mockResolvedValue({
         ok: false,

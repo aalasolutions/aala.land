@@ -16,6 +16,7 @@ import {
   CompanyLockState,
   LockStateService,
 } from '@modules/lock/lock-state.service';
+import { SystemEmailService } from '@modules/email/system-email.service';
 import { DataSource } from 'typeorm';
 import * as bcrypt from 'bcryptjs';
 import * as crypto from 'crypto';
@@ -103,6 +104,7 @@ export class AuthService {
     private readonly companiesService: CompaniesService,
     private readonly lockStateService: LockStateService,
     private readonly dataSource: DataSource,
+    private readonly systemEmail: SystemEmailService,
   ) {}
 
   async validateUser(
@@ -237,8 +239,24 @@ export class AuthService {
 
       await this.usersService.updateResetToken(user.id, token, expires);
 
-      // TODO: Wire to email service. For now, log token generation without exposing it.
-      this.logger.debug(`Password reset token generated for ${email}`);
+      const appUrl = (process.env.APP_URL || 'http://localhost:4200').replace(
+        /\/$/,
+        '',
+      );
+      const resetUrl = `${appUrl}/reset-password?token=${token}`;
+      // Best-effort: MailService swallows transport errors, but never let an
+      // email failure change the generic response below.
+      try {
+        await this.systemEmail.sendPasswordReset(
+          { email: user.email, name: user.name },
+          resetUrl,
+          60,
+        );
+      } catch (err) {
+        this.logger.error(
+          `Password reset email failed for ${email}: ${err instanceof Error ? err.message : String(err)}`,
+        );
+      }
     }
 
     // Always return success to avoid leaking whether email exists
@@ -281,7 +299,7 @@ export class AuthService {
       throw new ConflictException('Company slug already taken');
     }
 
-    return this.dataSource.transaction(async (manager) => {
+    const result = await this.dataSource.transaction(async (manager) => {
       const companyRepo = manager.getRepository('Company');
       const userRepo = manager.getRepository('User');
 
@@ -329,5 +347,20 @@ export class AuthService {
         lockState: null,
       };
     });
+
+    // Welcome email is best-effort and sent post-commit so it never holds the
+    // transaction open or blocks signup on a mail failure.
+    try {
+      await this.systemEmail.sendWelcome(
+        { email: result.user.email, name: result.user.name },
+        dto.companyName,
+      );
+    } catch (err) {
+      this.logger.error(
+        `Welcome email failed for ${result.user.email}: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
+
+    return result;
   }
 }

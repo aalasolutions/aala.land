@@ -33,6 +33,7 @@ import { SearchModule } from '@modules/search/search.module';
 import { BillingModule } from '@modules/billing/billing.module';
 import { LockModule } from '@modules/lock/lock.module';
 import { ConsoleModule } from '@modules/console/console.module';
+import { EmailModule } from '@modules/email/email.module';
 
 @Module({
   imports: [
@@ -88,6 +89,7 @@ import { ConsoleModule } from '@modules/console/console.module';
     BillingModule,
     LockModule,
     ConsoleModule,
+    EmailModule,
   ],
   controllers: [AppController],
   providers: [AppService, { provide: APP_GUARD, useClass: ThrottlerGuard }],

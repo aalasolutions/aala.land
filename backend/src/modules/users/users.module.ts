@@ -4,19 +4,18 @@ import { UsersService } from './users.service';
 import { UsersController } from './users.controller';
 import { User } from './entities/user.entity';
 import { Company } from '../companies/entities/company.entity';
-import { EmailTemplatesModule } from '../email-templates/email-templates.module';
-import { MailService } from '../../shared/services/mail.service';
+import { EmailModule } from '../email/email.module';
 import { BillingModule } from '../billing/billing.module';
 import { UserReassignmentService } from './reassignment/user-reassignment.service';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([User, Company]),
-    EmailTemplatesModule,
+    EmailModule,
     BillingModule,
   ],
   controllers: [UsersController],
-  providers: [UsersService, MailService, UserReassignmentService],
+  providers: [UsersService, UserReassignmentService],
   exports: [UsersService],
 })
 export class UsersModule {}
