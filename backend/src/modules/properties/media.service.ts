@@ -76,11 +76,8 @@ export class MediaService {
     private readonly systemEmail: SystemEmailService,
   ) {}
 
-  /**
-   * Reserve storage, and on an over-quota rejection notify the company billing
-   * contact (deduped to once per 24h) before rethrowing. The email is
-   * best-effort: a mail failure never masks the original 507.
-   */
+  /** Reserve storage; on an over-quota rejection notify the company (best-effort,
+   *  deduped once per 24h) before rethrowing the 507. */
   private async reserveStorageOrNotify(
     companyId: string,
     bytes: number,
@@ -103,8 +100,6 @@ export class MediaService {
   }
 
   private async notifyStorageQuotaExceeded(companyId: string): Promise<void> {
-    // Atomically claim the 24h window; only the row that flips the timestamp
-    // sends the email, so concurrent rejections never double-send.
     const claim = await this.companyRepository
       .createQueryBuilder()
       .update(Company)

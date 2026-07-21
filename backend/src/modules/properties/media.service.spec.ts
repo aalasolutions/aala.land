@@ -259,15 +259,12 @@ describe('MediaService', () => {
         storageUsedBytes: FREE_STORAGE_BYTES,
         subscriptionTier: SubscriptionTier.FREE,
       });
-      // First execute() = reserveStorage's reservation UPDATE fails (over quota);
-      // the second = the notify dedup claim, which succeeds via the default mock.
       mockQb.execute.mockResolvedValueOnce({ affected: 0 });
 
       await expect(
         service.uploadImage(companyId, makeFile(), { unitId }),
       ).rejects.toMatchObject({ status: 507 });
 
-      // The quota email is fire-and-forget; let the microtask settle.
       await new Promise((resolve) => setImmediate(resolve));
 
       expect(systemEmail.sendQuotaExceededToCompany).toHaveBeenCalledWith(
@@ -283,8 +280,6 @@ describe('MediaService', () => {
         storageUsedBytes: FREE_STORAGE_BYTES,
         subscriptionTier: SubscriptionTier.FREE,
       });
-      // Reservation fails (507); the dedup claim also matches 0 rows (already
-      // notified within 24h), so no email is sent.
       mockQb.execute
         .mockResolvedValueOnce({ affected: 0 })
         .mockResolvedValueOnce({ affected: 0 });

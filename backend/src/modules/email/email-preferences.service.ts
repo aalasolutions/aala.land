@@ -25,7 +25,6 @@ export class EmailPreferencesService {
   ) {}
 
   private secret(): string {
-    // Reuse the app secret; no insecure fallback, or tokens become forgeable.
     const secret = process.env.JWT_SECRET;
     if (!secret) {
       throw new Error('JWT_SECRET is required for email preference tokens');
@@ -42,7 +41,7 @@ export class EmailPreferencesService {
     return `${Buffer.from(userId).toString('base64url')}.${mac}`;
   }
 
-  /** Returns the userId if the token is valid, else null (constant-time compare). */
+  /** Returns the userId if the token is valid, else null. */
   verifyToken(token: string): string | null {
     const parts = token.split('.');
     if (parts.length !== 2) return null;
@@ -56,9 +55,6 @@ export class EmailPreferencesService {
       .createHmac('sha256', this.secret())
       .update(userId)
       .digest('base64url');
-    // Compare BYTE lengths before timingSafeEqual: it throws on unequal-length
-    // buffers, and a crafted multi-byte token can match on char length while
-    // differing in bytes. Guarding here keeps an invalid token a clean null.
     const expectedBuf = Buffer.from(expected);
     const gotBuf = Buffer.from(parts[1]);
     if (
@@ -117,7 +113,6 @@ export class EmailPreferencesService {
     return this.update(userId, { [category]: false });
   }
 
-  /** Whether a user currently accepts a suppressible category. */
   async accepts(userId: string, category: EmailCategory): Promise<boolean> {
     const prefs = await this.getByUserId(userId);
     return prefs[category] !== false;

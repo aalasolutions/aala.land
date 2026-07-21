@@ -43,7 +43,6 @@ describe('EmailPreferencesService', () => {
     });
 
     it('rejects a token forged for another user', () => {
-      // A token minted with a different secret must not verify.
       const token = service.signToken(userId);
       const swapped = Buffer.from('attacker').toString('base64url') +
         '.' + token.split('.')[1];
@@ -56,8 +55,6 @@ describe('EmailPreferencesService', () => {
     });
 
     it('returns null (never throws) for a multi-byte signature part', () => {
-      // A crafted sig whose char length can equal the expected but whose byte
-      // length differs; timingSafeEqual would throw on unequal buffers.
       const token = service.signToken(userId);
       const userPart = token.split('.')[0];
       const multibyte = '€'.repeat(token.split('.')[1].length);

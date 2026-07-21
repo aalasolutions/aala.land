@@ -27,12 +27,16 @@ export class MailService {
   }
 
   async sendMail(options: MailOptions): Promise<void> {
+    const safe: MailOptions = {
+      ...options,
+      subject: options.subject.replace(/[\r\n]+/g, ' ').trim(),
+    };
     const sendgridKey = process.env.SENDGRID_API_KEY;
 
     if (sendgridKey) {
-      await this.sendViaSendGrid(options, sendgridKey);
+      await this.sendViaSendGrid(safe, sendgridKey);
     } else if (this.smtpTransporter) {
-      await this.sendViaSmtp(options);
+      await this.sendViaSmtp(safe);
     } else {
       this.logger.warn(
         'No email transport configured (SENDGRID_API_KEY or SMTP_HOST). Email not sent.',

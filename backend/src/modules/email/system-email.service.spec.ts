@@ -60,7 +60,6 @@ describe('SystemEmailService', () => {
       expect(arg.html).toContain('Welcome');
       expect(arg.html).toContain('Acme');
       expect(arg.text).toContain('Jane');
-      // Uses the configured app URL for the logo + CTA.
       expect(arg.html).toContain('https://app.aala.land');
     });
 
