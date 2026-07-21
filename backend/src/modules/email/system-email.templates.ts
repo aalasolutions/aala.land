@@ -46,7 +46,7 @@ function button(label: string, url: string): string {
     <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin: 24px 0;">
       <tr>
         <td align="center" bgcolor="${BRAND.teal}" style="border-radius: 8px;">
-          <a href="${esc(url)}" target="_blank"
+          <a href="${esc(url)}" target="_blank" rel="noopener noreferrer"
              style="display: inline-block; padding: 13px 28px; font-family: -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; font-size: 15px; font-weight: 600; color: #ffffff; text-decoration: none; border-radius: 8px;">
             ${esc(label)}
           </a>

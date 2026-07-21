@@ -1,7 +1,9 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Get,
+  NotFoundException,
   Patch,
   Post,
   Query,
@@ -47,28 +49,39 @@ export class EmailPreferencesController {
 
   @Get('resolve')
   @ApiOperation({ summary: 'Resolve current preferences from an email token' })
-  resolve(@Query('token') token: string) {
+  async resolve(@Query('token') token: string) {
     const userId = this.preferences.verifyToken(token || '');
     if (!userId) {
       return { valid: false };
     }
-    return this.preferences
-      .getByUserId(userId)
-      .then((prefs) => ({ valid: true, preferences: prefs }));
+    try {
+      const preferences = await this.preferences.getByUserId(userId);
+      return { valid: true, preferences };
+    } catch (err) {
+      if (err instanceof NotFoundException) return { valid: false };
+      throw err;
+    }
   }
 
   @Post('unsubscribe')
   @ApiOperation({ summary: 'One-click unsubscribe from a category via token' })
-  unsubscribe(
+  async unsubscribe(
     @Body('token') token: string,
     @Body('category') category: EmailCategory,
   ) {
-    return this.preferences.unsubscribeByToken(token, category);
+    try {
+      return await this.preferences.unsubscribeByToken(token, category);
+    } catch (err) {
+      if (err instanceof NotFoundException) {
+        throw new BadRequestException('Invalid or expired link');
+      }
+      throw err;
+    }
   }
 
   @Patch('by-token')
   @ApiOperation({ summary: 'Update preferences via an email token' })
-  updateByToken(
+  async updateByToken(
     @Body('token') token: string,
     @Body() dto: UpdateEmailPreferencesDto,
   ) {
@@ -76,8 +89,12 @@ export class EmailPreferencesController {
     if (!userId) {
       return { valid: false };
     }
-    return this.preferences
-      .update(userId, dto)
-      .then((preferences) => ({ valid: true, preferences }));
+    try {
+      const preferences = await this.preferences.update(userId, dto);
+      return { valid: true, preferences };
+    } catch (err) {
+      if (err instanceof NotFoundException) return { valid: false };
+      throw err;
+    }
   }
 }
