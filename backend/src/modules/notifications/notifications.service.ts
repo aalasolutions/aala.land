@@ -192,6 +192,7 @@ export class NotificationsService {
           personalizations: [{ to: [{ email: dto.email }] }],
           from: {
             email: process.env.SENDGRID_FROM_EMAIL || 'noreply@aala.land',
+            name: process.env.MAIL_FROM_NAME || 'AALA.LAND',
           },
           subject: dto.subject || 'Notification from AALA',
           content: [{ type: 'text/plain', value: dto.body }],

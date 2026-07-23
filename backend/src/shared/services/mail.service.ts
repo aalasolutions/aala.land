@@ -49,6 +49,7 @@ export class MailService {
     apiKey: string,
   ): Promise<void> {
     const from = process.env.SENDGRID_FROM_EMAIL || 'noreply@aala.land';
+    const fromName = process.env.MAIL_FROM_NAME || 'AALA.LAND';
 
     try {
       const response = await fetch('https://api.sendgrid.com/v3/mail/send', {
@@ -59,7 +60,7 @@ export class MailService {
         },
         body: JSON.stringify({
           personalizations: [{ to: [{ email: options.to }] }],
-          from: { email: from },
+          from: { email: from, name: fromName },
           subject: options.subject,
           content: [
             { type: 'text/plain', value: options.text },
@@ -83,9 +84,12 @@ export class MailService {
   }
 
   private async sendViaSmtp(options: MailOptions): Promise<void> {
+    const fromName = process.env.MAIL_FROM_NAME || 'AALA.LAND';
+    const fromAddress = process.env.SMTP_FROM || 'noreply@aala.land';
+
     try {
       await this.smtpTransporter!.sendMail({
-        from: process.env.SMTP_FROM || 'noreply@aala.land',
+        from: `"${fromName}" <${fromAddress}>`,
         to: options.to,
         subject: options.subject,
         text: options.text,

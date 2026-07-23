@@ -143,7 +143,7 @@ describe('MailService', () => {
       });
       expect(mockSendMail).toHaveBeenCalledWith(
         expect.objectContaining({
-          from: 'noreply@aala.land',
+          from: '"AALA.LAND" <noreply@aala.land>',
           to: 'user@example.com',
           subject: 'Welcome',
           text: 'Hello',
