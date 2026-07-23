@@ -4,7 +4,7 @@
  * (company-editable, PRO gated) live in the email-templates module instead.
  *
  * All CSS is inline: email clients strip <style> and external sheets. The logo
- * is referenced by absolute URL off APP_URL (the frontend serves /Logo.png).
+ * is referenced by absolute URL off APP_URL (the frontend serves /logo.png).
  */
 
 const BRAND = {
@@ -57,7 +57,7 @@ function button(label: string, url: string): string {
 
 /** Wraps content in the shared AALA.LAND shell (header logo + footer). */
 export function renderLayout(opts: LayoutOptions): string {
-  const logo = `${appUrl()}/Logo.png`;
+  const logo = `${appUrl()}/logo.png`;
   const cta = opts.cta ? button(opts.cta.label, opts.cta.url) : '';
   const unsubscribe = opts.unsubscribeUrl
     ? `<p style="margin: 8px 0 0; font-size: 12px; color: ${BRAND.muted};">
