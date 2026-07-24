@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { WorkOrder, WorkOrderStatus } from './entities/work-order.entity';
@@ -22,6 +22,10 @@ export class MaintenanceService {
   ) {}
 
   async create(companyId: string, dto: CreateWorkOrderDto): Promise<WorkOrder> {
+    if (!dto.unitId) {
+      throw new BadRequestException('Property is required for work orders');
+    }
+
     const order = this.workOrderRepository.create({ ...dto, companyId });
     return this.workOrderRepository.save(order);
   }

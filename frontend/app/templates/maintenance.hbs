@@ -240,7 +240,8 @@
         @value={{this.formUnitId}}
         @onChange={{fn this.setField "formUnitId"}}
         @options={{this.unitOptions}}
-        @placeholder="No property assigned"
+        @placeholder="Select a property..."
+        @required={{true}}
         data-test-wo-unit
       />
     {{/unless}}

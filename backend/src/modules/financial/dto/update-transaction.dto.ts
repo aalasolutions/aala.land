@@ -45,4 +45,9 @@ export class UpdateTransactionDto {
   @IsDateString()
   @IsOptional()
   dueDate?: string;
+
+  @ApiPropertyOptional({ example: '2026-02-15' })
+  @IsDateString()
+  @IsOptional()
+  transactionDate?: string;
 }

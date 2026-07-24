@@ -99,6 +99,7 @@ export default class FinancialsController extends PaginatedController {
           ...(this.formDescription
             ? { description: this.formDescription }
             : {}),
+          ...(this.formDate ? { transactionDate: this.formDate } : {}),
         }
       : {
           type: this.formType,
