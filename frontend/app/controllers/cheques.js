@@ -73,7 +73,7 @@ export default class ChequesController extends PaginatedController {
       EMPTY_UNIT_OPTION,
       ...(this.model.units || []).map((unit) => ({
         value: unit.id,
-        label: `${unit.areaName} - ${unit.assetName} - Unit ${unit.unitNumber}`,
+        label: `${unit.areaName} - ${unit.assetName} - Property ${unit.unitNumber}`,
       })),
     ];
   }

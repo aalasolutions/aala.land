@@ -51,10 +51,10 @@ export default class MaintenanceController extends PaginatedController {
 
   get unitOptions() {
     return [
-      { value: '', label: 'No unit assigned' },
+      { value: '', label: 'No property assigned' },
       ...(this.model.units || []).map((unit) => ({
         value: unit.id,
-        label: `${unit.areaName} / ${unit.assetName} / Unit ${unit.unitNumber}`,
+        label: `${unit.areaName} / ${unit.assetName} / Property ${unit.unitNumber}`,
       })),
     ];
   }

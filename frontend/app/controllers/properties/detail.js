@@ -345,7 +345,9 @@ export default class PropertiesDetailController extends Controller {
         method: isEdit ? 'PATCH' : 'POST',
         body: JSON.stringify(body),
       });
-      this.notifications.success(isEdit ? 'Unit updated' : 'Unit created');
+      this.notifications.success(
+        isEdit ? 'Property updated' : 'Property created',
+      );
       this.closeUnitModal();
       this.router.refresh('properties.detail');
     } catch (e) {

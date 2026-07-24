@@ -487,7 +487,7 @@ export class ReportsService {
       flags.push({
         type: 'LONG_VACANT',
         severity: 'LOW',
-        message: `Unit ${unit.unitNumber} vacant for 30+ days`,
+        message: `Property ${unit.unitNumber} vacant for 30+ days`,
         entityType: 'Unit',
         entityId: unit.id,
         createdAt: unit.updatedAt,

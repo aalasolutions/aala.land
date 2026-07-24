@@ -136,7 +136,7 @@ export default class LeadsController extends Controller {
       NONE_OPTION,
       ...(this.filteredUnits || []).map((unit) => ({
         value: unit.id,
-        label: `Unit ${unit.unitNumber} (${unit.status})`,
+        label: `Property ${unit.unitNumber} (${unit.status})`,
       })),
     ];
   }

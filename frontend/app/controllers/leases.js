@@ -34,10 +34,10 @@ export default class LeasesController extends Controller {
 
   get unitOptions() {
     return [
-      { value: '', label: 'Select a unit...' },
+      { value: '', label: 'Select a property...' },
       ...(this.model.units || []).map((unit) => ({
         value: unit.id,
-        label: `${unit.areaName} - ${unit.assetName} - Unit ${unit.unitNumber}${unit.floorNumber ? ` (Floor ${unit.floorNumber})` : ''}`,
+        label: `${unit.areaName} - ${unit.assetName} - Property ${unit.unitNumber}${unit.floorNumber ? ` (Floor ${unit.floorNumber})` : ''}`,
       })),
     ];
   }
@@ -115,7 +115,7 @@ export default class LeasesController extends Controller {
     const isRenew = !!this.renewingLeaseId;
 
     if (!isEdit && !UUID_PATTERN.test(this.formUnitId)) {
-      this.errorMsg = 'Please select a valid unit.';
+      this.errorMsg = 'Please select a valid property.';
       return;
     }
 

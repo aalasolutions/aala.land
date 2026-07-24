@@ -28,7 +28,7 @@ export default class PropertiesIndexController extends Controller {
   viewTabs = [
     { value: 'cards', label: 'Cards', icon: 'squares-four' },
     { value: 'list', label: 'List', icon: 'list' },
-    { value: 'browse', label: 'Browse Units', icon: 'grid-four' },
+    { value: 'browse', label: 'Browse Properties', icon: 'grid-four' },
   ];
   @tracked browseUnits = [];
   @tracked browseTotal = 0;
@@ -252,7 +252,7 @@ export default class PropertiesIndexController extends Controller {
       return;
     }
     if (!this.newUnitNumber.trim()) {
-      this.newUnitError = 'Unit number is required.';
+      this.newUnitError = 'Property number is required.';
       return;
     }
 
@@ -278,7 +278,7 @@ export default class PropertiesIndexController extends Controller {
         method: 'POST',
         body: JSON.stringify(body),
       });
-      this.notifications.success('Unit created');
+      this.notifications.success('Property created');
       this.closeNewUnitModal();
       this.router.refresh('properties.index');
     } catch (e) {

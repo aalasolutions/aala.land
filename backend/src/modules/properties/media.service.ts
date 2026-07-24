@@ -245,7 +245,7 @@ export class MediaService {
     });
     if (!unit) {
       throw new NotFoundException(
-        'Unit not found or does not belong to this company',
+        'Property not found or does not belong to this company',
       );
     }
   }

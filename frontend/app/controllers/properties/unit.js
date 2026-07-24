@@ -229,7 +229,7 @@ export default class PropertiesUnitController extends Controller {
         method: 'PATCH',
         body: JSON.stringify(body),
       });
-      this.notifications.success('Unit updated');
+      this.notifications.success('Property updated');
       this.closeEdit();
       this.router.refresh('properties.unit');
     } catch (e) {

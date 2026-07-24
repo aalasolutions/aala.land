@@ -421,7 +421,7 @@ export class PropertiesService {
       where: { id, companyId },
       relations: ['asset', 'asset.locality', 'owner'],
     });
-    if (!unit) throw new NotFoundException(`Unit not found`);
+    if (!unit) throw new NotFoundException(`Property not found`);
     return unit;
   }
 

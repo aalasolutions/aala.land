@@ -97,7 +97,7 @@
                 <p class="text-info font-xs flex gap-1 x-center"><Ui::Ph
                     @icon="house"
                   />
-                  Unit
+                  Property
                   {{lead.unit.unitNumber}}</p>
               {{/if}}
               {{#if lead.assignedAgentName}}
@@ -399,7 +399,7 @@
                   <span>{{lead.property.name}}</span>
                   {{#if lead.unit}}
                     <span class="text-muted font-xs">
-                      - Unit
+                      - Property
                       {{lead.unit.unitNumber}}</span>
                   {{/if}}
                 {{else}}
@@ -550,7 +550,7 @@
     />
     {{#if this.formPropertyId}}
       <Ui::FormDropdown
-        @label="Unit"
+        @label="Property"
         @id="lead-unit"
         @value={{this.formUnitId}}
         @onChange={{fn this.setField "formUnitId"}}
@@ -686,7 +686,7 @@
           {{#if this.detailLead.unit}}
             <div class="flex gap-2 x-center mt-1">
               <span><Ui::Ph @icon="house" /></span>
-              <span>Unit {{this.detailLead.unit.unitNumber}}</span>
+              <span>Property {{this.detailLead.unit.unitNumber}}</span>
             </div>
           {{/if}}
         {{else}}

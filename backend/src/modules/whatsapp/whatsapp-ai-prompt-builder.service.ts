@@ -62,8 +62,8 @@ export class WhatsappAiPromptBuilderService {
             ? 'SALE'
             : 'N/A';
       const title = asset?.name
-        ? `${asset.name} — Unit ${u.unitNumber}`
-        : `Unit ${u.unitNumber}`;
+        ? `${asset.name} — Property ${u.unitNumber}`
+        : `Property ${u.unitNumber}`;
 
       const priceLabel =
         u.price != null

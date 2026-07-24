@@ -8,7 +8,7 @@ export class UploadMediaDto {
    * Maps to PropertyMedia.unitId (DB column: unit_id).
    */
   @ApiProperty({
-    description: 'Unit UUID this photo belongs to',
+    description: 'Property UUID this photo belongs to',
     required: false,
   })
   @Transform(({ value }) => value || undefined)

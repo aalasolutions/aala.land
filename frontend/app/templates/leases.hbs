@@ -100,12 +100,12 @@
 >
   <form class="flex col gap-4" {{on "submit" this.saveLease}}>
     <Ui::FormDropdown
-      @label="Unit"
+      @label="Property"
       @id="lease-unit-id"
       @value={{this.formUnitId}}
       @onChange={{fn this.setField "formUnitId"}}
       @options={{this.unitOptions}}
-      @placeholder="Select a unit..."
+      @placeholder="Select a property..."
       @required={{true}}
     />
 

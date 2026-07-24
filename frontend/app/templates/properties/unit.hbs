@@ -1,5 +1,5 @@
 {{page-title
-  (if @model.unit (concat "Unit " @model.unit.unitNumber) "Unit Detail")
+  (if @model.unit (concat "Property " @model.unit.unitNumber) "Property Detail")
 }}
 
 <div data-test-unit-detail class="flex col gap-6">
@@ -25,7 +25,7 @@
       >{{@model.unit.asset.name}}</LinkTo>
       <span>/</span>
     {{/if}}
-    <span class="font-bold text-primary">Unit {{@model.unit.unitNumber}}</span>
+    <span class="font-bold text-primary">Property {{@model.unit.unitNumber}}</span>
   </div>
 
   {{#if @model.unit}}
@@ -61,7 +61,7 @@
         {{#if @model.media.length}}
           {{#let (object-at @model.media 0) as |primary|}}
             <div class="unit-main-photo" data-test-main-photo>
-              <img src={{primary.url}} alt="Unit photo" />
+              <img src={{primary.url}} alt="Property photo" />
             </div>
           {{/let}}
           <div class="flex gap-2 wrap">
@@ -121,11 +121,11 @@
         {{/if}}
       </div>
 
-      {{! Right: Unit info panel }}
+      {{! Right: Property info panel }}
       <div class="flex col gap-4">
         <div class="glass-panel p-6 flex col gap-3">
           <div class="flex between x-center">
-            <h2 data-test-unit-title class="font-2xl font-bold">Unit
+            <h2 data-test-unit-title class="font-2xl font-bold">Property
               {{@model.unit.unitNumber}}</h2>
             <button
               type="button"
@@ -266,13 +266,13 @@
           </table>
         </div>
       {{else}}
-        <p class="text-muted font-sm">No lease history for this unit.</p>
+        <p class="text-muted font-sm">No lease history for this property.</p>
       {{/if}}
     </div>
   {{else}}
     <div class="glass-panel p-8 text-center" data-test-unit-not-found>
       <Ui::Ph @icon="warning" />
-      <p class="text-muted mt-2">Unit not found.</p>
+      <p class="text-muted mt-2">Property not found.</p>
       <LinkTo @route="properties" class="btn btn-primary mt-4">Back to
         Properties</LinkTo>
     </div>
@@ -282,7 +282,7 @@
 {{! Edit Modal }}
 <Ui::Modal
   @isOpen={{this.showEditModal}}
-  @title="Edit Unit"
+  @title="Edit Property"
   @onClose={{this.closeEdit}}
   @showClose={{true}}
 >
@@ -290,7 +290,7 @@
     <div class="flex gap-4">
       <div class="flex col gap-2 flex-1">
         <Ui::FormInput
-          @label="Unit Number"
+          @label="Property Number"
           @id="u-number"
           @type="text"
           @placeholder="e.g. 101"
@@ -395,7 +395,7 @@
         class="form-input"
         data-test-field-description
         rows="3"
-        placeholder="Unit description..."
+        placeholder="Property description..."
         {{on "input" (fn this.setField "formDescription")}}
       >{{this.formDescription}}</textarea>
     </div>
@@ -448,7 +448,7 @@
         data-test-save-btn
         disabled={{this.isSaving}}
       >
-        {{if this.isSaving "Saving..." "Update Unit"}}
+        {{if this.isSaving "Saving..." "Update Property"}}
       </button>
     </div>
   </form>

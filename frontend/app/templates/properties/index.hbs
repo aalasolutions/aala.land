@@ -5,7 +5,7 @@
     <div>
       <h2 class="font-3xl font-bold"><Ui::Ph @icon="buildings" @size="28px" />
         Properties</h2>
-      <p class="text-muted mt-1">Locations, assets, and units.</p>
+      <p class="text-muted mt-1">Locations, assets, and properties.</p>
     </div>
     <div class="flex gap-3 x-center">
       <Ui::Tabs
@@ -22,7 +22,7 @@
           data-test-new-unit
         >
           <Ui::Ph @icon="plus" />
-          New Unit
+          New Property
         </button>
       {{/unless}}
     </div>
@@ -45,7 +45,7 @@
               </div>
               <div class="flex gap-4 text-sm">
                 <span class="text-muted">{{loc.assetCount}} Assets</span>
-                <span class="text-muted">{{loc.unitCount}} Units</span>
+                <span class="text-muted">{{loc.unitCount}} Properties</span>
               </div>
             </div>
             <Ui::Ph @icon="caret-right" @size="20" />
@@ -54,7 +54,7 @@
       </div>
     {{else}}
       <div class="glass-panel p-8 text-center">
-        <p class="text-muted">No assets yet. Click "New Unit" to add your first
+        <p class="text-muted">No assets yet. Click "New Property" to add your first
           property.</p>
       </div>
     {{/if}}
@@ -68,7 +68,7 @@
               <th>Location</th>
               <th>City</th>
               <th>Assets</th>
-              <th>Units</th>
+              <th>Properties</th>
               <th></th>
             </tr>
           </thead>
@@ -95,7 +95,7 @@
       </div>
     {{else}}
       <div class="glass-panel p-8 text-center">
-        <p class="text-muted">No assets yet. Click "New Unit" to add your first
+        <p class="text-muted">No assets yet. Click "New Property" to add your first
           property.</p>
       </div>
     {{/if}}
@@ -190,7 +190,7 @@
     <p class="text-muted font-sm" data-test-browse-count>{{format-number
         this.browseTotal
       }}
-      units found</p>
+      properties found</p>
 
     {{#if this.isLoadingBrowse}}
       <div class="glass-panel p-8 text-center">
@@ -209,7 +209,7 @@
               {{#if unit.photos.length}}
                 <img
                   src={{object-at unit.photos 0}}
-                  alt="Unit {{unit.unitNumber}}"
+                  alt="Property {{unit.unitNumber}}"
                 />
               {{else}}
                 <div class="unit-card-photo-empty"><Ui::Ph
@@ -219,7 +219,7 @@
             </div>
             <div class="p-4 flex col gap-2">
               <div class="flex between x-center">
-                <p class="font-bold">Unit {{unit.unitNumber}}</p>
+                <p class="font-bold">Property {{unit.unitNumber}}</p>
                 <span class="status-badge status-{{unit.status}}">{{capitalize
                     unit.status
                   }}</span>
@@ -285,16 +285,16 @@
     {{else}}
       <div class="glass-panel p-8 text-center">
         <Ui::Ph @icon="magnifying-glass" />
-        <p class="text-muted mt-2">No units match your filters.</p>
+        <p class="text-muted mt-2">No properties match your filters.</p>
       </div>
     {{/if}}
   {{/if}}
 </div>
 
-{{! New Unit modal (cascading: city > location > asset > unit) }}
+{{! New Property modal (cascading: city > location > asset > unit) }}
 <Ui::Modal
   @isOpen={{this.showNewUnitModal}}
-  @title="New Unit"
+  @title="New Property"
   @onClose={{this.closeNewUnitModal}}
   @showClose={{true}}
 >
@@ -342,7 +342,7 @@
     {{#if this.selectedAsset}}
       <hr class="border-t border-light" />
       <Ui::FormInput
-        @label="Unit Number"
+        @label="Property Number"
         @id="nu-number"
         @type="text"
         @placeholder="e.g. 101, Villa A"
@@ -422,7 +422,7 @@
         <Ui::AppButton
           @variant="primary"
           @buttonType="submit"
-          @text="Create Unit"
+          @text="Create Property"
           @loading={{this.isSavingNewUnit}}
           @loadingText="Creating..."
         />

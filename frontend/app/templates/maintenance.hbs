@@ -91,7 +91,7 @@
             <thead>
               <tr>
                 <th>Title</th>
-                <th>Unit</th>
+                <th>Property</th>
                 <th>Category</th>
                 <th>Priority</th>
                 <th>Est. Cost</th>
@@ -235,12 +235,12 @@
   <form class="flex col gap-4" {{on "submit" this.saveWorkOrder}}>
     {{#unless this.editWorkOrder}}
       <Ui::FormDropdown
-        @label="Unit"
+        @label="Property"
         @id="wo-unit"
         @value={{this.formUnitId}}
         @onChange={{fn this.setField "formUnitId"}}
         @options={{this.unitOptions}}
-        @placeholder="No unit assigned"
+        @placeholder="No property assigned"
         data-test-wo-unit
       />
     {{/unless}}
@@ -249,7 +249,7 @@
       @label="Title"
       @id="wo-title"
       @type="text"
-      @placeholder="e.g. Fix leaking pipe in unit 302"
+      @placeholder="e.g. Fix leaking pipe in property 302"
       @value={{this.formTitle}}
       @onChange={{fn this.setField "formTitle"}}
       @required={{true}}
