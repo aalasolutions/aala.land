@@ -4,6 +4,9 @@ const EmberApp = require('ember-cli/lib/broccoli/ember-app');
 
 module.exports = function (defaults) {
   const app = new EmberApp(defaults, {
+    fingerprint: {
+      exclude: ['logo.png', 'icons/*'], // Exclude specific files or paths
+    },
     emberData: {
       deprecations: {
         // New projects can safely leave this deprecation disabled.
