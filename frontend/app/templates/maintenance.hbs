@@ -237,7 +237,7 @@
       <Ui::FormDropdown
         @label="Property"
         @id="wo-unit"
-        @value={{this.formUnitId}}
+        @value={{if this.formUnitId this.formUnitId null}}
         @onChange={{fn this.setField "formUnitId"}}
         @options={{this.unitOptions}}
         @placeholder="Select a property..."

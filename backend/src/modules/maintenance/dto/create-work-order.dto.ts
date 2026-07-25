@@ -41,6 +41,7 @@ export class CreateWorkOrderDto {
   category?: WorkOrderCategory;
 
   @ApiProperty({ required: true })
+  @IsNotEmpty()
   @IsUUID()
   unitId: string;
 
