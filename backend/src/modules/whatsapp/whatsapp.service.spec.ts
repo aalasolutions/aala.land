@@ -79,7 +79,7 @@ describe('WhatsappService echo suppression', () => {
       loadEnabledState: jest.fn(),
       recordHumanReply: jest.fn(),
       handleIncomingMessage: jest.fn(),
-      getWeeklyCount: jest.fn().mockResolvedValue(null),
+      getCreditUsage: jest.fn().mockResolvedValue(null),
     };
 
     service = new WhatsappService(manager, store, ai, gateway);

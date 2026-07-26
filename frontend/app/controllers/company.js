@@ -5,6 +5,8 @@ import { service } from '@ember/service';
 import { isAdminRole } from '../utils/roles';
 import { TIER_LIMITS } from '../utils/subscription-plans';
 
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
 export default class CompanyController extends Controller {
   @service auth;
   @service notifications;
@@ -31,9 +33,10 @@ export default class CompanyController extends Controller {
   @tracked isSavingAI = false;
   @tracked aiSuccessMsg = '';
   @tracked aiErrorMsg = '';
-  @tracked weeklyLimit = null;
-  @tracked weeklyUsed = null;
-  @tracked weeklyResetsAt = null;
+  @tracked creditsLimit = null;
+  @tracked creditsUsed = null;
+  @tracked creditsResetsAt = null;
+  @tracked creditAgents = [];
 
   // Billing history (payment/invoice records), paginated in place.
   @tracked billingHistory = [];
@@ -173,22 +176,30 @@ export default class CompanyController extends Controller {
     });
   }
 
-  get weeklyUsageLabel() {
-    if (this.weeklyLimit === null) return null;
-    const used = this.weeklyUsed ?? 0;
+  get creditUsageLabel() {
+    if (this.creditsLimit === null) return null;
+    const used = this.creditsUsed ?? 0;
     let suffix = '';
-    if (this.weeklyResetsAt) {
-      const resetDate = new Date(this.weeklyResetsAt);
-      const daysLeft = Math.ceil((resetDate - Date.now()) / 86400000);
-      const day = resetDate.toLocaleDateString('en-US', { weekday: 'short' });
-      const time = resetDate.toLocaleTimeString('en-US', {
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: false,
+    if (this.creditsResetsAt) {
+      const resetDate = new Date(this.creditsResetsAt);
+      const daysLeft = Math.ceil((resetDate - Date.now()) / MS_PER_DAY);
+      const date = resetDate.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
       });
-      suffix = ` - resets in ${daysLeft}d (${day} - ${time})`;
+      suffix = ` - resets in ${daysLeft}d (${date})`;
     }
-    return `You've used ${used}/${this.weeklyLimit} AI messages this week${suffix}`;
+    return `You've used ${used}/${this.creditsLimit} AI credits this period${suffix}`;
+  }
+
+  // 1 credit opens a 24h window with one lead, so the count is conversations, not messages.
+  get creditUsageHint() {
+    if (this.creditsLimit === null) return null;
+    return '1 credit covers 24 hours of unlimited replies with one lead.';
+  }
+
+  get hasCreditAgents() {
+    return (this.creditAgents?.length ?? 0) > 0;
   }
 
   get maxRegions() {

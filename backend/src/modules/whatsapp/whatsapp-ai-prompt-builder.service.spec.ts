@@ -67,7 +67,7 @@ describe('WhatsappAiPromptBuilderService', () => {
       const result = service.formatToolResult([unit], fallbackCurrency);
       expect(typeof result).toBe('string');
       expect(result).toContain('Sunset Tower');
-      expect(result).toContain('Unit 1A');
+      expect(result).toContain('Property 1A');
       expect(result).toContain('25,000');
       expect(result).toContain('2 Bed');
       expect(result).toContain('[RENT]');

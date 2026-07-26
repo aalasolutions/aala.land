@@ -9,7 +9,13 @@ import {
 import { MessageStoreService } from './message-store.service';
 import { WhatsappAiService } from './whatsapp-ai.service';
 import { WhatsappGateway } from './whatsapp.gateway';
-import { AiHistoryMessage, WaChat, WaMessage, WaStatus } from './wa-types';
+import {
+  AiCreditUsageWithAgents,
+  AiHistoryMessage,
+  WaChat,
+  WaMessage,
+  WaStatus,
+} from './wa-types';
 
 @Injectable()
 export class WhatsappService implements OnModuleInit {
@@ -174,10 +180,14 @@ export class WhatsappService implements OnModuleInit {
               this.store.addMessage(userId, aiMsg);
               this.gateway.emitMessage(userId, aiMsg);
               void this.ai
-                .getWeeklyCount(companyId)
+                .getCreditUsage(companyId)
                 .then((usage) => {
                   if (usage)
-                    this.gateway.emitAi(userId, { weeklyUsed: usage.used });
+                    this.gateway.emitAi(userId, {
+                      creditsUsed: usage.used,
+                      creditsLimit: usage.limit,
+                      openWindows: usage.openWindows,
+                    });
                 })
                 .catch(() => {});
               return result;
@@ -300,6 +310,10 @@ export class WhatsappService implements OnModuleInit {
 
   getAiConfig(userId: string, companyId: string) {
     return this.ai.getConfigWithUsage(userId, companyId);
+  }
+
+  getAiCreditUsage(companyId: string): Promise<AiCreditUsageWithAgents | null> {
+    return this.ai.getCreditUsageWithAgents(companyId);
   }
 
   getAiHistory(userId: string, chatId: string): AiHistoryMessage[] {

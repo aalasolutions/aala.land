@@ -31,6 +31,7 @@ export default class CompanyRoute extends AuthenticatedRoute {
         ? Promise.all([
             this.whatsapp.getSettings().catch(() => null),
             this.whatsapp.getAi().catch(() => null),
+            safeJson(this.auth, '/whatsapp/ai/credits', 'COMPANY'),
           ])
         : Promise.resolve(null),
       isCompanyAdmin
@@ -48,18 +49,21 @@ export default class CompanyRoute extends AuthenticatedRoute {
 
     let ai = {
       aiPrompt: null,
-      weeklyLimit: null,
-      weeklyUsed: null,
-      weeklyResetsAt: null,
+      creditsLimit: null,
+      creditsUsed: null,
+      creditsResetsAt: null,
+      creditAgents: [],
     };
     if (aiSettings) {
-      const [settings, aiData] = aiSettings;
+      const [settings, aiData, creditsData] = aiSettings;
       const aiInfo = aiData?.data ?? aiData;
+      const credits = creditsData?.data ?? creditsData;
       ai = {
         aiPrompt: settings?.data?.aiPrompt ?? settings?.aiPrompt ?? null,
-        weeklyLimit: aiInfo?.weeklyLimit ?? null,
-        weeklyUsed: aiInfo?.weeklyUsed ?? null,
-        weeklyResetsAt: aiInfo?.weeklyResetsAt ?? null,
+        creditsLimit: aiInfo?.creditsLimit ?? null,
+        creditsUsed: aiInfo?.creditsUsed ?? null,
+        creditsResetsAt: aiInfo?.creditsResetsAt ?? null,
+        creditAgents: credits?.agents ?? [],
       };
     }
 
@@ -91,9 +95,10 @@ export default class CompanyRoute extends AuthenticatedRoute {
     controller.billingHistoryLimit = history?.limit ?? 10;
     controller.activeTab = 'general';
     controller.aiPrompt = model?.ai?.aiPrompt ?? '';
-    controller.weeklyLimit = model?.ai?.weeklyLimit ?? null;
-    controller.weeklyUsed = model?.ai?.weeklyUsed ?? null;
-    controller.weeklyResetsAt = model?.ai?.weeklyResetsAt ?? null;
+    controller.creditsLimit = model?.ai?.creditsLimit ?? null;
+    controller.creditsUsed = model?.ai?.creditsUsed ?? null;
+    controller.creditsResetsAt = model?.ai?.creditsResetsAt ?? null;
+    controller.creditAgents = model?.ai?.creditAgents ?? [];
     controller.aiSuccessMsg = '';
     controller.aiErrorMsg = '';
   }

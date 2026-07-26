@@ -4,7 +4,11 @@ import {
   OnModuleDestroy,
   OnModuleInit,
 } from '@nestjs/common';
-import { AiHistoryMessage } from './wa-types';
+import {
+  AiCreditUsageSummary,
+  AiCreditUsageWithAgents,
+  AiHistoryMessage,
+} from './wa-types';
 import { WhatsappAiRepositoryService } from './whatsapp-ai-repository.service';
 import { WhatsappAiPromptBuilderService } from './whatsapp-ai-prompt-builder.service';
 import {
@@ -17,14 +21,20 @@ import {
 } from './whatsapp-ai-filter';
 import { TOOL_DEFINITIONS, executeTool } from './whatsapp-ai-tools';
 import {
-  SubscriptionTier,
-  TIER_LIMITS,
-} from '../companies/entities/company.entity';
+  getAiCreditAllowance,
+  getCreditPeriod,
+} from '@shared/utils/ai-credit.util';
+import { SystemEmailService } from '@modules/email/system-email.service';
+import { Company } from '@modules/companies/entities/company.entity';
 
 type SendFn = (
   chatId: string,
   message: string,
 ) => Promise<{ messageId?: string }>;
+
+// Set only when THIS turn opened a new 24h window. A turn that rode an already-open
+// window has nothing to refund.
+type CreditCharge = { conversationId: string; periodStart: Date } | null;
 
 interface PendingChat {
   messages: string[];
@@ -45,10 +55,11 @@ export class WhatsappAiService implements OnModuleInit, OnModuleDestroy {
   private pendingByChat = new Map<string, PendingChat>();
   private humanReplyAt = new Map<string, number>();
   private lastActivityAt = new Map<string, number>();
+  private exhaustedPeriod = new Map<string, { start: number; end: number }>();
   // Serializes AI turns per chat (keyed by `${userId}:${chatId}`). Each turn chains
   // after the previous one for the same key, so only ONE processMessage runs at a time
   // per chat. This prevents two concurrent turns from interleaving push/pop/splice on the
-  // shared history array or double-counting the weekly quota when a follow-up message
+  // shared history array or double-charging a credit when a follow-up message
   // arrives mid-turn (after the pending entry was already flushed).
   private chatLocks = new Map<string, Promise<void>>();
   private readonly AI_STATE_TTL_MS = 24 * 60 * 60 * 1000;
@@ -57,6 +68,7 @@ export class WhatsappAiService implements OnModuleInit, OnModuleDestroy {
   constructor(
     private readonly repo: WhatsappAiRepositoryService,
     private readonly promptBuilder: WhatsappAiPromptBuilderService,
+    private readonly systemEmail: SystemEmailService,
   ) {}
 
   onModuleInit(): void {
@@ -79,6 +91,10 @@ export class WhatsappAiService implements OnModuleInit, OnModuleDestroy {
         this.lastActivityAt.delete(key);
       }
     }
+    const now = Date.now();
+    for (const [companyId, marker] of this.exhaustedPeriod.entries()) {
+      if (now >= marker.end) this.exhaustedPeriod.delete(companyId);
+    }
   }
 
   getConfig(userId: string) {
@@ -90,38 +106,74 @@ export class WhatsappAiService implements OnModuleInit, OnModuleDestroy {
     };
   }
 
-  async getWeeklyCount(
+  /** Single source of the billing facts every metering path needs. */
+  private async resolveLimitAndPeriod(
+    company: Company,
+  ): Promise<{ limit: number; period: { start: Date; end: Date } }> {
+    const limit = getAiCreditAllowance(company);
+    const period = getCreditPeriod(await this.repo.getPeriodAnchor(company));
+    return { limit, period };
+  }
+
+  async getCreditUsage(
     companyId: string,
-  ): Promise<{ used: number; limit: number } | null> {
-    const { company } = await this.repo.getCompanyAndUnits(companyId);
-    const tier = company?.subscriptionTier ?? SubscriptionTier.FREE;
-    const weeklyLimit = TIER_LIMITS[tier].aiWeeklyMessages;
-    if (weeklyLimit === Infinity) return null;
-    const { count } = await this.repo.getWeeklyUsage(companyId);
-    return { used: count, limit: weeklyLimit };
+  ): Promise<AiCreditUsageSummary | null> {
+    const company = await this.repo.getCompany(companyId);
+    if (!company) return null;
+
+    const { limit, period } = await this.resolveLimitAndPeriod(company);
+    const { used, openWindows } = await this.repo.getCreditUsage(
+      companyId,
+      period.start,
+    );
+
+    return { used, limit, openWindows, resetsAt: period.end.toISOString() };
+  }
+
+  /** Usage plus the per-agent breakdown: who on the team is spending the shared pool. */
+  async getCreditUsageWithAgents(
+    companyId: string,
+  ): Promise<AiCreditUsageWithAgents | null> {
+    const company = await this.repo.getCompany(companyId);
+    if (!company) return null;
+
+    const { limit, period } = await this.resolveLimitAndPeriod(company);
+    const [usage, agents] = await Promise.all([
+      this.repo.getCreditUsage(companyId, period.start),
+      this.repo.getAgentCreditBreakdown(companyId, period.start),
+    ]);
+
+    return {
+      used: usage.used,
+      limit,
+      openWindows: usage.openWindows,
+      periodStart: period.start.toISOString(),
+      resetsAt: period.end.toISOString(),
+      agents,
+    };
   }
 
   async getConfigWithUsage(userId: string, companyId: string) {
     const base = this.getConfig(userId);
-    const { company } = await this.repo.getCompanyAndUnits(companyId);
-    const tier = company?.subscriptionTier ?? SubscriptionTier.FREE;
-    const weeklyLimit = TIER_LIMITS[tier].aiWeeklyMessages;
+    const usage = await this.getCreditUsage(companyId);
 
-    if (weeklyLimit === Infinity) {
+    if (!usage) {
       return {
         ...base,
-        weeklyLimit: null,
-        weeklyUsed: null,
-        weeklyResetsAt: null,
+        creditsLimit: null,
+        creditsUsed: null,
+        creditsResetsAt: null,
+        openWindows: null,
       };
     }
 
-    const { count, windowStart } = await this.repo.getWeeklyUsage(companyId);
-    const weeklyResetsAt = windowStart
-      ? new Date(windowStart.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString()
-      : null;
-
-    return { ...base, weeklyLimit, weeklyUsed: count, weeklyResetsAt };
+    return {
+      ...base,
+      creditsLimit: usage.limit,
+      creditsUsed: usage.used,
+      creditsResetsAt: usage.resetsAt,
+      openWindows: usage.openWindows,
+    };
   }
 
   isEnabled(userId: string): boolean {
@@ -216,7 +268,7 @@ export class WhatsappAiService implements OnModuleInit, OnModuleDestroy {
     const maxAge = parseInt(process.env.AI_MESSAGE_MAX_AGE_S ?? '120', 10);
     if (Math.floor(Date.now() / 1000) - evt.timestamp > maxAge) return;
 
-    const debounceMs = parseInt(process.env.AI_DEBOUNCE_MS ?? '5000', 10);
+    const debounceMs = parseInt(process.env.AI_DEBOUNCE_MS ?? '10000', 10);
     const pendingKey = `${userId}:${evt.chatId}`;
 
     const existing = this.pendingByChat.get(pendingKey);
@@ -336,7 +388,7 @@ export class WhatsappAiService implements OnModuleInit, OnModuleDestroy {
     const historyLenBefore = history.length;
 
     let assistantPushed = false;
-    let quotaIncremented = false;
+    let charge: CreditCharge = null;
     try {
       history.push({ role: 'user', content: cleaned });
 
@@ -345,27 +397,52 @@ export class WhatsappAiService implements OnModuleInit, OnModuleDestroy {
         this.repo.getCompanyAndUnits(companyId),
       ]);
 
-      const tier = company?.subscriptionTier ?? SubscriptionTier.FREE;
-      const weeklyLimit = TIER_LIMITS[tier].aiWeeklyMessages;
-      if (weeklyLimit !== Infinity) {
-        try {
-          const { allowed } = await this.repo.checkLimitAndIncrement(
-            companyId,
-            weeklyLimit,
+      if (!company) {
+        this.logger.error(`No company row for ${companyId}, AI turn refused`);
+        this.rollbackTurn(history, historyLenBefore);
+        return;
+      }
+
+      let period: { start: Date; end: Date } | null = null;
+      try {
+        const resolved = await this.resolveLimitAndPeriod(company);
+        period = resolved.period;
+        const result = await this.repo.consumeConversationCredit(
+          companyId,
+          userId,
+          chatId,
+          resolved.limit,
+          resolved.period,
+        );
+
+        if (!result.allowed) {
+          this.logger.warn(
+            `AI credits exhausted for company ${companyId} (allowance: ${resolved.limit})`,
           );
-          if (allowed) quotaIncremented = true;
-          if (!allowed) {
-            this.logger.warn(
-              `Weekly AI limit exceeded for company ${companyId} (limit: ${weeklyLimit})`,
-            );
-            this.rollbackTurn(history, historyLenBefore);
-            return;
-          }
-        } catch (err) {
-          this.logger.error(
-            'Weekly limit check failed — allowing message',
-            err instanceof Error ? err.message : err,
-          );
+          this.markExhausted(companyId, resolved.period);
+          void this.notifyCreditsExhausted(companyId, resolved.period.start);
+          this.rollbackTurn(history, historyLenBefore);
+          return;
+        }
+
+        if (result.charged) this.clearExhausted(companyId);
+        if (result.charged && result.conversationId) {
+          charge = {
+            conversationId: result.conversationId,
+            periodStart: resolved.period.start,
+          };
+        }
+      } catch (err) {
+        // Fail open on a transient DB fault: losing a credit beats a silent bot.
+        // But a company already known to be exhausted this period stays refused,
+        // otherwise a degraded DB becomes an unlimited-AI bypass.
+        this.logger.error(
+          'Credit check failed',
+          err instanceof Error ? err.message : err,
+        );
+        if (this.isKnownExhausted(companyId, period)) {
+          this.rollbackTurn(history, historyLenBefore);
+          return;
         }
       }
 
@@ -384,7 +461,7 @@ export class WhatsappAiService implements OnModuleInit, OnModuleDestroy {
         TOOL_DEFINITIONS,
       );
       if (!firstRaw) {
-        this.revertQuotaIfNeeded(companyId, quotaIncremented);
+        this.revertQuotaIfNeeded(companyId, charge);
         this.rollbackTurn(history, historyLenBefore);
         return;
       }
@@ -437,13 +514,13 @@ export class WhatsappAiService implements OnModuleInit, OnModuleDestroy {
             'Second LLM call returned no text content after tool execution',
             { toolName: toolCall.name, companyId },
           );
-          this.revertQuotaIfNeeded(companyId, quotaIncremented);
+          this.revertQuotaIfNeeded(companyId, charge);
           this.rollbackTurn(history, historyLenBefore);
           return;
         }
 
         if (this.humanTookOverSince(userId, chatId, flushStartedAt)) {
-          this.revertQuotaIfNeeded(companyId, quotaIncremented);
+          this.revertQuotaIfNeeded(companyId, charge);
           this.rollbackTurn(history, historyLenBefore);
           return;
         }
@@ -457,13 +534,13 @@ export class WhatsappAiService implements OnModuleInit, OnModuleDestroy {
 
       const reply = parseResponse(firstRaw);
       if (!reply) {
-        this.revertQuotaIfNeeded(companyId, quotaIncremented);
+        this.revertQuotaIfNeeded(companyId, charge);
         this.rollbackTurn(history, historyLenBefore);
         return;
       }
 
       if (this.humanTookOverSince(userId, chatId, flushStartedAt)) {
-        this.revertQuotaIfNeeded(companyId, quotaIncremented);
+        this.revertQuotaIfNeeded(companyId, charge);
         this.rollbackTurn(history, historyLenBefore);
         return;
       }
@@ -474,8 +551,7 @@ export class WhatsappAiService implements OnModuleInit, OnModuleDestroy {
       this.trimHistory(userId, chatId, history);
     } catch (err) {
       // On failure, the quota is only reverted if the send never happened.
-      if (!assistantPushed)
-        this.revertQuotaIfNeeded(companyId, quotaIncremented);
+      if (!assistantPushed) this.revertQuotaIfNeeded(companyId, charge);
       // Index-safe rollback: remove exactly what this turn appended (the user message, and
       // the assistant reply if it was pushed) by truncating to the captured baseline,
       // instead of assuming this turn's messages are the last -2 entries.
@@ -496,16 +572,76 @@ export class WhatsappAiService implements OnModuleInit, OnModuleDestroy {
     if (history.length > lenBefore) history.length = lenBefore;
   }
 
-  private revertQuotaIfNeeded(
+  // Last period we saw a company hit its ceiling. Stores the period END too, so the
+  // marker expires on the wall clock: it stays usable when period resolution itself
+  // fails, and goes stale on its own once the period is over.
+  private markExhausted(
     companyId: string,
-    quotaIncremented: boolean,
+    period: { start: Date; end: Date },
   ): void {
-    if (!quotaIncremented) return;
+    this.exhaustedPeriod.set(companyId, {
+      start: period.start.getTime(),
+      end: period.end.getTime(),
+    });
+  }
+
+  private clearExhausted(companyId: string): void {
+    this.exhaustedPeriod.delete(companyId);
+  }
+
+  private isKnownExhausted(
+    companyId: string,
+    period: { start: Date } | null,
+  ): boolean {
+    const marker = this.exhaustedPeriod.get(companyId);
+    if (!marker) return false;
+    if (Date.now() >= marker.end) {
+      this.exhaustedPeriod.delete(companyId);
+      return false;
+    }
+    // Period resolution failed, so trust the clock: still inside the exhausted period.
+    if (!period) return true;
+    return marker.start === period.start.getTime();
+  }
+
+  // The claim is a conditional UPDATE on the usage row, so exactly one caller sends
+  // the email per period no matter how many leads hit the wall at once.
+  private async notifyCreditsExhausted(
+    companyId: string,
+    periodStart: Date,
+  ): Promise<void> {
+    try {
+      const claimed = await this.repo.claimExhaustedNotification(
+        companyId,
+        periodStart,
+      );
+      if (!claimed) return;
+      await this.systemEmail.sendQuotaExceededToCompany(
+        companyId,
+        'AI credits',
+        'The WhatsApp assistant has stopped replying to new conversations. Your agents can still reply manually, and the assistant resumes automatically when your credits reset.',
+      );
+    } catch (err) {
+      this.logger.error(
+        'Failed to send AI credits exhausted email',
+        err instanceof Error ? err.message : err,
+      );
+    }
+  }
+
+  // Deletes the window as well as decrementing: leaving it behind would hand the
+  // company 24 free hours for a turn that never produced a reply.
+  private revertQuotaIfNeeded(companyId: string, charge: CreditCharge): void {
+    if (!charge) return;
     this.repo
-      .decrementWeeklyCount(companyId)
+      .refundConversationCredit(
+        companyId,
+        charge.conversationId,
+        charge.periodStart,
+      )
       .catch((err) =>
         this.logger.error(
-          'Failed to revert weekly quota',
+          'Failed to refund AI credit',
           err instanceof Error ? err.message : err,
         ),
       );

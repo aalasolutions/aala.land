@@ -57,22 +57,45 @@ function mockToolCallResponse(id: string, name: string, args = '{}') {
   };
 }
 
+const makeCompany = (
+  tier: SubscriptionTier = SubscriptionTier.FREE,
+  purchasedSeats = 1,
+) => ({
+  id: 'co',
+  subscriptionTier: tier,
+  purchasedSeats,
+  createdAt: new Date('2026-07-01T00:00:00.000Z'),
+});
+
 const makeMockRepo = (
   customPrompt: string | null = null,
   tier: SubscriptionTier = SubscriptionTier.FREE,
 ) => ({
-  getCompanyAndUnits: jest
-    .fn()
-    .mockResolvedValue({ company: { subscriptionTier: tier }, units: [] }),
+  getCompany: jest.fn().mockResolvedValue(makeCompany(tier)),
+  getCompanyAndUnits: jest.fn().mockResolvedValue({
+    company: makeCompany(tier),
+    units: [],
+  }),
   getCompanyPrompt: jest.fn().mockResolvedValue(customPrompt),
   persistAiEnabled: jest.fn().mockResolvedValue(undefined),
   loadAiEnabled: jest.fn().mockResolvedValue(null),
   clearContextCache: jest.fn(),
   clearPromptCache: jest.fn(),
-  checkLimitAndIncrement: jest.fn().mockResolvedValue({ allowed: true }),
-  decrementWeeklyCount: jest.fn().mockResolvedValue(undefined),
-  getWeeklyUsage: jest.fn().mockResolvedValue({ count: 0, windowStart: null }),
+  getPeriodAnchor: jest
+    .fn()
+    .mockResolvedValue(new Date('2026-07-01T00:00:00.000Z')),
+  consumeConversationCredit: jest
+    .fn()
+    .mockResolvedValue({ allowed: true, charged: true, conversationId: 'cv1' }),
+  refundConversationCredit: jest.fn().mockResolvedValue(undefined),
+  getCreditUsage: jest.fn().mockResolvedValue({ used: 0, openWindows: 0 }),
+  getAgentCreditBreakdown: jest.fn().mockResolvedValue([]),
+  claimExhaustedNotification: jest.fn().mockResolvedValue(true),
   searchProperties: jest.fn().mockResolvedValue([]),
+});
+
+const makeMockEmail = () => ({
+  sendQuotaExceededToCompany: jest.fn().mockResolvedValue(undefined),
 });
 
 const makeMockBuilder = (
@@ -116,6 +139,7 @@ describe('WhatsappAiService', () => {
     service = new WhatsappAiService(
       makeMockRepo() as any,
       makeMockBuilder() as any,
+      makeMockEmail() as any,
     );
   });
 
@@ -170,6 +194,7 @@ describe('WhatsappAiService', () => {
     service = new WhatsappAiService(
       makeMockRepo() as any,
       makeMockBuilder() as any,
+      makeMockEmail() as any,
     );
     const mockSend = jest.fn();
     await service.handleIncomingMessage(
@@ -187,6 +212,7 @@ describe('WhatsappAiService', () => {
     service = new WhatsappAiService(
       makeMockRepo() as any,
       makeMockBuilder() as any,
+      makeMockEmail() as any,
     );
     const mockSend = jest.fn();
     await service.handleIncomingMessage(
@@ -205,6 +231,7 @@ describe('WhatsappAiService', () => {
     service = new WhatsappAiService(
       makeMockRepo() as any,
       makeMockBuilder() as any,
+      makeMockEmail() as any,
     );
     const mockSend = jest.fn().mockResolvedValue({});
     await service.handleIncomingMessage(
@@ -230,6 +257,7 @@ describe('WhatsappAiService', () => {
       service = new WhatsappAiService(
         mockRepo as any,
         makeMockBuilder() as any,
+        makeMockEmail() as any,
       );
 
       global.fetch = jest
@@ -274,6 +302,7 @@ describe('WhatsappAiService', () => {
       service = new WhatsappAiService(
         makeMockRepo() as any,
         makeMockBuilder() as any,
+        makeMockEmail() as any,
       );
 
       global.fetch = jest
@@ -312,6 +341,7 @@ describe('WhatsappAiService', () => {
       service = new WhatsappAiService(
         makeMockRepo() as any,
         makeMockBuilder() as any,
+        makeMockEmail() as any,
       );
 
       global.fetch = jest
@@ -356,6 +386,7 @@ describe('WhatsappAiService', () => {
       service = new WhatsappAiService(
         makeMockRepo() as any,
         makeMockBuilder() as any,
+        makeMockEmail() as any,
       );
       global.fetch = jest.fn() as any;
 
@@ -373,6 +404,7 @@ describe('WhatsappAiService', () => {
       service = new WhatsappAiService(
         makeMockRepo() as any,
         makeMockBuilder() as any,
+        makeMockEmail() as any,
       );
       global.fetch = jest
         .fn()
@@ -397,6 +429,7 @@ describe('WhatsappAiService', () => {
       service = new WhatsappAiService(
         makeMockRepo() as any,
         makeMockBuilder() as any,
+        makeMockEmail() as any,
       );
       global.fetch = jest.fn() as any;
 
@@ -425,6 +458,7 @@ describe('WhatsappAiService', () => {
       service = new WhatsappAiService(
         mockRepo as any,
         makeMockBuilder() as any,
+        makeMockEmail() as any,
       );
 
       // The human replies WHILE the LLM is streaming: the fetch mock records the human
@@ -448,8 +482,12 @@ describe('WhatsappAiService', () => {
       // LLM was called (turn started before the human reply), but the send was aborted.
       expect(global.fetch).toHaveBeenCalledTimes(1);
       expect(mockSend).not.toHaveBeenCalled();
-      // The FREE-tier quota debit is refunded since no reply was actually sent.
-      expect(mockRepo.decrementWeeklyCount).toHaveBeenCalledWith('co');
+      // The credit is refunded and the window deleted, since no reply was sent.
+      expect(mockRepo.refundConversationCredit).toHaveBeenCalledWith(
+        'co',
+        'cv1',
+        expect.any(Date),
+      );
       // The aborted assistant reply is not retained in history.
       expect(service.getHistoryFor('u1', 'c1')).toEqual([]);
     });
@@ -462,6 +500,7 @@ describe('WhatsappAiService', () => {
       service = new WhatsappAiService(
         mockRepo as any,
         makeMockBuilder() as any,
+        makeMockEmail() as any,
       );
 
       // First call returns a tool call; the human replies during the SECOND LLM call.
@@ -498,6 +537,7 @@ describe('WhatsappAiService', () => {
       service = new WhatsappAiService(
         makeMockRepo() as any,
         makeMockBuilder() as any,
+        makeMockEmail() as any,
       );
       global.fetch = jest
         .fn()
@@ -544,7 +584,11 @@ describe('WhatsappAiService', () => {
     it('calls repo.getCompanyPrompt and passes result to builder', async () => {
       const mockRepo = makeMockRepo('DB prompt');
       const mockBuilder = makeMockBuilder('DB prompt');
-      service = new WhatsappAiService(mockRepo as any, mockBuilder as any);
+      service = new WhatsappAiService(
+        mockRepo as any,
+        mockBuilder as any,
+        makeMockEmail() as any,
+      );
 
       global.fetch = jest
         .fn()
@@ -569,7 +613,11 @@ describe('WhatsappAiService', () => {
       const mockBuilder = makeMockBuilder(
         'default system prompt for AALA.LAND',
       );
-      service = new WhatsappAiService(mockRepo as any, mockBuilder as any);
+      service = new WhatsappAiService(
+        mockRepo as any,
+        mockBuilder as any,
+        makeMockEmail() as any,
+      );
 
       global.fetch = jest
         .fn()
@@ -600,6 +648,7 @@ describe('WhatsappAiService', () => {
       service = new WhatsappAiService(
         mockRepo as any,
         makeMockBuilder() as any,
+        makeMockEmail() as any,
       );
 
       global.fetch = jest
@@ -631,7 +680,68 @@ describe('WhatsappAiService', () => {
     });
   });
 
-  describe('weekly message limit', () => {
+  describe('credit usage reads', () => {
+    it('returns the usage summary and reads the company WITHOUT the 40-unit join', async () => {
+      const mockRepo = makeMockRepo(null, SubscriptionTier.PRO);
+      mockRepo.getCompany.mockResolvedValue(
+        makeCompany(SubscriptionTier.PRO, 2),
+      );
+      mockRepo.getCreditUsage.mockResolvedValue({ used: 7, openWindows: 2 });
+      service = new WhatsappAiService(
+        mockRepo as any,
+        makeMockBuilder() as any,
+        makeMockEmail() as any,
+      );
+
+      const usage = await service.getCreditUsage('co');
+
+      expect(usage).toEqual({
+        used: 7,
+        limit: 400,
+        openWindows: 2,
+        resetsAt: expect.any(String),
+      });
+      expect(mockRepo.getCompany).toHaveBeenCalledWith('co');
+      expect(mockRepo.getCompanyAndUnits).not.toHaveBeenCalled();
+    });
+
+    it('returns null when the company row is gone', async () => {
+      const mockRepo = makeMockRepo();
+      mockRepo.getCompany.mockResolvedValue(null);
+      service = new WhatsappAiService(
+        mockRepo as any,
+        makeMockBuilder() as any,
+        makeMockEmail() as any,
+      );
+      await expect(service.getCreditUsage('co')).resolves.toBeNull();
+      await expect(service.getCreditUsageWithAgents('co')).resolves.toBeNull();
+    });
+
+    it('includes the per-agent breakdown for the same period it reports usage for', async () => {
+      const mockRepo = makeMockRepo();
+      mockRepo.getCreditUsage.mockResolvedValue({ used: 3, openWindows: 1 });
+      mockRepo.getAgentCreditBreakdown.mockResolvedValue([
+        { userId: 'u1', name: 'Agent One', credits: 3, aiTurns: 9, leads: 2 },
+      ]);
+      service = new WhatsappAiService(
+        mockRepo as any,
+        makeMockBuilder() as any,
+        makeMockEmail() as any,
+      );
+
+      const result = await service.getCreditUsageWithAgents('co');
+
+      expect(result!.agents).toHaveLength(1);
+      expect(result!.used).toBe(3);
+      expect(result!.limit).toBe(50);
+      // Usage and breakdown must be read for the SAME period start.
+      expect(mockRepo.getCreditUsage.mock.calls[0][1]).toEqual(
+        mockRepo.getAgentCreditBreakdown.mock.calls[0][1],
+      );
+    });
+  });
+
+  describe('AI credits', () => {
     beforeEach(() => {
       process.env.OLLAMA_API_KEY = 'test-key';
       process.env.OLLAMA_HOST = 'http://localhost:11434';
@@ -639,12 +749,262 @@ describe('WhatsappAiService', () => {
       process.env.AI_DEBOUNCE_MS = '100';
     });
 
-    it('does not send when weekly limit is reached (allowed: false)', async () => {
-      const mockRepo = makeMockRepo(null, SubscriptionTier.FREE);
-      mockRepo.checkLimitAndIncrement.mockResolvedValue({ allowed: false });
+    it('refuses the turn when the company row is missing, rather than serving unmetered', async () => {
+      const mockRepo = makeMockRepo();
+      mockRepo.getCompanyAndUnits.mockResolvedValue({
+        company: null,
+        units: [],
+      });
       service = new WhatsappAiService(
         mockRepo as any,
         makeMockBuilder() as any,
+        makeMockEmail() as any,
+      );
+      global.fetch = jest.fn() as any;
+
+      const mockSend = jest.fn().mockResolvedValue({});
+      await service.handleIncomingMessage(
+        baseEvt(),
+        'company-1',
+        'user-1',
+        mockSend,
+      );
+      await jest.runAllTimersAsync();
+
+      expect(global.fetch).not.toHaveBeenCalled();
+      expect(mockSend).not.toHaveBeenCalled();
+      expect(mockRepo.consumeConversationCredit).not.toHaveBeenCalled();
+      expect(service.getHistoryFor('user-1', 'c1')).toEqual([]);
+    });
+
+    it('stays REFUSED on a DB error once the company is known exhausted this period', async () => {
+      const mockRepo = makeMockRepo();
+      service = new WhatsappAiService(
+        mockRepo as any,
+        makeMockBuilder() as any,
+        makeMockEmail() as any,
+      );
+      global.fetch = jest
+        .fn()
+        .mockImplementation(() =>
+          Promise.resolve(mockTextResponse('reply')),
+        ) as any;
+      const mockSend = jest.fn().mockResolvedValue({});
+
+      // Turn 1 learns the company is out of credits.
+      mockRepo.consumeConversationCredit.mockResolvedValue({
+        allowed: false,
+        charged: false,
+        conversationId: null,
+      });
+      await service.handleIncomingMessage(
+        baseEvt(),
+        'company-1',
+        'user-1',
+        mockSend,
+      );
+      await jest.runAllTimersAsync();
+
+      // Turn 2 hits a degraded DB. Fail-open must NOT hand out a free turn.
+      mockRepo.consumeConversationCredit.mockRejectedValue(
+        new Error('connection terminated'),
+      );
+      await service.handleIncomingMessage(
+        baseEvt({ body: 'again' }),
+        'company-1',
+        'user-1',
+        mockSend,
+      );
+      await jest.runAllTimersAsync();
+
+      expect(global.fetch).not.toHaveBeenCalled();
+      expect(mockSend).not.toHaveBeenCalled();
+    });
+
+    it('still fails OPEN on a DB error when the company was not known exhausted', async () => {
+      const mockRepo = makeMockRepo();
+      service = new WhatsappAiService(
+        mockRepo as any,
+        makeMockBuilder() as any,
+        makeMockEmail() as any,
+      );
+      global.fetch = jest
+        .fn()
+        .mockImplementation(() =>
+          Promise.resolve(mockTextResponse('reply')),
+        ) as any;
+      const mockSend = jest.fn().mockResolvedValue({});
+
+      mockRepo.consumeConversationCredit.mockRejectedValue(
+        new Error('connection terminated'),
+      );
+      await service.handleIncomingMessage(
+        baseEvt(),
+        'company-1',
+        'user-1',
+        mockSend,
+      );
+      await jest.runAllTimersAsync();
+
+      expect(mockSend).toHaveBeenCalledTimes(1);
+    });
+
+    it('stays REFUSED when period resolution itself throws for a known-exhausted company', async () => {
+      const mockRepo = makeMockRepo();
+      service = new WhatsappAiService(
+        mockRepo as any,
+        makeMockBuilder() as any,
+        makeMockEmail() as any,
+      );
+      global.fetch = jest
+        .fn()
+        .mockImplementation(() =>
+          Promise.resolve(mockTextResponse('reply')),
+        ) as any;
+      const mockSend = jest.fn().mockResolvedValue({});
+
+      mockRepo.consumeConversationCredit.mockResolvedValue({
+        allowed: false,
+        charged: false,
+        conversationId: null,
+      });
+      await service.handleIncomingMessage(
+        baseEvt(),
+        'company-1',
+        'user-1',
+        mockSend,
+      );
+      await jest.runAllTimersAsync();
+
+      // Now the ANCHOR read fails, so the period is never resolved at all.
+      mockRepo.getPeriodAnchor.mockRejectedValue(
+        new Error('billing read down'),
+      );
+      await service.handleIncomingMessage(
+        baseEvt({ body: 'again' }),
+        'company-1',
+        'user-1',
+        mockSend,
+      );
+      await jest.runAllTimersAsync();
+
+      expect(mockSend).not.toHaveBeenCalled();
+      expect(global.fetch).not.toHaveBeenCalled();
+    });
+
+    it('serves again once the exhausted period has elapsed, even if resolution throws', async () => {
+      const mockRepo = makeMockRepo();
+      // Anchor a month back so the marked period ends before "now".
+      mockRepo.getPeriodAnchor.mockResolvedValue(
+        new Date(Date.now() - 70 * 24 * 60 * 60 * 1000),
+      );
+      service = new WhatsappAiService(
+        mockRepo as any,
+        makeMockBuilder() as any,
+        makeMockEmail() as any,
+      );
+      global.fetch = jest
+        .fn()
+        .mockImplementation(() =>
+          Promise.resolve(mockTextResponse('reply')),
+        ) as any;
+      const mockSend = jest.fn().mockResolvedValue({});
+
+      mockRepo.consumeConversationCredit.mockResolvedValue({
+        allowed: false,
+        charged: false,
+        conversationId: null,
+      });
+      await service.handleIncomingMessage(
+        baseEvt(),
+        'company-1',
+        'user-1',
+        mockSend,
+      );
+      await jest.runAllTimersAsync();
+
+      // Jump past the marked period, then break resolution. A stale marker must not
+      // refuse a company that has since rolled into a fresh allowance.
+      jest.setSystemTime(new Date(Date.now() + 40 * 24 * 60 * 60 * 1000));
+      mockRepo.getPeriodAnchor.mockRejectedValue(
+        new Error('billing read down'),
+      );
+      await service.handleIncomingMessage(
+        baseEvt({ body: 'next period' }),
+        'company-1',
+        'user-1',
+        mockSend,
+      );
+      await jest.runAllTimersAsync();
+
+      expect(mockSend).toHaveBeenCalledTimes(1);
+    });
+
+    it('clears the exhausted marker once a credit is charged again', async () => {
+      const mockRepo = makeMockRepo();
+      service = new WhatsappAiService(
+        mockRepo as any,
+        makeMockBuilder() as any,
+        makeMockEmail() as any,
+      );
+      global.fetch = jest
+        .fn()
+        .mockImplementation(() =>
+          Promise.resolve(mockTextResponse('reply')),
+        ) as any;
+      const mockSend = jest.fn().mockResolvedValue({});
+
+      mockRepo.consumeConversationCredit.mockResolvedValue({
+        allowed: false,
+        charged: false,
+        conversationId: null,
+      });
+      await service.handleIncomingMessage(
+        baseEvt(),
+        'company-1',
+        'user-1',
+        mockSend,
+      );
+      await jest.runAllTimersAsync();
+
+      // Period rolled over / top-up landed: a charge succeeds.
+      mockRepo.consumeConversationCredit.mockResolvedValue({
+        allowed: true,
+        charged: true,
+        conversationId: 'cv9',
+      });
+      await service.handleIncomingMessage(
+        baseEvt({ body: 'two' }),
+        'company-1',
+        'user-1',
+        mockSend,
+      );
+      await jest.runAllTimersAsync();
+
+      // A later DB error must fail OPEN again, since the company is no longer exhausted.
+      mockRepo.consumeConversationCredit.mockRejectedValue(new Error('boom'));
+      await service.handleIncomingMessage(
+        baseEvt({ body: 'three' }),
+        'company-1',
+        'user-1',
+        mockSend,
+      );
+      await jest.runAllTimersAsync();
+
+      expect(mockSend).toHaveBeenCalledTimes(2);
+    });
+
+    it('does not send when the allowance is spent (allowed: false)', async () => {
+      const mockRepo = makeMockRepo(null, SubscriptionTier.FREE);
+      mockRepo.consumeConversationCredit.mockResolvedValue({
+        allowed: false,
+        charged: false,
+        conversationId: null,
+      });
+      service = new WhatsappAiService(
+        mockRepo as any,
+        makeMockBuilder() as any,
+        makeMockEmail() as any,
       );
       global.fetch = jest.fn() as any;
 
@@ -661,11 +1021,73 @@ describe('WhatsappAiService', () => {
       expect(global.fetch).not.toHaveBeenCalled();
     });
 
-    it('calls checkLimitAndIncrement with correct companyId for FREE tier', async () => {
+    it('emails the company once per period when the allowance runs out', async () => {
+      const mockRepo = makeMockRepo(null, SubscriptionTier.FREE);
+      const mockEmail = makeMockEmail();
+      mockRepo.consumeConversationCredit.mockResolvedValue({
+        allowed: false,
+        charged: false,
+        conversationId: null,
+      });
+      service = new WhatsappAiService(
+        mockRepo as any,
+        makeMockBuilder() as any,
+        mockEmail as any,
+      );
+      global.fetch = jest.fn() as any;
+
+      await service.handleIncomingMessage(
+        baseEvt(),
+        'company-1',
+        'user-1',
+        jest.fn().mockResolvedValue({}),
+      );
+      await jest.runAllTimersAsync();
+
+      expect(mockRepo.claimExhaustedNotification).toHaveBeenCalledWith(
+        'company-1',
+        expect.any(Date),
+      );
+      expect(mockEmail.sendQuotaExceededToCompany).toHaveBeenCalledWith(
+        'company-1',
+        'AI credits',
+        expect.any(String),
+      );
+    });
+
+    it('does not email again when another turn already claimed this period', async () => {
+      const mockRepo = makeMockRepo(null, SubscriptionTier.FREE);
+      const mockEmail = makeMockEmail();
+      mockRepo.consumeConversationCredit.mockResolvedValue({
+        allowed: false,
+        charged: false,
+        conversationId: null,
+      });
+      mockRepo.claimExhaustedNotification.mockResolvedValue(false);
+      service = new WhatsappAiService(
+        mockRepo as any,
+        makeMockBuilder() as any,
+        mockEmail as any,
+      );
+      global.fetch = jest.fn() as any;
+
+      await service.handleIncomingMessage(
+        baseEvt(),
+        'company-1',
+        'user-1',
+        jest.fn().mockResolvedValue({}),
+      );
+      await jest.runAllTimersAsync();
+
+      expect(mockEmail.sendQuotaExceededToCompany).not.toHaveBeenCalled();
+    });
+
+    it('meters FREE against a 50-credit allowance', async () => {
       const mockRepo = makeMockRepo(null, SubscriptionTier.FREE);
       service = new WhatsappAiService(
         mockRepo as any,
         makeMockBuilder() as any,
+        makeMockEmail() as any,
       );
       global.fetch = jest
         .fn()
@@ -681,17 +1103,32 @@ describe('WhatsappAiService', () => {
       );
       await jest.runAllTimersAsync();
 
-      expect(mockRepo.checkLimitAndIncrement).toHaveBeenCalledWith(
+      expect(mockRepo.consumeConversationCredit).toHaveBeenCalledWith(
         'company-1',
-        10,
+        'user-1',
+        'c1',
+        50,
+        expect.objectContaining({ start: expect.any(Date) }),
       );
     });
 
-    it('skips limit check entirely for ENTERPRISE tier', async () => {
+    // Unlike the old weekly limiter, paid tiers are metered too: they get a bigger
+    // per-seat allowance, not an exemption.
+    it('meters ENTERPRISE against 500 per seat', async () => {
       const mockRepo = makeMockRepo(null, SubscriptionTier.ENTERPRISE);
+      mockRepo.getCompanyAndUnits.mockResolvedValue({
+        company: {
+          id: 'co',
+          subscriptionTier: SubscriptionTier.ENTERPRISE,
+          purchasedSeats: 3,
+          createdAt: new Date('2026-07-01T00:00:00.000Z'),
+        },
+        units: [],
+      });
       service = new WhatsappAiService(
         mockRepo as any,
         makeMockBuilder() as any,
+        makeMockEmail() as any,
       );
       global.fetch = jest
         .fn()
@@ -708,14 +1145,30 @@ describe('WhatsappAiService', () => {
       );
       await jest.runAllTimersAsync();
 
-      expect(mockRepo.checkLimitAndIncrement).not.toHaveBeenCalled();
+      expect(mockRepo.consumeConversationCredit).toHaveBeenCalledWith(
+        'company-1',
+        'user-1',
+        'c1',
+        1500,
+        expect.anything(),
+      );
     });
 
-    it('skips limit check entirely for PRO tier', async () => {
+    it('meters PRO against 200 per seat and still replies', async () => {
       const mockRepo = makeMockRepo(null, SubscriptionTier.PRO);
+      mockRepo.getCompanyAndUnits.mockResolvedValue({
+        company: {
+          id: 'co',
+          subscriptionTier: SubscriptionTier.PRO,
+          purchasedSeats: 2,
+          createdAt: new Date('2026-07-01T00:00:00.000Z'),
+        },
+        units: [],
+      });
       service = new WhatsappAiService(
         mockRepo as any,
         makeMockBuilder() as any,
+        makeMockEmail() as any,
       );
       global.fetch = jest
         .fn()
@@ -732,16 +1185,50 @@ describe('WhatsappAiService', () => {
       );
       await jest.runAllTimersAsync();
 
-      expect(mockRepo.checkLimitAndIncrement).not.toHaveBeenCalled();
+      expect(mockRepo.consumeConversationCredit).toHaveBeenCalledWith(
+        'company-1',
+        'user-1',
+        'c1',
+        400,
+        expect.anything(),
+      );
       expect(mockSend).toHaveBeenCalledTimes(1);
     });
 
-    it('allows message when checkLimitAndIncrement throws (fail-open)', async () => {
+    it('does not refund a turn that rode an already-open window', async () => {
       const mockRepo = makeMockRepo(null, SubscriptionTier.FREE);
-      mockRepo.checkLimitAndIncrement.mockRejectedValue(new Error('DB error'));
+      mockRepo.consumeConversationCredit.mockResolvedValue({
+        allowed: true,
+        charged: false,
+        conversationId: 'open-1',
+      });
       service = new WhatsappAiService(
         mockRepo as any,
         makeMockBuilder() as any,
+        makeMockEmail() as any,
+      );
+      global.fetch = jest.fn().mockResolvedValue({ ok: false }) as any;
+
+      await service.handleIncomingMessage(
+        baseEvt(),
+        'company-1',
+        'user-1',
+        jest.fn().mockResolvedValue({}),
+      );
+      await jest.runAllTimersAsync();
+
+      expect(mockRepo.refundConversationCredit).not.toHaveBeenCalled();
+    });
+
+    it('allows the message when the credit check throws (fail-open)', async () => {
+      const mockRepo = makeMockRepo(null, SubscriptionTier.FREE);
+      mockRepo.consumeConversationCredit.mockRejectedValue(
+        new Error('DB error'),
+      );
+      service = new WhatsappAiService(
+        mockRepo as any,
+        makeMockBuilder() as any,
+        makeMockEmail() as any,
       );
       global.fetch = jest
         .fn()
@@ -774,6 +1261,7 @@ describe('WhatsappAiService', () => {
       service = new WhatsappAiService(
         makeMockRepo() as any,
         makeMockBuilder() as any,
+        makeMockEmail() as any,
       );
       global.fetch = jest
         .fn()
@@ -796,6 +1284,7 @@ describe('WhatsappAiService', () => {
       service = new WhatsappAiService(
         makeMockRepo() as any,
         makeMockBuilder() as any,
+        makeMockEmail() as any,
       );
       global.fetch = jest
         .fn()
@@ -828,6 +1317,7 @@ describe('WhatsappAiService', () => {
       service = new WhatsappAiService(
         mockRepo as any,
         makeMockBuilder() as any,
+        makeMockEmail() as any,
       );
 
       (global.fetch as jest.Mock) = jest
@@ -863,6 +1353,7 @@ describe('WhatsappAiService', () => {
       service = new WhatsappAiService(
         makeMockRepo() as any,
         makeMockBuilder() as any,
+        makeMockEmail() as any,
       );
       (global.fetch as jest.Mock) = jest
         .fn()
@@ -893,6 +1384,7 @@ describe('WhatsappAiService', () => {
       service = new WhatsappAiService(
         makeMockRepo() as any,
         makeMockBuilder() as any,
+        makeMockEmail() as any,
       );
 
       // Split the SSE body across two separate Uint8Array chunks mid-line
@@ -944,6 +1436,7 @@ describe('WhatsappAiService', () => {
       service = new WhatsappAiService(
         mockRepo as any,
         makeMockBuilder() as any,
+        makeMockEmail() as any,
       );
 
       // Gate every LLM call behind a manually-released resolver so we can hold turn 1
@@ -1007,8 +1500,8 @@ describe('WhatsappAiService', () => {
         'reply-2',
       ]);
       expect(mockSend).toHaveBeenCalledTimes(2);
-      // Quota incremented exactly once per turn (never interleaved).
-      expect(mockRepo.checkLimitAndIncrement).toHaveBeenCalledTimes(2);
+      // Credit consumed exactly once per turn (never interleaved).
+      expect(mockRepo.consumeConversationCredit).toHaveBeenCalledTimes(2);
     });
 
     // The error-recovery rollback must remove only what THIS turn appended, by captured
@@ -1018,6 +1511,7 @@ describe('WhatsappAiService', () => {
       service = new WhatsappAiService(
         mockRepo as any,
         makeMockBuilder() as any,
+        makeMockEmail() as any,
       );
 
       // Turn 1 succeeds, turn 2 throws inside the LLM call.
@@ -1071,6 +1565,7 @@ describe('WhatsappAiService', () => {
       service = new WhatsappAiService(
         makeMockRepo() as any,
         makeMockBuilder() as any,
+        makeMockEmail() as any,
       );
       global.fetch = jest.fn() as any;
       const mockSend = jest.fn().mockResolvedValue({});
@@ -1097,6 +1592,7 @@ describe('WhatsappAiService', () => {
       service = new WhatsappAiService(
         makeMockRepo() as any,
         makeMockBuilder() as any,
+        makeMockEmail() as any,
       );
       global.fetch = jest.fn() as any;
       const mockSend = jest.fn().mockResolvedValue({});
@@ -1119,6 +1615,7 @@ describe('WhatsappAiService', () => {
       service = new WhatsappAiService(
         makeMockRepo() as any,
         makeMockBuilder() as any,
+        makeMockEmail() as any,
       );
       global.fetch = jest.fn() as any;
       const mockSend = jest.fn().mockResolvedValue({});

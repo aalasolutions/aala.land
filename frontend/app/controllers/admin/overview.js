@@ -73,12 +73,20 @@ export default class AdminOverviewController extends Controller {
         value: this.formatBytes(o.totalStorageBytes),
       },
       {
-        key: 'ai-calls',
-        label: 'AI calls (this week)',
+        key: 'ai-credits',
+        label: 'AI credits (current periods)',
         icon: 'sparkle',
         accent: 'kpi-warning',
         iconAccent: 'kpi-icon-warning',
-        value: this.formatNumber(o.aiCallsCurrentWeek),
+        value: this.formatNumber(o.aiCreditsUsedCurrentPeriods),
+      },
+      {
+        key: 'ai-conversations',
+        label: 'AI conversations (30d)',
+        icon: 'chats-circle',
+        accent: 'kpi-warning',
+        iconAccent: 'kpi-icon-warning',
+        value: this.formatNumber(o.aiConversationsLast30Days),
       },
       {
         key: 'whatsapps',
