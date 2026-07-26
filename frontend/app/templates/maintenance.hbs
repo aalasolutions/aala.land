@@ -233,18 +233,16 @@
   @showClose={{true}}
 >
   <form class="flex col gap-4" {{on "submit" this.saveWorkOrder}}>
-    {{#unless this.editWorkOrder}}
-      <Ui::FormDropdown
-        @label="Property"
-        @id="wo-unit"
-        @value={{if this.formUnitId this.formUnitId null}}
-        @onChange={{fn this.setField "formUnitId"}}
-        @options={{this.unitOptions}}
-        @placeholder="Select a property..."
-        @required={{true}}
-        data-test-wo-unit
-      />
-    {{/unless}}
+    <Ui::FormDropdown
+      @label="Property"
+      @id="wo-unit"
+      @value={{this.formUnitId}}
+      @onChange={{fn this.setField "formUnitId"}}
+      @options={{this.unitOptions}}
+      @placeholder="Select a property..."
+      @required={{true}}
+      data-test-wo-unit
+    />
 
     <Ui::FormInput
       @label="Title"

@@ -50,13 +50,10 @@ export default class MaintenanceController extends PaginatedController {
   categoryOptions = MAINTENANCE_CATEGORY_OPTIONS;
 
   get unitOptions() {
-    return [
-      { value: '', label: 'No property assigned' },
-      ...(this.model.units || []).map((unit) => ({
-        value: unit.id,
-        label: `${unit.areaName} / ${unit.assetName} / Property ${unit.unitNumber}`,
-      })),
-    ];
+    return (this.model.units || []).map((unit) => ({
+      value: unit.id,
+      label: `${unit.areaName} / ${unit.assetName} / Property ${unit.unitNumber}`,
+    }));
   }
 
   get vendorOptions() {
@@ -163,8 +160,8 @@ export default class MaintenanceController extends PaginatedController {
     if (this.isSaving) return;
 
     const isEdit = !!this.editWorkOrder;
-    if (!isEdit && !this.formUnitId) {
-      this.errorMsg = 'Please select a property before creating a work order.';
+    if (!this.formUnitId) {
+      this.errorMsg = 'Please select a property before saving the work order.';
       return;
     }
 
@@ -192,11 +189,11 @@ export default class MaintenanceController extends PaginatedController {
         ? { scheduledDate: this.formScheduledDate }
         : {}),
       ...(this.formVendorId ? { vendorId: this.formVendorId } : {}),
+      unitId: this.formUnitId,
     };
 
-    if (!isEdit) {
-      if (this.formReportedBy) body.reportedBy = this.formReportedBy;
-      if (this.formUnitId) body.unitId = this.formUnitId;
+    if (!isEdit && this.formReportedBy) {
+      body.reportedBy = this.formReportedBy;
     }
 
     try {
