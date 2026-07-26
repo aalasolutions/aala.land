@@ -5,6 +5,7 @@ import { WorkOrder, WorkOrderStatus } from './entities/work-order.entity';
 import { CreateWorkOrderDto } from './dto/create-work-order.dto';
 import { UpdateWorkOrderDto } from './dto/update-work-order.dto';
 import { REGION_FILTER_SUBQUERY } from '../../shared/utils/region-filter.util';
+import { Unit } from '../properties/entities/unit.entity';
 
 export interface CostSummary {
   totalEstimated: number;
@@ -19,12 +20,15 @@ export class MaintenanceService {
   constructor(
     @InjectRepository(WorkOrder)
     private readonly workOrderRepository: Repository<WorkOrder>,
+    @InjectRepository(Unit)
+    private readonly unitRepository: Repository<Unit>,
   ) {}
 
   async create(companyId: string, dto: CreateWorkOrderDto): Promise<WorkOrder> {
     if (!dto.unitId) {
       throw new BadRequestException('Property is required for work orders');
     }
+    await this.validateUnitOwnership(dto.unitId, companyId);
 
     const order = this.workOrderRepository.create({ ...dto, companyId });
     return this.workOrderRepository.save(order);
@@ -141,6 +145,9 @@ export class MaintenanceService {
     dto: UpdateWorkOrderDto,
   ): Promise<WorkOrder> {
     const order = await this.findOne(id, companyId);
+    if (dto.unitId) {
+      await this.validateUnitOwnership(dto.unitId, companyId);
+    }
     Object.assign(order, dto);
 
     if (dto.status === WorkOrderStatus.COMPLETED && !order.completedAt) {
@@ -206,5 +213,17 @@ export class MaintenanceService {
     }
 
     return qb.take(100).getMany();
+  }
+
+  private async validateUnitOwnership(
+    unitId: string,
+    companyId: string,
+  ): Promise<void> {
+    const unit = await this.unitRepository.findOne({
+      where: { id: unitId, companyId },
+    });
+    if (!unit) {
+      throw new BadRequestException('Invalid unit selected');
+    }
   }
 }

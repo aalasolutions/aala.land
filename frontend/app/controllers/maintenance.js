@@ -188,7 +188,7 @@ export default class MaintenanceController extends PaginatedController {
       ...(this.formScheduledDate
         ? { scheduledDate: this.formScheduledDate }
         : {}),
-      ...(this.formVendorId ? { vendorId: this.formVendorId } : {}),
+      vendorId: this.formVendorId || null,
       unitId: this.formUnitId,
     };
 
