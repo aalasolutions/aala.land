@@ -50,19 +50,29 @@ export default class MaintenanceController extends PaginatedController {
   categoryOptions = MAINTENANCE_CATEGORY_OPTIONS;
 
   get unitOptions() {
-    return [
-      { value: '', label: 'No property assigned' },
-      ...(this.model.units || []).map((unit) => ({
-        value: unit.id,
-        label: `${unit.areaName} / ${unit.assetName} / Property ${unit.unitNumber}`,
-      })),
-    ];
+    return (this.model.units || []).map((unit) => ({
+      value: unit.id,
+      label: `${unit.areaName} / ${unit.assetName} / Property ${unit.unitNumber}`,
+    }));
   }
 
   get vendorOptions() {
+    const selectedCategory = this.formCategory;
+    const shouldFilterByCategory =
+      selectedCategory && selectedCategory !== 'OTHER';
+    const vendors = this.model.vendors || [];
+
+    const filteredVendors = shouldFilterByCategory
+      ? vendors.filter((vendor) =>
+          Array.isArray(vendor.specialties)
+            ? vendor.specialties.includes(selectedCategory)
+            : false,
+        )
+      : vendors;
+
     return [
       { value: '', label: 'No vendor assigned' },
-      ...(this.model.vendors || []).map((vendor) => ({
+      ...filteredVendors.map((vendor) => ({
         value: vendor.id,
         label: vendor.specialties?.length
           ? `${vendor.name} (${vendor.specialties.join(', ')})`
@@ -77,6 +87,14 @@ export default class MaintenanceController extends PaginatedController {
 
   @action setField(fieldName, e) {
     this[fieldName] = e.target.value;
+
+    // Keep selected vendor valid when category changes and vendor options narrow.
+    if (fieldName === 'formCategory' && this.formVendorId) {
+      const validVendorIds = this.vendorOptions.map((opt) => opt.value);
+      if (!validVendorIds.includes(this.formVendorId)) {
+        this.formVendorId = '';
+      }
+    }
   }
 
   @action setSection(section) {
@@ -140,10 +158,16 @@ export default class MaintenanceController extends PaginatedController {
   @action async saveWorkOrder(event) {
     event.preventDefault();
     if (this.isSaving) return;
+
+    const isEdit = !!this.editWorkOrder;
+    if (!this.formUnitId) {
+      this.errorMsg = 'Please select a property before saving the work order.';
+      return;
+    }
+
     this.isSaving = true;
     this.errorMsg = '';
 
-    const isEdit = !!this.editWorkOrder;
     const path = isEdit
       ? `/maintenance/${this.editWorkOrder.id}`
       : '/maintenance';
@@ -164,12 +188,12 @@ export default class MaintenanceController extends PaginatedController {
       ...(this.formScheduledDate
         ? { scheduledDate: this.formScheduledDate }
         : {}),
-      ...(this.formVendorId ? { vendorId: this.formVendorId } : {}),
+      vendorId: this.formVendorId || null,
+      unitId: this.formUnitId,
     };
 
-    if (!isEdit) {
-      if (this.formReportedBy) body.reportedBy = this.formReportedBy;
-      if (this.formUnitId) body.unitId = this.formUnitId;
+    if (!isEdit && this.formReportedBy) {
+      body.reportedBy = this.formReportedBy;
     }
 
     try {

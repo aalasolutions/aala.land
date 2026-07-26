@@ -40,10 +40,10 @@ export class CreateWorkOrderDto {
   @IsEnum(WorkOrderCategory)
   category?: WorkOrderCategory;
 
-  @ApiProperty({ required: false })
-  @IsOptional()
+  @ApiProperty({ required: true })
+  @IsNotEmpty()
   @IsUUID()
-  unitId?: string;
+  unitId: string;
 
   @ApiProperty({ required: false })
   @IsOptional()

@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { NotFoundException } from '@nestjs/common';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { MaintenanceService } from './maintenance.service';
 import {
   WorkOrder,
@@ -10,10 +10,12 @@ import {
   WorkOrderCategory,
   ScheduleFrequency,
 } from './entities/work-order.entity';
+import { Unit } from '../properties/entities/unit.entity';
 
 describe('MaintenanceService', () => {
   let service: MaintenanceService;
   let repo: any;
+  let unitRepo: any;
 
   const companyId = 'company-uuid-1';
 
@@ -64,11 +66,18 @@ describe('MaintenanceService', () => {
             createQueryBuilder: jest.fn().mockReturnValue(mockQueryBuilder),
           },
         },
+        {
+          provide: getRepositoryToken(Unit),
+          useValue: {
+            findOne: jest.fn(),
+          },
+        },
       ],
     }).compile();
 
     service = module.get<MaintenanceService>(MaintenanceService);
     repo = module.get(getRepositoryToken(WorkOrder));
+    unitRepo = module.get(getRepositoryToken(Unit));
   });
 
   it('should be defined', () => {
@@ -77,6 +86,7 @@ describe('MaintenanceService', () => {
 
   describe('create', () => {
     it('creates and returns a work order', async () => {
+      unitRepo.findOne.mockResolvedValue({ id: 'unit-uuid-1', companyId });
       repo.create.mockReturnValue(mockOrder as WorkOrder);
       repo.save.mockResolvedValue(mockOrder as WorkOrder);
 
@@ -85,11 +95,32 @@ describe('MaintenanceService', () => {
         description: 'AC not cooling',
         priority: WorkOrderPriority.HIGH,
         category: WorkOrderCategory.HVAC,
+        unitId: 'unit-uuid-1',
       };
       const result = await service.create(companyId, dto as any);
 
+      expect(unitRepo.findOne).toHaveBeenCalledWith({
+        where: { id: 'unit-uuid-1', companyId },
+      });
       expect(repo.create).toHaveBeenCalledWith({ ...dto, companyId });
       expect(result).toEqual(mockOrder);
+    });
+
+    it('throws BadRequestException when unit belongs to another company', async () => {
+      unitRepo.findOne.mockResolvedValue(null);
+
+      const dto = {
+        title: 'Fix AC',
+        description: 'AC not cooling',
+        priority: WorkOrderPriority.HIGH,
+        category: WorkOrderCategory.HVAC,
+        unitId: 'foreign-unit-uuid',
+      };
+
+      await expect(service.create(companyId, dto as any)).rejects.toThrow(
+        BadRequestException,
+      );
+      expect(repo.create).not.toHaveBeenCalled();
     });
   });
 
@@ -163,6 +194,30 @@ describe('MaintenanceService', () => {
       });
 
       expect(result.status).toBe(WorkOrderStatus.IN_PROGRESS);
+    });
+
+    it('throws BadRequestException when reassigned unit belongs to another company', async () => {
+      repo.findOne.mockResolvedValue({ ...mockOrder } as WorkOrder);
+      unitRepo.findOne.mockResolvedValue(null);
+
+      await expect(
+        service.update('order-uuid-1', companyId, {
+          unitId: 'foreign-unit-uuid',
+        }),
+      ).rejects.toThrow(BadRequestException);
+      expect(repo.save).not.toHaveBeenCalled();
+    });
+
+    it('throws BadRequestException when unitId is cleared to null', async () => {
+      repo.findOne.mockResolvedValue({ ...mockOrder } as WorkOrder);
+
+      await expect(
+        service.update('order-uuid-1', companyId, {
+          unitId: null,
+        } as any),
+      ).rejects.toThrow(BadRequestException);
+      expect(unitRepo.findOne).not.toHaveBeenCalled();
+      expect(repo.save).not.toHaveBeenCalled();
     });
 
     it('sets completedAt when status changed to COMPLETED', async () => {

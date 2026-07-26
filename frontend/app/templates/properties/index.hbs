@@ -14,17 +14,15 @@
         @onChange={{this.switchView}}
         data-test-view-toggle
       />
-      {{#unless (eq this.currentView "browse")}}
-        <button
-          type="button"
-          class="btn btn-primary"
-          {{on "click" this.openNewUnitModal}}
-          data-test-new-unit
-        >
-          <Ui::Ph @icon="plus" />
-          New Property
-        </button>
-      {{/unless}}
+      <button
+        type="button"
+        class="btn btn-primary"
+        {{on "click" this.openNewUnitModal}}
+        data-test-new-unit
+      >
+        <Ui::Ph @icon="plus" />
+        New Property
+      </button>
     </div>
   </div>
 

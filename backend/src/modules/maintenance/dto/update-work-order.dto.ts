@@ -48,6 +48,11 @@ export class UpdateWorkOrderDto {
   @ApiProperty({ required: false })
   @IsOptional()
   @IsUUID()
+  unitId?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsUUID()
   vendorId?: string;
 
   @ApiProperty({ required: false })
