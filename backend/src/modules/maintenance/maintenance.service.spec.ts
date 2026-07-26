@@ -208,6 +208,18 @@ describe('MaintenanceService', () => {
       expect(repo.save).not.toHaveBeenCalled();
     });
 
+    it('throws BadRequestException when unitId is cleared to null', async () => {
+      repo.findOne.mockResolvedValue({ ...mockOrder } as WorkOrder);
+
+      await expect(
+        service.update('order-uuid-1', companyId, {
+          unitId: null,
+        } as any),
+      ).rejects.toThrow(BadRequestException);
+      expect(unitRepo.findOne).not.toHaveBeenCalled();
+      expect(repo.save).not.toHaveBeenCalled();
+    });
+
     it('sets completedAt when status changed to COMPLETED', async () => {
       const openOrder = { ...mockOrder, completedAt: null } as WorkOrder;
       repo.findOne.mockResolvedValue(openOrder);

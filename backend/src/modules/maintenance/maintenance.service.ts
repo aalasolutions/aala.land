@@ -145,7 +145,10 @@ export class MaintenanceService {
     dto: UpdateWorkOrderDto,
   ): Promise<WorkOrder> {
     const order = await this.findOne(id, companyId);
-    if (dto.unitId) {
+    if (dto.unitId !== undefined) {
+      if (!dto.unitId) {
+        throw new BadRequestException('Property is required for work orders');
+      }
       await this.validateUnitOwnership(dto.unitId, companyId);
     }
     Object.assign(order, dto);
