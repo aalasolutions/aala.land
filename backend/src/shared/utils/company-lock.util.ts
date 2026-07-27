@@ -31,9 +31,24 @@ export function withCompanyLock<T>(
   fn: (manager: EntityManager) => Promise<T>,
 ): Promise<T> {
   return dataSource.transaction(async (manager) => {
-    await manager.query('SELECT pg_advisory_xact_lock(hashtext($1))', [
-      companyId,
-    ]);
+    await acquireCompanyLock(manager, companyId);
     return fn(manager);
   });
+}
+
+/**
+ * Same lock as `withCompanyLock`, for callers that already own a transaction.
+ * The key derivation MUST stay identical or the two sites take different lock
+ * keys and stop excluding each other.
+ *
+ * @param manager   EntityManager of an open transaction; the lock dies with it.
+ * @param companyId Tenant key the lock is bound to.
+ */
+export function acquireCompanyLock(
+  manager: EntityManager,
+  companyId: string,
+): Promise<unknown> {
+  return manager.query('SELECT pg_advisory_xact_lock(hashtext($1))', [
+    companyId,
+  ]);
 }

@@ -14,41 +14,41 @@ export enum SubscriptionTier {
 
 // Caps live on Free only. 999 is the frozen finite "uncapped" sentinel (contract
 // section 11): the webhook cap-column sync writes these values into int NOT NULL
-// columns, so Infinity is permitted ONLY for aiWeeklyMessages, which is never
-// synced to a column. aiWeeklyMessages is the interim AI limiter until the
-// credit ledger lands (parked behind the WhatsApp PR).
+// columns, so no value here may be Infinity.
 export const TIER_LIMITS: Record<
   SubscriptionTier,
   {
     maxUsers: number;
     maxRegions: number;
     maxProperties: number;
-    aiWeeklyMessages: number;
   }
 > = {
   [SubscriptionTier.FREE]: {
     maxUsers: 1,
     maxRegions: 1,
     maxProperties: 25,
-    aiWeeklyMessages: 10,
   },
   [SubscriptionTier.PRO]: {
     maxUsers: 999,
     maxRegions: 999,
     maxProperties: 999,
-    aiWeeklyMessages: Infinity,
   },
   [SubscriptionTier.ENTERPRISE]: {
     maxUsers: 999,
     maxRegions: 999,
     maxProperties: 999,
-    aiWeeklyMessages: Infinity,
   },
 };
 
 export const FREE_STORAGE_BYTES = 2 * 1024 * 1024 * 1024; // 2 GB flat (FREE tier)
 export const BYTES_PER_SEAT = 5 * 1024 * 1024 * 1024; // 5 GB per purchased seat (PRO)
 export const ENTERPRISE_BYTES_PER_SEAT = 10 * 1024 * 1024 * 1024; // 10 GB per purchased seat (ENTERPRISE)
+
+// 1 AI credit = one 24-hour conversation window between one agent and one lead.
+export const FREE_AI_CREDITS = 50; // flat per period (FREE tier)
+export const AI_CREDITS_PER_SEAT = 200; // per purchased seat (PRO)
+export const ENTERPRISE_AI_CREDITS_PER_SEAT = 500; // per purchased seat (ENTERPRISE)
+export const AI_CONVERSATION_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 @Entity('companies')
 export class Company {

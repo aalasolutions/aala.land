@@ -34,6 +34,26 @@ export interface WaStatus {
   qr: string | null;
 }
 
+export interface AiCreditAgentUsage {
+  userId: string;
+  name: string;
+  credits: number;
+  aiTurns: number;
+  leads: number;
+}
+
+export interface AiCreditUsageSummary {
+  used: number;
+  limit: number;
+  openWindows: number;
+  resetsAt: string;
+}
+
+export interface AiCreditUsageWithAgents extends AiCreditUsageSummary {
+  periodStart: string;
+  agents: AiCreditAgentUsage[];
+}
+
 export interface AiHistoryMessage {
   role: 'user' | 'assistant' | 'system' | 'tool';
   content: string | null;

@@ -12,7 +12,8 @@ import {
 import { User } from '@modules/users/entities/user.entity';
 import { BillingPrice } from '@modules/billing/entities/billing-price.entity';
 import { BillingHistory } from '@modules/billing/entities/billing-history.entity';
-import { WhatsappSettings } from '@modules/whatsapp/entities/whatsapp-settings.entity';
+import { AiCreditUsage } from '@modules/whatsapp/entities/ai-credit-usage.entity';
+import { WhatsappAiConversation } from '@modules/whatsapp/entities/whatsapp-ai-conversation.entity';
 import { BillingService } from '@modules/billing/billing.service';
 import { WhatsappService } from '@modules/whatsapp/whatsapp.service';
 import { AuditService } from '@modules/audit/audit.service';
@@ -110,7 +111,8 @@ describe('ConsoleService', () => {
   let remedyRepo: RepoMock;
   let priceRepo: RepoMock;
   let billingHistoryRepo: RepoMock;
-  let whatsappSettingsRepo: RepoMock;
+  let aiCreditUsageRepo: RepoMock;
+  let aiConversationRepo: RepoMock;
   let billingService: {
     getSubscriptionState: jest.Mock;
     syncPrices: jest.Mock;
@@ -138,7 +140,8 @@ describe('ConsoleService', () => {
     remedyRepo = repoMock();
     priceRepo = repoMock();
     billingHistoryRepo = repoMock();
-    whatsappSettingsRepo = repoMock();
+    aiCreditUsageRepo = repoMock();
+    aiConversationRepo = repoMock();
     billingService = {
       getSubscriptionState: jest.fn().mockResolvedValue({ tier: 'FREE' }),
       syncPrices: jest
@@ -180,8 +183,12 @@ describe('ConsoleService', () => {
           useValue: billingHistoryRepo,
         },
         {
-          provide: getRepositoryToken(WhatsappSettings),
-          useValue: whatsappSettingsRepo,
+          provide: getRepositoryToken(AiCreditUsage),
+          useValue: aiCreditUsageRepo,
+        },
+        {
+          provide: getRepositoryToken(WhatsappAiConversation),
+          useValue: aiConversationRepo,
         },
         { provide: BillingService, useValue: billingService },
         { provide: LockStateService, useValue: lockStateService },

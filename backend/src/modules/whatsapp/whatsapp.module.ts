@@ -12,13 +12,30 @@ import { WhatsappService } from './whatsapp.service';
 import { WhatsappController } from './whatsapp.controller';
 import { WhatsappSettingsController } from './whatsapp-settings.controller';
 import { WhatsappSettings } from './entities/whatsapp-settings.entity';
+import { WhatsappAiConversation } from './entities/whatsapp-ai-conversation.entity';
+import { AiCreditUsage } from './entities/ai-credit-usage.entity';
 import { User } from '../users/entities/user.entity';
 import { Company } from '../companies/entities/company.entity';
 import { Unit } from '../properties/entities/unit.entity';
+import { BillingHistory } from '../billing/entities/billing-history.entity';
+import { EmailModule } from '../email/email.module';
+import { BillingModule } from '../billing/billing.module';
+import { WhatsappBillingListener } from './whatsapp-billing.listener';
+import { AiConversationRetentionCron } from './ai-conversation-retention.cron';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([WhatsappSettings, User, Company, Unit]),
+    EmailModule,
+    BillingModule,
+    TypeOrmModule.forFeature([
+      WhatsappSettings,
+      WhatsappAiConversation,
+      AiCreditUsage,
+      User,
+      Company,
+      Unit,
+      BillingHistory,
+    ]),
     JwtModule.registerAsync({
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => ({
@@ -36,6 +53,8 @@ import { Unit } from '../properties/entities/unit.entity';
     WhatsappAiService,
     WhatsappGateway,
     WhatsappService,
+    WhatsappBillingListener,
+    AiConversationRetentionCron,
   ],
   exports: [WhatsappService],
 })

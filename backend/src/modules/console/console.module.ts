@@ -4,7 +4,8 @@ import { Company } from '@modules/companies/entities/company.entity';
 import { User } from '@modules/users/entities/user.entity';
 import { BillingPrice } from '@modules/billing/entities/billing-price.entity';
 import { BillingHistory } from '@modules/billing/entities/billing-history.entity';
-import { WhatsappSettings } from '@modules/whatsapp/entities/whatsapp-settings.entity';
+import { AiCreditUsage } from '@modules/whatsapp/entities/ai-credit-usage.entity';
+import { WhatsappAiConversation } from '@modules/whatsapp/entities/whatsapp-ai-conversation.entity';
 import { BillingModule } from '@modules/billing/billing.module';
 import { AuditModule } from '@modules/audit/audit.module';
 import { WhatsappModule } from '@modules/whatsapp/whatsapp.module';
@@ -28,7 +29,8 @@ import { ConsoleController } from './console.controller';
       PaymentRemedy,
       BillingPrice,
       BillingHistory,
-      WhatsappSettings,
+      AiCreditUsage,
+      WhatsappAiConversation,
     ]),
     LockModule,
     BillingModule,

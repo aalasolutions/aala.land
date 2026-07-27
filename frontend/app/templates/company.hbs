@@ -53,9 +53,37 @@
   {{/if}}
 
   {{#if (eq this.activeTab "ai")}}
-    {{#if this.weeklyUsageLabel}}
+    {{#if this.creditUsageLabel}}
       <div class="glass-panel p-4 max-w-lg mb-4 text-muted font-sm">
-        {{this.weeklyUsageLabel}}
+        <div data-test-ai-credit-usage>{{this.creditUsageLabel}}</div>
+        <div class="font-xs mt-1">1 credit covers 24 hours of unlimited replies
+          with one lead.</div>
+      </div>
+    {{/if}}
+
+    {{#if this.hasCreditAgents}}
+      <div class="glass-panel p-4 max-w-lg mb-4">
+        <div class="font-sm font-bold mb-2">AI credits by agent</div>
+        <table class="data-table" data-test-credit-agents>
+          <thead>
+            <tr>
+              <th>Agent</th>
+              <th>Credits</th>
+              <th>Leads</th>
+              <th>AI turns</th>
+            </tr>
+          </thead>
+          <tbody>
+            {{#each this.creditAgents as |agent|}}
+              <tr data-test-credit-agent-row={{agent.userId}}>
+                <td>{{agent.name}}</td>
+                <td>{{agent.credits}}</td>
+                <td>{{agent.leads}}</td>
+                <td>{{agent.aiTurns}}</td>
+              </tr>
+            {{/each}}
+          </tbody>
+        </table>
       </div>
     {{/if}}
 

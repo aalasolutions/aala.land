@@ -9,7 +9,13 @@ import {
 import { MessageStoreService } from './message-store.service';
 import { WhatsappAiService } from './whatsapp-ai.service';
 import { WhatsappGateway } from './whatsapp.gateway';
-import { AiHistoryMessage, WaChat, WaMessage, WaStatus } from './wa-types';
+import {
+  AiCreditUsageWithAgents,
+  AiHistoryMessage,
+  WaChat,
+  WaMessage,
+  WaStatus,
+} from './wa-types';
 
 @Injectable()
 export class WhatsappService implements OnModuleInit {
@@ -144,7 +150,7 @@ export class WhatsappService implements OnModuleInit {
             msg,
             companyId,
             userId,
-            async (chatId, message) => {
+            async (chatId, message, meta) => {
               // Register the echo fingerprint BEFORE sending so the fromMe re-emission
               // (which can arrive before or without a messageId) is always recognised.
               const fp = fingerprint(chatId, message);
@@ -173,13 +179,21 @@ export class WhatsappService implements OnModuleInit {
               };
               this.store.addMessage(userId, aiMsg);
               this.gateway.emitMessage(userId, aiMsg);
-              void this.ai
-                .getWeeklyCount(companyId)
-                .then((usage) => {
-                  if (usage)
-                    this.gateway.emitAi(userId, { weeklyUsed: usage.used });
-                })
-                .catch(() => {});
+              // Only a newly opened window moves these numbers; reuse turns would
+              // requery twice per reply to emit what the client already has.
+              if (meta?.creditCharged) {
+                void this.ai
+                  .getCreditUsage(companyId)
+                  .then((usage) => {
+                    if (usage)
+                      this.gateway.emitAi(userId, {
+                        creditsUsed: usage.used,
+                        creditsLimit: usage.limit,
+                        openWindows: usage.openWindows,
+                      });
+                  })
+                  .catch(() => {});
+              }
               return result;
             },
           )
@@ -300,6 +314,10 @@ export class WhatsappService implements OnModuleInit {
 
   getAiConfig(userId: string, companyId: string) {
     return this.ai.getConfigWithUsage(userId, companyId);
+  }
+
+  getAiCreditUsage(companyId: string): Promise<AiCreditUsageWithAgents | null> {
+    return this.ai.getCreditUsageWithAgents(companyId);
   }
 
   getAiHistory(userId: string, chatId: string): AiHistoryMessage[] {

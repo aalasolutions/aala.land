@@ -39,8 +39,13 @@
           Re-pair
         </button>
       </div>
-      {{#if this.weeklyUsageLabel}}
-        <div class="wa-weekly-usage">{{this.weeklyUsageLabel}}</div>
+      {{#if this.creditUsageLabel}}
+        <div class="wa-credit-usage" data-test-ai-credit-usage>
+          {{this.creditUsageLabel}}
+          {{#if this.openWindows}}
+            <span data-test-ai-open-windows>({{this.openWindows}} open)</span>
+          {{/if}}
+        </div>
       {{/if}}
     </div>
 

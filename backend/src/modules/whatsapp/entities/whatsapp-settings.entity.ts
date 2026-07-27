@@ -32,17 +32,6 @@ export class WhatsappSettings {
   })
   aiEnabled: boolean | null;
 
-  @Column({ name: 'ai_weekly_count', type: 'int', default: 0 })
-  aiWeeklyCount: number;
-
-  @Column({
-    name: 'ai_weekly_window_start',
-    type: 'timestamptz',
-    nullable: true,
-    default: null,
-  })
-  aiWeeklyWindowStart: Date | null;
-
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 

@@ -58,6 +58,13 @@ services:
       - "${BACKEND_HOST_PORT:-3010}:${PORT:-3010}"
     env_file:
       - ./.env
+    # Baileys session credentials and downloaded WhatsApp media live here. Without
+    # this volume every container recreate wipes them and each agent has to re-scan
+    # the QR code. The path is the app's own default (process.cwd()/data/whatsapp,
+    # and WORKDIR is /app), so leave WHATSAPP_DATA_DIR unset in backend/.env — setting
+    # it elsewhere moves the data off this volume and the wipe comes back.
+    volumes:
+      - whatsapp_data:/app/data/whatsapp
     depends_on:
       postgres:
         condition: service_healthy
@@ -74,3 +81,4 @@ services:
 volumes:
   postgres_data:
   dragonfly_data:
+  whatsapp_data:

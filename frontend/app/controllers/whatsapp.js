@@ -25,9 +25,10 @@ export default class WhatsappController extends Controller {
 
   @tracked aiEnabled = false;
   @tracked aiKeyConfigured = false;
-  @tracked weeklyLimit = null;
-  @tracked weeklyUsed = null;
-  @tracked weeklyResetsAt = null;
+  @tracked creditsLimit = null;
+  @tracked creditsUsed = null;
+  @tracked creditsResetsAt = null;
+  @tracked openWindows = null;
 
   @tracked messageText = '';
   @tracked isSending = false;
@@ -47,9 +48,9 @@ export default class WhatsappController extends Controller {
     );
   }
 
-  get weeklyUsageLabel() {
-    if (this.weeklyLimit === null) return null;
-    return `${this.weeklyUsed ?? 0}/${this.weeklyLimit}`;
+  get creditUsageLabel() {
+    if (this.creditsLimit === null) return null;
+    return `${this.creditsUsed ?? 0}/${this.creditsLimit} AI credits`;
   }
 
   get currentChatMessages() {
@@ -98,9 +99,10 @@ export default class WhatsappController extends Controller {
       const ai = aiData.data ?? aiData;
       this.aiEnabled = ai.enabled ?? false;
       this.aiKeyConfigured = ai.keyConfigured ?? false;
-      this.weeklyLimit = ai.weeklyLimit ?? null;
-      this.weeklyUsed = ai.weeklyUsed ?? null;
-      this.weeklyResetsAt = ai.weeklyResetsAt ?? null;
+      this.creditsLimit = ai.creditsLimit ?? null;
+      this.creditsUsed = ai.creditsUsed ?? null;
+      this.creditsResetsAt = ai.creditsResetsAt ?? null;
+      this.openWindows = ai.openWindows ?? null;
 
       if (this.connection !== 'connected') {
         this.pollForQR();
@@ -191,7 +193,10 @@ export default class WhatsappController extends Controller {
       if (data.enabled !== undefined) this.aiEnabled = data.enabled;
       if (data.keyConfigured !== undefined)
         this.aiKeyConfigured = data.keyConfigured;
-      if (data.weeklyUsed !== undefined) this.weeklyUsed = data.weeklyUsed;
+      if (data.creditsUsed !== undefined) this.creditsUsed = data.creditsUsed;
+      if (data.creditsLimit !== undefined)
+        this.creditsLimit = data.creditsLimit;
+      if (data.openWindows !== undefined) this.openWindows = data.openWindows;
     }
   }
 

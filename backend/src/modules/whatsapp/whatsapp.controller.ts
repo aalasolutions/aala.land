@@ -137,6 +137,15 @@ export class WhatsappController {
     return this.wa.getAiConfig(req.user.userId, req.user.companyId!);
   }
 
+  @Get('ai/credits')
+  @Roles(Role.COMPANY_ADMIN)
+  @ApiOperation({
+    summary: 'AI credit usage for the current period, broken down by agent',
+  })
+  getAiCredits(@Request() req: AuthenticatedRequest) {
+    return this.wa.getAiCreditUsage(req.user.companyId!);
+  }
+
   @Post('ai/toggle')
   @Roles(Role.COMPANY_ADMIN)
   @ApiOperation({ summary: 'Toggle or set AI auto-reply' })

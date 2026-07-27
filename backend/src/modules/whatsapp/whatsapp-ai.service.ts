@@ -4,7 +4,11 @@ import {
   OnModuleDestroy,
   OnModuleInit,
 } from '@nestjs/common';
-import { AiHistoryMessage } from './wa-types';
+import {
+  AiCreditUsageSummary,
+  AiCreditUsageWithAgents,
+  AiHistoryMessage,
+} from './wa-types';
 import { WhatsappAiRepositoryService } from './whatsapp-ai-repository.service';
 import { WhatsappAiPromptBuilderService } from './whatsapp-ai-prompt-builder.service';
 import {
@@ -17,13 +21,16 @@ import {
 } from './whatsapp-ai-filter';
 import { TOOL_DEFINITIONS, executeTool } from './whatsapp-ai-tools';
 import {
-  SubscriptionTier,
-  TIER_LIMITS,
-} from '../companies/entities/company.entity';
+  getAiCreditAllowance,
+  getCreditPeriod,
+} from '@shared/utils/ai-credit.util';
+import { SystemEmailService } from '@modules/email/system-email.service';
+import { Company } from '@modules/companies/entities/company.entity';
 
 type SendFn = (
   chatId: string,
   message: string,
+  meta?: { creditCharged: boolean },
 ) => Promise<{ messageId?: string }>;
 
 interface PendingChat {
@@ -33,6 +40,7 @@ interface PendingChat {
   userId: string;
   send: SendFn;
   timer: ReturnType<typeof setTimeout>;
+  deadlineAt: number;
 }
 
 // NOTE: Single-instance only — all Maps below are process-local and not shared across replicas.
@@ -48,7 +56,7 @@ export class WhatsappAiService implements OnModuleInit, OnModuleDestroy {
   // Serializes AI turns per chat (keyed by `${userId}:${chatId}`). Each turn chains
   // after the previous one for the same key, so only ONE processMessage runs at a time
   // per chat. This prevents two concurrent turns from interleaving push/pop/splice on the
-  // shared history array or double-counting the weekly quota when a follow-up message
+  // shared history array or double-charging a credit when a follow-up message
   // arrives mid-turn (after the pending entry was already flushed).
   private chatLocks = new Map<string, Promise<void>>();
   private readonly AI_STATE_TTL_MS = 24 * 60 * 60 * 1000;
@@ -57,6 +65,7 @@ export class WhatsappAiService implements OnModuleInit, OnModuleDestroy {
   constructor(
     private readonly repo: WhatsappAiRepositoryService,
     private readonly promptBuilder: WhatsappAiPromptBuilderService,
+    private readonly systemEmail: SystemEmailService,
   ) {}
 
   onModuleInit(): void {
@@ -68,6 +77,10 @@ export class WhatsappAiService implements OnModuleInit, OnModuleDestroy {
 
   onModuleDestroy(): void {
     if (this.sweepInterval) clearInterval(this.sweepInterval);
+    for (const pending of this.pendingByChat.values()) {
+      clearTimeout(pending.timer);
+    }
+    this.pendingByChat.clear();
   }
 
   private sweepStaleState(): void {
@@ -78,6 +91,13 @@ export class WhatsappAiService implements OnModuleInit, OnModuleDestroy {
         this.humanReplyAt.delete(key);
         this.lastActivityAt.delete(key);
       }
+    }
+    // Backstop: the loop above only sees keys that have an activity stamp.
+    for (const key of this.histories.keys()) {
+      if (!this.lastActivityAt.has(key)) this.histories.delete(key);
+    }
+    for (const key of this.humanReplyAt.keys()) {
+      if (!this.lastActivityAt.has(key)) this.humanReplyAt.delete(key);
     }
   }
 
@@ -90,38 +110,72 @@ export class WhatsappAiService implements OnModuleInit, OnModuleDestroy {
     };
   }
 
-  async getWeeklyCount(
+  private async resolveLimitAndPeriod(
+    company: Company,
+  ): Promise<{ limit: number; period: { start: Date; end: Date } }> {
+    const limit = getAiCreditAllowance(company);
+    const period = getCreditPeriod(await this.repo.getPeriodAnchor(company));
+    return { limit, period };
+  }
+
+  async getCreditUsage(
     companyId: string,
-  ): Promise<{ used: number; limit: number } | null> {
-    const { company } = await this.repo.getCompanyAndUnits(companyId);
-    const tier = company?.subscriptionTier ?? SubscriptionTier.FREE;
-    const weeklyLimit = TIER_LIMITS[tier].aiWeeklyMessages;
-    if (weeklyLimit === Infinity) return null;
-    const { count } = await this.repo.getWeeklyUsage(companyId);
-    return { used: count, limit: weeklyLimit };
+  ): Promise<AiCreditUsageSummary | null> {
+    const company = await this.repo.getCompany(companyId);
+    if (!company) return null;
+
+    const { limit, period } = await this.resolveLimitAndPeriod(company);
+    const { used, openWindows } = await this.repo.getCreditUsage(
+      companyId,
+      period.start,
+    );
+
+    return { used, limit, openWindows, resetsAt: period.end.toISOString() };
+  }
+
+  async getCreditUsageWithAgents(
+    companyId: string,
+  ): Promise<AiCreditUsageWithAgents | null> {
+    const company = await this.repo.getCompany(companyId);
+    if (!company) return null;
+
+    const { limit, period } = await this.resolveLimitAndPeriod(company);
+    const [usage, agents] = await Promise.all([
+      this.repo.getCreditUsage(companyId, period.start),
+      this.repo.getAgentCreditBreakdown(companyId, period.start),
+    ]);
+
+    return {
+      used: usage.used,
+      limit,
+      openWindows: usage.openWindows,
+      periodStart: period.start.toISOString(),
+      resetsAt: period.end.toISOString(),
+      agents,
+    };
   }
 
   async getConfigWithUsage(userId: string, companyId: string) {
     const base = this.getConfig(userId);
-    const { company } = await this.repo.getCompanyAndUnits(companyId);
-    const tier = company?.subscriptionTier ?? SubscriptionTier.FREE;
-    const weeklyLimit = TIER_LIMITS[tier].aiWeeklyMessages;
+    const usage = await this.getCreditUsage(companyId);
 
-    if (weeklyLimit === Infinity) {
+    if (!usage) {
       return {
         ...base,
-        weeklyLimit: null,
-        weeklyUsed: null,
-        weeklyResetsAt: null,
+        creditsLimit: null,
+        creditsUsed: null,
+        creditsResetsAt: null,
+        openWindows: null,
       };
     }
 
-    const { count, windowStart } = await this.repo.getWeeklyUsage(companyId);
-    const weeklyResetsAt = windowStart
-      ? new Date(windowStart.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString()
-      : null;
-
-    return { ...base, weeklyLimit, weeklyUsed: count, weeklyResetsAt };
+    return {
+      ...base,
+      creditsLimit: usage.limit,
+      creditsUsed: usage.used,
+      creditsResetsAt: usage.resetsAt,
+      openWindows: usage.openWindows,
+    };
   }
 
   isEnabled(userId: string): boolean {
@@ -189,6 +243,7 @@ export class WhatsappAiService implements OnModuleInit, OnModuleDestroy {
   // Cancels any pending debounced AI response for that chat and starts a silence window.
   recordHumanReply(userId: string, chatId: string): void {
     this.humanReplyAt.set(`${userId}:${chatId}`, Date.now());
+    this.lastActivityAt.set(`${userId}:${chatId}`, Date.now());
     const pendingKey = `${userId}:${chatId}`;
     const pending = this.pendingByChat.get(pendingKey);
     if (pending) {
@@ -216,27 +271,48 @@ export class WhatsappAiService implements OnModuleInit, OnModuleDestroy {
     const maxAge = parseInt(process.env.AI_MESSAGE_MAX_AGE_S ?? '120', 10);
     if (Math.floor(Date.now() / 1000) - evt.timestamp > maxAge) return;
 
-    const debounceMs = parseInt(process.env.AI_DEBOUNCE_MS ?? '5000', 10);
+    const debounceMs = parseInt(process.env.AI_DEBOUNCE_MS ?? '10000', 10);
+    const maxDebounceMs = parseInt(
+      process.env.AI_DEBOUNCE_MAX_MS ?? '60000',
+      10,
+    );
+    const maxPending = parseInt(process.env.AI_PENDING_MAX ?? '20', 10);
+    const maxBodyChars = parseInt(
+      process.env.AI_MESSAGE_MAX_CHARS ?? '4000',
+      10,
+    );
     const pendingKey = `${userId}:${evt.chatId}`;
+    const body = evt.body.slice(0, maxBodyChars);
 
     const existing = this.pendingByChat.get(pendingKey);
     if (existing) {
+      if (existing.messages.length < maxPending) existing.messages.push(body);
       clearTimeout(existing.timer);
-      existing.messages.push(evt.body);
-      existing.timer = setTimeout(() => {
+      // Deadline caps the extension: messaging faster than debounceMs would
+      // otherwise restart the countdown forever and the turn would never run.
+      const remaining = existing.deadlineAt - Date.now();
+      if (remaining <= 0) {
         void this.flushPending(pendingKey);
-      }, debounceMs);
+        return;
+      }
+      existing.timer = setTimeout(
+        () => {
+          void this.flushPending(pendingKey);
+        },
+        Math.min(debounceMs, remaining),
+      );
     } else {
       const timer = setTimeout(() => {
         void this.flushPending(pendingKey);
       }, debounceMs);
       this.pendingByChat.set(pendingKey, {
-        messages: [evt.body],
+        messages: [body],
         chatId: evt.chatId,
         companyId,
         userId,
         send,
         timer,
+        deadlineAt: Date.now() + maxDebounceMs,
       });
     }
   }
@@ -322,6 +398,8 @@ export class WhatsappAiService implements OnModuleInit, OnModuleDestroy {
     }
 
     const histKey = `${userId}:${chatId}`;
+    // Stamp on creation, not only on success: sweepStaleState walks lastActivityAt.
+    this.lastActivityAt.set(histKey, Date.now());
     let history = this.histories.get(histKey);
     if (!history) {
       history = [];
@@ -335,8 +413,8 @@ export class WhatsappAiService implements OnModuleInit, OnModuleDestroy {
     // the recovery correct even if the assumption is ever violated.
     const historyLenBefore = history.length;
 
-    let assistantPushed = false;
-    let quotaIncremented = false;
+    let conversationId: string | null = null;
+    let creditCharged = false;
     try {
       history.push({ role: 'user', content: cleaned });
 
@@ -345,28 +423,42 @@ export class WhatsappAiService implements OnModuleInit, OnModuleDestroy {
         this.repo.getCompanyAndUnits(companyId),
       ]);
 
-      const tier = company?.subscriptionTier ?? SubscriptionTier.FREE;
-      const weeklyLimit = TIER_LIMITS[tier].aiWeeklyMessages;
-      if (weeklyLimit !== Infinity) {
-        try {
-          const { allowed } = await this.repo.checkLimitAndIncrement(
-            companyId,
-            weeklyLimit,
+      if (!company) {
+        this.logger.error(`No company row for ${companyId}, AI turn refused`);
+        this.rollbackTurn(history, historyLenBefore);
+        return;
+      }
+
+      try {
+        const resolved = await this.resolveLimitAndPeriod(company);
+        const result = await this.repo.consumeConversationCredit(
+          companyId,
+          userId,
+          chatId,
+          resolved.limit,
+          resolved.period,
+        );
+
+        if (!result.allowed) {
+          this.logger.warn(
+            `AI credits exhausted for company ${companyId} (allowance: ${resolved.limit})`,
           );
-          if (allowed) quotaIncremented = true;
-          if (!allowed) {
-            this.logger.warn(
-              `Weekly AI limit exceeded for company ${companyId} (limit: ${weeklyLimit})`,
-            );
-            this.rollbackTurn(history, historyLenBefore);
-            return;
-          }
-        } catch (err) {
-          this.logger.error(
-            'Weekly limit check failed — allowing message',
-            err instanceof Error ? err.message : err,
-          );
+          void this.notifyCreditsExhausted(companyId, resolved.period.start);
+          this.rollbackTurn(history, historyLenBefore);
+          return;
         }
+
+        conversationId = result.conversationId;
+        creditCharged = result.charged;
+      } catch (err) {
+        // Fail closed. The transaction rolled back so nothing was charged, and running
+        // the turn anyway would serve unmetered AI for as long as the fault lasts.
+        this.logger.error(
+          'Credit check failed, refusing the AI turn',
+          err instanceof Error ? err.message : err,
+        );
+        this.rollbackTurn(history, historyLenBefore);
+        return;
       }
 
       const { block: contextBlock, fallbackCurrency } =
@@ -384,7 +476,6 @@ export class WhatsappAiService implements OnModuleInit, OnModuleDestroy {
         TOOL_DEFINITIONS,
       );
       if (!firstRaw) {
-        this.revertQuotaIfNeeded(companyId, quotaIncremented);
         this.rollbackTurn(history, historyLenBefore);
         return;
       }
@@ -437,48 +528,40 @@ export class WhatsappAiService implements OnModuleInit, OnModuleDestroy {
             'Second LLM call returned no text content after tool execution',
             { toolName: toolCall.name, companyId },
           );
-          this.revertQuotaIfNeeded(companyId, quotaIncremented);
           this.rollbackTurn(history, historyLenBefore);
           return;
         }
 
         if (this.humanTookOverSince(userId, chatId, flushStartedAt)) {
-          this.revertQuotaIfNeeded(companyId, quotaIncremented);
           this.rollbackTurn(history, historyLenBefore);
           return;
         }
 
         history.push({ role: 'assistant', content: reply });
-        assistantPushed = true;
-        await send(chatId, reply);
+        await send(chatId, reply, { creditCharged });
+        await this.recordDelivery(companyId, conversationId);
         this.trimHistory(userId, chatId, history);
         return;
       }
 
       const reply = parseResponse(firstRaw);
       if (!reply) {
-        this.revertQuotaIfNeeded(companyId, quotaIncremented);
         this.rollbackTurn(history, historyLenBefore);
         return;
       }
 
       if (this.humanTookOverSince(userId, chatId, flushStartedAt)) {
-        this.revertQuotaIfNeeded(companyId, quotaIncremented);
         this.rollbackTurn(history, historyLenBefore);
         return;
       }
 
       history.push({ role: 'assistant', content: reply });
-      assistantPushed = true;
-      await send(chatId, reply);
+      await send(chatId, reply, { creditCharged });
+      await this.recordDelivery(companyId, conversationId);
       this.trimHistory(userId, chatId, history);
     } catch (err) {
-      // On failure, the quota is only reverted if the send never happened.
-      if (!assistantPushed)
-        this.revertQuotaIfNeeded(companyId, quotaIncremented);
-      // Index-safe rollback: remove exactly what this turn appended (the user message, and
-      // the assistant reply if it was pushed) by truncating to the captured baseline,
-      // instead of assuming this turn's messages are the last -2 entries.
+      // Index-safe rollback: truncate to the captured baseline so only what this turn
+      // appended is removed, rather than assuming it is the last -2 entries.
       this.rollbackTurn(history, historyLenBefore);
       const cause = (err as any)?.cause;
       const causeStr =
@@ -496,19 +579,42 @@ export class WhatsappAiService implements OnModuleInit, OnModuleDestroy {
     if (history.length > lenBefore) history.length = lenBefore;
   }
 
-  private revertQuotaIfNeeded(
+  private async notifyCreditsExhausted(
     companyId: string,
-    quotaIncremented: boolean,
-  ): void {
-    if (!quotaIncremented) return;
-    this.repo
-      .decrementWeeklyCount(companyId)
-      .catch((err) =>
-        this.logger.error(
-          'Failed to revert weekly quota',
-          err instanceof Error ? err.message : err,
-        ),
+    periodStart: Date,
+  ): Promise<void> {
+    try {
+      const claimed = await this.repo.claimExhaustedNotification(
+        companyId,
+        periodStart,
       );
+      if (!claimed) return;
+      await this.systemEmail.sendQuotaExceededToCompany(
+        companyId,
+        'AI credits',
+        'The WhatsApp assistant has stopped replying to new conversations. Your agents can still reply manually, and the assistant resumes automatically when your credits reset.',
+      );
+    } catch (err) {
+      this.logger.error(
+        'Failed to send AI credits exhausted email',
+        err instanceof Error ? err.message : err,
+      );
+    }
+  }
+
+  private async recordDelivery(
+    companyId: string,
+    conversationId: string | null,
+  ): Promise<void> {
+    if (!conversationId) return;
+    try {
+      await this.repo.recordTurnDelivered(companyId, conversationId);
+    } catch (err) {
+      this.logger.error(
+        'Failed to record AI turn delivery',
+        err instanceof Error ? err.message : err,
+      );
+    }
   }
 
   private trimHistory(
@@ -535,7 +641,11 @@ export class WhatsappAiService implements OnModuleInit, OnModuleDestroy {
     if (!host || !key || !model) return null;
 
     const timeout = parseInt(process.env.AI_REQUEST_TIMEOUT_MS ?? '300000', 10);
-    const maxRetries = 5;
+    const maxRetries = parseInt(process.env.AI_MAX_RETRIES ?? '2', 10);
+    // Per-attempt timeouts alone let one turn hold a spent credit and the chat lock for
+    // retries x timeout, so cap the whole call instead.
+    const budgetMs = parseInt(process.env.AI_TOTAL_BUDGET_MS ?? '120000', 10);
+    const deadline = Date.now() + budgetMs;
     const TRANSIENT_CODES = new Set([
       'EAI_AGAIN',
       'ECONNRESET',
@@ -544,8 +654,9 @@ export class WhatsappAiService implements OnModuleInit, OnModuleDestroy {
     ]);
 
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      const attemptMs = Math.min(timeout, Math.max(deadline - Date.now(), 1));
       const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), timeout);
+      const timer = setTimeout(() => controller.abort(), attemptMs);
 
       try {
         const body: Record<string, any> = {
@@ -568,7 +679,6 @@ export class WhatsappAiService implements OnModuleInit, OnModuleDestroy {
         });
 
         if (!res.ok) {
-          clearTimeout(timer);
           const rawText = await res.text();
           this.logger.error(
             `LLM API error ${res.status} ${res.statusText}: ${rawText.slice(0, 500)}`,
@@ -576,104 +686,107 @@ export class WhatsappAiService implements OnModuleInit, OnModuleDestroy {
           return null;
         }
 
-        // Stream SSE chunks and accumulate into a single response object
-        const reader = res.body?.getReader();
-        if (!reader) {
-          clearTimeout(timer);
-          return null;
-        }
-
-        const decoder = new TextDecoder();
-        let buf = '';
-        let content = '';
-        const toolCallMap: Record<
-          number,
-          {
-            id: string;
-            type: string;
-            function: { name: string; arguments: string };
-          }
-        > = {};
-
-        try {
-          outer: while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-            buf += decoder.decode(value, { stream: true });
-
-            const lines = buf.split('\n');
-            buf = lines.pop() ?? '';
-
-            for (const line of lines) {
-              if (!line.startsWith('data: ')) continue;
-              const data = line.slice(6).trim();
-              if (data === '[DONE]') break outer;
-              try {
-                const parsed = JSON.parse(data);
-                const delta = parsed.choices?.[0]?.delta;
-                if (!delta) continue;
-
-                if (typeof delta.content === 'string') content += delta.content;
-
-                if (Array.isArray(delta.tool_calls)) {
-                  for (const tc of delta.tool_calls) {
-                    const idx: number = tc.index ?? 0;
-                    if (!toolCallMap[idx]) {
-                      toolCallMap[idx] = {
-                        id: '',
-                        type: 'function',
-                        function: { name: '', arguments: '' },
-                      };
-                    }
-                    // id and name arrive only in the first delta chunk — assign once
-                    if (tc.id && !toolCallMap[idx].id)
-                      toolCallMap[idx].id = tc.id;
-                    if (tc.function?.name && !toolCallMap[idx].function.name)
-                      toolCallMap[idx].function.name = tc.function.name;
-                    // arguments are streamed across multiple chunks — concatenate
-                    if (tc.function?.arguments)
-                      toolCallMap[idx].function.arguments +=
-                        tc.function.arguments;
-                  }
-                }
-              } catch {
-                /* malformed SSE chunk — skip */
-              }
-            }
-          }
-        } finally {
-          clearTimeout(timer);
-          reader.releaseLock();
-        }
-
-        const tool_calls = Object.values(toolCallMap);
-        return {
-          choices: [
-            {
-              message: {
-                role: 'assistant',
-                content: content || null,
-                ...(tool_calls.length > 0 ? { tool_calls } : {}),
-              },
-            },
-          ],
-        };
+        return await this.readCompletionStream(res);
       } catch (err) {
-        clearTimeout(timer);
         const cause = (err as any)?.cause;
         const isTransient = cause && TRANSIENT_CODES.has((cause as any).code);
+        const remaining = deadline - Date.now();
 
-        if (isTransient && attempt < maxRetries) {
-          const delayMs = 500 * (attempt + 1);
+        if (isTransient && attempt < maxRetries && remaining > 0) {
+          const delayMs = Math.min(500 * (attempt + 1), remaining);
           this.logger.warn(
-            `LLM call failed (attempt ${attempt + 1}/${maxRetries + 1}): ${cause.message} — retrying in ${delayMs}ms`,
+            `LLM call failed (attempt ${attempt + 1}/${maxRetries + 1}): ${cause.message}, retrying in ${delayMs}ms`,
           );
           await new Promise((r) => setTimeout(r, delayMs));
           continue;
         }
         throw err;
+      } finally {
+        clearTimeout(timer);
       }
     }
     return null;
+  }
+
+  // Tool-call ids and names arrive in the first delta; arguments stream across many.
+  private async readCompletionStream(
+    res: Response,
+  ): Promise<ChatCompletion | null> {
+    const reader = res.body?.getReader();
+    if (!reader) return null;
+
+    const decoder = new TextDecoder();
+    let buf = '';
+    let content = '';
+    const toolCallMap: Record<
+      number,
+      {
+        id: string;
+        type: string;
+        function: { name: string; arguments: string };
+      }
+    > = {};
+
+    try {
+      outer: while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buf += decoder.decode(value, { stream: true });
+
+        const lines = buf.split('\n');
+        buf = lines.pop() ?? '';
+
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          const data = line.slice(6).trim();
+          if (data === '[DONE]') break outer;
+          try {
+            const parsed = JSON.parse(data);
+            const delta = parsed.choices?.[0]?.delta;
+            if (!delta) continue;
+
+            if (typeof delta.content === 'string') content += delta.content;
+
+            if (Array.isArray(delta.tool_calls)) {
+              for (const tc of delta.tool_calls) {
+                const idx: number = tc.index ?? 0;
+                if (!toolCallMap[idx]) {
+                  toolCallMap[idx] = {
+                    id: '',
+                    type: 'function',
+                    function: { name: '', arguments: '' },
+                  };
+                }
+                if (tc.id && !toolCallMap[idx].id) toolCallMap[idx].id = tc.id;
+                if (tc.function?.name && !toolCallMap[idx].function.name)
+                  toolCallMap[idx].function.name = tc.function.name;
+                if (tc.function?.arguments)
+                  toolCallMap[idx].function.arguments += tc.function.arguments;
+              }
+            }
+          } catch {
+            /* malformed SSE chunk, skip */
+          }
+        }
+      }
+    } finally {
+      // cancel(), not just releaseLock(): after `break outer` the body is not at EOF
+      // and an undrained body pins its undici socket until GC.
+      await reader.cancel().catch(() => undefined);
+      reader.releaseLock();
+    }
+
+    const tool_calls = Object.values(toolCallMap);
+    return {
+      choices: [
+        {
+          message: {
+            role: 'assistant',
+            content: content || null,
+            ...(tool_calls.length > 0 ? { tool_calls } : {}),
+          },
+        },
+      ],
+    };
   }
 }
