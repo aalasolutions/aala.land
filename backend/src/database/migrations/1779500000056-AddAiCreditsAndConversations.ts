@@ -13,7 +13,7 @@ export class AddAiCreditsAndConversations1779500000056 implements MigrationInter
                 "lead_id" uuid,
                 "started_at" timestamptz NOT NULL,
                 "expires_at" timestamptz NOT NULL,
-                "messages_count" integer NOT NULL DEFAULT 1,
+                "messages_count" integer NOT NULL DEFAULT 0,
                 "period_start" timestamptz NOT NULL,
                 "created_at" TIMESTAMP NOT NULL DEFAULT now(),
                 CONSTRAINT "PK_whatsapp_ai_conversations" PRIMARY KEY ("id")

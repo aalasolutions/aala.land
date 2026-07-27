@@ -6,8 +6,9 @@ import {
   Index,
 } from 'typeorm';
 
-// Append-only: one row is exactly one consumed credit. Never deleted, never reversed:
-// the credit buys the 24h window, not the reply, so a failed turn keeps its window.
+// One row is exactly one consumed credit, never reversed: the credit buys the 24h
+// window, not the reply, so a failed turn keeps its window. Rows are only ever removed
+// wholesale by AiConversationRetentionCron.
 @Entity('whatsapp_ai_conversations')
 @Index('IDX_wa_ai_conversations_window', [
   'companyId',
@@ -39,7 +40,7 @@ export class WhatsappAiConversation {
   @Column({ name: 'expires_at', type: 'timestamptz' })
   expiresAt: Date;
 
-  @Column({ name: 'messages_count', type: 'int', default: 1 })
+  @Column({ name: 'messages_count', type: 'int', default: 0 })
   messagesCount: number;
 
   @Column({ name: 'period_start', type: 'timestamptz' })
