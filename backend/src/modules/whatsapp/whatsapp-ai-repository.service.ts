@@ -210,9 +210,14 @@ export class WhatsappAiRepositoryService {
    * Grants an AI turn for (company, agent, lead), charging 1 credit only when no
    * 24-hour window is currently open for that pair.
    *
-   * The counter row is inserted-then-locked so concurrent first-time callers cannot
-   * both see no row. That same lock serializes window creation for the company, so a
-   * duplicate window cannot be opened even across app instances.
+   * Serialization is a company-scoped advisory lock, NOT the usage row: the usage row
+   * key includes period_start, so two turns either side of a period boundary would
+   * lock different rows and could both open a window for the same chat. The window
+   * lookup is period-independent (it filters on expires_at), so locking the company
+   * alone is enough. Released automatically when the transaction ends.
+   *
+   * The counter row is still inserted-then-locked so the allowance check and the
+   * increment stay atomic.
    */
   async consumeConversationCredit(
     companyId: string,
@@ -228,6 +233,11 @@ export class WhatsappAiRepositoryService {
     return this.settingsRepo.manager.transaction(async (manager) => {
       const usageRepo = manager.getRepository(AiCreditUsage);
       const conversationRepo = manager.getRepository(WhatsappAiConversation);
+
+      await manager.query(
+        'SELECT pg_advisory_xact_lock(hashtextextended($1, 0))',
+        [companyId],
+      );
 
       await usageRepo
         .createQueryBuilder()

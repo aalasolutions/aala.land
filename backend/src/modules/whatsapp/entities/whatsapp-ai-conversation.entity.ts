@@ -6,11 +6,7 @@ import {
   Index,
 } from 'typeorm';
 
-/**
- * One row per credited 24-hour conversation window. Append-only: it is both the
- * live window state and the per-conversation audit trail, so one row is exactly
- * one consumed credit and per-agent spend is a GROUP BY over user_id.
- */
+// Append-only: one row is exactly one consumed credit.
 @Entity('whatsapp_ai_conversations')
 @Index('IDX_wa_ai_conversations_window', [
   'companyId',
@@ -19,6 +15,7 @@ import {
   'expiresAt',
 ])
 @Index('IDX_wa_ai_conversations_period', ['companyId', 'periodStart'])
+@Index('IDX_wa_ai_conversations_open', ['companyId', 'expiresAt'])
 export class WhatsappAiConversation {
   @PrimaryGeneratedColumn('uuid')
   id: string;

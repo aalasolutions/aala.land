@@ -1,10 +1,5 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-/**
- * Replaces the interim weekly AI message limiter with the credit model from
- * docs/PRICING_STRATEGY.md: 1 credit = one 24-hour conversation window between
- * one agent and one lead, on a monthly billing-cycle allowance.
- */
 export class AddAiCreditsAndConversations1779500000056 implements MigrationInterface {
   name = 'AddAiCreditsAndConversations1779500000056';
 
@@ -30,6 +25,9 @@ export class AddAiCreditsAndConversations1779500000056 implements MigrationInter
     await queryRunner.query(
       `CREATE INDEX IF NOT EXISTS "IDX_wa_ai_conversations_period" ON "whatsapp_ai_conversations" ("company_id", "period_start")`,
     );
+    await queryRunner.query(
+      `CREATE INDEX IF NOT EXISTS "IDX_wa_ai_conversations_open" ON "whatsapp_ai_conversations" ("company_id", "expires_at")`,
+    );
 
     await queryRunner.query(`
             CREATE TABLE IF NOT EXISTS "ai_credit_usage" (
@@ -44,7 +42,6 @@ export class AddAiCreditsAndConversations1779500000056 implements MigrationInter
                 CONSTRAINT "PK_ai_credit_usage" PRIMARY KEY ("id")
             )
         `);
-    // Unique so the counter can be upserted then locked as exactly one row.
     await queryRunner.query(
       `CREATE UNIQUE INDEX IF NOT EXISTS "UQ_ai_credit_usage_company_period" ON "ai_credit_usage" ("company_id", "period_start")`,
     );

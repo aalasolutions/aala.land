@@ -7,14 +7,9 @@ import {
   Index,
 } from 'typeorm';
 
-/**
- * Credit counter, one row per company per billing period. A new period simply
- * means a new row at zero, so the reset needs no cron.
- *
- * Deliberately NOT split per agent: the allowance check locks exactly one row,
- * and a per-agent split would turn it into a SUM that cannot be locked atomically.
- * Per-agent attribution comes from whatsapp_ai_conversations instead.
- */
+// Do NOT add user_id here: the allowance check locks this single row, and a
+// per-agent split turns it into a SUM that cannot be locked atomically.
+// Per-agent numbers come from whatsapp_ai_conversations.
 @Entity('ai_credit_usage')
 @Index('UQ_ai_credit_usage_company_period', ['companyId', 'periodStart'], {
   unique: true,

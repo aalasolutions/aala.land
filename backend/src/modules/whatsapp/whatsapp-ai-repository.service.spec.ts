@@ -42,8 +42,10 @@ const makeRepos = () => {
     save: jest.fn().mockResolvedValue({ id: 'conv-1' }),
     delete: jest.fn().mockResolvedValue(undefined),
   };
+  const managerQuery = jest.fn().mockResolvedValue([]);
   const transaction = jest.fn((cb: any) =>
     cb({
+      query: managerQuery,
       getRepository: (entity: any) =>
         entity?.name === 'AiCreditUsage' ? txUsageRepo : txConversationRepo,
     }),
@@ -76,6 +78,7 @@ const makeRepos = () => {
     conversationQb,
     txUsageRepo,
     txConversationRepo,
+    managerQuery,
   };
 };
 
@@ -299,6 +302,22 @@ describe('WhatsappAiRepositoryService', () => {
       });
       expect(repos.txConversationRepo.save).not.toHaveBeenCalled();
       expect(repos.txUsageRepo.increment).not.toHaveBeenCalled();
+    });
+
+    it('takes a company-scoped advisory lock before any period-dependent work', async () => {
+      repos.usageQb.getOne.mockResolvedValue({ creditsUsed: 0 });
+
+      await consume();
+
+      expect(repos.managerQuery).toHaveBeenCalledWith(
+        expect.stringContaining('pg_advisory_xact_lock'),
+        ['c1'],
+      );
+      // Must precede the usage upsert: the usage row key includes period_start, so
+      // locking it cannot serialize two turns either side of a period boundary.
+      expect(repos.managerQuery.mock.invocationCallOrder[0]).toBeLessThan(
+        repos.usageQb.orIgnore.mock.invocationCallOrder[0],
+      );
     });
 
     it('takes the row lock before reading the window (ordering only, not a race test)', async () => {
