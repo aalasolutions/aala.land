@@ -319,8 +319,8 @@ export class WhatsappAiRepositoryService {
         .createQueryBuilder()
         .update()
         .set({ creditsUsed: () => 'GREATEST(credits_used - 1, 0)' })
-        .where('companyId = :companyId', { companyId })
-        .andWhere('periodStart = :periodStart', { periodStart })
+        .where('company_id = :companyId', { companyId })
+        .andWhere('period_start = :periodStart', { periodStart })
         .execute();
     });
   }
@@ -395,9 +395,9 @@ export class WhatsappAiRepositoryService {
       .createQueryBuilder()
       .update()
       .set({ exhaustedNotifiedAt: () => 'now()' })
-      .where('companyId = :companyId', { companyId })
-      .andWhere('periodStart = :periodStart', { periodStart })
-      .andWhere('exhaustedNotifiedAt IS NULL')
+      .where('company_id = :companyId', { companyId })
+      .andWhere('period_start = :periodStart', { periodStart })
+      .andWhere('exhausted_notified_at IS NULL')
       .execute();
     return (result.affected ?? 0) > 0;
   }
