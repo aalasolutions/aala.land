@@ -34,6 +34,7 @@ describe('WhatsappService echo suppression', () => {
   let manager: any;
   let store: any;
   let gateway: any;
+  let usersRepo: any;
 
   const wire = async (userId = 'u1', companyId = 'co1') => {
     await service.getConnection(userId, companyId);
@@ -64,7 +65,6 @@ describe('WhatsappService echo suppression', () => {
     };
     store = {
       addMessage: jest.fn(),
-      clearAll: jest.fn(),
       getChatList: jest.fn(),
       getAllMessages: jest.fn(),
       getMessagesForChat: jest.fn(),
@@ -82,7 +82,9 @@ describe('WhatsappService echo suppression', () => {
       getCreditUsage: jest.fn().mockResolvedValue(null),
     };
 
-    service = new WhatsappService(manager, store, ai, gateway);
+    usersRepo = { find: jest.fn().mockResolvedValue([]) };
+
+    service = new WhatsappService(manager, store, ai, gateway, usersRepo);
     // Avoid touching the filesystem for company_id persistence.
     jest.spyOn(service as any, 'persistCompanyId').mockImplementation(() => {});
   });
@@ -220,5 +222,98 @@ describe('WhatsappService echo suppression', () => {
     ).not.toThrow();
     // With no matching AI send, an undefined-body human message is still a human reply.
     expect(ai.recordHumanReply).toHaveBeenCalledWith('u1', 'c1');
+  });
+
+  describe('dropSessionsWithoutActiveSeat', () => {
+    const withSessions = (...userIds: string[]) => {
+      const stub = { emitter: { removeAllListeners: jest.fn() } };
+      manager.getAll = () => new Map(userIds.map((id) => [id, stub as any]));
+      manager.get = jest.fn().mockReturnValue(stub);
+      ai.clearUserState = jest.fn();
+      jest.spyOn(service, 'logout');
+    };
+
+    it('stops a session whose user no longer exists', async () => {
+      withSessions('gone-user');
+      usersRepo.find.mockResolvedValue([]);
+
+      const dropped = await service.dropSessionsWithoutActiveSeat();
+
+      expect(dropped).toBe(1);
+      expect(manager.remove).toHaveBeenCalledWith('gone-user');
+    });
+
+    it('stops a session whose user is deactivated', async () => {
+      withSessions('active-user', 'inactive-user');
+      usersRepo.find.mockResolvedValue([{ id: 'active-user' }]);
+
+      await service.dropSessionsWithoutActiveSeat();
+
+      expect(manager.remove).toHaveBeenCalledTimes(1);
+      expect(manager.remove).toHaveBeenCalledWith('inactive-user');
+    });
+
+    it('never erases the pairing: a wrong seat lookup must cost a restart, not a re-pair', async () => {
+      withSessions('a', 'b', 'c');
+      usersRepo.find.mockResolvedValue([]);
+
+      await service.dropSessionsWithoutActiveSeat();
+
+      expect(service.logout).not.toHaveBeenCalled();
+      expect(manager.remove).toHaveBeenCalledTimes(3);
+    });
+
+    it('unwires the stopped session so a later reconnect does not double-register', async () => {
+      withSessions('gone-user');
+      usersRepo.find.mockResolvedValue([]);
+      (service as any).wiredUsers.add('gone-user');
+      (service as any).persistedCompanyIds.set('gone-user', 'co-1');
+
+      await service.dropSessionsWithoutActiveSeat();
+
+      expect((service as any).wiredUsers.has('gone-user')).toBe(false);
+      expect((service as any).persistedCompanyIds.has('gone-user')).toBe(false);
+      expect(ai.clearUserState).toHaveBeenCalledWith('gone-user');
+    });
+
+    it('leaves a session belonging to an active seat alone', async () => {
+      withSessions('active-user');
+      usersRepo.find.mockResolvedValue([{ id: 'active-user' }]);
+
+      const dropped = await service.dropSessionsWithoutActiveSeat();
+
+      expect(dropped).toBe(0);
+      expect(manager.remove).not.toHaveBeenCalled();
+    });
+
+    it('filters on isActive, not just existence', async () => {
+      withSessions('u1');
+      usersRepo.find.mockResolvedValue([]);
+
+      await service.dropSessionsWithoutActiveSeat();
+
+      expect(usersRepo.find.mock.calls[0][0].where.isActive).toBe(true);
+    });
+
+    it('keeps going when one stop throws', async () => {
+      withSessions('a', 'b');
+      usersRepo.find.mockResolvedValue([]);
+      manager.remove
+        .mockRejectedValueOnce(new Error('socket gone'))
+        .mockResolvedValueOnce(undefined);
+
+      await service.dropSessionsWithoutActiveSeat();
+
+      expect(manager.remove).toHaveBeenCalledTimes(2);
+    });
+
+    it('does not query at all when nothing is running', async () => {
+      manager.getAll = () => new Map();
+
+      const dropped = await service.dropSessionsWithoutActiveSeat();
+
+      expect(dropped).toBe(0);
+      expect(usersRepo.find).not.toHaveBeenCalled();
+    });
   });
 });

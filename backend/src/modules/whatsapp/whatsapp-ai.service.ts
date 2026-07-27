@@ -10,6 +10,7 @@ import {
   AiHistoryMessage,
 } from './wa-types';
 import { WhatsappAiRepositoryService } from './whatsapp-ai-repository.service';
+import { MessageStoreService } from './message-store.service';
 import { WhatsappAiPromptBuilderService } from './whatsapp-ai-prompt-builder.service';
 import {
   sanitizeInput,
@@ -35,6 +36,8 @@ type SendFn = (
 
 interface PendingChat {
   messages: string[];
+  // Persisted ids of the buffered messages, excluded when seeding history from the DB.
+  messageIds: string[];
   chatId: string;
   companyId: string;
   userId: string;
@@ -64,6 +67,7 @@ export class WhatsappAiService implements OnModuleInit, OnModuleDestroy {
 
   constructor(
     private readonly repo: WhatsappAiRepositoryService,
+    private readonly store: MessageStoreService,
     private readonly promptBuilder: WhatsappAiPromptBuilderService,
     private readonly systemEmail: SystemEmailService,
   ) {}
@@ -254,6 +258,7 @@ export class WhatsappAiService implements OnModuleInit, OnModuleDestroy {
 
   async handleIncomingMessage(
     evt: {
+      id: string;
       chatId: string;
       body: string;
       fromMe: boolean;
@@ -286,7 +291,10 @@ export class WhatsappAiService implements OnModuleInit, OnModuleDestroy {
 
     const existing = this.pendingByChat.get(pendingKey);
     if (existing) {
-      if (existing.messages.length < maxPending) existing.messages.push(body);
+      if (existing.messages.length < maxPending) {
+        existing.messages.push(body);
+        existing.messageIds.push(evt.id);
+      }
       clearTimeout(existing.timer);
       // Deadline caps the extension: messaging faster than debounceMs would
       // otherwise restart the countdown forever and the turn would never run.
@@ -307,6 +315,7 @@ export class WhatsappAiService implements OnModuleInit, OnModuleDestroy {
       }, debounceMs);
       this.pendingByChat.set(pendingKey, {
         messages: [body],
+        messageIds: [evt.id],
         chatId: evt.chatId,
         companyId,
         userId,
@@ -330,6 +339,7 @@ export class WhatsappAiService implements OnModuleInit, OnModuleDestroy {
         pending.companyId,
         pending.userId,
         pending.send,
+        pending.messageIds,
       ),
     );
   }
@@ -382,6 +392,7 @@ export class WhatsappAiService implements OnModuleInit, OnModuleDestroy {
     companyId: string,
     userId: string,
     send: SendFn,
+    pendingMessageIds: string[] = [],
   ): Promise<void> {
     if (this.isHumanSilenceActive(userId, chatId)) return;
 
@@ -402,7 +413,12 @@ export class WhatsappAiService implements OnModuleInit, OnModuleDestroy {
     this.lastActivityAt.set(histKey, Date.now());
     let history = this.histories.get(histKey);
     if (!history) {
-      history = [];
+      history = await this.seedHistoryFromDb(
+        companyId,
+        userId,
+        chatId,
+        pendingMessageIds,
+      );
       this.histories.set(histKey, history);
     }
 
@@ -577,6 +593,57 @@ export class WhatsappAiService implements OnModuleInit, OnModuleDestroy {
 
   private rollbackTurn(history: AiHistoryMessage[], lenBefore: number): void {
     if (history.length > lenBefore) history.length = lenBefore;
+  }
+
+  // Rebuilds history after a restart or the 24h sweep. fromMe maps to `assistant` for
+  // human-agent messages too, so the AI inherits what an agent promised.
+  private async seedHistoryFromDb(
+    companyId: string,
+    userId: string,
+    chatId: string,
+    excludeWaIds: string[],
+  ): Promise<AiHistoryMessage[]> {
+    const limit = parseInt(process.env.AI_HISTORY_SEED_LIMIT ?? '20', 10);
+    if (!Number.isFinite(limit) || limit <= 0) return [];
+    const parsedMaxChars = parseInt(
+      process.env.AI_HISTORY_SEED_MAX_CHARS ?? '8000',
+      10,
+    );
+    const maxChars =
+      Number.isFinite(parsedMaxChars) && parsedMaxChars > 0
+        ? parsedMaxChars
+        : 8000;
+
+    try {
+      const rows = await this.store.getChatHistory(
+        companyId,
+        userId,
+        chatId,
+        limit,
+        excludeWaIds,
+      );
+
+      // Newest-first so the char budget drops the oldest, then restore chronological order.
+      const seeded: AiHistoryMessage[] = [];
+      let chars = 0;
+      for (let i = rows.length - 1; i >= 0; i--) {
+        const content = (rows[i].body ?? '').trim();
+        if (!content) continue;
+        if (chars + content.length > maxChars) break;
+        chars += content.length;
+        seeded.push({
+          role: rows[i].fromMe ? 'assistant' : 'user',
+          content,
+        });
+      }
+      return seeded.reverse();
+    } catch (err) {
+      this.logger.error(
+        'Failed to seed AI history from the database',
+        err instanceof Error ? err.message : err,
+      );
+      return [];
+    }
   }
 
   private async notifyCreditsExhausted(

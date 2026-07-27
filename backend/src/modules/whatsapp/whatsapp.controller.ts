@@ -5,6 +5,7 @@ import {
   Post,
   Body,
   Param,
+  Query,
   UseGuards,
   Res,
   Request,
@@ -25,6 +26,7 @@ import {
   TypingDto,
   AiToggleDto,
 } from './dto/send-wa-message.dto';
+import { ListWaMessagesDto } from './dto/list-wa-messages.dto';
 import { AuthenticatedRequest } from '@shared/interfaces/authenticated-request.interface';
 
 @ApiTags('whatsapp')
@@ -56,7 +58,10 @@ export class WhatsappController {
   }
 
   @Post('logout')
-  @ApiOperation({ summary: 'Clear session and generate a new QR code' })
+  @ApiOperation({
+    summary:
+      'Clear the WhatsApp session and generate a new QR code. Stored chat history is kept.',
+  })
   logout(@Request() req: AuthenticatedRequest) {
     return this.wa.logout(req.user.userId, req.user.companyId!);
   }
@@ -65,23 +70,44 @@ export class WhatsappController {
 
   @Get('chats')
   @ApiOperation({ summary: 'Chat list with last-message preview' })
-  getChats(@Request() req: AuthenticatedRequest) {
-    return { chats: this.wa.getChats(req.user.userId) };
+  async getChats(@Request() req: AuthenticatedRequest) {
+    return {
+      chats: await this.wa.getChats(req.user.companyId!, req.user.userId),
+    };
   }
 
   @Get('messages')
-  @ApiOperation({ summary: 'All stored messages' })
-  getAllMessages(@Request() req: AuthenticatedRequest) {
-    return { messages: this.wa.getAllMessages(req.user.userId) };
+  @ApiOperation({
+    summary: 'Stored messages across all chats, newest page first',
+  })
+  async getAllMessages(
+    @Request() req: AuthenticatedRequest,
+    @Query() query: ListWaMessagesDto,
+  ) {
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 500;
+    const { messages, hasMore } = await this.wa.getAllMessages(
+      req.user.companyId!,
+      req.user.userId,
+      page,
+      limit,
+    );
+    return { messages, hasMore, page, limit };
   }
 
   @Get('messages/:chatId')
   @ApiOperation({ summary: 'Messages for a specific chat' })
-  getMessages(
+  async getMessages(
     @Request() req: AuthenticatedRequest,
     @Param('chatId') chatId: string,
   ) {
-    return { messages: this.wa.getMessagesForChat(req.user.userId, chatId) };
+    return {
+      messages: await this.wa.getMessagesForChat(
+        req.user.companyId!,
+        req.user.userId,
+        chatId,
+      ),
+    };
   }
 
   // ── Sending ───────────────────────────────────────────────────────────

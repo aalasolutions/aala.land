@@ -108,8 +108,14 @@ const makeMockBuilder = (
   formatToolResult: jest.fn().mockReturnValue('Formatted listings'),
 });
 
+const makeMockStore = (history: any[] = []) => ({
+  getChatHistory: jest.fn().mockResolvedValue(history),
+  addMessage: jest.fn().mockResolvedValue(undefined),
+});
+
 const baseEvt = (
   overrides: Partial<{
+    id: string;
     chatId: string;
     body: string;
     fromMe: boolean;
@@ -117,6 +123,7 @@ const baseEvt = (
     timestamp: number;
   }> = {},
 ) => ({
+  id: 'wa-msg-1',
   chatId: 'c1',
   body: 'hello',
   fromMe: false,
@@ -138,6 +145,7 @@ describe('WhatsappAiService', () => {
     delete process.env.AI_HUMAN_SILENCE_MINUTES;
     service = new WhatsappAiService(
       makeMockRepo() as any,
+      makeMockStore() as any,
       makeMockBuilder() as any,
       makeMockEmail() as any,
     );
@@ -193,6 +201,7 @@ describe('WhatsappAiService', () => {
     process.env.OLLAMA_API_KEY = 'test-key';
     service = new WhatsappAiService(
       makeMockRepo() as any,
+      makeMockStore() as any,
       makeMockBuilder() as any,
       makeMockEmail() as any,
     );
@@ -211,6 +220,7 @@ describe('WhatsappAiService', () => {
     process.env.OLLAMA_API_KEY = 'test-key';
     service = new WhatsappAiService(
       makeMockRepo() as any,
+      makeMockStore() as any,
       makeMockBuilder() as any,
       makeMockEmail() as any,
     );
@@ -230,6 +240,7 @@ describe('WhatsappAiService', () => {
     process.env.AI_DEBOUNCE_MS = '100';
     service = new WhatsappAiService(
       makeMockRepo() as any,
+      makeMockStore() as any,
       makeMockBuilder() as any,
       makeMockEmail() as any,
     );
@@ -256,6 +267,7 @@ describe('WhatsappAiService', () => {
       const mockRepo = makeMockRepo(null);
       service = new WhatsappAiService(
         mockRepo as any,
+        makeMockStore() as any,
         makeMockBuilder() as any,
         makeMockEmail() as any,
       );
@@ -301,6 +313,7 @@ describe('WhatsappAiService', () => {
     it('resets debounce timer when a new message arrives', async () => {
       service = new WhatsappAiService(
         makeMockRepo() as any,
+        makeMockStore() as any,
         makeMockBuilder() as any,
         makeMockEmail() as any,
       );
@@ -340,6 +353,7 @@ describe('WhatsappAiService', () => {
     it('separate chats debounce independently', async () => {
       service = new WhatsappAiService(
         makeMockRepo() as any,
+        makeMockStore() as any,
         makeMockBuilder() as any,
         makeMockEmail() as any,
       );
@@ -385,6 +399,7 @@ describe('WhatsappAiService', () => {
     it('does not respond when human replied recently', async () => {
       service = new WhatsappAiService(
         makeMockRepo() as any,
+        makeMockStore() as any,
         makeMockBuilder() as any,
         makeMockEmail() as any,
       );
@@ -403,6 +418,7 @@ describe('WhatsappAiService', () => {
     it('responds again after silence window expires', async () => {
       service = new WhatsappAiService(
         makeMockRepo() as any,
+        makeMockStore() as any,
         makeMockBuilder() as any,
         makeMockEmail() as any,
       );
@@ -428,6 +444,7 @@ describe('WhatsappAiService', () => {
     it('cancels pending debounced response when human replies', async () => {
       service = new WhatsappAiService(
         makeMockRepo() as any,
+        makeMockStore() as any,
         makeMockBuilder() as any,
         makeMockEmail() as any,
       );
@@ -457,6 +474,7 @@ describe('WhatsappAiService', () => {
       const mockRepo = makeMockRepo();
       service = new WhatsappAiService(
         mockRepo as any,
+        makeMockStore() as any,
         makeMockBuilder() as any,
         makeMockEmail() as any,
       );
@@ -496,6 +514,7 @@ describe('WhatsappAiService', () => {
       ]);
       service = new WhatsappAiService(
         mockRepo as any,
+        makeMockStore() as any,
         makeMockBuilder() as any,
         makeMockEmail() as any,
       );
@@ -533,6 +552,7 @@ describe('WhatsappAiService', () => {
     it('human silence is per-chat — other chats still respond', async () => {
       service = new WhatsappAiService(
         makeMockRepo() as any,
+        makeMockStore() as any,
         makeMockBuilder() as any,
         makeMockEmail() as any,
       );
@@ -585,6 +605,7 @@ describe('WhatsappAiService', () => {
       const mockBuilder = makeMockBuilder('DB prompt');
       service = new WhatsappAiService(
         mockRepo as any,
+        makeMockStore() as any,
         mockBuilder as any,
         makeMockEmail() as any,
       );
@@ -614,6 +635,7 @@ describe('WhatsappAiService', () => {
       );
       service = new WhatsappAiService(
         mockRepo as any,
+        makeMockStore() as any,
         mockBuilder as any,
         makeMockEmail() as any,
       );
@@ -646,6 +668,7 @@ describe('WhatsappAiService', () => {
       const mockRepo = makeMockRepo('prompt');
       service = new WhatsappAiService(
         mockRepo as any,
+        makeMockStore() as any,
         makeMockBuilder() as any,
         makeMockEmail() as any,
       );
@@ -688,6 +711,7 @@ describe('WhatsappAiService', () => {
       mockRepo.getCreditUsage.mockResolvedValue({ used: 7, openWindows: 2 });
       service = new WhatsappAiService(
         mockRepo as any,
+        makeMockStore() as any,
         makeMockBuilder() as any,
         makeMockEmail() as any,
       );
@@ -709,6 +733,7 @@ describe('WhatsappAiService', () => {
       mockRepo.getCompany.mockResolvedValue(null);
       service = new WhatsappAiService(
         mockRepo as any,
+        makeMockStore() as any,
         makeMockBuilder() as any,
         makeMockEmail() as any,
       );
@@ -724,6 +749,7 @@ describe('WhatsappAiService', () => {
       ]);
       service = new WhatsappAiService(
         mockRepo as any,
+        makeMockStore() as any,
         makeMockBuilder() as any,
         makeMockEmail() as any,
       );
@@ -756,6 +782,7 @@ describe('WhatsappAiService', () => {
       });
       service = new WhatsappAiService(
         mockRepo as any,
+        makeMockStore() as any,
         makeMockBuilder() as any,
         makeMockEmail() as any,
       );
@@ -780,6 +807,7 @@ describe('WhatsappAiService', () => {
       const mockRepo = makeMockRepo();
       service = new WhatsappAiService(
         mockRepo as any,
+        makeMockStore() as any,
         makeMockBuilder() as any,
         makeMockEmail() as any,
       );
@@ -824,6 +852,7 @@ describe('WhatsappAiService', () => {
       const mockRepo = makeMockRepo();
       service = new WhatsappAiService(
         mockRepo as any,
+        makeMockStore() as any,
         makeMockBuilder() as any,
         makeMockEmail() as any,
       );
@@ -853,6 +882,7 @@ describe('WhatsappAiService', () => {
       const mockRepo = makeMockRepo();
       service = new WhatsappAiService(
         mockRepo as any,
+        makeMockStore() as any,
         makeMockBuilder() as any,
         makeMockEmail() as any,
       );
@@ -901,6 +931,7 @@ describe('WhatsappAiService', () => {
       });
       service = new WhatsappAiService(
         mockRepo as any,
+        makeMockStore() as any,
         makeMockBuilder() as any,
         makeMockEmail() as any,
       );
@@ -929,6 +960,7 @@ describe('WhatsappAiService', () => {
       });
       service = new WhatsappAiService(
         mockRepo as any,
+        makeMockStore() as any,
         makeMockBuilder() as any,
         mockEmail as any,
       );
@@ -964,6 +996,7 @@ describe('WhatsappAiService', () => {
       mockRepo.claimExhaustedNotification.mockResolvedValue(false);
       service = new WhatsappAiService(
         mockRepo as any,
+        makeMockStore() as any,
         makeMockBuilder() as any,
         mockEmail as any,
       );
@@ -984,6 +1017,7 @@ describe('WhatsappAiService', () => {
       const mockRepo = makeMockRepo(null, SubscriptionTier.FREE);
       service = new WhatsappAiService(
         mockRepo as any,
+        makeMockStore() as any,
         makeMockBuilder() as any,
         makeMockEmail() as any,
       );
@@ -1025,6 +1059,7 @@ describe('WhatsappAiService', () => {
       });
       service = new WhatsappAiService(
         mockRepo as any,
+        makeMockStore() as any,
         makeMockBuilder() as any,
         makeMockEmail() as any,
       );
@@ -1065,6 +1100,7 @@ describe('WhatsappAiService', () => {
       });
       service = new WhatsappAiService(
         mockRepo as any,
+        makeMockStore() as any,
         makeMockBuilder() as any,
         makeMockEmail() as any,
       );
@@ -1102,6 +1138,7 @@ describe('WhatsappAiService', () => {
       });
       service = new WhatsappAiService(
         mockRepo as any,
+        makeMockStore() as any,
         makeMockBuilder() as any,
         makeMockEmail() as any,
       );
@@ -1125,6 +1162,7 @@ describe('WhatsappAiService', () => {
       );
       service = new WhatsappAiService(
         mockRepo as any,
+        makeMockStore() as any,
         makeMockBuilder() as any,
         makeMockEmail() as any,
       );
@@ -1159,6 +1197,7 @@ describe('WhatsappAiService', () => {
     it('sends direct reply when LLM returns no tool_calls', async () => {
       service = new WhatsappAiService(
         makeMockRepo() as any,
+        makeMockStore() as any,
         makeMockBuilder() as any,
         makeMockEmail() as any,
       );
@@ -1184,6 +1223,7 @@ describe('WhatsappAiService', () => {
     it('passes TOOL_DEFINITIONS and stream:true in first LLM call body', async () => {
       service = new WhatsappAiService(
         makeMockRepo() as any,
+        makeMockStore() as any,
         makeMockBuilder() as any,
         makeMockEmail() as any,
       );
@@ -1217,6 +1257,7 @@ describe('WhatsappAiService', () => {
       ]);
       service = new WhatsappAiService(
         mockRepo as any,
+        makeMockStore() as any,
         makeMockBuilder() as any,
         makeMockEmail() as any,
       );
@@ -1254,6 +1295,7 @@ describe('WhatsappAiService', () => {
     it('makes second LLM call with escalate_to_human result and sends AI reply', async () => {
       service = new WhatsappAiService(
         makeMockRepo() as any,
+        makeMockStore() as any,
         makeMockBuilder() as any,
         makeMockEmail() as any,
       );
@@ -1286,6 +1328,7 @@ describe('WhatsappAiService', () => {
     it('accumulates content correctly when SSE chunks arrive split across multiple reads', async () => {
       service = new WhatsappAiService(
         makeMockRepo() as any,
+        makeMockStore() as any,
         makeMockBuilder() as any,
         makeMockEmail() as any,
       );
@@ -1340,6 +1383,7 @@ describe('WhatsappAiService', () => {
       const mockRepo = makeMockRepo(null, SubscriptionTier.FREE);
       service = new WhatsappAiService(
         mockRepo as any,
+        makeMockStore() as any,
         makeMockBuilder() as any,
         makeMockEmail() as any,
       );
@@ -1415,6 +1459,7 @@ describe('WhatsappAiService', () => {
       const mockRepo = makeMockRepo(null, SubscriptionTier.PRO);
       service = new WhatsappAiService(
         mockRepo as any,
+        makeMockStore() as any,
         makeMockBuilder() as any,
         makeMockEmail() as any,
       );
@@ -1469,6 +1514,7 @@ describe('WhatsappAiService', () => {
     it('does not throw and does not process when body is undefined (media message)', async () => {
       service = new WhatsappAiService(
         makeMockRepo() as any,
+        makeMockStore() as any,
         makeMockBuilder() as any,
         makeMockEmail() as any,
       );
@@ -1477,6 +1523,7 @@ describe('WhatsappAiService', () => {
 
       // A media event with no text body must be skipped, not crash on body.trim().
       const evt = {
+        id: 'wa-media-1',
         chatId: 'c1',
         body: undefined as any,
         fromMe: false,
@@ -1496,6 +1543,7 @@ describe('WhatsappAiService', () => {
     it('sends the direct-contact reply when no human has taken over', async () => {
       service = new WhatsappAiService(
         makeMockRepo() as any,
+        makeMockStore() as any,
         makeMockBuilder() as any,
         makeMockEmail() as any,
       );
@@ -1519,6 +1567,7 @@ describe('WhatsappAiService', () => {
     it('skips the direct-contact reply when a human took over after the turn started', async () => {
       service = new WhatsappAiService(
         makeMockRepo() as any,
+        makeMockStore() as any,
         makeMockBuilder() as any,
         makeMockEmail() as any,
       );
@@ -1544,6 +1593,183 @@ describe('WhatsappAiService', () => {
 
       expect(guardSpy).toHaveBeenCalled();
       expect(mockSend).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('AI history seeding from the database', () => {
+    const priorRow = (over: any = {}) => ({
+      id: 'wa-x',
+      chatId: 'c1',
+      senderId: 's1',
+      senderName: 'Ahmed',
+      chatName: 'Ahmed',
+      isGroup: false,
+      body: 'earlier message',
+      hasMedia: false,
+      mediaType: '',
+      mediaUrls: [],
+      mentionedIds: [],
+      quotedParticipant: '',
+      fromMe: false,
+      aiGenerated: false,
+      timestamp: 1700000000,
+      ...over,
+    });
+
+    const buildService = (store: any) => {
+      process.env.OLLAMA_API_KEY = 'test-key';
+      process.env.OLLAMA_HOST = 'http://llm';
+      process.env.OLLAMA_MODEL = 'm';
+      process.env.AI_DEBOUNCE_MS = '100';
+      global.fetch = jest
+        .fn()
+        .mockImplementation(() =>
+          Promise.resolve(mockTextResponse('reply')),
+        ) as any;
+      return new WhatsappAiService(
+        makeMockRepo() as any,
+        store as any,
+        makeMockBuilder() as any,
+        makeMockEmail() as any,
+      );
+    };
+
+    const sentMessages = () =>
+      JSON.parse((global.fetch as jest.Mock).mock.calls[0][1].body).messages;
+
+    afterEach(() => {
+      delete process.env.AI_HISTORY_SEED_LIMIT;
+      delete process.env.AI_HISTORY_SEED_MAX_CHARS;
+    });
+
+    it('rebuilds prior turns into the prompt on a cold start', async () => {
+      const store = makeMockStore([
+        priorRow({ id: 'p1', body: 'do you have 2 bedrooms', fromMe: false }),
+        priorRow({ id: 'p2', body: 'yes, three of them', fromMe: true }),
+      ]);
+      service = buildService(store);
+
+      await service.handleIncomingMessage(
+        baseEvt({ id: 'now-1', body: 'what price' }),
+        'co',
+        'u1',
+        jest.fn().mockResolvedValue({}),
+      );
+      await jest.runAllTimersAsync();
+
+      const nonSystem = sentMessages().filter((m: any) => m.role !== 'system');
+      expect(nonSystem).toEqual([
+        { role: 'user', content: 'do you have 2 bedrooms' },
+        { role: 'assistant', content: 'yes, three of them' },
+        { role: 'user', content: 'what price' },
+      ]);
+    });
+
+    it('excludes the ids of the current turn so they are not sent twice', async () => {
+      const store = makeMockStore([]);
+      service = buildService(store);
+
+      await service.handleIncomingMessage(
+        baseEvt({ id: 'now-1', body: 'first' }),
+        'co',
+        'u1',
+        jest.fn().mockResolvedValue({}),
+      );
+      await service.handleIncomingMessage(
+        baseEvt({ id: 'now-2', body: 'second' }),
+        'co',
+        'u1',
+        jest.fn().mockResolvedValue({}),
+      );
+      await jest.runAllTimersAsync();
+
+      expect(store.getChatHistory).toHaveBeenCalledWith('co', 'u1', 'c1', 20, [
+        'now-1',
+        'now-2',
+      ]);
+    });
+
+    it('does not re-query the database while the history is still cached', async () => {
+      const store = makeMockStore([]);
+      service = buildService(store);
+      const send = jest.fn().mockResolvedValue({});
+
+      await service.handleIncomingMessage(
+        baseEvt({ id: 'a1', body: 'one' }),
+        'co',
+        'u1',
+        send,
+      );
+      await jest.runAllTimersAsync();
+      await service.handleIncomingMessage(
+        baseEvt({ id: 'a2', body: 'two' }),
+        'co',
+        'u1',
+        send,
+      );
+      await jest.runAllTimersAsync();
+
+      expect(store.getChatHistory).toHaveBeenCalledTimes(1);
+    });
+
+    it('still answers when the history query fails', async () => {
+      const store = {
+        getChatHistory: jest.fn().mockRejectedValue(new Error('db down')),
+        addMessage: jest.fn().mockResolvedValue(undefined),
+      };
+      service = buildService(store);
+      const send = jest.fn().mockResolvedValue({});
+
+      await service.handleIncomingMessage(
+        baseEvt({ id: 'now-1', body: 'hello' }),
+        'co',
+        'u1',
+        send,
+      );
+      await jest.runAllTimersAsync();
+
+      expect(send).toHaveBeenCalledTimes(1);
+      const nonSystem = sentMessages().filter((m: any) => m.role !== 'system');
+      expect(nonSystem).toEqual([{ role: 'user', content: 'hello' }]);
+    });
+
+    it('drops the oldest seeded messages to stay inside the character budget', async () => {
+      process.env.AI_HISTORY_SEED_MAX_CHARS = '20';
+      const store = makeMockStore([
+        priorRow({ id: 'p1', body: 'aaaaaaaaaaaaaaa' }),
+        priorRow({ id: 'p2', body: 'bbbbbbbbbbbbbbb' }),
+      ]);
+      service = buildService(store);
+
+      await service.handleIncomingMessage(
+        baseEvt({ id: 'now-1', body: 'hi' }),
+        'co',
+        'u1',
+        jest.fn().mockResolvedValue({}),
+      );
+      await jest.runAllTimersAsync();
+
+      const nonSystem = sentMessages().filter((m: any) => m.role !== 'system');
+      expect(nonSystem).toEqual([
+        { role: 'user', content: 'bbbbbbbbbbbbbbb' },
+        { role: 'user', content: 'hi' },
+      ]);
+    });
+
+    it('seeds nothing when the limit is zero', async () => {
+      process.env.AI_HISTORY_SEED_LIMIT = '0';
+      const store = makeMockStore([priorRow({ body: 'ignored' })]);
+      service = buildService(store);
+
+      await service.handleIncomingMessage(
+        baseEvt({ id: 'now-1', body: 'hi' }),
+        'co',
+        'u1',
+        jest.fn().mockResolvedValue({}),
+      );
+      await jest.runAllTimersAsync();
+
+      expect(store.getChatHistory).not.toHaveBeenCalled();
     });
   });
 });

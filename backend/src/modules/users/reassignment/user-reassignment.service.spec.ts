@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { EntityManager } from 'typeorm';
+import { DataSource, EntityManager } from 'typeorm';
 import { UserReassignmentService } from './user-reassignment.service';
 import { ReassignmentReport } from './reassignment-report';
 
@@ -30,7 +30,10 @@ describe('UserReassignmentService', () => {
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      providers: [UserReassignmentService],
+      providers: [
+        UserReassignmentService,
+        { provide: DataSource, useValue: { query: jest.fn() } },
+      ],
     }).compile();
 
     service = module.get<UserReassignmentService>(UserReassignmentService);
@@ -115,12 +118,10 @@ describe('UserReassignmentService', () => {
         set: jest.fn().mockReturnThis(),
         where: jest.fn().mockReturnThis(),
         returning: jest.fn().mockReturnThis(),
-        execute: jest
-          .fn()
-          .mockResolvedValue({
-            raw: [{ id: 'x1' }, { id: 'x2' }],
-            affected: 2,
-          }),
+        execute: jest.fn().mockResolvedValue({
+          raw: [{ id: 'x1' }, { id: 'x2' }],
+          affected: 2,
+        }),
       };
       const manager = {
         createQueryBuilder: jest.fn().mockReturnValue(qb),
@@ -167,6 +168,28 @@ describe('UserReassignmentService', () => {
       expect(
         report.entities.every((e) => e.count === 3 && e.ids.length === 0),
       ).toBe(true);
+    });
+  });
+
+  describe('reassignWhatsappRows', () => {
+    it('does nothing when the ids match, because the batch loop would never end', async () => {
+      const dataSource = { transaction: jest.fn(), query: jest.fn() };
+      const module: TestingModule = await Test.createTestingModule({
+        providers: [
+          UserReassignmentService,
+          { provide: DataSource, useValue: dataSource },
+        ],
+      }).compile();
+      const svc = module.get<UserReassignmentService>(UserReassignmentService);
+
+      const out = await svc.reassignWhatsappRows(
+        COMPANY_ID,
+        FROM_USER,
+        FROM_USER,
+      );
+
+      expect(out).toEqual({ chats: 0, messages: 0 });
+      expect(dataSource.transaction).not.toHaveBeenCalled();
     });
   });
 });

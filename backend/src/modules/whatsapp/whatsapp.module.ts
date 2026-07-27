@@ -13,6 +13,8 @@ import { WhatsappController } from './whatsapp.controller';
 import { WhatsappSettingsController } from './whatsapp-settings.controller';
 import { WhatsappSettings } from './entities/whatsapp-settings.entity';
 import { WhatsappAiConversation } from './entities/whatsapp-ai-conversation.entity';
+import { WhatsappMessage } from './entities/whatsapp-message.entity';
+import { WhatsappChat } from './entities/whatsapp-chat.entity';
 import { AiCreditUsage } from './entities/ai-credit-usage.entity';
 import { User } from '../users/entities/user.entity';
 import { Company } from '../companies/entities/company.entity';
@@ -30,6 +32,8 @@ import { AiConversationRetentionCron } from './ai-conversation-retention.cron';
     TypeOrmModule.forFeature([
       WhatsappSettings,
       WhatsappAiConversation,
+      WhatsappMessage,
+      WhatsappChat,
       AiCreditUsage,
       User,
       Company,
@@ -56,6 +60,6 @@ import { AiConversationRetentionCron } from './ai-conversation-retention.cron';
     WhatsappBillingListener,
     AiConversationRetentionCron,
   ],
-  exports: [WhatsappService],
+  exports: [WhatsappService, MessageStoreService],
 })
 export class WhatsappModule {}
