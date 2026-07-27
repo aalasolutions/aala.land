@@ -180,9 +180,15 @@ export default class CompanyController extends Controller {
     if (this.creditsLimit === null) return null;
     const used = this.creditsUsed ?? 0;
     let suffix = '';
-    if (this.creditsResetsAt) {
-      const resetDate = new Date(this.creditsResetsAt);
-      const daysLeft = Math.ceil((resetDate - Date.now()) / MS_PER_DAY);
+    const resetDate = this.creditsResetsAt
+      ? new Date(this.creditsResetsAt)
+      : null;
+    // The page can outlive the period it loaded, so never render a negative countdown.
+    if (resetDate && !Number.isNaN(resetDate.getTime())) {
+      const daysLeft = Math.max(
+        0,
+        Math.ceil((resetDate - Date.now()) / MS_PER_DAY),
+      );
       const date = resetDate.toLocaleDateString('en-US', {
         month: 'short',
         day: 'numeric',

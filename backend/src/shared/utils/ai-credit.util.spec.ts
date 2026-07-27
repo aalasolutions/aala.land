@@ -116,7 +116,7 @@ describe('getCreditPeriod', () => {
     expect(period.end.toISOString()).toBe('2026-09-01T00:00:00.000Z');
   });
 
-  it('always produces a period that contains now', () => {
+  it('produces a period containing now at every sampled point over 400 days', () => {
     const anchor = new Date('2026-01-31T23:30:00.000Z');
     for (let day = 1; day <= 400; day += 7) {
       const now = new Date(anchor.getTime() + day * 24 * 60 * 60 * 1000);

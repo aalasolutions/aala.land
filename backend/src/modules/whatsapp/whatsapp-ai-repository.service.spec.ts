@@ -301,7 +301,7 @@ describe('WhatsappAiRepositoryService', () => {
       expect(repos.txUsageRepo.increment).not.toHaveBeenCalled();
     });
 
-    it('inserts the counter row before locking it, so concurrent first callers cannot both miss', async () => {
+    it('takes the row lock before reading the window (ordering only, not a race test)', async () => {
       repos.usageQb.getOne.mockResolvedValue({ creditsUsed: 0 });
 
       await consume();
@@ -315,7 +315,7 @@ describe('WhatsappAiRepositoryService', () => {
       );
     });
 
-    it('runs the whole check inside one transaction', async () => {
+    it('wraps the check in a single transaction', async () => {
       repos.usageQb.getOne.mockResolvedValue({ creditsUsed: 0 });
       await consume();
       expect(repos.settingsRepo.manager.transaction).toHaveBeenCalledTimes(1);
