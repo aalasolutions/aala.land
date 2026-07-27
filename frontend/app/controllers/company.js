@@ -198,12 +198,6 @@ export default class CompanyController extends Controller {
     return `You've used ${used}/${this.creditsLimit} AI credits this period${suffix}`;
   }
 
-  // 1 credit opens a 24h window with one lead, so the count is conversations, not messages.
-  get creditUsageHint() {
-    if (this.creditsLimit === null) return null;
-    return '1 credit covers 24 hours of unlimited replies with one lead.';
-  }
-
   get hasCreditAgents() {
     return (this.creditAgents?.length ?? 0) > 0;
   }

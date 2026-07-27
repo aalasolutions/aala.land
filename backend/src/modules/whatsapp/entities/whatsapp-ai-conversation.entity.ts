@@ -6,7 +6,8 @@ import {
   Index,
 } from 'typeorm';
 
-// Append-only: one row is exactly one consumed credit.
+// Append-only: one row is exactly one consumed credit. Never deleted, never reversed:
+// the credit buys the 24h window, not the reply, so a failed turn keeps its window.
 @Entity('whatsapp_ai_conversations')
 @Index('IDX_wa_ai_conversations_window', [
   'companyId',

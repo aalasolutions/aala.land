@@ -66,6 +66,7 @@ const makeRepos = () => {
     conversationRepo: {
       count: jest.fn().mockResolvedValue(0),
       createQueryBuilder: jest.fn().mockReturnValue(qb),
+      increment: jest.fn().mockResolvedValue(undefined),
     },
     usageRepo: {
       findOne: jest.fn().mockResolvedValue(null),
@@ -236,7 +237,7 @@ describe('WhatsappAiRepositoryService', () => {
           companyId: 'c1',
           userId: 'u1',
           chatId: 'chat1',
-          messagesCount: 1,
+          messagesCount: 0,
           periodStart: PERIOD.start,
         }),
       );
@@ -259,7 +260,7 @@ describe('WhatsappAiRepositoryService', () => {
       );
     });
 
-    it('rides an open window free and only bumps the message count', async () => {
+    it('rides an open window free and writes nothing', async () => {
       repos.usageQb.getOne.mockResolvedValue({ creditsUsed: 3 });
       repos.conversationQb.getOne.mockResolvedValue({ id: 'open-1' });
 
@@ -270,11 +271,8 @@ describe('WhatsappAiRepositoryService', () => {
         charged: false,
         conversationId: 'open-1',
       });
-      expect(repos.txConversationRepo.increment).toHaveBeenCalledWith(
-        { id: 'open-1' },
-        'messagesCount',
-        1,
-      );
+      // The turn can still die at the LLM, so nothing is counted until it is delivered.
+      expect(repos.txConversationRepo.increment).not.toHaveBeenCalled();
       expect(repos.txUsageRepo.increment).not.toHaveBeenCalled();
       expect(repos.txConversationRepo.save).not.toHaveBeenCalled();
     });
@@ -309,8 +307,10 @@ describe('WhatsappAiRepositoryService', () => {
 
       await consume();
 
+      // Same key derivation as shared/utils/company-lock.util.ts, or this critical
+      // section lands in a different lock namespace from the seat/plan mutations.
       expect(repos.managerQuery).toHaveBeenCalledWith(
-        expect.stringContaining('pg_advisory_xact_lock'),
+        'SELECT pg_advisory_xact_lock(hashtext($1))',
         ['c1'],
       );
       // Must precede the usage upsert: the usage row key includes period_start, so
@@ -346,16 +346,15 @@ describe('WhatsappAiRepositoryService', () => {
     });
   });
 
-  describe('refundConversationCredit', () => {
-    it('deletes the window and decrements the counter in one transaction', async () => {
-      await service.refundConversationCredit('c1', 'conv-1', PERIOD.start);
+  describe('recordTurnDelivered', () => {
+    it('counts the reply against the conversation, scoped to the company', async () => {
+      await service.recordTurnDelivered('c1', 'conv-1');
 
-      expect(repos.txConversationRepo.delete).toHaveBeenCalledWith({
-        id: 'conv-1',
-        companyId: 'c1',
-      });
-      expect(repos.usageQb.execute).toHaveBeenCalled();
-      expect(repos.settingsRepo.manager.transaction).toHaveBeenCalledTimes(1);
+      expect(repos.conversationRepo.increment).toHaveBeenCalledWith(
+        { id: 'conv-1', companyId: 'c1' },
+        'messagesCount',
+        1,
+      );
     });
   });
 

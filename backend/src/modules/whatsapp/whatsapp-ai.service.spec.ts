@@ -87,7 +87,7 @@ const makeMockRepo = (
   consumeConversationCredit: jest
     .fn()
     .mockResolvedValue({ allowed: true, charged: true, conversationId: 'cv1' }),
-  refundConversationCredit: jest.fn().mockResolvedValue(undefined),
+  recordTurnDelivered: jest.fn().mockResolvedValue(undefined),
   getCreditUsage: jest.fn().mockResolvedValue({ used: 0, openWindows: 0 }),
   getAgentCreditBreakdown: jest.fn().mockResolvedValue([]),
   claimExhaustedNotification: jest.fn().mockResolvedValue(true),
@@ -453,7 +453,7 @@ describe('WhatsappAiService', () => {
       expect(mockSend).not.toHaveBeenCalled();
     });
 
-    it('aborts the send and reverts quota when the human replies mid-stream (after the turn started)', async () => {
+    it('aborts the send when the human replies mid-stream (after the turn started)', async () => {
       const mockRepo = makeMockRepo();
       service = new WhatsappAiService(
         mockRepo as any,
@@ -482,12 +482,9 @@ describe('WhatsappAiService', () => {
       // LLM was called (turn started before the human reply), but the send was aborted.
       expect(global.fetch).toHaveBeenCalledTimes(1);
       expect(mockSend).not.toHaveBeenCalled();
-      // The credit is refunded and the window deleted, since no reply was sent.
-      expect(mockRepo.refundConversationCredit).toHaveBeenCalledWith(
-        'co',
-        'cv1',
-        expect.any(Date),
-      );
+      // No refund by design: the credit bought the 24h window, which is still open.
+      // Nothing is counted as delivered, because nothing reached the lead.
+      expect(mockRepo.recordTurnDelivered).not.toHaveBeenCalled();
       // The aborted assistant reply is not retained in history.
       expect(service.getHistoryFor('u1', 'c1')).toEqual([]);
     });
@@ -569,7 +566,9 @@ describe('WhatsappAiService', () => {
 
       // Only chat-b should have gotten a response
       expect(mockSend).toHaveBeenCalledTimes(1);
-      expect(mockSend).toHaveBeenCalledWith('chat-b', expect.any(String));
+      expect(mockSend).toHaveBeenCalledWith('chat-b', expect.any(String), {
+        creditCharged: true,
+      });
     });
   });
 
@@ -821,7 +820,7 @@ describe('WhatsappAiService', () => {
       expect(mockSend).not.toHaveBeenCalled();
     });
 
-    it('still fails OPEN on a DB error when the company was not known exhausted', async () => {
+    it('fails CLOSED on a DB error, refusing the turn rather than serving it unmetered', async () => {
       const mockRepo = makeMockRepo();
       service = new WhatsappAiService(
         mockRepo as any,
@@ -846,7 +845,8 @@ describe('WhatsappAiService', () => {
       );
       await jest.runAllTimersAsync();
 
-      expect(mockSend).toHaveBeenCalledTimes(1);
+      expect(mockSend).not.toHaveBeenCalled();
+      expect(global.fetch).not.toHaveBeenCalled();
     });
 
     it('stays REFUSED when period resolution itself throws for a known-exhausted company', async () => {
@@ -890,108 +890,6 @@ describe('WhatsappAiService', () => {
 
       expect(mockSend).not.toHaveBeenCalled();
       expect(global.fetch).not.toHaveBeenCalled();
-    });
-
-    it('serves again once the exhausted period has elapsed, even if resolution throws', async () => {
-      const mockRepo = makeMockRepo();
-      // Anchor a month back so the marked period ends before "now".
-      mockRepo.getPeriodAnchor.mockResolvedValue(
-        new Date(Date.now() - 70 * 24 * 60 * 60 * 1000),
-      );
-      service = new WhatsappAiService(
-        mockRepo as any,
-        makeMockBuilder() as any,
-        makeMockEmail() as any,
-      );
-      global.fetch = jest
-        .fn()
-        .mockImplementation(() =>
-          Promise.resolve(mockTextResponse('reply')),
-        ) as any;
-      const mockSend = jest.fn().mockResolvedValue({});
-
-      mockRepo.consumeConversationCredit.mockResolvedValue({
-        allowed: false,
-        charged: false,
-        conversationId: null,
-      });
-      await service.handleIncomingMessage(
-        baseEvt(),
-        'company-1',
-        'user-1',
-        mockSend,
-      );
-      await jest.runAllTimersAsync();
-
-      // Jump past the marked period, then break resolution. A stale marker must not
-      // refuse a company that has since rolled into a fresh allowance.
-      jest.setSystemTime(new Date(Date.now() + 40 * 24 * 60 * 60 * 1000));
-      mockRepo.getPeriodAnchor.mockRejectedValue(
-        new Error('billing read down'),
-      );
-      await service.handleIncomingMessage(
-        baseEvt({ body: 'next period' }),
-        'company-1',
-        'user-1',
-        mockSend,
-      );
-      await jest.runAllTimersAsync();
-
-      expect(mockSend).toHaveBeenCalledTimes(1);
-    });
-
-    it('clears the exhausted marker once a credit is charged again', async () => {
-      const mockRepo = makeMockRepo();
-      service = new WhatsappAiService(
-        mockRepo as any,
-        makeMockBuilder() as any,
-        makeMockEmail() as any,
-      );
-      global.fetch = jest
-        .fn()
-        .mockImplementation(() =>
-          Promise.resolve(mockTextResponse('reply')),
-        ) as any;
-      const mockSend = jest.fn().mockResolvedValue({});
-
-      mockRepo.consumeConversationCredit.mockResolvedValue({
-        allowed: false,
-        charged: false,
-        conversationId: null,
-      });
-      await service.handleIncomingMessage(
-        baseEvt(),
-        'company-1',
-        'user-1',
-        mockSend,
-      );
-      await jest.runAllTimersAsync();
-
-      // Period rolled over / top-up landed: a charge succeeds.
-      mockRepo.consumeConversationCredit.mockResolvedValue({
-        allowed: true,
-        charged: true,
-        conversationId: 'cv9',
-      });
-      await service.handleIncomingMessage(
-        baseEvt({ body: 'two' }),
-        'company-1',
-        'user-1',
-        mockSend,
-      );
-      await jest.runAllTimersAsync();
-
-      // A later DB error must fail OPEN again, since the company is no longer exhausted.
-      mockRepo.consumeConversationCredit.mockRejectedValue(new Error('boom'));
-      await service.handleIncomingMessage(
-        baseEvt({ body: 'three' }),
-        'company-1',
-        'user-1',
-        mockSend,
-      );
-      await jest.runAllTimersAsync();
-
-      expect(mockSend).toHaveBeenCalledTimes(2);
     });
 
     it('does not send when the allowance is spent (allowed: false)', async () => {
@@ -1195,7 +1093,7 @@ describe('WhatsappAiService', () => {
       expect(mockSend).toHaveBeenCalledTimes(1);
     });
 
-    it('does not refund a turn that rode an already-open window', async () => {
+    it('counts nothing delivered when the turn dies before a reply', async () => {
       const mockRepo = makeMockRepo(null, SubscriptionTier.FREE);
       mockRepo.consumeConversationCredit.mockResolvedValue({
         allowed: true,
@@ -1217,10 +1115,10 @@ describe('WhatsappAiService', () => {
       );
       await jest.runAllTimersAsync();
 
-      expect(mockRepo.refundConversationCredit).not.toHaveBeenCalled();
+      expect(mockRepo.recordTurnDelivered).not.toHaveBeenCalled();
     });
 
-    it('allows the message when the credit check throws (fail-open)', async () => {
+    it('refuses the message when the credit check throws (fail-closed)', async () => {
       const mockRepo = makeMockRepo(null, SubscriptionTier.FREE);
       mockRepo.consumeConversationCredit.mockRejectedValue(
         new Error('DB error'),
@@ -1245,7 +1143,8 @@ describe('WhatsappAiService', () => {
       );
       await jest.runAllTimersAsync();
 
-      expect(mockSend).toHaveBeenCalledTimes(1);
+      expect(mockSend).not.toHaveBeenCalled();
+      expect(service.getHistoryFor('user-1', 'c1')).toEqual([]);
     });
   });
 
@@ -1277,7 +1176,9 @@ describe('WhatsappAiService', () => {
       await jest.runAllTimersAsync();
 
       expect(global.fetch).toHaveBeenCalledTimes(1);
-      expect(mockSend).toHaveBeenCalledWith('c1', 'Hello!');
+      expect(mockSend).toHaveBeenCalledWith('c1', 'Hello!', {
+        creditCharged: true,
+      });
     });
 
     it('passes TOOL_DEFINITIONS and stream:true in first LLM call body', async () => {
@@ -1346,6 +1247,7 @@ describe('WhatsappAiService', () => {
       expect(mockSend).toHaveBeenCalledWith(
         'c1',
         'Here are properties in Karachi.',
+        { creditCharged: true },
       );
     });
 
@@ -1377,6 +1279,7 @@ describe('WhatsappAiService', () => {
       expect(mockSend).toHaveBeenCalledWith(
         'c1',
         'I have escalated your request to a human agent.',
+        { creditCharged: true },
       );
     });
 
@@ -1416,7 +1319,9 @@ describe('WhatsappAiService', () => {
       );
       await jest.runAllTimersAsync();
 
-      expect(mockSend).toHaveBeenCalledWith('c1', 'Hello world');
+      expect(mockSend).toHaveBeenCalledWith('c1', 'Hello world', {
+        creditCharged: true,
+      });
     });
   });
 

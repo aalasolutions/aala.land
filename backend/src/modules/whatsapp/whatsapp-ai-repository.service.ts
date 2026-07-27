@@ -1,7 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import {
   Between,
+  FindOptionsWhere,
   ILike,
   In,
   IsNull,
@@ -11,6 +12,7 @@ import {
   Not,
   Repository,
 } from 'typeorm';
+import { acquireCompanyLock } from '@shared/utils/company-lock.util';
 import {
   Company,
   AI_CONVERSATION_WINDOW_MS,
@@ -33,7 +35,6 @@ interface PropertySearchFilters {
 }
 
 interface ContextCache {
-  company: Company | null;
   units: Unit[];
   cachedAt: number;
 }
@@ -57,7 +58,9 @@ interface CompanyCache {
 // NOTE: Single-instance only — caches below are process-local.
 // On multi-instance deploys, prompt edits will be stale on other replicas until TTL expires.
 @Injectable()
-export class WhatsappAiRepositoryService {
+export class WhatsappAiRepositoryService
+  implements OnModuleInit, OnModuleDestroy
+{
   private contextCache = new Map<string, ContextCache>();
   private promptCache = new Map<string, PromptCache>();
   private anchorCache = new Map<string, AnchorCache>();
@@ -67,6 +70,8 @@ export class WhatsappAiRepositoryService {
   private readonly PROMPT_NULL_TTL_MS = 30 * 1000;
   private readonly ANCHOR_TTL_MS = 5 * 60 * 1000;
   private readonly COMPANY_TTL_MS = 5 * 60 * 1000;
+  private readonly SWEEP_INTERVAL_MS = 5 * 60 * 1000;
+  private sweepInterval: ReturnType<typeof setInterval> | null = null;
 
   constructor(
     @InjectRepository(Company)
@@ -85,6 +90,37 @@ export class WhatsappAiRepositoryService {
     private readonly userRepo: Repository<User>,
   ) {}
 
+  onModuleInit(): void {
+    this.sweepInterval = setInterval(
+      () => this.sweepExpired(),
+      this.SWEEP_INTERVAL_MS,
+    );
+  }
+
+  onModuleDestroy(): void {
+    if (this.sweepInterval) clearInterval(this.sweepInterval);
+  }
+
+  // TTL alone is only enforced on re-read, so a company that goes quiet would keep its
+  // Company row and up to 40 hydrated Unit graphs pinned for the process lifetime.
+  private sweepExpired(): void {
+    const now = Date.now();
+    const drop = <V extends { cachedAt: number }>(
+      map: Map<string, V>,
+      ttl: number,
+    ): void => {
+      for (const [key, entry] of map.entries()) {
+        if (now - entry.cachedAt >= ttl) map.delete(key);
+      }
+    };
+    drop(this.contextCache, this.CONTEXT_TTL_MS);
+    drop(this.anchorCache, this.ANCHOR_TTL_MS);
+    drop(this.companyCache, this.COMPANY_TTL_MS);
+    for (const [key, entry] of this.promptCache.entries()) {
+      if (now - entry.cachedAt >= entry.ttl) this.promptCache.delete(key);
+    }
+  }
+
   async getCompany(companyId: string): Promise<Company | null> {
     const cached = this.companyCache.get(companyId);
     if (cached && Date.now() - cached.cachedAt < this.COMPANY_TTL_MS) {
@@ -102,10 +138,12 @@ export class WhatsappAiRepositoryService {
   ): Promise<{ company: Company | null; units: Unit[] }> {
     const cached = this.contextCache.get(companyId);
     if (cached && Date.now() - cached.cachedAt < this.CONTEXT_TTL_MS) {
-      return { company: cached.company, units: cached.units };
+      return { company: await this.getCompany(companyId), units: cached.units };
     }
+    // Company comes from getCompany so there is one cached copy on one TTL. Caching it
+    // here too let the enforcement path and the UI path read allowances that expire apart.
     const [company, units] = await Promise.all([
-      this.companyRepo.findOne({ where: { id: companyId } }),
+      this.getCompany(companyId),
       this.unitRepo.find({
         where: { companyId, status: UnitStatus.AVAILABLE },
         relations: ['asset', 'asset.locality', 'asset.locality.city'],
@@ -113,7 +151,7 @@ export class WhatsappAiRepositoryService {
         take: 40,
       }),
     ]);
-    this.contextCache.set(companyId, { company, units, cachedAt: Date.now() });
+    this.contextCache.set(companyId, { units, cachedAt: Date.now() });
     return { company, units };
   }
 
@@ -121,7 +159,7 @@ export class WhatsappAiRepositoryService {
     companyId: string,
     filters: PropertySearchFilters,
   ): Promise<Unit[]> {
-    const where: Record<string, any> = {
+    const where: FindOptionsWhere<Unit> = {
       companyId,
       status: UnitStatus.AVAILABLE,
     };
@@ -214,10 +252,7 @@ export class WhatsappAiRepositoryService {
       const usageRepo = manager.getRepository(AiCreditUsage);
       const conversationRepo = manager.getRepository(WhatsappAiConversation);
 
-      await manager.query(
-        'SELECT pg_advisory_xact_lock(hashtextextended($1, 0))',
-        [companyId],
-      );
+      await acquireCompanyLock(manager, companyId);
 
       await usageRepo
         .createQueryBuilder()
@@ -255,11 +290,6 @@ export class WhatsappAiRepositoryService {
         .getOne();
 
       if (openWindow) {
-        await conversationRepo.increment(
-          { id: openWindow.id },
-          'messagesCount',
-          1,
-        );
         return { allowed: true, charged: false, conversationId: openWindow.id };
       }
 
@@ -275,7 +305,7 @@ export class WhatsappAiRepositoryService {
           leadId: null,
           startedAt: now,
           expiresAt: new Date(now.getTime() + AI_CONVERSATION_WINDOW_MS),
-          messagesCount: 1,
+          messagesCount: 0,
           periodStart: period.start,
         }),
       );
@@ -290,25 +320,17 @@ export class WhatsappAiRepositoryService {
     });
   }
 
-  async refundConversationCredit(
+  // Counts an AI reply the lead actually received. Kept out of
+  // consumeConversationCredit so turns that die at the LLM never inflate the number.
+  async recordTurnDelivered(
     companyId: string,
     conversationId: string,
-    periodStart: Date,
   ): Promise<void> {
-    await this.settingsRepo.manager.transaction(async (manager) => {
-      await manager
-        .getRepository(WhatsappAiConversation)
-        .delete({ id: conversationId, companyId });
-
-      await manager
-        .getRepository(AiCreditUsage)
-        .createQueryBuilder()
-        .update()
-        .set({ creditsUsed: () => 'GREATEST(credits_used - 1, 0)' })
-        .where('company_id = :companyId', { companyId })
-        .andWhere('period_start = :periodStart', { periodStart })
-        .execute();
-    });
+    await this.conversationRepo.increment(
+      { id: conversationId, companyId },
+      'messagesCount',
+      1,
+    );
   }
 
   async getCreditUsage(
@@ -320,8 +342,10 @@ export class WhatsappAiRepositoryService {
         where: { companyId, periodStart },
         select: { creditsUsed: true },
       }),
+      // Period-scoped so `used` and `openWindows` describe the same set. A window
+      // opened late in the previous period stays open into this one but was charged there.
       this.conversationRepo.count({
-        where: { companyId, expiresAt: MoreThan(new Date()) },
+        where: { companyId, periodStart, expiresAt: MoreThan(new Date()) },
       }),
     ]);
     return { used: usage?.creditsUsed ?? 0, openWindows };

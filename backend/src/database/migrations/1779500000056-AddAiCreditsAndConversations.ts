@@ -28,6 +28,28 @@ export class AddAiCreditsAndConversations1779500000056 implements MigrationInter
     await queryRunner.query(
       `CREATE INDEX IF NOT EXISTS "IDX_wa_ai_conversations_open" ON "whatsapp_ai_conversations" ("company_id", "expires_at")`,
     );
+    // Console overview filters on started_at alone; every index above leads with company_id.
+    await queryRunner.query(
+      `CREATE INDEX IF NOT EXISTS "IDX_wa_ai_conversations_started_at" ON "whatsapp_ai_conversations" ("started_at")`,
+    );
+    await queryRunner.query(`
+            ALTER TABLE "whatsapp_ai_conversations"
+            ADD CONSTRAINT "FK_wa_ai_conversations_company"
+            FOREIGN KEY ("company_id") REFERENCES "companies"("id")
+            ON DELETE CASCADE ON UPDATE NO ACTION
+        `);
+    await queryRunner.query(`
+            ALTER TABLE "whatsapp_ai_conversations"
+            ADD CONSTRAINT "FK_wa_ai_conversations_user"
+            FOREIGN KEY ("user_id") REFERENCES "users"("id")
+            ON DELETE CASCADE ON UPDATE NO ACTION
+        `);
+    await queryRunner.query(`
+            ALTER TABLE "whatsapp_ai_conversations"
+            ADD CONSTRAINT "FK_wa_ai_conversations_lead"
+            FOREIGN KEY ("lead_id") REFERENCES "leads"("id")
+            ON DELETE SET NULL ON UPDATE NO ACTION
+        `);
 
     await queryRunner.query(`
             CREATE TABLE IF NOT EXISTS "ai_credit_usage" (
@@ -45,6 +67,15 @@ export class AddAiCreditsAndConversations1779500000056 implements MigrationInter
     await queryRunner.query(
       `CREATE UNIQUE INDEX IF NOT EXISTS "UQ_ai_credit_usage_company_period" ON "ai_credit_usage" ("company_id", "period_start")`,
     );
+    await queryRunner.query(
+      `CREATE INDEX IF NOT EXISTS "IDX_ai_credit_usage_period_window" ON "ai_credit_usage" ("period_start", "period_end")`,
+    );
+    await queryRunner.query(`
+            ALTER TABLE "ai_credit_usage"
+            ADD CONSTRAINT "FK_ai_credit_usage_company"
+            FOREIGN KEY ("company_id") REFERENCES "companies"("id")
+            ON DELETE CASCADE ON UPDATE NO ACTION
+        `);
 
     await queryRunner.query(`
             ALTER TABLE "whatsapp_settings"
@@ -59,6 +90,21 @@ export class AddAiCreditsAndConversations1779500000056 implements MigrationInter
             ADD COLUMN IF NOT EXISTS "ai_weekly_count" INTEGER NOT NULL DEFAULT 0,
             ADD COLUMN IF NOT EXISTS "ai_weekly_window_start" TIMESTAMPTZ NULL
         `);
+    await queryRunner.query(
+      `ALTER TABLE "ai_credit_usage" DROP CONSTRAINT IF EXISTS "FK_ai_credit_usage_company"`,
+    );
+    await queryRunner.query(`
+            ALTER TABLE "whatsapp_ai_conversations"
+            DROP CONSTRAINT IF EXISTS "FK_wa_ai_conversations_company",
+            DROP CONSTRAINT IF EXISTS "FK_wa_ai_conversations_user",
+            DROP CONSTRAINT IF EXISTS "FK_wa_ai_conversations_lead"
+        `);
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS "IDX_ai_credit_usage_period_window"`,
+    );
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS "IDX_wa_ai_conversations_started_at"`,
+    );
     await queryRunner.query(`DROP TABLE IF EXISTS "ai_credit_usage"`);
     await queryRunner.query(`DROP TABLE IF EXISTS "whatsapp_ai_conversations"`);
   }

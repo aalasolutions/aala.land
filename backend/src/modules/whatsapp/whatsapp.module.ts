@@ -21,6 +21,7 @@ import { BillingHistory } from '../billing/entities/billing-history.entity';
 import { EmailModule } from '../email/email.module';
 import { BillingModule } from '../billing/billing.module';
 import { WhatsappBillingListener } from './whatsapp-billing.listener';
+import { AiConversationRetentionCron } from './ai-conversation-retention.cron';
 
 @Module({
   imports: [
@@ -53,6 +54,7 @@ import { WhatsappBillingListener } from './whatsapp-billing.listener';
     WhatsappGateway,
     WhatsappService,
     WhatsappBillingListener,
+    AiConversationRetentionCron,
   ],
   exports: [WhatsappService],
 })

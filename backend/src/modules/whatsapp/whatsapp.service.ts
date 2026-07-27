@@ -150,7 +150,7 @@ export class WhatsappService implements OnModuleInit {
             msg,
             companyId,
             userId,
-            async (chatId, message) => {
+            async (chatId, message, meta) => {
               // Register the echo fingerprint BEFORE sending so the fromMe re-emission
               // (which can arrive before or without a messageId) is always recognised.
               const fp = fingerprint(chatId, message);
@@ -179,17 +179,21 @@ export class WhatsappService implements OnModuleInit {
               };
               this.store.addMessage(userId, aiMsg);
               this.gateway.emitMessage(userId, aiMsg);
-              void this.ai
-                .getCreditUsage(companyId)
-                .then((usage) => {
-                  if (usage)
-                    this.gateway.emitAi(userId, {
-                      creditsUsed: usage.used,
-                      creditsLimit: usage.limit,
-                      openWindows: usage.openWindows,
-                    });
-                })
-                .catch(() => {});
+              // Only a newly opened window moves these numbers; reuse turns would
+              // requery twice per reply to emit what the client already has.
+              if (meta?.creditCharged) {
+                void this.ai
+                  .getCreditUsage(companyId)
+                  .then((usage) => {
+                    if (usage)
+                      this.gateway.emitAi(userId, {
+                        creditsUsed: usage.used,
+                        creditsLimit: usage.limit,
+                        openWindows: usage.openWindows,
+                      });
+                  })
+                  .catch(() => {});
+              }
               return result;
             },
           )
