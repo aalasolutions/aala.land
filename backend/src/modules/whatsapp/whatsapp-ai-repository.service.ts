@@ -85,10 +85,6 @@ export class WhatsappAiRepositoryService {
     private readonly userRepo: Repository<User>,
   ) {}
 
-  /**
-   * Company row only. The metering paths need tier and purchasedSeats, not the
-   * 40-unit three-level join that getCompanyAndUnits carries for prompt context.
-   */
   async getCompany(companyId: string): Promise<Company | null> {
     const cached = this.companyCache.get(companyId);
     if (cached && Date.now() - cached.cachedAt < this.COMPANY_TTL_MS) {
@@ -186,11 +182,6 @@ export class WhatsappAiRepositoryService {
     return row?.aiEnabled ?? null;
   }
 
-  /**
-   * The company's billing cycle start: the period_start of its most recent
-   * invoice, or createdAt when it has never been invoiced (FREE, or paid before
-   * the first webhook lands).
-   */
   async getPeriodAnchor(company: Company): Promise<Date> {
     const cached = this.anchorCache.get(company.id);
     if (cached && Date.now() - cached.cachedAt < this.ANCHOR_TTL_MS) {
@@ -198,7 +189,7 @@ export class WhatsappAiRepositoryService {
     }
     const row = await this.billingHistoryRepo.findOne({
       where: { companyId: company.id, periodStart: Not(IsNull()) },
-      order: { occurredAt: 'DESC' },
+      order: { periodStart: 'DESC', occurredAt: 'DESC' },
       select: { periodStart: true },
     });
     const anchor = row?.periodStart ?? company.createdAt;
@@ -206,19 +197,8 @@ export class WhatsappAiRepositoryService {
     return anchor;
   }
 
-  /**
-   * Grants an AI turn for (company, agent, lead), charging 1 credit only when no
-   * 24-hour window is currently open for that pair.
-   *
-   * Serialization is a company-scoped advisory lock, NOT the usage row: the usage row
-   * key includes period_start, so two turns either side of a period boundary would
-   * lock different rows and could both open a window for the same chat. The window
-   * lookup is period-independent (it filters on expires_at), so locking the company
-   * alone is enough. Released automatically when the transaction ends.
-   *
-   * The counter row is still inserted-then-locked so the allowance check and the
-   * increment stay atomic.
-   */
+  // Advisory lock, NOT the usage row: that row's key includes period_start, so two
+  // turns either side of a boundary lock different rows and double-charge.
   async consumeConversationCredit(
     companyId: string,
     userId: string,
@@ -310,10 +290,6 @@ export class WhatsappAiRepositoryService {
     });
   }
 
-  /**
-   * Reverts a charge whose AI turn never produced a reply. The window row must go
-   * too, otherwise the company keeps 24 free hours it never got an answer for.
-   */
   async refundConversationCredit(
     companyId: string,
     conversationId: string,
@@ -351,10 +327,6 @@ export class WhatsappAiRepositoryService {
     return { used: usage?.creditsUsed ?? 0, openWindows };
   }
 
-  /**
-   * Per-agent credit consumption for a period. Needs no dedicated counter: one
-   * conversation row IS one credit, so this is a GROUP BY over the audit trail.
-   */
   async getAgentCreditBreakdown(
     companyId: string,
     periodStart: Date,
@@ -396,7 +368,6 @@ export class WhatsappAiRepositoryService {
       .sort((a, b) => b.credits - a.credits);
   }
 
-  /** Returns true for the single caller that wins the right to send the email this period. */
   async claimExhaustedNotification(
     companyId: string,
     periodStart: Date,

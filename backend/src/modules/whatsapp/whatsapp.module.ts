@@ -19,10 +19,13 @@ import { Company } from '../companies/entities/company.entity';
 import { Unit } from '../properties/entities/unit.entity';
 import { BillingHistory } from '../billing/entities/billing-history.entity';
 import { EmailModule } from '../email/email.module';
+import { BillingModule } from '../billing/billing.module';
+import { WhatsappBillingListener } from './whatsapp-billing.listener';
 
 @Module({
   imports: [
     EmailModule,
+    BillingModule,
     TypeOrmModule.forFeature([
       WhatsappSettings,
       WhatsappAiConversation,
@@ -49,6 +52,7 @@ import { EmailModule } from '../email/email.module';
     WhatsappAiService,
     WhatsappGateway,
     WhatsappService,
+    WhatsappBillingListener,
   ],
   exports: [WhatsappService],
 })

@@ -32,8 +32,6 @@ type SendFn = (
   message: string,
 ) => Promise<{ messageId?: string }>;
 
-// Set only when THIS turn opened a new 24h window. A turn that rode an already-open
-// window has nothing to refund.
 type CreditCharge = { conversationId: string; periodStart: Date } | null;
 
 interface PendingChat {
@@ -106,7 +104,6 @@ export class WhatsappAiService implements OnModuleInit, OnModuleDestroy {
     };
   }
 
-  /** Single source of the billing facts every metering path needs. */
   private async resolveLimitAndPeriod(
     company: Company,
   ): Promise<{ limit: number; period: { start: Date; end: Date } }> {
@@ -130,7 +127,6 @@ export class WhatsappAiService implements OnModuleInit, OnModuleDestroy {
     return { used, limit, openWindows, resetsAt: period.end.toISOString() };
   }
 
-  /** Usage plus the per-agent breakdown: who on the team is spending the shared pool. */
   async getCreditUsageWithAgents(
     companyId: string,
   ): Promise<AiCreditUsageWithAgents | null> {
@@ -433,9 +429,6 @@ export class WhatsappAiService implements OnModuleInit, OnModuleDestroy {
           };
         }
       } catch (err) {
-        // Fail open on a transient DB fault: losing a credit beats a silent bot.
-        // But a company already known to be exhausted this period stays refused,
-        // otherwise a degraded DB becomes an unlimited-AI bypass.
         this.logger.error(
           'Credit check failed',
           err instanceof Error ? err.message : err,
@@ -572,9 +565,6 @@ export class WhatsappAiService implements OnModuleInit, OnModuleDestroy {
     if (history.length > lenBefore) history.length = lenBefore;
   }
 
-  // Last period we saw a company hit its ceiling. Stores the period END too, so the
-  // marker expires on the wall clock: it stays usable when period resolution itself
-  // fails, and goes stale on its own once the period is over.
   private markExhausted(
     companyId: string,
     period: { start: Date; end: Date },
@@ -599,13 +589,10 @@ export class WhatsappAiService implements OnModuleInit, OnModuleDestroy {
       this.exhaustedPeriod.delete(companyId);
       return false;
     }
-    // Period resolution failed, so trust the clock: still inside the exhausted period.
     if (!period) return true;
     return marker.start === period.start.getTime();
   }
 
-  // The claim is a conditional UPDATE on the usage row, so exactly one caller sends
-  // the email per period no matter how many leads hit the wall at once.
   private async notifyCreditsExhausted(
     companyId: string,
     periodStart: Date,
@@ -629,8 +616,6 @@ export class WhatsappAiService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  // Deletes the window as well as decrementing: leaving it behind would hand the
-  // company 24 free hours for a turn that never produced a reply.
   private revertQuotaIfNeeded(companyId: string, charge: CreditCharge): void {
     if (!charge) return;
     this.repo
