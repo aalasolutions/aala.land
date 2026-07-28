@@ -798,7 +798,7 @@ describe('UsersService', () => {
       expect(updates.deletedAt).toBeInstanceOf(Date);
     });
 
-    it('reassigns owned records before the row is retired', async () => {
+    it('reassigns owned records within the soft-delete transaction', async () => {
       primeRemovalLookups(proCompany);
 
       await service.softDeleteUserWithReassignment(

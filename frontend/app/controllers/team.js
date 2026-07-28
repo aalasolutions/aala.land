@@ -209,8 +209,8 @@ export default class TeamController extends PaginatedController {
 
   @action async reactivateFromInvite() {
     if (!this.inviteExistingUser || this.reactivatingUserId) return;
-    await this.reactivateUser(this.inviteExistingUser);
-    this.closeInvite();
+    const reactivated = await this.reactivateUser(this.inviteExistingUser);
+    if (reactivated) this.closeInvite();
   }
 
   @action async saveUser(event) {
@@ -338,7 +338,7 @@ export default class TeamController extends PaginatedController {
   }
 
   @action async reactivateUser(user) {
-    if (this.reactivatingUserId) return;
+    if (this.reactivatingUserId) return false;
     this.reactivatingUserId = user.id;
     try {
       await this.auth.fetchJson(`/users/${user.id}/reactivate`, {
@@ -346,8 +346,10 @@ export default class TeamController extends PaginatedController {
       });
       this.notifications.success(`${user.name} reactivated`);
       this.router.refresh('team');
+      return true;
     } catch (e) {
       this.notifications.error(e.message || 'Reactivation failed');
+      return false;
     } finally {
       this.reactivatingUserId = null;
     }

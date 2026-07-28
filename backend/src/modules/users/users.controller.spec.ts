@@ -215,6 +215,15 @@ describe('UsersController', () => {
       expect(res.entities).toEqual([{ type: 'lead', count: 2 }]);
     });
 
+    it('strips the reassignment record ids from the delete response too', async () => {
+      const res = await controller.deleteUser(
+        'user-uuid-2',
+        dto as never,
+        reqAdmin as never,
+      );
+      expect(res.entities).toEqual([{ type: 'lead', count: 2 }]);
+    });
+
     it('POST /users/:id/delete forwards to softDeleteUserWithReassignment', async () => {
       await controller.deleteUser(
         'user-uuid-2',
