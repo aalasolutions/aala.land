@@ -16,6 +16,7 @@ export interface WaMessage {
   fromMe: boolean;
   aiGenerated: boolean;
   timestamp: number;
+  originUserId?: string;
 }
 
 export interface WaChat {

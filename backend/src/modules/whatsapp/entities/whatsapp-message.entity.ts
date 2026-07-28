@@ -3,30 +3,19 @@ import {
   PrimaryGeneratedColumn,
   Column,
   CreateDateColumn,
-  UpdateDateColumn,
-  ManyToOne,
-  JoinColumn,
+  Index,
 } from 'typeorm';
-import { Company } from '../../companies/entities/company.entity';
 
-export enum MessageDirection {
-  INBOUND = 'INBOUND',
-  OUTBOUND = 'OUTBOUND',
-}
-
-export enum MessageStatus {
-  QUEUED = 'QUEUED',
-  SENT = 'SENT',
-  DELIVERED = 'DELIVERED',
-  READ = 'READ',
-  FAILED = 'FAILED',
-}
-
-// NOTE: This entity was designed for a prior Twilio-based integration and is NOT
-// currently used by the Baileys WhatsApp module. The MessageStoreService uses
-// an in-memory store instead. Before re-wiring, this entity's schema must be
-// updated to match WaMessage (add chatId, fromMe, mediaType, etc.).
+// Retention: none by design (owner ruling 2026-07-27). Unlike whatsapp_ai_conversations,
+// which AiConversationRetentionCron prunes at 13 months.
 @Entity('whatsapp_messages')
+@Index(
+  'UQ_wa_messages_company_user_wa_id',
+  ['companyId', 'userId', 'waMessageId'],
+  { unique: true },
+)
+@Index('IDX_wa_messages_chat', ['companyId', 'userId', 'chatId', 'timestamp'])
+@Index('IDX_wa_messages_agent', ['companyId', 'userId', 'timestamp'])
 export class WhatsappMessage {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -34,42 +23,65 @@ export class WhatsappMessage {
   @Column({ name: 'company_id', type: 'uuid' })
   companyId: string;
 
-  @ManyToOne(() => Company)
-  @JoinColumn({ name: 'company_id' })
-  company: Company;
+  @Column({ name: 'user_id', type: 'uuid' })
+  userId: string;
 
-  @Column({ name: 'lead_id', type: 'uuid', nullable: true })
-  leadId: string | null;
+  // Never rewritten by a reassignment move, unlike userId above.
+  @Column({ name: 'origin_user_id', type: 'uuid', nullable: true })
+  originUserId: string | null;
 
-  @Column({ name: 'phone_number', length: 30 })
-  phoneNumber: string;
+  @Column({ name: 'wa_message_id', type: 'varchar', length: 255 })
+  waMessageId: string;
 
-  @Column({ type: 'text' })
-  message: string;
+  @Column({ name: 'chat_id', type: 'varchar', length: 255 })
+  chatId: string;
+
+  @Column({ name: 'sender_id', type: 'varchar', length: 255, default: '' })
+  senderId: string;
+
+  @Column({ name: 'sender_name', type: 'varchar', length: 255, default: '' })
+  senderName: string;
+
+  @Column({ name: 'chat_name', type: 'varchar', length: 255, default: '' })
+  chatName: string;
+
+  @Column({ name: 'is_group', type: 'boolean', default: false })
+  isGroup: boolean;
+
+  @Column({ type: 'text', default: '' })
+  body: string;
+
+  @Column({ name: 'has_media', type: 'boolean', default: false })
+  hasMedia: boolean;
+
+  @Column({ name: 'media_type', type: 'varchar', length: 32, default: '' })
+  mediaType: string;
+
+  // Bare filenames on local disk until Unit 3 moves media to S3.
+  @Column({ name: 'media_urls', type: 'jsonb', default: () => `'[]'` })
+  mediaUrls: string[];
+
+  @Column({ name: 'mentioned_ids', type: 'jsonb', default: () => `'[]'` })
+  mentionedIds: string[];
 
   @Column({
-    type: 'enum',
-    enum: MessageDirection,
-    default: MessageDirection.OUTBOUND,
+    name: 'quoted_participant',
+    type: 'varchar',
+    length: 255,
+    default: '',
   })
-  direction: MessageDirection;
+  quotedParticipant: string;
 
-  @Column({
-    type: 'enum',
-    enum: MessageStatus,
-    default: MessageStatus.QUEUED,
-  })
-  status: MessageStatus;
+  @Column({ name: 'from_me', type: 'boolean', default: false })
+  fromMe: boolean;
 
-  @Column({ name: 'external_id', type: 'varchar', nullable: true })
-  externalId: string | null;
+  @Column({ name: 'ai_generated', type: 'boolean', default: false })
+  aiGenerated: boolean;
 
-  @Column({ name: 'media_url', type: 'varchar', nullable: true })
-  mediaUrl: string | null;
+  // WhatsApp epoch SECONDS, not milliseconds. Read back as a string by pg.
+  @Column({ type: 'bigint' })
+  timestamp: string;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
-
-  @UpdateDateColumn({ name: 'updated_at' })
-  updatedAt: Date;
 }

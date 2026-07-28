@@ -22,6 +22,7 @@ import {
 import { Commission } from '../commissions/entities/commission.entity';
 import { BillingService } from '../billing/billing.service';
 import { UserReassignmentService } from './reassignment/user-reassignment.service';
+import { WhatsappService } from '../whatsapp/whatsapp.service';
 import { OWNERSHIP_TRANSFER_RECORDER } from './reassignment/ownership-transfer-recorder';
 
 jest.mock('bcryptjs');
@@ -52,7 +53,11 @@ let billingServiceMock: {
   decrementSeat: jest.Mock;
   getLiveSeatQuantity: jest.Mock;
 };
-let reassignmentServiceMock: { reassignOwnedRecords: jest.Mock };
+let reassignmentServiceMock: {
+  reassignOwnedRecords: jest.Mock;
+  reassignWhatsappRows: jest.Mock;
+};
+let whatsappServiceMock: { logout: jest.Mock };
 
 const emptyReport = {
   fromUserId: 'user-uuid-2',
@@ -201,6 +206,13 @@ describe('UsersService', () => {
     };
     reassignmentServiceMock = {
       reassignOwnedRecords: jest.fn().mockResolvedValue(emptyReport),
+      reassignWhatsappRows: jest.fn().mockResolvedValue({
+        chats: 0,
+        messages: 0,
+      }),
+    };
+    whatsappServiceMock = {
+      logout: jest.fn().mockResolvedValue({ success: true }),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -225,6 +237,10 @@ describe('UsersService', () => {
         {
           provide: UserReassignmentService,
           useValue: reassignmentServiceMock,
+        },
+        {
+          provide: WhatsappService,
+          useValue: whatsappServiceMock,
         },
         {
           provide: OWNERSHIP_TRANSFER_RECORDER,
@@ -523,6 +539,91 @@ describe('UsersService', () => {
       );
 
       expect(result.role).toBe(Role.COMPANY_ADMIN);
+    });
+  });
+
+  describe('WhatsApp teardown on removal', () => {
+    const removalPaths: Array<[string, () => Promise<unknown>]> = [
+      [
+        'deactivateUser',
+        () =>
+          service.deactivateUser(
+            'user-uuid-2',
+            'requester-uuid',
+            companyId,
+            Role.COMPANY_ADMIN,
+            removeDto,
+          ),
+      ],
+      [
+        'deleteUserWithReassignment',
+        () =>
+          service.deleteUserWithReassignment(
+            'user-uuid-2',
+            'requester-uuid',
+            companyId,
+            Role.COMPANY_ADMIN,
+            removeDto,
+          ),
+      ],
+    ];
+
+    it.each(removalPaths)(
+      '%s logs the removed user out of WhatsApp so the seat stops receiving',
+      async (_name, run) => {
+        primeRemovalLookups(proCompany);
+
+        await run();
+
+        expect(whatsappServiceMock.logout).toHaveBeenCalledWith(
+          'user-uuid-2',
+          companyId,
+        );
+      },
+    );
+
+    it('logs out before moving the rows, so no message can land after the move', async () => {
+      primeRemovalLookups(proCompany);
+      const order: string[] = [];
+      whatsappServiceMock.logout.mockImplementation(async () => {
+        order.push('logout');
+        return { success: true };
+      });
+      reassignmentServiceMock.reassignWhatsappRows.mockImplementation(
+        async () => {
+          order.push('move');
+          return { chats: 0, messages: 0 };
+        },
+      );
+
+      await service.deactivateUser(
+        'user-uuid-2',
+        'requester-uuid',
+        companyId,
+        Role.COMPANY_ADMIN,
+        removeDto,
+      );
+
+      expect(order).toEqual(['logout', 'move']);
+    });
+
+    it('still moves the rows when the logout fails', async () => {
+      primeRemovalLookups(proCompany);
+      whatsappServiceMock.logout.mockRejectedValue(new Error('socket gone'));
+
+      await service.deactivateUser(
+        'user-uuid-2',
+        'requester-uuid',
+        companyId,
+        Role.COMPANY_ADMIN,
+        removeDto,
+      );
+
+      expect(reassignmentServiceMock.reassignWhatsappRows).toHaveBeenCalledWith(
+        companyId,
+        'user-uuid-2',
+        'user-uuid-3',
+      );
     });
   });
 

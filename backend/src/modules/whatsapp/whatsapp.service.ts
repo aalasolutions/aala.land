@@ -1,7 +1,10 @@
 // backend/src/modules/whatsapp/whatsapp.service.ts
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { In, Repository } from 'typeorm';
 import { existsSync, readFileSync, rmSync, writeFileSync } from 'fs';
 import { join } from 'path';
+import { User } from '../users/entities/user.entity';
 import {
   BaileysManagerService,
   BaileysInstance,
@@ -30,11 +33,17 @@ export class WhatsappService implements OnModuleInit {
     private readonly store: MessageStoreService,
     private readonly ai: WhatsappAiService,
     private readonly gateway: WhatsappGateway,
+    @InjectRepository(User)
+    private readonly users: Repository<User>,
   ) {}
 
   // ── Boot wiring ────────────────────────────────────────────────────────
 
   async onModuleInit(): Promise<void> {
+    // Before wiring: BaileysManagerService auto-starts every session directory on boot,
+    // so a removal whose logout failed comes back live on every deploy.
+    await this.dropSessionsWithoutActiveSeat();
+
     // BaileysManagerService.onModuleInit already ran — wire any pre-started instances
     for (const [userId, inst] of this.manager.getAll()) {
       const companyId = this.readPersistedCompanyId(userId);
@@ -44,6 +53,51 @@ export class WhatsappService implements OnModuleInit {
         this.logger.log(`Auto-wired AI for user ${userId}`);
       }
     }
+  }
+
+  /**
+   * Stops any running session whose user is gone or deactivated. A session directory is
+   * not authority to connect: the seat may have been removed while this instance was
+   * down, or the logout on the removal path may have failed.
+   *
+   * Stops WITHOUT erasing credentials. Only a real removal deletes those. This runs
+   * automatically at boot on the result of a seat lookup, so a wrong database, a stale
+   * restore or a half-applied migration would classify every session as an orphan; the
+   * cost of that must be a restart, not every agent in every company re-pairing by hand.
+   */
+  async dropSessionsWithoutActiveSeat(): Promise<number> {
+    const userIds = [...this.manager.getAll().keys()];
+    if (userIds.length === 0) return 0;
+
+    const active = await this.users.find({
+      where: { id: In(userIds), isActive: true },
+      select: { id: true },
+    });
+    const activeIds = new Set(active.map((u) => u.id));
+    const orphans = userIds.filter((id) => !activeIds.has(id));
+
+    for (const userId of orphans) {
+      try {
+        await this.stopSessionKeepingCredentials(userId);
+        this.logger.warn(
+          `Stopped WhatsApp session for user ${userId}: no active seat`,
+        );
+      } catch (err) {
+        this.logger.error(
+          `Could not stop WhatsApp session for user ${userId}`,
+          err instanceof Error ? err.message : err,
+        );
+      }
+    }
+    return orphans.length;
+  }
+
+  private async stopSessionKeepingCredentials(userId: string): Promise<void> {
+    this.manager.get(userId)?.emitter.removeAllListeners();
+    this.ai.clearUserState(userId);
+    this.persistedCompanyIds.delete(userId);
+    this.wiredUsers.delete(userId);
+    await this.manager.remove(userId);
   }
 
   /** Live count of connected WhatsApp instances (operator scoreboard tile). */
@@ -126,11 +180,10 @@ export class WhatsappService implements OnModuleInit {
     };
     inst.emitter.on('status', (data) => {
       this.gateway.emitStatus(userId, data);
-      if (!data.hasCredentials) this.store.clearAll(userId);
     });
     inst.emitter.on('qr', (data) => this.gateway.emitQR(userId, data));
     inst.emitter.on('message', (msg: WaMessage) => {
-      this.store.addMessage(userId, msg);
+      void this.persistMessage(companyId, userId, msg);
       this.gateway.emitMessage(userId, msg);
       if (msg.fromMe) {
         const fp = fingerprint(msg.chatId, msg.body);
@@ -177,7 +230,7 @@ export class WhatsappService implements OnModuleInit {
                 aiGenerated: true,
                 timestamp: Math.floor(Date.now() / 1000),
               };
-              this.store.addMessage(userId, aiMsg);
+              void this.persistMessage(companyId, userId, aiMsg);
               this.gateway.emitMessage(userId, aiMsg);
               // Only a newly opened window moves these numbers; reuse turns would
               // requery twice per reply to emit what the client already has.
@@ -200,6 +253,22 @@ export class WhatsappService implements OnModuleInit {
           .catch((err) => this.logger.error('AI handler error', err));
       }
     });
+  }
+
+  // Logged, not thrown: a DB failure must not break the live chat or the AI turn.
+  private async persistMessage(
+    companyId: string,
+    userId: string,
+    msg: WaMessage,
+  ): Promise<void> {
+    try {
+      await this.store.addMessage(companyId, userId, msg);
+    } catch (err) {
+      this.logger.error(
+        `Failed to persist WhatsApp message ${msg.id}`,
+        err instanceof Error ? err.message : err,
+      );
+    }
   }
 
   // ── Connection ────────────────────────────────────────────────────────
@@ -239,7 +308,6 @@ export class WhatsappService implements OnModuleInit {
       if (existsSync(sessionDir))
         rmSync(sessionDir, { recursive: true, force: true });
     }
-    this.store.clearAll(userId);
     this.ai.clearUserState(userId);
     this.ai.clearPromptCache(companyId);
     this.persistedCompanyIds.delete(userId);
@@ -250,16 +318,25 @@ export class WhatsappService implements OnModuleInit {
 
   // ── Messages / Chats ──────────────────────────────────────────────────
 
-  getChats(userId: string): WaChat[] {
-    return this.store.getChatList(userId);
+  getChats(companyId: string, userId: string): Promise<WaChat[]> {
+    return this.store.getChatList(companyId, userId);
   }
 
-  getAllMessages(userId: string): WaMessage[] {
-    return this.store.getAllMessages(userId);
+  getAllMessages(
+    companyId: string,
+    userId: string,
+    page?: number,
+    limit?: number,
+  ): Promise<{ messages: WaMessage[]; hasMore: boolean }> {
+    return this.store.getAllMessages(companyId, userId, page, limit);
   }
 
-  getMessagesForChat(userId: string, chatId: string): WaMessage[] {
-    return this.store.getMessagesForChat(userId, chatId);
+  getMessagesForChat(
+    companyId: string,
+    userId: string,
+    chatId: string,
+  ): Promise<WaMessage[]> {
+    return this.store.getMessagesForChat(companyId, userId, chatId);
   }
 
   async send(
@@ -273,12 +350,13 @@ export class WhatsappService implements OnModuleInit {
     const result = await inst.sendMessage(chatId, message, { replyTo });
     if (result.messageId) {
       const { me } = inst.getStatus();
-      this.store.addMessage(userId, {
+      await this.persistMessage(companyId, userId, {
         id: result.messageId,
         chatId,
         senderId: me?.id ?? 'me',
         senderName: 'You',
-        chatName: chatId.split('@')[0],
+        // Empty so the store's placeholder rule applies and a real pushName can win.
+        chatName: '',
         isGroup: chatId.endsWith('@g.us'),
         body: message,
         hasMedia: false,

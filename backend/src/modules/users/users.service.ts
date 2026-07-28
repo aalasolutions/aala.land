@@ -33,6 +33,7 @@ import {
 } from '../commissions/entities/commission.entity';
 import { BillingService, SeatReservation } from '../billing/billing.service';
 import { UserReassignmentService } from './reassignment/user-reassignment.service';
+import { WhatsappService } from '../whatsapp/whatsapp.service';
 import { ReassignmentReport } from './reassignment/reassignment-report';
 import {
   OwnershipTransferRecorder,
@@ -55,6 +56,7 @@ export class UsersService {
     private readonly systemEmail: SystemEmailService,
     private readonly billingService: BillingService,
     private readonly reassignmentService: UserReassignmentService,
+    private readonly whatsappService: WhatsappService,
     @Optional()
     @Inject(OWNERSHIP_TRANSFER_RECORDER)
     private readonly transferRecorder?: OwnershipTransferRecorder,
@@ -431,7 +433,7 @@ export class UsersService {
       targetUserId,
       requesterCompanyId,
     );
-    return this.runRemoval(lockCompanyId, async (manager) => {
+    const report = await this.runRemoval(lockCompanyId, async (manager) => {
       const { target, reassignee, company } = await this.loadRemovalContext(
         manager,
         targetUserId,
@@ -464,6 +466,39 @@ export class UsersService {
         throw err;
       }
     });
+
+    await this.moveWhatsappRowsAfterRemoval(lockCompanyId, report);
+    return report;
+  }
+
+  // Runs after the removal commits, never inside the per-company advisory lock.
+  // Logout FIRST: a removed seat that keeps its Baileys socket keeps receiving, keeps
+  // writing rows, and keeps spending AI credits (sessions also restart from disk on boot).
+  private async moveWhatsappRowsAfterRemoval(
+    companyId: string | null,
+    report: ReassignmentReport,
+  ): Promise<void> {
+    if (!companyId) return;
+    try {
+      await this.whatsappService.logout(report.fromUserId, companyId);
+    } catch (err) {
+      this.logger.error(
+        `WhatsApp session not torn down for removed user ${report.fromUserId} in company ${companyId}; it may keep receiving and spending AI credits`,
+        err instanceof Error ? err.message : err,
+      );
+    }
+    try {
+      await this.reassignmentService.reassignWhatsappRows(
+        companyId,
+        report.fromUserId,
+        report.toUserId,
+      );
+    } catch (err) {
+      this.logger.error(
+        `WhatsApp rows not moved for company ${companyId} from ${report.fromUserId} to ${report.toUserId}; re-run the move`,
+        err instanceof Error ? err.message : err,
+      );
+    }
   }
 
   /**
@@ -484,7 +519,7 @@ export class UsersService {
       targetUserId,
       requesterCompanyId,
     );
-    return this.runRemoval(lockCompanyId, async (manager) => {
+    const report = await this.runRemoval(lockCompanyId, async (manager) => {
       const { target, reassignee, company } = await this.loadRemovalContext(
         manager,
         targetUserId,
@@ -575,6 +610,9 @@ export class UsersService {
         throw err;
       }
     });
+
+    await this.moveWhatsappRowsAfterRemoval(lockCompanyId, report);
+    return report;
   }
 
   /**
@@ -599,102 +637,114 @@ export class UsersService {
     requesterId: string,
     dto: TrimCompanyUsersDto,
   ): Promise<{ deactivatedCount: number; reports: ReassignmentReport[] }> {
-    return withCompanyLock(this.dataSource, companyId, async (manager) => {
-      const keeper = await manager.findOne(User, {
-        where: { id: dto.keepUserId, companyId, isActive: true },
-        lock: { mode: 'pessimistic_write' },
-      });
-      if (!keeper) {
-        throw new NotFoundException(
-          'The user to keep was not found or is inactive',
-        );
-      }
-      if (keeper.role !== Role.COMPANY_ADMIN) {
-        throw new BadRequestException(
-          'The remaining user must be a company admin so the account can still be managed',
-        );
-      }
+    const result = await withCompanyLock(
+      this.dataSource,
+      companyId,
+      async (manager) => {
+        const keeper = await manager.findOne(User, {
+          where: { id: dto.keepUserId, companyId, isActive: true },
+          lock: { mode: 'pessimistic_write' },
+        });
+        if (!keeper) {
+          throw new NotFoundException(
+            'The user to keep was not found or is inactive',
+          );
+        }
+        if (keeper.role !== Role.COMPANY_ADMIN) {
+          throw new BadRequestException(
+            'The remaining user must be a company admin so the account can still be managed',
+          );
+        }
 
-      const company = await manager.findOne(Company, {
-        where: { id: companyId },
-      });
-      if (!company) {
-        throw new NotFoundException(`Company ${companyId} not found`);
-      }
+        const company = await manager.findOne(Company, {
+          where: { id: companyId },
+        });
+        if (!company) {
+          throw new NotFoundException(`Company ${companyId} not found`);
+        }
 
-      const others = await manager.find(User, {
-        where: { companyId, isActive: true, id: Not(dto.keepUserId) },
-        order: { createdAt: 'ASC' },
-        lock: { mode: 'pessimistic_write' },
-      });
-      if (others.length === 0) {
-        return { deactivatedCount: 0, reports: [] };
-      }
+        const others = await manager.find(User, {
+          where: { companyId, isActive: true, id: Not(dto.keepUserId) },
+          order: { createdAt: 'ASC' },
+          lock: { mode: 'pessimistic_write' },
+        });
+        if (others.length === 0) {
+          return { deactivatedCount: 0, reports: [] };
+        }
 
-      // Seat line -> the target for a single remaining user, inside the lock.
-      // ENTERPRISE's $250 base covers that keeper (0 extra seats); PRO bills it
-      // (1 seat). Comp accounts with no subscription skip it.
-      let compensate: (() => Promise<void>) | null = null;
-      if (
-        this.isPaidTier(company) &&
-        company.billingSubscriptionId &&
-        company.billingCustomerId
-      ) {
-        const previous = await this.billingService.getLiveSeatQuantity(company);
-        const trimmedSeats =
-          company.subscriptionTier === SubscriptionTier.ENTERPRISE ? 0 : 1;
-        await this.billingService.setSeatQuantity(company, trimmedSeats);
-        compensate = async () => {
-          try {
-            await this.billingService.setSeatQuantity(company, previous);
-          } catch (err) {
-            this.logger.error(
-              `Trim seat compensation to ${previous} failed for company ${company.id}: ${err instanceof Error ? err.message : String(err)}`,
+        // Seat line -> the target for a single remaining user, inside the lock.
+        // ENTERPRISE's $250 base covers that keeper (0 extra seats); PRO bills it
+        // (1 seat). Comp accounts with no subscription skip it.
+        let compensate: (() => Promise<void>) | null = null;
+        if (
+          this.isPaidTier(company) &&
+          company.billingSubscriptionId &&
+          company.billingCustomerId
+        ) {
+          const previous =
+            await this.billingService.getLiveSeatQuantity(company);
+          const trimmedSeats =
+            company.subscriptionTier === SubscriptionTier.ENTERPRISE ? 0 : 1;
+          await this.billingService.setSeatQuantity(company, trimmedSeats);
+          compensate = async () => {
+            try {
+              await this.billingService.setSeatQuantity(company, previous);
+            } catch (err) {
+              this.logger.error(
+                `Trim seat compensation to ${previous} failed for company ${company.id}: ${err instanceof Error ? err.message : String(err)}`,
+              );
+            }
+          };
+        }
+
+        try {
+          const collected: ReassignmentReport[] = [];
+          for (const user of others) {
+            await manager.update(User, user.id, { isActive: false });
+            const report = await this.reassignmentService.reassignOwnedRecords(
+              manager,
+              companyId,
+              user.id,
+              keeper.id,
+              dto.reason,
+              { collectIds: !!this.transferRecorder },
+            );
+            if (this.transferRecorder) {
+              await this.transferRecorder.record(manager, companyId, report);
+            }
+            collected.push(report);
+          }
+
+          // Backstop: confirm exactly one active user remains before commit.
+          // Anything else means a concurrent add slipped in (should be
+          // impossible under the shared lock) and the downgrade invariant
+          // would be broken, so abort and roll back.
+          const remainingActive = await manager.count(User, {
+            where: { companyId, isActive: true },
+          });
+          if (remainingActive > 1) {
+            throw new ConflictException(
+              'Another active user was added while trimming; please retry the downgrade.',
             );
           }
-        };
-      }
 
-      try {
-        const collected: ReassignmentReport[] = [];
-        for (const user of others) {
-          await manager.update(User, user.id, { isActive: false });
-          const report = await this.reassignmentService.reassignOwnedRecords(
-            manager,
-            companyId,
-            user.id,
-            keeper.id,
-            dto.reason,
-            { collectIds: !!this.transferRecorder },
+          this.logger.log(
+            `Trimmed company ${companyId} to one active user (${keeper.id}) on request of ${requesterId}; deactivated ${others.length}`,
           );
-          if (this.transferRecorder) {
-            await this.transferRecorder.record(manager, companyId, report);
-          }
-          collected.push(report);
+          return { deactivatedCount: others.length, reports: collected };
+        } catch (err) {
+          if (compensate) await compensate();
+          throw err;
         }
+      },
+    );
 
-        // Backstop: confirm exactly one active user remains before commit.
-        // Anything else means a concurrent add slipped in (should be
-        // impossible under the shared lock) and the downgrade invariant
-        // would be broken, so abort and roll back.
-        const remainingActive = await manager.count(User, {
-          where: { companyId, isActive: true },
-        });
-        if (remainingActive > 1) {
-          throw new ConflictException(
-            'Another active user was added while trimming; please retry the downgrade.',
-          );
-        }
-
-        this.logger.log(
-          `Trimmed company ${companyId} to one active user (${keeper.id}) on request of ${requesterId}; deactivated ${others.length}`,
-        );
-        return { deactivatedCount: others.length, reports: collected };
-      } catch (err) {
-        if (compensate) await compensate();
-        throw err;
-      }
-    });
+    // Same ordering as the other two removal paths: outside the lock, because
+    // whatsapp_messages is unbounded.
+    for (const report of result.reports) {
+      await this.moveWhatsappRowsAfterRemoval(companyId, report);
+    }
+    return result;
   }
 
   /**
