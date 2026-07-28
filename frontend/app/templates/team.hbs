@@ -322,7 +322,25 @@
     </div>
 
     {{#if this.inviteErrorMsg}}
-      <p class="font-sm text-danger">{{this.inviteErrorMsg}}</p>
+      <p
+        class="font-sm text-danger"
+        data-test-invite-error
+      >{{this.inviteErrorMsg}}</p>
+      {{#if this.inviteExistingUser}}
+        <button
+          type="button"
+          class="btn btn-secondary btn-xs"
+          disabled={{this.isReactivating}}
+          data-test-invite-reactivate
+          {{on "click" this.reactivateFromInvite}}
+        >
+          {{if
+            this.isReactivating
+            "Reactivating..."
+            "Reactivate this user instead"
+          }}
+        </button>
+      {{/if}}
     {{/if}}
 
     <div class="flex gap-3 mt-2">
@@ -334,7 +352,7 @@
       <button
         type="submit"
         class="btn btn-primary"
-        disabled={{this.isInviting}}
+        disabled={{or this.isInviting this.isReactivating}}
         data-test-send-invite
       >
         {{if this.isInviting "Sending..." "Send Invitation"}}
@@ -372,8 +390,8 @@
             {{on "change" (fn this.setRemoveMode "deactivate")}}
           />
           <span><strong>Deactivate</strong>
-            (recommended): the member loses access and frees the seat. History
-            and financial records stay. Reversible.</span>
+            (recommended): the member loses access and frees the seat. Their
+            email address stays reserved for them. Reversible.</span>
         </label>
         <label class="flex gap-2 x-center">
           <input
@@ -384,9 +402,9 @@
             data-test-remove-mode-delete
             {{on "change" (fn this.setRemoveMode "delete")}}
           />
-          <span><strong>Delete permanently</strong>: the account is erased. If
-            the member has approved, paid, or cancelled commissions, deletion is
-            blocked and you must deactivate instead. Irreversible.</span>
+          <span><strong>Delete</strong>: the member is removed for good and
+            their email address is freed, so they can be invited elsewhere.
+            Their history stays in the audit log. Irreversible.</span>
         </label>
       </div>
 
@@ -439,13 +457,14 @@
         You are about to
         <strong>{{if
             (eq this.removeMode "delete")
-            "permanently delete"
+            "delete"
             "deactivate"
           }}</strong>
         <strong>{{this.userToRemove.name}}</strong>. Everything they own
         transfers to
         <strong>{{this.removeTargetName}}</strong>.
         {{#if (eq this.removeMode "delete")}}
+          Their email address is freed for reuse and they cannot be reactivated.
           This cannot be undone.
         {{else}}
           You can reactivate them later; transferred records stay with the new
@@ -478,9 +497,7 @@
             this.isRemoving
             "Working..."
             (if
-              (eq this.removeMode "delete")
-              "Delete Permanently"
-              "Deactivate Member"
+              (eq this.removeMode "delete") "Delete Member" "Deactivate Member"
             )
           }}
         </button>

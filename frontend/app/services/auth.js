@@ -1,6 +1,8 @@
 import Service, { service } from '@ember/service';
 import config from 'land/config/environment';
-import parseErrorResponse from 'land/utils/parse-error-response';
+import parseErrorResponse, {
+  parseErrorPayload,
+} from 'land/utils/parse-error-response';
 
 export default class AuthService extends Service {
   @service session;
@@ -267,14 +269,17 @@ export default class AuthService extends Service {
       options,
     );
     if (!res.ok) {
-      const message = await parseErrorResponse(res, 'Request failed');
+      const { message, body } = await parseErrorPayload(res, 'Request failed');
       if (res.status === 423) {
         // Write lock (COMPANY_LOCKED). Surface the reduce-or-pay message and
         // pull fresh lockState so the banner appears mid-session (design 8.2).
         this.notifications.error(message);
         void this.refreshLockState();
       }
-      throw new Error(message);
+      const error = new Error(message);
+      error.status = res.status;
+      error.body = body;
+      throw error;
     }
 
     const contentType = res.headers.get('content-type');

@@ -37,7 +37,11 @@ export class User {
   @Column({ type: 'varchar', length: 255 })
   name: string;
 
-  @Column({ type: 'varchar', length: 255, unique: true })
+  @Index('UQ_users_email_not_deleted', {
+    unique: true,
+    where: '"deleted_at" IS NULL',
+  })
+  @Column({ type: 'varchar', length: 255 })
   email: string;
 
   @Column({ type: 'varchar', length: 255, nullable: true, select: false })
@@ -100,6 +104,9 @@ export class User {
 
   @Column({ name: 'is_active', type: 'boolean', default: true })
   isActive: boolean;
+
+  @Column({ name: 'deleted_at', type: 'timestamptz', nullable: true })
+  deletedAt: Date | null;
 
   @Column({ name: 'must_change_password', type: 'boolean', default: false })
   mustChangePassword: boolean;

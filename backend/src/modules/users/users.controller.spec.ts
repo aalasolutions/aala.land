@@ -45,7 +45,7 @@ describe('UsersController', () => {
             update: jest.fn(),
             deactivateUser: jest.fn(),
             reactivateUser: jest.fn(),
-            deleteUserWithReassignment: jest.fn(),
+            softDeleteUserWithReassignment: jest.fn(),
             trimToOneActiveUser: jest.fn(),
           },
         },
@@ -196,10 +196,10 @@ describe('UsersController', () => {
     };
 
     beforeEach(() => {
-      service.deleteUserWithReassignment.mockResolvedValue(
+      service.deactivateUser.mockResolvedValue(sampleReport as never);
+      service.softDeleteUserWithReassignment.mockResolvedValue(
         sampleReport as never,
       );
-      service.deactivateUser.mockResolvedValue(sampleReport as never);
       service.trimToOneActiveUser.mockResolvedValue({
         deactivatedCount: 1,
         reports: [sampleReport],
@@ -207,7 +207,7 @@ describe('UsersController', () => {
     });
 
     it('strips the reassignment record ids from the response, keeping counts only', async () => {
-      const res = await controller.deleteUser(
+      const res = await controller.deactivate(
         'user-uuid-2',
         dto as never,
         reqAdmin as never,
@@ -215,13 +215,13 @@ describe('UsersController', () => {
       expect(res.entities).toEqual([{ type: 'lead', count: 2 }]);
     });
 
-    it('POST /users/:id/delete forwards to deleteUserWithReassignment with the requester context', async () => {
+    it('POST /users/:id/delete forwards to softDeleteUserWithReassignment', async () => {
       await controller.deleteUser(
         'user-uuid-2',
         dto as never,
         reqAdmin as never,
       );
-      expect(service.deleteUserWithReassignment).toHaveBeenCalledWith(
+      expect(service.softDeleteUserWithReassignment).toHaveBeenCalledWith(
         'user-uuid-2',
         'requester-uuid',
         'company-uuid-1',
@@ -285,8 +285,8 @@ describe('UsersController', () => {
       const reqSa = {
         user: { userId: 'sa-uuid', companyId: null, role: 'super_admin' },
       };
-      await controller.deleteUser('user-uuid-2', dto as never, reqSa as never);
-      expect(service.deleteUserWithReassignment).toHaveBeenCalledWith(
+      await controller.deactivate('user-uuid-2', dto as never, reqSa as never);
+      expect(service.deactivateUser).toHaveBeenCalledWith(
         'user-uuid-2',
         'sa-uuid',
         undefined,
