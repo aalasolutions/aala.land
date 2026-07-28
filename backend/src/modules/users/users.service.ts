@@ -9,7 +9,14 @@ import {
   Optional,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, In, Not, DataSource, EntityManager } from 'typeorm';
+import {
+  Repository,
+  In,
+  Not,
+  IsNull,
+  DataSource,
+  EntityManager,
+} from 'typeorm';
 import { withCompanyLock } from '@shared/utils/company-lock.util';
 import { User, AuthProvider } from './entities/user.entity';
 import { CreateUserDto } from './dto/create-user.dto';
@@ -27,10 +34,6 @@ import {
   Company,
   SubscriptionTier,
 } from '../companies/entities/company.entity';
-import {
-  Commission,
-  CommissionStatus,
-} from '../commissions/entities/commission.entity';
 import { BillingService, SeatReservation } from '../billing/billing.service';
 import { UserReassignmentService } from './reassignment/user-reassignment.service';
 import { WhatsappService } from '../whatsapp/whatsapp.service';
@@ -91,7 +94,7 @@ export class UsersService {
       const company = await this.enforceUserLimit(companyId, manager);
 
       const existing = await manager.findOne(User, {
-        where: { email: dto.email },
+        where: { email: dto.email, deletedAt: IsNull() },
       });
       if (existing) {
         throw new ConflictException('Email already exists');
@@ -123,7 +126,9 @@ export class UsersService {
     limit = 20,
   ): Promise<{ data: User[]; total: number; page: number; limit: number }> {
     const findOptions = {
-      where: companyId ? { companyId, role: Not(Role.SUPER_ADMIN) } : {},
+      where: companyId
+        ? { companyId, role: Not(Role.SUPER_ADMIN), deletedAt: IsNull() }
+        : { deletedAt: IsNull() },
       ...paginationOptions(page, limit),
       order: { createdAt: 'DESC' as const },
     };
@@ -136,7 +141,7 @@ export class UsersService {
 
   async findOne(id: string, companyId: string | undefined): Promise<User> {
     const user = await this.userRepository.findOne({
-      where: { id, ...(companyId ? { companyId } : {}) },
+      where: { id, deletedAt: IsNull(), ...(companyId ? { companyId } : {}) },
     });
     if (!user) {
       throw new NotFoundException('User not found');
@@ -146,14 +151,14 @@ export class UsersService {
 
   async findByIdWithCompany(id: string): Promise<User | null> {
     return this.userRepository.findOne({
-      where: { id },
+      where: { id, deletedAt: IsNull() },
       relations: ['company'],
     });
   }
 
   async findByEmail(email: string): Promise<User | null> {
     return this.userRepository.findOne({
-      where: { email },
+      where: { email, deletedAt: IsNull() },
       select: [
         'id',
         'email',
@@ -170,7 +175,7 @@ export class UsersService {
 
   async findByIdForAuth(id: string): Promise<User | null> {
     return this.userRepository.findOne({
-      where: { id },
+      where: { id, deletedAt: IsNull() },
       select: [
         'id',
         'email',
@@ -187,7 +192,7 @@ export class UsersService {
 
   async findByGoogleId(googleId: string): Promise<User | null> {
     return this.userRepository.findOne({
-      where: { googleId },
+      where: { googleId, deletedAt: IsNull() },
       select: [
         'id',
         'email',
@@ -207,7 +212,10 @@ export class UsersService {
     googleId: string,
   ): Promise<User | null> {
     return this.userRepository.findOne({
-      where: [{ email }, { googleId }],
+      where: [
+        { email, deletedAt: IsNull() },
+        { googleId, deletedAt: IsNull() },
+      ],
       select: [
         'id',
         'email',
@@ -239,7 +247,11 @@ export class UsersService {
     const requesterLevel = getRoleLevel(requesterRole as Role);
 
     const user = await this.userRepository.findOne({
-      where: { id: targetUserId, ...(companyId ? { companyId } : {}) },
+      where: {
+        id: targetUserId,
+        deletedAt: IsNull(),
+        ...(companyId ? { companyId } : {}),
+      },
     });
 
     if (!user) {
@@ -310,17 +322,6 @@ export class UsersService {
   }
 
   /**
-   * True when the error is a Postgres foreign-key violation (SQLSTATE 23503).
-   * TypeORM wraps the pg error in a QueryFailedError whose `code`/`driverError.code`
-   * carries the SQLSTATE, so check both shapes.
-   */
-  private isForeignKeyViolation(err: unknown): boolean {
-    if (typeof err !== 'object' || err === null) return false;
-    const e = err as { code?: string; driverError?: { code?: string } };
-    return e.code === '23503' || e.driverError?.code === '23503';
-  }
-
-  /**
    * Resolve the companyId to lock on. For a company-scoped requester it is the
    * requester's own company; for SUPER_ADMIN (no company context) it is the
    * target user's company, resolved with a cheap immutable read. Returns null
@@ -333,7 +334,7 @@ export class UsersService {
   ): Promise<string | null> {
     if (requesterCompanyId) return requesterCompanyId;
     const target = await this.userRepository.findOne({
-      where: { id: targetUserId },
+      where: { id: targetUserId, deletedAt: IsNull() },
       select: ['id', 'companyId'],
     });
     return target?.companyId ?? null;
@@ -366,6 +367,7 @@ export class UsersService {
     const target = await manager.findOne(User, {
       where: {
         id: targetUserId,
+        deletedAt: IsNull(),
         ...(requesterCompanyId ? { companyId: requesterCompanyId } : {}),
       },
       lock: { mode: 'pessimistic_write' },
@@ -398,6 +400,7 @@ export class UsersService {
         id: dto.reassignToUserId,
         companyId: target.companyId,
         isActive: true,
+        deletedAt: IsNull(),
       },
       lock: { mode: 'pessimistic_write' },
     });
@@ -471,6 +474,63 @@ export class UsersService {
     return report;
   }
 
+  async softDeleteUserWithReassignment(
+    targetUserId: string,
+    requesterId: string,
+    requesterCompanyId: string | undefined,
+    requesterRole: Role,
+    dto: RemoveUserDto,
+  ): Promise<ReassignmentReport> {
+    const lockCompanyId = await this.resolveRemovalLockCompanyId(
+      targetUserId,
+      requesterCompanyId,
+    );
+    const report = await this.runRemoval(lockCompanyId, async (manager) => {
+      const { target, reassignee, company } = await this.loadRemovalContext(
+        manager,
+        targetUserId,
+        requesterId,
+        requesterCompanyId,
+        requesterRole,
+        dto,
+        { requireActiveTarget: false },
+      );
+
+      const seat = target.isActive
+        ? await this.billingService.decrementSeat(company)
+        : null;
+
+      try {
+        await manager.update(User, target.id, {
+          isActive: false,
+          deletedAt: new Date(),
+          googleId: null,
+          password: null,
+          resetPasswordToken: null,
+          resetPasswordExpires: null,
+        });
+        const report = await this.reassignmentService.reassignOwnedRecords(
+          manager,
+          company.id,
+          target.id,
+          reassignee.id,
+          dto.reason,
+          { collectIds: !!this.transferRecorder },
+        );
+        if (this.transferRecorder) {
+          await this.transferRecorder.record(manager, company.id, report);
+        }
+        return report;
+      } catch (err) {
+        if (seat) await seat.compensate();
+        throw err;
+      }
+    });
+
+    await this.moveWhatsappRowsAfterRemoval(lockCompanyId, report);
+    return report;
+  }
+
   // Runs after the removal commits, never inside the per-company advisory lock.
   // Logout FIRST: a removed seat that keeps its Baileys socket keeps receiving, keeps
   // writing rows, and keeps spending AI credits (sessions also restart from disk on boot).
@@ -499,120 +559,6 @@ export class UsersService {
         err instanceof Error ? err.message : err,
       );
     }
-  }
-
-  /**
-   * Permanent delete: reassignment + housekeeping + row removal + seat -1.
-   * Blocked (409) when the user carries non PENDING commissions; those are
-   * financial records whose agent attribution must survive, so the user can
-   * only be deactivated. The commissions.agent_id NOT NULL FK is the
-   * database backstop for the same rule.
-   */
-  async deleteUserWithReassignment(
-    targetUserId: string,
-    requesterId: string,
-    requesterCompanyId: string | undefined,
-    requesterRole: Role,
-    dto: RemoveUserDto,
-  ): Promise<ReassignmentReport> {
-    const lockCompanyId = await this.resolveRemovalLockCompanyId(
-      targetUserId,
-      requesterCompanyId,
-    );
-    const report = await this.runRemoval(lockCompanyId, async (manager) => {
-      const { target, reassignee, company } = await this.loadRemovalContext(
-        manager,
-        targetUserId,
-        requesterId,
-        requesterCompanyId,
-        requesterRole,
-        dto,
-        { requireActiveTarget: false },
-      );
-
-      // Re-check the non-PENDING commission block INSIDE the locked txn: a
-      // commission that flipped PENDING->APPROVED (or a new one) after any
-      // earlier read would otherwise keep agent_id pointing at the deleted
-      // user (race audit P3). Counted on the txn manager for consistency.
-      const lockedCommissions = await manager.getRepository(Commission).count({
-        where: {
-          agentId: target.id,
-          companyId: company.id,
-          status: Not(CommissionStatus.PENDING),
-        },
-      });
-      if (lockedCommissions > 0) {
-        throw new ConflictException(
-          `This user has ${lockedCommissions} approved, paid, or cancelled commission record${lockedCommissions === 1 ? '' : 's'} that must keep their agent attribution. Deactivate the user instead.`,
-        );
-      }
-
-      // Seat -1 only if the user still occupies a seat. Deleting an already
-      // deactivated user must not decrement a second time (the deactivation
-      // already did).
-      const seat = target.isActive
-        ? await this.billingService.decrementSeat(company)
-        : null;
-
-      try {
-        const report = await this.reassignmentService.reassignOwnedRecords(
-          manager,
-          company.id,
-          target.id,
-          reassignee.id,
-          dto.reason,
-          { collectIds: !!this.transferRecorder },
-        );
-        if (this.transferRecorder) {
-          await this.transferRecorder.record(manager, company.id, report);
-        }
-
-        // Housekeeping, deliberately OUTSIDE the frozen report enum:
-        // 1. email_templates.created_by is authorship metadata with no FK;
-        //    null it rather than leave a dangling uuid. Raw SQL because the
-        //    entity property is typed as plain string.
-        await manager.query(
-          `UPDATE "email_templates" SET "created_by" = NULL WHERE "created_by" = $1 AND "company_id" = $2`,
-          [target.id, company.id],
-        );
-        // 2. The user's personal notification inbox is unreachable once the
-        //    row is gone; notifications.user_id is NOT NULL with no FK.
-        await manager.query(
-          `DELETE FROM "notifications" WHERE "user_id" = $1`,
-          [target.id],
-        );
-
-        // lead_activities.performed_by and audit_logs.user_id are handled by
-        // the database itself (ON DELETE SET NULL, migration 1779500000041).
-        // leads.previous_agent is a plain history column and stays as is.
-        //
-        // commissions.agent_id is a NOT NULL FK with ON DELETE RESTRICT
-        // (migration 1779500000045). The in-txn non-PENDING count above is
-        // the fast path, but a commission that flipped PENDING->APPROVED
-        // between that count and this delete would still reference the user;
-        // the FK then raises 23503, which we surface as a clean 409 rather
-        // than a raw 500. The whole txn (including the isActive/reassignment
-        // writes) rolls back, so nothing is orphaned.
-        try {
-          await manager.delete(User, { id: target.id });
-        } catch (err) {
-          if (this.isForeignKeyViolation(err)) {
-            throw new ConflictException(
-              'This user still has records that reference them (for example commissions) and cannot be deleted; deactivate instead.',
-            );
-          }
-          throw err;
-        }
-
-        return report;
-      } catch (err) {
-        if (seat) await seat.compensate();
-        throw err;
-      }
-    });
-
-    await this.moveWhatsappRowsAfterRemoval(lockCompanyId, report);
-    return report;
   }
 
   /**
@@ -766,6 +712,7 @@ export class UsersService {
       const target = await manager.findOne(User, {
         where: {
           id: targetUserId,
+          deletedAt: IsNull(),
           ...(requesterCompanyId ? { companyId: requesterCompanyId } : {}),
         },
         lock: { mode: 'pessimistic_write' },
@@ -958,9 +905,19 @@ export class UsersService {
         const company = await this.enforceUserLimit(companyId, manager);
 
         const existing = await manager.findOne(User, {
-          where: { email: dto.email },
+          where: { email: dto.email, deletedAt: IsNull() },
         });
         if (existing) {
+          if (!existing.isActive && existing.companyId === companyId) {
+            throw new ConflictException({
+              statusCode: 409,
+              error: 'Conflict',
+              message: `${existing.name} is already in the system as an inactive user. Reactivate them instead of sending a new invite.`,
+              code: 'EMAIL_INACTIVE_USER',
+              existingUserId: existing.id,
+              existingUserName: existing.name,
+            });
+          }
           throw new ConflictException('Email already exists');
         }
 

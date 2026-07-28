@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, Repository, IsNull } from 'typeorm';
 import {
   NotFoundException,
   BadRequestException,
@@ -318,7 +318,7 @@ describe('CompaniesService', () => {
         where: { companyId: 'c1', isActive: true },
       });
       expect(userRepo.count).toHaveBeenCalledWith({
-        where: { companyId: 'c1', isActive: false },
+        where: { companyId: 'c1', isActive: false, deletedAt: IsNull() },
       });
     });
   });

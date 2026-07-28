@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { DataSource, Repository, Not } from 'typeorm';
+import { DataSource, Repository, Not, IsNull } from 'typeorm';
 import {
   NotFoundException,
   ConflictException,
@@ -92,6 +92,7 @@ describe('UsersService', () => {
     timezone: 'Asia/Dubai',
     lastLoginAt: null,
     isActive: true,
+    deletedAt: null,
     mustChangePassword: false,
     resetPasswordToken: null,
     resetPasswordExpires: null,
@@ -392,7 +393,7 @@ describe('UsersService', () => {
       const result = await service.findAll(companyId, 1, 20);
 
       expect(repo.findAndCount).toHaveBeenCalledWith({
-        where: { companyId, role: Not(Role.SUPER_ADMIN) },
+        where: { companyId, role: Not(Role.SUPER_ADMIN), deletedAt: IsNull() },
         skip: 0,
         take: 20,
         order: { createdAt: 'DESC' },
@@ -408,7 +409,7 @@ describe('UsersService', () => {
       await service.findAll(companyId, 1, 20);
 
       expect(repo.findAndCount).toHaveBeenCalledWith({
-        where: { companyId, role: Not(Role.SUPER_ADMIN) },
+        where: { companyId, role: Not(Role.SUPER_ADMIN), deletedAt: IsNull() },
         skip: 0,
         take: 20,
         order: { createdAt: 'DESC' },
@@ -421,7 +422,7 @@ describe('UsersService', () => {
       const result = await service.findAll(undefined as any, 1, 20);
 
       expect(repo.findAndCount).toHaveBeenCalledWith({
-        where: {},
+        where: { deletedAt: IsNull() },
         relations: ['company'],
         skip: 0,
         take: 20,
@@ -443,7 +444,7 @@ describe('UsersService', () => {
       const result = await service.findOne('user-uuid-1', companyId);
 
       expect(repo.findOne).toHaveBeenCalledWith({
-        where: { id: 'user-uuid-1', companyId },
+        where: { id: 'user-uuid-1', deletedAt: IsNull(), companyId },
       });
       expect(result).toEqual(mockUser);
     });
@@ -548,17 +549,6 @@ describe('UsersService', () => {
         'deactivateUser',
         () =>
           service.deactivateUser(
-            'user-uuid-2',
-            'requester-uuid',
-            companyId,
-            Role.COMPANY_ADMIN,
-            removeDto,
-          ),
-      ],
-      [
-        'deleteUserWithReassignment',
-        () =>
-          service.deleteUserWithReassignment(
             'user-uuid-2',
             'requester-uuid',
             companyId,
@@ -785,29 +775,33 @@ describe('UsersService', () => {
     });
   });
 
-  describe('deleteUserWithReassignment', () => {
-    it('blocks deletion with 409 (re-checked inside the locked txn) when non PENDING commissions exist', async () => {
+  describe('softDeleteUserWithReassignment', () => {
+    it('marks the row deleted and strips the login identity instead of removing it', async () => {
       primeRemovalLookups(proCompany);
-      commissionRepoMock.count.mockResolvedValue(2);
-      await expect(
-        service.deleteUserWithReassignment(
-          'user-uuid-2',
-          'requester-uuid',
-          companyId,
-          Role.COMPANY_ADMIN,
-          removeDto,
-        ),
-      ).rejects.toThrow(ConflictException);
-      // The check now runs inside the transaction, so no seat mutation and no row delete.
-      expect(billingServiceMock.decrementSeat).not.toHaveBeenCalled();
+
+      await service.softDeleteUserWithReassignment(
+        'user-uuid-2',
+        'requester-uuid',
+        companyId,
+        Role.COMPANY_ADMIN,
+        removeDto,
+      );
+
       expect(managerMock.delete).not.toHaveBeenCalled();
-      // Commission count was performed on the transaction manager's repository.
-      expect(managerMock.getRepository).toHaveBeenCalledWith(Commission);
+      const [, id, updates] = managerMock.update.mock.calls[0];
+      expect(id).toBe('user-uuid-2');
+      expect(updates).toMatchObject({
+        isActive: false,
+        googleId: null,
+        password: null,
+      });
+      expect(updates.deletedAt).toBeInstanceOf(Date);
     });
 
-    it('reassigns, nulls email template authorship, deletes notifications, then deletes the row', async () => {
+    it('reassigns owned records within the soft-delete transaction', async () => {
       primeRemovalLookups(proCompany);
-      await service.deleteUserWithReassignment(
+
+      await service.softDeleteUserWithReassignment(
         'user-uuid-2',
         'requester-uuid',
         companyId,
@@ -823,73 +817,37 @@ describe('UsersService', () => {
         'left',
         { collectIds: false },
       );
-      expect(managerMock.query).toHaveBeenCalledWith(
-        expect.stringContaining(
-          'UPDATE "email_templates" SET "created_by" = NULL',
-        ),
-        ['user-uuid-2', companyId],
-      );
-      expect(managerMock.query).toHaveBeenCalledWith(
-        expect.stringContaining('DELETE FROM "notifications"'),
-        ['user-uuid-2'],
-      );
-      expect(managerMock.delete).toHaveBeenCalledWith(User, {
-        id: 'user-uuid-2',
-      });
     });
 
     it('does not decrement the seat when deleting an already deactivated user', async () => {
       primeRemovalLookups(proCompany, { ...targetUser, isActive: false });
-      await service.deleteUserWithReassignment(
+
+      await service.softDeleteUserWithReassignment(
         'user-uuid-2',
         'requester-uuid',
         companyId,
         Role.COMPANY_ADMIN,
         removeDto,
       );
+
       expect(billingServiceMock.decrementSeat).not.toHaveBeenCalled();
     });
 
-    it('maps a commissions.agent_id FK violation (23503) from the row delete to a 409', async () => {
-      // A commission flipped PENDING->APPROVED after the in-txn count but before
-      // the delete; the ON DELETE RESTRICT FK raises 23503. TypeORM surfaces it as
-      // a QueryFailedError carrying the SQLSTATE on driverError.code.
-      const fkError = Object.assign(
-        new Error(
-          'update or delete on table "users" violates foreign key constraint',
-        ),
-        {
-          code: '23503',
-          driverError: { code: '23503' },
-        },
-      );
-      managerMock.delete.mockRejectedValue(fkError);
-
+    it('logs the deleted user out of WhatsApp so the seat stops receiving', async () => {
       primeRemovalLookups(proCompany);
-      const first = service.deleteUserWithReassignment(
+
+      await service.softDeleteUserWithReassignment(
         'user-uuid-2',
         'requester-uuid',
         companyId,
         Role.COMPANY_ADMIN,
         removeDto,
       );
-      await expect(first).rejects.toThrow(ConflictException);
-      await expect(first).rejects.toThrow('deactivate instead');
-    });
 
-    it('does not swallow a non-FK error from the row delete', async () => {
-      primeRemovalLookups(proCompany);
-      managerMock.delete.mockRejectedValue(new Error('connection reset'));
-
-      await expect(
-        service.deleteUserWithReassignment(
-          'user-uuid-2',
-          'requester-uuid',
-          companyId,
-          Role.COMPANY_ADMIN,
-          removeDto,
-        ),
-      ).rejects.toThrow('connection reset');
+      expect(whatsappServiceMock.logout).toHaveBeenCalledWith(
+        'user-uuid-2',
+        companyId,
+      );
     });
   });
 

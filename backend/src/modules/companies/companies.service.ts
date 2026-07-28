@@ -7,7 +7,7 @@ import {
   ConflictException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, Repository, IsNull } from 'typeorm';
 import {
   Company,
   SubscriptionTier,
@@ -98,6 +98,7 @@ export class CompaniesService {
         .addSelect('COUNT(*)', 'count')
         .where('u.companyId IN (:...ids)', { ids: companyIds })
         .andWhere('u.isActive = false')
+        .andWhere('u.deletedAt IS NULL')
         .groupBy('u.companyId')
         .getRawMany<{ companyId: string; count: string }>(),
     ]);
@@ -139,7 +140,9 @@ export class CompaniesService {
         select: ['email'],
       }),
       this.userRepository.count({ where: { companyId: id, isActive: true } }),
-      this.userRepository.count({ where: { companyId: id, isActive: false } }),
+      this.userRepository.count({
+        where: { companyId: id, isActive: false, deletedAt: IsNull() },
+      }),
     ]);
     return {
       ...company,

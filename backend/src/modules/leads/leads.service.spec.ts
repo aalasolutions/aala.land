@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, IsNull } from 'typeorm';
 import {
   BadRequestException,
   ForbiddenException,
@@ -634,6 +634,32 @@ describe('LeadsService', () => {
       ).rejects.toThrow(NotFoundException);
 
       expect(leadRepo.save).not.toHaveBeenCalled();
+    });
+
+    it('only considers active, non-deleted agents assignable', async () => {
+      leadRepo.findOne.mockResolvedValue({ ...mockLead } as Lead);
+      userRepo.findOne.mockResolvedValue(null);
+
+      await expect(
+        service.update(
+          'lead-uuid-1',
+          companyId,
+          { assignedTo: 'deleted-agent' } as any,
+          'user-uuid-1',
+          Role.COMPANY_ADMIN,
+        ),
+      ).rejects.toThrow(NotFoundException);
+
+      expect(userRepo.findOne).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            id: 'deleted-agent',
+            companyId,
+            isActive: true,
+            deletedAt: IsNull(),
+          }),
+        }),
+      );
     });
 
     it('logs assignment activity when admin updates assignment', async () => {

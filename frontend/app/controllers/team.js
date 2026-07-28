@@ -27,6 +27,7 @@ export default class TeamController extends PaginatedController {
   @tracked inviteRole = 'agent';
   @tracked isInviting = false;
   @tracked inviteErrorMsg = '';
+  @tracked inviteExistingUser = null;
   @tracked impersonatingUserId = null;
 
   // Remove flow (deactivate or delete, double-confirm)
@@ -165,19 +166,22 @@ export default class TeamController extends PaginatedController {
     this.inviteEmail = '';
     this.inviteRole = 'agent';
     this.inviteErrorMsg = '';
+    this.inviteExistingUser = null;
     this.showInviteModal = true;
   }
 
   @action closeInvite() {
     this.showInviteModal = false;
     this.inviteErrorMsg = '';
+    this.inviteExistingUser = null;
   }
 
   @action async sendInvite(event) {
     event.preventDefault();
-    if (this.isInviting) return;
+    if (this.isInviting || this.isReactivating) return;
     this.isInviting = true;
     this.inviteErrorMsg = '';
+    this.inviteExistingUser = null;
 
     try {
       await this.auth.fetchJson('/users/invite', {
@@ -194,9 +198,19 @@ export default class TeamController extends PaginatedController {
       this.router.refresh('team');
     } catch (e) {
       this.inviteErrorMsg = e.message;
+      this.inviteExistingUser =
+        e.body?.code === 'EMAIL_INACTIVE_USER'
+          ? { id: e.body.existingUserId, name: e.body.existingUserName }
+          : null;
     } finally {
       this.isInviting = false;
     }
+  }
+
+  @action async reactivateFromInvite() {
+    if (!this.inviteExistingUser || this.reactivatingUserId) return;
+    const reactivated = await this.reactivateUser(this.inviteExistingUser);
+    if (reactivated) this.closeInvite();
   }
 
   @action async saveUser(event) {
@@ -240,7 +254,6 @@ export default class TeamController extends PaginatedController {
   @action async openRemove(user) {
     this.userToRemove = user;
     this.removeStep = 1;
-    // Inactive users can only be deleted; deactivate would 400 ("already inactive").
     this.removeMode = user?.isActive ? 'deactivate' : 'delete';
     this.removeTargetId = '';
     this.removeReason = '';
@@ -325,7 +338,7 @@ export default class TeamController extends PaginatedController {
   }
 
   @action async reactivateUser(user) {
-    if (this.reactivatingUserId) return;
+    if (this.reactivatingUserId) return false;
     this.reactivatingUserId = user.id;
     try {
       await this.auth.fetchJson(`/users/${user.id}/reactivate`, {
@@ -333,8 +346,10 @@ export default class TeamController extends PaginatedController {
       });
       this.notifications.success(`${user.name} reactivated`);
       this.router.refresh('team');
+      return true;
     } catch (e) {
       this.notifications.error(e.message || 'Reactivation failed');
+      return false;
     } finally {
       this.reactivatingUserId = null;
     }

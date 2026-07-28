@@ -5,7 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, FindOptionsWhere } from 'typeorm';
+import { Repository, FindOptionsWhere, IsNull } from 'typeorm';
 import { Lead, LeadStatus } from './entities/lead.entity';
 import { LeadActivity, ActivityType } from './entities/lead-activity.entity';
 import { CreateLeadDto } from './dto/create-lead.dto';
@@ -447,7 +447,7 @@ export class LeadsService {
     companyId: string,
   ): Promise<Pick<User, 'id' | 'name'>> {
     const agent = await this.userRepository.findOne({
-      where: { id: agentId, companyId },
+      where: { id: agentId, companyId, isActive: true, deletedAt: IsNull() },
       select: { id: true, name: true },
     });
 
