@@ -22,7 +22,7 @@ export default class PropertiesIndexController extends Controller {
 
   get currentView() {
     if (this.activeView) return this.activeView;
-    return this.preferences.get('properties-index-view', 'cards');
+    return this.preferences.get('properties-index-view', 'browse');
   }
 
   viewTabs = [

@@ -8,12 +8,12 @@
       <p class="text-muted mt-1">Locations, assets, and properties.</p>
     </div>
     <div class="flex gap-3 x-center">
-      <Ui::Tabs
+      {{!-- <Ui::Tabs
         @tabs={{this.viewTabs}}
         @active={{this.currentView}}
         @onChange={{this.switchView}}
         data-test-view-toggle
-      />
+      /> --}}
       <button
         type="button"
         class="btn btn-primary"
@@ -52,8 +52,8 @@
       </div>
     {{else}}
       <div class="glass-panel p-8 text-center">
-        <p class="text-muted">No assets yet. Click "New Property" to add your first
-          property.</p>
+        <p class="text-muted">No assets yet. Click "New Property" to add your
+          first property.</p>
       </div>
     {{/if}}
   {{else if (eq this.currentView "list")}}
@@ -93,8 +93,8 @@
       </div>
     {{else}}
       <div class="glass-panel p-8 text-center">
-        <p class="text-muted">No assets yet. Click "New Property" to add your first
-          property.</p>
+        <p class="text-muted">No assets yet. Click "New Property" to add your
+          first property.</p>
       </div>
     {{/if}}
   {{else}}
