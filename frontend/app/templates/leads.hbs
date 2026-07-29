@@ -28,13 +28,15 @@
     </div>
   </div>
 
-  {{! Filter Buttons }}
-  <Ui::Tabs
-    @tabs={{this.filterTabs}}
-    @active={{this.filterType}}
-    @onChange={{this.setFilter}}
-    data-test-lead-filters
-  />
+  {{! Agent board columns are already the ownership breakdown }}
+  {{#unless (eq this.viewMode "agent")}}
+    <Ui::Tabs
+      @tabs={{this.filterTabs}}
+      @active={{this.filterType}}
+      @onChange={{this.setFilter}}
+      data-test-lead-filters
+    />
+  {{/unless}}
 
   {{! PIPELINE KANBAN VIEW }}
   {{#if (eq this.viewMode "pipeline")}}

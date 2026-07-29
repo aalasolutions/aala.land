@@ -188,7 +188,7 @@ export default class LeadsController extends Controller {
   }
 
   get agentColumns() {
-    const leads = this.filteredLeads;
+    const leads = this.allLeads;
     const unassigned = {
       agentId: null,
       agentName: 'Unassigned',
