@@ -69,6 +69,9 @@ export class BaileysInstance {
     const { state, saveCreds } = await this.baileysFns.useMultiFileAuthState(
       this.sessionDir,
     );
+    this.status.hasCredentials = !!(
+      state as { creds?: { registered?: boolean } }
+    ).creds?.registered;
 
     this.sock = this.baileysFns.makeWASocket({
       auth: state,
@@ -103,7 +106,7 @@ export class BaileysInstance {
           connection: 'disconnected',
           me: null,
           qr: null,
-          hasCredentials: !loggedOut,
+          hasCredentials: loggedOut ? false : this.status.hasCredentials,
         };
         this.emitter.emit('status', { ...this.status });
         if (this.shouldReconnect && !this.reconnectPending) {

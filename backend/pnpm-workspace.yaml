@@ -6,3 +6,5 @@ allowBuilds:
   protobufjs: false
   sharp: true
   unrs-resolver: false
+minimumReleaseAgeExclude:
+  - '@whiskeysockets/baileys@7.0.0-rc14'

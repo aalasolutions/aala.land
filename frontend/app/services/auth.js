@@ -258,6 +258,7 @@ export default class AuthService extends Service {
     if (
       this.region.activeRegion &&
       !path.startsWith('/auth/') &&
+      !path.startsWith('/whatsapp/') &&
       !path.includes('regionCode=')
     ) {
       const separator = path.includes('?') ? '&' : '?';
