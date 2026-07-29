@@ -832,10 +832,11 @@ export class UsersService {
   }
 
   async findAgents(companyId: string | undefined): Promise<User[]> {
+    const assignableRoles = In([Role.AGENT, Role.COMPANY_ADMIN]);
     return this.userRepository.find({
       where: companyId
-        ? { companyId, role: Role.AGENT, isActive: true }
-        : { role: Role.AGENT, isActive: true },
+        ? { companyId, role: assignableRoles, isActive: true }
+        : { role: assignableRoles, isActive: true },
       select: ['id', 'name', 'email', 'role'],
       order: { name: 'ASC' },
     });
