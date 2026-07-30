@@ -76,7 +76,8 @@ export default class PropertiesUnitController extends Controller {
   documentAccessLevelOptions = ACCESS_LEVELS;
 
   get documentUploadProgressStyle() {
-    return htmlSafe(`width:${this.uploadProgress}%;`);
+    const clamped = Math.max(0, Math.min(100, Number(this.uploadProgress) || 0));
+    return htmlSafe(`width:${clamped}%;`);
   }
 
   get ownerOptions() {
