@@ -25,7 +25,7 @@ describe('DocumentsController', () => {
     url: 'https://s3.example.com/docs/lease.pdf',
     fileType: 'application/pdf',
     category: DocumentCategory.LEASE,
-    accessLevel: DocumentAccessLevel.COMPANY,
+    accessLevel: DocumentAccessLevel.TEAM,
     version: 1,
     previousVersionId: null,
     uploadedBy: userId,
@@ -116,6 +116,7 @@ describe('DocumentsController', () => {
         1,
         20,
         undefined,
+        undefined,
       );
     });
 
@@ -130,6 +131,22 @@ describe('DocumentsController', () => {
         1,
         20,
         DocumentCategory.LEASE,
+        undefined,
+      );
+    });
+
+    it('passes unitId filter', async () => {
+      service.findAll.mockResolvedValue(paginated as any);
+
+      await controller.findAll(mockReq, 1, 20, undefined, 'unit-uuid-1');
+
+      expect(service.findAll).toHaveBeenCalledWith(
+        companyId,
+        role,
+        1,
+        20,
+        undefined,
+        'unit-uuid-1',
       );
     });
   });

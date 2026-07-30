@@ -1,11 +1,12 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import {
   PropertyDocument,
   DocumentCategory,
   DocumentAccessLevel,
 } from '../properties/entities/property-document.entity';
+import { User } from '../users/entities/user.entity';
 import { UpdateDocumentDto } from './dto/update-document.dto';
 import { MediaService } from '../properties/media.service';
 import { UploadDocumentDto } from './dto/upload-document.dto';
@@ -15,13 +16,26 @@ import { Role } from '@shared/enums/roles.enum';
 // serialized to the client. Documents are served only through the streaming
 // download endpoint, so these fields have no use outside the service and would
 // only leak the private bucket's path structure.
-export type SanitizedDocument = Omit<PropertyDocument, 'url' | 's3Key'>;
+export type SanitizedDocument = Omit<
+  PropertyDocument,
+  'url' | 's3Key' | 'unit'
+> & {
+  uploadedByName?: string | null;
+  unit?: {
+    id: string;
+    unitNumber: string;
+    areaId: string | null;
+    assetName: string | null;
+  } | null;
+};
 
 @Injectable()
 export class DocumentsService {
   constructor(
     @InjectRepository(PropertyDocument)
     private readonly documentRepository: Repository<PropertyDocument>,
+    @InjectRepository(User)
+    private readonly userRepository: Repository<User>,
     private readonly mediaService: MediaService,
   ) {}
 
@@ -57,6 +71,7 @@ export class DocumentsService {
     page = 1,
     limit = 20,
     category?: DocumentCategory,
+    unitId?: string,
   ): Promise<{
     data: SanitizedDocument[];
     total: number;
@@ -67,6 +82,9 @@ export class DocumentsService {
 
     const qb = this.documentRepository
       .createQueryBuilder('doc')
+      .leftJoinAndSelect('doc.unit', 'unit')
+      .leftJoinAndSelect('unit.asset', 'asset')
+      .leftJoinAndSelect('asset.locality', 'locality')
       .where('doc.company_id = :companyId', { companyId })
       .andWhere('doc.access_level IN (:...allowedLevels)', { allowedLevels });
 
@@ -74,12 +92,54 @@ export class DocumentsService {
       qb.andWhere('doc.category = :category', { category });
     }
 
+    if (unitId) {
+      qb.andWhere('doc.unit_id = :unitId', { unitId });
+    }
+
     qb.skip((page - 1) * limit)
       .take(limit)
-      .orderBy('doc.created_at', 'DESC');
+      .orderBy('doc.createdAt', 'DESC');
 
     const [data, total] = await qb.getManyAndCount();
-    return { data: data.map((d) => this.sanitize(d)), total, page, limit };
+
+    // Separate lookup instead of a JOIN — simpler, and page size bounds the cost.
+    const uploaderIds = [
+      ...new Set(
+        data
+          .map((d) => d.uploadedBy)
+          .filter((id): id is string => id !== null),
+      ),
+    ];
+    const uploaderNames = uploaderIds.length
+      ? new Map(
+          (
+            await this.userRepository.find({
+              where: { id: In(uploaderIds), companyId },
+              select: { id: true, name: true },
+            })
+          ).map((u) => [u.id, u.name]),
+        )
+      : new Map<string, string>();
+
+    return {
+      data: data.map((d) => ({
+        ...this.sanitize(d),
+        uploadedByName: d.uploadedBy
+          ? (uploaderNames.get(d.uploadedBy) ?? null)
+          : null,
+        unit: d.unit
+          ? {
+              id: d.unit.id,
+              unitNumber: d.unit.unitNumber,
+              areaId: d.unit.asset?.locality?.id ?? null,
+              assetName: d.unit.asset?.name ?? null,
+            }
+          : null,
+      })),
+      total,
+      page,
+      limit,
+    };
   }
 
   // Client-facing single fetch — strips the storage pointers.
@@ -177,36 +237,22 @@ export class DocumentsService {
   // is returned to the client. Mirrors the omit-by-rest pattern used elsewhere
   // (e.g. companies.controller adminEmail).
   private sanitize(doc: PropertyDocument): SanitizedDocument {
-    const rest = { ...doc };
-    delete (rest as Partial<PropertyDocument>).url;
-    delete (rest as Partial<PropertyDocument>).s3Key;
+    const { url: _url, s3Key: _s3Key, unit: _unit, ...rest } = doc;
     return rest;
   }
 
   private getAllowedAccessLevels(userRole: string): DocumentAccessLevel[] {
     switch (userRole) {
       case Role.SUPER_ADMIN:
-        return [
-          DocumentAccessLevel.PUBLIC,
-          DocumentAccessLevel.COMPANY,
-          DocumentAccessLevel.OWNER_ONLY,
-          DocumentAccessLevel.ADMIN_ONLY,
-        ];
       case Role.COMPANY_ADMIN:
       case Role.ADMIN:
-        return [
-          DocumentAccessLevel.PUBLIC,
-          DocumentAccessLevel.COMPANY,
-          DocumentAccessLevel.ADMIN_ONLY,
-        ];
+        return [DocumentAccessLevel.ADMIN, DocumentAccessLevel.TEAM];
       case Role.AGENT:
-        return [DocumentAccessLevel.PUBLIC, DocumentAccessLevel.COMPANY];
       case Role.ACCOUNTANT:
-        return [DocumentAccessLevel.PUBLIC];
       case Role.MANAGER:
-        return [DocumentAccessLevel.PUBLIC, DocumentAccessLevel.COMPANY];
+        return [DocumentAccessLevel.TEAM];
       default:
-        return [DocumentAccessLevel.PUBLIC];
+        return [DocumentAccessLevel.TEAM];
     }
   }
 }

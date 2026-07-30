@@ -48,7 +48,7 @@ export class CreateDocumentDto {
 
   @ApiProperty({
     enum: DocumentAccessLevel,
-    default: DocumentAccessLevel.COMPANY,
+    default: DocumentAccessLevel.TEAM,
   })
   @IsOptional()
   @IsEnum(DocumentAccessLevel)

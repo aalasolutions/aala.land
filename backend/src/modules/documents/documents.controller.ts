@@ -78,7 +78,7 @@ export class DocumentsController {
         },
         accessLevel: {
           type: 'string',
-          enum: ['PUBLIC', 'COMPANY', 'OWNER_ONLY', 'ADMIN_ONLY'],
+          enum: ['ADMIN', 'TEAM'],
         },
       },
       required: ['file', 'name'],
@@ -149,11 +149,13 @@ export class DocumentsController {
   @ApiQuery({ name: 'page', required: false })
   @ApiQuery({ name: 'limit', required: false })
   @ApiQuery({ name: 'category', required: false, enum: DocumentCategory })
+  @ApiQuery({ name: 'unitId', required: false })
   findAll(
     @Request() req: AuthenticatedRequest,
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
     @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
     @Query('category') category?: DocumentCategory,
+    @Query('unitId') unitId?: string,
   ) {
     return this.documentsService.findAll(
       requireCompanyId(req.user),
@@ -161,6 +163,7 @@ export class DocumentsController {
       page,
       limit,
       category,
+      unitId,
     );
   }
 

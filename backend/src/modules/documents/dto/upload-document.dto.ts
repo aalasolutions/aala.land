@@ -55,7 +55,7 @@ export class UploadDocumentDto {
 
   @ApiProperty({
     enum: DocumentAccessLevel,
-    default: DocumentAccessLevel.COMPANY,
+    default: DocumentAccessLevel.TEAM,
     required: false,
   })
   @IsOptional()
