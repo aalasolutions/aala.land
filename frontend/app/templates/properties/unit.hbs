@@ -25,7 +25,8 @@
       >{{@model.unit.asset.name}}</LinkTo>
       <span>/</span>
     {{/if}}
-    <span class="font-bold text-primary">Property {{@model.unit.unitNumber}}</span>
+    <span class="font-bold text-primary">Property
+      {{@model.unit.unitNumber}}</span>
   </div>
 
   {{#if @model.unit}}
@@ -233,6 +234,89 @@
         <p class="text-muted">{{@model.unit.description}}</p>
       </div>
     {{/if}}
+
+    {{! Documents }}
+    <div class="glass-panel p-6" data-test-unit-documents>
+      <div class="flex between x-center mb-3">
+        <h4 class="font-md font-bold"><Ui::Ph @icon="file-text" />
+          Documents</h4>
+        <button
+          type="button"
+          class="btn btn-primary btn-sm"
+          data-test-upload-document-btn
+          {{on "click" this.openDocumentCreate}}
+        >
+          <Ui::Ph @icon="upload-simple" />
+          Upload
+        </button>
+      </div>
+
+      {{#if @model.documents.length}}
+        <div class="data-table-wrapper">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Title</th>
+                <th>Size</th>
+                <th>Document Type</th>
+                <th>Uploaded By</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {{#each @model.documents as |doc|}}
+                <tr data-test-document-row>
+                  <td class="font-bold">{{doc.name}}</td>
+                  <td class="font-sm text-muted">{{format-bytes
+                      doc.fileSize
+                    }}</td>
+                  <td><span
+                      class="type-badge type-{{lowercase doc.category}}"
+                    >{{doc.category}}</span></td>
+                  <td
+                    class="font-sm text-muted"
+                    data-test-document-uploader
+                  >{{if doc.uploadedByName doc.uploadedByName "—"}}</td>
+                  <td>
+                    <div class="flex gap-2">
+                      <button
+                        type="button"
+                        class="btn btn-secondary btn-xs"
+                        title="Download"
+                        data-test-download-document-btn
+                        {{on "click" (fn this.downloadDocument doc)}}
+                      >
+                        <Ui::Ph @icon="download-simple" />
+                      </button>
+                      <button
+                        type="button"
+                        class="btn btn-secondary btn-xs"
+                        title="Edit"
+                        data-test-edit-document-btn
+                        {{on "click" (fn this.openDocumentEdit doc)}}
+                      >
+                        <Ui::Ph @icon="pencil-simple" />
+                      </button>
+                      <button
+                        type="button"
+                        class="btn btn-danger btn-xs"
+                        title="Delete"
+                        data-test-delete-document-btn
+                        {{on "click" (fn this.openDeleteDocument doc)}}
+                      >
+                        <Ui::Ph @icon="trash" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              {{/each}}
+            </tbody>
+          </table>
+        </div>
+      {{else}}
+        <p class="text-muted font-sm">No documents uploaded for this property.</p>
+      {{/if}}
+    </div>
 
     {{! Lease History }}
     <div class="glass-panel p-6" data-test-lease-history>
@@ -465,4 +549,119 @@
   @confirmingText="Deleting..."
   @onClose={{this.closeDeleteModal}}
   @onConfirm={{this.confirmDeletePhoto}}
+/>
+
+{{! Upload/Edit Document Modal }}
+<Ui::Modal
+  @isOpen={{this.showDocumentModal}}
+  @title={{if this.editDocument "Update Document" "Upload Document"}}
+  @onClose={{this.closeDocumentModal}}
+  @showClose={{true}}
+>
+  <form class="flex col gap-4" {{on "submit" this.saveDocument}}>
+    <div class="flex col gap-2">
+      <label class="font-sm text-muted" for="ud-file">File
+        {{unless this.editDocument "*"}}</label>
+      <input
+        id="ud-file"
+        type="file"
+        class="form-input"
+        data-test-document-file-input
+        accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.rtf,.txt,.md,.csv"
+        {{on "change" this.onDocFileSelect}}
+      />
+      {{#if this.selectedDocFile}}
+        <p class="font-xs text-muted" data-test-selected-document-file>
+          Selected:
+          {{this.selectedDocFile.name}}
+          ({{format-bytes this.selectedDocFile.size}})
+        </p>
+      {{/if}}
+    </div>
+
+    <Ui::FormInput
+      @label="Document Name"
+      @id="ud-name"
+      @type="text"
+      @placeholder="Title Deed"
+      @value={{this.formDocName}}
+      @onChange={{fn this.setField "formDocName"}}
+      @required={{true}}
+      data-test-document-field-name
+    />
+
+    <div class="flex gap-4">
+      <div class="flex col gap-2 flex-1">
+        <Ui::FormDropdown
+          @label="Category"
+          @id="ud-category"
+          @value={{this.formDocCategory}}
+          @onChange={{fn this.setField "formDocCategory"}}
+          @options={{this.documentCategoryOptions}}
+          @placeholder="Select category..."
+          data-test-document-field-category
+        />
+      </div>
+      <div class="flex col gap-2 flex-1">
+        <Ui::FormDropdown
+          @label="Access Level"
+          @id="ud-access"
+          @value={{this.formDocAccessLevel}}
+          @onChange={{fn this.setField "formDocAccessLevel"}}
+          @options={{this.documentAccessLevelOptions}}
+          @placeholder="Select access level..."
+          data-test-document-field-access
+        />
+      </div>
+    </div>
+
+    {{#if this.isSavingDocument}}
+      {{#unless this.editDocument}}
+        <div class="upload-progress" data-test-document-upload-progress>
+          <div class="upload-progress-bar">
+            <div
+              class="upload-progress-bar__track upload-progress-bar__track--determinate"
+              style={{this.documentUploadProgressStyle}}
+            ></div>
+          </div>
+          <p class="font-xs text-muted mt-1">{{this.uploadProgress}}%</p>
+        </div>
+      {{/unless}}
+    {{/if}}
+
+    {{#if this.documentErrorMsg}}
+      <p class="font-sm text-danger" data-test-document-error>
+        {{this.documentErrorMsg}}
+      </p>
+    {{/if}}
+
+    <div class="flex gap-3 mt-2">
+      <Ui::AppButton
+        @variant="secondary"
+        @text="Cancel"
+        @onClick={{this.closeDocumentModal}}
+      />
+      <Ui::AppButton
+        @variant="primary"
+        @buttonType="submit"
+        @text={{if this.editDocument "Update" "Upload"}}
+        @loading={{this.isSavingDocument}}
+        @loadingText="Uploading..."
+        data-test-document-save-btn
+      />
+    </div>
+  </form>
+</Ui::Modal>
+
+<ConfirmModal
+  @isOpen={{this.showDeleteDocumentModal}}
+  @title="Delete Document"
+  @message="Are you sure you want to delete {{this.documentToDelete.name}}? This action cannot be undone."
+  @confirmText="Delete"
+  @cancelText="Cancel"
+  @confirmType="btn-danger"
+  @isConfirming={{this.isDeletingDocument}}
+  @confirmingText="Deleting..."
+  @onClose={{this.closeDeleteDocumentModal}}
+  @onConfirm={{this.confirmDeleteDocument}}
 />

@@ -46,11 +46,39 @@ export const ALLOWED_DOCUMENT_TYPES = [
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
   'application/vnd.ms-excel',
   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'application/vnd.ms-powerpoint',
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  'application/rtf',
+  'text/plain',
+  'text/markdown',
+  'text/csv',
   'image/jpeg',
   'image/png',
   'image/webp',
   'image/gif',
 ] as const;
+
+// No magic-byte signature exists for these — verifyTextFile below checks them instead.
+const TEXT_DOCUMENT_TYPES = new Set<string>([
+  'text/plain',
+  'text/markdown',
+  'text/csv',
+]);
+
+// <html> deliberately excluded (owner call).
+const TEXT_FILE_BINARY_SIGNATURES: ReadonlyArray<{
+  bytes: Buffer;
+  caseInsensitive?: boolean;
+}> = [
+  { bytes: Buffer.from('<script'), caseInsensitive: true },
+  { bytes: Buffer.from('<?php'), caseInsensitive: true },
+  { bytes: Buffer.from('MZ') },
+  { bytes: Buffer.from('%PDF') },
+  { bytes: Buffer.from('PK') },
+];
+const TEXT_FILE_SIGNATURE_SAMPLE_SIZE = Math.max(
+  ...TEXT_FILE_BINARY_SIGNATURES.map((s) => s.bytes.length),
+);
 
 export interface DocumentUploadResult {
   url: string;
@@ -501,6 +529,54 @@ export class MediaService {
     }
   }
 
+  // Content sanity check for formats with no magic-byte signature.
+  private async verifyTextFile(filePath: string): Promise<void> {
+    const decoder = new TextDecoder('utf-8', { fatal: true });
+    let checkedHead = false;
+
+    const stream = createReadStream(filePath);
+    try {
+      for await (const chunk of stream as AsyncIterable<Buffer>) {
+        if (!checkedHead) {
+          checkedHead = true;
+          const head = chunk.subarray(0, TEXT_FILE_SIGNATURE_SAMPLE_SIZE);
+          for (const sig of TEXT_FILE_BINARY_SIGNATURES) {
+            const candidate = head.subarray(0, sig.bytes.length);
+            const matches = sig.caseInsensitive
+              ? candidate.toString('latin1').toLowerCase() ===
+                sig.bytes.toString('latin1').toLowerCase()
+              : candidate.equals(sig.bytes);
+            if (matches) {
+              throw new BadRequestException(
+                'File content does not look like plain text — upload rejected.',
+              );
+            }
+          }
+        }
+
+        if (chunk.includes(0)) {
+          throw new BadRequestException(
+            'File contains binary content and cannot be accepted as a text document.',
+          );
+        }
+
+        try {
+          decoder.decode(chunk, { stream: true });
+        } catch {
+          throw new BadRequestException('File is not valid UTF-8 text.');
+        }
+      }
+
+      try {
+        decoder.decode();
+      } catch {
+        throw new BadRequestException('File is not valid UTF-8 text.');
+      }
+    } finally {
+      stream.destroy();
+    }
+  }
+
   private async uploadDocumentFile(
     companyId: string,
     file: Express.Multer.File,
@@ -515,23 +591,23 @@ export class MediaService {
       );
     }
 
-    // 2. Magic-byte validation — confirms file bytes match the declared MIME type.
-    // Every ALLOWED_DOCUMENT_TYPE is a binary format with a detectable signature,
-    // so a file whose content cannot be identified (undefined) is a mismatch too:
-    // e.g. an HTML/SVG/script payload uploaded as innocent.pdf with an
-    // application/pdf header would otherwise slip past the `detected &&` guard.
-    const { fileTypeFromFile } = await import('file-type');
-    const detected = await fileTypeFromFile(file.path);
-    if (!detected) {
-      throw new BadRequestException(
-        `File content could not be verified as "${file.mimetype}". ` +
-          `Only genuine ${ALLOWED_DOCUMENT_TYPES.join(', ')} files are accepted.`,
-      );
-    }
-    if (detected.mime !== file.mimetype) {
-      throw new BadRequestException(
-        `File content (${detected.mime}) does not match the declared type (${file.mimetype}).`,
-      );
+    // 2. Content validation — confirms file bytes match the declared MIME type.
+    if (TEXT_DOCUMENT_TYPES.has(file.mimetype)) {
+      await this.verifyTextFile(file.path);
+    } else {
+      const { fileTypeFromFile } = await import('file-type');
+      const detected = await fileTypeFromFile(file.path);
+      if (!detected) {
+        throw new BadRequestException(
+          `File content could not be verified as "${file.mimetype}". ` +
+            `Only genuine ${ALLOWED_DOCUMENT_TYPES.join(', ')} files are accepted.`,
+        );
+      }
+      if (detected.mime !== file.mimetype) {
+        throw new BadRequestException(
+          `File content (${detected.mime}) does not match the declared type (${file.mimetype}).`,
+        );
+      }
     }
 
     // 3. Atomically reserve storage before any S3 PUT (TOCTOU-safe — see

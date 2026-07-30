@@ -21,7 +21,7 @@ export default class DocumentsController extends PaginatedController {
   @tracked editDocument = null;
   @tracked formName = '';
   @tracked formCategory = 'OTHER';
-  @tracked formAccessLevel = 'COMPANY';
+  @tracked formAccessLevel = 'TEAM';
   @tracked isSaving = false;
   @tracked errorMsg = '';
 
@@ -62,7 +62,7 @@ export default class DocumentsController extends PaginatedController {
   @action openCreate() {
     this.formName = '';
     this.formCategory = 'OTHER';
-    this.formAccessLevel = 'COMPANY';
+    this.formAccessLevel = 'TEAM';
     this.selectedFile = null;
     this.uploadProgress = '';
     this.editDocument = null;
@@ -73,7 +73,7 @@ export default class DocumentsController extends PaginatedController {
   @action openEdit(doc) {
     this.formName = doc.name ?? '';
     this.formCategory = doc.category ?? 'OTHER';
-    this.formAccessLevel = doc.accessLevel ?? 'COMPANY';
+    this.formAccessLevel = doc.accessLevel ?? 'TEAM';
     this.selectedFile = null;
     this.uploadProgress = '';
     this.editDocument = doc;

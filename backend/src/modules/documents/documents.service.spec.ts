@@ -7,6 +7,7 @@ import {
   DocumentCategory,
   DocumentAccessLevel,
 } from '../properties/entities/property-document.entity';
+import { User } from '../users/entities/user.entity';
 import { MediaService } from '../properties/media.service';
 import { Role } from '@shared/enums/roles.enum';
 
@@ -34,7 +35,7 @@ describe('DocumentsService', () => {
     fileSize: 51200,
     fileType: 'application/pdf',
     category: DocumentCategory.LEASE,
-    accessLevel: DocumentAccessLevel.COMPANY,
+    accessLevel: DocumentAccessLevel.TEAM,
     version: 1,
     previousVersionId: null,
     uploadedBy: userId,
@@ -56,6 +57,7 @@ describe('DocumentsService', () => {
     };
 
     const mockQueryBuilder = {
+      leftJoinAndSelect: jest.fn().mockReturnThis(),
       where: jest.fn().mockReturnThis(),
       andWhere: jest.fn().mockReturnThis(),
       skip: jest.fn().mockReturnThis(),
@@ -76,6 +78,12 @@ describe('DocumentsService', () => {
             findOne: jest.fn(),
             remove: jest.fn(),
             createQueryBuilder: jest.fn().mockReturnValue(mockQueryBuilder),
+          },
+        },
+        {
+          provide: getRepositoryToken(User),
+          useValue: {
+            find: jest.fn().mockResolvedValue([]),
           },
         },
         {
@@ -155,7 +163,9 @@ describe('DocumentsService', () => {
         20,
       );
 
-      expect(result.data).toEqual([sanitizedMockDoc]);
+      expect(result.data).toEqual([
+        { ...sanitizedMockDoc, uploadedByName: null, unit: null },
+      ]);
       expect(result.data[0]).not.toHaveProperty('s3Key');
       expect(result.total).toBe(1);
     });
@@ -244,91 +254,68 @@ describe('DocumentsService', () => {
   });
 
   describe('access control', () => {
-    it('ACCOUNTANT only sees PUBLIC documents', async () => {
+    it('ACCOUNTANT only sees TEAM documents', async () => {
       await service.findAll(companyId, Role.ACCOUNTANT, 1, 20);
 
       const qb = repo.createQueryBuilder();
       expect(qb.andWhere).toHaveBeenCalledWith(
         'doc.access_level IN (:...allowedLevels)',
-        { allowedLevels: [DocumentAccessLevel.PUBLIC] },
+        { allowedLevels: [DocumentAccessLevel.TEAM] },
       );
     });
 
-    it('AGENT sees PUBLIC and COMPANY documents', async () => {
+    it('AGENT only sees TEAM documents', async () => {
       await service.findAll(companyId, Role.AGENT, 1, 20);
 
       const qb = repo.createQueryBuilder();
       expect(qb.andWhere).toHaveBeenCalledWith(
         'doc.access_level IN (:...allowedLevels)',
-        {
-          allowedLevels: [
-            DocumentAccessLevel.PUBLIC,
-            DocumentAccessLevel.COMPANY,
-          ],
-        },
+        { allowedLevels: [DocumentAccessLevel.TEAM] },
       );
     });
 
-    it('MANAGER sees PUBLIC and COMPANY documents', async () => {
+    it('MANAGER only sees TEAM documents', async () => {
       await service.findAll(companyId, Role.MANAGER, 1, 20);
 
       const qb = repo.createQueryBuilder();
       expect(qb.andWhere).toHaveBeenCalledWith(
         'doc.access_level IN (:...allowedLevels)',
-        {
-          allowedLevels: [
-            DocumentAccessLevel.PUBLIC,
-            DocumentAccessLevel.COMPANY,
-          ],
-        },
+        { allowedLevels: [DocumentAccessLevel.TEAM] },
       );
     });
 
-    it('ADMIN sees PUBLIC, COMPANY, and ADMIN_ONLY documents', async () => {
+    it('ADMIN sees ADMIN and TEAM documents', async () => {
       await service.findAll(companyId, Role.ADMIN, 1, 20);
 
       const qb = repo.createQueryBuilder();
       expect(qb.andWhere).toHaveBeenCalledWith(
         'doc.access_level IN (:...allowedLevels)',
         {
-          allowedLevels: [
-            DocumentAccessLevel.PUBLIC,
-            DocumentAccessLevel.COMPANY,
-            DocumentAccessLevel.ADMIN_ONLY,
-          ],
+          allowedLevels: [DocumentAccessLevel.ADMIN, DocumentAccessLevel.TEAM],
         },
       );
     });
 
-    it('COMPANY_ADMIN sees PUBLIC, COMPANY, and ADMIN_ONLY documents', async () => {
+    it('COMPANY_ADMIN sees ADMIN and TEAM documents', async () => {
       await service.findAll(companyId, Role.COMPANY_ADMIN, 1, 20);
 
       const qb = repo.createQueryBuilder();
       expect(qb.andWhere).toHaveBeenCalledWith(
         'doc.access_level IN (:...allowedLevels)',
         {
-          allowedLevels: [
-            DocumentAccessLevel.PUBLIC,
-            DocumentAccessLevel.COMPANY,
-            DocumentAccessLevel.ADMIN_ONLY,
-          ],
+          allowedLevels: [DocumentAccessLevel.ADMIN, DocumentAccessLevel.TEAM],
         },
       );
     });
 
-    it('SUPER_ADMIN sees all access levels', async () => {
+    it('SUPER_ADMIN sees ADMIN and TEAM documents', async () => {
       await service.findAll(companyId, Role.SUPER_ADMIN, 1, 20);
 
       const qb = repo.createQueryBuilder();
       expect(qb.andWhere).toHaveBeenCalledWith(
         'doc.access_level IN (:...allowedLevels)',
         {
-          allowedLevels: [
-            DocumentAccessLevel.PUBLIC,
-            DocumentAccessLevel.COMPANY,
-            DocumentAccessLevel.OWNER_ONLY,
-            DocumentAccessLevel.ADMIN_ONLY,
-          ],
+          allowedLevels: [DocumentAccessLevel.ADMIN, DocumentAccessLevel.TEAM],
         },
       );
     });

@@ -4268,6 +4268,14 @@ $google-neutral-border-hover: #c6cbd1;
   }
 }
 
+// Real percentage-driven progress (width set inline), used where the upload
+// exposes true byte progress instead of an indeterminate sweep.
+.upload-progress-bar__track--determinate {
+  width: 0%;
+  animation: none;
+  transition: width 0.15s ease-out;
+}
+
 // Company settings: storage usage indicator
 .storage-usage-section {
   padding: 16px 0;

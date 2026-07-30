@@ -110,10 +110,8 @@ export const CATEGORIES = [
 ];
 
 export const ACCESS_LEVELS = [
-  { value: 'PUBLIC', label: 'Public' },
-  { value: 'COMPANY', label: 'Company' },
-  { value: 'OWNER_ONLY', label: 'Owner Only' },
-  { value: 'ADMIN_ONLY', label: 'Admin Only' },
+  { value: 'TEAM', label: 'Share with Team' },
+  { value: 'ADMIN', label: 'Share with Admin' },
 ];
 
 export const EMAIL_CATEGORIES = [

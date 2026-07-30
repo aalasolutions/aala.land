@@ -21,8 +21,10 @@ export default class PropertiesIndexController extends Controller {
   @tracked activeView = null;
 
   get currentView() {
-    if (this.activeView) return this.activeView;
-    return this.preferences.get('properties-index-view', 'browse');
+    // Other views are not yet implemented, so always default to browse for now
+    return 'browse';
+    // if (this.activeView) return this.activeView;
+    // return this.preferences.get('properties-index-view', 'browse');
   }
 
   viewTabs = [

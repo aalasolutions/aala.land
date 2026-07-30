@@ -25,10 +25,8 @@ export enum DocumentCategory {
 }
 
 export enum DocumentAccessLevel {
-  PUBLIC = 'PUBLIC',
-  COMPANY = 'COMPANY',
-  OWNER_ONLY = 'OWNER_ONLY',
-  ADMIN_ONLY = 'ADMIN_ONLY',
+  ADMIN = 'ADMIN',
+  TEAM = 'TEAM',
 }
 
 @Entity('property_documents')
@@ -77,7 +75,7 @@ export class PropertyDocument {
     name: 'access_level',
     type: 'enum',
     enum: DocumentAccessLevel,
-    default: DocumentAccessLevel.COMPANY,
+    default: DocumentAccessLevel.TEAM,
   })
   accessLevel: DocumentAccessLevel;
 

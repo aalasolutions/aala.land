@@ -290,4 +290,54 @@ export default class AuthService extends Service {
 
     return res.json();
   }
+
+  // fetch() cannot report upload progress for a request body, so a real percentage
+  // needs XMLHttpRequest's upload.progress event instead.
+  uploadWithProgress(path, formData, onProgress) {
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', `${this.apiBase}${path}`);
+      xhr.setRequestHeader('Authorization', `Bearer ${this.token}`);
+
+      xhr.upload.addEventListener('progress', (event) => {
+        if (event.lengthComputable && onProgress) {
+          onProgress(Math.round((event.loaded / event.total) * 100));
+        }
+      });
+
+      xhr.addEventListener('load', () => {
+        let body = null;
+        try {
+          body = xhr.responseText ? JSON.parse(xhr.responseText) : null;
+        } catch {
+          /* non-JSON response */
+        }
+
+        if (xhr.status >= 200 && xhr.status < 300) {
+          resolve(body);
+          return;
+        }
+
+        if (xhr.status === 401) {
+          this.logout();
+          this.router.transitionTo('login');
+        }
+
+        const message = Array.isArray(body?.message)
+          ? body.message.join(', ')
+          : (body?.message ?? 'Upload failed');
+        const error = new Error(message);
+        error.status = xhr.status;
+        error.body = body;
+        reject(error);
+      });
+
+      xhr.addEventListener('error', () => reject(new Error('Upload failed')));
+      xhr.addEventListener('abort', () =>
+        reject(new Error('Upload cancelled')),
+      );
+
+      xhr.send(formData);
+    });
+  }
 }

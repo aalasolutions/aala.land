@@ -2,6 +2,7 @@ import PaginatedController from './paginated-base';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
+import { debounceTask } from 'ember-lifeline';
 import {
   closeDeleteModal,
   confirmDeleteModal,
@@ -42,7 +43,11 @@ export default class ContactsController extends PaginatedController {
   }
 
   @action updateSearch(e) {
-    this.search = e.target.value;
+    debounceTask(this, 'applySearch', e.target.value, 500);
+  }
+
+  applySearch(value) {
+    this.search = value;
     this.page = 1;
   }
 
