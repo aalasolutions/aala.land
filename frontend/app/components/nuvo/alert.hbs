@@ -1,0 +1,40 @@
+{{!
+  Icon grows (is-large) only when a description is present - a title-only
+  alert is one line and keeps the small centred icon.
+}}
+<div class={{this.classes}} role="alert" data-test-nu-alert ...attributes>
+  {{#if this.showIcon}}
+    <span class={{this.iconClasses}} aria-hidden="true" data-test-nu-alert-icon>
+      {{@icon}}
+    </span>
+  {{/if}}
+
+  <div class="nu-alert__content">
+    {{#if (has-block)}}
+      {{yield}}
+    {{else}}
+      {{#if @title}}
+        <div class="nu-alert__title" data-test-nu-alert-title>{{@title}}</div>
+      {{/if}}
+      {{#if @description}}
+        <div class="nu-alert__description" data-test-nu-alert-description>{{@description}}</div>
+      {{/if}}
+    {{/if}}
+
+    {{#if (has-block "actions")}}
+      <div class="nu-alert__actions" data-test-nu-alert-actions>
+        {{yield to="actions"}}
+      </div>
+    {{/if}}
+  </div>
+
+  {{#if @closable}}
+    <button
+      type="button"
+      class="nu-alert__close"
+      aria-label="Dismiss alert"
+      data-test-nu-alert-close
+      {{on "click" this.handleClose}}
+    >×</button>
+  {{/if}}
+</div>

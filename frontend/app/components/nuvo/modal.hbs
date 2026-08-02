@@ -1,0 +1,60 @@
+{{#if @open}}
+  <div
+    class={{this.backdropClasses}}
+    data-test-nu-modal-backdrop
+    {{on "click" this.onBackdropClick}}
+  >
+    <div
+      class={{this.modalClasses}}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby={{this.titleId}}
+      tabindex="-1"
+      data-test-nu-modal
+      {{did-insert this.registerModal}}
+      ...attributes
+    >
+      {{#if (has-block "header")}}
+        <div class="nu-modal__header">
+          {{yield to="header"}}
+        </div>
+      {{else if @title}}
+        <div class="nu-modal__header">
+          <div>
+            <h2 id={{this.titleId}} class="nu-modal__title" data-test-nu-modal-title>
+              {{@title}}
+            </h2>
+            {{#if @subtitle}}
+              <p class="nu-modal__subtitle" data-test-nu-modal-subtitle>{{@subtitle}}</p>
+            {{/if}}
+          </div>
+          {{#if this.showClose}}
+            <button
+              type="button"
+              class="nu-modal__close"
+              aria-label="Close"
+              data-test-nu-modal-close
+              {{on "click" this.onClose}}
+            >
+              ✕
+            </button>
+          {{/if}}
+        </div>
+      {{/if}}
+
+      <div class="nu-modal__body" data-test-nu-modal-body>
+        {{#if (has-block "body")}}
+          {{yield to="body"}}
+        {{else}}
+          {{yield}}
+        {{/if}}
+      </div>
+
+      {{#if (has-block "footer")}}
+        <div class="nu-modal__footer" data-test-nu-modal-footer>
+          {{yield to="footer"}}
+        </div>
+      {{/if}}
+    </div>
+  </div>
+{{/if}}

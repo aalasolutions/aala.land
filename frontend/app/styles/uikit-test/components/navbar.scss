@@ -1,0 +1,270 @@
+@use "sass:color";
+
+.confirm-logout {
+  border-radius: 20px;
+  padding: 0.5rem;
+  max-width: 400px;
+  text-align: center;
+  box-sizing: border-box;
+
+  .logout-heading {
+    font-size: 22px;
+    font-weight: 700;
+    color: $dark-color;
+    margin-bottom: 8px;
+  }
+
+  p {
+    font-size: 15px;
+    color: $text-muted;
+    margin: 0 0 20px;
+  }
+
+  .byok-schedule-details {
+    text-align: left;
+    background: $slate-50;
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 16px;
+
+    p {
+      margin: 8px 0;
+      font-size: 14px;
+      color: $dark-color;
+
+      &.activation-date {
+        margin-top: 16px;
+        padding-top: 12px;
+        border-top: 1px solid $slate-200;
+        color: $primary-color;
+        font-weight: 500;
+      }
+    }
+
+    .byok-price {
+      color: $success-color;
+      font-weight: 600;
+    }
+  }
+
+  .info-text {
+    font-size: 13px !important;
+    color: $text-muted;
+    background: $blue-50;
+    border-radius: 8px;
+    padding: 12px;
+    text-align: left;
+  }
+
+  .modal-logout {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    padding-top: 0.5rem;
+
+    button {
+      flex: 1;
+      padding: 12px 0;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: all 0.25s ease-in-out;
+
+      background: $slate-100;
+      color: $text-secondary;
+
+      &:hover {
+        background: $slate-200;
+      }
+
+      &.logout-btn {
+        background: $error-color;
+        color: $white;
+        &:hover {
+          background: color.adjust($error-color, $lightness: -10%);
+        }
+      }
+
+      &:disabled {
+        opacity: 0.7;
+        cursor: not-allowed;
+      }
+    }
+  }
+}
+
+.navbar-container {
+  height: 3.5rem;
+
+  .navbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 1rem;
+
+    .navbar-title {
+      font-weight: bold;
+      color: $dark-color;
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+      justify-content: center;
+
+       .project-header {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        font-size: 1.2rem;
+        color: $dark-color;
+        font-weight: bold;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        text-decoration: none;
+        cursor: pointer;
+
+        i {
+          margin-right: 5px;
+          font-size: 14px;
+          color: $blue-500;
+          width: 20px;
+          height: 22px;
+          transition: 0.5s;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          border-radius: 4px;
+          background-color: rgba($blue-100, 0.4);
+        }
+
+        &:hover {
+          i {
+            transition: 0.7s;
+            color: $white;
+            background-color: color.adjust($primary-color, $lightness: -10%);
+          }
+          text-decoration: none;
+        }
+      }
+
+    }
+
+    .profile-menu {
+      display: flex;
+      align-items: center;
+      padding: 10px 0;
+      gap: 1rem;
+
+      .profile-item {
+        all: unset;
+        display: flex;
+        align-items: center;
+        cursor: pointer;
+        color: $blue-500;
+        font-size: 16px;
+
+        .content {
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+          align-items: flex-end;
+          margin-right: 0.5rem;
+          .profile-name {
+            font-weight: 500;
+            font-size: 16px;
+            color: $dark-color;
+          }
+
+          .profile-role {
+            font-weight: 500;
+            font-size: 13px;
+            color: rgba($dark-color, 0.7);
+          }
+        }
+
+        .profile-icon {
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          border-radius: 999px;
+          width: 36px;
+          height: 36px;
+          color: $blue-500;
+          background-color: $secondary-color;
+
+          img {
+            width: 100%;
+            height: 100%;
+            border-radius: 999px;
+          }
+
+          i {
+            font-size: 18px;
+            color: $white;
+          }
+        }
+      }
+    }
+
+    .dropdown-menu {
+      position: absolute;
+      top: 60px;
+      right: 10px;
+      background: $white;
+      border: 1px solid $slate-300;
+      border-radius: 6px;
+      max-width: 180px;
+      width: 100%;
+      box-shadow: 0 2px 8px rgba($dark-color, 0.1);
+      animation: fadeIn 0.2s ease-in-out;
+
+      button {
+        all: unset;
+        width: -webkit-fill-available;
+        padding: 10px 15px;
+        font-size: 14px;
+        cursor: pointer;
+        display: flex;
+        justify-content: flex-start;
+        align-items: center;
+        transition: background 0.2s;
+
+        i {
+          margin-right: 10px;
+          color: $secondary-color;
+        }
+
+        &.logout-btn {
+          color: $error-color;
+
+          i {
+            margin-right: 10px;
+            color: $error-color;
+          }
+
+          &:hover {
+            color: $red-600;
+          }
+        }
+
+        &:hover {
+          background-color: $slate-100;
+        }
+      }
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(-5px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+  }
+}

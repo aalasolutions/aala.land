@@ -1,0 +1,247 @@
+// nu-progress - linear progress bar, plus the nu-spinner loading indicator
+@use "./mixins/bem" as *;
+@use "./mixins/var" as *;
+@use "./common/var" as *;
+
+@include b(progress) {
+  @include nu-root("progress", (
+    "Height": 0.5rem,
+    "BorderRadius": nu-radius(full),
+    "TrackColor": var(--bg-alternate),
+    "BarColor": var(--primary),
+    "LabelColor": var(--text-muted),
+    "LabelFontSize": nu-font-size(xs),
+  ));
+
+  display: flex;
+  flex-direction: column;
+  gap: nu-space(1);
+  inline-size: 100%;
+
+  // ---- elements ----
+
+  @include e(track) {
+    inline-size: 100%;
+    block-size: nu-var("progress", "Height");
+    background-color: nu-var("progress", "TrackColor");
+    border-radius: nu-var("progress", "BorderRadius");
+    overflow: hidden;
+  }
+
+  @include e(bar) {
+    @include nu-root-el("progress", "bar", (
+      "StripeColor": transparent,
+    ));
+
+    // Actual fill percentage is set inline by markup/JS (style="inline-size: 62%"),
+    // not by a modifier. Modifiers below only override for special states.
+    block-size: 100%;
+    background-color: nu-var("progress", "BarColor");
+    border-radius: nu-var("progress", "BorderRadius");
+    transition: inline-size nu-duration(normal) $nu-ease;
+
+    @include reduced-motion {
+      transition: none;
+    }
+  }
+
+  @include e(label) {
+    align-self: flex-end;
+    font-size: nu-var("progress", "LabelFontSize");
+    color: nu-var("progress", "LabelColor");
+    line-height: 1.4;
+  }
+
+  // ---- color variants: uniform, looped ----
+
+  @each $variant in $nu-variants {
+    @include m($variant) {
+      --nu-progress--BarColor: var(--#{$variant});
+    }
+  }
+
+  // ---- sizes: uniform, looped ----
+
+  $nu-progress-sizes: (
+    "sm": ("Height": 0.25rem),
+    "md": ("Height": 0.5rem),
+    "lg": ("Height": 0.75rem),
+  );
+
+  @each $size, $spec in $nu-progress-sizes {
+    @include m($size) {
+      @each $token, $value in $spec {
+        --nu-progress--#{$token}: #{$value};
+      }
+    }
+  }
+
+  // ---- striped ----
+
+  @include m(striped) {
+    --nu-progress__bar--StripeColor: #{nu-tint(text-inverted, 35%)};
+
+    .nu-progress__bar {
+      background-image: linear-gradient(
+        45deg,
+        nu-var-el("progress", "bar", "StripeColor") 25%,
+        transparent 25%,
+        transparent 50%,
+        nu-var-el("progress", "bar", "StripeColor") 50%,
+        nu-var-el("progress", "bar", "StripeColor") 75%,
+        transparent 75%,
+        transparent
+      );
+      background-size: nu-space(4) nu-space(4);
+    }
+  }
+
+  // ---- indeterminate ----
+
+  @include m(indeterminate) {
+    .nu-progress__bar {
+      inline-size: 40%;
+      animation: nu-progress-indeterminate nu-duration(slow) * 3.5 $nu-ease infinite;
+    }
+
+    @include reduced-motion {
+      .nu-progress__bar {
+        animation: none;
+      }
+    }
+  }
+}
+
+@keyframes nu-progress-indeterminate {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(350%);
+  }
+}
+
+// ---- nu-spinner ----
+
+// Circular progress. SVG-based, so a separate block rather than a modifier on
+// the linear bar. Geometry (stroke-dasharray/offset) is set by the component;
+// this owns size, color and the centred label.
+@include b(progress-circle) {
+  @include nu-root("progress-circle", (
+    "Size": 7.5rem,
+    "TrackColor": var(--bg-alternate),
+    "BarColor": var(--primary),
+    "LabelColor": var(--text-color),
+    "LabelFontSize": nu-font-size(xl),
+    "TransitionDuration": nu-duration(slow),
+  ));
+
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: nu-var("progress-circle", "Size");
+  block-size: nu-var("progress-circle", "Size");
+
+  @include e(svg) {
+    inline-size: 100%;
+    block-size: 100%;
+    transform: rotate(-90deg);
+  }
+
+  @include e(track) {
+    fill: none;
+    stroke: nu-var("progress-circle", "TrackColor");
+  }
+
+  @include e(bar) {
+    fill: none;
+    stroke: nu-var("progress-circle", "BarColor");
+    stroke-linecap: round;
+    transition: stroke-dashoffset nu-var("progress-circle", "TransitionDuration") $nu-ease;
+
+    @include reduced-motion {
+      transition: none;
+    }
+  }
+
+  @include e(label) {
+    position: absolute;
+    font-size: nu-var("progress-circle", "LabelFontSize");
+    font-weight: nu-font-weight(semibold);
+    line-height: 1;
+    color: nu-var("progress-circle", "LabelColor");
+  }
+
+  @each $variant in $nu-variants {
+    @include m($variant) {
+      --nu-progress-circle--BarColor: var(--#{$variant});
+    }
+  }
+
+  @include m(sm) {
+    --nu-progress-circle--Size: 4.5rem;
+    --nu-progress-circle--LabelFontSize: #{nu-font-size(sm)};
+  }
+
+  @include m(lg) {
+    --nu-progress-circle--Size: 10rem;
+    --nu-progress-circle--LabelFontSize: #{nu-font-size(2xl)};
+  }
+}
+
+@include b(spinner) {
+  @include nu-root("spinner", (
+    "Size": 1.5rem,
+    "BorderWidth": 2px,
+    "TrackColor": var(--bg-alternate),
+    "SpinColor": var(--primary),
+    "Duration": nu-duration(slow) * 2,
+  ));
+
+  display: inline-block;
+  inline-size: nu-var("spinner", "Size");
+  block-size: nu-var("spinner", "Size");
+  border: nu-var("spinner", "BorderWidth") solid nu-var("spinner", "TrackColor");
+  border-block-start-color: nu-var("spinner", "SpinColor");
+  border-radius: nu-radius(full);
+  animation: nu-spinner-rotate nu-var("spinner", "Duration") linear infinite;
+
+  @include reduced-motion {
+    animation-duration: nu-duration(slow) * 6;
+  }
+
+  // ---- color variants: uniform, looped ----
+
+  @each $variant in $nu-variants {
+    @include m($variant) {
+      --nu-spinner--SpinColor: var(--#{$variant});
+    }
+  }
+
+  // ---- sizes: uniform, looped ----
+
+  $nu-spinner-sizes: (
+    "xs": ("Size": 0.875rem, "BorderWidth": 2px),
+    "sm": ("Size": 1.125rem, "BorderWidth": 2px),
+    "md": ("Size": 1.5rem, "BorderWidth": 2px),
+    "lg": ("Size": 2.25rem, "BorderWidth": 3px),
+  );
+
+  @each $size, $spec in $nu-spinner-sizes {
+    @include m($size) {
+      @each $token, $value in $spec {
+        --nu-spinner--#{$token}: #{$value};
+      }
+    }
+  }
+}
+
+@keyframes nu-spinner-rotate {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}

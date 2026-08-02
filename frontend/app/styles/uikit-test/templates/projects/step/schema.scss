@@ -1,0 +1,150 @@
+.schema-container {
+  padding: 1rem;
+
+  .toggle-buttons {
+    display: flex;
+    gap: 2rem;
+    margin-bottom: 1rem;
+    label {
+      cursor: pointer;
+      font-weight: bold;
+    }
+  }
+
+  .dropzone {
+    border: 2px dashed $slate-300;
+    background-color: $white;
+    border-radius: 6px;
+    padding: 2rem;
+    text-align: center;
+    cursor: pointer;
+
+    &.uploaded-file-box {
+      background: $green-50;
+      border: 1px solid $green-500;
+    }
+
+    &.dragging {
+      background-color: $blue-50;
+      border-color: $blue-500;
+    }
+
+    .uploaded-file-box {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1rem;
+
+      border-radius: 8px;
+
+      .file-icon {
+        font-size: 1.8rem;
+        color: $green-500;
+      }
+
+      .file-details {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        strong {
+          font-size: 1rem;
+          color: $success-dark;
+        }
+
+        small {
+          font-size: 0.875rem;
+          color: $green-600;
+
+          .success-icon {
+            margin-right: 5px;
+            color: $green-500;
+          }
+        }
+      }
+    }
+  }
+
+  .dropzone-content {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+
+    .icon {
+      font-size: 40px;
+      color: $primary-color;
+    }
+
+    p {
+      color: $dark-color;
+      font-size: 1.2rem;
+      font-weight: bold;
+      margin: 0;
+    }
+
+    small {
+      color: $secondary-color;
+      font-size: 0.8rem;
+    }
+  }
+
+  .auto-mode-info {
+    margin-top: 1.5rem;
+    padding: 1rem;
+    background-color: $amber-50;
+    border: 1px solid $amber-500;
+    border-radius: 8px;
+    text-align: center;
+
+    .icon {
+      font-size: 1.5rem;
+      color: $amber-500;
+      margin-bottom: 0.5rem;
+
+      &.success-icon {
+        color: $green-500;
+        font-size: 2rem;
+      }
+    }
+
+    p {
+      color: $warning-dark;
+      font-size: 0.95rem;
+      margin-bottom: 1rem;
+
+      strong {
+        color: $success-dark;
+        font-weight: 600;
+      }
+    }
+
+    .schema-status {
+      display: block;
+      color: $green-600;
+      font-size: 0.85rem;
+      margin-top: 0.5rem;
+    }
+
+    &:has(.success-icon) {
+      background-color: $green-50;
+      border-color: $green-500;
+
+      p {
+        color: $success-dark;
+      }
+    }
+
+    .request-access-btn {
+      background-color: $amber-500;
+      color: $white;
+      padding: 0.4rem 1rem;
+      border: none;
+      border-radius: 4px;
+      font-size: 0.85rem;
+      cursor: pointer;
+
+      &:hover {
+        background-color: $amber-600;
+      }
+    }
+  }
+}

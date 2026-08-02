@@ -1,0 +1,314 @@
+// App shell: the frame every authenticated route renders inside.
+//
+// The sidebar and topbar themselves are kit components (`.nu-sidebar`,
+// `.nu-topbar`), both carrying `m-plain` so they sit flat on the shell
+// background. This file holds only the glue that is genuinely app-specific:
+// offsetting the main column past the fixed sidebar, the raised routed panel,
+// the collapse affordance, the brand lockup, and the two full-width banners.
+@use "../uikit/common/var" as *;
+@use "../uikit/mixins/bem" as *;
+
+$shell-sidebar-width: 15rem;
+$shell-sidebar-collapsed: 3.75rem;
+
+.app-shell {
+  display: flex;
+  min-block-size: 100vh;
+  // background: #f7f7f7;
+  /* Fallback for older browsers */
+  background-color: #0d1b2a;
+
+
+  /* The gradient engine */
+  background-image: radial-gradient(circle at center, #344244 0%, #070f17 90%, #2b1818 100%);
+  /* Crucial settings for full-page view */
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+  min-height: 100vh;
+}
+
+// `.nu-sidebar` is position:fixed and therefore out of flow, so the main
+// column carries its own offset rather than relying on a flex sibling.
+.app-shell__main {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-inline-size: 0;
+  margin-inline-start: $shell-sidebar-width;
+  transition: margin-inline-start nu-duration(normal) $nu-ease;
+
+  @include reduced-motion {
+    transition: none;
+  }
+}
+
+.app-shell.is-collapsed .app-shell__main {
+  margin-inline-start: $shell-sidebar-collapsed;
+}
+
+// ---- brand lockup ----
+
+.app-shell__brand-mark {
+  inline-size: 2.25rem;
+  block-size: 2.25rem;
+  object-fit: contain;
+  margin-inline: auto;
+  display: none;
+}
+
+.app-shell__brand-dot {
+  color: var(--text-muted);
+}
+
+.nu-sidebar.is-collapsed {
+  .app-shell__brand-mark {
+    display: block;
+  }
+
+  .app-shell__brand-text {
+    display: none;
+  }
+}
+
+// ---- collapse affordance ----
+
+// The nav above already grows to fill, so this must not compete with it for
+// height; it only separates the nav from the collapse button.
+.app-shell__spacer {
+  flex: 0 0 auto;
+}
+
+.app-shell__collapse {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-block-start: nu-space(2);
+  padding: nu-space(2);
+  border: 1px solid var(--border-base);
+  border-radius: nu-radius(md);
+  background: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition:
+    background-color nu-duration(fast) $nu-ease,
+    color nu-duration(fast) $nu-ease;
+
+  @include reduced-motion {
+    transition: none;
+  }
+
+  &:hover {
+    background-color: var(--bg-alternate);
+    color: var(--text-color);
+  }
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px nu-tint(primary, 35%);
+  }
+}
+
+// ---- routed page content ----
+
+// Every route renders in here. The padding lives on the shell rather than on
+// each page, so a page template never has to remember it.
+//
+// The sidebar and topbar carry `m-plain`, so this panel is the only raised
+// surface and the app reads as this. Logical corner and edges so it tucks
+// against the sidebar in RTL too. The shadow is an ambient glow rather than a
+// drop shadow, which no kit token covers, so it stays literal.
+.content-area {
+  flex: 1;
+  min-inline-size: 0;
+  padding-block: nu-space(6);
+  padding-inline: nu-space(8);
+
+  background: #fbfbfb;
+  border-start-start-radius: nu-radius(lg);
+  border-block-start: 1px solid var(--border-base);
+  border-inline-start: 1px solid var(--border-base);
+  box-shadow: 0 0 15px 5px rgba(0, 0, 0, 0.05);
+}
+
+// ---- topbar: region switcher ----
+
+// `.nu-topbar-menu` is position:absolute, so its trigger must establish the
+// containing block or the menu anchors to the viewport.
+.region-switcher,
+.notification-wrapper,
+.nu-topbar__search {
+  position: relative;
+}
+
+.app-shell__region-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: nu-space(2);
+  block-size: 2.5rem;
+  padding-inline: nu-space(3);
+  border: 1px solid var(--border-base);
+  border-radius: nu-radius(full);
+  background-color: var(--bg-surface);
+  color: var(--text-color);
+  font-size: nu-font-size(sm);
+  font-weight: nu-font-weight(medium);
+  cursor: pointer;
+  transition:
+    background-color nu-duration(fast) $nu-ease,
+    border-color nu-duration(fast) $nu-ease;
+
+  @include reduced-motion {
+    transition: none;
+  }
+
+  &:hover {
+    background-color: var(--bg-alternate);
+    border-color: var(--primary-300);
+  }
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px nu-tint(primary, 35%);
+  }
+}
+
+// Invisible click-catcher that closes an open dropdown.
+.region-overlay,
+.notification-overlay,
+.search-overlay {
+  position: fixed;
+  inset: 0;
+  border: 0;
+  background: transparent;
+  cursor: default;
+  z-index: nu-z(sticky);
+}
+
+// ---- topbar: dropdown internals ----
+
+.app-shell__menu-list {
+  max-block-size: 24rem;
+  overflow-y: auto;
+}
+
+.app-shell__menu-label {
+  padding-block: nu-space(2);
+  padding-inline: nu-space(4);
+  font-size: nu-font-size(xs);
+  font-weight: nu-font-weight(semibold);
+  color: var(--text-subtle);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.region-currency-tag {
+  margin-inline-start: auto;
+  font-size: nu-font-size(xs);
+  color: var(--text-muted);
+}
+
+.region-name {
+  white-space: nowrap;
+}
+
+// Unread notification: tinted row plus a leading marker, so the state does not
+// rely on colour alone.
+.nu-topbar-menu__item.unread {
+  background-color: var(--primary-50);
+
+  &::before {
+    content: "";
+    inline-size: 0.375rem;
+    block-size: 0.375rem;
+    border-radius: nu-radius(full);
+    background-color: var(--primary);
+    flex-shrink: 0;
+  }
+}
+
+.notification-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: 2rem;
+  block-size: 2rem;
+  border-radius: nu-radius(full);
+  background-color: var(--bg-alternate);
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.notification-content {
+  display: flex;
+  flex-direction: column;
+  gap: nu-space(1);
+  min-inline-size: 0;
+  flex: 1;
+  text-align: start;
+}
+
+.notification-title {
+  font-weight: nu-font-weight(semibold);
+  color: var(--text-color);
+}
+
+.notification-message {
+  color: var(--text-muted);
+  font-size: nu-font-size(xs);
+  overflow-wrap: anywhere;
+}
+
+.notification-time {
+  color: var(--text-subtle);
+  font-size: nu-font-size(xs);
+}
+
+// The menu is wider than the kit default: notification bodies are prose, not
+// menu labels.
+.notification-wrapper .nu-topbar-menu {
+  inline-size: 22rem;
+}
+
+// ---- full-width banners, above the topbar ----
+
+.impersonation-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-block: nu-space(2);
+  padding-inline: nu-space(8);
+  background: var(--warning-50);
+  border-block-end: 2px solid var(--warning-200);
+  color: var(--warning-800);
+  font-size: nu-font-size(sm);
+  font-weight: nu-font-weight(medium);
+}
+
+.tenant-lock-banner {
+  border-radius: 0;
+  padding-block: nu-space(2);
+  padding-inline: nu-space(8);
+  font-size: nu-font-size(sm);
+  font-weight: nu-font-weight(medium);
+}
+
+// ---- mobile: sidebar becomes an overlay drawer ----
+
+@include media-down(md) {
+  .app-shell__main {
+    margin-inline-start: 0;
+  }
+
+  .app-shell.is-collapsed .app-shell__main {
+    margin-inline-start: 0;
+  }
+
+  .nu-sidebar {
+    inset-inline-start: -#{$shell-sidebar-width};
+    transition: inset-inline-start nu-duration(normal) $nu-ease;
+  }
+
+  .nu-sidebar.is-open {
+    inset-inline-start: 0;
+  }
+}

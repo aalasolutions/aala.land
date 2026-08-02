@@ -1,0 +1,290 @@
+.credit-card-page {
+  padding: 24px;
+  color: $text-primary;
+
+  .page-header {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    margin-bottom: 28px;
+    flex-wrap: wrap;
+    gap: 12px;
+
+    .header-left {
+      .page-title {
+        font-size: 22px;
+        font-weight: 600;
+        margin-bottom: 4px;
+      }
+
+      .page-subtitle {
+        font-size: 14px;
+        color: $text-muted;
+      }
+    }
+
+    .header-actions button {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 14px;
+      color: $white;
+      border: none;
+      border-radius: 6px;
+      padding: 8px 14px;
+      transition: background 0.2s ease-in-out;
+
+      &:hover {
+      }
+
+      i {
+        font-size: 13px;
+      }
+    }
+  }
+
+  .add-card-form {
+    background: $slate-50;
+    border: 1px solid $border-color;
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 24px;
+    width: 46%;
+    box-shadow: 0 2px 4px rgba($dark-color, 0.05);
+
+    h3 {
+      margin-bottom: 16px;
+      font-weight: 600;
+      color: $text-primary;
+    }
+
+    .form-label {
+      display: flex;
+      flex-direction: column;
+      margin-bottom: 16px;
+
+      span {
+        margin-bottom: 6px;
+        font-weight: 500;
+      }
+
+      input {
+        padding: 8px 10px;
+        border-radius: 6px;
+        border: 1px solid $slate-300;
+
+        &:focus {
+          border-color: $blue-500;
+          outline: none;
+        }
+      }
+    }
+
+    .stripe-card-element {
+      padding: 12px;
+      border: 1px solid $slate-300;
+      border-radius: 8px;
+      background: $white;
+    }
+
+    .card-errors {
+      color: $error-color;
+      font-size: 13px;
+      margin-top: 4px;
+    }
+
+    .form-actions {
+      margin-top: 16px;
+      display: flex;
+      gap: 10px;
+
+      button {
+        padding: 8px 16px;
+        border-radius: 6px;
+        font-weight: 500;
+        font-size: 14px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+
+        &.btn-primary {
+          color: $white;
+          border: none;
+          width: 100%;
+
+          &.btn-disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+          }
+        }
+
+        &.btn-secondary {
+          background: $bg-gray;
+          color: $text-secondary;
+          border: 1px solid $slate-300;
+
+          &:hover {
+            background: $border-color;
+          }
+        }
+      }
+    }
+  }
+
+  .card-grid {
+    display: grid;
+    gap: 20px;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  }
+
+  .credit-card-item {
+    background: $white;
+    border: 1px solid $border-color;
+    border-radius: 12px;
+    padding: 16px;
+    transition: all 0.25s ease-in-out;
+
+    &.default-card {
+      border-color: $blue-500;
+      box-shadow: 0 0 10px rgba($blue-500, 0.2);
+    }
+
+    .card-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+
+        .emoji {
+          font-size: 20px;
+        }
+
+        .brand-name {
+          text-transform: capitalize;
+          font-weight: 600;
+        }
+      }
+
+      .badge-default {
+        background: $blue-500;
+        color: $white;
+        font-size: 12px;
+        padding: 2px 8px;
+        border-radius: 6px;
+      }
+    }
+
+    .card-body {
+      .field {
+        font-size: 14px;
+        color: $text-secondary;
+        margin-bottom: 4px;
+      }
+    }
+
+    .card-footer {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      margin-top: 14px;
+
+      button {
+        // flex: 1;
+        padding: 10px 0;
+        border-radius: 6px;
+        font-weight: 500;
+        font-size: 14px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        align-self: center;
+        justify-items: center;
+
+        gap: 6px;
+        min-width: 120px;
+        width: 200px;
+        height: 40px;
+      }
+
+      .btn-default {
+        color: $white;
+        border: none;
+
+        &:hover {
+          transform: translateY(-1px);
+        }
+
+        &:active {
+          transform: scale(0.98);
+        }
+
+        &:disabled {
+          opacity: 0.7;
+          cursor: not-allowed;
+        }
+      }
+
+      .btn-danger {
+        background: $error-color;
+        color: $white;
+        border: 1px solid $red-600;
+
+        &:hover {
+          background: $red-600;
+          transform: translateY(-1px);
+        }
+
+        &:active {
+          transform: scale(0.98);
+        }
+
+        &:disabled {
+          opacity: 0.7;
+          cursor: not-allowed;
+        }
+      }
+    }
+
+    &.default-card .card-footer {
+      justify-content: center;
+    }
+
+    button {
+      width: 200px;
+    }
+
+  }
+
+  .no-cards {
+    text-align: center;
+    padding: 30px 0;
+    color: $slate-400;
+    font-style: italic;
+  }
+}
+
+.credit-card-popup {
+  max-width: 450px;
+
+  .popup-content {
+    .generic-header-subtitle {
+      line-height: 1.6;
+      color: $text-secondary;
+      font-size: 14px;
+    }
+
+    .actions {
+      .btn,
+      button {
+        min-width: 100px;
+        flex: 1;
+      }
+    }
+  }
+}

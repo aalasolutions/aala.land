@@ -1,0 +1,30 @@
+{{! Block param is `option`, safe (not an HTML element name). }}
+<div
+  class={{this.classes}}
+  role={{if this.multiple "group" "radiogroup"}}
+  data-test-nu-segmented
+  {{did-insert this.registerRoot}}
+  {{on "keydown" this.handleKeydown}}
+  ...attributes
+>
+  {{#each this.options as |option|}}
+    <button
+      type="button"
+      class="nu-segmented__item {{if option.active 'is-active'}} {{if option.disabled 'is-disabled'}}"
+      role={{if this.multiple "checkbox" "radio"}}
+      aria-checked={{if option.active "true" "false"}}
+      disabled={{option.disabled}}
+      tabindex={{if this.multiple "0" (if option.active "0" "-1")}}
+      title={{if @iconOnly option.label}}
+      data-test-nu-segmented-item={{option.id}}
+      {{on "click" (fn this.select option)}}
+    >
+      {{#if option.icon}}
+        <span class="nu-segmented__icon" aria-hidden="true">
+          <Ui::Ph @icon={{option.icon}} />
+        </span>
+      {{/if}}
+      <span class="nu-segmented__label">{{option.label}}</span>
+    </button>
+  {{/each}}
+</div>

@@ -1,0 +1,38 @@
+.user-form-container {
+  display: flex;
+  align-items: center;
+  height: max-content;
+
+  .wrapper {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    background-color: $white;
+    padding: 2rem;
+    gap: 2rem;
+    border-radius: 8px;
+    box-shadow: -1px 1px 6px 1px #00000014;
+
+    form {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+
+      .form-inputs {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+      }
+
+      .form-select {
+        display: flex;
+        gap: 1rem;
+      }
+
+      .form-submit {
+        margin-top: 1rem;
+        max-width: 300px;
+      }
+    }
+  }
+}

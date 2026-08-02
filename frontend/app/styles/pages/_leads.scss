@@ -1,0 +1,92 @@
+// Leads: the three kanban boards (pipeline, temperature, agent).
+//
+// The boards themselves are the kit's `.nu-kanban`. Only two things here are
+// genuinely page-specific: the temperature accent colours, and the per-agent
+// load bar which no other board has.
+@use "../uikit/common/var" as *;
+@use "../uikit/mixins/bem" as *;
+
+// Temperature accent. Semantics match the `temp` domain in _badges.scss
+// (hot/warm/cold/dead -> danger/warning/info/neutral) so a column reads the
+// same colour as the temperature badge on the cards inside it.
+$lead-temps: (
+  "hot": var(--danger),
+  "warm": var(--warning),
+  "cold": var(--info),
+  "dead": var(--text-subtle),
+);
+
+// The kit re-declares this variable on the accent element itself, so an
+// inherited value from the column would lose. Set it on the element.
+@each $temp, $color in $lead-temps {
+  .column-temp-#{$temp} .nu-kanban__column-accent {
+    --nu-kanban__column-accent--Color: #{$color};
+  }
+}
+
+// ---- lead card ----
+
+// The assigned agent, shown as a subtle chip rather than a full badge so it
+// does not compete with the status/temperature tag on the same card.
+.lead-assign {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: nu-space(1);
+  padding-block: nu-space(1);
+  padding-inline: nu-space(2);
+  background: var(--bg-alternate);
+  border-radius: nu-radius(full);
+  font-size: nu-font-size(xs);
+  color: var(--text-muted);
+
+  &.m-sm {
+    font-size: 0.6875rem;
+    padding-block: 0;
+  }
+}
+
+.wa-link {
+  display: inline-flex;
+  align-items: center;
+  color: var(--success);
+  line-height: 1;
+
+  &:hover {
+    color: var(--success-600);
+  }
+}
+
+// ---- agent board: per-column load indicator ----
+
+.agent-load-bar {
+  block-size: 0.25rem;
+  background: var(--bg-alternate);
+  border-radius: nu-radius(full);
+  overflow: hidden;
+}
+
+.agent-load-fill {
+  block-size: 100%;
+  border-radius: nu-radius(full);
+  transition: inline-size nu-duration(normal) $nu-ease;
+
+  @include reduced-motion {
+    transition: none;
+  }
+
+  &.load-low {
+    inline-size: 25%;
+    background: var(--success);
+  }
+
+  &.load-medium {
+    inline-size: 60%;
+    background: var(--warning);
+  }
+
+  &.load-high {
+    inline-size: 100%;
+    background: var(--danger);
+  }
+}

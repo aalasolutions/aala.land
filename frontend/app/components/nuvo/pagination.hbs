@@ -1,0 +1,70 @@
+{{! Block param is `entry`, avoids shadowing HTML elements. }}
+<div class={{this.classes}} data-test-nu-pagination ...attributes>
+  <span class="nu-pagination__status" data-test-nu-pagination-status>
+    {{this.statusText}}
+  </span>
+
+  <ul class="nu-pagination__list">
+    <li class="nu-pagination__item {{if this.disablePrevious 'is-disabled'}}">
+      <button
+        type="button"
+        class="nu-pagination__link nu-pagination__prev"
+        aria-label="Previous page"
+        disabled={{this.disablePrevious}}
+        data-test-nu-pagination-prev
+        {{on "click" this.goToPrevious}}
+      >
+        &lsaquo;
+      </button>
+    </li>
+
+    {{#each this.pages as |entry|}}
+      {{#if (eq entry.type "ellipsis")}}
+        <li class="nu-pagination__item">
+          <span class="nu-pagination__ellipsis">&hellip;</span>
+        </li>
+      {{else}}
+        <li class="nu-pagination__item {{if entry.active 'is-active'}}">
+          <button
+            type="button"
+            class="nu-pagination__link"
+            aria-current={{if entry.active "page" false}}
+            data-test-nu-pagination-page={{entry.number}}
+            {{on "click" (fn this.goToPage entry.number)}}
+          >
+            {{entry.number}}
+          </button>
+        </li>
+      {{/if}}
+    {{/each}}
+
+    <li class="nu-pagination__item {{if this.disableNext 'is-disabled'}}">
+      <button
+        type="button"
+        class="nu-pagination__link nu-pagination__next"
+        aria-label="Next page"
+        disabled={{this.disableNext}}
+        data-test-nu-pagination-next
+        {{on "click" this.goToNext}}
+      >
+        &rsaquo;
+      </button>
+    </li>
+  </ul>
+
+  {{#if this.showPerPage}}
+    <div class="nu-pagination__per-page">
+      <label for={{this.selectId}}>Per page</label>
+      <select
+        id={{this.selectId}}
+        class="nu-pagination__select"
+        data-test-nu-pagination-select
+        {{on "change" this.changePerPage}}
+      >
+        {{#each this.perPageOptions as |choice|}}
+          <option value={{choice}} selected={{eq choice this.perPage}}>{{choice}}</option>
+        {{/each}}
+      </select>
+    </div>
+  {{/if}}
+</div>

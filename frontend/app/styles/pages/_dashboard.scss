@@ -1,0 +1,140 @@
+// Dashboard page - bespoke layout around Nuvo::PageHeader/Stat/Panel/Dot/Tag.
+// pipeline-bars/pipeline-stage/pipeline-bar had no legacy styling anywhere in
+// uikit-old or app.new.scss (see AGENT_BRIEF report); styled fresh here.
+@use "../uikit/mixins/var" as *;
+@use "../uikit/common/var" as *;
+
+.dashboard-page {
+  display: flex;
+  flex-direction: column;
+  gap: nu-space(6);
+}
+
+.dashboard-region-badge {
+  --nu-tag--Color: var(--primary);
+  --nu-tag--BackgroundColor: var(--primary-50);
+  --nu-tag--BorderColor: transparent;
+  display: inline-flex;
+  align-items: center;
+  gap: nu-space(1);
+}
+
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: nu-space(4);
+
+  @media (max-width: 1024px) {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.kpi-grid-3 {
+  grid-template-columns: repeat(3, 1fr);
+
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.dashboard-panels {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: nu-space(4);
+
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.activity-feed {
+  padding: nu-space(3);
+  max-height: 360px;
+  overflow-y: auto;
+}
+
+.dashboard-activity-item {
+  display: flex;
+  align-items: center;
+  gap: nu-space(3);
+  padding: nu-space(2) nu-space(3);
+  border-radius: nu-radius(md);
+  background: var(--bg-alternate);
+  margin-block-end: nu-space(2);
+  transition: background nu-duration(fast);
+
+  &:last-child {
+    margin-block-end: 0;
+  }
+  &:hover {
+    background: var(--bg-base);
+  }
+}
+
+.dashboard-activity-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex: 1;
+  min-inline-size: 0;
+}
+
+.dashboard-activity-text {
+  font-size: nu-font-size(sm);
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dashboard-activity-time {
+  font-size: nu-font-size(xs);
+  color: var(--text-muted);
+  white-space: nowrap;
+  margin-inline-start: nu-space(3);
+}
+
+.pipeline-bars {
+  display: flex;
+  flex-direction: column;
+  gap: nu-space(4);
+  padding: nu-space(4) nu-space(5);
+}
+
+.pipeline-stage-header {
+  display: flex;
+  justify-content: space-between;
+  margin-block-end: nu-space(1);
+  font-size: nu-font-size(sm);
+}
+
+.pipeline-stage-name {
+  color: var(--text-color);
+}
+
+.pipeline-stage-count {
+  color: var(--text-muted);
+  font-weight: nu-font-weight(semibold);
+}
+
+.pipeline-bar-track {
+  block-size: 8px;
+  border-radius: nu-radius(full);
+  background: var(--bg-alternate);
+  overflow: hidden;
+}
+
+.pipeline-bar-fill {
+  block-size: 100%;
+  border-radius: nu-radius(full);
+  transition: width nu-duration(normal);
+}
+
+@each $variant in $nu-variants {
+  .pipeline-bar-#{$variant} {
+    background: var(--#{$variant});
+  }
+}

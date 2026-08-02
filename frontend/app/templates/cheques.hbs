@@ -1,37 +1,38 @@
 {{page-title "Cheques"}}
 
 <div data-test-cheques-page class="flex col gap-6">
-  <div class="flex between x-center">
-    <div>
-      <h2 class="font-3xl font-bold"><Ui::Ph @icon="checks" @size="28px" />
-        Cheque Management</h2>
-      <p class="text-muted mt-1">Track post-dated cheques and payment schedules.</p>
-      <p class="text-muted font-sm mt-1">{{format-number @model.total}}
-        cheque records</p>
-    </div>
-    {{#if this.isAdmin}}
-      <button
-        type="button"
-        class="btn btn-primary"
-        {{on "click" this.openCreate}}
-      >
-        <Ui::Ph @icon="plus" />
-        New Cheque
-      </button>
-    {{/if}}
-  </div>
+  <Nuvo::PageHeader
+    @title="Cheque Management"
+    @subtitle="Track post-dated cheques and payment schedules."
+  >
+    <:meta>
+      <p class="text-muted">{{format-number @model.total unit="cheque record"}}</p>
+    </:meta>
+    <:actions>
+      {{#if this.isAdmin}}
+        <Nuvo::Button
+          @variant="primary"
+          data-test-new-cheque
+          {{on "click" this.openCreate}}
+        >
+          <Ui::Ph @icon="plus" />
+          New Cheque
+        </Nuvo::Button>
+      {{/if}}
+    </:actions>
+  </Nuvo::PageHeader>
 
-  <Ui::Tabs
+  <Nuvo::Tabs
     @tabs={{this.tabs}}
-    @active={{this.activeTab}}
+    @activeTab={{this.activeTab}}
     @onChange={{this.setTab}}
   />
 
   {{#if (eq this.activeTab "cheques")}}
-    <div class="glass-panel p-5">
+    <Nuvo::Card>
       {{#if @model.cheques.length}}
-        <div class="data-table-wrapper data-table-wrapper--with-pagination">
-          <table class="data-table">
+        <div class="nu-table-wrapper">
+          <table class="nu-table" data-test-cheques-table>
             <thead>
               <tr>
                 <th>Cheque #</th>
@@ -52,27 +53,33 @@
                   <td>{{cheque.accountHolder}}</td>
                   <td class="font-bold">{{format-currency cheque.amount}}</td>
                   <td>{{format-date cheque.dueDate}}</td>
-                  <td><span
-                      class="type-badge type-{{lowercase cheque.type}}"
-                    >{{cheque.type}}</span></td>
-                  <td><span
-                      class="status-badge status-{{lowercase cheque.status}}"
-                    >{{cheque.status}}</span></td>
+                  <td>
+                    <Nuvo::Tag
+                      class="badge-cheque-{{lowercase cheque.type}}"
+                      @text={{cheque.type}}
+                    />
+                  </td>
+                  <td>
+                    <Nuvo::Tag
+                      class="badge-chequestate-{{lowercase cheque.status}}"
+                      @text={{cheque.status}}
+                    />
+                  </td>
                   <td>
                     <div class="flex gap-2">
                       {{#if this.isAdmin}}
-                        <button
-                          type="button"
-                          class="btn btn-secondary btn-xs"
+                        <Nuvo::Button
+                          @variant="secondary"
+                          @size="xs"
                           {{on "click" (fn this.openEdit cheque)}}
                         >
                           <Ui::Ph @icon="pencil-simple" />
                           Edit
-                        </button>
+                        </Nuvo::Button>
                         {{#if (eq cheque.status "PENDING")}}
-                          <button
-                            type="button"
-                            class="btn btn-success btn-xs"
+                          <Nuvo::Button
+                            @variant="success"
+                            @size="xs"
                             {{on
                               "click"
                               (fn this.updateStatus cheque "DEPOSITED")
@@ -80,21 +87,21 @@
                           >
                             <Ui::Ph @icon="bank" />
                             Deposit
-                          </button>
-                          <button
-                            type="button"
-                            class="btn btn-danger btn-xs"
+                          </Nuvo::Button>
+                          <Nuvo::Button
+                            @variant="danger"
+                            @size="xs"
                             data-test-bounce
                             {{on "click" (fn this.openBounceModal cheque)}}
                           >
                             <Ui::Ph @icon="x-circle" />
                             Bounce
-                          </button>
+                          </Nuvo::Button>
                         {{/if}}
                         {{#if (eq cheque.status "DEPOSITED")}}
-                          <button
-                            type="button"
-                            class="btn btn-success btn-xs"
+                          <Nuvo::Button
+                            @variant="success"
+                            @size="xs"
                             {{on
                               "click"
                               (fn this.updateStatus cheque "CLEARED")
@@ -102,21 +109,21 @@
                           >
                             <Ui::Ph @icon="check-circle" />
                             Clear
-                          </button>
-                          <button
-                            type="button"
-                            class="btn btn-danger btn-xs"
+                          </Nuvo::Button>
+                          <Nuvo::Button
+                            @variant="danger"
+                            @size="xs"
                             data-test-bounce
                             {{on "click" (fn this.openBounceModal cheque)}}
                           >
                             <Ui::Ph @icon="x-circle" />
                             Bounce
-                          </button>
+                          </Nuvo::Button>
                         {{/if}}
                         {{#if (eq cheque.status "BOUNCED")}}
-                          <button
-                            type="button"
-                            class="btn btn-secondary btn-xs"
+                          <Nuvo::Button
+                            @variant="secondary"
+                            @size="xs"
                             {{on
                               "click"
                               (fn this.updateStatus cheque "REPLACED")
@@ -124,7 +131,7 @@
                           >
                             <Ui::Ph @icon="arrows-clockwise" />
                             Replace
-                          </button>
+                          </Nuvo::Button>
                         {{/if}}
                       {{/if}}
                     </div>
@@ -135,7 +142,7 @@
           </table>
         </div>
 
-        <Ui::Pagination
+        <Nuvo::Pagination
           @selectId="cheques-limit"
           @page={{this.page}}
           @limit={{this.limit}}
@@ -146,9 +153,10 @@
         />
       {{else}}
         {{#if @model.total}}
-          <p class="text-muted text-center py-8">No cheques on this page.
-            Navigate to find cheques or adjust filters.</p>
-          <Ui::Pagination
+          <Nuvo::EmptyState
+            @description="No cheques on this page. Navigate to find cheques or adjust filters."
+          />
+          <Nuvo::Pagination
             @selectId="cheques-limit"
             @page={{this.page}}
             @limit={{this.limit}}
@@ -158,186 +166,191 @@
             @onNext={{this.goToNextPage}}
           />
         {{else}}
-          <p class="text-muted text-center py-8">No cheques yet. Add your first
-            cheque record.</p>
+          <Nuvo::EmptyState
+            @description="No cheques yet. Add your first cheque record."
+          />
         {{/if}}
       {{/if}}
-    </div>
+    </Nuvo::Card>
   {{/if}}
 
   {{#if (eq this.activeTab "schedule")}}
-    <div class="glass-panel p-5">
-      <h4 class="font-lg font-bold mb-4"><Ui::Ph @icon="calendar" />
+    <Nuvo::Card>
+      <h4 class="text-lg font-bold mb-4"><Ui::Ph @icon="calendar" />
         Collection Schedule</h4>
       {{#if @model.collectionSchedule.length}}
         <div class="flex col gap-4">
           {{#each @model.collectionSchedule as |group|}}
-            <div class="glass-panel p-4">
-              <h5
-                class="font-sm font-bold uppercase tracking-wider text-muted mb-3"
-              >{{group.period}}</h5>
+            <Nuvo::Panel @title={{group.period}}>
               <div class="flex col gap-2">
                 {{#each group.cheques as |cheque|}}
-                  <div
-                    class="flex between x-center p-3 rounded bg-white@02 border border-white@05"
-                  >
-                    <div>
-                      <p class="font-sm font-bold">{{cheque.chequeNumber}}
+                  <Nuvo::ListItem>
+                    <:main>
+                      <p class="text-sm font-bold">{{cheque.chequeNumber}}
                         -
                         {{cheque.bankName}}</p>
-                      <p class="text-muted font-xs">{{cheque.accountHolder}}
+                      <p class="text-muted text-xs">{{cheque.accountHolder}}
                         - Due:
                         {{format-date cheque.dueDate}}</p>
-                    </div>
-                    <p class="font-sm font-bold">{{format-currency
-                        cheque.amount
-                      }}</p>
-                  </div>
+                    </:main>
+                    <:actions>
+                      <p class="text-sm font-bold">{{format-currency
+                          cheque.amount
+                        }}</p>
+                    </:actions>
+                  </Nuvo::ListItem>
                 {{/each}}
               </div>
               {{#if group.totalAmount}}
-                <p class="font-sm font-bold text-right mt-2">Total:
+                <p class="text-sm font-bold text-end mt-2">Total:
                   {{format-currency group.totalAmount}}</p>
               {{/if}}
-            </div>
+            </Nuvo::Panel>
           {{/each}}
         </div>
       {{else}}
-        <p class="text-muted text-center py-8">No upcoming cheques in the
-          collection schedule.</p>
+        <Nuvo::EmptyState
+          @description="No upcoming cheques in the collection schedule."
+        />
       {{/if}}
-    </div>
+    </Nuvo::Card>
   {{/if}}
 </div>
 
-<Ui::Modal
-  @isOpen={{this.showModal}}
+<Nuvo::Modal
+  @open={{this.showModal}}
   @title={{if this.editCheque "Edit Cheque" "New Cheque"}}
   @onClose={{this.closeModal}}
-  @showClose={{true}}
 >
   <form class="flex col gap-4" {{on "submit" this.saveCheque}}>
     <div class="flex gap-4">
-      <div class="flex col gap-2 flex-1">
-        <Ui::FormInput
-          @label="Cheque Number"
-          @id="chq-number"
-          @type="text"
-          @placeholder="e.g. 000123"
+      <Nuvo::Field @label="Cheque Number" @required={{true}} class="grow">
+        <Nuvo::Input
+          id="chq-number"
+          type="text"
+          placeholder="e.g. 000123"
           @value={{this.formChequeNumber}}
-          @onChange={{fn this.setField "formChequeNumber"}}
-          @required={{true}}
+          @onInput={{fn this.setFieldValue "formChequeNumber"}}
+          required={{true}}
+          data-test-input-cheque-number
         />
-      </div>
-      <div class="flex col gap-2 flex-1">
-        <Ui::FormDropdown
-          @label="Type"
-          @id="chq-type"
+      </Nuvo::Field>
+      <Nuvo::Field @label="Type" class="grow">
+        <Nuvo::Dropdown
+          id="chq-type"
+          @align="start"
           @value={{this.formType}}
-          @onChange={{fn this.setField "formType"}}
+          @onSelect={{fn this.setFieldValue "formType"}}
           @options={{this.chequeTypeOptions}}
           @placeholder="Select type..."
+          data-test-input-type
         />
-      </div>
+      </Nuvo::Field>
     </div>
-    <Ui::FormInput
-      @label="Bank Name"
-      @id="chq-bank"
-      @type="text"
-      @placeholder="e.g. Emirates NBD"
-      @value={{this.formBankName}}
-      @onChange={{fn this.setField "formBankName"}}
-      @required={{true}}
-    />
-    <Ui::FormInput
-      @label="Account Holder"
-      @id="chq-holder"
-      @type="text"
-      @placeholder="e.g. Ahmed Al Mansouri"
-      @value={{this.formAccountHolder}}
-      @onChange={{fn this.setField "formAccountHolder"}}
-      @required={{true}}
-    />
-    <Ui::FormDropdown
-      @label="Property"
-      @id="chq-unit"
-      @value={{this.formUnitId}}
-      @onChange={{fn this.setField "formUnitId"}}
-      @options={{this.unitOptions}}
-      @placeholder="No property linked"
-    />
+    <Nuvo::Field @label="Bank Name" @required={{true}}>
+      <Nuvo::Input
+        id="chq-bank"
+        type="text"
+        placeholder="e.g. Emirates NBD"
+        @value={{this.formBankName}}
+        @onInput={{fn this.setFieldValue "formBankName"}}
+        required={{true}}
+        data-test-input-bank
+      />
+    </Nuvo::Field>
+    <Nuvo::Field @label="Account Holder" @required={{true}}>
+      <Nuvo::Input
+        id="chq-holder"
+        type="text"
+        placeholder="e.g. Ahmed Al Mansouri"
+        @value={{this.formAccountHolder}}
+        @onInput={{fn this.setFieldValue "formAccountHolder"}}
+        required={{true}}
+        data-test-input-holder
+      />
+    </Nuvo::Field>
+    <Nuvo::Field @label="Property">
+      <Nuvo::Dropdown
+        id="chq-unit"
+        @align="start"
+        @value={{this.formUnitId}}
+        @onSelect={{fn this.setFieldValue "formUnitId"}}
+        @options={{this.unitOptions}}
+        @placeholder="No property linked"
+        data-test-input-unit
+      />
+    </Nuvo::Field>
     <div class="flex gap-4">
-      <div class="flex col gap-2 flex-1">
-        <Ui::FormInput
-          @label="Amount"
-          @id="chq-amount"
-          @type="number"
-          @min={{0}}
-          @step={{0.01}}
-          @placeholder="e.g. 8500"
+      <Nuvo::Field @label="Amount" @required={{true}} class="grow">
+        <Nuvo::Input
+          id="chq-amount"
+          type="number"
+          min="0"
+          step="0.01"
+          placeholder="e.g. 8500"
           @value={{this.formAmount}}
-          @onChange={{fn this.setField "formAmount"}}
-          @required={{true}}
+          @onInput={{fn this.setFieldValue "formAmount"}}
+          required={{true}}
+          data-test-input-amount
         />
-      </div>
-      <div class="flex col gap-2 flex-1">
-        <Ui::FormInput
-          @label="Due Date"
-          @id="chq-due"
-          @type="date"
-          @value={{this.formDueDate}}
-          @onChange={{fn this.setField "formDueDate"}}
-          @required={{true}}
+      </Nuvo::Field>
+      <Nuvo::Field @label="Due Date" @required={{true}} class="grow">
+        <input
+          id="chq-due"
+          type="date"
+          class="nu-input"
+          value={{this.formDueDate}}
+          required
+          data-test-input-due-date
+          {{on "input" (fn this.setField "formDueDate")}}
         />
-      </div>
+      </Nuvo::Field>
     </div>
     {{#if this.errorMsg}}
-      <p class="font-sm text-danger">{{this.errorMsg}}</p>
+      <p class="text-sm text-danger" data-test-error>{{this.errorMsg}}</p>
     {{/if}}
-    <div class="flex gap-3 mt-2">
-      <Ui::AppButton
+    <Nuvo::FormActions @align="end">
+      <Nuvo::Button
         @variant="secondary"
-        @text="Cancel"
         @onClick={{this.closeModal}}
-      />
-      <Ui::AppButton
+      >Cancel</Nuvo::Button>
+      <Nuvo::Button
         @variant="primary"
-        @buttonType="submit"
-        @text={{if this.editCheque "Update" "Create Cheque"}}
+        @type="submit"
         @loading={{this.isSaving}}
-        @loadingText="Saving..."
-      />
-    </div>
+        data-test-save-cheque
+      >{{if this.editCheque "Update" "Create Cheque"}}</Nuvo::Button>
+    </Nuvo::FormActions>
   </form>
-</Ui::Modal>
+</Nuvo::Modal>
 
-<Ui::Modal
-  @isOpen={{this.showBounceModal}}
+<Nuvo::Modal
+  @open={{this.showBounceModal}}
   @title="Bounce Cheque"
   @onClose={{this.closeBounceModal}}
-  @showClose={{true}}
 >
   <p class="text-muted">Mark cheque
     {{this.bounceChequeItem.chequeNumber}}
     as bounced?</p>
-  <Ui::FormInput
-    @label="Reason (optional)"
-    @id="bounce-reason"
-    @type="text"
-    @placeholder="e.g. Insufficient funds"
-    @value={{this.formBounceReason}}
-    @onChange={{fn this.setField "formBounceReason"}}
-  />
-  <div class="flex gap-3">
-    <Ui::AppButton
+  <Nuvo::Field @label="Reason (optional)">
+    <Nuvo::Input
+      id="bounce-reason"
+      type="text"
+      placeholder="e.g. Insufficient funds"
+      @value={{this.formBounceReason}}
+      @onInput={{fn this.setFieldValue "formBounceReason"}}
+      data-test-input-bounce-reason
+    />
+  </Nuvo::Field>
+  <Nuvo::FormActions @align="end">
+    <Nuvo::Button
       @variant="secondary"
-      @text="Cancel"
       @onClick={{this.closeBounceModal}}
-    />
-    <Ui::AppButton
+    >Cancel</Nuvo::Button>
+    <Nuvo::Button
       @variant="danger"
-      @text="Confirm Bounce"
-      @onClick={{this.confirmBounce}}
-    />
-  </div>
-</Ui::Modal>
+      data-test-confirm-bounce
+      {{on "click" this.confirmBounce}}
+    >Confirm Bounce</Nuvo::Button>
+  </Nuvo::FormActions>
+</Nuvo::Modal>

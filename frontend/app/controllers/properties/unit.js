@@ -94,6 +94,11 @@ export default class PropertiesUnitController extends Controller {
     this[fieldName] = e.target.value;
   }
 
+  // Kit form components call onInput/onChange as (value, event).
+  @action setFieldValue(fieldName, value) {
+    this[fieldName] = value;
+  }
+
   @action toggleAmenity(key) {
     this.formAmenities = toggleArrayItem(this.formAmenities, key);
   }

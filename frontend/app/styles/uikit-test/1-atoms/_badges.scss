@@ -1,0 +1,154 @@
+// ============================================
+// ATOMS: Badges & Status Pills
+// ============================================
+// Single source of truth for status indicators.
+// Consolidates: components/_status.scss
+// Fixes: hardcoded colors now use variables
+
+@use '../nuvoui' as Nuvo;
+@use '../variables' as *;
+
+// Base badge mixin
+@mixin badge-base {
+  @include Nuvo.apply(
+    flex-inline, x-center, gap(1),
+    py(1), px(2),
+    font-size(xs), font(medium),
+    leading-tight, whitespace-nowrap,
+    rounded(xs)
+  );
+}
+
+// Pill variant (more rounded)
+@mixin badge-pill {
+  @include Nuvo.apply(pill);
+}
+
+// Badge with dot indicator
+@mixin badge-dot($color) {
+  &::before {
+    content: '';
+    @include Nuvo.apply(width(2), height(2));
+    background-color: $color;
+    border-radius: 50%;
+  }
+}
+
+// ============================================
+// Generic Badge Classes
+// ============================================
+
+.badge {
+  @include badge-base;
+  background-color: Nuvo.get-color(gray, 100);
+  color: $text-secondary;
+}
+
+.badge-primary {
+  @include badge-base;
+  background-color: rgba($primary-color, 0.12);
+  color: $primary-color;
+}
+
+.badge-success {
+  @include badge-base;
+  background-color: $success-light;
+  color: $success-dark;
+}
+
+.badge-warning {
+  @include badge-base;
+  background-color: $warning-light;
+  color: $warning-dark;
+}
+
+.badge-danger {
+  @include badge-base;
+  background-color: $error-light;
+  color: $error-dark;
+}
+
+.badge-info {
+  @include badge-base;
+  background-color: $info-light;
+  color: $blue-600;
+}
+
+// ============================================
+// Pill Variants
+// ============================================
+
+.badge-pill {
+  @include badge-pill;
+}
+
+.badge-primary-pill {
+  @include badge-base;
+  @include badge-pill;
+  background-color: rgba($primary-color, 0.12);
+  color: $primary-color;
+}
+
+.badge-success-pill {
+  @include badge-base;
+  @include badge-pill;
+  background-color: $success-light;
+  color: $success-dark;
+}
+
+// ============================================
+// Dot Indicator Badges
+// ============================================
+
+.badge-dot-success {
+  @include badge-base;
+  @include badge-dot($green-500);
+  background-color: transparent;
+  color: $text-secondary;
+}
+
+.badge-dot-warning {
+  @include badge-base;
+  @include badge-dot($amber-500);
+  background-color: transparent;
+  color: $text-secondary;
+}
+
+.badge-dot-danger {
+  @include badge-base;
+  @include badge-dot($error-color);
+  background-color: transparent;
+  color: $text-secondary;
+}
+
+.badge-dot-neutral {
+  @include badge-base;
+  @include badge-dot(Nuvo.get-color(gray, 400));
+  background-color: transparent;
+  color: $text-secondary;
+}
+
+// ============================================
+// Count Badge (notification style)
+// ============================================
+
+.badge-count {
+  @include Nuvo.apply(
+    flex-inline, center, x-center,
+    min-width(5), height(5),
+    px(1.5),
+    font(semibold),
+    pill
+  );
+  font-size: 0.625rem;
+  color: $white;
+  background-color: $error-color;
+}
+
+.badge-count-primary {
+  background-color: $primary-color;
+}
+
+.badge-count-secondary {
+  background-color: $secondary-color;
+}

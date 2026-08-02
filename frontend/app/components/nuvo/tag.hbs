@@ -1,0 +1,16 @@
+<span class={{this.classes}} data-test-nu-tag ...attributes>
+  <span class="nu-tag__label">
+    {{#if (has-block)}}{{yield}}{{else}}{{@text}}{{/if}}
+  </span>
+
+  {{#if @closable}}
+    <button
+      type="button"
+      class="nu-tag__remove"
+      aria-label="Remove tag"
+      disabled={{@disabled}}
+      data-test-nu-tag-remove
+      {{on "click" this.handleClose}}
+    >×</button>
+  {{/if}}
+</span>

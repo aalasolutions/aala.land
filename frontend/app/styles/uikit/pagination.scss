@@ -1,0 +1,187 @@
+// nu-pagination - page navigation controls
+@use "./mixins/bem" as *;
+@use "./mixins/var" as *;
+@use "./common/var" as *;
+
+@include b(pagination) {
+  @include nu-root("pagination", (
+    "Gap": nu-space(4),
+  ));
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: nu-var("pagination", "Gap");
+
+  // ---- elements ----
+
+  @include e(list) {
+    display: flex;
+    align-items: center;
+    gap: nu-space(1);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  @include e(item) {
+    display: flex;
+  }
+
+  @include e(link) {
+    @include nu-root("pagination-link", (
+      "MinInlineSize": 2.5rem,
+      "MinBlockSize": 2.5rem,
+      "PaddingInline": nu-space(2),
+      "FontSize": nu-font-size(sm),
+      "FontWeight": nu-font-weight(medium),
+      "Color": var(--text-color),
+      "BackgroundColor": transparent,
+      "BorderColor": transparent,
+      "BorderRadius": nu-radius(md),
+      "TransitionDuration": nu-duration(fast),
+      "hover--BackgroundColor": var(--bg-alternate),
+      "hover--BorderColor": var(--border-base),
+      "focus--BoxShadow": 0 0 0 3px #{nu-tint(primary, 35%)},
+      "active--Color": var(--text-inverted),
+      "active--BackgroundColor": var(--primary),
+      "disabled--Opacity": 0.5,
+    ));
+
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-inline-size: nu-var("pagination-link", "MinInlineSize");
+    min-block-size: nu-var("pagination-link", "MinBlockSize");
+    padding-inline: nu-var("pagination-link", "PaddingInline");
+    font-family: inherit;
+    font-size: nu-var("pagination-link", "FontSize");
+    font-weight: nu-var("pagination-link", "FontWeight");
+    color: nu-var("pagination-link", "Color");
+    background-color: nu-var("pagination-link", "BackgroundColor");
+    border: 1px solid nu-var("pagination-link", "BorderColor");
+    border-radius: nu-var("pagination-link", "BorderRadius");
+    text-decoration: none;
+    cursor: pointer;
+    transition:
+      background-color nu-var("pagination-link", "TransitionDuration") $nu-ease,
+      border-color nu-var("pagination-link", "TransitionDuration") $nu-ease,
+      color nu-var("pagination-link", "TransitionDuration") $nu-ease;
+
+    @include reduced-motion {
+      transition: none;
+    }
+
+    &:hover:not(:disabled):not(.is-disabled) {
+      background-color: nu-var("pagination-link", "hover--BackgroundColor");
+      border-color: nu-var("pagination-link", "hover--BorderColor");
+    }
+
+    &:focus-visible {
+      outline: none;
+      box-shadow: nu-var("pagination-link", "focus--BoxShadow");
+    }
+
+    &:disabled,
+    &.is-disabled {
+      opacity: nu-var("pagination-link", "disabled--Opacity");
+      cursor: not-allowed;
+      pointer-events: none;
+    }
+  }
+
+  @include e(prev, next) {
+    display: inline-flex;
+    align-items: center;
+    gap: nu-space(1);
+  }
+
+  @include e(ellipsis) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-inline-size: 2.5rem;
+    min-block-size: 2.5rem;
+    color: var(--text-subtle);
+  }
+
+  @include e(status) {
+    font-size: nu-font-size(sm);
+    color: var(--text-muted);
+    white-space: nowrap;
+  }
+
+  @include e(per-page) {
+    display: inline-flex;
+    align-items: center;
+    gap: nu-space(2);
+    font-size: nu-font-size(sm);
+    color: var(--text-muted);
+  }
+
+  @include e(select) {
+    @include nu-root("pagination-select", (
+      "PaddingBlock": nu-space(1),
+      "PaddingInline": nu-space(2),
+      "Color": var(--text-color),
+      "BackgroundColor": var(--bg-surface),
+      "BorderColor": var(--border-base),
+      "BorderRadius": nu-radius(md),
+      "focus--BoxShadow": 0 0 0 3px #{nu-tint(primary, 35%)},
+    ));
+
+    padding-block: nu-var("pagination-select", "PaddingBlock");
+    padding-inline: nu-var("pagination-select", "PaddingInline");
+    font-family: inherit;
+    font-size: nu-font-size(sm);
+    color: nu-var("pagination-select", "Color");
+    background-color: nu-var("pagination-select", "BackgroundColor");
+    border: 1px solid nu-var("pagination-select", "BorderColor");
+    border-radius: nu-var("pagination-select", "BorderRadius");
+
+    &:focus-visible {
+      outline: none;
+      box-shadow: nu-var("pagination-select", "focus--BoxShadow");
+    }
+  }
+
+  // ---- item states ----
+
+  @include e(item) {
+    &.is-active {
+      .nu-pagination__link {
+        @include nu-set-all("pagination-link", "active", ("Color", "BackgroundColor"));
+        --nu-pagination-link--BorderColor: transparent;
+      }
+    }
+
+    &.is-disabled {
+      .nu-pagination__link {
+        opacity: nu-var("pagination-link", "disabled--Opacity");
+        cursor: not-allowed;
+        pointer-events: none;
+      }
+    }
+  }
+
+  // ---- modifiers ----
+
+  @include m(sm) {
+    .nu-pagination__link {
+      --nu-pagination-link--MinInlineSize: 2rem;
+      --nu-pagination-link--MinBlockSize: 2rem;
+      --nu-pagination-link--FontSize: #{nu-font-size(xs)};
+    }
+  }
+
+  @include m(compact) {
+    .nu-pagination__list {
+      gap: nu-space(0);
+    }
+
+    .nu-pagination__item:not(.is-active):not(:first-child):not(:last-child) {
+      display: none;
+    }
+  }
+}

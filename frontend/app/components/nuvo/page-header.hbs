@@ -1,0 +1,29 @@
+<header class={{this.classes}} data-test-nu-page-header ...attributes>
+  <div class="nu-page-header__main">
+    {{#if (has-block "breadcrumb")}}
+      <div class="nu-page-header__breadcrumb" data-test-nu-page-header-breadcrumb>
+        {{yield to="breadcrumb"}}
+      </div>
+    {{/if}}
+
+    {{#if @title}}
+      <h1 class="nu-page-header__title" data-test-nu-page-header-title>{{@title}}</h1>
+    {{/if}}
+
+    {{#if @subtitle}}
+      <p class="nu-page-header__subtitle" data-test-nu-page-header-subtitle>{{@subtitle}}</p>
+    {{/if}}
+
+    {{#if (has-block "meta")}}
+      <div class="nu-page-header__meta" data-test-nu-page-header-meta>
+        {{yield to="meta"}}
+      </div>
+    {{/if}}
+  </div>
+
+  {{#if (has-block "actions")}}
+    <div class="nu-page-header__actions" data-test-nu-page-header-actions>
+      {{yield to="actions"}}
+    </div>
+  {{/if}}
+</header>

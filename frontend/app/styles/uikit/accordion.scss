@@ -1,0 +1,183 @@
+// nu-accordion - collapsible content sections
+@use "./mixins/bem" as *;
+@use "./mixins/var" as *;
+@use "./common/var" as *;
+
+@include b(accordion) {
+  @include nu-root("accordion", (
+    "BorderColor": var(--border-base),
+    "BorderRadius": nu-radius(lg),
+  ));
+
+  display: flex;
+  flex-direction: column;
+  border: 1px solid nu-var("accordion", "BorderColor");
+  border-radius: nu-var("accordion", "BorderRadius");
+  overflow: hidden;
+
+  // ---- elements ----
+
+  @include e(item) {
+    @include nu-root("accordion-item", (
+      "BorderColor": var(--border-base),
+    ));
+
+    border-block-end: 1px solid nu-var("accordion-item", "BorderColor");
+
+    &:last-child {
+      border-block-end: none;
+    }
+  }
+
+  @include e(trigger) {
+    @include nu-root("accordion-trigger", (
+      "Display": flex,
+      "PaddingBlock": nu-space(4),
+      "PaddingInline": nu-space(4),
+      "Gap": nu-space(3),
+      "FontSize": nu-font-size(sm),
+      "FontWeight": nu-font-weight(semibold),
+      "Color": var(--text-color),
+      "BackgroundColor": transparent,
+      "TransitionDuration": nu-duration(fast),
+      "hover--BackgroundColor": var(--bg-alternate),
+      "focus--BoxShadow": 0 0 0 3px #{nu-tint(primary, 35%)},
+      "disabled--Opacity": 0.55,
+    ));
+
+    display: nu-var("accordion-trigger", "Display");
+    align-items: center;
+    justify-content: space-between;
+    inline-size: 100%;
+    gap: nu-var("accordion-trigger", "Gap");
+    padding-block: nu-var("accordion-trigger", "PaddingBlock");
+    padding-inline: nu-var("accordion-trigger", "PaddingInline");
+    font-family: inherit;
+    font-size: nu-var("accordion-trigger", "FontSize");
+    font-weight: nu-var("accordion-trigger", "FontWeight");
+    color: nu-var("accordion-trigger", "Color");
+    background-color: nu-var("accordion-trigger", "BackgroundColor");
+    border: none;
+    text-align: start;
+    cursor: pointer;
+    transition: background-color nu-var("accordion-trigger", "TransitionDuration") $nu-ease;
+
+    @include reduced-motion {
+      transition: none;
+    }
+
+    &:hover:not(:disabled):not(.is-disabled) {
+      background-color: nu-var("accordion-trigger", "hover--BackgroundColor");
+    }
+
+    &:focus-visible {
+      outline: none;
+      box-shadow: nu-var("accordion-trigger", "focus--BoxShadow");
+      z-index: 1;
+      position: relative;
+    }
+
+    &:disabled,
+    &.is-disabled {
+      opacity: nu-var("accordion-trigger", "disabled--Opacity");
+      cursor: not-allowed;
+      pointer-events: none;
+    }
+  }
+
+  @include e(icon) {
+    @include nu-root("accordion-icon", (
+      "TransitionDuration": nu-duration(fast),
+      "Color": var(--text-muted),
+    ));
+
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    font-size: 1em;
+    line-height: 1;
+    color: nu-var("accordion-icon", "Color");
+    transition: transform nu-var("accordion-icon", "TransitionDuration") $nu-ease;
+
+    @include reduced-motion {
+      transition: none;
+    }
+  }
+
+  @include e(panel) {
+    @include nu-root("accordion-panel", (
+      "MaxBlockSize": 0,
+      "BackgroundColor": transparent,
+    ));
+
+    max-block-size: nu-var("accordion-panel", "MaxBlockSize");
+    background-color: nu-var("accordion-panel", "BackgroundColor");
+    overflow: hidden;
+  }
+
+  @include e(content) {
+    padding-block: nu-space(0) nu-space(4);
+    padding-inline: nu-space(4);
+    font-size: nu-font-size(sm);
+    color: var(--text-muted);
+  }
+
+  // ---- item states ----
+
+  @include e(item) {
+    &.is-expanded {
+      .nu-accordion__panel {
+        --nu-accordion-panel--MaxBlockSize: 62.5rem;
+      }
+
+      .nu-accordion__icon {
+        transform: rotate(90deg);
+      }
+    }
+
+    &.is-disabled {
+      .nu-accordion__trigger {
+        opacity: nu-var("accordion-trigger", "disabled--Opacity");
+        cursor: not-allowed;
+        pointer-events: none;
+      }
+    }
+  }
+
+  // ---- modifiers ----
+
+  @include m(bordered) {
+    .nu-accordion__item {
+      --nu-accordion-item--BorderColor: var(--border-base);
+      border: 1px solid nu-var("accordion-item", "BorderColor");
+      border-radius: nu-radius(md);
+      margin-block-end: nu-space(2);
+
+      &:last-child {
+        margin-block-end: 0;
+      }
+    }
+  }
+
+  @include m(flush) {
+    border: none;
+    border-radius: 0;
+
+    .nu-accordion__item {
+      --nu-accordion-item--BorderColor: transparent;
+    }
+  }
+
+  @include m(compact) {
+    .nu-accordion__trigger {
+      --nu-accordion-trigger--PaddingBlock: #{nu-space(2)};
+      --nu-accordion-trigger--FontSize: #{nu-font-size(xs)};
+    }
+
+    .nu-accordion__content {
+      padding-block-end: nu-space(2);
+      font-size: nu-font-size(xs);
+    }
+  }
+}

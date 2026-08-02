@@ -1,66 +1,53 @@
 {{page-title "Owner Detail"}}
-<div class="page-header">
-  <div class="page-title-section owner-detail-title-section">
-    <button
-      type="button"
-      class="btn btn-secondary btn-back"
+<Nuvo::PageHeader @title={{this.model.owner.name}} @subtitle="Property Owner Details">
+  <:breadcrumb>
+    <Nuvo::Button
+      @variant="secondary"
+      @size="sm"
+      @icon="←"
+      @text="Back"
       {{on "click" this.goBack}}
-    >
-      <Ui::Ph @icon="arrow-left" @size="16px" />
-      <span class="btn-back-label">Back</span>
-    </button>
-    <div class="owner-detail-heading">
-      <h2 class="page-title">{{this.model.owner.name}}</h2>
-      <p class="page-subtitle">Property Owner Details</p>
-    </div>
-  </div>
-</div>
+    />
+  </:breadcrumb>
+</Nuvo::PageHeader>
 
 <div class="owner-detail-grid">
-  <div class="info-card">
-    <h3 class="card-title">Contact Information</h3>
-    <div class="info-row">
-      <span class="info-label">Email:</span>
-      <span class="info-value">{{#if
-          this.model.owner.email
-        }}{{this.model.owner.email}}{{else}}N/A{{/if}}</span>
-    </div>
-    <div class="info-row">
-      <span class="info-label">Phone:</span>
-      <span class="info-value">{{#if
-          this.model.owner.phone
-        }}{{this.model.owner.phone}}{{else}}N/A{{/if}}</span>
-    </div>
-    <div class="info-row">
-      <span class="info-label">Nationality ID:</span>
-      <span class="info-value">{{#if
-          this.model.owner.nationalityId
-        }}{{this.model.owner.nationalityId}}{{else}}N/A{{/if}}</span>
-    </div>
-    <div class="info-row">
-      <span class="info-label">Address:</span>
-      <span class="info-value">{{#if
-          this.model.owner.address
-        }}{{this.model.owner.address}}{{else}}N/A{{/if}}</span>
-    </div>
-    {{#if this.model.owner.assignedAgent}}
-      <div class="info-row">
-        <span class="info-label">Assigned Agent:</span>
-        <span class="info-value">{{this.model.owner.assignedAgent.name}}</span>
+  <Nuvo::Card @title="Contact Information">
+    <Nuvo::DescList @horizontal={{true}}>
+      <div class="nu-desc-list__group">
+        <dt class="nu-desc-list__term">Email</dt>
+        <dd class="nu-desc-list__description">{{if this.model.owner.email this.model.owner.email "N/A"}}</dd>
       </div>
-    {{/if}}
-  </div>
+      <div class="nu-desc-list__group">
+        <dt class="nu-desc-list__term">Phone</dt>
+        <dd class="nu-desc-list__description">{{if this.model.owner.phone this.model.owner.phone "N/A"}}</dd>
+      </div>
+      <div class="nu-desc-list__group">
+        <dt class="nu-desc-list__term">Nationality ID</dt>
+        <dd class="nu-desc-list__description">{{if this.model.owner.nationalityId this.model.owner.nationalityId "N/A"}}</dd>
+      </div>
+      <div class="nu-desc-list__group">
+        <dt class="nu-desc-list__term">Address</dt>
+        <dd class="nu-desc-list__description">{{if this.model.owner.address this.model.owner.address "N/A"}}</dd>
+      </div>
+      {{#if this.model.owner.assignedAgent}}
+        <div class="nu-desc-list__group">
+          <dt class="nu-desc-list__term">Assigned Agent</dt>
+          <dd class="nu-desc-list__description">{{this.model.owner.assignedAgent.name}}</dd>
+        </div>
+      {{/if}}
+    </Nuvo::DescList>
+  </Nuvo::Card>
 
   {{#if this.model.owner.notes}}
-    <div class="info-card">
-      <h3 class="card-title">Notes</h3>
-      <p class="notes-text">{{this.model.owner.notes}}</p>
-    </div>
+    <Nuvo::Card @title="Notes">
+      <p class="owner-detail__notes">{{this.model.owner.notes}}</p>
+    </Nuvo::Card>
   {{/if}}
 </div>
 
 <div class="units-section">
-  <h3 class="section-title">Properties Owned ({{this.model.owner.units.length}})</h3>
+  <Nuvo::Title @tag="h3" @size="lg">Properties Owned ({{this.model.owner.units.length}})</Nuvo::Title>
   {{#if this.model.owner.units}}
     <div class="units-grid">
       {{#each this.model.owner.units as |unit|}}
@@ -78,7 +65,7 @@
             {{else}}
               <p class="unit-building">{{unit.asset.name}}</p>
             {{/if}}
-            <p class="unit-status">{{unit.status}}</p>
+            <Nuvo::Tag class="badge-unit-{{lowercase unit.status}}">{{unit.status}}</Nuvo::Tag>
             {{#if unit.price}}
               <p class="unit-price">{{format-currency unit.price}}</p>
             {{/if}}
@@ -86,7 +73,7 @@
         {{else}}
           <div class="unit-card">
             <p class="unit-number">{{unit.unitNumber}}</p>
-            <p class="unit-status">{{unit.status}}</p>
+            <Nuvo::Tag class="badge-unit-{{lowercase unit.status}}">{{unit.status}}</Nuvo::Tag>
             {{#if unit.price}}
               <p class="unit-price">{{format-currency unit.price}}</p>
             {{/if}}
@@ -95,8 +82,6 @@
       {{/each}}
     </div>
   {{else}}
-    <div class="empty-state">
-      <p>No properties assigned to this owner yet.</p>
-    </div>
+    <Nuvo::EmptyState @description="No properties assigned to this owner yet." />
   {{/if}}
 </div>

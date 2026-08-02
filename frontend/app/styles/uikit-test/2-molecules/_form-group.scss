@@ -1,0 +1,166 @@
+// ============================================
+// MOLECULES: Form Group
+// ============================================
+// Label + Input + Error message combination.
+// Uses atoms: labels, inputs
+
+@use '../nuvoui' as Nuvo;
+@use '../variables' as *;
+
+// ============================================
+// Standard Form Group
+// ============================================
+
+.form-group {
+  @include Nuvo.apply(w-full, mb(5));
+
+  // Label styling handled by atoms/_labels.scss
+  // Input styling handled by atoms/_inputs.scss
+
+  // Error state
+  &.has-error,
+  &.form-group--error {
+    input,
+    select,
+    textarea {
+      border-color: $error-color;
+
+      &:focus {
+        border-color: $error-color;
+        box-shadow: 0 0 0 3px rgba($error-color, 0.1);
+      }
+    }
+
+    .form-label {
+      color: $error-color;
+    }
+  }
+
+  // Success state
+  &.has-success,
+  &.form-group--success {
+    input,
+    select,
+    textarea {
+      border-color: $success-color;
+
+      &:focus {
+        border-color: $success-color;
+        box-shadow: 0 0 0 3px rgba($success-color, 0.1);
+      }
+    }
+  }
+
+  // Disabled state
+  &.is-disabled {
+    @include Nuvo.apply(opacity(60));
+    pointer-events: none;
+  }
+}
+
+// ============================================
+// Inline Form Group
+// ============================================
+
+.form-group-inline {
+  @include Nuvo.apply(flex, x-center, gap(3), mb(4));
+
+  .form-label {
+    @include Nuvo.apply(mb(0), whitespace-nowrap);
+    min-width: fit-content;
+  }
+
+  input,
+  select {
+    @include Nuvo.apply(grow);
+  }
+}
+
+// ============================================
+// Horizontal Form Group (label left, input right)
+// ============================================
+
+.form-group-horizontal {
+  @include Nuvo.apply(grid, gap(4), x-start, mb(5));
+  grid-template-columns: minmax(120px, 200px) 1fr;
+
+  .form-label {
+    @include Nuvo.apply(mb(0), pt(2.5), text-right);
+  }
+
+  .form-control-wrapper {
+    @include Nuvo.apply(flex, col);
+  }
+
+  @include Nuvo.media-down(sm) {
+    grid-template-columns: 1fr;
+
+    .form-label {
+      @include Nuvo.apply(text-left, pt(0));
+    }
+  }
+}
+
+// ============================================
+// Form Group with Hint
+// ============================================
+
+.form-group-with-hint {
+  .form-hint {
+    @include Nuvo.apply(block, mt(1.5), font-size(xs), leading-relaxed);
+    color: $text-muted;
+  }
+}
+
+// ============================================
+// Form Row (multiple inputs in row)
+// ============================================
+
+.form-row {
+  @include Nuvo.apply(flex, gap(4), mb(5));
+
+  .form-group {
+    @include Nuvo.apply(grow, mb(0));
+  }
+
+  @include Nuvo.media-down(sm) {
+    @include Nuvo.apply(col);
+  }
+}
+
+// ============================================
+// Form Section (grouped fields)
+// ============================================
+
+.form-section {
+  @include Nuvo.apply(mb(8), pb(6));
+  border-bottom: 1px solid $border-color;
+
+  &:last-child {
+    @include Nuvo.apply(mb(0), pb(0));
+    border-bottom: none;
+  }
+
+  .form-section-title {
+    @include Nuvo.apply(mb(4), font-size(base), font(semibold));
+    color: $text-primary;
+  }
+
+  .form-section-description {
+    @include Nuvo.apply(mb(5), font-size(sm), leading-normal);
+    color: $text-secondary;
+  }
+}
+
+// ============================================
+// Required Field Indicator
+// ============================================
+
+.form-required-note {
+  @include Nuvo.apply(block, mb(4), font-size(xs));
+  color: $text-muted;
+
+  .required {
+    color: $error-color;
+  }
+}

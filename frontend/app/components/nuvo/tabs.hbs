@@ -1,0 +1,40 @@
+{{! Block param is `tab`, safe (not an HTML element name). }}
+<div
+  data-test-nu-tabs
+  {{did-insert this.registerRoot}}
+  ...attributes
+>
+  <div
+    class={{this.classes}}
+    role="tablist"
+    aria-orientation={{if @vertical "vertical" "horizontal"}}
+    {{on "keydown" this.handleKeydown}}
+  >
+    {{#each this.tabs as |tab|}}
+      <button
+        type="button"
+        class="nu-tabs__trigger {{if tab.active 'is-active'}} {{if tab.disabled 'is-disabled'}}"
+        role="tab"
+        aria-selected={{if tab.active "true" "false"}}
+        disabled={{tab.disabled}}
+        tabindex={{if tab.active "0" "-1"}}
+        data-test-nu-tabs-trigger={{tab.id}}
+        {{on "click" (fn this.selectTab tab)}}
+      >
+        {{#if tab.icon}}
+          <Ui::Ph @icon={{tab.icon}} class="nu-tabs__icon" aria-hidden="true" />
+        {{/if}}
+        <span class="nu-tabs__label">{{tab.label}}</span>
+        {{#if tab.count}}
+          <span class="nu-tabs__count">{{tab.count}}</span>
+        {{/if}}
+      </button>
+    {{/each}}
+  </div>
+
+  {{#if (has-block)}}
+    <div class="nu-tabs__panel" role="tabpanel" tabindex="0" data-test-nu-tabs-panel={{this.currentTab}}>
+      {{yield this.currentTab}}
+    </div>
+  {{/if}}
+</div>

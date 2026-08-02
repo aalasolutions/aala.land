@@ -39,6 +39,12 @@ export default class FinancialsController extends PaginatedController {
     return this.model?.transactions ?? [];
   }
 
+  transactionTabs = [
+    { id: 'all', label: 'All' },
+    { id: 'INCOME', label: 'Income' },
+    { id: 'EXPENSE', label: 'Expenses' },
+  ];
+
   @action setTab(tab) {
     this.activeTab = tab;
     this.page = 1;
@@ -46,6 +52,12 @@ export default class FinancialsController extends PaginatedController {
 
   @action setField(fieldName, e) {
     this[fieldName] = e.target.value;
+  }
+
+  // Nuvo::Input/Select/Textarea call onInput/onChange as (value, event),
+  // not the raw DOM event setField expects.
+  @action setFieldValue(fieldName, value) {
+    this[fieldName] = value;
   }
 
   @action openCreate() {

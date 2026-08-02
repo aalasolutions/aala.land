@@ -1,0 +1,223 @@
+@import "ember-power-select";
+@import "variables";
+@import "forms";
+@import "node_modules/prismjs/themes/prism-tomorrow";
+
+// ============================================
+// ATOMIC DESIGN SYSTEM (Session 544)
+// ============================================
+// New organized structure. Imports BEFORE legacy
+// files so atomic styles are the foundation.
+// Legacy imports below provide backwards compat.
+
+// Level 1: Atoms (basic UI elements)
+@import "1-atoms/index";
+
+// Level 2: Molecules (component combinations)
+@import "2-molecules/index";
+
+// Level 3: Organisms (complex components)
+@import "3-organisms/index";
+
+// Level 4: Modules (feature-specific styles)
+@import "4-modules/index";
+
+// ============================================
+// LEGACY IMPORTS (backwards compatibility)
+// ============================================
+// These can be gradually cleaned up as we verify
+// the atomic system covers all use cases.
+
+// Auth pages (ported from Astro Frontend)
+// @import "auth/components";
+// @import "auth/navigation";
+// @import "auth/footer";
+// @import "auth/signup";
+// @import "auth/login";
+// @import "auth/google";
+
+// Legacy login (can be removed after migration)
+// @import "button-component";
+
+// @import "components/card";
+// @import "components/table";
+// @import "components/status";
+// @import "components/sidebar";
+// @import "components/generic-header";
+// @import "components/navbar";
+// @import "components/popup";
+// @import "components/full-screen-popup";
+// @import "components/text-area-component";
+// @import "components/power-select-component";
+// @import "components/searchable-dropdown";
+// @import "components/action-dropdown";
+// @import "components/graph";
+// @import "components/user-activity";
+// @import "components/loading-bar";
+// @import "components/progress-bar";
+// @import "components/tabs";
+// @import "components/toggles";
+// @import "components/admin/users/user-form.scss";
+// @import "components/admin/invoices/invoice-form.scss";
+// @import "components/admin/invoices/invoice-details.scss";
+// @import "components/admin/packages/package-form.scss";
+// @import "components/admin/addons/addon-form.scss";
+
+@import "templates/admin/users/index.scss";
+@import "templates/admin/dashboard";
+@import "templates/admin/invoices";
+@import "templates/admin/clients/details";
+@import "templates/admin/project-billing";
+@import "templates/admin/roles";
+@import "templates/admin/schedulers";
+@import "templates/admin/users";
+@import "templates/admin/packages";
+@import "templates/admin/addons";
+@import "templates/admin/admin-settings";
+@import "templates/admin/profile";
+
+// @import "templates/dashboard";
+// @import 'templates/billing';
+// @import "templates/credit-card";
+// @import "templates/pricing";
+// @import "templates/not-found";
+// @import "templates/settings";
+// @import "templates/projects/schema";
+// @import "templates/projects/step/step";
+// @import "templates/projects/step/create";
+// @import "templates/projects/step/schema-viewer-stats";
+// @import "templates/projects/step/db-connection";
+// @import "templates/projects/step/business-logic";
+// @import "templates/projects/step/test-queries";
+// @import "templates/projects/step/schema";
+// @import "templates/projects/form";
+// @import "templates/projects/billing";
+// @import "templates/projects/db-connection.scss";
+// @import "templates/projects/playground";
+// @import "templates/projects/settings";
+// @import "templates/projects/white-label";
+// @import "templates/projects/business-logic";
+// @import "templates/projects/project-overview";
+// @import "templates/projects/user";
+// @import "templates/projects/projects";
+// @import 'components/upgrade-downgrade-preview';
+// @import "components/input-component";
+// @import "components/business-logic-form";
+
+body {
+  background-color: #e7ebf5;
+  padding: 0;
+  margin: 0;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 0.85rem;
+}
+
+hr {
+  margin: 0;
+  border-top: 1px solid rgba($success-color, 0.25);
+}
+
+.dashboard-layout {
+  display: flex;
+  height: 100vh;
+
+  .sidebar-toggle {
+    background: $gradient-teal;
+    border: none;
+    border-radius: 0.5rem;
+    padding: 0.5rem;
+    font-size: 1.25rem;
+    color: $white;
+    z-index: 999;
+    cursor: pointer;
+    display: none;
+    transition: opacity 0.2s ease;
+
+    &:hover {
+      opacity: 0.9;
+    }
+
+    @media (max-width: 1024px) {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+  }
+
+  .dashboard-layout-content {
+    flex: 1;
+    overflow-y: auto;
+
+    .navbar-wrapper {
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+    }
+
+    .dashboard-layout-content {
+      padding: 20px;
+      background-color: #FcFcFc;
+      height: calc(100vh - 66px);
+      margin-top: 10px;
+      border-radius: 1rem 0 0 0;
+      box-shadow: 0px 0px 6px rgba($dark-color, 0.2);
+      margin-left: 10px;
+      outline: 1px solid $slate-300;
+      outline-offset: 0px;
+
+      @media screen and (max-width: 1024px) {
+        border-radius: 0;
+        box-shadow: none;
+        margin-left: 0;
+      }
+    }
+  }
+}
+
+.ui-search-box {
+  position: relative;
+  width: 100%;
+  box-sizing: border-box;
+
+  .search-icon {
+    position: absolute;
+    top: 50%;
+    left: 12px;
+    transform: translateY(-50%);
+    color: $slate-400;
+    font-size: 16px;
+  }
+
+  input {
+    padding: 10px 12px 10px 32px;
+    width: -webkit-fill-available;
+    border: 1px solid $slate-300;
+    border-radius: 6px;
+    font-size: 14px;
+    outline: none;
+  }
+}
+
+// Toast overrides (NuvoUI button fix)
+button.toast-close-button {
+  background: transparent !important;
+}
+
+  .info {
+    font-size: 14px;
+    margin: 8px auto 0 auto;
+    color: $blue-600;
+    background-color: rgba($blue-500, 0.16);
+    padding: 8px 10px;
+    border-left: 4px solid $blue-500;
+    border-radius: 4px;
+    max-width: auto;
+    width: 35rem;
+    line-height: 20px;
+    text-align: center;
+
+    a{
+      color: $primary-color;
+      cursor: pointer;
+    }
+  }

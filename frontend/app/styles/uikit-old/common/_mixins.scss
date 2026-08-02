@@ -1,0 +1,73 @@
+// Sidebar collapsed (icon-only) state. Shared by sidebar.scss and the responsive layer in app.scss.
+@mixin sidebar-icon-only {
+  .sidebar {
+    width: 60px;
+    min-width: 60px;
+    padding: var(--space-4) var(--space-2);
+  }
+
+  .sidebar-header {
+    padding: 0;
+    text-align: center;
+  }
+
+  .brand-full {
+    display: none;
+  }
+
+  .brand-logo-collapsed {
+    display: block;
+  }
+
+  .sidebar-label,
+  .sidebar-chevron {
+    display: none;
+  }
+
+  .sidebar-link,
+  .sidebar-group-toggle {
+    justify-content: center;
+    padding: var(--space-2);
+    gap: 0;
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius-md);
+  }
+
+  .sidebar-group {
+    position: relative;
+  }
+
+  .sidebar-group-items {
+    max-height: 0 !important;
+    position: absolute;
+    left: 100%;
+    top: 0;
+    min-width: 160px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-float);
+    padding: var(--space-2);
+    z-index: 1050;
+    opacity: 0;
+    pointer-events: none;
+    transition:
+      opacity 0.15s ease,
+      max-height 0s;
+  }
+
+  .sidebar-group:hover .sidebar-group-items {
+    max-height: 300px !important;
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .sidebar-group:hover .sidebar-group-items .sidebar-sublink {
+    padding-left: var(--space-3);
+  }
+
+  .sidebar-group-items .sidebar-label {
+    display: inline;
+  }
+}

@@ -1,0 +1,53 @@
+{{#if @open}}
+  <div
+    class={{this.backdropClasses}}
+    data-test-nu-drawer-backdrop
+    {{on "click" this.onBackdropClick}}
+  >
+    <div
+      class={{this.drawerClasses}}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby={{this.titleId}}
+      tabindex="-1"
+      data-test-nu-drawer
+      {{did-insert this.registerDrawer}}
+      ...attributes
+    >
+      {{#if (has-block "header")}}
+        <div class="nu-drawer__header">
+          {{yield to="header"}}
+        </div>
+      {{else if @title}}
+        <div class="nu-drawer__header">
+          <h2 id={{this.titleId}} class="nu-drawer__title" data-test-nu-drawer-title>
+            {{@title}}
+          </h2>
+          <button
+            type="button"
+            class="nu-drawer__close"
+            aria-label="Close"
+            data-test-nu-drawer-close
+            {{on "click" this.onClose}}
+          >
+            ✕
+          </button>
+        </div>
+      {{/if}}
+
+      <div class="nu-drawer__body" data-test-nu-drawer-body>
+        {{#if (has-block "body")}}
+          {{yield to="body"}}
+        {{else}}
+          {{yield}}
+        {{/if}}
+      </div>
+
+      {{#if (has-block "footer")}}
+        <div class="nu-drawer__footer" data-test-nu-drawer-footer>
+          {{yield to="footer"}}
+        </div>
+      {{/if}}
+    </div>
+  </div>
+{{/if}}

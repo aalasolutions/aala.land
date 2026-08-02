@@ -1,0 +1,159 @@
+// ============================================
+// MOLECULES: Button Group
+// ============================================
+// Multiple buttons in row/column layout.
+
+@use '../nuvoui' as Nuvo;
+@use '../variables' as *;
+
+// ============================================
+// Standard Button Group
+// ============================================
+
+.btn-group {
+  @include Nuvo.apply(flex-inline, gap(2), x-center);
+
+  // Remove individual button radius for joined look
+  &.btn-group--joined {
+    gap: 0;
+
+    > .btn,
+    > button {
+      border-radius: 0;
+
+      &:first-child {
+        @include Nuvo.apply(rounded-l(sm));
+      }
+
+      &:last-child {
+        @include Nuvo.apply(rounded-r(sm));
+      }
+
+      &:not(:last-child) {
+        border-right: 1px solid rgba($white, 0.2);
+      }
+    }
+  }
+}
+
+// ============================================
+// Vertical Button Group
+// ============================================
+
+.btn-group--vertical {
+  @include Nuvo.apply(flex-inline, col, gap(2));
+
+  &.btn-group--joined {
+    gap: 0;
+
+    > .btn,
+    > button {
+      @include Nuvo.apply(w-full);
+      border-radius: 0;
+
+      &:first-child {
+        @include Nuvo.apply(rounded-t(sm));
+      }
+
+      &:last-child {
+        @include Nuvo.apply(rounded-b(sm));
+      }
+
+      &:not(:last-child) {
+        border-bottom: 1px solid rgba($white, 0.2);
+      }
+    }
+  }
+}
+
+// ============================================
+// Full Width Button Group
+// ============================================
+
+.btn-group--block {
+  @include Nuvo.apply(flex, w-full);
+
+  > .btn,
+  > button {
+    @include Nuvo.apply(grow);
+  }
+}
+
+// ============================================
+// Button Group with Divider
+// ============================================
+
+.btn-group--divided {
+  gap: 0;
+
+  > .btn,
+  > button {
+    @include Nuvo.apply(relative);
+
+    &:not(:last-child)::after {
+      content: '';
+      @include Nuvo.apply(absolute, right(0));
+      top: 25%;
+      height: 50%;
+      width: 1px;
+      background-color: $border-color;
+    }
+  }
+}
+
+// ============================================
+// Toolbar (spaced button groups)
+// ============================================
+
+.btn-toolbar {
+  @include Nuvo.apply(flex, wrap, gap(4), x-center);
+
+  .btn-group {
+    @include Nuvo.apply(no-shrink);
+  }
+}
+
+// ============================================
+// Split Button
+// ============================================
+
+.btn-split {
+  @include Nuvo.apply(flex-inline);
+
+  .btn-split__main {
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+  }
+
+  .btn-split__toggle {
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+    border-left: 1px solid rgba($white, 0.2);
+    @include Nuvo.apply(px(2));
+  }
+}
+
+// ============================================
+// Action Bar (form submit area)
+// ============================================
+
+.action-bar {
+  @include Nuvo.apply(flex, x-center, end, gap(3), pt(6), mt(6));
+  border-top: 1px solid $border-color;
+
+  &.action-bar--sticky {
+    @include Nuvo.apply(sticky, bottom(0), p(4));
+    margin: 1.5rem -1.5rem -1.5rem;
+    background-color: $white;
+    border-radius: 0 0 0.5rem 0.5rem;
+    box-shadow: 0 -2px 8px rgba($dark-color, 0.05);
+  }
+
+  &.action-bar--between {
+    @include Nuvo.apply(between);
+  }
+
+  &.action-bar--start {
+    @include Nuvo.apply(start);
+  }
+}

@@ -1,0 +1,38 @@
+// Reports (Boss Dashboard): pipeline funnel, red-flag alerts, activity feed.
+// Ported from app.new.scss. Action badges use the shared `badge-audit-*`
+// vocabulary in _badges.scss, the same as the audit page, so an action reads
+// the same colour wherever it appears.
+@use "../uikit/common/var" as *;
+
+.funnel-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: var(--space-3);
+
+  @media (max-width: 768px) {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.funnel-stage {
+  padding: nu-space(4);
+  background: var(--bg-alternate);
+  border-radius: nu-radius(lg);
+}
+
+// Severity tints. The `--bg-*-soft` / `--border-light` names these carried in
+// app.new.scss do not exist in the token set, so they rendered unstyled.
+.red-flag-high {
+  background: var(--danger-50);
+  border: 1px solid var(--danger-200);
+}
+
+.red-flag-medium {
+  background: var(--warning-50);
+  border: 1px solid var(--warning-200);
+}
+
+.red-flag-low {
+  background: var(--bg-alternate);
+  border: 1px solid var(--border-base);
+}

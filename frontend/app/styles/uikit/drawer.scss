@@ -1,0 +1,193 @@
+// nu-drawer - slide-in side panel
+@use "./mixins/bem" as *;
+@use "./mixins/var" as *;
+@use "./common/var" as *;
+
+@include b(drawer) {
+  @include nu-root("drawer", (
+    "ZIndex": nu-z(modal),
+    "Width": 24rem,
+    "Height": 24rem,
+    "BackgroundColor": var(--bg-surface),
+    "BorderColor": var(--border-base),
+    "BoxShadow": nu-shadow(xl),
+    "TransitionDuration": nu-duration(normal),
+    "TranslateX": 100%,
+    "TranslateY": 100%,
+    "focus--BoxShadow": 0 0 0 3px #{nu-tint(primary, 35%)},
+  ));
+
+  position: fixed;
+  inset-block: 0;
+  inset-inline-end: 0;
+  z-index: nu-var("drawer", "ZIndex");
+  display: flex;
+  flex-direction: column;
+  inline-size: nu-var("drawer", "Width");
+  max-inline-size: 100vw;
+  background-color: nu-var("drawer", "BackgroundColor");
+  border-inline-start: 1px solid nu-var("drawer", "BorderColor");
+  box-shadow: nu-var("drawer", "BoxShadow");
+  transform: translateX(nu-var("drawer", "TranslateX"));
+  transition: transform nu-var("drawer", "TransitionDuration") $nu-ease;
+
+  @include reduced-motion {
+    transition: none;
+  }
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: nu-var("drawer", "focus--BoxShadow");
+  }
+
+  // ---- elements ----
+
+  @include e(header) {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: nu-space(3);
+    padding: nu-space(5);
+    border-block-end: 1px solid var(--border-base);
+  }
+
+  @include e(title) {
+    margin: 0;
+    font-size: nu-font-size(lg);
+    font-weight: nu-font-weight(semibold);
+    color: var(--text-color);
+  }
+
+  @include e(close) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    inline-size: 2rem;
+    block-size: 2rem;
+    flex-shrink: 0;
+    color: var(--text-muted);
+    background-color: transparent;
+    border: none;
+    border-radius: nu-radius(md);
+    cursor: pointer;
+
+    &:hover {
+      color: var(--text-color);
+      background-color: var(--bg-alternate);
+    }
+
+    &:focus-visible {
+      outline: none;
+      box-shadow: nu-var("drawer", "focus--BoxShadow");
+    }
+  }
+
+  @include e(body) {
+    flex: 1;
+    overflow-y: auto;
+    padding: nu-space(5);
+  }
+
+  @include e(footer) {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: nu-space(2);
+    padding: nu-space(5);
+    border-block-start: 1px solid var(--border-base);
+  }
+
+  // ---- placement modifiers ----
+
+  @include m(end) {
+    inset-inline-start: auto;
+    border-inline-start: 1px solid var(--border-base);
+    border-inline-end: none;
+    --nu-drawer--TranslateX: 100%;
+  }
+
+  @include m(start) {
+    inset-inline-end: auto;
+    inset-inline-start: 0;
+    border-inline-end: 1px solid var(--border-base);
+    border-inline-start: none;
+    --nu-drawer--TranslateX: -100%;
+
+    transform: translateX(calc(-1 * nu-var("drawer", "TranslateX")));
+  }
+
+  @include m(top) {
+    inset-inline: 0;
+    inset-block-end: auto;
+    inline-size: 100%;
+    block-size: nu-var("drawer", "Height");
+    max-block-size: 100vh;
+    border-block-end: 1px solid var(--border-base);
+    border-inline-start: none;
+    --nu-drawer--TranslateY: -100%;
+
+    transform: translateY(nu-var("drawer", "TranslateY"));
+  }
+
+  @include m(bottom) {
+    inset-inline: 0;
+    inset-block-start: auto;
+    inline-size: 100%;
+    block-size: nu-var("drawer", "Height");
+    max-block-size: 100vh;
+    border-block-start: 1px solid var(--border-base);
+    border-inline-start: none;
+    --nu-drawer--TranslateY: 100%;
+
+    transform: translateY(nu-var("drawer", "TranslateY"));
+  }
+
+  // ---- size modifiers ----
+
+  $nu-drawer-sizes: (
+    "sm": ("Width": 18rem, "Height": 16rem),
+    "md": ("Width": 24rem, "Height": 24rem),
+    "lg": ("Width": 32rem, "Height": 32rem),
+  );
+
+  @each $size, $spec in $nu-drawer-sizes {
+    &.m-#{$size} {
+      @each $token, $value in $spec {
+        --nu-drawer--#{$token}: #{$value};
+      }
+    }
+  }
+
+  // ---- states ----
+
+  @include when(open) {
+    --nu-drawer--TranslateX: 0;
+    --nu-drawer--TranslateY: 0;
+  }
+}
+
+// Backdrop, shown alongside an open drawer
+@include b(drawer-backdrop) {
+  @include nu-root("drawer-backdrop", (
+    "ZIndex": nu-z(modal),
+    "BackgroundColor": #{nu-scrim(50%)},
+    "TransitionDuration": nu-duration(normal),
+  ));
+
+  position: fixed;
+  inset: 0;
+  z-index: calc(nu-var("drawer-backdrop", "ZIndex") - 1);
+  background-color: nu-var("drawer-backdrop", "BackgroundColor");
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity nu-var("drawer-backdrop", "TransitionDuration") $nu-ease;
+
+  @include reduced-motion {
+    transition: none;
+  }
+
+  @include when(open) {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}

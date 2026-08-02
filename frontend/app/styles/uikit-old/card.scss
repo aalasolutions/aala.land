@@ -1,0 +1,229 @@
+
+.card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-xl);
+  padding: var(--space-6);
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow var(--transition-fast);
+}
+
+.card:hover {
+  box-shadow: var(--shadow-md);
+}
+
+.glass-panel {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-xl);
+  padding: var(--space-5);
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow var(--transition-fast);
+}
+
+.glass-panel:hover {
+  box-shadow: var(--shadow-md);
+}
+
+.kanban-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  margin-bottom: var(--space-3);
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow var(--transition-fast);
+}
+
+.kanban-card:hover {
+  box-shadow: var(--shadow-md);
+}
+
+.list-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-4);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  margin-bottom: var(--space-3);
+  transition: box-shadow var(--transition-fast);
+}
+
+.list-item:hover {
+  box-shadow: var(--shadow-md);
+}
+
+.owners-list .list-item {
+  gap: var(--space-4);
+}
+
+.owner-info {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex: 1;
+  min-width: 0;
+}
+
+.kpi-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-xl);
+  padding: var(--space-5);
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow var(--transition-normal);
+
+  &:hover {
+    box-shadow: var(--shadow-md);
+  }
+}
+
+.kpi-card.kpi-primary {
+  background: var(--bg-primary-subtle);
+  border-color: var(--border-primary-soft);
+
+  .kpi-value {
+    color: var(--color-primary);
+  }
+}
+
+.kpi-card.kpi-coral {
+  background: var(--bg-coral-subtle);
+  border-color: var(--border-coral-soft);
+
+  .kpi-value {
+    color: var(--color-coral);
+  }
+}
+
+.kpi-card.kpi-success {
+  background: var(--bg-success-subtle);
+  border-color: var(--border-success-soft);
+
+  .kpi-value {
+    color: var(--color-success);
+  }
+}
+
+.kpi-card.kpi-warning {
+  background: var(--bg-warning-subtle);
+  border-color: var(--border-warning-soft);
+
+  .kpi-value {
+    color: var(--color-warning);
+  }
+}
+
+.kpi-icon-wrap {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: var(--space-3);
+  font-size: 20px;
+}
+
+.kpi-label {
+  font-size: var(--font-xs);
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: var(--space-1);
+}
+
+.kpi-value {
+  font-size: var(--font-3xl);
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.2;
+}
+
+.card-header {
+  margin-bottom: var(--space-4);
+}
+
+.card-content {
+  display: flex;
+  flex-direction: column;
+}
+
+.info-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-xl);
+  padding: var(--space-6);
+}
+
+.card-title {
+  font-size: var(--font-md);
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: var(--space-4);
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--border-light);
+}
+
+.info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--border-light);
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.info-label {
+  font-size: var(--font-sm);
+  font-weight: 500;
+  color: var(--text-muted);
+  min-width: 120px;
+}
+
+.info-value {
+  font-size: var(--font-sm);
+  color: var(--text-primary);
+  text-align: right;
+  flex: 1;
+}
+
+.kpi-icon-primary {
+  background: var(--bg-primary-emphasis-soft);
+  color: var(--color-primary);
+}
+
+.kpi-icon-coral {
+  background: var(--bg-coral-emphasis-soft);
+  color: var(--color-coral);
+}
+
+.kpi-icon-success {
+  background: var(--bg-success-emphasis-soft);
+  color: var(--color-success);
+}
+
+.kpi-icon-warning {
+  background: var(--bg-warning-emphasis-soft);
+  color: var(--color-warning);
+}
+
+.panel-header {
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--border-light);
+}
+
+.panel-title {
+  font-size: var(--font-sm);
+  font-weight: 600;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}

@@ -1,0 +1,216 @@
+@use '../nuvoui' as Nuvo;
+
+.dashboard-container {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  position: relative;
+
+  .loader-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba($white, 0.8);
+    backdrop-filter: blur(4px);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+    border-radius: 16px;
+
+    .loading-spinner {
+      margin-bottom: 1.5rem;
+
+      .spinner {
+        width: 40px;
+        height: 40px;
+        border: 3px solid $border-color;
+        border-top: 3px solid $blue-500;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+      }
+    }
+
+    p {
+      margin: 0;
+      color: $text-muted;
+      font-weight: 600;
+      font-size: 15px;
+    }
+
+    @keyframes spin {
+      0% {
+        transform: rotate(0deg);
+      }
+      100% {
+        transform: rotate(360deg);
+      }
+    }
+  }
+
+  .wrapper {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    flex-direction: column;
+    align-items: center;
+    margin-top: 1.5rem;
+    padding: 0 2rem;
+    box-sizing: border-box;
+
+    .project-card {
+      all: unset;
+      @include Nuvo.apply(pill);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 1rem;
+      padding: 2rem;
+      background: $primary-color;
+      border-radius: 8px;
+      width: 100%;
+      min-height: 120px;
+      box-sizing: border-box;
+      transition: all 0.3s ease;
+      box-shadow: 0 1px 4px rgba($dark-color, 0.06);
+      font-size: 20px;
+      font-weight: 600;
+      color: $white;
+      cursor: pointer;
+
+      @media screen and (max-width: 768px) {
+        flex-direction: column;
+        text-align: center;
+        font-size: 18px;
+      }
+
+      i {
+        font-size: 24px;
+      }
+
+      &:hover {
+        transform: translateY(-2px);
+        box-shadow:
+          0 10px 25px -3px rgba($blue-500, 0.3),
+          0 4px 6px -2px rgba($dark-color, 0.05);
+      }
+    }
+
+    .stats-cards {
+      display: flex;
+      gap: 1rem;
+      margin: 1.5rem 0;
+      flex-wrap: wrap;
+      width: 100%;
+      box-sizing: border-box;
+
+      .stat-card {
+        flex-grow: 1;
+        min-width: 180px;
+        background: $white;
+        border-radius: 8px;
+        padding: 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        box-shadow: 0 1px 4px rgba($dark-color, 0.06);
+        transition: all 0.2sease;
+
+        .stat-icon {
+          width: 48px;
+          height: 48px;
+          background: $slate-100;
+          border-radius: 8px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
+
+          i {
+            font-size: 20px;
+            color: $text-muted;
+          }
+        }
+
+        .stat-content {
+          flex: 1;
+
+          .stat-value {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: $dark-color;
+            line-height: 1.2;
+            text-transform: capitalize;
+          }
+
+          .stat-label {
+            font-size: 13px;
+            color: $text-muted;
+            font-weight: 500;
+            margin-top: 0.25rem;
+          }
+        }
+      }
+    }
+
+    .cards-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1.5rem;
+      margin-top: 1.4rem;
+      width: 100%;
+
+      @media (min-width: 1200px) {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .card {
+        background: $white;
+        border-radius: 16px;
+        padding: 1.5rem;
+        box-shadow: 0 1px 4px rgba($dark-color, 0.06);
+        transition: all 0.3s ease;
+
+        .empty-state {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          padding: 4rem 2rem;
+          color: $text-muted;
+          text-align: center;
+          min-height: 300px;
+
+          i {
+            font-size: 2rem;
+            margin-bottom: 1.5rem;
+            opacity: 0.6;
+            color: $slate-400;
+          }
+
+          p {
+            margin: 0;
+            font-size: 0.9rem;
+            font-weight: 500;
+          }
+        }
+      }
+    }
+
+    @media (max-width: 768px) {
+      padding: 0 1rem;
+    }
+  }
+
+  .no-underline {
+    text-decoration: none;
+  }
+
+  .no-underline:hover {
+    text-decoration: none;
+  }
+
+}

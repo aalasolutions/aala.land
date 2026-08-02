@@ -1,0 +1,7 @@
+<div class={{this.classes}} role="separator" data-test-nu-divider ...attributes>
+  {{#if (has-block)}}
+    <span class="nu-divider__label" data-test-nu-divider-label>{{yield}}</span>
+  {{else if @label}}
+    <span class="nu-divider__label" data-test-nu-divider-label>{{@label}}</span>
+  {{/if}}
+</div>

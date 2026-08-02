@@ -43,6 +43,13 @@ export default class MaintenanceController extends PaginatedController {
     return this.statusOptions.filter((o) => o.value);
   }
 
+  get sectionTabs() {
+    return [
+      { id: 'orders', label: 'Work Orders' },
+      { id: 'upcoming', label: 'Upcoming Preventive' },
+    ];
+  }
+
   monthOptions = MONTH_OPTIONS;
 
   priorityOptions = PRIORITY_OPTIONS;
@@ -97,17 +104,31 @@ export default class MaintenanceController extends PaginatedController {
     }
   }
 
+  // Nuvo::Input/Select/Textarea call onInput/onChange as (value, event),
+  // not the raw DOM event setField expects.
+  @action setFieldValue(fieldName, value) {
+    this[fieldName] = value;
+
+    // Keep selected vendor valid when category changes and vendor options narrow.
+    if (fieldName === 'formCategory' && this.formVendorId) {
+      const validVendorIds = this.vendorOptions.map((opt) => opt.value);
+      if (!validVendorIds.includes(this.formVendorId)) {
+        this.formVendorId = '';
+      }
+    }
+  }
+
   @action setSection(section) {
     this.activeSection = section;
   }
 
-  @action setStatusFilter(e) {
-    this.filterStatus = e.target.value;
+  @action setStatusFilter(value) {
+    this.filterStatus = value;
     this.page = 1;
   }
 
-  @action setMonthFilter(e) {
-    this.filterMonth = e.target.value;
+  @action setMonthFilter(value) {
+    this.filterMonth = value;
     this.page = 1;
   }
 

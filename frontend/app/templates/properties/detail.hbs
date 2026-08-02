@@ -7,91 +7,81 @@
 }}
 
 <div data-test-property-detail class="flex col gap-6">
-  <div class="flex between x-center">
-    <div class="flex x-center gap-3">
-      <LinkTo @route="properties" class="text-muted font-sm">Properties</LinkTo>
+  <Nuvo::PageHeader
+    @title={{if
+      @model.assets.length
+      (get (get @model.assets "0") "locality.name")
+      "Location"
+    }}
+  >
+    <:breadcrumb>
+      <LinkTo @route="properties" class="text-muted text-sm">Properties</LinkTo>
       <span class="text-muted">/</span>
-      <h2 class="font-2xl font-bold">{{if
-          @model.assets.length
-          (get (get @model.assets "0") "locality.name")
-          "Location"
-        }}</h2>
-    </div>
-    <div class="flex gap-3 x-center">
-      <div class="flex gap-1">
-        <button
-          type="button"
-          class="btn btn-sm
-            {{if
-              (eq this.currentDetailView 'cards')
-              'btn-primary'
-              'btn-secondary'
-            }}"
+    </:breadcrumb>
+    <:actions>
+      <Nuvo::BtnGroup @attached={{true}}>
+        <Nuvo::Button
+          @variant={{if (eq this.currentDetailView "cards") "primary" "secondary"}}
+          @size="sm"
+          data-test-view-cards
           {{on "click" (fn this.switchDetailView "cards")}}
         >
           <Ui::Ph @icon="squares-four" />
           Cards
-        </button>
-        <button
-          type="button"
-          class="btn btn-sm
-            {{if
-              (eq this.currentDetailView 'list')
-              'btn-primary'
-              'btn-secondary'
-            }}"
+        </Nuvo::Button>
+        <Nuvo::Button
+          @variant={{if (eq this.currentDetailView "list") "primary" "secondary"}}
+          @size="sm"
+          data-test-view-list
           {{on "click" (fn this.switchDetailView "list")}}
         >
           <Ui::Ph @icon="list" />
           List
-        </button>
-      </div>
-      <button
-        type="button"
-        class="btn btn-primary"
+        </Nuvo::Button>
+      </Nuvo::BtnGroup>
+      <Nuvo::Button
+        @variant="primary"
+        data-test-new-asset
         {{on "click" this.openCreateAsset}}
       >
         <Ui::Ph @icon="plus" />
         New Asset
-      </button>
-    </div>
-  </div>
+      </Nuvo::Button>
+    </:actions>
+  </Nuvo::PageHeader>
 
   {{#if this.assetsWithHistory.length}}
     {{#if (eq this.currentDetailView "cards")}}
       {{! CARDS VIEW }}
       <div class="flex col gap-4">
         {{#each this.assetsWithHistory as |asset|}}
-          <div
-            data-test-asset-card
-            class="glass-panel p-6 flex col gap-5 relative overflow-hidden"
-          >
+          <Nuvo::Card data-test-asset-card>
             <div class="flex between x-center">
               <div class="flex col gap-1">
-                <h4 class="font-lg font-bold flex x-center gap-2"><Ui::Ph
+                <h4 class="text-lg font-bold flex x-center gap-2"><Ui::Ph
                     @icon="buildings"
                     class="text-primary"
                   />
                   {{asset.name}}</h4>
-                <p class="text-muted font-sm">{{asset.units.length}} Properties</p>
+                <p class="text-muted text-sm">{{asset.units.length}} Properties</p>
               </div>
               <div class="flex gap-2">
-                <button
-                  type="button"
-                  class="btn btn-secondary btn-sm"
+                <Nuvo::Button
+                  @variant="secondary"
+                  @size="sm"
                   {{on "click" (fn this.openEditAsset asset)}}
                 >
                   <Ui::Ph @icon="pencil-simple" />
                   Edit
-                </button>
-                <button
-                  type="button"
-                  class="btn btn-primary btn-sm"
+                </Nuvo::Button>
+                <Nuvo::Button
+                  @variant="primary"
+                  @size="sm"
                   {{on "click" (fn this.openCreateUnit asset.id)}}
                 >
                   <Ui::Ph @icon="plus" />
                   Add Property
-                </button>
+                </Nuvo::Button>
               </div>
             </div>
             {{#if asset.units.length}}
@@ -103,21 +93,19 @@
                     class="unit-card-premium flex col gap-3"
                   >
                     <div
-                      class="flex between x-center border-b border-light pb-2"
+                      class="flex between x-center border-b pb-2"
                     >
                       <div class="flex x-center gap-2">
                         <div class="unit-card-icon-box">
                           <Ui::Ph @icon="door" />
                         </div>
-                        <p class="font-bold font-md">Property
+                        <p class="font-bold text-md">Property
                           {{unit.unitNumber}}</p>
                       </div>
                       {{#if unit.propertyType}}
-                        <span
-                          class="type-badge type-{{lowercase
-                              unit.propertyType
-                            }}"
-                        >{{if
+                        <Nuvo::Tag
+                          class="badge-proptype-{{lowercase unit.propertyType}}"
+                          @text={{if
                             (eq unit.propertyType "FOR_SALE")
                             "For Sale"
                             (if
@@ -125,19 +113,21 @@
                               "For Rent"
                               "Not Listed"
                             )
-                          }}</span>
+                          }}
+                        />
                       {{/if}}
                     </div>
 
                     <div class="flex between x-center">
-                      <p class="text-muted font-sm flex x-center gap-1">
-                        <span
-                          class="status-badge status-{{unit.status}}"
-                        >{{capitalize unit.status}}</span>
+                      <p class="text-muted text-sm flex x-center gap-1">
+                        <Nuvo::Tag
+                          class="badge-unit-{{lowercase unit.status}}"
+                          @text={{capitalize unit.status}}
+                        />
                       </p>
                       {{#if unit.price}}
                         <p
-                          class="text-success font-bold font-md"
+                          class="text-success font-bold text-md"
                         >{{format-currency unit.price}}</p>
                       {{/if}}
                     </div>
@@ -176,51 +166,49 @@
                       <LinkTo
                         @route="properties.unit"
                         @models={{array @model.localityId unit.id}}
-                        class="btn btn-primary btn-sm flex-1 justify-center"
+                        class="nu-btn m-primary m-sm grow justify-center"
                         data-test-view-unit
                       >
                         View Details
                       </LinkTo>
-                      <button
-                        type="button"
-                        class="btn btn-secondary btn-sm"
+                      <Nuvo::Button
+                        @variant="secondary"
+                        @size="sm"
                         aria-label="Edit property"
                         title="Edit property"
                         {{on "click" (fn this.openEditUnit unit asset.id)}}
                       >
                         <Ui::Ph @icon="pencil" />
-                      </button>
+                      </Nuvo::Button>
                     </div>
                   </div>
                 {{/each}}
               </div>
             {{else}}
-              <div class="property-empty-state-box animate-reveal">
-                <div class="icon-holder">
-                  <Ui::Ph @icon="house-line" @size="32px" class="text-muted" />
-                </div>
-                <div class="text-center">
-                  <h5 class="font-md font-bold">No properties yet</h5>
-                  <p class="text-muted font-sm">Start by adding the first property
-                    to this asset.</p>
-                </div>
-                <button
-                  type="button"
-                  class="btn btn-primary btn-sm px-6"
-                  {{on "click" (fn this.openCreateUnit asset.id)}}
-                >
-                  <Ui::Ph @icon="plus" />
-                  Add First Property
-                </button>
-              </div>
+              <Nuvo::EmptyState
+                @title="No properties yet"
+                @description="Start by adding the first property to this asset."
+              >
+                <:icon><Ui::Ph @icon="house-line" /></:icon>
+                <:actions>
+                  <Nuvo::Button
+                    @variant="primary"
+                    @size="sm"
+                    {{on "click" (fn this.openCreateUnit asset.id)}}
+                  >
+                    <Ui::Ph @icon="plus" />
+                    Add First Property
+                  </Nuvo::Button>
+                </:actions>
+              </Nuvo::EmptyState>
             {{/if}}
-          </div>
+          </Nuvo::Card>
         {{/each}}
       </div>
     {{else}}
       {{! LIST VIEW }}
-      <div class="data-table-wrapper">
-        <table class="data-table">
+      <div class="nu-table-wrapper">
+        <table class="nu-table">
           <thead>
             <tr>
               <th>Asset</th>
@@ -240,14 +228,15 @@
                 <tr>
                   <td class="font-bold">{{asset.name}}</td>
                   <td>{{unit.unitNumber}}</td>
-                  <td><span
-                      class="status-badge status-{{unit.status}}"
-                    >{{capitalize unit.status}}</span></td>
+                  <td><Nuvo::Tag
+                      class="badge-unit-{{lowercase unit.status}}"
+                      @text={{capitalize unit.status}}
+                    /></td>
                   <td>
                     {{#if unit.propertyType}}
-                      <span
-                        class="type-badge type-{{lowercase unit.propertyType}}"
-                      >{{if
+                      <Nuvo::Tag
+                        class="badge-proptype-{{lowercase unit.propertyType}}"
+                        @text={{if
                           (eq unit.propertyType "FOR_SALE")
                           "For Sale"
                           (if
@@ -255,7 +244,8 @@
                             "For Rent"
                             "Not Listed"
                           )
-                        }}</span>
+                        }}
+                      />
                     {{/if}}
                   </td>
                   <td>{{unit.bedrooms}}</td>
@@ -270,47 +260,40 @@
                       (format-currency unit.price)
                       ""
                     }}</td>
-                  <td class="text-right">
+                  <td class="text-end">
                     <div class="flex gap-1">
                       <LinkTo
                         @route="properties.unit"
                         @models={{array @model.localityId unit.id}}
-                        class="btn btn-primary btn-xs"
+                        class="nu-btn m-primary m-xs"
                       >View</LinkTo>
-                      <button
-                        type="button"
-                        class="btn btn-secondary btn-xs"
+                      <Nuvo::Button
+                        @variant="secondary"
+                        @size="xs"
                         {{on "click" (fn this.openEditUnit unit asset.id)}}
-                      >Edit</button>
+                      >Edit</Nuvo::Button>
                     </div>
                   </td>
                 </tr>
               {{else}}
                 <tr>
                   <td colspan="9" class="p-0">
-                    <div class="property-empty-state-box empty-state-flat">
-                      <div class="icon-holder">
-                        <Ui::Ph
-                          @icon="door"
-                          @size="32px"
-                          class="text-muted opacity-50"
-                        />
-                      </div>
-                      <div class="text-center">
-                        <p class="font-bold font-md">No properties in
-                          {{asset.name}}</p>
-                        <p class="text-muted font-sm">Add your first property to
-                          start managing this asset.</p>
-                      </div>
-                      <button
-                        type="button"
-                        class="btn btn-primary btn-xs px-6 mt-2"
-                        {{on "click" (fn this.openCreateUnit asset.id)}}
-                      >
-                        <Ui::Ph @icon="plus" />
-                        Add First Property
-                      </button>
-                    </div>
+                    <Nuvo::EmptyState
+                      @title="No properties in {{asset.name}}"
+                      @description="Add your first property to start managing this asset."
+                    >
+                      <:icon><Ui::Ph @icon="door" /></:icon>
+                      <:actions>
+                        <Nuvo::Button
+                          @variant="primary"
+                          @size="xs"
+                          {{on "click" (fn this.openCreateUnit asset.id)}}
+                        >
+                          <Ui::Ph @icon="plus" />
+                          Add First Property
+                        </Nuvo::Button>
+                      </:actions>
+                    </Nuvo::EmptyState>
                   </td>
                 </tr>
               {{/each}}
@@ -320,36 +303,33 @@
       </div>
     {{/if}}
   {{else}}
-    <div class="property-empty-state-box empty-state-large">
-      <div class="icon-holder">
-        <Ui::Ph @icon="buildings" @size="48px" class="text-muted" />
-      </div>
-      <div>
-        <h3 class="font-xl font-bold">No assets found</h3>
-        <p class="text-muted">There are no assets or properties in this location yet.</p>
-      </div>
-      <button
-        type="button"
-        class="btn btn-primary px-8"
-        {{on "click" this.openCreateAsset}}
-      >
-        <Ui::Ph @icon="plus" />
-        Create First Asset
-      </button>
-    </div>
+    <Nuvo::EmptyState
+      @title="No assets found"
+      @description="There are no assets or properties in this location yet."
+    >
+      <:icon><Ui::Ph @icon="buildings" /></:icon>
+      <:actions>
+        <Nuvo::Button
+          @variant="primary"
+          {{on "click" this.openCreateAsset}}
+        >
+          <Ui::Ph @icon="plus" />
+          Create First Asset
+        </Nuvo::Button>
+      </:actions>
+    </Nuvo::EmptyState>
   {{/if}}
 </div>
 
-<Ui::Modal
-  @isOpen={{this.showAssetModal}}
+<Nuvo::Modal
+  @open={{this.showAssetModal}}
   @title={{if this.editAsset "Edit Asset" "New Asset"}}
   @onClose={{this.closeAssetModal}}
-  @showClose={{true}}
 >
   <form class="flex col gap-4" {{on "submit" this.saveAsset}}>
     {{#unless this.editAsset}}
       <div class="flex col gap-2">
-        <label class="font-sm text-muted">City *</label>
+        <label class="text-sm text-muted">City *</label>
         <LocationTypeahead
           @searchUrl={{this.citySearchUrl}}
           @createUrl="/locations/cities"
@@ -362,7 +342,7 @@
       </div>
       {{#if this.selectedCity}}
         <div class="flex col gap-2">
-          <label class="font-sm text-muted">Location / Area *</label>
+          <label class="text-sm text-muted">Location / Area *</label>
           <LocationTypeahead
             @searchUrl={{this.localitySearchUrl}}
             @createUrl="/locations/localities"
@@ -375,151 +355,162 @@
         </div>
       {{/if}}
     {{/unless}}
-    <Ui::FormInput
-      @label="Asset Name"
-      @id="b-name"
-      @type="text"
-      @placeholder="e.g. Tower A"
-      @value={{this.formAssetName}}
-      @onChange={{fn this.setField "formAssetName"}}
-      @required={{true}}
-    />
-    <Ui::FormInput
-      @label="Address"
-      @id="b-address"
-      @type="text"
-      @placeholder="e.g. 123 Sheikh Zayed Road"
-      @value={{this.formAssetAddress}}
-      @onChange={{fn this.setField "formAssetAddress"}}
-    />
+    <Nuvo::Field @label="Asset Name" @required={{true}}>
+      <Nuvo::Input
+        id="b-name"
+        @type="text"
+        @placeholder="e.g. Tower A"
+        @value={{this.formAssetName}}
+        @onInput={{fn this.setFieldValue "formAssetName"}}
+        required={{true}}
+      />
+    </Nuvo::Field>
+    <Nuvo::Field @label="Address">
+      <Nuvo::Input
+        id="b-address"
+        @type="text"
+        @placeholder="e.g. 123 Sheikh Zayed Road"
+        @value={{this.formAssetAddress}}
+        @onInput={{fn this.setFieldValue "formAssetAddress"}}
+      />
+    </Nuvo::Field>
     {{#if this.assetError}}
-      <p class="font-sm text-danger">{{this.assetError}}</p>
+      <p class="text-sm text-danger">{{this.assetError}}</p>
     {{/if}}
     <div class="flex gap-3 mt-2">
-      <button
-        type="button"
-        class="btn btn-secondary"
+      <Nuvo::Button
+        @variant="secondary"
         {{on "click" this.closeAssetModal}}
-      >Cancel</button>
-      <button
-        type="submit"
-        class="btn btn-primary"
-        disabled={{this.isSavingAsset}}
+      >Cancel</Nuvo::Button>
+      <Nuvo::Button
+        @type="submit"
+        @variant="primary"
+        @disabled={{this.isSavingAsset}}
+        @loading={{this.isSavingAsset}}
       >
         {{if
           this.isSavingAsset
           "Saving..."
           (if this.editAsset "Update" "Create Asset")
         }}
-      </button>
+      </Nuvo::Button>
     </div>
   </form>
-</Ui::Modal>
+</Nuvo::Modal>
 
-<Ui::Modal
-  @isOpen={{this.showUnitModal}}
+<Nuvo::Modal
+  @open={{this.showUnitModal}}
   @title={{if this.editUnit "Edit Property" "New Property"}}
   @onClose={{this.closeUnitModal}}
-  @showClose={{true}}
 >
   <form class="flex col gap-4" {{on "submit" this.saveUnit}}>
     <div class="flex gap-4">
-      <div class="flex col gap-2 flex-1">
-        <Ui::FormInput
-          @label="Property Number"
-          @id="u-number"
-          @type="text"
-          @placeholder="e.g. 101"
-          @value={{this.formUnitNumber}}
-          @onChange={{fn this.setField "formUnitNumber"}}
-          @required={{true}}
-        />
+      <div class="flex col gap-2 grow">
+        <Nuvo::Field @label="Property Number" @required={{true}}>
+          <Nuvo::Input
+            id="u-number"
+            @type="text"
+            @placeholder="e.g. 101"
+            @value={{this.formUnitNumber}}
+            @onInput={{fn this.setFieldValue "formUnitNumber"}}
+            required={{true}}
+          />
+        </Nuvo::Field>
       </div>
-      <div class="flex col gap-2 flex-1">
-        <Ui::FormDropdown
-          @label="Status"
-          @id="u-status"
-          @value={{this.formUnitStatus}}
-          @onChange={{fn this.setField "formUnitStatus"}}
-          @options={{this.statusOptions}}
-          @placeholder="Select status..."
-        />
+      <div class="flex col gap-2 grow">
+        <Nuvo::Field @label="Status">
+          <Nuvo::Dropdown
+            id="u-status"
+            @align="start"
+            @value={{this.formUnitStatus}}
+            @onSelect={{fn this.setFieldValue "formUnitStatus"}}
+            @options={{this.statusOptions}}
+            @placeholder="Select status..."
+          />
+        </Nuvo::Field>
       </div>
     </div>
-    <Ui::FormDropdown
-      @label="Property Type"
-      @id="u-property-type"
-      @value={{this.formUnitPropertyType}}
-      @onChange={{fn this.setField "formUnitPropertyType"}}
-      @options={{this.propertyTypeOptions}}
-      @placeholder="Select type..."
-    />
+    <Nuvo::Field @label="Property Type">
+      <Nuvo::Dropdown
+        id="u-property-type"
+        @align="start"
+        @value={{this.formUnitPropertyType}}
+        @onSelect={{fn this.setFieldValue "formUnitPropertyType"}}
+        @options={{this.propertyTypeOptions}}
+        @placeholder="Select type..."
+      />
+    </Nuvo::Field>
     <div class="flex gap-4">
-      <div class="flex col gap-2 flex-1">
-        <Ui::FormInput
-          @label="Price"
-          @id="u-price"
-          @type="number"
-          @min="0"
-          @placeholder="e.g. 150000"
-          @value={{this.formUnitPrice}}
-          @onChange={{fn this.setField "formUnitPrice"}}
-        />
+      <div class="flex col gap-2 grow">
+        <Nuvo::Field @label="Price">
+          <Nuvo::Input
+            id="u-price"
+            @type="number"
+            @placeholder="e.g. 150000"
+            @value={{this.formUnitPrice}}
+            @onInput={{fn this.setFieldValue "formUnitPrice"}}
+            min="0"
+          />
+        </Nuvo::Field>
       </div>
-      <div class="flex col gap-2 flex-1">
-        <Ui::FormInput
-          @label="Sq Ft"
-          @id="u-sqft"
-          @type="number"
-          @min="0"
-          @placeholder="e.g. 850"
-          @value={{this.formUnitSqFt}}
-          @onChange={{fn this.setField "formUnitSqFt"}}
-        />
+      <div class="flex col gap-2 grow">
+        <Nuvo::Field @label="Sq Ft">
+          <Nuvo::Input
+            id="u-sqft"
+            @type="number"
+            @placeholder="e.g. 850"
+            @value={{this.formUnitSqFt}}
+            @onInput={{fn this.setFieldValue "formUnitSqFt"}}
+            min="0"
+          />
+        </Nuvo::Field>
       </div>
     </div>
     <div class="flex gap-4">
-      <div class="flex col gap-2 flex-1">
-        <Ui::FormInput
-          @label="Bedrooms"
-          @id="u-beds"
-          @type="number"
-          @min="0"
-          @placeholder="e.g. 2"
-          @value={{this.formUnitBedrooms}}
-          @onChange={{fn this.setField "formUnitBedrooms"}}
-        />
+      <div class="flex col gap-2 grow">
+        <Nuvo::Field @label="Bedrooms">
+          <Nuvo::Input
+            id="u-beds"
+            @type="number"
+            @placeholder="e.g. 2"
+            @value={{this.formUnitBedrooms}}
+            @onInput={{fn this.setFieldValue "formUnitBedrooms"}}
+            min="0"
+          />
+        </Nuvo::Field>
       </div>
-      <div class="flex col gap-2 flex-1">
-        <Ui::FormInput
-          @label="Bathrooms"
-          @id="u-baths"
-          @type="number"
-          @min="0"
-          @placeholder="e.g. 2"
-          @value={{this.formUnitBathrooms}}
-          @onChange={{fn this.setField "formUnitBathrooms"}}
-        />
+      <div class="flex col gap-2 grow">
+        <Nuvo::Field @label="Bathrooms">
+          <Nuvo::Input
+            id="u-baths"
+            @type="number"
+            @placeholder="e.g. 2"
+            @value={{this.formUnitBathrooms}}
+            @onInput={{fn this.setFieldValue "formUnitBathrooms"}}
+            min="0"
+          />
+        </Nuvo::Field>
       </div>
     </div>
-    <Ui::FormDropdown
-      @label="Owner"
-      @id="u-owner"
-      @value={{this.formUnitOwnerId}}
-      @onChange={{fn this.setField "formUnitOwnerId"}}
-      @options={{this.ownerOptions}}
-      @placeholder="Unassigned"
-    />
+    <Nuvo::Field @label="Owner">
+      <Nuvo::Dropdown
+        id="u-owner"
+        @align="start"
+        @value={{this.formUnitOwnerId}}
+        @onSelect={{fn this.setFieldValue "formUnitOwnerId"}}
+        @options={{this.ownerOptions}}
+      />
+    </Nuvo::Field>
     <div class="flex col gap-2">
-      <label class="font-sm text-muted">Amenities</label>
-      <div class="amenities-grid">
+      <label class="text-sm text-muted">Amenities</label>
+      <div class="flex wrap gap-2">
         {{#each this.amenityOptions as |opt|}}
           <button
             type="button"
-            class="amenity-chip
+            class="nu-tag m-pill m-selectable
               {{if
                 (includes this.formUnitAmenities opt.key)
-                'amenity-chip-active'
+                'is-selected'
               }}"
             {{on "click" (fn this.toggleAmenity opt.key)}}
           >
@@ -530,25 +521,25 @@
       </div>
     </div>
     {{#if this.unitError}}
-      <p class="font-sm text-danger">{{this.unitError}}</p>
+      <p class="text-sm text-danger">{{this.unitError}}</p>
     {{/if}}
     <div class="flex gap-3 mt-2">
-      <button
-        type="button"
-        class="btn btn-secondary"
+      <Nuvo::Button
+        @variant="secondary"
         {{on "click" this.closeUnitModal}}
-      >Cancel</button>
-      <button
-        type="submit"
-        class="btn btn-primary"
-        disabled={{this.isSavingUnit}}
+      >Cancel</Nuvo::Button>
+      <Nuvo::Button
+        @type="submit"
+        @variant="primary"
+        @disabled={{this.isSavingUnit}}
+        @loading={{this.isSavingUnit}}
       >
         {{if
           this.isSavingUnit
           "Saving..."
           (if this.editUnit "Update" "Create Property")
         }}
-      </button>
+      </Nuvo::Button>
     </div>
   </form>
-</Ui::Modal>
+</Nuvo::Modal>

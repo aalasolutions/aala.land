@@ -29,8 +29,8 @@ export default class ResetPasswordFormComponent extends Component {
   }
 
   @action
-  updateField(field, event) {
-    this[field] = event.target.value;
+  updateField(field, value) {
+    this[field] = value;
     this.errorMessage = '';
   }
 

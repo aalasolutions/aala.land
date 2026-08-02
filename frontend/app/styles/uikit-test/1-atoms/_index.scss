@@ -1,0 +1,12 @@
+// ============================================
+// ATOMS INDEX
+// ============================================
+// Forward all atom partials for single import.
+// Usage: @use '1-atoms' as atoms;
+
+@forward 'buttons';
+@forward 'badges';
+@forward 'inputs';
+@forward 'labels';
+@forward 'toggles';
+@forward 'icons';

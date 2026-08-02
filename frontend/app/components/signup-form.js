@@ -46,13 +46,13 @@ export default class SignupFormComponent extends Component {
   }
 
   @action
-  updateField(field, event) {
-    this[field] = event.target.value;
+  updateField(field, value) {
+    this[field] = value;
     this.errorMessage = '';
 
     // Auto-generate slug from company name
     if (field === 'companyName') {
-      this.companySlug = event.target.value
+      this.companySlug = value
         .toLowerCase()
         .replace(/[^a-z0-9\s-]/g, '')
         .replace(/\s+/g, '-')
@@ -62,8 +62,7 @@ export default class SignupFormComponent extends Component {
   }
 
   @action
-  selectRegion(event) {
-    const code = event.target.value;
+  selectRegion(code) {
     this.selectedRegion = code;
     this.errorMessage = '';
   }

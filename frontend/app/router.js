@@ -8,6 +8,7 @@ export default class Router extends EmberRouter {
 
 Router.map(function () {
   this.route('index', { path: '/' });
+  this.route('nuvo');
   this.route('login');
   this.route('signup');
   this.route('accept-invite');

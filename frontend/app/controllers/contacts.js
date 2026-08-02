@@ -38,8 +38,10 @@ export default class ContactsController extends PaginatedController {
 
   contactTypes = CONTACT_TYPES;
 
-  @action setField(fieldName, e) {
-    this[fieldName] = e.target.value;
+  // Nuvo::Input/Select/Textarea call onInput/onChange as (value, event),
+  // not the raw DOM event a legacy setField(fieldName, e) expects.
+  @action setFieldValue(fieldName, value) {
+    this[fieldName] = value;
   }
 
   @action updateSearch(e) {

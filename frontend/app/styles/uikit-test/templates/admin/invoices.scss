@@ -1,0 +1,229 @@
+.stats-row {
+  display: flex;
+  justify-content: space-between;
+  background: $slate-50;
+  border-radius: 8px;
+  padding: 32px 24px;
+  border: 1px solid $border-color;
+
+  .stat-item {
+    text-align: center;
+    flex: 1;
+    position: relative;
+
+    &:not(:last-child)::after {
+      content: '';
+      position: absolute;
+      right: 0;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 1px;
+      height: 40px;
+      background: $border-color;
+    }
+
+    .stat-value {
+      display: block;
+      font-size: 2.25rem;
+      font-weight: 700;
+      color: $text-primary;
+      margin-bottom: 6px;
+      line-height: 1;
+      text-transform: capitalize;
+    }
+
+    .stat-label {
+      display: block;
+      font-size: 0.875rem;
+      color: $text-muted;
+      font-weight: 500;
+    }
+  }
+}
+
+.filter-row {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1.5fr;
+  gap: 20px;
+  align-items: end;
+  background: $white;
+  padding: 24px;
+  border-radius: 8px;
+  border: 1px solid $border-color;
+
+  &.has-reset-button {
+    grid-template-columns: 2fr 1fr 1.5fr auto;
+  }
+
+  .search-container {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+
+    .inputLabel {
+      font-weight: 400;
+
+      font-size: 14px;
+      color: $dark-color;
+    }
+  }
+
+  @media (max-width: 1024px) {
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+}
+
+.admin-invoices-index {
+  .action-buttons {
+    display: flex;
+    gap: 0.5rem;
+
+    .table-button {
+      padding: 0.5rem 0.75rem;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.2s ease-in-out;
+      font-size: 0.75rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.25rem;
+      font-weight: 500;
+      white-space: nowrap;
+
+      i {
+        font-size: 0.75rem;
+      }
+
+      span {
+        font-size: 0.75rem;
+      }
+
+      &.send {
+        background-color: rgba($indigo-500, 0.1);
+        color: $indigo-500;
+
+        &:hover {
+          background-color: rgba($indigo-500, 0.2);
+        }
+      }
+
+      &.mark-paid {
+        background-color: rgba($green-500, 0.1);
+        color: $green-500;
+
+        &:hover {
+          background-color: rgba($green-500, 0.2);
+        }
+      }
+
+      &.download {
+        background-color: rgba($blue-500, 0.2);
+        color: $blue-500;
+
+        &:hover {
+          background-color: rgba($blue-500, 0.3);
+        }
+      }
+
+      &.void {
+        background-color: rgba($amber-500, 0.15);
+        color: $amber-500;
+
+        &:hover {
+          background-color: rgba($amber-500, 0.25);
+        }
+      }
+
+      &.edit {
+        background-color: rgba($blue-500, 0.2);
+        color: $blue-500;
+
+        &:hover {
+          background-color: rgba($blue-500, 0.3);
+        }
+      }
+
+      &.delete-action {
+        background-color: rgba($error-color, 0.15);
+        color: $error-color;
+
+        i {
+          font-size: 12px;
+        }
+
+        &:hover {
+          background-color: rgba($error-color, 0.25);
+        }
+      }
+
+      &:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none !important;
+      }
+    }
+
+    @media (max-width: 768px) {
+      flex-wrap: wrap;
+
+      .table-button {
+        font-size: 0.7rem;
+        padding: 0.4rem 0.6rem;
+
+        span {
+          font-size: 0.7rem;
+        }
+      }
+    }
+  }
+}
+
+@media (max-width: 768px) {
+  .stats-row {
+    flex-direction: column;
+    gap: 24px;
+    padding: 24px 20px;
+
+    .stat-item {
+      &:not(:last-child)::after {
+        display: none;
+      }
+
+      &:not(:last-child) {
+        padding-bottom: 16px;
+        border-bottom: 1px solid $border-color;
+      }
+
+      .stat-value {
+        font-size: 2rem;
+      }
+    }
+  }
+
+  .filter-row {
+    padding: 20px;
+    gap: 16px;
+  }
+}
+
+@media (max-width: 480px) {
+  .stats-row {
+    padding: 20px 16px;
+
+    .stat-item .stat-value {
+      font-size: 1.75rem;
+    }
+  }
+
+  .filter-row {
+    padding: 16px;
+  }
+}

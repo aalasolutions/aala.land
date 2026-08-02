@@ -1,0 +1,49 @@
+
+.content-area {
+  flex: 1;
+  padding: var(--space-8);
+  background: var(--bg-base);
+}
+
+.content-area--centered {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.forbidden-message {
+  text-align: center;
+  padding: var(--space-10) var(--space-8);
+  max-width: 400px;
+}
+
+.forbidden-message h2 {
+  font-size: var(--font-xl);
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-top: var(--space-4);
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-6);
+}
+
+.page-title-section {
+  flex: 1;
+}
+
+.page-title {
+  font-size: var(--font-2xl);
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.page-subtitle {
+  font-size: var(--font-sm);
+  color: var(--text-muted);
+  margin: var(--space-1) 0 0 0;
+}

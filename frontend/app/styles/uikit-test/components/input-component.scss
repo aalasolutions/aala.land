@@ -1,0 +1,98 @@
+// Variables from @import "variables", .inputLabel from @import "forms" in app.scss
+
+.customInputContainer {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+
+  // .inputLabel styles now in _forms.scss
+
+  .multiSelectInputWrapper {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    border: 1px solid #ccc;
+    background-color: $white;
+    border-radius: 6px;
+    padding: 8px;
+    min-height: auto;
+    align-items: center;
+    cursor: text;
+
+    .tag {
+      background: #f1f1f1;
+      padding: 4px 8px;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 14px;
+    }
+
+    .tag-remove {
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 0;
+      color: #888;
+      font-size: 12px;
+    }
+
+  .form-control {
+    width: 100%;
+    border: none;
+    outline: none;
+    padding: 8px;
+    font-size: 14px;
+  }
+  }
+
+
+  .inputWrapper {
+    display: flex;
+    border: 1px solid #e5e7eb;
+    background-color: $white;
+    border-radius: 0.375rem;
+    box-sizing: border-box;
+    transition: all 0.2s;
+
+    &:-webkit-autofill {
+      background-color: transparent !important;
+    }
+
+    .form-control {
+      all: unset;
+      width: 100%;
+      font-size: 0.875rem;
+      padding: 0.75rem;
+
+      &::placeholder {
+        color: $text-muted;
+      }
+    }
+
+    .input-icon-button {
+      all: unset;
+      padding: 0.5rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+
+      i {
+        font-size: 14px;
+        color: $text-muted;
+      }
+    }
+
+    &:focus-within {
+      outline: none;
+      border-color: $accent-teal;
+      box-shadow: 0 0 0 3px rgba(0, 172, 170, 0.1);
+    }
+  }
+
+  .error {
+    color: $error-color;
+    font-size: 12px;
+  }
+}

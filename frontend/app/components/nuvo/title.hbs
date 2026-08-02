@@ -1,0 +1,14 @@
+{{! Dynamic tag via branches, not dynamic component invocation. }}
+{{#if (eq this.tag "h1")}}
+  <h1 class={{this.classes}} data-test-nu-title ...attributes>{{#if (has-block)}}{{yield}}{{else}}{{@text}}{{/if}}</h1>
+{{else if (eq this.tag "h3")}}
+  <h3 class={{this.classes}} data-test-nu-title ...attributes>{{#if (has-block)}}{{yield}}{{else}}{{@text}}{{/if}}</h3>
+{{else if (eq this.tag "h4")}}
+  <h4 class={{this.classes}} data-test-nu-title ...attributes>{{#if (has-block)}}{{yield}}{{else}}{{@text}}{{/if}}</h4>
+{{else if (eq this.tag "h5")}}
+  <h5 class={{this.classes}} data-test-nu-title ...attributes>{{#if (has-block)}}{{yield}}{{else}}{{@text}}{{/if}}</h5>
+{{else if (eq this.tag "h6")}}
+  <h6 class={{this.classes}} data-test-nu-title ...attributes>{{#if (has-block)}}{{yield}}{{else}}{{@text}}{{/if}}</h6>
+{{else}}
+  <h2 class={{this.classes}} data-test-nu-title ...attributes>{{#if (has-block)}}{{yield}}{{else}}{{@text}}{{/if}}</h2>
+{{/if}}

@@ -1,0 +1,519 @@
+// nu-field / nu-input - form controls
+@use "./mixins/bem" as *;
+@use "./mixins/var" as *;
+@use "./common/var" as *;
+
+// ---- text-like controls ----
+
+@include b(input) {
+  @include nu-root("input", (
+    "PaddingBlock": nu-space(2),
+    "PaddingInline": nu-space(3),
+    "MinHeight": 2.5rem,
+    "FontSize": nu-font-size(sm),
+    "Color": var(--text-color),
+    "BackgroundColor": var(--bg-surface),
+    "BorderWidth": 1px,
+    "BorderColor": var(--border-base),
+    "BorderRadius": nu-radius(md),
+    "PlaceholderColor": var(--text-subtle),
+    "TransitionDuration": nu-duration(fast),
+    "focus--BorderColor": var(--primary),
+    "focus--BoxShadow": 0 0 0 3px #{nu-tint(primary, 25%)},
+    "disabled--Opacity": 0.6,
+  ));
+
+  display: block;
+  inline-size: 100%;
+  padding-block: nu-var("input", "PaddingBlock");
+  padding-inline: nu-var("input", "PaddingInline");
+  min-block-size: nu-var("input", "MinHeight");
+  font-family: inherit;
+  font-size: nu-var("input", "FontSize");
+  line-height: 1.4;
+  color: nu-var("input", "Color");
+  background-color: nu-var("input", "BackgroundColor");
+  border: nu-var("input", "BorderWidth") solid nu-var("input", "BorderColor");
+  border-radius: nu-var("input", "BorderRadius");
+  transition:
+    border-color nu-var("input", "TransitionDuration") $nu-ease,
+    box-shadow nu-var("input", "TransitionDuration") $nu-ease;
+
+  @include reduced-motion {
+    transition: none;
+  }
+
+  &::placeholder {
+    color: nu-var("input", "PlaceholderColor");
+  }
+
+  &:focus,
+  &:focus-visible {
+    outline: none;
+    border-color: nu-var("input", "focus--BorderColor");
+    box-shadow: nu-var("input", "focus--BoxShadow");
+  }
+
+  &:disabled,
+  &[readonly] {
+    background-color: var(--bg-alternate);
+  }
+
+  &:disabled {
+    opacity: nu-var("input", "disabled--Opacity");
+    cursor: not-allowed;
+  }
+
+  @include m(sm) {
+    --nu-input--PaddingBlock: #{nu-space(1)};
+    --nu-input--PaddingInline: #{nu-space(2)};
+    --nu-input--MinHeight: 2rem;
+    --nu-input--FontSize: #{nu-font-size(xs)};
+  }
+
+  @include m(lg) {
+    --nu-input--PaddingBlock: #{nu-space(3)};
+    --nu-input--PaddingInline: #{nu-space(4)};
+    --nu-input--MinHeight: 3rem;
+    --nu-input--FontSize: #{nu-font-size(md)};
+  }
+
+  @include m(auto) {
+    inline-size: auto;
+  }
+
+  @include when(invalid) {
+    --nu-input--BorderColor: var(--danger);
+    --nu-input--focus--BorderColor: var(--danger);
+    --nu-input--focus--BoxShadow: 0 0 0 3px #{nu-tint(danger, 25%)};
+  }
+
+  @include when(valid) {
+    --nu-input--BorderColor: var(--success);
+    --nu-input--focus--BorderColor: var(--success);
+    --nu-input--focus--BoxShadow: 0 0 0 3px #{nu-tint(success, 25%)};
+  }
+}
+
+// Affix wrapper: positions prefix/suffix icons over the input and reserves
+// padding so typed text never slides under them.
+@include b(input-wrap) {
+  @include nu-root("input-wrap", (
+    "AffixInset": nu-space(3),
+    "AffixSize": 1rem,
+    "AffixColor": var(--text-subtle),
+    "clear--hover--Color": var(--text-color),
+  ));
+
+  position: relative;
+  display: block;
+  inline-size: 100%;
+
+  @include e(prefix, suffix) {
+    position: absolute;
+    inset-block-start: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    inline-size: nu-var("input-wrap", "AffixSize");
+    block-size: nu-var("input-wrap", "AffixSize");
+    font-size: nu-var("input-wrap", "AffixSize");
+    line-height: 1;
+    color: nu-var("input-wrap", "AffixColor");
+    transform: translateY(-50%);
+    pointer-events: none;
+  }
+
+  @include e(prefix) {
+    inset-inline-start: nu-var("input-wrap", "AffixInset");
+  }
+
+  @include e(suffix) {
+    inset-inline-end: nu-var("input-wrap", "AffixInset");
+  }
+
+  // Clear button is interactive, unlike the static affixes.
+  @include e(clear) {
+    position: absolute;
+    inset-block-start: 50%;
+    inset-inline-end: nu-var("input-wrap", "AffixInset");
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    inline-size: nu-var("input-wrap", "AffixSize");
+    block-size: nu-var("input-wrap", "AffixSize");
+    padding: 0;
+    font-size: nu-var("input-wrap", "AffixSize");
+    line-height: 1;
+    color: nu-var("input-wrap", "AffixColor");
+    background: none;
+    border: none;
+    border-radius: nu-radius(full);
+    transform: translateY(-50%);
+    cursor: pointer;
+    transition: color nu-duration(fast) $nu-ease;
+
+    @include reduced-motion {
+      transition: none;
+    }
+
+    &:hover {
+      color: nu-var("input-wrap", "clear--hover--Color");
+    }
+
+    &:focus-visible {
+      outline: none;
+      box-shadow: 0 0 0 3px nu-tint(primary, 25%);
+    }
+  }
+
+  // Reserve room so text clears the affix.
+  @include m(has-prefix) {
+    .nu-input {
+      --nu-input--PaddingInline: #{nu-space(3)};
+
+      padding-inline-start: nu-space(8);
+    }
+  }
+
+  @include m(has-suffix) {
+    .nu-input {
+      padding-inline-end: nu-space(8);
+    }
+  }
+}
+
+@include b(textarea) {
+  resize: vertical;
+  min-block-size: 5rem;
+  line-height: 1.5;
+}
+
+@include b(select) {
+  appearance: none;
+  padding-inline-end: nu-space(8);
+  cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%2364748b' stroke-width='1.5'%3E%3Cpath d='M4 6l4 4 4-4'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right nu-space(3) center;
+  background-size: 1rem;
+}
+
+// ---- field wrapper ----
+
+@include b(field) {
+  @include nu-root("field", (
+    "Gap": nu-space(2),
+    "MarginBlockEnd": nu-space(4),
+  ));
+
+  display: flex;
+  flex-direction: column;
+  gap: nu-var("field", "Gap");
+  margin-block-end: nu-var("field", "MarginBlockEnd");
+
+  @include e(label) {
+    display: flex;
+    align-items: center;
+    gap: nu-space(1);
+    font-size: nu-font-size(sm);
+    font-weight: nu-font-weight(medium);
+    color: var(--text-color);
+  }
+
+  @include e(required) {
+    color: var(--danger);
+    line-height: 1;
+  }
+
+  @include e(hint) {
+    font-size: nu-font-size(xs);
+    color: var(--text-muted);
+  }
+
+  @include e(error) {
+    display: flex;
+    align-items: center;
+    gap: nu-space(1);
+    font-size: nu-font-size(xs);
+    color: var(--danger);
+  }
+
+  @include m(horizontal) {
+    flex-direction: row;
+    align-items: center;
+    gap: nu-space(4);
+
+    .nu-field__label {
+      flex-shrink: 0;
+      min-inline-size: 8rem;
+    }
+  }
+
+  @include m(flush) {
+    --nu-field--MarginBlockEnd: 0;
+  }
+
+  // A field whose control carries no label, sitting in a row beside fields
+  // that do. Without this the control drops by the label's height, because
+  // its own box starts where the others' labels start.
+  //
+  // The spacer is sized from the label's font scale rather than from
+  // placeholder text: `.nu-field__label` is a flex container, so an empty one
+  // collapses to zero and an `&nbsp;` overshoots (a flex line box is taller
+  // than the text line box it wraps).
+  @include e(label-spacer) {
+    display: block;
+    block-size: calc(#{nu-font-size(sm)} * 1.1);
+    visibility: hidden;
+  }
+}
+
+// Row of filter controls. Auto-fitting so the column count follows the
+// viewport instead of being pinned, and every control shares a baseline
+// whether or not it has a label.
+@include b(filter-row) {
+  @include nu-root("filter-row", (
+    "Gap": nu-space(4),
+    "MinColumnWidth": 10rem,
+  ));
+
+  display: grid;
+  grid-template-columns: repeat(
+    auto-fit,
+    minmax(nu-var("filter-row", "MinColumnWidth"), 1fr)
+  );
+  align-items: start;
+  gap: nu-var("filter-row", "Gap");
+
+  // Filter fields sit in a grid gap, so their own bottom margin would double it.
+  .nu-field {
+    --nu-field--MarginBlockEnd: 0;
+  }
+
+  @include m(compact) {
+    --nu-filter-row--MinColumnWidth: 7.5rem;
+    --nu-filter-row--Gap: #{nu-space(3)};
+  }
+}
+
+@include b(form-actions) {
+  display: flex;
+  align-items: center;
+  gap: nu-space(3);
+  margin-block-start: nu-space(6);
+
+  @include m(end) {
+    justify-content: flex-end;
+  }
+
+  @include m(between) {
+    justify-content: space-between;
+  }
+}
+
+// ---- checkbox / radio ----
+
+@include b(check) {
+  @include nu-root("check", (
+    "Size": 1.125rem,
+    "BorderWidth": 2px,
+    "BorderColor": var(--border-base),
+    "BorderRadius": nu-radius(sm),
+    "BackgroundColor": var(--bg-surface),
+    "checked--BackgroundColor": var(--primary),
+    "checked--BorderColor": var(--primary),
+    "MarkColor": var(--text-inverted),
+  ));
+
+  appearance: none;
+  flex-shrink: 0;
+  position: relative;
+  inline-size: nu-var("check", "Size");
+  block-size: nu-var("check", "Size");
+  background-color: nu-var("check", "BackgroundColor");
+  border: nu-var("check", "BorderWidth") solid nu-var("check", "BorderColor");
+  border-radius: nu-var("check", "BorderRadius");
+  cursor: pointer;
+  transition:
+    background-color nu-duration(fast) $nu-ease,
+    border-color nu-duration(fast) $nu-ease;
+
+  @include reduced-motion {
+    transition: none;
+  }
+
+  &:hover:not(:disabled) {
+    border-color: var(--primary);
+  }
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px nu-tint(primary, 25%);
+  }
+
+  &:checked {
+    background-color: nu-var("check", "checked--BackgroundColor");
+    border-color: nu-var("check", "checked--BorderColor");
+
+    &::after {
+      content: "";
+      position: absolute;
+      inset-block-start: 1px;
+      inset-inline-start: 5px;
+      inline-size: 5px;
+      block-size: 10px;
+      border: solid nu-var("check", "MarkColor");
+      border-width: 0 2px 2px 0;
+      transform: rotate(45deg);
+    }
+  }
+
+  &:indeterminate {
+    background-color: nu-var("check", "checked--BackgroundColor");
+    border-color: nu-var("check", "checked--BorderColor");
+
+    &::after {
+      content: "";
+      position: absolute;
+      inset-block-start: 50%;
+      inset-inline-start: 50%;
+      inline-size: 60%;
+      block-size: 2px;
+      background-color: nu-var("check", "MarkColor");
+      transform: translate(-50%, -50%);
+    }
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  @include m(radio) {
+    --nu-check--BorderRadius: #{nu-radius(full)};
+
+    &:checked::after {
+      inset-block-start: 50%;
+      inset-inline-start: 50%;
+      inline-size: 0.5rem;
+      block-size: 0.5rem;
+      border: none;
+      border-radius: nu-radius(full);
+      background-color: nu-var("check", "MarkColor");
+      transform: translate(-50%, -50%);
+    }
+  }
+}
+
+@include b(check-label) {
+  display: inline-flex;
+  align-items: center;
+  gap: nu-space(2);
+  font-size: nu-font-size(sm);
+  color: var(--text-color);
+  cursor: pointer;
+
+  @include when(disabled) {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+}
+
+// ---- input group ----
+
+@include b(input-group) {
+  @include nu-root("input-group", (
+    "BorderRadius": nu-radius(md),
+    "focus--BorderColor": var(--primary),
+    "focus--BoxShadow": 0 0 0 3px #{nu-tint(primary, 25%)},
+  ));
+
+  display: flex;
+  align-items: stretch;
+  inline-size: 100%;
+  border-radius: nu-var("input-group", "BorderRadius");
+
+  @include e(addon) {
+    display: inline-flex;
+    align-items: center;
+    padding-inline: nu-space(3);
+    font-size: nu-font-size(sm);
+    color: var(--text-muted);
+    background-color: var(--bg-alternate);
+    border: 1px solid var(--border-base);
+    border-radius: inherit;
+    white-space: nowrap;
+    transition: border-color nu-duration(fast) $nu-ease;
+
+    @include reduced-motion {
+      transition: none;
+    }
+  }
+
+  // Only the outer edges stay round; interior edges square up so the parts
+  // read as one control. Logical properties keep this correct in RTL.
+  > :first-child {
+    border-start-end-radius: 0;
+    border-end-end-radius: 0;
+  }
+
+  > :last-child {
+    border-start-start-radius: 0;
+    border-end-start-radius: 0;
+  }
+
+  // Anything sandwiched between addons loses both sides.
+  > :not(:first-child):not(:last-child) {
+    border-radius: 0;
+  }
+
+  > :not(:first-child) {
+    margin-inline-start: -1px;
+  }
+
+  // nu-input-wrap is the flex child, but the .nu-input inside it carries the
+  // visible border. Radius must be re-applied one level down or the input keeps
+  // rounding where it meets an addon.
+  > .nu-input-wrap {
+    flex: 1;
+    min-inline-size: 0;
+    border-radius: inherit;
+
+    .nu-input {
+      border-radius: inherit;
+    }
+  }
+
+  > .nu-input-wrap:first-child .nu-input {
+    border-start-end-radius: 0;
+    border-end-end-radius: 0;
+  }
+
+  > .nu-input-wrap:last-child .nu-input {
+    border-start-start-radius: 0;
+    border-end-start-radius: 0;
+  }
+
+  > .nu-input-wrap:not(:first-child):not(:last-child) .nu-input {
+    border-radius: 0;
+  }
+
+  // Focus belongs to the WHOLE group, not just the input. The input drops its
+  // own ring and the group draws one around every part.
+  &:focus-within {
+    border-color: nu-var("input-group", "focus--BorderColor");
+    box-shadow: nu-var("input-group", "focus--BoxShadow");
+
+    .nu-input-group__addon {
+      border-color: nu-var("input-group", "focus--BorderColor");
+    }
+  }
+
+  .nu-input:focus,
+  .nu-input:focus-visible {
+    position: relative;
+    z-index: 1;
+    box-shadow: none;
+  }
+}

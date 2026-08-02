@@ -1,0 +1,134 @@
+.project-db-connection {
+  .wrapper {
+    display: flex;
+    flex-direction: column;
+    // gap: 1.5rem;
+    margin-top: 1rem;
+    padding: 0 1rem;
+    box-sizing: border-box;
+    width: 100%;
+
+    .db-connection-form {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      background: #fff;
+      padding: 2rem;
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+
+      .db-connection-container {
+        .wrapper {
+          padding: 0;
+          margin: 0;
+          // gap: 1rem;
+        }
+
+        .field-wrapper {
+          display: flex;
+          flex-direction: column;
+          gap: 1rem;
+
+          @media (min-width: 768px) {
+            flex-direction: row;
+
+            > * {
+              flex: 1;
+            }
+          }
+        }
+      }
+
+      .form-actions {
+        display: flex;
+        justify-content: center;
+        margin-top: 2rem;
+        padding-top: 1.5rem;
+        border-top: 1px solid #e9ecef;
+
+        .btn {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          justify-content: center;
+          min-width: 160px;
+          transition: all 0.2s ease;
+
+          i {
+            font-size: 14px;
+          }
+
+          .fa-spinner {
+            animation: spin 1s linear infinite;
+          }
+
+          &:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            background-color: #6c757d;
+            border-color: #6c757d;
+            transform: none;
+
+            &:hover {
+              background-color: #6c757d;
+              border-color: #6c757d;
+              transform: none;
+            }
+          }
+        }
+      }
+
+      .loader-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(255, 255, 255, 0.9);
+        backdrop-filter: blur(4px);
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        font-size: 1rem;
+        color: #667eea;
+        z-index: 10;
+
+        i {
+          font-size: 2rem;
+          margin-bottom: 0.5rem;
+        }
+      }
+    }
+  }
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 768px) {
+  .project-db-connection {
+    .wrapper {
+      padding: 0 0.5rem;
+
+      .db-connection-form {
+        padding: 1.5rem;
+        border-radius: 8px;
+
+        .form-actions {
+          .btn {
+            width: 100%;
+            min-width: auto;
+          }
+        }
+      }
+    }
+  }
+}

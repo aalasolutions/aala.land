@@ -3,19 +3,18 @@
     <div data-test-reset-success class="flex col gap-5 w-full text-center">
       <div class="flex col gap-2">
         <Ui::Ph @icon="check-circle" @size="48px" />
-        <p class="font-sm text-muted">
+        <p class="text-sm text-muted">
           If an account exists with that email, you will receive a password
           reset link.
         </p>
       </div>
-      <button
+      <Nuvo::Button
+        @variant="link"
         data-test-back-to-login
-        type="button"
-        class="btn-link text-primary font-sm"
         {{on "click" this.toggleForgotPassword}}
       >
         Sign in
-      </button>
+      </Nuvo::Button>
     </div>
   {{else}}
     <form
@@ -23,42 +22,44 @@
       class="flex col gap-5 w-full"
       {{on "submit" this.submitForgotPassword}}
     >
-      <Ui::FormInput
-        @label="Email"
-        @id="reset-email"
-        @type="email"
-        @placeholder="you@company.com"
-        @value={{this.resetEmail}}
-        @autocomplete="email"
-        @required={{true}}
-        @onChange={{this.updateResetEmail}}
-        data-test-reset-email-input
-      />
+      <Nuvo::Field @label="Email" @required={{true}}>
+        <Nuvo::Input
+          id="reset-email"
+          type="email"
+          placeholder="you@company.com"
+          @value={{this.resetEmail}}
+          autocomplete="email"
+          required={{true}}
+          @onInput={{fn this.setFieldValue "resetEmail"}}
+          data-test-reset-email-input
+        />
+      </Nuvo::Field>
 
       {{#if this.resetError}}
-        <p data-test-reset-error class="font-sm text-danger text-center">
-          {{this.resetError}}
-        </p>
+        <Nuvo::Alert
+          @variant="danger"
+          @description={{this.resetError}}
+          data-test-reset-error
+        />
       {{/if}}
 
-      <Ui::AppButton
+      <Nuvo::Button
         @variant="primary"
-        @buttonType="submit"
-        @text="Send Reset Link"
+        @type="submit"
         @loading={{this.resetLoading}}
-        @loadingText="Sending..."
         data-test-reset-submit
-      />
+      >
+        {{if this.resetLoading "Sending..." "Send Reset Link"}}
+      </Nuvo::Button>
 
       <div class="text-center text-muted">
-        <button
+        <Nuvo::Button
+          @variant="link"
           data-test-back-to-login
-          type="button"
-          class="btn-link font-sm text-muted"
           {{on "click" this.toggleForgotPassword}}
         >
           Back to Sign In
-        </button>
+        </Nuvo::Button>
       </div>
     </form>
   {{/if}}
@@ -68,60 +69,61 @@
     class="flex col gap-5 w-full"
     {{on "submit" this.submit}}
   >
-    <Ui::FormInput
-      @label="Email"
-      @id="login-email"
-      @type="email"
-      @placeholder="you@company.com"
-      @value={{this.email}}
-      @autocomplete="email"
-      @required={{true}}
-      @onChange={{this.updateEmail}}
-      data-test-email-input
-    />
+    <Nuvo::Field @label="Email" @required={{true}}>
+      <Nuvo::Input
+        id="login-email"
+        type="email"
+        placeholder="you@company.com"
+        @value={{this.email}}
+        autocomplete="email"
+        required={{true}}
+        @onInput={{fn this.setFieldValue "email"}}
+        data-test-email-input
+      />
+    </Nuvo::Field>
 
-    <Ui::FormInput
-      @label="Password"
-      @id="login-password"
-      @type="password"
-      @placeholder="••••••••"
-      @value={{this.password}}
-      @autocomplete="current-password"
-      @required={{true}}
-      @onChange={{this.updatePassword}}
-      data-test-password-input
-    />
+    <Nuvo::Field @label="Password" @required={{true}}>
+      <Nuvo::Input
+        id="login-password"
+        type="password"
+        placeholder="••••••••"
+        @value={{this.password}}
+        autocomplete="current-password"
+        required={{true}}
+        @onInput={{fn this.setFieldValue "password"}}
+        data-test-password-input
+      />
+    </Nuvo::Field>
 
     {{#if this.errorMessage}}
-      <p data-test-error-message class="font-sm text-danger text-center">
-        {{this.errorMessage}}
-      </p>
+      <Nuvo::Alert
+        @variant="danger"
+        @description={{this.errorMessage}}
+        data-test-error-message
+      />
     {{/if}}
 
-    <Ui::AppButton
+    <Nuvo::Button
       @variant="primary"
-      @buttonType="submit"
-      @text="Sign In"
+      @type="submit"
       @loading={{this.isLoading}}
-      @loadingText="Signing in..."
       data-test-submit-button
-    />
+    >
+      {{if this.isLoading "Signing in..." "Sign In"}}
+    </Nuvo::Button>
 
     <div class="text-center">
-      <button
+      <Nuvo::Button
+        @variant="link"
         data-test-forgot-password-link
-        type="button"
-        class="btn-link font-sm text-muted"
         {{on "click" this.toggleForgotPassword}}
       >
         Forgot Password?
-      </button>
+      </Nuvo::Button>
     </div>
 
     {{#if this.googleAuth.isConfigured}}
-      <div class="divider">
-        <span class="text-muted font-sm">OR</span>
-      </div>
+      <Nuvo::Divider @label="OR" />
 
       <div
         class="google-signin-section
@@ -130,7 +132,7 @@
         {{#if this.isGoogleLoading}}
           <button
             type="button"
-            class="btn btn--google btn--google--loading"
+            class="btn--google btn--google--loading"
             disabled
           >
             <span class="google-spinner"></span>

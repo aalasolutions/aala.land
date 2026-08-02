@@ -1,0 +1,126 @@
+// UIKit design scales.
+//
+// Values come from NuvoUI core so the kit and core utilities cannot drift.
+// Where our key names differ from core's, we alias rather than redefine: the
+// kit keeps its own vocabulary but never its own numbers.
+@use "sass:map";
+@use "@nuvoui/core/src/styles/config/spacing" as core-space;
+@use "@nuvoui/core/src/styles/config/borders" as core-borders;
+@use "@nuvoui/core/src/styles/config/typography" as core-typo;
+
+$nu-prefix: "nu" !default;
+
+// Straight through: our keys already match core's.
+$nu-space: core-space.$spacings;
+
+// Core's radius scale is one step "larger" per name than ours was
+// (core sm = 0.375rem, our old sm = 0.25rem). We keep our names and map each
+// to the core key holding the value we already ship, so nothing re-renders.
+$nu-radius: (
+  "none": map.get(core-borders.$border-radii, "none"),
+  "sm": map.get(core-borders.$border-radii, "xs"),
+  "md": map.get(core-borders.$border-radii, "sm"),
+  "lg": map.get(core-borders.$border-radii, "md"),
+  "xl": map.get(core-borders.$border-radii, "lg"),
+  "2xl": map.get(core-borders.$border-radii, "xl"),
+  "full": 9999px,
+);
+
+// Adopted from core. Note this shifts lg and up (our lg was 1.125rem, core's
+// is 1.25rem), so headings render a step larger than before. Deliberate: one
+// type scale across kit and core beats two that quietly disagree.
+$nu-font-size: core-typo.$font-sizes;
+
+$nu-font-weight: core-typo.$font-weights;
+
+$nu-shadow: (
+  none: none,
+  sm: 0 1px 2px rgba(0, 0, 0, 0.05),
+  md: 0 4px 6px -1px rgba(0, 0, 0, 0.08),
+  lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1),
+  xl: 0 20px 25px -5px rgba(0, 0, 0, 0.12),
+);
+
+$nu-z: (
+  base: 1,
+  sticky: 100,
+  dropdown: 1000,
+  modal: 2000,
+  toast: 3000,
+);
+
+$nu-duration: (
+  fast: 150ms,
+  normal: 250ms,
+  slow: 400ms,
+);
+
+$nu-ease: cubic-bezier(0.4, 0, 0.2, 1);
+
+$nu-variants: (primary, secondary, success, warning, danger, info);
+
+@function nu-space($key) {
+  @if not map.has-key($nu-space, $key) {
+    @error "nu-space: unknown key `#{$key}`.";
+  }
+  @return map.get($nu-space, $key);
+}
+
+@function nu-radius($key) {
+  $k: "#{$key}";
+  @if not map.has-key($nu-radius, $k) {
+    @error "nu-radius: unknown key `#{$key}`.";
+  }
+  @return map.get($nu-radius, $k);
+}
+
+// Core keys its maps with strings ("2xl"), call sites write them bare (2xl).
+// Normalising here keeps the ergonomic call style without forking core's data.
+@function nu-font-size($key) {
+  $k: "#{$key}";
+  @if not map.has-key($nu-font-size, $k) {
+    @error "nu-font-size: unknown key `#{$key}`.";
+  }
+  @return map.get($nu-font-size, $k);
+}
+
+@function nu-font-weight($key) {
+  $k: "#{$key}";
+  @if not map.has-key($nu-font-weight, $k) {
+    @error "nu-font-weight: unknown key `#{$key}`.";
+  }
+  @return map.get($nu-font-weight, $k);
+}
+
+@function nu-shadow($key) {
+  @if not map.has-key($nu-shadow, $key) {
+    @error "nu-shadow: unknown key `#{$key}`.";
+  }
+  @return map.get($nu-shadow, $key);
+}
+
+@function nu-z($key) {
+  @if not map.has-key($nu-z, $key) {
+    @error "nu-z: unknown key `#{$key}`.";
+  }
+  @return map.get($nu-z, $key);
+}
+
+@function nu-duration($key) {
+  @if not map.has-key($nu-duration, $key) {
+    @error "nu-duration: unknown key `#{$key}`.";
+  }
+  @return map.get($nu-duration, $key);
+}
+
+// Translucent tint of a core color token, without hardcoding rgba.
+@function nu-tint($color-token, $percent) {
+  @return color-mix(in srgb, var(--#{$color-token}) $percent, transparent);
+}
+
+// Neutral scrim for overlays. Derived from the theme's text color so it stays
+// dark in light mode and adapts if the theme changes. Never use a brand color
+// for a scrim: brand hues tint the whole screen.
+@function nu-scrim($percent: 50%) {
+  @return color-mix(in srgb, var(--text-color) $percent, transparent);
+}

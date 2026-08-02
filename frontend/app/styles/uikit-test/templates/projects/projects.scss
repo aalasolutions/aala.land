@@ -1,0 +1,205 @@
+@use "sass:color";
+
+.projects-container {
+  .delete-input-wrapper {
+    margin: 20px 0;
+    background: $slate-50;
+    padding: 16px;
+    border-radius: 8px;
+    border: 1px solid $slate-200;
+    text-align: left;
+
+    label {
+      display: block;
+      font-size: 13px;
+      color: $text-secondary;
+      margin-bottom: 8px;
+      font-weight: 500;
+
+      strong {
+        font-weight: 600;
+        color: $dark-color;
+      }
+    }
+
+    input {
+      width: 100%;
+      padding: 10px 12px;
+      font-size: 14px;
+      border: 1px solid $slate-300;
+      border-radius: 6px;
+      outline: none;
+      box-sizing: border-box;
+      background: $white;
+      transition: border-color 0.2s;
+
+      &:focus {
+        border-color: $text-muted;
+      }
+
+      &::placeholder {
+        color: $slate-400;
+      }
+    }
+  }
+
+  .popup-content {
+    border-radius: 16px;
+    padding: 20px;
+    max-width: 480px;
+    text-align: center;
+    animation: slideUp 0.25s ease;
+
+    .generic-header-title {
+      font-size: 20px;
+      font-weight: 700;
+      color: $dark-color;
+      margin-bottom: 10px;
+    }
+
+    .generic-header-subtitle {
+      font-size: 14px;
+      color: $text-muted;
+      margin-bottom: 0;
+      line-height: 1.6;
+    }
+
+    .actions {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      margin-top: 25px;
+
+      button {
+        max-width: 150px;
+        width: 100%;
+        padding: 10px 0;
+        border-radius: 8px;
+        font-size: 15px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.25s ease-in-out;
+      }
+
+      .error {
+        background: $error-color;
+        color: $white;
+        border: none;
+        &:hover {
+          background: color.adjust($error-color, $lightness: -10%);
+        }
+
+        &:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
+      }
+
+      .secondary {
+        background: $slate-100;
+        color: $text-secondary;
+        border: none;
+        &:hover {
+          background: $slate-200;
+        }
+      }
+    }
+  }
+
+  .wrapper {
+    display: flex;
+    justify-content: flex-start;
+    flex-direction: column;
+    gap: 1.5rem;
+    margin-top: 1rem;
+
+    .table-button {
+      all: unset;
+      padding: 6px 12px;
+      font-size: 14px;
+      font-weight: 500;
+      border-radius: 4px;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.3s;
+
+      &.manage {
+        background-color: rgba($blue-500, 0.12);
+        color: $blue-500;
+        transition: 0.5s;
+
+        &.disabled {
+          background-color: $secondary-color;
+          color: $white;
+          cursor: not-allowed;
+        }
+
+        &:hover {
+          transition: 0.7s;
+          background-color: rgba($blue-500, 0.22);
+        }
+      }
+
+      &.delete {
+        transition: 0.5s;
+        color: $error-color;
+        margin-right: 0.5rem;
+
+        i {
+          font-size: 14px;
+        }
+
+        &:hover {
+          transition: all 0.7s;
+          background-color: color.adjust($error-color, $lightness: -10%);
+          color: $white;
+        }
+      }
+
+      &.restore {
+        transition: 0.5s;
+        color: $primary-color;
+        margin-right: 0.5rem;
+
+        i {
+          font-size: 14px;
+        }
+
+        &:hover {
+          transition: all 0.7s;
+          background-color: color.adjust($primary-color, $lightness: -10%);
+          color: $white;
+        }
+      }
+    }
+
+    restore
+
+    .dashboard-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+
+      .actions {
+        display: flex;
+        gap: 1rem;
+
+        .create-project {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          align-self: center;
+          gap: 0.5rem;
+          padding: 10px 12px;
+          font-size: 16px;
+
+          i {
+            font-size: 14px;
+            color: $white;
+          }
+        }
+      }
+    }
+
+  }
+}

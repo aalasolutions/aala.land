@@ -55,8 +55,15 @@ export default class LeasesController extends Controller {
     return statuses.map((s) => ({ value: s, label: s }));
   }
 
-  @action setField(fieldName, e) {
-    this[fieldName] = e.target.value;
+  // Nuvo::Input/Select/Textarea call onInput/onChange as (value, event),
+  // not the raw DOM event setField expects.
+  @action setFieldValue(fieldName, value) {
+    this[fieldName] = value;
+  }
+
+  // Native <input type="date"> still emits a raw DOM event.
+  @action setFieldValueFromEvent(fieldName, event) {
+    this[fieldName] = event.target.value;
   }
 
   @action openCreate() {

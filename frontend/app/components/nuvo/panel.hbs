@@ -1,0 +1,29 @@
+{{! Named blocks <:header>/<:body>/<:footer> take priority; a plain default
+    block renders straight into the body slot. }}
+<div class={{this.classes}} data-test-nu-panel ...attributes>
+  {{#if (has-block "header")}}
+    <div class="nu-panel__header" data-test-nu-panel-header>
+      {{yield to="header"}}
+    </div>
+  {{else if this.showHeader}}
+    <div class="nu-panel__header" data-test-nu-panel-header>
+      <h3 class="nu-panel__title" data-test-nu-panel-title>{{@title}}</h3>
+    </div>
+  {{/if}}
+
+  {{#if (has-block "body")}}
+    <div class="nu-panel__body" data-test-nu-panel-body>
+      {{yield to="body"}}
+    </div>
+  {{else if (has-block)}}
+    <div class="nu-panel__body" data-test-nu-panel-body>
+      {{yield}}
+    </div>
+  {{/if}}
+
+  {{#if (has-block "footer")}}
+    <div class="nu-panel__footer" data-test-nu-panel-footer>
+      {{yield to="footer"}}
+    </div>
+  {{/if}}
+</div>

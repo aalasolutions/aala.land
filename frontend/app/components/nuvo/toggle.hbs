@@ -1,0 +1,22 @@
+<label class={{this.classes}} data-test-nu-toggle ...attributes>
+  <input
+    type="checkbox"
+    class="nu-toggle__input"
+    checked={{@checked}}
+    disabled={{@disabled}}
+    data-test-nu-toggle-input
+    {{on "change" this.handleChange}}
+  />
+  <span class="nu-toggle__track">
+    <span class="nu-toggle__knob"></span>
+    {{#if @activeText}}
+      <span class="nu-toggle__active-text">{{@activeText}}</span>
+    {{/if}}
+    {{#if @inactiveText}}
+      <span class="nu-toggle__inactive-text">{{@inactiveText}}</span>
+    {{/if}}
+  </span>
+  {{#if (has-block)}}
+    <span class="nu-toggle__label">{{yield}}</span>
+  {{/if}}
+</label>

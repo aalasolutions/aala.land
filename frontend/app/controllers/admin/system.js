@@ -33,15 +33,18 @@ export default class AdminSystemController extends Controller {
     switch (this.overallState) {
       case 'ok':
         return {
-          cls: 'status-paid',
+          cls: 'badge-sub-active',
           text: `OK, ${this.data.registered} of ${this.data.total} active`,
         };
       case 'missing':
-        return { cls: 'status-pending', text: `${this.data.missing} missing` };
+        return {
+          cls: 'badge-sub-incomplete',
+          text: `${this.data.missing} missing`,
+        };
       case 'failed':
-        return { cls: 'status-failed', text: 'Sync failed' };
+        return { cls: 'badge-sub-unpaid', text: 'Sync failed' };
       default:
-        return { cls: 'status-pending', text: 'Unknown' };
+        return { cls: 'badge-sub-incomplete', text: 'Unknown' };
     }
   }
 

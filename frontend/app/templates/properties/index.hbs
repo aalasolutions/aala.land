@@ -1,30 +1,21 @@
 {{page-title "Properties"}}
 
 <div data-test-properties-page class="flex col gap-6">
-  <div class="flex between x-center">
-    <div>
-      <h2 class="font-3xl font-bold"><Ui::Ph @icon="buildings" @size="28px" />
-        Properties</h2>
-      <p class="text-muted mt-1">Locations, assets, and properties.</p>
-    </div>
-    <div class="flex gap-3 x-center">
-      {{!-- <Ui::Tabs
-        @tabs={{this.viewTabs}}
-        @active={{this.currentView}}
-        @onChange={{this.switchView}}
-        data-test-view-toggle
-      /> --}}
-      <button
-        type="button"
-        class="btn btn-primary"
-        {{on "click" this.openNewUnitModal}}
+  <Nuvo::PageHeader
+    @title="Properties"
+    @subtitle="Locations, assets, and properties."
+  >
+    <:actions>
+      <Nuvo::Button
+        @variant="primary"
         data-test-new-unit
+        {{on "click" this.openNewUnitModal}}
       >
         <Ui::Ph @icon="plus" />
         New Property
-      </button>
-    </div>
-  </div>
+      </Nuvo::Button>
+    </:actions>
+  </Nuvo::PageHeader>
 
   {{#if (eq this.currentView "cards")}}
     {{! CARDS VIEW }}
@@ -34,12 +25,12 @@
           <LinkTo
             @route="properties.detail"
             @model={{loc.id}}
-            class="glass-panel p-5 flex between x-center hover-lift"
+            class="nu-card m-interactive flex between x-center"
           >
             <div class="flex gap-6">
               <div>
-                <h4 class="font-md font-bold">{{loc.name}}</h4>
-                <p class="text-muted font-xs mt-1">{{loc.cityName}}</p>
+                <h4 class="text-md font-bold">{{loc.name}}</h4>
+                <p class="text-muted text-xs mt-1">{{loc.cityName}}</p>
               </div>
               <div class="flex gap-4 text-sm">
                 <span class="text-muted">{{loc.assetCount}} Assets</span>
@@ -51,16 +42,16 @@
         {{/each}}
       </div>
     {{else}}
-      <div class="glass-panel p-8 text-center">
-        <p class="text-muted">No assets yet. Click "New Property" to add your
-          first property.</p>
-      </div>
+      <Nuvo::EmptyState
+        @title="No assets yet"
+        @description="Click New Property to add your first property."
+      />
     {{/if}}
   {{else if (eq this.currentView "list")}}
     {{! LIST VIEW }}
     {{#if @model.length}}
-      <div class="data-table-wrapper">
-        <table class="data-table">
+      <div class="nu-table-wrapper">
+        <table class="nu-table">
           <thead>
             <tr>
               <th>Location</th>
@@ -77,11 +68,11 @@
                 <td class="text-muted">{{loc.cityName}}</td>
                 <td>{{loc.assetCount}}</td>
                 <td>{{loc.unitCount}}</td>
-                <td class="text-right">
+                <td class="text-end">
                   <LinkTo
                     @route="properties.detail"
                     @model={{loc.id}}
-                    class="btn btn-primary btn-xs"
+                    class="nu-btn m-primary m-xs"
                   >
                     View
                   </LinkTo>
@@ -92,87 +83,88 @@
         </table>
       </div>
     {{else}}
-      <div class="glass-panel p-8 text-center">
-        <p class="text-muted">No assets yet. Click "New Property" to add your
-          first property.</p>
-      </div>
+      <Nuvo::EmptyState
+        @title="No assets yet"
+        @description="Click New Property to add your first property."
+      />
     {{/if}}
   {{else}}
     {{! BROWSE UNITS VIEW }}
-    <div class="glass-panel p-4 flex col gap-4" data-test-browse-filters>
-      <div class="flex gap-4 wrap x-center">
-        <Ui::FormDropdown
-          @id="browse-type-filter"
-          @label="Type"
-          @value={{this.filterType}}
-          @onChange={{this.setFilterType}}
-          @options={{this.filterTypeOptions}}
-          @placeholder="All"
-          data-test-filter-type
-        />
-        <Ui::FormDropdown
-          @id="browse-status-filter"
-          @label="Status"
-          @value={{this.filterStatus}}
-          @onChange={{this.setFilterStatus}}
-          @options={{this.filterStatusOptions}}
-          @placeholder="All"
-          data-test-filter-status
-        />
-        <Ui::FormDropdown
-          @id="browse-beds-filter"
-          @label="Bedrooms"
-          @value={{this.filterBeds}}
-          @onChange={{this.setFilterBeds}}
-          @options={{this.filterBedsOptions}}
-          @placeholder="Any"
-          data-test-filter-beds
-        />
-        <div class="flex col gap-1">
-          <label class="font-xs text-muted">Min Price</label>
-          <input
+    <Nuvo::Card class="flex col gap-4" data-test-browse-filters>
+      <div class="nu-filter-row">
+        <Nuvo::Field @label="Type">
+          <Nuvo::Dropdown
+            @searchable={{true}}
+            @align="start"
+            @value={{this.filterType}}
+            @onSelect={{this.setFilterType}}
+            @options={{this.filterTypeOptions}}
+            @placeholder="All"
+            data-test-filter-type
+          />
+        </Nuvo::Field>
+        <Nuvo::Field @label="Status">
+          <Nuvo::Dropdown
+            @searchable={{true}}
+            @align="start"
+            @value={{this.filterStatus}}
+            @onSelect={{this.setFilterStatus}}
+            @options={{this.filterStatusOptions}}
+            @placeholder="All"
+            data-test-filter-status
+          />
+        </Nuvo::Field>
+        <Nuvo::Field @label="Bedrooms">
+          <Nuvo::Dropdown
+            @searchable={{true}}
+            @align="start"
+            @value={{this.filterBeds}}
+            @onSelect={{this.setFilterBeds}}
+            @options={{this.filterBedsOptions}}
+            @placeholder="Any"
+            data-test-filter-beds
+          />
+        </Nuvo::Field>
+        <Nuvo::Field @label="Min Price">
+          <Nuvo::Input
             type="number"
-            class="form-input form-input--price-range"
             placeholder="Min"
-            value={{this.filterMinPrice}}
+            @value={{this.filterMinPrice}}
+            @onInput={{fn this.setFieldValue "filterMinPrice"}}
             data-test-filter-min-price
-            {{on "input" (fn this.setField "filterMinPrice")}}
             {{on "change" this.applyFilters}}
           />
-        </div>
-        <div class="flex col gap-1">
-          <label class="font-xs text-muted">Max Price</label>
-          <input
+        </Nuvo::Field>
+        <Nuvo::Field @label="Max Price">
+          <Nuvo::Input
             type="number"
-            class="form-input form-input--price-range"
             placeholder="Max"
-            value={{this.filterMaxPrice}}
+            @value={{this.filterMaxPrice}}
+            @onInput={{fn this.setFieldValue "filterMaxPrice"}}
             data-test-filter-max-price
-            {{on "input" (fn this.setField "filterMaxPrice")}}
             {{on "change" this.applyFilters}}
           />
-        </div>
-        <div class="flex col gap-1">
-          <label class="font-xs text-muted">&nbsp;</label>
-          <button
-            class="btn btn-secondary btn-sm"
+        </Nuvo::Field>
+        <div class="nu-field">
+          <span class="nu-field__label-spacer" aria-hidden="true"></span>
+          <Nuvo::Button
+            @variant="secondary"
             data-test-clear-filters
-            type="button"
             {{on "click" this.clearFilters}}
-          >Clear</button>
+          >Clear</Nuvo::Button>
         </div>
       </div>
 
       <div>
-        <label class="font-xs text-muted mb-1">Amenities</label>
+        <label class="text-xs text-muted mb-1">Amenities</label>
         <div class="flex gap-2 wrap">
           {{#each this.amenityOptions as |opt|}}
             <button
               type="button"
-              class="amenity-chip
+              class="nu-tag m-pill m-selectable
                 {{if
                   (includes this.filterAmenities opt.key)
-                  'amenity-chip-active'
+                  'is-selected'
                 }}"
               data-test-amenity-filter={{opt.key}}
               {{on "click" (fn this.toggleBrowseAmenity opt.key)}}
@@ -183,24 +175,25 @@
           {{/each}}
         </div>
       </div>
-    </div>
+    </Nuvo::Card>
 
-    <p class="text-muted font-sm" data-test-browse-count>{{format-number
+    <p class="text-muted text-sm" data-test-browse-count>{{format-number
         this.browseTotal
       }}
       properties found</p>
 
     {{#if this.isLoadingBrowse}}
-      <div class="glass-panel p-8 text-center">
-        <p class="text-muted">Loading...</p>
-      </div>
+      <Nuvo::Card class="text-center">
+        <Nuvo::Spinner />
+        <p class="text-muted mt-2">Loading...</p>
+      </Nuvo::Card>
     {{else if this.browseUnits.length}}
       <div class="browse-unit-grid" data-test-browse-grid>
         {{#each this.browseUnits as |unit|}}
           <LinkTo
             @route="properties.unit"
             @models={{array unit.areaId unit.id}}
-            class="unit-browse-card glass-panel"
+            class="unit-browse-card nu-card m-interactive"
             data-test-browse-unit={{unit.id}}
           >
             <div class="unit-card-photo">
@@ -215,22 +208,23 @@
                   /></div>
               {{/if}}
             </div>
-            <div class="p-4 flex col gap-2">
+            <div class="pt-4 flex col gap-2">
               <div class="flex between x-center">
                 <p class="font-bold">Property {{unit.unitNumber}}</p>
-                <span class="status-badge status-{{unit.status}}">{{capitalize
-                    unit.status
-                  }}</span>
+                <Nuvo::Tag
+                  class="badge-unit-{{lowercase unit.status}}"
+                  @text={{capitalize unit.status}}
+                />
               </div>
-              <p class="font-xs text-muted">{{unit.assetName}}
+              <p class="text-xs text-muted">{{unit.assetName}}
                 &middot;
                 {{unit.areaName}}</p>
               {{#if unit.price}}
-                <p class="font-lg font-bold text-success">{{format-currency
+                <p class="text-lg font-bold text-success">{{format-currency
                     unit.price
                   }}</p>
               {{/if}}
-              <div class="flex gap-3 font-xs text-muted">
+              <div class="flex gap-3 text-xs text-muted">
                 {{#if unit.bedrooms}}<span><Ui::Ph @icon="bed" />
                     {{unit.bedrooms}}
                     bed</span>{{/if}}
@@ -242,13 +236,14 @@
                     sqft</span>{{/if}}
               </div>
               {{#if unit.ownerName}}
-                <p class="font-xs text-muted"><Ui::Ph @icon="user" />
+                <p class="text-xs text-muted"><Ui::Ph @icon="user" />
                   {{unit.ownerName}}</p>
               {{/if}}
               {{#if unit.propertyType}}
-                <span
-                  class="type-badge type-{{lowercase unit.propertyType}}"
-                >{{if (eq unit.propertyType "FOR_SALE") "Sale" "Rent"}}</span>
+                <Nuvo::Tag
+                  class="badge-proptype-{{lowercase unit.propertyType}}"
+                  @text={{if (eq unit.propertyType "FOR_SALE") "Sale" "Rent"}}
+                />
               {{/if}}
             </div>
           </LinkTo>
@@ -257,48 +252,49 @@
 
       {{#if this.browseHasNextPage}}
         <div class="flex center gap-4" data-test-browse-pagination>
-          <button
-            class="btn btn-secondary btn-sm"
-            disabled={{eq this.browsePage 1}}
-            type="button"
+          <Nuvo::Button
+            @variant="secondary"
+            @size="sm"
+            @disabled={{eq this.browsePage 1}}
             {{on "click" this.browsePrevPage}}
-          >Previous</button>
-          <span class="font-sm text-muted">Page {{this.browsePage}}</span>
-          <button
-            class="btn btn-secondary btn-sm"
-            type="button"
+          >Previous</Nuvo::Button>
+          <span class="text-sm text-muted">Page {{this.browsePage}}</span>
+          <Nuvo::Button
+            @variant="secondary"
+            @size="sm"
             {{on "click" this.browseNextPage}}
-          >Next</button>
+          >Next</Nuvo::Button>
         </div>
       {{else if (gt this.browsePage 1)}}
         <div class="flex center gap-4" data-test-browse-pagination>
-          <button
-            class="btn btn-secondary btn-sm"
-            type="button"
+          <Nuvo::Button
+            @variant="secondary"
+            @size="sm"
             {{on "click" this.browsePrevPage}}
-          >Previous</button>
-          <span class="font-sm text-muted">Page {{this.browsePage}}</span>
+          >Previous</Nuvo::Button>
+          <span class="text-sm text-muted">Page {{this.browsePage}}</span>
         </div>
       {{/if}}
     {{else}}
-      <div class="glass-panel p-8 text-center">
-        <Ui::Ph @icon="magnifying-glass" />
-        <p class="text-muted mt-2">No properties match your filters.</p>
-      </div>
+      <Nuvo::EmptyState
+        @title="No properties found"
+        @description="No properties match your filters."
+      >
+        <:icon><Ui::Ph @icon="magnifying-glass" /></:icon>
+      </Nuvo::EmptyState>
     {{/if}}
   {{/if}}
 </div>
 
 {{! New Property modal (cascading: city > location > asset > unit) }}
-<Ui::Modal
-  @isOpen={{this.showNewUnitModal}}
+<Nuvo::Modal
+  @open={{this.showNewUnitModal}}
   @title="New Property"
   @onClose={{this.closeNewUnitModal}}
-  @showClose={{true}}
 >
   <form class="flex col gap-4" {{on "submit" this.saveNewUnit}}>
     <div class="flex col gap-2">
-      <label class="font-sm text-muted">City *</label>
+      <label class="text-sm text-muted">City *</label>
       <LocationTypeahead
         @searchUrl={{this.citySearchUrl}}
         @createUrl="/locations/cities"
@@ -311,7 +307,7 @@
     </div>
     {{#if this.selectedCity}}
       <div class="flex col gap-2">
-        <label class="font-sm text-muted">Location / Area *</label>
+        <label class="text-sm text-muted">Location / Area *</label>
         <LocationTypeahead
           @searchUrl={{this.localitySearchUrl}}
           @createUrl="/locations/localities"
@@ -325,7 +321,7 @@
     {{/if}}
     {{#if this.selectedLocality}}
       <div class="flex col gap-2">
-        <label class="font-sm text-muted">Asset *</label>
+        <label class="text-sm text-muted">Asset *</label>
         <LocationTypeahead
           @searchUrl={{this.assetSearchUrl}}
           @createUrl="/properties/assets"
@@ -339,132 +335,133 @@
     {{/if}}
     {{#if this.selectedAsset}}
       <hr class="border-t border-light" />
-      <Ui::FormInput
-        @label="Property Number"
-        @id="nu-number"
-        @type="text"
-        @placeholder="e.g. 101, Villa A"
-        @value={{this.newUnitNumber}}
-        @onChange={{fn this.setField "newUnitNumber"}}
-        @required={{true}}
-      />
+      <Nuvo::Field @label="Property Number" @required={{true}}>
+        <Nuvo::Input
+          id="nu-number"
+          @type="text"
+          @placeholder="e.g. 101, Villa A"
+          @value={{this.newUnitNumber}}
+          @onInput={{fn this.setFieldValue "newUnitNumber"}}
+          required={{true}}
+        />
+      </Nuvo::Field>
 
       <div class="flex gap-4">
-        <div class="flex col gap-2 flex-1">
-          <Ui::FormDropdown
-            @label="Listing Type"
-            @id="nu-type"
-            @value={{this.newUnitType}}
-            @onChange={{fn this.setField "newUnitType"}}
-            @options={{this.unitTypeOptions}}
-            @placeholder="Not Listed"
-          />
+        <div class="flex col gap-2 grow">
+          <Nuvo::Field @label="Listing Type">
+            <Nuvo::Dropdown
+              id="nu-type"
+              @align="start"
+              @value={{this.newUnitType}}
+              @onSelect={{fn this.setFieldValue "newUnitType"}}
+              @options={{this.unitTypeOptions}}
+              @placeholder="Not Listed"
+            />
+          </Nuvo::Field>
         </div>
-        <div class="flex col gap-2 flex-1">
-          <Ui::FormDropdown
-            @label="Status"
-            @id="nu-status"
-            @value={{this.newUnitStatus}}
-            @onChange={{fn this.setField "newUnitStatus"}}
-            @options={{this.unitStatusOptions}}
-            @placeholder="Select status..."
-          />
+        <div class="flex col gap-2 grow">
+          <Nuvo::Field @label="Status">
+            <Nuvo::Dropdown
+              id="nu-status"
+              @align="start"
+              @value={{this.newUnitStatus}}
+              @onSelect={{fn this.setFieldValue "newUnitStatus"}}
+              @options={{this.unitStatusOptions}}
+              @placeholder="Select status..."
+            />
+          </Nuvo::Field>
         </div>
       </div>
 
       <div class="flex gap-4">
-        <div class="flex col gap-2 flex-1">
-          <Ui::FormInput
-            @label="Price"
-            @id="nu-price"
-            @type="number"
-            @placeholder="0"
-            @value={{this.newUnitPrice}}
-            @onChange={{fn this.setField "newUnitPrice"}}
-            @min={{0}}
-          />
+        <div class="flex col gap-2 grow">
+          <Nuvo::Field @label="Price">
+            <Nuvo::Input
+              id="nu-price"
+              @type="number"
+              @placeholder="0"
+              @value={{this.newUnitPrice}}
+              @onInput={{fn this.setFieldValue "newUnitPrice"}}
+              min="0"
+            />
+          </Nuvo::Field>
         </div>
-        <div class="flex col gap-2 flex-1">
-          <Ui::FormInput
-            @label="Bedrooms"
-            @id="nu-beds"
-            @type="number"
-            @placeholder="0"
-            @value={{this.newUnitBedrooms}}
-            @onChange={{fn this.setField "newUnitBedrooms"}}
-            @min={{0}}
-          />
+        <div class="flex col gap-2 grow">
+          <Nuvo::Field @label="Bedrooms">
+            <Nuvo::Input
+              id="nu-beds"
+              @type="number"
+              @placeholder="0"
+              @value={{this.newUnitBedrooms}}
+              @onInput={{fn this.setFieldValue "newUnitBedrooms"}}
+              min="0"
+            />
+          </Nuvo::Field>
         </div>
       </div>
 
-      <Ui::FormInput
-        @label="Bathrooms"
-        @id="nu-baths"
-        @type="number"
-        @placeholder="0"
-        @value={{this.newUnitBathrooms}}
-        @onChange={{fn this.setField "newUnitBathrooms"}}
-        @min={{0}}
-      />
+      <Nuvo::Field @label="Bathrooms">
+        <Nuvo::Input
+          id="nu-baths"
+          @type="number"
+          @placeholder="0"
+          @value={{this.newUnitBathrooms}}
+          @onInput={{fn this.setFieldValue "newUnitBathrooms"}}
+          min="0"
+        />
+      </Nuvo::Field>
     {{/if}}
     {{#if this.newUnitError}}
-      <p class="font-sm text-danger">{{this.newUnitError}}</p>
+      <p class="text-sm text-danger">{{this.newUnitError}}</p>
     {{/if}}
     <div class="flex gap-3 mt-2">
-      <Ui::AppButton
+      <Nuvo::Button
         @variant="secondary"
         @text="Cancel"
         @onClick={{this.closeNewUnitModal}}
       />
       {{#if this.selectedAsset}}
-        <Ui::AppButton
+        <Nuvo::Button
           @variant="primary"
-          @buttonType="submit"
-          @text="Create Property"
+          @type="submit"
+          @text={{if this.isSavingNewUnit "Creating..." "Create Property"}}
           @loading={{this.isSavingNewUnit}}
-          @loadingText="Creating..."
         />
       {{/if}}
     </div>
   </form>
-</Ui::Modal>
+</Nuvo::Modal>
 
 {{! Bulk import modal }}
-<Ui::Modal
-  @isOpen={{this.showImportModal}}
+<Nuvo::Modal
+  @open={{this.showImportModal}}
   @title="Bulk Import Properties"
   @onClose={{this.closeImportModal}}
-  @showClose={{true}}
-  @panelClass="modal-md"
+  @size="md"
 >
   <div class="flex col gap-4">
     <p class="text-muted">Import multiple property areas from a CSV file.</p>
 
-    <button
-      type="button"
-      class="btn btn-secondary"
-      {{on "click" this.downloadTemplate}}
-    >
+    <Nuvo::Button @variant="secondary" {{on "click" this.downloadTemplate}}>
       Download CSV Template
-    </button>
+    </Nuvo::Button>
 
-    <div class="flex col gap-2">
-      <label class="font-sm text-muted" for="import-file">Select CSV File *</label>
+    <Nuvo::Field @label="Select CSV File" @required={{true}}>
       <input
         id="import-file"
         type="file"
         accept=".csv"
-        class="form-input"
+        class="nu-input"
         {{on "change" this.handleFileSelect}}
       />
-    </div>
+    </Nuvo::Field>
 
     {{#if this.importPreview}}
       <div class="flex col gap-2">
-        <p class="font-sm font-bold">Preview (first 10 rows):</p>
+        <p class="text-sm font-bold">Preview (first 10 rows):</p>
         <div class="import-preview import-preview--scroll">
           {{#each this.importPreview as |row|}}
-            <p class="font-xs">{{row.areaName}}, {{row.location}}</p>
+            <p class="text-xs">{{row.areaName}}, {{row.location}}</p>
           {{/each}}
         </div>
       </div>
@@ -472,40 +469,36 @@
 
     {{#if this.importResults}}
       <div class="import-results">
-        <p class="font-sm font-bold">Import Results:</p>
-        <p class="font-sm text-success">{{this.importResults.created}}
+        <p class="text-sm font-bold">Import Results:</p>
+        <p class="text-sm text-success">{{this.importResults.created}}
           areas created</p>
         {{#if this.importResults.failed}}
-          <p class="font-sm text-danger">{{this.importResults.failed}}
+          <p class="text-sm text-danger">{{this.importResults.failed}}
             failed</p>
         {{/if}}
         {{#if this.importResults.errors}}
           <div class="import-errors mt-2">
-            <p class="font-xs text-muted">Errors:</p>
+            <p class="text-xs text-muted">Errors:</p>
             {{#each this.importResults.errors as |error|}}
-              <p class="font-xs text-danger">{{error}}</p>
+              <p class="text-xs text-danger">{{error}}</p>
             {{/each}}
           </div>
         {{/if}}
       </div>
     {{/if}}
 
-    <div class="flex gap-3 mt-2">
-      <button
-        type="button"
-        class="btn btn-secondary"
-        {{on "click" this.closeImportModal}}
-      >
+    <Nuvo::FormActions>
+      <Nuvo::Button @variant="secondary" {{on "click" this.closeImportModal}}>
         Cancel
-      </button>
-      <button
-        type="button"
-        class="btn btn-primary"
-        disabled={{or this.isImporting (not this.importFile)}}
+      </Nuvo::Button>
+      <Nuvo::Button
+        @variant="primary"
+        @disabled={{or this.isImporting (not this.importFile)}}
+        @loading={{this.isImporting}}
         {{on "click" this.importProperties}}
       >
         {{if this.isImporting "Importing..." "Import"}}
-      </button>
-    </div>
+      </Nuvo::Button>
+    </Nuvo::FormActions>
   </div>
-</Ui::Modal>
+</Nuvo::Modal>

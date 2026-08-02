@@ -1,88 +1,73 @@
 {{page-title "Owners"}}
-<div class="page-header">
-  <div class="page-title-section">
-    <h2 class="page-title"><Ui::Ph @icon="user-circle" @size="28px" />
-      Property Owners</h2>
-    <p class="page-subtitle">Manage property owners and their contact
-      information.</p>
-  </div>
-  <button
-    type="button"
-    class="btn btn-primary"
-    data-test-add-owner
-    {{on "click" this.openCreate}}
-  >
-    <Ui::Ph @icon="plus" />
-    Add Owner
-  </button>
-</div>
+<div data-test-owners-page class="flex col gap-6">
+  <Nuvo::PageHeader @title="Property Owners" @subtitle="Manage property owners and their contact information.">
+    <:actions>
+      <Nuvo::Button
+        @variant="primary"
+        @icon="+"
+        @text="Add Owner"
+        data-test-add-owner
+        {{on "click" this.openCreate}}
+      />
+    </:actions>
+  </Nuvo::PageHeader>
 
-<div class="owners-list">
+  <div class="owners-list">
   {{#each this.model.owners as |owner|}}
-    <div class="list-item" data-test-owner-id={{owner.id}}>
-      <div class="owner-info">
-        <div class="owner-avatar">{{uc-first owner.name}}</div>
-        <div class="owner-details">
-          <p class="owner-name">{{owner.name}}</p>
-          <p class="owner-contact">{{owner.phone}}</p>
-          <p class="owner-email">{{owner.email}}</p>
+    <Nuvo::Card class="owners-list__row" data-test-owner-id={{owner.id}}>
+      <div class="owners-list__info">
+        <Nuvo::Avatar @initials={{uc-first owner.name}} />
+        <div class="owners-list__details">
+          <p class="owners-list__name">{{owner.name}}</p>
+          <p class="owners-list__contact">{{owner.phone}}</p>
+          <p class="owners-list__contact">{{owner.email}}</p>
         </div>
       </div>
-      <div class="owner-meta">
+      <div class="owners-list__meta">
         {{#if owner.assignedAgent}}
-          <span class="status-badge">Agent: {{owner.assignedAgent.name}}</span>
+          <Nuvo::Tag @variant="info">Agent: {{owner.assignedAgent.name}}</Nuvo::Tag>
         {{/if}}
-        <span class="owner-units">{{owner.units.length}} Properties</span>
+        <span class="text-muted text-sm">{{owner.units.length}} Properties</span>
       </div>
-      <div class="owner-actions">
-        <button
-          type="button"
-          class="btn btn-secondary"
+      <div class="owners-list__actions">
+        <Nuvo::Button
+          @variant="secondary"
+          @icon="👁"
+          @text="View"
           data-test-view-owner
           {{on "click" (fn this.viewOwner owner)}}
-        >
-          <Ui::Ph @icon="eye" />
-          View
-        </button>
-        <button
-          type="button"
-          class="btn btn-secondary"
+        />
+        <Nuvo::Button
+          @variant="secondary"
+          @icon="✎"
+          @text="Edit"
           data-test-edit-owner
           {{on "click" (fn this.openEdit owner)}}
-        >
-          <Ui::Ph @icon="pencil-simple" />
-          Edit
-        </button>
+        />
         {{#if this.canDeleteOwners}}
-          <button
-            type="button"
-            class="btn btn-secondary text-danger"
+          <Nuvo::Button
+            @variant="danger"
+            @outline={{true}}
+            @icon="🗑"
+            @text="Remove"
             data-test-delete-owner
             {{on "click" (fn this.openDelete owner)}}
-          >
-            <Ui::Ph @icon="trash" />
-            Remove
-          </button>
+          />
         {{/if}}
       </div>
-    </div>
-  {{else}}
-    <div class="empty-state">
-      <p>No owners yet. Add your first property owner to get started.</p>
-    </div>
-  {{/each}}
+    </Nuvo::Card>
+    {{else}}
+      <Nuvo::Card>
+        <Nuvo::EmptyState
+          @description="No owners yet. Add your first property owner to get started."
+        />
+      </Nuvo::Card>
+    {{/each}}
+  </div>
 </div>
 
-<p class="text-muted mt-4">
-  Showing
-  {{format-number this.model.owners.length}}
-  of
-  {{format-number this.model.total}}
-  owners
-</p>
-
-<Ui::Modal
-  @isOpen={{this.showModal}}
+<Nuvo::Modal
+  @open={{this.showModal}}
   @title={{if this.editOwner "Edit Owner" "Add Owner"}}
   @onClose={{this.closeModal}}
   @showClose={{true}}
@@ -91,103 +76,97 @@
     <p class="error-message" data-test-error>{{this.errorMsg}}</p>
   {{/if}}
   <form {{on "submit" this.saveOwner}}>
-    <div class="form-group">
-      <Ui::FormInput
-        @label="Name"
-        @id="o-name"
+    <Nuvo::Field @label="Name" @required={{true}}>
+      <Nuvo::Input
+        id="o-name"
         @type="text"
         @value={{this.formName}}
-        @onChange={{fn this.setField "formName"}}
-        @required={{true}}
+        @onInput={{fn this.setFieldValue "formName"}}
+        required
         data-test-input-name
       />
-    </div>
-    <div class="form-group">
-      <Ui::FormInput
-        @label="Email"
-        @id="o-email"
+    </Nuvo::Field>
+    <Nuvo::Field @label="Email">
+      <Nuvo::Input
+        id="o-email"
         @type="email"
         @value={{this.formEmail}}
-        @onChange={{fn this.setField "formEmail"}}
+        @onInput={{fn this.setFieldValue "formEmail"}}
         data-test-input-email
       />
-    </div>
-    <div class="form-group">
-      <Ui::FormInput
-        @label="Phone"
-        @id="o-phone"
+    </Nuvo::Field>
+    <Nuvo::Field @label="Phone">
+      <Nuvo::Input
+        id="o-phone"
         @type="tel"
         @value={{this.formPhone}}
-        @onChange={{fn this.setField "formPhone"}}
+        @onInput={{fn this.setFieldValue "formPhone"}}
         data-test-input-phone
       />
-    </div>
-    <div class="form-group">
-      <Ui::FormInput
-        @label="Nationality ID"
-        @id="o-nid"
+    </Nuvo::Field>
+    <Nuvo::Field @label="Nationality ID">
+      <Nuvo::Input
+        id="o-nid"
         @type="text"
         @value={{this.formNationalityId}}
-        @onChange={{fn this.setField "formNationalityId"}}
+        @onInput={{fn this.setFieldValue "formNationalityId"}}
         data-test-input-nationality-id
       />
-    </div>
-    <div class="form-group">
-      <Ui::FormTextarea
-        @label="Address"
-        @id="o-address"
+    </Nuvo::Field>
+    <Nuvo::Field @label="Address">
+      <Nuvo::Textarea
+        id="o-address"
         @rows={{3}}
         @value={{this.formAddress}}
-        @onChange={{fn this.setField "formAddress"}}
+        @onInput={{fn this.setFieldValue "formAddress"}}
         data-test-input-address
       />
-    </div>
-    <div class="form-group">
-      <Ui::FormDropdown
-        @id="owner-agent-id"
-        @label="Assigned Agent"
+    </Nuvo::Field>
+    <Nuvo::Field @label="Assigned Agent">
+      <Nuvo::Dropdown
+        id="owner-agent-id"
+        @align="start"
         @value={{this.formAssignedAgentId}}
-        @onChange={{fn this.setField "formAssignedAgentId"}}
+        @onSelect={{fn this.setFieldValue "formAssignedAgentId"}}
         @options={{this.agentOptions}}
         @placeholder="Unassigned"
         data-test-input-agent
       />
-    </div>
-    <div class="form-group">
-      <Ui::FormTextarea
-        @label="Notes"
-        @id="o-notes"
+    </Nuvo::Field>
+    <Nuvo::Field @label="Notes">
+      <Nuvo::Textarea
+        id="o-notes"
         @rows={{3}}
         @value={{this.formNotes}}
-        @onChange={{fn this.setField "formNotes"}}
+        @onInput={{fn this.setFieldValue "formNotes"}}
         data-test-input-notes
       />
-    </div>
-    <div class="modal-actions">
-      <Ui::AppButton
+    </Nuvo::Field>
+    <Nuvo::FormActions @align="end">
+      <Nuvo::Button
         @variant="secondary"
         @text="Cancel"
-        @onClick={{this.closeModal}}
+        {{on "click" this.closeModal}}
       />
-      <Ui::AppButton
+      <Nuvo::Button
         @variant="primary"
-        @buttonType="submit"
+        @type="submit"
         @text={{if this.editOwner "Update" "Create"}}
         @loading={{this.isSaving}}
         @loadingText="Saving..."
         data-test-save-owner
       />
-    </div>
+    </Nuvo::FormActions>
   </form>
-</Ui::Modal>
+</Nuvo::Modal>
 
 <ConfirmModal
-  @isOpen={{this.showDeleteModal}}
+  @open={{this.showDeleteModal}}
   @title="Remove Owner"
   @message="Are you sure you want to remove {{this.ownerToDelete.name}}? This action cannot be undone."
   @confirmText="Remove"
   @cancelText="Cancel"
-  @confirmType="btn-danger"
+  @confirmVariant="danger"
   @isConfirming={{this.isDeleting}}
   @confirmingText="Removing..."
   @onClose={{this.closeDeleteModal}}

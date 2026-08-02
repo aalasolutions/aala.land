@@ -1,0 +1,245 @@
+// ============================================
+// MODULE: Admin Forms
+// ============================================
+// Admin panel forms (users, packages, invoices, addons).
+// Consolidates: components/admin/*/*.scss
+
+@use '../nuvoui' as Nuvo;
+@use '../variables' as *;
+
+// ============================================
+// Admin Form Base
+// ============================================
+// Shared structure for all admin forms
+
+@mixin admin-form-base($max-width: 600px) {
+  @include Nuvo.apply(w-full, rounded(md), overflow-hidden);
+  max-width: $max-width;
+
+  @include Nuvo.media-down(sm) {
+    @include Nuvo.apply(m(4));
+    max-width: 95vw;
+
+    .form-header {
+      @include Nuvo.apply(p(4));
+    }
+
+    .form-body {
+      @include Nuvo.apply(p(4));
+    }
+
+    .form-actions {
+      @include Nuvo.apply(p(4));
+    }
+  }
+}
+
+// ============================================
+// Form Header
+// ============================================
+
+.form-header {
+  @include Nuvo.apply(pt(6), px(6), pb(4));
+  border-bottom: 1px solid $border-color;
+
+  .header-content {
+    .form-title {
+      @include Nuvo.apply(m(0), mb(2), font-size(xl), font(semibold));
+      color: $text-primary;
+    }
+
+    .form-subtitle {
+      @include Nuvo.apply(m(0), font-size(sm));
+      color: $text-muted;
+    }
+  }
+}
+
+// ============================================
+// Form Body
+// ============================================
+
+.form-body {
+  @include Nuvo.apply(p(6));
+
+  .form-grid {
+    @include Nuvo.apply(grid, cols(2), gap(4));
+
+    .full-width {
+      grid-column: 1 / -1;
+    }
+
+    .checkbox-field {
+      @include Nuvo.apply(p(5), rounded(md));
+      background: $background-color;
+      border: 1px solid $border-color;
+    }
+
+    @include Nuvo.media-down(sm) {
+      @include Nuvo.apply(cols(1));
+
+      .full-width {
+        grid-column: 1;
+      }
+    }
+  }
+}
+
+// ============================================
+// Form Actions
+// ============================================
+
+.form-actions {
+  @include Nuvo.apply(flex, end, gap(3), py(4), px(6));
+  border-top: 1px solid $border-color;
+  background: Nuvo.get-color(gray, 50);
+
+  .form-btn {
+    @include Nuvo.apply(grow);
+
+    &[disabled] {
+      @include Nuvo.apply(opacity(60));
+      cursor: not-allowed;
+    }
+  }
+
+  button {
+    &[disabled] {
+      @include Nuvo.apply(opacity(60));
+      cursor: not-allowed;
+    }
+  }
+
+  @include Nuvo.media-down(sm) {
+    @include Nuvo.apply(col);
+
+    button {
+      @include Nuvo.apply(w-full);
+    }
+  }
+}
+
+// ============================================
+// Specific Admin Forms
+// ============================================
+
+// Invoice Form
+.admin-invoice-form {
+  @include admin-form-base(600px);
+
+  .form-body {
+    .invoice-form {
+      .form-grid {
+        @include Nuvo.apply(grid, cols(2), gap(4));
+      }
+    }
+  }
+}
+
+// Package Form
+.admin-package-form {
+  @include admin-form-base(600px);
+
+  .form-body {
+    @include Nuvo.apply(overflow-auto);
+    max-height: 425px;
+
+    .package-form {
+      .form-grid {
+        @include Nuvo.apply(grid, cols(2), gap(4));
+      }
+    }
+  }
+}
+
+// User Form
+.admin-user-form {
+  @include admin-form-base(500px);
+
+  .form-body {
+    .user-form {
+      .form-grid {
+        @include Nuvo.apply(grid, cols(2), gap(4));
+      }
+    }
+  }
+}
+
+// Addon Form
+.admin-addon-form {
+  @include admin-form-base(600px);
+
+  .form-body {
+    .addon-form {
+      .form-grid {
+        @include Nuvo.apply(grid, cols(2), gap(4));
+      }
+    }
+  }
+}
+
+// ============================================
+// Popup Wrapper Override
+// ============================================
+
+.popup-wrapper-box {
+  padding: 0 !important;
+}
+
+// ============================================
+// Form Field Variants
+// ============================================
+
+.form-field-inline {
+  @include Nuvo.apply(flex, x-center, gap(4));
+
+  @include Nuvo.media-down(sm) {
+    @include Nuvo.apply(col, x-stretch);
+  }
+}
+
+.form-field-stacked {
+  @include Nuvo.apply(flex, col, gap(2));
+}
+
+// ============================================
+// Form Sections
+// ============================================
+
+.form-section {
+  @include Nuvo.apply(mb(6), pb(6));
+  border-bottom: 1px solid $border-color;
+
+  &:last-child {
+    @include Nuvo.apply(mb(0), pb(0));
+    border-bottom: none;
+  }
+
+  .section-title {
+    @include Nuvo.apply(font(semibold), uppercase, mb(4));
+    font-size: 0.9rem;
+    color: $text-secondary;
+    letter-spacing: 0.5px;
+  }
+}
+
+// ============================================
+// Form Utilities
+// ============================================
+
+.form-divider {
+  @include Nuvo.apply(my(6));
+  height: 1px;
+  background: $border-color;
+}
+
+.form-hint {
+  @include Nuvo.apply(mt(1));
+  font-size: 0.8rem;
+  color: $text-muted;
+}
+
+.form-required {
+  @include Nuvo.apply(ml(0.5));
+  color: $error-color;
+}

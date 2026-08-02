@@ -1,0 +1,102 @@
+// BEM selector generators.
+//
+//   @include b(btn)          -> .nu-btn
+//     @include e(icon)       -> .nu-btn__icon
+//     @include m(primary)    -> .nu-btn.m-primary
+//     @include when(disabled)-> .nu-btn.is-disabled
+@use "sass:string";
+@use "sass:list";
+@use "@nuvoui/core/src/styles/tools/accessibility" as a11y;
+@use "@nuvoui/core/src/styles/tools/media-queries" as mq;
+@use "../common/var" as *;
+
+$nu-element-sep: "__" !default;
+$nu-modifier-prefix: "m-" !default;
+$nu-state-prefix: "is-" !default;
+
+// Current block name, tracked so e()/m() can build correct selectors.
+$nu-current-block: null;
+
+@mixin b($block) {
+  $nu-current-block: $block !global;
+  .#{$nu-prefix}-#{$block} {
+    @content;
+  }
+  $nu-current-block: null !global;
+}
+
+@mixin e($elements...) {
+  $selectors: ();
+  @each $el in $elements {
+    $selectors: list.append(
+      $selectors,
+      ".#{$nu-prefix}-#{$nu-current-block}#{$nu-element-sep}#{$el}",
+      comma
+    );
+  }
+  @at-root #{$selectors} {
+    @content;
+  }
+}
+
+@mixin m($modifiers...) {
+  $selectors: ();
+  @each $mod in $modifiers {
+    $selectors: list.append($selectors, "&.#{$nu-modifier-prefix}#{$mod}", comma);
+  }
+  #{$selectors} {
+    @content;
+  }
+}
+
+@mixin when($states...) {
+  $selectors: ();
+  @each $state in $states {
+    $selectors: list.append($selectors, "&.#{$nu-state-prefix}#{$state}", comma);
+  }
+  #{$selectors} {
+    @content;
+  }
+}
+
+// Element inside the block, still nested (not @at-root).
+// Use when the element must inherit block context.
+@mixin en($element) {
+  .#{$nu-prefix}-#{$nu-current-block}#{$nu-element-sep}#{$element} {
+    @content;
+  }
+}
+
+// Delegates to NuvoUI core rather than reimplementing the query, so the kit
+// tracks core's a11y behaviour instead of drifting from it.
+@mixin reduced-motion {
+  @include a11y.reduced-motion {
+    @content;
+  }
+}
+
+// Responsive + theme mixins re-exported from core so components have one
+// obvious place to reach for them.
+@mixin media-up($breakpoint) {
+  @include mq.media-up($breakpoint) {
+    @content;
+  }
+}
+
+@mixin media-down($breakpoint) {
+  @include mq.media-down($breakpoint) {
+    @content;
+  }
+}
+
+@mixin media-between($from, $to) {
+  @include mq.media-between($from, $to) {
+    @content;
+  }
+}
+
+@mixin dark-mode {
+  @include a11y.dark-mode {
+    @content;
+  }
+}

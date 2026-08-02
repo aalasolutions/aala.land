@@ -1,0 +1,103 @@
+@use "sass:color";
+
+.admin-package-form {
+  max-width: 600px;
+  width: 100%;
+  border-radius: 8px;
+  overflow: hidden;
+
+  .form-header {
+    padding: 1.5rem 1.5rem 1rem 1.5rem;
+    border-bottom: 1px solid $border-color;
+
+    .header-content {
+      .form-title {
+        margin: 0 0 0.5rem;
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: $dark-color;
+      }
+
+      .form-subtitle {
+        margin: 0;
+        font-size: 0.875rem;
+        color: $text-muted;
+      }
+    }
+  }
+
+  .form-body {
+    padding: 1.5rem;
+    max-height: 425px;
+    overflow: auto;
+
+    .package-form {
+      .form-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+
+        .full-width {
+          grid-column: 1 / -1;
+        }
+
+        .checkbox-field {
+          background: $background-color;
+          padding: 1.25rem;
+          border-radius: 8px;
+          border: 1px solid $border-color;
+        }
+
+        @media (max-width: 600px) {
+          grid-template-columns: 1fr;
+
+          .full-width {
+            grid-column: 1;
+          }
+        }
+      }
+    }
+  }
+
+  .form-actions {
+    padding: 1rem 1.5rem;
+    border-top: 1px solid $border-color;
+    background: $slate-50;
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+
+    .form-btn {
+      flex: 1;
+
+      &[disabled] {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+    }
+
+    @media (max-width: 600px) {
+      flex-direction: column;
+
+      button {
+        width: 100%;
+      }
+    }
+  }
+
+  @media (max-width: 600px) {
+    max-width: 95vw;
+
+    .form-header {
+      padding: 1rem;
+    }
+
+    .form-body {
+      padding: 1rem;
+    }
+
+    .form-actions {
+      padding: 1rem;
+    }
+  }
+}

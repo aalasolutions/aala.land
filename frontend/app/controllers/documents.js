@@ -44,8 +44,15 @@ export default class DocumentsController extends PaginatedController {
     this[fieldName] = e.target.value;
   }
 
-  @action setCategory(e) {
-    this.category = e.target.value;
+  // Nuvo::Input/Select/Textarea call onInput/onChange as (value, event),
+  // not the raw DOM event setField expects.
+  @action setFieldValue(fieldName, value) {
+    this[fieldName] = value;
+  }
+
+  // Nuvo::Select calls onChange as (value, event).
+  @action setCategory(value) {
+    this.category = value;
     this.page = 1;
   }
 

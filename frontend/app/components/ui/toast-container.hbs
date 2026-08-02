@@ -3,12 +3,12 @@
     <div
       data-test-toast
       data-test-toast-type={{toast.type}}
-      class="toast-item flex between x-center gap-4 px-5 py-4 rounded-xl font-sm text-white"
+      class="toast-item flex between x-center gap-4 px-5 py-4 rounded-xl text-sm text-white"
     >
       <span>{{toast.message}}</span>
       <button
         type="button"
-        class="opacity-70 font-lg leading-none text-white"
+        class="opacity-70 text-lg leading-none text-white"
         {{on "click" (fn this.dismiss toast.id)}}
       >
         &times;

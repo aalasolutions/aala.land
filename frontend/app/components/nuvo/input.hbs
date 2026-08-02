@@ -1,0 +1,37 @@
+<div
+  class={{this.wrapClasses}}
+  {{on "mouseenter" this.handleMouseEnter}}
+  {{on "mouseleave" this.handleMouseLeave}}
+>
+  {{#if @prefixIcon}}
+    <span class="nu-input-wrap__prefix" aria-hidden="true">{{@prefixIcon}}</span>
+  {{/if}}
+
+  <input
+    type={{this.type}}
+    class={{this.classes}}
+    value={{@value}}
+    placeholder={{@placeholder}}
+    disabled={{@disabled}}
+    readonly={{@readonly}}
+    maxlength={{@maxlength}}
+    autocomplete={{if @autocomplete @autocomplete "off"}}
+    aria-invalid={{if @invalid "true"}}
+    data-test-nu-input
+    {{on "input" this.handleInput}}
+    {{on "change" this.handleChange}}
+    ...attributes
+  />
+
+  {{#if this.showClear}}
+    <button
+      type="button"
+      class="nu-input-wrap__clear"
+      aria-label="Clear input"
+      data-test-nu-input-clear
+      {{on "click" this.handleClear}}
+    >×</button>
+  {{else if @suffixIcon}}
+    <span class="nu-input-wrap__suffix" aria-hidden="true">{{@suffixIcon}}</span>
+  {{/if}}
+</div>

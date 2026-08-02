@@ -1,60 +1,50 @@
 {{page-title "My Profile"}}
 
-<div class="page-header">
-  <div class="page-title-section">
-    <h2 class="page-title"><Ui::Ph @icon="user" @size="28px" /> My Profile</h2>
-    <p class="page-subtitle">Manage your account settings.</p>
-  </div>
-</div>
+<Nuvo::PageHeader
+  @title="My Profile"
+  @subtitle="Manage your account settings."
+/>
 
 {{#if this.model}}
-  <div class="glass-panel p-6 max-w-lg">
-    <form {{on "submit" this.saveProfile}}>
-      <div class="form-group">
-        <label class="form-label" for="profile-name">Name</label>
-        <input
+  <Nuvo::Card class="profile-card">
+    <form class="flex col gap-4" {{on "submit" this.saveProfile}}>
+      <Nuvo::Field @label="Name" @required={{true}}>
+        <Nuvo::Input
           id="profile-name"
           type="text"
-          class="form-input"
-          value={{or this.formName this.model.name}}
-          {{on "input" (fn this.setField "formName")}}
-          required
+          @value={{or this.formName this.model.name}}
+          @onInput={{fn this.setFieldValue "formName"}}
+          required={{true}}
         />
-      </div>
+      </Nuvo::Field>
 
-      <div class="form-group">
-        <label class="form-label" for="profile-email">Email</label>
-        <input
+      <Nuvo::Field @label="Email">
+        <Nuvo::Input
           id="profile-email"
           type="email"
-          class="form-input"
-          value={{this.model.email}}
-          disabled
+          @value={{this.model.email}}
+          @disabled={{true}}
         />
-      </div>
+      </Nuvo::Field>
 
-      <div class="form-group">
-        <label class="form-label" for="profile-password">New Password</label>
-        <input
+      <Nuvo::Field @label="New Password">
+        <Nuvo::Input
           id="profile-password"
           type="password"
-          class="form-input"
           placeholder="Leave blank to keep current"
-          value={{this.formPassword}}
-          {{on "input" (fn this.setField "formPassword")}}
+          @value={{this.formPassword}}
+          @onInput={{fn this.setFieldValue "formPassword"}}
         />
-      </div>
+      </Nuvo::Field>
 
-      <div class="form-group">
-        <label class="form-label" for="profile-role">Role</label>
-        <input
+      <Nuvo::Field @label="Role">
+        <Nuvo::Input
           id="profile-role"
           type="text"
-          class="form-input"
-          value={{format-role this.model.role}}
-          disabled
+          @value={{format-role this.model.role}}
+          @disabled={{true}}
         />
-      </div>
+      </Nuvo::Field>
 
       <div class="profile-connection-card">
         <div class="profile-connection-heading">
@@ -96,22 +86,21 @@
       </div>
 
       {{#if this.errorMsg}}
-        <p class="text-danger">{{this.errorMsg}}</p>
+        <Nuvo::Alert @variant="danger" @message={{this.errorMsg}} />
       {{/if}}
 
-      <div class="form-actions">
-        <button
+      <Nuvo::FormActions>
+        <Nuvo::Button
           type="submit"
-          class="btn btn-primary"
-          disabled={{this.isSaving}}
+          @variant="primary"
+          @disabled={{this.isSaving}}
+          @loading={{this.isSaving}}
         >
           {{if this.isSaving "Saving..." "Save Changes"}}
-        </button>
-      </div>
+        </Nuvo::Button>
+      </Nuvo::FormActions>
     </form>
-  </div>
+  </Nuvo::Card>
 {{else}}
-  <div class="empty-state">
-    <p>Loading profile...</p>
-  </div>
+  <Nuvo::EmptyState @title="Loading profile..." />
 {{/if}}

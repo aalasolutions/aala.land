@@ -1,0 +1,1157 @@
+{{page-title "NuvoUI UIKit"}}
+
+{{! The showcase is itself built from the kit: real sidebar, real topbar,
+    real collapse. Dogfooding proves the shell components actually work. }}
+<div class="nuvo-shell">
+  <Nuvo::Sidebar
+    @collapsed={{this.sidebarCollapsed}}
+    @open={{this.sidebarOpen}}
+    @dismissible={{true}}
+    @onDismiss={{this.closeSidebar}}
+    @brandTitle="NuvoUI"
+    @brandSubtitle="UI Kit"
+  >
+    {{! Named blocks are all-or-nothing: once <:footer> exists the nav must
+        live in an explicit <:default>. }}
+    <:default>
+      {{#each this.navSections as |group|}}
+        <div class="nu-sidebar__section-label">{{group.label}}</div>
+        {{#each group.items as |entry|}}
+          <Nuvo::SidebarLink
+            @icon={{entry.icon}}
+            @label={{entry.label}}
+            @active={{eq this.activeSection entry.id}}
+            @onClick={{fn this.goToSection entry.id}}
+          />
+        {{/each}}
+      {{/each}}
+    </:default>
+
+    <:footer>
+      <span class="nu-text m-xs m-subtle">{{this.componentCount}} components</span>
+    </:footer>
+  </Nuvo::Sidebar>
+
+  <div class="nuvo-shell__main">
+    <Nuvo::Topbar
+      @sticky={{true}}
+      @onToggle={{this.toggleSidebar}}
+      @userName="Aamir"
+      @userRole="Owner"
+    >
+      <:brand>
+        <Nuvo::Button
+          @variant="ghost"
+          @size="sm"
+          @icon={{if this.sidebarCollapsed "»" "«"}}
+          @shape="square"
+          @onClick={{this.toggleCollapsed}}
+          title="Collapse sidebar"
+        />
+        <span class="nu-title m-md">UI Kit</span>
+      </:brand>
+
+      <:actions>
+        <span class="nu-text m-sm m-muted">Theme</span>
+        {{#each this.themes as |theme|}}
+          <Nuvo::Button
+            @variant={{if (eq this.activeTheme theme) "primary" "secondary"}}
+            @size="xs"
+            @text={{theme}}
+            @onClick={{fn this.setTheme theme}}
+          />
+        {{/each}}
+
+        <Nuvo::Badge @variant="danger" @value={{3}}>
+          <Nuvo::Button @variant="ghost" @shape="square" @icon="🔔" />
+        </Nuvo::Badge>
+      </:actions>
+    </Nuvo::Topbar>
+
+    <div class="nuvo-page">
+
+  <section class="nuvo-section" id="button">
+    <h2 class="nuvo-section__title">Button</h2>
+
+    <div class="nuvo-row">
+      <Nuvo::Button @variant="primary" @text="Primary" />
+      <Nuvo::Button @variant="secondary" @text="Secondary" />
+      <Nuvo::Button @variant="success" @text="Success" />
+      <Nuvo::Button @variant="danger" @text="Danger" />
+      <Nuvo::Button @variant="ghost" @text="Ghost" />
+      <Nuvo::Button @variant="link" @text="Link" />
+    </div>
+
+    <div class="nuvo-row">
+      <Nuvo::Button @variant="primary" @outline={{true}} @text="Outline" />
+      <Nuvo::Button @variant="danger" @outline={{true}} @text="Outline" />
+      <Nuvo::Button @variant="success" @outline={{true}} @text="Outline" />
+    </div>
+
+    <div class="nuvo-row">
+      <Nuvo::Button @variant="primary" @size="xs" @text="XS" />
+      <Nuvo::Button @variant="primary" @size="sm" @text="SM" />
+      <Nuvo::Button @variant="primary" @text="MD" />
+      <Nuvo::Button @variant="primary" @size="lg" @text="LG" />
+      <Nuvo::Button @variant="primary" @disabled={{true}} @text="Disabled" />
+    </div>
+
+    <div class="nuvo-row">
+      <Nuvo::Button @variant="primary" @icon="+" @text="Icon start" />
+      <Nuvo::Button
+        @variant="secondary"
+        @icon="→"
+        @iconPosition="end"
+        @text="Icon end"
+      />
+      <Nuvo::Button @variant="primary" @shape="square" @icon="+" />
+      <Nuvo::Button @variant="secondary" @shape="circle" @icon="×" />
+      <Nuvo::Button
+        @variant="primary"
+        @loading={{this.loadingDemo}}
+        @text={{if this.loadingDemo "Saving" "Click to load"}}
+        @onClick={{this.toggleLoading}}
+      />
+    </div>
+  </section>
+
+  <section class="nuvo-section" id="input">
+    <h2 class="nuvo-section__title">Input</h2>
+
+    <div class="nuvo-stack">
+      <Nuvo::Input
+        @value={{this.inputValue}}
+        @placeholder="Property name"
+        @onInput={{this.updateInput}}
+      />
+      <Nuvo::Input
+        @value={{this.clearableValue}}
+        @clearable={{true}}
+        @placeholder="Hover to reveal clear"
+        @onInput={{this.updateClearable}}
+      />
+      <Nuvo::Input @prefixIcon="⌕" @placeholder="With prefix icon" />
+      <Nuvo::Input @suffixIcon="AED" @placeholder="With suffix" />
+      <Nuvo::Input @size="sm" @placeholder="Small" />
+      <Nuvo::Input @size="lg" @placeholder="Large" />
+      <Nuvo::Input @invalid={{true}} @value="-100" />
+      <Nuvo::Input @disabled={{true}} @value="Disabled" />
+    </div>
+  </section>
+
+  <section class="nuvo-section" id="badge">
+    <h2 class="nuvo-section__title">Badge</h2>
+
+    <div class="nuvo-row">
+      <Nuvo::Badge @value="Default" />
+      <Nuvo::Badge @variant="primary" @value="Primary" />
+      <Nuvo::Badge @variant="secondary" @value="Secondary" />
+      <Nuvo::Badge @variant="success" @value="Success" />
+      <Nuvo::Badge @variant="warning" @value="Warning" />
+      <Nuvo::Badge @variant="danger" @value="Danger" />
+      <Nuvo::Badge @variant="info" @value="Info" />
+    </div>
+
+    <div class="nuvo-row">
+      <Nuvo::Badge @variant="primary" @solid={{true}} @value="Solid" />
+      <Nuvo::Badge @variant="success" @outline={{true}} @value="Outline" />
+      <Nuvo::Badge @variant="info" @pill={{true}} @value="Pill" />
+      <Nuvo::Badge @variant="danger" @size="sm" @value="Small" />
+      <Nuvo::Badge @variant="danger" @size="lg" @value="Large" />
+      <Nuvo::Badge @variant="warning" @value={{0}} />
+      <Nuvo::Badge @variant="secondary" @isDot={{true}} />
+    </div>
+
+    {{! Standalone count bubbles: no anchor element, so no is-fixed. }}
+    <div class="nuvo-row">
+      <Nuvo::Badge @count={{true}} @value={{3}} />
+      <Nuvo::Badge @count={{true}} @variant="primary" @value={{12}} />
+      <Nuvo::Badge @count={{true}} @variant="success" @value={{99}} />
+      <Nuvo::Badge @count={{true}} @variant="warning" @value={{7}} />
+      <Nuvo::Badge @count={{true}} @variant="info" @value={{250}} @max={{99}} />
+      <Nuvo::Badge @count={{true}} @variant="danger" @isDot={{true}} />
+    </div>
+
+    <div class="nuvo-row">
+      <Nuvo::Badge @variant="danger" @value={{120}} @max={{99}} />
+
+      <Nuvo::Badge @variant="danger" @value={{5}}>
+        <Nuvo::Button @variant="secondary" @icon="✉" @shape="square" />
+      </Nuvo::Badge>
+
+      <Nuvo::Badge @variant="success" @isDot={{true}}>
+        <Nuvo::Button @variant="secondary" @icon="🔔" @shape="square" />
+      </Nuvo::Badge>
+
+      <Nuvo::Badge @variant="primary" @value={{0}}>
+        <Nuvo::Button @variant="secondary" @icon="★" @shape="square" />
+      </Nuvo::Badge>
+    </div>
+  </section>
+
+  <section class="nuvo-section" id="tag">
+    <h2 class="nuvo-section__title">Tag</h2>
+
+    <div class="nuvo-row">
+      <Nuvo::Tag @text="Default" />
+      <Nuvo::Tag @variant="primary" @text="Primary" />
+      <Nuvo::Tag @variant="secondary" @text="Secondary" />
+      <Nuvo::Tag @variant="success" @text="Success" />
+      <Nuvo::Tag @variant="warning" @text="Warning" />
+      <Nuvo::Tag @variant="danger" @text="Danger" />
+      <Nuvo::Tag @variant="info" @text="Info" />
+    </div>
+
+    <div class="nuvo-row">
+      <Nuvo::Tag @variant="primary" @outline={{true}} @text="Outline" />
+      <Nuvo::Tag @variant="success" @size="sm" @text="Small" />
+      <Nuvo::Tag @variant="success" @size="lg" @text="Large" />
+      <Nuvo::Tag @variant="info" @closable={{true}} @text="Closable" />
+      <Nuvo::Tag @variant="danger" @disabled={{true}} @closable={{true}} @text="Disabled" />
+    </div>
+  </section>
+
+  <section class="nuvo-section" id="dot">
+    <h2 class="nuvo-section__title">Dot</h2>
+
+    <div class="nuvo-row">
+      <Nuvo::Dot />
+      <Nuvo::Dot @variant="primary" />
+      <Nuvo::Dot @variant="secondary" />
+      <Nuvo::Dot @variant="success" />
+      <Nuvo::Dot @variant="warning" />
+      <Nuvo::Dot @variant="danger" />
+      <Nuvo::Dot @variant="info" />
+    </div>
+
+    <div class="nuvo-row">
+      <Nuvo::Dot @variant="primary" @size="xs" />
+      <Nuvo::Dot @variant="primary" @size="sm" />
+      <Nuvo::Dot @variant="primary" @size="md" />
+      <Nuvo::Dot @variant="primary" @size="lg" />
+      <Nuvo::Dot @variant="success" @ring={{true}} />
+      <Nuvo::Dot @variant="danger" @pulse={{true}} />
+    </div>
+  </section>
+
+  <section class="nuvo-section" id="avatar">
+    <h2 class="nuvo-section__title">Avatar</h2>
+
+    <div class="nuvo-row">
+      <Nuvo::Avatar @initials="AM" />
+      <Nuvo::Avatar @icon="👤" />
+      <Nuvo::Avatar @src="https://i.pravatar.cc/100?img=12" @alt="User avatar" />
+      <Nuvo::Avatar @initials="SQ" @square={{true}} />
+    </div>
+
+    <div class="nuvo-row">
+      <Nuvo::Avatar @initials="XS" @size="xs" />
+      <Nuvo::Avatar @initials="SM" @size="sm" />
+      <Nuvo::Avatar @initials="MD" @size="md" />
+      <Nuvo::Avatar @initials="LG" @size="lg" />
+      <Nuvo::Avatar @initials="XL" @size="xl" />
+    </div>
+
+    <div class="nuvo-row">
+      <Nuvo::Avatar @initials="ON" @status="success" />
+      <Nuvo::Avatar @initials="AW" @status="warning" />
+      <Nuvo::Avatar @initials="OF" @status="danger" />
+      <Nuvo::Avatar @initials="IN" @status="secondary" />
+    </div>
+  </section>
+
+  <section class="nuvo-section" id="spinner">
+    <h2 class="nuvo-section__title">Spinner</h2>
+
+    <div class="nuvo-row">
+      <Nuvo::Spinner />
+      <Nuvo::Spinner @variant="primary" />
+      <Nuvo::Spinner @variant="success" />
+      <Nuvo::Spinner @variant="danger" />
+    </div>
+
+    <div class="nuvo-row">
+      <Nuvo::Spinner @size="xs" />
+      <Nuvo::Spinner @size="sm" />
+      <Nuvo::Spinner @size="md" />
+      <Nuvo::Spinner @size="lg" />
+    </div>
+  </section>
+
+  <section class="nuvo-section" id="textarea">
+    <h2 class="nuvo-section__title">Textarea</h2>
+
+    <div class="nuvo-stack">
+      <Nuvo::Textarea
+        @value={{this.textareaValue}}
+        @rows={{4}}
+        @placeholder="Unit notes"
+        @onInput={{this.updateTextarea}}
+      />
+      <Nuvo::Textarea @placeholder="Small, no resize" @resize="none" @rows={{2}} />
+      <Nuvo::Textarea @invalid={{true}} @value="Too long for this field" @rows={{2}} />
+      <Nuvo::Textarea @disabled={{true}} @value="Disabled" @rows={{2}} />
+    </div>
+  </section>
+
+  <section class="nuvo-section" id="select">
+    <h2 class="nuvo-section__title">Select</h2>
+
+    <div class="nuvo-stack">
+      <Nuvo::Select
+        @value={{this.selectValue}}
+        @options={{this.regionOptions}}
+        @onChange={{this.updateSelect}}
+      />
+      <Nuvo::Select
+        @options={{this.propertyTypeOptions}}
+        @placeholder="Choose a property type"
+      />
+      <Nuvo::Select
+        @size="sm"
+        @options={{this.propertyTypeOptions}}
+        @placeholder="Small"
+      />
+      <Nuvo::Select
+        @size="lg"
+        @options={{this.propertyTypeOptions}}
+        @placeholder="Large"
+      />
+      <Nuvo::Select
+        @disabled={{true}}
+        @options={{this.propertyTypeOptions}}
+        @placeholder="Disabled"
+      />
+    </div>
+  </section>
+
+  <section class="nuvo-section" id="checkbox">
+    <h2 class="nuvo-section__title">Checkbox</h2>
+
+    <div class="nuvo-row">
+      <Nuvo::Checkbox
+        @checked={{this.checkboxValue}}
+        @label="Include archived units"
+        @onChange={{this.updateCheckbox}}
+      />
+      <Nuvo::Checkbox @indeterminate={{true}} @label="Some selected" />
+      <Nuvo::Checkbox @checked={{true}} @disabled={{true}} @label="Disabled checked" />
+      <Nuvo::Checkbox @disabled={{true}} @label="Disabled unchecked" />
+    </div>
+  </section>
+
+  <section class="nuvo-section" id="radio">
+    <h2 class="nuvo-section__title">Radio</h2>
+
+    <div class="nuvo-row">
+      <Nuvo::Radio
+        @name="property-type"
+        @value="apartment"
+        @checked={{eq this.radioValue "apartment"}}
+        @label="Apartment"
+        @onChange={{this.updateRadio}}
+      />
+      <Nuvo::Radio
+        @name="property-type"
+        @value="villa"
+        @checked={{eq this.radioValue "villa"}}
+        @label="Villa"
+        @onChange={{this.updateRadio}}
+      />
+      <Nuvo::Radio
+        @name="property-type"
+        @value="townhouse"
+        @checked={{eq this.radioValue "townhouse"}}
+        @label="Townhouse"
+        @onChange={{this.updateRadio}}
+      />
+      <Nuvo::Radio @name="property-type-disabled" @disabled={{true}} @label="Disabled" />
+    </div>
+  </section>
+
+  <section class="nuvo-section" id="toggle">
+    <h2 class="nuvo-section__title">Toggle</h2>
+
+    <div class="nuvo-row">
+      <Nuvo::Toggle @checked={{this.toggleValue}} @onChange={{this.updateToggle}} />
+      <Nuvo::Toggle @checked={{this.toggleValue}} @variant="success" @onChange={{this.updateToggle}} />
+      <Nuvo::Toggle @checked={{this.toggleValue}} @size="sm" @onChange={{this.updateToggle}} />
+      <Nuvo::Toggle @checked={{this.toggleValue}} @size="lg" @onChange={{this.updateToggle}} />
+      <Nuvo::Toggle @disabled={{true}} @checked={{true}} />
+    </div>
+
+    <div class="nuvo-row">
+      <Nuvo::Toggle
+        @checked={{this.toggleWithTextValue}}
+        @activeText="ON"
+        @inactiveText="OFF"
+        @onChange={{this.updateToggleWithText}}
+      />
+      <Nuvo::Toggle @checked={{this.toggleValue}} @onChange={{this.updateToggle}}>
+        Auto-assign leads
+      </Nuvo::Toggle>
+    </div>
+  </section>
+
+  <section class="nuvo-section" id="field">
+    <h2 class="nuvo-section__title">Field</h2>
+
+    <div class="nuvo-stack">
+      <Nuvo::Field @label="Property name" @required={{true}} @hint="Shown to tenants on the portal">
+        <Nuvo::Input @placeholder="Marina Tower" />
+      </Nuvo::Field>
+
+      <Nuvo::Field @label="Monthly rent" @error="Rent must be greater than 0">
+        <Nuvo::Input @invalid={{true}} @value="-100" />
+      </Nuvo::Field>
+
+      <Nuvo::Field @label="Region" @horizontal={{true}} @flush={{true}}>
+        <Nuvo::Select @options={{this.regionOptions}} @placeholder="Choose a region" />
+      </Nuvo::Field>
+    </div>
+  </section>
+
+  <section class="nuvo-section" id="btn-group">
+    <h2 class="nuvo-section__title">Button Group</h2>
+
+    <div class="nuvo-row">
+      <Nuvo::BtnGroup>
+        <Nuvo::Button @variant="secondary" @text="Left" />
+        <Nuvo::Button @variant="secondary" @text="Middle" />
+        <Nuvo::Button @variant="secondary" @text="Right" />
+      </Nuvo::BtnGroup>
+
+      <Nuvo::BtnGroup @attached={{true}}>
+        <Nuvo::Button @variant="secondary" @text="Day" />
+        <Nuvo::Button @variant="secondary" @text="Week" />
+        <Nuvo::Button @variant="secondary" @text="Month" />
+      </Nuvo::BtnGroup>
+
+      <Nuvo::BtnGroup @attached={{true}}>
+        <Nuvo::Button @variant="secondary" @shape="square" @icon="←" />
+        <Nuvo::Button @variant="secondary" @shape="square" @icon="→" />
+      </Nuvo::BtnGroup>
+    </div>
+  </section>
+
+  <section class="nuvo-section" id="avatar-group">
+    <h2 class="nuvo-section__title">Avatar Group</h2>
+
+    <div class="nuvo-row">
+      <Nuvo::AvatarGroup>
+        <Nuvo::Avatar @initials="AM" />
+        <Nuvo::Avatar @initials="SQ" />
+        <Nuvo::Avatar @initials="ON" />
+        <Nuvo::Avatar @src="https://i.pravatar.cc/100?img=12" @alt="User avatar" />
+      </Nuvo::AvatarGroup>
+
+      <Nuvo::AvatarGroup @compact={{true}}>
+        <Nuvo::Avatar @initials="AM" @size="sm" />
+        <Nuvo::Avatar @initials="SQ" @size="sm" />
+        <Nuvo::Avatar @initials="ON" @size="sm" />
+      </Nuvo::AvatarGroup>
+    </div>
+  </section>
+
+  <section class="nuvo-section" id="input-group">
+    <h2 class="nuvo-section__title">Input Group</h2>
+
+    <div class="nuvo-stack">
+      <Nuvo::InputGroup @prepend="https://">
+        <Nuvo::Input @placeholder="your-domain.com" />
+      </Nuvo::InputGroup>
+
+      <Nuvo::InputGroup @append="AED / month">
+        <Nuvo::Input @placeholder="0" />
+      </Nuvo::InputGroup>
+
+      <Nuvo::InputGroup @prepend="AED" @append=".00">
+        <Nuvo::Input
+          @value={{this.groupInputValue}}
+          @placeholder="Amount"
+          @onInput={{this.updateGroupInput}}
+        />
+      </Nuvo::InputGroup>
+    </div>
+  </section>
+
+  <section class="nuvo-section" id="form-actions">
+    <h2 class="nuvo-section__title">Form Actions</h2>
+
+    <div class="nuvo-stack">
+      <Nuvo::FormActions @align="end">
+        <Nuvo::Button @variant="secondary" @text="Cancel" />
+        <Nuvo::Button @variant="primary" @text="Save" />
+      </Nuvo::FormActions>
+
+      <Nuvo::FormActions @align="between">
+        <Nuvo::Button @variant="ghost" @text="Delete" />
+        <Nuvo::Button @variant="primary" @text="Save changes" />
+      </Nuvo::FormActions>
+    </div>
+  </section>
+
+  <section class="nuvo-section" id="divider">
+    <h2 class="nuvo-section__title">Divider</h2>
+
+    <div class="nuvo-stack">
+      <Nuvo::Divider />
+      <Nuvo::Divider @dashed={{true}} />
+      <Nuvo::Divider @label="OR" />
+      <Nuvo::Divider @labelPosition="start">Section start</Nuvo::Divider>
+      <Nuvo::Divider @labelPosition="end">Section end</Nuvo::Divider>
+    </div>
+
+    <div class="nuvo-row" style="block-size: 4rem;">
+      <span class="nu-text m-sm">Left</span>
+      <Nuvo::Divider @vertical={{true}} />
+      <span class="nu-text m-sm">Right</span>
+    </div>
+  </section>
+
+  <section class="nuvo-section" id="progress">
+    <h2 class="nuvo-section__title">Progress</h2>
+
+    <div class="nuvo-stack">
+      <Nuvo::Progress @value={{20}} />
+      <Nuvo::Progress @value={{45}} @variant="success" @showText={{true}} />
+      <Nuvo::Progress @value={{70}} @variant="warning" @showText={{true}} />
+      <Nuvo::Progress @value={{90}} @variant="danger" @showText={{true}} />
+      <Nuvo::Progress @value={{this.progressValue}} @variant="primary" @showText={{true}} />
+      <Nuvo::Button @variant="secondary" @size="sm" @text="Bump progress" @onClick={{this.bumpProgress}} />
+    </div>
+
+    <div class="nuvo-stack">
+      <Nuvo::Progress @value={{50}} @size="sm" />
+      <Nuvo::Progress @value={{50}} />
+      <Nuvo::Progress @value={{50}} @size="lg" />
+    </div>
+
+    <div class="nuvo-stack">
+      <Nuvo::Progress @value={{100}} @indeterminate={{true}} />
+      <Nuvo::Progress @value={{60}} @striped={{true}} @variant="info" />
+    </div>
+
+    <div class="nuvo-row">
+      <Nuvo::ProgressCircle @value={{75}} @showText={{true}} />
+      <Nuvo::ProgressCircle @value={{45}} @variant="success" @showText={{true}} @size="sm" />
+      <Nuvo::ProgressCircle @value={{90}} @variant="danger" @showText={{true}} @size="lg" />
+      <Nuvo::ProgressCircle @value={{30}} @variant="warning" @strokeWidth={{10}} @showText={{true}} />
+    </div>
+  </section>
+
+  <section class="nuvo-section" id="dropdown">
+    <h2 class="nuvo-section__title">Dropdown</h2>
+
+    <p class="nu-text m-sm m-muted">
+      Grouped options, type-to-filter (auto-enables past 8 options), full keyboard
+      nav (arrows, enter, escape, tab) and click-outside close.
+    </p>
+
+    <div class="nuvo-row">
+      <Nuvo::Dropdown
+        @options={{this.areaOptions}}
+        @value={{this.dropdownValue}}
+        @placeholder="Select an area"
+        @onSelect={{this.updateDropdown}}
+      />
+
+      <Nuvo::Dropdown
+        @options={{this.propertyTypeOptions}}
+        @placeholder="No search (3 options)"
+      />
+
+      <Nuvo::Dropdown
+        @options={{this.areaOptions}}
+        @placeholder="Opens upward"
+        @placement="up"
+      />
+
+      <Nuvo::Dropdown
+        @options={{this.propertyTypeOptions}}
+        @placeholder="Disabled"
+        @disabled={{true}}
+      />
+    </div>
+
+    <div class="nuvo-stack">
+      <Nuvo::Dropdown
+        @options={{this.propertyTypeOptions}}
+        @placeholder="Left aligned, select-like"
+        @align="start"
+      />
+      <Nuvo::Dropdown
+        @options={{this.propertyTypeOptions}}
+        @placeholder="Centre label, options stay at start"
+        @align="center"
+      />
+      <Nuvo::Dropdown
+        @options={{this.propertyTypeOptions}}
+        @placeholder="End label, centred options"
+        @align="end"
+        @optionsAlign="center"
+      />
+    </div>
+
+    <div class="nuvo-row">
+      <Nuvo::Dropdown
+        @options={{this.rowActions}}
+        @onSelect={{this.runAction}}
+        @searchable={{false}}
+        @optionsAlign="center"
+      >
+        <:trigger as |toggle|>
+          <Nuvo::Button
+            @variant="secondary"
+            @icon="⋯"
+            @shape="square"
+            @onClick={{toggle}}
+          />
+        </:trigger>
+      </Nuvo::Dropdown>
+
+      <span class="nu-text m-sm m-muted">Last action: {{this.actionResult}}</span>
+    </div>
+  </section>
+
+  <section class="nuvo-section" id="card">
+    <h2 class="nuvo-section__title">Card</h2>
+
+    <div class="nuvo-row">
+      <Nuvo::Card @title="Marina Tower" @subtitle="Unit 204 · 2BR">
+        <p class="nu-text m-sm m-muted">
+          Sea-facing unit, fully furnished, tenant on a 12-month lease.
+        </p>
+      </Nuvo::Card>
+
+      <Nuvo::Card @title="Occupancy" @subtitle="This month">
+        <:body>
+          <p class="nu-text m-sm m-muted">Named-block body content.</p>
+        </:body>
+        <:footer>
+          <Nuvo::Button @variant="secondary" @size="sm" @text="View report" />
+        </:footer>
+      </Nuvo::Card>
+    </div>
+
+    <div class="nuvo-row">
+      <Nuvo::Card @title="Flush" @flush={{true}}>
+        <p class="nu-text m-sm m-muted">No padding, edge-to-edge content.</p>
+      </Nuvo::Card>
+
+      <Nuvo::Card @title="Compact" @compact={{true}}>
+        <p class="nu-text m-sm m-muted">Tighter padding for dense lists.</p>
+      </Nuvo::Card>
+
+      <Nuvo::Card @title="Flat" @flat={{true}}>
+        <p class="nu-text m-sm m-muted">No shadow, border only.</p>
+      </Nuvo::Card>
+
+      <Nuvo::Card @title="Raised" @raised={{true}}>
+        <p class="nu-text m-sm m-muted">Elevated shadow, stands off the page.</p>
+      </Nuvo::Card>
+    </div>
+
+    <div class="nuvo-row">
+      <Nuvo::Card @title="Interactive" @interactive={{true}}>
+        <p class="nu-text m-sm m-muted">Hover/focus affordance, clickable card.</p>
+      </Nuvo::Card>
+
+      <Nuvo::Card @title="Accent primary" @accent="primary">
+        <p class="nu-text m-sm m-muted">Tinted surface for a primary highlight.</p>
+      </Nuvo::Card>
+
+      <Nuvo::Card @title="Accent danger" @accent="danger">
+        <p class="nu-text m-sm m-muted">Tinted surface for an overdue-rent alert.</p>
+      </Nuvo::Card>
+
+      <Nuvo::Card @title="Selected" @selected={{true}}>
+        <p class="nu-text m-sm m-muted">Primary-ring border, chosen state.</p>
+      </Nuvo::Card>
+    </div>
+  </section>
+
+  <section class="nuvo-section" id="stat">
+    <h2 class="nuvo-section__title">Stat</h2>
+
+    <div class="nuvo-row">
+      <Nuvo::Stat @icon="🏠" @label="Occupied units" @value="184" @delta="+4 this month" />
+      <Nuvo::Stat @variant="primary" @icon="🏠" @label="Occupancy rate" @value="94%" @delta="+2.1%" />
+      <Nuvo::Stat @variant="secondary" @icon="🧾" @label="Rent collected" @value="AED 1.2M" @delta="On track" />
+      <Nuvo::Stat @variant="success" @icon="✓" @label="Leases renewed" @value="37" @delta="+6 this month" />
+      <Nuvo::Stat @variant="warning" @icon="⏱" @label="Cheques pending" @value="12" @delta="Due this week" />
+      <Nuvo::Stat @variant="danger" @icon="⚠" @label="Overdue rent" @value="AED 45,000" @delta="9 units" />
+      <Nuvo::Stat @variant="info" @icon="🔧" @label="Maintenance open" @value="8" @delta="3 urgent" />
+    </div>
+  </section>
+
+  <section class="nuvo-section" id="list-item">
+    <h2 class="nuvo-section__title">List Item</h2>
+
+    <div class="nuvo-stack">
+      {{#each this.units as |unit|}}
+        <Nuvo::ListItem>
+          <:main>
+            <div>
+              <p class="nu-text m-sm">{{unit.name}}</p>
+              <p class="nu-text m-xs m-muted">{{unit.tenant}} · {{unit.rent}}</p>
+            </div>
+          </:main>
+          <:actions>
+            <Nuvo::Button
+              @variant={{if (eq this.selectedUnitId unit.id) "primary" "secondary"}}
+              @size="sm"
+              @text={{if (eq this.selectedUnitId unit.id) "Selected" "Select"}}
+              @onClick={{fn this.selectUnit unit.id}}
+            />
+          </:actions>
+        </Nuvo::ListItem>
+      {{/each}}
+    </div>
+  </section>
+
+  <section class="nuvo-section" id="info-row">
+    <h2 class="nuvo-section__title">Info Row</h2>
+
+    <Nuvo::Card @title="Lease Summary">
+      <Nuvo::InfoRow @label="Tenant" @value="Ahmed Khalid" />
+      <Nuvo::InfoRow @label="Unit" @value="Marina Tower, 204" />
+      <Nuvo::InfoRow @label="Rent" @value="AED 8,500/mo" />
+      <Nuvo::InfoRow @label="Lease ends">
+        <Nuvo::Badge @variant="warning" @text="42 days left" />
+      </Nuvo::InfoRow>
+    </Nuvo::Card>
+  </section>
+
+  <section class="nuvo-section" id="panel">
+    <h2 class="nuvo-section__title">Panel</h2>
+
+    <div class="nuvo-row">
+      <Nuvo::Panel @title="Property Filters">
+        <p class="nu-text m-sm m-muted">Default padded panel with a title.</p>
+      </Nuvo::Panel>
+
+      <Nuvo::Panel @title="Flush" @flush={{true}}>
+        <p class="nu-text m-sm m-muted">No padding.</p>
+      </Nuvo::Panel>
+
+      <Nuvo::Panel @title="Compact" @compact={{true}}>
+        <p class="nu-text m-sm m-muted">Tighter padding.</p>
+      </Nuvo::Panel>
+
+      <Nuvo::Panel @title="Raised" @raised={{true}}>
+        <p class="nu-text m-sm m-muted">Elevated shadow.</p>
+      </Nuvo::Panel>
+    </div>
+
+    <Nuvo::Panel @title="Unit Maintenance">
+      <:body>
+        <p class="nu-text m-sm m-muted">Named-block body/footer, same shape as card.</p>
+      </:body>
+      <:footer>
+        <Nuvo::Button @variant="secondary" @size="sm" @text="Cancel" />
+        <Nuvo::Button @variant="primary" @size="sm" @text="Save" />
+      </:footer>
+    </Nuvo::Panel>
+  </section>
+
+  <section class="nuvo-section" id="toolbar">
+    <h2 class="nuvo-section__title">Toolbar</h2>
+
+    <Nuvo::Toolbar @bordered={{true}}>
+      <div class="nu-toolbar__group">
+        <Nuvo::Button @variant="secondary" @size="sm" @text="All Units" />
+        <Nuvo::Button @variant="ghost" @size="sm" @text="Occupied" />
+        <Nuvo::Button @variant="ghost" @size="sm" @text="Vacant" />
+      </div>
+
+      {{! Spacer is a bare element, not a component - see nu-toolbar.hbs }}
+      <span class="nu-toolbar__spacer"></span>
+
+      <div class="nu-toolbar__item">
+        <Nuvo::Badge @variant="info" @text="184 units" />
+      </div>
+      <Nuvo::Button @variant="primary" @size="sm" @text="Add Unit" />
+    </Nuvo::Toolbar>
+  </section>
+
+  <section class="nuvo-section" id="alert">
+    <h2 class="nuvo-section__title">Alert</h2>
+
+    <div class="nuvo-stack">
+      <Nuvo::Alert @variant="info" @icon="ℹ" @title="12 leases renew this month" />
+      <Nuvo::Alert
+        @variant="success"
+        @icon="✓"
+        @title="Rent collected"
+        @description="AED 42,000 was collected across 6 units this week."
+      />
+      <Nuvo::Alert
+        @variant="warning"
+        @icon="⚠"
+        @title="Cheque bounced"
+        @description="Post-dated cheque #4821 for Unit 512, Burj Views was returned by the bank."
+      />
+      <Nuvo::Alert
+        @variant="danger"
+        @icon="⛔"
+        @title="Maintenance overdue"
+        @description="Unit 118, JVC Residence has an unresolved AC repair ticket open for 9 days."
+        @closable={{true}}
+        @onClose={{this.dismissAlert}}
+      />
+      {{#unless this.alertDismissed}}
+        <Nuvo::Alert @variant="info" @icon="ℹ" @inline={{true}} @title="Inline alert" @description="stays on one line" />
+      {{else}}
+        <div class="nuvo-row">
+          <span class="nu-text m-sm m-muted">Danger alert dismissed.</span>
+          <Nuvo::Button @variant="link" @size="sm" @text="Reset" @onClick={{this.resetAlert}} />
+        </div>
+      {{/unless}}
+      <Nuvo::Alert @variant="primary" @icon="🏠" @banner={{true}} @title="Banner alert spans full width" />
+    </div>
+  </section>
+
+  <section class="nuvo-section" id="empty-state">
+    <h2 class="nuvo-section__title">Empty State</h2>
+
+    <div class="nuvo-stack">
+      <Nuvo::EmptyState
+        @icon="🏢"
+        @title="No properties yet"
+        @description="Add your first property to start tracking units, tenants, and leases."
+      >
+        <:actions>
+          <Nuvo::Button @variant="primary" @size="sm" @text="Add Property" />
+        </:actions>
+      </Nuvo::EmptyState>
+
+      <Nuvo::EmptyState
+        @icon="🔍"
+        @size="sm"
+        @title="No results"
+        @description="No units match this filter."
+        @bordered={{true}}
+      />
+
+      <Nuvo::EmptyState
+        @icon="📄"
+        @size="lg"
+        @title="No lease documents"
+        @description="Upload a signed lease PDF to attach it to this unit."
+        @bordered={{true}}
+      >
+        <:actions>
+          <Nuvo::Button @variant="secondary" @size="sm" @text="Upload" />
+        </:actions>
+      </Nuvo::EmptyState>
+    </div>
+  </section>
+
+  <section class="nuvo-section" id="page-header">
+    <h2 class="nuvo-section__title">Page Header</h2>
+
+    <div class="nuvo-stack">
+      <Nuvo::PageHeader @title="Marina Tower" @subtitle="42 units - Dubai Marina" @bordered={{true}}>
+        <:breadcrumb>
+          <span>Properties</span>
+          <span aria-hidden="true">/</span>
+          <span>Marina Tower</span>
+        </:breadcrumb>
+        <:meta>
+          <Nuvo::Badge @variant="success" @text="Active" />
+          <span>Occupancy 91%</span>
+        </:meta>
+        <:actions>
+          <Nuvo::Button @variant="secondary" @size="sm" @text="Export" />
+          <Nuvo::Button @variant="primary" @size="sm" @text="Add Unit" />
+        </:actions>
+      </Nuvo::PageHeader>
+
+      <Nuvo::PageHeader @title="Sticky header" @subtitle="stays pinned in a scroll container" @sticky={{true}} />
+    </div>
+  </section>
+
+  <section class="nuvo-section" id="skeleton">
+    <h2 class="nuvo-section__title">Skeleton</h2>
+
+    <div class="nuvo-stack">
+      <div class="nuvo-row">
+        <Nuvo::Skeleton @shape="circle" />
+        <Nuvo::Skeleton @shape="title" @width="50" />
+      </div>
+      <Nuvo::Skeleton @shape="rect" @width="full" />
+      <Nuvo::Skeleton @shape="text" @lines={{3}} />
+    </div>
+  </section>
+
+  <section class="nuvo-section" id="title-text">
+    <h2 class="nuvo-section__title">Title &amp; Text</h2>
+
+    <div class="nuvo-stack">
+      <Nuvo::Title @tag="h1" @size="3xl" @text="Property Portfolio" />
+      <Nuvo::Title @size="xl" @weight="semibold" @text="Marina Tower" />
+      <Nuvo::Title @size="md" @tag="h4" @truncate={{true}} @text="A very long unit description that should truncate with an ellipsis when the container is narrow" />
+
+      <Nuvo::Text @text="Unit 1204 is currently leased to Ahmed Khalid at AED 8,500/month, renewing on 31 Dec 2026." />
+      <Nuvo::Text @size="sm" @muted={{true}} @text="Last synced 4 minutes ago." />
+      <Nuvo::Text @size="sm" @variant="danger" @text="Cheque #4821 bounced - contact tenant." />
+      <Nuvo::Text @tag="span" @size="xs" @subtle={{true}} @text="Inline span text" />
+      <Nuvo::Text @clamp="2" @text="This unit includes a fully equipped kitchen, two parking bays, access to the marina promenade, and a maintenance package covering AC servicing twice a year plus emergency plumbing support around the clock." />
+    </div>
+  </section>
+
+  <section class="nuvo-section" id="list">
+    <h2 class="nuvo-section__title">List</h2>
+
+    <div class="nuvo-stack">
+      <Nuvo::List @items={{this.unitList}} />
+      <Nuvo::List @items={{this.unitList}} @ordered={{true}} />
+      <Nuvo::List @items={{this.unitList}} @plain={{true}} @bordered={{true}} />
+      <Nuvo::List @items={{this.unitList}} @inline={{true}} @compact={{true}} />
+    </div>
+  </section>
+
+  <section class="nuvo-section" id="desc-list">
+    <h2 class="nuvo-section__title">Description List</h2>
+
+    <div class="nuvo-stack">
+      <Nuvo::DescList @items={{this.leaseDescItems}} />
+      <Nuvo::DescList @items={{this.leaseDescItems}} @horizontal={{true}} @compact={{true}} />
+    </div>
+  </section>
+
+  <section class="nuvo-section" id="accordion">
+    <h2 class="nuvo-section__title">Accordion</h2>
+
+    <div class="nuvo-stack">
+      <Nuvo::Accordion @items={{this.accordionItems}} />
+      <Nuvo::Accordion @items={{this.accordionItems}} @multiple={{true}} @bordered={{true}} @defaultExpanded="lease-terms" />
+      <Nuvo::Accordion @items={{this.accordionItems}} @flush={{true}} @compact={{true}} />
+    </div>
+  </section>
+
+  <section class="nuvo-section" id="segmented">
+    <h2 class="nuvo-section__title">Segmented</h2>
+    <p class="text-muted text-sm">A single- or multi-choice control rendered as
+      one joined switch. Unlike Tabs, which navigate between panels of content,
+      this sets a value.</p>
+
+    <div class="nuvo-stack">
+      <Nuvo::Text @text="Icon + label (default)" @variant="muted" @size="sm" />
+      <Nuvo::Segmented
+        @options={{this.segmentedViews}}
+        @value={{this.segmentedView}}
+        @onChange={{this.updateSegmentedView}}
+      />
+
+      <Nuvo::Text @text="Label only" @variant="muted" @size="sm" />
+      <Nuvo::Segmented
+        @options={{this.segmentedPlain}}
+        @value={{this.segmentedPeriod}}
+        @onChange={{this.updateSegmentedPeriod}}
+      />
+
+      <Nuvo::Text @text="Icon only" @variant="muted" @size="sm" />
+      <Nuvo::Segmented
+        @options={{this.segmentedViews}}
+        @value={{this.segmentedView}}
+        @onChange={{this.updateSegmentedView}}
+        @iconOnly={{true}}
+      />
+
+      <Nuvo::Text @text="Sizes: sm, default, lg" @variant="muted" @size="sm" />
+      <Nuvo::Segmented
+        @options={{this.segmentedPlain}}
+        @value={{this.segmentedPeriod}}
+        @onChange={{this.updateSegmentedPeriod}}
+        @size="sm"
+      />
+      <Nuvo::Segmented
+        @options={{this.segmentedPlain}}
+        @value={{this.segmentedPeriod}}
+        @onChange={{this.updateSegmentedPeriod}}
+        @size="lg"
+      />
+
+      <Nuvo::Text
+        @text="Multiple: several segments raised at once"
+        @variant="muted"
+        @size="sm"
+      />
+      <Nuvo::Segmented
+        @options={{this.segmentedAmenityOptions}}
+        @value={{this.segmentedAmenities}}
+        @onChange={{this.updateSegmentedAmenities}}
+        @multiple={{true}}
+      />
+
+      <Nuvo::Text @text="Fill: splits the container" @variant="muted" @size="sm" />
+      <Nuvo::Segmented
+        @options={{this.segmentedPlain}}
+        @value={{this.segmentedPeriod}}
+        @onChange={{this.updateSegmentedPeriod}}
+        @fill={{true}}
+      />
+    </div>
+  </section>
+
+  <section class="nuvo-section" id="tabs">
+    <h2 class="nuvo-section__title">Tabs</h2>
+
+    <div class="nuvo-stack">
+      <Nuvo::Tabs @tabs={{this.unitTabs}} @activeTab={{this.activeUnitTab}} @onChange={{this.updateUnitTab}} as |tabId|>
+        {{#if (eq tabId "overview")}}
+          <Nuvo::Text @text="Unit 1204, Marina Tower - 2BR, sea view, currently leased." />
+        {{else if (eq tabId "lease")}}
+          <Nuvo::Text @text="Leased to Ahmed Khalid, AED 8,500/month, renews 31 Dec 2026." />
+        {{else if (eq tabId "cheques")}}
+          <Nuvo::Text @text="4 post-dated cheques on file, next due 1 Sep 2026." />
+        {{else if (eq tabId "maintenance")}}
+          <Nuvo::Text @text="No open maintenance requests." />
+        {{/if}}
+      </Nuvo::Tabs>
+
+      <Nuvo::Tabs @tabs={{this.unitTabs}} @variant="pills" @activeTab={{this.activeUnitTab}} @onChange={{this.updateUnitTab}} />
+      <Nuvo::Tabs @tabs={{this.unitTabs}} @variant="enclosed" @activeTab={{this.activeUnitTab}} @onChange={{this.updateUnitTab}} />
+      <Nuvo::Tabs @tabs={{this.unitTabs}} @variant="underline" @vertical={{true}} @activeTab={{this.activeUnitTab}} @onChange={{this.updateUnitTab}} />
+      <Nuvo::Tabs @tabs={{this.unitTabs}} @fill={{true}} @activeTab={{this.activeUnitTab}} @onChange={{this.updateUnitTab}} />
+    </div>
+  </section>
+
+  <section class="nuvo-section" id="breadcrumb">
+    <h2 class="nuvo-section__title">Breadcrumb</h2>
+
+    <div class="nuvo-stack">
+      <Nuvo::Breadcrumb @items={{this.breadcrumbItems}} />
+      <Nuvo::Breadcrumb @items={{this.breadcrumbItems}} @compact={{true}} />
+    </div>
+  </section>
+
+  <section class="nuvo-section" id="pagination">
+    <h2 class="nuvo-section__title">Pagination</h2>
+
+    <div class="nuvo-stack">
+      <Nuvo::Pagination
+        @page={{this.paginationPage}}
+        @perPage={{this.paginationPerPage}}
+        @total={{this.paginationTotal}}
+        @onPageChange={{this.updatePaginationPage}}
+      />
+      <Nuvo::Pagination
+        @page={{this.paginationPage}}
+        @perPage={{this.paginationPerPage}}
+        @total={{this.paginationTotal}}
+        @onPageChange={{this.updatePaginationPage}}
+        @onPerPageChange={{this.updatePaginationPerPage}}
+        @perPageOptions={{this.paginationPerPageOptions}}
+        @sm={{true}}
+      />
+      <Nuvo::Pagination @page={{3}} @perPage={{10}} @total={{240}} @onPageChange={{this.updatePaginationPage}} @compact={{true}} />
+    </div>
+  </section>
+
+  <section class="nuvo-section" id="modal">
+    <h2 class="nuvo-section__title">Modal</h2>
+
+    <div class="nuvo-row">
+      <Nuvo::Button @text="Open modal" @onClick={{this.openModal}} data-test-open-modal />
+      <Nuvo::Button @text="Open full-screen modal" @variant="secondary" @onClick={{this.openModalFull}} data-test-open-modal-full />
+    </div>
+
+    <Nuvo::Modal
+      @open={{this.modalOpen}}
+      @title="Cancel lease?"
+      @subtitle="Unit 1204, Marina Tower"
+      @size="md"
+      @onClose={{this.closeModal}}
+    >
+      <:body>
+        <Nuvo::Text @text="This will end the lease for Ahmed Khalid effective today. Post-dated cheques on file will need to be voided manually." />
+      </:body>
+      <:footer>
+        <Nuvo::Button @text="Keep lease" @variant="secondary" @onClick={{this.closeModal}} />
+        <Nuvo::Button @text="Cancel lease" @variant="danger" @onClick={{this.closeModal}} />
+      </:footer>
+    </Nuvo::Modal>
+
+    <Nuvo::Modal
+      @open={{this.modalFullOpen}}
+      @title="Unit 1204 - full detail"
+      @size="full"
+      @scrollable={{true}}
+      @onClose={{this.closeModalFull}}
+    >
+      <Nuvo::Text @text="Full-screen modal body, scrollable when content overflows." />
+    </Nuvo::Modal>
+  </section>
+
+  <section class="nuvo-section" id="drawer">
+    <h2 class="nuvo-section__title">Drawer</h2>
+
+    <div class="nuvo-row">
+      <Nuvo::Button @text="Open end drawer" @onClick={{fn this.openDrawer "end"}} data-test-open-drawer-end />
+      <Nuvo::Button @text="Open start drawer" @variant="secondary" @onClick={{fn this.openDrawer "start"}} data-test-open-drawer-start />
+      <Nuvo::Button @text="Open bottom drawer" @variant="secondary" @onClick={{fn this.openDrawer "bottom"}} data-test-open-drawer-bottom />
+    </div>
+
+    <Nuvo::Drawer
+      @open={{this.drawerOpen}}
+      @title="Unit filters"
+      @placement={{this.drawerPlacement}}
+      @size="md"
+      @onClose={{this.closeDrawer}}
+    >
+      <:body>
+        <Nuvo::Text @text="Filter units by region, status, and rent range." />
+      </:body>
+      <:footer>
+        <Nuvo::Button @text="Close" @variant="secondary" @onClick={{this.closeDrawer}} />
+      </:footer>
+    </Nuvo::Drawer>
+  </section>
+
+  <section class="nuvo-section" id="popover">
+    <h2 class="nuvo-section__title">Popover</h2>
+
+    <div class="nuvo-row">
+      <Nuvo::Popover @title="Quick actions" @placement="bottom" @open={{this.popoverOpen}} @onClose={{this.closePopover}}>
+        <:trigger as |toggle|>
+          {{! Controlled mode: the caller owns the state, so the trigger calls
+              the controller's toggle, not the yielded one. }}
+          <Nuvo::Button @text="Unit actions" @variant="secondary" @onClick={{this.togglePopover}} data-test-open-popover />
+        </:trigger>
+        <:body>
+          <Nuvo::Text @text="Edit, duplicate, or archive this unit." />
+        </:body>
+        <:footer>
+          <Nuvo::Button @text="Close" @size="sm" @variant="ghost" @onClick={{this.closePopover}} />
+        </:footer>
+      </Nuvo::Popover>
+    </div>
+  </section>
+
+  <section class="nuvo-section" id="tooltip">
+    <h2 class="nuvo-section__title">Tooltip</h2>
+
+    <div class="nuvo-row">
+      <Nuvo::Tooltip @content="Top placement" @placement="top">
+        <Nuvo::Button @text="Top" @variant="secondary" />
+      </Nuvo::Tooltip>
+      <Nuvo::Tooltip @content="Bottom placement" @placement="bottom">
+        <Nuvo::Button @text="Bottom" @variant="secondary" />
+      </Nuvo::Tooltip>
+      <Nuvo::Tooltip @content="Start placement" @placement="start">
+        <Nuvo::Button @text="Start" @variant="secondary" />
+      </Nuvo::Tooltip>
+      <Nuvo::Tooltip @content="End placement" @placement="end">
+        <Nuvo::Button @text="End" @variant="secondary" />
+      </Nuvo::Tooltip>
+      <Nuvo::Tooltip @content="Light surface tooltip" @light={{true}}>
+        <Nuvo::Button @text="Light" @variant="secondary" />
+      </Nuvo::Tooltip>
+    </div>
+  </section>
+    </div>
+  </div>
+</div>

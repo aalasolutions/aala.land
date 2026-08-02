@@ -1,0 +1,423 @@
+@use "../../nuvoui" as Nuvo;
+
+.access-rules-container {
+  .wrapper {
+    @include Nuvo.apply(flex, col, gap(1.5rem), mt(1rem), px(1rem));
+    box-sizing: border-box;
+  }
+
+  .access-rules-header {
+    @include Nuvo.apply(flex, between, x-center, gap(1rem));
+
+    .actions {
+      @include Nuvo.apply(flex, gap(1rem));
+
+      .add-role {
+        @include Nuvo.apply(flex, x-center, gap(0.5rem));
+        padding: 10px 12px;
+        font-size: 16px;
+
+        i {
+          font-size: 14px;
+          color: $white;
+        }
+      }
+    }
+  }
+
+  .access-rules-section {
+    @include Nuvo.apply(flex, col, mt(1rem));
+  }
+
+  .roles-count {
+    font-size: 12px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: $bg-gray;
+    color: $text-muted;
+  }
+
+  .access-rules-note {
+    font-size: 12.5px;
+    color: $text-muted;
+  }
+
+  .card-note {
+    padding: 10px 16px;
+    border-bottom: 1px solid $border-color;
+    font-size: 12.5px;
+    color: $text-muted;
+    @include Nuvo.apply(flex, x-center, gap(0.5rem));
+    background: $bg-light;
+
+    .note-icon {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      @include Nuvo.apply(flex, center, x-center);
+      font-size: 11px;
+      font-weight: 600;
+      background: $bg-gray;
+      color: $text-secondary;
+    }
+  }
+
+  .roles-list {
+    @include Nuvo.apply(flex, col);
+  }
+
+  .role-default {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+  }
+
+  .role-cell {
+    @include Nuvo.apply(flex, x-start, gap(0.6rem));
+  }
+
+  .role-text {
+    @include Nuvo.apply(flex, col, gap(0.2rem));
+  }
+
+  .access-rules-card {
+    border: 1px solid $border-color;
+    border-radius: 12px;
+    background: $white;
+    overflow: hidden;
+  }
+
+  .card-header {
+    padding: 14px 16px;
+    border-bottom: 1px solid $border-color;
+    background: $bg-light;
+  }
+
+  .card-title {
+    font-weight: 600;
+    color: $text-primary;
+  }
+
+  .card-subheader {
+    padding: 10px 16px;
+    border-bottom: 1px solid $border-color;
+    font-size: 12.5px;
+    color: $text-muted;
+    background: $bg-light;
+  }
+
+  .role-row {
+    @include Nuvo.apply(flex, x-center, gap(1rem));
+    padding: 12px 16px;
+    border-top: 1px solid $border-color;
+    transition: background 0.2s ease;
+
+    &:first-child {
+      border-top: none;
+    }
+
+    &:hover {
+      background: $slate-50;
+    }
+
+    &.is-default {
+      border-left: 3px solid $primary-color;
+      padding-left: 13px;
+      background: lighten($primary-color, 65%);
+    }
+  }
+
+  .role-title {
+    @include Nuvo.apply(flex, x-center, gap(0.5rem));
+    color: $text-primary;
+  }
+
+  .role-name {
+    font-weight: 600;
+  }
+
+  .role-description {
+    font-size: 12.5px;
+    color: $text-muted;
+  }
+
+  .role-badge {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: $success-light;
+    color: $success-dark;
+  }
+
+  .role-tables {
+    font-size: 12.5px;
+    color: $text-secondary;
+    margin-top: 2px;
+    @include Nuvo.apply(flex, x-center, gap(0.35rem));
+
+    .tables-label {
+      font-weight: 600;
+      color: $text-primary;
+    }
+
+    .tables-list {
+      color: $text-secondary;
+    }
+
+    .tables-count {
+      color: $text-muted;
+    }
+  }
+
+  .role-actions {
+    @include Nuvo.apply(flex, x-center, gap(0.5rem));
+    margin-left: auto;
+    justify-content: flex-end;
+
+    .action-button {
+      padding: 4px 8px;
+      font-size: 12.5px;
+      line-height: 1;
+      border-radius: 6px;
+      transition: background 0.2s ease;
+    }
+  }
+
+  .access-rules-card {
+    .action-button.btn {
+      background: transparent !important;
+      border: none !important;
+      box-shadow: none !important;
+      min-height: auto !important;
+    }
+
+    .action-button.btn-secondary {
+      color: $primary-color !important;
+      &:hover {
+        background: rgba($primary-color, 0.08) !important;
+      }
+    }
+
+    .action-button.btn-danger {
+      color: $error-color !important;
+      &:hover {
+        background: rgba($error-color, 0.08) !important;
+      }
+    }
+  }
+
+  .card-footnote {
+    font-size: 12.5px;
+    color: $text-muted;
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    width: 100%;
+
+    .footnote-line {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .footnote-dot {
+      color: $primary-color;
+      font-size: 17px;
+      line-height: 1.5;
+    }
+
+    .subtle {
+      color: $text-secondary;
+    }
+  }
+
+  .empty-state {
+    padding: 1rem 1.25rem;
+    color: $text-muted;
+    font-size: 14px;
+  }
+
+  .access-rules-delete-popup {
+    max-width: 420px;
+    padding: 1.25rem 1.5rem;
+    text-align: center;
+
+    .generic-header-title {
+      font-size: 20px;
+      margin-bottom: 6px;
+    }
+
+    .generic-header-subtitle {
+      color: $text-secondary;
+      font-size: 14px;
+      line-height: 1.5;
+      padding-bottom: 0.5rem;
+
+      strong {
+        color: $text-primary;
+      }
+    }
+  }
+}
+
+.access-rules-form-container {
+  .wrapper {
+    @include Nuvo.apply(flex, col, gap(1.5rem), mt(1rem), px(1rem));
+    box-sizing: border-box;
+  }
+
+  .access-rules-placeholder {
+    font-size: 14px;
+    color: $text-muted;
+  }
+
+  .access-rules-back-wrapper {
+    @include Nuvo.apply(flex, x-start);
+  }
+
+  .access-rules-back-btn.btn {
+    @include Nuvo.apply(inline-flex, x-center, gap(0.4rem));
+    width: auto;
+  }
+
+  .access-rules-form-card {
+    background-color: $white;
+    border-radius: 12px;
+    padding: 1.5rem 1.75rem;
+    box-shadow: 0 6px 18px rgba($dark-color, 0.08);
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    max-width: 100%;
+    border: 1px solid rgba($dark-color, 0.06);
+    position: relative;
+
+    &.is-disabled {
+      opacity: 0.65;
+      pointer-events: none;
+    }
+  }
+
+  .access-rules-form-page {
+    gap: 1.5rem;
+  }
+
+  .role-fields {
+    @include Nuvo.apply(grid, gap(1rem));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    border-top: 1px solid rgba($dark-color, 0.08);
+    padding-top: 2rem;
+
+    @include Nuvo.media-down(960px) {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .items-section {
+    @include Nuvo.apply(flex, col, gap(1rem));
+    border-top: 1px solid rgba($dark-color, 0.08);
+    padding-top: 1.25rem;
+    width: 100%;
+  }
+
+  .items-header {
+    @include Nuvo.apply(flex, between, x-center, gap(1rem));
+
+    @include Nuvo.media-down(960px) {
+      @include Nuvo.apply(col, x-start);
+    }
+  }
+
+  .items-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: $text-primary;
+  }
+
+  .items-search {
+    width: 320px;
+    max-width: 100%;
+
+    .customInputContainer {
+      margin-bottom: 0;
+    }
+
+    .inputLabel {
+      font-size: 12px;
+      color: $text-muted;
+    }
+  }
+
+  .items-actions {
+    @include Nuvo.apply(flex, between, x-center, gap(1rem));
+
+    .box-body {
+      padding: 0;
+    }
+
+    .btn {
+      width: auto;
+      min-width: 120px;
+    }
+
+    @include Nuvo.media-down(960px) {
+      @include Nuvo.apply(col, x-start);
+    }
+  }
+
+  .schema-dashboard {
+    grid-template-columns: 1fr;
+    padding: 0;
+  }
+
+  .items-list {
+    @include Nuvo.apply(grid, gap(0.75rem));
+    border: 1px solid rgba($dark-color, 0.08);
+    border-radius: 10px;
+    padding: 1rem;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    max-height: 420px;
+    overflow: auto;
+    background: rgba($dark-color, 0.02);
+
+    @include Nuvo.media-down(960px) {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .items-empty {
+    @include Nuvo.apply(text-center);
+    grid-column: 1 / -1;
+    font-size: 14px;
+    color: $text-muted;
+    padding: 1.5rem 0;
+  }
+
+  .form-error {
+    background: rgba($error-color, 0.08);
+    border: 1px solid rgba($error-color, 0.2);
+    color: $error-color;
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+    font-size: 13px;
+  }
+
+  .form-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    justify-content: flex-end;
+    border-top: 1px solid rgba($dark-color, 0.08);
+    padding-top: 1rem;
+
+    .btn-primary,
+    .btn-secondary {
+      width: auto;
+      min-width: 140px;
+    }
+  }
+
+}

@@ -1,0 +1,31 @@
+{{#if @ordered}}
+  <ol class={{this.classes}} data-test-nu-list ...attributes>
+    {{#if (has-block)}}
+      {{yield}}
+    {{else}}
+      {{#each this.normalizedItems as |entry|}}
+        <li class="nu-list__item" data-test-nu-list-item>
+          {{#if entry.icon}}
+            <span class="nu-list__icon" aria-hidden="true">{{entry.icon}}</span>
+          {{/if}}
+          {{entry.label}}
+        </li>
+      {{/each}}
+    {{/if}}
+  </ol>
+{{else}}
+  <ul class={{this.classes}} data-test-nu-list ...attributes>
+    {{#if (has-block)}}
+      {{yield}}
+    {{else}}
+      {{#each this.normalizedItems as |entry|}}
+        <li class="nu-list__item" data-test-nu-list-item>
+          {{#if entry.icon}}
+            <span class="nu-list__icon" aria-hidden="true">{{entry.icon}}</span>
+          {{/if}}
+          {{entry.label}}
+        </li>
+      {{/each}}
+    {{/if}}
+  </ul>
+{{/if}}

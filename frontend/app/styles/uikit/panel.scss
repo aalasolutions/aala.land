@@ -1,0 +1,135 @@
+// nu-panel - bordered surface container, nu-toolbar - horizontal action bar
+@use "./mixins/bem" as *;
+@use "./mixins/var" as *;
+@use "./common/var" as *;
+
+@include b(panel) {
+  @include nu-root("panel", (
+    "Padding": nu-space(5),
+    "BackgroundColor": var(--bg-surface),
+    "BorderWidth": 1px,
+    "BorderColor": var(--border-base),
+    "BorderRadius": nu-radius(lg),
+    "BoxShadow": nu-shadow(none),
+  ));
+
+  display: block;
+  padding: nu-var("panel", "Padding");
+  background-color: nu-var("panel", "BackgroundColor");
+  border: nu-var("panel", "BorderWidth") solid nu-var("panel", "BorderColor");
+  border-radius: nu-var("panel", "BorderRadius");
+  box-shadow: nu-var("panel", "BoxShadow");
+
+  // ---- elements ----
+
+  @include e(header) {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: nu-space(3);
+    margin-block-end: nu-space(4);
+    padding-block-end: nu-space(3);
+    border-block-end: 1px solid var(--border-base);
+  }
+
+  @include e(title) {
+    margin: 0;
+    font-size: nu-font-size(md);
+    font-weight: nu-font-weight(semibold);
+    color: var(--text-color);
+  }
+
+  @include e(body) {
+    display: flex;
+    flex-direction: column;
+    gap: nu-space(3);
+  }
+
+  @include e(footer) {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: nu-space(2);
+    margin-block-start: nu-space(4);
+    padding-block-start: nu-space(3);
+    border-block-start: 1px solid var(--border-base);
+  }
+
+  // ---- modifiers ----
+
+  @include m(flush) {
+    --nu-panel--Padding: 0;
+  }
+
+  @include m(compact) {
+    --nu-panel--Padding: #{nu-space(3)};
+  }
+
+  @include m(raised) {
+    --nu-panel--BoxShadow: #{nu-shadow(md)};
+  }
+}
+
+@include b(toolbar) {
+  @include nu-root("toolbar", (
+    "Gap": nu-space(3),
+    "Padding": nu-space(3),
+    "BackgroundColor": var(--bg-surface),
+    "BorderColor": var(--border-base),
+    "ZIndex": nu-z(sticky),
+  ));
+
+  display: flex;
+  align-items: center;
+  gap: nu-var("toolbar", "Gap");
+  padding: nu-var("toolbar", "Padding");
+  background-color: nu-var("toolbar", "BackgroundColor");
+
+  // ---- elements ----
+
+  @include e(group) {
+    display: flex;
+    align-items: center;
+    gap: nu-space(2);
+  }
+
+  @include e(item) {
+    display: inline-flex;
+    align-items: center;
+  }
+
+  @include e(spacer) {
+    flex: 1 1 auto;
+  }
+
+  @include e(search) {
+    display: inline-flex;
+    align-items: center;
+    gap: nu-space(2);
+    inline-size: 16rem;
+    max-inline-size: 100%;
+    padding-block: nu-space(1);
+    padding-inline: nu-space(3);
+    color: var(--text-color);
+    background-color: var(--bg-alternate);
+    border: 1px solid var(--border-base);
+    border-radius: nu-radius(md);
+
+    &:focus-within {
+      outline: none;
+      box-shadow: 0 0 0 3px #{nu-tint(primary, 35%)};
+    }
+  }
+
+  // ---- modifiers ----
+
+  @include m(sticky) {
+    position: sticky;
+    inset-block-start: 0;
+    z-index: nu-var("toolbar", "ZIndex");
+  }
+
+  @include m(bordered) {
+    border-block-end: 1px solid nu-var("toolbar", "BorderColor");
+  }
+}

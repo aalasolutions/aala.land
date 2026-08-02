@@ -1,0 +1,122 @@
+// Property unit detail: photo gallery + info + amenities + documents/lease
+// tables. See AGENT_BRIEF.md.
+//
+// Bespoke: the photo gallery (main photo, thumbnail strip with hover
+// actions, upload preview states, dashed placeholder). Everything else
+// resolves to a kit component (Card, Tag, Button, nu-table).
+@use "../uikit/common/var" as *;
+@use "../uikit/mixins/bem" as *;
+
+.unit-detail-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: nu-space(6);
+
+  @include media-down(lg) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.unit-main-photo {
+  inline-size: 100%;
+  aspect-ratio: 16 / 10;
+  overflow: hidden;
+  border-radius: var(--radius-lg);
+  background: var(--bg-alternate);
+
+  img {
+    inline-size: 100%;
+    block-size: 100%;
+    object-fit: cover;
+  }
+}
+
+.unit-thumb {
+  position: relative;
+  inline-size: 80px;
+  block-size: 60px;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: border-color var(--transition-fast);
+
+  img {
+    inline-size: 100%;
+    block-size: 100%;
+    object-fit: cover;
+  }
+
+  &:hover {
+    border-color: var(--color-primary);
+  }
+
+  &:hover .unit-thumb-actions {
+    display: flex;
+  }
+}
+
+.unit-thumb-primary {
+  border-color: var(--color-primary);
+}
+
+.unit-thumb-actions {
+  display: none;
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  gap: 2px;
+}
+
+.upload-preview-thumb {
+  opacity: 0.7;
+  border: 2px dashed var(--color-primary);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  pointer-events: none;
+
+  img {
+    inline-size: 100%;
+    block-size: 100%;
+    object-fit: cover;
+  }
+}
+
+.upload-preview-active {
+  position: relative;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+
+  img {
+    inline-size: 100%;
+    block-size: 100%;
+    object-fit: cover;
+  }
+
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.15);
+    border-radius: var(--radius-lg);
+  }
+}
+
+.unit-photo-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  min-block-size: 300px;
+  border: 2px dashed var(--border-light);
+  border-radius: var(--radius-lg);
+  color: var(--text-muted);
+  font-size: 64px;
+}
+
+.unit-id-text {
+  word-break: break-all;
+  font-family: monospace;
+  font-size: 11px;
+}

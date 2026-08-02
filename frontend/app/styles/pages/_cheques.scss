@@ -1,0 +1,8 @@
+// Cheques: list + collection schedule + new/edit + bounce modals. See
+// AGENT_BRIEF.md.
+//
+// No page-level CSS. Every element resolves to a kit component or a core
+// utility; type badges use the `cheque` domain in _badges.scss. Cheque
+// status (PENDING/DEPOSITED/CLEARED/BOUNCED/REPLACED) has no matching
+// domain in _badges.scss, so status renders as a plain <Nuvo::Tag> with no
+// intent colour -- see the migration report for the follow-up needed there.

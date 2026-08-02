@@ -1,0 +1,341 @@
+// nu-sidebar - fixed app navigation rail
+@use "./mixins/bem" as *;
+@use "./mixins/var" as *;
+@use "./common/var" as *;
+
+@include b(sidebar) {
+  @include nu-root("sidebar", (
+    "Width": 15rem,
+    "CollapsedWidth": 3.75rem,
+    "BackgroundColor": var(--bg-surface),
+    "BorderColor": var(--border-base),
+    "PaddingBlock": nu-space(4),
+    "PaddingInline": nu-space(3),
+    "TransitionDuration": nu-duration(normal),
+  ));
+
+  display: flex;
+  flex-direction: column;
+  inline-size: nu-var("sidebar", "Width");
+  block-size: 100vh;
+  padding-block: nu-var("sidebar", "PaddingBlock");
+  padding-inline: nu-var("sidebar", "PaddingInline");
+  background-color: nu-var("sidebar", "BackgroundColor");
+  border-inline-end: 1px solid nu-var("sidebar", "BorderColor");
+  position: fixed;
+  inset-block-start: 0;
+  inset-inline-start: 0;
+  z-index: nu-z(sticky);
+  transition: inline-size nu-var("sidebar", "TransitionDuration") $nu-ease;
+
+  // Sits on the shell background instead of carrying its own surface, for
+  // layouts where the routed content is the only raised panel.
+  @include m(plain) {
+    --nu-sidebar--BackgroundColor: transparent;
+    --nu-sidebar--BorderColor: transparent;
+  }
+
+  @include reduced-motion {
+    transition: none;
+  }
+
+  // ---- elements ----
+
+  @include e(brand) {
+    display: flex;
+    align-items: center;
+    gap: nu-space(2);
+    padding-inline: nu-space(3);
+    margin-block-end: nu-space(6);
+    white-space: nowrap;
+    overflow: hidden;
+  }
+
+  @include e(brand-title) {
+    margin: 0;
+    font-size: nu-font-size(xl);
+    font-weight: nu-font-weight(bold);
+    color: var(--primary);
+  }
+
+  @include e(brand-subtitle) {
+    margin: 0;
+    font-size: nu-font-size(xs);
+    color: var(--text-muted);
+  }
+
+  @include e(nav) {
+    display: flex;
+    flex-direction: column;
+    gap: nu-space(1);
+    flex: 1;
+    overflow-y: auto;
+  }
+
+  @include e(section-label) {
+    padding-inline: nu-space(3);
+    margin-block: nu-space(2) nu-space(1);
+    font-size: nu-font-size(xs);
+    font-weight: nu-font-weight(semibold);
+    color: var(--text-subtle);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    white-space: nowrap;
+    overflow: hidden;
+  }
+
+  @include e(link) {
+    @include nu-root-el("sidebar", "link", (
+      "Color": var(--text-muted),
+      "BackgroundColor": transparent,
+      "hover--Color": var(--text-color),
+      "hover--BackgroundColor": var(--bg-alternate),
+    ));
+
+    display: flex;
+    align-items: center;
+    gap: nu-space(3);
+    padding-block: nu-space(2);
+    padding-inline: nu-space(3);
+    border-radius: nu-radius(md);
+    color: nu-var-el("sidebar", "link", "Color");
+    background-color: nu-var-el("sidebar", "link", "BackgroundColor");
+    font-size: nu-font-size(sm);
+    font-weight: nu-font-weight(medium);
+    text-decoration: none;
+    transition:
+      background-color nu-var("sidebar", "TransitionDuration") $nu-ease,
+      color nu-var("sidebar", "TransitionDuration") $nu-ease;
+
+    @include reduced-motion {
+      transition: none;
+    }
+
+    &:hover {
+      --nu-sidebar__link--Color: var(--text-color);
+      --nu-sidebar__link--BackgroundColor: var(--bg-alternate);
+    }
+
+    &:focus-visible {
+      outline: none;
+      box-shadow: 0 0 0 3px nu-tint(primary, 35%);
+    }
+
+    // `active` is what Ember's <LinkTo> emits; `is-active` is the kit's own
+    // state class. Both paint the same so a route link needs no extra binding.
+    &.is-active,
+    &.active {
+      --nu-sidebar__link--Color: var(--text-inverted);
+      --nu-sidebar__link--BackgroundColor: var(--primary);
+    }
+  }
+
+  @include e(link-icon) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 1.1em;
+    line-height: 1;
+  }
+
+  @include e(link-label) {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  // Collapsible group: a toggle button plus a region of sublinks that opens
+  // and closes. The open/closed animation uses grid-template-rows rather than
+  // a max-height guess, so a group with many children cannot be clipped.
+  @include e(group) {
+    display: flex;
+    flex-direction: column;
+    gap: nu-space(1);
+  }
+
+  @include e(group-toggle) {
+    @include nu-root-el("sidebar", "group-toggle", (
+      "Color": var(--text-muted),
+      "BackgroundColor": transparent,
+    ));
+
+    display: flex;
+    align-items: center;
+    gap: nu-space(3);
+    inline-size: 100%;
+    padding-block: nu-space(2);
+    padding-inline: nu-space(3);
+    border: 0;
+    border-radius: nu-radius(md);
+    color: nu-var-el("sidebar", "group-toggle", "Color");
+    background-color: nu-var-el("sidebar", "group-toggle", "BackgroundColor");
+    font-size: nu-font-size(sm);
+    font-weight: nu-font-weight(medium);
+    text-align: start;
+    cursor: pointer;
+    transition:
+      background-color nu-var("sidebar", "TransitionDuration") $nu-ease,
+      color nu-var("sidebar", "TransitionDuration") $nu-ease;
+
+    @include reduced-motion {
+      transition: none;
+    }
+
+    &:hover {
+      --nu-sidebar__group-toggle--Color: var(--text-color);
+      --nu-sidebar__group-toggle--BackgroundColor: var(--bg-alternate);
+    }
+
+    &:focus-visible {
+      outline: none;
+      box-shadow: 0 0 0 3px nu-tint(primary, 35%);
+    }
+
+    // A group holding the active route. Tinted, not filled, so it never
+    // competes with the active link inside it.
+    &.is-active {
+      --nu-sidebar__group-toggle--Color: var(--primary-800);
+      --nu-sidebar__group-toggle--BackgroundColor: #{nu-tint(primary, 12%)};
+    }
+  }
+
+  @include e(chevron) {
+    margin-inline-start: auto;
+    flex-shrink: 0;
+    font-size: nu-font-size(xs);
+    opacity: 0.5;
+    transition: transform nu-var("sidebar", "TransitionDuration") $nu-ease;
+
+    @include reduced-motion {
+      transition: none;
+    }
+  }
+
+  @include e(group-items) {
+    display: grid;
+    grid-template-rows: 0fr;
+    transition: grid-template-rows nu-var("sidebar", "TransitionDuration") $nu-ease;
+
+    @include reduced-motion {
+      transition: none;
+    }
+
+    // The single child owns the clipping. grid-template-rows animates the
+    // track, and this element is what gets squeezed to nothing.
+    > * {
+      display: flex;
+      flex-direction: column;
+      gap: nu-space(1);
+      overflow: hidden;
+      min-block-size: 0;
+    }
+  }
+
+  @include e(sublink) {
+    display: flex;
+    align-items: center;
+    gap: nu-space(2);
+    padding-block: nu-space(2);
+    padding-inline: nu-space(3) nu-space(3);
+    margin-inline-start: nu-space(6);
+    border-radius: nu-radius(md);
+    color: var(--text-subtle);
+    font-size: nu-font-size(xs);
+    font-weight: nu-font-weight(medium);
+    text-decoration: none;
+    transition: background-color nu-var("sidebar", "TransitionDuration") $nu-ease,
+      color nu-var("sidebar", "TransitionDuration") $nu-ease;
+
+    @include reduced-motion {
+      transition: none;
+    }
+
+    &:hover {
+      color: var(--text-color);
+      background-color: var(--bg-alternate);
+    }
+
+    &:focus-visible {
+      outline: none;
+      box-shadow: 0 0 0 3px nu-tint(primary, 35%);
+    }
+
+    &.is-active {
+      color: var(--text-inverted);
+      background-color: var(--primary);
+    }
+  }
+
+  @include e(footer) {
+    margin-block-start: auto;
+    padding-block-start: nu-space(4);
+    border-block-start: 1px solid var(--border-base);
+  }
+
+  // ---- states ----
+
+  // Group open. Applied to the group element, which owns both the chevron and
+  // the items region, so one class drives the whole disclosure.
+  @include e(group) {
+    &.is-expanded {
+      > .nu-sidebar__chevron,
+      .nu-sidebar__group-toggle .nu-sidebar__chevron {
+        transform: rotate(180deg);
+      }
+
+      > .nu-sidebar__group-items {
+        grid-template-rows: 1fr;
+      }
+    }
+  }
+
+  @include when(collapsed) {
+    --nu-sidebar--Width: var(--nu-sidebar--CollapsedWidth);
+
+    .nu-sidebar__brand-subtitle,
+    .nu-sidebar__section-label,
+    .nu-sidebar__link-label {
+      display: none;
+    }
+
+    .nu-sidebar__sublink {
+      display: none;
+    }
+
+    // Collapsed rail shows icons only: the label and the disclosure affordance
+    // have nowhere to go, and an open group would overflow the rail.
+    .nu-sidebar__chevron {
+      display: none;
+    }
+
+    .nu-sidebar__group-items {
+      grid-template-rows: 0fr;
+    }
+
+    .nu-sidebar__group-toggle {
+      justify-content: center;
+      padding-inline: nu-space(2);
+    }
+  }
+
+  @include when(open) {
+    inset-inline-start: 0;
+  }
+}
+
+// Mobile drawer scrim, shown only while sidebar.is-open on small viewports
+@include b(sidebar-backdrop) {
+  @include nu-root("sidebar-backdrop", (
+    "BackgroundColor": #{nu-scrim(45%)},
+  ));
+
+  position: fixed;
+  inset: 0;
+  background-color: nu-var("sidebar-backdrop", "BackgroundColor");
+  z-index: nu-z(sticky);
+
+  @include when(hidden) {
+    display: none;
+  }
+}

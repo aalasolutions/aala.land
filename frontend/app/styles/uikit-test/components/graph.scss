@@ -1,0 +1,37 @@
+.graph-card {
+  flex: 1;
+  background: $white;
+  border-radius: 12px;
+  padding: 1.5rem;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  gap: 0.5rem;
+  min-height: 400px;
+  min-width: 300px;
+
+  .card-title {
+    font-weight: 500;
+    font-size: 24px;
+    color: #141414;
+  }
+
+  .card-subtitle {
+    font-weight: 400;
+    font-size: 14px;
+    color: rgba(20, 20, 20, 0.7);
+    margin-bottom: 2rem;
+  }
+
+  .card-header {
+    margin-bottom: 1rem;
+  }
+}
+
+.query-pattern-card {
+  .query-pattern-chart {
+    flex-grow: 1;
+    height: 250px !important;
+  }
+}

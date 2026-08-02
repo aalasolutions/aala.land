@@ -1,0 +1,23 @@
+<select
+  class={{this.classes}}
+  disabled={{@disabled}}
+  data-test-nu-select
+  {{on "change" this.handleChange}}
+  ...attributes
+>
+  {{#if @placeholder}}
+    <option value="" disabled selected={{unless this.hasSelection true}}>
+      {{@placeholder}}
+    </option>
+  {{/if}}
+
+  {{! Block param must NOT be named `option`: inside the loop it would shadow
+      the <option> element and Glimmer would try to invoke it as a component. }}
+  {{#each this.normalizedOptions as |item|}}
+    <option
+      value={{item.value}}
+      selected={{item.selected}}
+      data-test-nu-select-option
+    >{{item.label}}</option>
+  {{/each}}
+</select>

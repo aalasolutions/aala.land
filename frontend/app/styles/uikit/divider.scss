@@ -1,0 +1,92 @@
+// nu-divider - horizontal or vertical separator, with optional centered label
+@use "./mixins/bem" as *;
+@use "./mixins/var" as *;
+@use "./common/var" as *;
+
+@include b(divider) {
+  @include nu-root("divider", (
+    "Color": var(--border-base),
+    "Thickness": 1px,
+    "Style": solid,
+    "MarginBlock": nu-space(4),
+    "Gap": nu-space(3),
+    "LabelColor": var(--text-muted),
+    "LabelFontSize": nu-font-size(xs),
+    "LabelFontWeight": nu-font-weight(medium),
+  ));
+
+  display: flex;
+  align-items: center;
+  block-size: nu-var("divider", "Thickness");
+  margin-block: nu-var("divider", "MarginBlock");
+  border-block-start: nu-var("divider", "Thickness") nu-var("divider", "Style") nu-var("divider", "Color");
+
+  @include e(label) {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    font-size: nu-var("divider", "LabelFontSize");
+    font-weight: nu-var("divider", "LabelFontWeight");
+    color: nu-var("divider", "LabelColor");
+    white-space: nowrap;
+  }
+
+  // ---- label placement (default: centered, rules on both sides) ----
+
+  &:has(.nu-divider__label) {
+    border-block-start: none;
+    gap: nu-var("divider", "Gap");
+
+    &::before,
+    &::after {
+      content: "";
+      flex: 1 1 auto;
+      block-size: nu-var("divider", "Thickness");
+      background-color: nu-var("divider", "Color");
+    }
+  }
+
+  @include m(start) {
+    &::before {
+      flex-grow: 0;
+      inline-size: nu-space(4);
+    }
+  }
+
+  @include m(end) {
+    &::after {
+      flex-grow: 0;
+      inline-size: nu-space(4);
+    }
+  }
+
+  // ---- style ----
+
+  @include m(dashed) {
+    --nu-divider--Style: dashed;
+  }
+
+  // ---- orientation ----
+
+  @include m(vertical) {
+    display: inline-flex;
+    flex-direction: column;
+    align-self: stretch;
+    inline-size: nu-var("divider", "Thickness");
+    block-size: auto;
+    margin-block: 0;
+    margin-inline: nu-var("divider", "MarginBlock");
+    border-block-start: none;
+    border-inline-start: nu-var("divider", "Thickness") nu-var("divider", "Style") nu-var("divider", "Color");
+
+    &:has(.nu-divider__label) {
+      border-inline-start: none;
+    }
+
+    &:has(.nu-divider__label)::before,
+    &:has(.nu-divider__label)::after {
+      inline-size: nu-var("divider", "Thickness");
+      block-size: auto;
+    }
+  }
+}

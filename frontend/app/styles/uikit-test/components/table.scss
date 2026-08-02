@@ -1,0 +1,222 @@
+.table-container {
+  overflow-x: auto;
+}
+
+.custom-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  border-radius: 8px;
+  font-size: 14px;
+  color: $dark-color;
+  background-color: $white;
+  border: 1px solid $border-color;
+  min-width: 800px;
+
+  thead {
+    th {
+      background-color: $slate-50;
+      text-align: left;
+      padding: 12px 16px;
+      white-space: nowrap;
+      font-weight: 400;
+
+      font-size: 14px;
+      color: rgba($dark-color, 0.7);
+
+      &:first-child {
+        border-top-left-radius: 6px;
+      }
+
+      &:last-child {
+        border-top-right-radius: 6px;
+      }
+    }
+  }
+
+  tbody {
+    tr {
+      box-shadow: 0 1px 3px rgba($dark-color, 0.05);
+      border-radius: 6px;
+      overflow: auto;
+
+      .no-data {
+        text-align: center;
+      }
+
+      .table-loading-cell {
+        text-align: center;
+        padding: 40px 16px !important;
+
+        .table-loader {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 16px;
+
+          .spinner {
+            width: 20px;
+            height: 20px;
+            border: 4px solid $slate-100;
+            border-top-color: $primary-color;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+          }
+
+          span {
+            color: $text-muted;
+            font-size: 14px;
+            font-weight: 500;
+          }
+        }
+      }
+
+      td {
+        padding: 20px 16px;
+        border-top: 1px solid $border-color;
+
+        font-weight: 400;
+
+        font-size: 14px;
+        color: rgba($dark-color, 0.7);
+
+        .api-key-text {
+          font-family: monospace;
+          margin-right: 8px;
+        }
+
+        .copy-btn {
+          border: none;
+          background: transparent;
+          cursor: pointer;
+          color: $primary-color;
+
+          &:hover {
+            color: $dark-color;
+          }
+
+          i {
+            font-size: 14px;
+          }
+        }
+
+        &:first-child {
+          font-weight: 500;
+
+          color: $dark-color;
+        }
+      }
+
+      &:not(:last-child) {
+        margin-bottom: 10px;
+      }
+
+      .avatar {
+        width: 40px;
+        height: 40px;
+        border-radius: 8px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        background-color: $slate-100;
+
+        img {
+          width: 40px;
+          height: 40px;
+          border-radius: 8px;
+        }
+
+        i {
+          color: $text-muted;
+          font-size: 25px;
+        }
+      }
+    }
+
+    .actions {
+      white-space: nowrap;
+      justify-content: flex-start;
+      margin: auto;
+      gap: unset;
+    }
+  }
+}
+
+.sort-button {
+  background: none;
+  border: none;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  color: rgba($dark-color, 0.7);
+  font-weight: 500;
+
+  i {
+    font-size: 0.75rem;
+  }
+
+  &.is-active {
+    color: $dark-color;
+  }
+}
+
+.pagination-controls-controller {
+  width: 100%;
+  background-color: $white;
+  display: flex;
+  border-radius: 8px;
+  justify-content: flex-end;
+  align-items: center;
+  margin-top: 0.5rem;
+  .pagination-controls {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 0.5rem;
+    background: $white;
+    max-width: fit-content;
+    padding: 4px;
+    border-radius: 6px;
+
+    span {
+      font-size: 14px;
+    }
+
+    button {
+      background: none;
+      border: none;
+      padding: 8px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: 0.5s;
+      background-color: rgba($blue-100, 0.4);
+      color: $primary-color;
+
+      &:disabled {
+        background-color: rgba($border-color, 0.5);
+        color: rgba($slate-400, 0.85);
+        cursor: not-allowed;
+        transition: none;
+      }
+
+      &.active {
+        background-color: rgba($blue-100, 0.4);
+        color: $primary-color;
+        transition: 0.5s;
+      }
+    }
+  }
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}

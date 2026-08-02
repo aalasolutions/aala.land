@@ -1,0 +1,44 @@
+.admin-settings-page {
+  padding: 20px;
+
+  .settings-card {
+    background-color: $white;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    padding: 30px;
+    max-width: 600px;
+    margin: 0 auto;
+
+    h2 {
+      color: #333;
+      font-size: 1.8rem;
+      margin-bottom: 25px;
+      border-bottom: 1px solid #eee;
+      padding-bottom: 15px;
+    }
+
+    .setting-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 0;
+      border-bottom: 1px dashed #f0f0f0;
+
+      &:last-child {
+        border-bottom: none;
+      }
+
+      .setting-label {
+        font-weight: 600;
+        color: #555;
+        flex: 1;
+      }
+
+      .setting-value {
+        color: #333;
+        flex: 2;
+        text-align: right;
+      }
+    }
+  }
+}

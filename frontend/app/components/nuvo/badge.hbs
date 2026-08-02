@@ -1,0 +1,26 @@
+{{#if (has-block)}}
+  <span class="nu-badge-wrap" data-test-nu-badge-wrap ...attributes>
+    {{yield}}
+
+    {{#unless this.isHidden}}
+      <span class={{this.countClasses}} data-test-nu-badge>
+        {{#unless @isDot}}
+          {{this.displayValue}}
+        {{/unless}}
+      </span>
+    {{/unless}}
+  </span>
+{{else if this.isCount}}
+  {{! Standalone count bubble, no anchor element. }}
+  <span class={{this.countClasses}} data-test-nu-badge ...attributes>
+    {{#unless @isDot}}{{this.displayValue}}{{/unless}}
+  </span>
+{{else}}
+  <span class={{this.classes}} data-test-nu-badge ...attributes>
+    {{#if @isDot}}
+      <span class="nu-badge__dot"></span>
+    {{else}}
+      {{this.displayValue}}
+    {{/if}}
+  </span>
+{{/if}}

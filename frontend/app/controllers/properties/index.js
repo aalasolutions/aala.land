@@ -64,6 +64,11 @@ export default class PropertiesIndexController extends Controller {
     this[fieldName] = e.target.value;
   }
 
+  // Kit form components call onInput/onChange as (value, event).
+  @action setFieldValue(fieldName, value) {
+    this[fieldName] = value;
+  }
+
   @action switchView(view) {
     this.activeView = view;
     this.preferences.set('properties-index-view', view);
@@ -72,16 +77,18 @@ export default class PropertiesIndexController extends Controller {
     }
   }
 
-  @action setFilterType(e) {
-    this.filterType = e.target.value;
+  @action setFilterType(value) {
+    this.filterType = value;
     this.applyFilters();
   }
-  @action setFilterStatus(e) {
-    this.filterStatus = e.target.value;
+
+  @action setFilterStatus(value) {
+    this.filterStatus = value;
     this.applyFilters();
   }
-  @action setFilterBeds(e) {
-    this.filterBeds = e.target.value;
+
+  @action setFilterBeds(value) {
+    this.filterBeds = value;
     this.applyFilters();
   }
 

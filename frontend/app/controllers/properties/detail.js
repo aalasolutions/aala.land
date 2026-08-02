@@ -187,8 +187,9 @@ export default class PropertiesDetailController extends Controller {
 
   amenityOptions = AMENITY_OPTIONS;
 
-  @action setField(fieldName, e) {
-    this[fieldName] = e.target.value;
+  // Kit form components call onInput/onChange as (value, event).
+  @action setFieldValue(fieldName, value) {
+    this[fieldName] = value;
   }
 
   @action toggleAmenity(key) {

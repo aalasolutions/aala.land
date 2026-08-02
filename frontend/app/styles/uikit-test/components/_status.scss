@@ -1,0 +1,84 @@
+// Status Pills - Standalone component
+// Usage: <span class="status active">Active</span>
+// Supports both lowercase (dasherized) and capitalized (raw from backend) variants
+
+.status {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-weight: 500;
+  font-size: 13px;
+  white-space: nowrap;
+
+  // Success states
+  &.active,
+  &.Active,
+  &.paid,
+  &.Paid,
+  &.completed,
+  &.Completed,
+  &.sent,
+  &.Sent,
+  &.billed,
+  &.Billed,
+  &.online,
+  &.payment_received {
+    background-color: #e6f4ea;
+    color: #2e7d32;
+  }
+
+  // Warning states
+  &.pending,
+  &.Pending,
+  &.running,
+  &.Running {
+    background-color: rgba($warning-color, 0.2);
+    color: $warning-color;
+  }
+
+  // Info/Update states
+  &.updated,
+  &.Updated,
+  &.billing_updated {
+    background-color: #cfe2ff66;
+    color: $primary-color;
+    border-radius: 12px;
+  }
+
+  // Error states
+  &.inactive,
+  &.Inactive,
+  &.overdue,
+  &.Overdue,
+  &.failed,
+  &.Failed,
+  &.offline{
+    background-color: #fce8e6;
+    color: #d32f2f;
+  }
+
+  &.Trashed,
+  &.trashed{
+    background-color: #fcf6e6;
+    color: #b8911c;
+  }
+
+  // Created state
+  &.created,
+  &.Created {
+    background-color: rgba($secondary-color, 0.15);
+    color: $secondary-color;
+    border-radius: 12px;
+  }
+
+  // Neutral/Draft states
+  &.cancelled,
+  &.Cancelled,
+  &.cancled,
+  &.cancle,
+  &.draft,
+  &.Draft {
+    background-color: rgba($secondary-color, 0.25);
+    color: $secondary-color;
+  }
+}

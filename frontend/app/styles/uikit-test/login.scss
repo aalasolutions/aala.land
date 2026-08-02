@@ -1,0 +1,143 @@
+@use "sass:color";
+
+.loginContainer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  background-color: $background-color;
+
+  .wrapper {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: start;
+    width: 100%;
+    row-gap: 1rem;
+    max-width: 400px;
+    margin: 80px auto;
+    padding: 30px;
+    background: $white;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+
+    .auth-header {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin-bottom: 16px;
+      width: 100%;
+
+      .auth-logo {
+        width: 100px;
+        height: auto;
+        display: block;
+      }
+    }
+
+    .title {
+      text-align: center;
+      font-size: 24px;
+      font-weight: bold;
+      color: #111827;
+      margin-bottom: 26px;
+    }
+
+    .auth-title {
+      text-align: center;
+      font-size: 24px;
+      font-weight: bold;
+      color: #111827;
+      margin-bottom: 0;
+    }
+
+    .admin-links {
+      width: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin-bottom: 10px;
+      
+      a {
+        color: $primary-color;
+        text-decoration: none;
+        font-size: 14px;
+        font-weight: 500;
+  
+        &:hover {
+          text-decoration: underline;
+        }
+      }
+    }
+  
+    .links {
+      width: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin-top: 5px;
+  
+      a {
+        color: $primary-color;
+        text-decoration: none;
+        font-size: 14px;
+
+        &:nth-child(1) {
+          border-right: 2px solid $background-color-dark;
+          padding-right: 9px;
+          margin-right: 7px;
+        }
+  
+        &:hover {
+          text-decoration: underline;
+        }
+      }
+    }
+
+    .reset-link-alert {
+      padding: 1rem;
+      background-color: #d1fae5;
+      border: 1px dashed #10b981;
+      color: #065f46;
+      border-radius: 0.5rem;
+      font-size: 14px;
+      line-height: 20px;
+
+      a {
+        color: $primary-color;
+        text-decoration: underline;
+        font-weight: 500;
+
+        &:hover {
+          text-decoration: none;
+          color: color.adjust($primary-color, $lightness: -10%);
+        }
+      }
+    }
+
+
+    .linksWrapper {
+      width: 100%;
+      display: flex;
+      justify-content: center;
+      margin-top: 5px;
+
+      span{
+        color: $secondary-color;
+        font-size: 14px;
+      }
+  
+      a {
+        color: $primary-color;
+        text-decoration: none;
+        font-size: 14px;
+        font-weight: 50;
+  
+        &:hover {
+          text-decoration: underline;
+        }
+      }
+    }
+  }
+}
+

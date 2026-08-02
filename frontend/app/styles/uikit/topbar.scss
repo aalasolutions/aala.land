@@ -1,0 +1,315 @@
+// nu-topbar - top app bar with search, actions and user menu
+@use "./mixins/bem" as *;
+@use "./mixins/var" as *;
+@use "./common/var" as *;
+
+@include b(topbar) {
+  @include nu-root("topbar", (
+    "Height": 4rem,
+    "BackgroundColor": var(--bg-surface),
+    "BorderColor": var(--border-base),
+    "PaddingInline": nu-space(8),
+    "Gap": nu-space(4),
+  ));
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: nu-var("topbar", "Gap");
+  block-size: nu-var("topbar", "Height");
+  padding-inline: nu-var("topbar", "PaddingInline");
+  background-color: nu-var("topbar", "BackgroundColor");
+  border-block-end: 1px solid nu-var("topbar", "BorderColor");
+
+  // Sits on the shell background instead of carrying its own surface. Pairs
+  // with `.nu-sidebar.m-plain`.
+  @include m(plain) {
+    --nu-topbar--BackgroundColor: transparent;
+    --nu-topbar--BorderColor: transparent;
+  }
+
+  // ---- elements ----
+
+  @include e(toggle) {
+    @include nu-root-el("topbar", "toggle", (
+      "Color": var(--text-muted),
+      "hover--Color": var(--text-color),
+      "hover--BackgroundColor": var(--bg-alternate),
+    ));
+
+    display: none;
+    align-items: center;
+    justify-content: center;
+    inline-size: 2.25rem;
+    block-size: 2.25rem;
+    border: none;
+    border-radius: nu-radius(md);
+    color: nu-var-el("topbar", "toggle", "Color");
+    background-color: transparent;
+    cursor: pointer;
+    transition: background-color nu-duration(fast) $nu-ease,
+      color nu-duration(fast) $nu-ease;
+
+    @include reduced-motion {
+      transition: none;
+    }
+
+    &:hover {
+      color: nu-var-el("topbar", "toggle", "hover--Color");
+      background-color: nu-var-el("topbar", "toggle", "hover--BackgroundColor");
+    }
+
+    &:focus-visible {
+      outline: none;
+      box-shadow: 0 0 0 3px nu-tint(primary, 35%);
+    }
+  }
+
+  @include e(brand) {
+    display: flex;
+    align-items: center;
+    gap: nu-space(2);
+    font-size: nu-font-size(md);
+    font-weight: nu-font-weight(semibold);
+    color: var(--text-color);
+  }
+
+  @include e(search) {
+    flex: 1;
+    max-inline-size: 20rem;
+    position: relative;
+  }
+
+  @include e(search-input) {
+    inline-size: 100%;
+    padding-block: nu-space(2);
+    padding-inline: nu-space(4);
+    background-color: var(--bg-base);
+    border: 1px solid var(--border-base);
+    border-radius: nu-radius(lg);
+    font-size: nu-font-size(sm);
+    color: var(--text-color);
+    transition: border-color nu-duration(fast) $nu-ease;
+
+    @include reduced-motion {
+      transition: none;
+    }
+
+    &::placeholder {
+      color: var(--text-muted);
+    }
+
+    &:focus-visible {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px nu-tint(primary, 35%);
+    }
+  }
+
+  @include e(actions) {
+    display: flex;
+    align-items: center;
+    gap: nu-space(1);
+  }
+
+  @include e(icon-btn) {
+    @include nu-root-el("topbar", "icon-btn", (
+      "Color": var(--text-muted),
+      "BackgroundColor": transparent,
+      "hover--Color": var(--text-color),
+      "hover--BackgroundColor": var(--bg-alternate),
+    ));
+
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    inline-size: 2.25rem;
+    block-size: 2.25rem;
+    border: none;
+    border-radius: nu-radius(md);
+    color: nu-var-el("topbar", "icon-btn", "Color");
+    background-color: nu-var-el("topbar", "icon-btn", "BackgroundColor");
+    cursor: pointer;
+    transition: background-color nu-duration(fast) $nu-ease,
+      color nu-duration(fast) $nu-ease;
+
+    @include reduced-motion {
+      transition: none;
+    }
+
+    &:hover {
+      color: nu-var-el("topbar", "icon-btn", "hover--Color");
+      background-color: nu-var-el("topbar", "icon-btn", "hover--BackgroundColor");
+    }
+
+    &:focus-visible {
+      outline: none;
+      box-shadow: 0 0 0 3px nu-tint(primary, 35%);
+    }
+  }
+
+  @include e(badge) {
+    position: absolute;
+    inset-block-start: 0;
+    inset-inline-end: 0;
+    min-inline-size: 1.125rem;
+    block-size: 1.125rem;
+    padding-inline: nu-space(1);
+    border-radius: nu-radius(full);
+    background-color: var(--danger);
+    color: var(--text-inverted);
+    font-size: 0.6875rem;
+    font-weight: nu-font-weight(bold);
+    line-height: 1.125rem;
+    text-align: center;
+  }
+
+  @include e(divider) {
+    inline-size: 1px;
+    block-size: 1.5rem;
+    background-color: var(--border-base);
+  }
+
+  @include e(user) {
+    @include nu-root-el("topbar", "user", (
+      "hover--BackgroundColor": var(--bg-alternate),
+    ));
+
+    display: flex;
+    align-items: center;
+    gap: nu-space(2);
+    padding-block: nu-space(1);
+    padding-inline: nu-space(2);
+    border: none;
+    border-radius: nu-radius(lg);
+    background-color: transparent;
+    cursor: pointer;
+    transition: background-color nu-duration(fast) $nu-ease;
+
+    @include reduced-motion {
+      transition: none;
+    }
+
+    &:hover {
+      background-color: nu-var-el("topbar", "user", "hover--BackgroundColor");
+    }
+
+    &:focus-visible {
+      outline: none;
+      box-shadow: 0 0 0 3px nu-tint(primary, 35%);
+    }
+  }
+
+  @include e(avatar) {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    inline-size: 2.25rem;
+    block-size: 2.25rem;
+    border-radius: nu-radius(full);
+    background-color: var(--primary);
+    color: var(--text-inverted);
+    font-size: nu-font-size(sm);
+    font-weight: nu-font-weight(semibold);
+    flex-shrink: 0;
+  }
+
+  @include e(user-details) {
+    display: none;
+    flex-direction: column;
+    min-inline-size: 0;
+  }
+
+  @include e(user-name) {
+    font-size: nu-font-size(xs);
+    font-weight: nu-font-weight(semibold);
+    color: var(--text-color);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  @include e(user-role) {
+    font-size: 0.6875rem;
+    color: var(--text-muted);
+  }
+
+  // ---- modifiers ----
+
+  @include m(sticky) {
+    position: sticky;
+    inset-block-start: 0;
+    z-index: nu-z(sticky);
+  }
+}
+
+// Dropdown surface anchored under topbar triggers (notifications, region, search, user menu)
+@include b(topbar-menu) {
+  @include nu-root("topbar-menu", (
+    "BackgroundColor": var(--bg-surface),
+    "BorderColor": var(--border-base),
+    "BorderRadius": nu-radius(xl),
+    "BoxShadow": nu-shadow(lg),
+  ));
+
+  position: absolute;
+  inset-block-start: calc(100% + #{nu-space(1)});
+  inset-inline-end: 0;
+  min-inline-size: 14rem;
+  background-color: nu-var("topbar-menu", "BackgroundColor");
+  border: 1px solid nu-var("topbar-menu", "BorderColor");
+  border-radius: nu-var("topbar-menu", "BorderRadius");
+  box-shadow: nu-var("topbar-menu", "BoxShadow");
+  z-index: nu-z(dropdown);
+  overflow: hidden;
+
+  @include e(header) {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: nu-space(4);
+    border-block-end: 1px solid var(--border-base);
+  }
+
+  @include e(item) {
+    display: flex;
+    align-items: center;
+    gap: nu-space(3);
+    inline-size: 100%;
+    padding-block: nu-space(3);
+    padding-inline: nu-space(4);
+    border: none;
+    background-color: transparent;
+    color: var(--text-color);
+    font-size: nu-font-size(sm);
+    text-align: start;
+    cursor: pointer;
+    transition: background-color nu-duration(fast) $nu-ease;
+
+    @include reduced-motion {
+      transition: none;
+    }
+
+    &:hover {
+      background-color: var(--bg-alternate);
+    }
+
+    &:focus-visible {
+      outline: none;
+      box-shadow: inset 0 0 0 3px nu-tint(primary, 35%);
+    }
+
+    &.is-active {
+      color: var(--primary);
+      font-weight: nu-font-weight(semibold);
+    }
+  }
+
+  @include e(empty) {
+    padding: nu-space(8);
+    text-align: center;
+    color: var(--text-muted);
+    font-size: nu-font-size(sm);
+  }
+}

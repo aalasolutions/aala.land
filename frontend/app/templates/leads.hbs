@@ -3,22 +3,22 @@
 <div data-test-leads-page class="flex col gap-6">
   <div class="flex between x-center">
     <div>
-      <h2 class="font-3xl font-bold"><Ui::Ph @icon="funnel" @size="28px" />
+      <h2 class="text-3xl font-bold"><Ui::Ph @icon="funnel" @size="28px" />
         Lead Pipeline</h2>
       <p class="text-muted mt-1">Track and manage your leads through the
         pipeline.</p>
     </div>
     <div class="flex gap-3 x-center">
       {{! View Toggle }}
-      <Ui::Tabs
-        @tabs={{this.viewTabs}}
-        @active={{this.viewMode}}
+      <Nuvo::Segmented
+        @options={{this.viewTabs}}
+        @value={{this.viewMode}}
         @onChange={{this.setViewMode}}
         data-test-view-toggle
       />
       <button
         type="button"
-        class="btn btn-primary"
+        class="nu-btn m-primary"
         data-test-add-lead
         {{on "click" this.openCreate}}
       >
@@ -30,9 +30,9 @@
 
   {{! Agent board columns are already the ownership breakdown }}
   {{#unless (eq this.viewMode "agent")}}
-    <Ui::Tabs
+    <Nuvo::Tabs
       @tabs={{this.filterTabs}}
-      @active={{this.filterType}}
+      @activeTab={{this.filterType}}
       @onChange={{this.setFilter}}
       data-test-lead-filters
     />
@@ -40,41 +40,40 @@
 
   {{! PIPELINE KANBAN VIEW }}
   {{#if (eq this.viewMode "pipeline")}}
-    <div class="kanban-board kanban-board--pipeline">
+    <div class="nu-kanban">
       {{#each this.columns as |column|}}
         <div
           data-test-kanban-column
           data-test-column-status={{column.status}}
-          class="kanban-column flex col gap-3"
+          class="nu-kanban__column"
           role="button"
           draggable="true"
           {{on "dragover" (fn this.handleDragOver column.status)}}
           {{on "drop" (fn this.handleDrop column.status)}}
         >
-          <div class="flex between x-center px-3 py-2 rounded-lg bg-surface">
-            <span class="font-sm font-bold">{{column.label}}</span>
-            <span class="font-xs text-muted">{{column.leads.length}}</span>
+          <div class="nu-kanban__column-header">
+            <span class="nu-kanban__column-title">{{column.label}}</span>
+            <span class="nu-kanban__column-count">{{column.leads.length}}</span>
           </div>
 
           {{#each column.leads as |lead|}}
-            <div
+            <Nuvo::Panel
+              @compact={{true}}
+              class="flex col gap-2 lead-card-clickable"
               data-test-lead-card
               data-test-lead-id={{lead.id}}
-              class="glass-panel p-4 flex col gap-2 lead-card-clickable"
               draggable="true"
               {{on "dragstart" (fn this.handleDragStart lead)}}
               {{on "click" (fn this.openDetailModal lead)}}
             >
               <div class="flex between x-center">
-                <p class="font-sm font-bold">{{lead.firstName}}{{#if
+                <p class="text-sm font-bold">{{lead.firstName}}{{#if
                     lead.lastName
                   }} {{lead.lastName}}{{/if}}</p>
-                <span
-                  class="temp-badge temp-{{lowercase lead.temperature}}"
-                >{{lead.temperature}}</span>
+                <Nuvo::Tag class="badge-temp-{{lowercase lead.temperature}}" @text={{lead.temperature}} />
               </div>
               <div class="flex gap-2 x-center">
-                <p class="text-muted font-xs">{{lead.phone}}</p>
+                <p class="text-muted text-xs">{{lead.phone}}</p>
                 {{#if lead.phone}}
                   <a
                     href={{wa-link lead.phone}}
@@ -88,48 +87,48 @@
                   </a>
                 {{/if}}
               </div>
-              <p class="text-muted font-xs">{{lead.email}}</p>
+              <p class="text-muted text-xs">{{lead.email}}</p>
               {{#if lead.property}}
-                <p class="text-primary font-xs flex gap-1 x-center"><Ui::Ph
+                <p class="text-primary text-xs flex gap-1 x-center"><Ui::Ph
                     @icon="buildings"
                   />
                   {{lead.property.name}}</p>
               {{/if}}
               {{#if lead.unit}}
-                <p class="text-info font-xs flex gap-1 x-center"><Ui::Ph
+                <p class="text-info text-xs flex gap-1 x-center"><Ui::Ph
                     @icon="house"
                   />
                   Property
                   {{lead.unit.unitNumber}}</p>
               {{/if}}
               {{#if lead.assignedAgentName}}
-                <p class="assign-badge">{{lead.assignedAgentName}}</p>
+                <p class="lead-assign">{{lead.assignedAgentName}}</p>
               {{/if}}
               <div class="flex between x-center mt-1">
-                <span class="font-xs text-muted">{{format-date
+                <span class="text-xs text-muted">{{format-date
                     lead.createdAt
                   }}</span>
-                <div class="flex gap-2" {{on "click" this.stopPropagation}}>
+                <Nuvo::BtnGroup @attached={{true}} {{on "click" this.stopPropagation}}>
                   <button
                     type="button"
-                    class="btn btn-secondary btn-xs"
+                    class="nu-btn m-secondary m-xs"
                     {{on "click" (fn this.openEdit lead)}}
                   >
                     Edit
                   </button>
                   <button
                     type="button"
-                    class="btn btn-secondary btn-xs"
+                    class="nu-btn m-secondary m-xs"
                     {{on "click" (fn this.openAssignModal lead)}}
                   >
                     Assign
                   </button>
-                </div>
+                </Nuvo::BtnGroup>
               </div>
-            </div>
+            </Nuvo::Panel>
           {{else}}
             <div class="p-4 rounded-xl border border-white@05 text-center">
-              <p class="text-muted font-xs">No leads</p>
+              <p class="text-muted text-xs">No leads</p>
             </div>
           {{/each}}
         </div>
@@ -141,49 +140,43 @@
   {{#if (eq this.viewMode "temperature")}}
     <div
       data-test-temperature-board
-      class="kanban-board kanban-board--temperature"
+      class="nu-kanban"
     >
       {{#each this.temperatureColumns as |column|}}
         <div
           data-test-kanban-column
           data-test-column-temp={{column.temperature}}
-          class="kanban-column flex col gap-3"
+          class="nu-kanban__column column-temp-{{lowercase column.temperature}}"
           {{on "dragover" (fn this.handleTempDragOver column.temperature)}}
           {{on "drop" (fn this.handleTempDrop column.temperature)}}
         >
-          <div
-            class="flex between x-center px-3 py-2 rounded-lg temp-column-header temp-column-{{lowercase
-                column.temperature
-              }}"
-          >
-            <span class="font-sm font-bold flex gap-2 x-center">
+          <div class="nu-kanban__column-header">
+            <span class="nu-kanban__column-title">
+              <span class="nu-kanban__column-accent"></span>
               <Ui::Ph @icon={{column.icon}} />
               {{column.label}}
             </span>
-            <span
-              class="font-xs temp-column-count"
-            >{{column.leads.length}}</span>
+            <span class="nu-kanban__column-count">{{column.leads.length}}</span>
           </div>
 
           {{#each column.leads as |lead|}}
-            <div
+            <Nuvo::Panel
+              @compact={{true}}
+              class="flex col gap-2 lead-card-clickable"
               data-test-lead-card
               data-test-lead-id={{lead.id}}
-              class="glass-panel p-4 flex col gap-2 lead-card-clickable"
               draggable="true"
               {{on "dragstart" (fn this.handleDragStart lead)}}
               {{on "click" (fn this.openDetailModal lead)}}
             >
               <div class="flex between x-center">
-                <p class="font-sm font-bold">{{lead.firstName}}{{#if
+                <p class="text-sm font-bold">{{lead.firstName}}{{#if
                     lead.lastName
                   }} {{lead.lastName}}{{/if}}</p>
-                <span
-                  class="status-badge status-{{lowercase lead.status}}"
-                >{{lead.status}}</span>
+                <Nuvo::Tag class="badge-lead-{{lowercase lead.status}}" @text={{lead.status}} />
               </div>
               <div class="flex gap-2 x-center">
-                <p class="text-muted font-xs">{{lead.phone}}</p>
+                <p class="text-muted text-xs">{{lead.phone}}</p>
                 {{#if lead.phone}}
                   <a
                     href={{wa-link lead.phone}}
@@ -197,41 +190,41 @@
                   </a>
                 {{/if}}
               </div>
-              <p class="text-muted font-xs">{{lead.email}}</p>
+              <p class="text-muted text-xs">{{lead.email}}</p>
               {{#if lead.property}}
-                <p class="text-primary font-xs flex gap-1 x-center"><Ui::Ph
+                <p class="text-primary text-xs flex gap-1 x-center"><Ui::Ph
                     @icon="buildings"
                   />
                   {{lead.property.name}}</p>
               {{/if}}
               {{#if lead.assignedAgentName}}
-                <p class="assign-badge">{{lead.assignedAgentName}}</p>
+                <p class="lead-assign">{{lead.assignedAgentName}}</p>
               {{/if}}
               <div class="flex between x-center mt-1">
-                <span class="font-xs text-muted">{{format-date
+                <span class="text-xs text-muted">{{format-date
                     lead.createdAt
                   }}</span>
-                <div class="flex gap-2" {{on "click" this.stopPropagation}}>
+                <Nuvo::BtnGroup @attached={{true}} {{on "click" this.stopPropagation}}>
                   <button
                     type="button"
-                    class="btn btn-secondary btn-xs"
+                    class="nu-btn m-secondary m-xs"
                     {{on "click" (fn this.openEdit lead)}}
                   >
                     Edit
                   </button>
                   <button
                     type="button"
-                    class="btn btn-secondary btn-xs"
+                    class="nu-btn m-secondary m-xs"
                     {{on "click" (fn this.openAssignModal lead)}}
                   >
                     Assign
                   </button>
-                </div>
+                </Nuvo::BtnGroup>
               </div>
-            </div>
+            </Nuvo::Panel>
           {{else}}
             <div class="p-4 rounded-xl border border-white@05 text-center">
-              <p class="text-muted font-xs">No leads</p>
+              <p class="text-muted text-xs">No leads</p>
             </div>
           {{/each}}
         </div>
@@ -241,23 +234,21 @@
 
   {{! AGENT BOARD VIEW }}
   {{#if (eq this.viewMode "agent")}}
-    <div data-test-agent-board class="kanban-board kanban-board--agent">
+    <div data-test-agent-board class="nu-kanban">
       {{#each this.agentColumns as |column|}}
         <div
           data-test-kanban-column
           data-test-column-agent={{or column.agentId "unassigned"}}
-          class="kanban-column flex col gap-3"
+          class="nu-kanban__column"
           {{on "dragover" (fn this.handleAgentDragOver column.agentId)}}
           {{on "drop" (fn this.handleAgentDrop column.agentId)}}
         >
-          <div
-            class="flex between x-center px-3 py-2 rounded-lg agent-column-header"
-          >
-            <span class="font-sm font-bold flex gap-2 x-center">
+          <div class="nu-kanban__column-header">
+            <span class="nu-kanban__column-title">
               <Ui::Ph @icon={{if column.agentId "user" "user-minus"}} />
               {{column.agentName}}
             </span>
-            <span class="agent-load-count">{{column.leads.length}}</span>
+            <span class="nu-kanban__column-count">{{column.leads.length}}</span>
           </div>
 
           {{! Load indicator bar }}
@@ -273,24 +264,23 @@
           </div>
 
           {{#each column.leads as |lead|}}
-            <div
+            <Nuvo::Panel
+              @compact={{true}}
+              class="flex col gap-2 lead-card-clickable"
               data-test-lead-card
               data-test-lead-id={{lead.id}}
-              class="glass-panel p-4 flex col gap-2 lead-card-clickable"
               draggable="true"
               {{on "dragstart" (fn this.handleDragStart lead)}}
               {{on "click" (fn this.openDetailModal lead)}}
             >
               <div class="flex between x-center">
-                <p class="font-sm font-bold">{{lead.firstName}}{{#if
+                <p class="text-sm font-bold">{{lead.firstName}}{{#if
                     lead.lastName
                   }} {{lead.lastName}}{{/if}}</p>
-                <span
-                  class="temp-badge temp-{{lowercase lead.temperature}}"
-                >{{lead.temperature}}</span>
+                <Nuvo::Tag class="badge-temp-{{lowercase lead.temperature}}" @text={{lead.temperature}} />
               </div>
               <div class="flex gap-2 x-center">
-                <p class="text-muted font-xs">{{lead.phone}}</p>
+                <p class="text-muted text-xs">{{lead.phone}}</p>
                 {{#if lead.phone}}
                   <a
                     href={{wa-link lead.phone}}
@@ -304,33 +294,31 @@
                   </a>
                 {{/if}}
               </div>
-              <span
-                class="status-badge status-{{lowercase lead.status}}"
-              >{{lead.status}}</span>
+              <Nuvo::Tag class="badge-lead-{{lowercase lead.status}}" @text={{lead.status}} />
               {{#if lead.property}}
-                <p class="text-primary font-xs flex gap-1 x-center"><Ui::Ph
+                <p class="text-primary text-xs flex gap-1 x-center"><Ui::Ph
                     @icon="buildings"
                   />
                   {{lead.property.name}}</p>
               {{/if}}
               <div class="flex between x-center mt-1">
-                <span class="font-xs text-muted">{{format-date
+                <span class="text-xs text-muted">{{format-date
                     lead.createdAt
                   }}</span>
-                <div class="flex gap-2" {{on "click" this.stopPropagation}}>
+                <Nuvo::BtnGroup @attached={{true}} {{on "click" this.stopPropagation}}>
                   <button
                     type="button"
-                    class="btn btn-secondary btn-xs"
+                    class="nu-btn m-secondary m-xs"
                     {{on "click" (fn this.openEdit lead)}}
                   >
                     Edit
                   </button>
-                </div>
+                </Nuvo::BtnGroup>
               </div>
-            </div>
+            </Nuvo::Panel>
           {{else}}
             <div class="p-4 rounded-xl border border-white@05 text-center">
-              <p class="text-muted font-xs">No leads</p>
+              <p class="text-muted text-xs">No leads</p>
             </div>
           {{/each}}
         </div>
@@ -340,8 +328,8 @@
 
   {{! LIST VIEW }}
   {{#if (eq this.viewMode "list")}}
-    <div class="leads-list-view">
-      <table class="data-table">
+    <div class="nu-table-wrapper">
+      <table class="nu-table">
         <thead>
           <tr>
             <th>Name</th>
@@ -369,7 +357,7 @@
               <td>
                 <div class="flex col gap-1">
                   <div class="flex gap-2 x-center">
-                    <span class="font-xs">{{lead.phone}}</span>
+                    <span class="text-xs">{{lead.phone}}</span>
                     {{#if lead.phone}}
                       <a
                         href={{wa-link lead.phone}}
@@ -383,24 +371,20 @@
                       </a>
                     {{/if}}
                   </div>
-                  <span class="font-xs text-muted">{{lead.email}}</span>
+                  <span class="text-xs text-muted">{{lead.email}}</span>
                 </div>
               </td>
               <td>
-                <span
-                  class="status-badge status-{{lowercase lead.status}}"
-                >{{lead.status}}</span>
+                <Nuvo::Tag class="badge-lead-{{lowercase lead.status}}" @text={{lead.status}} />
               </td>
               <td>
-                <span
-                  class="temp-badge temp-{{lowercase lead.temperature}}"
-                >{{lead.temperature}}</span>
+                <Nuvo::Tag class="badge-temp-{{lowercase lead.temperature}}" @text={{lead.temperature}} />
               </td>
               <td>
                 {{#if lead.property}}
                   <span>{{lead.property.name}}</span>
                   {{#if lead.unit}}
-                    <span class="text-muted font-xs">
+                    <span class="text-muted text-xs">
                       - Property
                       {{lead.unit.unitNumber}}</span>
                   {{/if}}
@@ -411,34 +395,34 @@
               <td>
                 {{#if lead.assignedAgentName}}
                   <span
-                    class="assign-badge-sm"
+                    class="lead-assign m-sm"
                   >{{lead.assignedAgentName}}</span>
                 {{else}}
                   <span class="text-muted">Unassigned</span>
                 {{/if}}
               </td>
               <td>
-                <span class="font-xs text-muted">{{format-date
+                <span class="text-xs text-muted">{{format-date
                     lead.createdAt
                   }}</span>
               </td>
               <td>
-                <div class="flex gap-2" {{on "click" this.stopPropagation}}>
+                <Nuvo::BtnGroup @attached={{true}} {{on "click" this.stopPropagation}}>
                   <button
                     type="button"
-                    class="btn btn-secondary btn-xs"
+                    class="nu-btn m-secondary m-xs"
                     {{on "click" (fn this.openEdit lead)}}
                   >
                     Edit
                   </button>
                   <button
                     type="button"
-                    class="btn btn-secondary btn-xs"
+                    class="nu-btn m-secondary m-xs"
                     {{on "click" (fn this.openAssignModal lead)}}
                   >
                     Assign
                   </button>
-                </div>
+                </Nuvo::BtnGroup>
               </td>
             </tr>
           {{else}}
@@ -455,164 +439,180 @@
 </div>
 
 {{! Edit Modal }}
-<Ui::Modal
-  @isOpen={{this.showModal}}
+<Nuvo::Modal
+  @open={{this.showModal}}
   @title={{if this.editLead "Edit Lead" "New Lead"}}
   @onClose={{this.closeModal}}
-  @showClose={{true}}
 >
   <form class="flex col gap-4" {{on "submit" this.saveLead}}>
     {{#if this.showRegionField}}
-      <Ui::FormDropdown
-        @label="Region"
-        @id="lead-region"
-        @value={{this.formRegionCode}}
-        @onChange={{this.setRegionCode}}
-        @options={{this.regionOptions}}
-        @placeholder="Select region..."
-        data-test-region-select
-      />
+      <Nuvo::Field @label="Region">
+        <Nuvo::Dropdown
+          id="lead-region"
+          @align="start"
+          @value={{this.formRegionCode}}
+          @onSelect={{this.setRegionCode}}
+          @options={{this.regionOptions}}
+          @placeholder="Select region..."
+          data-test-region-select
+        />
+      </Nuvo::Field>
     {{/if}}
     <div class="flex gap-4">
-      <div class="flex-1">
-        <Ui::FormInput
-          @label="First Name"
-          @id="lead-first-name"
-          @type="text"
-          @placeholder="e.g. Ahmed"
-          @value={{this.formFirstName}}
-          @onChange={{fn this.setField "formFirstName"}}
-          @required={{true}}
-        />
+      <div class="grow">
+        <Nuvo::Field @label="First Name" @required={{true}}>
+          <Nuvo::Input
+            id="lead-first-name"
+            @type="text"
+            @placeholder="e.g. Ahmed"
+            @value={{this.formFirstName}}
+            @onInput={{fn this.setFieldValue "formFirstName"}}
+            required={{true}}
+          />
+        </Nuvo::Field>
       </div>
-      <div class="flex-1">
-        <Ui::FormInput
-          @label="Last Name"
-          @id="lead-last-name"
-          @type="text"
-          @placeholder="e.g. Al Mansouri"
-          @value={{this.formLastName}}
-          @onChange={{fn this.setField "formLastName"}}
-        />
-      </div>
-    </div>
-    <Ui::FormInput
-      @label="Email"
-      @id="lead-email"
-      @type="email"
-      @placeholder="ahmed@example.com"
-      @value={{this.formEmail}}
-      @onChange={{fn this.setField "formEmail"}}
-    />
-    <Ui::FormInput
-      @label="Phone"
-      @id="lead-phone"
-      @type="text"
-      @placeholder="+971501234567"
-      @value={{this.formPhone}}
-      @onChange={{fn this.setField "formPhone"}}
-    />
-    <div class="flex gap-4">
-      <div class="flex-1">
-        <Ui::FormDropdown
-          @label="Status"
-          @id="lead-status"
-          @value={{this.formStatus}}
-          @onChange={{fn this.setField "formStatus"}}
-          @options={{this.statusOptions}}
-          @placeholder="Select status..."
-        />
-      </div>
-      <div class="flex-1">
-        <Ui::FormDropdown
-          @label="Temperature"
-          @id="lead-temp"
-          @value={{this.formTemperature}}
-          @onChange={{fn this.setField "formTemperature"}}
-          @options={{this.temperatureOptions}}
-          @placeholder="Select temperature..."
-        />
+      <div class="grow">
+        <Nuvo::Field @label="Last Name">
+          <Nuvo::Input
+            id="lead-last-name"
+            @type="text"
+            @placeholder="e.g. Al Mansouri"
+            @value={{this.formLastName}}
+            @onInput={{fn this.setFieldValue "formLastName"}}
+          />
+        </Nuvo::Field>
       </div>
     </div>
-    <Ui::FormDropdown
-      @label="Source"
-      @id="lead-source"
-      @value={{this.formSource}}
-      @onChange={{fn this.setField "formSource"}}
-      @options={{this.sourceOptions}}
-      @placeholder="Select source..."
-    />
-    <Ui::FormDropdown
-      @label="Property Area"
-      @id="lead-property"
-      @value={{this.formPropertyId}}
-      @onChange={{this.setPropertyId}}
-      @options={{this.propertyOptions}}
-      @placeholder="-- None --"
-    />
-    {{#if this.formPropertyId}}
-      <Ui::FormDropdown
-        @label="Property"
-        @id="lead-unit"
-        @value={{this.formUnitId}}
-        @onChange={{fn this.setField "formUnitId"}}
-        @options={{this.unitOptions}}
-        @placeholder="-- None --"
+    <Nuvo::Field @label="Email">
+      <Nuvo::Input
+        id="lead-email"
+        @type="email"
+        @placeholder="ahmed@example.com"
+        @value={{this.formEmail}}
+        @onInput={{fn this.setFieldValue "formEmail"}}
       />
+    </Nuvo::Field>
+    <Nuvo::Field @label="Phone">
+      <Nuvo::Input
+        id="lead-phone"
+        @type="text"
+        @placeholder="+971501234567"
+        @value={{this.formPhone}}
+        @onInput={{fn this.setFieldValue "formPhone"}}
+      />
+    </Nuvo::Field>
+    <div class="flex gap-4">
+      <div class="grow">
+        <Nuvo::Field @label="Status">
+          <Nuvo::Dropdown
+            id="lead-status"
+            @align="start"
+            @value={{this.formStatus}}
+            @onSelect={{fn this.setFieldValue "formStatus"}}
+            @options={{this.statusOptions}}
+            @placeholder="Select status..."
+          />
+        </Nuvo::Field>
+      </div>
+      <div class="grow">
+        <Nuvo::Field @label="Temperature">
+          <Nuvo::Dropdown
+            id="lead-temp"
+            @align="start"
+            @value={{this.formTemperature}}
+            @onSelect={{fn this.setFieldValue "formTemperature"}}
+            @options={{this.temperatureOptions}}
+            @placeholder="Select temperature..."
+          />
+        </Nuvo::Field>
+      </div>
+    </div>
+    <Nuvo::Field @label="Source">
+      <Nuvo::Dropdown
+        id="lead-source"
+        @align="start"
+        @value={{this.formSource}}
+        @onSelect={{fn this.setFieldValue "formSource"}}
+        @options={{this.sourceOptions}}
+        @placeholder="Select source..."
+      />
+    </Nuvo::Field>
+    <Nuvo::Field @label="Property Area">
+      <Nuvo::Dropdown
+        id="lead-property"
+        @align="start"
+        @value={{this.formPropertyId}}
+        @onSelect={{this.setPropertyId}}
+        @options={{this.propertyOptions}}
+      />
+    </Nuvo::Field>
+    {{#if this.formPropertyId}}
+      <Nuvo::Field @label="Property">
+        <Nuvo::Dropdown
+          id="lead-unit"
+          @align="start"
+          @value={{this.formUnitId}}
+          @onSelect={{fn this.setFieldValue "formUnitId"}}
+          @options={{this.unitOptions}}
+        />
+      </Nuvo::Field>
     {{/if}}
     {{#if this.errorMsg}}
       <p class="text-danger">{{this.errorMsg}}</p>
     {{/if}}
     <div class="flex gap-3 mt-2">
-      <Ui::AppButton
+      <Nuvo::Button
         @variant="secondary"
         @text="Cancel"
         @onClick={{this.closeModal}}
       />
-      <Ui::AppButton
+      <Nuvo::Button
         @variant="primary"
-        @buttonType="submit"
-        @text={{if this.editLead "Update" "Create Lead"}}
+        @type="submit"
+        @text={{if
+          this.isSaving
+          "Saving..."
+          (if this.editLead "Update" "Create Lead")
+        }}
         @loading={{this.isSaving}}
-        @loadingText="Saving..."
       />
     </div>
   </form>
-</Ui::Modal>
+</Nuvo::Modal>
 
 {{! Assign Modal }}
-<Ui::Modal
-  @isOpen={{this.showAssignModal}}
+<Nuvo::Modal
+  @open={{this.showAssignModal}}
   @title="Assign Lead"
   @onClose={{this.closeAssignModal}}
-  @showClose={{true}}
 >
   <form class="flex col gap-4" {{on "submit" this.assignToAgent}}>
     <p class="text-muted">Select an agent to assign
       <strong>{{this.assignLead.firstName}}</strong>
       to:</p>
-    <Ui::FormDropdown
-      @label="Agent"
-      @id="agent-select"
-      @value={{this.selectedAgentId}}
-      @onChange={{fn this.setField "selectedAgentId"}}
-      @options={{this.agentOptions}}
-      @placeholder="-- Select Agent --"
-    />
+    <Nuvo::Field @label="Agent">
+      <Nuvo::Dropdown
+        id="agent-select"
+        @align="start"
+        @value={{this.selectedAgentId}}
+        @onSelect={{fn this.setFieldValue "selectedAgentId"}}
+        @options={{this.agentOptions}}
+      />
+    </Nuvo::Field>
     <div class="flex gap-3 mt-2">
-      <Ui::AppButton
+      <Nuvo::Button
         @variant="secondary"
         @text="Cancel"
         @onClick={{this.closeAssignModal}}
       />
-      <Ui::AppButton @variant="primary" @buttonType="submit" @text="Assign" />
+      <Nuvo::Button @variant="primary" @type="submit" @text="Assign" />
     </div>
   </form>
-</Ui::Modal>
+</Nuvo::Modal>
 
 {{! Lead Detail Modal }}
-<Ui::Modal
-  @isOpen={{this.showDetailModal}}
+<Nuvo::Modal
+  @open={{this.showDetailModal}}
   @title={{if
     this.detailLead
     (concat
@@ -622,16 +622,11 @@
     "Lead Details"
   }}
   @onClose={{this.closeDetailModal}}
-  @showClose={{true}}
-  @panelClass="modal-lg"
+  @size="lg"
 >
   <div class="flex gap-4 x-center">
-    <span
-      class="temp-badge temp-{{lowercase this.detailLead.temperature}}"
-    >{{this.detailLead.temperature}}</span>
-    <span
-      class="status-badge status-{{lowercase this.detailLead.status}}"
-    >{{this.detailLead.status}}</span>
+    <Nuvo::Tag class="badge-temp-{{lowercase this.detailLead.temperature}}" @text={{this.detailLead.temperature}} />
+    <Nuvo::Tag class="badge-lead-{{lowercase this.detailLead.status}}" @text={{this.detailLead.status}} />
   </div>
 
   {{! Content }}
@@ -639,7 +634,7 @@
     {{! Left: Lead Info }}
     <div class="detail-info flex col gap-4">
       <div class="info-section">
-        <h4 class="font-sm font-bold text-muted mb-2">Contact Info</h4>
+        <h4 class="text-sm font-bold text-muted mb-2">Contact Info</h4>
         <div class="flex col gap-2">
           <div class="flex gap-2 x-center">
             <span><Ui::Ph @icon="phone" /></span>
@@ -679,7 +674,7 @@
       </div>
 
       <div class="info-section">
-        <h4 class="font-sm font-bold text-muted mb-2">Property Interest</h4>
+        <h4 class="text-sm font-bold text-muted mb-2">Property Interest</h4>
         {{#if this.detailLead.property}}
           <div class="flex gap-2 x-center">
             <span><Ui::Ph @icon="buildings" /></span>
@@ -697,7 +692,7 @@
       </div>
 
       <div class="info-section">
-        <h4 class="font-sm font-bold text-muted mb-2">Budget</h4>
+        <h4 class="text-sm font-bold text-muted mb-2">Budget</h4>
         {{#if this.detailLead.budgetMin}}
           <span>{{format-currency this.detailLead.budgetMin}}</span>
           {{#if this.detailLead.budgetMax}}
@@ -709,26 +704,26 @@
       </div>
 
       <div class="info-section">
-        <h4 class="font-sm font-bold text-muted mb-2">Notes</h4>
+        <h4 class="text-sm font-bold text-muted mb-2">Notes</h4>
         <p class="text-sm">{{or this.detailLead.notes "No notes"}}</p>
       </div>
 
       <div class="info-section">
-        <h4 class="font-sm font-bold text-muted mb-2">Source</h4>
+        <h4 class="text-sm font-bold text-muted mb-2">Source</h4>
         <span>{{or this.detailLead.source "Unknown"}}</span>
       </div>
 
       <div class="flex gap-2 mt-2">
         <button
           type="button"
-          class="btn btn-secondary btn-sm flex-1"
+          class="nu-btn m-secondary m-sm grow"
           {{on "click" (fn this.openEdit this.detailLead)}}
         >
           Edit
         </button>
         <button
           type="button"
-          class="btn btn-secondary btn-sm flex-1"
+          class="nu-btn m-secondary m-sm grow"
           {{on "click" (fn this.openAssignModal this.detailLead)}}
         >
           Assign
@@ -737,8 +732,8 @@
     </div>
 
     {{! Right: Activity Timeline }}
-    <div class="detail-timeline flex-1">
-      <h4 class="font-sm font-bold text-muted mb-4">Activity History</h4>
+    <div class="detail-timeline grow">
+      <h4 class="text-sm font-bold text-muted mb-4">Activity History</h4>
       <div class="activity-timeline flex col gap-3">
         {{#each this.leadActivities as |activity|}}
           <div class="activity-item" data-test-activity-id={{activity.id}}>
@@ -771,4 +766,4 @@
       </div>
     </div>
   </div>
-</Ui::Modal>
+</Nuvo::Modal>

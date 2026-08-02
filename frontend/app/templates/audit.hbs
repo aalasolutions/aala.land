@@ -1,59 +1,57 @@
 {{page-title "Audit Log"}}
-<div class="page-header">
-  <h1 class="page-title"><Ui::Ph @icon="clipboard-text" @size="28px" />
-    Audit Logs</h1>
-  <p class="page-subtitle">Track all changes across your account</p>
-</div>
+<Nuvo::PageHeader @title="Audit Logs" @subtitle="Track all changes across your account" />
 
-<div class="glass-panel card">
-  <div class="card-header">
-    <div class="flex gap-2 items-center flex-wrap">
-      <Ui::FormDropdown
-        @id="audit-action-filter"
-        @label=""
-        @value={{this.filterAction}}
-        @onChange={{this.setFilterAction}}
-        @options={{this.model.auditActions}}
-        @placeholder="All Actions"
-      />
+<Nuvo::Card>
+  <:header>
+    <Nuvo::Toolbar class="flex-wrap">
+      <Nuvo::Field>
+        <span class="nu-field__label-spacer" aria-hidden="true"></span>
+        <Nuvo::Dropdown
+          @searchable={{true}}
+          @align="start"
+          @value={{this.filterAction}}
+          @onSelect={{this.setFilterAction}}
+          @options={{this.model.auditActions}}
+          @placeholder="All Actions"
+        />
+      </Nuvo::Field>
 
-      <Ui::FormDropdown
-        @id="audit-entity-filter"
-        @label=""
-        @value={{this.filterEntityType}}
-        @onChange={{this.setFilterEntityType}}
-        @options={{this.model.entityTypes}}
-        @placeholder="All Entities"
-      />
+      <Nuvo::Field>
+        <span class="nu-field__label-spacer" aria-hidden="true"></span>
+        <Nuvo::Dropdown
+          @searchable={{true}}
+          @align="start"
+          @value={{this.filterEntityType}}
+          @onSelect={{this.setFilterEntityType}}
+          @options={{this.model.entityTypes}}
+          @placeholder="All Entities"
+        />
+      </Nuvo::Field>
 
       {{#if (or this.filterAction this.filterEntityType)}}
-        <button
-          type="button"
-          class="btn btn-secondary"
+        <Nuvo::Button
+          @variant="secondary"
+          @text="Clear Filters"
           {{on "click" this.clearFilters}}
-        >
-          Clear Filters
-        </button>
+        />
       {{/if}}
 
-      <button
-        type="button"
-        class="btn btn-danger"
+      <Nuvo::Button
+        @variant="danger"
         {{on "click" this.openPurge}}
         data-test-purge-btn
       >
         <Ui::Ph @icon="trash" @size="16px" />
         Purge Old Logs
-      </button>
-    </div>
-  </div>
+      </Nuvo::Button>
+    </Nuvo::Toolbar>
+  </:header>
 
-  <div class="card-content">
+  <:body>
     {{#if this.model.forbidden}}
-      <div class="alert alert-error">
-        <Ui::Ph @icon="warning" @size="20px" />
-        <span>You don't have permission to view audit logs.</span>
-      </div>
+      <Nuvo::Alert @variant="danger" @icon="warning">
+        You don't have permission to view audit logs.
+      </Nuvo::Alert>
     {{else}}
       {{#if (gt this.model.logs.length 0)}}
         <div class="audit-list">
@@ -63,11 +61,10 @@
                 class="audit-summary"
                 {{on "click" (fn this.toggleExpand log.id)}}
               >
-                <span
-                  class="audit-badge {{this.getActionBadgeClass log.action}}"
-                >
-                  {{log.action}}
-                </span>
+                <Nuvo::Tag
+                  class="badge-audit-{{lowercase log.action}}"
+                  @text={{log.action}}
+                />
                 <span class="audit-entity">{{log.entityType}}</span>
                 <span class="audit-entity-id">{{log.entityId}}</span>
                 <span class="audit-user">{{log.userEmail}}</span>
@@ -84,30 +81,28 @@
               </div>
               {{#if (eq this.expandedLogId log.id)}}
                 <div class="audit-details">
-                  <div class="audit-detail-row">
-                    <span class="audit-detail-label">IP Address:</span>
-                    <span class="audit-detail-value">{{log.ipAddress}}</span>
-                  </div>
-                  <div class="audit-detail-row">
-                    <span class="audit-detail-label">User Agent:</span>
-                    <span
-                      class="audit-detail-value text-muted"
-                    >{{log.userAgent}}</span>
-                  </div>
+                  <Nuvo::InfoRow @label="IP Address:" @value={{log.ipAddress}} />
+                  <Nuvo::InfoRow @label="User Agent:">
+                    <span class="text-muted">{{log.userAgent}}</span>
+                  </Nuvo::InfoRow>
                   {{#if log.oldValue}}
                     <div class="audit-detail-section">
-                      <span class="audit-detail-label">Old Value:</span>
-                      <pre class="audit-json">{{this.formatJson
-                          log.oldValue
-                        }}</pre>
+                      <span class="nu-info-row__label">Old Value:</span>
+                      <div class="nu-code-block">
+                        <pre class="nu-code-block__content">{{this.formatJson
+                            log.oldValue
+                          }}</pre>
+                      </div>
                     </div>
                   {{/if}}
                   {{#if log.newValue}}
                     <div class="audit-detail-section">
-                      <span class="audit-detail-label">New Value:</span>
-                      <pre class="audit-json">{{this.formatJson
-                          log.newValue
-                        }}</pre>
+                      <span class="nu-info-row__label">New Value:</span>
+                      <div class="nu-code-block">
+                        <pre class="nu-code-block__content">{{this.formatJson
+                            log.newValue
+                          }}</pre>
+                      </div>
                     </div>
                   {{/if}}
                 </div>
@@ -116,50 +111,44 @@
           {{/each}}
         </div>
       {{else}}
-        <div class="empty-state">
-          <Ui::Ph @icon="clock" @size="64px" />
-          <p>No audit logs found</p>
-        </div>
+        <Nuvo::EmptyState @title="No audit logs found" />
       {{/if}}
     {{/if}}
-  </div>
-</div>
+  </:body>
+</Nuvo::Card>
 
-<Ui::Modal
-  @isOpen={{this.showPurgeModal}}
+<Nuvo::Modal
+  @open={{this.showPurgeModal}}
   @title="Purge Audit Logs"
   @onClose={{this.closePurge}}
   @showClose={{true}}
 >
-  <p class="text-muted">Permanently delete audit logs older than the specified
-    number of days. Minimum retention is 30 days.</p>
+  <:body>
+    <p class="text-muted">Permanently delete audit logs older than the
+      specified number of days. Minimum retention is 30 days.</p>
 
-  <div class="flex col gap-2">
-    <label class="font-sm text-muted">Delete logs older than (days)</label>
-    <input
-      type="number"
-      class="form-input"
-      min="30"
-      value={{this.purgeDays}}
-      {{on "input" (fn this.setField "purgeDays")}}
-      data-test-purge-days
-    />
-  </div>
-
-  <div class="flex gap-2 end">
-    <button
-      type="button"
-      class="btn btn-secondary"
+    <Nuvo::Field @label="Delete logs older than (days)">
+      <Nuvo::Input
+        @type="number"
+        min="30"
+        @value={{this.purgeDays}}
+        {{on "input" (fn this.setField "purgeDays")}}
+        data-test-purge-days
+      />
+    </Nuvo::Field>
+  </:body>
+  <:footer>
+    <Nuvo::Button
+      @variant="secondary"
+      @text="Cancel"
       {{on "click" this.closePurge}}
-    >Cancel</button>
-    <button
-      type="button"
-      class="btn btn-danger"
-      {{on "click" this.confirmPurge}}
+    />
+    <Nuvo::Button
+      @variant="danger"
+      @text={{if this.isPurging "Purging..." "Purge"}}
       disabled={{this.isPurging}}
+      {{on "click" this.confirmPurge}}
       data-test-purge-confirm
-    >
-      {{if this.isPurging "Purging..." "Purge"}}
-    </button>
-  </div>
-</Ui::Modal>
+    />
+  </:footer>
+</Nuvo::Modal>

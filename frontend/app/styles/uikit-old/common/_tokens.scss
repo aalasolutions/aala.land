@@ -1,0 +1,116 @@
+@use './var' as *;
+
+:root {
+  --color-primary: #{$color-primary};
+  --color-primary-light: #{$color-primary-light};
+  --color-primary-dark: #{$color-primary-dark};
+  --color-success: #{$color-success};
+  --color-danger: #{$color-danger};
+  --color-warning: #{$color-warning};
+  --color-info: #{$color-info};
+  --color-coral: #{$color-coral};
+
+  --bg-base: #{$bg-base};
+  --bg-surface: #{$bg-surface};
+  --bg-muted: #{$bg-muted};
+  --bg-sidebar: #{$bg-sidebar};
+  --bg-surface-overlay: #{rgba($bg-surface, 0.9)};
+  --bg-hover-subtle: #{rgba($text-primary, 0.02)};
+  --bg-primary-soft: #{rgba($color-primary, 0.08)};
+  --bg-primary-soft-strong: #{rgba($color-primary, 0.12)};
+  --bg-primary-subtle: #{rgba($color-primary, 0.04)};
+  --bg-coral-subtle: #{rgba($color-coral, 0.04)};
+  --bg-success-subtle: #{rgba($color-success, 0.04)};
+  --bg-warning-subtle: #{rgba($color-warning, 0.04)};
+  --bg-primary-emphasis-soft: #{rgba($color-primary, 0.1)};
+  --bg-coral-emphasis-soft: #{rgba($color-coral, 0.1)};
+  --bg-success-emphasis-soft: #{rgba($color-success, 0.1)};
+  --bg-warning-emphasis-soft: #{rgba($color-warning, 0.1)};
+  --bg-danger-soft: #{rgba($color-danger, 0.08)};
+  --bg-warning-soft: #{rgba($color-warning, 0.08)};
+
+  --text-primary: #{$text-primary};
+  --text-secondary: #{$text-secondary};
+  --text-muted: #{$text-muted};
+  --text-inverse: #{$text-inverse};
+
+  --border-light: #{$border-light};
+  --border-medium: #{$border-medium};
+  --border-primary-soft: #{rgba($color-primary, 0.12)};
+  --border-coral-soft: #{rgba($color-coral, 0.12)};
+  --border-success-soft: #{rgba($color-success, 0.12)};
+  --border-warning-soft: #{rgba($color-warning, 0.12)};
+  --border-danger-soft: #{rgba($color-danger, 0.2)};
+  --border-warning-strong-soft: #{rgba($color-warning, 0.2)};
+
+  --overlay-backdrop: #{rgba($text-primary, 0.5)};
+  --overlay-backdrop-soft: #{rgba($text-primary, 0.3)};
+  --overlay-subtle: #{rgba($text-primary, 0.08)};
+  --focus-ring-primary: 0 0 0 3px #{rgba($color-primary, 0.1)};
+
+  --space-1: #{$space-1};
+  --space-2: #{$space-2};
+  --space-3: #{$space-3};
+  --space-4: #{$space-4};
+  --space-5: #{$space-5};
+  --space-6: #{$space-6};
+  --space-8: #{$space-8};
+
+  --radius-sm: #{$radius-sm};
+  --radius-md: #{$radius-md};
+  --radius-lg: #{$radius-lg};
+  --radius-xl: #{$radius-xl};
+
+  --shadow-sm: #{$shadow-sm};
+  --shadow-md: #{$shadow-md};
+  --shadow-lg: #{$shadow-lg};
+  --shadow-float: 0 4px 12px rgba(0, 0, 0, 0.1);
+  --shadow-float-strong: 0 4px 12px rgba(0, 0, 0, 0.15);
+  --shadow-popover: 0 8px 24px rgba(0, 0, 0, 0.12);
+
+  --font-xs: #{$font-xs};
+  --font-sm: #{$font-sm};
+  --font-md: #{$font-md};
+  --font-lg: #{$font-lg};
+  --font-xl: #{$font-xl};
+  --font-2xl: #{$font-2xl};
+  --font-3xl: #{$font-3xl};
+
+  --z-dropdown: #{$z-dropdown};
+  --z-modal: #{$z-modal};
+  --z-toast: #{$z-toast};
+
+  --transition-fast: #{$transition-fast};
+  --transition-normal: #{$transition-normal};
+
+  --badge-red-bg: #fee2e2;
+  --badge-red-text: #b91c1c;
+  --badge-amber-bg: #fef3c7;
+  --badge-amber-text: #b45309;
+  --badge-blue-bg: #dbeafe;
+  --badge-blue-text: #1d4ed8;
+  --badge-sky-bg: #f0f9ff;
+  --badge-sky-text: #0369a1;
+  --badge-purple-bg: #fdf4ff;
+  --badge-purple-text: #a21caf;
+  --badge-orange-bg: #fff7ed;
+  --badge-orange-text: #c2410c;
+  --badge-yellow-bg: #fefce8;
+  --badge-yellow-text: #a16207;
+  --badge-green-bg: #f0fdf4;
+  --badge-green-text: #16a34a;
+  --badge-gray-bg: #f5f5f5;
+  --badge-gray-text: #737373;
+  --badge-red-light-bg: #fef2f2;
+  --badge-red-light-text: #dc2626;
+  --badge-blue-light-bg: #eff6ff;
+  --badge-blue-light-text: #2563eb;
+
+  --badge-red-border: #fecaca;
+  --badge-amber-border: #fde68a;
+  --badge-blue-border: #bfdbfe;
+  --badge-gray-border: #d1d5db;
+
+  --whatsapp-primary: #25d366;
+  --whatsapp-dark: #128c7e;
+}

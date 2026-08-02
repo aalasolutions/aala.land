@@ -1,0 +1,223 @@
+// nu-kanban - draggable board with columns and cards
+@use "./mixins/bem" as *;
+@use "./mixins/var" as *;
+@use "./common/var" as *;
+
+@include b(kanban) {
+  @include nu-root("kanban", (
+    "Gap": nu-space(4),
+    "ColumnWidth": 18rem,
+    "PaddingBlockEnd": nu-space(4),
+  ));
+
+  display: flex;
+  align-items: flex-start;
+  gap: nu-var("kanban", "Gap");
+  padding-block-end: nu-var("kanban", "PaddingBlockEnd");
+  overflow-x: auto;
+
+  // ---- column ----
+
+  @include e(column) {
+    @include nu-root-el("kanban", "column", (
+      "Width": nu-var("kanban", "ColumnWidth"),
+      "Gap": nu-space(3),
+      "Padding": nu-space(3),
+      "BackgroundColor": var(--bg-alternate),
+      "BorderWidth": 1px,
+      "BorderStyle": dashed,
+      "BorderColor": transparent,
+      "BorderRadius": nu-radius(xl),
+      "TransitionDuration": nu-duration(fast),
+    ));
+
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    gap: nu-var-el("kanban", "column", "Gap");
+    inline-size: nu-var-el("kanban", "column", "Width");
+    padding: nu-var-el("kanban", "column", "Padding");
+    background-color: nu-var-el("kanban", "column", "BackgroundColor");
+    border: nu-var-el("kanban", "column", "BorderWidth") nu-var-el("kanban", "column", "BorderStyle") nu-var-el("kanban", "column", "BorderColor");
+    border-radius: nu-var-el("kanban", "column", "BorderRadius");
+    transition: border-color nu-var-el("kanban", "column", "TransitionDuration") $nu-ease,
+      background-color nu-var-el("kanban", "column", "TransitionDuration") $nu-ease;
+
+    @include reduced-motion {
+      transition: none;
+    }
+  }
+
+  @include e(column-header) {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: nu-space(2);
+    padding-inline: nu-space(1);
+  }
+
+  @include e(column-title) {
+    display: flex;
+    align-items: center;
+    gap: nu-space(2);
+    margin: 0;
+    font-size: nu-font-size(sm);
+    font-weight: nu-font-weight(semibold);
+    color: var(--text-color);
+  }
+
+  @include e(column-accent) {
+    @include nu-root-el("kanban", "column-accent", (
+      "Size": 0.5rem,
+      "Color": var(--border-base),
+    ));
+
+    flex-shrink: 0;
+    inline-size: nu-var-el("kanban", "column-accent", "Size");
+    block-size: nu-var-el("kanban", "column-accent", "Size");
+    background-color: nu-var-el("kanban", "column-accent", "Color");
+    border-radius: nu-radius(full);
+  }
+
+  @include e(column-count) {
+    @include nu-root-el("kanban", "column-count", (
+      "Color": var(--text-muted),
+      "BackgroundColor": var(--bg-surface),
+    ));
+
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-inline-size: 1.5rem;
+    block-size: 1.5rem;
+    padding-inline: nu-space(1);
+    font-size: nu-font-size(xs);
+    font-weight: nu-font-weight(semibold);
+    color: nu-var-el("kanban", "column-count", "Color");
+    background-color: nu-var-el("kanban", "column-count", "BackgroundColor");
+    border-radius: nu-radius(full);
+  }
+
+  @include e(column-body) {
+    @include nu-root-el("kanban", "column-body", (
+      "Gap": nu-space(3),
+      "MinBlockSize": 4rem,
+      "MaxBlockSize": 32rem,
+    ));
+
+    display: flex;
+    flex-direction: column;
+    gap: nu-var-el("kanban", "column-body", "Gap");
+    min-block-size: nu-var-el("kanban", "column-body", "MinBlockSize");
+    max-block-size: nu-var-el("kanban", "column-body", "MaxBlockSize");
+    overflow-y: auto;
+  }
+
+  // ---- card ----
+
+  @include e(card) {
+    @include nu-root-el("kanban", "card", (
+      "Padding": nu-space(3),
+      "Gap": nu-space(2),
+      "BackgroundColor": var(--bg-surface),
+      "BorderWidth": 1px,
+      "BorderColor": var(--border-base),
+      "BorderRadius": nu-radius(lg),
+      "BoxShadow": nu-shadow(sm),
+      "TransitionDuration": nu-duration(fast),
+      "hover--BoxShadow": nu-shadow(md),
+      "focus--BoxShadow": 0 0 0 3px #{nu-tint(primary, 35%)},
+    ));
+
+    display: flex;
+    flex-direction: column;
+    gap: nu-var-el("kanban", "card", "Gap");
+    padding: nu-var-el("kanban", "card", "Padding");
+    background-color: nu-var-el("kanban", "card", "BackgroundColor");
+    border: nu-var-el("kanban", "card", "BorderWidth") solid nu-var-el("kanban", "card", "BorderColor");
+    border-radius: nu-var-el("kanban", "card", "BorderRadius");
+    box-shadow: nu-var-el("kanban", "card", "BoxShadow");
+    cursor: grab;
+    transition: box-shadow nu-var-el("kanban", "card", "TransitionDuration") $nu-ease,
+      opacity nu-var-el("kanban", "card", "TransitionDuration") $nu-ease,
+      transform nu-var-el("kanban", "card", "TransitionDuration") $nu-ease;
+
+    @include reduced-motion {
+      transition: none;
+    }
+
+    &:hover {
+      box-shadow: nu-var-el("kanban", "card", "hover--BoxShadow");
+    }
+
+    &:focus-visible {
+      outline: none;
+      box-shadow: nu-var-el("kanban", "card", "focus--BoxShadow");
+    }
+
+    &:active {
+      cursor: grabbing;
+    }
+  }
+
+  @include e(card-title) {
+    margin: 0;
+    font-size: nu-font-size(sm);
+    font-weight: nu-font-weight(semibold);
+    color: var(--text-color);
+  }
+
+  @include e(card-meta) {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: nu-space(2);
+    font-size: nu-font-size(xs);
+    color: var(--text-muted);
+  }
+
+  @include e(card-footer) {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: nu-space(2);
+    margin-block-start: nu-space(1);
+    padding-block-start: nu-space(2);
+    border-block-start: 1px solid var(--border-base);
+  }
+}
+
+// ---- column accent colour variants: uniform, looped ----
+
+@each $variant in $nu-variants {
+  .nu-kanban__column.m-#{$variant} {
+    --nu-kanban-column--BorderColor: var(--#{$variant}-200);
+    --nu-kanban-column--BackgroundColor: var(--#{$variant}-50);
+    --nu-kanban-column-accent--Color: var(--#{$variant});
+    --nu-kanban-column-count--Color: var(--#{$variant}-700);
+    --nu-kanban-column-count--BackgroundColor: var(--#{$variant}-100);
+  }
+}
+
+// ---- states ----
+
+.nu-kanban__card.is-dragging {
+  opacity: 0.5;
+  transform: scale(1.03);
+}
+
+.nu-kanban__column.is-drag-over {
+  --nu-kanban-column--BorderColor: var(--primary);
+  --nu-kanban-column--BorderStyle: dashed;
+  --nu-kanban-column--BackgroundColor: #{nu-tint(primary, 8%)};
+}
+
+.nu-kanban__column.is-empty {
+  .nu-kanban__column-body {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-subtle);
+    font-size: nu-font-size(xs);
+  }
+}

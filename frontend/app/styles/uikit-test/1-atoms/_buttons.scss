@@ -1,0 +1,248 @@
+// ============================================
+// ATOMS: Buttons
+// ============================================
+// Single source of truth for all button styles.
+// Consolidates: button-component.scss + 13 template redefinitions
+
+@use 'sass:color';
+@use '../nuvoui' as Nuvo;
+@use '../variables' as *;
+
+// Base button mixin
+@mixin btn-base {
+  @include Nuvo.apply(
+    flex-inline, center, x-center, gap(2),
+    py(2.5), px(4),
+    font-size(sm), font(medium), leading-tight,
+    rounded(sm), cursor(pointer),
+    transition, duration(200)
+  );
+  border: none;
+  text-decoration: none;
+
+  &:disabled,
+  &.btn-disabled {
+    @include Nuvo.apply(opacity(60));
+    pointer-events: none;
+    cursor: not-allowed;
+  }
+
+  i,
+  svg {
+    font-size: 0.875em;
+  }
+}
+
+// Solid button variant
+@mixin btn-solid($bg-color, $text-color: $white) {
+  @include btn-base;
+  background-color: $bg-color;
+  color: $text-color;
+
+  &:hover:not(:disabled) {
+    background-color: color.adjust($bg-color, $lightness: -8%);
+  }
+
+  &:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba($bg-color, 0.25);
+  }
+
+  &:active:not(:disabled) {
+    background-color: color.adjust($bg-color, $lightness: -12%);
+  }
+}
+
+// Outline button variant
+@mixin btn-outline($color) {
+  @include btn-base;
+  background-color: transparent;
+  color: $color;
+  border: 1px solid $color;
+
+  &:hover:not(:disabled) {
+    background-color: rgba($color, 0.08);
+  }
+
+  &:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba($color, 0.15);
+  }
+}
+
+// Ghost button variant (no border)
+@mixin btn-ghost($color) {
+  @include btn-base;
+  background-color: transparent;
+  color: $color;
+  border: none;
+
+  &:hover:not(:disabled) {
+    background-color: rgba($color, 0.08);
+  }
+
+  &:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba($color, 0.1);
+  }
+}
+
+// ============================================
+// Button Classes
+// ============================================
+
+// Primary (Teal)
+button.btn-primary,
+.btn-primary {
+  @include btn-solid($primary-color);
+}
+
+// Secondary (Gray)
+button.btn-secondary,
+.btn-secondary {
+  @include btn-solid($secondary-color);
+}
+
+// Success (Green)
+button.btn-success,
+.btn-success {
+  @include btn-solid($success-color);
+}
+
+// Danger (Red)
+button.btn-danger,
+.btn-danger {
+  @include btn-solid($error-color);
+}
+
+// Warning (Amber)
+button.btn-warning,
+.btn-warning {
+  @include btn-solid($warning-color, $text-primary);
+}
+
+// Info (Blue)
+button.btn-info,
+.btn-info {
+  @include btn-solid($blue-500);
+}
+
+// Accent (Indigo)
+button.btn-accent,
+.btn-accent {
+  @include btn-solid($indigo-500);
+}
+
+// ============================================
+// Outline Variants
+// ============================================
+
+.btn-outline-primary {
+  @include btn-outline($primary-color);
+}
+
+.btn-outline-secondary {
+  @include btn-outline($secondary-color);
+}
+
+.btn-outline-danger {
+  @include btn-outline($error-color);
+}
+
+// ============================================
+// Ghost Variants
+// ============================================
+
+.btn-ghost {
+  @include btn-ghost($text-secondary);
+}
+
+.btn-ghost-primary {
+  @include btn-ghost($primary-color);
+}
+
+.btn-ghost-danger {
+  @include btn-ghost($error-color);
+}
+
+// ============================================
+// Size Variants
+// ============================================
+
+.btn-sm {
+  @include Nuvo.apply(py(1.5), px(3), font-size(xs));
+}
+
+.btn-lg {
+  @include Nuvo.apply(py(3), px(6), font-size(base));
+}
+
+// ============================================
+// Full Width
+// ============================================
+
+.btn-block {
+  @include Nuvo.apply(w-full);
+}
+
+// ============================================
+// Icon-Only Button
+// ============================================
+
+.btn-icon {
+  @include btn-base;
+  @include Nuvo.apply(p(2));
+  background-color: transparent;
+  color: $text-secondary;
+
+  &:hover:not(:disabled) {
+    background-color: Nuvo.get-color(gray, 100);
+    color: $text-primary;
+  }
+
+  &.btn-icon-primary {
+    color: $primary-color;
+
+    &:hover:not(:disabled) {
+      background-color: rgba($primary-color, 0.1);
+    }
+  }
+
+  &.btn-icon-danger {
+    color: $error-color;
+
+    &:hover:not(:disabled) {
+      background-color: rgba($error-color, 0.1);
+    }
+  }
+}
+
+// ============================================
+// Loading State
+// ============================================
+
+.btn-loading {
+  @include Nuvo.apply(relative);
+  pointer-events: none;
+
+  &::after {
+    content: '';
+    @include Nuvo.apply(absolute);
+    width: 1em;
+    height: 1em;
+    border: 2px solid transparent;
+    border-top-color: currentColor;
+    border-radius: 50%;
+    animation: btn-spin 0.6s linear infinite;
+  }
+
+  > * {
+    visibility: hidden;
+  }
+}
+
+@keyframes btn-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

@@ -82,17 +82,17 @@ export default class LeadsController extends Controller {
   }
 
   viewTabs = [
-    { value: 'pipeline', label: 'Pipeline', icon: 'squares-four' },
-    { value: 'temperature', label: 'Temperature', icon: 'thermometer' },
-    { value: 'agent', label: 'Agent', icon: 'users' },
-    { value: 'list', label: 'List', icon: 'list' },
+    { id: 'pipeline', label: 'Pipeline', icon: 'squares-four' },
+    { id: 'temperature', label: 'Temperature', icon: 'thermometer' },
+    { id: 'agent', label: 'Agent', icon: 'users' },
+    { id: 'list', label: 'List', icon: 'list' },
   ];
 
   filterTabs = [
-    { value: 'all', label: 'All' },
-    { value: 'mine', label: 'Assigned to Me' },
-    { value: 'others', label: 'Others' },
-    { value: 'unassigned', label: 'Unassigned' },
+    { id: 'all', label: 'All' },
+    { id: 'mine', label: 'Assigned to Me' },
+    { id: 'others', label: 'Others' },
+    { id: 'unassigned', label: 'Unassigned' },
   ];
 
   @tracked filterType = 'all';
@@ -220,20 +220,25 @@ export default class LeadsController extends Controller {
     this[fieldName] = e.target.value;
   }
 
-  @action setRegionCode(e) {
-    this.formRegionCode = e.target.value;
+  // Kit form components call onInput/onChange as (value, event).
+  @action setFieldValue(fieldName, value) {
+    this[fieldName] = value;
+  }
+
+  @action setRegionCode(value) {
+    this.formRegionCode = value;
     this.formPropertyId = '';
     this.formUnitId = '';
     this.filteredUnits = [];
     this.loadProperties(this.formRegionCode);
   }
 
-  @action setPropertyId(e) {
-    this.formPropertyId = e.target.value;
+  @action setPropertyId(value) {
+    this.formPropertyId = value;
     this.formUnitId = '';
     this.filteredUnits = [];
-    if (e.target.value) {
-      this.loadUnits(e.target.value, this.formRegionCode);
+    if (value) {
+      this.loadUnits(value, this.formRegionCode);
     }
   }
 

@@ -1,0 +1,13 @@
+<div class="nu-list-item" data-test-nu-list-item ...attributes>
+  {{#if (has-block "main")}}
+    <div class="nu-list-item__main" data-test-nu-list-item-main>
+      {{yield to="main"}}
+    </div>
+  {{/if}}
+
+  {{#if (has-block "actions")}}
+    <div class="nu-list-item__actions" data-test-nu-list-item-actions>
+      {{yield to="actions"}}
+    </div>
+  {{/if}}
+</div>

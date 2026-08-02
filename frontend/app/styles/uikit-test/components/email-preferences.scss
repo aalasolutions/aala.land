@@ -1,0 +1,119 @@
+.email-preferences-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  border: 1px solid rgba($dark-color, 0.08);
+  border-radius: 12px;
+  overflow: hidden;
+  background: $white;
+}
+
+.email-preference-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid rgba($dark-color, 0.08);
+  background: $white;
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.email-preference-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.email-preference-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  font-size: 0.98rem;
+  font-weight: 600;
+  color: $dark-color;
+}
+
+.email-preference-note {
+  color: $primary-color;
+  border: 1px solid rgba($primary-color, 0.4);
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.email-preference-description {
+  font-size: 0.82rem;
+  color: $text-secondary;
+  max-width: 520px;
+}
+
+.email-preference-warning {
+  font-size: 0.8rem;
+  color: $error-color;
+  font-weight: 600;
+  background: rgba($error-color, 0.08);
+  border-left: 3px solid rgba($error-color, 0.7);
+  padding: 0.4rem 0.6rem;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: 0.5rem;
+}
+
+.email-preference-toggle {
+  display: flex;
+  align-items: center;
+}
+
+.email-preferences-card {
+  position: relative;
+}
+
+.email-preferences-note {
+  font-size: 0.82rem;
+  color: $text-secondary;
+  padding: 0.75rem 1rem;
+  border: 1px dashed rgba($dark-color, 0.1);
+  border-radius: 10px;
+  background: rgba($dark-color, 0.02);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.email-preferences-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba($white, 0.75);
+  backdrop-filter: blur(2px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: $primary-color;
+  border-radius: 12px;
+  z-index: 2;
+}
+
+@media (max-width: 640px) {
+  .email-preference-item {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .email-preference-toggle {
+    align-self: flex-end;
+  }
+}

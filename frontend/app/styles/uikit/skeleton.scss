@@ -1,0 +1,109 @@
+// nu-skeleton - loading placeholder shimmer
+@use "./mixins/bem" as *;
+@use "./mixins/var" as *;
+@use "./common/var" as *;
+
+// Sweeps the highlight band fully off the leading edge and fully off the
+// trailing edge, so there is no visible seam where it wraps.
+@keyframes nu-skeleton-shimmer {
+  0% {
+    background-position: -100% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+@include b(skeleton) {
+  @include nu-root("skeleton", (
+    "BlockSize": 1rem,
+    "InlineSize": 100%,
+    "BorderRadius": nu-radius(md),
+    "BaseColor": var(--bg-alternate),
+    "HighlightColor": var(--bg-surface),
+    // 1.6s, not the shared `slow` (400ms). A shimmer that fast reads as a
+    // strobe. Industry practice is 1.5-2s: long enough to feel like ambient
+    // progress rather than a flicker.
+    "Duration": 1.6s,
+  ));
+
+  display: block;
+  inline-size: nu-var("skeleton", "InlineSize");
+  block-size: nu-var("skeleton", "BlockSize");
+  border-radius: nu-var("skeleton", "BorderRadius");
+  // A wider travel (400%) with a narrow highlight band reads as one soft sweep
+  // rather than a repeating stripe. ease-in-out gives the sweep natural
+  // acceleration instead of a mechanical constant slide.
+  background-color: nu-var("skeleton", "BaseColor");
+  background-image: linear-gradient(
+    90deg,
+    transparent 0%,
+    nu-var("skeleton", "HighlightColor") 50%,
+    transparent 100%
+  );
+  background-repeat: no-repeat;
+  background-size: 50% 100%;
+  animation: nu-skeleton-shimmer nu-var("skeleton", "Duration")
+    cubic-bezier(0.4, 0, 0.6, 1) infinite;
+
+  @include reduced-motion {
+    animation: none;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    background-image: none;
+    background-color: nu-var("skeleton", "BaseColor");
+  }
+
+  // ---- shape modifiers ----
+
+  @include m(text) {
+    --nu-skeleton--BlockSize: 0.875rem;
+    --nu-skeleton--BorderRadius: #{nu-radius(sm)};
+  }
+
+  @include m(title) {
+    --nu-skeleton--BlockSize: 1.5rem;
+    --nu-skeleton--BorderRadius: #{nu-radius(sm)};
+  }
+
+  @include m(circle) {
+    --nu-skeleton--BlockSize: 2.5rem;
+    --nu-skeleton--InlineSize: 2.5rem;
+    --nu-skeleton--BorderRadius: #{nu-radius(full)};
+  }
+
+  @include m(rect) {
+    --nu-skeleton--BlockSize: 8rem;
+    --nu-skeleton--BorderRadius: #{nu-radius(lg)};
+  }
+
+  // ---- width modifiers ----
+
+  @include m(w-25) {
+    --nu-skeleton--InlineSize: 25%;
+  }
+
+  @include m(w-50) {
+    --nu-skeleton--InlineSize: 50%;
+  }
+
+  @include m(w-75) {
+    --nu-skeleton--InlineSize: 75%;
+  }
+
+  @include m(w-full) {
+    --nu-skeleton--InlineSize: 100%;
+  }
+}
+
+// Stacked lines container
+@include b(skeleton-group) {
+  @include nu-root("skeleton-group", (
+    "Gap": nu-space(2),
+  ));
+
+  display: flex;
+  flex-direction: column;
+  gap: nu-var("skeleton-group", "Gap");
+}

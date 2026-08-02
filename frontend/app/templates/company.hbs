@@ -1,185 +1,163 @@
 {{page-title "Company Settings"}}
 
-<div class="page-header">
-  <div class="page-title-section">
-    <h2 class="page-title"><Ui::Ph @icon="building-office" @size="28px" />
-      Company Settings</h2>
-    <p class="page-subtitle">Manage your company information.</p>
-  </div>
-</div>
+<div data-test-company-page class="flex col gap-6">
+  <Nuvo::PageHeader
+    @title="Company Settings"
+    @subtitle="Manage your company information."
+  />
 
-{{#if this.company}}
-  <div class="plan-banner {{this.planTierClass}}">
-    <div>
-      <div class="plan-banner__name {{this.planNameClass}}">{{or
-          this.company.subscriptionTier
-          "FREE"
-        }}</div>
-      <div class="plan-banner__limits">{{this.planLimits}}</div>
-    </div>
-    {{#if this.company.subscriptionExpiresAt}}
-      <div class="plan-banner__expiry">
-        Expires
-        {{format-date this.company.subscriptionExpiresAt}}
+  {{#if this.company}}
+    <div class="plan-banner badge-plan-{{lowercase (or this.company.subscriptionTier "FREE")}}">
+      <div>
+        <div class="plan-banner__name">{{or
+            this.company.subscriptionTier
+            "FREE"
+          }}</div>
+        <div class="plan-banner__limits">{{this.planLimits}}</div>
       </div>
-    {{/if}}
-  </div>
-
-  {{#if this.isCompanyAdmin}}
-    <div class="settings-tabs mb-4">
-      <button
-        type="button"
-        class="settings-tab {{if (eq this.activeTab 'general') 'active'}}"
-        {{on "click" (fn this.setTab "general")}}
-      >
-        General
-      </button>
-      <button
-        type="button"
-        class="settings-tab {{if (eq this.activeTab 'billing') 'active'}}"
-        data-test-billing-tab
-        {{on "click" (fn this.setTab "billing")}}
-      >
-        Billing
-      </button>
-      <button
-        type="button"
-        class="settings-tab {{if (eq this.activeTab 'ai') 'active'}}"
-        {{on "click" (fn this.setTab "ai")}}
-      >
-        AI Settings
-      </button>
+      {{#if this.company.subscriptionExpiresAt}}
+        <div class="plan-banner__expiry">
+          Expires
+          {{format-date this.company.subscriptionExpiresAt}}
+        </div>
+      {{/if}}
     </div>
-  {{/if}}
+
+    {{#if this.isCompanyAdmin}}
+      <Nuvo::Tabs
+        @tabs={{this.settingsTabs}}
+        @activeTab={{this.activeTab}}
+        @onChange={{this.setTab}}
+      />
+    {{/if}}
 
   {{#if (eq this.activeTab "ai")}}
     {{#if this.creditUsageLabel}}
-      <div class="glass-panel p-4 max-w-lg mb-4 text-muted font-sm">
+      <Nuvo::Card class="max-w-lg text-muted text-sm">
         <div data-test-ai-credit-usage>{{this.creditUsageLabel}}</div>
-        <div class="font-xs mt-1">1 credit covers 24 hours of unlimited replies
+        <div class="text-xs mt-1">1 credit covers 24 hours of unlimited replies
           with one lead.</div>
-      </div>
+      </Nuvo::Card>
     {{/if}}
 
     {{#if this.hasCreditAgents}}
-      <div class="glass-panel p-4 max-w-lg mb-4">
-        <div class="font-sm font-bold mb-2">AI credits by agent</div>
-        <table class="data-table" data-test-credit-agents>
-          <thead>
-            <tr>
-              <th>Agent</th>
-              <th>Credits</th>
-              <th>Leads</th>
-              <th>AI turns</th>
-            </tr>
-          </thead>
-          <tbody>
-            {{#each this.creditAgents as |agent|}}
-              <tr data-test-credit-agent-row={{agent.userId}}>
-                <td>{{agent.name}}</td>
-                <td>{{agent.credits}}</td>
-                <td>{{agent.leads}}</td>
-                <td>{{agent.aiTurns}}</td>
+      <Nuvo::Card class="max-w-lg">
+        <div class="text-sm font-bold mb-2">AI credits by agent</div>
+        <div class="nu-table-wrapper">
+          <table class="nu-table" data-test-credit-agents>
+            <thead>
+              <tr>
+                <th>Agent</th>
+                <th>Credits</th>
+                <th>Leads</th>
+                <th>AI turns</th>
               </tr>
-            {{/each}}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {{#each this.creditAgents as |agent|}}
+                <tr data-test-credit-agent-row={{agent.userId}}>
+                  <td>{{agent.name}}</td>
+                  <td>{{agent.credits}}</td>
+                  <td>{{agent.leads}}</td>
+                  <td>{{agent.aiTurns}}</td>
+                </tr>
+              {{/each}}
+            </tbody>
+          </table>
+        </div>
+      </Nuvo::Card>
     {{/if}}
 
-    <div class="glass-panel p-6 max-w-lg">
+    <Nuvo::Card class="max-w-lg">
       <form aria-label="AI Settings" {{on "submit" this.saveAISettings}}>
-        <div class="form-group">
-          <label class="form-label" for="company-ai-prompt">AI System Prompt</label>
-          <textarea
+        <Nuvo::Field @label="AI System Prompt">
+          <Nuvo::Textarea
             id="company-ai-prompt"
             data-test-ai-prompt
-            class="form-input"
             rows="10"
             placeholder="Leave empty to use the default prompt"
-            {{on "input" this.setAIPrompt}}
-          >{{this.aiPrompt}}</textarea>
-          <p class="text-muted font-sm">
+            @value={{this.aiPrompt}}
+            @onInput={{this.setAIPrompt}}
+          />
+          <p class="text-muted text-sm mt-1">
             This prompt tells the AI how to respond on behalf of your company.
             Leave blank to use the built-in default.
           </p>
-        </div>
+        </Nuvo::Field>
 
         {{#if this.aiSuccessMsg}}
-          <p class="text-success font-sm">{{this.aiSuccessMsg}}</p>
+          <p class="text-success text-sm">{{this.aiSuccessMsg}}</p>
         {{/if}}
         {{#if this.aiErrorMsg}}
-          <p class="text-danger font-sm">{{this.aiErrorMsg}}</p>
+          <p class="text-danger text-sm">{{this.aiErrorMsg}}</p>
         {{/if}}
 
-        <div class="flex gap-3 mt-4">
-          <button
-            type="submit"
+        <Nuvo::FormActions>
+          <Nuvo::Button
+            @variant="primary"
+            @type="submit"
+            @loading={{this.isSavingAI}}
             data-test-save-prompt
-            class="btn btn-primary"
-            disabled={{this.isSavingAI}}
           >
-            {{#if this.isSavingAI}}Saving…{{else}}Save{{/if}}
-          </button>
-          <button
-            type="button"
+            {{if this.isSavingAI "Saving…" "Save"}}
+          </Nuvo::Button>
+          <Nuvo::Button
+            @variant="secondary"
+            @disabled={{this.isSavingAI}}
             data-test-restore-prompt
-            class="btn btn-secondary"
-            disabled={{this.isSavingAI}}
             {{on "click" this.restoreDefaultPrompt}}
           >
             Restore Default
-          </button>
-        </div>
+          </Nuvo::Button>
+        </Nuvo::FormActions>
       </form>
-    </div>
+    </Nuvo::Card>
   {{else if (eq this.activeTab "billing")}}
-    <div class="glass-panel p-6 max-w-lg" data-test-billing-panel>
-      <h3 class="font-lg font-bold mb-4">Plan and Billing</h3>
+    <Nuvo::Card class="max-w-lg" data-test-billing-panel>
+      <h3 class="text-lg font-bold mb-4">Plan and Billing</h3>
 
       {{#if this.billing}}
         {{#if this.isScheduledToCancel}}
-          <div class="alert alert-warning mb-4" data-test-cancel-scheduled>
-            <div>
-              <div class="font-bold">Scheduled to move to the Free plan</div>
-              <p class="font-sm mt-1">
-                Your paid plan is set to end on
-                <strong>{{this.cancelDateLabel}}</strong>. You have already paid
-                through that date, so you keep full access until then. It
-                switches to Free automatically. Changed your mind? Reactivate
-                below.
-              </p>
-            </div>
-          </div>
+          <Nuvo::Alert
+            @variant="warning"
+            class="mb-4"
+            data-test-cancel-scheduled
+          >
+            <div class="font-bold">Scheduled to move to the Free plan</div>
+            <p class="text-sm mt-1">
+              Your paid plan is set to end on
+              <strong>{{this.cancelDateLabel}}</strong>. You have already paid
+              through that date, so you keep full access until then. It
+              switches to Free automatically. Changed your mind? Reactivate
+              below.
+            </p>
+          </Nuvo::Alert>
         {{/if}}
         <div class="billing-plan-card mb-4" data-test-plan-card>
           <div class="flex between x-center">
             <div
-              class="font-xl font-bold"
+              class="text-xl font-bold"
               data-test-plan-name
             >{{this.billing.tier}}</div>
             {{#if this.billing.billingStatus}}
-              <span
-                class="status-badge status-{{lowercase
-                    this.billing.billingStatus
-                  }}"
+              <Nuvo::Tag
+                class="badge-sub-{{this.billingStatusBadgeValue}}"
+                @text={{this.billing.billingStatus}}
                 data-test-billing-status
-              >
-                {{this.billing.billingStatus}}
-              </span>
+              />
             {{/if}}
           </div>
-          <p class="font-sm text-muted mt-2" data-test-seat-count>
+          <p class="text-sm text-muted mt-2" data-test-seat-count>
             {{this.seatSummaryLabel}}
           </p>
           {{#if this.seatPriceLabel}}
             <p
-              class="font-sm text-muted"
+              class="text-sm text-muted"
               data-test-seat-price
             >{{this.seatPriceLabel}}</p>
           {{/if}}
           {{#if this.purchasedCurrency}}
-            <p class="font-sm text-muted" data-test-billed-currency>
+            <p class="text-sm text-muted" data-test-billed-currency>
               Billed in
               {{this.purchasedCurrency}}, locked to your account.
             </p>
@@ -188,30 +166,32 @@
 
         {{#if this.isFreeTier}}
           {{#if this.paymentCurrencyOptions.length}}
-            <div class="mb-3" data-test-currency-select>
-              <Ui::FormDropdown
-                @label="Select your Payment currency"
-                @id="billing-currency"
+            <Nuvo::Field
+              @label="Select your Payment currency"
+              class="mb-3"
+              data-test-currency-select
+            >
+              <Nuvo::Dropdown
+                @align="start"
                 @value={{this.selectedCurrency}}
-                @onChange={{fn this.setField "selectedCurrency"}}
+                @onSelect={{fn this.setFieldValue "selectedCurrency"}}
                 @options={{this.paymentCurrencyOptions}}
               />
               <p
-                class="font-sm text-muted mt-1"
+                class="text-sm text-muted mt-1"
                 data-test-currency-lock-note
               >Locked to your account once you subscribe.</p>
-            </div>
+            </Nuvo::Field>
           {{/if}}
-          <button
-            type="button"
-            class="btn btn-primary"
+          <Nuvo::Button
+            @variant="primary"
+            @loading={{this.isBillingBusy}}
             data-test-upgrade-pro
-            disabled={{this.isBillingBusy}}
             {{on "click" this.upgradeToPro}}
           >
-            {{#if this.isBillingBusy}}Starting checkout...{{else}}Upgrade to Pro{{/if}}
-          </button>
-          <p class="font-sm text-muted mt-3">
+            {{if this.isBillingBusy "Starting checkout..." "Upgrade to Pro"}}
+          </Nuvo::Button>
+          <p class="text-sm text-muted mt-3">
             Every Pro seat adds 5 GB of storage. Need white-label, ERP
             integration, or dedicated infrastructure?
             <a
@@ -221,28 +201,26 @@
           </p>
         {{else if this.billing.hasSubscription}}
           {{#if this.isScheduledToCancel}}
-            <button
-              type="button"
-              class="btn btn-primary"
+            <Nuvo::Button
+              @variant="primary"
+              @loading={{this.isBillingBusy}}
               data-test-reactivate-pro
-              disabled={{this.isBillingBusy}}
               {{on "click" this.reactivatePro}}
             >
-              {{#if this.isBillingBusy}}Working...{{else}}Reactivate plan{{/if}}
-            </button>
+              {{if this.isBillingBusy "Working..." "Reactivate plan"}}
+            </Nuvo::Button>
           {{else}}
-            <button
-              type="button"
-              class="btn btn-danger"
+            <Nuvo::Button
+              @variant="danger"
+              @disabled={{this.isDowngradeDisabled}}
               data-test-downgrade-free
-              disabled={{this.isDowngradeDisabled}}
               {{on "click" this.openDowngradeConfirm}}
             >
               Downgrade to Free
-            </button>
+            </Nuvo::Button>
             {{#unless this.billing.canDowngradeToFree}}
               <p
-                class="font-sm text-muted mt-2"
+                class="text-sm text-muted mt-2"
                 data-test-downgrade-blocked-hint
               >
                 Downgrading requires exactly 1 active user. You currently have
@@ -252,7 +230,7 @@
             {{/unless}}
           {{/if}}
         {{else}}
-          <p class="font-sm text-muted" data-test-billing-managed>
+          <p class="text-sm text-muted" data-test-billing-managed>
             Your plan is managed by AALA. Contact support to make changes.
           </p>
         {{/if}}
@@ -260,14 +238,14 @@
         <p class="text-muted" data-test-billing-unavailable>Billing information
           is unavailable right now.</p>
       {{/if}}
-    </div>
+    </Nuvo::Card>
 
     {{#if this.isCompanyAdmin}}
-      <div class="glass-panel p-6 mt-4" data-test-billing-history-panel>
-        <h3 class="font-lg font-bold mb-4">Billing History</h3>
+      <Nuvo::Card class="mt-4" data-test-billing-history-panel>
+        <h3 class="text-lg font-bold mb-4">Billing History</h3>
         {{#if this.billingHistory.length}}
-          <div class="data-table-wrapper data-table-wrapper--with-pagination">
-            <table class="data-table">
+          <div class="nu-table-wrapper">
+            <table class="nu-table">
               <thead>
                 <tr>
                   <th>Date</th>
@@ -286,15 +264,17 @@
                       }}</td>
                     <td>
                       {{#if (eq record.type "payment_succeeded")}}
-                        <span
-                          class="status-badge status-paid"
+                        <Nuvo::Tag
+                          class="badge-txn-completed"
+                          @text="Paid"
                           data-test-history-status
-                        >Paid</span>
+                        />
                       {{else}}
-                        <span
-                          class="status-badge status-failed"
+                        <Nuvo::Tag
+                          class="badge-txn-failed"
+                          @text="Failed"
                           data-test-history-status
-                        >Failed</span>
+                        />
                       {{/if}}
                     </td>
                     <td>
@@ -318,7 +298,7 @@
               </tbody>
             </table>
           </div>
-          <Ui::Pagination
+          <Nuvo::Pagination
             @selectId="billing-history-limit"
             @page={{this.billingHistoryPage}}
             @limit={{this.billingHistoryLimit}}
@@ -331,16 +311,16 @@
           <p class="text-muted" data-test-billing-history-empty>No payments yet.
             Invoices appear here after your first charge.</p>
         {{/if}}
-      </div>
+      </Nuvo::Card>
     {{/if}}
 
     <ConfirmModal
-      @isOpen={{this.showDowngradeConfirm}}
+      @open={{this.showDowngradeConfirm}}
       @title="Downgrade to Free"
       @message="Your subscription will be canceled at the end of the current billing period. Paid features, extra seats, and per-seat storage go away when it ends. Nothing is deleted, but uploads beyond the Free 2 GB quota will be blocked."
       @confirmText="Downgrade to Free"
       @confirmingText="Canceling..."
-      @confirmType="btn-danger"
+      @confirmVariant="danger"
       @cancelText="Keep my plan"
       @isConfirming={{this.isBillingBusy}}
       @onClose={{this.closeDowngradeConfirm}}
@@ -349,43 +329,46 @@
   {{else}}
     <div class="company-settings-grid">
       {{! Left: Company Info }}
-      <div class="glass-panel p-6">
-        <h3 class="font-lg font-bold mb-4">Company Information</h3>
+      <Nuvo::Card>
+        <h3 class="text-lg font-bold mb-4">Company Information</h3>
         <form
           aria-label="Company Information"
           class="flex col gap-4"
           {{on "submit" this.saveCompany}}
         >
-          <Ui::FormInput
-            @label="Company Name"
-            @id="company-name"
-            @type="text"
-            @value={{or this.formName this.company.name}}
-            @onChange={{fn this.setField "formName"}}
-            @required={{true}}
-            @readonly={{not this.isAdmin}}
-          />
+          <Nuvo::Field @label="Company Name" @required={{true}}>
+            <Nuvo::Input
+              id="company-name"
+              type="text"
+              @value={{or this.formName this.company.name}}
+              @onInput={{fn this.setFieldValue "formName"}}
+              required={{true}}
+              readonly={{not this.isAdmin}}
+            />
+          </Nuvo::Field>
 
           {{#if this.company.adminEmail}}
-            <Ui::FormInput
-              @label="Admin Email"
-              @id="company-email"
-              @type="email"
-              @value={{this.company.adminEmail}}
-              @disabled={{true}}
-            />
+            <Nuvo::Field @label="Admin Email">
+              <Nuvo::Input
+                id="company-email"
+                type="email"
+                @value={{this.company.adminEmail}}
+                disabled={{true}}
+              />
+            </Nuvo::Field>
           {{/if}}
 
-          <Ui::FormInput
-            @label="Plan"
-            @id="company-plan"
-            @type="text"
-            @value={{or this.company.subscriptionTier "FREE"}}
-            @disabled={{true}}
-          />
+          <Nuvo::Field @label="Plan">
+            <Nuvo::Input
+              id="company-plan"
+              type="text"
+              @value={{or this.company.subscriptionTier "FREE"}}
+              disabled={{true}}
+            />
+          </Nuvo::Field>
 
           {{#unless this.isAdmin}}
-            <p class="font-sm text-muted">Only company admins and super admins
+            <p class="text-sm text-muted">Only company admins and super admins
               can change these settings.</p>
           {{/unless}}
 
@@ -394,23 +377,21 @@
           {{/if}}
 
           {{#if this.storageUsage}}
-            <div class="storage-usage-section" data-test-storage-usage>
-              <h3 class="font-sm font-bold uppercase text-muted mb-2">Storage
+            <div data-test-storage-usage>
+              <h3 class="text-sm font-bold uppercase text-muted mb-2">Storage
                 Usage</h3>
-              <p class="font-sm mb-2" data-test-storage-label>
+              <p class="text-sm mb-2" data-test-storage-label>
                 {{format-bytes this.storageUsage.usedBytes}}
                 of
                 {{format-bytes this.storageUsage.quotaBytes}}
                 used ({{this.storageUsage.percentUsed}}%)
               </p>
-              <div class="storage-bar" data-test-storage-bar>
-                <div
-                  class="storage-bar__fill
-                    {{if this.isStorageWarning 'storage-bar__fill-warning'}}"
-                  style="width: {{this.storageUsage.percentUsed}}%"
-                ></div>
-              </div>
-              <p class="font-xs text-muted mt-1">
+              <Nuvo::Progress
+                @value={{this.storageUsage.percentUsed}}
+                @variant={{if this.isStorageWarning "danger" "primary"}}
+                data-test-storage-bar
+              />
+              <p class="text-xs text-muted mt-1">
                 Tier:
                 {{this.storageUsage.tier}}
                 /
@@ -420,28 +401,27 @@
             </div>
           {{/if}}
 
-          <div class="form-actions">
-            <Ui::AppButton
+          <Nuvo::FormActions>
+            <Nuvo::Button
               @variant="primary"
-              @buttonType="submit"
-              @text="Save Changes"
+              @type="submit"
               @loading={{this.isSaving}}
-              @loadingText="Saving..."
               @disabled={{not this.isAdmin}}
-            />
-          </div>
+            >
+              {{if this.isSaving "Saving..." "Save Changes"}}
+            </Nuvo::Button>
+          </Nuvo::FormActions>
         </form>
-      </div>
+      </Nuvo::Card>
 
       {{! Right: Operating Regions }}
       {{#if this.model.regions.length}}
-        <div
-          class="glass-panel p-6
-            {{unless this.isAdmin 'region-settings-readonly'}}"
+        <Nuvo::Card
+          class="{{unless this.isAdmin 'region-settings-readonly'}}"
           data-test-region-settings
         >
-          <h3 class="font-lg font-bold mb-2">Operating Regions</h3>
-          <p class="font-sm text-muted mb-4">
+          <h3 class="text-lg font-bold mb-2">Operating Regions</h3>
+          <p class="text-sm text-muted mb-4">
             Select regions where your company operates. Your
             {{or this.company.subscriptionTier "FREE"}}
             plan includes
@@ -458,21 +438,20 @@
 
           {{! Default Region (above the list) }}
           {{#if this.formActiveRegions.length}}
-            <div class="mb-4">
-              <Ui::FormDropdown
-                @label="Default Region"
-                @id="default-region"
+            <Nuvo::Field @label="Default Region" class="mb-4">
+              <Nuvo::Dropdown
+                @align="start"
                 @value={{this.formDefaultRegionCode}}
-                @onChange={{fn this.setField "formDefaultRegionCode"}}
+                @onSelect={{fn this.setFieldValue "formDefaultRegionCode"}}
                 @options={{this.activeRegionOptions}}
                 @placeholder="Select default region..."
                 @disabled={{not this.isAdmin}}
                 data-test-default-region
               />
-            </div>
+            </Nuvo::Field>
           {{/if}}
 
-          <p class="font-sm font-bold text-muted uppercase mb-3">Available
+          <p class="text-sm font-bold text-muted uppercase mb-3">Available
             Regions</p>
 
           {{#each this.model.groupedRegions as |group|}}
@@ -507,49 +486,43 @@
                 />
               </button>
               {{#if (includes this.expandedCountries group.country)}}
-                <div class="region-grid mt-2 mb-2 ml-2">
+                <div class="region-grid mt-2 mb-2 ms-2">
                   {{#each group.regions as |r|}}
                     <div
                       class="region-checkbox
                         {{unless this.isAdmin 'is-readonly'}}"
                       data-test-region-checkbox={{r.code}}
                     >
-                      <input
-                        type="checkbox"
+                      <Nuvo::Checkbox
                         id={{r.code}}
-                        checked={{includes this.formActiveRegions r.code}}
-                        disabled={{not this.isAdmin}}
-                        {{on "change" (fn this.toggleRegion r.code)}}
+                        @checked={{includes this.formActiveRegions r.code}}
+                        @disabled={{not this.isAdmin}}
+                        @label={{r.name}}
+                        @onChange={{fn this.toggleRegionChecked r.code}}
                       />
-                      <label for={{r.code}} class="region-check-label">
-                        {{r.name}}
-                        <span class="text-muted font-xs">({{r.currency}})</span>
-                      </label>
+                      <span class="text-muted text-xs">({{r.currency}})</span>
                     </div>
                   {{/each}}
                 </div>
               {{/if}}
             </div>
           {{/each}}
-        </div>
+        </Nuvo::Card>
       {{/if}}
     </div>
   {{/if}}
 {{else}}
-  <div
-    class="flex col gap-4 x-center y-center"
-    style="min-height: 40vh; text-align: center;"
+  <Nuvo::EmptyState
+    @title="No Company Data"
+    @description="Super Admins are not associated with any company. To view a specific company's settings, impersonate a Company Admin."
   >
-    <Ui::Ph @icon="buildings" @size="56px" @color="var(--text-muted)" />
-    <div>
-      <h3 class="font-xl font-bold">No Company Data</h3>
-      <p class="text-muted mt-2">Super Admins are not associated with any
-        company.<br />To view a specific company's settings, impersonate a
-        Company Admin.</p>
-    </div>
-    <LinkTo @route="team" class="btn btn-primary">
-      <Ui::Ph @icon="users" />
-      Go to Team
-    </LinkTo>
-  </div>
+    <:icon><Ui::Ph @icon="buildings" /></:icon>
+    <:actions>
+      <LinkTo @route="team" class="nu-btn m-primary">
+        <Ui::Ph @icon="users" />
+        Go to Team
+      </LinkTo>
+    </:actions>
+  </Nuvo::EmptyState>
 {{/if}}
+</div>

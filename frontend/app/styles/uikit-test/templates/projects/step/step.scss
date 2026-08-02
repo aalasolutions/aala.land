@@ -1,0 +1,276 @@
+@use "sass:color";
+
+.project-container {
+  display: flex;
+  justify-content: center;
+  flex-direction: column;
+  box-sizing: border-box;
+  width: 100%;
+  padding: 1rem 2rem 2rem 2rem;
+
+  .wrapper {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+
+    .step-header {
+      display: flex;
+      justify-content: center;
+    }
+
+    .stepper {
+      display: flex;
+      list-style: none;
+      padding: 0;
+      margin: 3rem 0;
+      position: relative;
+      justify-content: center;
+      width: 100%;
+      li {
+        position: relative;
+        text-align: center;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-direction: column;
+        width: 140px;
+
+        &.top {
+          flex-direction: column-reverse;
+          margin-bottom: 1rem;
+
+          .step-label {
+            padding-bottom: 0.5rem;
+          }
+        }
+
+        &.bottom {
+          flex-direction: column;
+          margin-top: 2.6rem;
+
+          .step-label {
+            padding-top: 0.5rem;
+          }
+        }
+
+        .circle-line-wrapper {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          position: relative;
+        }
+
+        .circle {
+          width: 12px;
+          height: 12px;
+          background-color: $border-color;
+          border: 3px solid $border-color;
+          border-radius: 50%;
+          z-index: 1;
+
+          transition: all 0.7s ease-in-out;
+          transform: scale(1);
+        }
+
+        .line {
+          position: absolute;
+          width: 140px;
+          height: 3px;
+          background-color: $border-color;
+          top: 45%;
+          left: 100%;
+          z-index: 0;
+        }
+
+        .step-label {
+          font-size: 14px;
+          color: $text-muted;
+          text-align: center;
+        }
+
+        &.active .circle,
+        &.completed .circle {
+          background-color: $white;
+          border: 3px solid $blue-500;
+
+          transform: scale(1.2);
+        }
+
+        &.active .step-label,
+        &.completed .step-label {
+          color: $blue-500;
+        }
+
+        &.active .line::before,
+        &.completed .line::after {
+          background-color: $blue-500;
+          animation: colorFill 1s forwards;
+        }
+      }
+    }
+
+    @media (max-width: 1210px) {
+      .stepper {
+        flex-direction: row;
+      }
+
+      .stepper li {
+        position: relative;
+        overflow: hidden;
+        z-index: 1;
+        background-color: $white;
+        padding: 1rem;
+        width: auto;
+        transition: color 0.3s ease;
+
+        &:last-child {
+          border-radius: 0 8px 8px 0;
+        }
+
+        &:first-child {
+          border-radius: 8px 0 0 8px;
+        }
+
+        &.top {
+          margin: 0;
+
+          .step-label {
+            padding: 0;
+            font-size: 14px;
+          }
+        }
+        &.bottom {
+          margin: 0;
+
+          .step-label {
+            padding: 0;
+            font-size: 14px;
+          }
+        }
+
+        .circle,
+        .line {
+          display: none;
+        }
+
+        &::before {
+          content: "";
+          position: absolute;
+          top: 0;
+          left: 0;
+          width: 0%;
+          height: 100%;
+          background-color: $blue-50;
+          z-index: -1;
+          transition: width 0.4s ease;
+        }
+
+        &.active::before,
+        &.completed::before {
+          width: 100%;
+          transition: 0.7s;
+        }
+
+        &.active,
+        &.completed {
+          color: $blue-500;
+          transition: 0.7s;
+        }
+      }
+    }
+
+    @media (max-width: 800px) {
+      .stepper {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+
+      .stepper li {
+        display: none;
+      }
+
+      .stepper li.active {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        background-color: transparent;
+        padding: 1rem 1.5rem;
+        border-radius: 12px;
+        width: 90%;
+        position: relative;
+        flex-direction: row;
+      }
+
+      .stepper li.active::before {
+        content: "";
+        position: absolute;
+        font-size: 12px;
+        color: $blue-500;
+        background-color: $blue-100;
+        padding: 2px 6px;
+        border-radius: 4px;
+      }
+
+      .stepper li.active .circle {
+        display: block;
+        width: 18px;
+        height: 18px;
+        min-width: 18px;
+        border: 3px solid $blue-500;
+        background-color: $white;
+        border-radius: 50%;
+      }
+
+      .stepper li.active .step-label {
+        font-size: 16px;
+        font-weight: 600;
+        color: $indigo-600;
+      }
+    }
+
+    @keyframes colorFill {
+      from {
+        width: 0%;
+      }
+      to {
+        width: 140px;
+      }
+    }
+
+    .form-actions {
+      display: flex;
+      justify-content: center;
+      gap: 1rem;
+      margin-top: 3rem;
+
+      button {
+        padding: 0.5rem 1.5rem;
+        font-size: 14px;
+        font-weight: 500;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: background 0.2s ease;
+
+        &:first-of-type {
+          background-color: $slate-200;
+          color: $dark-color;
+
+          &:hover {
+            background-color: $slate-300;
+          }
+        }
+
+        &:last-of-type {
+          background-color: $primary-color;
+          color: $white;
+
+          &:hover {
+            background-color: color.adjust($primary-color, $lightness: -10%);
+          }
+        }
+      }
+    }
+  }
+}

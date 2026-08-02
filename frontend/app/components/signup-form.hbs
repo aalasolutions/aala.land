@@ -4,98 +4,105 @@
   {{on "submit" this.submit}}
 >
   <div class="grid col gap-4">
-    <Ui::FormInput
-      @label="Company Name"
-      @id="signup-company"
-      @type="text"
-      @placeholder="Acme Real Estate"
-      @value={{this.companyName}}
-      @required={{true}}
-      @onChange={{fn this.updateField "companyName"}}
-      data-test-company-name
-    />
+    <Nuvo::Field @label="Company Name" @required={{true}}>
+      <Nuvo::Input
+        id="signup-company"
+        @type="text"
+        @placeholder="Acme Real Estate"
+        @value={{this.companyName}}
+        @onInput={{fn this.updateField "companyName"}}
+        required={{true}}
+        data-test-company-name
+      />
+    </Nuvo::Field>
 
     <div class="flex col gap-1 signup-slug-field">
-      <Ui::FormInput
-        @label="Company URL Slug"
-        @id="signup-slug"
-        @type="text"
-        @placeholder="acme-real-estate"
-        @value={{this.companySlug}}
-        @required={{true}}
-        @onChange={{fn this.updateField "companySlug"}}
-        data-test-company-slug
-      />
+      <Nuvo::Field @label="Company URL Slug" @required={{true}}>
+        <Nuvo::Input
+          id="signup-slug"
+          @type="text"
+          @placeholder="acme-real-estate"
+          @value={{this.companySlug}}
+          @onInput={{fn this.updateField "companySlug"}}
+          required={{true}}
+          data-test-company-slug
+        />
+      </Nuvo::Field>
       <p class="text-muted px-1 text-xs">Lowercase, numbers, and hyphens only.</p>
     </div>
   </div>
 
-  <Ui::FormDropdown
-    @label="Primary Operating Region"
-    @id="signup-region"
-    @value={{this.selectedRegion}}
-    @options={{this.regionOptions}}
-    @onChange={{this.selectRegion}}
-    @placeholder="Select your region..."
-    @required={{true}}
-    data-test-region-select
-  />
+  <Nuvo::Field @label="Primary Operating Region">
+    <Nuvo::Dropdown
+      @searchable={{true}}
+      @align="start"
+      @value={{this.selectedRegion}}
+      @options={{this.regionOptions}}
+      @onSelect={{this.selectRegion}}
+      @placeholder="Select your region..."
+      data-test-region-select
+    />
+  </Nuvo::Field>
 
   <hr class="border-white@10 my-1" />
 
   <div class="grid cols-2 gap-4">
-    <Ui::FormInput
-      @label="Your Name"
-      @id="signup-name"
-      @type="text"
-      @placeholder="Jane Smith"
-      @value={{this.userName}}
-      @required={{true}}
-      @onChange={{fn this.updateField "userName"}}
-      data-test-user-name
-    />
+    <Nuvo::Field @label="Your Name" @required={{true}}>
+      <Nuvo::Input
+        id="signup-name"
+        @type="text"
+        @placeholder="Jane Smith"
+        @value={{this.userName}}
+        @onInput={{fn this.updateField "userName"}}
+        required={{true}}
+        data-test-user-name
+      />
+    </Nuvo::Field>
 
-    <Ui::FormInput
-      @label="Email Address"
-      @id="signup-email"
-      @type="email"
-      @placeholder="jane@company.com"
-      @value={{this.email}}
-      @required={{true}}
-      @autocomplete="email"
-      @onChange={{fn this.updateField "email"}}
-      data-test-email-input
-    />
+    <Nuvo::Field @label="Email Address" @required={{true}}>
+      <Nuvo::Input
+        id="signup-email"
+        @type="email"
+        @placeholder="jane@company.com"
+        @value={{this.email}}
+        @autocomplete="email"
+        @onInput={{fn this.updateField "email"}}
+        required={{true}}
+        data-test-email-input
+      />
+    </Nuvo::Field>
   </div>
 
   <div class="grid cols-2 gap-4">
-    <Ui::FormInput
-      @label="Password"
-      @id="signup-password"
-      @type="password"
-      @placeholder="Min 8 characters"
-      @value={{this.password}}
-      @required={{true}}
-      @autocomplete="new-password"
-      @onChange={{fn this.updateField "password"}}
-      data-test-password-input
-    />
-    <Ui::FormInput
-      @label="Confirm Password"
-      @id="signup-confirm"
-      @type="password"
-      @placeholder="••••••••"
-      @value={{this.confirmPassword}}
-      @required={{true}}
-      @autocomplete="new-password"
-      @onChange={{fn this.updateField "confirmPassword"}}
-      data-test-confirm-password
-    />
+    <Nuvo::Field @label="Password" @required={{true}}>
+      <Nuvo::Input
+        id="signup-password"
+        @type="password"
+        @placeholder="Min 8 characters"
+        @value={{this.password}}
+        @autocomplete="new-password"
+        @onInput={{fn this.updateField "password"}}
+        required={{true}}
+        data-test-password-input
+      />
+    </Nuvo::Field>
+    <Nuvo::Field @label="Confirm Password" @required={{true}}>
+      <Nuvo::Input
+        id="signup-confirm"
+        @type="password"
+        @placeholder="••••••••"
+        @value={{this.confirmPassword}}
+        @autocomplete="new-password"
+        @onInput={{fn this.updateField "confirmPassword"}}
+        required={{true}}
+        data-test-confirm-password
+      />
+    </Nuvo::Field>
   </div>
 
   {{#if this.errorMessage}}
     <div
-      class="p-3 rounded-lg bg-danger@10 border border-danger@20 text-danger text-center font-sm"
+      class="p-3 rounded-lg bg-danger@10 border border-danger@20 text-danger text-center text-sm"
     >
       {{this.errorMessage}}
     </div>
@@ -119,7 +126,7 @@
 
   {{#if this.googleAuth.isConfigured}}
     <div class="divider">
-      <span class="text-muted font-sm">OR</span>
+      <span class="text-muted text-sm">OR</span>
     </div>
 
     {{#if this.canGoogleSignup}}

@@ -1,29 +1,31 @@
 {{page-title "Sign Up"}}
 
 <div data-test-signup-page class="login-page">
-  <div class="card p-10 flex col gap-8 signup-card">
-    <div class="text-center">
-      <h1 class="brand-title">AALA.LAND</h1>
-      <div class="signup-owner-pill mt-3">
-        <Ui::Ph @icon="briefcase" @size="14px" />
-        <span>Agency Owners Only</span>
+  <Nuvo::Card class="signup-card">
+    <div class="flex col gap-8">
+      <div class="text-center">
+        <Nuvo::Title @tag="h1" @size="2xl" @text="AALA.LAND" />
+        <div class="signup-owner-pill mt-3">
+          <Ui::Ph @icon="briefcase" @size="14px" />
+          <span>Agency Owners Only</span>
+        </div>
+        <p class="signup-invite-note">Agents and team members join from an
+          invite link.</p>
       </div>
-      <p class="signup-invite-note">Agents and team members join from an invite
-        link.</p>
-    </div>
 
-    <SignupForm
-      @regions={{this.model.regions}}
-      @grouped={{this.model.grouped}}
-      @countries={{this.model.countries}}
-      @marketerCode={{this.model.marketerCode}}
-    />
+      <SignupForm
+        @regions={{this.model.regions}}
+        @grouped={{this.model.grouped}}
+        @countries={{this.model.countries}}
+        @marketerCode={{this.model.marketerCode}}
+      />
 
-    <div class="text-center">
-      <p class="font-sm text-muted">
-        Already have an account?
-        <LinkTo @route="login" class="text-primary">Sign in</LinkTo>
-      </p>
+      <div class="text-center">
+        <p class="text-sm text-muted">
+          Already have an account?
+          <LinkTo @route="login" class="text-primary">Sign in</LinkTo>
+        </p>
+      </div>
     </div>
-  </div>
+  </Nuvo::Card>
 </div>

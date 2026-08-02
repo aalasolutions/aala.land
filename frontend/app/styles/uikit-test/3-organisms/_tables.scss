@@ -1,0 +1,290 @@
+// ============================================
+// ORGANISMS: Tables
+// ============================================
+// Data tables with sorting, pagination, actions.
+
+@use '../nuvoui' as Nuvo;
+@use '../variables' as *;
+
+// ============================================
+// Table Base
+// ============================================
+
+.table {
+  @include Nuvo.apply(w-full, font-size(sm));
+  border-collapse: collapse;
+
+  th,
+  td {
+    @include Nuvo.apply(py(3), px(4), text-left, align-middle);
+  }
+
+  th {
+    @include Nuvo.apply(font(semibold), font-size(xs), uppercase);
+    color: $text-secondary;
+    letter-spacing: 0.03em;
+    background-color: Nuvo.get-color(gray, 50);
+    border-bottom: 1px solid $border-color;
+  }
+
+  td {
+    color: $text-primary;
+    border-bottom: 1px solid $border-color;
+  }
+
+  tbody tr:last-child td {
+    border-bottom: none;
+  }
+}
+
+// ============================================
+// Table Variants
+// ============================================
+
+.table--striped {
+  tbody tr:nth-child(even) {
+    background-color: Nuvo.get-color(gray, 50);
+  }
+}
+
+.table--hover {
+  tbody tr {
+    @include Nuvo.apply(transition, duration(150));
+
+    &:hover {
+      background-color: Nuvo.get-color(gray, 50);
+    }
+  }
+}
+
+.table--bordered {
+  @include Nuvo.apply(rounded(md), overflow-hidden);
+  border: 1px solid $border-color;
+
+  th,
+  td {
+    border: 1px solid $border-color;
+  }
+}
+
+.table--compact {
+  th,
+  td {
+    @include Nuvo.apply(py(2), px(3));
+  }
+}
+
+// ============================================
+// Table Cell Variants
+// ============================================
+
+.table-cell--nowrap {
+  @include Nuvo.apply(whitespace-nowrap);
+}
+
+.table-cell--truncate {
+  @include Nuvo.apply(truncate, whitespace-nowrap);
+  max-width: 200px;
+}
+
+.table-cell--center {
+  @include Nuvo.apply(text-center);
+}
+
+.table-cell--right {
+  @include Nuvo.apply(text-right);
+}
+
+.table-cell--number {
+  @include Nuvo.apply(text-right);
+  font-variant-numeric: tabular-nums;
+}
+
+.table-cell--actions {
+  @include Nuvo.apply(whitespace-nowrap, text-right);
+  width: 1%;
+}
+
+// ============================================
+// Sortable Header
+// ============================================
+
+.table-sortable {
+  th.sortable {
+    @include Nuvo.apply(cursor(pointer), transition, duration(150));
+    user-select: none;
+
+    &:hover {
+      color: $text-primary;
+    }
+
+    .sort-icon {
+      @include Nuvo.apply(ml(1.5), opacity(30), transition, duration(150));
+    }
+
+    &.sorted {
+      color: $primary-color;
+
+      .sort-icon {
+        @include Nuvo.apply(opacity(100));
+        color: $primary-color;
+      }
+    }
+  }
+}
+
+// ============================================
+// Table Actions
+// ============================================
+
+.table-button {
+  @include Nuvo.apply(
+    flex-inline, center, x-center, gap(1.5),
+    py(1.5), px(3),
+    font-size(xs), font(medium),
+    rounded(xs), cursor(pointer),
+    transition, duration(150)
+  );
+  color: $text-secondary;
+  background-color: Nuvo.get-color(gray, 100);
+  border: none;
+
+  &:hover {
+    background-color: Nuvo.get-color(gray, 200);
+    color: $text-primary;
+  }
+
+  &.table-button--primary {
+    background-color: rgba($primary-color, 0.1);
+    color: $primary-color;
+
+    &:hover {
+      background-color: rgba($primary-color, 0.15);
+    }
+  }
+
+  &.table-button--danger {
+    color: $error-color;
+
+    &:hover {
+      background-color: rgba($error-color, 0.1);
+    }
+  }
+}
+
+// ============================================
+// Empty State
+// ============================================
+
+.table-empty {
+  @include Nuvo.apply(text-center, py(12), px(4));
+
+  .table-empty__icon {
+    @include Nuvo.apply(mb(4));
+    font-size: 2.5rem;
+    color: Nuvo.get-color(gray, 300);
+  }
+
+  .table-empty__title {
+    @include Nuvo.apply(font-size(base), font(semibold), mb(2));
+    color: $text-primary;
+  }
+
+  .table-empty__description {
+    @include Nuvo.apply(font-size(sm), mb(6));
+    color: $text-secondary;
+  }
+}
+
+// ============================================
+// Loading State
+// ============================================
+
+.table-loading {
+  @include Nuvo.apply(relative);
+  min-height: 200px;
+
+  &::after {
+    content: '';
+    @include Nuvo.apply(absolute, inset(0), flex, center, x-center);
+    background-color: rgba($white, 0.8);
+  }
+
+  .table-loading__spinner {
+    @include Nuvo.apply(absolute, z-base);
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+  }
+}
+
+// ============================================
+// Table Container (responsive)
+// ============================================
+
+.table-container {
+  @include Nuvo.apply(overflow-x-auto, rounded(md));
+  border: 1px solid $border-color;
+
+  .table {
+    @include Nuvo.apply(m(0));
+  }
+
+  th:first-child,
+  td:first-child {
+    @include Nuvo.apply(pl(5));
+  }
+
+  th:last-child,
+  td:last-child {
+    @include Nuvo.apply(pr(5));
+  }
+}
+
+// ============================================
+// Table Pagination
+// ============================================
+
+.table-pagination {
+  @include Nuvo.apply(flex, x-center, between, py(4));
+  font-size: 0.8125rem;
+  color: $text-secondary;
+
+  .table-pagination__info {
+    @include Nuvo.apply(flex, x-center, gap(2));
+  }
+
+  .table-pagination__controls {
+    @include Nuvo.apply(flex, x-center, gap(1));
+  }
+
+  .table-pagination__btn {
+    @include Nuvo.apply(
+      flex, center, x-center,
+      min-width(8), height(8),
+      px(2),
+      rounded(xs), cursor(pointer),
+      transition, duration(150)
+    );
+    font-size: 0.8125rem;
+    color: $text-secondary;
+    background-color: transparent;
+    border: 1px solid $border-color;
+
+    &:hover:not(:disabled) {
+      background-color: Nuvo.get-color(gray, 50);
+      border-color: Nuvo.get-color(gray, 300);
+    }
+
+    &:disabled {
+      @include Nuvo.apply(opacity(50));
+      cursor: not-allowed;
+    }
+
+    &.active {
+      background-color: $primary-color;
+      border-color: $primary-color;
+      color: $white;
+    }
+  }
+}

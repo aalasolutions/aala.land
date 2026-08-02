@@ -1,0 +1,211 @@
+// ===================================
+// Auth Components (ported from Astro Frontend)
+// ===================================
+@use '../nuvoui' as Nuvo;
+
+// ===================================
+// Container (scoped override for auth pages)
+// ===================================
+.auth-footer .container,
+.auth-navigation .container {
+  max-width: 1200px !important;
+  margin: 0 auto;
+  padding: 0 1.5rem !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+
+  @include Nuvo.media-down(768px) {
+    padding: 0 1rem !important;
+  }
+}
+
+// ===================================
+// Button System
+// ===================================
+.btn {
+  @include Nuvo.apply(
+    inline-block,
+    py(0.875rem),
+    px(2rem),
+    rounded(0.5rem),
+    text-center,
+    transition,
+    duration(300ms),
+    font(600),
+    no-underline
+  );
+  border: none;
+  cursor: pointer;
+  font-size: 0.875rem;
+  text-decoration: none;
+
+  &:hover {
+    transform: translateY(-2px);
+  }
+
+  &--primary {
+    background: $gradient-teal;
+    color: white;
+
+    &:hover {
+      box-shadow: 0 8px 16px rgba($accent-teal, 0.3);
+    }
+  }
+
+  &--secondary {
+    background: transparent;
+    color: $accent-teal;
+    border: 2px solid $accent-teal;
+
+    &:hover {
+      background: $accent-teal;
+      color: white;
+    }
+  }
+
+  &--danger {
+    background: $gradient-red;
+    color: white;
+
+    &:hover {
+      box-shadow: 0 8px 16px rgba($accent-red, 0.3);
+    }
+  }
+
+  &--block {
+    @include Nuvo.apply(block, w-full);
+  }
+
+  &--large {
+    @include Nuvo.apply(py(1.125rem), px(3rem));
+    font-size: 1.125rem;
+  }
+
+  &--small {
+    @include Nuvo.apply(py(0.625rem), px(1.5rem));
+    font-size: 0.875rem;
+  }
+
+  &--google {
+    @include Nuvo.apply(flex, center, x-center, gap(0.75rem));
+    background: white;
+    color: $text-primary;
+    border: 1px solid #e5e7eb;
+
+    &:hover {
+      background: $bg-gray;
+    }
+
+    img {
+      width: 20px;
+      height: 20px;
+    }
+  }
+}
+
+
+.form-row {
+  @include Nuvo.apply(grid, cols(2), gap(1rem));
+
+  @include Nuvo.media-down(sm) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.checkbox-label {
+  @include Nuvo.apply(flex, gap(0.5rem));
+  align-items: flex-start;
+  font-size: 0.7rem;
+  color: $text-secondary;
+
+  input[type="checkbox"] {
+    margin-top: 2px;
+  }
+
+  a {
+    color: $accent-teal;
+    text-decoration: none;
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+}
+
+.divider {
+  @include Nuvo.apply(my(1.5rem));
+  position: relative;
+  text-align: center;
+
+  span {
+    @include Nuvo.apply(px(1rem));
+    background: white;
+    color: $text-muted;
+    font-size: 0.85rem;
+    position: relative;
+    z-index: 1;
+  }
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: #e5e7eb;
+  }
+}
+
+// ===================================
+// Typography for Auth Pages
+// ===================================
+.auth-page {
+  h1 {
+    @include Nuvo.apply(font-size(2.25rem), mb(1rem));
+    font-weight: 700;
+    color: $text-primary;
+    line-height: 1.2;
+
+    @include Nuvo.media-down(768px) {
+      @include Nuvo.apply(font-size(1.5rem));
+    }
+  }
+
+  h2 {
+    @include Nuvo.apply(font-size(1.25rem), mb(1rem));
+    font-weight: 700;
+    color: $text-primary;
+    line-height: 1.3;
+
+    @include Nuvo.media-down(768px) {
+      @include Nuvo.apply(font-size(1rem));
+    }
+  }
+
+  p {
+    @include Nuvo.apply(mb(1rem));
+    color: $text-secondary;
+    line-height: 1.6;
+    font-size: 0.85rem;
+  }
+
+  .lead {
+    @include Nuvo.apply(font-size(1rem));
+    color: $text-secondary;
+    line-height: 1.6;
+
+    @include Nuvo.media-down(768px) {
+      @include Nuvo.apply(font-size(0.875rem));
+    }
+  }
+
+  a {
+    color: $accent-teal;
+    text-decoration: none;
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+}

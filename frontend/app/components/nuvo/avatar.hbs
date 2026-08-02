@@ -1,0 +1,13 @@
+<span class={{this.classes}} data-test-nu-avatar ...attributes>
+  {{#if this.hasImage}}
+    <img class="nu-avatar__image" src={{@src}} alt={{@alt}} data-test-nu-avatar-image />
+  {{else if this.hasInitials}}
+    <span class="nu-avatar__initials" data-test-nu-avatar-initials>{{@initials}}</span>
+  {{else if this.hasIcon}}
+    <span class="nu-avatar__icon" aria-hidden="true" data-test-nu-avatar-icon>{{@icon}}</span>
+  {{/if}}
+
+  {{#if this.hasStatus}}
+    <span class="nu-avatar__status" data-test-nu-avatar-status></span>
+  {{/if}}
+</span>

@@ -1,0 +1,143 @@
+// nu-avatar - user/entity image or initials representation
+@use "sass:map";
+@use "./mixins/bem" as *;
+@use "./mixins/var" as *;
+@use "./common/var" as *;
+
+@include b(avatar) {
+  @include nu-root("avatar", (
+    "Size": 2.5rem,
+    "FontSize": nu-font-size(sm),
+    "Color": var(--text-inverted),
+    "BackgroundColor": var(--secondary),
+    "BorderRadius": nu-radius(full),
+    "BorderWidth": 1px,
+    "BorderColor": var(--border-base),
+    "StatusSize": 0.625rem,
+    "StatusBorderColor": var(--bg-surface),
+    "StatusColor": var(--success),
+  ));
+
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  inline-size: nu-var("avatar", "Size");
+  block-size: nu-var("avatar", "Size");
+  font-size: nu-var("avatar", "FontSize");
+  font-weight: nu-font-weight(semibold);
+  color: nu-var("avatar", "Color");
+  background-color: nu-var("avatar", "BackgroundColor");
+  border: nu-var("avatar", "BorderWidth") solid nu-var("avatar", "BorderColor");
+  border-radius: nu-var("avatar", "BorderRadius");
+  overflow: hidden;
+  vertical-align: middle;
+
+  // A status dot sits half-outside the circle, so the avatar must not clip.
+  // The image clips itself instead (see __image below).
+  &:has(> .nu-avatar__status) {
+    overflow: visible;
+  }
+
+  // ---- elements ----
+
+  @include e(image) {
+    inline-size: 100%;
+    block-size: 100%;
+    object-fit: cover;
+
+    // Clips itself so the avatar can stay overflow:visible for the status dot.
+    border-radius: inherit;
+  }
+
+  @include e(initials) {
+    line-height: 1;
+    text-transform: uppercase;
+    user-select: none;
+  }
+
+  @include e(icon) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1em;
+    line-height: 1;
+  }
+
+  @include e(status) {
+    @include nu-root-el("avatar", "status", (
+      "TransitionDuration": nu-duration(fast),
+    ));
+
+    position: absolute;
+    inset-block-end: 0;
+    inset-inline-end: 0;
+    inline-size: nu-var("avatar", "StatusSize");
+    block-size: nu-var("avatar", "StatusSize");
+    background-color: nu-var("avatar", "StatusColor");
+    border: 2px solid nu-var("avatar", "StatusBorderColor");
+    border-radius: nu-radius(full);
+    transition: background-color nu-var-el("avatar", "status", "TransitionDuration") $nu-ease;
+
+    @include reduced-motion {
+      transition: none;
+    }
+  }
+
+  // ---- shape ----
+
+  @include m(square) {
+    --nu-avatar--BorderRadius: #{nu-radius(md)};
+  }
+
+  // ---- sizes: uniform, looped ----
+
+  $nu-avatar-sizes: (
+    "xs": ("Size": 1.5rem, "FontSize": nu-font-size(xs), "StatusSize": 0.5rem),
+    "sm": ("Size": 2rem, "FontSize": nu-font-size(xs), "StatusSize": 0.5625rem),
+    "md": ("Size": 2.5rem, "FontSize": nu-font-size(sm), "StatusSize": 0.625rem),
+    "lg": ("Size": 3rem, "FontSize": nu-font-size(md), "StatusSize": 0.75rem),
+    "xl": ("Size": 4rem, "FontSize": nu-font-size(xl), "StatusSize": 0.875rem),
+  );
+
+  @each $size, $spec in $nu-avatar-sizes {
+    &.m-#{$size} {
+      @each $token, $value in $spec {
+        --nu-avatar--#{$token}: #{$value};
+      }
+    }
+  }
+
+  // ---- status color variants: uniform, looped ----
+
+  @each $variant in (primary, secondary, success, warning, danger, info) {
+    &.m-status-#{$variant} {
+      --nu-avatar--StatusColor: var(--#{$variant});
+    }
+  }
+}
+
+// Overlapping horizontal stack of avatars
+@include b(avatar-group) {
+  @include nu-root("avatar-group", (
+    "Overlap": -0.625rem,
+    "BorderColor": var(--bg-surface),
+  ));
+
+  display: inline-flex;
+  align-items: center;
+
+  .nu-avatar {
+    border-color: nu-var("avatar-group", "BorderColor");
+    margin-inline-start: nu-var("avatar-group", "Overlap");
+
+    &:first-child {
+      margin-inline-start: 0;
+    }
+  }
+
+  @include m(compact) {
+    --nu-avatar-group--Overlap: -1rem;
+  }
+}

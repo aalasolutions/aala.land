@@ -1,0 +1,45 @@
+<div
+  style="position: relative; display: inline-block;"
+  data-test-nu-popover
+  {{did-insert this.registerRoot}}
+  {{on "keydown" this.onKeydown}}
+  ...attributes
+>
+  {{yield this.toggle this.isOpen to="trigger"}}
+
+  <div
+    class={{this.classes}}
+    role="dialog"
+    aria-labelledby={{if @title this.titleId}}
+    data-test-nu-popover-content
+  >
+    <span class="nu-popover__arrow" aria-hidden="true"></span>
+
+    {{#if @title}}
+      <div class="nu-popover__header">
+        <h3 id={{this.titleId}} class="nu-popover__title" data-test-nu-popover-title>
+          {{@title}}
+        </h3>
+        <button
+          type="button"
+          class="nu-popover__close"
+          aria-label="Close"
+          data-test-nu-popover-close
+          {{on "click" this.close}}
+        >
+          ✕
+        </button>
+      </div>
+    {{/if}}
+
+    <div class="nu-popover__body" data-test-nu-popover-body>
+      {{yield to="body"}}
+    </div>
+
+    {{#if (has-block "footer")}}
+      <div class="nu-popover__footer" data-test-nu-popover-footer>
+        {{yield to="footer"}}
+      </div>
+    {{/if}}
+  </div>
+</div>

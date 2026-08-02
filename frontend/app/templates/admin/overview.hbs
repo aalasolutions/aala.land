@@ -1,14 +1,9 @@
 {{page-title "Overview"}}
 
-<div class="page-header">
-  <div class="page-title-section">
-    <h1 class="page-title"><Ui::Ph @icon="gauge" @size="28px" /> Overview</h1>
-    <p class="page-subtitle">The business at a glance.</p>
-  </div>
-</div>
+<Nuvo::PageHeader @title="Overview" @subtitle="The business at a glance." />
 
 {{! Hero band: MRR / ARR with per-currency chips }}
-<div class="glass-panel p-6 console-hero" data-test-overview-hero>
+<Nuvo::Card class="console-hero" data-test-overview-hero>
   {{#if this.hasRevenue}}
     <div class="console-hero__figures">
       <div class="console-hero__figure">
@@ -41,30 +36,30 @@
     {{/if}}
   {{else}}
     <div class="console-hero__empty">
-      <p class="kpi-label">MRR</p>
+      <p class="console-hero__label">MRR</p>
       <h2 class="console-hero__value">No revenue yet</h2>
-      <p class="font-sm text-muted mt-1">Close the first deal to light this up.</p>
+      <p class="text-sm text-muted mt-1">Close the first deal to light this up.</p>
     </div>
   {{/if}}
-</div>
+</Nuvo::Card>
 
 {{! Extensible tile grid }}
-<div class="kpi-grid mt-6">
+<div class="console-tiles mt-6">
   {{#each this.tiles as |tile|}}
-    <div class="kpi-card {{tile.accent}}" data-test-overview-tile={{tile.key}}>
-      <div class="kpi-icon-wrap {{tile.iconAccent}}">
-        <Ui::Ph @icon={{tile.icon}} @size="22px" />
-      </div>
-      <p class="kpi-label">{{tile.label}}</p>
-      <h3 class="kpi-value">{{tile.value}}</h3>
-    </div>
+    <Nuvo::Stat
+      @label={{tile.label}}
+      @value={{tile.value}}
+      data-test-overview-tile={{tile.key}}
+    >
+      <:icon><Ui::Ph @icon={{tile.icon}} @size="22px" /></:icon>
+    </Nuvo::Stat>
   {{/each}}
 </div>
 
 <div class="console-rollups mt-6">
   {{! By region }}
-  <div class="glass-panel p-6" data-test-overview-regions>
-    <h3 class="font-lg font-bold mb-4">By region</h3>
+  <Nuvo::Card data-test-overview-regions>
+    <h3 class="text-lg font-bold mb-4">By region</h3>
     {{#if this.regions.length}}
       <div class="flex col gap-3">
         {{#each this.regions as |region|}}
@@ -83,14 +78,14 @@
     {{else}}
       <p class="text-muted">No companies yet.</p>
     {{/if}}
-  </div>
+  </Nuvo::Card>
 
   {{! Upcoming manual payments }}
-  <div class="glass-panel p-6" data-test-overview-upcoming-payments>
-    <h3 class="font-lg font-bold mb-4">Upcoming manual payments</h3>
+  <Nuvo::Card data-test-overview-upcoming-payments>
+    <h3 class="text-lg font-bold mb-4">Upcoming manual payments</h3>
     {{#if this.upcomingRows.length}}
-      <div class="data-table-wrapper">
-        <table class="data-table">
+      <div class="nu-table-wrapper">
+        <table class="nu-table">
           <thead>
             <tr>
               <th>Company</th>
@@ -109,7 +104,7 @@
                   }}</td>
                 <td>
                   {{#if row.overdue}}
-                    <span class="status-badge status-failed">Overdue</span>
+                    <Nuvo::Tag class="badge-txn-failed" @text="Overdue" />
                   {{else}}
                     {{format-date row.coversEnd}}
                   {{/if}}
@@ -131,5 +126,5 @@
         {{this.upcomingDays}}
         days.</p>
     {{/if}}
-  </div>
+  </Nuvo::Card>
 </div>

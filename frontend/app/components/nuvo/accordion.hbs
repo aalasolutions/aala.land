@@ -1,0 +1,31 @@
+{{! Block param is `entry`, never `item` shadowing risk avoided by not using `item` as tag name - safe here but kept explicit for consistency. }}
+<div class={{this.classes}} data-test-nu-accordion ...attributes>
+  {{#each this.items as |entry|}}
+    <div
+      class="nu-accordion__item {{if entry.expanded 'is-expanded'}} {{if entry.disabled 'is-disabled'}}"
+      data-test-nu-accordion-item={{entry.id}}
+    >
+      <button
+        type="button"
+        class="nu-accordion__trigger {{if entry.disabled 'is-disabled'}}"
+        aria-expanded={{if entry.expanded "true" "false"}}
+        disabled={{entry.disabled}}
+        data-test-nu-accordion-trigger={{entry.id}}
+        {{on "click" (fn this.toggle entry)}}
+      >
+        <span>{{entry.title}}</span>
+        <span class="nu-accordion__icon" aria-hidden="true">▸</span>
+      </button>
+
+      <div class="nu-accordion__panel" data-test-nu-accordion-panel={{entry.id}}>
+        <div class="nu-accordion__content">
+          {{#if (has-block)}}
+            {{yield entry}}
+          {{else}}
+            {{entry.content}}
+          {{/if}}
+        </div>
+      </div>
+    </div>
+  {{/each}}
+</div>

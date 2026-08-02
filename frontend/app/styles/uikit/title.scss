@@ -1,0 +1,131 @@
+// nu-title - heading and body text primitives
+@use "./mixins/bem" as *;
+@use "./mixins/var" as *;
+@use "./common/var" as *;
+
+@include b(title) {
+  @include nu-root("title", (
+    "FontSize": nu-font-size(2xl),
+    "FontWeight": nu-font-weight(bold),
+    "LineHeight": 1.25,
+    "Color": var(--text-color),
+  ));
+
+  display: block;
+  margin: 0;
+  font-size: nu-var("title", "FontSize");
+  font-weight: nu-var("title", "FontWeight");
+  line-height: nu-var("title", "LineHeight");
+  color: nu-var("title", "Color");
+
+  // ---- size scale: uniform, looped ----
+
+  $nu-title-sizes: (
+    "xs": nu-font-size(xs),
+    "sm": nu-font-size(sm),
+    "md": nu-font-size(md),
+    "lg": nu-font-size(lg),
+    "xl": nu-font-size(xl),
+    "2xl": nu-font-size(2xl),
+    "3xl": nu-font-size(3xl),
+  );
+
+  @each $size, $value in $nu-title-sizes {
+    @include m(#{$size}) {
+      --nu-title--FontSize: #{$value};
+    }
+  }
+
+  // ---- weight modifiers: uniform, looped ----
+
+  $nu-title-weights: (normal, medium, semibold, bold);
+
+  @each $weight in $nu-title-weights {
+    @include m(#{$weight}) {
+      --nu-title--FontWeight: #{nu-font-weight($weight)};
+    }
+  }
+
+  @include m(truncate) {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+}
+
+// Body copy
+@include b(text) {
+  @include nu-root("text", (
+    "FontSize": nu-font-size(md),
+    "FontWeight": nu-font-weight(normal),
+    "LineHeight": 1.5,
+    "Color": var(--text-color),
+  ));
+
+  display: block;
+  margin: 0;
+  font-size: nu-var("text", "FontSize");
+  font-weight: nu-var("text", "FontWeight");
+  line-height: nu-var("text", "LineHeight");
+  color: nu-var("text", "Color");
+
+  // ---- size scale: uniform, looped ----
+
+  $nu-text-sizes: (
+    "xs": nu-font-size(xs),
+    "sm": nu-font-size(sm),
+    "md": nu-font-size(md),
+    "lg": nu-font-size(lg),
+    "xl": nu-font-size(xl),
+  );
+
+  @each $size, $value in $nu-text-sizes {
+    @include m(#{$size}) {
+      --nu-text--FontSize: #{$value};
+    }
+  }
+
+  // ---- weight modifiers ----
+
+  @each $weight in (normal, medium, semibold, bold) {
+    @include m(#{$weight}) {
+      --nu-text--FontWeight: #{nu-font-weight($weight)};
+    }
+  }
+
+  // ---- color variants: uniform, looped ----
+
+  @each $variant in $nu-variants {
+    @include m(#{$variant}) {
+      --nu-text--Color: var(--#{$variant});
+    }
+  }
+
+  @include m(muted) {
+    --nu-text--Color: var(--text-muted);
+  }
+
+  @include m(subtle) {
+    --nu-text--Color: var(--text-subtle);
+  }
+
+  @include m(truncate) {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  @include m(clamp-2) {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  @include m(clamp-3) {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+  }
+}

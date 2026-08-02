@@ -12,7 +12,7 @@
       {{on "blur" this.onBlur}}
     />
     {{#if this.isSearching}}
-      <span class="typeahead-spinner font-xs text-muted">...</span>
+      <span class="typeahead-spinner text-xs text-muted">...</span>
     {{/if}}
   </div>
 
@@ -63,7 +63,7 @@
 
       {{#if (and (eq this.uniqueResults.length 0) (not this.isSearching))}}
         {{#unless this.canCreate}}
-          <div class="typeahead-item text-muted font-xs">No matches found</div>
+          <div class="typeahead-item text-muted text-xs">No matches found</div>
         {{/unless}}
       {{/if}}
     </div>

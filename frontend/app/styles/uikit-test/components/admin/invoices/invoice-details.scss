@@ -1,0 +1,427 @@
+.invoice-view {
+  width: 100%;
+  margin: 0 auto;
+  padding: 2rem;
+  background: $white;
+  box-sizing: border-box;
+
+  .loading-state,
+  .error-state {
+    text-align: center;
+    padding: 3rem;
+
+    .spinner {
+      width: 32px;
+      height: 32px;
+      border: 3px solid $bg-gray;
+      border-top: 3px solid $blue-500;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 1rem;
+    }
+
+    p {
+      color: $secondary-color;
+      margin: 0;
+    }
+  }
+
+  .invoice-content {
+    .invoice-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      padding-bottom: 2rem;
+      margin-bottom: 2rem;
+      border-bottom: 2px solid $slate-50;
+
+      .invoice-title {
+        h1 {
+          margin: 0 0 0.75rem 0;
+          font-size: 2rem;
+          font-weight: 700;
+          color: $dark-color;
+        }
+
+      }
+
+      .invoice-amount {
+        text-align: right;
+
+        .amount-label {
+          font-size: 0.85rem;
+          color: $secondary-color;
+          margin-bottom: 0.25rem;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+        }
+
+        .amount-value {
+          font-size: 2.25rem;
+          font-weight: 700;
+          color: $success-color;
+        }
+      }
+    }
+
+    .invoice-body {
+      .info-section {
+        margin-bottom: 2rem;
+
+        .info-row {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 2rem;
+          margin-bottom: 1.5rem;
+
+          &:last-child {
+            margin-bottom: 0;
+          }
+
+          .info-item {
+            label {
+              display: block;
+              font-size: 0.8rem;
+              font-weight: 600;
+              color: $secondary-color;
+              text-transform: uppercase;
+              letter-spacing: 0.5px;
+              margin-bottom: 0.5rem;
+            }
+
+            .value {
+              font-size: 1rem;
+              color: $dark-color;
+              font-weight: 500;
+
+              .billing-badge {
+                display: inline-block;
+                padding: 0.25rem 0.75rem;
+                border-radius: 12px;
+                font-size: 0.75rem;
+                font-weight: 600;
+                text-transform: capitalize;
+                background: $blue-50;
+                color: $blue-600;
+              }
+            }
+          }
+        }
+      }
+
+      .items-section {
+        margin-bottom: 2rem;
+
+        h3 {
+          font-size: 1.25rem;
+          font-weight: 600;
+          color: $dark-color;
+          margin: 0 0 1.5rem 0;
+          padding-bottom: 0.75rem;
+          border-bottom: 1px solid $border-color;
+        }
+
+        .items-list {
+          .item-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            padding: 1.25rem 0;
+            border-bottom: 1px solid $slate-50;
+
+            &:last-child {
+              border-bottom: none;
+            }
+
+            .item-info {
+              flex: 1;
+
+              .item-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: flex-start;
+                margin-bottom: 0.5rem;
+
+                .item-title {
+                  font-size: 1rem;
+                  font-weight: 600;
+                  color: $dark-color;
+                  flex: 1;
+                }
+
+                .credits-info {
+                  background: $blue-50;
+                  color: $blue-600;
+                  padding: 0.25rem 0.5rem;
+                  border-radius: 12px;
+                  font-size: 0.75rem;
+                  font-weight: 600;
+                  white-space: nowrap;
+                }
+              }
+
+              .item-description,
+              .item-notes {
+                font-size: 0.9rem;
+                color: $text-secondary;
+                line-height: 1.4;
+                margin-bottom: 0.25rem;
+
+                &:last-child {
+                  margin-bottom: 0;
+                }
+
+                .text-label {
+                  font-weight: 600;
+                  color: $secondary-color;
+                  font-size: 0.8rem;
+                }
+              }
+            }
+
+            .item-amount {
+              font-size: 1.1rem;
+              font-weight: 700;
+              color: $dark-color;
+              margin-left: 1rem;
+            }
+          }
+        }
+      }
+
+      .invoice-summary {
+        margin-bottom: 2rem;
+        border: 1px solid $border-color;
+        border-radius: 8px;
+        overflow: hidden;
+
+        .summary-item {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 1rem 1.5rem;
+          border-bottom: 1px solid $slate-100;
+
+          &:last-of-type {
+            border-bottom: none;
+          }
+
+          .summary-label {
+            font-size: 0.9rem;
+            color: $secondary-color;
+            font-weight: 500;
+          }
+
+          .summary-value {
+            font-size: 1rem;
+            color: $dark-color;
+            font-weight: 600;
+
+            &.discount {
+              color: $error-color;
+            }
+          }
+
+          &.discount-item {
+            background: $red-50;
+          }
+        }
+
+        .summary-total {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 1.25rem 1.5rem;
+          background: $slate-50;
+          border-top: 2px solid $slate-300;
+
+          .total-label {
+            font-size: 1.1rem;
+            color: $dark-color;
+            font-weight: 700;
+          }
+
+          .total-amount {
+            font-size: 1.5rem;
+            color: $success-color;
+            font-weight: 700;
+          }
+        }
+      }
+
+      .project-section {
+        margin-bottom: 2rem;
+
+        h3 {
+          font-size: 1.25rem;
+          font-weight: 600;
+          color: $dark-color;
+          margin: 0 0 1rem 0;
+        }
+
+        .project-info {
+          background: $slate-50;
+          padding: 1.5rem;
+          border-radius: 6px;
+          border-left: 4px solid $blue-500;
+
+          .project-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin-bottom: 1.5rem;
+
+            &:last-child {
+              margin-bottom: 0;
+            }
+
+            .project-item {
+              &.full-width {
+                grid-column: 1 / -1;
+              }
+
+              label {
+                display: block;
+                font-size: 0.8rem;
+                font-weight: 600;
+                color: $secondary-color;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                margin-bottom: 0.5rem;
+              }
+
+              .project-value {
+                font-size: 0.9rem;
+                color: $dark-color;
+                font-weight: 500;
+
+                &.api-key {
+                  font-family: 'Courier New', monospace;
+                  background: $border-color;
+                  padding: 0.25rem 0.5rem;
+                  border-radius: 4px;
+                  font-size: 0.8rem;
+                }
+
+
+                .billing-badge {
+                  display: inline-block;
+                  padding: 0.25rem 0.75rem;
+                  border-radius: 12px;
+                  font-size: 0.75rem;
+                  font-weight: 600;
+                  text-transform: capitalize;
+                  background: $blue-50;
+                  color: $blue-600;
+                }
+              }
+            }
+          }
+        }
+      }
+
+      .period-section {
+        margin-bottom: 2rem;
+
+        h3 {
+          font-size: 1.25rem;
+          font-weight: 600;
+          color: $dark-color;
+          margin: 0 0 1rem 0;
+        }
+
+        .period-details {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 2rem;
+          background: $slate-50;
+          padding: 1.5rem;
+          border-radius: 6px;
+          border-left: 4px solid $blue-500;
+
+          .period-item {
+            label {
+              display: block;
+              font-size: 0.8rem;
+              font-weight: 600;
+              color: $secondary-color;
+              text-transform: uppercase;
+              letter-spacing: 0.5px;
+              margin-bottom: 0.5rem;
+            }
+
+            .period-value {
+              font-size: 1rem;
+              color: $dark-color;
+              font-weight: 500;
+            }
+          }
+        }
+      }
+    }
+
+    .invoice-footer {
+      text-align: center;
+      padding-top: 2rem;
+      border-top: 1px solid $border-color;
+    }
+  }
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 768px) {
+  .invoice-view {
+    padding: 1rem;
+
+    .invoice-content {
+      .invoice-header {
+        flex-direction: column;
+        gap: 1.5rem;
+
+        .invoice-amount {
+          text-align: left;
+
+          .amount-value {
+            font-size: 1.75rem;
+          }
+        }
+      }
+
+      .invoice-body {
+        .info-section .info-row {
+          grid-template-columns: 1fr;
+          gap: 1rem;
+        }
+
+        .items-section .items-list .item-row {
+          flex-direction: column;
+          gap: 0.75rem;
+          align-items: flex-start;
+
+          .item-amount {
+            margin-left: 0;
+            font-size: 1.25rem;
+          }
+        }
+
+        .period-section .period-details {
+          grid-template-columns: 1fr;
+          gap: 1rem;
+        }
+
+        .project-section .project-info .project-row {
+          grid-template-columns: 1fr;
+          gap: 1rem;
+        }
+      }
+    }
+  }
+}

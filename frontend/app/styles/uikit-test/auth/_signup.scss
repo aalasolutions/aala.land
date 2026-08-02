@@ -1,0 +1,213 @@
+// ===================================
+// Signup Page Styles (ported from Astro Frontend)
+// ===================================
+@use '../nuvoui' as Nuvo;
+
+.signup-page {
+  font-size: 0.85rem;
+  padding-top: 80px; // Account for fixed navigation
+  background: linear-gradient(135deg, #f5f7fa 0%, #ffffff 100%);
+  min-height: 100vh;
+
+
+  p {
+    font-size: 0.85rem;
+  }
+
+
+  .signup-section {
+    @include Nuvo.apply(py(3rem));
+  }
+
+  // Main Wrapper
+  .signup-wrapper {
+    @include Nuvo.apply(grid, cols(1), gap(3rem));
+    grid-template-columns: repeat(2, 1fr);
+    max-width: 1200px;
+    margin: 0 auto;
+    align-items: start;
+    padding: 0 1.5rem;
+
+    @include Nuvo.media-down(lg) {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  // Benefits Section
+  .signup-benefits {
+    @include Nuvo.apply(py(2rem));
+
+    h2 {
+      @include Nuvo.apply(mb(1rem));
+      color: $text-primary;
+      font-size: 1.875rem;
+    }
+
+    .lead {
+      @include Nuvo.apply(mb(3rem));
+      color: $text-secondary;
+      font-size: 0.7rem;
+      line-height: 1.6;
+    }
+
+    .benefit-list {
+      @include Nuvo.apply(mb(3rem));
+    }
+
+    .benefit-item {
+      @include Nuvo.apply(flex, gap(1rem), mb(1.5rem));
+      align-items: flex-start;
+
+      .benefit-icon {
+        @include Nuvo.apply(flex, center, x-center);
+        width: 24px;
+        height: 24px;
+        background: $accent-teal;
+        color: white;
+        border-radius: 50%;
+        flex-shrink: 0;
+        font-size: 14px;
+      }
+
+      strong {
+        @include Nuvo.apply(block, mb(0.25rem));
+        color: $text-primary;
+      }
+
+      p {
+        color: $text-muted;
+        font-size: 0.7rem;
+        margin: 0;
+      }
+    }
+
+    .testimonial {
+      @include Nuvo.apply(p(1.5rem), rounded(0.5rem));
+      background: white;
+      border-left: 4px solid $accent-teal;
+
+      p {
+        @include Nuvo.apply(mb(1rem));
+        color: $text-secondary;
+        font-style: italic;
+        line-height: 1.6;
+      }
+
+      cite {
+        color: $text-muted;
+        font-size: 0.7rem;
+        font-style: normal;
+      }
+    }
+  }
+
+  // Signup Form
+  .signup-form-wrapper {
+    @include Nuvo.apply(p(2.5rem), rounded(1rem));
+    background: white;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.05);
+
+    .form-header {
+      @include Nuvo.apply(mb(2rem));
+      text-align: center;
+
+      h1 {
+        @include Nuvo.apply(mb(0.5rem));
+        color: $text-primary;
+        font-size: 1.375rem;
+      }
+
+      p {
+        color: $text-muted;
+        margin: 0;
+
+        a {
+          color: $accent-teal;
+          text-decoration: none;
+
+          &:hover {
+            text-decoration: underline;
+          }
+        }
+      }
+    }
+  }
+
+  .signup-form {
+    .form-row {
+      @include Nuvo.apply(grid, cols(2), gap(1rem));
+
+      @include Nuvo.media-down(sm) {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    // Base .form-group styles from _forms.scss
+
+    .checkbox-label {
+      @include Nuvo.apply(flex, gap(0.5rem));
+      align-items: flex-start;
+      font-size: 0.7rem;
+      color: $text-secondary;
+
+      input[type="checkbox"] {
+        margin-top: 2px;
+      }
+
+      a {
+        color: $accent-teal;
+        text-decoration: none;
+
+        &:hover {
+          text-decoration: underline;
+        }
+      }
+    }
+
+    .btn {
+      @include Nuvo.apply(width(100%), py(0.875rem), font(600));
+      font-size: 0.875rem;
+    }
+
+    .divider {
+      @include Nuvo.apply(my(1.5rem));
+      position: relative;
+      text-align: center;
+
+      span {
+        @include Nuvo.apply(px(1rem));
+        background: white;
+        color: $text-muted;
+        font-size: 0.85rem;
+        position: relative;
+        z-index: 1;
+      }
+
+      &::before {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 0;
+        right: 0;
+        height: 1px;
+        background: #e5e7eb;
+      }
+    }
+
+    .form-footer {
+      @include Nuvo.apply(mt(1.5rem));
+      text-align: center;
+      color: $text-muted;
+      font-size: 0.85rem;
+
+      a {
+        color: $accent-teal;
+        text-decoration: none;
+
+        &:hover {
+          text-decoration: underline;
+        }
+      }
+    }
+  }
+}

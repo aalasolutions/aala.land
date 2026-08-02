@@ -1,0 +1,236 @@
+// ============================================
+// ATOMS: Form Inputs
+// ============================================
+// Single source of truth for all input styles.
+// Consolidates: _forms.scss inputs, input-component.scss
+
+@use '../nuvoui' as Nuvo;
+@use '../variables' as *;
+
+// Base input mixin
+@mixin input-base {
+  @include Nuvo.apply(
+    w-full,
+    py(2.5), px(3),
+    font-size(sm), leading-normal,
+    rounded(sm),
+    transition, duration(200)
+  );
+  color: $text-primary;
+  background-color: $white;
+  border: 1px solid $border-color;
+
+  &::placeholder {
+    color: $text-muted;
+  }
+
+  &:focus {
+    outline: none;
+    border-color: $accent-teal;
+    box-shadow: 0 0 0 3px rgba($accent-teal, 0.1);
+  }
+
+  &:disabled {
+    background-color: Nuvo.get-color(gray, 50);
+    color: $text-muted;
+    cursor: not-allowed;
+  }
+
+  &:read-only {
+    background-color: Nuvo.get-color(gray, 50);
+  }
+}
+
+// Error state mixin
+@mixin input-error {
+  border-color: $error-color;
+
+  &:focus {
+    border-color: $error-color;
+    box-shadow: 0 0 0 3px rgba($error-color, 0.1);
+  }
+}
+
+// Success state mixin
+@mixin input-success {
+  border-color: $success-color;
+
+  &:focus {
+    border-color: $success-color;
+    box-shadow: 0 0 0 3px rgba($success-color, 0.1);
+  }
+}
+
+// ============================================
+// Text Inputs
+// ============================================
+
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="number"],
+input[type="url"],
+input[type="tel"],
+input[type="search"],
+input[type="date"],
+input[type="time"],
+input[type="datetime-local"] {
+  @include input-base;
+}
+
+// ============================================
+// Textarea
+// ============================================
+
+textarea {
+  @include input-base;
+  min-height: 5rem;
+  resize: vertical;
+}
+
+// ============================================
+// Select
+// ============================================
+
+select {
+  @include input-base;
+  @include Nuvo.apply(cursor(pointer), pr(10));
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23475569' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+
+  &:disabled {
+    cursor: not-allowed;
+  }
+}
+
+// ============================================
+// Input Variants
+// ============================================
+
+.input-error {
+  @include input-error;
+}
+
+.input-success {
+  @include input-success;
+}
+
+.input-sm {
+  @include Nuvo.apply(py(1.5), px(2.5), font-size(xs));
+}
+
+.input-lg {
+  @include Nuvo.apply(py(3), px(4), font-size(base));
+}
+
+// ============================================
+// Input with Icon
+// ============================================
+
+.input-with-icon {
+  @include Nuvo.apply(relative);
+
+  input {
+    @include Nuvo.apply(pl(10));
+  }
+
+  .input-icon {
+    @include Nuvo.apply(absolute, left(3));
+    top: 50%;
+    transform: translateY(-50%);
+    color: $text-muted;
+    pointer-events: none;
+  }
+
+  &.input-icon-right {
+    input {
+      @include Nuvo.apply(pl(3), pr(10));
+    }
+
+    .input-icon {
+      left: auto;
+      @include Nuvo.apply(right(3));
+    }
+  }
+}
+
+// ============================================
+// Input Group (prefix/suffix)
+// ============================================
+
+.input-group {
+  @include Nuvo.apply(flex);
+
+  input {
+    @include Nuvo.apply(grow);
+    border-radius: 0;
+
+    &:first-child {
+      border-top-left-radius: 0.375rem;
+      border-bottom-left-radius: 0.375rem;
+    }
+
+    &:last-child {
+      border-top-right-radius: 0.375rem;
+      border-bottom-right-radius: 0.375rem;
+    }
+  }
+
+  .input-group-text {
+    @include Nuvo.apply(
+      flex, x-center,
+      py(2.5), px(3),
+      font-size(sm),
+      whitespace-nowrap
+    );
+    color: $text-secondary;
+    background-color: Nuvo.get-color(gray, 50);
+    border: 1px solid $border-color;
+
+    &:first-child {
+      border-right: none;
+      border-top-left-radius: 0.375rem;
+      border-bottom-left-radius: 0.375rem;
+    }
+
+    &:last-child {
+      border-left: none;
+      border-top-right-radius: 0.375rem;
+      border-bottom-right-radius: 0.375rem;
+    }
+  }
+}
+
+// ============================================
+// Checkbox & Radio Base
+// ============================================
+
+input[type="checkbox"],
+input[type="radio"] {
+  @include Nuvo.apply(width(4), height(4), cursor(pointer));
+  margin: 0;
+  accent-color: $accent-teal;
+
+  &:disabled {
+    cursor: not-allowed;
+    @include Nuvo.apply(opacity(50));
+  }
+}
+
+// ============================================
+// Search Input
+// ============================================
+
+.search-input {
+  @include input-base;
+  @include Nuvo.apply(pl(10));
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cpath d='M21 21l-4.35-4.35'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: 0.75rem center;
+
+  &:focus {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2300acaa' stroke-width='2'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cpath d='M21 21l-4.35-4.35'/%3E%3C/svg%3E");
+  }
+}

@@ -1,0 +1,151 @@
+// nu-segmented - a single- or multi-choice control rendered as one joined
+// switch. Distinct from nu-tabs: tabs navigate between panels of content,
+// a segmented control sets a value.
+//
+// The track is muted and the selected segment is a raised surface floating
+// inside it, rather than a solid primary fill. Solid primary is already the
+// sidebar's active-nav treatment, so filling here would put two competing
+// primary blocks on the same screen.
+@use "./mixins/bem" as *;
+@use "./mixins/var" as *;
+@use "./common/var" as *;
+
+@include b(segmented) {
+  @include nu-root("segmented", (
+    "Gap": 0.125rem,
+    "Padding": 0.1875rem,
+    "BackgroundColor": var(--bg-alternate),
+    "BorderRadius": nu-radius(lg),
+  ));
+
+  display: inline-flex;
+  align-items: stretch;
+  gap: nu-var("segmented", "Gap");
+  padding: nu-var("segmented", "Padding");
+  background-color: nu-var("segmented", "BackgroundColor");
+  border-radius: nu-var("segmented", "BorderRadius");
+
+  // ---- item ----
+
+  @include e(item) {
+    @include nu-root-el("segmented", "item", (
+      "Gap": nu-space(2),
+      "PaddingBlock": nu-space(2),
+      "PaddingInline": nu-space(3),
+      "FontSize": nu-font-size(sm),
+      "FontWeight": nu-font-weight(medium),
+      "Color": var(--text-muted),
+      "BackgroundColor": transparent,
+      "BorderRadius": nu-radius(md),
+      "TransitionDuration": nu-duration(fast),
+    ));
+
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: nu-var-el("segmented", "item", "Gap");
+    padding-block: nu-var-el("segmented", "item", "PaddingBlock");
+    padding-inline: nu-var-el("segmented", "item", "PaddingInline");
+    font-size: nu-var-el("segmented", "item", "FontSize");
+    font-weight: nu-var-el("segmented", "item", "FontWeight");
+    font-family: inherit;
+    line-height: 1;
+    color: nu-var-el("segmented", "item", "Color");
+    background-color: nu-var-el("segmented", "item", "BackgroundColor");
+    border: 0;
+    border-radius: nu-var-el("segmented", "item", "BorderRadius");
+    cursor: pointer;
+    white-space: nowrap;
+    transition:
+      background-color nu-var-el("segmented", "item", "TransitionDuration") $nu-ease,
+      color nu-var-el("segmented", "item", "TransitionDuration") $nu-ease;
+
+    @include reduced-motion {
+      transition: none;
+    }
+
+    &:not(.is-active):not(.is-disabled):hover {
+      --nu-segmented__item--Color: var(--text-color);
+    }
+
+    &:focus-visible {
+      outline: none;
+      box-shadow: 0 0 0 3px nu-tint(primary, 35%);
+    }
+
+    // The raised segment. Reads as a physical switch sitting in the track.
+    &.is-active {
+      --nu-segmented__item--Color: var(--primary);
+      --nu-segmented__item--BackgroundColor: var(--bg-surface);
+
+      box-shadow: nu-shadow(sm);
+    }
+
+    &.is-disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      pointer-events: none;
+    }
+  }
+
+  @include e(icon) {
+    display: inline-flex;
+    align-items: center;
+    flex-shrink: 0;
+  }
+
+  // ---- sizes ----
+
+  // nu-root-el declares these on the item itself, so an inherited value from
+  // the track would lose. Set them on the item.
+  @include m(sm) {
+    --nu-segmented--Padding: 0.125rem;
+
+    .nu-segmented__item {
+      --nu-segmented__item--PaddingBlock: #{nu-space(1)};
+      --nu-segmented__item--PaddingInline: #{nu-space(2)};
+      --nu-segmented__item--FontSize: #{nu-font-size(xs)};
+    }
+  }
+
+  @include m(lg) {
+    --nu-segmented--Padding: #{nu-space(1)};
+
+    .nu-segmented__item {
+      --nu-segmented__item--PaddingBlock: #{nu-space(3)};
+      --nu-segmented__item--PaddingInline: #{nu-space(4)};
+      --nu-segmented__item--FontSize: #{nu-font-size(base)};
+    }
+  }
+
+  // ---- icon-only ----
+
+  // Square segments; the label is still in the DOM for screen readers.
+  @include m(icon-only) {
+    .nu-segmented__item {
+      --nu-segmented__item--PaddingInline: #{nu-space(2)};
+    }
+
+    // Kept in the DOM, hidden visually: the label is the accessible name.
+    .nu-segmented__label {
+      position: absolute;
+      inline-size: 1px;
+      block-size: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+      border: 0;
+    }
+  }
+
+  // Stretch to the container, splitting evenly.
+  @include m(fill) {
+    display: flex;
+
+    .nu-segmented__item {
+      flex: 1;
+    }
+  }
+}

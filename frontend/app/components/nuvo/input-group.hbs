@@ -1,0 +1,15 @@
+<div class="nu-input-group" data-test-nu-input-group ...attributes>
+  {{#if this.hasPrepend}}
+    <span class="nu-input-group__addon" data-test-nu-input-group-prepend>
+      {{@prepend}}
+    </span>
+  {{/if}}
+
+  {{yield}}
+
+  {{#if this.hasAppend}}
+    <span class="nu-input-group__addon" data-test-nu-input-group-append>
+      {{@append}}
+    </span>
+  {{/if}}
+</div>

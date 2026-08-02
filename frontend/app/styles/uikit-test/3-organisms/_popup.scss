@@ -1,0 +1,276 @@
+// ============================================
+// ORGANISMS: Popup / Modal
+// ============================================
+// Modal dialogs and overlays.
+// Consolidates: popup.scss + full-screen-popup.scss
+
+@use '../nuvoui' as Nuvo;
+@use '../variables' as *;
+
+// ============================================
+// Popup Overlay
+// ============================================
+
+.popup-overlay {
+  @include Nuvo.apply(fixed, inset(0), z-modal, flex, center, x-center, p(4));
+  background-color: rgba($dark-color, 0.5);
+  animation: popup-fade-in 0.2s ease;
+}
+
+@keyframes popup-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+// ============================================
+// Popup Container
+// ============================================
+
+.popup {
+  @include Nuvo.apply(relative, w-full, overflow-hidden);
+  max-width: 500px;
+  max-height: 90vh;
+  background-color: $white;
+  border-radius: 0.75rem;
+  box-shadow: 0 20px 40px rgba($dark-color, 0.15);
+  animation: popup-slide-up 0.25s ease;
+}
+
+@keyframes popup-slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+// ============================================
+// Popup Parts
+// ============================================
+
+.popup__header {
+  @include Nuvo.apply(flex, x-center, between, py(5), px(6));
+  border-bottom: 1px solid $border-color;
+}
+
+.popup__title {
+  @include Nuvo.apply(font-size(lg), font(semibold), m(0));
+  color: $text-primary;
+}
+
+.popup__close {
+  @include Nuvo.apply(
+    flex, center, x-center,
+    width(8), height(8), p(0),
+    rounded(sm), cursor(pointer),
+    transition, duration(150)
+  );
+  color: $text-muted;
+  background: none;
+  border: none;
+
+  &:hover {
+    color: $text-primary;
+    background-color: Nuvo.get-color(gray, 100);
+  }
+}
+
+.popup__body {
+  @include Nuvo.apply(p(6), overflow-y-auto);
+  max-height: calc(90vh - 140px);
+}
+
+.popup__footer {
+  @include Nuvo.apply(flex, x-center, end, gap(3), py(4), px(6));
+  border-top: 1px solid $border-color;
+  background-color: Nuvo.get-color(gray, 50);
+}
+
+// ============================================
+// Popup Sizes
+// ============================================
+
+.popup--sm {
+  max-width: 400px;
+}
+
+.popup--lg {
+  max-width: 700px;
+}
+
+.popup--xl {
+  max-width: 900px;
+}
+
+// ============================================
+// Fullscreen Popup
+// ============================================
+
+.popup--fullscreen {
+  @include Nuvo.apply(rounded(md));
+  max-width: none;
+  max-height: none;
+  width: calc(100vw - 2rem);
+  height: calc(100vh - 2rem);
+
+  .popup__body {
+    max-height: calc(100vh - 180px);
+  }
+
+  @include Nuvo.media-down(md) {
+    @include Nuvo.apply(w-screen, h-screen);
+    border-radius: 0;
+  }
+}
+
+// ============================================
+// Slide Panel (side drawer)
+// ============================================
+
+.popup--slide-right {
+  @include Nuvo.apply(fixed, right(0), top(0), h-screen);
+  max-height: 100vh;
+  border-radius: 0;
+  animation: popup-slide-right 0.3s ease;
+
+  .popup__body {
+    max-height: calc(100vh - 140px);
+  }
+}
+
+@keyframes popup-slide-right {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+// ============================================
+// Confirmation Popup
+// ============================================
+
+.popup--confirm {
+  @include Nuvo.apply(text-center);
+  max-width: 400px;
+
+  .popup__icon {
+    @include Nuvo.apply(flex, center, x-center, mx-auto, mb(4), pill);
+    width: 4rem;
+    height: 4rem;
+    font-size: 1.75rem;
+
+    &.popup__icon--warning {
+      background-color: $warning-light;
+      color: $warning-dark;
+    }
+
+    &.popup__icon--danger {
+      background-color: $error-light;
+      color: $error-dark;
+    }
+
+    &.popup__icon--success {
+      background-color: $success-light;
+      color: $success-dark;
+    }
+
+    &.popup__icon--info {
+      background-color: $info-light;
+      color: $blue-600;
+    }
+  }
+
+  .popup__message {
+    @include Nuvo.apply(leading-normal, mb(6));
+    font-size: 0.9375rem;
+    color: $text-secondary;
+  }
+
+  .popup__footer {
+    @include Nuvo.apply(center);
+    background-color: transparent;
+    border-top: none;
+  }
+}
+
+// ============================================
+// Toast Notification
+// ============================================
+
+.toast {
+  @include Nuvo.apply(
+    fixed, top(4), right(4), z-toast,
+    flex, x-start, gap(3), p(4),
+    rounded(md)
+  );
+  max-width: 400px;
+  background-color: $white;
+  box-shadow: 0 10px 25px rgba($dark-color, 0.15);
+  animation: toast-slide-in 0.3s ease;
+
+  &.toast--success {
+    border-left: 4px solid $success-color;
+  }
+
+  &.toast--error {
+    border-left: 4px solid $error-color;
+  }
+
+  &.toast--warning {
+    border-left: 4px solid $warning-color;
+  }
+
+  &.toast--info {
+    border-left: 4px solid $blue-500;
+  }
+
+  .toast__icon {
+    @include Nuvo.apply(no-shrink, font-size(xl));
+  }
+
+  .toast__content {
+    @include Nuvo.apply(grow);
+    min-width: 0;
+  }
+
+  .toast__title {
+    @include Nuvo.apply(font(semibold), mb(1));
+    color: $text-primary;
+  }
+
+  .toast__message {
+    @include Nuvo.apply(font-size(sm));
+    color: $text-secondary;
+  }
+
+  .toast__close {
+    @include Nuvo.apply(no-shrink, p(1), cursor(pointer));
+    color: $text-muted;
+    background: none;
+    border: none;
+
+    &:hover {
+      color: $text-primary;
+    }
+  }
+}
+
+@keyframes toast-slide-in {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
