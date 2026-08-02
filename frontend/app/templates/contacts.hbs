@@ -1,9 +1,12 @@
 {{page-title "Contacts"}}
 
 <div data-test-contacts class="flex col gap-6">
-  <Nuvo::PageHeader @title="Contacts">
+  <Nuvo::PageHeader
+    @title="Contacts"
+    @subtitle="Manage tenants, buyers, and other contacts."
+  >
     <:meta>
-      <p class="text-muted">({{format-number @model.total}} total)</p>
+      <p class="text-muted">{{format-number @model.total unit="contact"}}</p>
     </:meta>
     <:actions>
       <Nuvo::Button
@@ -89,8 +92,9 @@
       />
     {{else}}
       {{#if @model.total}}
-        <p class="text-muted text-center py-8">No contacts on page
-          {{this.page}}. Navigate back to find contacts or adjust your search.</p>
+        <Nuvo::EmptyState
+          @description="No contacts on page {{this.page}}. Navigate back to find contacts or adjust your search."
+        />
         <Nuvo::Pagination
           @selectId="contacts-limit"
           @page={{this.page}}
@@ -102,7 +106,6 @@
         />
       {{else}}
         <Nuvo::EmptyState
-          @icon="👤"
           @description="No contacts yet. Add your first contact above."
         />
       {{/if}}

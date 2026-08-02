@@ -114,7 +114,10 @@
       box-shadow: 0 0 0 3px nu-tint(primary, 35%);
     }
 
-    &.is-active {
+    // `active` is what Ember's <LinkTo> emits; `is-active` is the kit's own
+    // state class. Both paint the same so a route link needs no extra binding.
+    &.is-active,
+    &.active {
       --nu-sidebar__link--Color: var(--text-inverted);
       --nu-sidebar__link--BackgroundColor: var(--primary);
     }

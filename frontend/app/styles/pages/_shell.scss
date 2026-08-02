@@ -61,8 +61,10 @@ $shell-sidebar-collapsed: 3.75rem;
 
 // ---- collapse affordance ----
 
+// The nav above already grows to fill, so this must not compete with it for
+// height; it only separates the nav from the collapse button.
 .app-shell__spacer {
-  flex: 1;
+  flex: 0 0 auto;
 }
 
 .app-shell__collapse {

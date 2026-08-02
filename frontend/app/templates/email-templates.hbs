@@ -1,9 +1,12 @@
 {{page-title "Email Templates"}}
 
 <div data-test-email-templates class="flex col gap-6">
-  <Nuvo::PageHeader @title="Email Templates">
+  <Nuvo::PageHeader
+    @title="Email Templates"
+    @subtitle="Reusable email content for client communication."
+  >
     <:meta>
-      <p class="text-muted">{{format-number @model.total}} templates</p>
+      <p class="text-muted">{{format-number @model.total unit="template"}}</p>
     </:meta>
     <:actions>
       <Nuvo::Button

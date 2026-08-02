@@ -1,10 +1,7 @@
 {{page-title "Team"}}
 
 <div data-test-team-page class="flex col gap-6">
-  <Nuvo::PageHeader @title="Team">
-    <:meta>
-      <p class="text-muted">Manage your team members and their roles.</p>
-    </:meta>
+  <Nuvo::PageHeader @title="Team" @subtitle="Manage your team members and their roles.">
     <:actions>
       {{#unless this.isSuperAdmin}}
         <div class="flex gap-3">
@@ -166,8 +163,9 @@
       />
     {{else}}
       {{#if @model.total}}
-        <p class="text-muted text-center py-8">No team members on page
-          {{this.page}}. Navigate back to find members.</p>
+        <Nuvo::EmptyState
+          @description="No team members on page {{this.page}}. Navigate back to find members."
+        />
         <Nuvo::Pagination
           @selectId="team-limit"
           @page={{this.page}}
@@ -178,8 +176,9 @@
           @onNext={{this.goToNextPage}}
         />
       {{else}}
-        <p class="text-muted text-center py-8">No team members yet. Add your
-          first team member to get started.</p>
+        <Nuvo::EmptyState
+          @description="No team members yet. Add your first team member to get started."
+        />
       {{/if}}
     {{/if}}
   </Nuvo::Card>

@@ -1,11 +1,12 @@
 {{page-title "Cheques"}}
 
 <div data-test-cheques-page class="flex col gap-6">
-  <Nuvo::PageHeader @title="Cheque Management">
+  <Nuvo::PageHeader
+    @title="Cheque Management"
+    @subtitle="Track post-dated cheques and payment schedules."
+  >
     <:meta>
-      <p class="text-muted">Track post-dated cheques and payment schedules.</p>
-      <p class="text-muted text-sm mt-1">{{format-number @model.total}}
-        cheque records</p>
+      <p class="text-muted">{{format-number @model.total unit="cheque record"}}</p>
     </:meta>
     <:actions>
       {{#if this.isAdmin}}
@@ -152,8 +153,9 @@
         />
       {{else}}
         {{#if @model.total}}
-          <p class="text-muted text-center py-8">No cheques on this page.
-            Navigate to find cheques or adjust filters.</p>
+          <Nuvo::EmptyState
+            @description="No cheques on this page. Navigate to find cheques or adjust filters."
+          />
           <Nuvo::Pagination
             @selectId="cheques-limit"
             @page={{this.page}}
@@ -164,8 +166,9 @@
             @onNext={{this.goToNextPage}}
           />
         {{else}}
-          <p class="text-muted text-center py-8">No cheques yet. Add your first
-            cheque record.</p>
+          <Nuvo::EmptyState
+            @description="No cheques yet. Add your first cheque record."
+          />
         {{/if}}
       {{/if}}
     </Nuvo::Card>
@@ -206,8 +209,9 @@
           {{/each}}
         </div>
       {{else}}
-        <p class="text-muted text-center py-8">No upcoming cheques in the
-          collection schedule.</p>
+        <Nuvo::EmptyState
+          @description="No upcoming cheques in the collection schedule."
+        />
       {{/if}}
     </Nuvo::Card>
   {{/if}}

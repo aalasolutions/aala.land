@@ -1,9 +1,12 @@
 {{page-title "Documents"}}
 
 <div data-test-documents class="flex col gap-6">
-  <Nuvo::PageHeader @title="Documents">
+  <Nuvo::PageHeader
+    @title="Documents"
+    @subtitle="Store and organise property paperwork."
+  >
     <:meta>
-      <p class="text-muted">({{format-number @model.total}})</p>
+      <p class="text-muted">{{format-number @model.total unit="document"}}</p>
     </:meta>
     <:actions>
       <Nuvo::Button
@@ -30,7 +33,7 @@
   </div>
 
   {{#if @model.documents.length}}
-    <div>
+    <Nuvo::Card>
       <div class="nu-table-wrapper">
         <table class="nu-table">
           <thead>
@@ -129,12 +132,13 @@
         @onPrevious={{this.goToPreviousPage}}
         @onNext={{this.goToNextPage}}
       />
-    </div>
+    </Nuvo::Card>
   {{else}}
     {{#if @model.total}}
       <Nuvo::Card>
-        <p class="text-muted text-center py-8">No documents on page
-          {{this.page}}. Navigate back to find documents.</p>
+        <Nuvo::EmptyState
+          @description="No documents on page {{this.page}}. Navigate back to find documents."
+        />
       </Nuvo::Card>
       <Nuvo::Pagination
         @selectId="documents-limit"

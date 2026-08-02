@@ -1,10 +1,7 @@
 {{page-title "Financials"}}
 
 <div data-test-financials-page class="flex col gap-6">
-  <Nuvo::PageHeader @title="Financial Overview">
-    <:meta>
-      <p class="text-muted">Transactions, revenue, and payment tracking.</p>
-    </:meta>
+  <Nuvo::PageHeader @title="Financial Overview" @subtitle="Transactions, revenue, and payment tracking.">
     <:actions>
       <Nuvo::Button
         @variant="primary"
@@ -135,10 +132,9 @@
       />
     {{else}}
       {{#if @model.total}}
-        <p class="text-muted text-center py-4">
-          No transactions on this page with current filters. Adjust filters or
-          navigate to find transactions.
-        </p>
+        <Nuvo::EmptyState
+          @description="No transactions on this page with current filters. Adjust filters or navigate to find transactions."
+        />
         <Nuvo::Pagination
           @selectId="financials-limit"
           @page={{this.page}}
@@ -149,8 +145,8 @@
           @onNext={{this.goToNextPage}}
         />
       {{else}}
-        <p class="text-muted text-center py-4">
-          {{if
+        <Nuvo::EmptyState
+          @description={{if
             (eq this.activeTab "INCOME")
             "No income transactions."
             (if
@@ -159,7 +155,7 @@
               "No transactions yet."
             )
           }}
-        </p>
+        />
       {{/if}}
     {{/if}}
   </Nuvo::Card>

@@ -26,9 +26,225 @@
 @use "./pages/owners";
 @use "./pages/properties-detail";
 @use "./pages/properties-index";
+@use "./pages/reports";
 @use "./pages/team";
 @use "./pages/unit";
 @use "./pages/vendors";
 
 // No app-level rules live here. Everything belongs to a package (uikit),
 // the shell, the shared badge vocabulary, or a named page file above.
+
+
+
+.kanban-card {
+  cursor: grab;
+  transition:
+    transform var(--transition-fast),
+    box-shadow var(--transition-fast),
+    opacity var(--transition-fast);
+}
+
+.kanban-card.dragging {
+  opacity: 0.5;
+  transform: scale(1.05);
+}
+
+.kanban-column.drag-over {
+  background: var(--bg-muted);
+  border: 2px dashed var(--color-primary);
+}
+
+.assigned-agent {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 2px 8px;
+  background: var(--bg-muted);
+  border-radius: 9999px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin-top: var(--space-2);
+}
+
+.assigned-avatar {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  color: var(--text-inverse);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.kanban-filters {
+  display: flex;
+  gap: var(--space-3);
+  margin-bottom: var(--space-6);
+  flex-wrap: wrap;
+}
+
+.filter-btn {
+  padding: var(--space-2) var(--space-4);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  font-size: var(--font-sm);
+  font-weight: 500;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.filter-btn.active {
+  background: var(--color-primary);
+  color: var(--text-inverse);
+  border-color: var(--color-primary);
+}
+
+.kanban-board {
+  display: flex;
+  gap: var(--space-4);
+  overflow-x: auto;
+  padding-bottom: var(--space-4);
+  align-items: start;
+}
+
+.kanban-column {
+  min-width: 250px;
+  background: var(--bg-muted);
+  border-radius: var(--radius-xl);
+  padding: var(--space-3);
+}
+
+.kanban-filters {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.filter-btn {
+  padding: var(--space-2) var(--space-4);
+  background: var(--bg-muted);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  font-size: var(--font-sm);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+
+  &:hover {
+    background: var(--bg-surface);
+    border-color: var(--color-primary);
+    color: var(--text-primary);
+  }
+
+  &.active {
+    background: var(--color-primary);
+    border-color: var(--color-primary);
+    color: var(--text-inverse);
+  }
+}
+
+.temp-column-header {
+  border: 1px solid var(--border-light);
+
+  &.temp-column-hot {
+    background: var(--badge-red-light-bg);
+    color: var(--badge-red-light-text);
+    border-color: var(--badge-red-border);
+  }
+
+  &.temp-column-warm {
+    background: var(--badge-amber-bg);
+    color: var(--badge-amber-text);
+    border-color: var(--badge-amber-border);
+  }
+
+  &.temp-column-cold {
+    background: var(--badge-blue-light-bg);
+    color: var(--badge-blue-light-text);
+    border-color: var(--badge-blue-border);
+  }
+
+  &.temp-column-dead {
+    background: var(--badge-gray-bg);
+    color: var(--badge-gray-text);
+    border-color: var(--badge-gray-border);
+  }
+}
+
+.temp-column-count {
+  background: var(--overlay-subtle);
+  padding: 2px 8px;
+  border-radius: 9999px;
+  font-weight: 600;
+}
+
+.agent-column-header {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-light);
+}
+
+.agent-load-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 24px;
+  background: var(--color-primary);
+  color: var(--text-inverse);
+  border-radius: 9999px;
+  font-size: var(--font-xs);
+  font-weight: 700;
+}
+
+.agent-load-bar {
+  height: 4px;
+  background: var(--bg-muted);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.agent-load-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width var(--transition-normal);
+
+  &.load-low {
+    width: 25%;
+    background: var(--color-success);
+  }
+
+  &.load-medium {
+    width: 60%;
+    background: var(--color-warning);
+  }
+
+  &.load-high {
+    width: 100%;
+    background: var(--color-danger);
+  }
+}
+
+.kanban-card:active {
+  cursor: grabbing;
+  transform: scale(1.02) rotate(2deg);
+  box-shadow: var(--shadow-lg);
+}
+
+.filter-btn:hover {
+  background: var(--bg-muted);
+  color: var(--text-primary);
+}
+
+.kanban-board--pipeline {
+}
+
+.kanban-board--temperature {
+}
+
+.kanban-board--agent {
+}

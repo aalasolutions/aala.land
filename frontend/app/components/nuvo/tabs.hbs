@@ -22,7 +22,7 @@
         {{on "click" (fn this.selectTab tab)}}
       >
         {{#if tab.icon}}
-          <span class="nu-tabs__icon" aria-hidden="true">{{tab.icon}}</span>
+          <Ui::Ph @icon={{tab.icon}} class="nu-tabs__icon" aria-hidden="true" />
         {{/if}}
         <span class="nu-tabs__label">{{tab.label}}</span>
         {{#if tab.count}}

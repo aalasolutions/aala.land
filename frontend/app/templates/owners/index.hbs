@@ -1,17 +1,18 @@
 {{page-title "Owners"}}
-<Nuvo::PageHeader @title="Property Owners" @subtitle="Manage property owners and their contact information.">
-  <:actions>
-    <Nuvo::Button
-      @variant="primary"
-      @icon="+"
-      @text="Add Owner"
-      data-test-add-owner
-      {{on "click" this.openCreate}}
-    />
-  </:actions>
-</Nuvo::PageHeader>
+<div data-test-owners-page class="flex col gap-6">
+  <Nuvo::PageHeader @title="Property Owners" @subtitle="Manage property owners and their contact information.">
+    <:actions>
+      <Nuvo::Button
+        @variant="primary"
+        @icon="+"
+        @text="Add Owner"
+        data-test-add-owner
+        {{on "click" this.openCreate}}
+      />
+    </:actions>
+  </Nuvo::PageHeader>
 
-<div class="owners-list">
+  <div class="owners-list">
   {{#each this.model.owners as |owner|}}
     <Nuvo::Card class="owners-list__row" data-test-owner-id={{owner.id}}>
       <div class="owners-list__info">
@@ -55,18 +56,15 @@
         {{/if}}
       </div>
     </Nuvo::Card>
-  {{else}}
-    <Nuvo::EmptyState @description="No owners yet. Add your first property owner to get started." />
-  {{/each}}
+    {{else}}
+      <Nuvo::Card>
+        <Nuvo::EmptyState
+          @description="No owners yet. Add your first property owner to get started."
+        />
+      </Nuvo::Card>
+    {{/each}}
+  </div>
 </div>
-
-<p class="text-muted mt-4">
-  Showing
-  {{format-number this.model.owners.length}}
-  of
-  {{format-number this.model.total}}
-  owners
-</p>
 
 <Nuvo::Modal
   @open={{this.showModal}}

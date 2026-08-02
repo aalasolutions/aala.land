@@ -1,10 +1,7 @@
 {{page-title "Vendors"}}
 
 <div data-test-vendors-page class="flex col gap-6">
-  <Nuvo::PageHeader @title="Vendors">
-    <:meta>
-      <p class="text-muted">Manage service providers and contractors.</p>
-    </:meta>
+  <Nuvo::PageHeader @title="Vendors" @subtitle="Manage service providers and contractors.">
     <:actions>
       <Nuvo::Button
         data-test-new-vendor
@@ -111,7 +108,6 @@
         />
       {{else}}
         <Nuvo::EmptyState
-          @icon="🧰"
           @description="No vendors yet. Add your first vendor above."
         />
       {{/if}}

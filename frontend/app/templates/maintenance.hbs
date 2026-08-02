@@ -1,10 +1,7 @@
 {{page-title "Maintenance"}}
 
 <div data-test-maintenance-page class="flex col gap-6">
-  <Nuvo::PageHeader @title="Maintenance">
-    <:meta>
-      <p class="text-muted">Track and manage property work orders.</p>
-    </:meta>
+  <Nuvo::PageHeader @title="Maintenance" @subtitle="Track and manage property work orders.">
     <:actions>
       <Nuvo::Button @variant="primary" {{on "click" this.openCreate}}>
         <Ui::Ph @icon="plus" />
@@ -160,8 +157,9 @@
         />
       {{else}}
         {{#if @model.total}}
-          <p class="text-muted text-center py-8">No work orders on this page
-            with current filters. Navigate to find orders or adjust filters.</p>
+          <Nuvo::EmptyState
+            @description="No work orders on this page with current filters. Navigate to find orders or adjust filters."
+          />
           <Nuvo::Pagination
             @selectId="maintenance-limit"
             @page={{this.page}}
@@ -215,8 +213,9 @@
           {{/each}}
         </div>
       {{else}}
-        <p class="text-muted text-center py-8">No preventive maintenance
-          scheduled for the next 30 days.</p>
+        <Nuvo::EmptyState
+          @description="No preventive maintenance scheduled for the next 30 days."
+        />
       {{/if}}
     </Nuvo::Card>
   {{/if}}

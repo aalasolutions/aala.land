@@ -1,0 +1,35 @@
+// Reports (Boss Dashboard): pipeline funnel, red-flag alerts, activity feed.
+// Ported from app.new.scss. Action badges use the shared `badge-audit-*`
+// vocabulary in _badges.scss, the same as the audit page, so an action reads
+// the same colour wherever it appears.
+
+.funnel-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: var(--space-3);
+
+  @media (max-width: 768px) {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.funnel-stage {
+  padding: var(--space-4);
+  background: var(--bg-muted);
+  border-radius: var(--radius-lg);
+}
+
+.red-flag-high {
+  background: var(--bg-danger-soft);
+  border: 1px solid var(--border-danger-soft);
+}
+
+.red-flag-medium {
+  background: var(--bg-warning-soft);
+  border: 1px solid var(--border-warning-strong-soft);
+}
+
+.red-flag-low {
+  background: var(--bg-muted);
+  border: 1px solid var(--border-light);
+}

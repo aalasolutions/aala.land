@@ -1,10 +1,7 @@
 {{page-title "Commissions"}}
 
 <div data-test-commissions-page class="flex col gap-6">
-  <Nuvo::PageHeader @title="Commissions">
-    <:meta>
-      <p class="text-muted">Track agent commissions and payouts.</p>
-    </:meta>
+  <Nuvo::PageHeader @title="Commissions" @subtitle="Track agent commissions and payouts.">
     <:actions>
       <div class="flex gap-3 x-end">
         <Nuvo::Dropdown
@@ -110,18 +107,11 @@
       </div>
     {{else}}
       {{#if @model.total}}
-        <p class="text-muted text-center py-8">No commissions on this page
-          with current filters. Navigate to find commissions or adjust
-          filters.</p>
+        <Nuvo::EmptyState
+          @description="No commissions on this page with current filters. Navigate to find commissions or adjust filters."
+        />
       {{else}}
-        <div class="text-center py-8">
-          <Ui::Ph
-            @icon="hand-coins"
-            @size="32px"
-            @color="var(--text-muted)"
-          />
-          <p class="text-muted mt-2">No commissions found.</p>
-        </div>
+        <Nuvo::EmptyState @description="No commissions found." />
       {{/if}}
     {{/if}}
 
