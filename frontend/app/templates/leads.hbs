@@ -10,9 +10,9 @@
     </div>
     <div class="flex gap-3 x-center">
       {{! View Toggle }}
-      <Ui::Tabs
+      <Nuvo::Tabs
         @tabs={{this.viewTabs}}
-        @active={{this.viewMode}}
+        @activeTab={{this.viewMode}}
         @onChange={{this.setViewMode}}
         data-test-view-toggle
       />
@@ -30,9 +30,9 @@
 
   {{! Agent board columns are already the ownership breakdown }}
   {{#unless (eq this.viewMode "agent")}}
-    <Ui::Tabs
+    <Nuvo::Tabs
       @tabs={{this.filterTabs}}
-      @active={{this.filterType}}
+      @activeTab={{this.filterType}}
       @onChange={{this.setFilter}}
       data-test-lead-filters
     />
@@ -462,118 +462,129 @@
 >
   <form class="flex col gap-4" {{on "submit" this.saveLead}}>
     {{#if this.showRegionField}}
-      <Ui::FormDropdown
-        @label="Region"
-        @id="lead-region"
-        @value={{this.formRegionCode}}
-        @onChange={{this.setRegionCode}}
-        @options={{this.regionOptions}}
-        @placeholder="Select region..."
-        data-test-region-select
-      />
+      <Nuvo::Field @label="Region">
+        <Nuvo::Select
+          id="lead-region"
+          @value={{this.formRegionCode}}
+          @onChange={{this.setRegionCode}}
+          @options={{this.regionOptions}}
+          @placeholder="Select region..."
+          data-test-region-select
+        />
+      </Nuvo::Field>
     {{/if}}
     <div class="flex gap-4">
       <div class="grow">
-        <Ui::FormInput
-          @label="First Name"
-          @id="lead-first-name"
-          @type="text"
-          @placeholder="e.g. Ahmed"
-          @value={{this.formFirstName}}
-          @onChange={{fn this.setField "formFirstName"}}
-          @required={{true}}
-        />
+        <Nuvo::Field @label="First Name" @required={{true}}>
+          <Nuvo::Input
+            id="lead-first-name"
+            @type="text"
+            @placeholder="e.g. Ahmed"
+            @value={{this.formFirstName}}
+            @onInput={{fn this.setFieldValue "formFirstName"}}
+            required={{true}}
+          />
+        </Nuvo::Field>
       </div>
       <div class="grow">
-        <Ui::FormInput
-          @label="Last Name"
-          @id="lead-last-name"
-          @type="text"
-          @placeholder="e.g. Al Mansouri"
-          @value={{this.formLastName}}
-          @onChange={{fn this.setField "formLastName"}}
-        />
+        <Nuvo::Field @label="Last Name">
+          <Nuvo::Input
+            id="lead-last-name"
+            @type="text"
+            @placeholder="e.g. Al Mansouri"
+            @value={{this.formLastName}}
+            @onInput={{fn this.setFieldValue "formLastName"}}
+          />
+        </Nuvo::Field>
       </div>
     </div>
-    <Ui::FormInput
-      @label="Email"
-      @id="lead-email"
-      @type="email"
-      @placeholder="ahmed@example.com"
-      @value={{this.formEmail}}
-      @onChange={{fn this.setField "formEmail"}}
-    />
-    <Ui::FormInput
-      @label="Phone"
-      @id="lead-phone"
-      @type="text"
-      @placeholder="+971501234567"
-      @value={{this.formPhone}}
-      @onChange={{fn this.setField "formPhone"}}
-    />
+    <Nuvo::Field @label="Email">
+      <Nuvo::Input
+        id="lead-email"
+        @type="email"
+        @placeholder="ahmed@example.com"
+        @value={{this.formEmail}}
+        @onInput={{fn this.setFieldValue "formEmail"}}
+      />
+    </Nuvo::Field>
+    <Nuvo::Field @label="Phone">
+      <Nuvo::Input
+        id="lead-phone"
+        @type="text"
+        @placeholder="+971501234567"
+        @value={{this.formPhone}}
+        @onInput={{fn this.setFieldValue "formPhone"}}
+      />
+    </Nuvo::Field>
     <div class="flex gap-4">
       <div class="grow">
-        <Ui::FormDropdown
-          @label="Status"
-          @id="lead-status"
-          @value={{this.formStatus}}
-          @onChange={{fn this.setField "formStatus"}}
-          @options={{this.statusOptions}}
-          @placeholder="Select status..."
-        />
+        <Nuvo::Field @label="Status">
+          <Nuvo::Select
+            id="lead-status"
+            @value={{this.formStatus}}
+            @onChange={{fn this.setFieldValue "formStatus"}}
+            @options={{this.statusOptions}}
+            @placeholder="Select status..."
+          />
+        </Nuvo::Field>
       </div>
       <div class="grow">
-        <Ui::FormDropdown
-          @label="Temperature"
-          @id="lead-temp"
-          @value={{this.formTemperature}}
-          @onChange={{fn this.setField "formTemperature"}}
-          @options={{this.temperatureOptions}}
-          @placeholder="Select temperature..."
-        />
+        <Nuvo::Field @label="Temperature">
+          <Nuvo::Select
+            id="lead-temp"
+            @value={{this.formTemperature}}
+            @onChange={{fn this.setFieldValue "formTemperature"}}
+            @options={{this.temperatureOptions}}
+            @placeholder="Select temperature..."
+          />
+        </Nuvo::Field>
       </div>
     </div>
-    <Ui::FormDropdown
-      @label="Source"
-      @id="lead-source"
-      @value={{this.formSource}}
-      @onChange={{fn this.setField "formSource"}}
-      @options={{this.sourceOptions}}
-      @placeholder="Select source..."
-    />
-    <Ui::FormDropdown
-      @label="Property Area"
-      @id="lead-property"
-      @value={{this.formPropertyId}}
-      @onChange={{this.setPropertyId}}
-      @options={{this.propertyOptions}}
-      @placeholder="-- None --"
-    />
-    {{#if this.formPropertyId}}
-      <Ui::FormDropdown
-        @label="Property"
-        @id="lead-unit"
-        @value={{this.formUnitId}}
-        @onChange={{fn this.setField "formUnitId"}}
-        @options={{this.unitOptions}}
-        @placeholder="-- None --"
+    <Nuvo::Field @label="Source">
+      <Nuvo::Select
+        id="lead-source"
+        @value={{this.formSource}}
+        @onChange={{fn this.setFieldValue "formSource"}}
+        @options={{this.sourceOptions}}
+        @placeholder="Select source..."
       />
+    </Nuvo::Field>
+    <Nuvo::Field @label="Property Area">
+      <Nuvo::Select
+        id="lead-property"
+        @value={{this.formPropertyId}}
+        @onChange={{this.setPropertyId}}
+        @options={{this.propertyOptions}}
+      />
+    </Nuvo::Field>
+    {{#if this.formPropertyId}}
+      <Nuvo::Field @label="Property">
+        <Nuvo::Select
+          id="lead-unit"
+          @value={{this.formUnitId}}
+          @onChange={{fn this.setFieldValue "formUnitId"}}
+          @options={{this.unitOptions}}
+        />
+      </Nuvo::Field>
     {{/if}}
     {{#if this.errorMsg}}
       <p class="text-danger">{{this.errorMsg}}</p>
     {{/if}}
     <div class="flex gap-3 mt-2">
-      <Ui::AppButton
+      <Nuvo::Button
         @variant="secondary"
         @text="Cancel"
         @onClick={{this.closeModal}}
       />
-      <Ui::AppButton
+      <Nuvo::Button
         @variant="primary"
-        @buttonType="submit"
-        @text={{if this.editLead "Update" "Create Lead"}}
+        @type="submit"
+        @text={{if
+          this.isSaving
+          "Saving..."
+          (if this.editLead "Update" "Create Lead")
+        }}
         @loading={{this.isSaving}}
-        @loadingText="Saving..."
       />
     </div>
   </form>
@@ -589,21 +600,21 @@
     <p class="text-muted">Select an agent to assign
       <strong>{{this.assignLead.firstName}}</strong>
       to:</p>
-    <Ui::FormDropdown
-      @label="Agent"
-      @id="agent-select"
-      @value={{this.selectedAgentId}}
-      @onChange={{fn this.setField "selectedAgentId"}}
-      @options={{this.agentOptions}}
-      @placeholder="-- Select Agent --"
-    />
+    <Nuvo::Field @label="Agent">
+      <Nuvo::Select
+        id="agent-select"
+        @value={{this.selectedAgentId}}
+        @onChange={{fn this.setFieldValue "selectedAgentId"}}
+        @options={{this.agentOptions}}
+      />
+    </Nuvo::Field>
     <div class="flex gap-3 mt-2">
-      <Ui::AppButton
+      <Nuvo::Button
         @variant="secondary"
         @text="Cancel"
         @onClick={{this.closeAssignModal}}
       />
-      <Ui::AppButton @variant="primary" @buttonType="submit" @text="Assign" />
+      <Nuvo::Button @variant="primary" @type="submit" @text="Assign" />
     </div>
   </form>
 </Nuvo::Modal>

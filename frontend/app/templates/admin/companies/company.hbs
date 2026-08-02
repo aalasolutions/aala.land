@@ -122,9 +122,9 @@
   {{/if}}
 
   {{! Tabs }}
-  <Ui::Tabs
+  <Nuvo::Tabs
     @tabs={{this.tabs}}
-    @active={{this.activeTab}}
+    @activeTab={{this.activeTab}}
     @onChange={{this.selectTab}}
     class="mt-4 mb-4"
   />
@@ -414,19 +414,13 @@
         </div>
         <div class="flex col gap-2 flex-2">
           <label class="text-sm text-muted" for="deal-basis">Basis</label>
-          <select
+          <Nuvo::Select
             id="deal-basis"
-            class="form-input"
             data-test-deal-basis
-            {{on "change" this.setDealBasis}}
-          >
-            {{#each this.basisOptions as |opt|}}
-              <option
-                value={{opt.value}}
-                selected={{eq this.dealBasis opt.value}}
-              >{{opt.label}}</option>
-            {{/each}}
-          </select>
+            @options={{this.basisOptions}}
+            @value={{this.dealBasis}}
+            @onChange={{this.setDealBasis}}
+          />
         </div>
       </div>
 

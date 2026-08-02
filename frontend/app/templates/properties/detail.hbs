@@ -355,23 +355,25 @@
         </div>
       {{/if}}
     {{/unless}}
-    <Ui::FormInput
-      @label="Asset Name"
-      @id="b-name"
-      @type="text"
-      @placeholder="e.g. Tower A"
-      @value={{this.formAssetName}}
-      @onChange={{fn this.setField "formAssetName"}}
-      @required={{true}}
-    />
-    <Ui::FormInput
-      @label="Address"
-      @id="b-address"
-      @type="text"
-      @placeholder="e.g. 123 Sheikh Zayed Road"
-      @value={{this.formAssetAddress}}
-      @onChange={{fn this.setField "formAssetAddress"}}
-    />
+    <Nuvo::Field @label="Asset Name" @required={{true}}>
+      <Nuvo::Input
+        id="b-name"
+        @type="text"
+        @placeholder="e.g. Tower A"
+        @value={{this.formAssetName}}
+        @onInput={{fn this.setFieldValue "formAssetName"}}
+        required={{true}}
+      />
+    </Nuvo::Field>
+    <Nuvo::Field @label="Address">
+      <Nuvo::Input
+        id="b-address"
+        @type="text"
+        @placeholder="e.g. 123 Sheikh Zayed Road"
+        @value={{this.formAssetAddress}}
+        @onInput={{fn this.setFieldValue "formAssetAddress"}}
+      />
+    </Nuvo::Field>
     {{#if this.assetError}}
       <p class="text-sm text-danger">{{this.assetError}}</p>
     {{/if}}
@@ -404,91 +406,98 @@
   <form class="flex col gap-4" {{on "submit" this.saveUnit}}>
     <div class="flex gap-4">
       <div class="flex col gap-2 grow">
-        <Ui::FormInput
-          @label="Property Number"
-          @id="u-number"
-          @type="text"
-          @placeholder="e.g. 101"
-          @value={{this.formUnitNumber}}
-          @onChange={{fn this.setField "formUnitNumber"}}
-          @required={{true}}
-        />
+        <Nuvo::Field @label="Property Number" @required={{true}}>
+          <Nuvo::Input
+            id="u-number"
+            @type="text"
+            @placeholder="e.g. 101"
+            @value={{this.formUnitNumber}}
+            @onInput={{fn this.setFieldValue "formUnitNumber"}}
+            required={{true}}
+          />
+        </Nuvo::Field>
       </div>
       <div class="flex col gap-2 grow">
-        <Ui::FormDropdown
-          @label="Status"
-          @id="u-status"
-          @value={{this.formUnitStatus}}
-          @onChange={{fn this.setField "formUnitStatus"}}
-          @options={{this.statusOptions}}
-          @placeholder="Select status..."
-        />
+        <Nuvo::Field @label="Status">
+          <Nuvo::Select
+            id="u-status"
+            @value={{this.formUnitStatus}}
+            @onChange={{fn this.setFieldValue "formUnitStatus"}}
+            @options={{this.statusOptions}}
+            @placeholder="Select status..."
+          />
+        </Nuvo::Field>
       </div>
     </div>
-    <Ui::FormDropdown
-      @label="Property Type"
-      @id="u-property-type"
-      @value={{this.formUnitPropertyType}}
-      @onChange={{fn this.setField "formUnitPropertyType"}}
-      @options={{this.propertyTypeOptions}}
-      @placeholder="Select type..."
-    />
+    <Nuvo::Field @label="Property Type">
+      <Nuvo::Select
+        id="u-property-type"
+        @value={{this.formUnitPropertyType}}
+        @onChange={{fn this.setFieldValue "formUnitPropertyType"}}
+        @options={{this.propertyTypeOptions}}
+        @placeholder="Select type..."
+      />
+    </Nuvo::Field>
     <div class="flex gap-4">
       <div class="flex col gap-2 grow">
-        <Ui::FormInput
-          @label="Price"
-          @id="u-price"
-          @type="number"
-          @min="0"
-          @placeholder="e.g. 150000"
-          @value={{this.formUnitPrice}}
-          @onChange={{fn this.setField "formUnitPrice"}}
-        />
+        <Nuvo::Field @label="Price">
+          <Nuvo::Input
+            id="u-price"
+            @type="number"
+            @placeholder="e.g. 150000"
+            @value={{this.formUnitPrice}}
+            @onInput={{fn this.setFieldValue "formUnitPrice"}}
+            min="0"
+          />
+        </Nuvo::Field>
       </div>
       <div class="flex col gap-2 grow">
-        <Ui::FormInput
-          @label="Sq Ft"
-          @id="u-sqft"
-          @type="number"
-          @min="0"
-          @placeholder="e.g. 850"
-          @value={{this.formUnitSqFt}}
-          @onChange={{fn this.setField "formUnitSqFt"}}
-        />
+        <Nuvo::Field @label="Sq Ft">
+          <Nuvo::Input
+            id="u-sqft"
+            @type="number"
+            @placeholder="e.g. 850"
+            @value={{this.formUnitSqFt}}
+            @onInput={{fn this.setFieldValue "formUnitSqFt"}}
+            min="0"
+          />
+        </Nuvo::Field>
       </div>
     </div>
     <div class="flex gap-4">
       <div class="flex col gap-2 grow">
-        <Ui::FormInput
-          @label="Bedrooms"
-          @id="u-beds"
-          @type="number"
-          @min="0"
-          @placeholder="e.g. 2"
-          @value={{this.formUnitBedrooms}}
-          @onChange={{fn this.setField "formUnitBedrooms"}}
-        />
+        <Nuvo::Field @label="Bedrooms">
+          <Nuvo::Input
+            id="u-beds"
+            @type="number"
+            @placeholder="e.g. 2"
+            @value={{this.formUnitBedrooms}}
+            @onInput={{fn this.setFieldValue "formUnitBedrooms"}}
+            min="0"
+          />
+        </Nuvo::Field>
       </div>
       <div class="flex col gap-2 grow">
-        <Ui::FormInput
-          @label="Bathrooms"
-          @id="u-baths"
-          @type="number"
-          @min="0"
-          @placeholder="e.g. 2"
-          @value={{this.formUnitBathrooms}}
-          @onChange={{fn this.setField "formUnitBathrooms"}}
-        />
+        <Nuvo::Field @label="Bathrooms">
+          <Nuvo::Input
+            id="u-baths"
+            @type="number"
+            @placeholder="e.g. 2"
+            @value={{this.formUnitBathrooms}}
+            @onInput={{fn this.setFieldValue "formUnitBathrooms"}}
+            min="0"
+          />
+        </Nuvo::Field>
       </div>
     </div>
-    <Ui::FormDropdown
-      @label="Owner"
-      @id="u-owner"
-      @value={{this.formUnitOwnerId}}
-      @onChange={{fn this.setField "formUnitOwnerId"}}
-      @options={{this.ownerOptions}}
-      @placeholder="Unassigned"
-    />
+    <Nuvo::Field @label="Owner">
+      <Nuvo::Select
+        id="u-owner"
+        @value={{this.formUnitOwnerId}}
+        @onChange={{fn this.setFieldValue "formUnitOwnerId"}}
+        @options={{this.ownerOptions}}
+      />
+    </Nuvo::Field>
     <div class="flex col gap-2">
       <label class="text-sm text-muted">Amenities</label>
       <div class="flex wrap gap-2">

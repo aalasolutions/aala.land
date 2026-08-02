@@ -5,10 +5,10 @@ import { service } from '@ember/service';
 import { runTask } from 'ember-lifeline';
 
 const TABS = [
-  { value: 'overview', label: 'Overview' },
-  { value: 'deal', label: 'Deal' },
-  { value: 'payments', label: 'Payments' },
-  { value: 'history', label: 'History' },
+  { id: 'overview', label: 'Overview' },
+  { id: 'deal', label: 'Deal' },
+  { id: 'payments', label: 'Payments' },
+  { id: 'history', label: 'History' },
 ];
 
 const BASIS_OPTIONS = [
@@ -291,8 +291,8 @@ export default class AdminCompaniesCompanyController extends Controller {
   }
 
   @action
-  setDealBasis(event) {
-    this.dealBasis = event.target.value;
+  setDealBasis(value) {
+    this.dealBasis = value;
   }
 
   @action
