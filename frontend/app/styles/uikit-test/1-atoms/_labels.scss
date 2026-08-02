@@ -1,0 +1,160 @@
+// ============================================
+// ATOMS: Labels
+// ============================================
+// Single source of truth for form labels.
+// Consolidates: _forms.scss labels, .inputLabel
+
+@use '../nuvoui' as Nuvo;
+@use '../variables' as *;
+
+// ============================================
+// Standard Form Label
+// ============================================
+
+.form-label,
+.inputLabel {
+  @include Nuvo.apply(
+    flex, x-center, gap(1.5),
+    mb(2),
+    font-size(xs), font(semibold), leading-tight
+  );
+  color: $text-primary;
+}
+
+// ============================================
+// Required Indicator
+// ============================================
+
+.required {
+  color: $error-color;
+  @include Nuvo.apply(font(normal));
+}
+
+// Labels with required class get asterisk
+label.required::after,
+.form-label.required::after {
+  content: ' *';
+  color: $error-color;
+  @include Nuvo.apply(font(normal));
+}
+
+// ============================================
+// Tooltip Icon (help indicator)
+// ============================================
+
+.tooltip-icon,
+.field-help {
+  @include Nuvo.apply(
+    flex-inline, center, x-center,
+    font-size(xs), cursor(help)
+  );
+  color: $text-muted;
+
+  &:hover {
+    color: $accent-teal;
+  }
+
+  i,
+  svg {
+    font-size: inherit;
+  }
+}
+
+// ============================================
+// Label Variants
+// ============================================
+
+.form-label-sm {
+  font-size: 0.625rem;
+  @include Nuvo.apply(mb(1.5));
+}
+
+.form-label-lg {
+  @include Nuvo.apply(font-size(sm), mb(2.5));
+}
+
+// ============================================
+// Floating Label (optional pattern)
+// ============================================
+
+.floating-label {
+  @include Nuvo.apply(relative);
+
+  label {
+    @include Nuvo.apply(
+      absolute, left(3),
+      font-size(sm),
+      transition, duration(200)
+    );
+    top: 50%;
+    transform: translateY(-50%);
+    color: $text-muted;
+    pointer-events: none;
+    background-color: $white;
+    @include Nuvo.apply(px(1));
+  }
+
+  input:focus + label,
+  input:not(:placeholder-shown) + label {
+    top: 0;
+    @include Nuvo.apply(font-size(xs));
+    color: $accent-teal;
+  }
+
+  input {
+    &::placeholder {
+      color: transparent;
+    }
+  }
+}
+
+// ============================================
+// Error Message
+// ============================================
+
+.form-error,
+.error-message {
+  @include Nuvo.apply(
+    flex, x-center, gap(1),
+    mt(1.5),
+    font-size(xs)
+  );
+  color: $error-color;
+
+  i,
+  svg {
+    font-size: 0.875em;
+  }
+}
+
+// ============================================
+// Help Text
+// ============================================
+
+.form-help,
+.help-text {
+  @include Nuvo.apply(
+    block,
+    mt(1.5),
+    font-size(xs), leading-relaxed
+  );
+  color: $text-muted;
+}
+
+// ============================================
+// Character Counter
+// ============================================
+
+.char-counter {
+  @include Nuvo.apply(block, mt(1), text-right);
+  font-size: 0.625rem;
+  color: $text-muted;
+
+  &.char-counter-warning {
+    color: $warning-color;
+  }
+
+  &.char-counter-error {
+    color: $error-color;
+  }
+}

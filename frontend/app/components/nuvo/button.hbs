@@ -1,0 +1,30 @@
+{{!
+  Icon order is markup order: flexbox and the block's gap do the rest.
+  A shape button (square/circle) drops its label entirely.
+}}
+<button
+  type={{this.type}}
+  class={{this.classes}}
+  disabled={{this.isDisabled}}
+  data-test-nu-button
+  {{on "click" this.onClick}}
+  ...attributes
+>
+  {{#if this.iconAtStart}}
+    <span class={{this.iconClasses}} aria-hidden="true" data-test-nu-button-icon>
+      {{this.iconName}}
+    </span>
+  {{/if}}
+
+  {{#unless this.isIconOnly}}
+    <span class="nu-btn__label">
+      {{#if (has-block)}}{{yield}}{{else}}{{@text}}{{/if}}
+    </span>
+  {{/unless}}
+
+  {{#if this.iconAtEnd}}
+    <span class={{this.iconClasses}} aria-hidden="true" data-test-nu-button-icon>
+      {{this.iconName}}
+    </span>
+  {{/if}}
+</button>

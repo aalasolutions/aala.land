@@ -1,0 +1,14 @@
+<button
+  type="button"
+  class={{this.classes}}
+  data-test-nu-sidebar-link
+  {{on "click" this.onClick}}
+  ...attributes
+>
+  {{#if @icon}}
+    <span class="nu-sidebar__link-icon" aria-hidden="true">{{@icon}}</span>
+  {{/if}}
+  <span class="nu-sidebar__link-label">
+    {{#if (has-block)}}{{yield}}{{else}}{{@label}}{{/if}}
+  </span>
+</button>

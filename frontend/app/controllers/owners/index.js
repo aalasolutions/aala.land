@@ -66,6 +66,10 @@ export default class OwnersIndexController extends Controller {
     this[fieldName] = e.target.value;
   }
 
+  @action setFieldValue(fieldName, value) {
+    this[fieldName] = value;
+  }
+
   @action openCreate() {
     this.formName = '';
     this.formEmail = '';

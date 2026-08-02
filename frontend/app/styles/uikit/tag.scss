@@ -1,0 +1,155 @@
+// nu-tag - removable chip / label
+@use "./mixins/bem" as *;
+@use "./mixins/var" as *;
+@use "./common/var" as *;
+
+@include b(tag) {
+  @include nu-root("tag", (
+    "Display": inline-flex,
+    "AlignItems": center,
+    "Gap": nu-space(1),
+    "PaddingBlock": 0.125rem,
+    "PaddingInline": nu-space(2),
+    "FontSize": nu-font-size(xs),
+    "FontWeight": nu-font-weight(medium),
+    "LineHeight": 1.4,
+    "BorderRadius": nu-radius(sm),
+    "BorderWidth": 1px,
+    "BorderColor": var(--border-base),
+    "Color": var(--text-color),
+    "BackgroundColor": var(--bg-alternate),
+    "focus--BoxShadow": 0 0 0 3px #{nu-tint(primary, 35%)},
+    "disabled--Opacity": 0.55,
+  ));
+
+  display: nu-var("tag", "Display");
+  align-items: nu-var("tag", "AlignItems");
+  gap: nu-var("tag", "Gap");
+  padding-block: nu-var("tag", "PaddingBlock");
+  padding-inline: nu-var("tag", "PaddingInline");
+  font-size: nu-var("tag", "FontSize");
+  font-weight: nu-var("tag", "FontWeight");
+  line-height: nu-var("tag", "LineHeight");
+  color: nu-var("tag", "Color");
+  background-color: nu-var("tag", "BackgroundColor");
+  border: nu-var("tag", "BorderWidth") solid nu-var("tag", "BorderColor");
+  border-radius: nu-var("tag", "BorderRadius");
+  white-space: nowrap;
+  vertical-align: middle;
+
+  // ---- elements ----
+
+  @include e(label) {
+    line-height: 1;
+  }
+
+  @include e(remove) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    inline-size: 1em;
+    block-size: 1em;
+    padding: 0;
+    color: inherit;
+    background-color: transparent;
+    border: 0;
+    cursor: pointer;
+    font-size: 1em;
+    line-height: 1;
+
+    @include reduced-motion {
+      transition: none;
+    }
+
+    &:focus-visible {
+      outline: none;
+      box-shadow: nu-var("tag", "focus--BoxShadow");
+    }
+  }
+
+  // ---- color variants: uniform, looped ----
+
+  @each $variant in $nu-variants {
+    @include m($variant) {
+      --nu-tag--Color: var(--#{$variant}-700);
+      --nu-tag--BackgroundColor: var(--#{$variant}-50);
+      --nu-tag--BorderColor: var(--#{$variant}-200);
+    }
+  }
+
+  // ---- outline variants ----
+
+  @each $variant in $nu-variants {
+    &.m-outline.m-#{$variant} {
+      --nu-tag--Color: var(--#{$variant}-700);
+      --nu-tag--BackgroundColor: transparent;
+      --nu-tag--BorderColor: var(--#{$variant}-300);
+    }
+  }
+
+  // ---- sizes ----
+
+  @include m(sm) {
+    --nu-tag--PaddingInline: #{nu-space(1)};
+    --nu-tag--FontSize: 0.625rem;
+  }
+
+  @include m(lg) {
+    --nu-tag--PaddingBlock: #{nu-space(1)};
+    --nu-tag--PaddingInline: #{nu-space(3)};
+    --nu-tag--FontSize: #{nu-font-size(sm)};
+  }
+
+  // ---- shape ----
+
+  @include m(pill) {
+    --nu-tag--BorderRadius: #{nu-radius(full)};
+  }
+
+  // A tag the user can toggle: amenity pickers, specialty pickers, filter
+  // chips. Put it on a real <button> so it is keyboard reachable; the
+  // selected look is driven by `is-selected`, not by swapping classes.
+  @include m(selectable) {
+    cursor: pointer;
+    transition:
+      border-color nu-duration(fast) $nu-ease,
+      background-color nu-duration(fast) $nu-ease,
+      color nu-duration(fast) $nu-ease;
+
+    @include reduced-motion {
+      transition: none;
+    }
+
+    // Scoped to the unselected state: a selected chip is already filled with
+    // --primary, and tinting its text the same colour would erase the label.
+    &:not(.is-selected):hover {
+      --nu-tag--BorderColor: var(--primary);
+      --nu-tag--Color: var(--primary);
+    }
+
+    &.is-selected:hover {
+      --nu-tag--BackgroundColor: var(--primary-600);
+      --nu-tag--BorderColor: var(--primary-600);
+    }
+
+    &:focus-visible {
+      outline: none;
+      box-shadow: nu-var("tag", "focus--BoxShadow");
+    }
+  }
+
+  // ---- states ----
+
+  @include when(selected) {
+    --nu-tag--Color: var(--text-inverted);
+    --nu-tag--BackgroundColor: var(--primary);
+    --nu-tag--BorderColor: var(--primary);
+  }
+
+  &.is-disabled {
+    opacity: nu-var("tag", "disabled--Opacity");
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+}

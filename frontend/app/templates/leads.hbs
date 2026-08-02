@@ -3,7 +3,7 @@
 <div data-test-leads-page class="flex col gap-6">
   <div class="flex between x-center">
     <div>
-      <h2 class="font-3xl font-bold"><Ui::Ph @icon="funnel" @size="28px" />
+      <h2 class="text-3xl font-bold"><Ui::Ph @icon="funnel" @size="28px" />
         Lead Pipeline</h2>
       <p class="text-muted mt-1">Track and manage your leads through the
         pipeline.</p>
@@ -52,21 +52,21 @@
           {{on "drop" (fn this.handleDrop column.status)}}
         >
           <div class="flex between x-center px-3 py-2 rounded-lg bg-surface">
-            <span class="font-sm font-bold">{{column.label}}</span>
-            <span class="font-xs text-muted">{{column.leads.length}}</span>
+            <span class="text-sm font-bold">{{column.label}}</span>
+            <span class="text-xs text-muted">{{column.leads.length}}</span>
           </div>
 
           {{#each column.leads as |lead|}}
             <div
               data-test-lead-card
               data-test-lead-id={{lead.id}}
-              class="glass-panel p-4 flex col gap-2 lead-card-clickable"
+              class="glass-panel flex col gap-2 lead-card-clickable"
               draggable="true"
               {{on "dragstart" (fn this.handleDragStart lead)}}
               {{on "click" (fn this.openDetailModal lead)}}
             >
               <div class="flex between x-center">
-                <p class="font-sm font-bold">{{lead.firstName}}{{#if
+                <p class="text-sm font-bold">{{lead.firstName}}{{#if
                     lead.lastName
                   }} {{lead.lastName}}{{/if}}</p>
                 <span
@@ -74,7 +74,7 @@
                 >{{lead.temperature}}</span>
               </div>
               <div class="flex gap-2 x-center">
-                <p class="text-muted font-xs">{{lead.phone}}</p>
+                <p class="text-muted text-xs">{{lead.phone}}</p>
                 {{#if lead.phone}}
                   <a
                     href={{wa-link lead.phone}}
@@ -88,15 +88,15 @@
                   </a>
                 {{/if}}
               </div>
-              <p class="text-muted font-xs">{{lead.email}}</p>
+              <p class="text-muted text-xs">{{lead.email}}</p>
               {{#if lead.property}}
-                <p class="text-primary font-xs flex gap-1 x-center"><Ui::Ph
+                <p class="text-primary text-xs flex gap-1 x-center"><Ui::Ph
                     @icon="buildings"
                   />
                   {{lead.property.name}}</p>
               {{/if}}
               {{#if lead.unit}}
-                <p class="text-info font-xs flex gap-1 x-center"><Ui::Ph
+                <p class="text-info text-xs flex gap-1 x-center"><Ui::Ph
                     @icon="house"
                   />
                   Property
@@ -106,7 +106,7 @@
                 <p class="assign-badge">{{lead.assignedAgentName}}</p>
               {{/if}}
               <div class="flex between x-center mt-1">
-                <span class="font-xs text-muted">{{format-date
+                <span class="text-xs text-muted">{{format-date
                     lead.createdAt
                   }}</span>
                 <div class="flex gap-2" {{on "click" this.stopPropagation}}>
@@ -129,7 +129,7 @@
             </div>
           {{else}}
             <div class="p-4 rounded-xl border border-white@05 text-center">
-              <p class="text-muted font-xs">No leads</p>
+              <p class="text-muted text-xs">No leads</p>
             </div>
           {{/each}}
         </div>
@@ -156,12 +156,12 @@
                 column.temperature
               }}"
           >
-            <span class="font-sm font-bold flex gap-2 x-center">
+            <span class="text-sm font-bold flex gap-2 x-center">
               <Ui::Ph @icon={{column.icon}} />
               {{column.label}}
             </span>
             <span
-              class="font-xs temp-column-count"
+              class="text-xs temp-column-count"
             >{{column.leads.length}}</span>
           </div>
 
@@ -175,7 +175,7 @@
               {{on "click" (fn this.openDetailModal lead)}}
             >
               <div class="flex between x-center">
-                <p class="font-sm font-bold">{{lead.firstName}}{{#if
+                <p class="text-sm font-bold">{{lead.firstName}}{{#if
                     lead.lastName
                   }} {{lead.lastName}}{{/if}}</p>
                 <span
@@ -183,7 +183,7 @@
                 >{{lead.status}}</span>
               </div>
               <div class="flex gap-2 x-center">
-                <p class="text-muted font-xs">{{lead.phone}}</p>
+                <p class="text-muted text-xs">{{lead.phone}}</p>
                 {{#if lead.phone}}
                   <a
                     href={{wa-link lead.phone}}
@@ -197,9 +197,9 @@
                   </a>
                 {{/if}}
               </div>
-              <p class="text-muted font-xs">{{lead.email}}</p>
+              <p class="text-muted text-xs">{{lead.email}}</p>
               {{#if lead.property}}
-                <p class="text-primary font-xs flex gap-1 x-center"><Ui::Ph
+                <p class="text-primary text-xs flex gap-1 x-center"><Ui::Ph
                     @icon="buildings"
                   />
                   {{lead.property.name}}</p>
@@ -208,7 +208,7 @@
                 <p class="assign-badge">{{lead.assignedAgentName}}</p>
               {{/if}}
               <div class="flex between x-center mt-1">
-                <span class="font-xs text-muted">{{format-date
+                <span class="text-xs text-muted">{{format-date
                     lead.createdAt
                   }}</span>
                 <div class="flex gap-2" {{on "click" this.stopPropagation}}>
@@ -231,7 +231,7 @@
             </div>
           {{else}}
             <div class="p-4 rounded-xl border border-white@05 text-center">
-              <p class="text-muted font-xs">No leads</p>
+              <p class="text-muted text-xs">No leads</p>
             </div>
           {{/each}}
         </div>
@@ -253,7 +253,7 @@
           <div
             class="flex between x-center px-3 py-2 rounded-lg agent-column-header"
           >
-            <span class="font-sm font-bold flex gap-2 x-center">
+            <span class="text-sm font-bold flex gap-2 x-center">
               <Ui::Ph @icon={{if column.agentId "user" "user-minus"}} />
               {{column.agentName}}
             </span>
@@ -282,7 +282,7 @@
               {{on "click" (fn this.openDetailModal lead)}}
             >
               <div class="flex between x-center">
-                <p class="font-sm font-bold">{{lead.firstName}}{{#if
+                <p class="text-sm font-bold">{{lead.firstName}}{{#if
                     lead.lastName
                   }} {{lead.lastName}}{{/if}}</p>
                 <span
@@ -290,7 +290,7 @@
                 >{{lead.temperature}}</span>
               </div>
               <div class="flex gap-2 x-center">
-                <p class="text-muted font-xs">{{lead.phone}}</p>
+                <p class="text-muted text-xs">{{lead.phone}}</p>
                 {{#if lead.phone}}
                   <a
                     href={{wa-link lead.phone}}
@@ -308,13 +308,13 @@
                 class="status-badge status-{{lowercase lead.status}}"
               >{{lead.status}}</span>
               {{#if lead.property}}
-                <p class="text-primary font-xs flex gap-1 x-center"><Ui::Ph
+                <p class="text-primary text-xs flex gap-1 x-center"><Ui::Ph
                     @icon="buildings"
                   />
                   {{lead.property.name}}</p>
               {{/if}}
               <div class="flex between x-center mt-1">
-                <span class="font-xs text-muted">{{format-date
+                <span class="text-xs text-muted">{{format-date
                     lead.createdAt
                   }}</span>
                 <div class="flex gap-2" {{on "click" this.stopPropagation}}>
@@ -330,7 +330,7 @@
             </div>
           {{else}}
             <div class="p-4 rounded-xl border border-white@05 text-center">
-              <p class="text-muted font-xs">No leads</p>
+              <p class="text-muted text-xs">No leads</p>
             </div>
           {{/each}}
         </div>
@@ -369,7 +369,7 @@
               <td>
                 <div class="flex col gap-1">
                   <div class="flex gap-2 x-center">
-                    <span class="font-xs">{{lead.phone}}</span>
+                    <span class="text-xs">{{lead.phone}}</span>
                     {{#if lead.phone}}
                       <a
                         href={{wa-link lead.phone}}
@@ -383,7 +383,7 @@
                       </a>
                     {{/if}}
                   </div>
-                  <span class="font-xs text-muted">{{lead.email}}</span>
+                  <span class="text-xs text-muted">{{lead.email}}</span>
                 </div>
               </td>
               <td>
@@ -400,7 +400,7 @@
                 {{#if lead.property}}
                   <span>{{lead.property.name}}</span>
                   {{#if lead.unit}}
-                    <span class="text-muted font-xs">
+                    <span class="text-muted text-xs">
                       - Property
                       {{lead.unit.unitNumber}}</span>
                   {{/if}}
@@ -418,7 +418,7 @@
                 {{/if}}
               </td>
               <td>
-                <span class="font-xs text-muted">{{format-date
+                <span class="text-xs text-muted">{{format-date
                     lead.createdAt
                   }}</span>
               </td>
@@ -455,11 +455,10 @@
 </div>
 
 {{! Edit Modal }}
-<Ui::Modal
-  @isOpen={{this.showModal}}
+<Nuvo::Modal
+  @open={{this.showModal}}
   @title={{if this.editLead "Edit Lead" "New Lead"}}
   @onClose={{this.closeModal}}
-  @showClose={{true}}
 >
   <form class="flex col gap-4" {{on "submit" this.saveLead}}>
     {{#if this.showRegionField}}
@@ -474,7 +473,7 @@
       />
     {{/if}}
     <div class="flex gap-4">
-      <div class="flex-1">
+      <div class="grow">
         <Ui::FormInput
           @label="First Name"
           @id="lead-first-name"
@@ -485,7 +484,7 @@
           @required={{true}}
         />
       </div>
-      <div class="flex-1">
+      <div class="grow">
         <Ui::FormInput
           @label="Last Name"
           @id="lead-last-name"
@@ -513,7 +512,7 @@
       @onChange={{fn this.setField "formPhone"}}
     />
     <div class="flex gap-4">
-      <div class="flex-1">
+      <div class="grow">
         <Ui::FormDropdown
           @label="Status"
           @id="lead-status"
@@ -523,7 +522,7 @@
           @placeholder="Select status..."
         />
       </div>
-      <div class="flex-1">
+      <div class="grow">
         <Ui::FormDropdown
           @label="Temperature"
           @id="lead-temp"
@@ -578,14 +577,13 @@
       />
     </div>
   </form>
-</Ui::Modal>
+</Nuvo::Modal>
 
 {{! Assign Modal }}
-<Ui::Modal
-  @isOpen={{this.showAssignModal}}
+<Nuvo::Modal
+  @open={{this.showAssignModal}}
   @title="Assign Lead"
   @onClose={{this.closeAssignModal}}
-  @showClose={{true}}
 >
   <form class="flex col gap-4" {{on "submit" this.assignToAgent}}>
     <p class="text-muted">Select an agent to assign
@@ -608,11 +606,11 @@
       <Ui::AppButton @variant="primary" @buttonType="submit" @text="Assign" />
     </div>
   </form>
-</Ui::Modal>
+</Nuvo::Modal>
 
 {{! Lead Detail Modal }}
-<Ui::Modal
-  @isOpen={{this.showDetailModal}}
+<Nuvo::Modal
+  @open={{this.showDetailModal}}
   @title={{if
     this.detailLead
     (concat
@@ -622,8 +620,7 @@
     "Lead Details"
   }}
   @onClose={{this.closeDetailModal}}
-  @showClose={{true}}
-  @panelClass="modal-lg"
+  @size="lg"
 >
   <div class="flex gap-4 x-center">
     <span
@@ -639,7 +636,7 @@
     {{! Left: Lead Info }}
     <div class="detail-info flex col gap-4">
       <div class="info-section">
-        <h4 class="font-sm font-bold text-muted mb-2">Contact Info</h4>
+        <h4 class="text-sm font-bold text-muted mb-2">Contact Info</h4>
         <div class="flex col gap-2">
           <div class="flex gap-2 x-center">
             <span><Ui::Ph @icon="phone" /></span>
@@ -679,7 +676,7 @@
       </div>
 
       <div class="info-section">
-        <h4 class="font-sm font-bold text-muted mb-2">Property Interest</h4>
+        <h4 class="text-sm font-bold text-muted mb-2">Property Interest</h4>
         {{#if this.detailLead.property}}
           <div class="flex gap-2 x-center">
             <span><Ui::Ph @icon="buildings" /></span>
@@ -697,7 +694,7 @@
       </div>
 
       <div class="info-section">
-        <h4 class="font-sm font-bold text-muted mb-2">Budget</h4>
+        <h4 class="text-sm font-bold text-muted mb-2">Budget</h4>
         {{#if this.detailLead.budgetMin}}
           <span>{{format-currency this.detailLead.budgetMin}}</span>
           {{#if this.detailLead.budgetMax}}
@@ -709,26 +706,26 @@
       </div>
 
       <div class="info-section">
-        <h4 class="font-sm font-bold text-muted mb-2">Notes</h4>
+        <h4 class="text-sm font-bold text-muted mb-2">Notes</h4>
         <p class="text-sm">{{or this.detailLead.notes "No notes"}}</p>
       </div>
 
       <div class="info-section">
-        <h4 class="font-sm font-bold text-muted mb-2">Source</h4>
+        <h4 class="text-sm font-bold text-muted mb-2">Source</h4>
         <span>{{or this.detailLead.source "Unknown"}}</span>
       </div>
 
       <div class="flex gap-2 mt-2">
         <button
           type="button"
-          class="btn btn-secondary btn-sm flex-1"
+          class="btn btn-secondary btn-sm grow"
           {{on "click" (fn this.openEdit this.detailLead)}}
         >
           Edit
         </button>
         <button
           type="button"
-          class="btn btn-secondary btn-sm flex-1"
+          class="btn btn-secondary btn-sm grow"
           {{on "click" (fn this.openAssignModal this.detailLead)}}
         >
           Assign
@@ -737,8 +734,8 @@
     </div>
 
     {{! Right: Activity Timeline }}
-    <div class="detail-timeline flex-1">
-      <h4 class="font-sm font-bold text-muted mb-4">Activity History</h4>
+    <div class="detail-timeline grow">
+      <h4 class="text-sm font-bold text-muted mb-4">Activity History</h4>
       <div class="activity-timeline flex col gap-3">
         {{#each this.leadActivities as |activity|}}
           <div class="activity-item" data-test-activity-id={{activity.id}}>
@@ -771,4 +768,4 @@
       </div>
     </div>
   </div>
-</Ui::Modal>
+</Nuvo::Modal>

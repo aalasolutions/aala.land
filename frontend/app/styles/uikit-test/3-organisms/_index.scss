@@ -1,0 +1,10 @@
+// ============================================
+// ORGANISMS INDEX
+// ============================================
+// Forward all organism partials for single import.
+// Usage: @use '3-organisms' as organisms;
+
+@forward 'cards';
+@forward 'tables';
+@forward 'popup';
+@forward 'tabs';

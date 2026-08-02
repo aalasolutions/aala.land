@@ -1,0 +1,241 @@
+// nu-tabs - navigation between related panels of content
+@use "./mixins/bem" as *;
+@use "./mixins/var" as *;
+@use "./common/var" as *;
+
+@include b(tabs) {
+  @include nu-root("tabs", (
+    "Display": flex,
+    "Gap": nu-space(1),
+    "BackgroundColor": transparent,
+    "PaddingBlock": 0,
+    "PaddingInline": 0,
+    "BorderRadius": nu-radius(none),
+    "BorderWidth": 0,
+    "BorderColor": transparent,
+  ));
+
+  display: nu-var("tabs", "Display");
+  align-items: stretch;
+  gap: nu-var("tabs", "Gap");
+  background-color: nu-var("tabs", "BackgroundColor");
+  padding-block: nu-var("tabs", "PaddingBlock");
+  padding-inline: nu-var("tabs", "PaddingInline");
+  border-radius: nu-var("tabs", "BorderRadius");
+  border-bottom: nu-var("tabs", "BorderWidth") solid nu-var("tabs", "BorderColor");
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+
+  // ---- elements ----
+
+  @include e(trigger) {
+    @include nu-root-el("tabs", "trigger", (
+      "Display": inline-flex,
+      "Gap": nu-space(2),
+      "PaddingBlock": nu-space(2),
+      "PaddingInline": nu-space(4),
+      "MinHeight": 2.5rem,
+      "FontSize": nu-font-size(sm),
+      "FontWeight": nu-font-weight(medium),
+      "Color": var(--text-muted),
+      "BackgroundColor": transparent,
+      "BorderRadius": nu-radius(none),
+      "BorderWidth": 2px,
+      "BorderColor": transparent,
+      "TransitionDuration": nu-duration(fast),
+      "hover--Color": var(--text-color),
+      "focus--BoxShadow": 0 0 0 3px #{nu-tint(primary, 35%)},
+    ));
+
+    display: nu-var-el("tabs", "trigger", "Display");
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    gap: nu-var-el("tabs", "trigger", "Gap");
+    padding-block: nu-var-el("tabs", "trigger", "PaddingBlock");
+    padding-inline: nu-var-el("tabs", "trigger", "PaddingInline");
+    min-height: nu-var-el("tabs", "trigger", "MinHeight");
+    font-family: inherit;
+    font-size: nu-var-el("tabs", "trigger", "FontSize");
+    font-weight: nu-var-el("tabs", "trigger", "FontWeight");
+    color: nu-var-el("tabs", "trigger", "Color");
+    background-color: nu-var-el("tabs", "trigger", "BackgroundColor");
+    border: none;
+    border-radius: nu-var-el("tabs", "trigger", "BorderRadius");
+    border-bottom: nu-var-el("tabs", "trigger", "BorderWidth") solid nu-var-el("tabs", "trigger", "BorderColor");
+    white-space: nowrap;
+    cursor: pointer;
+    user-select: none;
+    transition: color nu-var-el("tabs", "trigger", "TransitionDuration") $nu-ease,
+      background-color nu-var-el("tabs", "trigger", "TransitionDuration") $nu-ease,
+      border-color nu-var-el("tabs", "trigger", "TransitionDuration") $nu-ease;
+
+    @include reduced-motion {
+      transition: none;
+    }
+
+    &:hover:not(:disabled):not(.is-disabled) {
+      color: nu-var-el("tabs", "trigger", "hover--Color");
+    }
+
+    &:focus-visible {
+      outline: none;
+      box-shadow: nu-var-el("tabs", "trigger", "focus--BoxShadow");
+    }
+
+    &.is-active {
+      --nu-tabs__trigger--Color: var(--text-color);
+      --nu-tabs__trigger--BorderColor: var(--primary);
+    }
+
+    &:disabled,
+    &.is-disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+      pointer-events: none;
+    }
+  }
+
+  @include e(icon) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 1em;
+    line-height: 1;
+  }
+
+  @include e(label) {
+    line-height: 1;
+  }
+
+  @include e(count) {
+    @include nu-root-el("tabs", "count", (
+      "Color": var(--text-muted),
+      "BackgroundColor": var(--bg-alternate),
+    ));
+
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-inline-size: 1.25rem;
+    padding-inline: nu-space(1);
+    font-size: nu-font-size(xs);
+    font-weight: nu-font-weight(semibold);
+    line-height: 1.4;
+    color: nu-var-el("tabs", "count", "Color");
+    background-color: nu-var-el("tabs", "count", "BackgroundColor");
+    border-radius: nu-radius(full);
+  }
+
+  @include e(panel) {
+    @include nu-root-el("tabs", "panel", (
+      "PaddingBlock": nu-space(4),
+      "PaddingInline": 0,
+    ));
+
+    padding-block: nu-var-el("tabs", "panel", "PaddingBlock");
+    padding-inline: nu-var-el("tabs", "panel", "PaddingInline");
+
+    &:focus-visible {
+      outline: none;
+      box-shadow: nu-var-el("tabs", "trigger", "focus--BoxShadow");
+    }
+  }
+
+  @include e(indicator) {
+    @include nu-root-el("tabs", "indicator", (
+      "BackgroundColor": var(--primary),
+      "BorderRadius": nu-radius(full),
+    ));
+
+    position: absolute;
+    background-color: nu-var-el("tabs", "indicator", "BackgroundColor");
+    border-radius: nu-var-el("tabs", "indicator", "BorderRadius");
+    transition: transform nu-duration(fast) $nu-ease, inline-size nu-duration(fast) $nu-ease;
+
+    @include reduced-motion {
+      transition: none;
+    }
+  }
+
+  // ---- variants: shape differs, so enumerated ----
+
+  @include m(underline) {
+    --nu-tabs--Gap: #{nu-space(1)};
+    --nu-tabs--BorderWidth: 1px;
+    --nu-tabs--BorderColor: var(--border-base);
+  }
+
+  @include m(pills) {
+    --nu-tabs--Gap: #{nu-space(1)};
+    --nu-tabs--BackgroundColor: var(--bg-alternate);
+    --nu-tabs--PaddingBlock: #{nu-space(1)};
+    --nu-tabs--PaddingInline: #{nu-space(1)};
+    --nu-tabs--BorderRadius: #{nu-radius(lg)};
+
+    .nu-tabs__trigger {
+      --nu-tabs__trigger--BorderRadius: #{nu-radius(md)};
+      --nu-tabs__trigger--BorderWidth: 0;
+    }
+
+    .nu-tabs__trigger.is-active {
+      --nu-tabs__trigger--Color: var(--text-color);
+      --nu-tabs__trigger--BackgroundColor: var(--bg-surface);
+    }
+  }
+
+  @include m(enclosed) {
+    --nu-tabs--Gap: 0;
+    --nu-tabs--BorderWidth: 1px;
+    --nu-tabs--BorderColor: var(--border-base);
+
+    .nu-tabs__trigger {
+      --nu-tabs__trigger--BorderWidth: 1px;
+      --nu-tabs__trigger--BorderColor: transparent;
+      --nu-tabs__trigger--BorderRadius: #{nu-radius(md)} #{nu-radius(md)} 0 0;
+
+      border-bottom: none;
+      border: nu-var-el("tabs", "trigger", "BorderWidth") solid nu-var-el("tabs", "trigger", "BorderColor");
+      border-block-end: none;
+      margin-block-end: -1px;
+    }
+
+    .nu-tabs__trigger.is-active {
+      --nu-tabs__trigger--Color: var(--text-color);
+      --nu-tabs__trigger--BackgroundColor: var(--bg-surface);
+      --nu-tabs__trigger--BorderColor: var(--border-base);
+    }
+  }
+
+  // ---- orientation / layout ----
+
+  @include m(vertical) {
+    --nu-tabs--Display: flex;
+
+    flex-direction: column;
+    align-items: stretch;
+    overflow-x: hidden;
+    overflow-y: auto;
+    border-bottom: none;
+
+    .nu-tabs__trigger {
+      justify-content: flex-start;
+      --nu-tabs__trigger--BorderWidth: 2px;
+    }
+
+    &.m-underline {
+      .nu-tabs__trigger {
+        border-bottom: none;
+        border-inline-start: nu-var-el("tabs", "trigger", "BorderWidth") solid nu-var-el("tabs", "trigger", "BorderColor");
+      }
+    }
+  }
+
+  @include m(fill) {
+    .nu-tabs__trigger {
+      flex: 1 1 0%;
+    }
+  }
+}

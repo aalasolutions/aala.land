@@ -1,0 +1,451 @@
+.business-logic-form-wrapper {
+  .form-textarea {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+
+    .business-context-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
+
+      .form-label {
+          display: block;
+          font-weight: 600;
+          font-size: 0.7rem;
+          color: $text-primary;
+          margin-bottom: 0.5rem;
+
+        .required {
+          color: $error-color;
+        }
+      }
+
+      .generate-questions-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 1rem;
+        font-size: 0.875rem;
+        font-weight: 500;
+        color: $primary-color;
+        background: linear-gradient(135deg, $indigo-50, $indigo-100);
+        border: 1px solid rgba($primary-color, 0.2);
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+
+        &:hover:not(:disabled) {
+          background: linear-gradient(135deg, $indigo-100, $blue-100);
+          border-color: rgba($primary-color, 0.3);
+          box-shadow: 0 2px 8px rgba($primary-color, 0.15);
+        }
+
+        &:disabled {
+          opacity: 0.7;
+          cursor: not-allowed;
+        }
+
+        &.loading {
+          color: $text-muted;
+        }
+
+        &.disabled-paused {
+          background: linear-gradient(135deg, $slate-100, $slate-200);
+          border-color: $slate-300;
+          color: $slate-500;
+
+          i {
+            color: $warning-color;
+          }
+        }
+
+        i {
+          font-size: 0.9rem;
+        }
+      }
+    }
+
+    .generated-questions {
+      background: linear-gradient(135deg, $amber-50, $amber-100);
+      border: 1px solid $yellow-400;
+      border-radius: 10px;
+      padding: 1rem;
+      margin-bottom: 0.5rem;
+
+      .questions-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 0.75rem;
+
+        span {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          font-size: 0.9rem;
+          font-weight: 600;
+          color: $amber-800;
+
+          i {
+            color: $amber-500;
+          }
+        }
+
+        .clear-questions-btn {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 24px;
+          height: 24px;
+          padding: 0;
+          background: rgba($dark-color, 0.05);
+          border: none;
+          border-radius: 50%;
+          cursor: pointer;
+          color: $text-muted;
+          transition: all 0.2s ease;
+
+          &:hover {
+            background: rgba($dark-color, 0.1);
+            color: $slate-600;
+          }
+        }
+      }
+
+      .questions-list {
+        margin: 0;
+        padding-left: 1.25rem;
+        color: $warning-dark;
+
+        li {
+          font-size: 0.875rem;
+          line-height: 1.6;
+          margin-bottom: 0.5rem;
+
+          &:last-child {
+            margin-bottom: 0;
+          }
+        }
+      }
+
+      .questions-hint {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.5rem;
+        margin: 0.75rem 0 0 0;
+        padding-top: 0.75rem;
+        border-top: 1px solid rgba($yellow-400, 0.5);
+        font-size: 0.8rem;
+        color: $amber-800;
+
+        i {
+          margin-top: 2px;
+          color: $amber-500;
+        }
+      }
+    }
+
+    .questions-error {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+      background: $red-50;
+      border: 1px solid $red-100;
+      border-radius: 8px;
+      padding: 0.75rem 1rem;
+      margin-bottom: 0.5rem;
+      font-size: 0.875rem;
+      color: $red-800;
+
+      i {
+        color: $red-600;
+      }
+
+      .retry-btn {
+        margin-left: auto;
+        padding: 0.25rem 0.75rem;
+        font-size: 0.8rem;
+        font-weight: 500;
+        color: $red-600;
+        background: $white;
+        border: 1px solid $red-100;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+
+        &:hover {
+          background: $red-50;
+          border-color: $red-600;
+        }
+      }
+    }
+  }
+
+  .form-select {
+    display: flex;
+    align-items: baseline;
+    gap: 1rem;
+    width: 100%;
+    margin-bottom: 1rem;
+
+    @media screen and (max-width: 768px) {
+      flex-direction: column;
+    }
+
+    .userIdInput {
+      background: $white;
+      border-radius: 4px;
+      box-sizing: border-box;
+    }
+
+    .form-field-group {
+      display: flex;
+      flex-direction: column;
+      width: 100%;
+    }
+
+    .custom-input-field {
+      width: 100%;
+
+      .customInputContainer {
+        width: 100%;
+        margin-top: 1rem;
+
+        .inputLabel {
+          font-size: 14px;
+          color: $secondary-color;
+          font-style: italic;
+        }
+
+        .inputWrapper {
+          border: 1px solid $slate-300;
+          border-radius: 4px;
+          width: 100%;
+
+          .form-control {
+            padding: 10px 14px;
+            font-size: 14px;
+            width: 100%;
+
+            &::placeholder {
+              color: $slate-400;
+              font-style: italic;
+            }
+          }
+
+          &:focus-within {
+            border-color: $secondary-color;
+            box-shadow: 0 0 0 2px rgba($blue-500, 0.25);
+          }
+        }
+      }
+    }
+
+    @media (min-width: 768px) {
+      align-items: baseline;
+
+      .form-field-group {
+        display: flex;
+        flex-direction: row;
+        justify-content: center;
+        align-items: center;
+        gap: 1rem;
+        min-width: 0;
+      }
+
+      .custom-input-field > .customInputContainer {
+        margin: 0;
+
+        .inputLabel {
+          margin: 0;
+        }
+      }
+    }
+  }
+
+  .isolation-section {
+    display: flex;
+    flex-direction: column;
+    margin-block: 1rem;
+
+    .section-header {
+      h3 {
+        margin: 0 0 0.25rem 0;
+        font-size: 1.15rem;
+        font-weight: 600;
+        color: $dark-color;
+      }
+
+      p {
+        margin: 0;
+        font-size: 0.875rem;
+        color: $text-muted;
+      }
+    }
+
+    .isolation-cards {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1rem;
+      align-items: start;
+
+      @media (min-width: 768px) {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .isolation-card {
+        background: $white;
+        border: 1px solid $border-color;
+        border-radius: 12px;
+        padding: 1.25rem;
+        transition:
+          box-shadow 0.3s ease,
+          background 0.3s ease,
+          transform 0.2s ease;
+        position: relative;
+        overflow: visible;
+        align-self: start;
+
+        &.active {
+          border-color: $border-color;
+          background: linear-gradient(
+            to bottom,
+            rgba($blue-600, 0.03),
+            $white
+          );
+          box-shadow: 0px 0px 3px rgba($blue-600, 0.12);
+        }
+
+        .card-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 1rem;
+
+          .card-info {
+            display: flex;
+            align-items: center;
+            gap: 0.875rem;
+            flex: 1;
+
+            .card-icon {
+              width: 40px;
+              height: 40px;
+              min-width: 40px;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              background: linear-gradient(135deg, $indigo-50, $indigo-100);
+              border-radius: 10px;
+              color: $primary-color;
+              font-size: 1.1rem;
+              transition: all 0.3s ease;
+
+              // Responsive fix for currency icon
+              &.currency-icon {
+                @media screen and (max-width: 480px) {
+                  width: 36px;
+                  height: 36px;
+                  min-width: 36px;
+                  font-size: 1rem;
+                }
+              }
+            }
+
+            .card-text {
+              h4 {
+                margin: 0;
+                font-size: 0.95rem;
+                font-weight: 600;
+                color: $dark-color;
+              }
+
+              .card-description {
+                font-size: 0.8rem;
+                color: $text-muted;
+                display: block;
+                margin-top: 0.15rem;
+              }
+            }
+          }
+
+          .currency-type-toggle {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-shrink: 0;
+
+            @media screen and (max-width: 480px) {
+              gap: 6px;
+            }
+
+            .toggle-label {
+              font-size: 0.875rem;
+              color: $text-muted;
+              transition: color 0.3s ease;
+              white-space: nowrap;
+
+              @media screen and (max-width: 480px) {
+                font-size: 0.8rem;
+              }
+
+              &.active-single,
+              &.active-multi {
+                color: $primary-color;
+                font-weight: 600;
+              }
+            }
+          }
+        }
+
+        &.active .card-header .card-info .card-icon {
+          box-shadow: 0px 4px 10px 0px rgba($blue-600, 0.35);
+          transform: scale(1.05);
+        }
+
+        .card-body {
+          overflow: hidden;
+          max-height: 500px;
+          opacity: 1;
+          margin-top: 1rem;
+          padding-top: 1rem;
+          border-top: 1px solid $bg-gray;
+          transition:
+            max-height 0.35s ease-in-out,
+            opacity 0.3s ease-in-out,
+            margin-top 0.35s ease-in-out,
+            padding-top 0.35s ease-in-out,
+            border-color 0.3s ease-in-out;
+
+          &.collapsed {
+            max-height: 0;
+            opacity: 0;
+            margin-top: 0;
+            padding-top: 0;
+            border-top-color: transparent;
+          }
+
+          .card-body-content {
+            .field-hint {
+              display: flex;
+              align-items: center;
+              gap: 0.5rem;
+              font-size: 0.8rem;
+              color: $text-muted;
+              margin-top: 0.5rem;
+
+              i {
+                color: $primary-color;
+                font-size: 0.75rem;
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

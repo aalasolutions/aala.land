@@ -4,7 +4,7 @@
 
 <div data-test-unit-detail class="flex col gap-6">
   {{! Breadcrumb }}
-  <div data-test-breadcrumb class="flex x-center gap-2 font-sm text-muted">
+  <div data-test-breadcrumb class="flex x-center gap-2 text-sm text-muted">
     <LinkTo
       @route="properties"
       data-test-breadcrumb-properties
@@ -33,15 +33,19 @@
     {{! Two column: Gallery + Info }}
     <div class="unit-detail-grid">
       {{! Left: Photo gallery }}
-      <div class="glass-panel p-6 flex col gap-4">
+      <Nuvo::Card class="flex col gap-4">
         <div class="flex between x-center mb-2">
-          <h4 class="font-sm font-bold uppercase text-muted">Photos</h4>
+          <h4 class="text-sm font-bold uppercase text-muted">Photos</h4>
           <label
-            class="btn btn-primary btn-sm {{if this.isUploading 'disabled'}}"
+            class="nu-btn m-primary m-sm {{if this.isUploading 'is-disabled'}}"
             data-test-upload-photo-btn
           >
             <Ui::Ph @icon="camera-plus" />
-            {{if this.isUploading this.uploadStatus "Add Photo"}}
+            <span class="nu-btn__label">{{if
+                this.isUploading
+                this.uploadStatus
+                "Add Photo"
+              }}</span>
             <input
               type="file"
               class="sr-only"
@@ -77,23 +81,23 @@
                 />
                 <div class="unit-thumb-actions">
                   {{#unless media.isPrimary}}
-                    <button
-                      type="button"
-                      class="btn-icon"
+                    <Nuvo::Button
+                      @variant="secondary"
+                      @shape="circle"
+                      @size="xs"
+                      @icon="★"
                       title="Set as primary"
                       {{on "click" (fn this.setPrimaryPhoto media)}}
-                    >
-                      <Ui::Ph @icon="star" />
-                    </button>
+                    />
                   {{/unless}}
-                  <button
-                    type="button"
-                    class="btn-icon btn-icon-danger"
+                  <Nuvo::Button
+                    @variant="danger"
+                    @shape="circle"
+                    @size="xs"
+                    @icon="🗑"
                     title="Delete"
                     {{on "click" (fn this.openDeletePhoto media)}}
-                  >
-                    <Ui::Ph @icon="trash" />
-                  </button>
+                  />
                 </div>
               </div>
             {{/each}}
@@ -117,30 +121,30 @@
         {{else}}
           <div class="unit-photo-placeholder" data-test-photo-placeholder>
             <Ui::Ph @icon="image" />
-            <p class="text-muted mt-2 font-sm">No photos uploaded yet</p>
+            <p class="text-muted mt-2 text-sm">No photos uploaded yet</p>
           </div>
         {{/if}}
-      </div>
+      </Nuvo::Card>
 
       {{! Right: Property info panel }}
       <div class="flex col gap-4">
-        <div class="glass-panel p-6 flex col gap-3">
+        <Nuvo::Card class="flex col gap-3">
           <div class="flex between x-center">
-            <h2 data-test-unit-title class="font-2xl font-bold">Property
+            <h2 data-test-unit-title class="text-2xl font-bold">Property
               {{@model.unit.unitNumber}}</h2>
-            <button
-              type="button"
-              class="btn btn-secondary btn-sm"
+            <Nuvo::Button
+              @variant="secondary"
+              @size="sm"
+              @icon="✎"
               data-test-edit-btn
               {{on "click" this.openEdit}}
             >
-              <Ui::Ph @icon="pencil-simple" />
               Edit
-            </button>
+            </Nuvo::Button>
           </div>
 
           {{#if @model.unit.asset}}
-            <p class="text-muted font-sm">
+            <p class="text-muted text-sm">
               {{@model.unit.asset.name}}
               {{#if @model.unit.asset.locality}}
                 &middot;
@@ -152,12 +156,12 @@
           {{#if @model.unit.price}}
             <p
               data-test-unit-price
-              class="font-2xl font-bold text-success"
+              class="text-2xl font-bold text-success"
             >{{format-currency @model.unit.price}}</p>
           {{/if}}
 
           {{! Specs row }}
-          <div class="flex gap-4 font-sm flex wrap" data-test-unit-specs>
+          <div class="flex gap-4 text-sm flex wrap" data-test-unit-specs>
             {{#if @model.unit.bedrooms}}
               <span class="flex x-center gap-1"><Ui::Ph @icon="bed" />
                 {{@model.unit.bedrooms}}
@@ -182,25 +186,25 @@
 
           {{! Status + Property Type badges }}
           <div class="flex gap-3 x-center" data-test-unit-badges>
-            <span
-              class="status-badge status-{{@model.unit.status}}"
-            >{{capitalize @model.unit.status}}</span>
+            <Nuvo::Tag class="badge-unit-{{lowercase @model.unit.status}}">
+              {{capitalize @model.unit.status}}
+            </Nuvo::Tag>
             {{#if @model.unit.propertyType}}
-              <span
-                class="type-badge type-{{lowercase @model.unit.propertyType}}"
+              <Nuvo::Tag
+                class="badge-proptype-{{lowercase @model.unit.propertyType}}"
               >
                 {{if
                   (eq @model.unit.propertyType "FOR_SALE")
                   "For Sale"
                   "For Rent"
                 }}
-              </span>
+              </Nuvo::Tag>
             {{/if}}
           </div>
 
           {{! Owner }}
           {{#if @model.unit.owner}}
-            <div class="flex x-center gap-2 font-sm" data-test-unit-owner>
+            <div class="flex x-center gap-2 text-sm" data-test-unit-owner>
               <Ui::Ph @icon="user" />
               <span class="text-muted">Owner:</span>
               <LinkTo
@@ -212,48 +216,48 @@
               </LinkTo>
             </div>
           {{/if}}
-        </div>
+        </Nuvo::Card>
 
         {{! Amenities card }}
         {{#if @model.unit.amenities.length}}
-          <div class="glass-panel p-5" data-test-amenities-card>
+          <Nuvo::Card data-test-amenities-card>
             <h4
-              class="font-sm font-bold uppercase text-muted mb-3"
+              class="text-sm font-bold uppercase text-muted mb-3"
             >Amenities</h4>
             <Unit::AmenitiesPrint @amenities={{@model.unit.amenities}} />
-          </div>
+          </Nuvo::Card>
         {{/if}}
       </div>
     </div>
 
     {{! Description }}
     {{#if @model.unit.description}}
-      <div class="glass-panel p-6" data-test-description>
-        <h4 class="font-md font-bold mb-3"><Ui::Ph @icon="text-align-left" />
+      <Nuvo::Card data-test-description>
+        <h4 class="text-md font-bold mb-3"><Ui::Ph @icon="text-align-left" />
           Description</h4>
         <p class="text-muted">{{@model.unit.description}}</p>
-      </div>
+      </Nuvo::Card>
     {{/if}}
 
     {{! Documents }}
-    <div class="glass-panel p-6" data-test-unit-documents>
+    <Nuvo::Card data-test-unit-documents>
       <div class="flex between x-center mb-3">
-        <h4 class="font-md font-bold"><Ui::Ph @icon="file-text" />
+        <h4 class="text-md font-bold"><Ui::Ph @icon="file-text" />
           Documents</h4>
-        <button
-          type="button"
-          class="btn btn-primary btn-sm"
+        <Nuvo::Button
+          @variant="primary"
+          @size="sm"
           data-test-upload-document-btn
           {{on "click" this.openDocumentCreate}}
         >
           <Ui::Ph @icon="upload-simple" />
           Upload
-        </button>
+        </Nuvo::Button>
       </div>
 
       {{#if @model.documents.length}}
-        <div class="data-table-wrapper">
-          <table class="data-table">
+        <div class="nu-table-wrapper">
+          <table class="nu-table">
             <thead>
               <tr>
                 <th>Title</th>
@@ -267,45 +271,45 @@
               {{#each @model.documents as |doc|}}
                 <tr data-test-document-row>
                   <td class="font-bold">{{doc.name}}</td>
-                  <td class="font-sm text-muted">{{format-bytes
+                  <td class="text-sm text-muted">{{format-bytes
                       doc.fileSize
                     }}</td>
-                  <td><span
-                      class="type-badge type-{{lowercase doc.category}}"
-                    >{{doc.category}}</span></td>
+                  <td><Nuvo::Tag class="badge-doc-{{lowercase doc.category}}">
+                      {{doc.category}}
+                    </Nuvo::Tag></td>
                   <td
-                    class="font-sm text-muted"
+                    class="text-sm text-muted"
                     data-test-document-uploader
                   >{{if doc.uploadedByName doc.uploadedByName "—"}}</td>
                   <td>
                     <div class="flex gap-2">
-                      <button
-                        type="button"
-                        class="btn btn-secondary btn-xs"
+                      <Nuvo::Button
+                        @variant="secondary"
+                        @size="xs"
                         title="Download"
                         data-test-download-document-btn
                         {{on "click" (fn this.downloadDocument doc)}}
                       >
                         <Ui::Ph @icon="download-simple" />
-                      </button>
-                      <button
-                        type="button"
-                        class="btn btn-secondary btn-xs"
+                      </Nuvo::Button>
+                      <Nuvo::Button
+                        @variant="secondary"
+                        @size="xs"
                         title="Edit"
                         data-test-edit-document-btn
                         {{on "click" (fn this.openDocumentEdit doc)}}
                       >
                         <Ui::Ph @icon="pencil-simple" />
-                      </button>
-                      <button
-                        type="button"
-                        class="btn btn-danger btn-xs"
+                      </Nuvo::Button>
+                      <Nuvo::Button
+                        @variant="danger"
+                        @size="xs"
                         title="Delete"
                         data-test-delete-document-btn
                         {{on "click" (fn this.openDeleteDocument doc)}}
                       >
                         <Ui::Ph @icon="trash" />
-                      </button>
+                      </Nuvo::Button>
                     </div>
                   </td>
                 </tr>
@@ -314,17 +318,17 @@
           </table>
         </div>
       {{else}}
-        <p class="text-muted font-sm">No documents uploaded for this property.</p>
+        <p class="text-muted text-sm">No documents uploaded for this property.</p>
       {{/if}}
-    </div>
+    </Nuvo::Card>
 
     {{! Lease History }}
-    <div class="glass-panel p-6" data-test-lease-history>
-      <h4 class="font-md font-bold mb-3"><Ui::Ph @icon="file-text" />
+    <Nuvo::Card data-test-lease-history>
+      <h4 class="text-md font-bold mb-3"><Ui::Ph @icon="file-text" />
         Lease History</h4>
       {{#if @model.leases.length}}
-        <div class="data-table-wrapper">
-          <table class="data-table">
+        <div class="nu-table-wrapper">
+          <table class="nu-table">
             <thead>
               <tr>
                 <th>Tenant</th>
@@ -341,169 +345,163 @@
                   <td>{{format-date lease.startDate}}</td>
                   <td>{{format-date lease.endDate}}</td>
                   <td>{{format-currency lease.monthlyRent}}</td>
-                  <td><span
-                      class="status-badge status-{{lowercase lease.status}}"
-                    >{{lease.status}}</span></td>
+                  <td><Nuvo::Tag class="badge-lease-{{lowercase lease.status}}">
+                      {{lease.status}}
+                    </Nuvo::Tag></td>
                 </tr>
               {{/each}}
             </tbody>
           </table>
         </div>
       {{else}}
-        <p class="text-muted font-sm">No lease history for this property.</p>
+        <p class="text-muted text-sm">No lease history for this property.</p>
       {{/if}}
-    </div>
+    </Nuvo::Card>
   {{else}}
-    <div class="glass-panel p-8 text-center" data-test-unit-not-found>
-      <Ui::Ph @icon="warning" />
-      <p class="text-muted mt-2">Property not found.</p>
-      <LinkTo @route="properties" class="btn btn-primary mt-4">Back to
-        Properties</LinkTo>
-    </div>
+    <Nuvo::EmptyState
+      @title="Property not found"
+      data-test-unit-not-found
+    >
+      <:icon><Ui::Ph @icon="warning" /></:icon>
+      <:actions>
+        <LinkTo @route="properties" class="nu-btn m-primary">Back to
+          Properties</LinkTo>
+      </:actions>
+    </Nuvo::EmptyState>
   {{/if}}
 </div>
 
 {{! Edit Modal }}
-<Ui::Modal
-  @isOpen={{this.showEditModal}}
+<Nuvo::Modal
+  @open={{this.showEditModal}}
   @title="Edit Property"
   @onClose={{this.closeEdit}}
-  @showClose={{true}}
 >
   <form class="flex col gap-4" {{on "submit" this.save}}>
     <div class="flex gap-4">
-      <div class="flex col gap-2 flex-1">
-        <Ui::FormInput
-          @label="Property Number"
-          @id="u-number"
-          @type="text"
-          @placeholder="e.g. 101"
+      <Nuvo::Field @label="Property Number" @required={{true}} class="grow">
+        <Nuvo::Input
+          type="text"
+          placeholder="e.g. 101"
           @value={{this.formUnitNumber}}
-          @onChange={{fn this.setField "formUnitNumber"}}
-          @required={{true}}
+          @onInput={{fn this.setFieldValue "formUnitNumber"}}
           data-test-field-unit-number
         />
-      </div>
-      <div class="flex col gap-2 flex-1">
-        <Ui::FormDropdown
-          @label="Status"
-          @id="u-status"
+      </Nuvo::Field>
+      <Nuvo::Field @label="Status" class="grow">
+        <Nuvo::Dropdown
+          @searchable={{true}}
+          @align="start"
           @value={{this.formStatus}}
-          @onChange={{fn this.setField "formStatus"}}
+          @onSelect={{fn this.setFieldValue "formStatus"}}
           @options={{this.statusOptions}}
           @placeholder="Select status..."
           data-test-field-status
         />
-      </div>
+      </Nuvo::Field>
     </div>
 
-    <Ui::FormDropdown
-      @label="Listing Type"
-      @id="u-property-type"
-      @value={{this.formPropertyType}}
-      @onChange={{fn this.setField "formPropertyType"}}
-      @options={{this.propertyTypeOptions}}
-      @placeholder="Not Listed"
-      data-test-field-property-type
-    />
+    <Nuvo::Field @label="Listing Type">
+      <Nuvo::Dropdown
+        @searchable={{true}}
+        @align="start"
+        @value={{this.formPropertyType}}
+        @onSelect={{fn this.setFieldValue "formPropertyType"}}
+        @options={{this.propertyTypeOptions}}
+        @placeholder="Not Listed"
+        data-test-field-property-type
+      />
+    </Nuvo::Field>
 
     <div class="flex gap-4">
-      <div class="flex col gap-2 flex-1">
-        <Ui::FormInput
-          @label="Price"
-          @id="u-price"
-          @type="number"
-          @min="0"
-          @placeholder="e.g. 150000"
+      <Nuvo::Field @label="Price" class="grow">
+        <Nuvo::Input
+          type="number"
+          min="0"
+          placeholder="e.g. 150000"
           @value={{this.formPrice}}
-          @onChange={{fn this.setField "formPrice"}}
+          @onInput={{fn this.setFieldValue "formPrice"}}
           data-test-field-price
         />
-      </div>
-      <div class="flex col gap-2 flex-1">
-        <Ui::FormInput
-          @label="Sq Ft"
-          @id="u-sqft"
-          @type="number"
-          @min="0"
-          @placeholder="e.g. 850"
+      </Nuvo::Field>
+      <Nuvo::Field @label="Sq Ft" class="grow">
+        <Nuvo::Input
+          type="number"
+          min="0"
+          placeholder="e.g. 850"
           @value={{this.formSqFt}}
-          @onChange={{fn this.setField "formSqFt"}}
+          @onInput={{fn this.setFieldValue "formSqFt"}}
           data-test-field-sqft
         />
-      </div>
+      </Nuvo::Field>
     </div>
 
     <div class="flex gap-4">
-      <div class="flex col gap-2 flex-1">
-        <Ui::FormInput
-          @label="Bedrooms"
-          @id="u-beds"
-          @type="number"
-          @min="0"
-          @placeholder="e.g. 2"
+      <Nuvo::Field @label="Bedrooms" class="grow">
+        <Nuvo::Input
+          type="number"
+          min="0"
+          placeholder="e.g. 2"
           @value={{this.formBedrooms}}
-          @onChange={{fn this.setField "formBedrooms"}}
+          @onInput={{fn this.setFieldValue "formBedrooms"}}
           data-test-field-bedrooms
         />
-      </div>
-      <div class="flex col gap-2 flex-1">
-        <Ui::FormInput
-          @label="Bathrooms"
-          @id="u-baths"
-          @type="number"
-          @min="0"
-          @placeholder="e.g. 2"
+      </Nuvo::Field>
+      <Nuvo::Field @label="Bathrooms" class="grow">
+        <Nuvo::Input
+          type="number"
+          min="0"
+          placeholder="e.g. 2"
           @value={{this.formBathrooms}}
-          @onChange={{fn this.setField "formBathrooms"}}
+          @onInput={{fn this.setFieldValue "formBathrooms"}}
           data-test-field-bathrooms
         />
-      </div>
+      </Nuvo::Field>
     </div>
 
-    <Ui::FormInput
-      @label="Floor"
-      @id="u-floor"
-      @type="number"
-      @min="0"
-      @placeholder="e.g. 5"
-      @value={{this.formFloor}}
-      @onChange={{fn this.setField "formFloor"}}
-      data-test-field-floor
-    />
+    <Nuvo::Field @label="Floor">
+      <Nuvo::Input
+        type="number"
+        min="0"
+        placeholder="e.g. 5"
+        @value={{this.formFloor}}
+        @onInput={{fn this.setFieldValue "formFloor"}}
+        data-test-field-floor
+      />
+    </Nuvo::Field>
 
-    <div class="flex col gap-2">
-      <label class="font-sm text-muted" for="u-desc">Description</label>
-      <textarea
-        id="u-desc"
-        class="form-input"
-        data-test-field-description
+    <Nuvo::Field @label="Description">
+      <Nuvo::Textarea
         rows="3"
         placeholder="Property description..."
-        {{on "input" (fn this.setField "formDescription")}}
-      >{{this.formDescription}}</textarea>
-    </div>
+        @value={{this.formDescription}}
+        @onInput={{fn this.setFieldValue "formDescription"}}
+        data-test-field-description
+      />
+    </Nuvo::Field>
 
-    <Ui::FormDropdown
-      @label="Owner"
-      @id="u-owner"
-      @value={{this.formOwnerId}}
-      @onChange={{fn this.setField "formOwnerId"}}
-      @options={{this.ownerOptions}}
-      @placeholder="Unassigned"
-      data-test-field-owner
-    />
+    <Nuvo::Field @label="Owner">
+      <Nuvo::Dropdown
+        @searchable={{true}}
+        @align="start"
+        @value={{this.formOwnerId}}
+        @onSelect={{fn this.setFieldValue "formOwnerId"}}
+        @options={{this.ownerOptions}}
+        @placeholder="Unassigned"
+        data-test-field-owner
+      />
+    </Nuvo::Field>
 
     <div class="flex col gap-2">
-      <label class="font-sm text-muted">Amenities</label>
-      <div class="amenities-grid" data-test-amenities-picker>
+      <label class="text-sm text-muted">Amenities</label>
+      <div class="flex gap-2 wrap" data-test-amenities-picker>
         {{#each this.amenityOptions as |opt|}}
           <button
             type="button"
-            class="amenity-chip
+            class="nu-tag m-pill m-selectable
               {{if
                 (includes this.formAmenities opt.key)
-                'amenity-chip-active'
+                'is-selected'
               }}"
             data-test-amenity={{opt.key}}
             {{on "click" (fn this.toggleAmenity opt.key)}}
@@ -516,35 +514,34 @@
     </div>
 
     {{#if this.errorMsg}}
-      <p class="font-sm text-danger" data-test-error>{{this.errorMsg}}</p>
+      <p class="text-sm text-danger" data-test-error>{{this.errorMsg}}</p>
     {{/if}}
 
-    <div class="flex gap-3 mt-2">
-      <button
-        type="button"
-        class="btn btn-secondary"
+    <Nuvo::FormActions>
+      <Nuvo::Button
+        @variant="secondary"
         data-test-cancel-btn
         {{on "click" this.closeEdit}}
-      >Cancel</button>
-      <button
+      >Cancel</Nuvo::Button>
+      <Nuvo::Button
+        @variant="primary"
         type="submit"
-        class="btn btn-primary"
+        @loading={{this.isSaving}}
         data-test-save-btn
-        disabled={{this.isSaving}}
       >
         {{if this.isSaving "Saving..." "Update Property"}}
-      </button>
-    </div>
+      </Nuvo::Button>
+    </Nuvo::FormActions>
   </form>
-</Ui::Modal>
+</Nuvo::Modal>
 
 <ConfirmModal
-  @isOpen={{this.showDeleteModal}}
+  @open={{this.showDeleteModal}}
   @title="Delete Photo"
   @message="Are you sure you want to delete this photo? This action cannot be undone."
   @confirmText="Delete"
   @cancelText="Cancel"
-  @confirmType="btn-danger"
+  @confirmVariant="danger"
   @isConfirming={{this.isDeleting}}
   @confirmingText="Deleting..."
   @onClose={{this.closeDeleteModal}}
@@ -552,114 +549,110 @@
 />
 
 {{! Upload/Edit Document Modal }}
-<Ui::Modal
-  @isOpen={{this.showDocumentModal}}
+<Nuvo::Modal
+  @open={{this.showDocumentModal}}
   @title={{if this.editDocument "Update Document" "Upload Document"}}
   @onClose={{this.closeDocumentModal}}
-  @showClose={{true}}
 >
   <form class="flex col gap-4" {{on "submit" this.saveDocument}}>
-    <div class="flex col gap-2">
-      <label class="font-sm text-muted" for="ud-file">File
-        {{unless this.editDocument "*"}}</label>
+    <Nuvo::Field @label="File {{unless this.editDocument '*'}}">
       <input
         id="ud-file"
         type="file"
-        class="form-input"
+        class="nu-input"
         data-test-document-file-input
         accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.rtf,.txt,.md,.csv,.jpg,.jpeg,.png,.webp,.gif"
         {{on "change" this.onDocFileSelect}}
       />
       {{#if this.selectedDocFile}}
-        <p class="font-xs text-muted" data-test-selected-document-file>
+        <p class="text-xs text-muted" data-test-selected-document-file>
           Selected:
           {{this.selectedDocFile.name}}
           ({{format-bytes this.selectedDocFile.size}})
         </p>
       {{/if}}
-    </div>
+    </Nuvo::Field>
 
-    <Ui::FormInput
-      @label="Document Name"
-      @id="ud-name"
-      @type="text"
-      @placeholder="Title Deed"
-      @value={{this.formDocName}}
-      @onChange={{fn this.setField "formDocName"}}
-      @required={{true}}
-      data-test-document-field-name
-    />
+    <Nuvo::Field @label="Document Name" @required={{true}}>
+      <Nuvo::Input
+        type="text"
+        placeholder="Title Deed"
+        @value={{this.formDocName}}
+        @onInput={{fn this.setFieldValue "formDocName"}}
+        data-test-document-field-name
+      />
+    </Nuvo::Field>
 
     <div class="flex gap-4">
-      <div class="flex col gap-2 flex-1">
-        <Ui::FormDropdown
-          @label="Category"
-          @id="ud-category"
+      <Nuvo::Field @label="Category" class="grow">
+        <Nuvo::Dropdown
+          @searchable={{true}}
+          @align="start"
           @value={{this.formDocCategory}}
-          @onChange={{fn this.setField "formDocCategory"}}
+          @onSelect={{fn this.setFieldValue "formDocCategory"}}
           @options={{this.documentCategoryOptions}}
           @placeholder="Select category..."
           data-test-document-field-category
         />
-      </div>
-      <div class="flex col gap-2 flex-1">
-        <Ui::FormDropdown
-          @label="Access Level"
-          @id="ud-access"
+      </Nuvo::Field>
+      <Nuvo::Field @label="Access Level" class="grow">
+        <Nuvo::Dropdown
+          @searchable={{true}}
+          @align="start"
           @value={{this.formDocAccessLevel}}
-          @onChange={{fn this.setField "formDocAccessLevel"}}
+          @onSelect={{fn this.setFieldValue "formDocAccessLevel"}}
           @options={{this.documentAccessLevelOptions}}
           @placeholder="Select access level..."
           data-test-document-field-access
         />
-      </div>
+      </Nuvo::Field>
     </div>
 
     {{#if this.isSavingDocument}}
       {{#unless this.editDocument}}
-        <div class="upload-progress" data-test-document-upload-progress>
-          <div class="upload-progress-bar">
-            <div
-              class="upload-progress-bar__track upload-progress-bar__track--determinate"
-              style={{this.documentUploadProgressStyle}}
-            ></div>
-          </div>
-          <p class="font-xs text-muted mt-1">{{this.uploadProgress}}%</p>
+        <div data-test-document-upload-progress>
+          <Nuvo::Progress
+            @value={{this.uploadProgress}}
+            @showText={{true}}
+          />
         </div>
       {{/unless}}
     {{/if}}
 
     {{#if this.documentErrorMsg}}
-      <p class="font-sm text-danger" data-test-document-error>
+      <p class="text-sm text-danger" data-test-document-error>
         {{this.documentErrorMsg}}
       </p>
     {{/if}}
 
-    <div class="flex gap-3 mt-2">
-      <Ui::AppButton
+    <Nuvo::FormActions>
+      <Nuvo::Button
         @variant="secondary"
-        @text="Cancel"
-        @onClick={{this.closeDocumentModal}}
-      />
-      <Ui::AppButton
+        {{on "click" this.closeDocumentModal}}
+      >Cancel</Nuvo::Button>
+      <Nuvo::Button
         @variant="primary"
-        @buttonType="submit"
-        @text={{if this.editDocument "Update" "Upload"}}
+        type="submit"
         @loading={{this.isSavingDocument}}
-        @loadingText="Uploading..."
         data-test-document-save-btn
-      />
-    </div>
+      >
+        {{if
+          this.isSavingDocument
+          "Uploading..."
+          (if this.editDocument "Update" "Upload")
+        }}
+      </Nuvo::Button>
+    </Nuvo::FormActions>
   </form>
-</Ui::Modal>
+</Nuvo::Modal>
 
 <ConfirmModal
-  @isOpen={{this.showDeleteDocumentModal}}
+  @open={{this.showDeleteDocumentModal}}
   @title="Delete Document"
   @message="Are you sure you want to delete {{this.documentToDelete.name}}? This action cannot be undone."
   @confirmText="Delete"
   @cancelText="Cancel"
-  @confirmType="btn-danger"
+  @confirmVariant="danger"
   @isConfirming={{this.isDeletingDocument}}
   @confirmingText="Deleting..."
   @onClose={{this.closeDeleteDocumentModal}}

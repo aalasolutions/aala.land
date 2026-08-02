@@ -1,0 +1,17 @@
+<label class={{this.labelClasses}} data-test-nu-radio ...attributes>
+  <input
+    type="radio"
+    class={{this.classes}}
+    checked={{@checked}}
+    value={{@value}}
+    name={{@name}}
+    disabled={{@disabled}}
+    data-test-nu-radio-input
+    {{on "change" this.handleChange}}
+  />
+  {{#if (has-block)}}
+    <span data-test-nu-radio-label>{{yield}}</span>
+  {{else if @label}}
+    <span data-test-nu-radio-label>{{@label}}</span>
+  {{/if}}
+</label>

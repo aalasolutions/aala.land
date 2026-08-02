@@ -1,0 +1,309 @@
+.customInputContainer {
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+  .dropdown-input-wrapper {
+    position: relative;
+    border: 1px solid $slate-300;
+    background-color: $white;
+    border-radius: 6px;
+    box-sizing: border-box;
+    transition: all 0.2s ease;
+
+    &:hover {
+      border-color: $slate-400;
+    }
+
+    &.is-open {
+      border-color: $slate-300;
+      border-bottom-left-radius: 6px;
+      border-bottom-right-radius: 6px;
+    }
+
+    .dropdown-trigger {
+      all: unset;
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 14px;
+      cursor: pointer;
+      font-size: 14px;
+      background: none;
+      border: none;
+      text-align: left;
+      box-sizing: border-box;
+
+      .selected-value {
+        flex: 1;
+        color: $dark-color;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+
+        .placeholder {
+          color: $secondary-color;
+        }
+      }
+
+      .dropdown-arrow {
+        color: $secondary-color;
+        font-size: 12px;
+        transition: transform 0.2s ease;
+        margin-left: 8px;
+
+        &.rotated {
+          transform: rotate(180deg);
+        }
+      }
+
+      &.has-error {
+        border-color: $error-color;
+      }
+    }
+
+    .dropdown-menu {
+      position: absolute;
+      top: calc(100% + 4px);
+      left: 0;
+      right: 0;
+      z-index: 1000;
+      background: $white;
+      border: 1px solid $slate-300;
+      border-radius: 6px;
+      box-shadow: 0 4px 12px rgba($dark-color, 0.15);
+      animation: dropdown-slide-in 0.15s ease-out;
+      max-height: 300px;
+      overflow: hidden;
+
+      @keyframes dropdown-slide-in {
+        from {
+          opacity: 0;
+          transform: translateY(-8px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .search-container {
+        position: relative;
+        padding: 8px 12px;
+        border-bottom: 1px solid $bg-gray;
+        background: $slate-50;
+
+        .search-input {
+          all: unset;
+          width: 100%;
+          padding: 8px 12px;
+          border: 1px solid $slate-300;
+          border-radius: 4px;
+          font-size: 14px;
+          background: $white;
+          transition: all 0.2s ease;
+          box-sizing: border-box;
+
+          &:focus {
+            border-color: $secondary-color;
+            outline: none;
+          }
+
+          &::placeholder {
+            color: $secondary-color;
+          }
+        }
+
+        .search-icon {
+          position: absolute;
+          right: 20px;
+          top: 50%;
+          transform: translateY(-50%);
+          color: $secondary-color;
+          font-size: 12px;
+          pointer-events: none;
+        }
+
+        .clear-search {
+          position: absolute;
+          right: 16px;
+          top: 50%;
+          transform: translateY(-50%);
+          background: none;
+          border: none;
+          color: $secondary-color;
+          cursor: pointer;
+          padding: 2px;
+          border-radius: 2px;
+          transition: all 0.15s ease;
+
+          &:hover {
+            color: $error-color;
+          }
+        }
+      }
+
+      .options-container {
+        max-height: 200px;
+        overflow-y: auto;
+
+        .option-item {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 10px 14px;
+          font-size: 14px;
+          cursor: pointer;
+          border-bottom: 1px solid $bg-gray;
+          transition: all 0.15s ease;
+          overflow: hidden;
+
+          &:hover {
+            background-color: $slate-50;
+          }
+
+          &.selected {
+            background-color: rgba($secondary-color, 0.1);
+            color: $secondary-color;
+            font-weight: 500;
+
+            .option-text {
+              color: $secondary-color;
+            }
+
+            i {
+              color: $secondary-color;
+            }
+          }
+
+          &:last-child {
+            border-bottom: none;
+          }
+
+          &:first-child {
+            border-top-left-radius: 6px;
+            border-top-right-radius: 6px;
+          }
+
+          .option-text {
+            flex: 1;
+            color: $text-secondary;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            margin-right: 8px;
+          }
+
+          i {
+            font-size: 12px;
+            color: $secondary-color;
+            opacity: 0.8;
+            flex-shrink: 0;
+          }
+        }
+
+        .loading-item,
+        .load-more-item,
+        .no-results {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          padding: 12px 14px;
+          font-size: 13px;
+          color: $secondary-color;
+          text-align: center;
+          background: $slate-50;
+          overflow: hidden;
+
+          .load-more-text {
+            font-style: italic;
+            color: $slate-400;
+            white-space: nowrap;
+          }
+
+          i {
+            font-size: 12px;
+            flex-shrink: 0;
+          }
+
+          &.loading-item {
+            color: $secondary-color;
+
+            i {
+              animation: spin 1s linear infinite;
+            }
+          }
+        }
+
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+
+        // Enhanced scrollbar
+        &::-webkit-scrollbar {
+          width: 6px;
+        }
+
+        &::-webkit-scrollbar-track {
+          background: $slate-50;
+          border-radius: 3px;
+        }
+
+        &::-webkit-scrollbar-thumb {
+          background: linear-gradient(180deg, $slate-300 0%, $slate-400 100%);
+          border-radius: 3px;
+          transition: all 0.2s ease;
+
+          &:hover {
+            background: linear-gradient(180deg, $slate-400 0%, $slate-500 100%);
+          }
+        }
+      }
+    }
+
+    &.has-error {
+      border-color: $error-color;
+
+      .dropdown-menu {
+        border-color: $error-color;
+      }
+    }
+
+    &.is-disabled {
+      background-color: $slate-50;
+      border-color: $bg-gray;
+      cursor: not-allowed;
+
+      &:hover {
+        border-color: $bg-gray;
+      }
+
+      .dropdown-trigger {
+        cursor: not-allowed;
+        color: $secondary-color;
+
+        .selected-value {
+          color: $secondary-color;
+
+          .placeholder {
+            color: $slate-400;
+          }
+        }
+
+        .dropdown-arrow {
+          color: $slate-400;
+        }
+      }
+    }
+  }
+}

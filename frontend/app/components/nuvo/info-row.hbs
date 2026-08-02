@@ -1,0 +1,6 @@
+<div class="nu-info-row" data-test-nu-info-row ...attributes>
+  <span class="nu-info-row__label" data-test-nu-info-row-label>{{@label}}</span>
+  <span class="nu-info-row__value" data-test-nu-info-row-value>
+    {{#if (has-block)}}{{yield}}{{else}}{{@value}}{{/if}}
+  </span>
+</div>

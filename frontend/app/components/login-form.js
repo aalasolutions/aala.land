@@ -22,15 +22,13 @@ export default class LoginFormComponent extends Component {
   @tracked isGoogleLoading = false;
 
   @action
-  updateEmail(event) {
-    this.email = event.target.value;
-    this.errorMessage = '';
-  }
-
-  @action
-  updatePassword(event) {
-    this.password = event.target.value;
-    this.errorMessage = '';
+  setFieldValue(fieldName, value) {
+    this[fieldName] = value;
+    if (fieldName === 'resetEmail') {
+      this.resetError = '';
+    } else {
+      this.errorMessage = '';
+    }
   }
 
   @action
@@ -86,12 +84,6 @@ export default class LoginFormComponent extends Component {
     this.showForgotPassword = !this.showForgotPassword;
     this.resetEmail = '';
     this.resetSent = false;
-    this.resetError = '';
-  }
-
-  @action
-  updateResetEmail(event) {
-    this.resetEmail = event.target.value;
     this.resetError = '';
   }
 

@@ -1,0 +1,12 @@
+// ============================================
+// LILA Admin - Master Configuration
+// ============================================
+// Single entry point for NuvoUI + Variables
+// Import this file in all atoms/molecules/organisms
+
+@use 'nuvoui' as Nuvo;
+@use 'variables' as *;
+
+// Re-export for consumers
+// Usage: @use '../config' as *;
+// Then access: Nuvo.apply(), $accent-teal, etc.

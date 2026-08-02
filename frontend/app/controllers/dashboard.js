@@ -32,9 +32,9 @@ export default class DashboardController extends Controller {
 
   pipelineColor = (stage) => {
     const colors = {
-      NEW: 'primary',
-      CONTACTED: 'primary-light',
-      VIEWING: 'info',
+      NEW: 'info',
+      CONTACTED: 'secondary',
+      VIEWING: 'warning',
       NEGOTIATING: 'warning',
       WON: 'success',
       LOST: 'danger',
@@ -45,10 +45,10 @@ export default class DashboardController extends Controller {
   activityColor = (entityType) => {
     const colors = {
       Lead: 'primary',
-      Transaction: 'coral',
+      Transaction: 'secondary',
       Lease: 'success',
       WorkOrder: 'warning',
-      Cheque: 'coral',
+      Cheque: 'secondary',
       User: 'info',
     };
     return colors[entityType] || 'primary';

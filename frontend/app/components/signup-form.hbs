@@ -30,16 +30,17 @@
     </div>
   </div>
 
-  <Ui::FormDropdown
-    @label="Primary Operating Region"
-    @id="signup-region"
-    @value={{this.selectedRegion}}
-    @options={{this.regionOptions}}
-    @onChange={{this.selectRegion}}
-    @placeholder="Select your region..."
-    @required={{true}}
-    data-test-region-select
-  />
+  <Nuvo::Field @label="Primary Operating Region">
+    <Nuvo::Dropdown
+      @searchable={{true}}
+      @align="start"
+      @value={{this.selectedRegion}}
+      @options={{this.regionOptions}}
+      @onSelect={{this.selectRegion}}
+      @placeholder="Select your region..."
+      data-test-region-select
+    />
+  </Nuvo::Field>
 
   <hr class="border-white@10 my-1" />
 
@@ -95,7 +96,7 @@
 
   {{#if this.errorMessage}}
     <div
-      class="p-3 rounded-lg bg-danger@10 border border-danger@20 text-danger text-center font-sm"
+      class="p-3 rounded-lg bg-danger@10 border border-danger@20 text-danger text-center text-sm"
     >
       {{this.errorMessage}}
     </div>
@@ -119,7 +120,7 @@
 
   {{#if this.googleAuth.isConfigured}}
     <div class="divider">
-      <span class="text-muted font-sm">OR</span>
+      <span class="text-muted text-sm">OR</span>
     </div>
 
     {{#if this.canGoogleSignup}}

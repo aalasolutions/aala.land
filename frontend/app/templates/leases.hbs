@@ -1,81 +1,78 @@
 {{page-title "Leases"}}
 
 <div data-test-leases-page class="flex col gap-6">
-  <div class="flex between x-center">
-    <div>
-      <h2 class="font-3xl font-bold"><Ui::Ph @icon="file-text" @size="28px" />
-        Lease Agreements</h2>
-      <p class="text-muted mt-1">Manage tenant lease contracts and renewals.</p>
-    </div>
-    <button
-      type="button"
-      class="btn btn-primary"
-      {{on "click" this.openCreate}}
-    >
-      <Ui::Ph @icon="plus" />
-      New Lease
-    </button>
-  </div>
+  <Nuvo::PageHeader @title="Lease Agreements">
+    <:meta>
+      <p class="text-muted">Manage tenant lease contracts and renewals.</p>
+    </:meta>
+    <:actions>
+      <Nuvo::Button
+        @variant="primary"
+        @icon="+"
+        {{on "click" this.openCreate}}
+      >
+        New Lease
+      </Nuvo::Button>
+    </:actions>
+  </Nuvo::PageHeader>
 
-  <div class="glass-panel p-5">
+  <Nuvo::Card>
     {{#if @model.leases.length}}
       <div class="flex col gap-3">
         {{#each @model.leases as |lease|}}
-          <div
-            data-test-lease-row
-            class="flex between x-center p-4 rounded-xl bg-white@02 border border-white@05"
-          >
+          <div data-test-lease-row class="flex between x-center p-4 rounded-xl bg-alternate">
             <div class="flex col gap-1">
-              <p class="font-sm font-bold">{{lease.tenantName}}</p>
-              <p class="text-muted font-xs">{{lease.type}}
+              <p class="text-sm font-bold">{{lease.tenantName}}</p>
+              <p class="text-muted text-xs">{{lease.type}}
                 -
                 {{format-currency lease.monthlyRent}}/mo</p>
-              <p class="text-muted font-xs">{{format-date lease.startDate}}
+              <p class="text-muted text-xs">{{format-date lease.startDate}}
                 to
                 {{format-date lease.endDate}}</p>
             </div>
             <div class="flex x-center gap-3">
-              <span
-                class="font-xs px-2 py-1 rounded bg-white@05"
-              >{{lease.status}}</span>
-              <button
-                type="button"
-                class="btn btn-secondary btn-sm"
+              <Nuvo::Tag
+                class="badge-lease-{{lowercase lease.status}}"
+                @text={{lease.status}}
+              />
+              <Nuvo::Button
+                @variant="secondary"
+                @size="sm"
                 {{on "click" (fn this.openEdit lease)}}
               >
                 <Ui::Ph @icon="pencil-simple" />
                 Edit
-              </button>
+              </Nuvo::Button>
               {{#if (eq lease.status "ACTIVE")}}
-                <button
+                <Nuvo::Button
                   data-test-renew-lease
-                  type="button"
-                  class="btn btn-secondary btn-sm"
+                  @variant="secondary"
+                  @size="sm"
                   {{on "click" (fn this.renewLease lease)}}
                 >
                   <Ui::Ph @icon="arrows-clockwise" />
                   Renew
-                </button>
-                <button
+                </Nuvo::Button>
+                <Nuvo::Button
                   data-test-terminate-lease
-                  type="button"
-                  class="btn btn-danger btn-sm"
+                  @variant="danger"
+                  @size="sm"
                   {{on "click" (fn this.openTerminate lease)}}
                 >
                   <Ui::Ph @icon="x-circle" />
                   Terminate
-                </button>
+                </Nuvo::Button>
               {{/if}}
               {{#if (eq lease.status "EXPIRED")}}
-                <button
+                <Nuvo::Button
                   data-test-renew-lease
-                  type="button"
-                  class="btn btn-secondary btn-sm"
+                  @variant="secondary"
+                  @size="sm"
                   {{on "click" (fn this.renewLease lease)}}
                 >
                   <Ui::Ph @icon="arrows-clockwise" />
                   Renew
-                </button>
+                </Nuvo::Button>
               {{/if}}
             </div>
           </div>
@@ -85,189 +82,186 @@
       <p class="text-muted text-center py-8">No leases yet. Create your first
         lease agreement.</p>
     {{/if}}
-  </div>
+  </Nuvo::Card>
 </div>
 
-<Ui::Modal
-  @isOpen={{this.showModal}}
+<Nuvo::Modal
+  @open={{this.showModal}}
   @title={{if
     this.editLease
     "Edit Lease"
     (if this.renewingLeaseId "Renew Lease" "New Lease")
   }}
   @onClose={{this.closeModal}}
-  @showClose={{true}}
 >
   <form class="flex col gap-4" {{on "submit" this.saveLease}}>
-    <Ui::FormDropdown
-      @label="Property"
-      @id="lease-unit-id"
-      @value={{this.formUnitId}}
-      @onChange={{fn this.setField "formUnitId"}}
-      @options={{this.unitOptions}}
-      @placeholder="Select a property..."
-      @required={{true}}
-    />
+    <Nuvo::Field @label="Property" @required={{true}}>
+      <Nuvo::Select
+        id="lease-unit-id"
+        @value={{this.formUnitId}}
+        @onChange={{fn this.setFieldValue "formUnitId"}}
+        @options={{this.unitOptions}}
+        @placeholder="Select a property..."
+      />
+    </Nuvo::Field>
 
     {{#if this.editLease}}
-      <Ui::FormDropdown
-        @label="Status"
-        @id="lease-status"
-        @value={{this.formStatus}}
-        @onChange={{fn this.setField "formStatus"}}
-        @options={{this.validNextStatuses}}
-      />
+      <Nuvo::Field @label="Status">
+        <Nuvo::Select
+          id="lease-status"
+          @value={{this.formStatus}}
+          @onChange={{fn this.setFieldValue "formStatus"}}
+          @options={{this.validNextStatuses}}
+        />
+      </Nuvo::Field>
     {{/if}}
 
-    <Ui::FormInput
-      @label="Tenant Name"
-      @id="lease-tenant-name"
-      @type="text"
-      @placeholder="e.g. Ahmed Al Mansouri"
-      @value={{this.formTenantName}}
-      @onChange={{fn this.setField "formTenantName"}}
-      @required={{true}}
-    />
+    <Nuvo::Field @label="Tenant Name" @required={{true}}>
+      <Nuvo::Input
+        id="lease-tenant-name"
+        type="text"
+        placeholder="e.g. Ahmed Al Mansouri"
+        @value={{this.formTenantName}}
+        @onInput={{fn this.setFieldValue "formTenantName"}}
+        required={{true}}
+      />
+    </Nuvo::Field>
 
-    <div class="flex gap-4 items-start">
-      <div class="flex-1">
-        <Ui::FormInput
-          @label="Email"
-          @id="lease-tenant-email"
-          @type="email"
-          @placeholder="ahmed@example.com"
+    <div class="flex gap-4">
+      <Nuvo::Field class="grow" @label="Email">
+        <Nuvo::Input
+          id="lease-tenant-email"
+          type="email"
+          placeholder="ahmed@example.com"
           @value={{this.formTenantEmail}}
-          @onChange={{fn this.setField "formTenantEmail"}}
+          @onInput={{fn this.setFieldValue "formTenantEmail"}}
         />
-      </div>
-      <div class="flex-1">
-        <Ui::FormInput
-          @label="Phone"
-          @id="lease-tenant-phone"
-          @type="text"
-          @placeholder="+971501234567"
+      </Nuvo::Field>
+      <Nuvo::Field class="grow" @label="Phone">
+        <Nuvo::Input
+          id="lease-tenant-phone"
+          type="text"
+          placeholder="+971501234567"
           @value={{this.formTenantPhone}}
-          @onChange={{fn this.setField "formTenantPhone"}}
+          @onInput={{fn this.setFieldValue "formTenantPhone"}}
         />
-      </div>
+      </Nuvo::Field>
     </div>
 
-    <div class="flex gap-4 items-start">
-      <div class="flex-1">
-        <Ui::FormDropdown
-          @label="Property Type"
-          @id="lease-type"
+    <div class="flex gap-4">
+      <Nuvo::Field class="grow" @label="Property Type">
+        <Nuvo::Select
+          id="lease-type"
           @value={{this.formType}}
-          @onChange={{fn this.setField "formType"}}
+          @onChange={{fn this.setFieldValue "formType"}}
           @options={{this.leaseTypeOptions}}
           @placeholder="Select property type..."
         />
-      </div>
-      <div class="flex-1">
-        <Ui::FormInput
-          @label="Number of Cheques"
-          @id="lease-cheques"
-          @type="number"
+      </Nuvo::Field>
+      <Nuvo::Field class="grow" @label="Number of Cheques">
+        <Nuvo::Input
+          id="lease-cheques"
+          type="number"
           @value={{this.formNumberOfCheques}}
-          @onChange={{fn this.setField "formNumberOfCheques"}}
-          @min={{1}}
-          @max={{12}}
+          @onInput={{fn this.setFieldValue "formNumberOfCheques"}}
+          min="1"
+          max="12"
         />
-      </div>
+      </Nuvo::Field>
     </div>
 
-    <div class="flex gap-4 items-start">
-      <div class="flex-1">
-        <Ui::FormInput
-          @label="Start Date"
-          @id="lease-start"
-          @type="date"
-          @value={{this.formStartDate}}
-          @onChange={{fn this.setField "formStartDate"}}
-          @required={{true}}
+    <div class="flex gap-4">
+      <Nuvo::Field class="grow" @label="Start Date" @required={{true}}>
+        <input
+          id="lease-start"
+          type="date"
+          class="nu-input"
+          value={{this.formStartDate}}
+          required
+          {{on "input" (fn this.setFieldValueFromEvent "formStartDate")}}
         />
-      </div>
-      <div class="flex-1">
-        <Ui::FormInput
-          @label="End Date"
-          @id="lease-end"
-          @type="date"
-          @value={{this.formEndDate}}
-          @onChange={{fn this.setField "formEndDate"}}
-          @required={{true}}
+      </Nuvo::Field>
+      <Nuvo::Field class="grow" @label="End Date" @required={{true}}>
+        <input
+          id="lease-end"
+          type="date"
+          class="nu-input"
+          value={{this.formEndDate}}
+          required
+          {{on "input" (fn this.setFieldValueFromEvent "formEndDate")}}
         />
-      </div>
+      </Nuvo::Field>
     </div>
 
-    <div class="flex gap-4 items-start">
-      <div class="flex-1">
-        <Ui::FormInput
-          @label="Monthly Rent"
-          @id="lease-rent"
-          @type="number"
-          @placeholder="e.g. 8500"
+    <div class="flex gap-4">
+      <Nuvo::Field class="grow" @label="Monthly Rent" @required={{true}}>
+        <Nuvo::Input
+          id="lease-rent"
+          type="number"
+          placeholder="e.g. 8500"
           @value={{this.formMonthlyRent}}
-          @onChange={{fn this.setField "formMonthlyRent"}}
-          @required={{true}}
-          @min={{0}}
-          @step={{0.01}}
+          @onInput={{fn this.setFieldValue "formMonthlyRent"}}
+          required={{true}}
+          min="0"
+          step="0.01"
         />
-      </div>
-      <div class="flex-1">
-        <Ui::FormInput
-          @label="Security Deposit"
-          @id="lease-deposit"
-          @type="number"
-          @placeholder="e.g. 17000"
+      </Nuvo::Field>
+      <Nuvo::Field class="grow" @label="Security Deposit">
+        <Nuvo::Input
+          id="lease-deposit"
+          type="number"
+          placeholder="e.g. 17000"
           @value={{this.formSecurityDeposit}}
-          @onChange={{fn this.setField "formSecurityDeposit"}}
-          @min={{0}}
-          @step={{0.01}}
+          @onInput={{fn this.setFieldValue "formSecurityDeposit"}}
+          min="0"
+          step="0.01"
         />
-      </div>
+      </Nuvo::Field>
     </div>
 
-    <Ui::FormInput
-      @label="Ejari Number"
-      @id="lease-ejari"
-      @type="text"
-      @placeholder="e.g. EJARI-2026-00001"
-      @value={{this.formEjariNumber}}
-      @onChange={{fn this.setField "formEjariNumber"}}
-    />
+    <Nuvo::Field @label="Ejari Number">
+      <Nuvo::Input
+        id="lease-ejari"
+        type="text"
+        placeholder="e.g. EJARI-2026-00001"
+        @value={{this.formEjariNumber}}
+        @onInput={{fn this.setFieldValue "formEjariNumber"}}
+      />
+    </Nuvo::Field>
 
     {{#if this.errorMsg}}
-      <p class="font-sm text-danger">{{this.errorMsg}}</p>
+      <p class="text-sm text-danger">{{this.errorMsg}}</p>
     {{/if}}
 
-    <div class="flex gap-3">
-      <Ui::AppButton
+    <Nuvo::FormActions @align="end">
+      <Nuvo::Button
         @variant="secondary"
-        @text="Cancel"
         @onClick={{this.closeModal}}
-      />
-      <Ui::AppButton
+      >Cancel</Nuvo::Button>
+      <Nuvo::Button
         @variant="primary"
-        @buttonType="submit"
-        @text={{if
-          this.editLease
-          "Update"
-          (if this.renewingLeaseId "Renew Lease" "Create Lease")
-        }}
+        @type="submit"
         @loading={{this.isSaving}}
-        @loadingText="Saving..."
-      />
-    </div>
+      >{{if
+          this.isSaving
+          "Saving..."
+          (if
+            this.editLease
+            "Update"
+            (if this.renewingLeaseId "Renew Lease" "Create Lease")
+          )
+        }}</Nuvo::Button>
+    </Nuvo::FormActions>
   </form>
-</Ui::Modal>
+</Nuvo::Modal>
 
 <ConfirmModal
-  @isOpen={{this.showTerminateModal}}
+  @open={{this.showTerminateModal}}
   @title="Terminate Lease"
   @message="Are you sure you want to terminate this lease? This action cannot be undone."
   @confirmText="Terminate"
   @cancelText="Cancel"
-  @confirmType="btn-danger"
+  @confirmVariant="danger"
   @isConfirming={{this.isTerminating}}
   @confirmingText="Terminating..."
   @onClose={{this.closeTerminateModal}}

@@ -1,26 +1,26 @@
 {{page-title "Vendors"}}
 
 <div data-test-vendors-page class="flex col gap-6">
-  <div class="flex between x-center">
-    <div>
-      <h2 class="font-3xl font-bold"><Ui::Ph @icon="toolbox" @size="28px" />
-        Vendors</h2>
-      <p class="text-muted mt-1">Manage service providers and contractors.</p>
-    </div>
-    <button
-      data-test-new-vendor
-      type="button"
-      class="btn btn-primary"
-      {{on "click" this.openCreate}}
-    >
-      <Ui::Ph @icon="plus" />
-      New Vendor
-    </button>
-  </div>
-  <div>
+  <Nuvo::PageHeader @title="Vendors">
+    <:meta>
+      <p class="text-muted">Manage service providers and contractors.</p>
+    </:meta>
+    <:actions>
+      <Nuvo::Button
+        data-test-new-vendor
+        @variant="primary"
+        @icon="+"
+        {{on "click" this.openCreate}}
+      >
+        New Vendor
+      </Nuvo::Button>
+    </:actions>
+  </Nuvo::PageHeader>
+
+  <Nuvo::Card>
     {{#if @model.vendors.length}}
-      <div class="data-table-wrapper data-table-wrapper--with-pagination">
-        <table class="data-table">
+      <div class="nu-table-wrapper">
+        <table class="nu-table">
           <thead>
             <tr>
               <th>Name</th>
@@ -42,9 +42,10 @@
                 <td>
                   <div class="flex gap-2 wrap">
                     {{#each vendor.specialties as |sp|}}
-                      <span
-                        class="type-badge type-{{lowercase sp}}"
-                      >{{sp}}</span>
+                      <Nuvo::Tag
+                        class="badge-trade-{{lowercase sp}}"
+                        @text={{sp}}
+                      />
                     {{/each}}
                   </div>
                 </td>
@@ -60,23 +61,23 @@
                 </td>
                 <td>
                   <div class="flex gap-2">
-                    <button
+                    <Nuvo::Button
                       data-test-edit-vendor
-                      type="button"
-                      class="btn btn-secondary btn-xs"
+                      @variant="secondary"
+                      @size="xs"
                       {{on "click" (fn this.openEdit vendor)}}
                     >
                       <Ui::Ph @icon="pencil-simple" />
                       Edit
-                    </button>
-                    <button
+                    </Nuvo::Button>
+                    <Nuvo::Button
                       data-test-delete-vendor
-                      type="button"
-                      class="btn btn-danger btn-xs"
+                      @variant="danger"
+                      @size="xs"
                       {{on "click" (fn this.openDelete vendor)}}
                     >
                       <Ui::Ph @icon="trash" />
-                    </button>
+                    </Nuvo::Button>
                   </div>
                 </td>
               </tr>
@@ -85,7 +86,7 @@
         </table>
       </div>
 
-      <Ui::Pagination
+      <Nuvo::Pagination
         @selectId="vendors-limit"
         @page={{this.page}}
         @limit={{this.limit}}
@@ -96,11 +97,10 @@
       />
     {{else}}
       {{#if @model.total}}
-        <div class="glass-panel p-8 text-center">
-          <p class="text-muted mt-3">No vendors on page
-            {{this.page}}. Navigate back to find vendors.</p>
-        </div>
-        <Ui::Pagination
+        <Nuvo::EmptyState
+          @description="No vendors on page {{this.page}}. Navigate back to find vendors."
+        />
+        <Nuvo::Pagination
           @selectId="vendors-limit"
           @page={{this.page}}
           @limit={{this.limit}}
@@ -110,52 +110,48 @@
           @onNext={{this.goToNextPage}}
         />
       {{else}}
-        <div class="glass-panel p-8 text-center">
-          <Ui::Ph @icon="toolbox" @size="48px" @color="var(--text-muted)" />
-          <p class="text-muted mt-3">No vendors yet. Add your first vendor
-            above.</p>
-        </div>
+        <Nuvo::EmptyState
+          @icon="🧰"
+          @description="No vendors yet. Add your first vendor above."
+        />
       {{/if}}
     {{/if}}
-  </div>
+  </Nuvo::Card>
 </div>
 
-<Ui::Modal
-  @isOpen={{this.showModal}}
+<Nuvo::Modal
+  @open={{this.showModal}}
   @title={{if this.editVendor "Edit Vendor" "New Vendor"}}
   @onClose={{this.closeModal}}
-  @showClose={{true}}
 >
   <form class="flex col gap-4" {{on "submit" this.saveVendor}}>
     {{#if this.showRegionField}}
-      <div class="flex col gap-2">
-        <Ui::FormDropdown
-          @label="Region"
-          @id="vendor-region"
+      <Nuvo::Field @label="Region">
+        <Nuvo::Select
+          id="vendor-region"
           @value={{this.formRegionCode}}
-          @onChange={{fn this.setField "formRegionCode"}}
+          @onChange={{fn this.setFieldValue "formRegionCode"}}
           @options={{this.regionOptions}}
           @placeholder="Select region..."
           data-test-region-select
         />
-      </div>
+      </Nuvo::Field>
     {{/if}}
 
-    <div class="flex col gap-2">
-      <Ui::FormInput
-        @label="Name"
-        @id="v-name"
-        @type="text"
-        @placeholder="Ahmed Al-Rashid"
+    <Nuvo::Field @label="Name" @required={{true}}>
+      <Nuvo::Input
+        id="v-name"
+        type="text"
+        placeholder="Ahmed Al-Rashid"
         @value={{this.formName}}
-        @onChange={{fn this.setField "formName"}}
-        @required={{true}}
+        @onInput={{fn this.setFieldValue "formName"}}
+        required={{true}}
         data-test-vendor-name
       />
-    </div>
+    </Nuvo::Field>
 
     <div class="flex col gap-2">
-      <span id="vendor-specialty-label" class="font-sm text-muted">Specialty
+      <span id="vendor-specialty-label" class="text-sm text-muted">Specialty
         (select one or more)</span>
       <div
         class="flex gap-2 wrap"
@@ -166,11 +162,9 @@
         {{#each this.specialtyOptions as |opt|}}
           <button
             type="button"
-            class="amenity-chip
-              {{if
-                (includes this.formSpecialties opt.value)
-                'amenity-chip-active'
-              }}"
+            class="nu-tag m-pill m-selectable vendor-specialty-chip
+              badge-trade-{{lowercase opt.value}}
+              {{if (includes this.formSpecialties opt.value) 'is-selected'}}"
             data-test-specialty-chip={{opt.value}}
             {{on "click" (fn this.toggleSpecialty opt.value)}}
           >{{opt.label}}</button>
@@ -179,123 +173,119 @@
     </div>
 
     <div class="flex gap-4">
-      <div class="flex col gap-2 flex-1">
-        <Ui::FormInput
-          @label="Email"
-          @id="v-email"
-          @type="email"
-          @placeholder="vendor@example.com"
+      <Nuvo::Field class="grow" @label="Email">
+        <Nuvo::Input
+          id="v-email"
+          type="email"
+          placeholder="vendor@example.com"
           @value={{this.formEmail}}
-          @onChange={{fn this.setField "formEmail"}}
+          @onInput={{fn this.setFieldValue "formEmail"}}
           data-test-vendor-email
         />
-      </div>
-      <div class="flex col gap-2 flex-1">
-        <Ui::FormInput
-          @label="Phone"
-          @id="v-phone"
-          @type="text"
-          @placeholder="+971501234567"
+      </Nuvo::Field>
+      <Nuvo::Field class="grow" @label="Phone">
+        <Nuvo::Input
+          id="v-phone"
+          type="text"
+          placeholder="+971501234567"
           @value={{this.formPhone}}
-          @onChange={{fn this.setField "formPhone"}}
+          @onInput={{fn this.setFieldValue "formPhone"}}
           data-test-vendor-phone
         />
-      </div>
+      </Nuvo::Field>
     </div>
 
     <div class="flex gap-4">
-      <div class="flex col gap-2 flex-1">
-        <Ui::FormInput
-          @label="Company Name"
-          @id="v-company"
-          @type="text"
-          @placeholder="Al-Rashid Maintenance LLC"
+      <Nuvo::Field class="grow" @label="Company Name">
+        <Nuvo::Input
+          id="v-company"
+          type="text"
+          placeholder="Al-Rashid Maintenance LLC"
           @value={{this.formCompanyName}}
-          @onChange={{fn this.setField "formCompanyName"}}
+          @onInput={{fn this.setFieldValue "formCompanyName"}}
           data-test-vendor-company
         />
-      </div>
-      <div class="flex col gap-2 flex-1">
-        <Ui::FormInput
-          @label="Hourly Rate"
-          @id="v-rate"
-          @type="number"
-          @placeholder="150"
+      </Nuvo::Field>
+      <Nuvo::Field class="grow" @label="Hourly Rate">
+        <Nuvo::Input
+          id="v-rate"
+          type="number"
+          placeholder="150"
           @value={{this.formHourlyRate}}
-          @onChange={{fn this.setField "formHourlyRate"}}
-          @min={{0}}
-          @step={{0.01}}
+          @onInput={{fn this.setFieldValue "formHourlyRate"}}
+          min="0"
+          step="0.01"
           data-test-vendor-rate
         />
-      </div>
+      </Nuvo::Field>
     </div>
 
     <div class="flex gap-4">
-      <div class="flex col gap-2 flex-1">
-        <Ui::FormInput
-          @label="Address"
-          @id="v-address"
-          @type="text"
-          @placeholder="e.g. Industrial Area, Karachi"
+      <Nuvo::Field class="grow" @label="Address">
+        <Nuvo::Input
+          id="v-address"
+          type="text"
+          placeholder="e.g. Industrial Area, Karachi"
           @value={{this.formAddress}}
-          @onChange={{fn this.setField "formAddress"}}
+          @onInput={{fn this.setFieldValue "formAddress"}}
           data-test-vendor-address
         />
-      </div>
-      <div class="flex col gap-2 flex-1">
-        <Ui::FormInput
-          @label="Rating (1-5)"
-          @id="v-rating"
-          @type="number"
-          @placeholder="5"
+      </Nuvo::Field>
+      <Nuvo::Field class="grow" @label="Rating (1-5)">
+        <Nuvo::Input
+          id="v-rating"
+          type="number"
+          placeholder="5"
           @value={{this.formRating}}
-          @onChange={{fn this.setField "formRating"}}
-          @min={{1}}
-          @max={{5}}
-          @step={{1}}
+          @onInput={{fn this.setFieldValue "formRating"}}
+          min="1"
+          max="5"
+          step="1"
           data-test-vendor-rating
         />
-      </div>
+      </Nuvo::Field>
     </div>
 
-    <Ui::FormTextarea
-      @label="Notes"
-      @id="v-notes"
-      @placeholder="Additional notes about this vendor..."
-      @rows={{3}}
-      @value={{this.formNotes}}
-      @onChange={{fn this.setField "formNotes"}}
-      data-test-vendor-notes
-    />
+    <Nuvo::Field @label="Notes">
+      <Nuvo::Textarea
+        id="v-notes"
+        placeholder="Additional notes about this vendor..."
+        rows="3"
+        @value={{this.formNotes}}
+        @onInput={{fn this.setFieldValue "formNotes"}}
+        data-test-vendor-notes
+      />
+    </Nuvo::Field>
 
     {{#if this.errorMsg}}
-      <p class="font-sm text-danger">{{this.errorMsg}}</p>
+      <p class="text-sm text-danger">{{this.errorMsg}}</p>
     {{/if}}
 
-    <div class="flex gap-3 mt-2">
-      <Ui::AppButton
+    <Nuvo::FormActions @align="end">
+      <Nuvo::Button
         @variant="secondary"
-        @text="Cancel"
         @onClick={{this.closeModal}}
-      />
-      <Ui::AppButton
+      >Cancel</Nuvo::Button>
+      <Nuvo::Button
         @variant="primary"
-        @buttonType="submit"
-        @text={{if this.editVendor "Update" "Create Vendor"}}
+        @type="submit"
         @loading={{this.isSaving}}
-        @loadingText="Saving..."
-      />
-    </div>
+      >{{if
+          this.isSaving
+          "Saving..."
+          (if this.editVendor "Update" "Create Vendor")
+        }}</Nuvo::Button>
+    </Nuvo::FormActions>
   </form>
-</Ui::Modal>
+</Nuvo::Modal>
 
 <ConfirmModal
-  @isOpen={{this.showDeleteModal}}
+  @open={{this.showDeleteModal}}
   @title="Delete Vendor"
   @message="Are you sure you want to delete {{this.vendorToDelete.name}}? This action cannot be undone."
   @confirmText="Delete"
   @cancelText="Cancel"
-  @confirmType="btn-danger"
+  @confirmVariant="danger"
   @isConfirming={{this.isDeleting}}
   @confirmingText="Deleting..."
   @onClose={{this.closeDeleteModal}}

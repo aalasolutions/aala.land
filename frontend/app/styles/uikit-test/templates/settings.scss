@@ -1,0 +1,166 @@
+@use "sass:color";
+
+.settings-page {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  margin: 1rem 2rem 2rem 2rem;
+
+  .card {
+    background-color: $white;
+    border-radius: 8px;
+    padding: 2rem;
+    box-shadow: 0 2px 6px rgba($dark-color, 0.08);
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    &:nth-child(0) {
+      border: 1px solid $error-color;
+    }
+
+    form {
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+
+      .profile-input-wrapper {
+        display: flex;
+        column-gap: 1rem;
+        margin-top: 1.25rem;
+      }
+
+      .btn {
+        margin-top: 0.5rem;
+        max-width: 250px;
+      }
+    }
+  }
+}
+
+.profile-image-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+
+  .info-message {
+    font-size: 12px;
+    margin-top: 8px;
+    color: $blue-600;
+    background-color: rgba($blue-500, 0.158);
+    padding: 8px 10px;
+    border-left: 4px solid $blue-500;
+    border-radius: 4px;
+    max-width: 500px;
+    line-height: 20px;
+  }
+
+  .image-wrapper {
+    position: relative;
+    width: 100px;
+    height: 100px;
+    cursor: pointer;
+    background-color: rgba($dark-color, 0.295);
+    border-radius: 16px;
+
+    img {
+      object-fit: contain;
+    }
+
+    .profile-image,
+    .default-profile-icon {
+      width: 100%;
+      height: 100%;
+      border-radius: 16px;
+    }
+
+    .profile-image {
+      object-fit: contain;
+    }
+
+    .default-profile-icon {
+      background-color: rgba($dark-color, 0.295);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: 0.5s;
+
+      i {
+        font-size: 40px;
+        color: $white;
+      }
+    }
+
+    .camera-overlay {
+      position: absolute;
+      bottom: 0;
+      right: 0;
+      background: rgba($dark-color, 0.795);
+      padding: 6px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      transition: 0.5s;
+
+      i {
+        color: $white;
+        font-size: 14px;
+      }
+
+      &:hover {
+        transition: 0.5s;
+        background-color: $white;
+        i {
+          color: $primary-color;
+        }
+      }
+    }
+
+    &:hover {
+      .default-profile-icon {
+        opacity: 0.5;
+        transition: 0.5s;
+      }
+      .camera-overlay {
+        opacity: 1;
+        transition: 0.5s;
+      }
+    }
+
+    input {
+      display: none;
+    }
+  }
+
+  .remove-overlay {
+    all: unset;
+    background: $error-color;
+    padding: 6px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0.8;
+    transition: 0.5s;
+    width: 100px;
+    cursor: pointer;
+    box-sizing: border-box;
+
+    i {
+      color: $white;
+      font-size: 12px;
+    }
+
+    &.disabled {
+      pointer-events: none;
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    &:hover {
+      transition: 0.5s;
+      background-color: color.adjust($error-color, $lightness: -10%);
+    }
+  }
+}

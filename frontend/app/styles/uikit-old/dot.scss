@@ -1,0 +1,17 @@
+
+.flag-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.flag-dot-high {
+  background: var(--color-danger);
+}
+.flag-dot-medium {
+  background: var(--color-warning);
+}
+.flag-dot-low {
+  background: var(--text-muted);
+}

@@ -1,0 +1,172 @@
+// nu-toggle - switch control built on a checkbox input
+@use "./mixins/bem" as *;
+@use "./mixins/var" as *;
+@use "./common/var" as *;
+
+@include b(toggle) {
+  @include nu-root("toggle", (
+    "Display": inline-flex,
+    "AlignItems": center,
+    "Gap": nu-space(3),
+    "TrackInlineSize": 2.75rem,
+    "TrackBlockSize": 1.5rem,
+    "TrackColor": var(--border-base),
+    "TrackCheckedColor": var(--primary),
+    "KnobSize": 1.125rem,
+    "KnobInset": 0.1875rem,
+    "KnobColor": var(--bg-surface),
+    "LabelFontSize": nu-font-size(sm),
+    "LabelColor": var(--text-color),
+    "focus--BoxShadow": 0 0 0 3px #{nu-tint(primary, 35%)},
+    "disabled--Opacity": 0.55,
+  ));
+
+  display: nu-var("toggle", "Display");
+  align-items: nu-var("toggle", "AlignItems");
+  gap: nu-var("toggle", "Gap");
+  cursor: pointer;
+  user-select: none;
+
+  // ---- elements ----
+
+  @include e(input) {
+    position: absolute;
+    inline-size: 1px;
+    block-size: 1px;
+    opacity: 0;
+    appearance: none;
+    margin: 0;
+    pointer-events: none;
+  }
+
+  @include e(track) {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    flex-shrink: 0;
+    inline-size: nu-var("toggle", "TrackInlineSize");
+    block-size: nu-var("toggle", "TrackBlockSize");
+    background-color: nu-var("toggle", "TrackColor");
+    border-radius: nu-radius(full);
+    transition: background-color nu-duration(fast) $nu-ease;
+
+    @include reduced-motion {
+      transition: none;
+    }
+  }
+
+  @include e(knob) {
+    position: absolute;
+    inset-inline-start: nu-var("toggle", "KnobInset");
+    inline-size: nu-var("toggle", "KnobSize");
+    block-size: nu-var("toggle", "KnobSize");
+    background-color: nu-var("toggle", "KnobColor");
+    border-radius: nu-radius(full);
+    box-shadow: nu-shadow(sm);
+    transition: inset-inline-start nu-duration(fast) $nu-ease;
+
+    @include reduced-motion {
+      transition: none;
+    }
+  }
+
+  @include e(label) {
+    font-size: nu-var("toggle", "LabelFontSize");
+    color: nu-var("toggle", "LabelColor");
+    line-height: 1.4;
+  }
+
+  // Inline on/off text rendered INSIDE the track, Element-style.
+  // Both are always in the DOM; only the matching one is visible.
+  @include e(active-text, inactive-text) {
+    position: absolute;
+    font-size: 0.625rem;
+    font-weight: nu-font-weight(semibold);
+    line-height: 1;
+    color: var(--text-inverted);
+    white-space: nowrap;
+    opacity: 0;
+    transition: opacity nu-duration(fast) $nu-ease;
+
+    @include reduced-motion {
+      transition: none;
+    }
+  }
+
+  @include e(active-text) {
+    inset-inline-start: nu-space(2);
+  }
+
+  @include e(inactive-text) {
+    inset-inline-end: nu-space(2);
+    color: var(--text-muted);
+    opacity: 1;
+  }
+
+  // ---- checked state, driven by the input ----
+
+  .nu-toggle__input:checked ~ .nu-toggle__track {
+    background-color: nu-var("toggle", "TrackCheckedColor");
+  }
+
+  .nu-toggle__input:checked ~ .nu-toggle__track .nu-toggle__active-text {
+    opacity: 1;
+  }
+
+  .nu-toggle__input:checked ~ .nu-toggle__track .nu-toggle__inactive-text {
+    opacity: 0;
+  }
+
+  .nu-toggle__input:checked ~ .nu-toggle__track .nu-toggle__knob {
+    inset-inline-start: calc(100% - #{nu-var("toggle", "KnobSize")} - #{nu-var("toggle", "KnobInset")});
+  }
+
+  .nu-toggle__input:focus-visible ~ .nu-toggle__track {
+    outline: none;
+    box-shadow: nu-var("toggle", "focus--BoxShadow");
+  }
+
+  // ---- color variants: uniform, looped ----
+
+  @each $variant in $nu-variants {
+    @include m($variant) {
+      --nu-toggle--TrackCheckedColor: var(--#{$variant});
+    }
+  }
+
+  // ---- sizes ----
+
+  @include m(sm) {
+    --nu-toggle--TrackInlineSize: 2.25rem;
+    --nu-toggle--TrackBlockSize: 1.25rem;
+    --nu-toggle--KnobSize: 0.875rem;
+    --nu-toggle--KnobInset: 0.1875rem;
+  }
+
+  @include m(md) {
+    --nu-toggle--TrackInlineSize: 2.75rem;
+    --nu-toggle--TrackBlockSize: 1.5rem;
+    --nu-toggle--KnobSize: 1.125rem;
+    --nu-toggle--KnobInset: 0.1875rem;
+  }
+
+  @include m(lg) {
+    --nu-toggle--TrackInlineSize: 3.25rem;
+    --nu-toggle--TrackBlockSize: 1.75rem;
+    --nu-toggle--KnobSize: 1.375rem;
+    --nu-toggle--KnobInset: 0.1875rem;
+  }
+
+  // Inline text needs a wider track than the bare knob sizes allow.
+  @include m(with-text) {
+    --nu-toggle--TrackInlineSize: 4rem;
+  }
+
+  // ---- states ----
+
+  &.is-disabled {
+    opacity: nu-var("toggle", "disabled--Opacity");
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+}

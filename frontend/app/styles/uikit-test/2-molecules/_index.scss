@@ -1,0 +1,12 @@
+// ============================================
+// MOLECULES INDEX
+// ============================================
+// Forward all molecule partials for single import.
+// Usage: @use '2-molecules' as molecules;
+
+@forward 'form-group';
+@forward 'card-header';
+@forward 'button-group';
+@forward 'search-box';
+@forward 'dropdown-item';
+@forward 'tab-item';

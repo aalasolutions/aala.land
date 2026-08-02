@@ -1,0 +1,25 @@
+<div class={{this.classes}} data-test-nu-empty-state ...attributes>
+  {{#if (has-block "icon")}}
+    <span class="nu-empty-state__icon" aria-hidden="true" data-test-nu-empty-state-icon>
+      {{yield to="icon"}}
+    </span>
+  {{else if @icon}}
+    <span class="nu-empty-state__icon" aria-hidden="true" data-test-nu-empty-state-icon>
+      {{@icon}}
+    </span>
+  {{/if}}
+
+  {{#if @title}}
+    <p class="nu-empty-state__title" data-test-nu-empty-state-title>{{@title}}</p>
+  {{/if}}
+
+  {{#if @description}}
+    <p class="nu-empty-state__description" data-test-nu-empty-state-description>{{@description}}</p>
+  {{/if}}
+
+  {{#if (has-block "actions")}}
+    <div class="nu-empty-state__actions" data-test-nu-empty-state-actions>
+      {{yield to="actions"}}
+    </div>
+  {{/if}}
+</div>

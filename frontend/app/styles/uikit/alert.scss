@@ -1,0 +1,153 @@
+// nu-alert - inline notification banner with icon, title, description and actions
+@use "./mixins/bem" as *;
+@use "./mixins/var" as *;
+@use "./common/var" as *;
+
+@include b(alert) {
+  @include nu-root("alert", (
+    "Display": flex,
+    "AlignItems": flex-start,
+    "Gap": nu-space(3),
+    "PaddingBlock": nu-space(4),
+    "PaddingInline": nu-space(4),
+    "BorderRadius": nu-radius(lg),
+    "BorderWidth": 1px,
+    "BorderColor": var(--border-base),
+    "Color": var(--text-color),
+    "BackgroundColor": var(--bg-surface),
+    "IconColor": var(--text-muted),
+    "TitleFontWeight": nu-font-weight(semibold),
+    "DescriptionColor": var(--text-muted),
+  ));
+
+  display: nu-var("alert", "Display");
+  align-items: nu-var("alert", "AlignItems");
+  gap: nu-var("alert", "Gap");
+  padding-block: nu-var("alert", "PaddingBlock");
+  padding-inline: nu-var("alert", "PaddingInline");
+  color: nu-var("alert", "Color");
+  background-color: nu-var("alert", "BackgroundColor");
+  border: nu-var("alert", "BorderWidth") solid nu-var("alert", "BorderColor");
+  border-radius: nu-var("alert", "BorderRadius");
+
+  // ---- elements ----
+
+  @include e(icon) {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    font-size: nu-font-size(lg);
+    line-height: 1;
+    color: nu-var("alert", "IconColor");
+
+    // A title-only alert is one line, so the icon centres on it. With a
+    // description the alert is a block, so the icon grows and top-aligns.
+    @include when(large) {
+      align-items: flex-start;
+      font-size: nu-font-size(2xl);
+    }
+  }
+
+  @include e(content) {
+    flex: 1 1 auto;
+    min-inline-size: 0;
+  }
+
+  @include e(title) {
+    font-weight: nu-var("alert", "TitleFontWeight");
+    line-height: 1.4;
+  }
+
+  @include e(description) {
+    margin-block-start: nu-space(1);
+    color: nu-var("alert", "DescriptionColor");
+    font-size: nu-font-size(sm);
+    line-height: 1.5;
+  }
+
+  @include e(actions) {
+    display: flex;
+    align-items: center;
+    gap: nu-space(2);
+    margin-block-start: nu-space(3);
+  }
+
+  @include e(close) {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    inline-size: nu-space(6);
+    block-size: nu-space(6);
+    padding: 0;
+    color: nu-var("alert", "IconColor");
+    background-color: transparent;
+    border: none;
+    border-radius: nu-radius(sm);
+    cursor: pointer;
+    transition: background-color nu-duration(fast) $nu-ease,
+      color nu-duration(fast) $nu-ease;
+
+    @include reduced-motion {
+      transition: none;
+    }
+
+    &:hover {
+      color: nu-var("alert", "Color");
+      background-color: var(--bg-alternate);
+    }
+
+    &:focus-visible {
+      outline: none;
+      box-shadow: 0 0 0 3px #{nu-tint(primary, 35%)};
+    }
+  }
+
+  // ---- color variants: uniform, looped ----
+
+  @each $variant in $nu-variants {
+    @include m($variant) {
+      --nu-alert--Color: var(--#{$variant}-700);
+      --nu-alert--BackgroundColor: var(--#{$variant}-50);
+      --nu-alert--BorderColor: var(--#{$variant}-200);
+      --nu-alert--IconColor: var(--#{$variant});
+      --nu-alert--DescriptionColor: var(--#{$variant}-700);
+    }
+  }
+
+  // ---- shape modifiers ----
+
+  @include m(inline) {
+    --nu-alert--AlignItems: center;
+    --nu-alert--PaddingBlock: #{nu-space(2)};
+    --nu-alert--PaddingInline: #{nu-space(3)};
+    --nu-alert--Gap: #{nu-space(2)};
+
+    @include en(description) {
+      display: inline;
+      margin-block-start: 0;
+      margin-inline-start: nu-space(1);
+    }
+
+    @include en(title) {
+      display: inline;
+    }
+
+    @include en(actions) {
+      margin-block-start: 0;
+      margin-inline-start: auto;
+    }
+  }
+
+  @include m(banner) {
+    --nu-alert--BorderRadius: #{nu-radius(none)};
+
+    inline-size: 100%;
+  }
+
+  // ---- states ----
+
+  @include when(dismissible) {
+    padding-inline-end: nu-space(3);
+  }
+}

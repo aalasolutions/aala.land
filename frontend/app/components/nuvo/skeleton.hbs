@@ -1,0 +1,9 @@
+{{#if this.hasMultipleLines}}
+  <div class="nu-skeleton-group" data-test-nu-skeleton-group ...attributes>
+    {{#each this.lineItems as |entry|}}
+      <div class={{this.lineClasses}} data-test-nu-skeleton></div>
+    {{/each}}
+  </div>
+{{else}}
+  <div class={{this.classes}} data-test-nu-skeleton ...attributes></div>
+{{/if}}

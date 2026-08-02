@@ -1,0 +1,50 @@
+// Centralized tab styles - single source of truth for all tab navigation
+
+.ui-filter-tabs {
+  display: flex;
+  gap: 0.5rem;
+  background: $white;
+  max-width: fit-content;
+  padding: 4px;
+  border: 1px solid $border-color;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba($dark-color, 0.05);
+  overflow-x: auto;
+
+  button {
+    background: none;
+    border: none;
+    padding: 8px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    color: $text-primary;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.3s ease;
+
+    i {
+      font-size: 0.9rem;
+    }
+
+    &:hover {
+      background-color: rgba($blue-100, 0.3);
+    }
+
+    &.active {
+      background-color: rgba($blue-100, 0.4);
+      color: $primary-color;
+    }
+
+    .tab-badge {
+      font-size: 10px;
+      font-weight: 600;
+      padding: 2px 6px;
+      border-radius: 4px;
+      background-color: $success-color;
+      color: $white;
+      text-transform: uppercase;
+    }
+  }
+}

@@ -1,0 +1,136 @@
+// Owners: index (list) + detail. Bespoke layout only; components carry their
+// own box model. See AGENT_BRIEF.md.
+@use "../uikit/common/var" as *;
+
+// ---- index ----
+
+.owners-list {
+  display: flex;
+  flex-direction: column;
+  gap: nu-space(4);
+}
+
+.owners-list__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: nu-space(4);
+  flex-wrap: wrap;
+}
+
+.owners-list__info {
+  display: flex;
+  align-items: center;
+  gap: nu-space(4);
+  min-inline-size: 0;
+}
+
+.owners-list__details {
+  display: flex;
+  flex-direction: column;
+  gap: nu-space(1);
+  min-inline-size: 0;
+}
+
+.owners-list__name {
+  margin: 0;
+  font-weight: nu-font-weight(semibold);
+  color: var(--text-color);
+}
+
+.owners-list__contact {
+  margin: 0;
+  font-size: nu-font-size(sm);
+  color: var(--text-muted);
+}
+
+.owners-list__meta {
+  display: flex;
+  align-items: center;
+  gap: nu-space(3);
+  flex-shrink: 0;
+}
+
+.owners-list__actions {
+  display: flex;
+  align-items: center;
+  gap: nu-space(2);
+  flex-shrink: 0;
+}
+
+// ---- detail ----
+
+.owner-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: nu-space(6);
+  margin-block-end: nu-space(8);
+}
+
+.owner-detail__notes {
+  margin: 0;
+  font-size: nu-font-size(sm);
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+
+.units-section {
+  margin-block-start: nu-space(8);
+
+  .nu-title {
+    margin-block-end: nu-space(4);
+  }
+}
+
+.units-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: nu-space(4);
+}
+
+// No kit component covers this compound tile (number + building line + status
+// tag + price), so it stays bespoke, built from card tokens directly.
+.unit-card {
+  display: block;
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-base);
+  border-radius: nu-radius(xl);
+  padding: nu-space(4);
+  transition: box-shadow nu-duration(fast) $nu-ease, border-color nu-duration(fast) $nu-ease;
+
+  &:hover {
+    box-shadow: nu-shadow(md);
+  }
+}
+
+.unit-card-link {
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: nu-shadow(lg);
+    border-color: var(--primary);
+  }
+}
+
+.unit-number {
+  font-size: nu-font-size(md);
+  font-weight: nu-font-weight(semibold);
+  color: var(--text-color);
+  margin: 0 0 nu-space(1);
+}
+
+.unit-building {
+  font-size: nu-font-size(xs);
+  color: var(--text-muted);
+  margin: 0 0 nu-space(2);
+}
+
+.unit-price {
+  font-size: nu-font-size(sm);
+  font-weight: nu-font-weight(semibold);
+  color: var(--success);
+  margin: nu-space(2) 0 0;
+}

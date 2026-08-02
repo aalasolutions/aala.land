@@ -1,0 +1,47 @@
+.loading-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  z-index: 9999;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s ease-out;
+
+  &--active {
+    opacity: 1;
+  }
+
+  &--completing {
+    opacity: 0;
+    transition: opacity 0.3s ease-out;
+  }
+
+  &__progress {
+    height: 100%;
+    background: $primary-color;
+    background: linear-gradient(
+      90deg,
+      $primary-color 0%,
+      $accent-teal-light 50%,
+      $primary-color 100%
+    );
+    background-size: 200% 100%;
+    animation: loading-bar-shimmer 1.5s ease-in-out infinite;
+    transition: width 0.2s ease-out;
+    box-shadow:
+      0 0 10px rgba($primary-color, 0.5),
+      0 0 5px rgba($primary-color, 0.3);
+    border-radius: 0 2px 2px 0;
+  }
+}
+
+@keyframes loading-bar-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}

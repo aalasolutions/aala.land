@@ -1,0 +1,202 @@
+@import "variables";
+@import "forms";
+
+// Auth pages (ported from Astro Frontend)
+@import "auth/components";
+@import "auth/navigation";
+@import "auth/footer";
+@import "auth/signup";
+@import "auth/login";
+@import "auth/google";
+
+// Legacy login (can be removed after migration)
+@import "button-component";
+
+@import "components/card";
+@import "components/table";
+@import "components/status";
+@import "components/sidebar";
+@import "components/generic-header";
+@import "components/navbar";
+@import "components/popup";
+@import "components/full-screen-popup";
+@import "components/text-area-component";
+@import "components/power-select-component";
+@import "components/searchable-dropdown";
+@import "components/action-dropdown";
+@import "components/graph";
+@import "components/user-activity";
+@import "components/loading-bar";
+@import "components/progress-bar";
+@import "components/tabs";
+@import "components/toggles";
+@import "components/radio";
+@import "components/email-preferences";
+@import "components/admin/users/user-form.scss";
+@import "components/admin/invoices/invoice-form.scss";
+@import "components/admin/invoices/invoice-details.scss";
+@import "components/admin/packages/package-form.scss";
+@import "components/admin/addons/addon-form.scss";
+
+@import "templates/admin/users/index.scss";
+@import "templates/admin/dashboard";
+@import "templates/admin/invoices";
+@import "templates/admin/clients/details";
+@import "templates/admin/project-billing";
+@import "templates/admin/roles";
+@import "templates/admin/schedulers";
+@import "templates/admin/users";
+@import "templates/admin/packages";
+@import "templates/admin/addons";
+@import "templates/admin/admin-settings";
+@import "templates/admin/profile";
+
+@import "templates/dashboard";
+@import 'templates/billing';
+@import "templates/credit-card";
+@import "templates/pricing";
+@import "templates/not-found";
+@import "templates/settings";
+@import "templates/projects/schema";
+@import "templates/projects/step/step";
+@import "templates/projects/step/create";
+@import "templates/projects/step/schema-viewer-stats";
+@import "templates/projects/step/db-connection";
+@import "templates/projects/step/business-logic";
+@import "templates/projects/step/test-queries";
+@import "templates/projects/step/schema";
+@import "templates/projects/form";
+@import "templates/projects/billing";
+@import "templates/projects/db-connection.scss";
+@import "templates/projects/playground";
+@import "templates/projects/settings";
+@import "templates/projects/access-rules";
+@import "templates/projects/white-label";
+@import "templates/projects/business-logic";
+@import "templates/projects/project-overview";
+@import "templates/projects/user";
+@import "templates/projects/projects";
+@import 'components/upgrade-downgrade-preview';
+@import "components/input-component";
+@import "components/business-logic-form";
+
+body {
+  background-color: #e7ebf5;
+  padding: 0;
+  margin: 0;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 0.85rem;
+}
+
+hr {
+  margin: 5px 0;
+  border-top: 1px solid rgba($success-color, 0.1);
+}
+
+.dashboard-layout {
+  display: flex;
+  height: 100vh;
+
+  .sidebar-toggle {
+    background: $gradient-teal;
+    border: none;
+    border-radius: 0.5rem;
+    padding: 0.5rem;
+    font-size: 1.25rem;
+    color: $white;
+    z-index: 999;
+    cursor: pointer;
+    display: none;
+    transition: opacity 0.2s ease;
+
+    &:hover {
+      opacity: 0.9;
+    }
+
+    @media (max-width: 1024px) {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+  }
+
+  .dashboard-layout-content {
+    flex: 1;
+    overflow-y: auto;
+
+    .navbar-wrapper {
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+    }
+
+    .dashboard-layout-content {
+      padding: 20px;
+      background-color: #f8f8fd;
+      height: calc(100vh - 56px);
+      border-radius: 1rem 0 0 0;
+      @media screen and (max-width: 1024px) {
+        border-radius: 0;
+      }
+    }
+  }
+}
+
+.ui-search-box {
+  position: relative;
+  width: 100%;
+  box-sizing: border-box;
+
+  .search-icon {
+    position: absolute;
+    top: 50%;
+    left: 12px;
+    transform: translateY(-50%);
+    color: $slate-400;
+    font-size: 16px;
+  }
+
+  input {
+    padding: 10px 12px 10px 32px;
+    width: -webkit-fill-available;
+    border: 1px solid $slate-300;
+    border-radius: 6px;
+    font-size: 14px;
+    outline: none;
+  }
+}
+
+// Toast overrides (NuvoUI button fix)
+button.toast-close-button {
+  background: transparent !important;
+}
+
+  .info {
+    font-size: 14px;
+    margin: 8px auto 0 auto;
+    color: $blue-600;
+    background-color: rgba($blue-500, 0.16);
+    padding: 8px 10px;
+    border-left: 4px solid $blue-500;
+    border-radius: 4px;
+    max-width: auto;
+    width: 35rem;
+    line-height: 20px;
+    text-align: center;
+
+    a{
+      color: $primary-color;
+      cursor: pointer;
+    }
+  }
+
+.project-page-container {
+  padding: 0 1rem;
+  width: 100%;
+  margin: 0 auto;
+  box-sizing: border-box;
+
+  .wrapper {
+    margin-top: 1rem;
+  }
+}

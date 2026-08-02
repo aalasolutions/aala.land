@@ -1,0 +1,299 @@
+// Domain badge vocabulary.
+//
+// Every dynamically-concatenated badge class in the app resolves here. These
+// are NOT components: each rule only reassigns `.nu-tag` variables, so a badge
+// is `<Nuvo::Tag>` plus one of these classes. No new box model, no new type
+// scale, no JS.
+//
+// SHARED FILE. Page agents read it and never edit it. If a page needs a value
+// that is not here, report it; do not add it.
+//
+// ---------------------------------------------------------------------------
+// Why the class names carry a domain
+//
+// A sweep of `-{{` found 35 concat sites across 5 families, and `status-` alone
+// draws from six unrelated enums. Values collide: MAINTENANCE is a property
+// status, a cheque type, a document category and a transaction category. Those
+// must not share a colour. The legacy sheet flattened them all into one
+// `.status-badge` block, which is why it carried both `.status-cancelled` and
+// `.status-canceled` 3200 lines apart with different colours.
+//
+// So: `.badge-lead-won`, `.badge-unit-maintenance`, `.badge-doc-maintenance`.
+// The domain is in the name and the collision cannot happen.
+//
+// Value lists come from `app/constants.js`, which is the source of truth. Do
+// not hand-extend them; add to constants first.
+// ---------------------------------------------------------------------------
+@use "sass:map";
+@use "../uikit/common/var" as *;
+
+// Semantic intent -> the core colour scale backing it. `neutral` is the only
+// non-scale entry: it maps to theme surface tokens, not a hue.
+$badge-intents: (
+  "success": "success",
+  "warning": "warning",
+  "danger": "danger",
+  "info": "info",
+  "primary": "primary",
+  "accent": "secondary",
+);
+
+// Domain vocabularies. Keys are the lowercased enum value as it reaches the
+// DOM; values are an intent above, or `neutral`.
+$badge-domains: (
+  // LEAD_STAGES
+  "lead": (
+    "new": "info",
+    "contacted": "accent",
+    "viewing": "warning",
+    "negotiating": "warning",
+    "won": "success",
+    "lost": "danger",
+  ),
+
+  // TEMPERATURE_STAGES
+  "temp": (
+    "hot": "danger",
+    "warm": "warning",
+    "cold": "info",
+    "dead": "neutral",
+  ),
+
+  // TRANSACTION_STATUS_OPTIONS
+  "txn": (
+    "pending": "warning",
+    "completed": "success",
+    "cancelled": "neutral",
+    "failed": "danger",
+  ),
+
+  // FILTER_STATUS_OPTIONS (commissions)
+  "commission": (
+    "pending": "warning",
+    "approved": "info",
+    "paid": "success",
+  ),
+
+  // PROPERTY_STATUS_OPTIONS
+  "unit": (
+    "available": "success",
+    "rented": "info",
+    "sold": "neutral",
+    "maintenance": "warning",
+  ),
+
+  // PROPERTY_TYPE_OPTIONS + PROPERTY_SUB_TYPES
+  "proptype": (
+    "rental": "info",
+    "for_sale": "success",
+    "apartment": "neutral",
+    "villa": "neutral",
+    "townhouse": "neutral",
+    "penthouse": "neutral",
+    "office_space": "neutral",
+    "retail_store": "neutral",
+    "warehouse": "neutral",
+    "land_plot": "neutral",
+  ),
+
+  // MAINTENANCE_STATUS_OPTIONS
+  "wo": (
+    "open": "info",
+    "in_progress": "primary",
+    "pending_approval": "warning",
+    "completed": "success",
+    "cancelled": "neutral",
+  ),
+
+  // PRIORITY_OPTIONS. Rendered through a class named `status-` in the legacy
+  // markup; given its own domain here because it is not a status.
+  "priority": (
+    "low": "neutral",
+    "medium": "info",
+    "high": "warning",
+    "urgent": "danger",
+  ),
+
+  // MAINTENANCE_CATEGORY_OPTIONS + SPECIALTY_OPTIONS
+  "trade": (
+    "plumbing": "info",
+    "electrical": "warning",
+    "hvac": "info",
+    "structural": "neutral",
+    "cleaning": "success",
+    "pest_control": "warning",
+    "appliance": "accent",
+    "painting": "accent",
+    "general": "neutral",
+    "other": "neutral",
+  ),
+
+  // CHEQUE_TYPE_OPTIONS
+  "cheque": (
+    "rent": "info",
+    "security_deposit": "accent",
+    "maintenance": "warning",
+    "other": "neutral",
+  ),
+
+  // Cheque lifecycle. Not in `constants.js` (no filter UI exposes it). Values
+  // taken from the DB enum in migration 1772684930871-AddCheques.ts, which
+  // carries a sixth state the templates never render.
+  "chequestate": (
+    "pending": "warning",
+    "deposited": "info",
+    "cleared": "success",
+    "bounced": "danger",
+    "cancelled": "neutral",
+    "replaced": "neutral",
+  ),
+
+  // TRANSACTION_TYPE_OPTIONS
+  "txntype": (
+    "income": "success",
+    "expense": "danger",
+  ),
+
+  // TRANSACTION_CATEGORY_OPTIONS
+  "txncat": (
+    "rent": "info",
+    "sale": "success",
+    "deposit": "accent",
+    "maintenance": "warning",
+    "commission": "primary",
+    "other": "neutral",
+  ),
+
+  // COMMISSION_TYPE_OPTIONS
+  "commtype": (
+    "sale": "success",
+    "rental": "info",
+    "referral": "accent",
+  ),
+
+  // CONTACT_TYPES
+  "contact": (
+    "lead": "warning",
+    "tenant": "info",
+    "owner": "success",
+    "vendor": "accent",
+    "other": "neutral",
+  ),
+
+  // CATEGORIES (documents)
+  "doc": (
+    "lease": "info",
+    "ejari": "primary",
+    "title_deed": "success",
+    "id_copy": "neutral",
+    "noc": "warning",
+    "insurance": "accent",
+    "maintenance": "warning",
+    "invoice": "danger",
+    "receipt": "success",
+    "other": "neutral",
+  ),
+
+  // ACCESS_LEVELS
+  "access": (
+    "team": "info",
+    "admin": "warning",
+  ),
+
+  // EMAIL_CATEGORIES
+  "email": (
+    "follow_up": "info",
+    "welcome": "success",
+    "lease_renewal": "primary",
+    "payment_reminder": "warning",
+    "maintenance_update": "accent",
+    "marketing": "danger",
+    "custom": "neutral",
+  ),
+
+  // LEASE_TYPE_OPTIONS
+  "lease": (
+    "residential": "info",
+    "commercial": "accent",
+    "active": "success",
+    "expired": "neutral",
+    "terminated": "danger",
+    "pending": "warning",
+  ),
+
+  // Subscription tiers
+  "plan": (
+    "free": "neutral",
+    "starter": "info",
+    "growth": "success",
+    "pro": "success",
+    "scale": "primary",
+    "enterprise": "accent",
+  ),
+
+  // Stripe subscription states. Stripe spells it `canceled` (one L), the app
+  // spells it `cancelled`. Only the correct spelling ships here; the Stripe
+  // value is normalised in JS before it reaches the DOM.
+  "sub": (
+    "active": "success",
+    "trialing": "success",
+    "past_due": "warning",
+    "incomplete": "warning",
+    "incomplete_expired": "danger",
+    "unpaid": "danger",
+    "cancelled": "neutral",
+  ),
+
+  // Generic enabled/disabled state. Not an enum: any record with an
+  // `isActive` boolean renders through this. Shared so team, vendors, contacts
+  // and marketers do not each invent their own pair.
+  "enabled": (
+    "active": "success",
+    "inactive": "neutral",
+  ),
+
+  // Audit log actions. Values come from the backend audit trail, not from
+  // `constants.js`. The legacy controller returned Tailwind class strings for
+  // these (`bg-green-100 text-green-800`) in a project that bans Tailwind.
+  "audit": (
+    "create": "success",
+    "update": "info",
+    "delete": "danger",
+    "assign": "accent",
+    "login": "neutral",
+    "logout": "neutral",
+    "import": "warning",
+    "export": "primary",
+  ),
+
+  // Admin console account state. Not an enum: derived in
+  // `controllers/admin/companies/company.js` -> `statusView`, which returns the
+  // class name directly. Kept as its own domain so that getter can return
+  // `badge-account-locked` instead of borrowing `status-failed` from the
+  // payment vocabulary.
+  "account": (
+    "locked": "danger",
+    "lifted": "warning",
+    "on_deal": "warning",
+    "active": "success",
+  ),
+);
+
+// Emit one class per domain/value pair. Only variables are reassigned, so the
+// badge keeps `.nu-tag`'s box model and inherits any future kit change.
+@each $domain, $values in $badge-domains {
+  @each $value, $intent in $values {
+    .badge-#{$domain}-#{$value} {
+      @if $intent == "neutral" {
+        --nu-tag--Color: var(--text-muted);
+        --nu-tag--BackgroundColor: var(--bg-alternate);
+        --nu-tag--BorderColor: var(--border-base);
+      } @else {
+        $scale: map.get($badge-intents, $intent);
+        --nu-tag--Color: var(--#{$scale}-700);
+        --nu-tag--BackgroundColor: var(--#{$scale}-50);
+        --nu-tag--BorderColor: var(--#{$scale}-200);
+      }
+    }
+  }
+}

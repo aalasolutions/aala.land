@@ -1,0 +1,132 @@
+@use "sass:color";
+
+.users-container {
+  .delete-container {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    padding: 1rem;
+    .contant {
+      display: flex;
+      justify-content: flex-start;
+      align-items: flex-start;
+      gap: 0.5rem;
+      .title {
+        font-size: 22px;
+      }
+      .subtitle {
+        font-size: 14px;
+        width: 80%;
+        text-align: left;
+        line-height: 23px;
+      }
+    }
+
+    .button-wrapper {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 1rem;
+
+      button {
+        padding: 0.5rem;
+      }
+    }
+  }
+  .wrapper {
+    display: flex;
+    justify-content: flex-start;
+    flex-direction: column;
+    gap: 1.5rem;
+    margin-top: 1rem;
+    padding: 0 1rem;
+
+    .table-button {
+      all: unset;
+      color: $primary-color;
+      font-weight: 400;
+      
+      font-size: 16px;
+      cursor: pointer;
+
+      &:hover {
+        color: color.adjust($primary-color, $lightness: -10%);
+        transition: 0.5s;
+      }
+    }
+
+    .users-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+
+      .actions {
+        display: flex;
+        gap: 1rem;
+
+        .create-project {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          align-self: center;
+          gap: 0.5rem;
+          padding: 10px 12px;
+          font-size: 16px;
+
+          i {
+            font-size: 14px;
+            color: $white;
+          }
+        }
+      }
+    }
+
+    .table-actions {
+      display: flex;
+      justify-items: center;
+      gap: 0.5rem;
+
+      button {
+        background: none;
+        border: none;
+        cursor: pointer;
+        font-size: 14px;
+        color: #555;
+
+        &:hover {
+          color: #000;
+        }
+
+        .fa-edit {
+          color: $primary-color;
+        }
+
+        .fa-trash-alt {
+          color: $error-color;
+        }
+      }
+    }
+  }
+}
+
+.contant {
+  display: flex;
+  flex-direction: column;
+  align-items: fle;
+
+  gap: 0.5rem;
+
+  .title {
+    font-weight: 600;
+    
+    font-size: 32px;
+    color: #141414;
+  }
+
+  .subtitle {
+    font-weight: 400;
+    
+    font-size: 16px;
+    color: #141414;
+  }
+}

@@ -1,0 +1,172 @@
+// Admin console: overview, system, marketers, companies list + detail.
+// See AGENT_BRIEF.md. Bespoke `.console-*` layout classes are kept here,
+// rewritten onto kit tokens; anything a kit component covers uses the
+// component instead. Badges use the domains in _badges.scss.
+@use "../uikit/common/var" as *;
+@use "../uikit/mixins/bem" as *;
+
+// ---- Overview: hero band ----
+
+.console-hero {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: nu-space(6);
+}
+
+.console-hero__figures {
+  display: flex;
+  gap: nu-space(8);
+}
+
+.console-hero__label {
+  font-size: nu-font-size(xs);
+  font-weight: nu-font-weight(semibold);
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.console-hero__value {
+  font-size: 2rem;
+  font-weight: nu-font-weight(bold);
+  color: var(--text-color);
+  line-height: 1.1;
+}
+
+.console-hero__unit {
+  font-size: 1rem;
+  font-weight: nu-font-weight(medium);
+  color: var(--text-muted);
+}
+
+.console-hero__chips,
+.console-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: nu-space(2);
+}
+
+// ---- chips ----
+
+.console-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: nu-space(2);
+  padding-block: nu-space(1);
+  padding-inline: nu-space(3);
+  border-radius: nu-radius(full);
+  background: var(--bg-alternate);
+  font-size: nu-font-size(sm);
+  color: var(--text-muted);
+}
+
+.console-chip__code {
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-color);
+}
+
+// ---- Overview: tile grid + rollups ----
+
+.console-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  gap: nu-space(4);
+}
+
+.console-rollups {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: nu-space(6);
+
+  @include media-down(lg) {
+    grid-template-columns: 1fr;
+  }
+}
+
+// ---- Overview: region distribution bars ----
+
+.console-region-row {
+  display: flex;
+  align-items: center;
+  gap: nu-space(3);
+}
+
+.console-region-row__name {
+  inline-size: 5.625rem;
+  font-size: nu-font-size(sm);
+  color: var(--text-muted);
+}
+
+.console-region-bar {
+  flex: 1;
+  block-size: 8px;
+  border-radius: nu-radius(full);
+  background: var(--bg-alternate);
+  overflow: hidden;
+}
+
+.console-region-bar__fill {
+  display: block;
+  block-size: 100%;
+  border-radius: nu-radius(full);
+  background: var(--primary);
+}
+
+.console-region-row__count {
+  inline-size: 2rem;
+  text-align: end;
+  font-weight: nu-font-weight(semibold);
+}
+
+// ---- Companies list: filter bar + clickable rows ----
+
+.console-list-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: nu-space(3);
+}
+
+.console-list-filters__search {
+  flex: 1;
+  min-inline-size: 12.5rem;
+}
+
+.console-list-filters__select {
+  inline-size: auto;
+  min-inline-size: 8.75rem;
+}
+
+// Whole-row click is the ratified affordance (design section 3); the company
+// name is also a real link, so keyboard users are not stranded.
+.console-row {
+  cursor: pointer;
+
+  &:hover {
+    background: var(--bg-alternate);
+  }
+}
+
+.console-row__name-link {
+  color: inherit;
+  text-decoration: none;
+
+  &:hover {
+    color: var(--primary);
+  }
+}
+
+// ---- Marketers: expandable detail row ----
+
+.console-expand-row td {
+  background: var(--bg-alternate);
+}
+
+.console-expand {
+  display: flex;
+  flex-wrap: wrap;
+  gap: nu-space(4);
+  padding-block: nu-space(2);
+}

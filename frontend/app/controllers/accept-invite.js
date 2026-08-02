@@ -21,6 +21,11 @@ export default class AcceptInviteController extends Controller {
     this[field] = e.target.value;
   }
 
+  // Nuvo::Input calls onInput as (value, event), not with a raw DOM event.
+  @action setFieldValue(field, value) {
+    this[field] = value;
+  }
+
   @action async submit(event) {
     event.preventDefault();
     this.errorMsg = '';

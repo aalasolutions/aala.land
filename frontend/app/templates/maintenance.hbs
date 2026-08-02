@@ -1,93 +1,75 @@
 {{page-title "Maintenance"}}
 
 <div data-test-maintenance-page class="flex col gap-6">
-  <div class="flex between x-center">
-    <div>
-      <h2 class="font-3xl font-bold"><Ui::Ph @icon="wrench" @size="28px" />
-        Maintenance</h2>
-      <p class="text-muted mt-1">Track and manage property work orders.</p>
-    </div>
-    <button
-      type="button"
-      class="btn btn-primary"
-      {{on "click" this.openCreate}}
-    >
-      <Ui::Ph @icon="plus" />
-      New Work Order
-    </button>
-  </div>
+  <Nuvo::PageHeader @title="Maintenance">
+    <:meta>
+      <p class="text-muted">Track and manage property work orders.</p>
+    </:meta>
+    <:actions>
+      <Nuvo::Button @variant="primary" {{on "click" this.openCreate}}>
+        <Ui::Ph @icon="plus" />
+        New Work Order
+      </Nuvo::Button>
+    </:actions>
+  </Nuvo::PageHeader>
 
   {{#if @model.costSummary}}
     <div class="grid cols-4 gap-4">
-      <div class="glass-panel p-4">
-        <p class="text-muted font-xs uppercase tracking-wider mb-1">Total
-          Estimated</p>
-        <h4 class="font-xl font-bold">{{format-currency
-            @model.costSummary.totalEstimated
-          }}</h4>
-      </div>
-      <div class="glass-panel p-4">
-        <p class="text-muted font-xs uppercase tracking-wider mb-1">Total Actual</p>
-        <h4 class="font-xl font-bold">{{format-currency
-            @model.costSummary.totalActual
-          }}</h4>
-      </div>
-      <div class="glass-panel p-4">
-        <p class="text-muted font-xs uppercase tracking-wider mb-1">Pending Cost</p>
-        <h4 class="font-xl font-bold text-warning">{{format-currency
-            @model.costSummary.pendingCost
-          }}</h4>
-      </div>
-      <div class="glass-panel p-4">
-        <p class="text-muted font-xs uppercase tracking-wider mb-1">Work Orders</p>
-        <h4 class="font-xl font-bold">{{@model.costSummary.totalOrders}}</h4>
-      </div>
+      <Nuvo::Stat
+        @variant="primary"
+        @label="Total Estimated"
+        @value={{format-currency @model.costSummary.totalEstimated}}
+      />
+      <Nuvo::Stat
+        @variant="primary"
+        @label="Total Actual"
+        @value={{format-currency @model.costSummary.totalActual}}
+      />
+      <Nuvo::Stat
+        @variant="warning"
+        @label="Pending Cost"
+        @value={{format-currency @model.costSummary.pendingCost}}
+      />
+      <Nuvo::Stat
+        @variant="secondary"
+        @label="Work Orders"
+        @value={{@model.costSummary.totalOrders}}
+      />
     </div>
   {{/if}}
 
-  <div class="tabs">
-    <button
-      type="button"
-      class="tab-btn {{if (eq this.activeSection 'orders') 'active'}}"
-      {{on "click" (fn this.setSection "orders")}}
-    >
-      <Ui::Ph @icon="list-checks" />
-      Work Orders
-    </button>
-    <button
-      type="button"
-      class="tab-btn {{if (eq this.activeSection 'upcoming') 'active'}}"
-      {{on "click" (fn this.setSection "upcoming")}}
-    >
-      <Ui::Ph @icon="calendar-check" />
-      Upcoming Preventive
-    </button>
-  </div>
+  <Nuvo::Tabs
+    @tabs={{this.sectionTabs}}
+    @activeTab={{this.activeSection}}
+    @onChange={{this.setSection}}
+  />
 
   {{#if (eq this.activeSection "orders")}}
     <div class="flex gap-4 x-center">
-      <Ui::FormDropdown
-        @id="maintenance-status-filter"
-        @label="Status"
-        @value={{this.filterStatus}}
-        @onChange={{this.setStatusFilter}}
-        @options={{this.statusOptions}}
-        @placeholder="All"
-      />
-      <Ui::FormDropdown
-        @id="maintenance-period-filter"
-        @label="Period"
-        @value={{this.filterMonth}}
-        @onChange={{this.setMonthFilter}}
-        @options={{this.monthOptions}}
-        @placeholder="All"
-      />
+      <Nuvo::Field @label="Status">
+        <Nuvo::Select
+          id="maintenance-status-filter"
+          @value={{this.filterStatus}}
+          @onChange={{this.setStatusFilter}}
+          @options={{this.statusOptions}}
+          @placeholder="All"
+        />
+      </Nuvo::Field>
+      <Nuvo::Field @label="Period">
+        <Nuvo::Select
+          id="maintenance-period-filter"
+          @value={{this.filterMonth}}
+          @onChange={{this.setMonthFilter}}
+          @options={{this.monthOptions}}
+          @placeholder="All"
+        />
+      </Nuvo::Field>
     </div>
 
-    <div class="glass-panel p-5">
+    <Nuvo::Card>
       {{#if this.filteredWorkOrders.length}}
-        <div class="data-table-wrapper data-table-wrapper--with-pagination">
-          <table class="data-table">
+        <div class="nu-table-wrapper">
+          <table class="nu-table" data-test-work-orders-table>
             <thead>
               <tr>
                 <th>Title</th>
@@ -105,13 +87,13 @@
               {{#each this.filteredWorkOrders as |wo|}}
                 <tr data-test-work-order>
                   <td>
-                    <p class="font-sm font-bold">{{wo.title}}</p>
-                    {{#if wo.vendorId}}<p class="text-muted font-xs"><Ui::Ph
+                    <p class="text-sm font-bold">{{wo.title}}</p>
+                    {{#if wo.vendorId}}<p class="text-muted text-xs"><Ui::Ph
                           @icon="toolbox"
                         />
                         Vendor assigned</p>{{/if}}
                   </td>
-                  <td class="font-sm text-muted">
+                  <td class="text-sm text-muted">
                     {{#if wo.unitNumber}}
                       {{wo.areaName}}
                       /
@@ -122,33 +104,42 @@
                       <span class="text-muted">-</span>
                     {{/if}}
                   </td>
-                  <td><span
-                      class="type-badge type-{{lowercase wo.category}}"
-                    >{{wo.category}}</span></td>
-                  <td><span
-                      class="status-badge status-{{lowercase wo.priority}}"
-                    >{{wo.priority}}</span></td>
+                  <td>
+                    <Nuvo::Tag
+                      class="badge-trade-{{lowercase wo.category}}"
+                      @text={{wo.category}}
+                    />
+                  </td>
+                  <td>
+                    <Nuvo::Tag
+                      class="badge-priority-{{lowercase wo.priority}}"
+                      @text={{wo.priority}}
+                    />
+                  </td>
                   <td>{{#if wo.estimatedCost}}{{format-currency
                         wo.estimatedCost
                       }}{{else}}-{{/if}}</td>
                   <td>{{#if wo.actualCost}}{{format-currency
                         wo.actualCost
                       }}{{else}}-{{/if}}</td>
-                  <td class="font-xs">{{#if wo.scheduledDate}}{{format-date
+                  <td class="text-xs">{{#if wo.scheduledDate}}{{format-date
                         wo.scheduledDate
                       }}{{else}}-{{/if}}</td>
-                  <td><span
-                      class="status-badge status-{{lowercase wo.status}}"
-                    >{{wo.status}}</span></td>
                   <td>
-                    <button
-                      type="button"
-                      class="btn btn-secondary btn-xs"
+                    <Nuvo::Tag
+                      class="badge-wo-{{lowercase wo.status}}"
+                      @text={{wo.status}}
+                    />
+                  </td>
+                  <td>
+                    <Nuvo::Button
+                      @variant="secondary"
+                      @size="xs"
                       {{on "click" (fn this.openEdit wo)}}
                     >
                       <Ui::Ph @icon="pencil-simple" />
                       Edit
-                    </button>
+                    </Nuvo::Button>
                   </td>
                 </tr>
               {{/each}}
@@ -156,7 +147,7 @@
           </table>
         </div>
 
-        <Ui::Pagination
+        <Nuvo::Pagination
           @selectId="maintenance-limit"
           @page={{this.page}}
           @limit={{this.limit}}
@@ -169,7 +160,7 @@
         {{#if @model.total}}
           <p class="text-muted text-center py-8">No work orders on this page
             with current filters. Navigate to find orders or adjust filters.</p>
-          <Ui::Pagination
+          <Nuvo::Pagination
             @selectId="maintenance-limit"
             @page={{this.page}}
             @limit={{this.limit}}
@@ -179,16 +170,18 @@
             @onNext={{this.goToNextPage}}
           />
         {{else}}
-          <p class="text-muted text-center py-8">No work orders match your
-            filters.</p>
+          <Nuvo::EmptyState
+            @title="No work orders"
+            @description="No work orders match your filters."
+          />
         {{/if}}
       {{/if}}
-    </div>
+    </Nuvo::Card>
   {{/if}}
 
   {{#if (eq this.activeSection "upcoming")}}
-    <div class="glass-panel p-5">
-      <h4 class="font-lg font-bold mb-3"><Ui::Ph @icon="clock-countdown" />
+    <Nuvo::Card>
+      <h4 class="text-lg font-bold mb-3"><Ui::Ph @icon="clock-countdown" />
         Preventive Maintenance (Next 30 Days)</h4>
       {{#if @model.upcoming.length}}
         <div class="flex col gap-3">
@@ -197,23 +190,24 @@
               class="flex between x-center p-4 rounded bg-white@02 border border-white@05"
             >
               <div class="flex col gap-1">
-                <p class="font-sm font-bold">{{wo.title}}</p>
-                <p class="text-muted font-xs">{{wo.category}}
+                <p class="text-sm font-bold">{{wo.title}}</p>
+                <p class="text-muted text-xs">{{wo.category}}
                   - Scheduled:
                   {{format-date wo.scheduledDate}}</p>
               </div>
               <div class="flex x-center gap-3">
-                <span
-                  class="status-badge status-{{lowercase wo.priority}}"
-                >{{wo.priority}}</span>
-                <button
-                  type="button"
-                  class="btn btn-secondary btn-xs"
+                <Nuvo::Tag
+                  class="badge-priority-{{lowercase wo.priority}}"
+                  @text={{wo.priority}}
+                />
+                <Nuvo::Button
+                  @variant="secondary"
+                  @size="xs"
                   {{on "click" (fn this.openEdit wo)}}
                 >
                   <Ui::Ph @icon="pencil-simple" />
                   Edit
-                </button>
+                </Nuvo::Button>
               </div>
             </div>
           {{/each}}
@@ -222,184 +216,194 @@
         <p class="text-muted text-center py-8">No preventive maintenance
           scheduled for the next 30 days.</p>
       {{/if}}
-    </div>
+    </Nuvo::Card>
   {{/if}}
 </div>
 
-<Ui::Modal
-  @isOpen={{this.showModal}}
+<Nuvo::Modal
+  @open={{this.showModal}}
   @title={{if this.editWorkOrder "Edit Work Order" "New Work Order"}}
   @onClose={{this.closeModal}}
-  @showClose={{true}}
 >
   <form class="flex col gap-4" {{on "submit" this.saveWorkOrder}}>
-    <Ui::FormDropdown
-      @label="Property"
-      @id="wo-unit"
-      @value={{this.formUnitId}}
-      @onChange={{fn this.setField "formUnitId"}}
-      @options={{this.unitOptions}}
-      @placeholder="Select a property..."
-      @required={{true}}
-      data-test-wo-unit
-    />
+    <Nuvo::Field @label="Property" @required={{true}}>
+      <Nuvo::Select
+        id="wo-unit"
+        @value={{this.formUnitId}}
+        @onChange={{fn this.setFieldValue "formUnitId"}}
+        @options={{this.unitOptions}}
+        @placeholder="Select a property..."
+        data-test-wo-unit
+      />
+    </Nuvo::Field>
 
-    <Ui::FormInput
-      @label="Title"
-      @id="wo-title"
-      @type="text"
-      @placeholder="e.g. Fix leaking pipe in property 302"
-      @value={{this.formTitle}}
-      @onChange={{fn this.setField "formTitle"}}
-      @required={{true}}
-    />
+    <Nuvo::Field @label="Title" @required={{true}}>
+      <Nuvo::Input
+        id="wo-title"
+        type="text"
+        placeholder="e.g. Fix leaking pipe in property 302"
+        @value={{this.formTitle}}
+        @onInput={{fn this.setFieldValue "formTitle"}}
+        required={{true}}
+      />
+    </Nuvo::Field>
 
-    <Ui::FormTextarea
-      @label="Description"
-      @id="wo-desc"
-      @placeholder="Describe the issue in detail..."
-      @rows={{3}}
-      @value={{this.formDescription}}
-      @onChange={{fn this.setField "formDescription"}}
-      @required={{true}}
-    />
+    <Nuvo::Field @label="Description" @required={{true}}>
+      <Nuvo::Textarea
+        id="wo-desc"
+        placeholder="Describe the issue in detail..."
+        rows="3"
+        @value={{this.formDescription}}
+        @onInput={{fn this.setFieldValue "formDescription"}}
+        required={{true}}
+      />
+    </Nuvo::Field>
 
     <div class="flex gap-4">
-      <div class="flex col gap-2 flex-1">
-        <Ui::FormDropdown
-          @label="Priority"
-          @id="wo-priority"
-          @value={{this.formPriority}}
-          @onChange={{fn this.setField "formPriority"}}
-          @options={{this.priorityOptions}}
-          @placeholder="Select priority..."
-        />
+      <div class="grow">
+        <Nuvo::Field @label="Priority">
+          <Nuvo::Select
+            id="wo-priority"
+            @value={{this.formPriority}}
+            @onChange={{fn this.setFieldValue "formPriority"}}
+            @options={{this.priorityOptions}}
+            @placeholder="Select priority..."
+          />
+        </Nuvo::Field>
       </div>
-      <div class="flex col gap-2 flex-1">
-        <Ui::FormDropdown
-          @label="Category"
-          @id="wo-category"
-          @value={{this.formCategory}}
-          @onChange={{fn this.setField "formCategory"}}
-          @options={{this.categoryOptions}}
-          @placeholder="Select category..."
-        />
+      <div class="grow">
+        <Nuvo::Field @label="Category">
+          <Nuvo::Select
+            id="wo-category"
+            @value={{this.formCategory}}
+            @onChange={{fn this.setFieldValue "formCategory"}}
+            @options={{this.categoryOptions}}
+            @placeholder="Select category..."
+          />
+        </Nuvo::Field>
       </div>
     </div>
 
     {{#if this.editWorkOrder}}
-      <Ui::FormDropdown
-        @label="Status"
-        @id="wo-status"
-        @value={{this.formStatus}}
-        @onChange={{fn this.setField "formStatus"}}
-        @options={{this.workOrderStatusOptions}}
-        @placeholder="Select status..."
-      />
+      <Nuvo::Field @label="Status">
+        <Nuvo::Select
+          id="wo-status"
+          @value={{this.formStatus}}
+          @onChange={{fn this.setFieldValue "formStatus"}}
+          @options={{this.workOrderStatusOptions}}
+          @placeholder="Select status..."
+        />
+      </Nuvo::Field>
     {{/if}}
 
     {{#if this.editWorkOrder}}
-      <Ui::FormInput
-        @label="Estimated Cost"
-        @id="wo-est-cost"
-        @type="number"
-        @placeholder="e.g. 500"
-        @value={{this.formEstimatedCost}}
-        @onChange={{fn this.setField "formEstimatedCost"}}
-        @min={{0}}
-        @step={{0.01}}
-      />
+      <Nuvo::Field @label="Estimated Cost">
+        <Nuvo::Input
+          id="wo-est-cost"
+          type="number"
+          placeholder="e.g. 500"
+          @value={{this.formEstimatedCost}}
+          @onInput={{fn this.setFieldValue "formEstimatedCost"}}
+          min="0"
+          step="0.01"
+        />
+      </Nuvo::Field>
     {{else}}
       <div class="flex gap-4">
-        <div class="flex col gap-2 flex-1">
-          <Ui::FormInput
-            @label="Reported By"
-            @id="wo-reported-by"
-            @type="text"
-            @placeholder="Tenant or staff name"
-            @value={{this.formReportedBy}}
-            @onChange={{fn this.setField "formReportedBy"}}
-          />
+        <div class="grow">
+          <Nuvo::Field @label="Reported By">
+            <Nuvo::Input
+              id="wo-reported-by"
+              type="text"
+              placeholder="Tenant or staff name"
+              @value={{this.formReportedBy}}
+              @onInput={{fn this.setFieldValue "formReportedBy"}}
+            />
+          </Nuvo::Field>
         </div>
-        <div class="flex col gap-2 flex-1">
-          <Ui::FormInput
-            @label="Estimated Cost"
-            @id="wo-est-cost"
-            @type="number"
-            @placeholder="e.g. 500"
-            @value={{this.formEstimatedCost}}
-            @onChange={{fn this.setField "formEstimatedCost"}}
-            @min={{0}}
-            @step={{0.01}}
-          />
+        <div class="grow">
+          <Nuvo::Field @label="Estimated Cost">
+            <Nuvo::Input
+              id="wo-est-cost"
+              type="number"
+              placeholder="e.g. 500"
+              @value={{this.formEstimatedCost}}
+              @onInput={{fn this.setFieldValue "formEstimatedCost"}}
+              min="0"
+              step="0.01"
+            />
+          </Nuvo::Field>
         </div>
       </div>
     {{/if}}
 
     <div class="flex gap-4">
-      <div class="flex col gap-2 flex-1">
-        <Ui::FormInput
-          @label="Actual Cost"
-          @id="wo-act-cost"
-          @type="number"
-          @placeholder="e.g. 450"
-          @value={{this.formActualCost}}
-          @onChange={{fn this.setField "formActualCost"}}
-          @min={{0}}
-          @step={{0.01}}
-        />
+      <div class="grow">
+        <Nuvo::Field @label="Actual Cost">
+          <Nuvo::Input
+            id="wo-act-cost"
+            type="number"
+            placeholder="e.g. 450"
+            @value={{this.formActualCost}}
+            @onInput={{fn this.setFieldValue "formActualCost"}}
+            min="0"
+            step="0.01"
+          />
+        </Nuvo::Field>
       </div>
-      <div class="flex col gap-2 flex-1">
-        <Ui::FormInput
-          @label="Cost Notes"
-          @id="wo-cost-notes"
-          @type="text"
-          @placeholder="e.g. Parts + labor"
-          @value={{this.formCostNotes}}
-          @onChange={{fn this.setField "formCostNotes"}}
-        />
+      <div class="grow">
+        <Nuvo::Field @label="Cost Notes">
+          <Nuvo::Input
+            id="wo-cost-notes"
+            type="text"
+            placeholder="e.g. Parts + labor"
+            @value={{this.formCostNotes}}
+            @onInput={{fn this.setFieldValue "formCostNotes"}}
+          />
+        </Nuvo::Field>
       </div>
     </div>
 
     <div class="flex gap-4">
-      <div class="flex col gap-2 flex-1">
-        <Ui::FormInput
-          @label="Scheduled Date"
-          @id="wo-scheduled"
-          @type="date"
-          @value={{this.formScheduledDate}}
-          @onChange={{fn this.setField "formScheduledDate"}}
-        />
+      <div class="grow">
+        <Nuvo::Field @label="Scheduled Date">
+          <Nuvo::Input
+            id="wo-scheduled"
+            type="date"
+            @value={{this.formScheduledDate}}
+            @onInput={{fn this.setFieldValue "formScheduledDate"}}
+          />
+        </Nuvo::Field>
       </div>
-      <div class="flex col gap-2 flex-1">
-        <Ui::FormDropdown
-          @label="Vendor"
-          @id="wo-vendor"
-          @value={{this.formVendorId}}
-          @onChange={{fn this.setField "formVendorId"}}
-          @options={{this.vendorOptions}}
-          @placeholder="No vendor assigned"
-        />
+      <div class="grow">
+        <Nuvo::Field @label="Vendor">
+          <Nuvo::Select
+            id="wo-vendor"
+            @value={{this.formVendorId}}
+            @onChange={{fn this.setFieldValue "formVendorId"}}
+            @options={{this.vendorOptions}}
+            @placeholder="No vendor assigned"
+          />
+        </Nuvo::Field>
       </div>
     </div>
 
     {{#if this.errorMsg}}
-      <p class="font-sm text-danger">{{this.errorMsg}}</p>
+      <p class="text-sm text-danger" data-test-error>{{this.errorMsg}}</p>
     {{/if}}
 
-    <div class="flex gap-3 mt-2">
-      <Ui::AppButton
-        @variant="secondary"
-        @text="Cancel"
-        @onClick={{this.closeModal}}
-      />
-      <Ui::AppButton
+    <Nuvo::FormActions @align="end">
+      <Nuvo::Button @variant="secondary" {{on "click" this.closeModal}}>
+        Cancel
+      </Nuvo::Button>
+      <Nuvo::Button
         @variant="primary"
-        @buttonType="submit"
-        @text={{if this.editWorkOrder "Update" "Create Work Order"}}
+        @type="submit"
         @loading={{this.isSaving}}
-        @loadingText="Saving..."
-      />
-    </div>
+        data-test-save-work-order
+      >
+        {{if this.editWorkOrder "Update" "Create Work Order"}}
+      </Nuvo::Button>
+    </Nuvo::FormActions>
   </form>
-</Ui::Modal>
+</Nuvo::Modal>

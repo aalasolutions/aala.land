@@ -1,0 +1,71 @@
+// Properties index: cards / list / browse views. See AGENT_BRIEF.md.
+//
+// Only the browse grid and its photo tile are bespoke. Everything else on this
+// page resolves to a kit component: the filter dropdowns are `<Nuvo::Dropdown>`,
+// the amenity picker is `.nu-tag.m-selectable`, and the unit tile is a
+// `.nu-card.m-interactive` with the photo block below layered on top.
+@use "../uikit/common/var" as *;
+@use "../uikit/mixins/bem" as *;
+
+// ---- browse grid ----
+
+.browse-unit-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: nu-space(4);
+
+  @include media-down(lg) {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  @include media-down(sm) {
+    grid-template-columns: 1fr;
+  }
+}
+
+// The card's own padding is removed so the photo can bleed to the edges; the
+// text block below re-adds it.
+.unit-browse-card {
+  --nu-card--Padding: 0;
+
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  text-decoration: none;
+  color: inherit;
+
+  > *:not(.unit-card-photo) {
+    padding-inline: nu-space(4);
+    padding-block-end: nu-space(4);
+  }
+}
+
+.unit-card-photo {
+  inline-size: 100%;
+  aspect-ratio: 16 / 10;
+  overflow: hidden;
+  background: var(--bg-alternate);
+
+  img {
+    inline-size: 100%;
+    block-size: 100%;
+    object-fit: cover;
+  }
+}
+
+.unit-card-photo-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: 100%;
+  block-size: 100%;
+  color: var(--text-muted);
+  font-size: 2rem;
+}
+
+// ---- CSV import preview ----
+
+.import-preview--scroll {
+  max-block-size: 12.5rem;
+  overflow-y: auto;
+}

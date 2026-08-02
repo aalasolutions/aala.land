@@ -1,27 +1,25 @@
 {{page-title "Documents"}}
 
 <div data-test-documents class="flex col gap-6">
-  <div class="flex between x-center">
-    <div class="flex x-center gap-3">
-      <Ui::Ph @icon="file-arrow-up" @size="24px" />
-      <h2 class="font-2xl font-bold">Documents</h2>
-      <span class="text-muted font-sm">({{format-number @model.total}})</span>
-    </div>
-    <button
-      type="button"
-      class="btn btn-primary"
-      data-test-upload-btn
-      {{on "click" this.openCreate}}
-    >
-      <Ui::Ph @icon="upload-simple" />
-      Upload Document
-    </button>
-  </div>
+  <Nuvo::PageHeader @title="Documents">
+    <:meta>
+      <p class="text-muted">({{format-number @model.total}})</p>
+    </:meta>
+    <:actions>
+      <Nuvo::Button
+        @variant="primary"
+        data-test-upload-btn
+        {{on "click" this.openCreate}}
+      >
+        <Ui::Ph @icon="upload-simple" />
+        Upload Document
+      </Nuvo::Button>
+    </:actions>
+  </Nuvo::PageHeader>
 
   <div class="flex gap-3">
-    <Ui::FormDropdown
-      @id="document-category-filter"
-      @label=""
+    <Nuvo::Select
+      id="document-category-filter"
       @value={{this.category}}
       @onChange={{this.setCategory}}
       @options={{this.categories}}
@@ -32,8 +30,8 @@
 
   {{#if @model.documents.length}}
     <div>
-      <div class="data-table-wrapper data-table-wrapper--with-pagination">
-        <table class="data-table">
+      <div class="nu-table-wrapper">
+        <table class="nu-table">
           <thead>
             <tr>
               <th>Name</th>
@@ -55,13 +53,15 @@
                     <span class="font-bold">{{doc.name}}</span>
                   </div>
                 </td>
-                <td><span
-                    class="type-badge type-{{lowercase doc.category}}"
-                  >{{doc.category}}</span></td>
-                <td><span
-                    class="status-badge status-{{lowercase doc.accessLevel}}"
-                  >{{doc.accessLevel}}</span></td>
-                <td class="font-sm" data-test-document-property>
+                <td><Nuvo::Tag
+                    class="badge-doc-{{lowercase doc.category}}"
+                    @text={{doc.category}}
+                  /></td>
+                <td><Nuvo::Tag
+                    class="badge-access-{{lowercase doc.accessLevel}}"
+                    @text={{doc.accessLevel}}
+                  /></td>
+                <td class="text-sm" data-test-document-property>
                   {{#if doc.unit}}
                     <LinkTo
                       @route="properties.unit"
@@ -74,43 +74,43 @@
                     <span class="text-muted">—</span>
                   {{/if}}
                 </td>
-                <td class="font-sm text-muted">{{format-bytes
+                <td class="text-sm text-muted">{{format-bytes
                     doc.fileSize
                   }}</td>
-                <td class="font-sm text-muted" data-test-document-uploader>{{if
+                <td class="text-sm text-muted" data-test-document-uploader>{{if
                     doc.uploadedByName
                     doc.uploadedByName
                     "—"
                   }}</td>
-                <td class="font-sm text-muted">{{format-date
+                <td class="text-sm text-muted">{{format-date
                     doc.createdAt
                   }}</td>
                 <td>
                   <div class="flex gap-2">
-                    <button
-                      type="button"
-                      class="btn btn-secondary btn-xs"
+                    <Nuvo::Button
+                      @variant="secondary"
+                      @size="xs"
                       data-test-download-btn
                       {{on "click" (fn this.downloadDocument doc)}}
                     >
                       <Ui::Ph @icon="download-simple" />
-                    </button>
-                    <button
-                      type="button"
-                      class="btn btn-secondary btn-xs"
+                    </Nuvo::Button>
+                    <Nuvo::Button
+                      @variant="secondary"
+                      @size="xs"
                       data-test-edit-btn
                       {{on "click" (fn this.openEdit doc)}}
                     >
                       <Ui::Ph @icon="pencil-simple" />
-                    </button>
-                    <button
-                      type="button"
-                      class="btn btn-danger btn-xs"
+                    </Nuvo::Button>
+                    <Nuvo::Button
+                      @variant="danger"
+                      @size="xs"
                       data-test-delete-btn
                       {{on "click" (fn this.openDelete doc)}}
                     >
                       <Ui::Ph @icon="trash" />
-                    </button>
+                    </Nuvo::Button>
                   </div>
                 </td>
               </tr>
@@ -119,7 +119,7 @@
         </table>
       </div>
 
-      <Ui::Pagination
+      <Nuvo::Pagination
         @selectId="documents-limit"
         @page={{this.page}}
         @limit={{this.limit}}
@@ -131,11 +131,11 @@
     </div>
   {{else}}
     {{#if @model.total}}
-      <div class="glass-panel p-8 text-center">
-        <p class="text-muted mt-3">No documents on page
+      <Nuvo::Card>
+        <p class="text-muted text-center py-8">No documents on page
           {{this.page}}. Navigate back to find documents.</p>
-      </div>
-      <Ui::Pagination
+      </Nuvo::Card>
+      <Nuvo::Pagination
         @selectId="documents-limit"
         @page={{this.page}}
         @limit={{this.limit}}
@@ -145,35 +145,36 @@
         @onNext={{this.goToNextPage}}
       />
     {{else}}
-      <div class="glass-panel p-8 text-center">
-        <Ui::Ph @icon="file-arrow-up" @size="48px" @color="var(--text-muted)" />
-        <p class="text-muted mt-3">No documents yet. Upload your first document
-          above.</p>
-      </div>
+      <Nuvo::Card>
+        <div class="flex col x-center gap-2 py-8" data-test-documents-empty>
+          <Ui::Ph @icon="file-arrow-up" @size="48px" @color="var(--text-muted)" />
+          <p class="text-muted">No documents yet. Upload your first document
+            above.</p>
+        </div>
+      </Nuvo::Card>
     {{/if}}
   {{/if}}
 </div>
 
-<Ui::Modal
-  @isOpen={{this.showModal}}
+<Nuvo::Modal
+  @open={{this.showModal}}
   @title={{if this.editDocument "Update Document" "Upload Document"}}
   @onClose={{this.closeModal}}
-  @showClose={{true}}
 >
   <form class="flex col gap-4" {{on "submit" this.saveDocument}}>
     <div class="flex col gap-2">
-      <label class="font-sm text-muted" for="d-file">File
+      <label class="text-sm text-muted" for="d-file">File
         {{unless this.editDocument "*"}}</label>
       <input
         id="d-file"
         type="file"
-        class="form-input"
+        class="nu-input"
         data-test-file-input
         accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.rtf,.txt,.md,.csv,.jpg,.jpeg,.png,.webp,.gif"
         {{on "change" this.onFileSelect}}
       />
       {{#if this.selectedFile}}
-        <p class="font-xs text-muted" data-test-selected-file>
+        <p class="text-xs text-muted" data-test-selected-file>
           Selected:
           {{this.selectedFile.name}}
           ({{format-bytes this.selectedFile.size}})
@@ -181,78 +182,78 @@
       {{/if}}
     </div>
 
-    <Ui::FormInput
-      @label="Document Name"
-      @id="d-name"
-      @type="text"
-      @placeholder="Lease Agreement Q1 2026"
-      @value={{this.formName}}
-      @onChange={{fn this.setField "formName"}}
-      @required={{true}}
-      data-test-field-name
-    />
+    <Nuvo::Field @label="Document Name" @required={{true}}>
+      <Nuvo::Input
+        id="d-name"
+        type="text"
+        placeholder="Lease Agreement Q1 2026"
+        @value={{this.formName}}
+        @onInput={{fn this.setFieldValue "formName"}}
+        required={{true}}
+        data-test-field-name
+      />
+    </Nuvo::Field>
 
     <div class="flex gap-4">
-      <div class="flex col gap-2 flex-1">
-        <Ui::FormDropdown
-          @label="Category"
-          @id="d-category"
+      <Nuvo::Field class="grow" @label="Category">
+        <Nuvo::Select
+          id="d-category"
           @value={{this.formCategory}}
-          @onChange={{fn this.setField "formCategory"}}
+          @onChange={{fn this.setFieldValue "formCategory"}}
           @options={{this.categoryOptions}}
           @placeholder="Select category..."
           data-test-field-category
         />
-      </div>
-      <div class="flex col gap-2 flex-1">
-        <Ui::FormDropdown
-          @label="Access Level"
-          @id="d-access"
+      </Nuvo::Field>
+      <Nuvo::Field class="grow" @label="Access Level">
+        <Nuvo::Select
+          id="d-access"
           @value={{this.formAccessLevel}}
-          @onChange={{fn this.setField "formAccessLevel"}}
+          @onChange={{fn this.setFieldValue "formAccessLevel"}}
           @options={{this.accessLevels}}
           @placeholder="Select access level..."
           data-test-field-access
         />
-      </div>
+      </Nuvo::Field>
     </div>
 
     {{#if this.uploadProgress}}
       <p
-        class="font-sm text-muted"
+        class="text-sm text-muted"
         data-test-upload-progress
       >{{this.uploadProgress}}</p>
     {{/if}}
 
     {{#if this.errorMsg}}
-      <p class="font-sm text-danger" data-test-error>{{this.errorMsg}}</p>
+      <p class="text-sm text-danger" data-test-error>{{this.errorMsg}}</p>
     {{/if}}
 
-    <div class="flex gap-3 mt-2">
-      <Ui::AppButton
+    <Nuvo::FormActions @align="end">
+      <Nuvo::Button
         @variant="secondary"
-        @text="Cancel"
         @onClick={{this.closeModal}}
-      />
-      <Ui::AppButton
+      >Cancel</Nuvo::Button>
+      <Nuvo::Button
         @variant="primary"
-        @buttonType="submit"
-        @text={{if this.editDocument "Update" "Upload"}}
+        @type="submit"
         @loading={{this.isSaving}}
-        @loadingText="Uploading..."
         data-test-save-btn
-      />
-    </div>
+      >{{if
+          this.isSaving
+          "Uploading..."
+          (if this.editDocument "Update" "Upload")
+        }}</Nuvo::Button>
+    </Nuvo::FormActions>
   </form>
-</Ui::Modal>
+</Nuvo::Modal>
 
 <ConfirmModal
-  @isOpen={{this.showDeleteModal}}
+  @open={{this.showDeleteModal}}
   @title="Delete Document"
   @message="Are you sure you want to delete {{this.documentToDelete.name}}? This action cannot be undone."
   @confirmText="Delete"
   @cancelText="Cancel"
-  @confirmType="btn-danger"
+  @confirmVariant="danger"
   @isConfirming={{this.isDeleting}}
   @confirmingText="Deleting..."
   @onClose={{this.closeDeleteModal}}

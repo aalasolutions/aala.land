@@ -1,0 +1,81 @@
+// Variables from @import "variables", .inputLabel from @import "forms" in app.scss
+
+.customPowerselectContainer {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+
+  // .inputLabel styles now in _forms.scss
+
+  .dropdownWrapper {
+    border: 1px solid #ccc;
+    background-color: $white;
+    box-sizing: border-box;
+    font-size: 14px;
+    padding: 8px 12px;
+    position: relative;
+    border-radius: 6px;
+    min-height: 42px;
+  }
+
+  .error {
+    color: $error-color;
+    font-size: 12px;
+  }
+}
+
+.ember-power-select-label {
+  font-weight: 400;
+  
+  font-size: 14px;
+  color: #212529;
+  margin-bottom: 8px;
+}
+
+.ember-power-select-option[aria-current=true] {
+  background-color: #f3f4f6 !important;
+  color: #374151 !important;
+}
+
+.ember-power-select-option[aria-selected=true] {
+  background-color: $primary-color !important;
+  color: $white !important;
+}
+
+
+@keyframes drop-fade-below {
+  0% {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(3px);
+  }
+}
+@keyframes drop-fade-above {
+  0% {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(-3px);
+  }
+}
+
+.slide-fade {
+  &.ember-basic-dropdown-content--below.ember-basic-dropdown--transitioning-in {
+    animation: drop-fade-below 0.15s;
+  }
+  &.ember-basic-dropdown-content--below.ember-basic-dropdown--transitioning-out {
+    animation: drop-fade-below 0.15s reverse;
+  }
+
+  &.ember-basic-dropdown-content--above.ember-basic-dropdown--transitioning-in {
+    animation: drop-fade-above 0.15s;
+  }
+  &.ember-basic-dropdown-content--above.ember-basic-dropdown--transitioning-out {
+    animation: drop-fade-above 0.15s reverse;
+  }
+}

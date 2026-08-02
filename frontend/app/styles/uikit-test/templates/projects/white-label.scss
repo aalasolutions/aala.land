@@ -1,0 +1,233 @@
+// White Label Configuration Styles (Cleaned for new structure)
+
+.card-container {
+  // Two-column layout for Branding + Theme sections
+  .two-column-layout {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    margin-bottom: 20px;
+  }
+
+  // Four-column layout for top Branding/Theme section
+  .four-column-layout {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr;
+    gap: 0 14px;
+  }
+
+  .form-column {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  // Main section headings (Layout, Labels & Text, Features, etc.)
+  .heading {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+    color: $dark-color;
+  }
+
+  // Form panels (like "Powered By", "Features")
+  .form-panel {
+    padding: 1rem;
+    background: $slate-50;
+    border-radius: 6px;
+
+    h3 {
+      font-size: 1.125rem;
+      font-weight: 600;
+      margin-bottom: 1rem;
+    }
+  }
+
+  .checkbox-group label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 400;
+    cursor: pointer;
+  }
+
+  // Color theme sections
+  .color-themes {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+    margin-top: 1.5rem;
+  }
+
+  .theme-colors h3 {
+    font-size: 1.125rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+  }
+
+  .color-grid {
+    display: grid;
+    gap: 1rem;
+  }
+
+  .color-input-group label {
+    font-size: 0.875rem;
+  }
+
+  .color-input-wrapper {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+  }
+
+  .color-picker {
+    width: 50px;
+    height: 40px;
+    border: 1px solid $slate-300;
+    border-radius: 6px;
+    cursor: pointer;
+  }
+
+  .color-text-input {
+    flex: 1;
+    padding: 0.5rem;
+    border: 1px solid $slate-300;
+    border-radius: 6px;
+    font-size: 0.875rem;
+  }
+
+  // Labels accordion
+  .labels-accordion details {
+    margin-bottom: 1rem;
+    border: 1px solid $slate-200;
+    border-radius: 6px;
+    overflow: hidden;
+  }
+
+  .labels-accordion summary {
+    padding: 1rem;
+    background: $slate-50;
+    cursor: pointer;
+    font-weight: 500;
+    user-select: none;
+  }
+
+  .labels-accordion summary:hover {
+    background: $slate-100;
+  }
+
+  .labels-accordion details[open] summary {
+    border-bottom: 1px solid $slate-200;
+  }
+
+  .labels-accordion .accordion-content {
+    padding: 1rem;
+  }
+
+  // Button row (inline at bottom)
+  .form-actions.button-row {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+    margin-top: 24px;
+
+    button {
+      flex: 0 0 auto;
+      min-width: 150px;
+    }
+  }
+
+  .btn-primary {
+    background: $primary-color;
+    color: $white;
+    padding: 0.75rem 1.5rem;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 500;
+    width: auto;  // Prevent 100% width expansion
+
+    &:hover:not(:disabled) {
+      background: $primary-color;
+    }
+
+    &:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+  }
+
+  .btn-secondary {
+    background: $secondary-color;
+    color: $white;
+    padding: 0.75rem 1.5rem;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 500;
+    width: auto;  // Prevent 100% width expansion
+
+    &:hover {
+      background: $text-secondary;
+    }
+  }
+
+  .spinner {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    border: 2px solid rgba($white, 0.3);
+    border-top-color: $white;
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+  }
+
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  // Alerts
+  .alert {
+    padding: 1rem 1.5rem;
+    border-radius: 6px;
+    margin-top: 1rem;
+    font-weight: 500;
+  }
+
+  .alert-success {
+    background: $success-light;
+    color: $success-dark;
+    border: 1px solid $success-color;
+  }
+
+  .alert-error {
+    background: $error-light;
+    color: $red-800;
+    border: 1px solid $error-color;
+  }
+
+  // Responsive
+  @media (max-width: 1024px) {
+    .four-column-layout {
+      grid-template-columns: 1fr 1fr;
+    }
+  }
+
+  @media (max-width: 768px) {
+    .two-column-layout,
+    .four-column-layout,
+    .color-themes {
+      grid-template-columns: 1fr;
+    }
+
+    .form-actions.button-row {
+      flex-direction: column;
+
+      button {
+        width: 100%;
+      }
+    }
+  }
+}

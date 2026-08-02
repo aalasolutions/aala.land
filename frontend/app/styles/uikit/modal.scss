@@ -1,0 +1,232 @@
+// nu-modal - dialog overlay and container
+@use "./mixins/bem" as *;
+@use "./mixins/var" as *;
+@use "./common/var" as *;
+
+@keyframes nu-backdrop-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes nu-modal-in {
+  from {
+    opacity: 0;
+    transform: translateY(nu-space(3)) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@include b(backdrop) {
+  @include nu-root("backdrop", (
+    "BackgroundColor": #{nu-scrim(55%)},
+    "ZIndex": nu-z(modal),
+    "Padding": nu-space(4),
+    "TransitionDuration": nu-duration(fast),
+  ));
+
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: nu-var("backdrop", "Padding");
+  background-color: nu-var("backdrop", "BackgroundColor");
+  z-index: nu-var("backdrop", "ZIndex");
+  animation: nu-backdrop-in nu-var("backdrop", "TransitionDuration") $nu-ease;
+
+  @include reduced-motion {
+    animation: none;
+  }
+
+  @include m(blur) {
+    backdrop-filter: blur(4px);
+  }
+
+  @include m(top) {
+    align-items: flex-start;
+    padding-block-start: nu-space(12);
+  }
+
+  @include when(open) {
+    display: flex;
+  }
+}
+
+@include b(modal) {
+  @include nu-root("modal", (
+    "Display": flex,
+    "MaxWidth": 32rem,
+    "MaxHeight": 90vh,
+    "BackgroundColor": var(--bg-surface),
+    "BorderWidth": 1px,
+    "BorderColor": var(--border-base),
+    "BorderRadius": nu-radius(xl),
+    "BoxShadow": nu-shadow(xl),
+    "Padding": nu-space(6),
+    "Gap": nu-space(4),
+    "TransitionDuration": nu-duration(fast),
+    "focus--BoxShadow": 0 0 0 3px #{nu-tint(primary, 35%)},
+  ));
+
+  display: nu-var("modal", "Display");
+  flex-direction: column;
+  inline-size: 100%;
+  max-inline-size: nu-var("modal", "MaxWidth");
+  max-block-size: nu-var("modal", "MaxHeight");
+  background-color: nu-var("modal", "BackgroundColor");
+  border: nu-var("modal", "BorderWidth") solid nu-var("modal", "BorderColor");
+  border-radius: nu-var("modal", "BorderRadius");
+  box-shadow: nu-var("modal", "BoxShadow");
+  padding: nu-var("modal", "Padding");
+  gap: nu-var("modal", "Gap");
+  animation: nu-modal-in nu-var("modal", "TransitionDuration") $nu-ease;
+
+  @include reduced-motion {
+    animation: none;
+  }
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: nu-var("modal", "BoxShadow"), nu-var("modal", "focus--BoxShadow");
+  }
+
+  // ---- elements ----
+
+  // flex-shrink: 0 so a tall body scrolls instead of squeezing the header.
+  @include e(header) {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    flex-shrink: 0;
+    gap: nu-space(3);
+    padding-block-end: nu-space(3);
+    border-block-end: 1px solid var(--border-base);
+  }
+
+  @include e(title) {
+    margin: 0;
+    font-size: nu-font-size(xl);
+    font-weight: nu-font-weight(bold);
+    color: var(--text-color);
+  }
+
+  @include e(subtitle) {
+    margin: 0;
+    font-size: nu-font-size(sm);
+    color: var(--text-muted);
+  }
+
+  @include e(close) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    inline-size: 2rem;
+    block-size: 2rem;
+    padding: 0;
+    color: var(--text-muted);
+    background-color: transparent;
+    border: none;
+    border-radius: nu-radius(md);
+    cursor: pointer;
+    transition: background-color nu-duration(fast) $nu-ease, color nu-duration(fast) $nu-ease;
+
+    @include reduced-motion {
+      transition: none;
+    }
+
+    &:hover {
+      color: var(--text-color);
+      background-color: var(--bg-alternate);
+    }
+
+    &:focus-visible {
+      outline: none;
+      box-shadow: nu-var("modal", "focus--BoxShadow");
+    }
+  }
+
+  // Scrolls by default. The modal is capped at MaxHeight, so without this the
+  // body simply overflows past the panel edge and its content is unreachable.
+  // `min-block-size: 0` is what lets a flex child shrink below its content
+  // size; without it the body refuses to scroll no matter the overflow value.
+  @include e(body) {
+    flex: 1;
+    min-block-size: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    font-size: nu-font-size(sm);
+    color: var(--text-color);
+  }
+
+  @include e(footer) {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    flex-shrink: 0;
+    gap: nu-space(2);
+    padding-block-start: nu-space(3);
+    border-block-start: 1px solid var(--border-base);
+  }
+
+  // ---- modifiers: sizes, uniform, so looped ----
+
+  $nu-modal-sizes: (
+    "sm": 24rem,
+    "md": 32rem,
+    "lg": 48rem,
+    "xl": 64rem,
+    "full": 100vw,
+  );
+
+  @each $size, $width in $nu-modal-sizes {
+    &.m-#{$size} {
+      --nu-modal--MaxWidth: #{$width};
+    }
+  }
+
+  // ---- size modifiers ----
+  //
+  // `modal.js` accepts sm|md|lg|xl|full and emits the matching `m-` class, so
+  // every one of these must exist here or the argument silently does nothing.
+
+  @include m(sm) {
+    --nu-modal--MaxWidth: 24rem;
+  }
+
+  @include m(md) {
+    --nu-modal--MaxWidth: 32rem;
+  }
+
+  @include m(lg) {
+    --nu-modal--MaxWidth: 48rem;
+  }
+
+  @include m(xl) {
+    --nu-modal--MaxWidth: 64rem;
+  }
+
+  @include m(full) {
+    --nu-modal--MaxWidth: 100%;
+    --nu-modal--MaxHeight: 100vh;
+    block-size: 100vh;
+    border-radius: nu-radius(none);
+  }
+
+  // ---- states ----
+
+  // Body scrolling is the default (see __body). This state is kept as a no-op
+  // so existing `@scrollable={{true}}` call sites keep working.
+  @include when(scrollable) {
+    @include en(body) {
+      overflow-y: auto;
+    }
+  }
+
+  @include when(open) {
+    display: flex;
+  }
+}

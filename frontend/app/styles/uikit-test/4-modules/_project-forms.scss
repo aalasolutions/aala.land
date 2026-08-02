@@ -1,0 +1,941 @@
+// ============================================
+// MODULE: Project Forms
+// ============================================
+// Project-specific forms and previews.
+// Consolidates: business-logic-form.scss + upgrade-downgrade-preview.scss
+
+@use 'sass:color';
+@use '../nuvoui' as Nuvo;
+@use '../variables' as *;
+
+// ============================================
+// Business Logic Form
+// ============================================
+
+.business-logic-form-wrapper {
+  .form-textarea {
+    @include Nuvo.apply(flex, col, gap(2));
+  }
+
+  .form-select {
+    @include Nuvo.apply(flex, x-baseline, gap(4), w-full, mb(4));
+
+    @include Nuvo.media-down(md) {
+      @include Nuvo.apply(col);
+    }
+
+    .userIdInput {
+      @include Nuvo.apply(rounded(xs));
+      background: $white;
+      box-sizing: border-box;
+    }
+
+    .form-field-group {
+      @include Nuvo.apply(flex, col, w-full);
+    }
+
+    @include Nuvo.media-up(md) {
+      @include Nuvo.apply(x-baseline);
+
+      .form-field-group {
+        @include Nuvo.apply(flex, row, center, x-center, gap(4));
+        min-width: 0;
+      }
+    }
+  }
+}
+
+// ============================================
+// Business Context Header
+// ============================================
+
+.business-context-header {
+  @include Nuvo.apply(flex, x-center, between, gap(4), wrap);
+
+  .form-label {
+    @include Nuvo.apply(block, font(semibold), mb(2));
+    font-size: 0.7rem;
+    color: $text-primary;
+
+    .required {
+      color: $error-color;
+    }
+  }
+}
+
+.generate-questions-btn {
+  @include Nuvo.apply(
+    flex-inline, x-center, gap(2),
+    py(2), px(4),
+    font-size(sm), font(medium),
+    rounded(md), cursor(pointer),
+    transition, duration(200)
+  );
+  color: $primary-color;
+  background: linear-gradient(135deg, $indigo-50, $indigo-100);
+  border: 1px solid rgba($primary-color, 0.2);
+
+  &:hover:not(:disabled) {
+    background: linear-gradient(135deg, $indigo-100, $blue-100);
+    border-color: rgba($primary-color, 0.3);
+    box-shadow: 0 2px 8px rgba($primary-color, 0.15);
+  }
+
+  &:disabled {
+    @include Nuvo.apply(opacity(70));
+    cursor: not-allowed;
+  }
+
+  &.loading {
+    color: $text-muted;
+  }
+
+  &.disabled-paused {
+    background: linear-gradient(135deg, Nuvo.get-color(gray, 100), Nuvo.get-color(gray, 200));
+    border-color: Nuvo.get-color(gray, 300);
+    color: Nuvo.get-color(gray, 500);
+
+    i {
+      color: $warning-color;
+    }
+  }
+
+  i {
+    font-size: 0.9rem;
+  }
+}
+
+// ============================================
+// Generated Questions Panel
+// ============================================
+
+.generated-questions {
+  @include Nuvo.apply(p(4), mb(2));
+  background: linear-gradient(135deg, $amber-50, $amber-100);
+  border: 1px solid $yellow-400;
+  border-radius: 10px;
+
+  .questions-header {
+    @include Nuvo.apply(flex, x-center, between, mb(3));
+
+    span {
+      @include Nuvo.apply(flex, x-center, gap(2), font(semibold));
+      font-size: 0.9rem;
+      color: $amber-800;
+
+      i {
+        color: $amber-500;
+      }
+    }
+
+    .clear-questions-btn {
+      @include Nuvo.apply(
+        flex, center, x-center, p(0),
+        pill, cursor(pointer), transition, duration(200)
+      );
+      width: 24px;
+      height: 24px;
+      background: rgba($dark-color, 0.05);
+      border: none;
+      color: $text-muted;
+
+      &:hover {
+        background: rgba($dark-color, 0.1);
+        color: Nuvo.get-color(gray, 600);
+      }
+    }
+  }
+
+  .questions-list {
+    @include Nuvo.apply(m(0), pl(5));
+    color: $warning-dark;
+
+    li {
+      @include Nuvo.apply(font-size(sm), leading-relaxed, mb(2));
+
+      &:last-child {
+        @include Nuvo.apply(mb(0));
+      }
+    }
+  }
+
+  .questions-hint {
+    @include Nuvo.apply(flex, x-start, gap(2), pt(3));
+    margin: 0.75rem 0 0 0;
+    border-top: 1px solid rgba($yellow-400, 0.5);
+    font-size: 0.8rem;
+    color: $amber-800;
+
+    i {
+      margin-top: 2px;
+      color: $amber-500;
+    }
+  }
+}
+
+// ============================================
+// Questions Error State
+// ============================================
+
+.questions-error {
+  @include Nuvo.apply(flex, x-center, gap(2), wrap, py(3), px(4), rounded(md), mb(2), font-size(sm));
+  background: $red-50;
+  border: 1px solid $red-100;
+  color: $red-800;
+
+  i {
+    color: $red-600;
+  }
+
+  .retry-btn {
+    @include Nuvo.apply(ml-auto, py(1), px(3), font(medium), rounded(sm), cursor(pointer), transition, duration(200));
+    font-size: 0.8rem;
+    color: $red-600;
+    background: $white;
+    border: 1px solid $red-100;
+
+    &:hover {
+      background: $red-50;
+      border-color: $red-600;
+    }
+  }
+}
+
+// ============================================
+// Isolation Section
+// ============================================
+
+.isolation-section {
+  @include Nuvo.apply(flex, col, my(4));
+
+  .section-header {
+    h3 {
+      @include Nuvo.apply(m(0), mb(1), font-size(lg), font(semibold));
+      color: $dark-color;
+    }
+
+    p {
+      @include Nuvo.apply(m(0), font-size(sm));
+      color: $text-muted;
+    }
+  }
+}
+
+// ============================================
+// Isolation Cards
+// ============================================
+
+.isolation-cards {
+  @include Nuvo.apply(grid, cols(1), gap(4), x-start);
+
+  @include Nuvo.media-up(md) {
+    @include Nuvo.apply(cols(2));
+  }
+}
+
+.isolation-card {
+  @include Nuvo.apply(relative, overflow-visible, self-start, p(5), rounded(lg), transition, duration(300));
+  background: $white;
+  border: 1px solid $border-color;
+
+  &.active {
+    border-color: $border-color;
+    background: linear-gradient(to bottom, rgba($blue-600, 0.03), $white);
+    box-shadow: 0px 0px 3px rgba($blue-600, 0.12);
+
+    .card-header .card-info .card-icon {
+      box-shadow: 0px 4px 10px 0px rgba($blue-600, 0.35);
+      transform: scale(1.05);
+    }
+  }
+
+  .card-header {
+    @include Nuvo.apply(flex, x-center, between, gap(4));
+
+    .card-info {
+      @include Nuvo.apply(flex, x-center, grow);
+      gap: 0.875rem;
+
+      .card-icon {
+        @include Nuvo.apply(flex, center, x-center, transition, duration(300));
+        width: 40px;
+        height: 40px;
+        min-width: 40px;
+        background: linear-gradient(135deg, $indigo-50, $indigo-100);
+        border-radius: 10px;
+        color: $primary-color;
+        font-size: 1.1rem;
+
+        &.currency-icon {
+          @include Nuvo.media-down(xs) {
+            width: 36px;
+            height: 36px;
+            min-width: 36px;
+            font-size: 1rem;
+          }
+        }
+      }
+
+      .card-text {
+        h4 {
+          @include Nuvo.apply(m(0), font(semibold));
+          font-size: 0.95rem;
+          color: $dark-color;
+        }
+
+        .card-description {
+          @include Nuvo.apply(block, mt(0.5));
+          font-size: 0.8rem;
+          color: $text-muted;
+        }
+      }
+    }
+  }
+
+  .card-body {
+    @include Nuvo.apply(overflow-hidden, mt(4), pt(4));
+    max-height: 500px;
+    opacity: 1;
+    border-top: 1px solid $bg-gray;
+    transition: max-height 0.35s ease-in-out, opacity 0.3s ease-in-out,
+      margin-top 0.35s ease-in-out, padding-top 0.35s ease-in-out,
+      border-color 0.3s ease-in-out;
+
+    &.collapsed {
+      @include Nuvo.apply(mt(0), pt(0), opacity(0));
+      max-height: 0;
+      border-top-color: transparent;
+    }
+
+    .card-body-content {
+      .field-hint {
+        @include Nuvo.apply(flex, x-center, gap(2), mt(2));
+        font-size: 0.8rem;
+        color: $text-muted;
+
+        i {
+          @include Nuvo.apply(font-size(xs));
+          color: $primary-color;
+        }
+      }
+    }
+  }
+}
+
+// Currency Type Toggle
+.currency-type-toggle {
+  @include Nuvo.apply(flex, x-center, no-shrink);
+  gap: 10px;
+
+  @include Nuvo.media-down(xs) {
+    gap: 6px;
+  }
+
+  .toggle-label {
+    @include Nuvo.apply(font-size(sm), whitespace-nowrap, transition-colors, duration(300));
+    color: $text-muted;
+
+    @include Nuvo.media-down(xs) {
+      font-size: 0.8rem;
+    }
+
+    &.active-single,
+    &.active-multi {
+      @include Nuvo.apply(font(semibold));
+      color: $primary-color;
+    }
+  }
+}
+
+// Custom Input Field
+.custom-input-field {
+  @include Nuvo.apply(w-full);
+
+  .customInputContainer {
+    @include Nuvo.apply(w-full, mt(4));
+
+    .inputLabel {
+      @include Nuvo.apply(font-size(sm), italic);
+      color: $secondary-color;
+    }
+
+    .inputWrapper {
+      @include Nuvo.apply(w-full, rounded(xs));
+      border: 1px solid Nuvo.get-color(gray, 300);
+
+      .form-control {
+        @include Nuvo.apply(w-full, py(2), px(4), font-size(sm));
+
+        &::placeholder {
+          @include Nuvo.apply(italic);
+          color: Nuvo.get-color(gray, 400);
+        }
+      }
+
+      &:focus-within {
+        border-color: $secondary-color;
+        box-shadow: 0 0 0 2px rgba($blue-500, 0.25);
+      }
+    }
+  }
+
+  @include Nuvo.media-up(md) {
+    .customInputContainer {
+      @include Nuvo.apply(m(0));
+
+      .inputLabel {
+        @include Nuvo.apply(m(0));
+      }
+    }
+  }
+}
+
+// ============================================
+// Upgrade/Downgrade Preview Modal
+// ============================================
+
+.upgrade-downgrade-preview {
+  @include Nuvo.apply(mx-auto, overflow-y-auto, overflow-x-hidden);
+  max-width: 700px;
+  max-height: 90vh;
+  scroll-behavior: smooth;
+
+  &::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  &::-webkit-scrollbar-track {
+    @include Nuvo.apply(rounded(xs));
+    background: $bg-gray;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    @include Nuvo.apply(rounded(xs));
+    background: Nuvo.get-color(gray, 300);
+
+    &:hover {
+      background: Nuvo.get-color(gray, 400);
+    }
+  }
+
+  .preview-content {
+    @include Nuvo.apply(px(2));
+  }
+}
+
+// Loading State
+.loading-state {
+  @include Nuvo.apply(text-center, py(10), px(5));
+
+  .spinner {
+    @include Nuvo.apply(mb(4));
+    font-size: 32px;
+    color: $indigo-500;
+  }
+
+  p {
+    @include Nuvo.apply(font-size(sm));
+    color: $text-muted;
+  }
+}
+
+// Modal Header
+.modal-header {
+  @include Nuvo.apply(text-center, mb(8), pb(6));
+  border-bottom: 2px solid $border-color;
+
+  .modal-title {
+    @include Nuvo.apply(flex, x-center, center, gap(3), font(bold), mb(2));
+    font-size: 24px;
+    color: $text-primary;
+
+    .upgrade-icon {
+      color: $green-500;
+    }
+
+    .downgrade-icon {
+      color: $amber-500;
+    }
+  }
+
+  .modal-subtitle {
+    @include Nuvo.apply(font-size(sm));
+    color: $text-muted;
+  }
+}
+
+// ============================================
+// Plan Comparison
+// ============================================
+
+.plan-comparison {
+  @include Nuvo.apply(grid, x-center, gap(4), mb(8));
+  grid-template-columns: 1fr auto 1fr;
+
+  @include Nuvo.media-down(md) {
+    @include Nuvo.apply(cols(1), gap(3));
+
+    .arrow-divider {
+      transform: rotate(90deg);
+      @include Nuvo.apply(my(2));
+    }
+  }
+
+  .plan-item {
+    @include Nuvo.apply(p(5), rounded(lg));
+    background: Nuvo.get-color(gray, 50);
+    border: 2px solid $border-color;
+
+    &.current {
+      border-color: Nuvo.get-color(gray, 400);
+    }
+
+    &.new {
+      border-color: $indigo-500;
+      background: linear-gradient(135deg, Nuvo.get-color(gray, 50) 0%, $indigo-50 100%);
+    }
+
+    .plan-label {
+      @include Nuvo.apply(uppercase, font(semibold), mb(2));
+      font-size: 11px;
+      color: $text-muted;
+      letter-spacing: 0.5px;
+    }
+
+    .plan-name {
+      @include Nuvo.apply(font(bold), mb(3));
+      font-size: 18px;
+      color: $text-primary;
+    }
+
+    .plan-details {
+      .detail-row {
+        @include Nuvo.apply(flex, between, py(2));
+        font-size: 13px;
+
+        .label {
+          color: $text-muted;
+        }
+
+        .value {
+          @include Nuvo.apply(flex, x-center, gap(2), font(semibold));
+          color: $text-primary;
+
+          i {
+            color: $amber-500;
+          }
+        }
+      }
+    }
+  }
+
+  .arrow-divider {
+    font-size: 24px;
+    color: $indigo-500;
+  }
+}
+
+// ============================================
+// Upgrade/Usage Breakdown
+// ============================================
+
+.upgrade-breakdown,
+.usage-summary {
+  @include Nuvo.apply(p(6), mb(6), rounded(lg));
+  background: $white;
+  border: 2px solid $border-color;
+
+  .breakdown-title,
+  .summary-title {
+    @include Nuvo.apply(flex, x-center, gap(2), font(bold), mb(5));
+    font-size: 16px;
+    color: $text-primary;
+
+    &::before {
+      @include Nuvo.apply(rounded(xs));
+      content: '';
+      width: 4px;
+      height: 20px;
+      background: $indigo-500;
+    }
+  }
+
+  .breakdown-item,
+  .summary-item {
+    @include Nuvo.apply(flex, between, py(3), font-size(sm));
+
+    &.highlight {
+      @include Nuvo.apply(py(3), px(4), rounded(md), my(2));
+      background: $warning-light;
+    }
+
+    .item-label {
+      color: $text-muted;
+    }
+
+    .item-value {
+      @include Nuvo.apply(flex, x-center, gap(2), font(semibold));
+      color: $text-primary;
+
+      &.highlight {
+        color: $amber-500;
+      }
+
+      i {
+        color: $amber-500;
+      }
+    }
+
+    &.total-queries {
+      @include Nuvo.apply(p(4), rounded(md), mt(3));
+      background: linear-gradient(135deg, $indigo-50 0%, $indigo-100 100%);
+
+      .item-value.total {
+        font-size: 18px;
+        color: $indigo-500;
+      }
+    }
+  }
+
+  .breakdown-divider {
+    @include Nuvo.apply(my(4));
+    height: 1px;
+    background: $border-color;
+  }
+}
+
+// ============================================
+// Pricing Section
+// ============================================
+
+.pricing-section {
+  @include Nuvo.apply(p(6), mb(6), rounded(lg));
+  background: $white;
+  border: 2px solid $border-color;
+
+  .pricing-title {
+    @include Nuvo.apply(flex, x-center, gap(2), font(bold), mb(5));
+    font-size: 16px;
+    color: $text-primary;
+
+    &::before {
+      content: '💰';
+      font-size: 20px;
+    }
+  }
+
+  .price-item {
+    @include Nuvo.apply(flex, between, py(3), font-size(sm));
+
+    .price-label {
+      color: $text-muted;
+    }
+
+    .price-value {
+      @include Nuvo.apply(font(semibold));
+      color: $text-primary;
+    }
+
+    &.charge-total {
+      @include Nuvo.apply(mt(3), p(4), rounded(md));
+      background: linear-gradient(135deg, $red-50 0%, $error-light 100%);
+
+      .price-value.charge {
+        font-size: 20px;
+        color: $red-600;
+      }
+
+      .price-value.free {
+        @include Nuvo.apply(flex, x-center, gap(2));
+        font-size: 18px;
+        color: $green-500;
+      }
+    }
+  }
+
+  .price-divider {
+    @include Nuvo.apply(my(4));
+    height: 2px;
+    background: $border-color;
+  }
+}
+
+// ============================================
+// Downgrade Case
+// ============================================
+
+.downgrade-case {
+  @include Nuvo.apply(p(6), mb(6), rounded(lg));
+  background: $white;
+  border: 2px solid $border-color;
+
+  .case-title {
+    @include Nuvo.apply(font(bold), mb(4));
+    font-size: 16px;
+    color: $text-primary;
+  }
+
+  .case-badge {
+    @include Nuvo.apply(flex-inline, x-center, gap(2), py(3), px(5), rounded(md), font(semibold), font-size(sm), mb(4));
+
+    &.full_refund {
+      background: $success-light;
+      color: $success-dark;
+    }
+
+    &.value_conversion,
+    &.partial_credit {
+      background: $warning-light;
+      color: $warning-dark;
+    }
+
+    &.no_value {
+      background: $error-light;
+      color: $error-dark;
+    }
+  }
+
+  .case-details {
+    .case-description {
+      @include Nuvo.apply(font-size(sm), leading-relaxed, mb(4));
+      color: $text-muted;
+    }
+
+    .conversion-details {
+      @include Nuvo.apply(p(4), rounded(md));
+      background: Nuvo.get-color(gray, 50);
+
+      .detail-item {
+        @include Nuvo.apply(flex, between, py(2), font-size(sm));
+
+        .label {
+          color: $text-muted;
+        }
+
+        .value {
+          @include Nuvo.apply(font(semibold));
+          color: $text-primary;
+
+          &.highlight {
+            @include Nuvo.apply(flex, x-center, gap(2));
+            color: $amber-500;
+          }
+        }
+      }
+    }
+  }
+}
+
+// ============================================
+// Refund Result
+// ============================================
+
+.refund-result {
+  @include Nuvo.apply(flex, col, gap(3), p(6), mb(6), rounded(lg));
+  background: $white;
+  border: 2px solid $border-color;
+
+  .result-item {
+    @include Nuvo.apply(flex, between, x-center, p(4), rounded(md));
+
+    &.refund {
+      background: linear-gradient(135deg, $success-light 0%, $green-200 100%);
+
+      .result-value.refund {
+        font-size: 20px;
+        color: $success-dark;
+      }
+    }
+
+    &.credits {
+      background: linear-gradient(135deg, $warning-light 0%, $amber-200 100%);
+
+      .result-value.credits {
+        @include Nuvo.apply(flex, x-center, gap(2));
+        font-size: 20px;
+        color: $warning-dark;
+      }
+    }
+
+    &.charge {
+      background: linear-gradient(135deg, $red-50 0%, $error-light 100%);
+
+      .result-value.charge {
+        font-size: 20px;
+        color: $red-600;
+      }
+    }
+
+    &.none {
+      background: Nuvo.get-color(gray, 50);
+
+      .result-value.none {
+        color: $text-muted;
+      }
+    }
+
+    .result-label {
+      @include Nuvo.apply(font(semibold), font-size(sm));
+      color: $text-primary;
+    }
+  }
+}
+
+// ============================================
+// Info Notes
+// ============================================
+
+.downgrade-note {
+  @include Nuvo.apply(flex, x-start, gap(3), p(4), mb(6), rounded(lg));
+  background: linear-gradient(135deg, $info-light 0%, $blue-100 100%);
+  border: 2px solid $blue-100;
+
+  i {
+    @include Nuvo.apply(no-shrink);
+    font-size: 20px;
+    color: $blue-500;
+    margin-top: 2px;
+  }
+
+  p {
+    @include Nuvo.apply(m(0), leading-relaxed);
+    font-size: 13px;
+    color: $text-secondary;
+  }
+}
+
+// ============================================
+// Pricing Summary
+// ============================================
+
+.pricing-summary {
+  @include Nuvo.apply(py(4), px(5), mb(6), rounded(lg));
+  background: Nuvo.get-color(gray, 50);
+  border: 2px solid $border-color;
+
+  .summary-row {
+    @include Nuvo.apply(flex, between, x-center, py(2));
+    font-size: 15px;
+
+    &:not(:last-child) {
+      border-bottom: 1px solid $border-color;
+    }
+
+    .summary-label {
+      @include Nuvo.apply(font(medium));
+      color: $text-secondary;
+    }
+
+    .summary-value {
+      @include Nuvo.apply(font(bold), font-size(base));
+      color: $text-primary;
+
+      &.refund {
+        color: $success-dark;
+      }
+
+      &.charge {
+        color: $red-600;
+      }
+    }
+
+    &.refund {
+      .summary-label {
+        color: $success-dark;
+      }
+    }
+
+    &.charge {
+      .summary-label {
+        color: $red-600;
+      }
+    }
+  }
+}
+
+// ============================================
+// Modal Actions
+// ============================================
+
+.modal-actions {
+  @include Nuvo.apply(flex, gap(3), pt(6));
+  border-top: 2px solid $border-color;
+
+  @include Nuvo.media-down(md) {
+    @include Nuvo.apply(col);
+  }
+
+  button {
+    @include Nuvo.apply(
+      grow, flex, center, x-center, gap(2),
+      py(3.5), px(6),
+      font(semibold), font-size(sm),
+      rounded(md), cursor(pointer),
+      transition, duration(200)
+    );
+
+    &:disabled {
+      @include Nuvo.apply(opacity(60));
+      cursor: not-allowed;
+    }
+  }
+
+  .btn-cancel {
+    background: $bg-gray;
+    color: $text-secondary;
+    border: 2px solid $border-color;
+
+    &:hover:not(:disabled) {
+      background: $border-color;
+    }
+  }
+
+  .btn-confirm {
+    border: none;
+    color: $white;
+
+    &.upgrade {
+      background: linear-gradient(135deg, $green-500 0%, $green-600 100%);
+
+      &:hover:not(:disabled) {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 16px rgba(34, 197, 94, 0.3);
+      }
+    }
+
+    &.downgrade {
+      background: linear-gradient(135deg, $amber-500 0%, $amber-600 100%);
+
+      &:hover:not(:disabled) {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 16px rgba(245, 158, 11, 0.3);
+      }
+    }
+  }
+}
+
+// ============================================
+// Utility Classes
+// ============================================
+
+.strike-through {
+  @include Nuvo.apply(line-through);
+  font-size: large;
+}
+
+.byok-badge-small {
+  @include Nuvo.apply(flex-inline, x-center, center, py(1), px(2), font(medium), font-size(xs));
+  background-color: $info-light;
+  color: $blue-600;
+  border-radius: 6px;
+
+  @include Nuvo.media-up(sm) {
+    padding: 4px 10px;
+    font-size: 0.85rem;
+  }
+
+  @include Nuvo.media-up(md) {
+    padding: 5px 12px;
+    font-size: 0.9rem;
+  }
+}

@@ -1,26 +1,25 @@
 {{page-title "Email Templates"}}
 
 <div data-test-email-templates class="flex col gap-6">
-  <div class="flex between x-center">
-    <div class="flex x-center gap-3">
-      <Ui::Ph @icon="envelope-simple" @size="24px" />
-      <h2 class="font-2xl font-bold">Email Templates</h2>
-      <span class="text-muted font-sm">({{format-number @model.total}})</span>
-    </div>
-    <button
-      type="button"
-      class="btn btn-primary"
-      {{on "click" this.openCreate}}
-    >
-      <Ui::Ph @icon="plus" />
-      New Template
-    </button>
-  </div>
+  <Nuvo::PageHeader @title="Email Templates">
+    <:meta>
+      <p class="text-muted">{{format-number @model.total}} templates</p>
+    </:meta>
+    <:actions>
+      <Nuvo::Button
+        @variant="primary"
+        @icon="+"
+        data-test-new-template
+        {{on "click" this.openCreate}}
+      >
+        New Template
+      </Nuvo::Button>
+    </:actions>
+  </Nuvo::PageHeader>
 
   <div class="flex gap-3">
-    <Ui::FormDropdown
-      @id="email-template-category-filter"
-      @label=""
+    <Nuvo::Select
+      id="email-template-category-filter"
       @value={{this.category}}
       @onChange={{this.filterCategory}}
       @options={{this.filterCategories}}
@@ -32,190 +31,203 @@
   {{#if @model.templates.length}}
     <div class="grid cols-2 gap-4">
       {{#each @model.templates as |template|}}
-        <div data-test-template-card class="glass-panel p-5 flex col gap-3">
+        <Nuvo::Card data-test-template-card class="flex col gap-3">
           <div class="flex between x-center">
             <div class="flex x-center gap-2">
               <Ui::Ph @icon="envelope-simple" />
-              <h4 class="font-md font-bold">{{template.name}}</h4>
+              <h4 class="font-bold">{{template.name}}</h4>
             </div>
             <div class="flex gap-1 x-center">
               {{#unless template.isActive}}
-                <span class="type-badge type-inactive">Inactive</span>
+                <Nuvo::Tag class="badge-enabled-inactive" @text="Inactive" />
               {{/unless}}
-              <span
-                class="type-badge type-{{lowercase template.category}}"
-              >{{template.category}}</span>
+              <Nuvo::Tag
+                class="badge-email-{{lowercase template.category}}"
+                @text={{template.category}}
+              />
             </div>
           </div>
-          <p class="text-muted font-sm">Subject: {{template.subject}}</p>
+          <p class="text-muted text-sm">Subject: {{template.subject}}</p>
           {{#if template.variables.length}}
             <div class="flex gap-1 wrap">
               {{#each template.variables as |v|}}
-                <span class="amenity-tag">{{v}}</span>
+                <Nuvo::Tag @text={{v}} />
               {{/each}}
             </div>
           {{/if}}
-          <div class="flex gap-2 mt-auto">
-            <button
-              type="button"
-              class="btn btn-secondary btn-sm"
+          <div class="flex gap-2 email-template-card__actions">
+            <Nuvo::Button
+              @variant="secondary"
+              @size="sm"
+              @icon="👁"
+              data-test-preview-template
               {{on "click" (fn this.openPreview template)}}
             >
-              <Ui::Ph @icon="eye" />
               Preview
-            </button>
-            <button
-              type="button"
-              class="btn btn-secondary btn-sm"
+            </Nuvo::Button>
+            <Nuvo::Button
+              @variant="secondary"
+              @size="sm"
+              @icon="✎"
+              data-test-edit-template
               {{on "click" (fn this.openEdit template)}}
             >
-              <Ui::Ph @icon="pencil-simple" />
               Edit
-            </button>
-            <button
-              type="button"
-              class="btn btn-danger btn-sm"
+            </Nuvo::Button>
+            <Nuvo::Button
+              @variant="danger"
+              @size="sm"
+              @icon="✕"
+              data-test-delete-template
               {{on "click" (fn this.openDelete template)}}
-            >
-              <Ui::Ph @icon="trash" />
-            </button>
+            />
           </div>
-        </div>
+        </Nuvo::Card>
       {{/each}}
     </div>
   {{else}}
-    <div class="glass-panel p-8 text-center">
+    <Nuvo::Card class="text-center">
       <Ui::Ph @icon="envelope-simple" @size="48px" @color="var(--text-muted)" />
       <p class="text-muted mt-3">No email templates yet. Create your first
         template above.</p>
-    </div>
+    </Nuvo::Card>
   {{/if}}
 </div>
 
-<Ui::Modal
-  @isOpen={{this.showModal}}
+<Nuvo::Modal
+  @open={{this.showModal}}
   @title={{if this.editTemplate "Edit Template" "New Template"}}
   @onClose={{this.closeModal}}
-  @showClose={{true}}
 >
   <form class="flex col gap-4" {{on "submit" this.saveTemplate}}>
     <div class="flex gap-4">
-      <div class="flex col gap-2 flex-1">
-        <Ui::FormInput
-          @label="Template Name"
-          @id="t-name"
-          @type="text"
-          @placeholder="Welcome New Tenant"
+      <Nuvo::Field class="grow" @label="Template Name" @required={{true}}>
+        <Nuvo::Input
+          id="t-name"
+          type="text"
+          placeholder="Welcome New Tenant"
           @value={{this.formName}}
-          @onChange={{fn this.setField "formName"}}
-          @required={{true}}
+          @onInput={{fn this.setFieldValue "formName"}}
+          required={{true}}
+          data-test-input-name
         />
-      </div>
-      <div class="flex col gap-2 flex-1">
-        <Ui::FormDropdown
-          @label="Category"
-          @id="t-category"
+      </Nuvo::Field>
+      <Nuvo::Field class="grow" @label="Category">
+        <Nuvo::Select
+          id="t-category"
           @value={{this.formCategory}}
-          @onChange={{fn this.setField "formCategory"}}
+          @onChange={{fn this.setFieldValue "formCategory"}}
           @options={{this.categories}}
           @placeholder="Select category..."
+          data-test-input-category
         />
-      </div>
+      </Nuvo::Field>
     </div>
-    <Ui::FormInput
-      @label="Subject"
-      @id="t-subject"
-      @type="text"
-      @placeholder="Welcome to your new home!"
-      @value={{this.formSubject}}
-      @onChange={{fn this.setField "formSubject"}}
-      @required={{true}}
-    />
-    <Ui::FormTextarea
-      @label="Body (HTML)"
-      @id="t-body"
-      @placeholder="Use curly braces for variables, e.g. first name"
-      @rows={{8}}
-      @value={{this.formBody}}
-      @onChange={{fn this.setField "formBody"}}
-      @required={{true}}
-    />
-    <div class="flex col gap-2">
-      <Ui::FormInput
-        @label="Variables (comma-separated)"
-        @id="t-vars"
-        @type="text"
-        @placeholder="firstName, lastName, propertyName"
-        @value={{this.formVariables}}
-        @onChange={{fn this.setField "formVariables"}}
-      />
-      <p class="font-xs text-muted">Use double curly braces in subject/body to
-        reference variables.</p>
-    </div>
-    <div class="flex x-center gap-2">
-      <input
-        id="t-active"
-        type="checkbox"
-        checked={{this.formIsActive}}
-        {{on "change" (fn this.setField "formIsActive")}}
-      />
-      <label class="font-sm" for="t-active">Active</label>
-    </div>
-    {{#if this.errorMsg}}
-      <p class="font-sm text-danger">{{this.errorMsg}}</p>
-    {{/if}}
-    <div class="flex gap-3 mt-2">
-      <Ui::AppButton
-        @variant="secondary"
-        @text="Cancel"
-        @onClick={{this.closeModal}}
-      />
-      <Ui::AppButton
-        @variant="primary"
-        @buttonType="submit"
-        @text={{if this.editTemplate "Update" "Create Template"}}
-        @loading={{this.isSaving}}
-        @loadingText="Saving..."
-      />
-    </div>
-  </form>
-</Ui::Modal>
 
-<Ui::Modal
-  @isOpen={{this.showPreview}}
+    <Nuvo::Field @label="Subject" @required={{true}}>
+      <Nuvo::Input
+        id="t-subject"
+        type="text"
+        placeholder="Welcome to your new home!"
+        @value={{this.formSubject}}
+        @onInput={{fn this.setFieldValue "formSubject"}}
+        required={{true}}
+        data-test-input-subject
+      />
+    </Nuvo::Field>
+
+    <Nuvo::Field @label="Body (HTML)" @required={{true}}>
+      <Nuvo::Textarea
+        id="t-body"
+        placeholder="Use curly braces for variables, e.g. first name"
+        rows="8"
+        @value={{this.formBody}}
+        @onInput={{fn this.setFieldValue "formBody"}}
+        required={{true}}
+        data-test-input-body
+      />
+    </Nuvo::Field>
+
+    <Nuvo::Field
+      @label="Variables (comma-separated)"
+      @hint="Use double curly braces in subject/body to reference variables."
+    >
+      <Nuvo::Input
+        id="t-vars"
+        type="text"
+        placeholder="firstName, lastName, propertyName"
+        @value={{this.formVariables}}
+        @onInput={{fn this.setFieldValue "formVariables"}}
+        data-test-input-variables
+      />
+    </Nuvo::Field>
+
+    <Nuvo::Checkbox
+      @checked={{this.formIsActive}}
+      @label="Active"
+      @onChange={{fn this.setFieldValue "formIsActive"}}
+      data-test-input-active
+    />
+
+    {{#if this.errorMsg}}
+      <p class="text-sm text-danger" data-test-error>{{this.errorMsg}}</p>
+    {{/if}}
+
+    <Nuvo::FormActions @align="end">
+      <Nuvo::Button
+        @variant="secondary"
+        @onClick={{this.closeModal}}
+      >Cancel</Nuvo::Button>
+      <Nuvo::Button
+        @variant="primary"
+        @type="submit"
+        @loading={{this.isSaving}}
+        data-test-save-template
+      >{{if
+          this.isSaving
+          "Saving..."
+          (if this.editTemplate "Update" "Create Template")
+        }}</Nuvo::Button>
+    </Nuvo::FormActions>
+  </form>
+</Nuvo::Modal>
+
+<Nuvo::Modal
+  @open={{this.showPreview}}
   @title="Template Preview"
   @onClose={{this.closePreview}}
-  @showClose={{true}}
 >
   <div class="flex col gap-3">
     <div class="flex col gap-1">
-      <p class="font-sm text-muted">Subject:</p>
+      <p class="text-sm text-muted">Subject:</p>
       <p class="font-bold">{{this.previewSubject}}</p>
     </div>
     {{#if this.previewVars}}
-      <p class="font-xs text-muted">Variables: {{this.previewVars}}</p>
+      <p class="text-xs text-muted">Variables: {{this.previewVars}}</p>
     {{/if}}
     <div class="flex col gap-1">
-      <p class="font-sm text-muted">Body:</p>
+      <p class="text-sm text-muted">Body:</p>
       <pre
-        class="p-4 bg-white rounded-lg border font-sm whitespace-pre-wrap text-xs"
+        class="p-4 rounded-lg border text-xs whitespace-pre-wrap"
+        data-test-preview-body
       >{{this.previewBody}}</pre>
     </div>
   </div>
-  <button
-    type="button"
-    class="btn btn-secondary"
-    {{on "click" this.closePreview}}
-  >Close</button>
-</Ui::Modal>
+  <Nuvo::FormActions @align="end">
+    <Nuvo::Button
+      @variant="secondary"
+      {{on "click" this.closePreview}}
+    >Close</Nuvo::Button>
+  </Nuvo::FormActions>
+</Nuvo::Modal>
 
 <ConfirmModal
-  @isOpen={{this.showDeleteModal}}
+  @open={{this.showDeleteModal}}
   @title="Delete Template"
   @message="Are you sure you want to delete {{this.templateToDelete.name}}? This action cannot be undone."
   @confirmText="Delete"
   @cancelText="Cancel"
-  @confirmType="btn-danger"
+  @confirmVariant="danger"
   @isConfirming={{this.isDeleting}}
   @confirmingText="Deleting..."
   @onClose={{this.closeDeleteModal}}

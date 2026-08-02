@@ -1,0 +1,101 @@
+.test-query-container {
+  margin: 2rem auto;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.query-label {
+  font-weight: 600;
+  font-size: 14px;
+  color: $dark-color;
+  margin-bottom: 0.75rem;
+  display: block;
+}
+
+.query-box-wrapper {
+  position: relative;
+}
+
+.query-textarea {
+  width: 100%;
+  height: 250px;
+  border: 1px solid $slate-300;
+  border-radius: 8px;
+  padding: 1rem 1rem 2.5rem 1rem;
+  font-size: 12px;
+  line-height: 1.5;
+  color: $dark-color;
+  background-color: $white;
+  resize: vertical;
+  box-sizing: border-box;
+  transition: border-color 0.2s;
+
+  &:focus {
+    outline: none;
+    border-color: $blue-500;
+  }
+}
+
+.run-button {
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  color: $white;
+  border: none;
+  padding: 0.5rem 0.7rem;
+  font-size: 12px;
+  font-weight: 500;
+  border-radius: 8px;
+  box-shadow: 0 2px 6px rgba($dark-color, 0.1);
+  cursor: pointer;
+  transition: background-color 0.2s ease, transform 0.2s ease;
+
+  &:hover {
+    background-color: $primary-color;
+    transform: scale(1.03);
+  }
+
+  &:active {
+    transform: scale(0.98);
+  }
+}
+
+.query-response {
+  margin-top: 2rem;
+  background-color: $dark-color;
+  color: $slate-50;
+  padding: 1.25rem;
+  border-radius: 8px;
+  border: 1px solid $text-secondary;
+  font-size: 14px;
+  font-family: 'Fira Code', 'Courier New', monospace;
+  line-height: 1.6;
+  overflow-x: auto;
+  max-height: 300px;
+  box-shadow: inset 0 0 10px rgba($dark-color, 0.2);
+  position: relative;
+
+  &::before {
+    content: "Response:";
+    position: absolute;
+    top: -1.5rem;
+    left: 0;
+    font-size: 13px;
+    font-weight: 600;
+    color: $text-secondary;
+  }
+
+  &::-webkit-scrollbar {
+    height: 8px;
+    width: 8px;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: $text-secondary;
+    border-radius: 8px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: $dark-color;
+  }
+}

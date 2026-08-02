@@ -1,0 +1,199 @@
+// nu-code - inline and block code display, clipboard copy control
+@use "./mixins/bem" as *;
+@use "./mixins/var" as *;
+@use "./common/var" as *;
+
+$nu-code-font-stack: ui-monospace, "SFMono-Regular", "Menlo", "Consolas", monospace;
+
+// Inline code span
+@include b(code) {
+  @include nu-root("code", (
+    "Color": var(--text-color),
+    "BackgroundColor": var(--bg-alternate),
+    "PaddingBlock": 0.125rem,
+    "PaddingInline": nu-space(1),
+    "FontSize": nu-font-size(sm),
+    "BorderRadius": nu-radius(sm),
+  ));
+
+  padding-block: nu-var("code", "PaddingBlock");
+  padding-inline: nu-var("code", "PaddingInline");
+  font-family: $nu-code-font-stack;
+  font-size: nu-var("code", "FontSize");
+  color: nu-var("code", "Color");
+  background-color: nu-var("code", "BackgroundColor");
+  border-radius: nu-var("code", "BorderRadius");
+
+  @each $variant in $nu-variants {
+    @include m(#{$variant}) {
+      --nu-code--Color: var(--#{$variant}-700);
+      --nu-code--BackgroundColor: var(--#{$variant}-50);
+    }
+  }
+}
+
+// Pre-formatted code block
+@include b(code-block) {
+  @include nu-root("code-block", (
+    "Color": var(--text-color),
+    "BackgroundColor": var(--bg-alternate),
+    "BorderColor": var(--border-base),
+    "BorderRadius": nu-radius(lg),
+    "FontSize": nu-font-size(sm),
+    "MaxHeight": none,
+  ));
+
+  display: block;
+  overflow: hidden;
+  color: nu-var("code-block", "Color");
+  background-color: nu-var("code-block", "BackgroundColor");
+  border: 1px solid nu-var("code-block", "BorderColor");
+  border-radius: nu-var("code-block", "BorderRadius");
+
+  // ---- elements ----
+
+  @include e(header) {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: nu-space(3);
+    padding-block: nu-space(2);
+    padding-inline: nu-space(4);
+    font-size: nu-font-size(xs);
+    color: var(--text-muted);
+    border-block-end: 1px solid nu-var("code-block", "BorderColor");
+  }
+
+  @include e(content) {
+    margin: 0;
+    overflow: auto;
+    padding: nu-space(4);
+    font-family: $nu-code-font-stack;
+    font-size: nu-var("code-block", "FontSize");
+    line-height: 1.6;
+    white-space: pre;
+  }
+
+  @include e(actions) {
+    display: flex;
+    align-items: center;
+    gap: nu-space(2);
+    flex-shrink: 0;
+  }
+
+  // ---- modifiers ----
+
+  @include m(scrollable) {
+    --nu-code-block--MaxHeight: 20rem;
+
+    @include e(content) {
+      max-block-size: nu-var("code-block", "MaxHeight");
+    }
+  }
+
+  // Line-numbering hook: consumer wraps each line in this element
+  @include e(line) {
+    display: block;
+    padding-inline-start: nu-space(3);
+    counter-increment: nu-code-line;
+
+    &::before {
+      display: inline-block;
+      inline-size: nu-space(6);
+      margin-inline-end: nu-space(3);
+      color: var(--text-subtle);
+      content: counter(nu-code-line);
+      text-align: end;
+    }
+  }
+
+  @include m(numbered) {
+    @include e(content) {
+      counter-reset: nu-code-line;
+    }
+  }
+}
+
+// Input + button clipboard copy control
+@include b(clipboard-copy) {
+  @include nu-root("clipboard-copy", (
+    "BackgroundColor": var(--bg-surface),
+    "BorderColor": var(--border-base),
+    "BorderRadius": nu-radius(md),
+    "Color": var(--text-color),
+    "FontSize": nu-font-size(sm),
+    "TransitionDuration": nu-duration(fast),
+    "focus--BoxShadow": 0 0 0 3px #{nu-tint(primary, 35%)},
+    "feedback--Color": var(--success),
+  ));
+
+  display: inline-flex;
+  align-items: center;
+  gap: nu-space(2);
+  padding-inline: nu-space(1);
+  background-color: nu-var("clipboard-copy", "BackgroundColor");
+  border: 1px solid nu-var("clipboard-copy", "BorderColor");
+  border-radius: nu-var("clipboard-copy", "BorderRadius");
+
+  // ---- elements ----
+
+  @include e(input) {
+    flex: 1;
+    min-inline-size: 0;
+    padding-block: nu-space(2);
+    padding-inline: nu-space(2);
+    font-family: $nu-code-font-stack;
+    font-size: nu-var("clipboard-copy", "FontSize");
+    color: nu-var("clipboard-copy", "Color");
+    background-color: transparent;
+    border: none;
+
+    &:focus-visible {
+      outline: none;
+      box-shadow: nu-var("clipboard-copy", "focus--BoxShadow");
+    }
+  }
+
+  @include e(button) {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    inline-size: 2rem;
+    block-size: 2rem;
+    color: var(--text-muted);
+    background-color: transparent;
+    border: none;
+    border-radius: nu-radius(sm);
+    cursor: pointer;
+    transition: color nu-var("clipboard-copy", "TransitionDuration") $nu-ease,
+      background-color nu-var("clipboard-copy", "TransitionDuration") $nu-ease;
+
+    @include reduced-motion {
+      transition: none;
+    }
+
+    &:hover {
+      color: var(--text-color);
+      background-color: var(--bg-alternate);
+    }
+
+    &:focus-visible {
+      outline: none;
+      box-shadow: nu-var("clipboard-copy", "focus--BoxShadow");
+    }
+  }
+
+  @include e(feedback) {
+    font-size: nu-font-size(xs);
+    color: nu-var("clipboard-copy", "feedback--Color");
+  }
+
+  // ---- states ----
+
+  @include when(copied) {
+    @include e(button) {
+      color: nu-var("clipboard-copy", "feedback--Color");
+    }
+  }
+}

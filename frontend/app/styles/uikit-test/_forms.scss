@@ -1,0 +1,75 @@
+// ============================================
+// FORMS - Single Source of Truth
+// ============================================
+// Standard form styles used across the application.
+// All .form-group label and .inputLabel styles extend from here.
+
+// Shared label class for custom components (Input, PowerSelect, MultiSelect)
+.inputLabel {
+  font-weight: 600;
+  color: $text-primary;
+  margin-bottom: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+
+  .required {
+    color: $error-color;
+    margin-left: 2px;
+  }
+
+  .tooltip-icon {
+    color: $text-muted;
+    cursor: help;
+    font-size: 0.875rem;
+
+    &:hover {
+      color: $accent-teal;
+    }
+  }
+}
+
+.form-group {
+  width: 100%;
+  margin-bottom: 1.25rem;
+
+  label {
+    display: block;
+    font-weight: 600;
+    font-size: 0.7rem;
+    color: $text-primary;
+    margin-bottom: 0.5rem;
+  }
+
+  // Standard required indicator
+  label.required::after {
+    content: " *";
+    color: $error-color;
+  }
+
+  // Standard input styles
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="number"],
+  input[type="url"],
+  select,
+  textarea {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.375rem;
+    font-size: 0.875rem;
+    transition: all 0.2s;
+
+    &:focus {
+      outline: none;
+      border-color: $accent-teal;
+      box-shadow: 0 0 0 3px rgba(0, 172, 170, 0.1);
+    }
+
+    &::placeholder {
+      color: $text-muted;
+    }
+  }
+}

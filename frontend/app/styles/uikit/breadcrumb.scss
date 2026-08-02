@@ -1,0 +1,105 @@
+// nu-breadcrumb - hierarchical navigation trail
+@use "./mixins/bem" as *;
+@use "./mixins/var" as *;
+@use "./common/var" as *;
+
+@include b(breadcrumb) {
+  @include nu-root("breadcrumb", (
+    "FontSize": nu-font-size(sm),
+  ));
+
+  display: block;
+  font-size: nu-var("breadcrumb", "FontSize");
+
+  // ---- elements ----
+
+  @include e(list) {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: nu-space(1);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  @include e(item) {
+    @include nu-root("breadcrumb-item", (
+      "Gap": nu-space(1),
+      "SeparatorColor": var(--text-subtle),
+    ));
+
+    display: flex;
+    align-items: center;
+    gap: nu-var("breadcrumb-item", "Gap");
+
+    &:not(:first-child)::before {
+      content: "/";
+      color: nu-var("breadcrumb-item", "SeparatorColor");
+    }
+  }
+
+  @include e(separator) {
+    display: inline-flex;
+    align-items: center;
+    color: var(--text-subtle);
+  }
+
+  @include e(link) {
+    @include nu-root("breadcrumb-link", (
+      "Color": var(--text-muted),
+      "TransitionDuration": nu-duration(fast),
+      "hover--Color": var(--primary),
+      "focus--BoxShadow": 0 0 0 3px #{nu-tint(primary, 35%)},
+    ));
+
+    display: inline-flex;
+    align-items: center;
+    color: nu-var("breadcrumb-link", "Color");
+    text-decoration: none;
+    border-radius: nu-radius(sm);
+    transition: color nu-var("breadcrumb-link", "TransitionDuration") $nu-ease;
+
+    @include reduced-motion {
+      transition: none;
+    }
+
+    &:hover {
+      color: nu-var("breadcrumb-link", "hover--Color");
+      text-decoration: underline;
+      text-underline-offset: 2px;
+    }
+
+    &:focus-visible {
+      outline: none;
+      box-shadow: nu-var("breadcrumb-link", "focus--BoxShadow");
+    }
+  }
+
+  @include e(current) {
+    color: var(--text-color);
+    font-weight: nu-font-weight(medium);
+  }
+
+  // ---- states ----
+
+  @include e(item) {
+    &.is-current {
+      .nu-breadcrumb__link {
+        --nu-breadcrumb-link--Color: var(--text-color);
+        font-weight: nu-font-weight(medium);
+        pointer-events: none;
+      }
+    }
+  }
+
+  // ---- modifiers ----
+
+  @include m(compact) {
+    --nu-breadcrumb--FontSize: #{nu-font-size(xs)};
+
+    .nu-breadcrumb__item {
+      --nu-breadcrumb-item--Gap: #{nu-space(1)};
+    }
+  }
+}

@@ -1,0 +1,74 @@
+// Audit log page - bespoke layout for the expandable log list.
+// Accordion could not carry this markup (see AGENT_BRIEF report); the
+// expand/collapse row stays hand-rolled, styled with kit tokens.
+@use "../uikit/mixins/var" as *;
+@use "../uikit/common/var" as *;
+
+.audit-list {
+  display: flex;
+  flex-direction: column;
+  gap: nu-space(3);
+}
+
+.audit-item {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-base);
+  border-radius: nu-radius(lg);
+  overflow: hidden;
+}
+
+.audit-summary {
+  display: flex;
+  align-items: center;
+  gap: nu-space(3);
+  padding: nu-space(4);
+  cursor: pointer;
+  transition: background nu-duration(fast);
+
+  &:hover {
+    background: var(--bg-alternate);
+  }
+}
+
+.audit-entity {
+  font-size: nu-font-size(sm);
+  font-weight: 600;
+  color: var(--text-color);
+}
+
+.audit-entity-id {
+  font-size: nu-font-size(xs);
+  color: var(--text-muted);
+  font-family: ui-monospace, "SFMono-Regular", "Menlo", "Consolas", monospace;
+}
+
+.audit-user {
+  margin-inline-start: auto;
+  font-size: nu-font-size(sm);
+  color: var(--text-muted);
+}
+
+.audit-date {
+  font-size: nu-font-size(xs);
+  color: var(--text-muted);
+}
+
+.audit-summary .chevron {
+  flex-shrink: 0;
+  transition: transform nu-duration(fast);
+
+  &.expanded {
+    transform: rotate(180deg);
+  }
+}
+
+.audit-details {
+  padding-block: nu-space(4);
+  padding-inline: nu-space(5);
+  border-block-start: 1px solid var(--border-base);
+  background: var(--bg-alternate);
+}
+
+.audit-detail-section {
+  margin-block-start: nu-space(4);
+}

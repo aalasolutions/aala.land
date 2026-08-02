@@ -1,0 +1,199 @@
+// nu-toast - transient stacked notification with region placement and entry animation
+@use "./mixins/bem" as *;
+@use "./mixins/var" as *;
+@use "./common/var" as *;
+
+@keyframes nu-toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(nu-space(2));
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@include b(toast-region) {
+  @include nu-root("toast-region", (
+    "Position": fixed,
+    "InsetBlockStart": auto,
+    "InsetBlockEnd": nu-space(6),
+    "InsetInlineStart": auto,
+    "InsetInlineEnd": nu-space(6),
+    "Gap": nu-space(3),
+    "ZIndex": nu-z(toast),
+    "MaxInlineSize": 400px,
+  ));
+
+  position: nu-var("toast-region", "Position");
+  inset-block-start: nu-var("toast-region", "InsetBlockStart");
+  inset-block-end: nu-var("toast-region", "InsetBlockEnd");
+  inset-inline-start: nu-var("toast-region", "InsetInlineStart");
+  inset-inline-end: nu-var("toast-region", "InsetInlineEnd");
+  z-index: nu-var("toast-region", "ZIndex");
+  display: flex;
+  flex-direction: column;
+  gap: nu-var("toast-region", "Gap");
+  max-inline-size: nu-var("toast-region", "MaxInlineSize");
+  pointer-events: none;
+
+  // ---- placement modifiers ----
+
+  @include m(top-start) {
+    --nu-toast-region--InsetBlockStart: #{nu-space(6)};
+    --nu-toast-region--InsetBlockEnd: auto;
+    --nu-toast-region--InsetInlineStart: #{nu-space(6)};
+    --nu-toast-region--InsetInlineEnd: auto;
+  }
+
+  @include m(top-end) {
+    --nu-toast-region--InsetBlockStart: #{nu-space(6)};
+    --nu-toast-region--InsetBlockEnd: auto;
+    --nu-toast-region--InsetInlineStart: auto;
+    --nu-toast-region--InsetInlineEnd: #{nu-space(6)};
+  }
+
+  @include m(bottom-start) {
+    --nu-toast-region--InsetBlockStart: auto;
+    --nu-toast-region--InsetBlockEnd: #{nu-space(6)};
+    --nu-toast-region--InsetInlineStart: #{nu-space(6)};
+    --nu-toast-region--InsetInlineEnd: auto;
+  }
+
+  @include m(bottom-end) {
+    --nu-toast-region--InsetBlockStart: auto;
+    --nu-toast-region--InsetBlockEnd: #{nu-space(6)};
+    --nu-toast-region--InsetInlineStart: auto;
+    --nu-toast-region--InsetInlineEnd: #{nu-space(6)};
+  }
+}
+
+@include b(toast) {
+  @include nu-root("toast", (
+    "Display": flex,
+    "AlignItems": flex-start,
+    "Gap": nu-space(3),
+    "PaddingBlock": nu-space(4),
+    "PaddingInline": nu-space(4),
+    "BorderRadius": nu-radius(lg),
+    "BorderWidth": 1px,
+    "BorderColor": var(--border-base),
+    "Color": var(--text-color),
+    "BackgroundColor": var(--bg-surface),
+    "BoxShadow": #{nu-shadow(lg)},
+    "IconColor": var(--text-muted),
+    "TitleFontWeight": nu-font-weight(semibold),
+    "ContentColor": var(--text-muted),
+    "AnimationDuration": nu-duration(normal),
+    "ProgressColor": var(--primary),
+  ));
+
+  position: relative;
+  display: nu-var("toast", "Display");
+  align-items: nu-var("toast", "AlignItems");
+  gap: nu-var("toast", "Gap");
+  padding-block: nu-var("toast", "PaddingBlock");
+  padding-inline: nu-var("toast", "PaddingInline");
+  overflow: hidden;
+  color: nu-var("toast", "Color");
+  background-color: nu-var("toast", "BackgroundColor");
+  border: nu-var("toast", "BorderWidth") solid nu-var("toast", "BorderColor");
+  border-radius: nu-var("toast", "BorderRadius");
+  box-shadow: nu-var("toast", "BoxShadow");
+  pointer-events: auto;
+  animation: nu-toast-in nu-var("toast", "AnimationDuration") $nu-ease;
+
+  @include reduced-motion {
+    animation: none;
+  }
+
+  // ---- elements ----
+
+  @include e(icon) {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    font-size: nu-font-size(lg);
+    line-height: 1;
+    color: nu-var("toast", "IconColor");
+  }
+
+  @include e(content) {
+    flex: 1 1 auto;
+    min-inline-size: 0;
+  }
+
+  @include e(title) {
+    font-weight: nu-var("toast", "TitleFontWeight");
+    line-height: 1.4;
+  }
+
+  @include e(description) {
+    margin-block-start: nu-space(1);
+    color: nu-var("toast", "ContentColor");
+    font-size: nu-font-size(sm);
+    line-height: 1.5;
+  }
+
+  @include e(close) {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    inline-size: nu-space(6);
+    block-size: nu-space(6);
+    padding: 0;
+    color: nu-var("toast", "IconColor");
+    background-color: transparent;
+    border: none;
+    border-radius: nu-radius(sm);
+    cursor: pointer;
+    transition: background-color nu-duration(fast) $nu-ease,
+      color nu-duration(fast) $nu-ease;
+
+    @include reduced-motion {
+      transition: none;
+    }
+
+    &:hover {
+      color: nu-var("toast", "Color");
+      background-color: var(--bg-alternate);
+    }
+
+    &:focus-visible {
+      outline: none;
+      box-shadow: 0 0 0 3px #{nu-tint(primary, 35%)};
+    }
+  }
+
+  @include e(progress) {
+    position: absolute;
+    inset-block-end: 0;
+    inset-inline-start: 0;
+    inline-size: 100%;
+    block-size: 3px;
+    background-color: nu-tint(primary, 15%);
+
+    &::after {
+      content: "";
+      display: block;
+      block-size: 100%;
+      background-color: nu-var("toast", "ProgressColor");
+    }
+  }
+
+  // ---- color variants: uniform, looped ----
+
+  @each $variant in $nu-variants {
+    @include m($variant) {
+      --nu-toast--Color: var(--#{$variant}-700);
+      --nu-toast--BackgroundColor: var(--#{$variant}-50);
+      --nu-toast--BorderColor: var(--#{$variant}-200);
+      --nu-toast--IconColor: var(--#{$variant});
+      --nu-toast--ContentColor: var(--#{$variant}-700);
+      --nu-toast--ProgressColor: var(--#{$variant});
+    }
+  }
+}

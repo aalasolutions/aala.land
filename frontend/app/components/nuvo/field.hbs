@@ -1,0 +1,18 @@
+<div class={{this.classes}} data-test-nu-field ...attributes>
+  {{#if @label}}
+    <label class="nu-field__label" data-test-nu-field-label>
+      {{@label}}
+      {{#if @required}}
+        <span class="nu-field__required" aria-hidden="true" data-test-nu-field-required>*</span>
+      {{/if}}
+    </label>
+  {{/if}}
+
+  {{yield}}
+
+  {{#if this.showError}}
+    <span class="nu-field__error" data-test-nu-field-error>{{@error}}</span>
+  {{else if this.showHint}}
+    <span class="nu-field__hint" data-test-nu-field-hint>{{@hint}}</span>
+  {{/if}}
+</div>

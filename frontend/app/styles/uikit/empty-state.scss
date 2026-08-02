@@ -1,0 +1,95 @@
+// nu-empty-state - placeholder for empty lists/views
+@use "./mixins/bem" as *;
+@use "./mixins/var" as *;
+@use "./common/var" as *;
+
+@include b(empty-state) {
+  @include nu-root("empty-state", (
+    "Display": flex,
+    "PaddingBlock": nu-space(10),
+    "PaddingInline": nu-space(6),
+    "Gap": nu-space(3),
+    "TextAlign": center,
+    "BorderRadius": nu-radius(lg),
+    "BorderWidth": 0,
+    "BorderStyle": solid,
+    "BorderColor": transparent,
+    "BackgroundColor": transparent,
+    "IconFontSize": nu-font-size(3xl),
+    "IconColor": var(--text-subtle),
+    "TitleFontSize": nu-font-size(lg),
+    "TitleFontWeight": nu-font-weight(semibold),
+    "TitleColor": var(--text-color),
+    "DescriptionFontSize": nu-font-size(sm),
+    "DescriptionColor": var(--text-muted),
+  ));
+
+  display: nu-var("empty-state", "Display");
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: nu-var("empty-state", "Gap");
+  padding-block: nu-var("empty-state", "PaddingBlock");
+  padding-inline: nu-var("empty-state", "PaddingInline");
+  text-align: nu-var("empty-state", "TextAlign");
+  background-color: nu-var("empty-state", "BackgroundColor");
+  border: nu-var("empty-state", "BorderWidth") nu-var("empty-state", "BorderStyle") nu-var("empty-state", "BorderColor");
+  border-radius: nu-var("empty-state", "BorderRadius");
+
+  // ---- elements ----
+
+  @include e(icon) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: nu-var("empty-state", "IconFontSize");
+    color: nu-var("empty-state", "IconColor");
+    line-height: 1;
+  }
+
+  @include e(title) {
+    font-size: nu-var("empty-state", "TitleFontSize");
+    font-weight: nu-var("empty-state", "TitleFontWeight");
+    color: nu-var("empty-state", "TitleColor");
+    margin: 0;
+  }
+
+  @include e(description) {
+    max-inline-size: 32rem;
+    font-size: nu-var("empty-state", "DescriptionFontSize");
+    color: nu-var("empty-state", "DescriptionColor");
+    margin: 0;
+  }
+
+  @include e(actions) {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: nu-space(3);
+    margin-block-start: nu-space(2);
+  }
+
+  // ---- sizes ----
+
+  @include m(sm) {
+    --nu-empty-state--PaddingBlock: #{nu-space(6)};
+    --nu-empty-state--Gap: #{nu-space(2)};
+    --nu-empty-state--IconFontSize: #{nu-font-size(2xl)};
+    --nu-empty-state--TitleFontSize: #{nu-font-size(md)};
+  }
+
+  @include m(lg) {
+    --nu-empty-state--PaddingBlock: #{nu-space(12)};
+    --nu-empty-state--Gap: #{nu-space(4)};
+    --nu-empty-state--IconFontSize: 3.5rem;
+    --nu-empty-state--TitleFontSize: #{nu-font-size(xl)};
+  }
+
+  // ---- bordered container ----
+
+  @include m(bordered) {
+    --nu-empty-state--BorderWidth: 1px;
+    --nu-empty-state--BorderStyle: dashed;
+    --nu-empty-state--BorderColor: var(--border-base);
+  }
+}

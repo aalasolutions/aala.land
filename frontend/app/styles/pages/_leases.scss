@@ -1,0 +1,5 @@
+// Leases: list + new/edit/renew-lease modal. See AGENT_BRIEF.md.
+//
+// No page-level CSS. Every element resolves to a kit component or a core
+// utility; status badges use the `lease` domain in _badges.scss. Kept as a
+// file so the page has an obvious home if it ever needs bespoke layout.

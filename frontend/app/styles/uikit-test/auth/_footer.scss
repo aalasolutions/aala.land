@@ -1,0 +1,263 @@
+// ============================================
+// FOOTER - Single Source of Truth
+// ============================================
+@use '../nuvoui' as Nuvo;
+@use "sass:map";
+
+// Footer-specific colors (global colors from _variables.scss)
+$footer-bg: #f1f5f9;
+$footer-border: #e2e8f0;
+
+.auth-footer {
+  background-color: $footer-bg;
+  border-top: 1px solid $footer-border;
+  padding: map.get(Nuvo.$spacings, 16) 0 map.get(Nuvo.$spacings, 8) 0;
+
+  @include Nuvo.media-down(sm) {
+    padding: map.get(Nuvo.$spacings, 12) 0 map.get(Nuvo.$spacings, 6) 0;
+  }
+}
+
+.footer-grid {
+  @include Nuvo.apply(
+    grid,
+    gap(48px),
+    mb(48px)
+  );
+
+  // Desktop: Brand + wrapper for 3 columns
+  grid-template-columns: 2fr 3fr;
+
+  // Tablet: Brand spans full, columns below
+  @include Nuvo.media-down(lg) {
+    grid-template-columns: 1fr;
+    gap: 32px;
+  }
+
+  // Mobile: Tighter gaps
+  @include Nuvo.media-down(sm) {
+    gap: 24px;
+  }
+}
+
+.footer-columns {
+  @include Nuvo.apply(
+    grid,
+    gap(48px)
+  );
+
+  // Desktop & Tablet: Always 3 columns
+  grid-template-columns: 1fr 1fr 1fr;
+
+  // Mobile: Keep 3 columns but tighter gap
+  @include Nuvo.media-down(sm) {
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 12px;
+  }
+}
+
+
+.footer-brand {
+  .footer-logo {
+    @include Nuvo.apply(
+      mb(24px)
+    );
+
+    img {
+      height: 45px;
+      width: auto;
+      display: block;
+    }
+  }
+
+  .footer-tagline {
+    color: $text-secondary;
+    line-height: 1.6;
+    margin-bottom: 32px;
+    max-width: 300px;
+    font-size: 0.9375rem;
+  }
+
+  .footer-social {
+    @include Nuvo.apply(
+      flex,
+      gap(16px)
+    );
+
+    a {
+      @include Nuvo.apply(
+        flex,
+        center,
+        x-center,
+        width(40px),
+        height(40px),
+        rounded(lg),
+        transition,
+        duration(300ms)
+      );
+      background: rgba($accent-teal, 0.1);
+      border: 1px solid rgba($accent-teal, 0.2);
+      color: $accent-teal;
+      font-weight: 600;
+      font-size: 0.875rem;
+
+      &:hover {
+        background: $accent-teal;
+        color: white;
+        transform: translateY(-2px);
+        text-decoration: none;
+      }
+    }
+  }
+}
+
+.footer-column {
+  h4 {
+    @include Nuvo.apply(
+      font-size(map.get(Nuvo.$font-sizes, 'sm')),
+      uppercase,
+      mb(16px)
+    );
+    letter-spacing: 0.05em;
+    color: $text-primary;
+    font-weight: 700;
+  }
+
+  ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+
+    li {
+      margin-bottom: 12px;
+
+      &:last-child {
+        margin-bottom: 0;
+      }
+
+      a {
+        color: $text-secondary;
+        font-size: 0.8rem;
+        transition: color 0.2s ease;
+        text-decoration: none;
+
+        &:hover {
+          color: $accent-teal;
+        }
+      }
+    }
+  }
+}
+
+.footer-bottom {
+  @include Nuvo.apply(
+    flex,
+    between,
+    x-center,
+    wrap,
+    gap(24px),
+    pt(48px)
+  );
+
+  @include Nuvo.media-down(sm) {
+    @include Nuvo.apply(
+      col,
+      text-center
+    );
+  }
+}
+
+.footer-legal {
+  @include Nuvo.apply(
+    flex,
+    x-center,
+    gap(12px),
+    wrap
+  );
+
+  @include Nuvo.media-down(sm) {
+    @include Nuvo.apply(
+      col,
+      gap(20px)
+    );
+  }
+
+  p {
+    color: $text-muted;
+    font-size: map.get(Nuvo.$font-sizes, 'sm');
+    margin: 0;
+  }
+
+  .legal-links {
+    @include Nuvo.apply(
+      flex,
+      gap(32px)
+    );
+
+    a {
+      color: $text-muted;
+      font-size: map.get(Nuvo.$font-sizes, 'sm');
+      text-decoration: none;
+
+      &:hover {
+        color: $accent-teal;
+      }
+    }
+  }
+}
+
+.footer-badge {
+  @include Nuvo.apply(
+    flex,
+    gap(16px)
+  );
+
+  @include Nuvo.media-down(sm) {
+    @include Nuvo.apply(
+      col,
+      gap(12px),
+      x-center
+    );
+  }
+
+  .security-badge {
+    @include Nuvo.apply(
+      flex-inline,
+      x-center,
+      px(12px),
+      py(6px),
+      rounded(full),
+      font-size(map.get(Nuvo.$font-sizes, 'xs')),
+      uppercase
+    );
+    font-weight: 600;
+    background: rgba($accent-teal, 0.1);
+    color: $accent-teal;
+    border: 1px solid rgba($accent-teal, 0.2);
+    letter-spacing: 0.05em;
+  }
+}
+
+.footer-credits {
+  @include Nuvo.apply(
+    text-center,
+    pt(24px),
+    mt(24px)
+  );
+  border-top: 1px solid $footer-border;
+
+  p {
+    color: $text-muted;
+    font-size: 0.75rem;
+    margin: 0;
+
+    a {
+      color: $text-muted;
+      text-decoration: none;
+
+      &:hover {
+        color: $accent-teal;
+      }
+    }
+  }
+}

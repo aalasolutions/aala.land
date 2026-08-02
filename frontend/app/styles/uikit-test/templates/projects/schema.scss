@@ -1,0 +1,88 @@
+.project-schema-container {
+  .wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    margin-top: 1rem;
+    padding: 0 1rem;
+    box-sizing: border-box;
+
+    .card {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      gap: 2rem;
+      background: #fff;
+      padding: 1.5rem;
+      border-radius: 10px;
+      overflow: hidden;
+
+      .schema-dashboard {
+        padding: 1rem;
+
+        .box-body .checkbox-label input[type='checkbox'] {
+          accent-color: #01a5a3;
+        }
+      }
+
+      .page-header {
+        padding-left: 1rem;
+        box-sizing: border-box;
+      }
+
+      .card-schema-wrapper {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+
+        button {
+          width: max-content;
+          margin-left: 1rem;
+          box-sizing: border-box;
+
+          i {
+            margin-right: 0.5rem;
+          }
+        }
+      }
+
+      .loader-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(190, 190, 190, 0.397);
+        backdrop-filter: blur(2px);
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        font-size: 1rem;
+        color: #000000;
+        z-index: 10;
+
+        i {
+          font-size: 2rem;
+          margin-bottom: 0.5rem;
+        }
+      }
+    }
+
+    .border {
+      margin: 1rem 0;
+      border-bottom: 1px solid #dee2e6;
+    }
+  }
+}
+
+.update-button-wrapper {
+  display: flex;
+  justify-content: center;
+  margin-top: 20px;
+
+  .btn-primary {
+    max-width: 200px;
+    font-weight: bold;
+  }
+}

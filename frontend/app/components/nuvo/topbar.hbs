@@ -1,0 +1,40 @@
+<header class={{this.classes}} data-test-nu-topbar ...attributes>
+  {{#if @onToggle}}
+    <button
+      type="button"
+      class="nu-topbar__toggle"
+      aria-label="Toggle navigation"
+      data-test-nu-topbar-toggle
+      {{on "click" this.toggle}}
+    >☰</button>
+  {{/if}}
+
+  {{#if (has-block "brand")}}
+    <div class="nu-topbar__brand">{{yield to="brand"}}</div>
+  {{else if @brand}}
+    <div class="nu-topbar__brand">{{@brand}}</div>
+  {{/if}}
+
+  {{#if (has-block "search")}}
+    <div class="nu-topbar__search">{{yield to="search"}}</div>
+  {{/if}}
+
+  <div class="nu-topbar__actions">
+    {{yield to="actions"}}
+  </div>
+
+  {{#if (has-block "user")}}
+    <div class="nu-topbar__divider"></div>
+    <div class="nu-topbar__user">{{yield to="user"}}</div>
+  {{else if @userName}}
+    <div class="nu-topbar__divider"></div>
+    <div class="nu-topbar__user">
+      <div class="nu-topbar__user-details">
+        <div class="nu-topbar__user-name">{{@userName}}</div>
+        {{#if @userRole}}
+          <div class="nu-topbar__user-role">{{@userRole}}</div>
+        {{/if}}
+      </div>
+    </div>
+  {{/if}}
+</header>

@@ -1,0 +1,10 @@
+// ============================================
+// MODULES INDEX
+// ============================================
+// Forward all module partials for single import.
+// Usage: @use '4-modules' as modules;
+
+@forward 'billing-module';
+@forward 'pricing-module';
+@forward 'admin-forms';
+@forward 'project-forms';

@@ -1,0 +1,41 @@
+
+.toast-container {
+  position: fixed;
+  bottom: var(--space-6);
+  right: var(--space-6);
+  z-index: 9999;
+}
+
+.toast-item {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4) var(--space-5);
+  min-width: 280px;
+  max-width: 400px;
+  box-shadow: var(--shadow-lg);
+}
+
+.toast-item[data-test-toast-type="success"] {
+  background: var(--color-success);
+  color: var(--text-inverse);
+  border: none;
+}
+
+.toast-item[data-test-toast-type="info"] {
+  background: var(--color-info);
+  color: var(--text-inverse);
+  border: none;
+}
+
+.toast-item[data-test-toast-type="error"] {
+  background: var(--color-danger);
+  color: var(--text-inverse);
+  border: none;
+}
+
+.toast-item[data-test-toast-type="warning"] {
+  background: var(--color-warning);
+  color: var(--text-inverse);
+  border: none;
+}

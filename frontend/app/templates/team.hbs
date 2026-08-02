@@ -1,51 +1,48 @@
 {{page-title "Team"}}
 
 <div data-test-team-page class="flex col gap-6">
-  <div class="flex between x-center">
-    <div>
-      <h2 class="font-3xl font-bold"><Ui::Ph @icon="users-three" @size="28px" />
-        Team</h2>
-      <p class="text-muted mt-1">Manage your team members and their roles.</p>
-    </div>
-    {{#unless this.isSuperAdmin}}
-      <div class="flex gap-3">
-        {{#if this.canTrim}}
-          <button
-            type="button"
-            class="btn btn-secondary"
-            data-test-trim-users
-            {{on "click" this.openTrim}}
+  <Nuvo::PageHeader @title="Team">
+    <:meta>
+      <p class="text-muted">Manage your team members and their roles.</p>
+    </:meta>
+    <:actions>
+      {{#unless this.isSuperAdmin}}
+        <div class="flex gap-3">
+          {{#if this.canTrim}}
+            <Nuvo::Button
+              @variant="secondary"
+              @icon="↧"
+              data-test-trim-users
+              {{on "click" this.openTrim}}
+            >
+              Prepare Downgrade
+            </Nuvo::Button>
+          {{/if}}
+          <Nuvo::Button
+            @variant="secondary"
+            @icon="✉"
+            data-test-invite-member
+            {{on "click" this.openInvite}}
           >
-            <Ui::Ph @icon="arrows-in-simple" />
-            Prepare Downgrade
-          </button>
-        {{/if}}
-        <button
-          type="button"
-          class="btn btn-secondary"
-          data-test-invite-member
-          {{on "click" this.openInvite}}
-        >
-          <Ui::Ph @icon="envelope" />
-          Invite
-        </button>
-        <button
-          type="button"
-          class="btn btn-primary"
-          data-test-add-member
-          {{on "click" this.openCreate}}
-        >
-          <Ui::Ph @icon="plus" />
-          Add Member
-        </button>
-      </div>
-    {{/unless}}
-  </div>
+            Invite
+          </Nuvo::Button>
+          <Nuvo::Button
+            @variant="primary"
+            @icon="+"
+            data-test-add-member
+            {{on "click" this.openCreate}}
+          >
+            Add Member
+          </Nuvo::Button>
+        </div>
+      {{/unless}}
+    </:actions>
+  </Nuvo::PageHeader>
 
-  <div class="glass-panel p-5">
+  <Nuvo::Card>
     {{#if this.model.users.length}}
-      <div class="data-table-wrapper data-table-wrapper--with-pagination">
-        <table class="data-table">
+      <div class="nu-table-wrapper">
+        <table class="nu-table">
           <thead>
             <tr>
               <th>Name</th>
@@ -63,74 +60,78 @@
               <tr data-test-user-id={{user.id}}>
                 <td class="font-bold">{{user.name}}</td>
                 <td class="text-muted">{{user.email}}</td>
-                <td><span class="status-badge">{{format-role
-                      user.role
-                    }}</span></td>
+                <td><Nuvo::Tag @text={{format-role user.role}} /></td>
                 {{#if this.isSuperAdmin}}
                   <td class="text-muted">{{or user.company.name "—"}}</td>
                 {{/if}}
                 <td>
                   {{#if user.isActive}}
-                    <span class="status-badge status-completed">Active</span>
+                    <Nuvo::Tag class="badge-enabled-active" @text="Active" />
                   {{else}}
-                    <span class="status-badge status-pending">Inactive</span>
+                    <Nuvo::Tag class="badge-enabled-inactive" @text="Inactive" />
                   {{/if}}
                 </td>
                 <td>
                   <div class="flex gap-2">
-                    <button
-                      type="button"
-                      class="btn btn-secondary btn-xs"
+                    <Nuvo::Button
+                      @variant="secondary"
+                      @size="xs"
+                      @icon="✎"
                       data-test-edit-user
                       {{on "click" (fn this.openEdit user)}}
                     >
-                      <Ui::Ph @icon="pencil-simple" />
                       Edit
-                    </button>
+                    </Nuvo::Button>
                     {{! Removal flows require a company context; the backend rejects a user with no companyId (e.g. SUPER_ADMIN rows). }}
                     {{#if user.companyId}}
                       {{#if user.isActive}}
-                        <button
-                          type="button"
-                          class="btn btn-danger btn-xs"
+                        <Nuvo::Button
+                          @variant="danger"
+                          @size="xs"
+                          @icon="−"
                           data-test-remove-user
                           {{on "click" (fn this.openRemove user)}}
                         >
-                          <Ui::Ph @icon="user-minus" />
                           Remove
-                        </button>
+                        </Nuvo::Button>
                       {{else}}
-                        <button
-                          type="button"
-                          class="btn btn-secondary btn-xs"
-                          disabled={{this.isReactivating}}
+                        <Nuvo::Button
+                          @variant="secondary"
+                          @size="xs"
+                          @icon="+"
+                          @disabled={{this.isReactivating}}
                           data-test-reactivate-user
                           {{on "click" (fn this.reactivateUser user)}}
                         >
-                          <Ui::Ph @icon="user-plus" />
                           {{if
                             (eq this.reactivatingUserId user.id)
                             "Reactivating..."
                             "Reactivate"
                           }}
-                        </button>
-                        <button
-                          type="button"
-                          class="btn btn-danger btn-xs"
+                        </Nuvo::Button>
+                        <Nuvo::Button
+                          @variant="danger"
+                          @size="xs"
+                          @icon="✕"
                           data-test-delete-user
                           {{on "click" (fn this.openRemove user)}}
                         >
-                          <Ui::Ph @icon="trash" />
                           Delete
-                        </button>
+                        </Nuvo::Button>
                       {{/if}}
                     {{/if}}
                     {{#if this.isSuperAdmin}}
                       {{#unless (eq user.role "super_admin")}}
-                        <button
-                          type="button"
-                          class="btn btn-secondary btn-xs"
-                          disabled={{or
+                        <Nuvo::Button
+                          @variant="secondary"
+                          @size="xs"
+                          @icon={{if
+                            (eq this.impersonatingUserId user.id)
+                            "↻"
+                            "⇄"
+                          }}
+                          @loading={{eq this.impersonatingUserId user.id}}
+                          @disabled={{or
                             (eq user.isActive false)
                             this.isImpersonating
                             (eq this.impersonatingUserId user.id)
@@ -138,14 +139,12 @@
                           data-test-impersonate-user
                           {{on "click" (fn this.impersonateUser user)}}
                         >
-                          {{#if (eq this.impersonatingUserId user.id)}}
-                            <Ui::Ph @icon="circle-notch" />
-                            Impersonating...
-                          {{else}}
-                            <Ui::Ph @icon="user-switch" />
-                            Impersonate
-                          {{/if}}
-                        </button>
+                          {{if
+                            (eq this.impersonatingUserId user.id)
+                            "Impersonating..."
+                            "Impersonate"
+                          }}
+                        </Nuvo::Button>
                       {{/unless}}
                     {{/if}}
                   </div>
@@ -156,7 +155,7 @@
         </table>
       </div>
 
-      <Ui::Pagination
+      <Nuvo::Pagination
         @selectId="team-limit"
         @page={{this.page}}
         @limit={{this.limit}}
@@ -169,7 +168,7 @@
       {{#if @model.total}}
         <p class="text-muted text-center py-8">No team members on page
           {{this.page}}. Navigate back to find members.</p>
-        <Ui::Pagination
+        <Nuvo::Pagination
           @selectId="team-limit"
           @page={{this.page}}
           @limit={{this.limit}}
@@ -183,154 +182,153 @@
           first team member to get started.</p>
       {{/if}}
     {{/if}}
-  </div>
+  </Nuvo::Card>
 </div>
 
-<Ui::Modal
-  @isOpen={{this.showModal}}
+<Nuvo::Modal
+  @open={{this.showModal}}
   @title={{if this.editUser "Edit Team Member" "Add Team Member"}}
   @onClose={{this.closeModal}}
-  @showClose={{true}}
 >
   {{#unless this.editUser}}
     <SeatNote @seatInfo={{this.model.seatInfo}} />
   {{/unless}}
   <form class="flex col gap-4" {{on "submit" this.saveUser}}>
-    <Ui::FormInput
-      @label="Name"
-      @id="t-name"
-      @type="text"
-      @value={{this.formName}}
-      @onChange={{fn this.setField "formName"}}
-      @required={{true}}
-      data-test-input-name
-    />
+    <Nuvo::Field @label="Name" @required={{true}}>
+      <Nuvo::Input
+        id="t-name"
+        type="text"
+        @value={{this.formName}}
+        @onInput={{fn this.setFieldValue "formName"}}
+        required={{true}}
+        data-test-input-name
+      />
+    </Nuvo::Field>
 
-    <Ui::FormInput
-      @label="Email"
-      @id="t-email"
-      @type="email"
-      @value={{this.formEmail}}
-      @onChange={{fn this.setField "formEmail"}}
-      @required={{true}}
-      data-test-input-email
-    />
+    <Nuvo::Field @label="Email" @required={{true}}>
+      <Nuvo::Input
+        id="t-email"
+        type="email"
+        @value={{this.formEmail}}
+        @onInput={{fn this.setFieldValue "formEmail"}}
+        required={{true}}
+        data-test-input-email
+      />
+    </Nuvo::Field>
 
     {{#unless this.editUser}}
-      <Ui::FormInput
-        @label="Password"
-        @id="t-password"
-        @type="password"
-        @value={{this.formPassword}}
-        @onChange={{fn this.setField "formPassword"}}
-        @required={{true}}
-        data-test-input-password
-      />
+      <Nuvo::Field @label="Password" @required={{true}}>
+        <Nuvo::Input
+          id="t-password"
+          type="password"
+          @value={{this.formPassword}}
+          @onInput={{fn this.setFieldValue "formPassword"}}
+          required={{true}}
+          data-test-input-password
+        />
+      </Nuvo::Field>
     {{/unless}}
 
-    <div class="flex col gap-2">
-      <Ui::FormDropdown
-        @label="Role"
-        @id="t-role"
+    <Nuvo::Field @label="Role">
+      <Nuvo::Select
+        id="t-role"
         @value={{this.formRole}}
-        @onChange={{fn this.setField "formRole"}}
+        @onChange={{fn this.setFieldValue "formRole"}}
         @options={{this.roles}}
         @placeholder="Select role..."
         data-test-input-role
       />
-    </div>
+    </Nuvo::Field>
 
     {{#if this.errorMsg}}
-      <p class="font-sm text-danger" data-test-error>{{this.errorMsg}}</p>
+      <p class="text-sm text-danger" data-test-error>{{this.errorMsg}}</p>
     {{/if}}
 
-    <div class="flex gap-3 mt-2">
-      <Ui::AppButton
+    <Nuvo::FormActions @align="end">
+      <Nuvo::Button
         @variant="secondary"
-        @text="Cancel"
         @onClick={{this.closeModal}}
-      />
-      <Ui::AppButton
+      >Cancel</Nuvo::Button>
+      <Nuvo::Button
         @variant="primary"
-        @buttonType="submit"
-        @text={{if this.editUser "Update" "Create"}}
+        @type="submit"
         @loading={{this.isSaving}}
-        @loadingText="Saving..."
-      />
-    </div>
+      >{{if
+          this.isSaving
+          "Saving..."
+          (if this.editUser "Update" "Create")
+        }}</Nuvo::Button>
+    </Nuvo::FormActions>
   </form>
-</Ui::Modal>
+</Nuvo::Modal>
 
-<Ui::Modal
-  @isOpen={{this.showInviteModal}}
+<Nuvo::Modal
+  @open={{this.showInviteModal}}
   @title="Invite Team Member"
   @onClose={{this.closeInvite}}
-  @showClose={{true}}
 >
-  <p class="text-muted font-sm">Send an invitation with a temporary password.
+  <p class="text-muted text-sm">Send an invitation with a temporary password.
     The new member will receive login credentials.</p>
   <SeatNote @seatInfo={{this.model.seatInfo}} />
   <form class="flex col gap-4" {{on "submit" this.sendInvite}}>
     <div class="flex gap-4">
-      <div class="flex col gap-2 flex-1">
-        <Ui::FormInput
-          @label="First Name"
-          @id="i-fname"
-          @type="text"
-          @placeholder="e.g. Jane"
+      <Nuvo::Field class="grow" @label="First Name" @required={{true}}>
+        <Nuvo::Input
+          id="i-fname"
+          type="text"
+          placeholder="e.g. Jane"
           @value={{this.inviteFirstName}}
-          @onChange={{fn this.setField "inviteFirstName"}}
-          @required={{true}}
+          @onInput={{fn this.setFieldValue "inviteFirstName"}}
+          required={{true}}
           data-test-invite-first
         />
-      </div>
-      <div class="flex col gap-2 flex-1">
-        <Ui::FormInput
-          @label="Last Name"
-          @id="i-lname"
-          @type="text"
-          @placeholder="e.g. Smith"
+      </Nuvo::Field>
+      <Nuvo::Field class="grow" @label="Last Name" @required={{true}}>
+        <Nuvo::Input
+          id="i-lname"
+          type="text"
+          placeholder="e.g. Smith"
           @value={{this.inviteLastName}}
-          @onChange={{fn this.setField "inviteLastName"}}
-          @required={{true}}
+          @onInput={{fn this.setFieldValue "inviteLastName"}}
+          required={{true}}
           data-test-invite-last
         />
-      </div>
+      </Nuvo::Field>
     </div>
 
-    <Ui::FormInput
-      @label="Email"
-      @id="i-email"
-      @type="email"
-      @placeholder="e.g. jane@company.com"
-      @value={{this.inviteEmail}}
-      @onChange={{fn this.setField "inviteEmail"}}
-      @required={{true}}
-      data-test-invite-email
-    />
+    <Nuvo::Field @label="Email" @required={{true}}>
+      <Nuvo::Input
+        id="i-email"
+        type="email"
+        placeholder="e.g. jane@company.com"
+        @value={{this.inviteEmail}}
+        @onInput={{fn this.setFieldValue "inviteEmail"}}
+        required={{true}}
+        data-test-invite-email
+      />
+    </Nuvo::Field>
 
-    <div class="flex col gap-2">
-      <Ui::FormDropdown
-        @label="Role"
-        @id="i-role"
+    <Nuvo::Field @label="Role">
+      <Nuvo::Select
+        id="i-role"
         @value={{this.inviteRole}}
-        @onChange={{fn this.setField "inviteRole"}}
+        @onChange={{fn this.setFieldValue "inviteRole"}}
         @options={{this.roles}}
         @placeholder="Select role..."
         data-test-invite-role
       />
-    </div>
+    </Nuvo::Field>
 
     {{#if this.inviteErrorMsg}}
       <p
-        class="font-sm text-danger"
+        class="text-sm text-danger"
         data-test-invite-error
       >{{this.inviteErrorMsg}}</p>
       {{#if this.inviteExistingUser}}
-        <button
-          type="button"
-          class="btn btn-secondary btn-xs"
-          disabled={{this.isReactivating}}
+        <Nuvo::Button
+          @variant="secondary"
+          @size="xs"
+          @disabled={{this.isReactivating}}
           data-test-invite-reactivate
           {{on "click" this.reactivateFromInvite}}
         >
@@ -339,38 +337,35 @@
             "Reactivating..."
             "Reactivate this user instead"
           }}
-        </button>
+        </Nuvo::Button>
       {{/if}}
     {{/if}}
 
-    <div class="flex gap-3 mt-2">
-      <button
-        type="button"
-        class="btn btn-secondary"
+    <Nuvo::FormActions @align="end">
+      <Nuvo::Button
+        @variant="secondary"
         {{on "click" this.closeInvite}}
-      >Cancel</button>
-      <button
-        type="submit"
-        class="btn btn-primary"
-        disabled={{or this.isInviting this.isReactivating}}
+      >Cancel</Nuvo::Button>
+      <Nuvo::Button
+        @variant="primary"
+        @type="submit"
+        @disabled={{or this.isInviting this.isReactivating}}
+        @loading={{this.isInviting}}
         data-test-send-invite
-      >
-        {{if this.isInviting "Sending..." "Send Invitation"}}
-      </button>
-    </div>
+      >{{if this.isInviting "Sending..." "Send Invitation"}}</Nuvo::Button>
+    </Nuvo::FormActions>
   </form>
-</Ui::Modal>
+</Nuvo::Modal>
 
 {{! Remove flow: step 1 configures, step 2 confirms }}
-<Ui::Modal
-  @isOpen={{this.showRemoveModal}}
+<Nuvo::Modal
+  @open={{this.showRemoveModal}}
   @title={{if (eq this.removeStep 1) "Remove Team Member" "Confirm Removal"}}
   @onClose={{this.closeRemoveModal}}
-  @showClose={{true}}
 >
   {{#if (eq this.removeStep 1)}}
     <div class="flex col gap-4" data-test-remove-step-1>
-      <p class="text-muted font-sm">
+      <p class="text-muted text-sm">
         Removing
         <strong>{{this.userToRemove.name}}</strong>. Their leads, documents,
         owners, pending commissions, work orders, and contacts must be handed to
@@ -378,7 +373,7 @@
       </p>
 
       <div class="flex col gap-2">
-        <span class="font-sm text-muted">Action</span>
+        <span class="text-sm text-muted">Action</span>
         <label class="flex gap-2 x-center">
           <input
             type="radio"
@@ -408,48 +403,47 @@
         </label>
       </div>
 
-      <Ui::FormDropdown
-        @label="Reassign records to"
-        @id="remove-target"
-        @value={{this.removeTargetId}}
-        @onChange={{fn this.setField "removeTargetId"}}
-        @options={{this.reassignOptions}}
-        @placeholder="Select a team member..."
-        @required={{true}}
-        data-test-remove-target
-      />
+      <Nuvo::Field @label="Reassign records to" @required={{true}}>
+        <Nuvo::Select
+          id="remove-target"
+          @value={{this.removeTargetId}}
+          @onChange={{fn this.setFieldValue "removeTargetId"}}
+          @options={{this.reassignOptions}}
+          @placeholder="Select a team member..."
+          data-test-remove-target
+        />
+      </Nuvo::Field>
 
-      <Ui::FormTextarea
-        @label="Reason"
-        @id="remove-reason"
-        @rows="2"
-        @placeholder="e.g. Agent left the company"
-        @value={{this.removeReason}}
-        @onChange={{fn this.setField "removeReason"}}
-        @required={{true}}
-        data-test-remove-reason
-      />
+      <Nuvo::Field @label="Reason" @required={{true}}>
+        <Nuvo::Textarea
+          id="remove-reason"
+          rows="2"
+          placeholder="e.g. Agent left the company"
+          @value={{this.removeReason}}
+          @onInput={{fn this.setFieldValue "removeReason"}}
+          required={{true}}
+          data-test-remove-reason
+        />
+      </Nuvo::Field>
 
       {{#if this.removeError}}
         <p
-          class="font-sm text-danger"
+          class="text-sm text-danger"
           data-test-remove-error
         >{{this.removeError}}</p>
       {{/if}}
 
-      <div class="flex gap-3 mt-2">
-        <Ui::AppButton
+      <Nuvo::FormActions @align="end">
+        <Nuvo::Button
           @variant="secondary"
-          @text="Cancel"
           @onClick={{this.closeRemoveModal}}
-        />
-        <Ui::AppButton
+        >Cancel</Nuvo::Button>
+        <Nuvo::Button
           @variant="primary"
-          @text="Continue"
           @onClick={{this.continueRemove}}
           data-test-remove-continue
-        />
-      </div>
+        >Continue</Nuvo::Button>
+      </Nuvo::FormActions>
     </div>
   {{else}}
     <div class="flex col gap-4" data-test-remove-step-2>
@@ -474,22 +468,20 @@
 
       {{#if this.removeError}}
         <p
-          class="font-sm text-danger"
+          class="text-sm text-danger"
           data-test-remove-error
         >{{this.removeError}}</p>
       {{/if}}
 
-      <div class="flex gap-3 mt-2">
-        <Ui::AppButton
+      <Nuvo::FormActions @align="end">
+        <Nuvo::Button
           @variant="secondary"
-          @text="Back"
           @onClick={{this.backToRemoveOptions}}
           data-test-remove-back
-        />
-        <button
-          type="button"
-          class="btn btn-danger"
-          disabled={{this.isRemoving}}
+        >Back</Nuvo::Button>
+        <Nuvo::Button
+          @variant="danger"
+          @disabled={{this.isRemoving}}
           data-test-remove-confirm
           {{on "click" this.confirmRemove}}
         >
@@ -500,68 +492,69 @@
               (eq this.removeMode "delete") "Delete Member" "Deactivate Member"
             )
           }}
-        </button>
-      </div>
+        </Nuvo::Button>
+      </Nuvo::FormActions>
     </div>
   {{/if}}
-</Ui::Modal>
+</Nuvo::Modal>
 
 {{! Trim-to-one flow: downgrade preparation }}
-<Ui::Modal
-  @isOpen={{this.showTrimModal}}
+<Nuvo::Modal
+  @open={{this.showTrimModal}}
   @title={{if (eq this.trimStep 1) "Prepare Downgrade" "Confirm Trim"}}
   @onClose={{this.closeTrimModal}}
-  @showClose={{true}}
 >
   {{#if (eq this.trimStep 1)}}
     <div class="flex col gap-4" data-test-trim-step-1>
-      <p class="text-muted font-sm">
+      <p class="text-muted text-sm">
         Downgrading to the Free plan requires exactly one active user. Every
         other member will be deactivated and their records handed to the member
         who stays.
       </p>
 
-      <Ui::FormDropdown
+      <Nuvo::Field
         @label="Member who stays active (must be a company admin)"
-        @id="trim-keep"
-        @value={{this.trimKeepId}}
-        @onChange={{fn this.setField "trimKeepId"}}
-        @options={{this.trimKeepOptions}}
-        @placeholder="Select a company admin..."
         @required={{true}}
-        data-test-trim-keep
-      />
+      >
+        <Nuvo::Select
+          id="trim-keep"
+          @value={{this.trimKeepId}}
+          @onChange={{fn this.setFieldValue "trimKeepId"}}
+          @options={{this.trimKeepOptions}}
+          @placeholder="Select a company admin..."
+          data-test-trim-keep
+        />
+      </Nuvo::Field>
 
-      <Ui::FormTextarea
-        @label="Reason"
-        @id="trim-reason"
-        @rows="2"
-        @value={{this.trimReason}}
-        @onChange={{fn this.setField "trimReason"}}
-        @required={{true}}
-        data-test-trim-reason
-      />
+      <Nuvo::Field @label="Reason" @required={{true}}>
+        <Nuvo::Textarea
+          id="trim-reason"
+          rows="2"
+          @value={{this.trimReason}}
+          @onInput={{fn this.setFieldValue "trimReason"}}
+          required={{true}}
+          data-test-trim-reason
+        />
+      </Nuvo::Field>
 
       {{#if this.trimError}}
         <p
-          class="font-sm text-danger"
+          class="text-sm text-danger"
           data-test-trim-error
         >{{this.trimError}}</p>
       {{/if}}
 
-      <div class="flex gap-3 mt-2">
-        <Ui::AppButton
+      <Nuvo::FormActions @align="end">
+        <Nuvo::Button
           @variant="secondary"
-          @text="Cancel"
           @onClick={{this.closeTrimModal}}
-        />
-        <Ui::AppButton
+        >Cancel</Nuvo::Button>
+        <Nuvo::Button
           @variant="primary"
-          @text="Continue"
           @onClick={{this.continueTrim}}
           data-test-trim-continue
-        />
-      </div>
+        >Continue</Nuvo::Button>
+      </Nuvo::FormActions>
     </div>
   {{else}}
     <div class="flex col gap-4" data-test-trim-step-2>
@@ -572,7 +565,7 @@
         <strong>{{this.trimKeepName}}</strong>.
       </p>
       {{#if this.trimKeeperIsNotMe}}
-        <p class="font-sm text-danger">
+        <p class="text-sm text-danger">
           Warning: you selected someone else to stay. Your own account will be
           deactivated and you will be signed out immediately.
         </p>
@@ -580,28 +573,26 @@
 
       {{#if this.trimError}}
         <p
-          class="font-sm text-danger"
+          class="text-sm text-danger"
           data-test-trim-error
         >{{this.trimError}}</p>
       {{/if}}
 
-      <div class="flex gap-3 mt-2">
-        <Ui::AppButton
+      <Nuvo::FormActions @align="end">
+        <Nuvo::Button
           @variant="secondary"
-          @text="Back"
           @onClick={{this.backToTrimOptions}}
           data-test-trim-back
-        />
-        <button
-          type="button"
-          class="btn btn-danger"
-          disabled={{this.isTrimming}}
+        >Back</Nuvo::Button>
+        <Nuvo::Button
+          @variant="danger"
+          @disabled={{this.isTrimming}}
           data-test-trim-confirm
           {{on "click" this.confirmTrim}}
         >
           {{if this.isTrimming "Trimming..." "Deactivate Everyone Else"}}
-        </button>
-      </div>
+        </Nuvo::Button>
+      </Nuvo::FormActions>
     </div>
   {{/if}}
-</Ui::Modal>
+</Nuvo::Modal>

@@ -50,8 +50,8 @@ export default class AdminCompaniesIndexController extends Controller {
   }
 
   @action
-  setSearch(event) {
-    debounceTask(this, 'applySearch', event.target.value, SEARCH_DEBOUNCE_MS);
+  setSearch(value) {
+    debounceTask(this, 'applySearch', value, SEARCH_DEBOUNCE_MS);
   }
 
   applySearch(value) {
@@ -60,13 +60,13 @@ export default class AdminCompaniesIndexController extends Controller {
   }
 
   @action
-  setRail(event) {
-    this.railFilter = event.target.value;
+  setRail(value) {
+    this.railFilter = value;
   }
 
   @action
-  setStatus(event) {
-    this.statusFilter = event.target.value;
+  setStatus(value) {
+    this.statusFilter = value;
   }
 
   @action
@@ -89,8 +89,8 @@ export default class AdminCompaniesIndexController extends Controller {
   }
 
   @action
-  changeLimit(event) {
-    this.limit = Number(event.target.value);
+  changeLimit(value) {
+    this.limit = Number(value);
     this.page = 1;
   }
 }

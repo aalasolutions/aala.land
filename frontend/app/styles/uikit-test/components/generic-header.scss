@@ -1,0 +1,30 @@
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  .content {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+
+    .title {
+      font-weight: 600;
+      font-size: 32px;
+      color: #141414;
+    }
+
+    .subtitle {
+      font-weight: 400;
+      font-size: 16px;
+      color: #141414;
+    }
+  }
+
+  .header-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+}

@@ -1,0 +1,99 @@
+// ===================================
+// LILA Brand Colors (from Frontend)
+// ===================================
+$accent-teal: #00acaa;
+$accent-teal-light: #00c9c6;
+$accent-red: #ff6363;
+$gradient-teal: linear-gradient(135deg, #00acaa 0%, #00c9c6 100%);
+$gradient-red: linear-gradient(135deg, #ff6363 0%, #ff8080 100%);
+$text-primary: #0f172a;
+$text-secondary: #475569;
+$text-muted: #64748b;
+$bg-white: #ffffff;
+$bg-light: #fafafa;
+$bg-gray: #f1f5f9;
+
+// ===================================
+// Dashboard Colors (Bootstrap-style for existing dashboard)
+// ===================================
+$primary-color: #00acaa;  // LILA teal (was Bootstrap blue #0d6efd)
+$secondary-color: #6c757d;
+$success-color: #198754;
+$error-color: #dc3545;
+$dark-color: #111111;
+$warning-color: #ffc107;
+$background-color: #f8f9fa;
+$background-color-dark: #111111;
+$white: #ffffff;
+
+// ===================================
+// Extended Neutral Palette (Slate)
+// ===================================
+$slate-50: #f8fafc;
+$slate-100: #f1f5f9;   // Same as $bg-gray
+$slate-200: #e2e8f0;   // Common border color
+$slate-300: #cbd5e1;
+$slate-400: #94a3b8;
+$slate-500: #64748b;   // Same as $text-muted
+$slate-600: #475569;   // Same as $text-secondary
+$slate-900: #0f172a;   // Same as $text-primary
+
+// Common border
+$border-color: $slate-200;
+$border-color-dark: $slate-300;
+
+// ===================================
+// Extended Success Palette (Green)
+// ===================================
+$green-50: #f0fdf4;
+$green-100: #dcfce7;
+$green-200: #a7f3d0;   // Used in gradients
+$green-300: #bbf7d0;
+$green-500: #22c55e;
+$green-600: #16a34a;
+$green-800: #166534;
+$success-light: #d1fae5;
+$success-dark: #065f46;
+
+// ===================================
+// Extended Error Palette (Red)
+// ===================================
+$red-50: #fef2f2;
+$red-100: #fee2e2;
+$red-600: #dc2626;
+$red-800: #991b1b;
+$error-light: $red-100;
+$error-dark: $red-800;
+
+// ===================================
+// Extended Warning Palette (Amber)
+// ===================================
+$amber-50: #fffbeb;
+$amber-100: #fef3c7;
+$amber-200: #fde68a;
+$amber-500: #f59e0b;
+$amber-600: #d97706;
+$amber-800: #92400e;
+$warning-light: $amber-100;
+$warning-dark: $amber-800;
+$yellow-400: #fde047;
+
+// ===================================
+// Accent Palette (Indigo - for highlights)
+// ===================================
+$indigo-50: #eef2ff;
+$indigo-100: #e0e7ff;
+$indigo-200: #c7d2fe;
+$indigo-500: #6366f1;
+$indigo-600: #4f46e5;
+$accent-highlight: $indigo-500;
+$accent-highlight-light: $indigo-50;
+
+// ===================================
+// Info Palette (Blue)
+// ===================================
+$blue-50: #eff6ff;
+$blue-100: #dbeafe;
+$blue-500: #3b82f6;
+$blue-600: #2563eb;
+$info-light: $blue-50;

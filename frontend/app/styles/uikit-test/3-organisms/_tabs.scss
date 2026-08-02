@@ -1,0 +1,130 @@
+// ============================================
+// ORGANISMS: Tabs
+// ============================================
+// Tab container and navigation.
+// Uses molecules: tab-item
+
+@use '../nuvoui' as Nuvo;
+@use '../variables' as *;
+
+// ============================================
+// Tab Container
+// ============================================
+
+.tabs {
+  @include Nuvo.apply(flex, col);
+}
+
+.tabs__nav {
+  @include Nuvo.apply(flex, overflow-x-auto);
+  border-bottom: 1px solid $border-color;
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+.tabs__content {
+  @include Nuvo.apply(py(6));
+}
+
+.tabs__panel {
+  @include Nuvo.apply(hide);
+
+  &.tabs__panel--active {
+    @include Nuvo.apply(block);
+    animation: tab-fade-in 0.2s ease;
+  }
+}
+
+@keyframes tab-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+// ============================================
+// Tab Variants
+// ============================================
+
+// Pill style tabs
+.tabs--pills {
+  .tabs__nav {
+    @include Nuvo.apply(gap(2), p(1), rounded(md), w-fit);
+    border-bottom: none;
+    background-color: Nuvo.get-color(gray, 100);
+  }
+}
+
+// Contained tabs (card style)
+.tabs--contained {
+  @include Nuvo.apply(rounded(md));
+  background-color: $white;
+  border: 1px solid $border-color;
+
+  .tabs__nav {
+    @include Nuvo.apply(rounded-t(md), px(4));
+    background-color: Nuvo.get-color(gray, 50);
+    border-bottom: 1px solid $border-color;
+  }
+
+  .tabs__content {
+    @include Nuvo.apply(p(6));
+  }
+}
+
+// Vertical tabs
+.tabs--vertical {
+  @include Nuvo.apply(row);
+
+  .tabs__nav {
+    @include Nuvo.apply(col, pr(0));
+    border-bottom: none;
+    border-right: 1px solid $border-color;
+    min-width: 200px;
+  }
+
+  .tabs__content {
+    @include Nuvo.apply(grow, py(0), px(6));
+  }
+}
+
+// ============================================
+// Tab Sizes
+// ============================================
+
+.tabs--sm {
+  .tabs__nav {
+    @include Nuvo.apply(gap(0));
+  }
+}
+
+.tabs--lg {
+  .tabs__content {
+    @include Nuvo.apply(py(8));
+  }
+}
+
+// ============================================
+// Responsive Tabs (collapse to dropdown on mobile)
+// ============================================
+
+.tabs--responsive {
+  @include Nuvo.media-down(sm) {
+    .tabs__nav {
+      @include Nuvo.apply(hide);
+    }
+
+    .tabs__dropdown {
+      @include Nuvo.apply(block);
+    }
+  }
+
+  .tabs__dropdown {
+    @include Nuvo.apply(hide, mb(4));
+  }
+}

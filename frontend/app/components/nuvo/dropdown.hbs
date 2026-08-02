@@ -1,0 +1,107 @@
+{{! Block param is `row`/`grp`, never `option` - that would shadow <option>. }}
+<div
+  class={{this.classes}}
+  data-test-nu-dropdown
+  {{did-insert this.registerRoot}}
+  {{on "keydown" this.handleKeydown}}
+  ...attributes
+>
+  {{#if (has-block "trigger")}}
+    {{yield this.toggle this.isOpen to="trigger"}}
+  {{else}}
+    <Nuvo::Button
+      @variant={{if @triggerVariant @triggerVariant "secondary"}}
+      @size={{@size}}
+      @disabled={{@disabled}}
+      @onClick={{this.toggle}}
+      aria-haspopup="listbox"
+      aria-expanded={{if this.isOpen "true" "false"}}
+      data-test-nu-dropdown-trigger
+    >
+      {{this.triggerLabel}}
+      <span class="nu-dropdown__caret" aria-hidden="true">▾</span>
+    </Nuvo::Button>
+  {{/if}}
+
+  <div class={{this.menuClasses}} role="listbox" data-test-nu-dropdown-menu>
+    {{#if this.showSearch}}
+      {{! No keydown here: it bubbles to the root handler. Binding both would
+          fire the handler twice and step the highlight by 2. }}
+      <div class="nu-menu__search">
+        <Nuvo::Input
+          @value={{this.searchText}}
+          @size="sm"
+          @placeholder={{if @searchPlaceholder @searchPlaceholder "Search..."}}
+          @onInput={{this.updateSearch}}
+          data-test-nu-dropdown-search
+        />
+      </div>
+    {{/if}}
+
+    {{#if this.hasResults}}
+      {{#if this.flatRows}}
+        {{#each this.flatRows as |row|}}
+          {{#if row.separator}}
+            <div class="nu-menu__separator" role="presentation"></div>
+          {{else}}
+            <button
+              type="button"
+              class="nu-menu__item
+                {{if row.selected 'is-active'}}
+                {{if row.highlighted 'is-highlighted'}}
+                {{if row.option.disabled 'is-disabled'}}
+                {{if row.option.danger 'm-danger'}}"
+              role="option"
+              aria-selected={{if row.selected "true" "false"}}
+              disabled={{row.option.disabled}}
+              data-test-nu-dropdown-item
+              {{on "click" (fn this.select row.option)}}
+            >
+              {{#if row.option.icon}}
+                <span class="nu-menu__item-icon" aria-hidden="true">
+                  {{row.option.icon}}
+                </span>
+              {{/if}}
+              <span class="nu-menu__item-label">{{row.option.label}}</span>
+            </button>
+          {{/if}}
+        {{/each}}
+      {{else}}
+      {{#each this.groupedOptions as |grp|}}
+        {{#if grp.group}}
+          <div class="nu-menu__group-label" role="presentation">
+            {{grp.group}}
+          </div>
+        {{/if}}
+
+        {{#each grp.rows as |row|}}
+          <button
+            type="button"
+            class="nu-menu__item
+              {{if row.selected 'is-active'}}
+              {{if row.highlighted 'is-highlighted'}}
+              {{if row.option.disabled 'is-disabled'}}
+              {{if row.option.danger 'm-danger'}}"
+            role="option"
+            aria-selected={{if row.selected "true" "false"}}
+            disabled={{row.option.disabled}}
+            data-test-nu-dropdown-item
+            {{on "click" (fn this.select row.option)}}
+          >
+            {{#if row.option.icon}}
+              <span class="nu-menu__item-icon" aria-hidden="true">
+                {{row.option.icon}}
+              </span>
+            {{/if}}
+            <span class="nu-menu__item-label">{{row.option.label}}</span>
+          </button>
+        {{/each}}
+      {{/each}}
+      {{/if}}
+    {{else}}
+      <div class="nu-menu__empty">
+        {{if @emptyText @emptyText "No results found"}}
+      </div>
+    {{/if}}
+  </div>
+</div>

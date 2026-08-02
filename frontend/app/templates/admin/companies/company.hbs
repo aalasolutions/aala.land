@@ -48,11 +48,11 @@
             <div class="font-bold">Locked{{#if this.lock.dealExpiredAt}}, deal
                 expired
                 {{format-date this.lock.dealExpiredAt}}{{/if}}.</div>
-            <p class="font-sm mt-1">Writes are blocked; reads and export stay.
+            <p class="text-sm mt-1">Writes are blocked; reads and export stay.
               Their admin sees the "reduce or pay" banner.</p>
           </div>
           <div class="console-lock-actions">
-            <span class="font-sm">To unlock permanently:</span>
+            <span class="text-sm">To unlock permanently:</span>
             <button
               type="button"
               class="btn btn-secondary btn-xs"
@@ -65,7 +65,7 @@
             >Record a payment</button>
           </div>
           <div class="console-lock-actions">
-            <span class="font-sm">To let them breathe:</span>
+            <span class="text-sm">To let them breathe:</span>
             <input
               type="date"
               aria-label="Lift lock until"
@@ -90,7 +90,7 @@
           <div>
             <div class="font-bold">Lock lifted until
               {{format-date this.lock.liftUntil}}.</div>
-            <p class="font-sm mt-1">Re-locks automatically then, unless a deal
+            <p class="text-sm mt-1">Re-locks automatically then, unless a deal
               or payment lands.</p>
           </div>
           <div class="console-lock-actions">
@@ -133,7 +133,7 @@
     <div class="console-cards">
       {{! Live billing state }}
       <div class="glass-panel p-6" data-test-company-plan-card>
-        <h3 class="font-lg font-bold mb-4">Billing state</h3>
+        <h3 class="text-lg font-bold mb-4">Billing state</h3>
         {{#if this.billing}}
           <dl class="console-kv">
             <dt>Tier</dt>
@@ -168,7 +168,7 @@
       {{! Active deal summary }}
       {{#if this.deal}}
         <div class="glass-panel p-6" data-test-company-deal-card>
-          <h3 class="font-lg font-bold mb-4">Active deal</h3>
+          <h3 class="text-lg font-bold mb-4">Active deal</h3>
           <dl class="console-kv">
             <dt>Price</dt>
             <dd>{{this.dealPriceLabel}}</dd>
@@ -191,7 +191,7 @@
       {{! Limits }}
       <div class="glass-panel p-6">
         <div class="flex between x-center mb-4">
-          <h3 class="font-lg font-bold">Limits</h3>
+          <h3 class="text-lg font-bold">Limits</h3>
           <button
             type="button"
             class="btn btn-secondary btn-xs"
@@ -213,7 +213,7 @@
   {{else if (eq this.activeTab "deal")}}
     {{#if this.deal}}
       <div class="glass-panel p-6" data-test-company-deal-card>
-        <h3 class="font-lg font-bold mb-4">Active deal</h3>
+        <h3 class="text-lg font-bold mb-4">Active deal</h3>
         <dl class="console-kv">
           <dt>Price</dt>
           <dd>{{this.dealPriceLabel}}</dd>
@@ -269,7 +269,7 @@
   {{else if (eq this.activeTab "payments")}}
     <div class="glass-panel p-6">
       <div class="flex between x-center mb-4">
-        <h3 class="font-lg font-bold">Payments</h3>
+        <h3 class="text-lg font-bold">Payments</h3>
         <button
           type="button"
           class="btn btn-primary"
@@ -326,7 +326,7 @@
                       <span class="text-muted">—</span>
                     {{/if}}
                   </td>
-                  <td class="text-right">
+                  <td class="text-end">
                     {{#if row.paid}}
                       <button
                         type="button"
@@ -348,7 +348,7 @@
 
   {{else if (eq this.activeTab "history")}}
     <div class="glass-panel p-6">
-      <h3 class="font-lg font-bold mb-4">History</h3>
+      <h3 class="text-lg font-bold mb-4">History</h3>
       {{#if this.historyLoading}}
         <p class="text-muted">Loading history…</p>
       {{else if this.historyRows}}
@@ -379,17 +379,16 @@
   {{/if}}
 
   {{! ---- Deal modal ---- }}
-  <Ui::Modal
-    @isOpen={{this.dealModalOpen}}
+  <Nuvo::Modal
+    @open={{this.dealModalOpen}}
     @title="{{if this.dealEditing 'Edit' 'Give'}} {{this.company.name}} a deal"
     @onClose={{this.closeDealModal}}
-    @showClose={{true}}
-    @panelClass="modal-panel--wide"
+    @size="lg"
   >
     <div class="flex col gap-4" data-test-deal-form>
       <div class="console-form-row">
         <div class="flex col gap-2 flex-2">
-          <label class="font-sm text-muted" for="deal-price">Price</label>
+          <label class="text-sm text-muted" for="deal-price">Price</label>
           <input
             id="deal-price"
             type="number"
@@ -401,8 +400,8 @@
             {{on "input" (fn this.setDealField "dealPrice")}}
           />
         </div>
-        <div class="flex col gap-2 flex-1">
-          <label class="font-sm text-muted" for="deal-currency">Currency</label>
+        <div class="flex col gap-2 grow">
+          <label class="text-sm text-muted" for="deal-currency">Currency</label>
           <input
             id="deal-currency"
             type="text"
@@ -414,7 +413,7 @@
           />
         </div>
         <div class="flex col gap-2 flex-2">
-          <label class="font-sm text-muted" for="deal-basis">Basis</label>
+          <label class="text-sm text-muted" for="deal-basis">Basis</label>
           <select
             id="deal-basis"
             class="form-input"
@@ -432,7 +431,7 @@
       </div>
 
       <div class="flex col gap-2">
-        <label class="font-sm text-muted" for="deal-seats">Seats included</label>
+        <label class="text-sm text-muted" for="deal-seats">Seats included</label>
         <input
           id="deal-seats"
           type="number"
@@ -447,7 +446,7 @@
 
       <div class="console-form-row x-end">
         <div class="flex col gap-2 flex-2">
-          <label class="font-sm text-muted" for="deal-until">Until</label>
+          <label class="text-sm text-muted" for="deal-until">Until</label>
           <input
             id="deal-until"
             type="date"
@@ -458,7 +457,7 @@
             {{on "input" (fn this.setDealField "dealUntil")}}
           />
         </div>
-        <label class="console-checkbox flex-1">
+        <label class="console-checkbox grow">
           <input
             type="checkbox"
             checked={{this.dealLifetime}}
@@ -470,7 +469,7 @@
       </div>
 
       <div class="flex col gap-2">
-        <label class="font-sm text-muted" for="deal-why">Why (required)</label>
+        <label class="text-sm text-muted" for="deal-why">Why (required)</label>
         <textarea
           id="deal-why"
           class="form-input"
@@ -483,7 +482,7 @@
       <div class="alert alert-warning" data-test-deal-expiry-preview>
         <div>
           <div class="font-bold">What happens on expiry</div>
-          <p class="font-sm mt-1">{{this.expiryPreview}}</p>
+          <p class="text-sm mt-1">{{this.expiryPreview}}</p>
         </div>
       </div>
     </div>
@@ -505,20 +504,19 @@
           (if this.dealEditing "Save deal" "Give deal")
         }}</button>
     </div>
-  </Ui::Modal>
+  </Nuvo::Modal>
 
   {{! ---- Record payment modal ---- }}
-  <Ui::Modal
-    @isOpen={{this.paymentModalOpen}}
+  <Nuvo::Modal
+    @open={{this.paymentModalOpen}}
     @title="Record a payment from {{this.company.name}}"
     @onClose={{this.closePaymentModal}}
-    @showClose={{true}}
-    @panelClass="modal-panel--wide"
+    @size="lg"
   >
     <div class="flex col gap-4" data-test-payment-form>
       <div class="console-form-row">
         <div class="flex col gap-2 flex-2">
-          <label class="font-sm text-muted" for="pay-amount">Amount</label>
+          <label class="text-sm text-muted" for="pay-amount">Amount</label>
           <input
             id="pay-amount"
             type="number"
@@ -530,8 +528,8 @@
             {{on "input" (fn this.setPayField "payAmount")}}
           />
         </div>
-        <div class="flex col gap-2 flex-1">
-          <label class="font-sm text-muted" for="pay-currency">Currency</label>
+        <div class="flex col gap-2 grow">
+          <label class="text-sm text-muted" for="pay-currency">Currency</label>
           <input
             id="pay-currency"
             type="text"
@@ -545,8 +543,8 @@
       </div>
 
       <div class="console-form-row">
-        <div class="flex col gap-2 flex-1">
-          <label class="font-sm text-muted" for="pay-received">Date received</label>
+        <div class="flex col gap-2 grow">
+          <label class="text-sm text-muted" for="pay-received">Date received</label>
           <input
             id="pay-received"
             type="date"
@@ -556,8 +554,8 @@
             {{on "input" (fn this.setPayField "payReceivedAt")}}
           />
         </div>
-        <div class="flex col gap-2 flex-1">
-          <label class="font-sm text-muted" for="pay-covers-start">Covers from</label>
+        <div class="flex col gap-2 grow">
+          <label class="text-sm text-muted" for="pay-covers-start">Covers from</label>
           <input
             id="pay-covers-start"
             type="date"
@@ -567,8 +565,8 @@
             {{on "input" (fn this.setPayField "payCoversStart")}}
           />
         </div>
-        <div class="flex col gap-2 flex-1">
-          <label class="font-sm text-muted" for="pay-covers-end">Covers to</label>
+        <div class="flex col gap-2 grow">
+          <label class="text-sm text-muted" for="pay-covers-end">Covers to</label>
           <input
             id="pay-covers-end"
             type="date"
@@ -581,7 +579,7 @@
       </div>
 
       <div class="flex col gap-2">
-        <label class="font-sm text-muted" for="pay-notes">Notes</label>
+        <label class="text-sm text-muted" for="pay-notes">Notes</label>
         <textarea
           id="pay-notes"
           class="form-input"
@@ -593,7 +591,7 @@
       </div>
 
       <div class="flex col gap-2">
-        <label class="font-sm text-muted" for="pay-receipt">Receipt image</label>
+        <label class="text-sm text-muted" for="pay-receipt">Receipt image</label>
         <input
           id="pay-receipt"
           type="file"
@@ -603,10 +601,10 @@
           {{on "change" this.setPayReceipt}}
         />
         {{#if this.payReceiptName}}
-          <span class="font-sm text-muted">{{this.payReceiptName}}</span>
+          <span class="text-sm text-muted">{{this.payReceiptName}}</span>
         {{/if}}
       </div>
-      <p class="font-sm text-muted">Document it: notes or a receipt image is
+      <p class="text-sm text-muted">Document it: notes or a receipt image is
         required.</p>
     </div>
     <div class="modal-actions">
@@ -623,15 +621,14 @@
         {{on "click" this.submitPayment}}
       >{{if this.payBusy "Recording…" "Record"}}</button>
     </div>
-  </Ui::Modal>
+  </Nuvo::Modal>
 
   {{! ---- Make it right modal ---- }}
-  <Ui::Modal
-    @isOpen={{this.remedyModalOpen}}
+  <Nuvo::Modal
+    @open={{this.remedyModalOpen}}
     @title="Make it right for {{this.company.name}}"
     @onClose={{this.closeRemedy}}
-    @showClose={{true}}
-    @panelClass="modal-panel--wide"
+    @size="lg"
   >
     <div class="flex col gap-4" data-test-remedy-form>
       <div class="console-anchor">Payment: {{this.remedyAnchorLabel}}</div>
@@ -686,7 +683,7 @@
 
       {{#if this.showRemedyAmount}}
         <div class="flex col gap-2">
-          <label class="font-sm text-muted" for="remedy-amount">Amount</label>
+          <label class="text-sm text-muted" for="remedy-amount">Amount</label>
           <input
             id="remedy-amount"
             type="number"
@@ -702,7 +699,7 @@
       {{/if}}
 
       <div class="flex col gap-2">
-        <label class="font-sm text-muted" for="remedy-why">Why (required)</label>
+        <label class="text-sm text-muted" for="remedy-why">Why (required)</label>
         <textarea
           id="remedy-why"
           class="form-input"
@@ -715,7 +712,7 @@
       {{#if this.remedyIsRefund}}
         <div class="alert alert-warning" data-test-remedy-sla-alert>
           <div>
-            <p class="font-sm">Refunds are initiated within 24 to 48 hours.
+            <p class="text-sm">Refunds are initiated within 24 to 48 hours.
               Money leaves the account. This is not undoable.</p>
           </div>
         </div>
@@ -735,18 +732,17 @@
         {{on "click" this.submitRemedy}}
       >{{if this.remedyBusy "Working…" this.remedyConfirmLabel}}</button>
     </div>
-  </Ui::Modal>
+  </Nuvo::Modal>
 
   {{! ---- Limits modal ---- }}
-  <Ui::Modal
-    @isOpen={{this.limitsModalOpen}}
+  <Nuvo::Modal
+    @open={{this.limitsModalOpen}}
     @title="Edit limits"
     @onClose={{this.closeLimitsModal}}
-    @showClose={{true}}
   >
     <div class="flex col gap-4">
       <div class="flex col gap-2">
-        <label class="font-sm text-muted" for="limit-users">Max users</label>
+        <label class="text-sm text-muted" for="limit-users">Max users</label>
         <input
           id="limit-users"
           type="number"
@@ -758,7 +754,7 @@
         />
       </div>
       <div class="flex col gap-2">
-        <label class="font-sm text-muted" for="limit-regions">Max regions</label>
+        <label class="text-sm text-muted" for="limit-regions">Max regions</label>
         <input
           id="limit-regions"
           type="number"
@@ -770,7 +766,7 @@
         />
       </div>
       <div class="flex col gap-2">
-        <label class="font-sm text-muted" for="limit-properties">Max properties</label>
+        <label class="text-sm text-muted" for="limit-properties">Max properties</label>
         <input
           id="limit-properties"
           type="number"
@@ -795,30 +791,30 @@
         {{on "click" this.submitLimits}}
       >{{if this.limitsBusy "Saving…" "Save"}}</button>
     </div>
-  </Ui::Modal>
+  </Nuvo::Modal>
 
   {{! ---- Confirms ---- }}
   <ConfirmModal
-    @isOpen={{this.endDealConfirmOpen}}
+    @open={{this.endDealConfirmOpen}}
     @title="End this deal early?"
     @message="{{this.company.name}} returns to standard pricing at the next cycle. This does not lock the account."
     @confirmText="End deal early"
     @confirmingText="Ending…"
     @cancelText="Keep deal"
-    @confirmType="btn-danger"
+    @confirmVariant="danger"
     @isConfirming={{this.endDealBusy}}
     @onConfirm={{this.confirmEndDeal}}
     @onClose={{this.closeEndDealConfirm}}
   />
 
   <ConfirmModal
-    @isOpen={{this.endLiftConfirmOpen}}
+    @open={{this.endLiftConfirmOpen}}
     @title="End the lift now?"
     @message="The write lock re-applies immediately. Their admin sees the 'reduce or pay' banner again."
     @confirmText="End lift now"
     @confirmingText="Ending…"
     @cancelText="Keep lift"
-    @confirmType="btn-danger"
+    @confirmVariant="danger"
     @isConfirming={{this.endLiftBusy}}
     @onConfirm={{this.confirmEndLift}}
     @onClose={{this.closeEndLiftConfirm}}

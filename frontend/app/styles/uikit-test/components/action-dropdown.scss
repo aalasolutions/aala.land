@@ -1,0 +1,137 @@
+.action-dropdown-container {
+  position: relative;
+  display: inline-block;
+
+  .action-dropdown-trigger {
+    padding: 0.25rem;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    background: transparent;
+    color: $text-muted;
+    transition: color 0.15s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+
+    &:hover {
+      color: $text-secondary;
+    }
+
+    &:focus {
+      outline: none;
+    }
+
+    i {
+      font-size: 0.75rem;
+    }
+  }
+
+  .action-dropdown-menu {
+    position: fixed;
+    z-index: 1000;
+    background: $white;
+    border: 1px solid $border-color;
+    border-radius: 4px;
+    box-shadow: 0 1px 3px rgba($dark-color, 0.1);
+    min-width: 140px;
+    padding: 0.25rem 0;
+    animation: dropdown-appear 0.1s ease-out;
+
+    &.dropdown-above {
+      animation: dropdown-appear-above 0.1s ease-out;
+    }
+
+    &.dropdown-below {
+      animation: dropdown-appear-below 0.1s ease-out;
+    }
+
+    @keyframes dropdown-appear {
+      from {
+        opacity: 0;
+        transform: translateY(-2px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes dropdown-appear-above {
+      from {
+        opacity: 0;
+        transform: translateY(2px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes dropdown-appear-below {
+      from {
+        opacity: 0;
+        transform: translateY(-2px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .action-dropdown-item {
+      width: 100%;
+      padding: 0.5rem 0.75rem;
+      border: none;
+      background: none;
+      text-align: left;
+      cursor: pointer;
+      transition: background-color 0.1s ease;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.875rem;
+      color: $text-secondary;
+
+      &:hover {
+        background: $slate-50;
+      }
+
+      &.send {
+        color: $blue-500;
+      }
+
+      &.mark-paid {
+        color: $green-500;
+      }
+
+      &.download {
+        color: $text-muted;
+      }
+
+      &.edit {
+        color: $text-muted;
+      }
+
+      &.void {
+        color: $amber-500;
+      }
+
+      &.delete {
+        color: $error-color;
+      }
+
+      i {
+        font-size: 0.75rem;
+        width: 12px;
+        text-align: center;
+      }
+
+      span {
+        flex: 1;
+      }
+    }
+  }
+}

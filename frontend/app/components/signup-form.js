@@ -62,8 +62,7 @@ export default class SignupFormComponent extends Component {
   }
 
   @action
-  selectRegion(event) {
-    const code = event.target.value;
+  selectRegion(code) {
     this.selectedRegion = code;
     this.errorMessage = '';
   }

@@ -1,0 +1,653 @@
+// ============================================
+// MODULE: Pricing
+// ============================================
+// Pricing page, plan boxes, enterprise details, addons.
+// Consolidates: templates/pricing.scss
+
+@use 'sass:color';
+@use '../nuvoui' as Nuvo;
+@use '../variables' as *;
+
+// ============================================
+// Pricing Page Container
+// ============================================
+
+.pricing-page {
+  h1 {
+    @include Nuvo.apply(text-center, font(bold), mb(2));
+    font-size: 2.5rem;
+    color: $dark-color;
+  }
+
+  .sub-heading {
+    @include Nuvo.apply(text-center, font-size(lg), mb(12));
+    color: $text-muted;
+  }
+
+  .no-data {
+    @include Nuvo.apply(font-size(sm));
+    color: $secondary-color;
+  }
+}
+
+// ============================================
+// Back Link
+// ============================================
+
+.back-link {
+  @include Nuvo.apply(mb(4));
+
+  a {
+    @include Nuvo.apply(flex-inline, x-center, gap(2), font-size(sm), no-underline, transition-colors, duration(200));
+    color: $text-secondary;
+
+    &:hover {
+      color: $indigo-500;
+    }
+
+    i {
+      @include Nuvo.apply(font-size(xs));
+    }
+  }
+}
+
+// ============================================
+// Current Plan Summary
+// ============================================
+
+.current-plan-summary {
+  @include Nuvo.apply(flex, x-center, gap(3), py(3), px(4), rounded(md), mb(6), font-size(sm));
+  background: $bg-gray;
+
+  .plan-badge {
+    @include Nuvo.apply(py(1), px(3), rounded(xs), font(semibold));
+    background: $indigo-500;
+    color: $white;
+  }
+
+  .plan-stats {
+    color: $text-secondary;
+  }
+}
+
+// ============================================
+// Billing Tabs Wrapper
+// ============================================
+
+.tabs-wrapper {
+  @include Nuvo.apply(flex, col, my(2), gap(2));
+
+  span {
+    @include Nuvo.apply(font(semibold));
+    font-size: 0.8rem;
+    color: $secondary-color;
+  }
+}
+
+// ============================================
+// Plan Boxes Grid
+// ============================================
+
+.plans {
+  @include Nuvo.apply(flex, wrap, center, pt(12), gap(8));
+}
+
+.plan-box {
+  @include Nuvo.apply(
+    relative, flex, col, between, w-full, p(8),
+    rounded(lg), transition, duration(300)
+  );
+  max-width: 300px;
+  background: rgba($white, 0.6);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 8px 24px rgba($dark-color, 0.05);
+
+  .badge {
+    @include Nuvo.apply(absolute, font-size(xs), py(1), px(2), rounded(sm), font(semibold));
+    top: -12px;
+    right: -12px;
+    background: $primary-color;
+    color: $white;
+    box-shadow: 0 2px 6px rgba($dark-color, 0.1);
+  }
+
+  &:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 12px 30px rgba($dark-color, 0.1);
+  }
+
+  &.popular {
+    border: 2px solid $primary-color;
+    background: rgba($indigo-500, 0.05);
+  }
+
+  &.active {
+    border: 2px solid $success-color;
+    background: rgba($success-color, 0.05);
+
+    h2 {
+      color: $success-color;
+    }
+
+    .price {
+      .price-amount {
+        color: $success-color;
+      }
+      .price-yearly {
+        color: $dark-color;
+      }
+      .price-period {
+        color: rgba($success-color, 0.8);
+      }
+    }
+
+    .credits {
+      color: $success-color;
+      background-color: rgba($success-color, 0.1);
+
+      i {
+        color: $success-color;
+      }
+    }
+
+    .btn-active {
+      background-color: rgba($success-color, 0.1);
+      color: $success-color;
+      cursor: auto;
+    }
+  }
+
+  h2 {
+    @include Nuvo.apply(text-left, m(0));
+    font-size: 22px;
+    font-weight: bolder;
+    color: $dark-color;
+  }
+
+  .price {
+    @include Nuvo.apply(flex, x-baseline, text-left);
+    margin: 0.6rem 0 1.4rem 0;
+
+    .price-amount {
+      @include Nuvo.apply(font(bold));
+      font-size: 2.5rem;
+      color: $primary-color;
+    }
+
+    .price-yearly {
+      @include Nuvo.apply(font-size(base), font(bold));
+    }
+
+    .price-period {
+      @include Nuvo.apply(font-size(base), font(medium), ml(1));
+      color: $text-muted;
+    }
+  }
+
+  .credits {
+    @include Nuvo.apply(flex, x-center, center, gap(2), w-full, py(2), px(3), mb(4), rounded(md));
+    font-size: 0.9rem;
+    color: $primary-color;
+    background-color: rgba($primary-color, 0.1);
+
+    i {
+      color: $primary-color;
+    }
+  }
+
+  .description {
+    @include Nuvo.apply(text-center, mb(4), leading-relaxed);
+    font-size: 0.88rem;
+    color: $text-secondary;
+
+    strong {
+      @include Nuvo.apply(font(semibold));
+      color: $dark-color;
+    }
+
+    ul {
+      @include Nuvo.apply(p(0), my(2));
+      list-style: none;
+
+      li {
+        @include Nuvo.apply(mb(1), pl(0), font-size(sm));
+
+        &::before {
+          @include Nuvo.apply(font(bold), mr(2));
+          content: '•';
+          color: $primary-color;
+        }
+      }
+    }
+
+    p {
+      @include Nuvo.apply(my(2));
+    }
+  }
+
+  ul {
+    @include Nuvo.apply(p(0), mb(6));
+    list-style: none;
+
+    li {
+      @include Nuvo.apply(mb(2));
+      font-size: 0.9rem;
+      color: $dark-color;
+
+      &::before {
+        @include Nuvo.apply(mr(2));
+        content: '✔';
+        color: $success-color;
+      }
+    }
+  }
+
+  button {
+    @include Nuvo.apply(w-full, py(2), px(4), font(semibold), rounded(md), cursor(pointer), transition, duration(300));
+    background: $primary-color;
+    color: $white;
+    border: none;
+
+    &.active-button {
+      background-color: $success-color;
+      cursor: default;
+
+      &:hover {
+        background: color.adjust($success-color, $lightness: -10%);
+      }
+    }
+
+    &.disabled-button {
+      @include Nuvo.apply(opacity(60));
+      pointer-events: none;
+    }
+
+    &:hover {
+      background: color.adjust($primary-color, $lightness: -10%);
+    }
+  }
+
+  .price-info {
+    @include Nuvo.apply(text-center, my(6));
+  }
+
+  .purchased-price {
+    @include Nuvo.apply(rounded(sm), py(4));
+    color: $success-color;
+    background-color: rgba($success-color, 0.1);
+    border: 1px solid rgba($success-color, 0.1);
+  }
+
+  .btn-cancel {
+    background: rgba($error-color, 0.1) !important;
+    color: $error-color !important;
+    border: 1px solid rgba($error-color, 0.2) !important;
+
+    &:hover {
+      background: rgba($error-color, 0.15) !important;
+    }
+
+    i {
+      @include Nuvo.apply(mr(2));
+    }
+  }
+
+  .btn-resume {
+    @include Nuvo.apply(mt(2));
+    background: rgba($success-color, 0.1) !important;
+    color: $success-color !important;
+    border: 1px solid rgba($success-color, 0.2) !important;
+
+    &:hover {
+      background: rgba($success-color, 0.15) !important;
+    }
+
+    i {
+      @include Nuvo.apply(mr(2));
+    }
+  }
+
+  .renewal-cancelled {
+    @include Nuvo.apply(flex, x-center, gap(2), py(3), px(4), rounded(md), font-size(sm));
+    background: rgba($warning-color, 0.1);
+    border: 1px solid rgba($warning-color, 0.3);
+    color: color.adjust($warning-color, $lightness: -20%);
+
+    i {
+      color: $warning-color;
+    }
+  }
+}
+
+// ============================================
+// Enterprise Details
+// ============================================
+
+.enterprise-details {
+  @include Nuvo.apply(flex, center, mt(12), px(4));
+}
+
+.enterprise-details-card {
+  @include Nuvo.apply(w-full, py(6), px(8), rounded(lg));
+  max-width: 800px;
+  background: rgba($white, 0.7);
+  border: 1px solid $border-color;
+  box-shadow: 0 2px 8px rgba($dark-color, 0.04);
+
+  h3 {
+    @include Nuvo.apply(font-size(xl), font(semibold), text-center, m(0), mb(4));
+    color: $dark-color;
+  }
+
+  .enterprise-description {
+    @include Nuvo.apply(leading-relaxed);
+    font-size: 0.9rem;
+    color: $text-muted;
+
+    strong {
+      @include Nuvo.apply(font(semibold), block, mb(3));
+      color: $text-secondary;
+    }
+
+    ul {
+      @include Nuvo.apply(flex, col, gap(2), p(0), m(0));
+      list-style: none;
+
+      li {
+        @include Nuvo.apply(relative, font-size(sm), pl(6));
+        color: $text-secondary;
+
+        &::before {
+          @include Nuvo.apply(absolute, left(0), font(bold));
+          content: '•';
+          color: $primary-color;
+        }
+      }
+    }
+  }
+}
+
+// ============================================
+// Addons Section
+// ============================================
+
+.addons {
+  @include Nuvo.apply(mt(16));
+
+  .addon-box {
+    @include Nuvo.apply(w-full, mx-auto, mt(8), p(6), rounded(lg));
+    background: $white;
+    box-shadow: 0 4px 14px rgba($dark-color, 0.05);
+    box-sizing: border-box;
+
+    h4 {
+      @include Nuvo.apply(flex, between, font-size(lg), mb(3));
+      color: $text-secondary;
+
+      span {
+        color: $success-color;
+      }
+    }
+
+    ul {
+      @include Nuvo.apply(pl(0));
+      list-style: none;
+
+      li {
+        @include Nuvo.apply(mb(2));
+        font-size: 0.9rem;
+        color: $text-secondary;
+
+        &::before {
+          @include Nuvo.apply(mr(2));
+          content: '✓';
+          color: $success-color;
+        }
+      }
+    }
+  }
+}
+
+// ============================================
+// Stripe Container (Payment Form)
+// ============================================
+
+.stripe-container {
+  @include Nuvo.apply(w-full, grid, gap(4), p(4));
+  min-width: 440px;
+  background: rgba($white, 0.96);
+  box-sizing: border-box;
+
+  .popup-credits,
+  .price-plan {
+    @include Nuvo.apply(flex, x-center, gap(2), p(4), rounded(md), font-size(base), font(medium));
+    color: $text-secondary;
+    background: $bg-gray;
+
+    i {
+      color: Nuvo.get-color(gray, 400);
+    }
+  }
+
+  .heading {
+    @include Nuvo.apply(grid, cols(2), gap(4));
+
+    h3 {
+      @include Nuvo.apply(text-left, font(bold), m(0), mb(1));
+      grid-column: 1 / -1;
+      font-size: 24px;
+      color: $text-primary;
+
+      span {
+        color: $indigo-500;
+      }
+    }
+
+    .tabs-wrapper {
+      grid-column: 1 / -1;
+    }
+  }
+
+  .el-label {
+    @include Nuvo.apply(font(semibold));
+    font-size: 0.8rem;
+    color: $secondary-color;
+  }
+
+  .el-input {
+    @include Nuvo.apply(rounded(lg), transition, duration(200));
+    border: 1px solid $border-color;
+    background: Nuvo.get-color(gray, 50);
+  }
+
+  .el-error {
+    font-size: 0.85rem;
+    color: $error-color;
+  }
+
+  .btn-wrapper {
+    @include Nuvo.apply(flex, x-center, gap(4));
+
+    .el-pay {
+      @include Nuvo.apply(w-full, py(3), px(4), font(bold), cursor(pointer));
+      background: $indigo-500;
+      color: $white;
+      border-radius: 10px;
+      border: none;
+      transition: transform 0.05s ease, background 0.2s ease;
+
+      i {
+        @include Nuvo.apply(mr(2));
+      }
+
+      &:hover {
+        background: $indigo-600;
+      }
+
+      &:active {
+        transform: translateY(1px);
+      }
+
+      &:disabled {
+        @include Nuvo.apply(opacity(60));
+        cursor: not-allowed;
+      }
+    }
+
+    .el-cancel {
+      @include Nuvo.apply(w-full, py(3), px(4), font(semibold), cursor(pointer), transition, duration(200));
+      background: $border-color;
+      color: $text-primary;
+      border-radius: 10px;
+      border: none;
+
+      &:hover {
+        background: Nuvo.get-color(gray, 300);
+      }
+    }
+  }
+
+  .el-secure {
+    @include Nuvo.apply(flex, x-center, center, gap(2), font-size(xs), mt(1));
+    color: $text-muted;
+
+    i {
+      @include Nuvo.apply(font-size(xs));
+    }
+  }
+}
+
+// ============================================
+// Payment Notice
+// ============================================
+
+.payment-notice {
+  @include Nuvo.apply(flex, x-start, gap(4), p(4), rounded(lg), mb(6));
+  background: linear-gradient(135deg, $indigo-50 0%, $indigo-100 100%);
+  border: 2px solid $indigo-200;
+
+  &.downgrade {
+    background: linear-gradient(135deg, $warning-light 0%, $amber-200 100%);
+    border-color: $yellow-400;
+  }
+
+  i {
+    font-size: 24px;
+    color: $indigo-500;
+  }
+
+  .notice-text {
+    @include Nuvo.apply(grow);
+
+    strong {
+      @include Nuvo.apply(block, font-size(sm), mb(1));
+      color: $text-primary;
+    }
+
+    p {
+      @include Nuvo.apply(m(0), leading-normal);
+      color: $text-muted;
+      font-size: 13px;
+    }
+  }
+}
+
+// ============================================
+// Highlight Messages
+// ============================================
+
+.highlight-msg {
+  @include Nuvo.apply(font(bold), text-center);
+  font-size: large;
+  color: $error-color;
+
+  &.warning {
+    @include Nuvo.apply(rounded(md), p(4), my(4), font-size(sm), font(medium));
+    background-color: $warning-light;
+    border: 1px solid $warning-color;
+    color: $warning-dark;
+
+    i {
+      color: $warning-color;
+    }
+
+    strong {
+      color: color.adjust($warning-dark, $lightness: -10%);
+    }
+  }
+
+  .btn-link {
+    @include Nuvo.apply(p(0), ml(2), font(semibold), underline, cursor(pointer));
+    background: none;
+    border: none;
+    color: $primary-color;
+
+    &:hover {
+      color: color.adjust($primary-color, $lightness: -10%);
+    }
+
+    &:disabled {
+      @include Nuvo.apply(opacity(60));
+      cursor: not-allowed;
+    }
+
+    &.cancel-link {
+      @include Nuvo.apply(inline, ml(2));
+      color: $error-color;
+
+      &:hover {
+        color: color.adjust($error-color, $lightness: -10%);
+      }
+    }
+  }
+}
+
+// ============================================
+// BYOK Info
+// ============================================
+
+.byok-info {
+  @include Nuvo.apply(flex, x-center, gap(2), font(medium), mb(4));
+  background-color: rgba($success-color, 0.1);
+  border: 1px solid rgba($success-color, 0.3);
+  color: $success-color;
+
+  a {
+    @include Nuvo.apply(ml-auto, underline);
+    color: $primary-color;
+  }
+}
+
+// ============================================
+// Form Actions
+// ============================================
+
+.form-actions.button-row {
+  @include Nuvo.apply(flex, end, gap(3), my(6));
+
+  button {
+    @include Nuvo.apply(no-shrink);
+    max-width: 250px;
+  }
+}
+
+// ============================================
+// Responsive
+// ============================================
+
+@include Nuvo.media-down(md) {
+  .pricing-page {
+    .plans {
+      @include Nuvo.apply(col, center);
+    }
+
+    .addons,
+    .faq {
+      @include Nuvo.apply(px(4));
+    }
+
+    .cta h2 {
+      font-size: 1.4rem;
+    }
+  }
+}

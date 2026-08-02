@@ -1,0 +1,170 @@
+// nu-badge - compact status / label indicator
+@use "./mixins/bem" as *;
+@use "./mixins/var" as *;
+@use "./common/var" as *;
+
+@include b(badge) {
+  @include nu-root("badge", (
+    "Gap": nu-space(1),
+    "PaddingBlock": 0.125rem,
+    "PaddingInline": nu-space(2),
+    "FontSize": nu-font-size(xs),
+    "FontWeight": nu-font-weight(semibold),
+    "LineHeight": 1.4,
+    "BorderRadius": nu-radius(sm),
+    "BorderWidth": 1px,
+    "BorderColor": transparent,
+    "Color": var(--text-muted),
+    "BackgroundColor": var(--bg-alternate),
+    "DotSize": 0.5rem,
+    "DotColor": currentcolor,
+  ));
+
+  display: inline-flex;
+  align-items: center;
+  gap: nu-var("badge", "Gap");
+  padding-block: nu-var("badge", "PaddingBlock");
+  padding-inline: nu-var("badge", "PaddingInline");
+  font-size: nu-var("badge", "FontSize");
+  font-weight: nu-var("badge", "FontWeight");
+  line-height: nu-var("badge", "LineHeight");
+  color: nu-var("badge", "Color");
+  background-color: nu-var("badge", "BackgroundColor");
+  border: nu-var("badge", "BorderWidth") solid nu-var("badge", "BorderColor");
+  border-radius: nu-var("badge", "BorderRadius");
+  white-space: nowrap;
+  vertical-align: middle;
+
+  @include e(icon) {
+    display: inline-flex;
+    flex-shrink: 0;
+    font-size: 1em;
+    line-height: 1;
+  }
+
+  @include e(dot) {
+    flex-shrink: 0;
+    inline-size: nu-var("badge", "DotSize");
+    block-size: nu-var("badge", "DotSize");
+    border-radius: nu-radius(full);
+    background-color: nu-var("badge", "DotColor");
+  }
+
+  // ---- color variants: uniform, looped ----
+
+  @each $variant in $nu-variants {
+    @include m($variant) {
+      --nu-badge--Color: var(--#{$variant}-700);
+      --nu-badge--BackgroundColor: var(--#{$variant}-50);
+      --nu-badge--BorderColor: var(--#{$variant}-200);
+      --nu-badge--DotColor: var(--#{$variant});
+    }
+  }
+
+  // ---- solid variants ----
+
+  @each $variant in $nu-variants {
+    &.m-solid.m-#{$variant} {
+      --nu-badge--Color: var(--text-inverted);
+      --nu-badge--BackgroundColor: var(--#{$variant});
+      --nu-badge--BorderColor: transparent;
+      --nu-badge--DotColor: currentcolor;
+    }
+  }
+
+  // ---- outline variants ----
+
+  @each $variant in $nu-variants {
+    &.m-outline.m-#{$variant} {
+      --nu-badge--Color: var(--#{$variant}-700);
+      --nu-badge--BackgroundColor: transparent;
+      --nu-badge--BorderColor: var(--#{$variant}-300);
+    }
+  }
+
+  // ---- shape / size ----
+
+  @include m(pill) {
+    --nu-badge--BorderRadius: #{nu-radius(full)};
+    --nu-badge--PaddingInline: #{nu-space(3)};
+  }
+
+  @include m(sm) {
+    --nu-badge--PaddingInline: #{nu-space(1)};
+    --nu-badge--FontSize: 0.625rem;
+    --nu-badge--DotSize: 0.375rem;
+  }
+
+  @include m(lg) {
+    --nu-badge--PaddingBlock: #{nu-space(1)};
+    --nu-badge--PaddingInline: #{nu-space(3)};
+    --nu-badge--FontSize: #{nu-font-size(sm)};
+  }
+
+  // Dot-only, no background. Colour comes from the variant's DotColor.
+  @include m(quiet) {
+    --nu-badge--BackgroundColor: transparent;
+    --nu-badge--BorderColor: transparent;
+    --nu-badge--Color: var(--text-muted);
+    --nu-badge--PaddingInline: 0;
+  }
+}
+
+// Anchor for a corner-positioned count bubble.
+// Wrap any element (icon, avatar, button) to hang an is-fixed badge off it.
+@include b(badge-wrap) {
+  position: relative;
+  display: inline-flex;
+  vertical-align: middle;
+}
+
+// Notification count bubble
+@include b(badge-count) {
+  @include nu-root("badge-count", (
+    "Size": 1.25rem,
+    "FontSize": 0.625rem,
+    "Color": var(--text-inverted),
+    "BackgroundColor": var(--danger),
+    "RingColor": var(--bg-surface),
+    "RingWidth": 2px,
+  ));
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-inline-size: nu-var("badge-count", "Size");
+  block-size: nu-var("badge-count", "Size");
+  padding-inline: nu-space(1);
+  font-size: nu-var("badge-count", "FontSize");
+  font-weight: nu-font-weight(semibold);
+  line-height: 1;
+  color: nu-var("badge-count", "Color");
+  background-color: nu-var("badge-count", "BackgroundColor");
+  border-radius: nu-radius(full);
+
+  @each $variant in $nu-variants {
+    @include m($variant) {
+      --nu-badge-count--BackgroundColor: var(--#{$variant});
+    }
+  }
+
+  @include m(dot) {
+    --nu-badge-count--Size: 0.5rem;
+    min-inline-size: nu-var("badge-count", "Size");
+    padding-inline: 0;
+  }
+
+  // Corner-anchored inside a .nu-badge-wrap. The ring keeps the bubble legible
+  // over a busy icon; translate pulls it half-out of the anchor's corner.
+  @include when(fixed) {
+    position: absolute;
+    inset-block-start: 0;
+    inset-inline-end: 0;
+    transform: translate(50%, -50%);
+    box-shadow: 0 0 0 nu-var("badge-count", "RingWidth") nu-var("badge-count", "RingColor");
+  }
+
+  &.is-fixed.m-dot {
+    transform: translate(25%, -25%);
+  }
+}

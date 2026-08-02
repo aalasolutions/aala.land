@@ -1,0 +1,90 @@
+// Layout for the /uikit showcase route. Presentation surface only, not part of
+// the shipped kit.
+@use "./uikit/common/var" as *;
+
+// The showcase is an app shell built from the kit itself.
+// nu-sidebar is position:fixed (it owns its own placement), so the main region
+// reserves space with a margin rather than relying on flex flow.
+.nuvo-shell {
+  min-block-size: 100vh;
+
+  &__main {
+    display: flex;
+    flex-direction: column;
+    min-inline-size: 0;
+    margin-inline-start: 240px;
+    transition: margin-inline-start 200ms cubic-bezier(0.4, 0, 0.2, 1);
+
+    @media (prefers-reduced-motion: reduce) {
+      transition: none;
+    }
+  }
+
+  @media (max-width: 768px) {
+    &__main {
+      margin-inline-start: 0;
+    }
+  }
+}
+
+// Follows the collapsed sidebar width.
+.nuvo-shell:has(.nu-sidebar.is-collapsed) .nuvo-shell__main {
+  margin-inline-start: 60px;
+}
+
+@media (max-width: 768px) {
+  .nuvo-shell:has(.nu-sidebar.is-collapsed) .nuvo-shell__main {
+    margin-inline-start: 0;
+  }
+}
+
+.nuvo-page {
+  max-inline-size: 72rem;
+  margin-inline: auto;
+  padding: nu-space(8) nu-space(6);
+
+  &__header {
+    margin-block-end: nu-space(10);
+    padding-block-end: nu-space(5);
+    border-block-end: 1px solid var(--border-base);
+  }
+
+  &__themes {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: nu-space(2);
+    margin-block-start: nu-space(4);
+  }
+}
+
+.nuvo-section {
+  margin-block-end: nu-space(10);
+  scroll-margin-block-start: nu-space(6);
+
+  &__title {
+    margin-block-end: nu-space(5);
+    padding-block-end: nu-space(2);
+    font-size: nu-font-size(sm);
+    font-weight: nu-font-weight(semibold);
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    border-block-end: 1px solid var(--border-base);
+  }
+}
+
+.nuvo-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: nu-space(3);
+  margin-block-end: nu-space(4);
+}
+
+.nuvo-stack {
+  display: flex;
+  flex-direction: column;
+  gap: nu-space(3);
+  max-inline-size: 26rem;
+}

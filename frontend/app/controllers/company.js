@@ -226,12 +226,32 @@ export default class CompanyController extends Controller {
     this[fieldName] = e.target.value;
   }
 
+  @action setFieldValue(fieldName, value) {
+    this[fieldName] = value;
+  }
+
+  // Stripe spells the cancelled status `canceled` (one L); the app's badge
+  // vocabulary only ships the correct `cancelled` spelling.
+  get billingStatusBadgeValue() {
+    const status = this.billing?.billingStatus;
+    if (!status) return null;
+    return status === 'canceled' ? 'cancelled' : status;
+  }
+
+  get settingsTabs() {
+    return [
+      { id: 'general', label: 'General' },
+      { id: 'billing', label: 'Billing' },
+      { id: 'ai', label: 'AI Settings' },
+    ];
+  }
+
   @action setTab(tab) {
     this.activeTab = tab;
   }
 
-  @action setAIPrompt(event) {
-    this.aiPrompt = event.target.value;
+  @action setAIPrompt(value) {
+    this.aiPrompt = value;
     this.aiSuccessMsg = '';
     this.aiErrorMsg = '';
   }
@@ -394,6 +414,10 @@ export default class CompanyController extends Controller {
   @action setBillingHistoryLimit(e) {
     // Ui::Pagination binds this to the <select>'s change event, not a value.
     this.fetchBillingHistory(1, Number(e?.target?.value) || 10);
+  }
+
+  @action toggleRegionChecked(code) {
+    this.toggleRegion(code);
   }
 
   @action toggleRegion(code) {

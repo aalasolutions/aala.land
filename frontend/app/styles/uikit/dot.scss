@@ -1,0 +1,82 @@
+// nu-dot - status indicator dot
+@use "./mixins/bem" as *;
+@use "./mixins/var" as *;
+@use "./common/var" as *;
+
+@include b(dot) {
+  @include nu-root("dot", (
+    "Size": 0.5rem,
+    "Color": var(--text-muted),
+    "RingColor": transparent,
+    "RingWidth": 3px,
+  ));
+
+  display: inline-block;
+  flex-shrink: 0;
+  inline-size: nu-var("dot", "Size");
+  block-size: nu-var("dot", "Size");
+  border-radius: nu-radius(full);
+  background-color: nu-var("dot", "Color");
+  box-shadow: 0 0 0 nu-var("dot", "RingWidth") nu-var("dot", "RingColor");
+
+  // ---- color variants: uniform, looped ----
+
+  @each $variant in $nu-variants {
+    @include m($variant) {
+      --nu-dot--Color: var(--#{$variant});
+    }
+  }
+
+  // ---- sizes ----
+
+  @include m(xs) {
+    --nu-dot--Size: 0.375rem;
+  }
+
+  @include m(sm) {
+    --nu-dot--Size: 0.5rem;
+  }
+
+  @include m(md) {
+    --nu-dot--Size: 0.625rem;
+  }
+
+  @include m(lg) {
+    --nu-dot--Size: 0.875rem;
+  }
+
+  // ---- halo ring ----
+
+  @include m(ring) {
+    --nu-dot--RingColor: #{nu-tint(primary, 25%)};
+  }
+
+  @each $variant in $nu-variants {
+    &.m-ring.m-#{$variant} {
+      --nu-dot--RingColor: #{nu-tint($variant, 25%)};
+    }
+  }
+
+  // ---- pulse animation ----
+
+  @include m(pulse) {
+    position: relative;
+    animation: nu-dot-pulse nu-duration(slow) $nu-ease infinite;
+
+    @include reduced-motion {
+      animation: none;
+    }
+  }
+}
+
+@keyframes nu-dot-pulse {
+  0% {
+    box-shadow: 0 0 0 0 var(--nu-dot--Color);
+  }
+  70% {
+    box-shadow: 0 0 0 nu-var("dot", "RingWidth", 6px) transparent;
+  }
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+  }
+}

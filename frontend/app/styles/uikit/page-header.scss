@@ -1,0 +1,93 @@
+// nu-page-header - page title bar with breadcrumb, meta and actions
+@use "./mixins/bem" as *;
+@use "./mixins/var" as *;
+@use "./common/var" as *;
+
+@include b(page-header) {
+  @include nu-root("page-header", (
+    "Display": flex,
+    "Gap": nu-space(4),
+    "PaddingBlockEnd": 0,
+    "BorderBlockEndWidth": 0,
+    "BorderBlockEndColor": var(--border-base),
+    "BackgroundColor": transparent,
+    "TitleFontSize": nu-font-size(2xl),
+    "TitleFontWeight": nu-font-weight(bold),
+    "TitleColor": var(--text-color),
+    "SubtitleFontSize": nu-font-size(sm),
+    "SubtitleColor": var(--text-muted),
+    "StickyTop": 0,
+    "StickyZIndex": nu-z(sticky),
+  ));
+
+  display: nu-var("page-header", "Display");
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: nu-var("page-header", "Gap");
+  padding-block-end: nu-var("page-header", "PaddingBlockEnd");
+  background-color: nu-var("page-header", "BackgroundColor");
+  border-block-end: nu-var("page-header", "BorderBlockEndWidth") solid nu-var("page-header", "BorderBlockEndColor");
+
+  // ---- elements ----
+
+  // Groups breadcrumb/title/subtitle/meta so `justify-content: space-between`
+  // pushes actions to the far edge as one unit.
+  @include e(main) {
+    display: flex;
+    flex-direction: column;
+    min-inline-size: 0;
+  }
+
+  @include e(breadcrumb) {
+    display: flex;
+    align-items: center;
+    gap: nu-space(1);
+    font-size: nu-font-size(xs);
+    color: var(--text-muted);
+    margin-block-end: nu-space(1);
+  }
+
+  @include e(title) {
+    font-size: nu-var("page-header", "TitleFontSize");
+    font-weight: nu-var("page-header", "TitleFontWeight");
+    color: nu-var("page-header", "TitleColor");
+    margin: 0;
+  }
+
+  @include e(subtitle) {
+    font-size: nu-var("page-header", "SubtitleFontSize");
+    color: nu-var("page-header", "SubtitleColor");
+    margin: nu-space(1) 0 0;
+  }
+
+  @include e(meta) {
+    display: flex;
+    align-items: center;
+    gap: nu-space(2);
+    margin-block-start: nu-space(2);
+    font-size: nu-font-size(xs);
+    color: var(--text-muted);
+  }
+
+  @include e(actions) {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: nu-space(2);
+  }
+
+  // ---- modifiers ----
+
+  @include m(bordered) {
+    --nu-page-header--PaddingBlockEnd: #{nu-space(4)};
+    --nu-page-header--BorderBlockEndWidth: 1px;
+  }
+
+  @include m(sticky) {
+    position: sticky;
+    inset-block-start: nu-var("page-header", "StickyTop");
+    z-index: nu-var("page-header", "StickyZIndex");
+    --nu-page-header--BackgroundColor: var(--bg-surface);
+  }
+}

@@ -1,0 +1,72 @@
+@use "sass:color";
+
+// Use button.btn-* to beat NuvoUI's button:not([class*=bg-]) specificity
+button.btn-primary,
+.btn-primary {
+  padding: 10px;
+  background-color: $primary-color;
+  color: $background-color;
+  font-size: 14px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+
+  &:hover {
+    background-color: color.adjust($primary-color, $lightness: -10%);
+  }
+}
+
+button.btn-success,
+.btn-success {
+  width: 100%;
+  padding: 10px;
+  background-color: $success-color;
+  color: $background-color;
+  font-size: 14px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+
+  &:hover {
+    background-color: color.adjust($success-color, $lightness: -10%);
+  }
+}
+
+button.btn-danger,
+.btn-danger {
+  width: 100%;
+  padding: 10px;
+  background-color: $error-color;
+  color: $background-color;
+  font-size: 14px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+
+  &:hover {
+    background-color: color.adjust($error-color, $lightness: -10%);
+  }
+}
+
+button.btn-secondary,
+.btn-secondary {
+  width: 100%;
+  padding: 10px;
+  background-color: $secondary-color;
+  color: $background-color;
+  font-size: 14px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+
+  &:hover {
+    background-color: color.adjust($secondary-color, $lightness: -10%);
+  }
+}
+
+button.btn-disabled,
+.btn-disabled {
+  opacity: 0.6;
+  pointer-events: none;
+  cursor: not-allowed;
+}

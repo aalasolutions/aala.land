@@ -1,0 +1,174 @@
+// ============================================
+// MOLECULES: Tab Item
+// ============================================
+// Single tab with active indicator.
+
+@use '../nuvoui' as Nuvo;
+@use '../variables' as *;
+
+// ============================================
+// Standard Tab Item
+// ============================================
+
+.tab-item {
+  @include Nuvo.apply(
+    flex-inline, x-center, gap(2),
+    py(3), px(4),
+    font-size(sm), font(medium),
+    cursor(pointer),
+    whitespace-nowrap,
+    transition, duration(200)
+  );
+  color: $text-secondary;
+  text-decoration: none;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+
+  &:hover {
+    color: $text-primary;
+  }
+
+  &:focus {
+    outline: none;
+  }
+}
+
+// ============================================
+// Tab Item States
+// ============================================
+
+.tab-item--active {
+  color: $primary-color;
+  border-bottom-color: $primary-color;
+
+  .tab-item__icon {
+    color: $primary-color;
+  }
+}
+
+.tab-item--disabled {
+  @include Nuvo.apply(opacity(50));
+  pointer-events: none;
+  cursor: not-allowed;
+}
+
+// ============================================
+// Tab Item Parts
+// ============================================
+
+.tab-item__icon {
+  @include Nuvo.apply(transition, duration(200));
+  font-size: 1em;
+  color: $text-muted;
+}
+
+.tab-item__badge {
+  @include Nuvo.apply(
+    flex-inline, center, x-center,
+    min-width(5), height(5),
+    px(1.5),
+    font(semibold),
+    pill
+  );
+  font-size: 0.625rem;
+  color: $white;
+  background-color: Nuvo.get-color(gray, 400);
+
+  .tab-item--active & {
+    background-color: $primary-color;
+  }
+}
+
+// ============================================
+// Tab Item Variants
+// ============================================
+
+// Pill style tabs
+.tab-item--pill {
+  @include Nuvo.apply(rounded(sm));
+  border-bottom: none;
+
+  &:hover {
+    background-color: Nuvo.get-color(gray, 100);
+  }
+
+  &.tab-item--active {
+    background-color: rgba($primary-color, 0.1);
+    color: $primary-color;
+  }
+}
+
+// Contained tabs (with background)
+.tab-item--contained {
+  @include Nuvo.apply(rounded-t(sm));
+  border-bottom: none;
+  background-color: transparent;
+
+  &.tab-item--active {
+    background-color: $white;
+    box-shadow: 0 -1px 3px rgba($dark-color, 0.1);
+  }
+}
+
+// ============================================
+// Tab Item Sizes
+// ============================================
+
+.tab-item--sm {
+  @include Nuvo.apply(py(2), px(3), gap(1.5));
+  font-size: 0.8125rem;
+}
+
+.tab-item--lg {
+  @include Nuvo.apply(py(4), px(5), gap(2.5), font-size(base));
+}
+
+// ============================================
+// Vertical Tab Item
+// ============================================
+
+.tab-item--vertical {
+  @include Nuvo.apply(w-full, start, py(2.5), px(4));
+  border-bottom: none;
+  border-left: 2px solid transparent;
+  border-radius: 0;
+
+  &.tab-item--active {
+    border-left-color: $primary-color;
+    background-color: rgba($primary-color, 0.05);
+  }
+
+  &:hover:not(.tab-item--active) {
+    background-color: Nuvo.get-color(gray, 50);
+  }
+}
+
+// ============================================
+// Tab Close Button
+// ============================================
+
+.tab-item__close {
+  @include Nuvo.apply(
+    flex, center, x-center,
+    width(4), height(4),
+    ml(1), p(0),
+    font-size(xs),
+    rounded(xs), cursor(pointer),
+    opacity(0),
+    transition, duration(200)
+  );
+  color: $text-muted;
+  background: none;
+  border: none;
+
+  .tab-item:hover &,
+  .tab-item--active & {
+    @include Nuvo.apply(opacity(100));
+  }
+
+  &:hover {
+    color: $error-color;
+    background-color: rgba($error-color, 0.1);
+  }
+}

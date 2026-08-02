@@ -1,0 +1,16 @@
+<div class={{this.classes}} data-test-nu-progress ...attributes>
+  <div
+    class="nu-progress__track"
+    role="progressbar"
+    aria-valuenow={{this.value}}
+    aria-valuemin="0"
+    aria-valuemax="100"
+    data-test-nu-progress-track
+  >
+    <div class="nu-progress__bar" style={{this.barStyle}} data-test-nu-progress-bar></div>
+  </div>
+
+  {{#if this.showText}}
+    <span class="nu-progress__label" data-test-nu-progress-label>{{this.displayLabel}}</span>
+  {{/if}}
+</div>

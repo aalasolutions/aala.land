@@ -1,0 +1,308 @@
+// nu-dropdown - positioning wrapper for a trigger + floating menu panel
+@use "./mixins/bem" as *;
+@use "./mixins/var" as *;
+@use "./common/var" as *;
+
+@include b(dropdown) {
+  position: relative;
+  display: inline-block;
+
+  // The trigger's caret flips while the menu is open. Scoped to __caret so a
+  // custom :trigger block can opt in by using the same class.
+  @include e(caret) {
+    display: inline-flex;
+    transition: transform nu-duration(fast) $nu-ease;
+
+    @include reduced-motion {
+      transition: none;
+    }
+  }
+
+  @include when(open) {
+    .nu-dropdown__caret {
+      transform: rotate(180deg);
+    }
+  }
+
+  // Trigger text alignment. Default centres (button behaviour); m-align-start
+  // reads like a select field, with the caret pushed to the far end.
+  @include m(align-start, align-end, align-center) {
+    inline-size: 100%;
+
+    .nu-btn {
+      inline-size: 100%;
+    }
+
+    // Menu tracks the trigger width so the two read as one control.
+    .nu-menu {
+      inline-size: 100%;
+      min-inline-size: 0;
+    }
+
+    // The label holds the text plus the caret. The caret is pinned to the far
+    // edge so label alignment moves only the text.
+    .nu-btn__label {
+      display: flex;
+      align-items: center;
+      gap: nu-space(2);
+      inline-size: 100%;
+    }
+
+    .nu-dropdown__caret {
+      margin-inline-start: auto;
+    }
+  }
+
+  // Trigger label alignment. The caret is pushed to the far edge so the label
+  // can sit wherever it likes without the caret following it.
+  @include m(align-start) {
+    .nu-btn__label {
+      justify-content: flex-start;
+    }
+  }
+
+  @include m(align-center) {
+    .nu-btn__label {
+      justify-content: center;
+    }
+  }
+
+  @include m(align-end) {
+    .nu-btn__label {
+      justify-content: flex-end;
+    }
+  }
+
+  // Option alignment is a SEPARATE axis from the trigger. A [...] action menu
+  // may want centred options while a select-like dropdown keeps them at start
+  // (the default). Never couple the two.
+  // Group indent is a start-edge affordance, so it is cancelled when options
+  // are deliberately centred or end-aligned.
+  @include m(options-center) {
+    .nu-menu__item {
+      justify-content: center;
+      text-align: center;
+      padding-inline-start: nu-var-el("menu", "item", "PaddingInline");
+    }
+  }
+
+  @include m(options-end) {
+    .nu-menu__item {
+      justify-content: flex-end;
+      text-align: end;
+      padding-inline-start: nu-var-el("menu", "item", "PaddingInline");
+    }
+  }
+
+  // ---- placement modifiers ----
+
+  @include m(start) {
+    .nu-menu {
+      inset-inline-start: 0;
+      inset-inline-end: auto;
+    }
+  }
+
+  @include m(end) {
+    .nu-menu {
+      inset-inline-start: auto;
+      inset-inline-end: 0;
+    }
+  }
+
+  @include m(up) {
+    .nu-menu {
+      inset-block-end: 100%;
+      inset-block-start: auto;
+      margin-block-end: nu-space(1);
+      margin-block-start: 0;
+    }
+  }
+}
+
+@include b(menu) {
+  @include nu-root("menu", (
+    "MinWidth": 12rem,
+    "MaxHeight": 20rem,
+    "PaddingBlock": nu-space(2),
+    "PaddingInline": nu-space(2),
+    "Gap": nu-space(1),
+    "BackgroundColor": var(--bg-surface),
+    "BorderWidth": 1px,
+    "BorderColor": var(--border-base),
+    "BorderRadius": nu-radius(lg),
+    "BoxShadow": nu-shadow(lg),
+    "ZIndex": nu-z(dropdown),
+    "TransitionDuration": nu-duration(fast),
+    "focus--BoxShadow": 0 0 0 3px #{nu-tint(primary, 35%)},
+  ));
+
+  position: absolute;
+  inset-block-start: 100%;
+  inset-inline-start: 0;
+  z-index: nu-var("menu", "ZIndex");
+  display: none;
+  flex-direction: column;
+  gap: nu-var("menu", "Gap");
+  min-inline-size: nu-var("menu", "MinWidth");
+  max-block-size: nu-var("menu", "MaxHeight");
+  margin-block-start: nu-space(1);
+  padding-block: nu-var("menu", "PaddingBlock");
+  padding-inline: nu-var("menu", "PaddingInline");
+  overflow-y: auto;
+  background-color: nu-var("menu", "BackgroundColor");
+  border: nu-var("menu", "BorderWidth") solid nu-var("menu", "BorderColor");
+  border-radius: nu-var("menu", "BorderRadius");
+  box-shadow: nu-var("menu", "BoxShadow");
+  opacity: 0;
+  transition:
+    opacity nu-var("menu", "TransitionDuration") $nu-ease,
+    transform nu-var("menu", "TransitionDuration") $nu-ease;
+
+  @include reduced-motion {
+    transition: none;
+  }
+
+  // ---- elements ----
+
+  @include e(item) {
+    @include nu-root-el("menu", "item", (
+      "Gap": nu-space(2),
+      "PaddingBlock": nu-space(2),
+      "PaddingInline": nu-space(3),
+      "FontSize": nu-font-size(sm),
+      "Color": var(--text-color),
+      "BackgroundColor": transparent,
+      "BorderRadius": nu-radius(md),
+      "hover--BackgroundColor": var(--bg-alternate),
+      "active--BackgroundColor": var(--primary-50),
+      "active--Color": var(--primary-700),
+    ));
+
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    inline-size: 100%;
+    text-align: start;
+    gap: nu-var-el("menu", "item", "Gap");
+    padding-block: nu-var-el("menu", "item", "PaddingBlock");
+    padding-inline: nu-var-el("menu", "item", "PaddingInline");
+    font-size: nu-var-el("menu", "item", "FontSize");
+    color: nu-var-el("menu", "item", "Color");
+    background-color: nu-var-el("menu", "item", "BackgroundColor");
+    border-radius: nu-var-el("menu", "item", "BorderRadius");
+    cursor: pointer;
+    user-select: none;
+    text-decoration: none;
+    transition: background-color nu-var("menu", "TransitionDuration") $nu-ease;
+
+    @include reduced-motion {
+      transition: none;
+    }
+
+    &:hover:not(.is-disabled) {
+      --nu-menu__item--BackgroundColor: var(--nu-menu__item--hover--BackgroundColor);
+    }
+
+    &:focus-visible {
+      outline: none;
+      box-shadow: nu-var("menu", "focus--BoxShadow");
+    }
+  }
+
+  @include e(item-icon) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 1em;
+    line-height: 1;
+    color: var(--text-muted);
+  }
+
+  @include e(item-label) {
+    flex: 1;
+    min-inline-size: 0;
+    line-height: 1.25;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  @include e(group-label) {
+    padding-block: nu-space(1);
+    padding-inline: nu-space(3);
+    font-size: nu-font-size(xs);
+    font-weight: nu-font-weight(semibold);
+    color: var(--text-subtle);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+
+    // Breathing room above a new group, except the first one.
+    &:not(:first-child) {
+      margin-block-start: nu-space(2);
+    }
+  }
+
+  // A menu that has groups indents ALL its options so the hierarchy reads.
+  // Uses :has() rather than a sibling selector, which would keep indenting
+  // past the next group label.
+  &:has(.nu-menu__group-label) {
+    .nu-menu__item {
+      padding-inline-start: nu-space(5);
+    }
+  }
+
+  @include e(separator) {
+    block-size: 1px;
+    margin-block: nu-space(1);
+    margin-inline: nu-space(1);
+    background-color: var(--border-base);
+  }
+
+  @include e(search) {
+    padding-block: nu-space(1);
+    padding-inline: nu-space(1);
+    margin-block-end: nu-space(1);
+    border-block-end: 1px solid var(--border-base);
+  }
+
+  @include e(empty) {
+    padding-block: nu-space(4);
+    padding-inline: nu-space(3);
+    font-size: nu-font-size(sm);
+    color: var(--text-muted);
+    text-align: center;
+  }
+
+  // ---- item states ----
+
+  .nu-menu__item.is-active {
+    --nu-menu__item--BackgroundColor: var(--nu-menu__item--active--BackgroundColor);
+    --nu-menu__item--Color: var(--nu-menu__item--active--Color);
+  }
+
+  .nu-menu__item.is-highlighted {
+    --nu-menu__item--BackgroundColor: var(--bg-alternate);
+  }
+
+  .nu-menu__item.is-disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+
+  .nu-menu__item.m-danger {
+    --nu-menu__item--Color: var(--danger);
+    --nu-menu__item--hover--BackgroundColor: var(--danger-50);
+    --nu-menu__item--active--BackgroundColor: var(--danger-50);
+    --nu-menu__item--active--Color: var(--danger-700);
+  }
+
+  // ---- menu open state ----
+
+  @include when(open) {
+    display: flex;
+    opacity: 1;
+  }
+}

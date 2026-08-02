@@ -41,8 +41,14 @@ export default class CommissionsController extends PaginatedController {
     this[fieldName] = e.target.value;
   }
 
-  @action setStatusFilter(e) {
-    this.filterStatus = e.target.value;
+  // Nuvo::Input/Select/Textarea call onInput/onChange as (value, event),
+  // not the raw DOM event setField expects.
+  @action setFieldValue(fieldName, value) {
+    this[fieldName] = value;
+  }
+
+  @action setStatusFilter(value) {
+    this.filterStatus = value;
     this.page = 1;
   }
 

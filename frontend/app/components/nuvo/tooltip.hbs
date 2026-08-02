@@ -1,0 +1,22 @@
+<span
+  class={{this.classes}}
+  data-test-nu-tooltip
+  {{on "mouseenter" this.show}}
+  {{on "mouseleave" this.hide}}
+  {{on "focusin" this.show}}
+  {{on "focusout" this.hide}}
+  {{on "keydown" this.onKeydown}}
+  ...attributes
+>
+  {{yield}}
+
+  <span
+    id={{this.contentId}}
+    class="nu-tooltip__content"
+    role="tooltip"
+    data-test-nu-tooltip-content
+  >
+    {{@content}}
+  </span>
+  <span class="nu-tooltip__arrow" aria-hidden="true"></span>
+</span>

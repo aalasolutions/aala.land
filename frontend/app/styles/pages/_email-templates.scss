@@ -1,0 +1,8 @@
+// Email Templates: template grid + create/edit/preview modals. See AGENT_BRIEF.md.
+//
+// One bespoke rule: the card action row needs to pin to the bottom of the
+// card regardless of body content height. No core `mt-auto` utility exists.
+
+.email-template-card__actions {
+  margin-top: auto;
+}

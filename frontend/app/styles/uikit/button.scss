@@ -1,0 +1,249 @@
+// nu-btn - interactive action trigger
+@use "./mixins/bem" as *;
+@use "./mixins/var" as *;
+@use "./common/var" as *;
+
+@include b(btn) {
+  @include nu-root("btn", (
+    "Display": inline-flex,
+    "AlignItems": center,
+    "JustifyContent": center,
+    "Gap": nu-space(2),
+    "PaddingBlock": nu-space(2),
+    "PaddingInline": nu-space(4),
+    "MinHeight": 2.5rem,
+    "FontSize": nu-font-size(sm),
+    "FontWeight": nu-font-weight(semibold),
+    "LineHeight": 1.25,
+    "BorderRadius": nu-radius(lg),
+    "BorderWidth": 1px,
+    "BorderStyle": solid,
+    "BorderColor": transparent,
+    "Color": var(--text-color),
+    "BackgroundColor": transparent,
+    "TransitionDuration": nu-duration(fast),
+    "hover--BackgroundColor": var(--bg-alternate),
+    "hover--BorderColor": var(--border-base),
+    "hover--Color": var(--text-color),
+    "focus--BoxShadow": 0 0 0 3px #{nu-tint(primary, 35%)},
+    "disabled--Opacity": 0.55,
+  ));
+
+  display: nu-var("btn", "Display");
+  align-items: nu-var("btn", "AlignItems");
+  justify-content: nu-var("btn", "JustifyContent");
+  gap: nu-var("btn", "Gap");
+  padding-block: nu-var("btn", "PaddingBlock");
+  padding-inline: nu-var("btn", "PaddingInline");
+  min-height: nu-var("btn", "MinHeight");
+  font-family: inherit;
+  font-size: nu-var("btn", "FontSize");
+  font-weight: nu-var("btn", "FontWeight");
+  line-height: nu-var("btn", "LineHeight");
+  color: nu-var("btn", "Color");
+  background-color: nu-var("btn", "BackgroundColor");
+  border: nu-var("btn", "BorderWidth") nu-var("btn", "BorderStyle") nu-var("btn", "BorderColor");
+  border-radius: nu-var("btn", "BorderRadius");
+  white-space: nowrap;
+  text-decoration: none;
+  cursor: pointer;
+  user-select: none;
+  transition:
+    background-color nu-var("btn", "TransitionDuration") $nu-ease,
+    border-color nu-var("btn", "TransitionDuration") $nu-ease,
+    color nu-var("btn", "TransitionDuration") $nu-ease,
+    box-shadow nu-var("btn", "TransitionDuration") $nu-ease;
+
+  @include reduced-motion {
+    transition: none;
+  }
+
+  &:hover:not(:disabled):not(.is-disabled):not(.is-loading) {
+    @include nu-set-all("btn", "hover", ("Color", "BackgroundColor", "BorderColor"));
+  }
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: nu-var("btn", "focus--BoxShadow");
+  }
+
+  // ---- elements ----
+
+  @include e(icon) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 1em;
+    line-height: 1;
+
+    // Icon order is flex order: place __icon before or after the label in
+    // markup and the gap handles the rest. No modifier needed.
+    @include when(spinning) {
+      animation: nu-btn-spin nu-duration(slow) linear infinite;
+
+      @include reduced-motion {
+        animation: none;
+      }
+    }
+  }
+
+  @include e(label) {
+    line-height: 1;
+  }
+
+  // ---- variants: shape differs, so enumerated ----
+
+  @include m(primary) {
+    --nu-btn--Color: var(--text-inverted);
+    --nu-btn--BackgroundColor: var(--primary);
+    --nu-btn--hover--Color: var(--text-inverted);
+    --nu-btn--hover--BackgroundColor: var(--primary-600);
+    --nu-btn--hover--BorderColor: transparent;
+  }
+
+  @include m(secondary) {
+    --nu-btn--Color: var(--text-color);
+    --nu-btn--BackgroundColor: var(--bg-surface);
+    --nu-btn--BorderColor: var(--border-base);
+    --nu-btn--hover--BackgroundColor: var(--bg-alternate);
+    --nu-btn--hover--BorderColor: var(--border-base);
+  }
+
+  @include m(danger) {
+    --nu-btn--Color: var(--text-inverted);
+    --nu-btn--BackgroundColor: var(--danger);
+    --nu-btn--hover--Color: var(--text-inverted);
+    --nu-btn--hover--BackgroundColor: var(--danger-600);
+    --nu-btn--hover--BorderColor: transparent;
+    --nu-btn--focus--BoxShadow: 0 0 0 3px #{nu-tint(danger, 35%)};
+  }
+
+  @include m(success) {
+    --nu-btn--Color: var(--text-inverted);
+    --nu-btn--BackgroundColor: var(--success);
+    --nu-btn--hover--Color: var(--text-inverted);
+    --nu-btn--hover--BackgroundColor: var(--success-600);
+    --nu-btn--hover--BorderColor: transparent;
+  }
+
+  @include m(ghost) {
+    --nu-btn--Color: var(--text-muted);
+    --nu-btn--BackgroundColor: transparent;
+    --nu-btn--BorderColor: transparent;
+    --nu-btn--hover--Color: var(--text-color);
+    --nu-btn--hover--BackgroundColor: var(--bg-alternate);
+    --nu-btn--hover--BorderColor: transparent;
+  }
+
+  @include m(link) {
+    --nu-btn--Color: var(--primary);
+    --nu-btn--BackgroundColor: transparent;
+    --nu-btn--BorderColor: transparent;
+    --nu-btn--PaddingInline: 0;
+    --nu-btn--MinHeight: auto;
+    --nu-btn--hover--Color: var(--primary-600);
+    --nu-btn--hover--BackgroundColor: transparent;
+    --nu-btn--hover--BorderColor: transparent;
+
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+
+  // ---- outline variants: uniform, so looped ----
+
+  @each $variant in $nu-variants {
+    &.m-outline.m-#{$variant} {
+      --nu-btn--Color: var(--#{$variant});
+      --nu-btn--BackgroundColor: transparent;
+      --nu-btn--BorderColor: var(--#{$variant});
+      --nu-btn--hover--Color: var(--text-inverted);
+      --nu-btn--hover--BackgroundColor: var(--#{$variant});
+      --nu-btn--hover--BorderColor: var(--#{$variant});
+    }
+  }
+
+  // ---- sizes: uniform, so looped ----
+
+  $nu-btn-sizes: (
+    "xs": ("PaddingBlock": nu-space(1), "PaddingInline": nu-space(2), "FontSize": nu-font-size(xs), "MinHeight": 1.75rem, "Gap": nu-space(1)),
+    "sm": ("PaddingBlock": nu-space(1), "PaddingInline": nu-space(3), "FontSize": nu-font-size(xs), "MinHeight": 2rem, "Gap": nu-space(1)),
+    "lg": ("PaddingBlock": nu-space(3), "PaddingInline": nu-space(5), "FontSize": nu-font-size(md), "MinHeight": 3rem, "Gap": nu-space(3)),
+  );
+
+  @each $size, $spec in $nu-btn-sizes {
+    &.m-#{$size} {
+      @each $token, $value in $spec {
+        --nu-btn--#{$token}: #{$value};
+      }
+    }
+  }
+
+  // ---- icon-only shapes ----
+  // Square/circle collapse horizontal padding and lock the box to MinHeight so
+  // a lone icon renders as a square, not a wide pill.
+
+  @include m(square, circle) {
+    --nu-btn--PaddingInline: 0;
+    --nu-btn--Gap: 0;
+
+    inline-size: nu-var("btn", "MinHeight");
+    padding-inline: 0;
+  }
+
+  @include m(circle) {
+    --nu-btn--BorderRadius: #{nu-radius(full)};
+  }
+
+  // ---- states ----
+
+  @include when(block) {
+    display: flex;
+    width: 100%;
+  }
+
+  @include when(loading) {
+    cursor: progress;
+    pointer-events: none;
+  }
+
+  @include when(active) {
+    --nu-btn--BackgroundColor: var(--bg-alternate);
+    --nu-btn--BorderColor: var(--border-base);
+  }
+
+  &:disabled,
+  &.is-disabled {
+    opacity: nu-var("btn", "disabled--Opacity");
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+}
+
+@keyframes nu-btn-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+// Button group
+@include b(btn-group) {
+  display: inline-flex;
+  align-items: center;
+  gap: nu-space(2);
+
+  @include m(attached) {
+    gap: 0;
+
+    .nu-btn:not(:first-child) {
+      border-start-start-radius: 0;
+      border-end-start-radius: 0;
+    }
+
+    .nu-btn:not(:last-child) {
+      border-start-end-radius: 0;
+      border-end-end-radius: 0;
+      margin-inline-end: -1px;
+    }
+  }
+}

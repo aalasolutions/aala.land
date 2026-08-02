@@ -15,8 +15,7 @@ export default class AuditController extends Controller {
   @tracked purgeDays = 90;
   @tracked isPurging = false;
 
-  @action setFilterAction(event) {
-    const value = event.target.value;
+  @action setFilterAction(value) {
     this.filterAction = value;
     this.router.transitionTo('audit', {
       queryParams: {
@@ -26,8 +25,7 @@ export default class AuditController extends Controller {
     });
   }
 
-  @action setFilterEntityType(event) {
-    const value = event.target.value;
+  @action setFilterEntityType(value) {
     this.filterEntityType = value;
     this.router.transitionTo('audit', {
       queryParams: {
@@ -60,20 +58,6 @@ export default class AuditController extends Controller {
     } catch {
       return String(value);
     }
-  }
-
-  @action getActionBadgeClass(action) {
-    const classes = {
-      CREATE: 'bg-green-100 text-green-800',
-      UPDATE: 'bg-blue-100 text-blue-800',
-      DELETE: 'bg-red-100 text-red-800',
-      ASSIGN: 'bg-purple-100 text-purple-800',
-      LOGIN: 'bg-gray-100 text-gray-800',
-      LOGOUT: 'bg-gray-100 text-gray-800',
-      IMPORT: 'bg-yellow-100 text-yellow-800',
-      EXPORT: 'bg-indigo-100 text-indigo-800',
-    };
-    return classes[action] || 'bg-gray-100 text-gray-800';
   }
 
   @action setField(fieldName, e) {

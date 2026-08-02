@@ -1,0 +1,59 @@
+// Properties detail: asset cards with a nested unit grid, plus a list view.
+// See AGENT_BRIEF.md. `_owners.scss` already owns `.unit-card` /
+// `.unit-number` / `.units-grid` for a different tile shape; this page's
+// premium tile (icon box + amenities strip + tenant footer) has its own
+// class names so nothing collides.
+@use "../uikit/common/var" as *;
+@use "../uikit/mixins/bem" as *;
+
+// ---- units grid inside an asset card ----
+
+.grid-cols-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: nu-space(4);
+
+  @include media-down(lg) {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  @include media-down(sm) {
+    grid-template-columns: 1fr;
+  }
+}
+
+// No kit component covers this compound tile (icon box + status/type tags +
+// amenities strip + actions), so it stays bespoke, built from card tokens.
+.unit-card-premium {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-base);
+  border-radius: nu-radius(xl);
+  padding: nu-space(4);
+  box-shadow: nu-shadow(sm);
+  transition: box-shadow nu-duration(fast) $nu-ease;
+
+  &:hover {
+    box-shadow: nu-shadow(md);
+  }
+}
+
+.unit-card-icon-box {
+  background-color: var(--bg-alternate);
+  color: var(--primary);
+  padding: nu-space(2);
+  border-radius: nu-radius(lg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.unit-amenities-strip {
+  background-color: var(--bg-alternate);
+  padding: nu-space(2);
+  border-radius: nu-radius(lg);
+  display: flex;
+  justify-content: space-around;
+  gap: nu-space(4);
+  font-size: nu-font-size(sm);
+  color: var(--text-muted);
+}

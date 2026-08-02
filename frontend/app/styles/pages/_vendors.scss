@@ -1,0 +1,15 @@
+// Vendors: table + new/edit-vendor modal. See AGENT_BRIEF.md.
+//
+// The specialty picker uses the kit's `.nu-tag.m-selectable` plus a
+// `badge-trade-*` domain class, so a chip in the form and the read-only badge
+// on the vendor row are the same colour. The only local rule keeps the domain
+// tint when a chip is selected: the kit's `is-selected` paints it with
+// `--primary`, which would throw away the trade colour that identifies it.
+@use "../uikit/common/var" as *;
+
+.vendor-specialty-chip.is-selected {
+  --nu-tag--BackgroundColor: var(--bg-surface);
+  --nu-tag--BorderColor: var(--nu-tag--Color);
+
+  box-shadow: inset 0 0 0 1px var(--nu-tag--Color);
+}

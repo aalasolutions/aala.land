@@ -1,0 +1,127 @@
+// ============================================
+// MOLECULES: Card Header
+// ============================================
+// Card title + action buttons combination.
+
+@use '../nuvoui' as Nuvo;
+@use '../variables' as *;
+
+// ============================================
+// Standard Card Header
+// ============================================
+
+.card-header {
+  @include Nuvo.apply(flex, x-center, between, gap(4), pb(4), mb(4));
+  border-bottom: 1px solid $border-color;
+
+  &:last-child {
+    @include Nuvo.apply(mb(0), pb(0));
+    border-bottom: none;
+  }
+}
+
+.card-header__title {
+  @include Nuvo.apply(flex, x-center, gap(2), font-size(base), font(semibold), m(0));
+  color: $text-primary;
+
+  i,
+  svg {
+    color: $text-muted;
+    font-size: 1.125em;
+  }
+}
+
+.card-header__subtitle {
+  @include Nuvo.apply(mt(1), font(normal));
+  font-size: 0.8125rem;
+  color: $text-secondary;
+}
+
+.card-header__actions {
+  @include Nuvo.apply(flex, x-center, gap(2), no-shrink);
+}
+
+// ============================================
+// Card Header Variants
+// ============================================
+
+// Compact (no border)
+.card-header--compact {
+  @include Nuvo.apply(pb(3), mb(3));
+  border-bottom: none;
+}
+
+// With background
+.card-header--shaded {
+  @include Nuvo.apply(p(4), mb(4));
+  margin: -1.5rem -1.5rem 1rem;
+  background-color: Nuvo.get-color(gray, 50);
+  border-bottom: 1px solid $border-color;
+  border-radius: 0.5rem 0.5rem 0 0;
+}
+
+// Sticky header
+.card-header--sticky {
+  @include Nuvo.apply(sticky, top(0), z-hover);
+  background-color: $white;
+}
+
+// ============================================
+// Card Header with Tabs
+// ============================================
+
+.card-header--tabs {
+  @include Nuvo.apply(wrap, pb(0), mb(0));
+  border-bottom: none;
+
+  .card-header__tabs {
+    @include Nuvo.apply(flex, mt(3), w-full);
+    gap: 0;
+    border-bottom: 1px solid $border-color;
+  }
+}
+
+// ============================================
+// Card Header with Badge
+// ============================================
+
+.card-header__badge {
+  @include Nuvo.apply(
+    flex-inline, x-center,
+    py(1), px(2),
+    font(semibold), uppercase, rounded(xs)
+  );
+  font-size: 0.625rem;
+  letter-spacing: 0.05em;
+  background-color: rgba($primary-color, 0.1);
+  color: $primary-color;
+}
+
+// ============================================
+// Card Header with Icon Background
+// ============================================
+
+.card-header__icon {
+  @include Nuvo.apply(
+    flex, center, x-center,
+    width(10), height(10),
+    rounded(md), no-shrink
+  );
+  background-color: rgba($primary-color, 0.1);
+  color: $primary-color;
+
+  &.card-header__icon--success {
+    background-color: $success-light;
+    color: $success-dark;
+  }
+
+  &.card-header__icon--warning {
+    background-color: $warning-light;
+    color: $warning-dark;
+  }
+
+  &.card-header__icon--danger {
+    background-color: $error-light;
+    color: $error-dark;
+  }
+}

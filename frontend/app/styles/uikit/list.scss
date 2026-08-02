@@ -1,0 +1,252 @@
+// nu-list - unordered/ordered lists and description lists
+@use "./mixins/bem" as *;
+@use "./mixins/var" as *;
+@use "./common/var" as *;
+
+@include b(list) {
+  @include nu-root("list", (
+    "Gap": nu-space(2),
+    "PaddingInlineStart": nu-space(6),
+    "MarkerColor": var(--text-muted),
+    "FontSize": nu-font-size(md),
+    "Color": var(--text-color),
+    "DividerColor": var(--border-base),
+  ));
+
+  display: flex;
+  flex-direction: column;
+  gap: nu-var("list", "Gap");
+  margin: 0;
+  padding-inline-start: nu-var("list", "PaddingInlineStart");
+  font-size: nu-var("list", "FontSize");
+  color: nu-var("list", "Color");
+
+  &::marker {
+    color: nu-var("list", "MarkerColor");
+  }
+
+  // ---- elements ----
+
+  @include e(item) {
+    display: flex;
+    align-items: flex-start;
+    gap: nu-space(2);
+    line-height: 1.5;
+  }
+
+  @include e(icon) {
+    display: inline-flex;
+    flex-shrink: 0;
+    margin-block-start: 0.125rem;
+    font-size: 1em;
+    line-height: 1;
+    color: var(--text-muted);
+  }
+
+  // ---- modifiers ----
+
+  @include m(plain) {
+    --nu-list--PaddingInlineStart: 0;
+
+    list-style: none;
+  }
+
+  @include m(ordered) {
+    list-style: decimal;
+  }
+
+  @include m(inline) {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    padding-inline-start: 0;
+    list-style: none;
+
+    @include e(item) {
+      align-items: center;
+    }
+  }
+
+  @include m(bordered) {
+    --nu-list--PaddingInlineStart: 0;
+
+    gap: 0;
+    list-style: none;
+
+    @include e(item) {
+      padding-block: nu-space(3);
+      border-block-end: 1px solid nu-var("list", "DividerColor");
+
+      &:last-child {
+        border-block-end: none;
+      }
+    }
+  }
+
+  @include m(compact) {
+    --nu-list--Gap: #{nu-space(1)};
+  }
+}
+
+// Standalone row with a main region and a trailing action region. Distinct
+// from `.nu-list__item`, which is a child of `.nu-list`; this one stands alone
+// inside any container.
+@include b(list-item) {
+  @include nu-root("list-item", (
+    "Gap": nu-space(3),
+    "PaddingBlock": nu-space(3),
+    "PaddingInline": nu-space(4),
+    "BorderRadius": nu-radius(lg),
+    "BorderColor": var(--border-base),
+    "BackgroundColor": var(--bg-surface),
+    "hover--BorderColor": var(--primary-300),
+  ));
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: nu-var("list-item", "Gap");
+  padding-block: nu-var("list-item", "PaddingBlock");
+  padding-inline: nu-var("list-item", "PaddingInline");
+  background-color: nu-var("list-item", "BackgroundColor");
+  border: 1px solid nu-var("list-item", "BorderColor");
+  border-radius: nu-var("list-item", "BorderRadius");
+
+  @include e(main) {
+    min-inline-size: 0;
+    flex: 1;
+  }
+
+  @include e(actions) {
+    display: flex;
+    align-items: center;
+    gap: nu-space(2);
+    flex-shrink: 0;
+  }
+
+  @include m(hoverable) {
+    transition: border-color nu-duration(fast) $nu-ease;
+
+    &:hover {
+      border-color: nu-var("list-item", "hover--BorderColor");
+    }
+
+    @include reduced-motion {
+      transition: none;
+    }
+  }
+
+  @include m(plain) {
+    --nu-list-item--PaddingInline: 0;
+    --nu-list-item--BackgroundColor: transparent;
+    --nu-list-item--BorderColor: transparent;
+  }
+}
+
+// Label/value pair on one line. Used for compact metadata readouts where a
+// full desc-list would be too heavy.
+@include b(info-row) {
+  @include nu-root("info-row", (
+    "Gap": nu-space(3),
+    "PaddingBlock": nu-space(2),
+    "FontSize": nu-font-size(sm),
+    "LabelColor": var(--text-muted),
+    "LabelFontWeight": nu-font-weight(medium),
+    "ValueColor": var(--text-color),
+  ));
+
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: nu-var("info-row", "Gap");
+  padding-block: nu-var("info-row", "PaddingBlock");
+  font-size: nu-var("info-row", "FontSize");
+
+  @include e(label) {
+    color: nu-var("info-row", "LabelColor");
+    font-weight: nu-var("info-row", "LabelFontWeight");
+    flex-shrink: 0;
+  }
+
+  @include e(value) {
+    color: nu-var("info-row", "ValueColor");
+    min-inline-size: 0;
+    text-align: end;
+    word-break: break-word;
+  }
+
+  // Label above value, both full width. For long values (JSON, user agents)
+  // that cannot share a line with their label.
+  @include m(stacked) {
+    flex-direction: column;
+    align-items: stretch;
+    gap: nu-space(1);
+
+    .nu-info-row__value {
+      text-align: start;
+    }
+  }
+
+  @include m(bordered) {
+    border-block-end: 1px solid var(--border-base);
+  }
+}
+
+// Term/description grid
+@include b(desc-list) {
+  @include nu-root("desc-list", (
+    "Gap": nu-space(3),
+    "TermColor": var(--text-muted),
+    "TermFontWeight": nu-font-weight(medium),
+    "DescriptionColor": var(--text-color),
+    "FontSize": nu-font-size(sm),
+  ));
+
+  display: flex;
+  flex-direction: column;
+  gap: nu-var("desc-list", "Gap");
+  margin: 0;
+  font-size: nu-var("desc-list", "FontSize");
+
+  // ---- elements ----
+
+  @include e(group) {
+    display: flex;
+    flex-direction: column;
+    gap: nu-space(1);
+  }
+
+  @include e(term) {
+    margin: 0;
+    font-weight: nu-var("desc-list", "TermFontWeight");
+    color: nu-var("desc-list", "TermColor");
+  }
+
+  @include e(description) {
+    margin: 0;
+    color: nu-var("desc-list", "DescriptionColor");
+  }
+
+  // ---- modifiers ----
+
+  @include m(horizontal) {
+    @include e(group) {
+      flex-direction: row;
+      align-items: baseline;
+      gap: nu-space(4);
+    }
+
+    @include e(term) {
+      flex-shrink: 0;
+      min-inline-size: 7.5rem;
+    }
+
+    @include e(description) {
+      flex: 1;
+    }
+  }
+
+  @include m(compact) {
+    --nu-desc-list--Gap: #{nu-space(1)};
+  }
+}

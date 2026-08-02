@@ -1,0 +1,461 @@
+@use "../../../nuvoui" as Nuvo;
+
+.admin-clients-details {
+  @include Nuvo.apply(pt(2rem));
+
+  .main-loading-container {
+    @include Nuvo.apply(flex, col, x-center, center, gap(1rem));
+    min-height: 400px;
+
+    .loading-spinner {
+      width: 3rem;
+      height: 3rem;
+      border: 3px solid $border-color;
+      border-top-color: $primary-color;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    p {
+      color: $text-secondary;
+      font-size: 0.9375rem;
+      margin: 0;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+  }
+
+  .back-button {
+    @include Nuvo.apply(
+      flex-inline,
+      x-center,
+      gap(0.5rem),
+      px(1rem),
+      py(0.5rem),
+      mb(1.5rem),
+      rounded(0.375rem)
+    );
+    background: $white;
+    border: 1px solid $border-color;
+    color: $text-secondary;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: color 0.2s ease, background 0.2s ease;
+    line-height: 1;
+    box-sizing: border-box;
+
+    i {
+      font-size: 0.75rem;
+      line-height: 1;
+      display: flex;
+      align-items: center;
+    }
+
+    &:hover {
+      color: $primary-color;
+      background: rgba($primary-color, 0.05);
+    }
+  }
+
+  .client-overview-card {
+    @include Nuvo.apply(grid, p(1.5rem));
+    grid-template-columns: 1fr auto;
+    gap: 2rem;
+    background: $white;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+    margin-bottom: 2rem;
+    transition: box-shadow 0.2s;
+
+    &:hover {
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+    }
+
+    .client-info-section {
+      @include Nuvo.apply(flex, x-start);
+      gap: 1.25rem;
+
+      .client-avatar-large,
+      .client-avatar-large-placeholder {
+        border-radius: 8px;
+        width: 4rem;
+        height: 4rem;
+        flex-shrink: 0;
+      }
+
+      .client-avatar-large {
+        border: 1px solid $border-color;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        object-fit: cover;
+      }
+
+      .client-avatar-large-placeholder {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, $slate-100 0%, $slate-200 100%);
+        color: $slate-400;
+        font-size: 1.5rem;
+        border: 1px solid $border-color;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+
+        i {
+          line-height: 1;
+          display: block;
+        }
+      }
+
+      .client-details {
+        h3 {
+          margin: 0 0 0.625rem 0;
+          font-size: 1.75rem;
+          font-weight: 700;
+          color: $text-primary;
+          letter-spacing: -0.025em;
+        }
+
+        p {
+          margin: 0.375rem 0;
+          font-size: 0.9375rem;
+          color: $text-secondary;
+          line-height: 1.5;
+
+          strong {
+            color: $text-primary;
+            font-weight: 600;
+            margin-right: 0.375rem;
+          }
+        }
+      }
+    }
+
+    .client-stats-section {
+      @include Nuvo.apply(flex, gap(2rem), x-center, center);
+
+      .stat-item {
+        text-align: center;
+
+        .stat-number {
+          font-size: 2rem;
+          font-weight: 700;
+          color: $primary-color;
+          line-height: 1;
+          margin-bottom: 0.5rem;
+        }
+
+        .stat-label {
+          font-size: 0.8125rem;
+          font-weight: 500;
+          color: $text-secondary;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+        }
+      }
+    }
+  }
+
+  .card {
+    background: $white;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+    margin-bottom: 2rem;
+    overflow: hidden;
+    transition: box-shadow 0.2s;
+
+    &:hover {
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+    }
+
+    .card-header {
+      background: $white;
+      padding: 1.5rem 1.5rem 0.5rem 1.5rem;
+    }
+
+    .card-body {
+      padding: 0.5rem 1.5rem 1.5rem 1.5rem;
+      background: $white;
+    }
+  }
+
+  .table-button {
+    @include Nuvo.apply(
+      flex-inline,
+      x-center,
+      center,
+      gap(0.375rem),
+      px(0.75rem),
+      py(0.5rem)
+    );
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+    font-size: 0.75rem;
+    font-weight: 500;
+    white-space: nowrap;
+
+    &.invoice {
+      background-color: rgba($blue-500, 0.12);
+      color: $blue-500;
+
+      &:hover {
+        background-color: rgba($blue-500, 0.2);
+      }
+    }
+
+    &.adjust-credits {
+      background-color: rgba($primary-color, 0.1);
+      color: $primary-color;
+      margin-right: 0.5rem;
+
+      &:hover {
+        background-color: rgba($primary-color, 0.2);
+      }
+    }
+
+    &.project-addons {
+      background-color: rgba($slate-500, 0.12);
+      color: $slate-600;
+      margin-right: 0.5rem;
+
+      &:hover {
+        background-color: rgba($slate-500, 0.22);
+      }
+    }
+
+    i {
+      font-size: 0.75rem;
+    }
+
+    span {
+      font-size: 0.75rem;
+    }
+  }
+
+  .popup-box {
+    padding: 0;
+  }
+
+  .edit-credits-form {
+    width: 420px;
+    max-width: 95vw;
+    border-radius: 8px;
+    overflow: hidden;
+    background: $white;
+    box-shadow: 0 12px 30px rgba(15, 23, 42, 0.18);
+    border-top: 3px solid $primary-color;
+
+    .no-data {
+      @include Nuvo.apply(flex, col);
+      gap: 0 !important;
+    }
+
+    .form-header {
+      @include Nuvo.apply(flex, between, x-center, gap(1.25rem));
+      padding: 1.25rem 1.5rem 1.6rem 1.5rem;
+      border-bottom: 1px solid $border-color;
+
+      .form-header-main {
+        flex: 1;
+        min-width: 0;
+      }
+
+      .form-title {
+        margin: 0 0 0.375rem;
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: $text-primary;
+      }
+
+      .form-subtitle {
+        margin: 0;
+        font-size: 0.875rem;
+        color: $text-muted;
+      }
+
+      .form-meta {
+        @include Nuvo.apply(mt(0.5rem));
+        font-size: 0.8rem;
+        color: $text-secondary;
+
+        .meta-value {
+          @include Nuvo.apply(inline-flex, x-center, gap(0.35rem), px(0.6rem), py(0.25rem), rounded(999px));
+          background: rgba($primary-color, 0.04);
+          border: 1px solid rgba($primary-color, 0.35);
+          color: $primary-color;
+          font-weight: 600;
+
+          i {
+            font-size: 0.75rem;
+          }
+        }
+      }
+    }
+
+    .form-tabs {
+      @include Nuvo.apply(flex, center, x-center, px(1.5rem), pt(0.75rem), pb(0.25rem));
+    }
+
+    .form-body {
+      padding: 1.25rem 1.5rem;
+
+      .credits-info {
+        @include Nuvo.apply(flex, between, x-center, p(1rem));
+        background: linear-gradient(135deg, rgba($primary-color, 0.06), rgba($slate-100, 0.7));
+        border-radius: 8px;
+        margin-bottom: 1.25rem;
+        border: 1px solid rgba($primary-color, 0.12);
+
+        .info-item {
+          display: flex;
+          flex-direction: column;
+          gap: 0.25rem;
+
+          .info-label {
+            font-size: 0.75rem;
+            font-weight: 500;
+            color: $text-secondary;
+            text-transform: uppercase;
+            letter-spacing: 0.025em;
+          }
+
+          .info-value {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: $primary-color;
+          }
+
+          &.remaining {
+            .info-value {
+              color: $success-color;
+            }
+          }
+        }
+      }
+
+      .form-fields {
+        @include Nuvo.apply(flex, col, gap(0.75rem));
+
+        .form-group {
+          margin-bottom: 0.75rem;
+        }
+
+        .section-label {
+          font-size: 0.75rem;
+          font-weight: 600;
+          text-transform: uppercase;
+          letter-spacing: 0.06em;
+          color: $text-secondary;
+          margin: 0.5rem 0 0.75rem;
+          padding-bottom: 0.35rem;
+          border-bottom: 1px dashed rgba($border-color, 0.7);
+        }
+
+        .helper-text {
+          font-size: 0.75rem;
+          color: $text-muted;
+          margin: 0;
+        }
+      }
+    }
+
+    .form-actions {
+      @include Nuvo.apply(flex, gap(0.75rem), px(1.5rem), py(1rem));
+      border-top: 1px solid $border-color;
+      background: $slate-50;
+      justify-content: flex-end;
+
+      .btn {
+        flex: 1;
+      }
+
+      button[disabled] {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+    }
+  }
+
+  .project-addons-modal {
+    width: 100%;
+    max-width: 94vw;
+    border-radius: 8px;
+    overflow: hidden;
+
+    .page-header {
+      padding: 1.25rem 1.5rem 1rem;
+      border-bottom: 1px solid $border-color;
+    }
+
+    .form-body {
+      padding: 1rem;
+      max-height: 55vh;
+      overflow-y: auto;
+    }
+  }
+
+  @include Nuvo.media-down(lg) {
+    .client-overview-card {
+      grid-template-columns: 1fr;
+      gap: 2rem;
+
+      .client-stats-section {
+        justify-content: flex-start;
+      }
+    }
+  }
+
+  @include Nuvo.media-down(md) {
+    @include Nuvo.apply(p(1rem));
+
+    .back-button {
+      margin-bottom: 1.5rem;
+    }
+
+    .client-overview-card {
+      @include Nuvo.apply(p(1.25rem), gap(1.5rem), mb(2rem));
+
+      .client-info-section {
+        flex-direction: column;
+        gap: 1rem;
+
+        .client-avatar-large,
+        .client-avatar-large-placeholder {
+          width: 3.5rem;
+          height: 3.5rem;
+        }
+
+        .client-details h3 {
+          font-size: 1.375rem;
+        }
+      }
+
+      .client-stats-section {
+        flex-wrap: wrap;
+        gap: 1rem;
+
+        .stat-item {
+          flex: 1;
+          min-width: calc(33.333% - 0.75rem);
+
+          .stat-number {
+            font-size: 1.5rem;
+          }
+        }
+      }
+    }
+
+    .card {
+      margin-bottom: 1.5rem;
+
+      .card-body {
+        padding-top: 1rem;
+      }
+    }
+  }
+}

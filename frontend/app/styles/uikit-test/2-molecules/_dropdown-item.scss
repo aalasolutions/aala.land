@@ -1,0 +1,164 @@
+// ============================================
+// MOLECULES: Dropdown Item
+// ============================================
+// Single dropdown option with icon support.
+
+@use '../nuvoui' as Nuvo;
+@use '../variables' as *;
+
+// ============================================
+// Standard Dropdown Item
+// ============================================
+
+.dropdown-item {
+  @include Nuvo.apply(
+    flex, x-center, gap(2.5),
+    w-full,
+    py(2), px(3),
+    font-size(sm),
+    cursor(pointer),
+    transition, duration(150)
+  );
+  color: $text-primary;
+  text-decoration: none;
+  background: none;
+  border: none;
+
+  &:hover {
+    background-color: Nuvo.get-color(gray, 50);
+  }
+
+  &:focus {
+    outline: none;
+    background-color: Nuvo.get-color(gray, 100);
+  }
+
+  &:active {
+    background-color: Nuvo.get-color(gray, 100);
+  }
+}
+
+// ============================================
+// Dropdown Item States
+// ============================================
+
+.dropdown-item--active {
+  background-color: rgba($primary-color, 0.08);
+  color: $primary-color;
+
+  &:hover {
+    background-color: rgba($primary-color, 0.12);
+  }
+}
+
+.dropdown-item--disabled {
+  @include Nuvo.apply(opacity(50));
+  pointer-events: none;
+  cursor: not-allowed;
+}
+
+.dropdown-item--danger {
+  color: $error-color;
+
+  &:hover {
+    background-color: rgba($error-color, 0.08);
+  }
+}
+
+// ============================================
+// Dropdown Item Parts
+// ============================================
+
+.dropdown-item__icon {
+  @include Nuvo.apply(flex, center, x-center, width(5), no-shrink);
+  color: $text-muted;
+
+  .dropdown-item--active & {
+    color: $primary-color;
+  }
+
+  .dropdown-item--danger & {
+    color: $error-color;
+  }
+}
+
+.dropdown-item__content {
+  @include Nuvo.apply(grow);
+  min-width: 0;
+}
+
+.dropdown-item__label {
+  @include Nuvo.apply(block, font(medium), whitespace-nowrap, truncate);
+}
+
+.dropdown-item__description {
+  @include Nuvo.apply(block, mt(0.5), font-size(xs), whitespace-nowrap, truncate);
+  color: $text-muted;
+}
+
+.dropdown-item__badge {
+  @include Nuvo.apply(no-shrink, ml-auto);
+}
+
+.dropdown-item__shortcut {
+  @include Nuvo.apply(no-shrink, ml-auto, font-size(xs));
+  color: $text-muted;
+  font-family: monospace;
+}
+
+// ============================================
+// Dropdown Divider
+// ============================================
+
+.dropdown-divider {
+  @include Nuvo.apply(my(1.5));
+  height: 1px;
+  background-color: $border-color;
+}
+
+// ============================================
+// Dropdown Header
+// ============================================
+
+.dropdown-header {
+  @include Nuvo.apply(py(2), px(3), font(semibold), uppercase);
+  font-size: 0.6875rem;
+  color: $text-muted;
+  letter-spacing: 0.05em;
+}
+
+// ============================================
+// Dropdown Item with Checkbox
+// ============================================
+
+.dropdown-item--checkbox {
+  .dropdown-item__check {
+    @include Nuvo.apply(
+      flex, center, x-center,
+      width(4), height(4),
+      rounded(xs), no-shrink,
+      transition, duration(150)
+    );
+    border: 2px solid $border-color-dark;
+  }
+
+  &.dropdown-item--active .dropdown-item__check {
+    background-color: $primary-color;
+    border-color: $primary-color;
+    color: $white;
+  }
+}
+
+// ============================================
+// Dropdown Item Sizes
+// ============================================
+
+.dropdown-item--sm {
+  @include Nuvo.apply(py(1.5), px(2.5), gap(2));
+  font-size: 0.8125rem;
+}
+
+.dropdown-item--lg {
+  @include Nuvo.apply(py(3), px(4), gap(3));
+  font-size: 0.9375rem;
+}

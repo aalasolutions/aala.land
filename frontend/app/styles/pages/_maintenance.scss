@@ -1,0 +1,7 @@
+// Maintenance: work order list + upcoming preventive list + create/edit
+// modal. See AGENT_BRIEF.md.
+//
+// No page-level CSS. Every element resolves to a kit component or a core
+// utility; category/status/priority badges use the `trade`, `wo` and
+// `priority` domains in _badges.scss respectively. Kept as a file so the
+// page has an obvious home if it ever needs bespoke layout.

@@ -1,0 +1,301 @@
+@use "../../nuvoui" as Nuvo;
+
+.admin-dashboard-container {
+  @include Nuvo.apply(p(2), mx(auto));
+  background: $bg-light;
+  max-width: 1400px;
+
+  .page-header {
+    margin-bottom: 3.5rem;
+  }
+
+  .loading {
+    text-align: center;
+    padding: 3.75rem 1.25rem;
+    color: $secondary-color;
+
+    i {
+      @include Nuvo.apply(mr(2));
+    }
+  }
+
+  .section {
+    margin-bottom: 3rem;
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
+
+  .two-column-grid {
+    @include Nuvo.apply(grid, cols(2), gap(1));
+  }
+
+  .column {
+    min-width: 0;
+
+    .section-heading {
+      @include Nuvo.apply(mb(1));
+    }
+  }
+
+  .section-heading {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: $text-secondary;
+    margin: 0 0 0.875rem 0;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding-left: 0.25rem;
+  }
+
+  .stats-table-wrapper {
+    background: $white;
+    border: 1px solid $border-color;
+    border-radius: 8px;
+    overflow-x: auto;
+  }
+
+  .stats-table {
+    width: 100%;
+    min-width: 400px;
+    border-collapse: collapse;
+
+    thead {
+      background: $slate-50;
+      border-bottom: 1px solid $border-color;
+
+      th {
+        padding: 0.75rem 1rem;
+        text-align: left;
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: $text-secondary;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+    }
+
+    tbody {
+      tr {
+        border-bottom: 1px solid $slate-100;
+        @include Nuvo.apply(transition);
+
+        &:last-child {
+          border-bottom: none;
+        }
+
+        &:hover {
+          background: $slate-50;
+        }
+
+        td {
+          padding: 1rem;
+          font-size: 0.875rem;
+          color: $text-primary;
+
+          &.metric-name {
+            font-weight: 500;
+            color: $text-secondary;
+
+            .metric-icon {
+              margin-right: 0.5rem;
+              font-size: 0.875rem;
+              color: $slate-400;
+
+              &.success {
+                color: $success-color;
+              }
+
+              &.warning {
+                color: $warning-color;
+              }
+
+              &.danger {
+                color: $error-color;
+              }
+            }
+          }
+
+          &.metric-value {
+            font-weight: 600;
+            font-size: 1rem;
+            text-align: left;
+
+            &.success {
+              color: $success-color;
+            }
+
+            &.warning {
+              color: $warning-color;
+            }
+
+            &.danger {
+              color: $error-color;
+            }
+
+            &.secondary {
+              color: $text-muted;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  .revenue-grid {
+    @include Nuvo.apply(grid, auto-fit(280px), gap(1));
+
+    .revenue {
+      text-align: center;
+      padding: 2rem 1.5rem;
+      background: $white;
+      border: 1px solid $slate-100;
+      border-radius: 8px;
+      @include Nuvo.apply(transition);
+
+      &:hover {
+        border-color: $slate-200;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+      }
+
+      .revenue-icon {
+        display: block;
+        font-size: 1.25rem;
+        margin-bottom: 0.75rem;
+        color: $success-color;
+      }
+
+      .amount {
+        display: block;
+        font-size: 1.5rem;
+        font-weight: 600;
+        color: $success-color;
+        margin-bottom: 0.25rem;
+        line-height: 1.1;
+      }
+
+      .label {
+        font-size: 0.6875rem;
+        color: $text-muted;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+
+      &:nth-child(2) {
+        .revenue-icon {
+          color: $primary-color;
+        }
+
+        .amount {
+          color: $primary-color;
+        }
+      }
+    }
+  }
+
+  .package-grid {
+    @include Nuvo.apply(grid, auto-fit(200px), gap(1));
+  }
+
+  .no-data {
+    text-align: center;
+    padding: 5rem 1.25rem;
+    color: $text-muted;
+
+    i {
+      font-size: 3rem;
+      margin-bottom: 1rem;
+      display: block;
+      color: $slate-300;
+    }
+
+    p {
+      font-size: 1rem;
+      font-weight: 500;
+      margin: 0;
+    }
+  }
+
+  @include Nuvo.media-down(md) {
+    padding: 1.5rem 1rem;
+
+    .section {
+      margin-bottom: 2.5rem;
+    }
+
+    .two-column-grid {
+      @include Nuvo.apply(cols(1));
+    }
+
+    .stats-table {
+      thead th {
+        padding: 0.625rem 0.75rem;
+        font-size: 0.6875rem;
+      }
+
+      tbody tr td {
+        padding: 0.75rem;
+        font-size: 0.8125rem;
+
+        &.metric-value {
+          font-size: 0.9375rem;
+        }
+      }
+    }
+
+    .revenue-grid {
+      @include Nuvo.apply(cols(1), gap(1));
+
+      .revenue {
+        padding: 2rem 1.5rem;
+
+        .revenue-icon {
+          font-size: 1.25rem;
+          margin-bottom: 1rem;
+        }
+
+        .amount {
+          font-size: 2rem;
+        }
+      }
+    }
+
+    .package-grid {
+      @include Nuvo.apply(cols(2), gap(1));
+    }
+  }
+
+  @include Nuvo.media-down(sm) {
+    padding: 1.25rem 1rem;
+
+    .stats-table {
+      thead th {
+        padding: 0.5rem 0.625rem;
+      }
+
+      tbody tr td {
+        padding: 0.625rem;
+      }
+    }
+
+    .revenue-grid {
+      .revenue {
+        padding: 1.75rem 1.25rem;
+
+        .amount {
+          font-size: 2rem;
+        }
+      }
+    }
+
+    .package-grid {
+      @include Nuvo.apply(cols(1), gap(1));
+    }
+
+    .no-data {
+      padding: 4rem 1rem;
+    }
+  }
+}

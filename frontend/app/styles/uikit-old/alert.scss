@@ -1,0 +1,18 @@
+.alert {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+
+  &.alert-error {
+    background: var(--badge-red-bg);
+    color: var(--badge-red-text);
+  }
+
+  &.alert-warning {
+    background: var(--badge-amber-bg);
+    color: var(--badge-amber-text);
+    align-items: flex-start;
+  }
+}

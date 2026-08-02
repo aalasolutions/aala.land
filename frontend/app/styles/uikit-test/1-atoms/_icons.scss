@@ -1,0 +1,244 @@
+// ============================================
+// ATOMS: Icons
+// ============================================
+// Icon sizing, colors, and animation utilities.
+
+@use '../nuvoui' as Nuvo;
+@use '../variables' as *;
+
+// ============================================
+// Icon Size Classes
+// ============================================
+
+.icon-xs {
+  @include Nuvo.apply(font-size(xs), width(3), height(3));
+}
+
+.icon-sm {
+  @include Nuvo.apply(font-size(sm), width(3.5), height(3.5));
+}
+
+.icon-md {
+  @include Nuvo.apply(font-size(base), width(4), height(4));
+}
+
+.icon-lg {
+  @include Nuvo.apply(font-size(lg), width(5), height(5));
+}
+
+.icon-xl {
+  @include Nuvo.apply(font-size(xl), width(6), height(6));
+}
+
+.icon-2xl {
+  @include Nuvo.apply(font-size(2xl), width(8), height(8));
+}
+
+// ============================================
+// Icon Color Classes
+// ============================================
+
+.icon-primary {
+  color: $primary-color;
+}
+
+.icon-secondary {
+  color: $secondary-color;
+}
+
+.icon-success {
+  color: $success-color;
+}
+
+.icon-danger {
+  color: $error-color;
+}
+
+.icon-warning {
+  color: $warning-color;
+}
+
+.icon-info {
+  color: $blue-500;
+}
+
+.icon-muted {
+  color: $text-muted;
+}
+
+// ============================================
+// Icon with Background
+// ============================================
+
+.icon-bg {
+  @include Nuvo.apply(flex-inline, center, x-center, rounded(sm));
+
+  &.icon-bg-primary {
+    background-color: rgba($primary-color, 0.12);
+    color: $primary-color;
+  }
+
+  &.icon-bg-success {
+    background-color: $success-light;
+    color: $success-dark;
+  }
+
+  &.icon-bg-danger {
+    background-color: $error-light;
+    color: $error-dark;
+  }
+
+  &.icon-bg-warning {
+    background-color: $warning-light;
+    color: $warning-dark;
+  }
+
+  &.icon-bg-info {
+    background-color: $info-light;
+    color: $blue-600;
+  }
+
+  &.icon-bg-neutral {
+    background-color: Nuvo.get-color(gray, 100);
+    color: $text-secondary;
+  }
+
+  // Size variants with padding
+  &.icon-bg-sm {
+    @include Nuvo.apply(p(1.5));
+  }
+
+  &.icon-bg-md {
+    @include Nuvo.apply(p(2));
+  }
+
+  &.icon-bg-lg {
+    @include Nuvo.apply(p(3));
+  }
+
+  // Circular variant
+  &.icon-bg-circle {
+    border-radius: 50%;
+  }
+}
+
+// ============================================
+// Icon Animations
+// ============================================
+
+.icon-spin {
+  animation: icon-spin 1s linear infinite;
+}
+
+.icon-pulse {
+  animation: icon-pulse 1s ease-in-out infinite;
+}
+
+.icon-bounce {
+  animation: icon-bounce 0.6s ease infinite;
+}
+
+@keyframes icon-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes icon-pulse {
+  0%,
+  100% {
+    @include Nuvo.apply(opacity(100));
+  }
+  50% {
+    @include Nuvo.apply(opacity(50));
+  }
+}
+
+@keyframes icon-bounce {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+// ============================================
+// Loading Spinner
+// ============================================
+
+.spinner {
+  @include Nuvo.apply(inline-block, width(4), height(4));
+  border: 2px solid Nuvo.get-color(gray, 200);
+  border-top-color: $primary-color;
+  border-radius: 50%;
+  animation: icon-spin 0.6s linear infinite;
+
+  &.spinner-sm {
+    @include Nuvo.apply(width(3), height(3));
+    border-width: 1.5px;
+  }
+
+  &.spinner-lg {
+    @include Nuvo.apply(width(6), height(6));
+    border-width: 3px;
+  }
+
+  &.spinner-xl {
+    @include Nuvo.apply(width(8), height(8));
+    border-width: 3px;
+  }
+
+  // Color variants
+  &.spinner-white {
+    border-color: rgba($white, 0.3);
+    border-top-color: $white;
+  }
+
+  &.spinner-success {
+    border-top-color: $success-color;
+  }
+
+  &.spinner-danger {
+    border-top-color: $error-color;
+  }
+}
+
+// ============================================
+// Icon Inline with Text
+// ============================================
+
+.icon-inline {
+  @include Nuvo.apply(flex-inline, x-center, gap(1.5), align-middle);
+
+  i,
+  svg {
+    @include Nuvo.apply(no-shrink);
+  }
+}
+
+// ============================================
+// Stacked Icons
+// ============================================
+
+.icon-stack {
+  @include Nuvo.apply(relative, inline-block, align-middle);
+  width: 2em;
+  height: 2em;
+  line-height: 2em;
+
+  .icon-stack-bg {
+    @include Nuvo.apply(absolute, left(0), w-full, text-center);
+    font-size: 2em;
+    color: Nuvo.get-color(gray, 200);
+  }
+
+  .icon-stack-fg {
+    @include Nuvo.apply(absolute, left(0), w-full, text-center);
+    font-size: 1em;
+  }
+}

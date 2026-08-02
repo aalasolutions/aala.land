@@ -1,0 +1,31 @@
+<div
+  class={{this.classes}}
+  role="progressbar"
+  aria-valuenow={{this.value}}
+  aria-valuemin="0"
+  aria-valuemax="100"
+  data-test-nu-progress-circle
+  ...attributes
+>
+  <svg class="nu-progress-circle__svg" viewBox={{this.viewBox}} data-test-nu-progress-circle-svg>
+    <circle
+      class="nu-progress-circle__track"
+      cx="50"
+      cy="50"
+      r={{this.radius}}
+      style={{this.trackStyle}}
+    />
+    <circle
+      class="nu-progress-circle__bar"
+      cx="50"
+      cy="50"
+      r={{this.radius}}
+      style={{this.barStyle}}
+      data-test-nu-progress-circle-bar
+    />
+  </svg>
+
+  {{#if this.showText}}
+    <span class="nu-progress-circle__label" data-test-nu-progress-circle-label>{{this.displayLabel}}</span>
+  {{/if}}
+</div>

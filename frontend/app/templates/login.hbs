@@ -1,18 +1,20 @@
 {{page-title "Sign In"}}
 
 <div data-test-login-page class="login-page">
-  <div class="card p-10 flex col gap-8 login-card">
-    <div class="text-center">
-      <h1 class="brand-title">AALA.LAND</h1>
-      <p class="text-muted font-sm mt-2">Sign in to your command center</p>
-    </div>
+  <Nuvo::Card class="login-card">
+    <div class="flex col gap-8">
+      <div class="text-center">
+        <Nuvo::Title @tag="h1" @size="2xl" @text="AALA.LAND" />
+        <p class="text-muted text-sm mt-2">Sign in to your command center</p>
+      </div>
 
-    <LoginForm />
-    <div class="text-center">
-      <p class="font-sm text-muted">
-        Don't have an account?
-        <LinkTo @route="signup" class="text-primary">Create one</LinkTo>
-      </p>
+      <LoginForm />
+      <div class="text-center">
+        <p class="text-sm text-muted">
+          Don't have an account?
+          <LinkTo @route="signup" class="text-primary">Create one</LinkTo>
+        </p>
+      </div>
     </div>
-  </div>
+  </Nuvo::Card>
 </div>

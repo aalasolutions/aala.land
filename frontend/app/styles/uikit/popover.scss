@@ -1,0 +1,195 @@
+// nu-popover - anchored content bubble, richer than a tooltip
+@use "./mixins/bem" as *;
+@use "./mixins/var" as *;
+@use "./common/var" as *;
+
+@include b(popover) {
+  @include nu-root("popover", (
+    "ZIndex": nu-z(dropdown),
+    "Width": 18rem,
+    "BackgroundColor": var(--bg-surface),
+    "BorderColor": var(--border-base),
+    "BorderRadius": nu-radius(lg),
+    "BoxShadow": nu-shadow(lg),
+    "TranslateY": nu-space(2),
+    "TransitionDuration": nu-duration(fast),
+    "focus--BoxShadow": 0 0 0 3px #{nu-tint(primary, 35%)},
+    "ArrowSize": 8px,
+    "ArrowOffset": -4px,
+  ));
+
+  position: absolute;
+  z-index: nu-var("popover", "ZIndex");
+  inline-size: nu-var("popover", "Width");
+  max-inline-size: 90vw;
+  background-color: nu-var("popover", "BackgroundColor");
+  border: 1px solid nu-var("popover", "BorderColor");
+  border-radius: nu-var("popover", "BorderRadius");
+  box-shadow: nu-var("popover", "BoxShadow");
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition:
+    opacity nu-var("popover", "TransitionDuration") $nu-ease,
+    visibility nu-var("popover", "TransitionDuration") $nu-ease;
+
+  @include reduced-motion {
+    transition: none;
+    animation: none;
+  }
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: nu-var("popover", "focus--BoxShadow");
+  }
+
+  // ---- elements ----
+
+  @include e(arrow) {
+    position: absolute;
+    inline-size: nu-var("popover", "ArrowSize");
+    block-size: nu-var("popover", "ArrowSize");
+    background-color: nu-var("popover", "BackgroundColor");
+    border-inline-start: 1px solid nu-var("popover", "BorderColor");
+    border-block-start: 1px solid nu-var("popover", "BorderColor");
+    transform: rotate(45deg);
+  }
+
+  @include e(header) {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: nu-space(2);
+    padding: nu-space(3) nu-space(4);
+    border-block-end: 1px solid var(--border-base);
+  }
+
+  @include e(title) {
+    margin: 0;
+    font-size: nu-font-size(sm);
+    font-weight: nu-font-weight(semibold);
+    color: var(--text-color);
+  }
+
+  @include e(close) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    inline-size: 1.5rem;
+    block-size: 1.5rem;
+    flex-shrink: 0;
+    color: var(--text-muted);
+    background-color: transparent;
+    border: none;
+    border-radius: nu-radius(sm);
+    cursor: pointer;
+
+    &:hover {
+      color: var(--text-color);
+      background-color: var(--bg-alternate);
+    }
+
+    &:focus-visible {
+      outline: none;
+      box-shadow: nu-var("popover", "focus--BoxShadow");
+    }
+  }
+
+  @include e(body) {
+    padding: nu-space(4);
+    font-size: nu-font-size(sm);
+    color: var(--text-muted);
+  }
+
+  @include e(footer) {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: nu-space(2);
+    padding: nu-space(3) nu-space(4);
+    border-block-start: 1px solid var(--border-base);
+  }
+
+  // ---- placement modifiers: position body + arrow ----
+
+  @include m(top) {
+    inset-block-end: calc(100% + #{nu-space(2)});
+    inset-inline-start: 50%;
+    transform: translateX(-50%);
+
+    .nu-popover__arrow {
+      inset-block-end: nu-var("popover", "ArrowOffset");
+      inset-inline-start: 50%;
+      margin-inline-start: calc(-1 * nu-var("popover", "ArrowSize") / 2);
+      border-inline-start: none;
+      border-block-start: none;
+      border-inline-end: 1px solid nu-var("popover", "BorderColor");
+      border-block-end: 1px solid nu-var("popover", "BorderColor");
+    }
+  }
+
+  @include m(bottom) {
+    inset-block-start: calc(100% + #{nu-space(2)});
+    inset-inline-start: 50%;
+    transform: translateX(-50%);
+
+    .nu-popover__arrow {
+      inset-block-start: nu-var("popover", "ArrowOffset");
+      inset-inline-start: 50%;
+      margin-inline-start: calc(-1 * nu-var("popover", "ArrowSize") / 2);
+    }
+  }
+
+  @include m(start) {
+    inset-inline-end: calc(100% + #{nu-space(2)});
+    inset-block-start: 50%;
+    transform: translateY(-50%);
+
+    .nu-popover__arrow {
+      inset-inline-end: nu-var("popover", "ArrowOffset");
+      inset-block-start: 50%;
+      margin-block-start: calc(-1 * nu-var("popover", "ArrowSize") / 2);
+      border-inline-start: none;
+      border-block-start: 1px solid nu-var("popover", "BorderColor");
+      border-inline-end: 1px solid nu-var("popover", "BorderColor");
+      border-block-end: none;
+    }
+  }
+
+  @include m(end) {
+    inset-inline-start: calc(100% + #{nu-space(2)});
+    inset-block-start: 50%;
+    transform: translateY(-50%);
+
+    .nu-popover__arrow {
+      inset-inline-start: nu-var("popover", "ArrowOffset");
+      inset-block-start: 50%;
+      margin-block-start: calc(-1 * nu-var("popover", "ArrowSize") / 2);
+    }
+  }
+
+  // ---- states ----
+
+  @include when(visible) {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    animation: nu-popover-in nu-var("popover", "TransitionDuration") $nu-ease;
+
+    @include reduced-motion {
+      animation: none;
+    }
+  }
+}
+
+// Opacity only. Animating `transform` here would clobber the placement
+// transform (translateX(-50%) etc), making the popover render off-centre for
+// the duration of the animation and then snap into place.
+@keyframes nu-popover-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}

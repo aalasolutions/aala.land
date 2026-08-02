@@ -1,0 +1,14 @@
+<textarea
+  class={{this.classes}}
+  placeholder={{@placeholder}}
+  disabled={{@disabled}}
+  readonly={{@readonly}}
+  maxlength={{@maxlength}}
+  rows={{if @rows @rows 3}}
+  style={{this.resizeStyle}}
+  aria-invalid={{if @invalid "true"}}
+  data-test-nu-textarea
+  {{on "input" this.handleInput}}
+  {{on "change" this.handleChange}}
+  ...attributes
+>{{@value}}</textarea>

@@ -1,0 +1,6 @@
+{{! No dedicated spacer component: callers drop a bare
+    <span class="nu-toolbar__spacer"> between groups to push trailing
+    content to the end. Documented here, not wrapped, per spec. }}
+<div class={{this.classes}} data-test-nu-toolbar ...attributes>
+  {{yield}}
+</div>

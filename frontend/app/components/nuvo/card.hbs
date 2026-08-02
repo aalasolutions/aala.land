@@ -1,0 +1,36 @@
+{{! Named blocks <:header>/<:body>/<:footer> take priority; a plain default
+    block renders straight into the body slot. }}
+<div class={{this.classes}} data-test-nu-card ...attributes>
+  {{#if (has-block "header")}}
+    <div class="nu-card__header" data-test-nu-card-header>
+      {{yield to="header"}}
+    </div>
+  {{else if this.showHeader}}
+    <div class="nu-card__header" data-test-nu-card-header>
+      <div>
+        {{#if @title}}
+          <h3 class="nu-card__title" data-test-nu-card-title>{{@title}}</h3>
+        {{/if}}
+        {{#if @subtitle}}
+          <p class="nu-card__subtitle" data-test-nu-card-subtitle>{{@subtitle}}</p>
+        {{/if}}
+      </div>
+    </div>
+  {{/if}}
+
+  {{#if (has-block "body")}}
+    <div class="nu-card__body" data-test-nu-card-body>
+      {{yield to="body"}}
+    </div>
+  {{else if (has-block)}}
+    <div class="nu-card__body" data-test-nu-card-body>
+      {{yield}}
+    </div>
+  {{/if}}
+
+  {{#if (has-block "footer")}}
+    <div class="nu-card__footer" data-test-nu-card-footer>
+      {{yield to="footer"}}
+    </div>
+  {{/if}}
+</div>

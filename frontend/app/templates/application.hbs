@@ -2,74 +2,83 @@
 
 {{#if this.session.isAuthenticated}}
   <div
-    class="app-layout
-      {{if this.desktopCollapsed 'sidebar-collapsed'}}
-      {{if this.sidebarMobileOpen 'sidebar-mobile-open'}}"
+    class="app-shell
+      {{if this.desktopCollapsed 'is-collapsed'}}
+      {{if this.sidebarMobileOpen 'is-mobile-open'}}"
   >
     {{! Sidebar }}
-    <aside class="sidebar" data-test-sidebar>
-      <div class="sidebar-header">
-        <img src="/logo.png" alt="AALA.LAND" class="brand-logo-collapsed" />
-        <div class="brand-full">
-          <h1 class="brand-title">AALA<span class="brand-dot">.</span>LAND</h1>
-          <p class="brand-subtitle">Property Management</p>
+    <aside
+      class="nu-sidebar
+        {{if this.desktopCollapsed 'is-collapsed'}}
+        {{if this.sidebarMobileOpen 'is-open'}}"
+      data-test-sidebar
+    >
+      <div class="nu-sidebar__brand">
+        <img src="/logo.png" alt="AALA.LAND" class="app-shell__brand-mark" />
+        <div class="app-shell__brand-text">
+          <h1 class="nu-sidebar__brand-title">AALA<span
+              class="app-shell__brand-dot"
+            >.</span>LAND</h1>
+          <p class="nu-sidebar__brand-subtitle">Property Management</p>
         </div>
       </div>
 
-      <nav data-test-sidebar-nav class="sidebar-nav">
+      <nav data-test-sidebar-nav class="nu-sidebar__nav">
         {{! Dashboard (direct link) }}
-        <LinkTo @route="dashboard" class="sidebar-link" data-test-nav-dashboard>
+        <LinkTo @route="dashboard" class="nu-sidebar__link" data-test-nav-dashboard>
           <Ui::Ph @icon="gauge" />
-          <span class="sidebar-label">Dashboard</span>
+          <span class="nu-sidebar__link-label">Dashboard</span>
         </LinkTo>
 
         {{! Properties Group }}
         {{#if this.sidebarGroups.properties}}
           <div
-            class="sidebar-group
+            class="nu-sidebar__group
               {{if
                 (or
                   (eq this.expandedGroup 'properties')
                   (eq this.activeGroup 'properties')
                 )
-                'expanded'
+                'is-expanded'
               }}"
           >
             <button
               type="button"
-              class="sidebar-group-toggle
+              class="nu-sidebar__group-toggle
                 {{if
                   (eq this.activeGroup 'properties')
-                  'sidebar-group-active'
+                  'is-active'
                 }}"
               {{on "click" (fn this.toggleGroup "properties")}}
             >
               <Ui::Ph @icon="buildings" />
-              <span class="sidebar-label">Properties</span>
-              <Ui::Ph @icon="caret-down" class="sidebar-chevron" />
+              <span class="nu-sidebar__link-label">Properties</span>
+              <Ui::Ph @icon="caret-down" class="nu-sidebar__chevron" />
             </button>
-            <div class="sidebar-group-items">
-              <LinkTo
-                @route="properties"
-                class="sidebar-sublink"
-                data-test-nav-properties
-              >
-                <span class="sidebar-label">All Properties</span>
-              </LinkTo>
-              <LinkTo
-                @route="owners"
-                class="sidebar-sublink"
-                data-test-nav-owners
-              >
-                <span class="sidebar-label">Owners</span>
-              </LinkTo>
-              <LinkTo
-                @route="leases"
-                class="sidebar-sublink"
-                data-test-nav-leases
-              >
-                <span class="sidebar-label">Leases</span>
-              </LinkTo>
+            <div class="nu-sidebar__group-items">
+              <div>
+                <LinkTo
+                  @route="properties"
+                  class="nu-sidebar__sublink"
+                  data-test-nav-properties
+                >
+                  <span class="nu-sidebar__link-label">All Properties</span>
+                </LinkTo>
+                <LinkTo
+                  @route="owners"
+                  class="nu-sidebar__sublink"
+                  data-test-nav-owners
+                >
+                  <span class="nu-sidebar__link-label">Owners</span>
+                </LinkTo>
+                <LinkTo
+                  @route="leases"
+                  class="nu-sidebar__sublink"
+                  data-test-nav-leases
+                >
+                  <span class="nu-sidebar__link-label">Leases</span>
+                </LinkTo>
+              </div>
             </div>
           </div>
         {{/if}}
@@ -77,37 +86,39 @@
         {{! Leads / CRM Group }}
         {{#if this.sidebarGroups.crm}}
           <div
-            class="sidebar-group
+            class="nu-sidebar__group
               {{if
                 (or (eq this.expandedGroup 'crm') (eq this.activeGroup 'crm'))
-                'expanded'
+                'is-expanded'
               }}"
           >
             <button
               type="button"
-              class="sidebar-group-toggle
-                {{if (eq this.activeGroup 'crm') 'sidebar-group-active'}}"
+              class="nu-sidebar__group-toggle
+                {{if (eq this.activeGroup 'crm') 'is-active'}}"
               {{on "click" (fn this.toggleGroup "crm")}}
             >
               <Ui::Ph @icon="funnel" />
-              <span class="sidebar-label">Leads</span>
-              <Ui::Ph @icon="caret-down" class="sidebar-chevron" />
+              <span class="nu-sidebar__link-label">Leads</span>
+              <Ui::Ph @icon="caret-down" class="nu-sidebar__chevron" />
             </button>
-            <div class="sidebar-group-items">
-              <LinkTo
-                @route="leads"
-                class="sidebar-sublink"
-                data-test-nav-leads
-              >
-                <span class="sidebar-label">Pipeline</span>
-              </LinkTo>
-              <LinkTo
-                @route="contacts"
-                class="sidebar-sublink"
-                data-test-nav-contacts
-              >
-                <span class="sidebar-label">Contacts</span>
-              </LinkTo>
+            <div class="nu-sidebar__group-items">
+              <div>
+                <LinkTo
+                  @route="leads"
+                  class="nu-sidebar__sublink"
+                  data-test-nav-leads
+                >
+                  <span class="nu-sidebar__link-label">Pipeline</span>
+                </LinkTo>
+                <LinkTo
+                  @route="contacts"
+                  class="nu-sidebar__sublink"
+                  data-test-nav-contacts
+                >
+                  <span class="nu-sidebar__link-label">Contacts</span>
+                </LinkTo>
+              </div>
             </div>
           </div>
         {{/if}}
@@ -116,128 +127,132 @@
         {{#if this.sidebarGroups.documents}}
           <LinkTo
             @route="documents"
-            class="sidebar-link"
+            class="nu-sidebar__link"
             data-test-nav-documents
           >
             <Ui::Ph @icon="files" />
-            <span class="sidebar-label">Documents</span>
+            <span class="nu-sidebar__link-label">Documents</span>
           </LinkTo>
         {{/if}}
 
         {{! Finance Group }}
         {{#if this.sidebarGroups.finance}}
           <div
-            class="sidebar-group
+            class="nu-sidebar__group
               {{if
                 (or
                   (eq this.expandedGroup 'finance')
                   (eq this.activeGroup 'finance')
                 )
-                'expanded'
+                'is-expanded'
               }}"
           >
             <button
               type="button"
-              class="sidebar-group-toggle
-                {{if (eq this.activeGroup 'finance') 'sidebar-group-active'}}"
+              class="nu-sidebar__group-toggle
+                {{if (eq this.activeGroup 'finance') 'is-active'}}"
               {{on "click" (fn this.toggleGroup "finance")}}
             >
               <Ui::Ph @icon="currency-circle-dollar" />
-              <span class="sidebar-label">Finance</span>
-              <Ui::Ph @icon="caret-down" class="sidebar-chevron" />
+              <span class="nu-sidebar__link-label">Finance</span>
+              <Ui::Ph @icon="caret-down" class="nu-sidebar__chevron" />
             </button>
-            <div class="sidebar-group-items">
-              <LinkTo
-                @route="financials"
-                class="sidebar-sublink"
-                data-test-nav-financials
-              >
-                <span class="sidebar-label">Transactions</span>
-              </LinkTo>
-              <LinkTo
-                @route="cheques"
-                class="sidebar-sublink"
-                data-test-nav-cheques
-              >
-                <span class="sidebar-label">Cheques</span>
-              </LinkTo>
-              <LinkTo
-                @route="commissions"
-                class="sidebar-sublink"
-                data-test-nav-commissions
-              >
-                <span class="sidebar-label">Commissions</span>
-              </LinkTo>
+            <div class="nu-sidebar__group-items">
+              <div>
+                <LinkTo
+                  @route="financials"
+                  class="nu-sidebar__sublink"
+                  data-test-nav-financials
+                >
+                  <span class="nu-sidebar__link-label">Transactions</span>
+                </LinkTo>
+                <LinkTo
+                  @route="cheques"
+                  class="nu-sidebar__sublink"
+                  data-test-nav-cheques
+                >
+                  <span class="nu-sidebar__link-label">Cheques</span>
+                </LinkTo>
+                <LinkTo
+                  @route="commissions"
+                  class="nu-sidebar__sublink"
+                  data-test-nav-commissions
+                >
+                  <span class="nu-sidebar__link-label">Commissions</span>
+                </LinkTo>
+              </div>
             </div>
           </div>
         {{/if}}
 
         {{! WhatsApp (direct link) }}
         {{#if this.sidebarGroups.outreach}}
-          <LinkTo @route="whatsapp" class="sidebar-link" data-test-nav-whatsapp>
+          <LinkTo @route="whatsapp" class="nu-sidebar__link" data-test-nav-whatsapp>
             <Ui::Ph @icon="whatsapp-logo" />
-            <span class="sidebar-label">WhatsApp</span>
+            <span class="nu-sidebar__link-label">WhatsApp</span>
           </LinkTo>
         {{/if}}
 
         {{! Operations Group }}
         {{#if this.sidebarGroups.operations}}
           <div
-            class="sidebar-group
+            class="nu-sidebar__group
               {{if
                 (or
                   (eq this.expandedGroup 'operations')
                   (eq this.activeGroup 'operations')
                 )
-                'expanded'
+                'is-expanded'
               }}"
           >
             <button
               type="button"
-              class="sidebar-group-toggle
+              class="nu-sidebar__group-toggle
                 {{if
                   (eq this.activeGroup 'operations')
-                  'sidebar-group-active'
+                  'is-active'
                 }}"
               {{on "click" (fn this.toggleGroup "operations")}}
             >
               <Ui::Ph @icon="wrench" />
-              <span class="sidebar-label">Operations</span>
-              <Ui::Ph @icon="caret-down" class="sidebar-chevron" />
+              <span class="nu-sidebar__link-label">Operations</span>
+              <Ui::Ph @icon="caret-down" class="nu-sidebar__chevron" />
             </button>
-            <div class="sidebar-group-items">
-              <LinkTo
-                @route="maintenance"
-                class="sidebar-sublink"
-                data-test-nav-maintenance
-              >
-                <span class="sidebar-label">Maintenance</span>
-              </LinkTo>
-              <LinkTo
-                @route="vendors"
-                class="sidebar-sublink"
-                data-test-nav-vendors
-              >
-                <span class="sidebar-label">Vendors</span>
-              </LinkTo>
+            <div class="nu-sidebar__group-items">
+              <div>
+                <LinkTo
+                  @route="maintenance"
+                  class="nu-sidebar__sublink"
+                  data-test-nav-maintenance
+                >
+                  <span class="nu-sidebar__link-label">Maintenance</span>
+                </LinkTo>
+                <LinkTo
+                  @route="vendors"
+                  class="nu-sidebar__sublink"
+                  data-test-nav-vendors
+                >
+                  <span class="nu-sidebar__link-label">Vendors</span>
+                </LinkTo>
+              </div>
             </div>
           </div>
         {{/if}}
 
         {{! Reports (direct link) }}
         {{#if this.sidebarGroups.reports}}
-          <LinkTo @route="reports" class="sidebar-link" data-test-nav-reports>
+          <LinkTo @route="reports" class="nu-sidebar__link" data-test-nav-reports>
             <Ui::Ph @icon="chart-bar" />
-            <span class="sidebar-label">Reports</span>
+            <span class="nu-sidebar__link-label">Reports</span>
           </LinkTo>
         {{/if}}
 
         {{! Team (direct link for Company Admin and Admin) }}
         {{#if this.sidebarGroups.team}}
           {{#unless this.isSuperAdmin}}
-            <LinkTo @route="team" class="sidebar-link" data-test-nav-team>
+            <LinkTo @route="team" class="nu-sidebar__link" data-test-nav-team>
               <Ui::Ph @icon="users-three" />
-              <span class="sidebar-label">Team</span>
+              <span class="nu-sidebar__link-label">Team</span>
             </LinkTo>
           {{/unless}}
         {{/if}}
@@ -245,81 +260,83 @@
         {{! Admin Group (Super Admin only) }}
         {{#if this.sidebarGroups.admin}}
           <div
-            class="sidebar-group
+            class="nu-sidebar__group
               {{if
                 (or
                   (eq this.expandedGroup 'admin') (eq this.activeGroup 'admin')
                 )
-                'expanded'
+                'is-expanded'
               }}"
           >
             <button
               type="button"
-              class="sidebar-group-toggle
-                {{if (eq this.activeGroup 'admin') 'sidebar-group-active'}}"
+              class="nu-sidebar__group-toggle
+                {{if (eq this.activeGroup 'admin') 'is-active'}}"
               {{on "click" (fn this.toggleGroup "admin")}}
             >
               <Ui::Ph @icon="gear" />
-              <span class="sidebar-label">Admin</span>
-              <Ui::Ph @icon="caret-down" class="sidebar-chevron" />
+              <span class="nu-sidebar__link-label">Admin</span>
+              <Ui::Ph @icon="caret-down" class="nu-sidebar__chevron" />
             </button>
-            <div class="sidebar-group-items">
-              <LinkTo
-                @route="admin.overview"
-                class="sidebar-sublink"
-                data-test-nav-overview
-              >
-                <span class="sidebar-label">Overview</span>
-              </LinkTo>
-              <LinkTo
-                @route="admin.companies"
-                class="sidebar-sublink"
-                data-test-nav-companies
-              >
-                <span class="sidebar-label">Companies</span>
-              </LinkTo>
-              <LinkTo
-                @route="admin.marketers"
-                class="sidebar-sublink"
-                data-test-nav-marketers
-              >
-                <span class="sidebar-label">Marketers</span>
-              </LinkTo>
-              <LinkTo @route="team" class="sidebar-sublink" data-test-nav-team>
-                <span class="sidebar-label">Team</span>
-              </LinkTo>
-              <LinkTo
-                @route="documents"
-                class="sidebar-sublink"
-                data-test-nav-documents
-              >
-                <span class="sidebar-label">Documents</span>
-              </LinkTo>
-              <LinkTo
-                @route="audit"
-                class="sidebar-sublink"
-                data-test-nav-audit
-              >
-                <span class="sidebar-label">Audit Log</span>
-              </LinkTo>
-              <LinkTo
-                @route="admin.system"
-                class="sidebar-sublink"
-                data-test-nav-system
-              >
-                <span class="sidebar-label">System</span>
-              </LinkTo>
+            <div class="nu-sidebar__group-items">
+              <div>
+                <LinkTo
+                  @route="admin.overview"
+                  class="nu-sidebar__sublink"
+                  data-test-nav-overview
+                >
+                  <span class="nu-sidebar__link-label">Overview</span>
+                </LinkTo>
+                <LinkTo
+                  @route="admin.companies"
+                  class="nu-sidebar__sublink"
+                  data-test-nav-companies
+                >
+                  <span class="nu-sidebar__link-label">Companies</span>
+                </LinkTo>
+                <LinkTo
+                  @route="admin.marketers"
+                  class="nu-sidebar__sublink"
+                  data-test-nav-marketers
+                >
+                  <span class="nu-sidebar__link-label">Marketers</span>
+                </LinkTo>
+                <LinkTo @route="team" class="nu-sidebar__sublink" data-test-nav-team>
+                  <span class="nu-sidebar__link-label">Team</span>
+                </LinkTo>
+                <LinkTo
+                  @route="documents"
+                  class="nu-sidebar__sublink"
+                  data-test-nav-documents
+                >
+                  <span class="nu-sidebar__link-label">Documents</span>
+                </LinkTo>
+                <LinkTo
+                  @route="audit"
+                  class="nu-sidebar__sublink"
+                  data-test-nav-audit
+                >
+                  <span class="nu-sidebar__link-label">Audit Log</span>
+                </LinkTo>
+                <LinkTo
+                  @route="admin.system"
+                  class="nu-sidebar__sublink"
+                  data-test-nav-system
+                >
+                  <span class="nu-sidebar__link-label">System</span>
+                </LinkTo>
+              </div>
             </div>
           </div>
         {{/if}}
       </nav>
 
-      <div class="sidebar-spacer"></div>
+      <div class="app-shell__spacer"></div>
 
       {{! Collapse toggle }}
       <button
         type="button"
-        class="sidebar-collapse-btn"
+        class="app-shell__collapse"
         aria-label="Toggle sidebar"
         {{on "click" this.toggleSidebar}}
       >
@@ -336,7 +353,7 @@
     {{#if this.sidebarMobileOpen}}
       <button
         type="button"
-        class="sidebar-backdrop"
+        class="nu-sidebar-backdrop"
         aria-label="Close menu"
         data-test-sidebar-backdrop
         {{on "click" this.closeMobileSidebar}}
@@ -344,7 +361,7 @@
     {{/if}}
 
     {{! Main Content }}
-    <main class="main-content">
+    <main class="app-shell__main">
       {{#if this.session.isImpersonating}}
         <div class="impersonation-banner" data-test-impersonation-banner>
           <span>
@@ -364,14 +381,14 @@
       {{/if}}
       <TenantLockBanner @lockState={{this.session.lockState}} />
       {{! Top Bar }}
-      <header class="topbar">
-        <div class="search-box">
+      <header class="nu-topbar m-sticky">
+        <div class="nu-topbar__search">
           <input
             type="text"
             autocomplete="off"
             aria-label="Search"
             placeholder="Search..."
-            class="search-input"
+            class="nu-topbar__search-input"
             aria-autocomplete="list"
             aria-haspopup="listbox"
             aria-expanded={{if this.showSearchDropdown "true" "false"}}
@@ -398,12 +415,12 @@
             {{on "click" this.closeSearch}}
           ></div>
         {{/if}}
-        <div class="topbar-actions">
+        <div class="nu-topbar__actions">
           {{#if this.showRegionSwitcher}}
             <div class="region-switcher" data-test-region-switcher>
               <button
                 type="button"
-                class="region-btn"
+                class="app-shell__region-btn"
                 {{on "click" this.toggleRegionDropdown}}
               >
                 <Ui::Ph @icon="globe" @size="18px" />
@@ -418,19 +435,19 @@
                   class="region-overlay"
                   {{on "click" this.closeRegionDropdown}}
                 ></button>
-                <div class="region-dropdown" data-test-region-dropdown>
+                <div class="nu-topbar-menu" data-test-region-dropdown>
                   {{#each this.groupedRegions as |grp|}}
                     <div
-                      class="region-group-label"
+                      class="app-shell__menu-label"
                       data-test-region-group={{grp.countryName}}
                     >{{grp.countryName}}</div>
                     {{#each grp.regions as |r|}}
                       <button
                         type="button"
-                        class="region-option
+                        class="nu-topbar-menu__item
                           {{if
                             (eq r.code this.region.activeRegion.code)
-                            'active'
+                            'is-active'
                           }}"
                         data-test-region-option={{r.code}}
                         {{on "click" (fn this.selectRegion r)}}
@@ -449,21 +466,79 @@
               <span class="region-name">{{this.region.activeRegion.name}}</span>
             </div>
           {{/if}}
-          <button
-            type="button"
-            class="notification-bell"
-            aria-label="Notifications"
-            {{on "click" this.toggleNotifications}}
-          >
-            <Ui::Ph @icon="bell" @size="22px" />
-            {{#if this.unreadCount}}
-              <span class="notification-badge">{{this.unreadCount}}</span>
+          <div class="notification-wrapper">
+            <button
+              type="button"
+              class="nu-topbar__icon-btn"
+              aria-label="Notifications"
+              {{on "click" this.toggleNotifications}}
+            >
+              <Ui::Ph @icon="bell" @size="22px" />
+              {{#if this.unreadCount}}
+                <span class="nu-topbar__badge">{{this.unreadCount}}</span>
+              {{/if}}
+            </button>
+
+            {{#if this.showNotifications}}
+              <button
+                type="button"
+                class="notification-overlay"
+                aria-label="Close notifications"
+                {{on "click" this.closeNotifications}}
+              ></button>
+              <div class="nu-topbar-menu">
+                <div class="nu-topbar-menu__header">
+                  <span class="text-sm font-bold">Notifications</span>
+                  {{#if this.unreadCount}}
+                    <button
+                      type="button"
+                      class="btn-link text-xs"
+                      {{on "click" this.markAllRead}}
+                    >Mark all read</button>
+                  {{/if}}
+                </div>
+                <div class="app-shell__menu-list">
+                  {{#each this.notifications as |notif|}}
+                    <button
+                      type="button"
+                      class="nu-topbar-menu__item
+                        {{unless notif.isRead 'unread'}}"
+                      {{on "click" (fn this.markAsRead notif)}}
+                    >
+                      <div class="notification-icon {{notif.type}}">
+                        <Ui::Ph
+                          @icon={{get-notification-icon notif.type}}
+                          @size="18px"
+                        />
+                      </div>
+                      <div class="notification-content">
+                        <span class="notification-title">{{notif.title}}</span>
+                        <span
+                          class="notification-message"
+                        >{{notif.message}}</span>
+                        <span class="notification-time">{{format-date-time
+                            notif.createdAt
+                          }}</span>
+                      </div>
+                    </button>
+                  {{else}}
+                    <div class="nu-topbar-menu__empty">
+                      <Ui::Ph
+                        @icon="bell-slash"
+                        @size="24px"
+                        @color="var(--text-muted)"
+                      />
+                      <p class="text-xs text-muted mt-2">No notifications</p>
+                    </div>
+                  {{/each}}
+                </div>
+              </div>
             {{/if}}
-          </button>
+          </div>
           {{#unless this.isSuperAdmin}}
             <LinkTo
               @route="company"
-              class="topbar-icon-btn"
+              class="nu-topbar__icon-btn"
               aria-label="Company settings"
             >
               <Ui::Ph @icon="building-office" @size="20px" />
@@ -471,7 +546,7 @@
           {{/unless}}
           <LinkTo
             @route="profile"
-            class="topbar-icon-btn"
+            class="nu-topbar__icon-btn"
             aria-label="My profile"
           >
             <Ui::Ph @icon="user" @size="20px" />
@@ -479,7 +554,7 @@
           <button
             data-test-logout-button
             type="button"
-            class="topbar-icon-btn topbar-logout"
+            class="nu-topbar__icon-btn topbar-logout"
             aria-label="Logout"
             {{on "click" this.logout}}
           >
@@ -487,63 +562,6 @@
           </button>
         </div>
       </header>
-
-      {{! Notifications Dropdown }}
-      {{#if this.showNotifications}}
-        <button
-          type="button"
-          class="notification-overlay"
-          aria-label="Close notifications"
-          {{on "click" this.closeNotifications}}
-        ></button>
-        <div class="notification-dropdown">
-          <div class="notification-dropdown-header">
-            <span class="font-sm font-bold">Notifications</span>
-            {{#if this.unreadCount}}
-              <button
-                type="button"
-                class="btn-link font-xs"
-                {{on "click" this.markAllRead}}
-              >Mark all read</button>
-            {{/if}}
-          </div>
-          <div class="notification-dropdown-list">
-            {{#each this.notifications as |notif|}}
-              <button
-                type="button"
-                class="notification-item {{unless notif.isRead 'unread'}}"
-                {{on "click" (fn this.markAsRead notif)}}
-              >
-                <div class="notification-icon {{notif.type}}">
-                  <Ui::Ph
-                    @icon={{get-notification-icon notif.type}}
-                    @size="18px"
-                  />
-                </div>
-                <div class="notification-content">
-                  <span class="notification-title">{{notif.title}}</span>
-                  <span class="notification-message">{{notif.message}}</span>
-                  <span class="notification-time">{{format-date-time
-                      notif.createdAt
-                    }}</span>
-                </div>
-                {{#unless notif.isRead}}
-                  <span class="unread-dot"></span>
-                {{/unless}}
-              </button>
-            {{else}}
-              <div class="notification-empty">
-                <Ui::Ph
-                  @icon="bell-slash"
-                  @size="24px"
-                  @color="var(--text-muted)"
-                />
-                <p class="font-xs text-muted mt-2">No notifications</p>
-              </div>
-            {{/each}}
-          </div>
-        </div>
-      {{/if}}
 
       {{! Route Outlet }}
       <section class="content-area">
@@ -558,12 +576,12 @@
 <Ui::ToastContainer />
 
 <ConfirmModal
-  @isOpen={{this.showLogoutModal}}
+  @open={{this.showLogoutModal}}
   @title="Logout"
   @message="Are you sure you want to logout?"
   @confirmText="Logout"
   @cancelText="Cancel"
-  @confirmType="btn-danger"
+  @confirmVariant="danger"
   @onClose={{this.closeLogoutModal}}
   @onConfirm={{this.confirmLogout}}
 />
