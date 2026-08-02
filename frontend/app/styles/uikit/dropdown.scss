@@ -33,10 +33,15 @@
       inline-size: 100%;
     }
 
-    // Menu tracks the trigger width so the two read as one control.
+    // The menu is at LEAST as wide as the trigger, so the two read as one
+    // control, but grows to fit its longest option. A hard `inline-size: 100%`
+    // here truncated every option to the width of the selected one: pick a
+    // short value and the menu shrinks with the trigger, so "Approved" renders
+    // as "Ap...". Capped so one long option cannot run off the viewport.
     .nu-menu {
-      inline-size: 100%;
-      min-inline-size: 0;
+      inline-size: max-content;
+      min-inline-size: 100%;
+      max-inline-size: min(24rem, 90vw);
     }
 
     // The label holds the text plus the caret. The caret is pinned to the far

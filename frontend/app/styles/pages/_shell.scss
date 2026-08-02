@@ -20,7 +20,7 @@ $shell-sidebar-collapsed: 3.75rem;
 
 
   /* The gradient engine */
-  background-image: radial-gradient(circle at center, #1b263b 0%, #0d1b2a 100%);
+  background-image: radial-gradient(circle at center, #344244 0%, #070f17 90%, #2b1818 100%);
   /* Crucial settings for full-page view */
   background-repeat: no-repeat;
   background-attachment: fixed;
@@ -123,7 +123,7 @@ $shell-sidebar-collapsed: 3.75rem;
   padding-block: nu-space(6);
   padding-inline: nu-space(8);
 
-  background: #f4f4f4;
+  background: #fbfbfb;
   border-start-start-radius: nu-radius(lg);
   border-block-start: 1px solid var(--border-base);
   border-inline-start: 1px solid var(--border-base);
