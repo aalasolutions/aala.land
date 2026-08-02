@@ -55,10 +55,13 @@ test-results/
 /.codex/
 /scripts/codex.sh
 
-# Claude Code (memory is private, agents/commands are shared)
+# Claude Code (memory is private, agents/commands are shared).
+# `**/` so a nested .claude (e.g. frontend/.claude) is ignored too: a pattern
+# containing a slash is anchored to the repo root without it.
 .claude/memory/
 .claude/settings.local.json
 .claude/*
+**/.claude/
 docs/
 PROJECT_OVERVIEW.md
 PRODUCT_GUIDE.md
