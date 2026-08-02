@@ -21,6 +21,13 @@
   background-color: nu-var("topbar", "BackgroundColor");
   border-block-end: 1px solid nu-var("topbar", "BorderColor");
 
+  // Sits on the shell background instead of carrying its own surface. Pairs
+  // with `.nu-sidebar.m-plain`.
+  @include m(plain) {
+    --nu-topbar--BackgroundColor: transparent;
+    --nu-topbar--BorderColor: transparent;
+  }
+
   // ---- elements ----
 
   @include e(toggle) {

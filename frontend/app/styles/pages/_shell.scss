@@ -1,9 +1,10 @@
 // App shell: the frame every authenticated route renders inside.
 //
 // The sidebar and topbar themselves are kit components (`.nu-sidebar`,
-// `.nu-topbar`). This file holds only the glue that is genuinely app-specific:
-// offsetting the main column past the fixed sidebar, the collapse affordance,
-// the brand lockup, and the two full-width banners.
+// `.nu-topbar`), both carrying `m-plain` so they sit flat on the shell
+// background. This file holds only the glue that is genuinely app-specific:
+// offsetting the main column past the fixed sidebar, the raised routed panel,
+// the collapse affordance, the brand lockup, and the two full-width banners.
 @use "../uikit/common/var" as *;
 @use "../uikit/mixins/bem" as *;
 
@@ -13,7 +14,17 @@ $shell-sidebar-collapsed: 3.75rem;
 .app-shell {
   display: flex;
   min-block-size: 100vh;
-  background: var(--bg-base);
+  // background: #f7f7f7;
+  /* Fallback for older browsers */
+  background-color: #0d1b2a;
+
+
+  /* The gradient engine */
+  background-image: radial-gradient(circle at center, #1b263b 0%, #0d1b2a 100%);
+  /* Crucial settings for full-page view */
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+  min-height: 100vh;
 }
 
 // `.nu-sidebar` is position:fixed and therefore out of flow, so the main
@@ -101,11 +112,22 @@ $shell-sidebar-collapsed: 3.75rem;
 
 // Every route renders in here. The padding lives on the shell rather than on
 // each page, so a page template never has to remember it.
+//
+// The sidebar and topbar carry `m-plain`, so this panel is the only raised
+// surface and the app reads as this. Logical corner and edges so it tucks
+// against the sidebar in RTL too. The shadow is an ambient glow rather than a
+// drop shadow, which no kit token covers, so it stays literal.
 .content-area {
   flex: 1;
   min-inline-size: 0;
   padding-block: nu-space(6);
   padding-inline: nu-space(8);
+
+  background: #f4f4f4;
+  border-start-start-radius: nu-radius(lg);
+  border-block-start: 1px solid var(--border-base);
+  border-inline-start: 1px solid var(--border-base);
+  box-shadow: 0 0 15px 5px rgba(0, 0, 0, 0.05);
 }
 
 // ---- topbar: region switcher ----

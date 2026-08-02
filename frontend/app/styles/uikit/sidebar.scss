@@ -28,6 +28,13 @@
   z-index: nu-z(sticky);
   transition: inline-size nu-var("sidebar", "TransitionDuration") $nu-ease;
 
+  // Sits on the shell background instead of carrying its own surface, for
+  // layouts where the routed content is the only raised panel.
+  @include m(plain) {
+    --nu-sidebar--BackgroundColor: transparent;
+    --nu-sidebar--BorderColor: transparent;
+  }
+
   @include reduced-motion {
     transition: none;
   }
