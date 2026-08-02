@@ -132,8 +132,7 @@
   {{#if (eq this.activeTab "overview")}}
     <div class="console-cards">
       {{! Live billing state }}
-      <div class="glass-panel p-6" data-test-company-plan-card>
-        <h3 class="text-lg font-bold mb-4">Billing state</h3>
+      <Nuvo::Panel @title="Billing state" data-test-company-plan-card>
         {{#if this.billing}}
           <dl class="console-kv">
             <dt>Tier</dt>
@@ -163,12 +162,11 @@
           <p class="text-muted" data-test-company-billing-unavailable>Billing
             state is unavailable right now.</p>
         {{/if}}
-      </div>
+      </Nuvo::Panel>
 
       {{! Active deal summary }}
       {{#if this.deal}}
-        <div class="glass-panel p-6" data-test-company-deal-card>
-          <h3 class="text-lg font-bold mb-4">Active deal</h3>
+        <Nuvo::Panel @title="Active deal" data-test-company-deal-card>
           <dl class="console-kv">
             <dt>Price</dt>
             <dd>{{this.dealPriceLabel}}</dd>
@@ -185,35 +183,36 @@
             <dt>Granted by</dt>
             <dd>{{this.deal.grantedBy}}</dd>
           </dl>
-        </div>
+        </Nuvo::Panel>
       {{/if}}
 
       {{! Limits }}
-      <div class="glass-panel p-6">
-        <div class="flex between x-center mb-4">
-          <h3 class="text-lg font-bold">Limits</h3>
+      <Nuvo::Panel>
+        <:header>
+          <h3 class="nu-panel__title">Limits</h3>
           <button
             type="button"
             class="btn btn-secondary btn-xs"
             data-test-company-limits-edit
             {{on "click" this.openLimitsModal}}
           >Edit</button>
-        </div>
-        <dl class="console-kv">
-          <dt>Max users</dt>
-          <dd>{{this.company.limits.maxUsers}}</dd>
-          <dt>Max regions</dt>
-          <dd>{{this.company.limits.maxRegions}}</dd>
-          <dt>Max properties</dt>
-          <dd>{{this.company.limits.maxProperties}}</dd>
-        </dl>
-      </div>
+        </:header>
+        <:body>
+          <dl class="console-kv">
+            <dt>Max users</dt>
+            <dd>{{this.company.limits.maxUsers}}</dd>
+            <dt>Max regions</dt>
+            <dd>{{this.company.limits.maxRegions}}</dd>
+            <dt>Max properties</dt>
+            <dd>{{this.company.limits.maxProperties}}</dd>
+          </dl>
+        </:body>
+      </Nuvo::Panel>
     </div>
 
   {{else if (eq this.activeTab "deal")}}
     {{#if this.deal}}
-      <div class="glass-panel p-6" data-test-company-deal-card>
-        <h3 class="text-lg font-bold mb-4">Active deal</h3>
+      <Nuvo::Panel @title="Active deal" data-test-company-deal-card>
         <dl class="console-kv">
           <dt>Price</dt>
           <dd>{{this.dealPriceLabel}}</dd>
@@ -252,9 +251,9 @@
             {{on "click" this.openEndDealConfirm}}
           >End deal early</button>
         </div>
-      </div>
+      </Nuvo::Panel>
     {{else}}
-      <div class="glass-panel p-6 console-empty">
+      <Nuvo::Panel class="console-empty">
         <Ui::Ph @icon="handshake" @size="40px" />
         <p class="text-muted mt-2">No deal on this company yet.</p>
         <button
@@ -263,25 +262,26 @@
           data-test-deal-give
           {{on "click" this.openDealModal}}
         >Give a deal</button>
-      </div>
+      </Nuvo::Panel>
     {{/if}}
 
   {{else if (eq this.activeTab "payments")}}
-    <div class="glass-panel p-6">
-      <div class="flex between x-center mb-4">
-        <h3 class="text-lg font-bold">Payments</h3>
+    <Nuvo::Panel>
+      <:header>
+        <h3 class="nu-panel__title">Payments</h3>
         <button
           type="button"
           class="btn btn-primary"
           data-test-payment-record
           {{on "click" this.openPaymentModal}}
         >Record a payment</button>
-      </div>
+      </:header>
+      <:body>
       {{#if this.paymentsLoading}}
         <p class="text-muted">Loading payments…</p>
       {{else if this.paymentRows}}
-        <div class="data-table-wrapper">
-          <table class="data-table" data-test-company-payments-table>
+        <div class="nu-table-wrapper">
+          <table class="nu-table" data-test-company-payments-table>
             <thead>
               <tr>
                 <th>Date</th>
@@ -344,16 +344,16 @@
       {{else}}
         <p class="text-muted">No payments recorded yet.</p>
       {{/if}}
-    </div>
+      </:body>
+    </Nuvo::Panel>
 
   {{else if (eq this.activeTab "history")}}
-    <div class="glass-panel p-6">
-      <h3 class="text-lg font-bold mb-4">History</h3>
+    <Nuvo::Panel @title="History">
       {{#if this.historyLoading}}
         <p class="text-muted">Loading history…</p>
       {{else if this.historyRows}}
-        <div class="data-table-wrapper">
-          <table class="data-table" data-test-company-history-table>
+        <div class="nu-table-wrapper">
+          <table class="nu-table" data-test-company-history-table>
             <thead>
               <tr>
                 <th>When</th>
@@ -375,7 +375,7 @@
       {{else}}
         <p class="text-muted">No operator events for this company yet.</p>
       {{/if}}
-    </div>
+    </Nuvo::Panel>
   {{/if}}
 
   {{! ---- Deal modal ---- }}
@@ -414,12 +414,13 @@
         </div>
         <div class="flex col gap-2 flex-2">
           <label class="text-sm text-muted" for="deal-basis">Basis</label>
-          <Nuvo::Select
+          <Nuvo::Dropdown
             id="deal-basis"
             data-test-deal-basis
+            @align="start"
             @options={{this.basisOptions}}
             @value={{this.dealBasis}}
-            @onChange={{this.setDealBasis}}
+            @onSelect={{this.setDealBasis}}
           />
         </div>
       </div>
@@ -815,12 +816,12 @@
   />
 
 {{else}}
-  <div class="glass-panel p-6 console-empty">
+  <Nuvo::Panel class="console-empty">
     <p class="text-muted">This company could not be loaded.</p>
     <button
       type="button"
       class="btn btn-secondary mt-3"
       {{on "click" this.goBack}}
     >Back to Companies</button>
-  </div>
+  </Nuvo::Panel>
 {{/if}}

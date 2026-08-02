@@ -232,10 +232,11 @@
         />
       </Nuvo::Field>
       <Nuvo::Field @label="Type" class="grow">
-        <Nuvo::Select
+        <Nuvo::Dropdown
           id="chq-type"
+          @align="start"
           @value={{this.formType}}
-          @onChange={{fn this.setFieldValue "formType"}}
+          @onSelect={{fn this.setFieldValue "formType"}}
           @options={{this.chequeTypeOptions}}
           @placeholder="Select type..."
           data-test-input-type
@@ -265,10 +266,11 @@
       />
     </Nuvo::Field>
     <Nuvo::Field @label="Property">
-      <Nuvo::Select
+      <Nuvo::Dropdown
         id="chq-unit"
+        @align="start"
         @value={{this.formUnitId}}
-        @onChange={{fn this.setFieldValue "formUnitId"}}
+        @onSelect={{fn this.setFieldValue "formUnitId"}}
         @options={{this.unitOptions}}
         @placeholder="No property linked"
         data-test-input-unit

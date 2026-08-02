@@ -349,10 +349,11 @@
       <div class="flex gap-4">
         <div class="flex col gap-2 grow">
           <Nuvo::Field @label="Listing Type">
-            <Nuvo::Select
+            <Nuvo::Dropdown
               id="nu-type"
+              @align="start"
               @value={{this.newUnitType}}
-              @onChange={{fn this.setFieldValue "newUnitType"}}
+              @onSelect={{fn this.setFieldValue "newUnitType"}}
               @options={{this.unitTypeOptions}}
               @placeholder="Not Listed"
             />
@@ -360,10 +361,11 @@
         </div>
         <div class="flex col gap-2 grow">
           <Nuvo::Field @label="Status">
-            <Nuvo::Select
+            <Nuvo::Dropdown
               id="nu-status"
+              @align="start"
               @value={{this.newUnitStatus}}
-              @onChange={{fn this.setFieldValue "newUnitStatus"}}
+              @onSelect={{fn this.setFieldValue "newUnitStatus"}}
               @options={{this.unitStatusOptions}}
               @placeholder="Select status..."
             />

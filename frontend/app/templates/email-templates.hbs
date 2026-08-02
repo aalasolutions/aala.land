@@ -18,10 +18,11 @@
   </Nuvo::PageHeader>
 
   <div class="flex gap-3">
-    <Nuvo::Select
+    <Nuvo::Dropdown
       id="email-template-category-filter"
+      @align="start"
       @value={{this.category}}
-      @onChange={{this.filterCategory}}
+      @onSelect={{this.filterCategory}}
       @options={{this.filterCategories}}
       @placeholder="All Categories"
       data-test-category-filter
@@ -113,10 +114,11 @@
         />
       </Nuvo::Field>
       <Nuvo::Field class="grow" @label="Category">
-        <Nuvo::Select
+        <Nuvo::Dropdown
           id="t-category"
+          @align="start"
           @value={{this.formCategory}}
-          @onChange={{fn this.setFieldValue "formCategory"}}
+          @onSelect={{fn this.setFieldValue "formCategory"}}
           @options={{this.categories}}
           @placeholder="Select category..."
           data-test-input-category

@@ -18,10 +18,11 @@
   </Nuvo::PageHeader>
 
   <div class="flex gap-3">
-    <Nuvo::Select
+    <Nuvo::Dropdown
       id="document-category-filter"
+      @align="start"
       @value={{this.category}}
-      @onChange={{this.setCategory}}
+      @onSelect={{this.setCategory}}
       @options={{this.categories}}
       @placeholder="All Categories"
       data-test-category-filter
@@ -196,20 +197,22 @@
 
     <div class="flex gap-4">
       <Nuvo::Field class="grow" @label="Category">
-        <Nuvo::Select
+        <Nuvo::Dropdown
           id="d-category"
+          @align="start"
           @value={{this.formCategory}}
-          @onChange={{fn this.setFieldValue "formCategory"}}
+          @onSelect={{fn this.setFieldValue "formCategory"}}
           @options={{this.categoryOptions}}
           @placeholder="Select category..."
           data-test-field-category
         />
       </Nuvo::Field>
       <Nuvo::Field class="grow" @label="Access Level">
-        <Nuvo::Select
+        <Nuvo::Dropdown
           id="d-access"
+          @align="start"
           @value={{this.formAccessLevel}}
-          @onChange={{fn this.setFieldValue "formAccessLevel"}}
+          @onSelect={{fn this.setFieldValue "formAccessLevel"}}
           @options={{this.accessLevels}}
           @placeholder="Select access level..."
           data-test-field-access

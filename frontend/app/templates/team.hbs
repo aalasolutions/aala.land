@@ -230,10 +230,11 @@
     {{/unless}}
 
     <Nuvo::Field @label="Role">
-      <Nuvo::Select
+      <Nuvo::Dropdown
         id="t-role"
+        @align="start"
         @value={{this.formRole}}
-        @onChange={{fn this.setFieldValue "formRole"}}
+        @onSelect={{fn this.setFieldValue "formRole"}}
         @options={{this.roles}}
         @placeholder="Select role..."
         data-test-input-role
@@ -309,10 +310,11 @@
     </Nuvo::Field>
 
     <Nuvo::Field @label="Role">
-      <Nuvo::Select
+      <Nuvo::Dropdown
         id="i-role"
+        @align="start"
         @value={{this.inviteRole}}
-        @onChange={{fn this.setFieldValue "inviteRole"}}
+        @onSelect={{fn this.setFieldValue "inviteRole"}}
         @options={{this.roles}}
         @placeholder="Select role..."
         data-test-invite-role
@@ -404,10 +406,11 @@
       </div>
 
       <Nuvo::Field @label="Reassign records to" @required={{true}}>
-        <Nuvo::Select
+        <Nuvo::Dropdown
           id="remove-target"
+          @align="start"
           @value={{this.removeTargetId}}
-          @onChange={{fn this.setFieldValue "removeTargetId"}}
+          @onSelect={{fn this.setFieldValue "removeTargetId"}}
           @options={{this.reassignOptions}}
           @placeholder="Select a team member..."
           data-test-remove-target
@@ -516,10 +519,11 @@
         @label="Member who stays active (must be a company admin)"
         @required={{true}}
       >
-        <Nuvo::Select
+        <Nuvo::Dropdown
           id="trim-keep"
+          @align="start"
           @value={{this.trimKeepId}}
-          @onChange={{fn this.setFieldValue "trimKeepId"}}
+          @onSelect={{fn this.setFieldValue "trimKeepId"}}
           @options={{this.trimKeepOptions}}
           @placeholder="Select a company admin..."
           data-test-trim-keep

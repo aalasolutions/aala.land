@@ -125,10 +125,11 @@
       />
     </Nuvo::Field>
     <Nuvo::Field @label="Assigned Agent">
-      <Nuvo::Select
+      <Nuvo::Dropdown
         id="owner-agent-id"
+        @align="start"
         @value={{this.formAssignedAgentId}}
-        @onChange={{fn this.setFieldValue "formAssignedAgentId"}}
+        @onSelect={{fn this.setFieldValue "formAssignedAgentId"}}
         @options={{this.agentOptions}}
         @placeholder="Unassigned"
         data-test-input-agent

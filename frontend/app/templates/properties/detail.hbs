@@ -419,10 +419,11 @@
       </div>
       <div class="flex col gap-2 grow">
         <Nuvo::Field @label="Status">
-          <Nuvo::Select
+          <Nuvo::Dropdown
             id="u-status"
+            @align="start"
             @value={{this.formUnitStatus}}
-            @onChange={{fn this.setFieldValue "formUnitStatus"}}
+            @onSelect={{fn this.setFieldValue "formUnitStatus"}}
             @options={{this.statusOptions}}
             @placeholder="Select status..."
           />
@@ -430,10 +431,11 @@
       </div>
     </div>
     <Nuvo::Field @label="Property Type">
-      <Nuvo::Select
+      <Nuvo::Dropdown
         id="u-property-type"
+        @align="start"
         @value={{this.formUnitPropertyType}}
-        @onChange={{fn this.setFieldValue "formUnitPropertyType"}}
+        @onSelect={{fn this.setFieldValue "formUnitPropertyType"}}
         @options={{this.propertyTypeOptions}}
         @placeholder="Select type..."
       />
@@ -491,10 +493,11 @@
       </div>
     </div>
     <Nuvo::Field @label="Owner">
-      <Nuvo::Select
+      <Nuvo::Dropdown
         id="u-owner"
+        @align="start"
         @value={{this.formUnitOwnerId}}
-        @onChange={{fn this.setFieldValue "formUnitOwnerId"}}
+        @onSelect={{fn this.setFieldValue "formUnitOwnerId"}}
         @options={{this.ownerOptions}}
       />
     </Nuvo::Field>

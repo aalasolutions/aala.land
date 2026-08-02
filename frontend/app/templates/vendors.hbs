@@ -127,10 +127,11 @@
   <form class="flex col gap-4" {{on "submit" this.saveVendor}}>
     {{#if this.showRegionField}}
       <Nuvo::Field @label="Region">
-        <Nuvo::Select
+        <Nuvo::Dropdown
           id="vendor-region"
+          @align="start"
           @value={{this.formRegionCode}}
-          @onChange={{fn this.setFieldValue "formRegionCode"}}
+          @onSelect={{fn this.setFieldValue "formRegionCode"}}
           @options={{this.regionOptions}}
           @placeholder="Select region..."
           data-test-region-select

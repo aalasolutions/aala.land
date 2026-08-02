@@ -7,9 +7,9 @@
 // `--primary`, which would throw away the trade colour that identifies it.
 @use "../uikit/common/var" as *;
 
-.vendor-specialty-chip.is-selected {
-  --nu-tag--BackgroundColor: var(--bg-surface);
-  --nu-tag--BorderColor: var(--nu-tag--Color);
+// .vendor-specialty-chip.is-selected {
+//   --nu-tag--BackgroundColor: var(--bg-surface);
+//   --nu-tag--BorderColor: var(--nu-tag--Color);
 
-  box-shadow: inset 0 0 0 1px var(--nu-tag--Color);
-}
+//   box-shadow: inset 0 0 0 1px var(--nu-tag--Color);
+// }

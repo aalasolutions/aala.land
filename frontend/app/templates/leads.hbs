@@ -57,10 +57,11 @@
           </div>
 
           {{#each column.leads as |lead|}}
-            <div
+            <Nuvo::Panel
+              @compact={{true}}
+              class="flex col gap-2 lead-card-clickable"
               data-test-lead-card
               data-test-lead-id={{lead.id}}
-              class="glass-panel flex col gap-2 lead-card-clickable"
               draggable="true"
               {{on "dragstart" (fn this.handleDragStart lead)}}
               {{on "click" (fn this.openDetailModal lead)}}
@@ -126,7 +127,7 @@
                   </button>
                 </div>
               </div>
-            </div>
+            </Nuvo::Panel>
           {{else}}
             <div class="p-4 rounded-xl border border-white@05 text-center">
               <p class="text-muted text-xs">No leads</p>
@@ -166,10 +167,11 @@
           </div>
 
           {{#each column.leads as |lead|}}
-            <div
+            <Nuvo::Panel
+              @compact={{true}}
+              class="flex col gap-2 lead-card-clickable"
               data-test-lead-card
               data-test-lead-id={{lead.id}}
-              class="glass-panel p-4 flex col gap-2 lead-card-clickable"
               draggable="true"
               {{on "dragstart" (fn this.handleDragStart lead)}}
               {{on "click" (fn this.openDetailModal lead)}}
@@ -228,7 +230,7 @@
                   </button>
                 </div>
               </div>
-            </div>
+            </Nuvo::Panel>
           {{else}}
             <div class="p-4 rounded-xl border border-white@05 text-center">
               <p class="text-muted text-xs">No leads</p>
@@ -273,10 +275,11 @@
           </div>
 
           {{#each column.leads as |lead|}}
-            <div
+            <Nuvo::Panel
+              @compact={{true}}
+              class="flex col gap-2 lead-card-clickable"
               data-test-lead-card
               data-test-lead-id={{lead.id}}
-              class="glass-panel p-4 flex col gap-2 lead-card-clickable"
               draggable="true"
               {{on "dragstart" (fn this.handleDragStart lead)}}
               {{on "click" (fn this.openDetailModal lead)}}
@@ -327,7 +330,7 @@
                   </button>
                 </div>
               </div>
-            </div>
+            </Nuvo::Panel>
           {{else}}
             <div class="p-4 rounded-xl border border-white@05 text-center">
               <p class="text-muted text-xs">No leads</p>
@@ -340,8 +343,8 @@
 
   {{! LIST VIEW }}
   {{#if (eq this.viewMode "list")}}
-    <div class="leads-list-view">
-      <table class="data-table">
+    <div class="nu-table-wrapper">
+      <table class="nu-table">
         <thead>
           <tr>
             <th>Name</th>
@@ -463,10 +466,11 @@
   <form class="flex col gap-4" {{on "submit" this.saveLead}}>
     {{#if this.showRegionField}}
       <Nuvo::Field @label="Region">
-        <Nuvo::Select
+        <Nuvo::Dropdown
           id="lead-region"
+          @align="start"
           @value={{this.formRegionCode}}
-          @onChange={{this.setRegionCode}}
+          @onSelect={{this.setRegionCode}}
           @options={{this.regionOptions}}
           @placeholder="Select region..."
           data-test-region-select
@@ -519,10 +523,11 @@
     <div class="flex gap-4">
       <div class="grow">
         <Nuvo::Field @label="Status">
-          <Nuvo::Select
+          <Nuvo::Dropdown
             id="lead-status"
+            @align="start"
             @value={{this.formStatus}}
-            @onChange={{fn this.setFieldValue "formStatus"}}
+            @onSelect={{fn this.setFieldValue "formStatus"}}
             @options={{this.statusOptions}}
             @placeholder="Select status..."
           />
@@ -530,10 +535,11 @@
       </div>
       <div class="grow">
         <Nuvo::Field @label="Temperature">
-          <Nuvo::Select
+          <Nuvo::Dropdown
             id="lead-temp"
+            @align="start"
             @value={{this.formTemperature}}
-            @onChange={{fn this.setFieldValue "formTemperature"}}
+            @onSelect={{fn this.setFieldValue "formTemperature"}}
             @options={{this.temperatureOptions}}
             @placeholder="Select temperature..."
           />
@@ -541,28 +547,31 @@
       </div>
     </div>
     <Nuvo::Field @label="Source">
-      <Nuvo::Select
+      <Nuvo::Dropdown
         id="lead-source"
+        @align="start"
         @value={{this.formSource}}
-        @onChange={{fn this.setFieldValue "formSource"}}
+        @onSelect={{fn this.setFieldValue "formSource"}}
         @options={{this.sourceOptions}}
         @placeholder="Select source..."
       />
     </Nuvo::Field>
     <Nuvo::Field @label="Property Area">
-      <Nuvo::Select
+      <Nuvo::Dropdown
         id="lead-property"
+        @align="start"
         @value={{this.formPropertyId}}
-        @onChange={{this.setPropertyId}}
+        @onSelect={{this.setPropertyId}}
         @options={{this.propertyOptions}}
       />
     </Nuvo::Field>
     {{#if this.formPropertyId}}
       <Nuvo::Field @label="Property">
-        <Nuvo::Select
+        <Nuvo::Dropdown
           id="lead-unit"
+          @align="start"
           @value={{this.formUnitId}}
-          @onChange={{fn this.setFieldValue "formUnitId"}}
+          @onSelect={{fn this.setFieldValue "formUnitId"}}
           @options={{this.unitOptions}}
         />
       </Nuvo::Field>
@@ -601,10 +610,11 @@
       <strong>{{this.assignLead.firstName}}</strong>
       to:</p>
     <Nuvo::Field @label="Agent">
-      <Nuvo::Select
+      <Nuvo::Dropdown
         id="agent-select"
+        @align="start"
         @value={{this.selectedAgentId}}
-        @onChange={{fn this.setFieldValue "selectedAgentId"}}
+        @onSelect={{fn this.setFieldValue "selectedAgentId"}}
         @options={{this.agentOptions}}
       />
     </Nuvo::Field>

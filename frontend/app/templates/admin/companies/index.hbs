@@ -16,20 +16,22 @@
       @onInput={{this.setSearch}}
       data-test-companies-search
     />
-    <Nuvo::Select
+    <Nuvo::Dropdown
       class="console-list-filters__select"
       aria-label="Filter by rail"
+      @align="start"
       @value={{this.railFilter}}
       @options={{this.railOptions}}
-      @onChange={{this.setRail}}
+      @onSelect={{this.setRail}}
       data-test-companies-rail-filter
     />
-    <Nuvo::Select
+    <Nuvo::Dropdown
       class="console-list-filters__select"
       aria-label="Filter by status"
+      @align="start"
       @value={{this.statusFilter}}
       @options={{this.statusOptions}}
-      @onChange={{this.setStatus}}
+      @onSelect={{this.setStatus}}
       data-test-companies-status-filter
     />
   </div>

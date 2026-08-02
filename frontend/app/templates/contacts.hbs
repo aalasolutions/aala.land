@@ -152,10 +152,11 @@
         />
       </Nuvo::Field>
       <Nuvo::Field class="grow" @label="Type">
-        <Nuvo::Select
+        <Nuvo::Dropdown
           id="c-type"
+          @align="start"
           @value={{this.formType}}
-          @onChange={{fn this.setFieldValue "formType"}}
+          @onSelect={{fn this.setFieldValue "formType"}}
           @options={{this.contactTypes}}
           @placeholder="Select type..."
           data-test-input-type

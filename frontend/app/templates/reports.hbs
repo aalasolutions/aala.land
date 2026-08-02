@@ -10,50 +10,53 @@
   {{! KPI Cards }}
   {{#if @model.kpis}}
     <div class="kpi-grid">
-      <div class="glass-panel p-5 text-center">
+      <Nuvo::Panel class="text-center">
         <p class="text-xs text-muted uppercase">Total Leads</p>
         <p class="text-3xl font-bold mt-1">{{format-number
             @model.kpis.totalLeads
           }}</p>
-      </div>
-      <div class="glass-panel p-5 text-center">
+      </Nuvo::Panel>
+      <Nuvo::Panel class="text-center">
         <p class="text-xs text-muted uppercase">Won Leads</p>
         <p class="text-3xl font-bold mt-1 text-success">{{format-number
             @model.kpis.wonLeads
           }}</p>
-      </div>
-      <div class="glass-panel p-5 text-center">
+      </Nuvo::Panel>
+      <Nuvo::Panel class="text-center">
         <p class="text-xs text-muted uppercase">Total Properties</p>
         <p class="text-3xl font-bold mt-1">{{format-number
             @model.kpis.totalUnits
           }}</p>
-      </div>
-      <div class="glass-panel p-5 text-center">
+      </Nuvo::Panel>
+      <Nuvo::Panel class="text-center">
         <p class="text-xs text-muted uppercase">Monthly Revenue</p>
         <p class="text-3xl font-bold mt-1">{{format-currency
             @model.kpis.monthlyRevenue
           }}</p>
-      </div>
-      <div class="glass-panel p-5 text-center">
+      </Nuvo::Panel>
+      <Nuvo::Panel class="text-center">
         <p class="text-xs text-muted uppercase">Active Leases</p>
         <p class="text-3xl font-bold mt-1">{{format-number
             @model.kpis.activeLeases
           }}</p>
-      </div>
-      <div class="glass-panel p-5 text-center">
+      </Nuvo::Panel>
+      <Nuvo::Panel class="text-center">
         <p class="text-xs text-muted uppercase">Pending Cheques</p>
         <p class="text-3xl font-bold mt-1">{{format-number
             @model.kpis.pendingCheques
           }}</p>
-      </div>
+      </Nuvo::Panel>
     </div>
   {{/if}}
 
   {{! Red Flag Alerts }}
   {{#if @model.redFlags.length}}
-    <div class="glass-panel p-5">
-      <h4 class="text-lg font-bold mb-4"><Ui::Ph @icon="warning" @size="20px" />
-        Red Flag Alerts</h4>
+    <Nuvo::Panel>
+      <:header>
+        <h4 class="nu-panel__title"><Ui::Ph @icon="warning" @size="20px" />
+          Red Flag Alerts</h4>
+      </:header>
+      <:body>
       <div class="flex col gap-2">
         {{#each @model.redFlags as |flag|}}
           <div
@@ -77,14 +80,18 @@
           </div>
         {{/each}}
       </div>
-    </div>
+      </:body>
+    </Nuvo::Panel>
   {{/if}}
 
   {{! Pipeline Funnel }}
   {{#if @model.funnel.length}}
-    <div class="glass-panel p-5">
-      <h4 class="text-lg font-bold mb-4"><Ui::Ph @icon="funnel" @size="20px" />
-        Pipeline Funnel</h4>
+    <Nuvo::Panel>
+      <:header>
+        <h4 class="nu-panel__title"><Ui::Ph @icon="funnel" @size="20px" />
+          Pipeline Funnel</h4>
+      </:header>
+      <:body>
       <div class="funnel-grid">
         {{#each @model.funnel as |stage|}}
           <div class="funnel-stage text-center">
@@ -93,19 +100,23 @@
           </div>
         {{/each}}
       </div>
-    </div>
+      </:body>
+    </Nuvo::Panel>
   {{/if}}
 
   {{! Agent Performance }}
   {{#if @model.agents.length}}
-    <div class="glass-panel p-5">
-      <h4 class="text-lg font-bold mb-4"><Ui::Ph
-          @icon="users-three"
-          @size="20px"
-        />
-        Agent Performance</h4>
-      <div class="data-table-wrapper">
-        <table class="data-table">
+    <Nuvo::Panel>
+      <:header>
+        <h4 class="nu-panel__title"><Ui::Ph
+            @icon="users-three"
+            @size="20px"
+          />
+          Agent Performance</h4>
+      </:header>
+      <:body>
+      <div class="nu-table-wrapper">
+        <table class="nu-table">
           <thead>
             <tr>
               <th>Agent</th>
@@ -158,21 +169,25 @@
           </tbody>
         </table>
       </div>
-    </div>
+      </:body>
+    </Nuvo::Panel>
   {{else}}
-    <div class="glass-panel p-8 text-center">
+    <Nuvo::Panel class="text-center">
       <p class="text-muted">No agent data available.</p>
-    </div>
+    </Nuvo::Panel>
   {{/if}}
 
   {{! Activity Feed }}
   {{#if @model.activity.length}}
-    <div class="glass-panel p-5">
-      <h4 class="text-lg font-bold mb-4"><Ui::Ph
-          @icon="clock-counter-clockwise"
-          @size="20px"
-        />
-        Recent Activity</h4>
+    <Nuvo::Panel>
+      <:header>
+        <h4 class="nu-panel__title"><Ui::Ph
+            @icon="clock-counter-clockwise"
+            @size="20px"
+          />
+          Recent Activity</h4>
+      </:header>
+      <:body>
       <div class="flex col gap-2">
         {{#each @model.activity as |item|}}
           <div class="flex between x-center p-3 rounded-lg activity-row">
@@ -188,6 +203,7 @@
           </div>
         {{/each}}
       </div>
-    </div>
+      </:body>
+    </Nuvo::Panel>
   {{/if}}
 </div>

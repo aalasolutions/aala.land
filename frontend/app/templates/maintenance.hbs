@@ -47,19 +47,21 @@
   {{#if (eq this.activeSection "orders")}}
     <div class="flex gap-4 x-center">
       <Nuvo::Field @label="Status">
-        <Nuvo::Select
+        <Nuvo::Dropdown
           id="maintenance-status-filter"
+          @align="start"
           @value={{this.filterStatus}}
-          @onChange={{this.setStatusFilter}}
+          @onSelect={{this.setStatusFilter}}
           @options={{this.statusOptions}}
           @placeholder="All"
         />
       </Nuvo::Field>
       <Nuvo::Field @label="Period">
-        <Nuvo::Select
+        <Nuvo::Dropdown
           id="maintenance-period-filter"
+          @align="start"
           @value={{this.filterMonth}}
-          @onChange={{this.setMonthFilter}}
+          @onSelect={{this.setMonthFilter}}
           @options={{this.monthOptions}}
           @placeholder="All"
         />
@@ -227,10 +229,11 @@
 >
   <form class="flex col gap-4" {{on "submit" this.saveWorkOrder}}>
     <Nuvo::Field @label="Property" @required={{true}}>
-      <Nuvo::Select
+      <Nuvo::Dropdown
         id="wo-unit"
+        @align="start"
         @value={{this.formUnitId}}
-        @onChange={{fn this.setFieldValue "formUnitId"}}
+        @onSelect={{fn this.setFieldValue "formUnitId"}}
         @options={{this.unitOptions}}
         @placeholder="Select a property..."
         data-test-wo-unit
@@ -262,10 +265,11 @@
     <div class="flex gap-4">
       <div class="grow">
         <Nuvo::Field @label="Priority">
-          <Nuvo::Select
+          <Nuvo::Dropdown
             id="wo-priority"
+            @align="start"
             @value={{this.formPriority}}
-            @onChange={{fn this.setFieldValue "formPriority"}}
+            @onSelect={{fn this.setFieldValue "formPriority"}}
             @options={{this.priorityOptions}}
             @placeholder="Select priority..."
           />
@@ -273,10 +277,11 @@
       </div>
       <div class="grow">
         <Nuvo::Field @label="Category">
-          <Nuvo::Select
+          <Nuvo::Dropdown
             id="wo-category"
+            @align="start"
             @value={{this.formCategory}}
-            @onChange={{fn this.setFieldValue "formCategory"}}
+            @onSelect={{fn this.setFieldValue "formCategory"}}
             @options={{this.categoryOptions}}
             @placeholder="Select category..."
           />
@@ -286,10 +291,11 @@
 
     {{#if this.editWorkOrder}}
       <Nuvo::Field @label="Status">
-        <Nuvo::Select
+        <Nuvo::Dropdown
           id="wo-status"
+          @align="start"
           @value={{this.formStatus}}
-          @onChange={{fn this.setFieldValue "formStatus"}}
+          @onSelect={{fn this.setFieldValue "formStatus"}}
           @options={{this.workOrderStatusOptions}}
           @placeholder="Select status..."
         />
@@ -377,10 +383,11 @@
       </div>
       <div class="grow">
         <Nuvo::Field @label="Vendor">
-          <Nuvo::Select
+          <Nuvo::Dropdown
             id="wo-vendor"
+            @align="start"
             @value={{this.formVendorId}}
-            @onChange={{fn this.setFieldValue "formVendorId"}}
+            @onSelect={{fn this.setFieldValue "formVendorId"}}
             @options={{this.vendorOptions}}
             @placeholder="No vendor assigned"
           />

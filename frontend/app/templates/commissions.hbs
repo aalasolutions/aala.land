@@ -7,10 +7,11 @@
     </:meta>
     <:actions>
       <div class="flex gap-3 x-end">
-        <Nuvo::Select
+        <Nuvo::Dropdown
           id="commissions-status-filter"
+          @align="start"
           @value={{this.filterStatus}}
-          @onChange={{this.setStatusFilter}}
+          @onSelect={{this.setStatusFilter}}
           @options={{this.filterStatusOptions}}
           @placeholder="All"
         />
@@ -148,10 +149,11 @@
   {{/if}}
   <form class="flex col gap-4" {{on "submit" this.saveCommission}}>
     <Nuvo::Field @label="Agent" @required={{true}}>
-      <Nuvo::Select
+      <Nuvo::Dropdown
         id="commission-agent"
+        @align="start"
         @value={{this.formAgentId}}
-        @onChange={{fn this.setFieldValue "formAgentId"}}
+        @onSelect={{fn this.setFieldValue "formAgentId"}}
         @options={{this.agentOptions}}
         @placeholder="Select agent..."
         data-test-input-agent
@@ -159,10 +161,11 @@
     </Nuvo::Field>
 
     <Nuvo::Field @label="Type" @required={{true}}>
-      <Nuvo::Select
+      <Nuvo::Dropdown
         id="commission-type"
+        @align="start"
         @value={{this.formType}}
-        @onChange={{fn this.setFieldValue "formType"}}
+        @onSelect={{fn this.setFieldValue "formType"}}
         @options={{this.commissionTypeOptions}}
         @placeholder="Select type..."
         data-test-input-type

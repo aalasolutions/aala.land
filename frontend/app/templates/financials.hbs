@@ -173,19 +173,21 @@
   <form class="flex col gap-4" {{on "submit" this.saveTx}}>
     <div class="flex gap-4">
       <Nuvo::Field @label="Type" @required={{true}} class="grow">
-        <Nuvo::Select
+        <Nuvo::Dropdown
           id="tx-type"
+          @align="start"
           @value={{this.formType}}
-          @onChange={{fn this.setFieldValue "formType"}}
+          @onSelect={{fn this.setFieldValue "formType"}}
           @options={{this.transactionTypeOptions}}
           @placeholder="Select type..."
         />
       </Nuvo::Field>
       <Nuvo::Field @label="Category" @required={{true}} class="grow">
-        <Nuvo::Select
+        <Nuvo::Dropdown
           id="tx-category"
+          @align="start"
           @value={{this.formCategory}}
-          @onChange={{fn this.setFieldValue "formCategory"}}
+          @onSelect={{fn this.setFieldValue "formCategory"}}
           @options={{this.categoryOptions}}
           @placeholder="Select category..."
         />
@@ -205,10 +207,11 @@
         />
       </Nuvo::Field>
       <Nuvo::Field @label="Payment Method" @required={{true}} class="grow">
-        <Nuvo::Select
+        <Nuvo::Dropdown
           id="tx-payment"
+          @align="start"
           @value={{this.formPaymentMethod}}
-          @onChange={{fn this.setFieldValue "formPaymentMethod"}}
+          @onSelect={{fn this.setFieldValue "formPaymentMethod"}}
           @options={{this.paymentMethodOptions}}
           @placeholder="Select payment method..."
         />
@@ -233,10 +236,11 @@
         />
       </Nuvo::Field>
       <Nuvo::Field @label="Status" @required={{true}} class="grow">
-        <Nuvo::Select
+        <Nuvo::Dropdown
           id="tx-status"
+          @align="start"
           @value={{this.formStatus}}
-          @onChange={{fn this.setFieldValue "formStatus"}}
+          @onSelect={{fn this.setFieldValue "formStatus"}}
           @options={{this.statusOptions}}
           @placeholder="Select status..."
         />

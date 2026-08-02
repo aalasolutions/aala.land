@@ -96,10 +96,11 @@
 >
   <form class="flex col gap-4" {{on "submit" this.saveLease}}>
     <Nuvo::Field @label="Property" @required={{true}}>
-      <Nuvo::Select
+      <Nuvo::Dropdown
         id="lease-unit-id"
+        @align="start"
         @value={{this.formUnitId}}
-        @onChange={{fn this.setFieldValue "formUnitId"}}
+        @onSelect={{fn this.setFieldValue "formUnitId"}}
         @options={{this.unitOptions}}
         @placeholder="Select a property..."
       />
@@ -107,10 +108,11 @@
 
     {{#if this.editLease}}
       <Nuvo::Field @label="Status">
-        <Nuvo::Select
+        <Nuvo::Dropdown
           id="lease-status"
+          @align="start"
           @value={{this.formStatus}}
-          @onChange={{fn this.setFieldValue "formStatus"}}
+          @onSelect={{fn this.setFieldValue "formStatus"}}
           @options={{this.validNextStatuses}}
         />
       </Nuvo::Field>
@@ -150,10 +152,11 @@
 
     <div class="flex gap-4">
       <Nuvo::Field class="grow" @label="Property Type">
-        <Nuvo::Select
+        <Nuvo::Dropdown
           id="lease-type"
+          @align="start"
           @value={{this.formType}}
-          @onChange={{fn this.setFieldValue "formType"}}
+          @onSelect={{fn this.setFieldValue "formType"}}
           @options={{this.leaseTypeOptions}}
           @placeholder="Select property type..."
         />
