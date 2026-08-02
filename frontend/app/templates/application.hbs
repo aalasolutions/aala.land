@@ -8,7 +8,7 @@
   >
     {{! Sidebar }}
     <aside
-      class="nu-sidebar
+      class="nu-sidebar m-plain
         {{if this.desktopCollapsed 'is-collapsed'}}
         {{if this.sidebarMobileOpen 'is-open'}}"
       data-test-sidebar
@@ -381,7 +381,7 @@
       {{/if}}
       <TenantLockBanner @lockState={{this.session.lockState}} />
       {{! Top Bar }}
-      <header class="nu-topbar m-sticky">
+      <header class="nu-topbar m-sticky m-plain">
         <div class="nu-topbar__search">
           <input
             type="text"

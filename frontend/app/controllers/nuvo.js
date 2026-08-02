@@ -212,6 +212,48 @@ export default class UikitController extends Controller {
     this.activeUnitTab = tabId;
   }
 
+  // ---- segmented ----
+
+  @tracked segmentedView = 'pipeline';
+  @tracked segmentedPeriod = 'week';
+  @tracked segmentedAmenities = ['parking', 'pool'];
+
+  segmentedViews = [
+    { id: 'pipeline', label: 'Pipeline', icon: 'squares-four' },
+    { id: 'temperature', label: 'Temperature', icon: 'thermometer' },
+    { id: 'agent', label: 'Agent', icon: 'users' },
+    { id: 'list', label: 'List', icon: 'list' },
+  ];
+
+  segmentedPlain = [
+    { id: 'day', label: 'Day' },
+    { id: 'week', label: 'Week' },
+    { id: 'month', label: 'Month' },
+    { id: 'year', label: 'Year', disabled: true },
+  ];
+
+  segmentedAmenityOptions = [
+    { id: 'parking', label: 'Parking', icon: 'car' },
+    { id: 'pool', label: 'Pool', icon: 'swimming-pool' },
+    { id: 'gym', label: 'Gym', icon: 'barbell' },
+    { id: 'security', label: 'Security', icon: 'shield-check' },
+  ];
+
+  @action
+  updateSegmentedView(value) {
+    this.segmentedView = value;
+  }
+
+  @action
+  updateSegmentedPeriod(value) {
+    this.segmentedPeriod = value;
+  }
+
+  @action
+  updateSegmentedAmenities(values) {
+    this.segmentedAmenities = values;
+  }
+
   // ---- breadcrumb ----
 
   breadcrumbItems = [

@@ -931,6 +931,71 @@
     </div>
   </section>
 
+  <section class="nuvo-section" id="segmented">
+    <h2 class="nuvo-section__title">Segmented</h2>
+    <p class="text-muted text-sm">A single- or multi-choice control rendered as
+      one joined switch. Unlike Tabs, which navigate between panels of content,
+      this sets a value.</p>
+
+    <div class="nuvo-stack">
+      <Nuvo::Text @text="Icon + label (default)" @variant="muted" @size="sm" />
+      <Nuvo::Segmented
+        @options={{this.segmentedViews}}
+        @value={{this.segmentedView}}
+        @onChange={{this.updateSegmentedView}}
+      />
+
+      <Nuvo::Text @text="Label only" @variant="muted" @size="sm" />
+      <Nuvo::Segmented
+        @options={{this.segmentedPlain}}
+        @value={{this.segmentedPeriod}}
+        @onChange={{this.updateSegmentedPeriod}}
+      />
+
+      <Nuvo::Text @text="Icon only" @variant="muted" @size="sm" />
+      <Nuvo::Segmented
+        @options={{this.segmentedViews}}
+        @value={{this.segmentedView}}
+        @onChange={{this.updateSegmentedView}}
+        @iconOnly={{true}}
+      />
+
+      <Nuvo::Text @text="Sizes: sm, default, lg" @variant="muted" @size="sm" />
+      <Nuvo::Segmented
+        @options={{this.segmentedPlain}}
+        @value={{this.segmentedPeriod}}
+        @onChange={{this.updateSegmentedPeriod}}
+        @size="sm"
+      />
+      <Nuvo::Segmented
+        @options={{this.segmentedPlain}}
+        @value={{this.segmentedPeriod}}
+        @onChange={{this.updateSegmentedPeriod}}
+        @size="lg"
+      />
+
+      <Nuvo::Text
+        @text="Multiple: several segments raised at once"
+        @variant="muted"
+        @size="sm"
+      />
+      <Nuvo::Segmented
+        @options={{this.segmentedAmenityOptions}}
+        @value={{this.segmentedAmenities}}
+        @onChange={{this.updateSegmentedAmenities}}
+        @multiple={{true}}
+      />
+
+      <Nuvo::Text @text="Fill: splits the container" @variant="muted" @size="sm" />
+      <Nuvo::Segmented
+        @options={{this.segmentedPlain}}
+        @value={{this.segmentedPeriod}}
+        @onChange={{this.updateSegmentedPeriod}}
+        @fill={{true}}
+      />
+    </div>
+  </section>
+
   <section class="nuvo-section" id="tabs">
     <h2 class="nuvo-section__title">Tabs</h2>
 
