@@ -1,9 +1,11 @@
-{{#if @open}}
-  <div
-    class={{this.backdropClasses}}
-    data-test-nu-drawer-backdrop
-    {{on "click" this.onBackdropClick}}
-  >
+{{! The backdrop stays mounted so the panel can transition in and back out. }}
+<div
+  class={{this.backdropClasses}}
+  data-test-nu-drawer-backdrop
+  {{did-update this.syncOpen @open}}
+  {{on "click" this.onBackdropClick}}
+>
+  {{#if this.isMounted}}
     <div
       class={{this.drawerClasses}}
       role="dialog"
@@ -49,5 +51,5 @@
         </div>
       {{/if}}
     </div>
-  </div>
-{{/if}}
+  {{/if}}
+</div>
