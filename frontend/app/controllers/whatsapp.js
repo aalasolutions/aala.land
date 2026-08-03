@@ -7,6 +7,7 @@ import { action } from '@ember/object';
 export default class WhatsappController extends Controller {
   @service whatsapp;
   @service auth;
+  @service dialogs;
 
   get isCompanyAdmin() {
     return this.auth.currentUser?.role === 'company_admin';
@@ -33,9 +34,6 @@ export default class WhatsappController extends Controller {
   @tracked messageText = '';
   @tracked isSending = false;
   @tracked errorMsg = '';
-
-  @tracked showRepairModal = false;
-  @tracked isRepairing = false;
 
   _pollQRGeneration = 0;
 
@@ -365,36 +363,32 @@ export default class WhatsappController extends Controller {
   }
 
   @action
-  openRepairModal() {
-    this.showRepairModal = true;
-  }
-
-  @action
-  closeRepairModal() {
-    if (this.isRepairing) return;
-    this.showRepairModal = false;
-  }
-
-  @action
   async repairWhatsapp() {
-    if (this.isRepairing) return;
-    this.isRepairing = true;
-    try {
-      await this.whatsapp.logout();
-      this.messages = [];
-      this.chats = [];
-      this.currentChatId = null;
-      this.connection = 'disconnected';
-      this.hasCredentials = false;
-      this.qr = null;
-      this._pollQRGeneration++;
-      this.showRepairModal = false;
-      this.pollForQR();
-    } catch {
-      this.errorMsg = 'Re-pair failed.';
-    } finally {
-      this.isRepairing = false;
-    }
+    await this.dialogs.confirm({
+      confirmVariant: 'danger',
+      title: 'Re-pair WhatsApp',
+      message:
+        'Your current session will be cleared and you will need to scan a new QR code to reconnect.',
+      confirmText: 'Re-pair',
+      confirmingText: 'Clearing session...',
+      // Swallowed rather than rethrown so the dialog closes and the existing
+      // inline error banner is what reports the failure, as it did before.
+      onConfirm: async () => {
+        try {
+          await this.whatsapp.logout();
+          this.messages = [];
+          this.chats = [];
+          this.currentChatId = null;
+          this.connection = 'disconnected';
+          this.hasCredentials = false;
+          this.qr = null;
+          this._pollQRGeneration++;
+          this.pollForQR();
+        } catch {
+          this.errorMsg = 'Re-pair failed.';
+        }
+      },
+    });
   }
 
   mediaUrl(msg) {

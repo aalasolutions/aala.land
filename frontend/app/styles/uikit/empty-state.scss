@@ -85,6 +85,19 @@
     --nu-empty-state--TitleFontSize: #{nu-font-size(xl)};
   }
 
+  // ---- fill ----
+  //
+  // The base block is content-height, so inside a tall flex column (a chat
+  // pane, a scroll region) it pins to the top instead of sitting in the middle
+  // of the space it is describing. This grows it to claim the free space; the
+  // centring already declared on the block then does the rest.
+  // `min-block-size: 0` keeps it shrinkable inside a scroll parent.
+
+  @include m(fill) {
+    flex: 1;
+    min-block-size: 0;
+  }
+
   // ---- bordered container ----
 
   @include m(bordered) {

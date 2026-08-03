@@ -1,0 +1,56 @@
+{{!--
+  A preset Nuvo::Modal for a single yes/no decision. Use this instead of the
+  browser's native confirm(), which cannot be styled and blocks the main thread.
+
+  It owns its footer, so pass @confirmText / @cancelText / @type rather than
+  building a <:footer> block. For anything that needs custom footer controls,
+  reach for Nuvo::Modal directly.
+
+  @showCancel={{false}} turns this into an alert: one acknowledging button.
+
+  Prefer the `dialogs` service over invoking this directly. Reach for the
+  component only when the body needs custom markup passed as a block.
+--}}
+<Nuvo::Modal
+  @open={{@open}}
+  @title={{@title}}
+  @subtitle={{@subtitle}}
+  @size={{if @size @size "sm"}}
+  @showClose={{this.showClose}}
+  @closeOnEsc={{this.allowDismiss}}
+  @closeOnBackdrop={{this.allowDismiss}}
+  @onClose={{this.close}}
+  data-test-nu-confirm-modal
+  ...attributes
+>
+  <:body>
+    {{#if @message}}
+      <Nuvo::Text
+        @text={{@message}}
+        @muted={{true}}
+        data-test-nu-confirm-modal-message
+      />
+    {{/if}}
+    {{yield}}
+  </:body>
+
+  <:footer>
+    {{#if this.showCancel}}
+      <Nuvo::Button
+        @variant="secondary"
+        @text={{this.cancelText}}
+        @disabled={{this.isConfirming}}
+        data-test-nu-confirm-modal-cancel
+        {{on "click" this.close}}
+      />
+    {{/if}}
+    {{! @loading already implies disabled, see button.js isDisabled. }}
+    <Nuvo::Button
+      @variant={{this.confirmVariant}}
+      @text={{if this.isConfirming this.confirmingText this.confirmText}}
+      @loading={{this.isConfirming}}
+      data-test-nu-confirm-modal-confirm
+      {{on "click" this.confirm}}
+    />
+  </:footer>
+</Nuvo::Modal>

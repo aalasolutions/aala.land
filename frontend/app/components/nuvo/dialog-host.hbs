@@ -1,0 +1,21 @@
+{{!
+  Renders whatever the `dialogs` service currently holds. Mount once, in
+  application.hbs, beside Nuvo::TooltipHost. Never invoke this per page.
+}}
+{{#if this.dialogs.isOpen}}
+  <Nuvo::ConfirmModal
+    @open={{true}}
+    @title={{this.dialogs.current.title}}
+    @subtitle={{this.dialogs.current.subtitle}}
+    @message={{this.dialogs.current.message}}
+    @confirmText={{this.dialogs.current.confirmText}}
+    @cancelText={{this.dialogs.current.cancelText}}
+    @confirmingText={{this.dialogs.current.confirmingText}}
+    @confirmVariant={{this.dialogs.current.confirmVariant}}
+    @showCancel={{this.dialogs.current.showCancel}}
+    @isConfirming={{this.dialogs.isConfirming}}
+    @onClose={{this.dialogs.handleClose}}
+    @onConfirm={{this.dialogs.handleConfirm}}
+    data-test-nu-dialog-host
+  />
+{{/if}}

@@ -69,7 +69,7 @@
             data-tooltip="Re-pair device"
             data-tooltip-position="bottom"
             data-test-repair-btn
-            {{on "click" this.openRepairModal}}
+            {{on "click" this.repairWhatsapp}}
           />
         </div>
       </div>
@@ -193,7 +193,7 @@
               </div>
             </div>
           {{else}}
-            <Nuvo::EmptyState @title="No messages in this chat yet" />
+            <Nuvo::EmptyState @fill={{true}} @title="No messages in this chat yet" />
           {{/each}}
         </div>
 
@@ -230,6 +230,8 @@
       {{else}}
 
         <Nuvo::EmptyState
+          @fill={{true}}
+          @size="lg"
           @title={{if
             this.isConnected
             "Select a chat to start messaging"
@@ -246,16 +248,3 @@
   </div>
 
 </div>
-
-<ConfirmModal
-  @open={{this.showRepairModal}}
-  @title="Re-pair WhatsApp"
-  @message="Your current session will be cleared and you will need to scan a new QR code to reconnect."
-  @confirmText="Re-pair"
-  @cancelText="Cancel"
-  @confirmVariant="danger"
-  @isConfirming={{this.isRepairing}}
-  @confirmingText="Clearing session..."
-  @onClose={{this.closeRepairModal}}
-  @onConfirm={{this.repairWhatsapp}}
-/>

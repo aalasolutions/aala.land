@@ -12,6 +12,9 @@ export default class NuEmptyStateComponent extends Component {
     if (this.args.bordered) {
       parts.push('m-bordered');
     }
+    if (this.args.fill) {
+      parts.push('m-fill');
+    }
 
     return parts.join(' ');
   }
