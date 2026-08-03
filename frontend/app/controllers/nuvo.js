@@ -1,6 +1,7 @@
 import Controller from '@ember/controller';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
+import { runTask } from 'ember-lifeline';
 import { VARIANTS } from 'land/components/nuvo/-constants';
 
 const THEMES = {
@@ -346,6 +347,7 @@ export default class UikitController extends Controller {
         { id: 'title-text', label: 'Typography', icon: 'A' },
         { id: 'pagination', label: 'Pagination', icon: '▤' },
         { id: 'modal', label: 'Modal', icon: '▢' },
+        { id: 'confirm-modal', label: 'Confirm modal', icon: '◫' },
         { id: 'drawer', label: 'Drawer', icon: '▥' },
         { id: 'popover', label: 'Popover', icon: '◈' },
         { id: 'tooltip', label: 'Tooltip', icon: '◭' },
@@ -403,6 +405,62 @@ export default class UikitController extends Controller {
   @action
   closeModalFull() {
     this.modalFullOpen = false;
+  }
+
+  // ---- confirm modal ----
+
+  @tracked confirmOpen = false;
+  @tracked confirmDangerOpen = false;
+  @tracked confirmBusyOpen = false;
+  @tracked isConfirmingDemo = false;
+
+  @action
+  openConfirm() {
+    this.confirmOpen = true;
+  }
+
+  @action
+  closeConfirm() {
+    this.confirmOpen = false;
+  }
+
+  @action
+  openConfirmDanger() {
+    this.confirmDangerOpen = true;
+  }
+
+  @action
+  closeConfirmDanger() {
+    this.confirmDangerOpen = false;
+  }
+
+  @action
+  openConfirmBusy() {
+    this.confirmBusyOpen = true;
+  }
+
+  @action
+  closeConfirmBusy() {
+    if (this.isConfirmingDemo) {
+      return;
+    }
+    this.confirmBusyOpen = false;
+  }
+
+  @action
+  runConfirmBusy() {
+    if (this.isConfirmingDemo) {
+      return;
+    }
+    this.isConfirmingDemo = true;
+    runTask(
+      this,
+      () => {
+        this.isConfirmingDemo = false;
+        this.confirmBusyOpen = false;
+      },
+      1600,
+    );
   }
 
   // ---- drawer ----

@@ -1153,6 +1153,63 @@
     </Nuvo::Modal>
   </section>
 
+  <section class="nuvo-section" id="confirm-modal">
+    <h2 class="nuvo-section__title">Confirm modal</h2>
+    <p class="nuvo-note">A preset <code>Nuvo::Modal</code> for yes/no decisions.
+      Use this instead of the browser's native
+      <code>confirm()</code>, which cannot be styled and blocks the main thread.
+      It owns the footer buttons, so pass text and variant as arguments rather
+      than building a footer block.</p>
+
+    <div class="nuvo-row">
+      <Nuvo::Button @text="Default" @onClick={{this.openConfirm}} data-test-open-confirm />
+      <Nuvo::Button @text="Danger" @variant="secondary" @onClick={{this.openConfirmDanger}} data-test-open-confirm-danger />
+      <Nuvo::Button @text="Async confirm" @variant="secondary" @onClick={{this.openConfirmBusy}} data-test-open-confirm-busy />
+    </div>
+
+    <ConfirmModal
+      @open={{this.confirmOpen}}
+      @title="Publish listing?"
+      @message="Unit 1204 will become visible on all connected portals."
+      @confirmText="Publish"
+      @cancelText="Cancel"
+      @onClose={{this.closeConfirm}}
+      @onConfirm={{this.closeConfirm}}
+    />
+
+    <ConfirmModal
+      @open={{this.confirmDangerOpen}}
+      @title="Delete vendor"
+      @message="Are you sure you want to delete Gulf Maintenance LLC? This action cannot be undone."
+      @confirmText="Delete"
+      @cancelText="Cancel"
+      @confirmVariant="danger"
+      @onClose={{this.closeConfirmDanger}}
+      @onConfirm={{this.closeConfirmDanger}}
+    />
+
+    <h3 class="nuvo-subtitle">Pending state</h3>
+    <p class="nuvo-note">While
+      <code>@isConfirming</code>
+      is true the confirm button shows
+      <code>@confirmingText</code>
+      with a spinner and is disabled. Block your close handler for the same
+      duration so the dialog cannot be dismissed mid-request.</p>
+
+    <ConfirmModal
+      @open={{this.confirmBusyOpen}}
+      @title="Re-pair WhatsApp"
+      @message="Your current session will be cleared and you will need to scan a new QR code to reconnect."
+      @confirmText="Re-pair"
+      @cancelText="Cancel"
+      @confirmVariant="danger"
+      @isConfirming={{this.isConfirmingDemo}}
+      @confirmingText="Clearing session..."
+      @onClose={{this.closeConfirmBusy}}
+      @onConfirm={{this.runConfirmBusy}}
+    />
+  </section>
+
   <section class="nuvo-section" id="drawer">
     <h2 class="nuvo-section__title">Drawer</h2>
 

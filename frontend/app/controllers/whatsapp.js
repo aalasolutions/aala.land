@@ -34,6 +34,9 @@ export default class WhatsappController extends Controller {
   @tracked isSending = false;
   @tracked errorMsg = '';
 
+  @tracked showRepairModal = false;
+  @tracked isRepairing = false;
+
   _pollQRGeneration = 0;
 
   // ── Computed ──────────────────────────────────────────────────────────
@@ -362,11 +365,20 @@ export default class WhatsappController extends Controller {
   }
 
   @action
+  openRepairModal() {
+    this.showRepairModal = true;
+  }
+
+  @action
+  closeRepairModal() {
+    if (this.isRepairing) return;
+    this.showRepairModal = false;
+  }
+
+  @action
   async repairWhatsapp() {
-    if (
-      !confirm('Re-pair your WhatsApp? Your current session will be cleared.')
-    )
-      return;
+    if (this.isRepairing) return;
+    this.isRepairing = true;
     try {
       await this.whatsapp.logout();
       this.messages = [];
@@ -376,9 +388,12 @@ export default class WhatsappController extends Controller {
       this.hasCredentials = false;
       this.qr = null;
       this._pollQRGeneration++;
+      this.showRepairModal = false;
       this.pollForQR();
-    } catch (err) {
+    } catch {
       this.errorMsg = 'Re-pair failed.';
+    } finally {
+      this.isRepairing = false;
     }
   }
 

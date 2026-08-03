@@ -69,7 +69,7 @@
             data-tooltip="Re-pair device"
             data-tooltip-position="bottom"
             data-test-repair-btn
-            {{on "click" this.repairWhatsapp}}
+            {{on "click" this.openRepairModal}}
           />
         </div>
       </div>
@@ -246,3 +246,16 @@
   </div>
 
 </div>
+
+<ConfirmModal
+  @open={{this.showRepairModal}}
+  @title="Re-pair WhatsApp"
+  @message="Your current session will be cleared and you will need to scan a new QR code to reconnect."
+  @confirmText="Re-pair"
+  @cancelText="Cancel"
+  @confirmVariant="danger"
+  @isConfirming={{this.isRepairing}}
+  @confirmingText="Clearing session..."
+  @onClose={{this.closeRepairModal}}
+  @onConfirm={{this.repairWhatsapp}}
+/>
