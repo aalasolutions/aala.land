@@ -1,6 +1,7 @@
 import Controller from '@ember/controller';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
+import { VARIANTS } from 'land/components/nuvo/-constants';
 
 const THEMES = {
   teal: '#1ab5a5',
@@ -53,6 +54,8 @@ export default class UikitController extends Controller {
   ];
 
   propertyTypeOptions = ['Villa', 'Apartment', 'Townhouse'];
+
+  variantOptions = VARIANTS;
 
   @action
   updateTextarea(value) {
@@ -346,7 +349,12 @@ export default class UikitController extends Controller {
         { id: 'drawer', label: 'Drawer', icon: '▥' },
         { id: 'popover', label: 'Popover', icon: '◈' },
         { id: 'tooltip', label: 'Tooltip', icon: '◭' },
+        { id: 'timeline', label: 'Timeline', icon: '⋮' },
       ],
+    },
+    {
+      label: 'Foundations',
+      items: [{ id: 'utilities', label: 'Utilities', icon: '⇥' }],
     },
   ];
 
@@ -427,5 +435,60 @@ export default class UikitController extends Controller {
   @action
   closePopover() {
     this.popoverOpen = false;
+  }
+
+  // ---- selectable tags ----
+
+  chipOptions = ['Parking', 'Pool', 'Gym', 'Balcony', 'Furnished'];
+  @tracked selectedChips = ['Pool'];
+
+  @action
+  toggleChip(chip) {
+    this.selectedChips = this.selectedChips.includes(chip)
+      ? this.selectedChips.filter((c) => c !== chip)
+      : [...this.selectedChips, chip];
+  }
+
+  // ---- filter row ----
+
+  @tracked filterStatus = '';
+  @tracked filterSearch = '';
+
+  filterStatusOptions = [
+    { value: '', label: 'All' },
+    { value: 'active', label: 'Active' },
+    { value: 'archived', label: 'Archived' },
+  ];
+
+  @action
+  setFilterStatus(value) {
+    this.filterStatus = value;
+  }
+
+  @action
+  setFilterSearch(value) {
+    this.filterSearch = value;
+  }
+
+  @action
+  clearFilters() {
+    this.filterStatus = '';
+    this.filterSearch = '';
+  }
+
+  // ---- modal sizes ----
+
+  @tracked sizedModal = null;
+
+  modalSizes = ['sm', 'md', 'lg', 'xl', 'full'];
+
+  @action
+  openSizedModal(size) {
+    this.sizedModal = size;
+  }
+
+  @action
+  closeSizedModal() {
+    this.sizedModal = null;
   }
 }

@@ -1,8 +1,4 @@
-<div
-  class={{this.wrapClasses}}
-  {{on "mouseenter" this.handleMouseEnter}}
-  {{on "mouseleave" this.handleMouseLeave}}
->
+<div class={{this.wrapClasses}}>
   {{#if @prefixIcon}}
     <span class="nu-input-wrap__prefix" aria-hidden="true">{{@prefixIcon}}</span>
   {{/if}}

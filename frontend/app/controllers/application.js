@@ -179,10 +179,12 @@ export default class ApplicationController extends Controller {
 
     this.router.on('routeDidChange', this.routeDidChangeHandler);
 
-    // Track the responsive breakpoint. Must mirror the sidebar rail media query
-    // in app.scss (max-width: 1024px).
+    // Must mirror `@include media-down(md)` in styles/pages/_shell.scss, which
+    // is where the rail actually goes off-canvas. Core's md is 768px, so
+    // media-down(md) is max-width 767.98px. A wider value here opens the
+    // backdrop over a desktop layout.
     if (typeof window !== 'undefined' && window.matchMedia) {
-      this.sidebarMedia = window.matchMedia('(max-width: 1024px)');
+      this.sidebarMedia = window.matchMedia('(max-width: 767.98px)');
       this.isNarrow = this.sidebarMedia.matches;
       this.sidebarMediaHandler = (e) => {
         this.isNarrow = e.matches;

@@ -7,7 +7,7 @@
   {{on "keydown" this.handleKeydown}}
   ...attributes
 >
-  {{#each this.options as |option|}}
+  {{#each this.options key="id" as |option|}}
     <button
       type="button"
       class="nu-segmented__item {{if option.active 'is-active'}} {{if option.disabled 'is-disabled'}}"

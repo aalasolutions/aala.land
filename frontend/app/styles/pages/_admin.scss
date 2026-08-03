@@ -1,7 +1,7 @@
 // Admin console: overview, system, marketers, companies list + detail.
 // See AGENT_BRIEF.md. Bespoke `.console-*` layout classes are kept here,
 // rewritten onto kit tokens; anything a kit component covers uses the
-// component instead. Badges use the domains in _badges.scss.
+// component instead. Badges use the domains in _tags.scss.
 @use "../uikit/common/var" as *;
 @use "../uikit/mixins/bem" as *;
 

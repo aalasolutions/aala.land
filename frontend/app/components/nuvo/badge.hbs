@@ -3,7 +3,7 @@
     {{yield}}
 
     {{#unless this.isHidden}}
-      <span class={{this.countClasses}} data-test-nu-badge>
+      <span class="{{this.countClasses}} is-fixed" data-test-nu-badge>
         {{#unless @isDot}}
           {{this.displayValue}}
         {{/unless}}

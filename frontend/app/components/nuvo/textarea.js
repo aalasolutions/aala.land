@@ -1,5 +1,8 @@
 import Component from '@glimmer/component';
 import { action } from '@ember/object';
+import { htmlSafe } from '@ember/template';
+
+const RESIZE = ['none', 'both', 'horizontal', 'vertical'];
 
 export default class NuTextareaComponent extends Component {
   get classes() {
@@ -11,7 +14,10 @@ export default class NuTextareaComponent extends Component {
   }
 
   get resizeStyle() {
-    return this.args.resize ? `resize: ${this.args.resize};` : undefined;
+    if (!RESIZE.includes(this.args.resize)) {
+      return undefined;
+    }
+    return htmlSafe(`resize: ${this.args.resize}`);
   }
 
   @action

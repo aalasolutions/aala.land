@@ -1,15 +1,9 @@
-// Company settings: plan banner, billing card, and the region picker grid.
-// See AGENT_BRIEF.md. Everything else on this page resolves to a kit
-// component: cards replace glass-panel, tags carry the badge domains, the
-// storage meter is Nuvo::Progress.
+// Company settings: plan banner, billing card, region picker grid.
 @use "../uikit/common/var" as *;
 @use "../uikit/mixins/bem" as *;
 
 // ---- plan banner ----
-//
-// The tier colour comes from `badge-plan-{{tier}}` (see _badges.scss), which
-// only reassigns --nu-tag--* variables on this element. The banner box model
-// below just consumes those variables instead of duplicating the palette.
+// Colour comes from `tag-plan-*`; this only sets the box model.
 
 .plan-banner {
   display: flex;
@@ -33,7 +27,7 @@
   }
 
   &__expiry {
-    text-align: right;
+    text-align: end;
     font-size: nu-font-size(xs);
     color: var(--text-muted);
   }
@@ -43,7 +37,7 @@
 
 .billing-plan-card {
   padding: nu-space(5);
-  border: 1px solid var(--border-light);
+  border: 1px solid var(--border-base);
   border-radius: nu-radius(md);
   background: var(--bg-alternate);
 }
@@ -51,13 +45,13 @@
 // ---- region picker ----
 
 .region-country-group {
-  border: 1px solid var(--border-light);
+  border: 1px solid var(--border-base);
   border-radius: nu-radius(sm);
   overflow: hidden;
 
   &.is-readonly {
-    border-color: color-mix(in srgb, var(--border-light) 75%, transparent);
-    background: color-mix(in srgb, var(--bg-muted) 35%, transparent);
+    border-color: color-mix(in srgb, var(--border-base) 75%, transparent);
+    background: color-mix(in srgb, var(--bg-alternate) 35%, transparent);
   }
 }
 
@@ -70,12 +64,12 @@
   background: var(--bg-surface);
   border: none;
   cursor: pointer;
-  text-align: left;
+  text-align: start;
   font-size: nu-font-size(sm);
-  color: var(--text-primary);
+  color: var(--text-color);
 
   &:hover {
-    background: var(--bg-hover);
+    background: var(--bg-alternate);
   }
 }
 
@@ -100,17 +94,17 @@
   font-weight: nu-font-weight(semibold);
   padding: 2px nu-space(2);
   border-radius: nu-radius(full);
-  background: var(--bg-primary-soft-strong);
+  background: var(--primary-100);
   color: var(--primary);
 }
 
 .region-settings-readonly {
   .region-country-header {
-    background: color-mix(in srgb, var(--bg-surface) 82%, var(--bg-muted));
-    color: color-mix(in srgb, var(--text-primary) 78%, white);
+    background: color-mix(in srgb, var(--bg-surface) 82%, var(--bg-alternate));
+    color: color-mix(in srgb, var(--text-color) 78%, white);
 
     &:hover {
-      background: color-mix(in srgb, var(--bg-surface) 82%, var(--bg-muted));
+      background: color-mix(in srgb, var(--bg-surface) 82%, var(--bg-alternate));
     }
   }
 
@@ -121,7 +115,7 @@
   }
 
   .region-selected-badge {
-    background: color-mix(in srgb, var(--bg-primary-soft-strong) 55%, white);
+    background: color-mix(in srgb, var(--primary-100) 55%, white);
     color: color-mix(in srgb, var(--primary) 70%, white);
   }
 }
@@ -138,12 +132,12 @@
   align-items: center;
   gap: nu-space(2);
   padding: nu-space(2) nu-space(3);
-  border: 1px solid var(--border-light);
+  border: 1px solid var(--border-base);
   border-radius: nu-radius(sm);
 
   &.is-readonly {
-    background: color-mix(in srgb, var(--bg-muted) 45%, transparent);
-    border-color: color-mix(in srgb, var(--border-light) 72%, transparent);
+    background: color-mix(in srgb, var(--bg-alternate) 45%, transparent);
+    border-color: color-mix(in srgb, var(--border-base) 72%, transparent);
     opacity: 0.78;
   }
 }

@@ -104,7 +104,7 @@
                   }}</td>
                 <td>
                   {{#if row.overdue}}
-                    <Nuvo::Tag class="badge-txn-failed" @text="Overdue" />
+                    <Nuvo::Tag class="tag-txn-failed" @text="Overdue" />
                   {{else}}
                     {{format-date row.coversEnd}}
                   {{/if}}

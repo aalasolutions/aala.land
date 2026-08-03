@@ -1,0 +1,40 @@
+<li class={{this.classes}} data-test-nu-timeline-item ...attributes>
+  <span class="nu-timeline__marker" aria-hidden="true"></span>
+  <span class="nu-timeline__connector" aria-hidden="true"></span>
+  <div class="nu-timeline__content">
+    {{#if (or @title @timestamp (has-block "icon"))}}
+      <div class="nu-timeline__heading">
+        {{#if (has-block "icon")}}
+          <span class="nu-timeline__icon" aria-hidden="true">{{yield to="icon"}}</span>
+        {{/if}}
+
+        {{#if @title}}
+          <h5
+            class="nu-timeline__title"
+            data-test-nu-timeline-title
+          >{{@title}}</h5>
+        {{/if}}
+
+        {{#if @timestamp}}
+          <span
+            class="nu-timeline__timestamp"
+            data-test-nu-timeline-timestamp
+          >{{@timestamp}}</span>
+        {{/if}}
+      </div>
+    {{/if}}
+
+    {{#if (has-block)}}
+      {{yield}}
+    {{else if @description}}
+      <p
+        class="nu-timeline__description"
+        data-test-nu-timeline-description
+      >{{@description}}</p>
+    {{/if}}
+
+    {{#if @meta}}
+      <span class="nu-timeline__meta" data-test-nu-timeline-meta>{{@meta}}</span>
+    {{/if}}
+  </div>
+</li>

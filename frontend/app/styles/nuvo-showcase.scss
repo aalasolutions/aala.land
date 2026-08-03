@@ -88,3 +88,25 @@
   gap: nu-space(3);
   max-inline-size: 26rem;
 }
+
+.nuvo-note {
+  margin-block: 0 nu-space(2);
+  color: var(--text-muted);
+  font-size: nu-font-size(sm);
+
+  code {
+    padding-inline: nu-space(1);
+    border-radius: nu-radius(sm);
+    background: var(--bg-alternate);
+    font-size: 0.9em;
+  }
+}
+
+.nuvo-subtitle {
+  margin-block: nu-space(6) nu-space(2);
+  font-size: nu-font-size(sm);
+  font-weight: nu-font-weight(semibold);
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}

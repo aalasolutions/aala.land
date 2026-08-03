@@ -18,7 +18,7 @@
       </button>
     </li>
 
-    {{#each this.pages as |entry|}}
+    {{#each this.pages key="@index" as |entry|}}
       {{#if (eq entry.type "ellipsis")}}
         <li class="nu-pagination__item">
           <span class="nu-pagination__ellipsis">&hellip;</span>

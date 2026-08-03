@@ -62,7 +62,7 @@
                 {{on "click" (fn this.toggleExpand log.id)}}
               >
                 <Nuvo::Tag
-                  class="badge-audit-{{lowercase log.action}}"
+                  class="tag-audit-{{lowercase log.action}}"
                   @text={{log.action}}
                 />
                 <span class="audit-entity">{{log.entityType}}</span>

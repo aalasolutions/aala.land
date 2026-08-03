@@ -186,12 +186,12 @@
 
           {{! Status + Property Type badges }}
           <div class="flex gap-3 x-center" data-test-unit-badges>
-            <Nuvo::Tag class="badge-unit-{{lowercase @model.unit.status}}">
+            <Nuvo::Tag class="tag-unit-{{lowercase @model.unit.status}}">
               {{capitalize @model.unit.status}}
             </Nuvo::Tag>
             {{#if @model.unit.propertyType}}
               <Nuvo::Tag
-                class="badge-proptype-{{lowercase @model.unit.propertyType}}"
+                class="tag-proptype-{{lowercase @model.unit.propertyType}}"
               >
                 {{if
                   (eq @model.unit.propertyType "FOR_SALE")
@@ -274,7 +274,7 @@
                   <td class="text-sm text-muted">{{format-bytes
                       doc.fileSize
                     }}</td>
-                  <td><Nuvo::Tag class="badge-doc-{{lowercase doc.category}}">
+                  <td><Nuvo::Tag class="tag-doc-{{lowercase doc.category}}">
                       {{doc.category}}
                     </Nuvo::Tag></td>
                   <td
@@ -345,7 +345,7 @@
                   <td>{{format-date lease.startDate}}</td>
                   <td>{{format-date lease.endDate}}</td>
                   <td>{{format-currency lease.monthlyRent}}</td>
-                  <td><Nuvo::Tag class="badge-lease-{{lowercase lease.status}}">
+                  <td><Nuvo::Tag class="tag-lease-{{lowercase lease.status}}">
                       {{lease.status}}
                     </Nuvo::Tag></td>
                 </tr>

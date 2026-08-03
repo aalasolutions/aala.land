@@ -40,7 +40,7 @@
                   <div class="flex gap-2 wrap">
                     {{#each vendor.specialties as |sp|}}
                       <Nuvo::Tag
-                        class="badge-trade-{{lowercase sp}}"
+                        class="tag-trade-{{lowercase sp}}"
                         @text={{sp}}
                       />
                     {{/each}}
@@ -160,7 +160,7 @@
           <button
             type="button"
             class="nu-tag m-pill m-selectable vendor-specialty-chip
-              badge-trade-{{lowercase opt.value}}
+              tag-trade-{{lowercase opt.value}}
               {{if (includes this.formSpecialties opt.value) 'is-selected'}}"
             data-test-specialty-chip={{opt.value}}
             {{on "click" (fn this.toggleSpecialty opt.value)}}

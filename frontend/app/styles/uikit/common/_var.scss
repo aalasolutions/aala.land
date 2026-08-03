@@ -7,6 +7,7 @@
 @use "@nuvoui/core/src/styles/config/spacing" as core-space;
 @use "@nuvoui/core/src/styles/config/borders" as core-borders;
 @use "@nuvoui/core/src/styles/config/typography" as core-typo;
+@use "@nuvoui/core/src/styles/config/shadows" as core-shadows;
 
 $nu-prefix: "nu" !default;
 
@@ -33,12 +34,29 @@ $nu-font-size: core-typo.$font-sizes;
 
 $nu-font-weight: core-typo.$font-weights;
 
+// Core's scale bottoms out at xs (0.75rem). Badges, tags, toggle inline text and
+// the topbar meta lines need one step below it. Declared once here rather than
+// hardcoded at the call sites.
+$nu-font-size: map.set($nu-font-size, "2xs", 0.625rem);
+
+// Composed from core's shadow config, like every other scale in this file.
+// Geometry comes from core's $shadow-sizes (identical to what the kit shipped
+// by hand); colour comes from $shadow-colors, which app/styles/_nuvoui.scss
+// overrides. sm and lg map exactly onto the old hand-written values; md and xl
+// were kit-invented alphas (0.08 and 0.12) with no core equivalent and settle
+// one step lighter.
+@function nu-compose-shadow($size, $color) {
+  $s: map.get(core-shadows.$shadow-sizes, $size);
+  @return map.get($s, "x") map.get($s, "y") map.get($s, "blur")
+    map.get($s, "spread") map.get(core-shadows.$shadow-colors, $color);
+}
+
 $nu-shadow: (
   none: none,
-  sm: 0 1px 2px rgba(0, 0, 0, 0.05),
-  md: 0 4px 6px -1px rgba(0, 0, 0, 0.08),
-  lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1),
-  xl: 0 20px 25px -5px rgba(0, 0, 0, 0.12),
+  sm: nu-compose-shadow("sm", "default"),
+  md: nu-compose-shadow("md", "default"),
+  lg: nu-compose-shadow("lg", "dark"),
+  xl: nu-compose-shadow("xl", "dark"),
 );
 
 $nu-z: (
@@ -118,9 +136,11 @@ $nu-variants: (primary, secondary, success, warning, danger, info);
   @return color-mix(in srgb, var(--#{$color-token}) $percent, transparent);
 }
 
-// Neutral scrim for overlays. Derived from the theme's text color so it stays
-// dark in light mode and adapts if the theme changes. Never use a brand color
-// for a scrim: brand hues tint the whole screen.
+// Neutral scrim for overlays. Anchored to --black in BOTH themes: a scrim is a
+// dimming layer, not a themed surface. Deriving it from --text-color inverted it
+// to a white wash under a dark theme, because core's dark theme sets
+// --text-color to near-white. Never use a brand color for a scrim either: brand
+// hues tint the whole screen.
 @function nu-scrim($percent: 50%) {
-  @return color-mix(in srgb, var(--text-color) $percent, transparent);
+  @return color-mix(in srgb, var(--black) $percent, transparent);
 }

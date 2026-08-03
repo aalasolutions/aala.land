@@ -1,12 +1,9 @@
 import Component from '@glimmer/component';
-import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 
 const SIZES = ['sm', 'lg'];
 
 export default class NuInputComponent extends Component {
-  @tracked isHovering = false;
-
   get wrapClasses() {
     const parts = ['nu-input-wrap'];
     if (this.args.prefixIcon) {
@@ -43,29 +40,19 @@ export default class NuInputComponent extends Component {
     return value !== undefined && value !== null && value !== '';
   }
 
-  // Clear only appears on hover, and only when there is something to clear.
+  // Rendered whenever there is something to clear: a hover gate would keep the
+  // button out of the tab order for keyboard and touch users.
   get showClear() {
     return Boolean(
       this.args.clearable &&
         !this.args.disabled &&
         !this.args.readonly &&
-        this.hasValue &&
-        this.isHovering,
+        this.hasValue,
     );
   }
 
   get hasSuffixSlot() {
     return Boolean(this.args.suffixIcon || this.args.clearable);
-  }
-
-  @action
-  handleMouseEnter() {
-    this.isHovering = true;
-  }
-
-  @action
-  handleMouseLeave() {
-    this.isHovering = false;
   }
 
   @action

@@ -14,6 +14,7 @@
     "TrackCheckedColor": var(--primary),
     "KnobSize": 1.125rem,
     "KnobInset": 0.1875rem,
+    "KnobTravel": calc(#{nu-var("toggle", "TrackInlineSize")} - #{nu-var("toggle", "KnobSize")} - (2 * #{nu-var("toggle", "KnobInset")})),
     "KnobColor": var(--bg-surface),
     "LabelFontSize": nu-font-size(sm),
     "LabelColor": var(--text-color),
@@ -63,7 +64,8 @@
     background-color: nu-var("toggle", "KnobColor");
     border-radius: nu-radius(full);
     box-shadow: nu-shadow(sm);
-    transition: inset-inline-start nu-duration(fast) $nu-ease;
+    translate: 0;
+    transition: translate nu-duration(fast) $nu-ease;
 
     @include reduced-motion {
       transition: none;
@@ -80,7 +82,7 @@
   // Both are always in the DOM; only the matching one is visible.
   @include e(active-text, inactive-text) {
     position: absolute;
-    font-size: 0.625rem;
+    font-size: nu-font-size(2xs);
     font-weight: nu-font-weight(semibold);
     line-height: 1;
     color: var(--text-inverted);
@@ -118,7 +120,14 @@
   }
 
   .nu-toggle__input:checked ~ .nu-toggle__track .nu-toggle__knob {
-    inset-inline-start: calc(100% - #{nu-var("toggle", "KnobSize")} - #{nu-var("toggle", "KnobInset")});
+    translate: nu-var("toggle", "KnobTravel");
+  }
+
+  // translate is physical, so RTL does not flip it the way inset-inline-start did.
+  [dir="rtl"] & {
+    .nu-toggle__input:checked ~ .nu-toggle__track .nu-toggle__knob {
+      translate: calc(-1 * #{nu-var("toggle", "KnobTravel")});
+    }
   }
 
   .nu-toggle__input:focus-visible ~ .nu-toggle__track {
@@ -140,13 +149,6 @@
     --nu-toggle--TrackInlineSize: 2.25rem;
     --nu-toggle--TrackBlockSize: 1.25rem;
     --nu-toggle--KnobSize: 0.875rem;
-    --nu-toggle--KnobInset: 0.1875rem;
-  }
-
-  @include m(md) {
-    --nu-toggle--TrackInlineSize: 2.75rem;
-    --nu-toggle--TrackBlockSize: 1.5rem;
-    --nu-toggle--KnobSize: 1.125rem;
     --nu-toggle--KnobInset: 0.1875rem;
   }
 

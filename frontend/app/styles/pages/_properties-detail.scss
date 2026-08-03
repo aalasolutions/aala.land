@@ -1,8 +1,5 @@
-// Properties detail: asset cards with a nested unit grid, plus a list view.
-// See AGENT_BRIEF.md. `_owners.scss` already owns `.unit-card` /
-// `.unit-number` / `.units-grid` for a different tile shape; this page's
-// premium tile (icon box + amenities strip + tenant footer) has its own
-// class names so nothing collides.
+// Properties detail. `_owners.scss` owns `.unit-card` / `.unit-number` /
+// `.units-grid` for a different tile; these names are deliberately distinct.
 @use "../uikit/common/var" as *;
 @use "../uikit/mixins/bem" as *;
 

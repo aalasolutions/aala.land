@@ -11,7 +11,6 @@
     "BorderColor": var(--border-base),
     "BorderRadius": nu-radius(lg),
     "BoxShadow": nu-shadow(lg),
-    "TranslateY": nu-space(2),
     "TransitionDuration": nu-duration(fast),
     "focus--BoxShadow": 0 0 0 3px #{nu-tint(primary, 35%)},
     "ArrowSize": 8px,
@@ -75,6 +74,7 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    position: relative;
     inline-size: 1.5rem;
     block-size: 1.5rem;
     flex-shrink: 0;
@@ -83,6 +83,17 @@
     border: none;
     border-radius: nu-radius(sm);
     cursor: pointer;
+
+    // Hit area only, lifting the 1.5rem control to the 2rem touch floor.
+    // Centred with offsets rather than a transform so RTL stays aligned.
+    &::before {
+      content: "";
+      position: absolute;
+      inset-block-start: calc(50% - 1rem);
+      inset-inline-start: calc(50% - 1rem);
+      inline-size: 2rem;
+      block-size: 2rem;
+    }
 
     &:hover {
       color: var(--text-color);

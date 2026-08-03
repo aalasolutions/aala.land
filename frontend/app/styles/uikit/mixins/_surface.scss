@@ -1,0 +1,43 @@
+// Shared element bodies for the bordered-surface blocks (.nu-card, .nu-panel).
+//
+// The two blocks stay separate on purpose: they are different defaults (padding,
+// radius, shadow) and different public names, and .nu-panel has 39 live call
+// sites. Only the element rules were byte-identical, so only those are shared.
+// Call from inside a b() block; e() reads the current block name.
+@use "./bem" as *;
+@use "../common/var" as *;
+
+@mixin nu-surface-elements($header-align: center) {
+  @include e(header) {
+    display: flex;
+    align-items: $header-align;
+    justify-content: space-between;
+    gap: nu-space(3);
+    margin-block-end: nu-space(4);
+    padding-block-end: nu-space(3);
+    border-block-end: 1px solid var(--border-base);
+  }
+
+  @include e(title) {
+    margin: 0;
+    font-size: nu-font-size(md);
+    font-weight: nu-font-weight(semibold);
+    color: var(--text-color);
+  }
+
+  @include e(body) {
+    display: flex;
+    flex-direction: column;
+    gap: nu-space(3);
+  }
+
+  @include e(footer) {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: nu-space(2);
+    margin-block-start: nu-space(4);
+    padding-block-start: nu-space(3);
+    border-block-start: 1px solid var(--border-base);
+  }
+}

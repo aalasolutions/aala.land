@@ -15,6 +15,9 @@ export default class NuDrawerComponent extends Component {
   constructor() {
     super(...arguments);
     this.keydownHandler = (event) => {
+      if (!this.args.open) {
+        return;
+      }
       if (event.key !== 'Escape') {
         return;
       }

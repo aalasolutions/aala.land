@@ -10,7 +10,7 @@
     aria-orientation={{if @vertical "vertical" "horizontal"}}
     {{on "keydown" this.handleKeydown}}
   >
-    {{#each this.tabs as |tab|}}
+    {{#each this.tabs key="id" as |tab|}}
       <button
         type="button"
         class="nu-tabs__trigger {{if tab.active 'is-active'}} {{if tab.disabled 'is-disabled'}}"

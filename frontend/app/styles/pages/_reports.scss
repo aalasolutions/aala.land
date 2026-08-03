@@ -1,13 +1,10 @@
-// Reports (Boss Dashboard): pipeline funnel, red-flag alerts, activity feed.
-// Ported from app.new.scss. Action badges use the shared `badge-audit-*`
-// vocabulary in _badges.scss, the same as the audit page, so an action reads
-// the same colour wherever it appears.
+// Reports: pipeline funnel, red-flag alerts, activity feed.
 @use "../uikit/common/var" as *;
 
 .funnel-grid {
   display: grid;
   grid-template-columns: repeat(6, 1fr);
-  gap: var(--space-3);
+  gap: #{nu-space(3)};
 
   @media (max-width: 768px) {
     grid-template-columns: repeat(3, 1fr);

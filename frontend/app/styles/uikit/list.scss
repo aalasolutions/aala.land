@@ -62,7 +62,7 @@
     padding-inline-start: 0;
     list-style: none;
 
-    @include e(item) {
+    @include en(item) {
       align-items: center;
     }
   }
@@ -73,7 +73,7 @@
     gap: 0;
     list-style: none;
 
-    @include e(item) {
+    @include en(item) {
       padding-block: nu-space(3);
       border-block-end: 1px solid nu-var("list", "DividerColor");
 
@@ -88,9 +88,8 @@
   }
 }
 
-// Standalone row with a main region and a trailing action region. Distinct
-// from `.nu-list__item`, which is a child of `.nu-list`; this one stands alone
-// inside any container.
+// Standalone row: main region + trailing actions. Distinct from
+// `.nu-list__item`, which must be a child of `.nu-list`.
 @include b(list-item) {
   @include nu-root("list-item", (
     "Gap": nu-space(3),
@@ -100,6 +99,7 @@
     "BorderColor": var(--border-base),
     "BackgroundColor": var(--bg-surface),
     "hover--BorderColor": var(--primary-300),
+    "hover--BoxShadow": nu-shadow(md),
   ));
 
   display: flex;
@@ -113,6 +113,9 @@
   border-radius: nu-var("list-item", "BorderRadius");
 
   @include e(main) {
+    display: flex;
+    align-items: center;
+    gap: nu-space(3);
     min-inline-size: 0;
     flex: 1;
   }
@@ -122,6 +125,19 @@
     align-items: center;
     gap: nu-space(2);
     flex-shrink: 0;
+  }
+
+  // Shadow lift on hover, the surface language card uses.
+  @include m(raised) {
+    transition: box-shadow nu-duration(fast) $nu-ease;
+
+    &:hover {
+      box-shadow: nu-var("list-item", "hover--BoxShadow");
+    }
+
+    @include reduced-motion {
+      transition: none;
+    }
   }
 
   @include m(hoverable) {
@@ -143,8 +159,7 @@
   }
 }
 
-// Label/value pair on one line. Used for compact metadata readouts where a
-// full desc-list would be too heavy.
+// Label/value pair on one line, where a full desc-list is too heavy.
 @include b(info-row) {
   @include nu-root("info-row", (
     "Gap": nu-space(3),
@@ -152,7 +167,9 @@
     "FontSize": nu-font-size(sm),
     "LabelColor": var(--text-muted),
     "LabelFontWeight": nu-font-weight(medium),
+    "LabelMinInlineSize": 7.5rem,
     "ValueColor": var(--text-color),
+    "BorderColor": var(--border-base),
   ));
 
   display: flex;
@@ -161,34 +178,44 @@
   gap: nu-var("info-row", "Gap");
   padding-block: nu-var("info-row", "PaddingBlock");
   font-size: nu-var("info-row", "FontSize");
+  border-block-end: 1px solid nu-var("info-row", "BorderColor");
+
+  &:last-child {
+    border-block-end: none;
+  }
 
   @include e(label) {
     color: nu-var("info-row", "LabelColor");
     font-weight: nu-var("info-row", "LabelFontWeight");
+    min-inline-size: nu-var("info-row", "LabelMinInlineSize");
     flex-shrink: 0;
   }
 
   @include e(value) {
+    flex: 1;
     color: nu-var("info-row", "ValueColor");
     min-inline-size: 0;
     text-align: end;
     word-break: break-word;
   }
 
-  // Label above value, both full width. For long values (JSON, user agents)
-  // that cannot share a line with their label.
+  // For long values (JSON, user agents) that cannot share a line.
   @include m(stacked) {
     flex-direction: column;
     align-items: stretch;
     gap: nu-space(1);
 
-    .nu-info-row__value {
+    @include en(label) {
+      min-inline-size: 0;
+    }
+
+    @include en(value) {
       text-align: start;
     }
   }
 
-  @include m(bordered) {
-    border-block-end: 1px solid var(--border-base);
+  @include m(borderless) {
+    --nu-info-row--BorderColor: transparent;
   }
 }
 
@@ -230,18 +257,18 @@
   // ---- modifiers ----
 
   @include m(horizontal) {
-    @include e(group) {
+    @include en(group) {
       flex-direction: row;
       align-items: baseline;
       gap: nu-space(4);
     }
 
-    @include e(term) {
+    @include en(term) {
       flex-shrink: 0;
       min-inline-size: 7.5rem;
     }
 
-    @include e(description) {
+    @include en(description) {
       flex: 1;
     }
   }

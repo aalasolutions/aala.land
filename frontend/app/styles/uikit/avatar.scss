@@ -111,7 +111,7 @@
 
   // ---- status color variants: uniform, looped ----
 
-  @each $variant in (primary, secondary, success, warning, danger, info) {
+  @each $variant in $nu-variants {
     &.m-status-#{$variant} {
       --nu-avatar--StatusColor: var(--#{$variant});
     }

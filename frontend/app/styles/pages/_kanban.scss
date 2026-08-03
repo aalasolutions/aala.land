@@ -1,7 +1,13 @@
-// nu-kanban - draggable board with columns and cards
-@use "./mixins/bem" as *;
-@use "./mixins/var" as *;
-@use "./common/var" as *;
+// nu-kanban - draggable board with columns and cards.
+//
+// Page-level, not part of the kit. Every kit entry pairs a stylesheet with an
+// Ember component; this one has none, and only the three boards in leads.hbs
+// use it, via hand-written markup. It keeps the `nu-` prefix so the existing
+// markup did not have to change. Promote it back into uikit/ if and when a
+// <Nuvo::Kanban> component exists.
+@use "../uikit/mixins/bem" as *;
+@use "../uikit/mixins/var" as *;
+@use "../uikit/common/var" as *;
 
 @include b(kanban) {
   @include nu-root("kanban", (
@@ -191,11 +197,19 @@
 
 @each $variant in $nu-variants {
   .nu-kanban__column.m-#{$variant} {
-    --nu-kanban-column--BorderColor: var(--#{$variant}-200);
-    --nu-kanban-column--BackgroundColor: var(--#{$variant}-50);
-    --nu-kanban-column-accent--Color: var(--#{$variant});
-    --nu-kanban-column-count--Color: var(--#{$variant}-700);
-    --nu-kanban-column-count--BackgroundColor: var(--#{$variant}-100);
+    --nu-kanban__column--BorderColor: var(--#{$variant}-200);
+    --nu-kanban__column--BackgroundColor: var(--#{$variant}-50);
+
+    // Accent and count re-declare these on themselves, so an inherited value
+    // from the column loses. Set them on the elements.
+    .nu-kanban__column-accent {
+      --nu-kanban__column-accent--Color: var(--#{$variant});
+    }
+
+    .nu-kanban__column-count {
+      --nu-kanban__column-count--Color: var(--#{$variant}-700);
+      --nu-kanban__column-count--BackgroundColor: var(--#{$variant}-100);
+    }
   }
 }
 
@@ -206,10 +220,29 @@
   transform: scale(1.03);
 }
 
+// Keys off [draggable] because a card is not always `.nu-kanban__card`.
+// Descendant, so the column's own draggable attribute is not matched.
+.nu-kanban__column [draggable="true"] {
+  cursor: grab;
+
+  &:active {
+    cursor: grabbing;
+  }
+}
+
+// Targets the column, not the board: element vars set on an ancestor lose.
+.nu-kanban.is-dragging .nu-kanban__column {
+  --nu-kanban__column--BorderColor: #{nu-tint(primary, 45%)};
+}
+
 .nu-kanban__column.is-drag-over {
-  --nu-kanban-column--BorderColor: var(--primary);
-  --nu-kanban-column--BorderStyle: dashed;
-  --nu-kanban-column--BackgroundColor: #{nu-tint(primary, 8%)};
+  --nu-kanban__column--BorderColor: var(--primary);
+  --nu-kanban__column--BackgroundColor: #{nu-tint(primary, 8%)};
+}
+
+// Later than the rule above at equal specificity, so hover stays strongest.
+.nu-kanban.is-dragging .nu-kanban__column.is-drag-over {
+  --nu-kanban__column--BorderColor: var(--primary);
 }
 
 .nu-kanban__column.is-empty {

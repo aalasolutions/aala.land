@@ -160,9 +160,11 @@
   border-radius: nu-var("menu", "BorderRadius");
   box-shadow: nu-var("menu", "BoxShadow");
   opacity: 0;
+  // display must be in the transition list with allow-discrete, otherwise the
+  // opacity fade never runs: the element is leaving display: none in the same frame.
   transition:
     opacity nu-var("menu", "TransitionDuration") $nu-ease,
-    transform nu-var("menu", "TransitionDuration") $nu-ease;
+    display nu-var("menu", "TransitionDuration") $nu-ease allow-discrete;
 
   @include reduced-motion {
     transition: none;
@@ -309,5 +311,9 @@
   @include when(open) {
     display: flex;
     opacity: 1;
+
+    @starting-style {
+      opacity: 0;
+    }
   }
 }

@@ -22,7 +22,7 @@
   padding-block: nu-var("tabs", "PaddingBlock");
   padding-inline: nu-var("tabs", "PaddingInline");
   border-radius: nu-var("tabs", "BorderRadius");
-  border-bottom: nu-var("tabs", "BorderWidth") solid nu-var("tabs", "BorderColor");
+  border-block-end: nu-var("tabs", "BorderWidth") solid nu-var("tabs", "BorderColor");
   overflow-x: auto;
   overflow-y: hidden;
   scrollbar-width: none;
@@ -55,7 +55,7 @@
     gap: nu-var-el("tabs", "trigger", "Gap");
     padding-block: nu-var-el("tabs", "trigger", "PaddingBlock");
     padding-inline: nu-var-el("tabs", "trigger", "PaddingInline");
-    min-height: nu-var-el("tabs", "trigger", "MinHeight");
+    min-block-size: nu-var-el("tabs", "trigger", "MinHeight");
     font-family: inherit;
     font-size: nu-var-el("tabs", "trigger", "FontSize");
     font-weight: nu-var-el("tabs", "trigger", "FontWeight");
@@ -63,7 +63,7 @@
     background-color: nu-var-el("tabs", "trigger", "BackgroundColor");
     border: none;
     border-radius: nu-var-el("tabs", "trigger", "BorderRadius");
-    border-bottom: nu-var-el("tabs", "trigger", "BorderWidth") solid nu-var-el("tabs", "trigger", "BorderColor");
+    border-block-end: nu-var-el("tabs", "trigger", "BorderWidth") solid nu-var-el("tabs", "trigger", "BorderColor");
     white-space: nowrap;
     cursor: pointer;
     user-select: none;
@@ -144,6 +144,7 @@
     }
   }
 
+  // Not emitted by tabs.hbs today; wiring it up needs a positioned ancestor.
   @include e(indicator) {
     @include nu-root-el("tabs", "indicator", (
       "BackgroundColor": var(--primary),
@@ -196,7 +197,6 @@
       --nu-tabs__trigger--BorderColor: transparent;
       --nu-tabs__trigger--BorderRadius: #{nu-radius(md)} #{nu-radius(md)} 0 0;
 
-      border-bottom: none;
       border: nu-var-el("tabs", "trigger", "BorderWidth") solid nu-var-el("tabs", "trigger", "BorderColor");
       border-block-end: none;
       margin-block-end: -1px;
@@ -218,7 +218,7 @@
     align-items: stretch;
     overflow-x: hidden;
     overflow-y: auto;
-    border-bottom: none;
+    border-block-end: none;
 
     .nu-tabs__trigger {
       justify-content: flex-start;
@@ -227,7 +227,7 @@
 
     &.m-underline {
       .nu-tabs__trigger {
-        border-bottom: none;
+        border-block-end: none;
         border-inline-start: nu-var-el("tabs", "trigger", "BorderWidth") solid nu-var-el("tabs", "trigger", "BorderColor");
       }
     }

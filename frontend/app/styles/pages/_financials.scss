@@ -1,7 +1,0 @@
-// Financials: transaction list + summary stats + deposit reminders + modal.
-// See AGENT_BRIEF.md.
-//
-// No page-level CSS. Every element resolves to a kit component or a core
-// utility; the transaction status badge uses the `txn` domain in
-// _badges.scss. Kept as a file so the page has an obvious home if it ever
-// needs bespoke layout.

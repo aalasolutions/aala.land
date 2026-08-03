@@ -17,6 +17,10 @@ $nu-state-prefix: "is-" !default;
 // Current block name, tracked so e()/m() can build correct selectors.
 $nu-current-block: null;
 
+// Set while inside m() or when(). e() hoists through @at-root and would silently
+// drop the qualifier there, so it errors instead and points at en().
+$nu-qualified: false;
+
 @mixin b($block) {
   $nu-current-block: $block !global;
   .#{$nu-prefix}-#{$block} {
@@ -26,6 +30,9 @@ $nu-current-block: null;
 }
 
 @mixin e($elements...) {
+  @if $nu-qualified {
+    @error "e() inside a modifier or state hoists to root and drops the qualifier. Use en().";
+  }
   $selectors: ();
   @each $el in $elements {
     $selectors: list.append(
@@ -40,6 +47,8 @@ $nu-current-block: null;
 }
 
 @mixin m($modifiers...) {
+  $prev: $nu-qualified;
+  $nu-qualified: true !global;
   $selectors: ();
   @each $mod in $modifiers {
     $selectors: list.append($selectors, "&.#{$nu-modifier-prefix}#{$mod}", comma);
@@ -47,9 +56,12 @@ $nu-current-block: null;
   #{$selectors} {
     @content;
   }
+  $nu-qualified: $prev !global;
 }
 
 @mixin when($states...) {
+  $prev: $nu-qualified;
+  $nu-qualified: true !global;
   $selectors: ();
   @each $state in $states {
     $selectors: list.append($selectors, "&.#{$nu-state-prefix}#{$state}", comma);
@@ -57,6 +69,7 @@ $nu-current-block: null;
   #{$selectors} {
     @content;
   }
+  $nu-qualified: $prev !global;
 }
 
 // Element inside the block, still nested (not @at-root).

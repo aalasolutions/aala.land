@@ -24,18 +24,21 @@
   }
 
   @include e(item) {
-    @include nu-root("breadcrumb-item", (
+    @include nu-root-el("breadcrumb", "item", (
       "Gap": nu-space(1),
+      "SeparatorContent": '"/"',
       "SeparatorColor": var(--text-subtle),
     ));
 
     display: flex;
     align-items: center;
-    gap: nu-var("breadcrumb-item", "Gap");
+    gap: nu-var-el("breadcrumb", "item", "Gap");
 
-    &:not(:first-child)::before {
-      content: "/";
-      color: nu-var("breadcrumb-item", "SeparatorColor");
+    // The glyph is the fallback separator. An item that renders an explicit
+    // __separator gets that one instead, never both.
+    &:not(:first-child):not(:has(.nu-breadcrumb__separator))::before {
+      content: nu-var-el("breadcrumb", "item", "SeparatorContent");
+      color: nu-var-el("breadcrumb", "item", "SeparatorColor");
     }
   }
 
@@ -46,7 +49,7 @@
   }
 
   @include e(link) {
-    @include nu-root("breadcrumb-link", (
+    @include nu-root-el("breadcrumb", "link", (
       "Color": var(--text-muted),
       "TransitionDuration": nu-duration(fast),
       "hover--Color": var(--primary),
@@ -55,24 +58,24 @@
 
     display: inline-flex;
     align-items: center;
-    color: nu-var("breadcrumb-link", "Color");
+    color: nu-var-el("breadcrumb", "link", "Color");
     text-decoration: none;
     border-radius: nu-radius(sm);
-    transition: color nu-var("breadcrumb-link", "TransitionDuration") $nu-ease;
+    transition: color nu-var-el("breadcrumb", "link", "TransitionDuration") $nu-ease;
 
     @include reduced-motion {
       transition: none;
     }
 
     &:hover {
-      color: nu-var("breadcrumb-link", "hover--Color");
+      color: nu-var-el("breadcrumb", "link", "hover--Color");
       text-decoration: underline;
       text-underline-offset: 2px;
     }
 
     &:focus-visible {
       outline: none;
-      box-shadow: nu-var("breadcrumb-link", "focus--BoxShadow");
+      box-shadow: nu-var-el("breadcrumb", "link", "focus--BoxShadow");
     }
   }
 
@@ -86,7 +89,7 @@
   @include e(item) {
     &.is-current {
       .nu-breadcrumb__link {
-        --nu-breadcrumb-link--Color: var(--text-color);
+        --nu-breadcrumb__link--Color: var(--text-color);
         font-weight: nu-font-weight(medium);
         pointer-events: none;
       }
@@ -99,7 +102,7 @@
     --nu-breadcrumb--FontSize: #{nu-font-size(xs)};
 
     .nu-breadcrumb__item {
-      --nu-breadcrumb-item--Gap: #{nu-space(1)};
+      --nu-breadcrumb__item--Gap: #{nu-space(1)};
     }
   }
 }

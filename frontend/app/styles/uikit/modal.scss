@@ -93,6 +93,12 @@
     box-shadow: nu-var("modal", "BoxShadow"), nu-var("modal", "focus--BoxShadow");
   }
 
+  // dvh so a mobile URL bar cannot push the footer off screen. Guarded, because a
+  // plain 90dvh token default would also apply where dvh is unsupported.
+  @supports (max-block-size: 1dvh) {
+    --nu-modal--MaxHeight: 90dvh;
+  }
+
   // ---- elements ----
 
   // flex-shrink: 0 so a tall body scrolls instead of squeezing the header.
@@ -149,10 +155,8 @@
     }
   }
 
-  // Scrolls by default. The modal is capped at MaxHeight, so without this the
-  // body simply overflows past the panel edge and its content is unreachable.
-  // `min-block-size: 0` is what lets a flex child shrink below its content
-  // size; without it the body refuses to scroll no matter the overflow value.
+  // Scrolls by default; the panel is capped at MaxHeight. `min-block-size: 0`
+  // is what lets a flex child shrink below its content size.
   @include e(body) {
     flex: 1;
     min-block-size: 0;
@@ -170,22 +174,6 @@
     gap: nu-space(2);
     padding-block-start: nu-space(3);
     border-block-start: 1px solid var(--border-base);
-  }
-
-  // ---- modifiers: sizes, uniform, so looped ----
-
-  $nu-modal-sizes: (
-    "sm": 24rem,
-    "md": 32rem,
-    "lg": 48rem,
-    "xl": 64rem,
-    "full": 100vw,
-  );
-
-  @each $size, $width in $nu-modal-sizes {
-    &.m-#{$size} {
-      --nu-modal--MaxWidth: #{$width};
-    }
   }
 
   // ---- size modifiers ----

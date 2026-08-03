@@ -115,10 +115,7 @@ export default class LeadsController extends Controller {
   sourceOptions = LEAD_SOURCE_OPTIONS;
 
   get regionOptions() {
-    return this.region.regions.map((r) => ({
-      value: r.code,
-      label: `${r.name} (${r.currency})`,
-    }));
+    return this.region.regionOptions;
   }
 
   get propertyOptions() {
@@ -399,6 +396,14 @@ export default class LeadsController extends Controller {
     this.draggedLead = lead;
   }
 
+  // `drop` never fires on a cancelled drag; this does.
+  @action handleDragEnd() {
+    this.draggedLead = null;
+    this.dropTargetStatus = null;
+    this.dropTargetTemp = null;
+    this.dropTargetAgent = null;
+  }
+
   @action handleDragOver(status, event) {
     event.preventDefault();
     event.dataTransfer.dropEffect = 'move';
@@ -427,6 +432,10 @@ export default class LeadsController extends Controller {
       this.draggedLead = null;
       this.dropTargetStatus = null;
     }
+  }
+
+  @action clearDropTarget(key) {
+    this[key] = null;
   }
 
   // Temperature Board drag-drop
@@ -463,10 +472,12 @@ export default class LeadsController extends Controller {
   }
 
   // Agent Board drag-drop
+  // Sentinel, not null: the Unassigned column's own id is null, so a null
+  // drop target would mark it active whenever nothing is being dragged.
   @action handleAgentDragOver(agentId, event) {
     event.preventDefault();
     event.dataTransfer.dropEffect = 'move';
-    this.dropTargetAgent = agentId;
+    this.dropTargetAgent = agentId ?? 'unassigned';
   }
 
   @action async handleAgentDrop(newAgentId, event) {

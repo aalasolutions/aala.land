@@ -1,5 +1,5 @@
 import Component from '@glimmer/component';
-import { tracked } from '@glimmer/tracking';
+import { cached, tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { registerDestructor } from '@ember/destroyable';
 import { runTask } from 'ember-lifeline';
@@ -64,6 +64,7 @@ export default class NuDropdownComponent extends Component {
   }
 
   // Accepts {value,label,group,icon,danger,disabled} objects or plain strings.
+  @cached
   get normalizedOptions() {
     return (this.args.options || []).map((entry) => {
       const isObject = entry !== null && typeof entry === 'object';
@@ -83,6 +84,7 @@ export default class NuDropdownComponent extends Component {
 
   // Separators are decoration: they must never be selectable or land under the
   // keyboard cursor, so they are excluded from the navigable list entirely.
+  @cached
   get filteredOptions() {
     const term = this.searchText.trim().toLowerCase();
     const all = this.normalizedOptions.filter((o) => !o.separator);
@@ -117,6 +119,7 @@ export default class NuDropdownComponent extends Component {
 
   // Separators render only in the unfiltered, ungrouped list. Once a search
   // term or grouping reorders things, a fixed divider position is meaningless.
+  @cached
   get flatRows() {
     if (this.searchText.trim() || this.normalizedOptions.some((o) => o.group)) {
       return null;
@@ -137,6 +140,7 @@ export default class NuDropdownComponent extends Component {
   }
 
   // Flat index is assigned here so keyboard nav and rendering agree.
+  @cached
   get groupedOptions() {
     const groups = [];
     let current = null;

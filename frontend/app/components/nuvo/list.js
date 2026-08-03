@@ -23,10 +23,6 @@ export default class NuListComponent extends Component {
     return parts.join(' ');
   }
 
-  get tag() {
-    return this.args.ordered ? 'ol' : 'ul';
-  }
-
   get normalizedItems() {
     const items = this.args.items;
     if (!Array.isArray(items)) {

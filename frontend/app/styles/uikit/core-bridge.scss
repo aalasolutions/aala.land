@@ -1,0 +1,17 @@
+// Points NuvoUI core's global variables at kit tokens so a page mixing core
+// primitives and kit components reads as one system.
+//
+// Separated from the component files because writing to :root is a global side
+// effect: importing one component must not silently reconfigure a third-party
+// library. A consuming app that themes core itself should not @use this.
+@use "./common/var" as *;
+
+// Core's [data-tooltip] and the kit's .nu-tooltip cover different needs and both
+// ship deliberately. This keeps them visually identical.
+:root {
+  --tooltip-bg: var(--text-color);
+  --tooltip-text-color: var(--text-inverted);
+  --tooltip-font-size: #{nu-font-size(xs)};
+  --tooltip-border-radius: #{nu-radius(md)};
+  --tooltip-transition-duration: #{nu-duration(fast)};
+}

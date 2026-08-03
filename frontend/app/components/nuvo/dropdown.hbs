@@ -40,7 +40,7 @@
 
     {{#if this.hasResults}}
       {{#if this.flatRows}}
-        {{#each this.flatRows as |row|}}
+        {{#each this.flatRows key="@index" as |row|}}
           {{#if row.separator}}
             <div class="nu-menu__separator" role="presentation"></div>
           {{else}}
@@ -67,14 +67,14 @@
           {{/if}}
         {{/each}}
       {{else}}
-      {{#each this.groupedOptions as |grp|}}
+      {{#each this.groupedOptions key="group" as |grp|}}
         {{#if grp.group}}
           <div class="nu-menu__group-label" role="presentation">
             {{grp.group}}
           </div>
         {{/if}}
 
-        {{#each grp.rows as |row|}}
+        {{#each grp.rows key="index" as |row|}}
           <button
             type="button"
             class="nu-menu__item

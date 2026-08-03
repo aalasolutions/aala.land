@@ -65,7 +65,7 @@
             {{else}}
               <p class="unit-building">{{unit.asset.name}}</p>
             {{/if}}
-            <Nuvo::Tag class="badge-unit-{{lowercase unit.status}}">{{unit.status}}</Nuvo::Tag>
+            <Nuvo::Tag class="tag-unit-{{lowercase unit.status}}">{{unit.status}}</Nuvo::Tag>
             {{#if unit.price}}
               <p class="unit-price">{{format-currency unit.price}}</p>
             {{/if}}
@@ -73,7 +73,7 @@
         {{else}}
           <div class="unit-card">
             <p class="unit-number">{{unit.unitNumber}}</p>
-            <Nuvo::Tag class="badge-unit-{{lowercase unit.status}}">{{unit.status}}</Nuvo::Tag>
+            <Nuvo::Tag class="tag-unit-{{lowercase unit.status}}">{{unit.status}}</Nuvo::Tag>
             {{#if unit.price}}
               <p class="unit-price">{{format-currency unit.price}}</p>
             {{/if}}

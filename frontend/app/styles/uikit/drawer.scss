@@ -99,21 +99,12 @@
 
   // ---- placement modifiers ----
 
-  @include m(end) {
-    inset-inline-start: auto;
-    border-inline-start: 1px solid var(--border-base);
-    border-inline-end: none;
-    --nu-drawer--TranslateX: 100%;
-  }
-
   @include m(start) {
     inset-inline-end: auto;
     inset-inline-start: 0;
     border-inline-end: 1px solid var(--border-base);
     border-inline-start: none;
     --nu-drawer--TranslateX: -100%;
-
-    transform: translateX(calc(-1 * nu-var("drawer", "TranslateX")));
   }
 
   @include m(top) {

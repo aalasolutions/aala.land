@@ -1,9 +1,5 @@
-// Property unit detail: photo gallery + info + amenities + documents/lease
-// tables. See AGENT_BRIEF.md.
-//
-// Bespoke: the photo gallery (main photo, thumbnail strip with hover
-// actions, upload preview states, dashed placeholder). Everything else
-// resolves to a kit component (Card, Tag, Button, nu-table).
+// Property unit detail. Only the photo gallery is bespoke; everything else
+// resolves to a kit component.
 @use "../uikit/common/var" as *;
 @use "../uikit/mixins/bem" as *;
 
@@ -21,7 +17,7 @@
   inline-size: 100%;
   aspect-ratio: 16 / 10;
   overflow: hidden;
-  border-radius: var(--radius-lg);
+  border-radius: #{nu-radius(lg)};
   background: var(--bg-alternate);
 
   img {
@@ -35,11 +31,11 @@
   position: relative;
   inline-size: 80px;
   block-size: 60px;
-  border-radius: var(--radius-sm);
+  border-radius: #{nu-radius(sm)};
   overflow: hidden;
   border: 2px solid transparent;
   cursor: pointer;
-  transition: border-color var(--transition-fast);
+  transition: border-color #{nu-duration(fast)};
 
   img {
     inline-size: 100%;
@@ -48,7 +44,7 @@
   }
 
   &:hover {
-    border-color: var(--color-primary);
+    border-color: var(--primary);
   }
 
   &:hover .unit-thumb-actions {
@@ -57,7 +53,7 @@
 }
 
 .unit-thumb-primary {
-  border-color: var(--color-primary);
+  border-color: var(--primary);
 }
 
 .unit-thumb-actions {
@@ -70,8 +66,8 @@
 
 .upload-preview-thumb {
   opacity: 0.7;
-  border: 2px dashed var(--color-primary);
-  border-radius: var(--radius-md);
+  border: 2px dashed var(--primary);
+  border-radius: #{nu-radius(md)};
   overflow: hidden;
   pointer-events: none;
 
@@ -84,7 +80,7 @@
 
 .upload-preview-active {
   position: relative;
-  border-radius: var(--radius-lg);
+  border-radius: #{nu-radius(lg)};
   overflow: hidden;
 
   img {
@@ -98,7 +94,7 @@
     position: absolute;
     inset: 0;
     background: rgba(0, 0, 0, 0.15);
-    border-radius: var(--radius-lg);
+    border-radius: #{nu-radius(lg)};
   }
 }
 
@@ -109,8 +105,8 @@
   justify-content: center;
   text-align: center;
   min-block-size: 300px;
-  border: 2px dashed var(--border-light);
-  border-radius: var(--radius-lg);
+  border: 2px dashed var(--border-base);
+  border-radius: #{nu-radius(lg)};
   color: var(--text-muted);
   font-size: 64px;
 }

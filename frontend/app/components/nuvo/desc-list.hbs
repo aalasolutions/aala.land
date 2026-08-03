@@ -2,7 +2,7 @@
   {{#if (has-block)}}
     {{yield}}
   {{else}}
-    {{#each this.normalizedItems as |entry|}}
+    {{#each this.normalizedItems key="key" as |entry|}}
       <div class="nu-desc-list__group" data-test-nu-desc-list-group>
         <dt class="nu-desc-list__term" data-test-nu-desc-list-term>{{entry.term}}</dt>
         <dd class="nu-desc-list__description" data-test-nu-desc-list-description>{{entry.description}}</dd>

@@ -101,7 +101,14 @@
   @include nu-root("input-wrap", (
     "AffixInset": nu-space(3),
     "AffixSize": 1rem,
+    // Affixes are often text ("AED", "%"), not glyphs, so they track the
+    // input's own size rather than the icon box.
+    "AffixFontSize": nu-font-size(sm),
     "AffixColor": var(--text-subtle),
+    // Room for the affix. Fits an icon or a short code like "AED" with
+    // clearance; widen it per instance for anything longer.
+    "AffixGutter": nu-space(12),
+    "clear--HitArea": 2rem,
     "clear--hover--Color": var(--text-color),
   ));
 
@@ -115,10 +122,11 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    inline-size: nu-var("input-wrap", "AffixSize");
+    min-inline-size: nu-var("input-wrap", "AffixSize");
     block-size: nu-var("input-wrap", "AffixSize");
-    font-size: nu-var("input-wrap", "AffixSize");
+    font-size: nu-var("input-wrap", "AffixFontSize");
     line-height: 1;
+    white-space: nowrap;
     color: nu-var("input-wrap", "AffixColor");
     transform: translateY(-50%);
     pointer-events: none;
@@ -151,10 +159,38 @@
     border-radius: nu-radius(full);
     transform: translateY(-50%);
     cursor: pointer;
-    transition: color nu-duration(fast) $nu-ease;
+    transition:
+      color nu-duration(fast) $nu-ease,
+      opacity nu-duration(fast) $nu-ease;
 
     @include reduced-motion {
       transition: none;
+    }
+
+    // Revealed on hover or keyboard focus. Guarded by (hover: hover) so touch
+    // devices, which never hover, keep it visible.
+    @media (hover: hover) {
+      opacity: 0;
+      pointer-events: none;
+
+      .nu-input-wrap:hover &,
+      .nu-input-wrap:focus-within &,
+      &:focus-visible {
+        opacity: 1;
+        pointer-events: auto;
+      }
+    }
+
+    // Icon is 1rem, under the interactive-target floor. The pseudo widens only
+    // the pointer target; it is out of flow so nothing shifts.
+    &::before {
+      content: "";
+      position: absolute;
+      inset-block-start: 50%;
+      inset-inline-start: 50%;
+      inline-size: nu-var("input-wrap", "clear--HitArea");
+      block-size: nu-var("input-wrap", "clear--HitArea");
+      transform: translate(-50%, -50%);
     }
 
     &:hover {
@@ -172,13 +208,13 @@
     .nu-input {
       --nu-input--PaddingInline: #{nu-space(3)};
 
-      padding-inline-start: nu-space(8);
+      padding-inline-start: nu-var("input-wrap", "AffixGutter");
     }
   }
 
   @include m(has-suffix) {
     .nu-input {
-      padding-inline-end: nu-space(8);
+      padding-inline-end: nu-var("input-wrap", "AffixGutter");
     }
   }
 }
@@ -190,10 +226,14 @@
 }
 
 @include b(select) {
+  @include nu-root("select", (
+    "ChevronImage": url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%2364748b' stroke-width='1.5'%3E%3Cpath d='M4 6l4 4 4-4'/%3E%3C/svg%3E"),
+  ));
+
   appearance: none;
   padding-inline-end: nu-space(8);
   cursor: pointer;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%2364748b' stroke-width='1.5'%3E%3Cpath d='M4 6l4 4 4-4'/%3E%3C/svg%3E");
+  background-image: nu-var("select", "ChevronImage");
   background-repeat: no-repeat;
   background-position: right nu-space(3) center;
   background-size: 1rem;
@@ -254,14 +294,9 @@
     --nu-field--MarginBlockEnd: 0;
   }
 
-  // A field whose control carries no label, sitting in a row beside fields
-  // that do. Without this the control drops by the label's height, because
-  // its own box starts where the others' labels start.
-  //
-  // The spacer is sized from the label's font scale rather than from
-  // placeholder text: `.nu-field__label` is a flex container, so an empty one
-  // collapses to zero and an `&nbsp;` overshoots (a flex line box is taller
-  // than the text line box it wraps).
+  // Aligns an unlabelled control with labelled siblings. Sized from the font
+  // scale, not placeholder text: the label is flex, so empty collapses and
+  // `&nbsp;` overshoots.
   @include e(label-spacer) {
     display: block;
     block-size: calc(#{nu-font-size(sm)} * 1.1);
@@ -269,9 +304,7 @@
   }
 }
 
-// Row of filter controls. Auto-fitting so the column count follows the
-// viewport instead of being pinned, and every control shares a baseline
-// whether or not it has a label.
+// Auto-fitting row of filter controls; column count follows the viewport.
 @include b(filter-row) {
   @include nu-root("filter-row", (
     "Gap": nu-space(4),
@@ -286,7 +319,7 @@
   align-items: start;
   gap: nu-var("filter-row", "Gap");
 
-  // Filter fields sit in a grid gap, so their own bottom margin would double it.
+  // Grid gap already spaces these; their own margin would double it.
   .nu-field {
     --nu-field--MarginBlockEnd: 0;
   }
@@ -417,6 +450,27 @@
   @include when(disabled) {
     opacity: 0.6;
     cursor: not-allowed;
+  }
+}
+
+// Row of checkboxes or radios. The gap between options is deliberately much
+// larger than the 8px inside a label: at similar values each box appears to
+// float between two labels instead of belonging to the one it precedes.
+@include b(check-group) {
+  @include nu-root("check-group", (
+    "Gap": nu-space(6),
+    "RowGap": nu-space(3),
+  ));
+
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: nu-var("check-group", "RowGap") nu-var("check-group", "Gap");
+
+  @include m(stacked) {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: nu-var("check-group", "RowGap");
   }
 }
 

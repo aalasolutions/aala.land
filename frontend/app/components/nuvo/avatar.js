@@ -21,7 +21,7 @@ export default class NuAvatarComponent extends Component {
   }
 
   get hasStatus() {
-    return STATUSES.includes(this.args.status) || Boolean(this.args.status);
+    return STATUSES.includes(this.args.status);
   }
 
   get hasImage() {

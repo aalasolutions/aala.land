@@ -68,7 +68,7 @@
             </td>
             <td>
               <Nuvo::Tag
-                class="badge-plan-{{lowercase row.tier}}"
+                class="tag-plan-{{lowercase row.tier}}"
                 @text={{row.tier}}
               />
             </td>
@@ -83,14 +83,14 @@
             </td>
             <td data-test-companies-status={{row.id}}>
               {{#if (eq row.status "locked")}}
-                <Nuvo::Tag class="badge-account-locked" @text="LOCKED" />
+                <Nuvo::Tag class="tag-account-locked" @text="LOCKED" />
               {{else if (eq row.status "lifted")}}
-                <Nuvo::Tag class="badge-account-lifted">
+                <Nuvo::Tag class="tag-account-lifted">
                   lifted until
                   {{format-date row.lockState.liftUntil}}
                 </Nuvo::Tag>
               {{else if (eq row.status "deal")}}
-                <Nuvo::Tag class="badge-account-on_deal">
+                <Nuvo::Tag class="tag-account-on_deal">
                   {{#if row.deal.lifetime}}
                     lifetime deal
                   {{else}}
@@ -99,7 +99,7 @@
                   {{/if}}
                 </Nuvo::Tag>
               {{else}}
-                <Nuvo::Tag class="badge-account-active" @text="active" />
+                <Nuvo::Tag class="tag-account-active" @text="active" />
               {{/if}}
             </td>
             <td class="text-end">

@@ -86,7 +86,7 @@ $nu-code-font-stack: ui-monospace, "SFMono-Regular", "Menlo", "Consolas", monosp
   @include m(scrollable) {
     --nu-code-block--MaxHeight: 20rem;
 
-    @include e(content) {
+    @include en(content) {
       max-block-size: nu-var("code-block", "MaxHeight");
     }
   }
@@ -95,21 +95,26 @@ $nu-code-font-stack: ui-monospace, "SFMono-Regular", "Menlo", "Consolas", monosp
   @include e(line) {
     display: block;
     padding-inline-start: nu-space(3);
-    counter-increment: nu-code-line;
-
-    &::before {
-      display: inline-block;
-      inline-size: nu-space(6);
-      margin-inline-end: nu-space(3);
-      color: var(--text-subtle);
-      content: counter(nu-code-line);
-      text-align: end;
-    }
   }
 
+  // The counter lives here, not on __line, so a block that renders __line
+  // without opting in stays unnumbered.
   @include m(numbered) {
-    @include e(content) {
+    @include en(content) {
       counter-reset: nu-code-line;
+    }
+
+    @include en(line) {
+      counter-increment: nu-code-line;
+
+      &::before {
+        display: inline-block;
+        inline-size: nu-space(6);
+        margin-inline-end: nu-space(3);
+        color: var(--text-subtle);
+        content: counter(nu-code-line);
+        text-align: end;
+      }
     }
   }
 }
@@ -192,7 +197,7 @@ $nu-code-font-stack: ui-monospace, "SFMono-Regular", "Menlo", "Consolas", monosp
   // ---- states ----
 
   @include when(copied) {
-    @include e(button) {
+    @include en(button) {
       color: nu-var("clipboard-copy", "feedback--Color");
     }
   }

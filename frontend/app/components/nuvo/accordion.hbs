@@ -1,6 +1,6 @@
 {{! Block param is `entry`, never `item` shadowing risk avoided by not using `item` as tag name - safe here but kept explicit for consistency. }}
 <div class={{this.classes}} data-test-nu-accordion ...attributes>
-  {{#each this.items as |entry|}}
+  {{#each this.items key="id" as |entry|}}
     <div
       class="nu-accordion__item {{if entry.expanded 'is-expanded'}} {{if entry.disabled 'is-disabled'}}"
       data-test-nu-accordion-item={{entry.id}}
@@ -18,12 +18,17 @@
       </button>
 
       <div class="nu-accordion__panel" data-test-nu-accordion-panel={{entry.id}}>
-        <div class="nu-accordion__content">
-          {{#if (has-block)}}
-            {{yield entry}}
-          {{else}}
-            {{entry.content}}
-          {{/if}}
+        {{! Unpadded clip layer. Padding on the clipped element itself keeps
+            the collapsed panel that many pixels tall, showing a strip of the
+            content through it. }}
+        <div>
+          <div class="nu-accordion__content">
+            {{#if (has-block)}}
+              {{yield entry}}
+            {{else}}
+              {{entry.content}}
+            {{/if}}
+          </div>
         </div>
       </div>
     </div>

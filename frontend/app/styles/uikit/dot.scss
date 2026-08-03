@@ -71,10 +71,10 @@
 
 @keyframes nu-dot-pulse {
   0% {
-    box-shadow: 0 0 0 0 var(--nu-dot--Color);
+    box-shadow: 0 0 0 0 nu-var("dot", "Color");
   }
   70% {
-    box-shadow: 0 0 0 nu-var("dot", "RingWidth", 6px) transparent;
+    box-shadow: 0 0 0 nu-var("dot", "RingWidth") transparent;
   }
   100% {
     box-shadow: 0 0 0 0 transparent;

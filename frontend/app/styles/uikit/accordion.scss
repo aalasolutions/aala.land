@@ -18,11 +18,11 @@
   // ---- elements ----
 
   @include e(item) {
-    @include nu-root("accordion-item", (
+    @include nu-root-el("accordion", "item", (
       "BorderColor": var(--border-base),
     ));
 
-    border-block-end: 1px solid nu-var("accordion-item", "BorderColor");
+    border-block-end: 1px solid nu-var-el("accordion", "item", "BorderColor");
 
     &:last-child {
       border-block-end: none;
@@ -30,7 +30,7 @@
   }
 
   @include e(trigger) {
-    @include nu-root("accordion-trigger", (
+    @include nu-root-el("accordion", "trigger", (
       "Display": flex,
       "PaddingBlock": nu-space(4),
       "PaddingInline": nu-space(4),
@@ -45,48 +45,48 @@
       "disabled--Opacity": 0.55,
     ));
 
-    display: nu-var("accordion-trigger", "Display");
+    display: nu-var-el("accordion", "trigger", "Display");
     align-items: center;
     justify-content: space-between;
     inline-size: 100%;
-    gap: nu-var("accordion-trigger", "Gap");
-    padding-block: nu-var("accordion-trigger", "PaddingBlock");
-    padding-inline: nu-var("accordion-trigger", "PaddingInline");
+    gap: nu-var-el("accordion", "trigger", "Gap");
+    padding-block: nu-var-el("accordion", "trigger", "PaddingBlock");
+    padding-inline: nu-var-el("accordion", "trigger", "PaddingInline");
     font-family: inherit;
-    font-size: nu-var("accordion-trigger", "FontSize");
-    font-weight: nu-var("accordion-trigger", "FontWeight");
-    color: nu-var("accordion-trigger", "Color");
-    background-color: nu-var("accordion-trigger", "BackgroundColor");
+    font-size: nu-var-el("accordion", "trigger", "FontSize");
+    font-weight: nu-var-el("accordion", "trigger", "FontWeight");
+    color: nu-var-el("accordion", "trigger", "Color");
+    background-color: nu-var-el("accordion", "trigger", "BackgroundColor");
     border: none;
     text-align: start;
     cursor: pointer;
-    transition: background-color nu-var("accordion-trigger", "TransitionDuration") $nu-ease;
+    transition: background-color nu-var-el("accordion", "trigger", "TransitionDuration") $nu-ease;
 
     @include reduced-motion {
       transition: none;
     }
 
     &:hover:not(:disabled):not(.is-disabled) {
-      background-color: nu-var("accordion-trigger", "hover--BackgroundColor");
+      background-color: nu-var-el("accordion", "trigger", "hover--BackgroundColor");
     }
 
     &:focus-visible {
       outline: none;
-      box-shadow: nu-var("accordion-trigger", "focus--BoxShadow");
+      box-shadow: nu-var-el("accordion", "trigger", "focus--BoxShadow");
       z-index: 1;
       position: relative;
     }
 
     &:disabled,
     &.is-disabled {
-      opacity: nu-var("accordion-trigger", "disabled--Opacity");
+      opacity: nu-var-el("accordion", "trigger", "disabled--Opacity");
       cursor: not-allowed;
       pointer-events: none;
     }
   }
 
   @include e(icon) {
-    @include nu-root("accordion-icon", (
+    @include nu-root-el("accordion", "icon", (
       "TransitionDuration": nu-duration(fast),
       "Color": var(--text-muted),
     ));
@@ -97,23 +97,36 @@
     justify-content: center;
     font-size: 1em;
     line-height: 1;
-    color: nu-var("accordion-icon", "Color");
-    transition: transform nu-var("accordion-icon", "TransitionDuration") $nu-ease;
+    color: nu-var-el("accordion", "icon", "Color");
+    transition: transform nu-var-el("accordion", "icon", "TransitionDuration") $nu-ease;
 
     @include reduced-motion {
       transition: none;
     }
   }
 
+  // Open/close animates grid-template-rows rather than a max-height guess, so
+  // content of any height opens fully instead of being clipped at a ceiling.
   @include e(panel) {
-    @include nu-root("accordion-panel", (
-      "MaxBlockSize": 0,
+    @include nu-root-el("accordion", "panel", (
       "BackgroundColor": transparent,
+      "TransitionDuration": nu-duration(fast),
     ));
 
-    max-block-size: nu-var("accordion-panel", "MaxBlockSize");
-    background-color: nu-var("accordion-panel", "BackgroundColor");
-    overflow: hidden;
+    display: grid;
+    grid-template-rows: 0fr;
+    background-color: nu-var-el("accordion", "panel", "BackgroundColor");
+    transition: grid-template-rows nu-var-el("accordion", "panel", "TransitionDuration") $nu-ease;
+
+    @include reduced-motion {
+      transition: none;
+    }
+
+    // The single child owns the clipping; the track is what animates.
+    > * {
+      overflow: hidden;
+      min-block-size: 0;
+    }
   }
 
   @include e(content) {
@@ -128,7 +141,7 @@
   @include e(item) {
     &.is-expanded {
       .nu-accordion__panel {
-        --nu-accordion-panel--MaxBlockSize: 62.5rem;
+        grid-template-rows: 1fr;
       }
 
       .nu-accordion__icon {
@@ -138,7 +151,7 @@
 
     &.is-disabled {
       .nu-accordion__trigger {
-        opacity: nu-var("accordion-trigger", "disabled--Opacity");
+        opacity: nu-var-el("accordion", "trigger", "disabled--Opacity");
         cursor: not-allowed;
         pointer-events: none;
       }
@@ -149,8 +162,8 @@
 
   @include m(bordered) {
     .nu-accordion__item {
-      --nu-accordion-item--BorderColor: var(--border-base);
-      border: 1px solid nu-var("accordion-item", "BorderColor");
+      --nu-accordion__item--BorderColor: var(--border-base);
+      border: 1px solid nu-var-el("accordion", "item", "BorderColor");
       border-radius: nu-radius(md);
       margin-block-end: nu-space(2);
 
@@ -165,14 +178,14 @@
     border-radius: 0;
 
     .nu-accordion__item {
-      --nu-accordion-item--BorderColor: transparent;
+      --nu-accordion__item--BorderColor: transparent;
     }
   }
 
   @include m(compact) {
     .nu-accordion__trigger {
-      --nu-accordion-trigger--PaddingBlock: #{nu-space(2)};
-      --nu-accordion-trigger--FontSize: #{nu-font-size(xs)};
+      --nu-accordion__trigger--PaddingBlock: #{nu-space(2)};
+      --nu-accordion__trigger--FontSize: #{nu-font-size(xs)};
     }
 
     .nu-accordion__content {

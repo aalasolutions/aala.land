@@ -3,7 +3,7 @@
     {{#if (has-block)}}
       {{yield}}
     {{else}}
-      {{#each this.normalizedItems as |entry|}}
+      {{#each this.normalizedItems key="key" as |entry|}}
         <li class="nu-list__item" data-test-nu-list-item>
           {{#if entry.icon}}
             <span class="nu-list__icon" aria-hidden="true">{{entry.icon}}</span>
@@ -18,7 +18,7 @@
     {{#if (has-block)}}
       {{yield}}
     {{else}}
-      {{#each this.normalizedItems as |entry|}}
+      {{#each this.normalizedItems key="key" as |entry|}}
         <li class="nu-list__item" data-test-nu-list-item>
           {{#if entry.icon}}
             <span class="nu-list__icon" aria-hidden="true">{{entry.icon}}</span>

@@ -1,40 +1,31 @@
-// Logical-direction utilities.
-//
-// NuvoUI core ships only physical alignment (`.text-left` / `.text-right`),
-// which is wrong for this app: it renders RTL, and a "right"-aligned number
-// column must follow the reading direction, not the viewport.
-//
-// These are the logical equivalents. They are the ONLY alignment classes that
-// should appear in new markup. `.text-right` still exists in core and still
-// works, but it pins the column to the physical right in Arabic too.
-//
-// Kept deliberately small. This is not a utility framework; it fills the one
-// gap that keeps producing bugs.
+// Logical-direction utilities. Core ships physical only (.text-left/.ml-*),
+// which pins to the viewport instead of the reading direction in RTL.
 @use "./common/var" as *;
 
-.text-start {
+$nu-utility-prefix: "" !default;
+
+.#{$nu-utility-prefix}text-start {
   text-align: start;
 }
 
-.text-end {
+.#{$nu-utility-prefix}text-end {
   text-align: end;
 }
 
-// Margin on the inline axis. Core ships `.ml-*` / `.mr-*` only.
 @each $key, $value in $nu-space {
-  .ms-#{$key} {
+  .#{$nu-utility-prefix}ms-#{$key} {
     margin-inline-start: $value;
   }
 
-  .me-#{$key} {
+  .#{$nu-utility-prefix}me-#{$key} {
     margin-inline-end: $value;
   }
 
-  .ps-#{$key} {
+  .#{$nu-utility-prefix}ps-#{$key} {
     padding-inline-start: $value;
   }
 
-  .pe-#{$key} {
+  .#{$nu-utility-prefix}pe-#{$key} {
     padding-inline-end: $value;
   }
 }

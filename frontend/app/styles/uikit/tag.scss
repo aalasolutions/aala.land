@@ -36,6 +36,7 @@
   border-radius: nu-var("tag", "BorderRadius");
   white-space: nowrap;
   vertical-align: middle;
+  inline-size: fit-content; // opt out of flex-item stretch
 
   // ---- elements ----
 
@@ -44,6 +45,7 @@
   }
 
   @include e(remove) {
+    position: relative;
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -58,8 +60,15 @@
     font-size: 1em;
     line-height: 1;
 
-    @include reduced-motion {
-      transition: none;
+    // Visual size stays 1em; ::before pads the hit area to the 32px floor.
+    &::before {
+      content: "";
+      position: absolute;
+      inset-block-start: 50%;
+      inset-inline-start: 50%;
+      inline-size: 2rem;
+      block-size: 2rem;
+      transform: translate(-50%, -50%);
     }
 
     &:focus-visible {
@@ -92,7 +101,7 @@
 
   @include m(sm) {
     --nu-tag--PaddingInline: #{nu-space(1)};
-    --nu-tag--FontSize: 0.625rem;
+    --nu-tag--FontSize: #{nu-font-size(2xs)};
   }
 
   @include m(lg) {
@@ -107,9 +116,7 @@
     --nu-tag--BorderRadius: #{nu-radius(full)};
   }
 
-  // A tag the user can toggle: amenity pickers, specialty pickers, filter
-  // chips. Put it on a real <button> so it is keyboard reachable; the
-  // selected look is driven by `is-selected`, not by swapping classes.
+  // Toggleable chip. Put it on a real <button> for keyboard reach.
   @include m(selectable) {
     cursor: pointer;
     transition:
@@ -121,8 +128,8 @@
       transition: none;
     }
 
-    // Scoped to the unselected state: a selected chip is already filled with
-    // --primary, and tinting its text the same colour would erase the label.
+    // Unselected only: a selected chip is already --primary, so tinting its
+    // text the same colour would erase the label.
     &:not(.is-selected):hover {
       --nu-tag--BorderColor: var(--primary);
       --nu-tag--Color: var(--primary);

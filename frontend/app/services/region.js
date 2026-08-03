@@ -17,6 +17,21 @@ export default class RegionService extends Service {
     return this.activeRegion?.code ?? null;
   }
 
+  // Dropdown options tagged with a country `group`, sorted country then region
+  // so Nuvo::Dropdown renders one header per country. Matches the topbar
+  // switcher grouping in application.js `groupedRegions`.
+  get regionOptions() {
+    return this.regions
+      .map((r) => ({
+        value: r.code,
+        label: `${r.name} (${r.currency})`,
+        group: r.countryName || r.country || 'Other',
+      }))
+      .sort(
+        (a, b) => a.group.localeCompare(b.group) || a.label.localeCompare(b.label),
+      );
+  }
+
   initialize(regions, defaultRegionCode) {
     this.regions = regions || [];
 

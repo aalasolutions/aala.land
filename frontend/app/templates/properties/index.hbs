@@ -212,7 +212,7 @@
               <div class="flex between x-center">
                 <p class="font-bold">Property {{unit.unitNumber}}</p>
                 <Nuvo::Tag
-                  class="badge-unit-{{lowercase unit.status}}"
+                  class="tag-unit-{{lowercase unit.status}}"
                   @text={{capitalize unit.status}}
                 />
               </div>
@@ -241,7 +241,7 @@
               {{/if}}
               {{#if unit.propertyType}}
                 <Nuvo::Tag
-                  class="badge-proptype-{{lowercase unit.propertyType}}"
+                  class="tag-proptype-{{lowercase unit.propertyType}}"
                   @text={{if (eq unit.propertyType "FOR_SALE") "Sale" "Rent"}}
                 />
               {{/if}}

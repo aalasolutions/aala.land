@@ -1,5 +1,6 @@
 <textarea
   class={{this.classes}}
+  value={{@value}}
   placeholder={{@placeholder}}
   disabled={{@disabled}}
   readonly={{@readonly}}
@@ -11,4 +12,4 @@
   {{on "input" this.handleInput}}
   {{on "change" this.handleChange}}
   ...attributes
->{{@value}}</textarea>
+></textarea>

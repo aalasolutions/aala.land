@@ -43,10 +43,10 @@
             </div>
             <div class="flex gap-1 x-center">
               {{#unless template.isActive}}
-                <Nuvo::Tag class="badge-enabled-inactive" @text="Inactive" />
+                <Nuvo::Tag class="tag-enabled-inactive" @text="Inactive" />
               {{/unless}}
               <Nuvo::Tag
-                class="badge-email-{{lowercase template.category}}"
+                class="tag-email-{{lowercase template.category}}"
                 @text={{template.category}}
               />
             </div>

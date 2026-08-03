@@ -3,8 +3,7 @@ import { action } from '@ember/object';
 
 export default class NuCheckboxComponent extends Component {
   get classes() {
-    const parts = ['nu-check'];
-    return parts.join(' ');
+    return 'nu-check';
   }
 
   get labelClasses() {

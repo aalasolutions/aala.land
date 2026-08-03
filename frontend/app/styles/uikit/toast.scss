@@ -138,6 +138,7 @@
   }
 
   @include e(close) {
+    position: relative;
     display: inline-flex;
     flex-shrink: 0;
     align-items: center;
@@ -155,6 +156,17 @@
 
     @include reduced-motion {
       transition: none;
+    }
+
+    // Visual size stays 24px; ::before pads the hit area to the 32px floor.
+    &::before {
+      content: "";
+      position: absolute;
+      inset-block-start: 50%;
+      inset-inline-start: 50%;
+      inline-size: 2rem;
+      block-size: 2rem;
+      transform: translate(-50%, -50%);
     }
 
     &:hover {

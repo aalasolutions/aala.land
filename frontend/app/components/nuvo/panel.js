@@ -3,9 +3,6 @@ import Component from '@glimmer/component';
 export default class NuPanelComponent extends Component {
   get classes() {
     const parts = ['nu-panel'];
-    if (this.args.flush) {
-      parts.push('m-flush');
-    }
     if (this.args.compact) {
       parts.push('m-compact');
     }

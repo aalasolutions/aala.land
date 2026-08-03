@@ -12,6 +12,12 @@
   flex-direction: column;
   gap: nu-var("timeline", "Gap");
 
+  // Rendered as <ol> by the component. Core's reset only strips list defaults
+  // from [role="list"], so they survive here. Matches list/breadcrumb/pagination.
+  margin: 0;
+  padding-inline-start: 0;
+  list-style: none;
+
   // ---- item ----
 
   @include e(item) {
@@ -67,6 +73,22 @@
     min-inline-size: 0;
   }
 
+  // Title row: optional leading icon, the title, then the timestamp beside it.
+  @include e(heading) {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: nu-space(2);
+  }
+
+  @include e(icon) {
+    display: inline-flex;
+    align-items: center;
+    flex-shrink: 0;
+    line-height: 1;
+    color: var(--text-muted);
+  }
+
   @include e(title) {
     margin: 0;
     font-size: nu-font-size(sm);
@@ -84,13 +106,20 @@
     line-height: 1.5;
     color: var(--text-muted);
   }
+
+  // Secondary attribution ("by Sara"), below the description. Quieter than
+  // __timestamp, which sits in the title row.
+  @include e(meta) {
+    font-size: nu-font-size(xs);
+    color: var(--text-subtle);
+  }
 }
 
 // ---- marker colour variants: uniform, looped ----
 
 @each $variant in $nu-variants {
   .nu-timeline__item.m-#{$variant} {
-    --nu-timeline-item--MarkerColor: var(--#{$variant});
+    --nu-timeline__item--MarkerColor: var(--#{$variant});
   }
 }
 
@@ -100,8 +129,8 @@
   --nu-timeline--Gap: #{nu-space(3)};
 
   .nu-timeline__content {
-    --nu-timeline-content--Gap: #{nu-space(0)};
-    --nu-timeline-content--PaddingBlockEnd: #{nu-space(2)};
+    --nu-timeline__content--Gap: #{nu-space(0)};
+    --nu-timeline__content--PaddingBlockEnd: #{nu-space(2)};
   }
 }
 
@@ -135,10 +164,13 @@
 
 // ---- states ----
 
+// Token writes sit on the item, not the marker: the grid columns and the
+// connector offset read MarkerSize from the item scope and would not see a
+// value set on their sibling.
 .nu-timeline__item.is-active {
-  .nu-timeline__marker {
-    --nu-timeline-item--MarkerSize: 0.875rem;
+  --nu-timeline__item--MarkerSize: 0.875rem;
 
+  .nu-timeline__marker {
     box-shadow: 0 0 0 3px #{nu-tint(primary, 25%)};
   }
 
@@ -148,7 +180,5 @@
 }
 
 .nu-timeline__item.is-complete {
-  .nu-timeline__marker {
-    --nu-timeline-item--MarkerColor: var(--success);
-  }
+  --nu-timeline__item--MarkerColor: var(--success);
 }

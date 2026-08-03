@@ -37,7 +37,15 @@
       "hover--BackgroundColor": var(--bg-alternate),
     ));
 
+    // Hidden on desktop, where the sidebar rail is always on screen. Shown at
+    // the same breakpoint that takes the rail off-canvas, so it is the only way
+    // to reach navigation there.
     display: none;
+
+    @include media-down(md) {
+      display: inline-flex;
+    }
+
     align-items: center;
     justify-content: center;
     inline-size: 2.25rem;
@@ -159,6 +167,7 @@
     border-radius: nu-radius(full);
     background-color: var(--danger);
     color: var(--text-inverted);
+    // deliberately a step above 2xs, pending an xs- scale alias
     font-size: 0.6875rem;
     font-weight: nu-font-weight(bold);
     line-height: 1.125rem;
@@ -231,6 +240,7 @@
   }
 
   @include e(user-role) {
+    // deliberately a step above 2xs, pending an xs- scale alias
     font-size: 0.6875rem;
     color: var(--text-muted);
   }

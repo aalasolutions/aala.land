@@ -1,35 +1,15 @@
-// Domain badge vocabulary.
+// Domain tag vocabulary. Each rule only reassigns `.nu-tag` variables, so a
+// domain tag is `<Nuvo::Tag>` plus one of these classes.
 //
-// Every dynamically-concatenated badge class in the app resolves here. These
-// are NOT components: each rule only reassigns `.nu-tag` variables, so a badge
-// is `<Nuvo::Tag>` plus one of these classes. No new box model, no new type
-// scale, no JS.
+// Names carry a domain because values collide across enums: MAINTENANCE is a
+// property status, a cheque type, a document category and a transaction
+// category, and they must not share a colour.
 //
-// SHARED FILE. Page agents read it and never edit it. If a page needs a value
-// that is not here, report it; do not add it.
-//
-// ---------------------------------------------------------------------------
-// Why the class names carry a domain
-//
-// A sweep of `-{{` found 35 concat sites across 5 families, and `status-` alone
-// draws from six unrelated enums. Values collide: MAINTENANCE is a property
-// status, a cheque type, a document category and a transaction category. Those
-// must not share a colour. The legacy sheet flattened them all into one
-// `.status-badge` block, which is why it carried both `.status-cancelled` and
-// `.status-canceled` 3200 lines apart with different colours.
-//
-// So: `.badge-lead-won`, `.badge-unit-maintenance`, `.badge-doc-maintenance`.
-// The domain is in the name and the collision cannot happen.
-//
-// Value lists come from `app/constants.js`, which is the source of truth. Do
-// not hand-extend them; add to constants first.
-// ---------------------------------------------------------------------------
+// Values come from `app/constants.js`. Add there first, not here.
 @use "sass:map";
 @use "../uikit/common/var" as *;
 
-// Semantic intent -> the core colour scale backing it. `neutral` is the only
-// non-scale entry: it maps to theme surface tokens, not a hue.
-$badge-intents: (
+$tag-intents: (
   "success": "success",
   "warning": "warning",
   "danger": "danger",
@@ -38,9 +18,8 @@ $badge-intents: (
   "accent": "secondary",
 );
 
-// Domain vocabularies. Keys are the lowercased enum value as it reaches the
-// DOM; values are an intent above, or `neutral`.
-$badge-domains: (
+// Keys are the lowercased enum value as it reaches the DOM.
+$tag-domains: (
   // LEAD_STAGES
   "lead": (
     "new": "info",
@@ -105,8 +84,7 @@ $badge-domains: (
     "cancelled": "neutral",
   ),
 
-  // PRIORITY_OPTIONS. Rendered through a class named `status-` in the legacy
-  // markup; given its own domain here because it is not a status.
+  // PRIORITY_OPTIONS. Legacy rendered these through `status-`; not a status.
   "priority": (
     "low": "neutral",
     "medium": "info",
@@ -136,9 +114,7 @@ $badge-domains: (
     "other": "neutral",
   ),
 
-  // Cheque lifecycle. Not in `constants.js` (no filter UI exposes it). Values
-  // taken from the DB enum in migration 1772684930871-AddCheques.ts, which
-  // carries a sixth state the templates never render.
+  // Cheque lifecycle. Not in constants.js; from migration 1772684930871.
   "chequestate": (
     "pending": "warning",
     "deposited": "info",
@@ -231,9 +207,7 @@ $badge-domains: (
     "enterprise": "accent",
   ),
 
-  // Stripe subscription states. Stripe spells it `canceled` (one L), the app
-  // spells it `cancelled`. Only the correct spelling ships here; the Stripe
-  // value is normalised in JS before it reaches the DOM.
+  // Stripe spells it `canceled`; normalised to `cancelled` in JS before render.
   "sub": (
     "active": "success",
     "trialing": "success",
@@ -244,17 +218,13 @@ $badge-domains: (
     "cancelled": "neutral",
   ),
 
-  // Generic enabled/disabled state. Not an enum: any record with an
-  // `isActive` boolean renders through this. Shared so team, vendors, contacts
-  // and marketers do not each invent their own pair.
+  // Any record with an `isActive` boolean.
   "enabled": (
     "active": "success",
     "inactive": "neutral",
   ),
 
-  // Audit log actions. Values come from the backend audit trail, not from
-  // `constants.js`. The legacy controller returned Tailwind class strings for
-  // these (`bg-green-100 text-green-800`) in a project that bans Tailwind.
+  // Audit log actions. From the backend audit trail, not constants.js.
   "audit": (
     "create": "success",
     "update": "info",
@@ -266,11 +236,7 @@ $badge-domains: (
     "export": "primary",
   ),
 
-  // Admin console account state. Not an enum: derived in
-  // `controllers/admin/companies/company.js` -> `statusView`, which returns the
-  // class name directly. Kept as its own domain so that getter can return
-  // `badge-account-locked` instead of borrowing `status-failed` from the
-  // payment vocabulary.
+  // Derived in `controllers/admin/companies/company.js` -> `statusView`.
   "account": (
     "locked": "danger",
     "lifted": "warning",
@@ -279,17 +245,15 @@ $badge-domains: (
   ),
 );
 
-// Emit one class per domain/value pair. Only variables are reassigned, so the
-// badge keeps `.nu-tag`'s box model and inherits any future kit change.
-@each $domain, $values in $badge-domains {
+@each $domain, $values in $tag-domains {
   @each $value, $intent in $values {
-    .badge-#{$domain}-#{$value} {
+    .tag-#{$domain}-#{$value} {
       @if $intent == "neutral" {
         --nu-tag--Color: var(--text-muted);
         --nu-tag--BackgroundColor: var(--bg-alternate);
         --nu-tag--BorderColor: var(--border-base);
       } @else {
-        $scale: map.get($badge-intents, $intent);
+        $scale: map.get($tag-intents, $intent);
         --nu-tag--Color: var(--#{$scale}-700);
         --nu-tag--BackgroundColor: var(--#{$scale}-50);
         --nu-tag--BorderColor: var(--#{$scale}-200);

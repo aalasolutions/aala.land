@@ -1,6 +1,0 @@
-// Documents: table + upload/delete modals. See AGENT_BRIEF.md.
-//
-// No bespoke layout was needed. The upload form's native file input takes the
-// shared `.nu-input` class directly (file inputs are not `<Nuvo::Input>`, but
-// they render with the same kit token surface). Category/access badges use
-// two domains from the shared vocabulary: `doc` and `access`.

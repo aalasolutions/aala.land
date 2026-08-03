@@ -2,9 +2,7 @@
 
 {{#if this.session.isAuthenticated}}
   <div
-    class="app-shell
-      {{if this.desktopCollapsed 'is-collapsed'}}
-      {{if this.sidebarMobileOpen 'is-mobile-open'}}"
+    class="app-shell {{if this.desktopCollapsed 'is-collapsed'}}"
   >
     {{! Sidebar }}
     <aside
@@ -382,6 +380,16 @@
       <TenantLockBanner @lockState={{this.session.lockState}} />
       {{! Top Bar }}
       <header class="nu-topbar m-sticky m-plain">
+        <button
+          type="button"
+          class="nu-topbar__toggle"
+          aria-label="Open navigation"
+          aria-expanded={{if this.sidebarMobileOpen "true" "false"}}
+          data-test-nav-toggle
+          {{on "click" this.toggleSidebar}}
+        >
+          <Ui::Ph @icon="list" @size="20px" />
+        </button>
         <div class="nu-topbar__search">
           <input
             type="text"
@@ -573,7 +581,7 @@
   {{outlet}}
 {{/if}}
 
-<Ui::ToastContainer />
+<Nuvo::ToastRegion />
 
 <ConfirmModal
   @open={{this.showLogoutModal}}

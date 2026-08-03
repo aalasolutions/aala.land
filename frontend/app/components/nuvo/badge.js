@@ -32,8 +32,8 @@ export default class NuBadgeComponent extends Component {
     return parts.join(' ');
   }
 
-  // Renders the count bubble on its own instead of the pill badge. Without a
-  // block there is nothing to anchor to, so is-fixed is dropped.
+  // Renders the count bubble on its own instead of the pill badge, since
+  // without a block there is nothing to anchor it to.
   get isCount() {
     return Boolean(this.args.count);
   }
@@ -41,9 +41,6 @@ export default class NuBadgeComponent extends Component {
   get countClasses() {
     const parts = ['nu-badge-count'];
 
-    if (!this.isCount) {
-      parts.push('is-fixed');
-    }
     if (VARIANTS.includes(this.args.variant)) {
       parts.push(`m-${this.args.variant}`);
     }
@@ -75,8 +72,10 @@ export default class NuBadgeComponent extends Component {
   get displayValue() {
     const value = this.resolvedValue;
     const max = this.args.max;
-    if (typeof value === 'number' && typeof max === 'number' && value > max) {
-      return `${max}+`;
+    const numericValue = Number(value);
+    const numericMax = Number(max);
+    if (Number.isFinite(numericValue) && Number.isFinite(numericMax) && numericValue > numericMax) {
+      return `${numericMax}+`;
     }
     return value;
   }

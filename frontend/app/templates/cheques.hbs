@@ -55,13 +55,13 @@
                   <td>{{format-date cheque.dueDate}}</td>
                   <td>
                     <Nuvo::Tag
-                      class="badge-cheque-{{lowercase cheque.type}}"
+                      class="tag-cheque-{{lowercase cheque.type}}"
                       @text={{cheque.type}}
                     />
                   </td>
                   <td>
                     <Nuvo::Tag
-                      class="badge-chequestate-{{lowercase cheque.status}}"
+                      class="tag-chequestate-{{lowercase cheque.status}}"
                       @text={{cheque.status}}
                     />
                   </td>

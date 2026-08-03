@@ -30,7 +30,7 @@
   }
 
   @include e(link) {
-    @include nu-root("pagination-link", (
+    @include nu-root-el("pagination", "link", (
       "MinInlineSize": 2.5rem,
       "MinBlockSize": 2.5rem,
       "PaddingInline": nu-space(2),
@@ -52,40 +52,40 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    min-inline-size: nu-var("pagination-link", "MinInlineSize");
-    min-block-size: nu-var("pagination-link", "MinBlockSize");
-    padding-inline: nu-var("pagination-link", "PaddingInline");
+    min-inline-size: nu-var-el("pagination", "link", "MinInlineSize");
+    min-block-size: nu-var-el("pagination", "link", "MinBlockSize");
+    padding-inline: nu-var-el("pagination", "link", "PaddingInline");
     font-family: inherit;
-    font-size: nu-var("pagination-link", "FontSize");
-    font-weight: nu-var("pagination-link", "FontWeight");
-    color: nu-var("pagination-link", "Color");
-    background-color: nu-var("pagination-link", "BackgroundColor");
-    border: 1px solid nu-var("pagination-link", "BorderColor");
-    border-radius: nu-var("pagination-link", "BorderRadius");
+    font-size: nu-var-el("pagination", "link", "FontSize");
+    font-weight: nu-var-el("pagination", "link", "FontWeight");
+    color: nu-var-el("pagination", "link", "Color");
+    background-color: nu-var-el("pagination", "link", "BackgroundColor");
+    border: 1px solid nu-var-el("pagination", "link", "BorderColor");
+    border-radius: nu-var-el("pagination", "link", "BorderRadius");
     text-decoration: none;
     cursor: pointer;
     transition:
-      background-color nu-var("pagination-link", "TransitionDuration") $nu-ease,
-      border-color nu-var("pagination-link", "TransitionDuration") $nu-ease,
-      color nu-var("pagination-link", "TransitionDuration") $nu-ease;
+      background-color nu-var-el("pagination", "link", "TransitionDuration") $nu-ease,
+      border-color nu-var-el("pagination", "link", "TransitionDuration") $nu-ease,
+      color nu-var-el("pagination", "link", "TransitionDuration") $nu-ease;
 
     @include reduced-motion {
       transition: none;
     }
 
     &:hover:not(:disabled):not(.is-disabled) {
-      background-color: nu-var("pagination-link", "hover--BackgroundColor");
-      border-color: nu-var("pagination-link", "hover--BorderColor");
+      background-color: nu-var-el("pagination", "link", "hover--BackgroundColor");
+      border-color: nu-var-el("pagination", "link", "hover--BorderColor");
     }
 
     &:focus-visible {
       outline: none;
-      box-shadow: nu-var("pagination-link", "focus--BoxShadow");
+      box-shadow: nu-var-el("pagination", "link", "focus--BoxShadow");
     }
 
     &:disabled,
     &.is-disabled {
-      opacity: nu-var("pagination-link", "disabled--Opacity");
+      opacity: nu-var-el("pagination", "link", "disabled--Opacity");
       cursor: not-allowed;
       pointer-events: none;
     }
@@ -121,7 +121,7 @@
   }
 
   @include e(select) {
-    @include nu-root("pagination-select", (
+    @include nu-root-el("pagination", "select", (
       "PaddingBlock": nu-space(1),
       "PaddingInline": nu-space(2),
       "Color": var(--text-color),
@@ -131,18 +131,18 @@
       "focus--BoxShadow": 0 0 0 3px #{nu-tint(primary, 35%)},
     ));
 
-    padding-block: nu-var("pagination-select", "PaddingBlock");
-    padding-inline: nu-var("pagination-select", "PaddingInline");
+    padding-block: nu-var-el("pagination", "select", "PaddingBlock");
+    padding-inline: nu-var-el("pagination", "select", "PaddingInline");
     font-family: inherit;
     font-size: nu-font-size(sm);
-    color: nu-var("pagination-select", "Color");
-    background-color: nu-var("pagination-select", "BackgroundColor");
-    border: 1px solid nu-var("pagination-select", "BorderColor");
-    border-radius: nu-var("pagination-select", "BorderRadius");
+    color: nu-var-el("pagination", "select", "Color");
+    background-color: nu-var-el("pagination", "select", "BackgroundColor");
+    border: 1px solid nu-var-el("pagination", "select", "BorderColor");
+    border-radius: nu-var-el("pagination", "select", "BorderRadius");
 
     &:focus-visible {
       outline: none;
-      box-shadow: nu-var("pagination-select", "focus--BoxShadow");
+      box-shadow: nu-var-el("pagination", "select", "focus--BoxShadow");
     }
   }
 
@@ -151,14 +151,15 @@
   @include e(item) {
     &.is-active {
       .nu-pagination__link {
-        @include nu-set-all("pagination-link", "active", ("Color", "BackgroundColor"));
-        --nu-pagination-link--BorderColor: transparent;
+        --nu-pagination__link--Color: #{nu-var-el("pagination", "link", "active--Color")};
+        --nu-pagination__link--BackgroundColor: #{nu-var-el("pagination", "link", "active--BackgroundColor")};
+        --nu-pagination__link--BorderColor: transparent;
       }
     }
 
     &.is-disabled {
       .nu-pagination__link {
-        opacity: nu-var("pagination-link", "disabled--Opacity");
+        opacity: nu-var-el("pagination", "link", "disabled--Opacity");
         cursor: not-allowed;
         pointer-events: none;
       }
@@ -169,9 +170,9 @@
 
   @include m(sm) {
     .nu-pagination__link {
-      --nu-pagination-link--MinInlineSize: 2rem;
-      --nu-pagination-link--MinBlockSize: 2rem;
-      --nu-pagination-link--FontSize: #{nu-font-size(xs)};
+      --nu-pagination__link--MinInlineSize: 2rem;
+      --nu-pagination__link--MinBlockSize: 2rem;
+      --nu-pagination__link--FontSize: #{nu-font-size(xs)};
     }
   }
 

@@ -5,9 +5,6 @@ const VARIANTS = ['primary', 'secondary', 'success', 'warning', 'danger', 'info'
 export default class NuCardComponent extends Component {
   get classes() {
     const parts = ['nu-card'];
-    if (this.args.flush) {
-      parts.push('m-flush');
-    }
     if (this.args.compact) {
       parts.push('m-compact');
     }

@@ -1,12 +1,9 @@
-// Leads: the three kanban boards (pipeline, temperature, agent).
-//
-// The boards themselves are the kit's `.nu-kanban`. Only two things here are
-// genuinely page-specific: the temperature accent colours, and the per-agent
-// load bar which no other board has.
+// Leads. The boards are the kit's `.nu-kanban`; only the temperature accents
+// and the per-agent load bar are page-specific.
 @use "../uikit/common/var" as *;
 @use "../uikit/mixins/bem" as *;
 
-// Temperature accent. Semantics match the `temp` domain in _badges.scss
+// Temperature accent. Semantics match the `temp` domain in _tags.scss
 // (hot/warm/cold/dead -> danger/warning/info/neutral) so a column reads the
 // same colour as the temperature badge on the cards inside it.
 $lead-temps: (
@@ -54,6 +51,51 @@ $lead-temps: (
 
   &:hover {
     color: var(--success-600);
+  }
+}
+
+// ---- lead detail modal: two-column split, timeline scrolls ----
+
+.lead-detail {
+  min-block-size: 24rem;
+  max-block-size: 60vh;
+}
+
+.lead-detail__info {
+  flex: 0 0 20rem;
+  border-inline-end: 1px solid var(--border-base);
+  padding-inline-end: 1.5rem;
+  overflow-y: auto;
+}
+
+.lead-detail__scroll {
+  overflow-y: auto;
+  min-block-size: 0;
+  padding-inline-end: 0.5rem;
+
+  .nu-timeline__description {
+    margin-block: 0;
+  }
+}
+
+// long emails must wrap on any character, not overflow the 20rem rail
+.lead-detail__info .nu-info-row__value {
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 768px) {
+  .lead-detail {
+    flex-direction: column;
+    max-block-size: none;
+  }
+
+  .lead-detail__info {
+    flex: 1 1 auto;
+    border-inline-end: none;
+    border-block-end: 1px solid var(--border-base);
+    padding-inline-end: 0;
+    padding-block-end: 1rem;
+    overflow-y: visible;
   }
 }
 

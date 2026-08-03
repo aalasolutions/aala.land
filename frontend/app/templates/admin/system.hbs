@@ -47,15 +47,15 @@
                 <td>{{format-money row.unitAmount row.currency}}</td>
                 <td>
                   {{#if (eq row.status "registered")}}
-                    <Nuvo::Tag class="badge-sub-active" @text="Registered" />
+                    <Nuvo::Tag class="tag-sub-active" @text="Registered" />
                   {{else if (eq row.status "missing")}}
                     <Nuvo::Tag
-                      class="badge-sub-incomplete"
+                      class="tag-sub-incomplete"
                       @text="Not yet registered"
                     />
                   {{else}}
                     <div class="flex col gap-2">
-                      <Nuvo::Tag class="badge-sub-unpaid" @text="Failed" />
+                      <Nuvo::Tag class="tag-sub-unpaid" @text="Failed" />
                       {{#if row.lastError}}
                         <Nuvo::Alert
                           @variant="danger"

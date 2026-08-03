@@ -9,12 +9,14 @@ const SIZES = ['sm', 'md', 'lg', 'xl', 'full'];
 export default class NuModalComponent extends Component {
   titleId = `nu-modal-title-${guidFor(this)}`;
 
-  modalElement = null;
   keydownHandler = null;
 
   constructor() {
     super(...arguments);
     this.keydownHandler = (event) => {
+      if (!this.args.open) {
+        return;
+      }
       if (event.key !== 'Escape') {
         return;
       }
@@ -63,7 +65,6 @@ export default class NuModalComponent extends Component {
 
   @action
   registerModal(element) {
-    this.modalElement = element;
     document.addEventListener('keydown', this.keydownHandler);
     runTask(
       this,

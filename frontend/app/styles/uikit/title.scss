@@ -20,17 +20,7 @@
 
   // ---- size scale: uniform, looped ----
 
-  $nu-title-sizes: (
-    "xs": nu-font-size(xs),
-    "sm": nu-font-size(sm),
-    "md": nu-font-size(md),
-    "lg": nu-font-size(lg),
-    "xl": nu-font-size(xl),
-    "2xl": nu-font-size(2xl),
-    "3xl": nu-font-size(3xl),
-  );
-
-  @each $size, $value in $nu-title-sizes {
+  @each $size, $value in $nu-font-size {
     @include m(#{$size}) {
       --nu-title--FontSize: #{$value};
     }
@@ -71,15 +61,7 @@
 
   // ---- size scale: uniform, looped ----
 
-  $nu-text-sizes: (
-    "xs": nu-font-size(xs),
-    "sm": nu-font-size(sm),
-    "md": nu-font-size(md),
-    "lg": nu-font-size(lg),
-    "xl": nu-font-size(xl),
-  );
-
-  @each $size, $value in $nu-text-sizes {
+  @each $size, $value in $nu-font-size {
     @include m(#{$size}) {
       --nu-text--FontSize: #{$value};
     }

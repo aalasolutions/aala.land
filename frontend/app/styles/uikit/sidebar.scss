@@ -112,8 +112,8 @@
     }
 
     &:hover {
-      --nu-sidebar__link--Color: var(--text-color);
-      --nu-sidebar__link--BackgroundColor: var(--bg-alternate);
+      --nu-sidebar__link--Color: var(--nu-sidebar__link--hover--Color);
+      --nu-sidebar__link--BackgroundColor: var(--nu-sidebar__link--hover--BackgroundColor);
     }
 
     &:focus-visible {
@@ -145,9 +145,8 @@
     text-overflow: ellipsis;
   }
 
-  // Collapsible group: a toggle button plus a region of sublinks that opens
-  // and closes. The open/closed animation uses grid-template-rows rather than
-  // a max-height guess, so a group with many children cannot be clipped.
+  // Collapsible group. Animates grid-template-rows, not a max-height guess,
+  // so a group with many children cannot be clipped.
   @include e(group) {
     display: flex;
     flex-direction: column;
@@ -192,8 +191,7 @@
       box-shadow: 0 0 0 3px nu-tint(primary, 35%);
     }
 
-    // A group holding the active route. Tinted, not filled, so it never
-    // competes with the active link inside it.
+    // Tinted, not filled, so it never competes with the active link inside it.
     &.is-active {
       --nu-sidebar__group-toggle--Color: var(--primary-800);
       --nu-sidebar__group-toggle--BackgroundColor: #{nu-tint(primary, 12%)};
@@ -221,8 +219,7 @@
       transition: none;
     }
 
-    // The single child owns the clipping. grid-template-rows animates the
-    // track, and this element is what gets squeezed to nothing.
+    // The single child owns the clipping; the track animates around it.
     > * {
       display: flex;
       flex-direction: column;
@@ -275,8 +272,7 @@
 
   // ---- states ----
 
-  // Group open. Applied to the group element, which owns both the chevron and
-  // the items region, so one class drives the whole disclosure.
+  // On the group element, so one class drives the whole disclosure.
   @include e(group) {
     &.is-expanded {
       > .nu-sidebar__chevron,
@@ -303,8 +299,7 @@
       display: none;
     }
 
-    // Collapsed rail shows icons only: the label and the disclosure affordance
-    // have nowhere to go, and an open group would overflow the rail.
+    // Icons only; an open group would overflow the rail.
     .nu-sidebar__chevron {
       display: none;
     }

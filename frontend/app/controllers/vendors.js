@@ -41,10 +41,7 @@ export default class VendorsController extends PaginatedController {
   }
 
   get regionOptions() {
-    return this.region.regions.map((r) => ({
-      value: r.code,
-      label: `${r.name} (${r.currency})`,
-    }));
+    return this.region.regionOptions;
   }
 
   specialtyOptions = SPECIALTY_OPTIONS;

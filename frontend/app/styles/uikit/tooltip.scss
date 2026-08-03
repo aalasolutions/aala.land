@@ -11,16 +11,9 @@
 //                   visibility, focus/Escape handling. Use when the tooltip
 //                   holds rich content or must react to state.
 //
-// They are kept visually identical by pointing core's --tooltip-* variables at
-// the same tokens this component consumes, so a page mixing both looks like one
-// system.
-:root {
-  --tooltip-bg: var(--text-color);
-  --tooltip-text-color: var(--text-inverted);
-  --tooltip-font-size: #{nu-font-size(xs)};
-  --tooltip-border-radius: #{nu-radius(md)};
-  --tooltip-transition-duration: #{nu-duration(fast)};
-}
+// They are kept visually identical by core-bridge.scss, which points core's
+// --tooltip-* variables at the same tokens this component consumes. That lives
+// there rather than here so importing a component never rewrites :root.
 
 @include b(tooltip) {
   @include nu-root("tooltip", (

@@ -209,6 +209,19 @@
       <Nuvo::Tag @variant="info" @closable={{true}} @text="Closable" />
       <Nuvo::Tag @variant="danger" @disabled={{true}} @closable={{true}} @text="Disabled" />
     </div>
+
+    <p class="nuvo-note">Selectable chips. Use a real
+      <code>&lt;button&gt;</code>; <code>is-selected</code> drives the state.</p>
+    <div class="nuvo-row">
+      {{#each this.chipOptions as |chip|}}
+        <button
+          type="button"
+          class="nu-tag m-pill m-selectable
+            {{if (includes this.selectedChips chip) 'is-selected'}}"
+          {{on "click" (fn this.toggleChip chip)}}
+        >{{chip}}</button>
+      {{/each}}
+    </div>
   </section>
 
   <section class="nuvo-section" id="dot">
@@ -328,7 +341,7 @@
   <section class="nuvo-section" id="checkbox">
     <h2 class="nuvo-section__title">Checkbox</h2>
 
-    <div class="nuvo-row">
+    <div class="nu-check-group">
       <Nuvo::Checkbox
         @checked={{this.checkboxValue}}
         @label="Include archived units"
@@ -343,7 +356,7 @@
   <section class="nuvo-section" id="radio">
     <h2 class="nuvo-section__title">Radio</h2>
 
-    <div class="nuvo-row">
+    <div class="nu-check-group">
       <Nuvo::Radio
         @name="property-type"
         @value="apartment"
@@ -408,6 +421,36 @@
       <Nuvo::Field @label="Region" @horizontal={{true}} @flush={{true}}>
         <Nuvo::Select @options={{this.regionOptions}} @placeholder="Choose a region" />
       </Nuvo::Field>
+    </div>
+
+    <h3 class="nuvo-subtitle">Filter row</h3>
+    <p class="nuvo-note">Auto-fitting grid; column count follows the viewport.
+      The unlabelled control uses
+      <code>nu-field__label-spacer</code> to hold the same baseline.</p>
+
+    <div class="nu-filter-row">
+      <Nuvo::Field @label="Status">
+        <Nuvo::Dropdown
+          @align="start"
+          @value={{this.filterStatus}}
+          @onSelect={{this.setFilterStatus}}
+          @options={{this.filterStatusOptions}}
+          @placeholder="All"
+        />
+      </Nuvo::Field>
+      <Nuvo::Field @label="Search">
+        <Nuvo::Input
+          @value={{this.filterSearch}}
+          @onInput={{this.setFilterSearch}}
+          @placeholder="Name or ID"
+        />
+      </Nuvo::Field>
+      <div class="nu-field">
+        <span class="nu-field__label-spacer" aria-hidden="true"></span>
+        <Nuvo::Button @variant="secondary" {{on "click" this.clearFilters}}>
+          Clear
+        </Nuvo::Button>
+      </div>
     </div>
   </section>
 
@@ -635,10 +678,6 @@
     </div>
 
     <div class="nuvo-row">
-      <Nuvo::Card @title="Flush" @flush={{true}}>
-        <p class="nu-text m-sm m-muted">No padding, edge-to-edge content.</p>
-      </Nuvo::Card>
-
       <Nuvo::Card @title="Compact" @compact={{true}}>
         <p class="nu-text m-sm m-muted">Tighter padding for dense lists.</p>
       </Nuvo::Card>
@@ -729,10 +768,6 @@
     <div class="nuvo-row">
       <Nuvo::Panel @title="Property Filters">
         <p class="nu-text m-sm m-muted">Default padded panel with a title.</p>
-      </Nuvo::Panel>
-
-      <Nuvo::Panel @title="Flush" @flush={{true}}>
-        <p class="nu-text m-sm m-muted">No padding.</p>
       </Nuvo::Panel>
 
       <Nuvo::Panel @title="Compact" @compact={{true}}>
@@ -1084,6 +1119,38 @@
     >
       <Nuvo::Text @text="Full-screen modal body, scrollable when content overflows." />
     </Nuvo::Modal>
+
+    <h3 class="nuvo-subtitle">Sizes</h3>
+    <p class="nuvo-note">The body scrolls by default once content exceeds the
+      panel; header and footer stay pinned.</p>
+
+    <div class="nuvo-row">
+      {{#each this.modalSizes as |size|}}
+        <Nuvo::Button
+          @variant="secondary"
+          @size="sm"
+          {{on "click" (fn this.openSizedModal size)}}
+        >{{size}}</Nuvo::Button>
+      {{/each}}
+    </div>
+
+    <Nuvo::Modal
+      @open={{this.sizedModal}}
+      @title="Size: {{this.sizedModal}}"
+      @size={{this.sizedModal}}
+      @onClose={{this.closeSizedModal}}
+    >
+      <:body>
+        {{#each this.variantOptions as |variant|}}
+          <p>Row for {{variant}}, repeated so the body overflows and scrolls.</p>
+        {{/each}}
+      </:body>
+      <:footer>
+        <Nuvo::Button @variant="secondary" {{on "click" this.closeSizedModal}}>
+          Close
+        </Nuvo::Button>
+      </:footer>
+    </Nuvo::Modal>
   </section>
 
   <section class="nuvo-section" id="drawer">
@@ -1150,6 +1217,78 @@
       <Nuvo::Tooltip @content="Light surface tooltip" @light={{true}}>
         <Nuvo::Button @text="Light" @variant="secondary" />
       </Nuvo::Tooltip>
+    </div>
+  </section>
+
+  <section class="nuvo-section" id="timeline">
+    <h2 class="nuvo-section__title">Timeline</h2>
+
+    <div class="nuvo-stack">
+      <Nuvo::Timeline>
+        <Nuvo::TimelineItem
+          @title="Created"
+          @timestamp="09:14"
+          @complete={{true}}
+          @description="Lead captured from the website form."
+          @meta="by Sara"
+        />
+        <Nuvo::TimelineItem
+          @title="Contacted"
+          @timestamp="11:02"
+          @variant="info"
+          @description="First WhatsApp message sent."
+        />
+        <Nuvo::TimelineItem
+          @title="Site visit"
+          @timestamp="14:30"
+          @active={{true}}
+          @variant="warning"
+          @description="Scheduled for Thursday."
+        />
+      </Nuvo::Timeline>
+    </div>
+
+    <div class="nuvo-stack">
+      <Nuvo::Timeline @compact={{true}}>
+        {{#each this.variantOptions as |variant|}}
+          <Nuvo::TimelineItem
+            @title={{variant}}
+            @variant={{variant}}
+            @timestamp="12:00"
+            @description="Compact row, {{variant}} marker."
+          />
+        {{/each}}
+      </Nuvo::Timeline>
+    </div>
+
+    <div class="nuvo-stack">
+      <Nuvo::Timeline @alternate={{true}}>
+        <Nuvo::TimelineItem @title="Left" @description="Alternating layout." />
+        <Nuvo::TimelineItem @title="Right" @description="Second item flips." />
+        <Nuvo::TimelineItem @title="Left" @description="Third returns." />
+      </Nuvo::Timeline>
+    </div>
+  </section>
+
+  <section class="nuvo-section" id="utilities">
+    <h2 class="nuvo-section__title">Utilities</h2>
+    <p class="nuvo-note">Logical-direction classes. Core ships physical only
+      (<code>.text-left</code>, <code>.ml-*</code>), which pins to the viewport
+      instead of the reading direction under RTL. Use these in new markup.</p>
+
+    <h3 class="nuvo-subtitle">Text alignment</h3>
+    <div class="nuvo-stack">
+      <Nuvo::Panel class="text-start">text-start</Nuvo::Panel>
+      <Nuvo::Panel class="text-center">text-center (core)</Nuvo::Panel>
+      <Nuvo::Panel class="text-end">text-end</Nuvo::Panel>
+    </div>
+
+    <h3 class="nuvo-subtitle">Inline margin and padding</h3>
+    <p class="nuvo-note"><code>ms-*</code> / <code>me-*</code> for margin,
+      <code>ps-*</code> / <code>pe-*</code> for padding, on the spacing scale.</p>
+    <div class="nuvo-stack">
+      <Nuvo::Panel class="ms-8">ms-8</Nuvo::Panel>
+      <Nuvo::Panel class="ps-8">ps-8</Nuvo::Panel>
     </div>
   </section>
     </div>

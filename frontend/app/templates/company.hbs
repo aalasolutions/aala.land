@@ -7,7 +7,7 @@
   />
 
   {{#if this.company}}
-    <div class="plan-banner badge-plan-{{lowercase (or this.company.subscriptionTier "FREE")}}">
+    <div class="plan-banner tag-plan-{{lowercase (or this.company.subscriptionTier "FREE")}}">
       <div>
         <div class="plan-banner__name">{{or
             this.company.subscriptionTier
@@ -141,7 +141,7 @@
             >{{this.billing.tier}}</div>
             {{#if this.billing.billingStatus}}
               <Nuvo::Tag
-                class="badge-sub-{{this.billingStatusBadgeValue}}"
+                class="tag-sub-{{this.billingStatusBadgeValue}}"
                 @text={{this.billing.billingStatus}}
                 data-test-billing-status
               />
@@ -265,13 +265,13 @@
                     <td>
                       {{#if (eq record.type "payment_succeeded")}}
                         <Nuvo::Tag
-                          class="badge-txn-completed"
+                          class="tag-txn-completed"
                           @text="Paid"
                           data-test-history-status
                         />
                       {{else}}
                         <Nuvo::Tag
-                          class="badge-txn-failed"
+                          class="tag-txn-failed"
                           @text="Failed"
                           data-test-history-status
                         />

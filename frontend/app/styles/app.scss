@@ -4,7 +4,7 @@
 @use "./nuvo-showcase";
 
 // Shared domain vocabulary. Read-only to page agents.
-@use "./pages/badges";
+@use "./pages/tags";
 
 // The frame every authenticated route renders inside.
 @use "./pages/shell";
@@ -13,22 +13,15 @@
 @use "./pages/admin";
 @use "./pages/audit";
 @use "./pages/auth";
-@use "./pages/cheques";
-@use "./pages/commissions";
 @use "./pages/company";
-@use "./pages/contacts";
 @use "./pages/dashboard";
-@use "./pages/documents";
 @use "./pages/email-templates";
-@use "./pages/financials";
+@use "./pages/kanban";
 @use "./pages/leads";
-@use "./pages/leases";
-@use "./pages/maintenance";
 @use "./pages/owners";
 @use "./pages/properties-detail";
 @use "./pages/properties-index";
 @use "./pages/reports";
-@use "./pages/team";
 @use "./pages/unit";
 @use "./pages/vendors";
 
