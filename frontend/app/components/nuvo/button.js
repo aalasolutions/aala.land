@@ -51,11 +51,18 @@ export default class NuButtonComponent extends Component {
   }
 
   get iconName() {
-    return this.args.loading ? this.args.loadingIcon || '↻' : this.args.icon;
+    return this.args.loading
+      ? this.args.loadingIcon || 'spinner-gap'
+      : this.args.icon;
   }
 
   get hasIcon() {
     return Boolean(this.iconName);
+  }
+
+  // Lowercase kebab reads as a Phosphor name; anything else is a literal glyph.
+  get isPhosphorIcon() {
+    return /^[a-z0-9-]+$/.test(this.iconName ?? '');
   }
 
   get iconClasses() {
@@ -76,6 +83,15 @@ export default class NuButtonComponent extends Component {
 
   get type() {
     return this.args.type || 'button';
+  }
+
+  get linkModels() {
+    if (this.args.models) return this.args.models;
+    return this.args.model === undefined ? [] : [this.args.model];
+  }
+
+  get linkQuery() {
+    return this.args.query ?? {};
   }
 
   @action

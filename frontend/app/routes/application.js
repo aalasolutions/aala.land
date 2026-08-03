@@ -10,6 +10,8 @@ export default class ApplicationRoute extends Route {
       return;
     }
 
+    this.auth.loadUiSettings();
+
     // Refresh account state on boot so a role/region/tier change made
     // outside this session (e.g. by a super admin) doesn't require a
     // re-login to take effect. Fails open: a network/server error, or a

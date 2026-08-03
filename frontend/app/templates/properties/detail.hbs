@@ -24,27 +24,27 @@
           @variant={{if (eq this.currentDetailView "cards") "primary" "secondary"}}
           @size="sm"
           data-test-view-cards
+          @icon="squares-four"
           {{on "click" (fn this.switchDetailView "cards")}}
         >
-          <Ui::Ph @icon="squares-four" />
           Cards
         </Nuvo::Button>
         <Nuvo::Button
           @variant={{if (eq this.currentDetailView "list") "primary" "secondary"}}
           @size="sm"
           data-test-view-list
+          @icon="list"
           {{on "click" (fn this.switchDetailView "list")}}
         >
-          <Ui::Ph @icon="list" />
           List
         </Nuvo::Button>
       </Nuvo::BtnGroup>
       <Nuvo::Button
         @variant="primary"
         data-test-new-asset
+        @icon="plus"
         {{on "click" this.openCreateAsset}}
       >
-        <Ui::Ph @icon="plus" />
         New Asset
       </Nuvo::Button>
     </:actions>
@@ -69,17 +69,17 @@
                 <Nuvo::Button
                   @variant="secondary"
                   @size="sm"
+                  @icon="pencil-simple"
                   {{on "click" (fn this.openEditAsset asset)}}
                 >
-                  <Ui::Ph @icon="pencil-simple" />
                   Edit
                 </Nuvo::Button>
                 <Nuvo::Button
                   @variant="primary"
                   @size="sm"
+                  @icon="plus"
                   {{on "click" (fn this.openCreateUnit asset.id)}}
                 >
-                  <Ui::Ph @icon="plus" />
                   Add Property
                 </Nuvo::Button>
               </div>
@@ -163,23 +163,24 @@
                     <Unit::AmenitiesPrint @amenities={{unit.amenities}} />
 
                     <div class="flex gap-2 pt-1">
-                      <LinkTo
+                      <Nuvo::Button
+                        @variant="primary"
+                        @size="sm"
                         @route="properties.unit"
                         @models={{array @model.localityId unit.id}}
-                        class="nu-btn m-primary m-sm grow justify-center"
+                        class="grow justify-center"
                         data-test-view-unit
                       >
                         View Details
-                      </LinkTo>
+                      </Nuvo::Button>
                       <Nuvo::Button
                         @variant="secondary"
                         @size="sm"
                         aria-label="Edit property"
                         title="Edit property"
+                        @icon="pencil"
                         {{on "click" (fn this.openEditUnit unit asset.id)}}
-                      >
-                        <Ui::Ph @icon="pencil" />
-                      </Nuvo::Button>
+                      />
                     </div>
                   </div>
                 {{/each}}
@@ -194,9 +195,9 @@
                   <Nuvo::Button
                     @variant="primary"
                     @size="sm"
+                    @icon="plus"
                     {{on "click" (fn this.openCreateUnit asset.id)}}
                   >
-                    <Ui::Ph @icon="plus" />
                     Add First Property
                   </Nuvo::Button>
                 </:actions>
@@ -262,11 +263,12 @@
                     }}</td>
                   <td class="text-end">
                     <div class="flex gap-1">
-                      <LinkTo
+                      <Nuvo::Button
+                        @variant="primary"
+                        @size="xs"
                         @route="properties.unit"
                         @models={{array @model.localityId unit.id}}
-                        class="nu-btn m-primary m-xs"
-                      >View</LinkTo>
+                      >View</Nuvo::Button>
                       <Nuvo::Button
                         @variant="secondary"
                         @size="xs"
@@ -287,9 +289,9 @@
                         <Nuvo::Button
                           @variant="primary"
                           @size="xs"
+                          @icon="plus"
                           {{on "click" (fn this.openCreateUnit asset.id)}}
                         >
-                          <Ui::Ph @icon="plus" />
                           Add First Property
                         </Nuvo::Button>
                       </:actions>
@@ -311,9 +313,9 @@
       <:actions>
         <Nuvo::Button
           @variant="primary"
+          @icon="plus"
           {{on "click" this.openCreateAsset}}
         >
-          <Ui::Ph @icon="plus" />
           Create First Asset
         </Nuvo::Button>
       </:actions>

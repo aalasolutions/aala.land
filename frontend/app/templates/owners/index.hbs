@@ -4,7 +4,7 @@
     <:actions>
       <Nuvo::Button
         @variant="primary"
-        @icon="+"
+        @icon="plus"
         @text="Add Owner"
         data-test-add-owner
         {{on "click" this.openCreate}}
@@ -32,14 +32,14 @@
       <div class="owners-list__actions">
         <Nuvo::Button
           @variant="secondary"
-          @icon="👁"
+          @icon="eye"
           @text="View"
           data-test-view-owner
           {{on "click" (fn this.viewOwner owner)}}
         />
         <Nuvo::Button
           @variant="secondary"
-          @icon="✎"
+          @icon="pencil-simple"
           @text="Edit"
           data-test-edit-owner
           {{on "click" (fn this.openEdit owner)}}
@@ -48,7 +48,7 @@
           <Nuvo::Button
             @variant="danger"
             @outline={{true}}
-            @icon="🗑"
+            @icon="trash"
             @text="Remove"
             data-test-delete-owner
             {{on "click" (fn this.openDelete owner)}}

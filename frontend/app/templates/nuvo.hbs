@@ -1202,21 +1202,42 @@
     <h2 class="nuvo-section__title">Tooltip</h2>
 
     <div class="nuvo-row">
-      <Nuvo::Tooltip @content="Top placement" @placement="top">
-        <Nuvo::Button @text="Top" @variant="secondary" />
-      </Nuvo::Tooltip>
-      <Nuvo::Tooltip @content="Bottom placement" @placement="bottom">
-        <Nuvo::Button @text="Bottom" @variant="secondary" />
-      </Nuvo::Tooltip>
-      <Nuvo::Tooltip @content="Start placement" @placement="start">
-        <Nuvo::Button @text="Start" @variant="secondary" />
-      </Nuvo::Tooltip>
-      <Nuvo::Tooltip @content="End placement" @placement="end">
-        <Nuvo::Button @text="End" @variant="secondary" />
-      </Nuvo::Tooltip>
-      <Nuvo::Tooltip @content="Light surface tooltip" @light={{true}}>
-        <Nuvo::Button @text="Light" @variant="secondary" />
-      </Nuvo::Tooltip>
+      <Nuvo::Button
+        @text="Top"
+        @variant="secondary"
+        data-tooltip="Top placement"
+        data-tooltip-position="top"
+      />
+      <Nuvo::Button
+        @text="Bottom"
+        @variant="secondary"
+        data-tooltip="Bottom placement"
+        data-tooltip-position="bottom"
+      />
+      <Nuvo::Button
+        @text="Start"
+        @variant="secondary"
+        data-tooltip="Start placement"
+        data-tooltip-position="start"
+      />
+      <Nuvo::Button
+        @text="End"
+        @variant="secondary"
+        data-tooltip="End placement"
+        data-tooltip-position="end"
+      />
+      <Nuvo::Button
+        @text="Light"
+        @variant="secondary"
+        data-tooltip="Light surface tooltip"
+        data-tooltip-light
+      />
+      <span
+        data-tooltip="Disabled button, wrapped so hover still registers"
+        data-tooltip-position="bottom"
+      >
+        <Nuvo::Button @text="Disabled" @variant="secondary" @disabled={{true}} />
+      </span>
     </div>
   </section>
 

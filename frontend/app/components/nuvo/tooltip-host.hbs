@@ -1,0 +1,13 @@
+{{#if this.tooltip.isVisible}}
+  <div
+    id={{this.tooltipId}}
+    class={{this.classes}}
+    style={{this.style}}
+    role="tooltip"
+    data-test-nu-tooltip
+    ...attributes
+  >
+    {{this.tooltip.content}}
+    <span class="nu-tooltip__arrow" aria-hidden="true"></span>
+  </div>
+{{/if}}

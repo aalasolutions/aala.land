@@ -11,6 +11,7 @@ export default class ApplicationController extends Controller {
   @service router;
   @service region;
   @service socket;
+  @service uiSettings;
 
   get isCompanyAdmin() {
     return this.auth.currentUser?.role === 'company_admin';
@@ -28,6 +29,10 @@ export default class ApplicationController extends Controller {
     return getVisibleGroups(this.auth.currentUser?.role);
   }
 
+  get sidebarCollapsed() {
+    return this.uiSettings.sidebarCollapsed;
+  }
+
   // Desktop collapse (icon rail) only applies above the responsive breakpoint.
   // Below it the sidebar is always a rail that expands as an overlay instead.
   get desktopCollapsed() {
@@ -43,7 +48,6 @@ export default class ApplicationController extends Controller {
   @tracked showNotifications = false;
   @tracked notifications = [];
   @tracked expandedGroup = null;
-  @tracked sidebarCollapsed = false;
   @tracked sidebarMobileOpen = false;
   @tracked isNarrow = false;
   @tracked showRegionDropdown = false;
@@ -213,7 +217,7 @@ export default class ApplicationController extends Controller {
       this.sidebarMobileOpen = !this.sidebarMobileOpen;
       return;
     }
-    this.sidebarCollapsed = !this.sidebarCollapsed;
+    this.uiSettings.update('sidebarCollapsed', !this.sidebarCollapsed);
     if (this.sidebarCollapsed) {
       this.expandedGroup = null;
     }

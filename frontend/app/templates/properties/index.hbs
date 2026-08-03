@@ -9,9 +9,9 @@
       <Nuvo::Button
         @variant="primary"
         data-test-new-unit
+        @icon="plus"
         {{on "click" this.openNewUnitModal}}
       >
-        <Ui::Ph @icon="plus" />
         New Property
       </Nuvo::Button>
     </:actions>
@@ -69,13 +69,14 @@
                 <td>{{loc.assetCount}}</td>
                 <td>{{loc.unitCount}}</td>
                 <td class="text-end">
-                  <LinkTo
+                  <Nuvo::Button
+                    @variant="primary"
+                    @size="xs"
                     @route="properties.detail"
                     @model={{loc.id}}
-                    class="nu-btn m-primary m-xs"
                   >
                     View
-                  </LinkTo>
+                  </Nuvo::Button>
                 </td>
               </tr>
             {{/each}}

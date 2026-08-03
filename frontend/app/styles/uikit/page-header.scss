@@ -14,6 +14,7 @@
     "TitleFontSize": nu-font-size(2xl),
     "TitleFontWeight": nu-font-weight(bold),
     "TitleColor": var(--text-color),
+    "TitleIconColor": var(--primary),
     "SubtitleFontSize": nu-font-size(sm),
     "SubtitleColor": var(--text-muted),
     "StickyTop": 0,
@@ -49,10 +50,18 @@
   }
 
   @include e(title) {
+    display: flex;
+    align-items: center;
+    gap: nu-space(2);
     font-size: nu-var("page-header", "TitleFontSize");
     font-weight: nu-var("page-header", "TitleFontWeight");
     color: nu-var("page-header", "TitleColor");
     margin: 0;
+  }
+
+  @include e(title-icon) {
+    flex-shrink: 0;
+    color: nu-var("page-header", "TitleIconColor");
   }
 
   @include e(subtitle) {

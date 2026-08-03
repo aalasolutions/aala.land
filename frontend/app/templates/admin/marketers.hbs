@@ -25,18 +25,14 @@
                   <Nuvo::Button
                     @variant="link"
                     @size="xs"
+                    @icon={{if
+                      (eq this.expanded row.key)
+                      "caret-down"
+                      "caret-right"
+                    }}
                     data-test-marketers-expand={{row.key}}
                     {{on "click" (fn this.toggle row.key)}}
-                  >
-                    <Ui::Ph
-                      @icon={{if
-                        (eq this.expanded row.key)
-                        "caret-down"
-                        "caret-right"
-                      }}
-                      @size="16px"
-                    />
-                  </Nuvo::Button>
+                  />
                 {{/if}}
               </td>
               <td class="font-bold">{{row.code}}</td>

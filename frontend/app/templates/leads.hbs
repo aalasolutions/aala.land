@@ -1,32 +1,28 @@
 {{page-title "Leads"}}
 
 <div data-test-leads-page class="flex col gap-6">
-  <div class="flex between x-center">
-    <div>
-      <h2 class="text-3xl font-bold"><Ui::Ph @icon="funnel" @size="28px" />
-        Lead Pipeline</h2>
-      <p class="text-muted mt-1">Track and manage your leads through the
-        pipeline.</p>
-    </div>
-    <div class="flex gap-3 x-center">
-      {{! View Toggle }}
+  <Nuvo::PageHeader
+    @icon="funnel"
+    @title="Lead Pipeline"
+    @subtitle="Track and manage your leads through the pipeline."
+  >
+    <:actions>
       <Nuvo::Segmented
         @options={{this.viewTabs}}
         @value={{this.viewMode}}
         @onChange={{this.setViewMode}}
         data-test-view-toggle
       />
-      <button
-        type="button"
-        class="nu-btn m-primary"
+      <Nuvo::Button
+        @variant="primary"
+        @icon="plus"
         data-test-add-lead
         {{on "click" this.openCreate}}
       >
-        <Ui::Ph @icon="plus" />
         New Lead
-      </button>
-    </div>
-  </div>
+      </Nuvo::Button>
+    </:actions>
+  </Nuvo::PageHeader>
 
   {{! Agent board columns are already the ownership breakdown }}
   {{#unless (eq this.viewMode "agent")}}
@@ -112,20 +108,20 @@
                     lead.createdAt
                   }}</span>
                 <Nuvo::BtnGroup @attached={{true}} {{on "click" this.stopPropagation}}>
-                  <button
-                    type="button"
-                    class="nu-btn m-secondary m-xs"
+                  <Nuvo::Button
+                    @variant="secondary"
+                    @size="xs"
                     {{on "click" (fn this.openEdit lead)}}
                   >
                     Edit
-                  </button>
-                  <button
-                    type="button"
-                    class="nu-btn m-secondary m-xs"
+                  </Nuvo::Button>
+                  <Nuvo::Button
+                    @variant="secondary"
+                    @size="xs"
                     {{on "click" (fn this.openAssignModal lead)}}
                   >
                     Assign
-                  </button>
+                  </Nuvo::Button>
                 </Nuvo::BtnGroup>
               </div>
             </Nuvo::Panel>
@@ -214,20 +210,20 @@
                     lead.createdAt
                   }}</span>
                 <Nuvo::BtnGroup @attached={{true}} {{on "click" this.stopPropagation}}>
-                  <button
-                    type="button"
-                    class="nu-btn m-secondary m-xs"
+                  <Nuvo::Button
+                    @variant="secondary"
+                    @size="xs"
                     {{on "click" (fn this.openEdit lead)}}
                   >
                     Edit
-                  </button>
-                  <button
-                    type="button"
-                    class="nu-btn m-secondary m-xs"
+                  </Nuvo::Button>
+                  <Nuvo::Button
+                    @variant="secondary"
+                    @size="xs"
                     {{on "click" (fn this.openAssignModal lead)}}
                   >
                     Assign
-                  </button>
+                  </Nuvo::Button>
                 </Nuvo::BtnGroup>
               </div>
             </Nuvo::Panel>
@@ -321,13 +317,13 @@
                     lead.createdAt
                   }}</span>
                 <Nuvo::BtnGroup @attached={{true}} {{on "click" this.stopPropagation}}>
-                  <button
-                    type="button"
-                    class="nu-btn m-secondary m-xs"
+                  <Nuvo::Button
+                    @variant="secondary"
+                    @size="xs"
                     {{on "click" (fn this.openEdit lead)}}
                   >
                     Edit
-                  </button>
+                  </Nuvo::Button>
                 </Nuvo::BtnGroup>
               </div>
             </Nuvo::Panel>
@@ -423,20 +419,20 @@
               </td>
               <td>
                 <Nuvo::BtnGroup @attached={{true}} {{on "click" this.stopPropagation}}>
-                  <button
-                    type="button"
-                    class="nu-btn m-secondary m-xs"
+                  <Nuvo::Button
+                    @variant="secondary"
+                    @size="xs"
                     {{on "click" (fn this.openEdit lead)}}
                   >
                     Edit
-                  </button>
-                  <button
-                    type="button"
-                    class="nu-btn m-secondary m-xs"
+                  </Nuvo::Button>
+                  <Nuvo::Button
+                    @variant="secondary"
+                    @size="xs"
                     {{on "click" (fn this.openAssignModal lead)}}
                   >
                     Assign
-                  </button>
+                  </Nuvo::Button>
                 </Nuvo::BtnGroup>
               </td>
             </tr>
@@ -798,19 +794,19 @@
   </:body>
 
   <:footer>
-    <button
-      type="button"
-      class="nu-btn m-secondary m-sm"
+    <Nuvo::Button
+      @variant="secondary"
+      @size="sm"
       {{on "click" (fn this.openAssignModal this.detailLead)}}
     >
       Assign
-    </button>
-    <button
-      type="button"
-      class="nu-btn m-primary m-sm"
+    </Nuvo::Button>
+    <Nuvo::Button
+      @variant="primary"
+      @size="sm"
       {{on "click" (fn this.openEdit this.detailLead)}}
     >
       Edit
-    </button>
+    </Nuvo::Button>
   </:footer>
 </Nuvo::Modal>

@@ -33,100 +33,6 @@
     {{! Two column: Gallery + Info }}
     <div class="unit-detail-grid">
       {{! Left: Photo gallery }}
-      <Nuvo::Card class="flex col gap-4">
-        <div class="flex between x-center mb-2">
-          <h4 class="text-sm font-bold uppercase text-muted">Photos</h4>
-          <label
-            class="nu-btn m-primary m-sm {{if this.isUploading 'is-disabled'}}"
-            data-test-upload-photo-btn
-          >
-            <Ui::Ph @icon="camera-plus" />
-            <span class="nu-btn__label">{{if
-                this.isUploading
-                this.uploadStatus
-                "Add Photo"
-              }}</span>
-            <input
-              type="file"
-              class="sr-only"
-              accept="image/jpeg,image/png,image/webp"
-              {{on "change" this.uploadPhoto}}
-            />
-          </label>
-        </div>
-
-        {{#if this.isUploading}}
-          <div class="upload-progress" data-test-upload-progress>
-            <div class="upload-progress-bar">
-              <div class="upload-progress-bar__track"></div>
-            </div>
-          </div>
-        {{/if}}
-
-        {{#if @model.media.length}}
-          {{#let (object-at @model.media 0) as |primary|}}
-            <div class="unit-main-photo" data-test-main-photo>
-              <img src={{primary.url}} alt="Property photo" />
-            </div>
-          {{/let}}
-          <div class="flex gap-2 wrap">
-            {{#each @model.media as |media|}}
-              <div
-                class="unit-thumb {{if media.isPrimary 'unit-thumb-primary'}}"
-                data-test-photo-thumb
-              >
-                <img
-                  src={{or media.thumbnailUrl media.url}}
-                  alt={{media.fileName}}
-                />
-                <div class="unit-thumb-actions">
-                  {{#unless media.isPrimary}}
-                    <Nuvo::Button
-                      @variant="secondary"
-                      @shape="circle"
-                      @size="xs"
-                      @icon="★"
-                      title="Set as primary"
-                      {{on "click" (fn this.setPrimaryPhoto media)}}
-                    />
-                  {{/unless}}
-                  <Nuvo::Button
-                    @variant="danger"
-                    @shape="circle"
-                    @size="xs"
-                    @icon="🗑"
-                    title="Delete"
-                    {{on "click" (fn this.openDeletePhoto media)}}
-                  />
-                </div>
-              </div>
-            {{/each}}
-
-            {{#if this.previewUrl}}
-              <div
-                class="unit-thumb upload-preview-thumb"
-                data-test-upload-preview
-              >
-                <img src={{this.previewUrl}} alt="Uploading preview" />
-              </div>
-            {{/if}}
-          </div>
-        {{else if this.previewUrl}}
-          <div
-            class="unit-main-photo upload-preview-active"
-            data-test-upload-preview
-          >
-            <img src={{this.previewUrl}} alt="Uploading preview" />
-          </div>
-        {{else}}
-          <div class="unit-photo-placeholder" data-test-photo-placeholder>
-            <Ui::Ph @icon="image" />
-            <p class="text-muted mt-2 text-sm">No photos uploaded yet</p>
-          </div>
-        {{/if}}
-      </Nuvo::Card>
-
-      {{! Right: Property info panel }}
       <div class="flex col gap-4">
         <Nuvo::Card class="flex col gap-3">
           <div class="flex between x-center">
@@ -135,7 +41,7 @@
             <Nuvo::Button
               @variant="secondary"
               @size="sm"
-              @icon="✎"
+              @icon="pencil-simple"
               data-test-edit-btn
               {{on "click" this.openEdit}}
             >
@@ -228,6 +134,101 @@
           </Nuvo::Card>
         {{/if}}
       </div>
+
+      {{! Right: Property info panel }}
+
+      <Nuvo::Card class="flex col gap-4">
+        <div class="flex between x-center mb-2">
+          <h4 class="text-sm font-bold uppercase text-muted">Photos</h4>
+          <label
+            class="nu-btn m-primary m-sm {{if this.isUploading 'is-disabled'}}"
+            data-test-upload-photo-btn
+          >
+            <Ui::Ph @icon="camera-plus" />
+            <span class="nu-btn__label">{{if
+                this.isUploading
+                this.uploadStatus
+                "Add Photo"
+              }}</span>
+            <input
+              type="file"
+              class="sr-only"
+              accept="image/jpeg,image/png,image/webp"
+              {{on "change" this.uploadPhoto}}
+            />
+          </label>
+        </div>
+
+        {{#if this.isUploading}}
+          <div class="upload-progress" data-test-upload-progress>
+            <div class="upload-progress-bar">
+              <div class="upload-progress-bar__track"></div>
+            </div>
+          </div>
+        {{/if}}
+
+        {{#if @model.media.length}}
+          {{#let (object-at @model.media 0) as |primary|}}
+            <div class="unit-main-photo" data-test-main-photo>
+              <img src={{primary.url}} alt="Property photo" />
+            </div>
+          {{/let}}
+          <div class="flex gap-2 wrap">
+            {{#each @model.media as |media|}}
+              <div
+                class="unit-thumb {{if media.isPrimary 'unit-thumb-primary'}}"
+                data-test-photo-thumb
+              >
+                <img
+                  src={{or media.thumbnailUrl media.url}}
+                  alt={{media.fileName}}
+                />
+                <div class="unit-thumb-actions">
+                  {{#unless media.isPrimary}}
+                    <Nuvo::Button
+                      @variant="secondary"
+                      @shape="circle"
+                      @size="xs"
+                      @icon="star"
+                      title="Set as primary"
+                      {{on "click" (fn this.setPrimaryPhoto media)}}
+                    />
+                  {{/unless}}
+                  <Nuvo::Button
+                    @variant="danger"
+                    @shape="circle"
+                    @size="xs"
+                    @icon="trash"
+                    title="Delete"
+                    {{on "click" (fn this.openDeletePhoto media)}}
+                  />
+                </div>
+              </div>
+            {{/each}}
+
+            {{#if this.previewUrl}}
+              <div
+                class="unit-thumb upload-preview-thumb"
+                data-test-upload-preview
+              >
+                <img src={{this.previewUrl}} alt="Uploading preview" />
+              </div>
+            {{/if}}
+          </div>
+        {{else if this.previewUrl}}
+          <div
+            class="unit-main-photo upload-preview-active"
+            data-test-upload-preview
+          >
+            <img src={{this.previewUrl}} alt="Uploading preview" />
+          </div>
+        {{else}}
+          <div class="unit-photo-placeholder" data-test-photo-placeholder>
+            <Ui::Ph @icon="image" />
+            <p class="text-muted mt-2 text-sm">No photos uploaded yet</p>
+          </div>
+        {{/if}}
+      </Nuvo::Card>
     </div>
 
     {{! Description }}
@@ -248,9 +249,9 @@
           @variant="primary"
           @size="sm"
           data-test-upload-document-btn
+          @icon="upload-simple"
           {{on "click" this.openDocumentCreate}}
         >
-          <Ui::Ph @icon="upload-simple" />
           Upload
         </Nuvo::Button>
       </div>
@@ -288,28 +289,25 @@
                         @size="xs"
                         title="Download"
                         data-test-download-document-btn
+                        @icon="download-simple"
                         {{on "click" (fn this.downloadDocument doc)}}
-                      >
-                        <Ui::Ph @icon="download-simple" />
-                      </Nuvo::Button>
+                      />
                       <Nuvo::Button
                         @variant="secondary"
                         @size="xs"
                         title="Edit"
                         data-test-edit-document-btn
+                        @icon="pencil-simple"
                         {{on "click" (fn this.openDocumentEdit doc)}}
-                      >
-                        <Ui::Ph @icon="pencil-simple" />
-                      </Nuvo::Button>
+                      />
                       <Nuvo::Button
                         @variant="danger"
                         @size="xs"
                         title="Delete"
                         data-test-delete-document-btn
+                        @icon="trash"
                         {{on "click" (fn this.openDeleteDocument doc)}}
-                      >
-                        <Ui::Ph @icon="trash" />
-                      </Nuvo::Button>
+                      />
                     </div>
                   </td>
                 </tr>
@@ -364,8 +362,8 @@
     >
       <:icon><Ui::Ph @icon="warning" /></:icon>
       <:actions>
-        <LinkTo @route="properties" class="nu-btn m-primary">Back to
-          Properties</LinkTo>
+        <Nuvo::Button @variant="primary" @route="properties">Back to
+          Properties</Nuvo::Button>
       </:actions>
     </Nuvo::EmptyState>
   {{/if}}

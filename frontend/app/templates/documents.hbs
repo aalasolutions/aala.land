@@ -12,9 +12,9 @@
       <Nuvo::Button
         @variant="primary"
         data-test-upload-btn
+        @icon="upload-simple"
         {{on "click" this.openCreate}}
       >
-        <Ui::Ph @icon="upload-simple" />
         Upload Document
       </Nuvo::Button>
     </:actions>
@@ -95,26 +95,23 @@
                       @variant="secondary"
                       @size="xs"
                       data-test-download-btn
+                      @icon="download-simple"
                       {{on "click" (fn this.downloadDocument doc)}}
-                    >
-                      <Ui::Ph @icon="download-simple" />
-                    </Nuvo::Button>
+                    />
                     <Nuvo::Button
                       @variant="secondary"
                       @size="xs"
                       data-test-edit-btn
+                      @icon="pencil-simple"
                       {{on "click" (fn this.openEdit doc)}}
-                    >
-                      <Ui::Ph @icon="pencil-simple" />
-                    </Nuvo::Button>
+                    />
                     <Nuvo::Button
                       @variant="danger"
                       @size="xs"
                       data-test-delete-btn
+                      @icon="trash"
                       {{on "click" (fn this.openDelete doc)}}
-                    >
-                      <Ui::Ph @icon="trash" />
-                    </Nuvo::Button>
+                    />
                   </div>
                 </td>
               </tr>

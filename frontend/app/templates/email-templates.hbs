@@ -11,7 +11,7 @@
     <:actions>
       <Nuvo::Button
         @variant="primary"
-        @icon="+"
+        @icon="plus"
         data-test-new-template
         {{on "click" this.openCreate}}
       >
@@ -63,7 +63,7 @@
             <Nuvo::Button
               @variant="secondary"
               @size="sm"
-              @icon="👁"
+              @icon="eye"
               data-test-preview-template
               {{on "click" (fn this.openPreview template)}}
             >
@@ -72,7 +72,7 @@
             <Nuvo::Button
               @variant="secondary"
               @size="sm"
-              @icon="✎"
+              @icon="pencil-simple"
               data-test-edit-template
               {{on "click" (fn this.openEdit template)}}
             >
@@ -81,7 +81,7 @@
             <Nuvo::Button
               @variant="danger"
               @size="sm"
-              @icon="✕"
+              @icon="trash"
               data-test-delete-template
               {{on "click" (fn this.openDelete template)}}
             />

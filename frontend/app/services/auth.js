@@ -10,6 +10,7 @@ export default class AuthService extends Service {
   @service router;
   @service socket;
   @service notifications;
+  @service uiSettings;
 
   get apiBase() {
     return config.APP.API_BASE;
@@ -35,12 +36,19 @@ export default class AuthService extends Service {
     return this.session.isImpersonating;
   }
 
+  loadUiSettings() {
+    if (this.currentUser?.id) {
+      this.uiSettings.load();
+    }
+  }
+
   async login(email, password) {
     await this.session.authenticate(
       'authenticator:credentials',
       email,
       password,
     );
+    this.loadUiSettings();
   }
 
   async register(registrationData) {
@@ -59,6 +67,7 @@ export default class AuthService extends Service {
     const { data } = await response.json();
 
     this.session.establish(data);
+    this.loadUiSettings();
 
     return data;
   }
@@ -70,6 +79,7 @@ export default class AuthService extends Service {
       'Google authentication failed',
     );
     this.session.establish(data);
+    this.loadUiSettings();
     return data;
   }
 
@@ -80,6 +90,7 @@ export default class AuthService extends Service {
       'Google signup failed',
     );
     this.session.establish(data);
+    this.loadUiSettings();
     return data;
   }
 
@@ -153,6 +164,7 @@ export default class AuthService extends Service {
 
   async logout() {
     this.socket.disconnect();
+    this.uiSettings.reset();
     await this.session.invalidate();
   }
 

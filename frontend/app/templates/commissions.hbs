@@ -15,9 +15,9 @@
         <Nuvo::Button
           @variant="primary"
           data-test-add-commission
+          @icon="plus"
           {{on "click" this.openCreate}}
         >
-          <Ui::Ph @icon="plus" />
           New Commission
         </Nuvo::Button>
       </div>
@@ -74,9 +74,9 @@
                       @variant="primary"
                       @size="xs"
                       data-test-approve-btn
+                      @icon="check"
                       {{on "click" (fn this.approveCommission comm)}}
                     >
-                      <Ui::Ph @icon="check" />
                       Approve
                     </Nuvo::Button>
                   {{else if (eq comm.status "APPROVED")}}
@@ -84,9 +84,9 @@
                       @variant="primary"
                       @size="xs"
                       data-test-pay-btn
+                      @icon="currency-dollar"
                       {{on "click" (fn this.payCommission comm)}}
                     >
-                      <Ui::Ph @icon="currency-dollar" />
                       Mark Paid
                     </Nuvo::Button>
                   {{else if (eq comm.status "PAID")}}

@@ -1,0 +1,348 @@
+// WhatsApp. A full-bleed chat shell: the only page that fills the content area
+// edge to edge instead of scrolling inside it.
+//
+// Layout intent taken from the pre-kit backup in app.new.scss, NOT ported
+// verbatim. Seven of the ten tokens that block used no longer exist
+// (--border-light, --border-medium, --bg-muted, --text-primary,
+// --text-secondary, --color-primary, --color-info), so a literal port would
+// have shipped an unstyled page a second time. Everything the kit already
+// solves is a component now: status dot, tags, buttons, textarea, empty states.
+@use "../uikit/common/var" as *;
+
+// The shell owns the viewport budget, so the content area must stop padding and
+// stop scrolling. `:has()` outranks the bare `.content-area` rule on its own, so
+// no `!important` is needed here.
+.content-area:has(.wa-shell) {
+  padding: 0;
+  overflow: hidden;
+}
+
+.wa-shell {
+  display: flex;
+  flex-direction: column;
+  block-size: 100%;
+  min-block-size: 0;
+}
+
+// Header sits outside the scroll panes, so it supplies its own gutter now that
+// the content area has none.
+.wa-shell__header {
+  flex-shrink: 0;
+  padding: nu-space(4) nu-space(6);
+  border-block-end: 1px solid var(--border-base);
+}
+
+.wa-page {
+  display: flex;
+  flex: 1;
+  min-block-size: 0;
+  overflow: hidden;
+  background: var(--bg-base);
+}
+
+// ---- sidebar ----
+
+.wa-sidebar {
+  display: flex;
+  flex-direction: column;
+  inline-size: 22.5rem;
+  flex-shrink: 0;
+  background: var(--bg-surface);
+  border-inline-end: 1px solid var(--border-base);
+}
+
+.wa-sidebar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: nu-space(2);
+  padding: nu-space(3) nu-space(4);
+  border-block-end: 1px solid var(--border-base);
+  font-size: nu-font-size(sm);
+  font-weight: nu-font-weight(semibold);
+  color: var(--text-color);
+}
+
+.wa-sidebar-actions {
+  display: flex;
+  align-items: center;
+  gap: nu-space(2);
+}
+
+.wa-credit-usage {
+  padding: nu-space(1) nu-space(4) nu-space(2);
+  background: var(--bg-surface);
+  border-block-end: 1px solid var(--border-base);
+  font-size: nu-font-size(2xs);
+  color: var(--text-muted);
+}
+
+.wa-status-bar {
+  display: flex;
+  align-items: center;
+  gap: nu-space(2);
+  font-size: nu-font-size(xs);
+  color: var(--text-muted);
+}
+
+// ---- pairing ----
+
+.wa-qr-pane {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  gap: nu-space(4);
+  padding: nu-space(6) nu-space(5);
+  text-align: center;
+  font-size: nu-font-size(xs);
+  color: var(--text-muted);
+}
+
+.wa-qr-title {
+  font-size: nu-font-size(sm);
+  font-weight: nu-font-weight(semibold);
+  color: var(--text-color);
+}
+
+// A QR must stay high-contrast dark-on-white to remain scannable, so this panel
+// is deliberately NOT themed. Do not swap --white for a surface token.
+.wa-qr-frame {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: 17.5rem;
+  block-size: 17.5rem;
+  padding: nu-space(3);
+  background: var(--white);
+  border-radius: nu-radius(lg);
+}
+
+.wa-qr-img {
+  inline-size: 100%;
+  block-size: 100%;
+  image-rendering: pixelated;
+}
+
+.wa-qr-steps {
+  max-inline-size: 17.5rem;
+  margin: 0;
+  padding-inline-start: nu-space(5);
+  text-align: start;
+  font-size: nu-font-size(xs);
+  color: var(--text-muted);
+
+  li {
+    margin-block-end: nu-space(1);
+    line-height: 1.5;
+  }
+}
+
+// ---- chat list ----
+
+.wa-chat-list {
+  flex: 1;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.wa-chat-item {
+  display: block;
+  inline-size: 100%;
+  padding: nu-space(3) nu-space(4);
+  text-align: start;
+  background: transparent;
+  border: 0;
+  border-block-end: 1px solid var(--border-base);
+  border-inline-start: 3px solid transparent;
+  cursor: pointer;
+  transition: background nu-duration(fast) $nu-ease;
+
+  &:hover {
+    background: var(--bg-alternate);
+  }
+
+  &.is-active {
+    background: var(--bg-alternate);
+    border-inline-start-color: var(--primary);
+  }
+}
+
+.wa-chat-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: nu-font-size(sm);
+  font-weight: nu-font-weight(medium);
+  color: var(--text-color);
+}
+
+.wa-chat-time {
+  flex-shrink: 0;
+  margin-inline-start: nu-space(2);
+  font-size: nu-font-size(2xs);
+  color: var(--text-muted);
+}
+
+.wa-chat-preview {
+  margin: nu-space(1) 0 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: nu-font-size(xs);
+  color: var(--text-muted);
+}
+
+// ---- conversation ----
+
+.wa-chat-area {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-inline-size: 0;
+  overflow: hidden;
+  background: var(--bg-base);
+}
+
+.wa-chat-header {
+  flex-shrink: 0;
+  padding: nu-space(3) nu-space(5);
+  background: var(--bg-surface);
+  border-block-end: 1px solid var(--border-base);
+}
+
+.wa-chat-header-name {
+  font-size: nu-font-size(sm);
+  font-weight: nu-font-weight(semibold);
+  color: var(--text-color);
+}
+
+.wa-chat-header-id {
+  font-size: nu-font-size(xs);
+  color: var(--text-muted);
+}
+
+.wa-messages {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: nu-space(2);
+  padding: nu-space(5);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.wa-message {
+  max-inline-size: 70%;
+
+  &.m-incoming {
+    align-self: flex-start;
+  }
+
+  &.m-outgoing {
+    align-self: flex-end;
+  }
+}
+
+.wa-bubble {
+  padding: nu-space(2) nu-space(3);
+  border-radius: nu-radius(lg);
+  font-size: nu-font-size(sm);
+  line-height: 1.4;
+  overflow-wrap: break-word;
+  white-space: pre-wrap;
+
+  .m-incoming & {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-base);
+    color: var(--text-color);
+  }
+
+  .m-outgoing & {
+    background: var(--primary);
+    color: var(--text-inverted);
+  }
+
+  // An AI reply is still outgoing, but must be distinguishable at a glance from
+  // something a human on the team actually typed.
+  .m-outgoing.m-ai & {
+    background: var(--info);
+    color: var(--text-inverted);
+  }
+}
+
+.wa-media-img,
+.wa-media-video {
+  display: block;
+  max-inline-size: 17.5rem;
+  max-block-size: 17.5rem;
+  border-radius: nu-radius(md);
+}
+
+.wa-media-img {
+  cursor: pointer;
+}
+
+.wa-media-audio {
+  display: block;
+  max-inline-size: 15rem;
+  margin-block: nu-space(1);
+}
+
+.wa-media-doc {
+  display: inline-block;
+  padding: nu-space(2) nu-space(3);
+  border-radius: nu-radius(sm);
+  background: nu-tint(black, 6%);
+  color: inherit;
+  text-decoration: none;
+  font-size: nu-font-size(xs);
+
+  &:hover {
+    background: nu-tint(black, 12%);
+  }
+}
+
+.wa-sender-tag {
+  margin-block-end: nu-space(1);
+  padding-inline: nu-space(1);
+  font-size: nu-font-size(xs);
+  color: var(--text-muted);
+}
+
+.wa-meta {
+  display: flex;
+  align-items: center;
+  gap: nu-space(1);
+  padding: nu-space(1) nu-space(1) 0;
+  font-size: nu-font-size(2xs);
+  color: var(--text-muted);
+
+  .m-outgoing & {
+    justify-content: flex-end;
+  }
+}
+
+// ---- composer ----
+
+.wa-input-area {
+  flex-shrink: 0;
+  padding: nu-space(3) nu-space(4);
+  background: var(--bg-surface);
+  border-block-start: 1px solid var(--border-base);
+}
+
+.wa-input-row {
+  display: flex;
+  align-items: flex-end;
+  gap: nu-space(2);
+}
+
+// The kit textarea defaults to a form-field block size; the composer wants a
+// single line that grows to a few before scrolling.
+.wa-input-row .nu-textarea {
+  flex: 1;
+  min-block-size: 2.5rem;
+  max-block-size: 7.5rem;
+  resize: none;
+}

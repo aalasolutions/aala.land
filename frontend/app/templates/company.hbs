@@ -518,10 +518,9 @@
   >
     <:icon><Ui::Ph @icon="buildings" /></:icon>
     <:actions>
-      <LinkTo @route="team" class="nu-btn m-primary">
-        <Ui::Ph @icon="users" />
+      <Nuvo::Button @variant="primary" @icon="users" @route="team">
         Go to Team
-      </LinkTo>
+      </Nuvo::Button>
     </:actions>
   </Nuvo::EmptyState>
 {{/if}}

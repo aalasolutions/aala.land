@@ -38,10 +38,10 @@
 
       <Nuvo::Button
         @variant="danger"
+        @icon="trash"
         {{on "click" this.openPurge}}
         data-test-purge-btn
       >
-        <Ui::Ph @icon="trash" @size="16px" />
         Purge Old Logs
       </Nuvo::Button>
     </Nuvo::Toolbar>

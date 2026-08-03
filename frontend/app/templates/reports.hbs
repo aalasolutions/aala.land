@@ -1,11 +1,11 @@
 {{page-title "Reports"}}
 
 <div data-test-reports-page class="flex col gap-6">
-  <div>
-    <h2 class="text-3xl font-bold"><Ui::Ph @icon="chart-bar" @size="28px" />
-      Boss Dashboard</h2>
-    <p class="text-muted mt-1">Real-time performance and business intelligence.</p>
-  </div>
+  <Nuvo::PageHeader
+    @icon="chart-bar"
+    @title="Boss Dashboard"
+    @subtitle="Real-time performance and business intelligence."
+  />
 
   {{! KPI Cards }}
   {{#if @model.kpis}}

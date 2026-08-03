@@ -3,8 +3,7 @@
 <div data-test-maintenance-page class="flex col gap-6">
   <Nuvo::PageHeader @title="Maintenance" @subtitle="Track and manage property work orders.">
     <:actions>
-      <Nuvo::Button @variant="primary" {{on "click" this.openCreate}}>
-        <Ui::Ph @icon="plus" />
+      <Nuvo::Button @variant="primary" {{on "click" this.openCreate}} @icon="plus">
         New Work Order
       </Nuvo::Button>
     </:actions>
@@ -134,9 +133,9 @@
                     <Nuvo::Button
                       @variant="secondary"
                       @size="xs"
+                      @icon="pencil-simple"
                       {{on "click" (fn this.openEdit wo)}}
                     >
-                      <Ui::Ph @icon="pencil-simple" />
                       Edit
                     </Nuvo::Button>
                   </td>
@@ -203,9 +202,9 @@
                 <Nuvo::Button
                   @variant="secondary"
                   @size="xs"
+                  @icon="pencil-simple"
                   {{on "click" (fn this.openEdit wo)}}
                 >
-                  <Ui::Ph @icon="pencil-simple" />
                   Edit
                 </Nuvo::Button>
               </div>

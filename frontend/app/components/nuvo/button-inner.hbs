@@ -1,0 +1,25 @@
+{{!
+  Shared innards for every Nuvo::Button tag mode. Kept out of button.hbs so the
+  button, anchor and LinkTo branches cannot drift apart.
+  Icon order is markup order: flexbox and the parent's gap do the rest.
+  A shape button (square/circle) drops its label entirely.
+}}
+{{#if @btn.iconAtStart}}
+  <span class={{@btn.iconClasses}} aria-hidden="true" data-test-nu-button-icon>
+    {{#if @btn.isPhosphorIcon}}<Ui::Ph @icon={{@btn.iconName}} />{{else}}{{@btn.iconName}}{{/if}}
+  </span>
+{{/if}}
+
+{{#unless @btn.isIconOnly}}
+  {{#if (or @hasBlock @text)}}
+    <span
+      class="nu-btn__label"
+    >{{#if @hasBlock}}{{yield}}{{else}}{{@text}}{{/if}}</span>
+  {{/if}}
+{{/unless}}
+
+{{#if @btn.iconAtEnd}}
+  <span class={{@btn.iconClasses}} aria-hidden="true" data-test-nu-button-icon>
+    {{#if @btn.isPhosphorIcon}}<Ui::Ph @icon={{@btn.iconName}} />{{else}}{{@btn.iconName}}{{/if}}
+  </span>
+{{/if}}

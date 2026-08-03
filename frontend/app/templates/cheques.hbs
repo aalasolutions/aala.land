@@ -13,9 +13,9 @@
         <Nuvo::Button
           @variant="primary"
           data-test-new-cheque
+          @icon="plus"
           {{on "click" this.openCreate}}
         >
-          <Ui::Ph @icon="plus" />
           New Cheque
         </Nuvo::Button>
       {{/if}}
@@ -71,30 +71,30 @@
                         <Nuvo::Button
                           @variant="secondary"
                           @size="xs"
+                          @icon="pencil-simple"
                           {{on "click" (fn this.openEdit cheque)}}
                         >
-                          <Ui::Ph @icon="pencil-simple" />
                           Edit
                         </Nuvo::Button>
                         {{#if (eq cheque.status "PENDING")}}
                           <Nuvo::Button
                             @variant="success"
                             @size="xs"
+                            @icon="bank"
                             {{on
                               "click"
                               (fn this.updateStatus cheque "DEPOSITED")
                             }}
                           >
-                            <Ui::Ph @icon="bank" />
                             Deposit
                           </Nuvo::Button>
                           <Nuvo::Button
                             @variant="danger"
                             @size="xs"
                             data-test-bounce
+                            @icon="x-circle"
                             {{on "click" (fn this.openBounceModal cheque)}}
                           >
-                            <Ui::Ph @icon="x-circle" />
                             Bounce
                           </Nuvo::Button>
                         {{/if}}
@@ -102,21 +102,21 @@
                           <Nuvo::Button
                             @variant="success"
                             @size="xs"
+                            @icon="check-circle"
                             {{on
                               "click"
                               (fn this.updateStatus cheque "CLEARED")
                             }}
                           >
-                            <Ui::Ph @icon="check-circle" />
                             Clear
                           </Nuvo::Button>
                           <Nuvo::Button
                             @variant="danger"
                             @size="xs"
                             data-test-bounce
+                            @icon="x-circle"
                             {{on "click" (fn this.openBounceModal cheque)}}
                           >
-                            <Ui::Ph @icon="x-circle" />
                             Bounce
                           </Nuvo::Button>
                         {{/if}}
@@ -124,12 +124,12 @@
                           <Nuvo::Button
                             @variant="secondary"
                             @size="xs"
+                            @icon="arrows-clockwise"
                             {{on
                               "click"
                               (fn this.updateStatus cheque "REPLACED")
                             }}
                           >
-                            <Ui::Ph @icon="arrows-clockwise" />
                             Replace
                           </Nuvo::Button>
                         {{/if}}

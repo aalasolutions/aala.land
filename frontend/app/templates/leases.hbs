@@ -5,7 +5,7 @@
     <:actions>
       <Nuvo::Button
         @variant="primary"
-        @icon="+"
+        @icon="plus"
         {{on "click" this.openCreate}}
       >
         New Lease
@@ -35,9 +35,9 @@
               <Nuvo::Button
                 @variant="secondary"
                 @size="sm"
+                @icon="pencil-simple"
                 {{on "click" (fn this.openEdit lease)}}
               >
-                <Ui::Ph @icon="pencil-simple" />
                 Edit
               </Nuvo::Button>
               {{#if (eq lease.status "ACTIVE")}}
@@ -45,18 +45,18 @@
                   data-test-renew-lease
                   @variant="secondary"
                   @size="sm"
+                  @icon="arrows-clockwise"
                   {{on "click" (fn this.renewLease lease)}}
                 >
-                  <Ui::Ph @icon="arrows-clockwise" />
                   Renew
                 </Nuvo::Button>
                 <Nuvo::Button
                   data-test-terminate-lease
                   @variant="danger"
                   @size="sm"
+                  @icon="x-circle"
                   {{on "click" (fn this.openTerminate lease)}}
                 >
-                  <Ui::Ph @icon="x-circle" />
                   Terminate
                 </Nuvo::Button>
               {{/if}}
@@ -65,9 +65,9 @@
                   data-test-renew-lease
                   @variant="secondary"
                   @size="sm"
+                  @icon="arrows-clockwise"
                   {{on "click" (fn this.renewLease lease)}}
                 >
-                  <Ui::Ph @icon="arrows-clockwise" />
                   Renew
                 </Nuvo::Button>
               {{/if}}

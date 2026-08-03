@@ -20,7 +20,7 @@ $shell-sidebar-collapsed: 3.75rem;
 
 
   /* The gradient engine */
-  background-image: radial-gradient(circle at center, #344244 0%, #070f17 90%, #2b1818 100%);
+  background-image: radial-gradient(circle at center, #344244 0%, #0b212d 90%, #2b1818 100%);
   /* Crucial settings for full-page view */
   background-repeat: no-repeat;
   background-attachment: fixed;
@@ -84,7 +84,6 @@ $shell-sidebar-collapsed: 3.75rem;
   justify-content: center;
   margin-block-start: nu-space(2);
   padding: nu-space(2);
-  border: 1px solid var(--border-base);
   border-radius: nu-radius(md);
   background: none;
   color: var(--text-muted);
@@ -118,16 +117,19 @@ $shell-sidebar-collapsed: 3.75rem;
 // against the sidebar in RTL too. The shadow is an ambient glow rather than a
 // drop shadow, which no kit token covers, so it stays literal.
 .content-area {
-  flex: 1;
+  // flex: 1;
+  height: calc(100vh - 65px);
+  position: relative;
+  overflow: auto;
   min-inline-size: 0;
   padding-block: nu-space(6);
   padding-inline: nu-space(8);
 
-  background: #fbfbfb;
+  background: #f9fcfe;
   border-start-start-radius: nu-radius(lg);
-  border-block-start: 1px solid var(--border-base);
-  border-inline-start: 1px solid var(--border-base);
-  box-shadow: 0 0 15px 5px rgba(0, 0, 0, 0.05);
+  // border-block-start: 1px solid var(--border-base);
+  // border-inline-start: 1px solid var(--border-base);
+  box-shadow: 0 0 20px 10px rgba(0, 0, 0, 0.35)
 }
 
 // ---- topbar: region switcher ----

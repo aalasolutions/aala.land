@@ -11,7 +11,7 @@
     <:actions>
       <Nuvo::Button
         @variant="primary"
-        @icon="+"
+        @icon="plus"
         {{on "click" this.openCreate}}
       >
         New Contact
@@ -62,7 +62,7 @@
                     <Nuvo::Button
                       @variant="secondary"
                       @size="xs"
-                      @icon="✎"
+                      @icon="pencil-simple"
                       {{on "click" (fn this.openEdit contact)}}
                     >
                       Edit
@@ -70,7 +70,7 @@
                     <Nuvo::Button
                       @variant="danger"
                       @size="xs"
-                      @icon="✕"
+                      @icon="trash"
                       {{on "click" (fn this.openDelete contact)}}
                     />
                   </div>

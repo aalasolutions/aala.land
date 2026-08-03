@@ -7,7 +7,16 @@
     {{/if}}
 
     {{#if @title}}
-      <h1 class="nu-page-header__title" data-test-nu-page-header-title>{{@title}}</h1>
+      <h1 class="nu-page-header__title" data-test-nu-page-header-title>
+        {{#if @icon}}
+          <Ui::Ph
+            class="nu-page-header__title-icon"
+            @icon={{@icon}}
+            data-test-nu-page-header-icon
+          />
+        {{/if}}
+        {{@title}}
+      </h1>
     {{/if}}
 
     {{#if @subtitle}}

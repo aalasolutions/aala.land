@@ -41,6 +41,11 @@ export default class WhatsappController extends Controller {
   get isConnected() {
     return this.connection === 'connected';
   }
+
+  get connectionVariant() {
+    if (this.connection === 'connected') return 'success';
+    return this.connection === 'connecting' ? 'warning' : 'danger';
+  }
   get showQR() {
     return (
       this.connection !== 'connected' &&
@@ -270,9 +275,10 @@ export default class WhatsappController extends Controller {
     this.errorMsg = '';
   }
 
+  // Kit form components call onInput as (value, event), unlike a raw input event.
   @action
-  setMessageText(event) {
-    this.messageText = event.target.value;
+  setMessageText(value) {
+    this.messageText = value;
   }
 
   @action

@@ -15,7 +15,7 @@
   align-items: center;
   justify-content: center;
   min-block-size: 100vh;
-  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-700) 100%);
+  background: radial-gradient(circle at center, #344244 0%, #0b212d 90%, #2b1818 100%);
 }
 
 // Wordmark on the unauthenticated pages. Deliberately not the sidebar's

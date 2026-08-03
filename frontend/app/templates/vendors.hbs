@@ -6,7 +6,7 @@
       <Nuvo::Button
         data-test-new-vendor
         @variant="primary"
-        @icon="+"
+        @icon="plus"
         {{on "click" this.openCreate}}
       >
         New Vendor
@@ -62,19 +62,18 @@
                       data-test-edit-vendor
                       @variant="secondary"
                       @size="xs"
+                      @icon="pencil-simple"
                       {{on "click" (fn this.openEdit vendor)}}
                     >
-                      <Ui::Ph @icon="pencil-simple" />
                       Edit
                     </Nuvo::Button>
                     <Nuvo::Button
                       data-test-delete-vendor
                       @variant="danger"
                       @size="xs"
+                      @icon="trash"
                       {{on "click" (fn this.openDelete vendor)}}
-                    >
-                      <Ui::Ph @icon="trash" />
-                    </Nuvo::Button>
+                    />
                   </div>
                 </td>
               </tr>

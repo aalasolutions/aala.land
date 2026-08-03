@@ -193,7 +193,7 @@
 
     // Tinted, not filled, so it never competes with the active link inside it.
     &.is-active {
-      --nu-sidebar__group-toggle--Color: var(--primary-800);
+      --nu-sidebar__group-toggle--Color: var(--text-inverted);
       --nu-sidebar__group-toggle--BackgroundColor: #{nu-tint(primary, 12%)};
     }
   }
@@ -258,7 +258,8 @@
       box-shadow: 0 0 0 3px nu-tint(primary, 35%);
     }
 
-    &.is-active {
+    &.is-active,
+    &.active {
       color: var(--text-inverted);
       background-color: var(--primary);
     }
@@ -286,6 +287,10 @@
     }
   }
 
+  @include e(group-title) {
+    display: none;
+  }
+
   @include when(collapsed) {
     --nu-sidebar--Width: var(--nu-sidebar--CollapsedWidth);
 
@@ -295,22 +300,84 @@
       display: none;
     }
 
-    .nu-sidebar__sublink {
-      display: none;
-    }
-
-    // Icons only; an open group would overflow the rail.
     .nu-sidebar__chevron {
       display: none;
     }
 
-    .nu-sidebar__group-items {
-      grid-template-rows: 0fr;
-    }
-
+    .nu-sidebar__link,
     .nu-sidebar__group-toggle {
       justify-content: center;
+      gap: 0;
       padding-inline: nu-space(2);
+    }
+
+    .nu-sidebar__nav {
+      overflow: visible;
+    }
+
+    .nu-sidebar__group {
+      position: relative;
+    }
+
+    .nu-sidebar__group-toggle.is-active {
+      --nu-sidebar__group-toggle--Color: var(--text-inverted);
+      --nu-sidebar__group-toggle--BackgroundColor: var(--primary);
+    }
+
+    .nu-sidebar__group-items {
+      position: absolute;
+      inset-block-start: 0;
+      inset-inline-start: 100%;
+      margin-inline-start: calc(#{nu-space(2)} + #{nu-var("sidebar", "PaddingInline")});
+      grid-template-rows: 1fr;
+      min-inline-size: 11rem;
+      padding: nu-space(2);
+      background-color: var(--bg-surface);
+      border: 1px solid var(--border-base);
+      border-radius: nu-radius(md);
+      box-shadow: nu-shadow(lg);
+      z-index: nu-z(dropdown);
+      opacity: 0;
+      visibility: hidden;
+      transition:
+        opacity nu-duration(fast) $nu-ease,
+        visibility nu-duration(fast) $nu-ease;
+
+      @include reduced-motion {
+        transition: none;
+      }
+
+      > * {
+        overflow: visible;
+      }
+    }
+
+    .nu-sidebar__group:hover > .nu-sidebar__group-items,
+    .nu-sidebar__group:focus-within > .nu-sidebar__group-items {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .nu-sidebar__group-items {
+      .nu-sidebar__group-title {
+        display: block;
+        padding-inline: nu-space(3);
+        padding-block-end: nu-space(1);
+        margin: 0;
+        font-size: nu-font-size(2xs);
+        font-weight: nu-font-weight(semibold);
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+      }
+
+      .nu-sidebar__link-label {
+        display: block;
+      }
+
+      .nu-sidebar__sublink {
+        margin-inline-start: 0;
+      }
     }
   }
 

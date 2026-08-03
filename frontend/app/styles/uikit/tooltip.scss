@@ -1,24 +1,11 @@
-// nu-tooltip - floating contextual hint anchored to a trigger element
+// nu-tooltip - the single floating hint element owned by Nuvo::TooltipHost
 @use "./mixins/bem" as *;
 @use "./mixins/var" as *;
 @use "./common/var" as *;
 
-// Two tooltip systems ship in this app and that is deliberate:
-//
-//   [data-tooltip]  (NuvoUI core) - zero markup, pure CSS, text only. Use for
-//                   simple labels on icon buttons. No component needed.
-//   .nu-tooltip     (this file)   - wraps markup, real arrow element, tracked
-//                   visibility, focus/Escape handling. Use when the tooltip
-//                   holds rich content or must react to state.
-//
-// They are kept visually identical by core-bridge.scss, which points core's
-// --tooltip-* variables at the same tokens this component consumes. That lives
-// there rather than here so importing a component never rewrites :root.
-
 @include b(tooltip) {
   @include nu-root("tooltip", (
     "ZIndex": nu-z(modal),
-    "Gap": nu-space(2),
     "MaxWidth": 16rem,
     "PaddingBlock": nu-space(1),
     "PaddingInline": nu-space(3),
@@ -29,138 +16,85 @@
     "BackgroundColor": var(--text-color),
     "BorderRadius": nu-radius(md),
     "Shadow": #{nu-shadow(md)},
-    "ArrowSize": 5px,
+    "ArrowSize": 8px,
     "TransitionDuration": nu-duration(fast),
   ));
 
-  position: relative;
-  display: inline-flex;
+  position: fixed;
+  z-index: nu-var("tooltip", "ZIndex");
+  inline-size: max-content;
+  max-inline-size: nu-var("tooltip", "MaxWidth");
+  padding-block: nu-var("tooltip", "PaddingBlock");
+  padding-inline: nu-var("tooltip", "PaddingInline");
+  font-size: nu-var("tooltip", "FontSize");
+  font-weight: nu-var("tooltip", "FontWeight");
+  line-height: nu-var("tooltip", "LineHeight");
+  color: nu-var("tooltip", "Color");
+  background-color: nu-var("tooltip", "BackgroundColor");
+  border-radius: nu-var("tooltip", "BorderRadius");
+  box-shadow: nu-var("tooltip", "Shadow");
+  pointer-events: none;
+  animation: nu-tooltip-in nu-var("tooltip", "TransitionDuration") $nu-ease;
 
-  @include e(content) {
-    position: absolute;
-    z-index: nu-var("tooltip", "ZIndex");
-    inline-size: max-content;
-    max-inline-size: nu-var("tooltip", "MaxWidth");
-    padding-block: nu-var("tooltip", "PaddingBlock");
-    padding-inline: nu-var("tooltip", "PaddingInline");
-    font-size: nu-var("tooltip", "FontSize");
-    font-weight: nu-var("tooltip", "FontWeight");
-    line-height: nu-var("tooltip", "LineHeight");
-    color: nu-var("tooltip", "Color");
-    background-color: nu-var("tooltip", "BackgroundColor");
-    border-radius: nu-var("tooltip", "BorderRadius");
-    box-shadow: nu-var("tooltip", "Shadow");
-    opacity: 0;
-    visibility: hidden;
-    pointer-events: none;
-    transition:
-      opacity nu-var("tooltip", "TransitionDuration") $nu-ease,
-      visibility nu-var("tooltip", "TransitionDuration") $nu-ease;
-
-    @include reduced-motion {
-      transition: none;
-      animation: none;
-    }
+  @include reduced-motion {
+    animation: none;
   }
 
   @include e(arrow) {
     position: absolute;
-    z-index: nu-var("tooltip", "ZIndex");
     inline-size: nu-var("tooltip", "ArrowSize");
     block-size: nu-var("tooltip", "ArrowSize");
     background-color: nu-var("tooltip", "BackgroundColor");
     transform: rotate(45deg);
   }
 
-  // ---- placement: top ----
-
   @include m(top) {
-    .nu-tooltip__content {
-      inset-block-end: calc(100% + #{nu-var("tooltip", "Gap")});
-      inset-inline-start: 50%;
-      transform: translateX(-50%);
-    }
+    transform: translateX(-50%);
 
     .nu-tooltip__arrow {
-      inset-block-end: calc(100% + #{nu-var("tooltip", "Gap")} - (#{nu-var("tooltip", "ArrowSize")} / 2));
+      inset-block-end: calc(#{nu-var("tooltip", "ArrowSize")} / -2);
       inset-inline-start: 50%;
       margin-inline-start: calc(#{nu-var("tooltip", "ArrowSize")} / -2);
     }
   }
-
-  // ---- placement: bottom ----
 
   @include m(bottom) {
-    .nu-tooltip__content {
-      inset-block-start: calc(100% + #{nu-var("tooltip", "Gap")});
-      inset-inline-start: 50%;
-      transform: translateX(-50%);
-    }
+    transform: translateX(-50%);
 
     .nu-tooltip__arrow {
-      inset-block-start: calc(100% + #{nu-var("tooltip", "Gap")} - (#{nu-var("tooltip", "ArrowSize")} / 2));
+      inset-block-start: calc(#{nu-var("tooltip", "ArrowSize")} / -2);
       inset-inline-start: 50%;
       margin-inline-start: calc(#{nu-var("tooltip", "ArrowSize")} / -2);
     }
   }
 
-  // ---- placement: start (inline-start side) ----
-
-  @include m(start) {
-    .nu-tooltip__content {
-      inset-inline-end: calc(100% + #{nu-var("tooltip", "Gap")});
-      inset-block-start: 50%;
-      transform: translateY(-50%);
-    }
+  @include m(left) {
+    transform: translateY(-50%);
 
     .nu-tooltip__arrow {
-      inset-inline-end: calc(100% + #{nu-var("tooltip", "Gap")} - (#{nu-var("tooltip", "ArrowSize")} / 2));
+      inset-inline-end: calc(#{nu-var("tooltip", "ArrowSize")} / -2);
       inset-block-start: 50%;
       margin-block-start: calc(#{nu-var("tooltip", "ArrowSize")} / -2);
     }
   }
 
-  // ---- placement: end (inline-end side) ----
-
-  @include m(end) {
-    .nu-tooltip__content {
-      inset-inline-start: calc(100% + #{nu-var("tooltip", "Gap")});
-      inset-block-start: 50%;
-      transform: translateY(-50%);
-    }
+  @include m(right) {
+    transform: translateY(-50%);
 
     .nu-tooltip__arrow {
-      inset-inline-start: calc(100% + #{nu-var("tooltip", "Gap")} - (#{nu-var("tooltip", "ArrowSize")} / 2));
+      inset-inline-start: calc(#{nu-var("tooltip", "ArrowSize")} / -2);
       inset-block-start: 50%;
       margin-block-start: calc(#{nu-var("tooltip", "ArrowSize")} / -2);
     }
   }
-
-  // ---- surface variant ----
 
   @include m(light) {
     --nu-tooltip--Color: var(--text-color);
     --nu-tooltip--BackgroundColor: var(--bg-surface);
   }
-
-  // ---- state ----
-
-  @include when(visible) {
-    .nu-tooltip__content {
-      opacity: 1;
-      visibility: visible;
-      animation: nu-tooltip-in nu-var("tooltip", "TransitionDuration") $nu-ease;
-
-      @include reduced-motion {
-        animation: none;
-      }
-    }
-  }
 }
 
-// Opacity only. Animating `transform` here would clobber the placement
-// transform (translateX(-50%) etc), making the tooltip render off-centre for
-// the duration of the animation and then snap into place.
+// Opacity only; a transform here would clobber the centring transform.
 @keyframes nu-tooltip-in {
   from {
     opacity: 0;

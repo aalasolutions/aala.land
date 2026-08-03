@@ -5,9 +5,9 @@
     <:actions>
       <Nuvo::Button
         @variant="primary"
+        @icon="plus"
         {{on "click" this.openCreate}}
       >
-        <Ui::Ph @icon="plus" />
         New Transaction
       </Nuvo::Button>
     </:actions>
@@ -36,7 +36,7 @@
         @label="Net Balance"
         @value={{format-currency @model.summary.net}}
       >
-        <:icon><Ui::Ph @icon="scale" /></:icon>
+        <:icon><Ui::Ph @icon="scales" /></:icon>
       </Nuvo::Stat>
     </div>
   {{/if}}
@@ -109,9 +109,9 @@
                   <Nuvo::Button
                     @variant="secondary"
                     @size="xs"
+                    @icon="pencil-simple"
                     {{on "click" (fn this.openEdit tx)}}
                   >
-                    <Ui::Ph @icon="pencil-simple" />
                     Edit
                   </Nuvo::Button>
                 </td>

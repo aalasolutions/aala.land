@@ -1,30 +1,43 @@
 {{!
-  Icon order is markup order: flexbox and the block's gap do the rest.
-  A shape button (square/circle) drops its label entirely.
+  @route renders a LinkTo, @href an anchor, otherwise a button.
+  All three share their innards from button-inner.
 }}
-<button
-  type={{this.type}}
-  class={{this.classes}}
-  disabled={{this.isDisabled}}
-  data-test-nu-button
-  {{on "click" this.onClick}}
-  ...attributes
->
-  {{#if this.iconAtStart}}
-    <span class={{this.iconClasses}} aria-hidden="true" data-test-nu-button-icon>
-      {{this.iconName}}
-    </span>
-  {{/if}}
-
-  {{#unless this.isIconOnly}}
-    <span class="nu-btn__label">
-      {{#if (has-block)}}{{yield}}{{else}}{{@text}}{{/if}}
-    </span>
-  {{/unless}}
-
-  {{#if this.iconAtEnd}}
-    <span class={{this.iconClasses}} aria-hidden="true" data-test-nu-button-icon>
-      {{this.iconName}}
-    </span>
-  {{/if}}
-</button>
+{{#if @route}}
+  <LinkTo
+    @route={{@route}}
+    @models={{this.linkModels}}
+    @query={{this.linkQuery}}
+    class={{this.classes}}
+    data-test-nu-button
+    ...attributes
+  >
+    <Nuvo::ButtonInner
+      @btn={{this}}
+      @hasBlock={{has-block}}
+      @text={{@text}}
+    >{{yield}}</Nuvo::ButtonInner>
+  </LinkTo>
+{{else if @href}}
+  <a href={{@href}} class={{this.classes}} ...attributes>
+    <Nuvo::ButtonInner
+      @btn={{this}}
+      @hasBlock={{has-block}}
+      @text={{@text}}
+    >{{yield}}</Nuvo::ButtonInner>
+  </a>
+{{else}}
+  <button
+    type={{this.type}}
+    class={{this.classes}}
+    disabled={{this.isDisabled}}
+    data-test-nu-button
+    {{on "click" this.onClick}}
+    ...attributes
+  >
+    <Nuvo::ButtonInner
+      @btn={{this}}
+      @hasBlock={{has-block}}
+      @text={{@text}}
+    >{{yield}}</Nuvo::ButtonInner>
+  </button>
+{{/if}}

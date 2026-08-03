@@ -23,7 +23,13 @@
 
       <nav data-test-sidebar-nav class="nu-sidebar__nav">
         {{! Dashboard (direct link) }}
-        <LinkTo @route="dashboard" class="nu-sidebar__link" data-test-nav-dashboard>
+        <LinkTo
+          @route="dashboard"
+          class="nu-sidebar__link"
+          data-tooltip={{if this.desktopCollapsed "Dashboard"}}
+          data-tooltip-position="end"
+          data-test-nav-dashboard
+        >
           <Ui::Ph @icon="gauge" />
           <span class="nu-sidebar__link-label">Dashboard</span>
         </LinkTo>
@@ -55,6 +61,7 @@
             </button>
             <div class="nu-sidebar__group-items">
               <div>
+                <p class="nu-sidebar__group-title">Properties</p>
                 <LinkTo
                   @route="properties"
                   class="nu-sidebar__sublink"
@@ -102,6 +109,7 @@
             </button>
             <div class="nu-sidebar__group-items">
               <div>
+                <p class="nu-sidebar__group-title">Leads</p>
                 <LinkTo
                   @route="leads"
                   class="nu-sidebar__sublink"
@@ -126,6 +134,8 @@
           <LinkTo
             @route="documents"
             class="nu-sidebar__link"
+            data-tooltip={{if this.desktopCollapsed "Documents"}}
+            data-tooltip-position="end"
             data-test-nav-documents
           >
             <Ui::Ph @icon="files" />
@@ -157,6 +167,7 @@
             </button>
             <div class="nu-sidebar__group-items">
               <div>
+                <p class="nu-sidebar__group-title">Finance</p>
                 <LinkTo
                   @route="financials"
                   class="nu-sidebar__sublink"
@@ -185,7 +196,13 @@
 
         {{! WhatsApp (direct link) }}
         {{#if this.sidebarGroups.outreach}}
-          <LinkTo @route="whatsapp" class="nu-sidebar__link" data-test-nav-whatsapp>
+          <LinkTo
+            @route="whatsapp"
+            class="nu-sidebar__link"
+            data-tooltip={{if this.desktopCollapsed "WhatsApp"}}
+            data-tooltip-position="end"
+            data-test-nav-whatsapp
+          >
             <Ui::Ph @icon="whatsapp-logo" />
             <span class="nu-sidebar__link-label">WhatsApp</span>
           </LinkTo>
@@ -218,6 +235,7 @@
             </button>
             <div class="nu-sidebar__group-items">
               <div>
+                <p class="nu-sidebar__group-title">Operations</p>
                 <LinkTo
                   @route="maintenance"
                   class="nu-sidebar__sublink"
@@ -239,7 +257,13 @@
 
         {{! Reports (direct link) }}
         {{#if this.sidebarGroups.reports}}
-          <LinkTo @route="reports" class="nu-sidebar__link" data-test-nav-reports>
+          <LinkTo
+            @route="reports"
+            class="nu-sidebar__link"
+            data-tooltip={{if this.desktopCollapsed "Reports"}}
+            data-tooltip-position="end"
+            data-test-nav-reports
+          >
             <Ui::Ph @icon="chart-bar" />
             <span class="nu-sidebar__link-label">Reports</span>
           </LinkTo>
@@ -248,7 +272,13 @@
         {{! Team (direct link for Company Admin and Admin) }}
         {{#if this.sidebarGroups.team}}
           {{#unless this.isSuperAdmin}}
-            <LinkTo @route="team" class="nu-sidebar__link" data-test-nav-team>
+            <LinkTo
+              @route="team"
+              class="nu-sidebar__link"
+              data-tooltip={{if this.desktopCollapsed "Team"}}
+              data-tooltip-position="end"
+              data-test-nav-team
+            >
               <Ui::Ph @icon="users-three" />
               <span class="nu-sidebar__link-label">Team</span>
             </LinkTo>
@@ -278,6 +308,7 @@
             </button>
             <div class="nu-sidebar__group-items">
               <div>
+                <p class="nu-sidebar__group-title">Admin</p>
                 <LinkTo
                   @route="admin.overview"
                   class="nu-sidebar__sublink"
@@ -582,6 +613,8 @@
 {{/if}}
 
 <Nuvo::ToastRegion />
+
+<Nuvo::TooltipHost />
 
 <ConfirmModal
   @open={{this.showLogoutModal}}
