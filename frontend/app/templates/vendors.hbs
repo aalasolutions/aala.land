@@ -114,166 +114,174 @@
   </Nuvo::Card>
 </div>
 
-<Nuvo::Modal
+<Nuvo::Drawer
   @open={{this.showModal}}
   @title={{if this.editVendor "Edit Vendor" "New Vendor"}}
+  @placement="end"
+  @size="lg"
   @onClose={{this.closeModal}}
 >
-  <form class="flex col gap-4" {{on "submit" this.saveVendor}}>
-    {{#if this.showRegionField}}
-      <Nuvo::Field @label="Region">
-        <Nuvo::Dropdown
-          id="vendor-region"
-          @align="start"
-          @value={{this.formRegionCode}}
-          @onSelect={{fn this.setFieldValue "formRegionCode"}}
-          @options={{this.regionOptions}}
-          @placeholder="Select region..."
-          data-test-region-select
+  <:body>
+    <form
+      id="vendor-form"
+      class="flex col gap-4"
+      {{on "submit" this.saveVendor}}
+    >
+      {{#if this.showRegionField}}
+        <Nuvo::Field @label="Region">
+          <Nuvo::Dropdown
+            id="vendor-region"
+            @align="start"
+            @value={{this.formRegionCode}}
+            @onSelect={{fn this.setFieldValue "formRegionCode"}}
+            @options={{this.regionOptions}}
+            @placeholder="Select region..."
+            data-test-region-select
+          />
+        </Nuvo::Field>
+      {{/if}}
+
+      <Nuvo::Field @label="Name" @required={{true}}>
+        <Nuvo::Input
+          id="v-name"
+          type="text"
+          placeholder="Ahmed Al-Rashid"
+          @value={{this.formName}}
+          @onInput={{fn this.setFieldValue "formName"}}
+          required={{true}}
+          data-test-vendor-name
         />
       </Nuvo::Field>
-    {{/if}}
 
-    <Nuvo::Field @label="Name" @required={{true}}>
-      <Nuvo::Input
-        id="v-name"
-        type="text"
-        placeholder="Ahmed Al-Rashid"
-        @value={{this.formName}}
-        @onInput={{fn this.setFieldValue "formName"}}
-        required={{true}}
-        data-test-vendor-name
-      />
-    </Nuvo::Field>
-
-    <div class="flex col gap-2">
-      <span id="vendor-specialty-label" class="text-sm text-muted">Specialty
-        (select one or more)</span>
-      <div
-        class="flex gap-2 wrap"
-        role="group"
-        aria-labelledby="vendor-specialty-label"
-        data-test-vendor-specialty
-      >
-        {{#each this.specialtyOptions as |opt|}}
-          <button
-            type="button"
-            class="nu-tag m-pill m-selectable vendor-specialty-chip
-              tag-trade-{{lowercase opt.value}}
-              {{if (includes this.formSpecialties opt.value) 'is-selected'}}"
-            data-test-specialty-chip={{opt.value}}
-            {{on "click" (fn this.toggleSpecialty opt.value)}}
-          >{{opt.label}}</button>
-        {{/each}}
+      <div class="flex col gap-2">
+        <span id="vendor-specialty-label" class="text-sm text-muted">Specialty
+          (select one or more)</span>
+        <div
+          class="flex gap-2 wrap"
+          role="group"
+          aria-labelledby="vendor-specialty-label"
+          data-test-vendor-specialty
+        >
+          {{#each this.specialtyOptions as |opt|}}
+            <button
+              type="button"
+              class="nu-tag m-pill m-selectable vendor-specialty-chip
+                tag-trade-{{lowercase opt.value}}
+                {{if (includes this.formSpecialties opt.value) 'is-selected'}}"
+              data-test-specialty-chip={{opt.value}}
+              {{on "click" (fn this.toggleSpecialty opt.value)}}
+            >{{opt.label}}</button>
+          {{/each}}
+        </div>
       </div>
-    </div>
 
-    <div class="flex gap-4">
-      <Nuvo::Field class="grow" @label="Email">
-        <Nuvo::Input
-          id="v-email"
-          type="email"
-          placeholder="vendor@example.com"
-          @value={{this.formEmail}}
-          @onInput={{fn this.setFieldValue "formEmail"}}
-          data-test-vendor-email
+      <div class="flex gap-4">
+        <Nuvo::Field class="grow" @label="Email">
+          <Nuvo::Input
+            id="v-email"
+            type="email"
+            placeholder="vendor@example.com"
+            @value={{this.formEmail}}
+            @onInput={{fn this.setFieldValue "formEmail"}}
+            data-test-vendor-email
+          />
+        </Nuvo::Field>
+        <Nuvo::Field class="grow" @label="Phone">
+          <Nuvo::Input
+            id="v-phone"
+            type="text"
+            placeholder="+971501234567"
+            @value={{this.formPhone}}
+            @onInput={{fn this.setFieldValue "formPhone"}}
+            data-test-vendor-phone
+          />
+        </Nuvo::Field>
+      </div>
+
+      <div class="flex gap-4">
+        <Nuvo::Field class="grow" @label="Company Name">
+          <Nuvo::Input
+            id="v-company"
+            type="text"
+            placeholder="Al-Rashid Maintenance LLC"
+            @value={{this.formCompanyName}}
+            @onInput={{fn this.setFieldValue "formCompanyName"}}
+            data-test-vendor-company
+          />
+        </Nuvo::Field>
+        <Nuvo::Field class="grow" @label="Hourly Rate">
+          <Nuvo::Input
+            id="v-rate"
+            type="number"
+            placeholder="150"
+            @value={{this.formHourlyRate}}
+            @onInput={{fn this.setFieldValue "formHourlyRate"}}
+            min="0"
+            step="0.01"
+            data-test-vendor-rate
+          />
+        </Nuvo::Field>
+      </div>
+
+      <div class="flex gap-4">
+        <Nuvo::Field class="grow" @label="Address">
+          <Nuvo::Input
+            id="v-address"
+            type="text"
+            placeholder="e.g. Industrial Area, Karachi"
+            @value={{this.formAddress}}
+            @onInput={{fn this.setFieldValue "formAddress"}}
+            data-test-vendor-address
+          />
+        </Nuvo::Field>
+        <Nuvo::Field class="grow" @label="Rating (1-5)">
+          <Nuvo::Input
+            id="v-rating"
+            type="number"
+            placeholder="5"
+            @value={{this.formRating}}
+            @onInput={{fn this.setFieldValue "formRating"}}
+            min="1"
+            max="5"
+            step="1"
+            data-test-vendor-rating
+          />
+        </Nuvo::Field>
+      </div>
+
+      <Nuvo::Field @label="Notes">
+        <Nuvo::Textarea
+          id="v-notes"
+          placeholder="Additional notes about this vendor..."
+          rows="3"
+          @value={{this.formNotes}}
+          @onInput={{fn this.setFieldValue "formNotes"}}
+          data-test-vendor-notes
         />
       </Nuvo::Field>
-      <Nuvo::Field class="grow" @label="Phone">
-        <Nuvo::Input
-          id="v-phone"
-          type="text"
-          placeholder="+971501234567"
-          @value={{this.formPhone}}
-          @onInput={{fn this.setFieldValue "formPhone"}}
-          data-test-vendor-phone
-        />
-      </Nuvo::Field>
-    </div>
 
-    <div class="flex gap-4">
-      <Nuvo::Field class="grow" @label="Company Name">
-        <Nuvo::Input
-          id="v-company"
-          type="text"
-          placeholder="Al-Rashid Maintenance LLC"
-          @value={{this.formCompanyName}}
-          @onInput={{fn this.setFieldValue "formCompanyName"}}
-          data-test-vendor-company
-        />
-      </Nuvo::Field>
-      <Nuvo::Field class="grow" @label="Hourly Rate">
-        <Nuvo::Input
-          id="v-rate"
-          type="number"
-          placeholder="150"
-          @value={{this.formHourlyRate}}
-          @onInput={{fn this.setFieldValue "formHourlyRate"}}
-          min="0"
-          step="0.01"
-          data-test-vendor-rate
-        />
-      </Nuvo::Field>
-    </div>
-
-    <div class="flex gap-4">
-      <Nuvo::Field class="grow" @label="Address">
-        <Nuvo::Input
-          id="v-address"
-          type="text"
-          placeholder="e.g. Industrial Area, Karachi"
-          @value={{this.formAddress}}
-          @onInput={{fn this.setFieldValue "formAddress"}}
-          data-test-vendor-address
-        />
-      </Nuvo::Field>
-      <Nuvo::Field class="grow" @label="Rating (1-5)">
-        <Nuvo::Input
-          id="v-rating"
-          type="number"
-          placeholder="5"
-          @value={{this.formRating}}
-          @onInput={{fn this.setFieldValue "formRating"}}
-          min="1"
-          max="5"
-          step="1"
-          data-test-vendor-rating
-        />
-      </Nuvo::Field>
-    </div>
-
-    <Nuvo::Field @label="Notes">
-      <Nuvo::Textarea
-        id="v-notes"
-        placeholder="Additional notes about this vendor..."
-        rows="3"
-        @value={{this.formNotes}}
-        @onInput={{fn this.setFieldValue "formNotes"}}
-        data-test-vendor-notes
-      />
-    </Nuvo::Field>
-
-    {{#if this.errorMsg}}
-      <p class="text-sm text-danger">{{this.errorMsg}}</p>
-    {{/if}}
-
-    <Nuvo::FormActions @align="end">
-      <Nuvo::Button
-        @variant="secondary"
-        @onClick={{this.closeModal}}
-      >Cancel</Nuvo::Button>
-      <Nuvo::Button
-        @variant="primary"
-        @type="submit"
-        @loading={{this.isSaving}}
-      >{{if
-          this.isSaving
-          "Saving..."
-          (if this.editVendor "Update" "Create Vendor")
-        }}</Nuvo::Button>
-    </Nuvo::FormActions>
-  </form>
-</Nuvo::Modal>
+      {{#if this.errorMsg}}
+        <p class="text-sm text-danger">{{this.errorMsg}}</p>
+      {{/if}}
+    </form>
+  </:body>
+  <:footer>
+    <Nuvo::Button
+      @variant="secondary"
+      @onClick={{this.closeModal}}
+    >Cancel</Nuvo::Button>
+    <Nuvo::Button
+      @variant="primary"
+      @type="submit"
+      form="vendor-form"
+      @loading={{this.isSaving}}
+    >{{if
+        this.isSaving
+        "Saving..."
+        (if this.editVendor "Update" "Create Vendor")
+      }}</Nuvo::Button>
+  </:footer>
+</Nuvo::Drawer>
 
 <ConfirmModal
   @open={{this.showDeleteModal}}

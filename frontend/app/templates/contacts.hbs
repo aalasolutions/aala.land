@@ -113,149 +113,157 @@
   </Nuvo::Card>
 </div>
 
-<Nuvo::Modal
+<Nuvo::Drawer
   @open={{this.showModal}}
   @title={{if this.editContact "Edit Contact" "New Contact"}}
+  @placement="end"
+  @size="lg"
   @onClose={{this.closeModal}}
 >
-  <form class="flex col gap-4" {{on "submit" this.saveContact}}>
-    <div class="flex gap-4">
-      <Nuvo::Field class="grow" @label="First Name" @required={{true}}>
+  <:body>
+    <form
+      id="contact-form"
+      class="flex col gap-4"
+      {{on "submit" this.saveContact}}
+    >
+      <div class="flex gap-4">
+        <Nuvo::Field class="grow" @label="First Name" @required={{true}}>
+          <Nuvo::Input
+            id="c-fname"
+            type="text"
+            placeholder="Ahmed"
+            @value={{this.formFirstName}}
+            @onInput={{fn this.setFieldValue "formFirstName"}}
+            required={{true}}
+            data-test-input-first-name
+          />
+        </Nuvo::Field>
+        <Nuvo::Field class="grow" @label="Last Name">
+          <Nuvo::Input
+            id="c-lname"
+            type="text"
+            placeholder="Al-Rashid"
+            @value={{this.formLastName}}
+            @onInput={{fn this.setFieldValue "formLastName"}}
+            data-test-input-last-name
+          />
+        </Nuvo::Field>
+      </div>
+
+      <div class="flex gap-4">
+        <Nuvo::Field class="grow" @label="Email">
+          <Nuvo::Input
+            id="c-email"
+            type="email"
+            placeholder="ahmed@example.com"
+            @value={{this.formEmail}}
+            @onInput={{fn this.setFieldValue "formEmail"}}
+            data-test-input-email
+          />
+        </Nuvo::Field>
+        <Nuvo::Field class="grow" @label="Type">
+          <Nuvo::Dropdown
+            id="c-type"
+            @align="start"
+            @value={{this.formType}}
+            @onSelect={{fn this.setFieldValue "formType"}}
+            @options={{this.contactTypes}}
+            @placeholder="Select type..."
+            data-test-input-type
+          />
+        </Nuvo::Field>
+      </div>
+
+      <div class="flex gap-4">
+        <Nuvo::Field class="grow" @label="Phone">
+          <Nuvo::Input
+            id="c-phone"
+            type="text"
+            placeholder="+971501234567"
+            @value={{this.formPhone}}
+            @onInput={{fn this.setFieldValue "formPhone"}}
+            data-test-input-phone
+          />
+        </Nuvo::Field>
+        <Nuvo::Field class="grow" @label="WhatsApp">
+          <Nuvo::Input
+            id="c-whatsapp"
+            type="text"
+            placeholder="+971501234567"
+            @value={{this.formWhatsappNumber}}
+            @onInput={{fn this.setFieldValue "formWhatsappNumber"}}
+            data-test-input-whatsapp
+          />
+        </Nuvo::Field>
+      </div>
+
+      <div class="flex gap-4">
+        <Nuvo::Field class="grow" @label="Company">
+          <Nuvo::Input
+            id="c-company"
+            type="text"
+            placeholder="Emaar Properties"
+            @value={{this.formContactCompany}}
+            @onInput={{fn this.setFieldValue "formContactCompany"}}
+            data-test-input-company
+          />
+        </Nuvo::Field>
+        <Nuvo::Field class="grow" @label="Job Title">
+          <Nuvo::Input
+            id="c-job"
+            type="text"
+            placeholder="Property Manager"
+            @value={{this.formJobTitle}}
+            @onInput={{fn this.setFieldValue "formJobTitle"}}
+            data-test-input-job-title
+          />
+        </Nuvo::Field>
+      </div>
+
+      <Nuvo::Field @label="Address">
         <Nuvo::Input
-          id="c-fname"
+          id="c-address"
           type="text"
-          placeholder="Ahmed"
-          @value={{this.formFirstName}}
-          @onInput={{fn this.setFieldValue "formFirstName"}}
-          required={{true}}
-          data-test-input-first-name
+          placeholder="e.g. Gulberg, Lahore"
+          @value={{this.formAddress}}
+          @onInput={{fn this.setFieldValue "formAddress"}}
+          data-test-input-address
         />
       </Nuvo::Field>
-      <Nuvo::Field class="grow" @label="Last Name">
-        <Nuvo::Input
-          id="c-lname"
-          type="text"
-          placeholder="Al-Rashid"
-          @value={{this.formLastName}}
-          @onInput={{fn this.setFieldValue "formLastName"}}
-          data-test-input-last-name
-        />
-      </Nuvo::Field>
-    </div>
 
-    <div class="flex gap-4">
-      <Nuvo::Field class="grow" @label="Email">
-        <Nuvo::Input
-          id="c-email"
-          type="email"
-          placeholder="ahmed@example.com"
-          @value={{this.formEmail}}
-          @onInput={{fn this.setFieldValue "formEmail"}}
-          data-test-input-email
+      <Nuvo::Field @label="Notes">
+        <Nuvo::Textarea
+          id="c-notes"
+          placeholder="Additional notes..."
+          rows="3"
+          @value={{this.formNotes}}
+          @onInput={{fn this.setFieldValue "formNotes"}}
+          data-test-input-notes
         />
       </Nuvo::Field>
-      <Nuvo::Field class="grow" @label="Type">
-        <Nuvo::Dropdown
-          id="c-type"
-          @align="start"
-          @value={{this.formType}}
-          @onSelect={{fn this.setFieldValue "formType"}}
-          @options={{this.contactTypes}}
-          @placeholder="Select type..."
-          data-test-input-type
-        />
-      </Nuvo::Field>
-    </div>
 
-    <div class="flex gap-4">
-      <Nuvo::Field class="grow" @label="Phone">
-        <Nuvo::Input
-          id="c-phone"
-          type="text"
-          placeholder="+971501234567"
-          @value={{this.formPhone}}
-          @onInput={{fn this.setFieldValue "formPhone"}}
-          data-test-input-phone
-        />
-      </Nuvo::Field>
-      <Nuvo::Field class="grow" @label="WhatsApp">
-        <Nuvo::Input
-          id="c-whatsapp"
-          type="text"
-          placeholder="+971501234567"
-          @value={{this.formWhatsappNumber}}
-          @onInput={{fn this.setFieldValue "formWhatsappNumber"}}
-          data-test-input-whatsapp
-        />
-      </Nuvo::Field>
-    </div>
-
-    <div class="flex gap-4">
-      <Nuvo::Field class="grow" @label="Company">
-        <Nuvo::Input
-          id="c-company"
-          type="text"
-          placeholder="Emaar Properties"
-          @value={{this.formContactCompany}}
-          @onInput={{fn this.setFieldValue "formContactCompany"}}
-          data-test-input-company
-        />
-      </Nuvo::Field>
-      <Nuvo::Field class="grow" @label="Job Title">
-        <Nuvo::Input
-          id="c-job"
-          type="text"
-          placeholder="Property Manager"
-          @value={{this.formJobTitle}}
-          @onInput={{fn this.setFieldValue "formJobTitle"}}
-          data-test-input-job-title
-        />
-      </Nuvo::Field>
-    </div>
-
-    <Nuvo::Field @label="Address">
-      <Nuvo::Input
-        id="c-address"
-        type="text"
-        placeholder="e.g. Gulberg, Lahore"
-        @value={{this.formAddress}}
-        @onInput={{fn this.setFieldValue "formAddress"}}
-        data-test-input-address
-      />
-    </Nuvo::Field>
-
-    <Nuvo::Field @label="Notes">
-      <Nuvo::Textarea
-        id="c-notes"
-        placeholder="Additional notes..."
-        rows="3"
-        @value={{this.formNotes}}
-        @onInput={{fn this.setFieldValue "formNotes"}}
-        data-test-input-notes
-      />
-    </Nuvo::Field>
-
-    {{#if this.errorMsg}}
-      <p class="text-sm text-danger" data-test-error>{{this.errorMsg}}</p>
-    {{/if}}
-
-    <Nuvo::FormActions @align="end">
-      <Nuvo::Button
-        @variant="secondary"
-        @onClick={{this.closeModal}}
-      >Cancel</Nuvo::Button>
-      <Nuvo::Button
-        @variant="primary"
-        @type="submit"
-        @loading={{this.isSaving}}
-      >{{if
-          this.isSaving
-          "Saving..."
-          (if this.editContact "Update" "Create Contact")
-        }}</Nuvo::Button>
-    </Nuvo::FormActions>
-  </form>
-</Nuvo::Modal>
+      {{#if this.errorMsg}}
+        <p class="text-sm text-danger" data-test-error>{{this.errorMsg}}</p>
+      {{/if}}
+    </form>
+  </:body>
+  <:footer>
+    <Nuvo::Button
+      @variant="secondary"
+      @onClick={{this.closeModal}}
+    >Cancel</Nuvo::Button>
+    <Nuvo::Button
+      @variant="primary"
+      @type="submit"
+      form="contact-form"
+      @loading={{this.isSaving}}
+    >{{if
+        this.isSaving
+        "Saving..."
+        (if this.editContact "Update" "Create Contact")
+      }}</Nuvo::Button>
+  </:footer>
+</Nuvo::Drawer>
 
 <ConfirmModal
   @open={{this.showDeleteModal}}

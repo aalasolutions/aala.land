@@ -323,225 +323,239 @@
   {{/if}}
 </div>
 
-<Nuvo::Modal
+<Nuvo::Drawer
   @open={{this.showAssetModal}}
   @title={{if this.editAsset "Edit Asset" "New Asset"}}
+  @placement="end"
+  @size="lg"
   @onClose={{this.closeAssetModal}}
 >
-  <form class="flex col gap-4" {{on "submit" this.saveAsset}}>
-    {{#unless this.editAsset}}
-      <div class="flex col gap-2">
-        <label class="text-sm text-muted">City *</label>
-        <LocationTypeahead
-          @searchUrl={{this.citySearchUrl}}
-          @createUrl="/locations/cities"
-          @createPayload={{this.cityCreatePayload}}
-          @placeholder="Search city..."
-          @selectedName={{this.selectedCity.name}}
-          @onSelect={{this.selectCity}}
-          @onClear={{this.clearCity}}
-        />
-      </div>
-      {{#if this.selectedCity}}
+  <:body>
+    <form
+      id="asset-form"
+      class="flex col gap-4"
+      {{on "submit" this.saveAsset}}
+    >
+      {{#unless this.editAsset}}
         <div class="flex col gap-2">
-          <label class="text-sm text-muted">Location / Area *</label>
+          <label class="text-sm text-muted">City *</label>
           <LocationTypeahead
-            @searchUrl={{this.localitySearchUrl}}
-            @createUrl="/locations/localities"
-            @createPayload={{this.localityCreatePayload}}
-            @placeholder="Search location..."
-            @selectedName={{this.selectedLocality.name}}
-            @onSelect={{this.selectLocality}}
-            @onClear={{this.clearLocality}}
+            @searchUrl={{this.citySearchUrl}}
+            @createUrl="/locations/cities"
+            @createPayload={{this.cityCreatePayload}}
+            @placeholder="Search city..."
+            @selectedName={{this.selectedCity.name}}
+            @onSelect={{this.selectCity}}
+            @onClear={{this.clearCity}}
           />
         </div>
+        {{#if this.selectedCity}}
+          <div class="flex col gap-2">
+            <label class="text-sm text-muted">Location / Area *</label>
+            <LocationTypeahead
+              @searchUrl={{this.localitySearchUrl}}
+              @createUrl="/locations/localities"
+              @createPayload={{this.localityCreatePayload}}
+              @placeholder="Search location..."
+              @selectedName={{this.selectedLocality.name}}
+              @onSelect={{this.selectLocality}}
+              @onClear={{this.clearLocality}}
+            />
+          </div>
+        {{/if}}
+      {{/unless}}
+      <Nuvo::Field @label="Asset Name" @required={{true}}>
+        <Nuvo::Input
+          id="b-name"
+          @type="text"
+          @placeholder="e.g. Tower A"
+          @value={{this.formAssetName}}
+          @onInput={{fn this.setFieldValue "formAssetName"}}
+          required={{true}}
+        />
+      </Nuvo::Field>
+      <Nuvo::Field @label="Address">
+        <Nuvo::Input
+          id="b-address"
+          @type="text"
+          @placeholder="e.g. 123 Sheikh Zayed Road"
+          @value={{this.formAssetAddress}}
+          @onInput={{fn this.setFieldValue "formAssetAddress"}}
+        />
+      </Nuvo::Field>
+      {{#if this.assetError}}
+        <p class="text-sm text-danger">{{this.assetError}}</p>
       {{/if}}
-    {{/unless}}
-    <Nuvo::Field @label="Asset Name" @required={{true}}>
-      <Nuvo::Input
-        id="b-name"
-        @type="text"
-        @placeholder="e.g. Tower A"
-        @value={{this.formAssetName}}
-        @onInput={{fn this.setFieldValue "formAssetName"}}
-        required={{true}}
-      />
-    </Nuvo::Field>
-    <Nuvo::Field @label="Address">
-      <Nuvo::Input
-        id="b-address"
-        @type="text"
-        @placeholder="e.g. 123 Sheikh Zayed Road"
-        @value={{this.formAssetAddress}}
-        @onInput={{fn this.setFieldValue "formAssetAddress"}}
-      />
-    </Nuvo::Field>
-    {{#if this.assetError}}
-      <p class="text-sm text-danger">{{this.assetError}}</p>
-    {{/if}}
-    <div class="flex gap-3 mt-2">
-      <Nuvo::Button
-        @variant="secondary"
-        {{on "click" this.closeAssetModal}}
-      >Cancel</Nuvo::Button>
-      <Nuvo::Button
-        @type="submit"
-        @variant="primary"
-        @disabled={{this.isSavingAsset}}
-        @loading={{this.isSavingAsset}}
-      >
-        {{if
-          this.isSavingAsset
-          "Saving..."
-          (if this.editAsset "Update" "Create Asset")
-        }}
-      </Nuvo::Button>
-    </div>
-  </form>
-</Nuvo::Modal>
+    </form>
+  </:body>
+  <:footer>
+    <Nuvo::Button
+      @variant="secondary"
+      {{on "click" this.closeAssetModal}}
+    >Cancel</Nuvo::Button>
+    <Nuvo::Button
+      @type="submit"
+      form="asset-form"
+      @variant="primary"
+      @disabled={{this.isSavingAsset}}
+      @loading={{this.isSavingAsset}}
+    >
+      {{if
+        this.isSavingAsset
+        "Saving..."
+        (if this.editAsset "Update" "Create Asset")
+      }}
+    </Nuvo::Button>
+  </:footer>
+</Nuvo::Drawer>
 
-<Nuvo::Modal
+<Nuvo::Drawer
   @open={{this.showUnitModal}}
   @title={{if this.editUnit "Edit Property" "New Property"}}
+  @placement="end"
+  @size="lg"
   @onClose={{this.closeUnitModal}}
 >
-  <form class="flex col gap-4" {{on "submit" this.saveUnit}}>
-    <div class="flex gap-4">
-      <div class="flex col gap-2 grow">
-        <Nuvo::Field @label="Property Number" @required={{true}}>
-          <Nuvo::Input
-            id="u-number"
-            @type="text"
-            @placeholder="e.g. 101"
-            @value={{this.formUnitNumber}}
-            @onInput={{fn this.setFieldValue "formUnitNumber"}}
-            required={{true}}
-          />
-        </Nuvo::Field>
+  <:body>
+    <form id="unit-form" class="flex col gap-4" {{on "submit" this.saveUnit}}>
+      <div class="flex gap-4">
+        <div class="flex col gap-2 grow">
+          <Nuvo::Field @label="Property Number" @required={{true}}>
+            <Nuvo::Input
+              id="u-number"
+              @type="text"
+              @placeholder="e.g. 101"
+              @value={{this.formUnitNumber}}
+              @onInput={{fn this.setFieldValue "formUnitNumber"}}
+              required={{true}}
+            />
+          </Nuvo::Field>
+        </div>
+        <div class="flex col gap-2 grow">
+          <Nuvo::Field @label="Status">
+            <Nuvo::Dropdown
+              id="u-status"
+              @align="start"
+              @value={{this.formUnitStatus}}
+              @onSelect={{fn this.setFieldValue "formUnitStatus"}}
+              @options={{this.statusOptions}}
+              @placeholder="Select status..."
+            />
+          </Nuvo::Field>
+        </div>
       </div>
-      <div class="flex col gap-2 grow">
-        <Nuvo::Field @label="Status">
-          <Nuvo::Dropdown
-            id="u-status"
-            @align="start"
-            @value={{this.formUnitStatus}}
-            @onSelect={{fn this.setFieldValue "formUnitStatus"}}
-            @options={{this.statusOptions}}
-            @placeholder="Select status..."
-          />
-        </Nuvo::Field>
+      <Nuvo::Field @label="Property Type">
+        <Nuvo::Dropdown
+          id="u-property-type"
+          @align="start"
+          @value={{this.formUnitPropertyType}}
+          @onSelect={{fn this.setFieldValue "formUnitPropertyType"}}
+          @options={{this.propertyTypeOptions}}
+          @placeholder="Select type..."
+        />
+      </Nuvo::Field>
+      <div class="flex gap-4">
+        <div class="flex col gap-2 grow">
+          <Nuvo::Field @label="Price">
+            <Nuvo::Input
+              id="u-price"
+              @type="number"
+              @placeholder="e.g. 150000"
+              @value={{this.formUnitPrice}}
+              @onInput={{fn this.setFieldValue "formUnitPrice"}}
+              min="0"
+            />
+          </Nuvo::Field>
+        </div>
+        <div class="flex col gap-2 grow">
+          <Nuvo::Field @label="Sq Ft">
+            <Nuvo::Input
+              id="u-sqft"
+              @type="number"
+              @placeholder="e.g. 850"
+              @value={{this.formUnitSqFt}}
+              @onInput={{fn this.setFieldValue "formUnitSqFt"}}
+              min="0"
+            />
+          </Nuvo::Field>
+        </div>
       </div>
-    </div>
-    <Nuvo::Field @label="Property Type">
-      <Nuvo::Dropdown
-        id="u-property-type"
-        @align="start"
-        @value={{this.formUnitPropertyType}}
-        @onSelect={{fn this.setFieldValue "formUnitPropertyType"}}
-        @options={{this.propertyTypeOptions}}
-        @placeholder="Select type..."
-      />
-    </Nuvo::Field>
-    <div class="flex gap-4">
-      <div class="flex col gap-2 grow">
-        <Nuvo::Field @label="Price">
-          <Nuvo::Input
-            id="u-price"
-            @type="number"
-            @placeholder="e.g. 150000"
-            @value={{this.formUnitPrice}}
-            @onInput={{fn this.setFieldValue "formUnitPrice"}}
-            min="0"
-          />
-        </Nuvo::Field>
+      <div class="flex gap-4">
+        <div class="flex col gap-2 grow">
+          <Nuvo::Field @label="Bedrooms">
+            <Nuvo::Input
+              id="u-beds"
+              @type="number"
+              @placeholder="e.g. 2"
+              @value={{this.formUnitBedrooms}}
+              @onInput={{fn this.setFieldValue "formUnitBedrooms"}}
+              min="0"
+            />
+          </Nuvo::Field>
+        </div>
+        <div class="flex col gap-2 grow">
+          <Nuvo::Field @label="Bathrooms">
+            <Nuvo::Input
+              id="u-baths"
+              @type="number"
+              @placeholder="e.g. 2"
+              @value={{this.formUnitBathrooms}}
+              @onInput={{fn this.setFieldValue "formUnitBathrooms"}}
+              min="0"
+            />
+          </Nuvo::Field>
+        </div>
       </div>
-      <div class="flex col gap-2 grow">
-        <Nuvo::Field @label="Sq Ft">
-          <Nuvo::Input
-            id="u-sqft"
-            @type="number"
-            @placeholder="e.g. 850"
-            @value={{this.formUnitSqFt}}
-            @onInput={{fn this.setFieldValue "formUnitSqFt"}}
-            min="0"
-          />
-        </Nuvo::Field>
+      <Nuvo::Field @label="Owner">
+        <Nuvo::Dropdown
+          id="u-owner"
+          @align="start"
+          @value={{this.formUnitOwnerId}}
+          @onSelect={{fn this.setFieldValue "formUnitOwnerId"}}
+          @options={{this.ownerOptions}}
+        />
+      </Nuvo::Field>
+      <div class="flex col gap-2">
+        <label class="text-sm text-muted">Amenities</label>
+        <div class="flex wrap gap-2">
+          {{#each this.amenityOptions as |opt|}}
+            <button
+              type="button"
+              class="nu-tag m-pill m-selectable
+                {{if
+                  (includes this.formUnitAmenities opt.key)
+                  'is-selected'
+                }}"
+              {{on "click" (fn this.toggleAmenity opt.key)}}
+            >
+              <Ui::Ph @icon={{opt.icon}} />
+              {{opt.label}}
+            </button>
+          {{/each}}
+        </div>
       </div>
-    </div>
-    <div class="flex gap-4">
-      <div class="flex col gap-2 grow">
-        <Nuvo::Field @label="Bedrooms">
-          <Nuvo::Input
-            id="u-beds"
-            @type="number"
-            @placeholder="e.g. 2"
-            @value={{this.formUnitBedrooms}}
-            @onInput={{fn this.setFieldValue "formUnitBedrooms"}}
-            min="0"
-          />
-        </Nuvo::Field>
-      </div>
-      <div class="flex col gap-2 grow">
-        <Nuvo::Field @label="Bathrooms">
-          <Nuvo::Input
-            id="u-baths"
-            @type="number"
-            @placeholder="e.g. 2"
-            @value={{this.formUnitBathrooms}}
-            @onInput={{fn this.setFieldValue "formUnitBathrooms"}}
-            min="0"
-          />
-        </Nuvo::Field>
-      </div>
-    </div>
-    <Nuvo::Field @label="Owner">
-      <Nuvo::Dropdown
-        id="u-owner"
-        @align="start"
-        @value={{this.formUnitOwnerId}}
-        @onSelect={{fn this.setFieldValue "formUnitOwnerId"}}
-        @options={{this.ownerOptions}}
-      />
-    </Nuvo::Field>
-    <div class="flex col gap-2">
-      <label class="text-sm text-muted">Amenities</label>
-      <div class="flex wrap gap-2">
-        {{#each this.amenityOptions as |opt|}}
-          <button
-            type="button"
-            class="nu-tag m-pill m-selectable
-              {{if
-                (includes this.formUnitAmenities opt.key)
-                'is-selected'
-              }}"
-            {{on "click" (fn this.toggleAmenity opt.key)}}
-          >
-            <Ui::Ph @icon={{opt.icon}} />
-            {{opt.label}}
-          </button>
-        {{/each}}
-      </div>
-    </div>
-    {{#if this.unitError}}
-      <p class="text-sm text-danger">{{this.unitError}}</p>
-    {{/if}}
-    <div class="flex gap-3 mt-2">
-      <Nuvo::Button
-        @variant="secondary"
-        {{on "click" this.closeUnitModal}}
-      >Cancel</Nuvo::Button>
-      <Nuvo::Button
-        @type="submit"
-        @variant="primary"
-        @disabled={{this.isSavingUnit}}
-        @loading={{this.isSavingUnit}}
-      >
-        {{if
-          this.isSavingUnit
-          "Saving..."
-          (if this.editUnit "Update" "Create Property")
-        }}
-      </Nuvo::Button>
-    </div>
-  </form>
-</Nuvo::Modal>
+      {{#if this.unitError}}
+        <p class="text-sm text-danger">{{this.unitError}}</p>
+      {{/if}}
+    </form>
+  </:body>
+  <:footer>
+    <Nuvo::Button
+      @variant="secondary"
+      {{on "click" this.closeUnitModal}}
+    >Cancel</Nuvo::Button>
+    <Nuvo::Button
+      @type="submit"
+      form="unit-form"
+      @variant="primary"
+      @disabled={{this.isSavingUnit}}
+      @loading={{this.isSavingUnit}}
+    >
+      {{if
+        this.isSavingUnit
+        "Saving..."
+        (if this.editUnit "Update" "Create Property")
+      }}
+    </Nuvo::Button>
+  </:footer>
+</Nuvo::Drawer>

@@ -66,99 +66,103 @@
   </div>
 </div>
 
-<Nuvo::Modal
+<Nuvo::Drawer
   @open={{this.showModal}}
   @title={{if this.editOwner "Edit Owner" "Add Owner"}}
+  @placement="end"
+  @size="lg"
   @onClose={{this.closeModal}}
-  @showClose={{true}}
 >
-  {{#if this.errorMsg}}
-    <p class="error-message" data-test-error>{{this.errorMsg}}</p>
-  {{/if}}
-  <form {{on "submit" this.saveOwner}}>
-    <Nuvo::Field @label="Name" @required={{true}}>
-      <Nuvo::Input
-        id="o-name"
-        @type="text"
-        @value={{this.formName}}
-        @onInput={{fn this.setFieldValue "formName"}}
-        required
-        data-test-input-name
-      />
-    </Nuvo::Field>
-    <Nuvo::Field @label="Email">
-      <Nuvo::Input
-        id="o-email"
-        @type="email"
-        @value={{this.formEmail}}
-        @onInput={{fn this.setFieldValue "formEmail"}}
-        data-test-input-email
-      />
-    </Nuvo::Field>
-    <Nuvo::Field @label="Phone">
-      <Nuvo::Input
-        id="o-phone"
-        @type="tel"
-        @value={{this.formPhone}}
-        @onInput={{fn this.setFieldValue "formPhone"}}
-        data-test-input-phone
-      />
-    </Nuvo::Field>
-    <Nuvo::Field @label="Nationality ID">
-      <Nuvo::Input
-        id="o-nid"
-        @type="text"
-        @value={{this.formNationalityId}}
-        @onInput={{fn this.setFieldValue "formNationalityId"}}
-        data-test-input-nationality-id
-      />
-    </Nuvo::Field>
-    <Nuvo::Field @label="Address">
-      <Nuvo::Textarea
-        id="o-address"
-        @rows={{3}}
-        @value={{this.formAddress}}
-        @onInput={{fn this.setFieldValue "formAddress"}}
-        data-test-input-address
-      />
-    </Nuvo::Field>
-    <Nuvo::Field @label="Assigned Agent">
-      <Nuvo::Dropdown
-        id="owner-agent-id"
-        @align="start"
-        @value={{this.formAssignedAgentId}}
-        @onSelect={{fn this.setFieldValue "formAssignedAgentId"}}
-        @options={{this.agentOptions}}
-        @placeholder="Unassigned"
-        data-test-input-agent
-      />
-    </Nuvo::Field>
-    <Nuvo::Field @label="Notes">
-      <Nuvo::Textarea
-        id="o-notes"
-        @rows={{3}}
-        @value={{this.formNotes}}
-        @onInput={{fn this.setFieldValue "formNotes"}}
-        data-test-input-notes
-      />
-    </Nuvo::Field>
-    <Nuvo::FormActions @align="end">
-      <Nuvo::Button
-        @variant="secondary"
-        @text="Cancel"
-        {{on "click" this.closeModal}}
-      />
-      <Nuvo::Button
-        @variant="primary"
-        @type="submit"
-        @text={{if this.editOwner "Update" "Create"}}
-        @loading={{this.isSaving}}
-        @loadingText="Saving..."
-        data-test-save-owner
-      />
-    </Nuvo::FormActions>
-  </form>
-</Nuvo::Modal>
+  <:body>
+    {{#if this.errorMsg}}
+      <p class="error-message" data-test-error>{{this.errorMsg}}</p>
+    {{/if}}
+    <form id="owner-form" {{on "submit" this.saveOwner}}>
+      <Nuvo::Field @label="Name" @required={{true}}>
+        <Nuvo::Input
+          id="o-name"
+          @type="text"
+          @value={{this.formName}}
+          @onInput={{fn this.setFieldValue "formName"}}
+          required
+          data-test-input-name
+        />
+      </Nuvo::Field>
+      <Nuvo::Field @label="Email">
+        <Nuvo::Input
+          id="o-email"
+          @type="email"
+          @value={{this.formEmail}}
+          @onInput={{fn this.setFieldValue "formEmail"}}
+          data-test-input-email
+        />
+      </Nuvo::Field>
+      <Nuvo::Field @label="Phone">
+        <Nuvo::Input
+          id="o-phone"
+          @type="tel"
+          @value={{this.formPhone}}
+          @onInput={{fn this.setFieldValue "formPhone"}}
+          data-test-input-phone
+        />
+      </Nuvo::Field>
+      <Nuvo::Field @label="Nationality ID">
+        <Nuvo::Input
+          id="o-nid"
+          @type="text"
+          @value={{this.formNationalityId}}
+          @onInput={{fn this.setFieldValue "formNationalityId"}}
+          data-test-input-nationality-id
+        />
+      </Nuvo::Field>
+      <Nuvo::Field @label="Address">
+        <Nuvo::Textarea
+          id="o-address"
+          @rows={{3}}
+          @value={{this.formAddress}}
+          @onInput={{fn this.setFieldValue "formAddress"}}
+          data-test-input-address
+        />
+      </Nuvo::Field>
+      <Nuvo::Field @label="Assigned Agent">
+        <Nuvo::Dropdown
+          id="owner-agent-id"
+          @align="start"
+          @value={{this.formAssignedAgentId}}
+          @onSelect={{fn this.setFieldValue "formAssignedAgentId"}}
+          @options={{this.agentOptions}}
+          @placeholder="Unassigned"
+          data-test-input-agent
+        />
+      </Nuvo::Field>
+      <Nuvo::Field @label="Notes">
+        <Nuvo::Textarea
+          id="o-notes"
+          @rows={{3}}
+          @value={{this.formNotes}}
+          @onInput={{fn this.setFieldValue "formNotes"}}
+          data-test-input-notes
+        />
+      </Nuvo::Field>
+    </form>
+  </:body>
+  <:footer>
+    <Nuvo::Button
+      @variant="secondary"
+      @text="Cancel"
+      {{on "click" this.closeModal}}
+    />
+    <Nuvo::Button
+      @variant="primary"
+      @type="submit"
+      form="owner-form"
+      @text={{if this.editOwner "Update" "Create"}}
+      @loading={{this.isSaving}}
+      @loadingText="Saving..."
+      data-test-save-owner
+    />
+  </:footer>
+</Nuvo::Drawer>
 
 <ConfirmModal
   @open={{this.showDeleteModal}}

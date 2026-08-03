@@ -217,112 +217,121 @@
   {{/if}}
 </div>
 
-<Nuvo::Modal
+<Nuvo::Drawer
   @open={{this.showModal}}
   @title={{if this.editCheque "Edit Cheque" "New Cheque"}}
+  @placement="end"
+  @size="lg"
   @onClose={{this.closeModal}}
 >
-  <form class="flex col gap-4" {{on "submit" this.saveCheque}}>
-    <div class="flex gap-4">
-      <Nuvo::Field @label="Cheque Number" @required={{true}} class="grow">
+  <:body>
+    <form
+      id="cheque-form"
+      class="flex col gap-4"
+      {{on "submit" this.saveCheque}}
+    >
+      <div class="flex gap-4">
+        <Nuvo::Field @label="Cheque Number" @required={{true}} class="grow">
+          <Nuvo::Input
+            id="chq-number"
+            type="text"
+            placeholder="e.g. 000123"
+            @value={{this.formChequeNumber}}
+            @onInput={{fn this.setFieldValue "formChequeNumber"}}
+            required={{true}}
+            data-test-input-cheque-number
+          />
+        </Nuvo::Field>
+        <Nuvo::Field @label="Type" class="grow">
+          <Nuvo::Dropdown
+            id="chq-type"
+            @align="start"
+            @value={{this.formType}}
+            @onSelect={{fn this.setFieldValue "formType"}}
+            @options={{this.chequeTypeOptions}}
+            @placeholder="Select type..."
+            data-test-input-type
+          />
+        </Nuvo::Field>
+      </div>
+      <Nuvo::Field @label="Bank Name" @required={{true}}>
         <Nuvo::Input
-          id="chq-number"
+          id="chq-bank"
           type="text"
-          placeholder="e.g. 000123"
-          @value={{this.formChequeNumber}}
-          @onInput={{fn this.setFieldValue "formChequeNumber"}}
+          placeholder="e.g. Emirates NBD"
+          @value={{this.formBankName}}
+          @onInput={{fn this.setFieldValue "formBankName"}}
           required={{true}}
-          data-test-input-cheque-number
+          data-test-input-bank
         />
       </Nuvo::Field>
-      <Nuvo::Field @label="Type" class="grow">
-        <Nuvo::Dropdown
-          id="chq-type"
-          @align="start"
-          @value={{this.formType}}
-          @onSelect={{fn this.setFieldValue "formType"}}
-          @options={{this.chequeTypeOptions}}
-          @placeholder="Select type..."
-          data-test-input-type
-        />
-      </Nuvo::Field>
-    </div>
-    <Nuvo::Field @label="Bank Name" @required={{true}}>
-      <Nuvo::Input
-        id="chq-bank"
-        type="text"
-        placeholder="e.g. Emirates NBD"
-        @value={{this.formBankName}}
-        @onInput={{fn this.setFieldValue "formBankName"}}
-        required={{true}}
-        data-test-input-bank
-      />
-    </Nuvo::Field>
-    <Nuvo::Field @label="Account Holder" @required={{true}}>
-      <Nuvo::Input
-        id="chq-holder"
-        type="text"
-        placeholder="e.g. Ahmed Al Mansouri"
-        @value={{this.formAccountHolder}}
-        @onInput={{fn this.setFieldValue "formAccountHolder"}}
-        required={{true}}
-        data-test-input-holder
-      />
-    </Nuvo::Field>
-    <Nuvo::Field @label="Property">
-      <Nuvo::Dropdown
-        id="chq-unit"
-        @align="start"
-        @value={{this.formUnitId}}
-        @onSelect={{fn this.setFieldValue "formUnitId"}}
-        @options={{this.unitOptions}}
-        @placeholder="No property linked"
-        data-test-input-unit
-      />
-    </Nuvo::Field>
-    <div class="flex gap-4">
-      <Nuvo::Field @label="Amount" @required={{true}} class="grow">
+      <Nuvo::Field @label="Account Holder" @required={{true}}>
         <Nuvo::Input
-          id="chq-amount"
-          type="number"
-          min="0"
-          step="0.01"
-          placeholder="e.g. 8500"
-          @value={{this.formAmount}}
-          @onInput={{fn this.setFieldValue "formAmount"}}
+          id="chq-holder"
+          type="text"
+          placeholder="e.g. Ahmed Al Mansouri"
+          @value={{this.formAccountHolder}}
+          @onInput={{fn this.setFieldValue "formAccountHolder"}}
           required={{true}}
-          data-test-input-amount
+          data-test-input-holder
         />
       </Nuvo::Field>
-      <Nuvo::Field @label="Due Date" @required={{true}} class="grow">
-        <input
-          id="chq-due"
-          type="date"
-          class="nu-input"
-          value={{this.formDueDate}}
-          required
-          data-test-input-due-date
-          {{on "input" (fn this.setField "formDueDate")}}
+      <Nuvo::Field @label="Property">
+        <Nuvo::Dropdown
+          id="chq-unit"
+          @align="start"
+          @value={{this.formUnitId}}
+          @onSelect={{fn this.setFieldValue "formUnitId"}}
+          @options={{this.unitOptions}}
+          @placeholder="No property linked"
+          data-test-input-unit
         />
       </Nuvo::Field>
-    </div>
-    {{#if this.errorMsg}}
-      <p class="text-sm text-danger" data-test-error>{{this.errorMsg}}</p>
-    {{/if}}
-    <Nuvo::FormActions @align="end">
-      <Nuvo::Button
-        @variant="secondary"
-        @onClick={{this.closeModal}}
-      >Cancel</Nuvo::Button>
-      <Nuvo::Button
-        @variant="primary"
-        @type="submit"
-        @loading={{this.isSaving}}
-        data-test-save-cheque
-      >{{if this.editCheque "Update" "Create Cheque"}}</Nuvo::Button>
-    </Nuvo::FormActions>
-  </form>
-</Nuvo::Modal>
+      <div class="flex gap-4">
+        <Nuvo::Field @label="Amount" @required={{true}} class="grow">
+          <Nuvo::Input
+            id="chq-amount"
+            type="number"
+            min="0"
+            step="0.01"
+            placeholder="e.g. 8500"
+            @value={{this.formAmount}}
+            @onInput={{fn this.setFieldValue "formAmount"}}
+            required={{true}}
+            data-test-input-amount
+          />
+        </Nuvo::Field>
+        <Nuvo::Field @label="Due Date" @required={{true}} class="grow">
+          <input
+            id="chq-due"
+            type="date"
+            class="nu-input"
+            value={{this.formDueDate}}
+            required
+            data-test-input-due-date
+            {{on "input" (fn this.setField "formDueDate")}}
+          />
+        </Nuvo::Field>
+      </div>
+      {{#if this.errorMsg}}
+        <p class="text-sm text-danger" data-test-error>{{this.errorMsg}}</p>
+      {{/if}}
+    </form>
+  </:body>
+  <:footer>
+    <Nuvo::Button
+      @variant="secondary"
+      @onClick={{this.closeModal}}
+    >Cancel</Nuvo::Button>
+    <Nuvo::Button
+      @variant="primary"
+      @type="submit"
+      form="cheque-form"
+      @loading={{this.isSaving}}
+      data-test-save-cheque
+    >{{if this.editCheque "Update" "Create Cheque"}}</Nuvo::Button>
+  </:footer>
+</Nuvo::Drawer>
 
 <Nuvo::Modal
   @open={{this.showBounceModal}}

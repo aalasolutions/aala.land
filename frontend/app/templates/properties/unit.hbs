@@ -370,168 +370,172 @@
 </div>
 
 {{! Edit Modal }}
-<Nuvo::Modal
+<Nuvo::Drawer
   @open={{this.showEditModal}}
   @title="Edit Property"
+  @placement="end"
+  @size="lg"
   @onClose={{this.closeEdit}}
 >
-  <form class="flex col gap-4" {{on "submit" this.save}}>
-    <div class="flex gap-4">
-      <Nuvo::Field @label="Property Number" @required={{true}} class="grow">
-        <Nuvo::Input
-          type="text"
-          placeholder="e.g. 101"
-          @value={{this.formUnitNumber}}
-          @onInput={{fn this.setFieldValue "formUnitNumber"}}
-          data-test-field-unit-number
-        />
-      </Nuvo::Field>
-      <Nuvo::Field @label="Status" class="grow">
+  <:body>
+    <form id="unit-edit-form" class="flex col gap-4" {{on "submit" this.save}}>
+      <div class="flex gap-4">
+        <Nuvo::Field @label="Property Number" @required={{true}} class="grow">
+          <Nuvo::Input
+            type="text"
+            placeholder="e.g. 101"
+            @value={{this.formUnitNumber}}
+            @onInput={{fn this.setFieldValue "formUnitNumber"}}
+            data-test-field-unit-number
+          />
+        </Nuvo::Field>
+        <Nuvo::Field @label="Status" class="grow">
+          <Nuvo::Dropdown
+            @searchable={{true}}
+            @align="start"
+            @value={{this.formStatus}}
+            @onSelect={{fn this.setFieldValue "formStatus"}}
+            @options={{this.statusOptions}}
+            @placeholder="Select status..."
+            data-test-field-status
+          />
+        </Nuvo::Field>
+      </div>
+
+      <Nuvo::Field @label="Listing Type">
         <Nuvo::Dropdown
           @searchable={{true}}
           @align="start"
-          @value={{this.formStatus}}
-          @onSelect={{fn this.setFieldValue "formStatus"}}
-          @options={{this.statusOptions}}
-          @placeholder="Select status..."
-          data-test-field-status
+          @value={{this.formPropertyType}}
+          @onSelect={{fn this.setFieldValue "formPropertyType"}}
+          @options={{this.propertyTypeOptions}}
+          @placeholder="Not Listed"
+          data-test-field-property-type
         />
       </Nuvo::Field>
-    </div>
 
-    <Nuvo::Field @label="Listing Type">
-      <Nuvo::Dropdown
-        @searchable={{true}}
-        @align="start"
-        @value={{this.formPropertyType}}
-        @onSelect={{fn this.setFieldValue "formPropertyType"}}
-        @options={{this.propertyTypeOptions}}
-        @placeholder="Not Listed"
-        data-test-field-property-type
-      />
-    </Nuvo::Field>
-
-    <div class="flex gap-4">
-      <Nuvo::Field @label="Price" class="grow">
-        <Nuvo::Input
-          type="number"
-          min="0"
-          placeholder="e.g. 150000"
-          @value={{this.formPrice}}
-          @onInput={{fn this.setFieldValue "formPrice"}}
-          data-test-field-price
-        />
-      </Nuvo::Field>
-      <Nuvo::Field @label="Sq Ft" class="grow">
-        <Nuvo::Input
-          type="number"
-          min="0"
-          placeholder="e.g. 850"
-          @value={{this.formSqFt}}
-          @onInput={{fn this.setFieldValue "formSqFt"}}
-          data-test-field-sqft
-        />
-      </Nuvo::Field>
-    </div>
-
-    <div class="flex gap-4">
-      <Nuvo::Field @label="Bedrooms" class="grow">
-        <Nuvo::Input
-          type="number"
-          min="0"
-          placeholder="e.g. 2"
-          @value={{this.formBedrooms}}
-          @onInput={{fn this.setFieldValue "formBedrooms"}}
-          data-test-field-bedrooms
-        />
-      </Nuvo::Field>
-      <Nuvo::Field @label="Bathrooms" class="grow">
-        <Nuvo::Input
-          type="number"
-          min="0"
-          placeholder="e.g. 2"
-          @value={{this.formBathrooms}}
-          @onInput={{fn this.setFieldValue "formBathrooms"}}
-          data-test-field-bathrooms
-        />
-      </Nuvo::Field>
-    </div>
-
-    <Nuvo::Field @label="Floor">
-      <Nuvo::Input
-        type="number"
-        min="0"
-        placeholder="e.g. 5"
-        @value={{this.formFloor}}
-        @onInput={{fn this.setFieldValue "formFloor"}}
-        data-test-field-floor
-      />
-    </Nuvo::Field>
-
-    <Nuvo::Field @label="Description">
-      <Nuvo::Textarea
-        rows="3"
-        placeholder="Property description..."
-        @value={{this.formDescription}}
-        @onInput={{fn this.setFieldValue "formDescription"}}
-        data-test-field-description
-      />
-    </Nuvo::Field>
-
-    <Nuvo::Field @label="Owner">
-      <Nuvo::Dropdown
-        @searchable={{true}}
-        @align="start"
-        @value={{this.formOwnerId}}
-        @onSelect={{fn this.setFieldValue "formOwnerId"}}
-        @options={{this.ownerOptions}}
-        @placeholder="Unassigned"
-        data-test-field-owner
-      />
-    </Nuvo::Field>
-
-    <div class="flex col gap-2">
-      <label class="text-sm text-muted">Amenities</label>
-      <div class="flex gap-2 wrap" data-test-amenities-picker>
-        {{#each this.amenityOptions as |opt|}}
-          <button
-            type="button"
-            class="nu-tag m-pill m-selectable
-              {{if
-                (includes this.formAmenities opt.key)
-                'is-selected'
-              }}"
-            data-test-amenity={{opt.key}}
-            {{on "click" (fn this.toggleAmenity opt.key)}}
-          >
-            <Ui::Ph @icon={{opt.icon}} />
-            {{opt.label}}
-          </button>
-        {{/each}}
+      <div class="flex gap-4">
+        <Nuvo::Field @label="Price" class="grow">
+          <Nuvo::Input
+            type="number"
+            min="0"
+            placeholder="e.g. 150000"
+            @value={{this.formPrice}}
+            @onInput={{fn this.setFieldValue "formPrice"}}
+            data-test-field-price
+          />
+        </Nuvo::Field>
+        <Nuvo::Field @label="Sq Ft" class="grow">
+          <Nuvo::Input
+            type="number"
+            min="0"
+            placeholder="e.g. 850"
+            @value={{this.formSqFt}}
+            @onInput={{fn this.setFieldValue "formSqFt"}}
+            data-test-field-sqft
+          />
+        </Nuvo::Field>
       </div>
-    </div>
 
-    {{#if this.errorMsg}}
-      <p class="text-sm text-danger" data-test-error>{{this.errorMsg}}</p>
-    {{/if}}
+      <div class="flex gap-4">
+        <Nuvo::Field @label="Bedrooms" class="grow">
+          <Nuvo::Input
+            type="number"
+            min="0"
+            placeholder="e.g. 2"
+            @value={{this.formBedrooms}}
+            @onInput={{fn this.setFieldValue "formBedrooms"}}
+            data-test-field-bedrooms
+          />
+        </Nuvo::Field>
+        <Nuvo::Field @label="Bathrooms" class="grow">
+          <Nuvo::Input
+            type="number"
+            min="0"
+            placeholder="e.g. 2"
+            @value={{this.formBathrooms}}
+            @onInput={{fn this.setFieldValue "formBathrooms"}}
+            data-test-field-bathrooms
+          />
+        </Nuvo::Field>
+      </div>
 
-    <Nuvo::FormActions>
-      <Nuvo::Button
-        @variant="secondary"
-        data-test-cancel-btn
-        {{on "click" this.closeEdit}}
-      >Cancel</Nuvo::Button>
-      <Nuvo::Button
-        @variant="primary"
-        type="submit"
-        @loading={{this.isSaving}}
-        data-test-save-btn
-      >
-        {{if this.isSaving "Saving..." "Update Property"}}
-      </Nuvo::Button>
-    </Nuvo::FormActions>
-  </form>
-</Nuvo::Modal>
+      <Nuvo::Field @label="Floor">
+        <Nuvo::Input
+          type="number"
+          min="0"
+          placeholder="e.g. 5"
+          @value={{this.formFloor}}
+          @onInput={{fn this.setFieldValue "formFloor"}}
+          data-test-field-floor
+        />
+      </Nuvo::Field>
+
+      <Nuvo::Field @label="Description">
+        <Nuvo::Textarea
+          rows="3"
+          placeholder="Property description..."
+          @value={{this.formDescription}}
+          @onInput={{fn this.setFieldValue "formDescription"}}
+          data-test-field-description
+        />
+      </Nuvo::Field>
+
+      <Nuvo::Field @label="Owner">
+        <Nuvo::Dropdown
+          @searchable={{true}}
+          @align="start"
+          @value={{this.formOwnerId}}
+          @onSelect={{fn this.setFieldValue "formOwnerId"}}
+          @options={{this.ownerOptions}}
+          @placeholder="Unassigned"
+          data-test-field-owner
+        />
+      </Nuvo::Field>
+
+      <div class="flex col gap-2">
+        <label class="text-sm text-muted">Amenities</label>
+        <div class="flex gap-2 wrap" data-test-amenities-picker>
+          {{#each this.amenityOptions as |opt|}}
+            <button
+              type="button"
+              class="nu-tag m-pill m-selectable
+                {{if
+                  (includes this.formAmenities opt.key)
+                  'is-selected'
+                }}"
+              data-test-amenity={{opt.key}}
+              {{on "click" (fn this.toggleAmenity opt.key)}}
+            >
+              <Ui::Ph @icon={{opt.icon}} />
+              {{opt.label}}
+            </button>
+          {{/each}}
+        </div>
+      </div>
+
+      {{#if this.errorMsg}}
+        <p class="text-sm text-danger" data-test-error>{{this.errorMsg}}</p>
+      {{/if}}
+    </form>
+  </:body>
+  <:footer>
+    <Nuvo::Button
+      @variant="secondary"
+      data-test-cancel-btn
+      {{on "click" this.closeEdit}}
+    >Cancel</Nuvo::Button>
+    <Nuvo::Button
+      @variant="primary"
+      type="submit"
+      form="unit-edit-form"
+      @loading={{this.isSaving}}
+      data-test-save-btn
+    >
+      {{if this.isSaving "Saving..." "Update Property"}}
+    </Nuvo::Button>
+  </:footer>
+</Nuvo::Drawer>
 
 <ConfirmModal
   @open={{this.showDeleteModal}}
@@ -547,102 +551,110 @@
 />
 
 {{! Upload/Edit Document Modal }}
-<Nuvo::Modal
+<Nuvo::Drawer
   @open={{this.showDocumentModal}}
   @title={{if this.editDocument "Update Document" "Upload Document"}}
+  @placement="end"
+  @size="lg"
   @onClose={{this.closeDocumentModal}}
 >
-  <form class="flex col gap-4" {{on "submit" this.saveDocument}}>
-    <Nuvo::Field @label="File {{unless this.editDocument '*'}}">
-      <input
-        id="ud-file"
-        type="file"
-        class="nu-input"
-        data-test-document-file-input
-        accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.rtf,.txt,.md,.csv,.jpg,.jpeg,.png,.webp,.gif"
-        {{on "change" this.onDocFileSelect}}
-      />
-      {{#if this.selectedDocFile}}
-        <p class="text-xs text-muted" data-test-selected-document-file>
-          Selected:
-          {{this.selectedDocFile.name}}
-          ({{format-bytes this.selectedDocFile.size}})
+  <:body>
+    <form
+      id="unit-document-form"
+      class="flex col gap-4"
+      {{on "submit" this.saveDocument}}
+    >
+      <Nuvo::Field @label="File {{unless this.editDocument '*'}}">
+        <input
+          id="ud-file"
+          type="file"
+          class="nu-input"
+          data-test-document-file-input
+          accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.rtf,.txt,.md,.csv,.jpg,.jpeg,.png,.webp,.gif"
+          {{on "change" this.onDocFileSelect}}
+        />
+        {{#if this.selectedDocFile}}
+          <p class="text-xs text-muted" data-test-selected-document-file>
+            Selected:
+            {{this.selectedDocFile.name}}
+            ({{format-bytes this.selectedDocFile.size}})
+          </p>
+        {{/if}}
+      </Nuvo::Field>
+
+      <Nuvo::Field @label="Document Name" @required={{true}}>
+        <Nuvo::Input
+          type="text"
+          placeholder="Title Deed"
+          @value={{this.formDocName}}
+          @onInput={{fn this.setFieldValue "formDocName"}}
+          data-test-document-field-name
+        />
+      </Nuvo::Field>
+
+      <div class="flex gap-4">
+        <Nuvo::Field @label="Category" class="grow">
+          <Nuvo::Dropdown
+            @searchable={{true}}
+            @align="start"
+            @value={{this.formDocCategory}}
+            @onSelect={{fn this.setFieldValue "formDocCategory"}}
+            @options={{this.documentCategoryOptions}}
+            @placeholder="Select category..."
+            data-test-document-field-category
+          />
+        </Nuvo::Field>
+        <Nuvo::Field @label="Access Level" class="grow">
+          <Nuvo::Dropdown
+            @searchable={{true}}
+            @align="start"
+            @value={{this.formDocAccessLevel}}
+            @onSelect={{fn this.setFieldValue "formDocAccessLevel"}}
+            @options={{this.documentAccessLevelOptions}}
+            @placeholder="Select access level..."
+            data-test-document-field-access
+          />
+        </Nuvo::Field>
+      </div>
+
+      {{#if this.isSavingDocument}}
+        {{#unless this.editDocument}}
+          <div data-test-document-upload-progress>
+            <Nuvo::Progress
+              @value={{this.uploadProgress}}
+              @showText={{true}}
+            />
+          </div>
+        {{/unless}}
+      {{/if}}
+
+      {{#if this.documentErrorMsg}}
+        <p class="text-sm text-danger" data-test-document-error>
+          {{this.documentErrorMsg}}
         </p>
       {{/if}}
-    </Nuvo::Field>
-
-    <Nuvo::Field @label="Document Name" @required={{true}}>
-      <Nuvo::Input
-        type="text"
-        placeholder="Title Deed"
-        @value={{this.formDocName}}
-        @onInput={{fn this.setFieldValue "formDocName"}}
-        data-test-document-field-name
-      />
-    </Nuvo::Field>
-
-    <div class="flex gap-4">
-      <Nuvo::Field @label="Category" class="grow">
-        <Nuvo::Dropdown
-          @searchable={{true}}
-          @align="start"
-          @value={{this.formDocCategory}}
-          @onSelect={{fn this.setFieldValue "formDocCategory"}}
-          @options={{this.documentCategoryOptions}}
-          @placeholder="Select category..."
-          data-test-document-field-category
-        />
-      </Nuvo::Field>
-      <Nuvo::Field @label="Access Level" class="grow">
-        <Nuvo::Dropdown
-          @searchable={{true}}
-          @align="start"
-          @value={{this.formDocAccessLevel}}
-          @onSelect={{fn this.setFieldValue "formDocAccessLevel"}}
-          @options={{this.documentAccessLevelOptions}}
-          @placeholder="Select access level..."
-          data-test-document-field-access
-        />
-      </Nuvo::Field>
-    </div>
-
-    {{#if this.isSavingDocument}}
-      {{#unless this.editDocument}}
-        <div data-test-document-upload-progress>
-          <Nuvo::Progress
-            @value={{this.uploadProgress}}
-            @showText={{true}}
-          />
-        </div>
-      {{/unless}}
-    {{/if}}
-
-    {{#if this.documentErrorMsg}}
-      <p class="text-sm text-danger" data-test-document-error>
-        {{this.documentErrorMsg}}
-      </p>
-    {{/if}}
-
-    <Nuvo::FormActions>
-      <Nuvo::Button
-        @variant="secondary"
-        {{on "click" this.closeDocumentModal}}
-      >Cancel</Nuvo::Button>
-      <Nuvo::Button
-        @variant="primary"
-        type="submit"
-        @loading={{this.isSavingDocument}}
-        data-test-document-save-btn
-      >
-        {{if
-          this.isSavingDocument
-          "Uploading..."
-          (if this.editDocument "Update" "Upload")
-        }}
-      </Nuvo::Button>
-    </Nuvo::FormActions>
-  </form>
-</Nuvo::Modal>
+    </form>
+  </:body>
+  <:footer>
+    <Nuvo::Button
+      @variant="secondary"
+      {{on "click" this.closeDocumentModal}}
+    >Cancel</Nuvo::Button>
+    <Nuvo::Button
+      @variant="primary"
+      type="submit"
+      form="unit-document-form"
+      @loading={{this.isSavingDocument}}
+      data-test-document-save-btn
+    >
+      {{if
+        this.isSavingDocument
+        "Uploading..."
+        (if this.editDocument "Update" "Upload")
+      }}
+    </Nuvo::Button>
+  </:footer>
+</Nuvo::Drawer>
 
 <ConfirmModal
   @open={{this.showDeleteDocumentModal}}

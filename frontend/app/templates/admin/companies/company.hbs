@@ -379,109 +379,112 @@
   {{/if}}
 
   {{! ---- Deal modal ---- }}
-  <Nuvo::Modal
+  <Nuvo::Drawer
     @open={{this.dealModalOpen}}
     @title="{{if this.dealEditing 'Edit' 'Give'}} {{this.company.name}} a deal"
-    @onClose={{this.closeDealModal}}
+    @placement="end"
     @size="lg"
+    @onClose={{this.closeDealModal}}
   >
-    <div class="flex col gap-4" data-test-deal-form>
-      <div class="console-form-row">
-        <div class="flex col gap-2 flex-2">
-          <label class="text-sm text-muted" for="deal-price">Price</label>
+    <:body>
+      <div class="flex col gap-4" data-test-deal-form>
+        <div class="console-form-row">
+          <div class="flex col gap-2 flex-2">
+            <label class="text-sm text-muted" for="deal-price">Price</label>
+            <input
+              id="deal-price"
+              type="number"
+              min="0"
+              step="0.01"
+              class="form-input"
+              value={{this.dealPrice}}
+              data-test-deal-price
+              {{on "input" (fn this.setDealField "dealPrice")}}
+            />
+          </div>
+          <div class="flex col gap-2 grow">
+            <label class="text-sm text-muted" for="deal-currency">Currency</label>
+            <input
+              id="deal-currency"
+              type="text"
+              maxlength="3"
+              class="form-input console-currency-input"
+              value={{this.dealCurrency}}
+              data-test-deal-currency
+              {{on "input" (fn this.setDealField "dealCurrency")}}
+            />
+          </div>
+          <div class="flex col gap-2 flex-2">
+            <label class="text-sm text-muted" for="deal-basis">Basis</label>
+            <Nuvo::Dropdown
+              id="deal-basis"
+              data-test-deal-basis
+              @align="start"
+              @options={{this.basisOptions}}
+              @value={{this.dealBasis}}
+              @onSelect={{this.setDealBasis}}
+            />
+          </div>
+        </div>
+
+        <div class="flex col gap-2">
+          <label class="text-sm text-muted" for="deal-seats">Seats included</label>
           <input
-            id="deal-price"
+            id="deal-seats"
             type="number"
-            min="0"
-            step="0.01"
+            min="1"
+            step="1"
             class="form-input"
-            value={{this.dealPrice}}
-            data-test-deal-price
-            {{on "input" (fn this.setDealField "dealPrice")}}
+            value={{this.dealSeatCap}}
+            data-test-deal-seats
+            {{on "input" (fn this.setDealField "dealSeatCap")}}
           />
         </div>
-        <div class="flex col gap-2 grow">
-          <label class="text-sm text-muted" for="deal-currency">Currency</label>
-          <input
-            id="deal-currency"
-            type="text"
-            maxlength="3"
-            class="form-input console-currency-input"
-            value={{this.dealCurrency}}
-            data-test-deal-currency
-            {{on "input" (fn this.setDealField "dealCurrency")}}
-          />
-        </div>
-        <div class="flex col gap-2 flex-2">
-          <label class="text-sm text-muted" for="deal-basis">Basis</label>
-          <Nuvo::Dropdown
-            id="deal-basis"
-            data-test-deal-basis
-            @align="start"
-            @options={{this.basisOptions}}
-            @value={{this.dealBasis}}
-            @onSelect={{this.setDealBasis}}
-          />
-        </div>
-      </div>
 
-      <div class="flex col gap-2">
-        <label class="text-sm text-muted" for="deal-seats">Seats included</label>
-        <input
-          id="deal-seats"
-          type="number"
-          min="1"
-          step="1"
-          class="form-input"
-          value={{this.dealSeatCap}}
-          data-test-deal-seats
-          {{on "input" (fn this.setDealField "dealSeatCap")}}
-        />
-      </div>
+        <div class="console-form-row x-end">
+          <div class="flex col gap-2 flex-2">
+            <label class="text-sm text-muted" for="deal-until">Until</label>
+            <input
+              id="deal-until"
+              type="date"
+              class="form-input"
+              value={{this.dealUntil}}
+              disabled={{this.dealLifetime}}
+              data-test-deal-until
+              {{on "input" (fn this.setDealField "dealUntil")}}
+            />
+          </div>
+          <label class="console-checkbox grow">
+            <input
+              type="checkbox"
+              checked={{this.dealLifetime}}
+              data-test-deal-lifetime
+              {{on "change" this.toggleDealLifetime}}
+            />
+            Lifetime
+          </label>
+        </div>
 
-      <div class="console-form-row x-end">
-        <div class="flex col gap-2 flex-2">
-          <label class="text-sm text-muted" for="deal-until">Until</label>
-          <input
-            id="deal-until"
-            type="date"
+        <div class="flex col gap-2">
+          <label class="text-sm text-muted" for="deal-why">Why (required)</label>
+          <textarea
+            id="deal-why"
             class="form-input"
-            value={{this.dealUntil}}
-            disabled={{this.dealLifetime}}
-            data-test-deal-until
-            {{on "input" (fn this.setDealField "dealUntil")}}
-          />
+            rows="2"
+            data-test-deal-why
+            {{on "input" (fn this.setDealField "dealWhy")}}
+          >{{this.dealWhy}}</textarea>
         </div>
-        <label class="console-checkbox grow">
-          <input
-            type="checkbox"
-            checked={{this.dealLifetime}}
-            data-test-deal-lifetime
-            {{on "change" this.toggleDealLifetime}}
-          />
-          Lifetime
-        </label>
-      </div>
 
-      <div class="flex col gap-2">
-        <label class="text-sm text-muted" for="deal-why">Why (required)</label>
-        <textarea
-          id="deal-why"
-          class="form-input"
-          rows="2"
-          data-test-deal-why
-          {{on "input" (fn this.setDealField "dealWhy")}}
-        >{{this.dealWhy}}</textarea>
-      </div>
-
-      <div class="alert alert-warning" data-test-deal-expiry-preview>
-        <div>
-          <div class="font-bold">What happens on expiry</div>
-          <p class="text-sm mt-1">{{this.expiryPreview}}</p>
+        <div class="alert alert-warning" data-test-deal-expiry-preview>
+          <div>
+            <div class="font-bold">What happens on expiry</div>
+            <p class="text-sm mt-1">{{this.expiryPreview}}</p>
+          </div>
         </div>
       </div>
-    </div>
-    <div class="modal-actions">
+    </:body>
+    <:footer>
       <button
         type="button"
         class="btn btn-secondary"
@@ -498,111 +501,114 @@
           "Saving…"
           (if this.dealEditing "Save deal" "Give deal")
         }}</button>
-    </div>
-  </Nuvo::Modal>
+    </:footer>
+  </Nuvo::Drawer>
 
   {{! ---- Record payment modal ---- }}
-  <Nuvo::Modal
+  <Nuvo::Drawer
     @open={{this.paymentModalOpen}}
     @title="Record a payment from {{this.company.name}}"
-    @onClose={{this.closePaymentModal}}
+    @placement="end"
     @size="lg"
+    @onClose={{this.closePaymentModal}}
   >
-    <div class="flex col gap-4" data-test-payment-form>
-      <div class="console-form-row">
-        <div class="flex col gap-2 flex-2">
-          <label class="text-sm text-muted" for="pay-amount">Amount</label>
-          <input
-            id="pay-amount"
-            type="number"
-            min="0"
-            step="0.01"
-            class="form-input"
-            value={{this.payAmount}}
-            data-test-payment-amount
-            {{on "input" (fn this.setPayField "payAmount")}}
-          />
+    <:body>
+      <div class="flex col gap-4" data-test-payment-form>
+        <div class="console-form-row">
+          <div class="flex col gap-2 flex-2">
+            <label class="text-sm text-muted" for="pay-amount">Amount</label>
+            <input
+              id="pay-amount"
+              type="number"
+              min="0"
+              step="0.01"
+              class="form-input"
+              value={{this.payAmount}}
+              data-test-payment-amount
+              {{on "input" (fn this.setPayField "payAmount")}}
+            />
+          </div>
+          <div class="flex col gap-2 grow">
+            <label class="text-sm text-muted" for="pay-currency">Currency</label>
+            <input
+              id="pay-currency"
+              type="text"
+              maxlength="3"
+              class="form-input console-currency-input"
+              value={{this.payCurrency}}
+              data-test-payment-currency
+              {{on "input" (fn this.setPayField "payCurrency")}}
+            />
+          </div>
         </div>
-        <div class="flex col gap-2 grow">
-          <label class="text-sm text-muted" for="pay-currency">Currency</label>
-          <input
-            id="pay-currency"
-            type="text"
-            maxlength="3"
-            class="form-input console-currency-input"
-            value={{this.payCurrency}}
-            data-test-payment-currency
-            {{on "input" (fn this.setPayField "payCurrency")}}
-          />
-        </div>
-      </div>
 
-      <div class="console-form-row">
-        <div class="flex col gap-2 grow">
-          <label class="text-sm text-muted" for="pay-received">Date received</label>
-          <input
-            id="pay-received"
-            type="date"
-            class="form-input"
-            value={{this.payReceivedAt}}
-            data-test-payment-date
-            {{on "input" (fn this.setPayField "payReceivedAt")}}
-          />
+        <div class="console-form-row">
+          <div class="flex col gap-2 grow">
+            <label class="text-sm text-muted" for="pay-received">Date received</label>
+            <input
+              id="pay-received"
+              type="date"
+              class="form-input"
+              value={{this.payReceivedAt}}
+              data-test-payment-date
+              {{on "input" (fn this.setPayField "payReceivedAt")}}
+            />
+          </div>
+          <div class="flex col gap-2 grow">
+            <label class="text-sm text-muted" for="pay-covers-start">Covers from</label>
+            <input
+              id="pay-covers-start"
+              type="date"
+              class="form-input"
+              value={{this.payCoversStart}}
+              data-test-payment-covers
+              {{on "input" (fn this.setPayField "payCoversStart")}}
+            />
+          </div>
+          <div class="flex col gap-2 grow">
+            <label class="text-sm text-muted" for="pay-covers-end">Covers to</label>
+            <input
+              id="pay-covers-end"
+              type="date"
+              class="form-input"
+              value={{this.payCoversEnd}}
+              data-test-payment-covers-end
+              {{on "input" (fn this.setPayField "payCoversEnd")}}
+            />
+          </div>
         </div>
-        <div class="flex col gap-2 grow">
-          <label class="text-sm text-muted" for="pay-covers-start">Covers from</label>
-          <input
-            id="pay-covers-start"
-            type="date"
-            class="form-input"
-            value={{this.payCoversStart}}
-            data-test-payment-covers
-            {{on "input" (fn this.setPayField "payCoversStart")}}
-          />
-        </div>
-        <div class="flex col gap-2 grow">
-          <label class="text-sm text-muted" for="pay-covers-end">Covers to</label>
-          <input
-            id="pay-covers-end"
-            type="date"
-            class="form-input"
-            value={{this.payCoversEnd}}
-            data-test-payment-covers-end
-            {{on "input" (fn this.setPayField "payCoversEnd")}}
-          />
-        </div>
-      </div>
 
-      <div class="flex col gap-2">
-        <label class="text-sm text-muted" for="pay-notes">Notes</label>
-        <textarea
-          id="pay-notes"
-          class="form-input"
-          rows="2"
-          placeholder="JazzCash transfer, txn 8842"
-          data-test-payment-notes
-          {{on "input" (fn this.setPayField "payNotes")}}
-        >{{this.payNotes}}</textarea>
-      </div>
+        <div class="flex col gap-2">
+          <label class="text-sm text-muted" for="pay-notes">Notes</label>
+          <textarea
+            id="pay-notes"
+            class="form-input"
+            rows="2"
+            placeholder="JazzCash transfer, txn 8842"
+            data-test-payment-notes
+            {{on "input" (fn this.setPayField "payNotes")}}
+          >{{this.payNotes}}</textarea>
+        </div>
 
-      <div class="flex col gap-2">
-        <label class="text-sm text-muted" for="pay-receipt">Receipt image</label>
-        <input
-          id="pay-receipt"
-          type="file"
-          accept="image/jpeg,image/png,image/webp"
-          class="form-input"
-          data-test-payment-receipt
-          {{on "change" this.setPayReceipt}}
-        />
-        {{#if this.payReceiptName}}
-          <span class="text-sm text-muted">{{this.payReceiptName}}</span>
-        {{/if}}
+        <div class="flex col gap-2">
+          <label class="text-sm text-muted" for="pay-receipt">Receipt image</label>
+          <input
+            id="pay-receipt"
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            class="form-input"
+            data-test-payment-receipt
+            {{on "change" this.setPayReceipt}}
+          />
+          {{#if this.payReceiptName}}
+            <span class="text-sm text-muted">{{this.payReceiptName}}</span>
+          {{/if}}
+        </div>
+        <p class="text-sm text-muted">Document it: notes or a receipt image is
+          required.</p>
       </div>
-      <p class="text-sm text-muted">Document it: notes or a receipt image is
-        required.</p>
-    </div>
-    <div class="modal-actions">
+    </:body>
+    <:footer>
       <button
         type="button"
         class="btn btn-secondary"
@@ -615,105 +621,108 @@
         data-test-payment-submit
         {{on "click" this.submitPayment}}
       >{{if this.payBusy "Recording…" "Record"}}</button>
-    </div>
-  </Nuvo::Modal>
+    </:footer>
+  </Nuvo::Drawer>
 
   {{! ---- Make it right modal ---- }}
-  <Nuvo::Modal
+  <Nuvo::Drawer
     @open={{this.remedyModalOpen}}
     @title="Make it right for {{this.company.name}}"
-    @onClose={{this.closeRemedy}}
+    @placement="end"
     @size="lg"
+    @onClose={{this.closeRemedy}}
   >
-    <div class="flex col gap-4" data-test-remedy-form>
-      <div class="console-anchor">Payment: {{this.remedyAnchorLabel}}</div>
+    <:body>
+      <div class="flex col gap-4" data-test-remedy-form>
+        <div class="console-anchor">Payment: {{this.remedyAnchorLabel}}</div>
 
-      <div class="flex col gap-2">
-        <label class="console-radio">
-          <input
-            type="radio"
-            name="remedy-kind"
-            checked={{eq this.remedyKind "discount_next_bill"}}
-            data-test-remedy-discount
-            {{on "change" (fn this.setRemedyKind "discount_next_bill")}}
-          />
-          Discount the next bill
-        </label>
-        <label class="console-radio">
-          <input
-            type="radio"
-            name="remedy-kind"
-            checked={{eq this.remedyKind "refund"}}
-            data-test-remedy-refund
-            {{on "change" (fn this.setRemedyKind "refund")}}
-          />
-          Refund this payment
-        </label>
-      </div>
-
-      {{#if this.remedyIsRefund}}
-        <div class="flex gap-4">
-          <label class="console-radio">
-            <input
-              type="radio"
-              name="remedy-scope"
-              checked={{eq this.remedyScope "partial"}}
-              data-test-remedy-scope-partial
-              {{on "change" (fn this.setRemedyScope "partial")}}
-            />
-            Partial
-          </label>
-          <label class="console-radio">
-            <input
-              type="radio"
-              name="remedy-scope"
-              checked={{eq this.remedyScope "full"}}
-              data-test-remedy-scope-full
-              {{on "change" (fn this.setRemedyScope "full")}}
-            />
-            Full
-          </label>
-        </div>
-      {{/if}}
-
-      {{#if this.showRemedyAmount}}
         <div class="flex col gap-2">
-          <label class="text-sm text-muted" for="remedy-amount">Amount</label>
-          <input
-            id="remedy-amount"
-            type="number"
-            min="0"
-            step="0.01"
-            class="form-input"
-            value={{this.remedyAmount}}
-            data-test-remedy-amount
-            data-test-remedy-partial-amount={{if this.remedyIsRefund true}}
-            {{on "input" (fn this.setRemedyField "remedyAmount")}}
-          />
+          <label class="console-radio">
+            <input
+              type="radio"
+              name="remedy-kind"
+              checked={{eq this.remedyKind "discount_next_bill"}}
+              data-test-remedy-discount
+              {{on "change" (fn this.setRemedyKind "discount_next_bill")}}
+            />
+            Discount the next bill
+          </label>
+          <label class="console-radio">
+            <input
+              type="radio"
+              name="remedy-kind"
+              checked={{eq this.remedyKind "refund"}}
+              data-test-remedy-refund
+              {{on "change" (fn this.setRemedyKind "refund")}}
+            />
+            Refund this payment
+          </label>
         </div>
-      {{/if}}
 
-      <div class="flex col gap-2">
-        <label class="text-sm text-muted" for="remedy-why">Why (required)</label>
-        <textarea
-          id="remedy-why"
-          class="form-input"
-          rows="2"
-          data-test-remedy-why
-          {{on "input" (fn this.setRemedyField "remedyWhy")}}
-        >{{this.remedyWhy}}</textarea>
-      </div>
-
-      {{#if this.remedyIsRefund}}
-        <div class="alert alert-warning" data-test-remedy-sla-alert>
-          <div>
-            <p class="text-sm">Refunds are initiated within 24 to 48 hours.
-              Money leaves the account. This is not undoable.</p>
+        {{#if this.remedyIsRefund}}
+          <div class="flex gap-4">
+            <label class="console-radio">
+              <input
+                type="radio"
+                name="remedy-scope"
+                checked={{eq this.remedyScope "partial"}}
+                data-test-remedy-scope-partial
+                {{on "change" (fn this.setRemedyScope "partial")}}
+              />
+              Partial
+            </label>
+            <label class="console-radio">
+              <input
+                type="radio"
+                name="remedy-scope"
+                checked={{eq this.remedyScope "full"}}
+                data-test-remedy-scope-full
+                {{on "change" (fn this.setRemedyScope "full")}}
+              />
+              Full
+            </label>
           </div>
+        {{/if}}
+
+        {{#if this.showRemedyAmount}}
+          <div class="flex col gap-2">
+            <label class="text-sm text-muted" for="remedy-amount">Amount</label>
+            <input
+              id="remedy-amount"
+              type="number"
+              min="0"
+              step="0.01"
+              class="form-input"
+              value={{this.remedyAmount}}
+              data-test-remedy-amount
+              data-test-remedy-partial-amount={{if this.remedyIsRefund true}}
+              {{on "input" (fn this.setRemedyField "remedyAmount")}}
+            />
+          </div>
+        {{/if}}
+
+        <div class="flex col gap-2">
+          <label class="text-sm text-muted" for="remedy-why">Why (required)</label>
+          <textarea
+            id="remedy-why"
+            class="form-input"
+            rows="2"
+            data-test-remedy-why
+            {{on "input" (fn this.setRemedyField "remedyWhy")}}
+          >{{this.remedyWhy}}</textarea>
         </div>
-      {{/if}}
-    </div>
-    <div class="modal-actions">
+
+        {{#if this.remedyIsRefund}}
+          <div class="alert alert-warning" data-test-remedy-sla-alert>
+            <div>
+              <p class="text-sm">Refunds are initiated within 24 to 48 hours.
+                Money leaves the account. This is not undoable.</p>
+            </div>
+          </div>
+        {{/if}}
+      </div>
+    </:body>
+    <:footer>
       <button
         type="button"
         class="btn btn-secondary"
@@ -726,54 +735,58 @@
         data-test-remedy-submit
         {{on "click" this.submitRemedy}}
       >{{if this.remedyBusy "Working…" this.remedyConfirmLabel}}</button>
-    </div>
-  </Nuvo::Modal>
+    </:footer>
+  </Nuvo::Drawer>
 
   {{! ---- Limits modal ---- }}
-  <Nuvo::Modal
+  <Nuvo::Drawer
     @open={{this.limitsModalOpen}}
     @title="Edit limits"
+    @placement="end"
+    @size="lg"
     @onClose={{this.closeLimitsModal}}
   >
-    <div class="flex col gap-4">
-      <div class="flex col gap-2">
-        <label class="text-sm text-muted" for="limit-users">Max users</label>
-        <input
-          id="limit-users"
-          type="number"
-          min="1"
-          step="1"
-          class="form-input"
-          value={{this.limitMaxUsers}}
-          {{on "input" (fn this.setLimitField "limitMaxUsers")}}
-        />
+    <:body>
+      <div class="flex col gap-4">
+        <div class="flex col gap-2">
+          <label class="text-sm text-muted" for="limit-users">Max users</label>
+          <input
+            id="limit-users"
+            type="number"
+            min="1"
+            step="1"
+            class="form-input"
+            value={{this.limitMaxUsers}}
+            {{on "input" (fn this.setLimitField "limitMaxUsers")}}
+          />
+        </div>
+        <div class="flex col gap-2">
+          <label class="text-sm text-muted" for="limit-regions">Max regions</label>
+          <input
+            id="limit-regions"
+            type="number"
+            min="1"
+            step="1"
+            class="form-input"
+            value={{this.limitMaxRegions}}
+            {{on "input" (fn this.setLimitField "limitMaxRegions")}}
+          />
+        </div>
+        <div class="flex col gap-2">
+          <label class="text-sm text-muted" for="limit-properties">Max properties</label>
+          <input
+            id="limit-properties"
+            type="number"
+            min="1"
+            step="1"
+            class="form-input"
+            value={{this.limitMaxProperties}}
+            {{on "input" (fn this.setLimitField "limitMaxProperties")}}
+          />
+        </div>
       </div>
-      <div class="flex col gap-2">
-        <label class="text-sm text-muted" for="limit-regions">Max regions</label>
-        <input
-          id="limit-regions"
-          type="number"
-          min="1"
-          step="1"
-          class="form-input"
-          value={{this.limitMaxRegions}}
-          {{on "input" (fn this.setLimitField "limitMaxRegions")}}
-        />
-      </div>
-      <div class="flex col gap-2">
-        <label class="text-sm text-muted" for="limit-properties">Max properties</label>
-        <input
-          id="limit-properties"
-          type="number"
-          min="1"
-          step="1"
-          class="form-input"
-          value={{this.limitMaxProperties}}
-          {{on "input" (fn this.setLimitField "limitMaxProperties")}}
-        />
-      </div>
-    </div>
-    <div class="modal-actions">
+    </:body>
+    <:footer>
       <button
         type="button"
         class="btn btn-secondary"
@@ -785,8 +798,8 @@
         disabled={{this.limitsBusy}}
         {{on "click" this.submitLimits}}
       >{{if this.limitsBusy "Saving…" "Save"}}</button>
-    </div>
-  </Nuvo::Modal>
+    </:footer>
+  </Nuvo::Drawer>
 
   {{! ---- Confirms ---- }}
   <ConfirmModal

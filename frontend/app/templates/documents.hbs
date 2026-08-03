@@ -158,98 +158,102 @@
   {{/if}}
 </div>
 
-<Nuvo::Modal
+<Nuvo::Drawer
   @open={{this.showModal}}
   @title={{if this.editDocument "Update Document" "Upload Document"}}
+  @placement="end"
+  @size="lg"
   @onClose={{this.closeModal}}
 >
-  <form class="flex col gap-4" {{on "submit" this.saveDocument}}>
-    <div class="flex col gap-2">
-      <label class="text-sm text-muted" for="d-file">File
-        {{unless this.editDocument "*"}}</label>
-      <input
-        id="d-file"
-        type="file"
-        class="nu-input"
-        data-test-file-input
-        accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.rtf,.txt,.md,.csv,.jpg,.jpeg,.png,.webp,.gif"
-        {{on "change" this.onFileSelect}}
-      />
-      {{#if this.selectedFile}}
-        <p class="text-xs text-muted" data-test-selected-file>
-          Selected:
-          {{this.selectedFile.name}}
-          ({{format-bytes this.selectedFile.size}})
-        </p>
+  <:body>
+    <form id="document-form" class="flex col gap-4" {{on "submit" this.saveDocument}}>
+      <div class="flex col gap-2">
+        <label class="text-sm text-muted" for="d-file">File
+          {{unless this.editDocument "*"}}</label>
+        <input
+          id="d-file"
+          type="file"
+          class="nu-input"
+          data-test-file-input
+          accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.rtf,.txt,.md,.csv,.jpg,.jpeg,.png,.webp,.gif"
+          {{on "change" this.onFileSelect}}
+        />
+        {{#if this.selectedFile}}
+          <p class="text-xs text-muted" data-test-selected-file>
+            Selected:
+            {{this.selectedFile.name}}
+            ({{format-bytes this.selectedFile.size}})
+          </p>
+        {{/if}}
+      </div>
+
+      <Nuvo::Field @label="Document Name" @required={{true}}>
+        <Nuvo::Input
+          id="d-name"
+          type="text"
+          placeholder="Lease Agreement Q1 2026"
+          @value={{this.formName}}
+          @onInput={{fn this.setFieldValue "formName"}}
+          required={{true}}
+          data-test-field-name
+        />
+      </Nuvo::Field>
+
+      <div class="flex gap-4">
+        <Nuvo::Field class="grow" @label="Category">
+          <Nuvo::Dropdown
+            id="d-category"
+            @align="start"
+            @value={{this.formCategory}}
+            @onSelect={{fn this.setFieldValue "formCategory"}}
+            @options={{this.categoryOptions}}
+            @placeholder="Select category..."
+            data-test-field-category
+          />
+        </Nuvo::Field>
+        <Nuvo::Field class="grow" @label="Access Level">
+          <Nuvo::Dropdown
+            id="d-access"
+            @align="start"
+            @value={{this.formAccessLevel}}
+            @onSelect={{fn this.setFieldValue "formAccessLevel"}}
+            @options={{this.accessLevels}}
+            @placeholder="Select access level..."
+            data-test-field-access
+          />
+        </Nuvo::Field>
+      </div>
+
+      {{#if this.uploadProgress}}
+        <p
+          class="text-sm text-muted"
+          data-test-upload-progress
+        >{{this.uploadProgress}}</p>
       {{/if}}
-    </div>
 
-    <Nuvo::Field @label="Document Name" @required={{true}}>
-      <Nuvo::Input
-        id="d-name"
-        type="text"
-        placeholder="Lease Agreement Q1 2026"
-        @value={{this.formName}}
-        @onInput={{fn this.setFieldValue "formName"}}
-        required={{true}}
-        data-test-field-name
-      />
-    </Nuvo::Field>
-
-    <div class="flex gap-4">
-      <Nuvo::Field class="grow" @label="Category">
-        <Nuvo::Dropdown
-          id="d-category"
-          @align="start"
-          @value={{this.formCategory}}
-          @onSelect={{fn this.setFieldValue "formCategory"}}
-          @options={{this.categoryOptions}}
-          @placeholder="Select category..."
-          data-test-field-category
-        />
-      </Nuvo::Field>
-      <Nuvo::Field class="grow" @label="Access Level">
-        <Nuvo::Dropdown
-          id="d-access"
-          @align="start"
-          @value={{this.formAccessLevel}}
-          @onSelect={{fn this.setFieldValue "formAccessLevel"}}
-          @options={{this.accessLevels}}
-          @placeholder="Select access level..."
-          data-test-field-access
-        />
-      </Nuvo::Field>
-    </div>
-
-    {{#if this.uploadProgress}}
-      <p
-        class="text-sm text-muted"
-        data-test-upload-progress
-      >{{this.uploadProgress}}</p>
-    {{/if}}
-
-    {{#if this.errorMsg}}
-      <p class="text-sm text-danger" data-test-error>{{this.errorMsg}}</p>
-    {{/if}}
-
-    <Nuvo::FormActions @align="end">
-      <Nuvo::Button
-        @variant="secondary"
-        @onClick={{this.closeModal}}
-      >Cancel</Nuvo::Button>
-      <Nuvo::Button
-        @variant="primary"
-        @type="submit"
-        @loading={{this.isSaving}}
-        data-test-save-btn
-      >{{if
-          this.isSaving
-          "Uploading..."
-          (if this.editDocument "Update" "Upload")
-        }}</Nuvo::Button>
-    </Nuvo::FormActions>
-  </form>
-</Nuvo::Modal>
+      {{#if this.errorMsg}}
+        <p class="text-sm text-danger" data-test-error>{{this.errorMsg}}</p>
+      {{/if}}
+    </form>
+  </:body>
+  <:footer>
+    <Nuvo::Button
+      @variant="secondary"
+      @onClick={{this.closeModal}}
+    >Cancel</Nuvo::Button>
+    <Nuvo::Button
+      @variant="primary"
+      @type="submit"
+      form="document-form"
+      @loading={{this.isSaving}}
+      data-test-save-btn
+    >{{if
+        this.isSaving
+        "Uploading..."
+        (if this.editDocument "Update" "Upload")
+      }}</Nuvo::Button>
+  </:footer>
+</Nuvo::Drawer>
 
 <ConfirmModal
   @open={{this.showDeleteModal}}
