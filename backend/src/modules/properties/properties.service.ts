@@ -194,7 +194,7 @@ export class PropertiesService {
                      name,
                      address,
                      similarity(name, $1) AS score
-                 FROM buildings
+                 FROM assets
                  WHERE locality_id = $2
                    AND similarity(name, $1) > 0.2
                  ORDER BY ${normalizedNameSql('name')}, score DESC, name ASC

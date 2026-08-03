@@ -13,7 +13,7 @@ import { Locality } from '../../locations/entities/locality.entity';
 import { Unit } from './unit.entity';
 import { PropertyType } from './property-type.enum';
 
-@Entity('buildings')
+@Entity('assets')
 export class Asset {
   @PrimaryGeneratedColumn('uuid')
   id: string;

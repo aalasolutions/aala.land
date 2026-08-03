@@ -53,12 +53,12 @@ export class Lead {
   company?: Company;
 
   @Index()
-  @Column({ name: 'property_id', type: 'uuid', nullable: true })
-  propertyId: string | null;
+  @Column({ name: 'locality_id', type: 'uuid', nullable: true })
+  localityId: string | null;
 
   @ManyToOne(() => Locality, { nullable: true })
-  @JoinColumn({ name: 'property_id' })
-  property: Locality | null;
+  @JoinColumn({ name: 'locality_id' })
+  locality: Locality | null;
 
   @Index()
   @Column({ name: 'unit_id', type: 'uuid', nullable: true })

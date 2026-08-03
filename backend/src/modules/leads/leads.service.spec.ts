@@ -155,7 +155,7 @@ describe('LeadsService', () => {
 
     it('validates property/locality exists in create', async () => {
       localityRepo.exist.mockResolvedValue(false);
-      const dto = { firstName: 'Ahmed', propertyId: 'other-company-locality' };
+      const dto = { firstName: 'Ahmed', localityId: 'other-company-locality' };
 
       await expect(service.create(companyId, dto as any)).rejects.toThrow(
         BadRequestException,
@@ -454,7 +454,7 @@ describe('LeadsService', () => {
 
       expect(leadRepo.findAndCount).toHaveBeenCalledWith({
         where: { companyId },
-        relations: ['property', 'unit', 'assignedAgent'],
+        relations: ['locality', 'unit', 'assignedAgent'],
         ...{ skip: 0, take: 20 },
         order: { createdAt: 'DESC' },
       });
@@ -564,31 +564,31 @@ describe('LeadsService', () => {
     it('clears property and unit relations when ids are explicitly unset', async () => {
       const leadWithRelations = {
         ...mockLead,
-        propertyId: 'locality-uuid-1',
+        localityId: 'locality-uuid-1',
         unitId: 'unit-uuid-1',
-        property: { id: 'locality-uuid-1', name: 'Dubai Marina' },
+        locality: { id: 'locality-uuid-1', name: 'Dubai Marina' },
         unit: { id: 'unit-uuid-1', unitNumber: '1204' },
       } as unknown as Lead;
       leadRepo.findOne
         .mockResolvedValueOnce(leadWithRelations)
         .mockResolvedValueOnce({
           ...leadWithRelations,
-          propertyId: null,
+          localityId: null,
           unitId: null,
-          property: null,
+          locality: null,
           unit: null,
         } as unknown as Lead);
       leadRepo.save.mockImplementation(async (lead) => lead as Lead);
 
       await service.update('lead-uuid-1', companyId, {
-        propertyId: null,
+        localityId: null,
         unitId: null,
       } as any);
 
       const savedLead = leadRepo.save.mock.calls[0][0] as Lead;
-      expect(savedLead.propertyId).toBeNull();
+      expect(savedLead.localityId).toBeNull();
       expect(savedLead.unitId).toBeNull();
-      expect(savedLead.property).toBeNull();
+      expect(savedLead.locality).toBeNull();
       expect(savedLead.unit).toBeNull();
     });
 
@@ -736,7 +736,7 @@ describe('LeadsService', () => {
 
       await expect(
         service.update('lead-uuid-1', companyId, {
-          propertyId: 'other-locality',
+          localityId: 'other-locality',
         } as any),
       ).rejects.toThrow(BadRequestException);
       expect(localityRepo.exist).toHaveBeenCalledWith({

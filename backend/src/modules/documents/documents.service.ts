@@ -55,7 +55,7 @@ export class DocumentsService {
       fileSize,
       fileType: dto.fileType ?? file.mimetype,
       unitId: dto.unitId ?? null,
-      assetId: dto.assetId ?? null, // persists to building_id column (legacy naming)
+      assetId: dto.assetId ?? null,
       category: dto.category,
       accessLevel: dto.accessLevel,
       companyId,

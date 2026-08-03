@@ -35,9 +35,6 @@ export class UploadDocumentDto {
   @IsUUID()
   unitId?: string;
 
-  /**
-   * Maps to PropertyDocument.assetId (DB column: building_id). Intentional legacy naming.
-   */
   @ApiProperty({ required: false })
   @Transform(({ value }) => value || undefined)
   @IsOptional()

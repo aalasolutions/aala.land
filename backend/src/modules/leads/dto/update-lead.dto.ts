@@ -76,7 +76,7 @@ export class UpdateLeadDto {
   @ApiPropertyOptional({ nullable: true })
   @IsUUID()
   @IsOptional()
-  propertyId?: string | null;
+  localityId?: string | null;
 
   @ApiPropertyOptional({ nullable: true })
   @IsUUID()
