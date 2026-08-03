@@ -1,0 +1,21 @@
+<Nuvo::Dropdown
+  @filterable={{true}}
+  @remote={{true}}
+  @align="start"
+  @size={{@size}}
+  @disabled={{@disabled}}
+  @placeholder={{@placeholder}}
+  @promptText={{@promptText}}
+  @emptyText={{@emptyText}}
+  @searchDebounce={{@searchDebounce}}
+  @minChars={{if @minChars @minChars 2}}
+  @allowCreate={{this.allowCreate}}
+  @selectedLabel={{@selectedName}}
+  @value={{@value}}
+  @onSearch={{this.search}}
+  @onCreate={{this.create}}
+  @onSelect={{this.onSelect}}
+  @onClear={{@onClear}}
+  data-test-nu-autocomplete
+  ...attributes
+/>

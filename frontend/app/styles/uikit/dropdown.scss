@@ -306,6 +306,13 @@
     --nu-menu__item--active--Color: var(--danger-700);
   }
 
+  .nu-menu__item.m-create {
+    --nu-menu__item--Color: var(--primary);
+    --nu-menu__item--hover--BackgroundColor: var(--primary-50);
+    font-weight: nu-font-weight(medium);
+    border-block-end: 1px solid var(--border-base);
+  }
+
   // ---- menu open state ----
 
   @include when(open) {

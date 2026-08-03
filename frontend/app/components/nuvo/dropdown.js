@@ -1,20 +1,30 @@
 import Component from '@glimmer/component';
 import { cached, tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
-import { registerDestructor } from '@ember/destroyable';
-import { runTask } from 'ember-lifeline';
+import { isDestroyed, registerDestructor } from '@ember/destroyable';
+import { guidFor } from '@ember/object/internals';
+import { cancelTask, runTask } from 'ember-lifeline';
 
 const PLACEMENTS = ['start', 'end', 'up'];
 const ALIGNMENTS = ['start', 'center', 'end'];
 
+const CREATE_VALUE = '__nu_dropdown_create__';
+
 export default class NuDropdownComponent extends Component {
+  menuId = `nu-menu-${guidFor(this)}`;
+
   @tracked isOpen = false;
   @tracked searchText = '';
   @tracked highlightedIndex = -1;
   @tracked internalValue = undefined;
+  @tracked remoteOptions = [];
+  @tracked isSearching = false;
+  @tracked isCreating = false;
 
   rootElement = null;
   clickOutsideHandler = null;
+  searchTimer = null;
+  searchSeq = 0;
 
   // Controlled when @value is passed, uncontrolled otherwise. Without this an
   // uncontrolled dropdown would never mark anything selected after a pick.
@@ -63,10 +73,14 @@ export default class NuDropdownComponent extends Component {
     return this.isOpen ? 'nu-menu is-open' : 'nu-menu';
   }
 
+  get optionSource() {
+    return this.args.remote ? this.remoteOptions : this.args.options || [];
+  }
+
   // Accepts {value,label,group,icon,danger,disabled} objects or plain strings.
   @cached
   get normalizedOptions() {
-    return (this.args.options || []).map((entry) => {
+    return this.optionSource.map((entry) => {
       const isObject = entry !== null && typeof entry === 'object';
       const value = isObject ? entry.value : entry;
       return {
@@ -78,6 +92,7 @@ export default class NuDropdownComponent extends Component {
         disabled: isObject ? Boolean(entry.disabled) : false,
         // { separator: true } renders a divider instead of a clickable item.
         separator: isObject ? Boolean(entry.separator) : false,
+        item: isObject ? (entry.item ?? entry) : entry,
       };
     });
   }
@@ -85,18 +100,19 @@ export default class NuDropdownComponent extends Component {
   // Separators are decoration: they must never be selectable or land under the
   // keyboard cursor, so they are excluded from the navigable list entirely.
   @cached
-  get filteredOptions() {
+  get matchedOptions() {
     const term = this.searchText.trim().toLowerCase();
     const all = this.normalizedOptions.filter((o) => !o.separator);
-    const matched = term
-      ? all.filter(
-          (o) =>
-            String(o.label).toLowerCase().includes(term) ||
-            String(o.group ?? '')
-              .toLowerCase()
-              .includes(term),
-        )
-      : all.slice();
+    const matched =
+      term && !this.args.remote
+        ? all.filter(
+            (o) =>
+              String(o.label).toLowerCase().includes(term) ||
+              String(o.group ?? '')
+                .toLowerCase()
+                .includes(term),
+          )
+        : all.slice();
 
     if (!matched.some((o) => o.group)) {
       return matched;
@@ -117,10 +133,49 @@ export default class NuDropdownComponent extends Component {
     return order.flatMap((key) => byGroup.get(key));
   }
 
+  get minChars() {
+    return this.args.minChars ?? 1;
+  }
+
+  get createRow() {
+    if (!this.args.allowCreate) {
+      return null;
+    }
+    const term = this.searchText.trim();
+    if (term.length < this.minChars || this.isSearching) {
+      return null;
+    }
+    const exists = this.normalizedOptions.some(
+      (o) => String(o.label).trim().toLowerCase() === term.toLowerCase(),
+    );
+    if (exists) {
+      return null;
+    }
+    return {
+      value: CREATE_VALUE,
+      label: this.isCreating ? 'Creating...' : `Add "${term}"`,
+      group: null,
+      icon: null,
+      danger: false,
+      disabled: this.isCreating,
+      separator: false,
+      isCreate: true,
+    };
+  }
+
+  @cached
+  get filteredOptions() {
+    const row = this.createRow;
+    return row ? [row, ...this.matchedOptions] : this.matchedOptions;
+  }
+
   // Separators render only in the unfiltered, ungrouped list. Once a search
   // term or grouping reorders things, a fixed divider position is meaningless.
   @cached
   get flatRows() {
+    if (this.args.remote || this.args.allowCreate || this.args.filterable) {
+      return null;
+    }
     if (this.searchText.trim() || this.normalizedOptions.some((o) => o.group)) {
       return null;
     }
@@ -161,7 +216,7 @@ export default class NuDropdownComponent extends Component {
   }
 
   get showSearch() {
-    if (this.args.searchable === false) {
+    if (this.args.filterable || this.args.searchable === false) {
       return false;
     }
     const threshold = this.args.searchThreshold ?? 8;
@@ -172,11 +227,32 @@ export default class NuDropdownComponent extends Component {
     return this.filteredOptions.length > 0;
   }
 
-  get triggerLabel() {
+  get selectedLabel() {
     const match = this.normalizedOptions.find(
       (o) => o.value === this.currentValue,
     );
-    return match ? match.label : (this.args.placeholder ?? 'Select...');
+    if (match) {
+      return match.label;
+    }
+    return this.args.selectedLabel ?? '';
+  }
+
+  get triggerLabel() {
+    return this.selectedLabel || (this.args.placeholder ?? 'Select...');
+  }
+
+  get inputValue() {
+    return this.isOpen ? this.searchText : this.selectedLabel;
+  }
+
+  get emptyText() {
+    if (this.isSearching) {
+      return 'Searching...';
+    }
+    if (this.args.remote && !this.searchText.trim()) {
+      return this.args.promptText ?? 'Type to search';
+    }
+    return this.args.emptyText ?? 'No results found';
   }
 
   @action
@@ -213,6 +289,10 @@ export default class NuDropdownComponent extends Component {
     this.isOpen = false;
     this.searchText = '';
     this.highlightedIndex = -1;
+    if (this.args.remote) {
+      this.remoteOptions = [];
+      this.searchSeq += 1;
+    }
   }
 
   @action
@@ -220,9 +300,35 @@ export default class NuDropdownComponent extends Component {
     if (option.disabled) {
       return;
     }
+    if (option.value === CREATE_VALUE) {
+      this.runCreate();
+      return;
+    }
     this.internalValue = option.value;
     this.args.onSelect?.(option.value, option);
     this.close();
+  }
+
+  async runCreate() {
+    const term = this.searchText.trim();
+    if (!term || this.isCreating) {
+      return;
+    }
+    this.isCreating = true;
+    try {
+      const created = await this.args.onCreate?.(term);
+      if (isDestroyed(this) || !created) {
+        return;
+      }
+      const value = created.value ?? created.id;
+      this.internalValue = value;
+      this.args.onSelect?.(value, created);
+      this.close();
+    } finally {
+      if (!isDestroyed(this)) {
+        this.isCreating = false;
+      }
+    }
   }
 
   // NuInput yields (value, event), not a raw DOM event.
@@ -230,6 +336,71 @@ export default class NuDropdownComponent extends Component {
   updateSearch(value) {
     this.searchText = value ?? '';
     this.highlightedIndex = -1;
+    if (this.args.remote) {
+      this.scheduleRemoteSearch();
+    }
+  }
+
+  @action
+  onFilterInput(value) {
+    if (!this.isOpen) {
+      this.isOpen = true;
+    }
+    if (this.args.selectedLabel && !String(value ?? '').trim()) {
+      this.args.onClear?.();
+    }
+    this.updateSearch(value);
+  }
+
+  @action
+  onFilterFocus() {
+    if (!this.args.disabled) {
+      this.isOpen = true;
+    }
+  }
+
+  @action
+  onFilterClear() {
+    this.internalValue = undefined;
+    this.args.onClear?.();
+    this.updateSearch('');
+  }
+
+  scheduleRemoteSearch() {
+    if (this.searchTimer) {
+      cancelTask(this, this.searchTimer);
+    }
+    this.searchTimer = runTask(
+      this,
+      () => this.runRemoteSearch(),
+      this.args.searchDebounce ?? 250,
+    );
+  }
+
+  async runRemoteSearch() {
+    const term = this.searchText.trim();
+    const seq = ++this.searchSeq;
+    if (term.length < this.minChars) {
+      this.remoteOptions = [];
+      this.isSearching = false;
+      return;
+    }
+    this.isSearching = true;
+    try {
+      const results = await this.args.onSearch?.(term);
+      if (isDestroyed(this) || seq !== this.searchSeq) {
+        return;
+      }
+      this.remoteOptions = results ?? [];
+    } catch {
+      if (!isDestroyed(this) && seq === this.searchSeq) {
+        this.remoteOptions = [];
+      }
+    } finally {
+      if (!isDestroyed(this) && seq === this.searchSeq) {
+        this.isSearching = false;
+      }
+    }
   }
 
   @action

@@ -8,6 +8,22 @@
 >
   {{#if (has-block "trigger")}}
     {{yield this.toggle this.isOpen to="trigger"}}
+  {{else if @filterable}}
+    <Nuvo::Input
+      @value={{this.inputValue}}
+      @size={{@size}}
+      @disabled={{@disabled}}
+      @placeholder={{if @placeholder @placeholder "Search..."}}
+      @clearable={{true}}
+      @onInput={{this.onFilterInput}}
+      @onClear={{this.onFilterClear}}
+      role="combobox"
+      aria-expanded={{if this.isOpen "true" "false"}}
+      aria-controls={{this.menuId}}
+      aria-autocomplete="list"
+      data-test-nu-dropdown-filter
+      {{on "focus" this.onFilterFocus}}
+    />
   {{else}}
     <Nuvo::Button
       @variant={{if @triggerVariant @triggerVariant "secondary"}}
@@ -23,7 +39,12 @@
     </Nuvo::Button>
   {{/if}}
 
-  <div class={{this.menuClasses}} role="listbox" data-test-nu-dropdown-menu>
+  <div
+    class={{this.menuClasses}}
+    id={{this.menuId}}
+    role="listbox"
+    data-test-nu-dropdown-menu
+  >
     {{#if this.showSearch}}
       {{! No keydown here: it bubbles to the root handler. Binding both would
           fire the handler twice and step the highlight by 2. }}
@@ -50,7 +71,8 @@
                 {{if row.selected 'is-active'}}
                 {{if row.highlighted 'is-highlighted'}}
                 {{if row.option.disabled 'is-disabled'}}
-                {{if row.option.danger 'm-danger'}}"
+                {{if row.option.danger 'm-danger'}}
+                {{if row.option.isCreate 'm-create'}}"
               role="option"
               aria-selected={{if row.selected "true" "false"}}
               disabled={{row.option.disabled}}
@@ -81,7 +103,8 @@
               {{if row.selected 'is-active'}}
               {{if row.highlighted 'is-highlighted'}}
               {{if row.option.disabled 'is-disabled'}}
-              {{if row.option.danger 'm-danger'}}"
+              {{if row.option.danger 'm-danger'}}
+              {{if row.option.isCreate 'm-create'}}"
             role="option"
             aria-selected={{if row.selected "true" "false"}}
             disabled={{row.option.disabled}}
@@ -100,7 +123,7 @@
       {{/if}}
     {{else}}
       <div class="nu-menu__empty">
-        {{if @emptyText @emptyText "No results found"}}
+        {{this.emptyText}}
       </div>
     {{/if}}
   </div>

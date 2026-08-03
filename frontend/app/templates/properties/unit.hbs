@@ -168,21 +168,28 @@
         {{/if}}
 
         {{#if @model.media.length}}
-          {{#let (object-at @model.media 0) as |primary|}}
-            <div class="unit-main-photo" data-test-main-photo>
-              <img src={{primary.url}} alt="Property photo" />
-            </div>
-          {{/let}}
+          <div class="unit-main-photo" data-test-main-photo>
+            <img src={{this.activePhoto.url}} alt="Property photo" />
+          </div>
           <div class="flex gap-2 wrap">
             {{#each @model.media as |media|}}
               <div
-                class="unit-thumb {{if media.isPrimary 'unit-thumb-primary'}}"
+                class="unit-thumb
+                  {{if media.isPrimary 'unit-thumb-primary'}}
+                  {{if (eq media.id this.activePhoto.id) 'is-active'}}"
                 data-test-photo-thumb
               >
                 <img
                   src={{or media.thumbnailUrl media.url}}
                   alt={{media.fileName}}
                 />
+                <button
+                  type="button"
+                  class="unit-thumb__select"
+                  aria-label="View {{media.fileName}}"
+                  data-test-photo-thumb-select={{media.id}}
+                  {{on "click" (fn this.selectPhoto media)}}
+                ></button>
                 <div class="unit-thumb-actions">
                   {{#unless media.isPrimary}}
                     <Nuvo::Button

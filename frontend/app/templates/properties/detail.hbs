@@ -339,7 +339,7 @@
       {{#unless this.editAsset}}
         <div class="flex col gap-2">
           <label class="text-sm text-muted">City *</label>
-          <LocationTypeahead
+          <Nuvo::Autocomplete
             @searchUrl={{this.citySearchUrl}}
             @createUrl="/locations/cities"
             @createPayload={{this.cityCreatePayload}}
@@ -352,7 +352,7 @@
         {{#if this.selectedCity}}
           <div class="flex col gap-2">
             <label class="text-sm text-muted">Location / Area *</label>
-            <LocationTypeahead
+            <Nuvo::Autocomplete
               @searchUrl={{this.localitySearchUrl}}
               @createUrl="/locations/localities"
               @createPayload={{this.localityCreatePayload}}

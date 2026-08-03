@@ -56,11 +56,31 @@
   border-color: var(--primary);
 }
 
+.unit-thumb.is-active {
+  box-shadow: 0 0 0 2px var(--primary);
+}
+
+.unit-thumb__select {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+
+  &:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: -2px;
+  }
+}
+
 .unit-thumb-actions {
   display: none;
   position: absolute;
   top: 2px;
   right: 2px;
+  z-index: 2;
   gap: 2px;
 }
 

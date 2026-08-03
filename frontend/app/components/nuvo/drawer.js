@@ -11,8 +11,6 @@ const SIZES = ['sm', 'md', 'lg'];
 export default class NuDrawerComponent extends Component {
   titleId = `nu-drawer-title-${guidFor(this)}`;
 
-  // isMounted keeps the panel in the DOM while it slides out; isVisible drives
-  // the is-open class one paint later so the transform actually transitions.
   @tracked isMounted = false;
   @tracked isVisible = false;
 

@@ -31,6 +31,7 @@ export default class PropertiesUnitController extends Controller {
   @tracked isUploading = false;
   @tracked uploadStatus = '';
   @tracked previewUrl = null;
+  @tracked activePhotoId = null;
 
   // Delete confirmation state (photos)
   @tracked showDeleteModal = false;
@@ -213,6 +214,15 @@ export default class PropertiesUnitController extends Controller {
       refreshRoute: 'properties.unit',
       errorMessage: 'Delete failed',
     });
+  }
+
+  get activePhoto() {
+    const media = this.model?.media ?? [];
+    return media.find((m) => m.id === this.activePhotoId) ?? media[0];
+  }
+
+  @action selectPhoto(media) {
+    this.activePhotoId = media.id;
   }
 
   @action async setPrimaryPhoto(media) {
