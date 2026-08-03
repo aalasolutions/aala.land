@@ -156,7 +156,7 @@ describe('PropertiesService', () => {
     it('returns the existing asset when a unique violation races with another create', async () => {
       const duplicate = { ...mockAsset, id: 'asset-uuid-2' } as Asset;
       const uniqueViolation = new QueryFailedError(
-        'INSERT INTO buildings ...',
+        'INSERT INTO assets ...',
         [],
         Object.assign(new Error('unique violation'), { code: '23505' }),
       );

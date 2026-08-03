@@ -28,11 +28,11 @@ export class Unit {
   @Column({ name: 'unit_number', type: 'varchar', length: 50 })
   unitNumber: string;
 
-  @Column({ name: 'building_id', type: 'uuid' })
+  @Column({ name: 'asset_id', type: 'uuid' })
   assetId: string;
 
   @ManyToOne(() => Asset, (asset) => asset.units)
-  @JoinColumn({ name: 'building_id' })
+  @JoinColumn({ name: 'asset_id' })
   asset: Asset;
 
   @Column({ name: 'company_id', type: 'uuid' })

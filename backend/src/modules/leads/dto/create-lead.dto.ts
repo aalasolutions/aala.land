@@ -93,7 +93,7 @@ export class CreateLeadDto {
   @ApiPropertyOptional({ example: 'uuid-of-locality' })
   @IsUUID()
   @IsOptional()
-  propertyId?: string;
+  localityId?: string;
 
   @ApiPropertyOptional({ example: 'uuid-of-unit' })
   @IsUUID()

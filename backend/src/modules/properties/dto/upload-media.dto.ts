@@ -16,9 +16,6 @@ export class UploadMediaDto {
   @IsUUID()
   unitId?: string;
 
-  /**
-   * Maps to PropertyMedia.assetId (DB column: building_id). Intentional legacy naming.
-   */
   @ApiProperty({
     description: 'Asset UUID this photo belongs to',
     required: false,

@@ -63,9 +63,9 @@ export class LeadsService {
     dto: CreateLeadDto,
     userId?: string,
   ): Promise<Lead> {
-    const { propertyId, unitId, regionCode: dtoRegionCode, ...rest } = dto;
+    const { localityId, unitId, regionCode: dtoRegionCode, ...rest } = dto;
 
-    if (propertyId) await this.validateLocalityExists(propertyId);
+    if (localityId) await this.validateLocalityExists(localityId);
     if (unitId) await this.validateUnitOwnership(unitId, companyId);
 
     const regionCode = await resolveRegionCode(
@@ -75,7 +75,7 @@ export class LeadsService {
     );
     const lead = this.leadRepository.create({
       ...rest,
-      propertyId,
+      localityId,
       unitId,
       companyId,
       regionCode,
@@ -135,7 +135,7 @@ export class LeadsService {
 
     const [data, total] = await this.leadRepository.findAndCount({
       where,
-      relations: ['property', 'unit', 'assignedAgent'],
+      relations: ['locality', 'unit', 'assignedAgent'],
       ...paginationOptions(page, limit),
       order: { createdAt: 'DESC' },
     });
@@ -161,8 +161,8 @@ export class LeadsService {
   ): Promise<LeadResponse> {
     const lead = await this.findLeadEntityOrThrow(id, companyId);
 
-    if (dto.propertyId && dto.propertyId !== lead.propertyId) {
-      await this.validateLocalityExists(dto.propertyId);
+    if (dto.localityId && dto.localityId !== lead.localityId) {
+      await this.validateLocalityExists(dto.localityId);
     }
     if (dto.unitId && dto.unitId !== lead.unitId) {
       await this.validateUnitOwnership(dto.unitId, companyId);
@@ -199,7 +199,7 @@ export class LeadsService {
 
     Object.assign(lead, dto);
 
-    if (dto.propertyId === null) lead.property = null;
+    if (dto.localityId === null) lead.locality = null;
     if (dto.unitId === null) lead.unit = null;
 
     if (hasAssignmentUpdate) {
@@ -429,7 +429,7 @@ export class LeadsService {
   ): Promise<Lead> {
     const lead = await this.leadRepository.findOne({
       where: { id, companyId },
-      relations: ['property', 'unit', 'assignedAgent'],
+      relations: ['locality', 'unit', 'assignedAgent'],
     });
     if (!lead) {
       throw new NotFoundException('Lead not found');
@@ -458,12 +458,12 @@ export class LeadsService {
     return agent;
   }
 
-  private async validateLocalityExists(propertyId: string): Promise<void> {
+  private async validateLocalityExists(localityId: string): Promise<void> {
     const exists = await this.localityRepository.exist({
-      where: { id: propertyId },
+      where: { id: localityId },
     });
     if (!exists) {
-      throw new BadRequestException('Invalid property (locality) selected');
+      throw new BadRequestException('Invalid locality selected');
     }
   }
 

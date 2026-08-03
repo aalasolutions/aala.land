@@ -283,8 +283,6 @@ export class MediaService {
     companyId: string,
   ): Promise<void> {
     // Assets are shared (community-seeded); no companyId on Asset entity.
-    // Verify company has at least one unit whose assetId (DB: building_id) matches.
-    // Unit.assetId maps to DB column building_id (unit.entity.ts line 22).
     const unit = await this.unitRepository.findOne({
       where: { assetId, companyId },
     });
@@ -469,7 +467,6 @@ export class MediaService {
     }
 
     // 12. Save media record. Output is always JPEG — store the actual content type.
-    //     PropertyMedia.assetId persists to building_id column (intentional legacy naming).
     const media = this.mediaRepository.create({
       url: this.buildFileUrl(bucket, originalKey),
       thumbnailUrl: this.buildFileUrl(bucket, thumbKey),

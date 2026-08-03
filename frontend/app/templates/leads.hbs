@@ -87,11 +87,11 @@
                 {{/if}}
               </div>
               <p class="text-muted text-xs">{{lead.email}}</p>
-              {{#if lead.property}}
+              {{#if lead.locality}}
                 <p class="text-primary text-xs flex gap-1 x-center"><Ui::Ph
                     @icon="buildings"
                   />
-                  {{lead.property.name}}</p>
+                  {{lead.locality.name}}</p>
               {{/if}}
               {{#if lead.unit}}
                 <p class="text-info text-xs flex gap-1 x-center"><Ui::Ph
@@ -196,11 +196,11 @@
                 {{/if}}
               </div>
               <p class="text-muted text-xs">{{lead.email}}</p>
-              {{#if lead.property}}
+              {{#if lead.locality}}
                 <p class="text-primary text-xs flex gap-1 x-center"><Ui::Ph
                     @icon="buildings"
                   />
-                  {{lead.property.name}}</p>
+                  {{lead.locality.name}}</p>
               {{/if}}
               {{#if lead.assignedAgentName}}
                 <p class="lead-assign">{{lead.assignedAgentName}}</p>
@@ -306,11 +306,11 @@
                 {{/if}}
               </div>
               <Nuvo::Tag class="tag-lead-{{lowercase lead.status}}" @text={{lead.status}} />
-              {{#if lead.property}}
+              {{#if lead.locality}}
                 <p class="text-primary text-xs flex gap-1 x-center"><Ui::Ph
                     @icon="buildings"
                   />
-                  {{lead.property.name}}</p>
+                  {{lead.locality.name}}</p>
               {{/if}}
               <div class="flex between x-center mt-1">
                 <span class="text-xs text-muted">{{format-date
@@ -392,8 +392,8 @@
                 <Nuvo::Tag class="tag-temp-{{lowercase lead.temperature}}" @text={{lead.temperature}} />
               </td>
               <td>
-                {{#if lead.property}}
-                  <span>{{lead.property.name}}</span>
+                {{#if lead.locality}}
+                  <span>{{lead.locality.name}}</span>
                   {{#if lead.unit}}
                     <span class="text-muted text-xs">
                       - Property
@@ -551,16 +551,16 @@
           @placeholder="Select source..."
         />
       </Nuvo::Field>
-      <Nuvo::Field @label="Property Area">
+      <Nuvo::Field @label="Location / Area">
         <Nuvo::Dropdown
-          id="lead-property"
+          id="lead-locality"
           @align="start"
-          @value={{this.formPropertyId}}
-          @onSelect={{this.setPropertyId}}
-          @options={{this.propertyOptions}}
+          @value={{this.formLocalityId}}
+          @onSelect={{this.setLocalityId}}
+          @options={{this.localityOptions}}
         />
       </Nuvo::Field>
-      {{#if this.formPropertyId}}
+      {{#if this.formLocalityId}}
         <Nuvo::Field @label="Property">
           <Nuvo::Dropdown
             id="lead-unit"
@@ -725,8 +725,8 @@
         <section class="flex col">
           <h4 class="nu-title m-xs text-muted mb-1">Requirement</h4>
           <Nuvo::InfoRow @label="Property">
-            {{#if this.detailLead.property}}
-              {{this.detailLead.property.name}}
+            {{#if this.detailLead.locality}}
+              {{this.detailLead.locality.name}}
             {{else}}
               <span class="text-muted">No property selected</span>
             {{/if}}
