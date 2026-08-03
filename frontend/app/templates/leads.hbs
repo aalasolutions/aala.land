@@ -724,15 +724,15 @@
 
         <section class="flex col">
           <h4 class="nu-title m-xs text-muted mb-1">Requirement</h4>
-          <Nuvo::InfoRow @label="Property">
+          <Nuvo::InfoRow @label="Location / Area">
             {{#if this.detailLead.locality}}
               {{this.detailLead.locality.name}}
             {{else}}
-              <span class="text-muted">No property selected</span>
+              <span class="text-muted">No area selected</span>
             {{/if}}
           </Nuvo::InfoRow>
           {{#if this.detailLead.unit}}
-            <Nuvo::InfoRow @label="Unit">
+            <Nuvo::InfoRow @label="Property">
               {{this.detailLead.unit.unitNumber}}
             </Nuvo::InfoRow>
           {{/if}}
