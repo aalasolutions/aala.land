@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { DataSource, EntityManager } from 'typeorm';
+import { DataSource, EntityManager, EntityTarget } from 'typeorm';
 import { Lead } from '../../leads/entities/lead.entity';
 import { PropertyDocument } from '../../properties/entities/property-document.entity';
 import { Unit } from '../../properties/entities/unit.entity';
@@ -16,8 +16,7 @@ import {
 
 interface ReassignmentTarget {
   type: ReassignedEntityType;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  entity: any;
+  entity: EntityTarget<unknown>;
   setProperty: string; // entity property written with the new owner id
   column: string; // snake_case DB column matched in the WHERE clause
   extraWhere?: string;

@@ -229,7 +229,12 @@ export class ContactsService {
     limit = 20,
     search?: string,
     tag?: ContactTag,
-  ): Promise<{ data: ContactResponse[]; total: number; page: number; limit: number }> {
+  ): Promise<{
+    data: ContactResponse[];
+    total: number;
+    page: number;
+    limit: number;
+  }> {
     const qb = this.contactRepository
       .createQueryBuilder('c')
       .where('c.company_id = :companyId', { companyId });

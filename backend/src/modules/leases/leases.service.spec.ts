@@ -8,6 +8,7 @@ import {
 } from 'typeorm';
 import { NotFoundException, BadRequestException } from '@nestjs/common';
 import { LeasesService } from './leases.service';
+import { ContactsService } from '../contacts/contacts.service';
 import { Lease, LeaseStatus, LeaseType } from './entities/lease.entity';
 
 describe('LeasesService', () => {
@@ -104,6 +105,12 @@ describe('LeasesService', () => {
         {
           provide: DataSource,
           useValue: dataSource,
+        },
+        {
+          provide: ContactsService,
+          useValue: {
+            findOneEntity: jest.fn().mockResolvedValue({ id: 'contact-uuid-1' }),
+          },
         },
       ],
     }).compile();

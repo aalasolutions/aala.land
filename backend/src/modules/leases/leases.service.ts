@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { attachDisplayName } from '../../shared/utils/contact.util';
+import { ContactsService } from '../contacts/contacts.service';
 import {
   DataSource,
   EntityManager,
@@ -30,6 +31,7 @@ export class LeasesService {
     @InjectRepository(Lease)
     private readonly leaseRepository: Repository<Lease>,
     private readonly dataSource: DataSource,
+    private readonly contactsService: ContactsService,
   ) {}
 
   /**
@@ -100,7 +102,18 @@ export class LeasesService {
     }
   }
 
+  // A tenant contactId must belong to the lease's company, or loading the
+  // contact relation would surface another tenant's PII.
+  private async assertContactInCompany(
+    contactId: string | null | undefined,
+    companyId: string,
+  ): Promise<void> {
+    if (!contactId) return;
+    await this.contactsService.findOneEntity(contactId, companyId);
+  }
+
   async create(companyId: string, dto: CreateLeaseDto): Promise<Lease> {
+    await this.assertContactInCompany(dto.contactId, companyId);
     const lease = this.leaseRepository.create({ ...dto, companyId });
     return this.leaseRepository.save(lease);
   }
@@ -162,6 +175,7 @@ export class LeasesService {
     companyId: string,
     dto: UpdateLeaseDto,
   ): Promise<Lease> {
+    await this.assertContactInCompany(dto.contactId, companyId);
     return this.dataSource.transaction(async (manager) => {
       const lease = await manager.findOne(Lease, {
         where: { id, companyId },
@@ -205,6 +219,7 @@ export class LeasesService {
     companyId: string,
     dto: CreateLeaseDto,
   ): Promise<{ oldLease: Lease; newLease: Lease }> {
+    await this.assertContactInCompany(dto.contactId, companyId);
     return this.dataSource.transaction(async (manager) => {
       // Lock the lease row FOR UPDATE, then re-check the status guard under the
       // lock: two concurrent renews serialize here, so only the first flips the
