@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { DataSource, EntityManager } from 'typeorm';
 import { Lead } from '../../leads/entities/lead.entity';
 import { PropertyDocument } from '../../properties/entities/property-document.entity';
-import { Owner } from '../../owners/entities/owner.entity';
+import { Unit } from '../../properties/entities/unit.entity';
 import {
   Commission,
   CommissionStatus,
@@ -39,8 +39,8 @@ const REASSIGNMENT_TARGETS: ReassignmentTarget[] = [
     column: 'uploaded_by',
   },
   {
-    type: 'owner',
-    entity: Owner,
+    type: 'unit',
+    entity: Unit,
     setProperty: 'assignedAgentId',
     column: 'assigned_agent_id',
   },

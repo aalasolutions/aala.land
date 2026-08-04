@@ -18,29 +18,11 @@ export class CreateLeaseDto {
   @IsUUID()
   unitId: string;
 
-  @ApiProperty()
-  @IsString()
-  @IsNotEmpty()
-  @MaxLength(255)
-  tenantName: string;
-
+  // The tenant is a contact. Identity and national ID live on the contact.
   @ApiProperty({ required: false })
   @IsOptional()
-  @IsString()
-  @MaxLength(255)
-  tenantEmail?: string;
-
-  @ApiProperty({ required: false })
-  @IsOptional()
-  @IsString()
-  @MaxLength(30)
-  tenantPhone?: string;
-
-  @ApiProperty({ required: false })
-  @IsOptional()
-  @IsString()
-  @MaxLength(50)
-  tenantNationalId?: string;
+  @IsUUID()
+  contactId?: string;
 
   @ApiProperty({ enum: LeaseType, default: LeaseType.RESIDENTIAL })
   @IsOptional()

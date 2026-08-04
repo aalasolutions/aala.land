@@ -10,7 +10,11 @@ import { PropertyArea } from './entities/property-area.entity';
 import { Asset } from './entities/asset.entity';
 import { Unit, UnitStatus } from './entities/unit.entity';
 import { PropertyMedia } from './entities/property-media.entity';
-import { Owner } from '../owners/entities/owner.entity';
+import { Contact } from '../contacts/entities/contact.entity';
+import {
+  attachDisplayName,
+  contactDisplayName,
+} from '../../shared/utils/contact.util';
 import { CreateAreaDto } from './dto/create-area.dto';
 import { UpdateAreaDto } from './dto/update-area.dto';
 import { CreateAssetDto } from './dto/create-asset.dto';
@@ -39,8 +43,8 @@ export class PropertiesService {
     private readonly unitRepository: Repository<Unit>,
     @InjectRepository(PropertyMedia)
     private readonly mediaRepository: Repository<PropertyMedia>,
-    @InjectRepository(Owner)
-    private readonly ownerRepository: Repository<Owner>,
+    @InjectRepository(Contact)
+    private readonly contactRepository: Repository<Contact>,
   ) {}
 
   // Areas
@@ -310,7 +314,9 @@ export class PropertiesService {
         'loc.id',
         'loc.name',
         'o.id',
-        'o.name',
+        'o.firstName',
+        'o.lastName',
+        'o.phone',
       ])
       .where('u.companyId = :companyId', { companyId });
 
@@ -387,7 +393,7 @@ export class PropertiesService {
       assetName: u.asset?.name ?? '',
       areaId: u.asset?.locality?.id ?? '',
       areaName: u.asset?.locality?.name ?? '',
-      ownerName: u.owner?.name ?? null,
+      ownerName: contactDisplayName(u.owner),
     }));
 
     return { data, total, page, limit };
@@ -395,7 +401,7 @@ export class PropertiesService {
 
   async createUnit(companyId: string, dto: CreateUnitDto): Promise<Unit> {
     if (dto.ownerId) {
-      await this.verifyOwnerBelongsToCompany(dto.ownerId, companyId);
+      await this.verifyContactBelongsToCompany(dto.ownerId, companyId);
     }
     const unit = this.unitRepository.create({ ...dto, companyId });
     return this.unitRepository.save(unit);
@@ -422,6 +428,9 @@ export class PropertiesService {
       relations: ['asset', 'asset.locality', 'owner'],
     });
     if (!unit) throw new NotFoundException(`Property not found`);
+    // owner is a raw Contact relation; attach displayName so a phone-only owner
+    // renders instead of blanking.
+    attachDisplayName(unit.owner);
     return unit;
   }
 
@@ -434,23 +443,25 @@ export class PropertiesService {
     const { ownerId, ...rest } = dto;
     Object.assign(unit, rest);
     if ('ownerId' in dto) {
+      // Set both the FK and the relation object: findOneUnit loads `owner`, so a
+      // stale unit.owner would otherwise outrank the changed ownerId on save.
       unit.owner = ownerId
-        ? await this.verifyOwnerBelongsToCompany(ownerId, companyId)
+        ? await this.verifyContactBelongsToCompany(ownerId, companyId)
         : null;
       unit.ownerId = ownerId ?? null;
     }
     return this.unitRepository.save(unit);
   }
 
-  private async verifyOwnerBelongsToCompany(
-    ownerId: string,
+  private async verifyContactBelongsToCompany(
+    contactId: string,
     companyId: string,
-  ): Promise<Owner> {
-    const owner = await this.ownerRepository.findOne({
-      where: { id: ownerId, companyId },
+  ): Promise<Contact> {
+    const contact = await this.contactRepository.findOne({
+      where: { id: contactId, companyId },
     });
-    if (!owner) throw new BadRequestException('Owner not found');
-    return owner;
+    if (!contact) throw new BadRequestException('Contact not found');
+    return contact;
   }
 
   async removeUnit(id: string, companyId: string): Promise<void> {

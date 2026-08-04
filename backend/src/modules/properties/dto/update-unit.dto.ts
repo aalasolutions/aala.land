@@ -25,6 +25,11 @@ export class UpdateUnitDto {
   @IsOptional()
   ownerId?: string | null;
 
+  @ApiPropertyOptional({ example: 'uuid-of-agent', nullable: true })
+  @IsUUID()
+  @IsOptional()
+  assignedAgentId?: string | null;
+
   @ApiPropertyOptional({ enum: UnitStatus })
   @IsEnum(UnitStatus)
   @IsOptional()

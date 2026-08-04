@@ -49,8 +49,7 @@ describe('LeasesService', () => {
     id: 'lease-uuid-1',
     companyId,
     unitId: 'unit-uuid-1',
-    tenantName: 'Ahmed Al-Rashid',
-    tenantEmail: 'ahmed@example.com',
+    contactId: 'contact-uuid-1',
     type: LeaseType.RESIDENTIAL,
     status: LeaseStatus.ACTIVE,
     monthlyRent: 5000,
@@ -124,7 +123,7 @@ describe('LeasesService', () => {
 
       const dto = {
         unitId: 'unit-uuid-1',
-        tenantName: 'Ahmed Al-Rashid',
+        contactId: 'contact-uuid-1',
         startDate: '2026-01-01',
         endDate: '2026-12-31',
         monthlyRent: 5000,
@@ -144,6 +143,7 @@ describe('LeasesService', () => {
 
       expect(repo.findAndCount).toHaveBeenCalledWith({
         where: { companyId },
+        relations: ['contact'],
         skip: 0,
         take: 20,
         order: { createdAt: 'DESC' },
@@ -281,7 +281,7 @@ describe('LeasesService', () => {
       const activeLease = { ...mockLease, status: LeaseStatus.ACTIVE } as Lease;
       const newLeaseData = {
         unitId: 'unit-uuid-1',
-        tenantName: 'Ahmed Al-Rashid',
+        contactId: 'contact-uuid-1',
         startDate: '2027-01-01',
         endDate: '2027-12-31',
         monthlyRent: 5500,
@@ -326,7 +326,7 @@ describe('LeasesService', () => {
       } as Lease;
       const newLeaseData = {
         unitId: 'unit-uuid-1',
-        tenantName: 'Ahmed Al-Rashid',
+        contactId: 'contact-uuid-1',
         startDate: '2027-01-01',
         endDate: '2027-12-31',
         monthlyRent: 5500,

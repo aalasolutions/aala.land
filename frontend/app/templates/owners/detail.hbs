@@ -1,5 +1,8 @@
 {{page-title "Owner Detail"}}
-<Nuvo::PageHeader @title={{this.model.owner.name}} @subtitle="Property Owner Details">
+<Nuvo::PageHeader
+  @title={{this.model.owner.displayName}}
+  @subtitle="Property Owner Details"
+>
   <:breadcrumb>
     <Nuvo::Button
       @variant="secondary"
@@ -11,77 +14,61 @@
   </:breadcrumb>
 </Nuvo::PageHeader>
 
-<div class="owner-detail-grid">
-  <Nuvo::Card @title="Contact Information">
-    <Nuvo::DescList @horizontal={{true}}>
-      <div class="nu-desc-list__group">
-        <dt class="nu-desc-list__term">Email</dt>
-        <dd class="nu-desc-list__description">{{if this.model.owner.email this.model.owner.email "N/A"}}</dd>
-      </div>
-      <div class="nu-desc-list__group">
-        <dt class="nu-desc-list__term">Phone</dt>
-        <dd class="nu-desc-list__description">{{if this.model.owner.phone this.model.owner.phone "N/A"}}</dd>
-      </div>
-      <div class="nu-desc-list__group">
-        <dt class="nu-desc-list__term">Nationality ID</dt>
-        <dd class="nu-desc-list__description">{{if this.model.owner.nationalityId this.model.owner.nationalityId "N/A"}}</dd>
-      </div>
-      <div class="nu-desc-list__group">
-        <dt class="nu-desc-list__term">Address</dt>
-        <dd class="nu-desc-list__description">{{if this.model.owner.address this.model.owner.address "N/A"}}</dd>
-      </div>
-      {{#if this.model.owner.assignedAgent}}
+{{#if this.model.owner}}
+  <div class="owner-detail-grid">
+    <Nuvo::Card @title="Contact Information">
+      <Nuvo::DescList @horizontal={{true}}>
         <div class="nu-desc-list__group">
-          <dt class="nu-desc-list__term">Assigned Agent</dt>
-          <dd class="nu-desc-list__description">{{this.model.owner.assignedAgent.name}}</dd>
+          <dt class="nu-desc-list__term">Email</dt>
+          <dd class="nu-desc-list__description">{{if
+              this.model.owner.email
+              this.model.owner.email
+              "N/A"
+            }}</dd>
         </div>
-      {{/if}}
-    </Nuvo::DescList>
-  </Nuvo::Card>
-
-  {{#if this.model.owner.notes}}
-    <Nuvo::Card @title="Notes">
-      <p class="owner-detail__notes">{{this.model.owner.notes}}</p>
+        <div class="nu-desc-list__group">
+          <dt class="nu-desc-list__term">Phone</dt>
+          <dd class="nu-desc-list__description">{{if
+              this.model.owner.phone
+              this.model.owner.phone
+              "N/A"
+            }}</dd>
+        </div>
+        <div class="nu-desc-list__group">
+          <dt class="nu-desc-list__term">Nationality</dt>
+          <dd class="nu-desc-list__description">{{if
+              this.model.owner.nationality
+              this.model.owner.nationality
+              "N/A"
+            }}</dd>
+        </div>
+        <div class="nu-desc-list__group">
+          <dt class="nu-desc-list__term">National ID</dt>
+          <dd class="nu-desc-list__description">{{if
+              this.model.owner.nationalId
+              this.model.owner.nationalId
+              "N/A"
+            }}</dd>
+        </div>
+        <div class="nu-desc-list__group">
+          <dt class="nu-desc-list__term">Address</dt>
+          <dd class="nu-desc-list__description">{{if
+              this.model.owner.address
+              this.model.owner.address
+              "N/A"
+            }}</dd>
+        </div>
+      </Nuvo::DescList>
     </Nuvo::Card>
-  {{/if}}
-</div>
 
-<div class="units-section">
-  <Nuvo::Title @tag="h3" @size="lg">Properties Owned ({{this.model.owner.units.length}})</Nuvo::Title>
-  {{#if this.model.owner.units}}
-    <div class="units-grid">
-      {{#each this.model.owner.units as |unit|}}
-        {{#if unit.asset}}
-          <LinkTo
-            @route="properties.unit"
-            @models={{array unit.asset.localityId unit.id}}
-            class="unit-card unit-card-link"
-          >
-            <p class="unit-number">{{unit.unitNumber}}</p>
-            {{#if unit.asset.locality}}
-              <p class="unit-building">{{unit.asset.locality.name}}
-                -
-                {{unit.asset.name}}</p>
-            {{else}}
-              <p class="unit-building">{{unit.asset.name}}</p>
-            {{/if}}
-            <Nuvo::Tag class="tag-unit-{{lowercase unit.status}}">{{unit.status}}</Nuvo::Tag>
-            {{#if unit.price}}
-              <p class="unit-price">{{format-currency unit.price}}</p>
-            {{/if}}
-          </LinkTo>
-        {{else}}
-          <div class="unit-card">
-            <p class="unit-number">{{unit.unitNumber}}</p>
-            <Nuvo::Tag class="tag-unit-{{lowercase unit.status}}">{{unit.status}}</Nuvo::Tag>
-            {{#if unit.price}}
-              <p class="unit-price">{{format-currency unit.price}}</p>
-            {{/if}}
-          </div>
-        {{/if}}
-      {{/each}}
-    </div>
-  {{else}}
-    <Nuvo::EmptyState @description="No properties assigned to this owner yet." />
-  {{/if}}
-</div>
+    {{#if this.model.owner.notes}}
+      <Nuvo::Card @title="Notes">
+        <p class="owner-detail__notes">{{this.model.owner.notes}}</p>
+      </Nuvo::Card>
+    {{/if}}
+  </div>
+{{else}}
+  <Nuvo::Card>
+    <Nuvo::EmptyState @description="Owner not found." />
+  </Nuvo::Card>
+{{/if}}

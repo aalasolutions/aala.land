@@ -262,10 +262,12 @@ export default class LeadsController extends Controller {
       this.closeDetailModal();
     }
 
-    this.formFirstName = lead.firstName ?? '';
-    this.formLastName = lead.lastName ?? '';
-    this.formEmail = lead.email ?? '';
-    this.formPhone = lead.phone ?? '';
+    // Identity now lives on the contact; shown for reference, not editable here.
+    const contact = lead.contact ?? {};
+    this.formFirstName = contact.firstName ?? '';
+    this.formLastName = contact.lastName ?? '';
+    this.formEmail = contact.email ?? '';
+    this.formPhone = contact.phone ?? '';
     this.formStatus = lead.status ?? 'NEW';
     this.formTemperature = lead.temperature ?? 'WARM';
     this.formSource = lead.source ?? 'OTHER';
@@ -552,10 +554,17 @@ export default class LeadsController extends Controller {
       await this.auth.fetchJson(path, {
         method: isEdit ? 'PATCH' : 'POST',
         body: JSON.stringify({
-          firstName: this.formFirstName,
-          ...(this.formLastName ? { lastName: this.formLastName } : {}),
-          ...(this.formEmail ? { email: this.formEmail } : {}),
-          ...(this.formPhone ? { phone: this.formPhone } : {}),
+          // Identity (name/phone/email) lives on the contact. Create resolves or
+          // creates the contact from these; edit must NOT send them (UpdateLeadDto
+          // no longer declares them, and forbidNonWhitelisted would 400).
+          ...(isEdit
+            ? {}
+            : {
+                firstName: this.formFirstName,
+                ...(this.formLastName ? { lastName: this.formLastName } : {}),
+                ...(this.formEmail ? { email: this.formEmail } : {}),
+                ...(this.formPhone ? { phone: this.formPhone } : {}),
+              }),
           status: this.formStatus,
           temperature: this.formTemperature,
           source: this.formSource,

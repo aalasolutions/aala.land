@@ -2,7 +2,6 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ContactsController } from './contacts.controller';
 import { ContactsService } from './contacts.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { ContactType } from './entities/contact.entity';
 
 describe('ContactsController', () => {
   let controller: ContactsController;
@@ -25,8 +24,7 @@ describe('ContactsController', () => {
     lastName: 'Al-Rashid',
     email: 'ahmed@example.com',
     phone: '+971501234567',
-    type: ContactType.OTHER,
-    tags: ['VIP'],
+    isWhatsapp: false,
   };
 
   const paginated = { data: [mockContact], total: 1, page: 1, limit: 20 };
@@ -85,7 +83,13 @@ describe('ContactsController', () => {
 
       const result = await controller.findAll(mockReq, 1, 20, undefined);
 
-      expect(service.findAll).toHaveBeenCalledWith(companyId, 1, 20, undefined);
+      expect(service.findAll).toHaveBeenCalledWith(
+        companyId,
+        1,
+        20,
+        undefined,
+        undefined,
+      );
       expect(result).toEqual(paginated);
     });
 
@@ -94,7 +98,13 @@ describe('ContactsController', () => {
 
       await controller.findAll(mockReq, 1, 20, 'Ahmed');
 
-      expect(service.findAll).toHaveBeenCalledWith(companyId, 1, 20, 'Ahmed');
+      expect(service.findAll).toHaveBeenCalledWith(
+        companyId,
+        1,
+        20,
+        'Ahmed',
+        undefined,
+      );
     });
   });
 
@@ -133,7 +143,11 @@ describe('ContactsController', () => {
 
       await controller.remove('contact-uuid-1', mockReq);
 
-      expect(service.remove).toHaveBeenCalledWith('contact-uuid-1', companyId);
+      expect(service.remove).toHaveBeenCalledWith(
+        'contact-uuid-1',
+        companyId,
+        undefined,
+      );
     });
   });
 });

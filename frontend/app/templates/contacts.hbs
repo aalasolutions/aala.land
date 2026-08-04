@@ -37,7 +37,7 @@
           <thead>
             <tr>
               <th>Name</th>
-              <th>Type</th>
+              <th>Role</th>
               <th>Email</th>
               <th>Phone</th>
               <th>Company</th>
@@ -47,12 +47,15 @@
           <tbody>
             {{#each @model.contacts as |contact|}}
               <tr data-test-contact-row>
-                <td class="font-bold">{{contact.firstName}} {{contact.lastName}}</td>
+                <td class="font-bold">{{contact.displayName}}</td>
                 <td>
-                  <Nuvo::Tag
-                    class="tag-contact-{{lowercase contact.type}}"
-                    @text={{contact.type}}
-                  />
+                  <div class="flex gap-1 flex-wrap">
+                    {{#each contact.tags as |tag|}}
+                      <Nuvo::Tag @text={{capitalize tag}} />
+                    {{else}}
+                      <span class="text-muted text-sm">Contact</span>
+                    {{/each}}
+                  </div>
                 </td>
                 <td class="text-muted">{{contact.email}}</td>
                 <td class="text-muted">{{contact.phone}}</td>
@@ -127,14 +130,13 @@
       {{on "submit" this.saveContact}}
     >
       <div class="flex gap-4">
-        <Nuvo::Field class="grow" @label="First Name" @required={{true}}>
+        <Nuvo::Field class="grow" @label="First Name">
           <Nuvo::Input
             id="c-fname"
             type="text"
             placeholder="Ahmed"
             @value={{this.formFirstName}}
             @onInput={{fn this.setFieldValue "formFirstName"}}
-            required={{true}}
             data-test-input-first-name
           />
         </Nuvo::Field>
@@ -161,15 +163,14 @@
             data-test-input-email
           />
         </Nuvo::Field>
-        <Nuvo::Field class="grow" @label="Type">
-          <Nuvo::Dropdown
-            id="c-type"
-            @align="start"
-            @value={{this.formType}}
-            @onSelect={{fn this.setFieldValue "formType"}}
-            @options={{this.contactTypes}}
-            @placeholder="Select type..."
-            data-test-input-type
+        <Nuvo::Field class="grow" @label="Nationality">
+          <Nuvo::Input
+            id="c-nationality"
+            type="text"
+            placeholder="e.g. Emirati"
+            @value={{this.formNationality}}
+            @onInput={{fn this.setFieldValue "formNationality"}}
+            data-test-input-nationality
           />
         </Nuvo::Field>
       </div>
@@ -185,17 +186,29 @@
             data-test-input-phone
           />
         </Nuvo::Field>
-        <Nuvo::Field class="grow" @label="WhatsApp">
+        <Nuvo::Field class="grow" @label="National ID">
           <Nuvo::Input
-            id="c-whatsapp"
+            id="c-national-id"
             type="text"
-            placeholder="+971501234567"
-            @value={{this.formWhatsappNumber}}
-            @onInput={{fn this.setFieldValue "formWhatsappNumber"}}
-            data-test-input-whatsapp
+            placeholder="EID / passport number"
+            @value={{this.formNationalId}}
+            @onInput={{fn this.setFieldValue "formNationalId"}}
+            data-test-input-national-id
           />
         </Nuvo::Field>
       </div>
+
+      <Nuvo::Field @label="WhatsApp">
+        <label class="flex gap-2 items-center text-sm">
+          <input
+            type="checkbox"
+            checked={{this.formIsWhatsapp}}
+            {{on "change" this.toggleIsWhatsapp}}
+            data-test-input-is-whatsapp
+          />
+          <span>This phone number is on WhatsApp</span>
+        </label>
+      </Nuvo::Field>
 
       <div class="flex gap-4">
         <Nuvo::Field class="grow" @label="Company">

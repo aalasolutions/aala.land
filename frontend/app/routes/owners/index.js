@@ -10,10 +10,12 @@ export default class OwnersIndexRoute extends AuthenticatedRoute {
   };
 
   async model({ page = 1, limit = 20 }) {
-    const params = new URLSearchParams({ page, limit });
+    const params = new URLSearchParams({ page, limit, tag: 'owner' });
 
     try {
-      const json = await this.auth.fetchJson(`/owners?${params.toString()}`);
+      const json = await this.auth.fetchJson(
+        `/contacts?${params.toString()}`,
+      );
       return {
         owners: json.data?.data || [],
         total: json.data?.total || 0,

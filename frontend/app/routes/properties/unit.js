@@ -10,7 +10,7 @@ export default class PropertiesUnitRoute extends AuthenticatedRoute {
         await Promise.all([
           this.auth.fetchJson(`/properties/units/${unit_id}`),
           this.auth.fetchJson(`/leases/unit/${unit_id}`),
-          this.auth.fetchJson('/owners?limit=100'),
+          this.auth.fetchJson('/contacts?limit=100'),
           this.auth.fetchJson(`/properties/units/${unit_id}/media`),
           this.auth.fetchJson(`/documents?unitId=${unit_id}&limit=100`),
         ]);

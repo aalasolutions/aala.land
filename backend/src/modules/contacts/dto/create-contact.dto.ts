@@ -3,20 +3,20 @@ import {
   IsNotEmpty,
   IsOptional,
   IsEmail,
-  IsEnum,
-  IsArray,
-  IsUUID,
+  IsBoolean,
   MaxLength,
 } from 'class-validator';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { ContactType } from '../entities/contact.entity';
+import { ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateContactDto {
-  @ApiProperty({ example: 'Ahmed' })
+  // Nullable on the entity; a contact may start as a number only. When provided
+  // it must be non-empty.
+  @ApiPropertyOptional({ example: 'Ahmed' })
   @IsString()
   @IsNotEmpty()
+  @IsOptional()
   @MaxLength(100)
-  firstName: string;
+  firstName?: string;
 
   @ApiPropertyOptional({ example: 'Al-Rashid' })
   @IsString()
@@ -35,16 +35,23 @@ export class CreateContactDto {
   @MaxLength(50)
   phone?: string;
 
-  @ApiPropertyOptional({ example: '+971501234567' })
+  // Whether `phone` is reachable on WhatsApp. One number field, not two.
+  @ApiPropertyOptional({ example: true, default: false })
+  @IsBoolean()
+  @IsOptional()
+  isWhatsapp?: boolean;
+
+  @ApiPropertyOptional({ example: 'Emirati' })
+  @IsString()
+  @IsOptional()
+  @MaxLength(100)
+  nationality?: string;
+
+  @ApiPropertyOptional({ example: '784-1234-5678901-1' })
   @IsString()
   @IsOptional()
   @MaxLength(50)
-  whatsappNumber?: string;
-
-  @ApiPropertyOptional({ enum: ContactType, default: ContactType.OTHER })
-  @IsEnum(ContactType)
-  @IsOptional()
-  type?: ContactType;
+  nationalId?: string;
 
   @ApiPropertyOptional({ example: 'Emaar Properties' })
   @IsString()
@@ -67,15 +74,4 @@ export class CreateContactDto {
   @IsString()
   @IsOptional()
   notes?: string;
-
-  @ApiPropertyOptional({ example: ['VIP', 'dubai-marina'], type: [String] })
-  @IsArray()
-  @IsString({ each: true })
-  @IsOptional()
-  tags?: string[];
-
-  @ApiPropertyOptional({ example: 'uuid-of-lead' })
-  @IsUUID()
-  @IsOptional()
-  leadId?: string;
 }

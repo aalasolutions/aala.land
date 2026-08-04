@@ -66,16 +66,14 @@
               {{on "click" (fn this.openDetailModal lead)}}
             >
               <div class="flex between x-center">
-                <p class="text-sm font-bold">{{lead.firstName}}{{#if
-                    lead.lastName
-                  }} {{lead.lastName}}{{/if}}</p>
+                <p class="text-sm font-bold">{{lead.contact.displayName}}</p>
                 <Nuvo::Tag class="tag-temp-{{lowercase lead.temperature}}" @text={{lead.temperature}} />
               </div>
               <div class="flex gap-2 x-center">
-                <p class="text-muted text-xs">{{lead.phone}}</p>
-                {{#if lead.phone}}
+                <p class="text-muted text-xs">{{lead.contact.phone}}</p>
+                {{#if lead.contact.phone}}
                   <a
-                    href={{wa-link lead.phone}}
+                    href={{wa-link lead.contact.phone}}
                     target="_blank"
                     rel="noopener noreferrer"
                     class="wa-link"
@@ -86,7 +84,7 @@
                   </a>
                 {{/if}}
               </div>
-              <p class="text-muted text-xs">{{lead.email}}</p>
+              <p class="text-muted text-xs">{{lead.contact.email}}</p>
               {{#if lead.locality}}
                 <p class="text-primary text-xs flex gap-1 x-center"><Ui::Ph
                     @icon="buildings"
@@ -175,16 +173,14 @@
               {{on "click" (fn this.openDetailModal lead)}}
             >
               <div class="flex between x-center">
-                <p class="text-sm font-bold">{{lead.firstName}}{{#if
-                    lead.lastName
-                  }} {{lead.lastName}}{{/if}}</p>
+                <p class="text-sm font-bold">{{lead.contact.displayName}}</p>
                 <Nuvo::Tag class="tag-lead-{{lowercase lead.status}}" @text={{lead.status}} />
               </div>
               <div class="flex gap-2 x-center">
-                <p class="text-muted text-xs">{{lead.phone}}</p>
-                {{#if lead.phone}}
+                <p class="text-muted text-xs">{{lead.contact.phone}}</p>
+                {{#if lead.contact.phone}}
                   <a
-                    href={{wa-link lead.phone}}
+                    href={{wa-link lead.contact.phone}}
                     target="_blank"
                     rel="noopener noreferrer"
                     class="wa-link"
@@ -195,7 +191,7 @@
                   </a>
                 {{/if}}
               </div>
-              <p class="text-muted text-xs">{{lead.email}}</p>
+              <p class="text-muted text-xs">{{lead.contact.email}}</p>
               {{#if lead.locality}}
                 <p class="text-primary text-xs flex gap-1 x-center"><Ui::Ph
                     @icon="buildings"
@@ -285,16 +281,14 @@
               {{on "click" (fn this.openDetailModal lead)}}
             >
               <div class="flex between x-center">
-                <p class="text-sm font-bold">{{lead.firstName}}{{#if
-                    lead.lastName
-                  }} {{lead.lastName}}{{/if}}</p>
+                <p class="text-sm font-bold">{{lead.contact.displayName}}</p>
                 <Nuvo::Tag class="tag-temp-{{lowercase lead.temperature}}" @text={{lead.temperature}} />
               </div>
               <div class="flex gap-2 x-center">
-                <p class="text-muted text-xs">{{lead.phone}}</p>
-                {{#if lead.phone}}
+                <p class="text-muted text-xs">{{lead.contact.phone}}</p>
+                {{#if lead.contact.phone}}
                   <a
-                    href={{wa-link lead.phone}}
+                    href={{wa-link lead.contact.phone}}
                     target="_blank"
                     rel="noopener noreferrer"
                     class="wa-link"
@@ -362,16 +356,15 @@
               {{on "click" (fn this.openDetailModal lead)}}
             >
               <td>
-                <span class="font-bold">{{lead.firstName}}{{#if lead.lastName}}
-                    {{lead.lastName}}{{/if}}</span>
+                <span class="font-bold">{{lead.contact.displayName}}</span>
               </td>
               <td>
                 <div class="flex col gap-1">
                   <div class="flex gap-2 x-center">
-                    <span class="text-xs">{{lead.phone}}</span>
-                    {{#if lead.phone}}
+                    <span class="text-xs">{{lead.contact.phone}}</span>
+                    {{#if lead.contact.phone}}
                       <a
-                        href={{wa-link lead.phone}}
+                        href={{wa-link lead.contact.phone}}
                         target="_blank"
                         rel="noopener noreferrer"
                         class="wa-link"
@@ -382,7 +375,7 @@
                       </a>
                     {{/if}}
                   </div>
-                  <span class="text-xs text-muted">{{lead.email}}</span>
+                  <span class="text-xs text-muted">{{lead.contact.email}}</span>
                 </div>
               </td>
               <td>
@@ -472,49 +465,64 @@
           />
         </Nuvo::Field>
       {{/if}}
-      <div class="flex gap-4">
-        <div class="grow">
-          <Nuvo::Field @label="First Name" @required={{true}}>
-            <Nuvo::Input
-              id="lead-first-name"
-              @type="text"
-              @placeholder="e.g. Ahmed"
-              @value={{this.formFirstName}}
-              @onInput={{fn this.setFieldValue "formFirstName"}}
-              required={{true}}
-            />
-          </Nuvo::Field>
+      {{#if this.editLead}}
+        {{! Identity lives on the contact; edit it on the Contacts page. }}
+        <Nuvo::Field @label="Contact">
+          <p class="text-sm">
+            {{this.editLead.contact.displayName}}
+            {{#if this.editLead.contact.email}}
+              <span class="text-muted">- {{this.editLead.contact.email}}</span>
+            {{/if}}
+            {{#if this.editLead.contact.phone}}
+              <span class="text-muted">- {{this.editLead.contact.phone}}</span>
+            {{/if}}
+          </p>
+        </Nuvo::Field>
+      {{else}}
+        <div class="flex gap-4">
+          <div class="grow">
+            <Nuvo::Field @label="First Name" @required={{true}}>
+              <Nuvo::Input
+                id="lead-first-name"
+                @type="text"
+                @placeholder="e.g. Ahmed"
+                @value={{this.formFirstName}}
+                @onInput={{fn this.setFieldValue "formFirstName"}}
+                required={{true}}
+              />
+            </Nuvo::Field>
+          </div>
+          <div class="grow">
+            <Nuvo::Field @label="Last Name">
+              <Nuvo::Input
+                id="lead-last-name"
+                @type="text"
+                @placeholder="e.g. Al Mansouri"
+                @value={{this.formLastName}}
+                @onInput={{fn this.setFieldValue "formLastName"}}
+              />
+            </Nuvo::Field>
+          </div>
         </div>
-        <div class="grow">
-          <Nuvo::Field @label="Last Name">
-            <Nuvo::Input
-              id="lead-last-name"
-              @type="text"
-              @placeholder="e.g. Al Mansouri"
-              @value={{this.formLastName}}
-              @onInput={{fn this.setFieldValue "formLastName"}}
-            />
-          </Nuvo::Field>
-        </div>
-      </div>
-      <Nuvo::Field @label="Email">
-        <Nuvo::Input
-          id="lead-email"
-          @type="email"
-          @placeholder="ahmed@example.com"
-          @value={{this.formEmail}}
-          @onInput={{fn this.setFieldValue "formEmail"}}
-        />
-      </Nuvo::Field>
-      <Nuvo::Field @label="Phone">
-        <Nuvo::Input
-          id="lead-phone"
-          @type="text"
-          @placeholder="+971501234567"
-          @value={{this.formPhone}}
-          @onInput={{fn this.setFieldValue "formPhone"}}
-        />
-      </Nuvo::Field>
+        <Nuvo::Field @label="Email">
+          <Nuvo::Input
+            id="lead-email"
+            @type="email"
+            @placeholder="ahmed@example.com"
+            @value={{this.formEmail}}
+            @onInput={{fn this.setFieldValue "formEmail"}}
+          />
+        </Nuvo::Field>
+        <Nuvo::Field @label="Phone">
+          <Nuvo::Input
+            id="lead-phone"
+            @type="text"
+            @placeholder="+971501234567"
+            @value={{this.formPhone}}
+            @onInput={{fn this.setFieldValue "formPhone"}}
+          />
+        </Nuvo::Field>
+      {{/if}}
       <div class="flex gap-4">
         <div class="grow">
           <Nuvo::Field @label="Status">
@@ -604,7 +612,7 @@
 >
   <form class="flex col gap-4" {{on "submit" this.assignToAgent}}>
     <p class="text-muted">Select an agent to assign
-      <strong>{{this.assignLead.firstName}}</strong>
+      <strong>{{this.assignLead.contact.displayName}}</strong>
       to:</p>
     <Nuvo::Field @label="Agent">
       <Nuvo::Dropdown
@@ -629,14 +637,7 @@
 {{! Lead Detail Modal }}
 <Nuvo::Modal
   @open={{this.showDetailModal}}
-  @title={{if
-    this.detailLead
-    (concat
-      this.detailLead.firstName
-      (if this.detailLead.lastName (concat " " this.detailLead.lastName) "")
-    )
-    "Lead Details"
-  }}
+  @title={{if this.detailLead this.detailLead.contact.displayName "Lead Details"}}
   @onClose={{this.closeDetailModal}}
   @size="xl"
 >
@@ -644,8 +645,7 @@
     <div class="flex col gap-2 grow min-w-0">
       <div class="flex gap-3 x-center wrap">
         <h2 id={{titleId}} class="nu-modal__title" data-test-nu-modal-title>
-          {{this.detailLead.firstName}}
-          {{this.detailLead.lastName}}
+          {{this.detailLead.contact.displayName}}
         </h2>
         <Nuvo::Tag
           class="tag-temp-{{lowercase this.detailLead.temperature}}"
@@ -675,41 +675,43 @@
         <section class="flex col">
           <h4 class="nu-title m-xs text-muted mb-1">Contact</h4>
           <Nuvo::InfoRow @label="Phone">
-            {{#if this.detailLead.phone}}
+            {{#if this.detailLead.contact.phone}}
               <span class="flex gap-2 x-center">
-                <span>{{this.detailLead.phone}}</span>
-                <a
-                  href={{wa-link this.detailLead.phone}}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  class="wa-link"
-                  data-test-wa-link
-                  title="Open WhatsApp"
-                >
-                  <Ui::Ph @icon="whatsapp-logo" @size="16px" />
-                </a>
+                <span>{{this.detailLead.contact.phone}}</span>
+                {{#if this.detailLead.contact.isWhatsapp}}
+                  <a
+                    href={{wa-link this.detailLead.contact.phone}}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="wa-link"
+                    data-test-wa-link
+                    title="Open WhatsApp"
+                  >
+                    <Ui::Ph @icon="whatsapp-logo" @size="16px" />
+                  </a>
+                {{/if}}
               </span>
             {{else}}
               <span class="text-muted">N/A</span>
             {{/if}}
           </Nuvo::InfoRow>
           <Nuvo::InfoRow class="m-stacked" @label="Email">
-            {{#if this.detailLead.email}}
-              {{this.detailLead.email}}
+            {{#if this.detailLead.contact.email}}
+              {{this.detailLead.contact.email}}
             {{else}}
               <span class="text-muted">N/A</span>
             {{/if}}
           </Nuvo::InfoRow>
-          {{#if this.detailLead.whatsappNumber}}
+          {{#if this.detailLead.contact.isWhatsapp}}
             <Nuvo::InfoRow @label="WhatsApp">
               <a
-                href={{wa-link this.detailLead.whatsappNumber}}
+                href={{wa-link this.detailLead.contact.phone}}
                 target="_blank"
                 rel="noopener noreferrer"
                 class="wa-link-text"
                 data-test-wa-link
               >
-                {{this.detailLead.whatsappNumber}}
+                {{this.detailLead.contact.phone}}
               </a>
             </Nuvo::InfoRow>
           {{/if}}

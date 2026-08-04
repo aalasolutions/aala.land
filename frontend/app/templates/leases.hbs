@@ -19,7 +19,7 @@
         {{#each @model.leases as |lease|}}
           <div data-test-lease-row class="flex between x-center p-4 rounded-xl bg-alternate">
             <div class="flex col gap-1">
-              <p class="text-sm font-bold">{{lease.tenantName}}</p>
+              <p class="text-sm font-bold">{{lease.contact.displayName}}</p>
               <p class="text-muted text-xs">{{lease.type}}
                 -
                 {{format-currency lease.monthlyRent}}/mo</p>
@@ -123,37 +123,17 @@
         </Nuvo::Field>
       {{/if}}
 
-      <Nuvo::Field @label="Tenant Name" @required={{true}}>
-        <Nuvo::Input
-          id="lease-tenant-name"
-          type="text"
-          placeholder="e.g. Ahmed Al Mansouri"
-          @value={{this.formTenantName}}
-          @onInput={{fn this.setFieldValue "formTenantName"}}
-          required={{true}}
+      <Nuvo::Field @label="Tenant" @required={{true}}>
+        <Nuvo::Dropdown
+          id="lease-tenant"
+          @align="start"
+          @value={{this.formTenantContactId}}
+          @onSelect={{fn this.setFieldValue "formTenantContactId"}}
+          @options={{this.tenantOptions}}
+          @placeholder="Select a tenant..."
+          data-test-lease-tenant
         />
       </Nuvo::Field>
-
-      <div class="flex gap-4">
-        <Nuvo::Field class="grow" @label="Email">
-          <Nuvo::Input
-            id="lease-tenant-email"
-            type="email"
-            placeholder="ahmed@example.com"
-            @value={{this.formTenantEmail}}
-            @onInput={{fn this.setFieldValue "formTenantEmail"}}
-          />
-        </Nuvo::Field>
-        <Nuvo::Field class="grow" @label="Phone">
-          <Nuvo::Input
-            id="lease-tenant-phone"
-            type="text"
-            placeholder="+971501234567"
-            @value={{this.formTenantPhone}}
-            @onInput={{fn this.setFieldValue "formTenantPhone"}}
-          />
-        </Nuvo::Field>
-      </div>
 
       <div class="flex gap-4">
         <Nuvo::Field class="grow" @label="Property Type">

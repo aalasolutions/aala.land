@@ -105,7 +105,7 @@ describe('UserReassignmentService', () => {
       expect(types).toEqual([
         'lead',
         'document',
-        'owner',
+        'unit',
         'commission',
         'work_order',
         'contact',

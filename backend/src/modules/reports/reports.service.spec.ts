@@ -25,6 +25,8 @@ function createMockQueryBuilder(result: any = []) {
     orderBy: jest.fn().mockReturnThis(),
     setParameter: jest.fn().mockReturnThis(),
     innerJoin: jest.fn().mockReturnThis(),
+    leftJoin: jest.fn().mockReturnThis(),
+    leftJoinAndSelect: jest.fn().mockReturnThis(),
     take: jest.fn().mockReturnThis(),
     getRawMany: jest.fn().mockResolvedValue(result),
     getRawOne: jest.fn().mockResolvedValue(result),

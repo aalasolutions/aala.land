@@ -14,7 +14,10 @@ import { CreateLeadActivityDto } from './dto/create-lead-activity.dto';
 import { Company } from '../companies/entities/company.entity';
 import { User } from '../users/entities/user.entity';
 import { Locality } from '../locations/entities/locality.entity';
+import { City } from '../locations/entities/city.entity';
 import { Unit } from '../properties/entities/unit.entity';
+import { ContactsService } from '../contacts/contacts.service';
+import { attachDisplayName, contactDisplayNameOr } from '../../shared/utils/contact.util';
 import { resolveRegionCode } from '../../shared/utils/resolve-region-code.util';
 import { paginationOptions } from '../../shared/utils/pagination.util';
 import { Role } from '../../shared/enums/roles.enum';
@@ -51,8 +54,11 @@ export class LeadsService {
     private readonly userRepository: Repository<User>,
     @InjectRepository(Locality)
     private readonly localityRepository: Repository<Locality>,
+    @InjectRepository(City)
+    private readonly cityRepository: Repository<City>,
     @InjectRepository(Unit)
     private readonly unitRepository: Repository<Unit>,
+    private readonly contactsService: ContactsService,
     private readonly notificationsService: NotificationsService,
     private readonly usersService: UsersService,
     private readonly notificationsGateway: NotificationsGateway,
@@ -63,10 +69,40 @@ export class LeadsService {
     dto: CreateLeadDto,
     userId?: string,
   ): Promise<Lead> {
-    const { localityId, unitId, regionCode: dtoRegionCode, ...rest } = dto;
+    const {
+      contactId,
+      firstName,
+      lastName,
+      email,
+      phone,
+      isWhatsapp,
+      cityId,
+      localityId,
+      unitId,
+      regionCode: dtoRegionCode,
+      ...rest
+    } = dto;
 
     if (localityId) await this.validateLocalityExists(localityId);
     if (unitId) await this.validateUnitOwnership(unitId, companyId);
+    if (cityId) await this.validateCityExists(cityId);
+
+    // A lead needs someone to be about: either an existing contact or at least
+    // one identifying detail. Without that, resolveOrCreate would insert an
+    // all-null junk contact for every such lead.
+    if (!contactId && !firstName && !phone && !email) {
+      throw new BadRequestException(
+        'A lead requires a contact or identifying details (name, phone or email).',
+      );
+    }
+
+    // Resolve or create the contact this lead belongs to. One number is one
+    // contact within the company, so re-entering a known number reuses it.
+    const contact = await this.contactsService.resolveOrCreate(
+      companyId,
+      { contactId, firstName, lastName, email, phone, isWhatsapp },
+      userId,
+    );
 
     const regionCode = await resolveRegionCode(
       this.companyRepository,
@@ -75,6 +111,8 @@ export class LeadsService {
     );
     const lead = this.leadRepository.create({
       ...rest,
+      contactId: contact.id,
+      cityId,
       localityId,
       unitId,
       companyId,
@@ -82,7 +120,7 @@ export class LeadsService {
     });
     const saved = await this.leadRepository.save(lead);
 
-    const clientName = `${saved.firstName} ${saved.lastName || ''}`.trim();
+    const clientName = contactDisplayNameOr(contact);
 
     // Broadcast update to all users in the company
     this.notificationsGateway.broadcastToCompany(companyId, 'leadUpdated', {
@@ -135,7 +173,7 @@ export class LeadsService {
 
     const [data, total] = await this.leadRepository.findAndCount({
       where,
-      relations: ['locality', 'unit', 'assignedAgent'],
+      relations: ['contact', 'city', 'locality', 'unit', 'assignedAgent'],
       ...paginationOptions(page, limit),
       order: { createdAt: 'DESC' },
     });
@@ -164,8 +202,20 @@ export class LeadsService {
     if (dto.localityId && dto.localityId !== lead.localityId) {
       await this.validateLocalityExists(dto.localityId);
     }
+    if (dto.cityId && dto.cityId !== lead.cityId) {
+      await this.validateCityExists(dto.cityId);
+    }
     if (dto.unitId && dto.unitId !== lead.unitId) {
       await this.validateUnitOwnership(dto.unitId, companyId);
+    }
+    // Repointing a lead at another contact must stay within the company. Load the
+    // resolved contact onto the entity so the relation object and the FK stay in
+    // sync (a stale lead.contact would make the broadcast carry the previous
+    // contact's name).
+    if (dto.contactId !== undefined && dto.contactId !== lead.contactId) {
+      lead.contact = dto.contactId
+        ? await this.contactsService.findOneEntity(dto.contactId, companyId)
+        : null;
     }
 
     const hasStatusUpdate = 'status' in dto;
@@ -219,7 +269,7 @@ export class LeadsService {
 
     await this.leadRepository.save(lead);
 
-    const clientName = `${lead.firstName} ${lead.lastName || ''}`.trim();
+    const clientName = contactDisplayNameOr(lead.contact);
 
     // Broadcast update to all users in the company
     this.notificationsGateway.broadcastToCompany(companyId, 'leadUpdated', {
@@ -317,7 +367,7 @@ export class LeadsService {
     lead.assignedAgent = agent as User;
     await this.leadRepository.save(lead);
 
-    const clientName = `${lead.firstName} ${lead.lastName || ''}`.trim();
+    const clientName = contactDisplayNameOr(lead.contact);
 
     // Broadcast update to all users in the company
     this.notificationsGateway.broadcastToCompany(companyId, 'leadUpdated', {
@@ -429,7 +479,7 @@ export class LeadsService {
   ): Promise<Lead> {
     const lead = await this.leadRepository.findOne({
       where: { id, companyId },
-      relations: ['locality', 'unit', 'assignedAgent'],
+      relations: ['contact', 'city', 'locality', 'unit', 'assignedAgent'],
     });
     if (!lead) {
       throw new NotFoundException('Lead not found');
@@ -467,6 +517,15 @@ export class LeadsService {
     }
   }
 
+  private async validateCityExists(cityId: string): Promise<void> {
+    const exists = await this.cityRepository.exist({
+      where: { id: cityId },
+    });
+    if (!exists) {
+      throw new BadRequestException('Invalid city selected');
+    }
+  }
+
   private async validateUnitOwnership(
     unitId: string,
     companyId: string,
@@ -481,6 +540,9 @@ export class LeadsService {
 
   private serializeLead(lead: Lead): LeadResponse {
     const { assignedAgent, ...leadWithoutAssignedAgent } = lead;
+    // The contact is a raw relation; attach displayName so a phone-only contact
+    // (e.g. a WhatsApp lead) renders instead of blanking.
+    attachDisplayName(lead.contact);
     return {
       ...leadWithoutAssignedAgent,
       assignedAgentName: assignedAgent?.name ?? null,

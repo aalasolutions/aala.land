@@ -70,17 +70,25 @@ export class ContactsController {
   @ApiQuery({ name: 'page', required: false, type: Number })
   @ApiQuery({ name: 'limit', required: false, type: Number })
   @ApiQuery({ name: 'search', required: false, type: String })
+  @ApiQuery({
+    name: 'tag',
+    required: false,
+    enum: ['lead', 'tenant', 'owner', 'vendor'],
+    description: 'Filter by derived role tag',
+  })
   findAll(
     @Request() req: AuthenticatedRequest,
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
     @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
     @Query('search') search?: string,
+    @Query('tag') tag?: 'lead' | 'tenant' | 'owner' | 'vendor',
   ) {
     return this.contactsService.findAll(
       requireCompanyId(req.user),
       page,
       limit,
       search,
+      tag,
     );
   }
 
@@ -124,10 +132,21 @@ export class ContactsController {
   @ApiOperation({
     summary: 'Delete a contact (SUPER_ADMIN, COMPANY_ADMIN, ADMIN)',
   })
+  @ApiQuery({
+    name: 'transferToContactId',
+    required: false,
+    description:
+      'Required when the contact has leads, units, leases or chats: their edges move to this contact first.',
+  })
   remove(
     @Param('id', ParseUUIDPipe) id: string,
     @Request() req: AuthenticatedRequest,
+    @Query('transferToContactId') transferToContactId?: string,
   ) {
-    return this.contactsService.remove(id, requireCompanyId(req.user));
+    return this.contactsService.remove(
+      id,
+      requireCompanyId(req.user),
+      transferToContactId,
+    );
   }
 }

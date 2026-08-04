@@ -4,6 +4,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { attachDisplayName } from '../../shared/utils/contact.util';
 import {
   DataSource,
   EntityManager,
@@ -110,34 +111,42 @@ export class LeasesService {
     limit = 20,
     regionCode?: string,
   ): Promise<{ data: Lease[]; total: number; page: number; limit: number }> {
+    let data: Lease[];
+    let total: number;
     if (regionCode) {
       const qb = this.leaseRepository
         .createQueryBuilder('l')
+        .leftJoinAndSelect('l.contact', 'tenant')
         .where('l.companyId = :companyId', { companyId })
         .andWhere(`l.unitId IN (${REGION_FILTER_SUBQUERY})`, { regionCode })
         .skip((page - 1) * limit)
         .take(limit)
         .orderBy('l.createdAt', 'DESC');
 
-      const [data, total] = await qb.getManyAndCount();
-      return { data, total, page, limit };
+      [data, total] = await qb.getManyAndCount();
+    } else {
+      [data, total] = await this.leaseRepository.findAndCount({
+        where: { companyId },
+        relations: ['contact'],
+        ...paginationOptions(page, limit),
+        order: { createdAt: 'DESC' },
+      });
     }
-
-    const [data, total] = await this.leaseRepository.findAndCount({
-      where: { companyId },
-      ...paginationOptions(page, limit),
-      order: { createdAt: 'DESC' },
-    });
+    // The tenant is a raw Contact relation with no displayName field; attach it
+    // so the list can render one value regardless of name/phone-only.
+    data.forEach((l) => attachDisplayName(l.contact));
     return { data, total, page, limit };
   }
 
   async findOne(id: string, companyId: string): Promise<Lease> {
     const lease = await this.leaseRepository.findOne({
       where: { id, companyId },
+      relations: ['contact'],
     });
     if (!lease) {
       throw new NotFoundException('Lease not found');
     }
+    attachDisplayName(lease.contact);
     return lease;
   }
 

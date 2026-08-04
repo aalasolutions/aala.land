@@ -11,14 +11,14 @@ import { PropertyArea } from './entities/property-area.entity';
 import { Asset } from './entities/asset.entity';
 import { Unit } from './entities/unit.entity';
 import { PropertyMedia } from './entities/property-media.entity';
-import { Owner } from '../owners/entities/owner.entity';
+import { Contact } from '../contacts/entities/contact.entity';
 
 describe('PropertiesService', () => {
   let service: PropertiesService;
   let areaRepo: jest.Mocked<Repository<PropertyArea>>;
   let assetRepo: jest.Mocked<Repository<Asset>>;
   let unitRepo: jest.Mocked<Repository<Unit>>;
-  let ownerRepo: jest.Mocked<Repository<Owner>>;
+  let contactRepo: jest.Mocked<Repository<Contact>>;
 
   const companyId = 'company-uuid-1';
 
@@ -43,9 +43,10 @@ describe('PropertiesService', () => {
     companyId,
   };
 
-  const mockOwner: Partial<Owner> = {
+  const mockOwner: Partial<Contact> = {
     id: 'owner-uuid-1',
-    name: 'John Doe',
+    firstName: 'John',
+    lastName: 'Doe',
     companyId,
   };
 
@@ -83,8 +84,8 @@ describe('PropertiesService', () => {
           useValue: createRepositoryMock<PropertyMedia>(),
         },
         {
-          provide: getRepositoryToken(Owner),
-          useValue: createRepositoryMock<Owner>(),
+          provide: getRepositoryToken(Contact),
+          useValue: createRepositoryMock<Contact>(),
         },
       ],
     }).compile();
@@ -93,7 +94,7 @@ describe('PropertiesService', () => {
     areaRepo = module.get(getRepositoryToken(PropertyArea));
     assetRepo = module.get(getRepositoryToken(Asset));
     unitRepo = module.get(getRepositoryToken(Unit));
-    ownerRepo = module.get(getRepositoryToken(Owner));
+    contactRepo = module.get(getRepositoryToken(Contact));
   });
 
   it('should be defined', () => {
@@ -221,29 +222,28 @@ describe('PropertiesService', () => {
   });
 
   describe('updateUnit', () => {
-    it('assigns the verified owner and ownerId when a valid ownerId is provided', async () => {
+    it('assigns ownerId when a valid ownerId is provided', async () => {
       unitRepo.findOne.mockResolvedValue({ ...mockUnit } as Unit);
-      ownerRepo.findOne.mockResolvedValue(mockOwner as Owner);
+      contactRepo.findOne.mockResolvedValue(mockOwner as Contact);
       unitRepo.save.mockImplementation(async (u: Unit) => u);
 
       const result = await service.updateUnit('unit-uuid-1', companyId, {
         ownerId: 'owner-uuid-1',
       });
 
-      expect(ownerRepo.findOne).toHaveBeenCalledWith({
+      expect(contactRepo.findOne).toHaveBeenCalledWith({
         where: { id: 'owner-uuid-1', companyId },
       });
       expect(unitRepo.save).toHaveBeenCalledWith(
-        expect.objectContaining({ owner: mockOwner, ownerId: 'owner-uuid-1' }),
+        expect.objectContaining({ ownerId: 'owner-uuid-1' }),
       );
-      expect(result.owner).toEqual(mockOwner);
+      expect(result.ownerId).toBe('owner-uuid-1');
     });
 
-    it('clears the owner and ownerId when ownerId is set to null', async () => {
+    it('clears ownerId when ownerId is set to null', async () => {
       unitRepo.findOne.mockResolvedValue({
         ...mockUnit,
         ownerId: 'owner-uuid-1',
-        owner: mockOwner,
       } as Unit);
       unitRepo.save.mockImplementation(async (u: Unit) => u);
 
@@ -251,16 +251,16 @@ describe('PropertiesService', () => {
         ownerId: null,
       });
 
-      expect(ownerRepo.findOne).not.toHaveBeenCalled();
+      expect(contactRepo.findOne).not.toHaveBeenCalled();
       expect(unitRepo.save).toHaveBeenCalledWith(
-        expect.objectContaining({ owner: null, ownerId: null }),
+        expect.objectContaining({ ownerId: null }),
       );
-      expect(result.owner).toBeNull();
+      expect(result.ownerId).toBeNull();
     });
 
     it('throws BadRequestException when ownerId does not belong to the company', async () => {
       unitRepo.findOne.mockResolvedValue({ ...mockUnit } as Unit);
-      ownerRepo.findOne.mockResolvedValue(null);
+      contactRepo.findOne.mockResolvedValue(null);
 
       await expect(
         service.updateUnit('unit-uuid-1', companyId, {
