@@ -351,7 +351,14 @@ export class ReportsService {
     const overdueQb = this.leadRepository
       .createQueryBuilder('l')
       .leftJoinAndSelect('l.contact', 'c')
-      .select(['l.id', 'l.status', 'l.updatedAt'])
+      .select([
+        'l.id',
+        'l.status',
+        'l.updatedAt',
+        'c.firstName',
+        'c.lastName',
+        'c.phone',
+      ])
       .where('l.companyId = :companyId', { companyId })
       .andWhere('l.status IN (:...statuses)', {
         statuses: [LeadStatus.CONTACTED, LeadStatus.VIEWING],

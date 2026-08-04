@@ -141,7 +141,8 @@ export class ContactsController {
   remove(
     @Param('id', ParseUUIDPipe) id: string,
     @Request() req: AuthenticatedRequest,
-    @Query('transferToContactId') transferToContactId?: string,
+    @Query('transferToContactId', new ParseUUIDPipe({ optional: true }))
+    transferToContactId?: string,
   ) {
     return this.contactsService.remove(
       id,

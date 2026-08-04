@@ -12,7 +12,6 @@ import { Lease } from '../leases/entities/lease.entity';
 import { WhatsappChat } from '../whatsapp/entities/whatsapp-chat.entity';
 import { CreateContactDto } from './dto/create-contact.dto';
 import { UpdateContactDto } from './dto/update-contact.dto';
-import { paginationOptions } from '../../shared/utils/pagination.util';
 import {
   contactDisplayName,
   normalizePhone,
@@ -20,7 +19,7 @@ import {
 } from '../../shared/utils/contact.util';
 
 // Derived role tags. Never stored on the contact; computed from which rows
-// reference it. See PLAN_CONTACTS_DOMAIN.md.
+// reference it.
 export type ContactTag = 'lead' | 'tenant' | 'owner' | 'vendor';
 
 export type ContactResponse = Omit<Contact, 'company'> & {
@@ -244,7 +243,7 @@ export class ContactsService {
 
     if (tag) {
       // companyId is already bound on the qb; the EXISTS subqueries reuse it so
-      // every role check stays company-scoped (CLAUDE.md rule 1).
+      // every role check stays company-scoped.
       qb.andWhere(this.tagExistsSql('c.id', tag));
     }
 

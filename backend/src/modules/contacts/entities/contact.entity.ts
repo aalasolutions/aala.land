@@ -12,7 +12,7 @@ import { Company } from '../../companies/entities/company.entity';
 
 // Contacts is the single place a person's identity lives. Roles (Lead, Tenant,
 // Owner, Vendor) are DERIVED from which rows reference the contact, never stored
-// here. See .claude/memory/PLAN_CONTACTS_DOMAIN.md.
+// here.
 @Entity('contacts')
 export class Contact {
   @PrimaryGeneratedColumn('uuid')

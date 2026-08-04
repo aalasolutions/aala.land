@@ -2,7 +2,7 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
 
 // Contacts becomes the single identity table. owners is dropped; units.owner_id,
 // leads.contact_id, leases.contact_id and whatsapp_chats.contact_id all point at
-// contacts. See .claude/memory/PLAN_CONTACTS_DOMAIN.md.
+// contacts.
 //
 // Production is empty, so this is a pure schema reshape: no backfill, no
 // dual-write. The Dubai default on leads.region_code is dropped here too (a
