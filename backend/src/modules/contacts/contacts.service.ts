@@ -316,6 +316,11 @@ export class ContactsService {
       throw new BadRequestException('Cannot transfer a contact to itself');
     }
 
+    // Verify the source exists in this company first. Without this, a wrong id
+    // (or another company's) yields zero edge counts and a delete that touches
+    // nothing, reported as success instead of 404.
+    await this.findOneEntity(id, companyId);
+
     const [leadCount, unitCount, leaseCount, chatCount] = await Promise.all([
       this.leadRepository.count({ where: { contactId: id, companyId } }),
       this.unitRepository.count({ where: { ownerId: id, companyId } }),

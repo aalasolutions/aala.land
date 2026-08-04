@@ -71,7 +71,7 @@
               </div>
               <div class="flex gap-2 x-center">
                 <p class="text-muted text-xs">{{lead.contact.phone}}</p>
-                {{#if lead.contact.phone}}
+                {{#if (and lead.contact.phone lead.contact.isWhatsapp)}}
                   <a
                     href={{wa-link lead.contact.phone}}
                     target="_blank"
@@ -178,7 +178,7 @@
               </div>
               <div class="flex gap-2 x-center">
                 <p class="text-muted text-xs">{{lead.contact.phone}}</p>
-                {{#if lead.contact.phone}}
+                {{#if (and lead.contact.phone lead.contact.isWhatsapp)}}
                   <a
                     href={{wa-link lead.contact.phone}}
                     target="_blank"
@@ -286,7 +286,7 @@
               </div>
               <div class="flex gap-2 x-center">
                 <p class="text-muted text-xs">{{lead.contact.phone}}</p>
-                {{#if lead.contact.phone}}
+                {{#if (and lead.contact.phone lead.contact.isWhatsapp)}}
                   <a
                     href={{wa-link lead.contact.phone}}
                     target="_blank"
@@ -362,7 +362,7 @@
                 <div class="flex col gap-1">
                   <div class="flex gap-2 x-center">
                     <span class="text-xs">{{lead.contact.phone}}</span>
-                    {{#if lead.contact.phone}}
+                    {{#if (and lead.contact.phone lead.contact.isWhatsapp)}}
                       <a
                         href={{wa-link lead.contact.phone}}
                         target="_blank"

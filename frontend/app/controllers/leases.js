@@ -131,6 +131,14 @@ export default class LeasesController extends Controller {
       return;
     }
 
+    // A new lease must name a tenant. The Nuvo dropdown's `required` is not
+    // native-validated, so enforce it here or the body omits contactId and the
+    // lease is created with a blank tenant.
+    if (!isEdit && !UUID_PATTERN.test(this.formTenantContactId)) {
+      this.errorMsg = 'Please select a tenant.';
+      return;
+    }
+
     this.isSaving = true;
     let path;
     let method;

@@ -161,6 +161,14 @@ describe('ContactsService', () => {
   });
 
   describe('remove', () => {
+    it('throws NotFound when the contact does not exist (no silent success)', async () => {
+      repo.findOne.mockResolvedValue(null);
+      await expect(service.remove('missing-id', companyId)).rejects.toThrow(
+        NotFoundException,
+      );
+      expect(repo.delete).not.toHaveBeenCalled();
+    });
+
     it('deletes outright when the contact has no edges', async () => {
       repo.findOne.mockResolvedValue(mockContact);
       leadRepo.count.mockResolvedValue(0);

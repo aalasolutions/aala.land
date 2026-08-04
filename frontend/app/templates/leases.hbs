@@ -19,7 +19,10 @@
         {{#each @model.leases as |lease|}}
           <div data-test-lease-row class="flex between x-center p-4 rounded-xl bg-alternate">
             <div class="flex col gap-1">
-              <p class="text-sm font-bold">{{lease.contact.displayName}}</p>
+              <p class="text-sm font-bold">{{or
+                  lease.contact.displayName
+                  "Unknown tenant"
+                }}</p>
               <p class="text-muted text-xs">{{lease.type}}
                 -
                 {{format-currency lease.monthlyRent}}/mo</p>

@@ -355,6 +355,8 @@ export class ReportsService {
         'l.id',
         'l.status',
         'l.updatedAt',
+        'l.contactId',
+        'c.id',
         'c.firstName',
         'c.lastName',
         'c.phone',
