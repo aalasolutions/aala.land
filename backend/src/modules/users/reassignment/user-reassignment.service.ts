@@ -50,7 +50,7 @@ const REASSIGNMENT_TARGETS: ReassignmentTarget[] = [
     setProperty: 'agentId',
     column: 'agent_id',
     // PENDING only. APPROVED, PAID, and CANCELLED are financial records and
-    // must keep their agent attribution (PRICING_STRATEGY.md, contract section 12).
+    // must keep their agent attribution.
     extraWhere: 'AND status = :pendingStatus',
     extraParams: { pendingStatus: CommissionStatus.PENDING },
   },
