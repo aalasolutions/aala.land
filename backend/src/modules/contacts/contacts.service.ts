@@ -4,7 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, Repository, ILike } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import { Contact } from './entities/contact.entity';
 import { Lead } from '../leads/entities/lead.entity';
 import { Unit } from '../properties/entities/unit.entity';
@@ -14,6 +14,7 @@ import { CreateContactDto } from './dto/create-contact.dto';
 import { UpdateContactDto } from './dto/update-contact.dto';
 import {
   contactDisplayName,
+  emailEqualsWhere,
   normalizePhone,
   phoneDigitsWhere,
 } from '../../shared/utils/contact.util';
@@ -73,7 +74,7 @@ export class ContactsService {
       });
     } else if (dto.email) {
       existing = await this.contactRepository.findOne({
-        where: { companyId, email: ILike(dto.email.trim().toLowerCase()) },
+        where: { companyId, email: emailEqualsWhere(dto.email) },
       });
     }
     if (existing) {
@@ -130,7 +131,7 @@ export class ContactsService {
       const match = await this.contactRepository.findOne({
         where: {
           companyId,
-          email: ILike(identity.email.trim().toLowerCase()),
+          email: emailEqualsWhere(identity.email),
         },
       });
       if (match) {
