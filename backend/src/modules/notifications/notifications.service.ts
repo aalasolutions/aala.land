@@ -5,6 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { contactDisplayNameOr } from '../../shared/utils/contact.util';
 import {
   Repository,
   In,
@@ -315,13 +316,14 @@ export class NotificationsService {
         status: LeadStatus.NEW,
         assignedTo: IsNull(),
       },
+      relations: ['contact'],
     });
 
     await this.notifyAdminsOncePerDay(
       unassignedLeads,
       NotificationType.LEAD_UNASSIGNED,
       (lead, admin) => {
-        const clientName = `${lead.firstName} ${lead.lastName || ''}`.trim();
+        const clientName = contactDisplayNameOr(lead.contact);
         return {
           userId: admin.id,
           title: 'Pending Unassigned Lead',
@@ -400,6 +402,7 @@ export class NotificationsService {
 
     const leases = await this.leaseRepository
       .createQueryBuilder('lease')
+      .leftJoinAndSelect('lease.contact', 'tenant')
       .where('lease.company_id = :companyId', { companyId })
       .andWhere('lease.status = :status', { status: LeaseStatus.ACTIVE })
       .andWhere('lease.end_date >= :now', {
@@ -417,7 +420,7 @@ export class NotificationsService {
       return {
         leaseId: l.id,
         unitId: l.unitId,
-        tenantName: l.tenantName,
+        tenantName: contactDisplayNameOr(l.contact, 'Unknown tenant'),
         endDate: l.endDate,
         daysRemaining,
       };

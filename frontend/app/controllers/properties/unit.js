@@ -86,7 +86,7 @@ export default class PropertiesUnitController extends Controller {
       { value: '', label: 'Unassigned' },
       ...(this.model.owners || []).map((owner) => ({
         value: owner.id,
-        label: owner.name,
+        label: owner.displayName,
       })),
     ];
   }

@@ -350,7 +350,17 @@ export class ReportsService {
     // Overdue followups QBuilder
     const overdueQb = this.leadRepository
       .createQueryBuilder('l')
-      .select(['l.id', 'l.firstName', 'l.lastName', 'l.status', 'l.updatedAt'])
+      .leftJoinAndSelect('l.contact', 'c')
+      .select([
+        'l.id',
+        'l.status',
+        'l.updatedAt',
+        'l.contactId',
+        'c.id',
+        'c.firstName',
+        'c.lastName',
+        'c.phone',
+      ])
       .where('l.companyId = :companyId', { companyId })
       .andWhere('l.status IN (:...statuses)', {
         statuses: [LeadStatus.CONTACTED, LeadStatus.VIEWING],
@@ -401,7 +411,8 @@ export class ReportsService {
           status: LeadStatus.NEW,
           createdAt: LessThan(hours48Ago),
         },
-        select: ['id', 'firstName', 'lastName', 'createdAt'],
+        select: ['id', 'contactId', 'createdAt'],
+        relations: ['contact'],
         take: 20,
       }),
       // Leads sitting in NEW for 24+ hours (but less than 48)
@@ -411,7 +422,8 @@ export class ReportsService {
           status: LeadStatus.NEW,
           createdAt: LessThan(hours24Ago),
         },
-        select: ['id', 'firstName', 'lastName', 'createdAt'],
+        select: ['id', 'contactId', 'createdAt'],
+        relations: ['contact'],
         take: 20,
       }),
       // Leads stuck in same pipeline stage for 14+ days
@@ -421,7 +433,8 @@ export class ReportsService {
           status: LeadStatus.NEGOTIATING,
           updatedAt: LessThan(days14Ago),
         },
-        select: ['id', 'firstName', 'lastName', 'status', 'updatedAt'],
+        select: ['id', 'contactId', 'status', 'updatedAt'],
+        relations: ['contact'],
         take: 20,
       }),
       // Leads in active stages not updated for 7+ days
@@ -437,7 +450,7 @@ export class ReportsService {
         type: 'UNTOUCHED_LEAD_48H',
         severity: 'HIGH',
         message:
-          `${lead.firstName} ${lead.lastName || ''} untouched for 48+ hours`.trim(),
+          `${this.leadFlagName(lead)} untouched for 48+ hours`,
         entityType: 'Lead',
         entityId: lead.id,
         createdAt: lead.createdAt,
@@ -452,7 +465,7 @@ export class ReportsService {
         type: 'UNTOUCHED_LEAD_24H',
         severity: 'MEDIUM',
         message:
-          `${lead.firstName} ${lead.lastName || ''} untouched for 24+ hours`.trim(),
+          `${this.leadFlagName(lead)} untouched for 24+ hours`,
         entityType: 'Lead',
         entityId: lead.id,
         createdAt: lead.createdAt,
@@ -464,7 +477,7 @@ export class ReportsService {
         type: 'STALLED_PIPELINE',
         severity: 'MEDIUM',
         message:
-          `${lead.firstName} ${lead.lastName || ''} stuck in ${lead.status} for 14+ days`.trim(),
+          `${this.leadFlagName(lead)} stuck in ${lead.status} for 14+ days`,
         entityType: 'Lead',
         entityId: lead.id,
         createdAt: lead.updatedAt,
@@ -476,7 +489,7 @@ export class ReportsService {
         type: 'OVERDUE_FOLLOWUP',
         severity: 'MEDIUM',
         message:
-          `${lead.firstName} ${lead.lastName || ''} in ${lead.status}, no update for 7+ days`.trim(),
+          `${this.leadFlagName(lead)} in ${lead.status}, no update for 7+ days`,
         entityType: 'Lead',
         entityId: lead.id,
         createdAt: lead.updatedAt,
@@ -733,5 +746,14 @@ export class ReportsService {
       commissionsEarned: agent.commissionsEarned,
       rank: idx + 1,
     }));
+  }
+
+  // The contact carries the name; a lead has none of its own.
+  private leadFlagName(
+    lead: { contact?: { firstName?: string | null; lastName?: string | null; phone?: string | null } | null },
+  ): string {
+    const c = lead.contact;
+    const name = [c?.firstName, c?.lastName].filter(Boolean).join(' ').trim();
+    return name || c?.phone || 'Lead';
   }
 }

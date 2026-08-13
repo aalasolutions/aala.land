@@ -6,6 +6,7 @@ import {
   Min,
   IsDateString,
   IsInt,
+  IsUUID,
   MaxLength,
 } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
@@ -24,21 +25,8 @@ export class UpdateLeaseDto {
 
   @ApiProperty({ required: false })
   @IsOptional()
-  @IsString()
-  @MaxLength(255)
-  tenantName?: string;
-
-  @ApiProperty({ required: false })
-  @IsOptional()
-  @IsString()
-  @MaxLength(255)
-  tenantEmail?: string;
-
-  @ApiProperty({ required: false })
-  @IsOptional()
-  @IsString()
-  @MaxLength(30)
-  tenantPhone?: string;
+  @IsUUID()
+  contactId?: string;
 
   @ApiProperty({ required: false })
   @IsOptional()

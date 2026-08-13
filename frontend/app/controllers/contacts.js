@@ -8,7 +8,6 @@ import {
   confirmDeleteModal,
   openDeleteModal,
 } from '../utils/delete-modal';
-import { CONTACT_TYPES } from 'land/constants';
 
 export default class ContactsController extends PaginatedController {
   @service auth;
@@ -24,8 +23,9 @@ export default class ContactsController extends PaginatedController {
   @tracked formLastName = '';
   @tracked formEmail = '';
   @tracked formPhone = '';
-  @tracked formWhatsappNumber = '';
-  @tracked formType = 'OTHER';
+  @tracked formIsWhatsapp = false;
+  @tracked formNationality = '';
+  @tracked formNationalId = '';
   @tracked formContactCompany = '';
   @tracked formJobTitle = '';
   @tracked formAddress = '';
@@ -36,12 +36,15 @@ export default class ContactsController extends PaginatedController {
   @tracked contactToDelete = null;
   @tracked isDeleting = false;
 
-  contactTypes = CONTACT_TYPES;
-
   // Nuvo::Input/Select/Textarea call onInput/onChange as (value, event),
   // not the raw DOM event a legacy setField(fieldName, e) expects.
   @action setFieldValue(fieldName, value) {
     this[fieldName] = value;
+  }
+
+  // Native checkbox: read .checked off the event.
+  @action toggleIsWhatsapp(e) {
+    this.formIsWhatsapp = e.target.checked;
   }
 
   @action updateSearch(e) {
@@ -58,8 +61,9 @@ export default class ContactsController extends PaginatedController {
     this.formLastName = '';
     this.formEmail = '';
     this.formPhone = '';
-    this.formWhatsappNumber = '';
-    this.formType = 'OTHER';
+    this.formIsWhatsapp = false;
+    this.formNationality = '';
+    this.formNationalId = '';
     this.formContactCompany = '';
     this.formJobTitle = '';
     this.formAddress = '';
@@ -74,8 +78,9 @@ export default class ContactsController extends PaginatedController {
     this.formLastName = contact.lastName ?? '';
     this.formEmail = contact.email ?? '';
     this.formPhone = contact.phone ?? '';
-    this.formWhatsappNumber = contact.whatsappNumber ?? '';
-    this.formType = contact.type ?? 'OTHER';
+    this.formIsWhatsapp = !!contact.isWhatsapp;
+    this.formNationality = contact.nationality ?? '';
+    this.formNationalId = contact.nationalId ?? '';
     this.formContactCompany = contact.contactCompany ?? '';
     this.formJobTitle = contact.jobTitle ?? '';
     this.formAddress = contact.address ?? '';
@@ -101,14 +106,15 @@ export default class ContactsController extends PaginatedController {
     const path = isEdit ? `/contacts/${this.editContact.id}` : '/contacts';
 
     const body = {
-      firstName: this.formFirstName,
+      ...(this.formFirstName ? { firstName: this.formFirstName } : {}),
       ...(this.formLastName ? { lastName: this.formLastName } : {}),
       ...(this.formEmail ? { email: this.formEmail } : {}),
       ...(this.formPhone ? { phone: this.formPhone } : {}),
-      ...(this.formWhatsappNumber
-        ? { whatsappNumber: this.formWhatsappNumber }
+      isWhatsapp: this.formIsWhatsapp,
+      ...(this.formNationality
+        ? { nationality: this.formNationality }
         : {}),
-      type: this.formType,
+      ...(this.formNationalId ? { nationalId: this.formNationalId } : {}),
       ...(this.formContactCompany
         ? { contactCompany: this.formContactCompany }
         : {}),

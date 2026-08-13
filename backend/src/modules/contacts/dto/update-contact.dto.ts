@@ -2,13 +2,10 @@ import {
   IsString,
   IsOptional,
   IsEmail,
-  IsEnum,
-  IsArray,
-  IsUUID,
+  IsBoolean,
   MaxLength,
 } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { ContactType } from '../entities/contact.entity';
 
 export class UpdateContactDto {
   @ApiPropertyOptional({ example: 'Ahmed' })
@@ -34,16 +31,22 @@ export class UpdateContactDto {
   @MaxLength(50)
   phone?: string;
 
-  @ApiPropertyOptional({ example: '+971501234567' })
+  @ApiPropertyOptional({ example: true })
+  @IsBoolean()
+  @IsOptional()
+  isWhatsapp?: boolean;
+
+  @ApiPropertyOptional({ example: 'Emirati' })
+  @IsString()
+  @IsOptional()
+  @MaxLength(100)
+  nationality?: string;
+
+  @ApiPropertyOptional({ example: '784-1234-5678901-1' })
   @IsString()
   @IsOptional()
   @MaxLength(50)
-  whatsappNumber?: string;
-
-  @ApiPropertyOptional({ enum: ContactType })
-  @IsEnum(ContactType)
-  @IsOptional()
-  type?: ContactType;
+  nationalId?: string;
 
   @ApiPropertyOptional({ example: 'Emaar Properties' })
   @IsString()
@@ -66,15 +69,4 @@ export class UpdateContactDto {
   @IsString()
   @IsOptional()
   notes?: string;
-
-  @ApiPropertyOptional({ example: ['VIP', 'dubai-marina'], type: [String] })
-  @IsArray()
-  @IsString({ each: true })
-  @IsOptional()
-  tags?: string[];
-
-  @ApiPropertyOptional({ example: 'uuid-of-lead' })
-  @IsUUID()
-  @IsOptional()
-  leadId?: string;
 }

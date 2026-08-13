@@ -5,7 +5,10 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   Index,
+  ManyToOne,
+  JoinColumn,
 } from 'typeorm';
+import { Contact } from '../../contacts/entities/contact.entity';
 
 @Entity('whatsapp_chats')
 @Index('UQ_wa_chats_company_user_chat', ['companyId', 'userId', 'chatId'], {
@@ -24,6 +27,26 @@ export class WhatsappChat {
 
   @Column({ name: 'chat_id', type: 'varchar', length: 255 })
   chatId: string;
+
+  // Resolved when the chat's number matches a contact in this company. An
+  // inbound message from a known number points here; an unknown number stays
+  // null until an operator saves it.
+  @Column({ name: 'contact_id', type: 'uuid', nullable: true })
+  contactId: string | null;
+
+  @ManyToOne(() => Contact, { nullable: true })
+  @JoinColumn({ name: 'contact_id' })
+  contact: Contact | null;
+
+  // True once contact_id resolution has been attempted for this chat, whether or
+  // not it matched. Stops the resolution UPDATE re-running on every inbound
+  // message for a number that has no contact yet.
+  @Column({
+    name: 'contact_resolution_attempted',
+    type: 'boolean',
+    default: false,
+  })
+  contactResolutionAttempted: boolean;
 
   @Column({ name: 'chat_name', type: 'varchar', length: 255, default: '' })
   chatName: string;

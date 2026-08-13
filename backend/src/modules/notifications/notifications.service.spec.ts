@@ -60,6 +60,7 @@ describe('NotificationsService', () => {
     process.env = { ...originalEnv };
 
     const mockQueryBuilder = {
+      leftJoinAndSelect: jest.fn().mockReturnThis(),
       where: jest.fn().mockReturnThis(),
       andWhere: jest.fn().mockReturnThis(),
       orderBy: jest.fn().mockReturnThis(),
@@ -540,13 +541,14 @@ describe('NotificationsService', () => {
       const mockLease = {
         id: 'lease-uuid-1',
         unitId: 'unit-uuid-1',
-        tenantName: 'Fatima Hassan',
+        contact: { firstName: 'Fatima', lastName: 'Hassan', phone: null },
         endDate,
         status: LeaseStatus.ACTIVE,
         companyId,
       };
 
       const qb = {
+        leftJoinAndSelect: jest.fn().mockReturnThis(),
         where: jest.fn().mockReturnThis(),
         andWhere: jest.fn().mockReturnThis(),
         orderBy: jest.fn().mockReturnThis(),
@@ -566,6 +568,7 @@ describe('NotificationsService', () => {
 
     it('returns empty data when no leases expiring soon', async () => {
       const qb = {
+        leftJoinAndSelect: jest.fn().mockReturnThis(),
         where: jest.fn().mockReturnThis(),
         andWhere: jest.fn().mockReturnThis(),
         orderBy: jest.fn().mockReturnThis(),
@@ -1063,9 +1066,7 @@ describe('NotificationsService', () => {
     const mockUnassignedLead: Partial<Lead> = {
       id: 'unassigned-uuid-1',
       companyId,
-      firstName: 'John',
-      lastName: 'Doe',
-      email: 'john@example.com',
+      contact: { firstName: 'John', lastName: 'Doe', phone: null } as any,
       status: LeadStatus.NEW,
       assignedTo: null,
       source: LeadSource.WEBSITE,
@@ -1091,6 +1092,7 @@ describe('NotificationsService', () => {
           status: LeadStatus.NEW,
           assignedTo: IsNull(),
         },
+        relations: ['contact'],
       });
     });
 
@@ -1099,9 +1101,7 @@ describe('NotificationsService', () => {
       const assignedLead: Partial<Lead> = {
         id: 'assigned-uuid-1',
         companyId,
-        firstName: 'Jane',
-        lastName: 'Smith',
-        email: 'jane@example.com',
+        contact: { firstName: 'Jane', lastName: 'Smith', phone: null } as any,
         status: LeadStatus.NEW,
         assignedTo: 'agent-uuid-1',
         source: LeadSource.WEBSITE,
@@ -1120,6 +1120,7 @@ describe('NotificationsService', () => {
           status: LeadStatus.NEW,
           assignedTo: IsNull(),
         },
+        relations: ['contact'],
       });
     });
 
@@ -1128,9 +1129,7 @@ describe('NotificationsService', () => {
       const contactedLead: Partial<Lead> = {
         id: 'contacted-uuid-1',
         companyId,
-        firstName: 'Bob',
-        lastName: '',
-        email: 'bob@example.com',
+        contact: { firstName: 'Bob', lastName: '', phone: null } as any,
         status: LeadStatus.CONTACTED,
         assignedTo: null,
         source: LeadSource.REFERRAL,
@@ -1149,6 +1148,7 @@ describe('NotificationsService', () => {
           status: LeadStatus.NEW,
           assignedTo: IsNull(),
         },
+        relations: ['contact'],
       });
     });
 
@@ -1157,9 +1157,7 @@ describe('NotificationsService', () => {
       const leadWithMissingLastName: Partial<Lead> = {
         id: 'unassigned-uuid-2',
         companyId,
-        firstName: 'Fatima',
-        lastName: '',
-        email: 'fatima@example.com',
+        contact: { firstName: 'Fatima', lastName: '', phone: null } as any,
         status: LeadStatus.NEW,
         assignedTo: null,
         source: LeadSource.WHATSAPP,
@@ -1169,9 +1167,7 @@ describe('NotificationsService', () => {
       const leadWithBothNames: Partial<Lead> = {
         id: 'unassigned-uuid-3',
         companyId,
-        firstName: 'Ahmed',
-        lastName: 'Hassan',
-        email: 'ahmed@example.com',
+        contact: { firstName: 'Ahmed', lastName: 'Hassan', phone: null } as any,
         status: LeadStatus.NEW,
         assignedTo: null,
         source: LeadSource.SOCIAL_MEDIA,

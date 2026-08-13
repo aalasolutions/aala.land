@@ -1,7 +1,7 @@
 export type ReassignedEntityType =
   | 'lead' // leads.assigned_to
   | 'document' // property_documents.uploaded_by
-  | 'owner' // owners.assigned_agent_id
+  | 'unit' // units.assigned_agent_id (the old owners.assigned_agent_id, moved to units)
   | 'commission' // commissions.agent_id, PENDING status only
   | 'work_order' // work_orders.assigned_to
   | 'contact'; // contacts.created_by (column added by unit 5, migration 1779500000041)

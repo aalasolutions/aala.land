@@ -17,12 +17,14 @@ import { LeadActivity, ActivityType } from './entities/lead-activity.entity';
 import { Company } from '../companies/entities/company.entity';
 import { User } from '../users/entities/user.entity';
 import { Locality } from '../locations/entities/locality.entity';
+import { City } from '../locations/entities/city.entity';
 import { Unit } from '../properties/entities/unit.entity';
 import { Role } from '@shared/enums/roles.enum';
 import { NotificationsService } from '../notifications/notifications.service';
 import { NotificationType } from '../notifications/entities/notification.entity';
 import { UsersService } from '../users/users.service';
 import { NotificationsGateway } from '../notifications/notifications.gateway';
+import { ContactsService } from '../contacts/contacts.service';
 
 describe('LeadsService', () => {
   let service: LeadsService;
@@ -32,6 +34,7 @@ describe('LeadsService', () => {
   let userRepo: jest.Mocked<Repository<User>>;
   let localityRepo: jest.Mocked<Repository<Locality>>;
   let unitRepo: jest.Mocked<Repository<Unit>>;
+  let contactsService: { resolveOrCreate: jest.Mock; findOneEntity: jest.Mock };
   let module: TestingModule;
 
   const companyId = 'company-uuid-1';
@@ -39,9 +42,8 @@ describe('LeadsService', () => {
   const mockLead: Partial<Lead> = {
     id: 'lead-uuid-1',
     companyId,
-    firstName: 'Ahmed',
-    lastName: 'Al-Rashid',
-    email: 'ahmed@example.com',
+    contactId: 'contact-uuid-1',
+    contact: { firstName: 'Ahmed', lastName: 'Al-Rashid', phone: '+971501234567' } as any,
     status: LeadStatus.NEW,
     temperature: LeadTemperature.WARM,
     source: LeadSource.WHATSAPP,
@@ -55,6 +57,12 @@ describe('LeadsService', () => {
     type: ActivityType.NOTE,
     notes: 'First contact made',
   };
+
+  // Identity now lives on the contact. create() derives the contact via
+  // ContactsService.resolveOrCreate; this helper builds the mock contact a test
+  // wants resolveOrCreate to return.
+  const contact = (firstName: string, lastName = '', phone = '+97150000000') =>
+    ({ id: 'contact-uuid-1', firstName, lastName, phone, companyId } as any);
 
   beforeEach(async () => {
     module = await Test.createTestingModule({
@@ -97,9 +105,22 @@ describe('LeadsService', () => {
           },
         },
         {
+          provide: getRepositoryToken(City),
+          useValue: {
+            exist: jest.fn(),
+          },
+        },
+        {
           provide: getRepositoryToken(Unit),
           useValue: {
             findOne: jest.fn(),
+          },
+        },
+        {
+          provide: ContactsService,
+          useValue: {
+            resolveOrCreate: jest.fn(),
+            findOneEntity: jest.fn(),
           },
         },
         {
@@ -130,6 +151,11 @@ describe('LeadsService', () => {
     userRepo = module.get(getRepositoryToken(User));
     localityRepo = module.get(getRepositoryToken(Locality));
     unitRepo = module.get(getRepositoryToken(Unit));
+    contactsService = module.get(ContactsService);
+    // Default: resolveOrCreate returns a contact carrying the lead's name.
+    contactsService.resolveOrCreate.mockResolvedValue(
+      contact('Ahmed', 'Al-Rashid'),
+    );
   });
 
   it('should be defined', () => {
@@ -137,7 +163,7 @@ describe('LeadsService', () => {
   });
 
   describe('create', () => {
-    it('creates and returns a lead', async () => {
+    it('creates and returns a lead against the resolved contact', async () => {
       companyRepo.findOne.mockResolvedValue({
         defaultRegionCode: 'dubai',
       } as Company);
@@ -147,15 +173,24 @@ describe('LeadsService', () => {
       const dto = { firstName: 'Ahmed', source: LeadSource.WHATSAPP };
       const result = await service.create(companyId, dto as any);
 
+      expect(contactsService.resolveOrCreate).toHaveBeenCalledWith(
+        companyId,
+        expect.any(Object),
+        undefined,
+      );
       expect(leadRepo.create).toHaveBeenCalledWith(
-        expect.objectContaining({ ...dto, companyId, regionCode: 'dubai' }),
+        expect.objectContaining({
+          contactId: 'contact-uuid-1',
+          companyId,
+          regionCode: 'dubai',
+        }),
       );
       expect(result).toEqual(mockLead);
     });
 
     it('validates property/locality exists in create', async () => {
       localityRepo.exist.mockResolvedValue(false);
-      const dto = { firstName: 'Ahmed', localityId: 'other-company-locality' };
+      const dto = { localityId: 'other-company-locality' };
 
       await expect(service.create(companyId, dto as any)).rejects.toThrow(
         BadRequestException,
@@ -167,7 +202,7 @@ describe('LeadsService', () => {
 
     it('validates unit ownership in create', async () => {
       unitRepo.findOne.mockResolvedValue(null);
-      const dto = { firstName: 'Ahmed', unitId: 'other-company-unit' };
+      const dto = { unitId: 'other-company-unit' };
 
       await expect(service.create(companyId, dto as any)).rejects.toThrow(
         BadRequestException,
@@ -181,9 +216,6 @@ describe('LeadsService', () => {
       const clientLead: Partial<Lead> = {
         id: 'lead-uuid-2',
         companyId,
-        firstName: 'Clara',
-        lastName: 'Rashid',
-        email: 'clara@example.com',
         status: LeadStatus.NEW,
         temperature: LeadTemperature.WARM,
         source: LeadSource.WHATSAPP,
@@ -218,9 +250,6 @@ describe('LeadsService', () => {
       const clientLead: Partial<Lead> = {
         id: 'lead-assigned-1',
         companyId,
-        firstName: 'Samir',
-        lastName: 'Hassan',
-        email: 'samir@example.com',
         status: LeadStatus.NEW,
         temperature: LeadTemperature.WARM,
         source: LeadSource.WHATSAPP,
@@ -232,6 +261,9 @@ describe('LeadsService', () => {
       } as Company);
       leadRepo.create.mockReturnValue(clientLead as Lead);
       leadRepo.save.mockResolvedValue(clientLead as Lead);
+      contactsService.resolveOrCreate.mockResolvedValue(
+        contact('Samir', 'Hassan'),
+      );
       const notificationsService = module!.get(NotificationsService);
 
       await service.create(companyId, {
@@ -256,9 +288,6 @@ describe('LeadsService', () => {
       const clientLead: Partial<Lead> = {
         id: 'lead-self-assigned',
         companyId,
-        firstName: 'Nadia',
-        lastName: 'Ali',
-        email: 'nadia@example.com',
         status: LeadStatus.NEW,
         temperature: LeadTemperature.WARM,
         source: LeadSource.WHATSAPP,
@@ -272,11 +301,7 @@ describe('LeadsService', () => {
       leadRepo.save.mockResolvedValue(clientLead as Lead);
       const notificationsService = module!.get(NotificationsService);
 
-      await service.create(
-        companyId,
-        { firstName: 'Nadia' } as any,
-        'creator-user-id',
-      );
+      await service.create(companyId,  { firstName: 'Nadia' } as any, 'creator-user-id');
 
       expect(notificationsService.create).not.toHaveBeenCalled();
     });
@@ -285,9 +310,6 @@ describe('LeadsService', () => {
       const clientLead: Partial<Lead> = {
         id: 'lead-assigned-2',
         companyId,
-        firstName: 'Omar',
-        lastName: 'Khalid',
-        email: 'omar@example.com',
         status: LeadStatus.NEW,
         temperature: LeadTemperature.WARM,
         source: LeadSource.WHATSAPP,
@@ -319,9 +341,6 @@ describe('LeadsService', () => {
       const noAssignLead: Partial<Lead> = {
         id: 'lead-no-assign',
         companyId,
-        firstName: 'Rania',
-        lastName: 'Mohammed',
-        email: 'rania@example.com',
         status: LeadStatus.NEW,
         temperature: LeadTemperature.WARM,
         source: LeadSource.REFERRAL,
@@ -342,11 +361,7 @@ describe('LeadsService', () => {
         },
       ]);
 
-      await service.create(
-        companyId,
-        { firstName: 'Rania' } as any,
-        'creator-user-id',
-      );
+      await service.create(companyId,  { firstName: 'Rania' } as any, 'creator-user-id');
 
       expect(notificationsService.create).not.toHaveBeenCalled();
     });
@@ -355,9 +370,6 @@ describe('LeadsService', () => {
       const noAssignLead: Partial<Lead> = {
         id: 'lead-unassigned-multi',
         companyId,
-        firstName: 'Layla',
-        lastName: 'Ibrahim',
-        email: 'layla@example.com',
         status: LeadStatus.NEW,
         temperature: LeadTemperature.WARM,
         source: LeadSource.WEBSITE,
@@ -379,17 +391,16 @@ describe('LeadsService', () => {
       } as Company);
       leadRepo.create.mockReturnValue(noAssignLead as Lead);
       leadRepo.save.mockResolvedValue(noAssignLead as Lead);
+      contactsService.resolveOrCreate.mockResolvedValue(
+        contact('Layla', 'Ibrahim'),
+      );
       const notificationsService = module!.get(NotificationsService);
       (module.get(UsersService).findAdmins as jest.Mock).mockResolvedValue([
         admin1,
         admin2,
       ]);
 
-      await service.create(
-        companyId,
-        { firstName: 'Layla' } as any,
-        'creator-user-id',
-      );
+      await service.create(companyId,  { firstName: 'Layla' } as any, 'creator-user-id');
 
       expect(notificationsService.create).toHaveBeenCalledWith(
         companyId,
@@ -417,9 +428,6 @@ describe('LeadsService', () => {
       const noAssignLead: Partial<Lead> = {
         id: 'lead-no-lastname',
         companyId,
-        firstName: 'Salma',
-        lastName: '',
-        email: 'salma@example.com',
         status: LeadStatus.NEW,
         temperature: LeadTemperature.WARM,
         source: LeadSource.OTHER,
@@ -431,6 +439,7 @@ describe('LeadsService', () => {
       } as Company);
       leadRepo.create.mockReturnValue(noAssignLead as Lead);
       leadRepo.save.mockResolvedValue(noAssignLead as Lead);
+      contactsService.resolveOrCreate.mockResolvedValue(contact('Salma', ''));
       const notificationsService = module!.get(NotificationsService);
 
       await service.create(companyId, { firstName: 'Salma' } as any);
@@ -454,7 +463,7 @@ describe('LeadsService', () => {
 
       expect(leadRepo.findAndCount).toHaveBeenCalledWith({
         where: { companyId },
-        relations: ['locality', 'unit', 'assignedAgent'],
+        relations: ['contact', 'city', 'locality', 'unit', 'assignedAgent'],
         ...{ skip: 0, take: 20 },
         order: { createdAt: 'DESC' },
       });

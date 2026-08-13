@@ -6,6 +6,7 @@ import {
   IsEnum,
   IsInt,
   IsNumber,
+  IsBoolean,
   Min,
   Max,
   MaxLength,
@@ -18,12 +19,22 @@ import {
   LeadSource,
 } from '../entities/lead.entity';
 
+// Identity lives on the contact, not the lead. A lead is created against either
+// an existing contact (contactId) or inline details that resolve/create a
+// contact (one number resolves to one contact within the company).
 export class CreateLeadDto {
-  @ApiProperty({ example: 'Ahmed' })
+  @ApiPropertyOptional({ example: 'uuid-of-contact' })
+  @IsUUID()
+  @IsOptional()
+  contactId?: string;
+
+  // Inline contact details, used only when contactId is absent.
+  @ApiPropertyOptional({ example: 'Ahmed' })
   @IsString()
   @IsNotEmpty()
+  @IsOptional()
   @MaxLength(100)
-  firstName: string;
+  firstName?: string;
 
   @ApiPropertyOptional({ example: 'Al-Rashid' })
   @IsString()
@@ -42,11 +53,10 @@ export class CreateLeadDto {
   @MaxLength(50)
   phone?: string;
 
-  @ApiPropertyOptional({ example: '+971501234567' })
-  @IsString()
+  @ApiPropertyOptional({ example: true })
+  @IsBoolean()
   @IsOptional()
-  @MaxLength(50)
-  whatsappNumber?: string;
+  isWhatsapp?: boolean;
 
   @ApiPropertyOptional({ enum: LeadStatus, default: LeadStatus.NEW })
   @IsEnum(LeadStatus)
@@ -89,6 +99,11 @@ export class CreateLeadDto {
   @IsNumber()
   @IsOptional()
   budgetMax?: number;
+
+  @ApiPropertyOptional({ example: 'uuid-of-city' })
+  @IsUUID()
+  @IsOptional()
+  cityId?: string;
 
   @ApiPropertyOptional({ example: 'uuid-of-locality' })
   @IsUUID()

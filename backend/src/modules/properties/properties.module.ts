@@ -8,7 +8,7 @@ import { Asset } from './entities/asset.entity';
 import { Unit } from './entities/unit.entity';
 import { PropertyMedia } from './entities/property-media.entity';
 import { PropertyDocument } from './entities/property-document.entity';
-import { Owner } from '../owners/entities/owner.entity';
+import { Contact } from '../contacts/entities/contact.entity';
 import { Company } from '../companies/entities/company.entity';
 import { EmailModule } from '../email/email.module';
 
@@ -20,7 +20,7 @@ import { EmailModule } from '../email/email.module';
       Unit,
       PropertyMedia,
       PropertyDocument,
-      Owner,
+      Contact,
       Company,
     ]),
     EmailModule,

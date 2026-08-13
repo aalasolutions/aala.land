@@ -31,6 +31,11 @@ export class CreateUnitDto {
   @IsOptional()
   ownerId?: string;
 
+  @ApiPropertyOptional({ example: 'uuid-of-agent' })
+  @IsUUID()
+  @IsOptional()
+  assignedAgentId?: string;
+
   @ApiPropertyOptional({ enum: UnitStatus, default: UnitStatus.AVAILABLE })
   @IsEnum(UnitStatus)
   @IsOptional()

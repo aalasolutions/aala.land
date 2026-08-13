@@ -6,9 +6,11 @@ import {
   UpdateDateColumn,
   ManyToOne,
   JoinColumn,
+  Index,
 } from 'typeorm';
 import { Company } from '../../companies/entities/company.entity';
 import { Unit } from '../../properties/entities/unit.entity';
+import { Contact } from '../../contacts/entities/contact.entity';
 
 export enum LeaseStatus {
   DRAFT = 'DRAFT',
@@ -42,27 +44,15 @@ export class Lease {
   @JoinColumn({ name: 'unit_id' })
   unit: Unit;
 
-  @Column({ name: 'tenant_name', length: 255 })
-  tenantName: string;
+  // The tenant is a contact. The flat tenant_* strings are gone; identity and
+  // national ID live on the contact.
+  @Index()
+  @Column({ name: 'contact_id', type: 'uuid', nullable: true })
+  contactId: string | null;
 
-  @Column({
-    name: 'tenant_email',
-    length: 255,
-    nullable: true,
-    type: 'varchar',
-  })
-  tenantEmail: string | null;
-
-  @Column({ name: 'tenant_phone', length: 30, nullable: true, type: 'varchar' })
-  tenantPhone: string | null;
-
-  @Column({
-    name: 'tenant_national_id',
-    length: 50,
-    nullable: true,
-    type: 'varchar',
-  })
-  tenantNationalId: string | null;
+  @ManyToOne(() => Contact, { nullable: true })
+  @JoinColumn({ name: 'contact_id' })
+  contact: Contact | null;
 
   @Column({
     type: 'enum',

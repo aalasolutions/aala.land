@@ -7,7 +7,9 @@ import { LeadActivity } from './entities/lead-activity.entity';
 import { Company } from '../companies/entities/company.entity';
 import { User } from '../users/entities/user.entity';
 import { Locality } from '../locations/entities/locality.entity';
+import { City } from '../locations/entities/city.entity';
 import { Unit } from '../properties/entities/unit.entity';
+import { ContactsModule } from '../contacts/contacts.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { UsersModule } from '../users/users.module';
 
@@ -19,8 +21,10 @@ import { UsersModule } from '../users/users.module';
       Company,
       User,
       Locality,
+      City,
       Unit,
     ]),
+    ContactsModule,
     NotificationsModule,
     UsersModule,
   ],

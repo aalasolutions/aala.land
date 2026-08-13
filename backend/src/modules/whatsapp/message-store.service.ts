@@ -112,6 +112,42 @@ export class MessageStoreService {
           msg.fromMe ?? false,
         ],
       );
+
+      // Resolve the chat to a contact by its number, at most once per chat. The
+      // JID for an individual chat is <number>@s.whatsapp.net (optionally
+      // <number>:<device>@...); group chats (@g.us) have no person. Strip the
+      // device suffix and host before normalising digits, then match on the last
+      // 9. contact_resolution_attempted records that this ran, so an unsaved
+      // number does not re-trigger the correlated subquery on every message.
+      if (!msg.isGroup) {
+        await manager.query(
+          `UPDATE "whatsapp_chats"
+             SET
+               "contact_id" = (
+                 SELECT c."id"
+                   FROM "contacts" c
+                  WHERE c."company_id" = $1
+                    AND c."phone" IS NOT NULL
+                    AND RIGHT(regexp_replace(c."phone", '\\D', '', 'g'), 9)
+                      = RIGHT(
+                          regexp_replace(
+                            split_part(split_part($3, '@', 1), ':', 1),
+                            '\\D', '', 'g'
+                          ),
+                          9
+                        )
+                  LIMIT 1
+               ),
+               "contact_resolution_attempted" = true
+           WHERE "company_id" = $1
+             AND "user_id" = $2
+             AND "chat_id" = $3
+             AND "contact_id" IS NULL
+             AND COALESCE("contact_resolution_attempted", false) = false
+             AND COALESCE("is_group", false) = false`,
+          [companyId, userId, msg.chatId],
+        );
+      }
     });
   }
 

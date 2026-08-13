@@ -19,27 +19,10 @@ import {
 } from '../entities/lead.entity';
 
 export class UpdateLeadDto {
-  @ApiPropertyOptional()
-  @IsString()
+  @ApiPropertyOptional({ nullable: true })
+  @IsUUID()
   @IsOptional()
-  @MaxLength(100)
-  firstName?: string;
-
-  @ApiPropertyOptional()
-  @IsString()
-  @IsOptional()
-  @MaxLength(100)
-  lastName?: string;
-
-  @ApiPropertyOptional()
-  @IsEmail()
-  @IsOptional()
-  email?: string;
-
-  @ApiPropertyOptional()
-  @IsString()
-  @IsOptional()
-  phone?: string;
+  contactId?: string | null;
 
   @ApiPropertyOptional({ enum: LeadStatus })
   @ValidateIf((_obj, value) => value !== undefined)
@@ -72,6 +55,11 @@ export class UpdateLeadDto {
   @IsUUID()
   @IsOptional()
   assignedTo?: string | null;
+
+  @ApiPropertyOptional({ nullable: true })
+  @IsUUID()
+  @IsOptional()
+  cityId?: string | null;
 
   @ApiPropertyOptional({ nullable: true })
   @IsUUID()

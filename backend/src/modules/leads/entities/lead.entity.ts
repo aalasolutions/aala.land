@@ -6,13 +6,14 @@ import {
   UpdateDateColumn,
   ManyToOne,
   JoinColumn,
-  OneToMany,
   Index,
 } from 'typeorm';
 import { Company } from '../../companies/entities/company.entity';
 import { Locality } from '../../locations/entities/locality.entity';
+import { City } from '../../locations/entities/city.entity';
 import { Unit } from '../../properties/entities/unit.entity';
 import { User } from '../../users/entities/user.entity';
+import { Contact } from '../../contacts/entities/contact.entity';
 
 export enum LeadStatus {
   NEW = 'NEW',
@@ -52,6 +53,17 @@ export class Lead {
   @JoinColumn({ name: 'company_id' })
   company?: Company;
 
+  // The person this lead belongs to. Identity (name, phone, email) lives on the
+  // contact, not the lead. One lead per property: a contact interested in three
+  // properties is three leads rows.
+  @Index()
+  @Column({ name: 'contact_id', type: 'uuid', nullable: true })
+  contactId: string | null;
+
+  @ManyToOne(() => Contact, { nullable: true })
+  @JoinColumn({ name: 'contact_id' })
+  contact: Contact | null;
+
   @Index()
   @Column({ name: 'locality_id', type: 'uuid', nullable: true })
   localityId: string | null;
@@ -60,6 +72,16 @@ export class Lead {
   @JoinColumn({ name: 'locality_id' })
   locality: Locality | null;
 
+  // City is the rung above locality: a lead can name a city but no area. The
+  // full hierarchy is region -> city -> locality -> unit.
+  @Index()
+  @Column({ name: 'city_id', type: 'uuid', nullable: true })
+  cityId: string | null;
+
+  @ManyToOne(() => City, { nullable: true })
+  @JoinColumn({ name: 'city_id' })
+  city: City | null;
+
   @Index()
   @Column({ name: 'unit_id', type: 'uuid', nullable: true })
   unitId: string | null;
@@ -67,26 +89,6 @@ export class Lead {
   @ManyToOne(() => Unit, { nullable: true })
   @JoinColumn({ name: 'unit_id' })
   unit: Unit | null;
-
-  @Column({ name: 'first_name', type: 'varchar', length: 100 })
-  firstName: string;
-
-  @Column({ name: 'last_name', type: 'varchar', length: 100, nullable: true })
-  lastName: string | null;
-
-  @Column({ type: 'varchar', length: 255, nullable: true })
-  email: string | null;
-
-  @Column({ type: 'varchar', length: 50, nullable: true })
-  phone: string | null;
-
-  @Column({
-    name: 'whatsapp_number',
-    type: 'varchar',
-    length: 50,
-    nullable: true,
-  })
-  whatsappNumber: string | null;
 
   @Column({
     type: 'enum',

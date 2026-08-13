@@ -1,8 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { DataSource, EntityManager } from 'typeorm';
+import { DataSource, EntityManager, EntityTarget } from 'typeorm';
 import { Lead } from '../../leads/entities/lead.entity';
 import { PropertyDocument } from '../../properties/entities/property-document.entity';
-import { Owner } from '../../owners/entities/owner.entity';
+import { Unit } from '../../properties/entities/unit.entity';
 import {
   Commission,
   CommissionStatus,
@@ -16,8 +16,7 @@ import {
 
 interface ReassignmentTarget {
   type: ReassignedEntityType;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  entity: any;
+  entity: EntityTarget<unknown>;
   setProperty: string; // entity property written with the new owner id
   column: string; // snake_case DB column matched in the WHERE clause
   extraWhere?: string;
@@ -39,8 +38,8 @@ const REASSIGNMENT_TARGETS: ReassignmentTarget[] = [
     column: 'uploaded_by',
   },
   {
-    type: 'owner',
-    entity: Owner,
+    type: 'unit',
+    entity: Unit,
     setProperty: 'assignedAgentId',
     column: 'assigned_agent_id',
   },
@@ -50,7 +49,7 @@ const REASSIGNMENT_TARGETS: ReassignmentTarget[] = [
     setProperty: 'agentId',
     column: 'agent_id',
     // PENDING only. APPROVED, PAID, and CANCELLED are financial records and
-    // must keep their agent attribution (PRICING_STRATEGY.md, contract section 12).
+    // must keep their agent attribution.
     extraWhere: 'AND status = :pendingStatus',
     extraParams: { pendingStatus: CommissionStatus.PENDING },
   },

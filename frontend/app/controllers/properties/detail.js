@@ -55,7 +55,7 @@ export default class PropertiesDetailController extends Controller {
   async loadOwners() {
     this.isLoadingOwners = true;
     try {
-      const result = await this.auth.fetchJson('/owners?limit=100');
+      const result = await this.auth.fetchJson('/contacts?limit=100');
       this.owners = result.data?.data || [];
     } catch (e) {
       console.error('Failed to load owners:', e);
@@ -116,7 +116,7 @@ export default class PropertiesDetailController extends Controller {
       { value: '', label: 'Unassigned' },
       ...(this.owners || []).map((owner) => ({
         value: owner.id,
-        label: owner.name,
+        label: owner.displayName,
       })),
     ];
   }

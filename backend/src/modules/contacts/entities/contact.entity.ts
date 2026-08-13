@@ -9,16 +9,10 @@ import {
   Index,
 } from 'typeorm';
 import { Company } from '../../companies/entities/company.entity';
-import { Lead } from '../../leads/entities/lead.entity';
 
-export enum ContactType {
-  LEAD = 'LEAD',
-  TENANT = 'TENANT',
-  OWNER = 'OWNER',
-  VENDOR = 'VENDOR',
-  OTHER = 'OTHER',
-}
-
+// Contacts is the single place a person's identity lives. Roles (Lead, Tenant,
+// Owner, Vendor) are DERIVED from which rows reference the contact, never stored
+// here.
 @Entity('contacts')
 export class Contact {
   @PrimaryGeneratedColumn('uuid')
@@ -32,32 +26,39 @@ export class Contact {
   @JoinColumn({ name: 'company_id' })
   company: Company;
 
-  @Column({ name: 'first_name', type: 'varchar', length: 100 })
-  firstName: string;
+  // Nullable: a contact created from an inbound WhatsApp message may have a
+  // number and no name. The UI falls back to the number for display.
+  @Column({ name: 'first_name', type: 'varchar', length: 100, nullable: true })
+  firstName: string | null;
 
   @Column({ name: 'last_name', type: 'varchar', length: 100, nullable: true })
-  lastName: string;
+  lastName: string | null;
 
   @Column({ type: 'varchar', length: 255, nullable: true })
-  email: string;
+  email: string | null;
 
   @Column({ type: 'varchar', length: 50, nullable: true })
-  phone: string;
+  phone: string | null;
 
+  // Whether `phone` is reachable on WhatsApp. One number field, not two: the
+  // old whatsapp_number column duplicated what is nearly always one number.
   @Column({
-    name: 'whatsapp_number',
-    type: 'varchar',
-    length: 50,
-    nullable: true,
+    name: 'is_whatsapp',
+    type: 'boolean',
+    default: false,
   })
-  whatsappNumber: string;
+  isWhatsapp: boolean;
 
-  @Column({
-    type: 'enum',
-    enum: ContactType,
-    default: ContactType.OTHER,
-  })
-  type: ContactType;
+  // Free-text nationality (no nationalities lookup table exists). Renamed from
+  // owners.nationality_id, which was a varchar despite the _id suffix.
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  nationality: string | null;
+
+  // The ID document number (EID / passport). Absorbed from leases' flat
+  // tenant_national_id string. Stored plain; the same number already sits in
+  // attached document scans, so encrypting one varchar buys nothing.
+  @Column({ name: 'national_id', type: 'varchar', length: 50, nullable: true })
+  nationalId: string | null;
 
   @Column({
     name: 'contact_company',
@@ -65,26 +66,16 @@ export class Contact {
     length: 200,
     nullable: true,
   })
-  contactCompany: string;
+  contactCompany: string | null;
 
   @Column({ name: 'job_title', type: 'varchar', length: 100, nullable: true })
-  jobTitle: string;
+  jobTitle: string | null;
 
   @Column({ type: 'text', nullable: true })
-  address: string;
+  address: string | null;
 
   @Column({ type: 'text', nullable: true })
-  notes: string;
-
-  @Column({ type: 'jsonb', default: '[]' })
-  tags: string[];
-
-  @Column({ name: 'lead_id', type: 'uuid', nullable: true })
-  leadId: string;
-
-  @ManyToOne(() => Lead, { nullable: true })
-  @JoinColumn({ name: 'lead_id' })
-  lead: Lead;
+  notes: string | null;
 
   @Index('IDX_contacts_created_by')
   @Column({ name: 'created_by', type: 'uuid', nullable: true })

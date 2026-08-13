@@ -11,9 +11,7 @@ export default class LeasesController extends Controller {
 
   @tracked showModal = false;
   @tracked editLease = null;
-  @tracked formTenantName = '';
-  @tracked formTenantEmail = '';
-  @tracked formTenantPhone = '';
+  @tracked formTenantContactId = '';
   @tracked formUnitId = '';
   @tracked formType = 'RESIDENTIAL';
   @tracked formStartDate = '';
@@ -38,6 +36,17 @@ export default class LeasesController extends Controller {
       ...(this.model.units || []).map((unit) => ({
         value: unit.id,
         label: `${unit.areaName} - ${unit.assetName} - Property ${unit.unitNumber}${unit.floorNumber ? ` (Floor ${unit.floorNumber})` : ''}`,
+      })),
+    ];
+  }
+
+  // The tenant is a contact (identity lives on the contact).
+  get tenantOptions() {
+    return [
+      { value: '', label: 'Select a tenant...' },
+      ...(this.model.contacts || []).map((contact) => ({
+        value: contact.id,
+        label: contact.displayName,
       })),
     ];
   }
@@ -67,9 +76,7 @@ export default class LeasesController extends Controller {
   }
 
   @action openCreate() {
-    this.formTenantName = '';
-    this.formTenantEmail = '';
-    this.formTenantPhone = '';
+    this.formTenantContactId = '';
     this.formUnitId = '';
     this.formType = 'RESIDENTIAL';
     this.formStartDate = '';
@@ -86,9 +93,7 @@ export default class LeasesController extends Controller {
   }
 
   @action openEdit(lease) {
-    this.formTenantName = lease.tenantName;
-    this.formTenantEmail = lease.tenantEmail ?? '';
-    this.formTenantPhone = lease.tenantPhone ?? '';
+    this.formTenantContactId = lease.contactId ?? lease.contact?.id ?? '';
     this.formUnitId = lease.unitId ?? '';
     this.formType = lease.type ?? 'RESIDENTIAL';
     this.formStartDate = lease.startDate ? lease.startDate.split('T')[0] : '';
@@ -126,6 +131,14 @@ export default class LeasesController extends Controller {
       return;
     }
 
+    // A new lease must name a tenant. The Nuvo dropdown's `required` is not
+    // native-validated, so enforce it here or the body omits contactId and the
+    // lease is created with a blank tenant.
+    if (!isEdit && !UUID_PATTERN.test(this.formTenantContactId)) {
+      this.errorMsg = 'Please select a tenant.';
+      return;
+    }
+
     this.isSaving = true;
     let path;
     let method;
@@ -143,12 +156,8 @@ export default class LeasesController extends Controller {
 
     const body = isEdit
       ? {
-          tenantName: this.formTenantName,
-          ...(this.formTenantEmail
-            ? { tenantEmail: this.formTenantEmail }
-            : {}),
-          ...(this.formTenantPhone
-            ? { tenantPhone: this.formTenantPhone }
+          ...(this.formTenantContactId
+            ? { contactId: this.formTenantContactId }
             : {}),
           type: this.formType,
           startDate: this.formStartDate,
@@ -164,12 +173,8 @@ export default class LeasesController extends Controller {
           status: this.formStatus,
         }
       : {
-          tenantName: this.formTenantName,
-          ...(this.formTenantEmail
-            ? { tenantEmail: this.formTenantEmail }
-            : {}),
-          ...(this.formTenantPhone
-            ? { tenantPhone: this.formTenantPhone }
+          ...(this.formTenantContactId
+            ? { contactId: this.formTenantContactId }
             : {}),
           ...(this.formUnitId ? { unitId: this.formUnitId } : {}),
           type: this.formType,
@@ -205,9 +210,7 @@ export default class LeasesController extends Controller {
   }
 
   @action renewLease(lease) {
-    this.formTenantName = lease.tenantName;
-    this.formTenantEmail = lease.tenantEmail ?? '';
-    this.formTenantPhone = lease.tenantPhone ?? '';
+    this.formTenantContactId = lease.contactId ?? lease.contact?.id ?? '';
     this.formUnitId = lease.unitId ?? '';
     this.formType = lease.type ?? 'RESIDENTIAL';
     this.formStartDate = lease.endDate ? lease.endDate.split('T')[0] : '';

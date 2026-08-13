@@ -10,7 +10,8 @@ import {
 } from 'typeorm';
 import { Company } from '../../companies/entities/company.entity';
 import { Asset } from './asset.entity';
-import { Owner } from '../../owners/entities/owner.entity';
+import { Contact } from '../../contacts/entities/contact.entity';
+import { User } from '../../users/entities/user.entity';
 import { PropertyType } from './property-type.enum';
 
 export enum UnitStatus {
@@ -46,9 +47,20 @@ export class Unit {
   @Column({ name: 'owner_id', type: 'uuid', nullable: true })
   ownerId: string | null;
 
-  @ManyToOne(() => Owner, (owner) => owner.units, { nullable: true })
+  // A unit's owner is a contact. One unit has at most one owner (no
+  // co-ownership). The old owners table is gone.
+  @ManyToOne(() => Contact, { nullable: true })
   @JoinColumn({ name: 'owner_id' })
-  owner: Owner | null;
+  owner: Contact | null;
+
+  // Assignment lives on the thing, not the person: the same contact can be a
+  // lead handled by one agent and own a unit handled by another.
+  @Column({ name: 'assigned_agent_id', type: 'uuid', nullable: true })
+  assignedAgentId: string | null;
+
+  @ManyToOne(() => User, { nullable: true })
+  @JoinColumn({ name: 'assigned_agent_id' })
+  assignedAgent: User | null;
 
   @Column({
     type: 'enum',
