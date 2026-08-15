@@ -11,6 +11,7 @@
         @size="sm"
         @icon="arrow-left"
         @text="Back to Contacts"
+        data-test-back-to-contacts
         {{on "click" this.goBack}}
       />
     </:breadcrumb>
@@ -18,7 +19,7 @@
       {{#if @model.contact}}
         <div class="flex gap-1 flex-wrap">
           {{#each @model.contact.tags as |tag|}}
-            <Nuvo::Tag @text={{capitalize tag}} />
+            <Nuvo::Tag class="tag-contact-{{tag}}" @text={{capitalize tag}} />
           {{else}}
             <span class="text-muted text-sm">Contact</span>
           {{/each}}
@@ -83,17 +84,12 @@
                 />
               </Nuvo::Field>
             </div>
-            <Nuvo::Field @label="WhatsApp">
-              <label class="flex gap-2 items-center text-sm">
-                <input
-                  type="checkbox"
-                  checked={{this.formIsWhatsapp}}
-                  {{on "change" this.toggleIsWhatsapp}}
-                  data-test-input-is-whatsapp
-                />
-                <span>This phone number is on WhatsApp</span>
-              </label>
-            </Nuvo::Field>
+            <Nuvo::Checkbox
+              @checked={{this.formIsWhatsapp}}
+              @label="This phone number is on WhatsApp"
+              @onChange={{fn this.setFieldValue "formIsWhatsapp"}}
+              data-test-input-is-whatsapp
+            />
             <div class="flex gap-4">
               <Nuvo::Field class="grow" @label="Nationality">
                 <Nuvo::Input
@@ -153,6 +149,7 @@
               <Nuvo::Button
                 @variant="secondary"
                 @text="Cancel"
+                data-test-cancel-edit-contact
                 {{on "click" this.cancelEdit}}
               />
               <Nuvo::Button
@@ -161,6 +158,7 @@
                 form="contact-detail-form"
                 @loading={{this.isSaving}}
                 @text={{if this.isSaving "Saving..." "Save"}}
+                data-test-save-contact
               />
             </div>
           </form>
@@ -183,6 +181,7 @@
                         rel="noopener noreferrer"
                         class="wa-link"
                         title="Open WhatsApp"
+                        data-test-wa-link
                       ><Ui::Ph @icon="whatsapp-logo" @size="14px" /></a>
                     {{/if}}
                   </span>
@@ -239,15 +238,17 @@
                       <td class="font-bold">{{unit.unitNumber}}</td>
                       <td>{{unit.areaName}}</td>
                       <td>{{unit.propertyType}}</td>
-                      <td><Nuvo::Tag @text={{unit.status}} /></td>
+                      <td><Nuvo::Tag class="tag-unit-{{lowercase unit.status}}" @text={{unit.status}} /></td>
                       <td>{{format-currency unit.price}}</td>
                       <td>
-                        <LinkTo
+                        <Nuvo::Button
+                          @variant="secondary"
+                          @size="xs"
                           @route="properties.unit"
                           @models={{array unit.areaId unit.id}}
-                          class="nu-btn m-secondary m-xs"
+                          @text="View"
                           data-test-view-owned-unit
-                        >View</LinkTo>
+                        />
                       </td>
                     </tr>
                   {{/each}}
@@ -278,7 +279,7 @@
                   {{#each @model.leases as |lease|}}
                     <tr data-test-lease-row>
                       <td class="font-bold">{{lease.unit.unitNumber}}</td>
-                      <td><Nuvo::Tag @text={{lease.status}} /></td>
+                      <td><Nuvo::Tag class="tag-lease-{{lowercase lease.status}}" @text={{lease.status}} /></td>
                       <td>{{format-date lease.startDate}}</td>
                       <td>{{format-date lease.endDate}}</td>
                       <td>{{format-currency lease.monthlyRent}}</td>
@@ -304,7 +305,7 @@
                   data-test-lead-card
                   {{on "click" (fn this.toggleLeadActivity lead.id)}}
                 >
-                  <div class="flex between x-center" data-test-toggle-lead-activity>
+                  <div class="flex between x-center">
                     <div class="flex gap-2 x-center">
                       <Nuvo::Tag class="tag-lead-{{lowercase lead.status}}" @text={{lead.status}} />
                       <Nuvo::Tag class="tag-temp-{{lowercase lead.temperature}}" @text={{lead.temperature}} />
@@ -312,7 +313,17 @@
                         <span class="text-sm">{{lead.locality.name}}</span>
                       {{/if}}
                     </div>
-                    <Ui::Ph @icon={{if (eq this.expandedLeadId lead.id) "caret-up" "caret-down"}} />
+                    {{! A real, focusable button so keyboard/AT users can reach this -
+                        no own click handler, the click bubbles to the Panel's. }}
+                    <Nuvo::Button
+                      @variant="secondary"
+                      @size="xs"
+                      @shape="circle"
+                      @icon={{if (eq this.expandedLeadId lead.id) "caret-up" "caret-down"}}
+                      aria-label={{if (eq this.expandedLeadId lead.id) "Collapse lead activity" "Expand lead activity"}}
+                      aria-expanded={{if (eq this.expandedLeadId lead.id) "true" "false"}}
+                      data-test-toggle-lead-activity
+                    />
                   </div>
                   <div class="flex gap-4 text-sm text-muted">
                     <span>Source: {{lead.source}}</span>

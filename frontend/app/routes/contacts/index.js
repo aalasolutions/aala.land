@@ -52,4 +52,8 @@ export default class ContactsIndexRoute extends AuthenticatedRoute {
       agents: agentsResult?.data || [],
     };
   }
+
+  resetController(controller, isExiting) {
+    if (isExiting) controller.resetState();
+  }
 }

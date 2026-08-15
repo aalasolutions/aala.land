@@ -13,6 +13,7 @@
       <Nuvo::Button
         @variant="primary"
         @icon="plus"
+        data-test-new-contact
         {{on "click" this.openCreate}}
       >
         New Contact
@@ -140,7 +141,7 @@
                 <td>
                   <div class="flex gap-1 flex-wrap">
                     {{#each contact.tags as |tag|}}
-                      <Nuvo::Tag @text={{capitalize tag}} />
+                      <Nuvo::Tag class="tag-contact-{{tag}}" @text={{capitalize tag}} />
                     {{else}}
                       <span class="text-muted text-sm">Contact</span>
                     {{/each}}
@@ -155,6 +156,7 @@
                       @variant="secondary"
                       @size="xs"
                       @icon="pencil-simple"
+                      data-test-edit-contact
                       {{on "click" (fn this.openEdit contact)}}
                     >
                       Edit
@@ -163,6 +165,8 @@
                       @variant="danger"
                       @size="xs"
                       @icon="trash"
+                      aria-label="Delete {{contact.displayName}}"
+                      data-test-delete-contact
                       {{on "click" (fn this.openDelete contact)}}
                     />
                   </div>
@@ -287,17 +291,12 @@
         </Nuvo::Field>
       </div>
 
-      <Nuvo::Field @label="WhatsApp">
-        <label class="flex gap-2 items-center text-sm">
-          <input
-            type="checkbox"
-            checked={{this.formIsWhatsapp}}
-            {{on "change" this.toggleIsWhatsapp}}
-            data-test-input-is-whatsapp
-          />
-          <span>This phone number is on WhatsApp</span>
-        </label>
-      </Nuvo::Field>
+      <Nuvo::Checkbox
+        @checked={{this.formIsWhatsapp}}
+        @label="This phone number is on WhatsApp"
+        @onChange={{fn this.setFieldValue "formIsWhatsapp"}}
+        data-test-input-is-whatsapp
+      />
 
       <div class="flex gap-4">
         <Nuvo::Field class="grow" @label="Company">
@@ -353,12 +352,14 @@
     <Nuvo::Button
       @variant="secondary"
       @onClick={{this.closeModal}}
+      data-test-cancel-contact-form
     >Cancel</Nuvo::Button>
     <Nuvo::Button
       @variant="primary"
       @type="submit"
       form="contact-form"
       @loading={{this.isSaving}}
+      data-test-save-contact
     >{{if
         this.isSaving
         "Saving..."

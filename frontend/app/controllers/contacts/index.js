@@ -45,6 +45,25 @@ export default class ContactsIndexController extends PaginatedController {
 
   roleTabs = ROLE_TABS;
 
+  resetState() {
+    this.search = '';
+    this.tag = '';
+    this.agentId = '';
+    this.isWhatsapp = false;
+    this.company = '';
+    this.nationality = '';
+    this.dateFrom = '';
+    this.dateTo = '';
+    this.page = 1;
+    this.showModal = false;
+    this.editContact = null;
+    this.errorMsg = '';
+    this.isSaving = false;
+    this.showDeleteModal = false;
+    this.contactToDelete = null;
+    this.isDeleting = false;
+  }
+
   get agentOptions() {
     return [
       { value: '', label: 'Any agent' },
@@ -89,11 +108,6 @@ export default class ContactsIndexController extends PaginatedController {
   // not the raw DOM event a legacy setField(fieldName, e) expects.
   @action setFieldValue(fieldName, value) {
     this[fieldName] = value;
-  }
-
-  // Native checkbox: read .checked off the event.
-  @action toggleIsWhatsapp(e) {
-    this.formIsWhatsapp = e.target.checked;
   }
 
   @action setTag(tabId) {
@@ -207,23 +221,39 @@ export default class ContactsIndexController extends PaginatedController {
     const isEdit = !!this.editContact;
     const path = isEdit ? `/contacts/${this.editContact.id}` : '/contacts';
 
-    const body = {
-      ...(this.formFirstName ? { firstName: this.formFirstName } : {}),
-      ...(this.formLastName ? { lastName: this.formLastName } : {}),
-      ...(this.formEmail ? { email: this.formEmail } : {}),
-      ...(this.formPhone ? { phone: this.formPhone } : {}),
-      isWhatsapp: this.formIsWhatsapp,
-      ...(this.formNationality
-        ? { nationality: this.formNationality }
-        : {}),
-      ...(this.formNationalId ? { nationalId: this.formNationalId } : {}),
-      ...(this.formContactCompany
-        ? { contactCompany: this.formContactCompany }
-        : {}),
-      ...(this.formJobTitle ? { jobTitle: this.formJobTitle } : {}),
-      ...(this.formAddress ? { address: this.formAddress } : {}),
-      ...(this.formNotes ? { notes: this.formNotes } : {}),
-    };
+    const body = isEdit
+      ? {
+          firstName: this.formFirstName || null,
+          lastName: this.formLastName || null,
+          email: this.formEmail || null,
+          phone: this.formPhone || null,
+          isWhatsapp: this.formIsWhatsapp,
+          nationality: this.formNationality || null,
+          nationalId: this.formNationalId || null,
+          contactCompany: this.formContactCompany || null,
+          jobTitle: this.formJobTitle || null,
+          address: this.formAddress || null,
+          notes: this.formNotes || null,
+        }
+      : {
+          ...(this.formFirstName ? { firstName: this.formFirstName } : {}),
+          ...(this.formLastName ? { lastName: this.formLastName } : {}),
+          ...(this.formEmail ? { email: this.formEmail } : {}),
+          ...(this.formPhone ? { phone: this.formPhone } : {}),
+          isWhatsapp: this.formIsWhatsapp,
+          ...(this.formNationality
+            ? { nationality: this.formNationality }
+            : {}),
+          ...(this.formNationalId
+            ? { nationalId: this.formNationalId }
+            : {}),
+          ...(this.formContactCompany
+            ? { contactCompany: this.formContactCompany }
+            : {}),
+          ...(this.formJobTitle ? { jobTitle: this.formJobTitle } : {}),
+          ...(this.formAddress ? { address: this.formAddress } : {}),
+          ...(this.formNotes ? { notes: this.formNotes } : {}),
+        };
 
     try {
       await this.auth.fetchJson(path, {

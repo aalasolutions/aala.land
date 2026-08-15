@@ -81,7 +81,8 @@ export class LeadsController {
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
     @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
     @Query('regionCode') regionCode?: string,
-    @Query('contactId') contactId?: string,
+    @Query('contactId', new ParseUUIDPipe({ optional: true }))
+    contactId?: string,
   ) {
     return this.leadsService.findAll(
       requireCompanyId(req.user),

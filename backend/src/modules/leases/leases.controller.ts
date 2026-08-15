@@ -46,7 +46,14 @@ export class LeasesController {
   }
 
   @Get()
-  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER)
+  @Roles(
+    Role.SUPER_ADMIN,
+    Role.COMPANY_ADMIN,
+    Role.ADMIN,
+    Role.MANAGER,
+    Role.AGENT,
+    Role.ACCOUNTANT,
+  )
   @ApiOperation({ summary: 'List lease agreements (paginated)' })
   @ApiQuery({ name: 'page', required: false })
   @ApiQuery({ name: 'limit', required: false })
@@ -62,7 +69,8 @@ export class LeasesController {
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
     @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
     @Query('regionCode') regionCode?: string,
-    @Query('contactId') contactId?: string,
+    @Query('contactId', new ParseUUIDPipe({ optional: true }))
+    contactId?: string,
   ) {
     return this.leasesService.findAll(
       requireCompanyId(req.user),

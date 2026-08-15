@@ -421,7 +421,7 @@ export class PropertiesController {
     @Query('maxBeds') maxBeds?: string,
     @Query('localityId') localityId?: string,
     @Query('regionCode') regionCode?: string,
-    @Query('ownerId') ownerId?: string,
+    @Query('ownerId', new ParseUUIDPipe({ optional: true })) ownerId?: string,
   ) {
     const filters = {
       amenities: amenitiesStr

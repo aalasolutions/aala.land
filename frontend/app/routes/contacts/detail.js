@@ -38,4 +38,9 @@ export default class ContactsDetailRoute extends AuthenticatedRoute {
       leads: leadsResult?.data?.data || [],
     };
   }
+
+  setupController(controller, model, transition) {
+    super.setupController(controller, model, transition);
+    controller.resetEditState();
+  }
 }

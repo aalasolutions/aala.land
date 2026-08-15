@@ -299,7 +299,9 @@ export class ContactsService {
     }
 
     if (filters?.dateTo) {
-      qb.andWhere('c.created_at <= :dateTo', { dateTo: filters.dateTo });
+      qb.andWhere("c.created_at < :dateTo::date + interval '1 day'", {
+        dateTo: filters.dateTo,
+      });
     }
 
     qb.skip((page - 1) * limit)
