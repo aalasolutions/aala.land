@@ -57,7 +57,8 @@
           {{#each column.leads as |lead|}}
             <Nuvo::Panel
               @compact={{true}}
-              class="flex col gap-2 lead-card-clickable"
+              @interactive={{true}}
+              class="flex col gap-2"
               data-test-lead-card
               data-test-lead-id={{lead.id}}
               draggable="true"
@@ -164,7 +165,8 @@
           {{#each column.leads as |lead|}}
             <Nuvo::Panel
               @compact={{true}}
-              class="flex col gap-2 lead-card-clickable"
+              @interactive={{true}}
+              class="flex col gap-2"
               data-test-lead-card
               data-test-lead-id={{lead.id}}
               draggable="true"
@@ -272,7 +274,8 @@
           {{#each column.leads as |lead|}}
             <Nuvo::Panel
               @compact={{true}}
-              class="flex col gap-2 lead-card-clickable"
+              @interactive={{true}}
+              class="flex col gap-2"
               data-test-lead-card
               data-test-lead-id={{lead.id}}
               draggable="true"

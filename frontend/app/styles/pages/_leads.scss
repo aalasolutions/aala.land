@@ -78,17 +78,6 @@ $lead-temps: (
   }
 }
 
-.lead-card-clickable {
-  cursor: pointer;
-  transition: box-shadow nu-duration(fast) $nu-ease, transform nu-duration(fast) $nu-ease, border-color nu-duration(fast) $nu-ease;
-
-  &:hover {
-    transform: translateY(-2px);
-    box-shadow: nu-shadow(lg);
-    border-color: var(--primary);
-  }
-}
-
 // long emails must wrap on any character, not overflow the 20rem rail
 .lead-detail__info .nu-info-row__value {
   overflow-wrap: anywhere;

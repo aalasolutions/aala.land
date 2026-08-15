@@ -9,6 +9,9 @@ export default class NuPanelComponent extends Component {
     if (this.args.raised) {
       parts.push('m-raised');
     }
+    if (this.args.interactive) {
+      parts.push('m-interactive');
+    }
     return parts.join(' ');
   }
 

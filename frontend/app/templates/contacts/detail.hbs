@@ -1,4 +1,4 @@
-{{page-title @model.contact.displayName}}
+{{page-title (if @model.contact @model.contact.displayName "Contact")}}
 
 <div data-test-contact-detail class="flex col gap-6">
   <Nuvo::PageHeader
@@ -301,7 +301,8 @@
               {{#each @model.leads as |lead|}}
                 <Nuvo::Panel
                   @compact={{true}}
-                  class="flex col gap-2 lead-card-clickable"
+                  @interactive={{true}}
+                  class="flex col gap-2"
                   data-test-lead-card
                   {{on "click" (fn this.toggleLeadActivity lead.id)}}
                 >

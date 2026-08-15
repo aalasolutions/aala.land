@@ -12,6 +12,9 @@
     "BorderColor": var(--border-base),
     "BorderRadius": nu-radius(lg),
     "BoxShadow": nu-shadow(none),
+    "TransitionDuration": nu-duration(fast),
+    "hover--BoxShadow": nu-shadow(lg),
+    "hover--BorderColor": var(--primary),
   ));
 
   display: block;
@@ -20,6 +23,14 @@
   border: nu-var("panel", "BorderWidth") solid nu-var("panel", "BorderColor");
   border-radius: nu-var("panel", "BorderRadius");
   box-shadow: nu-var("panel", "BoxShadow");
+  transition:
+    box-shadow nu-var("panel", "TransitionDuration") $nu-ease,
+    border-color nu-var("panel", "TransitionDuration") $nu-ease,
+    transform nu-var("panel", "TransitionDuration") $nu-ease;
+
+  @include reduced-motion {
+    transition: none;
+  }
 
   // ---- elements ----
 
@@ -33,6 +44,20 @@
 
   @include m(raised) {
     --nu-panel--BoxShadow: #{nu-shadow(md)};
+  }
+
+  @include m(interactive) {
+    cursor: pointer;
+
+    &:hover {
+      transform: translateY(-2px);
+      @include nu-set-all("panel", "hover", ("BoxShadow", "BorderColor"));
+    }
+
+    &:focus-visible {
+      outline: none;
+      box-shadow: 0 0 0 3px nu-tint(primary, 35%);
+    }
   }
 }
 
