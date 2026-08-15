@@ -90,7 +90,7 @@ export class LeadsService {
     // A lead needs someone to be about: either an existing contact or at least
     // one identifying detail. Without that, resolveOrCreate would insert an
     // all-null junk contact for every such lead.
-    if (!contactId && !firstName && !phone && !email) {
+    if (!contactId && !firstName && !lastName && !phone && !email) {
       throw new BadRequestException(
         'A lead requires a contact or identifying details (name, phone or email).',
       );

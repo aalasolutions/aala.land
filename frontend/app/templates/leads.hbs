@@ -479,49 +479,15 @@
           </p>
         </Nuvo::Field>
       {{else}}
-        <div class="flex gap-4">
-          <div class="grow">
-            <Nuvo::Field @label="First Name" @required={{true}}>
-              <Nuvo::Input
-                id="lead-first-name"
-                @type="text"
-                @placeholder="e.g. Ahmed"
-                @value={{this.formFirstName}}
-                @onInput={{fn this.setFieldValue "formFirstName"}}
-                required={{true}}
-              />
-            </Nuvo::Field>
-          </div>
-          <div class="grow">
-            <Nuvo::Field @label="Last Name">
-              <Nuvo::Input
-                id="lead-last-name"
-                @type="text"
-                @placeholder="e.g. Al Mansouri"
-                @value={{this.formLastName}}
-                @onInput={{fn this.setFieldValue "formLastName"}}
-              />
-            </Nuvo::Field>
-          </div>
-        </div>
-        <Nuvo::Field @label="Email">
-          <Nuvo::Input
-            id="lead-email"
-            @type="email"
-            @placeholder="ahmed@example.com"
-            @value={{this.formEmail}}
-            @onInput={{fn this.setFieldValue "formEmail"}}
-          />
-        </Nuvo::Field>
-        <Nuvo::Field @label="Phone">
-          <Nuvo::Input
-            id="lead-phone"
-            @type="text"
-            @placeholder="+971501234567"
-            @value={{this.formPhone}}
-            @onInput={{fn this.setFieldValue "formPhone"}}
-          />
-        </Nuvo::Field>
+        <Contact::Picker
+          @label="Contact"
+          @required={{true}}
+          @contact={{this.contactSelection.contact}}
+          @identity={{this.contactSelection.identity}}
+          @onSelectContact={{this.contactSelection.attach}}
+          @onClear={{this.contactSelection.clear}}
+          @onIdentityChange={{this.contactSelection.setField}}
+        />
       {{/if}}
       <div class="flex gap-4">
         <div class="grow">

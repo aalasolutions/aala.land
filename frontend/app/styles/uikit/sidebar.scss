@@ -193,7 +193,7 @@
 
     // Tinted, not filled, so it never competes with the active link inside it.
     &.is-active {
-      --nu-sidebar__group-toggle--Color: var(--text-inverted);
+      --nu-sidebar__group-toggle--Color: var(--primary);
       --nu-sidebar__group-toggle--BackgroundColor: #{nu-tint(primary, 12%)};
     }
   }
@@ -220,12 +220,21 @@
     }
 
     // The single child owns the clipping; the track animates around it.
+    // No padding at rest: a closed 0fr track still paints it.
     > * {
       display: flex;
       flex-direction: column;
       gap: nu-space(1);
       overflow: hidden;
       min-block-size: 0;
+      padding-block: 0;
+      border-radius: nu-radius(md);
+      background-color: nu-tint(primary, 6%);
+      transition: padding-block nu-var("sidebar", "TransitionDuration") $nu-ease;
+
+      @include reduced-motion {
+        transition: none;
+      }
     }
   }
 
@@ -283,6 +292,10 @@
 
       > .nu-sidebar__group-items {
         grid-template-rows: 1fr;
+
+        > * {
+          padding-block: nu-space(1);
+        }
       }
     }
   }
@@ -349,6 +362,8 @@
 
       > * {
         overflow: visible;
+        padding-block: 0;
+        background-color: transparent;
       }
     }
 
@@ -377,6 +392,42 @@
 
       .nu-sidebar__sublink {
         margin-inline-start: 0;
+      }
+    }
+
+    .nu-sidebar__group.is-active-group {
+      > .nu-sidebar__group-toggle.is-active {
+        --nu-sidebar__group-toggle--Color: var(--primary);
+        --nu-sidebar__group-toggle--BackgroundColor: #{nu-tint(primary, 12%)};
+      }
+
+      > .nu-sidebar__group-items {
+        position: static;
+        margin-inline-start: 0;
+        min-inline-size: 0;
+        padding: 0;
+        background-color: transparent;
+        border: 0;
+        border-radius: 0;
+        box-shadow: none;
+        opacity: 1;
+        visibility: visible;
+
+        > * {
+          padding-block: nu-space(1);
+          background-color: nu-tint(primary, 6%);
+        }
+
+        .nu-sidebar__group-title,
+        .nu-sidebar__link-label {
+          display: none;
+        }
+
+        .nu-sidebar__sublink {
+          justify-content: center;
+          gap: 0;
+          padding-inline: nu-space(2);
+        }
       }
     }
   }

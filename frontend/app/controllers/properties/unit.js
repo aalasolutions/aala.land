@@ -1,4 +1,7 @@
 import Controller from '@ember/controller';
+import ContactSelection, {
+  OWNER_REQUIRED_ERROR,
+} from '../../utils/contact-selection';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
@@ -64,7 +67,6 @@ export default class PropertiesUnitController extends Controller {
   @tracked formBathrooms = '';
   @tracked formFloor = '';
   @tracked formDescription = '';
-  @tracked formOwnerId = '';
   @tracked formAmenities = [];
 
   statusOptions = PROPERTY_STATUS_OPTIONS;
@@ -81,15 +83,7 @@ export default class PropertiesUnitController extends Controller {
     return htmlSafe(`width:${clamped}%;`);
   }
 
-  get ownerOptions() {
-    return [
-      { value: '', label: 'Unassigned' },
-      ...(this.model.owners || []).map((owner) => ({
-        value: owner.id,
-        label: owner.displayName,
-      })),
-    ];
-  }
+  ownerSelection = new ContactSelection();
 
   @action setField(fieldName, e) {
     this[fieldName] = e.target.value;
@@ -117,7 +111,7 @@ export default class PropertiesUnitController extends Controller {
     this.formBathrooms = unit.bathrooms != null ? String(unit.bathrooms) : '';
     this.formFloor = unit.floor != null ? String(unit.floor) : '';
     this.formDescription = unit.description ?? '';
-    this.formOwnerId = unit.ownerId || '';
+    this.ownerSelection.attach(unit.owner ?? null);
     this.formAmenities = Array.isArray(unit.amenities)
       ? [...unit.amenities]
       : [];
@@ -240,6 +234,10 @@ export default class PropertiesUnitController extends Controller {
   @action async save(event) {
     event.preventDefault();
     if (this.isSaving) return;
+    if (!this.ownerSelection.isPresent) {
+      this.errorMsg = OWNER_REQUIRED_ERROR;
+      return;
+    }
     this.isSaving = true;
     this.errorMsg = '';
 
@@ -262,7 +260,9 @@ export default class PropertiesUnitController extends Controller {
         : {}),
       ...(this.formFloor ? { floor: this.formFloor } : {}),
       ...(this.formDescription ? { description: this.formDescription } : {}),
-      ownerId: this.formOwnerId || null,
+      ...(this.ownerSelection.contactId
+        ? { ownerId: this.ownerSelection.contactId }
+        : { owner: this.ownerSelection.cleanIdentity }),
       amenities: this.formAmenities,
     };
 

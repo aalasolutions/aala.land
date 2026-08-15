@@ -12,6 +12,7 @@ import { Asset } from './entities/asset.entity';
 import { Unit } from './entities/unit.entity';
 import { PropertyMedia } from './entities/property-media.entity';
 import { Contact } from '../contacts/entities/contact.entity';
+import { ContactsService } from '../contacts/contacts.service';
 
 describe('PropertiesService', () => {
   let service: PropertiesService;
@@ -19,6 +20,7 @@ describe('PropertiesService', () => {
   let assetRepo: jest.Mocked<Repository<Asset>>;
   let unitRepo: jest.Mocked<Repository<Unit>>;
   let contactRepo: jest.Mocked<Repository<Contact>>;
+  let contactsService: jest.Mocked<ContactsService>;
 
   const companyId = 'company-uuid-1';
 
@@ -87,6 +89,10 @@ describe('PropertiesService', () => {
           provide: getRepositoryToken(Contact),
           useValue: createRepositoryMock<Contact>(),
         },
+        {
+          provide: ContactsService,
+          useValue: { resolveOrCreate: jest.fn() },
+        },
       ],
     }).compile();
 
@@ -95,6 +101,7 @@ describe('PropertiesService', () => {
     assetRepo = module.get(getRepositoryToken(Asset));
     unitRepo = module.get(getRepositoryToken(Unit));
     contactRepo = module.get(getRepositoryToken(Contact));
+    contactsService = module.get(ContactsService);
   });
 
   it('should be defined', () => {
@@ -221,6 +228,105 @@ describe('PropertiesService', () => {
     });
   });
 
+  describe('createUnit', () => {
+    it('creates a unit with an existing ownerId after verifying the company', async () => {
+      contactRepo.findOne.mockResolvedValue(mockOwner as Contact);
+      unitRepo.create.mockImplementation((data) => data as Unit);
+      unitRepo.save.mockImplementation(async (u: Unit) => u);
+
+      const result = await service.createUnit(companyId, {
+        unitNumber: '1A',
+        assetId: 'asset-uuid-1',
+        ownerId: 'owner-uuid-1',
+      });
+
+      expect(contactRepo.findOne).toHaveBeenCalledWith({
+        where: { id: 'owner-uuid-1', companyId },
+      });
+      expect(contactsService.resolveOrCreate).not.toHaveBeenCalled();
+      expect(result.ownerId).toBe('owner-uuid-1');
+    });
+
+    it('resolves inline owner details into a contact and links it', async () => {
+      contactsService.resolveOrCreate.mockResolvedValue({
+        id: 'owner-uuid-1',
+      } as Contact);
+      unitRepo.create.mockImplementation((data) => data as Unit);
+      unitRepo.save.mockImplementation(async (u: Unit) => u);
+
+      const result = await service.createUnit(
+        companyId,
+        {
+          unitNumber: '1A',
+          assetId: 'asset-uuid-1',
+          owner: { firstName: 'Ahmed', phone: '+971501234567', isWhatsapp: true },
+        },
+        'user-uuid-1',
+      );
+
+      expect(contactsService.resolveOrCreate).toHaveBeenCalledWith(
+        companyId,
+        { firstName: 'Ahmed', phone: '+971501234567', isWhatsapp: true },
+        'user-uuid-1',
+      );
+      expect(result.ownerId).toBe('owner-uuid-1');
+      expect(unitRepo.create).toHaveBeenCalledWith(
+        expect.not.objectContaining({ owner: expect.anything() }),
+      );
+    });
+
+    it('ignores an empty owner object rather than creating a blank contact', async () => {
+      unitRepo.create.mockImplementation((data) => data as Unit);
+      unitRepo.save.mockImplementation(async (u: Unit) => u);
+
+      const result = await service.createUnit(companyId, {
+        unitNumber: '1A',
+        assetId: 'asset-uuid-1',
+        owner: {},
+      });
+
+      expect(contactsService.resolveOrCreate).not.toHaveBeenCalled();
+      expect(result.ownerId).toBeUndefined();
+    });
+
+    it('accepts a last name alone as owner details', async () => {
+      contactsService.resolveOrCreate.mockResolvedValue({
+        id: 'owner-uuid-2',
+      } as Contact);
+      unitRepo.create.mockImplementation((data) => data as Unit);
+      unitRepo.save.mockImplementation(async (u: Unit) => u);
+
+      const result = await service.createUnit(companyId, {
+        unitNumber: '1A',
+        assetId: 'asset-uuid-1',
+        owner: { lastName: 'Al-Rashid Holdings' },
+      });
+
+      expect(contactsService.resolveOrCreate).toHaveBeenCalledWith(
+        companyId,
+        { lastName: 'Al-Rashid Holdings' },
+        undefined,
+      );
+      expect(result.ownerId).toBe('owner-uuid-2');
+    });
+
+    it('prefers ownerId over inline details when both are sent', async () => {
+      contactRepo.findOne.mockResolvedValue(mockOwner as Contact);
+      unitRepo.create.mockImplementation((data) => data as Unit);
+      unitRepo.save.mockImplementation(async (u: Unit) => u);
+
+      const result = await service.createUnit(companyId, {
+        unitNumber: '1A',
+        assetId: 'asset-uuid-1',
+        ownerId: 'owner-uuid-1',
+        owner: { firstName: 'Ahmed' },
+      });
+
+      expect(contactsService.resolveOrCreate).not.toHaveBeenCalled();
+      expect(result.ownerId).toBe('owner-uuid-1');
+    });
+  });
+
   describe('updateUnit', () => {
     it('assigns ownerId when a valid ownerId is provided', async () => {
       unitRepo.findOne.mockResolvedValue({ ...mockUnit } as Unit);
@@ -269,6 +375,29 @@ describe('PropertiesService', () => {
       ).rejects.toThrow(BadRequestException);
 
       expect(unitRepo.save).not.toHaveBeenCalled();
+    });
+
+    it('resolves inline owner details on update when no ownerId is sent', async () => {
+      unitRepo.findOne.mockResolvedValue({ ...mockUnit } as Unit);
+      contactsService.resolveOrCreate.mockResolvedValue({
+        id: 'owner-uuid-1',
+      } as Contact);
+      contactRepo.findOne.mockResolvedValue(mockOwner as Contact);
+      unitRepo.save.mockImplementation(async (u: Unit) => u);
+
+      const result = await service.updateUnit(
+        'unit-uuid-1',
+        companyId,
+        { owner: { firstName: 'Ahmed', phone: '+971501234567' } },
+        'user-uuid-1',
+      );
+
+      expect(contactsService.resolveOrCreate).toHaveBeenCalledWith(
+        companyId,
+        { firstName: 'Ahmed', phone: '+971501234567' },
+        'user-uuid-1',
+      );
+      expect(result.ownerId).toBe('owner-uuid-1');
     });
   });
 

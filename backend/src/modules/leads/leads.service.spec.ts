@@ -188,6 +188,34 @@ describe('LeadsService', () => {
       expect(result).toEqual(mockLead);
     });
 
+    it('rejects create with no contact and no identifying detail', async () => {
+      await expect(service.create(companyId, {} as any)).rejects.toThrow(
+        BadRequestException,
+      );
+      expect(contactsService.resolveOrCreate).not.toHaveBeenCalled();
+    });
+
+    it('accepts a last name alone as identifying detail', async () => {
+      companyRepo.findOne.mockResolvedValue({
+        defaultRegionCode: 'dubai',
+      } as Company);
+      contactsService.resolveOrCreate.mockResolvedValue({
+        id: 'contact-uuid-1',
+      } as any);
+      leadRepo.create.mockReturnValue(mockLead as Lead);
+      leadRepo.save.mockResolvedValue(mockLead as Lead);
+
+      await service.create(companyId, {
+        lastName: 'Al-Rashid Holdings',
+      } as any);
+
+      expect(contactsService.resolveOrCreate).toHaveBeenCalledWith(
+        companyId,
+        expect.objectContaining({ lastName: 'Al-Rashid Holdings' }),
+        undefined,
+      );
+    });
+
     it('validates property/locality exists in create', async () => {
       localityRepo.exist.mockResolvedValue(false);
       const dto = { localityId: 'other-company-locality' };

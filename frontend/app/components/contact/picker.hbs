@@ -1,0 +1,108 @@
+<div class="flex col gap-4" data-test-contact-picker>
+  <Nuvo::Field @label={{this.label}} @required={{@required}}>
+    <Nuvo::Autocomplete
+      @searchUrl={{this.searchUrl}}
+      @searchParam="search"
+      @labelKey="displayName"
+      @placeholder="Search name, phone or email..."
+      @selectedName={{this.selectedName}}
+      @onSelect={{this.select}}
+      @onClear={{this.clear}}
+      data-test-contact-search
+    />
+  </Nuvo::Field>
+
+  {{#unless this.isAttached}}
+    {{#unless this.isCreating}}
+      <Nuvo::Button
+        @variant="secondary"
+        @size="sm"
+        @text="Not in contacts? Add a new one"
+        @onClick={{this.startCreating}}
+        data-test-contact-add-new
+      />
+    {{/unless}}
+  {{/unless}}
+
+  {{#if (or this.isAttached this.isCreating)}}
+    <div class="flex gap-4">
+      <div class="grow">
+        <Nuvo::Field @label="First Name" @required={{this.isCreating}}>
+          <Nuvo::Input
+            id="{{this.fieldPrefix}}-first-name"
+            @type="text"
+            @placeholder="e.g. Ahmed"
+            @value={{if this.isAttached this.contact.firstName this.identity.firstName}}
+            @onInput={{fn this.setIdentity "firstName"}}
+            @readonly={{this.isAttached}}
+            data-test-contact-first-name
+          />
+        </Nuvo::Field>
+      </div>
+      <div class="grow">
+        <Nuvo::Field @label="Last Name">
+          <Nuvo::Input
+            id="{{this.fieldPrefix}}-last-name"
+            @type="text"
+            @placeholder="e.g. Al Mansouri"
+            @value={{if this.isAttached this.contact.lastName this.identity.lastName}}
+            @onInput={{fn this.setIdentity "lastName"}}
+            @readonly={{this.isAttached}}
+            data-test-contact-last-name
+          />
+        </Nuvo::Field>
+      </div>
+    </div>
+
+    <div class="flex gap-4">
+      <div class="grow">
+        <Nuvo::Field @label="Phone">
+          <Nuvo::Input
+            id="{{this.fieldPrefix}}-phone"
+            @type="text"
+            @placeholder="+971501234567"
+            @value={{if this.isAttached this.contact.phone this.identity.phone}}
+            @onInput={{fn this.setIdentity "phone"}}
+            @readonly={{this.isAttached}}
+            data-test-contact-phone
+          />
+        </Nuvo::Field>
+      </div>
+      <div class="grow">
+        <Nuvo::Field @label="Email">
+          <Nuvo::Input
+            id="{{this.fieldPrefix}}-email"
+            @type="email"
+            @placeholder="ahmed@example.com"
+            @value={{if this.isAttached this.contact.email this.identity.email}}
+            @onInput={{fn this.setIdentity "email"}}
+            @readonly={{this.isAttached}}
+            data-test-contact-email
+          />
+        </Nuvo::Field>
+      </div>
+    </div>
+
+    {{#if this.isAttached}}
+      {{#if this.contact.isWhatsapp}}
+        <p class="text-sm text-muted" data-test-contact-whatsapp-note>
+          <Ui::Ph @icon="whatsapp-logo" />
+          Reachable on WhatsApp
+        </p>
+      {{/if}}
+    {{else}}
+      <Nuvo::Checkbox
+        @label="Reachable on WhatsApp"
+        @checked={{this.identity.isWhatsapp}}
+        @onChange={{this.toggleWhatsapp}}
+        data-test-contact-whatsapp
+      />
+    {{/if}}
+
+    {{#if this.notes}}
+      <Nuvo::Field @label="Notes">
+        <p class="text-sm text-muted" data-test-contact-notes>{{this.notes}}</p>
+      </Nuvo::Field>
+    {{/if}}
+  {{/if}}
+</div>

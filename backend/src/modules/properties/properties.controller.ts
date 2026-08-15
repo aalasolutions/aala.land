@@ -462,7 +462,11 @@ export class PropertiesController {
   @Roles(Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT)
   @ApiOperation({ summary: 'Create a new unit (ADMIN+, AGENT)' })
   createUnit(@Body() dto: CreateUnitDto, @Request() req: AuthenticatedRequest) {
-    return this.propertiesService.createUnit(requireCompanyId(req.user), dto);
+    return this.propertiesService.createUnit(
+      requireCompanyId(req.user),
+      dto,
+      req.user.userId,
+    );
   }
 
   @Get('assets/:assetId/units')
@@ -502,6 +506,7 @@ export class PropertiesController {
       id,
       requireCompanyId(req.user),
       dto,
+      req.user.userId,
     );
   }
 

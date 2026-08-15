@@ -488,17 +488,15 @@
         />
       </Nuvo::Field>
 
-      <Nuvo::Field @label="Owner">
-        <Nuvo::Dropdown
-          @searchable={{true}}
-          @align="start"
-          @value={{this.formOwnerId}}
-          @onSelect={{fn this.setFieldValue "formOwnerId"}}
-          @options={{this.ownerOptions}}
-          @placeholder="Unassigned"
-          data-test-field-owner
-        />
-      </Nuvo::Field>
+      <Contact::Picker
+        @label="Owner"
+        @required={{true}}
+        @contact={{this.ownerSelection.contact}}
+        @identity={{this.ownerSelection.identity}}
+        @onSelectContact={{this.ownerSelection.attach}}
+        @onClear={{this.ownerSelection.clear}}
+        @onIdentityChange={{this.ownerSelection.setField}}
+      />
 
       <div class="flex col gap-2">
         <label class="text-sm text-muted">Amenities</label>

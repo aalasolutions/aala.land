@@ -418,6 +418,17 @@
             min="0"
           />
         </Nuvo::Field>
+
+        <hr class="border-t border-light" />
+        <Contact::Picker
+          @label="Owner"
+          @required={{true}}
+          @contact={{this.ownerSelection.contact}}
+          @identity={{this.ownerSelection.identity}}
+          @onSelectContact={{this.ownerSelection.attach}}
+          @onClear={{this.ownerSelection.clear}}
+          @onIdentityChange={{this.ownerSelection.setField}}
+        />
       {{/if}}
       {{#if this.newUnitError}}
         <p class="text-sm text-danger">{{this.newUnitError}}</p>

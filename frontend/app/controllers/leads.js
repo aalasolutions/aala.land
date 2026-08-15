@@ -1,4 +1,7 @@
 import Controller from '@ember/controller';
+import ContactSelection, {
+  CONTACT_REQUIRED_ERROR,
+} from '../utils/contact-selection';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
@@ -57,10 +60,7 @@ export default class LeadsController extends Controller {
   @tracked assignLead = null;
   @tracked detailLead = null;
   @tracked leadActivities = [];
-  @tracked formFirstName = '';
-  @tracked formLastName = '';
-  @tracked formEmail = '';
-  @tracked formPhone = '';
+  contactSelection = new ContactSelection();
   @tracked formStatus = 'NEW';
   @tracked formTemperature = 'WARM';
   @tracked formSource = 'OTHER';
@@ -240,10 +240,7 @@ export default class LeadsController extends Controller {
   }
 
   @action openCreate() {
-    this.formFirstName = '';
-    this.formLastName = '';
-    this.formEmail = '';
-    this.formPhone = '';
+    this.contactSelection.reset();
     this.formStatus = 'NEW';
     this.formTemperature = 'WARM';
     this.formSource = 'OTHER';
@@ -262,12 +259,6 @@ export default class LeadsController extends Controller {
       this.closeDetailModal();
     }
 
-    // Identity now lives on the contact; shown for reference, not editable here.
-    const contact = lead.contact ?? {};
-    this.formFirstName = contact.firstName ?? '';
-    this.formLastName = contact.lastName ?? '';
-    this.formEmail = contact.email ?? '';
-    this.formPhone = contact.phone ?? '';
     this.formStatus = lead.status ?? 'NEW';
     this.formTemperature = lead.temperature ?? 'WARM';
     this.formSource = lead.source ?? 'OTHER';
@@ -539,6 +530,10 @@ export default class LeadsController extends Controller {
   @action async saveLead(event) {
     event.preventDefault();
     if (this.isSaving) return;
+    if (!this.editLead && !this.contactSelection.isPresent) {
+      this.errorMsg = CONTACT_REQUIRED_ERROR;
+      return;
+    }
     this.isSaving = true;
     this.errorMsg = '';
 
@@ -559,12 +554,9 @@ export default class LeadsController extends Controller {
           // no longer declares them, and forbidNonWhitelisted would 400).
           ...(isEdit
             ? {}
-            : {
-                firstName: this.formFirstName,
-                ...(this.formLastName ? { lastName: this.formLastName } : {}),
-                ...(this.formEmail ? { email: this.formEmail } : {}),
-                ...(this.formPhone ? { phone: this.formPhone } : {}),
-              }),
+            : this.contactSelection.contactId
+              ? { contactId: this.contactSelection.contactId }
+              : this.contactSelection.cleanIdentity),
           status: this.formStatus,
           temperature: this.formTemperature,
           source: this.formSource,
