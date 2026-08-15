@@ -27,12 +27,16 @@
   {{#if (or this.isAttached this.isCreating)}}
     <div class="flex gap-4">
       <div class="grow">
-        <Nuvo::Field @label="First Name" @required={{this.isCreating}}>
+        <Nuvo::Field @label="First Name">
           <Nuvo::Input
             id="{{this.fieldPrefix}}-first-name"
             @type="text"
             @placeholder="e.g. Ahmed"
-            @value={{if this.isAttached this.contact.firstName this.identity.firstName}}
+            @value={{if
+              this.isAttached
+              this.contact.firstName
+              this.identity.firstName
+            }}
             @onInput={{fn this.setIdentity "firstName"}}
             @readonly={{this.isAttached}}
             data-test-contact-first-name
@@ -45,7 +49,11 @@
             id="{{this.fieldPrefix}}-last-name"
             @type="text"
             @placeholder="e.g. Al Mansouri"
-            @value={{if this.isAttached this.contact.lastName this.identity.lastName}}
+            @value={{if
+              this.isAttached
+              this.contact.lastName
+              this.identity.lastName
+            }}
             @onInput={{fn this.setIdentity "lastName"}}
             @readonly={{this.isAttached}}
             data-test-contact-last-name
