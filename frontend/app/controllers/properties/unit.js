@@ -1,7 +1,7 @@
 import Controller from '@ember/controller';
-import OwnerSelection, {
+import ContactSelection, {
   OWNER_REQUIRED_ERROR,
-} from '../../utils/owner-selection';
+} from '../../utils/contact-selection';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
@@ -83,7 +83,7 @@ export default class PropertiesUnitController extends Controller {
     return htmlSafe(`width:${clamped}%;`);
   }
 
-  ownerSelection = new OwnerSelection();
+  ownerSelection = new ContactSelection();
 
   @action setField(fieldName, e) {
     this[fieldName] = e.target.value;
@@ -260,7 +260,9 @@ export default class PropertiesUnitController extends Controller {
         : {}),
       ...(this.formFloor ? { floor: this.formFloor } : {}),
       ...(this.formDescription ? { description: this.formDescription } : {}),
-      ...this.ownerSelection.payload,
+      ...(this.ownerSelection.contactId
+        ? { ownerId: this.ownerSelection.contactId }
+        : { owner: this.ownerSelection.cleanIdentity }),
       amenities: this.formAmenities,
     };
 

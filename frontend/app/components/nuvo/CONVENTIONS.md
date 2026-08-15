@@ -57,6 +57,43 @@ These are the details that make a kit feel finished. Apply where relevant.
 - **Group parents coordinate children.** A checkbox-group passes size/disabled
   down and enforces min/max selection at the item level.
 
+## Tooltips
+
+There is exactly one tooltip mechanism. Do not build a second one, and do not
+add a per-instance tooltip component.
+
+Add `data-tooltip="..."` to any element. That is the whole API.
+
+```hbs
+<Nuvo::Button @icon="plugs" aria-label="Re-pair" data-tooltip="Re-pair device" />
+```
+
+Optional: `data-tooltip-position="top|bottom|start|end"` (default `top`,
+`start`/`end` are logical and swap under RTL), and `data-tooltip-light`.
+
+`Nuvo::TooltipHost` is mounted once in `application.hbs`. It installs delegated
+listeners on `document` and renders a single positioned element **only while a
+tooltip is shown**, destroying it on hide. So a trigger costs zero extra DOM
+nodes and zero event listeners, and an idle page carries no tooltip DOM at all.
+Measured: 10,000 triggers on one page render 0 tooltip nodes idle, 1 while
+shown, 0 after mouseout. This is why a table with 1,000 rows is fine.
+
+Rules:
+
+- **Never write `role="tooltip"` on a trigger.** It replaces the element's own
+  role, so a button stops announcing as a button. The host owns that role.
+  NuvoUI core ships a pure-CSS `[data-tooltip][role~="tooltip"]` tooltip; because
+  nothing here writes that role, core never matches and cannot double-render.
+- **`aria-describedby` is automatic.** The service sets it on the trigger while
+  visible and removes it on hide. Do not hand-write it.
+- **`aria-label` only when the element has no accessible name of its own**, ie.
+  an icon-only button. It replaces the *name*; a tooltip is a *description*. On
+  a labelled control it would overwrite the label and lose what the control is.
+- **Wrap a disabled trigger.** `.nu-btn:disabled` sets `pointer-events: none`,
+  so no event reaches delegation. Put `data-tooltip` on a wrapping `<span>`.
+- **Content is read at hover time**, so state-dependent text needs no special
+  handling. Text only; the attribute cannot carry markup.
+
 ## Showcase
 
 Every component gets a section appended to `app/templates/uikit.hbs`:

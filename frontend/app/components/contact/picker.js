@@ -1,12 +1,21 @@
 import Component from '@glimmer/component';
 import { action } from '@ember/object';
 import { tracked } from '@glimmer/tracking';
+import { guidFor } from '@ember/object/internals';
 
-// Owner of a property. Search the company's contacts and attach one, or type a
-// name that has no match and fill the details to create the contact on save.
-// The parent reads `value` and sends either ownerId or the owner identity.
-export default class UnitOwnerPickerComponent extends Component {
+// Attach a person: search the company's contacts and pick one, or type a name
+// that has no match and fill the details so the backend creates the contact on
+// save. Used for the unit owner and for lead capture; the parent decides
+// whether that becomes an id or inline details.
+export default class ContactPickerComponent extends Component {
   @tracked isCreating = false;
+
+  // Two pickers can share a page, so field ids must not collide.
+  fieldPrefix = guidFor(this);
+
+  get label() {
+    return this.args.label ?? 'Contact';
+  }
 
   get contact() {
     return this.args.contact ?? null;
@@ -24,8 +33,8 @@ export default class UnitOwnerPickerComponent extends Component {
     return '/contacts';
   }
 
-  // Units loaded through the asset listing carry a raw contact with no
-  // displayName, so fall back the same way the backend serializer does.
+  // Contacts loaded through a relation carry no displayName, so fall back the
+  // same way the backend serializer does.
   get selectedName() {
     const contact = this.contact;
     if (!contact) return '';

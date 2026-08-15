@@ -506,7 +506,8 @@
           </Nuvo::Field>
         </div>
       </div>
-      <Unit::OwnerPicker
+      <Contact::Picker
+        @label="Owner"
         @required={{true}}
         @contact={{this.ownerSelection.contact}}
         @identity={{this.ownerSelection.identity}}

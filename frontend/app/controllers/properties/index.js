@@ -1,7 +1,7 @@
 import Controller from '@ember/controller';
-import OwnerSelection, {
+import ContactSelection, {
   OWNER_REQUIRED_ERROR,
-} from '../../utils/owner-selection';
+} from '../../utils/contact-selection';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
@@ -236,7 +236,7 @@ export default class PropertiesIndexController extends Controller {
     this.selectedAsset = null;
   }
 
-  ownerSelection = new OwnerSelection();
+  ownerSelection = new ContactSelection();
 
   @action openNewUnitModal() {
     this.ownerSelection.reset();
@@ -290,7 +290,9 @@ export default class PropertiesIndexController extends Controller {
       ...(this.newUnitBathrooms
         ? { bathrooms: parseInt(this.newUnitBathrooms, 10) }
         : {}),
-      ...this.ownerSelection.payload,
+      ...(this.ownerSelection.contactId
+        ? { ownerId: this.ownerSelection.contactId }
+        : { owner: this.ownerSelection.cleanIdentity }),
     };
 
     try {

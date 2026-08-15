@@ -420,7 +420,8 @@
         </Nuvo::Field>
 
         <hr class="border-t border-light" />
-        <Unit::OwnerPicker
+        <Contact::Picker
+          @label="Owner"
           @required={{true}}
           @contact={{this.ownerSelection.contact}}
           @identity={{this.ownerSelection.identity}}

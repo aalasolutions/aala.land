@@ -35,7 +35,13 @@ module('Unit | Controller | leads', function (hooks) {
         return Promise.resolve({});
       },
     };
-    Object.assign(controller, assigns);
+    const { identity, ...rest } = assigns;
+    Object.assign(controller, rest);
+    // Lead capture attaches a person through the shared ContactSelection, so
+    // the create path needs one before it will save.
+    for (const [field, value] of Object.entries(identity ?? {})) {
+      controller.contactSelection.setField(field, value);
+    }
     await controller.saveLead({ preventDefault() {} });
     return captured;
   }
@@ -43,7 +49,7 @@ module('Unit | Controller | leads', function (hooks) {
   test('create sends localityId only when set', async function (assert) {
     const payload = await savePayload(this, {
       editLead: null,
-      formFirstName: 'A',
+      identity: { firstName: 'A' },
       formLocalityId: 'loc-1',
     });
     assert.strictEqual(payload.localityId, 'loc-1');
@@ -52,7 +58,7 @@ module('Unit | Controller | leads', function (hooks) {
   test('create omits localityId when empty', async function (assert) {
     const payload = await savePayload(this, {
       editLead: null,
-      formFirstName: 'A',
+      identity: { firstName: 'A' },
       formLocalityId: '',
     });
     assert.false('localityId' in payload);
@@ -61,7 +67,7 @@ module('Unit | Controller | leads', function (hooks) {
   test('edit sends localityId: null when cleared', async function (assert) {
     const payload = await savePayload(this, {
       editLead: { locality: { id: 'loc-1' } },
-      formFirstName: 'A',
+      identity: { firstName: 'A' },
       formLocalityId: '',
     });
     assert.strictEqual(payload.localityId, null);
@@ -70,7 +76,7 @@ module('Unit | Controller | leads', function (hooks) {
   test('edit omits localityId when unchanged', async function (assert) {
     const payload = await savePayload(this, {
       editLead: { locality: { id: 'loc-1' } },
-      formFirstName: 'A',
+      identity: { firstName: 'A' },
       formLocalityId: 'loc-1',
     });
     assert.false('localityId' in payload);

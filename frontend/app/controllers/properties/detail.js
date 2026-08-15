@@ -1,7 +1,7 @@
 import Controller from '@ember/controller';
-import OwnerSelection, {
+import ContactSelection, {
   OWNER_REQUIRED_ERROR,
-} from '../../utils/owner-selection';
+} from '../../utils/contact-selection';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
@@ -98,7 +98,7 @@ export default class PropertiesDetailController extends Controller {
 
   propertyTypeOptions = PROPERTY_TYPE_OPTIONS;
 
-  ownerSelection = new OwnerSelection();
+  ownerSelection = new ContactSelection();
 
   @service region;
 
@@ -319,7 +319,9 @@ export default class PropertiesDetailController extends Controller {
       ...(this.formUnitBathrooms
         ? { bathrooms: parseInt(this.formUnitBathrooms, 10) }
         : {}),
-      ...this.ownerSelection.payload,
+      ...(this.ownerSelection.contactId
+        ? { ownerId: this.ownerSelection.contactId }
+        : { owner: this.ownerSelection.cleanIdentity }),
       amenities: this.formUnitAmenities,
     };
 
