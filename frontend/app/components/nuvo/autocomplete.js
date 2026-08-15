@@ -9,8 +9,16 @@ export default class NuAutocompleteComponent extends Component {
     return Boolean(this.args.createUrl);
   }
 
+  get labelKey() {
+    return this.args.labelKey ?? 'name';
+  }
+
+  get searchParam() {
+    return this.args.searchParam ?? 'q';
+  }
+
   toOption(item) {
-    return { value: item.id, label: item.name, item };
+    return { value: item.id, label: item[this.labelKey], item };
   }
 
   @action
@@ -19,9 +27,11 @@ export default class NuAutocompleteComponent extends Component {
       return [];
     }
     const separator = this.args.searchUrl.includes('?') ? '&' : '?';
-    const url = `${this.args.searchUrl}${separator}q=${encodeURIComponent(term)}`;
+    const url = `${this.args.searchUrl}${separator}${this.searchParam}=${encodeURIComponent(term)}`;
     const result = await this.auth.fetchJson(url);
-    const items = result.data ?? result ?? [];
+    const payload = result.data ?? result ?? [];
+    // Search endpoints return a bare array; paginated ones wrap it again.
+    const items = Array.isArray(payload) ? payload : (payload.data ?? []);
     return items.map((item) => this.toOption(item));
   }
 

@@ -1,4 +1,7 @@
 import Controller from '@ember/controller';
+import OwnerSelection, {
+  OWNER_REQUIRED_ERROR,
+} from '../../utils/owner-selection';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
@@ -233,7 +236,10 @@ export default class PropertiesIndexController extends Controller {
     this.selectedAsset = null;
   }
 
+  ownerSelection = new OwnerSelection();
+
   @action openNewUnitModal() {
+    this.ownerSelection.reset();
     this.selectedCity = null;
     this.selectedLocality = null;
     this.selectedAsset = null;
@@ -264,6 +270,10 @@ export default class PropertiesIndexController extends Controller {
       this.newUnitError = 'Property number is required.';
       return;
     }
+    if (!this.ownerSelection.isPresent) {
+      this.newUnitError = OWNER_REQUIRED_ERROR;
+      return;
+    }
 
     this.isSavingNewUnit = true;
     this.newUnitError = '';
@@ -280,6 +290,7 @@ export default class PropertiesIndexController extends Controller {
       ...(this.newUnitBathrooms
         ? { bathrooms: parseInt(this.newUnitBathrooms, 10) }
         : {}),
+      ...this.ownerSelection.payload,
     };
 
     try {

@@ -11,6 +11,7 @@ import { PropertyDocument } from './entities/property-document.entity';
 import { Contact } from '../contacts/entities/contact.entity';
 import { Company } from '../companies/entities/company.entity';
 import { EmailModule } from '../email/email.module';
+import { ContactsModule } from '../contacts/contacts.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { EmailModule } from '../email/email.module';
       Company,
     ]),
     EmailModule,
+    ContactsModule,
   ],
   controllers: [PropertiesController],
   providers: [PropertiesService, MediaService],

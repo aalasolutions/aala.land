@@ -1,4 +1,7 @@
 import Controller from '@ember/controller';
+import OwnerSelection, {
+  OWNER_REQUIRED_ERROR,
+} from '../../utils/owner-selection';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
@@ -27,9 +30,6 @@ export default class PropertiesDetailController extends Controller {
     this.preferences.set('properties-detail-view', view);
   }
 
-  @tracked owners = [];
-  @tracked isLoadingOwners = false;
-
   @tracked tenantHistoryCache = new Map();
   @tracked _historyVersion = 0;
 
@@ -49,19 +49,6 @@ export default class PropertiesDetailController extends Controller {
       unitIds.map((unitId) => this._loadTenantHistoryForUnit(unitId)),
     );
     this._historyVersion = (this._historyVersion || 0) + 1;
-  }
-
-  @action
-  async loadOwners() {
-    this.isLoadingOwners = true;
-    try {
-      const result = await this.auth.fetchJson('/contacts?limit=100');
-      this.owners = result.data?.data || [];
-    } catch (e) {
-      console.error('Failed to load owners:', e);
-    } finally {
-      this.isLoadingOwners = false;
-    }
   }
 
   async _loadTenantHistoryForUnit(unitId) {
@@ -111,15 +98,7 @@ export default class PropertiesDetailController extends Controller {
 
   propertyTypeOptions = PROPERTY_TYPE_OPTIONS;
 
-  get ownerOptions() {
-    return [
-      { value: '', label: 'Unassigned' },
-      ...(this.owners || []).map((owner) => ({
-        value: owner.id,
-        label: owner.displayName,
-      })),
-    ];
-  }
+  ownerSelection = new OwnerSelection();
 
   @service region;
 
@@ -180,7 +159,6 @@ export default class PropertiesDetailController extends Controller {
   @tracked formUnitSqFt = '';
   @tracked formUnitBedrooms = '';
   @tracked formUnitBathrooms = '';
-  @tracked formUnitOwnerId = '';
   @tracked formUnitAmenities = [];
   @tracked isSavingUnit = false;
   @tracked unitError = '';
@@ -277,7 +255,7 @@ export default class PropertiesDetailController extends Controller {
     this.formUnitSqFt = '';
     this.formUnitBedrooms = '';
     this.formUnitBathrooms = '';
-    this.formUnitOwnerId = '';
+    this.ownerSelection.reset();
     this.formUnitAmenities = [];
     this.editUnit = null;
     this.unitError = '';
@@ -294,7 +272,7 @@ export default class PropertiesDetailController extends Controller {
     this.formUnitBedrooms = unit.bedrooms != null ? String(unit.bedrooms) : '';
     this.formUnitBathrooms =
       unit.bathrooms != null ? String(unit.bathrooms) : '';
-    this.formUnitOwnerId = unit.ownerId || '';
+    this.ownerSelection.attach(unit.owner ?? null);
     this.formUnitAmenities = Array.isArray(unit.amenities)
       ? [...unit.amenities]
       : [];
@@ -312,6 +290,10 @@ export default class PropertiesDetailController extends Controller {
   @action async saveUnit(event) {
     event.preventDefault();
     if (this.isSavingUnit) return;
+    if (!this.ownerSelection.isPresent) {
+      this.unitError = OWNER_REQUIRED_ERROR;
+      return;
+    }
     this.isSavingUnit = true;
     this.unitError = '';
 
@@ -337,7 +319,7 @@ export default class PropertiesDetailController extends Controller {
       ...(this.formUnitBathrooms
         ? { bathrooms: parseInt(this.formUnitBathrooms, 10) }
         : {}),
-      ownerId: this.formUnitOwnerId || null,
+      ...this.ownerSelection.payload,
       amenities: this.formUnitAmenities,
     };
 

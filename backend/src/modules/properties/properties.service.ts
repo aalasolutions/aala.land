@@ -11,6 +11,8 @@ import { Asset } from './entities/asset.entity';
 import { Unit, UnitStatus } from './entities/unit.entity';
 import { PropertyMedia } from './entities/property-media.entity';
 import { Contact } from '../contacts/entities/contact.entity';
+import { ContactsService } from '../contacts/contacts.service';
+import { ContactIdentityDto } from '../contacts/dto/contact-identity.dto';
 import {
   attachDisplayName,
   contactDisplayName,
@@ -32,6 +34,16 @@ import {
   isUniqueViolation,
 } from '../../shared/utils/name-normalization.util';
 
+// True when inline owner details carry at least one identifying value. An empty
+// object must not reach resolveOrCreate, which would insert an all-null contact.
+function hasContactIdentity(
+  owner: ContactIdentityDto | undefined,
+): owner is ContactIdentityDto {
+  return Boolean(
+    owner && (owner.firstName || owner.lastName || owner.phone || owner.email),
+  );
+}
+
 @Injectable()
 export class PropertiesService {
   constructor(
@@ -45,6 +57,7 @@ export class PropertiesService {
     private readonly mediaRepository: Repository<PropertyMedia>,
     @InjectRepository(Contact)
     private readonly contactRepository: Repository<Contact>,
+    private readonly contactsService: ContactsService,
   ) {}
 
   // Areas
@@ -399,11 +412,23 @@ export class PropertiesService {
     return { data, total, page, limit };
   }
 
-  async createUnit(companyId: string, dto: CreateUnitDto): Promise<Unit> {
-    if (dto.ownerId) {
-      await this.verifyContactBelongsToCompany(dto.ownerId, companyId);
-    }
-    const unit = this.unitRepository.create({ ...dto, companyId });
+  async createUnit(
+    companyId: string,
+    dto: CreateUnitDto,
+    userId?: string,
+  ): Promise<Unit> {
+    const { owner, ...rest } = dto;
+    const ownerId = await this.resolveOwnerId(
+      companyId,
+      dto.ownerId,
+      owner,
+      userId,
+    );
+    const unit = this.unitRepository.create({
+      ...rest,
+      ownerId: ownerId ?? undefined,
+      companyId,
+    });
     return this.unitRepository.save(unit);
   }
 
@@ -438,19 +463,47 @@ export class PropertiesService {
     id: string,
     companyId: string,
     dto: UpdateUnitDto,
+    userId?: string,
   ): Promise<Unit> {
     const unit = await this.findOneUnit(id, companyId);
-    const { ownerId, ...rest } = dto;
+    const { ownerId, owner, ...rest } = dto;
     Object.assign(unit, rest);
-    if ('ownerId' in dto) {
+    if ('ownerId' in dto || hasContactIdentity(owner)) {
+      const resolvedId = await this.resolveOwnerId(
+        companyId,
+        ownerId ?? undefined,
+        owner,
+        userId,
+      );
       // Set both the FK and the relation object: findOneUnit loads `owner`, so a
       // stale unit.owner would otherwise outrank the changed ownerId on save.
-      unit.owner = ownerId
-        ? await this.verifyContactBelongsToCompany(ownerId, companyId)
+      unit.owner = resolvedId
+        ? await this.verifyContactBelongsToCompany(resolvedId, companyId)
         : null;
-      unit.ownerId = ownerId ?? null;
+      unit.ownerId = resolvedId ?? null;
     }
     return this.unitRepository.save(unit);
+  }
+
+  // An owner is either an existing contact or inline details that resolve to
+  // one. Same rule as lead capture: one number is one contact per company.
+  private async resolveOwnerId(
+    companyId: string,
+    ownerId: string | undefined,
+    owner: ContactIdentityDto | undefined,
+    userId?: string,
+  ): Promise<string | null> {
+    if (ownerId) {
+      await this.verifyContactBelongsToCompany(ownerId, companyId);
+      return ownerId;
+    }
+    if (!hasContactIdentity(owner)) return null;
+    const contact = await this.contactsService.resolveOrCreate(
+      companyId,
+      owner,
+      userId,
+    );
+    return contact.id;
   }
 
   private async verifyContactBelongsToCompany(

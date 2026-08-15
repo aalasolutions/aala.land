@@ -8,8 +8,11 @@ import {
   Min,
   MaxLength,
   IsUUID,
+  ValidateNested,
 } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
+import { ContactIdentityDto } from '../../contacts/dto/contact-identity.dto';
 import { UnitStatus } from '../entities/unit.entity';
 import { PropertyType } from '../entities/property-type.enum';
 
@@ -24,6 +27,14 @@ export class UpdateUnitDto {
   @IsUUID()
   @IsOptional()
   ownerId?: string | null;
+
+  // Used only when ownerId is absent: resolves to an existing contact by phone
+  // or email, or creates one.
+  @ApiPropertyOptional({ type: ContactIdentityDto })
+  @ValidateNested()
+  @Type(() => ContactIdentityDto)
+  @IsOptional()
+  owner?: ContactIdentityDto;
 
   @ApiPropertyOptional({ example: 'uuid-of-agent', nullable: true })
   @IsUUID()

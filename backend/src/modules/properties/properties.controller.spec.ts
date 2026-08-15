@@ -10,10 +10,11 @@ describe('PropertiesController', () => {
   let mediaService: jest.Mocked<MediaService>;
 
   const companyId = 'company-uuid-1';
+  const userId = 'user-uuid-1';
   const mockReq = {
     user: {
       companyId,
-      userId: 'user-uuid-1',
+      userId,
       email: 'admin@test.com',
       role: 'company_admin',
     },
@@ -164,10 +165,14 @@ describe('PropertiesController', () => {
         mockReq,
       );
 
-      expect(service.createUnit).toHaveBeenCalledWith(companyId, {
-        unitNumber: '1A',
-        assetId: 'asset-uuid-1',
-      });
+      expect(service.createUnit).toHaveBeenCalledWith(
+        companyId,
+        {
+          unitNumber: '1A',
+          assetId: 'asset-uuid-1',
+        },
+        userId,
+      );
       expect(result).toEqual(mockUnit);
     });
   });

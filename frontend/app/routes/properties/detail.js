@@ -31,9 +31,4 @@ export default class PropertiesDetailRoute extends AuthenticatedRoute {
       return { localityId: area_id, assets: [] };
     }
   }
-
-  setupController(controller, model) {
-    super.setupController(controller, model);
-    controller.loadOwners();
-  }
 }

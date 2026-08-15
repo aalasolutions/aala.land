@@ -506,15 +506,14 @@
           </Nuvo::Field>
         </div>
       </div>
-      <Nuvo::Field @label="Owner">
-        <Nuvo::Dropdown
-          id="u-owner"
-          @align="start"
-          @value={{this.formUnitOwnerId}}
-          @onSelect={{fn this.setFieldValue "formUnitOwnerId"}}
-          @options={{this.ownerOptions}}
-        />
-      </Nuvo::Field>
+      <Unit::OwnerPicker
+        @required={{true}}
+        @contact={{this.ownerSelection.contact}}
+        @identity={{this.ownerSelection.identity}}
+        @onSelectContact={{this.ownerSelection.attach}}
+        @onClear={{this.ownerSelection.clear}}
+        @onIdentityChange={{this.ownerSelection.setField}}
+      />
       <div class="flex col gap-2">
         <label class="text-sm text-muted">Amenities</label>
         <div class="flex wrap gap-2">

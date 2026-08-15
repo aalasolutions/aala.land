@@ -44,7 +44,8 @@
                   (eq this.activeGroup 'properties')
                 )
                 'is-expanded'
-              }}"
+              }}
+              {{if (eq this.activeGroup 'properties') 'is-active-group'}}"
           >
             <button
               type="button"
@@ -65,22 +66,31 @@
                 <LinkTo
                   @route="properties"
                   class="nu-sidebar__sublink"
+                  data-tooltip={{if this.desktopCollapsed "All Properties"}}
+                  data-tooltip-position="end"
                   data-test-nav-properties
                 >
+                  <Ui::Ph @icon="house-line" />
                   <span class="nu-sidebar__link-label">All Properties</span>
                 </LinkTo>
                 <LinkTo
                   @route="owners"
                   class="nu-sidebar__sublink"
+                  data-tooltip={{if this.desktopCollapsed "Owners"}}
+                  data-tooltip-position="end"
                   data-test-nav-owners
                 >
+                  <Ui::Ph @icon="user-list" />
                   <span class="nu-sidebar__link-label">Owners</span>
                 </LinkTo>
                 <LinkTo
                   @route="leases"
                   class="nu-sidebar__sublink"
+                  data-tooltip={{if this.desktopCollapsed "Leases"}}
+                  data-tooltip-position="end"
                   data-test-nav-leases
                 >
+                  <Ui::Ph @icon="file-text" />
                   <span class="nu-sidebar__link-label">Leases</span>
                 </LinkTo>
               </div>
@@ -95,7 +105,8 @@
               {{if
                 (or (eq this.expandedGroup 'crm') (eq this.activeGroup 'crm'))
                 'is-expanded'
-              }}"
+              }}
+              {{if (eq this.activeGroup 'crm') 'is-active-group'}}"
           >
             <button
               type="button"
@@ -113,15 +124,21 @@
                 <LinkTo
                   @route="leads"
                   class="nu-sidebar__sublink"
+                  data-tooltip={{if this.desktopCollapsed "Pipeline"}}
+                  data-tooltip-position="end"
                   data-test-nav-leads
                 >
+                  <Ui::Ph @icon="kanban" />
                   <span class="nu-sidebar__link-label">Pipeline</span>
                 </LinkTo>
                 <LinkTo
                   @route="contacts"
                   class="nu-sidebar__sublink"
+                  data-tooltip={{if this.desktopCollapsed "Contacts"}}
+                  data-tooltip-position="end"
                   data-test-nav-contacts
                 >
+                  <Ui::Ph @icon="address-book" />
                   <span class="nu-sidebar__link-label">Contacts</span>
                 </LinkTo>
               </div>
@@ -153,7 +170,8 @@
                   (eq this.activeGroup 'finance')
                 )
                 'is-expanded'
-              }}"
+              }}
+              {{if (eq this.activeGroup 'finance') 'is-active-group'}}"
           >
             <button
               type="button"
@@ -171,22 +189,31 @@
                 <LinkTo
                   @route="financials"
                   class="nu-sidebar__sublink"
+                  data-tooltip={{if this.desktopCollapsed "Transactions"}}
+                  data-tooltip-position="end"
                   data-test-nav-financials
                 >
+                  <Ui::Ph @icon="receipt" />
                   <span class="nu-sidebar__link-label">Transactions</span>
                 </LinkTo>
                 <LinkTo
                   @route="cheques"
                   class="nu-sidebar__sublink"
+                  data-tooltip={{if this.desktopCollapsed "Cheques"}}
+                  data-tooltip-position="end"
                   data-test-nav-cheques
                 >
+                  <Ui::Ph @icon="money" />
                   <span class="nu-sidebar__link-label">Cheques</span>
                 </LinkTo>
                 <LinkTo
                   @route="commissions"
                   class="nu-sidebar__sublink"
+                  data-tooltip={{if this.desktopCollapsed "Commissions"}}
+                  data-tooltip-position="end"
                   data-test-nav-commissions
                 >
+                  <Ui::Ph @icon="percent" />
                   <span class="nu-sidebar__link-label">Commissions</span>
                 </LinkTo>
               </div>
@@ -218,7 +245,8 @@
                   (eq this.activeGroup 'operations')
                 )
                 'is-expanded'
-              }}"
+              }}
+              {{if (eq this.activeGroup 'operations') 'is-active-group'}}"
           >
             <button
               type="button"
@@ -239,15 +267,21 @@
                 <LinkTo
                   @route="maintenance"
                   class="nu-sidebar__sublink"
+                  data-tooltip={{if this.desktopCollapsed "Maintenance"}}
+                  data-tooltip-position="end"
                   data-test-nav-maintenance
                 >
+                  <Ui::Ph @icon="toolbox" />
                   <span class="nu-sidebar__link-label">Maintenance</span>
                 </LinkTo>
                 <LinkTo
                   @route="vendors"
                   class="nu-sidebar__sublink"
+                  data-tooltip={{if this.desktopCollapsed "Vendors"}}
+                  data-tooltip-position="end"
                   data-test-nav-vendors
                 >
+                  <Ui::Ph @icon="storefront" />
                   <span class="nu-sidebar__link-label">Vendors</span>
                 </LinkTo>
               </div>
@@ -294,7 +328,8 @@
                   (eq this.expandedGroup 'admin') (eq this.activeGroup 'admin')
                 )
                 'is-expanded'
-              }}"
+              }}
+              {{if (eq this.activeGroup 'admin') 'is-active-group'}}"
           >
             <button
               type="button"
@@ -312,46 +347,65 @@
                 <LinkTo
                   @route="admin.overview"
                   class="nu-sidebar__sublink"
+                  data-tooltip={{if this.desktopCollapsed "Overview"}}
+                  data-tooltip-position="end"
                   data-test-nav-overview
                 >
+                  <Ui::Ph @icon="squares-four" />
                   <span class="nu-sidebar__link-label">Overview</span>
                 </LinkTo>
                 <LinkTo
                   @route="admin.companies"
                   class="nu-sidebar__sublink"
+                  data-tooltip={{if this.desktopCollapsed "Companies"}}
+                  data-tooltip-position="end"
                   data-test-nav-companies
                 >
+                  <Ui::Ph @icon="buildings" />
                   <span class="nu-sidebar__link-label">Companies</span>
                 </LinkTo>
                 <LinkTo
                   @route="admin.marketers"
                   class="nu-sidebar__sublink"
+                  data-tooltip={{if this.desktopCollapsed "Marketers"}}
+                  data-tooltip-position="end"
                   data-test-nav-marketers
                 >
+                  <Ui::Ph @icon="megaphone" />
                   <span class="nu-sidebar__link-label">Marketers</span>
                 </LinkTo>
-                <LinkTo @route="team" class="nu-sidebar__sublink" data-test-nav-team>
+                <LinkTo @route="team" class="nu-sidebar__sublink" data-tooltip={{if this.desktopCollapsed "Team"}} data-tooltip-position="end" data-test-nav-team>
+                  <Ui::Ph @icon="users-three" />
                   <span class="nu-sidebar__link-label">Team</span>
                 </LinkTo>
                 <LinkTo
                   @route="documents"
                   class="nu-sidebar__sublink"
+                  data-tooltip={{if this.desktopCollapsed "Documents"}}
+                  data-tooltip-position="end"
                   data-test-nav-documents
                 >
+                  <Ui::Ph @icon="files" />
                   <span class="nu-sidebar__link-label">Documents</span>
                 </LinkTo>
                 <LinkTo
                   @route="audit"
                   class="nu-sidebar__sublink"
+                  data-tooltip={{if this.desktopCollapsed "Audit Log"}}
+                  data-tooltip-position="end"
                   data-test-nav-audit
                 >
+                  <Ui::Ph @icon="list-checks" />
                   <span class="nu-sidebar__link-label">Audit Log</span>
                 </LinkTo>
                 <LinkTo
                   @route="admin.system"
                   class="nu-sidebar__sublink"
+                  data-tooltip={{if this.desktopCollapsed "System"}}
+                  data-tooltip-position="end"
                   data-test-nav-system
                 >
+                  <Ui::Ph @icon="sliders" />
                   <span class="nu-sidebar__link-label">System</span>
                 </LinkTo>
               </div>
