@@ -28,6 +28,16 @@ export type ContactResponse = Omit<Contact, 'company'> & {
   tags: ContactTag[];
 };
 
+// Additional list filters beyond search and role tag.
+export interface ContactFilters {
+  agentId?: string;
+  isWhatsapp?: boolean;
+  company?: string;
+  nationality?: string;
+  dateFrom?: string;
+  dateTo?: string;
+}
+
 // Identity carried inline when attaching a person (lead capture, unit owner,
 // lease tenant). Either an existing contact id, or details to resolve/create.
 export interface ContactIdentity {
@@ -230,6 +240,7 @@ export class ContactsService {
     limit = 20,
     search?: string,
     tag?: ContactTag,
+    filters?: ContactFilters,
   ): Promise<{
     data: ContactResponse[];
     total: number;
@@ -251,6 +262,44 @@ export class ContactsService {
       // companyId is already bound on the qb; the EXISTS subqueries reuse it so
       // every role check stays company-scoped.
       qb.andWhere(this.tagExistsSql('c.id', tag));
+    }
+
+    if (filters?.agentId) {
+      // An agent may be assigned via a lead OR via a unit this contact owns.
+      // Both are company-scoped through the same :companyId already bound.
+      qb.andWhere(
+        `(EXISTS (SELECT 1 FROM leads l WHERE l.contact_id = c.id AND l.company_id = :companyId AND l.assigned_to = :agentId)
+          OR EXISTS (SELECT 1 FROM units u WHERE u.owner_id = c.id AND u.company_id = :companyId AND u.assigned_agent_id = :agentId))`,
+        { agentId: filters.agentId },
+      );
+    }
+
+    if (filters?.isWhatsapp !== undefined) {
+      qb.andWhere('c.is_whatsapp = :isWhatsapp', {
+        isWhatsapp: filters.isWhatsapp,
+      });
+    }
+
+    if (filters?.company) {
+      qb.andWhere('c.contact_company ILIKE :company', {
+        company: `%${filters.company}%`,
+      });
+    }
+
+    if (filters?.nationality) {
+      qb.andWhere('c.nationality ILIKE :nationality', {
+        nationality: `%${filters.nationality}%`,
+      });
+    }
+
+    if (filters?.dateFrom) {
+      qb.andWhere('c.created_at >= :dateFrom', {
+        dateFrom: filters.dateFrom,
+      });
+    }
+
+    if (filters?.dateTo) {
+      qb.andWhere('c.created_at <= :dateTo', { dateTo: filters.dateTo });
     }
 
     qb.skip((page - 1) * limit)

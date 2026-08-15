@@ -74,16 +74,6 @@
                   <span class="nu-sidebar__link-label">All Properties</span>
                 </LinkTo>
                 <LinkTo
-                  @route="owners"
-                  class="nu-sidebar__sublink"
-                  data-tooltip={{if this.desktopCollapsed "Owners"}}
-                  data-tooltip-position="end"
-                  data-test-nav-owners
-                >
-                  <Ui::Ph @icon="user-list" />
-                  <span class="nu-sidebar__link-label">Owners</span>
-                </LinkTo>
-                <LinkTo
                   @route="leases"
                   class="nu-sidebar__sublink"
                   data-tooltip={{if this.desktopCollapsed "Leases"}}
@@ -114,13 +104,23 @@
                 {{if (eq this.activeGroup 'crm') 'is-active'}}"
               {{on "click" (fn this.toggleGroup "crm")}}
             >
-              <Ui::Ph @icon="funnel" />
-              <span class="nu-sidebar__link-label">Leads</span>
+              <Ui::Ph @icon="address-book" />
+              <span class="nu-sidebar__link-label">People</span>
               <Ui::Ph @icon="caret-down" class="nu-sidebar__chevron" />
             </button>
             <div class="nu-sidebar__group-items">
               <div>
-                <p class="nu-sidebar__group-title">Leads</p>
+                <p class="nu-sidebar__group-title">People</p>
+                <LinkTo
+                  @route="contacts"
+                  class="nu-sidebar__sublink"
+                  data-tooltip={{if this.desktopCollapsed "Contacts"}}
+                  data-tooltip-position="end"
+                  data-test-nav-contacts
+                >
+                  <Ui::Ph @icon="users" />
+                  <span class="nu-sidebar__link-label">Contacts</span>
+                </LinkTo>
                 <LinkTo
                   @route="leads"
                   class="nu-sidebar__sublink"
@@ -130,16 +130,6 @@
                 >
                   <Ui::Ph @icon="kanban" />
                   <span class="nu-sidebar__link-label">Pipeline</span>
-                </LinkTo>
-                <LinkTo
-                  @route="contacts"
-                  class="nu-sidebar__sublink"
-                  data-tooltip={{if this.desktopCollapsed "Contacts"}}
-                  data-tooltip-position="end"
-                  data-test-nav-contacts
-                >
-                  <Ui::Ph @icon="address-book" />
-                  <span class="nu-sidebar__link-label">Contacts</span>
                 </LinkTo>
               </div>
             </div>

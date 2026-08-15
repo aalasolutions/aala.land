@@ -70,17 +70,25 @@ export class LeadsController {
   @ApiQuery({ name: 'page', required: false, type: Number })
   @ApiQuery({ name: 'limit', required: false, type: Number })
   @ApiQuery({ name: 'regionCode', required: false, type: String })
+  @ApiQuery({
+    name: 'contactId',
+    required: false,
+    type: String,
+    description: 'All lead records for this contact',
+  })
   findAll(
     @Request() req: AuthenticatedRequest,
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
     @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
     @Query('regionCode') regionCode?: string,
+    @Query('contactId') contactId?: string,
   ) {
     return this.leadsService.findAll(
       requireCompanyId(req.user),
       page,
       limit,
       regionCode,
+      contactId,
     );
   }
 

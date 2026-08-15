@@ -51,17 +51,25 @@ export class LeasesController {
   @ApiQuery({ name: 'page', required: false })
   @ApiQuery({ name: 'limit', required: false })
   @ApiQuery({ name: 'regionCode', required: false, type: String })
+  @ApiQuery({
+    name: 'contactId',
+    required: false,
+    type: String,
+    description: 'All leases (as tenant) for this contact',
+  })
   findAll(
     @Request() req: AuthenticatedRequest,
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
     @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
     @Query('regionCode') regionCode?: string,
+    @Query('contactId') contactId?: string,
   ) {
     return this.leasesService.findAll(
       requireCompanyId(req.user),
       page,
       limit,
       regionCode,
+      contactId,
     );
   }
 

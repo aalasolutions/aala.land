@@ -312,6 +312,7 @@ export class PropertiesService {
       maxBeds?: number;
       localityId?: string;
       regionCode?: string;
+      ownerId?: string;
     },
   ) {
     const qb = this.unitRepository
@@ -365,6 +366,9 @@ export class PropertiesService {
       qb.andWhere('ci.regionCode = :regionCode', {
         regionCode: filters.regionCode,
       });
+    }
+    if (filters?.ownerId) {
+      qb.andWhere('u.ownerId = :ownerId', { ownerId: filters.ownerId });
     }
 
     qb.skip(pageSkip(page, limit))

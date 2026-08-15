@@ -123,18 +123,27 @@ export class LeasesService {
     page = 1,
     limit = 20,
     regionCode?: string,
+    contactId?: string,
   ): Promise<{ data: Lease[]; total: number; page: number; limit: number }> {
     let data: Lease[];
     let total: number;
-    if (regionCode) {
+    if (regionCode || contactId) {
       const qb = this.leaseRepository
         .createQueryBuilder('l')
         .leftJoinAndSelect('l.contact', 'tenant')
+        .leftJoinAndSelect('l.unit', 'unit')
         .where('l.companyId = :companyId', { companyId })
-        .andWhere(`l.unitId IN (${REGION_FILTER_SUBQUERY})`, { regionCode })
         .skip((page - 1) * limit)
         .take(limit)
         .orderBy('l.createdAt', 'DESC');
+      if (regionCode) {
+        qb.andWhere(`l.unitId IN (${REGION_FILTER_SUBQUERY})`, {
+          regionCode,
+        });
+      }
+      if (contactId) {
+        qb.andWhere('l.contactId = :contactId', { contactId });
+      }
 
       [data, total] = await qb.getManyAndCount();
     } else {
