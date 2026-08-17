@@ -54,7 +54,7 @@
                   (eq this.activeGroup 'properties')
                   'is-active'
                 }}"
-              {{on "click" (fn this.toggleGroup "properties")}}
+              {{on "click" (fn this.toggleGroup "properties" "properties")}}
             >
               <Ui::Ph @icon="buildings" />
               <span class="nu-sidebar__link-label">Properties</span>
@@ -102,7 +102,7 @@
               type="button"
               class="nu-sidebar__group-toggle
                 {{if (eq this.activeGroup 'crm') 'is-active'}}"
-              {{on "click" (fn this.toggleGroup "crm")}}
+              {{on "click" (fn this.toggleGroup "crm" "contacts")}}
             >
               <Ui::Ph @icon="address-book" />
               <span class="nu-sidebar__link-label">People</span>
@@ -167,7 +167,7 @@
               type="button"
               class="nu-sidebar__group-toggle
                 {{if (eq this.activeGroup 'finance') 'is-active'}}"
-              {{on "click" (fn this.toggleGroup "finance")}}
+              {{on "click" (fn this.toggleGroup "finance" "financials")}}
             >
               <Ui::Ph @icon="currency-circle-dollar" />
               <span class="nu-sidebar__link-label">Finance</span>
@@ -245,7 +245,7 @@
                   (eq this.activeGroup 'operations')
                   'is-active'
                 }}"
-              {{on "click" (fn this.toggleGroup "operations")}}
+              {{on "click" (fn this.toggleGroup "operations" "maintenance")}}
             >
               <Ui::Ph @icon="wrench" />
               <span class="nu-sidebar__link-label">Operations</span>
@@ -325,7 +325,7 @@
               type="button"
               class="nu-sidebar__group-toggle
                 {{if (eq this.activeGroup 'admin') 'is-active'}}"
-              {{on "click" (fn this.toggleGroup "admin")}}
+              {{on "click" (fn this.toggleGroup "admin" "admin.overview")}}
             >
               <Ui::Ph @icon="gear" />
               <span class="nu-sidebar__link-label">Admin</span>

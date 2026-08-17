@@ -203,8 +203,12 @@ export default class ApplicationController extends Controller {
   }
 
   @action
-  toggleGroup(group) {
-    this.expandedGroup = this.expandedGroup === group ? null : group;
+  toggleGroup(group, firstRoute) {
+    const isExpanding = this.expandedGroup !== group;
+    this.expandedGroup = isExpanding ? group : null;
+    if (isExpanding && firstRoute) {
+      this.router.transitionTo(firstRoute);
+    }
   }
 
   @action

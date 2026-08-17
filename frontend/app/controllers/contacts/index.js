@@ -8,6 +8,10 @@ import {
   confirmDeleteModal,
   openDeleteModal,
 } from '../../utils/delete-modal';
+import {
+  contactFormToBody,
+  contactToFormFields,
+} from '../../utils/contact-form';
 
 const ROLE_TABS = [
   { id: '', label: 'All' },
@@ -125,30 +129,12 @@ export default class ContactsIndexController extends PaginatedController {
     this.page = 1;
   }
 
-  @action updateSearch(e) {
-    debounceTask(this, 'applySearch', e.target.value, 500);
+  @action updateFilter(fieldName, e) {
+    debounceTask(this, 'applyFilter', fieldName, e.target.value, 500);
   }
 
-  applySearch(value) {
-    this.search = value;
-    this.page = 1;
-  }
-
-  @action updateCompanyFilter(e) {
-    debounceTask(this, 'applyCompanyFilter', e.target.value, 500);
-  }
-
-  applyCompanyFilter(value) {
-    this.company = value;
-    this.page = 1;
-  }
-
-  @action updateNationalityFilter(e) {
-    debounceTask(this, 'applyNationalityFilter', e.target.value, 500);
-  }
-
-  applyNationalityFilter(value) {
-    this.nationality = value;
+  applyFilter(fieldName, value) {
+    this[fieldName] = value;
     this.page = 1;
   }
 
@@ -190,17 +176,7 @@ export default class ContactsIndexController extends PaginatedController {
   }
 
   @action openEdit(contact) {
-    this.formFirstName = contact.firstName ?? '';
-    this.formLastName = contact.lastName ?? '';
-    this.formEmail = contact.email ?? '';
-    this.formPhone = contact.phone ?? '';
-    this.formIsWhatsapp = !!contact.isWhatsapp;
-    this.formNationality = contact.nationality ?? '';
-    this.formNationalId = contact.nationalId ?? '';
-    this.formContactCompany = contact.contactCompany ?? '';
-    this.formJobTitle = contact.jobTitle ?? '';
-    this.formAddress = contact.address ?? '';
-    this.formNotes = contact.notes ?? '';
+    Object.assign(this, contactToFormFields(contact));
     this.editContact = contact;
     this.errorMsg = '';
     this.showModal = true;
@@ -222,19 +198,7 @@ export default class ContactsIndexController extends PaginatedController {
     const path = isEdit ? `/contacts/${this.editContact.id}` : '/contacts';
 
     const body = isEdit
-      ? {
-          firstName: this.formFirstName || null,
-          lastName: this.formLastName || null,
-          email: this.formEmail || null,
-          phone: this.formPhone || null,
-          isWhatsapp: this.formIsWhatsapp,
-          nationality: this.formNationality || null,
-          nationalId: this.formNationalId || null,
-          contactCompany: this.formContactCompany || null,
-          jobTitle: this.formJobTitle || null,
-          address: this.formAddress || null,
-          notes: this.formNotes || null,
-        }
+      ? contactFormToBody(this)
       : {
           ...(this.formFirstName ? { firstName: this.formFirstName } : {}),
           ...(this.formLastName ? { lastName: this.formLastName } : {}),

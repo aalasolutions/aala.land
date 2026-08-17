@@ -12,6 +12,7 @@ import {
   ParseIntPipe,
   ParseUUIDPipe,
   DefaultValuePipe,
+  ForbiddenException,
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
@@ -72,6 +73,11 @@ export class LeasesController {
     @Query('contactId', new ParseUUIDPipe({ optional: true }))
     contactId?: string,
   ) {
+    if (req.user.role === Role.AGENT && !contactId) {
+      throw new ForbiddenException(
+        'Agents must filter leases by contactId',
+      );
+    }
     return this.leasesService.findAll(
       requireCompanyId(req.user),
       page,

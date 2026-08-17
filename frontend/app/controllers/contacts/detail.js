@@ -2,6 +2,10 @@ import Controller from '@ember/controller';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
+import {
+  contactFormToBody,
+  contactToFormFields,
+} from '../../utils/contact-form';
 
 export default class ContactsDetailController extends Controller {
   @service auth;
@@ -45,18 +49,7 @@ export default class ContactsDetailController extends Controller {
   }
 
   @action startEdit() {
-    const contact = this.model.contact;
-    this.formFirstName = contact?.firstName ?? '';
-    this.formLastName = contact?.lastName ?? '';
-    this.formEmail = contact?.email ?? '';
-    this.formPhone = contact?.phone ?? '';
-    this.formIsWhatsapp = !!contact?.isWhatsapp;
-    this.formNationality = contact?.nationality ?? '';
-    this.formNationalId = contact?.nationalId ?? '';
-    this.formContactCompany = contact?.contactCompany ?? '';
-    this.formJobTitle = contact?.jobTitle ?? '';
-    this.formAddress = contact?.address ?? '';
-    this.formNotes = contact?.notes ?? '';
+    Object.assign(this, contactToFormFields(this.model.contact));
     this.errorMsg = '';
     this.isEditing = true;
   }
@@ -72,19 +65,7 @@ export default class ContactsDetailController extends Controller {
     this.isSaving = true;
     this.errorMsg = '';
 
-    const body = {
-      firstName: this.formFirstName || null,
-      lastName: this.formLastName || null,
-      email: this.formEmail || null,
-      phone: this.formPhone || null,
-      isWhatsapp: this.formIsWhatsapp,
-      nationality: this.formNationality || null,
-      nationalId: this.formNationalId || null,
-      contactCompany: this.formContactCompany || null,
-      jobTitle: this.formJobTitle || null,
-      address: this.formAddress || null,
-      notes: this.formNotes || null,
-    };
+    const body = contactFormToBody(this);
 
     try {
       await this.auth.fetchJson(`/contacts/${this.model.contact.id}`, {

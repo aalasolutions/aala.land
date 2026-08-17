@@ -150,7 +150,7 @@
   @include e(group) {
     display: flex;
     flex-direction: column;
-    gap: nu-space(1);
+    // gap: nu-space(1);
   }
 
   @include e(group-toggle) {
@@ -191,10 +191,11 @@
       box-shadow: 0 0 0 3px nu-tint(primary, 35%);
     }
 
-    // Tinted, not filled, so it never competes with the active link inside it.
     &.is-active {
       --nu-sidebar__group-toggle--Color: var(--primary);
       --nu-sidebar__group-toggle--BackgroundColor: #{nu-tint(primary, 12%)};
+      border-end-start-radius: 0;
+      border-end-end-radius: 0;
     }
   }
 
@@ -228,7 +229,8 @@
       overflow: hidden;
       min-block-size: 0;
       padding-block: 0;
-      border-radius: nu-radius(md);
+      border-end-start-radius: nu-radius(md);
+      border-end-end-radius: nu-radius(md);
       background-color: nu-tint(primary, 6%);
       transition: padding-block nu-var("sidebar", "TransitionDuration") $nu-ease;
 
@@ -239,12 +241,14 @@
   }
 
   @include e(sublink) {
+    // sublink
+
     display: flex;
     align-items: center;
     gap: nu-space(2);
     padding-block: nu-space(2);
     padding-inline: nu-space(3) nu-space(3);
-    margin-inline-start: nu-space(6);
+    margin-inline: nu-space(2);
     border-radius: nu-radius(md);
     color: var(--text-subtle);
     font-size: nu-font-size(xs);
@@ -330,6 +334,7 @@
 
     .nu-sidebar__group {
       position: relative;
+      gap: 0;
     }
 
     .nu-sidebar__group-toggle.is-active {
@@ -426,7 +431,8 @@
         .nu-sidebar__sublink {
           justify-content: center;
           gap: 0;
-          padding-inline: nu-space(2);
+          padding-inline: nu-space(1);
+          margin-inline: nu-space(1);
         }
       }
     }

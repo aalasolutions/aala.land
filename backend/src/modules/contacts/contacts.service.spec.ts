@@ -160,6 +160,73 @@ describe('ContactsService', () => {
     });
   });
 
+  describe('findAll', () => {
+    function stubQueryBuilders() {
+      const qb = qbMock({ getManyAndCount: [[mockContact], 1] });
+      repo.createQueryBuilder.mockReturnValue(qb as any);
+      leadRepo.createQueryBuilder.mockReturnValue(qbMock({ getRawMany: [] }) as any);
+      leaseRepo.createQueryBuilder.mockReturnValue(qbMock({ getRawMany: [] }) as any);
+      unitRepo.createQueryBuilder.mockReturnValue(qbMock({ getRawMany: [] }) as any);
+      return qb;
+    }
+
+    it('filters by agentId via an EXISTS clause covering both lead assignment and unit ownership', async () => {
+      const qb = stubQueryBuilders();
+
+      await service.findAll(companyId, 1, 20, undefined, undefined, {
+        agentId: 'agent-uuid-1',
+      });
+
+      const agentClause = qb.andWhere.mock.calls.find(
+        ([, params]: [string, Record<string, unknown>]) =>
+          params?.agentId === 'agent-uuid-1',
+      );
+      expect(agentClause).toBeDefined();
+      const [sql] = agentClause;
+      expect(sql).toContain('FROM leads l');
+      expect(sql).toContain('l.assigned_to = :agentId');
+      expect(sql).toContain('FROM units u');
+      expect(sql).toContain('u.assigned_agent_id = :agentId');
+    });
+
+    it('filters by isWhatsapp', async () => {
+      const qb = stubQueryBuilders();
+
+      await service.findAll(companyId, 1, 20, undefined, undefined, {
+        isWhatsapp: true,
+      });
+
+      expect(qb.andWhere).toHaveBeenCalledWith('c.is_whatsapp = :isWhatsapp', {
+        isWhatsapp: true,
+      });
+    });
+
+    it('filters isWhatsapp false explicitly (not skipped as falsy)', async () => {
+      const qb = stubQueryBuilders();
+
+      await service.findAll(companyId, 1, 20, undefined, undefined, {
+        isWhatsapp: false,
+      });
+
+      expect(qb.andWhere).toHaveBeenCalledWith('c.is_whatsapp = :isWhatsapp', {
+        isWhatsapp: false,
+      });
+    });
+
+    it('includes a contact created exactly on dateTo (exclusive next-day boundary)', async () => {
+      const qb = stubQueryBuilders();
+
+      await service.findAll(companyId, 1, 20, undefined, undefined, {
+        dateTo: '2026-08-15',
+      });
+
+      expect(qb.andWhere).toHaveBeenCalledWith(
+        "c.created_at < :dateTo::date + interval '1 day'",
+        { dateTo: '2026-08-15' },
+      );
+    });
+  });
+
   describe('remove', () => {
     it('throws NotFound when the contact does not exist (no silent success)', async () => {
       repo.findOne.mockResolvedValue(null);

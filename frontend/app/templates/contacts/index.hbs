@@ -36,7 +36,7 @@
         placeholder="Search name, email, phone..."
         class="grow"
         value={{this.search}}
-        {{on "input" this.updateSearch}}
+        {{on "input" (fn this.updateFilter "search")}}
         data-test-contacts-search
       />
     </div>
@@ -58,7 +58,7 @@
           autocomplete="off"
           placeholder="e.g. Emaar Properties"
           value={{this.company}}
-          {{on "input" this.updateCompanyFilter}}
+          {{on "input" (fn this.updateFilter "company")}}
           data-test-company-filter
         />
       </Nuvo::Field>
@@ -68,7 +68,7 @@
           autocomplete="off"
           placeholder="e.g. Emirati"
           value={{this.nationality}}
-          {{on "input" this.updateNationalityFilter}}
+          {{on "input" (fn this.updateFilter "nationality")}}
           data-test-nationality-filter
         />
       </Nuvo::Field>

@@ -1,4 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { ForbiddenException } from '@nestjs/common';
 import { LeasesController } from './leases.controller';
 import { LeasesService } from './leases.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -82,6 +83,45 @@ describe('LeasesController', () => {
       service.findAll.mockResolvedValue(paginated as any);
 
       const result = await controller.findAll(mockReq, 1, 20);
+
+      expect(service.findAll).toHaveBeenCalledWith(companyId, 1, 20, undefined);
+    });
+
+    it('rejects an AGENT calling the unfiltered list (no contactId)', async () => {
+      const agentReq = { user: { ...mockReq.user, role: 'agent' } };
+
+      await expect(
+        controller.findAll(agentReq as any, 1, 20),
+      ).rejects.toThrow(ForbiddenException);
+      expect(service.findAll).not.toHaveBeenCalled();
+    });
+
+    it('allows an AGENT scoped to a contactId', async () => {
+      service.findAll.mockResolvedValue(paginated as any);
+      const agentReq = { user: { ...mockReq.user, role: 'agent' } };
+
+      await controller.findAll(
+        agentReq as any,
+        1,
+        20,
+        undefined,
+        'contact-uuid-1',
+      );
+
+      expect(service.findAll).toHaveBeenCalledWith(
+        companyId,
+        1,
+        20,
+        undefined,
+        'contact-uuid-1',
+      );
+    });
+
+    it('allows an ACCOUNTANT the unfiltered list (unscoped, matches leads/units)', async () => {
+      service.findAll.mockResolvedValue(paginated as any);
+      const accountantReq = { user: { ...mockReq.user, role: 'accountant' } };
+
+      await controller.findAll(accountantReq as any, 1, 20);
 
       expect(service.findAll).toHaveBeenCalledWith(companyId, 1, 20, undefined);
     });
