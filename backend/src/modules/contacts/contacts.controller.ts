@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Controller,
   Get,
   Post,
@@ -76,19 +77,60 @@ export class ContactsController {
     enum: ['lead', 'tenant', 'owner', 'vendor'],
     description: 'Filter by derived role tag',
   })
+  @ApiQuery({
+    name: 'agentId',
+    required: false,
+    type: String,
+    description: 'Contacts with a lead or owned unit assigned to this agent',
+  })
+  @ApiQuery({ name: 'isWhatsapp', required: false, type: Boolean })
+  @ApiQuery({ name: 'company', required: false, type: String })
+  @ApiQuery({ name: 'nationality', required: false, type: String })
+  @ApiQuery({
+    name: 'dateFrom',
+    required: false,
+    type: String,
+    description: 'ISO date, inclusive lower bound on createdAt',
+  })
+  @ApiQuery({
+    name: 'dateTo',
+    required: false,
+    type: String,
+    description: 'ISO date, inclusive upper bound on createdAt',
+  })
   findAll(
     @Request() req: AuthenticatedRequest,
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
     @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
     @Query('search') search?: string,
     @Query('tag') tag?: 'lead' | 'tenant' | 'owner' | 'vendor',
+    @Query('agentId', new ParseUUIDPipe({ optional: true })) agentId?: string,
+    @Query('isWhatsapp') isWhatsapp?: string,
+    @Query('company') company?: string,
+    @Query('nationality') nationality?: string,
+    @Query('dateFrom') dateFrom?: string,
+    @Query('dateTo') dateTo?: string,
   ) {
+    if (dateFrom && isNaN(Date.parse(dateFrom))) {
+      throw new BadRequestException('dateFrom is not a valid date');
+    }
+    if (dateTo && isNaN(Date.parse(dateTo))) {
+      throw new BadRequestException('dateTo is not a valid date');
+    }
     return this.contactsService.findAll(
       requireCompanyId(req.user),
       page,
       limit,
       search,
       tag,
+      {
+        agentId: agentId || undefined,
+        isWhatsapp: isWhatsapp ? isWhatsapp === 'true' : undefined,
+        company: company || undefined,
+        nationality: nationality || undefined,
+        dateFrom: dateFrom || undefined,
+        dateTo: dateTo || undefined,
+      },
     );
   }
 

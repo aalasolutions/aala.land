@@ -28,11 +28,17 @@ Router.map(function () {
   this.route('vendors');
   this.route('cheques');
   this.route('team');
+  // Owners is retired as a destination; both legs redirect into Contacts
+  // (see routes/owners/index.js, routes/owners/detail.js) so old links and
+  // bookmarks still land somewhere real instead of 404ing.
   this.route('owners', function () {
     this.route('index', { path: '/' });
     this.route('detail', { path: '/:owner_id' });
   });
-  this.route('contacts');
+  this.route('contacts', function () {
+    this.route('index', { path: '/' });
+    this.route('detail', { path: '/:contact_id' });
+  });
   this.route('documents');
   this.route('email-templates');
   this.route('whatsapp');

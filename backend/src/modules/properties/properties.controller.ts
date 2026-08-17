@@ -402,6 +402,12 @@ export class PropertiesController {
   @ApiQuery({ name: 'maxBeds', required: false, type: Number })
   @ApiQuery({ name: 'localityId', required: false, type: String })
   @ApiQuery({ name: 'regionCode', required: false, type: String })
+  @ApiQuery({
+    name: 'ownerId',
+    required: false,
+    type: String,
+    description: 'Units owned by this contact',
+  })
   findAllUnits(
     @Request() req: AuthenticatedRequest,
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
@@ -415,6 +421,7 @@ export class PropertiesController {
     @Query('maxBeds') maxBeds?: string,
     @Query('localityId') localityId?: string,
     @Query('regionCode') regionCode?: string,
+    @Query('ownerId', new ParseUUIDPipe({ optional: true })) ownerId?: string,
   ) {
     const filters = {
       amenities: amenitiesStr
@@ -431,6 +438,7 @@ export class PropertiesController {
       maxBeds: maxBeds ? Number(maxBeds) : undefined,
       localityId: localityId || undefined,
       regionCode: regionCode || undefined,
+      ownerId: ownerId || undefined,
     };
     return this.propertiesService.findAllUnits(
       requireCompanyId(req.user),

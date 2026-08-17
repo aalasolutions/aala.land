@@ -19,8 +19,32 @@ describe('PropertiesService', () => {
   let areaRepo: jest.Mocked<Repository<PropertyArea>>;
   let assetRepo: jest.Mocked<Repository<Asset>>;
   let unitRepo: jest.Mocked<Repository<Unit>>;
+  let mediaRepo: jest.Mocked<Repository<PropertyMedia>>;
   let contactRepo: jest.Mocked<Repository<Contact>>;
   let contactsService: jest.Mocked<ContactsService>;
+
+  // A query-builder chain mock matching findAllUnits' fluent calls.
+  function qbMock(units: Partial<Unit>[], total: number) {
+    const chain: Record<string, jest.Mock> = {};
+    const mk = (key: string) => {
+      chain[key] = jest.fn().mockReturnValue(chain);
+    };
+    [
+      'innerJoin',
+      'leftJoin',
+      'addSelect',
+      'where',
+      'andWhere',
+      'skip',
+      'take',
+      'orderBy',
+      'addOrderBy',
+    ].forEach(mk);
+    chain.getManyAndCount = jest
+      .fn()
+      .mockResolvedValue([units as Unit[], total]);
+    return chain;
+  }
 
   const companyId = 'company-uuid-1';
 
@@ -100,6 +124,7 @@ describe('PropertiesService', () => {
     areaRepo = module.get(getRepositoryToken(PropertyArea));
     assetRepo = module.get(getRepositoryToken(Asset));
     unitRepo = module.get(getRepositoryToken(Unit));
+    mediaRepo = module.get(getRepositoryToken(PropertyMedia));
     contactRepo = module.get(getRepositoryToken(Contact));
     contactsService = module.get(ContactsService);
   });
@@ -324,6 +349,37 @@ describe('PropertiesService', () => {
 
       expect(contactsService.resolveOrCreate).not.toHaveBeenCalled();
       expect(result.ownerId).toBe('owner-uuid-1');
+    });
+  });
+
+  describe('findAllUnits', () => {
+    it('scopes to ownerId when supplied, excluding units owned by another contact', async () => {
+      const qb = qbMock([{ ...mockUnit, ownerId: 'owner-uuid-1' }], 1);
+      unitRepo.createQueryBuilder.mockReturnValue(qb as any);
+      mediaRepo.find.mockResolvedValue([]);
+
+      const result = await service.findAllUnits(companyId, 1, 20, {
+        ownerId: 'owner-uuid-1',
+      });
+
+      expect(qb.andWhere).toHaveBeenCalledWith('u.ownerId = :ownerId', {
+        ownerId: 'owner-uuid-1',
+      });
+      expect(result.data).toHaveLength(1);
+    });
+
+    it('does not apply an ownerId clause when the filter is absent', async () => {
+      const qb = qbMock([mockUnit], 1);
+      unitRepo.createQueryBuilder.mockReturnValue(qb as any);
+      mediaRepo.find.mockResolvedValue([]);
+
+      await service.findAllUnits(companyId, 1, 20, {});
+
+      expect(
+        qb.andWhere.mock.calls.some(([sql]: [string]) =>
+          sql.includes('ownerId'),
+        ),
+      ).toBe(false);
     });
   });
 

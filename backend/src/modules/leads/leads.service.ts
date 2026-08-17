@@ -167,9 +167,11 @@ export class LeadsService {
     page = 1,
     limit = 20,
     regionCode?: string,
+    contactId?: string,
   ): Promise<PaginatedLeadResponse> {
     const where: FindOptionsWhere<Lead> = { companyId };
     if (regionCode) where.regionCode = regionCode;
+    if (contactId) where.contactId = contactId;
 
     const [data, total] = await this.leadRepository.findAndCount({
       where,

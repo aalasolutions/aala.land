@@ -99,9 +99,6 @@ export default class ApplicationController extends Controller {
     'properties.index': 'properties',
     'properties.detail': 'properties',
     leases: 'properties',
-    owners: 'properties',
-    'owners.index': 'properties',
-    'owners.detail': 'properties',
     documents: 'documents',
     leads: 'crm',
     contacts: 'crm',
@@ -206,8 +203,12 @@ export default class ApplicationController extends Controller {
   }
 
   @action
-  toggleGroup(group) {
-    this.expandedGroup = this.expandedGroup === group ? null : group;
+  toggleGroup(group, firstRoute) {
+    const isExpanding = this.expandedGroup !== group;
+    this.expandedGroup = isExpanding ? group : null;
+    if (isExpanding && firstRoute) {
+      this.router.transitionTo(firstRoute);
+    }
   }
 
   @action

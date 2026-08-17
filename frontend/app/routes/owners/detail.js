@@ -1,15 +1,12 @@
 import AuthenticatedRoute from '../authenticated';
 import { service } from '@ember/service';
 
+// owner_id IS a contact id (Owners always read straight through to Contacts).
+// See app/routes/owners/index.js for why this route only redirects.
 export default class OwnersDetailRoute extends AuthenticatedRoute {
-  @service auth;
+  @service router;
 
-  async model(params) {
-    try {
-      const json = await this.auth.fetchJson(`/contacts/${params.owner_id}`);
-      return { owner: json.data };
-    } catch {
-      return { owner: null, units: [], financialSummary: null };
-    }
+  beforeModel(transition) {
+    this.router.transitionTo('contacts.detail', transition.to.params.owner_id);
   }
 }

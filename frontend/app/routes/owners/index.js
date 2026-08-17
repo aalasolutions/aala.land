@@ -1,28 +1,12 @@
 import AuthenticatedRoute from '../authenticated';
 import { service } from '@ember/service';
 
+// Owners is retired as its own page. Contacts (filtered to the Owner tab) is
+// the one hub now; this route only exists so old /owners links still land
 export default class OwnersIndexRoute extends AuthenticatedRoute {
-  @service auth;
+  @service router;
 
-  queryParams = {
-    page: { refreshModel: true },
-    limit: { refreshModel: true },
-  };
-
-  async model({ page = 1, limit = 10 }) {
-    const params = new URLSearchParams({ page, limit, tag: 'owner' });
-
-    try {
-      const json = await this.auth.fetchJson(
-        `/contacts?${params.toString()}`,
-      );
-      return {
-        owners: json.data?.data || [],
-        total: json.data?.total || 0,
-        page: json.data?.page || 1,
-      };
-    } catch {
-      return { owners: [], total: 0, page: 1 };
-    }
+  beforeModel() {
+    this.router.transitionTo('contacts.index', { queryParams: { tag: 'owner' } });
   }
 }

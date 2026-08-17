@@ -12,6 +12,7 @@ import {
   ParseIntPipe,
   ParseUUIDPipe,
   DefaultValuePipe,
+  ForbiddenException,
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
@@ -46,22 +47,43 @@ export class LeasesController {
   }
 
   @Get()
-  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER)
+  @Roles(
+    Role.SUPER_ADMIN,
+    Role.COMPANY_ADMIN,
+    Role.ADMIN,
+    Role.MANAGER,
+    Role.AGENT,
+    Role.ACCOUNTANT,
+  )
   @ApiOperation({ summary: 'List lease agreements (paginated)' })
   @ApiQuery({ name: 'page', required: false })
   @ApiQuery({ name: 'limit', required: false })
   @ApiQuery({ name: 'regionCode', required: false, type: String })
+  @ApiQuery({
+    name: 'contactId',
+    required: false,
+    type: String,
+    description: 'All leases (as tenant) for this contact',
+  })
   findAll(
     @Request() req: AuthenticatedRequest,
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
     @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
     @Query('regionCode') regionCode?: string,
+    @Query('contactId', new ParseUUIDPipe({ optional: true }))
+    contactId?: string,
   ) {
+    if (req.user.role === Role.AGENT && !contactId) {
+      throw new ForbiddenException(
+        'Agents must filter leases by contactId',
+      );
+    }
     return this.leasesService.findAll(
       requireCompanyId(req.user),
       page,
       limit,
       regionCode,
+      contactId,
     );
   }
 

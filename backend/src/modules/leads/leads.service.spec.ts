@@ -484,6 +484,28 @@ describe('LeadsService', () => {
   });
 
   describe('findAll', () => {
+    it('scopes to contactId when supplied', async () => {
+      leadRepo.findAndCount.mockResolvedValue([[mockLead as Lead], 1]);
+
+      const result = await service.findAll(
+        companyId,
+        1,
+        20,
+        undefined,
+        'contact-uuid-1',
+      );
+
+      expect(leadRepo.findAndCount).toHaveBeenCalledWith({
+        where: { companyId, contactId: 'contact-uuid-1' },
+        relations: ['contact', 'city', 'locality', 'unit', 'assignedAgent'],
+        skip: 0,
+        take: 20,
+        order: { createdAt: 'DESC' },
+      });
+      expect(result.data).toEqual([{ ...mockLead, assignedAgentName: null }]);
+      expect(result.total).toBe(1);
+    });
+
     it('returns paginated leads for company', async () => {
       leadRepo.findAndCount.mockResolvedValue([[mockLead as Lead], 1]);
 

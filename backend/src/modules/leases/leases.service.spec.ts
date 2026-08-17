@@ -143,19 +143,51 @@ describe('LeasesService', () => {
   });
 
   describe('findAll', () => {
-    it('returns paginated leases', async () => {
-      repo.findAndCount.mockResolvedValue([[mockLease as Lease], 1]);
+    function qbMock(rows: Lease[], total: number) {
+      const chain: Record<string, jest.Mock> = {};
+      const mk = (key: string) => {
+        chain[key] = jest.fn().mockReturnValue(chain);
+      };
+      ['leftJoinAndSelect', 'where', 'andWhere', 'skip', 'take', 'orderBy'].forEach(mk);
+      chain.getManyAndCount = jest.fn().mockResolvedValue([rows, total]);
+      return chain;
+    }
+
+    it('returns paginated leases with contact and unit relations', async () => {
+      const qb = qbMock([mockLease as Lease], 1);
+      (repo.createQueryBuilder as unknown as jest.Mock) = jest
+        .fn()
+        .mockReturnValue(qb);
 
       const result = await service.findAll(companyId, 1, 20);
 
-      expect(repo.findAndCount).toHaveBeenCalledWith({
-        where: { companyId },
-        relations: ['contact'],
-        skip: 0,
-        take: 20,
-        order: { createdAt: 'DESC' },
+      expect(qb.leftJoinAndSelect).toHaveBeenCalledWith('l.contact', 'tenant');
+      expect(qb.leftJoinAndSelect).toHaveBeenCalledWith('l.unit', 'unit');
+      expect(qb.where).toHaveBeenCalledWith('l.companyId = :companyId', {
+        companyId,
       });
+      expect(qb.andWhere).not.toHaveBeenCalled();
       expect(result.total).toBe(1);
+      expect(result.data).toEqual([mockLease]);
+    });
+
+    it('scopes to contactId when supplied, still with unit relation loaded', async () => {
+      const qb = qbMock([mockLease as Lease], 1);
+      (repo.createQueryBuilder as unknown as jest.Mock) = jest
+        .fn()
+        .mockReturnValue(qb);
+
+      const result = await service.findAll(
+        companyId,
+        1,
+        20,
+        undefined,
+        'contact-uuid-1',
+      );
+
+      expect(qb.andWhere).toHaveBeenCalledWith('l.contactId = :contactId', {
+        contactId: 'contact-uuid-1',
+      });
       expect(result.data).toEqual([mockLease]);
     });
   });

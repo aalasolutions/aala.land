@@ -1,0 +1,8 @@
+@use "../uikit/common/var" as *;
+
+.contact-detail__notes {
+  margin: 0;
+  font-size: nu-font-size(sm);
+  color: var(--text-muted);
+  line-height: 1.6;
+}

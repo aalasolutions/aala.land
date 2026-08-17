@@ -16,7 +16,6 @@ import { Lease, LeaseStatus } from './entities/lease.entity';
 import { CreateLeaseDto } from './dto/create-lease.dto';
 import { UpdateLeaseDto } from './dto/update-lease.dto';
 import { REGION_FILTER_SUBQUERY } from '../../shared/utils/region-filter.util';
-import { paginationOptions } from '../../shared/utils/pagination.util';
 
 /**
  * Partial unique index name from migration 1779500000043
@@ -123,30 +122,27 @@ export class LeasesService {
     page = 1,
     limit = 20,
     regionCode?: string,
+    contactId?: string,
   ): Promise<{ data: Lease[]; total: number; page: number; limit: number }> {
-    let data: Lease[];
-    let total: number;
+    const qb = this.leaseRepository
+      .createQueryBuilder('l')
+      .leftJoinAndSelect('l.contact', 'tenant')
+      .leftJoinAndSelect('l.unit', 'unit')
+      .where('l.companyId = :companyId', { companyId })
+      .skip((page - 1) * limit)
+      .take(limit)
+      .orderBy('l.createdAt', 'DESC');
     if (regionCode) {
-      const qb = this.leaseRepository
-        .createQueryBuilder('l')
-        .leftJoinAndSelect('l.contact', 'tenant')
-        .where('l.companyId = :companyId', { companyId })
-        .andWhere(`l.unitId IN (${REGION_FILTER_SUBQUERY})`, { regionCode })
-        .skip((page - 1) * limit)
-        .take(limit)
-        .orderBy('l.createdAt', 'DESC');
-
-      [data, total] = await qb.getManyAndCount();
-    } else {
-      [data, total] = await this.leaseRepository.findAndCount({
-        where: { companyId },
-        relations: ['contact'],
-        ...paginationOptions(page, limit),
-        order: { createdAt: 'DESC' },
+      qb.andWhere(`l.unitId IN (${REGION_FILTER_SUBQUERY})`, {
+        regionCode,
       });
     }
-    // The tenant is a raw Contact relation with no displayName field; attach it
-    // so the list can render one value regardless of name/phone-only.
+    if (contactId) {
+      qb.andWhere('l.contactId = :contactId', { contactId });
+    }
+
+    const [data, total] = await qb.getManyAndCount();
+
     data.forEach((l) => attachDisplayName(l.contact));
     return { data, total, page, limit };
   }
