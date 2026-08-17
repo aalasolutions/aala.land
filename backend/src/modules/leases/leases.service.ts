@@ -122,9 +122,10 @@ export class LeasesService {
   private async reloadWithContact(
     manager: EntityManager,
     id: string,
+    companyId: string,
   ): Promise<Lease> {
     const lease = await manager.findOne(Lease, {
-      where: { id },
+      where: { id, companyId },
       relations: ['contact'],
     });
     attachDisplayName(lease?.contact ?? null);
@@ -267,7 +268,7 @@ export class LeasesService {
         await manager.save(Lease, lease);
       }
 
-      return this.reloadWithContact(manager, id);
+      return this.reloadWithContact(manager, id, companyId);
     });
   }
 
@@ -312,8 +313,16 @@ export class LeasesService {
       }
 
       return {
-        oldLease: await this.reloadWithContact(manager, savedOldLease.id),
-        newLease: await this.reloadWithContact(manager, savedNewLease.id),
+        oldLease: await this.reloadWithContact(
+          manager,
+          savedOldLease.id,
+          companyId,
+        ),
+        newLease: await this.reloadWithContact(
+          manager,
+          savedNewLease.id,
+          companyId,
+        ),
       };
     });
   }
@@ -332,7 +341,7 @@ export class LeasesService {
       }
       lease.status = LeaseStatus.TERMINATED;
       await manager.save(Lease, lease);
-      return this.reloadWithContact(manager, id);
+      return this.reloadWithContact(manager, id, companyId);
     });
   }
 
