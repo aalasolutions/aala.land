@@ -57,7 +57,7 @@ describe('ContactsService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ContactsService,
-        { provide: getRepositoryToken(Contact), useValue: { create: jest.fn(), save: jest.fn(), findOne: jest.fn(), find: jest.fn(), remove: jest.fn(), delete: jest.fn() } },
+        { provide: getRepositoryToken(Contact), useValue: { create: jest.fn(), save: jest.fn(), findOne: jest.fn(), find: jest.fn(), remove: jest.fn(), delete: jest.fn(), createQueryBuilder: jest.fn() } },
         { provide: getRepositoryToken(Lead), useValue: { count: jest.fn(), createQueryBuilder: jest.fn() } },
         { provide: getRepositoryToken(Unit), useValue: { count: jest.fn(), createQueryBuilder: jest.fn() } },
         { provide: getRepositoryToken(Lease), useValue: { count: jest.fn(), createQueryBuilder: jest.fn() } },
@@ -80,21 +80,34 @@ describe('ContactsService', () => {
   });
 
   describe('create', () => {
+    function stubReload() {
+      repo.findOne.mockResolvedValueOnce(null).mockResolvedValue(mockContact);
+      leadRepo.createQueryBuilder.mockReturnValue(qbMock({ getRawMany: [] }) as any);
+      leaseRepo.createQueryBuilder.mockReturnValue(qbMock({ getRawMany: [] }) as any);
+      unitRepo.createQueryBuilder.mockReturnValue(qbMock({ getRawMany: [] }) as any);
+    }
+
     it('creates and returns a contact with createdBy', async () => {
       const dto = { firstName: 'Ahmed', phone: '+971501234567' };
       repo.create.mockReturnValue(mockContact);
       repo.save.mockResolvedValue(mockContact);
+      stubReload();
 
       const result = await service.create(companyId, dto as any, 'user-uuid-1');
 
       expect(repo.create).toHaveBeenCalledWith({ ...dto, companyId, createdBy: 'user-uuid-1' });
-      expect(result).toEqual(mockContact);
+      expect(result).toEqual({
+        ...mockContact,
+        tags: [],
+        displayName: 'Ahmed Al-Rashid',
+      });
     });
 
     it('re-links whatsapp chats for the new number (clears the resolution latch)', async () => {
       const dto = { firstName: 'Stranger', phone: '+971501234567' };
       repo.create.mockReturnValue(mockContact);
       repo.save.mockResolvedValue(mockContact);
+      stubReload();
 
       await service.create(companyId, dto as any, 'user-uuid-1');
 

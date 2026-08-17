@@ -433,7 +433,8 @@ export class PropertiesService {
       ownerId: ownerId ?? undefined,
       companyId,
     });
-    return this.unitRepository.save(unit);
+    const saved = await this.unitRepository.save(unit);
+    return this.findOneUnit(saved.id, companyId);
   }
 
   async findUnitsByAsset(

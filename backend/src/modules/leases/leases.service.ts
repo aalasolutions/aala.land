@@ -12,10 +12,18 @@ import {
   QueryFailedError,
   Repository,
 } from 'typeorm';
-import { Lease, LeaseStatus } from './entities/lease.entity';
+import { Lease, LeaseStatus, LeaseType } from './entities/lease.entity';
 import { CreateLeaseDto } from './dto/create-lease.dto';
 import { UpdateLeaseDto } from './dto/update-lease.dto';
 import { REGION_FILTER_SUBQUERY } from '../../shared/utils/region-filter.util';
+
+export interface LeaseFilters {
+  status?: LeaseStatus;
+  type?: LeaseType;
+  search?: string;
+  dateFrom?: string;
+  dateTo?: string;
+}
 
 /**
  * Partial unique index name from migration 1779500000043
@@ -111,10 +119,23 @@ export class LeasesService {
     await this.contactsService.findOneEntity(contactId, companyId);
   }
 
+  private async reloadWithContact(
+    manager: EntityManager,
+    id: string,
+  ): Promise<Lease> {
+    const lease = await manager.findOne(Lease, {
+      where: { id },
+      relations: ['contact'],
+    });
+    attachDisplayName(lease?.contact ?? null);
+    return lease as Lease;
+  }
+
   async create(companyId: string, dto: CreateLeaseDto): Promise<Lease> {
     await this.assertContactInCompany(dto.contactId, companyId);
     const lease = this.leaseRepository.create({ ...dto, companyId });
-    return this.leaseRepository.save(lease);
+    const saved = await this.leaseRepository.save(lease);
+    return this.findOne(saved.id, companyId);
   }
 
   async findAll(
@@ -123,11 +144,14 @@ export class LeasesService {
     limit = 20,
     regionCode?: string,
     contactId?: string,
+    filters?: LeaseFilters,
   ): Promise<{ data: Lease[]; total: number; page: number; limit: number }> {
     const qb = this.leaseRepository
       .createQueryBuilder('l')
       .leftJoinAndSelect('l.contact', 'tenant')
       .leftJoinAndSelect('l.unit', 'unit')
+      .leftJoinAndSelect('unit.asset', 'asset')
+      .leftJoinAndSelect('asset.locality', 'locality')
       .where('l.companyId = :companyId', { companyId })
       .skip((page - 1) * limit)
       .take(limit)
@@ -140,10 +164,42 @@ export class LeasesService {
     if (contactId) {
       qb.andWhere('l.contactId = :contactId', { contactId });
     }
+    if (filters?.status) {
+      qb.andWhere('l.status = :status', { status: filters.status });
+    }
+    if (filters?.type) {
+      qb.andWhere('l.type = :type', { type: filters.type });
+    }
+    if (filters?.search) {
+      qb.andWhere(
+        `(tenant.firstName ILIKE :s OR tenant.lastName ILIKE :s OR unit.unitNumber ILIKE :s OR l.ejariNumber ILIKE :s)`,
+        { s: `%${filters.search}%` },
+      );
+    }
+    if (filters?.dateFrom) {
+      qb.andWhere('l.startDate >= :dateFrom', { dateFrom: filters.dateFrom });
+    }
+    if (filters?.dateTo) {
+      qb.andWhere("l.startDate < :dateTo::date + interval '1 day'", {
+        dateTo: filters.dateTo,
+      });
+    }
 
     const [data, total] = await qb.getManyAndCount();
 
-    data.forEach((l) => attachDisplayName(l.contact));
+    data.forEach((l) => {
+      attachDisplayName(l.contact);
+      if (l.unit) {
+        const unit = l.unit as typeof l.unit & {
+          areaId: string | null;
+          areaName: string | null;
+          assetName: string | null;
+        };
+        unit.areaId = l.unit.asset?.locality?.id ?? null;
+        unit.areaName = l.unit.asset?.locality?.name ?? null;
+        unit.assetName = l.unit.asset?.name ?? null;
+      }
+    });
     return { data, total, page, limit };
   }
 
@@ -160,10 +216,13 @@ export class LeasesService {
   }
 
   async findByUnit(unitId: string, companyId: string): Promise<Lease[]> {
-    return this.leaseRepository.find({
+    const leases = await this.leaseRepository.find({
       where: { unitId, companyId },
+      relations: ['contact'],
       order: { startDate: 'DESC' },
     });
+    leases.forEach((l) => attachDisplayName(l.contact));
+    return leases;
   }
 
   async update(
@@ -203,10 +262,12 @@ export class LeasesService {
           companyId,
           id,
         );
-        return this.saveActiveLease(manager, lease);
+        await this.saveActiveLease(manager, lease);
+      } else {
+        await manager.save(Lease, lease);
       }
 
-      return manager.save(Lease, lease);
+      return this.reloadWithContact(manager, id);
     });
   }
 
@@ -217,9 +278,6 @@ export class LeasesService {
   ): Promise<{ oldLease: Lease; newLease: Lease }> {
     await this.assertContactInCompany(dto.contactId, companyId);
     return this.dataSource.transaction(async (manager) => {
-      // Lock the lease row FOR UPDATE, then re-check the status guard under the
-      // lock: two concurrent renews serialize here, so only the first flips the
-      // lease to RENEWED and the second sees the new status and is rejected.
       const oldLease = await manager.findOne(Lease, {
         where: { id, companyId },
         lock: { mode: 'pessimistic_write' },
@@ -239,8 +297,6 @@ export class LeasesService {
       oldLease.status = LeaseStatus.RENEWED;
       const savedOldLease = await manager.save(Lease, oldLease);
 
-      // The successor is ACTIVE only if the DTO says so (default DRAFT). Guard
-      // against a second ACTIVE lease landing on the same unit under this lock.
       const newLease = manager.create(Lease, { ...dto, companyId });
       let savedNewLease: Lease;
       if (newLease.status === LeaseStatus.ACTIVE) {
@@ -255,7 +311,10 @@ export class LeasesService {
         savedNewLease = await manager.save(Lease, newLease);
       }
 
-      return { oldLease: savedOldLease, newLease: savedNewLease };
+      return {
+        oldLease: await this.reloadWithContact(manager, savedOldLease.id),
+        newLease: await this.reloadWithContact(manager, savedNewLease.id),
+      };
     });
   }
 
@@ -272,7 +331,8 @@ export class LeasesService {
         throw new BadRequestException('Only ACTIVE leases can be terminated');
       }
       lease.status = LeaseStatus.TERMINATED;
-      return manager.save(Lease, lease);
+      await manager.save(Lease, lease);
+      return this.reloadWithContact(manager, id);
     });
   }
 

@@ -75,7 +75,7 @@ export class ContactsService {
     companyId: string,
     dto: CreateContactDto,
     createdBy: string,
-  ): Promise<Contact> {
+  ): Promise<ContactResponse> {
     const phoneKey = normalizePhone(dto.phone);
     let existing: Contact | null = null;
     if (phoneKey) {
@@ -88,7 +88,8 @@ export class ContactsService {
       });
     }
     if (existing) {
-      return this.mergeEmpty(existing, dto);
+      const merged = await this.mergeEmpty(existing, dto);
+      return this.findOne(merged.id, companyId);
     }
 
     const contact = this.contactRepository.create({
@@ -98,7 +99,7 @@ export class ContactsService {
     });
     const saved = await this.contactRepository.save(contact);
     await this.linkMatchingChats(saved);
-    return saved;
+    return this.findOne(saved.id, companyId);
   }
 
   // One number is one contact, within a company. Used wherever a person is

@@ -28,90 +28,103 @@
     data-test-role-tabs
   />
 
-  <Nuvo::Card class="flex col gap-4">
-    <div class="flex gap-3 wrap">
-      <Nuvo::Input
-        type="text"
-        autocomplete="off"
-        placeholder="Search name, email, phone..."
-        class="grow"
-        value={{this.search}}
-        {{on "input" (fn this.updateFilter "search")}}
-        data-test-contacts-search
-      />
-    </div>
+  <Nuvo::Accordion
+    @items={{array
+      (hash
+        id="filters"
+        title=(if this.hasActiveFilters "Filters · active" "Filters")
+      )
+    }}
+    data-test-filters-accordion
+  >
+    <div class="flex col gap-4">
+      <div class="flex gap-3 wrap">
+        <Nuvo::Input
+          type="text"
+          autocomplete="off"
+          placeholder="Search name, email, phone..."
+          class="grow"
+          value={{this.search}}
+          {{on "input" (fn this.updateFilter "search")}}
+          data-test-contacts-search
+        />
+      </div>
 
-    <div class="flex gap-3 wrap x-end">
-      <Nuvo::Field class="grow" @label="Assigned agent">
-        <Nuvo::Dropdown
-          id="contacts-agent-filter"
-          @align="start"
-          @value={{this.agentId}}
-          @onSelect={{this.setAgentFilter}}
-          @options={{this.agentOptions}}
-          data-test-agent-filter
-        />
-      </Nuvo::Field>
-      <Nuvo::Field class="grow" @label="Company">
-        <Nuvo::Input
-          type="text"
-          autocomplete="off"
-          placeholder="e.g. Emaar Properties"
-          value={{this.company}}
-          {{on "input" (fn this.updateFilter "company")}}
-          data-test-company-filter
-        />
-      </Nuvo::Field>
-      <Nuvo::Field class="grow" @label="Nationality">
-        <Nuvo::Input
-          type="text"
-          autocomplete="off"
-          placeholder="e.g. Emirati"
-          value={{this.nationality}}
-          {{on "input" (fn this.updateFilter "nationality")}}
-          data-test-nationality-filter
-        />
-      </Nuvo::Field>
-      <Nuvo::Field @label="Added from">
-        <input
-          type="date"
-          class="nu-input"
-          aria-label="Added from"
-          value={{this.dateFrom}}
-          {{on "change" this.setDateFrom}}
-          data-test-date-from-filter
-        />
-      </Nuvo::Field>
-      <Nuvo::Field @label="Added to">
-        <input
-          type="date"
-          class="nu-input"
-          aria-label="Added to"
-          value={{this.dateTo}}
-          {{on "change" this.setDateTo}}
-          data-test-date-to-filter
-        />
-      </Nuvo::Field>
-      <Nuvo::Toggle
-        @checked={{this.isWhatsapp}}
-        @onChange={{this.toggleWhatsappFilter}}
-        data-test-whatsapp-filter
-      >
-        Has WhatsApp
-      </Nuvo::Toggle>
-      {{#if this.hasActiveFilters}}
-        <Nuvo::Button
-          @variant="secondary"
-          @size="sm"
-          @icon="x"
-          {{on "click" this.clearFilters}}
-          data-test-clear-filters
+      <div class="flex gap-3 wrap x-end">
+        <Nuvo::Field class="grow" @label="Assigned agent">
+          <Nuvo::Dropdown
+            id="contacts-agent-filter"
+            @align="start"
+            @value={{this.agentId}}
+            @onSelect={{this.setAgentFilter}}
+            @options={{this.agentOptions}}
+            data-test-agent-filter
+          />
+        </Nuvo::Field>
+        <Nuvo::Field class="grow" @label="Company">
+          <Nuvo::Input
+            type="text"
+            autocomplete="off"
+            placeholder="e.g. Emaar Properties"
+            value={{this.company}}
+            {{on "input" (fn this.updateFilter "company")}}
+            data-test-company-filter
+          />
+        </Nuvo::Field>
+        <Nuvo::Field class="grow" @label="Nationality">
+          <Nuvo::Input
+            type="text"
+            autocomplete="off"
+            placeholder="e.g. Emirati"
+            value={{this.nationality}}
+            {{on "input" (fn this.updateFilter "nationality")}}
+            data-test-nationality-filter
+          />
+        </Nuvo::Field>
+        <Nuvo::Field @label="Added from">
+          <input
+            type="date"
+            class="nu-input"
+            aria-label="Added from"
+            value={{this.dateFrom}}
+            {{on "change" this.setDateFrom}}
+            data-test-date-from-filter
+          />
+        </Nuvo::Field>
+        <Nuvo::Field @label="Added to">
+          <input
+            type="date"
+            class="nu-input"
+            aria-label="Added to"
+            value={{this.dateTo}}
+            {{on "change" this.setDateTo}}
+            data-test-date-to-filter
+          />
+        </Nuvo::Field>
+      </div>
+
+      <div class="flex gap-3 x-center between">
+        <Nuvo::Toggle
+          @checked={{this.isWhatsapp}}
+          @onChange={{this.toggleWhatsappFilter}}
+          data-test-whatsapp-filter
         >
-          Clear filters
-        </Nuvo::Button>
-      {{/if}}
+          Has WhatsApp
+        </Nuvo::Toggle>
+        {{#if this.hasActiveFilters}}
+          <Nuvo::Button
+            @variant="danger"
+            @size="sm"
+            @icon="x"
+            {{on "click" this.clearFilters}}
+            data-test-clear-filters
+          >
+            Clear filters
+          </Nuvo::Button>
+        {{/if}}
+      </div>
     </div>
-  </Nuvo::Card>
+  </Nuvo::Accordion>
 
   <Nuvo::Card>
     {{#if @model.contacts.length}}
@@ -148,7 +161,23 @@
                   </div>
                 </td>
                 <td class="text-muted">{{contact.email}}</td>
-                <td class="text-muted">{{contact.phone}}</td>
+                <td class="text-muted">
+                  {{#if contact.phone}}
+                    <span class="flex gap-2 x-center">
+                      <span>{{contact.phone}}</span>
+                      {{#if contact.isWhatsapp}}
+                        <a
+                          href={{wa-link contact.phone}}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          class="wa-link"
+                          title="Open WhatsApp"
+                          data-test-wa-link
+                        ><Ui::Ph @icon="whatsapp-logo" @size="14px" /></a>
+                      {{/if}}
+                    </span>
+                  {{/if}}
+                </td>
                 <td class="text-muted">{{contact.contactCompany}}</td>
                 <td>
                   <div class="flex gap-2">

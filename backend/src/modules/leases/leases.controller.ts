@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Controller,
   Get,
   Post,
@@ -25,6 +26,7 @@ import {
 import { LeasesService } from './leases.service';
 import { CreateLeaseDto } from './dto/create-lease.dto';
 import { UpdateLeaseDto } from './dto/update-lease.dto';
+import { LeaseStatus, LeaseType } from './entities/lease.entity';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '@shared/guards/roles.guard';
 import { Roles } from '@shared/decorators/roles.decorator';
@@ -65,6 +67,26 @@ export class LeasesController {
     type: String,
     description: 'All leases (as tenant) for this contact',
   })
+  @ApiQuery({ name: 'status', required: false, enum: LeaseStatus })
+  @ApiQuery({ name: 'type', required: false, enum: LeaseType })
+  @ApiQuery({
+    name: 'search',
+    required: false,
+    type: String,
+    description: 'Matches tenant name, unit number or Ejari number',
+  })
+  @ApiQuery({
+    name: 'dateFrom',
+    required: false,
+    type: String,
+    description: 'ISO date, inclusive lower bound on startDate',
+  })
+  @ApiQuery({
+    name: 'dateTo',
+    required: false,
+    type: String,
+    description: 'ISO date, inclusive upper bound on startDate',
+  })
   findAll(
     @Request() req: AuthenticatedRequest,
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
@@ -72,11 +94,22 @@ export class LeasesController {
     @Query('regionCode') regionCode?: string,
     @Query('contactId', new ParseUUIDPipe({ optional: true }))
     contactId?: string,
+    @Query('status') status?: LeaseStatus,
+    @Query('type') type?: LeaseType,
+    @Query('search') search?: string,
+    @Query('dateFrom') dateFrom?: string,
+    @Query('dateTo') dateTo?: string,
   ) {
     if (req.user.role === Role.AGENT && !contactId) {
       throw new ForbiddenException(
         'Agents must filter leases by contactId',
       );
+    }
+    if (dateFrom && isNaN(Date.parse(dateFrom))) {
+      throw new BadRequestException('dateFrom is not a valid date');
+    }
+    if (dateTo && isNaN(Date.parse(dateTo))) {
+      throw new BadRequestException('dateTo is not a valid date');
     }
     return this.leasesService.findAll(
       requireCompanyId(req.user),
@@ -84,6 +117,13 @@ export class LeasesController {
       limit,
       regionCode,
       contactId,
+      {
+        status: status || undefined,
+        type: type || undefined,
+        search: search || undefined,
+        dateFrom: dateFrom || undefined,
+        dateTo: dateTo || undefined,
+      },
     );
   }
 

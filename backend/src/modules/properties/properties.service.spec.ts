@@ -254,6 +254,12 @@ describe('PropertiesService', () => {
   });
 
   describe('createUnit', () => {
+    beforeEach(() => {
+      unitRepo.findOne.mockImplementation(
+        async () => unitRepo.save.mock.calls.at(-1)?.[0] as Unit,
+      );
+    });
+
     it('creates a unit with an existing ownerId after verifying the company', async () => {
       contactRepo.findOne.mockResolvedValue(mockOwner as Contact);
       unitRepo.create.mockImplementation((data) => data as Unit);

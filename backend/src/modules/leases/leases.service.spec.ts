@@ -124,9 +124,10 @@ describe('LeasesService', () => {
   });
 
   describe('create', () => {
-    it('creates and returns a lease', async () => {
+    it('creates and returns a lease, reloaded with the contact relation', async () => {
       repo.create.mockReturnValue(mockLease as Lease);
       repo.save.mockResolvedValue(mockLease as Lease);
+      repo.findOne.mockResolvedValue(mockLease as Lease);
 
       const dto = {
         unitId: 'unit-uuid-1',
@@ -138,6 +139,10 @@ describe('LeasesService', () => {
       const result = await service.create(companyId, dto as any);
 
       expect(repo.create).toHaveBeenCalledWith({ ...dto, companyId });
+      expect(repo.findOne).toHaveBeenCalledWith({
+        where: { id: mockLease.id, companyId },
+        relations: ['contact'],
+      });
       expect(result).toEqual(mockLease);
     });
   });
@@ -225,9 +230,22 @@ describe('LeasesService', () => {
 
       expect(repo.find).toHaveBeenCalledWith({
         where: { unitId: 'unit-uuid-1', companyId },
+        relations: ['contact'],
         order: { startDate: 'DESC' },
       });
       expect(result).toEqual([mockLease]);
+    });
+
+    it('attaches displayName to each lease tenant', async () => {
+      const leaseWithContact = {
+        ...mockLease,
+        contact: { firstName: 'Zainab', lastName: 'Qureshi' },
+      } as Lease;
+      repo.find.mockResolvedValue([leaseWithContact]);
+
+      const [result] = await service.findByUnit('unit-uuid-1', companyId);
+
+      expect(result.contact).toMatchObject({ displayName: 'Zainab Qureshi' });
     });
   });
 
@@ -332,8 +350,17 @@ describe('LeasesService', () => {
         status: LeaseStatus.DRAFT,
       } as unknown as Lease;
       const savedNewLease = { ...newLeaseEntity, id: 'lease-uuid-2' } as Lease;
+      const reloadedOldLease = {
+        ...activeLease,
+        status: LeaseStatus.RENEWED,
+        contact: null,
+      } as Lease;
+      const reloadedNewLease = { ...savedNewLease, contact: null } as Lease;
 
-      manager.findOne.mockResolvedValue(activeLease);
+      manager.findOne
+        .mockResolvedValueOnce(activeLease) // initial FOR UPDATE lock load
+        .mockResolvedValueOnce(reloadedOldLease) // reloadWithContact(oldLease.id)
+        .mockResolvedValueOnce(reloadedNewLease); // reloadWithContact(newLease.id)
       manager.create.mockReturnValue(newLeaseEntity);
       manager.save
         .mockResolvedValueOnce({
@@ -349,13 +376,13 @@ describe('LeasesService', () => {
       );
 
       // Old lease loaded FOR UPDATE, re-checked under the lock.
-      expect(manager.findOne).toHaveBeenCalledWith(Lease, {
+      expect(manager.findOne).toHaveBeenNthCalledWith(1, Lease, {
         where: { id: 'lease-uuid-1', companyId },
         lock: { mode: 'pessimistic_write' },
       });
       expect(dataSource.transaction).toHaveBeenCalledTimes(1);
-      expect(result.oldLease.status).toBe(LeaseStatus.RENEWED);
-      expect(result.newLease).toEqual(savedNewLease);
+      expect(result.oldLease).toEqual(reloadedOldLease);
+      expect(result.newLease).toEqual(reloadedNewLease);
     });
 
     it('allows renewal of EXPIRED lease', async () => {

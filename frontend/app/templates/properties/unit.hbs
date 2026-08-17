@@ -346,7 +346,7 @@
             <tbody>
               {{#each @model.leases as |lease|}}
                 <tr data-test-lease-row>
-                  <td>{{lease.tenantName}}</td>
+                  <td>{{or lease.contact.displayName "Unknown tenant"}}</td>
                   <td>{{format-date lease.startDate}}</td>
                   <td>{{format-date lease.endDate}}</td>
                   <td>{{format-currency lease.monthlyRent}}</td>

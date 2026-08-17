@@ -84,15 +84,28 @@ describe('LeasesController', () => {
 
       const result = await controller.findAll(mockReq, 1, 20);
 
-      expect(service.findAll).toHaveBeenCalledWith(companyId, 1, 20, undefined);
+      expect(service.findAll).toHaveBeenCalledWith(
+        companyId,
+        1,
+        20,
+        undefined,
+        undefined,
+        {
+          status: undefined,
+          type: undefined,
+          search: undefined,
+          dateFrom: undefined,
+          dateTo: undefined,
+        },
+      );
     });
 
-    it('rejects an AGENT calling the unfiltered list (no contactId)', async () => {
+    it('rejects an AGENT calling the unfiltered list (no contactId)', () => {
       const agentReq = { user: { ...mockReq.user, role: 'agent' } };
 
-      await expect(
-        controller.findAll(agentReq as any, 1, 20),
-      ).rejects.toThrow(ForbiddenException);
+      expect(() => controller.findAll(agentReq as any, 1, 20)).toThrow(
+        ForbiddenException,
+      );
       expect(service.findAll).not.toHaveBeenCalled();
     });
 
@@ -114,6 +127,13 @@ describe('LeasesController', () => {
         20,
         undefined,
         'contact-uuid-1',
+        {
+          status: undefined,
+          type: undefined,
+          search: undefined,
+          dateFrom: undefined,
+          dateTo: undefined,
+        },
       );
     });
 
@@ -123,7 +143,20 @@ describe('LeasesController', () => {
 
       await controller.findAll(accountantReq as any, 1, 20);
 
-      expect(service.findAll).toHaveBeenCalledWith(companyId, 1, 20, undefined);
+      expect(service.findAll).toHaveBeenCalledWith(
+        companyId,
+        1,
+        20,
+        undefined,
+        undefined,
+        {
+          status: undefined,
+          type: undefined,
+          search: undefined,
+          dateFrom: undefined,
+          dateTo: undefined,
+        },
+      );
     });
   });
 

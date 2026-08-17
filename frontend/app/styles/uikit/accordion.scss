@@ -14,6 +14,20 @@
   border: 1px solid nu-var("accordion", "BorderColor");
   border-radius: nu-var("accordion", "BorderRadius");
   overflow: hidden;
+  transition: overflow 0s linear 0s;
+
+  @include reduced-motion {
+    transition: none;
+  }
+
+  &:has(.nu-accordion__item.is-expanded) {
+    overflow: visible;
+    transition: overflow 0s linear nu-duration(fast);
+
+    @include reduced-motion {
+      transition: none;
+    }
+  }
 
   // ---- elements ----
 
@@ -126,6 +140,11 @@
     > * {
       overflow: hidden;
       min-block-size: 0;
+      transition: overflow 0s linear 0s;
+
+      @include reduced-motion {
+        transition: none;
+      }
     }
   }
 
@@ -142,6 +161,15 @@
     &.is-expanded {
       .nu-accordion__panel {
         grid-template-rows: 1fr;
+
+        > * {
+          overflow: visible;
+          transition: overflow 0s linear nu-var-el("accordion", "panel", "TransitionDuration");
+
+          @include reduced-motion {
+            transition: none;
+          }
+        }
       }
 
       .nu-accordion__icon {

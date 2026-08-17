@@ -89,6 +89,14 @@ describe('ContactsController', () => {
         20,
         undefined,
         undefined,
+        {
+          agentId: undefined,
+          isWhatsapp: undefined,
+          company: undefined,
+          nationality: undefined,
+          dateFrom: undefined,
+          dateTo: undefined,
+        },
       );
       expect(result).toEqual(paginated);
     });
@@ -104,6 +112,14 @@ describe('ContactsController', () => {
         20,
         'Ahmed',
         undefined,
+        {
+          agentId: undefined,
+          isWhatsapp: undefined,
+          company: undefined,
+          nationality: undefined,
+          dateFrom: undefined,
+          dateTo: undefined,
+        },
       );
     });
   });

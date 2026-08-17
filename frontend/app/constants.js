@@ -204,6 +204,15 @@ export const LEASE_TYPE_OPTIONS = [
   { value: 'COMMERCIAL', label: 'Commercial Office' },
 ];
 
+export const LEASE_STATUS_OPTIONS = [
+  { id: '', label: 'All' },
+  { id: 'DRAFT', label: 'Draft' },
+  { id: 'ACTIVE', label: 'Active' },
+  { id: 'EXPIRED', label: 'Expired' },
+  { id: 'TERMINATED', label: 'Terminated' },
+  { id: 'RENEWED', label: 'Renewed' },
+];
+
 export const MAINTENANCE_STATUS_OPTIONS = [
   { value: '', label: 'All Statuses' },
   { value: 'OPEN', label: 'New / Unassigned' },
