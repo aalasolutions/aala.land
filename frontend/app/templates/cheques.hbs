@@ -22,9 +22,9 @@
     </:actions>
   </Nuvo::PageHeader>
 
-  <Nuvo::Tabs
-    @tabs={{this.tabs}}
-    @activeTab={{this.activeTab}}
+  <Nuvo::Segmented
+    @options={{this.tabs}}
+    @value={{this.activeTab}}
     @onChange={{this.setTab}}
   />
 

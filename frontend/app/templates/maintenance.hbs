@@ -34,9 +34,9 @@
     </div>
   {{/if}}
 
-  <Nuvo::Tabs
-    @tabs={{this.sectionTabs}}
-    @activeTab={{this.activeSection}}
+  <Nuvo::Segmented
+    @options={{this.sectionTabs}}
+    @value={{this.activeSection}}
     @onChange={{this.setSection}}
   />
 
