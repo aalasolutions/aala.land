@@ -37,7 +37,10 @@ import { Roles } from '@shared/decorators/roles.decorator';
 import { Role } from '@shared/enums/roles.enum';
 import { AuthenticatedRequest } from '@shared/interfaces/authenticated-request.interface';
 import { requireCompanyId } from '@shared/utils/auth.util';
-import { DocumentCategory } from '../properties/entities/property-document.entity';
+import {
+  DocumentCategory,
+  DocumentAccessLevel,
+} from '../properties/entities/property-document.entity';
 import { ALLOWED_DOCUMENT_TYPES } from '../properties/media.service';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
@@ -150,13 +153,42 @@ export class DocumentsController {
   @ApiQuery({ name: 'limit', required: false })
   @ApiQuery({ name: 'category', required: false, enum: DocumentCategory })
   @ApiQuery({ name: 'unitId', required: false })
+  @ApiQuery({
+    name: 'search',
+    required: false,
+    type: String,
+    description: 'Matches document name',
+  })
+  @ApiQuery({ name: 'accessLevel', required: false, enum: DocumentAccessLevel })
+  @ApiQuery({
+    name: 'dateFrom',
+    required: false,
+    type: String,
+    description: 'ISO date, inclusive lower bound on uploaded date',
+  })
+  @ApiQuery({
+    name: 'dateTo',
+    required: false,
+    type: String,
+    description: 'ISO date, inclusive upper bound on uploaded date',
+  })
   findAll(
     @Request() req: AuthenticatedRequest,
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
     @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
     @Query('category') category?: DocumentCategory,
     @Query('unitId') unitId?: string,
+    @Query('search') search?: string,
+    @Query('accessLevel') accessLevel?: DocumentAccessLevel,
+    @Query('dateFrom') dateFrom?: string,
+    @Query('dateTo') dateTo?: string,
   ) {
+    if (dateFrom && isNaN(Date.parse(dateFrom))) {
+      throw new BadRequestException('dateFrom is not a valid date');
+    }
+    if (dateTo && isNaN(Date.parse(dateTo))) {
+      throw new BadRequestException('dateTo is not a valid date');
+    }
     return this.documentsService.findAll(
       requireCompanyId(req.user),
       req.user.role,
@@ -164,6 +196,7 @@ export class DocumentsController {
       limit,
       category,
       unitId,
+      { search, accessLevel, dateFrom, dateTo },
     );
   }
 

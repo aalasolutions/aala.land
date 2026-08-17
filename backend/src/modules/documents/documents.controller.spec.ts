@@ -117,6 +117,12 @@ describe('DocumentsController', () => {
         20,
         undefined,
         undefined,
+        {
+          search: undefined,
+          accessLevel: undefined,
+          dateFrom: undefined,
+          dateTo: undefined,
+        },
       );
     });
 
@@ -132,6 +138,12 @@ describe('DocumentsController', () => {
         20,
         DocumentCategory.LEASE,
         undefined,
+        {
+          search: undefined,
+          accessLevel: undefined,
+          dateFrom: undefined,
+          dateTo: undefined,
+        },
       );
     });
 
@@ -147,6 +159,12 @@ describe('DocumentsController', () => {
         20,
         undefined,
         'unit-uuid-1',
+        {
+          search: undefined,
+          accessLevel: undefined,
+          dateFrom: undefined,
+          dateTo: undefined,
+        },
       );
     });
   });

@@ -8,12 +8,28 @@ export default class DocumentsRoute extends AuthenticatedRoute {
     page: { refreshModel: true },
     limit: { refreshModel: true },
     category: { refreshModel: true },
+    search: { refreshModel: true },
+    accessLevel: { refreshModel: true },
+    dateFrom: { refreshModel: true },
+    dateTo: { refreshModel: true },
   };
 
-  async model({ page = 1, limit = 10, category = '' }) {
+  async model({
+    page = 1,
+    limit = 10,
+    category = '',
+    search = '',
+    accessLevel = '',
+    dateFrom = '',
+    dateTo = '',
+  }) {
     try {
       const params = new URLSearchParams({ page, limit });
       if (category) params.set('category', category);
+      if (search) params.set('search', search);
+      if (accessLevel) params.set('accessLevel', accessLevel);
+      if (dateFrom) params.set('dateFrom', dateFrom);
+      if (dateTo) params.set('dateTo', dateTo);
 
       const result = await this.auth.fetchJson(
         `/documents?${params.toString()}`,
@@ -26,5 +42,9 @@ export default class DocumentsRoute extends AuthenticatedRoute {
     } catch {
       return { documents: [], total: 0, page: 1 };
     }
+  }
+
+  resetController(controller, isExiting) {
+    if (isExiting) controller.resetState();
   }
 }
