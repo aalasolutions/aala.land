@@ -390,8 +390,14 @@ describe('PropertiesService', () => {
   });
 
   describe('updateUnit', () => {
-    it('assigns ownerId when a valid ownerId is provided', async () => {
-      unitRepo.findOne.mockResolvedValue({ ...mockUnit } as Unit);
+    it('assigns ownerId when a valid ownerId is provided, reloaded with owner displayName', async () => {
+      unitRepo.findOne
+        .mockResolvedValueOnce({ ...mockUnit } as Unit)
+        .mockResolvedValueOnce({
+          ...mockUnit,
+          ownerId: 'owner-uuid-1',
+          owner: { ...mockOwner } as Contact,
+        } as Unit);
       contactRepo.findOne.mockResolvedValue(mockOwner as Contact);
       unitRepo.save.mockImplementation(async (u: Unit) => u);
 
@@ -405,14 +411,22 @@ describe('PropertiesService', () => {
       expect(unitRepo.save).toHaveBeenCalledWith(
         expect.objectContaining({ ownerId: 'owner-uuid-1' }),
       );
+      expect(unitRepo.findOne).toHaveBeenCalledTimes(2);
       expect(result.ownerId).toBe('owner-uuid-1');
+      expect(result.owner).toMatchObject({ displayName: 'John Doe' });
     });
 
     it('clears ownerId when ownerId is set to null', async () => {
-      unitRepo.findOne.mockResolvedValue({
-        ...mockUnit,
-        ownerId: 'owner-uuid-1',
-      } as Unit);
+      unitRepo.findOne
+        .mockResolvedValueOnce({
+          ...mockUnit,
+          ownerId: 'owner-uuid-1',
+        } as Unit)
+        .mockResolvedValueOnce({
+          ...mockUnit,
+          ownerId: null,
+          owner: null,
+        } as unknown as Unit);
       unitRepo.save.mockImplementation(async (u: Unit) => u);
 
       const result = await service.updateUnit('unit-uuid-1', companyId, {
@@ -440,7 +454,13 @@ describe('PropertiesService', () => {
     });
 
     it('resolves inline owner details on update when no ownerId is sent', async () => {
-      unitRepo.findOne.mockResolvedValue({ ...mockUnit } as Unit);
+      unitRepo.findOne
+        .mockResolvedValueOnce({ ...mockUnit } as Unit)
+        .mockResolvedValueOnce({
+          ...mockUnit,
+          ownerId: 'owner-uuid-1',
+          owner: { ...mockOwner } as Contact,
+        } as Unit);
       contactsService.resolveOrCreate.mockResolvedValue({
         id: 'owner-uuid-1',
       } as Contact);
@@ -460,6 +480,7 @@ describe('PropertiesService', () => {
         'user-uuid-1',
       );
       expect(result.ownerId).toBe('owner-uuid-1');
+      expect(result.owner).toMatchObject({ displayName: 'John Doe' });
     });
   });
 
