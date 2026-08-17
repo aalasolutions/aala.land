@@ -195,6 +195,116 @@ describe('LeasesService', () => {
       });
       expect(result.data).toEqual([mockLease]);
     });
+
+    it('filters by status when provided', async () => {
+      const qb = qbMock([mockLease as Lease], 1);
+      (repo.createQueryBuilder as unknown as jest.Mock) = jest
+        .fn()
+        .mockReturnValue(qb);
+
+      await service.findAll(companyId, 1, 20, undefined, undefined, {
+        status: LeaseStatus.ACTIVE,
+      });
+
+      expect(qb.andWhere).toHaveBeenCalledWith('l.status = :status', {
+        status: LeaseStatus.ACTIVE,
+      });
+    });
+
+    it('filters by type when provided', async () => {
+      const qb = qbMock([mockLease as Lease], 1);
+      (repo.createQueryBuilder as unknown as jest.Mock) = jest
+        .fn()
+        .mockReturnValue(qb);
+
+      await service.findAll(companyId, 1, 20, undefined, undefined, {
+        type: LeaseType.COMMERCIAL,
+      });
+
+      expect(qb.andWhere).toHaveBeenCalledWith('l.type = :type', {
+        type: LeaseType.COMMERCIAL,
+      });
+    });
+
+    it('filters by search against tenant name, unit number and ejari number', async () => {
+      const qb = qbMock([mockLease as Lease], 1);
+      (repo.createQueryBuilder as unknown as jest.Mock) = jest
+        .fn()
+        .mockReturnValue(qb);
+
+      await service.findAll(companyId, 1, 20, undefined, undefined, {
+        search: 'zainab',
+      });
+
+      expect(qb.andWhere).toHaveBeenCalledWith(
+        '(tenant.firstName ILIKE :s OR tenant.lastName ILIKE :s OR unit.unitNumber ILIKE :s OR l.ejariNumber ILIKE :s)',
+        { s: '%zainab%' },
+      );
+    });
+
+    it('filters by dateFrom', async () => {
+      const qb = qbMock([mockLease as Lease], 1);
+      (repo.createQueryBuilder as unknown as jest.Mock) = jest
+        .fn()
+        .mockReturnValue(qb);
+
+      await service.findAll(companyId, 1, 20, undefined, undefined, {
+        dateFrom: '2026-01-01',
+      });
+
+      expect(qb.andWhere).toHaveBeenCalledWith('l.startDate >= :dateFrom', {
+        dateFrom: '2026-01-01',
+      });
+    });
+
+    it('filters by dateTo inclusively (through the end of that day)', async () => {
+      const qb = qbMock([mockLease as Lease], 1);
+      (repo.createQueryBuilder as unknown as jest.Mock) = jest
+        .fn()
+        .mockReturnValue(qb);
+
+      await service.findAll(companyId, 1, 20, undefined, undefined, {
+        dateTo: '2026-01-31',
+      });
+
+      expect(qb.andWhere).toHaveBeenCalledWith(
+        "l.startDate < :dateTo::date + interval '1 day'",
+        { dateTo: '2026-01-31' },
+      );
+    });
+
+    it('combines status, type, search and date range filters together', async () => {
+      const qb = qbMock([mockLease as Lease], 1);
+      (repo.createQueryBuilder as unknown as jest.Mock) = jest
+        .fn()
+        .mockReturnValue(qb);
+
+      await service.findAll(companyId, 1, 20, undefined, undefined, {
+        status: LeaseStatus.ACTIVE,
+        type: LeaseType.RESIDENTIAL,
+        search: 'zainab',
+        dateFrom: '2026-01-01',
+        dateTo: '2026-01-31',
+      });
+
+      expect(qb.andWhere).toHaveBeenCalledWith('l.status = :status', {
+        status: LeaseStatus.ACTIVE,
+      });
+      expect(qb.andWhere).toHaveBeenCalledWith('l.type = :type', {
+        type: LeaseType.RESIDENTIAL,
+      });
+      expect(qb.andWhere).toHaveBeenCalledWith(
+        '(tenant.firstName ILIKE :s OR tenant.lastName ILIKE :s OR unit.unitNumber ILIKE :s OR l.ejariNumber ILIKE :s)',
+        { s: '%zainab%' },
+      );
+      expect(qb.andWhere).toHaveBeenCalledWith('l.startDate >= :dateFrom', {
+        dateFrom: '2026-01-01',
+      });
+      expect(qb.andWhere).toHaveBeenCalledWith(
+        "l.startDate < :dateTo::date + interval '1 day'",
+        { dateTo: '2026-01-31' },
+      );
+    });
   });
 
   describe('findOne', () => {
