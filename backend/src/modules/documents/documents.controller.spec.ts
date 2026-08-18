@@ -167,6 +167,41 @@ describe('DocumentsController', () => {
         },
       );
     });
+
+    it('throws BadRequestException for an invalid dateFrom', () => {
+      expect(() =>
+        controller.findAll(
+          mockReq,
+          1,
+          20,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          'not-a-date',
+        ),
+      ).toThrow('dateFrom is not a valid date');
+
+      expect(service.findAll).not.toHaveBeenCalled();
+    });
+
+    it('throws BadRequestException for an invalid dateTo', () => {
+      expect(() =>
+        controller.findAll(
+          mockReq,
+          1,
+          20,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          'not-a-date',
+        ),
+      ).toThrow('dateTo is not a valid date');
+
+      expect(service.findAll).not.toHaveBeenCalled();
+    });
   });
 
   describe('findOne', () => {
