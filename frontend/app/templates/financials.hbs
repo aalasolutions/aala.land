@@ -64,12 +64,13 @@
     </Nuvo::Card>
   {{/if}}
 
+  <Nuvo::Segmented
+    @options={{this.transactionTabs}}
+    @value={{this.activeTab}}
+    @onChange={{this.setTab}}
+  />
+
   <Nuvo::Card @title="Transactions">
-    <Nuvo::Tabs
-      @tabs={{this.transactionTabs}}
-      @activeTab={{this.activeTab}}
-      @onChange={{this.setTab}}
-    />
     {{#if this.filteredTransactions.length}}
       <div class="nu-table-wrapper">
         <table class="nu-table" data-test-financials-table>

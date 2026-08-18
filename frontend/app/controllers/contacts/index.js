@@ -12,13 +12,11 @@ import {
   contactFormToBody,
   contactToFormFields,
 } from '../../utils/contact-form';
+import { CONTACT_TAG_LABELS } from '../../helpers/contact-tag-label';
 
 const ROLE_TABS = [
   { id: '', label: 'All' },
-  { id: 'lead', label: 'Lead' },
-  { id: 'owner', label: 'Owner' },
-  { id: 'tenant', label: 'Tenant' },
-  { id: 'vendor', label: 'Vendor' },
+  ...Object.entries(CONTACT_TAG_LABELS).map(([id, label]) => ({ id, label })),
 ];
 
 export default class ContactsIndexController extends PaginatedController {

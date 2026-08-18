@@ -1,13 +1,38 @@
-import Controller from '@ember/controller';
+import PaginatedController from './paginated-base';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
-import { UUID_PATTERN, LEASE_TYPE_OPTIONS } from 'land/constants';
+import { debounceTask } from 'ember-lifeline';
+import {
+  UUID_PATTERN,
+  LEASE_TYPE_OPTIONS,
+  LEASE_STATUS_OPTIONS,
+} from 'land/constants';
+import {
+  closeDeleteModal,
+  confirmDeleteModal,
+  openDeleteModal,
+} from '../utils/delete-modal';
 
-export default class LeasesController extends Controller {
+export default class LeasesController extends PaginatedController {
   @service auth;
   @service notifications;
   @service router;
+
+  queryParams = [
+    'page',
+    'limit',
+    'status',
+    'type',
+    'search',
+    'dateFrom',
+    'dateTo',
+  ];
+  @tracked status = '';
+  @tracked type = '';
+  @tracked search = '';
+  @tracked dateFrom = '';
+  @tracked dateTo = '';
 
   @tracked showModal = false;
   @tracked editLease = null;
@@ -20,6 +45,7 @@ export default class LeasesController extends Controller {
   @tracked formSecurityDeposit = '';
   @tracked formNumberOfCheques = '4';
   @tracked formEjariNumber = '';
+  @tracked formNotes = '';
   @tracked renewingLeaseId = null;
   @tracked isSaving = false;
   @tracked errorMsg = '';
@@ -27,8 +53,39 @@ export default class LeasesController extends Controller {
   @tracked leaseToTerminate = null;
   @tracked isTerminating = false;
   @tracked formStatus = '';
+  @tracked showDeleteModal = false;
+  @tracked leaseToDelete = null;
+  @tracked isDeleting = false;
 
   leaseTypeOptions = LEASE_TYPE_OPTIONS;
+  statusTabs = LEASE_STATUS_OPTIONS;
+
+  resetState() {
+    this.page = 1;
+    this.status = '';
+    this.type = '';
+    this.search = '';
+    this.dateFrom = '';
+    this.dateTo = '';
+    this.showModal = false;
+    this.editLease = null;
+    this.renewingLeaseId = null;
+    this.errorMsg = '';
+    this.showTerminateModal = false;
+    this.leaseToTerminate = null;
+    this.isTerminating = false;
+    this.showDeleteModal = false;
+    this.leaseToDelete = null;
+    this.isDeleting = false;
+  }
+
+  get hasActiveFilters() {
+    return Boolean(this.type || this.search || this.dateFrom || this.dateTo);
+  }
+
+  get typeFilterOptions() {
+    return [{ value: '', label: 'All types' }, ...LEASE_TYPE_OPTIONS];
+  }
 
   get unitOptions() {
     return [
@@ -75,6 +132,43 @@ export default class LeasesController extends Controller {
     this[fieldName] = event.target.value;
   }
 
+  @action setStatusTab(tabId) {
+    this.status = tabId;
+    this.page = 1;
+  }
+
+  @action setType(value) {
+    this.type = value;
+    this.page = 1;
+  }
+
+  @action updateFilter(fieldName, e) {
+    debounceTask(this, 'applyFilter', fieldName, e.target.value, 500);
+  }
+
+  applyFilter(fieldName, value) {
+    this[fieldName] = value;
+    this.page = 1;
+  }
+
+  @action setDateFrom(e) {
+    this.dateFrom = e.target.value;
+    this.page = 1;
+  }
+
+  @action setDateTo(e) {
+    this.dateTo = e.target.value;
+    this.page = 1;
+  }
+
+  @action clearFilters() {
+    this.type = '';
+    this.search = '';
+    this.dateFrom = '';
+    this.dateTo = '';
+    this.page = 1;
+  }
+
   @action openCreate() {
     this.formTenantContactId = '';
     this.formUnitId = '';
@@ -85,6 +179,7 @@ export default class LeasesController extends Controller {
     this.formSecurityDeposit = '';
     this.formNumberOfCheques = '4';
     this.formEjariNumber = '';
+    this.formNotes = '';
     this.editLease = null;
     this.renewingLeaseId = null;
     this.errorMsg = '';
@@ -104,6 +199,7 @@ export default class LeasesController extends Controller {
       : '';
     this.formNumberOfCheques = String(lease.numberOfCheques ?? 4);
     this.formEjariNumber = lease.ejariNumber ?? '';
+    this.formNotes = lease.notes ?? '';
     this.editLease = lease;
     this.formStatus = lease.status ?? 'DRAFT';
     this.errorMsg = '';
@@ -170,6 +266,7 @@ export default class LeasesController extends Controller {
           ...(this.formEjariNumber
             ? { ejariNumber: this.formEjariNumber }
             : {}),
+          ...(this.formNotes ? { notes: this.formNotes } : {}),
           status: this.formStatus,
         }
       : {
@@ -188,6 +285,7 @@ export default class LeasesController extends Controller {
           ...(this.formEjariNumber
             ? { ejariNumber: this.formEjariNumber }
             : {}),
+          ...(this.formNotes ? { notes: this.formNotes } : {}),
         };
 
     let successMsg = 'Lease created';
@@ -221,6 +319,7 @@ export default class LeasesController extends Controller {
       : '';
     this.formNumberOfCheques = String(lease.numberOfCheques ?? 4);
     this.formEjariNumber = '';
+    this.formNotes = '';
     this.editLease = null;
     this.renewingLeaseId = lease.id;
     this.errorMsg = '';
@@ -254,5 +353,22 @@ export default class LeasesController extends Controller {
     } finally {
       this.isTerminating = false;
     }
+  }
+
+  @action openDelete(lease) {
+    openDeleteModal(this, 'leaseToDelete', lease);
+  }
+
+  @action closeDeleteModal() {
+    closeDeleteModal(this, 'leaseToDelete');
+  }
+
+  @action async confirmDelete() {
+    await confirmDeleteModal(this, {
+      itemKey: 'leaseToDelete',
+      resourcePath: '/leases',
+      successMessage: 'Lease deleted',
+      refreshRoute: 'leases',
+    });
   }
 }

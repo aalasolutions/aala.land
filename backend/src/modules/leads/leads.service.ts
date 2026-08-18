@@ -68,7 +68,7 @@ export class LeadsService {
     companyId: string,
     dto: CreateLeadDto,
     userId?: string,
-  ): Promise<Lead> {
+  ): Promise<LeadResponse> {
     const {
       contactId,
       firstName,
@@ -87,17 +87,12 @@ export class LeadsService {
     if (unitId) await this.validateUnitOwnership(unitId, companyId);
     if (cityId) await this.validateCityExists(cityId);
 
-    // A lead needs someone to be about: either an existing contact or at least
-    // one identifying detail. Without that, resolveOrCreate would insert an
-    // all-null junk contact for every such lead.
     if (!contactId && !firstName && !lastName && !phone && !email) {
       throw new BadRequestException(
         'A lead requires a contact or identifying details (name, phone or email).',
       );
     }
 
-    // Resolve or create the contact this lead belongs to. One number is one
-    // contact within the company, so re-entering a known number reuses it.
     const contact = await this.contactsService.resolveOrCreate(
       companyId,
       { contactId, firstName, lastName, email, phone, isWhatsapp },
@@ -159,7 +154,8 @@ export class LeadsService {
       }
     }
 
-    return saved;
+    saved.contact = contact;
+    return this.serializeLead(saved);
   }
 
   async findAll(

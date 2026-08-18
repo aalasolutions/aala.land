@@ -433,7 +433,8 @@ export class PropertiesService {
       ownerId: ownerId ?? undefined,
       companyId,
     });
-    return this.unitRepository.save(unit);
+    const saved = await this.unitRepository.save(unit);
+    return this.findOneUnit(saved.id, companyId);
   }
 
   async findUnitsByAsset(
@@ -479,18 +480,15 @@ export class PropertiesService {
         owner,
         userId,
       );
-      // Set both the FK and the relation object: findOneUnit loads `owner`, so a
-      // stale unit.owner would otherwise outrank the changed ownerId on save.
       unit.owner = resolvedId
         ? await this.verifyContactBelongsToCompany(resolvedId, companyId)
         : null;
       unit.ownerId = resolvedId ?? null;
     }
-    return this.unitRepository.save(unit);
+    await this.unitRepository.save(unit);
+    return this.findOneUnit(id, companyId);
   }
 
-  // An owner is either an existing contact or inline details that resolve to
-  // one. Same rule as lead capture: one number is one contact per company.
   private async resolveOwnerId(
     companyId: string,
     ownerId: string | undefined,

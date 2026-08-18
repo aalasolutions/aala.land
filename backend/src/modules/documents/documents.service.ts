@@ -72,6 +72,12 @@ export class DocumentsService {
     limit = 20,
     category?: DocumentCategory,
     unitId?: string,
+    filters?: {
+      search?: string;
+      accessLevel?: DocumentAccessLevel;
+      dateFrom?: string;
+      dateTo?: string;
+    },
   ): Promise<{
     data: SanitizedDocument[];
     total: number;
@@ -94,6 +100,28 @@ export class DocumentsService {
 
     if (unitId) {
       qb.andWhere('doc.unit_id = :unitId', { unitId });
+    }
+
+    if (filters?.accessLevel) {
+      qb.andWhere('doc.access_level = :accessLevel', {
+        accessLevel: filters.accessLevel,
+      });
+    }
+
+    if (filters?.search) {
+      qb.andWhere('doc.name ILIKE :search', { search: `%${filters.search}%` });
+    }
+
+    if (filters?.dateFrom) {
+      qb.andWhere('doc.created_at >= :dateFrom', {
+        dateFrom: filters.dateFrom,
+      });
+    }
+
+    if (filters?.dateTo) {
+      qb.andWhere("doc.created_at < :dateTo::date + interval '1 day'", {
+        dateTo: filters.dateTo,
+      });
     }
 
     qb.skip((page - 1) * limit)

@@ -2,6 +2,7 @@ import PaginatedController from './paginated-base';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
+import { debounceTask } from 'ember-lifeline';
 import {
   closeDeleteModal,
   confirmDeleteModal,
@@ -14,8 +15,20 @@ export default class DocumentsController extends PaginatedController {
   @service notifications;
   @service router;
 
-  queryParams = ['page', 'limit', 'category'];
+  queryParams = [
+    'page',
+    'limit',
+    'category',
+    'search',
+    'accessLevel',
+    'dateFrom',
+    'dateTo',
+  ];
   @tracked category = '';
+  @tracked search = '';
+  @tracked accessLevel = '';
+  @tracked dateFrom = '';
+  @tracked dateTo = '';
 
   @tracked showModal = false;
   @tracked editDocument = null;
@@ -32,6 +45,21 @@ export default class DocumentsController extends PaginatedController {
   @tracked documentToDelete = null;
   @tracked isDeleting = false;
 
+  resetState() {
+    this.page = 1;
+    this.category = '';
+    this.search = '';
+    this.accessLevel = '';
+    this.dateFrom = '';
+    this.dateTo = '';
+    this.showModal = false;
+    this.editDocument = null;
+    this.errorMsg = '';
+    this.showDeleteModal = false;
+    this.documentToDelete = null;
+    this.isDeleting = false;
+  }
+
   get categories() {
     return CATEGORIES;
   }
@@ -39,6 +67,20 @@ export default class DocumentsController extends PaginatedController {
   categoryOptions = CATEGORIES.filter((c) => c.value !== '');
 
   accessLevels = ACCESS_LEVELS;
+
+  get accessLevelFilterOptions() {
+    return [{ value: '', label: 'All access levels' }, ...ACCESS_LEVELS];
+  }
+
+  get hasActiveFilters() {
+    return Boolean(
+      this.category ||
+        this.search ||
+        this.accessLevel ||
+        this.dateFrom ||
+        this.dateTo,
+    );
+  }
 
   @action setField(fieldName, e) {
     this[fieldName] = e.target.value;
@@ -53,6 +95,39 @@ export default class DocumentsController extends PaginatedController {
   // Nuvo::Select calls onChange as (value, event).
   @action setCategory(value) {
     this.category = value;
+    this.page = 1;
+  }
+
+  @action setAccessLevelFilter(value) {
+    this.accessLevel = value;
+    this.page = 1;
+  }
+
+  @action updateFilter(fieldName, e) {
+    debounceTask(this, 'applyFilter', fieldName, e.target.value, 500);
+  }
+
+  applyFilter(fieldName, value) {
+    this[fieldName] = value;
+    this.page = 1;
+  }
+
+  @action setDateFrom(e) {
+    this.dateFrom = e.target.value;
+    this.page = 1;
+  }
+
+  @action setDateTo(e) {
+    this.dateTo = e.target.value;
+    this.page = 1;
+  }
+
+  @action clearFilters() {
+    this.category = '';
+    this.search = '';
+    this.accessLevel = '';
+    this.dateFrom = '';
+    this.dateTo = '';
     this.page = 1;
   }
 

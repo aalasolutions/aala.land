@@ -58,10 +58,11 @@ export default class PropertiesDetailController extends Controller {
 
       const tenantHistory = leases
         .filter(
-          (lease) => lease.status === 'COMPLETED' || lease.status === 'EXPIRED',
+          (lease) =>
+            lease.status === 'EXPIRED' || lease.status === 'TERMINATED',
         )
         .map((lease) => ({
-          tenantName: lease.tenantName,
+          tenantName: lease.contact?.displayName ?? 'Unknown tenant',
           startDate: lease.startDate
             ? new Date(lease.startDate).toLocaleDateString()
             : 'N/A',

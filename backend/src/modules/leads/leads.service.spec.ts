@@ -168,7 +168,7 @@ describe('LeadsService', () => {
         defaultRegionCode: 'dubai',
       } as Company);
       leadRepo.create.mockReturnValue(mockLead as Lead);
-      leadRepo.save.mockResolvedValue(mockLead as Lead);
+      leadRepo.save.mockResolvedValue({ ...mockLead } as Lead);
 
       const dto = { firstName: 'Ahmed', source: LeadSource.WHATSAPP };
       const result = await service.create(companyId, dto as any);
@@ -185,7 +185,11 @@ describe('LeadsService', () => {
           regionCode: 'dubai',
         }),
       );
-      expect(result).toEqual(mockLead);
+      expect(result).toEqual({
+        ...mockLead,
+        contact: { ...contact('Ahmed', 'Al-Rashid'), displayName: 'Ahmed Al-Rashid' },
+        assignedAgentName: null,
+      });
     });
 
     it('rejects create with no contact and no identifying detail', async () => {
@@ -203,7 +207,7 @@ describe('LeadsService', () => {
         id: 'contact-uuid-1',
       } as any);
       leadRepo.create.mockReturnValue(mockLead as Lead);
-      leadRepo.save.mockResolvedValue(mockLead as Lead);
+      leadRepo.save.mockResolvedValue({ ...mockLead } as Lead);
 
       await service.create(companyId, {
         lastName: 'Al-Rashid Holdings',

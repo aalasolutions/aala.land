@@ -63,6 +63,17 @@ export default class PropertiesIndexController extends Controller {
     return this.browseTotal > this.browsePage * 20;
   }
 
+  get hasActiveFilters() {
+    return Boolean(
+      this.filterType ||
+        this.filterStatus ||
+        this.filterBeds ||
+        this.filterMinPrice ||
+        this.filterMaxPrice ||
+        this.filterAmenities.length,
+    );
+  }
+
   @action setField(fieldName, e) {
     this[fieldName] = e.target.value;
   }

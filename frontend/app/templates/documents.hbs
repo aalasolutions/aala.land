@@ -20,17 +20,87 @@
     </:actions>
   </Nuvo::PageHeader>
 
-  <div class="flex gap-3">
-    <Nuvo::Dropdown
-      id="document-category-filter"
-      @align="start"
-      @value={{this.category}}
-      @onSelect={{this.setCategory}}
-      @options={{this.categories}}
-      @placeholder="All Categories"
-      data-test-category-filter
-    />
-  </div>
+  <Nuvo::Accordion
+    @items={{array
+      (hash
+        id="filters"
+        title=(if this.hasActiveFilters "Filters · active" "Filters")
+      )
+    }}
+    data-test-filters-accordion
+  >
+    <div class="flex col gap-4">
+      <div class="flex gap-3 wrap">
+        <Nuvo::Input
+          type="text"
+          autocomplete="off"
+          placeholder="Search document name..."
+          class="grow"
+          value={{this.search}}
+          {{on "input" (fn this.updateFilter "search")}}
+          data-test-documents-search
+        />
+      </div>
+
+      <div class="flex gap-3 wrap x-end">
+        <Nuvo::Field class="grow" @label="Category">
+          <Nuvo::Dropdown
+            id="document-category-filter"
+            @align="start"
+            @value={{this.category}}
+            @onSelect={{this.setCategory}}
+            @options={{this.categories}}
+            @placeholder="All Categories"
+            data-test-category-filter
+          />
+        </Nuvo::Field>
+        <Nuvo::Field class="grow" @label="Access Level">
+          <Nuvo::Dropdown
+            id="document-access-filter"
+            @align="start"
+            @value={{this.accessLevel}}
+            @onSelect={{this.setAccessLevelFilter}}
+            @options={{this.accessLevelFilterOptions}}
+            data-test-access-filter
+          />
+        </Nuvo::Field>
+        <Nuvo::Field @label="Uploaded from">
+          <input
+            type="date"
+            class="nu-input"
+            aria-label="Uploaded from"
+            value={{this.dateFrom}}
+            {{on "change" this.setDateFrom}}
+            data-test-date-from-filter
+          />
+        </Nuvo::Field>
+        <Nuvo::Field @label="Uploaded to">
+          <input
+            type="date"
+            class="nu-input"
+            aria-label="Uploaded to"
+            value={{this.dateTo}}
+            {{on "change" this.setDateTo}}
+            data-test-date-to-filter
+          />
+        </Nuvo::Field>
+      </div>
+
+      {{#if this.hasActiveFilters}}
+        <div class="flex end">
+          <Nuvo::Button
+            @variant="danger"
+            @size="sm"
+            @icon="x"
+            {{on "click" this.clearFilters}}
+            data-test-clear-filters
+          >
+            Clear filters
+          </Nuvo::Button>
+        </div>
+      {{/if}}
+    </div>
+  </Nuvo::Accordion>
 
   {{#if @model.documents.length}}
     <Nuvo::Card>
@@ -81,11 +151,13 @@
                 <td class="text-sm text-muted">{{format-bytes
                     doc.fileSize
                   }}</td>
-                <td class="text-sm text-muted" data-test-document-uploader>{{if
-                    doc.uploadedByName
-                    doc.uploadedByName
-                    "—"
-                  }}</td>
+                <td class="text-sm text-muted" data-test-document-uploader>
+                  {{#if (eq doc.uploadedBy this.auth.currentUser.id)}}
+                    ME
+                  {{else}}
+                    {{or doc.uploadedByName "—"}}
+                  {{/if}}
+                </td>
                 <td class="text-sm text-muted">{{format-date
                     doc.createdAt
                   }}</td>

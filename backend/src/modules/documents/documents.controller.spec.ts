@@ -117,6 +117,12 @@ describe('DocumentsController', () => {
         20,
         undefined,
         undefined,
+        {
+          search: undefined,
+          accessLevel: undefined,
+          dateFrom: undefined,
+          dateTo: undefined,
+        },
       );
     });
 
@@ -132,6 +138,12 @@ describe('DocumentsController', () => {
         20,
         DocumentCategory.LEASE,
         undefined,
+        {
+          search: undefined,
+          accessLevel: undefined,
+          dateFrom: undefined,
+          dateTo: undefined,
+        },
       );
     });
 
@@ -147,7 +159,48 @@ describe('DocumentsController', () => {
         20,
         undefined,
         'unit-uuid-1',
+        {
+          search: undefined,
+          accessLevel: undefined,
+          dateFrom: undefined,
+          dateTo: undefined,
+        },
       );
+    });
+
+    it('throws BadRequestException for an invalid dateFrom', () => {
+      expect(() =>
+        controller.findAll(
+          mockReq,
+          1,
+          20,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          'not-a-date',
+        ),
+      ).toThrow('dateFrom is not a valid date');
+
+      expect(service.findAll).not.toHaveBeenCalled();
+    });
+
+    it('throws BadRequestException for an invalid dateTo', () => {
+      expect(() =>
+        controller.findAll(
+          mockReq,
+          1,
+          20,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          'not-a-date',
+        ),
+      ).toThrow('dateTo is not a valid date');
+
+      expect(service.findAll).not.toHaveBeenCalled();
     });
   });
 

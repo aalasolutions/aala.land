@@ -19,7 +19,7 @@
       {{#if @model.contact}}
         <div class="flex gap-1 flex-wrap">
           {{#each @model.contact.tags as |tag|}}
-            <Nuvo::Tag class="tag-contact-{{tag}}" @text={{capitalize tag}} />
+            <Nuvo::Tag class="tag-contact-{{tag}}" @text={{contact-tag-label tag}} />
           {{else}}
             <span class="text-muted text-sm">Contact</span>
           {{/each}}
@@ -181,6 +181,7 @@
                         rel="noopener noreferrer"
                         class="wa-link"
                         title="Open WhatsApp"
+                        aria-label="Open WhatsApp chat with {{@model.contact.displayName}}"
                         data-test-wa-link
                       ><Ui::Ph @icon="whatsapp-logo" @size="14px" /></a>
                     {{/if}}

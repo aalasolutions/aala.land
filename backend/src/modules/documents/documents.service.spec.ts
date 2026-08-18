@@ -184,6 +184,112 @@ describe('DocumentsService', () => {
         category: DocumentCategory.LEASE,
       });
     });
+
+    it('filters by accessLevel when provided', async () => {
+      const qb = repo.createQueryBuilder();
+      await service.findAll(
+        companyId,
+        Role.COMPANY_ADMIN,
+        1,
+        20,
+        undefined,
+        undefined,
+        { accessLevel: DocumentAccessLevel.ADMIN },
+      );
+
+      expect(qb.andWhere).toHaveBeenCalledWith(
+        'doc.access_level = :accessLevel',
+        { accessLevel: DocumentAccessLevel.ADMIN },
+      );
+    });
+
+    it('filters by search against the document name', async () => {
+      const qb = repo.createQueryBuilder();
+      await service.findAll(
+        companyId,
+        Role.COMPANY_ADMIN,
+        1,
+        20,
+        undefined,
+        undefined,
+        { search: 'lease' },
+      );
+
+      expect(qb.andWhere).toHaveBeenCalledWith('doc.name ILIKE :search', {
+        search: '%lease%',
+      });
+    });
+
+    it('filters by dateFrom', async () => {
+      const qb = repo.createQueryBuilder();
+      await service.findAll(
+        companyId,
+        Role.COMPANY_ADMIN,
+        1,
+        20,
+        undefined,
+        undefined,
+        { dateFrom: '2026-01-01' },
+      );
+
+      expect(qb.andWhere).toHaveBeenCalledWith('doc.created_at >= :dateFrom', {
+        dateFrom: '2026-01-01',
+      });
+    });
+
+    it('filters by dateTo inclusively (through the end of that day)', async () => {
+      const qb = repo.createQueryBuilder();
+      await service.findAll(
+        companyId,
+        Role.COMPANY_ADMIN,
+        1,
+        20,
+        undefined,
+        undefined,
+        { dateTo: '2026-01-31' },
+      );
+
+      expect(qb.andWhere).toHaveBeenCalledWith(
+        "doc.created_at < :dateTo::date + interval '1 day'",
+        { dateTo: '2026-01-31' },
+      );
+    });
+
+    it('combines category, accessLevel, search and date range filters together', async () => {
+      const qb = repo.createQueryBuilder();
+      await service.findAll(
+        companyId,
+        Role.COMPANY_ADMIN,
+        1,
+        20,
+        DocumentCategory.LEASE,
+        undefined,
+        {
+          accessLevel: DocumentAccessLevel.TEAM,
+          search: 'contract',
+          dateFrom: '2026-01-01',
+          dateTo: '2026-01-31',
+        },
+      );
+
+      expect(qb.andWhere).toHaveBeenCalledWith('doc.category = :category', {
+        category: DocumentCategory.LEASE,
+      });
+      expect(qb.andWhere).toHaveBeenCalledWith(
+        'doc.access_level = :accessLevel',
+        { accessLevel: DocumentAccessLevel.TEAM },
+      );
+      expect(qb.andWhere).toHaveBeenCalledWith('doc.name ILIKE :search', {
+        search: '%contract%',
+      });
+      expect(qb.andWhere).toHaveBeenCalledWith('doc.created_at >= :dateFrom', {
+        dateFrom: '2026-01-01',
+      });
+      expect(qb.andWhere).toHaveBeenCalledWith(
+        "doc.created_at < :dateTo::date + interval '1 day'",
+        { dateTo: '2026-01-31' },
+      );
+    });
   });
 
   describe('findOne', () => {

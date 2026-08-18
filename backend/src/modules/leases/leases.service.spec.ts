@@ -124,9 +124,10 @@ describe('LeasesService', () => {
   });
 
   describe('create', () => {
-    it('creates and returns a lease', async () => {
+    it('creates and returns a lease, reloaded with the contact relation', async () => {
       repo.create.mockReturnValue(mockLease as Lease);
       repo.save.mockResolvedValue(mockLease as Lease);
+      repo.findOne.mockResolvedValue(mockLease as Lease);
 
       const dto = {
         unitId: 'unit-uuid-1',
@@ -138,6 +139,10 @@ describe('LeasesService', () => {
       const result = await service.create(companyId, dto as any);
 
       expect(repo.create).toHaveBeenCalledWith({ ...dto, companyId });
+      expect(repo.findOne).toHaveBeenCalledWith({
+        where: { id: mockLease.id, companyId },
+        relations: ['contact'],
+      });
       expect(result).toEqual(mockLease);
     });
   });
@@ -190,6 +195,116 @@ describe('LeasesService', () => {
       });
       expect(result.data).toEqual([mockLease]);
     });
+
+    it('filters by status when provided', async () => {
+      const qb = qbMock([mockLease as Lease], 1);
+      (repo.createQueryBuilder as unknown as jest.Mock) = jest
+        .fn()
+        .mockReturnValue(qb);
+
+      await service.findAll(companyId, 1, 20, undefined, undefined, {
+        status: LeaseStatus.ACTIVE,
+      });
+
+      expect(qb.andWhere).toHaveBeenCalledWith('l.status = :status', {
+        status: LeaseStatus.ACTIVE,
+      });
+    });
+
+    it('filters by type when provided', async () => {
+      const qb = qbMock([mockLease as Lease], 1);
+      (repo.createQueryBuilder as unknown as jest.Mock) = jest
+        .fn()
+        .mockReturnValue(qb);
+
+      await service.findAll(companyId, 1, 20, undefined, undefined, {
+        type: LeaseType.COMMERCIAL,
+      });
+
+      expect(qb.andWhere).toHaveBeenCalledWith('l.type = :type', {
+        type: LeaseType.COMMERCIAL,
+      });
+    });
+
+    it('filters by search against tenant name, unit number and ejari number', async () => {
+      const qb = qbMock([mockLease as Lease], 1);
+      (repo.createQueryBuilder as unknown as jest.Mock) = jest
+        .fn()
+        .mockReturnValue(qb);
+
+      await service.findAll(companyId, 1, 20, undefined, undefined, {
+        search: 'zainab',
+      });
+
+      expect(qb.andWhere).toHaveBeenCalledWith(
+        '(tenant.firstName ILIKE :s OR tenant.lastName ILIKE :s OR unit.unitNumber ILIKE :s OR l.ejariNumber ILIKE :s)',
+        { s: '%zainab%' },
+      );
+    });
+
+    it('filters by dateFrom', async () => {
+      const qb = qbMock([mockLease as Lease], 1);
+      (repo.createQueryBuilder as unknown as jest.Mock) = jest
+        .fn()
+        .mockReturnValue(qb);
+
+      await service.findAll(companyId, 1, 20, undefined, undefined, {
+        dateFrom: '2026-01-01',
+      });
+
+      expect(qb.andWhere).toHaveBeenCalledWith('l.startDate >= :dateFrom', {
+        dateFrom: '2026-01-01',
+      });
+    });
+
+    it('filters by dateTo inclusively (through the end of that day)', async () => {
+      const qb = qbMock([mockLease as Lease], 1);
+      (repo.createQueryBuilder as unknown as jest.Mock) = jest
+        .fn()
+        .mockReturnValue(qb);
+
+      await service.findAll(companyId, 1, 20, undefined, undefined, {
+        dateTo: '2026-01-31',
+      });
+
+      expect(qb.andWhere).toHaveBeenCalledWith(
+        "l.startDate < :dateTo::date + interval '1 day'",
+        { dateTo: '2026-01-31' },
+      );
+    });
+
+    it('combines status, type, search and date range filters together', async () => {
+      const qb = qbMock([mockLease as Lease], 1);
+      (repo.createQueryBuilder as unknown as jest.Mock) = jest
+        .fn()
+        .mockReturnValue(qb);
+
+      await service.findAll(companyId, 1, 20, undefined, undefined, {
+        status: LeaseStatus.ACTIVE,
+        type: LeaseType.RESIDENTIAL,
+        search: 'zainab',
+        dateFrom: '2026-01-01',
+        dateTo: '2026-01-31',
+      });
+
+      expect(qb.andWhere).toHaveBeenCalledWith('l.status = :status', {
+        status: LeaseStatus.ACTIVE,
+      });
+      expect(qb.andWhere).toHaveBeenCalledWith('l.type = :type', {
+        type: LeaseType.RESIDENTIAL,
+      });
+      expect(qb.andWhere).toHaveBeenCalledWith(
+        '(tenant.firstName ILIKE :s OR tenant.lastName ILIKE :s OR unit.unitNumber ILIKE :s OR l.ejariNumber ILIKE :s)',
+        { s: '%zainab%' },
+      );
+      expect(qb.andWhere).toHaveBeenCalledWith('l.startDate >= :dateFrom', {
+        dateFrom: '2026-01-01',
+      });
+      expect(qb.andWhere).toHaveBeenCalledWith(
+        "l.startDate < :dateTo::date + interval '1 day'",
+        { dateTo: '2026-01-31' },
+      );
+    });
   });
 
   describe('findOne', () => {
@@ -225,9 +340,22 @@ describe('LeasesService', () => {
 
       expect(repo.find).toHaveBeenCalledWith({
         where: { unitId: 'unit-uuid-1', companyId },
+        relations: ['contact'],
         order: { startDate: 'DESC' },
       });
       expect(result).toEqual([mockLease]);
+    });
+
+    it('attaches displayName to each lease tenant', async () => {
+      const leaseWithContact = {
+        ...mockLease,
+        contact: { firstName: 'Zainab', lastName: 'Qureshi' },
+      } as Lease;
+      repo.find.mockResolvedValue([leaseWithContact]);
+
+      const [result] = await service.findByUnit('unit-uuid-1', companyId);
+
+      expect(result.contact).toMatchObject({ displayName: 'Zainab Qureshi' });
     });
   });
 
@@ -332,8 +460,17 @@ describe('LeasesService', () => {
         status: LeaseStatus.DRAFT,
       } as unknown as Lease;
       const savedNewLease = { ...newLeaseEntity, id: 'lease-uuid-2' } as Lease;
+      const reloadedOldLease = {
+        ...activeLease,
+        status: LeaseStatus.RENEWED,
+        contact: null,
+      } as Lease;
+      const reloadedNewLease = { ...savedNewLease, contact: null } as Lease;
 
-      manager.findOne.mockResolvedValue(activeLease);
+      manager.findOne
+        .mockResolvedValueOnce(activeLease) // initial FOR UPDATE lock load
+        .mockResolvedValueOnce(reloadedOldLease) // reloadWithContact(oldLease.id)
+        .mockResolvedValueOnce(reloadedNewLease); // reloadWithContact(newLease.id)
       manager.create.mockReturnValue(newLeaseEntity);
       manager.save
         .mockResolvedValueOnce({
@@ -349,13 +486,13 @@ describe('LeasesService', () => {
       );
 
       // Old lease loaded FOR UPDATE, re-checked under the lock.
-      expect(manager.findOne).toHaveBeenCalledWith(Lease, {
+      expect(manager.findOne).toHaveBeenNthCalledWith(1, Lease, {
         where: { id: 'lease-uuid-1', companyId },
         lock: { mode: 'pessimistic_write' },
       });
       expect(dataSource.transaction).toHaveBeenCalledTimes(1);
-      expect(result.oldLease.status).toBe(LeaseStatus.RENEWED);
-      expect(result.newLease).toEqual(savedNewLease);
+      expect(result.oldLease).toEqual(reloadedOldLease);
+      expect(result.newLease).toEqual(reloadedNewLease);
     });
 
     it('allows renewal of EXPIRED lease', async () => {
