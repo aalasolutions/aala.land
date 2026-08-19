@@ -17,6 +17,7 @@ export default class TooltipService extends Service {
   #trigger = null;
   #openTask = null;
   #ownsDescribedBy = false;
+  #observer = null;
 
   get isVisible() {
     return this.content !== null;
@@ -49,6 +50,19 @@ export default class TooltipService extends Service {
           trigger.setAttribute('aria-describedby', TOOLTIP_ID);
           this.#ownsDescribedBy = true;
         }
+
+        this.#observer = new MutationObserver(() => {
+          const next = trigger.getAttribute('data-tooltip');
+          if (next) {
+            this.content = next;
+          } else {
+            this.hide();
+          }
+        });
+        this.#observer.observe(trigger, {
+          attributes: true,
+          attributeFilter: ['data-tooltip'],
+        });
       },
       OPEN_DELAY,
     );
@@ -84,6 +98,8 @@ export default class TooltipService extends Service {
   }
 
   #releaseTrigger() {
+    this.#observer?.disconnect();
+    this.#observer = null;
     if (this.#ownsDescribedBy) {
       this.#trigger?.removeAttribute('aria-describedby');
       this.#ownsDescribedBy = false;

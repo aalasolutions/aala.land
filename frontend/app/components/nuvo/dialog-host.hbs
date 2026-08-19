@@ -1,7 +1,3 @@
-{{!
-  Renders whatever the `dialogs` service currently holds. Mount once, in
-  application.hbs, beside Nuvo::TooltipHost. Never invoke this per page.
-}}
 {{#if this.dialogs.isOpen}}
   <Nuvo::ConfirmModal
     @open={{true}}

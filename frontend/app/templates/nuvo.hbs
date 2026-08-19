@@ -556,12 +556,19 @@
     <h2 class="nuvo-section__title">Progress</h2>
 
     <div class="nuvo-stack">
-      <Nuvo::Progress @value={{20}} />
+      <Nuvo::Progress @value={{20}}  data-tooltip="Top placement {{this.progressValue}}" @placement="top" />
       <Nuvo::Progress @value={{45}} @variant="success" @showText={{true}} />
       <Nuvo::Progress @value={{70}} @variant="warning" @showText={{true}} />
       <Nuvo::Progress @value={{90}} @variant="danger" @showText={{true}} />
       <Nuvo::Progress @value={{this.progressValue}} @variant="primary" @showText={{true}} />
-      <Nuvo::Button @variant="secondary" @size="sm" @text="Bump progress" @onClick={{this.bumpProgress}} />
+      <Nuvo::Button
+        @variant="secondary"
+        @size="sm"
+        @text="Bump progress"
+        @onClick={{this.bumpProgress}}
+        data-tooltip="Top placement {{this.progressValue}}"
+
+        />
     </div>
 
     <div class="nuvo-stack">
