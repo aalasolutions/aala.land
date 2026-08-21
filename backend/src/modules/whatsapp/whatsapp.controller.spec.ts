@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { Reflector } from '@nestjs/core';
+import { BadGatewayException } from '@nestjs/common';
 import { WhatsappController } from './whatsapp.controller';
 import { WhatsappService } from './whatsapp.service';
 import { Role } from '@shared/enums/roles.enum';
@@ -20,19 +21,14 @@ describe('WhatsappController', () => {
         {
           provide: WhatsappService,
           useValue: {
-            getConnection: jest.fn(),
-            getQR: jest.fn(),
-            logout: jest.fn(),
             getChats: jest.fn(),
             getAllMessages: jest.fn(),
             getMessagesForChat: jest.fn(),
-            send: jest.fn(),
-            sendMedia: jest.fn(),
-            typing: jest.fn(),
             getAiConfig: jest.fn(),
+            getAiCreditUsage: jest.fn(),
             toggleAi: jest.fn(),
             getAiHistory: jest.fn(),
-            getMediaDirs: jest.fn(),
+            sendMessage: jest.fn(),
           },
         },
       ],
@@ -40,6 +36,46 @@ describe('WhatsappController', () => {
 
     controller = module.get(WhatsappController);
     wa = module.get(WhatsappService);
+  });
+
+  describe('POST send', () => {
+    it('sends as the caller and returns the created message unwrapped', async () => {
+      const created = { id: 'wamid.op1', chatId: '971501234567', fromMe: true };
+      wa.sendMessage.mockResolvedValue(created as any);
+      const req = makeReq('u1', 'c1');
+
+      const result = await controller.send(req, {
+        chatId: '971501234567',
+        body: 'hello',
+      });
+
+      expect(wa.sendMessage).toHaveBeenCalledWith(
+        'u1',
+        'c1',
+        '971501234567',
+        'hello',
+      );
+      // The socket path consumes a bare message, so the composer can render it directly.
+      expect(result).toBe(created);
+    });
+
+    it('propagates a refused send instead of swallowing it', async () => {
+      wa.sendMessage.mockRejectedValue(
+        new BadGatewayException('WhatsApp could not be reached'),
+      );
+
+      await expect(
+        controller.send(makeReq('u1', 'c1'), {
+          chatId: '971501234567',
+          body: 'hello',
+        }),
+      ).rejects.toBeInstanceOf(BadGatewayException);
+    });
+
+    it('is open to every operator role on the controller, not admin only', () => {
+      const reflector = new Reflector();
+      expect(reflector.get<Role[]>('roles', controller.send)).toBeUndefined();
+    });
   });
 
   describe('POST ai/toggle', () => {
@@ -57,43 +93,6 @@ describe('WhatsappController', () => {
       const reflector = new Reflector();
       const roles = reflector.get<Role[]>('roles', controller.toggleAi);
       expect(roles).toEqual([Role.COMPANY_ADMIN]);
-    });
-  });
-
-  describe('GET media/:type/:filename path traversal protection', () => {
-    const mockDirs = {
-      IMAGE_DIR: '/data/whatsapp/u1/images',
-      VIDEO_DIR: '/data/whatsapp/u1/videos',
-      AUDIO_DIR: '/data/whatsapp/u1/audio',
-      DOCUMENT_DIR: '/data/whatsapp/u1/documents',
-    };
-
-    it('returns 403 for path traversal attempt', () => {
-      wa.getMediaDirs.mockReturnValue(mockDirs as any);
-      const req = makeReq('u1', 'c1');
-      const res = {
-        status: jest.fn().mockReturnThis(),
-        json: jest.fn(),
-        sendFile: jest.fn(),
-      } as any;
-
-      controller.serveMedia(req, 'images', '../../../etc/passwd', res);
-
-      expect(res.status).toHaveBeenCalledWith(403);
-    });
-
-    it('returns 400 for invalid media type', () => {
-      wa.getMediaDirs.mockReturnValue(mockDirs as any);
-      const req = makeReq('u1', 'c1');
-      const res = {
-        status: jest.fn().mockReturnThis(),
-        json: jest.fn(),
-        sendFile: jest.fn(),
-      } as any;
-
-      controller.serveMedia(req, 'invalid-type', 'file.jpg', res);
-
-      expect(res.status).toHaveBeenCalledWith(400);
     });
   });
 });

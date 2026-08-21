@@ -77,67 +77,6 @@
   color: var(--text-muted);
 }
 
-.wa-status-bar {
-  display: flex;
-  align-items: center;
-  gap: nu-space(2);
-  font-size: nu-font-size(xs);
-  color: var(--text-muted);
-}
-
-// ---- pairing ----
-
-.wa-qr-pane {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  align-items: center;
-  gap: nu-space(4);
-  padding: nu-space(6) nu-space(5);
-  text-align: center;
-  font-size: nu-font-size(xs);
-  color: var(--text-muted);
-}
-
-.wa-qr-title {
-  font-size: nu-font-size(sm);
-  font-weight: nu-font-weight(semibold);
-  color: var(--text-color);
-}
-
-// A QR must stay high-contrast dark-on-white to remain scannable, so this panel
-// is deliberately NOT themed. Do not swap --white for a surface token.
-.wa-qr-frame {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  inline-size: 17.5rem;
-  block-size: 17.5rem;
-  padding: nu-space(3);
-  background: var(--white);
-  border-radius: nu-radius(lg);
-}
-
-.wa-qr-img {
-  inline-size: 100%;
-  block-size: 100%;
-  image-rendering: pixelated;
-}
-
-.wa-qr-steps {
-  max-inline-size: 17.5rem;
-  margin: 0;
-  padding-inline-start: nu-space(5);
-  text-align: start;
-  font-size: nu-font-size(xs);
-  color: var(--text-muted);
-
-  li {
-    margin-block-end: nu-space(1);
-    line-height: 1.5;
-  }
-}
-
 // ---- chat list ----
 
 .wa-chat-list {
@@ -268,38 +207,6 @@
   .m-outgoing.m-ai & {
     background: var(--info);
     color: var(--text-inverted);
-  }
-}
-
-.wa-media-img,
-.wa-media-video {
-  display: block;
-  max-inline-size: 17.5rem;
-  max-block-size: 17.5rem;
-  border-radius: nu-radius(md);
-}
-
-.wa-media-img {
-  cursor: pointer;
-}
-
-.wa-media-audio {
-  display: block;
-  max-inline-size: 15rem;
-  margin-block: nu-space(1);
-}
-
-.wa-media-doc {
-  display: inline-block;
-  padding: nu-space(2) nu-space(3);
-  border-radius: nu-radius(sm);
-  background: nu-tint(black, 6%);
-  color: inherit;
-  text-decoration: none;
-  font-size: nu-font-size(xs);
-
-  &:hover {
-    background: nu-tint(black, 12%);
   }
 }
 

@@ -21,7 +21,6 @@ export default class WhatsappService extends Service {
     });
 
     this._socket.on('whatsapp:status', (data) => onEvent('status', data));
-    this._socket.on('whatsapp:qr', (data) => onEvent('qr', data));
     this._socket.on('whatsapp:message', (data) => onEvent('message', data));
     this._socket.on('whatsapp:ai', (data) => onEvent('ai', data));
 
@@ -35,12 +34,6 @@ export default class WhatsappService extends Service {
     }
   }
 
-  getConnection() {
-    return this.auth.fetchJson('/whatsapp/connection');
-  }
-  getQR() {
-    return this.auth.fetchJson('/whatsapp/qr');
-  }
   getChats() {
     return this.auth.fetchJson('/whatsapp/chats');
   }
@@ -59,14 +52,10 @@ export default class WhatsappService extends Service {
     return this.auth.fetchJson('/whatsapp/settings');
   }
 
-  logout() {
-    return this.auth.fetchJson('/whatsapp/logout', { method: 'POST' });
-  }
-
-  sendMessage(chatId, message, replyTo) {
+  sendMessage(chatId, body) {
     return this.auth.fetchJson('/whatsapp/send', {
       method: 'POST',
-      body: JSON.stringify({ chatId, message, replyTo }),
+      body: JSON.stringify({ chatId, body }),
     });
   }
 
@@ -82,19 +71,6 @@ export default class WhatsappService extends Service {
       method: 'PATCH',
       body: JSON.stringify({ aiPrompt: aiPrompt || null }),
     });
-  }
-
-  mediaUrl(type, filename) {
-    const typeMap = {
-      image: 'images',
-      sticker: 'images',
-      video: 'videos',
-      audio: 'audio',
-      ptt: 'audio',
-      document: 'documents',
-    };
-    const subdir = typeMap[type] ?? 'documents';
-    return `${this.apiUrl}/v1/whatsapp/media/${subdir}/${encodeURIComponent(filename.split(/[/\\]/).pop())}`;
   }
 
   willDestroy() {

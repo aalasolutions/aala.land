@@ -31,6 +31,16 @@ export class WhatsappAiConversation {
   @Column({ name: 'chat_id', type: 'varchar', length: 255 })
   chatId: string;
 
+  // Same identity as whatsapp_messages / whatsapp_chats, so the AI credit window and
+  // Meta's reply window can be reconciled against one connected number in Phase 5.
+  @Column({
+    name: 'phone_number_id',
+    type: 'varchar',
+    length: 64,
+    nullable: true,
+  })
+  phoneNumberId: string | null;
+
   @Column({ name: 'lead_id', type: 'uuid', nullable: true })
   leadId: string | null;
 

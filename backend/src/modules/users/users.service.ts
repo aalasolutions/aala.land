@@ -532,15 +532,15 @@ export class UsersService {
   }
 
   // Runs after the removal commits, never inside the per-company advisory lock.
-  // Logout FIRST: a removed seat that keeps its Baileys socket keeps receiving, keeps
-  // writing rows, and keeps spending AI credits (sessions also restart from disk on boot).
+  // Disconnect FIRST: a removed seat that stays connected keeps receiving, keeps writing
+  // rows, and keeps spending AI credits.
   private async moveWhatsappRowsAfterRemoval(
     companyId: string | null,
     report: ReassignmentReport,
   ): Promise<void> {
     if (!companyId) return;
     try {
-      await this.whatsappService.logout(report.fromUserId, companyId);
+      await this.whatsappService.disconnect(report.fromUserId, companyId);
     } catch (err) {
       this.logger.error(
         `WhatsApp session not torn down for removed user ${report.fromUserId} in company ${companyId}; it may keep receiving and spending AI credits`,

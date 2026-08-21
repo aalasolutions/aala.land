@@ -1,319 +1,212 @@
-import { EventEmitter } from 'events';
+import { BadGatewayException, BadRequestException } from '@nestjs/common';
 import { WhatsappService } from './whatsapp.service';
-import { WaMessage } from './wa-types';
+import { WhatsappSendError } from './whatsapp-cloud-api.service';
+import { WhatsappConnection } from './entities/whatsapp-connection.entity';
 
-// Drives the private wireInstance message handler through the public getConnection()
-// path to assert AI-echo suppression: a fromMe re-emission of an AI-sent message must
-// NOT be treated as a human reply, whether matched by messageId or by content fingerprint
-// (Baileys sendMessage can return without a key.id).
+const connection = {
+  id: 'conn-1',
+  companyId: 'company-1',
+  userId: 'user-1',
+  phoneNumberId: 'pnid-1',
+  displayPhoneNumber: '+971500000000',
+  accessTokenCiphertext: 'super-secret-token',
+} as WhatsappConnection;
 
-const baseMsg = (overrides: Partial<WaMessage> = {}): WaMessage => ({
-  id: 'm1',
-  chatId: 'c1',
-  senderId: 's1',
-  senderName: 'Them',
-  chatName: 'Chat',
-  isGroup: false,
-  body: 'hi',
-  hasMedia: false,
-  mediaType: '',
-  mediaUrls: [],
-  mentionedIds: [],
-  quotedParticipant: '',
-  fromMe: false,
-  aiGenerated: false,
-  timestamp: Math.floor(Date.now() / 1000),
-  ...overrides,
-});
-
-describe('WhatsappService echo suppression', () => {
+describe('WhatsappService', () => {
   let service: WhatsappService;
-  let emitter: EventEmitter;
-  let sendMessage: jest.Mock;
-  let ai: any;
-  let manager: any;
-  let store: any;
-  let gateway: any;
-  let usersRepo: any;
-
-  const wire = async (userId = 'u1', companyId = 'co1') => {
-    await service.getConnection(userId, companyId);
-  };
+  let connections: { findOne: jest.Mock; update: jest.Mock };
+  let store: { addMessage: jest.Mock };
+  let ai: { recordHumanReply: jest.Mock; getCreditUsage: jest.Mock };
+  let gateway: { emitMessage: jest.Mock; emitAi: jest.Mock };
+  let cloud: { sendText: jest.Mock };
 
   beforeEach(() => {
-    emitter = new EventEmitter();
-    sendMessage = jest
-      .fn()
-      .mockResolvedValue({ success: true, messageId: 'ai-msg-1' });
-
-    const inst = {
-      emitter,
-      sendMessage,
-      getStatus: () => ({
-        connection: 'connected',
-        hasCredentials: true,
-        me: { id: 'me', name: 'Me' },
-        qr: null,
-      }),
+    connections = {
+      findOne: jest.fn().mockResolvedValue(connection),
+      update: jest.fn().mockResolvedValue({ affected: 1 }),
     };
-
-    manager = {
-      getAll: () => new Map(),
-      getOrCreate: jest.fn().mockResolvedValue(inst),
-      get: jest.fn().mockReturnValue(inst),
-      remove: jest.fn(),
-    };
-    store = {
-      addMessage: jest.fn(),
-      getChatList: jest.fn(),
-      getAllMessages: jest.fn(),
-      getMessagesForChat: jest.fn(),
-    };
-    gateway = {
-      emitStatus: jest.fn(),
-      emitQR: jest.fn(),
-      emitMessage: jest.fn(),
-      emitAi: jest.fn(),
-    };
+    store = { addMessage: jest.fn().mockResolvedValue(true) };
     ai = {
-      loadEnabledState: jest.fn(),
-      recordHumanReply: jest.fn(),
-      handleIncomingMessage: jest.fn(),
-      getCreditUsage: jest.fn().mockResolvedValue(null),
+      recordHumanReply: jest.fn().mockResolvedValue(undefined),
+      getCreditUsage: jest.fn(),
     };
-
-    usersRepo = { find: jest.fn().mockResolvedValue([]) };
-
-    service = new WhatsappService(manager, store, ai, gateway, usersRepo);
-    // Avoid touching the filesystem for company_id persistence.
-    jest.spyOn(service as any, 'persistCompanyId').mockImplementation(() => {});
-  });
-
-  it('treats a genuine human fromMe message as a human reply', async () => {
-    await wire();
-    emitter.emit(
-      'message',
-      baseMsg({ fromMe: true, body: 'human typed this' }),
-    );
-    expect(ai.recordHumanReply).toHaveBeenCalledWith('u1', 'c1');
-  });
-
-  it('does NOT record a human reply when the fromMe echo matches by messageId', async () => {
-    await wire();
-
-    // AI sends a message (records id ai-msg-1 + fingerprint).
-    let capturedSend: any;
-    ai.handleIncomingMessage.mockImplementation(
-      (_msg: any, _co: string, _u: string, send: any) => {
-        capturedSend = send;
-        return Promise.resolve();
-      },
-    );
-    emitter.emit('message', baseMsg({ fromMe: false, body: 'question' }));
-    await capturedSend('c1', 'ai answer');
-
-    // Baileys re-emits the AI message as fromMe with the same id.
-    emitter.emit(
-      'message',
-      baseMsg({ id: 'ai-msg-1', fromMe: true, body: 'ai answer' }),
-    );
-    expect(ai.recordHumanReply).not.toHaveBeenCalled();
-  });
-
-  it('does NOT record a human reply when the fromMe echo has no messageId but matches by content', async () => {
-    // sendMessage returns WITHOUT a messageId — id-based tracking cannot match.
-    sendMessage.mockResolvedValue({ success: true, messageId: undefined });
-    await wire();
-
-    let capturedSend: any;
-    ai.handleIncomingMessage.mockImplementation(
-      (_msg: any, _co: string, _u: string, send: any) => {
-        capturedSend = send;
-        return Promise.resolve();
-      },
-    );
-    emitter.emit('message', baseMsg({ fromMe: false, body: 'question' }));
-    await capturedSend('c1', 'ai answer no id');
-
-    // Echo comes back with a DIFFERENT id (assigned late by Baileys) but same content.
-    emitter.emit(
-      'message',
-      baseMsg({ id: 'late-id', fromMe: true, body: 'ai answer no id' }),
-    );
-    expect(ai.recordHumanReply).not.toHaveBeenCalled();
-  });
-
-  it('consumes the fingerprint so a later identical human message IS recorded', async () => {
-    sendMessage.mockResolvedValue({ success: true, messageId: undefined });
-    await wire();
-
-    let capturedSend: any;
-    ai.handleIncomingMessage.mockImplementation(
-      (_msg: any, _co: string, _u: string, send: any) => {
-        capturedSend = send;
-        return Promise.resolve();
-      },
-    );
-    emitter.emit('message', baseMsg({ fromMe: false, body: 'question' }));
-    await capturedSend('c1', 'duplicate text');
-
-    // First fromMe with that text = the AI echo, suppressed.
-    emitter.emit(
-      'message',
-      baseMsg({ id: 'e1', fromMe: true, body: 'duplicate text' }),
-    );
-    expect(ai.recordHumanReply).not.toHaveBeenCalled();
-
-    // A later human message with the SAME text must be treated as a human reply.
-    emitter.emit(
-      'message',
-      baseMsg({ id: 'e2', fromMe: true, body: 'duplicate text' }),
-    );
-    expect(ai.recordHumanReply).toHaveBeenCalledWith('u1', 'c1');
-  });
-
-  it('matches N identical AI sends with N echoes (counter, not a collapsing Set)', async () => {
-    // Both sends return without a messageId — only the content fingerprint can match, so
-    // this is exactly the collapse case a Set would get wrong.
-    sendMessage.mockResolvedValue({ success: true, messageId: undefined });
-    await wire();
-
-    let capturedSend: any;
-    ai.handleIncomingMessage.mockImplementation(
-      (_msg: any, _co: string, _u: string, send: any) => {
-        capturedSend = send;
-        return Promise.resolve();
-      },
-    );
-    emitter.emit('message', baseMsg({ fromMe: false, body: 'question' }));
-
-    // AI sends the SAME canned line twice within the window (counter → 2).
-    await capturedSend('c1', 'Hello! How can I help?');
-    await capturedSend('c1', 'Hello! How can I help?');
-
-    // Two fromMe echoes of that identical line: BOTH are AI echoes, neither is a takeover.
-    emitter.emit(
-      'message',
-      baseMsg({ id: 'echo-1', fromMe: true, body: 'Hello! How can I help?' }),
-    );
-    emitter.emit(
-      'message',
-      baseMsg({ id: 'echo-2', fromMe: true, body: 'Hello! How can I help?' }),
-    );
-    expect(ai.recordHumanReply).not.toHaveBeenCalled();
-
-    // A THIRD identical fromMe (counter drained to 0) is a genuine human takeover.
-    emitter.emit(
-      'message',
-      baseMsg({ id: 'echo-3', fromMe: true, body: 'Hello! How can I help?' }),
-    );
-    expect(ai.recordHumanReply).toHaveBeenCalledTimes(1);
-    expect(ai.recordHumanReply).toHaveBeenCalledWith('u1', 'c1');
-  });
-
-  it('does not throw when a fromMe echo has an undefined body', async () => {
-    await wire();
-    // A fromMe media re-emission with no text body must not crash the fingerprint build.
-    expect(() =>
-      emitter.emit(
-        'message',
-        baseMsg({ fromMe: true, body: undefined as any }),
-      ),
-    ).not.toThrow();
-    // With no matching AI send, an undefined-body human message is still a human reply.
-    expect(ai.recordHumanReply).toHaveBeenCalledWith('u1', 'c1');
-  });
-
-  describe('dropSessionsWithoutActiveSeat', () => {
-    const withSessions = (...userIds: string[]) => {
-      const stub = { emitter: { removeAllListeners: jest.fn() } };
-      manager.getAll = () => new Map(userIds.map((id) => [id, stub as any]));
-      manager.get = jest.fn().mockReturnValue(stub);
-      ai.clearUserState = jest.fn();
-      jest.spyOn(service, 'logout');
+    gateway = { emitMessage: jest.fn(), emitAi: jest.fn() };
+    cloud = {
+      sendText: jest.fn().mockResolvedValue({ messageId: 'wamid.op1' }),
     };
+    service = new WhatsappService(
+      connections as any,
+      store as any,
+      ai as any,
+      gateway as any,
+      cloud as any,
+    );
+  });
 
-    it('stops a session whose user no longer exists', async () => {
-      withSessions('gone-user');
-      usersRepo.find.mockResolvedValue([]);
+  describe('sendMessage', () => {
+    it('sends through the caller own connected number', async () => {
+      const result = await service.sendMessage(
+        'user-1',
+        'company-1',
+        '971501234567',
+        'the keys are ready',
+      );
 
-      const dropped = await service.dropSessionsWithoutActiveSeat();
-
-      expect(dropped).toBe(1);
-      expect(manager.remove).toHaveBeenCalledWith('gone-user');
+      expect(connections.findOne).toHaveBeenCalledWith({
+        where: {
+          userId: 'user-1',
+          companyId: 'company-1',
+          status: 'connected',
+        },
+      });
+      expect(cloud.sendText).toHaveBeenCalledWith(
+        connection,
+        '971501234567',
+        'the keys are ready',
+      );
+      expect(result.id).toBe('wamid.op1');
+      expect(result.chatId).toBe('971501234567');
+      expect(result.body).toBe('the keys are ready');
     });
 
-    it('stops a session whose user is deactivated', async () => {
-      withSessions('active-user', 'inactive-user');
-      usersRepo.find.mockResolvedValue([{ id: 'active-user' }]);
+    it('marks the row outbound and human, never AI', async () => {
+      const before = Math.floor(Date.now() / 1000);
 
-      await service.dropSessionsWithoutActiveSeat();
+      const result = await service.sendMessage(
+        'user-1',
+        'company-1',
+        '971501234567',
+        'hi',
+      );
 
-      expect(manager.remove).toHaveBeenCalledTimes(1);
-      expect(manager.remove).toHaveBeenCalledWith('inactive-user');
+      expect(result.fromMe).toBe(true);
+      expect(result.aiGenerated).toBe(false);
+      expect(result.originUserId).toBe('user-1');
+      // Seconds, matching every other timestamp on the WhatsApp path.
+      expect(result.timestamp).toBeGreaterThanOrEqual(before);
+      expect(result.timestamp).toBeLessThan(before + 60);
     });
 
-    it('never erases the pairing: a wrong seat lookup must cost a restart, not a re-pair', async () => {
-      withSessions('a', 'b', 'c');
-      usersRepo.find.mockResolvedValue([]);
+    it('persists the real wamid with the connection phone number id', async () => {
+      await service.sendMessage('user-1', 'company-1', '971501234567', 'hi');
 
-      await service.dropSessionsWithoutActiveSeat();
-
-      expect(service.logout).not.toHaveBeenCalled();
-      expect(manager.remove).toHaveBeenCalledTimes(3);
+      expect(store.addMessage).toHaveBeenCalledWith(
+        'company-1',
+        'user-1',
+        expect.objectContaining({
+          id: 'wamid.op1',
+          chatId: '971501234567',
+          fromMe: true,
+          aiGenerated: false,
+        }),
+        'pnid-1',
+      );
     });
 
-    it('unwires the stopped session so a later reconnect does not double-register', async () => {
-      withSessions('gone-user');
-      usersRepo.find.mockResolvedValue([]);
-      (service as any).wiredUsers.add('gone-user');
-      (service as any).persistedCompanyIds.set('gone-user', 'co-1');
+    it('pushes the new message to the operator dashboards', async () => {
+      const result = await service.sendMessage(
+        'user-1',
+        'company-1',
+        '971501234567',
+        'hi',
+      );
 
-      await service.dropSessionsWithoutActiveSeat();
-
-      expect((service as any).wiredUsers.has('gone-user')).toBe(false);
-      expect((service as any).persistedCompanyIds.has('gone-user')).toBe(false);
-      expect(ai.clearUserState).toHaveBeenCalledWith('gone-user');
+      expect(gateway.emitMessage).toHaveBeenCalledWith('user-1', result);
     });
 
-    it('leaves a session belonging to an active seat alone', async () => {
-      withSessions('active-user');
-      usersRepo.find.mockResolvedValue([{ id: 'active-user' }]);
+    it('records the human takeover BEFORE the send goes out', async () => {
+      await service.sendMessage('user-1', 'company-1', '971501234567', 'hi');
 
-      const dropped = await service.dropSessionsWithoutActiveSeat();
-
-      expect(dropped).toBe(0);
-      expect(manager.remove).not.toHaveBeenCalled();
+      expect(ai.recordHumanReply).toHaveBeenCalledWith(
+        'user-1',
+        '971501234567',
+      );
+      expect(ai.recordHumanReply.mock.invocationCallOrder[0]).toBeLessThan(
+        cloud.sendText.mock.invocationCallOrder[0],
+      );
     });
 
-    it('filters on isActive, not just existence', async () => {
-      withSessions('u1');
-      usersRepo.find.mockResolvedValue([]);
+    it('never touches credits: the operator path is free by ruling', async () => {
+      await service.sendMessage('user-1', 'company-1', '971501234567', 'hi');
 
-      await service.dropSessionsWithoutActiveSeat();
-
-      expect(usersRepo.find.mock.calls[0][0].where.isActive).toBe(true);
+      expect(ai.getCreditUsage).not.toHaveBeenCalled();
+      expect(gateway.emitAi).not.toHaveBeenCalled();
     });
 
-    it('keeps going when one stop throws', async () => {
-      withSessions('a', 'b');
-      usersRepo.find.mockResolvedValue([]);
-      manager.remove
-        .mockRejectedValueOnce(new Error('socket gone'))
-        .mockResolvedValueOnce(undefined);
+    it('refuses with a 400 when the caller has no CONNECTED row', async () => {
+      connections.findOne.mockResolvedValue(null);
 
-      await service.dropSessionsWithoutActiveSeat();
+      await expect(
+        service.sendMessage('user-1', 'company-1', '971501234567', 'hi'),
+      ).rejects.toBeInstanceOf(BadRequestException);
 
-      expect(manager.remove).toHaveBeenCalledTimes(2);
+      expect(ai.recordHumanReply).not.toHaveBeenCalled();
+      expect(cloud.sendText).not.toHaveBeenCalled();
+      expect(store.addMessage).not.toHaveBeenCalled();
     });
 
-    it('does not query at all when nothing is running', async () => {
-      manager.getAll = () => new Map();
+    it('maps a send failure to a 502 without leaking the token or the Graph body', async () => {
+      cloud.sendText.mockRejectedValue(
+        new WhatsappSendError(
+          'Cloud API send failed 400: {"error":{"message":"bad token super-secret-token"}}',
+          400,
+          131042,
+        ),
+      );
 
-      const dropped = await service.dropSessionsWithoutActiveSeat();
+      const err = (await service
+        .sendMessage('user-1', 'company-1', '971501234567', 'hi')
+        .catch((e: unknown) => e)) as Error;
 
-      expect(dropped).toBe(0);
-      expect(usersRepo.find).not.toHaveBeenCalled();
+      expect(err).toBeInstanceOf(BadGatewayException);
+      expect(err.message).toBe(
+        'WhatsApp rejected the message (HTTP 400); it was not sent',
+      );
+      expect(err.message).not.toContain('super-secret-token');
+      expect(store.addMessage).not.toHaveBeenCalled();
+      expect(gateway.emitMessage).not.toHaveBeenCalled();
+    });
+
+    it('maps a transport failure with no HTTP status to a 502', async () => {
+      cloud.sendText.mockRejectedValue(
+        new WhatsappSendError('Cloud API send error: fetch failed'),
+      );
+
+      const err = (await service
+        .sendMessage('user-1', 'company-1', '971501234567', 'hi')
+        .catch((e: unknown) => e)) as Error;
+
+      expect(err).toBeInstanceOf(BadGatewayException);
+      expect(err.message).toBe(
+        'WhatsApp could not be reached; the message was not sent',
+      );
+    });
+
+    it('rethrows anything that is not a send failure untouched', async () => {
+      const boom = new Error('unexpected');
+      cloud.sendText.mockRejectedValue(boom);
+
+      await expect(
+        service.sendMessage('user-1', 'company-1', '971501234567', 'hi'),
+      ).rejects.toBe(boom);
+    });
+
+    it('still returns the delivered message when the store write fails', async () => {
+      jest
+        .spyOn((service as any).logger, 'error')
+        .mockImplementation(() => undefined);
+      store.addMessage.mockRejectedValue(new Error('db down'));
+
+      const result = await service.sendMessage(
+        'user-1',
+        'company-1',
+        '971501234567',
+        'hi',
+      );
+
+      // Meta already has it; reporting a failure here would only invite a duplicate.
+      expect(result.id).toBe('wamid.op1');
+      expect(gateway.emitMessage).toHaveBeenCalled();
     });
   });
 });

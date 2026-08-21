@@ -6,13 +6,26 @@ import { ResponseInterceptor } from './shared/interceptors/response.interceptor'
 import { MulterExceptionFilter } from './shared/filters/multer-exception.filter';
 import helmet from 'helmet';
 import { AppDataSource } from './data-source';
+import { RedisIoAdapter } from './shared/adapters/redis-io.adapter';
+import { RedisService } from './modules/redis/redis.service';
+import { NestExpressApplication } from '@nestjs/platform-express';
 
 async function bootstrap() {
   // Initialize TypeORM DataSource before NestJS app
   await AppDataSource.initialize();
   console.log('TypeORM DataSource initialized');
 
-  const app = await NestFactory.create(AppModule, { rawBody: true });
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
+    rawBody: true,
+  });
+
+  // Meta batches inbound webhooks; Express's 100kb JSON default would 413 them first.
+  app.useBodyParser('json', { limit: '2mb' });
+
+  // Cross-replica websocket delivery. Must be set before listen().
+  const ioAdapter = new RedisIoAdapter(app, app.get(RedisService));
+  ioAdapter.connect();
+  app.useWebSocketAdapter(ioAdapter);
 
   // Security headers
   app.use(helmet());

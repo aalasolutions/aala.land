@@ -3,7 +3,6 @@ import { DataSource } from 'typeorm';
 import { StrandedWhatsappRowsCron } from './stranded-whatsapp-rows.cron';
 import { UserReassignmentService } from './user-reassignment.service';
 import { MessageStoreService } from '../../whatsapp/message-store.service';
-import { WhatsappService } from '../../whatsapp/whatsapp.service';
 
 const COMPANY_ID = '068dfa72-9a27-4527-b3e4-a4251d7ed643';
 const GONE_USER = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
@@ -14,12 +13,10 @@ describe('StrandedWhatsappRowsCron', () => {
   let query: jest.Mock;
   let findOwnersNeedingRecovery: jest.Mock;
   let reassignWhatsappRows: jest.Mock;
-  let dropSessionsWithoutActiveSeat: jest.Mock;
 
   beforeEach(async () => {
     query = jest.fn().mockResolvedValue([{ id: ADMIN_USER }]);
     findOwnersNeedingRecovery = jest.fn().mockResolvedValue([]);
-    dropSessionsWithoutActiveSeat = jest.fn().mockResolvedValue(0);
     reassignWhatsappRows = jest.fn().mockResolvedValue({
       chats: 2,
       messages: 40,
@@ -32,10 +29,6 @@ describe('StrandedWhatsappRowsCron', () => {
         {
           provide: MessageStoreService,
           useValue: { findOwnersNeedingRecovery },
-        },
-        {
-          provide: WhatsappService,
-          useValue: { dropSessionsWithoutActiveSeat },
         },
         {
           provide: UserReassignmentService,
@@ -66,27 +59,6 @@ describe('StrandedWhatsappRowsCron', () => {
 
     expect(query).not.toHaveBeenCalled();
     expect(reassignWhatsappRows).not.toHaveBeenCalled();
-  });
-
-  it('kills sessions with no active seat even when no rows are stranded', async () => {
-    await cron.run();
-
-    expect(dropSessionsWithoutActiveSeat).toHaveBeenCalledTimes(1);
-  });
-
-  it('still recovers the rows when the session reconcile throws', async () => {
-    findOwnersNeedingRecovery.mockResolvedValue([
-      { companyId: COMPANY_ID, userId: GONE_USER },
-    ]);
-    dropSessionsWithoutActiveSeat.mockRejectedValue(new Error('socket gone'));
-
-    await cron.run();
-
-    expect(reassignWhatsappRows).toHaveBeenCalledWith(
-      COMPANY_ID,
-      GONE_USER,
-      ADMIN_USER,
-    );
   });
 
   it('accepts an ADMIN when the company has no active company_admin', async () => {

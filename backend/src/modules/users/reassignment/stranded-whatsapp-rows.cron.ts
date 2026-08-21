@@ -3,15 +3,13 @@ import { DataSource } from 'typeorm';
 import { Cron } from '@nestjs/schedule';
 import { Role } from '@shared/enums/roles.enum';
 import { MessageStoreService } from '../../whatsapp/message-store.service';
-import { WhatsappService } from '../../whatsapp/whatsapp.service';
 import { UserReassignmentService } from './user-reassignment.service';
 
 // Ordered: COMPANY_ADMIN preferred, ADMIN as fallback.
 const RECIPIENT_ROLES = [Role.COMPANY_ADMIN, Role.ADMIN];
 
 /**
- * Recovers both halves of a removal whose WhatsApp teardown failed: the live session that
- * should not still be connected, and the rows left on a user who is gone or deactivated.
+ * Recovers the rows left on a user who is gone or deactivated after a removal.
  * Nothing reads those rows, so the loss is otherwise silent.
  * Assumes a single scheduler instance, as the other crons do.
  */
@@ -23,23 +21,11 @@ export class StrandedWhatsappRowsCron {
   constructor(
     private readonly dataSource: DataSource,
     private readonly messageStore: MessageStoreService,
-    private readonly whatsapp: WhatsappService,
     private readonly reassignment: UserReassignmentService,
   ) {}
 
   @Cron('0 4 * * *')
   async run(): Promise<void> {
-    // The removal path logs and continues when logout fails, which would otherwise leave
-    // a removed seat receiving and spending AI credits until the next restart.
-    try {
-      await this.whatsapp.dropSessionsWithoutActiveSeat();
-    } catch (err) {
-      this.logger.error(
-        'Could not reconcile WhatsApp sessions against active seats',
-        err instanceof Error ? err.message : err,
-      );
-    }
-
     const stranded = await this.messageStore.findOwnersNeedingRecovery();
     if (stranded.length === 0) return;
 

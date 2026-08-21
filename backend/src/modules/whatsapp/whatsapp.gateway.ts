@@ -84,9 +84,6 @@ export class WhatsappGateway
   emitStatus(userId: string, data: any) {
     this.server?.to('user:' + userId).emit('whatsapp:status', data);
   }
-  emitQR(userId: string, data: any) {
-    this.server?.to('user:' + userId).emit('whatsapp:qr', data);
-  }
   emitMessage(userId: string, data: any) {
     this.server?.to('user:' + userId).emit('whatsapp:message', data);
   }

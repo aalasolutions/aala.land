@@ -28,13 +28,6 @@ export interface WaChat {
   lastFromMe: boolean;
 }
 
-export interface WaStatus {
-  connection: 'disconnected' | 'connecting' | 'connected';
-  hasCredentials: boolean;
-  me: { id: string; name: string } | null;
-  qr: string | null;
-}
-
 export interface AiCreditAgentUsage {
   userId: string;
   name: string;
@@ -60,4 +53,25 @@ export interface AiHistoryMessage {
   content: string | null;
   tool_call_id?: string;
   tool_calls?: any[];
+}
+
+export const WA_AI_DEBOUNCE_QUEUE = 'wa-ai-debounce';
+
+export interface DebounceJobData {
+  userId: string;
+  chatId: string;
+  companyId: string;
+  deadlineAt: number;
+}
+
+export interface DebouncedBuffer {
+  combinedText: string;
+  messageIds: string[];
+}
+
+export const WA_WEBHOOK_EVENTS_QUEUE = 'wa-webhook-events';
+
+export interface WaWebhookJobData {
+  // Parsed Meta envelope, signature already verified at the HTTP edge.
+  envelope: unknown;
 }

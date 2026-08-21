@@ -57,7 +57,7 @@ let reassignmentServiceMock: {
   reassignOwnedRecords: jest.Mock;
   reassignWhatsappRows: jest.Mock;
 };
-let whatsappServiceMock: { logout: jest.Mock };
+let whatsappServiceMock: { disconnect: jest.Mock };
 
 const emptyReport = {
   fromUserId: 'user-uuid-2',
@@ -213,7 +213,7 @@ describe('UsersService', () => {
       }),
     };
     whatsappServiceMock = {
-      logout: jest.fn().mockResolvedValue({ success: true }),
+      disconnect: jest.fn().mockResolvedValue({ success: true }),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -565,7 +565,7 @@ describe('UsersService', () => {
 
         await run();
 
-        expect(whatsappServiceMock.logout).toHaveBeenCalledWith(
+        expect(whatsappServiceMock.disconnect).toHaveBeenCalledWith(
           'user-uuid-2',
           companyId,
         );
@@ -575,8 +575,8 @@ describe('UsersService', () => {
     it('logs out before moving the rows, so no message can land after the move', async () => {
       primeRemovalLookups(proCompany);
       const order: string[] = [];
-      whatsappServiceMock.logout.mockImplementation(async () => {
-        order.push('logout');
+      whatsappServiceMock.disconnect.mockImplementation(async () => {
+        order.push('disconnect');
         return { success: true };
       });
       reassignmentServiceMock.reassignWhatsappRows.mockImplementation(
@@ -594,12 +594,12 @@ describe('UsersService', () => {
         removeDto,
       );
 
-      expect(order).toEqual(['logout', 'move']);
+      expect(order).toEqual(['disconnect', 'move']);
     });
 
-    it('still moves the rows when the logout fails', async () => {
+    it('still moves the rows when the disconnect fails', async () => {
       primeRemovalLookups(proCompany);
-      whatsappServiceMock.logout.mockRejectedValue(new Error('socket gone'));
+      whatsappServiceMock.disconnect.mockRejectedValue(new Error('socket gone'));
 
       await service.deactivateUser(
         'user-uuid-2',
@@ -844,7 +844,7 @@ describe('UsersService', () => {
         removeDto,
       );
 
-      expect(whatsappServiceMock.logout).toHaveBeenCalledWith(
+      expect(whatsappServiceMock.disconnect).toHaveBeenCalledWith(
         'user-uuid-2',
         companyId,
       );
