@@ -47,7 +47,9 @@ export class WhatsappConnection {
   })
   status: WhatsappConnectionStatus;
 
-  // AES-256-GCM ciphertext. Never read into a log, a response, or an error message.
+  // AES-256-GCM ciphertext, `v1.<iv>.<tag>.<ct>`. Never read into a log, a response, or an
+  // error message. WRITE CONTRACT: only ever assign `EncryptionService.encrypt(token)`.
+  // READ CONTRACT: only ever through `WhatsappCloudApiService.resolveAccessToken`.
   @Column({ name: 'access_token_ciphertext', type: 'text', nullable: true })
   accessTokenCiphertext: string | null;
 

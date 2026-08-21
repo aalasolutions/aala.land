@@ -9,6 +9,7 @@ import { MessageStoreService } from './message-store.service';
 import { WhatsappGateway } from './whatsapp.gateway';
 import { WhatsappAiService, SendFn, MarkReadFn } from './whatsapp-ai.service';
 import { WaMessage } from './wa-types';
+import { EncryptionService } from '../encryption/encryption.service';
 
 // Pinned on purpose: a version bump is a deliberate act, never a drift.
 const GRAPH_VERSION = 'v23.0';
@@ -41,11 +42,15 @@ export class WhatsappCloudApiService {
     private readonly store: MessageStoreService,
     private readonly gateway: WhatsappGateway,
     private readonly ai: WhatsappAiService,
+    private readonly encryption: EncryptionService,
   ) {}
 
-  // The single seam where Phase 6 AES-256-GCM token decryption lands.
+  // The single seam where a stored token becomes a bearer. Writers do the mirror image:
+  // `access_token_ciphertext` is only ever assigned from `EncryptionService.encrypt`.
+  // A dead key or a tampered row decrypts to null, which every caller already treats as
+  // "no token" and fails closed on, so the outcome is a refused send, not a crash.
   resolveAccessToken(connection: WhatsappConnection): string | null {
-    return connection.accessTokenCiphertext ?? null;
+    return this.encryption.decrypt(connection.accessTokenCiphertext);
   }
 
   async findConnected(userId: string): Promise<WhatsappConnection | null> {
@@ -269,7 +274,12 @@ export class WhatsappCloudApiService {
         timestamp: Math.floor(Date.now() / 1000),
         originUserId: userId,
       };
-      void this.persistOutbound(connection.companyId, userId, aiMsg);
+      void this.persistOutbound(
+        connection.companyId,
+        userId,
+        aiMsg,
+        connection.phoneNumberId,
+      );
       this.gateway.emitMessage(userId, aiMsg);
 
       // Only a newly opened window moves these numbers; reuse turns would requery
@@ -295,9 +305,10 @@ export class WhatsappCloudApiService {
     companyId: string,
     userId: string,
     msg: WaMessage,
+    phoneNumberId: string,
   ): Promise<void> {
     try {
-      await this.store.addMessage(companyId, userId, msg);
+      await this.store.addMessage(companyId, userId, msg, phoneNumberId);
     } catch (err) {
       this.logger.error(
         'Failed to persist outbound AI message',

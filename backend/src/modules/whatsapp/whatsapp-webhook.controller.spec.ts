@@ -109,7 +109,7 @@ describe('WhatsappWebhookController (HTTP)', () => {
     app = moduleRef.createNestApplication<NestExpressApplication>({
       rawBody: true,
     });
-    app.useBodyParser('json', { limit: '2mb' });
+    app.useBodyParser('json', { limit: '4mb' });
     app.useGlobalInterceptors(new ResponseInterceptor());
     app.useGlobalPipes(
       new ValidationPipe({
@@ -256,7 +256,7 @@ describe('WhatsappWebhookController (HTTP)', () => {
         .expect(500);
     });
 
-    // Over Express's 100kb default, under the 2mb limit main.ts sets. This also proves
+    // Over Express's 100kb default, under the 4mb limit main.ts sets (Meta documents 3MB payloads). This also proves
     // rawBody still populates after useBodyParser: without it the HMAC could not match.
     it('accepts a body far past the Express default and keeps the bytes intact', async () => {
       const raw = inboundBody('x'.repeat(400_000));
@@ -282,7 +282,7 @@ describe('WhatsappWebhookController (HTTP)', () => {
     });
 
     it('rejects a body past the configured limit rather than truncating it', async () => {
-      const raw = inboundBody('x'.repeat(3 * 1024 * 1024));
+      const raw = inboundBody('x'.repeat(5 * 1024 * 1024));
 
       await request(app.getHttpServer())
         .post('/whatsapp/webhook')

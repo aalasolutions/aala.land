@@ -470,7 +470,7 @@ export class UsersService {
       }
     });
 
-    await this.moveWhatsappRowsAfterRemoval(lockCompanyId, report);
+    await this.disconnectWhatsappAfterRemoval(lockCompanyId, report);
     return report;
   }
 
@@ -527,14 +527,13 @@ export class UsersService {
       }
     });
 
-    await this.moveWhatsappRowsAfterRemoval(lockCompanyId, report);
+    await this.disconnectWhatsappAfterRemoval(lockCompanyId, report);
     return report;
   }
 
-  // Runs after the removal commits, never inside the per-company advisory lock.
-  // Disconnect FIRST: a removed seat that stays connected keeps receiving, keeps writing
-  // rows, and keeps spending AI credits.
-  private async moveWhatsappRowsAfterRemoval(
+  // Runs after the removal commits, outside the per-company lock: the number is disconnected so the seat stops receiving and stops spending AI credits, and StrandedWhatsappRowsCron re-runs it if this fails.
+  // Chats, messages and AI conversation rows are deliberately left on the departing agent as the company record; the reassignee starts fresh from their own number.
+  private async disconnectWhatsappAfterRemoval(
     companyId: string | null,
     report: ReassignmentReport,
   ): Promise<void> {
@@ -544,18 +543,6 @@ export class UsersService {
     } catch (err) {
       this.logger.error(
         `WhatsApp session not torn down for removed user ${report.fromUserId} in company ${companyId}; it may keep receiving and spending AI credits`,
-        err instanceof Error ? err.message : err,
-      );
-    }
-    try {
-      await this.reassignmentService.reassignWhatsappRows(
-        companyId,
-        report.fromUserId,
-        report.toUserId,
-      );
-    } catch (err) {
-      this.logger.error(
-        `WhatsApp rows not moved for company ${companyId} from ${report.fromUserId} to ${report.toUserId}; re-run the move`,
         err instanceof Error ? err.message : err,
       );
     }
@@ -688,7 +675,7 @@ export class UsersService {
     // Same ordering as the other two removal paths: outside the lock, because
     // whatsapp_messages is unbounded.
     for (const report of result.reports) {
-      await this.moveWhatsappRowsAfterRemoval(companyId, report);
+      await this.disconnectWhatsappAfterRemoval(companyId, report);
     }
     return result;
   }

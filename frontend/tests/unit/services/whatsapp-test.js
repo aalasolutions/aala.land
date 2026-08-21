@@ -5,6 +5,48 @@ import Service from '@ember/service';
 module('Unit | Service | whatsapp', function (hooks) {
   setupTest(hooks);
 
+  test('getConnection reads /whatsapp/connection', async function (assert) {
+    let capturedPath;
+    this.owner.register(
+      'service:auth',
+      class extends Service {
+        token = 'test-token';
+        fetchJson(path) {
+          capturedPath = path;
+          return Promise.resolve({ success: true, data: null });
+        }
+      },
+    );
+
+    const service = this.owner.lookup('service:whatsapp');
+    const result = await service.getConnection();
+
+    assert.strictEqual(capturedPath, '/whatsapp/connection');
+    assert.deepEqual(result, { success: true, data: null });
+  });
+
+  test('getMessages encodes the chat id into the path', async function (assert) {
+    let capturedPath;
+    this.owner.register(
+      'service:auth',
+      class extends Service {
+        token = 'test-token';
+        fetchJson(path) {
+          capturedPath = path;
+          return Promise.resolve({ success: true, data: { messages: [] } });
+        }
+      },
+    );
+
+    const service = this.owner.lookup('service:whatsapp');
+    await service.getMessages('971500000001@s.whatsapp.net');
+
+    assert.strictEqual(
+      capturedPath,
+      '/whatsapp/messages/971500000001%40s.whatsapp.net',
+    );
+  });
+
   test('sendMessage posts chatId and body to /whatsapp/send', async function (assert) {
     let capturedPath;
     let capturedOptions;

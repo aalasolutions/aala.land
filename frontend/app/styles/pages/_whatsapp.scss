@@ -32,6 +32,44 @@
   border-block-end: 1px solid var(--border-base);
 }
 
+// ---- connection status ----
+
+// A strip rather than a sidebar card: it has to read on a page with no
+// connection and no chats, which is every local run today.
+.wa-connection {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: nu-space(2);
+  padding: nu-space(2) nu-space(6);
+  background: var(--bg-surface);
+  border-block-end: 1px solid var(--border-base);
+}
+
+.wa-connection__text {
+  display: flex;
+  flex: 1;
+  min-inline-size: 0;
+  align-items: baseline;
+  gap: nu-space(2);
+  flex-wrap: wrap;
+}
+
+.wa-connection__label {
+  font-size: nu-font-size(sm);
+  font-weight: nu-font-weight(medium);
+  color: var(--text-color);
+}
+
+.wa-connection__detail {
+  font-size: nu-font-size(xs);
+  color: var(--text-muted);
+}
+
+.wa-connection__cta {
+  flex-shrink: 0;
+}
+
 .wa-page {
   display: flex;
   flex: 1;
@@ -210,6 +248,41 @@
   }
 }
 
+// A revoked message keeps its slot in the thread; it must not read as a normal
+// bubble, so it drops the fill and goes italic in muted text on both sides.
+.wa-bubble.is-deleted {
+  display: flex;
+  align-items: center;
+  gap: nu-space(1);
+  background: transparent;
+  border: 1px dashed var(--border-base);
+  color: var(--text-muted);
+  font-style: italic;
+
+  .m-outgoing & {
+    background: transparent;
+    color: var(--text-muted);
+  }
+}
+
+.wa-edited {
+  font-style: italic;
+}
+
+.wa-tick {
+  display: inline-flex;
+  align-items: center;
+  line-height: 1;
+
+  &.is-read {
+    color: var(--info);
+  }
+
+  &.is-failed {
+    color: var(--danger);
+  }
+}
+
 .wa-sender-tag {
   margin-block-end: nu-space(1);
   padding-inline: nu-space(1);
@@ -237,6 +310,29 @@
   padding: nu-space(3) nu-space(4);
   background: var(--bg-surface);
   border-block-start: 1px solid var(--border-base);
+}
+
+// Sits above the composer on purpose: the state has to be read before typing,
+// not discovered after a send is refused.
+.wa-window {
+  display: flex;
+  align-items: center;
+  gap: nu-space(1);
+  margin-block-end: nu-space(2);
+  font-size: nu-font-size(2xs);
+  color: var(--text-muted);
+
+  &.is-open {
+    color: var(--success);
+  }
+
+  &.is-closed {
+    color: var(--warning);
+  }
+}
+
+.wa-window__detail {
+  color: var(--text-muted);
 }
 
 .wa-input-row {

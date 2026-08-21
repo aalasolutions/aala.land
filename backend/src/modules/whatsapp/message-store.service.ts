@@ -43,6 +43,13 @@ export class MessageStoreService {
     private readonly chats: Repository<WhatsappChat>,
   ) {}
 
+  // timestamptz reads back as a Date; the wire format on this module is epoch seconds.
+  private toEpochSeconds(value: Date | null | undefined): number | null {
+    if (!value) return null;
+    const ms = value instanceof Date ? value.getTime() : Date.parse(String(value));
+    return Number.isFinite(ms) ? Math.floor(ms / 1000) : null;
+  }
+
   private toWaMessage(row: WhatsappMessage): WaMessage {
     return {
       id: row.waMessageId,
@@ -61,6 +68,12 @@ export class MessageStoreService {
       aiGenerated: row.aiGenerated,
       timestamp: Number(row.timestamp),
       originUserId: row.originUserId ?? row.userId,
+      status: row.status ?? null,
+      statusAt: this.toEpochSeconds(row.statusAt),
+      errorCode: row.errorCode ?? null,
+      editedAt: this.toEpochSeconds(row.editedAt),
+      // Deliberately not filtered out of the read: the UI renders a deleted stub.
+      deletedAt: this.toEpochSeconds(row.deletedAt),
     };
   }
 
@@ -302,6 +315,7 @@ export class MessageStoreService {
       lastBody: c.lastBody,
       lastTs: Number(c.lastTs),
       lastFromMe: c.lastFromMe,
+      lastInboundAt: this.toEpochSeconds(c.lastInboundAt),
     }));
   }
 

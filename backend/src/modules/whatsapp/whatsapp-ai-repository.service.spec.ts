@@ -42,12 +42,18 @@ const makeRepos = () => {
     save: jest.fn().mockResolvedValue({ id: 'conv-1' }),
     delete: jest.fn().mockResolvedValue(undefined),
   };
+  const txChatRepo = {
+    findOne: jest.fn().mockResolvedValue(null),
+  };
   const managerQuery = jest.fn().mockResolvedValue([]);
   const transaction = jest.fn((cb: any) =>
     cb({
       query: managerQuery,
-      getRepository: (entity: any) =>
-        entity?.name === 'AiCreditUsage' ? txUsageRepo : txConversationRepo,
+      getRepository: (entity: any) => {
+        if (entity?.name === 'AiCreditUsage') return txUsageRepo;
+        if (entity?.name === 'WhatsappChat') return txChatRepo;
+        return txConversationRepo;
+      },
     }),
   );
 
@@ -79,6 +85,7 @@ const makeRepos = () => {
     conversationQb,
     txUsageRepo,
     txConversationRepo,
+    txChatRepo,
     managerQuery,
   };
 };
@@ -343,6 +350,35 @@ describe('WhatsappAiRepositoryService', () => {
     it('throws when the counter row is missing after the upsert', async () => {
       repos.usageQb.getOne.mockResolvedValue(null);
       await expect(consume()).rejects.toThrow('ai_credit_usage row missing');
+    });
+
+    it('writes the connected number onto a new window when the chat row has one', async () => {
+      repos.usageQb.getOne.mockResolvedValue({ creditsUsed: 0 });
+      repos.conversationQb.getOne.mockResolvedValue(null);
+      repos.txChatRepo.findOne.mockResolvedValue({ phoneNumberId: 'pn-1' });
+
+      await consume();
+
+      expect(repos.txChatRepo.findOne).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { companyId: 'c1', userId: 'u1', chatId: 'chat1' },
+        }),
+      );
+      expect(repos.txConversationRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ phoneNumberId: 'pn-1' }),
+      );
+    });
+
+    it('leaves phone_number_id null when the chat row is not found', async () => {
+      repos.usageQb.getOne.mockResolvedValue({ creditsUsed: 0 });
+      repos.conversationQb.getOne.mockResolvedValue(null);
+      repos.txChatRepo.findOne.mockResolvedValue(null);
+
+      await consume();
+
+      expect(repos.txConversationRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ phoneNumberId: null }),
+      );
     });
   });
 

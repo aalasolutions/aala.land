@@ -28,6 +28,16 @@ import { AuthenticatedRequest } from '@shared/interfaces/authenticated-request.i
 export class WhatsappController {
   constructor(private readonly wa: WhatsappService) {}
 
+  // ── Connection ────────────────────────────────────────────────────────
+
+  @Get('connection')
+  @ApiOperation({
+    summary: "The caller's own connected number, or null when none exists",
+  })
+  getConnection(@Request() req: AuthenticatedRequest) {
+    return this.wa.getConnection(req.user.userId, req.user.companyId!);
+  }
+
   // ── Chats / Messages ──────────────────────────────────────────────────
 
   @Get('chats')

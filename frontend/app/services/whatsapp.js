@@ -34,6 +34,9 @@ export default class WhatsappService extends Service {
     }
   }
 
+  getConnection() {
+    return this.auth.fetchJson('/whatsapp/connection');
+  }
   getChats() {
     return this.auth.fetchJson('/whatsapp/chats');
   }

@@ -22,6 +22,7 @@ import {
   AiCreditUsageWithAgents,
   AiHistoryMessage,
   WaChat,
+  WaConnectionInfo,
   WaMessage,
 } from './wa-types';
 
@@ -39,6 +40,24 @@ export class WhatsappService {
   ) {}
 
   // ── Connection ────────────────────────────────────────────────────────
+
+  // Field-by-field on purpose: accessTokenCiphertext must never reach a response.
+  async getConnection(
+    userId: string,
+    companyId: string,
+  ): Promise<WaConnectionInfo | null> {
+    const row = await this.connections.findOne({ where: { userId, companyId } });
+    if (!row) return null;
+    return {
+      status: row.status,
+      displayPhoneNumber: row.displayPhoneNumber,
+      connectedAt: row.connectedAt ? row.connectedAt.toISOString() : null,
+      disconnectedAt: row.disconnectedAt
+        ? row.disconnectedAt.toISOString()
+        : null,
+      disconnectReason: row.disconnectReason ?? null,
+    };
+  }
 
   async disconnect(
     userId: string,

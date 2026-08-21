@@ -26,6 +26,7 @@ import { BillingHistory } from '../billing/entities/billing-history.entity';
 import { EmailModule } from '../email/email.module';
 import { BillingModule } from '../billing/billing.module';
 import { RedisModule } from '../redis/redis.module';
+import { EncryptionModule } from '../encryption/encryption.module';
 import { WhatsappBillingListener } from './whatsapp-billing.listener';
 import { AiConversationRetentionCron } from './ai-conversation-retention.cron';
 import { WhatsappAiDebounceProcessor } from './whatsapp-ai-debounce.processor';
@@ -38,6 +39,7 @@ import { WA_AI_DEBOUNCE_QUEUE, WA_WEBHOOK_EVENTS_QUEUE } from './wa-types';
     EmailModule,
     BillingModule,
     RedisModule,
+    EncryptionModule,
     BullModule.registerQueue({
       name: WA_AI_DEBOUNCE_QUEUE,
       defaultJobOptions: {

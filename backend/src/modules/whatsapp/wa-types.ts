@@ -1,4 +1,6 @@
 // backend/src/modules/whatsapp/wa-types.ts
+import { WhatsappConnectionStatus } from './entities/whatsapp-connection.entity';
+import { WhatsappMessageStatus } from './entities/whatsapp-message.entity';
 
 export interface WaMessage {
   id: string;
@@ -17,6 +19,14 @@ export interface WaMessage {
   aiGenerated: boolean;
   timestamp: number;
   originUserId?: string;
+  // Outbound only. Inbound rows carry no delivery status.
+  status?: WhatsappMessageStatus | null;
+  // Epoch SECONDS, like timestamp above, not an ISO string.
+  statusAt?: number | null;
+  errorCode?: string | null;
+  editedAt?: number | null;
+  // Set means Meta revoked the message; the row and its stub are still returned.
+  deletedAt?: number | null;
 }
 
 export interface WaChat {
@@ -26,6 +36,18 @@ export interface WaChat {
   lastBody: string;
   lastTs: number;
   lastFromMe: boolean;
+  // Epoch SECONDS of the last inbound customer message, or null when the
+  // customer has never written. Meta's 24h reply window is measured from here.
+  lastInboundAt: number | null;
+}
+
+// The caller's own connected number. Never carries the access token.
+export interface WaConnectionInfo {
+  status: WhatsappConnectionStatus;
+  displayPhoneNumber: string;
+  connectedAt: string | null;
+  disconnectedAt: string | null;
+  disconnectReason: string | null;
 }
 
 export interface AiCreditAgentUsage {

@@ -502,6 +502,108 @@ describe('MessageStoreService', () => {
       });
       expect(list[0].lastTs).toBe(200);
     });
+
+    it('getChatList carries lastInboundAt as epoch seconds so the client can size the reply window', async () => {
+      chatsRepo.find.mockResolvedValue([
+        {
+          chatId: 'chat-a',
+          chatName: 'Ahmed',
+          isGroup: false,
+          lastBody: 'hi',
+          lastTs: '200',
+          lastFromMe: false,
+          lastInboundAt: new Date('2026-08-21T10:00:00.000Z'),
+        },
+      ]);
+
+      const list = await service.getChatList('co-1', 'user-a');
+
+      expect(list[0].lastInboundAt).toBe(
+        Math.floor(Date.parse('2026-08-21T10:00:00.000Z') / 1000),
+      );
+    });
+
+    it('getChatList reports a chat the customer never wrote in as null, not zero', async () => {
+      chatsRepo.find.mockResolvedValue([
+        {
+          chatId: 'chat-a',
+          chatName: 'Ahmed',
+          isGroup: false,
+          lastBody: 'hi',
+          lastTs: '200',
+          lastFromMe: true,
+          lastInboundAt: null,
+        },
+      ]);
+
+      const list = await service.getChatList('co-1', 'user-a');
+
+      expect(list[0].lastInboundAt).toBeNull();
+    });
+
+    it('carries the delivery status, its timestamp and the error code onto the payload', async () => {
+      messagesRepo.find.mockResolvedValue([
+        makeRow({
+          fromMe: true,
+          status: WhatsappMessageStatus.FAILED,
+          statusAt: new Date('2026-08-21T10:00:00.000Z'),
+          errorCode: '131047',
+        }),
+      ]);
+
+      const out = await service.getMessagesForChat('co-1', 'user-a', 'chat-a');
+
+      expect(out[0].status).toBe('failed');
+      expect(out[0].statusAt).toBe(
+        Math.floor(Date.parse('2026-08-21T10:00:00.000Z') / 1000),
+      );
+      expect(out[0].errorCode).toBe('131047');
+    });
+
+    it('reports an inbound row with a null status rather than inventing one', async () => {
+      messagesRepo.find.mockResolvedValue([makeRow({ fromMe: false })]);
+
+      const out = await service.getMessagesForChat('co-1', 'user-a', 'chat-a');
+
+      expect(out[0].status).toBeNull();
+      expect(out[0].statusAt).toBeNull();
+      expect(out[0].errorCode).toBeNull();
+    });
+
+    it('carries editedAt and deletedAt so the client can mark the bubble', async () => {
+      messagesRepo.find.mockResolvedValue([
+        makeRow({
+          editedAt: new Date('2026-08-21T11:00:00.000Z'),
+          deletedAt: new Date('2026-08-21T12:00:00.000Z'),
+        }),
+      ]);
+
+      const out = await service.getMessagesForChat('co-1', 'user-a', 'chat-a');
+
+      expect(out[0].editedAt).toBe(
+        Math.floor(Date.parse('2026-08-21T11:00:00.000Z') / 1000),
+      );
+      expect(out[0].deletedAt).toBe(
+        Math.floor(Date.parse('2026-08-21T12:00:00.000Z') / 1000),
+      );
+    });
+
+    it('still returns a deleted message: the client renders a stub, it is not hidden here', async () => {
+      messagesRepo.find.mockResolvedValue([
+        makeRow({ waMessageId: 'gone', deletedAt: new Date() }),
+        makeRow({ waMessageId: 'kept', timestamp: '1700000001' }),
+      ]);
+
+      const out = await service.getMessagesForChat('co-1', 'user-a', 'chat-a');
+
+      expect(out.map((m) => m.id)).toEqual(['kept', 'gone']);
+      // No deletedAt predicate is sent to the database either.
+      expect(messagesRepo.find.mock.calls[0][0].where).toEqual({
+        companyId: 'co-1',
+        userId: 'user-a',
+        chatId: 'chat-a',
+      });
+    });
   });
 
   describe('findOwnersNeedingRecovery', () => {

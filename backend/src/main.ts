@@ -20,7 +20,7 @@ async function bootstrap() {
   });
 
   // Meta batches inbound webhooks; Express's 100kb JSON default would 413 them first.
-  app.useBodyParser('json', { limit: '2mb' });
+  app.useBodyParser('json', { limit: '4mb' });
 
   // Cross-replica websocket delivery. Must be set before listen().
   const ioAdapter = new RedisIoAdapter(app, app.get(RedisService));
@@ -38,6 +38,8 @@ async function bootstrap() {
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true,
+    // Cache preflights: the browser default (5s) expires between 3s poll ticks and doubles request volume
+    maxAge: 86400,
   });
 
   // Global prefix

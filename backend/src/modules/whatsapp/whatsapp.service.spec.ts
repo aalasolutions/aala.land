@@ -43,6 +43,71 @@ describe('WhatsappService', () => {
     );
   });
 
+  describe('getConnection', () => {
+    it('scopes the lookup to the caller and their company', async () => {
+      await service.getConnection('user-1', 'company-1');
+
+      expect(connections.findOne).toHaveBeenCalledWith({
+        where: { userId: 'user-1', companyId: 'company-1' },
+      });
+    });
+
+    it('returns null when the caller has no row, rather than an empty shell', async () => {
+      connections.findOne.mockResolvedValue(null);
+
+      await expect(
+        service.getConnection('user-1', 'company-1'),
+      ).resolves.toBeNull();
+    });
+
+    it('never exposes the access token ciphertext', async () => {
+      const result = await service.getConnection('user-1', 'company-1');
+
+      expect(result).not.toHaveProperty('accessTokenCiphertext');
+      expect(JSON.stringify(result)).not.toContain('super-secret-token');
+    });
+
+    it('serialises the lifecycle dates as ISO strings and passes the reason through', async () => {
+      connections.findOne.mockResolvedValue({
+        ...connection,
+        status: 'disconnected',
+        connectedAt: new Date('2026-08-01T10:00:00.000Z'),
+        disconnectedAt: new Date('2026-08-05T09:30:00.000Z'),
+        disconnectReason: 'PARTNER_REMOVED',
+      });
+
+      const result = await service.getConnection('user-1', 'company-1');
+
+      expect(result).toEqual({
+        status: 'disconnected',
+        displayPhoneNumber: '+971500000000',
+        connectedAt: '2026-08-01T10:00:00.000Z',
+        disconnectedAt: '2026-08-05T09:30:00.000Z',
+        disconnectReason: 'PARTNER_REMOVED',
+      });
+    });
+
+    it('reports a pending row with null dates instead of failing on them', async () => {
+      connections.findOne.mockResolvedValue({
+        ...connection,
+        status: 'pending',
+        connectedAt: null,
+        disconnectedAt: null,
+        disconnectReason: null,
+      });
+
+      const result = await service.getConnection('user-1', 'company-1');
+
+      expect(result).toEqual({
+        status: 'pending',
+        displayPhoneNumber: '+971500000000',
+        connectedAt: null,
+        disconnectedAt: null,
+        disconnectReason: null,
+      });
+    });
+  });
+
   describe('sendMessage', () => {
     it('sends through the caller own connected number', async () => {
       const result = await service.sendMessage(

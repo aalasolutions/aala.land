@@ -1,17 +1,15 @@
+import { randomBytes } from 'crypto';
 import {
   WhatsappCloudApiService,
   WhatsappSendError,
 } from './whatsapp-cloud-api.service';
 import { WhatsappConnection } from './entities/whatsapp-connection.entity';
+import { EncryptionService } from '../encryption/encryption.service';
 
-const connection = {
-  id: 'conn-1',
-  companyId: 'company-1',
-  userId: 'user-1',
-  phoneNumberId: 'pnid-1',
-  displayPhoneNumber: '+1111111111',
-  accessTokenCiphertext: 'token-1',
-} as WhatsappConnection;
+const KEY_ENV = 'WHATSAPP_TOKEN_ENC_KEY';
+
+// Real encryption, not a mock: the seam is only proven if a real ciphertext round-trips.
+let connection: WhatsappConnection;
 
 const graphError = (status: number, code: number, message: string) => ({
   ok: false,
@@ -28,9 +26,22 @@ describe('WhatsappCloudApiService', () => {
   let store: { addMessage: jest.Mock };
   let gateway: { emitMessage: jest.Mock; emitAi: jest.Mock };
   let ai: { getCreditUsage: jest.Mock };
+  let encryption: EncryptionService;
   let fetchMock: jest.Mock;
+  let originalKey: string | undefined;
 
   beforeEach(() => {
+    originalKey = process.env[KEY_ENV];
+    process.env[KEY_ENV] = randomBytes(32).toString('base64');
+    encryption = new EncryptionService();
+    connection = {
+      id: 'conn-1',
+      companyId: 'company-1',
+      userId: 'user-1',
+      phoneNumberId: 'pnid-1',
+      displayPhoneNumber: '+1111111111',
+      accessTokenCiphertext: encryption.encrypt('token-1'),
+    } as WhatsappConnection;
     connections = {
       findOne: jest.fn(),
       update: jest.fn().mockResolvedValue({ affected: 1 }),
@@ -45,12 +56,71 @@ describe('WhatsappCloudApiService', () => {
       store as any,
       gateway as any,
       ai as any,
+      encryption,
     );
   });
 
   afterEach(() => {
     jest.restoreAllMocks();
     delete process.env.WHATSAPP_SEND_TIMEOUT_MS;
+    if (originalKey === undefined) delete process.env[KEY_ENV];
+    else process.env[KEY_ENV] = originalKey;
+  });
+
+  describe('resolveAccessToken', () => {
+    it('decrypts the stored ciphertext back into the bearer token', () => {
+      expect(service.resolveAccessToken(connection)).toBe('token-1');
+      expect(connection.accessTokenCiphertext).not.toContain('token-1');
+    });
+
+    it('returns null for a row that has no token', () => {
+      expect(
+        service.resolveAccessToken({
+          ...connection,
+          accessTokenCiphertext: null,
+        }),
+      ).toBeNull();
+    });
+
+    it('returns null instead of throwing for a garbage or tampered ciphertext', () => {
+      jest
+        .spyOn((encryption as any).logger, 'error')
+        .mockImplementation(() => undefined);
+
+      expect(
+        service.resolveAccessToken({
+          ...connection,
+          accessTokenCiphertext: 'not-a-ciphertext',
+        }),
+      ).toBeNull();
+
+      const parts = connection.accessTokenCiphertext!.split('.');
+      const body = Buffer.from(parts[3], 'base64');
+      body[0] ^= 0xff;
+      parts[3] = body.toString('base64');
+      expect(
+        service.resolveAccessToken({
+          ...connection,
+          accessTokenCiphertext: parts.join('.'),
+        }),
+      ).toBeNull();
+    });
+
+    it('refuses the send when the encryption key is gone, and never throws out of decrypt', async () => {
+      jest
+        .spyOn((encryption as any).logger, 'error')
+        .mockImplementation(() => undefined);
+      jest
+        .spyOn((service as any).logger, 'error')
+        .mockImplementation(() => undefined);
+      delete process.env[KEY_ENV];
+
+      expect(service.resolveAccessToken(connection)).toBeNull();
+      await expect(
+        service.sendText(connection, '+923001234567', 'hello'),
+      ).rejects.toBeInstanceOf(WhatsappSendError);
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
   });
 
   describe('sendText', () => {
@@ -341,6 +411,7 @@ describe('WhatsappCloudApiService', () => {
       expect(connections.findOne).toHaveBeenCalledWith({
         where: { userId: 'user-1', status: 'connected' },
       });
+      // The AI row carries the same phone_number_id the operator path already stamps.
       expect(store.addMessage).toHaveBeenCalledWith(
         'company-1',
         'user-1',
@@ -350,6 +421,7 @@ describe('WhatsappCloudApiService', () => {
           fromMe: true,
           aiGenerated: true,
         }),
+        'pnid-1',
       );
       expect(gateway.emitMessage).toHaveBeenCalledWith(
         'user-1',

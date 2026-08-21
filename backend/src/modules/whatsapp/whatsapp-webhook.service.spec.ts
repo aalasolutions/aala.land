@@ -344,6 +344,55 @@ describe('WhatsappWebhookService', () => {
     });
   });
 
+  // Phase 7: once a departing agent's number is disconnected, nothing it receives may
+  // reach the AI, because a turn is what consumes a credit.
+  describe('a disconnected agent cannot start an AI turn', () => {
+    beforeEach(() => {
+      // Behaves like the real lookup: the row is only returned when it is CONNECTED.
+      const row = connectionRow();
+      row.status = WhatsappConnectionStatus.DISCONNECTED;
+      row.disconnectedAt = new Date();
+      repo.findOne.mockImplementation(
+        async (options: {
+          where: { phoneNumberId: string; status: WhatsappConnectionStatus };
+        }) =>
+          options.where.phoneNumberId === row.phoneNumberId &&
+          options.where.status === row.status
+            ? row
+            : null,
+      );
+    });
+
+    it('never dispatches, persists, or pushes the inbound message', async () => {
+      await expect(
+        service.processEnvelope(inboundEnvelope()),
+      ).resolves.toBeUndefined();
+
+      expect(ai.handleIncomingMessage).not.toHaveBeenCalled();
+      expect(store.addMessage).not.toHaveBeenCalled();
+      expect(gateway.emitMessage).not.toHaveBeenCalled();
+    });
+
+    it('pins the routing lookup to CONNECTED, which is what excludes the row', async () => {
+      await service.processEnvelope(inboundEnvelope());
+
+      expect(repo.findOne).toHaveBeenCalledWith({
+        where: {
+          phoneNumberId: 'phone-1',
+          status: WhatsappConnectionStatus.CONNECTED,
+        },
+      });
+    });
+
+    it('drops the delivery statuses of that number too', async () => {
+      await expect(
+        service.processEnvelope(statusEnvelope()),
+      ).resolves.toBeUndefined();
+
+      expect(store.applyMessageStatus).not.toHaveBeenCalled();
+    });
+  });
+
   describe('redelivery', () => {
     it('does not emit or dispatch a message the store already held', async () => {
       store.addMessage.mockResolvedValue(false);

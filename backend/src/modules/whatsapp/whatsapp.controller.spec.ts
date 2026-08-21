@@ -21,6 +21,7 @@ describe('WhatsappController', () => {
         {
           provide: WhatsappService,
           useValue: {
+            getConnection: jest.fn(),
             getChats: jest.fn(),
             getAllMessages: jest.fn(),
             getMessagesForChat: jest.fn(),
@@ -36,6 +37,39 @@ describe('WhatsappController', () => {
 
     controller = module.get(WhatsappController);
     wa = module.get(WhatsappService);
+  });
+
+  describe('GET connection', () => {
+    it('reads the caller own row, never a companyId from the query', async () => {
+      const info = {
+        status: 'connected',
+        displayPhoneNumber: '+971500000000',
+        connectedAt: '2026-08-01T00:00:00.000Z',
+        disconnectedAt: null,
+        disconnectReason: null,
+      };
+      wa.getConnection.mockResolvedValue(info as any);
+
+      const result = await controller.getConnection(makeReq('u1', 'c1'));
+
+      expect(wa.getConnection).toHaveBeenCalledWith('u1', 'c1');
+      expect(result).toBe(info);
+    });
+
+    it('returns null when the caller has never connected a number', async () => {
+      wa.getConnection.mockResolvedValue(null);
+
+      await expect(
+        controller.getConnection(makeReq('u1', 'c1')),
+      ).resolves.toBeNull();
+    });
+
+    it('is open to every operator role, not admin only', () => {
+      const reflector = new Reflector();
+      expect(
+        reflector.get<Role[]>('roles', controller.getConnection),
+      ).toBeUndefined();
+    });
   });
 
   describe('POST send', () => {
