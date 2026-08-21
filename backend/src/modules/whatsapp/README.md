@@ -1,0 +1,33 @@
+# WhatsApp Module
+
+WhatsApp messaging over the official Meta Cloud API with Coexistence (agents keep their own number and their WhatsApp Business app; the platform mirrors and automates through the API). Meta partner model: Tech Provider, no BSP. Clients hold their own WABA and pay Meta directly.
+
+This module was migrated from an unofficial transport (Baileys) to the Cloud API. The migration is deliberately phased around two external gates that no code can remove: creating a Meta app (unlocks the free test number) and Meta approval of Business Verification plus App Review (unlocks Embedded Signup and the Coexistence webhooks). Anything listed as deferred below is scheduled behind one of those gates or behind a recorded product decision. It is scoped work, not missing work.
+
+## Implemented and test-covered
+
+- **Inbound webhook** (`whatsapp-webhook.controller.ts`, `whatsapp-webhook.service.ts`, `whatsapp-webhook.processor.ts`): Meta verification handshake (raw `hub.challenge` echo, bypassing the app-wide response envelope), `X-Hub-Signature-256` HMAC over the raw body with timing-safe compare, fail-closed when secrets are unset. Fast-ack design: the request thread validates, enqueues the envelope on a BullMQ queue, and returns 200; a processor does all persistence and dispatch, so Meta retries (documented up to 7 days, with documented duplicate deliveries) are absorbed by wamid deduplication rather than producing duplicate AI turns.
+- **Message storage** (`message-store.service.ts`): unique-index dedupe on the Meta message id, delivery status persistence with a forward-only rank ladder (Meta documents that `delivered` can be skipped when a message is read in-chat), reply-window clock (`whatsapp_chats.last_inbound_at`), edit and soft-delete columns.
+- **Outbound transport** (`whatsapp-cloud-api.service.ts`): Graph API send pinned to one version constant, per-connection bearer token decrypted through `EncryptionService` (AES-256-GCM, no plaintext storage path exists), failures throw typed `WhatsappSendError` so an undelivered reply is never recorded as delivered, token-invalid responses (HTTP 401 or Graph code 190) flag the connection row. Mark-as-read with the typing-indicator rider (the Cloud API has no standalone typing call).
+- **Operator send path** (`whatsapp.service.ts`, `POST /whatsapp/send`): human takeover cancels any queued AI turn before sending; no AI credit is involved on this path.
+- **AI pipeline** (`whatsapp-ai.service.ts`, `whatsapp-ai-debounce.processor.ts`): per-chat debounce as delayed BullMQ jobs (survives replica restarts), Redis-backed conversation state and distributed per-chat locks (multi-replica safe), credit charging before the LLM call with no refund path by design, buffered messages survive a failed turn.
+- **Frontend surface**: connection status, reply-window indicator, edited and deleted rendering, delivery ticks, composer.
+
+Backend suite at the time of writing: 78 suites, 1299 tests, green. The webhook controller is additionally covered by HTTP-level tests through the real Nest pipeline (raw body, global interceptor, validation pipe), because the transport contract lives at that layer.
+
+A documentation-conformance audit was performed against the official Meta developer documentation for every wire-format assumption in this module (handshake, signature, envelope shapes, status values and ordering, send payload and response, error codes, typing rider, retry semantics). Findings were folded back into the code. No live Meta traffic has been exercised yet; that requires a Meta app, which is in progress externally.
+
+## Scope boundaries
+
+| Area | State | Gate |
+| --- | --- | --- |
+| Connection creation (`whatsapp_connections` rows) | Table, entity, and every read path exist; rows are created by Embedded Signup | Meta approval. Embedded Signup returns a 30-second exchangeable token code; the exchange and row insert are that phase's work. An operator onboarding endpoint for the free test number is scheduled as the first step once the Meta app exists |
+| Inbound media (image, audio, document) | Text messages only; other types are skipped explicitly | Meta app (media flows must be built against real media ids, which expire server-side) |
+| Coexistence sync (`smb_message_echoes`, 180-day history, contact sync, `account_update` lifecycle) | Webhook field names verified current; handlers not yet built | Meta approval (these webhooks cannot fire at all before it) |
+| Live status push to the dashboard (`emitStatus`) | Status persistence is implemented; the socket push is not | Scheduled with the connection lifecycle work; `whatsapp.gateway.ts` keeps the emitter for it |
+| Reply-window enforcement and template messages | Window state is stored and displayed; sends outside the window are rejected by Meta and surfaced as failed sends | Product decision on template usage (template sends cost the client money per message) |
+| Send retry and rate-limit backoff (Graph code 130429) | Single attempt, typed failure, no backoff | Revisit at volume; current throughput ceilings make it a non-issue for 1:1 conversations |
+
+## Local development
+
+The webhook rejects all traffic with 403 until `WHATSAPP_VERIFY_TOKEN` and `WHATSAPP_APP_SECRET` are set. `WHATSAPP_TOKEN_ENC_KEY` (32 bytes base64) is required before any access token can be stored; without it, writes refuse rather than storing plaintext. `WHATSAPP_SEND_TIMEOUT_MS` is optional (default 15000). See `.env.example`.
