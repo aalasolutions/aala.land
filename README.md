@@ -160,6 +160,7 @@ REDIS_PORT=6470
 WHATSAPP_VERIFY_TOKEN=your-webhook-verify-token   # echoed handshake token you configure in the Meta App Dashboard
 WHATSAPP_APP_SECRET=your-meta-app-secret          # validates X-Hub-Signature-256 on incoming webhooks
 # WHATSAPP_SEND_TIMEOUT_MS=15000                  # Cloud API send timeout, default 15000
+WHATSAPP_TOKEN_ENC_KEY=generate-me                # 32 bytes base64 (openssl rand -base64 32); encrypts stored access tokens, writes refuse without it
 AWS_ACCESS_KEY_ID=your-media-key      # key scoped to the media (public) bucket only
 AWS_SECRET_ACCESS_KEY=your-media-secret
 AWS_S3_BUCKET=aala-land-media         # public: property photos/thumbnails
