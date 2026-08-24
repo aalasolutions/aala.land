@@ -99,7 +99,7 @@ export default class WhatsappController extends Controller {
   }
 
   get composerDisabled() {
-    return !this.currentChatId || this.isSending;
+    return !this.currentChatId || this.isSending || !this.isConnected;
   }
 
   get currentChatMessages() {
@@ -115,9 +115,7 @@ export default class WhatsappController extends Controller {
   }
 
   get currentChatName() {
-    return (
-      this.currentChat?.chatName ?? this.currentChatId?.split('@')[0] ?? ''
-    );
+    return this.currentChat?.chatName ?? this.currentChatId ?? '';
   }
 
   // ── Connection ────────────────────────────────────────────────────────
@@ -230,6 +228,7 @@ export default class WhatsappController extends Controller {
       this.startPolling();
     } catch (err) {
       console.error('WhatsApp setup failed', err);
+      this.notifications.error('Could not load WhatsApp data');
     }
   }
 
@@ -383,9 +382,7 @@ export default class WhatsappController extends Controller {
   }
 
   _isIgnoredChat(msg) {
-    if (msg.isGroup) return true;
-    if (msg.chatId?.endsWith('@newsletter')) return true;
-    return false;
+    return Boolean(msg.isGroup);
   }
 
   _updateChat(msg) {
@@ -411,7 +408,7 @@ export default class WhatsappController extends Controller {
       this.chats = [
         {
           chatId: msg.chatId,
-          chatName: msg.chatName || msg.chatId.split('@')[0],
+          chatName: msg.chatName || msg.chatId,
           isGroup: msg.isGroup ?? false,
           lastBody: msg.body,
           lastTs: msg.timestamp,
@@ -470,8 +467,8 @@ export default class WhatsappController extends Controller {
     try {
       const result = await this.whatsapp.toggleAi(!this.aiEnabled);
       this.aiEnabled = (result.data ?? result).enabled ?? this.aiEnabled;
-    } catch {
-      /* gateway will emit ai-status */
+    } catch (err) {
+      this.notifications.error(err.message || 'Could not toggle AI');
     }
   }
 }

@@ -133,13 +133,14 @@ export class WhatsappWebhookService {
   async processEnvelope(body: unknown): Promise<void> {
     const envelope = (body ?? {}) as CloudWebhookEnvelope;
 
-    // Past the signature the envelope is ours to keep. A per-change failure must never
-    // fail the whole job, or a retry replays every sibling change with it.
+    // Siblings still run, then the first error is rethrown so BullMQ retries the envelope.
+    let firstError: unknown = null;
     for (const entry of envelope.entry ?? []) {
       for (const change of entry.changes ?? []) {
         try {
           await this.dispatchValue(change.value ?? {});
         } catch (err) {
+          firstError = firstError ?? err;
           this.logger.error(
             'Failed to process a WhatsApp webhook change',
             err instanceof Error ? (err.stack ?? err.message) : err,
@@ -147,6 +148,7 @@ export class WhatsappWebhookService {
         }
       }
     }
+    if (firstError) throw firstError;
   }
 
   private signatureMatches(
@@ -169,11 +171,12 @@ export class WhatsappWebhookService {
       return;
     }
 
+    // FLAGGED breaks outbound only and Meta keeps delivering inbound, so it is kept here.
     const connection = await this.connections.findOne({
-      where: {
-        phoneNumberId,
-        status: WhatsappConnectionStatus.CONNECTED,
-      },
+      where: [
+        { phoneNumberId, status: WhatsappConnectionStatus.CONNECTED },
+        { phoneNumberId, status: WhatsappConnectionStatus.FLAGGED },
+      ],
     });
     if (!connection) {
       this.logger.warn(
@@ -304,6 +307,13 @@ export class WhatsappWebhookService {
         }
 
         this.gateway.emitMessage(connection.userId, evt);
+        // A flagged token cannot send, so an AI turn would only burn a credit on a failure.
+        if (connection.status !== WhatsappConnectionStatus.CONNECTED) {
+          this.logger.debug(
+            `Skipping the AI turn for ${evt.id}: connection is ${connection.status}`,
+          );
+          continue;
+        }
         await this.ai.handleIncomingMessage(
           evt,
           connection.companyId,

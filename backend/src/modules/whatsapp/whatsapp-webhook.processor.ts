@@ -19,8 +19,7 @@ export class WhatsappWebhookProcessor extends WorkerHost {
     );
   }
 
-  // Per-message failures are swallowed inside processEnvelope; anything that escapes is
-  // envelope-level, so letting it out hands the job back to BullMQ for a retry.
+  // processEnvelope rethrows a change-level failure, so letting it out earns a retry.
   async process(job: Job<WaWebhookJobData>): Promise<void> {
     await this.webhook.processEnvelope(job.data?.envelope);
   }

@@ -83,9 +83,19 @@ export class RedisService implements OnModuleDestroy {
     if (keys.length > 0) await this.client.del(...keys);
   }
 
+  // exec() resolves with [err, result] pairs and never rejects per command, so an
+  // unchecked exec reads a failed write as a success.
+  private unwrapExec(res: [Error | null, unknown][] | null): unknown[] {
+    if (!res) throw new Error('Redis MULTI aborted');
+    for (const [err] of res) if (err) throw err;
+    return res.map(([, value]) => value);
+  }
+
   // MULTI, not two awaits: a crash between the write and PEXPIRE leaks a TTL-less key.
   async pushList(key: string, value: string, ttlMs: number): Promise<void> {
-    await this.client.multi().rpush(key, value).pexpire(key, ttlMs).exec();
+    this.unwrapExec(
+      await this.client.multi().rpush(key, value).pexpire(key, ttlMs).exec(),
+    );
   }
 
   async getList(key: string): Promise<string[]> {
@@ -112,12 +122,16 @@ export class RedisService implements OnModuleDestroy {
   }
 
   async incrCounter(key: string, ttlMs: number): Promise<number> {
-    const res = await this.client.multi().incr(key).pexpire(key, ttlMs).exec();
-    return Number(res?.[0]?.[1] ?? 0);
+    const [count] = this.unwrapExec(
+      await this.client.multi().incr(key).pexpire(key, ttlMs).exec(),
+    );
+    return Number(count);
   }
 
   async setAdd(key: string, member: string, ttlMs: number): Promise<void> {
-    await this.client.multi().sadd(key, member).pexpire(key, ttlMs).exec();
+    this.unwrapExec(
+      await this.client.multi().sadd(key, member).pexpire(key, ttlMs).exec(),
+    );
   }
 
   async setRemove(key: string, member: string): Promise<void> {

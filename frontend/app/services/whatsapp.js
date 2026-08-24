@@ -17,8 +17,15 @@ export default class WhatsappService extends Service {
     if (this._socket) return this._socket;
 
     this._socket = io(`${this.apiUrl}/whatsapp`, {
-      auth: { token: this.auth.token },
+      // Function form: socket.io calls this on every (re)connect, so a
+      // refreshed token is picked up instead of the one captured at first
+      // connect.
+      auth: (cb) => cb({ token: this.auth.token }),
     });
+
+    this._socket.on('connect_error', (err) =>
+      console.error('WhatsApp socket connect failed:', err.message),
+    );
 
     this._socket.on('whatsapp:status', (data) => onEvent('status', data));
     this._socket.on('whatsapp:message', (data) => onEvent('message', data));
@@ -40,6 +47,8 @@ export default class WhatsappService extends Service {
   getChats() {
     return this.auth.fetchJson('/whatsapp/chats');
   }
+  // No page/limit sent: deliberate phase-cut caps, 500 rows here and 200 per
+  // chat below, no "load older" path yet.
   getAllMessages() {
     return this.auth.fetchJson('/whatsapp/messages');
   }

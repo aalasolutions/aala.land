@@ -429,6 +429,31 @@ describe('WhatsappCloudApiService', () => {
       );
     });
 
+    it('waits for the outbound row before returning, so a fast sent callback finds it', async () => {
+      connections.findOne.mockResolvedValue(connection);
+      fetchMock.mockResolvedValue({
+        ok: true,
+        json: async () => ({ messages: [{ id: 'wamid.4' }] }),
+      });
+      let committed = false;
+      store.addMessage.mockImplementation(
+        () =>
+          new Promise<void>((resolve) =>
+            setImmediate(() => {
+              committed = true;
+              resolve();
+            }),
+          ),
+      );
+
+      await service.senderFor('user-1')('+923001234567', 'awaited reply');
+
+      expect(committed).toBe(true);
+      expect(
+        store.addMessage.mock.invocationCallOrder[0],
+      ).toBeLessThan(gateway.emitMessage.mock.invocationCallOrder[0]);
+    });
+
     it('refreshes the credit counters only when a window was charged', async () => {
       connections.findOne.mockResolvedValue(connection);
       fetchMock.mockResolvedValue({

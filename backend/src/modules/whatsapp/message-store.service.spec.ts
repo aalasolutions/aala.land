@@ -285,11 +285,12 @@ describe('MessageStoreService', () => {
       expect(guard[0]).toContain(`WHEN 'delivered' THEN 2`);
     });
 
-    it('ranks read above delivered above sent', async () => {
+    it('ranks failed above played above read above delivered above sent', async () => {
       for (const [status, rank] of [
         [WhatsappMessageStatus.SENT, 1],
         [WhatsappMessageStatus.DELIVERED, 2],
         [WhatsappMessageStatus.READ, 3],
+        [WhatsappMessageStatus.PLAYED, 4],
       ] as [WhatsappMessageStatus, number][]) {
         updateBuilder.andWhere.mockClear();
         await service.applyMessageStatus(
@@ -304,22 +305,48 @@ describe('MessageStoreService', () => {
       }
     });
 
-    it('always writes failed and played, which are not rungs on the ladder', async () => {
-      for (const status of [
+    // failed must land on a row already read, which the rank comparison alone would refuse.
+    it('always writes failed, the one terminal fact that can arrive out of order', async () => {
+      await service.applyMessageStatus(
+        'co-1',
+        'user-a',
+        'wamid.1',
         WhatsappMessageStatus.FAILED,
-        WhatsappMessageStatus.PLAYED,
-      ]) {
-        updateBuilder.andWhere.mockClear();
-        await service.applyMessageStatus(
-          'co-1',
-          'user-a',
-          'wamid.1',
-          status,
-          statusAt,
-          null,
-        );
-        expect(whereArgs()).toContainEqual({ always: true, rank: 0 });
-      }
+        statusAt,
+        null,
+      );
+
+      expect(whereArgs()).toContainEqual({ always: true, rank: 5 });
+    });
+
+    it('carries the whole ladder into the SQL guard so no rung falls back to zero', async () => {
+      await service.applyMessageStatus(
+        'co-1',
+        'user-a',
+        'wamid.1',
+        WhatsappMessageStatus.SENT,
+        statusAt,
+        null,
+      );
+
+      const guard = updateBuilder.andWhere.mock.calls.find((c: any[]) =>
+        (c[0] as string).includes(':always'),
+      );
+      expect(guard[0]).toContain(`WHEN 'played' THEN 4`);
+      expect(guard[0]).toContain(`WHEN 'failed' THEN 5`);
+    });
+
+    it('ranks read below played so a late read cannot downgrade a played row', async () => {
+      await service.applyMessageStatus(
+        'co-1',
+        'user-a',
+        'wamid.1',
+        WhatsappMessageStatus.READ,
+        statusAt,
+        null,
+      );
+
+      expect(whereArgs()).toContainEqual({ always: false, rank: 3 });
     });
 
     it('stores the error code only when one was supplied', async () => {
@@ -603,33 +630,6 @@ describe('MessageStoreService', () => {
         userId: 'user-a',
         chatId: 'chat-a',
       });
-    });
-  });
-
-  describe('findOwnersNeedingRecovery', () => {
-    it('claims owners who are deleted or deactivated', async () => {
-      await service.findOwnersNeedingRecovery();
-
-      const sql = chatsRepo.query.mock.calls[0][0] as string;
-      expect(sql).toContain('u."id" IS NULL OR u."is_active" = false');
-    });
-
-    it('reads whatsapp_chats, never the unbounded whatsapp_messages', async () => {
-      await service.findOwnersNeedingRecovery();
-
-      const sql = chatsRepo.query.mock.calls[0][0] as string;
-      expect(sql).toContain('whatsapp_chats');
-      expect(sql).not.toContain('whatsapp_messages');
-    });
-
-    it('maps the snake_case columns to the caller shape', async () => {
-      chatsRepo.query.mockResolvedValue([
-        { company_id: 'co-1', user_id: 'user-a' },
-      ]);
-
-      const out = await service.findOwnersNeedingRecovery();
-
-      expect(out).toEqual([{ companyId: 'co-1', userId: 'user-a' }]);
     });
   });
 

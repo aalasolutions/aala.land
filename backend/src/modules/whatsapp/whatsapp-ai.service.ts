@@ -49,8 +49,12 @@ export type MarkReadFn = (
 @Injectable()
 export class WhatsappAiService {
   private readonly logger = new Logger(WhatsappAiService.name);
-  private enabledByUser = new Map<string, boolean>();
+  // Keyed by companyId because that is what the toggle persists against.
+  private enabledByCompany = new Map<string, boolean>();
   private readonly AI_STATE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+  // Invariant: the turn sequence must outlive any job record that could collide with it,
+  // so this sits one day above the debounce queue's removeOnFail age of 604800s.
+  private readonly AI_SEQ_TTL_MS = 8 * 24 * 60 * 60 * 1000;
 
   constructor(
     private readonly repo: WhatsappAiRepositoryService,
@@ -100,9 +104,15 @@ export class WhatsappAiService {
     return (await this.redis.getNumber(this.seqKey(userId, chatId))) ?? 0;
   }
 
-  getConfig(userId: string) {
+  // min is 0 only where zero is a meaningful setting rather than a typo.
+  private envInt(name: string, fallback: number, min = 1): number {
+    const parsed = parseInt(process.env[name] ?? '', 10);
+    return Number.isFinite(parsed) && parsed >= min ? parsed : fallback;
+  }
+
+  getConfig(companyId: string) {
     return {
-      enabled: this.isEnabled(userId),
+      enabled: this.isEnabled(companyId),
       keyConfigured: !!process.env.OLLAMA_API_KEY,
       model: process.env.OLLAMA_MODEL ?? '',
       host: process.env.OLLAMA_HOST ?? '',
@@ -154,10 +164,10 @@ export class WhatsappAiService {
     };
   }
 
-  async getConfigWithUsage(userId: string, companyId: string) {
+  async getConfigWithUsage(companyId: string) {
     const base = {
-      ...this.getConfig(userId),
-      enabled: await this.isEnabledFor(userId, companyId),
+      ...this.getConfig(companyId),
+      enabled: await this.isEnabledFor(companyId),
     };
     const usage = await this.getCreditUsage(companyId);
 
@@ -180,45 +190,37 @@ export class WhatsappAiService {
     };
   }
 
-  isEnabled(userId: string): boolean {
-    if (this.enabledByUser.has(userId)) return this.enabledByUser.get(userId)!;
+  isEnabled(companyId: string): boolean {
+    if (this.enabledByCompany.has(companyId))
+      return this.enabledByCompany.get(companyId)!;
     return process.env.AI_ENABLED !== 'false';
   }
 
   // Map miss means a fresh replica: load the stored toggle before gating, or a restart re-enables AI
-  async isEnabledFor(userId: string, companyId: string): Promise<boolean> {
-    if (!this.enabledByUser.has(userId)) {
-      await this.loadEnabledState(userId, companyId);
+  async isEnabledFor(companyId: string): Promise<boolean> {
+    if (!this.enabledByCompany.has(companyId)) {
+      await this.loadEnabledState(companyId);
     }
-    return this.isEnabled(userId);
+    return this.isEnabled(companyId);
   }
 
-  setEnabled(userId: string, value: boolean): boolean {
-    this.enabledByUser.set(userId, value);
+  setEnabled(companyId: string, value: boolean): boolean {
+    this.enabledByCompany.set(companyId, value);
     return value;
   }
 
-  async persistEnabled(
-    userId: string,
-    companyId: string,
-    value: boolean,
-  ): Promise<void> {
-    this.enabledByUser.set(userId, value);
-    try {
-      await this.repo.persistAiEnabled(companyId, value);
-    } catch (err) {
-      this.logger.error(
-        'Failed to persist aiEnabled',
-        err instanceof Error ? err.message : err,
-      );
-    }
+  // In-memory first so the running replica honours the intent, then the DB failure
+  // propagates: the admin must learn that a disable did not stick.
+  async persistEnabled(companyId: string, value: boolean): Promise<void> {
+    this.enabledByCompany.set(companyId, value);
+    await this.repo.persistAiEnabled(companyId, value);
   }
 
-  async loadEnabledState(userId: string, companyId: string): Promise<void> {
-    if (this.enabledByUser.has(userId)) return;
+  async loadEnabledState(companyId: string): Promise<void> {
+    if (this.enabledByCompany.has(companyId)) return;
     try {
       const enabled = await this.repo.loadAiEnabled(companyId);
-      if (enabled !== null) this.enabledByUser.set(userId, enabled);
+      if (enabled !== null) this.enabledByCompany.set(companyId, enabled);
     } catch {
       /* non-fatal, the env default applies */
     }
@@ -239,16 +241,17 @@ export class WhatsappAiService {
     this.repo.clearContextCache(companyId);
   }
 
-  async clearUserState(userId: string): Promise<void> {
+  // The seq keys are deliberately left alone: resetting them would reuse a job id that
+  // a failed job record still holds for 7 days, and BullMQ drops that add silently.
+  async clearUserState(userId: string, companyId: string): Promise<void> {
     const jobIds = await this.redis.setMembers(this.pendIdxKey(userId));
     for (const jobId of jobIds) {
       const job = await this.debounceQueue.getJob(jobId);
       if (job) await job.remove().catch(() => undefined);
     }
     await this.redis.del(this.pendIdxKey(userId));
-    this.enabledByUser.delete(userId);
+    this.enabledByCompany.delete(companyId);
     await this.redis.delByPattern(this.pendKey(userId, '*'));
-    await this.redis.delByPattern(this.seqKey(userId, '*'));
     await this.redis.delByPattern(this.histKey(userId, '*'));
     await this.redis.delByPattern(this.humanKey(userId, '*'));
   }
@@ -290,22 +293,16 @@ export class WhatsappAiService {
     userId: string,
   ): Promise<void> {
     if (!process.env.OLLAMA_API_KEY) return;
-    if (!(await this.isEnabledFor(userId, companyId))) return;
+    if (!(await this.isEnabledFor(companyId))) return;
     if (evt.fromMe || evt.isGroup || !(evt.body ?? '').trim()) return;
 
-    const maxAge = parseInt(process.env.AI_MESSAGE_MAX_AGE_S ?? '120', 10);
+    const maxAge = this.envInt('AI_MESSAGE_MAX_AGE_S', 120);
     if (Math.floor(Date.now() / 1000) - evt.timestamp > maxAge) return;
 
-    const debounceMs = parseInt(process.env.AI_DEBOUNCE_MS ?? '10000', 10);
-    const maxDebounceMs = parseInt(
-      process.env.AI_DEBOUNCE_MAX_MS ?? '60000',
-      10,
-    );
-    const maxPending = parseInt(process.env.AI_PENDING_MAX ?? '20', 10);
-    const maxBodyChars = parseInt(
-      process.env.AI_MESSAGE_MAX_CHARS ?? '4000',
-      10,
-    );
+    const debounceMs = this.envInt('AI_DEBOUNCE_MS', 10000);
+    const maxDebounceMs = this.envInt('AI_DEBOUNCE_MAX_MS', 60000);
+    const maxPending = this.envInt('AI_PENDING_MAX', 20);
+    const maxBodyChars = this.envInt('AI_MESSAGE_MAX_CHARS', 4000);
     const pendKey = this.pendKey(userId, evt.chatId);
     const body = evt.body.slice(0, maxBodyChars);
 
@@ -351,7 +348,7 @@ export class WhatsappAiService {
           evt.chatId,
           await this.redis.incrCounter(
             this.seqKey(userId, evt.chatId),
-            this.AI_STATE_TTL_MS,
+            this.AI_SEQ_TTL_MS,
           ),
         );
       }
@@ -385,7 +382,7 @@ export class WhatsappAiService {
     // the job already running.
     const claimed = await this.redis.incrCounter(
       this.seqKey(data.userId, data.chatId),
-      this.AI_STATE_TTL_MS,
+      this.AI_SEQ_TTL_MS,
     );
     if (!(await this.redis.renameKey(source, scratch))) return null;
     await this.redis.setRemove(
@@ -422,7 +419,7 @@ export class WhatsappAiService {
     if (raw.length === 0) return;
 
     const pendKey = this.pendKey(data.userId, data.chatId);
-    const maxPending = parseInt(process.env.AI_PENDING_MAX ?? '20', 10);
+    const maxPending = this.envInt('AI_PENDING_MAX', 20);
     // Appended, so a message that arrived while the turn was failing reads before these.
     for (const entry of raw) {
       if ((await this.redis.listLength(pendKey)) >= maxPending) {
@@ -440,11 +437,8 @@ export class WhatsappAiService {
   }
 
   private async scheduleRestoredTurn(data: DebounceJobData): Promise<void> {
-    const debounceMs = parseInt(process.env.AI_DEBOUNCE_MS ?? '10000', 10);
-    const maxDebounceMs = parseInt(
-      process.env.AI_DEBOUNCE_MAX_MS ?? '60000',
-      10,
-    );
+    const debounceMs = this.envInt('AI_DEBOUNCE_MS', 10000);
+    const maxDebounceMs = this.envInt('AI_DEBOUNCE_MAX_MS', 60000);
     // The claim already advanced the sequence, so this id is fresh. A job under it means
     // a message landed during the failure and has scheduled the turn already.
     const jobId = this.jobIdFor(
@@ -502,14 +496,17 @@ export class WhatsappAiService {
   ): Promise<void> {
     const lockKey = `wa:ai:lock:${key}`;
     const token = randomUUID();
-    const ttlMs = parseInt(process.env.AI_LOCK_TTL_MS ?? '30000', 10);
-    const waitMs = parseInt(process.env.AI_LOCK_WAIT_MS ?? '300000', 10);
+    const ttlMs = this.envInt('AI_LOCK_TTL_MS', 30000);
+    // Seconds, not minutes: a longer wait pins one of five worker slots while the
+    // queue re-arms the turn anyway on timeout.
+    const waitMs = this.envInt('AI_LOCK_WAIT_MS', 20000);
 
+    // Throws, never returns: the processor's catch restores the claimed buffer and
+    // re-arms the turn, where a normal return would have it delete those messages.
     if (!(await this.acquireChatLock(lockKey, token, ttlMs, waitMs))) {
-      this.logger.error(
-        `Timed out waiting ${waitMs}ms for the AI chat lock on ${key}; this turn is dropped`,
+      throw new Error(
+        `Timed out waiting ${waitMs}ms for the AI chat lock on ${key}`,
       );
-      return;
     }
 
     // A turn can outlive ttlMs (two LLM calls plus tool execution), so keep extending
@@ -564,8 +561,7 @@ export class WhatsappAiService {
   ): Promise<boolean> {
     const lastReply = await this.redis.getNumber(this.humanKey(userId, chatId));
     if (lastReply === null) return false;
-    const silenceMs =
-      parseInt(process.env.AI_HUMAN_SILENCE_MINUTES ?? '20', 10) * 60 * 1000;
+    const silenceMs = this.envInt('AI_HUMAN_SILENCE_MINUTES', 20) * 60 * 1000;
     return Date.now() - lastReply < silenceMs;
   }
 
@@ -580,8 +576,7 @@ export class WhatsappAiService {
   ): Promise<boolean> {
     const lastReply = await this.redis.getNumber(this.humanKey(userId, chatId));
     if (lastReply === null) return false;
-    const silenceMs =
-      parseInt(process.env.AI_HUMAN_SILENCE_MINUTES ?? '20', 10) * 60 * 1000;
+    const silenceMs = this.envInt('AI_HUMAN_SILENCE_MINUTES', 20) * 60 * 1000;
     return Date.now() - lastReply < silenceMs || lastReply > flushStartedAt;
   }
 
@@ -673,7 +668,11 @@ export class WhatsappAiService {
       // failures and a missing indicator is never worth losing the reply over.
       const newestInboundId = pendingMessageIds[pendingMessageIds.length - 1];
       if (markRead && newestInboundId) {
-        void markRead(newestInboundId, true).catch(() => undefined);
+        void markRead(newestInboundId, true).catch((err: unknown) =>
+          this.logger.debug(
+            `Read receipt rider failed for ${userId}:${chatId}: ${err instanceof Error ? err.message : String(err)}`,
+          ),
+        );
       }
 
       const { block: contextBlock, fallbackCurrency } =
@@ -786,16 +785,10 @@ export class WhatsappAiService {
     chatId: string,
     excludeWaIds: string[],
   ): Promise<AiHistoryMessage[]> {
-    const limit = parseInt(process.env.AI_HISTORY_SEED_LIMIT ?? '20', 10);
-    if (!Number.isFinite(limit) || limit <= 0) return [];
-    const parsedMaxChars = parseInt(
-      process.env.AI_HISTORY_SEED_MAX_CHARS ?? '8000',
-      10,
-    );
-    const maxChars =
-      Number.isFinite(parsedMaxChars) && parsedMaxChars > 0
-        ? parsedMaxChars
-        : 8000;
+    // Zero is the documented way to disable seeding, so it is allowed through.
+    const limit = this.envInt('AI_HISTORY_SEED_LIMIT', 20, 0);
+    if (limit <= 0) return [];
+    const maxChars = this.envInt('AI_HISTORY_SEED_MAX_CHARS', 8000);
 
     try {
       const rows = await this.store.getChatHistory(
@@ -872,7 +865,7 @@ export class WhatsappAiService {
     chatId: string,
     history: AiHistoryMessage[],
   ): Promise<void> {
-    const limit = parseInt(process.env.AI_HISTORY_LIMIT ?? '40', 10);
+    const limit = this.envInt('AI_HISTORY_LIMIT', 40);
     if (history.length > limit) history.splice(0, history.length - limit);
     await this.redis.setJson(
       this.histKey(userId, chatId),
@@ -892,11 +885,12 @@ export class WhatsappAiService {
     } = process.env;
     if (!host || !key || !model) return null;
 
-    const timeout = parseInt(process.env.AI_REQUEST_TIMEOUT_MS ?? '300000', 10);
-    const maxRetries = parseInt(process.env.AI_MAX_RETRIES ?? '2', 10);
+    const timeout = this.envInt('AI_REQUEST_TIMEOUT_MS', 300000);
+    // Zero means a single attempt, a legitimate setting.
+    const maxRetries = this.envInt('AI_MAX_RETRIES', 2, 0);
     // Per-attempt timeouts alone let one turn hold a spent credit and the chat lock for
     // retries x timeout, so cap the whole call instead.
-    const budgetMs = parseInt(process.env.AI_TOTAL_BUDGET_MS ?? '120000', 10);
+    const budgetMs = this.envInt('AI_TOTAL_BUDGET_MS', 120000);
     const deadline = Date.now() + budgetMs;
     const TRANSIENT_CODES = new Set([
       'EAI_AGAIN',

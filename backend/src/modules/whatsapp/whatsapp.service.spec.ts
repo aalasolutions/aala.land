@@ -16,7 +16,12 @@ describe('WhatsappService', () => {
   let service: WhatsappService;
   let connections: { findOne: jest.Mock; update: jest.Mock };
   let store: { addMessage: jest.Mock };
-  let ai: { recordHumanReply: jest.Mock; getCreditUsage: jest.Mock };
+  let ai: {
+    recordHumanReply: jest.Mock;
+    getCreditUsage: jest.Mock;
+    persistEnabled: jest.Mock;
+    isEnabledFor: jest.Mock;
+  };
   let gateway: { emitMessage: jest.Mock; emitAi: jest.Mock };
   let cloud: { sendText: jest.Mock };
 
@@ -29,6 +34,8 @@ describe('WhatsappService', () => {
     ai = {
       recordHumanReply: jest.fn().mockResolvedValue(undefined),
       getCreditUsage: jest.fn(),
+      persistEnabled: jest.fn().mockResolvedValue(undefined),
+      isEnabledFor: jest.fn().mockResolvedValue(true),
     };
     gateway = { emitMessage: jest.fn(), emitAi: jest.fn() };
     cloud = {
@@ -272,6 +279,37 @@ describe('WhatsappService', () => {
       // Meta already has it; reporting a failure here would only invite a duplicate.
       expect(result.id).toBe('wamid.op1');
       expect(gateway.emitMessage).toHaveBeenCalled();
+    });
+  });
+
+  describe('toggleAi', () => {
+    it('persists against the company, then announces the new state', async () => {
+      const result = await service.toggleAi('user-1', 'company-1', false);
+
+      expect(result).toEqual({ enabled: false });
+      expect(ai.persistEnabled).toHaveBeenCalledWith('company-1', false);
+      expect(ai.persistEnabled.mock.invocationCallOrder[0]).toBeLessThan(
+        gateway.emitAi.mock.invocationCallOrder[0],
+      );
+    });
+
+    it('flips the company state when no explicit value is given', async () => {
+      ai.isEnabledFor.mockResolvedValue(true);
+
+      await service.toggleAi('user-1', 'company-1');
+
+      expect(ai.isEnabledFor).toHaveBeenCalledWith('company-1');
+      expect(ai.persistEnabled).toHaveBeenCalledWith('company-1', false);
+    });
+
+    it('propagates a failed persist and announces nothing', async () => {
+      ai.persistEnabled.mockRejectedValue(new Error('db unreachable'));
+
+      await expect(
+        service.toggleAi('user-1', 'company-1', false),
+      ).rejects.toThrow('db unreachable');
+
+      expect(gateway.emitAi).not.toHaveBeenCalled();
     });
   });
 });

@@ -348,16 +348,18 @@ describe('WhatsappWebhookService', () => {
   // reach the AI, because a turn is what consumes a credit.
   describe('a disconnected agent cannot start an AI turn', () => {
     beforeEach(() => {
-      // Behaves like the real lookup: the row is only returned when it is CONNECTED.
+      // Behaves like the real lookup: the row is only returned for a status it asks for.
       const row = connectionRow();
       row.status = WhatsappConnectionStatus.DISCONNECTED;
       row.disconnectedAt = new Date();
       repo.findOne.mockImplementation(
         async (options: {
-          where: { phoneNumberId: string; status: WhatsappConnectionStatus };
+          where: { phoneNumberId: string; status: WhatsappConnectionStatus }[];
         }) =>
-          options.where.phoneNumberId === row.phoneNumberId &&
-          options.where.status === row.status
+          options.where.some(
+            (w) =>
+              w.phoneNumberId === row.phoneNumberId && w.status === row.status,
+          )
             ? row
             : null,
       );
@@ -373,14 +375,20 @@ describe('WhatsappWebhookService', () => {
       expect(gateway.emitMessage).not.toHaveBeenCalled();
     });
 
-    it('pins the routing lookup to CONNECTED, which is what excludes the row', async () => {
+    it('asks only for CONNECTED and FLAGGED, which is what excludes the row', async () => {
       await service.processEnvelope(inboundEnvelope());
 
       expect(repo.findOne).toHaveBeenCalledWith({
-        where: {
-          phoneNumberId: 'phone-1',
-          status: WhatsappConnectionStatus.CONNECTED,
-        },
+        where: [
+          {
+            phoneNumberId: 'phone-1',
+            status: WhatsappConnectionStatus.CONNECTED,
+          },
+          {
+            phoneNumberId: 'phone-1',
+            status: WhatsappConnectionStatus.FLAGGED,
+          },
+        ],
       });
     });
 
@@ -390,6 +398,51 @@ describe('WhatsappWebhookService', () => {
       ).resolves.toBeUndefined();
 
       expect(store.applyMessageStatus).not.toHaveBeenCalled();
+    });
+  });
+
+  // Inbound is kept and shown; only the AI turn is held back, its reply could not send.
+  describe('a flagged connection still receives inbound traffic', () => {
+    beforeEach(() => {
+      const row = connectionRow();
+      row.status = WhatsappConnectionStatus.FLAGGED;
+      repo.findOne.mockResolvedValue(row);
+    });
+
+    it('persists the message and pushes it to the operator page', async () => {
+      await expect(
+        service.processEnvelope(inboundEnvelope()),
+      ).resolves.toBeUndefined();
+
+      expect(store.addMessage).toHaveBeenCalledWith(
+        'company-1',
+        'user-1',
+        expect.objectContaining({ id: 'wamid.1' }),
+        'phone-1',
+      );
+      expect(gateway.emitMessage).toHaveBeenCalledWith(
+        'user-1',
+        expect.objectContaining({ id: 'wamid.1' }),
+      );
+    });
+
+    it('does not start an AI turn, whose reply could not be sent anyway', async () => {
+      await service.processEnvelope(inboundEnvelope());
+
+      expect(ai.handleIncomingMessage).not.toHaveBeenCalled();
+    });
+
+    it('still persists the delivery statuses of that number', async () => {
+      await service.processEnvelope(statusEnvelope());
+
+      expect(store.applyMessageStatus).toHaveBeenCalledWith(
+        'company-1',
+        'user-1',
+        'wamid.out.1',
+        WhatsappMessageStatus.DELIVERED,
+        new Date(1761234567 * 1000),
+        null,
+      );
     });
   });
 
@@ -425,7 +478,7 @@ describe('WhatsappWebhookService', () => {
     });
   });
 
-  describe('processing failures never fail the envelope', () => {
+  describe('per-message failures never fail the envelope', () => {
     it('does not throw when the AI dispatch throws', async () => {
       ai.handleIncomingMessage.mockRejectedValue(new Error('llm down'));
 
@@ -443,14 +496,6 @@ describe('WhatsappWebhookService', () => {
         service.processEnvelope(inboundEnvelope()),
       ).resolves.toBeUndefined();
       expect(ai.handleIncomingMessage).not.toHaveBeenCalled();
-    });
-
-    it('does not throw when the connection lookup throws', async () => {
-      repo.findOne.mockRejectedValue(new Error('db down'));
-
-      await expect(
-        service.processEnvelope(inboundEnvelope()),
-      ).resolves.toBeUndefined();
     });
 
     it('keeps processing the rest of the batch after one message fails', async () => {
@@ -478,6 +523,90 @@ describe('WhatsappWebhookService', () => {
       await expect(service.processEnvelope(envelope)).resolves.toBeUndefined();
       expect(ai.handleIncomingMessage).toHaveBeenCalledTimes(2);
       expect(ai.handleIncomingMessage.mock.calls[1][0].id).toBe('wamid.good');
+    });
+  });
+
+  // The queue runs attempts: 3, which is dead unless a change-level failure escapes.
+  describe('a change-level failure hands the envelope back to BullMQ', () => {
+    beforeEach(() => {
+      jest
+        .spyOn(
+          (service as unknown as { logger: { error: jest.Mock } }).logger,
+          'error',
+        )
+        .mockImplementation(() => undefined);
+    });
+
+    const twoChangeEnvelope = () => ({
+      object: 'whatsapp_business_account',
+      entry: [
+        {
+          id: 'waba-1',
+          changes: ['first', 'second'].map((label) => ({
+            field: 'messages',
+            value: {
+              metadata: { phone_number_id: 'phone-1' },
+              messages: [
+                {
+                  from: '971501234567',
+                  id: `wamid.${label}`,
+                  timestamp: '1761234567',
+                  type: 'text',
+                  text: { body: label },
+                },
+              ],
+            },
+          })),
+        },
+      ],
+    });
+
+    it('processes the sibling change and then rejects', async () => {
+      repo.findOne
+        .mockRejectedValueOnce(new Error('db pool exhausted'))
+        .mockResolvedValue(connectionRow());
+
+      await expect(
+        service.processEnvelope(twoChangeEnvelope()),
+      ).rejects.toThrow('db pool exhausted');
+
+      expect(ai.handleIncomingMessage).toHaveBeenCalledTimes(1);
+      expect(ai.handleIncomingMessage.mock.calls[0][0].id).toBe('wamid.second');
+    });
+
+    it('reports the first failure when several changes fail', async () => {
+      repo.findOne
+        .mockRejectedValueOnce(new Error('first failure'))
+        .mockRejectedValueOnce(new Error('second failure'));
+
+      await expect(
+        service.processEnvelope(twoChangeEnvelope()),
+      ).rejects.toThrow('first failure');
+    });
+
+    // The pool is down for seconds and the retry lands after it heals.
+    it('loses nothing across the retry: the second run delivers the message', async () => {
+      repo.findOne.mockRejectedValueOnce(new Error('db pool exhausted'));
+      const envelope = inboundEnvelope();
+
+      await expect(service.processEnvelope(envelope)).rejects.toThrow(
+        'db pool exhausted',
+      );
+      expect(store.addMessage).not.toHaveBeenCalled();
+      expect(ai.handleIncomingMessage).not.toHaveBeenCalled();
+
+      await expect(service.processEnvelope(envelope)).resolves.toBeUndefined();
+      expect(store.addMessage).toHaveBeenCalledTimes(1);
+      expect(ai.handleIncomingMessage).toHaveBeenCalledTimes(1);
+      expect(ai.handleIncomingMessage.mock.calls[0][0].id).toBe('wamid.1');
+    });
+
+    it('rejects when a statuses-only change fails to route', async () => {
+      repo.findOne.mockRejectedValue(new Error('db down'));
+
+      await expect(service.processEnvelope(statusEnvelope())).rejects.toThrow(
+        'db down',
+      );
     });
   });
 

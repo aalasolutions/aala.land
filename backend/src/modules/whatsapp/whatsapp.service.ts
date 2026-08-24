@@ -71,7 +71,7 @@ export class WhatsappService {
         disconnectedAt: new Date(),
       },
     );
-    await this.ai.clearUserState(userId);
+    await this.ai.clearUserState(userId, companyId);
     this.ai.clearPromptCache(companyId);
     return { success: true };
   }
@@ -116,6 +116,8 @@ export class WhatsappService {
     }
 
     // First on purpose: cancel any queued AI turn so it cannot fire after the human spoke
+    // Accepted trade-off: a failed send below leaves the AI silenced and the buffer
+    // cancelled, deliberate, because the operator is present to retry.
     await this.ai.recordHumanReply(userId, chatId);
 
     let sent: { messageId: string };
@@ -170,8 +172,8 @@ export class WhatsappService {
 
   // ── AI ────────────────────────────────────────────────────────────────
 
-  getAiConfig(userId: string, companyId: string) {
-    return this.ai.getConfigWithUsage(userId, companyId);
+  getAiConfig(companyId: string) {
+    return this.ai.getConfigWithUsage(companyId);
   }
 
   getAiCreditUsage(companyId: string): Promise<AiCreditUsageWithAgents | null> {
@@ -182,6 +184,8 @@ export class WhatsappService {
     return this.ai.getHistoryFor(userId, chatId);
   }
 
+  // persistEnabled throws when the write fails, so the emit below only ever announces
+  // a toggle that actually stuck.
   async toggleAi(
     userId: string,
     companyId: string,
@@ -190,8 +194,8 @@ export class WhatsappService {
     const next =
       typeof enabled === 'boolean'
         ? enabled
-        : !(await this.ai.isEnabledFor(userId, companyId));
-    await this.ai.persistEnabled(userId, companyId, next);
+        : !(await this.ai.isEnabledFor(companyId));
+    await this.ai.persistEnabled(companyId, next);
     this.gateway.emitAi(userId, {
       enabled: next,
       keyConfigured: !!process.env.OLLAMA_API_KEY,

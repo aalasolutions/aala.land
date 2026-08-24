@@ -17,6 +17,7 @@
     "BorderRadius": nu-radius(md),
     "Shadow": #{nu-shadow(md)},
     "ArrowSize": 8px,
+    "ArrowInset": nu-space(4),
     "TransitionDuration": nu-duration(fast),
   ));
 
@@ -48,13 +49,33 @@
     transform: rotate(45deg);
   }
 
+  // Offsets below are physical on purpose: the host applies the RTL swap before it writes the modifier.
   @include m(top) {
     transform: translateX(-50%);
 
     .nu-tooltip__arrow {
-      inset-block-end: calc(#{nu-var("tooltip", "ArrowSize")} / -2);
-      inset-inline-start: 50%;
-      margin-inline-start: calc(#{nu-var("tooltip", "ArrowSize")} / -2);
+      bottom: calc(#{nu-var("tooltip", "ArrowSize")} / -2);
+      left: 50%;
+      margin-left: calc(#{nu-var("tooltip", "ArrowSize")} / -2);
+    }
+  }
+
+  // Corner modifiers name where the box SITS: m-top-left extends leftward from the trigger.
+  @include m(top-left) {
+    transform: translate(-100%, -100%);
+
+    .nu-tooltip__arrow {
+      bottom: calc(#{nu-var("tooltip", "ArrowSize")} / -2);
+      right: nu-var("tooltip", "ArrowInset");
+    }
+  }
+
+  @include m(top-right) {
+    transform: translateY(-100%);
+
+    .nu-tooltip__arrow {
+      bottom: calc(#{nu-var("tooltip", "ArrowSize")} / -2);
+      left: nu-var("tooltip", "ArrowInset");
     }
   }
 
@@ -62,9 +83,27 @@
     transform: translateX(-50%);
 
     .nu-tooltip__arrow {
-      inset-block-start: calc(#{nu-var("tooltip", "ArrowSize")} / -2);
-      inset-inline-start: 50%;
-      margin-inline-start: calc(#{nu-var("tooltip", "ArrowSize")} / -2);
+      top: calc(#{nu-var("tooltip", "ArrowSize")} / -2);
+      left: 50%;
+      margin-left: calc(#{nu-var("tooltip", "ArrowSize")} / -2);
+    }
+  }
+
+  @include m(bottom-left) {
+    transform: translateX(-100%);
+
+    .nu-tooltip__arrow {
+      top: calc(#{nu-var("tooltip", "ArrowSize")} / -2);
+      right: nu-var("tooltip", "ArrowInset");
+    }
+  }
+
+  @include m(bottom-right) {
+    transform: translateY(0);
+
+    .nu-tooltip__arrow {
+      top: calc(#{nu-var("tooltip", "ArrowSize")} / -2);
+      left: nu-var("tooltip", "ArrowInset");
     }
   }
 
@@ -72,9 +111,9 @@
     transform: translateY(-50%);
 
     .nu-tooltip__arrow {
-      inset-inline-end: calc(#{nu-var("tooltip", "ArrowSize")} / -2);
-      inset-block-start: 50%;
-      margin-block-start: calc(#{nu-var("tooltip", "ArrowSize")} / -2);
+      right: calc(#{nu-var("tooltip", "ArrowSize")} / -2);
+      top: 50%;
+      margin-top: calc(#{nu-var("tooltip", "ArrowSize")} / -2);
     }
   }
 
@@ -82,9 +121,9 @@
     transform: translateY(-50%);
 
     .nu-tooltip__arrow {
-      inset-inline-start: calc(#{nu-var("tooltip", "ArrowSize")} / -2);
-      inset-block-start: 50%;
-      margin-block-start: calc(#{nu-var("tooltip", "ArrowSize")} / -2);
+      left: calc(#{nu-var("tooltip", "ArrowSize")} / -2);
+      top: 50%;
+      margin-top: calc(#{nu-var("tooltip", "ArrowSize")} / -2);
     }
   }
 

@@ -13,6 +13,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from '../users/entities/user.entity';
 import { Company } from '../companies/entities/company.entity';
+import { WaMessage } from './wa-types';
 
 const corsOrigins = process.env.CORS_ORIGIN
   ? process.env.CORS_ORIGIN.split(',')
@@ -81,13 +82,13 @@ export class WhatsappGateway
     this.logger.log(`WhatsApp socket disconnected: ${socket.id}`);
   }
 
-  emitStatus(userId: string, data: any) {
+  emitStatus(userId: string, data: Record<string, unknown>) {
     this.server?.to('user:' + userId).emit('whatsapp:status', data);
   }
-  emitMessage(userId: string, data: any) {
+  emitMessage(userId: string, data: WaMessage) {
     this.server?.to('user:' + userId).emit('whatsapp:message', data);
   }
-  emitAi(userId: string, data: any) {
+  emitAi(userId: string, data: Record<string, unknown>) {
     this.server?.to('user:' + userId).emit('whatsapp:ai', data);
   }
 }

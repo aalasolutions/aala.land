@@ -50,6 +50,7 @@ module('Unit | Controller | whatsapp', function (hooks) {
   test('sendMessage on success ingests the returned message and clears the input', async function (assert) {
     const controller = makeController(this);
     controller.currentChatId = 'chat-1';
+    controller.connection = { status: 'connected' };
     controller.messageText = 'hello there';
 
     let capturedChatId;
@@ -83,6 +84,7 @@ module('Unit | Controller | whatsapp', function (hooks) {
   test('sendMessage dedupes against a socket echo that already arrived', async function (assert) {
     const controller = makeController(this);
     controller.currentChatId = 'chat-1';
+    controller.connection = { status: 'connected' };
     controller.messageText = 'hi';
     // Simulate the whatsapp:message socket event landing before the send
     // response resolves.
@@ -115,6 +117,7 @@ module('Unit | Controller | whatsapp', function (hooks) {
   test('sendMessage surfaces a failure via notifications.error and resets isSending', async function (assert) {
     const controller = makeController(this);
     controller.currentChatId = 'chat-1';
+    controller.connection = { status: 'connected' };
     controller.messageText = 'hi';
 
     let errorMessage;
@@ -143,6 +146,7 @@ module('Unit | Controller | whatsapp', function (hooks) {
 
   test('composerDisabled is true with no chat selected or while sending', function (assert) {
     const controller = makeController(this);
+    controller.connection = { status: 'connected' };
     controller.currentChatId = null;
     assert.true(controller.composerDisabled);
 
@@ -152,6 +156,24 @@ module('Unit | Controller | whatsapp', function (hooks) {
 
     controller.isSending = true;
     assert.true(controller.composerDisabled);
+  });
+
+  test('composerDisabled is true with no connected number, even with a chat open', function (assert) {
+    const controller = makeController(this);
+    controller.currentChatId = 'chat-1';
+    controller.isSending = false;
+
+    controller.connection = null;
+    assert.true(controller.composerDisabled, 'no connection row');
+
+    controller.connection = { status: 'disconnected' };
+    assert.true(controller.composerDisabled, 'disconnected');
+
+    controller.connection = { status: 'flagged' };
+    assert.true(controller.composerDisabled, 'flagged');
+
+    controller.connection = { status: 'connected' };
+    assert.false(controller.composerDisabled, 'connected clears the gate');
   });
 
   // ── Reply window ────────────────────────────────────────────────────────
@@ -239,6 +261,7 @@ module('Unit | Controller | whatsapp', function (hooks) {
   test('a closed window never disables the composer: the backend is the enforcement point', function (assert) {
     const controller = makeController(this);
     withChat(controller, NOW - 30 * HOUR);
+    controller.connection = { status: 'connected' };
 
     assert.false(controller.replyWindow.open);
     assert.false(controller.composerDisabled, 'composer stays usable');
@@ -526,6 +549,7 @@ module('Unit | Controller | whatsapp', function (hooks) {
   test('handleKeydown sends on Enter and lets Shift+Enter through for a newline', async function (assert) {
     const controller = makeController(this);
     controller.currentChatId = 'chat-1';
+    controller.connection = { status: 'connected' };
     controller.messageText = 'hi';
 
     // @action getter-binds sendMessage, so spy through the service call it
@@ -560,5 +584,138 @@ module('Unit | Controller | whatsapp', function (hooks) {
       1,
       'Shift+Enter does not trigger another send',
     );
+  });
+
+  // ── AI toggle ────────────────────────────────────────────────────────────
+
+  test('toggleAi on success adopts the returned enabled state', async function (assert) {
+    const controller = makeController(this);
+    controller.aiKeyConfigured = true;
+    controller.aiEnabled = false;
+    controller.whatsapp = {
+      toggleAi(enabled) {
+        return Promise.resolve({ data: { enabled } });
+      },
+    };
+
+    await controller.toggleAi();
+    assert.true(controller.aiEnabled);
+  });
+
+  test('toggleAi surfaces a failure via notifications.error instead of failing silently', async function (assert) {
+    const controller = makeController(this);
+    controller.aiKeyConfigured = true;
+    controller.aiEnabled = false;
+
+    let errorMessage;
+    controller.notifications = {
+      error(message) {
+        errorMessage = message;
+      },
+    };
+    controller.whatsapp = {
+      toggleAi() {
+        return Promise.reject(new Error('gateway unreachable'));
+      },
+    };
+
+    await controller.toggleAi();
+
+    assert.strictEqual(errorMessage, 'gateway unreachable');
+    assert.false(controller.aiEnabled, 'state unchanged on failure');
+  });
+
+  test('toggleAi falls back to a generic message when the error carries none', async function (assert) {
+    const controller = makeController(this);
+    controller.aiKeyConfigured = true;
+
+    let errorMessage;
+    controller.notifications = {
+      error(message) {
+        errorMessage = message;
+      },
+    };
+    controller.whatsapp = {
+      toggleAi() {
+        return Promise.reject(new Error());
+      },
+    };
+
+    await controller.toggleAi();
+    assert.strictEqual(errorMessage, 'Could not toggle AI');
+  });
+
+  // ── JID residue (Cloud API chat ids are bare E.164 digits, never Baileys JIDs) ──
+
+  test('_isIgnoredChat only filters groups now that Baileys JIDs are gone', function (assert) {
+    const controller = makeController(this);
+
+    assert.true(controller._isIgnoredChat({ isGroup: true }));
+    assert.false(controller._isIgnoredChat({ isGroup: false }));
+    // A chat id that happens to end in the old Baileys newsletter suffix is
+    // no longer special-cased: Cloud API chat ids can never look like this,
+    // and if one somehow did, it should render like any other chat.
+    assert.false(
+      controller._isIgnoredChat({
+        isGroup: false,
+        chatId: '971500000000@newsletter',
+      }),
+    );
+  });
+
+  test('currentChatName falls back to the raw chatId, not a Baileys-style split', function (assert) {
+    const controller = makeController(this);
+    controller.chats = [];
+    controller.currentChatId = '971500000000';
+
+    assert.strictEqual(controller.currentChatName, '971500000000');
+  });
+
+  test('_updateChat names a new chat with the raw chatId when no chatName is given', function (assert) {
+    const controller = makeController(this);
+    controller.ingestMessage({
+      id: 'm-1',
+      chatId: '971500000000',
+      body: 'hi',
+      fromMe: false,
+      timestamp: 100,
+    });
+
+    assert.strictEqual(controller.chats[0].chatId, '971500000000');
+    assert.strictEqual(controller.chats[0].chatName, '971500000000');
+  });
+
+  // ── Setup failure ────────────────────────────────────────────────────────
+
+  test('setup surfaces a failure via notifications.error, not just the console', async function (assert) {
+    const controller = makeController(this);
+
+    let errorMessage;
+    controller.notifications = {
+      error(message) {
+        errorMessage = message;
+      },
+    };
+    controller.whatsapp = {
+      connectSocket() {
+        return {};
+      },
+      getChats() {
+        return Promise.reject(new Error('backend down'));
+      },
+      getAllMessages() {
+        return Promise.resolve({ data: { messages: [] } });
+      },
+      getAi() {
+        return Promise.resolve({ data: {} });
+      },
+      getConnection() {
+        return Promise.resolve({ data: null });
+      },
+    };
+
+    await controller.setup();
+
+    assert.strictEqual(errorMessage, 'Could not load WhatsApp data');
   });
 });

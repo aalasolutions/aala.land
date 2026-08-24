@@ -139,6 +139,41 @@ describe('RedisService', () => {
         ['s', 3000],
       ]);
     });
+
+    it('surfaces a per-command error instead of reporting a successful write', async () => {
+      const wrongType = new Error(
+        'WRONGTYPE Operation against a key holding the wrong kind of value',
+      );
+
+      mockMulti.exec.mockResolvedValueOnce([
+        [wrongType, null],
+        [null, 1],
+      ]);
+      await expect(service.pushList('l', 'v', 1000)).rejects.toThrow(
+        'WRONGTYPE',
+      );
+
+      mockMulti.exec.mockResolvedValueOnce([
+        [wrongType, null],
+        [null, 1],
+      ]);
+      await expect(service.setAdd('s', 'm', 3000)).rejects.toThrow('WRONGTYPE');
+    });
+
+    it('incrCounter throws on a failed INCR rather than returning 0', async () => {
+      mockMulti.exec.mockResolvedValueOnce([
+        [new Error('OOM command not allowed'), null],
+        [null, 1],
+      ]);
+      await expect(service.incrCounter('c', 2000)).rejects.toThrow('OOM');
+    });
+
+    it('treats an aborted MULTI as a failure', async () => {
+      mockMulti.exec.mockResolvedValueOnce(null);
+      await expect(service.incrCounter('c', 2000)).rejects.toThrow(
+        'Redis MULTI aborted',
+      );
+    });
   });
 
   describe('delByPattern', () => {

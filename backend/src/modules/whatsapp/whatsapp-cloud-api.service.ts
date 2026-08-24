@@ -274,7 +274,9 @@ export class WhatsappCloudApiService {
         timestamp: Math.floor(Date.now() / 1000),
         originUserId: userId,
       };
-      void this.persistOutbound(
+      // Awaited: Meta's sent callback can arrive within milliseconds and is dropped as an
+      // unknown wamid if the row is not committed yet. persistOutbound never throws.
+      await this.persistOutbound(
         connection.companyId,
         userId,
         aiMsg,
@@ -295,7 +297,11 @@ export class WhatsappCloudApiService {
                 openWindows: usage.openWindows,
               });
           })
-          .catch(() => undefined);
+          .catch((err: unknown) =>
+            this.logger.debug(
+              `Credit usage push failed for ${connection.companyId}: ${err instanceof Error ? err.message : String(err)}`,
+            ),
+          );
       }
       return result;
     };

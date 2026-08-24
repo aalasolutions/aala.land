@@ -16,23 +16,22 @@ const CHAT_LIST_LIMIT = 300;
 // last_ts is a one-way GREATEST latch: a future timestamp would freeze the preview.
 const MAX_TS_SKEW_S = 300;
 
-// Delivery ladder. Meta can skip delivered entirely, so a status only moves forward.
+// Delivery ladder, forward only: failed tops it so a redelivered sent cannot resurrect.
 const STATUS_RANK: Record<WhatsappMessageStatus, number> = {
   [WhatsappMessageStatus.SENT]: 1,
   [WhatsappMessageStatus.DELIVERED]: 2,
   [WhatsappMessageStatus.READ]: 3,
-  [WhatsappMessageStatus.PLAYED]: 0,
-  [WhatsappMessageStatus.FAILED]: 0,
+  [WhatsappMessageStatus.PLAYED]: 4,
+  [WhatsappMessageStatus.FAILED]: 5,
 };
 
-// played and failed are terminal facts, not rungs on the ladder; they always write.
+// failed is a terminal fact that must land even on top of a read row; played wins by rank.
 const ALWAYS_WRITE_STATUSES: WhatsappMessageStatus[] = [
-  WhatsappMessageStatus.PLAYED,
   WhatsappMessageStatus.FAILED,
 ];
 
 // Same ladder in SQL, so the no-downgrade guard is evaluated inside the UPDATE.
-const STATUS_RANK_SQL = `COALESCE(CASE "status" WHEN 'sent' THEN 1 WHEN 'delivered' THEN 2 WHEN 'read' THEN 3 ELSE 0 END, 0)`;
+const STATUS_RANK_SQL = `COALESCE(CASE "status" WHEN 'sent' THEN 1 WHEN 'delivered' THEN 2 WHEN 'read' THEN 3 WHEN 'played' THEN 4 WHEN 'failed' THEN 5 ELSE 0 END, 0)`;
 
 @Injectable()
 export class MessageStoreService {
@@ -162,12 +161,8 @@ export class MessageStoreService {
         ],
       );
 
-      // Resolve the chat to a contact by its number, at most once per chat. The
-      // JID for an individual chat is <number>@s.whatsapp.net (optionally
-      // <number>:<device>@...); group chats (@g.us) have no person. Strip the
-      // device suffix and host before normalising digits, then match on the last
-      // 9. contact_resolution_attempted records that this ran, so an unsaved
-      // number does not re-trigger the correlated subquery on every message.
+      // chat_id is bare E.164 digits on Cloud API rows; the split_part calls strip the JID suffix only on legacy Baileys-era rows.
+      // Matched on the last 9 digits, once per chat: contact_resolution_attempted stops an unsaved number re-running the subquery.
       if (!msg.isGroup) {
         await manager.query(
           `UPDATE "whatsapp_chats"
@@ -317,21 +312,5 @@ export class MessageStoreService {
       lastFromMe: c.lastFromMe,
       lastInboundAt: this.toEpochSeconds(c.lastInboundAt),
     }));
-  }
-
-  // Driven off whatsapp_chats, never whatsapp_messages: addMessage writes both in one
-  // transaction, so a message owner always has a chat row, and chats do not grow with
-  // message volume.
-  async findOwnersNeedingRecovery(): Promise<
-    Array<{ companyId: string; userId: string }>
-  > {
-    const rows: Array<{ company_id: string; user_id: string }> =
-      await this.chats.query(
-        `SELECT DISTINCT c."company_id", c."user_id"
-           FROM "whatsapp_chats" c
-           LEFT JOIN "users" u ON u."id" = c."user_id"
-          WHERE u."id" IS NULL OR u."is_active" = false`,
-      );
-    return rows.map((r) => ({ companyId: r.company_id, userId: r.user_id }));
   }
 }
