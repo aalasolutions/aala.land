@@ -7,6 +7,44 @@
 @use "../uikit/common/var" as *;
 @use "../uikit/mixins/bem" as *;
 
+// ---- browse toolbar ----
+
+// Sort sits outside the filter accordion: it is a frequent, low-commitment
+// action and should not need a click to reach.
+.browse-toolbar {
+  display: flex;
+  gap: nu-space(4);
+  align-items: flex-end;
+  justify-content: space-between;
+  margin-block-end: nu-space(4);
+
+  @include media-down(sm) {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
+// Label sits inline, not stacked: <Nuvo::Field> carries a 16px block-end margin
+// that pushed the attached direction button out of line with the dropdown.
+.browse-toolbar__sort {
+  display: flex;
+  gap: nu-space(2);
+  align-items: center;
+}
+
+.browse-toolbar__sort-label {
+  font-size: nu-font-size(sm);
+  font-weight: nu-font-weight(medium);
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+// Stats render unconditionally so the row never collapses and the sort controls
+// stay explicable; a missing value shows a dash and recedes.
+.unit-stat.is-unset {
+  opacity: 0.55;
+}
+
 // ---- browse grid ----
 
 .browse-unit-grid {

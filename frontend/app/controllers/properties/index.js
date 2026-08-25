@@ -47,6 +47,18 @@ export default class PropertiesIndexController extends Controller {
   @tracked filterMaxPrice = '';
   @tracked filterAmenities = [];
 
+  // Empty field means the backend's default order (locality, asset, unit number).
+  @tracked sortField = '';
+  @tracked sortDirection = 'asc';
+
+  sortFieldOptions = [
+    { value: '', label: 'Default (location)' },
+    { value: 'name', label: 'Name' },
+    { value: 'price', label: 'Price' },
+    { value: 'area', label: 'Area' },
+    { value: 'added', label: 'Date added' },
+  ];
+
   amenityOptions = AMENITY_OPTIONS;
 
   filterTypeOptions = FILTER_TYPE_OPTIONS;
@@ -111,6 +123,16 @@ export default class PropertiesIndexController extends Controller {
     this.loadBrowseUnits();
   }
 
+  @action setSortField(value) {
+    this.sortField = value;
+    this.applyFilters();
+  }
+
+  @action toggleSortDirection() {
+    this.sortDirection = this.sortDirection === 'asc' ? 'desc' : 'asc';
+    this.applyFilters();
+  }
+
   @action clearFilters() {
     this.filterType = '';
     this.filterStatus = '';
@@ -162,6 +184,8 @@ export default class PropertiesIndexController extends Controller {
       }
       if (this.filterAmenities.length)
         params += `&amenities=${this.filterAmenities.join(',')}`;
+      if (this.sortField)
+        params += `&sort=${this.sortField}&order=${this.sortDirection}`;
       const json = await this.auth.fetchJson(`/properties/units?${params}`);
       this.browseUnits = json.data?.data ?? [];
       this.browseTotal = json.data?.total ?? 0;

@@ -235,14 +235,23 @@
   @include m(attached) {
     gap: 0;
 
-    .nu-btn:not(:first-child) {
+    // The second selector reaches one level into a <Nuvo::Dropdown>, which wraps
+    // its trigger, the same way nu-input-group reaches into .nu-input-wrap.
+    > .nu-btn:not(:first-child),
+    > .nu-dropdown:not(:first-child) > .nu-btn {
       border-start-start-radius: 0;
       border-end-start-radius: 0;
     }
 
-    .nu-btn:not(:last-child) {
+    > .nu-btn:not(:last-child),
+    > .nu-dropdown:not(:last-child) > .nu-btn {
       border-start-end-radius: 0;
       border-end-end-radius: 0;
+    }
+
+    // Border overlap belongs on the group's own flex child, so a wrapper carries
+    // it rather than the button nested inside it. Otherwise the seam doubles.
+    > :not(:last-child) {
       margin-inline-end: -1px;
     }
   }
