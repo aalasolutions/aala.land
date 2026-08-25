@@ -182,6 +182,7 @@ export class DocumentsController {
     @Query('accessLevel') accessLevel?: DocumentAccessLevel,
     @Query('dateFrom') dateFrom?: string,
     @Query('dateTo') dateTo?: string,
+    @Query('regionCode') regionCode?: string,
   ) {
     if (dateFrom && isNaN(Date.parse(dateFrom))) {
       throw new BadRequestException('dateFrom is not a valid date');
@@ -196,7 +197,7 @@ export class DocumentsController {
       limit,
       category,
       unitId,
-      { search, accessLevel, dateFrom, dateTo },
+      { search, accessLevel, dateFrom, dateTo, regionCode },
     );
   }
 

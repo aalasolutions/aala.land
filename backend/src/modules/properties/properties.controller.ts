@@ -408,6 +408,13 @@ export class PropertiesController {
     type: String,
     description: 'Units owned by this contact',
   })
+  @ApiQuery({
+    name: 'sort',
+    required: false,
+    type: String,
+    description: 'One of: name, price, area, added. Anything else is ignored.',
+  })
+  @ApiQuery({ name: 'order', required: false, enum: ['asc', 'desc'] })
   findAllUnits(
     @Request() req: AuthenticatedRequest,
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
@@ -422,6 +429,8 @@ export class PropertiesController {
     @Query('localityId') localityId?: string,
     @Query('regionCode') regionCode?: string,
     @Query('ownerId', new ParseUUIDPipe({ optional: true })) ownerId?: string,
+    @Query('sort') sort?: string,
+    @Query('order') order?: string,
   ) {
     const filters = {
       amenities: amenitiesStr
@@ -445,7 +454,27 @@ export class PropertiesController {
       page,
       limit,
       filters,
+      {
+        field: sort || undefined,
+        direction: order?.toUpperCase() === 'DESC' ? 'DESC' : 'ASC',
+      },
     );
+  }
+
+  // Declared before `units/:id` so the literal segment is not eaten by the param route.
+  @Get('units/count-by-region')
+  @Roles(
+    Role.COMPANY_ADMIN,
+    Role.ADMIN,
+    Role.MANAGER,
+    Role.AGENT,
+    Role.ACCOUNTANT,
+  )
+  @ApiOperation({
+    summary: 'Unit totals per region code for the topbar region switcher',
+  })
+  countUnitsByRegion(@Request() req: AuthenticatedRequest) {
+    return this.propertiesService.countUnitsByRegion(requireCompanyId(req.user));
   }
 
   @Get('units/:id')

@@ -61,6 +61,11 @@ export class Notification {
   @Column({ name: 'entity_id', type: 'uuid', nullable: true })
   entityId: string;
 
+  // NULL means company-wide, so it shows in every region.
+  @Index('IDX_NOTIFICATIONS_REGION_CODE')
+  @Column({ name: 'region_code', type: 'varchar', length: 50, nullable: true })
+  regionCode: string | null;
+
   @Column({ name: 'is_read', type: 'boolean', default: false })
   isRead: boolean;
 

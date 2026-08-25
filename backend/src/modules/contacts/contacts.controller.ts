@@ -110,6 +110,7 @@ export class ContactsController {
     @Query('nationality') nationality?: string,
     @Query('dateFrom') dateFrom?: string,
     @Query('dateTo') dateTo?: string,
+    @Query('regionCode') regionCode?: string,
   ) {
     if (dateFrom && isNaN(Date.parse(dateFrom))) {
       throw new BadRequestException('dateFrom is not a valid date');
@@ -128,6 +129,7 @@ export class ContactsController {
         isWhatsapp: isWhatsapp ? isWhatsapp === 'true' : undefined,
         company: company || undefined,
         nationality: nationality || undefined,
+        regionCode: regionCode || undefined,
         dateFrom: dateFrom || undefined,
         dateTo: dateTo || undefined,
       },

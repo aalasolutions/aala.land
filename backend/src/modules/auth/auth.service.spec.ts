@@ -9,6 +9,8 @@ import { LockStateService, UNLOCKED } from '../lock/lock-state.service';
 import { SystemEmailService } from '../email/system-email.service';
 import * as bcrypt from 'bcryptjs';
 import * as crypto from 'crypto';
+import { UserRegion } from '../users/entities/user-region.entity';
+import { getRepositoryToken } from '@nestjs/typeorm';
 
 jest.mock('bcryptjs');
 jest.mock('crypto');
@@ -73,6 +75,10 @@ describe('AuthService', () => {
           useValue: {
             getLockState: jest.fn().mockResolvedValue(UNLOCKED),
           },
+        },
+        {
+          provide: getRepositoryToken(UserRegion),
+          useValue: { find: jest.fn().mockResolvedValue([]) },
         },
         {
           provide: DataSource,

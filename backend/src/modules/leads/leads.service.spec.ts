@@ -177,6 +177,7 @@ describe('LeadsService', () => {
         companyId,
         expect.any(Object),
         undefined,
+        expect.any(String),
       );
       expect(leadRepo.create).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -217,6 +218,7 @@ describe('LeadsService', () => {
         companyId,
         expect.objectContaining({ lastName: 'Al-Rashid Holdings' }),
         undefined,
+        expect.any(String),
       );
     });
 

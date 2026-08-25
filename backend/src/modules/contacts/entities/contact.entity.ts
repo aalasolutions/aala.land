@@ -77,6 +77,10 @@ export class Contact {
   @Column({ type: 'text', nullable: true })
   notes: string | null;
 
+  @Index('IDX_CONTACTS_REGION_CODE')
+  @Column({ name: 'region_code', type: 'varchar', length: 50 })
+  regionCode: string;
+
   @Index('IDX_contacts_created_by')
   @Column({ name: 'created_by', type: 'uuid', nullable: true })
   createdBy: string | null;

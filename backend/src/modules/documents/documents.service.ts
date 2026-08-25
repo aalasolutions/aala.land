@@ -7,10 +7,13 @@ import {
   DocumentAccessLevel,
 } from '../properties/entities/property-document.entity';
 import { User } from '../users/entities/user.entity';
+import { Company } from '../companies/entities/company.entity';
+import { resolveRegionCode } from '../../shared/utils/resolve-region-code.util';
 import { UpdateDocumentDto } from './dto/update-document.dto';
 import { MediaService } from '../properties/media.service';
 import { UploadDocumentDto } from './dto/upload-document.dto';
 import { Role } from '@shared/enums/roles.enum';
+import { seesAllRegions } from '@shared/utils/region-visibility.util';
 
 // Client-facing shape: the internal storage pointers (url, s3Key) are never
 // serialized to the client. Documents are served only through the streaming
@@ -36,6 +39,8 @@ export class DocumentsService {
     private readonly documentRepository: Repository<PropertyDocument>,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+    @InjectRepository(Company)
+    private readonly companyRepository: Repository<Company>,
     private readonly mediaService: MediaService,
   ) {}
 
@@ -59,6 +64,11 @@ export class DocumentsService {
       category: dto.category,
       accessLevel: dto.accessLevel,
       companyId,
+      regionCode: await resolveRegionCode(
+        this.companyRepository,
+        companyId,
+        dto.regionCode,
+      ),
       uploadedBy: userId,
       version: 1,
     });
@@ -77,6 +87,7 @@ export class DocumentsService {
       accessLevel?: DocumentAccessLevel;
       dateFrom?: string;
       dateTo?: string;
+      regionCode?: string;
     },
   ): Promise<{
     data: SanitizedDocument[];
@@ -93,6 +104,14 @@ export class DocumentsService {
       .leftJoinAndSelect('asset.locality', 'locality')
       .where('doc.company_id = :companyId', { companyId })
       .andWhere('doc.access_level IN (:...allowedLevels)', { allowedLevels });
+
+    // Owner ruling: admins see every region and read regionCode off each row;
+    // everyone else is confined to the region they are currently working in.
+    if (filters?.regionCode && !seesAllRegions(userRole)) {
+      qb.andWhere('doc.region_code = :regionCode', {
+        regionCode: filters.regionCode,
+      });
+    }
 
     if (category) {
       qb.andWhere('doc.category = :category', { category });

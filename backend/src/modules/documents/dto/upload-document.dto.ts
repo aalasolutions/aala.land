@@ -58,4 +58,12 @@ export class UploadDocumentDto {
   @IsOptional()
   @IsEnum(DocumentAccessLevel)
   accessLevel?: DocumentAccessLevel;
+
+  @ApiProperty({
+    required: false,
+    description: 'Defaults to the company default region when omitted',
+  })
+  @IsOptional()
+  @IsString()
+  regionCode?: string;
 }

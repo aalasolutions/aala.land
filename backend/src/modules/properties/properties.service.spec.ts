@@ -123,6 +123,14 @@ describe('PropertiesService', () => {
     service = module.get<PropertiesService>(PropertiesService);
     areaRepo = module.get(getRepositoryToken(PropertyArea));
     assetRepo = module.get(getRepositoryToken(Asset));
+    // resolveOwnerId() now derives the new owner contact's region from the
+    // asset chain, so this builder has to be chainable by default.
+    (assetRepo.createQueryBuilder as jest.Mock).mockReturnValue({
+      innerJoin: jest.fn().mockReturnThis(),
+      select: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      getRawOne: jest.fn().mockResolvedValue({ regionCode: 'dubai' }),
+    });
     unitRepo = module.get(getRepositoryToken(Unit));
     mediaRepo = module.get(getRepositoryToken(PropertyMedia));
     contactRepo = module.get(getRepositoryToken(Contact));
@@ -299,6 +307,7 @@ describe('PropertiesService', () => {
         companyId,
         { firstName: 'Ahmed', phone: '+971501234567', isWhatsapp: true },
         'user-uuid-1',
+        'dubai',
       );
       expect(result.ownerId).toBe('owner-uuid-1');
       expect(unitRepo.create).toHaveBeenCalledWith(
@@ -337,6 +346,7 @@ describe('PropertiesService', () => {
         companyId,
         { lastName: 'Al-Rashid Holdings' },
         undefined,
+        'dubai',
       );
       expect(result.ownerId).toBe('owner-uuid-2');
     });
@@ -478,6 +488,7 @@ describe('PropertiesService', () => {
         companyId,
         { firstName: 'Ahmed', phone: '+971501234567' },
         'user-uuid-1',
+        'dubai',
       );
       expect(result.ownerId).toBe('owner-uuid-1');
       expect(result.owner).toMatchObject({ displayName: 'John Doe' });

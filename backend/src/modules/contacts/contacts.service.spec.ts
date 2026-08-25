@@ -8,6 +8,7 @@ import { Lead } from '../leads/entities/lead.entity';
 import { Unit } from '../properties/entities/unit.entity';
 import { Lease } from '../leases/entities/lease.entity';
 import { WhatsappChat } from '../whatsapp/entities/whatsapp-chat.entity';
+import { Company } from '../companies/entities/company.entity';
 
 // A query-builder mock that records the chained fluent calls and resolves from
 // the given result. Used for findAll + the tag-derivation sub-queries.
@@ -62,6 +63,7 @@ describe('ContactsService', () => {
         { provide: getRepositoryToken(Unit), useValue: { count: jest.fn(), createQueryBuilder: jest.fn() } },
         { provide: getRepositoryToken(Lease), useValue: { count: jest.fn(), createQueryBuilder: jest.fn() } },
         { provide: getRepositoryToken(WhatsappChat), useValue: { count: jest.fn(), query: jest.fn().mockResolvedValue(undefined) } },
+        { provide: getRepositoryToken(Company), useValue: { findOne: jest.fn().mockResolvedValue({ defaultRegionCode: 'dubai' }) } },
         { provide: DataSource, useValue: { transaction: jest.fn() } },
       ],
     }).compile();
@@ -95,7 +97,7 @@ describe('ContactsService', () => {
 
       const result = await service.create(companyId, dto as any, 'user-uuid-1');
 
-      expect(repo.create).toHaveBeenCalledWith({ ...dto, companyId, createdBy: 'user-uuid-1' });
+      expect(repo.create).toHaveBeenCalledWith({ ...dto, companyId, createdBy: 'user-uuid-1', regionCode: 'dubai' });
       expect(result).toEqual({
         ...mockContact,
         tags: [],

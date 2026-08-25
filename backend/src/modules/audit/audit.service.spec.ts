@@ -5,6 +5,7 @@ import { AuditService } from './audit.service';
 import { AuditLog } from './entities/audit-log.entity';
 import { AuditAction } from './dto/query-audit-logs.dto';
 import { NotFoundException } from '@nestjs/common';
+import { Company } from '../companies/entities/company.entity';
 
 describe('AuditService', () => {
   let service: AuditService;
@@ -28,6 +29,7 @@ describe('AuditService', () => {
     newValue: { name: 'Test Lead' },
     ipAddress: '127.0.0.1',
     userAgent: 'Mozilla/5.0',
+    regionCode: 'dubai',
     createdAt: new Date(),
     company: null as any,
     user: null as any,
@@ -40,6 +42,12 @@ describe('AuditService', () => {
         {
           provide: getRepositoryToken(AuditLog),
           useValue: mockRepository,
+        },
+        {
+          provide: getRepositoryToken(Company),
+          useValue: {
+            findOne: jest.fn().mockResolvedValue({ defaultRegionCode: 'dubai' }),
+          },
         },
       ],
     }).compile();
@@ -71,7 +79,10 @@ describe('AuditService', () => {
       const result = await service.log(createAuditLogDto);
 
       expect(result).toEqual(mockAuditLog);
-      expect(mockRepository.create).toHaveBeenCalledWith(createAuditLogDto);
+      expect(mockRepository.create).toHaveBeenCalledWith({
+        ...createAuditLogDto,
+        regionCode: 'dubai',
+      });
       expect(mockRepository.save).toHaveBeenCalledWith(mockAuditLog);
     });
   });

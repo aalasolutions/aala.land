@@ -203,8 +203,32 @@ $shell-sidebar-collapsed: 3.75rem;
   letter-spacing: 0.05em;
 }
 
-.region-currency-tag {
+// Holds the count badge and currency tag; carries the auto margin that used to
+// sit on the currency tag itself.
+.region-meta {
+  display: flex;
+  gap: nu-space(2);
+  align-items: center;
   margin-inline-start: auto;
+}
+
+.region-unit-count {
+  padding-block: nu-space(1);
+  padding-inline: nu-space(2);
+  font-size: nu-font-size(xs);
+  font-weight: nu-font-weight(semibold);
+  line-height: 1;
+  color: var(--primary);
+  background-color: nu-tint(primary, 12%);
+  border-radius: nu-radius(full);
+
+  &.is-zero {
+    color: var(--text-muted);
+    background-color: var(--bg-alternate);
+  }
+}
+
+.region-currency-tag {
   font-size: nu-font-size(xs);
   color: var(--text-muted);
 }

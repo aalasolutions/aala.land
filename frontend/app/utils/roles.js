@@ -105,8 +105,11 @@ export function canUpdateUser(role, targetRole) {
   return currentRoleIndex < targetRoleIndex;
 }
 
-export function canSwitchRegion(role) {
-  return role === ROLES.COMPANY_ADMIN;
+// Switching is a data question, not a role one: the bootstrap already narrows
+// `regions` to what the user is assigned, so anyone holding more than one may
+// move between them and anyone holding one is pinned to it.
+export function canSwitchRegion(assignedRegionCount) {
+  return assignedRegionCount > 1;
 }
 
 export function getVisibleGroups(role) {

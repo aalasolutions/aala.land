@@ -98,7 +98,13 @@ describe('NotificationsController', () => {
 
       const result = await controller.findAll(mockReq, 1, 20);
 
-      expect(service.findAll).toHaveBeenCalledWith(companyId, userId, 1, 20);
+      expect(service.findAll).toHaveBeenCalledWith(
+        companyId,
+        userId,
+        1,
+        20,
+        undefined,
+      );
       expect(result.data).toHaveLength(1);
       expect(result.total).toBe(1);
     });

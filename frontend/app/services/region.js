@@ -33,7 +33,11 @@ export default class RegionService extends Service {
   }
 
   initialize(regions, defaultRegionCode) {
-    this.regions = regions || [];
+    // Sorted once at the source so every consumer (topbar switcher, team
+    // assignment picker, lead and vendor forms) reads the same order.
+    this.regions = [...(regions ?? [])].sort((a, b) =>
+      (a.name ?? '').localeCompare(b.name ?? ''),
+    );
 
     const saved = localStorage.getItem('aala-region');
     if (saved && this.regions.find((r) => r.code === saved)) {

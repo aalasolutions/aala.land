@@ -101,14 +101,22 @@ export class NotificationsService {
     userId: string,
     page = 1,
     limit = 20,
+    regionCode?: string,
   ): Promise<{
     data: Notification[];
     total: number;
     page: number;
     limit: number;
   }> {
+    // Region here is relevance, not access: the row is already addressed to this
+    // user. Company-wide notices (NULL region) stay visible everywhere.
     const [data, total] = await this.notificationRepository.findAndCount({
-      where: { companyId, userId },
+      where: regionCode
+        ? [
+            { companyId, userId, regionCode },
+            { companyId, userId, regionCode: IsNull() },
+          ]
+        : { companyId, userId },
       ...paginationOptions(page, limit),
       order: { createdAt: 'DESC' },
     });

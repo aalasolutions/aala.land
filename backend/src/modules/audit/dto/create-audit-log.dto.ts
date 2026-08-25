@@ -53,4 +53,10 @@ export class CreateAuditLogDto {
   @IsOptional()
   @IsString()
   userAgent?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  @MaxLength(50)
+  regionCode?: string;
 }

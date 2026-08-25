@@ -10,6 +10,7 @@ import { UsersModule } from '../users/users.module';
 import { CompaniesModule } from '../companies/companies.module';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { User } from '../users/entities/user.entity';
+import { UserRegion } from '../users/entities/user-region.entity';
 import { Company } from '../companies/entities/company.entity';
 import { ImpersonateService } from './impersonate.service';
 import { LockModule } from '@modules/lock/lock.module';
@@ -21,7 +22,7 @@ import { EmailModule } from '@modules/email/email.module';
     CompaniesModule,
     LockModule,
     EmailModule,
-    TypeOrmModule.forFeature([User, Company]),
+    TypeOrmModule.forFeature([User, Company, UserRegion]),
     PassportModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],

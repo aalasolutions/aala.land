@@ -42,6 +42,12 @@ export class AuditLog {
   @Column({ name: 'entity_id', type: 'uuid', nullable: true })
   entityId: string | null;
 
+  // NULL means the event has no region by nature. Billing is global and
+  // admin-only, so billing rows keep NULL forever and never reach a
+  // region-scoped user.
+  @Column({ name: 'region_code', type: 'varchar', length: 50, nullable: true })
+  regionCode: string | null;
+
   @Column({ name: 'old_value', type: 'jsonb', nullable: true })
   oldValue: Record<string, any> | null;
 

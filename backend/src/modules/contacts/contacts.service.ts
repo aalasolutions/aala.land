@@ -6,6 +6,8 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import { Contact } from './entities/contact.entity';
+import { Company } from '../companies/entities/company.entity';
+import { resolveRegionCode } from '../../shared/utils/resolve-region-code.util';
 import { Lead } from '../leads/entities/lead.entity';
 import { Unit } from '../properties/entities/unit.entity';
 import { Lease } from '../leases/entities/lease.entity';
@@ -36,6 +38,7 @@ export interface ContactFilters {
   nationality?: string;
   dateFrom?: string;
   dateTo?: string;
+  regionCode?: string;
 }
 
 // Identity carried inline when attaching a person (lead capture, unit owner,
@@ -63,6 +66,8 @@ export class ContactsService {
     private readonly leaseRepository: Repository<Lease>,
     @InjectRepository(WhatsappChat)
     private readonly chatRepository: Repository<WhatsappChat>,
+    @InjectRepository(Company)
+    private readonly companyRepository: Repository<Company>,
   ) {}
 
   // Adding a contact honors the same one-number-one-contact rule as lead
@@ -92,10 +97,16 @@ export class ContactsService {
       return this.findOne(merged.id, companyId);
     }
 
+    const regionCode = await resolveRegionCode(
+      this.companyRepository,
+      companyId,
+      dto.regionCode,
+    );
     const contact = this.contactRepository.create({
       ...dto,
       companyId,
       createdBy,
+      regionCode,
     });
     const saved = await this.contactRepository.save(contact);
     await this.linkMatchingChats(saved);
@@ -109,10 +120,13 @@ export class ContactsService {
   // resolves. Contacts with no phone match on lowercased email; a contact with
   // neither is just created (the plain-contact case). On resolve, identity
   // fields fill the existing contact's empty slots.
+  // `regionCode` is the region of whatever created this contact (a lead, a unit
+  // owner). Falls back to the company default when the caller has none.
   async resolveOrCreate(
     companyId: string,
     identity: ContactIdentity,
     createdBy?: string,
+    regionCode?: string,
   ): Promise<Contact> {
     if (identity.contactId) {
       const existing = await this.contactRepository.findOne({
@@ -159,6 +173,11 @@ export class ContactsService {
     const contact = this.contactRepository.create({
       companyId,
       createdBy: createdBy ?? null,
+      regionCode: await resolveRegionCode(
+        this.companyRepository,
+        companyId,
+        regionCode,
+      ),
       firstName: identity.firstName || null,
       lastName: identity.lastName || null,
       email: identity.email || null,
@@ -251,6 +270,12 @@ export class ContactsService {
     const qb = this.contactRepository
       .createQueryBuilder('c')
       .where('c.company_id = :companyId', { companyId });
+
+    if (filters?.regionCode) {
+      qb.andWhere('c.region_code = :regionCode', {
+        regionCode: filters.regionCode,
+      });
+    }
 
     if (search) {
       qb.andWhere(

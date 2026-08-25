@@ -9,6 +9,8 @@ import { UsersService } from '../users/users.service';
 import { CompaniesService } from '../companies/companies.service';
 import { User } from '../users/entities/user.entity';
 import { Region, resolveRegions } from '@shared/constants/regions';
+import { seesAllRegions } from '@shared/utils/region-visibility.util';
+import { UserRegion } from '@modules/users/entities/user-region.entity';
 import { RegisterDto } from './dto/register.dto';
 import { Role } from '@shared/enums/roles.enum';
 import { SubscriptionTier } from '../companies/entities/company.entity';
@@ -17,7 +19,8 @@ import {
   LockStateService,
 } from '@modules/lock/lock-state.service';
 import { SystemEmailService } from '@modules/email/system-email.service';
-import { DataSource } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
+import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcryptjs';
 import * as crypto from 'crypto';
 
@@ -105,6 +108,8 @@ export class AuthService {
     private readonly lockStateService: LockStateService,
     private readonly dataSource: DataSource,
     private readonly systemEmail: SystemEmailService,
+    @InjectRepository(UserRegion)
+    private readonly userRegionRepository: Repository<UserRegion>,
   ) {}
 
   async validateUser(
@@ -123,15 +128,47 @@ export class AuthService {
     return null;
   }
 
+  // Regions a user may actually work in, intersected with what the company
+  // still operates so a stale assignment cannot resurface a dropped region.
+  private async assignedRegionCodes(
+    userId: string,
+    companyCodes: string[],
+  ): Promise<string[]> {
+    const rows = await this.userRegionRepository.find({
+      where: { userId },
+      select: { regionCode: true },
+    });
+    const assigned = new Set(rows.map((row) => row.regionCode));
+    return companyCodes.filter((code) => assigned.has(code));
+  }
+
   private async resolveCompanyContext(
     companyId: string | null,
+    user?: { id: string; role: string },
   ): Promise<CompanyContext> {
     const company = companyId
       ? await this.companiesService.findOne(companyId)
       : null;
+
+    const companyCodes = company?.activeRegions ?? [];
+    // Admins keep every company region; everyone else only sees what they are
+    // assigned, so the switcher can never offer a region they cannot read.
+    const codes =
+      !user || seesAllRegions(user.role)
+        ? companyCodes
+        : await this.assignedRegionCodes(user.id, companyCodes);
+
+    // The company default is useless to someone not assigned to it: the client
+    // would boot into a region every request then gets rewritten away from.
+    const companyDefault = company?.defaultRegionCode ?? '';
+    const defaultRegionCode =
+      companyDefault && codes.includes(companyDefault)
+        ? companyDefault
+        : (codes[0] ?? companyDefault);
+
     return {
-      regions: company ? resolveRegions(company.activeRegions) : [],
-      defaultRegionCode: company?.defaultRegionCode ?? '',
+      regions: resolveRegions(codes),
+      defaultRegionCode,
       subscriptionTier: company?.subscriptionTier ?? null,
       // Read-time evaluation; drives the tenant lock/grace banner (design 8.2).
       lockState: companyId
@@ -148,7 +185,10 @@ export class AuthService {
       role: user.role,
     };
 
-    const context = await this.resolveCompanyContext(user.companyId);
+    const context = await this.resolveCompanyContext(user.companyId, {
+      id: user.id,
+      role: user.role,
+    });
 
     return {
       accessToken: this.jwtService.sign(payload),
@@ -172,7 +212,10 @@ export class AuthService {
       userId,
       companyId ?? undefined,
     );
-    const context = await this.resolveCompanyContext(user.companyId);
+    const context = await this.resolveCompanyContext(user.companyId, {
+      id: user.id,
+      role: user.role,
+    });
 
     return {
       user: {
@@ -210,7 +253,10 @@ export class AuthService {
       impersonatedBy,
     };
 
-    const context = await this.resolveCompanyContext(user.companyId);
+    const context = await this.resolveCompanyContext(user.companyId, {
+      id: user.sub,
+      role: user.role,
+    });
 
     return {
       accessToken: this.jwtService.sign(payload),

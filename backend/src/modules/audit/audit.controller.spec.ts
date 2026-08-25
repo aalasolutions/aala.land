@@ -39,6 +39,7 @@ describe('AuditController (e2e)', () => {
     newValue: { name: 'Test Lead' },
     ipAddress: '127.0.0.1',
     userAgent: 'Mozilla/5.0',
+    regionCode: 'dubai',
     createdAt: new Date(),
     company: null as any,
     user: null as any,
@@ -126,6 +127,7 @@ describe('AuditController (e2e)', () => {
           page: 1,
           limit: 20,
         },
+        mockUser.role,
       );
     });
 
@@ -149,6 +151,7 @@ describe('AuditController (e2e)', () => {
           limit: 20,
           action: AuditAction.CREATE,
         },
+        mockUser.role,
       );
     });
 
@@ -172,6 +175,7 @@ describe('AuditController (e2e)', () => {
           limit: 20,
           entityType: 'lead',
         },
+        mockUser.role,
       );
     });
 
@@ -195,6 +199,7 @@ describe('AuditController (e2e)', () => {
           limit: 20,
           entityId: mockAuditLog.entityId,
         },
+        mockUser.role,
       );
     });
 
@@ -218,6 +223,7 @@ describe('AuditController (e2e)', () => {
           limit: 20,
           userId: mockAuditLog.userId,
         },
+        mockUser.role,
       );
     });
 
@@ -240,6 +246,7 @@ describe('AuditController (e2e)', () => {
           page: 2,
           limit: 10,
         },
+        mockUser.role,
       );
     });
   });

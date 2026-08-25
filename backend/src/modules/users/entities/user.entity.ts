@@ -5,10 +5,12 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   ManyToOne,
+  OneToMany,
   JoinColumn,
   Index,
 } from 'typeorm';
 import { Company } from '../../companies/entities/company.entity';
+import { UserRegion } from './user-region.entity';
 import { Role } from '../../../shared/enums/roles.enum';
 
 export enum AuthProvider {
@@ -140,4 +142,7 @@ export class User {
 
   @UpdateDateColumn({ name: 'updated_at' })
   updatedAt: Date;
+
+  @OneToMany(() => UserRegion, (region) => region.user)
+  regions: UserRegion[];
 }

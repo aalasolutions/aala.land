@@ -44,6 +44,14 @@ function hasContactIdentity(
   );
 }
 
+// Whitelist: nothing user-supplied ever reaches ORDER BY.
+const UNIT_SORT_COLUMNS: Record<string, string[]> = {
+  name: ['a.name', 'u.unitNumber'],
+  price: ['u.price'],
+  area: ['u.sqFt'],
+  added: ['u.createdAt'],
+};
+
 @Injectable()
 export class PropertiesService {
   constructor(
@@ -314,6 +322,7 @@ export class PropertiesService {
       regionCode?: string;
       ownerId?: string;
     },
+    sort?: { field?: string; direction?: string },
   ) {
     const qb = this.unitRepository
       .createQueryBuilder('u')
@@ -371,11 +380,21 @@ export class PropertiesService {
       qb.andWhere('u.ownerId = :ownerId', { ownerId: filters.ownerId });
     }
 
-    qb.skip(pageSkip(page, limit))
-      .take(limit)
-      .orderBy('loc.name', 'ASC')
-      .addOrderBy('a.name', 'ASC')
-      .addOrderBy('u.unitNumber', 'ASC');
+    qb.skip(pageSkip(page, limit)).take(limit);
+
+    const sortColumns = sort?.field ? UNIT_SORT_COLUMNS[sort.field] : undefined;
+    if (sortColumns) {
+      // NULLS LAST both ways so unpriced or unmeasured units never lead the list.
+      const direction = sort?.direction === 'DESC' ? 'DESC' : 'ASC';
+      qb.orderBy(sortColumns[0], direction, 'NULLS LAST');
+      for (const column of sortColumns.slice(1)) {
+        qb.addOrderBy(column, direction, 'NULLS LAST');
+      }
+    } else {
+      qb.orderBy('loc.name', 'ASC')
+        .addOrderBy('a.name', 'ASC')
+        .addOrderBy('u.unitNumber', 'ASC');
+    }
 
     const [units, total] = await qb.getManyAndCount();
 
@@ -427,6 +446,7 @@ export class PropertiesService {
       dto.ownerId,
       owner,
       userId,
+      dto.assetId,
     );
     const unit = this.unitRepository.create({
       ...rest,
@@ -450,6 +470,26 @@ export class PropertiesService {
       order: { createdAt: 'DESC' },
     });
     return { data, total, page, limit };
+  }
+
+  // Region totals for the topbar switcher. Deliberately unfiltered by region.
+  async countUnitsByRegion(companyId: string): Promise<Record<string, number>> {
+    const rows = await this.unitRepository
+      .createQueryBuilder('u')
+      .innerJoin('u.asset', 'a')
+      .innerJoin('a.locality', 'loc')
+      .innerJoin('loc.city', 'ci')
+      .select('ci.regionCode', 'regionCode')
+      .addSelect('COUNT(u.id)', 'count')
+      .where('u.companyId = :companyId', { companyId })
+      .groupBy('ci.regionCode')
+      .getRawMany<{ regionCode: string; count: string }>();
+
+    const counts: Record<string, number> = {};
+    for (const row of rows) {
+      counts[row.regionCode] = Number(row.count);
+    }
+    return counts;
   }
 
   async findOneUnit(id: string, companyId: string): Promise<Unit> {
@@ -479,6 +519,7 @@ export class PropertiesService {
         ownerId ?? undefined,
         owner,
         userId,
+        unit.assetId,
       );
       unit.owner = resolvedId
         ? await this.verifyContactBelongsToCompany(resolvedId, companyId)
@@ -494,6 +535,7 @@ export class PropertiesService {
     ownerId: string | undefined,
     owner: ContactIdentityDto | undefined,
     userId?: string,
+    assetId?: string | null,
   ): Promise<string | null> {
     if (ownerId) {
       await this.verifyContactBelongsToCompany(ownerId, companyId);
@@ -504,8 +546,25 @@ export class PropertiesService {
       companyId,
       owner,
       userId,
+      await this.regionOfAsset(assetId),
     );
     return contact.id;
+  }
+
+  // A new owner contact belongs to the region of the unit being created, not to
+  // the company default, or region-scoped users would never see that owner.
+  private async regionOfAsset(
+    assetId?: string | null,
+  ): Promise<string | undefined> {
+    if (!assetId) return undefined;
+    const row = await this.assetRepository
+      .createQueryBuilder('a')
+      .innerJoin('a.locality', 'loc')
+      .innerJoin('loc.city', 'ci')
+      .select('ci.regionCode', 'regionCode')
+      .where('a.id = :assetId', { assetId })
+      .getRawOne<{ regionCode: string }>();
+    return row?.regionCode ?? undefined;
   }
 
   private async verifyContactBelongsToCompany(

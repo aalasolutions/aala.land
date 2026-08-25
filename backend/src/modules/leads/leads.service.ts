@@ -93,17 +93,21 @@ export class LeadsService {
       );
     }
 
-    const contact = await this.contactsService.resolveOrCreate(
-      companyId,
-      { contactId, firstName, lastName, email, phone, isWhatsapp },
-      userId,
-    );
-
+    // Resolved before the contact so a contact created here inherits the lead's
+    // region rather than silently falling back to the company default.
     const regionCode = await resolveRegionCode(
       this.companyRepository,
       companyId,
       dtoRegionCode,
     );
+
+    const contact = await this.contactsService.resolveOrCreate(
+      companyId,
+      { contactId, firstName, lastName, email, phone, isWhatsapp },
+      userId,
+      regionCode,
+    );
+
     const lead = this.leadRepository.create({
       ...rest,
       contactId: contact.id,
@@ -139,6 +143,7 @@ export class LeadsService {
           type: NotificationType.LEAD_UNASSIGNED,
           entityType: 'lead',
           entityId: saved.id,
+          regionCode: saved.regionCode,
         });
       }
     } else {
@@ -150,6 +155,7 @@ export class LeadsService {
           type: NotificationType.LEAD_ASSIGNED,
           entityType: 'lead',
           entityId: saved.id,
+          regionCode: saved.regionCode,
         });
       }
     }
@@ -297,6 +303,7 @@ export class LeadsService {
           type: NotificationType.LEAD_STATUS_CHANGED,
           entityType: 'lead',
           entityId: lead.id,
+          regionCode: lead.regionCode,
         });
       }
     }
@@ -322,6 +329,7 @@ export class LeadsService {
           type: NotificationType.LEAD_ASSIGNED,
           entityType: 'lead',
           entityId: lead.id,
+          regionCode: lead.regionCode,
         });
       } else if (assignmentChanged && !dto.assignedTo) {
         // Notify admins about unassigned lead (only if not the performer)
@@ -335,6 +343,7 @@ export class LeadsService {
               type: NotificationType.LEAD_UNASSIGNED,
               entityType: 'lead',
               entityId: lead.id,
+              regionCode: lead.regionCode,
             });
           }
         }
@@ -398,6 +407,7 @@ export class LeadsService {
         type: NotificationType.LEAD_ASSIGNED,
         entityType: 'lead',
         entityId: lead.id,
+        regionCode: lead.regionCode,
       });
     }
 

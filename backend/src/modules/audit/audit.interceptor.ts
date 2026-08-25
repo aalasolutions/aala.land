@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { Observable, tap } from 'rxjs';
 import { AuditService } from './audit.service';
+import { isGlobalEntityType } from './audit-global-entities';
 import { AuditAction } from './dto/query-audit-logs.dto';
 
 // Path segments that should never be audited (matched against normalized path)
@@ -187,6 +188,10 @@ export class AuditInterceptor implements NestInterceptor {
                   ? ipAddress.substring(0, 100)
                   : undefined,
               userAgent: userAgent || undefined,
+              regionCode: isGlobalEntityType(entityType)
+                ? undefined
+                : ((request.query?.regionCode as string | undefined) ??
+                  undefined),
             })
             .catch((err: unknown) => {
               const message = err instanceof Error ? err.message : String(err);

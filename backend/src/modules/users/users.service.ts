@@ -19,6 +19,7 @@ import {
 } from 'typeorm';
 import { withCompanyLock } from '@shared/utils/company-lock.util';
 import { User, AuthProvider } from './entities/user.entity';
+import { UserRegion } from './entities/user-region.entity';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { InviteUserDto } from './dto/invite-user.dto';
@@ -107,12 +108,28 @@ export class UsersService {
         : null;
 
       try {
+        const { regionCodes, ...userFields } = dto;
         const user = manager.create(User, {
-          ...dto,
+          ...userFields,
           password: hashedPassword,
           companyId,
         });
-        return await manager.save(user);
+        const saved = await manager.save(user);
+
+        // A member with no regions would slip past region scoping entirely, so
+        // an explicit set is used when given and the company default otherwise.
+        const codes = regionCodes?.length
+          ? this.validateRegionCodes(regionCodes, company?.activeRegions ?? [])
+          : company?.defaultRegionCode
+            ? [company.defaultRegionCode]
+            : [];
+        if (codes.length) {
+          await manager.insert(
+            UserRegion,
+            codes.map((regionCode) => ({ userId: saved.id, regionCode })),
+          );
+        }
+        return saved;
       } catch (err) {
         if (seat) await seat.release();
         throw err;
@@ -132,11 +149,61 @@ export class UsersService {
       ...paginationOptions(page, limit),
       order: { createdAt: 'DESC' as const },
     };
-    if (!companyId) {
-      Object.assign(findOptions, { relations: ['company'] });
-    }
+    Object.assign(findOptions, {
+      relations: companyId ? ['regions'] : ['company', 'regions'],
+    });
     const [data, total] = await this.userRepository.findAndCount(findOptions);
-    return { data, total, page, limit };
+    // Flattened so the client never has to reason about the join rows.
+    const withRegions = data.map((user) => ({
+      ...user,
+      regionCodes: (user.regions ?? []).map((r) => r.regionCode).sort(),
+    }));
+    return { data: withRegions, total, page, limit };
+  }
+
+  private validateRegionCodes(
+    regionCodes: string[],
+    allowed: string[],
+  ): string[] {
+    const requested = [...new Set(regionCodes)];
+    const invalid = requested.filter((code) => !allowed.includes(code));
+    if (invalid.length) {
+      throw new BadRequestException(
+        `Not active for this company: ${invalid.join(', ')}`,
+      );
+    }
+    return requested;
+  }
+
+  // Replaces a user's assignments wholesale. Codes outside the company's active
+  // regions are rejected rather than silently dropped, so a bad payload is
+  // visible instead of quietly narrowing someone's access.
+  async setRegions(
+    id: string,
+    companyId: string | undefined,
+    regionCodes: string[],
+  ): Promise<{ id: string; regionCodes: string[] }> {
+    const user = await this.findOne(id, companyId);
+
+    const company = await this.companyRepository.findOne({
+      where: { id: user.companyId ?? '' },
+      select: { activeRegions: true },
+    });
+    const allowed = company?.activeRegions ?? [];
+
+    const requested = this.validateRegionCodes(regionCodes, allowed);
+
+    await this.dataSource.transaction(async (manager) => {
+      await manager.delete(UserRegion, { userId: user.id });
+      if (requested.length) {
+        await manager.insert(
+          UserRegion,
+          requested.map((regionCode) => ({ userId: user.id, regionCode })),
+        );
+      }
+    });
+
+    return { id: user.id, regionCodes: requested.sort() };
   }
 
   async findOne(id: string, companyId: string | undefined): Promise<User> {
@@ -936,7 +1003,16 @@ export class UsersService {
           : null;
 
         try {
-          return await manager.save(user);
+          const saved = await manager.save(user);
+          // Same reasoning as create(): an invited member with no regions would
+          // otherwise sit outside region scoping the moment they accept.
+          if (company?.defaultRegionCode) {
+            await manager.insert(UserRegion, {
+              userId: saved.id,
+              regionCode: company.defaultRegionCode,
+            });
+          }
+          return saved;
         } catch (err) {
           if (seat) await seat.release();
           throw err;

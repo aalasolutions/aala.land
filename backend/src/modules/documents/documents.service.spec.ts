@@ -10,6 +10,7 @@ import {
 import { User } from '../users/entities/user.entity';
 import { MediaService } from '../properties/media.service';
 import { Role } from '@shared/enums/roles.enum';
+import { Company } from '../companies/entities/company.entity';
 
 describe('DocumentsService', () => {
   let service: DocumentsService;
@@ -84,6 +85,12 @@ describe('DocumentsService', () => {
           provide: getRepositoryToken(User),
           useValue: {
             find: jest.fn().mockResolvedValue([]),
+          },
+        },
+        {
+          provide: getRepositoryToken(Company),
+          useValue: {
+            findOne: jest.fn().mockResolvedValue({ defaultRegionCode: 'dubai' }),
           },
         },
         {

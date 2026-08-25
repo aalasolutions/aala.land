@@ -208,6 +208,8 @@ export class ChequesService {
         }
 
         try {
+          // Deliberately company-wide: these go to admins, who read every region,
+          // so deriving a region through the unit join would buy nothing.
           await this.notificationsService.create(companyId, {
             userId: admin.id,
             title,

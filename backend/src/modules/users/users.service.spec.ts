@@ -104,6 +104,7 @@ describe('UsersService', () => {
     createdAt: new Date(),
     updatedAt: new Date(),
     company: null as any,
+    regions: [],
   };
 
   const targetUser = {
@@ -394,11 +395,12 @@ describe('UsersService', () => {
 
       expect(repo.findAndCount).toHaveBeenCalledWith({
         where: { companyId, role: Not(Role.SUPER_ADMIN), deletedAt: IsNull() },
+        relations: ['regions'],
         skip: 0,
         take: 20,
         order: { createdAt: 'DESC' },
       });
-      expect(result.data).toEqual([mockUser]);
+      expect(result.data).toEqual([{ ...mockUser, regionCodes: [] }]);
       expect(result.total).toBe(1);
       expect(result.page).toBe(1);
     });
@@ -410,6 +412,7 @@ describe('UsersService', () => {
 
       expect(repo.findAndCount).toHaveBeenCalledWith({
         where: { companyId, role: Not(Role.SUPER_ADMIN), deletedAt: IsNull() },
+        relations: ['regions'],
         skip: 0,
         take: 20,
         order: { createdAt: 'DESC' },
@@ -423,7 +426,7 @@ describe('UsersService', () => {
 
       expect(repo.findAndCount).toHaveBeenCalledWith({
         where: { deletedAt: IsNull() },
-        relations: ['company'],
+        relations: ['company', 'regions'],
         skip: 0,
         take: 20,
         order: { createdAt: 'DESC' },
