@@ -286,7 +286,7 @@
         <Nuvo::Alert
           @variant="warning"
           @title="No regions selected"
-          @description="This member will not be able to read any regional data until at least one region is assigned."
+          @description="This member will fall back to the company default region rather than one you picked. Select at least one to control what they can read."
           data-test-regions-empty-warning
         />
       {{/if}}

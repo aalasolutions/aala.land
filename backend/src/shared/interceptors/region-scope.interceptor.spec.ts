@@ -1,6 +1,9 @@
 import { of } from 'rxjs';
 import { ExecutionContext, CallHandler } from '@nestjs/common';
-import { RegionScopeInterceptor } from './region-scope.interceptor';
+import {
+  RegionScopeInterceptor,
+  NO_REGION_SENTINEL,
+} from './region-scope.interceptor';
 import { Role } from '../enums/roles.enum';
 
 describe('RegionScopeInterceptor', () => {
@@ -128,7 +131,8 @@ describe('RegionScopeInterceptor', () => {
     expect(next.handle).toHaveBeenCalled();
   });
 
-  it('still serves a user whose company has no default region', async () => {
+
+  it('scrubs the region to a sentinel when the company has no default', async () => {
     repo.find.mockResolvedValue([]);
     companyRepo.findOne.mockResolvedValue({ defaultRegionCode: null });
     const req = expressFiveRequest(
@@ -138,6 +142,25 @@ describe('RegionScopeInterceptor', () => {
 
     await interceptor.intercept(contextFor(req), next);
 
+    expect(req.query.regionCode).toBe(NO_REGION_SENTINEL);
+    expect(req.query.regionCode).not.toBe('punjab');
     expect(next.handle).toHaveBeenCalled();
+  });
+
+  it('uses a truthy sentinel that matches no real region code', () => {
+    expect(NO_REGION_SENTINEL).toBeTruthy();
+    expect(NO_REGION_SENTINEL).not.toMatch(/^[a-z]+(-[a-z]+)*$/);
+  });
+
+  it('scrubs even when the user has no company at all', async () => {
+    repo.find.mockResolvedValue([]);
+    const req = expressFiveRequest(
+      { regionCode: 'punjab' },
+      { userId: 'u1', role: Role.AGENT, companyId: null },
+    );
+
+    await interceptor.intercept(contextFor(req), next);
+
+    expect(req.query.regionCode).toBe(NO_REGION_SENTINEL);
   });
 });

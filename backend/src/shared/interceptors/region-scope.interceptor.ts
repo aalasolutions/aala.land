@@ -11,8 +11,8 @@ import { UserRegion } from '../../modules/users/entities/user-region.entity';
 import { Company } from '../../modules/companies/entities/company.entity';
 import { seesAllRegions } from '../utils/region-visibility.util';
 
-// The active region arrives as a plain `regionCode` query param, so without
-// this it is caller-supplied and a user can read any region by editing the URL.
+export const NO_REGION_SENTINEL = '__no_region__';
+
 // This rewrites it to a region the user is actually assigned to.
 @Injectable()
 export class RegionScopeInterceptor implements NestInterceptor {
@@ -44,12 +44,11 @@ export class RegionScopeInterceptor implements NestInterceptor {
 
     // A user with no assignments must NOT fall through unscoped: that would make
     // every freshly created member a hole in the region boundary. Pin them to
-    // their company default instead, which is the narrowest safe choice.
+    // their company default, and when the company has none, scrub the param to a
+    // sentinel rather than leaving it caller-controlled.
     if (assigned.length === 0) {
       const fallback = await this.companyDefaultRegion(user.companyId);
-      if (fallback) {
-        this.overwriteRegionCode(request, fallback);
-      }
+      this.overwriteRegionCode(request, fallback ?? NO_REGION_SENTINEL);
       return next.handle();
     }
 

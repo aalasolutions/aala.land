@@ -117,12 +117,12 @@ export class UsersService {
         const saved = await manager.save(user);
 
         // A member with no regions would slip past region scoping entirely, so
-        // an explicit set is used when given and the company default otherwise.
+        // an explicit set is used when given, then the company default, then any
+        // region the company operates. Only a company with no regions at all
+        // yields an empty set.
         const codes = regionCodes?.length
           ? this.validateRegionCodes(regionCodes, company?.activeRegions ?? [])
-          : company?.defaultRegionCode
-            ? [company.defaultRegionCode]
-            : [];
+          : this.fallbackRegionCodes(company);
         if (codes.length) {
           await manager.insert(
             UserRegion,
@@ -159,6 +159,17 @@ export class UsersService {
       regionCodes: (user.regions ?? []).map((r) => r.regionCode).sort(),
     }));
     return { data: withRegions, total, page, limit };
+  }
+
+  private fallbackRegionCodes(
+    company: {
+      defaultRegionCode?: string | null;
+      activeRegions?: string[] | null;
+    } | null,
+  ): string[] {
+    if (company?.defaultRegionCode) return [company.defaultRegionCode];
+    const first = company?.activeRegions?.[0];
+    return first ? [first] : [];
   }
 
   private validateRegionCodes(
@@ -1004,13 +1015,16 @@ export class UsersService {
 
         try {
           const saved = await manager.save(user);
-          // Same reasoning as create(): an invited member with no regions would
-          // otherwise sit outside region scoping the moment they accept.
-          if (company?.defaultRegionCode) {
-            await manager.insert(UserRegion, {
-              userId: saved.id,
-              regionCode: company.defaultRegionCode,
-            });
+
+          const inviteRegions = this.fallbackRegionCodes(company);
+          if (inviteRegions.length) {
+            await manager.insert(
+              UserRegion,
+              inviteRegions.map((regionCode) => ({
+                userId: saved.id,
+                regionCode,
+              })),
+            );
           }
           return saved;
         } catch (err) {
