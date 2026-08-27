@@ -33,6 +33,8 @@ import {
   sanitizeName,
   isUniqueViolation,
 } from '../../shared/utils/name-normalization.util';
+import { seesAllRegions } from '../../shared/utils/region-visibility.util';
+import { UserRegion } from '../users/entities/user-region.entity';
 
 // True when inline owner details carry at least one identifying value. An empty
 // object must not reach resolveOrCreate, which would insert an all-null contact.
@@ -65,6 +67,8 @@ export class PropertiesService {
     private readonly mediaRepository: Repository<PropertyMedia>,
     @InjectRepository(Contact)
     private readonly contactRepository: Repository<Contact>,
+    @InjectRepository(UserRegion)
+    private readonly userRegionRepository: Repository<UserRegion>,
     private readonly contactsService: ContactsService,
   ) {}
 
@@ -185,9 +189,25 @@ export class PropertiesService {
     return { data: filtered, total, page, limit };
   }
 
-  async findAllAssets(companyId: string, page = 1, limit = 100) {
+  async findAllAssets(
+    companyId: string,
+    page = 1,
+    limit = 100,
+    user?: { userId: string; role: string },
+  ) {
+    const scopedCodes = await this.scopedRegionCodes(user);
+    if (scopedCodes?.length === 0) {
+      return { data: [], total: 0, page, limit };
+    }
+
+    const regionWhere = scopedCodes
+      ? { locality: { city: { regionCode: In(scopedCodes) } } }
+      : {};
     const [data, total] = await this.assetRepository.findAndCount({
-      where: [{ units: { companyId } }, { createdByCompanyId: companyId }],
+      where: [
+        { units: { companyId }, ...regionWhere },
+        { createdByCompanyId: companyId, ...regionWhere },
+      ],
       relations: ['locality', 'locality.city', 'units'],
       ...paginationOptions(page, limit),
       order: { createdAt: 'DESC' },
@@ -201,7 +221,13 @@ export class PropertiesService {
     return { data: filtered, total, page, limit };
   }
 
-  async searchAssets(localityId: string, q: string): Promise<any[]> {
+
+  async searchAssets(
+    companyId: string,
+    localityId: string,
+    q: string,
+    user?: { userId: string; role: string },
+  ): Promise<any[]> {
     if (typeof q !== 'string') {
       return [];
     }
@@ -221,19 +247,22 @@ export class PropertiesService {
                      similarity(name, $1) AS score
                  FROM assets
                  WHERE locality_id = $2
+                   AND company_id = $3
                    AND similarity(name, $1) > 0.2
                  ORDER BY ${normalizedNameSql('name')}, score DESC, name ASC
              ) deduped
              ORDER BY score DESC, name ASC
              LIMIT 10`,
-      [query, localityId],
+      [query, localityId, companyId],
     );
     return results;
   }
 
-  async findOneAsset(id: string): Promise<Asset> {
+  // companyId is optional only because SUPER_ADMIN legitimately reads across
+  // tenants; for everyone else omitting it exposed other companies' assets.
+  async findOneAsset(id: string, companyId?: string): Promise<Asset> {
     const asset = await this.assetRepository.findOne({
-      where: { id },
+      where: { id, ...(companyId ? { companyId } : {}) },
       relations: ['locality'],
     });
     if (!asset) throw new NotFoundException(`Asset not found`);
@@ -472,9 +501,34 @@ export class PropertiesService {
     return { data, total, page, limit };
   }
 
-  // Region totals for the topbar switcher. Deliberately unfiltered by region.
-  async countUnitsByRegion(companyId: string): Promise<Record<string, number>> {
-    const rows = await this.unitRepository
+  // Regions the caller may read, or null when they read all of them. Endpoints
+  // that span regions cannot rely on RegionScopeInterceptor: it only sanitises the
+  // `regionCode` query param, so a method that never reads that param is unscoped.
+  private async scopedRegionCodes(user?: {
+    userId: string;
+    role: string;
+  }): Promise<string[] | null> {
+    if (!user || seesAllRegions(user.role)) {
+      return null;
+    }
+    const assigned = await this.userRegionRepository.find({
+      where: { userId: user.userId },
+      select: { regionCode: true },
+    });
+    return assigned.map((row) => row.regionCode);
+  }
+
+  async countUnitsByRegion(
+    companyId: string,
+    user?: { userId: string; role: string },
+  ): Promise<Record<string, number>> {
+    const scopedCodes = await this.scopedRegionCodes(user);
+    // No assignments means nothing to report, and an empty IN () is invalid SQL.
+    if (scopedCodes?.length === 0) {
+      return {};
+    }
+
+    const qb = this.unitRepository
       .createQueryBuilder('u')
       .innerJoin('u.asset', 'a')
       .innerJoin('a.locality', 'loc')
@@ -482,8 +536,13 @@ export class PropertiesService {
       .select('ci.regionCode', 'regionCode')
       .addSelect('COUNT(u.id)', 'count')
       .where('u.companyId = :companyId', { companyId })
-      .groupBy('ci.regionCode')
-      .getRawMany<{ regionCode: string; count: string }>();
+      .groupBy('ci.regionCode');
+
+    if (scopedCodes) {
+      qb.andWhere('ci.regionCode IN (:...scopedCodes)', { scopedCodes });
+    }
+
+    const rows = await qb.getRawMany<{ regionCode: string; count: string }>();
 
     const counts: Record<string, number> = {};
     for (const row of rows) {
@@ -656,8 +715,16 @@ export class PropertiesService {
     return results;
   }
 
-  async getAssetOccupancy(companyId: string) {
-    const results = await this.unitRepository
+  async getAssetOccupancy(
+    companyId: string,
+    user?: { userId: string; role: string },
+  ) {
+    const scopedCodes = await this.scopedRegionCodes(user);
+    if (scopedCodes?.length === 0) {
+      return [];
+    }
+
+    const qb = this.unitRepository
       .createQueryBuilder('u')
       .innerJoin('u.asset', 'a')
       .select('a.id', 'assetId')
@@ -675,8 +742,15 @@ export class PropertiesService {
       .setParameter('rented', UnitStatus.RENTED)
       .setParameter('available', UnitStatus.AVAILABLE)
       .groupBy('a.id')
-      .addGroupBy('a.name')
-      .getRawMany();
+      .addGroupBy('a.name');
+
+    if (scopedCodes) {
+      qb.innerJoin('a.locality', 'loc')
+        .innerJoin('loc.city', 'ci')
+        .andWhere('ci.regionCode IN (:...scopedCodes)', { scopedCodes });
+    }
+
+    const results = await qb.getRawMany();
 
     return results.map((r) => ({
       assetId: r.assetId,

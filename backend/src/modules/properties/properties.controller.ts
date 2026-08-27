@@ -277,8 +277,17 @@ export class PropertiesController {
   @ApiOperation({ summary: 'Fuzzy search assets by name within a locality' })
   @ApiQuery({ name: 'q', required: true, type: String })
   @ApiQuery({ name: 'localityId', required: true, type: String })
-  searchAssets(@Query('q') q: string, @Query('localityId') localityId: string) {
-    return this.propertiesService.searchAssets(localityId, q);
+  searchAssets(
+    @Request() req: AuthenticatedRequest,
+    @Query('q') q: string,
+    @Query('localityId') localityId: string,
+  ) {
+    return this.propertiesService.searchAssets(
+      requireCompanyId(req.user),
+      localityId,
+      q,
+      { userId: req.user.userId, role: req.user.role },
+    );
   }
 
   @Post('assets')
@@ -311,6 +320,7 @@ export class PropertiesController {
       requireCompanyId(req.user),
       page,
       limit,
+      { userId: req.user.userId, role: req.user.role },
     );
   }
 
@@ -351,8 +361,15 @@ export class PropertiesController {
     Role.ACCOUNTANT,
   )
   @ApiOperation({ summary: 'Get asset by ID (shared)' })
-  findOneAsset(@Param('id', ParseUUIDPipe) id: string) {
-    return this.propertiesService.findOneAsset(id);
+  findOneAsset(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Request() req: AuthenticatedRequest,
+  ) {
+    // SUPER_ADMIN has no company and legitimately reads across tenants.
+    return this.propertiesService.findOneAsset(
+      id,
+      req.user.companyId ?? undefined,
+    );
   }
 
   @Patch('assets/:id')
@@ -474,7 +491,10 @@ export class PropertiesController {
     summary: 'Unit totals per region code for the topbar region switcher',
   })
   countUnitsByRegion(@Request() req: AuthenticatedRequest) {
-    return this.propertiesService.countUnitsByRegion(requireCompanyId(req.user));
+    return this.propertiesService.countUnitsByRegion(
+      requireCompanyId(req.user),
+      { userId: req.user.userId, role: req.user.role },
+    );
   }
 
   @Get('units/:id')
@@ -568,6 +588,9 @@ export class PropertiesController {
   )
   @ApiOperation({ summary: 'Asset-level occupancy rates' })
   getOccupancy(@Request() req: AuthenticatedRequest) {
-    return this.propertiesService.getAssetOccupancy(requireCompanyId(req.user));
+    return this.propertiesService.getAssetOccupancy(
+      requireCompanyId(req.user),
+      { userId: req.user.userId, role: req.user.role },
+    );
   }
 }

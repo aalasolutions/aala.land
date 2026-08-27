@@ -12,6 +12,8 @@ import { Asset } from './entities/asset.entity';
 import { Unit } from './entities/unit.entity';
 import { PropertyMedia } from './entities/property-media.entity';
 import { Contact } from '../contacts/entities/contact.entity';
+import { UserRegion } from '../users/entities/user-region.entity';
+import { Role } from '@shared/enums/roles.enum';
 import { ContactsService } from '../contacts/contacts.service';
 
 describe('PropertiesService', () => {
@@ -21,6 +23,7 @@ describe('PropertiesService', () => {
   let unitRepo: jest.Mocked<Repository<Unit>>;
   let mediaRepo: jest.Mocked<Repository<PropertyMedia>>;
   let contactRepo: jest.Mocked<Repository<Contact>>;
+  let userRegionRepo: jest.Mocked<Repository<UserRegion>>;
   let contactsService: jest.Mocked<ContactsService>;
 
   // A query-builder chain mock matching findAllUnits' fluent calls.
@@ -114,6 +117,10 @@ describe('PropertiesService', () => {
           useValue: createRepositoryMock<Contact>(),
         },
         {
+          provide: getRepositoryToken(UserRegion),
+          useValue: createRepositoryMock<UserRegion>(),
+        },
+        {
           provide: ContactsService,
           useValue: { resolveOrCreate: jest.fn() },
         },
@@ -134,6 +141,7 @@ describe('PropertiesService', () => {
     unitRepo = module.get(getRepositoryToken(Unit));
     mediaRepo = module.get(getRepositoryToken(PropertyMedia));
     contactRepo = module.get(getRepositoryToken(Contact));
+    userRegionRepo = module.get(getRepositoryToken(UserRegion));
     contactsService = module.get(ContactsService);
   });
 
@@ -525,6 +533,211 @@ describe('PropertiesService', () => {
 
       expect(result.created).toBe(0);
       expect(result.errors.length).toBeGreaterThan(0);
+    });
+  });
+
+  describe('countUnitsByRegion', () => {
+    const companyId = 'company-uuid-1';
+
+    function arrangeCounts(rows: { regionCode: string; count: string }[]) {
+      const qb: any = {
+        innerJoin: jest.fn().mockReturnThis(),
+        select: jest.fn().mockReturnThis(),
+        addSelect: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        groupBy: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        getRawMany: jest.fn().mockResolvedValue(rows),
+      };
+      (unitRepo.createQueryBuilder as jest.Mock).mockReturnValue(qb);
+      return qb;
+    }
+
+    it('returns every region for an admin', async () => {
+      const qb = arrangeCounts([
+        { regionCode: 'makkah', count: '9' },
+        { regionCode: 'punjab', count: '1' },
+      ]);
+
+      const result = await service.countUnitsByRegion(companyId, {
+        userId: 'u1',
+        role: Role.COMPANY_ADMIN,
+      });
+
+      expect(userRegionRepo.find).not.toHaveBeenCalled();
+      expect(qb.andWhere).not.toHaveBeenCalled();
+      expect(result).toEqual({ makkah: 9, punjab: 1 });
+    });
+
+    it('confines a region-scoped caller to the regions they hold', async () => {
+      const qb = arrangeCounts([{ regionCode: 'punjab', count: '1' }]);
+      (userRegionRepo.find as jest.Mock).mockResolvedValue([
+        { regionCode: 'punjab' },
+      ]);
+
+      const result = await service.countUnitsByRegion(companyId, {
+        userId: 'u1',
+        role: Role.AGENT,
+      });
+
+      expect(qb.andWhere).toHaveBeenCalledWith(
+        'ci.regionCode IN (:...scopedCodes)',
+        { scopedCodes: ['punjab'] },
+      );
+      expect(result).toEqual({ punjab: 1 });
+      expect(result).not.toHaveProperty('makkah');
+    });
+
+    it('reports nothing for a scoped caller with no assignments', async () => {
+      arrangeCounts([{ regionCode: 'makkah', count: '9' }]);
+      (userRegionRepo.find as jest.Mock).mockResolvedValue([]);
+
+      const result = await service.countUnitsByRegion(companyId, {
+        userId: 'u1',
+        role: Role.AGENT,
+      });
+
+      expect(result).toEqual({});
+      expect(unitRepo.createQueryBuilder).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('asset tenant confinement', () => {
+    const companyId = 'company-uuid-1';
+
+    it('searchAssets filters by company in the SQL, not just by locality', async () => {
+      (assetRepo.query as jest.Mock).mockResolvedValue([]);
+      (userRegionRepo.find as jest.Mock).mockResolvedValue([
+        { regionCode: 'punjab' },
+      ]);
+
+      await service.searchAssets(companyId, 'locality-1', 'tower', {
+        userId: 'u1',
+        role: Role.AGENT,
+      });
+
+      const [sql, params] = (assetRepo.query as jest.Mock).mock.calls[0];
+      expect(sql).toContain('company_id');
+      expect(params).toContain(companyId);
+    });
+
+    it('findOneAsset scopes to the caller company', async () => {
+      (assetRepo.findOne as jest.Mock).mockResolvedValue({ id: 'a1' });
+
+      await service.findOneAsset('a1', companyId);
+
+      expect(assetRepo.findOne).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ id: 'a1', companyId }),
+        }),
+      );
+    });
+
+    it('findOneAsset stays cross-tenant for SUPER_ADMIN, which has no company', async () => {
+      (assetRepo.findOne as jest.Mock).mockResolvedValue({ id: 'a1' });
+
+      await service.findOneAsset('a1', undefined);
+
+      expect(assetRepo.findOne).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { id: 'a1' } }),
+      );
+    });
+  });
+
+  describe('getAssetOccupancy region confinement', () => {
+    const companyId = 'company-uuid-1';
+
+    function arrangeOccupancy() {
+      const qb: any = {
+        innerJoin: jest.fn().mockReturnThis(),
+        select: jest.fn().mockReturnThis(),
+        addSelect: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        setParameter: jest.fn().mockReturnThis(),
+        groupBy: jest.fn().mockReturnThis(),
+        addGroupBy: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        getRawMany: jest.fn().mockResolvedValue([]),
+      };
+      (unitRepo.createQueryBuilder as jest.Mock).mockReturnValue(qb);
+      return qb;
+    }
+
+    it('confines a region-scoped caller', async () => {
+      const qb = arrangeOccupancy();
+      (userRegionRepo.find as jest.Mock).mockResolvedValue([
+        { regionCode: 'punjab' },
+      ]);
+
+      await service.getAssetOccupancy(companyId, {
+        userId: 'u1',
+        role: Role.AGENT,
+      });
+
+      expect(qb.andWhere).toHaveBeenCalledWith(
+        'ci.regionCode IN (:...scopedCodes)',
+        { scopedCodes: ['punjab'] },
+      );
+    });
+
+    it('leaves an admin unconfined', async () => {
+      const qb = arrangeOccupancy();
+
+      await service.getAssetOccupancy(companyId, {
+        userId: 'u1',
+        role: Role.COMPANY_ADMIN,
+      });
+
+      expect(userRegionRepo.find).not.toHaveBeenCalled();
+      expect(qb.andWhere).not.toHaveBeenCalled();
+    });
+
+    it('returns nothing for a scoped caller with no assignments', async () => {
+      arrangeOccupancy();
+      (userRegionRepo.find as jest.Mock).mockResolvedValue([]);
+
+      const result = await service.getAssetOccupancy(companyId, {
+        userId: 'u1',
+        role: Role.AGENT,
+      });
+
+      expect(result).toEqual([]);
+      expect(unitRepo.createQueryBuilder).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('findAllAssets region confinement', () => {
+    const companyId = 'company-uuid-1';
+
+    it('adds a region predicate for a scoped caller', async () => {
+      (assetRepo.findAndCount as jest.Mock).mockResolvedValue([[], 0]);
+      (userRegionRepo.find as jest.Mock).mockResolvedValue([
+        { regionCode: 'punjab' },
+      ]);
+
+      await service.findAllAssets(companyId, 1, 100, {
+        userId: 'u1',
+        role: Role.AGENT,
+      });
+
+      const opts = (assetRepo.findAndCount as jest.Mock).mock.calls[0][0];
+      for (const clause of opts.where) {
+        expect(clause).toHaveProperty('locality');
+      }
+    });
+
+    it('adds no region predicate for an admin', async () => {
+      (assetRepo.findAndCount as jest.Mock).mockResolvedValue([[], 0]);
+
+      await service.findAllAssets(companyId, 1, 100, {
+        userId: 'u1',
+        role: Role.COMPANY_ADMIN,
+      });
+
+      const opts = (assetRepo.findAndCount as jest.Mock).mock.calls[0][0];
+      for (const clause of opts.where) {
+        expect(clause).not.toHaveProperty('locality');
+      }
     });
   });
 });
