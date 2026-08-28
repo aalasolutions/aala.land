@@ -39,7 +39,7 @@ import { UpdateAssetDto } from './dto/update-asset.dto';
 import { CreateUnitDto } from './dto/create-unit.dto';
 import { UpdateUnitDto } from './dto/update-unit.dto';
 import { AuthenticatedRequest } from '@shared/interfaces/authenticated-request.interface';
-import { requireCompanyId } from '@shared/utils/auth.util';
+import { requireCompanyId, scopedCompanyId } from '@shared/utils/auth.util';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import { UploadMediaDto } from './dto/upload-media.dto';
@@ -283,7 +283,7 @@ export class PropertiesController {
     @Query('localityId') localityId: string,
   ) {
     return this.propertiesService.searchAssets(
-      requireCompanyId(req.user),
+      scopedCompanyId(req.user),
       localityId,
       q,
       { userId: req.user.userId, role: req.user.role },
@@ -365,11 +365,7 @@ export class PropertiesController {
     @Param('id', ParseUUIDPipe) id: string,
     @Request() req: AuthenticatedRequest,
   ) {
-    // SUPER_ADMIN has no company and legitimately reads across tenants.
-    return this.propertiesService.findOneAsset(
-      id,
-      req.user.companyId ?? undefined,
-    );
+    return this.propertiesService.findOneAsset(id, scopedCompanyId(req.user));
   }
 
   @Patch('assets/:id')

@@ -223,7 +223,7 @@ export class PropertiesService {
 
 
   async searchAssets(
-    companyId: string,
+    companyId: string | undefined,
     localityId: string,
     q: string,
     user?: { userId: string; role: string },
@@ -237,6 +237,14 @@ export class PropertiesService {
       return [];
     }
 
+    // Still a bound parameter, just conditionally present.
+    const params: unknown[] = [query, localityId];
+    let companyPredicate = '';
+    if (companyId) {
+      params.push(companyId);
+      companyPredicate = `AND company_id = $${params.length}`;
+    }
+
     const results = await this.assetRepository.query(
       `SELECT *
              FROM (
@@ -247,13 +255,13 @@ export class PropertiesService {
                      similarity(name, $1) AS score
                  FROM assets
                  WHERE locality_id = $2
-                   AND company_id = $3
+                   ${companyPredicate}
                    AND similarity(name, $1) > 0.2
                  ORDER BY ${normalizedNameSql('name')}, score DESC, name ASC
              ) deduped
              ORDER BY score DESC, name ASC
              LIMIT 10`,
-      [query, localityId, companyId],
+      params,
     );
     return results;
   }
