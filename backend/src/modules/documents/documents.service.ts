@@ -1,19 +1,32 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, Repository } from 'typeorm';
+import { In, IsNull, Repository } from 'typeorm';
 import {
   PropertyDocument,
   DocumentCategory,
   DocumentAccessLevel,
 } from '../properties/entities/property-document.entity';
+import { Unit } from '../properties/entities/unit.entity';
+import { Asset } from '../properties/entities/asset.entity';
 import { User } from '../users/entities/user.entity';
 import { Company } from '../companies/entities/company.entity';
-import { resolveRegionCode } from '../../shared/utils/resolve-region-code.util';
+import {
+  RegionScope,
+  resolveRegionCode,
+} from '../../shared/utils/resolve-region-code.util';
 import { UpdateDocumentDto } from './dto/update-document.dto';
 import { MediaService } from '../properties/media.service';
 import { UploadDocumentDto } from './dto/upload-document.dto';
 import { Role } from '@shared/enums/roles.enum';
-import { seesAllRegions } from '@shared/utils/region-visibility.util';
+import {
+  effectiveRegionCodes,
+  isAdminRole,
+  scopedRegionCodes,
+} from '@shared/utils/region-visibility.util';
 
 // Client-facing shape: the internal storage pointers (url, s3Key) are never
 // serialized to the client. Documents are served only through the streaming
@@ -39,6 +52,10 @@ export class DocumentsService {
     private readonly documentRepository: Repository<PropertyDocument>,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+    @InjectRepository(Unit)
+    private readonly unitRepository: Repository<Unit>,
+    @InjectRepository(Asset)
+    private readonly assetRepository: Repository<Asset>,
     @InjectRepository(Company)
     private readonly companyRepository: Repository<Company>,
     private readonly mediaService: MediaService,
@@ -49,6 +66,7 @@ export class DocumentsService {
     userId: string,
     file: Express.Multer.File,
     dto: UploadDocumentDto,
+    caller: RegionScope,
   ): Promise<SanitizedDocument> {
     const { url, s3Key, fileSize } =
       await this.mediaService.uploadDocumentToStorage(companyId, file);
@@ -64,11 +82,7 @@ export class DocumentsService {
       category: dto.category,
       accessLevel: dto.accessLevel,
       companyId,
-      regionCode: await resolveRegionCode(
-        this.companyRepository,
-        companyId,
-        dto.regionCode,
-      ),
+      regionCode: await this.resolveDocumentRegion(companyId, dto, caller),
       uploadedBy: userId,
       version: 1,
     });
@@ -89,6 +103,7 @@ export class DocumentsService {
       dateTo?: string;
       regionCode?: string;
     },
+    regionCodes?: string[],
   ): Promise<{
     data: SanitizedDocument[];
     total: number;
@@ -96,6 +111,15 @@ export class DocumentsService {
     limit: number;
   }> {
     const allowedLevels = this.getAllowedAccessLevels(userRole);
+    const scopedCodes = effectiveRegionCodes(filters?.regionCode, {
+      role: userRole,
+      regionCodes: regionCodes ?? [],
+    });
+
+    // No assignment means no access, and an empty IN () is invalid SQL.
+    if (scopedCodes?.length === 0) {
+      return { data: [], total: 0, page, limit };
+    }
 
     const qb = this.documentRepository
       .createQueryBuilder('doc')
@@ -105,12 +129,11 @@ export class DocumentsService {
       .where('doc.company_id = :companyId', { companyId })
       .andWhere('doc.access_level IN (:...allowedLevels)', { allowedLevels });
 
-    // Owner ruling: admins see every region and read regionCode off each row;
-    // everyone else is confined to the region they are currently working in.
-    if (filters?.regionCode && !seesAllRegions(userRole)) {
-      qb.andWhere('doc.region_code = :regionCode', {
-        regionCode: filters.regionCode,
-      });
+    if (scopedCodes) {
+      qb.andWhere(
+        '(doc.region_code IN (:...scopedCodes) OR doc.region_code IS NULL)',
+        { scopedCodes },
+      );
     }
 
     if (category) {
@@ -152,9 +175,7 @@ export class DocumentsService {
     // Separate lookup instead of a JOIN — simpler, and page size bounds the cost.
     const uploaderIds = [
       ...new Set(
-        data
-          .map((d) => d.uploadedBy)
-          .filter((id): id is string => id !== null),
+        data.map((d) => d.uploadedBy).filter((id): id is string => id !== null),
       ),
     ];
     const uploaderNames = uploaderIds.length
@@ -194,8 +215,11 @@ export class DocumentsService {
     id: string,
     companyId: string,
     userRole: string,
+    regionCodes: string[],
   ): Promise<SanitizedDocument> {
-    return this.sanitize(await this.findOneEntity(id, companyId, userRole));
+    return this.sanitize(
+      await this.findOneEntity(id, companyId, userRole, regionCodes),
+    );
   }
 
   // Internal full-entity fetch (keeps url/s3Key) for callers that touch storage:
@@ -205,15 +229,30 @@ export class DocumentsService {
     id: string,
     companyId: string,
     userRole: string,
+    regionCodes: string[],
   ): Promise<PropertyDocument> {
     const allowedLevels = this.getAllowedAccessLevels(userRole);
+    const scopedCodes = scopedRegionCodes({ role: userRole, regionCodes });
 
-    const doc = await this.documentRepository
+    // No assignment means no access, and an empty IN () is invalid SQL.
+    if (scopedCodes?.length === 0) {
+      throw new NotFoundException('Document not found');
+    }
+
+    const qb = this.documentRepository
       .createQueryBuilder('doc')
       .where('doc.id = :id', { id })
       .andWhere('doc.company_id = :companyId', { companyId })
-      .andWhere('doc.access_level IN (:...allowedLevels)', { allowedLevels })
-      .getOne();
+      .andWhere('doc.access_level IN (:...allowedLevels)', { allowedLevels });
+
+    if (scopedCodes) {
+      qb.andWhere(
+        '(doc.region_code IN (:...scopedCodes) OR doc.region_code IS NULL)',
+        { scopedCodes },
+      );
+    }
+
+    const doc = await qb.getOne();
 
     if (!doc) {
       throw new NotFoundException('Document not found');
@@ -226,14 +265,25 @@ export class DocumentsService {
     companyId: string,
     userRole: string,
     dto: UpdateDocumentDto,
+    regionCodes: string[],
   ): Promise<SanitizedDocument> {
-    const existing = await this.findOneEntity(id, companyId, userRole);
+    const existing = await this.findOneEntity(
+      id,
+      companyId,
+      userRole,
+      regionCodes,
+    );
     Object.assign(existing, dto);
     return this.sanitize(await this.documentRepository.save(existing));
   }
 
-  async remove(id: string, companyId: string, userRole: string): Promise<void> {
-    const doc = await this.findOneEntity(id, companyId, userRole);
+  async remove(
+    id: string,
+    companyId: string,
+    userRole: string,
+    regionCodes: string[],
+  ): Promise<void> {
+    const doc = await this.findOneEntity(id, companyId, userRole, regionCodes);
 
     if (doc.s3Key) {
       await this.mediaService.deleteDocumentFromStorage(
@@ -250,8 +300,9 @@ export class DocumentsService {
     id: string,
     companyId: string,
     userRole: string,
+    regionCodes: string[],
   ): Promise<{ stream: NodeJS.ReadableStream; doc: PropertyDocument }> {
-    const doc = await this.findOneEntity(id, companyId, userRole); // re-checks accessLevel
+    const doc = await this.findOneEntity(id, companyId, userRole, regionCodes);
     if (!doc.s3Key) {
       throw new NotFoundException('Document has no associated file in storage');
     }
@@ -263,14 +314,29 @@ export class DocumentsService {
     id: string,
     companyId: string,
     userRole: string,
+    regionCodes: string[],
   ): Promise<SanitizedDocument[]> {
-    const doc = await this.findOneEntity(id, companyId, userRole);
+    const doc = await this.findOneEntity(id, companyId, userRole, regionCodes);
+    const scopedCodes = scopedRegionCodes({ role: userRole, regionCodes });
     const versions: PropertyDocument[] = [doc];
 
     let current = doc;
     while (current.previousVersionId) {
       const prev = await this.documentRepository.findOne({
-        where: { id: current.previousVersionId, companyId },
+        where: scopedCodes
+          ? [
+              {
+                id: current.previousVersionId,
+                companyId,
+                regionCode: In(scopedCodes),
+              },
+              {
+                id: current.previousVersionId,
+                companyId,
+                regionCode: IsNull(),
+              },
+            ]
+          : { id: current.previousVersionId, companyId },
       });
       if (!prev) break;
       versions.push(prev);
@@ -278,6 +344,89 @@ export class DocumentsService {
     }
 
     return versions.map((v) => this.sanitize(v));
+  }
+
+  // NULL is company-wide, so only an admin may file one. A document attached
+  // to a property takes that property region, matching the derivation in
+  // migration 1779600000004.
+  private async resolveDocumentRegion(
+    companyId: string,
+    dto: UploadDocumentDto,
+    caller: RegionScope,
+  ): Promise<string | null> {
+    if (dto.regionCode) {
+      return resolveRegionCode(
+        this.companyRepository,
+        companyId,
+        dto.regionCode,
+        caller,
+      );
+    }
+
+    const attachedRegion = await this.regionOfProperty(
+      companyId,
+      dto.unitId,
+      dto.assetId,
+    );
+    if (attachedRegion) {
+      return attachedRegion;
+    }
+
+    if (isAdminRole(caller.role)) {
+      return null;
+    }
+
+    const ownRegion = (caller.regionCodes ?? [])[0];
+    if (!ownRegion) {
+      throw new BadRequestException('No region assigned to you');
+    }
+    return ownRegion;
+  }
+
+  // A document may only attach to a property this company can see, so an
+  // unresolvable id is rejected rather than falling through to another region.
+  private async regionOfProperty(
+    companyId: string,
+    unitId?: string,
+    assetId?: string,
+  ): Promise<string | undefined> {
+    if (unitId) {
+      const row = await this.unitRepository
+        .createQueryBuilder('u')
+        .innerJoin('u.asset', 'a')
+        .innerJoin('a.locality', 'loc')
+        .innerJoin('loc.city', 'ci')
+        .select('ci.regionCode', 'regionCode')
+        .where('u.id = :unitId', { unitId })
+        .andWhere('u.companyId = :companyId', { companyId })
+        .getRawOne<{ regionCode: string }>();
+      if (!row?.regionCode) {
+        throw new BadRequestException('Invalid property selected');
+      }
+      return row.regionCode;
+    }
+
+    if (assetId) {
+      // An asset is shared: visible when this company created it or owns units
+      // inside it, matching findAllAssets.
+      const row = await this.assetRepository
+        .createQueryBuilder('a')
+        .innerJoin('a.locality', 'loc')
+        .innerJoin('loc.city', 'ci')
+        .select('ci.regionCode', 'regionCode')
+        .where('a.id = :assetId', { assetId })
+        .andWhere(
+          '(a.createdByCompanyId = :companyId OR EXISTS (SELECT 1 FROM units u2 WHERE u2.asset_id = a.id AND u2.company_id = :companyId))',
+          { companyId },
+        )
+        .getRawOne<{ regionCode: string }>();
+      if (!row?.regionCode) {
+        throw new BadRequestException('Invalid property selected');
+      }
+      return row.regionCode;
+    }
+
+    return undefined;
   }
 
   // Strips the private storage pointers (url, s3Key) from a document before it

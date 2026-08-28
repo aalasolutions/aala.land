@@ -42,9 +42,8 @@ export class AuditLog {
   @Column({ name: 'entity_id', type: 'uuid', nullable: true })
   entityId: string | null;
 
-  // NULL means the event has no region by nature. Billing is global and
-  // admin-only, so billing rows keep NULL forever and never reach a
-  // region-scoped user.
+  // NULL means the event has no region. Billing is global and admin-only.
+  @Index('IDX_AUDIT_LOGS_REGION_CODE')
   @Column({ name: 'region_code', type: 'varchar', length: 50, nullable: true })
   regionCode: string | null;
 

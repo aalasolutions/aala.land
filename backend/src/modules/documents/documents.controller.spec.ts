@@ -14,8 +14,15 @@ describe('DocumentsController', () => {
   const companyId = 'company-uuid-1';
   const userId = 'user-uuid-1';
   const role = 'company_admin';
+  const callerRegions = ['dubai'];
   const mockReq = {
-    user: { companyId, userId, role, email: 'test@example.com' },
+    user: {
+      companyId,
+      userId,
+      role,
+      email: 'test@example.com',
+      regionCodes: callerRegions,
+    },
   } as any;
 
   const mockDoc = {
@@ -89,6 +96,7 @@ describe('DocumentsController', () => {
         userId,
         mockFile,
         dto,
+        { role, regionCodes: callerRegions },
       );
       expect(result).toEqual(mockDoc);
     });
@@ -123,6 +131,7 @@ describe('DocumentsController', () => {
           dateFrom: undefined,
           dateTo: undefined,
         },
+        callerRegions,
       );
     });
 
@@ -144,6 +153,7 @@ describe('DocumentsController', () => {
           dateFrom: undefined,
           dateTo: undefined,
         },
+        callerRegions,
       );
     });
 
@@ -165,6 +175,7 @@ describe('DocumentsController', () => {
           dateFrom: undefined,
           dateTo: undefined,
         },
+        callerRegions,
       );
     });
 
@@ -214,6 +225,7 @@ describe('DocumentsController', () => {
         'doc-uuid-1',
         companyId,
         role,
+        callerRegions,
       );
     });
   });
@@ -228,6 +240,7 @@ describe('DocumentsController', () => {
         'doc-uuid-1',
         companyId,
         role,
+        callerRegions,
       );
     });
   });
@@ -250,6 +263,7 @@ describe('DocumentsController', () => {
         'doc-uuid-1',
         companyId,
         role,
+        callerRegions,
       );
       expect(res.setHeader).toHaveBeenCalledWith(
         'Content-Type',
@@ -370,6 +384,7 @@ describe('DocumentsController', () => {
         companyId,
         role,
         { name: 'Renamed.pdf' },
+        callerRegions,
       );
     });
   });
@@ -384,6 +399,7 @@ describe('DocumentsController', () => {
         'doc-uuid-1',
         companyId,
         role,
+        callerRegions,
       );
     });
   });

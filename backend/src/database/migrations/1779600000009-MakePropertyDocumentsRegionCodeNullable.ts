@@ -1,22 +1,29 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-// Region is derivable through unit > asset > locality > city. Anything not
-// linked to a property falls back to the company default.
-export class AddRegionCodeToPropertyDocuments1779600000004 implements MigrationInterface {
-  name = 'AddRegionCodeToPropertyDocuments1779600000004';
+// NULL means company-wide and stays visible in every region, matching
+// audit_logs and notifications. A company-level document such as a trade
+// licence belongs to no single region.
+// Existing rows keep the region they were stamped with: clearing them would
+// widen who can see them.
+export class MakePropertyDocumentsRegionCodeNullable1779600000009 implements MigrationInterface {
+  name = 'MakePropertyDocumentsRegionCodeNullable1779600000009';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(
-      `ALTER TABLE "property_documents" ADD COLUMN "region_code" varchar(50)`,
+      `ALTER TABLE "property_documents" ALTER COLUMN "region_code" DROP NOT NULL`,
     );
+  }
 
+  public async down(queryRunner: QueryRunner): Promise<void> {
+    // NULLs must go before NOT NULL can be restored. Same derivation order as
+    // 1779600000004: unit chain, asset chain, company default, then dubai.
     await queryRunner.query(
       `UPDATE "property_documents" d SET "region_code" = ci."region_code"
        FROM "units" u
        JOIN "assets" a ON u."asset_id" = a."id"
        JOIN "localities" loc ON a."locality_id" = loc."id"
        JOIN "cities" ci ON loc."city_id" = ci."id"
-       WHERE d."unit_id" = u."id"`,
+       WHERE d."region_code" IS NULL AND d."unit_id" = u."id"`,
     );
 
     await queryRunner.query(
@@ -40,18 +47,6 @@ export class AddRegionCodeToPropertyDocuments1779600000004 implements MigrationI
 
     await queryRunner.query(
       `ALTER TABLE "property_documents" ALTER COLUMN "region_code" SET NOT NULL`,
-    );
-    await queryRunner.query(
-      `CREATE INDEX "IDX_PROPERTY_DOCUMENTS_REGION_CODE" ON "property_documents"("region_code")`,
-    );
-  }
-
-  public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(
-      `DROP INDEX IF EXISTS "IDX_PROPERTY_DOCUMENTS_REGION_CODE"`,
-    );
-    await queryRunner.query(
-      `ALTER TABLE "property_documents" DROP COLUMN IF EXISTS "region_code"`,
     );
   }
 }

@@ -61,9 +61,10 @@ export class PropertyDocument {
   @Column({ name: 'company_id', type: 'uuid' })
   companyId: string;
 
+  // NULL means company-wide, so it shows in every region.
   @Index('IDX_PROPERTY_DOCUMENTS_REGION_CODE')
-  @Column({ name: 'region_code', type: 'varchar', length: 50 })
-  regionCode: string;
+  @Column({ name: 'region_code', type: 'varchar', length: 50, nullable: true })
+  regionCode: string | null;
 
   @ManyToOne(() => Company)
   @JoinColumn({ name: 'company_id' })

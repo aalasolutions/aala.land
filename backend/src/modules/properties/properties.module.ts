@@ -10,7 +10,6 @@ import { PropertyMedia } from './entities/property-media.entity';
 import { PropertyDocument } from './entities/property-document.entity';
 import { Contact } from '../contacts/entities/contact.entity';
 import { Company } from '../companies/entities/company.entity';
-import { UserRegion } from '../users/entities/user-region.entity';
 import { EmailModule } from '../email/email.module';
 import { ContactsModule } from '../contacts/contacts.module';
 
@@ -24,7 +23,6 @@ import { ContactsModule } from '../contacts/contacts.module';
       PropertyDocument,
       Contact,
       Company,
-      UserRegion,
     ]),
     EmailModule,
     ContactsModule,

@@ -11,7 +11,14 @@ import { WhatsappChat } from '../whatsapp/entities/whatsapp-chat.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Contact, Lead, Unit, Lease, WhatsappChat, Company]),
+    TypeOrmModule.forFeature([
+      Contact,
+      Lead,
+      Unit,
+      Lease,
+      WhatsappChat,
+      Company,
+    ]),
   ],
   controllers: [ContactsController],
   providers: [ContactsService],

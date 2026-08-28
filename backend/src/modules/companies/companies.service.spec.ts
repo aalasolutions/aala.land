@@ -48,7 +48,9 @@ describe('CompaniesService', () => {
         {
           provide: getRepositoryToken(User),
           useValue: {
+            find: jest.fn().mockResolvedValue([]),
             findOne: jest.fn(),
+            update: jest.fn(),
             count: jest.fn(),
             createQueryBuilder: jest.fn(() => ({
               select: jest.fn().mockReturnThis(),
@@ -251,6 +253,46 @@ describe('CompaniesService', () => {
           Role.SUPER_ADMIN,
         ),
       ).resolves.toBeDefined();
+    });
+
+    it('drops a removed region from every user assigned to it', async () => {
+      repo.findOne.mockResolvedValue(mockCompany);
+      repo.save.mockResolvedValue(mockCompany);
+      userRepo.find.mockResolvedValue([
+        { id: 'u1', regionCodes: ['dubai', 'abu-dhabi'] },
+        { id: 'u2', regionCodes: ['dubai'] },
+        { id: 'u3', regionCodes: ['abu-dhabi'] },
+      ] as User[]);
+
+      await service.update(
+        'company-uuid-1',
+        { activeRegions: ['dubai'] },
+        Role.SUPER_ADMIN,
+      );
+
+      expect(userRepo.find).toHaveBeenCalledWith({
+        where: { companyId: 'company-uuid-1' },
+        select: { id: true, regionCodes: true },
+      });
+      expect(userRepo.update).toHaveBeenCalledTimes(2);
+      expect(userRepo.update).toHaveBeenCalledWith('u1', {
+        regionCodes: ['dubai'],
+      });
+      expect(userRepo.update).toHaveBeenCalledWith('u3', { regionCodes: [] });
+    });
+
+    it('leaves user regions alone when activeRegions is not being changed', async () => {
+      repo.findOne.mockResolvedValue(mockCompany);
+      repo.save.mockResolvedValue(mockCompany);
+
+      await service.update(
+        'company-uuid-1',
+        { name: 'Renamed' },
+        Role.SUPER_ADMIN,
+      );
+
+      expect(userRepo.find).not.toHaveBeenCalled();
+      expect(userRepo.update).not.toHaveBeenCalled();
     });
 
     it('counts duplicate region codes once against the cap', async () => {

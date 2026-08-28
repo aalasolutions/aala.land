@@ -8,7 +8,10 @@ import { Repository, LessThan } from 'typeorm';
 import { AuditLog } from './entities/audit-log.entity';
 import { Company } from '../companies/entities/company.entity';
 import { isGlobalEntityType } from './audit-global-entities';
-import { seesAllRegions } from '@shared/utils/region-visibility.util';
+import {
+  isAdminRole,
+  seesAllRegions,
+} from '@shared/utils/region-visibility.util';
 import { CreateAuditLogDto } from './dto/create-audit-log.dto';
 import { QueryAuditLogsDto } from './dto/query-audit-logs.dto';
 
@@ -21,15 +24,15 @@ export class AuditService {
     private readonly companyRepository: Repository<Company>,
   ) {}
 
-  // A NULL region must mean exactly one thing: the event is global and
-  // admin-only. Billing is the only such case, so everything else falls back to
-  // the company default when the request carried no region (login, for example).
+  // NULL means the event has no region to filter on. A caller passing no
+  // region at all still falls back to the company default.
   async log(dto: CreateAuditLogDto): Promise<AuditLog> {
     const regionCode =
-      dto.regionCode ??
-      (isGlobalEntityType(dto.entityType)
-        ? null
-        : await this.defaultRegionFor(dto.companyId));
+      dto.regionCode !== undefined
+        ? dto.regionCode
+        : isGlobalEntityType(dto.entityType)
+          ? null
+          : await this.defaultRegionFor(dto.companyId);
 
     const auditLog = this.auditLogRepository.create({ ...dto, regionCode });
     return await this.auditLogRepository.save(auditLog);
@@ -65,13 +68,14 @@ export class AuditService {
       .where('auditLog.companyId = :companyId', { companyId })
       .orderBy('auditLog.createdAt', 'DESC');
 
-    // Admins read every region, including the NULL-region global rows such as
-    // billing. A region-scoped role sees only its own region, so global rows
-    // never leak to it.
+    // A NULL region marks a global row such as billing, which stays admin-only.
     if (regionCode && userRole && !seesAllRegions(userRole)) {
-      queryBuilder.andWhere('auditLog.regionCode = :regionCode', {
-        regionCode,
-      });
+      queryBuilder.andWhere(
+        isAdminRole(userRole)
+          ? '(auditLog.regionCode = :regionCode OR auditLog.regionCode IS NULL)'
+          : 'auditLog.regionCode = :regionCode',
+        { regionCode },
+      );
     }
 
     if (action) {

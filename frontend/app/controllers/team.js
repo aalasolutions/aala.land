@@ -157,8 +157,8 @@ export default class TeamController extends PaginatedController {
     this.showModal = true;
   }
 
-  // Only admins reach this page, and an admin's bootstrap carries every company
-  // region, so this list is the full assignable set.
+  // Only admins reach this page, and an admin bootstrap carries every company
+  // region.
   get assignableRegions() {
     return this.region.regions;
   }

@@ -1,6 +1,12 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { DataSource, Repository, Not, IsNull } from 'typeorm';
+import {
+  DataSource,
+  Repository,
+  Not,
+  IsNull,
+  getMetadataArgsStorage,
+} from 'typeorm';
 import {
   NotFoundException,
   ConflictException,
@@ -24,7 +30,6 @@ import { BillingService } from '../billing/billing.service';
 import { UserReassignmentService } from './reassignment/user-reassignment.service';
 import { WhatsappService } from '../whatsapp/whatsapp.service';
 import { OWNERSHIP_TRANSFER_RECORDER } from './reassignment/ownership-transfer-recorder';
-import { UserRegion } from './entities/user-region.entity';
 
 jest.mock('bcryptjs');
 jest.mock('crypto');
@@ -106,7 +111,7 @@ describe('UsersService', () => {
     createdAt: new Date(),
     updatedAt: new Date(),
     company: null as any,
-    regions: [],
+    regionCodes: [],
   };
 
   const targetUser = {
@@ -398,7 +403,6 @@ describe('UsersService', () => {
 
       expect(repo.findAndCount).toHaveBeenCalledWith({
         where: { companyId, role: Not(Role.SUPER_ADMIN), deletedAt: IsNull() },
-        relations: ['regions'],
         skip: 0,
         take: 20,
         order: { createdAt: 'DESC' },
@@ -415,7 +419,6 @@ describe('UsersService', () => {
 
       expect(repo.findAndCount).toHaveBeenCalledWith({
         where: { companyId, role: Not(Role.SUPER_ADMIN), deletedAt: IsNull() },
-        relations: ['regions'],
         skip: 0,
         take: 20,
         order: { createdAt: 'DESC' },
@@ -429,7 +432,7 @@ describe('UsersService', () => {
 
       expect(repo.findAndCount).toHaveBeenCalledWith({
         where: { deletedAt: IsNull() },
-        relations: ['company', 'regions'],
+        relations: ['company'],
         skip: 0,
         take: 20,
         order: { createdAt: 'DESC' },
@@ -1196,6 +1199,7 @@ describe('UsersService', () => {
         role: Role.AGENT,
         companyId,
         mustChangePassword: true,
+        regionCodes: [],
       });
       expect(result.mustChangePassword).toBe(true);
     });
@@ -1573,6 +1577,17 @@ describe('UsersService', () => {
   describe('region assignment', () => {
     const activeRegions = ['makkah', 'punjab'];
 
+    // Every region read goes through this column, and a rename would fail
+    // silently at runtime rather than at compile time.
+    it('stores regions in the jsonb column the migration creates', () => {
+      const column = getMetadataArgsStorage()
+        .filterColumns(User)
+        .find((c) => c.propertyName === 'regionCodes');
+
+      expect(column?.options.name).toBe('region_codes');
+      expect(column?.options.type).toBe('jsonb');
+    });
+
     describe('setRegions', () => {
       it('replaces the whole set, not merges into it', async () => {
         repo.findOne.mockResolvedValue(mockUser);
@@ -1582,12 +1597,9 @@ describe('UsersService', () => {
           'punjab',
         ]);
 
-        expect(managerMock.delete).toHaveBeenCalledWith(UserRegion, {
-          userId: mockUser.id,
+        expect(repo.update).toHaveBeenCalledWith(mockUser.id, {
+          regionCodes: ['punjab'],
         });
-        expect(managerMock.insert).toHaveBeenCalledWith(UserRegion, [
-          { userId: mockUser.id, regionCode: 'punjab' },
-        ]);
         expect(result).toEqual({ id: mockUser.id, regionCodes: ['punjab'] });
       });
 
@@ -1598,7 +1610,7 @@ describe('UsersService', () => {
         await expect(
           service.setRegions(mockUser.id, companyId, ['makkah', 'dubai']),
         ).rejects.toThrow(BadRequestException);
-        expect(managerMock.delete).not.toHaveBeenCalled();
+        expect(repo.update).not.toHaveBeenCalled();
       });
 
       it('de-duplicates a repeated code', async () => {
@@ -1613,17 +1625,28 @@ describe('UsersService', () => {
         expect(result.regionCodes).toEqual(['makkah']);
       });
 
-      it('clears every assignment on an empty array without inserting', async () => {
+      it('clears every assignment on an empty array', async () => {
         repo.findOne.mockResolvedValue(mockUser);
         companyRepo.findOne.mockResolvedValue({ activeRegions } as any);
 
         const result = await service.setRegions(mockUser.id, companyId, []);
 
-        expect(managerMock.delete).toHaveBeenCalledWith(UserRegion, {
-          userId: mockUser.id,
+        expect(repo.update).toHaveBeenCalledWith(mockUser.id, {
+          regionCodes: [],
         });
-        expect(managerMock.insert).not.toHaveBeenCalled();
         expect(result.regionCodes).toEqual([]);
+      });
+
+      // SUPER_ADMIN can reach this for a user with no company.
+      it('rejects a user with no company instead of querying for one', async () => {
+        repo.findOne.mockResolvedValue({ ...mockUser, companyId: null });
+
+        await expect(
+          service.setRegions(mockUser.id, undefined, ['punjab']),
+        ).rejects.toThrow(BadRequestException);
+
+        expect(companyRepo.findOne).not.toHaveBeenCalled();
+        expect(repo.update).not.toHaveBeenCalled();
       });
     });
 
@@ -1659,9 +1682,9 @@ describe('UsersService', () => {
           Role.COMPANY_ADMIN,
         );
 
-        expect(managerMock.insert).toHaveBeenCalledWith(UserRegion, [
-          { userId: mockUser.id, regionCode: 'punjab' },
-        ]);
+        expect(repo.create).toHaveBeenCalledWith(
+          expect.objectContaining({ regionCodes: ['punjab'] }),
+        );
       });
 
       it('falls back to the company default when none are given', async () => {
@@ -1675,9 +1698,9 @@ describe('UsersService', () => {
 
         await service.create(dto, companyId, Role.COMPANY_ADMIN);
 
-        expect(managerMock.insert).toHaveBeenCalledWith(UserRegion, [
-          { userId: mockUser.id, regionCode: 'makkah' },
-        ]);
+        expect(repo.create).toHaveBeenCalledWith(
+          expect.objectContaining({ regionCodes: ['makkah'] }),
+        );
       });
 
       // Without this the member is created with zero assignments, which is the
@@ -1693,9 +1716,9 @@ describe('UsersService', () => {
 
         await service.create(dto, companyId, Role.COMPANY_ADMIN);
 
-        expect(managerMock.insert).toHaveBeenCalledWith(UserRegion, [
-          { userId: mockUser.id, regionCode: 'makkah' },
-        ]);
+        expect(repo.create).toHaveBeenCalledWith(
+          expect.objectContaining({ regionCodes: ['makkah'] }),
+        );
       });
 
       it('rejects a create code outside the company regions', async () => {

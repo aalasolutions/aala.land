@@ -105,9 +105,8 @@ export function canUpdateUser(role, targetRole) {
   return currentRoleIndex < targetRoleIndex;
 }
 
-// Switching is a data question, not a role one: the bootstrap already narrows
-// `regions` to what the user is assigned, so anyone holding more than one may
-// move between them and anyone holding one is pinned to it.
+// The bootstrap already narrows `regions` to what the user is assigned, so
+// more than one means switchable and exactly one means pinned.
 export function canSwitchRegion(assignedRegionCount) {
   return assignedRegionCount > 1;
 }

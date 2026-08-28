@@ -6,14 +6,13 @@ import { Role } from '@shared/enums/roles.enum';
 export class ImpersonateService {
   constructor(private readonly usersService: UsersService) {}
 
-  async impersonate(
-    userId: string,
-  ): Promise<{
+  async impersonate(userId: string): Promise<{
     email: string;
     sub: string;
     name: string;
     companyId: string | null;
     role: string;
+    regionCodes: string[];
   }> {
     const user = await this.usersService.findByIdWithCompany(userId);
     if (!user) {
@@ -46,6 +45,7 @@ export class ImpersonateService {
       name: user.name,
       companyId: user.companyId,
       role: user.role,
+      regionCodes: user.regionCodes ?? [],
     };
   }
 }

@@ -1,12 +1,9 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-// `default 0` made a studio indistinguishable from a unit nobody filled in.
-// Existing 0s are deliberately left alone (owner ruling); only new rows can be
-// NULL, which now means "unknown" while 0 means a genuine zero.
-export class MakeUnitBedroomsBathroomsNullable1779600000002
-  implements MigrationInterface
-{
-  name = 'MakeUnitBedroomsBathroomsNullable1779600000002';
+// NULL means unknown, 0 means a genuine zero such as a studio.
+// Existing 0s are left as they are.
+export class MakeUnitBedroomsBathroomsNullable1779600000010 implements MigrationInterface {
+  name = 'MakeUnitBedroomsBathroomsNullable1779600000010';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(

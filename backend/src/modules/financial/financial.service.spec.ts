@@ -230,4 +230,153 @@ describe('FinancialService', () => {
       }
     });
   });
+  describe('region scoping', () => {
+    const makkahManager = { role: 'manager', regionCodes: ['makkah'] };
+    const twoRegionManager = {
+      role: 'manager',
+      regionCodes: ['makkah', 'punjab'],
+    };
+    const admin = { role: 'company_admin', regionCodes: ['makkah'] };
+    const unassignedManager = { role: 'manager', regionCodes: [] };
+
+    const rows = [
+      { id: 'txn-makkah', unitId: 'unit-makkah', regionCode: 'makkah' },
+      { id: 'txn-punjab', unitId: 'unit-punjab', regionCode: 'punjab' },
+      { id: 'txn-no-unit', unitId: null, regionCode: null },
+    ];
+
+    // Stands in for Postgres on the QueryBuilder read. The predicate is
+    // "unit is null OR unit sits in one of these regions", so an unlinked
+    // transaction survives whatever the caller is assigned to.
+    function seedTransactions() {
+      let codes: string[] | undefined;
+      const capture = (_sql: string, params?: any) => {
+        if (params && Array.isArray(params.regionCodes)) {
+          codes = params.regionCodes as string[];
+        }
+        return qb;
+      };
+      const visible = () =>
+        codes
+          ? rows.filter(
+              (r) => r.unitId === null || codes!.includes(r.regionCode as string),
+            )
+          : rows;
+      const qb: any = {
+        leftJoinAndSelect: jest.fn().mockReturnThis(),
+        skip: jest.fn().mockReturnThis(),
+        take: jest.fn().mockReturnThis(),
+        orderBy: jest.fn().mockReturnThis(),
+        where: jest.fn(capture),
+        andWhere: jest.fn(capture),
+        getManyAndCount: jest.fn(() =>
+          Promise.resolve([visible(), visible().length]),
+        ),
+      };
+      repo.createQueryBuilder.mockReturnValue(qb);
+      repo.findAndCount.mockResolvedValue([rows as any, rows.length]);
+      return qb;
+    }
+
+    it('confines the list to the caller regions with no regionCode argument', async () => {
+      seedTransactions();
+
+      const result = await service.findAll(
+        companyId,
+        1,
+        20,
+        undefined,
+        undefined,
+        undefined,
+        makkahManager,
+      );
+
+      expect(result.data.map((t) => t.id)).toEqual([
+        'txn-makkah',
+        'txn-no-unit',
+      ]);
+      expect(result.total).toBe(2);
+    });
+
+    it('lists no transaction from a region outside the caller assignments', async () => {
+      seedTransactions();
+
+      const result = await service.findAll(
+        companyId,
+        1,
+        20,
+        undefined,
+        undefined,
+        'punjab',
+        makkahManager,
+      );
+
+      expect(result.data.map((t) => t.id)).not.toContain('txn-punjab');
+    });
+
+    it('narrows the list to a requested region the caller is assigned to', async () => {
+      seedTransactions();
+
+      const result = await service.findAll(
+        companyId,
+        1,
+        20,
+        undefined,
+        undefined,
+        'punjab',
+        twoRegionManager,
+      );
+
+      expect(result.data.map((t) => t.id)).toEqual([
+        'txn-punjab',
+        'txn-no-unit',
+      ]);
+    });
+
+    it('leaves the list unfiltered for admins', async () => {
+      seedTransactions();
+
+      const result = await service.findAll(
+        companyId,
+        1,
+        20,
+        undefined,
+        undefined,
+        undefined,
+        admin,
+      );
+
+      expect(result.data.map((t) => t.id)).toEqual([
+        'txn-makkah',
+        'txn-punjab',
+        'txn-no-unit',
+      ]);
+    });
+
+    it('stays unscoped when no caller is supplied', async () => {
+      seedTransactions();
+
+      const result = await service.findAll(companyId, 1, 20);
+
+      expect(result.total).toBe(3);
+    });
+
+    it('lists nothing when the caller has no assigned region', async () => {
+      seedTransactions();
+
+      const result = await service.findAll(
+        companyId,
+        1,
+        20,
+        undefined,
+        undefined,
+        undefined,
+        unassignedManager,
+      );
+
+      expect(result).toEqual({ data: [], total: 0, page: 1, limit: 20 });
+      expect(repo.createQueryBuilder).not.toHaveBeenCalled();
+      expect(repo.findAndCount).not.toHaveBeenCalled();
+    });
+  });
 });

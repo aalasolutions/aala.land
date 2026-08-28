@@ -17,6 +17,7 @@ describe('PropertiesController', () => {
       userId,
       email: 'admin@test.com',
       role: 'company_admin',
+      regionCodes: ['dubai'],
     },
   };
 
@@ -52,9 +53,11 @@ describe('PropertiesController', () => {
             removeArea: jest.fn(),
             createAsset: jest.fn(),
             findAssetsByLocality: jest.fn(),
+            findOneAsset: jest.fn(),
             updateAsset: jest.fn(),
             removeAsset: jest.fn(),
             createUnit: jest.fn(),
+            findOneUnit: jest.fn(),
             findUnitsByAsset: jest.fn(),
             updateUnit: jest.fn(),
             removeUnit: jest.fn(),
@@ -113,6 +116,7 @@ describe('PropertiesController', () => {
         1,
         20,
         undefined,
+        mockReq.user,
       );
       expect(result).toEqual(paginatedAreas);
     });
@@ -151,6 +155,7 @@ describe('PropertiesController', () => {
         companyId,
         1,
         20,
+        mockReq.user,
       );
       expect(result).toEqual(paginatedAssets);
     });
@@ -172,6 +177,7 @@ describe('PropertiesController', () => {
           assetId: 'asset-uuid-1',
         },
         userId,
+        mockReq.user,
       );
       expect(result).toEqual(mockUnit);
     });
@@ -193,6 +199,7 @@ describe('PropertiesController', () => {
         companyId,
         1,
         20,
+        mockReq.user,
       );
       expect(result).toEqual(paginatedUnits);
     });
@@ -215,6 +222,7 @@ describe('PropertiesController', () => {
         'area-uuid-1',
         companyId,
         { name: 'Updated' },
+        mockReq.user,
       );
     });
   });
@@ -225,7 +233,75 @@ describe('PropertiesController', () => {
 
       await controller.removeArea('area-uuid-1', mockReq);
 
-      expect(service.removeArea).toHaveBeenCalledWith('area-uuid-1', companyId);
+      expect(service.removeArea).toHaveBeenCalledWith(
+        'area-uuid-1',
+        companyId,
+        mockReq.user,
+      );
+    });
+  });
+
+  describe('region set threading', () => {
+    it('findOneArea passes the caller region set to the service', async () => {
+      service.findOneArea.mockResolvedValue(mockArea as any);
+
+      await controller.findOneArea('area-uuid-1', mockReq);
+
+      expect(service.findOneArea).toHaveBeenCalledWith(
+        'area-uuid-1',
+        companyId,
+        mockReq.user,
+      );
+    });
+
+    it('findOneAsset passes the caller region set to the service', async () => {
+      service.findOneAsset.mockResolvedValue(mockAsset as any);
+
+      await controller.findOneAsset('asset-uuid-1', mockReq);
+
+      expect(service.findOneAsset).toHaveBeenCalledWith(
+        'asset-uuid-1',
+        companyId,
+        mockReq.user,
+      );
+    });
+
+    it('findOneUnit passes the caller region set to the service', async () => {
+      service.findOneUnit.mockResolvedValue(mockUnit as any);
+
+      await controller.findOneUnit('unit-uuid-1', mockReq);
+
+      expect(service.findOneUnit).toHaveBeenCalledWith(
+        'unit-uuid-1',
+        companyId,
+        mockReq.user,
+      );
+    });
+
+    it('updateUnit passes the caller region set to the service', async () => {
+      service.updateUnit.mockResolvedValue(mockUnit as any);
+
+      await controller.updateUnit('unit-uuid-1', { floor: '3' }, mockReq);
+
+      expect(service.updateUnit).toHaveBeenCalledWith(
+        'unit-uuid-1',
+        companyId,
+        { floor: '3' },
+        userId,
+        mockReq.user,
+      );
+    });
+
+    it('removeUnit passes the caller region set to the service', async () => {
+      service.removeUnit.mockResolvedValue(undefined);
+
+      await controller.removeUnit('unit-uuid-1', mockReq);
+
+      expect(service.removeUnit).toHaveBeenCalledWith(
+        'unit-uuid-1',
+        companyId,
+        mockReq.user,
+      );
     });
   });
 
@@ -279,7 +355,11 @@ describe('PropertiesController', () => {
       const csv = 'unitNumber,assetId\n101,asset-uuid-1\n102,asset-uuid-1';
       const result = await controller.bulkImport(csv, mockReq);
 
-      expect(service.bulkImportUnits).toHaveBeenCalledWith(companyId, csv);
+      expect(service.bulkImportUnits).toHaveBeenCalledWith(
+        companyId,
+        csv,
+        mockReq.user,
+      );
       expect(result).toEqual(importResult);
     });
   });

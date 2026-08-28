@@ -33,8 +33,7 @@ export default class RegionService extends Service {
   }
 
   initialize(regions, defaultRegionCode) {
-    // Sorted once at the source so every consumer (topbar switcher, team
-    // assignment picker, lead and vendor forms) reads the same order.
+    // Sorted once at the source so every consumer reads the same order.
     this.regions = [...(regions ?? [])].sort((a, b) =>
       (a.name ?? '').localeCompare(b.name ?? ''),
     );

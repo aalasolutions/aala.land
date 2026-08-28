@@ -5,16 +5,68 @@ import {
 } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { QueryFailedError, Repository } from 'typeorm';
+import {
+  DataSource,
+  FindOperator,
+  FindOptionsRelations,
+  FindOptionsWhere,
+  In,
+  ObjectLiteral,
+  QueryFailedError,
+  Repository,
+  getMetadataArgsStorage,
+} from 'typeorm';
 import { PropertiesService } from './properties.service';
 import { PropertyArea } from './entities/property-area.entity';
 import { Asset } from './entities/asset.entity';
 import { Unit } from './entities/unit.entity';
 import { PropertyMedia } from './entities/property-media.entity';
+import { Locality } from '../locations/entities/locality.entity';
+import { City } from '../locations/entities/city.entity';
+import { Company } from '../companies/entities/company.entity';
+import { User } from '../users/entities/user.entity';
 import { Contact } from '../contacts/entities/contact.entity';
-import { UserRegion } from '../users/entities/user-region.entity';
 import { Role } from '@shared/enums/roles.enum';
 import { ContactsService } from '../contacts/contacts.service';
+
+// A conditional object spread widens past FindOptionsWhere<Asset>, so only
+// the entity metadata can catch a wrong `where` key.
+function assetWhereKeys(): string[] {
+  const storage = getMetadataArgsStorage();
+  return [
+    ...storage.filterColumns(Asset).map((c) => c.propertyName),
+    ...storage.filterRelations(Asset).map((r) => r.propertyName),
+  ];
+}
+
+// Evaluates a TypeORM `where` against a fixture row so the mock filters the
+// way the database would: arrays OR, In() matches membership, nested objects
+// walk into relations.
+function matchesWhere(row: unknown, where: unknown): boolean {
+  if (Array.isArray(where)) {
+    return where.some((clause) => matchesWhere(row, clause));
+  }
+  if (row === null || row === undefined) return false;
+  return Object.entries(where as Record<string, unknown>).every(
+    ([key, expected]) => {
+      const actual = (row as Record<string, unknown>)[key];
+      if (expected instanceof FindOperator) {
+        return (expected.value as unknown[]).includes(actual);
+      }
+      if (expected !== null && typeof expected === 'object') {
+        if (Array.isArray(actual)) {
+          return actual.some((item) => matchesWhere(item, expected));
+        }
+        return matchesWhere(actual, expected);
+      }
+      return actual === expected;
+    },
+  );
+}
+
+function inRegion(regionCode: string) {
+  return { locality: { city: { regionCode } } };
+}
 
 describe('PropertiesService', () => {
   let service: PropertiesService;
@@ -23,7 +75,6 @@ describe('PropertiesService', () => {
   let unitRepo: jest.Mocked<Repository<Unit>>;
   let mediaRepo: jest.Mocked<Repository<PropertyMedia>>;
   let contactRepo: jest.Mocked<Repository<Contact>>;
-  let userRegionRepo: jest.Mocked<Repository<UserRegion>>;
   let contactsService: jest.Mocked<ContactsService>;
 
   // A query-builder chain mock matching findAllUnits' fluent calls.
@@ -117,10 +168,6 @@ describe('PropertiesService', () => {
           useValue: createRepositoryMock<Contact>(),
         },
         {
-          provide: getRepositoryToken(UserRegion),
-          useValue: createRepositoryMock<UserRegion>(),
-        },
-        {
           provide: ContactsService,
           useValue: { resolveOrCreate: jest.fn() },
         },
@@ -130,8 +177,8 @@ describe('PropertiesService', () => {
     service = module.get<PropertiesService>(PropertiesService);
     areaRepo = module.get(getRepositoryToken(PropertyArea));
     assetRepo = module.get(getRepositoryToken(Asset));
-    // resolveOwnerId() now derives the new owner contact's region from the
-    // asset chain, so this builder has to be chainable by default.
+    // resolveOwnerId() derives the owner contact region from the asset chain, so
+    // this builder has to be chainable by default.
     (assetRepo.createQueryBuilder as jest.Mock).mockReturnValue({
       innerJoin: jest.fn().mockReturnThis(),
       select: jest.fn().mockReturnThis(),
@@ -141,7 +188,6 @@ describe('PropertiesService', () => {
     unitRepo = module.get(getRepositoryToken(Unit));
     mediaRepo = module.get(getRepositoryToken(PropertyMedia));
     contactRepo = module.get(getRepositoryToken(Contact));
-    userRegionRepo = module.get(getRepositoryToken(UserRegion));
     contactsService = module.get(ContactsService);
   });
 
@@ -269,6 +315,64 @@ describe('PropertiesService', () => {
     });
   });
 
+  describe('findAllAreas region confinement', () => {
+    it('confines a scoped caller to their assigned regions', async () => {
+      (areaRepo.findAndCount as jest.Mock).mockResolvedValue([[], 0]);
+
+      await service.findAllAreas(companyId, 1, 20, undefined, {
+        role: Role.AGENT,
+        regionCodes: ['makkah', 'punjab'],
+      });
+
+      const opts = (areaRepo.findAndCount as jest.Mock).mock.calls[0][0];
+      expect(opts.where.regionCode).toEqual(In(['makkah', 'punjab']));
+    });
+
+    it('narrows the assigned set to the region asked for', async () => {
+      (areaRepo.findAndCount as jest.Mock).mockResolvedValue([[], 0]);
+
+      await service.findAllAreas(companyId, 1, 20, 'makkah', {
+        role: Role.AGENT,
+        regionCodes: ['makkah', 'punjab'],
+      });
+
+      const opts = (areaRepo.findAndCount as jest.Mock).mock.calls[0][0];
+      expect(opts.where.regionCode).toEqual(In(['makkah']));
+    });
+
+    it('returns nothing when the caller asks for a region they do not hold', async () => {
+      const result = await service.findAllAreas(companyId, 1, 20, 'punjab', {
+        role: Role.AGENT,
+        regionCodes: ['makkah'],
+      });
+
+      expect(result.data).toEqual([]);
+      expect(areaRepo.findAndCount).not.toHaveBeenCalled();
+    });
+
+    it('returns nothing when the caller has no assigned region', async () => {
+      const result = await service.findAllAreas(companyId, 1, 20, undefined, {
+        role: Role.AGENT,
+        regionCodes: [],
+      });
+
+      expect(result.data).toEqual([]);
+      expect(areaRepo.findAndCount).not.toHaveBeenCalled();
+    });
+
+    it('leaves an admin unconfined', async () => {
+      (areaRepo.findAndCount as jest.Mock).mockResolvedValue([[], 0]);
+
+      await service.findAllAreas(companyId, 1, 20, undefined, {
+        role: Role.COMPANY_ADMIN,
+        regionCodes: [],
+      });
+
+      const opts = (areaRepo.findAndCount as jest.Mock).mock.calls[0][0];
+      expect(opts.where.regionCode).toBeUndefined();
+    });
+  });
+
   describe('createUnit', () => {
     beforeEach(() => {
       unitRepo.findOne.mockImplementation(
@@ -294,6 +398,51 @@ describe('PropertiesService', () => {
       expect(result.ownerId).toBe('owner-uuid-1');
     });
 
+    it('refuses to create a unit under an asset outside the caller regions', async () => {
+      unitRepo.create.mockImplementation((data) => data as Unit);
+      unitRepo.save.mockImplementation(async (u: Unit) => u);
+
+      await expect(
+        service.createUnit(
+          companyId,
+          { unitNumber: '1A', assetId: 'asset-uuid-1' } as any,
+          'u1',
+          { role: Role.AGENT, regionCodes: ['punjab'] },
+        ),
+      ).rejects.toThrow(NotFoundException);
+      expect(unitRepo.save).not.toHaveBeenCalled();
+    });
+
+    it('creates a unit under an asset inside the caller regions', async () => {
+      contactRepo.findOne.mockResolvedValue(mockOwner as Contact);
+      unitRepo.create.mockImplementation((data) => data as Unit);
+      unitRepo.save.mockImplementation(async (u: Unit) => u);
+
+      const result = await service.createUnit(
+        companyId,
+        { unitNumber: '1A', assetId: 'asset-uuid-1' } as any,
+        'u1',
+        { role: Role.AGENT, regionCodes: ['dubai'] },
+      );
+
+      expect(unitRepo.save).toHaveBeenCalled();
+      expect(result.unitNumber).toBe('1A');
+    });
+
+    it('leaves an admin unconfined when creating a unit', async () => {
+      unitRepo.create.mockImplementation((data) => data as Unit);
+      unitRepo.save.mockImplementation(async (u: Unit) => u);
+
+      await service.createUnit(
+        companyId,
+        { unitNumber: '1A', assetId: 'asset-uuid-1' } as any,
+        'u1',
+        { role: Role.COMPANY_ADMIN, regionCodes: [] },
+      );
+
+      expect(unitRepo.save).toHaveBeenCalled();
+    });
+
     it('resolves inline owner details into a contact and links it', async () => {
       contactsService.resolveOrCreate.mockResolvedValue({
         id: 'owner-uuid-1',
@@ -306,7 +455,11 @@ describe('PropertiesService', () => {
         {
           unitNumber: '1A',
           assetId: 'asset-uuid-1',
-          owner: { firstName: 'Ahmed', phone: '+971501234567', isWhatsapp: true },
+          owner: {
+            firstName: 'Ahmed',
+            phone: '+971501234567',
+            isWhatsapp: true,
+          },
         },
         'user-uuid-1',
       );
@@ -527,6 +680,85 @@ describe('PropertiesService', () => {
       expect(result.errors.length).toBe(2);
     });
 
+    it('fails rows whose asset is outside the caller regions', async () => {
+      unitRepo.create.mockImplementation((data) => data as Unit);
+
+      const csv = 'unitNumber,assetId\n101,asset-1\n102,asset-1';
+      const result = await service.bulkImportUnits(companyId, csv, {
+        role: Role.AGENT,
+        regionCodes: ['punjab'],
+      });
+
+      expect(result.created).toBe(0);
+      expect(result.failed).toBe(2);
+      expect(result.errors[0]).toContain('outside your regions');
+      expect(unitRepo.save).not.toHaveBeenCalled();
+    });
+
+    it('imports rows whose asset is inside the caller regions', async () => {
+      unitRepo.create.mockImplementation((data) => data as Unit);
+      (unitRepo.save as jest.Mock).mockResolvedValue([
+        mockUnit,
+      ] as unknown as Unit[]);
+
+      const csv = 'unitNumber,assetId\n101,asset-1';
+      const result = await service.bulkImportUnits(companyId, csv, {
+        role: Role.AGENT,
+        regionCodes: ['dubai'],
+      });
+
+      expect(result.failed).toBe(0);
+      expect(unitRepo.save).toHaveBeenCalledTimes(1);
+    });
+
+    it('imports absent bedrooms and bathrooms as unknown, not as a studio', async () => {
+      unitRepo.create.mockImplementation((data) => data as Unit);
+      (unitRepo.save as jest.Mock).mockResolvedValue([] as unknown as Unit[]);
+
+      const csv = 'unitNumber,assetId,bedrooms,bathrooms\n101,asset-1,,';
+      await service.bulkImportUnits(companyId, csv);
+
+      expect(unitRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({ bedrooms: null, bathrooms: null }),
+      );
+    });
+
+    it('imports a non-numeric bedrooms value as unknown', async () => {
+      unitRepo.create.mockImplementation((data) => data as Unit);
+      (unitRepo.save as jest.Mock).mockResolvedValue([] as unknown as Unit[]);
+
+      const csv = 'unitNumber,assetId,bedrooms\n101,asset-1,n/a';
+      await service.bulkImportUnits(companyId, csv);
+
+      expect(unitRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({ bedrooms: null }),
+      );
+    });
+
+    it('keeps an explicit zero, which is a genuine studio', async () => {
+      unitRepo.create.mockImplementation((data) => data as Unit);
+      (unitRepo.save as jest.Mock).mockResolvedValue([] as unknown as Unit[]);
+
+      const csv = 'unitNumber,assetId,bedrooms,bathrooms\n101,asset-1,0,0';
+      await service.bulkImportUnits(companyId, csv);
+
+      expect(unitRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({ bedrooms: 0, bathrooms: 0 }),
+      );
+    });
+
+    it('keeps a stated bedroom count', async () => {
+      unitRepo.create.mockImplementation((data) => data as Unit);
+      (unitRepo.save as jest.Mock).mockResolvedValue([] as unknown as Unit[]);
+
+      const csv = 'unitNumber,assetId,bedrooms,bathrooms\n101,asset-1,2,1';
+      await service.bulkImportUnits(companyId, csv);
+
+      expect(unitRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({ bedrooms: 2, bathrooms: 1 }),
+      );
+    });
+
     it('returns error when CSV has no data rows', async () => {
       const csv = 'unitNumber,assetId';
       const result = await service.bulkImportUnits(companyId, csv);
@@ -562,22 +794,20 @@ describe('PropertiesService', () => {
       const result = await service.countUnitsByRegion(companyId, {
         userId: 'u1',
         role: Role.COMPANY_ADMIN,
+        regionCodes: [],
       });
 
-      expect(userRegionRepo.find).not.toHaveBeenCalled();
       expect(qb.andWhere).not.toHaveBeenCalled();
       expect(result).toEqual({ makkah: 9, punjab: 1 });
     });
 
     it('confines a region-scoped caller to the regions they hold', async () => {
       const qb = arrangeCounts([{ regionCode: 'punjab', count: '1' }]);
-      (userRegionRepo.find as jest.Mock).mockResolvedValue([
-        { regionCode: 'punjab' },
-      ]);
 
       const result = await service.countUnitsByRegion(companyId, {
         userId: 'u1',
         role: Role.AGENT,
+        regionCodes: ['punjab'],
       });
 
       expect(qb.andWhere).toHaveBeenCalledWith(
@@ -590,11 +820,11 @@ describe('PropertiesService', () => {
 
     it('reports nothing for a scoped caller with no assignments', async () => {
       arrangeCounts([{ regionCode: 'makkah', count: '9' }]);
-      (userRegionRepo.find as jest.Mock).mockResolvedValue([]);
 
       const result = await service.countUnitsByRegion(companyId, {
         userId: 'u1',
         role: Role.AGENT,
+        regionCodes: [],
       });
 
       expect(result).toEqual({});
@@ -611,6 +841,7 @@ describe('PropertiesService', () => {
       await service.searchAssets(undefined, 'locality-1', 'tower', {
         userId: 'u1',
         role: Role.SUPER_ADMIN,
+        regionCodes: [],
       });
 
       const [sql, params] = (assetRepo.query as jest.Mock).mock.calls[0];
@@ -620,13 +851,11 @@ describe('PropertiesService', () => {
 
     it('searchAssets binds the company as a parameter, never inlines it', async () => {
       (assetRepo.query as jest.Mock).mockResolvedValue([]);
-      (userRegionRepo.find as jest.Mock).mockResolvedValue([
-        { regionCode: 'punjab' },
-      ]);
 
       await service.searchAssets(companyId, 'locality-1', 'tower', {
         userId: 'u1',
         role: Role.AGENT,
+        regionCodes: ['punjab'],
       });
 
       const [sql, params] = (assetRepo.query as jest.Mock).mock.calls[0];
@@ -637,13 +866,11 @@ describe('PropertiesService', () => {
 
     it('searchAssets filters by company in the SQL, not just by locality', async () => {
       (assetRepo.query as jest.Mock).mockResolvedValue([]);
-      (userRegionRepo.find as jest.Mock).mockResolvedValue([
-        { regionCode: 'punjab' },
-      ]);
 
       await service.searchAssets(companyId, 'locality-1', 'tower', {
         userId: 'u1',
         role: Role.AGENT,
+        regionCodes: ['punjab'],
       });
 
       const [sql, params] = (assetRepo.query as jest.Mock).mock.calls[0];
@@ -651,16 +878,73 @@ describe('PropertiesService', () => {
       expect(params).toContain(companyId);
     });
 
-    it('findOneAsset scopes to the caller company', async () => {
+    it('findOneAsset filters only on properties that exist on the Asset entity', async () => {
       (assetRepo.findOne as jest.Mock).mockResolvedValue({ id: 'a1' });
 
       await service.findOneAsset('a1', companyId);
 
-      expect(assetRepo.findOne).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: expect.objectContaining({ id: 'a1', companyId }),
-        }),
+      const { where } = (assetRepo.findOne as jest.Mock).mock.calls[0][0];
+      const known = assetWhereKeys();
+      for (const clause of Array.isArray(where) ? where : [where]) {
+        for (const key of Object.keys(clause)) {
+          expect(known).toContain(key);
+        }
+      }
+    });
+
+    it('findOneAsset scopes to the caller company the same way the list does', async () => {
+      (assetRepo.findOne as jest.Mock).mockResolvedValue({ id: 'a1' });
+
+      await service.findOneAsset('a1', companyId);
+
+      const { where } = (assetRepo.findOne as jest.Mock).mock.calls[0][0];
+      expect(where).toEqual([
+        { id: 'a1', units: { companyId } },
+        { id: 'a1', createdByCompanyId: companyId },
+      ]);
+    });
+
+    it('searchAssets confines a region-scoped caller to their assigned regions', async () => {
+      (assetRepo.query as jest.Mock).mockResolvedValue([]);
+
+      await service.searchAssets(companyId, 'locality-1', 'tower', {
+        userId: 'u1',
+        role: Role.AGENT,
+        regionCodes: ['punjab'],
+      });
+
+      const [sql, params] = (assetRepo.query as jest.Mock).mock.calls[0];
+      expect(sql).toContain('INNER JOIN cities ci');
+      expect(sql).toContain('ci.region_code = ANY($4::varchar[])');
+      expect(sql).not.toContain('punjab');
+      expect(params[3]).toEqual(['punjab']);
+    });
+
+    it('searchAssets leaves an admin unconfined by region', async () => {
+      (assetRepo.query as jest.Mock).mockResolvedValue([]);
+
+      await service.searchAssets(companyId, 'locality-1', 'tower', {
+        userId: 'u1',
+        role: Role.COMPANY_ADMIN,
+        regionCodes: [],
+      });
+
+      const [sql] = (assetRepo.query as jest.Mock).mock.calls[0];
+      expect(sql).not.toContain('region_code');
+    });
+
+    it('searchAssets returns nothing for a scoped caller with no assignments', async () => {
+      (assetRepo.query as jest.Mock).mockResolvedValue([]);
+
+      const result = await service.searchAssets(
+        companyId,
+        'locality-1',
+        'tower',
+        { userId: 'u1', role: Role.AGENT, regionCodes: [] },
       );
+
+      expect(result).toEqual([]);
+      expect(assetRepo.query).not.toHaveBeenCalled();
     });
 
     it('findOneAsset stays cross-tenant for SUPER_ADMIN, which has no company', async () => {
@@ -695,13 +979,11 @@ describe('PropertiesService', () => {
 
     it('confines a region-scoped caller', async () => {
       const qb = arrangeOccupancy();
-      (userRegionRepo.find as jest.Mock).mockResolvedValue([
-        { regionCode: 'punjab' },
-      ]);
 
       await service.getAssetOccupancy(companyId, {
         userId: 'u1',
         role: Role.AGENT,
+        regionCodes: ['punjab'],
       });
 
       expect(qb.andWhere).toHaveBeenCalledWith(
@@ -716,19 +998,19 @@ describe('PropertiesService', () => {
       await service.getAssetOccupancy(companyId, {
         userId: 'u1',
         role: Role.COMPANY_ADMIN,
+        regionCodes: [],
       });
 
-      expect(userRegionRepo.find).not.toHaveBeenCalled();
       expect(qb.andWhere).not.toHaveBeenCalled();
     });
 
     it('returns nothing for a scoped caller with no assignments', async () => {
       arrangeOccupancy();
-      (userRegionRepo.find as jest.Mock).mockResolvedValue([]);
 
       const result = await service.getAssetOccupancy(companyId, {
         userId: 'u1',
         role: Role.AGENT,
+        regionCodes: [],
       });
 
       expect(result).toEqual([]);
@@ -741,13 +1023,11 @@ describe('PropertiesService', () => {
 
     it('adds a region predicate for a scoped caller', async () => {
       (assetRepo.findAndCount as jest.Mock).mockResolvedValue([[], 0]);
-      (userRegionRepo.find as jest.Mock).mockResolvedValue([
-        { regionCode: 'punjab' },
-      ]);
 
       await service.findAllAssets(companyId, 1, 100, {
         userId: 'u1',
         role: Role.AGENT,
+        regionCodes: ['punjab'],
       });
 
       const opts = (assetRepo.findAndCount as jest.Mock).mock.calls[0][0];
@@ -762,12 +1042,498 @@ describe('PropertiesService', () => {
       await service.findAllAssets(companyId, 1, 100, {
         userId: 'u1',
         role: Role.COMPANY_ADMIN,
+        regionCodes: [],
       });
 
       const opts = (assetRepo.findAndCount as jest.Mock).mock.calls[0][0];
       for (const clause of opts.where) {
         expect(clause).not.toHaveProperty('locality');
       }
+    });
+  });
+
+  describe('by-id region confinement', () => {
+    const companyId = 'company-uuid-1';
+    const makkahAgent = {
+      userId: 'agent-1',
+      role: Role.AGENT,
+      regionCodes: ['makkah'],
+    };
+    const unassignedAgent = {
+      userId: 'agent-2',
+      role: Role.AGENT,
+      regionCodes: [],
+    };
+    const admin = {
+      userId: 'admin-1',
+      role: Role.COMPANY_ADMIN,
+      regionCodes: [],
+    };
+
+    const punjabArea = {
+      id: 'area-punjab',
+      companyId,
+      regionCode: 'punjab',
+    } as PropertyArea;
+    const makkahArea = {
+      id: 'area-makkah',
+      companyId,
+      regionCode: 'makkah',
+    } as PropertyArea;
+
+    const punjabAsset = {
+      id: 'asset-punjab',
+      localityId: 'locality-punjab',
+      createdByCompanyId: companyId,
+      units: [],
+      ...inRegion('punjab'),
+    } as unknown as Asset;
+    const makkahAsset = {
+      id: 'asset-makkah',
+      localityId: 'locality-makkah',
+      createdByCompanyId: companyId,
+      units: [],
+      ...inRegion('makkah'),
+    } as unknown as Asset;
+
+    const punjabUnit = {
+      id: 'unit-punjab',
+      companyId,
+      assetId: 'asset-punjab',
+      owner: null,
+      asset: inRegion('punjab'),
+    } as unknown as Unit;
+    const makkahUnit = {
+      id: 'unit-makkah',
+      companyId,
+      assetId: 'asset-makkah',
+      owner: null,
+      asset: inRegion('makkah'),
+    } as unknown as Unit;
+
+    function stubFindOne<T extends ObjectLiteral>(
+      repo: jest.Mocked<Repository<T>>,
+      rows: T[],
+    ) {
+      (repo.findOne as jest.Mock).mockImplementation(
+        (opts: { where: unknown }) =>
+          Promise.resolve(
+            rows.find((row) => matchesWhere(row, opts.where)) ?? null,
+          ),
+      );
+    }
+
+    function stubFindAndCount<T extends ObjectLiteral>(
+      repo: jest.Mocked<Repository<T>>,
+      rows: T[],
+    ) {
+      (repo.findAndCount as jest.Mock).mockImplementation(
+        (opts: { where: unknown }) => {
+          const hits = rows.filter((row) => matchesWhere(row, opts.where));
+          return Promise.resolve([hits, hits.length]);
+        },
+      );
+    }
+
+    describe('findOneUnit', () => {
+      beforeEach(() => stubFindOne(unitRepo, [punjabUnit, makkahUnit]));
+
+      it('denies a by-id read outside the caller regions', async () => {
+        await expect(
+          service.findOneUnit('unit-punjab', companyId, makkahAgent),
+        ).rejects.toThrow(NotFoundException);
+      });
+
+      it('allows a by-id read inside the caller regions', async () => {
+        const unit = await service.findOneUnit(
+          'unit-makkah',
+          companyId,
+          makkahAgent,
+        );
+
+        expect(unit.id).toBe('unit-makkah');
+      });
+
+      it('leaves an admin unconfined', async () => {
+        const unit = await service.findOneUnit('unit-punjab', companyId, admin);
+
+        expect(unit.id).toBe('unit-punjab');
+      });
+
+      it('denies everything for a caller with no assignments', async () => {
+        await expect(
+          service.findOneUnit('unit-makkah', companyId, unassignedAgent),
+        ).rejects.toThrow(NotFoundException);
+        expect(unitRepo.findOne).not.toHaveBeenCalled();
+      });
+    });
+
+    describe('findOneAsset', () => {
+      beforeEach(() => stubFindOne(assetRepo, [punjabAsset, makkahAsset]));
+
+      it('denies a by-id read outside the caller regions', async () => {
+        await expect(
+          service.findOneAsset('asset-punjab', companyId, makkahAgent),
+        ).rejects.toThrow(NotFoundException);
+      });
+
+      it('allows a by-id read inside the caller regions', async () => {
+        const asset = await service.findOneAsset(
+          'asset-makkah',
+          companyId,
+          makkahAgent,
+        );
+
+        expect(asset.id).toBe('asset-makkah');
+      });
+
+      it('leaves an admin unconfined', async () => {
+        const asset = await service.findOneAsset(
+          'asset-punjab',
+          companyId,
+          admin,
+        );
+
+        expect(asset.id).toBe('asset-punjab');
+      });
+
+      it('denies everything for a caller with no assignments', async () => {
+        await expect(
+          service.findOneAsset('asset-makkah', companyId, unassignedAgent),
+        ).rejects.toThrow(NotFoundException);
+        expect(assetRepo.findOne).not.toHaveBeenCalled();
+      });
+    });
+
+    describe('findOneArea', () => {
+      beforeEach(() => stubFindOne(areaRepo, [punjabArea, makkahArea]));
+
+      it('denies a by-id read outside the caller regions', async () => {
+        await expect(
+          service.findOneArea('area-punjab', companyId, makkahAgent),
+        ).rejects.toThrow(NotFoundException);
+      });
+
+      it('allows a by-id read inside the caller regions', async () => {
+        const area = await service.findOneArea(
+          'area-makkah',
+          companyId,
+          makkahAgent,
+        );
+
+        expect(area.id).toBe('area-makkah');
+      });
+
+      it('leaves an admin unconfined', async () => {
+        const area = await service.findOneArea('area-punjab', companyId, admin);
+
+        expect(area.id).toBe('area-punjab');
+      });
+
+      it('denies everything for a caller with no assignments', async () => {
+        await expect(
+          service.findOneArea('area-makkah', companyId, unassignedAgent),
+        ).rejects.toThrow(NotFoundException);
+        expect(areaRepo.findOne).not.toHaveBeenCalled();
+      });
+    });
+
+    describe('updateArea and removeArea guards', () => {
+      beforeEach(() => stubFindOne(areaRepo, [punjabArea, makkahArea]));
+
+      it('refuses to update an area outside the caller regions', async () => {
+        await expect(
+          service.updateArea(
+            'area-punjab',
+            companyId,
+            { name: 'Renamed' },
+            makkahAgent,
+          ),
+        ).rejects.toThrow(NotFoundException);
+        expect(areaRepo.save).not.toHaveBeenCalled();
+      });
+
+      it('still updates an area inside the caller regions', async () => {
+        (areaRepo.save as jest.Mock).mockImplementation((area: PropertyArea) =>
+          Promise.resolve(area),
+        );
+
+        const result = await service.updateArea(
+          'area-makkah',
+          companyId,
+          { name: 'Renamed' },
+          makkahAgent,
+        );
+
+        expect(result.name).toBe('Renamed');
+      });
+
+      it('refuses to remove an area outside the caller regions', async () => {
+        await expect(
+          service.removeArea('area-punjab', companyId, makkahAgent),
+        ).rejects.toThrow(NotFoundException);
+        expect(areaRepo.remove).not.toHaveBeenCalled();
+      });
+    });
+
+    describe('findUnitsByAsset', () => {
+      beforeEach(() => stubFindAndCount(unitRepo, [punjabUnit, makkahUnit]));
+
+      it('withholds units of an asset outside the caller regions', async () => {
+        const result = await service.findUnitsByAsset(
+          'asset-punjab',
+          companyId,
+          1,
+          20,
+          makkahAgent,
+        );
+
+        expect(result.data).toEqual([]);
+        expect(result.total).toBe(0);
+      });
+
+      it('returns units of an asset inside the caller regions', async () => {
+        const result = await service.findUnitsByAsset(
+          'asset-makkah',
+          companyId,
+          1,
+          20,
+          makkahAgent,
+        );
+
+        expect(result.data.map((u) => u.id)).toEqual(['unit-makkah']);
+      });
+
+      it('leaves an admin unconfined', async () => {
+        const result = await service.findUnitsByAsset(
+          'asset-punjab',
+          companyId,
+          1,
+          20,
+          admin,
+        );
+
+        expect(result.data.map((u) => u.id)).toEqual(['unit-punjab']);
+      });
+
+      it('returns nothing for a caller with no assignments', async () => {
+        const result = await service.findUnitsByAsset(
+          'asset-makkah',
+          companyId,
+          1,
+          20,
+          unassignedAgent,
+        );
+
+        expect(result.data).toEqual([]);
+        expect(unitRepo.findAndCount).not.toHaveBeenCalled();
+      });
+    });
+
+    describe('findAssetsByLocality', () => {
+      beforeEach(() =>
+        stubFindAndCount(assetRepo, [
+          { ...punjabAsset, localityId: 'locality-1' } as Asset,
+          { ...makkahAsset, localityId: 'locality-1' } as Asset,
+        ]),
+      );
+
+      it('withholds assets outside the caller regions', async () => {
+        const result = await service.findAssetsByLocality(
+          'locality-1',
+          companyId,
+          1,
+          20,
+          makkahAgent,
+        );
+
+        expect(result.data.map((a) => a.id)).toEqual(['asset-makkah']);
+      });
+
+      it('leaves an admin unconfined', async () => {
+        const result = await service.findAssetsByLocality(
+          'locality-1',
+          companyId,
+          1,
+          20,
+          admin,
+        );
+
+        expect(result.data.map((a) => a.id)).toEqual([
+          'asset-punjab',
+          'asset-makkah',
+        ]);
+      });
+
+      it('returns nothing for a caller with no assignments', async () => {
+        const result = await service.findAssetsByLocality(
+          'locality-1',
+          companyId,
+          1,
+          20,
+          unassignedAgent,
+        );
+
+        expect(result.data).toEqual([]);
+        expect(assetRepo.findAndCount).not.toHaveBeenCalled();
+      });
+    });
+
+    describe('write paths that re-read the row they just touched', () => {
+      it('createUnit returns the new unit rather than 404ing on the way out', async () => {
+        const created = { ...punjabUnit, id: 'unit-new' } as Unit;
+        stubFindOne(unitRepo, [created]);
+        unitRepo.create.mockReturnValue(created);
+        (unitRepo.save as jest.Mock).mockResolvedValue(created);
+
+        const result = await service.createUnit(companyId, {
+          unitNumber: '1A',
+          assetId: 'asset-punjab',
+        });
+
+        expect(result.id).toBe('unit-new');
+      });
+
+      it('updateUnit refuses a unit outside the caller regions', async () => {
+        stubFindOne(unitRepo, [punjabUnit, makkahUnit]);
+
+        await expect(
+          service.updateUnit(
+            'unit-punjab',
+            companyId,
+            { unitNumber: '2B' },
+            'agent-1',
+            makkahAgent,
+          ),
+        ).rejects.toThrow(NotFoundException);
+        expect(unitRepo.save).not.toHaveBeenCalled();
+      });
+
+      it('updateUnit still returns the row for a unit inside the caller regions', async () => {
+        stubFindOne(unitRepo, [punjabUnit, makkahUnit]);
+        (unitRepo.save as jest.Mock).mockImplementation((u: Unit) =>
+          Promise.resolve(u),
+        );
+
+        const result = await service.updateUnit(
+          'unit-makkah',
+          companyId,
+          { unitNumber: '2B' },
+          'agent-1',
+          makkahAgent,
+        );
+
+        expect(result.id).toBe('unit-makkah');
+        expect(unitRepo.save).toHaveBeenCalledWith(
+          expect.objectContaining({ unitNumber: '2B' }),
+        );
+      });
+
+      it('removeUnit refuses a unit outside the caller regions', async () => {
+        stubFindOne(unitRepo, [punjabUnit, makkahUnit]);
+
+        await expect(
+          service.removeUnit('unit-punjab', companyId, makkahAgent),
+        ).rejects.toThrow(NotFoundException);
+        expect(unitRepo.remove).not.toHaveBeenCalled();
+      });
+    });
+
+    // Compiles the same `where` with TypeORM itself, so the region predicate is
+    // checked against real SQL and not only against the matcher above.
+    describe('the filter TypeORM actually compiles', () => {
+      let dataSource: DataSource;
+
+      beforeAll(async () => {
+        dataSource = new DataSource({
+          type: 'postgres',
+          entities: [
+            Unit,
+            Asset,
+            PropertyArea,
+            Locality,
+            City,
+            Contact,
+            Company,
+            User,
+          ],
+        });
+        await (
+          dataSource as unknown as { buildMetadatas: () => Promise<void> }
+        ).buildMetadatas();
+      });
+
+      function compile<T extends ObjectLiteral>(
+        target: new () => T,
+        call: {
+          where: FindOptionsWhere<T> | FindOptionsWhere<T>[];
+          relations?: FindOptionsRelations<T> | string[];
+        },
+      ) {
+        const qb = dataSource
+          .createQueryBuilder(target, target.name)
+          .setFindOptions({
+            where: call.where,
+            relations: call.relations as FindOptionsRelations<T>,
+          });
+        return { sql: qb.getQuery(), params: qb.getParameters() };
+      }
+
+      it('findOneUnit joins cities and binds the region list', async () => {
+        stubFindOne(unitRepo, []);
+
+        await expect(
+          service.findOneUnit('unit-1', companyId, makkahAgent),
+        ).rejects.toThrow(NotFoundException);
+
+        const { sql, params } = compile(
+          Unit,
+          (unitRepo.findOne as jest.Mock).mock.calls[0][0],
+        );
+        expect(sql).toContain('LEFT JOIN "cities"');
+        expect(sql).toMatch(/"region_code" IN \(:orm_param_\d+\)/);
+        expect(sql).not.toContain('makkah');
+        expect(Object.values(params)).toContain('makkah');
+      });
+
+      it('findOneAsset carries the region predicate in every OR branch', async () => {
+        stubFindOne(assetRepo, []);
+
+        await expect(
+          service.findOneAsset('asset-1', companyId, makkahAgent),
+        ).rejects.toThrow(NotFoundException);
+
+        const { sql, params } = compile(
+          Asset,
+          (assetRepo.findOne as jest.Mock).mock.calls[0][0],
+        );
+        expect(sql).toContain('LEFT JOIN "cities"');
+        expect(sql.split(' OR ')).toHaveLength(2);
+        for (const branch of sql.split(' OR ')) {
+          expect(branch).toMatch(/"region_code" IN \(:orm_param_\d+\)/);
+        }
+        expect(sql).not.toContain('makkah');
+        expect(Object.values(params)).toContain('makkah');
+      });
+
+      it('findOneArea filters region_code on the row itself, with no join', async () => {
+        stubFindOne(areaRepo, []);
+
+        await expect(
+          service.findOneArea('area-1', companyId, makkahAgent),
+        ).rejects.toThrow(NotFoundException);
+
+        const { sql, params } = compile(
+          PropertyArea,
+          (areaRepo.findOne as jest.Mock).mock.calls[0][0],
+        );
+        expect(sql).not.toContain('JOIN');
+        expect(sql).toMatch(
+          /"PropertyArea"\."region_code" IN \(:orm_param_\d+\)/,
+        );
+        expect(sql).not.toContain('makkah');
+        expect(Object.values(params)).toContain('makkah');
+      });
     });
   });
 });

@@ -18,6 +18,10 @@ describe('AuditService', () => {
     createQueryBuilder: jest.fn(),
   };
 
+  const mockCompanyRepository = {
+    findOne: jest.fn().mockResolvedValue({ defaultRegionCode: 'dubai' }),
+  };
+
   const mockAuditLog: AuditLog = {
     id: '123e4567-e89b-12d3-a456-426614174000',
     companyId: '123e4567-e89b-12d3-a456-426614174001',
@@ -45,9 +49,7 @@ describe('AuditService', () => {
         },
         {
           provide: getRepositoryToken(Company),
-          useValue: {
-            findOne: jest.fn().mockResolvedValue({ defaultRegionCode: 'dubai' }),
-          },
+          useValue: mockCompanyRepository,
         },
       ],
     }).compile();
@@ -84,6 +86,23 @@ describe('AuditService', () => {
         regionCode: 'dubai',
       });
       expect(mockRepository.save).toHaveBeenCalledWith(mockAuditLog);
+    });
+
+    it('keeps an explicit null region instead of the company default', async () => {
+      mockRepository.create.mockImplementationOnce((row: unknown) => row);
+      mockRepository.save.mockImplementationOnce((row: unknown) =>
+        Promise.resolve(row),
+      );
+
+      const saved = await service.log({
+        companyId: '123e4567-e89b-12d3-a456-426614174001',
+        action: AuditAction.UPDATE,
+        entityType: 'Lease',
+        regionCode: null,
+      });
+
+      expect(saved.regionCode).toBeNull();
+      expect(mockCompanyRepository.findOne).not.toHaveBeenCalled();
     });
   });
 

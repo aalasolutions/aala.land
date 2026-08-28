@@ -19,7 +19,6 @@ import {
 } from 'typeorm';
 import { withCompanyLock } from '@shared/utils/company-lock.util';
 import { User, AuthProvider } from './entities/user.entity';
-import { UserRegion } from './entities/user-region.entity';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { InviteUserDto } from './dto/invite-user.dto';
@@ -109,12 +108,6 @@ export class UsersService {
 
       try {
         const { regionCodes, ...userFields } = dto;
-        const user = manager.create(User, {
-          ...userFields,
-          password: hashedPassword,
-          companyId,
-        });
-        const saved = await manager.save(user);
 
         // A member with no regions would slip past region scoping entirely, so
         // an explicit set is used when given, then the company default, then any
@@ -123,13 +116,14 @@ export class UsersService {
         const codes = regionCodes?.length
           ? this.validateRegionCodes(regionCodes, company?.activeRegions ?? [])
           : this.fallbackRegionCodes(company);
-        if (codes.length) {
-          await manager.insert(
-            UserRegion,
-            codes.map((regionCode) => ({ userId: saved.id, regionCode })),
-          );
-        }
-        return saved;
+
+        const user = manager.create(User, {
+          ...userFields,
+          password: hashedPassword,
+          companyId,
+          regionCodes: codes,
+        });
+        return await manager.save(user);
       } catch (err) {
         if (seat) await seat.release();
         throw err;
@@ -149,14 +143,15 @@ export class UsersService {
       ...paginationOptions(page, limit),
       order: { createdAt: 'DESC' as const },
     };
-    Object.assign(findOptions, {
-      relations: companyId ? ['regions'] : ['company', 'regions'],
-    });
+    if (!companyId) {
+      Object.assign(findOptions, { relations: ['company'] });
+    }
     const [data, total] = await this.userRepository.findAndCount(findOptions);
-    // Flattened so the client never has to reason about the join rows.
+    // Sorted for the client; the stored order is the assignment order, whose
+    // first element is the region the scoping layer falls back to.
     const withRegions = data.map((user) => ({
       ...user,
-      regionCodes: (user.regions ?? []).map((r) => r.regionCode).sort(),
+      regionCodes: [...(user.regionCodes ?? [])].sort(),
     }));
     return { data: withRegions, total, page, limit };
   }
@@ -186,9 +181,8 @@ export class UsersService {
     return requested;
   }
 
-  // Replaces a user's assignments wholesale. Codes outside the company's active
-  // regions are rejected rather than silently dropped, so a bad payload is
-  // visible instead of quietly narrowing someone's access.
+  // Replaces assignments wholesale. Codes outside the company active regions
+  // are rejected, not silently dropped.
   async setRegions(
     id: string,
     companyId: string | undefined,
@@ -196,25 +190,22 @@ export class UsersService {
   ): Promise<{ id: string; regionCodes: string[] }> {
     const user = await this.findOne(id, companyId);
 
+    // No company means no active region list to validate against.
+    if (!user.companyId) {
+      throw new BadRequestException('User is not associated with a company');
+    }
+
     const company = await this.companyRepository.findOne({
-      where: { id: user.companyId ?? '' },
+      where: { id: user.companyId },
       select: { activeRegions: true },
     });
     const allowed = company?.activeRegions ?? [];
 
     const requested = this.validateRegionCodes(regionCodes, allowed);
 
-    await this.dataSource.transaction(async (manager) => {
-      await manager.delete(UserRegion, { userId: user.id });
-      if (requested.length) {
-        await manager.insert(
-          UserRegion,
-          requested.map((regionCode) => ({ userId: user.id, regionCode })),
-        );
-      }
-    });
+    await this.userRepository.update(user.id, { regionCodes: requested });
 
-    return { id: user.id, regionCodes: requested.sort() };
+    return { id: user.id, regionCodes: [...requested].sort() };
   }
 
   async findOne(id: string, companyId: string | undefined): Promise<User> {
@@ -1007,6 +998,7 @@ export class UsersService {
           role: dto.role,
           companyId,
           mustChangePassword: true,
+          regionCodes: this.fallbackRegionCodes(company),
         });
 
         const seat: SeatReservation | null = company
@@ -1014,19 +1006,7 @@ export class UsersService {
           : null;
 
         try {
-          const saved = await manager.save(user);
-
-          const inviteRegions = this.fallbackRegionCodes(company);
-          if (inviteRegions.length) {
-            await manager.insert(
-              UserRegion,
-              inviteRegions.map((regionCode) => ({
-                userId: saved.id,
-                regionCode,
-              })),
-            );
-          }
-          return saved;
+          return await manager.save(user);
         } catch (err) {
           if (seat) await seat.release();
           throw err;

@@ -42,7 +42,11 @@ export class CommissionsController {
     @Body() dto: CreateCommissionDto,
     @Request() req: AuthenticatedRequest,
   ) {
-    return this.commissionsService.create(requireCompanyId(req.user), dto);
+    return this.commissionsService.create(
+      requireCompanyId(req.user),
+      dto,
+      req.user,
+    );
   }
 
   @Get()
@@ -65,6 +69,7 @@ export class CommissionsController {
       limit,
       status,
       regionCode,
+      req.user,
     );
   }
 
@@ -82,6 +87,7 @@ export class CommissionsController {
       requireCompanyId(req.user),
       page,
       limit,
+      req.user,
     );
   }
 
@@ -95,6 +101,7 @@ export class CommissionsController {
     return this.commissionsService.getSummary(
       agentId,
       requireCompanyId(req.user),
+      req.user,
     );
   }
 
@@ -105,7 +112,11 @@ export class CommissionsController {
     @Param('id', ParseUUIDPipe) id: string,
     @Request() req: AuthenticatedRequest,
   ) {
-    return this.commissionsService.approve(id, requireCompanyId(req.user));
+    return this.commissionsService.approve(
+      id,
+      requireCompanyId(req.user),
+      req.user,
+    );
   }
 
   @Post(':id/pay')
@@ -115,7 +126,11 @@ export class CommissionsController {
     @Param('id', ParseUUIDPipe) id: string,
     @Request() req: AuthenticatedRequest,
   ) {
-    return this.commissionsService.pay(id, requireCompanyId(req.user));
+    return this.commissionsService.pay(
+      id,
+      requireCompanyId(req.user),
+      req.user,
+    );
   }
 
   @Get(':id')
@@ -125,7 +140,11 @@ export class CommissionsController {
     @Param('id', ParseUUIDPipe) id: string,
     @Request() req: AuthenticatedRequest,
   ) {
-    return this.commissionsService.findOne(id, requireCompanyId(req.user));
+    return this.commissionsService.findOne(
+      id,
+      requireCompanyId(req.user),
+      req.user,
+    );
   }
 
   @Patch(':id')
@@ -136,6 +155,11 @@ export class CommissionsController {
     @Body() dto: UpdateCommissionDto,
     @Request() req: AuthenticatedRequest,
   ) {
-    return this.commissionsService.update(id, requireCompanyId(req.user), dto);
+    return this.commissionsService.update(
+      id,
+      requireCompanyId(req.user),
+      dto,
+      req.user,
+    );
   }
 }

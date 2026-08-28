@@ -1,5 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { DataSource } from 'typeorm';
+import { RegionScope } from '../../shared/utils/resolve-region-code.util';
+import { effectiveRegionCodes } from '../../shared/utils/region-visibility.util';
 
 @Injectable()
 export class SearchService {
@@ -8,25 +10,35 @@ export class SearchService {
   private queryWithOptionalRegion(
     sql: string,
     params: unknown[],
-    regionCode?: string,
+    regionCodes: string[] | null,
   ) {
-    const paramIndex = regionCode ? params.length + 1 : 0;
+    // No readable region means no rows.
+    if (regionCodes?.length === 0) {
+      return Promise.resolve([]);
+    }
+
     const finalSql = sql.replace(
       '/* REGION_FILTER */',
-      regionCode ? `AND c.region_code = $${paramIndex}` : '',
+      regionCodes ? `AND c.region_code = ANY($${params.length + 1})` : '',
     );
     return this.dataSource.query(
       finalSql,
-      regionCode ? [...params, regionCode] : params,
+      regionCodes ? [...params, regionCodes] : params,
     );
   }
 
-  async search(q: string, companyId: string, regionCode?: string) {
+  async search(
+    q: string,
+    companyId: string,
+    regionCode?: string,
+    caller?: RegionScope,
+  ) {
     const query = q?.trim();
     if (!query || query.length < 2) {
       return { properties: [], agents: [] };
     }
 
+    const regionCodes = effectiveRegionCodes(regionCode, caller);
     const term = `${query.toLowerCase()}%`;
     const [cities, localities, assets, agents] = await Promise.all([
       this.queryWithOptionalRegion(
@@ -47,7 +59,7 @@ export class SearchService {
                     LIMIT 5`,
 
         [term, companyId],
-        regionCode,
+        regionCodes,
       ),
       this.queryWithOptionalRegion(
         `SELECT l.id, l.name, c.name AS "cityName"
@@ -62,7 +74,7 @@ export class SearchService {
                   ORDER BY LOWER(l.name)
                   LIMIT 5`,
         [term, companyId],
-        regionCode,
+        regionCodes,
       ),
       this.queryWithOptionalRegion(
         `SELECT b.id, b.name, b.locality_id AS "localityId", l.name AS "localityName"
@@ -76,7 +88,7 @@ export class SearchService {
                   ORDER BY LOWER(b.name)
                   LIMIT 5`,
         [term, companyId],
-        regionCode,
+        regionCodes,
       ),
       this.dataSource.query(
         `SELECT id, name, role

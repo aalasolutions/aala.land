@@ -176,6 +176,7 @@ export class PropertiesController {
     return this.propertiesService.bulkImportUnits(
       requireCompanyId(req.user),
       csv,
+      req.user,
     );
   }
 
@@ -219,6 +220,7 @@ export class PropertiesController {
       page,
       limit,
       regionCode,
+      req.user,
     );
   }
 
@@ -235,7 +237,11 @@ export class PropertiesController {
     @Param('id', ParseUUIDPipe) id: string,
     @Request() req: AuthenticatedRequest,
   ) {
-    return this.propertiesService.findOneArea(id, requireCompanyId(req.user));
+    return this.propertiesService.findOneArea(
+      id,
+      requireCompanyId(req.user),
+      req.user,
+    );
   }
 
   @Patch('areas/:id')
@@ -250,6 +256,7 @@ export class PropertiesController {
       id,
       requireCompanyId(req.user),
       dto,
+      req.user,
     );
   }
 
@@ -261,7 +268,11 @@ export class PropertiesController {
     @Param('id', ParseUUIDPipe) id: string,
     @Request() req: AuthenticatedRequest,
   ) {
-    return this.propertiesService.removeArea(id, requireCompanyId(req.user));
+    return this.propertiesService.removeArea(
+      id,
+      requireCompanyId(req.user),
+      req.user,
+    );
   }
 
   // Assets (shared, community-seeded)
@@ -286,7 +297,7 @@ export class PropertiesController {
       scopedCompanyId(req.user),
       localityId,
       q,
-      { userId: req.user.userId, role: req.user.role },
+      req.user,
     );
   }
 
@@ -320,7 +331,7 @@ export class PropertiesController {
       requireCompanyId(req.user),
       page,
       limit,
-      { userId: req.user.userId, role: req.user.role },
+      req.user,
     );
   }
 
@@ -348,6 +359,7 @@ export class PropertiesController {
       requireCompanyId(req.user),
       page,
       limit,
+      req.user,
     );
   }
 
@@ -365,7 +377,11 @@ export class PropertiesController {
     @Param('id', ParseUUIDPipe) id: string,
     @Request() req: AuthenticatedRequest,
   ) {
-    return this.propertiesService.findOneAsset(id, scopedCompanyId(req.user));
+    return this.propertiesService.findOneAsset(
+      id,
+      scopedCompanyId(req.user),
+      req.user,
+    );
   }
 
   @Patch('assets/:id')
@@ -489,7 +505,7 @@ export class PropertiesController {
   countUnitsByRegion(@Request() req: AuthenticatedRequest) {
     return this.propertiesService.countUnitsByRegion(
       requireCompanyId(req.user),
-      { userId: req.user.userId, role: req.user.role },
+      req.user,
     );
   }
 
@@ -508,7 +524,11 @@ export class PropertiesController {
     @Param('id', ParseUUIDPipe) id: string,
     @Request() req: AuthenticatedRequest,
   ) {
-    return this.propertiesService.findOneUnit(id, requireCompanyId(req.user));
+    return this.propertiesService.findOneUnit(
+      id,
+      requireCompanyId(req.user),
+      req.user,
+    );
   }
 
   @Post('units')
@@ -519,6 +539,7 @@ export class PropertiesController {
       requireCompanyId(req.user),
       dto,
       req.user.userId,
+      req.user,
     );
   }
 
@@ -544,6 +565,7 @@ export class PropertiesController {
       requireCompanyId(req.user),
       page,
       limit,
+      req.user,
     );
   }
 
@@ -560,6 +582,7 @@ export class PropertiesController {
       requireCompanyId(req.user),
       dto,
       req.user.userId,
+      req.user,
     );
   }
 
@@ -571,7 +594,11 @@ export class PropertiesController {
     @Param('id', ParseUUIDPipe) id: string,
     @Request() req: AuthenticatedRequest,
   ) {
-    return this.propertiesService.removeUnit(id, requireCompanyId(req.user));
+    return this.propertiesService.removeUnit(
+      id,
+      requireCompanyId(req.user),
+      req.user,
+    );
   }
 
   @Get('occupancy')
@@ -586,7 +613,7 @@ export class PropertiesController {
   getOccupancy(@Request() req: AuthenticatedRequest) {
     return this.propertiesService.getAssetOccupancy(
       requireCompanyId(req.user),
-      { userId: req.user.userId, role: req.user.role },
+      req.user,
     );
   }
 }

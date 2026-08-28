@@ -19,6 +19,7 @@ describe('FinancialController', () => {
       userId: 'user-uuid-1',
       email: 'admin@test.com',
       role: 'company_admin',
+      regionCodes: ['dubai'],
     },
   };
 
@@ -87,6 +88,7 @@ describe('FinancialController', () => {
         undefined,
         undefined,
         undefined,
+        mockReq.user,
       );
       expect(result).toEqual(paginated);
     });

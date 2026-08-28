@@ -125,6 +125,7 @@ describe('AuthController', () => {
           email: 'admin@test.com',
           companyId: 'c1',
           role: 'admin',
+          regionCodes: ['dubai'],
         },
       };
       const result = (await controller.refresh(req)) as any;
@@ -179,6 +180,7 @@ describe('AuthController', () => {
           email: 'admin@test.com',
           companyId: 'c1',
           role: 'admin',
+          regionCodes: ['dubai'],
         },
       };
       const result = await controller.linkGoogleAccount(req as any, {

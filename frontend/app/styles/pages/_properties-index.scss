@@ -9,8 +9,6 @@
 
 // ---- browse toolbar ----
 
-// Sort sits outside the filter accordion: it is a frequent, low-commitment
-// action and should not need a click to reach.
 .browse-toolbar {
   display: flex;
   gap: nu-space(4);
@@ -24,8 +22,8 @@
   }
 }
 
-// Label sits inline, not stacked: <Nuvo::Field> carries a 16px block-end margin
-// that pushed the attached direction button out of line with the dropdown.
+// Label inline, not stacked: <Nuvo::Field> carries a 16px block-end margin
+// that pushes the attached direction button out of line.
 .browse-toolbar__sort {
   display: flex;
   gap: nu-space(2);
@@ -39,8 +37,8 @@
   white-space: nowrap;
 }
 
-// Stats render unconditionally so the row never collapses and the sort controls
-// stay explicable; a missing value shows a dash and recedes.
+// Stats render unconditionally so the row never collapses; a missing value
+// shows a dash.
 .unit-stat.is-unset {
   opacity: 0.55;
 }

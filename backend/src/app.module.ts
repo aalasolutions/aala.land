@@ -33,8 +33,6 @@ import { BillingModule } from '@modules/billing/billing.module';
 import { LockModule } from '@modules/lock/lock.module';
 import { ConsoleModule } from '@modules/console/console.module';
 import { EmailModule } from '@modules/email/email.module';
-import { UserRegion } from '@modules/users/entities/user-region.entity';
-import { Company } from '@modules/companies/entities/company.entity';
 import { RegionScopeInterceptor } from '@shared/interceptors/region-scope.interceptor';
 
 @Module({
@@ -91,14 +89,12 @@ import { RegionScopeInterceptor } from '@shared/interceptors/region-scope.interc
     LockModule,
     ConsoleModule,
     EmailModule,
-    TypeOrmModule.forFeature([UserRegion, Company]),
   ],
   controllers: [AppController],
   providers: [
     AppService,
     { provide: APP_GUARD, useClass: ThrottlerGuard },
-    // Runs after JwtAuthGuard, so req.user is populated by the time it rewrites
-    // the caller-supplied regionCode down to something the user may actually read.
+    // Runs after JwtAuthGuard, so req.user is populated.
     { provide: APP_INTERCEPTOR, useClass: RegionScopeInterceptor },
   ],
 })

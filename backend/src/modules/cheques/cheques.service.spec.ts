@@ -8,10 +8,14 @@ import { UsersService } from '../users/users.service';
 import { NotificationsGateway } from '../notifications/notifications.gateway';
 import { ChequesService } from './cheques.service';
 import { Cheque, ChequeStatus, ChequeType } from './entities/cheque.entity';
+import { Unit } from '../properties/entities/unit.entity';
+import { Company } from '../companies/entities/company.entity';
 
 describe('ChequesService', () => {
   let service: ChequesService;
   let repo: jest.Mocked<Repository<Cheque>>;
+  let unitRepo: jest.Mocked<Repository<Unit>>;
+  let companyRepo: jest.Mocked<Repository<Company>>;
   let module: TestingModule;
   let updateBuilder: {
     update: jest.Mock;
@@ -23,6 +27,12 @@ describe('ChequesService', () => {
 
   const companyId = 'company-uuid-1';
 
+  // How the unit > asset > locality > city chain resolves each unit.
+  const unitRegions: Record<string, string> = {
+    'unit-makkah': 'makkah',
+    'unit-punjab': 'punjab',
+  };
+
   // Builds a chainable QueryBuilder mock whose execute() resolves to { affected }.
   const makeUpdateBuilder = (affected: number) => {
     const builder: any = {};
@@ -31,6 +41,28 @@ describe('ChequesService', () => {
     builder.where = jest.fn().mockReturnValue(builder);
     builder.andWhere = jest.fn().mockReturnValue(builder);
     builder.execute = jest.fn().mockResolvedValue({ affected });
+    return builder;
+  };
+
+  // Stands in for Postgres on the unit region lookup: resolves the region of
+  // whichever unit the service asked about.
+  const makeUnitRegionBuilder = () => {
+    const builder: any = {};
+    let unitId: string | undefined;
+    builder.innerJoin = jest.fn().mockReturnValue(builder);
+    builder.select = jest.fn().mockReturnValue(builder);
+    builder.where = jest.fn((_sql: string, params: { unitId: string }) => {
+      unitId = params.unitId;
+      return builder;
+    });
+    builder.andWhere = jest.fn().mockReturnValue(builder);
+    builder.getRawOne = jest.fn(() =>
+      Promise.resolve(
+        unitId && unitRegions[unitId]
+          ? { regionCode: unitRegions[unitId] }
+          : undefined,
+      ),
+    );
     return builder;
   };
 
@@ -68,6 +100,19 @@ describe('ChequesService', () => {
           },
         },
         {
+          provide: getRepositoryToken(Unit),
+          useValue: {
+            findOne: jest.fn(),
+            createQueryBuilder: jest.fn(),
+          },
+        },
+        {
+          provide: getRepositoryToken(Company),
+          useValue: {
+            findOne: jest.fn(),
+          },
+        },
+        {
           provide: NotificationsService,
           useValue: {
             create: jest.fn(),
@@ -90,6 +135,16 @@ describe('ChequesService', () => {
 
     service = module.get<ChequesService>(ChequesService);
     repo = module.get(getRepositoryToken(Cheque));
+    unitRepo = module.get(getRepositoryToken(Unit));
+    companyRepo = module.get(getRepositoryToken(Company));
+
+    companyRepo.findOne.mockResolvedValue({
+      defaultRegionCode: 'dubai',
+      activeRegions: ['dubai', 'makkah', 'punjab'],
+    } as Company);
+    unitRepo.createQueryBuilder.mockImplementation(
+      () => makeUnitRegionBuilder() as never,
+    );
 
     // Default: conditional UPDATE affects one row (the happy path).
     updateBuilder = makeUpdateBuilder(1);
@@ -114,7 +169,11 @@ describe('ChequesService', () => {
       };
       const result = await service.create(companyId, dto as any);
 
-      expect(repo.create).toHaveBeenCalledWith({ ...dto, companyId });
+      expect(repo.create).toHaveBeenCalledWith({
+        ...dto,
+        companyId,
+        regionCode: 'dubai',
+      });
       expect(result).toEqual(mockCheque);
     });
   });
@@ -794,6 +853,507 @@ describe('ChequesService', () => {
       await service.remove('cheque-uuid-1', companyId);
 
       expect(repo.remove).toHaveBeenCalledWith(mockCheque);
+    });
+  });
+  describe('region scoping', () => {
+    const makkahManager = { role: 'manager', regionCodes: ['makkah'] };
+    const twoRegionManager = {
+      role: 'manager',
+      regionCodes: ['makkah', 'punjab'],
+    };
+    const admin = { role: 'company_admin', regionCodes: ['makkah'] };
+
+    // Stands in for Postgres on the by-id read: the seeded cheque resolves only
+    // when the region predicate the service built admits its region_code.
+    function seedCheque(regionCode: string, unitId: string | null = null) {
+      const row = { ...mockCheque, regionCode, unitId } as Cheque;
+      repo.findOne.mockImplementation((opts: any) => {
+        const codes = opts?.where?.regionCode?.value as string[] | undefined;
+        if (codes && !codes.includes(regionCode)) {
+          return Promise.resolve(null);
+        }
+        return Promise.resolve(row);
+      });
+      return row;
+    }
+
+    it('denies findOne on a cheque outside the caller assigned regions', async () => {
+      seedCheque('punjab', 'unit-punjab');
+
+      await expect(
+        service.findOne('cheque-uuid-1', companyId, makkahManager),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('allows a by-id read in any region the caller is assigned to', async () => {
+      seedCheque('punjab', 'unit-punjab');
+
+      const result = await service.findOne(
+        'cheque-uuid-1',
+        companyId,
+        twoRegionManager,
+      );
+
+      expect(result.id).toBe('cheque-uuid-1');
+    });
+
+    it('reads a cheque with no unit from the caller own region', async () => {
+      seedCheque('makkah');
+
+      const result = await service.findOne(
+        'cheque-uuid-1',
+        companyId,
+        makkahManager,
+      );
+
+      expect(result.unitId).toBeNull();
+      expect(result.regionCode).toBe('makkah');
+    });
+
+    it('denies a cheque with no unit from another region', async () => {
+      seedCheque('punjab');
+
+      await expect(
+        service.findOne('cheque-uuid-1', companyId, makkahManager),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('reads the region off the cheque own column, not its unit', async () => {
+      seedCheque('punjab', 'unit-punjab');
+
+      await expect(
+        service.findOne('cheque-uuid-1', companyId, makkahManager),
+      ).rejects.toThrow(NotFoundException);
+
+      const where = (repo.findOne.mock.calls[0]![0] as any).where;
+      expect(where.regionCode.value).toEqual(['makkah']);
+      expect(where.unitId).toBeUndefined();
+    });
+
+    it('denies update on a cheque outside the caller assigned regions', async () => {
+      seedCheque('punjab', 'unit-punjab');
+      repo.createQueryBuilder.mockReturnValue(makeUpdateBuilder(1) as any);
+
+      await expect(
+        service.update(
+          'cheque-uuid-1',
+          companyId,
+          { status: ChequeStatus.DEPOSITED },
+          'user-uuid-1',
+          makkahManager,
+        ),
+      ).rejects.toThrow(NotFoundException);
+      expect(repo.createQueryBuilder).not.toHaveBeenCalled();
+    });
+
+    it('denies bounce on a cheque outside the caller assigned regions', async () => {
+      seedCheque('punjab', 'unit-punjab');
+      repo.createQueryBuilder.mockReturnValue(makeUpdateBuilder(1) as any);
+
+      await expect(
+        service.bounce(
+          'cheque-uuid-1',
+          companyId,
+          { bounceReason: 'Insufficient funds' },
+          'user-uuid-1',
+          makkahManager,
+        ),
+      ).rejects.toThrow(NotFoundException);
+      expect(repo.createQueryBuilder).not.toHaveBeenCalled();
+    });
+
+    it('denies processOcr on a cheque outside the caller assigned regions', async () => {
+      seedCheque('punjab', 'unit-punjab');
+
+      await expect(
+        service.processOcr(
+          'cheque-uuid-1',
+          companyId,
+          'https://example.com/cheque.jpg',
+          makkahManager,
+        ),
+      ).rejects.toThrow(NotFoundException);
+      expect(repo.save).not.toHaveBeenCalled();
+    });
+
+    it('denies remove on a cheque outside the caller assigned regions', async () => {
+      seedCheque('punjab', 'unit-punjab');
+
+      await expect(
+        service.remove('cheque-uuid-1', companyId, makkahManager),
+      ).rejects.toThrow(NotFoundException);
+      expect(repo.remove).not.toHaveBeenCalled();
+    });
+
+    it('denies every by-id read when the caller has no assigned region', async () => {
+      seedCheque('makkah', 'unit-makkah');
+
+      await expect(
+        service.findOne('cheque-uuid-1', companyId, {
+          role: 'manager',
+          regionCodes: [],
+        }),
+      ).rejects.toThrow(NotFoundException);
+      expect(repo.findOne).not.toHaveBeenCalled();
+    });
+
+    it('leaves admins unconfined by their own assignments', async () => {
+      seedCheque('punjab', 'unit-punjab');
+
+      const result = await service.findOne('cheque-uuid-1', companyId, admin);
+
+      expect(result.id).toBe('cheque-uuid-1');
+    });
+
+    it('stays unscoped when no caller is supplied', async () => {
+      seedCheque('punjab', 'unit-punjab');
+
+      const result = await service.findOne('cheque-uuid-1', companyId);
+
+      expect(result.id).toBe('cheque-uuid-1');
+    });
+
+    // Stands in for Postgres on the unit lookup: the unit resolves only when
+    // the region predicate the service built admits its region.
+    function seedUnitLookup() {
+      unitRepo.findOne.mockImplementation((opts: any) => {
+        const id = opts?.where?.id as string;
+        const codes = opts?.where?.asset?.locality?.city?.regionCode?.value as
+          | string[]
+          | undefined;
+        const region = unitRegions[id];
+        if (!region || (codes && !codes.includes(region))) {
+          return Promise.resolve(null);
+        }
+        return Promise.resolve({ id } as Unit);
+      });
+    }
+
+    // Stands in for Postgres on the list reads: the seeded cheques survive only
+    // when the region predicate the service built admits their region_code.
+    function seedCheques(
+      seeds: Array<{ id: string; regionCode: string; unitId: string | null }>,
+    ) {
+      const rows = seeds.map((seed) => ({ ...mockCheque, ...seed }) as Cheque);
+      const matching = (where: any) => {
+        const codes = where?.regionCode?.value as string[] | undefined;
+        return codes
+          ? rows.filter((row) => codes.includes(row.regionCode))
+          : rows;
+      };
+      repo.findAndCount.mockImplementation((opts: any) => {
+        const matched = matching(opts?.where);
+        return Promise.resolve([matched, matched.length]);
+      });
+      repo.find.mockImplementation((opts: any) =>
+        Promise.resolve(matching(opts?.where)),
+      );
+      return rows;
+    }
+
+    // A cheque with no unit is the case the column exists for: under the unit
+    // chain filter it matched no region at all.
+    const listSeeds = [
+      { id: 'cheque-makkah', regionCode: 'makkah', unitId: 'unit-makkah' },
+      { id: 'cheque-makkah-no-unit', regionCode: 'makkah', unitId: null },
+      { id: 'cheque-punjab', regionCode: 'punjab', unitId: 'unit-punjab' },
+    ];
+
+    it('confines the list to the caller assigned regions with no region requested', async () => {
+      seedCheques(listSeeds);
+
+      const result = await service.findAll(
+        companyId,
+        1,
+        20,
+        undefined,
+        makkahManager,
+      );
+
+      expect(result.data.map((c) => c.id)).toEqual([
+        'cheque-makkah',
+        'cheque-makkah-no-unit',
+      ]);
+      expect(result.total).toBe(2);
+    });
+
+    it('lists a cheque with no unit to a caller in that region', async () => {
+      seedCheques(listSeeds);
+
+      const result = await service.findAll(
+        companyId,
+        1,
+        20,
+        undefined,
+        makkahManager,
+      );
+
+      const unitless = result.data.find((c) => c.unitId === null);
+      expect(unitless?.id).toBe('cheque-makkah-no-unit');
+    });
+
+    it('hides a cheque with no unit from a caller in another region', async () => {
+      seedCheques([
+        { id: 'cheque-punjab-no-unit', regionCode: 'punjab', unitId: null },
+      ]);
+
+      const result = await service.findAll(
+        companyId,
+        1,
+        20,
+        undefined,
+        makkahManager,
+      );
+
+      expect(result.data).toEqual([]);
+      expect(result.total).toBe(0);
+    });
+
+    it('filters the list on the cheque own region column', async () => {
+      seedCheques(listSeeds);
+
+      await service.findAll(companyId, 1, 20, undefined, makkahManager);
+
+      const where = (repo.findAndCount.mock.calls[0]![0] as any).where;
+      expect(where.regionCode.value).toEqual(['makkah']);
+      expect(where.unitId).toBeUndefined();
+    });
+
+    it('lists no cheques from a region outside the caller assignments', async () => {
+      seedCheques(listSeeds);
+
+      const result = await service.findAll(
+        companyId,
+        1,
+        20,
+        'punjab',
+        makkahManager,
+      );
+
+      expect(result.data).toEqual([]);
+      expect(result.total).toBe(0);
+    });
+
+    it('leaves the list unfiltered for admins', async () => {
+      seedCheques(listSeeds);
+
+      const result = await service.findAll(companyId, 1, 20, undefined, admin);
+
+      expect(result.data.map((c) => c.id)).toEqual([
+        'cheque-makkah',
+        'cheque-makkah-no-unit',
+        'cheque-punjab',
+      ]);
+    });
+
+    it('lists nothing when the caller has no assigned region', async () => {
+      seedCheques(listSeeds);
+
+      const result = await service.findAll(companyId, 1, 20, undefined, {
+        role: 'manager',
+        regionCodes: [],
+      });
+
+      expect(result.data).toEqual([]);
+      expect(repo.findAndCount).not.toHaveBeenCalled();
+    });
+
+    it('confines the collection schedule to the caller assigned regions', async () => {
+      seedCheques(listSeeds);
+
+      const result = await service.getCollectionSchedule(
+        companyId,
+        makkahManager,
+      );
+
+      expect(result.overdue.map((c) => c.id)).toEqual([
+        'cheque-makkah',
+        'cheque-makkah-no-unit',
+      ]);
+      expect(result.thisWeek.map((c) => c.id)).toEqual([
+        'cheque-makkah',
+        'cheque-makkah-no-unit',
+      ]);
+    });
+
+    it('leaves the collection schedule unfiltered for admins', async () => {
+      seedCheques(listSeeds);
+
+      const result = await service.getCollectionSchedule(companyId, admin);
+
+      expect(result.overdue.map((c) => c.id)).toEqual([
+        'cheque-makkah',
+        'cheque-makkah-no-unit',
+        'cheque-punjab',
+      ]);
+    });
+
+    it('returns an empty collection schedule when the caller has no assigned region', async () => {
+      seedCheques(listSeeds);
+
+      const result = await service.getCollectionSchedule(companyId, {
+        role: 'manager',
+        regionCodes: [],
+      });
+
+      expect(result).toEqual({
+        overdue: [],
+        thisWeek: [],
+        nextWeek: [],
+        thisMonth: [],
+      });
+      expect(repo.find).not.toHaveBeenCalled();
+    });
+
+    describe('unit binding', () => {
+      // Writes the row the service built, so the stamped region is observable.
+      function seedPassthroughWrites() {
+        (repo.create as jest.Mock).mockImplementation(
+          (input: Partial<Cheque>) => input as Cheque,
+        );
+        (repo.save as jest.Mock).mockImplementation((row: Cheque) =>
+          Promise.resolve(row),
+        );
+      }
+
+      it('denies an admin binding a unit from another company', async () => {
+        seedPassthroughWrites();
+        unitRepo.findOne.mockImplementation((opts: any) =>
+          Promise.resolve(
+            opts?.where?.companyId === companyId
+              ? ({ id: opts.where.id } as Unit)
+              : null,
+          ),
+        );
+
+        await expect(
+          service.create(
+            'another-company-uuid',
+            { chequeNumber: 'CHQ003', unitId: 'unit-makkah' } as any,
+            'user-uuid-1',
+            admin,
+          ),
+        ).rejects.toThrow(NotFoundException);
+        expect(repo.save).not.toHaveBeenCalled();
+      });
+
+      it('denies create when the unit is outside the caller regions', async () => {
+        seedUnitLookup();
+
+        await expect(
+          service.create(
+            companyId,
+            { chequeNumber: 'CHQ002', unitId: 'unit-punjab' } as any,
+            'user-uuid-1',
+            makkahManager,
+          ),
+        ).rejects.toThrow(NotFoundException);
+        expect(repo.save).not.toHaveBeenCalled();
+      });
+
+      it('creates a cheque on a unit inside the caller regions', async () => {
+        seedUnitLookup();
+        seedPassthroughWrites();
+
+        const result = await service.create(
+          companyId,
+          { chequeNumber: 'CHQ002', unitId: 'unit-punjab' } as any,
+          'user-uuid-1',
+          twoRegionManager,
+        );
+
+        expect(result.unitId).toBe('unit-punjab');
+        expect(result.regionCode).toBe('punjab');
+      });
+
+      it('stamps a cheque with no unit with the region the caller supplied', async () => {
+        seedPassthroughWrites();
+
+        const result = await service.create(
+          companyId,
+          { chequeNumber: 'CHQ003', regionCode: 'makkah' } as any,
+          'user-uuid-1',
+          makkahManager,
+        );
+
+        expect(result.regionCode).toBe('makkah');
+        expect(companyRepo.findOne).not.toHaveBeenCalled();
+      });
+
+      it('rejects a supplied region the caller is not assigned to', async () => {
+        seedPassthroughWrites();
+
+        await expect(
+          service.create(
+            companyId,
+            { chequeNumber: 'CHQ004', regionCode: 'punjab' } as any,
+            'user-uuid-1',
+            makkahManager,
+          ),
+        ).rejects.toThrow(BadRequestException);
+        expect(repo.save).not.toHaveBeenCalled();
+      });
+
+      it('falls back to the company default with no unit and no region', async () => {
+        seedPassthroughWrites();
+
+        const result = await service.create(
+          companyId,
+          { chequeNumber: 'CHQ005' } as any,
+          'user-uuid-1',
+          admin,
+        );
+
+        expect(result.regionCode).toBe('dubai');
+      });
+
+      it('denies moving a cheque onto a unit outside the caller regions', async () => {
+        seedCheque('makkah', 'unit-makkah');
+        seedUnitLookup();
+
+        await expect(
+          service.update(
+            'cheque-uuid-1',
+            companyId,
+            { unitId: 'unit-punjab' },
+            'user-uuid-1',
+            makkahManager,
+          ),
+        ).rejects.toThrow(NotFoundException);
+        expect(repo.createQueryBuilder).not.toHaveBeenCalled();
+      });
+
+      it('moves a cheque onto a unit inside the caller regions', async () => {
+        seedCheque('makkah', 'unit-makkah');
+        seedUnitLookup();
+
+        const result = await service.update(
+          'cheque-uuid-1',
+          companyId,
+          { unitId: 'unit-punjab' },
+          'user-uuid-1',
+          twoRegionManager,
+        );
+
+        expect(result.unitId).toBe('unit-punjab');
+      });
+
+      it('moves the region with the unit', async () => {
+        seedCheque('makkah', 'unit-makkah');
+        seedUnitLookup();
+
+        await service.update(
+          'cheque-uuid-1',
+          companyId,
+          { unitId: 'unit-punjab' },
+          'user-uuid-1',
+          twoRegionManager,
+        );
+
+        expect(updateBuilder.set).toHaveBeenCalledWith(
+          expect.objectContaining({ regionCode: 'punjab' }),
+        );
+      });
     });
   });
 });

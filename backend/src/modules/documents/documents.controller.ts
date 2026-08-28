@@ -58,7 +58,13 @@ export class DocumentsController {
   constructor(private readonly documentsService: DocumentsService) {}
 
   @Post('upload')
-  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER)
+  @Roles(
+    Role.SUPER_ADMIN,
+    Role.COMPANY_ADMIN,
+    Role.ADMIN,
+    Role.MANAGER,
+    Role.AGENT,
+  )
   @ApiOperation({
     summary: 'Upload a document file and create its DB record in one request.',
   })
@@ -134,6 +140,7 @@ export class DocumentsController {
       req.user.userId,
       file,
       dto,
+      { role: req.user.role, regionCodes: req.user.regionCodes },
     );
   }
 
@@ -198,6 +205,7 @@ export class DocumentsController {
       category,
       unitId,
       { search, accessLevel, dateFrom, dateTo, regionCode },
+      req.user.regionCodes,
     );
   }
 
@@ -218,6 +226,7 @@ export class DocumentsController {
       id,
       requireCompanyId(req.user),
       req.user.role,
+      req.user.regionCodes,
     );
   }
 
@@ -238,6 +247,7 @@ export class DocumentsController {
       id,
       requireCompanyId(req.user),
       req.user.role,
+      req.user.regionCodes,
     );
   }
 
@@ -263,6 +273,7 @@ export class DocumentsController {
       id,
       requireCompanyId(req.user),
       req.user.role,
+      req.user.regionCodes,
     );
     // Strip quotes and control characters (including CR/LF) so a document name
     // can never inject extra headers or break the Content-Disposition value.
@@ -308,6 +319,7 @@ export class DocumentsController {
       requireCompanyId(req.user),
       req.user.role,
       dto,
+      req.user.regionCodes,
     );
   }
 
@@ -325,6 +337,7 @@ export class DocumentsController {
       id,
       requireCompanyId(req.user),
       req.user.role,
+      req.user.regionCodes,
     );
   }
 }

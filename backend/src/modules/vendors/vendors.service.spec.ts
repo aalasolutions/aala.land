@@ -1,3 +1,5 @@
+import { BadRequestException } from '@nestjs/common';
+import { Role } from '@shared/enums/roles.enum';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -86,6 +88,60 @@ describe('VendorsService', () => {
       });
       expect(repo.save).toHaveBeenCalledWith(mockVendor);
       expect(result).toEqual(mockVendor);
+    });
+
+    it('rejects a body regionCode outside the caller assignments', async () => {
+      const dto = {
+        name: 'Al Futtaim Maintenance',
+        specialties: [VendorSpecialty.HVAC],
+        regionCode: 'punjab',
+      };
+
+      await expect(
+        service.create(companyId, dto as any, {
+          role: Role.MANAGER,
+          regionCodes: ['makkah'],
+        }),
+      ).rejects.toThrow(BadRequestException);
+      expect(repo.save).not.toHaveBeenCalled();
+    });
+
+    it('accepts a body regionCode the caller is assigned to', async () => {
+      const dto = {
+        name: 'Al Futtaim Maintenance',
+        specialties: [VendorSpecialty.HVAC],
+        regionCode: 'makkah',
+      };
+      repo.create.mockReturnValue(mockVendor as Vendor);
+      repo.save.mockResolvedValue(mockVendor as Vendor);
+
+      await service.create(companyId, dto as any, {
+        role: Role.MANAGER,
+        regionCodes: ['makkah'],
+      });
+
+      expect(repo.create).toHaveBeenCalledWith(
+        expect.objectContaining({ regionCode: 'makkah' }),
+      );
+    });
+
+    it('checks an admin against the company active regions, not assignments', async () => {
+      companyRepo.findOne.mockResolvedValue({
+        defaultRegionCode: 'dubai',
+        activeRegions: ['dubai'],
+      } as Company);
+      const dto = {
+        name: 'Al Futtaim Maintenance',
+        specialties: [VendorSpecialty.HVAC],
+        regionCode: 'punjab',
+      };
+
+      await expect(
+        service.create(companyId, dto as any, {
+          role: Role.COMPANY_ADMIN,
+          regionCodes: [],
+        }),
+      ).rejects.toThrow(BadRequestException);
     });
   });
 
@@ -233,6 +289,207 @@ describe('VendorsService', () => {
       await expect(service.remove('bad-id', companyId)).rejects.toThrow(
         NotFoundException,
       );
+    });
+  });
+  describe('region scoping', () => {
+    const makkahManager = { role: 'manager', regionCodes: ['makkah'] };
+    const twoRegionManager = {
+      role: 'manager',
+      regionCodes: ['makkah', 'punjab'],
+    };
+    const admin = { role: 'company_admin', regionCodes: ['makkah'] };
+
+    // Stands in for Postgres: the seeded row is only returned when the where
+    // clause the service built actually admits its region.
+    function seedVendorInRegion(regionCode: string) {
+      const row = { ...mockVendor, regionCode } as Vendor;
+      repo.findOne.mockImplementation((opts: any) => {
+        const filter = opts?.where?.regionCode;
+        if (filter && !(filter.value as string[]).includes(regionCode)) {
+          return Promise.resolve(null);
+        }
+        return Promise.resolve(row);
+      });
+      repo.save.mockImplementation(async (v) => v as Vendor);
+      return row;
+    }
+
+    it('denies findOne on a vendor outside the caller assigned regions', async () => {
+      seedVendorInRegion('punjab');
+
+      await expect(
+        service.findOne('vendor-uuid-1', companyId, makkahManager),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('allows a by-id read in any region the caller is assigned to', async () => {
+      seedVendorInRegion('punjab');
+
+      const result = await service.findOne(
+        'vendor-uuid-1',
+        companyId,
+        twoRegionManager,
+      );
+
+      expect(result.id).toBe('vendor-uuid-1');
+    });
+
+    it('denies update on a vendor outside the caller assigned regions', async () => {
+      seedVendorInRegion('punjab');
+
+      await expect(
+        service.update(
+          'vendor-uuid-1',
+          companyId,
+          { name: 'Renamed' },
+          makkahManager,
+        ),
+      ).rejects.toThrow(NotFoundException);
+      expect(repo.save).not.toHaveBeenCalled();
+    });
+
+    it('denies remove on a vendor outside the caller assigned regions', async () => {
+      const row = seedVendorInRegion('punjab');
+
+      await expect(
+        service.remove('vendor-uuid-1', companyId, makkahManager),
+      ).rejects.toThrow(NotFoundException);
+      expect(repo.save).not.toHaveBeenCalled();
+      expect(row.isActive).toBe(true);
+    });
+
+    it('denies every by-id read when the caller has no assigned region', async () => {
+      seedVendorInRegion('makkah');
+
+      await expect(
+        service.findOne('vendor-uuid-1', companyId, {
+          role: 'manager',
+          regionCodes: [],
+        }),
+      ).rejects.toThrow(NotFoundException);
+      expect(repo.findOne).not.toHaveBeenCalled();
+    });
+
+    it('leaves admins unconfined by their own assignments', async () => {
+      seedVendorInRegion('punjab');
+
+      const result = await service.findOne('vendor-uuid-1', companyId, admin);
+
+      expect(result.id).toBe('vendor-uuid-1');
+    });
+
+    it('stays unscoped when no caller is supplied', async () => {
+      seedVendorInRegion('punjab');
+
+      const result = await service.findOne('vendor-uuid-1', companyId);
+
+      expect(result.id).toBe('vendor-uuid-1');
+    });
+
+    // Stands in for Postgres on the list read: the seeded rows survive only
+    // when the where clause the service built admits their region.
+    function seedVendorsInRegions(regionCodes: string[]) {
+      const rows = regionCodes.map(
+        (regionCode) =>
+          ({ ...mockVendor, id: `vendor-${regionCode}`, regionCode }) as Vendor,
+      );
+      repo.findAndCount.mockImplementation((opts: any) => {
+        const codes = opts?.where?.[0]?.regionCode?.value as
+          | string[]
+          | undefined;
+        const matched = codes
+          ? rows.filter((row) => codes.includes(row.regionCode))
+          : rows;
+        return Promise.resolve([matched, matched.length]);
+      });
+      return rows;
+    }
+
+    it('confines the list to the caller assigned regions', async () => {
+      seedVendorsInRegions(['makkah', 'punjab']);
+
+      const result = await service.findAll(
+        companyId,
+        1,
+        20,
+        undefined,
+        undefined,
+        undefined,
+        makkahManager,
+      );
+
+      expect(result.data.map((v) => v.regionCode)).toEqual(['makkah']);
+      expect(result.total).toBe(1);
+    });
+
+    it('lists no vendors from a region outside the caller assignments', async () => {
+      seedVendorsInRegions(['makkah', 'punjab']);
+
+      const result = await service.findAll(
+        companyId,
+        1,
+        20,
+        undefined,
+        undefined,
+        'punjab',
+        makkahManager,
+      );
+
+      expect(result.data).toEqual([]);
+      expect(result.total).toBe(0);
+    });
+
+    it('narrows the list to a requested region the caller is assigned to', async () => {
+      seedVendorsInRegions(['makkah', 'punjab']);
+
+      const result = await service.findAll(
+        companyId,
+        1,
+        20,
+        undefined,
+        undefined,
+        'punjab',
+        twoRegionManager,
+      );
+
+      expect(result.data.map((v) => v.regionCode)).toEqual(['punjab']);
+    });
+
+    it('leaves the list unfiltered for admins', async () => {
+      seedVendorsInRegions(['makkah', 'punjab']);
+
+      const result = await service.findAll(
+        companyId,
+        1,
+        20,
+        undefined,
+        undefined,
+        undefined,
+        admin,
+      );
+
+      expect(result.data.map((v) => v.regionCode)).toEqual([
+        'makkah',
+        'punjab',
+      ]);
+    });
+
+    it('lists nothing when the caller has no assigned region', async () => {
+      seedVendorsInRegions(['makkah', 'punjab']);
+
+      const result = await service.findAll(
+        companyId,
+        1,
+        20,
+        undefined,
+        undefined,
+        undefined,
+        { role: 'manager', regionCodes: [] },
+      );
+
+      expect(result.data).toEqual([]);
+      expect(result.total).toBe(0);
+      expect(repo.findAndCount).not.toHaveBeenCalled();
     });
   });
 });

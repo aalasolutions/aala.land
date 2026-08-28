@@ -5,16 +5,22 @@ import {
   Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, LessThan, Between } from 'typeorm';
+import { Repository, LessThan, Between, In, FindOptionsWhere } from 'typeorm';
 import { Cheque, ChequeStatus } from './entities/cheque.entity';
 import { CreateChequeDto } from './dto/create-cheque.dto';
 import { UpdateChequeDto } from './dto/update-cheque.dto';
 import { BounceChequeDto } from './dto/bounce-cheque.dto';
-import { REGION_FILTER_SUBQUERY } from '../../shared/utils/region-filter.util';
 import {
-  paginationOptions,
-  pageSkip,
-} from '../../shared/utils/pagination.util';
+  RegionScope,
+  resolveRegionCode,
+} from '../../shared/utils/resolve-region-code.util';
+import {
+  effectiveRegionCodes,
+  scopedRegionCodes,
+} from '../../shared/utils/region-visibility.util';
+import { paginationOptions } from '../../shared/utils/pagination.util';
+import { Unit } from '../properties/entities/unit.entity';
+import { Company } from '../companies/entities/company.entity';
 import { NotificationsService } from '../notifications/notifications.service';
 import { UsersService } from '../users/users.service';
 import { NotificationType } from '../notifications/entities/notification.entity';
@@ -27,6 +33,10 @@ export class ChequesService {
   constructor(
     @InjectRepository(Cheque)
     private readonly chequeRepository: Repository<Cheque>,
+    @InjectRepository(Unit)
+    private readonly unitRepository: Repository<Unit>,
+    @InjectRepository(Company)
+    private readonly companyRepository: Repository<Company>,
     private readonly notificationsService: NotificationsService,
     private readonly usersService: UsersService,
     private readonly notificationsGateway: NotificationsGateway,
@@ -36,8 +46,20 @@ export class ChequesService {
     companyId: string,
     dto: CreateChequeDto,
     userId?: string,
+    caller?: RegionScope,
   ): Promise<Cheque> {
-    const cheque = this.chequeRepository.create({ ...dto, companyId });
+    await this.assertUnitInCallerRegions(dto.unitId, companyId, caller);
+    const regionCode = await this.resolveChequeRegion(
+      companyId,
+      dto.unitId,
+      dto.regionCode,
+      caller,
+    );
+    const cheque = this.chequeRepository.create({
+      ...dto,
+      companyId,
+      regionCode,
+    });
     const saved = await this.chequeRepository.save(cheque);
 
     this.notificationsGateway.broadcastToCompany(companyId, 'chequeUpdated', {
@@ -54,31 +76,112 @@ export class ChequesService {
     page = 1,
     limit = 20,
     regionCode?: string,
+    caller?: RegionScope,
   ): Promise<{ data: Cheque[]; total: number; page: number; limit: number }> {
-    if (regionCode) {
-      const qb = this.chequeRepository
-        .createQueryBuilder('c')
-        .where('c.companyId = :companyId', { companyId })
-        .andWhere(`c.unitId IN (${REGION_FILTER_SUBQUERY})`, { regionCode })
-        .skip(pageSkip(page, limit))
-        .take(limit)
-        .orderBy('c.dueDate', 'ASC');
-
-      const [data, total] = await qb.getManyAndCount();
-      return { data, total, page, limit };
+    const regionCodes = effectiveRegionCodes(regionCode, caller);
+    // No readable region means no rows, and an empty IN () is invalid SQL.
+    if (regionCodes?.length === 0) {
+      return { data: [], total: 0, page, limit };
     }
 
     const [data, total] = await this.chequeRepository.findAndCount({
-      where: { companyId },
+      where: {
+        companyId,
+        ...(regionCodes ? { regionCode: In(regionCodes) } : {}),
+      },
       ...paginationOptions(page, limit),
       order: { dueDate: 'ASC' },
     });
     return { data, total, page, limit };
   }
 
-  async findOne(id: string, companyId: string): Promise<Cheque> {
+  // A cheque's region is its unit's, so a unit the caller cannot read must not
+  // be bound to one.
+  private async assertUnitInCallerRegions(
+    unitId: string | null | undefined,
+    companyId: string,
+    caller?: RegionScope,
+  ): Promise<void> {
+    if (!unitId) {
+      return;
+    }
+
+    const scopedCodes = scopedRegionCodes(caller);
+    // No assignment means no access, and an empty IN () is invalid SQL.
+    if (scopedCodes?.length === 0) {
+      throw new NotFoundException('Unit not found');
+    }
+
+    const where: FindOptionsWhere<Unit> = { id: unitId, companyId };
+    if (scopedCodes) {
+      where.asset = { locality: { city: { regionCode: In(scopedCodes) } } };
+    }
+
+    const unit = await this.unitRepository.findOne({
+      where,
+      select: { id: true },
+    });
+    if (!unit) {
+      throw new NotFoundException('Unit not found');
+    }
+  }
+
+  // A cheque takes the region of its unit. With no unit it falls back to the
+  // supplied region, then to the company default.
+  private async resolveChequeRegion(
+    companyId: string,
+    unitId: string | null | undefined,
+    regionCode: string | undefined,
+    caller?: RegionScope,
+  ): Promise<string> {
+    const unitRegion = await this.regionOfUnit(unitId, companyId);
+    if (unitRegion) {
+      return unitRegion;
+    }
+    return resolveRegionCode(
+      this.companyRepository,
+      companyId,
+      regionCode,
+      caller,
+    );
+  }
+
+  private async regionOfUnit(
+    unitId: string | null | undefined,
+    companyId: string,
+  ): Promise<string | undefined> {
+    if (!unitId) {
+      return undefined;
+    }
+    const row = await this.unitRepository
+      .createQueryBuilder('u')
+      .innerJoin('u.asset', 'a')
+      .innerJoin('a.locality', 'loc')
+      .innerJoin('loc.city', 'ci')
+      .select('ci.regionCode', 'regionCode')
+      .where('u.id = :unitId', { unitId })
+      .andWhere('u.companyId = :companyId', { companyId })
+      .getRawOne<{ regionCode: string }>();
+    return row?.regionCode ?? undefined;
+  }
+
+  async findOne(
+    id: string,
+    companyId: string,
+    caller?: RegionScope,
+  ): Promise<Cheque> {
+    const scopedCodes = scopedRegionCodes(caller);
+    // No assignment means no access, and an empty IN () is invalid SQL.
+    if (scopedCodes?.length === 0) {
+      throw new NotFoundException('Cheque not found');
+    }
+
     const cheque = await this.chequeRepository.findOne({
-      where: { id, companyId },
+      where: {
+        id,
+        companyId,
+        ...(scopedCodes ? { regionCode: In(scopedCodes) } : {}),
+      },
     });
     if (!cheque) {
       throw new NotFoundException('Cheque not found');
@@ -91,8 +194,10 @@ export class ChequesService {
     companyId: string,
     dto: UpdateChequeDto,
     userId?: string,
+    caller?: RegionScope,
   ): Promise<Cheque> {
-    const cheque = await this.findOne(id, companyId);
+    const cheque = await this.findOne(id, companyId, caller);
+    await this.assertUnitInCallerRegions(dto.unitId, companyId, caller);
 
     const terminalStatuses = [
       ChequeStatus.CLEARED,
@@ -118,8 +223,19 @@ export class ChequesService {
     }
 
     const oldStatus = cheque.status;
+    const oldUnitId = cheque.unitId;
     const expectedVersion = cheque.version;
     Object.assign(cheque, dto);
+
+    // The region follows the unit, so moving the cheque moves the row.
+    if (dto.unitId !== undefined && dto.unitId !== oldUnitId) {
+      cheque.regionCode = await this.resolveChequeRegion(
+        companyId,
+        dto.unitId,
+        undefined,
+        caller,
+      );
+    }
 
     if (cheque.status === ChequeStatus.DEPOSITED && !cheque.depositDate) {
       cheque.depositDate = new Date();
@@ -144,6 +260,7 @@ export class ChequesService {
         chequeNumber: cheque.chequeNumber,
         bankName: cheque.bankName,
         unitId: cheque.unitId,
+        regionCode: cheque.regionCode,
         type: cheque.type,
         notes: cheque.notes,
         version: () => 'version + 1',
@@ -170,6 +287,7 @@ export class ChequesService {
       );
     }
 
+    // Re-read of a row this caller just wrote, so it stays unscoped.
     const saved = await this.findOne(id, companyId);
 
     this.notificationsGateway.broadcastToCompany(companyId, 'chequeUpdated', {
@@ -208,8 +326,7 @@ export class ChequesService {
         }
 
         try {
-          // Deliberately company-wide: these go to admins, who read every region,
-          // so deriving a region through the unit join would buy nothing.
+          // These go to admins, who read every region.
           await this.notificationsService.create(companyId, {
             userId: admin.id,
             title,
@@ -235,8 +352,9 @@ export class ChequesService {
     id: string,
     companyId: string,
     imageUrl: string,
+    caller?: RegionScope,
   ): Promise<Cheque> {
-    const cheque = await this.findOne(id, companyId);
+    const cheque = await this.findOne(id, companyId, caller);
     cheque.ocrImageUrl = imageUrl;
 
     try {
@@ -258,9 +376,10 @@ export class ChequesService {
     companyId: string,
     dto: BounceChequeDto,
     userId?: string,
+    caller?: RegionScope,
   ): Promise<Cheque> {
     // Existence + tenant check.
-    await this.findOne(id, companyId);
+    await this.findOne(id, companyId, caller);
 
     // Atomic increment: compute bounce_count in the database (SET col = col + 1)
     // so concurrent bounces do not lose increments via a JS read-modify-write.
@@ -286,6 +405,7 @@ export class ChequesService {
       throw new NotFoundException('Cheque not found');
     }
 
+    // Re-read of a row this caller just wrote, so it stays unscoped.
     const saved = await this.findOne(id, companyId);
 
     this.notificationsGateway.broadcastToCompany(companyId, 'chequeUpdated', {
@@ -321,12 +441,21 @@ export class ChequesService {
     return saved;
   }
 
-  async getCollectionSchedule(companyId: string): Promise<{
+  async getCollectionSchedule(
+    companyId: string,
+    caller?: RegionScope,
+  ): Promise<{
     overdue: Cheque[];
     thisWeek: Cheque[];
     nextWeek: Cheque[];
     thisMonth: Cheque[];
   }> {
+    const scopedCodes = scopedRegionCodes(caller);
+    // No assignment means no rows, and an empty IN () is invalid SQL.
+    if (scopedCodes?.length === 0) {
+      return { overdue: [], thisWeek: [], nextWeek: [], thisMonth: [] };
+    }
+
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const endOfWeek = new Date(today);
@@ -335,7 +464,11 @@ export class ChequesService {
     endOfNextWeek.setDate(endOfNextWeek.getDate() + 7);
     const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
 
-    const baseWhere = { companyId, status: ChequeStatus.PENDING };
+    const baseWhere = {
+      companyId,
+      status: ChequeStatus.PENDING,
+      ...(scopedCodes ? { regionCode: In(scopedCodes) } : {}),
+    };
 
     const [overdue, thisWeek, nextWeek, thisMonth] = await Promise.all([
       this.chequeRepository.find({
@@ -363,8 +496,12 @@ export class ChequesService {
     return { overdue, thisWeek, nextWeek, thisMonth };
   }
 
-  async remove(id: string, companyId: string): Promise<void> {
-    const cheque = await this.findOne(id, companyId);
+  async remove(
+    id: string,
+    companyId: string,
+    caller?: RegionScope,
+  ): Promise<void> {
+    const cheque = await this.findOne(id, companyId, caller);
     await this.chequeRepository.remove(cheque);
   }
 

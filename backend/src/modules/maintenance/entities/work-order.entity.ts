@@ -4,6 +4,7 @@ import {
   Column,
   CreateDateColumn,
   UpdateDateColumn,
+  Index,
   ManyToOne,
   JoinColumn,
 } from 'typeorm';
@@ -63,6 +64,10 @@ export class WorkOrder {
   @ManyToOne(() => Unit, { nullable: true })
   @JoinColumn({ name: 'unit_id' })
   unit: Unit | null;
+
+  @Index('IDX_WORK_ORDERS_REGION_CODE')
+  @Column({ name: 'region_code', type: 'varchar', length: 50 })
+  regionCode: string;
 
   @Column({ length: 255 })
   title: string;

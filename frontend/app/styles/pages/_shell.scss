@@ -203,8 +203,7 @@ $shell-sidebar-collapsed: 3.75rem;
   letter-spacing: 0.05em;
 }
 
-// Holds the count badge and currency tag; carries the auto margin that used to
-// sit on the currency tag itself.
+// Holds the count badge and currency tag, and carries the auto margin.
 .region-meta {
   display: flex;
   gap: nu-space(2);

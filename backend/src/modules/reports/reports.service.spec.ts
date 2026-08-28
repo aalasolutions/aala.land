@@ -78,6 +78,7 @@ describe('ReportsService', () => {
           useValue: {
             count: jest.fn(),
             find: jest.fn(),
+            createQueryBuilder: jest.fn(),
           },
         },
         {
@@ -90,12 +91,14 @@ describe('ReportsService', () => {
           provide: getRepositoryToken(Lease),
           useValue: {
             count: jest.fn(),
+            createQueryBuilder: jest.fn(),
           },
         },
         {
           provide: getRepositoryToken(Cheque),
           useValue: {
             count: jest.fn(),
+            createQueryBuilder: jest.fn(),
           },
         },
         {
@@ -346,6 +349,522 @@ describe('ReportsService', () => {
       const result = await service.getResponseTimeMetrics(companyId);
 
       expect(result).toEqual([]);
+    });
+  });
+  describe('region scoping', () => {
+    const makkahManager = { role: 'manager', regionCodes: ['makkah'] };
+    const twoRegionManager = {
+      role: 'manager',
+      regionCodes: ['makkah', 'punjab'],
+    };
+    const admin = { role: 'company_admin', regionCodes: ['makkah'] };
+    const unassignedManager = { role: 'manager', regionCodes: [] };
+
+    // Stands in for Postgres on a QueryBuilder read: the seeded rows survive
+    // only when the predicate the service built admits their region.
+    function createRegionAwareQb(rows: any[]) {
+      let codes: string[] | undefined;
+      const capture = (_sql: string, params?: any) => {
+        if (params && Array.isArray(params.regionCodes)) {
+          codes = params.regionCodes as string[];
+        }
+        return qb;
+      };
+      const visible = () =>
+        codes ? rows.filter((r) => codes!.includes(r.regionCode)) : rows;
+      const qb: any = {
+        select: jest.fn().mockReturnThis(),
+        addSelect: jest.fn().mockReturnThis(),
+        groupBy: jest.fn().mockReturnThis(),
+        orderBy: jest.fn().mockReturnThis(),
+        setParameter: jest.fn().mockReturnThis(),
+        innerJoin: jest.fn().mockReturnThis(),
+        leftJoin: jest.fn().mockReturnThis(),
+        leftJoinAndSelect: jest.fn().mockReturnThis(),
+        take: jest.fn().mockReturnThis(),
+        where: jest.fn(capture),
+        andWhere: jest.fn(capture),
+        getRawMany: jest.fn(() => Promise.resolve(visible())),
+        getMany: jest.fn(() => Promise.resolve(visible())),
+        getCount: jest.fn(() => Promise.resolve(visible().length)),
+        getRawOne: jest.fn(() =>
+          Promise.resolve({
+            total: visible()
+              .reduce((sum, r) => sum + Number(r.amount ?? 0), 0)
+              .toString(),
+          }),
+        ),
+      };
+      return qb;
+    }
+
+    // Stands in for Postgres on a find/count read: In() carries the admitted
+    // regions on `.value`, and a row outside them is not returned.
+    function rowsMatchingWhere(rows: any[], where: any) {
+      const codes = where?.regionCode?.value as string[] | undefined;
+      const byRegion = codes
+        ? rows.filter((r) => codes.includes(r.regionCode))
+        : rows;
+      return where?.status
+        ? byRegion.filter((r) => r.status === where.status)
+        : byRegion;
+    }
+
+    describe('getPipelineFunnel', () => {
+      const stageRows = [
+        { stage: LeadStatus.NEW, count: 3, regionCode: 'makkah' },
+        { stage: LeadStatus.WON, count: 2, regionCode: 'punjab' },
+      ];
+
+      function countFor(result: any[], stage: LeadStatus) {
+        return result.find((r) => r.stage === stage)!.count;
+      }
+
+      it('confines the funnel to the caller regions with no regionCode argument', async () => {
+        leadRepo.createQueryBuilder.mockReturnValue(
+          createRegionAwareQb(stageRows),
+        );
+
+        const result = await service.getPipelineFunnel(
+          companyId,
+          undefined,
+          makkahManager,
+        );
+
+        expect(countFor(result, LeadStatus.NEW)).toBe(3);
+        expect(countFor(result, LeadStatus.WON)).toBe(0);
+      });
+
+      it('counts nothing from a region outside the caller assignments', async () => {
+        leadRepo.createQueryBuilder.mockReturnValue(
+          createRegionAwareQb(stageRows),
+        );
+
+        const result = await service.getPipelineFunnel(
+          companyId,
+          'punjab',
+          makkahManager,
+        );
+
+        expect(result.every((r) => r.count === 0)).toBe(true);
+      });
+
+      it('narrows to a requested region the caller is assigned to', async () => {
+        leadRepo.createQueryBuilder.mockReturnValue(
+          createRegionAwareQb(stageRows),
+        );
+
+        const result = await service.getPipelineFunnel(
+          companyId,
+          'punjab',
+          twoRegionManager,
+        );
+
+        expect(countFor(result, LeadStatus.NEW)).toBe(0);
+        expect(countFor(result, LeadStatus.WON)).toBe(2);
+      });
+
+      it('leaves the funnel unfiltered for admins', async () => {
+        leadRepo.createQueryBuilder.mockReturnValue(
+          createRegionAwareQb(stageRows),
+        );
+
+        const result = await service.getPipelineFunnel(
+          companyId,
+          undefined,
+          admin,
+        );
+
+        expect(countFor(result, LeadStatus.NEW)).toBe(3);
+        expect(countFor(result, LeadStatus.WON)).toBe(2);
+      });
+
+      it('stays unfiltered when no caller is supplied', async () => {
+        leadRepo.createQueryBuilder.mockReturnValue(
+          createRegionAwareQb(stageRows),
+        );
+
+        const result = await service.getPipelineFunnel(companyId);
+
+        expect(countFor(result, LeadStatus.NEW)).toBe(3);
+        expect(countFor(result, LeadStatus.WON)).toBe(2);
+      });
+
+      it('returns a zeroed funnel when the caller has no assigned region', async () => {
+        leadRepo.createQueryBuilder.mockReturnValue(
+          createRegionAwareQb(stageRows),
+        );
+
+        const result = await service.getPipelineFunnel(
+          companyId,
+          undefined,
+          unassignedManager,
+        );
+
+        expect(result).toHaveLength(6);
+        expect(result.every((r) => r.count === 0)).toBe(true);
+        expect(leadRepo.createQueryBuilder).not.toHaveBeenCalled();
+      });
+    });
+
+    describe('getAgentPerformance', () => {
+      const leadRows = [
+        {
+          agentId: 'agent-makkah',
+          leadsAssigned: 2,
+          leadsWon: 1,
+          leadsLost: 1,
+          regionCode: 'makkah',
+        },
+        {
+          agentId: 'agent-punjab',
+          leadsAssigned: 4,
+          leadsWon: 2,
+          leadsLost: 2,
+          regionCode: 'punjab',
+        },
+      ];
+      const commissionRows = [
+        {
+          agentId: 'agent-punjab',
+          commissionsEarned: '5000',
+          regionCode: 'punjab',
+        },
+      ];
+
+      function seed() {
+        leadRepo.createQueryBuilder.mockReturnValue(
+          createRegionAwareQb(leadRows),
+        );
+        commissionRepo.createQueryBuilder.mockReturnValue(
+          createRegionAwareQb(commissionRows),
+        );
+      }
+
+      it('confines agents to the caller regions with no regionCode argument', async () => {
+        seed();
+
+        const result = await service.getAgentPerformance(
+          companyId,
+          undefined,
+          makkahManager,
+        );
+
+        expect(result.map((a) => a.agentId)).toEqual(['agent-makkah']);
+      });
+
+      it('excludes out-of-region commissions from the caller totals', async () => {
+        seed();
+
+        const result = await service.getAgentPerformance(
+          companyId,
+          undefined,
+          makkahManager,
+        );
+
+        expect(
+          result.some((a) => a.agentId === 'agent-punjab'),
+        ).toBe(false);
+        expect(result[0].commissionsEarned).toBe(0);
+      });
+
+      it('leaves agent performance unfiltered for admins', async () => {
+        seed();
+
+        const result = await service.getAgentPerformance(
+          companyId,
+          undefined,
+          admin,
+        );
+
+        expect(result.map((a) => a.agentId).sort()).toEqual([
+          'agent-makkah',
+          'agent-punjab',
+        ]);
+        expect(
+          result.find((a) => a.agentId === 'agent-punjab')!.commissionsEarned,
+        ).toBe(5000);
+      });
+
+      it('returns no agents when the caller has no assigned region', async () => {
+        seed();
+
+        const result = await service.getAgentPerformance(
+          companyId,
+          undefined,
+          unassignedManager,
+        );
+
+        expect(result).toEqual([]);
+        expect(leadRepo.createQueryBuilder).not.toHaveBeenCalled();
+        expect(commissionRepo.createQueryBuilder).not.toHaveBeenCalled();
+      });
+
+      it('confines achievements through the same scope', async () => {
+        seed();
+
+        const result = await service.getAchievements(
+          companyId,
+          undefined,
+          makkahManager,
+        );
+
+        expect(result.every((a) => a.agentId === 'agent-makkah')).toBe(true);
+      });
+
+      it('confines the agent comparison through the same scope', async () => {
+        seed();
+
+        const result = await service.getAgentComparison(
+          companyId,
+          undefined,
+          makkahManager,
+        );
+
+        expect(result.map((a) => a.agentId)).toEqual(['agent-makkah']);
+      });
+    });
+
+    describe('getDashboardKpis', () => {
+      const leadRows = [
+        { id: 'lead-makkah', status: LeadStatus.WON, regionCode: 'makkah' },
+        { id: 'lead-punjab', status: LeadStatus.WON, regionCode: 'punjab' },
+        { id: 'lead-punjab-2', status: LeadStatus.NEW, regionCode: 'punjab' },
+      ];
+      const unitRows = [
+        { id: 'unit-makkah', regionCode: 'makkah' },
+        { id: 'unit-punjab', regionCode: 'punjab' },
+      ];
+
+      function seed() {
+        leadRepo.count.mockImplementation((opts: any) =>
+          Promise.resolve(rowsMatchingWhere(leadRows, opts?.where).length),
+        );
+        unitRepo.count.mockResolvedValue(unitRows.length);
+        unitRepo.createQueryBuilder.mockReturnValue(
+          createRegionAwareQb(unitRows),
+        );
+        transactionRepo.createQueryBuilder.mockReturnValue(
+          createRegionAwareQb([]),
+        );
+        leaseRepo.count.mockResolvedValue(0);
+        leaseRepo.createQueryBuilder.mockReturnValue(createRegionAwareQb([]));
+        chequeRepo.count.mockResolvedValue(0);
+        chequeRepo.createQueryBuilder.mockReturnValue(createRegionAwareQb([]));
+      }
+
+      it('confines KPIs to the caller regions with no regionCode argument', async () => {
+        seed();
+
+        const result = await service.getDashboardKpis(
+          companyId,
+          undefined,
+          makkahManager,
+        );
+
+        expect(result.totalLeads).toBe(1);
+        expect(result.wonLeads).toBe(1);
+        expect(result.totalUnits).toBe(1);
+      });
+
+      it('counts nothing from a region outside the caller assignments', async () => {
+        seed();
+
+        const result = await service.getDashboardKpis(
+          companyId,
+          'punjab',
+          makkahManager,
+        );
+
+        expect(result.totalLeads).toBe(0);
+        expect(result.totalUnits).toBe(0);
+      });
+
+      it('leaves KPIs unfiltered for admins', async () => {
+        seed();
+
+        const result = await service.getDashboardKpis(
+          companyId,
+          undefined,
+          admin,
+        );
+
+        expect(result.totalLeads).toBe(3);
+        expect(result.totalUnits).toBe(2);
+      });
+
+      it('returns zeroed KPIs when the caller has no assigned region', async () => {
+        seed();
+
+        const result = await service.getDashboardKpis(
+          companyId,
+          undefined,
+          unassignedManager,
+        );
+
+        expect(result).toEqual({
+          totalLeads: 0,
+          wonLeads: 0,
+          totalUnits: 0,
+          monthlyRevenue: 0,
+          activeLeases: 0,
+          pendingCheques: 0,
+        });
+        expect(leadRepo.count).not.toHaveBeenCalled();
+        expect(unitRepo.count).not.toHaveBeenCalled();
+        expect(unitRepo.createQueryBuilder).not.toHaveBeenCalled();
+      });
+    });
+
+    describe('getBottlenecks', () => {
+      const stageRows = [
+        {
+          stage: LeadStatus.NEGOTIATING,
+          avgDays: '8.5',
+          count: 3,
+          slowestLeadDays: '14.2',
+          regionCode: 'makkah',
+        },
+        {
+          stage: LeadStatus.CONTACTED,
+          avgDays: '2.1',
+          count: 5,
+          slowestLeadDays: '5.0',
+          regionCode: 'punjab',
+        },
+      ];
+
+      it('confines bottlenecks to the caller regions with no regionCode argument', async () => {
+        leadRepo.createQueryBuilder.mockReturnValue(
+          createRegionAwareQb(stageRows),
+        );
+
+        const result = await service.getBottlenecks(
+          companyId,
+          undefined,
+          makkahManager,
+        );
+
+        expect(result.map((r) => r.stage)).toEqual([LeadStatus.NEGOTIATING]);
+      });
+
+      it('leaves bottlenecks unfiltered for admins', async () => {
+        leadRepo.createQueryBuilder.mockReturnValue(
+          createRegionAwareQb(stageRows),
+        );
+
+        const result = await service.getBottlenecks(
+          companyId,
+          undefined,
+          admin,
+        );
+
+        expect(result).toHaveLength(2);
+      });
+
+      it('returns no bottlenecks when the caller has no assigned region', async () => {
+        leadRepo.createQueryBuilder.mockReturnValue(
+          createRegionAwareQb(stageRows),
+        );
+
+        const result = await service.getBottlenecks(
+          companyId,
+          undefined,
+          unassignedManager,
+        );
+
+        expect(result).toEqual([]);
+        expect(leadRepo.createQueryBuilder).not.toHaveBeenCalled();
+      });
+    });
+
+    describe('getRedFlags', () => {
+      const staleLeads = [
+        {
+          id: 'lead-makkah',
+          status: LeadStatus.NEW,
+          regionCode: 'makkah',
+          createdAt: new Date(0),
+          updatedAt: new Date(0),
+          contact: { firstName: 'Makkah', lastName: 'Lead' },
+        },
+        {
+          id: 'lead-punjab',
+          status: LeadStatus.NEW,
+          regionCode: 'punjab',
+          createdAt: new Date(0),
+          updatedAt: new Date(0),
+          contact: { firstName: 'Punjab', lastName: 'Lead' },
+        },
+      ];
+      const vacantUnits = [
+        {
+          id: 'unit-makkah',
+          unitNumber: '101',
+          regionCode: 'makkah',
+          updatedAt: new Date(0),
+        },
+        {
+          id: 'unit-punjab',
+          unitNumber: '201',
+          regionCode: 'punjab',
+          updatedAt: new Date(0),
+        },
+      ];
+
+      function seed() {
+        leadRepo.find.mockImplementation((opts: any) =>
+          Promise.resolve(rowsMatchingWhere(staleLeads, opts?.where)),
+        );
+        leadRepo.createQueryBuilder.mockReturnValue(createRegionAwareQb([]));
+        unitRepo.find.mockResolvedValue(vacantUnits);
+        unitRepo.createQueryBuilder.mockReturnValue(
+          createRegionAwareQb(vacantUnits),
+        );
+      }
+
+      it('confines flags to the caller regions with no regionCode argument', async () => {
+        seed();
+
+        const result = await service.getRedFlags(
+          companyId,
+          undefined,
+          makkahManager,
+        );
+
+        expect(result.map((f) => f.entityId).sort()).toEqual([
+          'lead-makkah',
+          'unit-makkah',
+        ]);
+      });
+
+      it('leaves flags unfiltered for admins', async () => {
+        seed();
+
+        const result = await service.getRedFlags(companyId, undefined, admin);
+
+        expect(result.map((f) => f.entityId).sort()).toEqual([
+          'lead-makkah',
+          'lead-punjab',
+          'unit-makkah',
+          'unit-punjab',
+        ]);
+      });
+
+      it('returns no flags when the caller has no assigned region', async () => {
+        seed();
+
+        const result = await service.getRedFlags(
+          companyId,
+          undefined,
+          unassignedManager,
+        );
+
+        expect(result).toEqual([]);
+        expect(leadRepo.find).not.toHaveBeenCalled();
+        expect(unitRepo.find).not.toHaveBeenCalled();
+        expect(unitRepo.createQueryBuilder).not.toHaveBeenCalled();
+      });
     });
   });
 });

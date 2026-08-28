@@ -52,6 +52,7 @@ export default class ApplicationController extends Controller {
   @tracked isNarrow = false;
   @tracked showRegionDropdown = false;
   @tracked regionUnitCounts = null;
+  regionUnitCountsKey = null;
   notificationHandler = null;
   socketConnectHandler = null;
   routeDidChangeHandler = null;
@@ -83,7 +84,7 @@ export default class ApplicationController extends Controller {
     for (const r of this.region.regions) {
       const countryName = r.countryName || r.country || 'Other';
       if (!groups.has(countryName)) groups.set(countryName, []);
-      // null until the first fetch resolves, so a loading region shows no badge
+      // null until a fetch succeeds, so a loading or failed region shows no badge
       // while a genuinely empty one shows a muted 0.
       groups
         .get(countryName)
@@ -97,13 +98,27 @@ export default class ApplicationController extends Controller {
       .sort((a, b) => a.countryName.localeCompare(b.countryName));
   }
 
+  // Counts are company-scoped, and impersonation swaps company without a page
+  // reload, so the cache is keyed on the resulting user.
+  get regionContextKey() {
+    const user = this.auth.currentUser;
+    if (!user) return null;
+    return `${user.companyId ?? 'none'}:${user.id}`;
+  }
+
   @action
   async loadRegionUnitCounts() {
+    const key = this.regionContextKey;
     try {
       const json = await this.auth.fetchJson('/properties/units/count-by-region');
+      // Discard a response that landed after the context changed.
+      if (key !== this.regionContextKey) return;
       this.regionUnitCounts = json.data ?? {};
+      this.regionUnitCountsKey = key;
     } catch {
-      this.regionUnitCounts = {};
+      // Stay null so a failure renders no badge and the next open retries.
+      this.regionUnitCounts = null;
+      this.regionUnitCountsKey = null;
     }
   }
 
@@ -284,6 +299,8 @@ export default class ApplicationController extends Controller {
     this.showNotifications = false;
     this.notifications = [];
     this.unreadCount = 0;
+    this.regionUnitCounts = null;
+    this.regionUnitCountsKey = null;
   }
 
   willDestroy() {
@@ -388,7 +405,13 @@ export default class ApplicationController extends Controller {
   @action
   toggleRegionDropdown() {
     this.showRegionDropdown = !this.showRegionDropdown;
-    if (this.showRegionDropdown && this.regionUnitCounts === null) {
+    if (
+      this.showRegionDropdown &&
+      this.regionUnitCountsKey !== this.regionContextKey
+    ) {
+      // Cleared first so a company switch shows no badge while the refetch is
+      // in flight, rather than the previous company's counts.
+      this.regionUnitCounts = null;
       this.loadRegionUnitCounts();
     }
   }

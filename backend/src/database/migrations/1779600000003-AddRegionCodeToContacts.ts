@@ -1,11 +1,7 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-// Contacts had no region link at all. Backfilled from each company's own
-// default rather than a hardcoded region, which is what the older
-// AddRegionCodeToVendors/Commissions migrations did.
-export class AddRegionCodeToContacts1779600000003
-  implements MigrationInterface
-{
+// Backfilled from each company default rather than a hardcoded region.
+export class AddRegionCodeToContacts1779600000003 implements MigrationInterface {
   name = 'AddRegionCodeToContacts1779600000003';
 
   public async up(queryRunner: QueryRunner): Promise<void> {

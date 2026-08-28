@@ -204,10 +204,14 @@
     </Nuvo::Accordion>
 
     <div class="browse-toolbar" data-test-browse-toolbar>
-      <p class="text-sm text-muted" data-test-browse-count>
-        {{this.browseTotal}}
-        {{if (eq this.browseTotal 1) "property" "properties"}}
-      </p>
+      <p
+        class="text-sm text-muted"
+        data-test-browse-result-count
+      >{{format-number
+          this.browseTotal
+          unit="property"
+          plural="properties"
+        }}</p>
       <div class="browse-toolbar__sort">
         <span class="browse-toolbar__sort-label" id="browse-sort-label">Sort by</span>
         <Nuvo::BtnGroup @attached={{true}}>

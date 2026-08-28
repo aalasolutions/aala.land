@@ -61,7 +61,8 @@ export class UploadDocumentDto {
 
   @ApiProperty({
     required: false,
-    description: 'Defaults to the company default region when omitted',
+    description:
+      'When omitted, the region of the linked property, otherwise company-wide for admins and the caller own region for everyone else',
   })
   @IsOptional()
   @IsString()

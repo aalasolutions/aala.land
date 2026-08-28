@@ -33,8 +33,10 @@ import {
   sanitizeName,
   isUniqueViolation,
 } from '../../shared/utils/name-normalization.util';
-import { seesAllRegions } from '../../shared/utils/region-visibility.util';
-import { UserRegion } from '../users/entities/user-region.entity';
+import {
+  effectiveRegionCodes,
+  scopedRegionCodes,
+} from '../../shared/utils/region-visibility.util';
 
 // True when inline owner details carry at least one identifying value. An empty
 // object must not reach resolveOrCreate, which would insert an all-null contact.
@@ -44,6 +46,13 @@ function hasContactIdentity(
   return Boolean(
     owner && (owner.firstName || owner.lastName || owner.phone || owner.email),
   );
+}
+
+// Absent or non-numeric stays unknown (null); an explicit "0" is a real studio.
+function parseOptionalInt(value: string | undefined): number | null {
+  if (!value || !value.trim()) return null;
+  const parsed = Number.parseInt(value, 10);
+  return Number.isNaN(parsed) ? null : parsed;
 }
 
 // Whitelist: nothing user-supplied ever reaches ORDER BY.
@@ -67,8 +76,6 @@ export class PropertiesService {
     private readonly mediaRepository: Repository<PropertyMedia>,
     @InjectRepository(Contact)
     private readonly contactRepository: Repository<Contact>,
-    @InjectRepository(UserRegion)
-    private readonly userRegionRepository: Repository<UserRegion>,
     private readonly contactsService: ContactsService,
   ) {}
 
@@ -86,9 +93,15 @@ export class PropertiesService {
     page = 1,
     limit = 20,
     regionCode?: string,
+    user?: { role: string; regionCodes: string[] },
   ) {
+    const codes = effectiveRegionCodes(regionCode, user);
+    if (codes?.length === 0) {
+      return { data: [], total: 0, page, limit };
+    }
+
     const where: FindOptionsWhere<PropertyArea> = { companyId };
-    if (regionCode) where.regionCode = regionCode;
+    if (codes) where.regionCode = In(codes);
 
     const [areas, total] = await this.areaRepository.findAndCount({
       where,
@@ -105,10 +118,20 @@ export class PropertiesService {
     return { data, total, page, limit };
   }
 
-  async findOneArea(id: string, companyId: string): Promise<PropertyArea> {
-    const area = await this.areaRepository.findOne({
-      where: { id, companyId },
-    });
+  async findOneArea(
+    id: string,
+    companyId: string,
+    user?: { userId: string; role: string; regionCodes: string[] },
+  ): Promise<PropertyArea> {
+    const scopedCodes = scopedRegionCodes(user);
+    // No assignments means nothing is visible, and an empty IN () is invalid SQL.
+    if (scopedCodes?.length === 0)
+      throw new NotFoundException(`Area not found`);
+
+    const where: FindOptionsWhere<PropertyArea> = { id, companyId };
+    if (scopedCodes) where.regionCode = In(scopedCodes);
+
+    const area = await this.areaRepository.findOne({ where });
     if (!area) throw new NotFoundException(`Area not found`);
     return area;
   }
@@ -117,14 +140,19 @@ export class PropertiesService {
     id: string,
     companyId: string,
     dto: UpdateAreaDto,
+    user?: { userId: string; role: string; regionCodes: string[] },
   ): Promise<PropertyArea> {
-    const area = await this.findOneArea(id, companyId);
+    const area = await this.findOneArea(id, companyId, user);
     Object.assign(area, dto);
     return this.areaRepository.save(area);
   }
 
-  async removeArea(id: string, companyId: string): Promise<void> {
-    const area = await this.findOneArea(id, companyId);
+  async removeArea(
+    id: string,
+    companyId: string,
+    user?: { userId: string; role: string; regionCodes: string[] },
+  ): Promise<void> {
+    const area = await this.findOneArea(id, companyId, user);
     await this.areaRepository.remove(area);
   }
 
@@ -170,11 +198,20 @@ export class PropertiesService {
     companyId: string,
     page = 1,
     limit = 20,
+    user?: { userId: string; role: string; regionCodes: string[] },
   ) {
+    const scopedCodes = scopedRegionCodes(user);
+    if (scopedCodes?.length === 0) {
+      return { data: [], total: 0, page, limit };
+    }
+
+    const regionWhere = scopedCodes
+      ? { locality: { city: { regionCode: In(scopedCodes) } } }
+      : {};
     const [data, total] = await this.assetRepository.findAndCount({
       where: [
-        { localityId, units: { companyId } },
-        { localityId, createdByCompanyId: companyId },
+        { localityId, units: { companyId }, ...regionWhere },
+        { localityId, createdByCompanyId: companyId, ...regionWhere },
       ],
       relations: ['locality', 'locality.city', 'units'],
       ...paginationOptions(page, limit),
@@ -193,9 +230,9 @@ export class PropertiesService {
     companyId: string,
     page = 1,
     limit = 100,
-    user?: { userId: string; role: string },
+    user?: { userId: string; role: string; regionCodes: string[] },
   ) {
-    const scopedCodes = await this.scopedRegionCodes(user);
+    const scopedCodes = scopedRegionCodes(user);
     if (scopedCodes?.length === 0) {
       return { data: [], total: 0, page, limit };
     }
@@ -221,12 +258,11 @@ export class PropertiesService {
     return { data: filtered, total, page, limit };
   }
 
-
   async searchAssets(
     companyId: string | undefined,
     localityId: string,
     q: string,
-    user?: { userId: string; role: string },
+    user?: { userId: string; role: string; regionCodes: string[] },
   ): Promise<any[]> {
     if (typeof q !== 'string') {
       return [];
@@ -237,27 +273,42 @@ export class PropertiesService {
       return [];
     }
 
+    const scopedCodes = scopedRegionCodes(user);
+    // No assignments means nothing is visible, and an empty IN () is invalid SQL.
+    if (scopedCodes?.length === 0) {
+      return [];
+    }
+
     // Still a bound parameter, just conditionally present.
     const params: unknown[] = [query, localityId];
     let companyPredicate = '';
     if (companyId) {
       params.push(companyId);
-      companyPredicate = `AND company_id = $${params.length}`;
+      companyPredicate = `AND a.company_id = $${params.length}`;
+    }
+
+    let regionPredicate = '';
+    if (scopedCodes) {
+      params.push(scopedCodes);
+      regionPredicate = `AND ci.region_code = ANY($${params.length}::varchar[])`;
     }
 
     const results = await this.assetRepository.query(
       `SELECT *
              FROM (
-                 SELECT DISTINCT ON (${normalizedNameSql('name')})
-                     id,
-                     name,
-                     address,
-                     similarity(name, $1) AS score
-                 FROM assets
-                 WHERE locality_id = $2
+                 SELECT DISTINCT ON (${normalizedNameSql('a.name')})
+                     a.id,
+                     a.name,
+                     a.address,
+                     similarity(a.name, $1) AS score
+                 FROM assets a
+                 INNER JOIN localities loc ON loc.id = a.locality_id
+                 INNER JOIN cities ci ON ci.id = loc.city_id
+                 WHERE a.locality_id = $2
                    ${companyPredicate}
-                   AND similarity(name, $1) > 0.2
-                 ORDER BY ${normalizedNameSql('name')}, score DESC, name ASC
+                   ${regionPredicate}
+                   AND similarity(a.name, $1) > 0.2
+                 ORDER BY ${normalizedNameSql('a.name')}, score DESC, a.name ASC
              ) deduped
              ORDER BY score DESC, name ASC
              LIMIT 10`,
@@ -266,11 +317,28 @@ export class PropertiesService {
     return results;
   }
 
-  // companyId is optional only because SUPER_ADMIN legitimately reads across
-  // tenants; for everyone else omitting it exposed other companies' assets.
-  async findOneAsset(id: string, companyId?: string): Promise<Asset> {
+  // companyId is optional only because SUPER_ADMIN reads across tenants.
+  // The company predicate mirrors findAllAssets: an asset is visible either
+  // because this company created it or because it owns units inside it.
+  async findOneAsset(
+    id: string,
+    companyId?: string,
+    user?: { userId: string; role: string; regionCodes: string[] },
+  ): Promise<Asset> {
+    const scopedCodes = scopedRegionCodes(user);
+    if (scopedCodes?.length === 0)
+      throw new NotFoundException(`Asset not found`);
+
+    const regionWhere = scopedCodes
+      ? { locality: { city: { regionCode: In(scopedCodes) } } }
+      : {};
     const asset = await this.assetRepository.findOne({
-      where: { id, ...(companyId ? { companyId } : {}) },
+      where: companyId
+        ? [
+            { id, units: { companyId }, ...regionWhere },
+            { id, createdByCompanyId: companyId, ...regionWhere },
+          ]
+        : { id, ...regionWhere },
       relations: ['locality'],
     });
     if (!asset) throw new NotFoundException(`Asset not found`);
@@ -476,7 +544,9 @@ export class PropertiesService {
     companyId: string,
     dto: CreateUnitDto,
     userId?: string,
+    user?: { role: string; regionCodes: string[] },
   ): Promise<Unit> {
+    await this.assertAssetInCallerRegions(dto.assetId, user);
     const { owner, ...rest } = dto;
     const ownerId = await this.resolveOwnerId(
       companyId,
@@ -491,6 +561,8 @@ export class PropertiesService {
       companyId,
     });
     const saved = await this.unitRepository.save(unit);
+    // Re-read of a row this caller just wrote, so it stays unscoped: a create
+    // must not succeed in the database and then 404 on the way out.
     return this.findOneUnit(saved.id, companyId);
   }
 
@@ -499,9 +571,20 @@ export class PropertiesService {
     companyId: string,
     page = 1,
     limit = 20,
+    user?: { userId: string; role: string; regionCodes: string[] },
   ) {
+    const scopedCodes = scopedRegionCodes(user);
+    if (scopedCodes?.length === 0) {
+      return { data: [], total: 0, page, limit };
+    }
+
+    const where: FindOptionsWhere<Unit> = { assetId, companyId };
+    if (scopedCodes) {
+      where.asset = { locality: { city: { regionCode: In(scopedCodes) } } };
+    }
+
     const [data, total] = await this.unitRepository.findAndCount({
-      where: { assetId, companyId },
+      where,
       relations: ['owner'],
       ...paginationOptions(page, limit),
       order: { createdAt: 'DESC' },
@@ -509,28 +592,11 @@ export class PropertiesService {
     return { data, total, page, limit };
   }
 
-  // Regions the caller may read, or null when they read all of them. Endpoints
-  // that span regions cannot rely on RegionScopeInterceptor: it only sanitises the
-  // `regionCode` query param, so a method that never reads that param is unscoped.
-  private async scopedRegionCodes(user?: {
-    userId: string;
-    role: string;
-  }): Promise<string[] | null> {
-    if (!user || seesAllRegions(user.role)) {
-      return null;
-    }
-    const assigned = await this.userRegionRepository.find({
-      where: { userId: user.userId },
-      select: { regionCode: true },
-    });
-    return assigned.map((row) => row.regionCode);
-  }
-
   async countUnitsByRegion(
     companyId: string,
-    user?: { userId: string; role: string },
+    user?: { userId: string; role: string; regionCodes: string[] },
   ): Promise<Record<string, number>> {
-    const scopedCodes = await this.scopedRegionCodes(user);
+    const scopedCodes = scopedRegionCodes(user);
     // No assignments means nothing to report, and an empty IN () is invalid SQL.
     if (scopedCodes?.length === 0) {
       return {};
@@ -559,9 +625,22 @@ export class PropertiesService {
     return counts;
   }
 
-  async findOneUnit(id: string, companyId: string): Promise<Unit> {
+  async findOneUnit(
+    id: string,
+    companyId: string,
+    user?: { userId: string; role: string; regionCodes: string[] },
+  ): Promise<Unit> {
+    const scopedCodes = scopedRegionCodes(user);
+    if (scopedCodes?.length === 0)
+      throw new NotFoundException(`Property not found`);
+
+    const where: FindOptionsWhere<Unit> = { id, companyId };
+    if (scopedCodes) {
+      where.asset = { locality: { city: { regionCode: In(scopedCodes) } } };
+    }
+
     const unit = await this.unitRepository.findOne({
-      where: { id, companyId },
+      where,
       relations: ['asset', 'asset.locality', 'owner'],
     });
     if (!unit) throw new NotFoundException(`Property not found`);
@@ -576,8 +655,9 @@ export class PropertiesService {
     companyId: string,
     dto: UpdateUnitDto,
     userId?: string,
+    user?: { userId: string; role: string; regionCodes: string[] },
   ): Promise<Unit> {
-    const unit = await this.findOneUnit(id, companyId);
+    const unit = await this.findOneUnit(id, companyId, user);
     const { ownerId, owner, ...rest } = dto;
     Object.assign(unit, rest);
     if ('ownerId' in dto || hasContactIdentity(owner)) {
@@ -594,6 +674,7 @@ export class PropertiesService {
       unit.ownerId = resolvedId ?? null;
     }
     await this.unitRepository.save(unit);
+    // Authorization happened above; this re-read only builds the response.
     return this.findOneUnit(id, companyId);
   }
 
@@ -618,8 +699,22 @@ export class PropertiesService {
     return contact.id;
   }
 
-  // A new owner contact belongs to the region of the unit being created, not to
-  // the company default, or region-scoped users would never see that owner.
+  // A new owner contact takes the region of the unit, not the company default,
+  // or region-scoped users would never see that owner.
+  // A unit inherits its region from its asset, so writing one under an asset
+  // outside the caller regions would create a row they cannot read back.
+  private async assertAssetInCallerRegions(
+    assetId: string | undefined,
+    user?: { role: string; regionCodes: string[] },
+  ): Promise<void> {
+    const scopedCodes = scopedRegionCodes(user);
+    if (!scopedCodes) return;
+    const region = await this.regionOfAsset(assetId);
+    if (!region || !scopedCodes.includes(region)) {
+      throw new NotFoundException(`Asset not found`);
+    }
+  }
+
   private async regionOfAsset(
     assetId?: string | null,
   ): Promise<string | undefined> {
@@ -645,14 +740,19 @@ export class PropertiesService {
     return contact;
   }
 
-  async removeUnit(id: string, companyId: string): Promise<void> {
-    const unit = await this.findOneUnit(id, companyId);
+  async removeUnit(
+    id: string,
+    companyId: string,
+    user?: { userId: string; role: string; regionCodes: string[] },
+  ): Promise<void> {
+    const unit = await this.findOneUnit(id, companyId, user);
     await this.unitRepository.remove(unit);
   }
 
   async bulkImportUnits(
     companyId: string,
     csvContent: string,
+    user?: { role: string; regionCodes: string[] },
   ): Promise<{ created: number; failed: number; errors: string[] }> {
     if (!csvContent || typeof csvContent !== 'string') {
       return {
@@ -674,6 +774,8 @@ export class PropertiesService {
     const headers = lines[0].split(',').map((h) => h.trim().toLowerCase());
     const results = { created: 0, failed: 0, errors: [] as string[] };
     const unitsToCreate: Unit[] = [];
+    const scopedCodes = scopedRegionCodes(user);
+    const regionByAsset = new Map<string, string | undefined>();
 
     for (let i = 1; i < lines.length; i++) {
       const values = lines[i].split(',').map((v) => v.trim());
@@ -688,6 +790,19 @@ export class PropertiesService {
         continue;
       }
 
+      if (scopedCodes) {
+        const assetId = row['assetid'];
+        if (!regionByAsset.has(assetId)) {
+          regionByAsset.set(assetId, await this.regionOfAsset(assetId));
+        }
+        const region = regionByAsset.get(assetId);
+        if (!region || !scopedCodes.includes(region)) {
+          results.failed++;
+          results.errors.push(`Row ${i}: asset is outside your regions`);
+          continue;
+        }
+      }
+
       try {
         const sqFt = parseFloat(row['sqft'] || '0') || undefined;
         const price = parseFloat(row['price'] || '0') || undefined;
@@ -695,8 +810,8 @@ export class PropertiesService {
           companyId,
           unitNumber: row['unitnumber'],
           assetId: row['assetid'],
-          bedrooms: parseInt(row['bedrooms'] || '0', 10),
-          bathrooms: parseInt(row['bathrooms'] || '0', 10),
+          bedrooms: parseOptionalInt(row['bedrooms']),
+          bathrooms: parseOptionalInt(row['bathrooms']),
           sqFt,
           price,
           status: (row['status'] as any) || 'available',
@@ -725,9 +840,9 @@ export class PropertiesService {
 
   async getAssetOccupancy(
     companyId: string,
-    user?: { userId: string; role: string },
+    user?: { userId: string; role: string; regionCodes: string[] },
   ) {
-    const scopedCodes = await this.scopedRegionCodes(user);
+    const scopedCodes = scopedRegionCodes(user);
     if (scopedCodes?.length === 0) {
       return [];
     }

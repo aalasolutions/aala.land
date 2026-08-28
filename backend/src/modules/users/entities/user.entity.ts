@@ -5,12 +5,10 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   ManyToOne,
-  OneToMany,
   JoinColumn,
   Index,
 } from 'typeorm';
 import { Company } from '../../companies/entities/company.entity';
-import { UserRegion } from './user-region.entity';
 import { Role } from '../../../shared/enums/roles.enum';
 
 export enum AuthProvider {
@@ -79,6 +77,10 @@ export class User {
   @JoinColumn({ name: 'company_id' })
   company: Company;
 
+  // Regions this user may work in. jsonb to match companies.active_regions.
+  @Column({ name: 'region_codes', type: 'jsonb', default: () => "'[]'::jsonb" })
+  regionCodes: string[];
+
   @Column({ type: 'varchar', length: 50, nullable: true })
   phone: string | null;
 
@@ -142,7 +144,4 @@ export class User {
 
   @UpdateDateColumn({ name: 'updated_at' })
   updatedAt: Date;
-
-  @OneToMany(() => UserRegion, (region) => region.user)
-  regions: UserRegion[];
 }

@@ -10,7 +10,6 @@ import { CompaniesService } from '../companies/companies.service';
 import { User } from '../users/entities/user.entity';
 import { Region, resolveRegions } from '@shared/constants/regions';
 import { seesAllRegions } from '@shared/utils/region-visibility.util';
-import { UserRegion } from '@modules/users/entities/user-region.entity';
 import { RegisterDto } from './dto/register.dto';
 import { Role } from '@shared/enums/roles.enum';
 import { SubscriptionTier } from '../companies/entities/company.entity';
@@ -19,8 +18,7 @@ import {
   LockStateService,
 } from '@modules/lock/lock-state.service';
 import { SystemEmailService } from '@modules/email/system-email.service';
-import { DataSource, Repository } from 'typeorm';
-import { InjectRepository } from '@nestjs/typeorm';
+import { DataSource } from 'typeorm';
 import * as bcrypt from 'bcryptjs';
 import * as crypto from 'crypto';
 
@@ -30,6 +28,7 @@ interface LoginUser {
   email: string;
   role: string;
   companyId: string | null;
+  regionCodes: string[];
 }
 
 interface RefreshUser {
@@ -45,6 +44,7 @@ interface ImpersonateUser {
   name: string;
   companyId: string | null;
   role: string;
+  regionCodes: string[];
 }
 
 interface LoginResponse {
@@ -108,8 +108,6 @@ export class AuthService {
     private readonly lockStateService: LockStateService,
     private readonly dataSource: DataSource,
     private readonly systemEmail: SystemEmailService,
-    @InjectRepository(UserRegion)
-    private readonly userRegionRepository: Repository<UserRegion>,
   ) {}
 
   async validateUser(
@@ -130,36 +128,32 @@ export class AuthService {
 
   // Regions a user may actually work in, intersected with what the company
   // still operates so a stale assignment cannot resurface a dropped region.
-  private async assignedRegionCodes(
-    userId: string,
+  private assignedRegionCodes(
+    userCodes: string[],
     companyCodes: string[],
-  ): Promise<string[]> {
-    const rows = await this.userRegionRepository.find({
-      where: { userId },
-      select: { regionCode: true },
-    });
-    const assigned = new Set(rows.map((row) => row.regionCode));
+  ): string[] {
+    const assigned = new Set(userCodes);
     return companyCodes.filter((code) => assigned.has(code));
   }
 
   private async resolveCompanyContext(
     companyId: string | null,
-    user?: { id: string; role: string },
+    user?: { role: string; regionCodes: string[] },
   ): Promise<CompanyContext> {
     const company = companyId
       ? await this.companiesService.findOne(companyId)
       : null;
 
     const companyCodes = company?.activeRegions ?? [];
-    // Admins keep every company region; everyone else only sees what they are
-    // assigned, so the switcher can never offer a region they cannot read.
+    // Admins keep every company region; everyone else only what they are
+    // assigned, so the switcher cannot offer a region they cannot read.
     const codes =
       !user || seesAllRegions(user.role)
         ? companyCodes
-        : await this.assignedRegionCodes(user.id, companyCodes);
+        : this.assignedRegionCodes(user.regionCodes, companyCodes);
 
-    // The company default is useless to someone not assigned to it: the client
-    // would boot into a region every request then gets rewritten away from.
+    // A default the user is not assigned to would be rewritten away on the
+    // first request, so it is not offered.
     const companyDefault = company?.defaultRegionCode ?? '';
     const defaultRegionCode =
       companyDefault && codes.includes(companyDefault)
@@ -186,8 +180,8 @@ export class AuthService {
     };
 
     const context = await this.resolveCompanyContext(user.companyId, {
-      id: user.id,
       role: user.role,
+      regionCodes: user.regionCodes,
     });
 
     return {
@@ -213,8 +207,8 @@ export class AuthService {
       companyId ?? undefined,
     );
     const context = await this.resolveCompanyContext(user.companyId, {
-      id: user.id,
       role: user.role,
+      regionCodes: user.regionCodes,
     });
 
     return {
@@ -254,8 +248,8 @@ export class AuthService {
     };
 
     const context = await this.resolveCompanyContext(user.companyId, {
-      id: user.sub,
       role: user.role,
+      regionCodes: user.regionCodes,
     });
 
     return {

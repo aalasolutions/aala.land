@@ -15,6 +15,7 @@ describe('CompaniesController', () => {
       email: 'admin@test.com',
       companyId: 'company-uuid-1',
       role: 'company_admin',
+      regionCodes: ['dubai'],
     },
   };
 

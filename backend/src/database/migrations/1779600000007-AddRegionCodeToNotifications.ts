@@ -1,11 +1,8 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-// Nullable: a notification is already addressed to one user, so region here is a
-// RELEVANCE filter, never a security boundary. NULL means company-wide and stays
-// visible in every region. Historical rows are left NULL for that reason.
-export class AddRegionCodeToNotifications1779600000007
-  implements MigrationInterface
-{
+// Nullable: region here is a relevance filter, not a security boundary.
+// NULL means company-wide and stays visible in every region.
+export class AddRegionCodeToNotifications1779600000007 implements MigrationInterface {
   name = 'AddRegionCodeToNotifications1779600000007';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
