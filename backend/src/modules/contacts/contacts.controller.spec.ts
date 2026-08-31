@@ -8,14 +8,17 @@ describe('ContactsController', () => {
   let service: jest.Mocked<ContactsService>;
 
   const companyId = 'company-uuid-1';
+  const callerRegions = ['dubai'];
   const mockReq = {
     user: {
       companyId,
       userId: 'user-uuid-1',
       email: 'agent@test.com',
       role: 'company_admin',
+      regionCodes: callerRegions,
     },
   };
+  const caller = { role: 'company_admin', regionCodes: callerRegions };
 
   const mockContact = {
     id: 'contact-uuid-1',
@@ -72,6 +75,7 @@ describe('ContactsController', () => {
         companyId,
         dto,
         'user-uuid-1',
+        caller,
       );
       expect(result).toEqual(mockContact);
     });
@@ -97,6 +101,7 @@ describe('ContactsController', () => {
           dateFrom: undefined,
           dateTo: undefined,
         },
+        mockReq.user,
       );
       expect(result).toEqual(paginated);
     });
@@ -120,6 +125,7 @@ describe('ContactsController', () => {
           dateFrom: undefined,
           dateTo: undefined,
         },
+        mockReq.user,
       );
     });
   });
@@ -130,7 +136,11 @@ describe('ContactsController', () => {
 
       const result = await controller.findOne('contact-uuid-1', mockReq);
 
-      expect(service.findOne).toHaveBeenCalledWith('contact-uuid-1', companyId);
+      expect(service.findOne).toHaveBeenCalledWith(
+        'contact-uuid-1',
+        companyId,
+        caller,
+      );
       expect(result).toEqual(mockContact);
     });
   });
@@ -146,9 +156,12 @@ describe('ContactsController', () => {
         mockReq,
       );
 
-      expect(service.update).toHaveBeenCalledWith('contact-uuid-1', companyId, {
-        firstName: 'Khalid',
-      });
+      expect(service.update).toHaveBeenCalledWith(
+        'contact-uuid-1',
+        companyId,
+        { firstName: 'Khalid' },
+        caller,
+      );
       expect(result.firstName).toBe('Khalid');
     });
   });
@@ -163,6 +176,7 @@ describe('ContactsController', () => {
         'contact-uuid-1',
         companyId,
         undefined,
+        caller,
       );
     });
   });

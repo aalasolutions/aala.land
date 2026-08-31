@@ -467,4 +467,105 @@ describe('LocationsService', () => {
       expect(result).toEqual([]);
     });
   });
+  describe('getCompanyLocalities region scoping', () => {
+    const makkahManager = { role: 'manager', regionCodes: ['makkah'] };
+    const twoRegionManager = {
+      role: 'manager',
+      regionCodes: ['makkah', 'punjab'],
+    };
+    const admin = { role: 'company_admin', regionCodes: ['makkah'] };
+    const unassignedManager = { role: 'manager', regionCodes: [] };
+
+    const rows = [
+      { id: 'loc-makkah', name: 'Makkah Locality', regionCode: 'makkah' },
+      { id: 'loc-punjab', name: 'Punjab Locality', regionCode: 'punjab' },
+    ];
+
+    // Stands in for Postgres: rows survive only when the ANY() predicate the
+    // service appended admits their region.
+    function seedLocalities() {
+      dataSource.query.mockImplementation((sql: string, params: unknown[]) => {
+        const match = /region_code = ANY\(\$(\d+)\)/.exec(sql);
+        if (!match) {
+          return Promise.resolve(rows);
+        }
+        const codes = params[Number(match[1]) - 1] as string[];
+        return Promise.resolve(
+          rows.filter((row) => codes.includes(row.regionCode)),
+        );
+      });
+    }
+
+    it('confines localities to the caller regions with no regionCode argument', async () => {
+      seedLocalities();
+
+      const result = await service.getCompanyLocalities(
+        'company-1',
+        undefined,
+        makkahManager,
+      );
+
+      expect(result.map((r: any) => r.id)).toEqual(['loc-makkah']);
+    });
+
+    it('returns no locality from a region outside the caller assignments', async () => {
+      seedLocalities();
+
+      const result = await service.getCompanyLocalities(
+        'company-1',
+        'punjab',
+        makkahManager,
+      );
+
+      expect(result).toEqual([]);
+    });
+
+    it('narrows to a requested region the caller is assigned to', async () => {
+      seedLocalities();
+
+      const result = await service.getCompanyLocalities(
+        'company-1',
+        'punjab',
+        twoRegionManager,
+      );
+
+      expect(result.map((r: any) => r.id)).toEqual(['loc-punjab']);
+    });
+
+    it('leaves localities unfiltered for admins', async () => {
+      seedLocalities();
+
+      const result = await service.getCompanyLocalities(
+        'company-1',
+        undefined,
+        admin,
+      );
+
+      expect(result.map((r: any) => r.id)).toEqual([
+        'loc-makkah',
+        'loc-punjab',
+      ]);
+    });
+
+    it('stays unscoped when no caller is supplied', async () => {
+      seedLocalities();
+
+      const result = await service.getCompanyLocalities('company-1');
+
+      expect(result).toHaveLength(2);
+    });
+
+    it('returns nothing when the caller has no assigned region', async () => {
+      seedLocalities();
+
+      const result = await service.getCompanyLocalities(
+        'company-1',
+        undefined,
+        unassignedManager,
+      );
+
+      expect(result).toEqual([]);
+      expect(dataSource.query).not.toHaveBeenCalled();
+    });
+  });
 });

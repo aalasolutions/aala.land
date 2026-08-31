@@ -203,6 +203,50 @@
       </div>
     </Nuvo::Accordion>
 
+    <div class="browse-toolbar" data-test-browse-toolbar>
+      <p
+        class="text-sm text-muted"
+        data-test-browse-result-count
+      >{{format-number
+          this.browseTotal
+          unit="property"
+          plural="properties"
+        }}</p>
+      <div class="browse-toolbar__sort">
+        <span class="browse-toolbar__sort-label" id="browse-sort-label">Sort by</span>
+        <Nuvo::BtnGroup @attached={{true}}>
+          <Nuvo::Dropdown
+            id="browse-sort-field"
+            @align="end"
+            @value={{this.sortField}}
+            @onSelect={{this.setSortField}}
+            @options={{this.sortFieldOptions}}
+            aria-labelledby="browse-sort-label"
+            data-test-sort-field
+          />
+          <Nuvo::Button
+            @variant="secondary"
+            @icon={{if
+              (eq this.sortDirection "desc")
+              "sort-descending"
+              "sort-ascending"
+            }}
+            @shape="square"
+            @disabled={{not this.sortField}}
+            data-tooltip={{if
+              (eq this.sortDirection "desc")
+              "Descending, click for ascending"
+              "Ascending, click for descending"
+            }}
+            data-tooltip-position="start"
+            aria-label="Toggle sort direction"
+            {{on "click" this.toggleSortDirection}}
+            data-test-sort-direction
+          />
+        </Nuvo::BtnGroup>
+      </div>
+    </div>
+
     {{#if this.isLoadingBrowse}}
       <Nuvo::Card class="text-center">
         <Nuvo::Spinner />
@@ -245,16 +289,38 @@
                     unit.price
                   }}</p>
               {{/if}}
+              {{! Every stat always renders; a missing value shows a dash so the
+                  row never collapses and the sort controls stay explicable. }}
               <div class="flex gap-3 text-xs text-muted">
-                {{#if unit.bedrooms}}<span><Ui::Ph @icon="bed" />
+                <span
+                  class="unit-stat
+                    {{unless (has-value unit.bedrooms) 'is-unset'}}"
+                  data-test-unit-beds
+                ><Ui::Ph @icon="bed" />
+                  {{#if (has-value unit.bedrooms)}}
                     {{unit.bedrooms}}
-                    bed</span>{{/if}}
-                {{#if unit.bathrooms}}<span><Ui::Ph @icon="bathtub" />
+                  {{else}}-{{/if}}
+                  bed
+                </span>
+                <span
+                  class="unit-stat
+                    {{unless (has-value unit.bathrooms) 'is-unset'}}"
+                  data-test-unit-baths
+                ><Ui::Ph @icon="bathtub" />
+                  {{#if (has-value unit.bathrooms)}}
                     {{unit.bathrooms}}
-                    bath</span>{{/if}}
-                {{#if unit.sqFt}}<span><Ui::Ph @icon="ruler" />
+                  {{else}}-{{/if}}
+                  bath
+                </span>
+                <span
+                  class="unit-stat {{unless (has-value unit.sqFt) 'is-unset'}}"
+                  data-test-unit-area
+                ><Ui::Ph @icon="ruler" />
+                  {{#if (has-value unit.sqFt)}}
                     {{format-number unit.sqFt}}
-                    sqft</span>{{/if}}
+                  {{else}}-{{/if}}
+                  sqft
+                </span>
               </div>
               {{#if unit.ownerName}}
                 <p class="text-xs text-muted"><Ui::Ph @icon="user" />

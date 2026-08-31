@@ -10,6 +10,7 @@ import {
   Query,
   ParseIntPipe,
   ParseUUIDPipe,
+  Put,
   DefaultValuePipe,
   BadRequestException,
 } from '@nestjs/common';
@@ -25,6 +26,7 @@ import { RolesGuard } from '@shared/guards/roles.guard';
 import { Roles } from '@shared/decorators/roles.decorator';
 import { Role } from '@shared/enums/roles.enum';
 import { CreateUserDto } from './dto/create-user.dto';
+import { UpdateUserRegionsDto } from './dto/update-user-regions.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { InviteUserDto } from './dto/invite-user.dto';
 import { RemoveUserDto } from './dto/remove-user.dto';
@@ -199,6 +201,23 @@ export class UsersController {
   ) {
     const companyId = scopedCompanyId(req.user);
     return this.usersService.findOne(id, companyId);
+  }
+
+  @Put(':id/regions')
+  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN)
+  @ApiOperation({
+    summary: 'Replace the regions a user may work in (ADMIN+)',
+  })
+  setRegions(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateUserRegionsDto,
+    @Request() req: AuthenticatedRequest,
+  ) {
+    return this.usersService.setRegions(
+      id,
+      req.user.companyId ?? undefined,
+      dto.regionCodes,
+    );
   }
 
   @Patch(':id')

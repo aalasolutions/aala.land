@@ -51,6 +51,8 @@ export default class ApplicationController extends Controller {
   @tracked sidebarMobileOpen = false;
   @tracked isNarrow = false;
   @tracked showRegionDropdown = false;
+  @tracked regionUnitCounts = null;
+  regionUnitCountsKey = null;
   notificationHandler = null;
   socketConnectHandler = null;
   routeDidChangeHandler = null;
@@ -65,26 +67,28 @@ export default class ApplicationController extends Controller {
   @tracked activeSearchIndex = -1;
 
   get showRegionSwitcher() {
-    return (
-      canSwitchRegion(this.auth.currentUser?.role) &&
-      this.region.regions.length > 1
-    );
+    return canSwitchRegion(this.region.regions.length);
   }
 
   get showRegionLabel() {
     return (
-      !canSwitchRegion(this.auth.currentUser?.role) &&
+      !canSwitchRegion(this.region.regions.length) &&
       this.region.regions.length > 0
     );
   }
 
   // Regions grouped by country for the switcher, sorted by country then region.
   get groupedRegions() {
+    const counts = this.regionUnitCounts;
     const groups = new Map();
     for (const r of this.region.regions) {
       const countryName = r.countryName || r.country || 'Other';
       if (!groups.has(countryName)) groups.set(countryName, []);
-      groups.get(countryName).push(r);
+      // null until a fetch succeeds, so a loading or failed region shows no badge
+      // while a genuinely empty one shows a muted 0.
+      groups
+        .get(countryName)
+        .push({ ...r, unitCount: counts ? (counts[r.code] ?? 0) : null });
     }
     return [...groups.entries()]
       .map(([countryName, regions]) => ({
@@ -92,6 +96,30 @@ export default class ApplicationController extends Controller {
         regions: regions.slice().sort((a, b) => a.name.localeCompare(b.name)),
       }))
       .sort((a, b) => a.countryName.localeCompare(b.countryName));
+  }
+
+  // Counts are company-scoped, and impersonation swaps company without a page
+  // reload, so the cache is keyed on the resulting user.
+  get regionContextKey() {
+    const user = this.auth.currentUser;
+    if (!user) return null;
+    return `${user.companyId ?? 'none'}:${user.id}`;
+  }
+
+  @action
+  async loadRegionUnitCounts() {
+    const key = this.regionContextKey;
+    try {
+      const json = await this.auth.fetchJson('/properties/units/count-by-region');
+      // Discard a response that landed after the context changed.
+      if (key !== this.regionContextKey) return;
+      this.regionUnitCounts = json.data ?? {};
+      this.regionUnitCountsKey = key;
+    } catch {
+      // Stay null so a failure renders no badge and the next open retries.
+      this.regionUnitCounts = null;
+      this.regionUnitCountsKey = null;
+    }
   }
 
   routeGroupMap = {
@@ -271,6 +299,8 @@ export default class ApplicationController extends Controller {
     this.showNotifications = false;
     this.notifications = [];
     this.unreadCount = 0;
+    this.regionUnitCounts = null;
+    this.regionUnitCountsKey = null;
   }
 
   willDestroy() {
@@ -375,6 +405,15 @@ export default class ApplicationController extends Controller {
   @action
   toggleRegionDropdown() {
     this.showRegionDropdown = !this.showRegionDropdown;
+    if (
+      this.showRegionDropdown &&
+      this.regionUnitCountsKey !== this.regionContextKey
+    ) {
+      // Cleared first so a company switch shows no badge while the refetch is
+      // in flight, rather than the previous company's counts.
+      this.regionUnitCounts = null;
+      this.loadRegionUnitCounts();
+    }
   }
 
   @action

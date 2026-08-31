@@ -18,6 +18,8 @@ import {
   sanitizeName,
   isUniqueViolation,
 } from '../../shared/utils/name-normalization.util';
+import { RegionScope } from '../../shared/utils/resolve-region-code.util';
+import { effectiveRegionCodes } from '../../shared/utils/region-visibility.util';
 
 export interface CitySearchResult {
   id: string;
@@ -205,7 +207,17 @@ export class LocationsService {
     });
   }
 
-  async getCompanyLocalities(companyId: string, regionCode?: string) {
+  async getCompanyLocalities(
+    companyId: string,
+    regionCode?: string,
+    caller?: RegionScope,
+  ) {
+    const regionCodes = effectiveRegionCodes(regionCode, caller);
+    // No readable region means no rows.
+    if (regionCodes?.length === 0) {
+      return [];
+    }
+
     let query = `
             SELECT l.id, l.name, c.name AS "cityName", c.region_code AS "regionCode",
                    COUNT(DISTINCT ast.id)::int AS "assetCount",
@@ -216,11 +228,11 @@ export class LocationsService {
             LEFT JOIN units u ON u.asset_id = ast.id AND u.company_id = $1
             WHERE (u.company_id = $1 OR ast.company_id = $1)
         `;
-    const params: string[] = [companyId];
+    const params: (string | string[])[] = [companyId];
 
-    if (regionCode) {
-      query += ` AND c.region_code = $2`;
-      params.push(regionCode);
+    if (regionCodes) {
+      query += ` AND c.region_code = ANY($2)`;
+      params.push(regionCodes);
     }
 
     query += ` GROUP BY l.id, l.name, c.name, c.region_code ORDER BY c.name ASC, l.name ASC`;

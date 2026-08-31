@@ -54,6 +54,7 @@ export class LeadsController {
       requireCompanyId(req.user),
       dto,
       req.user.userId,
+      { role: req.user.role, regionCodes: req.user.regionCodes },
     );
   }
 
@@ -107,7 +108,10 @@ export class LeadsController {
     @Param('id', ParseUUIDPipe) id: string,
     @Request() req: AuthenticatedRequest,
   ) {
-    return this.leadsService.findOne(id, requireCompanyId(req.user));
+    return this.leadsService.findOne(id, requireCompanyId(req.user), {
+      role: req.user.role,
+      regionCodes: req.user.regionCodes,
+    });
   }
 
   @Patch(':id')
@@ -130,6 +134,7 @@ export class LeadsController {
       dto,
       req.user.userId,
       req.user.role,
+      { role: req.user.role, regionCodes: req.user.regionCodes },
     );
   }
 
@@ -155,6 +160,7 @@ export class LeadsController {
       dto.agentId,
       req.user.userId,
       dto.reason,
+      { role: req.user.role, regionCodes: req.user.regionCodes },
     );
   }
 
@@ -177,6 +183,7 @@ export class LeadsController {
       id,
       requireCompanyId(req.user),
       req.user.userId,
+      { role: req.user.role, regionCodes: req.user.regionCodes },
     );
   }
 
@@ -201,6 +208,7 @@ export class LeadsController {
       requireCompanyId(req.user),
       dto,
       req.user.userId,
+      { role: req.user.role, regionCodes: req.user.regionCodes },
     );
   }
 
@@ -218,6 +226,9 @@ export class LeadsController {
     @Param('id', ParseUUIDPipe) id: string,
     @Request() req: AuthenticatedRequest,
   ) {
-    return this.leadsService.findActivities(id, requireCompanyId(req.user));
+    return this.leadsService.findActivities(id, requireCompanyId(req.user), {
+      role: req.user.role,
+      regionCodes: req.user.regionCodes,
+    });
   }
 }

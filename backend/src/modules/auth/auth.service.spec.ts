@@ -26,6 +26,7 @@ describe('AuthService', () => {
     password: 'hashed-password',
     role: 'admin',
     companyId: 'company-uuid-1',
+    regionCodes: ['dubai'],
     isActive: true,
     createdAt: new Date(),
     updatedAt: new Date(),
@@ -185,10 +186,34 @@ describe('AuthService', () => {
       expect(result.user.id).toBe(mockUser.id);
       expect(result.user).not.toHaveProperty('password');
       expect(result.defaultRegionCode).toBe('dubai');
-      expect(result.regions).toHaveLength(2);
+      // mockUser is an ADMIN assigned one region, so the bootstrap offers that
+      // one, not both of the company's.
+      expect(result.regions).toHaveLength(1);
       expect(result.regions[0].code).toBe('dubai');
       expect(result.regions[0].currency).toBe('AED');
-      expect(result.regions[1].code).toBe('abu-dhabi');
+    });
+
+    it('gives a non-admin only the assigned regions the company still runs', async () => {
+      const agent = {
+        ...mockUser,
+        role: 'agent',
+        regionCodes: ['dubai', 'sharjah'],
+      };
+
+      const result = await service.login(agent);
+
+      expect(result.regions).toHaveLength(1);
+      expect(result.regions[0].code).toBe('dubai');
+      expect(result.defaultRegionCode).toBe('dubai');
+    });
+
+    it('leaves a non-admin with no regions when nothing is assigned', async () => {
+      const agent = { ...mockUser, role: 'agent', regionCodes: [] };
+
+      const result = await service.login(agent);
+
+      expect(result.regions).toEqual([]);
+      expect(result.defaultRegionCode).toBe('dubai');
     });
   });
 
@@ -350,6 +375,7 @@ describe('AuthService', () => {
         name: 'Jane Agent',
         companyId: 'company-uuid-1',
         role: 'agent',
+        regionCodes: ['dubai'],
       };
 
       companiesService.findOne.mockResolvedValue(mockCompany as any);
@@ -389,6 +415,7 @@ describe('AuthService', () => {
         name: 'Super Admin',
         companyId: null,
         role: 'super_admin',
+        regionCodes: [],
       };
 
       const result = await service.impersonateLogin(

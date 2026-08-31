@@ -68,4 +68,14 @@ export class CreateChequeDto {
   @IsOptional()
   @IsString()
   notes?: string;
+
+  @ApiProperty({
+    required: false,
+    example: 'dubai',
+    description: 'Region code, used when the cheque has no unit',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(50)
+  regionCode?: string;
 }

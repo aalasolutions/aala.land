@@ -53,4 +53,11 @@ export class CreateAuditLogDto {
   @IsOptional()
   @IsString()
   userAgent?: string;
+
+  // null is meaningful: the caller determined the event has no region.
+  @ApiProperty({ required: false, nullable: true })
+  @IsOptional()
+  @IsString()
+  @MaxLength(50)
+  regionCode?: string | null;
 }

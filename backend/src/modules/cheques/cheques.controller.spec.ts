@@ -15,6 +15,7 @@ describe('ChequesController', () => {
       userId: 'user-uuid-1',
       email: 'admin@test.com',
       role: 'company_admin',
+      regionCodes: ['dubai'],
     },
   };
 
@@ -78,6 +79,7 @@ describe('ChequesController', () => {
         companyId,
         dto,
         'user-uuid-1',
+        mockReq.user,
       );
     });
   });
@@ -88,7 +90,13 @@ describe('ChequesController', () => {
 
       const result = await controller.findAll(mockReq, 1, 20);
 
-      expect(service.findAll).toHaveBeenCalledWith(companyId, 1, 20, undefined);
+      expect(service.findAll).toHaveBeenCalledWith(
+        companyId,
+        1,
+        20,
+        undefined,
+        mockReq.user,
+      );
     });
   });
 
@@ -98,7 +106,11 @@ describe('ChequesController', () => {
 
       await controller.findOne('cheque-uuid-1', mockReq);
 
-      expect(service.findOne).toHaveBeenCalledWith('cheque-uuid-1', companyId);
+      expect(service.findOne).toHaveBeenCalledWith(
+        'cheque-uuid-1',
+        companyId,
+        mockReq.user,
+      );
     });
   });
 
@@ -120,6 +132,7 @@ describe('ChequesController', () => {
         companyId,
         { status: ChequeStatus.DEPOSITED },
         'user-uuid-1',
+        mockReq.user,
       );
     });
   });
@@ -141,6 +154,7 @@ describe('ChequesController', () => {
         companyId,
         dto,
         'user-uuid-1',
+        mockReq.user,
       );
     });
   });
@@ -157,7 +171,10 @@ describe('ChequesController', () => {
 
       const result = await controller.getCollectionSchedule(mockReq);
 
-      expect(service.getCollectionSchedule).toHaveBeenCalledWith(companyId);
+      expect(service.getCollectionSchedule).toHaveBeenCalledWith(
+        companyId,
+        mockReq.user,
+      );
       expect(result).toEqual(schedule);
     });
   });
@@ -179,6 +196,7 @@ describe('ChequesController', () => {
         'cheque-uuid-1',
         companyId,
         'https://example.com/cheque.jpg',
+        mockReq.user,
       );
     });
   });
@@ -189,7 +207,11 @@ describe('ChequesController', () => {
 
       await controller.remove('cheque-uuid-1', mockReq);
 
-      expect(service.remove).toHaveBeenCalledWith('cheque-uuid-1', companyId);
+      expect(service.remove).toHaveBeenCalledWith(
+        'cheque-uuid-1',
+        companyId,
+        mockReq.user,
+      );
     });
   });
 });

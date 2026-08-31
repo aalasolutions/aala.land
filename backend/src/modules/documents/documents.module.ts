@@ -3,12 +3,15 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { DocumentsService } from './documents.service';
 import { DocumentsController } from './documents.controller';
 import { PropertyDocument } from '../properties/entities/property-document.entity';
+import { Unit } from '../properties/entities/unit.entity';
+import { Asset } from '../properties/entities/asset.entity';
 import { User } from '../users/entities/user.entity';
+import { Company } from '../companies/entities/company.entity';
 import { PropertiesModule } from '../properties/properties.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([PropertyDocument, User]),
+    TypeOrmModule.forFeature([PropertyDocument, Unit, Asset, User, Company]),
     PropertiesModule,
   ],
   controllers: [DocumentsController],

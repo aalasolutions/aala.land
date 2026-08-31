@@ -49,7 +49,7 @@ export class QueryAuditLogsDto {
   @ApiProperty({
     required: false,
     description:
-      'Region code filter (ignored - audit logs are region-agnostic)',
+      'Applied for region-scoped roles only. Admins read every region, including the global NULL-region rows such as billing.',
   })
   @IsOptional()
   @IsString()

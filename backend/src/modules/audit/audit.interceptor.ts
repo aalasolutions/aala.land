@@ -7,7 +7,15 @@ import {
 } from '@nestjs/common';
 import { Observable, tap } from 'rxjs';
 import { AuditService } from './audit.service';
+import { isGlobalEntityType } from './audit-global-entities';
 import { AuditAction } from './dto/query-audit-logs.dto';
+import { NO_REGION_SENTINEL } from '@shared/interceptors/region-scope.interceptor';
+import { seesAllRegions } from '@shared/utils/region-visibility.util';
+
+interface AuditRequestContext {
+  query?: Record<string, unknown>;
+  user?: { role?: string };
+}
 
 // Path segments that should never be audited (matched against normalized path)
 // billing/webhook: public provider callback with no user context and large raw
@@ -187,6 +195,11 @@ export class AuditInterceptor implements NestInterceptor {
                   ? ipAddress.substring(0, 100)
                   : undefined,
               userAgent: userAgent || undefined,
+              regionCode: this.resolveRegionCode(
+                entityType,
+                request as AuditRequestContext,
+                responseData,
+              ),
             })
             .catch((err: unknown) => {
               const message = err instanceof Error ? err.message : String(err);
@@ -195,6 +208,50 @@ export class AuditInterceptor implements NestInterceptor {
         },
       }),
     );
+  }
+
+  // A region-scoped role has query.regionCode pinned by
+  // RegionScopeInterceptor. An admin gets no such param, so the acted-on
+  // entity is the only source, and NULL when it has none.
+  private resolveRegionCode(
+    entityType: string,
+    request: AuditRequestContext,
+    responseData: unknown,
+  ): string | null | undefined {
+    if (isGlobalEntityType(entityType)) {
+      return null;
+    }
+
+    const entityRegion = this.entityRegionCode(responseData);
+    if (entityRegion) {
+      return entityRegion;
+    }
+
+    const requested = request.query?.regionCode;
+    if (
+      typeof requested === 'string' &&
+      requested &&
+      requested !== NO_REGION_SENTINEL
+    ) {
+      return requested;
+    }
+
+    const role = request.user?.role;
+    return role && seesAllRegions(role) ? null : undefined;
+  }
+
+  // The response is either the entity itself or the ResponseInterceptor
+  // envelope around it.
+  private entityRegionCode(responseData: unknown): string | undefined {
+    const envelope = responseData as { data?: unknown } | null | undefined;
+    const payload = (envelope?.data ?? responseData) as
+      | { regionCode?: unknown }
+      | null
+      | undefined;
+    const regionCode = payload?.regionCode;
+    return typeof regionCode === 'string' && regionCode
+      ? regionCode
+      : undefined;
   }
 
   private getAction(method: string, segments: string[]): AuditAction {

@@ -7,6 +7,8 @@ import {
   MinLength,
   MaxLength,
   IsUUID,
+  IsArray,
+  ArrayUnique,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Role } from '../../../shared/enums/roles.enum';
@@ -68,4 +70,15 @@ export class CreateUserDto {
   companyId?: string;
 
   // companyId is extracted from JWT for company admins
+
+  @ApiPropertyOptional({
+    example: ['makkah', 'punjab'],
+    description:
+      'Regions this member may work in. Defaults to the company default region when omitted.',
+  })
+  @IsOptional()
+  @IsArray()
+  @ArrayUnique()
+  @IsString({ each: true })
+  regionCodes?: string[];
 }

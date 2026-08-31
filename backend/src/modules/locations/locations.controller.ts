@@ -123,6 +123,7 @@ export class LocationsController {
     return this.locationsService.getCompanyLocalities(
       requireCompanyId(req.user),
       regionCode,
+      req.user,
     );
   }
 }

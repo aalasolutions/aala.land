@@ -43,7 +43,11 @@ describe('LeadsService', () => {
     id: 'lead-uuid-1',
     companyId,
     contactId: 'contact-uuid-1',
-    contact: { firstName: 'Ahmed', lastName: 'Al-Rashid', phone: '+971501234567' } as any,
+    contact: {
+      firstName: 'Ahmed',
+      lastName: 'Al-Rashid',
+      phone: '+971501234567',
+    } as any,
     status: LeadStatus.NEW,
     temperature: LeadTemperature.WARM,
     source: LeadSource.WHATSAPP,
@@ -62,7 +66,7 @@ describe('LeadsService', () => {
   // ContactsService.resolveOrCreate; this helper builds the mock contact a test
   // wants resolveOrCreate to return.
   const contact = (firstName: string, lastName = '', phone = '+97150000000') =>
-    ({ id: 'contact-uuid-1', firstName, lastName, phone, companyId } as any);
+    ({ id: 'contact-uuid-1', firstName, lastName, phone, companyId }) as any;
 
   beforeEach(async () => {
     module = await Test.createTestingModule({
@@ -177,6 +181,7 @@ describe('LeadsService', () => {
         companyId,
         expect.any(Object),
         undefined,
+        expect.any(String),
       );
       expect(leadRepo.create).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -187,7 +192,10 @@ describe('LeadsService', () => {
       );
       expect(result).toEqual({
         ...mockLead,
-        contact: { ...contact('Ahmed', 'Al-Rashid'), displayName: 'Ahmed Al-Rashid' },
+        contact: {
+          ...contact('Ahmed', 'Al-Rashid'),
+          displayName: 'Ahmed Al-Rashid',
+        },
         assignedAgentName: null,
       });
     });
@@ -217,6 +225,7 @@ describe('LeadsService', () => {
         companyId,
         expect.objectContaining({ lastName: 'Al-Rashid Holdings' }),
         undefined,
+        expect.any(String),
       );
     });
 
@@ -333,7 +342,11 @@ describe('LeadsService', () => {
       leadRepo.save.mockResolvedValue(clientLead as Lead);
       const notificationsService = module!.get(NotificationsService);
 
-      await service.create(companyId,  { firstName: 'Nadia' } as any, 'creator-user-id');
+      await service.create(
+        companyId,
+        { firstName: 'Nadia' } as any,
+        'creator-user-id',
+      );
 
       expect(notificationsService.create).not.toHaveBeenCalled();
     });
@@ -393,7 +406,11 @@ describe('LeadsService', () => {
         },
       ]);
 
-      await service.create(companyId,  { firstName: 'Rania' } as any, 'creator-user-id');
+      await service.create(
+        companyId,
+        { firstName: 'Rania' } as any,
+        'creator-user-id',
+      );
 
       expect(notificationsService.create).not.toHaveBeenCalled();
     });
@@ -432,7 +449,11 @@ describe('LeadsService', () => {
         admin2,
       ]);
 
-      await service.create(companyId,  { firstName: 'Layla' } as any, 'creator-user-id');
+      await service.create(
+        companyId,
+        { firstName: 'Layla' } as any,
+        'creator-user-id',
+      );
 
       expect(notificationsService.create).toHaveBeenCalledWith(
         companyId,
@@ -1006,6 +1027,186 @@ describe('LeadsService', () => {
         take: 200,
       });
       expect(result).toEqual([{ ...mockActivity, performedByName: null }]);
+    });
+  });
+  describe('region scoping', () => {
+    const makkahAgent = { role: Role.AGENT, regionCodes: ['makkah'] };
+    const twoRegionAgent = {
+      role: Role.AGENT,
+      regionCodes: ['makkah', 'punjab'],
+    };
+    const admin = { role: Role.COMPANY_ADMIN, regionCodes: ['makkah'] };
+
+    function seedLeadInRegion(regionCode: string) {
+      const row = { ...mockLead, regionCode } as Lead;
+      leadRepo.findOne.mockImplementation((opts: any) => {
+        const filter = opts?.where?.regionCode;
+        if (filter && !(filter.value as string[]).includes(regionCode)) {
+          return Promise.resolve(null);
+        }
+        return Promise.resolve(row);
+      });
+      return row;
+    }
+
+    describe('by-id reads and writes', () => {
+      it('denies findOne on a lead outside the caller assigned regions', async () => {
+        seedLeadInRegion('punjab');
+
+        await expect(
+          service.findOne('lead-uuid-1', companyId, makkahAgent),
+        ).rejects.toThrow(NotFoundException);
+      });
+
+      it('denies update on a lead outside the caller assigned regions', async () => {
+        seedLeadInRegion('punjab');
+
+        await expect(
+          service.update(
+            'lead-uuid-1',
+            companyId,
+            { score: 90 } as any,
+            'user-uuid-1',
+            Role.AGENT,
+            makkahAgent,
+          ),
+        ).rejects.toThrow(NotFoundException);
+        expect(leadRepo.save).not.toHaveBeenCalled();
+      });
+
+      it('denies assign on a lead outside the caller assigned regions', async () => {
+        seedLeadInRegion('punjab');
+        userRepo.findOne.mockResolvedValue({
+          id: 'agent-uuid-1',
+          name: 'Sara',
+        } as User);
+
+        await expect(
+          service.assign(
+            'lead-uuid-1',
+            companyId,
+            'agent-uuid-1',
+            'user-uuid-1',
+            undefined,
+            makkahAgent,
+          ),
+        ).rejects.toThrow(NotFoundException);
+        expect(leadRepo.save).not.toHaveBeenCalled();
+      });
+
+      it('denies convert on a lead outside the caller assigned regions', async () => {
+        seedLeadInRegion('punjab');
+
+        await expect(
+          service.convert('lead-uuid-1', companyId, 'user-uuid-1', makkahAgent),
+        ).rejects.toThrow(NotFoundException);
+        expect(leadRepo.save).not.toHaveBeenCalled();
+      });
+
+      it('denies addActivity on a lead outside the caller assigned regions', async () => {
+        seedLeadInRegion('punjab');
+
+        await expect(
+          service.addActivity(
+            'lead-uuid-1',
+            companyId,
+            { type: ActivityType.NOTE } as any,
+            'user-uuid-1',
+            makkahAgent,
+          ),
+        ).rejects.toThrow(NotFoundException);
+        expect(activityRepo.save).not.toHaveBeenCalled();
+      });
+
+      it('denies findActivities on a lead outside the caller assigned regions', async () => {
+        seedLeadInRegion('punjab');
+
+        await expect(
+          service.findActivities('lead-uuid-1', companyId, makkahAgent),
+        ).rejects.toThrow(NotFoundException);
+        expect(activityRepo.find).not.toHaveBeenCalled();
+      });
+
+      it('denies every by-id read when the caller has no assigned region', async () => {
+        seedLeadInRegion('makkah');
+
+        await expect(
+          service.findOne('lead-uuid-1', companyId, {
+            role: Role.AGENT,
+            regionCodes: [],
+          }),
+        ).rejects.toThrow(NotFoundException);
+        expect(leadRepo.findOne).not.toHaveBeenCalled();
+      });
+
+      it('allows a by-id read in any region the caller is assigned to', async () => {
+        seedLeadInRegion('punjab');
+
+        const result = await service.findOne(
+          'lead-uuid-1',
+          companyId,
+          twoRegionAgent,
+        );
+
+        expect(result.id).toBe('lead-uuid-1');
+      });
+
+      it('leaves admins unconfined by their own assignments', async () => {
+        seedLeadInRegion('punjab');
+
+        const result = await service.findOne('lead-uuid-1', companyId, admin);
+
+        expect(result.id).toBe('lead-uuid-1');
+      });
+    });
+
+    describe('create with a body regionCode', () => {
+      beforeEach(() => {
+        companyRepo.findOne.mockResolvedValue({
+          defaultRegionCode: 'dubai',
+          activeRegions: ['dubai', 'makkah', 'punjab'],
+        } as Company);
+      });
+
+      it('rejects a region outside the caller assigned set with 400', async () => {
+        await expect(
+          service.create(
+            companyId,
+            { firstName: 'Ahmed', regionCode: 'punjab' } as any,
+            'user-uuid-1',
+            makkahAgent,
+          ),
+        ).rejects.toThrow(BadRequestException);
+        expect(leadRepo.save).not.toHaveBeenCalled();
+      });
+
+      it('rejects a region the company does not operate, even for an admin', async () => {
+        await expect(
+          service.create(
+            companyId,
+            { firstName: 'Ahmed', regionCode: 'atlantis' } as any,
+            'user-uuid-1',
+            admin,
+          ),
+        ).rejects.toThrow(BadRequestException);
+        expect(leadRepo.save).not.toHaveBeenCalled();
+      });
+
+      it('accepts a region inside the caller assigned set', async () => {
+        leadRepo.create.mockReturnValue(mockLead as Lead);
+        leadRepo.save.mockResolvedValue({ ...mockLead } as Lead);
+
+        await service.create(
+          companyId,
+          { firstName: 'Ahmed', regionCode: 'makkah' } as any,
+          'user-uuid-1',
+          makkahAgent,
+        );
+
+        expect(leadRepo.create).toHaveBeenCalledWith(
+          expect.objectContaining({ regionCode: 'makkah' }),
+        );
+      });
     });
   });
 });

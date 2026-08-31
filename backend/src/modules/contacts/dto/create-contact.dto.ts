@@ -74,4 +74,13 @@ export class CreateContactDto {
   @IsString()
   @IsOptional()
   notes?: string;
+
+  @ApiPropertyOptional({
+    example: 'dubai',
+    description: 'Defaults to the company default region when omitted',
+  })
+  @IsString()
+  @IsOptional()
+  @MaxLength(50)
+  regionCode?: string;
 }

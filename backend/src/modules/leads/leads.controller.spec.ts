@@ -15,14 +15,17 @@ describe('LeadsController', () => {
   let service: jest.Mocked<LeadsService>;
 
   const companyId = 'company-uuid-1';
+  const callerRegions = ['dubai'];
   const mockReq = {
     user: {
       companyId,
       userId: 'user-uuid-1',
       email: 'admin@test.com',
       role: Role.COMPANY_ADMIN,
+      regionCodes: callerRegions,
     },
   };
+  const caller = { role: Role.COMPANY_ADMIN, regionCodes: callerRegions };
 
   const mockLead = {
     id: 'lead-uuid-1',
@@ -85,6 +88,7 @@ describe('LeadsController', () => {
         companyId,
         dto,
         'user-uuid-1',
+        caller,
       );
       expect(result).toEqual(mockLead);
     });
@@ -113,7 +117,11 @@ describe('LeadsController', () => {
 
       const result = await controller.findOne('lead-uuid-1', mockReq);
 
-      expect(service.findOne).toHaveBeenCalledWith('lead-uuid-1', companyId);
+      expect(service.findOne).toHaveBeenCalledWith(
+        'lead-uuid-1',
+        companyId,
+        caller,
+      );
     });
   });
 
@@ -134,6 +142,7 @@ describe('LeadsController', () => {
         dto,
         'user-uuid-1',
         Role.COMPANY_ADMIN,
+        caller,
       );
       expect(result).toEqual({ ...mockLead, score: 75 });
     });
@@ -159,6 +168,7 @@ describe('LeadsController', () => {
         'agent-uuid-1',
         'user-uuid-1',
         undefined,
+        caller,
       );
     });
 
@@ -184,6 +194,7 @@ describe('LeadsController', () => {
         'agent-uuid-1',
         'user-uuid-1',
         'Client prefers Arabic speaker',
+        caller,
       );
     });
   });
@@ -201,6 +212,7 @@ describe('LeadsController', () => {
         'lead-uuid-1',
         companyId,
         'user-uuid-1',
+        caller,
       );
     });
   });
@@ -217,6 +229,7 @@ describe('LeadsController', () => {
         companyId,
         dto,
         'user-uuid-1',
+        caller,
       );
     });
   });
@@ -230,6 +243,7 @@ describe('LeadsController', () => {
       expect(service.findActivities).toHaveBeenCalledWith(
         'lead-uuid-1',
         companyId,
+        caller,
       );
     });
   });

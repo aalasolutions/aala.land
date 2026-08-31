@@ -53,6 +53,7 @@ export class ContactsController {
       requireCompanyId(req.user),
       dto,
       req.user.userId,
+      { role: req.user.role, regionCodes: req.user.regionCodes },
     );
   }
 
@@ -110,6 +111,7 @@ export class ContactsController {
     @Query('nationality') nationality?: string,
     @Query('dateFrom') dateFrom?: string,
     @Query('dateTo') dateTo?: string,
+    @Query('regionCode') regionCode?: string,
   ) {
     if (dateFrom && isNaN(Date.parse(dateFrom))) {
       throw new BadRequestException('dateFrom is not a valid date');
@@ -128,9 +130,11 @@ export class ContactsController {
         isWhatsapp: isWhatsapp ? isWhatsapp === 'true' : undefined,
         company: company || undefined,
         nationality: nationality || undefined,
+        regionCode: regionCode || undefined,
         dateFrom: dateFrom || undefined,
         dateTo: dateTo || undefined,
       },
+      req.user,
     );
   }
 
@@ -148,7 +152,10 @@ export class ContactsController {
     @Param('id', ParseUUIDPipe) id: string,
     @Request() req: AuthenticatedRequest,
   ) {
-    return this.contactsService.findOne(id, requireCompanyId(req.user));
+    return this.contactsService.findOne(id, requireCompanyId(req.user), {
+      role: req.user.role,
+      regionCodes: req.user.regionCodes,
+    });
   }
 
   @Patch(':id')
@@ -165,7 +172,10 @@ export class ContactsController {
     @Body() dto: UpdateContactDto,
     @Request() req: AuthenticatedRequest,
   ) {
-    return this.contactsService.update(id, requireCompanyId(req.user), dto);
+    return this.contactsService.update(id, requireCompanyId(req.user), dto, {
+      role: req.user.role,
+      regionCodes: req.user.regionCodes,
+    });
   }
 
   @Delete(':id')
@@ -190,6 +200,7 @@ export class ContactsController {
       id,
       requireCompanyId(req.user),
       transferToContactId,
+      { role: req.user.role, regionCodes: req.user.regionCodes },
     );
   }
 }

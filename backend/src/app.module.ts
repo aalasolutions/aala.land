@@ -4,7 +4,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { BullModule } from '@nestjs/bullmq';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { ScheduleModule } from '@nestjs/schedule';
-import { APP_GUARD } from '@nestjs/core';
+import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AppDataSource } from './data-source';
@@ -35,6 +35,7 @@ import { ConsoleModule } from '@modules/console/console.module';
 import { EmailModule } from '@modules/email/email.module';
 import { RedisModule } from '@modules/redis/redis.module';
 import { getRedisConnection } from '@modules/redis/redis.config';
+import { RegionScopeInterceptor } from '@shared/interceptors/region-scope.interceptor';
 
 @Module({
   imports: [
@@ -88,6 +89,11 @@ import { getRedisConnection } from '@modules/redis/redis.config';
     RedisModule,
   ],
   controllers: [AppController],
-  providers: [AppService, { provide: APP_GUARD, useClass: ThrottlerGuard }],
+  providers: [
+    AppService,
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
+    // Runs after JwtAuthGuard, so req.user is populated.
+    { provide: APP_INTERCEPTOR, useClass: RegionScopeInterceptor },
+  ],
 })
 export class AppModule {}

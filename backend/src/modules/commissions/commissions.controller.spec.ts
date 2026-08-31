@@ -16,6 +16,7 @@ describe('CommissionsController', () => {
       userId: 'user-uuid-1',
       email: 'admin@test.com',
       role: 'company_admin',
+      regionCodes: ['dubai'],
     },
   };
 
@@ -73,7 +74,7 @@ describe('CommissionsController', () => {
       };
       await controller.create(dto as any, mockReq);
 
-      expect(service.create).toHaveBeenCalledWith(companyId, dto);
+      expect(service.create).toHaveBeenCalledWith(companyId, dto, mockReq.user);
     });
   });
 
@@ -89,6 +90,7 @@ describe('CommissionsController', () => {
         20,
         undefined,
         undefined,
+        mockReq.user,
       );
     });
   });
@@ -104,6 +106,7 @@ describe('CommissionsController', () => {
         companyId,
         1,
         20,
+        mockReq.user,
       );
     });
   });
@@ -120,7 +123,11 @@ describe('CommissionsController', () => {
 
       const result = await controller.getSummary(agentId, mockReq);
 
-      expect(service.getSummary).toHaveBeenCalledWith(agentId, companyId);
+      expect(service.getSummary).toHaveBeenCalledWith(
+        agentId,
+        companyId,
+        mockReq.user,
+      );
     });
   });
 
@@ -141,6 +148,7 @@ describe('CommissionsController', () => {
         'commission-uuid-1',
         companyId,
         { status: CommissionStatus.APPROVED },
+        mockReq.user,
       );
     });
   });

@@ -1,10 +1,14 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { FindOptionsWhere, In, Repository } from 'typeorm';
 import { WorkOrder, WorkOrderStatus } from './entities/work-order.entity';
 import { CreateWorkOrderDto } from './dto/create-work-order.dto';
 import { UpdateWorkOrderDto } from './dto/update-work-order.dto';
-import { REGION_FILTER_SUBQUERY } from '../../shared/utils/region-filter.util';
+import { RegionScope } from '../../shared/utils/resolve-region-code.util';
+import {
+  effectiveRegionCodes,
+  scopedRegionCodes,
+} from '../../shared/utils/region-visibility.util';
 import { Unit } from '../properties/entities/unit.entity';
 
 export interface CostSummary {
@@ -24,13 +28,25 @@ export class MaintenanceService {
     private readonly unitRepository: Repository<Unit>,
   ) {}
 
-  async create(companyId: string, dto: CreateWorkOrderDto): Promise<WorkOrder> {
+  async create(
+    companyId: string,
+    dto: CreateWorkOrderDto,
+    caller?: RegionScope,
+  ): Promise<WorkOrder> {
     if (!dto.unitId) {
       throw new BadRequestException('Property is required for work orders');
     }
-    await this.validateUnitOwnership(dto.unitId, companyId);
+    await this.validateUnitOwnership(dto.unitId, companyId, caller);
+    const regionCode = await this.regionOfUnit(dto.unitId, companyId);
+    if (!regionCode) {
+      throw new BadRequestException('Invalid unit selected');
+    }
 
-    const order = this.workOrderRepository.create({ ...dto, companyId });
+    const order = this.workOrderRepository.create({
+      ...dto,
+      companyId,
+      regionCode,
+    });
     return this.workOrderRepository.save(order);
   }
 
@@ -41,13 +57,20 @@ export class MaintenanceService {
     regionCode?: string,
     status?: string,
     period?: string,
+    caller?: RegionScope,
   ) {
+    const regionCodes = effectiveRegionCodes(regionCode, caller);
+    // No readable region means no rows, and an empty IN () is invalid SQL.
+    if (regionCodes?.length === 0) {
+      return { data: [], total: 0, page, limit };
+    }
+
     const qb = this.workOrderRepository
       .createQueryBuilder('wo')
       .where('wo.company_id = :companyId', { companyId });
 
-    if (regionCode) {
-      qb.andWhere(`wo.unit_id IN (${REGION_FILTER_SUBQUERY})`, { regionCode });
+    if (regionCodes) {
+      qb.andWhere('wo.region_code IN (:...regionCodes)', { regionCodes });
     }
 
     if (status) {
@@ -129,9 +152,23 @@ export class MaintenanceService {
     return { data, total, page, limit };
   }
 
-  async findOne(id: string, companyId: string): Promise<WorkOrder> {
+  async findOne(
+    id: string,
+    companyId: string,
+    caller?: RegionScope,
+  ): Promise<WorkOrder> {
+    const scopedCodes = scopedRegionCodes(caller);
+    // No assignment means no access, and an empty IN () is invalid SQL.
+    if (scopedCodes?.length === 0) {
+      throw new NotFoundException('Work order not found');
+    }
+
     const order = await this.workOrderRepository.findOne({
-      where: { id, companyId },
+      where: {
+        id,
+        companyId,
+        ...(scopedCodes ? { regionCode: In(scopedCodes) } : {}),
+      },
     });
     if (!order) {
       throw new NotFoundException('Work order not found');
@@ -143,13 +180,22 @@ export class MaintenanceService {
     id: string,
     companyId: string,
     dto: UpdateWorkOrderDto,
+    caller?: RegionScope,
   ): Promise<WorkOrder> {
-    const order = await this.findOne(id, companyId);
+    const order = await this.findOne(id, companyId, caller);
     if (dto.unitId !== undefined) {
       if (!dto.unitId) {
         throw new BadRequestException('Property is required for work orders');
       }
-      await this.validateUnitOwnership(dto.unitId, companyId);
+      await this.validateUnitOwnership(dto.unitId, companyId, caller);
+      // The region follows the unit, so moving the work order moves the row.
+      if (dto.unitId !== order.unitId) {
+        const regionCode = await this.regionOfUnit(dto.unitId, companyId);
+        if (!regionCode) {
+          throw new BadRequestException('Invalid unit selected');
+        }
+        order.regionCode = regionCode;
+      }
     }
     Object.assign(order, dto);
 
@@ -160,15 +206,32 @@ export class MaintenanceService {
     return this.workOrderRepository.save(order);
   }
 
-  async remove(id: string, companyId: string): Promise<void> {
-    const order = await this.findOne(id, companyId);
+  async remove(
+    id: string,
+    companyId: string,
+    caller?: RegionScope,
+  ): Promise<void> {
+    const order = await this.findOne(id, companyId, caller);
     await this.workOrderRepository.remove(order);
   }
 
   async getCostSummary(
     companyId: string,
     regionCode?: string,
+    caller?: RegionScope,
   ): Promise<CostSummary> {
+    const regionCodes = effectiveRegionCodes(regionCode, caller);
+    // No readable region means nothing to total, and an empty IN () is invalid SQL.
+    if (regionCodes?.length === 0) {
+      return {
+        totalEstimated: 0,
+        totalActual: 0,
+        variance: 0,
+        workOrderCount: 0,
+        avgCostPerOrder: 0,
+      };
+    }
+
     const qb = this.workOrderRepository
       .createQueryBuilder('wo')
       .select('COALESCE(SUM(wo.estimated_cost), 0)', 'totalEstimated')
@@ -176,8 +239,8 @@ export class MaintenanceService {
       .addSelect('COUNT(*)::int', 'workOrderCount')
       .where('wo.company_id = :companyId', { companyId });
 
-    if (regionCode) {
-      qb.andWhere(`wo.unit_id IN (${REGION_FILTER_SUBQUERY})`, { regionCode });
+    if (regionCodes) {
+      qb.andWhere('wo.region_code IN (:...regionCodes)', { regionCodes });
     }
 
     const result = await qb.getRawOne();
@@ -198,7 +261,14 @@ export class MaintenanceService {
   async getUpcoming(
     companyId: string,
     regionCode?: string,
+    caller?: RegionScope,
   ): Promise<WorkOrder[]> {
+    const regionCodes = effectiveRegionCodes(regionCode, caller);
+    // No readable region means no rows, and an empty IN () is invalid SQL.
+    if (regionCodes?.length === 0) {
+      return [];
+    }
+
     const thirtyDaysFromNow = new Date();
     thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
 
@@ -211,22 +281,50 @@ export class MaintenanceService {
       })
       .orderBy('wo.next_scheduled_date', 'ASC');
 
-    if (regionCode) {
-      qb.andWhere(`wo.unit_id IN (${REGION_FILTER_SUBQUERY})`, { regionCode });
+    if (regionCodes) {
+      qb.andWhere('wo.region_code IN (:...regionCodes)', { regionCodes });
     }
 
     return qb.take(100).getMany();
   }
 
+  // A work order's region is its unit's, so a unit the caller cannot read must
+  // not be bound to one.
   private async validateUnitOwnership(
     unitId: string,
     companyId: string,
+    caller?: RegionScope,
   ): Promise<void> {
-    const unit = await this.unitRepository.findOne({
-      where: { id: unitId, companyId },
-    });
+    const scopedCodes = scopedRegionCodes(caller);
+    // No assignment means no access, and an empty IN () is invalid SQL.
+    if (scopedCodes?.length === 0) {
+      throw new BadRequestException('Invalid unit selected');
+    }
+
+    const where: FindOptionsWhere<Unit> = { id: unitId, companyId };
+    if (scopedCodes) {
+      where.asset = { locality: { city: { regionCode: In(scopedCodes) } } };
+    }
+
+    const unit = await this.unitRepository.findOne({ where });
     if (!unit) {
       throw new BadRequestException('Invalid unit selected');
     }
+  }
+
+  private async regionOfUnit(
+    unitId: string,
+    companyId: string,
+  ): Promise<string | undefined> {
+    const row = await this.unitRepository
+      .createQueryBuilder('u')
+      .innerJoin('u.asset', 'a')
+      .innerJoin('a.locality', 'loc')
+      .innerJoin('loc.city', 'ci')
+      .select('ci.regionCode', 'regionCode')
+      .where('u.id = :unitId', { unitId })
+      .andWhere('u.companyId = :companyId', { companyId })
+      .getRawOne<{ regionCode: string }>();
+    return row?.regionCode ?? undefined;
   }
 }

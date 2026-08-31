@@ -108,8 +108,8 @@ describe('SearchService', () => {
 
     // Verify regionCode is passed to relevant queries
     expect(dataSource.query).toHaveBeenCalledWith(
-      expect.stringContaining('region_code = $3'),
-      expect.arrayContaining([term, companyId, regionCode]),
+      expect.stringContaining('region_code = ANY($3)'),
+      expect.arrayContaining([term, companyId, [regionCode]]),
     );
     // The agent query does not use regionCode, so it should not be in its parameters
     expect(dataSource.query).toHaveBeenCalledWith(
@@ -137,7 +137,7 @@ describe('SearchService', () => {
     await service.search(q, companyId, 'dubai');
     expect(dataSource.query).toHaveBeenCalledWith(
       expect.stringContaining('region_code'),
-      expect.arrayContaining([term, companyId, 'dubai']),
+      expect.arrayContaining([term, companyId, ['dubai']]),
     );
   });
 
@@ -155,5 +155,142 @@ describe('SearchService', () => {
       expect.stringContaining("role != 'super_admin'"),
       expect.arrayContaining([term, companyId]),
     );
+  });
+  describe('region scoping', () => {
+    const makkahManager = { role: 'manager', regionCodes: ['makkah'] };
+    const twoRegionManager = {
+      role: 'manager',
+      regionCodes: ['makkah', 'punjab'],
+    };
+    const admin = { role: 'company_admin', regionCodes: ['makkah'] };
+    const unassignedManager = { role: 'manager', regionCodes: [] };
+
+    const cityRows = [
+      { id: 'city-makkah', name: 'Makkah City', regionCode: 'makkah' },
+      { id: 'city-punjab', name: 'Punjab City', regionCode: 'punjab' },
+    ];
+    const localityRows = [
+      {
+        id: 'loc-makkah',
+        name: 'Makkah Locality',
+        cityName: 'Makkah City',
+        regionCode: 'makkah',
+      },
+      {
+        id: 'loc-punjab',
+        name: 'Punjab Locality',
+        cityName: 'Punjab City',
+        regionCode: 'punjab',
+      },
+    ];
+    const assetRows = [
+      {
+        id: 'asset-makkah',
+        name: 'Makkah Tower',
+        localityId: 'loc-makkah',
+        localityName: 'Makkah Locality',
+        regionCode: 'makkah',
+      },
+      {
+        id: 'asset-punjab',
+        name: 'Punjab Tower',
+        localityId: 'loc-punjab',
+        localityName: 'Punjab Locality',
+        regionCode: 'punjab',
+      },
+    ];
+    const agentRows = [{ id: 'agent-1', name: 'Agent One', role: 'agent' }];
+
+    // Stands in for Postgres: rows survive only when the ANY() predicate the
+    // service spliced in admits their region.
+    function seedRegions() {
+      dataSource.query.mockImplementation((sql: string, params: unknown[]) => {
+        if (sql.includes('FROM users')) {
+          return Promise.resolve(agentRows);
+        }
+        const table = sql.includes('FROM cities c')
+          ? cityRows
+          : sql.includes('FROM localities l')
+            ? localityRows
+            : assetRows;
+        const match = /region_code = ANY\(\$(\d+)\)/.exec(sql);
+        if (!match) {
+          return Promise.resolve(table);
+        }
+        const codes = params[Number(match[1]) - 1] as string[];
+        return Promise.resolve(
+          table.filter((row) => codes.includes(row.regionCode)),
+        );
+      });
+    }
+
+    it('confines properties to the caller regions with no regionCode argument', async () => {
+      seedRegions();
+
+      const result = await service.search('test', 'company1', undefined, makkahManager);
+
+      expect(result.properties.map((p: any) => p.id)).toEqual([
+        'city-makkah',
+        'loc-makkah',
+        'asset-makkah',
+      ]);
+    });
+
+    it('returns no properties from a region outside the caller assignments', async () => {
+      seedRegions();
+
+      const result = await service.search('test', 'company1', 'punjab', makkahManager);
+
+      expect(result.properties).toEqual([]);
+    });
+
+    it('narrows to a requested region the caller is assigned to', async () => {
+      seedRegions();
+
+      const result = await service.search(
+        'test',
+        'company1',
+        'punjab',
+        twoRegionManager,
+      );
+
+      expect(result.properties.map((p: any) => p.id)).toEqual([
+        'city-punjab',
+        'loc-punjab',
+        'asset-punjab',
+      ]);
+    });
+
+    it('leaves properties unfiltered for admins', async () => {
+      seedRegions();
+
+      const result = await service.search('test', 'company1', undefined, admin);
+
+      expect(result.properties).toHaveLength(6);
+    });
+
+    it('stays unfiltered when no caller is supplied', async () => {
+      seedRegions();
+
+      const result = await service.search('test', 'company1');
+
+      expect(result.properties).toHaveLength(6);
+    });
+
+    it('returns no properties when the caller has no assigned region', async () => {
+      seedRegions();
+
+      const result = await service.search(
+        'test',
+        'company1',
+        undefined,
+        unassignedManager,
+      );
+
+      expect(result.properties).toEqual([]);
+      // The agent lookup carries no region predicate, so it still runs.
+      expect(result.agents).toHaveLength(1);
+      expect(dataSource.query).toHaveBeenCalledTimes(1);
+    });
   });
 });

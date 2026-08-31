@@ -265,7 +265,33 @@ export class CompaniesService {
         ? new Date(subscriptionExpiresAt)
         : null;
     }
-    return this.companyRepository.save(company);
+    const saved = await this.companyRepository.save(company);
+
+    if (dto.activeRegions) {
+      await this.pruneUserRegions(id, dto.activeRegions);
+    }
+
+    return saved;
+  }
+
+  // A dropped company region must also leave every user assigned to it,
+  // or the assignment keeps granting access.
+  private async pruneUserRegions(
+    companyId: string,
+    activeRegions: string[],
+  ): Promise<void> {
+    const users = await this.userRepository.find({
+      where: { companyId },
+      select: { id: true, regionCodes: true },
+    });
+
+    for (const user of users) {
+      const current = user.regionCodes ?? [];
+      const kept = current.filter((code) => activeRegions.includes(code));
+      if (kept.length !== current.length) {
+        await this.userRepository.update(user.id, { regionCodes: kept });
+      }
+    }
   }
 
   async findBySlug(slug: string): Promise<Company> {
@@ -284,7 +310,9 @@ export class CompaniesService {
     email: string;
     name: string;
     marketerCode?: string;
-  }): Promise<Pick<User, 'id' | 'name' | 'email' | 'role' | 'companyId'>> {
+  }): Promise<
+    Pick<User, 'id' | 'name' | 'email' | 'role' | 'companyId' | 'regionCodes'>
+  > {
     this.validateRegionCode(dto.regionCode);
 
     try {
@@ -321,6 +349,7 @@ export class CompaniesService {
             password: null,
             role: Role.COMPANY_ADMIN,
             companyId: savedCompany.id,
+            regionCodes: [dto.regionCode],
           });
           const savedUser = await userRepo.save(userEntity);
 
@@ -331,6 +360,7 @@ export class CompaniesService {
               email: savedUser.email,
               role: savedUser.role,
               companyId: savedCompany.id,
+              regionCodes: savedUser.regionCodes,
             },
             company: savedCompany,
           };

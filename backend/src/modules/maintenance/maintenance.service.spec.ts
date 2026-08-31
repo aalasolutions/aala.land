@@ -19,6 +19,35 @@ describe('MaintenanceService', () => {
 
   const companyId = 'company-uuid-1';
 
+  // How the unit > asset > locality > city chain resolves each unit.
+  const unitRegions: Record<string, string> = {
+    'unit-uuid-1': 'dubai',
+    'unit-makkah': 'makkah',
+    'unit-punjab': 'punjab',
+  };
+
+  // Stands in for Postgres on the unit region lookup: resolves the region of
+  // whichever unit the service asked about.
+  const makeUnitRegionBuilder = () => {
+    const builder: any = {};
+    let unitId: string | undefined;
+    builder.innerJoin = jest.fn().mockReturnValue(builder);
+    builder.select = jest.fn().mockReturnValue(builder);
+    builder.where = jest.fn((_sql: string, params: { unitId: string }) => {
+      unitId = params.unitId;
+      return builder;
+    });
+    builder.andWhere = jest.fn().mockReturnValue(builder);
+    builder.getRawOne = jest.fn(() =>
+      Promise.resolve(
+        unitId && unitRegions[unitId]
+          ? { regionCode: unitRegions[unitId] }
+          : undefined,
+      ),
+    );
+    return builder;
+  };
+
   const mockOrder: Partial<WorkOrder> = {
     id: 'order-uuid-1',
     companyId,
@@ -70,6 +99,7 @@ describe('MaintenanceService', () => {
           provide: getRepositoryToken(Unit),
           useValue: {
             findOne: jest.fn(),
+            createQueryBuilder: jest.fn(),
           },
         },
       ],
@@ -78,6 +108,9 @@ describe('MaintenanceService', () => {
     service = module.get<MaintenanceService>(MaintenanceService);
     repo = module.get(getRepositoryToken(WorkOrder));
     unitRepo = module.get(getRepositoryToken(Unit));
+    unitRepo.createQueryBuilder.mockImplementation(() =>
+      makeUnitRegionBuilder(),
+    );
   });
 
   it('should be defined', () => {
@@ -102,7 +135,11 @@ describe('MaintenanceService', () => {
       expect(unitRepo.findOne).toHaveBeenCalledWith({
         where: { id: 'unit-uuid-1', companyId },
       });
-      expect(repo.create).toHaveBeenCalledWith({ ...dto, companyId });
+      expect(repo.create).toHaveBeenCalledWith({
+        ...dto,
+        companyId,
+        regionCode: 'dubai',
+      });
       expect(result).toEqual(mockOrder);
     });
 
@@ -309,6 +346,493 @@ describe('MaintenanceService', () => {
       const result = await service.getUpcoming(companyId);
 
       expect(result).toHaveLength(0);
+    });
+  });
+  describe('region scoping', () => {
+    const makkahManager = { role: 'manager', regionCodes: ['makkah'] };
+    const twoRegionManager = {
+      role: 'manager',
+      regionCodes: ['makkah', 'punjab'],
+    };
+    const admin = { role: 'company_admin', regionCodes: ['makkah'] };
+
+    // Stands in for Postgres on the by-id read: the seeded work order resolves
+    // only when the region predicate the service built admits its region_code.
+    function seedOrder(regionCode: string, unitId: string | null = null) {
+      const row = { ...mockOrder, regionCode, unitId } as WorkOrder;
+      repo.findOne.mockImplementation((opts: any) => {
+        const codes = opts?.where?.regionCode?.value as string[] | undefined;
+        if (codes && !codes.includes(regionCode)) {
+          return Promise.resolve(null);
+        }
+        return Promise.resolve(row);
+      });
+      return row;
+    }
+
+    it('denies findOne on a work order outside the caller assigned regions', async () => {
+      seedOrder('punjab', 'unit-punjab');
+
+      await expect(
+        service.findOne('order-uuid-1', companyId, makkahManager),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('allows a by-id read in any region the caller is assigned to', async () => {
+      seedOrder('punjab', 'unit-punjab');
+
+      const result = await service.findOne(
+        'order-uuid-1',
+        companyId,
+        twoRegionManager,
+      );
+
+      expect(result.id).toBe('order-uuid-1');
+    });
+
+    it('reads a work order with no unit from the caller own region', async () => {
+      seedOrder('makkah');
+
+      const result = await service.findOne(
+        'order-uuid-1',
+        companyId,
+        makkahManager,
+      );
+
+      expect(result.unitId).toBeNull();
+      expect(result.regionCode).toBe('makkah');
+    });
+
+    it('denies a work order with no unit from another region', async () => {
+      seedOrder('punjab');
+
+      await expect(
+        service.findOne('order-uuid-1', companyId, makkahManager),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('reads the region off the work order own column, not its unit', async () => {
+      seedOrder('punjab', 'unit-punjab');
+
+      await expect(
+        service.findOne('order-uuid-1', companyId, makkahManager),
+      ).rejects.toThrow(NotFoundException);
+
+      const where = repo.findOne.mock.calls[0][0].where;
+      expect(where.regionCode.value).toEqual(['makkah']);
+      expect(where.unitId).toBeUndefined();
+    });
+
+    it('denies update on a work order outside the caller assigned regions', async () => {
+      seedOrder('punjab', 'unit-punjab');
+
+      await expect(
+        service.update(
+          'order-uuid-1',
+          companyId,
+          { status: WorkOrderStatus.COMPLETED },
+          makkahManager,
+        ),
+      ).rejects.toThrow(NotFoundException);
+      expect(repo.save).not.toHaveBeenCalled();
+    });
+
+    it('denies remove on a work order outside the caller assigned regions', async () => {
+      seedOrder('punjab', 'unit-punjab');
+
+      await expect(
+        service.remove('order-uuid-1', companyId, makkahManager),
+      ).rejects.toThrow(NotFoundException);
+      expect(repo.remove).not.toHaveBeenCalled();
+    });
+
+    it('denies every by-id read when the caller has no assigned region', async () => {
+      seedOrder('makkah', 'unit-makkah');
+
+      await expect(
+        service.findOne('order-uuid-1', companyId, {
+          role: 'manager',
+          regionCodes: [],
+        }),
+      ).rejects.toThrow(NotFoundException);
+      expect(repo.findOne).not.toHaveBeenCalled();
+    });
+
+    it('leaves admins unconfined by their own assignments', async () => {
+      seedOrder('punjab', 'unit-punjab');
+
+      const result = await service.findOne('order-uuid-1', companyId, admin);
+
+      expect(result.id).toBe('order-uuid-1');
+    });
+
+    it('stays unscoped when no caller is supplied', async () => {
+      seedOrder('punjab', 'unit-punjab');
+
+      const result = await service.findOne('order-uuid-1', companyId);
+
+      expect(result.id).toBe('order-uuid-1');
+    });
+
+    // Stands in for Postgres on the unit lookup: the unit resolves only when
+    // the region predicate the service built admits its region.
+    function seedUnitLookup() {
+      unitRepo.findOne.mockImplementation((opts: any) => {
+        const id = opts?.where?.id as string;
+        const codes = opts?.where?.asset?.locality?.city?.regionCode?.value as
+          | string[]
+          | undefined;
+        const region = unitRegions[id];
+        if (!region || (codes && !codes.includes(region))) {
+          return Promise.resolve(null);
+        }
+        return Promise.resolve({ id });
+      });
+    }
+
+    // Stands in for Postgres on the list and aggregate reads: the seeded work
+    // orders survive only when the region predicate admits their region_code.
+    function seedOrders(
+      seeds: Array<{ id: string; regionCode: string; unitId: string | null }>,
+    ) {
+      const rows = seeds.map((seed) => ({ ...mockOrder, ...seed }) as WorkOrder);
+      let codes: string[] | undefined;
+      const matched = () =>
+        codes ? rows.filter((row) => codes!.includes(row.regionCode)) : rows;
+      const chain: any = {};
+      ['select', 'addSelect', 'where', 'skip', 'take', 'orderBy'].forEach(
+        (key) => {
+          chain[key] = jest.fn().mockReturnValue(chain);
+        },
+      );
+      chain.andWhere = jest
+        .fn()
+        .mockImplementation((_sql: string, params?: any) => {
+          if (params?.regionCodes) {
+            codes = params.regionCodes as string[];
+          }
+          return chain;
+        });
+      chain.getManyAndCount = jest
+        .fn()
+        .mockImplementation(() =>
+          Promise.resolve([matched(), matched().length]),
+        );
+      chain.getMany = jest
+        .fn()
+        .mockImplementation(() => Promise.resolve(matched()));
+      chain.getRawOne = jest.fn().mockImplementation(() =>
+        Promise.resolve({
+          totalEstimated: String(matched().length * 100),
+          totalActual: String(matched().length * 60),
+          workOrderCount: String(matched().length),
+        }),
+      );
+      repo.createQueryBuilder.mockReturnValue(chain);
+      repo.query.mockResolvedValue([]);
+      return rows;
+    }
+
+    // A work order with no unit is the case the column exists for: under the
+    // unit chain filter it matched no region at all.
+    const listSeeds = [
+      { id: 'order-makkah', regionCode: 'makkah', unitId: 'unit-makkah' },
+      { id: 'order-makkah-no-unit', regionCode: 'makkah', unitId: null },
+      { id: 'order-punjab', regionCode: 'punjab', unitId: 'unit-punjab' },
+    ];
+
+    it('confines the list to the caller assigned regions', async () => {
+      seedOrders(listSeeds);
+
+      const result = await service.findAll(
+        companyId,
+        1,
+        20,
+        undefined,
+        undefined,
+        undefined,
+        makkahManager,
+      );
+
+      expect(result.data.map((o) => o.id)).toEqual([
+        'order-makkah',
+        'order-makkah-no-unit',
+      ]);
+      expect(result.total).toBe(2);
+    });
+
+    it('lists a work order with no unit to a caller in that region', async () => {
+      seedOrders(listSeeds);
+
+      const result = await service.findAll(
+        companyId,
+        1,
+        20,
+        undefined,
+        undefined,
+        undefined,
+        makkahManager,
+      );
+
+      const unitless = result.data.find((o) => o.unitId === null);
+      expect(unitless?.id).toBe('order-makkah-no-unit');
+    });
+
+    it('hides a work order with no unit from a caller in another region', async () => {
+      seedOrders([
+        { id: 'order-punjab-no-unit', regionCode: 'punjab', unitId: null },
+      ]);
+
+      const result = await service.findAll(
+        companyId,
+        1,
+        20,
+        undefined,
+        undefined,
+        undefined,
+        makkahManager,
+      );
+
+      expect(result.data).toEqual([]);
+      expect(result.total).toBe(0);
+    });
+
+    it('filters the list on the work order own region column', async () => {
+      seedOrders(listSeeds);
+
+      await service.findAll(
+        companyId,
+        1,
+        20,
+        undefined,
+        undefined,
+        undefined,
+        makkahManager,
+      );
+
+      const chain = repo.createQueryBuilder.mock.results[0].value;
+      expect(chain.andWhere).toHaveBeenCalledWith(
+        'wo.region_code IN (:...regionCodes)',
+        { regionCodes: ['makkah'] },
+      );
+    });
+
+    it('lists no work orders from a region outside the caller assignments', async () => {
+      seedOrders(listSeeds);
+
+      const result = await service.findAll(
+        companyId,
+        1,
+        20,
+        'punjab',
+        undefined,
+        undefined,
+        makkahManager,
+      );
+
+      expect(result.data).toEqual([]);
+      expect(result.total).toBe(0);
+    });
+
+    it('leaves the list unfiltered for admins', async () => {
+      seedOrders(listSeeds);
+
+      const result = await service.findAll(
+        companyId,
+        1,
+        20,
+        undefined,
+        undefined,
+        undefined,
+        admin,
+      );
+
+      expect(result.data.map((o) => o.id)).toEqual([
+        'order-makkah',
+        'order-makkah-no-unit',
+        'order-punjab',
+      ]);
+    });
+
+    it('lists nothing when the caller has no assigned region', async () => {
+      seedOrders(listSeeds);
+
+      const result = await service.findAll(
+        companyId,
+        1,
+        20,
+        undefined,
+        undefined,
+        undefined,
+        { role: 'manager', regionCodes: [] },
+      );
+
+      expect(result.data).toEqual([]);
+      expect(repo.createQueryBuilder).not.toHaveBeenCalled();
+    });
+
+    it('totals costs only for the caller assigned regions', async () => {
+      seedOrders(listSeeds);
+
+      const result = await service.getCostSummary(
+        companyId,
+        undefined,
+        makkahManager,
+      );
+
+      expect(result.workOrderCount).toBe(2);
+      expect(result.totalEstimated).toBe(200);
+    });
+
+    it('totals costs across every region for admins', async () => {
+      seedOrders(listSeeds);
+
+      const result = await service.getCostSummary(companyId, undefined, admin);
+
+      expect(result.workOrderCount).toBe(3);
+    });
+
+    it('totals no costs when the caller has no assigned region', async () => {
+      seedOrders(listSeeds);
+
+      const result = await service.getCostSummary(companyId, undefined, {
+        role: 'manager',
+        regionCodes: [],
+      });
+
+      expect(result).toEqual({
+        totalEstimated: 0,
+        totalActual: 0,
+        variance: 0,
+        workOrderCount: 0,
+        avgCostPerOrder: 0,
+      });
+      expect(repo.createQueryBuilder).not.toHaveBeenCalled();
+    });
+
+    it('confines upcoming preventive work to the caller assigned regions', async () => {
+      seedOrders(listSeeds);
+
+      const result = await service.getUpcoming(
+        companyId,
+        undefined,
+        makkahManager,
+      );
+
+      expect(result.map((o) => o.id)).toEqual([
+        'order-makkah',
+        'order-makkah-no-unit',
+      ]);
+    });
+
+    it('returns no upcoming preventive work when the caller has no assigned region', async () => {
+      seedOrders(listSeeds);
+
+      const result = await service.getUpcoming(companyId, undefined, {
+        role: 'manager',
+        regionCodes: [],
+      });
+
+      expect(result).toEqual([]);
+      expect(repo.createQueryBuilder).not.toHaveBeenCalled();
+    });
+
+    describe('unit binding', () => {
+      const dtoOnUnit = (unitId: string) =>
+        ({
+          title: 'Fix AC',
+          description: 'AC not cooling',
+          priority: WorkOrderPriority.HIGH,
+          category: WorkOrderCategory.HVAC,
+          unitId,
+        }) as any;
+
+      // Writes the row the service built, so the stamped region is observable.
+      function seedPassthroughWrites() {
+        repo.create.mockImplementation((input: Partial<WorkOrder>) => input);
+        repo.save.mockImplementation((row: WorkOrder) => Promise.resolve(row));
+      }
+
+      it('denies create when the unit is outside the caller regions', async () => {
+        seedUnitLookup();
+
+        await expect(
+          service.create(companyId, dtoOnUnit('unit-punjab'), makkahManager),
+        ).rejects.toThrow(BadRequestException);
+        expect(repo.save).not.toHaveBeenCalled();
+      });
+
+      it('creates a work order on a unit inside the caller regions', async () => {
+        seedUnitLookup();
+        seedPassthroughWrites();
+
+        const result = await service.create(
+          companyId,
+          dtoOnUnit('unit-punjab'),
+          twoRegionManager,
+        );
+
+        expect(result.unitId).toBe('unit-punjab');
+        expect(result.regionCode).toBe('punjab');
+      });
+
+      it('denies create when the caller has no assigned region', async () => {
+        seedUnitLookup();
+
+        await expect(
+          service.create(companyId, dtoOnUnit('unit-makkah'), {
+            role: 'manager',
+            regionCodes: [],
+          }),
+        ).rejects.toThrow(BadRequestException);
+        expect(unitRepo.findOne).not.toHaveBeenCalled();
+        expect(repo.save).not.toHaveBeenCalled();
+      });
+
+      it('denies moving a work order onto a unit outside the caller regions', async () => {
+        seedOrder('makkah', 'unit-makkah');
+        seedUnitLookup();
+
+        await expect(
+          service.update(
+            'order-uuid-1',
+            companyId,
+            { unitId: 'unit-punjab' },
+            makkahManager,
+          ),
+        ).rejects.toThrow(BadRequestException);
+        expect(repo.save).not.toHaveBeenCalled();
+      });
+
+      it('moves a work order onto a unit inside the caller regions', async () => {
+        seedOrder('makkah', 'unit-makkah');
+        seedUnitLookup();
+        seedPassthroughWrites();
+
+        const result = await service.update(
+          'order-uuid-1',
+          companyId,
+          { unitId: 'unit-punjab' },
+          twoRegionManager,
+        );
+
+        expect(result.unitId).toBe('unit-punjab');
+      });
+
+      it('moves the region with the unit', async () => {
+        seedOrder('makkah', 'unit-makkah');
+        seedUnitLookup();
+        seedPassthroughWrites();
+
+        const result = await service.update(
+          'order-uuid-1',
+          companyId,
+          { unitId: 'unit-punjab' },
+          twoRegionManager,
+        );
+
+        expect(result.regionCode).toBe('punjab');
+      });
     });
   });
 });

@@ -4,6 +4,7 @@ import {
   Column,
   CreateDateColumn,
   UpdateDateColumn,
+  Index,
   ManyToOne,
   JoinColumn,
 } from 'typeorm';
@@ -52,6 +53,10 @@ export class Cheque {
   @ManyToOne(() => Unit, { nullable: true })
   @JoinColumn({ name: 'unit_id' })
   unit: Unit | null;
+
+  @Index('IDX_CHEQUES_REGION_CODE')
+  @Column({ name: 'region_code', type: 'varchar', length: 50 })
+  regionCode: string;
 
   @Column({ name: 'cheque_number', length: 100 })
   chequeNumber: string;

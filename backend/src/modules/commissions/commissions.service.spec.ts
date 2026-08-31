@@ -1,7 +1,12 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { NotFoundException, ConflictException } from '@nestjs/common';
+import {
+  NotFoundException,
+  ConflictException,
+  BadRequestException,
+} from '@nestjs/common';
+import { Role } from '@shared/enums/roles.enum';
 import { CommissionsService } from './commissions.service';
 import {
   Commission,
@@ -86,6 +91,45 @@ describe('CommissionsService', () => {
           commissionAmount: 10000,
           companyId,
         }),
+      );
+    });
+
+    it('rejects a body regionCode outside the caller assignments', async () => {
+      const dto = {
+        agentId,
+        type: CommissionType.SALE,
+        grossAmount: 500000,
+        commissionRate: 2,
+        regionCode: 'punjab',
+      };
+
+      await expect(
+        service.create(companyId, dto as any, {
+          role: Role.MANAGER,
+          regionCodes: ['makkah'],
+        }),
+      ).rejects.toThrow(BadRequestException);
+      expect(repo.save).not.toHaveBeenCalled();
+    });
+
+    it('accepts a body regionCode the caller is assigned to', async () => {
+      repo.create.mockReturnValue(mockCommission as Commission);
+      repo.save.mockResolvedValue(mockCommission as Commission);
+      const dto = {
+        agentId,
+        type: CommissionType.SALE,
+        grossAmount: 500000,
+        commissionRate: 2,
+        regionCode: 'makkah',
+      };
+
+      await service.create(companyId, dto as any, {
+        role: Role.MANAGER,
+        regionCodes: ['makkah'],
+      });
+
+      expect(repo.create).toHaveBeenCalledWith(
+        expect.objectContaining({ regionCode: 'makkah' }),
       );
     });
 
@@ -388,6 +432,354 @@ describe('CommissionsService', () => {
       expect(result.totalPaid).toBe(10000);
       expect(result.totalPending).toBe(8000);
       expect(result.count).toBe(3);
+    });
+  });
+  describe('region scoping', () => {
+    const makkahManager = { role: 'manager', regionCodes: ['makkah'] };
+    const twoRegionManager = {
+      role: 'manager',
+      regionCodes: ['makkah', 'punjab'],
+    };
+    const admin = { role: 'company_admin', regionCodes: ['makkah'] };
+
+    // Stands in for Postgres: reads and conditional updates only touch the
+    // seeded row when the where clause the service built admits its region.
+    function seedCommissionInRegion(
+      regionCode: string,
+      status = CommissionStatus.PENDING,
+    ) {
+      const row = { ...mockCommission, regionCode, status } as Commission;
+      const admits = (where: any) => {
+        const filter = where?.regionCode;
+        return !filter || (filter.value as string[]).includes(regionCode);
+      };
+      repo.findOne.mockImplementation((opts: any) =>
+        Promise.resolve(admits(opts?.where) ? row : null),
+      );
+      repo.update.mockImplementation((criteria: any) =>
+        Promise.resolve({
+          affected: admits(criteria) && criteria.status === row.status ? 1 : 0,
+        } as any),
+      );
+      return row;
+    }
+
+    it('denies findOne on a commission outside the caller assigned regions', async () => {
+      seedCommissionInRegion('punjab');
+
+      await expect(
+        service.findOne('commission-uuid-1', companyId, makkahManager),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('allows a by-id read in any region the caller is assigned to', async () => {
+      seedCommissionInRegion('punjab');
+
+      const result = await service.findOne(
+        'commission-uuid-1',
+        companyId,
+        twoRegionManager,
+      );
+
+      expect(result.id).toBe('commission-uuid-1');
+    });
+
+    it('denies update on a commission outside the caller assigned regions', async () => {
+      seedCommissionInRegion('punjab');
+
+      await expect(
+        service.update(
+          'commission-uuid-1',
+          companyId,
+          { status: CommissionStatus.APPROVED },
+          makkahManager,
+        ),
+      ).rejects.toThrow(NotFoundException);
+      expect(repo.update).not.toHaveBeenCalled();
+    });
+
+    it('denies approve on a commission outside the caller assigned regions', async () => {
+      const row = seedCommissionInRegion('punjab');
+
+      await expect(
+        service.approve('commission-uuid-1', companyId, makkahManager),
+      ).rejects.toThrow(NotFoundException);
+      expect(row.status).toBe(CommissionStatus.PENDING);
+    });
+
+    it('approves a commission inside the caller assigned regions', async () => {
+      seedCommissionInRegion('punjab');
+
+      const result = await service.approve(
+        'commission-uuid-1',
+        companyId,
+        twoRegionManager,
+      );
+
+      expect(result.id).toBe('commission-uuid-1');
+    });
+
+    it('denies pay on a commission outside the caller assigned regions', async () => {
+      seedCommissionInRegion('punjab', CommissionStatus.APPROVED);
+
+      await expect(
+        service.pay('commission-uuid-1', companyId, makkahManager),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('denies every by-id read when the caller has no assigned region', async () => {
+      seedCommissionInRegion('makkah');
+
+      await expect(
+        service.findOne('commission-uuid-1', companyId, {
+          role: 'manager',
+          regionCodes: [],
+        }),
+      ).rejects.toThrow(NotFoundException);
+      expect(repo.findOne).not.toHaveBeenCalled();
+    });
+
+    it('leaves admins unconfined by their own assignments', async () => {
+      seedCommissionInRegion('punjab');
+
+      const result = await service.findOne(
+        'commission-uuid-1',
+        companyId,
+        admin,
+      );
+
+      expect(result.id).toBe('commission-uuid-1');
+    });
+
+    it('stays unscoped when no caller is supplied', async () => {
+      seedCommissionInRegion('punjab');
+
+      const result = await service.findOne('commission-uuid-1', companyId);
+
+      expect(result.id).toBe('commission-uuid-1');
+    });
+
+    // Stands in for Postgres on list reads: the seeded rows survive only when
+    // the where clause the service built admits their region.
+    function seedCommissionsInRegions(regionCodes: string[]) {
+      const rows = regionCodes.map(
+        (regionCode) =>
+          ({
+            ...mockCommission,
+            id: `commission-${regionCode}`,
+            regionCode,
+          }) as Commission,
+      );
+      repo.findAndCount.mockImplementation((opts: any) => {
+        const codes = opts?.where?.regionCode?.value as string[] | undefined;
+        const matched = codes
+          ? rows.filter((row) => codes.includes(row.regionCode))
+          : rows;
+        return Promise.resolve([matched, matched.length]);
+      });
+      return rows;
+    }
+
+    // Stands in for Postgres on the aggregate: the fake only totals the seeded
+    // rows the region predicate admits.
+    function seedSummaryRows(rows: { regionCode: string; amount: number }[]) {
+      let codes: string[] | undefined;
+      const qb: any = {
+        select: jest.fn().mockReturnThis(),
+        addSelect: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        setParameters: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockImplementation((_sql: string, params?: any) => {
+          if (params?.regionCodes) {
+            codes = params.regionCodes as string[];
+          }
+          return qb;
+        }),
+        getRawOne: jest.fn().mockImplementation(() => {
+          const matched = codes
+            ? rows.filter((row) => codes!.includes(row.regionCode))
+            : rows;
+          return Promise.resolve({
+            totalEarned: String(
+              matched.reduce((sum, row) => sum + row.amount, 0),
+            ),
+            totalPaid: '0',
+            totalPending: '0',
+            count: String(matched.length),
+          });
+        }),
+      };
+      repo.createQueryBuilder.mockReturnValue(qb);
+      return qb;
+    }
+
+    it('confines the list to the caller assigned regions', async () => {
+      seedCommissionsInRegions(['makkah', 'punjab']);
+
+      const result = await service.findAll(
+        companyId,
+        1,
+        20,
+        undefined,
+        undefined,
+        makkahManager,
+      );
+
+      expect(result.data.map((c) => c.regionCode)).toEqual(['makkah']);
+      expect(result.total).toBe(1);
+    });
+
+    it('lists no commissions from a region outside the caller assignments', async () => {
+      seedCommissionsInRegions(['makkah', 'punjab']);
+
+      const result = await service.findAll(
+        companyId,
+        1,
+        20,
+        undefined,
+        'punjab',
+        makkahManager,
+      );
+
+      expect(result.data).toEqual([]);
+      expect(result.total).toBe(0);
+    });
+
+    it('narrows the list to a requested region the caller is assigned to', async () => {
+      seedCommissionsInRegions(['makkah', 'punjab']);
+
+      const result = await service.findAll(
+        companyId,
+        1,
+        20,
+        undefined,
+        'punjab',
+        twoRegionManager,
+      );
+
+      expect(result.data.map((c) => c.regionCode)).toEqual(['punjab']);
+    });
+
+    it('leaves the list unfiltered for admins', async () => {
+      seedCommissionsInRegions(['makkah', 'punjab']);
+
+      const result = await service.findAll(
+        companyId,
+        1,
+        20,
+        undefined,
+        undefined,
+        admin,
+      );
+
+      expect(result.data.map((c) => c.regionCode)).toEqual([
+        'makkah',
+        'punjab',
+      ]);
+    });
+
+    it('lists nothing when the caller has no assigned region', async () => {
+      seedCommissionsInRegions(['makkah', 'punjab']);
+
+      const result = await service.findAll(companyId, 1, 20, undefined, undefined, {
+        role: 'manager',
+        regionCodes: [],
+      });
+
+      expect(result.data).toEqual([]);
+      expect(repo.findAndCount).not.toHaveBeenCalled();
+    });
+
+    it('confines findByAgent to the caller assigned regions', async () => {
+      seedCommissionsInRegions(['makkah', 'punjab']);
+
+      const result = await service.findByAgent(
+        agentId,
+        companyId,
+        1,
+        20,
+        makkahManager,
+      );
+
+      expect(result.data.map((c) => c.regionCode)).toEqual(['makkah']);
+      expect(result.total).toBe(1);
+    });
+
+    it('returns every region on findByAgent for admins', async () => {
+      seedCommissionsInRegions(['makkah', 'punjab']);
+
+      const result = await service.findByAgent(
+        agentId,
+        companyId,
+        1,
+        20,
+        admin,
+      );
+
+      expect(result.data.map((c) => c.regionCode)).toEqual([
+        'makkah',
+        'punjab',
+      ]);
+    });
+
+    it('returns no agent commissions when the caller has no assigned region', async () => {
+      seedCommissionsInRegions(['makkah', 'punjab']);
+
+      const result = await service.findByAgent(agentId, companyId, 1, 20, {
+        role: 'manager',
+        regionCodes: [],
+      });
+
+      expect(result.data).toEqual([]);
+      expect(repo.findAndCount).not.toHaveBeenCalled();
+    });
+
+    it('totals only the commissions in the caller assigned regions', async () => {
+      seedSummaryRows([
+        { regionCode: 'makkah', amount: 1000 },
+        { regionCode: 'punjab', amount: 2000 },
+      ]);
+
+      const result = await service.getSummary(
+        agentId,
+        companyId,
+        makkahManager,
+      );
+
+      expect(result.totalEarned).toBe(1000);
+      expect(result.count).toBe(1);
+    });
+
+    it('totals every region for admins', async () => {
+      seedSummaryRows([
+        { regionCode: 'makkah', amount: 1000 },
+        { regionCode: 'punjab', amount: 2000 },
+      ]);
+
+      const result = await service.getSummary(agentId, companyId, admin);
+
+      expect(result.totalEarned).toBe(3000);
+      expect(result.count).toBe(2);
+    });
+
+    it('totals nothing when the caller has no assigned region', async () => {
+      seedSummaryRows([
+        { regionCode: 'makkah', amount: 1000 },
+        { regionCode: 'punjab', amount: 2000 },
+      ]);
+
+      const result = await service.getSummary(agentId, companyId, {
+        role: 'manager',
+        regionCodes: [],
+      });
+
+      expect(result).toEqual({
+        totalEarned: 0,
+        totalPaid: 0,
+        totalPending: 0,
+        count: 0,
+      });
+      expect(repo.createQueryBuilder).not.toHaveBeenCalled();
     });
   });
 });

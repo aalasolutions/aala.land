@@ -4,8 +4,13 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, In, Repository } from 'typeorm';
 import { Contact } from './entities/contact.entity';
+import { Company } from '../companies/entities/company.entity';
+import {
+  RegionScope,
+  resolveRegionCode,
+} from '../../shared/utils/resolve-region-code.util';
 import { Lead } from '../leads/entities/lead.entity';
 import { Unit } from '../properties/entities/unit.entity';
 import { Lease } from '../leases/entities/lease.entity';
@@ -18,6 +23,10 @@ import {
   normalizePhone,
   phoneDigitsWhere,
 } from '../../shared/utils/contact.util';
+import {
+  effectiveRegionCodes,
+  scopedRegionCodes,
+} from '../../shared/utils/region-visibility.util';
 
 // Derived role tags. Never stored on the contact; computed from which rows
 // reference it.
@@ -36,6 +45,7 @@ export interface ContactFilters {
   nationality?: string;
   dateFrom?: string;
   dateTo?: string;
+  regionCode?: string;
 }
 
 // Identity carried inline when attaching a person (lead capture, unit owner,
@@ -63,6 +73,8 @@ export class ContactsService {
     private readonly leaseRepository: Repository<Lease>,
     @InjectRepository(WhatsappChat)
     private readonly chatRepository: Repository<WhatsappChat>,
+    @InjectRepository(Company)
+    private readonly companyRepository: Repository<Company>,
   ) {}
 
   // Adding a contact honors the same one-number-one-contact rule as lead
@@ -75,6 +87,7 @@ export class ContactsService {
     companyId: string,
     dto: CreateContactDto,
     createdBy: string,
+    caller: RegionScope,
   ): Promise<ContactResponse> {
     const phoneKey = normalizePhone(dto.phone);
     let existing: Contact | null = null;
@@ -92,10 +105,17 @@ export class ContactsService {
       return this.findOne(merged.id, companyId);
     }
 
+    const regionCode = await resolveRegionCode(
+      this.companyRepository,
+      companyId,
+      dto.regionCode,
+      caller,
+    );
     const contact = this.contactRepository.create({
       ...dto,
       companyId,
       createdBy,
+      regionCode,
     });
     const saved = await this.contactRepository.save(contact);
     await this.linkMatchingChats(saved);
@@ -109,10 +129,13 @@ export class ContactsService {
   // resolves. Contacts with no phone match on lowercased email; a contact with
   // neither is just created (the plain-contact case). On resolve, identity
   // fields fill the existing contact's empty slots.
+  // `regionCode` is the region of whatever created this contact (a lead, a unit
+  // owner). Falls back to the company default when the caller has none.
   async resolveOrCreate(
     companyId: string,
     identity: ContactIdentity,
     createdBy?: string,
+    regionCode?: string,
   ): Promise<Contact> {
     if (identity.contactId) {
       const existing = await this.contactRepository.findOne({
@@ -159,6 +182,11 @@ export class ContactsService {
     const contact = this.contactRepository.create({
       companyId,
       createdBy: createdBy ?? null,
+      regionCode: await resolveRegionCode(
+        this.companyRepository,
+        companyId,
+        regionCode,
+      ),
       firstName: identity.firstName || null,
       lastName: identity.lastName || null,
       email: identity.email || null,
@@ -242,15 +270,25 @@ export class ContactsService {
     search?: string,
     tag?: ContactTag,
     filters?: ContactFilters,
+    caller?: RegionScope,
   ): Promise<{
     data: ContactResponse[];
     total: number;
     page: number;
     limit: number;
   }> {
+    const regionCodes = effectiveRegionCodes(filters?.regionCode, caller);
+    if (regionCodes?.length === 0) {
+      return { data: [], total: 0, page, limit };
+    }
+
     const qb = this.contactRepository
       .createQueryBuilder('c')
       .where('c.company_id = :companyId', { companyId });
+
+    if (regionCodes) {
+      qb.andWhere('c.region_code IN (:...regionCodes)', { regionCodes });
+    }
 
     if (search) {
       qb.andWhere(
@@ -320,20 +358,34 @@ export class ContactsService {
     };
   }
 
-  async findOne(id: string, companyId: string): Promise<ContactResponse> {
-    const contact = await this.contactRepository.findOne({
-      where: { id, companyId },
-    });
-    if (!contact) {
-      throw new NotFoundException('Contact not found');
-    }
+  async findOne(
+    id: string,
+    companyId: string,
+    caller?: RegionScope,
+  ): Promise<ContactResponse> {
+    const contact = await this.findOneEntity(id, companyId, caller);
     const [withTag] = await this.attachTags(companyId, [contact]);
     return this.serialize(withTag);
   }
 
-  async findOneEntity(id: string, companyId: string): Promise<Contact> {
+  // Internal callers omit `caller`: access is already established.
+  async findOneEntity(
+    id: string,
+    companyId: string,
+    caller?: RegionScope,
+  ): Promise<Contact> {
+    const scopedCodes = scopedRegionCodes(caller);
+    // No assignment means no access, and an empty IN () is invalid SQL.
+    if (scopedCodes?.length === 0) {
+      throw new NotFoundException('Contact not found');
+    }
+
     const contact = await this.contactRepository.findOne({
-      where: { id, companyId },
+      where: {
+        id,
+        companyId,
+        ...(scopedCodes ? { regionCode: In(scopedCodes) } : {}),
+      },
     });
     if (!contact) {
       throw new NotFoundException('Contact not found');
@@ -345,8 +397,9 @@ export class ContactsService {
     id: string,
     companyId: string,
     dto: UpdateContactDto,
+    caller?: RegionScope,
   ): Promise<ContactResponse> {
-    const contact = await this.findOneEntity(id, companyId);
+    const contact = await this.findOneEntity(id, companyId, caller);
     Object.assign(contact, dto);
     await this.contactRepository.save(contact);
     // A phone may have changed (or just been set): re-link chats for it.
@@ -363,6 +416,7 @@ export class ContactsService {
     id: string,
     companyId: string,
     transferToContactId?: string,
+    caller?: RegionScope,
   ): Promise<void> {
     if (transferToContactId === id) {
       throw new BadRequestException('Cannot transfer a contact to itself');
@@ -371,7 +425,7 @@ export class ContactsService {
     // Verify the source exists in this company first. Without this, a wrong id
     // (or another company's) yields zero edge counts and a delete that touches
     // nothing, reported as success instead of 404.
-    await this.findOneEntity(id, companyId);
+    await this.findOneEntity(id, companyId, caller);
 
     const [leadCount, unitCount, leaseCount, chatCount] = await Promise.all([
       this.leadRepository.count({ where: { contactId: id, companyId } }),

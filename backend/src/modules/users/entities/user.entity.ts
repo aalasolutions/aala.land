@@ -77,6 +77,10 @@ export class User {
   @JoinColumn({ name: 'company_id' })
   company: Company;
 
+  // Regions this user may work in. jsonb to match companies.active_regions.
+  @Column({ name: 'region_codes', type: 'jsonb', default: () => "'[]'::jsonb" })
+  regionCodes: string[];
+
   @Column({ type: 'varchar', length: 50, nullable: true })
   phone: string | null;
 

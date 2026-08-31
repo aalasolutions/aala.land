@@ -14,6 +14,7 @@ describe('ReportsController', () => {
       userId: 'user-uuid-1',
       email: 'admin@test.com',
       role: 'company_admin',
+      regionCodes: ['dubai'],
     },
   };
 
@@ -65,6 +66,7 @@ describe('ReportsController', () => {
       expect(service.getDashboardKpis).toHaveBeenCalledWith(
         companyId,
         undefined,
+        mockReq.user,
       );
       expect(result).toEqual(mockKpis);
     });
@@ -91,6 +93,7 @@ describe('ReportsController', () => {
       expect(service.getAgentPerformance).toHaveBeenCalledWith(
         companyId,
         undefined,
+        mockReq.user,
       );
       expect(result).toEqual(mockPerf);
     });
@@ -102,7 +105,11 @@ describe('ReportsController', () => {
 
       const result = await controller.getRedFlags(mockReq);
 
-      expect(service.getRedFlags).toHaveBeenCalledWith(companyId, undefined);
+      expect(service.getRedFlags).toHaveBeenCalledWith(
+        companyId,
+        undefined,
+        mockReq.user,
+      );
       expect(result).toEqual([]);
     });
   });
@@ -130,6 +137,7 @@ describe('ReportsController', () => {
       expect(service.getPipelineFunnel).toHaveBeenCalledWith(
         companyId,
         undefined,
+        mockReq.user,
       );
       expect(result).toEqual([]);
     });
@@ -144,7 +152,11 @@ describe('ReportsController', () => {
 
       const result = await controller.getBottlenecks(mockReq);
 
-      expect(service.getBottlenecks).toHaveBeenCalledWith(companyId, undefined);
+      expect(service.getBottlenecks).toHaveBeenCalledWith(
+        companyId,
+        undefined,
+        mockReq.user,
+      );
       expect(result).toEqual(mockBottlenecks);
     });
   });

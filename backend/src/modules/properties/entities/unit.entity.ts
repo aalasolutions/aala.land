@@ -81,11 +81,12 @@ export class Unit {
   })
   sqFt: number | null;
 
-  @Column({ type: 'integer', default: 0 })
-  bedrooms: number;
+  // Nullable means unknown; 0 is a genuine zero, ie. a studio.
+  @Column({ type: 'integer', nullable: true })
+  bedrooms: number | null;
 
-  @Column({ type: 'integer', default: 0 })
-  bathrooms: number;
+  @Column({ type: 'integer', nullable: true })
+  bathrooms: number | null;
 
   @Column({
     name: 'property_type',

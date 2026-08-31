@@ -28,6 +28,7 @@ describe('UsersController', () => {
       email: 'admin@test.com',
       companyId,
       role: Role.COMPANY_ADMIN,
+      regionCodes: ['dubai'],
     },
   };
 

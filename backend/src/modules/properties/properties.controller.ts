@@ -39,7 +39,7 @@ import { UpdateAssetDto } from './dto/update-asset.dto';
 import { CreateUnitDto } from './dto/create-unit.dto';
 import { UpdateUnitDto } from './dto/update-unit.dto';
 import { AuthenticatedRequest } from '@shared/interfaces/authenticated-request.interface';
-import { requireCompanyId } from '@shared/utils/auth.util';
+import { requireCompanyId, scopedCompanyId } from '@shared/utils/auth.util';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import { UploadMediaDto } from './dto/upload-media.dto';
@@ -176,6 +176,7 @@ export class PropertiesController {
     return this.propertiesService.bulkImportUnits(
       requireCompanyId(req.user),
       csv,
+      req.user,
     );
   }
 
@@ -219,6 +220,7 @@ export class PropertiesController {
       page,
       limit,
       regionCode,
+      req.user,
     );
   }
 
@@ -235,7 +237,11 @@ export class PropertiesController {
     @Param('id', ParseUUIDPipe) id: string,
     @Request() req: AuthenticatedRequest,
   ) {
-    return this.propertiesService.findOneArea(id, requireCompanyId(req.user));
+    return this.propertiesService.findOneArea(
+      id,
+      requireCompanyId(req.user),
+      req.user,
+    );
   }
 
   @Patch('areas/:id')
@@ -250,6 +256,7 @@ export class PropertiesController {
       id,
       requireCompanyId(req.user),
       dto,
+      req.user,
     );
   }
 
@@ -261,7 +268,11 @@ export class PropertiesController {
     @Param('id', ParseUUIDPipe) id: string,
     @Request() req: AuthenticatedRequest,
   ) {
-    return this.propertiesService.removeArea(id, requireCompanyId(req.user));
+    return this.propertiesService.removeArea(
+      id,
+      requireCompanyId(req.user),
+      req.user,
+    );
   }
 
   // Assets (shared, community-seeded)
@@ -277,8 +288,17 @@ export class PropertiesController {
   @ApiOperation({ summary: 'Fuzzy search assets by name within a locality' })
   @ApiQuery({ name: 'q', required: true, type: String })
   @ApiQuery({ name: 'localityId', required: true, type: String })
-  searchAssets(@Query('q') q: string, @Query('localityId') localityId: string) {
-    return this.propertiesService.searchAssets(localityId, q);
+  searchAssets(
+    @Request() req: AuthenticatedRequest,
+    @Query('q') q: string,
+    @Query('localityId') localityId: string,
+  ) {
+    return this.propertiesService.searchAssets(
+      scopedCompanyId(req.user),
+      localityId,
+      q,
+      req.user,
+    );
   }
 
   @Post('assets')
@@ -311,6 +331,7 @@ export class PropertiesController {
       requireCompanyId(req.user),
       page,
       limit,
+      req.user,
     );
   }
 
@@ -338,6 +359,7 @@ export class PropertiesController {
       requireCompanyId(req.user),
       page,
       limit,
+      req.user,
     );
   }
 
@@ -351,8 +373,15 @@ export class PropertiesController {
     Role.ACCOUNTANT,
   )
   @ApiOperation({ summary: 'Get asset by ID (shared)' })
-  findOneAsset(@Param('id', ParseUUIDPipe) id: string) {
-    return this.propertiesService.findOneAsset(id);
+  findOneAsset(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Request() req: AuthenticatedRequest,
+  ) {
+    return this.propertiesService.findOneAsset(
+      id,
+      scopedCompanyId(req.user),
+      req.user,
+    );
   }
 
   @Patch('assets/:id')
@@ -408,6 +437,13 @@ export class PropertiesController {
     type: String,
     description: 'Units owned by this contact',
   })
+  @ApiQuery({
+    name: 'sort',
+    required: false,
+    type: String,
+    description: 'One of: name, price, area, added. Anything else is ignored.',
+  })
+  @ApiQuery({ name: 'order', required: false, enum: ['asc', 'desc'] })
   findAllUnits(
     @Request() req: AuthenticatedRequest,
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
@@ -422,6 +458,8 @@ export class PropertiesController {
     @Query('localityId') localityId?: string,
     @Query('regionCode') regionCode?: string,
     @Query('ownerId', new ParseUUIDPipe({ optional: true })) ownerId?: string,
+    @Query('sort') sort?: string,
+    @Query('order') order?: string,
   ) {
     const filters = {
       amenities: amenitiesStr
@@ -445,6 +483,29 @@ export class PropertiesController {
       page,
       limit,
       filters,
+      {
+        field: sort || undefined,
+        direction: order?.toUpperCase() === 'DESC' ? 'DESC' : 'ASC',
+      },
+    );
+  }
+
+  // Declared before `units/:id` so the literal segment is not eaten by the param route.
+  @Get('units/count-by-region')
+  @Roles(
+    Role.COMPANY_ADMIN,
+    Role.ADMIN,
+    Role.MANAGER,
+    Role.AGENT,
+    Role.ACCOUNTANT,
+  )
+  @ApiOperation({
+    summary: 'Unit totals per region code for the topbar region switcher',
+  })
+  countUnitsByRegion(@Request() req: AuthenticatedRequest) {
+    return this.propertiesService.countUnitsByRegion(
+      requireCompanyId(req.user),
+      req.user,
     );
   }
 
@@ -463,7 +524,11 @@ export class PropertiesController {
     @Param('id', ParseUUIDPipe) id: string,
     @Request() req: AuthenticatedRequest,
   ) {
-    return this.propertiesService.findOneUnit(id, requireCompanyId(req.user));
+    return this.propertiesService.findOneUnit(
+      id,
+      requireCompanyId(req.user),
+      req.user,
+    );
   }
 
   @Post('units')
@@ -474,6 +539,7 @@ export class PropertiesController {
       requireCompanyId(req.user),
       dto,
       req.user.userId,
+      req.user,
     );
   }
 
@@ -499,6 +565,7 @@ export class PropertiesController {
       requireCompanyId(req.user),
       page,
       limit,
+      req.user,
     );
   }
 
@@ -515,6 +582,7 @@ export class PropertiesController {
       requireCompanyId(req.user),
       dto,
       req.user.userId,
+      req.user,
     );
   }
 
@@ -526,7 +594,11 @@ export class PropertiesController {
     @Param('id', ParseUUIDPipe) id: string,
     @Request() req: AuthenticatedRequest,
   ) {
-    return this.propertiesService.removeUnit(id, requireCompanyId(req.user));
+    return this.propertiesService.removeUnit(
+      id,
+      requireCompanyId(req.user),
+      req.user,
+    );
   }
 
   @Get('occupancy')
@@ -539,6 +611,9 @@ export class PropertiesController {
   )
   @ApiOperation({ summary: 'Asset-level occupancy rates' })
   getOccupancy(@Request() req: AuthenticatedRequest) {
-    return this.propertiesService.getAssetOccupancy(requireCompanyId(req.user));
+    return this.propertiesService.getAssetOccupancy(
+      requireCompanyId(req.user),
+      req.user,
+    );
   }
 }

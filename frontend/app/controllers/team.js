@@ -7,6 +7,7 @@ import { ALL_ROLES } from 'land/constants';
 
 export default class TeamController extends PaginatedController {
   @service auth;
+  @service region;
   @service notifications;
   @service router;
 
@@ -29,6 +30,8 @@ export default class TeamController extends PaginatedController {
   @tracked inviteErrorMsg = '';
   @tracked inviteExistingUser = null;
   @tracked impersonatingUserId = null;
+
+  @tracked selectedRegionCodes = [];
 
   // Remove flow (deactivate or delete, double-confirm)
   @tracked showRemoveModal = false;
@@ -145,9 +148,34 @@ export default class TeamController extends PaginatedController {
     this.formEmail = '';
     this.formPassword = '';
     this.formRole = 'agent';
+    // Seeded with the active region so a new member is never created unscoped.
+    this.selectedRegionCodes = this.region.regionCode
+      ? [this.region.regionCode]
+      : [];
     this.editUser = null;
     this.errorMsg = '';
     this.showModal = true;
+  }
+
+  // Only admins reach this page, and an admin bootstrap carries every company
+  // region.
+  get assignableRegions() {
+    return this.region.regions;
+  }
+
+  get hasNoRegionsSelected() {
+    return this.selectedRegionCodes.length === 0;
+  }
+
+  @action toggleRegion(code) {
+    const next = [...this.selectedRegionCodes];
+    const idx = next.indexOf(code);
+    if (idx === -1) {
+      next.push(code);
+    } else {
+      next.splice(idx, 1);
+    }
+    this.selectedRegionCodes = next;
   }
 
   @action openEdit(user) {
@@ -155,6 +183,7 @@ export default class TeamController extends PaginatedController {
     this.formEmail = user.email ?? '';
     this.formPassword = '';
     this.formRole = user.role ?? 'agent';
+    this.selectedRegionCodes = [...(user.regionCodes ?? [])];
     this.editUser = user;
     this.errorMsg = '';
     this.showModal = true;
@@ -238,10 +267,22 @@ export default class TeamController extends PaginatedController {
         if (this.formPassword) body.password = this.formPassword;
       }
 
+      if (!isEdit) {
+        body.regionCodes = this.selectedRegionCodes;
+      }
+
       await this.auth.fetchJson(path, {
         method: isEdit ? 'PATCH' : 'POST',
         body: JSON.stringify(body),
       });
+
+      // PATCH does not touch assignments, so an edit sends them separately.
+      if (isEdit) {
+        await this.auth.fetchJson(`/users/${this.editUser.id}/regions`, {
+          method: 'PUT',
+          body: JSON.stringify({ regionCodes: this.selectedRegionCodes }),
+        });
+      }
 
       this.notifications.success(
         isEdit ? 'Team member updated' : 'Team member created',
