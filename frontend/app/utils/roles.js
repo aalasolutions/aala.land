@@ -105,8 +105,10 @@ export function canUpdateUser(role, targetRole) {
   return currentRoleIndex < targetRoleIndex;
 }
 
-export function canSwitchRegion(role) {
-  return role === ROLES.COMPANY_ADMIN;
+// The bootstrap already narrows `regions` to what the user is assigned, so
+// more than one means switchable and exactly one means pinned.
+export function canSwitchRegion(assignedRegionCount) {
+  return assignedRegionCount > 1;
 }
 
 export function getVisibleGroups(role) {

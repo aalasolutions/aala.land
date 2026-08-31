@@ -39,7 +39,11 @@ export class AuditController {
     @Request() req: AuthenticatedRequest,
     @Query() query: QueryAuditLogsDto,
   ) {
-    return this.auditService.findAll(requireCompanyId(req.user), query);
+    return this.auditService.findAll(
+      requireCompanyId(req.user),
+      query,
+      req.user.role,
+    );
   }
 
   @Delete('purge')

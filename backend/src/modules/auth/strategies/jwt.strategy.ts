@@ -39,6 +39,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
         role: true,
         companyId: true,
         isActive: true,
+        regionCodes: true,
       },
     });
 
@@ -73,6 +74,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       email: user.email,
       companyId: user.companyId,
       role: user.role,
+      regionCodes: user.regionCodes ?? [],
     };
   }
 }

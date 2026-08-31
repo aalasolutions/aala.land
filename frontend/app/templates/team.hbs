@@ -45,6 +45,7 @@
               <th>Name</th>
               <th>Email</th>
               <th>Role</th>
+              <th>Regions</th>
               {{#if this.isSuperAdmin}}
                 <th>Company</th>
               {{/if}}
@@ -58,6 +59,20 @@
                 <td class="font-bold">{{user.name}}</td>
                 <td class="text-muted">{{user.email}}</td>
                 <td><Nuvo::Tag @text={{format-role user.role}} /></td>
+                <td>
+                  {{#if user.regionCodes.length}}
+                    <div class="flex gap-1 wrap" data-test-user-regions={{user.id}}>
+                      {{#each user.regionCodes as |code|}}
+                        <Nuvo::Tag @text={{code}} @size="sm" />
+                      {{/each}}
+                    </div>
+                  {{else}}
+                    <span
+                      class="text-xs text-muted"
+                      data-test-user-regions-empty={{user.id}}
+                    >None</span>
+                  {{/if}}
+                </td>
                 {{#if this.isSuperAdmin}}
                   <td class="text-muted">{{or user.company.name "—"}}</td>
                 {{/if}}
@@ -246,6 +261,40 @@
           data-test-input-role
         />
       </Nuvo::Field>
+
+      <Nuvo::Field
+        @label="Regions"
+        @hint="Which regions this member can work in. Selecting more than one lets them switch."
+      >
+        <div class="flex gap-2 wrap" data-test-region-picker>
+          {{#each this.assignableRegions as |r|}}
+            <button
+              type="button"
+              class="nu-tag m-pill m-selectable
+                {{if (includes this.selectedRegionCodes r.code) 'is-selected'}}"
+              data-test-region-choice={{r.code}}
+              aria-pressed={{if
+                (includes this.selectedRegionCodes r.code)
+                "true"
+                "false"
+              }}
+              {{on "click" (fn this.toggleRegion r.code)}}
+            >
+              <Ui::Ph @icon="map-pin" />
+              {{r.name}}
+            </button>
+          {{/each}}
+        </div>
+      </Nuvo::Field>
+
+      {{#if this.hasNoRegionsSelected}}
+        <Nuvo::Alert
+          @variant="warning"
+          @title="No regions selected"
+          @description="This member will fall back to the company default region rather than one you picked. Select at least one to control what they can read."
+          data-test-regions-empty-warning
+        />
+      {{/if}}
 
       {{#if this.errorMsg}}
         <p class="text-sm text-danger" data-test-error>{{this.errorMsg}}</p>

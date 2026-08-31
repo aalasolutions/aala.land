@@ -38,6 +38,7 @@ export class ReportsController {
     return this.reportsService.getDashboardKpis(
       requireCompanyId(req.user),
       regionCode,
+      req.user,
     );
   }
 
@@ -59,6 +60,7 @@ export class ReportsController {
     return this.reportsService.getAgentPerformance(
       requireCompanyId(req.user),
       regionCode,
+      req.user,
     );
   }
 
@@ -80,6 +82,7 @@ export class ReportsController {
     return this.reportsService.getRedFlags(
       requireCompanyId(req.user),
       regionCode,
+      req.user,
     );
   }
 
@@ -122,6 +125,7 @@ export class ReportsController {
     return this.reportsService.getPipelineFunnel(
       requireCompanyId(req.user),
       regionCode,
+      req.user,
     );
   }
 
@@ -145,6 +149,7 @@ export class ReportsController {
     return this.reportsService.getBottlenecks(
       requireCompanyId(req.user),
       regionCode,
+      req.user,
     );
   }
 
@@ -192,6 +197,7 @@ export class ReportsController {
     return this.reportsService.getAchievements(
       requireCompanyId(req.user),
       regionCode,
+      req.user,
     );
   }
 
@@ -213,6 +219,7 @@ export class ReportsController {
     return this.reportsService.getAgentComparison(
       requireCompanyId(req.user),
       regionCode,
+      req.user,
     );
   }
 }

@@ -3,7 +3,7 @@
  * Used by services that filter by regionCode through the Unit > Asset > Locality > City chain
  */
 
-import { SelectQueryBuilder } from 'typeorm';
+import { Raw, SelectQueryBuilder } from 'typeorm';
 
 export const REGION_FILTER_SUBQUERY = `
   SELECT u.id FROM units u
@@ -12,6 +12,25 @@ export const REGION_FILTER_SUBQUERY = `
   INNER JOIN cities c ON loc.city_id = c.id
   WHERE c.region_code = :regionCode
 `;
+
+export const REGION_FILTER_SUBQUERY_MULTI = `
+  SELECT u.id FROM units u
+  INNER JOIN assets ast ON u.asset_id = ast.id
+  INNER JOIN localities loc ON ast.locality_id = loc.id
+  INNER JOIN cities c ON loc.city_id = c.id
+  WHERE c.region_code IN (:...regionCodes)
+`;
+
+/**
+ * FindOperator for a unit reference column, for by-id reads that use find
+ * options instead of a QueryBuilder. A row whose unit is NULL does not match,
+ * which is how the list filters treat it too.
+ */
+export function unitInRegionsWhere(regionCodes: string[]) {
+  return Raw((alias) => `${alias} IN (${REGION_FILTER_SUBQUERY_MULTI})`, {
+    regionCodes,
+  });
+}
 
 /**
  * Appends region filter to a QueryBuilder if regionCode is provided

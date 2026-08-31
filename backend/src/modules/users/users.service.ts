@@ -107,10 +107,21 @@ export class UsersService {
         : null;
 
       try {
+        const { regionCodes, ...userFields } = dto;
+
+        // A member with no regions would slip past region scoping entirely, so
+        // an explicit set is used when given, then the company default, then any
+        // region the company operates. Only a company with no regions at all
+        // yields an empty set.
+        const codes = regionCodes?.length
+          ? this.validateRegionCodes(regionCodes, company?.activeRegions ?? [])
+          : this.fallbackRegionCodes(company);
+
         const user = manager.create(User, {
-          ...dto,
+          ...userFields,
           password: hashedPassword,
           companyId,
+          regionCodes: codes,
         });
         return await manager.save(user);
       } catch (err) {
@@ -136,7 +147,65 @@ export class UsersService {
       Object.assign(findOptions, { relations: ['company'] });
     }
     const [data, total] = await this.userRepository.findAndCount(findOptions);
-    return { data, total, page, limit };
+    // Sorted for the client; the stored order is the assignment order, whose
+    // first element is the region the scoping layer falls back to.
+    const withRegions = data.map((user) => ({
+      ...user,
+      regionCodes: [...(user.regionCodes ?? [])].sort(),
+    }));
+    return { data: withRegions, total, page, limit };
+  }
+
+  private fallbackRegionCodes(
+    company: {
+      defaultRegionCode?: string | null;
+      activeRegions?: string[] | null;
+    } | null,
+  ): string[] {
+    if (company?.defaultRegionCode) return [company.defaultRegionCode];
+    const first = company?.activeRegions?.[0];
+    return first ? [first] : [];
+  }
+
+  private validateRegionCodes(
+    regionCodes: string[],
+    allowed: string[],
+  ): string[] {
+    const requested = [...new Set(regionCodes)];
+    const invalid = requested.filter((code) => !allowed.includes(code));
+    if (invalid.length) {
+      throw new BadRequestException(
+        `Not active for this company: ${invalid.join(', ')}`,
+      );
+    }
+    return requested;
+  }
+
+  // Replaces assignments wholesale. Codes outside the company active regions
+  // are rejected, not silently dropped.
+  async setRegions(
+    id: string,
+    companyId: string | undefined,
+    regionCodes: string[],
+  ): Promise<{ id: string; regionCodes: string[] }> {
+    const user = await this.findOne(id, companyId);
+
+    // No company means no active region list to validate against.
+    if (!user.companyId) {
+      throw new BadRequestException('User is not associated with a company');
+    }
+
+    const company = await this.companyRepository.findOne({
+      where: { id: user.companyId },
+      select: { activeRegions: true },
+    });
+    const allowed = company?.activeRegions ?? [];
+
+    const requested = this.validateRegionCodes(regionCodes, allowed);
+
+    await this.userRepository.update(user.id, { regionCodes: requested });
+
+    return { id: user.id, regionCodes: [...requested].sort() };
   }
 
   async findOne(id: string, companyId: string | undefined): Promise<User> {
@@ -929,6 +998,7 @@ export class UsersService {
           role: dto.role,
           companyId,
           mustChangePassword: true,
+          regionCodes: this.fallbackRegionCodes(company),
         });
 
         const seat: SeatReservation | null = company

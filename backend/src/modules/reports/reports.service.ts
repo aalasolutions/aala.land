@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, LessThan } from 'typeorm';
+import { Repository, LessThan, In, FindOptionsWhere } from 'typeorm';
 import { Lead, LeadStatus } from '../leads/entities/lead.entity';
 import {
   LeadActivity,
@@ -20,6 +20,8 @@ import { Lease, LeaseStatus } from '../leases/entities/lease.entity';
 import { Cheque, ChequeStatus } from '../cheques/entities/cheque.entity';
 import { AuditLog } from '../audit/entities/audit-log.entity';
 import { User } from '../users/entities/user.entity';
+import { RegionScope } from '../../shared/utils/resolve-region-code.util';
+import { effectiveRegionCodes } from '../../shared/utils/region-visibility.util';
 
 export interface DashboardKpis {
   totalLeads: number;
@@ -92,6 +94,15 @@ export interface AgentComparison {
   rank: number;
 }
 
+const PIPELINE_STAGE_ORDER = [
+  LeadStatus.NEW,
+  LeadStatus.CONTACTED,
+  LeadStatus.VIEWING,
+  LeadStatus.NEGOTIATING,
+  LeadStatus.WON,
+  LeadStatus.LOST,
+];
+
 @Injectable()
 export class ReportsService {
   constructor(
@@ -126,13 +137,27 @@ export class ReportsService {
   async getDashboardKpis(
     companyId: string,
     regionCode?: string,
+    caller?: RegionScope,
   ): Promise<DashboardKpis> {
+    const regionCodes = effectiveRegionCodes(regionCode, caller);
+    // No readable region means nothing to total, and an empty IN () is invalid SQL.
+    if (regionCodes?.length === 0) {
+      return {
+        totalLeads: 0,
+        wonLeads: 0,
+        totalUnits: 0,
+        monthlyRevenue: 0,
+        activeLeases: 0,
+        pendingCheques: 0,
+      };
+    }
+
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
     // Leads and Commissions have direct regionCode
-    const leadWhere: Record<string, string> = { companyId };
-    if (regionCode) leadWhere.regionCode = regionCode;
+    const leadWhere: FindOptionsWhere<Lead> = { companyId };
+    if (regionCodes) leadWhere.regionCode = In(regionCodes);
 
     // Units, Transactions, Leases, Cheques need FK chain filtering
     let totalUnitsPromise: Promise<number>;
@@ -140,14 +165,14 @@ export class ReportsService {
     let activeLeasesPromise: Promise<number>;
     let pendingChequesPromise: Promise<number>;
 
-    if (regionCode) {
+    if (regionCodes) {
       totalUnitsPromise = this.unitRepository
         .createQueryBuilder('u')
         .innerJoin('assets', 'ast', 'u.asset_id = ast.id')
         .innerJoin('localities', 'loc', 'ast.locality_id = loc.id')
         .innerJoin('cities', 'ci', 'loc.city_id = ci.id')
         .where('u.company_id = :companyId', { companyId })
-        .andWhere('ci.region_code = :regionCode', { regionCode })
+        .andWhere('ci.region_code IN (:...regionCodes)', { regionCodes })
         .getCount();
 
       revenuePromise = this.transactionRepository
@@ -161,7 +186,7 @@ export class ReportsService {
         .andWhere('t.type = :type', { type: TransactionType.INCOME })
         .andWhere('t.status = :status', { status: TransactionStatus.COMPLETED })
         .andWhere('t.createdAt >= :startOfMonth', { startOfMonth })
-        .andWhere('ci.region_code = :regionCode', { regionCode })
+        .andWhere('ci.region_code IN (:...regionCodes)', { regionCodes })
         .getRawOne();
 
       activeLeasesPromise = this.leaseRepository
@@ -172,7 +197,7 @@ export class ReportsService {
         .innerJoin('cities', 'ci', 'loc.city_id = ci.id')
         .where('l.company_id = :companyId', { companyId })
         .andWhere('l.status = :status', { status: LeaseStatus.ACTIVE })
-        .andWhere('ci.region_code = :regionCode', { regionCode })
+        .andWhere('ci.region_code IN (:...regionCodes)', { regionCodes })
         .getCount();
 
       pendingChequesPromise = this.chequeRepository
@@ -183,7 +208,7 @@ export class ReportsService {
         .innerJoin('cities', 'ci', 'loc.city_id = ci.id')
         .where('c.company_id = :companyId', { companyId })
         .andWhere('c.status = :status', { status: ChequeStatus.PENDING })
-        .andWhere('ci.region_code = :regionCode', { regionCode })
+        .andWhere('ci.region_code IN (:...regionCodes)', { regionCodes })
         .getCount();
     } else {
       totalUnitsPromise = this.unitRepository.count({ where: { companyId } });
@@ -234,7 +259,14 @@ export class ReportsService {
   async getAgentPerformance(
     companyId: string,
     regionCode?: string,
+    caller?: RegionScope,
   ): Promise<AgentPerformance[]> {
+    const regionCodes = effectiveRegionCodes(regionCode, caller);
+    // No readable region means no rows, and an empty IN () is invalid SQL.
+    if (regionCodes?.length === 0) {
+      return [];
+    }
+
     const leadQb = this.leadRepository
       .createQueryBuilder('l')
       .select('l.assignedTo', 'agentId')
@@ -252,8 +284,8 @@ export class ReportsService {
       .setParameter('won', LeadStatus.WON)
       .setParameter('lost', LeadStatus.LOST);
 
-    if (regionCode)
-      leadQb.andWhere('l.regionCode = :regionCode', { regionCode });
+    if (regionCodes)
+      leadQb.andWhere('l.regionCode IN (:...regionCodes)', { regionCodes });
     leadQb.groupBy('l.assignedTo');
 
     const commQb = this.commissionRepository
@@ -265,8 +297,8 @@ export class ReportsService {
         commStatuses: [CommissionStatus.APPROVED, CommissionStatus.PAID],
       });
 
-    if (regionCode)
-      commQb.andWhere('c.regionCode = :regionCode', { regionCode });
+    if (regionCodes)
+      commQb.andWhere('c.regionCode IN (:...regionCodes)', { regionCodes });
     commQb.groupBy('c.agentId');
 
     const [leadStats, commissionStats] = await Promise.all([
@@ -335,7 +367,14 @@ export class ReportsService {
   async getRedFlags(
     companyId: string,
     regionCode?: string,
+    caller?: RegionScope,
   ): Promise<RedFlag[]> {
+    const regionCodes = effectiveRegionCodes(regionCode, caller);
+    // No readable region means no rows, and an empty IN () is invalid SQL.
+    if (regionCodes?.length === 0) {
+      return [];
+    }
+
     const now = new Date();
     const hours24Ago = new Date(now.getTime() - 24 * 60 * 60 * 1000);
     const hours48Ago = new Date(now.getTime() - 48 * 60 * 60 * 1000);
@@ -344,8 +383,8 @@ export class ReportsService {
     const days30Ago = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
     // Lead where clause (direct regionCode)
-    const leadWhere: Record<string, string> = { companyId };
-    if (regionCode) leadWhere.regionCode = regionCode;
+    const leadWhere: FindOptionsWhere<Lead> = { companyId };
+    if (regionCodes) leadWhere.regionCode = In(regionCodes);
 
     // Overdue followups QBuilder
     const overdueQb = this.leadRepository
@@ -366,13 +405,13 @@ export class ReportsService {
         statuses: [LeadStatus.CONTACTED, LeadStatus.VIEWING],
       })
       .andWhere('l.updatedAt < :days7Ago', { days7Ago });
-    if (regionCode)
-      overdueQb.andWhere('l.regionCode = :regionCode', { regionCode });
+    if (regionCodes)
+      overdueQb.andWhere('l.regionCode IN (:...regionCodes)', { regionCodes });
     overdueQb.take(20);
 
     // Vacant units (inherit region through FK)
     let vacantUnitsPromise: Promise<any[]>;
-    if (regionCode) {
+    if (regionCodes) {
       vacantUnitsPromise = this.unitRepository
         .createQueryBuilder('u')
         .select(['u.id', 'u.unitNumber', 'u.updatedAt'])
@@ -382,7 +421,7 @@ export class ReportsService {
         .where('u.company_id = :companyId', { companyId })
         .andWhere('u.status = :status', { status: UnitStatus.AVAILABLE })
         .andWhere('u.updated_at < :days30Ago', { days30Ago })
-        .andWhere('ci.region_code = :regionCode', { regionCode })
+        .andWhere('ci.region_code IN (:...regionCodes)', { regionCodes })
         .take(20)
         .getMany();
     } else {
@@ -543,30 +582,30 @@ export class ReportsService {
   async getPipelineFunnel(
     companyId: string,
     regionCode?: string,
+    caller?: RegionScope,
   ): Promise<PipelineFunnel[]> {
+    const regionCodes = effectiveRegionCodes(regionCode, caller);
+    // No readable region means no leads, and an empty IN () is invalid SQL.
+    if (regionCodes?.length === 0) {
+      return PIPELINE_STAGE_ORDER.map((stage) => ({ stage, count: 0 }));
+    }
+
     const qb = this.leadRepository
       .createQueryBuilder('l')
       .select('l.status', 'stage')
       .addSelect('COUNT(*)::int', 'count')
       .where('l.companyId = :companyId', { companyId });
 
-    if (regionCode) qb.andWhere('l.regionCode = :regionCode', { regionCode });
+    if (regionCodes)
+      qb.andWhere('l.regionCode IN (:...regionCodes)', { regionCodes });
     qb.groupBy('l.status');
 
     const results = await qb.getRawMany();
 
     // Return in pipeline order
-    const order = [
-      LeadStatus.NEW,
-      LeadStatus.CONTACTED,
-      LeadStatus.VIEWING,
-      LeadStatus.NEGOTIATING,
-      LeadStatus.WON,
-      LeadStatus.LOST,
-    ];
     const countMap = new Map(results.map((r) => [r.stage, Number(r.count)]));
 
-    return order.map((stage) => ({
+    return PIPELINE_STAGE_ORDER.map((stage) => ({
       stage,
       count: countMap.get(stage) ?? 0,
     }));
@@ -575,7 +614,14 @@ export class ReportsService {
   async getBottlenecks(
     companyId: string,
     regionCode?: string,
+    caller?: RegionScope,
   ): Promise<StageBottleneck[]> {
+    const regionCodes = effectiveRegionCodes(regionCode, caller);
+    // No readable region means no rows, and an empty IN () is invalid SQL.
+    if (regionCodes?.length === 0) {
+      return [];
+    }
+
     const now = new Date();
 
     // Get active leads (not WON/LOST) with stageEnteredAt set, grouped by status
@@ -598,7 +644,8 @@ export class ReportsService {
       })
       .setParameter('now', now);
 
-    if (regionCode) qb.andWhere('l.regionCode = :regionCode', { regionCode });
+    if (regionCodes)
+      qb.andWhere('l.regionCode IN (:...regionCodes)', { regionCodes });
 
     const results = await qb
       .groupBy('l.status')
@@ -660,8 +707,13 @@ export class ReportsService {
   async getAchievements(
     companyId: string,
     regionCode?: string,
+    caller?: RegionScope,
   ): Promise<Achievement[]> {
-    const agents = await this.getAgentPerformance(companyId, regionCode);
+    const agents = await this.getAgentPerformance(
+      companyId,
+      regionCode,
+      caller,
+    );
     const achievements: Achievement[] = [];
 
     if (agents.length === 0) return achievements;
@@ -728,8 +780,13 @@ export class ReportsService {
   async getAgentComparison(
     companyId: string,
     regionCode?: string,
+    caller?: RegionScope,
   ): Promise<AgentComparison[]> {
-    const agents = await this.getAgentPerformance(companyId, regionCode);
+    const agents = await this.getAgentPerformance(
+      companyId,
+      regionCode,
+      caller,
+    );
 
     // Rank by conversion rate, then by leads won as tiebreaker
     const sorted = [...agents].sort((a, b) => {

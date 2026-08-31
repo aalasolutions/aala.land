@@ -124,12 +124,12 @@
                 <LinkTo
                   @route="leads"
                   class="nu-sidebar__sublink"
-                  data-tooltip={{if this.desktopCollapsed "Pipeline"}}
+                  data-tooltip={{if this.desktopCollapsed "Lead Pipeline"}}
                   data-tooltip-position="end"
                   data-test-nav-leads
                 >
                   <Ui::Ph @icon="kanban" />
-                  <span class="nu-sidebar__link-label">Pipeline</span>
+                  <span class="nu-sidebar__link-label">Lead Pipeline</span>
                 </LinkTo>
               </div>
             </div>
@@ -536,7 +536,16 @@
                         {{on "click" (fn this.selectRegion r)}}
                       >
                         <span>{{r.name}}</span>
-                        <span class="region-currency-tag">{{r.currency}}</span>
+                        <span class="region-meta">
+                          {{#unless (eq r.unitCount null)}}
+                            <span
+                              class="region-unit-count
+                                {{unless r.unitCount 'is-zero'}}"
+                              data-test-region-unit-count={{r.code}}
+                            >{{r.unitCount}}</span>
+                          {{/unless}}
+                          <span class="region-currency-tag">{{r.currency}}</span>
+                        </span>
                       </button>
                     {{/each}}
                   {{/each}}

@@ -20,6 +20,7 @@ describe('MaintenanceController', () => {
       userId: 'user-uuid-1',
       email: 'admin@test.com',
       role: 'company_admin',
+      regionCodes: ['dubai'],
     },
   };
 
@@ -76,7 +77,7 @@ describe('MaintenanceController', () => {
       };
       await controller.create(dto as any, mockReq);
 
-      expect(service.create).toHaveBeenCalledWith(companyId, dto);
+      expect(service.create).toHaveBeenCalledWith(companyId, dto, mockReq.user);
     });
   });
 
@@ -93,6 +94,7 @@ describe('MaintenanceController', () => {
         undefined,
         undefined,
         undefined,
+        mockReq.user,
       );
     });
   });
@@ -110,7 +112,11 @@ describe('MaintenanceController', () => {
 
       const result = await controller.getCostSummary(mockReq);
 
-      expect(service.getCostSummary).toHaveBeenCalledWith(companyId, undefined);
+      expect(service.getCostSummary).toHaveBeenCalledWith(
+        companyId,
+        undefined,
+        mockReq.user,
+      );
       expect(result).toEqual(summary);
     });
   });
@@ -127,7 +133,11 @@ describe('MaintenanceController', () => {
 
       const result = await controller.getUpcoming(mockReq);
 
-      expect(service.getUpcoming).toHaveBeenCalledWith(companyId, undefined);
+      expect(service.getUpcoming).toHaveBeenCalledWith(
+        companyId,
+        undefined,
+        mockReq.user,
+      );
       expect(result).toHaveLength(1);
     });
   });
@@ -138,7 +148,11 @@ describe('MaintenanceController', () => {
 
       await controller.findOne('order-uuid-1', mockReq);
 
-      expect(service.findOne).toHaveBeenCalledWith('order-uuid-1', companyId);
+      expect(service.findOne).toHaveBeenCalledWith(
+        'order-uuid-1',
+        companyId,
+        mockReq.user,
+      );
     });
   });
 
@@ -155,9 +169,12 @@ describe('MaintenanceController', () => {
         mockReq,
       );
 
-      expect(service.update).toHaveBeenCalledWith('order-uuid-1', companyId, {
-        status: WorkOrderStatus.COMPLETED,
-      });
+      expect(service.update).toHaveBeenCalledWith(
+        'order-uuid-1',
+        companyId,
+        { status: WorkOrderStatus.COMPLETED },
+        mockReq.user,
+      );
     });
   });
 
@@ -167,7 +184,11 @@ describe('MaintenanceController', () => {
 
       await controller.remove('order-uuid-1', mockReq);
 
-      expect(service.remove).toHaveBeenCalledWith('order-uuid-1', companyId);
+      expect(service.remove).toHaveBeenCalledWith(
+        'order-uuid-1',
+        companyId,
+        mockReq.user,
+      );
     });
   });
 });

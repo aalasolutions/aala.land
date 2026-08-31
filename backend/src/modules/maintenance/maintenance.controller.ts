@@ -45,7 +45,11 @@ export class MaintenanceController {
     @Body() dto: CreateWorkOrderDto,
     @Request() req: AuthenticatedRequest,
   ) {
-    return this.maintenanceService.create(requireCompanyId(req.user), dto);
+    return this.maintenanceService.create(
+      requireCompanyId(req.user),
+      dto,
+      req.user,
+    );
   }
 
   @Get()
@@ -85,6 +89,7 @@ export class MaintenanceController {
       regionCode,
       status,
       period,
+      req.user,
     );
   }
 
@@ -105,6 +110,7 @@ export class MaintenanceController {
     return this.maintenanceService.getCostSummary(
       requireCompanyId(req.user),
       regionCode,
+      req.user,
     );
   }
 
@@ -125,6 +131,7 @@ export class MaintenanceController {
     return this.maintenanceService.getUpcoming(
       requireCompanyId(req.user),
       regionCode,
+      req.user,
     );
   }
 
@@ -141,7 +148,11 @@ export class MaintenanceController {
     @Param('id', ParseUUIDPipe) id: string,
     @Request() req: AuthenticatedRequest,
   ) {
-    return this.maintenanceService.findOne(id, requireCompanyId(req.user));
+    return this.maintenanceService.findOne(
+      id,
+      requireCompanyId(req.user),
+      req.user,
+    );
   }
 
   @Patch(':id')
@@ -152,7 +163,12 @@ export class MaintenanceController {
     @Body() dto: UpdateWorkOrderDto,
     @Request() req: AuthenticatedRequest,
   ) {
-    return this.maintenanceService.update(id, requireCompanyId(req.user), dto);
+    return this.maintenanceService.update(
+      id,
+      requireCompanyId(req.user),
+      dto,
+      req.user,
+    );
   }
 
   @Delete(':id')
@@ -163,6 +179,10 @@ export class MaintenanceController {
     @Param('id', ParseUUIDPipe) id: string,
     @Request() req: AuthenticatedRequest,
   ) {
-    return this.maintenanceService.remove(id, requireCompanyId(req.user));
+    return this.maintenanceService.remove(
+      id,
+      requireCompanyId(req.user),
+      req.user,
+    );
   }
 }

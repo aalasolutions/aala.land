@@ -9,6 +9,7 @@ import { UsersService } from '../users/users.service';
 import { CompaniesService } from '../companies/companies.service';
 import { User } from '../users/entities/user.entity';
 import { Region, resolveRegions } from '@shared/constants/regions';
+import { seesAllRegions } from '@shared/utils/region-visibility.util';
 import { RegisterDto } from './dto/register.dto';
 import { Role } from '@shared/enums/roles.enum';
 import { SubscriptionTier } from '../companies/entities/company.entity';
@@ -27,6 +28,7 @@ interface LoginUser {
   email: string;
   role: string;
   companyId: string | null;
+  regionCodes: string[];
 }
 
 interface RefreshUser {
@@ -42,6 +44,7 @@ interface ImpersonateUser {
   name: string;
   companyId: string | null;
   role: string;
+  regionCodes: string[];
 }
 
 interface LoginResponse {
@@ -123,15 +126,43 @@ export class AuthService {
     return null;
   }
 
+  // Regions a user may actually work in, intersected with what the company
+  // still operates so a stale assignment cannot resurface a dropped region.
+  private assignedRegionCodes(
+    userCodes: string[],
+    companyCodes: string[],
+  ): string[] {
+    const assigned = new Set(userCodes);
+    return companyCodes.filter((code) => assigned.has(code));
+  }
+
   private async resolveCompanyContext(
     companyId: string | null,
+    user?: { role: string; regionCodes: string[] },
   ): Promise<CompanyContext> {
     const company = companyId
       ? await this.companiesService.findOne(companyId)
       : null;
+
+    const companyCodes = company?.activeRegions ?? [];
+    // Admins keep every company region; everyone else only what they are
+    // assigned, so the switcher cannot offer a region they cannot read.
+    const codes =
+      !user || seesAllRegions(user.role)
+        ? companyCodes
+        : this.assignedRegionCodes(user.regionCodes, companyCodes);
+
+    // A default the user is not assigned to would be rewritten away on the
+    // first request, so it is not offered.
+    const companyDefault = company?.defaultRegionCode ?? '';
+    const defaultRegionCode =
+      companyDefault && codes.includes(companyDefault)
+        ? companyDefault
+        : (codes[0] ?? companyDefault);
+
     return {
-      regions: company ? resolveRegions(company.activeRegions) : [],
-      defaultRegionCode: company?.defaultRegionCode ?? '',
+      regions: resolveRegions(codes),
+      defaultRegionCode,
       subscriptionTier: company?.subscriptionTier ?? null,
       // Read-time evaluation; drives the tenant lock/grace banner (design 8.2).
       lockState: companyId
@@ -148,7 +179,10 @@ export class AuthService {
       role: user.role,
     };
 
-    const context = await this.resolveCompanyContext(user.companyId);
+    const context = await this.resolveCompanyContext(user.companyId, {
+      role: user.role,
+      regionCodes: user.regionCodes,
+    });
 
     return {
       accessToken: this.jwtService.sign(payload),
@@ -172,7 +206,10 @@ export class AuthService {
       userId,
       companyId ?? undefined,
     );
-    const context = await this.resolveCompanyContext(user.companyId);
+    const context = await this.resolveCompanyContext(user.companyId, {
+      role: user.role,
+      regionCodes: user.regionCodes,
+    });
 
     return {
       user: {
@@ -210,7 +247,10 @@ export class AuthService {
       impersonatedBy,
     };
 
-    const context = await this.resolveCompanyContext(user.companyId);
+    const context = await this.resolveCompanyContext(user.companyId, {
+      role: user.role,
+      regionCodes: user.regionCodes,
+    });
 
     return {
       accessToken: this.jwtService.sign(payload),

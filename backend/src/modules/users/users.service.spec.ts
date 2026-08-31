@@ -1,6 +1,12 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { DataSource, Repository, Not, IsNull } from 'typeorm';
+import {
+  DataSource,
+  Repository,
+  Not,
+  IsNull,
+  getMetadataArgsStorage,
+} from 'typeorm';
 import {
   NotFoundException,
   ConflictException,
@@ -43,6 +49,7 @@ let managerMock: {
   find: jest.Mock;
   create: jest.Mock;
   save: jest.Mock;
+  insert: jest.Mock;
   getRepository: jest.Mock;
 };
 let commissionRepoMock: { count: jest.Mock };
@@ -104,6 +111,7 @@ describe('UsersService', () => {
     createdAt: new Date(),
     updatedAt: new Date(),
     company: null as any,
+    regionCodes: [],
   };
 
   const targetUser = {
@@ -191,6 +199,7 @@ describe('UsersService', () => {
       ),
       create: jest.fn((_entity: unknown, x: unknown) => userRepoMock.create(x)),
       save: jest.fn((x: unknown) => userRepoMock.save(x)),
+      insert: jest.fn(),
       getRepository: jest.fn().mockReturnValue(commissionRepoMock),
     };
     dataSourceMock = {
@@ -398,7 +407,7 @@ describe('UsersService', () => {
         take: 20,
         order: { createdAt: 'DESC' },
       });
-      expect(result.data).toEqual([mockUser]);
+      expect(result.data).toEqual([{ ...mockUser, regionCodes: [] }]);
       expect(result.total).toBe(1);
       expect(result.page).toBe(1);
     });
@@ -1190,6 +1199,7 @@ describe('UsersService', () => {
         role: Role.AGENT,
         companyId,
         mustChangePassword: true,
+        regionCodes: [],
       });
       expect(result.mustChangePassword).toBe(true);
     });
@@ -1561,6 +1571,173 @@ describe('UsersService', () => {
 
       expect(billingService.reserveSeat).toHaveBeenCalledWith(freeCompany);
       expect(result).toEqual(mockUser);
+    });
+  });
+  // Region assignment is a permission boundary, so every branch is pinned here.
+  describe('region assignment', () => {
+    const activeRegions = ['makkah', 'punjab'];
+
+    // Every region read goes through this column, and a rename would fail
+    // silently at runtime rather than at compile time.
+    it('stores regions in the jsonb column the migration creates', () => {
+      const column = getMetadataArgsStorage()
+        .filterColumns(User)
+        .find((c) => c.propertyName === 'regionCodes');
+
+      expect(column?.options.name).toBe('region_codes');
+      expect(column?.options.type).toBe('jsonb');
+    });
+
+    describe('setRegions', () => {
+      it('replaces the whole set, not merges into it', async () => {
+        repo.findOne.mockResolvedValue(mockUser);
+        companyRepo.findOne.mockResolvedValue({ activeRegions } as any);
+
+        const result = await service.setRegions(mockUser.id, companyId, [
+          'punjab',
+        ]);
+
+        expect(repo.update).toHaveBeenCalledWith(mockUser.id, {
+          regionCodes: ['punjab'],
+        });
+        expect(result).toEqual({ id: mockUser.id, regionCodes: ['punjab'] });
+      });
+
+      it('rejects a code the company does not operate', async () => {
+        repo.findOne.mockResolvedValue(mockUser);
+        companyRepo.findOne.mockResolvedValue({ activeRegions } as any);
+
+        await expect(
+          service.setRegions(mockUser.id, companyId, ['makkah', 'dubai']),
+        ).rejects.toThrow(BadRequestException);
+        expect(repo.update).not.toHaveBeenCalled();
+      });
+
+      it('de-duplicates a repeated code', async () => {
+        repo.findOne.mockResolvedValue(mockUser);
+        companyRepo.findOne.mockResolvedValue({ activeRegions } as any);
+
+        const result = await service.setRegions(mockUser.id, companyId, [
+          'makkah',
+          'makkah',
+        ]);
+
+        expect(result.regionCodes).toEqual(['makkah']);
+      });
+
+      it('clears every assignment on an empty array', async () => {
+        repo.findOne.mockResolvedValue(mockUser);
+        companyRepo.findOne.mockResolvedValue({ activeRegions } as any);
+
+        const result = await service.setRegions(mockUser.id, companyId, []);
+
+        expect(repo.update).toHaveBeenCalledWith(mockUser.id, {
+          regionCodes: [],
+        });
+        expect(result.regionCodes).toEqual([]);
+      });
+
+      // SUPER_ADMIN can reach this for a user with no company.
+      it('rejects a user with no company instead of querying for one', async () => {
+        repo.findOne.mockResolvedValue({ ...mockUser, companyId: null });
+
+        await expect(
+          service.setRegions(mockUser.id, undefined, ['punjab']),
+        ).rejects.toThrow(BadRequestException);
+
+        expect(companyRepo.findOne).not.toHaveBeenCalled();
+        expect(repo.update).not.toHaveBeenCalled();
+      });
+    });
+
+    describe('create seeding', () => {
+      const dto = {
+        name: 'Seeded Agent',
+        email: 'seeded@test.com',
+        password: 'pass123',
+        role: Role.AGENT,
+      } as any;
+
+      function arrangeCompany(company: Record<string, unknown>) {
+        companyRepo.findOne.mockResolvedValue(company as any);
+        repo.count.mockResolvedValue(0);
+        repo.findOne.mockResolvedValue(null);
+        repo.create.mockReturnValue(mockUser);
+        repo.save.mockResolvedValue(mockUser);
+        billingService.reserveSeat.mockResolvedValue(null as any);
+      }
+
+      it('uses the codes given', async () => {
+        arrangeCompany({
+          id: companyId,
+          subscriptionTier: 'FREE',
+          maxUsers: 5,
+          defaultRegionCode: 'makkah',
+          activeRegions,
+        });
+
+        await service.create(
+          { ...dto, regionCodes: ['punjab'] },
+          companyId,
+          Role.COMPANY_ADMIN,
+        );
+
+        expect(repo.create).toHaveBeenCalledWith(
+          expect.objectContaining({ regionCodes: ['punjab'] }),
+        );
+      });
+
+      it('falls back to the company default when none are given', async () => {
+        arrangeCompany({
+          id: companyId,
+          subscriptionTier: 'FREE',
+          maxUsers: 5,
+          defaultRegionCode: 'makkah',
+          activeRegions,
+        });
+
+        await service.create(dto, companyId, Role.COMPANY_ADMIN);
+
+        expect(repo.create).toHaveBeenCalledWith(
+          expect.objectContaining({ regionCodes: ['makkah'] }),
+        );
+      });
+
+      // Without this the member is created with zero assignments, which is the
+      // exact state the region interceptor cannot scope.
+      it('falls back to an active region when the company has no default', async () => {
+        arrangeCompany({
+          id: companyId,
+          subscriptionTier: 'FREE',
+          maxUsers: 5,
+          defaultRegionCode: null,
+          activeRegions,
+        });
+
+        await service.create(dto, companyId, Role.COMPANY_ADMIN);
+
+        expect(repo.create).toHaveBeenCalledWith(
+          expect.objectContaining({ regionCodes: ['makkah'] }),
+        );
+      });
+
+      it('rejects a create code outside the company regions', async () => {
+        arrangeCompany({
+          id: companyId,
+          subscriptionTier: 'FREE',
+          maxUsers: 5,
+          defaultRegionCode: 'makkah',
+          activeRegions,
+        });
+
+        await expect(
+          service.create(
+            { ...dto, regionCodes: ['dubai'] },
+            companyId,
+            Role.COMPANY_ADMIN,
+          ),
+        ).rejects.toThrow(BadRequestException);
+      });
     });
   });
 });

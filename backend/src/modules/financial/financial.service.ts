@@ -8,7 +8,9 @@ import {
 } from './entities/transaction.entity';
 import { CreateTransactionDto } from './dto/create-transaction.dto';
 import { UpdateTransactionDto } from './dto/update-transaction.dto';
-import { REGION_FILTER_SUBQUERY } from '../../shared/utils/region-filter.util';
+import { REGION_FILTER_SUBQUERY_MULTI } from '../../shared/utils/region-filter.util';
+import { RegionScope } from '../../shared/utils/resolve-region-code.util';
+import { effectiveRegionCodes } from '../../shared/utils/region-visibility.util';
 import {
   paginationOptions,
   pageSkip,
@@ -45,21 +47,28 @@ export class FinancialService {
     type?: string,
     ownerId?: string,
     regionCode?: string,
+    caller?: RegionScope,
   ): Promise<{
     data: Transaction[];
     total: number;
     page: number;
     limit: number;
   }> {
-    if (regionCode) {
+    const regionCodes = effectiveRegionCodes(regionCode, caller);
+    // No readable region means no rows, and an empty IN () is invalid SQL.
+    if (regionCodes?.length === 0) {
+      return { data: [], total: 0, page, limit };
+    }
+
+    if (regionCodes) {
       // Show transactions that either belong to a unit in the region OR have no unit linked
       const qb = this.transactionRepository
         .createQueryBuilder('t')
         .leftJoinAndSelect('t.unit', 'unit')
         .where('t.companyId = :companyId', { companyId })
         .andWhere(
-          `(t.unitId IS NULL OR t.unitId IN (${REGION_FILTER_SUBQUERY}))`,
-          { regionCode },
+          `(t.unitId IS NULL OR t.unitId IN (${REGION_FILTER_SUBQUERY_MULTI}))`,
+          { regionCodes },
         );
 
       if (ownerId) {

@@ -48,6 +48,7 @@ export class ChequesController {
       requireCompanyId(req.user),
       dto,
       req.user.userId,
+      req.user,
     );
   }
 
@@ -74,6 +75,7 @@ export class ChequesController {
       page,
       limit,
       regionCode,
+      req.user,
     );
   }
 
@@ -91,6 +93,7 @@ export class ChequesController {
   getCollectionSchedule(@Request() req: AuthenticatedRequest) {
     return this.chequesService.getCollectionSchedule(
       requireCompanyId(req.user),
+      req.user,
     );
   }
 
@@ -107,7 +110,11 @@ export class ChequesController {
     @Param('id', ParseUUIDPipe) id: string,
     @Request() req: AuthenticatedRequest,
   ) {
-    return this.chequesService.findOne(id, requireCompanyId(req.user));
+    return this.chequesService.findOne(
+      id,
+      requireCompanyId(req.user),
+      req.user,
+    );
   }
 
   @Patch(':id')
@@ -123,6 +130,7 @@ export class ChequesController {
       requireCompanyId(req.user),
       dto,
       req.user.userId,
+      req.user,
     );
   }
 
@@ -139,6 +147,7 @@ export class ChequesController {
       requireCompanyId(req.user),
       dto,
       req.user.userId,
+      req.user,
     );
   }
 
@@ -160,6 +169,7 @@ export class ChequesController {
       id,
       requireCompanyId(req.user),
       dto.imageUrl,
+      req.user,
     );
   }
 
@@ -171,6 +181,6 @@ export class ChequesController {
     @Param('id', ParseUUIDPipe) id: string,
     @Request() req: AuthenticatedRequest,
   ) {
-    return this.chequesService.remove(id, requireCompanyId(req.user));
+    return this.chequesService.remove(id, requireCompanyId(req.user), req.user);
   }
 }

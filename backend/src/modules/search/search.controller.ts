@@ -44,6 +44,7 @@ export class SearchController {
       trimmed,
       requireCompanyId(req.user),
       regionCode,
+      req.user,
     );
   }
 }

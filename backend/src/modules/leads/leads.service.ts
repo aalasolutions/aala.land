@@ -5,7 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, FindOptionsWhere, IsNull } from 'typeorm';
+import { Repository, FindOptionsWhere, In, IsNull } from 'typeorm';
 import { Lead, LeadStatus } from './entities/lead.entity';
 import { LeadActivity, ActivityType } from './entities/lead-activity.entity';
 import { CreateLeadDto } from './dto/create-lead.dto';
@@ -17,10 +17,17 @@ import { Locality } from '../locations/entities/locality.entity';
 import { City } from '../locations/entities/city.entity';
 import { Unit } from '../properties/entities/unit.entity';
 import { ContactsService } from '../contacts/contacts.service';
-import { attachDisplayName, contactDisplayNameOr } from '../../shared/utils/contact.util';
-import { resolveRegionCode } from '../../shared/utils/resolve-region-code.util';
+import {
+  attachDisplayName,
+  contactDisplayNameOr,
+} from '../../shared/utils/contact.util';
+import {
+  RegionScope,
+  resolveRegionCode,
+} from '../../shared/utils/resolve-region-code.util';
 import { paginationOptions } from '../../shared/utils/pagination.util';
 import { Role } from '../../shared/enums/roles.enum';
+import { scopedRegionCodes } from '../../shared/utils/region-visibility.util';
 import { NotificationsService } from '../notifications/notifications.service';
 import { UsersService } from '../users/users.service';
 import { NotificationType } from '../notifications/entities/notification.entity';
@@ -68,6 +75,7 @@ export class LeadsService {
     companyId: string,
     dto: CreateLeadDto,
     userId?: string,
+    caller?: RegionScope,
   ): Promise<LeadResponse> {
     const {
       contactId,
@@ -93,17 +101,22 @@ export class LeadsService {
       );
     }
 
-    const contact = await this.contactsService.resolveOrCreate(
-      companyId,
-      { contactId, firstName, lastName, email, phone, isWhatsapp },
-      userId,
-    );
-
+    // Resolved before the contact so a contact created here inherits the lead
+    // region.
     const regionCode = await resolveRegionCode(
       this.companyRepository,
       companyId,
       dtoRegionCode,
+      caller,
     );
+
+    const contact = await this.contactsService.resolveOrCreate(
+      companyId,
+      { contactId, firstName, lastName, email, phone, isWhatsapp },
+      userId,
+      regionCode,
+    );
+
     const lead = this.leadRepository.create({
       ...rest,
       contactId: contact.id,
@@ -139,6 +152,7 @@ export class LeadsService {
           type: NotificationType.LEAD_UNASSIGNED,
           entityType: 'lead',
           entityId: saved.id,
+          regionCode: saved.regionCode,
         });
       }
     } else {
@@ -150,6 +164,7 @@ export class LeadsService {
           type: NotificationType.LEAD_ASSIGNED,
           entityType: 'lead',
           entityId: saved.id,
+          regionCode: saved.regionCode,
         });
       }
     }
@@ -183,8 +198,12 @@ export class LeadsService {
     };
   }
 
-  async findOne(id: string, companyId: string): Promise<LeadResponse> {
-    const lead = await this.findLeadEntityOrThrow(id, companyId);
+  async findOne(
+    id: string,
+    companyId: string,
+    caller?: RegionScope,
+  ): Promise<LeadResponse> {
+    const lead = await this.findLeadEntityOrThrow(id, companyId, caller);
     return this.serializeLead(lead);
   }
 
@@ -194,8 +213,9 @@ export class LeadsService {
     dto: UpdateLeadDto,
     userId?: string,
     userRole?: string,
+    caller?: RegionScope,
   ): Promise<LeadResponse> {
-    const lead = await this.findLeadEntityOrThrow(id, companyId);
+    const lead = await this.findLeadEntityOrThrow(id, companyId, caller);
 
     if (dto.localityId && dto.localityId !== lead.localityId) {
       await this.validateLocalityExists(dto.localityId);
@@ -206,13 +226,14 @@ export class LeadsService {
     if (dto.unitId && dto.unitId !== lead.unitId) {
       await this.validateUnitOwnership(dto.unitId, companyId);
     }
-    // Repointing a lead at another contact must stay within the company. Load the
-    // resolved contact onto the entity so the relation object and the FK stay in
-    // sync (a stale lead.contact would make the broadcast carry the previous
-    // contact's name).
+    // Repointing must stay within the company and the caller regions.
     if (dto.contactId !== undefined && dto.contactId !== lead.contactId) {
       lead.contact = dto.contactId
-        ? await this.contactsService.findOneEntity(dto.contactId, companyId)
+        ? await this.contactsService.findOneEntity(
+            dto.contactId,
+            companyId,
+            caller,
+          )
         : null;
     }
 
@@ -297,6 +318,7 @@ export class LeadsService {
           type: NotificationType.LEAD_STATUS_CHANGED,
           entityType: 'lead',
           entityId: lead.id,
+          regionCode: lead.regionCode,
         });
       }
     }
@@ -322,6 +344,7 @@ export class LeadsService {
           type: NotificationType.LEAD_ASSIGNED,
           entityType: 'lead',
           entityId: lead.id,
+          regionCode: lead.regionCode,
         });
       } else if (assignmentChanged && !dto.assignedTo) {
         // Notify admins about unassigned lead (only if not the performer)
@@ -335,6 +358,7 @@ export class LeadsService {
               type: NotificationType.LEAD_UNASSIGNED,
               entityType: 'lead',
               entityId: lead.id,
+              regionCode: lead.regionCode,
             });
           }
         }
@@ -350,8 +374,9 @@ export class LeadsService {
     agentId: string,
     performedBy?: string,
     reason?: string,
+    caller?: RegionScope,
   ): Promise<LeadResponse> {
-    const lead = await this.findLeadEntityOrThrow(id, companyId);
+    const lead = await this.findLeadEntityOrThrow(id, companyId, caller);
     const agent = await this.findAssignableAgentOrThrow(agentId, companyId);
 
     if (lead.assignedTo) {
@@ -398,6 +423,7 @@ export class LeadsService {
         type: NotificationType.LEAD_ASSIGNED,
         entityType: 'lead',
         entityId: lead.id,
+        regionCode: lead.regionCode,
       });
     }
 
@@ -408,8 +434,9 @@ export class LeadsService {
     id: string,
     companyId: string,
     performedBy?: string,
+    caller?: RegionScope,
   ): Promise<Lead> {
-    const lead = await this.findLeadEntityOrThrow(id, companyId);
+    const lead = await this.findLeadEntityOrThrow(id, companyId, caller);
     const previousStatus = lead.status;
     lead.status = LeadStatus.WON;
     const updated = await this.leadRepository.save(lead);
@@ -440,8 +467,9 @@ export class LeadsService {
     companyId: string,
     dto: CreateLeadActivityDto,
     performedBy?: string,
+    caller?: RegionScope,
   ): Promise<LeadActivity> {
-    await this.findLeadEntityOrThrow(leadId, companyId);
+    await this.findLeadEntityOrThrow(leadId, companyId, caller);
 
     const activity = this.activityRepository.create({
       leadId,
@@ -455,8 +483,9 @@ export class LeadsService {
   async findActivities(
     leadId: string,
     companyId: string,
+    caller?: RegionScope,
   ): Promise<LeadActivityResponse[]> {
-    await this.findLeadEntityOrThrow(leadId, companyId);
+    await this.findLeadEntityOrThrow(leadId, companyId, caller);
 
     const activities = await this.activityRepository.find({
       where: { leadId, companyId },
@@ -474,9 +503,20 @@ export class LeadsService {
   private async findLeadEntityOrThrow(
     id: string,
     companyId: string,
+    caller?: RegionScope,
   ): Promise<Lead> {
+    const scopedCodes = scopedRegionCodes(caller);
+    // No assignment means no access, and an empty IN () is invalid SQL.
+    if (scopedCodes?.length === 0) {
+      throw new NotFoundException('Lead not found');
+    }
+
     const lead = await this.leadRepository.findOne({
-      where: { id, companyId },
+      where: {
+        id,
+        companyId,
+        ...(scopedCodes ? { regionCode: In(scopedCodes) } : {}),
+      },
       relations: ['contact', 'city', 'locality', 'unit', 'assignedAgent'],
     });
     if (!lead) {

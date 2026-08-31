@@ -43,7 +43,11 @@ export class VendorsController {
   @Roles(Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER)
   @ApiOperation({ summary: 'Create a vendor (ADMIN+)' })
   create(@Body() dto: CreateVendorDto, @Request() req: AuthenticatedRequest) {
-    return this.vendorsService.create(requireCompanyId(req.user), dto);
+    return this.vendorsService.create(
+      requireCompanyId(req.user),
+      dto,
+      req.user,
+    );
   }
 
   @Get()
@@ -71,6 +75,7 @@ export class VendorsController {
       search,
       specialty,
       regionCode,
+      req.user,
     );
   }
 
@@ -81,7 +86,11 @@ export class VendorsController {
     @Param('id', ParseUUIDPipe) id: string,
     @Request() req: AuthenticatedRequest,
   ) {
-    return this.vendorsService.findOne(id, requireCompanyId(req.user));
+    return this.vendorsService.findOne(
+      id,
+      requireCompanyId(req.user),
+      req.user,
+    );
   }
 
   @Patch(':id')
@@ -92,7 +101,12 @@ export class VendorsController {
     @Body() dto: UpdateVendorDto,
     @Request() req: AuthenticatedRequest,
   ) {
-    return this.vendorsService.update(id, requireCompanyId(req.user), dto);
+    return this.vendorsService.update(
+      id,
+      requireCompanyId(req.user),
+      dto,
+      req.user,
+    );
   }
 
   @Delete(':id')
@@ -103,6 +117,6 @@ export class VendorsController {
     @Param('id', ParseUUIDPipe) id: string,
     @Request() req: AuthenticatedRequest,
   ) {
-    return this.vendorsService.remove(id, requireCompanyId(req.user));
+    return this.vendorsService.remove(id, requireCompanyId(req.user), req.user);
   }
 }

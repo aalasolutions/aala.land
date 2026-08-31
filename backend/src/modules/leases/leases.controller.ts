@@ -45,7 +45,7 @@ export class LeasesController {
   @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER)
   @ApiOperation({ summary: 'Create a lease agreement (ADMIN+)' })
   create(@Body() dto: CreateLeaseDto, @Request() req: AuthenticatedRequest) {
-    return this.leasesService.create(requireCompanyId(req.user), dto);
+    return this.leasesService.create(requireCompanyId(req.user), dto, req.user);
   }
 
   @Get()
@@ -124,6 +124,7 @@ export class LeasesController {
         dateFrom: dateFrom || undefined,
         dateTo: dateTo || undefined,
       },
+      req.user,
     );
   }
 
@@ -141,7 +142,11 @@ export class LeasesController {
     @Param('unitId', ParseUUIDPipe) unitId: string,
     @Request() req: AuthenticatedRequest,
   ) {
-    return this.leasesService.findByUnit(unitId, requireCompanyId(req.user));
+    return this.leasesService.findByUnit(
+      unitId,
+      requireCompanyId(req.user),
+      req.user,
+    );
   }
 
   @Get(':id')
@@ -151,7 +156,7 @@ export class LeasesController {
     @Param('id', ParseUUIDPipe) id: string,
     @Request() req: AuthenticatedRequest,
   ) {
-    return this.leasesService.findOne(id, requireCompanyId(req.user));
+    return this.leasesService.findOne(id, requireCompanyId(req.user), req.user);
   }
 
   @Patch(':id')
@@ -162,7 +167,12 @@ export class LeasesController {
     @Body() dto: UpdateLeaseDto,
     @Request() req: AuthenticatedRequest,
   ) {
-    return this.leasesService.update(id, requireCompanyId(req.user), dto);
+    return this.leasesService.update(
+      id,
+      requireCompanyId(req.user),
+      dto,
+      req.user,
+    );
   }
 
   @Post(':id/renew')
@@ -175,7 +185,12 @@ export class LeasesController {
     @Body() dto: CreateLeaseDto,
     @Request() req: AuthenticatedRequest,
   ) {
-    return this.leasesService.renew(id, requireCompanyId(req.user), dto);
+    return this.leasesService.renew(
+      id,
+      requireCompanyId(req.user),
+      dto,
+      req.user,
+    );
   }
 
   @Post(':id/terminate')
@@ -185,7 +200,11 @@ export class LeasesController {
     @Param('id', ParseUUIDPipe) id: string,
     @Request() req: AuthenticatedRequest,
   ) {
-    return this.leasesService.terminate(id, requireCompanyId(req.user));
+    return this.leasesService.terminate(
+      id,
+      requireCompanyId(req.user),
+      req.user,
+    );
   }
 
   @Delete(':id')
@@ -196,6 +215,6 @@ export class LeasesController {
     @Param('id', ParseUUIDPipe) id: string,
     @Request() req: AuthenticatedRequest,
   ) {
-    return this.leasesService.remove(id, requireCompanyId(req.user));
+    return this.leasesService.remove(id, requireCompanyId(req.user), req.user);
   }
 }

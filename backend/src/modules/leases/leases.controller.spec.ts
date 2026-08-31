@@ -16,6 +16,7 @@ describe('LeasesController', () => {
       userId: 'user-uuid-1',
       email: 'admin@test.com',
       role: 'company_admin',
+      regionCodes: ['dubai'],
     },
   };
 
@@ -73,7 +74,7 @@ describe('LeasesController', () => {
       };
       const result = await controller.create(dto as any, mockReq);
 
-      expect(service.create).toHaveBeenCalledWith(companyId, dto);
+      expect(service.create).toHaveBeenCalledWith(companyId, dto, mockReq.user);
       expect(result).toEqual(mockLease);
     });
   });
@@ -97,6 +98,7 @@ describe('LeasesController', () => {
           dateFrom: undefined,
           dateTo: undefined,
         },
+        mockReq.user,
       );
     });
 
@@ -134,6 +136,7 @@ describe('LeasesController', () => {
           dateFrom: undefined,
           dateTo: undefined,
         },
+        agentReq.user,
       );
     });
 
@@ -156,6 +159,7 @@ describe('LeasesController', () => {
           dateFrom: undefined,
           dateTo: undefined,
         },
+        accountantReq.user,
       );
     });
 
@@ -203,7 +207,11 @@ describe('LeasesController', () => {
 
       const result = await controller.findByUnit('unit-uuid-1', mockReq);
 
-      expect(service.findByUnit).toHaveBeenCalledWith('unit-uuid-1', companyId);
+      expect(service.findByUnit).toHaveBeenCalledWith(
+        'unit-uuid-1',
+        companyId,
+        mockReq.user,
+      );
     });
   });
 
@@ -213,7 +221,11 @@ describe('LeasesController', () => {
 
       await controller.findOne('lease-uuid-1', mockReq);
 
-      expect(service.findOne).toHaveBeenCalledWith('lease-uuid-1', companyId);
+      expect(service.findOne).toHaveBeenCalledWith(
+        'lease-uuid-1',
+        companyId,
+        mockReq.user,
+      );
     });
   });
 
@@ -230,9 +242,12 @@ describe('LeasesController', () => {
         mockReq,
       );
 
-      expect(service.update).toHaveBeenCalledWith('lease-uuid-1', companyId, {
-        status: LeaseStatus.EXPIRED,
-      });
+      expect(service.update).toHaveBeenCalledWith(
+        'lease-uuid-1',
+        companyId,
+        { status: LeaseStatus.EXPIRED },
+        mockReq.user,
+      );
     });
   });
 
@@ -242,7 +257,11 @@ describe('LeasesController', () => {
 
       await controller.remove('lease-uuid-1', mockReq);
 
-      expect(service.remove).toHaveBeenCalledWith('lease-uuid-1', companyId);
+      expect(service.remove).toHaveBeenCalledWith(
+        'lease-uuid-1',
+        companyId,
+        mockReq.user,
+      );
     });
   });
 });

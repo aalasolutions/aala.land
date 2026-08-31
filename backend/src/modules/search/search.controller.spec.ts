@@ -93,6 +93,7 @@ describe('SearchController', () => {
         'test_query',
         'company1',
         'dubai',
+        req.user,
       );
     });
 

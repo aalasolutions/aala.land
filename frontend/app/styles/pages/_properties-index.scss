@@ -7,6 +7,42 @@
 @use "../uikit/common/var" as *;
 @use "../uikit/mixins/bem" as *;
 
+// ---- browse toolbar ----
+
+.browse-toolbar {
+  display: flex;
+  gap: nu-space(4);
+  align-items: flex-end;
+  justify-content: space-between;
+  margin-block-end: nu-space(4);
+
+  @include media-down(sm) {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
+// Label inline, not stacked: <Nuvo::Field> carries a 16px block-end margin
+// that pushes the attached direction button out of line.
+.browse-toolbar__sort {
+  display: flex;
+  gap: nu-space(2);
+  align-items: center;
+}
+
+.browse-toolbar__sort-label {
+  font-size: nu-font-size(sm);
+  font-weight: nu-font-weight(medium);
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+// Stats render unconditionally so the row never collapses; a missing value
+// shows a dash.
+.unit-stat.is-unset {
+  opacity: 0.55;
+}
+
 // ---- browse grid ----
 
 .browse-unit-grid {

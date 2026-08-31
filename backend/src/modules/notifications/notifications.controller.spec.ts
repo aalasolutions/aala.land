@@ -16,7 +16,13 @@ describe('NotificationsController', () => {
   const companyId = 'company-uuid-1';
   const userId = 'user-uuid-1';
   const mockReq = {
-    user: { companyId, userId, email: 'admin@test.com', role: 'company_admin' },
+    user: {
+      companyId,
+      userId,
+      email: 'admin@test.com',
+      role: 'company_admin',
+      regionCodes: ['dubai'],
+    },
   };
 
   const mockNotification = {
@@ -98,7 +104,13 @@ describe('NotificationsController', () => {
 
       const result = await controller.findAll(mockReq, 1, 20);
 
-      expect(service.findAll).toHaveBeenCalledWith(companyId, userId, 1, 20);
+      expect(service.findAll).toHaveBeenCalledWith(
+        companyId,
+        userId,
+        1,
+        20,
+        undefined,
+      );
       expect(result.data).toHaveLength(1);
       expect(result.total).toBe(1);
     });

@@ -9,13 +9,24 @@ import { ContactsService } from '../contacts/contacts.service';
 import {
   DataSource,
   EntityManager,
+  FindOptionsWhere,
+  In,
   QueryFailedError,
   Repository,
 } from 'typeorm';
 import { Lease, LeaseStatus, LeaseType } from './entities/lease.entity';
 import { CreateLeaseDto } from './dto/create-lease.dto';
 import { UpdateLeaseDto } from './dto/update-lease.dto';
-import { REGION_FILTER_SUBQUERY } from '../../shared/utils/region-filter.util';
+import { Unit } from '../properties/entities/unit.entity';
+import {
+  REGION_FILTER_SUBQUERY_MULTI,
+  unitInRegionsWhere,
+} from '../../shared/utils/region-filter.util';
+import { RegionScope } from '../../shared/utils/resolve-region-code.util';
+import {
+  effectiveRegionCodes,
+  scopedRegionCodes,
+} from '../../shared/utils/region-visibility.util';
 
 export interface LeaseFilters {
   status?: LeaseStatus;
@@ -37,6 +48,8 @@ export class LeasesService {
   constructor(
     @InjectRepository(Lease)
     private readonly leaseRepository: Repository<Lease>,
+    @InjectRepository(Unit)
+    private readonly unitRepository: Repository<Unit>,
     private readonly dataSource: DataSource,
     private readonly contactsService: ContactsService,
   ) {}
@@ -110,13 +123,56 @@ export class LeasesService {
   }
 
   // A tenant contactId must belong to the lease's company, or loading the
-  // contact relation would surface another tenant's PII.
+  // contact relation would surface another tenant's PII. The caller is passed on
+  // so a contact outside their regions cannot be bound either.
   private async assertContactInCompany(
     contactId: string | null | undefined,
     companyId: string,
+    caller?: RegionScope,
   ): Promise<void> {
     if (!contactId) return;
-    await this.contactsService.findOneEntity(contactId, companyId);
+    await this.contactsService.findOneEntity(contactId, companyId, caller);
+  }
+
+  // A lease carries no region column: its region is its unit's.
+  private regionScopedWhere(caller?: RegionScope): FindOptionsWhere<Lease> {
+    const scopedCodes = scopedRegionCodes(caller);
+    // No assignment means no access, and an empty IN () is invalid SQL.
+    if (scopedCodes?.length === 0) {
+      throw new NotFoundException('Lease not found');
+    }
+    return scopedCodes ? { unitId: unitInRegionsWhere(scopedCodes) } : {};
+  }
+
+  // A lease's region is its unit's, so a unit the caller cannot read must not
+  // be bound to one, nor its leases listed.
+  private async assertUnitInCallerRegions(
+    unitId: string | null | undefined,
+    companyId: string,
+    caller?: RegionScope,
+  ): Promise<void> {
+    if (!unitId) {
+      return;
+    }
+
+    const scopedCodes = scopedRegionCodes(caller);
+    // No assignment means no access, and an empty IN () is invalid SQL.
+    if (scopedCodes?.length === 0) {
+      throw new NotFoundException('Unit not found');
+    }
+
+    const where: FindOptionsWhere<Unit> = { id: unitId, companyId };
+    if (scopedCodes) {
+      where.asset = { locality: { city: { regionCode: In(scopedCodes) } } };
+    }
+
+    const unit = await this.unitRepository.findOne({
+      where,
+      select: { id: true },
+    });
+    if (!unit) {
+      throw new NotFoundException('Unit not found');
+    }
   }
 
   private async reloadWithContact(
@@ -132,10 +188,16 @@ export class LeasesService {
     return lease as Lease;
   }
 
-  async create(companyId: string, dto: CreateLeaseDto): Promise<Lease> {
-    await this.assertContactInCompany(dto.contactId, companyId);
+  async create(
+    companyId: string,
+    dto: CreateLeaseDto,
+    caller?: RegionScope,
+  ): Promise<Lease> {
+    await this.assertContactInCompany(dto.contactId, companyId, caller);
+    await this.assertUnitInCallerRegions(dto.unitId, companyId, caller);
     const lease = this.leaseRepository.create({ ...dto, companyId });
     const saved = await this.leaseRepository.save(lease);
+    // Re-read of a row this caller just wrote, so it stays unscoped.
     return this.findOne(saved.id, companyId);
   }
 
@@ -146,7 +208,14 @@ export class LeasesService {
     regionCode?: string,
     contactId?: string,
     filters?: LeaseFilters,
+    caller?: RegionScope,
   ): Promise<{ data: Lease[]; total: number; page: number; limit: number }> {
+    const regionCodes = effectiveRegionCodes(regionCode, caller);
+    // No readable region means no rows, and an empty IN () is invalid SQL.
+    if (regionCodes?.length === 0) {
+      return { data: [], total: 0, page, limit };
+    }
+
     const qb = this.leaseRepository
       .createQueryBuilder('l')
       .leftJoinAndSelect('l.contact', 'tenant')
@@ -157,9 +226,9 @@ export class LeasesService {
       .skip((page - 1) * limit)
       .take(limit)
       .orderBy('l.createdAt', 'DESC');
-    if (regionCode) {
-      qb.andWhere(`l.unitId IN (${REGION_FILTER_SUBQUERY})`, {
-        regionCode,
+    if (regionCodes) {
+      qb.andWhere(`l.unitId IN (${REGION_FILTER_SUBQUERY_MULTI})`, {
+        regionCodes,
       });
     }
     if (contactId) {
@@ -204,9 +273,13 @@ export class LeasesService {
     return { data, total, page, limit };
   }
 
-  async findOne(id: string, companyId: string): Promise<Lease> {
+  async findOne(
+    id: string,
+    companyId: string,
+    caller?: RegionScope,
+  ): Promise<Lease> {
     const lease = await this.leaseRepository.findOne({
-      where: { id, companyId },
+      where: { id, companyId, ...this.regionScopedWhere(caller) },
       relations: ['contact'],
     });
     if (!lease) {
@@ -216,7 +289,12 @@ export class LeasesService {
     return lease;
   }
 
-  async findByUnit(unitId: string, companyId: string): Promise<Lease[]> {
+  async findByUnit(
+    unitId: string,
+    companyId: string,
+    caller?: RegionScope,
+  ): Promise<Lease[]> {
+    await this.assertUnitInCallerRegions(unitId, companyId, caller);
     const leases = await this.leaseRepository.find({
       where: { unitId, companyId },
       relations: ['contact'],
@@ -230,11 +308,13 @@ export class LeasesService {
     id: string,
     companyId: string,
     dto: UpdateLeaseDto,
+    caller?: RegionScope,
   ): Promise<Lease> {
-    await this.assertContactInCompany(dto.contactId, companyId);
+    await this.assertContactInCompany(dto.contactId, companyId, caller);
+    const regionWhere = this.regionScopedWhere(caller);
     return this.dataSource.transaction(async (manager) => {
       const lease = await manager.findOne(Lease, {
-        where: { id, companyId },
+        where: { id, companyId, ...regionWhere },
         lock: { mode: 'pessimistic_write' },
       });
       if (!lease) {
@@ -276,11 +356,14 @@ export class LeasesService {
     id: string,
     companyId: string,
     dto: CreateLeaseDto,
+    caller?: RegionScope,
   ): Promise<{ oldLease: Lease; newLease: Lease }> {
-    await this.assertContactInCompany(dto.contactId, companyId);
+    await this.assertContactInCompany(dto.contactId, companyId, caller);
+    await this.assertUnitInCallerRegions(dto.unitId, companyId, caller);
+    const regionWhere = this.regionScopedWhere(caller);
     return this.dataSource.transaction(async (manager) => {
       const oldLease = await manager.findOne(Lease, {
-        where: { id, companyId },
+        where: { id, companyId, ...regionWhere },
         lock: { mode: 'pessimistic_write' },
       });
       if (!oldLease) {
@@ -327,10 +410,15 @@ export class LeasesService {
     });
   }
 
-  async terminate(id: string, companyId: string): Promise<Lease> {
+  async terminate(
+    id: string,
+    companyId: string,
+    caller?: RegionScope,
+  ): Promise<Lease> {
+    const regionWhere = this.regionScopedWhere(caller);
     return this.dataSource.transaction(async (manager) => {
       const lease = await manager.findOne(Lease, {
-        where: { id, companyId },
+        where: { id, companyId, ...regionWhere },
         lock: { mode: 'pessimistic_write' },
       });
       if (!lease) {
@@ -345,8 +433,12 @@ export class LeasesService {
     });
   }
 
-  async remove(id: string, companyId: string): Promise<void> {
-    const lease = await this.findOne(id, companyId);
+  async remove(
+    id: string,
+    companyId: string,
+    caller?: RegionScope,
+  ): Promise<void> {
+    const lease = await this.findOne(id, companyId, caller);
     await this.leaseRepository.remove(lease);
   }
 }

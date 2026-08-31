@@ -69,6 +69,7 @@ export class FinancialController {
       type,
       ownerId,
       regionCode,
+      req.user,
     );
   }
 

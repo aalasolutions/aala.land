@@ -10,10 +10,13 @@ import { NotFoundException, BadRequestException } from '@nestjs/common';
 import { LeasesService } from './leases.service';
 import { ContactsService } from '../contacts/contacts.service';
 import { Lease, LeaseStatus, LeaseType } from './entities/lease.entity';
+import { Unit } from '../properties/entities/unit.entity';
 
 describe('LeasesService', () => {
   let service: LeasesService;
   let repo: jest.Mocked<Repository<Lease>>;
+  let unitRepo: jest.Mocked<Repository<Unit>>;
+  let contactsService: { findOneEntity: jest.Mock };
   let dataSource: { transaction: jest.Mock };
   let manager: {
     findOne: jest.Mock;
@@ -103,13 +106,21 @@ describe('LeasesService', () => {
           },
         },
         {
+          provide: getRepositoryToken(Unit),
+          useValue: {
+            findOne: jest.fn(),
+          },
+        },
+        {
           provide: DataSource,
           useValue: dataSource,
         },
         {
           provide: ContactsService,
           useValue: {
-            findOneEntity: jest.fn().mockResolvedValue({ id: 'contact-uuid-1' }),
+            findOneEntity: jest
+              .fn()
+              .mockResolvedValue({ id: 'contact-uuid-1' }),
           },
         },
       ],
@@ -117,6 +128,11 @@ describe('LeasesService', () => {
 
     service = module.get<LeasesService>(LeasesService);
     repo = module.get(getRepositoryToken(Lease));
+    unitRepo = module.get(getRepositoryToken(Unit));
+    // The unit lookup now runs for every caller, admins included, because it
+    // also enforces company ownership. Region tests override this.
+    unitRepo.findOne.mockResolvedValue({ id: 'unit-uuid-1' } as Unit);
+    contactsService = module.get(ContactsService);
   });
 
   it('should be defined', () => {
@@ -153,7 +169,14 @@ describe('LeasesService', () => {
       const mk = (key: string) => {
         chain[key] = jest.fn().mockReturnValue(chain);
       };
-      ['leftJoinAndSelect', 'where', 'andWhere', 'skip', 'take', 'orderBy'].forEach(mk);
+      [
+        'leftJoinAndSelect',
+        'where',
+        'andWhere',
+        'skip',
+        'take',
+        'orderBy',
+      ].forEach(mk);
       chain.getManyAndCount = jest.fn().mockResolvedValue([rows, total]);
       return chain;
     }
@@ -729,6 +752,473 @@ describe('LeasesService', () => {
       await service.remove('lease-uuid-1', companyId);
 
       expect(repo.remove).toHaveBeenCalledWith(mockLease);
+    });
+  });
+  describe('region scoping', () => {
+    const makkahManager = { role: 'manager', regionCodes: ['makkah'] };
+    const twoRegionManager = {
+      role: 'manager',
+      regionCodes: ['makkah', 'punjab'],
+    };
+    const admin = { role: 'company_admin', regionCodes: ['makkah'] };
+
+    const unitRegions: Record<string, string> = {
+      'unit-makkah': 'makkah',
+      'unit-punjab': 'punjab',
+    };
+
+    // Stands in for Postgres: a lease has no region column, so the fake
+    // resolves the unitId subquery predicate through a unit -> region map. The
+    // locked read inside the transaction goes through the same rule.
+    function seedLeaseOnUnit(unitId: string) {
+      const row = { ...mockLease, unitId } as Lease;
+      const read = (opts: any) => {
+        const filter = opts?.where?.unitId;
+        if (filter) {
+          const codes = filter.objectLiteralParameters?.regionCodes as string[];
+          if (!codes.includes(unitRegions[unitId])) {
+            return Promise.resolve(null);
+          }
+        }
+        return Promise.resolve(row);
+      };
+      repo.findOne.mockImplementation(read);
+      manager.findOne.mockImplementation((_entity: unknown, opts: any) =>
+        read(opts),
+      );
+      manager.save.mockImplementation(async (_entity: unknown, l: Lease) => l);
+      return row;
+    }
+
+    it('denies findOne on a lease outside the caller assigned regions', async () => {
+      seedLeaseOnUnit('unit-punjab');
+
+      await expect(
+        service.findOne('lease-uuid-1', companyId, makkahManager),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('allows a by-id read in any region the caller is assigned to', async () => {
+      seedLeaseOnUnit('unit-punjab');
+
+      const result = await service.findOne(
+        'lease-uuid-1',
+        companyId,
+        twoRegionManager,
+      );
+
+      expect(result.id).toBe('lease-uuid-1');
+    });
+
+    it('denies update on a lease outside the caller assigned regions', async () => {
+      seedLeaseOnUnit('unit-punjab');
+
+      await expect(
+        service.update(
+          'lease-uuid-1',
+          companyId,
+          { monthlyRent: 9000 },
+          makkahManager,
+        ),
+      ).rejects.toThrow(NotFoundException);
+      expect(manager.save).not.toHaveBeenCalled();
+    });
+
+    it('denies renew on a lease outside the caller assigned regions', async () => {
+      seedLeaseOnUnit('unit-punjab');
+
+      await expect(
+        service.renew(
+          'lease-uuid-1',
+          companyId,
+          {
+            unitId: 'unit-punjab',
+            startDate: '2027-01-01',
+            endDate: '2027-12-31',
+            monthlyRent: 5000,
+          } as any,
+          makkahManager,
+        ),
+      ).rejects.toThrow(NotFoundException);
+      expect(manager.save).not.toHaveBeenCalled();
+    });
+
+    it('denies terminate on a lease outside the caller assigned regions', async () => {
+      seedLeaseOnUnit('unit-punjab');
+
+      await expect(
+        service.terminate('lease-uuid-1', companyId, makkahManager),
+      ).rejects.toThrow(NotFoundException);
+      expect(manager.save).not.toHaveBeenCalled();
+    });
+
+    it('terminates a lease inside the caller assigned regions', async () => {
+      const row = seedLeaseOnUnit('unit-punjab');
+
+      const result = await service.terminate(
+        'lease-uuid-1',
+        companyId,
+        twoRegionManager,
+      );
+
+      expect(result.id).toBe('lease-uuid-1');
+      expect(row.status).toBe(LeaseStatus.TERMINATED);
+    });
+
+    it('denies remove on a lease outside the caller assigned regions', async () => {
+      seedLeaseOnUnit('unit-punjab');
+
+      await expect(
+        service.remove('lease-uuid-1', companyId, makkahManager),
+      ).rejects.toThrow(NotFoundException);
+      expect(repo.remove).not.toHaveBeenCalled();
+    });
+
+    it('denies every by-id read when the caller has no assigned region', async () => {
+      seedLeaseOnUnit('unit-makkah');
+
+      await expect(
+        service.findOne('lease-uuid-1', companyId, {
+          role: 'manager',
+          regionCodes: [],
+        }),
+      ).rejects.toThrow(NotFoundException);
+      expect(repo.findOne).not.toHaveBeenCalled();
+    });
+
+    it('leaves admins unconfined by their own assignments', async () => {
+      seedLeaseOnUnit('unit-punjab');
+
+      const result = await service.findOne('lease-uuid-1', companyId, admin);
+
+      expect(result.id).toBe('lease-uuid-1');
+    });
+
+    it('stays unscoped when no caller is supplied', async () => {
+      seedLeaseOnUnit('unit-punjab');
+
+      const result = await service.findOne('lease-uuid-1', companyId);
+
+      expect(result.id).toBe('lease-uuid-1');
+    });
+
+    describe('tenant contact', () => {
+      // ContactsService confines its own by-id read, so a contact the caller
+      // cannot see resolves to NotFound here too.
+      function contactInRegion(regionCode: string) {
+        contactsService.findOneEntity.mockImplementation(
+          (_id: string, _companyId: string, caller?: any) => {
+            if (
+              caller &&
+              caller.role === 'manager' &&
+              !(caller.regionCodes as string[]).includes(regionCode)
+            ) {
+              return Promise.reject(new NotFoundException('Contact not found'));
+            }
+            return Promise.resolve({ id: 'contact-uuid-1' });
+          },
+        );
+      }
+
+      it('denies create when the tenant contact is outside the caller regions', async () => {
+        contactInRegion('punjab');
+
+        await expect(
+          service.create(
+            companyId,
+            {
+              unitId: 'unit-makkah',
+              contactId: 'contact-uuid-1',
+              startDate: '2026-01-01',
+              endDate: '2026-12-31',
+              monthlyRent: 5000,
+            } as any,
+            makkahManager,
+          ),
+        ).rejects.toThrow(NotFoundException);
+        expect(repo.save).not.toHaveBeenCalled();
+      });
+
+      it('denies update when the tenant contact is outside the caller regions', async () => {
+        seedLeaseOnUnit('unit-makkah');
+        contactInRegion('punjab');
+
+        await expect(
+          service.update(
+            'lease-uuid-1',
+            companyId,
+            { contactId: 'contact-uuid-1' },
+            makkahManager,
+          ),
+        ).rejects.toThrow(NotFoundException);
+        expect(manager.save).not.toHaveBeenCalled();
+      });
+
+      it('accepts a tenant contact inside the caller regions', async () => {
+        seedLeaseOnUnit('unit-makkah');
+        contactInRegion('makkah');
+
+        const result = await service.update(
+          'lease-uuid-1',
+          companyId,
+          { contactId: 'contact-uuid-1' },
+          makkahManager,
+        );
+
+        expect(result.id).toBe('lease-uuid-1');
+      });
+    });
+
+    // Stands in for Postgres on the unit lookup: the unit resolves only when
+    // the region predicate the service built admits its region.
+    function seedUnitLookup() {
+      unitRepo.findOne.mockImplementation((opts: any) => {
+        const id = opts?.where?.id as string;
+        const codes = opts?.where?.asset?.locality?.city?.regionCode?.value as
+          | string[]
+          | undefined;
+        const region = unitRegions[id];
+        if (!region || (codes && !codes.includes(region))) {
+          return Promise.resolve(null);
+        }
+        return Promise.resolve({ id } as Unit);
+      });
+    }
+
+    // Stands in for Postgres on the list read: the seeded leases survive only
+    // when the region predicate the service built admits their unit's region.
+    function seedLeaseListOnUnits(unitIds: string[]) {
+      const rows = unitIds.map(
+        (unitId) => ({ ...mockLease, id: `lease-${unitId}`, unitId }) as Lease,
+      );
+      let codes: string[] | undefined;
+      const chain: Record<string, jest.Mock> = {};
+      ['leftJoinAndSelect', 'where', 'skip', 'take', 'orderBy'].forEach(
+        (key) => {
+          chain[key] = jest.fn().mockReturnValue(chain);
+        },
+      );
+      chain.andWhere = jest
+        .fn()
+        .mockImplementation((_sql: string, params?: any) => {
+          if (params?.regionCodes) {
+            codes = params.regionCodes as string[];
+          }
+          return chain;
+        });
+      chain.getManyAndCount = jest.fn().mockImplementation(() => {
+        const matched = codes
+          ? rows.filter((row) => codes!.includes(unitRegions[row.unitId]))
+          : rows;
+        return Promise.resolve([matched, matched.length]);
+      });
+      (repo.createQueryBuilder as unknown as jest.Mock) = jest
+        .fn()
+        .mockReturnValue(chain);
+      return rows;
+    }
+
+    it('confines the list to the caller assigned regions', async () => {
+      seedLeaseListOnUnits(['unit-makkah', 'unit-punjab']);
+
+      const result = await service.findAll(
+        companyId,
+        1,
+        20,
+        undefined,
+        undefined,
+        undefined,
+        makkahManager,
+      );
+
+      expect(result.data.map((l) => l.unitId)).toEqual(['unit-makkah']);
+      expect(result.total).toBe(1);
+    });
+
+    it('lists no leases from a region outside the caller assignments', async () => {
+      seedLeaseListOnUnits(['unit-makkah', 'unit-punjab']);
+
+      const result = await service.findAll(
+        companyId,
+        1,
+        20,
+        'punjab',
+        undefined,
+        undefined,
+        makkahManager,
+      );
+
+      expect(result.data).toEqual([]);
+      expect(result.total).toBe(0);
+    });
+
+    it('leaves the list unfiltered for admins', async () => {
+      seedLeaseListOnUnits(['unit-makkah', 'unit-punjab']);
+
+      const result = await service.findAll(
+        companyId,
+        1,
+        20,
+        undefined,
+        undefined,
+        undefined,
+        admin,
+      );
+
+      expect(result.data.map((l) => l.unitId)).toEqual([
+        'unit-makkah',
+        'unit-punjab',
+      ]);
+    });
+
+    it('lists nothing when the caller has no assigned region', async () => {
+      seedLeaseListOnUnits(['unit-makkah', 'unit-punjab']);
+
+      const result = await service.findAll(
+        companyId,
+        1,
+        20,
+        undefined,
+        undefined,
+        undefined,
+        { role: 'manager', regionCodes: [] },
+      );
+
+      expect(result.data).toEqual([]);
+      expect(repo.createQueryBuilder).not.toHaveBeenCalled();
+    });
+
+    it('denies findByUnit for a unit outside the caller assigned regions', async () => {
+      seedUnitLookup();
+      repo.find.mockResolvedValue([mockLease as Lease]);
+
+      await expect(
+        service.findByUnit('unit-punjab', companyId, makkahManager),
+      ).rejects.toThrow(NotFoundException);
+      expect(repo.find).not.toHaveBeenCalled();
+    });
+
+    it('returns the leases of a unit inside the caller assigned regions', async () => {
+      seedUnitLookup();
+      const row = { ...mockLease, unitId: 'unit-punjab' } as Lease;
+      repo.find.mockResolvedValue([row]);
+
+      const result = await service.findByUnit(
+        'unit-punjab',
+        companyId,
+        twoRegionManager,
+      );
+
+      expect(result.map((l) => l.id)).toEqual(['lease-uuid-1']);
+    });
+
+    it('denies findByUnit when the caller has no assigned region', async () => {
+      seedUnitLookup();
+      repo.find.mockResolvedValue([mockLease as Lease]);
+
+      await expect(
+        service.findByUnit('unit-makkah', companyId, {
+          role: 'manager',
+          regionCodes: [],
+        }),
+      ).rejects.toThrow(NotFoundException);
+      expect(unitRepo.findOne).not.toHaveBeenCalled();
+      expect(repo.find).not.toHaveBeenCalled();
+    });
+
+    it('leaves findByUnit unconfined for admins', async () => {
+      seedUnitLookup();
+      const row = { ...mockLease, unitId: 'unit-punjab' } as Lease;
+      repo.find.mockResolvedValue([row]);
+
+      const result = await service.findByUnit('unit-punjab', companyId, admin);
+
+      expect(result.map((l) => l.id)).toEqual(['lease-uuid-1']);
+      // Still company-checked, just not region-confined.
+      const opts = (unitRepo.findOne as jest.Mock).mock.calls[0][0];
+      expect(opts.where.companyId).toBe(companyId);
+      expect(opts.where.asset).toBeUndefined();
+    });
+
+    describe('unit binding', () => {
+      const dtoOnUnit = (unitId: string) =>
+        ({
+          unitId,
+          startDate: '2026-01-01',
+          endDate: '2026-12-31',
+          monthlyRent: 5000,
+        }) as any;
+
+      it('denies an admin binding a unit from another company', async () => {
+        unitRepo.findOne.mockImplementation((opts: any) =>
+          Promise.resolve(
+            opts?.where?.companyId === companyId
+              ? ({ id: opts.where.id } as Unit)
+              : null,
+          ),
+        );
+
+        await expect(
+          service.create(
+            'another-company-uuid',
+            dtoOnUnit('unit-uuid-1'),
+            admin,
+          ),
+        ).rejects.toThrow(NotFoundException);
+        expect(repo.save).not.toHaveBeenCalled();
+      });
+
+      it('denies create when the unit is outside the caller regions', async () => {
+        seedUnitLookup();
+
+        await expect(
+          service.create(companyId, dtoOnUnit('unit-punjab'), makkahManager),
+        ).rejects.toThrow(NotFoundException);
+        expect(repo.save).not.toHaveBeenCalled();
+      });
+
+      it('creates a lease on a unit inside the caller regions', async () => {
+        seedUnitLookup();
+        const row = { ...mockLease, unitId: 'unit-punjab' } as Lease;
+        repo.create.mockReturnValue(row);
+        repo.save.mockResolvedValue(row);
+        repo.findOne.mockResolvedValue(row);
+
+        const result = await service.create(
+          companyId,
+          dtoOnUnit('unit-punjab'),
+          twoRegionManager,
+        );
+
+        expect(result.id).toBe('lease-uuid-1');
+      });
+
+      it('denies create when the caller has no assigned region', async () => {
+        seedUnitLookup();
+
+        await expect(
+          service.create(companyId, dtoOnUnit('unit-makkah'), {
+            role: 'manager',
+            regionCodes: [],
+          }),
+        ).rejects.toThrow(NotFoundException);
+        expect(repo.save).not.toHaveBeenCalled();
+      });
+
+      it('denies renew onto a unit outside the caller regions', async () => {
+        seedUnitLookup();
+        seedLeaseOnUnit('unit-makkah');
+
+        await expect(
+          service.renew(
+            'lease-uuid-1',
+            companyId,
+            dtoOnUnit('unit-punjab'),
+            makkahManager,
+          ),
+        ).rejects.toThrow(NotFoundException);
+        expect(manager.save).not.toHaveBeenCalled();
+      });
     });
   });
 });
