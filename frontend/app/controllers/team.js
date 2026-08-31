@@ -271,7 +271,7 @@ export default class TeamController extends PaginatedController {
         body.regionCodes = this.selectedRegionCodes;
       }
 
-      const saved = await this.auth.fetchJson(path, {
+      await this.auth.fetchJson(path, {
         method: isEdit ? 'PATCH' : 'POST',
         body: JSON.stringify(body),
       });
@@ -283,7 +283,6 @@ export default class TeamController extends PaginatedController {
           body: JSON.stringify({ regionCodes: this.selectedRegionCodes }),
         });
       }
-      void saved;
 
       this.notifications.success(
         isEdit ? 'Team member updated' : 'Team member created',

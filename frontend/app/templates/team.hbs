@@ -273,6 +273,11 @@
               class="nu-tag m-pill m-selectable
                 {{if (includes this.selectedRegionCodes r.code) 'is-selected'}}"
               data-test-region-choice={{r.code}}
+              aria-pressed={{if
+                (includes this.selectedRegionCodes r.code)
+                "true"
+                "false"
+              }}
               {{on "click" (fn this.toggleRegion r.code)}}
             >
               <Ui::Ph @icon="map-pin" />
