@@ -4,10 +4,64 @@ import { service } from '@ember/service';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 
+// Meta opens the free-form reply window on an inbound customer message only, and
+// it runs 24h from that message. An agent replying never extends it.
+const REPLY_WINDOW_MS = 24 * 60 * 60 * 1000;
+
+// Fields a later delivery of the same wa message id may legitimately change.
+const MUTABLE_MESSAGE_FIELDS = [
+  'body',
+  'status',
+  'statusAt',
+  'errorCode',
+  'editedAt',
+  'deletedAt',
+];
+
+const CONNECTION_COPY = {
+  none: {
+    label: 'No number connected',
+    variant: 'secondary',
+    detail: 'Connect your WhatsApp Business number to send and receive here.',
+  },
+  pending: {
+    label: 'Connection pending',
+    variant: 'warning',
+    detail: 'Meta has not finished setting this number up yet.',
+  },
+  connected: {
+    label: 'Connected',
+    variant: 'success',
+    detail: '',
+  },
+  disconnected: {
+    label: 'Disconnected',
+    variant: 'danger',
+    detail: 'This number is no longer linked. Reconnect it to send again.',
+  },
+  flagged: {
+    label: 'Flagged by Meta',
+    variant: 'danger',
+    detail:
+      'Meta has flagged this number for quality. Sending may be restricted.',
+  },
+};
+
+// Coarse on purpose: the operator needs "plenty of time" or "almost gone", not seconds.
+function formatRemaining(ms) {
+  const totalMinutes = Math.floor(ms / 60000);
+  if (totalMinutes < 1) return 'under a minute';
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  if (hours < 1) return `${minutes}m`;
+  return minutes > 0 ? `${hours}h ${minutes}m` : `${hours}h`;
+}
+
 export default class WhatsappController extends Controller {
   @service whatsapp;
   @service auth;
-  @service dialogs;
+  @service notifications;
+  @service embeddedSignup;
 
   get isCompanyAdmin() {
     return this.auth.currentUser?.role === 'company_admin';
@@ -15,14 +69,15 @@ export default class WhatsappController extends Controller {
 
   // ── State ─────────────────────────────────────────────────────────────
 
-  @tracked connection = 'disconnected';
-  @tracked hasCredentials = false;
-  @tracked me = null;
-  @tracked qr = null;
-
   @tracked chats = [];
   @tracked messages = [];
   @tracked currentChatId = null;
+
+  @tracked connection = null;
+  @tracked signupConfig = null;
+  @tracked isConnecting = false;
+  // Bumped on every poll tick so the reply-window countdown stays honest.
+  @tracked now = Date.now();
 
   @tracked aiEnabled = false;
   @tracked aiKeyConfigured = false;
@@ -33,30 +88,20 @@ export default class WhatsappController extends Controller {
 
   @tracked messageText = '';
   @tracked isSending = false;
-  @tracked errorMsg = '';
 
-  _pollQRGeneration = 0;
+  _setupGeneration = 0;
+  _pollTimer = null;
+  _pollInFlight = false;
 
   // ── Computed ──────────────────────────────────────────────────────────
-
-  get isConnected() {
-    return this.connection === 'connected';
-  }
-
-  get connectionVariant() {
-    if (this.connection === 'connected') return 'success';
-    return this.connection === 'connecting' ? 'warning' : 'danger';
-  }
-  get showQR() {
-    return (
-      this.connection !== 'connected' &&
-      (!this.hasCredentials || this.qr !== null)
-    );
-  }
 
   get creditUsageLabel() {
     if (this.creditsLimit === null) return null;
     return `${this.creditsUsed ?? 0}/${this.creditsLimit} AI credits`;
+  }
+
+  get composerDisabled() {
+    return !this.currentChatId || this.isSending || !this.isConnected;
   }
 
   get currentChatMessages() {
@@ -66,40 +111,152 @@ export default class WhatsappController extends Controller {
       .sort((a, b) => (a.timestamp ?? 0) - (b.timestamp ?? 0));
   }
 
+  get currentChat() {
+    if (!this.currentChatId) return null;
+    return this.chats.find((c) => c.chatId === this.currentChatId) ?? null;
+  }
+
   get currentChatName() {
-    const chat = this.chats.find((c) => c.chatId === this.currentChatId);
-    return chat?.chatName ?? this.currentChatId?.split('@')[0] ?? '';
+    return this.currentChat?.chatName ?? this.currentChatId ?? '';
+  }
+
+  // ── Connection ────────────────────────────────────────────────────────
+
+  get connectionStatus() {
+    return this.connection?.status ?? 'none';
+  }
+
+  get isConnected() {
+    return this.connectionStatus === 'connected';
+  }
+
+  get connectionLabel() {
+    return (CONNECTION_COPY[this.connectionStatus] ?? CONNECTION_COPY.none)
+      .label;
+  }
+
+  get connectionVariant() {
+    return (CONNECTION_COPY[this.connectionStatus] ?? CONNECTION_COPY.none)
+      .variant;
+  }
+
+  // A disconnect reason from Meta beats our generic copy: it says WHY.
+  get connectionDetail() {
+    if (this.connectionStatus === 'connected') {
+      return this.connection?.displayPhoneNumber ?? '';
+    }
+    if (
+      this.connectionStatus === 'disconnected' &&
+      this.connection?.disconnectReason
+    ) {
+      return `Meta reported ${this.connection.disconnectReason}.`;
+    }
+    if (this.needsReauth) {
+      return 'Meta authorization for this number expired. Reconnect to send again.';
+    }
+    return (CONNECTION_COPY[this.connectionStatus] ?? CONNECTION_COPY.none)
+      .detail;
+  }
+
+  // A dead token is stored as FLAGGED, not DISCONNECTED, so Meta keeps delivering the
+  // lead's inbound messages. It still needs the agent to reconnect, and it is not the
+  // quality problem the generic flagged copy describes.
+  get needsReauth() {
+    return (
+      this.connectionStatus === 'flagged' &&
+      (this.connection?.disconnectReason ?? '').startsWith('token_invalid')
+    );
+  }
+
+  get needsConnect() {
+    const status = this.connectionStatus;
+    return status === 'none' || status === 'disconnected' || this.needsReauth;
+  }
+
+  get signupReady() {
+    return Boolean(this.signupConfig?.appId && this.signupConfig?.configId);
+  }
+
+  get connectButtonText() {
+    return this.connection ? 'Reconnect' : 'Connect WhatsApp';
+  }
+
+  get connectDisabled() {
+    return !this.signupReady;
+  }
+
+  get connectTooltip() {
+    if (this.signupReady) return null;
+    return 'WhatsApp signup is not configured on this server yet';
+  }
+
+  // ── Reply window ──────────────────────────────────────────────────────
+
+  // Null when no chat is open. Otherwise always an object, because a chat the
+  // customer has never written in still needs to read as closed, not as unknown.
+  get replyWindow() {
+    if (!this.currentChatId) return null;
+
+    const openedAt = this.currentChat?.lastInboundAt ?? null;
+    if (!openedAt) {
+      return {
+        open: false,
+        everOpened: false,
+        remainingMs: 0,
+        label: 'Reply window closed',
+        detail: 'The customer has not written yet, so no window is open.',
+      };
+    }
+
+    const remainingMs = openedAt + REPLY_WINDOW_MS - this.now;
+    if (remainingMs <= 0) {
+      return {
+        open: false,
+        everOpened: true,
+        remainingMs: 0,
+        label: 'Reply window closed',
+        detail: 'Free-form replies need a new message from the customer.',
+      };
+    }
+
+    return {
+      open: true,
+      everOpened: true,
+      remainingMs,
+      label: `Reply window closes in ${formatRemaining(remainingMs)}`,
+      detail: '',
+    };
   }
 
   // ── Lifecycle ─────────────────────────────────────────────────────────
 
   async setup() {
-    const setupGen = this._pollQRGeneration;
+    const setupGen = this._setupGeneration;
     this.whatsapp.connectSocket((type, data) =>
       this.handleSocketEvent(type, data),
     );
 
     try {
-      const [connData, chatsData, msgsData, aiData] = await Promise.all([
-        this.whatsapp.getConnection(),
-        this.whatsapp.getChats(),
-        this.whatsapp.getAllMessages(),
-        this.whatsapp.getAi(),
-      ]);
+      const [chatsData, msgsData, aiData, connData, signupData] =
+        await Promise.all([
+          this.whatsapp.getChats(),
+          this.whatsapp.getAllMessages(),
+          this.whatsapp.getAi(),
+          // Own catch: a connection read failure must not blank the chat list.
+          this.whatsapp.getConnection().catch(() => null),
+          this.whatsapp.getSignupConfig().catch(() => null),
+        ]);
 
-      if (setupGen !== this._pollQRGeneration) return; // navigated away mid-fetch
+      if (setupGen !== this._setupGeneration) return; // navigated away mid-fetch
 
-      const conn = connData.data ?? connData;
-      this.connection = conn.connection ?? 'disconnected';
-      this.hasCredentials = conn.hasCredentials ?? false;
-      this.me = conn.me ?? null;
+      this.connection = connData ? (connData.data ?? connData) : null;
+      this.signupConfig = signupData
+        ? (signupData.data ?? signupData)
+        : null;
 
       this.chats = (chatsData.data?.chats ?? chatsData.chats ?? [])
         .filter((c) => !this._isIgnoredChat(c))
-        .map((c) => ({
-          ...c,
-          lastTs: c.lastTs ? c.lastTs * 1000 : c.lastTs,
-        }));
+        .map((c) => this._normalizeChat(c));
       this.ingestMessages(msgsData.data?.messages ?? msgsData.messages ?? []);
 
       const ai = aiData.data ?? aiData;
@@ -110,43 +267,15 @@ export default class WhatsappController extends Controller {
       this.creditsResetsAt = ai.creditsResetsAt ?? null;
       this.openWindows = ai.openWindows ?? null;
 
-      if (this.connection !== 'connected') {
-        this.pollForQR();
-      }
-
       this.startPolling();
     } catch (err) {
       console.error('WhatsApp setup failed', err);
-    }
-  }
-
-  async pollForQR() {
-    const myGen = ++this._pollQRGeneration;
-    for (let i = 0; i < 40; i++) {
-      await new Promise((r) => setTimeout(r, 1500));
-      if (myGen !== this._pollQRGeneration || this.connection === 'connected')
-        return;
-      try {
-        const qrData = await this.whatsapp.getQR();
-        const data = qrData.data ?? qrData;
-        if (data.connection === 'connected') {
-          this.connection = 'connected';
-          this.hasCredentials = data.hasCredentials ?? true;
-          this.me = data.me ?? this.me;
-          this.qr = null;
-          return;
-        }
-        if (typeof data.hasCredentials === 'boolean')
-          this.hasCredentials = data.hasCredentials;
-        if (data.qr) this.qr = data.qr;
-      } catch {
-        /* ignore */
-      }
+      this.notifications.error('Could not load WhatsApp data');
     }
   }
 
   teardown() {
-    this._pollQRGeneration++;
+    this._setupGeneration++;
     this.whatsapp.disconnectSocket();
     this.stopPolling();
     this.currentChatId = null;
@@ -162,38 +291,32 @@ export default class WhatsappController extends Controller {
       clearInterval(this._pollTimer);
       this._pollTimer = null;
     }
+    this._pollInFlight = false;
   }
 
   async pollUpdates() {
-    if (!this.isConnected) return;
+    // Ahead of the guards: the countdown must keep moving even between fetches.
+    this.now = Date.now();
+    if (!this.currentChatId) return;
+    // setInterval does not wait for the previous tick, so a response slower than
+    // the interval would otherwise stack a second request on top of the first.
+    if (this._pollInFlight) return;
+
+    this._pollInFlight = true;
     try {
-      if (this.currentChatId) {
-        const msgsData = await this.whatsapp.getMessages(this.currentChatId);
-        this.ingestMessages(msgsData.data?.messages ?? msgsData.messages ?? []);
-      }
+      const msgsData = await this.whatsapp.getMessages(this.currentChatId);
+      this.ingestMessages(msgsData.data?.messages ?? msgsData.messages ?? []);
     } catch {
       /* ignore */
+    } finally {
+      this._pollInFlight = false;
     }
   }
 
   // ── Socket events ─────────────────────────────────────────────────────
 
   handleSocketEvent(type, data) {
-    if (type === 'status') {
-      this.connection = data.connection ?? 'disconnected';
-      this.hasCredentials = data.hasCredentials ?? false;
-      this.me = data.me ?? null;
-      if (this.connection !== 'connected') {
-        if (!this.hasCredentials) {
-          this.chats = [];
-          this.messages = [];
-          this.currentChatId = null;
-        }
-        this.pollForQR();
-      }
-    } else if (type === 'qr') {
-      this.qr = data.dataUrl ?? null;
-    } else if (type === 'message') {
+    if (type === 'message') {
       this.ingestMessage(data);
     } else if (type === 'ai') {
       if (data.enabled !== undefined) this.aiEnabled = data.enabled;
@@ -206,62 +329,133 @@ export default class WhatsappController extends Controller {
     }
   }
 
-  ingestMessages(msgs) {
-    const existingIds = new Set(this.messages.map((m) => m.id));
-    const newMsgs = msgs
-      .filter((m) => !existingIds.has(m.id))
-      .filter((m) => m.body || m.hasMedia)
-      .filter((m) => !this._isIgnoredChat(m))
-      .map((m) => ({
-        ...m,
-        timestamp: m.timestamp ? m.timestamp * 1000 : m.timestamp,
-      }));
-    if (!newMsgs.length) return;
-    this.messages = [...this.messages, ...newMsgs];
-    for (const m of newMsgs) this._updateChat(m);
+  // A deleted message keeps its row but loses its body, so it must survive the
+  // body/hasMedia filter that drops empty system rows.
+  _isRenderable(msg) {
+    return Boolean(msg.body || msg.hasMedia || msg.deletedAt);
   }
 
-  ingestMessage(msg) {
-    if (this.messages.some((m) => m.id === msg.id)) return;
-    if (!msg.body && !msg.hasMedia) return;
-    if (this._isIgnoredChat(msg)) return;
-    const normalized = {
+  _normalizeMessage(msg) {
+    return {
       ...msg,
       timestamp: msg.timestamp ? msg.timestamp * 1000 : msg.timestamp,
     };
+  }
+
+  _normalizeChat(chat) {
+    return {
+      ...chat,
+      lastTs: chat.lastTs ? chat.lastTs * 1000 : chat.lastTs,
+      lastInboundAt: chat.lastInboundAt ? chat.lastInboundAt * 1000 : null,
+    };
+  }
+
+  // Returns the merged row when a later delivery of the same id changed a
+  // mutable field, and null when there is nothing to write. Delivery status,
+  // edits and deletions all arrive on an id we already hold, so dropping every
+  // known id (the old behaviour) froze a message at whatever it looked like the
+  // first time we saw it.
+  _mergeExisting(existing, incoming) {
+    let changed = false;
+    const merged = { ...existing };
+    for (const field of MUTABLE_MESSAGE_FIELDS) {
+      const next = incoming[field] ?? null;
+      if (next !== null && next !== (existing[field] ?? null)) {
+        merged[field] = next;
+        changed = true;
+      }
+    }
+    return changed ? merged : null;
+  }
+
+  ingestMessages(msgs) {
+    const byId = new Map(this.messages.map((m) => [m.id, m]));
+    const appended = [];
+    const chatTouched = [];
+    let changed = false;
+
+    for (const raw of msgs) {
+      if (!this._isRenderable(raw) || this._isIgnoredChat(raw)) continue;
+      const normalized = this._normalizeMessage(raw);
+      const existing = byId.get(normalized.id);
+
+      if (!existing) {
+        byId.set(normalized.id, normalized);
+        appended.push(normalized);
+        chatTouched.push(normalized);
+        changed = true;
+        continue;
+      }
+
+      const merged = this._mergeExisting(existing, normalized);
+      if (merged) {
+        byId.set(merged.id, merged);
+        changed = true;
+      }
+    }
+
+    if (!changed) return;
+    // Rebuild in place so an updated row keeps its position in the thread.
+    this.messages = [
+      ...this.messages.map((m) => byId.get(m.id) ?? m),
+      ...appended,
+    ];
+    for (const m of chatTouched) this._updateChat(m);
+  }
+
+  ingestMessage(msg) {
+    if (!this._isRenderable(msg)) return;
+    if (this._isIgnoredChat(msg)) return;
+    const normalized = this._normalizeMessage(msg);
+    const existing = this.messages.find((m) => m.id === normalized.id);
+
+    if (existing) {
+      const merged = this._mergeExisting(existing, normalized);
+      if (merged) {
+        this.messages = this.messages.map((m) =>
+          m.id === merged.id ? merged : m,
+        );
+      }
+      return;
+    }
+
     this.messages = [...this.messages, normalized];
     this._updateChat(normalized);
   }
 
   _isIgnoredChat(msg) {
-    if (msg.isGroup) return true;
-    if (this.me?.id && msg.chatId === this.me.id) return true;
-    if (msg.chatId?.endsWith('@newsletter')) return true;
-    return false;
+    return Boolean(msg.isGroup);
   }
 
   _updateChat(msg) {
     const existingIdx = this.chats.findIndex((c) => c.chatId === msg.chatId);
     const isNewer =
       (msg.timestamp ?? 0) >= (this.chats[existingIdx]?.lastTs ?? 0);
+    // An inbound message reopens Meta's window; an outbound one never does.
+    const inboundAt = msg.fromMe ? null : (msg.timestamp ?? null);
+
     if (existingIdx >= 0 && isNewer) {
       const updated = [...this.chats];
+      const current = updated[existingIdx];
       updated[existingIdx] = {
-        ...updated[existingIdx],
+        ...current,
         lastBody: msg.body,
         lastTs: msg.timestamp,
         lastFromMe: msg.fromMe,
+        lastInboundAt:
+          Math.max(inboundAt ?? 0, current.lastInboundAt ?? 0) || null,
       };
       this.chats = updated.sort((a, b) => (b.lastTs ?? 0) - (a.lastTs ?? 0));
     } else if (existingIdx < 0) {
       this.chats = [
         {
           chatId: msg.chatId,
-          chatName: msg.chatName || msg.chatId.split('@')[0],
+          chatName: msg.chatName || msg.chatId,
           isGroup: msg.isGroup ?? false,
           lastBody: msg.body,
           lastTs: msg.timestamp,
           lastFromMe: msg.fromMe,
+          lastInboundAt: inboundAt,
         },
         ...this.chats,
       ];
@@ -270,10 +464,52 @@ export default class WhatsappController extends Controller {
 
   // ── Actions ───────────────────────────────────────────────────────────
 
+  // The exchangeable code Meta returns lives 30 seconds, so the POST goes out the moment
+  // the flow finishes rather than waiting on any UI transition.
+  @action
+  async connectWhatsapp() {
+    if (this.isConnecting || !this.signupReady) return;
+
+    this.isConnecting = true;
+    try {
+      const result = await this.embeddedSignup.launch(this.signupConfig);
+      const saved = await this.whatsapp.connect(result);
+      this.connection = saved.data ?? saved;
+      this.notifications.success('WhatsApp connected');
+    } catch (err) {
+      // Walking away from a Meta-hosted flow is not an error worth shouting about.
+      if (err?.cancelled) {
+        this.notifications.info('WhatsApp connection was not completed');
+      } else {
+        console.error('WhatsApp connect failed', err);
+        this.notifications.error(err?.message ?? 'Could not connect WhatsApp');
+      }
+    } finally {
+      this.isConnecting = false;
+    }
+  }
+
+  @action
+  async disconnectWhatsapp() {
+    if (this.isConnecting) return;
+
+    this.isConnecting = true;
+    try {
+      await this.whatsapp.disconnect();
+      const connData = await this.whatsapp.getConnection().catch(() => null);
+      this.connection = connData ? (connData.data ?? connData) : null;
+      this.notifications.success('WhatsApp disconnected');
+    } catch (err) {
+      console.error('WhatsApp disconnect failed', err);
+      this.notifications.error(err?.message ?? 'Could not disconnect WhatsApp');
+    } finally {
+      this.isConnecting = false;
+    }
+  }
+
   @action
   selectChat(chatId) {
     this.currentChatId = chatId;
-    this.errorMsg = '';
   }
 
   // Kit form components call onInput as (value, event), unlike a raw input event.
@@ -285,59 +521,18 @@ export default class WhatsappController extends Controller {
   @action
   async sendMessage(event) {
     if (event) event.preventDefault();
-    const text = this.messageText.trim();
-    if (!text || !this.currentChatId || this.isSending) return;
+    const body = this.messageText.trim();
+    if (!body || this.composerDisabled) return;
 
     this.isSending = true;
-    this.errorMsg = '';
-    const tempId = `pending-${Date.now()}`;
-    const prevChat = this.chats.find((c) => c.chatId === this.currentChatId);
-
-    this.ingestMessage({
-      id: tempId,
-      chatId: this.currentChatId,
-      senderId: this.me?.id ?? 'me',
-      senderName: 'You',
-      chatName: this.currentChatName,
-      isGroup: this.currentChatId.endsWith('@g.us'),
-      body: text,
-      hasMedia: false,
-      mediaType: '',
-      mediaUrls: [],
-      mentionedIds: [],
-      quotedParticipant: '',
-      fromMe: true,
-      aiGenerated: false,
-      timestamp: Math.floor(Date.now() / 1000),
-    });
-    this.messageText = '';
-
     try {
-      const result = await this.whatsapp.sendMessage(this.currentChatId, text);
-      const realId = (result.data ?? result).messageId;
-      if (realId) {
-        const alreadyPresent = this.messages.some((m) => m.id === realId);
-        this.messages = alreadyPresent
-          ? this.messages.filter((m) => m.id !== tempId)
-          : this.messages.map((m) =>
-              m.id === tempId ? { ...m, id: realId } : m,
-            );
-      }
+      const result = await this.whatsapp.sendMessage(this.currentChatId, body);
+      // Same path the socket handler uses, so the later whatsapp:message echo
+      // for this id is deduped instead of appended twice.
+      this.ingestMessage(result.data ?? result);
+      this.messageText = '';
     } catch (err) {
-      this.messages = this.messages.filter((m) => m.id !== tempId);
-      if (prevChat) {
-        const idx = this.chats.findIndex(
-          (c) => c.chatId === this.currentChatId,
-        );
-        if (idx >= 0) {
-          const updated = [...this.chats];
-          updated[idx] = prevChat;
-          this.chats = updated.sort(
-            (a, b) => (b.lastTs ?? 0) - (a.lastTs ?? 0),
-          );
-        }
-      }
-      this.errorMsg = 'Send failed. Please try again.';
+      this.notifications.error(err.message);
     } finally {
       this.isSending = false;
     }
@@ -357,42 +552,8 @@ export default class WhatsappController extends Controller {
     try {
       const result = await this.whatsapp.toggleAi(!this.aiEnabled);
       this.aiEnabled = (result.data ?? result).enabled ?? this.aiEnabled;
-    } catch {
-      /* gateway will emit ai-status */
+    } catch (err) {
+      this.notifications.error(err.message || 'Could not toggle AI');
     }
-  }
-
-  @action
-  async repairWhatsapp() {
-    await this.dialogs.confirm({
-      confirmVariant: 'danger',
-      title: 'Re-pair WhatsApp',
-      message:
-        'Your current session will be cleared and you will need to scan a new QR code to reconnect.',
-      confirmText: 'Re-pair',
-      confirmingText: 'Clearing session...',
-      // Swallowed rather than rethrown so the dialog closes and the existing
-      // inline error banner is what reports the failure, as it did before.
-      onConfirm: async () => {
-        try {
-          await this.whatsapp.logout();
-          this.messages = [];
-          this.chats = [];
-          this.currentChatId = null;
-          this.connection = 'disconnected';
-          this.hasCredentials = false;
-          this.qr = null;
-          this._pollQRGeneration++;
-          this.pollForQR();
-        } catch {
-          this.errorMsg = 'Re-pair failed.';
-        }
-      },
-    });
-  }
-
-  mediaUrl(msg) {
-    if (!msg.hasMedia || !msg.mediaUrls?.[0]) return null;
-    return this.whatsapp.mediaUrl(msg.mediaType, msg.mediaUrls[0]);
   }
 }

@@ -23,6 +23,7 @@ import { BillingHistory } from '../billing/entities/billing-history.entity';
 import { User } from '../users/entities/user.entity';
 import { WhatsappSettings } from './entities/whatsapp-settings.entity';
 import { WhatsappAiConversation } from './entities/whatsapp-ai-conversation.entity';
+import { WhatsappChat } from './entities/whatsapp-chat.entity';
 import { AiCreditUsage } from './entities/ai-credit-usage.entity';
 import { AiCreditAgentUsage } from './wa-types';
 
@@ -251,6 +252,7 @@ export class WhatsappAiRepositoryService
     return this.settingsRepo.manager.transaction(async (manager) => {
       const usageRepo = manager.getRepository(AiCreditUsage);
       const conversationRepo = manager.getRepository(WhatsappAiConversation);
+      const chatRepo = manager.getRepository(WhatsappChat);
 
       await acquireCompanyLock(manager, companyId);
 
@@ -297,11 +299,19 @@ export class WhatsappAiRepositoryService
         return { allowed: false, charged: false, conversationId: null };
       }
 
+      // Same identity as the chat row (company+user+chat), read here so a new window
+      // records which connected number it belongs to without the caller passing it in.
+      const chat = await chatRepo.findOne({
+        where: { companyId, userId, chatId },
+        select: { phoneNumberId: true },
+      });
+
       const conversation = await conversationRepo.save(
         conversationRepo.create({
           companyId,
           userId,
           chatId,
+          phoneNumberId: chat?.phoneNumberId ?? null,
           leadId: null,
           startedAt: now,
           expiresAt: new Date(now.getTime() + AI_CONVERSATION_WINDOW_MS),

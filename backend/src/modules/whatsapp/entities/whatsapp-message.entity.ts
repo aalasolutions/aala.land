@@ -6,6 +6,14 @@ import {
   Index,
 } from 'typeorm';
 
+export enum WhatsappMessageStatus {
+  SENT = 'sent',
+  DELIVERED = 'delivered',
+  READ = 'read',
+  FAILED = 'failed',
+  PLAYED = 'played',
+}
+
 // Retention: none by design (owner ruling 2026-07-27). Unlike whatsapp_ai_conversations,
 // which AiConversationRetentionCron prunes at 13 months.
 @Entity('whatsapp_messages')
@@ -33,6 +41,7 @@ export class WhatsappMessage {
   @Column({ name: 'wa_message_id', type: 'varchar', length: 255 })
   waMessageId: string;
 
+  // The customer's number in E.164, not a Baileys JID.
   @Column({ name: 'chat_id', type: 'varchar', length: 255 })
   chatId: string;
 
@@ -77,6 +86,36 @@ export class WhatsappMessage {
 
   @Column({ name: 'ai_generated', type: 'boolean', default: false })
   aiGenerated: boolean;
+
+  // Which connected business number this message belongs to.
+  @Column({
+    name: 'phone_number_id',
+    type: 'varchar',
+    length: 64,
+    nullable: true,
+  })
+  phoneNumberId: string | null;
+
+  // Outbound only. Inbound messages have no delivery status.
+  @Column({
+    name: 'status',
+    type: 'enum',
+    enum: WhatsappMessageStatus,
+    nullable: true,
+  })
+  status: WhatsappMessageStatus | null;
+
+  @Column({ name: 'status_at', type: 'timestamptz', nullable: true })
+  statusAt: Date | null;
+
+  @Column({ name: 'error_code', type: 'varchar', length: 32, nullable: true })
+  errorCode: string | null;
+
+  @Column({ name: 'edited_at', type: 'timestamptz', nullable: true })
+  editedAt: Date | null;
+
+  @Column({ name: 'deleted_at', type: 'timestamptz', nullable: true })
+  deletedAt: Date | null;
 
   // WhatsApp epoch SECONDS, not milliseconds. Read back as a string by pg.
   @Column({ type: 'bigint' })

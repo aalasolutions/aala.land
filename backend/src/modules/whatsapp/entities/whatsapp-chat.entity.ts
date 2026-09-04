@@ -25,6 +25,7 @@ export class WhatsappChat {
   @Column({ name: 'user_id', type: 'uuid' })
   userId: string;
 
+  // The customer's number in E.164, not a Baileys JID.
   @Column({ name: 'chat_id', type: 'varchar', length: 255 })
   chatId: string;
 
@@ -63,6 +64,19 @@ export class WhatsappChat {
 
   @Column({ name: 'last_from_me', type: 'boolean', default: false })
   lastFromMe: boolean;
+
+  // Meta's 24h reply window opens ONLY on an inbound customer message. This is a
+  // different clock from the AI credit window; do not reconcile them here.
+  @Column({ name: 'last_inbound_at', type: 'timestamptz', nullable: true })
+  lastInboundAt: Date | null;
+
+  @Column({
+    name: 'phone_number_id',
+    type: 'varchar',
+    length: 64,
+    nullable: true,
+  })
+  phoneNumberId: string | null;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;

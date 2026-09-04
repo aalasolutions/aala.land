@@ -14,8 +14,8 @@ import { BillingPrice } from '@modules/billing/entities/billing-price.entity';
 import { BillingHistory } from '@modules/billing/entities/billing-history.entity';
 import { AiCreditUsage } from '@modules/whatsapp/entities/ai-credit-usage.entity';
 import { WhatsappAiConversation } from '@modules/whatsapp/entities/whatsapp-ai-conversation.entity';
+import { WhatsappConnection } from '@modules/whatsapp/entities/whatsapp-connection.entity';
 import { BillingService } from '@modules/billing/billing.service';
-import { WhatsappService } from '@modules/whatsapp/whatsapp.service';
 import { AuditService } from '@modules/audit/audit.service';
 import { MediaService } from '@modules/properties/media.service';
 import { LockStateService, UNLOCKED } from '@modules/lock/lock-state.service';
@@ -70,6 +70,7 @@ interface RepoMock {
   create: jest.Mock;
   update: jest.Mock;
   exists: jest.Mock;
+  countBy: jest.Mock;
   createQueryBuilder: jest.Mock;
 }
 
@@ -97,6 +98,7 @@ function repoMock(): RepoMock {
     create: jest.fn().mockImplementation((x) => x),
     update: jest.fn().mockResolvedValue({ affected: 1 }),
     exists: jest.fn().mockResolvedValue(false),
+    countBy: jest.fn().mockResolvedValue(0),
     createQueryBuilder: jest.fn().mockReturnValue(qb),
   };
 }
@@ -113,6 +115,7 @@ describe('ConsoleService', () => {
   let billingHistoryRepo: RepoMock;
   let aiCreditUsageRepo: RepoMock;
   let aiConversationRepo: RepoMock;
+  let waConnectionRepo: RepoMock;
   let billingService: {
     getSubscriptionState: jest.Mock;
     syncPrices: jest.Mock;
@@ -129,7 +132,6 @@ describe('ConsoleService', () => {
     uploadConsoleReceipt: jest.Mock;
     getDocumentStream: jest.Mock;
   };
-  let whatsappService: { countConnectedInstances: jest.Mock };
 
   beforeEach(async () => {
     companyRepo = repoMock();
@@ -142,6 +144,7 @@ describe('ConsoleService', () => {
     billingHistoryRepo = repoMock();
     aiCreditUsageRepo = repoMock();
     aiConversationRepo = repoMock();
+    waConnectionRepo = repoMock();
     billingService = {
       getSubscriptionState: jest.fn().mockResolvedValue({ tier: 'FREE' }),
       syncPrices: jest
@@ -166,7 +169,6 @@ describe('ConsoleService', () => {
       }),
       getDocumentStream: jest.fn(),
     };
-    whatsappService = { countConnectedInstances: jest.fn().mockReturnValue(0) };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -190,11 +192,14 @@ describe('ConsoleService', () => {
           provide: getRepositoryToken(WhatsappAiConversation),
           useValue: aiConversationRepo,
         },
+        {
+          provide: getRepositoryToken(WhatsappConnection),
+          useValue: waConnectionRepo,
+        },
         { provide: BillingService, useValue: billingService },
         { provide: LockStateService, useValue: lockStateService },
         { provide: AuditService, useValue: auditService },
         { provide: MediaService, useValue: mediaService },
-        { provide: WhatsappService, useValue: whatsappService },
       ],
     }).compile();
 

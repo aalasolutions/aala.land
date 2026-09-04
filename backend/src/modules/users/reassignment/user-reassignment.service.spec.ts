@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { DataSource, EntityManager } from 'typeorm';
+import { EntityManager } from 'typeorm';
 import { UserReassignmentService } from './user-reassignment.service';
 import { ReassignmentReport } from './reassignment-report';
 
@@ -30,10 +30,7 @@ describe('UserReassignmentService', () => {
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        UserReassignmentService,
-        { provide: DataSource, useValue: { query: jest.fn() } },
-      ],
+      providers: [UserReassignmentService],
     }).compile();
 
     service = module.get<UserReassignmentService>(UserReassignmentService);
@@ -171,25 +168,46 @@ describe('UserReassignmentService', () => {
     });
   });
 
-  describe('reassignWhatsappRows', () => {
-    it('does nothing when the ids match, because the batch loop would never end', async () => {
-      const dataSource = { transaction: jest.fn(), query: jest.fn() };
-      const module: TestingModule = await Test.createTestingModule({
-        providers: [
-          UserReassignmentService,
-          { provide: DataSource, useValue: dataSource },
-        ],
-      }).compile();
-      const svc = module.get<UserReassignmentService>(UserReassignmentService);
+  describe('WhatsApp rows stay with the departing agent', () => {
+    it('exposes no API that moves chat or message rows between users', () => {
+      const surface = [
+        ...Object.getOwnPropertyNames(UserReassignmentService.prototype),
+        ...Object.keys(service),
+      ];
 
-      const out = await svc.reassignWhatsappRows(
+      expect(surface).not.toContain('reassignWhatsappRows');
+      expect(surface.filter((n) => /whatsapp/i.test(n))).toEqual([]);
+    });
+
+    it('reassigns nothing on a whatsapp table', async () => {
+      const manager = makeManager([]);
+      await service.reassignOwnedRecords(
+        manager,
         COMPANY_ID,
         FROM_USER,
-        FROM_USER,
+        TO_USER,
+        REASON,
       );
 
-      expect(out).toEqual({ chats: 0, messages: 0 });
-      expect(dataSource.transaction).not.toHaveBeenCalled();
+      const qb = (manager.createQueryBuilder as jest.Mock).mock.results[0]
+        .value as { update: jest.Mock; where: jest.Mock };
+      const updatedEntities = qb.update.mock.calls.map(
+        ([entity]: [{ name?: string }]) => entity?.name,
+      );
+      expect(updatedEntities).toEqual([
+        'Lead',
+        'PropertyDocument',
+        'Unit',
+        'Commission',
+        'WorkOrder',
+        'Contact',
+      ]);
+      const clauses = qb.where.mock.calls.map(([clause]: [string]) => clause);
+      expect(clauses.some((c) => /whatsapp/i.test(c))).toBe(false);
+    });
+
+    it('needs no DataSource, because nothing here runs outside the caller transaction', () => {
+      expect(UserReassignmentService.length).toBe(0);
     });
   });
 });

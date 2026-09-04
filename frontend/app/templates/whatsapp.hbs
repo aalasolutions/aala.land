@@ -6,23 +6,58 @@
     class="wa-shell__header"
     @icon="whatsapp-logo"
     @title="WhatsApp"
+  />
+
+  {{! ── Connection status ─────────────────────────────────────────────── }}
+  <div
+    class="wa-connection is-{{this.connectionStatus}}"
+    data-test-wa-connection-status={{this.connectionStatus}}
   >
-    <:meta>
-      <span class="wa-status-bar" data-test-wa-status>
-        <Nuvo::Dot
-          @variant={{this.connectionVariant}}
-          @pulse={{eq this.connection "connecting"}}
-        />
-        {{#if (eq this.connection "connected")}}
-          Connected
-        {{else if (eq this.connection "connecting")}}
-          Connecting...
-        {{else}}
-          {{if this.hasCredentials "Reconnecting..." "Not paired"}}
-        {{/if}}
+    <Nuvo::Dot @variant={{this.connectionVariant}} @size="sm" />
+
+    <div class="wa-connection__text">
+      <span class="wa-connection__label" data-test-wa-connection-label>
+        {{this.connectionLabel}}
       </span>
-    </:meta>
-  </Nuvo::PageHeader>
+      {{#if this.connectionDetail}}
+        <span class="wa-connection__detail" data-test-wa-connection-detail>
+          {{this.connectionDetail}}
+        </span>
+      {{/if}}
+    </div>
+
+    {{#if this.isConnected}}
+      <span class="wa-connection__cta">
+        <Nuvo::Button
+          @variant="ghost"
+          @size="xs"
+          @icon="plugs-connected"
+          @text="Disconnect"
+          @loading={{this.isConnecting}}
+          @onClick={{this.disconnectWhatsapp}}
+          data-test-wa-disconnect
+        />
+      </span>
+    {{else if this.needsConnect}}
+      {{! Wrapper: a disabled button swallows its own pointer events, tooltip included. }}
+      <span
+        class="wa-connection__cta"
+        data-tooltip={{this.connectTooltip}}
+        data-tooltip-position="bottom"
+      >
+        <Nuvo::Button
+          @variant="secondary"
+          @size="xs"
+          @icon="plugs"
+          @text={{this.connectButtonText}}
+          @disabled={{this.connectDisabled}}
+          @loading={{this.isConnecting}}
+          @onClick={{this.connectWhatsapp}}
+          data-test-wa-connect
+        />
+      </span>
+    {{/if}}
+  </div>
 
   <div class="wa-page">
 
@@ -59,18 +94,6 @@
               {{on "click" this.toggleAi}}
             />
           </span>
-
-          <Nuvo::Button
-            @variant="secondary"
-            @size="xs"
-            @shape="square"
-            @icon="plugs"
-            aria-label="Re-pair device"
-            data-tooltip="Re-pair device"
-            data-tooltip-position="bottom"
-            data-test-repair-btn
-            {{on "click" this.repairWhatsapp}}
-          />
         </div>
       </div>
 
@@ -83,57 +106,33 @@
         </div>
       {{/if}}
 
-      {{! QR pane }}
-      {{#if this.showQR}}
-        <div class="wa-qr-pane">
-          <p class="wa-qr-title">Connect your WhatsApp</p>
-          <div class="wa-qr-frame">
-            {{#if this.qr}}
-              <img src={{this.qr}} alt="WhatsApp pairing code" class="wa-qr-img" />
-            {{else}}
-              <Nuvo::Spinner />
-            {{/if}}
-          </div>
-          <ol class="wa-qr-steps">
-            <li>Open WhatsApp on your phone</li>
-            <li>Tap Settings, then Linked Devices</li>
-            <li>Tap "Link a Device"</li>
-            <li>Point your phone at this screen</li>
-          </ol>
-        </div>
-      {{/if}}
-
       {{! Chat list }}
-      {{#unless this.showQR}}
-        <div class="wa-chat-list">
-          {{#each this.chats as |chat|}}
-            <button
-              type="button"
-              class="wa-chat-item
-                {{if (eq this.currentChatId chat.chatId) 'is-active'}}"
-              data-test-wa-chat={{chat.chatId}}
-              {{on "click" (fn this.selectChat chat.chatId)}}
-            >
-              <div class="flex between x-center">
-                <span class="wa-chat-name">
-                  {{#if chat.isGroup}}
-                    <Nuvo::Tag @size="sm" @text="group" />
-                  {{/if}}
-                  {{chat.chatName}}
-                </span>
-                <span class="wa-chat-time">{{format-date-time chat.lastTs}}</span>
-              </div>
-              <p class="wa-chat-preview">
-                {{#if chat.lastFromMe}}You: {{/if}}{{chat.lastBody}}
-              </p>
-            </button>
-          {{else}}
-            {{#if this.isConnected}}
-              <Nuvo::EmptyState @title="No chats yet" />
-            {{/if}}
-          {{/each}}
-        </div>
-      {{/unless}}
+      <div class="wa-chat-list">
+        {{#each this.chats as |chat|}}
+          <button
+            type="button"
+            class="wa-chat-item
+              {{if (eq this.currentChatId chat.chatId) 'is-active'}}"
+            data-test-wa-chat={{chat.chatId}}
+            {{on "click" (fn this.selectChat chat.chatId)}}
+          >
+            <div class="flex between x-center">
+              <span class="wa-chat-name">
+                {{#if chat.isGroup}}
+                  <Nuvo::Tag @size="sm" @text="group" />
+                {{/if}}
+                {{chat.chatName}}
+              </span>
+              <span class="wa-chat-time">{{format-date-time chat.lastTs}}</span>
+            </div>
+            <p class="wa-chat-preview">
+              {{#if chat.lastFromMe}}You: {{/if}}{{chat.lastBody}}
+            </p>
+          </button>
+        {{else}}
+          <Nuvo::EmptyState @title="No chats yet" />
+        {{/each}}
+      </div>
 
     </aside>
 
@@ -148,95 +147,140 @@
         </div>
 
         <div class="wa-messages" id="wa-messages-container">
-          {{#each this.currentChatMessages as |msg|}}
+          {{#each this.currentChatMessages key="id" as |msg|}}
             <div
               class="wa-message
                 {{if msg.fromMe 'm-outgoing' 'm-incoming'}}
-                {{if msg.aiGenerated 'm-ai'}}"
-              data-test-wa-message
+                {{if msg.aiGenerated 'm-ai'}}
+                {{if msg.deletedAt 'm-deleted'}}"
+              data-test-wa-message={{msg.id}}
             >
               {{#unless msg.fromMe}}
                 <div class="wa-sender-tag">{{msg.senderName}}</div>
               {{/unless}}
-              <div class="wa-bubble" dir="auto">{{~#if msg.hasMedia~}}{{~#if
-                    (or (eq msg.mediaType "image") (eq msg.mediaType "sticker"))
-                  ~}}<img
-                      src={{this.mediaUrl msg}}
-                      alt={{msg.body}}
-                      class="wa-media-img"
-                      loading="lazy"
-                    />{{~else if (eq msg.mediaType "video")~}}<video
-                      src={{this.mediaUrl msg}}
-                      controls
-                      class="wa-media-video"
-                    ></video>{{~else if
-                    (or (eq msg.mediaType "audio") (eq msg.mediaType "ptt"))
-                  ~}}<audio
-                      src={{this.mediaUrl msg}}
-                      controls
-                      class="wa-media-audio"
-                    ></audio>{{~else if (eq msg.mediaType "document")~}}<a
-                      href={{this.mediaUrl msg}}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      class="wa-media-doc"
-                    >{{msg.body}}</a>{{~/if~}}{{~else~}}{{msg.body}}{{~/if~}}</div>
+
+              {{#if msg.deletedAt}}
+                <div class="wa-bubble is-deleted" data-test-wa-message-deleted>
+                  <Ui::Ph @icon="prohibit" />
+                  This message was deleted
+                </div>
+              {{else}}
+                <div class="wa-bubble" dir="auto">{{msg.body}}</div>
+              {{/if}}
+
               <div class="wa-meta">
                 <span>{{format-date-time msg.timestamp}}</span>
+
+                {{#if msg.editedAt}}
+                  <span
+                    class="wa-edited"
+                    data-test-wa-message-edited
+                  >edited</span>
+                {{/if}}
+
                 {{#if msg.fromMe}}
                   {{#if msg.aiGenerated}}
                     <Nuvo::Tag @variant="info" @size="sm" @text="AI" />
                   {{else}}
                     <span>You</span>
                   {{/if}}
+
+                  {{! Delivery ladder. No status yet means Meta has taken it but
+                      has not called back, so it reads as pending, not failed. }}
+                  {{#if (eq msg.status "failed")}}
+                    <span
+                      class="wa-tick is-failed"
+                      data-test-wa-message-status="failed"
+                      title={{if
+                        msg.errorCode
+                        (concat "Not delivered. Meta error " msg.errorCode)
+                        "Not delivered"
+                      }}
+                    ><Ui::Ph @icon="warning-circle" /></span>
+                  {{else if (eq msg.status "read")}}
+                    <span
+                      class="wa-tick is-read"
+                      data-test-wa-message-status="read"
+                      title="Read"
+                    ><Ui::Ph @icon="checks" /></span>
+                  {{else if (eq msg.status "delivered")}}
+                    <span
+                      class="wa-tick"
+                      data-test-wa-message-status="delivered"
+                      title="Delivered"
+                    ><Ui::Ph @icon="checks" /></span>
+                  {{else if (eq msg.status "sent")}}
+                    <span
+                      class="wa-tick"
+                      data-test-wa-message-status="sent"
+                      title="Sent"
+                    ><Ui::Ph @icon="check" /></span>
+                  {{else}}
+                    <span
+                      class="wa-tick"
+                      data-test-wa-message-status="pending"
+                      title="Waiting for WhatsApp"
+                    ><Ui::Ph @icon="clock" /></span>
+                  {{/if}}
                 {{/if}}
               </div>
             </div>
           {{else}}
-            <Nuvo::EmptyState @fill={{true}} @title="No messages in this chat yet" />
+            <Nuvo::EmptyState
+              @fill={{true}}
+              @title="No messages in this chat yet"
+            />
           {{/each}}
         </div>
 
-        {{#if this.isConnected}}
-          <div class="wa-input-area">
-            {{#if this.errorMsg}}
-              <Nuvo::Alert
-                @variant="danger"
-                @description={{this.errorMsg}}
-                data-test-wa-error
-              />
-            {{/if}}
-            <div class="wa-input-row">
-              <Nuvo::Textarea
-                @value={{this.messageText}}
-                @onInput={{this.setMessageText}}
-                @placeholder="Type a message..."
-                @rows="1"
-                data-test-wa-input
-                {{on "keydown" this.handleKeydown}}
-              />
-              <Nuvo::Button
-                @variant="primary"
-                @icon="paper-plane-tilt"
-                @text="Send"
-                @disabled={{this.isSending}}
-                data-test-wa-send
-                {{on "click" this.sendMessage}}
-              />
+        <div class="wa-input-area">
+          {{#if this.replyWindow}}
+            <div
+              class="wa-window
+                {{if this.replyWindow.open 'is-open' 'is-closed'}}"
+              data-test-wa-window-state={{if
+                this.replyWindow.open
+                "open"
+                "closed"
+              }}
+            >
+              <Ui::Ph @icon={{if this.replyWindow.open "clock" "prohibit"}} />
+              <span data-test-wa-window-label>{{this.replyWindow.label}}</span>
+              {{#if this.replyWindow.detail}}
+                <span
+                  class="wa-window__detail"
+                >{{this.replyWindow.detail}}</span>
+              {{/if}}
             </div>
+          {{/if}}
+
+          <div class="wa-input-row">
+            <Nuvo::Textarea
+              @value={{this.messageText}}
+              @onInput={{this.setMessageText}}
+              @placeholder="Type a message..."
+              @disabled={{this.composerDisabled}}
+              @rows="1"
+              data-test-wa-composer-input
+              {{on "keydown" this.handleKeydown}}
+            />
+            <Nuvo::Button
+              @variant="primary"
+              @icon="paper-plane-tilt"
+              @text="Send"
+              @disabled={{this.composerDisabled}}
+              data-test-wa-composer-send
+              {{on "click" this.sendMessage}}
+            />
           </div>
-        {{/if}}
+        </div>
 
       {{else}}
 
         <Nuvo::EmptyState
           @fill={{true}}
           @size="lg"
-          @title={{if
-            this.isConnected
-            "Select a chat to start messaging"
-            "Pair your WhatsApp to begin"
-          }}
+          @title="Select a chat to view its messages"
         >
           <:icon><Ui::Ph @icon="whatsapp-logo" /></:icon>
         </Nuvo::EmptyState>
