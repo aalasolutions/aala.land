@@ -26,23 +26,37 @@
       {{/if}}
     </div>
 
-    {{#unless this.isConnected}}
+    {{#if this.isConnected}}
+      <span class="wa-connection__cta">
+        <Nuvo::Button
+          @variant="ghost"
+          @size="xs"
+          @icon="plugs-connected"
+          @text="Disconnect"
+          @loading={{this.isConnecting}}
+          @onClick={{this.disconnectWhatsapp}}
+          data-test-wa-disconnect
+        />
+      </span>
+    {{else if this.needsConnect}}
       {{! Wrapper: a disabled button swallows its own pointer events, tooltip included. }}
       <span
         class="wa-connection__cta"
-        data-tooltip="Number connection arrives with onboarding"
+        data-tooltip={{this.connectTooltip}}
         data-tooltip-position="bottom"
       >
         <Nuvo::Button
           @variant="secondary"
           @size="xs"
           @icon="plugs"
-          @text="Connect WhatsApp"
-          @disabled={{true}}
+          @text={{this.connectButtonText}}
+          @disabled={{this.connectDisabled}}
+          @loading={{this.isConnecting}}
+          @onClick={{this.connectWhatsapp}}
           data-test-wa-connect
         />
       </span>
-    {{/unless}}
+    {{/if}}
   </div>
 
   <div class="wa-page">

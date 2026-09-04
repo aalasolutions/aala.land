@@ -44,6 +44,18 @@ export default class WhatsappService extends Service {
   getConnection() {
     return this.auth.fetchJson('/whatsapp/connection');
   }
+  getSignupConfig() {
+    return this.auth.fetchJson('/whatsapp/signup-config');
+  }
+  connect({ code, wabaId, phoneNumberId }) {
+    return this.auth.fetchJson('/whatsapp/connect', {
+      method: 'POST',
+      body: JSON.stringify({ code, wabaId, phoneNumberId }),
+    });
+  }
+  disconnect() {
+    return this.auth.fetchJson('/whatsapp/connection', { method: 'DELETE' });
+  }
   getChats() {
     return this.auth.fetchJson('/whatsapp/chats');
   }

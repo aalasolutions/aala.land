@@ -18,7 +18,12 @@ export enum WhatsappConnectionStatus {
 // device per company.
 @Entity('whatsapp_connections')
 @Index('UQ_wa_connections_user', ['userId'], { unique: true })
-@Index('UQ_wa_connections_phone_number_id', ['phoneNumberId'], { unique: true })
+// Unique only among rows the inbound router can match. A DISCONNECTED row keeps its
+// number for history without blocking the next agent from connecting it.
+@Index('UQ_wa_connections_phone_number_id', ['phoneNumberId'], {
+  unique: true,
+  where: "status IN ('connected', 'flagged')",
+})
 @Index('IDX_wa_connections_company_status', ['companyId', 'status'])
 export class WhatsappConnection {
   @PrimaryGeneratedColumn('uuid')

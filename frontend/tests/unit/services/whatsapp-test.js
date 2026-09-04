@@ -5,6 +5,39 @@ import Service from '@ember/service';
 module('Unit | Service | whatsapp', function (hooks) {
   setupTest(hooks);
 
+  test('signup calls hit the right paths and methods', async function (assert) {
+    const calls = [];
+    this.owner.register(
+      'service:auth',
+      class extends Service {
+        token = 'test-token';
+        fetchJson(path, options) {
+          calls.push({ path, options });
+          return Promise.resolve({ success: true, data: null });
+        }
+      },
+    );
+
+    const service = this.owner.lookup('service:whatsapp');
+    await service.getSignupConfig();
+    await service.connect({ code: 'c', wabaId: '1', phoneNumberId: '2' });
+    await service.disconnect();
+
+    assert.strictEqual(calls[0].path, '/whatsapp/signup-config');
+    assert.strictEqual(calls[0].options, undefined);
+
+    assert.strictEqual(calls[1].path, '/whatsapp/connect');
+    assert.strictEqual(calls[1].options.method, 'POST');
+    assert.deepEqual(JSON.parse(calls[1].options.body), {
+      code: 'c',
+      wabaId: '1',
+      phoneNumberId: '2',
+    });
+
+    assert.strictEqual(calls[2].path, '/whatsapp/connection');
+    assert.strictEqual(calls[2].options.method, 'DELETE');
+  });
+
   test('getConnection reads /whatsapp/connection', async function (assert) {
     let capturedPath;
     this.owner.register(

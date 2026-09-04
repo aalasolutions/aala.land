@@ -3,11 +3,13 @@ import { Reflector } from '@nestjs/core';
 import { BadGatewayException } from '@nestjs/common';
 import { WhatsappController } from './whatsapp.controller';
 import { WhatsappService } from './whatsapp.service';
+import { WhatsappSignupService } from './whatsapp-signup.service';
 import { Role } from '@shared/enums/roles.enum';
 
 describe('WhatsappController', () => {
   let controller: WhatsappController;
   let wa: jest.Mocked<WhatsappService>;
+  let signup: jest.Mocked<WhatsappSignupService>;
 
   const makeReq = (userId: string, companyId: string) =>
     ({
@@ -32,11 +34,63 @@ describe('WhatsappController', () => {
             sendMessage: jest.fn(),
           },
         },
+        {
+          provide: WhatsappSignupService,
+          useValue: {
+            getSignupConfig: jest.fn(),
+            connect: jest.fn(),
+            disconnect: jest.fn(),
+          },
+        },
       ],
     }).compile();
 
     controller = module.get(WhatsappController);
     wa = module.get(WhatsappService);
+    signup = module.get(WhatsappSignupService);
+  });
+
+  describe('Embedded Signup', () => {
+    it('serves the signup config the browser needs to launch the flow', () => {
+      const config = {
+        appId: '123',
+        configId: '456',
+        graphVersion: 'v23.0',
+      };
+      signup.getSignupConfig.mockReturnValue(config);
+
+      expect(controller.getSignupConfig()).toBe(config);
+    });
+
+    it('connects as the caller, never as a companyId taken from the body', async () => {
+      const dto = { code: 'AQ...', wabaId: '111', phoneNumberId: '222' };
+      const info = { status: 'connected' };
+      signup.connect.mockResolvedValue(info as any);
+
+      const result = await controller.connect(makeReq('u1', 'c1'), dto);
+
+      expect(signup.connect).toHaveBeenCalledWith('u1', 'c1', dto);
+      expect(result).toBe(info);
+    });
+
+    it('disconnects the caller own connection', async () => {
+      signup.disconnect.mockResolvedValue({ success: true });
+
+      await expect(
+        controller.disconnect(makeReq('u1', 'c1')),
+      ).resolves.toEqual({ success: true });
+      expect(signup.disconnect).toHaveBeenCalledWith('u1', 'c1');
+    });
+
+    it('leaves connecting open to every operator role, not admin only', () => {
+      const reflector = new Reflector();
+      expect(
+        reflector.get<Role[]>('roles', controller.connect),
+      ).toBeUndefined();
+      expect(
+        reflector.get<Role[]>('roles', controller.disconnect),
+      ).toBeUndefined();
+    });
   });
 
   describe('GET connection', () => {

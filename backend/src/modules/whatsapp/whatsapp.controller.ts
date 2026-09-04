@@ -3,6 +3,7 @@ import {
   Controller,
   Get,
   Post,
+  Delete,
   Body,
   Param,
   Query,
@@ -18,6 +19,8 @@ import { Role } from '@shared/enums/roles.enum';
 import { AiToggleDto } from './dto/ai-toggle.dto';
 import { ListWaMessagesDto } from './dto/list-wa-messages.dto';
 import { SendMessageDto } from './dto/send-message.dto';
+import { ConnectWhatsappDto } from './dto/connect-whatsapp.dto';
+import { WhatsappSignupService } from './whatsapp-signup.service';
 import { AuthenticatedRequest } from '@shared/interfaces/authenticated-request.interface';
 
 @ApiTags('whatsapp')
@@ -26,7 +29,10 @@ import { AuthenticatedRequest } from '@shared/interfaces/authenticated-request.i
 @Roles(Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT)
 @Controller('whatsapp')
 export class WhatsappController {
-  constructor(private readonly wa: WhatsappService) {}
+  constructor(
+    private readonly wa: WhatsappService,
+    private readonly signup: WhatsappSignupService,
+  ) {}
 
   // ── Connection ────────────────────────────────────────────────────────
 
@@ -36,6 +42,33 @@ export class WhatsappController {
   })
   getConnection(@Request() req: AuthenticatedRequest) {
     return this.wa.getConnection(req.user.userId, req.user.companyId!);
+  }
+
+  @Get('signup-config')
+  @ApiOperation({
+    summary: 'App id and Embedded Signup configuration id for the browser flow',
+  })
+  getSignupConfig() {
+    return this.signup.getSignupConfig();
+  }
+
+  @Post('connect')
+  @ApiOperation({
+    summary: 'Exchange an Embedded Signup code and store the connection',
+  })
+  connect(
+    @Request() req: AuthenticatedRequest,
+    @Body() dto: ConnectWhatsappDto,
+  ) {
+    return this.signup.connect(req.user.userId, req.user.companyId!, dto);
+  }
+
+  @Delete('connection')
+  @ApiOperation({
+    summary: "Release the caller's number and destroy its stored token",
+  })
+  disconnect(@Request() req: AuthenticatedRequest) {
+    return this.signup.disconnect(req.user.userId, req.user.companyId!);
   }
 
   // ── Chats / Messages ──────────────────────────────────────────────────

@@ -9,7 +9,7 @@ module('Unit | Controller | whatsapp', function (hooks) {
 
   function makeController(ctx) {
     const controller = ctx.owner.lookup('controller:whatsapp');
-    controller.notifications = { error() {}, success() {} };
+    controller.notifications = { error() {}, success() {}, info() {} };
     return controller;
   }
 
@@ -311,8 +311,197 @@ module('Unit | Controller | whatsapp', function (hooks) {
     assert.strictEqual(controller.connectionLabel, 'No number connected');
     assert.strictEqual(
       controller.connectionDetail,
-      'Connecting a WhatsApp number is part of onboarding and is not available yet.',
+      'Connect your WhatsApp Business number to send and receive here.',
     );
+    assert.true(controller.needsConnect, 'the connect CTA is offered');
+  });
+
+  // A dead token is stored as FLAGGED so Meta keeps delivering inbound. The card still has
+  // to tell the agent to reconnect, and must not call it a quality problem.
+  test('a token failure reads as reconnect, not as a quality flag', function (assert) {
+    const controller = makeController(this);
+    controller.connection = {
+      status: 'flagged',
+      disconnectReason: 'token_invalid_190',
+    };
+
+    assert.true(controller.needsReauth);
+    assert.true(controller.needsConnect, 'the reconnect CTA is offered');
+    assert.strictEqual(
+      controller.connectionDetail,
+      'Meta authorization for this number expired. Reconnect to send again.',
+    );
+  });
+
+  test('a quality flag keeps its own copy and offers no reconnect', function (assert) {
+    const controller = makeController(this);
+    controller.connection = {
+      status: 'flagged',
+      disconnectReason: 'QUALITY_LOW',
+    };
+
+    assert.false(controller.needsReauth);
+    assert.false(controller.needsConnect);
+    assert.strictEqual(controller.connectionLabel, 'Flagged by Meta');
+  });
+
+  test('the connect button stays disabled until the server serves a signup config', function (assert) {
+    const controller = makeController(this);
+
+    controller.signupConfig = null;
+    assert.false(controller.signupReady);
+    assert.true(controller.connectDisabled);
+    assert.strictEqual(
+      controller.connectTooltip,
+      'WhatsApp signup is not configured on this server yet',
+    );
+
+    controller.signupConfig = { appId: 'a', configId: null };
+    assert.false(controller.signupReady, 'both values are required');
+
+    controller.signupConfig = { appId: 'a', configId: 'c' };
+    assert.true(controller.signupReady);
+    assert.false(controller.connectDisabled);
+    assert.strictEqual(controller.connectTooltip, null);
+  });
+
+  test('connectWhatsapp posts the launch result and adopts the saved connection', async function (assert) {
+    const controller = makeController(this);
+    controller.signupConfig = { appId: 'a', configId: 'c', graphVersion: 'v23.0' };
+
+    let launchedWith = null;
+    controller.embeddedSignup = {
+      launch(config) {
+        launchedWith = config;
+        return Promise.resolve({
+          code: 'AQ-code',
+          wabaId: '111',
+          phoneNumberId: '222',
+        });
+      },
+    };
+
+    let posted = null;
+    controller.whatsapp = {
+      connect(payload) {
+        posted = payload;
+        return Promise.resolve({
+          data: { status: 'connected', displayPhoneNumber: '+971500000000' },
+        });
+      },
+    };
+
+    await controller.connectWhatsapp();
+
+    assert.strictEqual(launchedWith, controller.signupConfig);
+    assert.deepEqual(posted, {
+      code: 'AQ-code',
+      wabaId: '111',
+      phoneNumberId: '222',
+    });
+    assert.strictEqual(controller.connectionStatus, 'connected');
+    assert.false(controller.isConnecting, 'the button is released again');
+  });
+
+  test('connectWhatsapp refuses to launch before the config has arrived', async function (assert) {
+    const controller = makeController(this);
+    controller.signupConfig = null;
+
+    let launched = false;
+    controller.embeddedSignup = {
+      launch() {
+        launched = true;
+        return Promise.resolve({});
+      },
+    };
+
+    await controller.connectWhatsapp();
+    assert.false(launched);
+  });
+
+  // Walking away from a Meta-hosted flow is not an error worth shouting about.
+  test('a cancelled signup is reported quietly and leaves the connection alone', async function (assert) {
+    const controller = makeController(this);
+    controller.signupConfig = { appId: 'a', configId: 'c' };
+    controller.connection = null;
+
+    let errored = false;
+    let informed = false;
+    controller.notifications = {
+      error() {
+        errored = true;
+      },
+      success() {},
+      info() {
+        informed = true;
+      },
+    };
+    controller.embeddedSignup = {
+      launch() {
+        const err = new Error('cancelled');
+        err.cancelled = true;
+        return Promise.reject(err);
+      },
+    };
+    controller.whatsapp = {
+      connect() {
+        assert.true(false, 'connect must not be called');
+        return Promise.resolve({});
+      },
+    };
+
+    await controller.connectWhatsapp();
+
+    assert.true(informed);
+    assert.false(errored);
+    assert.strictEqual(controller.connection, null);
+    assert.false(controller.isConnecting);
+  });
+
+  test('a failed exchange surfaces the error and releases the button', async function (assert) {
+    const controller = makeController(this);
+    controller.signupConfig = { appId: 'a', configId: 'c' };
+
+    let message = null;
+    controller.notifications = {
+      error(m) {
+        message = m;
+      },
+      success() {},
+      info() {},
+    };
+    controller.embeddedSignup = {
+      launch: () =>
+        Promise.resolve({ code: 'c', wabaId: '1', phoneNumberId: '2' }),
+    };
+    controller.whatsapp = {
+      connect: () => Promise.reject(new Error('That number is already connected')),
+    };
+
+    await controller.connectWhatsapp();
+
+    assert.strictEqual(message, 'That number is already connected');
+    assert.false(controller.isConnecting);
+  });
+
+  test('disconnectWhatsapp tears down and re-reads the connection', async function (assert) {
+    const controller = makeController(this);
+    controller.connection = { status: 'connected' };
+
+    let disconnected = false;
+    controller.whatsapp = {
+      disconnect() {
+        disconnected = true;
+        return Promise.resolve({ success: true });
+      },
+      getConnection: () => Promise.resolve({ data: null }),
+    };
+
+    await controller.disconnectWhatsapp();
+
+    assert.true(disconnected);
+    assert.strictEqual(controller.connectionStatus, 'none');
+    assert.false(controller.isConnecting);
   });
 
   test('a connected row shows the display number as its detail', function (assert) {
@@ -710,6 +899,9 @@ module('Unit | Controller | whatsapp', function (hooks) {
         return Promise.resolve({ data: {} });
       },
       getConnection() {
+        return Promise.resolve({ data: null });
+      },
+      getSignupConfig() {
         return Promise.resolve({ data: null });
       },
     };

@@ -34,8 +34,16 @@ function connectionRow(): WhatsappConnection {
   row.companyId = 'company-1';
   row.userId = 'user-1';
   row.phoneNumberId = 'phone-1';
+  row.wabaId = 'waba-1';
   row.status = WhatsappConnectionStatus.CONNECTED;
   return row;
+}
+
+function accountUpdateEnvelope(value: unknown, wabaId = 'waba-1'): unknown {
+  return {
+    object: 'whatsapp_business_account',
+    entry: [{ id: wabaId, changes: [{ field: 'account_update', value }] }],
+  };
 }
 
 function inboundEnvelope(): unknown {
@@ -99,7 +107,7 @@ function statusEnvelope(statuses?: unknown[]): unknown {
 describe('WhatsappWebhookService', () => {
   let service: WhatsappWebhookService;
   let ai: { handleIncomingMessage: jest.Mock };
-  let repo: { findOne: jest.Mock };
+  let repo: { findOne: jest.Mock; find: jest.Mock; update: jest.Mock };
   let store: { addMessage: jest.Mock; applyMessageStatus: jest.Mock };
   let gateway: { emitMessage: jest.Mock };
   let queue: { add: jest.Mock };
@@ -108,7 +116,11 @@ describe('WhatsappWebhookService', () => {
     process.env.WHATSAPP_APP_SECRET = APP_SECRET;
     process.env.WHATSAPP_VERIFY_TOKEN = VERIFY_TOKEN;
     ai = { handleIncomingMessage: jest.fn().mockResolvedValue(undefined) };
-    repo = { findOne: jest.fn().mockResolvedValue(connectionRow()) };
+    repo = {
+      findOne: jest.fn().mockResolvedValue(connectionRow()),
+      find: jest.fn().mockResolvedValue([]),
+      update: jest.fn().mockResolvedValue({ affected: 1 }),
+    };
     store = {
       addMessage: jest.fn().mockResolvedValue(true),
       applyMessageStatus: jest.fn().mockResolvedValue(true),
@@ -731,6 +743,230 @@ describe('WhatsappWebhookService', () => {
       );
 
       expect(store.applyMessageStatus.mock.calls[0][4]).toBeInstanceOf(Date);
+    });
+  });
+
+  // phone_number_id is supplied by the browser at signup, so it is a claim, not proof.
+  describe('WABA cross-check on inbound', () => {
+    it('refuses a message whose WABA does not match the stored connection', async () => {
+      repo.findOne.mockResolvedValue(
+        Object.assign(connectionRow(), { wabaId: 'waba-OTHER' }),
+      );
+
+      await service.processEnvelope(inboundEnvelope());
+
+      expect(store.addMessage).not.toHaveBeenCalled();
+      expect(ai.handleIncomingMessage).not.toHaveBeenCalled();
+    });
+
+    it('accepts a message whose WABA matches', async () => {
+      await service.processEnvelope(inboundEnvelope());
+
+      expect(store.addMessage).toHaveBeenCalled();
+    });
+  });
+
+  // account_update carries no metadata.phone_number_id, so it is routed off entry.id.
+  // Before this existed the whole field was dropped on the phone-number guard.
+  describe('account_update', () => {
+    // A real CONNECTED or FLAGGED row always holds a token; the status handlers now refuse
+    // to promote one that does not.
+    const rowFor = (overrides: Partial<WhatsappConnection> = {}) =>
+      Object.assign(
+        connectionRow(),
+        { id: 'conn-1', accessTokenCiphertext: 'v1.iv.tag.ct' },
+        overrides,
+      );
+
+    it('disconnects on PARTNER_REMOVED and keeps Meta reason', async () => {
+      repo.find.mockResolvedValue([rowFor()]);
+
+      await service.processEnvelope(
+        accountUpdateEnvelope({
+          event: 'PARTNER_REMOVED',
+          disconnection_info: { reason: 'PRIMARY_INACTIVITY', initiated_by: 'SYSTEM' },
+        }),
+      );
+
+      const [where, patch] = repo.update.mock.calls[0];
+      expect(where).toEqual({ id: 'conn-1' });
+      expect(patch.status).toBe(WhatsappConnectionStatus.DISCONNECTED);
+      expect(patch.disconnectReason).toBe('PRIMARY_INACTIVITY');
+    });
+
+    it('falls back to the event name when no disconnection reason is sent', async () => {
+      repo.find.mockResolvedValue([rowFor()]);
+
+      await service.processEnvelope(
+        accountUpdateEnvelope({ event: 'PARTNER_REMOVED' }),
+      );
+
+      expect(repo.update.mock.calls[0][1].disconnectReason).toBe(
+        'PARTNER_REMOVED',
+      );
+    });
+
+    // Meta documents a device change as self-healing, so it is a suspension. FLAGGED keeps
+    // inbound flowing; DISCONNECTED would drop the lead's messages on the floor.
+    it('flags rather than disconnects on ACCOUNT_OFFBOARDED', async () => {
+      repo.find.mockResolvedValue([rowFor()]);
+
+      await service.processEnvelope(
+        accountUpdateEnvelope({ event: 'ACCOUNT_OFFBOARDED' }),
+      );
+
+      expect(repo.update.mock.calls[0][1].status).toBe(
+        WhatsappConnectionStatus.FLAGGED,
+      );
+    });
+
+    it('restores a connection on ACCOUNT_RECONNECTED and clears the reason', async () => {
+      repo.find.mockResolvedValue([
+        rowFor({
+          status: WhatsappConnectionStatus.FLAGGED,
+          disconnectReason: 'ACCOUNT_OFFBOARDED',
+        }),
+      ]);
+
+      await service.processEnvelope(
+        accountUpdateEnvelope({ event: 'ACCOUNT_RECONNECTED' }),
+      );
+
+      const patch = repo.update.mock.calls[0][1];
+      expect(patch.status).toBe(WhatsappConnectionStatus.CONNECTED);
+      expect(patch.disconnectReason).toBeNull();
+      expect(patch.disconnectedAt).toBeNull();
+    });
+
+    it('promotes a PENDING row on PARTNER_ADDED but leaves a CONNECTED one alone', async () => {
+      repo.find.mockResolvedValue([
+        rowFor({ status: WhatsappConnectionStatus.PENDING }),
+      ]);
+      await service.processEnvelope(
+        accountUpdateEnvelope({ event: 'PARTNER_ADDED' }),
+      );
+      expect(repo.update.mock.calls[0][1].status).toBe(
+        WhatsappConnectionStatus.CONNECTED,
+      );
+
+      repo.update.mockClear();
+      repo.find.mockResolvedValue([rowFor()]);
+      await service.processEnvelope(
+        accountUpdateEnvelope({ event: 'PARTNER_ADDED' }),
+      );
+      expect(repo.update).not.toHaveBeenCalled();
+    });
+
+    // Guessing a status from an unknown string is how an agent silently loses a number.
+    it('changes nothing on an unrecognised event', async () => {
+      repo.find.mockResolvedValue([rowFor()]);
+
+      await service.processEnvelope(
+        accountUpdateEnvelope({ event: 'SOMETHING_META_ADDED_LATER' }),
+      );
+
+      expect(repo.update).not.toHaveBeenCalled();
+    });
+
+    it('changes nothing for an unknown WABA', async () => {
+      repo.find.mockResolvedValue([]);
+
+      await service.processEnvelope(
+        accountUpdateEnvelope({ event: 'PARTNER_REMOVED' }),
+      );
+
+      expect(repo.update).not.toHaveBeenCalled();
+    });
+
+    // One WABA can host up to 20 numbers, and Graph and the webhook format the display
+    // number differently, so the match is on digits.
+    it('picks the right number when one WABA hosts several, ignoring formatting', async () => {
+      repo.find.mockResolvedValue([
+        rowFor({ id: 'conn-a', displayPhoneNumber: '+971 50 000 0000' }),
+        rowFor({ id: 'conn-b', displayPhoneNumber: '+971 50 111 1111' }),
+      ]);
+
+      await service.processEnvelope(
+        accountUpdateEnvelope({
+          event: 'PARTNER_REMOVED',
+          phone_number: '+971-50-111-1111',
+        }),
+      );
+
+      expect(repo.update.mock.calls[0][0]).toEqual({ id: 'conn-b' });
+    });
+
+    it('refuses to guess when several numbers share a WABA and none matches', async () => {
+      repo.find.mockResolvedValue([
+        rowFor({ id: 'conn-a', displayPhoneNumber: '+971 50 000 0000' }),
+        rowFor({ id: 'conn-b', displayPhoneNumber: '+971 50 111 1111' }),
+      ]);
+
+      await service.processEnvelope(
+        accountUpdateEnvelope({ event: 'PARTNER_REMOVED' }),
+      );
+
+      expect(repo.update).not.toHaveBeenCalled();
+    });
+
+    // A WABA hosts up to 20 numbers and we may hold only one. An event about a sibling
+    // number used to disconnect ours, because the single-row branch never read phone_number.
+    it('ignores an event naming a different number on the same WABA', async () => {
+      repo.find.mockResolvedValue([
+        rowFor({ displayPhoneNumber: '+971 50 000 0000' }),
+      ]);
+
+      await service.processEnvelope(
+        accountUpdateEnvelope({
+          event: 'PARTNER_REMOVED',
+          phone_number: '+971 50 999 9999',
+        }),
+      );
+
+      expect(repo.update).not.toHaveBeenCalled();
+    });
+
+    it('still applies a single-row event when the number cannot be compared', async () => {
+      repo.find.mockResolvedValue([rowFor({ displayPhoneNumber: '' })]);
+
+      await service.processEnvelope(
+        accountUpdateEnvelope({
+          event: 'PARTNER_REMOVED',
+          phone_number: '+971 50 999 9999',
+        }),
+      );
+
+      expect(repo.update.mock.calls[0][1].status).toBe(
+        WhatsappConnectionStatus.DISCONNECTED,
+      );
+    });
+
+    // The row has no token after a self-disconnect, so flipping it to CONNECTED would show
+    // "Connected" on the card while every send fails at the token check.
+    it('refuses to reconnect a row that has no stored token', async () => {
+      repo.find.mockResolvedValue([
+        rowFor({
+          status: WhatsappConnectionStatus.FLAGGED,
+          accessTokenCiphertext: null,
+        }),
+      ]);
+
+      await service.processEnvelope(
+        accountUpdateEnvelope({ event: 'ACCOUNT_RECONNECTED' }),
+      );
+
+      expect(repo.update).not.toHaveBeenCalled();
+    });
+
+    it('never routes an account_update down the message path', async () => {
+      repo.find.mockResolvedValue([rowFor()]);
+
+      await service.processEnvelope(
+        accountUpdateEnvelope({ event: 'PARTNER_REMOVED' }),
+      );
+
+      expect(store.addMessage).not.toHaveBeenCalled();
+      expect(ai.handleIncomingMessage).not.toHaveBeenCalled();
     });
   });
 });

@@ -8,11 +8,8 @@ import {
 import { MessageStoreService } from './message-store.service';
 import { WhatsappGateway } from './whatsapp.gateway';
 import { WhatsappAiService, SendFn, MarkReadFn } from './whatsapp-ai.service';
-import { WaMessage } from './wa-types';
+import { GRAPH_VERSION, WaMessage } from './wa-types';
 import { EncryptionService } from '../encryption/encryption.service';
-
-// Pinned on purpose: a version bump is a deliberate act, never a drift.
-const GRAPH_VERSION = 'v23.0';
 
 const DEFAULT_SEND_TIMEOUT_MS = 15000;
 

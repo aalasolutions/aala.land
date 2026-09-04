@@ -30,10 +30,14 @@ interface CloudWebhookEnvelope {
 }
 
 interface WebhookEntry {
+  // The WABA id. It is the only routing key an account_update carries, because that
+  // event has no metadata.phone_number_id.
+  id?: string;
   changes?: WebhookChange[];
 }
 
 interface WebhookChange {
+  field?: string;
   value?: WebhookValue;
 }
 
@@ -42,6 +46,10 @@ interface WebhookValue {
   contacts?: { profile?: { name?: string }; wa_id?: string }[];
   messages?: CloudMessage[];
   statuses?: CloudStatus[];
+  // account_update only.
+  event?: string;
+  phone_number?: string;
+  disconnection_info?: { reason?: string; initiated_by?: string };
 }
 
 interface CloudMessage {
@@ -138,7 +146,7 @@ export class WhatsappWebhookService {
     for (const entry of envelope.entry ?? []) {
       for (const change of entry.changes ?? []) {
         try {
-          await this.dispatchValue(change.value ?? {});
+          await this.dispatchValue(change.value ?? {}, change.field, entry.id);
         } catch (err) {
           firstError = firstError ?? err;
           this.logger.error(
@@ -163,7 +171,18 @@ export class WhatsappWebhookService {
     return timingSafeEqual(received, expected);
   }
 
-  private async dispatchValue(value: WebhookValue): Promise<void> {
+  private async dispatchValue(
+    value: WebhookValue,
+    field?: string,
+    wabaId?: string,
+  ): Promise<void> {
+    // account_update carries no phone_number_id, so it must branch off before the guard
+    // below. Until this existed the event was dropped silently.
+    if (field === 'account_update') {
+      await this.handleAccountUpdate(value, wabaId);
+      return;
+    }
+
     const phoneNumberId = value.metadata?.phone_number_id;
     const messages = value.messages ?? [];
     const statuses = value.statuses ?? [];
@@ -185,12 +204,169 @@ export class WhatsappWebhookService {
       return;
     }
 
+    // phone_number_id is supplied by the browser at signup, so on its own it is a claim, not
+    // proof. entry.id is Meta's own statement of which WABA delivered this. A mismatch means
+    // the stored row does not own this number, and routing it anyway would hand one tenant
+    // another tenant's customer messages.
+    if (wabaId && connection.wabaId !== wabaId) {
+      this.logger.error(
+        `Refusing webhook: phone_number_id ${phoneNumberId} is stored under WABA ${connection.wabaId} but was delivered by ${wabaId}`,
+      );
+      return;
+    }
+
     if (statuses.length > 0) {
       await this.persistStatuses(connection, statuses);
     }
     if (messages.length > 0) {
       await this.dispatchMessages(connection, value, messages, phoneNumberId);
     }
+  }
+
+  // Meta surfaces every lifecycle change on this one field. Mapping is deliberately
+  // explicit and an unrecognised event changes NOTHING: guessing a status from an unknown
+  // string is how an agent silently loses their number.
+  //
+  // PARTNER_REMOVED is the disconnect event for all six documented reasons; the specific
+  // one arrives in disconnection_info.reason. ACCOUNT_OFFBOARDED is a device change and
+  // Meta documents it as self-healing, so it is treated as suspension (FLAGGED keeps
+  // inbound flowing) rather than teardown.
+  private async handleAccountUpdate(
+    value: WebhookValue,
+    wabaId: string | undefined,
+  ): Promise<void> {
+    const event = value.event;
+    if (!wabaId || !event) {
+      this.logger.warn('account_update with no WABA id or no event; ignored');
+      return;
+    }
+
+    const connection = await this.findConnectionForAccountUpdate(
+      wabaId,
+      value.phone_number,
+    );
+    if (!connection) return;
+
+    switch (event) {
+      case 'PARTNER_ADDED': {
+        // The row is created by the connect endpoint, so this normally confirms what we
+        // already stored. It only matters when it beats us there.
+        if (
+          connection.status === WhatsappConnectionStatus.PENDING &&
+          connection.accessTokenCiphertext
+        ) {
+          await this.connections.update(
+            { id: connection.id },
+            {
+              status: WhatsappConnectionStatus.CONNECTED,
+              connectedAt: new Date(),
+              disconnectedAt: null,
+              disconnectReason: null,
+            },
+          );
+        }
+        this.logger.log(
+          `account_update PARTNER_ADDED for WABA ${wabaId} (${connection.phoneNumberId})`,
+        );
+        return;
+      }
+      case 'PARTNER_REMOVED': {
+        const reason = value.disconnection_info?.reason ?? 'PARTNER_REMOVED';
+        await this.connections.update(
+          { id: connection.id },
+          {
+            status: WhatsappConnectionStatus.DISCONNECTED,
+            disconnectedAt: new Date(),
+            disconnectReason: reason.slice(0, 64),
+          },
+        );
+        this.logger.warn(
+          `WhatsApp connection ${connection.phoneNumberId} disconnected by Meta: ${reason}`,
+        );
+        return;
+      }
+      case 'ACCOUNT_OFFBOARDED': {
+        await this.connections.update(
+          { id: connection.id },
+          {
+            status: WhatsappConnectionStatus.FLAGGED,
+            disconnectReason: 'ACCOUNT_OFFBOARDED',
+          },
+        );
+        this.logger.warn(
+          `WhatsApp connection ${connection.phoneNumberId} offboarded; awaiting ACCOUNT_RECONNECTED`,
+        );
+        return;
+      }
+      case 'ACCOUNT_RECONNECTED': {
+        if (!connection.accessTokenCiphertext) {
+          this.logger.warn(
+            `ACCOUNT_RECONNECTED for ${connection.phoneNumberId} but no token is stored; the agent must reconnect`,
+          );
+          return;
+        }
+        await this.connections.update(
+          { id: connection.id },
+          {
+            status: WhatsappConnectionStatus.CONNECTED,
+            connectedAt: new Date(),
+            disconnectedAt: null,
+            disconnectReason: null,
+          },
+        );
+        this.logger.log(
+          `WhatsApp connection ${connection.phoneNumberId} reconnected`,
+        );
+        return;
+      }
+      default:
+        this.logger.warn(
+          `Unhandled account_update event "${event}" for WABA ${wabaId}; no status changed`,
+        );
+    }
+  }
+
+  // One WABA can host up to 20 numbers, so the WABA id alone is not unique to an agent.
+  // display_phone_number formatting differs between Graph and the webhook, so the match is
+  // on digits. With several numbers and no usable phone match we do nothing rather than
+  // disconnect an arbitrary agent.
+  private async findConnectionForAccountUpdate(
+    wabaId: string,
+    phoneNumber: string | undefined,
+  ): Promise<WhatsappConnection | null> {
+    const rows = await this.connections.find({ where: { wabaId } });
+    if (rows.length === 0) {
+      this.logger.warn(`account_update for unknown WABA ${wabaId}; ignored`);
+      return null;
+    }
+    const digits = (v: string | undefined) => (v ?? '').replace(/\D/g, '');
+    const wanted = digits(phoneNumber);
+
+    if (rows.length === 1) {
+      const only = rows[0];
+      const stored = digits(only.displayPhoneNumber);
+      // Only reject on a POSITIVE mismatch. A WABA hosts up to 20 numbers and we may hold
+      // just one of them, so an event about a sibling number must not disconnect ours.
+      // With either side unknown there is nothing to contradict, so the single row stands.
+      if (wanted && stored && stored !== wanted) {
+        this.logger.warn(
+          `account_update for WABA ${wabaId} names a different number than the one connected; ignored`,
+        );
+        return null;
+      }
+      return only;
+    }
+
+    const match = wanted
+      ? rows.find((r) => digits(r.displayPhoneNumber) === wanted)
+      : undefined;
+    if (!match) {
+      this.logger.warn(
+        `account_update for WABA ${wabaId} matched ${rows.length} connections and no phone number; ignored`,
+      );
+      return null;
+    }
+    return match;
   }
 
   // Persistence only. The live push to the page is Phase 6 emitStatus work.

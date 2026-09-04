@@ -22,8 +22,7 @@ const CONNECTION_COPY = {
   none: {
     label: 'No number connected',
     variant: 'secondary',
-    detail:
-      'Connecting a WhatsApp number is part of onboarding and is not available yet.',
+    detail: 'Connect your WhatsApp Business number to send and receive here.',
   },
   pending: {
     label: 'Connection pending',
@@ -62,6 +61,7 @@ export default class WhatsappController extends Controller {
   @service whatsapp;
   @service auth;
   @service notifications;
+  @service embeddedSignup;
 
   get isCompanyAdmin() {
     return this.auth.currentUser?.role === 'company_admin';
@@ -74,6 +74,8 @@ export default class WhatsappController extends Controller {
   @tracked currentChatId = null;
 
   @tracked connection = null;
+  @tracked signupConfig = null;
+  @tracked isConnecting = false;
   // Bumped on every poll tick so the reply-window countdown stays honest.
   @tracked now = Date.now();
 
@@ -149,8 +151,43 @@ export default class WhatsappController extends Controller {
     ) {
       return `Meta reported ${this.connection.disconnectReason}.`;
     }
+    if (this.needsReauth) {
+      return 'Meta authorization for this number expired. Reconnect to send again.';
+    }
     return (CONNECTION_COPY[this.connectionStatus] ?? CONNECTION_COPY.none)
       .detail;
+  }
+
+  // A dead token is stored as FLAGGED, not DISCONNECTED, so Meta keeps delivering the
+  // lead's inbound messages. It still needs the agent to reconnect, and it is not the
+  // quality problem the generic flagged copy describes.
+  get needsReauth() {
+    return (
+      this.connectionStatus === 'flagged' &&
+      (this.connection?.disconnectReason ?? '').startsWith('token_invalid')
+    );
+  }
+
+  get needsConnect() {
+    const status = this.connectionStatus;
+    return status === 'none' || status === 'disconnected' || this.needsReauth;
+  }
+
+  get signupReady() {
+    return Boolean(this.signupConfig?.appId && this.signupConfig?.configId);
+  }
+
+  get connectButtonText() {
+    return this.connection ? 'Reconnect' : 'Connect WhatsApp';
+  }
+
+  get connectDisabled() {
+    return !this.signupReady;
+  }
+
+  get connectTooltip() {
+    if (this.signupReady) return null;
+    return 'WhatsApp signup is not configured on this server yet';
   }
 
   // ── Reply window ──────────────────────────────────────────────────────
@@ -200,17 +237,22 @@ export default class WhatsappController extends Controller {
     );
 
     try {
-      const [chatsData, msgsData, aiData, connData] = await Promise.all([
-        this.whatsapp.getChats(),
-        this.whatsapp.getAllMessages(),
-        this.whatsapp.getAi(),
-        // Own catch: a connection read failure must not blank the chat list.
-        this.whatsapp.getConnection().catch(() => null),
-      ]);
+      const [chatsData, msgsData, aiData, connData, signupData] =
+        await Promise.all([
+          this.whatsapp.getChats(),
+          this.whatsapp.getAllMessages(),
+          this.whatsapp.getAi(),
+          // Own catch: a connection read failure must not blank the chat list.
+          this.whatsapp.getConnection().catch(() => null),
+          this.whatsapp.getSignupConfig().catch(() => null),
+        ]);
 
       if (setupGen !== this._setupGeneration) return; // navigated away mid-fetch
 
       this.connection = connData ? (connData.data ?? connData) : null;
+      this.signupConfig = signupData
+        ? (signupData.data ?? signupData)
+        : null;
 
       this.chats = (chatsData.data?.chats ?? chatsData.chats ?? [])
         .filter((c) => !this._isIgnoredChat(c))
@@ -421,6 +463,49 @@ export default class WhatsappController extends Controller {
   }
 
   // ── Actions ───────────────────────────────────────────────────────────
+
+  // The exchangeable code Meta returns lives 30 seconds, so the POST goes out the moment
+  // the flow finishes rather than waiting on any UI transition.
+  @action
+  async connectWhatsapp() {
+    if (this.isConnecting || !this.signupReady) return;
+
+    this.isConnecting = true;
+    try {
+      const result = await this.embeddedSignup.launch(this.signupConfig);
+      const saved = await this.whatsapp.connect(result);
+      this.connection = saved.data ?? saved;
+      this.notifications.success('WhatsApp connected');
+    } catch (err) {
+      // Walking away from a Meta-hosted flow is not an error worth shouting about.
+      if (err?.cancelled) {
+        this.notifications.info('WhatsApp connection was not completed');
+      } else {
+        console.error('WhatsApp connect failed', err);
+        this.notifications.error(err?.message ?? 'Could not connect WhatsApp');
+      }
+    } finally {
+      this.isConnecting = false;
+    }
+  }
+
+  @action
+  async disconnectWhatsapp() {
+    if (this.isConnecting) return;
+
+    this.isConnecting = true;
+    try {
+      await this.whatsapp.disconnect();
+      const connData = await this.whatsapp.getConnection().catch(() => null);
+      this.connection = connData ? (connData.data ?? connData) : null;
+      this.notifications.success('WhatsApp disconnected');
+    } catch (err) {
+      console.error('WhatsApp disconnect failed', err);
+      this.notifications.error(err?.message ?? 'Could not disconnect WhatsApp');
+    } finally {
+      this.isConnecting = false;
+    }
+  }
 
   @action
   selectChat(chatId) {

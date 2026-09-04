@@ -41,6 +41,19 @@ export interface WaChat {
   lastInboundAt: number | null;
 }
 
+// Pinned on purpose: a version bump is a deliberate act, never a drift. Shared here
+// because both the send path and the Embedded Signup path address the same Graph API,
+// and two copies of a pin is exactly how a pin drifts.
+export const GRAPH_VERSION = 'v23.0';
+
+// Values the browser needs to launch Embedded Signup. Public by design; Meta exposes
+// both in the client-side SDK call, so serving them is not a disclosure.
+export interface WaSignupConfig {
+  appId: string | null;
+  configId: string | null;
+  graphVersion: string;
+}
+
 // The caller's own connected number. Never carries the access token.
 export interface WaConnectionInfo {
   status: WhatsappConnectionStatus;
