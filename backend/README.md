@@ -9,7 +9,7 @@ NestJS 11 API powering the AALA.LAND property management platform.
 | Framework | NestJS 11, TypeScript |
 | ORM | TypeORM 0.3 |
 | Database | PostgreSQL 18 |
-| Cache | Dragonfly (Redis-compatible) via ioredis |
+| Cache | Valkey (Redis-compatible) via ioredis |
 | Queue | BullMQ |
 | Auth | JWT (Passport) with role-based access |
 | Storage | AWS S3 (presigned URLs) + Sharp for thumbnails |
@@ -74,7 +74,7 @@ src/
 - Node.js 20+
 - pnpm
 - PostgreSQL 18 (via Docker or native)
-- Dragonfly or Redis (via Docker or native)
+- Valkey or Redis (via Docker or native)
 
 ### Setup
 

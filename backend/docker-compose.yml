@@ -1,4 +1,4 @@
-# Backend stack: Postgres + Dragonfly + backend. backend/.env is the single
+# Backend stack: Postgres + Valkey + backend. backend/.env is the single
 # source of config, feeding two SEPARATE channels:
 #   - ${...} interpolation (postgres creds, ports): Compose auto-loads the .env
 #     from the directory you invoke it in, so run compose from HERE (cd backend).
@@ -10,7 +10,7 @@
 # the healthcheck below both track it via ${PORT}, so they can't drift from it.
 #
 # Public self-host: run the whole file. Owner/external-infra: prune the postgres
-# and/or dragonfly service in a skip-worktree copy and point DB_HOST/REDIS_HOST
+# and/or valkey service in a skip-worktree copy and point DB_HOST/REDIS_HOST
 # in backend/.env at the managed endpoints.
 #
 # STACK_NAME namespaces the whole stack so staging can run beside prod. Unset = aala-land.
@@ -35,15 +35,17 @@ services:
       retries: 5
     restart: unless-stopped
 
-  dragonfly:
-    image: docker.dragonflydb.io/dragonflydb/dragonfly:latest
-    container_name: ${STACK_NAME:-aala-land}-dragonfly
+  valkey:
+    image: valkey/valkey:9.1-alpine
+    container_name: ${STACK_NAME:-aala-land}-valkey
+    # BullMQ cannot work correctly if the store evicts keys.
+    command: ["valkey-server", "--maxmemory-policy", "noeviction"]
     ports:
       - "${REDIS_HOST_PORT:-6470}:6379"
     volumes:
-      - dragonfly_data:/data
+      - valkey_data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "-p", "6379", "ping"]
+      test: ["CMD", "valkey-cli", "-p", "6379", "ping"]
       interval: 10s
       timeout: 3s
       retries: 5
@@ -61,7 +63,7 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-      dragonfly:
+      valkey:
         condition: service_healthy
     restart: unless-stopped
     healthcheck:
@@ -73,4 +75,4 @@ services:
 
 volumes:
   postgres_data:
-  dragonfly_data:
+  valkey_data:
