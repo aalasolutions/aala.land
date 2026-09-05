@@ -79,7 +79,7 @@ Manage properties, leads, leases, maintenance, cheques, commissions, and teams f
 | Backend | NestJS 11, TypeScript, TypeORM |
 | Frontend | Ember.js 6.4, NuvoUI SCSS |
 | Database | PostgreSQL 18 |
-| Cache | Dragonfly (Redis-compatible) |
+| Cache | Valkey (Redis-compatible) |
 | Queue | BullMQ |
 | Mobile | Capacitor (shared codebase) |
 
@@ -100,8 +100,8 @@ aala.land/
       services/           Auth, session, region, notifications
       helpers/            Template helpers (currency, dates, etc.)
       components/         Reusable UI components
-  docker-compose.yml      Local dev infrastructure (Postgres, Dragonfly, MinIO)
-  backend/docker-compose.yml   Production backend stack (Postgres + Dragonfly + backend)
+  docker-compose.yml      Local dev infrastructure (Postgres, Valkey, MinIO)
+  backend/docker-compose.yml   Production backend stack (Postgres + Valkey + backend)
   frontend/docker-compose.yml  Production frontend (nginx serving the build)
   deploy.sh               One-shot production deploy
   LICENSE
@@ -130,7 +130,7 @@ docker compose up -d
 
 This starts:
 - **PostgreSQL 18** on port `5480`
-- **Dragonfly** (Redis-compatible) on port `6470`
+- **Valkey** (Redis-compatible) on port `6470`
 
 ### 3. Setup backend
 
@@ -152,7 +152,7 @@ DB_DATABASE=aala_land
 
 JWT_SECRET=your-secret-key      # Generate: openssl rand -base64 64
 
-REDIS_HOST=localhost            # Dragonfly (Redis-compatible), required for queues, AI state, live updates
+REDIS_HOST=localhost            # Valkey (Redis-compatible), required for queues, AI state, live updates
 REDIS_PORT=6470
 
 # Optional (for full functionality)
@@ -220,7 +220,7 @@ Configure `backend/.env` (copy from `backend/.env.example`), then run the one-sh
 ./deploy.sh
 ```
 
-It brings up the backend stack (`backend/docker-compose.yml`: Postgres + Dragonfly +
+It brings up the backend stack (`backend/docker-compose.yml`: Postgres + Valkey +
 backend), waits for health, runs migrations, then builds and serves the frontend
 (`frontend/docker-compose.yml`). Both images build inside Docker, so the host needs
 only Docker, no Node or pnpm.
