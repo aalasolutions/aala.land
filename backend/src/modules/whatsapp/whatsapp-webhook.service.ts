@@ -25,6 +25,9 @@ import {
 } from './wa-types';
 import { WebhookVerifyDto } from './dto/webhook-payload.dto';
 
+// Webhook tracing is noisy and can echo customer identifiers, so it stays off in production.
+const VERBOSE_WEBHOOK_LOGS = process.env.NODE_ENV !== 'production';
+
 interface CloudWebhookEnvelope {
   entry?: WebhookEntry[];
 }
@@ -146,6 +149,11 @@ export class WhatsappWebhookService {
     for (const entry of envelope.entry ?? []) {
       for (const change of entry.changes ?? []) {
         try {
+          if (VERBOSE_WEBHOOK_LOGS) {
+            this.logger.log(
+              `Webhook change received: field=${change.field ?? 'none'} waba=${entry.id ?? 'none'}`,
+            );
+          }
           await this.dispatchValue(change.value ?? {}, change.field, entry.id);
         } catch (err) {
           firstError = firstError ?? err;
@@ -187,6 +195,13 @@ export class WhatsappWebhookService {
     const messages = value.messages ?? [];
     const statuses = value.statuses ?? [];
     if (!phoneNumberId || (messages.length === 0 && statuses.length === 0)) {
+      // A dropped event must never look like a processed one in the logs.
+      if (VERBOSE_WEBHOOK_LOGS) {
+        this.logger.warn(
+          `Webhook DROPPED, field "${field ?? 'none'}" is not handled: ` +
+            `phone_number_id=${phoneNumberId ?? 'absent'} messages=${messages.length} statuses=${statuses.length}`,
+        );
+      }
       return;
     }
 

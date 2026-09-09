@@ -5,6 +5,7 @@ import { WhatsappController } from './whatsapp.controller';
 import { WhatsappService } from './whatsapp.service';
 import { WhatsappSignupService } from './whatsapp-signup.service';
 import { Role } from '@shared/enums/roles.enum';
+import { GRAPH_VERSION } from './wa-types';
 
 describe('WhatsappController', () => {
   let controller: WhatsappController;
@@ -55,7 +56,7 @@ describe('WhatsappController', () => {
       const config = {
         appId: '123',
         configId: '456',
-        graphVersion: 'v23.0',
+        graphVersion: GRAPH_VERSION,
       };
       signup.getSignupConfig.mockReturnValue(config);
 

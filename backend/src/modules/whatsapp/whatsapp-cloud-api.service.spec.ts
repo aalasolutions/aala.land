@@ -5,6 +5,7 @@ import {
 } from './whatsapp-cloud-api.service';
 import { WhatsappConnection } from './entities/whatsapp-connection.entity';
 import { EncryptionService } from '../encryption/encryption.service';
+import { GRAPH_VERSION } from './wa-types';
 
 const KEY_ENV = 'WHATSAPP_TOKEN_ENC_KEY';
 
@@ -134,7 +135,7 @@ describe('WhatsappCloudApiService', () => {
 
       expect(result).toEqual({ messageId: 'wamid.1' });
       expect(fetchMock).toHaveBeenCalledWith(
-        'https://graph.facebook.com/v23.0/pnid-1/messages',
+        `https://graph.facebook.com/${GRAPH_VERSION}/pnid-1/messages`,
         expect.objectContaining({
           method: 'POST',
           headers: expect.objectContaining({
@@ -264,7 +265,7 @@ describe('WhatsappCloudApiService', () => {
       await service.markRead(connection, 'wamid.in1', true);
 
       expect(fetchMock).toHaveBeenCalledWith(
-        'https://graph.facebook.com/v23.0/pnid-1/messages',
+        `https://graph.facebook.com/${GRAPH_VERSION}/pnid-1/messages`,
         expect.objectContaining({
           method: 'POST',
           headers: expect.objectContaining({
