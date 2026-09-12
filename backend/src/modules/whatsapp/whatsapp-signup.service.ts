@@ -165,9 +165,10 @@ export class WhatsappSignupService {
     return info;
   }
 
-  // Tells Meta to stop delivering, then tears down our side. The token is destroyed rather
-  // than left dormant: unsubscribing does not revoke it, so a stored credential for a number
-  // we no longer serve is a liability with no use.
+  // Tells Meta to stop delivering ONLY if no other agent's number still lives on that WABA,
+  // then tears down our side. The token is destroyed rather than left dormant: unsubscribing
+  // does not revoke it, so a stored credential for a number we no longer serve is a liability
+  // with no use.
   async disconnect(
     userId: string,
     companyId: string,
@@ -176,9 +177,31 @@ export class WhatsappSignupService {
     if (row) {
       const token = this.encryption.decrypt(row.accessTokenCiphertext);
       if (token) {
-        // Best effort by design: Meta refusing must not strand the agent in a connected
-        // state they cannot leave. The row transition below is what the product acts on.
-        await this.unsubscribeApp(row.wabaId, token);
+        // A WABA's subscription is shared by every number on it (Meta has no per-number
+        // unsubscribe), so unsubscribe only when this is the last live row on that WABA.
+        const siblings = await this.connections.count({
+          where: [
+            {
+              wabaId: row.wabaId,
+              id: Not(row.id),
+              status: WhatsappConnectionStatus.CONNECTED,
+            },
+            {
+              wabaId: row.wabaId,
+              id: Not(row.id),
+              status: WhatsappConnectionStatus.FLAGGED,
+            },
+          ],
+        });
+        if (siblings === 0) {
+          // Best effort by design: Meta refusing must not strand the agent in a connected
+          // state they cannot leave. The row transition below is what the product acts on.
+          await this.unsubscribeApp(row.wabaId, token);
+        } else {
+          this.logger.log(
+            `Skipping unsubscribe for WABA ${row.wabaId}: ${siblings} other live connection(s) remain`,
+          );
+        }
       }
     }
 

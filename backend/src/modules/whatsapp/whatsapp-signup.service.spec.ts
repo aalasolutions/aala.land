@@ -5,6 +5,7 @@ import {
   ForbiddenException,
   ServiceUnavailableException,
 } from '@nestjs/common';
+import { Not } from 'typeorm';
 import { WhatsappSignupService } from './whatsapp-signup.service';
 import { WhatsappConnectionStatus } from './entities/whatsapp-connection.entity';
 import { EncryptionService } from '../encryption/encryption.service';
@@ -41,6 +42,7 @@ describe('WhatsappSignupService', () => {
     findOne: jest.Mock;
     insert: jest.Mock;
     update: jest.Mock;
+    count: jest.Mock;
   };
   let wa: { getConnection: jest.Mock; disconnect: jest.Mock };
   let encryption: EncryptionService;
@@ -74,6 +76,7 @@ describe('WhatsappSignupService', () => {
       findOne: jest.fn().mockResolvedValue(null),
       insert: jest.fn().mockResolvedValue({ identifiers: [{ id: 'c1' }] }),
       update: jest.fn().mockResolvedValue({ affected: 1 }),
+      count: jest.fn().mockResolvedValue(0),
     };
     wa = {
       getConnection: jest.fn().mockResolvedValue(connectedInfo),
@@ -384,6 +387,53 @@ describe('WhatsappSignupService', () => {
 
       expect(fetchMock).not.toHaveBeenCalled();
       expect(wa.disconnect).toHaveBeenCalledWith('user-1', 'company-1');
+    });
+
+    // A WABA's subscription is shared by every number on it: unsubscribing while a sibling
+    // agent is still CONNECTED/FLAGGED would silence their webhooks too.
+    it('skips the Meta unsubscribe when another live connection shares the WABA', async () => {
+      connections.findOne.mockResolvedValue({
+        id: 'conn-1',
+        wabaId: dto.wabaId,
+        accessTokenCiphertext: encryption.encrypt(TOKEN),
+      });
+      connections.count.mockResolvedValue(1);
+
+      await expect(service.disconnect('user-1', 'company-1')).resolves.toEqual({
+        success: true,
+      });
+
+      expect(fetchMock).not.toHaveBeenCalled();
+      expect(wa.disconnect).toHaveBeenCalledWith('user-1', 'company-1');
+      const patch = connections.update.mock.calls[0][1];
+      expect(patch.accessTokenCiphertext).toBeNull();
+      expect(patch.tokenUpdatedAt).toBeNull();
+      expect(patch.disconnectReason).toBe('SELF_DISCONNECTED');
+    });
+
+    it('counts siblings on the same WABA excluding the disconnecting row, filtered to CONNECTED/FLAGGED', async () => {
+      connections.findOne.mockResolvedValue({
+        id: 'conn-1',
+        wabaId: dto.wabaId,
+        accessTokenCiphertext: encryption.encrypt(TOKEN),
+      });
+      fetchMock.mockResolvedValueOnce(ok({ success: true }));
+
+      await service.disconnect('user-1', 'company-1');
+
+      const countArgs = connections.count.mock.calls[0][0];
+      expect(countArgs.where).toEqual([
+        {
+          wabaId: dto.wabaId,
+          id: Not('conn-1'),
+          status: WhatsappConnectionStatus.CONNECTED,
+        },
+        {
+          wabaId: dto.wabaId,
+          id: Not('conn-1'),
+          status: WhatsappConnectionStatus.FLAGGED,
+        },
+      ]);
     });
   });
 });
