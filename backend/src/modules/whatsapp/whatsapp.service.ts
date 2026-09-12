@@ -4,6 +4,7 @@ import {
   BadRequestException,
   Injectable,
   Logger,
+  ServiceUnavailableException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -125,6 +126,11 @@ export class WhatsappService {
       sent = await this.cloud.sendText(connection, chatId, body);
     } catch (err) {
       if (!(err instanceof WhatsappSendError)) throw err;
+      if (err.needsReconnect) {
+        throw new ServiceUnavailableException(
+          'This WhatsApp connection needs reconnecting; the message was not sent',
+        );
+      }
       // The operator learns the send failed; the token and the raw Graph body stay in the log.
       throw new BadGatewayException(
         err.status

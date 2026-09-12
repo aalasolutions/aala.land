@@ -22,6 +22,12 @@ import { SendMessageDto } from './dto/send-message.dto';
 import { ConnectWhatsappDto } from './dto/connect-whatsapp.dto';
 import { WhatsappSignupService } from './whatsapp-signup.service';
 import { AuthenticatedRequest } from '@shared/interfaces/authenticated-request.interface';
+import {
+  AiHistoryMessage,
+  WaConnectionInfo,
+  WaMessage,
+  WaSignupConfig,
+} from './wa-types';
 
 @ApiTags('whatsapp')
 @ApiBearerAuth()
@@ -48,7 +54,7 @@ export class WhatsappController {
   @ApiOperation({
     summary: 'App id and Embedded Signup configuration id for the browser flow',
   })
-  getSignupConfig() {
+  getSignupConfig(): WaSignupConfig {
     return this.signup.getSignupConfig();
   }
 
@@ -59,7 +65,7 @@ export class WhatsappController {
   connect(
     @Request() req: AuthenticatedRequest,
     @Body() dto: ConnectWhatsappDto,
-  ) {
+  ): Promise<WaConnectionInfo> {
     return this.signup.connect(req.user.userId, req.user.companyId!, dto);
   }
 
@@ -67,7 +73,9 @@ export class WhatsappController {
   @ApiOperation({
     summary: "Release the caller's number and destroy its stored token",
   })
-  disconnect(@Request() req: AuthenticatedRequest) {
+  disconnect(
+    @Request() req: AuthenticatedRequest,
+  ): Promise<{ success: boolean }> {
     return this.signup.disconnect(req.user.userId, req.user.companyId!);
   }
 
@@ -120,7 +128,7 @@ export class WhatsappController {
   async send(
     @Request() req: AuthenticatedRequest,
     @Body() dto: SendMessageDto,
-  ) {
+  ): Promise<WaMessage> {
     return this.wa.sendMessage(
       req.user.userId,
       req.user.companyId!,
@@ -161,7 +169,7 @@ export class WhatsappController {
   async getAiHistory(
     @Request() req: AuthenticatedRequest,
     @Param('chatId') chatId: string,
-  ) {
+  ): Promise<{ chatId: string; history: AiHistoryMessage[] }> {
     const history = await this.wa.getAiHistory(req.user.userId, chatId);
     return { chatId, history };
   }

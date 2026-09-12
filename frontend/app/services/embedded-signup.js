@@ -50,6 +50,10 @@ export default class EmbeddedSignupService extends Service {
       };
 
       const finishInit = () => {
+        if (!window.FB?.init) {
+          settle(reject, new Error('The Meta SDK loaded but is unavailable'));
+          return;
+        }
         window.FB.init({
           appId,
           autoLogAppEvents: true,

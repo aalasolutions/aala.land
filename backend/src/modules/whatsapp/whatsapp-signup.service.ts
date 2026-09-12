@@ -4,6 +4,7 @@ import {
   ConflictException,
   ForbiddenException,
   Injectable,
+  InternalServerErrorException,
   Logger,
   ServiceUnavailableException,
 } from '@nestjs/common';
@@ -156,7 +157,9 @@ export class WhatsappSignupService {
 
     const info = await this.wa.getConnection(userId, companyId);
     if (!info) {
-      throw new BadGatewayException('Connection saved but could not be read back');
+      throw new InternalServerErrorException(
+        'Connection saved but could not be read back',
+      );
     }
     return info;
   }

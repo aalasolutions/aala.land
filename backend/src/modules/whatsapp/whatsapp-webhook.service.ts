@@ -73,6 +73,10 @@ interface CloudStatus {
 // WhatsappMessageStatus carries exactly the five strings Meta's status webhook sends.
 const META_STATUSES = new Set<string>(Object.values(WhatsappMessageStatus));
 
+// Shared log-argument shape: the stack when we have one, else whatever was thrown.
+const errorTrace = (err: unknown): unknown =>
+  err instanceof Error ? (err.stack ?? err.message) : err;
+
 @Injectable()
 export class WhatsappWebhookService {
   private readonly logger = new Logger(WhatsappWebhookService.name);
@@ -93,10 +97,12 @@ export class WhatsappWebhookService {
       this.logger.error('WHATSAPP_VERIFY_TOKEN is not set; refusing handshake');
       throw new ForbiddenException();
     }
-    if (
-      query['hub.mode'] !== 'subscribe' ||
-      query['hub.verify_token'] !== expected
-    ) {
+    const givenToken = query['hub.verify_token'];
+    const given = Buffer.from(typeof givenToken === 'string' ? givenToken : '');
+    const wanted = Buffer.from(expected);
+    const tokenMatches =
+      given.length === wanted.length && timingSafeEqual(given, wanted);
+    if (query['hub.mode'] !== 'subscribe' || !tokenMatches) {
       throw new ForbiddenException();
     }
     return query['hub.challenge'];
@@ -132,7 +138,7 @@ export class WhatsappWebhookService {
     } catch (err) {
       this.logger.error(
         'Failed to enqueue a WhatsApp webhook envelope',
-        err instanceof Error ? (err.stack ?? err.message) : err,
+        errorTrace(err),
       );
       throw new InternalServerErrorException();
     }
@@ -159,7 +165,7 @@ export class WhatsappWebhookService {
           firstError = firstError ?? err;
           this.logger.error(
             'Failed to process a WhatsApp webhook change',
-            err instanceof Error ? (err.stack ?? err.message) : err,
+            errorTrace(err),
           );
         }
       }
@@ -423,7 +429,7 @@ export class WhatsappWebhookService {
       } catch (err) {
         this.logger.error(
           `Failed to persist status callback for ${status.id ?? 'unknown'}`,
-          err instanceof Error ? (err.stack ?? err.message) : err,
+          errorTrace(err),
         );
       }
     }
@@ -488,7 +494,7 @@ export class WhatsappWebhookService {
         } catch (err) {
           this.logger.error(
             `Failed to persist WhatsApp message ${evt.id}`,
-            err instanceof Error ? err.message : err,
+            errorTrace(err),
           );
         }
         if (!firstDelivery) {
@@ -513,7 +519,7 @@ export class WhatsappWebhookService {
       } catch (err) {
         this.logger.error(
           `Failed to process WhatsApp message ${message.id ?? 'unknown'}`,
-          err instanceof Error ? (err.stack ?? err.message) : err,
+          errorTrace(err),
         );
       }
     }

@@ -14,8 +14,12 @@ export class WhatsappWebhookProcessor extends WorkerHost {
 
   @OnWorkerEvent('failed')
   onFailed(job: Job<WaWebhookJobData> | undefined, err: Error): void {
-    this.logger.error(
-      `Webhook envelope job ${job?.id ?? 'unknown'} failed: ${err.message}`,
+    const attempts = job?.opts?.attempts ?? 1;
+    // Missing attempt data means we cannot prove a retry is coming, so treat it as final.
+    const made = job?.attemptsMade ?? attempts;
+    const final = made >= attempts;
+    this.logger[final ? 'error' : 'warn'](
+      `Webhook envelope job ${job?.id ?? 'unknown'} attempt ${made}/${attempts} failed${final ? ', envelope DROPPED' : ''}: ${err.message}`,
     );
   }
 

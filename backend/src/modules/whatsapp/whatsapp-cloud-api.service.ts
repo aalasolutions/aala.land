@@ -23,6 +23,8 @@ export class WhatsappSendError extends Error {
     message: string,
     readonly status?: number,
     readonly graphCode?: number,
+    // Set only when the stored token could not be resolved: reconnecting is the only fix.
+    readonly needsReconnect?: boolean,
   ) {
     super(message);
     this.name = 'WhatsappSendError';
@@ -82,6 +84,9 @@ export class WhatsappCloudApiService {
       );
       throw new WhatsappSendError(
         `No access token on connection ${connection.phoneNumberId}`,
+        undefined,
+        undefined,
+        true,
       );
     }
 

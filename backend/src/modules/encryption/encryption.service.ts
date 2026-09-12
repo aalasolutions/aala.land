@@ -94,7 +94,7 @@ export class EncryptionService {
     }
   }
 
-  // Read per call so a rotated or freshly loaded key is never masked by a cached one.
+  // Single key, no key id in v1: rotating the key invalidates every stored secret.
   private readKey(): Buffer | null {
     const raw = process.env[KEY_ENV];
     if (!raw) return null;
