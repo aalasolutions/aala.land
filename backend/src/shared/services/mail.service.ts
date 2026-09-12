@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import * as nodemailer from 'nodemailer';
+import { errorMessage } from '@shared/utils/error.util';
 
 export interface MailOptions {
   to: string;
@@ -78,7 +79,7 @@ export class MailService {
 
       this.logger.log(`Email sent via SendGrid to ${options.to}`);
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
+      const message = errorMessage(err);
       this.logger.error(`SendGrid send failed for ${options.to}: ${message}`);
     }
   }
@@ -97,7 +98,7 @@ export class MailService {
       });
       this.logger.log(`Email sent via SMTP to ${options.to}`);
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
+      const message = errorMessage(err);
       this.logger.error(`SMTP send failed for ${options.to}: ${message}`);
     }
   }

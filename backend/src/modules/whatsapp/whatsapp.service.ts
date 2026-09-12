@@ -26,6 +26,7 @@ import {
   WaConnectionInfo,
   WaMessage,
 } from './wa-types';
+import { errorMessage } from '@shared/utils/error.util';
 
 @Injectable()
 export class WhatsappService {
@@ -169,7 +170,7 @@ export class WhatsappService {
     } catch (err) {
       this.logger.error(
         `Failed to persist operator message ${msg.id}`,
-        err instanceof Error ? err.message : err,
+        errorMessage(err),
       );
     }
     this.gateway.emitMessage(userId, msg);

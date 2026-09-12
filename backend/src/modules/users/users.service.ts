@@ -38,6 +38,7 @@ import { BillingService, SeatReservation } from '../billing/billing.service';
 import { UserReassignmentService } from './reassignment/user-reassignment.service';
 import { WhatsappService } from '../whatsapp/whatsapp.service';
 import { ReassignmentReport } from './reassignment/reassignment-report';
+import { errorMessage } from '@shared/utils/error.util';
 import {
   OwnershipTransferRecorder,
   OWNERSHIP_TRANSFER_RECORDER,
@@ -612,7 +613,7 @@ export class UsersService {
     } catch (err) {
       this.logger.error(
         `WhatsApp session not torn down for removed user ${report.fromUserId} in company ${companyId}; it may keep receiving and spending AI credits`,
-        err instanceof Error ? err.message : err,
+        errorMessage(err),
       );
     }
   }
@@ -693,7 +694,7 @@ export class UsersService {
               await this.billingService.setSeatQuantity(company, previous);
             } catch (err) {
               this.logger.error(
-                `Trim seat compensation to ${previous} failed for company ${company.id}: ${err instanceof Error ? err.message : String(err)}`,
+                `Trim seat compensation to ${previous} failed for company ${company.id}: ${errorMessage(err)}`,
               );
             }
           };
@@ -817,7 +818,7 @@ export class UsersService {
             await this.billingService.setSeatQuantity(company, previous);
           } catch (err) {
             this.logger.error(
-              `Reactivation seat compensation failed for company ${company.id}: ${err instanceof Error ? err.message : String(err)}`,
+              `Reactivation seat compensation failed for company ${company.id}: ${errorMessage(err)}`,
             );
           }
         };
@@ -1013,7 +1014,7 @@ export class UsersService {
       inviteToken,
     ).catch((err) => {
       this.logger.error(
-        `Failed to send invite email to ${dto.email}: ${err instanceof Error ? err.message : String(err)}`,
+        `Failed to send invite email to ${dto.email}: ${errorMessage(err)}`,
       );
     });
 

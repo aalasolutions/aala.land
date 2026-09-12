@@ -18,6 +18,7 @@ import { EncryptionService } from '../encryption/encryption.service';
 import { WhatsappService } from './whatsapp.service';
 import { ConnectWhatsappDto } from './dto/connect-whatsapp.dto';
 import { GRAPH_VERSION, WaConnectionInfo, WaSignupConfig } from './wa-types';
+import { errorMessage } from '@shared/utils/error.util';
 
 // The exchangeable code Meta hands back lives for 30 seconds, so every call on this path
 // is short by nature. A request still hanging at 15s has already lost the code.
@@ -253,9 +254,7 @@ export class WhatsappSignupService {
       );
     } catch (err) {
       this.logger.warn(
-        `Could not unsubscribe from WABA ${wabaId}; disconnecting locally anyway: ${
-          err instanceof Error ? err.message : String(err)
-        }`,
+        `Could not unsubscribe from WABA ${wabaId}; disconnecting locally anyway: ${errorMessage(err)}`,
       );
     }
   }
@@ -312,7 +311,7 @@ export class WhatsappSignupService {
       return (await res.json()) as T;
     } catch (err) {
       if (err instanceof BadGatewayException) throw err;
-      const reason = err instanceof Error ? err.message : String(err);
+      const reason = errorMessage(err);
       this.logger.error(`Graph ${label} error: ${reason}`);
       throw new BadGatewayException(`WhatsApp ${label} error`);
     } finally {

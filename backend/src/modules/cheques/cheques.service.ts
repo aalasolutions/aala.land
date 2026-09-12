@@ -19,6 +19,7 @@ import {
   scopedRegionCodes,
 } from '../../shared/utils/region-visibility.util';
 import { paginationOptions } from '../../shared/utils/pagination.util';
+import { errorMessage } from '@shared/utils/error.util';
 import { Unit } from '../properties/entities/unit.entity';
 import { Company } from '../companies/entities/company.entity';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -336,8 +337,7 @@ export class ChequesService {
             entityId: saved.id,
           });
         } catch (error) {
-          const messageText =
-            error instanceof Error ? error.message : String(error);
+          const messageText = errorMessage(error);
           this.logger.error(
             `Failed to create cheque status notification for cheque ${saved.id}: ${messageText}`,
           );
@@ -363,7 +363,7 @@ export class ChequesService {
       cheque.ocrProcessed = true;
       this.logger.log(`OCR processed for cheque ${id}`);
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
+      const message = errorMessage(err);
       this.logger.error(`OCR failed for cheque ${id}: ${message}`);
       cheque.ocrProcessed = false;
     }
@@ -430,8 +430,7 @@ export class ChequesService {
           entityId: saved.id,
         });
       } catch (error) {
-        const messageText =
-          error instanceof Error ? error.message : String(error);
+        const messageText = errorMessage(error);
         this.logger.error(
           `Failed to create cheque bounce notification for cheque ${saved.id}: ${messageText}`,
         );

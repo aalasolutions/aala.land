@@ -1,5 +1,6 @@
 import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
 import Redis from 'ioredis';
+import { errorMessage } from '@shared/utils/error.util';
 import { getRedisConnection } from './redis.config';
 
 // Compare-and-act, so a holder can never release or extend a lock that has
@@ -114,9 +115,7 @@ export class RedisService implements OnModuleDestroy {
     } catch (err) {
       if (err instanceof Error && err.message.includes('no such key'))
         return false;
-      this.logger.error(
-        `renameKey ${from} failed: ${err instanceof Error ? err.message : String(err)}`,
-      );
+      this.logger.error(`renameKey ${from} failed: ${errorMessage(err)}`);
       throw err;
     }
   }

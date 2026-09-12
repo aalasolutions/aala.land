@@ -1,4 +1,5 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { errorMessage } from '@shared/utils/error.util';
 import { BillingEventDispatcher } from '../billing/events/billing-event-dispatcher';
 import {
   PaymentFailedEvent,
@@ -66,9 +67,7 @@ export class BillingEmailListener implements OnModuleInit {
     try {
       await fn();
     } catch (err) {
-      this.logger.error(
-        `Billing email failed: ${err instanceof Error ? err.message : String(err)}`,
-      );
+      this.logger.error(`Billing email failed: ${errorMessage(err)}`);
     }
   }
 }

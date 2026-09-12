@@ -30,6 +30,7 @@ import { Lead, LeadStatus } from '../leads/entities/lead.entity';
 import { Role } from '../../shared/enums/roles.enum';
 import { paginationOptions } from '../../shared/utils/pagination.util';
 import { isUniqueViolation } from '../../shared/utils/name-normalization.util';
+import { errorMessage } from '@shared/utils/error.util';
 import { NotificationsGateway } from './notifications.gateway';
 
 export interface NotificationResult {
@@ -87,10 +88,8 @@ export class NotificationsService {
     try {
       this.notificationsGateway.sendNotificationToUser(dto.userId, saved);
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : String(err);
-      this.logger.error(
-        `Failed to emit notification via socket: ${errorMessage}`,
-      );
+      const reason = errorMessage(err);
+      this.logger.error(`Failed to emit notification via socket: ${reason}`);
     }
 
     return saved;
@@ -223,7 +222,7 @@ export class NotificationsService {
         externalId: messageId,
       };
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
+      const message = errorMessage(err);
       this.logger.error(`Email send failed for ${dto.email}: ${message}`);
       return {
         channel: NotificationChannel.EMAIL,
@@ -540,7 +539,7 @@ export class NotificationsService {
         externalId: data.sid,
       };
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
+      const message = errorMessage(err);
       this.logger.error(`SMS send failed for ${dto.phone}: ${message}`);
       return {
         channel: NotificationChannel.SMS,

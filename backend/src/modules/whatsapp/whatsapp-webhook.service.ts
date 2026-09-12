@@ -24,6 +24,7 @@ import {
   WA_WEBHOOK_EVENTS_QUEUE,
 } from './wa-types';
 import { WebhookVerifyDto } from './dto/webhook-payload.dto';
+import { errorMessage } from '@shared/utils/error.util';
 
 // Webhook tracing is noisy and can echo customer identifiers, so it stays off in production.
 const VERBOSE_WEBHOOK_LOGS = process.env.NODE_ENV !== 'production';
@@ -72,10 +73,6 @@ interface CloudStatus {
 
 // WhatsappMessageStatus carries exactly the five strings Meta's status webhook sends.
 const META_STATUSES = new Set<string>(Object.values(WhatsappMessageStatus));
-
-// Shared log-argument shape: the stack when we have one, else whatever was thrown.
-const errorTrace = (err: unknown): unknown =>
-  err instanceof Error ? (err.stack ?? err.message) : err;
 
 @Injectable()
 export class WhatsappWebhookService {
@@ -138,7 +135,7 @@ export class WhatsappWebhookService {
     } catch (err) {
       this.logger.error(
         'Failed to enqueue a WhatsApp webhook envelope',
-        errorTrace(err),
+        errorMessage(err, true),
       );
       throw new InternalServerErrorException();
     }
@@ -165,7 +162,7 @@ export class WhatsappWebhookService {
           firstError = firstError ?? err;
           this.logger.error(
             'Failed to process a WhatsApp webhook change',
-            errorTrace(err),
+            errorMessage(err, true),
           );
         }
       }
@@ -429,7 +426,7 @@ export class WhatsappWebhookService {
       } catch (err) {
         this.logger.error(
           `Failed to persist status callback for ${status.id ?? 'unknown'}`,
-          errorTrace(err),
+          errorMessage(err, true),
         );
       }
     }
@@ -494,7 +491,7 @@ export class WhatsappWebhookService {
         } catch (err) {
           this.logger.error(
             `Failed to persist WhatsApp message ${evt.id}`,
-            errorTrace(err),
+            errorMessage(err, true),
           );
         }
         if (!firstDelivery) {
@@ -519,7 +516,7 @@ export class WhatsappWebhookService {
       } catch (err) {
         this.logger.error(
           `Failed to process WhatsApp message ${message.id ?? 'unknown'}`,
-          errorTrace(err),
+          errorMessage(err, true),
         );
       }
     }

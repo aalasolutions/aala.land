@@ -16,6 +16,7 @@ import {
 import { User } from '@modules/users/entities/user.entity';
 import { Role } from '@shared/enums/roles.enum';
 import { paginationOptions } from '@shared/utils/pagination.util';
+import { errorMessage } from '@shared/utils/error.util';
 import { BillingPrice } from '@modules/billing/entities/billing-price.entity';
 import { BillingHistory } from '@modules/billing/entities/billing-history.entity';
 import { BillingService } from '@modules/billing/billing.service';
@@ -258,7 +259,7 @@ export class ConsoleService {
       this.billingService.getSubscriptionState(companyId).catch((err) => {
         // A dead provider must not blank the whole detail page.
         this.logger.warn(
-          `Billing state unavailable for company ${companyId}: ${err instanceof Error ? err.message : String(err)}`,
+          `Billing state unavailable for company ${companyId}: ${errorMessage(err)}`,
         );
         return null;
       }),
@@ -752,7 +753,7 @@ export class ConsoleService {
         }
       } catch (err) {
         if (err instanceof BadRequestException) throw err;
-        const msg = err instanceof Error ? err.message : String(err);
+        const msg = errorMessage(err);
         this.logger.error(
           `Remedy provider call failed for company ${companyId}: ${msg}`,
         );
@@ -814,9 +815,7 @@ export class ConsoleService {
       } catch (err) {
         // Sync-level failure (e.g. provider auth): each pending row keeps or
         // gains its own persisted error via syncPrices; log and fall through.
-        this.logger.error(
-          `Auto price sync failed: ${err instanceof Error ? err.message : String(err)}`,
-        );
+        this.logger.error(`Auto price sync failed: ${errorMessage(err)}`);
       }
       rows = await this.activePricesSorted();
     }
@@ -1242,7 +1241,7 @@ export class ConsoleService {
       });
     } catch (err) {
       this.logger.error(
-        `Audit write failed for ${entityType} on company ${companyId}: ${err instanceof Error ? err.message : String(err)}`,
+        `Audit write failed for ${entityType} on company ${companyId}: ${errorMessage(err)}`,
       );
     }
   }

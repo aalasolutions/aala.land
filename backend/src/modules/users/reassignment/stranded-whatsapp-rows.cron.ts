@@ -3,6 +3,7 @@ import { DataSource } from 'typeorm';
 import { Cron } from '@nestjs/schedule';
 import { WhatsappService } from '../../whatsapp/whatsapp.service';
 import { WhatsappConnectionStatus } from '../../whatsapp/entities/whatsapp-connection.entity';
+import { errorMessage } from '@shared/utils/error.util';
 
 // Chats and messages left on a departed agent are the intended end state now, not damage: what must never be left behind is a CONNECTED row, because the webhook routes on it and every inbound message could still open an AI credit window for a seat nobody holds.
 // Removal only logs when its disconnect fails, so re-running that disconnect is the whole job here. Assumes a single scheduler instance, as the other crons do.
@@ -30,7 +31,7 @@ export class StrandedWhatsappRowsCron {
       } catch (err) {
         this.logger.error(
           `Failed to disconnect the stranded WhatsApp number in company ${connection.companyId} for departed user ${connection.userId}; it may keep receiving and spending AI credits`,
-          err instanceof Error ? err.message : err,
+          errorMessage(err),
         );
       }
     }

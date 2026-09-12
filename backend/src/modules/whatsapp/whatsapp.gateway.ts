@@ -11,6 +11,7 @@ import { Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { errorMessage } from '@shared/utils/error.util';
 import { User } from '../users/entities/user.entity';
 import { Company } from '../companies/entities/company.entity';
 import { WaMessage } from './wa-types';
@@ -70,7 +71,7 @@ export class WhatsappGateway
         `Socket ${socket.id} authenticated and joined room user:${payload.sub}`,
       );
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
+      const message = errorMessage(error);
       this.logger.warn(
         `WhatsApp socket authentication failed for client ${socket.id}: ${message}`,
       );

@@ -10,6 +10,7 @@ import { WhatsappGateway } from './whatsapp.gateway';
 import { WhatsappAiService, SendFn, MarkReadFn } from './whatsapp-ai.service';
 import { GRAPH_VERSION, WaMessage } from './wa-types';
 import { EncryptionService } from '../encryption/encryption.service';
+import { errorMessage } from '@shared/utils/error.util';
 
 const DEFAULT_SEND_TIMEOUT_MS = 15000;
 
@@ -136,7 +137,7 @@ export class WhatsappCloudApiService {
       return { messageId };
     } catch (err) {
       if (err instanceof WhatsappSendError) throw err;
-      const reason = err instanceof Error ? err.message : String(err);
+      const reason = errorMessage(err);
       this.logger.error(`Cloud API send error: ${reason}`);
       throw new WhatsappSendError(`Cloud API send error: ${reason}`);
     } finally {
@@ -187,9 +188,7 @@ export class WhatsappCloudApiService {
         );
       }
     } catch (err) {
-      this.logger.warn(
-        `Cloud API mark-as-read error: ${err instanceof Error ? err.message : String(err)}`,
-      );
+      this.logger.warn(`Cloud API mark-as-read error: ${errorMessage(err)}`);
     } finally {
       clearTimeout(timer);
     }
@@ -237,7 +236,7 @@ export class WhatsappCloudApiService {
     } catch (err) {
       this.logger.error(
         'Failed to flag the WhatsApp connection',
-        err instanceof Error ? err.message : err,
+        errorMessage(err),
       );
     }
   }
@@ -301,7 +300,7 @@ export class WhatsappCloudApiService {
           })
           .catch((err: unknown) =>
             this.logger.debug(
-              `Credit usage push failed for ${connection.companyId}: ${err instanceof Error ? err.message : String(err)}`,
+              `Credit usage push failed for ${connection.companyId}: ${errorMessage(err)}`,
             ),
           );
       }
@@ -320,7 +319,7 @@ export class WhatsappCloudApiService {
     } catch (err) {
       this.logger.error(
         'Failed to persist outbound AI message',
-        err instanceof Error ? err.message : err,
+        errorMessage(err),
       );
     }
   }

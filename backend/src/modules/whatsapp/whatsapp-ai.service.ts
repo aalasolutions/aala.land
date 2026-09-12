@@ -27,6 +27,7 @@ import {
   getAiCreditAllowance,
   getCreditPeriod,
 } from '@shared/utils/ai-credit.util';
+import { errorMessage } from '@shared/utils/error.util';
 import { SystemEmailService } from '@modules/email/system-email.service';
 import { Company } from '@modules/companies/entities/company.entity';
 
@@ -523,7 +524,7 @@ export class WhatsappAiService {
         })
         .catch((err: unknown) =>
           this.logger.error(
-            `Lock renewal failed on ${key}: ${err instanceof Error ? err.message : String(err)}`,
+            `Lock renewal failed on ${key}: ${errorMessage(err)}`,
           ),
         );
     }, renewEveryMs);
@@ -657,7 +658,7 @@ export class WhatsappAiService {
         // the turn anyway would serve unmetered AI for as long as the fault lasts.
         this.logger.error(
           'Credit check failed, refusing the AI turn',
-          err instanceof Error ? err.message : err,
+          errorMessage(err),
         );
         return;
       }
@@ -670,7 +671,7 @@ export class WhatsappAiService {
       if (markRead && newestInboundId) {
         void markRead(newestInboundId, true).catch((err: unknown) =>
           this.logger.debug(
-            `Read receipt rider failed for ${userId}:${chatId}: ${err instanceof Error ? err.message : String(err)}`,
+            `Read receipt rider failed for ${userId}:${chatId}: ${errorMessage(err)}`,
           ),
         );
       }
@@ -770,10 +771,7 @@ export class WhatsappAiService {
         cause instanceof Error
           ? ` | cause: ${cause.name}: ${cause.message}`
           : '';
-      this.logger.error(
-        `AI call failed${causeStr}`,
-        err instanceof Error ? `${err.message}\n${err.stack}` : String(err),
-      );
+      this.logger.error(`AI call failed${causeStr}`, errorMessage(err, true));
     }
   }
 
@@ -816,7 +814,7 @@ export class WhatsappAiService {
     } catch (err) {
       this.logger.error(
         'Failed to seed AI history from the database',
-        err instanceof Error ? err.message : err,
+        errorMessage(err),
       );
       return [];
     }
@@ -840,7 +838,7 @@ export class WhatsappAiService {
     } catch (err) {
       this.logger.error(
         'Failed to send AI credits exhausted email',
-        err instanceof Error ? err.message : err,
+        errorMessage(err),
       );
     }
   }
@@ -853,10 +851,7 @@ export class WhatsappAiService {
     try {
       await this.repo.recordTurnDelivered(companyId, conversationId);
     } catch (err) {
-      this.logger.error(
-        'Failed to record AI turn delivery',
-        err instanceof Error ? err.message : err,
-      );
+      this.logger.error('Failed to record AI turn delivery', errorMessage(err));
     }
   }
 

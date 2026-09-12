@@ -9,6 +9,7 @@ import { Logger, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { errorMessage } from '@shared/utils/error.util';
 import { User } from '../users/entities/user.entity';
 
 const websocketCorsOrigins = process.env.CORS_ORIGIN
@@ -67,7 +68,7 @@ export class NotificationsGateway
         `Client connected: ${client.id}, joined user_${user.id} and company_${user.companyId}`,
       );
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
+      const message = errorMessage(error);
       this.logger.warn(
         `Socket authentication failed for client ${client.id}: ${message}`,
       );

@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { createCipheriv, createDecipheriv, randomBytes } from 'crypto';
+import { errorMessage } from '@shared/utils/error.util';
 
 // Ciphertext format: `v1.<iv b64>.<auth tag b64>.<ciphertext b64>`. Base64 never contains a
 // dot, so the split is unambiguous, and the version prefix lets a future v2 change the rest.
@@ -88,7 +89,7 @@ export class EncryptionService {
     } catch (err) {
       // Wrong key or edited ciphertext both land here: GCM rejects the tag.
       this.logger.error(
-        `Stored secret failed authentication and was discarded: ${err instanceof Error ? err.message : String(err)}`,
+        `Stored secret failed authentication and was discarded: ${errorMessage(err)}`,
       );
       return null;
     }

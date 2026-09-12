@@ -18,6 +18,7 @@ import {
   LockStateService,
 } from '@modules/lock/lock-state.service';
 import { SystemEmailService } from '@modules/email/system-email.service';
+import { errorMessage } from '@shared/utils/error.util';
 import { DataSource } from 'typeorm';
 import * as bcrypt from 'bcryptjs';
 import * as crypto from 'crypto';
@@ -294,7 +295,7 @@ export class AuthService {
         );
       } catch (err) {
         this.logger.error(
-          `Password reset email failed for ${email}: ${err instanceof Error ? err.message : String(err)}`,
+          `Password reset email failed for ${email}: ${errorMessage(err)}`,
         );
       }
     }
@@ -397,7 +398,7 @@ export class AuthService {
       );
     } catch (err) {
       this.logger.error(
-        `Welcome email failed for ${result.user.email}: ${err instanceof Error ? err.message : String(err)}`,
+        `Welcome email failed for ${result.user.email}: ${errorMessage(err)}`,
       );
     }
 

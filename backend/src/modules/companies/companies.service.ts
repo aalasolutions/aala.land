@@ -19,6 +19,7 @@ import { UpdateCompanyDto } from './dto/update-company.dto';
 import { REGIONS } from '@shared/constants/regions';
 import { paginationOptions } from '../../shared/utils/pagination.util';
 import { Role } from '@shared/enums/roles.enum';
+import { errorMessage } from '@shared/utils/error.util';
 import { BillingService } from '../billing/billing.service';
 
 @Injectable()
@@ -57,7 +58,7 @@ export class CompaniesService {
       .ensureCompanyCustomer(saved)
       .catch((err) =>
         this.logger.error(
-          `billing customer creation failed for company ${saved.id}: ${(err as Error).message}`,
+          `billing customer creation failed for company ${saved.id}: ${errorMessage(err)}`,
         ),
       );
 
@@ -371,7 +372,7 @@ export class CompaniesService {
         .ensureCompanyCustomer(savedCompanyOut)
         .catch((err) =>
           this.logger.error(
-            `billing customer creation failed for company ${savedCompanyOut.id}: ${(err as Error).message}`,
+            `billing customer creation failed for company ${savedCompanyOut.id}: ${errorMessage(err)}`,
           ),
         );
 
