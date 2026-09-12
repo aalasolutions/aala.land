@@ -21,6 +21,8 @@ describe('WhatsappService', () => {
     getCreditUsage: jest.Mock;
     persistEnabled: jest.Mock;
     isEnabledFor: jest.Mock;
+    clearUserState: jest.Mock;
+    clearPromptCache: jest.Mock;
   };
   let gateway: { emitMessage: jest.Mock; emitAi: jest.Mock };
   let cloud: { sendText: jest.Mock };
@@ -36,6 +38,8 @@ describe('WhatsappService', () => {
       getCreditUsage: jest.fn(),
       persistEnabled: jest.fn().mockResolvedValue(undefined),
       isEnabledFor: jest.fn().mockResolvedValue(true),
+      clearUserState: jest.fn().mockResolvedValue(undefined),
+      clearPromptCache: jest.fn(),
     };
     gateway = { emitMessage: jest.fn(), emitAi: jest.fn() };
     cloud = {
@@ -310,6 +314,24 @@ describe('WhatsappService', () => {
       ).rejects.toThrow('db unreachable');
 
       expect(gateway.emitAi).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('disconnect', () => {
+    it('wipes the access token along with the status, so a stale token cannot revive the row', async () => {
+      await service.disconnect('user-1', 'company-1');
+
+      expect(connections.update).toHaveBeenCalledWith(
+        { userId: 'user-1', companyId: 'company-1' },
+        {
+          status: 'disconnected',
+          disconnectedAt: expect.any(Date),
+          accessTokenCiphertext: null,
+          tokenUpdatedAt: null,
+        },
+      );
+      expect(ai.clearUserState).toHaveBeenCalledWith('user-1', 'company-1');
+      expect(ai.clearPromptCache).toHaveBeenCalledWith('company-1');
     });
   });
 });

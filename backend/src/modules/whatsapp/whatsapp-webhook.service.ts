@@ -8,7 +8,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
-import { Repository } from 'typeorm';
+import { Not, Repository } from 'typeorm';
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import {
   WhatsappConnection,
@@ -304,16 +304,23 @@ export class WhatsappWebhookService {
         return;
       }
       case 'ACCOUNT_OFFBOARDED': {
-        await this.connections.update(
-          { id: connection.id },
+        // Once disconnected, stays disconnected: only a CONNECTED row may be suspended.
+        const result = await this.connections.update(
+          { id: connection.id, status: WhatsappConnectionStatus.CONNECTED },
           {
             status: WhatsappConnectionStatus.FLAGGED,
             disconnectReason: 'ACCOUNT_OFFBOARDED',
           },
         );
-        this.logger.warn(
-          `WhatsApp connection ${connection.phoneNumberId} offboarded; awaiting ACCOUNT_RECONNECTED`,
-        );
+        if (result.affected) {
+          this.logger.warn(
+            `WhatsApp connection ${connection.phoneNumberId} offboarded; awaiting ACCOUNT_RECONNECTED`,
+          );
+        } else {
+          this.logger.log(
+            `ACCOUNT_OFFBOARDED for ${connection.phoneNumberId} ignored; row is not CONNECTED`,
+          );
+        }
         return;
       }
       case 'ACCOUNT_RECONNECTED': {
@@ -323,8 +330,14 @@ export class WhatsappWebhookService {
           );
           return;
         }
-        await this.connections.update(
-          { id: connection.id },
+        // Only undo what ACCOUNT_OFFBOARDED did; a row flagged for another reason, or a
+        // disconnected row, is never auto-reconnected.
+        const result = await this.connections.update(
+          {
+            id: connection.id,
+            status: WhatsappConnectionStatus.FLAGGED,
+            disconnectReason: 'ACCOUNT_OFFBOARDED',
+          },
           {
             status: WhatsappConnectionStatus.CONNECTED,
             connectedAt: new Date(),
@@ -332,9 +345,15 @@ export class WhatsappWebhookService {
             disconnectReason: null,
           },
         );
-        this.logger.log(
-          `WhatsApp connection ${connection.phoneNumberId} reconnected`,
-        );
+        if (result.affected) {
+          this.logger.log(
+            `WhatsApp connection ${connection.phoneNumberId} reconnected`,
+          );
+        } else {
+          this.logger.log(
+            `ACCOUNT_RECONNECTED for ${connection.phoneNumberId} ignored; row was not offboarded`,
+          );
+        }
         return;
       }
       default:
@@ -352,9 +371,15 @@ export class WhatsappWebhookService {
     wabaId: string,
     phoneNumber: string | undefined,
   ): Promise<WhatsappConnection | null> {
-    const rows = await this.connections.find({ where: { wabaId } });
+    // Once disconnected, stays disconnected: only the agent pressing Connect again brings
+    // a row back, never a Meta lifecycle event. PENDING stays in for PARTNER_ADDED.
+    const rows = await this.connections.find({
+      where: { wabaId, status: Not(WhatsappConnectionStatus.DISCONNECTED) },
+    });
     if (rows.length === 0) {
-      this.logger.warn(`account_update for unknown WABA ${wabaId}; ignored`);
+      this.logger.warn(
+        `account_update for WABA ${wabaId} has no live connection; ignored`,
+      );
       return null;
     }
     const digits = (v: string | undefined) => (v ?? '').replace(/\D/g, '');

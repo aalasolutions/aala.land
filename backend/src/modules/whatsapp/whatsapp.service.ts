@@ -66,11 +66,14 @@ export class WhatsappService {
     companyId: string,
   ): Promise<{ success: boolean }> {
     // Row first: a turn already in flight must not find a CONNECTED row and send anyway.
+    // Token wiped here too: a departed seat must never come back CONNECTED off a stale token.
     await this.connections.update(
       { userId, companyId },
       {
         status: WhatsappConnectionStatus.DISCONNECTED,
         disconnectedAt: new Date(),
+        accessTokenCiphertext: null,
+        tokenUpdatedAt: null,
       },
     );
     await this.ai.clearUserState(userId, companyId);

@@ -958,6 +958,73 @@ describe('WhatsappWebhookService', () => {
       expect(repo.update).not.toHaveBeenCalled();
     });
 
+    // AAMIR ruling: once disconnected, stays disconnected. Only the agent pressing Connect
+    // again brings it back, never a Meta lifecycle event. The real query excludes
+    // DISCONNECTED rows, so a WABA holding only a disconnected row resolves like an unknown one.
+    it('never resurrects a DISCONNECTED row on ACCOUNT_OFFBOARDED or ACCOUNT_RECONNECTED', async () => {
+      repo.find.mockResolvedValue([]);
+
+      await service.processEnvelope(
+        accountUpdateEnvelope({ event: 'ACCOUNT_OFFBOARDED' }),
+      );
+      await service.processEnvelope(
+        accountUpdateEnvelope({ event: 'ACCOUNT_RECONNECTED' }),
+      );
+
+      expect(repo.update).not.toHaveBeenCalled();
+    });
+
+    it('acts on the live CONNECTED row when a stale DISCONNECTED row shares the same number', async () => {
+      // The find query filters status != DISCONNECTED, so the stale duplicate never
+      // reaches the matcher; only the live row is returned.
+      repo.find.mockResolvedValue([rowFor({ id: 'conn-live' })]);
+
+      await service.processEnvelope(
+        accountUpdateEnvelope({ event: 'PARTNER_REMOVED' }),
+      );
+
+      expect(repo.update.mock.calls[0][0]).toEqual({ id: 'conn-live' });
+    });
+
+    it('leaves a FLAGGED row unchanged on ACCOUNT_OFFBOARDED, requiring CONNECTED in the update criteria', async () => {
+      repo.find.mockResolvedValue([
+        rowFor({
+          status: WhatsappConnectionStatus.FLAGGED,
+          disconnectReason: 'token_invalid_190',
+        }),
+      ]);
+      repo.update.mockResolvedValue({ affected: 0 });
+
+      await service.processEnvelope(
+        accountUpdateEnvelope({ event: 'ACCOUNT_OFFBOARDED' }),
+      );
+
+      expect(repo.update.mock.calls[0][0]).toEqual({
+        id: 'conn-1',
+        status: WhatsappConnectionStatus.CONNECTED,
+      });
+    });
+
+    it('does not revive a row FLAGGED for another reason on ACCOUNT_RECONNECTED', async () => {
+      repo.find.mockResolvedValue([
+        rowFor({
+          status: WhatsappConnectionStatus.FLAGGED,
+          disconnectReason: 'token_invalid_190',
+        }),
+      ]);
+      repo.update.mockResolvedValue({ affected: 0 });
+
+      await service.processEnvelope(
+        accountUpdateEnvelope({ event: 'ACCOUNT_RECONNECTED' }),
+      );
+
+      expect(repo.update.mock.calls[0][0]).toEqual({
+        id: 'conn-1',
+        status: WhatsappConnectionStatus.FLAGGED,
+        disconnectReason: 'ACCOUNT_OFFBOARDED',
+      });
+    });
+
     it('never routes an account_update down the message path', async () => {
       repo.find.mockResolvedValue([rowFor()]);
 
