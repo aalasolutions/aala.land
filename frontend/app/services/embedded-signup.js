@@ -5,15 +5,13 @@ const SDK_URL = 'https://connect.facebook.net/en_US/sdk.js';
 const SDK_ELEMENT_ID = 'facebook-jssdk';
 const META_ORIGIN = 'https://www.facebook.com';
 
-// Coexistence launches under this feature type. The old `coexistence` value was renamed
-// and pre-rename sample code fails silently (docs/planning/WHATSAPP_REVISED.md).
+// Must be this exact value, not 'coexistence' (renamed); the old value fails silently.
 const FEATURE_TYPE = 'whatsapp_business_app_onboarding';
 
 // The agent is typing a code into a Meta-hosted flow, so this is generous on purpose.
 const LAUNCH_TIMEOUT_MS = 10 * 60 * 1000;
 
-// Once the code is in hand the clock is Meta's, not the agent's: it dies in 30 seconds.
-// Waiting ten more minutes for the session info would only deliver an expired credential.
+// Meta's code expires in 30s; waiting longer for session info returns an expired credential.
 const SESSION_INFO_TIMEOUT_MS = 20 * 1000;
 
 // A script that neither loads nor errors must not wedge the button forever.
@@ -31,10 +29,7 @@ class SignupCancelled extends Error {
   }
 }
 
-// Owns the Meta-hosted half of Embedded Signup: loading the SDK, the session-logging
-// listener Meta requires for Coexistence, and the login launch. Resolves only when the
-// exchangeable code AND the session info have both arrived, because the backend needs
-// all three values and either one alone is useless.
+// Resolves only when both the code and session info arrive; the backend requires both.
 export default class EmbeddedSignupService extends Service {
   _sdkPromise = null;
   _initedAppId = null;
@@ -69,9 +64,7 @@ export default class EmbeddedSignupService extends Service {
         return;
       }
 
-      // Reaching here means no load is cached, so any element still in the DOM is the
-      // corpse of a failed attempt. Left in place it would swallow every retry, because a
-      // script that already errored never fires `load` again.
+      // Left from a failed attempt; an already-errored script never fires load again.
       document.getElementById(SDK_ELEMENT_ID)?.remove();
 
       const script = document.createElement('script');
@@ -130,8 +123,7 @@ export default class EmbeddedSignupService extends Service {
         });
       };
 
-      // Meta requires session logging for Coexistence. It is also the only place the
-      // waba_id and phone_number_id are handed to us; the login callback carries neither.
+      // Required by Meta for Coexistence; only place waba_id/phone_number_id arrive.
       const onMessage = (event) => {
         if (event.origin !== META_ORIGIN) return;
         let payload;

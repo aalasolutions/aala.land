@@ -87,7 +87,6 @@ export class WhatsappMessage {
   @Column({ name: 'ai_generated', type: 'boolean', default: false })
   aiGenerated: boolean;
 
-  // Which connected business number this message belongs to.
   @Column({
     name: 'phone_number_id',
     type: 'varchar',

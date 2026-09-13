@@ -37,24 +37,20 @@ export type SendFn = (
   meta?: { creditCharged: boolean },
 ) => Promise<{ messageId?: string }>;
 
-// Read receipt plus the typing indicator that rides on it. Resolved by the processor
-// alongside SendFn, so the AI service stays free of any transport dependency.
+// Resolved by the processor so this service stays free of transport dependencies.
 export type MarkReadFn = (
   messageId: string,
   withTyping: boolean,
 ) => Promise<void>;
 
-// Conversation state lives in Redis so every replica sees the same history and the
-// same human-takeover stamps. The debounce is a delayed BullMQ job per chat, so a
-// pending turn survives a replica restart instead of dying with the process.
+// State lives in Redis, turns queue in BullMQ, so replicas share history and survive restarts.
 @Injectable()
 export class WhatsappAiService {
   private readonly logger = new Logger(WhatsappAiService.name);
   // Keyed by companyId because that is what the toggle persists against.
   private enabledByCompany = new Map<string, boolean>();
   private readonly AI_STATE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
-  // Invariant: the turn sequence must outlive any job record that could collide with it,
-  // so this sits one day above the debounce queue's removeOnFail age of 604800s.
+  // Must outlive the debounce queue's removeOnFail age (604800s), so this TTL sits a day above it.
   private readonly AI_SEQ_TTL_MS = 8 * 24 * 60 * 60 * 1000;
 
   constructor(
@@ -83,16 +79,12 @@ export class WhatsappAiService {
     return `wa:ai:pendidx:${userId}`;
   }
 
-  // Holds one turn's claimed messages until that turn ends, so a turn that dies before
-  // replying can hand them back instead of eating them.
+  // Holds a turn's claimed messages so a turn that dies can hand them back instead of losing them.
   private takeKey(userId: string, chatId: string): string {
     return `${this.pendKey(userId, chatId)}:take`;
   }
 
-  // Turn counter for one chat. The job id carries it so a message arriving while a
-  // turn is already running schedules the NEXT turn instead of colliding with the
-  // job id of the one in flight (BullMQ dedupes same-id adds, which would have
-  // silently dropped that reply).
+  // Job id encodes this so a mid-turn message schedules the next turn, avoiding BullMQ's dedup.
   private seqKey(userId: string, chatId: string): string {
     return `wa:ai:seq:${userId}:${chatId}`;
   }
@@ -211,15 +203,13 @@ export class WhatsappAiService {
     return value;
   }
 
-  // In-memory first so the running replica honours the intent, then the DB failure
-  // propagates: the admin must learn that a disable did not stick.
+  // Set in-memory first so this replica honours the intent immediately; a DB failure then propagates.
   async persistEnabled(companyId: string, value: boolean): Promise<void> {
     this.enabledByCompany.set(companyId, value);
     await this.repo.persistAiEnabled(companyId, value);
   }
 
-  // Returns false only on a DB error, so the caller can fail the AI turn closed for
-  // this call without caching the failure: the next call retries the DB.
+  // Returns false only on a DB error, so the caller fails this turn closed without caching it.
   async loadEnabledState(companyId: string): Promise<boolean> {
     if (this.enabledByCompany.has(companyId)) return true;
     try {
@@ -250,8 +240,7 @@ export class WhatsappAiService {
     this.repo.clearContextCache(companyId);
   }
 
-  // The seq keys are deliberately left alone: resetting them would reuse a job id that
-  // a failed job record still holds for 7 days, and BullMQ drops that add silently.
+  // Left alone: resetting would reuse a job id a failed record holds for 7 days, and BullMQ drops it.
   async clearUserState(userId: string, companyId: string): Promise<void> {
     const jobIds = await this.redis.setMembers(this.pendIdxKey(userId));
     for (const jobId of jobIds) {
@@ -331,9 +320,7 @@ export class WhatsappAiService {
     const pendKey = this.pendKey(userId, evt.chatId);
     const body = evt.body.slice(0, maxBodyChars);
 
-    // Buffer FIRST, then resolve the job id. If a turn claims the buffer in between,
-    // the claim has already advanced the sequence, so this message schedules a fresh
-    // turn rather than attaching to the one being flushed.
+    // Buffered first: a mid-write claim already advanced the sequence, so this schedules a fresh turn.
     if ((await this.redis.listLength(pendKey)) < maxPending) {
       await this.redis.pushList(
         pendKey,
@@ -362,12 +349,7 @@ export class WhatsappAiService {
         else await existing.changeDelay(Math.min(debounceMs, remaining));
         return;
       } catch {
-        // The job left the delayed state between the sequence read and now, so it is
-        // running or gone. Adding with that id would be deduped by BullMQ into a silent
-        // no-op and strand this message, and merely re-reading the sequence still races
-        // the claim's own increment. Advance it here instead: the id is then guaranteed
-        // fresh. If the running claim also increments, the extra job finds an empty
-        // buffer and no-ops.
+        // Job already left delayed state; advancing the sequence here avoids a silent BullMQ dedup drop.
         jobId = this.jobIdFor(
           userId,
           evt.chatId,
@@ -392,19 +374,13 @@ export class WhatsappAiService {
     );
   }
 
-  // Atomically claims the buffered messages for one chat. RENAME means a message
-  // arriving mid-flush starts a fresh buffer instead of being lost between the
-  // read and the delete. The scratch key survives the read: only releaseClaimedBuffer
-  // or restoreClaimedBuffer retires it, so a turn that throws can give the messages back.
+  // RENAME claims the buffer atomically; scratch key survives until release/restore retires it.
   async takeDebouncedBuffer(
     data: Pick<DebounceJobData, 'userId' | 'chatId'>,
   ): Promise<DebouncedBuffer | null> {
     const source = this.pendKey(data.userId, data.chatId);
     const scratch = this.takeKey(data.userId, data.chatId);
-    // Sequence first: a message landing between here and the rename either joins the
-    // buffer this turn is about to claim, or schedules the next turn. Never both, never
-    // neither. Incrementing after the rename leaves a window where it reads the id of
-    // the job already running.
+    // Sequence increments before rename, so a racing message joins this claim or the next turn, never both.
     const claimed = await this.redis.incrCounter(
       this.seqKey(data.userId, data.chatId),
       this.AI_SEQ_TTL_MS,
@@ -435,8 +411,7 @@ export class WhatsappAiService {
     await this.redis.del(this.takeKey(data.userId, data.chatId));
   }
 
-  // The turn threw before it could reply, so the claimed messages go back into the
-  // pending buffer and a fresh turn is armed for them.
+  // Runs when a turn throws before replying: returns claimed messages to the buffer and re-arms it.
   async restoreClaimedBuffer(data: DebounceJobData): Promise<void> {
     const scratch = this.takeKey(data.userId, data.chatId);
     const raw = await this.redis.getList(scratch);
@@ -464,8 +439,7 @@ export class WhatsappAiService {
   private async scheduleRestoredTurn(data: DebounceJobData): Promise<void> {
     const debounceMs = this.envInt('AI_DEBOUNCE_MS', 10000);
     const maxDebounceMs = this.envInt('AI_DEBOUNCE_MAX_MS', 60000);
-    // The claim already advanced the sequence, so this id is fresh. A job under it means
-    // a message landed during the failure and has scheduled the turn already.
+    // Fresh id since the claim advanced the sequence; a job under it means one arrived during the failure.
     const jobId = this.jobIdFor(
       data.userId,
       data.chatId,
@@ -512,9 +486,7 @@ export class WhatsappAiService {
     );
   }
 
-  // Runs `task` only while holding the chat's distributed lock, so turns for one chat
-  // never overlap across replicas. Waiting rather than rejecting preserves the queueing
-  // the in-process Promise chain used to give us: a follow-up message still gets answered.
+  // Waits rather than rejecting so a follow-up message still gets answered instead of dropped.
   private async runSerializedPerChat(
     key: string,
     task: () => Promise<void>,
@@ -522,20 +494,17 @@ export class WhatsappAiService {
     const lockKey = `wa:ai:lock:${key}`;
     const token = randomUUID();
     const ttlMs = this.envInt('AI_LOCK_TTL_MS', 30000);
-    // Seconds, not minutes: a longer wait pins one of five worker slots while the
-    // queue re-arms the turn anyway on timeout.
+    // Seconds, not minutes: a longer wait pins a worker slot while the queue re-arms the turn anyway.
     const waitMs = this.envInt('AI_LOCK_WAIT_MS', 20000);
 
-    // Throws, never returns: the processor's catch restores the claimed buffer and
-    // re-arms the turn, where a normal return would have it delete those messages.
+    // Must throw, never return, so the processor's catch restores the buffer instead of deleting it.
     if (!(await this.acquireChatLock(lockKey, token, ttlMs, waitMs))) {
       throw new Error(
         `Timed out waiting ${waitMs}ms for the AI chat lock on ${key}`,
       );
     }
 
-    // A turn can outlive ttlMs (two LLM calls plus tool execution), so keep extending
-    // while this replica is alive. If it dies the lock expires instead of wedging.
+    // A turn can outlive ttlMs, so keep extending the lock while this replica is alive; else it expires.
     const renewEveryMs = Math.max(Math.floor(ttlMs / 3), 1000);
     const renew = setInterval(() => {
       void this.redis
@@ -620,8 +589,7 @@ export class WhatsappAiService {
     pendingMessageIds: string[] = [],
     markRead?: MarkReadFn,
   ): Promise<void> {
-    // Re-check the company toggle at turn time: a queued turn can outlive an admin
-    // disabling AI between ingest and now, and must not spend a credit or reply.
+    // Re-checked at turn time: a queued turn can outlive AI being disabled, and must not spend a credit.
     if (!(await this.isEnabledFor(companyId))) {
       this.logger.log(
         `AI disabled for company ${companyId}; skipping queued turn for ${userId}:${chatId}`,
@@ -642,8 +610,7 @@ export class WhatsappAiService {
       return;
     }
 
-    // Working copy only. Nothing is written back unless this turn delivers a reply,
-    // so an aborted or failed turn leaves the stored history exactly as it was.
+    // Working copy: nothing writes back unless this turn replies, so a failed turn leaves history untouched.
     const stored = await this.redis.getJson<AiHistoryMessage[]>(
       this.histKey(userId, chatId),
     );
@@ -701,10 +668,7 @@ export class WhatsappAiService {
         return;
       }
 
-      // The turn is now certain to run, which is Meta's condition for showing typing at
-      // all. The rider marks the newest claimed inbound message read; a one-to-one chat
-      // marks every earlier message with it. Fire and forget: markRead logs its own
-      // failures and a missing indicator is never worth losing the reply over.
+      // Fire-and-forget: Meta requires the turn be certain to run before it shows typing at all.
       const newestInboundId = pendingMessageIds[pendingMessageIds.length - 1];
       if (markRead && newestInboundId) {
         void markRead(newestInboundId, true).catch((err: unknown) =>

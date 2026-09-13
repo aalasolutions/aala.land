@@ -1,17 +1,14 @@
 import { module, test } from 'qunit';
 import { setupTest } from 'land/tests/helpers';
 
-// The send path relies on ingestMessage to append the server's response, the
-// same code path the whatsapp:message socket handler uses. That is what keeps
-// a later socket echo of the same id from being appended twice.
+// sendMessage relies on ingestMessage, the socket handler's path, so a later echo is deduped.
 module('Unit | Controller | whatsapp', function (hooks) {
   setupTest(hooks);
 
   function makeController(ctx) {
     const controller = ctx.owner.lookup('controller:whatsapp');
     controller.notifications = { error() {}, success() {}, info() {} };
-    // Defaults to configured so the existing signupConfig-only tests below
-    // keep exercising just the appId/configId half they were written for.
+    // Defaults to configured so the signupConfig-only tests below still exercise just appId/configId.
     controller.session = { whatsappConfigured: true };
     return controller;
   }
@@ -89,8 +86,7 @@ module('Unit | Controller | whatsapp', function (hooks) {
     controller.currentChatId = 'chat-1';
     controller.connection = { status: 'connected' };
     controller.messageText = 'hi';
-    // Simulate the whatsapp:message socket event landing before the send
-    // response resolves.
+    // Simulate the whatsapp:message socket event landing before the send response resolves.
     controller.ingestMessage({
       id: 'm-1',
       chatId: 'chat-1',
@@ -179,10 +175,7 @@ module('Unit | Controller | whatsapp', function (hooks) {
     assert.false(controller.composerDisabled, 'connected clears the gate');
   });
 
-  // ── Reply window ────────────────────────────────────────────────────────
-  // Meta opens the window on an inbound customer message only and it runs 24h
-  // from that message. `now` is the controller's own clock, so every case below
-  // is driven from a fixed instant rather than the wall clock.
+  // Meta's 24h window opens on inbound only; `now` is the controller's clock, fixed for tests.
 
   const NOW = Date.parse('2026-08-21T12:00:00.000Z');
   const HOUR = 60 * 60 * 1000;
@@ -302,8 +295,6 @@ module('Unit | Controller | whatsapp', function (hooks) {
     assert.false(controller.replyWindow.open);
     assert.false(controller.replyWindow.everOpened, 'still never opened');
   });
-
-  // ── Connection card ─────────────────────────────────────────────────────
 
   test('connection reads as none, with copy, when the caller has no row', function (assert) {
     const controller = makeController(this);
@@ -618,9 +609,7 @@ module('Unit | Controller | whatsapp', function (hooks) {
     assert.strictEqual(controller.connectionVariant, 'secondary');
   });
 
-  // ── Message updates ─────────────────────────────────────────────────────
-  // Status, edits and deletions all arrive on an id we already hold, so the
-  // ingest path has to merge them rather than drop them as duplicates.
+  // Status, edits and deletions arrive on an id already held, so ingest merges, not drops, them.
 
   test('ingestMessages merges a delivery status onto a message already held', function (assert) {
     const controller = makeController(this);
@@ -730,8 +719,6 @@ module('Unit | Controller | whatsapp', function (hooks) {
     assert.strictEqual(controller.messages[0].deletedAt, 150);
   });
 
-  // ── Poll dedupe ─────────────────────────────────────────────────────────
-
   test('pollUpdates does not stack a second request while one is in flight', async function (assert) {
     const controller = makeController(this);
     controller.currentChatId = 'chat-1';
@@ -791,8 +778,7 @@ module('Unit | Controller | whatsapp', function (hooks) {
     controller.connection = { status: 'connected' };
     controller.messageText = 'hi';
 
-    // @action getter-binds sendMessage, so spy through the service call it
-    // makes rather than replacing the bound action itself.
+    // @action getter-binds sendMessage; spy on the service call instead of replacing the bound action.
     let sendCalled = 0;
     controller.whatsapp = {
       sendMessage() {
@@ -824,8 +810,6 @@ module('Unit | Controller | whatsapp', function (hooks) {
       'Shift+Enter does not trigger another send',
     );
   });
-
-  // ── AI toggle ────────────────────────────────────────────────────────────
 
   test('toggleAi on success adopts the returned enabled state', async function (assert) {
     const controller = makeController(this);
@@ -891,9 +875,7 @@ module('Unit | Controller | whatsapp', function (hooks) {
 
     assert.true(controller._isIgnoredChat({ isGroup: true }));
     assert.false(controller._isIgnoredChat({ isGroup: false }));
-    // A chat id that happens to end in the old Baileys newsletter suffix is
-    // no longer special-cased: Cloud API chat ids can never look like this,
-    // and if one somehow did, it should render like any other chat.
+    // Cloud API chat ids can never look like the old Baileys newsletter suffix; none is special-cased.
     assert.false(
       controller._isIgnoredChat({
         isGroup: false,
@@ -923,8 +905,6 @@ module('Unit | Controller | whatsapp', function (hooks) {
     assert.strictEqual(controller.chats[0].chatId, '971500000000');
     assert.strictEqual(controller.chats[0].chatName, '971500000000');
   });
-
-  // ── Setup failure ────────────────────────────────────────────────────────
 
   test('setup surfaces a failure via notifications.error, not just the console', async function (assert) {
     const controller = makeController(this);

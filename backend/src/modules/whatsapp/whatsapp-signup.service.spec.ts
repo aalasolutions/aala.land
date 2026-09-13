@@ -22,8 +22,7 @@ const dto = {
   phoneNumberId: '444555666',
 };
 
-// Build a QueryFailedError shaped like a Postgres unique-index violation, so the
-// service's 23505 mapping in `connect` can be exercised.
+// Shapes a fake QueryFailedError to exercise connect's 23505 unique-violation mapping.
 const makeUniqueViolation = (driverError: {
   code?: string;
   constraint?: string;
@@ -111,8 +110,7 @@ describe('WhatsappSignupService', () => {
     }
   });
 
-  // The happy path: exchange, subscribe, read the number, store. In that order, because
-  // the code dies in 30 seconds and nothing is stored for a WABA we cannot receive from.
+  // Order matters: exchange, subscribe, read, then store, since the code expires in 30 seconds.
   const happyPathFetches = () => {
     fetchMock
       .mockResolvedValueOnce(ok({ access_token: TOKEN }))
@@ -177,16 +175,13 @@ describe('WhatsappSignupService', () => {
       expect(saved.companyId).toBe('company-1');
       expect(saved.phoneNumberId).toBe(dto.phoneNumberId);
       expect(saved.displayPhoneNumber).toBe('+971 50 000 0000');
-      // The token is never stored in the clear, and the ciphertext round-trips.
       expect(saved.accessTokenCiphertext).not.toContain(TOKEN);
       expect(encryption.decrypt(saved.accessTokenCiphertext)).toBe(TOKEN);
 
       expect(result).toBe(connectedInfo);
     });
 
-    // Meta instructs partners to skip registration for Coexistence numbers because they
-    // are already registered, and the call errors. Guarding it here so a later edit cannot
-    // quietly reintroduce it.
+    // Meta errors on /register for Coexistence numbers already registered; this call must never fire.
     it('never calls POST /{phone-number-id}/register', async () => {
       happyPathFetches();
 
@@ -222,8 +217,7 @@ describe('WhatsappSignupService', () => {
       expect(fetchMock).not.toHaveBeenCalled();
     });
 
-    // A departed agent's row must not lock the number. Seat removal disconnects them, and
-    // their replacement has to be able to connect the same company number.
+    // Only CONNECTED/FLAGGED rows hold a number, so seat removal frees it for a replacement agent.
     it('only treats CONNECTED or FLAGGED rows as holding a number', async () => {
       happyPathFetches();
 
@@ -239,9 +233,7 @@ describe('WhatsappSignupService', () => {
       expect(connections.insert).toHaveBeenCalled();
     });
 
-    // The `taken` pre-check is read-then-write: a concurrent connect for the same number
-    // can still pass it and only collide at the unique index, after the code was spent
-    // and the WABA was subscribed.
+    // The `taken` pre-check is read-then-write; concurrent connects can still collide at the unique index.
     it('maps a unique violation on the phone number index to a 409', async () => {
       happyPathFetches();
       connections.insert.mockRejectedValueOnce(
@@ -316,8 +308,7 @@ describe('WhatsappSignupService', () => {
       expect(connections.update).not.toHaveBeenCalled();
     });
 
-    // A connection we cannot receive webhooks for looks healthy and silently never
-    // delivers a message, which is worse than a visible failure.
+    // A failed subscription must not leave a connection that looks healthy but never receives webhooks.
     it('stores nothing when the app subscription fails', async () => {
       fetchMock
         .mockResolvedValueOnce(ok({ access_token: TOKEN }))
@@ -329,9 +320,7 @@ describe('WhatsappSignupService', () => {
       expect(connections.insert).not.toHaveBeenCalled();
     });
 
-    // The routing key is caller-supplied, so claiming another business's number must be
-    // impossible. Without this a caller permanently blocks the real owner from connecting
-    // AND receives that number's inbound customer messages.
+    // Caller-supplied routing key must not let one caller hijack another business's phone number.
     it('refuses a phone number that is not on the connected WABA', async () => {
       fetchMock
         .mockResolvedValueOnce(ok({ access_token: TOKEN }))
@@ -361,8 +350,7 @@ describe('WhatsappSignupService', () => {
       expect(connections.insert).not.toHaveBeenCalled();
     });
 
-    // A 200 carrying success:false would otherwise be stored as a live connection that
-    // silently receives nothing, which is the exact failure the call ordering prevents.
+    // success:false must not be stored as a live connection that silently receives nothing.
     it('refuses a subscription that Meta does not confirm', async () => {
       fetchMock
         .mockResolvedValueOnce(ok({ access_token: TOKEN }))
@@ -374,8 +362,7 @@ describe('WhatsappSignupService', () => {
       expect(connections.insert).not.toHaveBeenCalled();
     });
 
-    // Discovering a bad key at the encrypt call would mean the 30-second code is already
-    // burned and our app is already subscribed to the client's WABA.
+    // Encryption key must be validated before the code is spent and the WABA is subscribed.
     it('fails closed on an unusable encryption key BEFORE spending the code', async () => {
       process.env[KEY_ENV] = 'not-a-32-byte-key';
 
@@ -431,8 +418,7 @@ describe('WhatsappSignupService', () => {
       expect(patch.disconnectReason).toBe('SELF_DISCONNECTED');
     });
 
-    // wa.disconnect flips the row (and wipes the token) in one update; a turn already
-    // in flight must not find this row CONNECTED while the Graph DELETE is outstanding.
+    // wa.disconnect flips the row before the Graph DELETE, so no in-flight turn sees it CONNECTED.
     it('flips the row via wa.disconnect before calling Meta to unsubscribe', async () => {
       connections.findOne.mockResolvedValue({
         id: 'conn-1',
@@ -473,8 +459,7 @@ describe('WhatsappSignupService', () => {
       expect(wa.disconnect).toHaveBeenCalledWith('user-1', 'company-1');
     });
 
-    // A WABA's subscription is shared by every number on it: unsubscribing while a sibling
-    // agent is still CONNECTED/FLAGGED would silence their webhooks too.
+    // A WABA's subscription is shared, so unsubscribing must skip while a sibling connection is live.
     it('skips the Meta unsubscribe when another live connection shares the WABA', async () => {
       connections.findOne.mockResolvedValue({
         id: 'conn-1',

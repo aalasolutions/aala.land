@@ -17,8 +17,7 @@ export class WebhookVerifyDto {
   @IsNotEmpty()
   'hub.challenge': string;
 
-  // Meta sends each param twice, dotted and underscored. Unlisted properties are
-  // rejected with 400 by forbidNonWhitelisted before the handler runs.
+  // Meta sends each param twice, dotted and underscored; extras are 400'd by forbidNonWhitelisted.
   @ApiProperty({ required: false })
   @IsOptional()
   @IsString()

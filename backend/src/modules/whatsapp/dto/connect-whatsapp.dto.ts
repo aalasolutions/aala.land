@@ -6,13 +6,11 @@ import { Transform } from 'class-transformer';
 const trimmed = ({ value }: { value: unknown }) =>
   typeof value === 'string' ? value.trim() : value;
 
-// Meta node ids are numeric strings. Both of these are interpolated into a Graph URL,
-// so digits-only is a real injection guard and not decoration.
+// Meta node ids are numeric strings; digits-only is a real injection guard, not decoration.
 const META_NODE_ID = /^\d{1,64}$/;
 
 export class ConnectWhatsappDto {
-  // Embedded Signup v4 hands back an exchangeable code with a 30-SECOND time to live.
-  // The shape is opaque, so it is bounded rather than pattern-matched.
+  // Embedded Signup code has a 30s TTL and an opaque shape, so it's bounded, not pattern-matched.
   @ApiProperty({
     description: 'Exchangeable token code returned by Embedded Signup (30s TTL)',
   })

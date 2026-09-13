@@ -69,11 +69,7 @@ function inboundBody(body: string, waId = 'wamid.1'): string {
   });
 }
 
-// HTTP-level, not a hand-called controller method: the real pipeline is the thing under
-// test here. rawBody, the global ResponseInterceptor and the global ValidationPipe are all
-// the ones main.ts installs, because each of them can break the Meta contract on its own.
-// The route is fast-ack now, so the assertions land on the enqueue; the processing
-// behavior it used to drive inline is proven against processEnvelope in the service spec.
+// HTTP-level: exercises the real pipeline (rawBody, ResponseInterceptor, ValidationPipe) main.ts installs.
 describe('WhatsappWebhookController (HTTP)', () => {
   let app: NestExpressApplication;
   let ai: { handleIncomingMessage: jest.Mock };
@@ -224,8 +220,7 @@ describe('WhatsappWebhookController (HTTP)', () => {
       expect(queue.add).not.toHaveBeenCalled();
     });
 
-    // Meta redelivers for up to 7 days. Both deliveries are acked and enqueued here; the
-    // wamid dedupe that keeps the second one from starting a turn lives in processEnvelope.
+    // Meta redelivers up to 7 days; both are acked and enqueued here, wamid dedupe lives in processEnvelope.
     it('acks and enqueues both deliveries of the same wamid', async () => {
       const raw = inboundBody('hello again');
 
@@ -256,8 +251,7 @@ describe('WhatsappWebhookController (HTTP)', () => {
         .expect(500);
     });
 
-    // Over Express's 100kb default, under the 4mb limit main.ts sets (Meta documents 3MB payloads). This also proves
-    // rawBody still populates after useBodyParser: without it the HMAC could not match.
+    // Exceeds Express's 100kb default but under our 4mb limit; also proves rawBody survives useBodyParser.
     it('accepts a body far past the Express default and keeps the bytes intact', async () => {
       const raw = inboundBody('x'.repeat(400_000));
       expect(Buffer.byteLength(raw, 'utf8')).toBeGreaterThan(100 * 1024);

@@ -76,8 +76,7 @@ export class MessageStoreService {
     };
   }
 
-  // Returns false when the unique index already held this wa_message_id, so a caller
-  // can tell a first delivery from one of Meta's 7-day redeliveries.
+  // Returns false when the row already existed (a Meta redelivery), true only on first insert.
   async addMessage(
     companyId: string,
     userId: string,
@@ -161,8 +160,7 @@ export class MessageStoreService {
         ],
       );
 
-      // chat_id is bare E.164 digits on Cloud API rows; the split_part calls strip the JID suffix only on legacy Baileys-era rows.
-      // Matched on the last 9 digits, once per chat: contact_resolution_attempted stops an unsaved number re-running the subquery.
+      // chat_id may be a legacy JID; contact_resolution_attempted stops the subquery from re-running per chat.
       if (!msg.isGroup) {
         await manager.query(
           `UPDATE "whatsapp_chats"
@@ -197,9 +195,7 @@ export class MessageStoreService {
     return inserted;
   }
 
-  // Status callbacks arrive out of order and are redelivered, so this only ever moves
-  // a message forward on the delivery ladder. Returns false when nothing was written,
-  // which means either an unknown wa_message_id or a status older than the stored one.
+  // Status callbacks arrive out of order/redelivered; this only ever moves the status forward on the ladder.
   async applyMessageStatus(
     companyId: string,
     userId: string,

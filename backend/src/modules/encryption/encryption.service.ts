@@ -3,8 +3,7 @@ import { createCipheriv, createDecipheriv, randomBytes } from 'crypto';
 import { errorMessage } from '@shared/utils/error.util';
 import { isValidEncryptionKey } from '@shared/utils/encryption-key.util';
 
-// Ciphertext format: `v1.<iv b64>.<auth tag b64>.<ciphertext b64>`. Base64 never contains a
-// dot, so the split is unambiguous, and the version prefix lets a future v2 change the rest.
+// Format v1.<iv b64>.<tag b64>.<ciphertext b64>; base64 has no dot, so the split is unambiguous.
 const VERSION = 'v1';
 
 const ALGORITHM = 'aes-256-gcm';
@@ -20,8 +19,7 @@ const AUTH_TAG_BYTES = 16;
 
 const PART_COUNT = 4;
 
-// App-level AES-256-GCM for secrets stored as text. Key comes from the environment; the
-// first consumer is `whatsapp_connections.access_token_ciphertext`.
+// App-level AES-256-GCM for secrets-as-text; first consumer: access_token_ciphertext column.
 @Injectable()
 export class EncryptionService {
   private readonly logger = new Logger(EncryptionService.name);
@@ -50,8 +48,7 @@ export class EncryptionService {
     ].join('.');
   }
 
-  // Fails SOFT. A dead key or a tampered row returns null with a loud log and never throws,
-  // so one unreadable connection cannot take down the worker loop processing the rest.
+  // Fails SOFT: null on a dead key or tampered row so one bad connection can't halt the worker loop.
   decrypt(payload: string | null | undefined): string | null {
     if (!payload) return null;
 

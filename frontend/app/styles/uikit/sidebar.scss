@@ -129,8 +129,7 @@
       --nu-sidebar__link--BackgroundColor: var(--primary);
     }
 
-    // Visible but not clickable. No pointer-events:none: the tooltip still
-    // has to fire on hover, and this element carries no href to suppress.
+    // No pointer-events:none here: the tooltip still must fire on hover, no href to suppress.
     &.is-disabled {
       --nu-sidebar__link--Color: var(--text-subtle);
       cursor: not-allowed;

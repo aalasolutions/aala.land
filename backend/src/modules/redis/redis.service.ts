@@ -3,8 +3,7 @@ import Redis from 'ioredis';
 import { errorMessage } from '@shared/utils/error.util';
 import { getRedisConnection } from './redis.config';
 
-// Compare-and-act, so a holder can never release or extend a lock that has
-// already expired and been taken by someone else.
+// Compare-and-act: a holder can never release or extend a lock already expired and taken by someone else.
 const RELEASE_IF_MINE = `
   if redis.call("get", KEYS[1]) == ARGV[1] then
     return redis.call("del", KEYS[1])
@@ -37,8 +36,7 @@ export class RedisService implements OnModuleDestroy {
     );
   }
 
-  // The socket.io adapter needs its own pub/sub pair: a subscriber connection
-  // cannot run ordinary commands.
+  // Socket.io adapter needs its own pub/sub pair; a subscriber connection can't run ordinary commands.
   duplicate(label: string): Redis {
     const client = this.create(label);
     this.duplicates.push(client);
@@ -84,8 +82,7 @@ export class RedisService implements OnModuleDestroy {
     if (keys.length > 0) await this.client.del(...keys);
   }
 
-  // exec() resolves with [err, result] pairs and never rejects per command, so an
-  // unchecked exec reads a failed write as a success.
+  // exec() never rejects per-command; an unchecked exec would read a failed write as a success.
   private unwrapExec(res: [Error | null, unknown][] | null): unknown[] {
     if (!res) throw new Error('Redis MULTI aborted');
     for (const [err] of res) if (err) throw err;
@@ -107,8 +104,7 @@ export class RedisService implements OnModuleDestroy {
     return this.client.llen(key);
   }
 
-  // Only a missing source key is a benign false. Anything else must surface, or a
-  // Redis outage reads as "nothing buffered" and the messages stay stranded.
+  // Only a missing key is benign; anything else must surface, or an outage reads as nothing buffered.
   async renameKey(from: string, to: string): Promise<boolean> {
     try {
       return (await this.client.rename(from, to)) === 'OK';

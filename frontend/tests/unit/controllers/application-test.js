@@ -2,9 +2,6 @@ import { module, test } from 'qunit';
 import { setupTest } from 'land/tests/helpers';
 import Service from '@ember/service';
 
-// The sidebar link carries one data-tooltip attribute for two jobs: the
-// collapsed-rail label it always had, and the new disabled explanation.
-// Disabled has to win outright regardless of collapse state.
 class MockSessionService extends Service {
   isAuthenticated = false;
   whatsappConfigured = false;
@@ -27,8 +24,7 @@ module('Unit | Controller | application', function (hooks) {
 
   function makeController(ctx) {
     const controller = ctx.owner.lookup('controller:application');
-    // Pin desktop-collapse to the setting under test rather than the real
-    // matchMedia breakpoint, which depends on the test runner's viewport.
+    // Pins isNarrow directly instead of relying on matchMedia, which depends on the test viewport.
     controller.isNarrow = false;
     return controller;
   }

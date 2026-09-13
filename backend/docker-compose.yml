@@ -1,19 +1,4 @@
-# Backend stack: Postgres + Valkey + backend. backend/.env is the single
-# source of config, feeding two SEPARATE channels:
-#   - ${...} interpolation (postgres creds, ports): Compose auto-loads the .env
-#     from the directory you invoke it in, so run compose from HERE (cd backend).
-#     deploy.sh and deploy/deploy-backend.sh both do exactly that.
-#   - the backend container's env: injected by the EXPLICIT `env_file: ./.env` on
-#     the backend service below. This is not automatic; without that line the
-#     container would get nothing.
-# To change the app's port, set PORT in backend/.env: the published mapping and
-# the healthcheck below both track it via ${PORT}, so they can't drift from it.
-#
-# Public self-host: run the whole file. Owner/external-infra: prune the postgres
-# and/or valkey service in a skip-worktree copy and point DB_HOST/REDIS_HOST
-# in backend/.env at the managed endpoints.
-#
-# STACK_NAME namespaces the whole stack so staging can run beside prod. Unset = aala-land.
+# .env feeds two channels: shell interpolation (run from backend/) and env_file for the container.
 name: ${STACK_NAME:-aala-land}
 
 services:

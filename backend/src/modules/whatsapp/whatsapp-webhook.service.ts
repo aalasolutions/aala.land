@@ -34,8 +34,7 @@ interface CloudWebhookEnvelope {
 }
 
 interface WebhookEntry {
-  // The WABA id. It is the only routing key an account_update carries, because that
-  // event has no metadata.phone_number_id.
+  // The WABA id: the only routing key account_update carries (no metadata.phone_number_id).
   id?: string;
   changes?: WebhookChange[];
 }
@@ -74,8 +73,7 @@ interface CloudStatus {
 // WhatsappMessageStatus carries exactly the five strings Meta's status webhook sends.
 const META_STATUSES = new Set<string>(Object.values(WhatsappMessageStatus));
 
-// Preserves the original Error and stack; wraps a non-Error rejection with the same
-// formatter already used for logging, so `throw` never sees a non-Error value.
+// Preserves the Error/stack; wraps non-Error rejections so `throw` never sees a non-Error.
 function toError(err: unknown): Error {
   return err instanceof Error ? err : new Error(errorMessage(err));
 }
@@ -111,8 +109,7 @@ export class WhatsappWebhookService {
     return query['hub.challenge'];
   }
 
-  // Fail closed: no app secret configured means no webhook is accepted. Past the
-  // signature this only parses and enqueues, so Meta gets its 200 in milliseconds.
+  // Fails closed if no app secret; past the signature it just parses and enqueues for a fast 200.
   async handleWebhook(
     rawBody: Buffer | undefined,
     signature: string | undefined,
@@ -134,8 +131,7 @@ export class WhatsappWebhookService {
       throw new BadRequestException();
     }
 
-    // The only 5xx left on this route. Meta redelivers the envelope, which is the
-    // correct recovery when the queue itself is unreachable.
+    // The only 5xx here; Meta redelivers, the correct recovery when the queue is unreachable.
     try {
       await this.webhookQueue.add('envelope', { envelope });
     } catch (err) {
@@ -148,8 +144,7 @@ export class WhatsappWebhookService {
     return { received: true };
   }
 
-  // Called by WhatsappWebhookProcessor, never inline. Retries are safe: message
-  // processing dedupes on wamid and status persistence is a ranked idempotent update.
+  // Retries are safe: messages dedupe on wamid, status persistence is a ranked idempotent update.
   async processEnvelope(body: unknown): Promise<void> {
     const envelope = (body ?? {}) as CloudWebhookEnvelope;
 
@@ -193,8 +188,7 @@ export class WhatsappWebhookService {
     field?: string,
     wabaId?: string,
   ): Promise<void> {
-    // account_update carries no phone_number_id, so it must branch off before the guard
-    // below. Until this existed the event was dropped silently.
+    // account_update has no phone_number_id, so it must branch off before the guard below.
     if (field === 'account_update') {
       await this.handleAccountUpdate(value, wabaId);
       return;
@@ -228,10 +222,7 @@ export class WhatsappWebhookService {
       return;
     }
 
-    // phone_number_id is supplied by the browser at signup, so on its own it is a claim, not
-    // proof. entry.id is Meta's own statement of which WABA delivered this. A mismatch means
-    // the stored row does not own this number, and routing it anyway would hand one tenant
-    // another tenant's customer messages.
+    // A WABA mismatch would route messages to the wrong tenant, so it is rejected outright.
     if (wabaId && connection.wabaId !== wabaId) {
       this.logger.error(
         `Refusing webhook: phone_number_id ${phoneNumberId} is stored under WABA ${connection.wabaId} but was delivered by ${wabaId}`,
@@ -239,9 +230,7 @@ export class WhatsappWebhookService {
       return;
     }
 
-    // Both branches run even if one throws, so a status persistence failure never costs
-    // us the messages in the same change value. The first error (statuses first if both
-    // failed) is rethrown after, so BullMQ still retries the envelope.
+    // Both branches run even if one throws, so a status failure can't cost the messages too.
     let firstError: Error | null = null;
     if (statuses.length > 0) {
       try {
@@ -260,14 +249,7 @@ export class WhatsappWebhookService {
     if (firstError) throw firstError;
   }
 
-  // Meta surfaces every lifecycle change on this one field. Mapping is deliberately
-  // explicit and an unrecognised event changes NOTHING: guessing a status from an unknown
-  // string is how an agent silently loses their number.
-  //
-  // PARTNER_REMOVED is the disconnect event for all six documented reasons; the specific
-  // one arrives in disconnection_info.reason. ACCOUNT_OFFBOARDED is a device change and
-  // Meta documents it as self-healing, so it is treated as suspension (FLAGGED keeps
-  // inbound flowing) rather than teardown.
+  // Mapping is explicit; an unrecognised event changes nothing so guessing never loses a number.
   private async handleAccountUpdate(
     value: WebhookValue,
     wabaId: string | undefined,
@@ -286,8 +268,7 @@ export class WhatsappWebhookService {
 
     switch (event) {
       case 'PARTNER_ADDED': {
-        // The row is created by the connect endpoint, so this normally confirms what we
-        // already stored. It only matters when it beats us there.
+        // Normally confirms what the connect endpoint already stored; matters only if this arrives first.
         if (
           connection.status === WhatsappConnectionStatus.PENDING &&
           connection.accessTokenCiphertext
@@ -349,8 +330,7 @@ export class WhatsappWebhookService {
           );
           return;
         }
-        // Only undo what ACCOUNT_OFFBOARDED did; a row flagged for another reason, or a
-        // disconnected row, is never auto-reconnected.
+        // Only undoes ACCOUNT_OFFBOARDED; other flagged or disconnected rows never auto-reconnect.
         const result = await this.connections.update(
           {
             id: connection.id,
@@ -382,16 +362,12 @@ export class WhatsappWebhookService {
     }
   }
 
-  // One WABA can host up to 20 numbers, so the WABA id alone is not unique to an agent.
-  // display_phone_number formatting differs between Graph and the webhook, so the match is
-  // on digits. With several numbers and no usable phone match we do nothing rather than
-  // disconnect an arbitrary agent.
+  // A WABA can host 20 numbers; matched by digits, doing nothing rather than guessing wrong.
   private async findConnectionForAccountUpdate(
     wabaId: string,
     phoneNumber: string | undefined,
   ): Promise<WhatsappConnection | null> {
-    // Once disconnected, stays disconnected: only the agent pressing Connect again brings
-    // a row back, never a Meta lifecycle event. PENDING stays in for PARTNER_ADDED.
+    // Once disconnected, only pressing Connect again revives a row, never a Meta lifecycle event.
     const rows = await this.connections.find({
       where: { wabaId, status: Not(WhatsappConnectionStatus.DISCONNECTED) },
     });
@@ -407,9 +383,7 @@ export class WhatsappWebhookService {
     if (rows.length === 1) {
       const only = rows[0];
       const stored = digits(only.displayPhoneNumber);
-      // Only reject on a POSITIVE mismatch. A WABA hosts up to 20 numbers and we may hold
-      // just one of them, so an event about a sibling number must not disconnect ours.
-      // With either side unknown there is nothing to contradict, so the single row stands.
+      // Rejects only on a POSITIVE mismatch; an unknown side or a sibling number leaves it alone.
       if (wanted && stored && stored !== wanted) {
         this.logger.warn(
           `account_update for WABA ${wabaId} names a different number than the one connected; ignored`,
@@ -431,9 +405,7 @@ export class WhatsappWebhookService {
     return match;
   }
 
-  // Persistence only. The live push to the page is Phase 6 emitStatus work.
-  // Siblings still run, then the first error is rethrown so BullMQ retries the envelope;
-  // the retry is safe because applyMessageStatus is a rank-guarded, idempotent UPDATE.
+  // Retrying is safe: applyMessageStatus is a rank-guarded, idempotent UPDATE.
   private async persistStatuses(
     connection: WhatsappConnection,
     statuses: CloudStatus[],
@@ -492,8 +464,7 @@ export class WhatsappWebhookService {
       if (contact.wa_id) names.set(contact.wa_id, contact.profile?.name ?? '');
     }
 
-    // Siblings still run, then the first persistence error is rethrown so BullMQ retries
-    // the envelope; already-stored siblings dedupe on wamid via orIgnore.
+    // Siblings still run; first error rethrows for retry, dedup on wamid via orIgnore.
     let firstError: Error | null = null;
     for (const message of messages) {
       // One poisoned message must not cost us the rest of the batch.
@@ -530,8 +501,7 @@ export class WhatsappWebhookService {
           originUserId: connection.userId,
         };
 
-        // Persist first. A store failure propagates so BullMQ retries the envelope;
-        // already-stored siblings dedupe on wamid and skip emit and AI below.
+        // Persist first; a store failure propagates for BullMQ retry, and dedup skips emit and AI below.
         let firstDelivery: boolean;
         try {
           firstDelivery = await this.store.addMessage(
@@ -568,8 +538,7 @@ export class WhatsappWebhookService {
           connection.userId,
         );
       } catch (err) {
-        // The message is already stored and dedupes on retry, so an AI hand-off or
-        // gateway emit failure here must not fail the envelope.
+        // Already stored and dedupes on retry, so AI or gateway failure here must not fail the envelope.
         this.logger.error(
           `Failed to process WhatsApp message ${message.id ?? 'unknown'}`,
           errorMessage(err, true),

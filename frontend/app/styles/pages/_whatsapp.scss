@@ -32,10 +32,7 @@
   border-block-end: 1px solid var(--border-base);
 }
 
-// ---- connection status ----
-
-// A strip rather than a sidebar card: it has to read on a page with no
-// connection and no chats, which is every local run today.
+// A strip, not a sidebar card: must read on a page with no connection and no chats.
 .wa-connection {
   display: flex;
   flex-shrink: 0;
@@ -248,8 +245,7 @@
   }
 }
 
-// A revoked message keeps its slot in the thread; it must not read as a normal
-// bubble, so it drops the fill and goes italic in muted text on both sides.
+// A revoked message keeps its slot but drops the fill and goes italic, so it reads as deleted, not normal.
 .wa-bubble.is-deleted {
   display: flex;
   align-items: center;
@@ -312,8 +308,7 @@
   border-block-start: 1px solid var(--border-base);
 }
 
-// Sits above the composer on purpose: the state has to be read before typing,
-// not discovered after a send is refused.
+// Sits above the composer so window state is read before typing, not after a send is refused.
 .wa-window {
   display: flex;
   align-items: center;

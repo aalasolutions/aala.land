@@ -601,8 +601,7 @@ export class UsersService {
     return report;
   }
 
-  // Runs after the removal commits, outside the per-company lock: the number is disconnected so the seat stops receiving and stops spending AI credits, and StrandedWhatsappRowsCron re-runs it if this fails.
-  // Chats, messages and AI conversation rows are deliberately left on the departing agent as the company record; the reassignee starts fresh from their own number.
+  // Disconnects the seat outside the lock to stop AI credit spend; chats stay with the agent.
   private async disconnectWhatsappAfterRemoval(
     companyId: string | null,
     report: ReassignmentReport,

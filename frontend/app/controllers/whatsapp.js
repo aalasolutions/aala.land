@@ -4,8 +4,7 @@ import { service } from '@ember/service';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 
-// Meta opens the free-form reply window on an inbound customer message only, and
-// it runs 24h from that message. An agent replying never extends it.
+// Meta's 24h reply window opens only on an inbound message; an agent reply never extends it.
 const REPLY_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 // Fields a later delivery of the same wa message id may legitimately change.
@@ -121,8 +120,6 @@ export default class WhatsappController extends Controller {
     return this.currentChat?.chatName ?? this.currentChatId ?? '';
   }
 
-  // ── Connection ────────────────────────────────────────────────────────
-
   get connectionStatus() {
     return this.connection?.status ?? 'none';
   }
@@ -159,9 +156,7 @@ export default class WhatsappController extends Controller {
       .detail;
   }
 
-  // A dead token is stored as FLAGGED, not DISCONNECTED, so Meta keeps delivering the
-  // lead's inbound messages. It still needs the agent to reconnect, and it is not the
-  // quality problem the generic flagged copy describes.
+  // A dead token is stored as FLAGGED, not DISCONNECTED, so Meta keeps delivering inbound.
   get needsReauth() {
     return (
       this.connectionStatus === 'flagged' &&
@@ -198,10 +193,7 @@ export default class WhatsappController extends Controller {
     return 'WhatsApp signup is not configured on this server yet';
   }
 
-  // ── Reply window ──────────────────────────────────────────────────────
-
-  // Null when no chat is open. Otherwise always an object, because a chat the
-  // customer has never written in still needs to read as closed, not as unknown.
+  // Null when no chat is open; otherwise an object so an unwritten chat reads as closed, not unknown.
   get replyWindow() {
     if (!this.currentChatId) return null;
 
@@ -306,8 +298,7 @@ export default class WhatsappController extends Controller {
     // Ahead of the guards: the countdown must keep moving even between fetches.
     this.now = Date.now();
     if (!this.currentChatId) return;
-    // setInterval does not wait for the previous tick, so a response slower than
-    // the interval would otherwise stack a second request on top of the first.
+    // setInterval doesn't wait for the previous tick, so a slow response could stack a second request.
     if (this._pollInFlight) return;
 
     this._pollInFlight = true;
@@ -337,8 +328,7 @@ export default class WhatsappController extends Controller {
     }
   }
 
-  // A deleted message keeps its row but loses its body, so it must survive the
-  // body/hasMedia filter that drops empty system rows.
+  // A deleted message loses its body but must still pass the body/hasMedia filter for empty rows.
   _isRenderable(msg) {
     return Boolean(msg.body || msg.hasMedia || msg.deletedAt);
   }
@@ -358,11 +348,7 @@ export default class WhatsappController extends Controller {
     };
   }
 
-  // Returns the merged row when a later delivery of the same id changed a
-  // mutable field, and null when there is nothing to write. Delivery status,
-  // edits and deletions all arrive on an id we already hold, so dropping every
-  // known id (the old behaviour) froze a message at whatever it looked like the
-  // first time we saw it.
+  // Merges mutable fields from a later delivery of the same message id (status/edit/delete).
   _mergeExisting(existing, incoming) {
     let changed = false;
     const merged = { ...existing };
@@ -472,8 +458,7 @@ export default class WhatsappController extends Controller {
 
   // ── Actions ───────────────────────────────────────────────────────────
 
-  // The exchangeable code Meta returns lives 30 seconds, so the POST goes out the moment
-  // the flow finishes rather than waiting on any UI transition.
+  // Meta's exchange code lives only 30 seconds, so the POST fires immediately after the flow finishes.
   @action
   async connectWhatsapp() {
     if (this.isConnecting || !this.signupReady) return;
@@ -535,8 +520,7 @@ export default class WhatsappController extends Controller {
     this.isSending = true;
     try {
       const result = await this.whatsapp.sendMessage(this.currentChatId, body);
-      // Same path the socket handler uses, so the later whatsapp:message echo
-      // for this id is deduped instead of appended twice.
+      // Uses the same path as the socket handler, so a later whatsapp:message echo is deduped.
       this.ingestMessage(result.data ?? result);
       this.messageText = '';
     } catch (err) {

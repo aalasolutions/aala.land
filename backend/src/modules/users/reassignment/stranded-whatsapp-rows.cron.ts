@@ -5,8 +5,7 @@ import { WhatsappService } from '../../whatsapp/whatsapp.service';
 import { WhatsappConnectionStatus } from '../../whatsapp/entities/whatsapp-connection.entity';
 import { errorMessage } from '@shared/utils/error.util';
 
-// Chats and messages left on a departed agent are the intended end state now, not damage: what must never be left behind is a CONNECTED row, because the webhook routes on it and every inbound message could still open an AI credit window for a seat nobody holds.
-// Removal only logs when its disconnect fails, so re-running that disconnect is the whole job here. Assumes a single scheduler instance, as the other crons do.
+// Must clear CONNECTED rows for departed users, or the webhook still spends credits on no one.
 @Injectable()
 export class StrandedWhatsappRowsCron {
   private readonly logger = new Logger(StrandedWhatsappRowsCron.name);
@@ -37,8 +36,7 @@ export class StrandedWhatsappRowsCron {
     }
   }
 
-  // Deleted users leave no row to join, deactivated ones are is_active false; both mean
-  // nobody holds this number any more.
+  // Deleted users leave no row to join; deactivated ones have is_active false; both mean unowned.
   private async findLiveConnectionsOfDepartedUsers(): Promise<
     Array<{ companyId: string; userId: string }>
   > {

@@ -65,8 +65,7 @@ export class WhatsappService {
     userId: string,
     companyId: string,
   ): Promise<{ success: boolean }> {
-    // Row first: a turn already in flight must not find a CONNECTED row and send anyway.
-    // Token wiped here too: a departed seat must never come back CONNECTED off a stale token.
+    // Row updated and token wiped first, so no in-flight turn finds CONNECTED or a departed seat reconnects stale.
     await this.connections.update(
       { userId, companyId },
       {
@@ -120,9 +119,7 @@ export class WhatsappService {
       );
     }
 
-    // First on purpose: cancel any queued AI turn so it cannot fire after the human spoke
-    // Accepted trade-off: a failed send below leaves the AI silenced and the buffer
-    // cancelled, deliberate, because the operator is present to retry.
+    // Cancels any queued AI turn first so it can't fire after the human spoke; a failed send below then leaves it off.
     await this.ai.recordHumanReply(userId, chatId);
 
     let sent: { messageId: string };
@@ -194,8 +191,7 @@ export class WhatsappService {
     return this.ai.getHistoryFor(userId, chatId);
   }
 
-  // persistEnabled throws when the write fails, so the emit below only ever announces
-  // a toggle that actually stuck.
+  // persistEnabled throws on a failed write, so the emit below only ever announces a toggle that stuck.
   async toggleAi(
     userId: string,
     companyId: string,

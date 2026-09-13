@@ -231,9 +231,7 @@ function makeMockRedis() {
   };
 }
 
-// Stands in for the BullMQ delayed job: one job per chat keyed by `userId:chatId`,
-// re-armed by changeDelay, fired on the jest fake timer. `run` mirrors what
-// WhatsappAiDebounceProcessor does in production.
+// Mock stands in for BullMQ's delayed job; run() mirrors the production debounce processor.
 function makeMockQueue(
   getService: () => WhatsappAiService,
   getSend: () => any,
@@ -275,8 +273,7 @@ function makeMockQueue(
   };
   return {
     jobs,
-    // BullMQ's addDelayedJob returns the EXISTING job when the id is already present in
-    // any state, so a stale-id add is a silent no-op. Modelled here on purpose.
+    // Mirrors BullMQ: addDelayedJob returns the existing job for a stale id (silent no-op).
     add: (_name: string, data: any, opts: { jobId: string; delay: number }) => {
       const dup = jobs.get(opts.jobId);
       if (dup) return Promise.resolve(dup);
@@ -313,9 +310,6 @@ describe('WhatsappAiService', () => {
     () => currentSend,
     () => currentMarkRead,
   );
-  // Every test that used to pass `send` into handleIncomingMessage now registers it
-  // here instead: in production the processor resolves the sender, not the caller.
-  // The typing rider is resolved the same way, so it registers here too.
   const incoming = (
     evt: any,
     companyId: string,
@@ -675,8 +669,7 @@ describe('WhatsappAiService', () => {
 
       await service.clearUserState('user-1', 'company-1');
 
-      // The claim advanced the sequence and the disconnect must not undo it: the
-      // failed job record for :0 lives on in BullMQ for 7 days.
+      // The claim advances the sequence; the failed job record for :0 stays in BullMQ for 7 days.
       expect(await redis.getNumber('wa:ai:seq:user-1:c1')).toBe(1);
       expect(queue.jobs.has('user-1:c1:0')).toBe(true);
 
@@ -702,8 +695,7 @@ describe('WhatsappAiService', () => {
       await incoming(baseEvt({ id: 'm1', body: 'first' }), 'company-1', 'user-1', jest.fn());
       const firedJob = [...queue.jobs.values()][0];
 
-      // The job has fired and is running, but has NOT yet advanced the sequence: the
-      // exact window where a re-read of `wa:ai:seq` still returns the running job's id.
+      // Job has fired but not yet advanced the sequence: a re-read of wa:ai:seq can still return it.
       firedJob.state = 'active';
       await incoming(baseEvt({ id: 'm2', body: 'second' }), 'company-1', 'user-1', jest.fn());
 
@@ -719,7 +711,6 @@ describe('WhatsappAiService', () => {
       await incoming(baseEvt({ id: 'm1', body: 'first' }), 'company-1', 'user-1', jest.fn());
       const firstJobId = [...queue.jobs.keys()][0];
 
-      // The processor claims the buffer; the job for that turn is now in flight.
       await service.takeDebouncedBuffer({ userId: 'user-1', chatId: 'c1' });
       await incoming(baseEvt({ id: 'm2', body: 'second' }), 'company-1', 'user-1', jest.fn());
 
@@ -1806,9 +1797,7 @@ describe('WhatsappAiService', () => {
       process.env.AI_DEBOUNCE_MS = '100';
     });
 
-    // A follow-up inbound message arriving while the first turn is mid-LLM must NOT spawn
-    // a second concurrent processMessage on the same chat. Two overlapping turns would
-    // double-count the quota and could persist history out of order.
+    // Must not run two concurrent processMessage per chat: double-counts quota, reorders history.
     it('does not interleave two turns on the same chat — history stays ordered, quota counted once per turn', async () => {
       const mockRepo = makeMockRepo(null, SubscriptionTier.FREE);
       service = new WhatsappAiService(
@@ -1845,8 +1834,7 @@ describe('WhatsappAiService', () => {
         mockSend,
       );
       await jest.advanceTimersByTimeAsync(100);
-      // Turn 1's fetch is pending. Stored history is still empty: a turn works on a
-      // local copy and only writes back once it has delivered a reply.
+      // A turn works on a local history copy and only writes back after delivering a reply.
       expect(releases.length).toBe(1);
       expect(await service.getHistoryFor('u1', 'c1')).toEqual([]);
 
@@ -1858,12 +1846,9 @@ describe('WhatsappAiService', () => {
         mockSend,
       );
       await jest.advanceTimersByTimeAsync(100);
-      // Serialization: turn 2 must be BLOCKED behind turn 1, so no second fetch yet and
-      // nothing has been written to stored history.
       expect(releases.length).toBe(1);
       expect(await service.getHistoryFor('u1', 'c1')).toEqual([]);
 
-      // Release turn 1's LLM so it finishes and persists its reply.
       releases[0]('resolve');
       // Turn 2 resumes on its next lock poll, not instantly.
       await jest.advanceTimersByTimeAsync(200);
@@ -1880,8 +1865,7 @@ describe('WhatsappAiService', () => {
       expect(mockRepo.consumeConversationCredit).toHaveBeenCalledTimes(2);
     });
 
-    // A failed turn must leave the stored history exactly as the previous turn left it:
-    // the working copy is discarded rather than written back.
+    // A failed turn discards its working copy; stored history stays as the prior turn left it.
     it('on LLM failure removes only this turn user message, leaving prior turns intact', async () => {
       const mockRepo = makeMockRepo(null, SubscriptionTier.PRO);
       service = new WhatsappAiService(
@@ -2128,7 +2112,6 @@ describe('WhatsappAiService', () => {
       const nonSystem = sentMessages().filter((m: any) => m.role !== 'system');
       expect(nonSystem[0].role).toBe('user');
       expect(nonSystem[0].content).not.toContain('ignore previous instructions');
-      // The assistant row is left as stored.
       expect(nonSystem[1]).toEqual({
         role: 'assistant',
         content: 'sure, three bedrooms',
@@ -2335,7 +2318,6 @@ describe('WhatsappAiService', () => {
         queue as any,
       );
 
-      // Agent A's gate loads the company state while AI is still on.
       expect(await service.isEnabledFor('company-1')).toBe(true);
 
       await service.persistEnabled('company-1', false);
@@ -2370,7 +2352,6 @@ describe('WhatsappAiService', () => {
       const mockSend = jest.fn().mockResolvedValue({});
       await incoming(baseEvt(), 'company-1', 'user-1', mockSend);
 
-      // Admin disables AI after the turn is already queued but before it runs.
       await service.persistEnabled('company-1', false);
       await jest.runAllTimersAsync();
 
@@ -2584,8 +2565,7 @@ describe('WhatsappAiService', () => {
     }
   });
 
-  // Meta has no standalone typing call: it rides a read receipt for one inbound id,
-  // lasts 25 seconds, and may only be shown when a reply is actually coming.
+  // Meta has no standalone typing call; it rides a 25s read-receipt shown only before a reply.
   describe('typing rider', () => {
     const newService = (repo: any = makeMockRepo()) => {
       service = new WhatsappAiService(

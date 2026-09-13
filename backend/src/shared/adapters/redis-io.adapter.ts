@@ -4,8 +4,7 @@ import { createAdapter } from '@socket.io/redis-adapter';
 import { Server, ServerOptions } from 'socket.io';
 import { RedisService } from '@modules/redis/redis.service';
 
-// Without this every gateway emit reaches only the sockets held by the emitting
-// replica. Applied app-wide, so both the WhatsApp and notifications gateways use it.
+// Redis adapter needed so gateway emits reach sockets on every replica, not just the emitting one.
 export class RedisIoAdapter extends IoAdapter {
   private adapterConstructor: ReturnType<typeof createAdapter>;
 

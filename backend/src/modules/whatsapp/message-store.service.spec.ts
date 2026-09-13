@@ -624,7 +624,6 @@ describe('MessageStoreService', () => {
       const out = await service.getMessagesForChat('co-1', 'user-a', 'chat-a');
 
       expect(out.map((m) => m.id)).toEqual(['kept', 'gone']);
-      // No deletedAt predicate is sent to the database either.
       expect(messagesRepo.find.mock.calls[0][0].where).toEqual({
         companyId: 'co-1',
         userId: 'user-a',

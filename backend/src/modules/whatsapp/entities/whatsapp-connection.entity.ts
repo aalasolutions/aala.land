@@ -14,12 +14,10 @@ export enum WhatsappConnectionStatus {
   FLAGGED = 'flagged',
 }
 
-// One connected WhatsApp number per agent. Replaces the Baileys model of one paired
-// device per company.
+// One connected WhatsApp number per agent, enforced by the unique index on userId.
 @Entity('whatsapp_connections')
 @Index('UQ_wa_connections_user', ['userId'], { unique: true })
-// Unique only among rows the inbound router can match. A DISCONNECTED row keeps its
-// number for history without blocking the next agent from connecting it.
+// Unique only among CONNECTED/FLAGGED rows; a DISCONNECTED row won't block reconnecting it.
 @Index('UQ_wa_connections_phone_number_id', ['phoneNumberId'], {
   unique: true,
   where: "status IN ('connected', 'flagged')",
@@ -52,9 +50,7 @@ export class WhatsappConnection {
   })
   status: WhatsappConnectionStatus;
 
-  // AES-256-GCM ciphertext, `v1.<iv>.<tag>.<ct>`. Never read into a log, a response, or an
-  // error message. WRITE CONTRACT: only ever assign `EncryptionService.encrypt(token)`.
-  // READ CONTRACT: only ever through `WhatsappCloudApiService.resolveAccessToken`.
+  // AES-256-GCM ciphertext; never logged. Set only via encrypt(), read only via resolveAccessToken().
   @Column({ name: 'access_token_ciphertext', type: 'text', nullable: true })
   accessTokenCiphertext: string | null;
 

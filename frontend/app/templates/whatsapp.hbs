@@ -8,7 +8,6 @@
     @title="WhatsApp"
   />
 
-  {{! ── Connection status ─────────────────────────────────────────────── }}
   <div
     class="wa-connection is-{{this.connectionStatus}}"
     data-test-wa-connection-status={{this.connectionStatus}}
@@ -185,8 +184,7 @@
                     <span>You</span>
                   {{/if}}
 
-                  {{! Delivery ladder. No status yet means Meta has taken it but
-                      has not called back, so it reads as pending, not failed. }}
+                  {{! No status yet means Meta hasn't called back; it reads as pending, not failed. }}
                   {{#if (eq msg.status "failed")}}
                     <span
                       class="wa-tick is-failed"

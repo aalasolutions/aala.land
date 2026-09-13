@@ -1,10 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-// Reshapes the WhatsApp tables from the Baileys model (one paired device per company,
-// JID identifiers) to the Meta Cloud API model (one connected number per agent, E.164
-// identifiers, delivery statuses, edits and deletes). Done as ONE migration because
-// there are no production WhatsApp rows to preserve; splitting it would migrate the
-// same tables twice.
+// One migration only: no production WhatsApp rows to preserve, so splitting would be redundant.
 export class WhatsappCloudApiSchema1779600000002 implements MigrationInterface {
   name = 'WhatsappCloudApiSchema1779600000002';
 

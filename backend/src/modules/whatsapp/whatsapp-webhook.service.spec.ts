@@ -377,8 +377,7 @@ describe('WhatsappWebhookService', () => {
     });
   });
 
-  // Phase 7: once a departing agent's number is disconnected, nothing it receives may
-  // reach the AI, because a turn is what consumes a credit.
+  // Once disconnected, nothing an agent's number receives may reach the AI; a turn spends a credit.
   describe('a disconnected agent cannot start an AI turn', () => {
     beforeEach(() => {
       // Behaves like the real lookup: the row is only returned for a status it asks for.
@@ -788,10 +787,8 @@ describe('WhatsappWebhookService', () => {
   });
 
   // account_update carries no metadata.phone_number_id, so it is routed off entry.id.
-  // Before this existed the whole field was dropped on the phone-number guard.
   describe('account_update', () => {
-    // A real CONNECTED or FLAGGED row always holds a token; the status handlers now refuse
-    // to promote one that does not.
+    // A real CONNECTED or FLAGGED row always holds a token; handlers refuse to promote one without.
     const rowFor = (overrides: Partial<WhatsappConnection> = {}) =>
       Object.assign(
         connectionRow(),
@@ -827,8 +824,7 @@ describe('WhatsappWebhookService', () => {
       );
     });
 
-    // Meta documents a device change as self-healing, so it is a suspension. FLAGGED keeps
-    // inbound flowing; DISCONNECTED would drop the lead's messages on the floor.
+    // Meta treats a device change as self-healing, so it's a suspension; FLAGGED keeps inbound flowing.
     it('flags rather than disconnects on ACCOUNT_OFFBOARDED', async () => {
       repo.find.mockResolvedValue([rowFor()]);
 
@@ -899,8 +895,7 @@ describe('WhatsappWebhookService', () => {
       expect(repo.update).not.toHaveBeenCalled();
     });
 
-    // One WABA can host up to 20 numbers, and Graph and the webhook format the display
-    // number differently, so the match is on digits.
+    // A WABA can host 20 numbers with differently formatted display numbers, so matching uses digits.
     it('picks the right number when one WABA hosts several, ignoring formatting', async () => {
       repo.find.mockResolvedValue([
         rowFor({ id: 'conn-a', displayPhoneNumber: '+971 50 000 0000' }),
@@ -930,8 +925,7 @@ describe('WhatsappWebhookService', () => {
       expect(repo.update).not.toHaveBeenCalled();
     });
 
-    // A WABA hosts up to 20 numbers and we may hold only one. An event about a sibling
-    // number used to disconnect ours, because the single-row branch never read phone_number.
+    // A WABA can host multiple numbers, so matching must check phone_number, not just the WABA id.
     it('ignores an event naming a different number on the same WABA', async () => {
       repo.find.mockResolvedValue([
         rowFor({ displayPhoneNumber: '+971 50 000 0000' }),
@@ -962,8 +956,7 @@ describe('WhatsappWebhookService', () => {
       );
     });
 
-    // The row has no token after a self-disconnect, so flipping it to CONNECTED would show
-    // "Connected" on the card while every send fails at the token check.
+    // A self-disconnected row has no token, so reconnecting it would show Connected while sends fail.
     it('refuses to reconnect a row that has no stored token', async () => {
       repo.find.mockResolvedValue([
         rowFor({
@@ -979,9 +972,7 @@ describe('WhatsappWebhookService', () => {
       expect(repo.update).not.toHaveBeenCalled();
     });
 
-    // AAMIR ruling: once disconnected, stays disconnected. Only the agent pressing Connect
-    // again brings it back, never a Meta lifecycle event. The real query excludes
-    // DISCONNECTED rows, so a WABA holding only a disconnected row resolves like an unknown one.
+    // Once disconnected, only pressing Connect again brings it back, never a Meta lifecycle event.
     it('never resurrects a DISCONNECTED row on ACCOUNT_OFFBOARDED or ACCOUNT_RECONNECTED', async () => {
       repo.find.mockResolvedValue([]);
 
@@ -996,8 +987,7 @@ describe('WhatsappWebhookService', () => {
     });
 
     it('acts on the live CONNECTED row when a stale DISCONNECTED row shares the same number', async () => {
-      // The find query filters status != DISCONNECTED, so the stale duplicate never
-      // reaches the matcher; only the live row is returned.
+      // The find query excludes DISCONNECTED rows, so the stale duplicate is invisible to the matcher.
       repo.find.mockResolvedValue([rowFor({ id: 'conn-live' })]);
 
       await service.processEnvelope(

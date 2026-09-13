@@ -20,8 +20,7 @@ import { ConnectWhatsappDto } from './dto/connect-whatsapp.dto';
 import { GRAPH_VERSION, WaConnectionInfo, WaSignupConfig } from './wa-types';
 import { errorMessage } from '@shared/utils/error.util';
 
-// The exchangeable code Meta hands back lives for 30 seconds, so every call on this path
-// is short by nature. A request still hanging at 15s has already lost the code.
+// The exchange code expires in 30s, so a request still running past 15s has already lost it.
 const SIGNUP_TIMEOUT_MS = 15000;
 
 // Unique indexes the insert/update below can race (see `connect`'s catch block).
@@ -42,9 +41,7 @@ export class WhatsappSignupService {
     private readonly wa: WhatsappService,
   ) {}
 
-  // Both values are public: Meta requires them in the browser to launch the flow at all.
-  // Served rather than baked into the frontend build so changing an app never needs a
-  // frontend rebuild. Null means the UI keeps the Connect button disabled.
+  // Both values are public; served here so a config change never needs a frontend rebuild.
   getSignupConfig(): WaSignupConfig {
     return {
       appId: process.env.WHATSAPP_APP_ID?.trim() || null,
@@ -53,13 +50,7 @@ export class WhatsappSignupService {
     };
   }
 
-  // The single write path for access_token_ciphertext. Order matters: the code dies in 30
-  // seconds so it is exchanged first, the app is subscribed to the client's WABA before
-  // anything is stored, and only a connection that can actually receive webhooks is saved.
-  //
-  // POST /{phone-number-id}/register is DELIBERATELY NOT CALLED. Meta instructs partners to
-  // skip registration for Coexistence numbers because they are already registered, and the
-  // call errors (docs/planning/WHATSAPP_REVISED.md, "Skip phone number registration").
+  // POST /register is deliberately skipped: Meta already treats Coexistence numbers as registered.
   async connect(
     userId: string,
     companyId: string,
@@ -76,9 +67,7 @@ export class WhatsappSignupService {
       );
     }
 
-    // Proved with the real code path, and proved HERE. Discovering a bad key at the
-    // encrypt call below would mean burning the 30-second code and subscribing to the
-    // client's WABA first, leaving the agent to redo the whole Meta-hosted flow.
+    // Probed here so a bad encryption key fails before burning the 30s code and subscribing the WABA.
     try {
       this.encryption.encrypt('probe');
     } catch {
@@ -90,10 +79,7 @@ export class WhatsappSignupService {
       );
     }
 
-    // Deliberately NOT scoped by companyId: phone_number_id is the webhook routing key, so
-    // two companies claiming one number would make inbound routing ambiguous. Scoped by
-    // STATUS instead, mirroring the partial unique index: a DISCONNECTED row is history and
-    // must not stop the next agent from connecting that number.
+    // Unscoped by companyId since phone_number_id is the webhook routing key; scoped by status instead.
     const taken = await this.connections.findOne({
       where: [
         {
@@ -160,10 +146,7 @@ export class WhatsappSignupService {
         });
       }
     } catch (err) {
-      // The `taken` pre-check above is read-then-write: a concurrent connect for the same
-      // number or a double-submit for the same user can still pass it and only collide
-      // here, after the code was spent and the WABA was subscribed. Map that unique
-      // violation to a 409 instead of a raw 500; anything else is rethrown unchanged.
+      // Pre-check is read-then-write; a concurrent connect can still collide here, mapped to a 409.
       if (err instanceof QueryFailedError) {
         const driverError = err.driverError as
           | { code?: string; constraint?: string }
@@ -191,10 +174,7 @@ export class WhatsappSignupService {
     return info;
   }
 
-  // Row first: wa.disconnect flips status and wipes the token in one update, so a turn
-  // already in flight cannot find this row CONNECTED while we talk to Meta below. The
-  // token is decrypted before that call wipes it. Unsubscribing is best effort and runs
-  // after the flip, only when no other agent's number still lives on that WABA.
+  // Row is flipped and token wiped before contacting Meta so no in-flight turn sees it as live.
   async disconnect(
     userId: string,
     companyId: string,
@@ -209,8 +189,7 @@ export class WhatsappSignupService {
     const result = await this.wa.disconnect(userId, companyId);
 
     if (row && token) {
-      // A WABA's subscription is shared by every number on it (Meta has no per-number
-      // unsubscribe), so unsubscribe only when this is the last live row on that WABA.
+      // A WABA's subscription is shared by every number; unsubscribe only when this is the last live row.
       const siblings = await this.connections.count({
         where: [
           {
@@ -226,8 +205,7 @@ export class WhatsappSignupService {
         ],
       });
       if (siblings === 0) {
-        // Best effort by design: Meta refusing must not strand the agent in a connected
-        // state they cannot leave. The row transition above is what the product acts on.
+        // Best effort: Meta refusing must not strand the agent in a connected state they can't leave.
         await this.unsubscribeApp(row.wabaId, token);
       } else {
         this.logger.log(
@@ -245,10 +223,7 @@ export class WhatsappSignupService {
     return result;
   }
 
-  // ── Graph calls ───────────────────────────────────────────────────────
-
-  // Never log `code` or the returned token. A code is single-use and short-lived, a token
-  // is a live credential for someone else's business.
+  // Never log code or the returned token: a live credential for someone else's business.
   private async exchangeCode(
     code: string,
     appId: string,
@@ -274,17 +249,14 @@ export class WhatsappSignupService {
     return token;
   }
 
-  // Without this our webhook receives nothing for the client's WABA, so a connection that
-  // skipped it would look healthy and silently never deliver a message.
+  // Without this the webhook receives nothing for the WABA and looks healthy while never delivering.
   private async subscribeApp(wabaId: string, token: string): Promise<void> {
     const body = await this.graphFetch<{ success?: boolean }>(
       `https://graph.facebook.com/${GRAPH_VERSION}/${wabaId}/subscribed_apps`,
       { method: 'POST', headers: { Authorization: `Bearer ${token}` } },
       'app subscription',
     );
-    // Meta answers this call with an explicit success flag, and a 200 carrying false would
-    // otherwise be stored as a live connection that silently receives nothing. Fail closed:
-    // a loud refusal to connect beats a number that looks healthy and never delivers.
+    // Meta can return success false in a 200; fail closed rather than store a silently dead connection.
     if (body?.success !== true) {
       this.logger.error(
         `Graph accepted the subscription for WABA ${wabaId} but did not confirm success`,
@@ -307,13 +279,7 @@ export class WhatsappSignupService {
     }
   }
 
-  // `phoneNumberId` arrives from the browser and is the webhook ROUTING KEY, so it must be
-  // proven to sit on the WABA this token covers. Without that proof a caller could claim
-  // another business's number: they would permanently block the real owner from connecting,
-  // and inbound customer messages for that number would land in their chat list.
-  // `subscribeApp` already proves the WABA (Meta 403s a WABA the token does not cover), so
-  // listing that WABA's numbers is what closes the gap. The display number comes back on the
-  // same call, which is why this replaced a separate cosmetic read.
+  // Verifies phoneNumberId sits on this WABA, or a caller could hijack another business's number.
   private async verifyPhoneNumber(
     wabaId: string,
     phoneNumberId: string,

@@ -65,8 +65,7 @@ export class WhatsappChat {
   @Column({ name: 'last_from_me', type: 'boolean', default: false })
   lastFromMe: boolean;
 
-  // Meta's 24h reply window opens ONLY on an inbound customer message. This is a
-  // different clock from the AI credit window; do not reconcile them here.
+  // Meta's 24h reply window opens only on an inbound message; distinct from the AI credit window.
   @Column({ name: 'last_inbound_at', type: 'timestamptz', nullable: true })
   lastInboundAt: Date | null;
 

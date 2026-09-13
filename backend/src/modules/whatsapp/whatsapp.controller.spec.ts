@@ -95,10 +95,7 @@ describe('WhatsappController', () => {
   });
 
   describe('null companyId (SUPER_ADMIN acting without a company)', () => {
-    // RolesGuard passes SUPER_ADMIN through every route on this controller, and a
-    // SUPER_ADMIN not impersonating a company user carries companyId: null. That must
-    // reject up front rather than fall through to a tenant-unscoped query. Neither
-    // controller method is declared `async`, so the guard throws synchronously.
+    // SUPER_ADMIN with null companyId must be rejected up front, not fall through unscoped.
     it('rejects connect before calling the signup service', () => {
       expect(() =>
         controller.connect(makeReq('super-1', null), {

@@ -9,11 +9,7 @@ const REQUIRED_VARS = [
 
 const KEY_ENV = 'WHATSAPP_TOKEN_ENC_KEY';
 
-/**
- * Server-level flag: true iff every WhatsApp env var is set and non-empty after trim,
- * and WHATSAPP_TOKEN_ENC_KEY is a valid encryption key. Same for every caller; never
- * reveals which variable is missing.
- */
+/** True iff WhatsApp env is fully configured; never reveals which variable is missing. */
 export function isWhatsappConfigured(): boolean {
   const allSet = REQUIRED_VARS.every((name) => !!process.env[name]?.trim());
   return allSet && isValidEncryptionKey(process.env[KEY_ENV]?.trim());

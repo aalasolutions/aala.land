@@ -31,8 +31,7 @@ export default class SessionService extends Service {
     return this.data.authenticated?.lockState ?? null;
   }
 
-  // Strict: missing or false both read as not configured. Only the server
-  // knows whether every WhatsApp env var is set and valid.
+  // Strict: missing or false both mean not configured; only the server knows env validity.
   get whatsappConfigured() {
     return this.data.authenticated?.whatsappConfigured === true;
   }

@@ -17,9 +17,7 @@ export default class WhatsappService extends Service {
     if (this._socket) return this._socket;
 
     this._socket = io(`${this.apiUrl}/whatsapp`, {
-      // Function form: socket.io calls this on every (re)connect, so a
-      // refreshed token is picked up instead of the one captured at first
-      // connect.
+      // Function form: called on each reconnect, so a fresh token replaces the first-connect one.
       auth: (cb) => cb({ token: this.auth.token }),
     });
 
@@ -59,8 +57,7 @@ export default class WhatsappService extends Service {
   getChats() {
     return this.auth.fetchJson('/whatsapp/chats');
   }
-  // No page/limit sent: deliberate phase-cut caps, 500 rows here and 200 per
-  // chat below, no "load older" path yet.
+  // Deliberate caps, no page/limit: 500 rows here, 200 per chat below; no load-older path yet.
   getAllMessages() {
     return this.auth.fetchJson('/whatsapp/messages');
   }

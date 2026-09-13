@@ -36,18 +36,14 @@ export interface WaChat {
   lastBody: string;
   lastTs: number;
   lastFromMe: boolean;
-  // Epoch SECONDS of the last inbound customer message, or null when the
-  // customer has never written. Meta's 24h reply window is measured from here.
+  // Epoch SECONDS of last inbound message, or null; Meta's 24h window is measured from here.
   lastInboundAt: number | null;
 }
 
-// Pinned on purpose: a version bump is a deliberate act, never a drift. Shared here
-// because both the send path and the Embedded Signup path address the same Graph API,
-// and two copies of a pin is exactly how a pin drifts.
+// Pinned deliberately and shared here so the send path and Embedded Signup path can't drift apart.
 export const GRAPH_VERSION = 'v26.0';
 
-// Values the browser needs to launch Embedded Signup. Public by design; Meta exposes
-// both in the client-side SDK call, so serving them is not a disclosure.
+// Public by design: Meta already exposes appId and configId in its client-side SDK call.
 export interface WaSignupConfig {
   appId: string | null;
   configId: string | null;

@@ -17,8 +17,7 @@ const DEFAULT_SEND_TIMEOUT_MS = 15000;
 // Meta's code for an invalid or expired access token.
 const GRAPH_TOKEN_INVALID_CODE = 190;
 
-// A reply that never reached Meta. Thrown so the turn's own catch runs and neither the
-// delivery record nor the assistant history is written for a message nobody received.
+// A reply that never reached Meta; thrown so the turn's catch skips writing delivery record or history.
 export class WhatsappSendError extends Error {
   constructor(
     message: string,
@@ -45,10 +44,7 @@ export class WhatsappCloudApiService {
     private readonly encryption: EncryptionService,
   ) {}
 
-  // The single seam where a stored token becomes a bearer. Writers do the mirror image:
-  // `access_token_ciphertext` is only ever assigned from `EncryptionService.encrypt`.
-  // A dead key or a tampered row decrypts to null, which every caller already treats as
-  // "no token" and fails closed on, so the outcome is a refused send, not a crash.
+  // The only seam turning a stored token into a bearer; a dead key decrypts to null and callers fail closed.
   resolveAccessToken(connection: WhatsappConnection): string | null {
     return this.encryption.decrypt(connection.accessTokenCiphertext);
   }
@@ -148,10 +144,7 @@ export class WhatsappCloudApiService {
     }
   }
 
-  // Meta has no standalone typing call: the indicator rides this read receipt for one
-  // inbound message id, clears after 25 seconds or when the reply lands, and Meta asks
-  // it only be shown when a reply is actually coming. Log-only on purpose, never throws:
-  // a failed read receipt must not cost the turn the reply it was about to send.
+  // Meta has no standalone typing call: this read-receipt rider is log-only so it never blocks the reply.
   async markRead(
     connection: WhatsappConnection,
     messageId: string,
@@ -215,8 +208,7 @@ export class WhatsappCloudApiService {
     }
   }
 
-  // Only definitive token-invalid answers land here, so a dead connection stops being
-  // an invisible log line. Every other Graph failure stays log-only for now.
+  // Only definitive token-invalid answers flag the connection; every other Graph failure stays log-only.
   private async flagConnection(
     connection: WhatsappConnection,
     status: number,
@@ -244,8 +236,6 @@ export class WhatsappCloudApiService {
     }
   }
 
-  // The Phase 2 transport behind the debounce. Mirrors the old send closure:
-  // transport, persist the outbound row, live push to the operator, credit refresh.
   senderFor(companyId: string, userId: string): SendFn {
     return async (chatId, message, meta) => {
       const connection = await this.findConnected(companyId, userId);
@@ -278,8 +268,7 @@ export class WhatsappCloudApiService {
         timestamp: Math.floor(Date.now() / 1000),
         originUserId: userId,
       };
-      // Awaited: Meta's sent callback can arrive within milliseconds and is dropped as an
-      // unknown wamid if the row is not committed yet. persistOutbound never throws.
+      // Awaited: persistOutbound never throws, but an uncommitted row drops Meta's near-instant sent callback.
       await this.persistOutbound(
         connection.companyId,
         userId,
@@ -288,8 +277,7 @@ export class WhatsappCloudApiService {
       );
       this.gateway.emitMessage(userId, aiMsg);
 
-      // Only a newly opened window moves these numbers; reuse turns would requery
-      // twice per reply to emit what the client already has.
+      // Only a newly opened window moves these numbers, avoiding a requery of data the client already has.
       if (meta?.creditCharged) {
         void this.ai
           .getCreditUsage(connection.companyId)

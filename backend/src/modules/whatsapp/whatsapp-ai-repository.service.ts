@@ -299,8 +299,7 @@ export class WhatsappAiRepositoryService
         return { allowed: false, charged: false, conversationId: null };
       }
 
-      // Same identity as the chat row (company+user+chat), read here so a new window
-      // records which connected number it belongs to without the caller passing it in.
+      // Reads phoneNumberId from the chat row (company+user+chat) so callers don't have to pass it in.
       const chat = await chatRepo.findOne({
         where: { companyId, userId, chatId },
         select: { phoneNumberId: true },
