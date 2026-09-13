@@ -151,6 +151,7 @@ function makeMockRedis() {
   return {
     store,
     locks,
+    lists,
     getJson: (key: string) =>
       Promise.resolve(store.has(key) ? JSON.parse(store.get(key)!) : null),
     setJson: (key: string, value: unknown) => {
@@ -162,6 +163,11 @@ function makeMockRedis() {
     setNumber: (key: string, value: number) => {
       store.set(key, String(value));
       return Promise.resolve();
+    },
+    setNumberIfAbsent: (key: string, value: number) => {
+      if (store.has(key)) return Promise.resolve(false);
+      store.set(key, String(value));
+      return Promise.resolve(true);
     },
     del: (...keys: string[]) => {
       keys.forEach((key) => {
@@ -247,7 +253,7 @@ function makeMockQueue(
     if (!job) return;
     job.state = 'active';
     const service = getService();
-    const buffered = await service.takeDebouncedBuffer(job.data);
+    const buffered = await service.takeDebouncedBuffer(job.data, id);
     if (!buffered) {
       jobs.delete(id);
       return;
@@ -265,10 +271,10 @@ function makeMockQueue(
     } catch {
       // Mirrors the processor: a failed turn keeps its job record and gives the buffer back.
       job.state = 'failed';
-      await service.restoreClaimedBuffer(job.data);
+      await service.restoreClaimedBuffer(job.data, id);
       return;
     }
-    await service.releaseClaimedBuffer(job.data);
+    await service.releaseClaimedBuffer(job.data, id);
     jobs.delete(id); // removeOnComplete
   };
   return {
@@ -278,6 +284,7 @@ function makeMockQueue(
       const dup = jobs.get(opts.jobId);
       if (dup) return Promise.resolve(dup);
       const job: any = { id: opts.jobId, data, state: 'delayed' };
+      job.getState = () => Promise.resolve(job.state);
       job.timer = arm(opts.jobId, opts.delay);
       job.remove = () => {
         clearTimeout(job.timer);
@@ -354,24 +361,24 @@ describe('WhatsappAiService', () => {
     delete process.env.AI_HUMAN_SILENCE_MINUTES;
   });
 
-  it('is enabled by default', () => {
-    expect(service.isEnabled('company-1')).toBe(true);
+  it('is enabled by default', async () => {
+    expect(await service.isEnabledFor('company-1')).toBe(true);
   });
 
-  it('setEnabled toggles state per company', () => {
-    service.setEnabled('company-1', false);
-    expect(service.isEnabled('company-1')).toBe(false);
-    service.setEnabled('company-1', true);
-    expect(service.isEnabled('company-1')).toBe(true);
+  it('persistEnabled toggles state per company', async () => {
+    await service.persistEnabled('company-1', false);
+    expect(await service.isEnabledFor('company-1')).toBe(false);
+    await service.persistEnabled('company-1', true);
+    expect(await service.isEnabledFor('company-1')).toBe(true);
   });
 
-  it('setEnabled on one company does not affect another company', () => {
-    service.setEnabled('company-1', false);
-    expect(service.isEnabled('company-2')).toBe(true);
+  it('persistEnabled on one company does not affect another company', async () => {
+    await service.persistEnabled('company-1', false);
+    expect(await service.isEnabledFor('company-2')).toBe(true);
   });
 
-  it('getConfig returns keyConfigured false when no API key', () => {
-    expect(service.getConfig('company-1').keyConfigured).toBe(false);
+  it('getConfig returns keyConfigured false when no API key', async () => {
+    expect((await service.getConfig('company-1')).keyConfigured).toBe(false);
   });
 
   it('getHistoryFor returns empty array for unknown userId+chatId', async () => {
@@ -495,7 +502,7 @@ describe('WhatsappAiService', () => {
         mockSend,
       );
       await incoming(
-        baseEvt({ body: 'I need help', timestamp: ts }),
+        baseEvt({ id: 'wa-msg-2', body: 'I need help', timestamp: ts }),
         'co',
         'u1',
         mockSend,
@@ -546,7 +553,7 @@ describe('WhatsappAiService', () => {
       // Advance only 3 seconds — timer should still be running
       jest.advanceTimersByTime(3000);
       await incoming(
-        baseEvt({ body: 'msg2', timestamp: ts }),
+        baseEvt({ id: 'wa-msg-2', body: 'msg2', timestamp: ts }),
         'co',
         'u1',
         mockSend,
@@ -587,7 +594,7 @@ describe('WhatsappAiService', () => {
         mockSend,
       );
       await incoming(
-        baseEvt({ chatId: 'chat-b', body: 'Hey', timestamp: ts }),
+        baseEvt({ id: 'wa-msg-2', chatId: 'chat-b', body: 'Hey', timestamp: ts }),
         'co',
         'u1',
         mockSend,
@@ -603,7 +610,7 @@ describe('WhatsappAiService', () => {
   describe('queued debounce lifecycle', () => {
     it('takeDebouncedBuffer returns null when nothing is buffered', async () => {
       expect(
-        await service.takeDebouncedBuffer({ userId: 'user-1', chatId: 'c1' }),
+        await service.takeDebouncedBuffer({ userId: 'user-1', chatId: 'c1' }, 'job-1'),
       ).toBeNull();
     });
 
@@ -612,27 +619,27 @@ describe('WhatsappAiService', () => {
       await incoming(baseEvt({ id: 'm1', body: 'one' }), 'company-1', 'user-1', jest.fn());
       await incoming(baseEvt({ id: 'm2', body: 'two' }), 'company-1', 'user-1', jest.fn());
 
-      const first = await service.takeDebouncedBuffer({
-        userId: 'user-1',
-        chatId: 'c1',
-      });
+      const first = await service.takeDebouncedBuffer(
+        { userId: 'user-1', chatId: 'c1' },
+        'job-1',
+      );
       expect(first).toEqual({ combinedText: 'one\ntwo', messageIds: ['m1', 'm2'] });
       expect(
-        await service.takeDebouncedBuffer({ userId: 'user-1', chatId: 'c1' }),
+        await service.takeDebouncedBuffer({ userId: 'user-1', chatId: 'c1' }, 'job-1'),
       ).toBeNull();
     });
 
     it('clearUserState removes every queued turn for that user', async () => {
       process.env.OLLAMA_API_KEY = 'test-key';
       await incoming(baseEvt({ chatId: 'c1' }), 'company-1', 'user-1', jest.fn());
-      await incoming(baseEvt({ chatId: 'c2' }), 'company-1', 'user-1', jest.fn());
+      await incoming(baseEvt({ id: 'wa-msg-2', chatId: 'c2' }), 'company-1', 'user-1', jest.fn());
       expect(queue.jobs.size).toBe(2);
 
       await service.clearUserState('user-1', 'company-1');
 
       expect(queue.jobs.size).toBe(0);
       expect(
-        await service.takeDebouncedBuffer({ userId: 'user-1', chatId: 'c1' }),
+        await service.takeDebouncedBuffer({ userId: 'user-1', chatId: 'c1' }, 'job-1'),
       ).toBeNull();
     });
 
@@ -665,7 +672,7 @@ describe('WhatsappAiService', () => {
       );
 
       await incoming(baseEvt({ id: 'm1' }), 'company-1', 'user-1', jest.fn());
-      await service.takeDebouncedBuffer({ userId: 'user-1', chatId: 'c1' });
+      await service.takeDebouncedBuffer({ userId: 'user-1', chatId: 'c1' }, 'job-1');
 
       await service.clearUserState('user-1', 'company-1');
 
@@ -681,12 +688,12 @@ describe('WhatsappAiService', () => {
     it('a message arriving after the flush starts a fresh turn instead of vanishing', async () => {
       process.env.OLLAMA_API_KEY = 'test-key';
       await incoming(baseEvt({ id: 'm1', body: 'first' }), 'company-1', 'user-1', jest.fn());
-      await service.takeDebouncedBuffer({ userId: 'user-1', chatId: 'c1' });
+      await service.takeDebouncedBuffer({ userId: 'user-1', chatId: 'c1' }, 'job-1');
 
       await incoming(baseEvt({ id: 'm2', body: 'second' }), 'company-1', 'user-1', jest.fn());
 
       expect(
-        await service.takeDebouncedBuffer({ userId: 'user-1', chatId: 'c1' }),
+        await service.takeDebouncedBuffer({ userId: 'user-1', chatId: 'c1' }, 'job-1'),
       ).toEqual({ combinedText: 'second', messageIds: ['m2'] });
     });
 
@@ -706,12 +713,180 @@ describe('WhatsappAiService', () => {
       expect(scheduled[0].id).not.toBe(firedJob.id);
     });
 
+    it('a restore schedules under a new id when the current id only holds a failed job record', async () => {
+      process.env.OLLAMA_API_KEY = 'test-key';
+      const redis = makeMockRedis();
+      service = new WhatsappAiService(
+        makeMockRepo() as any,
+        makeMockStore() as any,
+        makeMockBuilder() as any,
+        makeMockEmail() as any,
+        redis as any,
+        queue as any,
+      );
+      jest
+        .spyOn((service as any).logger, 'warn')
+        .mockImplementation(() => undefined);
+      const data = {
+        userId: 'user-1',
+        chatId: 'c1',
+        companyId: 'company-1',
+        deadlineAt: Date.now() + 60000,
+      };
+
+      await incoming(baseEvt({ id: 'm1', body: 'first' }), 'company-1', 'user-1', jest.fn());
+      await service.takeDebouncedBuffer(data, 'user-1:c1:0');
+      queue.jobs.set('user-1:c1:1', {
+        id: 'user-1:c1:1',
+        data,
+        state: 'failed',
+        getState: () => Promise.resolve('failed'),
+      });
+
+      await service.restoreClaimedBuffer(data, 'user-1:c1:0');
+
+      expect(queue.jobs.get('user-1:c1:2')?.state).toBe('delayed');
+      expect(await redis.getNumber('wa:ai:seq:user-1:c1')).toBe(2);
+    });
+
+    it('a restore relies on a still-delayed job under the current id instead of adding another', async () => {
+      process.env.OLLAMA_API_KEY = 'test-key';
+      const redis = makeMockRedis();
+      service = new WhatsappAiService(
+        makeMockRepo() as any,
+        makeMockStore() as any,
+        makeMockBuilder() as any,
+        makeMockEmail() as any,
+        redis as any,
+        queue as any,
+      );
+      jest
+        .spyOn((service as any).logger, 'warn')
+        .mockImplementation(() => undefined);
+      const data = {
+        userId: 'user-1',
+        chatId: 'c1',
+        companyId: 'company-1',
+        deadlineAt: Date.now() + 60000,
+      };
+
+      await incoming(baseEvt({ id: 'm1', body: 'first' }), 'company-1', 'user-1', jest.fn());
+      await service.takeDebouncedBuffer(data, 'user-1:c1:0');
+      await incoming(baseEvt({ id: 'm2', body: 'second' }), 'company-1', 'user-1', jest.fn());
+      expect(queue.jobs.get('user-1:c1:1')?.state).toBe('delayed');
+
+      await service.restoreClaimedBuffer(data, 'user-1:c1:0');
+
+      expect(queue.jobs.has('user-1:c1:2')).toBe(false);
+      expect(await redis.getNumber('wa:ai:seq:user-1:c1')).toBe(1);
+    });
+
+    it('buffers a redelivered message id only once', async () => {
+      process.env.OLLAMA_API_KEY = 'test-key';
+      const redis = makeMockRedis();
+      service = new WhatsappAiService(
+        makeMockRepo() as any,
+        makeMockStore() as any,
+        makeMockBuilder() as any,
+        makeMockEmail() as any,
+        redis as any,
+        queue as any,
+      );
+
+      await incoming(baseEvt({ id: 'm1' }), 'company-1', 'user-1', jest.fn());
+      await incoming(baseEvt({ id: 'm1' }), 'company-1', 'user-1', jest.fn());
+
+      expect(await redis.getList('wa:ai:pend:user-1:c1')).toHaveLength(1);
+      expect(queue.jobs.size).toBe(1);
+      expect(await redis.getNumber('wa:ai:dispatched:user-1:m1')).not.toBeNull();
+    });
+
+    it('leaves no dispatch marker and propagates when scheduling the turn fails', async () => {
+      process.env.OLLAMA_API_KEY = 'test-key';
+      const redis = makeMockRedis();
+      service = new WhatsappAiService(
+        makeMockRepo() as any,
+        makeMockStore() as any,
+        makeMockBuilder() as any,
+        makeMockEmail() as any,
+        redis as any,
+        queue as any,
+      );
+      const addSpy = jest
+        .spyOn(queue, 'add')
+        .mockRejectedValueOnce(new Error('queue down'));
+
+      await expect(
+        incoming(baseEvt({ id: 'm1' }), 'company-1', 'user-1', jest.fn()),
+      ).rejects.toThrow('queue down');
+      addSpy.mockRestore();
+
+      expect(await redis.getNumber('wa:ai:dispatched:user-1:m1')).toBeNull();
+
+      await incoming(baseEvt({ id: 'm1' }), 'company-1', 'user-1', jest.fn());
+
+      expect(queue.jobs.size).toBe(1);
+      expect(await redis.getNumber('wa:ai:dispatched:user-1:m1')).not.toBeNull();
+    });
+
+    it('drops invalid buffered entries instead of throwing, and treats an all-invalid claim as empty', async () => {
+      const redis = makeMockRedis();
+      service = new WhatsappAiService(
+        makeMockRepo() as any,
+        makeMockStore() as any,
+        makeMockBuilder() as any,
+        makeMockEmail() as any,
+        redis as any,
+        queue as any,
+      );
+      const warn = jest
+        .spyOn((service as any).logger, 'warn')
+        .mockImplementation(() => undefined);
+      const data = { userId: 'user-1', chatId: 'c1' };
+      const pend = 'wa:ai:pend:user-1:c1';
+
+      await redis.pushList(pend, '{not json');
+      await redis.pushList(pend, 'null');
+      await redis.pushList(pend, JSON.stringify({ body: 'no id' }));
+      await redis.pushList(pend, JSON.stringify({ body: 'ok', id: 'm1' }));
+
+      await expect(service.takeDebouncedBuffer(data, 'job-1')).resolves.toEqual({
+        combinedText: 'ok',
+        messageIds: ['m1'],
+      });
+      expect(warn).toHaveBeenCalledTimes(3);
+
+      await redis.pushList(pend, '{not json');
+      expect(await service.takeDebouncedBuffer(data, 'job-2')).toBeNull();
+      expect(await redis.getList('wa:ai:pend:user-1:c1:take:job-2')).toEqual([]);
+    });
+
+    it('keeps only the first occurrence of a repeated message id in a claim', async () => {
+      const redis = makeMockRedis();
+      service = new WhatsappAiService(
+        makeMockRepo() as any,
+        makeMockStore() as any,
+        makeMockBuilder() as any,
+        makeMockEmail() as any,
+        redis as any,
+        queue as any,
+      );
+      const pend = 'wa:ai:pend:user-1:c1';
+      await redis.pushList(pend, JSON.stringify({ body: 'hello', id: 'm1' }));
+      await redis.pushList(pend, JSON.stringify({ body: 'there', id: 'm2' }));
+      await redis.pushList(pend, JSON.stringify({ body: 'hello', id: 'm1' }));
+
+      expect(
+        await service.takeDebouncedBuffer({ userId: 'user-1', chatId: 'c1' }, 'job-1'),
+      ).toEqual({ combinedText: 'hello\nthere', messageIds: ['m1', 'm2'] });
+    });
+
     it('schedules a NEW job for a message that lands while a turn is in flight', async () => {
       process.env.OLLAMA_API_KEY = 'test-key';
       await incoming(baseEvt({ id: 'm1', body: 'first' }), 'company-1', 'user-1', jest.fn());
       const firstJobId = [...queue.jobs.keys()][0];
 
-      await service.takeDebouncedBuffer({ userId: 'user-1', chatId: 'c1' });
+      await service.takeDebouncedBuffer({ userId: 'user-1', chatId: 'c1' }, 'job-1');
       await incoming(baseEvt({ id: 'm2', body: 'second' }), 'company-1', 'user-1', jest.fn());
 
       const jobIds = [...queue.jobs.keys()];
@@ -928,7 +1103,7 @@ describe('WhatsappAiService', () => {
         mockSend,
       );
       await incoming(
-        baseEvt({ chatId: 'chat-b', timestamp: ts }),
+        baseEvt({ id: 'wa-msg-2', chatId: 'chat-b', timestamp: ts }),
         'co',
         'u1',
         mockSend,
@@ -1251,7 +1426,7 @@ describe('WhatsappAiService', () => {
         new Error('connection terminated'),
       );
       await incoming(
-        baseEvt({ body: 'again' }),
+        baseEvt({ id: 'wa-msg-2', body: 'again' }),
         'company-1',
         'user-1',
         mockSend,
@@ -1331,7 +1506,7 @@ describe('WhatsappAiService', () => {
         new Error('billing read down'),
       );
       await incoming(
-        baseEvt({ body: 'again' }),
+        baseEvt({ id: 'wa-msg-2', body: 'again' }),
         'company-1',
         'user-1',
         mockSend,
@@ -1878,7 +2053,7 @@ describe('WhatsappAiService', () => {
 
       // Turn 2 arrives WHILE turn 1 is mid-LLM (no pending entry exists anymore).
       await incoming(
-        baseEvt({ body: 'second', timestamp: ts }),
+        baseEvt({ id: 'wa-msg-2', body: 'second', timestamp: ts }),
         'co',
         'u1',
         mockSend,
@@ -1939,7 +2114,7 @@ describe('WhatsappAiService', () => {
       );
       await jest.runAllTimersAsync();
       await incoming(
-        baseEvt({ body: 'bad', timestamp: ts }),
+        baseEvt({ id: 'wa-msg-2', body: 'bad', timestamp: ts }),
         'co',
         'u1',
         mockSend,
@@ -2325,21 +2500,45 @@ describe('WhatsappAiService', () => {
       expect(queue.jobs.size).toBe(0);
     });
 
-    it('keeps the in-process value once it is known', async () => {
+    it('serves the cached value without re-reading the database', async () => {
       const mockRepo = makeMockRepo();
       mockRepo.loadAiEnabled.mockResolvedValue(false);
+      const redis = makeMockRedis();
+      await redis.setNumber('wa:ai:enabled:company-1', 1);
       service = new WhatsappAiService(
         mockRepo as any,
         makeMockStore() as any,
         makeMockBuilder() as any,
         makeMockEmail() as any,
-        makeMockRedis() as any,
+        redis as any,
         queue as any,
       );
-      service.setEnabled('company-1', true);
 
       expect(await service.isEnabledFor('company-1')).toBe(true);
       expect(mockRepo.loadAiEnabled).not.toHaveBeenCalled();
+    });
+
+    it('a disable on one replica reaches a replica that already cached it enabled', async () => {
+      const mockRepo = makeMockRepo();
+      mockRepo.loadAiEnabled.mockResolvedValue(true);
+      const redis = makeMockRedis();
+      const build = () =>
+        new WhatsappAiService(
+          mockRepo as any,
+          makeMockStore() as any,
+          makeMockBuilder() as any,
+          makeMockEmail() as any,
+          redis as any,
+          queue as any,
+        );
+      const replicaA = build();
+      const replicaB = build();
+
+      expect(await replicaB.isEnabledFor('company-1')).toBe(true);
+
+      await replicaA.persistEnabled('company-1', false);
+
+      expect(await replicaB.isEnabledFor('company-1')).toBe(false);
     });
 
     it('an admin disabling AI takes effect for the other agents of that company', async () => {
@@ -2401,22 +2600,52 @@ describe('WhatsappAiService', () => {
       );
     });
 
-    it('persistEnabled sets the in-memory value and then propagates a failed write', async () => {
+    it('a cache load that read the old value loses to a toggle written before it lands', async () => {
       const mockRepo = makeMockRepo();
+      const redis = makeMockRedis();
+      const build = () =>
+        new WhatsappAiService(
+          mockRepo as any,
+          makeMockStore() as any,
+          makeMockBuilder() as any,
+          makeMockEmail() as any,
+          redis as any,
+          queue as any,
+        );
+      const replicaA = build();
+      const replicaB = build();
+      // B reads the old DB value, then A's disable commits and caches before B writes its cache entry.
+      mockRepo.loadAiEnabled.mockImplementationOnce(async () => {
+        await replicaA.persistEnabled('company-1', false);
+        return true;
+      });
+
+      await replicaB.isEnabledFor('company-1');
+
+      expect(redis.store.get('wa:ai:enabled:company-1')).toBe('0');
+      expect(await replicaB.isEnabledFor('company-1')).toBe(false);
+    });
+
+    it('persistEnabled propagates a failed write and leaves readers on the stored value', async () => {
+      const mockRepo = makeMockRepo();
+      mockRepo.loadAiEnabled.mockResolvedValue(true);
       mockRepo.persistAiEnabled.mockRejectedValue(new Error('db unreachable'));
+      const redis = makeMockRedis();
+      await redis.setNumber('wa:ai:enabled:company-1', 1);
       service = new WhatsappAiService(
         mockRepo as any,
         makeMockStore() as any,
         makeMockBuilder() as any,
         makeMockEmail() as any,
-        makeMockRedis() as any,
+        redis as any,
         queue as any,
       );
 
       await expect(service.persistEnabled('company-1', false)).rejects.toThrow(
         'db unreachable',
       );
-      expect(service.isEnabled('company-1')).toBe(false);
+      expect(await service.isEnabledFor('company-1')).toBe(true);
+      expect(mockRepo.loadAiEnabled).toHaveBeenCalledWith('company-1');
     });
   });
 
@@ -2454,7 +2683,9 @@ describe('WhatsappAiService', () => {
       expect(await redis.getList('wa:ai:pend:user-1:c1')).toEqual([
         JSON.stringify({ body: 'is the flat still free', id: 'wa-msg-1' }),
       ]);
-      expect(await redis.getList('wa:ai:pend:user-1:c1:take')).toEqual([]);
+      expect([...redis.lists.keys()].filter((k) => k.includes(':take'))).toEqual(
+        [],
+      );
       expect(
         [...queue.jobs.values()].some((job: any) => job.state === 'delayed'),
       ).toBe(true);
@@ -2487,7 +2718,9 @@ describe('WhatsappAiService', () => {
       expect(await redis.getList('wa:ai:pend:user-1:c1')).toEqual([
         JSON.stringify({ body: 'is the flat still free', id: 'wa-msg-1' }),
       ]);
-      expect(await redis.getList('wa:ai:pend:user-1:c1:take')).toEqual([]);
+      expect([...redis.lists.keys()].filter((k) => k.includes(':take'))).toEqual(
+        [],
+      );
       expect(
         [...queue.jobs.values()].some((job: any) => job.state === 'delayed'),
       ).toBe(true);
@@ -2544,7 +2777,128 @@ describe('WhatsappAiService', () => {
       await jest.runAllTimersAsync();
 
       expect(await redis.getList('wa:ai:pend:user-1:c1')).toEqual([]);
-      expect(await redis.getList('wa:ai:pend:user-1:c1:take')).toEqual([]);
+      expect([...redis.lists.keys()].filter((k) => k.includes(':take'))).toEqual(
+        [],
+      );
+    });
+
+    it('overlapping claims keep separate scratch lists, so a timed-out claim restores only its own messages', async () => {
+      process.env.OLLAMA_API_KEY = 'test-key';
+      process.env.AI_LOCK_WAIT_MS = '10';
+      const redis = makeMockRedis();
+      service = new WhatsappAiService(
+        makeMockRepo() as any,
+        makeMockStore() as any,
+        makeMockBuilder() as any,
+        makeMockEmail() as any,
+        redis as any,
+        queue as any,
+      );
+      jest
+        .spyOn((service as any).logger, 'warn')
+        .mockImplementation(() => undefined);
+      const data = {
+        userId: 'user-1',
+        chatId: 'c1',
+        companyId: 'company-1',
+        deadlineAt: Date.now() + 60000,
+      };
+      const entry = (id: string) => JSON.stringify({ body: id, id });
+
+      // Job A claims a1 and holds the chat lock for a slow turn.
+      await incoming(baseEvt({ id: 'a1', body: 'a1' }), 'company-1', 'user-1', jest.fn());
+      expect(await service.takeDebouncedBuffer(data, 'job-a')).toEqual({
+        combinedText: 'a1',
+        messageIds: ['a1'],
+      });
+      redis.locks.set('wa:ai:lock:user-1:c1', 'job-a');
+
+      // Jobs B and C claim b1 and c1 while A still holds the lock.
+      await incoming(baseEvt({ id: 'b1', body: 'b1' }), 'company-1', 'user-1', jest.fn());
+      const claimB = await service.takeDebouncedBuffer(data, 'job-b');
+      await incoming(baseEvt({ id: 'c1', body: 'c1' }), 'company-1', 'user-1', jest.fn());
+      const claimC = await service.takeDebouncedBuffer(data, 'job-c');
+      expect(claimB?.messageIds).toEqual(['b1']);
+      expect(claimC?.messageIds).toEqual(['c1']);
+
+      // B times out on the lock and hands back its claim, as the processor does.
+      const bTurn = expect(
+        service.runTurn(
+          'company-1',
+          'user-1',
+          'c1',
+          claimB!.messageIds,
+          claimB!.combinedText,
+          jest.fn(),
+        ),
+      ).rejects.toThrow('Timed out waiting');
+      await jest.advanceTimersByTimeAsync(50);
+      await bTurn;
+      await service.restoreClaimedBuffer(data, 'job-b');
+
+      expect(await redis.getList('wa:ai:pend:user-1:c1')).toEqual([entry('b1')]);
+      expect(await redis.getList('wa:ai:pend:user-1:c1:take:job-c')).toEqual([
+        entry('c1'),
+      ]);
+
+      // A finishes; its release leaves C's claim alone.
+      await service.releaseClaimedBuffer(data, 'job-a');
+      redis.locks.delete('wa:ai:lock:user-1:c1');
+      expect(await redis.getList('wa:ai:pend:user-1:c1:take:job-c')).toEqual([
+        entry('c1'),
+      ]);
+      await service.releaseClaimedBuffer(data, 'job-c');
+
+      // The re-armed turn answers b1 once; c1 is not replayed and a1 is not resurrected.
+      expect(await service.takeDebouncedBuffer(data, 'job-d')).toEqual({
+        combinedText: 'b1',
+        messageIds: ['b1'],
+      });
+      expect(
+        await service.takeDebouncedBuffer(data, 'job-e'),
+      ).toBeNull();
+    });
+  });
+
+  describe('chat lock lost mid-turn', () => {
+    it('does not send or persist history once lock renewal fails', async () => {
+      process.env.OLLAMA_API_KEY = 'test-key';
+      process.env.OLLAMA_HOST = 'http://localhost:11434';
+      process.env.OLLAMA_MODEL = 'test-model';
+      process.env.AI_DEBOUNCE_MS = '100';
+      const redis = makeMockRedis();
+      redis.renewLock = () => Promise.resolve(false);
+      const mockRepo = makeMockRepo(null);
+      service = new WhatsappAiService(
+        mockRepo as any,
+        makeMockStore() as any,
+        makeMockBuilder() as any,
+        makeMockEmail() as any,
+        redis as any,
+        queue as any,
+      );
+      const errorSpy = jest
+        .spyOn((service as any).logger, 'error')
+        .mockImplementation(() => undefined);
+      // Outlasts one renewal interval (ttl 30s / 3).
+      global.fetch = jest.fn().mockImplementation(
+        () =>
+          new Promise((resolve) =>
+            setTimeout(() => resolve(mockTextResponse('AI reply')), 15000),
+          ),
+      ) as any;
+
+      const mockSend = jest.fn().mockResolvedValue({});
+      await incoming(baseEvt(), 'company-1', 'user-1', mockSend);
+      await jest.runAllTimersAsync();
+
+      expect(global.fetch).toHaveBeenCalledTimes(1);
+      expect(mockSend).not.toHaveBeenCalled();
+      expect(mockRepo.recordTurnDelivered).not.toHaveBeenCalled();
+      expect(await service.getHistoryFor('user-1', 'c1')).toEqual([]);
+      expect(errorSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Lost the AI chat lock'),
+      );
     });
   });
 
@@ -2681,7 +3035,7 @@ describe('WhatsappAiService', () => {
 
     it('shows nothing when AI is disabled for the company', async () => {
       newService();
-      service.setEnabled('co', false);
+      await service.persistEnabled('co', false);
       global.fetch = jest.fn() as any;
       const mockSend = jest.fn().mockResolvedValue({});
       const mockMarkRead = jest.fn().mockResolvedValue(undefined);

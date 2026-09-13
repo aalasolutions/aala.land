@@ -545,7 +545,7 @@
       <Nuvo::Divider @labelPosition="end">Section end</Nuvo::Divider>
     </div>
 
-    <div class="nuvo-row" style="block-size: 4rem;">
+    <div class="nuvo-row nuvo-row--divider-demo">
       <span class="nu-text m-sm">Left</span>
       <Nuvo::Divider @vertical={{true}} />
       <span class="nu-text m-sm">Right</span>
@@ -1295,24 +1295,28 @@
         @variant="secondary"
         data-tooltip="Above the trigger, travelling toward the start side"
         data-tooltip-position="top-start"
+        data-test-tooltip-top-start
       />
       <Nuvo::Button
         @text="Top end"
         @variant="secondary"
         data-tooltip="Above the trigger, travelling toward the end side"
         data-tooltip-position="top-end"
+        data-test-tooltip-top-end
       />
       <Nuvo::Button
         @text="Bottom start"
         @variant="secondary"
         data-tooltip="Below the trigger, travelling toward the start side"
         data-tooltip-position="bottom-start"
+        data-test-tooltip-bottom-start
       />
       <Nuvo::Button
         @text="Bottom end"
         @variant="secondary"
         data-tooltip="Below the trigger, travelling toward the end side"
         data-tooltip-position="bottom-end"
+        data-test-tooltip-bottom-end
       />
       <Nuvo::Button
         @text="Light"

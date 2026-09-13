@@ -811,6 +811,39 @@ module('Unit | Controller | whatsapp', function (hooks) {
     );
   });
 
+  test('canToggleAi requires both company admin and a configured AI key', function (assert) {
+    const controller = makeController(this);
+
+    controller.auth = { currentUser: { role: 'company_admin' } };
+    controller.aiKeyConfigured = true;
+    assert.true(controller.canToggleAi);
+
+    controller.aiKeyConfigured = false;
+    assert.false(controller.canToggleAi, 'no key configured');
+
+    controller.aiKeyConfigured = true;
+    controller.auth = { currentUser: { role: 'agent' } };
+    assert.false(controller.canToggleAi, 'not a company admin');
+  });
+
+  test('aiToggleTooltip explains why the toggle is disabled, or invites the toggle', function (assert) {
+    const controller = makeController(this);
+
+    controller.auth = { currentUser: { role: 'agent' } };
+    controller.aiKeyConfigured = true;
+    assert.strictEqual(
+      controller.aiToggleTooltip,
+      'Only Company Admin can toggle AI',
+    );
+
+    controller.auth = { currentUser: { role: 'company_admin' } };
+    controller.aiKeyConfigured = false;
+    assert.strictEqual(controller.aiToggleTooltip, 'No AI key configured');
+
+    controller.aiKeyConfigured = true;
+    assert.strictEqual(controller.aiToggleTooltip, 'Toggle AI auto-reply');
+  });
+
   test('toggleAi on success adopts the returned enabled state', async function (assert) {
     const controller = makeController(this);
     controller.aiKeyConfigured = true;

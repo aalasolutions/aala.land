@@ -79,11 +79,17 @@ export interface AiCreditUsageWithAgents extends AiCreditUsageSummary {
   agents: AiCreditAgentUsage[];
 }
 
+export interface AiToolCall {
+  id: string;
+  type: 'function';
+  function: { name: string; arguments: string };
+}
+
 export interface AiHistoryMessage {
   role: 'user' | 'assistant' | 'system' | 'tool';
   content: string | null;
   tool_call_id?: string;
-  tool_calls?: any[];
+  tool_calls?: AiToolCall[];
 }
 
 export const WA_AI_DEBOUNCE_QUEUE = 'wa-ai-debounce';

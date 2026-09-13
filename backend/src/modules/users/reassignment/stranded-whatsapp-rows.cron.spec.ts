@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { DataSource } from 'typeorm';
 import { StrandedWhatsappRowsCron } from './stranded-whatsapp-rows.cron';
-import { WhatsappService } from '../../whatsapp/whatsapp.service';
+import { WhatsappSignupService } from '../../whatsapp/whatsapp-signup.service';
 import { WhatsappConnectionStatus } from '../../whatsapp/entities/whatsapp-connection.entity';
 
 const COMPANY_ID = '068dfa72-9a27-4527-b3e4-a4251d7ed643';
@@ -20,7 +20,7 @@ describe('StrandedWhatsappRowsCron', () => {
       providers: [
         StrandedWhatsappRowsCron,
         { provide: DataSource, useValue: { query } },
-        { provide: WhatsappService, useValue: { disconnect } },
+        { provide: WhatsappSignupService, useValue: { disconnect } },
       ],
     }).compile();
 
@@ -34,7 +34,11 @@ describe('StrandedWhatsappRowsCron', () => {
 
     await cron.run();
 
-    expect(disconnect).toHaveBeenCalledWith(GONE_USER, COMPANY_ID);
+    expect(disconnect).toHaveBeenCalledWith(
+      GONE_USER,
+      COMPANY_ID,
+      'SEAT_REMOVED',
+    );
   });
 
   it('only looks at CONNECTED rows whose user is gone or deactivated', async () => {

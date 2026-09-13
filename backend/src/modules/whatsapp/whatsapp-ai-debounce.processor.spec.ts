@@ -2,10 +2,14 @@ import { Job } from 'bullmq';
 import { WhatsappAiDebounceProcessor } from './whatsapp-ai-debounce.processor';
 import { DebounceJobData } from './wa-types';
 
+const JOB_ID = 'user-1:c1:0';
+
 const makeJob = (
   overrides: Partial<DebounceJobData> = {},
+  id: string | null = JOB_ID,
 ): Job<DebounceJobData> =>
   ({
+    id: id ?? undefined,
     data: {
       userId: 'user-1',
       chatId: 'c1',
@@ -37,6 +41,7 @@ describe('WhatsappAiDebounceProcessor', () => {
 
     expect(ai.takeDebouncedBuffer).toHaveBeenCalledWith(
       expect.objectContaining({ userId: 'user-1', chatId: 'c1' }),
+      JOB_ID,
     );
     expect(cloud.senderFor).toHaveBeenCalledWith('company-1', 'user-1');
     expect(cloud.markReadFor).toHaveBeenCalledWith('company-1', 'user-1');
@@ -49,7 +54,10 @@ describe('WhatsappAiDebounceProcessor', () => {
       cloud.senderFor.mock.results[0].value,
       cloud.markReadFor.mock.results[0].value,
     );
-    expect(ai.releaseClaimedBuffer).toHaveBeenCalled();
+    expect(ai.releaseClaimedBuffer).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: 'user-1', chatId: 'c1' }),
+      JOB_ID,
+    );
     expect(ai.restoreClaimedBuffer).not.toHaveBeenCalled();
   });
 
@@ -74,8 +82,38 @@ describe('WhatsappAiDebounceProcessor', () => {
 
     expect(ai.restoreClaimedBuffer).toHaveBeenCalledWith(
       expect.objectContaining({ userId: 'user-1', chatId: 'c1' }),
+      JOB_ID,
     );
     expect(ai.releaseClaimedBuffer).not.toHaveBeenCalled();
+  });
+
+  it('restores this job claim and rethrows when the claim itself throws after the rename', async () => {
+    const ai = makeAi(null);
+    ai.takeDebouncedBuffer.mockRejectedValue(new Error('lrange blip'));
+    const cloud = makeCloud();
+    const processor = new WhatsappAiDebounceProcessor(ai as any, cloud as any);
+
+    await expect(processor.process(makeJob())).rejects.toThrow('lrange blip');
+
+    expect(ai.restoreClaimedBuffer).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: 'user-1', chatId: 'c1' }),
+      JOB_ID,
+    );
+    expect(ai.runTurn).not.toHaveBeenCalled();
+    expect(ai.releaseClaimedBuffer).not.toHaveBeenCalled();
+  });
+
+  it('refuses a job with no id before claiming anything', async () => {
+    const ai = makeAi({ combinedText: 'hello', messageIds: ['m1'] });
+    const cloud = makeCloud();
+    const processor = new WhatsappAiDebounceProcessor(ai as any, cloud as any);
+
+    await expect(processor.process(makeJob({}, null))).rejects.toThrow(
+      'Debounce job has no id',
+    );
+
+    expect(ai.takeDebouncedBuffer).not.toHaveBeenCalled();
+    expect(ai.restoreClaimedBuffer).not.toHaveBeenCalled();
   });
 
   it('still rethrows the turn failure when the restore itself fails', async () => {

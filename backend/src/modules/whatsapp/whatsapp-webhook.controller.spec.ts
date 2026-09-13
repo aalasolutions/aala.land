@@ -6,6 +6,7 @@ import { NestExpressApplication } from '@nestjs/platform-express';
 import { createHmac } from 'node:crypto';
 import request from 'supertest';
 import { ResponseInterceptor } from '@shared/interceptors/response.interceptor';
+import { configureBodyParsers } from '@shared/utils/body-parser.util';
 import {
   WhatsappConnection,
   WhatsappConnectionStatus,
@@ -105,7 +106,7 @@ describe('WhatsappWebhookController (HTTP)', () => {
     app = moduleRef.createNestApplication<NestExpressApplication>({
       rawBody: true,
     });
-    app.useBodyParser('json', { limit: '4mb' });
+    configureBodyParsers(app);
     app.useGlobalInterceptors(new ResponseInterceptor());
     app.useGlobalPipes(
       new ValidationPipe({

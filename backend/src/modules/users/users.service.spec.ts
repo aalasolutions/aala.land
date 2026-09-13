@@ -28,7 +28,7 @@ import {
 import { Commission } from '../commissions/entities/commission.entity';
 import { BillingService } from '../billing/billing.service';
 import { UserReassignmentService } from './reassignment/user-reassignment.service';
-import { WhatsappService } from '../whatsapp/whatsapp.service';
+import { WhatsappSignupService } from '../whatsapp/whatsapp-signup.service';
 import { OWNERSHIP_TRANSFER_RECORDER } from './reassignment/ownership-transfer-recorder';
 
 jest.mock('bcryptjs');
@@ -244,7 +244,7 @@ describe('UsersService', () => {
           useValue: reassignmentServiceMock,
         },
         {
-          provide: WhatsappService,
+          provide: WhatsappSignupService,
           useValue: whatsappServiceMock,
         },
         {
@@ -572,6 +572,7 @@ describe('UsersService', () => {
         expect(whatsappServiceMock.disconnect).toHaveBeenCalledWith(
           'user-uuid-2',
           companyId,
+          'SEAT_REMOVED',
         );
       },
     );
@@ -865,6 +866,7 @@ describe('UsersService', () => {
       expect(whatsappServiceMock.disconnect).toHaveBeenCalledWith(
         'user-uuid-2',
         companyId,
+        'SEAT_REMOVED',
       );
     });
   });

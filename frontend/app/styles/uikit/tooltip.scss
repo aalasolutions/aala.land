@@ -99,8 +99,6 @@
   }
 
   @include m(bottom-right) {
-    transform: translateY(0);
-
     .nu-tooltip__arrow {
       top: calc(#{nu-var("tooltip", "ArrowSize")} / -2);
       left: nu-var("tooltip", "ArrowInset");

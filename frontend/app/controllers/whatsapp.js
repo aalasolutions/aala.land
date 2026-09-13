@@ -67,6 +67,17 @@ export default class WhatsappController extends Controller {
     return this.auth.currentUser?.role === 'company_admin';
   }
 
+  get canToggleAi() {
+    return this.isCompanyAdmin && this.aiKeyConfigured;
+  }
+
+  get aiToggleTooltip() {
+    if (!this.isCompanyAdmin) return 'Only Company Admin can toggle AI';
+    return this.aiKeyConfigured
+      ? 'Toggle AI auto-reply'
+      : 'No AI key configured';
+  }
+
   // ── State ─────────────────────────────────────────────────────────────
 
   @tracked chats = [];

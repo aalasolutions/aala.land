@@ -72,6 +72,10 @@ export class WhatsappConnection {
   })
   disconnectReason: string | null;
 
+  // Meta entry.time of the last applied account_update; older events are refused.
+  @Column({ name: 'lifecycle_event_at', type: 'timestamptz', nullable: true })
+  lifecycleEventAt: Date | null;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 

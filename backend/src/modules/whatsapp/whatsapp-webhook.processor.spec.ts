@@ -2,8 +2,16 @@ import { Job } from 'bullmq';
 import { WhatsappWebhookProcessor } from './whatsapp-webhook.processor';
 import { WaWebhookJobData } from './wa-types';
 
-const makeJob = (envelope: unknown, id = 'job-1'): Job<WaWebhookJobData> =>
-  ({ id, data: { envelope } }) as Job<WaWebhookJobData>;
+const makeJob = (
+  envelope: unknown,
+  id = 'job-1',
+  attemptsMade?: number,
+): Job<WaWebhookJobData> =>
+  ({
+    id,
+    data: { envelope },
+    ...(attemptsMade === undefined ? {} : { attemptsMade }),
+  }) as Job<WaWebhookJobData>;
 
 describe('WhatsappWebhookProcessor', () => {
   const makeWebhook = () => ({
@@ -18,7 +26,17 @@ describe('WhatsappWebhookProcessor', () => {
     await processor.process(makeJob(envelope));
 
     expect(webhook.processEnvelope).toHaveBeenCalledTimes(1);
-    expect(webhook.processEnvelope).toHaveBeenCalledWith(envelope);
+    expect(webhook.processEnvelope).toHaveBeenCalledWith(envelope, false);
+  });
+
+  it('flags the run as a retry once BullMQ has recorded a failed attempt', async () => {
+    const webhook = makeWebhook();
+    const processor = new WhatsappWebhookProcessor(webhook as any);
+    const envelope = { entry: [] };
+
+    await processor.process(makeJob(envelope, 'job-2', 1));
+
+    expect(webhook.processEnvelope).toHaveBeenCalledWith(envelope, true);
   });
 
   it('lets an envelope-level failure escape so BullMQ retries the job', async () => {

@@ -37,7 +37,7 @@ import {
 } from '../companies/entities/company.entity';
 import { BillingService, SeatReservation } from '../billing/billing.service';
 import { UserReassignmentService } from './reassignment/user-reassignment.service';
-import { WhatsappService } from '../whatsapp/whatsapp.service';
+import { WhatsappSignupService } from '../whatsapp/whatsapp-signup.service';
 import { ReassignmentReport } from './reassignment/reassignment-report';
 import { errorMessage } from '@shared/utils/error.util';
 import {
@@ -61,7 +61,7 @@ export class UsersService {
     private readonly systemEmail: SystemEmailService,
     private readonly billingService: BillingService,
     private readonly reassignmentService: UserReassignmentService,
-    private readonly whatsappService: WhatsappService,
+    private readonly whatsappSignupService: WhatsappSignupService,
     @Optional()
     @Inject(OWNERSHIP_TRANSFER_RECORDER)
     private readonly transferRecorder?: OwnershipTransferRecorder,
@@ -602,14 +602,18 @@ export class UsersService {
     return report;
   }
 
-  // Disconnects the seat outside the lock to stop AI credit spend; chats stay with the agent.
+  // Disconnects the seat outside the lock and tells Meta to stop sending its webhooks; chats stay with the agent.
   private async disconnectWhatsappAfterRemoval(
     companyId: string | null,
     report: ReassignmentReport,
   ): Promise<void> {
     if (!companyId) return;
     try {
-      await this.whatsappService.disconnect(report.fromUserId, companyId);
+      await this.whatsappSignupService.disconnect(
+        report.fromUserId,
+        companyId,
+        'SEAT_REMOVED',
+      );
     } catch (err) {
       this.logger.error(
         `WhatsApp session not torn down for removed user ${report.fromUserId} in company ${companyId}; it may keep receiving and spending AI credits`,

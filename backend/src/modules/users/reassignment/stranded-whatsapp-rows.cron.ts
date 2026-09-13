@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import { Cron } from '@nestjs/schedule';
-import { WhatsappService } from '../../whatsapp/whatsapp.service';
+import { WhatsappSignupService } from '../../whatsapp/whatsapp-signup.service';
 import { WhatsappConnectionStatus } from '../../whatsapp/entities/whatsapp-connection.entity';
 import { errorMessage } from '@shared/utils/error.util';
 
@@ -12,7 +12,7 @@ export class StrandedWhatsappRowsCron {
 
   constructor(
     private readonly dataSource: DataSource,
-    private readonly whatsapp: WhatsappService,
+    private readonly whatsapp: WhatsappSignupService,
   ) {}
 
   @Cron('0 4 * * *')
@@ -22,8 +22,11 @@ export class StrandedWhatsappRowsCron {
 
     for (const connection of stranded) {
       try {
-        // Same call the removal path uses: DISCONNECTED row plus the queued AI turns.
-        await this.whatsapp.disconnect(connection.userId, connection.companyId);
+        await this.whatsapp.disconnect(
+          connection.userId,
+          connection.companyId,
+          'SEAT_REMOVED',
+        );
         this.logger.log(
           `Disconnected a stranded WhatsApp number in company ${connection.companyId} for departed user ${connection.userId}`,
         );

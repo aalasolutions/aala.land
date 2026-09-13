@@ -71,6 +71,17 @@ describe('RedisService', () => {
     });
   });
 
+  describe('setNumberIfAbsent', () => {
+    it('writes with NX and a TTL, and reports whether it wrote', async () => {
+      mockClient.set.mockResolvedValueOnce('OK');
+      expect(await service.setNumberIfAbsent('k', 1, 5000)).toBe(true);
+      expect(mockClient.set).toHaveBeenCalledWith('k', '1', 'PX', 5000, 'NX');
+
+      mockClient.set.mockResolvedValueOnce(null);
+      expect(await service.setNumberIfAbsent('k', 1, 5000)).toBe(false);
+    });
+  });
+
   describe('renameKey', () => {
     it('returns true when the claim succeeds', async () => {
       mockClient.rename.mockResolvedValueOnce('OK');

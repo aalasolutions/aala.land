@@ -25,6 +25,9 @@ export class WhatsappWebhookProcessor extends WorkerHost {
 
   // processEnvelope rethrows a change-level failure, so letting it out earns a retry.
   async process(job: Job<WaWebhookJobData>): Promise<void> {
-    await this.webhook.processEnvelope(job.data?.envelope);
+    await this.webhook.processEnvelope(
+      job.data?.envelope,
+      (job.attemptsMade ?? 0) > 0,
+    );
   }
 }

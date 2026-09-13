@@ -25,9 +25,11 @@ export class WhatsappAiDebounceProcessor extends WorkerHost {
   }
 
   async process(job: Job<DebounceJobData>): Promise<void> {
-    const buffered = await this.ai.takeDebouncedBuffer(job.data);
-    if (!buffered) return;
+    const jobId = job.id;
+    if (!jobId) throw new Error('Debounce job has no id');
     try {
+      const buffered = await this.ai.takeDebouncedBuffer(job.data, jobId);
+      if (!buffered) return;
       await this.ai.runTurn(
         job.data.companyId,
         job.data.userId,
@@ -38,9 +40,9 @@ export class WhatsappAiDebounceProcessor extends WorkerHost {
         this.cloud.markReadFor(job.data.companyId, job.data.userId),
       );
     } catch (err) {
-      // The turn died outside its own guard, so the lead's messages go back on the buffer.
+      // The claim or turn died outside its own guard, so this job's claimed messages go back on the buffer.
       await this.ai
-        .restoreClaimedBuffer(job.data)
+        .restoreClaimedBuffer(job.data, jobId)
         .catch((restoreErr: unknown) =>
           this.logger.error(
             `Failed to restore the claimed buffer for ${job.data.userId}:${job.data.chatId}: ${errorMessage(restoreErr)}`,
@@ -48,6 +50,6 @@ export class WhatsappAiDebounceProcessor extends WorkerHost {
         );
       throw err;
     }
-    await this.ai.releaseClaimedBuffer(job.data);
+    await this.ai.releaseClaimedBuffer(job.data, jobId);
   }
 }

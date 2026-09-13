@@ -103,12 +103,13 @@ export class WhatsappSignupService {
     }
 
     const token = await this.exchangeCode(dto.code, appId, appSecret);
-    await this.subscribeApp(dto.wabaId, token);
+    // Side-effect free check first, so a rejected number never leaves the WABA subscribed.
     const displayPhoneNumber = await this.verifyPhoneNumber(
       dto.wabaId,
       dto.phoneNumberId,
       token,
     );
+    await this.subscribeApp(dto.wabaId, token);
 
     // Fails CLOSED: a bad or missing key throws here rather than storing a plaintext token.
     const ciphertext = this.encryption.encrypt(token);
@@ -117,6 +118,14 @@ export class WhatsappSignupService {
     const existing = await this.connections.findOne({
       where: { userId, companyId },
     });
+    // Captured before the write: the old token is the only credential able to unsubscribe the old WABA.
+    const previous =
+      existing?.accessTokenCiphertext && existing.wabaId !== dto.wabaId
+        ? {
+            wabaId: existing.wabaId,
+            token: this.encryption.decrypt(existing.accessTokenCiphertext),
+          }
+        : null;
     try {
       if (existing) {
         await this.connections.update(
@@ -131,6 +140,8 @@ export class WhatsappSignupService {
             connectedAt: now,
             disconnectedAt: null,
             disconnectReason: null,
+            // Millisecond stamp refuses any Meta lifecycle event from before this connect.
+            lifecycleEventAt: now,
           },
         );
       } else {
@@ -144,6 +155,7 @@ export class WhatsappSignupService {
           accessTokenCiphertext: ciphertext,
           tokenUpdatedAt: now,
           connectedAt: now,
+          lifecycleEventAt: now,
         });
       }
     } catch (err) {
@@ -160,6 +172,26 @@ export class WhatsappSignupService {
         }
       }
       throw err;
+    }
+
+    if (existing && previous) {
+      if (!previous.token) {
+        this.logger.warn(
+          `Could not read the previous token; WABA ${previous.wabaId} left subscribed`,
+        );
+      } else {
+        try {
+          await this.unsubscribeIfLastLive(
+            existing.id,
+            previous.wabaId,
+            previous.token,
+          );
+        } catch (err) {
+          this.logger.warn(
+            `Could not unsubscribe previous WABA ${previous.wabaId}: ${errorMessage(err)}`,
+          );
+        }
+      }
     }
 
     this.logger.log(
@@ -179,10 +211,17 @@ export class WhatsappSignupService {
   async disconnect(
     userId: string,
     companyId: string,
+    reason = 'SELF_DISCONNECTED',
   ): Promise<{ success: boolean }> {
-    const row = await this.connections.findOne({
-      where: { userId, companyId },
-    });
+    // Best effort: a failed read must not stop the local disconnect below.
+    const row = await this.connections
+      .findOne({ where: { userId, companyId } })
+      .catch((err: unknown) => {
+        this.logger.warn(
+          `Could not read the WhatsApp connection before disconnecting user ${userId}; Meta unsubscribe skipped: ${errorMessage(err)}`,
+        );
+        return null;
+      });
     const token = row
       ? this.encryption.decrypt(row.accessTokenCiphertext)
       : null;
@@ -190,35 +229,13 @@ export class WhatsappSignupService {
     const result = await this.wa.disconnect(userId, companyId);
 
     if (row && token) {
-      // A WABA's subscription is shared by every number; unsubscribe only when this is the last live row.
-      const siblings = await this.connections.count({
-        where: [
-          {
-            wabaId: row.wabaId,
-            id: Not(row.id),
-            status: WhatsappConnectionStatus.CONNECTED,
-          },
-          {
-            wabaId: row.wabaId,
-            id: Not(row.id),
-            status: WhatsappConnectionStatus.FLAGGED,
-          },
-        ],
-      });
-      if (siblings === 0) {
-        // Best effort: Meta refusing must not strand the agent in a connected state they can't leave.
-        await this.unsubscribeApp(row.wabaId, token);
-      } else {
-        this.logger.log(
-          `Skipping unsubscribe for WABA ${row.wabaId}: ${siblings} other live connection(s) remain`,
-        );
-      }
+      await this.unsubscribeIfLastLive(row.id, row.wabaId, token);
     }
 
     if (row) {
       await this.connections.update(
         { id: row.id },
-        { disconnectReason: 'SELF_DISCONNECTED' },
+        { disconnectReason: reason },
       );
     }
     return result;
@@ -266,6 +283,36 @@ export class WhatsappSignupService {
     }
   }
 
+  // A WABA's subscription is shared by every number; unsubscribe only when this is the last live row.
+  private async unsubscribeIfLastLive(
+    rowId: string,
+    wabaId: string,
+    token: string,
+  ): Promise<void> {
+    const siblings = await this.connections.count({
+      where: [
+        {
+          wabaId,
+          id: Not(rowId),
+          status: WhatsappConnectionStatus.CONNECTED,
+        },
+        {
+          wabaId,
+          id: Not(rowId),
+          status: WhatsappConnectionStatus.FLAGGED,
+        },
+      ],
+    });
+    if (siblings === 0) {
+      // Best effort: Meta refusing must not strand the agent in a state they can't leave.
+      await this.unsubscribeApp(wabaId, token);
+    } else {
+      this.logger.log(
+        `Skipping unsubscribe for WABA ${wabaId}: ${siblings} other live connection(s) remain`,
+      );
+    }
+  }
+
   private async unsubscribeApp(wabaId: string, token: string): Promise<void> {
     try {
       await this.graphFetch(
@@ -275,7 +322,7 @@ export class WhatsappSignupService {
       );
     } catch (err) {
       this.logger.warn(
-        `Could not unsubscribe from WABA ${wabaId}; disconnecting locally anyway: ${errorMessage(err)}`,
+        `Could not unsubscribe from WABA ${wabaId}; continuing locally anyway: ${errorMessage(err)}`,
       );
     }
   }

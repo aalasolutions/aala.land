@@ -48,8 +48,6 @@ export type MarkReadFn = (
 @Injectable()
 export class WhatsappAiService {
   private readonly logger = new Logger(WhatsappAiService.name);
-  // Keyed by companyId because that is what the toggle persists against.
-  private enabledByCompany = new Map<string, boolean>();
   private readonly AI_STATE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
   // Must outlive the debounce queue's removeOnFail age (604800s), so this TTL sits a day above it.
   private readonly AI_SEQ_TTL_MS = 8 * 24 * 60 * 60 * 1000;
@@ -80,9 +78,17 @@ export class WhatsappAiService {
     return `wa:ai:pendidx:${userId}`;
   }
 
-  // Holds a turn's claimed messages so a turn that dies can hand them back instead of losing them.
-  private takeKey(userId: string, chatId: string): string {
-    return `${this.pendKey(userId, chatId)}:take`;
+  // Per job, so overlapping claims on one chat never overwrite each other's scratch list.
+  private takeKey(userId: string, chatId: string, jobId: string): string {
+    return `${this.pendKey(userId, chatId)}:take:${jobId}`;
+  }
+
+  private enabledKey(companyId: string): string {
+    return `wa:ai:enabled:${companyId}`;
+  }
+
+  private dispatchedKey(userId: string, messageId: string): string {
+    return `wa:ai:dispatched:${userId}:${messageId}`;
   }
 
   // Job id encodes this so a mid-turn message schedules the next turn, avoiding BullMQ's dedup.
@@ -98,9 +104,9 @@ export class WhatsappAiService {
     return (await this.redis.getNumber(this.seqKey(userId, chatId))) ?? 0;
   }
 
-  getConfig(companyId: string) {
+  async getConfig(companyId: string) {
     return {
-      enabled: this.isEnabled(companyId),
+      enabled: await this.isEnabledFor(companyId),
       keyConfigured: !!envString('OLLAMA_API_KEY'),
       model: envString('OLLAMA_MODEL', ''),
       host: envString('OLLAMA_HOST', ''),
@@ -153,10 +159,7 @@ export class WhatsappAiService {
   }
 
   async getConfigWithUsage(companyId: string) {
-    const base = {
-      ...this.getConfig(companyId),
-      enabled: await this.isEnabledFor(companyId),
-    };
+    const base = await this.getConfig(companyId);
     const usage = await this.getCreditUsage(companyId);
 
     if (!usage) {
@@ -178,39 +181,20 @@ export class WhatsappAiService {
     };
   }
 
-  isEnabled(companyId: string): boolean {
-    if (this.enabledByCompany.has(companyId))
-      return this.enabledByCompany.get(companyId)!;
-    return envBool('AI_ENABLED', true);
-  }
-
-  // Map miss means a fresh replica: load the stored toggle before gating, or a restart re-enables AI
+  // Shared across replicas in Redis; the DB is the source of truth on a miss, and any error fails closed.
   async isEnabledFor(companyId: string): Promise<boolean> {
-    if (!this.enabledByCompany.has(companyId)) {
-      const loaded = await this.loadEnabledState(companyId);
-      if (!loaded) return false;
-    }
-    return this.isEnabled(companyId);
-  }
-
-  setEnabled(companyId: string, value: boolean): boolean {
-    this.enabledByCompany.set(companyId, value);
-    return value;
-  }
-
-  // Set in-memory first so this replica honours the intent immediately; a DB failure then propagates.
-  async persistEnabled(companyId: string, value: boolean): Promise<void> {
-    this.enabledByCompany.set(companyId, value);
-    await this.repo.persistAiEnabled(companyId, value);
-  }
-
-  // Returns false only on a DB error, so the caller fails this turn closed without caching it.
-  async loadEnabledState(companyId: string): Promise<boolean> {
-    if (this.enabledByCompany.has(companyId)) return true;
     try {
-      const enabled = await this.repo.loadAiEnabled(companyId);
-      if (enabled !== null) this.enabledByCompany.set(companyId, enabled);
-      return true;
+      const cached = await this.redis.getNumber(this.enabledKey(companyId));
+      if (cached !== null) return cached === 1;
+      const stored = await this.repo.loadAiEnabled(companyId);
+      if (stored === null) return envBool('AI_ENABLED', true);
+      // NX so a stale load can never overwrite a toggle written after it.
+      await this.redis.setNumberIfAbsent(
+        this.enabledKey(companyId),
+        stored ? 1 : 0,
+        this.AI_STATE_TTL_MS,
+      );
+      return stored;
     } catch (err) {
       this.logger.error(
         `Failed to load aiEnabled for ${companyId}, refusing the AI turn`,
@@ -218,6 +202,17 @@ export class WhatsappAiService {
       );
       return false;
     }
+  }
+
+  // Cache dropped before the write, so a failed write or cache update leaves readers on the DB value.
+  async persistEnabled(companyId: string, value: boolean): Promise<void> {
+    await this.redis.del(this.enabledKey(companyId));
+    await this.repo.persistAiEnabled(companyId, value);
+    await this.redis.setNumber(
+      this.enabledKey(companyId),
+      value ? 1 : 0,
+      this.AI_STATE_TTL_MS,
+    );
   }
 
   async getHistoryFor(
@@ -251,7 +246,7 @@ export class WhatsappAiService {
       }
     }
     await this.redis.del(this.pendIdxKey(userId));
-    this.enabledByCompany.delete(companyId);
+    await this.redis.del(this.enabledKey(companyId));
     await this.redis.delByPattern(this.pendKey(userId, '*'));
     await this.redis.delByPattern(this.histKey(userId, '*'));
     await this.redis.delByPattern(this.humanKey(userId, '*'));
@@ -308,6 +303,10 @@ export class WhatsappAiService {
     const maxAge = envInt('AI_MESSAGE_MAX_AGE_S', 120, 1);
     if (Math.floor(Date.now() / 1000) - evt.timestamp > maxAge) return;
 
+    // A retried webhook job re-delivers stored messages; each id is buffered for a turn at most once.
+    const dispatchedKey = this.dispatchedKey(userId, evt.id);
+    if ((await this.redis.getNumber(dispatchedKey)) !== null) return;
+
     const debounceMs = envInt('AI_DEBOUNCE_MS', 10000, 1);
     const maxDebounceMs = envInt('AI_DEBOUNCE_MAX_MS', 60000, 1);
     const maxPending = envInt('AI_PENDING_MAX', 20, 1);
@@ -334,6 +333,7 @@ export class WhatsappAiService {
       await this.currentSeq(userId, evt.chatId),
     );
     const existing = await this.debounceQueue.getJob(jobId);
+    let rescheduled = false;
 
     if (existing) {
       // Deadline caps the extension: messaging faster than debounceMs would
@@ -342,7 +342,7 @@ export class WhatsappAiService {
       try {
         if (remaining <= 0) await existing.promote();
         else await existing.changeDelay(Math.min(debounceMs, remaining));
-        return;
+        rescheduled = true;
       } catch {
         // Job already left delayed state; advancing the sequence here avoids a silent BullMQ dedup drop.
         jobId = this.jobIdFor(
@@ -356,25 +356,39 @@ export class WhatsappAiService {
       }
     }
 
-    await this.redis.setAdd(this.pendIdxKey(userId), jobId, this.AI_STATE_TTL_MS);
-    await this.debounceQueue.add(
-      'turn',
-      {
-        userId,
-        chatId: evt.chatId,
-        companyId,
-        deadlineAt: Date.now() + maxDebounceMs,
-      },
-      { jobId, delay: debounceMs },
+    if (!rescheduled) {
+      await this.redis.setAdd(
+        this.pendIdxKey(userId),
+        jobId,
+        this.AI_STATE_TTL_MS,
+      );
+      await this.debounceQueue.add(
+        'turn',
+        {
+          userId,
+          chatId: evt.chatId,
+          companyId,
+          deadlineAt: Date.now() + maxDebounceMs,
+        },
+        { jobId, delay: debounceMs },
+      );
+    }
+
+    // Set only after buffering and scheduling succeed, so a failure above leaves the retry free to run.
+    await this.redis.setNumberIfAbsent(
+      dispatchedKey,
+      Date.now(),
+      this.AI_STATE_TTL_MS,
     );
   }
 
   // RENAME claims the buffer atomically; scratch key survives until release/restore retires it.
   async takeDebouncedBuffer(
     data: Pick<DebounceJobData, 'userId' | 'chatId'>,
+    jobId: string,
   ): Promise<DebouncedBuffer | null> {
     const source = this.pendKey(data.userId, data.chatId);
-    const scratch = this.takeKey(data.userId, data.chatId);
+    const scratch = this.takeKey(data.userId, data.chatId, jobId);
     // Sequence increments before rename, so a racing message joins this claim or the next turn, never both.
     const claimed = await this.redis.incrCounter(
       this.seqKey(data.userId, data.chatId),
@@ -386,13 +400,31 @@ export class WhatsappAiService {
       this.jobIdFor(data.userId, data.chatId, claimed - 1),
     );
     const raw = await this.redis.getList(scratch);
-    if (raw.length === 0) {
+    // Invalid entries are dropped, never thrown, so one bad entry cannot loop through restore forever.
+    const parsed: { body: string; id: string }[] = [];
+    const seen = new Set<string>();
+    for (const entry of raw) {
+      let value: unknown;
+      try {
+        value = JSON.parse(entry);
+      } catch {
+        value = null;
+      }
+      const item = value as { body?: unknown; id?: unknown } | null;
+      if (typeof item?.body !== 'string' || typeof item.id !== 'string') {
+        this.logger.warn(
+          `Dropped an invalid buffered entry for ${data.userId}:${data.chatId}`,
+        );
+        continue;
+      }
+      if (seen.has(item.id)) continue;
+      seen.add(item.id);
+      parsed.push({ body: item.body, id: item.id });
+    }
+    if (parsed.length === 0) {
       await this.redis.del(scratch);
       return null;
     }
-    const parsed = raw.map(
-      (entry) => JSON.parse(entry) as { body: string; id: string },
-    );
     return {
       combinedText: parsed.map((p) => p.body).join('\n'),
       messageIds: parsed.map((p) => p.id),
@@ -402,13 +434,17 @@ export class WhatsappAiService {
   // The turn finished with the claim consumed: nothing left to hand back.
   async releaseClaimedBuffer(
     data: Pick<DebounceJobData, 'userId' | 'chatId'>,
+    jobId: string,
   ): Promise<void> {
-    await this.redis.del(this.takeKey(data.userId, data.chatId));
+    await this.redis.del(this.takeKey(data.userId, data.chatId, jobId));
   }
 
   // Runs when a turn throws before replying: returns claimed messages to the buffer and re-arms it.
-  async restoreClaimedBuffer(data: DebounceJobData): Promise<void> {
-    const scratch = this.takeKey(data.userId, data.chatId);
+  async restoreClaimedBuffer(
+    data: DebounceJobData,
+    jobId: string,
+  ): Promise<void> {
+    const scratch = this.takeKey(data.userId, data.chatId, jobId);
     const raw = await this.redis.getList(scratch);
     await this.redis.del(scratch);
     if (raw.length === 0) return;
@@ -435,12 +471,25 @@ export class WhatsappAiService {
     const debounceMs = envInt('AI_DEBOUNCE_MS', 10000, 1);
     const maxDebounceMs = envInt('AI_DEBOUNCE_MAX_MS', 60000, 1);
     // Fresh id since the claim advanced the sequence; a job under it means one arrived during the failure.
-    const jobId = this.jobIdFor(
+    let jobId = this.jobIdFor(
       data.userId,
       data.chatId,
       await this.currentSeq(data.userId, data.chatId),
     );
-    if (await this.debounceQueue.getJob(jobId)) return;
+    const existing = await this.debounceQueue.getJob(jobId);
+    if (existing) {
+      // Jobs are added with a delay and no priority or parent, so only these two states will still run.
+      const state = await existing.getState();
+      if (state === 'delayed' || state === 'waiting') return;
+      jobId = this.jobIdFor(
+        data.userId,
+        data.chatId,
+        await this.redis.incrCounter(
+          this.seqKey(data.userId, data.chatId),
+          this.AI_SEQ_TTL_MS,
+        ),
+      );
+    }
 
     await this.redis.setAdd(
       this.pendIdxKey(data.userId),
@@ -468,7 +517,7 @@ export class WhatsappAiService {
     send: SendFn,
     markRead?: MarkReadFn,
   ): Promise<void> {
-    await this.runSerializedPerChat(`${userId}:${chatId}`, () =>
+    await this.runSerializedPerChat(`${userId}:${chatId}`, (isLockHeld) =>
       this.processMessage(
         combinedText,
         chatId,
@@ -477,6 +526,7 @@ export class WhatsappAiService {
         send,
         messageIds,
         markRead,
+        isLockHeld,
       ),
     );
   }
@@ -484,7 +534,7 @@ export class WhatsappAiService {
   // Waits rather than rejecting so a follow-up message still gets answered instead of dropped.
   private async runSerializedPerChat(
     key: string,
-    task: () => Promise<void>,
+    task: (isLockHeld: () => boolean) => Promise<void>,
   ): Promise<void> {
     const lockKey = `wa:ai:lock:${key}`;
     const token = randomUUID();
@@ -501,14 +551,17 @@ export class WhatsappAiService {
 
     // A turn can outlive ttlMs, so keep extending the lock while this replica is alive; else it expires.
     const renewEveryMs = Math.max(Math.floor(ttlMs / 3), 1000);
+    let lockHeld = true;
     const renew = setInterval(() => {
       void this.redis
         .renewLock(lockKey, token, ttlMs)
         .then((ok) => {
-          if (!ok)
-            this.logger.error(
-              `Lost the AI chat lock on ${key}; a concurrent turn is now possible`,
-            );
+          if (ok) return;
+          lockHeld = false;
+          clearInterval(renew);
+          this.logger.error(
+            `Lost the AI chat lock on ${key}; the turn will not send or persist history`,
+          );
         })
         .catch((err: unknown) =>
           this.logger.error(
@@ -518,7 +571,7 @@ export class WhatsappAiService {
     }, renewEveryMs);
 
     try {
-      await task();
+      await task(() => lockHeld);
     } finally {
       clearInterval(renew);
       await this.redis
@@ -583,6 +636,7 @@ export class WhatsappAiService {
     send: SendFn,
     pendingMessageIds: string[] = [],
     markRead?: MarkReadFn,
+    isLockHeld: () => boolean = () => true,
   ): Promise<void> {
     // Re-checked at turn time: a queued turn can outlive AI being disabled, and must not spend a credit.
     if (!(await this.isEnabledFor(companyId))) {
@@ -600,7 +654,11 @@ export class WhatsappAiService {
     if (needsDirectContact) {
       // Same mid-turn human-takeover guard the other send paths use: if the operator
       // jumped in after this turn started, do not send the canned direct-contact reply.
-      if (await this.humanTookOverSince(userId, chatId, flushStartedAt)) return;
+      if (
+        !isLockHeld() ||
+        (await this.humanTookOverSince(userId, chatId, flushStartedAt))
+      )
+        return;
       await send(chatId, DIRECT_CONTACT_RESPONSE);
       return;
     }
@@ -717,7 +775,11 @@ export class WhatsappAiService {
         const assistantToolMsg: AiHistoryMessage = {
           role: 'assistant',
           content: firstMsg.content ?? null,
-          tool_calls: firstMsg.tool_calls,
+          tool_calls: firstMsg.tool_calls?.map((tc) => ({
+            id: tc.id,
+            type: 'function',
+            function: tc.function,
+          })),
         };
         const toolResultMsg: AiHistoryMessage = {
           role: 'tool',
@@ -740,13 +802,17 @@ export class WhatsappAiService {
           return;
         }
 
-        if (await this.humanTookOverSince(userId, chatId, flushStartedAt)) {
+        if (
+          !isLockHeld() ||
+          (await this.humanTookOverSince(userId, chatId, flushStartedAt))
+        ) {
           return;
         }
 
         history.push({ role: 'assistant', content: reply });
         await send(chatId, reply, { creditCharged });
         await this.recordDelivery(companyId, conversationId);
+        if (!isLockHeld()) return;
         await this.persistHistory(userId, chatId, history);
         return;
       }
@@ -754,13 +820,17 @@ export class WhatsappAiService {
       const reply = parseResponse(firstRaw);
       if (!reply) return;
 
-      if (await this.humanTookOverSince(userId, chatId, flushStartedAt)) {
+      if (
+        !isLockHeld() ||
+        (await this.humanTookOverSince(userId, chatId, flushStartedAt))
+      ) {
         return;
       }
 
       history.push({ role: 'assistant', content: reply });
       await send(chatId, reply, { creditCharged });
       await this.recordDelivery(companyId, conversationId);
+      if (!isLockHeld()) return;
       await this.persistHistory(userId, chatId, history);
     } catch (err) {
       const cause = (err as any)?.cause;

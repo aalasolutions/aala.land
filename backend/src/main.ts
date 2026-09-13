@@ -10,6 +10,9 @@ import { RedisIoAdapter } from './shared/adapters/redis-io.adapter';
 import { RedisService } from './modules/redis/redis.service';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { envList, envBool, envString, envInt } from '@shared/utils/env.util';
+import { configureBodyParsers } from '@shared/utils/body-parser.util';
+
+const API_PREFIX = 'v1';
 
 async function bootstrap() {
   // Initialize TypeORM DataSource before NestJS app
@@ -20,8 +23,7 @@ async function bootstrap() {
     rawBody: true,
   });
 
-  // Meta batches inbound webhooks; Express's 100kb JSON default would 413 them first.
-  app.useBodyParser('json', { limit: '4mb' });
+  configureBodyParsers(app, API_PREFIX);
 
   // Cross-replica websocket delivery. Must be set before listen().
   const ioAdapter = new RedisIoAdapter(app, app.get(RedisService));
@@ -42,7 +44,7 @@ async function bootstrap() {
   });
 
   // Global prefix
-  app.setGlobalPrefix('v1');
+  app.setGlobalPrefix(API_PREFIX);
 
   // Global Response Interceptor
   app.useGlobalInterceptors(new ResponseInterceptor());

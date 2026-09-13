@@ -7,6 +7,7 @@ import { Test } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { getQueueToken } from '@nestjs/bullmq';
 import { createHmac } from 'node:crypto';
+import { IsNull, LessThanOrEqual, Or } from 'typeorm';
 import {
   WhatsappConnection,
   WhatsappConnectionStatus,
@@ -539,15 +540,60 @@ describe('WhatsappWebhookService', () => {
       expect(store.addMessage).toHaveBeenCalledTimes(2);
       expect(ai.handleIncomingMessage).toHaveBeenCalledTimes(1);
     });
+
+    it('re-dispatches a stored message to the AI on a BullMQ retry attempt, without a second live push', async () => {
+      store.addMessage.mockResolvedValue(false);
+
+      await expect(
+        service.processEnvelope(inboundEnvelope(), true),
+      ).resolves.toBeUndefined();
+      expect(ai.handleIncomingMessage).toHaveBeenCalledTimes(1);
+      expect(ai.handleIncomingMessage.mock.calls[0][0].id).toBe('wamid.1');
+      expect(gateway.emitMessage).not.toHaveBeenCalled();
+    });
+
+    it('still skips a stored message on a retry when the connection is not CONNECTED', async () => {
+      store.addMessage.mockResolvedValue(false);
+      repo.findOne.mockResolvedValue(
+        Object.assign(connectionRow(), {
+          status: WhatsappConnectionStatus.FLAGGED,
+        }),
+      );
+
+      await service.processEnvelope(inboundEnvelope(), true);
+      expect(ai.handleIncomingMessage).not.toHaveBeenCalled();
+    });
+
+    it('recovers a failed AI hand-off: first run rejects, the retry dispatches again', async () => {
+      jest
+        .spyOn(
+          (service as unknown as { logger: { error: jest.Mock } }).logger,
+          'error',
+        )
+        .mockImplementation(() => undefined);
+      store.addMessage.mockResolvedValueOnce(true).mockResolvedValueOnce(false);
+      ai.handleIncomingMessage
+        .mockRejectedValueOnce(new Error('redis blip'))
+        .mockResolvedValueOnce(undefined);
+      const envelope = inboundEnvelope();
+
+      await expect(service.processEnvelope(envelope)).rejects.toThrow(
+        'redis blip',
+      );
+      await expect(
+        service.processEnvelope(envelope, true),
+      ).resolves.toBeUndefined();
+      expect(ai.handleIncomingMessage).toHaveBeenCalledTimes(2);
+    });
   });
 
-  describe('per-message failures never fail the envelope', () => {
-    it('does not throw when the AI dispatch throws', async () => {
+  describe('per-message failures', () => {
+    it('rejects when the AI dispatch throws, so BullMQ retries the envelope', async () => {
       ai.handleIncomingMessage.mockRejectedValue(new Error('llm down'));
 
       await expect(
         service.processEnvelope(inboundEnvelope()),
-      ).resolves.toBeUndefined();
+      ).rejects.toThrow('llm down');
     });
 
     it('does not throw when the live push throws', async () => {
@@ -561,7 +607,7 @@ describe('WhatsappWebhookService', () => {
       expect(ai.handleIncomingMessage).not.toHaveBeenCalled();
     });
 
-    it('keeps processing the rest of the batch after one message fails', async () => {
+    it('processes the rest of the batch after an AI hand-off fails, then rejects', async () => {
       const envelope = inboundEnvelope() as {
         entry: { changes: { value: { messages: unknown[] } }[] }[];
       };
@@ -583,7 +629,9 @@ describe('WhatsappWebhookService', () => {
       ];
       ai.handleIncomingMessage.mockRejectedValueOnce(new Error('llm down'));
 
-      await expect(service.processEnvelope(envelope)).resolves.toBeUndefined();
+      await expect(service.processEnvelope(envelope)).rejects.toThrow(
+        'llm down',
+      );
       expect(ai.handleIncomingMessage).toHaveBeenCalledTimes(2);
       expect(ai.handleIncomingMessage.mock.calls[1][0].id).toBe('wamid.good');
     });
@@ -826,6 +874,9 @@ describe('WhatsappWebhookService', () => {
         { id: 'conn-1', accessTokenCiphertext: 'v1.iv.tag.ct' },
         overrides,
       );
+    // The first update is the event-time claim; these are the status transitions after it.
+    const statusWrites = () =>
+      repo.update.mock.calls.filter((c) => 'status' in c[1]);
 
     it('disconnects on PARTNER_REMOVED and keeps Meta reason', async () => {
       repo.find.mockResolvedValue([rowFor()]);
@@ -837,8 +888,8 @@ describe('WhatsappWebhookService', () => {
         }),
       );
 
-      const [where, patch] = repo.update.mock.calls[0];
-      expect(where).toEqual({ id: 'conn-1' });
+      const [where, patch] = statusWrites()[0];
+      expect(where).toEqual({ id: 'conn-1', lifecycleEventAt: expect.anything() });
       expect(patch.status).toBe(WhatsappConnectionStatus.DISCONNECTED);
       expect(patch.disconnectReason).toBe('PRIMARY_INACTIVITY');
     });
@@ -850,9 +901,7 @@ describe('WhatsappWebhookService', () => {
         accountUpdateEnvelope({ event: 'PARTNER_REMOVED' }),
       );
 
-      expect(repo.update.mock.calls[0][1].disconnectReason).toBe(
-        'PARTNER_REMOVED',
-      );
+      expect(statusWrites()[0][1].disconnectReason).toBe('PARTNER_REMOVED');
     });
 
     // Meta treats a device change as self-healing, so it's a suspension; FLAGGED keeps inbound flowing.
@@ -863,7 +912,7 @@ describe('WhatsappWebhookService', () => {
         accountUpdateEnvelope({ event: 'ACCOUNT_OFFBOARDED' }),
       );
 
-      expect(repo.update.mock.calls[0][1].status).toBe(
+      expect(statusWrites()[0][1].status).toBe(
         WhatsappConnectionStatus.FLAGGED,
       );
     });
@@ -880,7 +929,7 @@ describe('WhatsappWebhookService', () => {
         accountUpdateEnvelope({ event: 'ACCOUNT_RECONNECTED' }),
       );
 
-      const patch = repo.update.mock.calls[0][1];
+      const patch = statusWrites()[0][1];
       expect(patch.status).toBe(WhatsappConnectionStatus.CONNECTED);
       expect(patch.disconnectReason).toBeNull();
       expect(patch.disconnectedAt).toBeNull();
@@ -893,7 +942,7 @@ describe('WhatsappWebhookService', () => {
       await service.processEnvelope(
         accountUpdateEnvelope({ event: 'PARTNER_ADDED' }),
       );
-      expect(repo.update.mock.calls[0][1].status).toBe(
+      expect(statusWrites()[0][1].status).toBe(
         WhatsappConnectionStatus.CONNECTED,
       );
 
@@ -902,7 +951,7 @@ describe('WhatsappWebhookService', () => {
       await service.processEnvelope(
         accountUpdateEnvelope({ event: 'PARTNER_ADDED' }),
       );
-      expect(repo.update).not.toHaveBeenCalled();
+      expect(statusWrites()).toHaveLength(0);
     });
 
     // Guessing a status from an unknown string is how an agent silently loses a number.
@@ -940,7 +989,7 @@ describe('WhatsappWebhookService', () => {
         }),
       );
 
-      expect(repo.update.mock.calls[0][0]).toEqual({ id: 'conn-b' });
+      expect(statusWrites()[0][0]).toMatchObject({ id: 'conn-b' });
     });
 
     it('refuses to guess when several numbers share a WABA and none matches', async () => {
@@ -982,7 +1031,7 @@ describe('WhatsappWebhookService', () => {
         }),
       );
 
-      expect(repo.update.mock.calls[0][1].status).toBe(
+      expect(statusWrites()[0][1].status).toBe(
         WhatsappConnectionStatus.DISCONNECTED,
       );
     });
@@ -1000,7 +1049,7 @@ describe('WhatsappWebhookService', () => {
         accountUpdateEnvelope({ event: 'ACCOUNT_RECONNECTED' }),
       );
 
-      expect(repo.update).not.toHaveBeenCalled();
+      expect(statusWrites()).toHaveLength(0);
     });
 
     // Once disconnected, only pressing Connect again brings it back, never a Meta lifecycle event.
@@ -1025,7 +1074,7 @@ describe('WhatsappWebhookService', () => {
         accountUpdateEnvelope({ event: 'PARTNER_REMOVED' }),
       );
 
-      expect(repo.update.mock.calls[0][0]).toEqual({ id: 'conn-live' });
+      expect(statusWrites()[0][0]).toMatchObject({ id: 'conn-live' });
     });
 
     it('leaves a FLAGGED row unchanged on ACCOUNT_OFFBOARDED, requiring CONNECTED in the update criteria', async () => {
@@ -1035,15 +1084,18 @@ describe('WhatsappWebhookService', () => {
           disconnectReason: 'token_invalid_190',
         }),
       ]);
-      repo.update.mockResolvedValue({ affected: 0 });
+      repo.update
+        .mockResolvedValueOnce({ affected: 1 })
+        .mockResolvedValue({ affected: 0 });
 
       await service.processEnvelope(
         accountUpdateEnvelope({ event: 'ACCOUNT_OFFBOARDED' }),
       );
 
-      expect(repo.update.mock.calls[0][0]).toEqual({
+      expect(statusWrites()[0][0]).toEqual({
         id: 'conn-1',
         status: WhatsappConnectionStatus.CONNECTED,
+        lifecycleEventAt: expect.anything(),
       });
     });
 
@@ -1054,16 +1106,185 @@ describe('WhatsappWebhookService', () => {
           disconnectReason: 'token_invalid_190',
         }),
       ]);
-      repo.update.mockResolvedValue({ affected: 0 });
+      repo.update
+        .mockResolvedValueOnce({ affected: 1 })
+        .mockResolvedValue({ affected: 0 });
 
       await service.processEnvelope(
         accountUpdateEnvelope({ event: 'ACCOUNT_RECONNECTED' }),
       );
 
-      expect(repo.update.mock.calls[0][0]).toEqual({
+      expect(statusWrites()[0][0]).toEqual({
         id: 'conn-1',
         status: WhatsappConnectionStatus.FLAGGED,
         disconnectReason: 'ACCOUNT_OFFBOARDED',
+        lifecycleEventAt: expect.anything(),
+      });
+    });
+
+    describe('stale lifecycle events', () => {
+      const timedEnvelope = (event: string, time?: number) => ({
+        object: 'whatsapp_business_account',
+        entry: [
+          {
+            id: 'waba-1',
+            time,
+            changes: [{ field: 'account_update', value: { event } }],
+          },
+        ],
+      });
+
+      it.each([
+        ['PARTNER_REMOVED', WhatsappConnectionStatus.CONNECTED],
+        ['ACCOUNT_OFFBOARDED', WhatsappConnectionStatus.CONNECTED],
+        ['ACCOUNT_RECONNECTED', WhatsappConnectionStatus.FLAGGED],
+        ['PARTNER_ADDED', WhatsappConnectionStatus.PENDING],
+      ])(
+        '%s stamps entry.time and guards the write on it',
+        async (event, status) => {
+          repo.find.mockResolvedValue([
+            rowFor({ status, disconnectReason: 'ACCOUNT_OFFBOARDED' }),
+          ]);
+
+          await service.processEnvelope(timedEnvelope(event, 1743451903));
+
+          const eventAt = new Date(1743451903 * 1000);
+          const guard = Or(IsNull(), LessThanOrEqual(eventAt));
+          expect(repo.update.mock.calls[0]).toEqual([
+            { id: 'conn-1', lifecycleEventAt: guard },
+            { lifecycleEventAt: eventAt },
+          ]);
+          const [where, patch] = statusWrites()[0];
+          expect(patch.lifecycleEventAt).toEqual(eventAt);
+          expect(where.lifecycleEventAt).toEqual(guard);
+        },
+      );
+
+      it('falls back to now when the entry carries no time', async () => {
+        repo.find.mockResolvedValue([rowFor()]);
+        const before = Date.now();
+
+        await service.processEnvelope(timedEnvelope('PARTNER_REMOVED'));
+
+        const stamped = repo.update.mock.calls[0][1].lifecycleEventAt as Date;
+        expect(stamped.getTime()).toBeGreaterThanOrEqual(before);
+      });
+
+      it('ignores and logs an event older than the last applied one', async () => {
+        repo.find.mockResolvedValue([rowFor()]);
+        repo.update.mockResolvedValue({ affected: 0 });
+        const log = jest
+          .spyOn(
+            (service as unknown as { logger: { log: jest.Mock } }).logger,
+            'log',
+          )
+          .mockImplementation(() => undefined);
+        const warn = jest
+          .spyOn(
+            (service as unknown as { logger: { warn: jest.Mock } }).logger,
+            'warn',
+          )
+          .mockImplementation(() => undefined);
+
+        await expect(
+          service.processEnvelope(timedEnvelope('PARTNER_REMOVED', 1)),
+        ).resolves.toBeUndefined();
+
+        expect(repo.update).toHaveBeenCalledTimes(1);
+        expect(
+          log.mock.calls.some((c) => String(c[0]).includes('stale')),
+        ).toBe(true);
+        expect(warn).not.toHaveBeenCalled();
+      });
+
+      // Evaluates update criteria against one in-memory row, like Postgres would.
+      const statefulRow = (overrides: Partial<WhatsappConnection>) => {
+        const row = rowFor(overrides);
+        repo.find.mockImplementation(async () =>
+          row.status === WhatsappConnectionStatus.DISCONNECTED ? [] : [row],
+        );
+        repo.update.mockImplementation(
+          async (
+            where: Record<string, unknown>,
+            patch: Partial<WhatsappConnection>,
+          ) => {
+            const eventAt = patch.lifecycleEventAt as Date;
+            const matches = Object.entries(where).every(([key, value]) =>
+              key === 'lifecycleEventAt'
+                ? !row.lifecycleEventAt ||
+                  row.lifecycleEventAt.getTime() <= eventAt.getTime()
+                : (row as unknown as Record<string, unknown>)[key] === value,
+            );
+            if (!matches) return { affected: 0 };
+            Object.assign(row, patch);
+            return { affected: 1 };
+          },
+        );
+        return row;
+      };
+      const T1 = 1743451903;
+
+      it('keeps the row CONNECTED when RECONNECTED(T2) is processed before OFFBOARDED(T1)', async () => {
+        const row = statefulRow({ lifecycleEventAt: null });
+
+        await service.processEnvelope(timedEnvelope('ACCOUNT_RECONNECTED', T1 + 5));
+        await service.processEnvelope(timedEnvelope('ACCOUNT_OFFBOARDED', T1));
+
+        expect(row.status).toBe(WhatsappConnectionStatus.CONNECTED);
+        expect(row.lifecycleEventAt).toEqual(new Date((T1 + 5) * 1000));
+      });
+
+      it('ignores an older PARTNER_REMOVED after a no-op PARTNER_ADDED', async () => {
+        const row = statefulRow({ lifecycleEventAt: null });
+
+        await service.processEnvelope(timedEnvelope('PARTNER_ADDED', T1 + 5));
+        await service.processEnvelope(timedEnvelope('PARTNER_REMOVED', T1));
+
+        expect(row.status).toBe(WhatsappConnectionStatus.CONNECTED);
+      });
+
+      it('ignores a retried PARTNER_REMOVED after a signup reconnect, even in the same second', async () => {
+        // Signup stamps a millisecond now(); Meta's entry.time is whole seconds.
+        const row = statefulRow({
+          lifecycleEventAt: new Date(T1 * 1000 + 500),
+        });
+
+        await service.processEnvelope(timedEnvelope('PARTNER_REMOVED', T1), true);
+
+        expect(row.status).toBe(WhatsappConnectionStatus.CONNECTED);
+      });
+
+      it('still applies a genuine later event after a signup reconnect', async () => {
+        const row = statefulRow({
+          lifecycleEventAt: new Date(T1 * 1000 + 500),
+        });
+
+        await service.processEnvelope(timedEnvelope('PARTNER_REMOVED', T1 + 1));
+
+        expect(row.status).toBe(WhatsappConnectionStatus.DISCONNECTED);
+      });
+
+      it('applies a retried event whose claim landed but whose transition write failed', async () => {
+        jest
+          .spyOn(
+            (service as unknown as { logger: { error: jest.Mock } }).logger,
+            'error',
+          )
+          .mockImplementation(() => undefined);
+        const row = statefulRow({ lifecycleEventAt: null });
+        const realUpdate = repo.update.getMockImplementation()!;
+        repo.update
+          .mockImplementationOnce(realUpdate)
+          .mockImplementationOnce(async () => {
+            throw new Error('db blip');
+          });
+
+        await expect(
+          service.processEnvelope(timedEnvelope('PARTNER_REMOVED', T1)),
+        ).rejects.toThrow('db blip');
+        await service.processEnvelope(timedEnvelope('PARTNER_REMOVED', T1), true);
+
+        expect(row.status).toBe(WhatsappConnectionStatus.DISCONNECTED);
       });
     });
 
