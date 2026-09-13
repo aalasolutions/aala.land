@@ -9,6 +9,7 @@ import { BillingModule } from '../billing/billing.module';
 import { UserReassignmentService } from './reassignment/user-reassignment.service';
 import { StrandedWhatsappRowsCron } from './reassignment/stranded-whatsapp-rows.cron';
 import { WhatsappModule } from '../whatsapp/whatsapp.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { WhatsappModule } from '../whatsapp/whatsapp.module';
     EmailModule,
     BillingModule,
     WhatsappModule,
+    NotificationsModule,
   ],
   controllers: [UsersController],
   providers: [UsersService, UserReassignmentService, StrandedWhatsappRowsCron],

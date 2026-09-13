@@ -41,6 +41,7 @@ export class NotificationsGateway
       const payload = await this.jwtService.verifyAsync<{
         sub: string;
         companyId: string;
+        exp?: number;
       }>(token);
       const user = await this.usersRepository.findOne({
         where: {
@@ -59,6 +60,11 @@ export class NotificationsGateway
         throw new UnauthorizedException('User no longer exists or is inactive');
       }
 
+      client.data = {
+        userId: user.id,
+        companyId: user.companyId,
+        tokenExp: payload.exp,
+      };
       client.join(`user_${user.id}`);
       client.join(`company_${user.companyId}`);
       this.logger.log(
@@ -75,6 +81,14 @@ export class NotificationsGateway
 
   handleDisconnect(client: Socket) {
     this.logger.log(`Client disconnected: ${client.id}`);
+  }
+
+  disconnectUser(userId: string) {
+    this.server?.in(`user_${userId}`).disconnectSockets(true);
+  }
+
+  disconnectCompany(companyId: string) {
+    this.server?.in(`company_${companyId}`).disconnectSockets(true);
   }
 
   sendNotificationToUser(userId: string, notification: any) {

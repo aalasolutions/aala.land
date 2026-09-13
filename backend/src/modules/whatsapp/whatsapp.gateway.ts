@@ -46,7 +46,10 @@ export class WhatsappGateway
       if (typeof token !== 'string' || !token.trim()) {
         throw new Error('Missing socket auth token');
       }
-      const payload = await this.jwtService.verifyAsync<{ sub: string }>(token);
+      const payload = await this.jwtService.verifyAsync<{
+        sub: string;
+        exp?: number;
+      }>(token);
 
       const user = await this.usersRepo.findOne({
         where: { id: payload.sub },
@@ -62,8 +65,13 @@ export class WhatsappGateway
       });
       if (!company?.isActive) throw new Error('Company inactive or not found');
 
-      socket.data.userId = payload.sub;
-      socket.join('user:' + payload.sub);
+      socket.data = {
+        userId: payload.sub,
+        companyId: user.companyId,
+        tokenExp: payload.exp,
+      };
+      await socket.join('user:' + payload.sub);
+      socket.emit('whatsapp:ready', { recovered: socket.recovered });
       this.logger.debug(
         `Socket ${socket.id} authenticated and joined room user:${payload.sub}`,
       );
@@ -78,6 +86,10 @@ export class WhatsappGateway
 
   handleDisconnect(socket: Socket) {
     this.logger.log(`WhatsApp socket disconnected: ${socket.id}`);
+  }
+
+  disconnectUser(userId: string) {
+    this.server?.in('user:' + userId).disconnectSockets(true);
   }
 
   emitStatus(userId: string, data: Record<string, unknown>) {

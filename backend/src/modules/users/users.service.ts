@@ -38,6 +38,8 @@ import {
 import { BillingService, SeatReservation } from '../billing/billing.service';
 import { UserReassignmentService } from './reassignment/user-reassignment.service';
 import { WhatsappSignupService } from '../whatsapp/whatsapp-signup.service';
+import { WhatsappGateway } from '../whatsapp/whatsapp.gateway';
+import { NotificationsGateway } from '../notifications/notifications.gateway';
 import { ReassignmentReport } from './reassignment/reassignment-report';
 import { errorMessage } from '@shared/utils/error.util';
 import {
@@ -62,6 +64,8 @@ export class UsersService {
     private readonly billingService: BillingService,
     private readonly reassignmentService: UserReassignmentService,
     private readonly whatsappSignupService: WhatsappSignupService,
+    private readonly whatsappGateway: WhatsappGateway,
+    private readonly notificationsGateway: NotificationsGateway,
     @Optional()
     @Inject(OWNERSHIP_TRANSFER_RECORDER)
     private readonly transferRecorder?: OwnershipTransferRecorder,
@@ -602,11 +606,26 @@ export class UsersService {
     return report;
   }
 
+  // Server-initiated disconnect is not recoverable, so no session is saved for replay.
+  private disconnectLiveSockets(userId: string): void {
+    for (const gateway of [this.whatsappGateway, this.notificationsGateway]) {
+      try {
+        gateway.disconnectUser(userId);
+      } catch (err) {
+        this.logger.error(
+          `Live sockets not disconnected for removed user ${userId}`,
+          errorMessage(err),
+        );
+      }
+    }
+  }
+
   // Disconnects the seat outside the lock and tells Meta to stop sending its webhooks; chats stay with the agent.
   private async disconnectWhatsappAfterRemoval(
     companyId: string | null,
     report: ReassignmentReport,
   ): Promise<void> {
+    this.disconnectLiveSockets(report.fromUserId);
     if (!companyId) return;
     try {
       await this.whatsappSignupService.disconnect(

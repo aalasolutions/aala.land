@@ -100,6 +100,11 @@ import { WA_AI_DEBOUNCE_QUEUE, WA_WEBHOOK_EVENTS_QUEUE } from './wa-types';
     WhatsappAiDebounceProcessor,
     WhatsappWebhookProcessor,
   ],
-  exports: [WhatsappService, WhatsappSignupService, MessageStoreService],
+  exports: [
+    WhatsappService,
+    WhatsappSignupService,
+    MessageStoreService,
+    WhatsappGateway,
+  ],
 })
 export class WhatsappModule {}

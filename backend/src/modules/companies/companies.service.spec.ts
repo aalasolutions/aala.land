@@ -12,6 +12,8 @@ import { Company } from './entities/company.entity';
 import { User } from '../users/entities/user.entity';
 import { Role } from '@shared/enums/roles.enum';
 import { BillingService } from '../billing/billing.service';
+import { WhatsappGateway } from '../whatsapp/whatsapp.gateway';
+import { NotificationsGateway } from '../notifications/notifications.gateway';
 
 describe('CompaniesService', () => {
   let module: TestingModule;
@@ -73,6 +75,11 @@ describe('CompaniesService', () => {
           useValue: {
             ensureCompanyCustomer: jest.fn().mockResolvedValue('cus_test'),
           },
+        },
+        { provide: WhatsappGateway, useValue: { disconnectUser: jest.fn() } },
+        {
+          provide: NotificationsGateway,
+          useValue: { disconnectCompany: jest.fn() },
         },
       ],
     }).compile();
@@ -169,6 +176,82 @@ describe('CompaniesService', () => {
       });
 
       expect(result.name).toBe('Updated Name');
+    });
+
+    describe('live socket disconnect on deactivation', () => {
+      let whatsappGateway: { disconnectUser: jest.Mock };
+      let notificationsGateway: { disconnectCompany: jest.Mock };
+
+      beforeEach(() => {
+        whatsappGateway = module.get(WhatsappGateway);
+        notificationsGateway = module.get(NotificationsGateway);
+        repo.save.mockImplementation(async (c) => c as Company);
+        userRepo.find.mockResolvedValue([
+          { id: 'user-a' },
+          { id: 'user-b' },
+        ] as User[]);
+      });
+
+      it('disconnects both namespaces when the company goes inactive', async () => {
+        repo.findOne.mockResolvedValue({ ...mockCompany, isActive: true });
+
+        await service.update(
+          'company-uuid-1',
+          { isActive: false },
+          Role.SUPER_ADMIN,
+        );
+
+        expect(notificationsGateway.disconnectCompany).toHaveBeenCalledWith(
+          'company-uuid-1',
+        );
+        expect(userRepo.find).toHaveBeenCalledWith({
+          where: { companyId: 'company-uuid-1', deletedAt: IsNull() },
+          select: { id: true },
+        });
+        expect(whatsappGateway.disconnectUser).toHaveBeenCalledWith('user-a');
+        expect(whatsappGateway.disconnectUser).toHaveBeenCalledWith('user-b');
+        expect(
+          notificationsGateway.disconnectCompany.mock.invocationCallOrder[0],
+        ).toBeGreaterThan(repo.save.mock.invocationCallOrder[0]);
+      });
+
+      it.each([
+        ['stays active', true, true],
+        ['is already inactive', false, false],
+      ])(
+        'does not disconnect when the company %s',
+        async (_name, before, after) => {
+          repo.findOne.mockResolvedValue({ ...mockCompany, isActive: before });
+
+          await service.update(
+            'company-uuid-1',
+            { isActive: after },
+            Role.SUPER_ADMIN,
+          );
+
+          expect(notificationsGateway.disconnectCompany).not.toHaveBeenCalled();
+          expect(whatsappGateway.disconnectUser).not.toHaveBeenCalled();
+        },
+      );
+
+      it('still returns the saved company when a disconnect throws', async () => {
+        repo.findOne.mockResolvedValue({ ...mockCompany, isActive: true });
+        notificationsGateway.disconnectCompany.mockImplementation(() => {
+          throw new Error('adapter down');
+        });
+        whatsappGateway.disconnectUser.mockImplementation(() => {
+          throw new Error('adapter down');
+        });
+
+        await expect(
+          service.update(
+            'company-uuid-1',
+            { isActive: false },
+            Role.SUPER_ADMIN,
+          ),
+        ).resolves.toMatchObject({ id: 'company-uuid-1', isActive: false });
+        expect(whatsappGateway.disconnectUser).toHaveBeenCalled();
+      });
     });
 
     it('throws ForbiddenException for restricted fields when ADMIN role', async () => {
