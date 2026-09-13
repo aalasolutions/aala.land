@@ -165,10 +165,7 @@ export class NotificationsService {
   // ---- Send methods (existing) ----
 
   async send(dto: SendNotificationDto): Promise<NotificationResult> {
-    if (dto.channel === NotificationChannel.EMAIL) {
-      return this.sendEmail(dto);
-    }
-    return this.sendSms(dto);
+    return this.sendEmail(dto);
   }
 
   private async sendEmail(
@@ -484,71 +481,6 @@ export class NotificationsService {
     });
 
     return { data };
-  }
-
-  private async sendSms(dto: SendNotificationDto): Promise<NotificationResult> {
-    if (!dto.phone) {
-      throw new BadRequestException('phone is required for SMS channel');
-    }
-
-    const accountSid = envString('TWILIO_ACCOUNT_SID');
-    const authToken = envString('TWILIO_AUTH_TOKEN');
-    const fromNumber = envString('TWILIO_FROM_NUMBER');
-
-    if (!accountSid || !authToken || !fromNumber) {
-      this.logger.warn('Twilio credentials not configured. SMS not sent.');
-      return {
-        channel: NotificationChannel.SMS,
-        recipient: dto.phone,
-        status: NotificationStatus.QUEUED,
-        error: 'Twilio not configured',
-      };
-    }
-
-    try {
-      const credentials = Buffer.from(`${accountSid}:${authToken}`).toString(
-        'base64',
-      );
-      const response = await fetch(
-        `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`,
-        {
-          method: 'POST',
-          headers: {
-            Authorization: `Basic ${credentials}`,
-            'Content-Type': 'application/x-www-form-urlencoded',
-          },
-          body: new URLSearchParams({
-            To: dto.phone,
-            From: fromNumber,
-            Body: dto.body,
-          }).toString(),
-        },
-      );
-
-      if (!response.ok) {
-        const err = await response.text();
-        throw new Error(err);
-      }
-
-      const data = (await response.json()) as { sid: string };
-      this.logger.log(`SMS sent to ${dto.phone}, SID: ${data.sid}`);
-
-      return {
-        channel: NotificationChannel.SMS,
-        recipient: dto.phone,
-        status: NotificationStatus.SENT,
-        externalId: data.sid,
-      };
-    } catch (err) {
-      const message = errorMessage(err);
-      this.logger.error(`SMS send failed for ${dto.phone}: ${message}`);
-      return {
-        channel: NotificationChannel.SMS,
-        recipient: dto.phone,
-        status: NotificationStatus.FAILED,
-        error: message,
-      };
-    }
   }
 
   private async findAdminsByCompanyIds(
