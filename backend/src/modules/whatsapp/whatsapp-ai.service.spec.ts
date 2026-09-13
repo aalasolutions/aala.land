@@ -1063,6 +1063,44 @@ describe('WhatsappAiService', () => {
     });
   });
 
+  describe('generation params from env', () => {
+    beforeEach(() => {
+      process.env.OLLAMA_API_KEY = 'test-key';
+      process.env.OLLAMA_HOST = 'http://localhost:11434';
+      process.env.OLLAMA_MODEL = 'test-model';
+      process.env.AI_DEBOUNCE_MS = '100';
+      global.fetch = jest
+        .fn()
+        .mockImplementation(() =>
+          Promise.resolve(mockTextResponse('reply')),
+        ) as any;
+    });
+
+    afterEach(() => {
+      delete process.env.AI_TEMPERATURE;
+      delete process.env.AI_TOP_P;
+    });
+
+    it('falls back to 0.7/0.9 when AI_TEMPERATURE and AI_TOP_P are malformed', async () => {
+      process.env.AI_TEMPERATURE = 'not-a-number';
+      process.env.AI_TOP_P = 'not-a-number';
+
+      await incoming(
+        baseEvt(),
+        'company-1',
+        'user-1',
+        jest.fn().mockResolvedValue({}),
+      );
+      await jest.runAllTimersAsync();
+
+      const body = JSON.parse(
+        (global.fetch as jest.Mock).mock.calls[0][1].body,
+      );
+      expect(body.temperature).toBe(0.7);
+      expect(body.top_p).toBe(0.9);
+    });
+  });
+
   describe('credit usage reads', () => {
     it('returns the usage summary and reads the company WITHOUT the 40-unit join', async () => {
       const mockRepo = makeMockRepo(null, SubscriptionTier.PRO);

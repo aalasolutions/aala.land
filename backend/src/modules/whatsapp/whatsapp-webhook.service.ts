@@ -25,9 +25,10 @@ import {
 } from './wa-types';
 import { WebhookVerifyDto } from './dto/webhook-payload.dto';
 import { errorMessage } from '@shared/utils/error.util';
+import { envString } from '@shared/utils/env.util';
 
 // Webhook tracing is noisy and can echo customer identifiers, so it stays off in production.
-const VERBOSE_WEBHOOK_LOGS = process.env.NODE_ENV !== 'production';
+const VERBOSE_WEBHOOK_LOGS = envString('NODE_ENV') !== 'production';
 
 interface CloudWebhookEnvelope {
   entry?: WebhookEntry[];
@@ -93,7 +94,7 @@ export class WhatsappWebhookService {
   ) {}
 
   verifyWebhook(query: WebhookVerifyDto): string {
-    const expected = process.env.WHATSAPP_VERIFY_TOKEN;
+    const expected = envString('WHATSAPP_VERIFY_TOKEN');
     if (!expected) {
       this.logger.error('WHATSAPP_VERIFY_TOKEN is not set; refusing handshake');
       throw new ForbiddenException();
@@ -115,7 +116,7 @@ export class WhatsappWebhookService {
     signature: string | undefined,
   ): Promise<{ received: true }> {
     if (!rawBody || rawBody.length === 0) throw new BadRequestException();
-    const appSecret = process.env.WHATSAPP_APP_SECRET;
+    const appSecret = envString('WHATSAPP_APP_SECRET');
     if (!appSecret) {
       this.logger.error('WHATSAPP_APP_SECRET is not set; rejecting webhook');
       throw new ForbiddenException();

@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { createCipheriv, createDecipheriv, randomBytes } from 'crypto';
 import { errorMessage } from '@shared/utils/error.util';
 import { isValidEncryptionKey } from '@shared/utils/encryption-key.util';
+import { envString } from '@shared/utils/env.util';
 
 // Format v1.<iv b64>.<tag b64>.<ciphertext b64>; base64 has no dot, so the split is unambiguous.
 const VERSION = 'v1';
@@ -95,7 +96,7 @@ export class EncryptionService {
 
   // Single key, no key id in v1: rotating the key invalidates every stored secret.
   private readKey(): Buffer | null {
-    const raw = process.env[KEY_ENV];
+    const raw = envString(KEY_ENV);
     if (!isValidEncryptionKey(raw)) return null;
     return Buffer.from(raw as string, 'base64');
   }

@@ -11,6 +11,7 @@ import { WhatsappAiService, SendFn, MarkReadFn } from './whatsapp-ai.service';
 import { GRAPH_VERSION, WaMessage } from './wa-types';
 import { EncryptionService } from '../encryption/encryption.service';
 import { errorMessage } from '@shared/utils/error.util';
+import { envInt } from '@shared/utils/env.util';
 
 const DEFAULT_SEND_TIMEOUT_MS = 15000;
 
@@ -63,13 +64,7 @@ export class WhatsappCloudApiService {
   }
 
   private resolveTimeoutMs(): number {
-    const parsed = parseInt(
-      process.env.WHATSAPP_SEND_TIMEOUT_MS ?? String(DEFAULT_SEND_TIMEOUT_MS),
-      10,
-    );
-    return Number.isFinite(parsed) && parsed > 0
-      ? parsed
-      : DEFAULT_SEND_TIMEOUT_MS;
+    return envInt('WHATSAPP_SEND_TIMEOUT_MS', DEFAULT_SEND_TIMEOUT_MS, 1);
   }
 
   async sendText(

@@ -11,6 +11,7 @@ import { User } from '../users/entities/user.entity';
 import { Region, resolveRegions } from '@shared/constants/regions';
 import { seesAllRegions } from '@shared/utils/region-visibility.util';
 import { isWhatsappConfigured } from '@shared/utils/whatsapp-config.util';
+import { envString } from '@shared/utils/env.util';
 import { RegisterDto } from './dto/register.dto';
 import { Role } from '@shared/enums/roles.enum';
 import { SubscriptionTier } from '../companies/entities/company.entity';
@@ -286,7 +287,7 @@ export class AuthService {
 
       await this.usersService.updateResetToken(user.id, token, expires);
 
-      const appUrl = (process.env.APP_URL || 'http://localhost:4200').replace(
+      const appUrl = envString('APP_URL', 'http://localhost:4200').replace(
         /\/$/,
         '',
       );

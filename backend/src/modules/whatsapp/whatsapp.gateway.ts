@@ -12,15 +12,12 @@ import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { errorMessage } from '@shared/utils/error.util';
+import { envList } from '@shared/utils/env.util';
 import { User } from '../users/entities/user.entity';
 import { Company } from '../companies/entities/company.entity';
 import { WaMessage } from './wa-types';
 
-const corsOrigins = process.env.CORS_ORIGIN
-  ? process.env.CORS_ORIGIN.split(',')
-      .map((o) => o.trim())
-      .filter(Boolean)
-  : ['http://localhost:4200'];
+const corsOrigins = envList('CORS_ORIGIN', ['http://localhost:4200']);
 
 @WebSocketGateway({
   namespace: 'whatsapp',

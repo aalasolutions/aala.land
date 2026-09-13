@@ -1,4 +1,5 @@
 import { isValidEncryptionKey } from './encryption-key.util';
+import { envString } from './env.util';
 
 const REQUIRED_VARS = [
   'WHATSAPP_APP_ID',
@@ -11,6 +12,6 @@ const KEY_ENV = 'WHATSAPP_TOKEN_ENC_KEY';
 
 /** True iff WhatsApp env is fully configured; never reveals which variable is missing. */
 export function isWhatsappConfigured(): boolean {
-  const allSet = REQUIRED_VARS.every((name) => !!process.env[name]?.trim());
-  return allSet && isValidEncryptionKey(process.env[KEY_ENV]?.trim());
+  const allSet = REQUIRED_VARS.every((name) => !!envString(name));
+  return allSet && isValidEncryptionKey(envString(KEY_ENV));
 }

@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import * as nodemailer from 'nodemailer';
 import { errorMessage } from '@shared/utils/error.util';
+import { envString, envInt, envBool } from '@shared/utils/env.util';
 
 export interface MailOptions {
   to: string;
@@ -15,13 +16,15 @@ export class MailService {
   private readonly smtpTransporter: nodemailer.Transporter | null = null;
 
   constructor() {
-    if (process.env.SMTP_HOST) {
+    const smtpHost = envString('SMTP_HOST');
+    if (smtpHost) {
+      const smtpUser = envString('SMTP_USER');
       this.smtpTransporter = nodemailer.createTransport({
-        host: process.env.SMTP_HOST,
-        port: Number(process.env.SMTP_PORT) || 587,
-        secure: process.env.SMTP_SECURE?.toLowerCase() === 'true',
-        auth: process.env.SMTP_USER
-          ? { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS }
+        host: smtpHost,
+        port: envInt('SMTP_PORT', 587, 1),
+        secure: envBool('SMTP_SECURE', false),
+        auth: smtpUser
+          ? { user: smtpUser, pass: envString('SMTP_PASS') }
           : undefined,
       });
     }
@@ -32,7 +35,7 @@ export class MailService {
       ...options,
       subject: options.subject.replace(/[\r\n]+/g, ' ').trim(),
     };
-    const sendgridKey = process.env.SENDGRID_API_KEY;
+    const sendgridKey = envString('SENDGRID_API_KEY');
 
     if (sendgridKey) {
       await this.sendViaSendGrid(safe, sendgridKey);
@@ -49,8 +52,8 @@ export class MailService {
     options: MailOptions,
     apiKey: string,
   ): Promise<void> {
-    const from = process.env.SENDGRID_FROM_EMAIL || 'noreply@aala.land';
-    const fromName = process.env.MAIL_FROM_NAME || 'AALA.LAND';
+    const from = envString('SENDGRID_FROM_EMAIL', 'noreply@aala.land');
+    const fromName = envString('MAIL_FROM_NAME', 'AALA.LAND');
 
     try {
       const response = await fetch('https://api.sendgrid.com/v3/mail/send', {
@@ -85,8 +88,8 @@ export class MailService {
   }
 
   private async sendViaSmtp(options: MailOptions): Promise<void> {
-    const fromName = process.env.MAIL_FROM_NAME || 'AALA.LAND';
-    const fromAddress = process.env.SMTP_FROM || 'noreply@aala.land';
+    const fromName = envString('MAIL_FROM_NAME', 'AALA.LAND');
+    const fromAddress = envString('SMTP_FROM', 'noreply@aala.land');
 
     try {
       await this.smtpTransporter!.sendMail({

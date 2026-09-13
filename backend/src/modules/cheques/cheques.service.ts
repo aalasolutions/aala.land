@@ -20,6 +20,7 @@ import {
 } from '../../shared/utils/region-visibility.util';
 import { paginationOptions } from '../../shared/utils/pagination.util';
 import { errorMessage } from '@shared/utils/error.util';
+import { envString } from '@shared/utils/env.util';
 import { Unit } from '../properties/entities/unit.entity';
 import { Company } from '../companies/entities/company.entity';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -507,7 +508,7 @@ export class ChequesService {
   private async runOcrExtraction(
     imageUrl: string,
   ): Promise<Record<string, unknown>> {
-    const apiKey = process.env.OCR_API_KEY;
+    const apiKey = envString('OCR_API_KEY');
 
     if (!apiKey) {
       this.logger.warn('OCR_API_KEY not configured. Returning empty OCR data.');

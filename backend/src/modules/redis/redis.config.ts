@@ -1,3 +1,5 @@
+import { envString } from '@shared/utils/env.util';
+
 export interface RedisConnectionOptions {
   host: string;
   port: number;
@@ -6,17 +8,15 @@ export interface RedisConnectionOptions {
 
 // Single source for every Redis consumer (BullMQ, the state store, the socket.io adapter).
 export function getRedisConnection(): RedisConnectionOptions {
-  const port = Number.parseInt(process.env.REDIS_PORT || '6470', 10);
+  const rawPort = envString('REDIS_PORT', '6470');
+  const port = Number.parseInt(rawPort, 10);
   if (!Number.isInteger(port)) {
-    throw new Error(
-      `REDIS_PORT must be an integer, got "${process.env.REDIS_PORT}"`,
-    );
+    throw new Error(`REDIS_PORT must be an integer, got "${rawPort}"`);
   }
+  const password = envString('REDIS_PASSWORD');
   return {
-    host: process.env.REDIS_HOST || 'localhost',
+    host: envString('REDIS_HOST', 'localhost'),
     port,
-    ...(process.env.REDIS_PASSWORD
-      ? { password: process.env.REDIS_PASSWORD }
-      : {}),
+    ...(password ? { password } : {}),
   };
 }

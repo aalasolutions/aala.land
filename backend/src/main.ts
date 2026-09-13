@@ -9,6 +9,7 @@ import { AppDataSource } from './data-source';
 import { RedisIoAdapter } from './shared/adapters/redis-io.adapter';
 import { RedisService } from './modules/redis/redis.service';
 import { NestExpressApplication } from '@nestjs/platform-express';
+import { envList, envBool, envString, envInt } from '@shared/utils/env.util';
 
 async function bootstrap() {
   // Initialize TypeORM DataSource before NestJS app
@@ -32,9 +33,7 @@ async function bootstrap() {
 
   // CORS - restrict to configured origins in production
   app.enableCors({
-    origin: process.env.CORS_ORIGIN
-      ? process.env.CORS_ORIGIN.split(',')
-      : ['http://localhost:4200'],
+    origin: envList('CORS_ORIGIN', ['http://localhost:4200']),
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true,
@@ -62,8 +61,7 @@ async function bootstrap() {
   // Disabled in production unless explicitly opted in, so the full API surface
   // (every route + DTO) is not published publicly at /docs and /docs-json.
   const swaggerEnabled =
-    process.env.ENABLE_SWAGGER === 'true' ||
-    process.env.NODE_ENV !== 'production';
+    envBool('ENABLE_SWAGGER', false) || envString('NODE_ENV') !== 'production';
   if (swaggerEnabled) {
     const config = new DocumentBuilder()
       .setTitle('AALA.LAND API')
@@ -77,7 +75,7 @@ async function bootstrap() {
     SwaggerModule.setup('docs', app, document);
   }
 
-  const port = process.env.PORT ?? 3010;
+  const port = envInt('PORT', 3010, 1);
   await app.listen(port);
   console.log(`AALA.LAND Backend is breathing on: http://localhost:${port}/v1`);
   if (swaggerEnabled) {

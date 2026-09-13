@@ -10,13 +10,10 @@ import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { errorMessage } from '@shared/utils/error.util';
+import { envList } from '@shared/utils/env.util';
 import { User } from '../users/entities/user.entity';
 
-const websocketCorsOrigins = process.env.CORS_ORIGIN
-  ? process.env.CORS_ORIGIN.split(',')
-      .map((origin) => origin.trim())
-      .filter(Boolean)
-  : ['http://localhost:4200'];
+const websocketCorsOrigins = envList('CORS_ORIGIN', ['http://localhost:4200']);
 
 @WebSocketGateway({
   cors: {

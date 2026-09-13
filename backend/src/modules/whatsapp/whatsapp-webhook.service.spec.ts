@@ -188,6 +188,17 @@ describe('WhatsappWebhookService', () => {
         }),
       ).toThrow(ForbiddenException);
     });
+
+    it('still verifies when the env value carries surrounding whitespace', () => {
+      process.env.WHATSAPP_VERIFY_TOKEN = `  ${VERIFY_TOKEN}\n`;
+      expect(
+        service.verifyWebhook({
+          'hub.mode': 'subscribe',
+          'hub.verify_token': VERIFY_TOKEN,
+          'hub.challenge': 'challenge-123',
+        }),
+      ).toBe('challenge-123');
+    });
   });
 
   describe('handleWebhook', () => {
@@ -243,6 +254,26 @@ describe('WhatsappWebhookService', () => {
         service.handleWebhook(rawBody, signature),
       ).rejects.toThrow(ForbiddenException);
       expect(queue.add).not.toHaveBeenCalled();
+    });
+
+    it('fails closed when the app secret is whitespace only', async () => {
+      process.env.WHATSAPP_APP_SECRET = '   ';
+      const { rawBody, signature } = signed(inboundEnvelope());
+      await expect(
+        service.handleWebhook(rawBody, signature),
+      ).rejects.toThrow(ForbiddenException);
+      expect(queue.add).not.toHaveBeenCalled();
+    });
+
+    it('still validates a correctly signed payload when the env secret carries a trailing newline', async () => {
+      process.env.WHATSAPP_APP_SECRET = `${APP_SECRET}\n`;
+      const envelope = inboundEnvelope();
+      const { rawBody, signature } = signed(envelope);
+
+      await expect(
+        service.handleWebhook(rawBody, signature),
+      ).resolves.toEqual({ received: true });
+      expect(queue.add).toHaveBeenCalledTimes(1);
     });
 
     it('rejects an empty body', async () => {

@@ -28,6 +28,7 @@ import {
   getCreditPeriod,
 } from '@shared/utils/ai-credit.util';
 import { errorMessage } from '@shared/utils/error.util';
+import { envString, envInt, envFloat, envBool } from '@shared/utils/env.util';
 import { SystemEmailService } from '@modules/email/system-email.service';
 import { Company } from '@modules/companies/entities/company.entity';
 
@@ -97,18 +98,12 @@ export class WhatsappAiService {
     return (await this.redis.getNumber(this.seqKey(userId, chatId))) ?? 0;
   }
 
-  // min is 0 only where zero is a meaningful setting rather than a typo.
-  private envInt(name: string, fallback: number, min = 1): number {
-    const parsed = parseInt(process.env[name] ?? '', 10);
-    return Number.isFinite(parsed) && parsed >= min ? parsed : fallback;
-  }
-
   getConfig(companyId: string) {
     return {
       enabled: this.isEnabled(companyId),
-      keyConfigured: !!process.env.OLLAMA_API_KEY,
-      model: process.env.OLLAMA_MODEL ?? '',
-      host: process.env.OLLAMA_HOST ?? '',
+      keyConfigured: !!envString('OLLAMA_API_KEY'),
+      model: envString('OLLAMA_MODEL', ''),
+      host: envString('OLLAMA_HOST', ''),
     };
   }
 
@@ -186,7 +181,7 @@ export class WhatsappAiService {
   isEnabled(companyId: string): boolean {
     if (this.enabledByCompany.has(companyId))
       return this.enabledByCompany.get(companyId)!;
-    return process.env.AI_ENABLED !== 'false';
+    return envBool('AI_ENABLED', true);
   }
 
   // Map miss means a fresh replica: load the stored toggle before gating, or a restart re-enables AI
@@ -306,17 +301,17 @@ export class WhatsappAiService {
     companyId: string,
     userId: string,
   ): Promise<void> {
-    if (!process.env.OLLAMA_API_KEY) return;
+    if (!envString('OLLAMA_API_KEY')) return;
     if (!(await this.isEnabledFor(companyId))) return;
     if (evt.fromMe || evt.isGroup || !(evt.body ?? '').trim()) return;
 
-    const maxAge = this.envInt('AI_MESSAGE_MAX_AGE_S', 120);
+    const maxAge = envInt('AI_MESSAGE_MAX_AGE_S', 120, 1);
     if (Math.floor(Date.now() / 1000) - evt.timestamp > maxAge) return;
 
-    const debounceMs = this.envInt('AI_DEBOUNCE_MS', 10000);
-    const maxDebounceMs = this.envInt('AI_DEBOUNCE_MAX_MS', 60000);
-    const maxPending = this.envInt('AI_PENDING_MAX', 20);
-    const maxBodyChars = this.envInt('AI_MESSAGE_MAX_CHARS', 4000);
+    const debounceMs = envInt('AI_DEBOUNCE_MS', 10000, 1);
+    const maxDebounceMs = envInt('AI_DEBOUNCE_MAX_MS', 60000, 1);
+    const maxPending = envInt('AI_PENDING_MAX', 20, 1);
+    const maxBodyChars = envInt('AI_MESSAGE_MAX_CHARS', 4000, 1);
     const pendKey = this.pendKey(userId, evt.chatId);
     const body = evt.body.slice(0, maxBodyChars);
 
@@ -419,7 +414,7 @@ export class WhatsappAiService {
     if (raw.length === 0) return;
 
     const pendKey = this.pendKey(data.userId, data.chatId);
-    const maxPending = this.envInt('AI_PENDING_MAX', 20);
+    const maxPending = envInt('AI_PENDING_MAX', 20, 1);
     // Appended, so a message that arrived while the turn was failing reads before these.
     for (const entry of raw) {
       if ((await this.redis.listLength(pendKey)) >= maxPending) {
@@ -437,8 +432,8 @@ export class WhatsappAiService {
   }
 
   private async scheduleRestoredTurn(data: DebounceJobData): Promise<void> {
-    const debounceMs = this.envInt('AI_DEBOUNCE_MS', 10000);
-    const maxDebounceMs = this.envInt('AI_DEBOUNCE_MAX_MS', 60000);
+    const debounceMs = envInt('AI_DEBOUNCE_MS', 10000, 1);
+    const maxDebounceMs = envInt('AI_DEBOUNCE_MAX_MS', 60000, 1);
     // Fresh id since the claim advanced the sequence; a job under it means one arrived during the failure.
     const jobId = this.jobIdFor(
       data.userId,
@@ -493,9 +488,9 @@ export class WhatsappAiService {
   ): Promise<void> {
     const lockKey = `wa:ai:lock:${key}`;
     const token = randomUUID();
-    const ttlMs = this.envInt('AI_LOCK_TTL_MS', 30000);
+    const ttlMs = envInt('AI_LOCK_TTL_MS', 30000, 1);
     // Seconds, not minutes: a longer wait pins a worker slot while the queue re-arms the turn anyway.
-    const waitMs = this.envInt('AI_LOCK_WAIT_MS', 20000);
+    const waitMs = envInt('AI_LOCK_WAIT_MS', 20000, 1);
 
     // Must throw, never return, so the processor's catch restores the buffer instead of deleting it.
     if (!(await this.acquireChatLock(lockKey, token, ttlMs, waitMs))) {
@@ -561,7 +556,7 @@ export class WhatsappAiService {
   ): Promise<boolean> {
     const lastReply = await this.redis.getNumber(this.humanKey(userId, chatId));
     if (lastReply === null) return false;
-    const silenceMs = this.envInt('AI_HUMAN_SILENCE_MINUTES', 20) * 60 * 1000;
+    const silenceMs = envInt('AI_HUMAN_SILENCE_MINUTES', 20, 1) * 60 * 1000;
     return Date.now() - lastReply < silenceMs;
   }
 
@@ -576,7 +571,7 @@ export class WhatsappAiService {
   ): Promise<boolean> {
     const lastReply = await this.redis.getNumber(this.humanKey(userId, chatId));
     if (lastReply === null) return false;
-    const silenceMs = this.envInt('AI_HUMAN_SILENCE_MINUTES', 20) * 60 * 1000;
+    const silenceMs = envInt('AI_HUMAN_SILENCE_MINUTES', 20, 1) * 60 * 1000;
     return Date.now() - lastReply < silenceMs || lastReply > flushStartedAt;
   }
 
@@ -786,9 +781,9 @@ export class WhatsappAiService {
     excludeWaIds: string[],
   ): Promise<AiHistoryMessage[]> {
     // Zero is the documented way to disable seeding, so it is allowed through.
-    const limit = this.envInt('AI_HISTORY_SEED_LIMIT', 20, 0);
+    const limit = envInt('AI_HISTORY_SEED_LIMIT', 20, 0);
     if (limit <= 0) return [];
-    const maxChars = this.envInt('AI_HISTORY_SEED_MAX_CHARS', 8000);
+    const maxChars = envInt('AI_HISTORY_SEED_MAX_CHARS', 8000, 1);
 
     try {
       const rows = await this.store.getChatHistory(
@@ -863,7 +858,7 @@ export class WhatsappAiService {
     chatId: string,
     history: AiHistoryMessage[],
   ): Promise<void> {
-    const limit = this.envInt('AI_HISTORY_LIMIT', 40);
+    const limit = envInt('AI_HISTORY_LIMIT', 40, 1);
     if (history.length > limit) history.splice(0, history.length - limit);
     await this.redis.setJson(
       this.histKey(userId, chatId),
@@ -876,19 +871,17 @@ export class WhatsappAiService {
     messages: AiHistoryMessage[],
     tools?: ToolDefinition[],
   ): Promise<ChatCompletion | null> {
-    const {
-      OLLAMA_HOST: host,
-      OLLAMA_API_KEY: key,
-      OLLAMA_MODEL: model,
-    } = process.env;
+    const host = envString('OLLAMA_HOST');
+    const key = envString('OLLAMA_API_KEY');
+    const model = envString('OLLAMA_MODEL');
     if (!host || !key || !model) return null;
 
-    const timeout = this.envInt('AI_REQUEST_TIMEOUT_MS', 300000);
+    const timeout = envInt('AI_REQUEST_TIMEOUT_MS', 300000, 1);
     // Zero means a single attempt, a legitimate setting.
-    const maxRetries = this.envInt('AI_MAX_RETRIES', 2, 0);
+    const maxRetries = envInt('AI_MAX_RETRIES', 2, 0);
     // Per-attempt timeouts alone let one turn hold a spent credit and the chat lock for
     // retries x timeout, so cap the whole call instead.
-    const budgetMs = this.envInt('AI_TOTAL_BUDGET_MS', 120000);
+    const budgetMs = envInt('AI_TOTAL_BUDGET_MS', 120000, 1);
     const deadline = Date.now() + budgetMs;
     const TRANSIENT_CODES = new Set([
       'EAI_AGAIN',
@@ -907,8 +900,8 @@ export class WhatsappAiService {
           model,
           messages,
           stream: true,
-          temperature: parseFloat(process.env.AI_TEMPERATURE ?? '0.7'),
-          top_p: parseFloat(process.env.AI_TOP_P ?? '0.9'),
+          temperature: envFloat('AI_TEMPERATURE', 0.7),
+          top_p: envFloat('AI_TOP_P', 0.9),
         };
         if (tools && tools.length > 0) body['tools'] = tools;
 

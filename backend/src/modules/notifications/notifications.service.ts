@@ -31,6 +31,7 @@ import { Role } from '../../shared/enums/roles.enum';
 import { paginationOptions } from '../../shared/utils/pagination.util';
 import { isUniqueViolation } from '../../shared/utils/name-normalization.util';
 import { errorMessage } from '@shared/utils/error.util';
+import { envString } from '@shared/utils/env.util';
 import { NotificationsGateway } from './notifications.gateway';
 
 export interface NotificationResult {
@@ -177,7 +178,7 @@ export class NotificationsService {
       throw new BadRequestException('email is required for EMAIL channel');
     }
 
-    const apiKey = process.env.SENDGRID_API_KEY;
+    const apiKey = envString('SENDGRID_API_KEY');
 
     if (!apiKey) {
       this.logger.warn('SENDGRID_API_KEY not configured. Email not sent.');
@@ -199,8 +200,8 @@ export class NotificationsService {
         body: JSON.stringify({
           personalizations: [{ to: [{ email: dto.email }] }],
           from: {
-            email: process.env.SENDGRID_FROM_EMAIL || 'noreply@aala.land',
-            name: process.env.MAIL_FROM_NAME || 'AALA.LAND',
+            email: envString('SENDGRID_FROM_EMAIL', 'noreply@aala.land'),
+            name: envString('MAIL_FROM_NAME', 'AALA.LAND'),
           },
           subject: dto.subject || 'Notification from AALA',
           content: [{ type: 'text/plain', value: dto.body }],
@@ -490,9 +491,9 @@ export class NotificationsService {
       throw new BadRequestException('phone is required for SMS channel');
     }
 
-    const accountSid = process.env.TWILIO_ACCOUNT_SID;
-    const authToken = process.env.TWILIO_AUTH_TOKEN;
-    const fromNumber = process.env.TWILIO_FROM_NUMBER;
+    const accountSid = envString('TWILIO_ACCOUNT_SID');
+    const authToken = envString('TWILIO_AUTH_TOKEN');
+    const fromNumber = envString('TWILIO_FROM_NUMBER');
 
     if (!accountSid || !authToken || !fromNumber) {
       this.logger.warn('Twilio credentials not configured. SMS not sent.');

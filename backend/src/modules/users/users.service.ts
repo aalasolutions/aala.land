@@ -28,6 +28,7 @@ import * as bcrypt from 'bcryptjs';
 import * as crypto from 'crypto';
 import { paginationOptions } from '../../shared/utils/pagination.util';
 import { getRoleLevel } from '../../shared/utils/auth.util';
+import { envString } from '../../shared/utils/env.util';
 import { SystemEmailService } from '../email/system-email.service';
 import { Role } from '../../shared/enums/roles.enum';
 import {
@@ -1075,7 +1076,7 @@ export class UsersService {
   ): Promise<void> {
     // Inviting a teammate is an ACCOUNT email, not tenant CRM outreach: it uses
     // the fixed system-branded template, never a company-editable one.
-    const appUrl = (process.env.APP_URL || 'http://localhost:4200').replace(
+    const appUrl = envString('APP_URL', 'http://localhost:4200').replace(
       /\/$/,
       '',
     );

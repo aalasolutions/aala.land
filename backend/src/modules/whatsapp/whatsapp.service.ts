@@ -27,6 +27,7 @@ import {
   WaMessage,
 } from './wa-types';
 import { errorMessage } from '@shared/utils/error.util';
+import { envString } from '@shared/utils/env.util';
 
 @Injectable()
 export class WhatsappService {
@@ -204,7 +205,7 @@ export class WhatsappService {
     await this.ai.persistEnabled(companyId, next);
     this.gateway.emitAi(userId, {
       enabled: next,
-      keyConfigured: !!process.env.OLLAMA_API_KEY,
+      keyConfigured: !!envString('OLLAMA_API_KEY'),
     });
     return { enabled: next };
   }

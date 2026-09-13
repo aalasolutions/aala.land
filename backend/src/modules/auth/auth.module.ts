@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { JwtModule } from '@nestjs/jwt';
+import { JwtModule, JwtSignOptions } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -14,6 +14,7 @@ import { Company } from '../companies/entities/company.entity';
 import { ImpersonateService } from './impersonate.service';
 import { LockModule } from '@modules/lock/lock.module';
 import { EmailModule } from '@modules/email/email.module';
+import { envString } from '@shared/utils/env.util';
 
 @Module({
   imports: [
@@ -28,7 +29,10 @@ import { EmailModule } from '@modules/email/email.module';
       useFactory: async (configService: ConfigService) => ({
         secret: configService.getOrThrow<string>('JWT_SECRET'),
         signOptions: {
-          expiresIn: '24h',
+          expiresIn: envString(
+            'JWT_EXPIRES_IN',
+            '24h',
+          ) as JwtSignOptions['expiresIn'],
         },
       }),
       inject: [ConfigService],

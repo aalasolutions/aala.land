@@ -25,6 +25,7 @@ import {
   reserveStorage,
 } from '@shared/utils/storage-quota.util';
 import { errorMessage } from '@shared/utils/error.util';
+import { envString } from '@shared/utils/env.util';
 import { SystemEmailService } from '../email/system-email.service';
 import { createReadStream } from 'fs';
 import { unlink } from 'fs/promises';
@@ -163,8 +164,8 @@ export class MediaService {
     if (!accessKeyId || !secretAccessKey) {
       throw new BadRequestException(`S3 is not configured. Set ${label}.`);
     }
-    const region = process.env.AWS_REGION ?? 'us-east-005';
-    const endpoint = process.env.S3_ENDPOINT;
+    const region = envString('AWS_REGION', 'us-east-005');
+    const endpoint = envString('S3_ENDPOINT');
     return new S3Client({
       region,
       credentials: { accessKeyId, secretAccessKey },
@@ -177,8 +178,8 @@ export class MediaService {
   private getMediaClient(): S3Client {
     if (!this.mediaClient) {
       this.mediaClient = this.buildClient(
-        process.env.AWS_ACCESS_KEY_ID,
-        process.env.AWS_SECRET_ACCESS_KEY,
+        envString('AWS_ACCESS_KEY_ID'),
+        envString('AWS_SECRET_ACCESS_KEY'),
         'AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY',
       );
     }
@@ -188,8 +189,8 @@ export class MediaService {
   private getDocumentsClient(): S3Client {
     if (!this.documentsClient) {
       this.documentsClient = this.buildClient(
-        process.env.AWS_DOCUMENTS_ACCESS_KEY_ID,
-        process.env.AWS_DOCUMENTS_SECRET_ACCESS_KEY,
+        envString('AWS_DOCUMENTS_ACCESS_KEY_ID'),
+        envString('AWS_DOCUMENTS_SECRET_ACCESS_KEY'),
         'AWS_DOCUMENTS_ACCESS_KEY_ID and AWS_DOCUMENTS_SECRET_ACCESS_KEY',
       );
     }
@@ -198,7 +199,7 @@ export class MediaService {
 
   // Public, property photos/thumbnails only.
   private getMediaBucket(): string {
-    const bucket = process.env.AWS_S3_BUCKET;
+    const bucket = envString('AWS_S3_BUCKET');
     if (!bucket)
       throw new BadRequestException('AWS_S3_BUCKET is not configured.');
     return bucket;
@@ -208,7 +209,7 @@ export class MediaService {
   // documents exclusively through DocumentsService.downloadStream, which
   // re-checks accessLevel before this bucket is touched.
   private getDocumentsBucket(): string {
-    const bucket = process.env.AWS_S3_DOCUMENTS_BUCKET;
+    const bucket = envString('AWS_S3_DOCUMENTS_BUCKET');
     if (!bucket)
       throw new BadRequestException(
         'AWS_S3_DOCUMENTS_BUCKET is not configured.',
@@ -230,8 +231,8 @@ export class MediaService {
   }
 
   private buildFileUrl(bucket: string, key: string): string {
-    const endpoint = process.env.S3_ENDPOINT;
-    const region = process.env.AWS_REGION ?? 'us-east-005';
+    const endpoint = envString('S3_ENDPOINT');
+    const region = envString('AWS_REGION', 'us-east-005');
     return endpoint
       ? `${endpoint}/${bucket}/${key}`
       : `https://${bucket}.s3.${region}.amazonaws.com/${key}`;

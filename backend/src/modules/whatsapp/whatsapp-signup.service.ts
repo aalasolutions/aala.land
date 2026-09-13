@@ -19,6 +19,7 @@ import { WhatsappService } from './whatsapp.service';
 import { ConnectWhatsappDto } from './dto/connect-whatsapp.dto';
 import { GRAPH_VERSION, WaConnectionInfo, WaSignupConfig } from './wa-types';
 import { errorMessage } from '@shared/utils/error.util';
+import { envString } from '@shared/utils/env.util';
 
 // The exchange code expires in 30s, so a request still running past 15s has already lost it.
 const SIGNUP_TIMEOUT_MS = 15000;
@@ -44,8 +45,8 @@ export class WhatsappSignupService {
   // Both values are public; served here so a config change never needs a frontend rebuild.
   getSignupConfig(): WaSignupConfig {
     return {
-      appId: process.env.WHATSAPP_APP_ID?.trim() || null,
-      configId: process.env.WHATSAPP_ES_CONFIG_ID?.trim() || null,
+      appId: envString('WHATSAPP_APP_ID') || null,
+      configId: envString('WHATSAPP_ES_CONFIG_ID') || null,
       graphVersion: GRAPH_VERSION,
     };
   }
@@ -56,8 +57,8 @@ export class WhatsappSignupService {
     companyId: string,
     dto: ConnectWhatsappDto,
   ): Promise<WaConnectionInfo> {
-    const appId = process.env.WHATSAPP_APP_ID?.trim();
-    const appSecret = process.env.WHATSAPP_APP_SECRET?.trim();
+    const appId = envString('WHATSAPP_APP_ID');
+    const appSecret = envString('WHATSAPP_APP_SECRET');
     if (!appId || !appSecret) {
       this.logger.error(
         'Embedded Signup attempted with WHATSAPP_APP_ID or WHATSAPP_APP_SECRET unset',
