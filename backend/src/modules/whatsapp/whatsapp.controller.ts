@@ -22,6 +22,7 @@ import { SendMessageDto } from './dto/send-message.dto';
 import { ConnectWhatsappDto } from './dto/connect-whatsapp.dto';
 import { WhatsappSignupService } from './whatsapp-signup.service';
 import { AuthenticatedRequest } from '@shared/interfaces/authenticated-request.interface';
+import { requireCompanyId } from '@shared/utils/auth.util';
 import {
   AiHistoryMessage,
   WaConnectionInfo,
@@ -47,7 +48,7 @@ export class WhatsappController {
     summary: "The caller's own connected number, or null when none exists",
   })
   getConnection(@Request() req: AuthenticatedRequest) {
-    return this.wa.getConnection(req.user.userId, req.user.companyId!);
+    return this.wa.getConnection(req.user.userId, requireCompanyId(req.user));
   }
 
   @Get('signup-config')
@@ -66,7 +67,11 @@ export class WhatsappController {
     @Request() req: AuthenticatedRequest,
     @Body() dto: ConnectWhatsappDto,
   ): Promise<WaConnectionInfo> {
-    return this.signup.connect(req.user.userId, req.user.companyId!, dto);
+    return this.signup.connect(
+      req.user.userId,
+      requireCompanyId(req.user),
+      dto,
+    );
   }
 
   @Delete('connection')
@@ -76,7 +81,7 @@ export class WhatsappController {
   disconnect(
     @Request() req: AuthenticatedRequest,
   ): Promise<{ success: boolean }> {
-    return this.signup.disconnect(req.user.userId, req.user.companyId!);
+    return this.signup.disconnect(req.user.userId, requireCompanyId(req.user));
   }
 
   // ── Chats / Messages ──────────────────────────────────────────────────
@@ -85,7 +90,10 @@ export class WhatsappController {
   @ApiOperation({ summary: 'Chat list with last-message preview' })
   async getChats(@Request() req: AuthenticatedRequest) {
     return {
-      chats: await this.wa.getChats(req.user.companyId!, req.user.userId),
+      chats: await this.wa.getChats(
+        requireCompanyId(req.user),
+        req.user.userId,
+      ),
     };
   }
 
@@ -100,7 +108,7 @@ export class WhatsappController {
     const page = query.page ?? 1;
     const limit = query.limit ?? 500;
     const { messages, hasMore } = await this.wa.getAllMessages(
-      req.user.companyId!,
+      requireCompanyId(req.user),
       req.user.userId,
       page,
       limit,
@@ -116,7 +124,7 @@ export class WhatsappController {
   ) {
     return {
       messages: await this.wa.getMessagesForChat(
-        req.user.companyId!,
+        requireCompanyId(req.user),
         req.user.userId,
         chatId,
       ),
@@ -131,7 +139,7 @@ export class WhatsappController {
   ): Promise<WaMessage> {
     return this.wa.sendMessage(
       req.user.userId,
-      req.user.companyId!,
+      requireCompanyId(req.user),
       dto.chatId,
       dto.body,
     );
@@ -142,7 +150,7 @@ export class WhatsappController {
   @Get('ai')
   @ApiOperation({ summary: 'AI config and enabled state' })
   getAi(@Request() req: AuthenticatedRequest) {
-    return this.wa.getAiConfig(req.user.companyId!);
+    return this.wa.getAiConfig(requireCompanyId(req.user));
   }
 
   @Get('ai/credits')
@@ -151,7 +159,7 @@ export class WhatsappController {
     summary: 'AI credit usage for the current period, broken down by agent',
   })
   getAiCredits(@Request() req: AuthenticatedRequest) {
-    return this.wa.getAiCreditUsage(req.user.companyId!);
+    return this.wa.getAiCreditUsage(requireCompanyId(req.user));
   }
 
   @Post('ai/toggle')
@@ -161,7 +169,11 @@ export class WhatsappController {
     @Request() req: AuthenticatedRequest,
     @Body() dto: AiToggleDto,
   ) {
-    return this.wa.toggleAi(req.user.userId, req.user.companyId!, dto.enabled);
+    return this.wa.toggleAi(
+      req.user.userId,
+      requireCompanyId(req.user),
+      dto.enabled,
+    );
   }
 
   @Get('ai/history/:chatId')

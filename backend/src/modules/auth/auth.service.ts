@@ -10,6 +10,7 @@ import { CompaniesService } from '../companies/companies.service';
 import { User } from '../users/entities/user.entity';
 import { Region, resolveRegions } from '@shared/constants/regions';
 import { seesAllRegions } from '@shared/utils/region-visibility.util';
+import { isWhatsappConfigured } from '@shared/utils/whatsapp-config.util';
 import { RegisterDto } from './dto/register.dto';
 import { Role } from '@shared/enums/roles.enum';
 import { SubscriptionTier } from '../companies/entities/company.entity';
@@ -62,6 +63,7 @@ interface LoginResponse {
   defaultRegionCode: string;
   subscriptionTier: SubscriptionTier | null;
   lockState: CompanyLockState | null;
+  whatsappConfigured: boolean;
 }
 
 interface BootstrapResponse {
@@ -76,6 +78,7 @@ interface BootstrapResponse {
   defaultRegionCode: string;
   subscriptionTier: SubscriptionTier | null;
   lockState: CompanyLockState | null;
+  whatsappConfigured: boolean;
 }
 
 interface CompanyContext {
@@ -84,6 +87,8 @@ interface CompanyContext {
   subscriptionTier: SubscriptionTier | null;
   /** Write-lock/banner state for the tenant app (design 8.2); null without a company. */
   lockState: CompanyLockState | null;
+  /** Server-level: whether WhatsApp env vars are configured. Same for every company. */
+  whatsappConfigured: boolean;
 }
 
 interface JwtPayload {
@@ -169,6 +174,7 @@ export class AuthService {
       lockState: companyId
         ? await this.lockStateService.getLockState(companyId)
         : null,
+      whatsappConfigured: isWhatsappConfigured(),
     };
   }
 
@@ -386,6 +392,7 @@ export class AuthService {
         subscriptionTier: savedCompany.subscriptionTier,
         // A company created this instant cannot be locked.
         lockState: null,
+        whatsappConfigured: isWhatsappConfigured(),
       };
     });
 

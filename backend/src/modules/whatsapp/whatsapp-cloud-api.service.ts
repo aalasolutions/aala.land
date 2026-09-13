@@ -53,9 +53,12 @@ export class WhatsappCloudApiService {
     return this.encryption.decrypt(connection.accessTokenCiphertext);
   }
 
-  async findConnected(userId: string): Promise<WhatsappConnection | null> {
+  async findConnected(
+    companyId: string,
+    userId: string,
+  ): Promise<WhatsappConnection | null> {
     return this.connections.findOne({
-      where: { userId, status: WhatsappConnectionStatus.CONNECTED },
+      where: { companyId, userId, status: WhatsappConnectionStatus.CONNECTED },
     });
   }
 
@@ -195,9 +198,9 @@ export class WhatsappCloudApiService {
   }
 
   // The typing rider's seam, resolved by the processor exactly like the sender is.
-  markReadFor(userId: string): MarkReadFn {
+  markReadFor(companyId: string, userId: string): MarkReadFn {
     return async (messageId, withTyping) => {
-      const connection = await this.findConnected(userId);
+      const connection = await this.findConnected(companyId, userId);
       if (!connection) return;
       await this.markRead(connection, messageId, withTyping);
     };
@@ -243,9 +246,9 @@ export class WhatsappCloudApiService {
 
   // The Phase 2 transport behind the debounce. Mirrors the old send closure:
   // transport, persist the outbound row, live push to the operator, credit refresh.
-  senderFor(userId: string): SendFn {
+  senderFor(companyId: string, userId: string): SendFn {
     return async (chatId, message, meta) => {
-      const connection = await this.findConnected(userId);
+      const connection = await this.findConnected(companyId, userId);
       if (!connection) {
         this.logger.error(
           `No connected WhatsApp number for user ${userId}; AI reply not sent`,

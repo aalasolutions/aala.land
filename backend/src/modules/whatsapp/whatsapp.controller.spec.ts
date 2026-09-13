@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { Reflector } from '@nestjs/core';
-import { BadGatewayException } from '@nestjs/common';
+import { BadGatewayException, ForbiddenException } from '@nestjs/common';
 import { WhatsappController } from './whatsapp.controller';
 import { WhatsappService } from './whatsapp.service';
 import { WhatsappSignupService } from './whatsapp-signup.service';
@@ -12,7 +12,7 @@ describe('WhatsappController', () => {
   let wa: jest.Mocked<WhatsappService>;
   let signup: jest.Mocked<WhatsappSignupService>;
 
-  const makeReq = (userId: string, companyId: string) =>
+  const makeReq = (userId: string, companyId: string | null) =>
     ({
       user: { userId, companyId, role: Role.COMPANY_ADMIN, email: 'a@b.com' },
     }) as any;
@@ -91,6 +91,30 @@ describe('WhatsappController', () => {
       expect(
         reflector.get<Role[]>('roles', controller.disconnect),
       ).toBeUndefined();
+    });
+  });
+
+  describe('null companyId (SUPER_ADMIN acting without a company)', () => {
+    // RolesGuard passes SUPER_ADMIN through every route on this controller, and a
+    // SUPER_ADMIN not impersonating a company user carries companyId: null. That must
+    // reject up front rather than fall through to a tenant-unscoped query. Neither
+    // controller method is declared `async`, so the guard throws synchronously.
+    it('rejects connect before calling the signup service', () => {
+      expect(() =>
+        controller.connect(makeReq('super-1', null), {
+          code: 'AQ...',
+          wabaId: '111',
+          phoneNumberId: '222',
+        }),
+      ).toThrow(ForbiddenException);
+      expect(signup.connect).not.toHaveBeenCalled();
+    });
+
+    it('rejects getConnection before calling the service', () => {
+      expect(() => controller.getConnection(makeReq('super-1', null))).toThrow(
+        ForbiddenException,
+      );
+      expect(wa.getConnection).not.toHaveBeenCalled();
     });
   });
 

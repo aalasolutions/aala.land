@@ -34,8 +34,8 @@ export class WhatsappAiDebounceProcessor extends WorkerHost {
         job.data.chatId,
         buffered.messageIds,
         buffered.combinedText,
-        this.cloud.senderFor(job.data.userId),
-        this.cloud.markReadFor(job.data.userId),
+        this.cloud.senderFor(job.data.companyId, job.data.userId),
+        this.cloud.markReadFor(job.data.companyId, job.data.userId),
       );
     } catch (err) {
       // The turn died outside its own guard, so the lead's messages go back on the buffer.

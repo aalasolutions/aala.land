@@ -200,7 +200,8 @@ export class WhatsappAiService {
   // Map miss means a fresh replica: load the stored toggle before gating, or a restart re-enables AI
   async isEnabledFor(companyId: string): Promise<boolean> {
     if (!this.enabledByCompany.has(companyId)) {
-      await this.loadEnabledState(companyId);
+      const loaded = await this.loadEnabledState(companyId);
+      if (!loaded) return false;
     }
     return this.isEnabled(companyId);
   }
@@ -217,13 +218,20 @@ export class WhatsappAiService {
     await this.repo.persistAiEnabled(companyId, value);
   }
 
-  async loadEnabledState(companyId: string): Promise<void> {
-    if (this.enabledByCompany.has(companyId)) return;
+  // Returns false only on a DB error, so the caller can fail the AI turn closed for
+  // this call without caching the failure: the next call retries the DB.
+  async loadEnabledState(companyId: string): Promise<boolean> {
+    if (this.enabledByCompany.has(companyId)) return true;
     try {
       const enabled = await this.repo.loadAiEnabled(companyId);
       if (enabled !== null) this.enabledByCompany.set(companyId, enabled);
-    } catch {
-      /* non-fatal, the env default applies */
+      return true;
+    } catch (err) {
+      this.logger.error(
+        `Failed to load aiEnabled for ${companyId}, refusing the AI turn`,
+        errorMessage(err),
+      );
+      return false;
     }
   }
 
@@ -248,7 +256,15 @@ export class WhatsappAiService {
     const jobIds = await this.redis.setMembers(this.pendIdxKey(userId));
     for (const jobId of jobIds) {
       const job = await this.debounceQueue.getJob(jobId);
-      if (job) await job.remove().catch(() => undefined);
+      if (job) {
+        await job
+          .remove()
+          .catch((err: unknown) =>
+            this.logger.warn(
+              `Could not remove debounce job ${jobId} for user ${userId}: ${errorMessage(err)}`,
+            ),
+          );
+      }
     }
     await this.redis.del(this.pendIdxKey(userId));
     this.enabledByCompany.delete(companyId);
@@ -275,7 +291,15 @@ export class WhatsappAiService {
       await this.currentSeq(userId, chatId),
     );
     const job = await this.debounceQueue.getJob(jobId);
-    if (job) await job.remove().catch(() => undefined);
+    if (job) {
+      await job
+        .remove()
+        .catch((err: unknown) =>
+          this.logger.warn(
+            `Could not remove debounce job ${jobId} for ${userId}:${chatId}: ${errorMessage(err)}`,
+          ),
+        );
+    }
     await this.redis.del(this.pendKey(userId, chatId));
     await this.redis.setRemove(this.pendIdxKey(userId), jobId);
   }
@@ -533,7 +557,13 @@ export class WhatsappAiService {
       await task();
     } finally {
       clearInterval(renew);
-      await this.redis.releaseLock(lockKey, token).catch(() => undefined);
+      await this.redis
+        .releaseLock(lockKey, token)
+        .catch((err: unknown) =>
+          this.logger.warn(
+            `Failed to release AI chat lock ${lockKey}: ${errorMessage(err)}`,
+          ),
+        );
     }
   }
 
@@ -590,6 +620,14 @@ export class WhatsappAiService {
     pendingMessageIds: string[] = [],
     markRead?: MarkReadFn,
   ): Promise<void> {
+    // Re-check the company toggle at turn time: a queued turn can outlive an admin
+    // disabling AI between ingest and now, and must not spend a credit or reply.
+    if (!(await this.isEnabledFor(companyId))) {
+      this.logger.log(
+        `AI disabled for company ${companyId}; skipping queued turn for ${userId}:${chatId}`,
+      );
+      return;
+    }
     if (await this.isHumanSilenceActive(userId, chatId)) return;
 
     // Baseline for detecting a human reply that lands mid-turn (after the awaits below).
@@ -801,7 +839,8 @@ export class WhatsappAiService {
       const seeded: AiHistoryMessage[] = [];
       let chars = 0;
       for (let i = rows.length - 1; i >= 0; i--) {
-        const content = (rows[i].body ?? '').trim();
+        const raw = (rows[i].body ?? '').trim();
+        const content = rows[i].fromMe ? raw : sanitizeInput(raw).cleaned;
         if (!content) continue;
         if (chars + content.length > maxChars) break;
         chars += content.length;

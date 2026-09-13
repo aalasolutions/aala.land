@@ -346,10 +346,10 @@ describe('WhatsappCloudApiService', () => {
       connections.findOne.mockResolvedValue(connection);
       fetchMock.mockResolvedValue({ ok: true, json: async () => ({}) });
 
-      await service.markReadFor('user-1')('wamid.in5', true);
+      await service.markReadFor('company-1', 'user-1')('wamid.in5', true);
 
       expect(connections.findOne).toHaveBeenCalledWith({
-        where: { userId: 'user-1', status: 'connected' },
+        where: { companyId: 'company-1', userId: 'user-1', status: 'connected' },
       });
       const [, init] = fetchMock.mock.calls[0];
       expect(JSON.parse(init.body).typing_indicator).toEqual({ type: 'text' });
@@ -359,7 +359,7 @@ describe('WhatsappCloudApiService', () => {
       connections.findOne.mockResolvedValue(null);
 
       await expect(
-        service.markReadFor('user-1')('wamid.in6', true),
+        service.markReadFor('company-1', 'user-1')('wamid.in6', true),
       ).resolves.toBeUndefined();
 
       expect(fetchMock).not.toHaveBeenCalled();
@@ -374,7 +374,7 @@ describe('WhatsappCloudApiService', () => {
         .mockImplementation(() => undefined);
 
       await expect(
-        service.senderFor('user-1')('+923001234567', 'hi'),
+        service.senderFor('company-1', 'user-1')('+923001234567', 'hi'),
       ).rejects.toBeInstanceOf(WhatsappSendError);
 
       expect(fetchMock).not.toHaveBeenCalled();
@@ -391,7 +391,7 @@ describe('WhatsappCloudApiService', () => {
       );
 
       await expect(
-        service.senderFor('user-1')('+923001234567', 'hi'),
+        service.senderFor('company-1', 'user-1')('+923001234567', 'hi'),
       ).rejects.toBeInstanceOf(WhatsappSendError);
 
       expect(store.addMessage).not.toHaveBeenCalled();
@@ -406,11 +406,11 @@ describe('WhatsappCloudApiService', () => {
       });
 
       const result = await service
-        .senderFor('user-1')('+923001234567', 'the rent is due friday');
+        .senderFor('company-1', 'user-1')('+923001234567', 'the rent is due friday');
 
       expect(result).toEqual({ messageId: 'wamid.2' });
       expect(connections.findOne).toHaveBeenCalledWith({
-        where: { userId: 'user-1', status: 'connected' },
+        where: { companyId: 'company-1', userId: 'user-1', status: 'connected' },
       });
       // The AI row carries the same phone_number_id the operator path already stamps.
       expect(store.addMessage).toHaveBeenCalledWith(
@@ -447,7 +447,7 @@ describe('WhatsappCloudApiService', () => {
           ),
       );
 
-      await service.senderFor('user-1')('+923001234567', 'awaited reply');
+      await service.senderFor('company-1', 'user-1')('+923001234567', 'awaited reply');
 
       expect(committed).toBe(true);
       expect(
@@ -468,7 +468,7 @@ describe('WhatsappCloudApiService', () => {
       });
 
       await service
-        .senderFor('user-1')('+923001234567', 'charged reply', {
+        .senderFor('company-1', 'user-1')('+923001234567', 'charged reply', {
           creditCharged: true,
         });
       await flushAsync();
@@ -480,7 +480,7 @@ describe('WhatsappCloudApiService', () => {
       });
 
       await service
-        .senderFor('user-1')('+923001234567', 'reused reply', {
+        .senderFor('company-1', 'user-1')('+923001234567', 'reused reply', {
           creditCharged: false,
         });
       await flushAsync();

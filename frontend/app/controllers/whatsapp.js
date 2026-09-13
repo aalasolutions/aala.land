@@ -62,6 +62,7 @@ export default class WhatsappController extends Controller {
   @service auth;
   @service notifications;
   @service embeddedSignup;
+  @service session;
 
   get isCompanyAdmin() {
     return this.auth.currentUser?.role === 'company_admin';
@@ -174,7 +175,11 @@ export default class WhatsappController extends Controller {
   }
 
   get signupReady() {
-    return Boolean(this.signupConfig?.appId && this.signupConfig?.configId);
+    return Boolean(
+      this.session.whatsappConfigured &&
+        this.signupConfig?.appId &&
+        this.signupConfig?.configId,
+    );
   }
 
   get connectButtonText() {
@@ -187,6 +192,9 @@ export default class WhatsappController extends Controller {
 
   get connectTooltip() {
     if (this.signupReady) return null;
+    if (!this.session.whatsappConfigured) {
+      return 'WhatsApp is not configured. Check system variables or contact your admin.';
+    }
     return 'WhatsApp signup is not configured on this server yet';
   }
 
@@ -249,7 +257,7 @@ export default class WhatsappController extends Controller {
 
       if (setupGen !== this._setupGeneration) return; // navigated away mid-fetch
 
-      this.connection = connData ? (connData.data ?? connData) : null;
+      this.connection = connData?.data ?? null;
       this.signupConfig = signupData
         ? (signupData.data ?? signupData)
         : null;
@@ -497,7 +505,7 @@ export default class WhatsappController extends Controller {
     try {
       await this.whatsapp.disconnect();
       const connData = await this.whatsapp.getConnection().catch(() => null);
-      this.connection = connData ? (connData.data ?? connData) : null;
+      this.connection = connData?.data ?? null;
       this.notifications.success('WhatsApp disconnected');
     } catch (err) {
       console.error('WhatsApp disconnect failed', err);

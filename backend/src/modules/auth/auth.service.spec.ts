@@ -430,6 +430,29 @@ describe('AuthService', () => {
   });
 
   describe('getBootstrap', () => {
+    const WA_VARS = [
+      'WHATSAPP_APP_ID',
+      'WHATSAPP_ES_CONFIG_ID',
+      'WHATSAPP_APP_SECRET',
+      'WHATSAPP_VERIFY_TOKEN',
+      'WHATSAPP_TOKEN_ENC_KEY',
+    ];
+    const originalWaEnv: Record<string, string | undefined> = {};
+
+    beforeEach(() => {
+      for (const name of WA_VARS) {
+        originalWaEnv[name] = process.env[name];
+        delete process.env[name];
+      }
+    });
+
+    afterEach(() => {
+      for (const name of WA_VARS) {
+        if (originalWaEnv[name] === undefined) delete process.env[name];
+        else process.env[name] = originalWaEnv[name];
+      }
+    });
+
     it('returns fresh user, regions, defaultRegionCode, and subscriptionTier', async () => {
       usersService.findOne.mockResolvedValue(mockUser as any);
       companiesService.findOne.mockResolvedValue({
@@ -457,6 +480,7 @@ describe('AuthService', () => {
       expect(result.defaultRegionCode).toBe('dubai');
       expect(result.subscriptionTier).toBe('PRO');
       expect(result.lockState).toEqual(UNLOCKED);
+      expect(result.whatsappConfigured).toBe(false);
     });
 
     it('returns empty regions and null subscriptionTier for a super admin with no companyId', async () => {
@@ -476,6 +500,24 @@ describe('AuthService', () => {
       expect(result.defaultRegionCode).toBe('');
       expect(result.subscriptionTier).toBeNull();
       expect(result.lockState).toBeNull();
+      expect(result.whatsappConfigured).toBe(false);
+    });
+
+    it('returns whatsappConfigured true for a super admin with no company when server env is set', async () => {
+      process.env.WHATSAPP_APP_ID = 'app-id';
+      process.env.WHATSAPP_ES_CONFIG_ID = 'config-id';
+      process.env.WHATSAPP_APP_SECRET = 'app-secret';
+      process.env.WHATSAPP_VERIFY_TOKEN = 'verify-token';
+      process.env.WHATSAPP_TOKEN_ENC_KEY =
+        '6wIs5lzCXCFzhDBpG23mDtzxxTtQVEZaoUKEWLd5mdw=';
+      usersService.findOne.mockResolvedValue({
+        ...mockUser,
+        companyId: null,
+      } as any);
+
+      const result = await service.getBootstrap('super-uuid-1', null);
+
+      expect(result.whatsappConfigured).toBe(true);
     });
   });
 });

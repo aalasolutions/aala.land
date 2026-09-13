@@ -74,6 +74,12 @@ interface CloudStatus {
 // WhatsappMessageStatus carries exactly the five strings Meta's status webhook sends.
 const META_STATUSES = new Set<string>(Object.values(WhatsappMessageStatus));
 
+// Preserves the original Error and stack; wraps a non-Error rejection with the same
+// formatter already used for logging, so `throw` never sees a non-Error value.
+function toError(err: unknown): Error {
+  return err instanceof Error ? err : new Error(errorMessage(err));
+}
+
 @Injectable()
 export class WhatsappWebhookService {
   private readonly logger = new Logger(WhatsappWebhookService.name);
@@ -148,7 +154,7 @@ export class WhatsappWebhookService {
     const envelope = (body ?? {}) as CloudWebhookEnvelope;
 
     // Siblings still run, then the first error is rethrown so BullMQ retries the envelope.
-    let firstError: unknown = null;
+    let firstError: Error | null = null;
     for (const entry of envelope.entry ?? []) {
       for (const change of entry.changes ?? []) {
         try {
@@ -159,7 +165,7 @@ export class WhatsappWebhookService {
           }
           await this.dispatchValue(change.value ?? {}, change.field, entry.id);
         } catch (err) {
-          firstError = firstError ?? err;
+          firstError = firstError ?? toError(err);
           this.logger.error(
             'Failed to process a WhatsApp webhook change',
             errorMessage(err, true),
@@ -233,12 +239,25 @@ export class WhatsappWebhookService {
       return;
     }
 
+    // Both branches run even if one throws, so a status persistence failure never costs
+    // us the messages in the same change value. The first error (statuses first if both
+    // failed) is rethrown after, so BullMQ still retries the envelope.
+    let firstError: Error | null = null;
     if (statuses.length > 0) {
-      await this.persistStatuses(connection, statuses);
+      try {
+        await this.persistStatuses(connection, statuses);
+      } catch (err) {
+        firstError = toError(err);
+      }
     }
     if (messages.length > 0) {
-      await this.dispatchMessages(connection, value, messages, phoneNumberId);
+      try {
+        await this.dispatchMessages(connection, value, messages, phoneNumberId);
+      } catch (err) {
+        firstError = firstError ?? toError(err);
+      }
     }
+    if (firstError) throw firstError;
   }
 
   // Meta surfaces every lifecycle change on this one field. Mapping is deliberately
@@ -413,10 +432,13 @@ export class WhatsappWebhookService {
   }
 
   // Persistence only. The live push to the page is Phase 6 emitStatus work.
+  // Siblings still run, then the first error is rethrown so BullMQ retries the envelope;
+  // the retry is safe because applyMessageStatus is a rank-guarded, idempotent UPDATE.
   private async persistStatuses(
     connection: WhatsappConnection,
     statuses: CloudStatus[],
   ): Promise<void> {
+    let firstError: Error | null = null;
     for (const status of statuses) {
       try {
         const value = status.status ?? '';
@@ -449,12 +471,14 @@ export class WhatsappWebhookService {
           );
         }
       } catch (err) {
+        firstError = firstError ?? toError(err);
         this.logger.error(
           `Failed to persist status callback for ${status.id ?? 'unknown'}`,
           errorMessage(err, true),
         );
       }
     }
+    if (firstError) throw firstError;
   }
 
   private async dispatchMessages(
@@ -468,6 +492,9 @@ export class WhatsappWebhookService {
       if (contact.wa_id) names.set(contact.wa_id, contact.profile?.name ?? '');
     }
 
+    // Siblings still run, then the first persistence error is rethrown so BullMQ retries
+    // the envelope; already-stored siblings dedupe on wamid via orIgnore.
+    let firstError: Error | null = null;
     for (const message of messages) {
       // One poisoned message must not cost us the rest of the batch.
       try {
@@ -503,9 +530,9 @@ export class WhatsappWebhookService {
           originUserId: connection.userId,
         };
 
-        // Same order as the old inbound flow: persist, emit to the live page, then AI.
-        // A store outage still emits and dispatches: availability over consistency.
-        let firstDelivery = true;
+        // Persist first. A store failure propagates so BullMQ retries the envelope;
+        // already-stored siblings dedupe on wamid and skip emit and AI below.
+        let firstDelivery: boolean;
         try {
           firstDelivery = await this.store.addMessage(
             connection.companyId,
@@ -514,10 +541,12 @@ export class WhatsappWebhookService {
             phoneNumberId,
           );
         } catch (err) {
+          firstError = firstError ?? toError(err);
           this.logger.error(
             `Failed to persist WhatsApp message ${evt.id}`,
             errorMessage(err, true),
           );
+          continue;
         }
         if (!firstDelivery) {
           // Meta redelivers for up to 7 days; a stored message must not start a second turn.
@@ -539,11 +568,14 @@ export class WhatsappWebhookService {
           connection.userId,
         );
       } catch (err) {
+        // The message is already stored and dedupes on retry, so an AI hand-off or
+        // gateway emit failure here must not fail the envelope.
         this.logger.error(
           `Failed to process WhatsApp message ${message.id ?? 'unknown'}`,
           errorMessage(err, true),
         );
       }
     }
+    if (firstError) throw firstError;
   }
 }

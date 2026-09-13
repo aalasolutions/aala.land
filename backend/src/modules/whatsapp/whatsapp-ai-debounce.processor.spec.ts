@@ -38,8 +38,8 @@ describe('WhatsappAiDebounceProcessor', () => {
     expect(ai.takeDebouncedBuffer).toHaveBeenCalledWith(
       expect.objectContaining({ userId: 'user-1', chatId: 'c1' }),
     );
-    expect(cloud.senderFor).toHaveBeenCalledWith('user-1');
-    expect(cloud.markReadFor).toHaveBeenCalledWith('user-1');
+    expect(cloud.senderFor).toHaveBeenCalledWith('company-1', 'user-1');
+    expect(cloud.markReadFor).toHaveBeenCalledWith('company-1', 'user-1');
     expect(ai.runTurn).toHaveBeenCalledWith(
       'company-1',
       'user-1',

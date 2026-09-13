@@ -10,6 +10,9 @@ module('Unit | Controller | whatsapp', function (hooks) {
   function makeController(ctx) {
     const controller = ctx.owner.lookup('controller:whatsapp');
     controller.notifications = { error() {}, success() {}, info() {} };
+    // Defaults to configured so the existing signupConfig-only tests below
+    // keep exercising just the appId/configId half they were written for.
+    controller.session = { whatsappConfigured: true };
     return controller;
   }
 
@@ -365,6 +368,34 @@ module('Unit | Controller | whatsapp', function (hooks) {
     assert.strictEqual(controller.connectTooltip, null);
   });
 
+  test('signupReady also requires the server whatsappConfigured flag', function (assert) {
+    const controller = makeController(this);
+    controller.session = { whatsappConfigured: false };
+    controller.signupConfig = { appId: 'a', configId: 'c' };
+
+    assert.false(
+      controller.signupReady,
+      'the session flag gates readiness even with a full signup config',
+    );
+    assert.true(controller.connectDisabled);
+    assert.strictEqual(
+      controller.connectTooltip,
+      'WhatsApp is not configured. Check system variables or contact your admin.',
+    );
+  });
+
+  test('connectTooltip keeps the signup-specific message when only the Meta config is missing', function (assert) {
+    const controller = makeController(this);
+    controller.session = { whatsappConfigured: true };
+    controller.signupConfig = null;
+
+    assert.false(controller.signupReady);
+    assert.strictEqual(
+      controller.connectTooltip,
+      'WhatsApp signup is not configured on this server yet',
+    );
+  });
+
   test('connectWhatsapp posts the launch result and adopts the saved connection', async function (assert) {
     const controller = makeController(this);
     controller.signupConfig = { appId: 'a', configId: 'c', graphVersion: 'v23.0' };
@@ -502,6 +533,25 @@ module('Unit | Controller | whatsapp', function (hooks) {
     assert.true(disconnected);
     assert.strictEqual(controller.connectionStatus, 'none');
     assert.false(controller.isConnecting);
+  });
+
+  test('disconnectWhatsapp unwraps a null connection to null, not the response wrapper', async function (assert) {
+    const controller = makeController(this);
+    controller.connection = { status: 'connected' };
+
+    controller.whatsapp = {
+      disconnect: () => Promise.resolve({ success: true }),
+      getConnection: () => Promise.resolve({ success: true, data: null }),
+    };
+
+    await controller.disconnectWhatsapp();
+
+    assert.strictEqual(controller.connection, null);
+    assert.strictEqual(
+      controller.connectButtonText,
+      'Connect WhatsApp',
+      'a never-connected user is not offered Reconnect',
+    );
   });
 
   test('a connected row shows the display number as its detail', function (assert) {

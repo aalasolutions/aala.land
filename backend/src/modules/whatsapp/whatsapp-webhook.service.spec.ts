@@ -309,14 +309,14 @@ describe('WhatsappWebhookService', () => {
       );
     });
 
-    it('still emits and dispatches when persistence fails', async () => {
+    it('rejects and does not emit or dispatch when persistence fails', async () => {
       store.addMessage.mockRejectedValue(new Error('db down'));
 
       await expect(
         service.processEnvelope(inboundEnvelope()),
-      ).resolves.toBeUndefined();
-      expect(gateway.emitMessage).toHaveBeenCalledTimes(1);
-      expect(ai.handleIncomingMessage).toHaveBeenCalledTimes(1);
+      ).rejects.toThrow('db down');
+      expect(gateway.emitMessage).not.toHaveBeenCalled();
+      expect(ai.handleIncomingMessage).not.toHaveBeenCalled();
     });
 
     it('skips envelopes for an unknown or disconnected number', async () => {
@@ -353,6 +353,27 @@ describe('WhatsappWebhookService', () => {
       ).resolves.toBeUndefined();
       expect(ai.handleIncomingMessage).not.toHaveBeenCalled();
       expect(gateway.emitMessage).not.toHaveBeenCalled();
+    });
+
+    it('still persists and dispatches the messages when status persistence fails in the same value', async () => {
+      store.applyMessageStatus.mockRejectedValue(new Error('status db down'));
+      const envelope = inboundEnvelope() as {
+        entry: { changes: { value: { statuses?: unknown[] } }[] }[];
+      };
+      envelope.entry[0].changes[0].value.statuses = [
+        { id: 'wamid.out.1', status: 'delivered', timestamp: '1761234567' },
+      ];
+
+      await expect(service.processEnvelope(envelope)).rejects.toThrow(
+        'status db down',
+      );
+      expect(store.addMessage).toHaveBeenCalledWith(
+        'company-1',
+        'user-1',
+        expect.objectContaining({ id: 'wamid.1' }),
+        'phone-1',
+      );
+      expect(ai.handleIncomingMessage).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -720,12 +741,12 @@ describe('WhatsappWebhookService', () => {
       ).resolves.toBeUndefined();
     });
 
-    it('does not throw when the status write throws', async () => {
+    it('rejects when the status write throws, so BullMQ retries the envelope', async () => {
       store.applyMessageStatus.mockRejectedValue(new Error('db down'));
 
       await expect(
         service.processEnvelope(statusEnvelope()),
-      ).resolves.toBeUndefined();
+      ).rejects.toThrow('db down');
     });
 
     it('drops statuses for an unknown or disconnected number', async () => {

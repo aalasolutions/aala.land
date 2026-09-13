@@ -9,7 +9,7 @@ import {
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Not, Repository } from 'typeorm';
+import { Not, QueryFailedError, Repository } from 'typeorm';
 import {
   WhatsappConnection,
   WhatsappConnectionStatus,
@@ -23,6 +23,13 @@ import { errorMessage } from '@shared/utils/error.util';
 // The exchangeable code Meta hands back lives for 30 seconds, so every call on this path
 // is short by nature. A request still hanging at 15s has already lost the code.
 const SIGNUP_TIMEOUT_MS = 15000;
+
+// Unique indexes the insert/update below can race (see `connect`'s catch block).
+const CONFLICT_MESSAGE_BY_CONSTRAINT: Record<string, string> = {
+  UQ_wa_connections_phone_number_id:
+    'That WhatsApp number is already connected to another account',
+  UQ_wa_connections_user: 'A connection for this user is already being saved',
+};
 
 @Injectable()
 export class WhatsappSignupService {
@@ -123,10 +130,26 @@ export class WhatsappSignupService {
     const existing = await this.connections.findOne({
       where: { userId, companyId },
     });
-    if (existing) {
-      await this.connections.update(
-        { id: existing.id },
-        {
+    try {
+      if (existing) {
+        await this.connections.update(
+          { id: existing.id },
+          {
+            wabaId: dto.wabaId,
+            phoneNumberId: dto.phoneNumberId,
+            displayPhoneNumber,
+            status: WhatsappConnectionStatus.CONNECTED,
+            accessTokenCiphertext: ciphertext,
+            tokenUpdatedAt: now,
+            connectedAt: now,
+            disconnectedAt: null,
+            disconnectReason: null,
+          },
+        );
+      } else {
+        await this.connections.insert({
+          companyId,
+          userId,
           wabaId: dto.wabaId,
           phoneNumberId: dto.phoneNumberId,
           displayPhoneNumber,
@@ -134,22 +157,25 @@ export class WhatsappSignupService {
           accessTokenCiphertext: ciphertext,
           tokenUpdatedAt: now,
           connectedAt: now,
-          disconnectedAt: null,
-          disconnectReason: null,
-        },
-      );
-    } else {
-      await this.connections.insert({
-        companyId,
-        userId,
-        wabaId: dto.wabaId,
-        phoneNumberId: dto.phoneNumberId,
-        displayPhoneNumber,
-        status: WhatsappConnectionStatus.CONNECTED,
-        accessTokenCiphertext: ciphertext,
-        tokenUpdatedAt: now,
-        connectedAt: now,
-      });
+        });
+      }
+    } catch (err) {
+      // The `taken` pre-check above is read-then-write: a concurrent connect for the same
+      // number or a double-submit for the same user can still pass it and only collide
+      // here, after the code was spent and the WABA was subscribed. Map that unique
+      // violation to a 409 instead of a raw 500; anything else is rethrown unchanged.
+      if (err instanceof QueryFailedError) {
+        const driverError = err.driverError as
+          | { code?: string; constraint?: string }
+          | undefined;
+        const message = driverError?.constraint
+          ? CONFLICT_MESSAGE_BY_CONSTRAINT[driverError.constraint]
+          : undefined;
+        if (driverError?.code === '23505' && message) {
+          throw new ConflictException(message);
+        }
+      }
+      throw err;
     }
 
     this.logger.log(
@@ -165,56 +191,55 @@ export class WhatsappSignupService {
     return info;
   }
 
-  // Tells Meta to stop delivering ONLY if no other agent's number still lives on that WABA,
-  // then tears down our side. The token is destroyed rather than left dormant: unsubscribing
-  // does not revoke it, so a stored credential for a number we no longer serve is a liability
-  // with no use.
+  // Row first: wa.disconnect flips status and wipes the token in one update, so a turn
+  // already in flight cannot find this row CONNECTED while we talk to Meta below. The
+  // token is decrypted before that call wipes it. Unsubscribing is best effort and runs
+  // after the flip, only when no other agent's number still lives on that WABA.
   async disconnect(
     userId: string,
     companyId: string,
   ): Promise<{ success: boolean }> {
-    const row = await this.connections.findOne({ where: { userId, companyId } });
-    if (row) {
-      const token = this.encryption.decrypt(row.accessTokenCiphertext);
-      if (token) {
-        // A WABA's subscription is shared by every number on it (Meta has no per-number
-        // unsubscribe), so unsubscribe only when this is the last live row on that WABA.
-        const siblings = await this.connections.count({
-          where: [
-            {
-              wabaId: row.wabaId,
-              id: Not(row.id),
-              status: WhatsappConnectionStatus.CONNECTED,
-            },
-            {
-              wabaId: row.wabaId,
-              id: Not(row.id),
-              status: WhatsappConnectionStatus.FLAGGED,
-            },
-          ],
-        });
-        if (siblings === 0) {
-          // Best effort by design: Meta refusing must not strand the agent in a connected
-          // state they cannot leave. The row transition below is what the product acts on.
-          await this.unsubscribeApp(row.wabaId, token);
-        } else {
-          this.logger.log(
-            `Skipping unsubscribe for WABA ${row.wabaId}: ${siblings} other live connection(s) remain`,
-          );
-        }
-      }
-    }
+    const row = await this.connections.findOne({
+      where: { userId, companyId },
+    });
+    const token = row
+      ? this.encryption.decrypt(row.accessTokenCiphertext)
+      : null;
 
     const result = await this.wa.disconnect(userId, companyId);
+
+    if (row && token) {
+      // A WABA's subscription is shared by every number on it (Meta has no per-number
+      // unsubscribe), so unsubscribe only when this is the last live row on that WABA.
+      const siblings = await this.connections.count({
+        where: [
+          {
+            wabaId: row.wabaId,
+            id: Not(row.id),
+            status: WhatsappConnectionStatus.CONNECTED,
+          },
+          {
+            wabaId: row.wabaId,
+            id: Not(row.id),
+            status: WhatsappConnectionStatus.FLAGGED,
+          },
+        ],
+      });
+      if (siblings === 0) {
+        // Best effort by design: Meta refusing must not strand the agent in a connected
+        // state they cannot leave. The row transition above is what the product acts on.
+        await this.unsubscribeApp(row.wabaId, token);
+      } else {
+        this.logger.log(
+          `Skipping unsubscribe for WABA ${row.wabaId}: ${siblings} other live connection(s) remain`,
+        );
+      }
+    }
 
     if (row) {
       await this.connections.update(
         { id: row.id },
-        {
-          accessTokenCiphertext: null,
-          tokenUpdatedAt: null,
-          disconnectReason: 'SELF_DISCONNECTED',
-        },
+        { disconnectReason: 'SELF_DISCONNECTED' },
       );
     }
     return result;

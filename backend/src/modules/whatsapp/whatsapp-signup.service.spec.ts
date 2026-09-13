@@ -5,7 +5,7 @@ import {
   ForbiddenException,
   ServiceUnavailableException,
 } from '@nestjs/common';
-import { Not } from 'typeorm';
+import { Not, QueryFailedError } from 'typeorm';
 import { WhatsappSignupService } from './whatsapp-signup.service';
 import { WhatsappConnectionStatus } from './entities/whatsapp-connection.entity';
 import { EncryptionService } from '../encryption/encryption.service';
@@ -20,6 +20,17 @@ const dto = {
   code: CODE,
   wabaId: '111222333',
   phoneNumberId: '444555666',
+};
+
+// Build a QueryFailedError shaped like a Postgres unique-index violation, so the
+// service's 23505 mapping in `connect` can be exercised.
+const makeUniqueViolation = (driverError: {
+  code?: string;
+  constraint?: string;
+}): QueryFailedError => {
+  const err = new QueryFailedError('query', [], driverError as unknown as Error);
+  (err as unknown as { driverError: unknown }).driverError = driverError;
+  return err;
 };
 
 const ok = (body: unknown) => ({
@@ -228,6 +239,64 @@ describe('WhatsappSignupService', () => {
       expect(connections.insert).toHaveBeenCalled();
     });
 
+    // The `taken` pre-check is read-then-write: a concurrent connect for the same number
+    // can still pass it and only collide at the unique index, after the code was spent
+    // and the WABA was subscribed.
+    it('maps a unique violation on the phone number index to a 409', async () => {
+      happyPathFetches();
+      connections.insert.mockRejectedValueOnce(
+        makeUniqueViolation({
+          code: '23505',
+          constraint: 'UQ_wa_connections_phone_number_id',
+        }),
+      );
+
+      await expect(
+        service.connect('user-1', 'company-1', dto),
+      ).rejects.toBeInstanceOf(ConflictException);
+    });
+
+    it('maps a unique violation on the user index to a 409', async () => {
+      happyPathFetches();
+      connections.insert.mockRejectedValueOnce(
+        makeUniqueViolation({
+          code: '23505',
+          constraint: 'UQ_wa_connections_user',
+        }),
+      );
+
+      await expect(
+        service.connect('user-1', 'company-1', dto),
+      ).rejects.toBeInstanceOf(ConflictException);
+    });
+
+    it('rethrows a DB error that is not the mapped unique violation', async () => {
+      happyPathFetches();
+      const dbError = makeUniqueViolation({ code: '55000' });
+      connections.insert.mockRejectedValueOnce(dbError);
+
+      await expect(service.connect('user-1', 'company-1', dto)).rejects.toBe(
+        dbError,
+      );
+    });
+
+    it('maps a unique violation on the update branch to a 409 too', async () => {
+      connections.findOne
+        .mockResolvedValueOnce(null) // no other user holds the number
+        .mockResolvedValueOnce({ id: 'existing-1' });
+      happyPathFetches();
+      connections.update.mockRejectedValueOnce(
+        makeUniqueViolation({
+          code: '23505',
+          constraint: 'UQ_wa_connections_user',
+        }),
+      );
+
+      await expect(
+        service.connect('user-1', 'company-1', dto),
+      ).rejects.toBeInstanceOf(ConflictException);
+    });
+
     it('fails closed when the app credentials are not configured', async () => {
       delete process.env.WHATSAPP_APP_SECRET;
 
@@ -359,9 +428,24 @@ describe('WhatsappSignupService', () => {
       expect(fetchMock.mock.calls[0][1].method).toBe('DELETE');
       expect(wa.disconnect).toHaveBeenCalledWith('user-1', 'company-1');
       const patch = connections.update.mock.calls[0][1];
-      expect(patch.accessTokenCiphertext).toBeNull();
-      expect(patch.tokenUpdatedAt).toBeNull();
       expect(patch.disconnectReason).toBe('SELF_DISCONNECTED');
+    });
+
+    // wa.disconnect flips the row (and wipes the token) in one update; a turn already
+    // in flight must not find this row CONNECTED while the Graph DELETE is outstanding.
+    it('flips the row via wa.disconnect before calling Meta to unsubscribe', async () => {
+      connections.findOne.mockResolvedValue({
+        id: 'conn-1',
+        wabaId: dto.wabaId,
+        accessTokenCiphertext: encryption.encrypt(TOKEN),
+      });
+      fetchMock.mockResolvedValueOnce(ok({ success: true }));
+
+      await service.disconnect('user-1', 'company-1');
+
+      const waDisconnectOrder = wa.disconnect.mock.invocationCallOrder[0];
+      const deleteCallOrder = fetchMock.mock.invocationCallOrder[0];
+      expect(waDisconnectOrder).toBeLessThan(deleteCallOrder);
     });
 
     // Meta refusing must not strand an agent in a connected state they cannot leave.
@@ -406,8 +490,6 @@ describe('WhatsappSignupService', () => {
       expect(fetchMock).not.toHaveBeenCalled();
       expect(wa.disconnect).toHaveBeenCalledWith('user-1', 'company-1');
       const patch = connections.update.mock.calls[0][1];
-      expect(patch.accessTokenCiphertext).toBeNull();
-      expect(patch.tokenUpdatedAt).toBeNull();
       expect(patch.disconnectReason).toBe('SELF_DISCONNECTED');
     });
 

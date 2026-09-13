@@ -213,16 +213,32 @@
 
         {{! WhatsApp (direct link) }}
         {{#if this.sidebarGroups.outreach}}
-          <LinkTo
-            @route="whatsapp"
-            class="nu-sidebar__link"
-            data-tooltip={{if this.desktopCollapsed "WhatsApp"}}
-            data-tooltip-position="end"
-            data-test-nav-whatsapp
-          >
-            <Ui::Ph @icon="whatsapp-logo" />
-            <span class="nu-sidebar__link-label">WhatsApp</span>
-          </LinkTo>
+          {{#if this.whatsappDisabled}}
+            <span
+              class="nu-sidebar__link is-disabled"
+              role="link"
+              aria-disabled="true"
+              tabindex="0"
+              data-tooltip={{this.whatsappTooltip}}
+              data-tooltip-position="end"
+              data-test-nav-whatsapp
+              data-test-nav-whatsapp-disabled
+            >
+              <Ui::Ph @icon="whatsapp-logo" />
+              <span class="nu-sidebar__link-label">WhatsApp</span>
+            </span>
+          {{else}}
+            <LinkTo
+              @route="whatsapp"
+              class="nu-sidebar__link"
+              data-tooltip={{this.whatsappTooltip}}
+              data-tooltip-position="end"
+              data-test-nav-whatsapp
+            >
+              <Ui::Ph @icon="whatsapp-logo" />
+              <span class="nu-sidebar__link-label">WhatsApp</span>
+            </LinkTo>
+          {{/if}}
         {{/if}}
 
         {{! Operations Group }}

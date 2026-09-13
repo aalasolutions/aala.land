@@ -39,6 +39,23 @@ export default class ApplicationController extends Controller {
     return this.sidebarCollapsed && !this.isNarrow;
   }
 
+  // Visible for every role, but not clickable until the server confirms the
+  // WhatsApp env vars are set. Kept off role entirely: page and sidebar must
+  // never disagree, and the route redirect uses this same flag.
+  get whatsappDisabled() {
+    return !this.session.whatsappConfigured;
+  }
+
+  // One data-tooltip attribute has to carry both jobs the link already had
+  // (a collapsed-rail label) and the new disabled explanation, so disabled
+  // wins outright and the collapsed label only applies when enabled.
+  get whatsappTooltip() {
+    if (this.whatsappDisabled) {
+      return 'WhatsApp is not configured. Check system variables or contact your admin.';
+    }
+    return this.desktopCollapsed ? 'WhatsApp' : null;
+  }
+
   // True when the sidebar is visually a rail (drives the toggle button caret).
   get sidebarRailed() {
     return this.isNarrow ? !this.sidebarMobileOpen : this.sidebarCollapsed;
