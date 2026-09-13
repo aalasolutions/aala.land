@@ -496,19 +496,36 @@ export class WhatsappWebhookService {
             ? new Date(seconds * 1000)
             : new Date();
         const failureCode = status.errors?.[0]?.code;
+        const errorCode =
+          mapped === WhatsappMessageStatus.FAILED && failureCode != null
+            ? String(failureCode)
+            : null;
         const applied = await this.store.applyMessageStatus(
           connection.companyId,
           connection.userId,
           status.id,
           mapped,
           statusAt,
-          mapped === WhatsappMessageStatus.FAILED && failureCode != null
-            ? String(failureCode)
-            : null,
+          errorCode,
         );
         if (!applied) {
           this.logger.debug(
             `Status ${mapped} not stored for ${status.id}: unknown message or a stale status`,
+          );
+          continue;
+        }
+        // A live push failure is log-only; the status is already stored.
+        try {
+          this.gateway.emitStatus(connection.userId, {
+            id: status.id,
+            status: mapped,
+            statusAt: Math.floor(statusAt.getTime() / 1000),
+            errorCode,
+          });
+        } catch (err) {
+          this.logger.error(
+            `Failed to push status ${mapped} for ${status.id}`,
+            errorMessage(err, true),
           );
         }
       } catch (err) {

@@ -87,7 +87,7 @@ export default class WhatsappController extends Controller {
   @tracked connection = null;
   @tracked signupConfig = null;
   @tracked isConnecting = false;
-  // Bumped on every poll tick so the reply-window countdown stays honest.
+  // Bumped by a local 60s clock so the reply-window countdown stays honest.
   @tracked now = Date.now();
 
   @tracked aiEnabled = false;
@@ -101,8 +101,7 @@ export default class WhatsappController extends Controller {
   @tracked isSending = false;
 
   _setupGeneration = 0;
-  _pollTimer = null;
-  _pollInFlight = false;
+  _clockTimer = null;
 
   // ── Computed ──────────────────────────────────────────────────────────
 
@@ -230,11 +229,15 @@ export default class WhatsappController extends Controller {
       };
     }
 
+    const closesAt = new Date(openedAt + REPLY_WINDOW_MS).toLocaleTimeString(
+      [],
+      { hour: 'numeric', minute: '2-digit' },
+    );
     return {
       open: true,
       everOpened: true,
       remainingMs,
-      label: `Reply window closes in ${formatRemaining(remainingMs)}`,
+      label: `Reply window closes in ${formatRemaining(remainingMs)} (at ${closesAt})`,
       detail: '',
     };
   }
@@ -243,6 +246,7 @@ export default class WhatsappController extends Controller {
 
   async setup() {
     const setupGen = this._setupGeneration;
+    this.startClock();
     this.whatsapp.connectSocket((type, data) =>
       this.handleSocketEvent(type, data),
     );
@@ -277,8 +281,6 @@ export default class WhatsappController extends Controller {
       this.creditsUsed = ai.creditsUsed ?? null;
       this.creditsResetsAt = ai.creditsResetsAt ?? null;
       this.openWindows = ai.openWindows ?? null;
-
-      this.startPolling();
     } catch (err) {
       console.error('WhatsApp setup failed', err);
       this.notifications.error('Could not load WhatsApp data');
@@ -288,38 +290,32 @@ export default class WhatsappController extends Controller {
   teardown() {
     this._setupGeneration++;
     this.whatsapp.disconnectSocket();
-    this.stopPolling();
+    this.stopClock();
     this.currentChatId = null;
   }
 
-  startPolling() {
-    this.stopPolling();
-    this._pollTimer = setInterval(() => this.pollUpdates(), 3000);
-  }
-
-  stopPolling() {
-    if (this._pollTimer) {
-      clearInterval(this._pollTimer);
-      this._pollTimer = null;
-    }
-    this._pollInFlight = false;
-  }
-
-  async pollUpdates() {
-    // Ahead of the guards: the countdown must keep moving even between fetches.
+  startClock() {
+    this.stopClock();
     this.now = Date.now();
-    if (!this.currentChatId) return;
-    // setInterval doesn't wait for the previous tick, so a slow response could stack a second request.
-    if (this._pollInFlight) return;
+    this._clockTimer = setInterval(() => (this.now = Date.now()), 60000);
+  }
 
-    this._pollInFlight = true;
+  stopClock() {
+    if (this._clockTimer) {
+      clearInterval(this._clockTimer);
+      this._clockTimer = null;
+    }
+  }
+
+  // Events emitted while the socket was down are lost, so catch up once.
+  async refetchMessages() {
+    const setupGen = this._setupGeneration;
     try {
-      const msgsData = await this.whatsapp.getMessages(this.currentChatId);
+      const msgsData = await this.whatsapp.getAllMessages();
+      if (setupGen !== this._setupGeneration) return;
       this.ingestMessages(msgsData.data?.messages ?? msgsData.messages ?? []);
-    } catch {
-      /* ignore */
-    } finally {
-      this._pollInFlight = false;
+    } catch (err) {
+      console.error('WhatsApp refetch after reconnect failed', err);
     }
   }
 
@@ -328,6 +324,10 @@ export default class WhatsappController extends Controller {
   handleSocketEvent(type, data) {
     if (type === 'message') {
       this.ingestMessage(data);
+    } else if (type === 'status') {
+      this.applyStatus(data);
+    } else if (type === 'reconnect') {
+      this.refetchMessages();
     } else if (type === 'ai') {
       if (data.enabled !== undefined) this.aiEnabled = data.enabled;
       if (data.keyConfigured !== undefined)
@@ -371,6 +371,22 @@ export default class WhatsappController extends Controller {
       }
     }
     return changed ? merged : null;
+  }
+
+  // A status push carries no body, so it bypasses ingestMessage's renderable filter.
+  applyStatus(data) {
+    const existing = this.messages.find((m) => m.id === data?.id);
+    if (!existing) return;
+    const merged = this._mergeExisting(existing, {
+      status: data.status,
+      statusAt: data.statusAt,
+      errorCode: data.errorCode,
+    });
+    if (merged) {
+      this.messages = this.messages.map((m) =>
+        m.id === merged.id ? merged : m,
+      );
+    }
   }
 
   ingestMessages(msgs) {

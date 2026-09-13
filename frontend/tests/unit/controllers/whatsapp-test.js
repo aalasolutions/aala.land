@@ -188,6 +188,13 @@ module('Unit | Controller | whatsapp', function (hooks) {
     controller.currentChatId = 'chat-1';
   }
 
+  function timeAt(ms) {
+    return new Date(ms).toLocaleTimeString([], {
+      hour: 'numeric',
+      minute: '2-digit',
+    });
+  }
+
   test('replyWindow is null when no chat is open', function (assert) {
     const controller = makeController(this);
     controller.currentChatId = null;
@@ -202,7 +209,10 @@ module('Unit | Controller | whatsapp', function (hooks) {
     assert.true(win.open);
     assert.true(win.everOpened);
     assert.strictEqual(win.remainingMs, 22 * HOUR);
-    assert.strictEqual(win.label, 'Reply window closes in 22h');
+    assert.strictEqual(
+      win.label,
+      `Reply window closes in 22h (at ${timeAt(NOW + 22 * HOUR)})`,
+    );
   });
 
   test('replyWindow renders hours and minutes together when both are left', function (assert) {
@@ -211,14 +221,23 @@ module('Unit | Controller | whatsapp', function (hooks) {
 
     assert.strictEqual(
       controller.replyWindow.label,
-      'Reply window closes in 40m',
+      `Reply window closes in 40m (at ${timeAt(NOW + 40 * 60 * 1000)})`,
     );
 
     withChat(controller, NOW - (1 * HOUR + 25 * 60 * 1000));
     assert.strictEqual(
       controller.replyWindow.label,
-      'Reply window closes in 22h 35m',
+      `Reply window closes in 22h 35m (at ${timeAt(NOW + 22 * HOUR + 35 * 60 * 1000)})`,
     );
+  });
+
+  test('replyWindow label shows both the duration and the closing time', function (assert) {
+    const controller = makeController(this);
+    withChat(controller, NOW - (21 * HOUR + 30 * 60 * 1000));
+
+    const label = controller.replyWindow.label;
+    assert.true(label.includes('2h 30m'), 'duration');
+    assert.true(label.includes(`(at ${timeAt(NOW + 2.5 * HOUR)})`), 'time');
   });
 
   test('replyWindow reports the last minute as under a minute, not as closed', function (assert) {
@@ -227,7 +246,9 @@ module('Unit | Controller | whatsapp', function (hooks) {
 
     const win = controller.replyWindow;
     assert.true(win.open);
-    assert.strictEqual(win.label, 'Reply window closes in under a minute');
+    assert.true(
+      win.label.startsWith('Reply window closes in under a minute (at '),
+    );
   });
 
   test('replyWindow closes exactly 24h after the inbound message', function (assert) {
@@ -719,57 +740,111 @@ module('Unit | Controller | whatsapp', function (hooks) {
     assert.strictEqual(controller.messages[0].deletedAt, 150);
   });
 
-  test('pollUpdates does not stack a second request while one is in flight', async function (assert) {
+  test('a status event merges status, statusAt and errorCode into the held message', function (assert) {
     const controller = makeController(this);
-    controller.currentChatId = 'chat-1';
+    controller.ingestMessages([
+      { id: 'm-1', chatId: 'chat-1', body: 'hi', fromMe: true, timestamp: 100 },
+    ]);
 
+    controller.handleSocketEvent('status', {
+      id: 'm-1',
+      status: 'failed',
+      statusAt: 120,
+      errorCode: '131042',
+    });
+
+    assert.strictEqual(controller.messages.length, 1, 'still one message');
+    assert.strictEqual(controller.messages[0].status, 'failed');
+    assert.strictEqual(controller.messages[0].statusAt, 120);
+    assert.strictEqual(controller.messages[0].errorCode, '131042');
+    assert.strictEqual(controller.messages[0].body, 'hi', 'body kept');
+  });
+
+  test('a status event for an unknown message id is ignored', function (assert) {
+    const controller = makeController(this);
+    controller.ingestMessages([
+      { id: 'm-1', chatId: 'chat-1', body: 'hi', fromMe: true, timestamp: 100 },
+    ]);
+    const before = controller.messages;
+
+    controller.handleSocketEvent('status', {
+      id: 'm-unknown',
+      status: 'read',
+      statusAt: 120,
+      errorCode: null,
+    });
+
+    assert.strictEqual(controller.messages, before, 'messages untouched');
+  });
+
+  test('a reconnect refetches messages once and ingests them', async function (assert) {
+    const controller = makeController(this);
     let calls = 0;
-    let release;
-    const pending = new Promise((resolve) => (release = resolve));
     controller.whatsapp = {
-      getMessages() {
+      getAllMessages() {
         calls++;
-        return pending.then(() => ({ data: { messages: [] } }));
+        return Promise.resolve({
+          data: {
+            messages: [
+              { id: 'm-missed', chatId: 'chat-1', body: 'hi', timestamp: 100 },
+            ],
+          },
+        });
       },
     };
 
-    const first = controller.pollUpdates();
-    await controller.pollUpdates(); // the next tick, first still unresolved
-    assert.strictEqual(calls, 1, 'second tick skipped while one was in flight');
+    await controller.refetchMessages();
 
-    release();
-    await first;
-
-    await controller.pollUpdates();
-    assert.strictEqual(calls, 2, 'polling resumes once the first settled');
+    assert.strictEqual(calls, 1, 'fetched once');
+    assert.deepEqual(
+      controller.messages.map((m) => m.id),
+      ['m-missed'],
+    );
   });
 
-  test('a failed poll releases the in-flight guard instead of wedging it', async function (assert) {
+  test('a reconnect event routes to the refetch', function (assert) {
     const controller = makeController(this);
-    controller.currentChatId = 'chat-1';
-
     let calls = 0;
+    controller.refetchMessages = () => calls++;
+
+    controller.handleSocketEvent('reconnect');
+
+    assert.strictEqual(calls, 1);
+  });
+
+  test('a failed refetch after reconnect is logged, not swallowed', async function (assert) {
+    const controller = makeController(this);
+    const failure = new Error('network down');
     controller.whatsapp = {
-      getMessages() {
-        calls++;
-        return Promise.reject(new Error('network down'));
+      getAllMessages() {
+        return Promise.reject(failure);
       },
     };
+    const originalError = console.error;
+    let logged;
+    console.error = (...args) => (logged = args);
 
-    await controller.pollUpdates();
-    await controller.pollUpdates();
+    try {
+      await controller.refetchMessages();
+    } finally {
+      console.error = originalError;
+    }
 
-    assert.strictEqual(calls, 2, 'a rejection does not block the next tick');
+    assert.strictEqual(logged?.[1], failure);
   });
 
-  test('pollUpdates advances the clock even with no chat open', async function (assert) {
+  test('setup starts one clock and teardown clears it', function (assert) {
     const controller = makeController(this);
-    controller.currentChatId = null;
-    controller.now = 0;
+    controller.whatsapp = { disconnectSocket() {} };
 
-    await controller.pollUpdates();
+    controller.startClock();
+    const first = controller._clockTimer;
+    controller.startClock();
+    assert.notStrictEqual(controller._clockTimer, first, 'replaced, not doubled');
+    assert.ok(controller._clockTimer);
 
-    assert.true(controller.now > 0, 'countdown clock still moves');
+    controller.teardown();
+    assert.strictEqual(controller._clockTimer, null);
   });
 
   test('handleKeydown sends on Enter and lets Shift+Enter through for a newline', async function (assert) {
@@ -970,6 +1045,7 @@ module('Unit | Controller | whatsapp', function (hooks) {
     };
 
     await controller.setup();
+    controller.stopClock();
 
     assert.strictEqual(errorMessage, 'Could not load WhatsApp data');
   });

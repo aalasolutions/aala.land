@@ -110,7 +110,7 @@ describe('WhatsappWebhookService', () => {
   let ai: { handleIncomingMessage: jest.Mock };
   let repo: { findOne: jest.Mock; find: jest.Mock; update: jest.Mock };
   let store: { addMessage: jest.Mock; applyMessageStatus: jest.Mock };
-  let gateway: { emitMessage: jest.Mock };
+  let gateway: { emitMessage: jest.Mock; emitStatus: jest.Mock };
   let queue: { add: jest.Mock };
 
   beforeEach(async () => {
@@ -126,7 +126,7 @@ describe('WhatsappWebhookService', () => {
       addMessage: jest.fn().mockResolvedValue(true),
       applyMessageStatus: jest.fn().mockResolvedValue(true),
     };
-    gateway = { emitMessage: jest.fn() };
+    gateway = { emitMessage: jest.fn(), emitStatus: jest.fn() };
     queue = { add: jest.fn().mockResolvedValue({ id: 'job-1' }) };
 
     const moduleRef = await Test.createTestingModule({
@@ -817,6 +817,45 @@ describe('WhatsappWebhookService', () => {
       await expect(
         service.processEnvelope(statusEnvelope()),
       ).resolves.toBeUndefined();
+    });
+
+    it('pushes an applied status to the agent in epoch seconds', async () => {
+      await service.processEnvelope(
+        statusEnvelope([
+          {
+            id: 'wamid.out.1',
+            status: 'failed',
+            timestamp: '1761234567',
+            errors: [{ code: 131042 }],
+          },
+        ]),
+      );
+
+      expect(gateway.emitStatus).toHaveBeenCalledWith('user-1', {
+        id: 'wamid.out.1',
+        status: WhatsappMessageStatus.FAILED,
+        statusAt: 1761234567,
+        errorCode: '131042',
+      });
+    });
+
+    it('does not push a status that was not applied', async () => {
+      store.applyMessageStatus.mockResolvedValue(false);
+
+      await service.processEnvelope(statusEnvelope());
+
+      expect(gateway.emitStatus).not.toHaveBeenCalled();
+    });
+
+    it('does not reject when the status push throws', async () => {
+      gateway.emitStatus.mockImplementation(() => {
+        throw new Error('socket down');
+      });
+
+      await expect(
+        service.processEnvelope(statusEnvelope()),
+      ).resolves.toBeUndefined();
+      expect(store.applyMessageStatus).toHaveBeenCalledTimes(1);
     });
 
     it('rejects when the status write throws, so BullMQ retries the envelope', async () => {

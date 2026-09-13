@@ -6,6 +6,7 @@ export default class WhatsappService extends Service {
   @service auth;
 
   _socket = null;
+  _onReconnect = null;
 
   get apiUrl() {
     const base =
@@ -28,12 +29,17 @@ export default class WhatsappService extends Service {
     this._socket.on('whatsapp:status', (data) => onEvent('status', data));
     this._socket.on('whatsapp:message', (data) => onEvent('message', data));
     this._socket.on('whatsapp:ai', (data) => onEvent('ai', data));
+    this._onReconnect = () => onEvent('reconnect');
+    this._socket.io.on('reconnect', this._onReconnect);
 
     return this._socket;
   }
 
   disconnectSocket() {
     if (this._socket) {
+      // The Manager is shared with services/socket.js, so it outlives this socket.
+      this._socket.io.off('reconnect', this._onReconnect);
+      this._onReconnect = null;
       this._socket.disconnect();
       this._socket = null;
     }
