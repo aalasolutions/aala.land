@@ -113,9 +113,22 @@
               </span>
               <span class="wa-chat-time">{{format-date-time chat.lastTs}}</span>
             </div>
-            <p class="wa-chat-preview">
-              {{#if chat.lastFromMe}}You: {{/if}}{{chat.lastBody}}
-            </p>
+            <div class="wa-chat-preview-row">
+              <p class="wa-chat-preview">
+                {{#if chat.lastFromMe}}You: {{/if}}{{chat.lastBody}}
+              </p>
+              {{#let (this.unreadCountFor chat.chatId) as |unreadCount|}}
+                {{#if unreadCount}}
+                  <Nuvo::Badge
+                    class="wa-chat-unread"
+                    @count={{true}}
+                    @value={{unreadCount}}
+                    @max={{99}}
+                    data-test-wa-chat-unread
+                  />
+                {{/if}}
+              {{/let}}
+            </div>
           </button>
         {{else}}
           <Nuvo::EmptyState @title="No chats yet" />
@@ -134,14 +147,50 @@
           <div class="wa-chat-header-id">{{this.currentChatId}}</div>
         </div>
 
-        <div class="wa-messages" id="wa-messages-container">
+        <div
+          class="wa-messages"
+          id="wa-messages-container"
+          {{on "scroll" this.onThreadScroll}}
+        >
+          {{#if this.currentChatWindowError}}
+            <div class="wa-load-older-error" data-test-wa-reload-error>
+              <span>Couldn't refresh messages.</span>
+              <Nuvo::Button
+                @variant="secondary"
+                @size="sm"
+                @text="Retry"
+                @loading={{this.currentChatLoadingWindow}}
+                @onClick={{this.retryReload}}
+                data-test-wa-reload-retry
+              />
+            </div>
+          {{/if}}
+          {{#if this.currentChatOlderError}}
+            <div class="wa-load-older-error" data-test-wa-load-older-error>
+              <span>Couldn't load older messages.</span>
+              <Nuvo::Button
+                @variant="secondary"
+                @size="sm"
+                @text="Retry"
+                @loading={{this.currentChatLoadingOlder}}
+                @onClick={{this.retryLoadOlder}}
+                data-test-wa-load-older-retry
+              />
+            </div>
+          {{else if this.currentChatLoadingOlder}}
+            <div class="wa-load-older" data-test-wa-load-older>
+              <Nuvo::Spinner @size="sm" />
+            </div>
+          {{/if}}
           {{#each this.currentChatMessages key="id" as |msg|}}
             <div
               class="wa-message
                 {{if msg.fromMe 'm-outgoing' 'm-incoming'}}
                 {{if msg.aiGenerated 'm-ai'}}
                 {{if msg.deletedAt 'm-deleted'}}"
+              data-message-id={{msg.id}}
               data-test-wa-message={{msg.id}}
+              {{this.observeMessageRow msg.fromMe}}
             >
               {{#unless msg.fromMe}}
                 <div class="wa-sender-tag">{{msg.senderName}}</div>
@@ -212,12 +261,40 @@
                 {{/if}}
               </div>
             </div>
+            {{#if (eq msg.id this.unreadMarkerId)}}
+              <div class="wa-unread-divider" data-test-wa-unread-divider>
+                Unread messages
+              </div>
+            {{/if}}
           {{else}}
-            <Nuvo::EmptyState
-              @fill={{true}}
-              @title="No messages in this chat yet"
-            />
+            {{#if this.currentChatLoadingWindow}}
+              <div class="wa-load-older" data-test-wa-thread-loading>
+                <Nuvo::Spinner @size="sm" />
+              </div>
+            {{else}}
+              <Nuvo::EmptyState
+                @fill={{true}}
+                @title="No messages in this chat yet"
+              />
+            {{/if}}
           {{/each}}
+          {{#if this.currentChatNewerError}}
+            <div class="wa-load-older-error" data-test-wa-load-newer-error>
+              <span>Couldn't load newer messages.</span>
+              <Nuvo::Button
+                @variant="secondary"
+                @size="sm"
+                @text="Retry"
+                @loading={{this.currentChatLoadingNewer}}
+                @onClick={{this.retryLoadNewer}}
+                data-test-wa-load-newer-retry
+              />
+            </div>
+          {{else if this.currentChatLoadingNewer}}
+            <div class="wa-load-older" data-test-wa-load-newer>
+              <Nuvo::Spinner @size="sm" />
+            </div>
+          {{/if}}
         </div>
 
         <div class="wa-input-area">

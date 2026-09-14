@@ -1,9 +1,34 @@
 import { module, test } from 'qunit';
 import { setupTest } from 'land/tests/helpers';
+import { settled } from '@ember/test-helpers';
 
 // sendMessage relies on ingestMessage, the socket handler's path, so a later echo is deduped.
 module('Unit | Controller | whatsapp', function (hooks) {
   setupTest(hooks);
+
+  function openThread(controller, state = {}, chatId = 'chat-1') {
+    controller.currentChatId = chatId;
+    controller.threads = new Map([
+      [
+        chatId,
+        {
+          messages: [],
+          oldestId: null,
+          newestId: null,
+          hasMore: false,
+          hasMoreNewer: false,
+          loading: null,
+          error: false,
+          newerError: false,
+          ...state,
+        },
+      ],
+    ]);
+  }
+
+  function ids(controller) {
+    return controller.currentChatMessages.map((m) => m.id);
+  }
 
   function makeController(ctx) {
     const controller = ctx.owner.lookup('controller:whatsapp');
@@ -49,7 +74,7 @@ module('Unit | Controller | whatsapp', function (hooks) {
 
   test('sendMessage on success ingests the returned message and clears the input', async function (assert) {
     const controller = makeController(this);
-    controller.currentChatId = 'chat-1';
+    openThread(controller);
     controller.connection = { status: 'connected' };
     controller.messageText = 'hello there';
 
@@ -76,14 +101,13 @@ module('Unit | Controller | whatsapp', function (hooks) {
     assert.strictEqual(capturedChatId, 'chat-1');
     assert.strictEqual(capturedBody, 'hello there');
     assert.strictEqual(controller.messageText, '', 'input cleared on success');
-    assert.strictEqual(controller.messages.length, 1);
-    assert.strictEqual(controller.messages[0].id, 'm-1');
+    assert.deepEqual(ids(controller), ['m-1']);
     assert.false(controller.isSending, 'isSending reset');
   });
 
   test('sendMessage dedupes against a socket echo that already arrived', async function (assert) {
     const controller = makeController(this);
-    controller.currentChatId = 'chat-1';
+    openThread(controller);
     controller.connection = { status: 'connected' };
     controller.messageText = 'hi';
     // Simulate the whatsapp:message socket event landing before the send response resolves.
@@ -110,12 +134,12 @@ module('Unit | Controller | whatsapp', function (hooks) {
     };
 
     await controller.sendMessage();
-    assert.strictEqual(controller.messages.length, 1, 'no duplicate message');
+    assert.deepEqual(ids(controller), ['m-1'], 'no duplicate message');
   });
 
   test('sendMessage surfaces a failure via notifications.error and resets isSending', async function (assert) {
     const controller = makeController(this);
-    controller.currentChatId = 'chat-1';
+    openThread(controller);
     controller.connection = { status: 'connected' };
     controller.messageText = 'hi';
 
@@ -135,11 +159,7 @@ module('Unit | Controller | whatsapp', function (hooks) {
 
     assert.strictEqual(errorMessage, 'No connected WhatsApp number');
     assert.strictEqual(controller.messageText, 'hi', 'input kept on failure');
-    assert.strictEqual(
-      controller.messages.length,
-      0,
-      'nothing ingested on failure',
-    );
+    assert.deepEqual(ids(controller), [], 'nothing ingested on failure');
     assert.false(controller.isSending, 'isSending reset');
   });
 
@@ -632,57 +652,56 @@ module('Unit | Controller | whatsapp', function (hooks) {
 
   // Status, edits and deletions arrive on an id already held, so ingest merges, not drops, them.
 
-  test('ingestMessages merges a delivery status onto a message already held', function (assert) {
+  function ingestAll(controller, msgs) {
+    for (const m of msgs) controller.ingestMessage(m);
+  }
+
+  test('ingestMessage merges a delivery status onto a message already held', function (assert) {
     const controller = makeController(this);
-    controller.ingestMessages([
+    openThread(controller);
+    ingestAll(controller, [
       { id: 'm-1', chatId: 'chat-1', body: 'hi', fromMe: true, timestamp: 100 },
     ]);
-    assert.strictEqual(controller.messages[0].status, undefined);
+    assert.strictEqual(controller.currentChatMessages[0].status, undefined);
 
-    controller.ingestMessages([
-      {
-        id: 'm-1',
-        chatId: 'chat-1',
-        body: 'hi',
-        fromMe: true,
-        timestamp: 100,
-        status: 'read',
-        statusAt: 120,
-      },
-    ]);
+    controller.ingestMessage({
+      id: 'm-1',
+      chatId: 'chat-1',
+      body: 'hi',
+      fromMe: true,
+      timestamp: 100,
+      status: 'read',
+      statusAt: 120,
+    });
 
-    assert.strictEqual(controller.messages.length, 1, 'still one message');
-    assert.strictEqual(controller.messages[0].status, 'read');
-    assert.strictEqual(controller.messages[0].statusAt, 120);
+    assert.strictEqual(controller.currentChatMessages.length, 1);
+    assert.strictEqual(controller.currentChatMessages[0].status, 'read');
+    assert.strictEqual(controller.currentChatMessages[0].statusAt, 120);
   });
 
-  test('ingestMessages keeps an updated message in its original position', function (assert) {
+  test('ingestMessage keeps an updated message in its original position', function (assert) {
     const controller = makeController(this);
-    controller.ingestMessages([
+    openThread(controller);
+    ingestAll(controller, [
       { id: 'm-1', chatId: 'chat-1', body: 'a', fromMe: true, timestamp: 100 },
       { id: 'm-2', chatId: 'chat-1', body: 'b', fromMe: true, timestamp: 200 },
     ]);
 
-    controller.ingestMessages([
-      {
-        id: 'm-1',
-        chatId: 'chat-1',
-        body: 'a',
-        fromMe: true,
-        timestamp: 100,
-        status: 'delivered',
-      },
-    ]);
+    controller.ingestMessage({
+      id: 'm-1',
+      chatId: 'chat-1',
+      body: 'a',
+      fromMe: true,
+      timestamp: 100,
+      status: 'delivered',
+    });
 
-    assert.deepEqual(
-      controller.messages.map((m) => m.id),
-      ['m-1', 'm-2'],
-    );
+    assert.deepEqual(ids(controller), ['m-1', 'm-2']);
   });
 
   test('a deleted message survives the empty-body filter and carries deletedAt', function (assert) {
     const controller = makeController(this);
-    controller.ingestMessages([
+    const page = controller._pageMessages([
       {
         id: 'm-gone',
         chatId: 'chat-1',
@@ -694,148 +713,1261 @@ module('Unit | Controller | whatsapp', function (hooks) {
       },
     ]);
 
-    assert.strictEqual(controller.messages.length, 1, 'stub is kept');
-    assert.strictEqual(controller.messages[0].deletedAt, 150);
+    assert.strictEqual(page.length, 1, 'stub kept');
+    assert.strictEqual(page[0].deletedAt, 150);
   });
 
   test('a body-less, media-less, undeleted row is still dropped', function (assert) {
     const controller = makeController(this);
-    controller.ingestMessages([
-      {
-        id: 'm-empty',
-        chatId: 'chat-1',
-        body: '',
-        fromMe: false,
-        timestamp: 100,
-      },
-    ]);
+    openThread(controller);
+    controller.ingestMessage({
+      id: 'm-empty',
+      chatId: 'chat-1',
+      body: '',
+      fromMe: false,
+      timestamp: 100,
+    });
 
-    assert.strictEqual(controller.messages.length, 0);
+    assert.strictEqual(controller.currentChatMessages.length, 0);
   });
 
   test('a deletion arriving later replaces the body of a message already rendered', function (assert) {
     const controller = makeController(this);
-    controller.ingestMessages([
-      {
-        id: 'm-1',
-        chatId: 'chat-1',
-        body: 'my old address',
-        fromMe: false,
-        timestamp: 100,
-      },
-    ]);
+    openThread(controller);
+    const base = {
+      id: 'm-1',
+      chatId: 'chat-1',
+      body: 'my old address',
+      fromMe: false,
+      timestamp: 100,
+    };
+    controller.ingestMessage(base);
+    controller.ingestMessage({ ...base, deletedAt: 150 });
 
-    controller.ingestMessages([
-      {
-        id: 'm-1',
-        chatId: 'chat-1',
-        body: 'my old address',
-        fromMe: false,
-        timestamp: 100,
-        deletedAt: 150,
-      },
-    ]);
-
-    assert.strictEqual(controller.messages.length, 1);
-    assert.strictEqual(controller.messages[0].deletedAt, 150);
+    assert.strictEqual(controller.currentChatMessages.length, 1);
+    assert.strictEqual(controller.currentChatMessages[0].deletedAt, 150);
   });
 
   test('a status event merges status, statusAt and errorCode into the held message', function (assert) {
     const controller = makeController(this);
-    controller.ingestMessages([
-      { id: 'm-1', chatId: 'chat-1', body: 'hi', fromMe: true, timestamp: 100 },
-    ]);
+    openThread(controller);
+    controller.ingestMessage({
+      id: 'm-1',
+      chatId: 'chat-1',
+      body: 'hi',
+      fromMe: true,
+      timestamp: 100,
+    });
 
-    controller.handleSocketEvent('status', {
+    controller.applyStatus({
       id: 'm-1',
       status: 'failed',
       statusAt: 120,
       errorCode: '131042',
     });
 
-    assert.strictEqual(controller.messages.length, 1, 'still one message');
-    assert.strictEqual(controller.messages[0].status, 'failed');
-    assert.strictEqual(controller.messages[0].statusAt, 120);
-    assert.strictEqual(controller.messages[0].errorCode, '131042');
-    assert.strictEqual(controller.messages[0].body, 'hi', 'body kept');
+    const [held] = controller.currentChatMessages;
+    assert.strictEqual(controller.currentChatMessages.length, 1);
+    assert.strictEqual(held.status, 'failed');
+    assert.strictEqual(held.statusAt, 120);
+    assert.strictEqual(held.errorCode, '131042');
+    assert.strictEqual(held.body, 'hi', 'body kept');
   });
 
   test('a status event for an unknown message id is ignored', function (assert) {
     const controller = makeController(this);
-    controller.ingestMessages([
-      { id: 'm-1', chatId: 'chat-1', body: 'hi', fromMe: true, timestamp: 100 },
-    ]);
-    const before = controller.messages;
-
-    controller.handleSocketEvent('status', {
-      id: 'm-unknown',
-      status: 'read',
-      statusAt: 120,
-      errorCode: null,
+    openThread(controller);
+    controller.ingestMessage({
+      id: 'm-1',
+      chatId: 'chat-1',
+      body: 'hi',
+      fromMe: true,
+      timestamp: 100,
     });
+    const before = controller.threads;
 
-    assert.strictEqual(controller.messages, before, 'messages untouched');
+    controller.applyStatus({ id: 'm-unknown', status: 'read', statusAt: 120 });
+
+    assert.strictEqual(controller.threads, before, 'threads untouched');
   });
 
-  test('a reconnect refetches messages once and ingests them', async function (assert) {
-    const controller = makeController(this);
-    let calls = 0;
-    controller.whatsapp = {
-      getAllMessages() {
-        calls++;
-        return Promise.resolve({
-          data: {
-            messages: [
-              { id: 'm-missed', chatId: 'chat-1', body: 'hi', timestamp: 100 },
-            ],
-          },
-        });
+  function msg(id, timestamp, chatId = 'chat-1') {
+    return { id, chatId, body: id, fromMe: false, timestamp };
+  }
+
+  function httpError(status) {
+    const err = new Error('Unknown message cursor');
+    err.status = status;
+    return err;
+  }
+
+  function fakeWhatsappService({ pages = [], chats = [], saved = null } = {}) {
+    const listeners = {};
+    const calls = [];
+    const saves = [];
+    return {
+      listeners,
+      calls,
+      saves,
+      connects: 0,
+      disconnects: 0,
+      activeChatId: null,
+      unread: new Map(),
+      on(type, fn) {
+        (listeners[type] ??= new Set()).add(fn);
+      },
+      off(type, fn) {
+        listeners[type]?.delete(fn);
+      },
+      emit(type, data) {
+        for (const fn of listeners[type] ?? []) fn(data);
+      },
+      connectSocket() {
+        this.connects++;
+      },
+      disconnectSocket() {
+        this.disconnects++;
+      },
+      beginUnreadSeed: () => ({ seq: 1, since: 0 }),
+      seedUnread() {},
+      saveLastChat(entry) {
+        saves.push(entry);
+      },
+      readLastChat: () => saved,
+      getChats: () => Promise.resolve({ data: { chats } }),
+      getAi: () => Promise.resolve({ data: {} }),
+      getConnection: () => Promise.resolve({ data: null }),
+      getSignupConfig: () => Promise.resolve({ data: null }),
+      getMessages(chatId, opts) {
+        calls.push({ chatId, opts });
+        const next = pages.shift() ?? { messages: [], hasMore: false };
+        return next instanceof Error
+          ? Promise.reject(next)
+          : Promise.resolve({ data: next });
       },
     };
+  }
 
-    await controller.refetchMessages();
+  // Fake scroll container with row offsets.
+  function threadEl(controller, { scrollTop, scrollHeight, clientHeight }) {
+    const el = {
+      scrollTop,
+      scrollHeight,
+      clientHeight,
+      rows: [],
+      getBoundingClientRect: () => ({ top: 0 }),
+      querySelectorAll() {
+        return el.rows.map((r) => ({
+          dataset: { messageId: r.id },
+          getBoundingClientRect: () => ({ top: r.top, bottom: r.top + 50 }),
+        }));
+      },
+    };
+    controller._threadElement = () => el;
+    return el;
+  }
 
-    assert.strictEqual(calls, 1, 'fetched once');
+  // ── Lifecycle ──
+
+  test('setup subscribes to message, status, chats and ai without touching the socket', async function (assert) {
+    const controller = makeController(this);
+    const whatsapp = fakeWhatsappService();
+    controller.whatsapp = whatsapp;
+
+    await controller.setup();
+    controller.stopClock();
+
+    assert.deepEqual(Object.keys(whatsapp.listeners).sort(), [
+      'ai',
+      'chats',
+      'message',
+      'status',
+    ]);
+    assert.strictEqual(whatsapp.connects, 0, 'the app controller owns connect');
+
+    openThread(controller);
+    whatsapp.emit('message', msg('m-1', 100));
+    assert.deepEqual(ids(controller), ['m-1'], 'message ingested');
+
+    whatsapp.emit('status', { id: 'm-1', status: 'read', statusAt: 120 });
+    assert.strictEqual(controller.currentChatMessages[0].status, 'read');
+
+    whatsapp.emit('ai', { enabled: true, creditsUsed: 3 });
+    assert.true(controller.aiEnabled, 'ai applied');
+    assert.strictEqual(controller.creditsUsed, 3);
+    controller.teardown();
+  });
+
+  test('teardown unsubscribes every handler and never disconnects the socket', async function (assert) {
+    const controller = makeController(this);
+    const whatsapp = fakeWhatsappService();
+    controller.whatsapp = whatsapp;
+
+    await controller.setup();
+    controller.teardown();
+
+    for (const type of ['message', 'status', 'ai', 'chats']) {
+      assert.strictEqual(whatsapp.listeners[type].size, 0, `${type} removed`);
+    }
+    assert.strictEqual(whatsapp.disconnects, 0, 'socket stays alive');
+    assert.strictEqual(controller.threads.size, 0, 'threads reset');
+    assert.strictEqual(controller.currentChatId, null);
+  });
+
+  test('setup loads only the chat list with unread counters, no messages', async function (assert) {
+    const controller = makeController(this);
+    const chats = [
+      { chatId: 'chat-1', unreadCount: 3, lastReadMessageId: 'm-1' },
+    ];
+    const whatsapp = fakeWhatsappService({ chats });
+    let seeded;
+    whatsapp.seedUnread = (list) => (seeded = list);
+    controller.whatsapp = whatsapp;
+
+    await controller.setup();
+    controller.teardown();
+
+    assert.deepEqual(seeded, chats, 'unread seeded from chats');
+    assert.strictEqual(whatsapp.calls.length, 0, 'no message reads');
+    assert.strictEqual(whatsapp.getAllMessages, undefined);
+    assert.strictEqual(controller.chats.length, 1);
+  });
+
+  // ── Opening a chat ──
+
+  test('opening a chat with nothing unread loads the latest 50 and shows the bottom', async function (assert) {
+    const controller = makeController(this);
+    const whatsapp = fakeWhatsappService({
+      pages: [{ messages: [msg('m-2', 200), msg('m-3', 300)], hasMore: true }],
+    });
+    whatsapp.unread.set('chat-1', { unreadCount: 0, lastReadMessageId: 'm-3' });
+    controller.whatsapp = whatsapp;
+    const el = threadEl(controller, {
+      scrollTop: 0,
+      scrollHeight: 1000,
+      clientHeight: 400,
+    });
+
+    controller.selectChat('chat-1');
+    assert.true(controller.currentChatLoadingWindow, 'loading while in flight');
+    assert.false(controller.currentChatLoadingOlder);
+    controller.selectChat('chat-1');
+    await settled();
+
+    assert.deepEqual(whatsapp.calls, [
+      { chatId: 'chat-1', opts: { limit: 50 } },
+    ]);
+    const { messages, requestId, ...rest } = controller.threads.get('chat-1');
     assert.deepEqual(
-      controller.messages.map((m) => m.id),
-      ['m-missed'],
+      messages.map((m) => m.id),
+      ['m-2', 'm-3'],
+    );
+    assert.strictEqual(typeof requestId, 'number');
+    assert.deepEqual(rest, {
+      oldestId: 'm-2',
+      newestId: 'm-3',
+      hasMore: true,
+      hasMoreNewer: false,
+      loading: null,
+      error: false,
+      newerError: false,
+      windowError: false,
+    });
+    assert.strictEqual(controller.unreadMarkerId, null);
+    assert.strictEqual(whatsapp.activeChatId, 'chat-1');
+    assert.strictEqual(el.scrollTop, 1000, 'bottom');
+  });
+
+  test('opening an unread chat loads around the read marker with limit 100 and puts the marker near the top', async function (assert) {
+    const controller = makeController(this);
+    const whatsapp = fakeWhatsappService({
+      pages: [
+        {
+          messages: [msg('m-1', 100), msg('m-2', 200), msg('m-3', 300)],
+          hasMoreOlder: true,
+          hasMoreNewer: true,
+        },
+      ],
+    });
+    whatsapp.unread.set('chat-1', { unreadCount: 4, lastReadMessageId: 'm-2' });
+    controller.whatsapp = whatsapp;
+    const el = threadEl(controller, {
+      scrollTop: 0,
+      scrollHeight: 3000,
+      clientHeight: 400,
+    });
+    el.rows = [{ id: 'm-2', top: 500 }];
+
+    await controller.selectChat('chat-1');
+    await settled();
+
+    assert.deepEqual(whatsapp.calls[0].opts, { around: 'm-2', limit: 100 });
+    assert.strictEqual(controller.unreadMarkerId, 'm-2');
+    const state = controller.threads.get('chat-1');
+    assert.true(state.hasMore);
+    assert.true(state.hasMoreNewer);
+    assert.strictEqual(state.oldestId, 'm-1');
+    assert.strictEqual(state.newestId, 'm-3');
+    assert.strictEqual(el.scrollTop, 476, 'marker 24px from the top');
+
+    controller.teardown();
+    assert.strictEqual(whatsapp.activeChatId, null, 'teardown clears it');
+  });
+
+  test('an unread chat whose marker no longer exists falls back to the latest page', async function (assert) {
+    const controller = makeController(this);
+    let toasted = false;
+    controller.notifications = { error: () => (toasted = true) };
+    const whatsapp = fakeWhatsappService({
+      pages: [httpError(400), { messages: [msg('m-9', 900)], hasMore: false }],
+    });
+    whatsapp.unread.set('chat-1', { unreadCount: 2, lastReadMessageId: 'm-x' });
+    controller.whatsapp = whatsapp;
+
+    await controller.selectChat('chat-1');
+
+    assert.deepEqual(
+      whatsapp.calls.map((c) => c.opts),
+      [{ around: 'm-x', limit: 100 }, { limit: 50 }],
+    );
+    assert.strictEqual(controller.unreadMarkerId, null);
+    assert.deepEqual(ids(controller), ['m-9']);
+    assert.false(toasted);
+  });
+
+  test('each chat loads independently: switching drops the old window and reopening reloads', async function (assert) {
+    const controller = makeController(this);
+    const whatsapp = fakeWhatsappService({
+      pages: [
+        { messages: [msg('m-1', 100)], hasMore: false },
+        { messages: [msg('x-1', 100, 'chat-2')], hasMore: false },
+        { messages: [msg('m-1', 100)], hasMore: false },
+      ],
+    });
+    controller.whatsapp = whatsapp;
+
+    await controller.selectChat('chat-1');
+    await controller.selectChat('chat-2');
+    assert.false(controller.threads.has('chat-1'), 'old window dropped');
+    assert.deepEqual(ids(controller), ['x-1']);
+
+    await controller.selectChat('chat-1');
+    assert.deepEqual(
+      whatsapp.calls.map((c) => c.chatId),
+      ['chat-1', 'chat-2', 'chat-1'],
     );
   });
 
-  test('a reconnect event routes to the refetch', function (assert) {
+  test('a page resolving after a switch is dropped', async function (assert) {
     const controller = makeController(this);
-    let calls = 0;
-    controller.refetchMessages = () => calls++;
+    controller.whatsapp = fakeWhatsappService({
+      pages: [
+        { messages: [msg('m-1', 100)], hasMore: false },
+        { messages: [msg('x-1', 100, 'chat-2')], hasMore: false },
+      ],
+    });
 
-    controller.handleSocketEvent('reconnect');
+    controller.selectChat('chat-1');
+    controller.selectChat('chat-2');
+    await settled();
 
-    assert.strictEqual(calls, 1);
+    assert.false(controller.threads.has('chat-1'));
+    assert.deepEqual(ids(controller), ['x-1']);
   });
 
-  test('a failed refetch after reconnect is logged, not swallowed', async function (assert) {
+  test('a failed window load logs, toasts, clears the thread, and selecting again retries', async function (assert) {
     const controller = makeController(this);
-    const failure = new Error('network down');
-    controller.whatsapp = {
-      getAllMessages() {
-        return Promise.reject(failure);
-      },
-    };
+    const failure = new Error('down');
+    const whatsapp = fakeWhatsappService({
+      pages: [failure, { messages: [msg('m-1', 100)], hasMore: false }],
+    });
+    controller.whatsapp = whatsapp;
+    let toast;
+    controller.notifications = { error: (m) => (toast = m) };
     const originalError = console.error;
     let logged;
     console.error = (...args) => (logged = args);
-
     try {
-      await controller.refetchMessages();
+      await controller.selectChat('chat-1');
     } finally {
       console.error = originalError;
     }
 
     assert.strictEqual(logged?.[1], failure);
+    assert.strictEqual(toast, 'Could not load messages');
+    assert.false(controller.threads.has('chat-1'));
+
+    await controller.selectChat('chat-1');
+    assert.deepEqual(ids(controller), ['m-1'], 'retried');
+  });
+
+  // ── Edge paging ──
+
+  test('a scroll burst near the top loads before=<oldestId> once and keeps the visual position', async function (assert) {
+    const controller = makeController(this);
+    openThread(controller, {
+      messages: [msg('m-2', 200)],
+      oldestId: 'm-2',
+      newestId: 'm-2',
+      hasMore: true,
+    });
+    const whatsapp = fakeWhatsappService({
+      pages: [{ messages: [msg('m-1', 100)], hasMore: true }],
+    });
+    controller.whatsapp = whatsapp;
+
+    // 100px per row, no anchor rows.
+    const el = {
+      scrollTop: 0,
+      get scrollHeight() {
+        return controller.currentChatMessages.length * 100;
+      },
+      getBoundingClientRect: () => ({ top: 0 }),
+      querySelectorAll: () => [],
+    };
+    const first = controller.onThreadScroll({ target: el });
+    controller.onThreadScroll({ target: el });
+    controller.onThreadScroll({
+      target: { scrollTop: 300, scrollHeight: 500, clientHeight: 100 },
+    });
+    await first;
+    await settled();
+
+    assert.deepEqual(whatsapp.calls, [
+      { chatId: 'chat-1', opts: { before: 'm-2', limit: 50 } },
+    ]);
+    assert.deepEqual(ids(controller), ['m-1', 'm-2']);
+    assert.strictEqual(el.scrollTop, 100, 'moved by the added height');
+    assert.strictEqual(controller.threads.get('chat-1').oldestId, 'm-1');
+  });
+
+  test('an empty older page keeps the cursor and sets hasMore false', async function (assert) {
+    const controller = makeController(this);
+    openThread(controller, { oldestId: 'm-5', newestId: 'm-5', hasMore: true });
+    controller.whatsapp = fakeWhatsappService({
+      pages: [{ messages: [], hasMore: true }],
+    });
+
+    await controller.loadEdgePage('chat-1', { older: true });
+
+    const state = controller.threads.get('chat-1');
+    assert.false(state.hasMore);
+    assert.strictEqual(state.oldestId, 'm-5');
+    assert.strictEqual(state.loading, null);
+  });
+
+  test('load older does nothing while loading, when hasMore is false, or without a thread', async function (assert) {
+    const controller = makeController(this);
+    const whatsapp = fakeWhatsappService();
+    controller.whatsapp = whatsapp;
+
+    openThread(controller, {
+      hasMore: true,
+      oldestId: 'm-2',
+      loading: 'newer',
+    });
+    assert.false(await controller.loadEdgePage('chat-1', { older: true }));
+
+    openThread(controller, { hasMore: false, oldestId: 'm-2' });
+    assert.false(await controller.loadEdgePage('chat-1', { older: true }));
+
+    controller.threads = new Map();
+    assert.false(await controller.loadEdgePage('chat-1', { older: true }));
+
+    assert.strictEqual(whatsapp.calls.length, 0);
+  });
+
+  test('scrolling near the bottom loads after=<newestId> once', async function (assert) {
+    const controller = makeController(this);
+    openThread(controller, {
+      messages: [msg('m-3', 300)],
+      oldestId: 'm-3',
+      newestId: 'm-3',
+      hasMoreNewer: true,
+    });
+    const whatsapp = fakeWhatsappService({
+      pages: [{ messages: [msg('m-4', 400), msg('m-5', 500)], hasMore: false }],
+    });
+    controller.whatsapp = whatsapp;
+    const el = { scrollTop: 570, scrollHeight: 1000, clientHeight: 400 };
+
+    const first = controller.onThreadScroll({ target: el });
+    controller.onThreadScroll({ target: el });
+    await first;
+    await settled();
+
+    assert.deepEqual(whatsapp.calls, [
+      { chatId: 'chat-1', opts: { after: 'm-3', limit: 50 } },
+    ]);
+    assert.deepEqual(ids(controller), ['m-3', 'm-4', 'm-5']);
+    const state = controller.threads.get('chat-1');
+    assert.strictEqual(state.newestId, 'm-5');
+    assert.false(state.hasMoreNewer);
+  });
+
+  test('a failed newer page shows the retry row and scrolling does not retry', async function (assert) {
+    const controller = makeController(this);
+    openThread(controller, {
+      oldestId: 'm-1',
+      newestId: 'm-3',
+      hasMoreNewer: true,
+    });
+    const whatsapp = fakeWhatsappService({ pages: [new Error('down')] });
+    controller.whatsapp = whatsapp;
+    const el = { scrollTop: 600, scrollHeight: 1000, clientHeight: 400 };
+    const originalError = console.error;
+    console.error = () => {};
+    try {
+      await controller.onThreadScroll({ target: el });
+      await controller.onThreadScroll({ target: el });
+      await settled();
+    } finally {
+      console.error = originalError;
+    }
+
+    assert.strictEqual(whatsapp.calls.length, 1);
+    assert.true(controller.currentChatNewerError);
+    assert.false(controller.currentChatLoadingNewer);
+  });
+
+  test('a live message and a status push during an older load keep the page and clear loading', async function (assert) {
+    const controller = makeController(this);
+    openThread(controller, {
+      messages: [controller._normalizeMessage(msg('m-5', 500))],
+      oldestId: 'm-5',
+      newestId: 'm-5',
+      hasMore: true,
+    });
+    let resolvePage;
+    controller.whatsapp = {
+      getMessages: () => new Promise((resolve) => (resolvePage = resolve)),
+    };
+
+    const load = controller.loadEdgePage('chat-1', { older: true });
+    assert.true(controller.currentChatLoadingOlder);
+    controller.ingestMessage(msg('m-9', 900));
+    controller.applyStatus({ id: 'm-5', status: 'read', statusAt: 950 });
+    resolvePage({ data: { messages: [msg('m-1', 100)], hasMore: false } });
+
+    assert.true(await load, 'page accepted');
+    assert.deepEqual(ids(controller), ['m-1', 'm-5', 'm-9']);
+    assert.strictEqual(controller.currentChatMessages[1].status, 'read');
+    const state = controller.threads.get('chat-1');
+    assert.strictEqual(state.loading, null);
+    assert.strictEqual(state.oldestId, 'm-1');
+    assert.strictEqual(state.newestId, 'm-9');
+  });
+
+  // ── Window rendering ──
+
+  test('a live message for the open chat is hidden while hasMoreNewer, shown once the window is at the newest', function (assert) {
+    const controller = makeController(this);
+    controller.chats = [{ chatId: 'chat-1', chatName: 'Layla', lastTs: 0 }];
+    openThread(controller, {
+      messages: [controller._normalizeMessage(msg('m-1', 100))],
+      oldestId: 'm-1',
+      newestId: 'm-1',
+      hasMoreNewer: true,
+    });
+
+    controller.ingestMessage(msg('m-9', 900));
+    assert.deepEqual(ids(controller), ['m-1'], 'not in the thread');
+    assert.strictEqual(controller.chats[0].lastBody, 'm-9', 'preview updates');
+
+    openThread(controller, {
+      messages: [controller._normalizeMessage(msg('m-1', 100))],
+      newestId: 'm-1',
+      hasMoreNewer: false,
+    });
+    controller.ingestMessage(msg('m-10', 1000));
+    assert.deepEqual(ids(controller), ['m-1', 'm-10']);
+    assert.strictEqual(controller.threads.get('chat-1').newestId, 'm-10');
+  });
+
+  test('a live message for a chat that is not open is never stored', function (assert) {
+    const controller = makeController(this);
+    openThread(controller);
+
+    controller.ingestMessage(msg('x-1', 100, 'chat-2'));
+
+    assert.false(controller.threads.has('chat-2'));
+    assert.deepEqual(ids(controller), []);
+    assert.strictEqual(controller.chats[0].chatId, 'chat-2', 'list updates');
+  });
+
+  test('a live message racing the latest page is appended once when the page lands', async function (assert) {
+    const controller = makeController(this);
+    controller.whatsapp = fakeWhatsappService({
+      pages: [{ messages: [msg('m-1', 100), msg('m-2', 200)], hasMore: false }],
+    });
+
+    const open = controller.selectChat('chat-1');
+    controller.ingestMessage(msg('m-2', 200));
+    controller.ingestMessage(msg('m-3', 300));
+    await open;
+
+    assert.deepEqual(ids(controller), ['m-1', 'm-2', 'm-3']);
+    assert.strictEqual(controller.threads.get('chat-1').newestId, 'm-3');
+  });
+
+  test('a new message sticks to the bottom only when already near it', async function (assert) {
+    const controller = makeController(this);
+    openThread(controller);
+    const el = threadEl(controller, {
+      scrollTop: 540,
+      scrollHeight: 1000,
+      clientHeight: 400,
+    });
+
+    controller.ingestMessage(msg('m-1', 100));
+    await settled();
+    assert.strictEqual(el.scrollTop, 1000, 'near bottom sticks');
+
+    el.scrollTop = 200;
+    controller.ingestMessage(msg('m-2', 200));
+    await settled();
+    assert.strictEqual(el.scrollTop, 200, 'scrolled up does not jump');
+  });
+
+  test('sending while the window is behind jumps to the latest page', async function (assert) {
+    const controller = makeController(this);
+    controller.connection = { status: 'connected' };
+    openThread(controller, {
+      messages: [controller._normalizeMessage(msg('m-1', 100))],
+      newestId: 'm-1',
+      hasMoreNewer: true,
+    });
+    const whatsapp = fakeWhatsappService({
+      pages: [{ messages: [msg('m-8', 800), msg('m-9', 900)], hasMore: true }],
+    });
+    whatsapp.sendMessage = () =>
+      Promise.resolve({ data: { ...msg('m-9', 900), fromMe: true } });
+    controller.whatsapp = whatsapp;
+    controller.messageText = 'hi';
+
+    await controller.sendMessage();
+
+    assert.deepEqual(whatsapp.calls[0].opts, { limit: 50 });
+    assert.deepEqual(ids(controller), ['m-8', 'm-9']);
+    assert.false(controller.threads.get('chat-1').hasMoreNewer);
+  });
+
+  // ── Read tracking ──
+
+  test('visible inbound rows mark read only past the current marker and only from the loaded window', function (assert) {
+    const controller = makeController(this);
+    const marked = [];
+    controller.whatsapp = {
+      unread: new Map([
+        ['chat-1', { unreadCount: 2, lastReadMessageId: 'm-2' }],
+      ]),
+      markRead: (chatId, id) => marked.push([chatId, id]),
+    };
+    openThread(controller);
+    ingestAll(controller, [
+      msg('m-1', 100),
+      msg('m-2', 200),
+      msg('m-3', 300),
+      { ...msg('m-4', 400), fromMe: true },
+    ]);
+    let visible = true;
+    controller._isDocumentVisible = () => visible;
+    const entry = (id, isIntersecting = true) => ({
+      isIntersecting,
+      target: { dataset: { messageId: id } },
+    });
+
+    controller._onRowsVisible([entry('m-1'), entry('m-2')]);
+    assert.deepEqual(marked, [], 'nothing past the marker');
+
+    controller._onRowsVisible([entry('m-unloaded')]);
+    assert.deepEqual(marked, [], 'an unloaded id is never marked');
+
+    controller._onRowsVisible([entry('m-3'), entry('m-4')]);
+    assert.deepEqual(marked, [['chat-1', 'm-3']], 'newest inbound only');
+
+    visible = false;
+    controller._visibleReadRows.clear();
+    controller._onRowsVisible([entry('m-3')]);
+    assert.strictEqual(marked.length, 1, 'hidden tab marks nothing');
+  });
+
+  // ── Reconnect ──
+
+  test('a resync reloads the open chat around the first visible row and keeps its offset', async function (assert) {
+    const controller = makeController(this);
+    const whatsapp = fakeWhatsappService({
+      pages: [
+        {
+          messages: [msg('m-5', 500), msg('m-6', 600), msg('m-7', 700)],
+          hasMoreOlder: true,
+          hasMoreNewer: true,
+        },
+      ],
+    });
+    controller.whatsapp = whatsapp;
+    await controller.setup();
+    controller.stopClock();
+    openThread(controller, {
+      messages: [msg('m-5', 500), msg('m-6', 600)].map((m) =>
+        controller._normalizeMessage(m),
+      ),
+    });
+    const el = threadEl(controller, {
+      scrollTop: 0,
+      scrollHeight: 2000,
+      clientHeight: 400,
+    });
+    el.rows = [
+      { id: 'm-5', top: -80 },
+      { id: 'm-6', top: 30 },
+    ];
+
+    whatsapp.emit('chats', [{ chatId: 'chat-1', chatName: 'Layla' }]);
+    el.rows = [{ id: 'm-6', top: 130 }];
+    await settled();
+
+    assert.deepEqual(whatsapp.calls, [
+      { chatId: 'chat-1', opts: { around: 'm-6', limit: 100 } },
+    ]);
+    assert.deepEqual(ids(controller), ['m-5', 'm-6', 'm-7']);
+    assert.true(controller.threads.get('chat-1').hasMoreNewer);
+    assert.strictEqual(el.scrollTop, 100, 'anchor row back at its offset');
+    assert.strictEqual(controller.chats[0].chatName, 'Layla', 'list replaced');
+    controller.teardown();
+  });
+
+  test('a resync at the bottom reloads the latest page', async function (assert) {
+    const controller = makeController(this);
+    const whatsapp = fakeWhatsappService({
+      pages: [{ messages: [msg('m-9', 900)], hasMore: true }],
+    });
+    controller.whatsapp = whatsapp;
+    await controller.setup();
+    controller.stopClock();
+    openThread(controller, {
+      messages: [controller._normalizeMessage(msg('m-8', 800))],
+    });
+    const el = threadEl(controller, {
+      scrollTop: 1600,
+      scrollHeight: 2000,
+      clientHeight: 400,
+    });
+
+    whatsapp.emit('chats', []);
+    await settled();
+
+    assert.deepEqual(whatsapp.calls[0].opts, { limit: 50 });
+    assert.strictEqual(el.scrollTop, 2000);
+    controller.teardown();
+  });
+
+  test('a resync near the bottom of a window with newer pages reloads around the first visible row', async function (assert) {
+    const controller = makeController(this);
+    const whatsapp = fakeWhatsappService({
+      pages: [
+        {
+          messages: [msg('m-5', 500), msg('m-6', 600)],
+          hasMoreOlder: true,
+          hasMoreNewer: true,
+        },
+      ],
+    });
+    controller.whatsapp = whatsapp;
+    await controller.setup();
+    controller.stopClock();
+    openThread(controller, {
+      messages: [msg('m-5', 500), msg('m-6', 600)].map((m) =>
+        controller._normalizeMessage(m),
+      ),
+      hasMoreNewer: true,
+    });
+    const el = threadEl(controller, {
+      scrollTop: 1600,
+      scrollHeight: 2000,
+      clientHeight: 400,
+    });
+    el.rows = [{ id: 'm-5', top: 10 }];
+
+    whatsapp.emit('chats', []);
+    await settled();
+
+    assert.deepEqual(
+      whatsapp.calls.map((c) => c.opts),
+      [{ around: 'm-5', limit: 100 }],
+      'no jump to latest',
+    );
+    controller.teardown();
+  });
+
+  test('a resync while the restore window is loading does not reload the chat', async function (assert) {
+    const controller = makeController(this);
+    const whatsapp = fakeWhatsappService({
+      chats: [{ chatId: 'chat-1' }],
+      saved: {
+        chatId: 'chat-1',
+        anchorMessageId: 'm-5',
+        anchorOffset: 40,
+        atBottom: false,
+      },
+    });
+    let resolvePage;
+    whatsapp.getMessages = (chatId, opts) => {
+      whatsapp.calls.push({ chatId, opts });
+      return new Promise((resolve) => (resolvePage = resolve));
+    };
+    controller.whatsapp = whatsapp;
+    const el = threadEl(controller, {
+      scrollTop: 0,
+      scrollHeight: 0,
+      clientHeight: 400,
+    });
+
+    const setup = controller.setup();
+    await settled();
+    assert.true(controller.currentChatLoadingWindow);
+    whatsapp.emit('chats', [{ chatId: 'chat-1', chatName: 'Layla' }]);
+    await settled();
+
+    assert.strictEqual(whatsapp.calls.length, 1, 'no reload');
+    assert.strictEqual(controller.chats[0].chatName, 'Layla', 'list refreshed');
+
+    el.scrollHeight = 3000;
+    el.rows = [{ id: 'm-5', top: 240 }];
+    resolvePage({ data: { messages: [msg('m-5', 500)], hasMoreNewer: true } });
+    await setup;
+    await settled();
+
+    assert.strictEqual(el.scrollTop, 200, 'restore offset kept');
+    controller.stopClock();
+    controller.teardown();
+  });
+
+  test('a resync with no open chat loads no messages', async function (assert) {
+    const controller = makeController(this);
+    const whatsapp = fakeWhatsappService();
+    controller.whatsapp = whatsapp;
+    await controller.setup();
+    controller.stopClock();
+
+    whatsapp.emit('chats', [{ chatId: 'c-1', chatName: 'Layla', lastTs: 10 }]);
+    await settled();
+
+    assert.strictEqual(whatsapp.calls.length, 0);
+    controller.teardown();
+  });
+
+  test('a chats event replaces the list with the setup filtering', async function (assert) {
+    const controller = makeController(this);
+    const whatsapp = fakeWhatsappService();
+    controller.whatsapp = whatsapp;
+    await controller.setup();
+    controller.stopClock();
+
+    whatsapp.emit('chats', [
+      { chatId: 'c-1', chatName: 'Layla', lastTs: 10, lastInboundAt: 5 },
+      { chatId: 'g-1', isGroup: true, lastTs: 20 },
+    ]);
+
+    assert.deepEqual(controller.chats, [
+      {
+        chatId: 'c-1',
+        chatName: 'Layla',
+        lastTs: 10000,
+        lastInboundAt: 5000,
+      },
+    ]);
+    controller.teardown();
+  });
+
+  test('a send resolving after a chat switch leaves the new chat alone', async function (assert) {
+    const controller = makeController(this);
+    controller.connection = { status: 'connected' };
+    openThread(controller, {
+      messages: [controller._normalizeMessage(msg('m-1', 100))],
+      newestId: 'm-1',
+    });
+    const whatsapp = fakeWhatsappService();
+    let resolveSend;
+    whatsapp.sendMessage = () => new Promise((r) => (resolveSend = r));
+    controller.whatsapp = whatsapp;
+    controller.messageText = 'hi';
+
+    const send = controller.sendMessage();
+    openThread(
+      controller,
+      {
+        messages: [controller._normalizeMessage(msg('x-1', 100, 'chat-2'))],
+        newestId: 'x-1',
+        hasMoreNewer: true,
+      },
+      'chat-2',
+    );
+    resolveSend({ data: { ...msg('m-9', 900), fromMe: true } });
+    await send;
+    await settled();
+
+    assert.strictEqual(whatsapp.calls.length, 0, 'no reload');
+    assert.deepEqual(ids(controller), ['x-1']);
+    assert.false(controller.threads.has('chat-1'));
+    assert.false(controller.isSending);
+  });
+
+  test('a resync skipped during the restore load reloads once that load lands', async function (assert) {
+    const controller = makeController(this);
+    const whatsapp = fakeWhatsappService({
+      chats: [{ chatId: 'chat-1' }],
+      saved: {
+        chatId: 'chat-1',
+        anchorMessageId: 'm-5',
+        anchorOffset: 40,
+        atBottom: false,
+      },
+    });
+    const resolvers = [];
+    whatsapp.getMessages = (chatId, opts) => {
+      whatsapp.calls.push({ chatId, opts });
+      return new Promise((resolve) => resolvers.push(resolve));
+    };
+    controller.whatsapp = whatsapp;
+    const el = threadEl(controller, {
+      scrollTop: 0,
+      scrollHeight: 3000,
+      clientHeight: 400,
+    });
+    el.rows = [{ id: 'm-5', top: 240 }];
+
+    const setup = controller.setup();
+    await settled();
+    whatsapp.emit('chats', [{ chatId: 'chat-1' }]);
+    await settled();
+    assert.strictEqual(whatsapp.calls.length, 1, 'skipped while loading');
+
+    resolvers[0]({
+      data: {
+        messages: [msg('m-5', 500), msg('m-6', 600)],
+        hasMoreNewer: true,
+      },
+    });
+    await setup;
+    await settled();
+    assert.deepEqual(
+      whatsapp.calls.map((c) => c.opts),
+      [
+        { around: 'm-5', limit: 100 },
+        { around: 'm-5', limit: 100 },
+      ],
+      'owed reload around the first visible row',
+    );
+
+    resolvers[1]({
+      data: {
+        messages: [msg('m-5', 500), msg('m-6', 600), msg('m-7', 700)],
+        hasMoreNewer: false,
+      },
+    });
+    await settled();
+    assert.deepEqual(ids(controller), ['m-5', 'm-6', 'm-7']);
+    assert.strictEqual(whatsapp.calls.length, 2, 'paid once');
+    controller.stopClock();
+    controller.teardown();
+  });
+
+  test('an owed reload is dropped on chat switch and teardown', async function (assert) {
+    const controller = makeController(this);
+    openThread(controller, { loading: 'window' });
+    const whatsapp = fakeWhatsappService({
+      pages: [{ messages: [msg('x-1', 100, 'chat-2')], hasMore: false }],
+    });
+    controller.whatsapp = whatsapp;
+
+    await controller.applyResyncChats([]);
+    assert.strictEqual(controller._owedReloadChatId, 'chat-1');
+
+    await controller.selectChat('chat-2');
+    await settled();
+    assert.strictEqual(controller._owedReloadChatId, null);
+    assert.deepEqual(
+      whatsapp.calls.map((c) => c.chatId),
+      ['chat-2'],
+    );
+
+    controller._owedReloadChatId = 'chat-2';
+    controller.teardown();
+    assert.strictEqual(controller._owedReloadChatId, null);
+  });
+
+  test('a failed reconnect reload keeps the window, shows retry, and does not toast', async function (assert) {
+    const controller = makeController(this);
+    let toasted = false;
+    controller.notifications = { error: () => (toasted = true) };
+    openThread(controller, {
+      messages: [msg('m-5', 500), msg('m-6', 600)].map((m) =>
+        controller._normalizeMessage(m),
+      ),
+      oldestId: 'm-5',
+      newestId: 'm-6',
+    });
+    const whatsapp = fakeWhatsappService();
+    let rejectPage;
+    whatsapp.getMessages = (chatId, opts) => {
+      whatsapp.calls.push({ chatId, opts });
+      return new Promise((_, reject) => (rejectPage = reject));
+    };
+    controller.whatsapp = whatsapp;
+    threadEl(controller, {
+      scrollTop: 1600,
+      scrollHeight: 2000,
+      clientHeight: 400,
+    });
+    const originalError = console.error;
+    console.error = () => {};
+    try {
+      const reload = controller.applyResyncChats([]);
+      controller.ingestMessage(msg('m-7', 700));
+      rejectPage(new Error('down'));
+      await reload;
+    } finally {
+      console.error = originalError;
+    }
+
+    assert.deepEqual(ids(controller), ['m-5', 'm-6', 'm-7'], 'window kept');
+    assert.true(controller.currentChatWindowError);
+    assert.false(controller.currentChatLoadingWindow);
+    assert.false(toasted);
+
+    whatsapp.getMessages = (chatId, opts) => {
+      whatsapp.calls.push({ chatId, opts });
+      return Promise.resolve({
+        data: { messages: [msg('m-7', 700), msg('m-8', 800)], hasMore: true },
+      });
+    };
+    await controller.retryReload();
+    await settled();
+
+    assert.deepEqual(whatsapp.calls.at(-1).opts, { limit: 50 });
+    assert.deepEqual(ids(controller), ['m-7', 'm-8']);
+    assert.false(controller.currentChatWindowError);
+  });
+
+  test('edits, deletes and status pushes for messages outside the window are ignored', function (assert) {
+    const controller = makeController(this);
+    controller.chats = [{ chatId: 'chat-1', lastBody: 'm-5', lastTs: 500000 }];
+    openThread(controller, {
+      messages: [controller._normalizeMessage(msg('m-5', 500))],
+      newestId: 'm-5',
+    });
+
+    controller.ingestMessage({ ...msg('m-1', 100), editedAt: 950 });
+    controller.ingestMessage({ ...msg('m-2', 200), deletedAt: 960 });
+    controller.applyStatus({ id: 'm-3', status: 'read', statusAt: 970 });
+    assert.deepEqual(ids(controller), ['m-5']);
+    assert.strictEqual(controller.threads.get('chat-1').newestId, 'm-5');
+    assert.strictEqual(controller.chats[0].lastBody, 'm-5', 'preview kept');
+
+    openThread(controller, { loading: 'window' });
+    controller.ingestMessage({ ...msg('m-1', 100), editedAt: 990 });
+    assert.deepEqual(controller._pendingLive, [], 'not queued either');
+  });
+
+  test('setup seeds unread with the ticket taken before the chats request', async function (assert) {
+    const controller = makeController(this);
+    const whatsapp = fakeWhatsappService();
+    const order = [];
+    whatsapp.beginUnreadSeed = () => {
+      order.push('ticket');
+      return { seq: 7, since: 4 };
+    };
+    whatsapp.getChats = () => {
+      order.push('request');
+      return Promise.resolve({ data: { chats: [] } });
+    };
+    let used;
+    whatsapp.seedUnread = (list, ticket) => (used = ticket);
+    controller.whatsapp = whatsapp;
+
+    await controller.setup();
+    controller.teardown();
+
+    assert.deepEqual(order, ['ticket', 'request']);
+    assert.deepEqual(used, { seq: 7, since: 4 });
+  });
+
+  // ── Last opened chat ──
+
+  test('selecting a chat saves it, and scrolling saves the reading anchor at most every 500ms', async function (assert) {
+    const controller = makeController(this);
+    const whatsapp = fakeWhatsappService({
+      pages: [{ messages: [msg('m-1', 100), msg('m-2', 200)], hasMore: false }],
+    });
+    controller.whatsapp = whatsapp;
+
+    await controller.selectChat('chat-1');
+    await settled();
+    assert.deepEqual(whatsapp.saves, [
+      {
+        chatId: 'chat-1',
+        anchorMessageId: null,
+        anchorOffset: 0,
+        atBottom: false,
+      },
+    ]);
+
+    const el = threadEl(controller, {
+      scrollTop: 200,
+      scrollHeight: 2000,
+      clientHeight: 400,
+    });
+    el.rows = [
+      { id: 'm-1', top: -60 },
+      { id: 'm-2', top: 20 },
+    ];
+    controller.onThreadScroll({ target: el });
+    controller.onThreadScroll({ target: el });
+    controller.onThreadScroll({ target: el });
+    await settled();
+
+    assert.strictEqual(whatsapp.saves.length, 2, 'one throttled save');
+    assert.deepEqual(whatsapp.saves[1], {
+      chatId: 'chat-1',
+      anchorMessageId: 'm-2',
+      anchorOffset: 20,
+      atBottom: false,
+    });
+
+    el.scrollTop = 1600;
+    controller.teardown();
+    assert.deepEqual(
+      whatsapp.saves[2],
+      {
+        chatId: 'chat-1',
+        anchorMessageId: 'm-2',
+        anchorOffset: 20,
+        atBottom: true,
+      },
+      'teardown saves, never clears',
+    );
+  });
+
+  test('setup reopens the saved chat around its anchor and restores the offset', async function (assert) {
+    const controller = makeController(this);
+    const whatsapp = fakeWhatsappService({
+      chats: [{ chatId: 'chat-1' }],
+      saved: {
+        chatId: 'chat-1',
+        anchorMessageId: 'm-5',
+        anchorOffset: 40,
+        atBottom: false,
+      },
+      pages: [
+        {
+          messages: [msg('m-4', 400), msg('m-5', 500)],
+          hasMoreOlder: true,
+          hasMoreNewer: true,
+        },
+      ],
+    });
+    whatsapp.unread.set('chat-1', { unreadCount: 3, lastReadMessageId: 'm-2' });
+    controller.whatsapp = whatsapp;
+    const el = threadEl(controller, {
+      scrollTop: 0,
+      scrollHeight: 3000,
+      clientHeight: 400,
+    });
+    el.rows = [{ id: 'm-5', top: 240 }];
+
+    await controller.setup();
+    await settled();
+
+    assert.strictEqual(controller.currentChatId, 'chat-1');
+    assert.deepEqual(whatsapp.calls, [
+      { chatId: 'chat-1', opts: { around: 'm-5', limit: 100 } },
+    ]);
+    assert.strictEqual(el.scrollTop, 200, 'anchor 40px from the top');
+    assert.strictEqual(
+      whatsapp.saves.length,
+      0,
+      'restore keeps the saved entry',
+    );
+    controller.teardown();
+  });
+
+  test('a saved chat left at the bottom opens the latest page at the bottom, over the unread marker', async function (assert) {
+    const controller = makeController(this);
+    const whatsapp = fakeWhatsappService({
+      chats: [{ chatId: 'chat-1' }],
+      saved: {
+        chatId: 'chat-1',
+        anchorMessageId: 'm-5',
+        anchorOffset: 0,
+        atBottom: true,
+      },
+      pages: [{ messages: [msg('m-9', 900)], hasMore: true }],
+    });
+    whatsapp.unread.set('chat-1', { unreadCount: 2, lastReadMessageId: 'm-2' });
+    controller.whatsapp = whatsapp;
+    const el = threadEl(controller, {
+      scrollTop: 0,
+      scrollHeight: 3000,
+      clientHeight: 400,
+    });
+
+    await controller.setup();
+    await settled();
+
+    assert.deepEqual(
+      whatsapp.calls.map((c) => c.opts),
+      [{ limit: 50 }],
+    );
+    assert.strictEqual(el.scrollTop, 3000);
+    controller.teardown();
+  });
+
+  test('a saved anchor that no longer exists falls back to the normal open', async function (assert) {
+    const controller = makeController(this);
+    let toasted = false;
+    controller.notifications = { error: () => (toasted = true) };
+    const whatsapp = fakeWhatsappService({
+      chats: [{ chatId: 'chat-1' }],
+      saved: {
+        chatId: 'chat-1',
+        anchorMessageId: 'm-gone',
+        anchorOffset: 10,
+        atBottom: false,
+      },
+      pages: [httpError(400), { messages: [msg('m-9', 900)], hasMore: false }],
+    });
+    controller.whatsapp = whatsapp;
+
+    await controller.setup();
+
+    assert.deepEqual(
+      whatsapp.calls.map((c) => c.opts),
+      [{ around: 'm-gone', limit: 100 }, { limit: 50 }],
+    );
+    assert.deepEqual(ids(controller), ['m-9']);
+    assert.false(toasted);
+    controller.teardown();
+  });
+
+  test('a saved chat missing from the chat list is not opened', async function (assert) {
+    const controller = makeController(this);
+    const whatsapp = fakeWhatsappService({
+      chats: [{ chatId: 'chat-2' }],
+      saved: { chatId: 'chat-1', anchorMessageId: 'm-5', atBottom: false },
+    });
+    controller.whatsapp = whatsapp;
+
+    await controller.setup();
+
+    assert.strictEqual(controller.currentChatId, null);
+    assert.strictEqual(whatsapp.calls.length, 0);
+    controller.teardown();
   });
 
   test('setup starts one clock and teardown clears it', function (assert) {
     const controller = makeController(this);
-    controller.whatsapp = { disconnectSocket() {} };
+    controller.whatsapp = { off() {} };
 
     controller.startClock();
     const first = controller._clockTimer;
@@ -1024,14 +2156,10 @@ module('Unit | Controller | whatsapp', function (hooks) {
       },
     };
     controller.whatsapp = {
-      connectSocket() {
-        return {};
-      },
+      on() {},
+      beginUnreadSeed: () => ({ seq: 1, since: 0 }),
       getChats() {
         return Promise.reject(new Error('backend down'));
-      },
-      getAllMessages() {
-        return Promise.resolve({ data: { messages: [] } });
       },
       getAi() {
         return Promise.resolve({ data: {} });

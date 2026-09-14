@@ -3,9 +3,19 @@ import Controller from '@ember/controller';
 import { service } from '@ember/service';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
+import { runTask, cancelTask } from 'ember-lifeline';
+import { modifier } from 'ember-modifier';
 
 // Meta's 24h reply window opens only on an inbound message; an agent reply never extends it.
 const REPLY_WINDOW_MS = 24 * 60 * 60 * 1000;
+const PAGE_SIZE = 50;
+const AROUND_LIMIT = 100;
+const SAVE_THROTTLE_MS = 500;
+const LOAD_OLDER_THRESHOLD_PX = 40;
+const LOAD_NEWER_THRESHOLD_PX = 40;
+const STICK_TO_BOTTOM_PX = 80;
+const MARKER_TOP_OFFSET_PX = 24;
+const READ_VISIBLE_RATIO = 0.6;
 
 // Fields a later delivery of the same wa message id may legitimately change.
 const MUTABLE_MESSAGE_FIELDS = [
@@ -81,8 +91,11 @@ export default class WhatsappController extends Controller {
   // ── State ─────────────────────────────────────────────────────────────
 
   @tracked chats = [];
-  @tracked messages = [];
   @tracked currentChatId = null;
+  // chatId to thread state; replaced on write.
+  @tracked threads = new Map();
+  // Divider position for this visit; not moved live.
+  @tracked unreadMarkerId = null;
 
   @tracked connection = null;
   @tracked signupConfig = null;
@@ -102,6 +115,22 @@ export default class WhatsappController extends Controller {
 
   _setupGeneration = 0;
   _clockTimer = null;
+  _saveTimer = null;
+  _requestSeq = 0;
+  _readObserver = null;
+  _visibleReadRows = new Set();
+  // Live messages during a load.
+  _pendingLive = [];
+  _owedReloadChatId = null;
+  _onVisibilityChange = () => this._markVisibleRead();
+
+  // Stable refs for off().
+  _socketHandlers = {
+    message: (data) => this.ingestMessage(data),
+    status: (data) => this.applyStatus(data),
+    ai: (data) => this.applyAi(data),
+    chats: (chats) => this.applyResyncChats(chats),
+  };
 
   // ── Computed ──────────────────────────────────────────────────────────
 
@@ -114,11 +143,43 @@ export default class WhatsappController extends Controller {
     return !this.currentChatId || this.isSending || !this.isConnected;
   }
 
+  get currentThread() {
+    return this.currentChatId
+      ? (this.threads.get(this.currentChatId) ?? null)
+      : null;
+  }
+
   get currentChatMessages() {
-    if (!this.currentChatId) return [];
-    return this.messages
-      .filter((m) => m.chatId === this.currentChatId)
-      .sort((a, b) => (a.timestamp ?? 0) - (b.timestamp ?? 0));
+    return this.currentThread?.messages ?? [];
+  }
+
+  get currentChatLoadingWindow() {
+    return this.currentThread?.loading === 'window';
+  }
+
+  get currentChatLoadingOlder() {
+    return this.currentThread?.loading === 'older';
+  }
+
+  get currentChatOlderError() {
+    return Boolean(this.currentThread?.error);
+  }
+
+  get currentChatLoadingNewer() {
+    return this.currentThread?.loading === 'newer';
+  }
+
+  get currentChatNewerError() {
+    return Boolean(this.currentThread?.newerError);
+  }
+
+  get currentChatWindowError() {
+    return Boolean(this.currentThread?.windowError);
+  }
+
+  @action
+  unreadCountFor(chatId) {
+    return this.whatsapp.unread.get(chatId)?.unreadCount ?? 0;
   }
 
   get currentChat() {
@@ -246,33 +307,31 @@ export default class WhatsappController extends Controller {
 
   async setup() {
     const setupGen = this._setupGeneration;
+    this.threads = new Map();
     this.startClock();
-    this.whatsapp.connectSocket((type, data) =>
-      this.handleSocketEvent(type, data),
-    );
+    for (const [type, fn] of Object.entries(this._socketHandlers)) {
+      this.whatsapp.on(type, fn);
+    }
+    document.addEventListener('visibilitychange', this._onVisibilityChange);
+    const seedTicket = this.whatsapp.beginUnreadSeed();
 
     try {
-      const [chatsData, msgsData, aiData, connData, signupData] =
-        await Promise.all([
-          this.whatsapp.getChats(),
-          this.whatsapp.getAllMessages(),
-          this.whatsapp.getAi(),
-          // Own catch: a connection read failure must not blank the chat list.
-          this.whatsapp.getConnection().catch(() => null),
-          this.whatsapp.getSignupConfig().catch(() => null),
-        ]);
+      const [chatsData, aiData, connData, signupData] = await Promise.all([
+        this.whatsapp.getChats(),
+        this.whatsapp.getAi(),
+        // Keeps the chat list on failure.
+        this.whatsapp.getConnection().catch(() => null),
+        this.whatsapp.getSignupConfig().catch(() => null),
+      ]);
 
       if (setupGen !== this._setupGeneration) return; // navigated away mid-fetch
 
       this.connection = connData?.data ?? null;
-      this.signupConfig = signupData
-        ? (signupData.data ?? signupData)
-        : null;
+      this.signupConfig = signupData ? (signupData.data ?? signupData) : null;
 
-      this.chats = (chatsData.data?.chats ?? chatsData.chats ?? [])
-        .filter((c) => !this._isIgnoredChat(c))
-        .map((c) => this._normalizeChat(c));
-      this.ingestMessages(msgsData.data?.messages ?? msgsData.messages ?? []);
+      const chats = chatsData.data?.chats ?? chatsData.chats ?? [];
+      this.whatsapp.seedUnread(chats, seedTicket);
+      this._setChats(chats);
 
       const ai = aiData.data ?? aiData;
       this.aiEnabled = ai.enabled ?? false;
@@ -284,14 +343,31 @@ export default class WhatsappController extends Controller {
     } catch (err) {
       console.error('WhatsApp setup failed', err);
       this.notifications.error('Could not load WhatsApp data');
+      return;
+    }
+
+    const saved = this.whatsapp.readLastChat();
+    if (saved && this.chats.some((c) => c.chatId === saved.chatId)) {
+      await this._openChat(saved.chatId, { restore: saved });
     }
   }
 
   teardown() {
     this._setupGeneration++;
-    this.whatsapp.disconnectSocket();
+    this._cancelSave();
+    this._saveLastChat();
+    for (const [type, fn] of Object.entries(this._socketHandlers)) {
+      this.whatsapp.off(type, fn);
+    }
+    document.removeEventListener('visibilitychange', this._onVisibilityChange);
     this.stopClock();
+    this._disconnectReadObserver();
     this.currentChatId = null;
+    this.whatsapp.activeChatId = null;
+    this.unreadMarkerId = null;
+    this.threads = new Map();
+    this._pendingLive = [];
+    this._owedReloadChatId = null;
   }
 
   startClock() {
@@ -307,36 +383,333 @@ export default class WhatsappController extends Controller {
     }
   }
 
-  // Events emitted while the socket was down are lost, so catch up once.
-  async refetchMessages() {
-    const setupGen = this._setupGeneration;
+  _setThread(chatId, state) {
+    const next = new Map(this.threads);
+    if (state) next.set(chatId, state);
+    else next.delete(chatId);
+    this.threads = next;
+  }
+
+  _pageMessages(raw) {
+    return raw
+      .filter((m) => this._isRenderable(m) && !this._isIgnoredChat(m))
+      .map((m) => this._normalizeMessage(m));
+  }
+
+  _isRequest(chatId, requestId) {
+    return this.threads.get(chatId)?.requestId === requestId;
+  }
+
+  // Returns 'ok', 'gone', 'failed' or 'stale'.
+  async loadWindow(chatId, { around = null } = {}) {
+    const state = this.threads.get(chatId);
+    const requestId = ++this._requestSeq;
+    if (chatId === this.currentChatId) this._pendingLive = [];
+    this._setThread(chatId, {
+      messages: state?.messages ?? [],
+      oldestId: state?.oldestId ?? null,
+      newestId: state?.newestId ?? null,
+      hasMore: state?.hasMore ?? false,
+      hasMoreNewer: state?.hasMoreNewer ?? false,
+      requestId,
+      loading: 'window',
+      error: false,
+      newerError: false,
+      windowError: Boolean(state?.windowError),
+    });
     try {
-      const msgsData = await this.whatsapp.getAllMessages();
-      if (setupGen !== this._setupGeneration) return;
-      this.ingestMessages(msgsData.data?.messages ?? msgsData.messages ?? []);
+      const result = await this.whatsapp.getMessages(
+        chatId,
+        around ? { around, limit: AROUND_LIMIT } : { limit: PAGE_SIZE },
+      );
+      if (!this._isRequest(chatId, requestId)) return 'stale';
+      const data = result?.data ?? result ?? {};
+      const raw = data.messages ?? [];
+      const got = raw.length > 0;
+      const hasMoreNewer = Boolean(around && got && data.hasMoreNewer);
+      let messages = this._pageMessages(raw);
+      let newestId = raw.at(-1)?.id ?? null;
+      if (!hasMoreNewer) {
+        ({ messages, newestId } = this._withPendingLive(messages, newestId));
+      }
+      this._setThread(chatId, {
+        messages,
+        oldestId: raw[0]?.id ?? null,
+        newestId,
+        hasMore: got && Boolean(around ? data.hasMoreOlder : data.hasMore),
+        hasMoreNewer,
+        requestId,
+        loading: null,
+        error: false,
+        newerError: false,
+        windowError: false,
+      });
+      return 'ok';
     } catch (err) {
-      console.error('WhatsApp refetch after reconnect failed', err);
+      if (!this._isRequest(chatId, requestId)) return 'stale';
+      const gone = Boolean(around) && err?.status === 400;
+      const kept = state?.messages.length > 0;
+      if (kept) {
+        this._keepWindow(chatId, state, requestId, !gone);
+      } else {
+        this._setThread(chatId, null);
+      }
+      if (gone) return 'gone';
+      if (this._owedReloadChatId === chatId) this._owedReloadChatId = null;
+      console.error('WhatsApp messages load failed', err);
+      if (!kept) this.notifications.error('Could not load messages');
+      return 'failed';
+    }
+  }
+
+  _keepWindow(chatId, state, requestId, failed) {
+    let messages = this.threads.get(chatId).messages;
+    let newestId = state.newestId;
+    if (!state.hasMoreNewer) {
+      ({ messages, newestId } = this._withPendingLive(messages, newestId));
+    }
+    this._setThread(chatId, {
+      ...state,
+      messages,
+      newestId,
+      requestId,
+      loading: null,
+      windowError: failed || Boolean(state.windowError),
+    });
+  }
+
+  // Returns true when an edge page was applied.
+  async loadEdgePage(chatId, { older = false } = {}) {
+    const state = this.threads.get(chatId);
+    if (!state || state.loading) return false;
+    if (older && (!state.hasMore || !state.oldestId)) return false;
+    if (!older && (!state.hasMoreNewer || !state.newestId)) return false;
+
+    const requestId = ++this._requestSeq;
+    if (!older && chatId === this.currentChatId) this._pendingLive = [];
+    this._setThread(chatId, {
+      ...state,
+      requestId,
+      loading: older ? 'older' : 'newer',
+    });
+    try {
+      const result = await this.whatsapp.getMessages(
+        chatId,
+        older
+          ? { before: state.oldestId, limit: PAGE_SIZE }
+          : { after: state.newestId, limit: PAGE_SIZE },
+      );
+      if (!this._isRequest(chatId, requestId)) return false;
+      // Built on the latest thread.
+      const current = this.threads.get(chatId);
+      const data = result?.data ?? result ?? {};
+      const raw = data.messages ?? [];
+      const got = raw.length > 0;
+      const held = new Set(current.messages.map((m) => m.id));
+      const page = this._pageMessages(raw).filter((m) => !held.has(m.id));
+      let next;
+      if (older) {
+        next = {
+          ...current,
+          messages: [...page, ...current.messages],
+          oldestId: raw[0]?.id ?? current.oldestId,
+          hasMore: got && Boolean(data.hasMore),
+          error: false,
+        };
+      } else {
+        const hasMoreNewer = got && Boolean(data.hasMore);
+        let messages = [...current.messages, ...page];
+        let newestId = raw.at(-1)?.id ?? current.newestId;
+        if (!hasMoreNewer) {
+          ({ messages, newestId } = this._withPendingLive(messages, newestId));
+        }
+        next = {
+          ...current,
+          messages,
+          newestId,
+          hasMoreNewer,
+          newerError: false,
+        };
+      }
+      this._setThread(chatId, { ...next, loading: null });
+      return true;
+    } catch (err) {
+      console.error('WhatsApp messages load failed', err);
+      if (this._isRequest(chatId, requestId)) {
+        // Edge failures show a retry row.
+        const flag = older ? 'error' : 'newerError';
+        const current = this.threads.get(chatId);
+        this._setThread(chatId, { ...current, loading: null, [flag]: true });
+      }
+      return false;
+    }
+  }
+
+  // Adds live messages after a load.
+  _withPendingLive(messages, newestId) {
+    const pending = this._pendingLive;
+    this._pendingLive = [];
+    if (!pending.length) return { messages, newestId };
+    const held = new Set(messages.map((m) => m.id));
+    const extra = pending.filter((m) => !held.has(m.id));
+    if (!extra.length) return { messages, newestId };
+    return {
+      messages: [...messages, ...extra],
+      newestId: extra.at(-1).id,
+    };
+  }
+
+  // Reconnect: refresh open chat.
+  async applyResyncChats(chats) {
+    this._setChats(chats);
+    if (this.currentChatId) await this._reloadWindow(this.currentChatId);
+  }
+
+  async _reloadWindow(chatId) {
+    const thread = this.threads.get(chatId);
+    // The open or restore load owns the window.
+    if (thread?.loading === 'window') {
+      this._owedReloadChatId = chatId;
+      return;
+    }
+    if (!thread?.messages.length) return;
+    const el = this._threadElement();
+    const anchor =
+      el && !this._isAtBottom(thread) ? this._readingAnchor(el) : null;
+    if (anchor) {
+      const outcome = await this.loadWindow(chatId, { around: anchor.id });
+      if (outcome === 'ok') {
+        this._scrollToRow(chatId, anchor.id, anchor.offset);
+        return;
+      }
+      if (outcome !== 'gone') return;
+    }
+    if ((await this.loadWindow(chatId)) === 'ok') this._scrollToBottom(chatId);
+  }
+
+  _payOwedReload(chatId) {
+    if (this._owedReloadChatId !== chatId) return;
+    if (this.threads.get(chatId)?.loading === 'window') return;
+    this._owedReloadChatId = null;
+    this._reloadWindow(chatId);
+  }
+
+  _setChats(chats) {
+    const current = new Map(this.chats.map((c) => [c.chatId, c]));
+    this.chats = chats
+      .filter((c) => !this._isIgnoredChat(c))
+      .map((c) => {
+        const next = this._normalizeChat(c);
+        const prev = current.get(next.chatId);
+        // Keep a newer local preview.
+        if (prev && (prev.lastTs ?? 0) > (next.lastTs ?? 0)) {
+          return {
+            ...next,
+            lastBody: prev.lastBody,
+            lastTs: prev.lastTs,
+            lastFromMe: prev.lastFromMe,
+            lastInboundAt:
+              Math.max(prev.lastInboundAt ?? 0, next.lastInboundAt ?? 0) ||
+              null,
+          };
+        }
+        return next;
+      });
+  }
+
+  _threadElement() {
+    return document.getElementById('wa-messages-container');
+  }
+
+  _isNearBottom() {
+    const el = this._threadElement();
+    return Boolean(
+      el &&
+      el.scrollHeight - el.scrollTop - el.clientHeight <= STICK_TO_BOTTOM_PX,
+    );
+  }
+
+  _isAtBottom(thread) {
+    return !thread?.hasMoreNewer && this._isNearBottom();
+  }
+
+  _scrollToBottom(chatId) {
+    runTask(this, () => {
+      if (this.currentChatId !== chatId) return;
+      const el = this._threadElement();
+      if (el) el.scrollTop = el.scrollHeight;
+      this._payOwedReload(chatId);
+    });
+  }
+
+  // Row at offset, else bottom.
+  _scrollToRow(chatId, messageId, offset) {
+    runTask(this, () => {
+      if (this.currentChatId !== chatId) return;
+      const el = this._threadElement();
+      const row = el && this._findRow(el, messageId);
+      if (row) {
+        const top =
+          row.getBoundingClientRect().top - el.getBoundingClientRect().top;
+        el.scrollTop += top - offset;
+      } else if (el) {
+        el.scrollTop = el.scrollHeight;
+      }
+      this._payOwedReload(chatId);
+    });
+  }
+
+  _findRow(el, messageId) {
+    return [...el.querySelectorAll('[data-message-id]')].find(
+      (r) => r.dataset.messageId === messageId,
+    );
+  }
+
+  // ── Last opened chat ──────────────────────────────────────────────────
+
+  _saveLastChat() {
+    const chatId = this.currentChatId;
+    const thread = this.currentThread;
+    const el = this._threadElement();
+    // An unloaded thread would overwrite a good anchor.
+    if (!chatId || !el || !thread || thread.loading === 'window') return;
+    const anchor = this._readingAnchor(el);
+    this.whatsapp.saveLastChat({
+      chatId,
+      anchorMessageId: anchor?.id ?? null,
+      anchorOffset: anchor?.offset ?? 0,
+      atBottom: this._isAtBottom(thread),
+    });
+  }
+
+  _scheduleSave() {
+    if (this._saveTimer !== null) return;
+    this._saveTimer = runTask(
+      this,
+      () => {
+        this._saveTimer = null;
+        this._saveLastChat();
+      },
+      SAVE_THROTTLE_MS,
+    );
+  }
+
+  _cancelSave() {
+    if (this._saveTimer !== null) {
+      cancelTask(this, this._saveTimer);
+      this._saveTimer = null;
     }
   }
 
   // ── Socket events ─────────────────────────────────────────────────────
 
-  handleSocketEvent(type, data) {
-    if (type === 'message') {
-      this.ingestMessage(data);
-    } else if (type === 'status') {
-      this.applyStatus(data);
-    } else if (type === 'reconnect') {
-      this.refetchMessages();
-    } else if (type === 'ai') {
-      if (data.enabled !== undefined) this.aiEnabled = data.enabled;
-      if (data.keyConfigured !== undefined)
-        this.aiKeyConfigured = data.keyConfigured;
-      if (data.creditsUsed !== undefined) this.creditsUsed = data.creditsUsed;
-      if (data.creditsLimit !== undefined)
-        this.creditsLimit = data.creditsLimit;
-      if (data.openWindows !== undefined) this.openWindows = data.openWindows;
-    }
+  applyAi(data) {
+    if (data.enabled !== undefined) this.aiEnabled = data.enabled;
+    if (data.keyConfigured !== undefined)
+      this.aiKeyConfigured = data.keyConfigured;
+    if (data.creditsUsed !== undefined) this.creditsUsed = data.creditsUsed;
+    if (data.creditsLimit !== undefined) this.creditsLimit = data.creditsLimit;
+    if (data.openWindows !== undefined) this.openWindows = data.openWindows;
   }
 
   // A deleted message loses its body but must still pass the body/hasMedia filter for empty rows.
@@ -373,75 +746,61 @@ export default class WhatsappController extends Controller {
     return changed ? merged : null;
   }
 
+  _replaceInThread(chatId, merged) {
+    const thread = this.threads.get(chatId);
+    this._setThread(chatId, {
+      ...thread,
+      messages: thread.messages.map((m) => (m.id === merged.id ? merged : m)),
+    });
+  }
+
   // A status push carries no body, so it bypasses ingestMessage's renderable filter.
   applyStatus(data) {
-    const existing = this.messages.find((m) => m.id === data?.id);
+    const chatId = this.currentChatId;
+    const existing = this.currentChatMessages.find((m) => m.id === data?.id);
     if (!existing) return;
     const merged = this._mergeExisting(existing, {
       status: data.status,
       statusAt: data.statusAt,
       errorCode: data.errorCode,
     });
-    if (merged) {
-      this.messages = this.messages.map((m) =>
-        m.id === merged.id ? merged : m,
-      );
-    }
+    if (merged) this._replaceInThread(chatId, merged);
   }
 
-  ingestMessages(msgs) {
-    const byId = new Map(this.messages.map((m) => [m.id, m]));
-    const appended = [];
-    const chatTouched = [];
-    let changed = false;
-
-    for (const raw of msgs) {
-      if (!this._isRenderable(raw) || this._isIgnoredChat(raw)) continue;
-      const normalized = this._normalizeMessage(raw);
-      const existing = byId.get(normalized.id);
-
-      if (!existing) {
-        byId.set(normalized.id, normalized);
-        appended.push(normalized);
-        chatTouched.push(normalized);
-        changed = true;
-        continue;
-      }
-
-      const merged = this._mergeExisting(existing, normalized);
-      if (merged) {
-        byId.set(merged.id, merged);
-        changed = true;
-      }
-    }
-
-    if (!changed) return;
-    // Rebuild in place so an updated row keeps its position in the thread.
-    this.messages = [
-      ...this.messages.map((m) => byId.get(m.id) ?? m),
-      ...appended,
-    ];
-    for (const m of chatTouched) this._updateChat(m);
-  }
-
+  // Only the open chat's loaded window holds messages.
   ingestMessage(msg) {
     if (!this._isRenderable(msg)) return;
     if (this._isIgnoredChat(msg)) return;
     const normalized = this._normalizeMessage(msg);
-    const existing = this.messages.find((m) => m.id === normalized.id);
+    const chatId = normalized.chatId;
+    const thread =
+      chatId === this.currentChatId ? this.threads.get(chatId) : null;
+    const existing = thread?.messages.find((m) => m.id === normalized.id);
 
     if (existing) {
       const merged = this._mergeExisting(existing, normalized);
-      if (merged) {
-        this.messages = this.messages.map((m) =>
-          m.id === merged.id ? merged : m,
-        );
-      }
+      if (merged) this._replaceInThread(chatId, merged);
       return;
     }
+    // Updates to unloaded messages.
+    if (normalized.editedAt || normalized.deletedAt) return;
 
-    this.messages = [...this.messages, normalized];
     this._updateChat(normalized);
+    if (!thread) return;
+    if (thread.loading === 'window' || thread.loading === 'newer') {
+      this._pendingLive = [...this._pendingLive, normalized];
+      return;
+    }
+    // Only when at the newest.
+    if (thread.hasMoreNewer) return;
+
+    const stick = this._isNearBottom();
+    this._setThread(chatId, {
+      ...thread,
+      messages: [...thread.messages, normalized],
+      newestId: normalized.id,
+    });
+    if (stick) this._scrollToBottom(chatId);
   }
 
   _isIgnoredChat(msg) {
@@ -529,7 +888,188 @@ export default class WhatsappController extends Controller {
 
   @action
   selectChat(chatId) {
+    if (chatId === this.currentChatId && this.threads.has(chatId)) return;
+    this.whatsapp.saveLastChat({
+      chatId,
+      anchorMessageId: null,
+      anchorOffset: 0,
+      atBottom: false,
+    });
+    return this._openChat(chatId);
+  }
+
+  async _openChat(chatId, { restore = null } = {}) {
+    const previous = this.currentChatId;
+    if (previous !== chatId) {
+      this._owedReloadChatId = null;
+      this._disconnectReadObserver();
+      this._cancelSave();
+      if (previous) this._setThread(previous, null);
+    }
+    this._pendingLive = [];
     this.currentChatId = chatId;
+    this.whatsapp.activeChatId = chatId;
+    const unread = this.whatsapp.unread.get(chatId);
+    const markerId =
+      unread?.unreadCount > 0 ? (unread.lastReadMessageId ?? null) : null;
+    this.unreadMarkerId = markerId;
+
+    // A saved position wins over the unread marker.
+    if (restore?.atBottom) {
+      if ((await this.loadWindow(chatId)) === 'ok') {
+        this._scrollToBottom(chatId);
+      }
+      return;
+    }
+    if (restore?.anchorMessageId) {
+      const outcome = await this.loadWindow(chatId, {
+        around: restore.anchorMessageId,
+      });
+      if (outcome === 'ok') {
+        this._scrollToRow(
+          chatId,
+          restore.anchorMessageId,
+          Number(restore.anchorOffset) || 0,
+        );
+        return;
+      }
+      if (outcome !== 'gone') return;
+    }
+
+    if (markerId) {
+      const outcome = await this.loadWindow(chatId, { around: markerId });
+      if (outcome === 'ok') {
+        this._scrollToRow(chatId, markerId, MARKER_TOP_OFFSET_PX);
+        return;
+      }
+      if (outcome !== 'gone') return;
+      this.unreadMarkerId = null;
+    }
+    if ((await this.loadWindow(chatId)) === 'ok') this._scrollToBottom(chatId);
+  }
+
+  @action
+  async onThreadScroll(event) {
+    const el = event.target;
+    const chatId = this.currentChatId;
+    if (!chatId) return;
+    this._scheduleSave();
+    const state = this.threads.get(chatId);
+    if (!state || state.loading) return;
+    if (el.scrollTop <= LOAD_OLDER_THRESHOLD_PX) {
+      // Only Retry retries.
+      if (!state.error) await this._loadOlder(chatId, el);
+      return;
+    }
+    const fromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+    if (fromBottom <= LOAD_NEWER_THRESHOLD_PX && !state.newerError) {
+      await this.loadEdgePage(chatId, { older: false });
+    }
+  }
+
+  @action
+  retryLoadOlder() {
+    const chatId = this.currentChatId;
+    const el = this._threadElement();
+    if (chatId && el) return this._loadOlder(chatId, el);
+  }
+
+  @action
+  retryReload() {
+    const chatId = this.currentChatId;
+    if (chatId) return this._reloadWindow(chatId);
+  }
+
+  @action
+  retryLoadNewer() {
+    const chatId = this.currentChatId;
+    if (chatId) return this.loadEdgePage(chatId, { older: false });
+  }
+
+  // ── Read tracking ─────────────────────────────────────────────────────
+
+  observeMessageRow = modifier((element, [fromMe]) => {
+    if (fromMe || typeof IntersectionObserver === 'undefined') return;
+    this._readObserver ??= new IntersectionObserver(
+      (entries) => this._onRowsVisible(entries),
+      { root: this._threadElement(), threshold: READ_VISIBLE_RATIO },
+    );
+    const observer = this._readObserver;
+    observer.observe(element);
+    return () => {
+      observer.unobserve(element);
+      this._visibleReadRows.delete(element.dataset.messageId);
+    };
+  });
+
+  _disconnectReadObserver() {
+    this._readObserver?.disconnect();
+    this._readObserver = null;
+    this._visibleReadRows.clear();
+  }
+
+  _onRowsVisible(entries) {
+    for (const entry of entries) {
+      const id = entry.target.dataset.messageId;
+      if (entry.isIntersecting) this._visibleReadRows.add(id);
+      else this._visibleReadRows.delete(id);
+    }
+    this._markVisibleRead();
+  }
+
+  _isDocumentVisible() {
+    return document.visibilityState === 'visible';
+  }
+
+  // Rendered rows only.
+  _markVisibleRead() {
+    const chatId = this.currentChatId;
+    if (!chatId || !this._isDocumentVisible()) return;
+    const messages = this.currentChatMessages;
+    let newest = null;
+    for (const m of messages) {
+      if (m.fromMe || !this._visibleReadRows.has(m.id)) continue;
+      if (!newest || (m.timestamp ?? 0) > (newest.timestamp ?? 0)) newest = m;
+    }
+    if (!newest) return;
+    const lastReadId = this.whatsapp.unread.get(chatId)?.lastReadMessageId;
+    if (lastReadId === newest.id) return;
+    const lastRead = lastReadId && messages.find((m) => m.id === lastReadId);
+    if (lastRead && (newest.timestamp ?? 0) <= (lastRead.timestamp ?? 0)) {
+      return;
+    }
+    this.whatsapp.markRead(chatId, newest.id);
+  }
+
+  // First visible row and offset.
+  _readingAnchor(el) {
+    const top = el.getBoundingClientRect().top;
+    for (const row of el.querySelectorAll('[data-message-id]')) {
+      const rect = row.getBoundingClientRect();
+      if (rect.bottom > top) {
+        return { id: row.dataset.messageId, offset: rect.top - top };
+      }
+    }
+    return null;
+  }
+
+  async _loadOlder(chatId, el) {
+    const anchor = this._readingAnchor(el);
+    const prevHeight = el.scrollHeight;
+    const loaded = await this.loadEdgePage(chatId, { older: true });
+    if (!loaded || this.currentChatId !== chatId) return;
+    // Keep the reading position.
+    runTask(this, () => {
+      if (this.currentChatId !== chatId) return;
+      const row = anchor && this._findRow(el, anchor.id);
+      if (row) {
+        const offset =
+          row.getBoundingClientRect().top - el.getBoundingClientRect().top;
+        el.scrollTop += offset - anchor.offset;
+      } else {
+        el.scrollTop += el.scrollHeight - prevHeight;
+      }
+    });
   }
 
   // Kit form components call onInput as (value, event), unlike a raw input event.
@@ -546,10 +1086,21 @@ export default class WhatsappController extends Controller {
 
     this.isSending = true;
     try {
-      const result = await this.whatsapp.sendMessage(this.currentChatId, body);
-      // Uses the same path as the socket handler, so a later whatsapp:message echo is deduped.
-      this.ingestMessage(result.data ?? result);
+      const chatId = this.currentChatId;
+      const result = await this.whatsapp.sendMessage(chatId, body);
       this.messageText = '';
+      if (chatId !== this.currentChatId) return;
+      if (this.threads.get(chatId)?.hasMoreNewer) {
+        // Jump to latest.
+        this._updateChat(this._normalizeMessage(result.data ?? result));
+        if ((await this.loadWindow(chatId)) === 'ok') {
+          this._scrollToBottom(chatId);
+        }
+        return;
+      }
+      // Dedupes a later socket echo.
+      this.ingestMessage(result.data ?? result);
+      this._scrollToBottom(chatId);
     } catch (err) {
       this.notifications.error(err.message);
     } finally {

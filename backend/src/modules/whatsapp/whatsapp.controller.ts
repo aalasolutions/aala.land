@@ -1,5 +1,6 @@
 // backend/src/modules/whatsapp/whatsapp.controller.ts
 import {
+  BadRequestException,
   Controller,
   Get,
   Post,
@@ -18,6 +19,7 @@ import { Roles } from '@shared/decorators/roles.decorator';
 import { Role } from '@shared/enums/roles.enum';
 import { AiToggleDto } from './dto/ai-toggle.dto';
 import { ListWaMessagesDto } from './dto/list-wa-messages.dto';
+import { ListWaChatMessagesDto } from './dto/list-wa-chat-messages.dto';
 import { SendMessageDto } from './dto/send-message.dto';
 import { ConnectWhatsappDto } from './dto/connect-whatsapp.dto';
 import { WhatsappSignupService } from './whatsapp-signup.service';
@@ -27,6 +29,7 @@ import {
   AiHistoryMessage,
   WaConnectionInfo,
   WaMessage,
+  WaMessageWindow,
   WaSignupConfig,
 } from './wa-types';
 
@@ -106,7 +109,7 @@ export class WhatsappController {
     @Query() query: ListWaMessagesDto,
   ) {
     const page = query.page ?? 1;
-    const limit = query.limit ?? 500;
+    const limit = query.limit ?? 50;
     const { messages, hasMore } = await this.wa.getAllMessages(
       requireCompanyId(req.user),
       req.user.userId,
@@ -117,18 +120,46 @@ export class WhatsappController {
   }
 
   @Get('messages/:chatId')
-  @ApiOperation({ summary: 'Messages for a specific chat' })
-  async getMessages(
+  @ApiOperation({
+    summary:
+      'Latest messages for a chat, or the page older than `before`, newer than `after`, or centred on `around`',
+  })
+  getMessages(
     @Request() req: AuthenticatedRequest,
     @Param('chatId') chatId: string,
-  ) {
-    return {
-      messages: await this.wa.getMessagesForChat(
-        requireCompanyId(req.user),
+    @Query() query: ListWaChatMessagesDto,
+  ): Promise<{ messages: WaMessage[]; hasMore: boolean } | WaMessageWindow> {
+    const companyId = requireCompanyId(req.user);
+    const limit = query.limit ?? 50;
+    const { before, after, around } = query;
+    if ([before, after, around].filter((c) => c !== undefined).length > 1) {
+      throw new BadRequestException('Use only one of before, after or around');
+    }
+    if (after !== undefined) {
+      return this.wa.getMessagesAfter(
+        companyId,
         req.user.userId,
         chatId,
-      ),
-    };
+        after,
+        limit,
+      );
+    }
+    if (around !== undefined) {
+      return this.wa.getMessagesAround(
+        companyId,
+        req.user.userId,
+        chatId,
+        around,
+        limit,
+      );
+    }
+    return this.wa.getMessagesForChat(
+      companyId,
+      req.user.userId,
+      chatId,
+      limit,
+      before,
+    );
   }
 
   @Post('send')

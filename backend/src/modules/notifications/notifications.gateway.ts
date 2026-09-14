@@ -1,7 +1,7 @@
 import {
   WebSocketGateway,
   WebSocketServer,
-  OnGatewayConnection,
+  OnGatewayInit,
   OnGatewayDisconnect,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
@@ -22,7 +22,7 @@ const websocketCorsOrigins = envList('CORS_ORIGIN', ['http://localhost:4200']);
   },
 })
 export class NotificationsGateway
-  implements OnGatewayConnection, OnGatewayDisconnect
+  implements OnGatewayInit, OnGatewayDisconnect
 {
   @WebSocketServer()
   server: Server;
@@ -35,7 +35,14 @@ export class NotificationsGateway
     private readonly usersRepository: Repository<User>,
   ) {}
 
-  async handleConnection(client: Socket) {
+  afterInit(server: Server) {
+    // Runs before CONNECT is sent, so the rooms are joined first.
+    server.use((client, next) => {
+      void this.authenticate(client).then(next);
+    });
+  }
+
+  private async authenticate(client: Socket): Promise<Error | undefined> {
     try {
       const token = this.getSocketToken(client);
       const payload = await this.jwtService.verifyAsync<{
@@ -65,17 +72,18 @@ export class NotificationsGateway
         companyId: user.companyId,
         tokenExp: payload.exp,
       };
-      client.join(`user_${user.id}`);
-      client.join(`company_${user.companyId}`);
+      await client.join(`user_${user.id}`);
+      await client.join(`company_${user.companyId}`);
       this.logger.log(
         `Client connected: ${client.id}, joined user_${user.id} and company_${user.companyId}`,
       );
+      return undefined;
     } catch (error) {
       const message = errorMessage(error);
       this.logger.warn(
         `Socket authentication failed for client ${client.id}: ${message}`,
       );
-      client.disconnect();
+      return new Error('Unauthorized');
     }
   }
 

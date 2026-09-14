@@ -69,6 +69,14 @@ export class WhatsappChat {
   @Column({ name: 'last_inbound_at', type: 'timestamptz', nullable: true })
   lastInboundAt: Date | null;
 
+  // The agent's read marker, a wa_message_id.
+  @Column({ name: 'last_read_message_id', type: 'varchar', nullable: true })
+  lastReadMessageId: string | null;
+
+  // Inbound messages after the read marker.
+  @Column({ name: 'unread_count', type: 'integer', default: 0 })
+  unreadCount: number;
+
   @Column({
     name: 'phone_number_id',
     type: 'varchar',

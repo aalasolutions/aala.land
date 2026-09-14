@@ -1,9 +1,11 @@
 import { Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { Repository } from 'typeorm';
-import { Socket } from 'socket.io';
+import { Server, Socket } from 'socket.io';
 import { User } from '../users/entities/user.entity';
 import { NotificationsGateway } from './notifications.gateway';
+
+type Middleware = (socket: Socket, next: (err?: Error) => void) => void;
 
 describe('NotificationsGateway', () => {
   let jwtService: { verifyAsync: jest.Mock };
@@ -44,11 +46,32 @@ describe('NotificationsGateway', () => {
     };
   }
 
-  it('stores the verified identity in socket.data and joins its rooms', async () => {
+  function initMiddleware(): { use: jest.Mock; middleware: Middleware } {
+    const use = jest.fn();
+    gateway.afterInit({ use } as unknown as Server);
+    return { use, middleware: use.mock.calls[0][0] as Middleware };
+  }
+
+  async function runMiddleware(socket: ReturnType<typeof socketStub>) {
+    const { middleware } = initMiddleware();
+    return new Promise<Error | undefined>((resolve) =>
+      middleware(socket as unknown as Socket, resolve),
+    );
+  }
+
+  it('afterInit registers exactly one middleware on the server', () => {
+    const { use } = initMiddleware();
+
+    expect(use).toHaveBeenCalledTimes(1);
+    expect(typeof use.mock.calls[0][0]).toBe('function');
+  });
+
+  it('middleware stores identity, joins its rooms and calls next() without error', async () => {
     const socket = socketStub();
 
-    await gateway.handleConnection(socket as unknown as Socket);
+    const err = await runMiddleware(socket);
 
+    expect(err).toBeUndefined();
     expect(socket.data).toEqual({
       userId: 'user-1',
       companyId: 'co-1',
@@ -59,16 +82,32 @@ describe('NotificationsGateway', () => {
     expect(socket.disconnect).not.toHaveBeenCalled();
   });
 
-  it('does not store identity and disconnects when the user is inactive', async () => {
-    usersRepository.findOne.mockResolvedValue(null);
-    const socket = socketStub();
+  it.each([
+    [
+      'missing token',
+      (s: ReturnType<typeof socketStub>) => {
+        s.handshake.auth.token = '';
+      },
+    ],
+    [
+      'bad JWT',
+      () => jwtService.verifyAsync.mockRejectedValue(new Error('jwt expired')),
+    ],
+    ['inactive user', () => usersRepository.findOne.mockResolvedValue(null)],
+  ])(
+    'middleware rejects with a generic error on %s',
+    async (_label, arrange) => {
+      const socket = socketStub();
+      arrange(socket);
 
-    await gateway.handleConnection(socket as unknown as Socket);
+      const err = await runMiddleware(socket);
 
-    expect(socket.data).toEqual({});
-    expect(socket.join).not.toHaveBeenCalled();
-    expect(socket.disconnect).toHaveBeenCalled();
-  });
+      expect(err).toBeInstanceOf(Error);
+      expect(err?.message).toBe('Unauthorized');
+      expect(socket.data).toEqual({});
+      expect(socket.join).not.toHaveBeenCalled();
+    },
+  );
 
   it('disconnectUser force-closes every socket in the user room', () => {
     const disconnectSockets = jest.fn();

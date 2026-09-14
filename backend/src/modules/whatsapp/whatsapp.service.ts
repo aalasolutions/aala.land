@@ -25,6 +25,7 @@ import {
   WaChat,
   WaConnectionInfo,
   WaMessage,
+  WaMessageWindow,
 } from './wa-types';
 import { errorMessage } from '@shared/utils/error.util';
 import { envString } from '@shared/utils/env.util';
@@ -100,8 +101,42 @@ export class WhatsappService {
     companyId: string,
     userId: string,
     chatId: string,
-  ): Promise<WaMessage[]> {
-    return this.store.getMessagesForChat(companyId, userId, chatId);
+    limit?: number,
+    before?: string,
+  ): Promise<{ messages: WaMessage[]; hasMore: boolean }> {
+    return this.store.getMessagesForChat(
+      companyId,
+      userId,
+      chatId,
+      limit,
+      before,
+    );
+  }
+
+  getMessagesAfter(
+    companyId: string,
+    userId: string,
+    chatId: string,
+    after: string,
+    limit?: number,
+  ): Promise<{ messages: WaMessage[]; hasMore: boolean }> {
+    return this.store.getMessagesAfter(companyId, userId, chatId, after, limit);
+  }
+
+  getMessagesAround(
+    companyId: string,
+    userId: string,
+    chatId: string,
+    around: string,
+    limit?: number,
+  ): Promise<WaMessageWindow> {
+    return this.store.getMessagesAround(
+      companyId,
+      userId,
+      chatId,
+      around,
+      limit,
+    );
   }
 
   // The human operator's send path. No credit is ever consumed here; credits are AI-only.

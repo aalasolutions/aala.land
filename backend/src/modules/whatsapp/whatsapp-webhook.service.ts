@@ -27,6 +27,7 @@ import { MessageStoreService } from './message-store.service';
 import { WhatsappGateway } from './whatsapp.gateway';
 import {
   WaMessage,
+  WaUnreadState,
   WaWebhookJobData,
   WA_WEBHOOK_EVENTS_QUEUE,
 } from './wa-types';
@@ -590,13 +591,14 @@ export class WhatsappWebhookService {
 
         // Persist first; a store failure propagates for BullMQ retry.
         let firstDelivery: boolean;
+        let unread: WaUnreadState;
         try {
-          firstDelivery = await this.store.addMessage(
+          ({ inserted: firstDelivery, unread } = await this.store.addMessage(
             connection.companyId,
             connection.userId,
             evt,
             phoneNumberId,
-          );
+          ));
         } catch (err) {
           firstError = firstError ?? toError(err);
           this.logger.error(
@@ -611,7 +613,25 @@ export class WhatsappWebhookService {
           continue;
         }
 
-        if (firstDelivery) this.gateway.emitMessage(connection.userId, evt);
+        if (firstDelivery) {
+          // A live push failure is log-only; the AI turn must still run.
+          try {
+            this.gateway.emitMessage(connection.userId, evt);
+          } catch (err) {
+            this.logger.error(
+              `Failed to push WhatsApp message ${evt.id}`,
+              errorMessage(err, true),
+            );
+          }
+          try {
+            this.gateway.emitUnread(connection.userId, unread);
+          } catch (err) {
+            this.logger.error(
+              `Failed to push unread state for ${evt.id}`,
+              errorMessage(err, true),
+            );
+          }
+        }
         // A flagged token cannot send, so an AI turn would only burn a credit on a failure.
         if (connection.status !== WhatsappConnectionStatus.CONNECTED) {
           this.logger.debug(
@@ -633,7 +653,7 @@ export class WhatsappWebhookService {
           );
         }
       } catch (err) {
-        // A live push failure is log-only; the message is already stored.
+        // Unexpected per-message failure is log-only; the message is already stored.
         this.logger.error(
           `Failed to process WhatsApp message ${message.id ?? 'unknown'}`,
           errorMessage(err, true),

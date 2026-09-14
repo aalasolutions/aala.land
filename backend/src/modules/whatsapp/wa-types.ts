@@ -38,6 +38,21 @@ export interface WaChat {
   lastFromMe: boolean;
   // Epoch SECONDS of last inbound message, or null; Meta's 24h window is measured from here.
   lastInboundAt: number | null;
+  unreadCount: number;
+  lastReadMessageId: string | null;
+}
+
+// Payload of the whatsapp:read ack and the whatsapp:unread event.
+export interface WaUnreadState {
+  chatId: string;
+  unreadCount: number;
+  lastReadMessageId: string | null;
+}
+
+export interface WaMessageWindow {
+  messages: WaMessage[];
+  hasMoreOlder: boolean;
+  hasMoreNewer: boolean;
 }
 
 // Pinned deliberately and shared here so the send path and Embedded Signup path can't drift apart.

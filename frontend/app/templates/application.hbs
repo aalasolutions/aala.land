@@ -237,6 +237,14 @@
             >
               <Ui::Ph @icon="whatsapp-logo" />
               <span class="nu-sidebar__link-label">WhatsApp</span>
+              {{#if this.whatsappUnreadCount}}
+                <Nuvo::Badge
+                  @count={{true}}
+                  @value={{this.whatsappUnreadCount}}
+                  @max={{99}}
+                  data-test-nav-whatsapp-unread
+                />
+              {{/if}}
             </LinkTo>
           {{/if}}
         {{/if}}

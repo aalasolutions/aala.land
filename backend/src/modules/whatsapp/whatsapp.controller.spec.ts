@@ -1,11 +1,18 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { Reflector } from '@nestjs/core';
-import { BadGatewayException, ForbiddenException } from '@nestjs/common';
+import {
+  BadGatewayException,
+  BadRequestException,
+  ForbiddenException,
+  ValidationPipe,
+} from '@nestjs/common';
 import { WhatsappController } from './whatsapp.controller';
 import { WhatsappService } from './whatsapp.service';
 import { WhatsappSignupService } from './whatsapp-signup.service';
 import { Role } from '@shared/enums/roles.enum';
 import { GRAPH_VERSION } from './wa-types';
+import { ListWaMessagesDto } from './dto/list-wa-messages.dto';
+import { ListWaChatMessagesDto } from './dto/list-wa-chat-messages.dto';
 
 describe('WhatsappController', () => {
   let controller: WhatsappController;
@@ -28,6 +35,8 @@ describe('WhatsappController', () => {
             getChats: jest.fn(),
             getAllMessages: jest.fn(),
             getMessagesForChat: jest.fn(),
+            getMessagesAfter: jest.fn(),
+            getMessagesAround: jest.fn(),
             getAiConfig: jest.fn(),
             getAiCreditUsage: jest.fn(),
             toggleAi: jest.fn(),
@@ -203,6 +212,144 @@ describe('WhatsappController', () => {
       const reflector = new Reflector();
       const roles = reflector.get<Role[]>('roles', controller.toggleAi);
       expect(roles).toEqual([Role.COMPANY_ADMIN]);
+    });
+  });
+
+  describe('GET messages', () => {
+    const pipe = new ValidationPipe({
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      transform: true,
+    });
+    const validate = (metatype: any, value: Record<string, string>) =>
+      pipe.transform(value, { type: 'query', metatype });
+
+    it('defaults both endpoints to 50 when limit is omitted', async () => {
+      wa.getAllMessages.mockResolvedValue({ messages: [], hasMore: false });
+      wa.getMessagesForChat.mockResolvedValue({ messages: [], hasMore: false });
+
+      await controller.getAllMessages(
+        makeReq('u1', 'c1'),
+        await validate(ListWaMessagesDto, {}),
+      );
+      await controller.getMessages(
+        makeReq('u1', 'c1'),
+        'chat-a',
+        await validate(ListWaChatMessagesDto, {}),
+      );
+
+      expect(wa.getAllMessages).toHaveBeenCalledWith('c1', 'u1', 1, 50);
+      expect(wa.getMessagesForChat).toHaveBeenCalledWith(
+        'c1',
+        'u1',
+        'chat-a',
+        50,
+        undefined,
+      );
+    });
+
+    it('passes limit and before for the caller own company and user', async () => {
+      const page = { messages: [], hasMore: true };
+      wa.getMessagesForChat.mockResolvedValue(page);
+
+      const result = await controller.getMessages(
+        makeReq('u1', 'c1'),
+        'chat-a',
+        await validate(ListWaChatMessagesDto, {
+          limit: '20',
+          before: 'wamid.HBgM=',
+        }),
+      );
+
+      expect(wa.getMessagesForChat).toHaveBeenCalledWith(
+        'c1',
+        'u1',
+        'chat-a',
+        20,
+        'wamid.HBgM=',
+      );
+      expect(result).toBe(page);
+    });
+
+    it.each([
+      [ListWaMessagesDto, { limit: '201' }],
+      [ListWaMessagesDto, { limit: '0' }],
+      [ListWaChatMessagesDto, { limit: '201' }],
+      [ListWaChatMessagesDto, { limit: '0' }],
+      [ListWaChatMessagesDto, { before: 'has space' }],
+      [ListWaChatMessagesDto, { before: 'x'.repeat(256) }],
+      [ListWaChatMessagesDto, { after: 'has space' }],
+      [ListWaChatMessagesDto, { after: 'x'.repeat(256) }],
+      [ListWaChatMessagesDto, { around: 'has space' }],
+      [ListWaChatMessagesDto, { around: 'x'.repeat(256) }],
+      [ListWaChatMessagesDto, { page: '2' }],
+    ])('rejects an out-of-contract query with 400 (%p %p)', async (dto, q) => {
+      await expect(validate(dto, q)).rejects.toBeInstanceOf(
+        BadRequestException,
+      );
+    });
+
+    it('routes after to the newer page for the caller own company and user', async () => {
+      const page = { messages: [], hasMore: false };
+      wa.getMessagesAfter.mockResolvedValue(page);
+
+      const result = await controller.getMessages(
+        makeReq('u1', 'c1'),
+        'chat-a',
+        await validate(ListWaChatMessagesDto, { limit: '20', after: 'wamid.A' }),
+      );
+
+      expect(wa.getMessagesAfter).toHaveBeenCalledWith(
+        'c1',
+        'u1',
+        'chat-a',
+        'wamid.A',
+        20,
+      );
+      expect(wa.getMessagesForChat).not.toHaveBeenCalled();
+      expect(result).toBe(page);
+    });
+
+    it('routes around to the window for the caller own company and user', async () => {
+      const window = { messages: [], hasMoreOlder: true, hasMoreNewer: false };
+      wa.getMessagesAround.mockResolvedValue(window);
+
+      const result = await controller.getMessages(
+        makeReq('u1', 'c1'),
+        'chat-a',
+        await validate(ListWaChatMessagesDto, { around: 'wamid.M' }),
+      );
+
+      expect(wa.getMessagesAround).toHaveBeenCalledWith(
+        'c1',
+        'u1',
+        'chat-a',
+        'wamid.M',
+        50,
+      );
+      expect(result).toBe(window);
+    });
+
+    it.each([
+      [{ before: 'a', after: 'b' }],
+      [{ before: 'a', around: 'b' }],
+      [{ after: 'a', around: 'b' }],
+      [{ before: 'a', after: 'b', around: 'c' }],
+    ])('rejects more than one cursor with 400 (%p)', async (q) => {
+      const query = await validate(ListWaChatMessagesDto, q);
+
+      expect(() =>
+        controller.getMessages(makeReq('u1', 'c1'), 'chat-a', query),
+      ).toThrow(BadRequestException);
+      expect(wa.getMessagesForChat).not.toHaveBeenCalled();
+      expect(wa.getMessagesAfter).not.toHaveBeenCalled();
+      expect(wa.getMessagesAround).not.toHaveBeenCalled();
+    });
+
+    it('accepts limit 200 and the regionCode the interceptor injects', async () => {
+      await expect(
+        validate(ListWaChatMessagesDto, { limit: '200', regionCode: 'dubai' }),
+      ).resolves.toMatchObject({ limit: 200 });
     });
   });
 });

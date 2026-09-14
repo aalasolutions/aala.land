@@ -105,12 +105,23 @@ function statusEnvelope(statuses?: unknown[]): unknown {
   };
 }
 
+const UNREAD = {
+  chatId: '971501234567',
+  unreadCount: 1,
+  lastReadMessageId: null,
+};
+const stored = (inserted: boolean) => ({ inserted, unread: UNREAD });
+
 describe('WhatsappWebhookService', () => {
   let service: WhatsappWebhookService;
   let ai: { handleIncomingMessage: jest.Mock };
   let repo: { findOne: jest.Mock; find: jest.Mock; update: jest.Mock };
   let store: { addMessage: jest.Mock; applyMessageStatus: jest.Mock };
-  let gateway: { emitMessage: jest.Mock; emitStatus: jest.Mock };
+  let gateway: {
+    emitMessage: jest.Mock;
+    emitStatus: jest.Mock;
+    emitUnread: jest.Mock;
+  };
   let queue: { add: jest.Mock };
 
   beforeEach(async () => {
@@ -123,10 +134,14 @@ describe('WhatsappWebhookService', () => {
       update: jest.fn().mockResolvedValue({ affected: 1 }),
     };
     store = {
-      addMessage: jest.fn().mockResolvedValue(true),
+      addMessage: jest.fn().mockResolvedValue(stored(true)),
       applyMessageStatus: jest.fn().mockResolvedValue(true),
     };
-    gateway = { emitMessage: jest.fn(), emitStatus: jest.fn() };
+    gateway = {
+      emitMessage: jest.fn(),
+      emitStatus: jest.fn(),
+      emitUnread: jest.fn(),
+    };
     queue = { add: jest.fn().mockResolvedValue({ id: 'job-1' }) };
 
     const moduleRef = await Test.createTestingModule({
@@ -341,6 +356,26 @@ describe('WhatsappWebhookService', () => {
       );
     });
 
+    it('emits whatsapp:unread with the stored unread state after a first delivery', async () => {
+      await service.processEnvelope(inboundEnvelope());
+
+      expect(gateway.emitUnread).toHaveBeenCalledWith('user-1', UNREAD);
+      expect(store.addMessage.mock.invocationCallOrder[0]).toBeLessThan(
+        gateway.emitUnread.mock.invocationCallOrder[0],
+      );
+    });
+
+    it('does not throw when the unread push throws', async () => {
+      gateway.emitUnread.mockImplementation(() => {
+        throw new Error('socket gone');
+      });
+
+      await expect(
+        service.processEnvelope(inboundEnvelope()),
+      ).resolves.toBeUndefined();
+      expect(ai.handleIncomingMessage).toHaveBeenCalledTimes(1);
+    });
+
     it('rejects and does not emit or dispatch when persistence fails', async () => {
       store.addMessage.mockRejectedValue(new Error('db down'));
 
@@ -512,18 +547,19 @@ describe('WhatsappWebhookService', () => {
 
   describe('redelivery', () => {
     it('does not emit or dispatch a message the store already held', async () => {
-      store.addMessage.mockResolvedValue(false);
+      store.addMessage.mockResolvedValue(stored(false));
 
       await expect(
         service.processEnvelope(inboundEnvelope()),
       ).resolves.toBeUndefined();
       expect(store.addMessage).toHaveBeenCalledTimes(1);
       expect(gateway.emitMessage).not.toHaveBeenCalled();
+      expect(gateway.emitUnread).not.toHaveBeenCalled();
       expect(ai.handleIncomingMessage).not.toHaveBeenCalled();
     });
 
     it('still dispatches a message the store has not seen', async () => {
-      store.addMessage.mockResolvedValue(true);
+      store.addMessage.mockResolvedValue(stored(true));
 
       await service.processEnvelope(inboundEnvelope());
       expect(ai.handleIncomingMessage).toHaveBeenCalledTimes(1);
@@ -531,7 +567,9 @@ describe('WhatsappWebhookService', () => {
 
     // A BullMQ retry replays the whole envelope; the wamid dedupe is what makes that safe.
     it('dispatches once when the same envelope is processed twice', async () => {
-      store.addMessage.mockResolvedValueOnce(true).mockResolvedValueOnce(false);
+      store.addMessage
+        .mockResolvedValueOnce(stored(true))
+        .mockResolvedValueOnce(stored(false));
       const envelope = inboundEnvelope();
 
       await service.processEnvelope(envelope);
@@ -542,7 +580,7 @@ describe('WhatsappWebhookService', () => {
     });
 
     it('re-dispatches a stored message to the AI on a BullMQ retry attempt, without a second live push', async () => {
-      store.addMessage.mockResolvedValue(false);
+      store.addMessage.mockResolvedValue(stored(false));
 
       await expect(
         service.processEnvelope(inboundEnvelope(), true),
@@ -553,7 +591,7 @@ describe('WhatsappWebhookService', () => {
     });
 
     it('still skips a stored message on a retry when the connection is not CONNECTED', async () => {
-      store.addMessage.mockResolvedValue(false);
+      store.addMessage.mockResolvedValue(stored(false));
       repo.findOne.mockResolvedValue(
         Object.assign(connectionRow(), {
           status: WhatsappConnectionStatus.FLAGGED,
@@ -571,7 +609,9 @@ describe('WhatsappWebhookService', () => {
           'error',
         )
         .mockImplementation(() => undefined);
-      store.addMessage.mockResolvedValueOnce(true).mockResolvedValueOnce(false);
+      store.addMessage
+        .mockResolvedValueOnce(stored(true))
+        .mockResolvedValueOnce(stored(false));
       ai.handleIncomingMessage
         .mockRejectedValueOnce(new Error('redis blip'))
         .mockResolvedValueOnce(undefined);
@@ -596,7 +636,7 @@ describe('WhatsappWebhookService', () => {
       ).rejects.toThrow('llm down');
     });
 
-    it('does not throw when the live push throws', async () => {
+    it('does not throw when the live push throws, and still runs the unread push and the AI hand-off', async () => {
       gateway.emitMessage.mockImplementation(() => {
         throw new Error('socket gone');
       });
@@ -604,7 +644,8 @@ describe('WhatsappWebhookService', () => {
       await expect(
         service.processEnvelope(inboundEnvelope()),
       ).resolves.toBeUndefined();
-      expect(ai.handleIncomingMessage).not.toHaveBeenCalled();
+      expect(gateway.emitUnread).toHaveBeenCalledWith('user-1', UNREAD);
+      expect(ai.handleIncomingMessage).toHaveBeenCalledTimes(1);
     });
 
     it('processes the rest of the batch after an AI hand-off fails, then rejects', async () => {
