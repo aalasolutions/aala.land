@@ -364,7 +364,7 @@ module('Unit | Controller | whatsapp', function (hooks) {
     assert.true(controller.needsConnect, 'the reconnect CTA is offered');
     assert.strictEqual(
       controller.connectionDetail,
-      'Meta authorization for this number expired. Reconnect to send again.',
+      'Meta authorization expired. Reconnect to send again.',
     );
   });
 
@@ -586,6 +586,79 @@ module('Unit | Controller | whatsapp', function (hooks) {
     );
   });
 
+  test('openDisconnectConfirm opens the modal without disconnecting', function (assert) {
+    const controller = makeController(this);
+    let disconnected = false;
+    controller.whatsapp = {
+      disconnect() {
+        disconnected = true;
+        return Promise.resolve({ success: true });
+      },
+    };
+
+    controller.openDisconnectConfirm();
+
+    assert.true(controller.isDisconnectConfirmOpen);
+    assert.false(disconnected);
+  });
+
+  test('confirmDisconnect disconnects and closes the modal', async function (assert) {
+    const controller = makeController(this);
+    controller.connection = { status: 'connected' };
+    let disconnected = false;
+    controller.whatsapp = {
+      disconnect() {
+        disconnected = true;
+        return Promise.resolve({ success: true });
+      },
+      getConnection: () => Promise.resolve({ data: null }),
+    };
+
+    controller.openDisconnectConfirm();
+    await controller.confirmDisconnect();
+
+    assert.true(disconnected);
+    assert.false(controller.isDisconnectConfirmOpen);
+    assert.false(controller.isConnecting);
+  });
+
+  test('confirmDisconnect closes the modal when the disconnect fails', async function (assert) {
+    const controller = makeController(this);
+    controller.connection = { status: 'connected' };
+    controller.whatsapp = {
+      disconnect: () => Promise.reject(new Error('Meta is down')),
+    };
+    const originalError = console.error;
+    console.error = () => {};
+
+    controller.openDisconnectConfirm();
+    try {
+      await controller.confirmDisconnect();
+    } finally {
+      console.error = originalError;
+    }
+
+    assert.false(controller.isDisconnectConfirmOpen);
+    assert.false(controller.isConnecting);
+  });
+
+  test('closeDisconnectConfirm cancels without disconnecting', function (assert) {
+    const controller = makeController(this);
+    let disconnected = false;
+    controller.whatsapp = {
+      disconnect() {
+        disconnected = true;
+        return Promise.resolve({ success: true });
+      },
+    };
+
+    controller.openDisconnectConfirm();
+    controller.closeDisconnectConfirm();
+
+    assert.false(controller.isDisconnectConfirmOpen);
+    assert.false(disconnected);
+  });
+
   test('a connected row shows the display number as its detail', function (assert) {
     const controller = makeController(this);
     controller.connection = {
@@ -611,7 +684,20 @@ module('Unit | Controller | whatsapp', function (hooks) {
     assert.strictEqual(controller.connectionVariant, 'danger');
     assert.strictEqual(
       controller.connectionDetail,
-      'Meta reported PARTNER_REMOVED.',
+      'Access was removed in Meta Business settings.',
+    );
+  });
+
+  test('an unknown disconnect reason never shows the raw code', function (assert) {
+    const controller = makeController(this);
+    controller.connection = {
+      status: 'disconnected',
+      disconnectReason: 'SOME_NEW_META_REASON',
+    };
+
+    assert.strictEqual(
+      controller.connectionDetail,
+      'This number was disconnected.',
     );
   });
 

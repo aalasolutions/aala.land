@@ -1,5 +1,7 @@
 const mockMulti = {
   rpush: jest.fn().mockReturnThis(),
+  lpush: jest.fn().mockReturnThis(),
+  ltrim: jest.fn().mockReturnThis(),
   sadd: jest.fn().mockReturnThis(),
   incr: jest.fn().mockReturnThis(),
   pexpire: jest.fn().mockReturnThis(),
@@ -169,6 +171,20 @@ describe('RedisService', () => {
         [null, 1],
       ]);
       await expect(service.setAdd('s', 'm', 3000)).rejects.toThrow('WRONGTYPE');
+    });
+
+    it('prependList pushes in original order, caps, expires in one MULTI', async () => {
+      mockMulti.exec.mockResolvedValueOnce([
+        [null, 5],
+        [null, 'OK'],
+        [null, 1],
+      ]);
+
+      expect(await service.prependList('l', ['a', 'b'], 3, 1000)).toBe(2);
+
+      expect(mockMulti.lpush).toHaveBeenCalledWith('l', 'b', 'a');
+      expect(mockMulti.ltrim).toHaveBeenCalledWith('l', -3, -1);
+      expect(mockMulti.pexpire).toHaveBeenCalledWith('l', 1000);
     });
 
     it('incrCounter throws on a failed INCR rather than returning 0', async () => {

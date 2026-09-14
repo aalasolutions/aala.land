@@ -33,7 +33,7 @@
           @icon="plugs-connected"
           @text="Disconnect"
           @loading={{this.isConnecting}}
-          @onClick={{this.disconnectWhatsapp}}
+          @onClick={{this.openDisconnectConfirm}}
           data-test-wa-disconnect
         />
       </span>
@@ -356,3 +356,16 @@
   </div>
 
 </div>
+
+<ConfirmModal
+  @open={{this.isDisconnectConfirmOpen}}
+  @title="Disconnect WhatsApp?"
+  @message="Messages will stop arriving here. Reconnecting needs the Meta signup again."
+  @confirmText="Disconnect"
+  @cancelText="Cancel"
+  @confirmVariant="danger"
+  @isConfirming={{this.isConnecting}}
+  @confirmingText="Disconnecting..."
+  @onClose={{this.closeDisconnectConfirm}}
+  @onConfirm={{this.confirmDisconnect}}
+/>

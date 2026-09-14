@@ -13,6 +13,7 @@ import { Role } from '@shared/enums/roles.enum';
 import { GRAPH_VERSION } from './wa-types';
 import { ListWaMessagesDto } from './dto/list-wa-messages.dto';
 import { ListWaChatMessagesDto } from './dto/list-wa-chat-messages.dto';
+import { WaChatIdParamDto } from './dto/wa-chat-id-param.dto';
 
 describe('WhatsappController', () => {
   let controller: WhatsappController;
@@ -234,7 +235,7 @@ describe('WhatsappController', () => {
       );
       await controller.getMessages(
         makeReq('u1', 'c1'),
-        'chat-a',
+        { chatId: 'chat-a' },
         await validate(ListWaChatMessagesDto, {}),
       );
 
@@ -254,7 +255,7 @@ describe('WhatsappController', () => {
 
       const result = await controller.getMessages(
         makeReq('u1', 'c1'),
-        'chat-a',
+        { chatId: 'chat-a' },
         await validate(ListWaChatMessagesDto, {
           limit: '20',
           before: 'wamid.HBgM=',
@@ -295,7 +296,7 @@ describe('WhatsappController', () => {
 
       const result = await controller.getMessages(
         makeReq('u1', 'c1'),
-        'chat-a',
+        { chatId: 'chat-a' },
         await validate(ListWaChatMessagesDto, { limit: '20', after: 'wamid.A' }),
       );
 
@@ -316,7 +317,7 @@ describe('WhatsappController', () => {
 
       const result = await controller.getMessages(
         makeReq('u1', 'c1'),
-        'chat-a',
+        { chatId: 'chat-a' },
         await validate(ListWaChatMessagesDto, { around: 'wamid.M' }),
       );
 
@@ -339,7 +340,7 @@ describe('WhatsappController', () => {
       const query = await validate(ListWaChatMessagesDto, q);
 
       expect(() =>
-        controller.getMessages(makeReq('u1', 'c1'), 'chat-a', query),
+        controller.getMessages(makeReq('u1', 'c1'), { chatId: 'chat-a' }, query),
       ).toThrow(BadRequestException);
       expect(wa.getMessagesForChat).not.toHaveBeenCalled();
       expect(wa.getMessagesAfter).not.toHaveBeenCalled();
@@ -350,6 +351,52 @@ describe('WhatsappController', () => {
       await expect(
         validate(ListWaChatMessagesDto, { limit: '200', regionCode: 'dubai' }),
       ).resolves.toMatchObject({ limit: 200 });
+    });
+  });
+
+  describe(':chatId route param', () => {
+    const pipe = new ValidationPipe({
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      transform: true,
+    });
+    const validateParam = (value: Record<string, string>) =>
+      pipe.transform(value, { type: 'param', metatype: WaChatIdParamDto });
+
+    it.each(['chat-a', '+971501234567', '0971501234567', '123', '9'.repeat(16)])(
+      'rejects an invalid chatId with 400 (%p)',
+      async (chatId) => {
+        await expect(validateParam({ chatId })).rejects.toBeInstanceOf(
+          BadRequestException,
+        );
+      },
+    );
+
+    it('accepts an E.164 chatId without a plus sign', async () => {
+      await expect(
+        validateParam({ chatId: '971501234567' }),
+      ).resolves.toMatchObject({ chatId: '971501234567' });
+    });
+
+    it('both :chatId routes take WaChatIdParamDto', () => {
+      for (const method of ['getMessages', 'getAiHistory']) {
+        const types = Reflect.getMetadata(
+          'design:paramtypes',
+          WhatsappController.prototype,
+          method,
+        );
+        expect(types[1]).toBe(WaChatIdParamDto);
+      }
+    });
+
+    it('returns the AI history for a valid chatId', async () => {
+      wa.getAiHistory.mockResolvedValue([]);
+      const params = await validateParam({ chatId: '971501234567' });
+
+      await expect(
+        controller.getAiHistory(makeReq('u1', 'c1'), params),
+      ).resolves.toEqual({ chatId: '971501234567', history: [] });
+      expect(wa.getAiHistory).toHaveBeenCalledWith('u1', '971501234567');
     });
   });
 });

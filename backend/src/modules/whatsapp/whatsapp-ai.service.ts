@@ -44,6 +44,17 @@ export type MarkReadFn = (
   withTyping: boolean,
 ) => Promise<void>;
 
+export class ChatLockTimeoutError extends Error {
+  readonly name = 'ChatLockTimeoutError';
+}
+
+type ErrorCause = { code?: string; message?: string };
+
+const errorCause = (err: unknown): ErrorCause | undefined =>
+  typeof err === 'object' && err !== null && 'cause' in err
+    ? (err.cause as ErrorCause | undefined)
+    : undefined;
+
 // State lives in Redis, turns queue in BullMQ, so replicas share history and survive restarts.
 @Injectable()
 export class WhatsappAiService {
@@ -449,17 +460,17 @@ export class WhatsappAiService {
     await this.redis.del(scratch);
     if (raw.length === 0) return;
 
-    const pendKey = this.pendKey(data.userId, data.chatId);
     const maxPending = envInt('AI_PENDING_MAX', 20, 1);
-    // Appended, so a message that arrived while the turn was failing reads before these.
-    for (const entry of raw) {
-      if ((await this.redis.listLength(pendKey)) >= maxPending) {
-        this.logger.warn(
-          `Pending buffer full while restoring a failed turn for ${data.userId}:${data.chatId}`,
-        );
-        break;
-      }
-      await this.redis.pushList(pendKey, entry, this.AI_STATE_TTL_MS);
+    const dropped = await this.redis.prependList(
+      this.pendKey(data.userId, data.chatId),
+      raw,
+      maxPending,
+      this.AI_STATE_TTL_MS,
+    );
+    if (dropped > 0) {
+      this.logger.warn(
+        `Pending buffer full (${maxPending}), dropped ${dropped} oldest message(s) restoring a failed turn for ${data.userId}:${data.chatId}`,
+      );
     }
     await this.scheduleRestoredTurn(data);
     this.logger.warn(
@@ -544,7 +555,7 @@ export class WhatsappAiService {
 
     // Must throw, never return, so the processor's catch restores the buffer instead of deleting it.
     if (!(await this.acquireChatLock(lockKey, token, ttlMs, waitMs))) {
-      throw new Error(
+      throw new ChatLockTimeoutError(
         `Timed out waiting ${waitMs}ms for the AI chat lock on ${key}`,
       );
     }
@@ -833,7 +844,7 @@ export class WhatsappAiService {
       if (!isLockHeld()) return;
       await this.persistHistory(userId, chatId, history);
     } catch (err) {
-      const cause = (err as any)?.cause;
+      const cause = errorCause(err);
       const causeStr =
         cause instanceof Error
           ? ` | cause: ${cause.name}: ${cause.message}`
@@ -966,7 +977,7 @@ export class WhatsappAiService {
       const timer = setTimeout(() => controller.abort(), attemptMs);
 
       try {
-        const body: Record<string, any> = {
+        const body: Record<string, unknown> = {
           model,
           messages,
           stream: true,
@@ -995,8 +1006,9 @@ export class WhatsappAiService {
 
         return await this.readCompletionStream(res);
       } catch (err) {
-        const cause = (err as any)?.cause;
-        const isTransient = cause && TRANSIENT_CODES.has((cause as any).code);
+        const cause = errorCause(err);
+        const isTransient =
+          cause?.code !== undefined && TRANSIENT_CODES.has(cause.code);
         const remaining = deadline - Date.now();
 
         if (isTransient && attempt < maxRetries && remaining > 0) {

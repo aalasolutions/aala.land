@@ -1,7 +1,7 @@
 import { Logger } from '@nestjs/common';
 import { Job } from 'bullmq';
 import { OnWorkerEvent, Processor, WorkerHost } from '@nestjs/bullmq';
-import { WhatsappAiService } from './whatsapp-ai.service';
+import { ChatLockTimeoutError, WhatsappAiService } from './whatsapp-ai.service';
 import { WhatsappCloudApiService } from './whatsapp-cloud-api.service';
 import { DebounceJobData, WA_AI_DEBOUNCE_QUEUE } from './wa-types';
 import { errorMessage } from '@shared/utils/error.util';
@@ -48,6 +48,10 @@ export class WhatsappAiDebounceProcessor extends WorkerHost {
             `Failed to restore the claimed buffer for ${job.data.userId}:${job.data.chatId}: ${errorMessage(restoreErr)}`,
           ),
         );
+      if (err instanceof ChatLockTimeoutError) {
+        this.logger.warn(`Debounce turn ${jobId}: ${err.message}`);
+        return;
+      }
       throw err;
     }
     await this.ai.releaseClaimedBuffer(job.data, jobId);

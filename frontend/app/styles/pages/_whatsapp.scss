@@ -8,6 +8,11 @@
 // have shipped an unstyled page a second time. Everything the kit already
 // solves is a component now: status dot, tags, buttons, textarea, empty states.
 @use "../uikit/common/var" as *;
+@use "../uikit/mixins/bem" as *;
+
+// No NuvoUI size token covers these.
+$wa-sidebar-width: 22.5rem;
+$wa-message-max-width: 70%;
 
 // The shell owns the viewport budget, so the content area must stop padding and
 // stop scrolling. `:has()` outranks the bare `.content-area` rule on its own, so
@@ -80,7 +85,7 @@
 .wa-sidebar {
   display: flex;
   flex-direction: column;
-  inline-size: 22.5rem;
+  inline-size: $wa-sidebar-width;
   flex-shrink: 0;
   background: var(--bg-surface);
   border-inline-end: 1px solid var(--border-base);
@@ -131,6 +136,10 @@
   border-inline-start: 3px solid transparent;
   cursor: pointer;
   transition: background nu-duration(fast) $nu-ease;
+
+  @include reduced-motion {
+    transition: none;
+  }
 
   &:hover {
     background: var(--bg-alternate);
@@ -249,7 +258,7 @@
 }
 
 .wa-message {
-  max-inline-size: 70%;
+  max-inline-size: $wa-message-max-width;
 
   &.m-incoming {
     align-self: flex-start;

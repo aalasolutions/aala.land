@@ -1,4 +1,7 @@
-import { WhatsappAiService } from './whatsapp-ai.service';
+import {
+  ChatLockTimeoutError,
+  WhatsappAiService,
+} from './whatsapp-ai.service';
 import { WhatsappSendError } from './whatsapp-cloud-api.service';
 import { DIRECT_CONTACT_RESPONSE } from './whatsapp-ai-filter';
 import { SubscriptionTier } from '../companies/entities/company.entity';
@@ -181,6 +184,12 @@ function makeMockRedis() {
       list.push(value);
       lists.set(key, list);
       return Promise.resolve();
+    },
+    prependList: (key: string, values: string[], maxLen: number) => {
+      const list = [...values, ...(lists.get(key) ?? [])];
+      const dropped = Math.max(0, list.length - maxLen);
+      lists.set(key, list.slice(dropped));
+      return Promise.resolve(dropped);
     },
     getList: (key: string) => Promise.resolve(lists.get(key) ?? []),
     listLength: (key: string) => Promise.resolve((lists.get(key) ?? []).length),
@@ -2741,11 +2750,85 @@ describe('WhatsappAiService', () => {
       const task = jest.fn().mockResolvedValue(undefined);
       const assertion = expect(
         (service as any).runSerializedPerChat('user-1:c1', task),
-      ).rejects.toThrow('Timed out waiting 20000ms');
+      ).rejects.toThrow(
+        new ChatLockTimeoutError(
+          'Timed out waiting 20000ms for the AI chat lock on user-1:c1',
+        ),
+      );
       await jest.advanceTimersByTimeAsync(21000);
       await assertion;
 
       expect(task).not.toHaveBeenCalled();
+    });
+
+    it('restores claimed messages before newer pending ones, in order', async () => {
+      const redis = makeMockRedis();
+      service = new WhatsappAiService(
+        makeMockRepo() as any,
+        makeMockStore() as any,
+        makeMockBuilder() as any,
+        makeMockEmail() as any,
+        redis as any,
+        queue as any,
+      );
+      jest
+        .spyOn((service as any).logger, 'warn')
+        .mockImplementation(() => undefined);
+      const data = {
+        userId: 'user-1',
+        chatId: 'c1',
+        companyId: 'company-1',
+        deadlineAt: Date.now() + 60000,
+      };
+      redis.lists.set('wa:ai:pend:user-1:c1:take:job-a', ['old1', 'old2']);
+      redis.lists.set('wa:ai:pend:user-1:c1', ['new1']);
+
+      await service.restoreClaimedBuffer(data, 'job-a');
+
+      expect(await redis.getList('wa:ai:pend:user-1:c1')).toEqual([
+        'old1',
+        'old2',
+        'new1',
+      ]);
+    });
+
+    it('restore keeps the newest messages up to the cap and warns the drop count', async () => {
+      process.env.AI_PENDING_MAX = '3';
+      const redis = makeMockRedis();
+      service = new WhatsappAiService(
+        makeMockRepo() as any,
+        makeMockStore() as any,
+        makeMockBuilder() as any,
+        makeMockEmail() as any,
+        redis as any,
+        queue as any,
+      );
+      const warn = jest
+        .spyOn((service as any).logger, 'warn')
+        .mockImplementation(() => undefined);
+      const data = {
+        userId: 'user-1',
+        chatId: 'c1',
+        companyId: 'company-1',
+        deadlineAt: Date.now() + 60000,
+      };
+      redis.lists.set('wa:ai:pend:user-1:c1:take:job-a', ['old1', 'old2', 'old3']);
+      redis.lists.set('wa:ai:pend:user-1:c1', ['new1', 'new2']);
+
+      try {
+        await service.restoreClaimedBuffer(data, 'job-a');
+      } finally {
+        delete process.env.AI_PENDING_MAX;
+      }
+
+      expect(await redis.getList('wa:ai:pend:user-1:c1')).toEqual([
+        'old3',
+        'new1',
+        'new2',
+      ]);
+      expect(warn).toHaveBeenCalledWith(
+        expect.stringContaining('dropped 2 oldest'),
+      );
     });
 
     it('drops the claim once the turn completes', async () => {

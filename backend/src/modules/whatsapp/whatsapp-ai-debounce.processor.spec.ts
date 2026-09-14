@@ -1,5 +1,6 @@
 import { Job } from 'bullmq';
 import { WhatsappAiDebounceProcessor } from './whatsapp-ai-debounce.processor';
+import { ChatLockTimeoutError } from './whatsapp-ai.service';
 import { DebounceJobData } from './wa-types';
 
 const JOB_ID = 'user-1:c1:0';
@@ -114,6 +115,33 @@ describe('WhatsappAiDebounceProcessor', () => {
 
     expect(ai.takeDebouncedBuffer).not.toHaveBeenCalled();
     expect(ai.restoreClaimedBuffer).not.toHaveBeenCalled();
+  });
+
+  it('restores and warns without failing the job on a chat lock timeout', async () => {
+    const ai = makeAi({ combinedText: 'hello', messageIds: ['m1'] });
+    ai.runTurn.mockRejectedValue(
+      new ChatLockTimeoutError('Timed out waiting 20000ms'),
+    );
+    const processor = new WhatsappAiDebounceProcessor(
+      ai as any,
+      makeCloud() as any,
+    );
+    const warn = jest
+      .spyOn((processor as any).logger, 'warn')
+      .mockImplementation(() => undefined);
+    const error = jest.spyOn((processor as any).logger, 'error');
+
+    await expect(processor.process(makeJob())).resolves.toBeUndefined();
+
+    expect(ai.restoreClaimedBuffer).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: 'user-1', chatId: 'c1' }),
+      JOB_ID,
+    );
+    expect(ai.releaseClaimedBuffer).not.toHaveBeenCalled();
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining('Timed out waiting'),
+    );
+    expect(error).not.toHaveBeenCalled();
   });
 
   it('still rethrows the turn failure when the restore itself fails', async () => {

@@ -5,6 +5,10 @@ import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { runTask, cancelTask } from 'ember-lifeline';
 import { modifier } from 'ember-modifier';
+import {
+  disconnectReasonText,
+  isTokenInvalidReason,
+} from 'land/utils/whatsapp-disconnect-reasons';
 
 // Meta's 24h reply window opens only on an inbound message; an agent reply never extends it.
 const REPLY_WINDOW_MS = 24 * 60 * 60 * 1000;
@@ -100,6 +104,7 @@ export default class WhatsappController extends Controller {
   @tracked connection = null;
   @tracked signupConfig = null;
   @tracked isConnecting = false;
+  @tracked isDisconnectConfirmOpen = false;
   // Bumped by a local 60s clock so the reply-window countdown stays honest.
   @tracked now = Date.now();
 
@@ -218,10 +223,10 @@ export default class WhatsappController extends Controller {
       this.connectionStatus === 'disconnected' &&
       this.connection?.disconnectReason
     ) {
-      return `Meta reported ${this.connection.disconnectReason}.`;
+      return disconnectReasonText(this.connection.disconnectReason);
     }
     if (this.needsReauth) {
-      return 'Meta authorization for this number expired. Reconnect to send again.';
+      return disconnectReasonText(this.connection.disconnectReason);
     }
     return (CONNECTION_COPY[this.connectionStatus] ?? CONNECTION_COPY.none)
       .detail;
@@ -231,7 +236,7 @@ export default class WhatsappController extends Controller {
   get needsReauth() {
     return (
       this.connectionStatus === 'flagged' &&
-      (this.connection?.disconnectReason ?? '').startsWith('token_invalid')
+      isTokenInvalidReason(this.connection?.disconnectReason)
     );
   }
 
@@ -884,6 +889,22 @@ export default class WhatsappController extends Controller {
     } finally {
       this.isConnecting = false;
     }
+  }
+
+  @action
+  openDisconnectConfirm() {
+    this.isDisconnectConfirmOpen = true;
+  }
+
+  @action
+  closeDisconnectConfirm() {
+    this.isDisconnectConfirmOpen = false;
+  }
+
+  @action
+  async confirmDisconnect() {
+    await this.disconnectWhatsapp();
+    this.isDisconnectConfirmOpen = false;
   }
 
   @action

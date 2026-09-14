@@ -24,10 +24,12 @@ import { envString } from '@shared/utils/env.util';
 // The exchange code expires in 30s, so a request still running past 15s has already lost it.
 const SIGNUP_TIMEOUT_MS = 15000;
 
+const NUMBER_TAKEN_MESSAGE =
+  'This number is connected to another account. Disconnect it from that account or from your WhatsApp Business app, then try again.';
+
 // Unique indexes the insert/update below can race (see `connect`'s catch block).
 const CONFLICT_MESSAGE_BY_CONSTRAINT: Record<string, string> = {
-  UQ_wa_connections_phone_number_id:
-    'That WhatsApp number is already connected to another account',
+  UQ_wa_connections_phone_number_id: NUMBER_TAKEN_MESSAGE,
   UQ_wa_connections_user: 'A connection for this user is already being saved',
 };
 
@@ -97,9 +99,7 @@ export class WhatsappSignupService {
       select: { id: true },
     });
     if (taken) {
-      throw new ConflictException(
-        'That WhatsApp number is already connected to another account',
-      );
+      throw new ConflictException(NUMBER_TAKEN_MESSAGE);
     }
 
     const token = await this.exchangeCode(dto.code, appId, appSecret);

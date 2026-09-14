@@ -21,6 +21,7 @@ import { AiToggleDto } from './dto/ai-toggle.dto';
 import { ListWaMessagesDto } from './dto/list-wa-messages.dto';
 import { ListWaChatMessagesDto } from './dto/list-wa-chat-messages.dto';
 import { SendMessageDto } from './dto/send-message.dto';
+import { WaChatIdParamDto } from './dto/wa-chat-id-param.dto';
 import { ConnectWhatsappDto } from './dto/connect-whatsapp.dto';
 import { WhatsappSignupService } from './whatsapp-signup.service';
 import { AuthenticatedRequest } from '@shared/interfaces/authenticated-request.interface';
@@ -126,7 +127,7 @@ export class WhatsappController {
   })
   getMessages(
     @Request() req: AuthenticatedRequest,
-    @Param('chatId') chatId: string,
+    @Param() { chatId }: WaChatIdParamDto,
     @Query() query: ListWaChatMessagesDto,
   ): Promise<{ messages: WaMessage[]; hasMore: boolean } | WaMessageWindow> {
     const companyId = requireCompanyId(req.user);
@@ -211,7 +212,7 @@ export class WhatsappController {
   @ApiOperation({ summary: 'AI conversation history for a chat' })
   async getAiHistory(
     @Request() req: AuthenticatedRequest,
-    @Param('chatId') chatId: string,
+    @Param() { chatId }: WaChatIdParamDto,
   ): Promise<{ chatId: string; history: AiHistoryMessage[] }> {
     const history = await this.wa.getAiHistory(req.user.userId, chatId);
     return { chatId, history };

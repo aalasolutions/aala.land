@@ -105,6 +105,24 @@ export class RedisService implements OnModuleDestroy {
     );
   }
 
+  // Keeps newest; returns trimmed count.
+  async prependList(
+    key: string,
+    values: string[],
+    maxLen: number,
+    ttlMs: number,
+  ): Promise<number> {
+    const [length] = this.unwrapExec(
+      await this.client
+        .multi()
+        .lpush(key, ...[...values].reverse())
+        .ltrim(key, -maxLen, -1)
+        .pexpire(key, ttlMs)
+        .exec(),
+    );
+    return Math.max(0, (length as number) - maxLen);
+  }
+
   async getList(key: string): Promise<string[]> {
     return this.client.lrange(key, 0, -1);
   }
