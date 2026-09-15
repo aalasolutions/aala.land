@@ -203,4 +203,35 @@ module('Unit | Service | auth', function (hooks) {
     assert.strictEqual(toasted, 0, 'no auto-toast for ordinary errors');
     assert.strictEqual(refreshed, 0, 'no lock refresh for ordinary errors');
   });
+
+  test('logout disconnects both the notifications and the whatsapp socket', async function (assert) {
+    const calls = [];
+    this.owner.register(
+      'service:socket',
+      class extends Service {
+        disconnect() {
+          calls.push('socket');
+        }
+      },
+    );
+    this.owner.register(
+      'service:whatsapp',
+      class extends Service {
+        disconnectSocket() {
+          calls.push('whatsapp');
+        }
+      },
+    );
+    this.owner.register(
+      'service:ui-settings',
+      class extends Service {
+        reset() {}
+      },
+    );
+
+    const service = this.owner.lookup('service:auth');
+    await service.logout();
+
+    assert.deepEqual(calls, ['socket', 'whatsapp']);
+  });
 });

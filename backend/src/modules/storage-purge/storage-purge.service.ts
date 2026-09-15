@@ -5,6 +5,7 @@ import { EntityManager, In } from 'typeorm';
 import { PropertyMedia } from '../properties/entities/property-media.entity';
 import { PropertyDocument } from '../properties/entities/property-document.entity';
 import { Company } from '../companies/entities/company.entity';
+import { errorMessage } from '@shared/utils/error.util';
 import {
   StorageBucketKind,
   StoragePurgeJob,
@@ -148,7 +149,7 @@ export class StoragePurgeService {
     } catch (err) {
       this.logger.error(
         `Failed to enqueue ${ids.length} storage purge job(s): ` +
-          (err instanceof Error ? err.message : String(err)),
+          errorMessage(err),
       );
     }
   }

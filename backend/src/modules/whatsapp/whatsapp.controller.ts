@@ -1,33 +1,38 @@
 // backend/src/modules/whatsapp/whatsapp.controller.ts
 import {
+  BadRequestException,
   Controller,
   Get,
   Post,
+  Delete,
   Body,
   Param,
   Query,
   UseGuards,
-  Res,
   Request,
-  ForbiddenException,
 } from '@nestjs/common';
-import { Response } from 'express';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
-import { resolve, join, sep } from 'path';
-import { existsSync } from 'fs';
 import { WhatsappService } from './whatsapp.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '@shared/guards/roles.guard';
 import { Roles } from '@shared/decorators/roles.decorator';
 import { Role } from '@shared/enums/roles.enum';
-import {
-  SendWaMessageDto,
-  SendWaMediaDto,
-  TypingDto,
-  AiToggleDto,
-} from './dto/send-wa-message.dto';
+import { AiToggleDto } from './dto/ai-toggle.dto';
 import { ListWaMessagesDto } from './dto/list-wa-messages.dto';
+import { ListWaChatMessagesDto } from './dto/list-wa-chat-messages.dto';
+import { SendMessageDto } from './dto/send-message.dto';
+import { WaChatIdParamDto } from './dto/wa-chat-id-param.dto';
+import { ConnectWhatsappDto } from './dto/connect-whatsapp.dto';
+import { WhatsappSignupService } from './whatsapp-signup.service';
 import { AuthenticatedRequest } from '@shared/interfaces/authenticated-request.interface';
+import { requireCompanyId } from '@shared/utils/auth.util';
+import {
+  AiHistoryMessage,
+  WaConnectionInfo,
+  WaMessage,
+  WaMessageWindow,
+  WaSignupConfig,
+} from './wa-types';
 
 @ApiTags('whatsapp')
 @ApiBearerAuth()
@@ -35,35 +40,52 @@ import { AuthenticatedRequest } from '@shared/interfaces/authenticated-request.i
 @Roles(Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT)
 @Controller('whatsapp')
 export class WhatsappController {
-  constructor(private readonly wa: WhatsappService) {}
-
-  private isPathInside(root: string, candidate: string): boolean {
-    return candidate.startsWith(resolve(root) + sep);
-  }
+  constructor(
+    private readonly wa: WhatsappService,
+    private readonly signup: WhatsappSignupService,
+  ) {}
 
   // ── Connection ────────────────────────────────────────────────────────
 
   @Get('connection')
-  @ApiOperation({ summary: 'WhatsApp connection status' })
+  @ApiOperation({
+    summary: "The caller's own connected number, or null when none exists",
+  })
   getConnection(@Request() req: AuthenticatedRequest) {
-    return this.wa.getConnection(req.user.userId, req.user.companyId!);
+    return this.wa.getConnection(req.user.userId, requireCompanyId(req.user));
   }
 
-  @Get('qr')
+  @Get('signup-config')
   @ApiOperation({
-    summary: 'Current QR code (base64 PNG data URL or null if paired)',
+    summary: 'App id and Embedded Signup configuration id for the browser flow',
   })
-  getQR(@Request() req: AuthenticatedRequest) {
-    return this.wa.getQR(req.user.userId, req.user.companyId!);
+  getSignupConfig(): WaSignupConfig {
+    return this.signup.getSignupConfig();
   }
 
-  @Post('logout')
+  @Post('connect')
   @ApiOperation({
-    summary:
-      'Clear the WhatsApp session and generate a new QR code. Stored chat history is kept.',
+    summary: 'Exchange an Embedded Signup code and store the connection',
   })
-  logout(@Request() req: AuthenticatedRequest) {
-    return this.wa.logout(req.user.userId, req.user.companyId!);
+  connect(
+    @Request() req: AuthenticatedRequest,
+    @Body() dto: ConnectWhatsappDto,
+  ): Promise<WaConnectionInfo> {
+    return this.signup.connect(
+      req.user.userId,
+      requireCompanyId(req.user),
+      dto,
+    );
+  }
+
+  @Delete('connection')
+  @ApiOperation({
+    summary: "Release the caller's number and destroy its stored token",
+  })
+  disconnect(
+    @Request() req: AuthenticatedRequest,
+  ): Promise<{ success: boolean }> {
+    return this.signup.disconnect(req.user.userId, requireCompanyId(req.user));
   }
 
   // ── Chats / Messages ──────────────────────────────────────────────────
@@ -72,7 +94,10 @@ export class WhatsappController {
   @ApiOperation({ summary: 'Chat list with last-message preview' })
   async getChats(@Request() req: AuthenticatedRequest) {
     return {
-      chats: await this.wa.getChats(req.user.companyId!, req.user.userId),
+      chats: await this.wa.getChats(
+        requireCompanyId(req.user),
+        req.user.userId,
+      ),
     };
   }
 
@@ -85,9 +110,9 @@ export class WhatsappController {
     @Query() query: ListWaMessagesDto,
   ) {
     const page = query.page ?? 1;
-    const limit = query.limit ?? 500;
+    const limit = query.limit ?? 50;
     const { messages, hasMore } = await this.wa.getAllMessages(
-      req.user.companyId!,
+      requireCompanyId(req.user),
       req.user.userId,
       page,
       limit,
@@ -96,63 +121,60 @@ export class WhatsappController {
   }
 
   @Get('messages/:chatId')
-  @ApiOperation({ summary: 'Messages for a specific chat' })
-  async getMessages(
+  @ApiOperation({
+    summary:
+      'Latest messages for a chat, or the page older than `before`, newer than `after`, or centred on `around`',
+  })
+  getMessages(
     @Request() req: AuthenticatedRequest,
-    @Param('chatId') chatId: string,
-  ) {
-    return {
-      messages: await this.wa.getMessagesForChat(
-        req.user.companyId!,
+    @Param() { chatId }: WaChatIdParamDto,
+    @Query() query: ListWaChatMessagesDto,
+  ): Promise<{ messages: WaMessage[]; hasMore: boolean } | WaMessageWindow> {
+    const companyId = requireCompanyId(req.user);
+    const limit = query.limit ?? 50;
+    const { before, after, around } = query;
+    if ([before, after, around].filter((c) => c !== undefined).length > 1) {
+      throw new BadRequestException('Use only one of before, after or around');
+    }
+    if (after !== undefined) {
+      return this.wa.getMessagesAfter(
+        companyId,
         req.user.userId,
         chatId,
-      ),
-    };
-  }
-
-  // ── Sending ───────────────────────────────────────────────────────────
-
-  @Post('send')
-  @ApiOperation({ summary: 'Send a text message' })
-  send(@Request() req: AuthenticatedRequest, @Body() dto: SendWaMessageDto) {
-    return this.wa.send(
-      req.user.userId,
-      req.user.companyId!,
-      dto.chatId,
-      dto.message,
-      dto.replyTo,
-    );
-  }
-
-  @Post('send-media')
-  @ApiOperation({ summary: 'Send a media message' })
-  sendMedia(@Request() req: AuthenticatedRequest, @Body() dto: SendWaMediaDto) {
-    const dataDir =
-      process.env.WHATSAPP_DATA_DIR ?? join(process.cwd(), 'data', 'whatsapp');
-    const mediaBase = join(dataDir, 'media', req.user.userId);
-    const resolvedPath = resolve(dto.filePath);
-    if (!this.isPathInside(mediaBase, resolvedPath)) {
-      throw new ForbiddenException(
-        'filePath must be within your media directory',
+        after,
+        limit,
       );
     }
-    return this.wa.sendMedia(
+    if (around !== undefined) {
+      return this.wa.getMessagesAround(
+        companyId,
+        req.user.userId,
+        chatId,
+        around,
+        limit,
+      );
+    }
+    return this.wa.getMessagesForChat(
+      companyId,
       req.user.userId,
-      req.user.companyId!,
-      dto.chatId,
-      resolvedPath,
-      {
-        mediaType: dto.mediaType,
-        caption: dto.caption,
-        fileName: dto.fileName,
-      },
+      chatId,
+      limit,
+      before,
     );
   }
 
-  @Post('typing')
-  @ApiOperation({ summary: 'Send typing indicator' })
-  typing(@Request() req: AuthenticatedRequest, @Body() dto: TypingDto) {
-    return this.wa.typing(req.user.userId, req.user.companyId!, dto.chatId);
+  @Post('send')
+  @ApiOperation({ summary: 'Send a text message as the human operator' })
+  async send(
+    @Request() req: AuthenticatedRequest,
+    @Body() dto: SendMessageDto,
+  ): Promise<WaMessage> {
+    return this.wa.sendMessage(
+      req.user.userId,
+      requireCompanyId(req.user),
+      dto.chatId,
+      dto.body,
+    );
   }
 
   // ── AI ────────────────────────────────────────────────────────────────
@@ -160,7 +182,7 @@ export class WhatsappController {
   @Get('ai')
   @ApiOperation({ summary: 'AI config and enabled state' })
   getAi(@Request() req: AuthenticatedRequest) {
-    return this.wa.getAiConfig(req.user.userId, req.user.companyId!);
+    return this.wa.getAiConfig(requireCompanyId(req.user));
   }
 
   @Get('ai/credits')
@@ -169,7 +191,7 @@ export class WhatsappController {
     summary: 'AI credit usage for the current period, broken down by agent',
   })
   getAiCredits(@Request() req: AuthenticatedRequest) {
-    return this.wa.getAiCreditUsage(req.user.companyId!);
+    return this.wa.getAiCreditUsage(requireCompanyId(req.user));
   }
 
   @Post('ai/toggle')
@@ -179,45 +201,20 @@ export class WhatsappController {
     @Request() req: AuthenticatedRequest,
     @Body() dto: AiToggleDto,
   ) {
-    return this.wa.toggleAi(req.user.userId, req.user.companyId!, dto.enabled);
+    return this.wa.toggleAi(
+      req.user.userId,
+      requireCompanyId(req.user),
+      dto.enabled,
+    );
   }
 
   @Get('ai/history/:chatId')
   @ApiOperation({ summary: 'AI conversation history for a chat' })
-  getAiHistory(
+  async getAiHistory(
     @Request() req: AuthenticatedRequest,
-    @Param('chatId') chatId: string,
-  ) {
-    return { chatId, history: this.wa.getAiHistory(req.user.userId, chatId) };
-  }
-
-  // ── Media serving ─────────────────────────────────────────────────────
-
-  @Get('media/:type/:filename')
-  @ApiOperation({ summary: 'Serve downloaded media file' })
-  serveMedia(
-    @Request() req: AuthenticatedRequest,
-    @Param('type') type: string,
-    @Param('filename') filename: string,
-    @Res() res: Response,
-  ) {
-    const dirs = this.wa.getMediaDirs(req.user.userId);
-    const dirMap: Record<string, string> = {
-      images: dirs.IMAGE_DIR,
-      videos: dirs.VIDEO_DIR,
-      audio: dirs.AUDIO_DIR,
-      documents: dirs.DOCUMENT_DIR,
-    };
-    const dir = dirMap[type];
-    if (!dir) return res.status(400).json({ error: 'Invalid media type' });
-
-    const filePath = resolve(join(dir, filename));
-    if (!this.isPathInside(dir, filePath)) {
-      return res.status(403).json({ error: 'Access denied' });
-    }
-    if (!existsSync(filePath))
-      return res.status(404).json({ error: 'Not found' });
-
-    return res.sendFile(filePath);
+    @Param() { chatId }: WaChatIdParamDto,
+  ): Promise<{ chatId: string; history: AiHistoryMessage[] }> {
+    const history = await this.wa.getAiHistory(req.user.userId, chatId);
+    return { chatId, history };
   }
 }

@@ -30,6 +30,8 @@ import { Lead, LeadStatus } from '../leads/entities/lead.entity';
 import { Role } from '../../shared/enums/roles.enum';
 import { paginationOptions } from '../../shared/utils/pagination.util';
 import { isUniqueViolation } from '../../shared/utils/name-normalization.util';
+import { errorMessage } from '@shared/utils/error.util';
+import { envString } from '@shared/utils/env.util';
 import { NotificationsGateway } from './notifications.gateway';
 
 export interface NotificationResult {
@@ -87,10 +89,8 @@ export class NotificationsService {
     try {
       this.notificationsGateway.sendNotificationToUser(dto.userId, saved);
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : String(err);
-      this.logger.error(
-        `Failed to emit notification via socket: ${errorMessage}`,
-      );
+      const reason = errorMessage(err);
+      this.logger.error(`Failed to emit notification via socket: ${reason}`);
     }
 
     return saved;
@@ -165,10 +165,7 @@ export class NotificationsService {
   // ---- Send methods (existing) ----
 
   async send(dto: SendNotificationDto): Promise<NotificationResult> {
-    if (dto.channel === NotificationChannel.EMAIL) {
-      return this.sendEmail(dto);
-    }
-    return this.sendSms(dto);
+    return this.sendEmail(dto);
   }
 
   private async sendEmail(
@@ -178,7 +175,7 @@ export class NotificationsService {
       throw new BadRequestException('email is required for EMAIL channel');
     }
 
-    const apiKey = process.env.SENDGRID_API_KEY;
+    const apiKey = envString('SENDGRID_API_KEY');
 
     if (!apiKey) {
       this.logger.warn('SENDGRID_API_KEY not configured. Email not sent.');
@@ -200,8 +197,8 @@ export class NotificationsService {
         body: JSON.stringify({
           personalizations: [{ to: [{ email: dto.email }] }],
           from: {
-            email: process.env.SENDGRID_FROM_EMAIL || 'noreply@aala.land',
-            name: process.env.MAIL_FROM_NAME || 'AALA.LAND',
+            email: envString('SENDGRID_FROM_EMAIL', 'noreply@aala.land'),
+            name: envString('MAIL_FROM_NAME', 'AALA.LAND'),
           },
           subject: dto.subject || 'Notification from AALA',
           content: [{ type: 'text/plain', value: dto.body }],
@@ -223,7 +220,7 @@ export class NotificationsService {
         externalId: messageId,
       };
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
+      const message = errorMessage(err);
       this.logger.error(`Email send failed for ${dto.email}: ${message}`);
       return {
         channel: NotificationChannel.EMAIL,
@@ -487,71 +484,6 @@ export class NotificationsService {
     return { data };
   }
 
-  private async sendSms(dto: SendNotificationDto): Promise<NotificationResult> {
-    if (!dto.phone) {
-      throw new BadRequestException('phone is required for SMS channel');
-    }
-
-    const accountSid = process.env.TWILIO_ACCOUNT_SID;
-    const authToken = process.env.TWILIO_AUTH_TOKEN;
-    const fromNumber = process.env.TWILIO_FROM_NUMBER;
-
-    if (!accountSid || !authToken || !fromNumber) {
-      this.logger.warn('Twilio credentials not configured. SMS not sent.');
-      return {
-        channel: NotificationChannel.SMS,
-        recipient: dto.phone,
-        status: NotificationStatus.QUEUED,
-        error: 'Twilio not configured',
-      };
-    }
-
-    try {
-      const credentials = Buffer.from(`${accountSid}:${authToken}`).toString(
-        'base64',
-      );
-      const response = await fetch(
-        `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`,
-        {
-          method: 'POST',
-          headers: {
-            Authorization: `Basic ${credentials}`,
-            'Content-Type': 'application/x-www-form-urlencoded',
-          },
-          body: new URLSearchParams({
-            To: dto.phone,
-            From: fromNumber,
-            Body: dto.body,
-          }).toString(),
-        },
-      );
-
-      if (!response.ok) {
-        const err = await response.text();
-        throw new Error(err);
-      }
-
-      const data = (await response.json()) as { sid: string };
-      this.logger.log(`SMS sent to ${dto.phone}, SID: ${data.sid}`);
-
-      return {
-        channel: NotificationChannel.SMS,
-        recipient: dto.phone,
-        status: NotificationStatus.SENT,
-        externalId: data.sid,
-      };
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      this.logger.error(`SMS send failed for ${dto.phone}: ${message}`);
-      return {
-        channel: NotificationChannel.SMS,
-        recipient: dto.phone,
-        status: NotificationStatus.FAILED,
-        error: message,
-      };
-    }
-  }
-
   private async findAdminsByCompanyIds(
     companyIds: string[],
   ): Promise<Map<string, User[]>> {
@@ -594,13 +526,7 @@ export class NotificationsService {
       companyIds: items.map((item) => item.companyId),
       entityIds: items.map((item) => item.id),
       type,
-      // Dedup day window MUST match the UQ_notifications_reminder_dedup_daily
-      // index, which buckets by the UTC calendar date of created_at
-      // (timestamptz). Using a UTC start-of-day here (rather than
-      // app-server-local midnight) keeps the in-memory prefilter and the DB
-      // index on the same calendar day near the midnight boundary; otherwise the
-      // two could disagree and a duplicate would slip past the prefilter only to
-      // lose to a swallowed 23505.
+      // UTC day to match the UQ_notifications_reminder_dedup_daily bucket.
       since: this.startOfUtcToday(),
     });
 
@@ -703,14 +629,7 @@ export class NotificationsService {
     return this.startOfDay(new Date());
   }
 
-  /**
-   * UTC midnight of the current day. Used only for the reminder dedup `since`
-   * lower bound so the app-side day window matches the UTC day bucket of the
-   * UQ_notifications_reminder_dedup_daily index (UTC date of created_at,
-   * a timestamptz). Kept separate
-   * from startOfToday() (app-server-local, used for cheque date-column queries)
-   * so those queries are not shifted.
-   */
+  /** UTC midnight, matches the reminder dedup index day bucket. */
   private startOfUtcToday(): Date {
     const now = new Date();
     return new Date(

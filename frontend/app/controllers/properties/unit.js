@@ -96,7 +96,6 @@ export default class PropertiesUnitController extends Controller {
   @tracked documentToDelete = null;
   @tracked isDeletingDocument = false;
 
-  // Archive / unarchive / delete state
   @tracked pendingUnitAction = null;
   @tracked unitActionReason = '';
   @tracked reasonError = '';
@@ -325,8 +324,6 @@ export default class PropertiesUnitController extends Controller {
       this.isSaving = false;
     }
   }
-
-  // ── Archive / unarchive / delete ──────────────────────────────────────
 
   get isArchived() {
     return Boolean(this.model?.unit?.deletedAt);

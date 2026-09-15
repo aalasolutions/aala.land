@@ -268,8 +268,7 @@ export class CommissionsService {
 
     await this.dataSource.transaction(async (manager) => {
       const repo = manager.getRepository(Commission);
-      // Guarded conditional transition: only flips APPROVED -> PAID atomically,
-      // stamping paidAt in the same statement so amount edits cannot be clobbered.
+      // Atomic APPROVED to PAID with paidAt in the same statement.
       const result = await repo.update(
         { id, companyId, status: CommissionStatus.APPROVED, ...regionWhere },
         { status: CommissionStatus.PAID, paidAt: new Date() },
@@ -349,8 +348,7 @@ export class CommissionsService {
     });
   }
 
-  // PATCH only cancels or un-approves. Approve and pay have their own guarded
-  // routes, and PAID is final.
+  // PATCH only cancels or un-approves; approve and pay have their own routes.
   private assertPatchTransition(
     from: CommissionStatus,
     to: CommissionStatus,

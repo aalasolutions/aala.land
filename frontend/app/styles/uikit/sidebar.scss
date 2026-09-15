@@ -128,6 +128,17 @@
       --nu-sidebar__link--Color: var(--text-inverted);
       --nu-sidebar__link--BackgroundColor: var(--primary);
     }
+
+    // No pointer-events:none here: the tooltip still must fire on hover, no href to suppress.
+    &.is-disabled {
+      --nu-sidebar__link--Color: var(--text-subtle);
+      cursor: not-allowed;
+
+      &:hover {
+        --nu-sidebar__link--Color: var(--text-subtle);
+        --nu-sidebar__link--BackgroundColor: transparent;
+      }
+    }
   }
 
   @include e(link-icon) {

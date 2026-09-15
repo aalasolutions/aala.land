@@ -16,13 +16,17 @@ import {
 import { User } from '@modules/users/entities/user.entity';
 import { Role } from '@shared/enums/roles.enum';
 import { paginationOptions } from '@shared/utils/pagination.util';
+import { errorMessage } from '@shared/utils/error.util';
 import { BillingPrice } from '@modules/billing/entities/billing-price.entity';
 import { BillingHistory } from '@modules/billing/entities/billing-history.entity';
 import { BillingService } from '@modules/billing/billing.service';
 import { resolveBillingCurrency } from '@modules/billing/billing-currency.util';
 import { AiCreditUsage } from '@modules/whatsapp/entities/ai-credit-usage.entity';
 import { WhatsappAiConversation } from '@modules/whatsapp/entities/whatsapp-ai-conversation.entity';
-import { WhatsappService } from '@modules/whatsapp/whatsapp.service';
+import {
+  WhatsappConnection,
+  WhatsappConnectionStatus,
+} from '@modules/whatsapp/entities/whatsapp-connection.entity';
 import { AuditService } from '@modules/audit/audit.service';
 import { AuditAction } from '@modules/audit/dto/query-audit-logs.dto';
 import { MediaService } from '@modules/properties/media.service';
@@ -92,11 +96,12 @@ export class ConsoleService {
     private readonly aiCreditUsageRepo: Repository<AiCreditUsage>,
     @InjectRepository(WhatsappAiConversation)
     private readonly aiConversationRepo: Repository<WhatsappAiConversation>,
+    @InjectRepository(WhatsappConnection)
+    private readonly waConnectionRepo: Repository<WhatsappConnection>,
     private readonly billingService: BillingService,
     private readonly lockStateService: LockStateService,
     private readonly auditService: AuditService,
     private readonly mediaService: MediaService,
-    private readonly whatsappService: WhatsappService,
   ) {}
 
   // -------------------------------------------------------------------------
@@ -139,22 +144,26 @@ export class ConsoleService {
     }
 
     const now = new Date();
-    const [aiCreditsRaw, aiConversationsRaw] = await Promise.all([
-      this.aiCreditUsageRepo
-        .createQueryBuilder('u')
-        .select('COALESCE(SUM(u.credits_used), 0)', 'total')
-        .where('u.period_start <= :now', { now })
-        .andWhere('u.period_end > :now', { now })
-        .getRawOne<{ total: string }>(),
-      this.aiConversationRepo
-        .createQueryBuilder('c')
-        .select('COUNT(*)', 'conversations')
-        .addSelect('COALESCE(SUM(c.messages_count), 0)', 'messages')
-        .where('c.started_at >= :cutoff', {
-          cutoff: new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000),
-        })
-        .getRawOne<{ conversations: string; messages: string }>(),
-    ]);
+    const [aiCreditsRaw, aiConversationsRaw, whatsappsConnected] =
+      await Promise.all([
+        this.aiCreditUsageRepo
+          .createQueryBuilder('u')
+          .select('COALESCE(SUM(u.credits_used), 0)', 'total')
+          .where('u.period_start <= :now', { now })
+          .andWhere('u.period_end > :now', { now })
+          .getRawOne<{ total: string }>(),
+        this.aiConversationRepo
+          .createQueryBuilder('c')
+          .select('COUNT(*)', 'conversations')
+          .addSelect('COALESCE(SUM(c.messages_count), 0)', 'messages')
+          .where('c.started_at >= :cutoff', {
+            cutoff: new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000),
+          })
+          .getRawOne<{ conversations: string; messages: string }>(),
+        this.waConnectionRepo.countBy({
+          status: WhatsappConnectionStatus.CONNECTED,
+        }),
+      ]);
 
     return {
       customers: companies.length,
@@ -171,7 +180,7 @@ export class ConsoleService {
       aiCreditsUsedCurrentPeriods: Number(aiCreditsRaw?.total ?? 0),
       aiConversationsLast30Days: Number(aiConversationsRaw?.conversations ?? 0),
       aiMessagesLast30Days: Number(aiConversationsRaw?.messages ?? 0),
-      whatsappsRunning: this.whatsappService.countConnectedInstances(),
+      whatsappsConnected,
       generatedAt: new Date().toISOString(),
     };
   }
@@ -250,7 +259,7 @@ export class ConsoleService {
       this.billingService.getSubscriptionState(companyId).catch((err) => {
         // A dead provider must not blank the whole detail page.
         this.logger.warn(
-          `Billing state unavailable for company ${companyId}: ${err instanceof Error ? err.message : String(err)}`,
+          `Billing state unavailable for company ${companyId}: ${errorMessage(err)}`,
         );
         return null;
       }),
@@ -744,7 +753,7 @@ export class ConsoleService {
         }
       } catch (err) {
         if (err instanceof BadRequestException) throw err;
-        const msg = err instanceof Error ? err.message : String(err);
+        const msg = errorMessage(err);
         this.logger.error(
           `Remedy provider call failed for company ${companyId}: ${msg}`,
         );
@@ -806,9 +815,7 @@ export class ConsoleService {
       } catch (err) {
         // Sync-level failure (e.g. provider auth): each pending row keeps or
         // gains its own persisted error via syncPrices; log and fall through.
-        this.logger.error(
-          `Auto price sync failed: ${err instanceof Error ? err.message : String(err)}`,
-        );
+        this.logger.error(`Auto price sync failed: ${errorMessage(err)}`);
       }
       rows = await this.activePricesSorted();
     }
@@ -1234,7 +1241,7 @@ export class ConsoleService {
       });
     } catch (err) {
       this.logger.error(
-        `Audit write failed for ${entityType} on company ${companyId}: ${err instanceof Error ? err.message : String(err)}`,
+        `Audit write failed for ${entityType} on company ${companyId}: ${errorMessage(err)}`,
       );
     }
   }

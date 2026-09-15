@@ -90,11 +90,11 @@ export default class AdminOverviewController extends Controller {
       },
       {
         key: 'whatsapps',
-        label: 'WhatsApps running',
+        label: 'WhatsApps connected',
         icon: 'whatsapp-logo',
         accent: 'kpi-primary',
         iconAccent: 'kpi-icon-primary',
-        value: this.formatNumber(o.whatsappsRunning),
+        value: this.formatNumber(o.whatsappsConnected),
       },
     ];
   }

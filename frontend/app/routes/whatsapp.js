@@ -6,11 +6,16 @@ export default class WhatsappRoute extends AuthenticatedRoute {
   @service whatsapp;
   @service router;
   @service auth;
+  @service session;
 
   async beforeModel(transition) {
     await super.beforeModel(transition);
 
     if (!canAccessWhatsapp(this.auth.currentUser?.role)) {
+      return this.router.transitionTo('dashboard');
+    }
+
+    if (!this.session.whatsappConfigured) {
       return this.router.transitionTo('dashboard');
     }
   }

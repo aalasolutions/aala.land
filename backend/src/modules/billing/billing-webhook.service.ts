@@ -31,6 +31,7 @@ import {
   SubscriptionCanceledEvent,
   SubscriptionUpdatedEvent,
 } from './events/billing-events';
+import { errorMessage } from '@shared/utils/error.util';
 
 /**
  * Maps a billing plan to a subscription tier. Unit 3 added ENTERPRISE to the
@@ -96,7 +97,7 @@ export class BillingWebhookService implements OnModuleInit {
       parsed = await this.provider.parseWebhook(rawBody, signature);
     } catch (err) {
       // Never log the raw body. The error message is enough for diagnosis.
-      this.logger.warn(`Webhook rejected: ${(err as Error).message}`);
+      this.logger.warn(`Webhook rejected: ${errorMessage(err)}`);
       throw new BadRequestException('Webhook signature verification failed');
     }
 
@@ -137,7 +138,7 @@ export class BillingWebhookService implements OnModuleInit {
     } catch (err) {
       // processed_at stays NULL for inspection (contract section 6, rule 3).
       this.logger.error(
-        `Handler failed for ${parsed.providerEventId} (${parsed.providerEventType}): ${(err as Error).message}`,
+        `Handler failed for ${parsed.providerEventId} (${parsed.providerEventType}): ${errorMessage(err)}`,
       );
       throw new InternalServerErrorException('Webhook processing failed');
     }

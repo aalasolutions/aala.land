@@ -25,6 +25,7 @@ export class WhatsappChat {
   @Column({ name: 'user_id', type: 'uuid' })
   userId: string;
 
+  // The customer's number in E.164, not a Baileys JID.
   @Column({ name: 'chat_id', type: 'varchar', length: 255 })
   chatId: string;
 
@@ -63,6 +64,26 @@ export class WhatsappChat {
 
   @Column({ name: 'last_from_me', type: 'boolean', default: false })
   lastFromMe: boolean;
+
+  // Meta's 24h reply window opens only on an inbound message; distinct from the AI credit window.
+  @Column({ name: 'last_inbound_at', type: 'timestamptz', nullable: true })
+  lastInboundAt: Date | null;
+
+  // The agent's read marker, a wa_message_id.
+  @Column({ name: 'last_read_message_id', type: 'varchar', nullable: true })
+  lastReadMessageId: string | null;
+
+  // Inbound messages after the read marker.
+  @Column({ name: 'unread_count', type: 'integer', default: 0 })
+  unreadCount: number;
+
+  @Column({
+    name: 'phone_number_id',
+    type: 'varchar',
+    length: 64,
+    nullable: true,
+  })
+  phoneNumberId: string | null;
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;

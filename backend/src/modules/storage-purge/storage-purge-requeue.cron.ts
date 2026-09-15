@@ -18,10 +18,7 @@ import { StoragePurgeService } from './storage-purge.service';
 const STALE_AFTER_MS = 5 * 60 * 1000;
 const BATCH_SIZE = 500;
 
-/**
- * Re-enqueues outbox rows whose dispatch was lost (enqueue failure, Valkey
- * restart). A row whose job is still queued is a no-op, since jobId is the row id.
- */
+/** Re-enqueues outbox rows whose dispatch was lost; jobId makes it idempotent. */
 @Injectable()
 export class StoragePurgeRequeueCron {
   private readonly logger = new Logger(StoragePurgeRequeueCron.name);
@@ -39,8 +36,7 @@ export class StoragePurgeRequeueCron {
     let total = 0;
     let cursor: { createdAt: Date; id: string } | null = null;
     for (;;) {
-      // Keyset pagination on (createdAt, id) ascending: page N+1 resumes strictly
-      // after the last row of page N, so rows workers mutate mid-scan are never skipped.
+      // Keyset pagination on (createdAt, id) so rows changed mid-scan are not skipped.
       const where: FindOptionsWhere<StoragePurgeJob>[] = cursor
         ? [
             {

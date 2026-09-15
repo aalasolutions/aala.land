@@ -19,7 +19,7 @@ Browser / Mobile (Capacitor)
   Ember.js 6.4 SPA  ──REST──►  NestJS 11 API  ──►  PostgreSQL 18
   (frontend/)                  (backend/)            (TypeORM entities)
                                     │
-                               Dragonfly (Redis)
+                               Valkey (Redis)
                                BullMQ job queues
                                AWS S3 (media/docs)
                                Meta Cloud API (WhatsApp)
@@ -128,8 +128,8 @@ Browser / Mobile (Capacitor)
 | `frontend/app/router.js` | All frontend routes |
 | `frontend/app/services/region.js` | Active region / currency logic |
 | `frontend/app/services/session.js` | Authenticated user state |
-| `docker-compose.yml` | Local dev: PostgreSQL 5480, Dragonfly 6470 |
-| `backend/docker-compose.yml` | Production backend stack (Postgres + Dragonfly + backend), colocated with `backend/.env` |
+| `docker-compose.yml` | Local dev: PostgreSQL 5480, Valkey 6470 |
+| `backend/docker-compose.yml` | Production backend stack (Postgres + Valkey + backend), colocated with `backend/.env` |
 | `frontend/docker-compose.yml` | Production frontend (nginx serving the build) |
 | `deploy.sh` | One-shot production deploy |
 
@@ -162,7 +162,7 @@ Company
 |---|---|
 | `DB_*` | PostgreSQL connection |
 | `JWT_SECRET` | Token signing key |
-| `REDIS_HOST/PORT` | Dragonfly/Redis for BullMQ |
+| `REDIS_HOST/PORT` | Valkey for BullMQ |
 | `WHATSAPP_TOKEN` | Meta Cloud API token |
 | `AWS_*` + `AWS_S3_BUCKET` | Media and document storage |
 | `CORS_ORIGIN` | Allowed frontend origin in production |

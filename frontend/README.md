@@ -21,7 +21,7 @@ You will need the following things properly installed on your computer.
 
 ## Quickstart (Local Dev)
 
-1. Start infra containers (Postgres, Dragonfly, MinIO) from `Main/`:
+1. Start infra containers (Postgres, Valkey, MinIO) from `Main/`:
    - `cd Main && docker compose up -d`
 2. Start the backend API from `Main/backend` (serves `http://localhost:3010/v1`)
 3. Start the land/ from `Main/land/`:

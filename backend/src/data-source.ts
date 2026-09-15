@@ -1,19 +1,22 @@
 import { DataSource } from 'typeorm';
 import { join, resolve } from 'path';
 import * as dotenv from 'dotenv';
+import { envString, envInt, envBool } from './shared/utils/env.util';
 
 const projectRoot = resolve(__dirname, '..');
 
 const envPath = resolve(projectRoot, '.env');
 dotenv.config({ path: envPath });
 
-if (process.env.NODE_ENV !== 'production') {
-  console.log(`[DataSource] DB_HOST: ${process.env.DB_HOST || 'localhost'}`);
-  console.log(`[DataSource] DB_PORT: ${process.env.DB_PORT || '5480'}`);
+const nodeEnv = envString('NODE_ENV');
+
+if (nodeEnv !== 'production') {
+  console.log(`[DataSource] DB_HOST: ${envString('DB_HOST', 'localhost')}`);
+  console.log(`[DataSource] DB_PORT: ${envInt('DB_PORT', 5480, 1)}`);
   console.log(
-    `[DataSource] DB_DATABASE: ${process.env.DB_DATABASE || 'aala_land'}`,
+    `[DataSource] DB_DATABASE: ${envString('DB_DATABASE', 'aala_land')}`,
   );
-  console.log(`[DataSource] NODE_ENV: ${process.env.NODE_ENV || 'not set'}`);
+  console.log(`[DataSource] NODE_ENV: ${nodeEnv || 'not set'}`);
 }
 
 const entityPaths = [
@@ -25,15 +28,15 @@ const migrationPaths = [join(__dirname, '/database/migrations/*{.ts,.js}')];
 
 export const AppDataSource = new DataSource({
   type: 'postgres',
-  host: process.env.DB_HOST || 'localhost',
-  port: parseInt(process.env.DB_PORT || '5480', 10),
-  username: process.env.DB_USERNAME || 'postgres',
-  password: process.env.DB_PASSWORD || 'postgres',
-  database: process.env.DB_DATABASE || 'aala_land',
+  host: envString('DB_HOST', 'localhost'),
+  port: envInt('DB_PORT', 5480, 1),
+  username: envString('DB_USERNAME', 'postgres'),
+  password: envString('DB_PASSWORD', 'postgres'),
+  database: envString('DB_DATABASE', 'aala_land'),
   schema: 'public',
 
   entities: entityPaths,
   migrations: migrationPaths,
-  synchronize: process.env.DB_SYNC === 'true',
-  logging: process.env.NODE_ENV !== 'production',
+  synchronize: envBool('DB_SYNC', false),
+  logging: nodeEnv !== 'production',
 });

@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Cron } from '@nestjs/schedule';
+import { errorMessage } from '@shared/utils/error.util';
 import { Company } from '../companies/entities/company.entity';
 import { SystemEmailService } from './system-email.service';
 
@@ -54,7 +55,7 @@ export class UpcomingInvoiceCron {
         );
       } catch (err) {
         this.logger.error(
-          `Renewal reminder failed for company ${row.id}: ${err instanceof Error ? err.message : String(err)}`,
+          `Renewal reminder failed for company ${row.id}: ${errorMessage(err)}`,
         );
       }
     }

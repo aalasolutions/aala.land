@@ -213,8 +213,7 @@ export const LEASE_STATUS_OPTIONS = [
   { id: 'RENEWED', label: 'Renewed' },
 ];
 
-// Active stays '' (backend omits the param); leases sends a different
-// archived value than properties, so this cannot share ARCHIVED_FILTER_OPTIONS.
+// Leases send a different archived value, so ARCHIVED_FILTER_OPTIONS is not shared.
 export const LEASE_ARCHIVED_OPTIONS = [
   { value: '', label: 'Active' },
   { value: 'only', label: 'Archived' },

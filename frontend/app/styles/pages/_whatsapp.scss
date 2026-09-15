@@ -8,6 +8,11 @@
 // have shipped an unstyled page a second time. Everything the kit already
 // solves is a component now: status dot, tags, buttons, textarea, empty states.
 @use "../uikit/common/var" as *;
+@use "../uikit/mixins/bem" as *;
+
+// No NuvoUI size token covers these.
+$wa-sidebar-width: 22.5rem;
+$wa-message-max-width: 70%;
 
 // The shell owns the viewport budget, so the content area must stop padding and
 // stop scrolling. `:has()` outranks the bare `.content-area` rule on its own, so
@@ -32,6 +37,41 @@
   border-block-end: 1px solid var(--border-base);
 }
 
+// A strip, not a sidebar card: must read on a page with no connection and no chats.
+.wa-connection {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: nu-space(2);
+  padding: nu-space(2) nu-space(6);
+  background: var(--bg-surface);
+  border-block-end: 1px solid var(--border-base);
+}
+
+.wa-connection__text {
+  display: flex;
+  flex: 1;
+  min-inline-size: 0;
+  align-items: baseline;
+  gap: nu-space(2);
+  flex-wrap: wrap;
+}
+
+.wa-connection__label {
+  font-size: nu-font-size(sm);
+  font-weight: nu-font-weight(medium);
+  color: var(--text-color);
+}
+
+.wa-connection__detail {
+  font-size: nu-font-size(xs);
+  color: var(--text-muted);
+}
+
+.wa-connection__cta {
+  flex-shrink: 0;
+}
+
 .wa-page {
   display: flex;
   flex: 1;
@@ -45,7 +85,7 @@
 .wa-sidebar {
   display: flex;
   flex-direction: column;
-  inline-size: 22.5rem;
+  inline-size: $wa-sidebar-width;
   flex-shrink: 0;
   background: var(--bg-surface);
   border-inline-end: 1px solid var(--border-base);
@@ -77,67 +117,6 @@
   color: var(--text-muted);
 }
 
-.wa-status-bar {
-  display: flex;
-  align-items: center;
-  gap: nu-space(2);
-  font-size: nu-font-size(xs);
-  color: var(--text-muted);
-}
-
-// ---- pairing ----
-
-.wa-qr-pane {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  align-items: center;
-  gap: nu-space(4);
-  padding: nu-space(6) nu-space(5);
-  text-align: center;
-  font-size: nu-font-size(xs);
-  color: var(--text-muted);
-}
-
-.wa-qr-title {
-  font-size: nu-font-size(sm);
-  font-weight: nu-font-weight(semibold);
-  color: var(--text-color);
-}
-
-// A QR must stay high-contrast dark-on-white to remain scannable, so this panel
-// is deliberately NOT themed. Do not swap --white for a surface token.
-.wa-qr-frame {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  inline-size: 17.5rem;
-  block-size: 17.5rem;
-  padding: nu-space(3);
-  background: var(--white);
-  border-radius: nu-radius(lg);
-}
-
-.wa-qr-img {
-  inline-size: 100%;
-  block-size: 100%;
-  image-rendering: pixelated;
-}
-
-.wa-qr-steps {
-  max-inline-size: 17.5rem;
-  margin: 0;
-  padding-inline-start: nu-space(5);
-  text-align: start;
-  font-size: nu-font-size(xs);
-  color: var(--text-muted);
-
-  li {
-    margin-block-end: nu-space(1);
-    line-height: 1.5;
-  }
-}
-
 // ---- chat list ----
 
 .wa-chat-list {
@@ -157,6 +136,10 @@
   border-inline-start: 3px solid transparent;
   cursor: pointer;
   transition: background nu-duration(fast) $nu-ease;
+
+  @include reduced-motion {
+    transition: none;
+  }
 
   &:hover {
     background: var(--bg-alternate);
@@ -184,8 +167,20 @@
   color: var(--text-muted);
 }
 
+.wa-chat-preview-row {
+  display: flex;
+  align-items: center;
+  gap: nu-space(2);
+  margin-block-start: nu-space(1);
+}
+
+.wa-chat-unread {
+  flex-shrink: 0;
+}
+
 .wa-chat-preview {
-  margin: nu-space(1) 0 0;
+  min-inline-size: 0;
+  margin: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -229,11 +224,41 @@
   gap: nu-space(2);
   padding: nu-space(5);
   overflow-y: auto;
+  overflow-anchor: none;
   overscroll-behavior: contain;
 }
 
+.wa-load-older {
+  align-self: center;
+}
+
+.wa-load-older-error {
+  display: flex;
+  align-items: center;
+  align-self: center;
+  gap: nu-space(2);
+  font-size: nu-font-size(xs);
+  color: var(--text-muted);
+}
+
+.wa-unread-divider {
+  display: flex;
+  align-items: center;
+  gap: nu-space(3);
+  font-size: nu-font-size(xs);
+  font-weight: nu-font-weight(medium);
+  color: var(--success);
+
+  &::before,
+  &::after {
+    content: "";
+    flex: 1;
+    border-block-start: 1px solid currentColor;
+  }
+}
+
 .wa-message {
-  max-inline-size: 70%;
+  max-inline-size: $wa-message-max-width;
 
   &.m-incoming {
     align-self: flex-start;
@@ -271,35 +296,37 @@
   }
 }
 
-.wa-media-img,
-.wa-media-video {
-  display: block;
-  max-inline-size: 17.5rem;
-  max-block-size: 17.5rem;
-  border-radius: nu-radius(md);
+// A revoked message keeps its slot but drops the fill and goes italic, so it reads as deleted, not normal.
+.wa-bubble.is-deleted {
+  display: flex;
+  align-items: center;
+  gap: nu-space(1);
+  background: transparent;
+  border: 1px dashed var(--border-base);
+  color: var(--text-muted);
+  font-style: italic;
+
+  .m-outgoing & {
+    background: transparent;
+    color: var(--text-muted);
+  }
 }
 
-.wa-media-img {
-  cursor: pointer;
+.wa-edited {
+  font-style: italic;
 }
 
-.wa-media-audio {
-  display: block;
-  max-inline-size: 15rem;
-  margin-block: nu-space(1);
-}
+.wa-tick {
+  display: inline-flex;
+  align-items: center;
+  line-height: 1;
 
-.wa-media-doc {
-  display: inline-block;
-  padding: nu-space(2) nu-space(3);
-  border-radius: nu-radius(sm);
-  background: nu-tint(black, 6%);
-  color: inherit;
-  text-decoration: none;
-  font-size: nu-font-size(xs);
+  &.is-read {
+    color: var(--info);
+  }
 
-  &:hover {
-    background: nu-tint(black, 12%);
+  &.is-failed {
+    color: var(--danger);
   }
 }
 
@@ -330,6 +357,28 @@
   padding: nu-space(3) nu-space(4);
   background: var(--bg-surface);
   border-block-start: 1px solid var(--border-base);
+}
+
+// Sits above the composer so window state is read before typing, not after a send is refused.
+.wa-window {
+  display: flex;
+  align-items: center;
+  gap: nu-space(1);
+  margin-block-end: nu-space(2);
+  font-size: nu-font-size(2xs);
+  color: var(--text-muted);
+
+  &.is-open {
+    color: var(--success);
+  }
+
+  &.is-closed {
+    color: var(--warning);
+  }
+}
+
+.wa-window__detail {
+  color: var(--text-muted);
 }
 
 .wa-input-row {

@@ -173,24 +173,5 @@ describe('NotificationsController', () => {
       expect(service.send).toHaveBeenCalledWith(dto);
       expect(result).toEqual(mockSendResult);
     });
-
-    it('sends SMS notification', async () => {
-      const smsResult = {
-        channel: NotificationChannel.SMS,
-        recipient: '+971501234567',
-        status: NotificationStatus.SENT,
-      };
-      service.send.mockResolvedValue(smsResult);
-
-      const dto = {
-        channel: NotificationChannel.SMS,
-        phone: '+971501234567',
-        body: 'Your appointment is confirmed',
-      };
-      const result = await controller.send(dto as any);
-
-      expect(service.send).toHaveBeenCalledWith(dto);
-      expect(result).toEqual(smsResult);
-    });
   });
 });

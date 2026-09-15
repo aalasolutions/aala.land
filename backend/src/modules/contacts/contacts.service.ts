@@ -411,11 +411,7 @@ export class ContactsService {
     return this.findOne(id, companyId);
   }
 
-  // Delete is transfer when the contact still has edges: leads, owned units,
-  // leases and chats move to another contact, then the source is removed. All of
-  // it in ONE transaction so a failed delete cannot leave the edges moved and
-  // the source contact alive owning nothing. A contact with nothing to move
-  // deletes outright. Either way the history row lands in the same transaction.
+  // Moves edges to the target and deletes the source in one transaction.
   async remove(
     id: string,
     companyId: string,

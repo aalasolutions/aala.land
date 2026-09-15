@@ -11,6 +11,7 @@ import { isGlobalEntityType } from './audit-global-entities';
 import { AuditAction } from './dto/query-audit-logs.dto';
 import { NO_REGION_SENTINEL } from '@shared/interceptors/region-scope.interceptor';
 import { seesAllRegions } from '@shared/utils/region-visibility.util';
+import { errorMessage } from '@shared/utils/error.util';
 
 interface AuditRequestContext {
   query?: Record<string, unknown>;
@@ -205,7 +206,7 @@ export class AuditInterceptor implements NestInterceptor {
               ),
             })
             .catch((err: unknown) => {
-              const message = err instanceof Error ? err.message : String(err);
+              const message = errorMessage(err);
               this.logger.error(`Audit log failed: ${message}`);
             });
         },

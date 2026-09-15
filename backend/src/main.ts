@@ -6,29 +6,45 @@ import { ResponseInterceptor } from './shared/interceptors/response.interceptor'
 import { MulterExceptionFilter } from './shared/filters/multer-exception.filter';
 import helmet from 'helmet';
 import { AppDataSource } from './data-source';
+import { RedisIoAdapter } from './shared/adapters/redis-io.adapter';
+import { RedisService } from './modules/redis/redis.service';
+import { NestExpressApplication } from '@nestjs/platform-express';
+import { envList, envBool, envString, envInt } from '@shared/utils/env.util';
+import { configureBodyParsers } from '@shared/utils/body-parser.util';
+
+const API_PREFIX = 'v1';
 
 async function bootstrap() {
   // Initialize TypeORM DataSource before NestJS app
   await AppDataSource.initialize();
   console.log('TypeORM DataSource initialized');
 
-  const app = await NestFactory.create(AppModule, { rawBody: true });
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
+    rawBody: true,
+  });
+
+  configureBodyParsers(app, API_PREFIX);
+
+  // Cross-replica websocket delivery. Must be set before listen().
+  const ioAdapter = new RedisIoAdapter(app, app.get(RedisService));
+  ioAdapter.connect();
+  app.useWebSocketAdapter(ioAdapter);
 
   // Security headers
   app.use(helmet());
 
   // CORS - restrict to configured origins in production
   app.enableCors({
-    origin: process.env.CORS_ORIGIN
-      ? process.env.CORS_ORIGIN.split(',')
-      : ['http://localhost:4200'],
+    origin: envList('CORS_ORIGIN', ['http://localhost:4200']),
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true,
+    // Cache preflights: the browser default (5s) expires between 3s poll ticks and doubles request volume
+    maxAge: 86400,
   });
 
   // Global prefix
-  app.setGlobalPrefix('v1');
+  app.setGlobalPrefix(API_PREFIX);
 
   // Global Response Interceptor
   app.useGlobalInterceptors(new ResponseInterceptor());
@@ -47,8 +63,7 @@ async function bootstrap() {
   // Disabled in production unless explicitly opted in, so the full API surface
   // (every route + DTO) is not published publicly at /docs and /docs-json.
   const swaggerEnabled =
-    process.env.ENABLE_SWAGGER === 'true' ||
-    process.env.NODE_ENV !== 'production';
+    envBool('ENABLE_SWAGGER', false) || envString('NODE_ENV') !== 'production';
   if (swaggerEnabled) {
     const config = new DocumentBuilder()
       .setTitle('AALA.LAND API')
@@ -62,7 +77,7 @@ async function bootstrap() {
     SwaggerModule.setup('docs', app, document);
   }
 
-  const port = process.env.PORT ?? 3010;
+  const port = envInt('PORT', 3010, 1);
   await app.listen(port);
   console.log(`AALA.LAND Backend is breathing on: http://localhost:${port}/v1`);
   if (swaggerEnabled) {

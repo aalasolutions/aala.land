@@ -1,19 +1,4 @@
-# Backend stack: Postgres + Dragonfly + backend. backend/.env is the single
-# source of config, feeding two SEPARATE channels:
-#   - ${...} interpolation (postgres creds, ports): Compose auto-loads the .env
-#     from the directory you invoke it in, so run compose from HERE (cd backend).
-#     deploy.sh and deploy/deploy-backend.sh both do exactly that.
-#   - the backend container's env: injected by the EXPLICIT `env_file: ./.env` on
-#     the backend service below. This is not automatic; without that line the
-#     container would get nothing.
-# To change the app's port, set PORT in backend/.env: the published mapping and
-# the healthcheck below both track it via ${PORT}, so they can't drift from it.
-#
-# Public self-host: run the whole file. Owner/external-infra: prune the postgres
-# and/or dragonfly service in a skip-worktree copy and point DB_HOST/REDIS_HOST
-# in backend/.env at the managed endpoints.
-#
-# STACK_NAME namespaces the whole stack so staging can run beside prod. Unset = aala-land.
+# .env feeds two channels: shell interpolation (run from backend/) and env_file for the container.
 name: ${STACK_NAME:-aala-land}
 
 services:
@@ -35,15 +20,17 @@ services:
       retries: 5
     restart: unless-stopped
 
-  dragonfly:
-    image: docker.dragonflydb.io/dragonflydb/dragonfly:latest
-    container_name: ${STACK_NAME:-aala-land}-dragonfly
+  valkey:
+    image: valkey/valkey:9.1-alpine
+    container_name: ${STACK_NAME:-aala-land}-valkey
+    # BullMQ cannot work correctly if the store evicts keys.
+    command: ["valkey-server", "--maxmemory-policy", "noeviction"]
     ports:
       - "${REDIS_HOST_PORT:-6470}:6379"
     volumes:
-      - dragonfly_data:/data
+      - valkey_data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "-p", "6379", "ping"]
+      test: ["CMD", "valkey-cli", "-p", "6379", "ping"]
       interval: 10s
       timeout: 3s
       retries: 5
@@ -58,17 +45,10 @@ services:
       - "${BACKEND_HOST_PORT:-3010}:${PORT:-3010}"
     env_file:
       - ./.env
-    # Baileys session credentials and downloaded WhatsApp media live here. Without
-    # this volume every container recreate wipes them and each agent has to re-scan
-    # the QR code. The path is the app's own default (process.cwd()/data/whatsapp,
-    # and WORKDIR is /app), so leave WHATSAPP_DATA_DIR unset in backend/.env — setting
-    # it elsewhere moves the data off this volume and the wipe comes back.
-    volumes:
-      - whatsapp_data:/app/data/whatsapp
     depends_on:
       postgres:
         condition: service_healthy
-      dragonfly:
+      valkey:
         condition: service_healthy
     restart: unless-stopped
     healthcheck:
@@ -80,5 +60,4 @@ services:
 
 volumes:
   postgres_data:
-  dragonfly_data:
-  whatsapp_data:
+  valkey_data:

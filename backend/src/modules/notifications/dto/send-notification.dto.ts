@@ -4,13 +4,11 @@ import {
   IsOptional,
   IsEnum,
   IsEmail,
-  Matches,
 } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export enum NotificationChannel {
   EMAIL = 'EMAIL',
-  SMS = 'SMS',
 }
 
 export enum NotificationStatus {
@@ -31,15 +29,6 @@ export class SendNotificationDto {
   @IsOptional()
   @IsEmail()
   email?: string;
-
-  @ApiProperty({
-    description: 'Recipient phone in E.164 format (for SMS channel)',
-    required: false,
-  })
-  @IsOptional()
-  @IsString()
-  @Matches(/^\+[1-9]\d{1,14}$/, { message: 'Phone must be E.164 format' })
-  phone?: string;
 
   @ApiProperty({ description: 'Subject line (email only)', required: false })
   @IsOptional()

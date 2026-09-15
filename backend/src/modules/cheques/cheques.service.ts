@@ -30,6 +30,8 @@ import {
   scopedRegionCodes,
 } from '../../shared/utils/region-visibility.util';
 import { paginationOptions } from '../../shared/utils/pagination.util';
+import { errorMessage } from '@shared/utils/error.util';
+import { envString } from '@shared/utils/env.util';
 import { Unit } from '../properties/entities/unit.entity';
 import { Lease } from '../leases/entities/lease.entity';
 import { Company } from '../companies/entities/company.entity';
@@ -414,8 +416,7 @@ export class ChequesService {
       const result = await qb.execute();
 
       if (!result.affected) {
-        // The row changed (status or any other column) between our read and
-        // write, so the version no longer matches.
+        // Version changed between read and write.
         throw new BadRequestException(
           'Cheque was modified concurrently. Please refresh and try again.',
         );
@@ -482,8 +483,7 @@ export class ChequesService {
             entityId: saved.id,
           });
         } catch (error) {
-          const messageText =
-            error instanceof Error ? error.message : String(error);
+          const messageText = errorMessage(error);
           this.logger.error(
             `Failed to create cheque status notification for cheque ${saved.id}: ${messageText}`,
           );
@@ -509,7 +509,7 @@ export class ChequesService {
       cheque.ocrProcessed = true;
       this.logger.log(`OCR processed for cheque ${id}`);
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
+      const message = errorMessage(err);
       this.logger.error(`OCR failed for cheque ${id}: ${message}`);
       cheque.ocrProcessed = false;
     }
@@ -534,9 +534,7 @@ export class ChequesService {
         cheque.leaseId,
         companyId,
       );
-      // Atomic increment: compute bounce_count in the database (SET col = col + 1)
-      // so concurrent bounces do not lose increments via a JS read-modify-write.
-      // The other bounce fields are written in the same UPDATE statement.
+      // Increment in SQL so concurrent bounces do not lose counts.
       const result = await manager
         .getRepository(Cheque)
         .createQueryBuilder()
@@ -546,8 +544,7 @@ export class ChequesService {
           bounceReason: dto.bounceReason || null,
           lastBounceDate: new Date(),
           status: ChequeStatus.BOUNCED,
-          // Bump the optimistic-lock version so a concurrent update() that read an
-          // older version fails its version guard and cannot revert this BOUNCED row.
+          // Bump version so a stale update() cannot revert BOUNCED.
           version: () => 'version + 1',
           updatedAt: () => 'now()',
         })
@@ -593,8 +590,7 @@ export class ChequesService {
           entityId: saved.id,
         });
       } catch (error) {
-        const messageText =
-          error instanceof Error ? error.message : String(error);
+        const messageText = errorMessage(error);
         this.logger.error(
           `Failed to create cheque bounce notification for cheque ${saved.id}: ${messageText}`,
         );
@@ -730,7 +726,6 @@ export class ChequesService {
     });
   }
 
-  // Drawer name, else the unit number.
   private async chequeContextTitle(
     manager: EntityManager,
     cheque: Cheque,
@@ -752,7 +747,7 @@ export class ChequesService {
   private async runOcrExtraction(
     imageUrl: string,
   ): Promise<Record<string, unknown>> {
-    const apiKey = process.env.OCR_API_KEY;
+    const apiKey = envString('OCR_API_KEY');
 
     if (!apiKey) {
       this.logger.warn('OCR_API_KEY not configured. Returning empty OCR data.');

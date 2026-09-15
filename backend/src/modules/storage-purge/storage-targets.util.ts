@@ -3,6 +3,7 @@ import {
   InternalServerErrorException,
 } from '@nestjs/common';
 import { S3Client } from '@aws-sdk/client-s3';
+import { envString } from '@shared/utils/env.util';
 
 export interface StorageTarget {
   client: S3Client;
@@ -17,8 +18,8 @@ export function buildS3Client(
   if (!accessKeyId || !secretAccessKey) {
     throw new BadRequestException(`S3 is not configured. Set ${label}.`);
   }
-  const region = process.env.AWS_REGION ?? 'us-east-005';
-  const endpoint = process.env.S3_ENDPOINT;
+  const region = envString('AWS_REGION', 'us-east-005');
+  const endpoint = envString('S3_ENDPOINT');
   return new S3Client({
     region,
     credentials: { accessKeyId, secretAccessKey },
@@ -28,37 +29,34 @@ export function buildS3Client(
   });
 }
 
-// Each bucket is paired with its own credentials so an operation can never use
-// the wrong key for a bucket.
+// Each bucket carries its own credentials.
 export function buildMediaClient(): S3Client {
   return buildS3Client(
-    process.env.AWS_ACCESS_KEY_ID,
-    process.env.AWS_SECRET_ACCESS_KEY,
+    envString('AWS_ACCESS_KEY_ID'),
+    envString('AWS_SECRET_ACCESS_KEY'),
     'AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY',
   );
 }
 
 export function buildDocumentsClient(): S3Client {
   return buildS3Client(
-    process.env.AWS_DOCUMENTS_ACCESS_KEY_ID,
-    process.env.AWS_DOCUMENTS_SECRET_ACCESS_KEY,
+    envString('AWS_DOCUMENTS_ACCESS_KEY_ID'),
+    envString('AWS_DOCUMENTS_SECRET_ACCESS_KEY'),
     'AWS_DOCUMENTS_ACCESS_KEY_ID and AWS_DOCUMENTS_SECRET_ACCESS_KEY',
   );
 }
 
 // Public, property photos/thumbnails only.
 export function getMediaBucket(): string {
-  const bucket = process.env.AWS_S3_BUCKET;
+  const bucket = envString('AWS_S3_BUCKET');
   if (!bucket)
     throw new BadRequestException('AWS_S3_BUCKET is not configured.');
   return bucket;
 }
 
-// Private — documents only. Must never be made public-read; the app serves
-// documents exclusively through DocumentsService.downloadStream, which
-// re-checks accessLevel before this bucket is touched.
+// Private bucket; served only via the DocumentsService.downloadStream access check.
 export function getDocumentsBucket(): string {
-  const bucket = process.env.AWS_S3_DOCUMENTS_BUCKET;
+  const bucket = envString('AWS_S3_DOCUMENTS_BUCKET');
   if (!bucket)
     throw new BadRequestException('AWS_S3_DOCUMENTS_BUCKET is not configured.');
   return bucket;

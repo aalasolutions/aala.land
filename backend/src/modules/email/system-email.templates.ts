@@ -7,6 +7,8 @@
  * is referenced by absolute URL off APP_URL (the frontend serves /logo.png).
  */
 
+import { envString } from '@shared/utils/env.util';
+
 const BRAND = {
   teal: '#0f9d94',
   darkTeal: '#0d3b37',
@@ -18,7 +20,7 @@ const BRAND = {
 };
 
 function appUrl(): string {
-  return (process.env.APP_URL || 'http://localhost:4200').replace(/\/$/, '');
+  return envString('APP_URL', 'http://localhost:4200').replace(/\/$/, '');
 }
 
 export interface LayoutOptions {

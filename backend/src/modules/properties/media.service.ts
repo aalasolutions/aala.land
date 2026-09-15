@@ -25,6 +25,8 @@ import {
   getStorageQuotaBytes,
   reserveStorage,
 } from '@shared/utils/storage-quota.util';
+import { errorMessage } from '@shared/utils/error.util';
+import { envString } from '@shared/utils/env.util';
 import { SystemEmailService } from '../email/system-email.service';
 import { StoragePurgeService } from '../storage-purge/storage-purge.service';
 import {
@@ -130,7 +132,7 @@ export class MediaService {
       ) {
         this.notifyStorageQuotaExceeded(companyId).catch((e) =>
           this.logger.error(
-            `Quota email failed for company ${companyId}: ${e instanceof Error ? e.message : String(e)}`,
+            `Quota email failed for company ${companyId}: ${errorMessage(e)}`,
           ),
         );
       }
@@ -193,8 +195,8 @@ export class MediaService {
   }
 
   private buildFileUrl(bucket: string, key: string): string {
-    const endpoint = process.env.S3_ENDPOINT;
-    const region = process.env.AWS_REGION ?? 'us-east-005';
+    const endpoint = envString('S3_ENDPOINT');
+    const region = envString('AWS_REGION', 'us-east-005');
     return endpoint
       ? `${endpoint}/${bucket}/${key}`
       : `https://${bucket}.s3.${region}.amazonaws.com/${key}`;
@@ -307,7 +309,7 @@ export class MediaService {
     try {
       meta = await sharp(file.buffer).metadata();
     } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
+      const msg = errorMessage(err);
       throw new BadRequestException(`Cannot read image metadata: ${msg}`);
     }
     if (
@@ -348,7 +350,7 @@ export class MediaService {
         .jpeg({ quality: 80 })
         .toBuffer();
     } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
+      const msg = errorMessage(err);
       throw new BadRequestException(`Image processing failed: ${msg}`);
     }
 
@@ -407,20 +409,17 @@ export class MediaService {
             this.logger.error(
               `Orphaned B2 object after thumbnail PUT failure. Manual cleanup required. ` +
                 `key=${originalKey} rollbackError=` +
-                (rollbackErr instanceof Error
-                  ? rollbackErr.message
-                  : String(rollbackErr)),
+                errorMessage(rollbackErr),
             );
           });
       }
       // Release the reservation made in step 8 — no bytes actually landed in storage.
       await this.decrementStorage(companyId, totalActualBytes).catch((e) => {
         this.logger.error(
-          `Failed to release storage reservation for company ${companyId}: ${e instanceof Error ? e.message : String(e)}`,
+          `Failed to release storage reservation for company ${companyId}: ${errorMessage(e)}`,
         );
       });
-      const msg =
-        uploadErr instanceof Error ? uploadErr.message : String(uploadErr);
+      const msg = errorMessage(uploadErr);
       throw new InternalServerErrorException(`Storage upload failed: ${msg}`);
     }
 
@@ -467,7 +466,7 @@ export class MediaService {
       // Roll back S3 objects and storage counter since the DB record was never persisted.
       await this.decrementStorage(companyId, totalActualBytes).catch((e) => {
         this.logger.error(
-          `Failed to decrement storage after DB failure for company ${companyId}: ${e instanceof Error ? e.message : String(e)}`,
+          `Failed to decrement storage after DB failure for company ${companyId}: ${errorMessage(e)}`,
         );
       });
       await client
@@ -479,7 +478,7 @@ export class MediaService {
       if (dbErr instanceof HttpException) {
         throw dbErr;
       }
-      const msg = dbErr instanceof Error ? dbErr.message : String(dbErr);
+      const msg = errorMessage(dbErr);
       throw new InternalServerErrorException(
         `Failed to save media record: ${msg}`,
       );
@@ -500,7 +499,7 @@ export class MediaService {
     } finally {
       await unlink(file.path).catch((e) => {
         this.logger.error(
-          `Failed to remove temp upload file ${file.path}: ${e instanceof Error ? e.message : String(e)}`,
+          `Failed to remove temp upload file ${file.path}: ${errorMessage(e)}`,
         );
       });
     }
@@ -623,10 +622,10 @@ export class MediaService {
       // Release the reservation — no bytes actually landed in storage.
       await this.decrementStorage(companyId, file.size).catch((e) => {
         this.logger.error(
-          `Failed to release storage reservation for company ${companyId}: ${e instanceof Error ? e.message : String(e)}`,
+          `Failed to release storage reservation for company ${companyId}: ${errorMessage(e)}`,
         );
       });
-      const msg = err instanceof Error ? err.message : String(err);
+      const msg = errorMessage(err);
       throw new InternalServerErrorException(`Document upload failed: ${msg}`);
     }
 
@@ -690,14 +689,14 @@ export class MediaService {
           }),
         );
       } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
+        const msg = errorMessage(err);
         throw new InternalServerErrorException(`Receipt upload failed: ${msg}`);
       }
       return { s3Key: key, fileSize: file.size };
     } finally {
       await unlink(file.path).catch((e) => {
         this.logger.error(
-          `Failed to remove temp receipt file ${file.path}: ${e instanceof Error ? e.message : String(e)}`,
+          `Failed to remove temp receipt file ${file.path}: ${errorMessage(e)}`,
         );
       });
     }
@@ -765,8 +764,6 @@ export class MediaService {
     });
   }
 
-  // Delete
-
   async deleteMedia(id: string, companyId: string): Promise<void> {
     const purgeIds = await this.dataSource.transaction(async (manager) => {
       const media = await manager.findOne(PropertyMedia, {
@@ -791,7 +788,7 @@ export class MediaService {
         if (err instanceof Error && err.name === 'NoSuchKey') {
           throw new NotFoundException('Document not found in storage');
         }
-        const msg = err instanceof Error ? err.message : String(err);
+        const msg = errorMessage(err);
         this.logger.error(
           `Failed to fetch document B2 object ${s3Key}: ${msg}`,
         );

@@ -19,7 +19,10 @@ import { UpdateCompanyDto } from './dto/update-company.dto';
 import { REGIONS } from '@shared/constants/regions';
 import { paginationOptions } from '../../shared/utils/pagination.util';
 import { Role } from '@shared/enums/roles.enum';
+import { errorMessage } from '@shared/utils/error.util';
 import { BillingService } from '../billing/billing.service';
+import { WhatsappGateway } from '../whatsapp/whatsapp.gateway';
+import { NotificationsGateway } from '../notifications/notifications.gateway';
 
 @Injectable()
 export class CompaniesService {
@@ -32,6 +35,8 @@ export class CompaniesService {
     private readonly userRepository: Repository<User>,
     private readonly dataSource: DataSource,
     private readonly billingService: BillingService,
+    private readonly whatsappGateway: WhatsappGateway,
+    private readonly notificationsGateway: NotificationsGateway,
   ) {}
 
   async create(dto: CreateCompanyDto): Promise<Company> {
@@ -57,7 +62,7 @@ export class CompaniesService {
       .ensureCompanyCustomer(saved)
       .catch((err) =>
         this.logger.error(
-          `billing customer creation failed for company ${saved.id}: ${(err as Error).message}`,
+          `billing customer creation failed for company ${saved.id}: ${errorMessage(err)}`,
         ),
       );
 
@@ -158,6 +163,7 @@ export class CompaniesService {
     role?: string,
   ): Promise<Company> {
     const company = await this.findOne(id);
+    const wasActive = company.isActive;
 
     if (role === Role.SUPER_ADMIN) {
       // No restrictions. NOTE: subscriptionTier is intentionally settable
@@ -267,11 +273,39 @@ export class CompaniesService {
     }
     const saved = await this.companyRepository.save(company);
 
+    if (wasActive && company.isActive === false) {
+      await this.disconnectCompanySockets(id);
+    }
+
     if (dto.activeRegions) {
       await this.pruneUserRegions(id, dto.activeRegions);
     }
 
     return saved;
+  }
+
+  // Server-initiated disconnect is not recoverable, so no session is saved for replay.
+  private async disconnectCompanySockets(companyId: string): Promise<void> {
+    try {
+      this.notificationsGateway.disconnectCompany(companyId);
+    } catch (err) {
+      this.logger.error(
+        `Notification sockets not disconnected for deactivated company ${companyId}`,
+        errorMessage(err),
+      );
+    }
+    try {
+      const users = await this.userRepository.find({
+        where: { companyId, deletedAt: IsNull() },
+        select: { id: true },
+      });
+      for (const user of users) this.whatsappGateway.disconnectUser(user.id);
+    } catch (err) {
+      this.logger.error(
+        `WhatsApp sockets not disconnected for deactivated company ${companyId}`,
+        errorMessage(err),
+      );
+    }
   }
 
   // A dropped company region must also leave every user assigned to it,
@@ -371,7 +405,7 @@ export class CompaniesService {
         .ensureCompanyCustomer(savedCompanyOut)
         .catch((err) =>
           this.logger.error(
-            `billing customer creation failed for company ${savedCompanyOut.id}: ${(err as Error).message}`,
+            `billing customer creation failed for company ${savedCompanyOut.id}: ${errorMessage(err)}`,
           ),
         );
 
