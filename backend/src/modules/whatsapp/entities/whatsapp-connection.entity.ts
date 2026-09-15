@@ -76,9 +76,9 @@ export class WhatsappConnection {
   @Column({ name: 'lifecycle_event_at', type: 'timestamptz', nullable: true })
   lifecycleEventAt: Date | null;
 
-  @CreateDateColumn({ name: 'created_at' })
+  @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;
 
-  @UpdateDateColumn({ name: 'updated_at' })
+  @UpdateDateColumn({ name: 'updated_at', type: 'timestamptz' })
   updatedAt: Date;
 }

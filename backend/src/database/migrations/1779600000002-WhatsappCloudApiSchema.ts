@@ -23,8 +23,8 @@ export class WhatsappCloudApiSchema1779600000002 implements MigrationInterface {
         "connected_at" TIMESTAMP WITH TIME ZONE,
         "disconnected_at" TIMESTAMP WITH TIME ZONE,
         "disconnect_reason" character varying(64),
-        "created_at" TIMESTAMP NOT NULL DEFAULT now(),
-        "updated_at" TIMESTAMP NOT NULL DEFAULT now(),
+        "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+        "updated_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
         CONSTRAINT "PK_whatsapp_connections" PRIMARY KEY ("id")
       )
     `);
