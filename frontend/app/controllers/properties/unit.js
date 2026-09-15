@@ -21,19 +21,14 @@ import {
   ACCESS_LEVELS,
 } from 'land/constants';
 
-const ARCHIVE_ROLES = [
-  ROLES.SUPER_ADMIN,
-  ROLES.COMPANY_ADMIN,
-  ROLES.ADMIN,
-  ROLES.MANAGER,
-];
+const ARCHIVE_ROLES = [ROLES.COMPANY_ADMIN, ROLES.ADMIN, ROLES.MANAGER];
 const DELETE_ROLES = [ROLES.COMPANY_ADMIN, ROLES.ADMIN];
 
 const UNIT_ACTIONS = {
   archive: {
     title: 'Archive Property',
     message:
-      'Archived properties are hidden from lists and pickers and become read-only. Leases, money records and history are kept.',
+      'Archive this property? It becomes read-only and hidden from lists. You can unarchive it later.',
     confirmText: 'Archive',
     confirmingText: 'Archiving...',
     confirmVariant: 'primary',
@@ -43,8 +38,7 @@ const UNIT_ACTIONS = {
   },
   unarchive: {
     title: 'Unarchive Property',
-    message:
-      'This property will return to lists and pickers and become editable again.',
+    message: 'Unarchive this property? It becomes active and editable again.',
     confirmText: 'Unarchive',
     confirmingText: 'Unarchiving...',
     confirmVariant: 'primary',
@@ -55,7 +49,7 @@ const UNIT_ACTIONS = {
   delete: {
     title: 'Delete Property',
     message:
-      'This permanently deletes the property with its photos and documents. It is refused while leases, cheques, transactions, work orders or leads are linked.',
+      'Delete this property? Its photos and documents are deleted too. This cannot be undone.',
     confirmText: 'Delete',
     confirmingText: 'Deleting...',
     confirmVariant: 'danger',
@@ -105,7 +99,7 @@ export default class PropertiesUnitController extends Controller {
   // Archive / unarchive / delete state
   @tracked pendingUnitAction = null;
   @tracked unitActionReason = '';
-  @tracked unitActionError = '';
+  @tracked reasonError = '';
   @tracked isSubmittingUnitAction = false;
 
   // Form fields
@@ -362,13 +356,13 @@ export default class PropertiesUnitController extends Controller {
   @action openUnitAction(kind) {
     this.pendingUnitAction = kind;
     this.unitActionReason = '';
-    this.unitActionError = '';
+    this.reasonError = '';
   }
 
   @action closeUnitAction() {
     this.pendingUnitAction = null;
     this.unitActionReason = '';
-    this.unitActionError = '';
+    this.reasonError = '';
   }
 
   @action async confirmUnitAction() {
@@ -379,12 +373,12 @@ export default class PropertiesUnitController extends Controller {
 
     const reason = this.unitActionReason.trim();
     if (config.reasonRequired && !reason) {
-      this.unitActionError = 'A reason is required.';
+      this.reasonError = 'A reason is required.';
       return;
     }
 
     this.isSubmittingUnitAction = true;
-    this.unitActionError = '';
+    this.reasonError = '';
 
     try {
       await this.auth.fetchJson(`/properties/units/${unit.id}/${kind}`, {

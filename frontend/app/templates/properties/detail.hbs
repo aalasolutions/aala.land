@@ -19,13 +19,16 @@
       <span class="text-muted">/</span>
     </:breadcrumb>
     <:actions>
-      <Nuvo::Dropdown
-        @align="start"
-        @value={{this.archivedFilterValue}}
-        @onSelect={{this.setArchivedFilter}}
-        @options={{this.archivedFilterOptions}}
-        data-test-archived-filter
-      />
+      {{! No filter panel exists on this page; kept in the header per AAMIR's ruling. }}
+      <Nuvo::Field @label="Visibility">
+        <Nuvo::Dropdown
+          @align="start"
+          @value={{this.archivedFilterValue}}
+          @onSelect={{this.setArchivedFilter}}
+          @options={{this.archivedFilterOptions}}
+          data-test-archived-filter
+        />
+      </Nuvo::Field>
       <Nuvo::BtnGroup @attached={{true}}>
         <Nuvo::Button
           @variant={{if (eq this.currentDetailView "cards") "primary" "secondary"}}
@@ -194,6 +197,7 @@
                           aria-label="Edit property"
                           title="Edit property"
                           @icon="pencil"
+                          data-test-edit-unit
                           {{on "click" (fn this.openEditUnit unit asset.id)}}
                         />
                       {{/unless}}
@@ -300,6 +304,7 @@
                         <Nuvo::Button
                           @variant="secondary"
                           @size="xs"
+                          data-test-edit-unit
                           {{on "click" (fn this.openEditUnit unit asset.id)}}
                         >Edit</Nuvo::Button>
                       {{/unless}}

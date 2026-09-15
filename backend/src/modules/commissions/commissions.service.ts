@@ -19,6 +19,7 @@ import { Commission, CommissionStatus } from './entities/commission.entity';
 import { CreateCommissionDto } from './dto/create-commission.dto';
 import { UpdateCommissionDto } from './dto/update-commission.dto';
 import { Company } from '../companies/entities/company.entity';
+import { User } from '../users/entities/user.entity';
 import {
   RegionScope,
   resolveRegionCode,
@@ -36,6 +37,8 @@ export class CommissionsService {
     private readonly commissionRepository: Repository<Commission>,
     @InjectRepository(Company)
     private readonly companyRepository: Repository<Company>,
+    @InjectRepository(User)
+    private readonly userRepository: Repository<User>,
     private readonly dataSource: DataSource,
     private readonly recordHistoryService: RecordHistoryService,
   ) {}
@@ -45,6 +48,13 @@ export class CommissionsService {
     dto: CreateCommissionDto,
     caller?: RegionScope,
   ): Promise<Commission> {
+    const agent = await this.userRepository.findOne({
+      where: { id: dto.agentId, companyId },
+      select: { id: true },
+    });
+    if (!agent) {
+      throw new NotFoundException('Agent not found');
+    }
     const commissionAmount = (dto.grossAmount * dto.commissionRate) / 100;
     const regionCode = await resolveRegionCode(
       this.companyRepository,
@@ -168,21 +178,31 @@ export class CommissionsService {
         'A reason is required to cancel a commission.',
       );
     }
+    if (isStatusChange) {
+      this.assertPatchTransition(commission.status, dto.status!);
+    }
 
     // Only persist the columns this DTO can change, so a concurrent state
     // transition (approve/pay) is not clobbered by a stale whole-entity save.
     const patch: QueryDeepPartialEntity<Commission> = {};
     if (dto.status !== undefined) patch.status = dto.status;
     if (dto.notes !== undefined) patch.notes = dto.notes;
-    if (dto.status === CommissionStatus.PAID && !commission.paidAt) {
-      patch.paidAt = new Date();
-    }
 
     if (Object.keys(patch).length > 0) {
       await this.dataSource.transaction(async (manager) => {
-        await manager
+        const result = await manager
           .getRepository(Commission)
-          .update({ id, companyId }, patch);
+          .update(
+            isStatusChange
+              ? { id, companyId, status: commission.status }
+              : { id, companyId },
+            patch,
+          );
+        if (result.affected !== 1) {
+          throw new ConflictException(
+            'This commission was changed by someone else. Refresh and try again.',
+          );
+        }
 
         if (isStatusChange) {
           await this.recordCommissionHistory(
@@ -314,9 +334,10 @@ export class CommissionsService {
       entityType: 'Commission',
       entityId: commission.id,
       entityTitle: `Commission ${commission.commissionAmount} ${commission.currency}`,
-      contextTitle: await this.recordHistoryService.resolveActorName(
+      contextTitle: await this.agentName(
         manager,
         commission.agentId,
+        commission.companyId,
       ),
       reason: reason ?? null,
       actorId: userId ?? null,
@@ -326,6 +347,41 @@ export class CommissionsService {
       regionCode: commission.regionCode,
       metadata,
     });
+  }
+
+  // PATCH only cancels or un-approves. Approve and pay have their own guarded
+  // routes, and PAID is final.
+  private assertPatchTransition(
+    from: CommissionStatus,
+    to: CommissionStatus,
+  ): void {
+    if (from === CommissionStatus.PAID) {
+      throw new ConflictException(
+        'A paid commission is final. Record a clawback instead.',
+      );
+    }
+    const cancel =
+      to === CommissionStatus.CANCELLED &&
+      (from === CommissionStatus.PENDING || from === CommissionStatus.APPROVED);
+    const unapprove =
+      to === CommissionStatus.PENDING && from === CommissionStatus.APPROVED;
+    if (!cancel && !unapprove) {
+      throw new ConflictException(
+        `A ${from} commission cannot be changed to ${to} here. Use Approve or Mark Paid.`,
+      );
+    }
+  }
+
+  private async agentName(
+    manager: EntityManager,
+    agentId: string,
+    companyId: string,
+  ): Promise<string | null> {
+    const agent = await manager.findOne(User, {
+      where: { id: agentId, companyId },
+      select: { id: true, name: true, email: true },
+    });
+    return agent?.name?.trim() || agent?.email || null;
   }
 
   private async assertExists(
@@ -360,7 +416,10 @@ export class CommissionsService {
 
     const qb = this.commissionRepository
       .createQueryBuilder('c')
-      .select('COALESCE(SUM(c.commissionAmount), 0)', 'totalEarned')
+      .select(
+        'COALESCE(SUM(CASE WHEN c.status <> :cancelled THEN c.commissionAmount ELSE 0 END), 0)',
+        'totalEarned',
+      )
       .addSelect(
         'COALESCE(SUM(CASE WHEN c.status = :paid THEN c.commissionAmount ELSE 0 END), 0)',
         'totalPaid',
@@ -373,6 +432,7 @@ export class CommissionsService {
       .where('c.agentId = :agentId', { agentId })
       .andWhere('c.companyId = :companyId', { companyId })
       .setParameters({
+        cancelled: CommissionStatus.CANCELLED,
         paid: CommissionStatus.PAID,
         pending: [CommissionStatus.PENDING, CommissionStatus.APPROVED],
       });

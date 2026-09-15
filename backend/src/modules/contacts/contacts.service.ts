@@ -312,7 +312,7 @@ export class ContactsService {
       // Both are company-scoped through the same :companyId already bound.
       qb.andWhere(
         `(EXISTS (SELECT 1 FROM leads l WHERE l.contact_id = c.id AND l.company_id = :companyId AND l.assigned_to = :agentId)
-          OR EXISTS (SELECT 1 FROM units u WHERE u.owner_id = c.id AND u.company_id = :companyId AND u.assigned_agent_id = :agentId))`,
+          OR EXISTS (SELECT 1 FROM units u WHERE u.owner_id = c.id AND u.company_id = :companyId AND u.assigned_agent_id = :agentId AND u.deleted_at IS NULL))`,
         { agentId: filters.agentId },
       );
     }
@@ -467,7 +467,7 @@ export class ContactsService {
           manager,
           actorId,
         ),
-        regionCode: source.regionCode ?? undefined,
+        regionCode: source.regionCode,
         metadata: {
           transferToContactId: target?.id ?? null,
           movedCounts: {
@@ -491,9 +491,14 @@ export class ContactsService {
     // Transfer the edges AND delete the source in one transaction, so a failed
     // delete cannot leave the edges moved and the source contact alive owning
     // nothing.
+    const scopedCodes = scopedRegionCodes(caller);
     await this.dataSource.transaction(async (manager) => {
       const target = await manager.findOne(Contact, {
-        where: { id: transferToContactId!, companyId },
+        where: {
+          id: transferToContactId!,
+          companyId,
+          ...(scopedCodes ? { regionCode: In(scopedCodes) } : {}),
+        },
       });
       if (!target) {
         throw new NotFoundException('Transfer target contact not found');
@@ -505,14 +510,14 @@ export class ContactsService {
         { contactId: target.id },
       );
       await manager.update(
-        Unit,
-        { ownerId: id, companyId },
-        { ownerId: target.id },
-      );
-      await manager.update(
         Lease,
         { contactId: id, companyId },
         { contactId: target.id },
+      );
+      await manager.update(
+        Unit,
+        { ownerId: id, companyId },
+        { ownerId: target.id },
       );
       await manager.update(
         WhatsappChat,
@@ -532,11 +537,11 @@ export class ContactsService {
       case 'lead':
         return `EXISTS (SELECT 1 FROM leads l WHERE l.contact_id = ${contactCol} AND l.company_id = :companyId)`;
       case 'tenant':
-        return `EXISTS (SELECT 1 FROM leases le WHERE le.contact_id = ${contactCol} AND le.company_id = :companyId)`;
+        return `EXISTS (SELECT 1 FROM leases le WHERE le.contact_id = ${contactCol} AND le.company_id = :companyId AND le.deleted_at IS NULL)`;
       case 'owner':
-        return `EXISTS (SELECT 1 FROM units u WHERE u.owner_id = ${contactCol} AND u.company_id = :companyId)`;
+        return `EXISTS (SELECT 1 FROM units u WHERE u.owner_id = ${contactCol} AND u.company_id = :companyId AND u.deleted_at IS NULL)`;
       case 'vendor':
-        return `(SELECT COUNT(*) FROM units u WHERE u.owner_id = ${contactCol} AND u.company_id = :companyId) >= 2`;
+        return `(SELECT COUNT(*) FROM units u WHERE u.owner_id = ${contactCol} AND u.company_id = :companyId AND u.deleted_at IS NULL) >= 2`;
     }
   }
 
@@ -563,6 +568,7 @@ export class ContactsService {
         .select('DISTINCT le.contact_id', 'id')
         .where('le.company_id = :companyId', { companyId })
         .andWhere('le.contact_id IN (:...ids)', { ids })
+        .andWhere('le.deleted_at IS NULL')
         .getRawMany<{ id: string }>(),
       this.unitRepository
         .createQueryBuilder('u')
@@ -570,6 +576,7 @@ export class ContactsService {
         .addSelect('COUNT(*)', 'n')
         .where('u.company_id = :companyId', { companyId })
         .andWhere('u.owner_id IN (:...ids)', { ids })
+        .andWhere('u.deleted_at IS NULL')
         .groupBy('u.owner_id')
         .getRawMany<{ id: string; n: string }>(),
     ]);

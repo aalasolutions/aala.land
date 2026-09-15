@@ -34,7 +34,7 @@ import { LockModule } from '@modules/lock/lock.module';
 import { ConsoleModule } from '@modules/console/console.module';
 import { EmailModule } from '@modules/email/email.module';
 import { StoragePurgeModule } from '@modules/storage-purge/storage-purge.module';
-import { RecordHistoryModule } from './modules/record-history/record-history.module';
+import { RecordHistoryModule } from '@modules/record-history/record-history.module';
 import { RegionScopeInterceptor } from '@shared/interceptors/region-scope.interceptor';
 
 @Module({

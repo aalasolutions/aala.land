@@ -9,7 +9,7 @@
       <p class="text-muted">{{format-number @model.total unit="cheque record"}}</p>
     </:meta>
     <:actions>
-      {{#if this.isAdmin}}
+      {{#if this.canWriteCheques}}
         <Nuvo::Button
           @variant="primary"
           data-test-new-cheque
@@ -67,7 +67,7 @@
                   </td>
                   <td>
                     <div class="flex gap-2">
-                      {{#if this.isAdmin}}
+                      {{#if this.canWriteCheques}}
                         <Nuvo::Button
                           @variant="secondary"
                           @size="xs"
@@ -399,9 +399,8 @@
 <ConfirmModal
   @open={{this.showCancelModal}}
   @title="Cancel Cheque"
-  @message="Mark this cheque as cancelled? Cancelled cheques cannot change status again."
-  @confirmText="Cancel Cheque"
-  @cancelText="Back"
+  @message="Cancel this cheque? It stays in history as cancelled."
+  @confirmText="Cancel cheque"
   @confirmVariant="danger"
   @isConfirming={{this.isCancelling}}
   @confirmingText="Cancelling..."
@@ -416,7 +415,7 @@
       placeholder="e.g. Tenant replaced payment method"
       @value={{this.cancelReason}}
       @onInput={{fn this.setFieldValue "cancelReason"}}
-      data-test-cancel-reason
+      data-test-reason-input
     />
   </Nuvo::Field>
 </ConfirmModal>
@@ -424,9 +423,8 @@
 <ConfirmModal
   @open={{this.showDeleteModal}}
   @title="Delete Cheque"
-  @message="Permanently delete this cheque? This action cannot be undone."
+  @message="Delete this cheque? This cannot be undone."
   @confirmText="Delete"
-  @cancelText="Cancel"
   @confirmVariant="danger"
   @isConfirming={{this.isDeleting}}
   @confirmingText="Deleting..."

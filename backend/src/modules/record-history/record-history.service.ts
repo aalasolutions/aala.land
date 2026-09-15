@@ -1,4 +1,7 @@
-import { Injectable } from '@nestjs/common';
+import {
+  Injectable,
+  InternalServerErrorException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { EntityManager, Repository } from 'typeorm';
 import {
@@ -48,7 +51,7 @@ export class RecordHistoryService {
   ): Promise<void> {
     const isGlobal = isGlobalRecordHistoryType(input.entityType);
     if (!input.companyId && !isGlobal) {
-      throw new Error(
+      throw new InternalServerErrorException(
         `record_history requires companyId for entity type ${input.entityType}`,
       );
     }

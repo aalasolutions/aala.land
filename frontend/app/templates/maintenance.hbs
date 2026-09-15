@@ -135,6 +135,7 @@
                         @variant="secondary"
                         @size="xs"
                         @icon="pencil-simple"
+                        data-test-edit-work-order
                         {{on "click" (fn this.openEdit wo)}}
                       >
                         Edit
@@ -314,8 +315,8 @@
             @placeholder="Select status..."
           />
         </Nuvo::Field>
-        {{#if this.isCancelling}}
-          <Nuvo::Field @label="Cancellation Reason" @required={{true}}>
+        {{#if this.isCancellingWorkOrder}}
+          <Nuvo::Field @label="Cancellation Reason" @required={{true}} @error={{this.reasonError}}>
             <Nuvo::Textarea
               id="wo-cancel-reason"
               rows="2"
@@ -323,7 +324,7 @@
               placeholder="e.g. Tenant resolved the issue"
               @value={{this.formReason}}
               @onInput={{fn this.setFieldValue "formReason"}}
-              data-test-cancel-reason
+              data-test-reason-input
             />
           </Nuvo::Field>
         {{/if}}
@@ -446,9 +447,8 @@
 <ConfirmModal
   @open={{this.showDeleteModal}}
   @title="Delete Work Order"
-  @message="Permanently delete this work order? This action cannot be undone."
+  @message="Delete this work order? This cannot be undone."
   @confirmText="Delete"
-  @cancelText="Cancel"
   @confirmVariant="danger"
   @isConfirming={{this.isDeleting}}
   @confirmingText="Deleting..."

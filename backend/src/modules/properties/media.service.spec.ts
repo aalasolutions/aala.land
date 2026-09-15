@@ -86,7 +86,7 @@ describe('MediaService', () => {
   let unitRepo: any;
   let systemEmail: { sendQuotaExceededToCompany: jest.Mock };
   let mockQb: any;
-  let manager: { findOne: jest.Mock };
+  let manager: { findOne: jest.Mock; getRepository: jest.Mock };
   let storagePurge: { purge: jest.Mock; dispatch: jest.Mock };
 
   const companyId = 'company-uuid-1';
@@ -123,7 +123,10 @@ describe('MediaService', () => {
       execute: jest.fn().mockResolvedValue({ affected: 1 }),
     };
 
-    manager = { findOne: jest.fn().mockResolvedValue(null) };
+    manager = {
+      findOne: jest.fn().mockResolvedValue({ id: unitId, deletedAt: null }),
+      getRepository: jest.fn(() => mediaRepo),
+    };
     storagePurge = {
       purge: jest.fn().mockResolvedValue(['purge-1', 'purge-2']),
       dispatch: jest.fn().mockResolvedValue(undefined),
@@ -192,6 +195,24 @@ describe('MediaService', () => {
     jest.clearAllMocks();
   });
 
+  describe('setPrimary', () => {
+    it('refuses a photo on an archived unit', async () => {
+      mediaRepo.findOne.mockResolvedValue({ id: 'media-1', companyId, unitId });
+      manager.findOne.mockResolvedValue({ id: unitId, deletedAt: new Date() });
+
+      await expect(service.setPrimary('media-1', companyId)).rejects.toThrow(
+        ConflictException,
+      );
+      expect(manager.findOne).toHaveBeenCalledWith(Unit, {
+        where: { id: unitId, companyId },
+        select: { id: true, deletedAt: true },
+        lock: { mode: 'pessimistic_read' },
+      });
+      expect(mediaRepo.update).not.toHaveBeenCalled();
+      expect(mediaRepo.save).not.toHaveBeenCalled();
+    });
+  });
+
   describe('uploadImage — archived unit', () => {
     it('refuses an upload to an archived unit with 409 before any storage write', async () => {
       unitRepo.findOne.mockResolvedValue({
@@ -204,6 +225,39 @@ describe('MediaService', () => {
         service.uploadImage(companyId, makeFile(), { unitId }),
       ).rejects.toThrow(ConflictException);
       expect(mockSend).not.toHaveBeenCalled();
+    });
+
+    it('refuses a unit archived after the storage write and releases the upload', async () => {
+      const releaseSpy = jest
+        .spyOn(service, 'decrementStorage')
+        .mockResolvedValue(undefined);
+      manager.findOne.mockResolvedValue({ id: unitId, deletedAt: new Date() });
+
+      await expect(
+        service.uploadImage(companyId, makeFile(), { unitId }),
+      ).rejects.toThrow(ConflictException);
+      expect(manager.findOne).toHaveBeenCalledWith(Unit, {
+        where: { id: unitId, companyId },
+        select: { id: true, deletedAt: true },
+        lock: { mode: 'pessimistic_read' },
+      });
+      expect(mediaRepo.save).not.toHaveBeenCalled();
+      expect(DeleteObjectCommand).toHaveBeenCalledTimes(2);
+      expect(releaseSpy).toHaveBeenCalledWith(companyId, expect.any(Number));
+    });
+
+    it('refuses a unit deleted while waiting for the lock and releases the upload', async () => {
+      const releaseSpy = jest
+        .spyOn(service, 'decrementStorage')
+        .mockResolvedValue(undefined);
+      manager.findOne.mockResolvedValue(null);
+
+      await expect(
+        service.uploadImage(companyId, makeFile(), { unitId }),
+      ).rejects.toThrow(NotFoundException);
+      expect(mediaRepo.save).not.toHaveBeenCalled();
+      expect(DeleteObjectCommand).toHaveBeenCalledTimes(2);
+      expect(releaseSpy).toHaveBeenCalledWith(companyId, expect.any(Number));
     });
 
     it('does not accept an asset upload through archived units only', async () => {

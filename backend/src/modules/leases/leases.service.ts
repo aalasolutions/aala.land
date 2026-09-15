@@ -15,6 +15,8 @@ import {
   EntityManager,
   FindOptionsWhere,
   In,
+  IsNull,
+  Not,
   QueryFailedError,
   Repository,
 } from 'typeorm';
@@ -48,6 +50,10 @@ export interface LeaseFilters {
 }
 
 const ARCHIVED_LEASE_MESSAGE = 'This lease is archived. Unarchive it first.';
+const ARCHIVED_UNIT_MESSAGE =
+  'This unit is archived and no longer active. Select another unit.';
+const ARCHIVED_UNIT_LOCKED_MESSAGE =
+  'This unit is archived. Its leases can no longer be edited.';
 
 /**
  * Partial unique index name from migration 1779500000043
@@ -195,6 +201,26 @@ export class LeasesService {
     }
   }
 
+  // FOR SHARE so archiveUnit (FOR UPDATE on the unit) cannot commit in between.
+  private async assertUnitNotArchivedLocked(
+    manager: EntityManager,
+    unitId: string,
+    companyId: string,
+    message: string,
+  ): Promise<void> {
+    const unit = await manager.findOne(Unit, {
+      where: { id: unitId, companyId },
+      select: { id: true, deletedAt: true },
+      lock: { mode: 'pessimistic_read' },
+    });
+    if (!unit) {
+      throw new NotFoundException('Unit not found');
+    }
+    if (unit.deletedAt) {
+      throw new ConflictException(message);
+    }
+  }
+
   private async reloadWithContact(
     manager: EntityManager,
     id: string,
@@ -216,7 +242,15 @@ export class LeasesService {
     await this.assertContactInCompany(dto.contactId, companyId, caller);
     await this.assertUnitInCallerRegions(dto.unitId, companyId, caller, true);
     const lease = this.leaseRepository.create({ ...dto, companyId });
-    const saved = await this.leaseRepository.save(lease);
+    const saved = await this.dataSource.transaction(async (manager) => {
+      await this.assertUnitNotArchivedLocked(
+        manager,
+        dto.unitId,
+        companyId,
+        'This unit is archived. Unarchive it before adding a lease.',
+      );
+      return manager.save(Lease, lease);
+    });
     // Re-read of a row this caller just wrote, so it stays unscoped.
     return this.findOne(saved.id, companyId);
   }
@@ -319,10 +353,17 @@ export class LeasesService {
     unitId: string,
     companyId: string,
     caller?: RegionScope,
+    archived: LeaseArchivedFilter = LeaseArchivedFilter.INCLUDE,
   ): Promise<Lease[]> {
     await this.assertUnitInCallerRegions(unitId, companyId, caller);
+    const where: FindOptionsWhere<Lease> = { unitId, companyId };
+    if (archived === LeaseArchivedFilter.EXCLUDE) {
+      where.deletedAt = IsNull();
+    } else if (archived === LeaseArchivedFilter.ONLY) {
+      where.deletedAt = Not(IsNull());
+    }
     const leases = await this.leaseRepository.find({
-      where: { unitId, companyId },
+      where,
       relations: ['contact'],
       order: { startDate: 'DESC' },
     });
@@ -349,6 +390,35 @@ export class LeasesService {
       }
       if (lease.deletedAt) {
         throw new ConflictException(ARCHIVED_LEASE_MESSAGE);
+      }
+
+      if (dto.unitId !== undefined && dto.unitId !== lease.unitId) {
+        if (lease.status !== LeaseStatus.DRAFT) {
+          throw new BadRequestException(
+            'Only a draft lease can move to another unit.',
+          );
+        }
+        await this.assertUnitInCallerRegions(
+          dto.unitId,
+          companyId,
+          caller,
+          true,
+        );
+        await this.assertUnitNotArchivedLocked(
+          manager,
+          dto.unitId,
+          companyId,
+          ARCHIVED_UNIT_MESSAGE,
+        );
+      } else {
+        await this.assertUnitNotArchivedLocked(
+          manager,
+          lease.unitId,
+          companyId,
+          lease.status === LeaseStatus.DRAFT
+            ? ARCHIVED_UNIT_MESSAGE
+            : ARCHIVED_UNIT_LOCKED_MESSAGE,
+        );
       }
 
       if (dto.status && dto.status !== lease.status) {
@@ -427,6 +497,14 @@ export class LeasesService {
           'Only ACTIVE or EXPIRED leases can be renewed',
         );
       }
+
+      // Lease row, then the new unit FOR SHARE.
+      await this.assertUnitNotArchivedLocked(
+        manager,
+        dto.unitId,
+        companyId,
+        'This unit is archived. Unarchive it before adding a lease.',
+      );
 
       oldLease.status = LeaseStatus.RENEWED;
       const savedOldLease = await manager.save(Lease, oldLease);

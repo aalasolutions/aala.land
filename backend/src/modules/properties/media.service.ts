@@ -443,7 +443,26 @@ export class MediaService {
     });
 
     try {
-      return await this.mediaRepository.save(media);
+      return await this.dataSource.transaction(async (manager) => {
+        if (dto.unitId) {
+          const unit = await manager.findOne(Unit, {
+            where: { id: dto.unitId, companyId },
+            select: { id: true, deletedAt: true },
+            lock: { mode: 'pessimistic_read' },
+          });
+          if (!unit) {
+            throw new NotFoundException(
+              'Property not found or does not belong to this company',
+            );
+          }
+          if (unit.deletedAt) {
+            throw new ConflictException(
+              'This unit is archived. Unarchive it before uploading photos.',
+            );
+          }
+        }
+        return manager.getRepository(PropertyMedia).save(media);
+      });
     } catch (dbErr) {
       // Roll back S3 objects and storage counter since the DB record was never persisted.
       await this.decrementStorage(companyId, totalActualBytes).catch((e) => {
@@ -457,6 +476,9 @@ export class MediaService {
       await client
         .send(new DeleteObjectCommand({ Bucket: bucket, Key: thumbKey }))
         .catch(() => {});
+      if (dbErr instanceof HttpException) {
+        throw dbErr;
+      }
       const msg = dbErr instanceof Error ? dbErr.message : String(dbErr);
       throw new InternalServerErrorException(
         `Failed to save media record: ${msg}`,
@@ -709,20 +731,38 @@ export class MediaService {
     });
     if (!media) throw new NotFoundException('Media not found');
 
-    if (media.unitId) {
-      await this.mediaRepository.update(
-        { companyId, unitId: media.unitId },
-        { isPrimary: false },
-      );
-    } else if (media.assetId) {
-      await this.mediaRepository.update(
-        { companyId, assetId: media.assetId },
-        { isPrimary: false },
-      );
-    }
+    return this.dataSource.transaction(async (manager) => {
+      const repo = manager.getRepository(PropertyMedia);
+      if (media.unitId) {
+        const unit = await manager.findOne(Unit, {
+          where: { id: media.unitId, companyId },
+          select: { id: true, deletedAt: true },
+          lock: { mode: 'pessimistic_read' },
+        });
+        if (!unit) {
+          throw new NotFoundException(
+            'Property not found or does not belong to this company',
+          );
+        }
+        if (unit.deletedAt) {
+          throw new ConflictException(
+            'This unit is archived. Unarchive it before changing its photos.',
+          );
+        }
+        await repo.update(
+          { companyId, unitId: media.unitId },
+          { isPrimary: false },
+        );
+      } else if (media.assetId) {
+        await repo.update(
+          { companyId, assetId: media.assetId },
+          { isPrimary: false },
+        );
+      }
 
-    media.isPrimary = true;
-    return this.mediaRepository.save(media);
+      media.isPrimary = true;
+      return repo.save(media);
+    });
   }
 
   // Delete

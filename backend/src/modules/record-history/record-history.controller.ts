@@ -17,7 +17,7 @@ export class RecordHistoryController {
   constructor(private readonly recordHistoryService: RecordHistoryService) {}
 
   @Get()
-  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER)
+  @Roles(Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER)
   @ApiOperation({ summary: 'Get record history for company' })
   async findAll(
     @Request() req: AuthenticatedRequest,

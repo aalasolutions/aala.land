@@ -233,9 +233,8 @@
 <ConfirmModal
   @open={{this.showDeleteModal}}
   @title="Delete Template"
-  @message="Are you sure you want to delete {{this.templateToDelete.name}}? This action cannot be undone."
+  @message="Delete {{this.templateToDelete.name}}? This cannot be undone."
   @confirmText="Delete"
-  @cancelText="Cancel"
   @confirmVariant="danger"
   @isConfirming={{this.isDeleting}}
   @confirmingText="Deleting..."

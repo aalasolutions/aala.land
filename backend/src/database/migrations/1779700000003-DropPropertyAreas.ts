@@ -7,6 +7,7 @@ export class DropPropertyAreas1779700000003 implements MigrationInterface {
     await queryRunner.query(`DROP TABLE IF EXISTS "property_areas"`);
   }
 
+  // Restores schema only. Rows dropped by up() are not recoverable.
   public async down(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`
             CREATE TABLE IF NOT EXISTS "property_areas" (

@@ -4,7 +4,12 @@ import { ApiProperty } from '@nestjs/swagger';
 import { CommissionStatus } from '../entities/commission.entity';
 
 export class UpdateCommissionDto {
-  @ApiProperty({ enum: CommissionStatus, required: false })
+  @ApiProperty({
+    enum: CommissionStatus,
+    required: false,
+    description:
+      'Only CANCELLED (from PENDING or APPROVED) or PENDING (from APPROVED). Use approve and pay to move forward.',
+  })
   @IsOptional()
   @IsEnum(CommissionStatus)
   status?: CommissionStatus;

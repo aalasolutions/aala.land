@@ -670,7 +670,6 @@
   @title="Reactivate User"
   @message="Restore access for this team member?"
   @confirmText="Reactivate"
-  @cancelText="Cancel"
   @confirmVariant="primary"
   @isConfirming={{this.isReactivating}}
   @confirmingText="Reactivating..."
@@ -685,7 +684,7 @@
       placeholder="e.g. Returned from leave"
       @value={{this.reactivateReason}}
       @onInput={{fn this.setFieldValue "reactivateReason"}}
-      data-test-reactivate-reason
+      data-test-reason-input
     />
   </Nuvo::Field>
 </ConfirmModal>

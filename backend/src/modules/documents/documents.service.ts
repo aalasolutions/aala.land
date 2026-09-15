@@ -5,7 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, In, IsNull, Repository } from 'typeorm';
+import { DataSource, EntityManager, In, IsNull, Repository } from 'typeorm';
 import {
   PropertyDocument,
   DocumentCategory,
@@ -74,8 +74,9 @@ export class DocumentsService {
   ): Promise<SanitizedDocument> {
     // Checked before the storage write so a refusal leaves no object behind.
     if (dto.unitId) {
-      await this.assertUnitNotArchived(companyId, dto.unitId);
+      await this.assertUnitNotArchived(companyId, dto.unitId, 'uploading');
     }
+    const regionCode = await this.resolveDocumentRegion(companyId, dto, caller);
     const { url, s3Key, fileSize } =
       await this.mediaService.uploadDocumentToStorage(companyId, file);
 
@@ -90,11 +91,23 @@ export class DocumentsService {
       category: dto.category,
       accessLevel: dto.accessLevel,
       companyId,
-      regionCode: await this.resolveDocumentRegion(companyId, dto, caller),
+      regionCode,
       uploadedBy: userId,
       version: 1,
     });
-    return this.sanitize(await this.documentRepository.save(doc));
+    return this.sanitize(
+      await this.dataSource.transaction(async (manager) => {
+        if (dto.unitId) {
+          await this.assertUnitNotArchived(
+            companyId,
+            dto.unitId,
+            'uploading',
+            manager,
+          );
+        }
+        return manager.getRepository(PropertyDocument).save(doc);
+      }),
+    );
   }
 
   async findAll(
@@ -281,8 +294,20 @@ export class DocumentsService {
       userRole,
       regionCodes,
     );
-    Object.assign(existing, dto);
-    return this.sanitize(await this.documentRepository.save(existing));
+    return this.sanitize(
+      await this.dataSource.transaction(async (manager) => {
+        if (existing.unitId) {
+          await this.assertUnitNotArchived(
+            companyId,
+            existing.unitId,
+            'editing',
+            manager,
+          );
+        }
+        Object.assign(existing, dto);
+        return manager.getRepository(PropertyDocument).save(existing);
+      }),
+    );
   }
 
   async remove(
@@ -394,14 +419,26 @@ export class DocumentsService {
   private async assertUnitNotArchived(
     companyId: string,
     unitId: string,
+    verb: 'uploading' | 'editing',
+    manager?: EntityManager,
   ): Promise<void> {
-    const unit = await this.unitRepository.findOne({
-      where: { id: unitId, companyId },
-      select: { id: true, deletedAt: true },
-    });
-    if (unit?.deletedAt) {
+    // With a manager, FOR SHARE so archiveUnit cannot commit in between.
+    const unit = manager
+      ? await manager.findOne(Unit, {
+          where: { id: unitId, companyId },
+          select: { id: true, deletedAt: true },
+          lock: { mode: 'pessimistic_read' },
+        })
+      : await this.unitRepository.findOne({
+          where: { id: unitId, companyId },
+          select: { id: true, deletedAt: true },
+        });
+    if (!unit) {
+      throw new BadRequestException('Invalid property selected');
+    }
+    if (unit.deletedAt) {
       throw new ConflictException(
-        'This unit is archived. Unarchive it before uploading documents.',
+        `This unit is archived. Unarchive it before ${verb} documents.`,
       );
     }
   }

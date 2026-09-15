@@ -132,6 +132,66 @@ module('Integration | Component | record-history-list', function (hooks) {
     assert.strictEqual(calls.length, 2);
   });
 
+  test('it stops loading when entityType or entityId is missing', async function (assert) {
+    stubAuth(this.owner, {
+      success: true,
+      data: { data: [], total: 0, page: 1, limit: 10 },
+    });
+
+    await render(hbs`<RecordHistoryList @entityType="Unit" />`);
+
+    assert.dom('[data-test-record-history-loading]').doesNotExist();
+  });
+
+  test('the loading row has role="status"', async function (assert) {
+    let resolveFetch;
+    this.owner.register(
+      'service:auth',
+      class extends Service {
+        fetchJson() {
+          return new Promise((resolve) => {
+            resolveFetch = resolve;
+          });
+        }
+      },
+    );
+
+    const renderPromise = render(
+      hbs`<RecordHistoryList @entityType="Unit" @entityId="unit-1" />`,
+    );
+    await waitFor('[data-test-record-history-loading]');
+
+    assert
+      .dom('[data-test-record-history-loading]')
+      .hasAttribute('role', 'status');
+
+    resolveFetch({ success: true, data: { data: [], total: 0 } });
+    await renderPromise;
+  });
+
+  test('it refetches when @entityType or @entityId changes', async function (assert) {
+    const calls = stubAuth(this.owner, {
+      success: true,
+      data: { data: [], total: 0, page: 1, limit: 10 },
+    });
+    this.set('entityType', 'Unit');
+    this.set('entityId', 'unit-1');
+
+    await render(
+      hbs`<RecordHistoryList @entityType={{this.entityType}} @entityId={{this.entityId}} />`,
+    );
+    await waitFor('[data-test-record-history-empty]');
+    assert.strictEqual(calls.length, 1);
+
+    this.set('entityId', 'unit-2');
+    await settled();
+    assert.strictEqual(calls.length, 2);
+
+    this.set('entityType', 'Lease');
+    await settled();
+    assert.strictEqual(calls.length, 3);
+  });
+
   test('it shows a permission message on 403', async function (assert) {
     const error = new Error('Forbidden resource');
     error.status = 403;

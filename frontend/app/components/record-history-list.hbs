@@ -1,11 +1,12 @@
 <div
   class="flex col gap-3"
   data-test-record-history
-  {{this.reloadOn @reloadKey}}
+  {{this.reloadOn @reloadKey @entityType @entityId}}
 >
   {{#if this.isLoading}}
     <div
       class="flex x-center gap-2 text-sm text-muted"
+      role="status"
       data-test-record-history-loading
     >
       <Nuvo::Spinner @size="sm" />

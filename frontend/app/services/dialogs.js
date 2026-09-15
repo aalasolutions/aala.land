@@ -29,7 +29,7 @@ export default class DialogsService extends Service {
    * @param {string} [options.confirmVariant='primary'] Any Nuvo::Button
    *   variant. `danger` is opt-in: confirming is not automatically deleting.
    * @param {string} [options.confirmText='Confirm']
-   * @param {string} [options.cancelText='Cancel']
+   * @param {string} [options.cancelText='I changed my mind']
    * @param {string} [options.confirmingText] Label while `onConfirm` runs.
    * @param {boolean} [options.showCancel=true] `false` renders an alert.
    * @param {Function} [options.onConfirm] Optional async handler. When given,

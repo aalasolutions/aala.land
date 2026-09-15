@@ -6,7 +6,14 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, FindOptionsWhere, In, IsNull } from 'typeorm';
+import {
+  DataSource,
+  EntityManager,
+  Repository,
+  FindOptionsWhere,
+  In,
+  IsNull,
+} from 'typeorm';
 import { Lead, LeadStatus } from './entities/lead.entity';
 import { LeadActivity, ActivityType } from './entities/lead-activity.entity';
 import { CreateLeadDto } from './dto/create-lead.dto';
@@ -70,6 +77,7 @@ export class LeadsService {
     private readonly notificationsService: NotificationsService,
     private readonly usersService: UsersService,
     private readonly notificationsGateway: NotificationsGateway,
+    private readonly dataSource: DataSource,
   ) {}
 
   async create(
@@ -127,7 +135,17 @@ export class LeadsService {
       companyId,
       regionCode,
     });
-    const saved = await this.leadRepository.save(lead);
+    const saved = await this.dataSource.transaction(async (manager) => {
+      if (unitId) {
+        await this.assertUnitNotArchivedLocked(
+          manager,
+          unitId,
+          companyId,
+          'This unit is archived.',
+        );
+      }
+      return manager.getRepository(Lead).save(lead);
+    });
 
     const clientName = contactDisplayNameOr(contact);
 
@@ -287,7 +305,23 @@ export class LeadsService {
       lead.stageEnteredAt = new Date();
     }
 
-    await this.leadRepository.save(lead);
+    await this.dataSource.transaction(async (manager) => {
+      const locked = await this.lockLeadUnitNotArchived(
+        manager,
+        id,
+        companyId,
+        'pessimistic_write',
+      );
+      if (dto.unitId && dto.unitId !== locked.unitId) {
+        await this.assertUnitNotArchivedLocked(
+          manager,
+          dto.unitId,
+          companyId,
+          'This unit is archived.',
+        );
+      }
+      await manager.getRepository(Lead).save(lead);
+    });
 
     const clientName = contactDisplayNameOr(lead.contact);
 
@@ -389,7 +423,15 @@ export class LeadsService {
 
     lead.assignedTo = agentId;
     lead.assignedAgent = agent as User;
-    await this.leadRepository.save(lead);
+    await this.dataSource.transaction(async (manager) => {
+      await this.lockLeadUnitNotArchived(
+        manager,
+        id,
+        companyId,
+        'pessimistic_write',
+      );
+      await manager.getRepository(Lead).save(lead);
+    });
 
     const clientName = contactDisplayNameOr(lead.contact);
 
@@ -440,7 +482,15 @@ export class LeadsService {
     const lead = await this.findLeadEntityOrThrow(id, companyId, caller);
     const previousStatus = lead.status;
     lead.status = LeadStatus.WON;
-    const updated = await this.leadRepository.save(lead);
+    const updated = await this.dataSource.transaction(async (manager) => {
+      await this.lockLeadUnitNotArchived(
+        manager,
+        id,
+        companyId,
+        'pessimistic_write',
+      );
+      return manager.getRepository(Lead).save(lead);
+    });
 
     // Broadcast update to all users in the company
     this.notificationsGateway.broadcastToCompany(companyId, 'leadUpdated', {
@@ -478,7 +528,15 @@ export class LeadsService {
       ...dto,
       performedBy,
     });
-    return this.activityRepository.save(activity);
+    return this.dataSource.transaction(async (manager) => {
+      await this.lockLeadUnitNotArchived(
+        manager,
+        leadId,
+        companyId,
+        'pessimistic_read',
+      );
+      return manager.getRepository(LeadActivity).save(activity);
+    });
   }
 
   async findActivities(
@@ -525,6 +583,51 @@ export class LeadsService {
     }
 
     return lead;
+  }
+
+  // Lead row, then its unit FOR SHARE.
+  private async lockLeadUnitNotArchived(
+    manager: EntityManager,
+    id: string,
+    companyId: string,
+    mode: 'pessimistic_read' | 'pessimistic_write',
+  ): Promise<Pick<Lead, 'id' | 'unitId'>> {
+    const locked = await manager.findOne(Lead, {
+      where: { id, companyId },
+      select: { id: true, unitId: true },
+      lock: { mode },
+    });
+    if (!locked) {
+      throw new NotFoundException('Lead not found');
+    }
+    if (locked.unitId) {
+      await this.assertUnitNotArchivedLocked(
+        manager,
+        locked.unitId,
+        companyId,
+        'This unit is archived. Its records can no longer be edited.',
+      );
+    }
+    return locked;
+  }
+
+  private async assertUnitNotArchivedLocked(
+    manager: EntityManager,
+    unitId: string,
+    companyId: string,
+    message: string,
+  ): Promise<void> {
+    const unit = await manager.findOne(Unit, {
+      where: { id: unitId, companyId },
+      select: { id: true, deletedAt: true },
+      lock: { mode: 'pessimistic_read' },
+    });
+    if (!unit) {
+      throw new BadRequestException('Invalid unit selected');
+    }
+    if (unit.deletedAt) {
+      throw new ConflictException(message);
+    }
   }
 
   private canManageAssignments(userRole?: string): boolean {

@@ -125,6 +125,20 @@ describe('StoragePurgeProcessor', () => {
     );
   });
 
+  it('does not treat a missing bucket as success', async () => {
+    const err = Object.assign(new Error('bucket missing'), {
+      name: 'NoSuchBucket',
+      $metadata: { httpStatusCode: 404 },
+    });
+    mockSend.mockRejectedValue(err);
+
+    await expect(processor.process(job(1))).rejects.toBe(err);
+    expect(repo.update).not.toHaveBeenCalledWith(
+      'purge-1',
+      expect.objectContaining({ status: StoragePurgeStatus.DONE }),
+    );
+  });
+
   it('records the attempt and error, then rethrows so BullMQ retries', async () => {
     const err = new Error('503 Service Unavailable');
     mockSend.mockRejectedValue(err);

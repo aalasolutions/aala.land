@@ -226,6 +226,24 @@ describe('LeasesController', () => {
         'unit-uuid-1',
         companyId,
         mockReq.user,
+        'include',
+      );
+    });
+
+    it('passes through an explicit archived filter', async () => {
+      service.findByUnit.mockResolvedValue([mockLease] as any);
+
+      await controller.findByUnit(
+        'unit-uuid-1',
+        mockReq,
+        'exclude' as any,
+      );
+
+      expect(service.findByUnit).toHaveBeenCalledWith(
+        'unit-uuid-1',
+        companyId,
+        mockReq.user,
+        'exclude',
       );
     });
   });

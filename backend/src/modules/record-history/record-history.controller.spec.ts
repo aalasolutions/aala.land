@@ -1,12 +1,17 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
+import { Reflector } from '@nestjs/core';
+import { plainToInstance } from 'class-transformer';
+import { validate } from 'class-validator';
 import request from 'supertest';
 import { RecordHistoryController } from './record-history.controller';
 import { RecordHistoryService } from './record-history.service';
 import { RecordHistoryAction } from './entities/record-history.entity';
+import { QueryRecordHistoryDto } from './dto/query-record-history.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '@shared/guards/roles.guard';
 import { Role } from '@shared/enums/roles.enum';
+import { ROLES_KEY } from '@shared/decorators/roles.decorator';
 import { ResponseInterceptor } from '@shared/interceptors/response.interceptor';
 
 describe('RecordHistoryController (e2e)', () => {
@@ -86,6 +91,16 @@ describe('RecordHistoryController (e2e)', () => {
   });
 
   describe('GET /record-history', () => {
+    it('does not allow SUPER_ADMIN, which has no company context', () => {
+      const roles = new Reflector().get<Role[]>(
+        ROLES_KEY,
+        RecordHistoryController.prototype.findAll,
+      );
+
+      expect(roles).not.toContain(Role.SUPER_ADMIN);
+      expect(roles).toEqual([Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER]);
+    });
+
     it('returns paginated history for the JWT company', async () => {
       mockRecordHistoryService.findAll.mockResolvedValue({
         data: [mockRow],
@@ -155,11 +170,63 @@ describe('RecordHistoryController (e2e)', () => {
         .expect(400);
     });
 
+    it('rejects a page above 10000', async () => {
+      await request(app.getHttpServer())
+        .get('/record-history?page=10001')
+        .expect(400);
+    });
+
+    it('rejects an entityType longer than 100 chars', async () => {
+      await request(app.getHttpServer())
+        .get(`/record-history?entityType=${'x'.repeat(101)}`)
+        .expect(400);
+    });
+
+    it('rejects a regionCode longer than 50 chars', async () => {
+      await request(app.getHttpServer())
+        .get(`/record-history?regionCode=${'x'.repeat(51)}`)
+        .expect(400);
+    });
+
     it('returns 403 without a company context', async () => {
       mockUser.companyId = null;
 
       await request(app.getHttpServer()).get('/record-history').expect(403);
       expect(mockRecordHistoryService.findAll).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('QueryRecordHistoryDto bounds', () => {
+    it('accepts values at the max bounds', async () => {
+      const dto = plainToInstance(QueryRecordHistoryDto, {
+        page: 10000,
+        entityType: 'x'.repeat(100),
+        regionCode: 'x'.repeat(50),
+      });
+
+      expect(await validate(dto)).toHaveLength(0);
+    });
+
+    it('rejects a page above 10000', async () => {
+      const dto = plainToInstance(QueryRecordHistoryDto, { page: 10001 });
+
+      expect(await validate(dto)).not.toHaveLength(0);
+    });
+
+    it('rejects an entityType longer than 100 chars', async () => {
+      const dto = plainToInstance(QueryRecordHistoryDto, {
+        entityType: 'x'.repeat(101),
+      });
+
+      expect(await validate(dto)).not.toHaveLength(0);
+    });
+
+    it('rejects a regionCode longer than 50 chars', async () => {
+      const dto = plainToInstance(QueryRecordHistoryDto, {
+        regionCode: 'x'.repeat(51),
+      });
+
+      expect(await validate(dto)).not.toHaveLength(0);
     });
   });
 

@@ -247,9 +247,8 @@
 <ConfirmModal
   @open={{this.showCancelModal}}
   @title="Cancel Commission"
-  @message="Mark this commission as cancelled?"
-  @confirmText="Cancel Commission"
-  @cancelText="Back"
+  @message="Cancel this commission? It stays in history as cancelled."
+  @confirmText="Cancel commission"
   @confirmVariant="danger"
   @isConfirming={{this.isCancelling}}
   @confirmingText="Cancelling..."
@@ -264,7 +263,7 @@
       placeholder="e.g. Deal fell through"
       @value={{this.cancelReason}}
       @onInput={{fn this.setFieldValue "cancelReason"}}
-      data-test-cancel-reason
+      data-test-reason-input
     />
   </Nuvo::Field>
 </ConfirmModal>

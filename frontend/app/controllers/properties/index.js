@@ -137,7 +137,7 @@ export default class PropertiesIndexController extends Controller {
 
   @action setArchivedFilter(value) {
     this.archived = value || 'exclude';
-    this.applyFilters();
+    this.browsePage = 1;
   }
 
   @action applyFilters() {

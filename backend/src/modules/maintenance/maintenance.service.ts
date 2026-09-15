@@ -24,6 +24,9 @@ import {
 } from '../../shared/utils/region-visibility.util';
 import { Unit } from '../properties/entities/unit.entity';
 
+const ARCHIVED_UNIT_LOCKED_MESSAGE =
+  'This unit is archived. Its records can no longer be edited.';
+
 export interface CostSummary {
   totalEstimated: number;
   totalActual: number;
@@ -62,7 +65,15 @@ export class MaintenanceService {
       companyId,
       regionCode,
     });
-    return this.workOrderRepository.save(order);
+    return this.dataSource.transaction(async (manager) => {
+      await this.assertUnitNotArchivedLocked(
+        manager,
+        order.unitId,
+        companyId,
+        'This unit is archived.',
+      );
+      return manager.getRepository(WorkOrder).save(order);
+    });
   }
 
   async findAll(
@@ -200,9 +211,8 @@ export class MaintenanceService {
   ): Promise<WorkOrder> {
     const order = await this.findOne(id, companyId, caller);
     const { reason, ...changes } = dto;
-    const oldStatus = order.status;
     const isStatusChange =
-      changes.status !== undefined && changes.status !== oldStatus;
+      changes.status !== undefined && changes.status !== order.status;
 
     if (
       isStatusChange &&
@@ -214,6 +224,7 @@ export class MaintenanceService {
       );
     }
 
+    let regionCode: string | undefined;
     if (changes.unitId !== undefined) {
       if (!changes.unitId) {
         throw new BadRequestException('Property is required for work orders');
@@ -226,31 +237,60 @@ export class MaintenanceService {
       );
       // The region follows the unit, so moving the work order moves the row.
       if (changes.unitId !== order.unitId) {
-        const regionCode = await this.regionOfUnit(changes.unitId, companyId);
+        regionCode = await this.regionOfUnit(changes.unitId, companyId);
         if (!regionCode) {
           throw new BadRequestException('Invalid unit selected');
         }
-        order.regionCode = regionCode;
       }
-    }
-    Object.assign(order, changes);
-
-    if (changes.status === WorkOrderStatus.COMPLETED && !order.completedAt) {
-      order.completedAt = new Date();
     }
 
     return this.dataSource.transaction(async (manager) => {
-      const saved = await manager.getRepository(WorkOrder).save(order);
-      if (isStatusChange) {
+      const repo = manager.getRepository(WorkOrder);
+      const locked = await repo.findOne({
+        where: { id, companyId },
+        lock: { mode: 'pessimistic_write' },
+      });
+      if (!locked) {
+        throw new NotFoundException('Work order not found');
+      }
+      if (locked.unitId) {
+        const unit = await manager.findOne(Unit, {
+          where: { id: locked.unitId, companyId },
+          select: { id: true, deletedAt: true },
+          lock: { mode: 'pessimistic_read' },
+        });
+        if (unit?.deletedAt) {
+          throw new ConflictException(ARCHIVED_UNIT_LOCKED_MESSAGE);
+        }
+      }
+      if (changes.unitId && changes.unitId !== locked.unitId) {
+        await this.assertUnitNotArchivedLocked(
+          manager,
+          changes.unitId,
+          companyId,
+          'This unit is archived.',
+        );
+      }
+      const fromStatus = locked.status;
+      Object.assign(locked, changes);
+      if (regionCode) {
+        locked.regionCode = regionCode;
+      }
+      if (changes.status === WorkOrderStatus.COMPLETED && !locked.completedAt) {
+        locked.completedAt = new Date();
+      }
+
+      const saved = await repo.save(locked);
+      if (locked.status !== fromStatus) {
         await this.recordWorkOrderHistory(
           manager,
-          order,
-          order.status === WorkOrderStatus.CANCELLED
+          locked,
+          locked.status === WorkOrderStatus.CANCELLED
             ? RecordHistoryAction.CANCEL
             : RecordHistoryAction.STATUS_CHANGE,
           userId,
           reason,
-          { from: oldStatus, to: order.status },
+          { from: fromStatus, to: locked.status },
         );
       }
       return saved;
@@ -264,11 +304,19 @@ export class MaintenanceService {
     userId: string,
     caller?: RegionScope,
   ): Promise<void> {
-    await this.findOne(id, companyId, caller);
+    const scopedCodes = scopedRegionCodes(caller);
+    // No assignment means no access, and an empty IN () is invalid SQL.
+    if (scopedCodes?.length === 0) {
+      throw new NotFoundException('Work order not found');
+    }
 
     await this.dataSource.transaction(async (manager) => {
       const order = await manager.findOne(WorkOrder, {
-        where: { id, companyId },
+        where: {
+          id,
+          companyId,
+          ...(scopedCodes ? { regionCode: In(scopedCodes) } : {}),
+        },
         lock: { mode: 'pessimistic_write' },
       });
       if (!order) {
@@ -425,6 +473,29 @@ export class MaintenanceService {
     }
     if (rejectArchived && unit.deletedAt) {
       throw new ConflictException('This unit is archived.');
+    }
+  }
+
+  // FOR SHARE so archiveUnit cannot commit in between.
+  private async assertUnitNotArchivedLocked(
+    manager: EntityManager,
+    unitId: string | null,
+    companyId: string,
+    message: string,
+  ): Promise<void> {
+    if (!unitId) {
+      return;
+    }
+    const unit = await manager.findOne(Unit, {
+      where: { id: unitId, companyId },
+      select: { id: true, deletedAt: true },
+      lock: { mode: 'pessimistic_read' },
+    });
+    if (!unit) {
+      throw new BadRequestException('Invalid unit selected');
+    }
+    if (unit.deletedAt) {
+      throw new ConflictException(message);
     }
   }
 

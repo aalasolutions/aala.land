@@ -23,13 +23,6 @@
     data-test-lease-status-tabs
   />
 
-  <Nuvo::Segmented
-    @options={{this.archivedTabs}}
-    @value={{this.archived}}
-    @onChange={{this.setArchivedTab}}
-    data-test-archived-filter
-  />
-
   <Nuvo::Accordion
     @items={{array
       (hash
@@ -61,6 +54,15 @@
             @onSelect={{this.setType}}
             @options={{this.typeFilterOptions}}
             data-test-type-filter
+          />
+        </Nuvo::Field>
+        <Nuvo::Field @label="Visibility">
+          <Nuvo::Dropdown
+            @align="start"
+            @value={{this.archived}}
+            @onSelect={{this.setArchivedTab}}
+            @options={{this.archivedTabs}}
+            data-test-archived-filter
           />
         </Nuvo::Field>
         <Nuvo::Field @label="Start date from">
@@ -155,7 +157,7 @@
                         @variant="secondary"
                         @size="xs"
                         @icon="clock-counter-clockwise"
-                        aria-label="History for lease of {{lease.contact.displayName}}"
+                        aria-label="History for lease of {{or lease.contact.displayName "Unknown tenant"}}"
                         data-test-lease-history
                         {{on "click" (fn this.openHistory lease)}}
                       />
@@ -173,70 +175,70 @@
                         </Nuvo::Button>
                       {{/if}}
                     {{else}}
-                    <Nuvo::Button
-                      @variant="secondary"
-                      @size="xs"
-                      @icon="pencil-simple"
-                      data-test-edit-lease
-                      {{on "click" (fn this.openEdit lease)}}
-                    >
-                      Edit
-                    </Nuvo::Button>
-                    {{#if (eq lease.status "ACTIVE")}}
                       <Nuvo::Button
-                        data-test-renew-lease
                         @variant="secondary"
                         @size="xs"
-                        @icon="arrows-clockwise"
-                        {{on "click" (fn this.renewLease lease)}}
+                        @icon="pencil-simple"
+                        data-test-edit-lease
+                        {{on "click" (fn this.openEdit lease)}}
                       >
-                        Renew
+                        Edit
                       </Nuvo::Button>
-                      <Nuvo::Button
-                        data-test-terminate-lease
-                        @variant="danger"
-                        @size="xs"
-                        @icon="x-circle"
-                        {{on "click" (fn this.openTerminate lease)}}
-                      >
-                        Terminate
-                      </Nuvo::Button>
-                    {{/if}}
-                    {{#if (eq lease.status "EXPIRED")}}
-                      <Nuvo::Button
-                        data-test-renew-lease
-                        @variant="secondary"
-                        @size="xs"
-                        @icon="arrows-clockwise"
-                        {{on "click" (fn this.renewLease lease)}}
-                      >
-                        Renew
-                      </Nuvo::Button>
-                    {{/if}}
-                    {{#if (eq lease.status "DRAFT")}}
-                      {{#if this.canDeleteLease}}
+                      {{#if (eq lease.status "ACTIVE")}}
                         <Nuvo::Button
-                          @variant="danger"
-                          @size="xs"
-                          @icon="trash"
-                          aria-label="Delete lease for {{lease.contact.displayName}}"
-                          data-test-delete-lease
-                          {{on "click" (fn this.openDelete lease)}}
-                        />
-                      {{/if}}
-                    {{else if this.canArchiveLease}}
-                      {{#unless (eq lease.status "ACTIVE")}}
-                        <Nuvo::Button
-                          data-test-archive-lease
+                          data-test-renew-lease
                           @variant="secondary"
                           @size="xs"
-                          @icon="archive"
-                          {{on "click" (fn this.openArchive lease "archive")}}
+                          @icon="arrows-clockwise"
+                          {{on "click" (fn this.renewLease lease)}}
                         >
-                          Archive
+                          Renew
                         </Nuvo::Button>
-                      {{/unless}}
-                    {{/if}}
+                        <Nuvo::Button
+                          data-test-terminate-lease
+                          @variant="danger"
+                          @size="xs"
+                          @icon="x-circle"
+                          {{on "click" (fn this.openTerminate lease)}}
+                        >
+                          Terminate
+                        </Nuvo::Button>
+                      {{/if}}
+                      {{#if (eq lease.status "EXPIRED")}}
+                        <Nuvo::Button
+                          data-test-renew-lease
+                          @variant="secondary"
+                          @size="xs"
+                          @icon="arrows-clockwise"
+                          {{on "click" (fn this.renewLease lease)}}
+                        >
+                          Renew
+                        </Nuvo::Button>
+                      {{/if}}
+                      {{#if (eq lease.status "DRAFT")}}
+                        {{#if this.canDeleteLease}}
+                          <Nuvo::Button
+                            @variant="danger"
+                            @size="xs"
+                            @icon="trash"
+                            aria-label="Delete lease for {{lease.contact.displayName}}"
+                            data-test-delete-lease
+                            {{on "click" (fn this.openDelete lease)}}
+                          />
+                        {{/if}}
+                      {{else if this.canArchiveLease}}
+                        {{#unless (eq lease.status "ACTIVE")}}
+                          <Nuvo::Button
+                            data-test-archive-lease
+                            @variant="secondary"
+                            @size="xs"
+                            @icon="archive"
+                            {{on "click" (fn this.openArchive lease "archive")}}
+                          >
+                            Archive
+                          </Nuvo::Button>
+                        {{/unless}}
+                      {{/if}}
                     {{/if}}
                   </div>
                 </td>
@@ -295,6 +297,14 @@
       class="flex col gap-4"
       {{on "submit" this.saveLease}}
     >
+      {{#if this.editLeaseUnitArchivedMessage}}
+        <Nuvo::Alert
+          @variant="warning"
+          @icon="warning"
+          @description={{this.editLeaseUnitArchivedMessage}}
+          data-test-lease-unit-archived
+        />
+      {{/if}}
       <Nuvo::Field @label="Property" @required={{true}}>
         <Nuvo::Dropdown
           id="lease-unit-id"
@@ -452,10 +462,10 @@
 
 <ConfirmModal
   @open={{this.showTerminateModal}}
-  @title="Terminate Lease"
-  @message="Are you sure you want to terminate this lease? This action cannot be undone."
+  @title="Terminate lease"
+  @message="Terminate the lease for {{or this.leaseToTerminate.contact.displayName "this tenant"}}? It ends now and cannot be reactivated."
   @confirmText="Terminate"
-  @cancelText="Cancel"
+  @cancelText="I changed my mind"
   @confirmVariant="danger"
   @isConfirming={{this.isTerminating}}
   @confirmingText="Terminating..."
@@ -470,7 +480,7 @@
       placeholder="e.g. Tenant moved out early"
       @value={{this.terminateReason}}
       @onInput={{fn this.setFieldValue "terminateReason"}}
-      data-test-terminate-reason
+      data-test-reason-input
     />
   </Nuvo::Field>
 </ConfirmModal>
@@ -478,9 +488,9 @@
 <ConfirmModal
   @open={{this.showDeleteModal}}
   @title="Delete Lease"
-  @message="Are you sure you want to delete this draft lease? This action cannot be undone."
+  @message="Delete the lease for {{or this.leaseToDelete.contact.displayName "this tenant"}}? This cannot be undone."
   @confirmText="Delete"
-  @cancelText="Cancel"
+  @cancelText="I changed my mind"
   @confirmVariant="danger"
   @isConfirming={{this.isDeleting}}
   @confirmingText="Deleting..."
@@ -503,13 +513,21 @@
 <ConfirmModal
   @open={{this.showArchiveModal}}
   @title={{if (eq this.archiveMode "archive") "Archive Lease" "Unarchive Lease"}}
-  @message={{if
-    (eq this.archiveMode "archive")
-    "Archived leases are hidden from active lists and cannot be edited. History and reports keep them."
-    "The lease returns to active lists."
+  @message={{concat
+    (if
+      (eq this.archiveMode "archive")
+      "Archive the lease for "
+      "Unarchive the lease for "
+    )
+    (or this.leaseToArchive.contact.displayName "this tenant")
+    (if
+      (eq this.archiveMode "archive")
+      "? It becomes read-only and hidden from lists. You can unarchive it later."
+      "? It becomes active and editable again."
+    )
   }}
   @confirmText={{if (eq this.archiveMode "archive") "Archive" "Unarchive"}}
-  @cancelText="Cancel"
+  @cancelText="I changed my mind"
   @confirmVariant="primary"
   @isConfirming={{this.isArchiving}}
   @confirmingText={{if (eq this.archiveMode "archive") "Archiving..." "Unarchiving..."}}

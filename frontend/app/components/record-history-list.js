@@ -47,6 +47,8 @@ export default class RecordHistoryListComponent extends Component {
   constructor(owner, args) {
     super(owner, args);
     this.reloadKey = args.reloadKey;
+    this.reloadEntityType = args.entityType;
+    this.reloadEntityId = args.entityId;
     this.fetchPage(1);
   }
 
@@ -66,10 +68,18 @@ export default class RecordHistoryListComponent extends Component {
     this.fetchPage(page);
   }
 
-  // Refetch when @reloadKey changes.
-  reloadOn = modifier((element, [key]) => {
-    if (key === this.reloadKey) return;
+  // Refetch when @reloadKey, @entityType or @entityId changes.
+  reloadOn = modifier((element, [key, entityType, entityId]) => {
+    if (
+      key === this.reloadKey &&
+      entityType === this.reloadEntityType &&
+      entityId === this.reloadEntityId
+    ) {
+      return;
+    }
     this.reloadKey = key;
+    this.reloadEntityType = entityType;
+    this.reloadEntityId = entityId;
     this.fetchPage(1);
   });
 
@@ -79,7 +89,11 @@ export default class RecordHistoryListComponent extends Component {
     await Promise.resolve();
 
     const { entityType, entityId } = this.args;
-    if (requestId !== this.requestId || !entityType || !entityId) {
+    if (requestId !== this.requestId) {
+      return;
+    }
+    if (!entityType || !entityId) {
+      this.isLoading = false;
       return;
     }
 

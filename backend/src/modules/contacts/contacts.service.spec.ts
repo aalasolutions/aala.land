@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { Role } from '@shared/enums/roles.enum';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { Repository, DataSource, EntityManager } from 'typeorm';
+import { Repository, DataSource, EntityManager, In } from 'typeorm';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { ContactsService } from './contacts.service';
 import { Contact } from './entities/contact.entity';
@@ -399,6 +399,23 @@ describe('ContactsService', () => {
       expect(sql).toContain('l.assigned_to = :agentId');
       expect(sql).toContain('FROM units u');
       expect(sql).toContain('u.assigned_agent_id = :agentId');
+      expect(sql).toContain('u.deleted_at IS NULL');
+    });
+
+    it('ignores archived units and leases when deriving tags', async () => {
+      const qb = stubQueryBuilders();
+      const leaseQb = qbMock({ getRawMany: [] });
+      const unitQb = qbMock({ getRawMany: [] });
+      leaseRepo.createQueryBuilder.mockReturnValue(leaseQb as any);
+      unitRepo.createQueryBuilder.mockReturnValue(unitQb as any);
+
+      await service.findAll(companyId, 1, 20, undefined, 'owner');
+
+      expect(qb.andWhere).toHaveBeenCalledWith(
+        expect.stringContaining('u.deleted_at IS NULL'),
+      );
+      expect(leaseQb.andWhere).toHaveBeenCalledWith('le.deleted_at IS NULL');
+      expect(unitQb.andWhere).toHaveBeenCalledWith('u.deleted_at IS NULL');
     });
 
     it('filters by isWhatsapp', async () => {
@@ -545,6 +562,13 @@ describe('ContactsService', () => {
         { contactId: 'contact-uuid-1', companyId },
         { contactId: 'contact-uuid-2' },
       );
+      // Leases before units, matching lease then unit locks elsewhere.
+      expect(manager.update.mock.calls.map(([entity]) => entity)).toEqual([
+        Lead,
+        Lease,
+        Unit,
+        WhatsappChat,
+      ]);
       expect(manager.delete).toHaveBeenCalledWith(Contact, {
         id: 'contact-uuid-1',
         companyId,
@@ -562,6 +586,40 @@ describe('ContactsService', () => {
           },
         }),
       );
+    });
+
+    it('scopes the transfer target to the caller regions', async () => {
+      const target = { ...mockContact, id: 'contact-uuid-2' } as Contact;
+      repo.findOne.mockResolvedValue(mockContact);
+      leadRepo.count.mockResolvedValue(1);
+      unitRepo.count.mockResolvedValue(0);
+      leaseRepo.count.mockResolvedValue(0);
+      chatRepo.count.mockResolvedValue(0);
+      const manager = {
+        update: jest.fn(),
+        delete: jest.fn(),
+        findOne: jest.fn().mockResolvedValue(target),
+      };
+      dataSource.transaction.mockImplementation(
+        (cb: (m: EntityManager) => Promise<void>) =>
+          cb(manager as unknown as EntityManager),
+      );
+
+      await service.remove(
+        'contact-uuid-1',
+        companyId,
+        { ...deleteDto, transferToContactId: 'contact-uuid-2' },
+        actorId,
+        { role: Role.MANAGER, regionCodes: ['makkah'] },
+      );
+
+      expect(manager.findOne).toHaveBeenCalledWith(Contact, {
+        where: {
+          id: 'contact-uuid-2',
+          companyId,
+          regionCode: In(['makkah']),
+        },
+      });
     });
 
     it('writes no history when the transfer target is missing', async () => {

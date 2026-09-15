@@ -2,6 +2,12 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { DataSource, EntityManager } from 'typeorm';
 import { UserReassignmentService } from './user-reassignment.service';
 import { ReassignmentReport } from './reassignment-report';
+import { Lead } from '../../leads/entities/lead.entity';
+import { PropertyDocument } from '../../properties/entities/property-document.entity';
+import { Unit } from '../../properties/entities/unit.entity';
+import { Commission } from '../../commissions/entities/commission.entity';
+import { WorkOrder } from '../../maintenance/entities/work-order.entity';
+import { Contact } from '../../contacts/entities/contact.entity';
 
 const COMPANY_ID = '068dfa72-9a27-4527-b3e4-a4251d7ed643';
 const FROM_USER = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
@@ -110,6 +116,55 @@ describe('UserReassignmentService', () => {
         'work_order',
         'contact',
       ]);
+    });
+
+    it('executes the UPDATEs in lock-safe order while the report stays frozen', async () => {
+      const manager = makeManager([]);
+      const report = await service.reassignOwnedRecords(
+        manager,
+        COMPANY_ID,
+        FROM_USER,
+        TO_USER,
+        REASON,
+      );
+
+      const updated = (
+        manager.createQueryBuilder().update as jest.Mock
+      ).mock.calls.map(([entity]: [unknown]) => entity);
+      expect(updated).toEqual([
+        Lead,
+        WorkOrder,
+        Unit,
+        PropertyDocument,
+        Commission,
+        Contact,
+      ]);
+      expect(report.entities.map((e) => e.type)).toEqual([
+        'lead',
+        'document',
+        'unit',
+        'commission',
+        'work_order',
+        'contact',
+      ]);
+    });
+
+    it('leaves archived units with the departed user', async () => {
+      const manager = makeManager([]);
+      await service.reassignOwnedRecords(
+        manager,
+        COMPANY_ID,
+        FROM_USER,
+        TO_USER,
+        REASON,
+      );
+
+      const whereSql = (
+        manager.createQueryBuilder().where as jest.Mock
+      ).mock.calls.map(([sql]: [string]) => sql);
+      expect(whereSql[2]).toContain('assigned_agent_id = :fromUserId');
+      expect(whereSql[2]).toContain('AND deleted_at IS NULL');
+      expect(whereSql[0]).not.toContain('deleted_at');
     });
 
     it('collects ids via RETURNING when collectIds is true', async () => {

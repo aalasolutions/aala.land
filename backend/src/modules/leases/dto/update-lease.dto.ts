@@ -26,6 +26,11 @@ export class UpdateLeaseDto {
   @ApiProperty({ required: false })
   @IsOptional()
   @IsUUID()
+  unitId?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsUUID()
   contactId?: string;
 
   @ApiProperty({ required: false })

@@ -16,12 +16,7 @@ import {
 } from '../utils/delete-modal';
 import { ROLES } from '../utils/roles';
 
-const ARCHIVE_ROLES = [
-  ROLES.SUPER_ADMIN,
-  ROLES.COMPANY_ADMIN,
-  ROLES.ADMIN,
-  ROLES.MANAGER,
-];
+const ARCHIVE_ROLES = [ROLES.COMPANY_ADMIN, ROLES.ADMIN, ROLES.MANAGER];
 const DELETE_ROLES = [ROLES.SUPER_ADMIN, ROLES.COMPANY_ADMIN, ROLES.ADMIN];
 
 export default class LeasesController extends PaginatedController {
@@ -114,6 +109,13 @@ export default class LeasesController extends PaginatedController {
     return Boolean(
       this.type || this.search || this.dateFrom || this.dateTo || this.archived,
     );
+  }
+
+  get editLeaseUnitArchivedMessage() {
+    if (!this.editLease?.unit?.deletedAt) return '';
+    return this.editLease.status === 'DRAFT'
+      ? 'This unit is archived and no longer active. Select another unit.'
+      : 'This unit is archived. Its leases can no longer be edited.';
   }
 
   get canArchiveLease() {
@@ -217,6 +219,7 @@ export default class LeasesController extends PaginatedController {
     this.search = '';
     this.dateFrom = '';
     this.dateTo = '';
+    this.archived = '';
     this.page = 1;
   }
 
@@ -305,6 +308,9 @@ export default class LeasesController extends PaginatedController {
       ? {
           ...(this.formTenantContactId
             ? { contactId: this.formTenantContactId }
+            : {}),
+          ...(this.formUnitId && this.formUnitId !== this.editLease.unitId
+            ? { unitId: this.formUnitId }
             : {}),
           type: this.formType,
           startDate: this.formStartDate,

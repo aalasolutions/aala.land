@@ -198,6 +198,7 @@ export class ReportsService {
         .innerJoin('cities', 'ci', 'loc.city_id = ci.id')
         .where('l.company_id = :companyId', { companyId })
         .andWhere('l.status = :status', { status: LeaseStatus.ACTIVE })
+        .andWhere('l.deleted_at IS NULL')
         .andWhere('ci.region_code IN (:...regionCodes)', { regionCodes })
         .getCount();
 
@@ -224,7 +225,7 @@ export class ReportsService {
         .andWhere('t.createdAt >= :startOfMonth', { startOfMonth })
         .getRawOne();
       activeLeasesPromise = this.leaseRepository.count({
-        where: { companyId, status: LeaseStatus.ACTIVE },
+        where: { companyId, status: LeaseStatus.ACTIVE, deletedAt: IsNull() },
       });
       pendingChequesPromise = this.chequeRepository.count({
         where: { companyId, status: ChequeStatus.PENDING },

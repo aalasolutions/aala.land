@@ -9,14 +9,9 @@ import {
   AMENITY_OPTIONS,
   PROPERTY_STATUS_OPTIONS,
   PROPERTY_TYPE_OPTIONS,
+  ARCHIVED_FILTER_OPTIONS,
 } from 'land/constants';
 import { toggleArrayItem } from '../../utils/toggle-array-item';
-
-const ARCHIVED_FILTER_OPTIONS = [
-  { value: 'exclude', label: 'Active' },
-  { value: 'only', label: 'Archived' },
-  { value: 'include', label: 'All' },
-];
 
 export default class PropertiesDetailController extends Controller {
   queryParams = ['archived'];

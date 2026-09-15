@@ -29,7 +29,7 @@ describe('DocumentsService', () => {
   let mockMediaService: jest.Mocked<
     Pick<MediaService, 'uploadDocumentToStorage' | 'getDocumentStream'>
   >;
-  let manager: { findOne: jest.Mock };
+  let manager: { findOne: jest.Mock; getRepository: jest.Mock };
   let dataSource: { transaction: jest.Mock };
   let storagePurge: { purge: jest.Mock; dispatch: jest.Mock };
 
@@ -65,7 +65,10 @@ describe('DocumentsService', () => {
       uploadDocumentToStorage: jest.fn(),
       getDocumentStream: jest.fn(),
     };
-    manager = { findOne: jest.fn().mockResolvedValue(mockDoc) };
+    manager = {
+      findOne: jest.fn().mockResolvedValue(mockDoc),
+      getRepository: jest.fn(() => repo),
+    };
     dataSource = {
       transaction: jest.fn((cb: (m: unknown) => unknown) => cb(manager)),
     };
@@ -188,6 +191,50 @@ describe('DocumentsService', () => {
       });
       expect(mockMediaService.uploadDocumentToStorage).not.toHaveBeenCalled();
       expect(repo.save).not.toHaveBeenCalled();
+    });
+
+    it('refuses a unit archived after the storage write, under a share lock', async () => {
+      unitRepo.findOne.mockResolvedValue({ id: 'unit-late', deletedAt: null });
+      unitQb.row = { regionCode: 'dubai' };
+      mockMediaService.uploadDocumentToStorage.mockResolvedValue({
+        url: 'u',
+        s3Key: 'k',
+        fileSize: 1,
+      });
+      repo.create.mockReturnValue(mockDoc);
+      manager.findOne.mockResolvedValue({
+        id: 'unit-late',
+        deletedAt: new Date(),
+      });
+
+      await expect(
+        service.uploadAndCreate(
+          companyId,
+          userId,
+          { mimetype: 'application/pdf' } as Express.Multer.File,
+          { name: 'Contract', unitId: 'unit-late' } as any,
+          { role: Role.COMPANY_ADMIN, regionCodes: callerRegions },
+        ),
+      ).rejects.toThrow(ConflictException);
+      expect(manager.findOne).toHaveBeenCalledWith(Unit, {
+        where: { id: 'unit-late', companyId },
+        select: { id: true, deletedAt: true },
+        lock: { mode: 'pessimistic_read' },
+      });
+      expect(repo.save).not.toHaveBeenCalled();
+    });
+
+    it('refuses an unknown unit before the storage write', async () => {
+      await expect(
+        service.uploadAndCreate(
+          companyId,
+          userId,
+          { mimetype: 'application/pdf' } as Express.Multer.File,
+          { name: 'Contract', unitId: 'unit-missing' } as any,
+          { role: Role.COMPANY_ADMIN, regionCodes: callerRegions },
+        ),
+      ).rejects.toThrow(BadRequestException);
+      expect(mockMediaService.uploadDocumentToStorage).not.toHaveBeenCalled();
     });
 
     it('does not resolve an asset through archived units only', async () => {
@@ -443,6 +490,33 @@ describe('DocumentsService', () => {
 
       expect(result.name).toBe('Updated Name');
       expect(repo.create).not.toHaveBeenCalled();
+    });
+
+    it('refuses editing a document on an archived unit', async () => {
+      (repo.createQueryBuilder as jest.Mock)().getOne.mockResolvedValue({
+        ...mockDoc,
+        unitId: 'unit-archived',
+      });
+      manager.findOne.mockResolvedValue({
+        id: 'unit-archived',
+        deletedAt: new Date(),
+      });
+
+      await expect(
+        service.update(
+          'doc-uuid-1',
+          companyId,
+          Role.COMPANY_ADMIN,
+          { name: 'Updated Name' },
+          callerRegions,
+        ),
+      ).rejects.toThrow(ConflictException);
+      expect(manager.findOne).toHaveBeenCalledWith(Unit, {
+        where: { id: 'unit-archived', companyId },
+        select: { id: true, deletedAt: true },
+        lock: { mode: 'pessimistic_read' },
+      });
+      expect(repo.save).not.toHaveBeenCalled();
     });
   });
 
@@ -1020,6 +1094,7 @@ describe('DocumentsService', () => {
           ),
         ).rejects.toThrow(BadRequestException);
         expect(repo.save).not.toHaveBeenCalled();
+        expect(mockMediaService.uploadDocumentToStorage).not.toHaveBeenCalled();
       });
 
       it('rejects a region the company does not operate, even for an admin', async () => {
@@ -1101,6 +1176,10 @@ describe('DocumentsService', () => {
 
       it('takes the region of the unit the document is attached to', async () => {
         unitQb.row = { regionCode: 'punjab' };
+        unitRepo.findOne.mockResolvedValue({
+          id: 'unit-uuid-1',
+          deletedAt: null,
+        });
         repo.create.mockReturnValue(mockDoc);
         repo.save.mockResolvedValue(mockDoc);
 

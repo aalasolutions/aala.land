@@ -307,7 +307,7 @@ export class UsersController {
       companyId,
       req.user.role as Role,
       req.user.userId,
-      dto?.reason,
+      dto.reason,
     );
   }
 

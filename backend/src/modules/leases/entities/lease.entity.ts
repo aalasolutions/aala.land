@@ -26,6 +26,9 @@ export enum LeaseType {
 }
 
 @Entity('leases')
+@Index('IDX_leases_company_active_rows', ['companyId'], {
+  where: '"deleted_at" IS NULL',
+})
 export class Lease {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -107,9 +110,9 @@ export class Lease {
   @Column({ name: 'deleted_at', type: 'timestamptz', nullable: true })
   deletedAt: Date | null;
 
-  @CreateDateColumn({ name: 'created_at' })
+  @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;
 
-  @UpdateDateColumn({ name: 'updated_at' })
+  @UpdateDateColumn({ name: 'updated_at', type: 'timestamptz' })
   updatedAt: Date;
 }

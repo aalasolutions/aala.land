@@ -89,7 +89,10 @@ describe('MaintenanceService', () => {
   beforeEach(async () => {
     manager = {
       getRepository: jest.fn(() => repo),
-      findOne: jest.fn(),
+      // Locked unit reads find a live unit unless a test says otherwise.
+      findOne: jest.fn((_entity: unknown, opts: any) =>
+        Promise.resolve({ id: opts?.where?.id, deletedAt: null }),
+      ),
       remove: jest.fn(),
     };
     recordHistory = {
@@ -291,6 +294,21 @@ describe('MaintenanceService', () => {
       });
 
       expect(openOrder.completedAt).not.toBeNull();
+    });
+
+    it('refuses to save a work order deleted after the first read', async () => {
+      repo.findOne
+        .mockResolvedValueOnce({ ...mockOrder } as WorkOrder)
+        .mockResolvedValueOnce(null);
+
+      await expect(
+        service.update('order-uuid-1', companyId, { notes: 'Checked' }),
+      ).rejects.toThrow(NotFoundException);
+      expect(repo.findOne).toHaveBeenLastCalledWith({
+        where: { id: 'order-uuid-1', companyId },
+        lock: { mode: 'pessimistic_write' },
+      });
+      expect(repo.save).not.toHaveBeenCalled();
     });
   });
 
@@ -514,17 +532,99 @@ describe('MaintenanceService', () => {
       expect(repo.save).not.toHaveBeenCalled();
     });
 
-    it('still edits a work order already on an archived unit', async () => {
+    it('refuses editing a work order already on an archived unit', async () => {
       repo.findOne.mockResolvedValue({ ...mockOrder } as WorkOrder);
-      repo.save.mockImplementation(async (o: WorkOrder) => o);
       unitRepo.findOne.mockResolvedValue(archivedUnit('unit-uuid-1'));
+      manager.findOne.mockResolvedValue(archivedUnit('unit-uuid-1'));
 
-      const result = await service.update('order-uuid-1', companyId, {
-        unitId: 'unit-uuid-1',
-        notes: 'Checked',
+      await expect(
+        service.update('order-uuid-1', companyId, {
+          unitId: 'unit-uuid-1',
+          notes: 'Checked',
+        }),
+      ).rejects.toThrow(
+        'This unit is archived. Its records can no longer be edited.',
+      );
+      expect(manager.findOne).toHaveBeenCalledWith(Unit, {
+        where: { id: 'unit-uuid-1', companyId },
+        select: { id: true, deletedAt: true },
+        lock: { mode: 'pessimistic_read' },
       });
+      expect(repo.save).not.toHaveBeenCalled();
+    });
 
-      expect(result.notes).toBe('Checked');
+    const shareLock = (id: string) => ({
+      where: { id, companyId },
+      select: { id: true, deletedAt: true },
+      lock: { mode: 'pessimistic_read' },
+    });
+
+    it('refuses create when the unit is archived after the first read', async () => {
+      unitRepo.findOne.mockResolvedValue({ id: 'unit-uuid-1', companyId });
+      repo.create.mockReturnValue(mockOrder as WorkOrder);
+      manager.findOne.mockResolvedValue(archivedUnit('unit-uuid-1'));
+
+      await expect(
+        service.create(companyId, {
+          title: 'Fix AC',
+          description: 'AC not cooling',
+          unitId: 'unit-uuid-1',
+        } as any),
+      ).rejects.toThrow('This unit is archived.');
+      expect(manager.findOne).toHaveBeenCalledWith(
+        Unit,
+        shareLock('unit-uuid-1'),
+      );
+      expect(repo.save).not.toHaveBeenCalled();
+    });
+
+    it('refuses create when the unit is deleted while waiting for the lock', async () => {
+      unitRepo.findOne.mockResolvedValue({ id: 'unit-uuid-1', companyId });
+      repo.create.mockReturnValue(mockOrder as WorkOrder);
+      manager.findOne.mockResolvedValue(null);
+
+      await expect(
+        service.create(companyId, {
+          title: 'Fix AC',
+          description: 'AC not cooling',
+          unitId: 'unit-uuid-1',
+        } as any),
+      ).rejects.toThrow(new BadRequestException('Invalid unit selected'));
+      expect(repo.save).not.toHaveBeenCalled();
+    });
+
+    it('refuses moving a work order onto a unit archived after the first read', async () => {
+      repo.findOne.mockResolvedValue({ ...mockOrder } as WorkOrder);
+      unitRepo.findOne.mockResolvedValue({ id: 'unit-makkah', companyId });
+      manager.findOne.mockImplementation((_entity: unknown, opts: any) =>
+        Promise.resolve(
+          opts.where.id === 'unit-makkah'
+            ? archivedUnit('unit-makkah')
+            : { id: opts.where.id, deletedAt: null },
+        ),
+      );
+
+      await expect(
+        service.update('order-uuid-1', companyId, { unitId: 'unit-makkah' }),
+      ).rejects.toThrow('This unit is archived.');
+      expect(manager.findOne).toHaveBeenCalledWith(
+        Unit,
+        shareLock('unit-makkah'),
+      );
+      expect(repo.save).not.toHaveBeenCalled();
+    });
+
+    it('refuses a status change on a work order whose unit is archived', async () => {
+      repo.findOne.mockResolvedValue({ ...mockOrder } as WorkOrder);
+      manager.findOne.mockResolvedValue(archivedUnit('unit-uuid-1'));
+
+      await expect(
+        service.update('order-uuid-1', companyId, {
+          status: WorkOrderStatus.COMPLETED,
+        }),
+      ).rejects.toThrow(ConflictException);
+      expect(repo.save).not.toHaveBeenCalled();
+      expect(recordHistory.record).not.toHaveBeenCalled();
     });
   });
 
@@ -685,7 +785,19 @@ describe('MaintenanceService', () => {
     });
 
     it('denies remove on a work order outside the caller assigned regions', async () => {
-      seedOrder('punjab', 'unit-punjab');
+      const row = seedOrder('punjab', 'unit-punjab');
+      // remove() locks via manager.findOne, so the region filter must be
+      // enforced there too, not just on repo.findOne.
+      manager.findOne.mockImplementation((entity: unknown, opts: any) => {
+        if (entity !== WorkOrder) {
+          return Promise.resolve({ id: opts?.where?.id, deletedAt: null });
+        }
+        const codes = opts?.where?.regionCode?.value as string[] | undefined;
+        if (codes && !codes.includes('punjab')) {
+          return Promise.resolve(null);
+        }
+        return Promise.resolve(row);
+      });
 
       await expect(
         service.remove(

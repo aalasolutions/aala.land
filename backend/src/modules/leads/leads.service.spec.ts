@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { Repository, IsNull } from 'typeorm';
+import { DataSource, Repository, IsNull } from 'typeorm';
 import {
   BadRequestException,
   ConflictException,
@@ -37,6 +37,7 @@ describe('LeadsService', () => {
   let unitRepo: jest.Mocked<Repository<Unit>>;
   let contactsService: { resolveOrCreate: jest.Mock; findOneEntity: jest.Mock };
   let module: TestingModule;
+  let manager: { getRepository: jest.Mock; findOne: jest.Mock };
 
   const companyId = 'company-uuid-1';
 
@@ -70,9 +71,25 @@ describe('LeadsService', () => {
     ({ id: 'contact-uuid-1', firstName, lastName, phone, companyId }) as any;
 
   beforeEach(async () => {
+    manager = {
+      getRepository: jest.fn((entity: unknown) =>
+        entity === LeadActivity ? activityRepo : leadRepo,
+      ),
+      findOne: jest.fn((entity: unknown, opts: any) =>
+        Promise.resolve(
+          entity === Lead ? { id: opts.where.id, unitId: null } : null,
+        ),
+      ),
+    };
     module = await Test.createTestingModule({
       providers: [
         LeadsService,
+        {
+          provide: DataSource,
+          useValue: {
+            transaction: jest.fn((cb: (m: unknown) => unknown) => cb(manager)),
+          },
+        },
         {
           provide: getRepositoryToken(Lead),
           useValue: {
@@ -982,6 +999,196 @@ describe('LeadsService', () => {
 
       const savedLead = leadRepo.save.mock.calls[0][0] as Lead;
       expect(savedLead.previousAgent).toBeUndefined();
+    });
+  });
+
+  describe('archived unit lock', () => {
+    const lockedMessage =
+      'This unit is archived. Its records can no longer be edited.';
+    const archivedUnit = { id: 'unit-archived', deletedAt: new Date() };
+    const leadOnArchivedUnit = () =>
+      ({
+        ...mockLead,
+        unitId: 'unit-archived',
+        unit: archivedUnit,
+      }) as unknown as Lead;
+
+    // Stands in for the locked reads inside the transaction.
+    const seedLocked = (
+      leadUnitId: string | null,
+      units: Record<string, Partial<Unit>>,
+    ) =>
+      manager.findOne.mockImplementation((entity: unknown, opts: any) =>
+        Promise.resolve(
+          entity === Lead
+            ? { id: opts.where.id, unitId: leadUnitId }
+            : (units[opts.where.id] ?? null),
+        ),
+      );
+
+    const expectLeadLock = (mode: string) => {
+      expect(manager.findOne).toHaveBeenCalledWith(Lead, {
+        where: { id: 'lead-uuid-1', companyId },
+        select: { id: true, unitId: true },
+        lock: { mode },
+      });
+    };
+
+    const expectUnitShareLock = (unitId: string) => {
+      expect(manager.findOne).toHaveBeenCalledWith(Unit, {
+        where: { id: unitId, companyId },
+        select: { id: true, deletedAt: true },
+        lock: { mode: 'pessimistic_read' },
+      });
+    };
+
+    it('refuses update', async () => {
+      leadRepo.findOne.mockResolvedValue(leadOnArchivedUnit());
+      seedLocked('unit-archived', { 'unit-archived': archivedUnit });
+
+      await expect(
+        service.update('lead-uuid-1', companyId, {
+          status: LeadStatus.CONTACTED,
+        }),
+      ).rejects.toThrow(lockedMessage);
+      expectLeadLock('pessimistic_write');
+      expectUnitShareLock('unit-archived');
+      expect(leadRepo.save).not.toHaveBeenCalled();
+    });
+
+    it('refuses update when the unit is archived after the first read', async () => {
+      leadRepo.findOne.mockResolvedValue({
+        ...mockLead,
+        unitId: 'unit-archived',
+        unit: { id: 'unit-archived', deletedAt: null },
+      } as unknown as Lead);
+      seedLocked('unit-archived', { 'unit-archived': archivedUnit });
+
+      await expect(
+        service.update('lead-uuid-1', companyId, { score: 10 } as any),
+      ).rejects.toThrow(lockedMessage);
+      expect(leadRepo.save).not.toHaveBeenCalled();
+    });
+
+    it('refuses update that moves the lead off the archived unit', async () => {
+      leadRepo.findOne.mockResolvedValue(leadOnArchivedUnit());
+      unitRepo.findOne.mockResolvedValue({
+        id: 'unit-live',
+        deletedAt: null,
+      } as Unit);
+      seedLocked('unit-archived', { 'unit-archived': archivedUnit });
+
+      await expect(
+        service.update('lead-uuid-1', companyId, { unitId: 'unit-live' }),
+      ).rejects.toThrow(ConflictException);
+      expect(leadRepo.save).not.toHaveBeenCalled();
+    });
+
+    it('refuses moving a lead onto a unit archived after the first read', async () => {
+      leadRepo.findOne.mockResolvedValue({ ...mockLead } as Lead);
+      unitRepo.findOne.mockResolvedValue({
+        id: 'unit-target',
+        deletedAt: null,
+      } as Unit);
+      seedLocked(null, {
+        'unit-target': { id: 'unit-target', deletedAt: new Date() },
+      });
+
+      await expect(
+        service.update('lead-uuid-1', companyId, { unitId: 'unit-target' }),
+      ).rejects.toThrow('This unit is archived.');
+      expectUnitShareLock('unit-target');
+      expect(leadRepo.save).not.toHaveBeenCalled();
+    });
+
+    it('refuses create when the unit is archived after the first read', async () => {
+      unitRepo.findOne.mockResolvedValue({
+        id: 'unit-target',
+        companyId,
+        deletedAt: null,
+      } as Unit);
+      companyRepo.findOne.mockResolvedValue({
+        defaultRegionCode: 'dubai',
+      } as Company);
+      leadRepo.create.mockReturnValue(mockLead as Lead);
+      seedLocked(null, {
+        'unit-target': { id: 'unit-target', deletedAt: new Date() },
+      });
+
+      await expect(
+        service.create(companyId, {
+          firstName: 'Ahmed',
+          unitId: 'unit-target',
+        } as any),
+      ).rejects.toThrow('This unit is archived.');
+      expectUnitShareLock('unit-target');
+      expect(leadRepo.save).not.toHaveBeenCalled();
+    });
+
+    it('refuses create when the unit is deleted while waiting for the lock', async () => {
+      unitRepo.findOne.mockResolvedValue({
+        id: 'unit-gone',
+        companyId,
+        deletedAt: null,
+      } as Unit);
+      companyRepo.findOne.mockResolvedValue({
+        defaultRegionCode: 'dubai',
+      } as Company);
+      leadRepo.create.mockReturnValue(mockLead as Lead);
+      seedLocked(null, {});
+
+      await expect(
+        service.create(companyId, {
+          firstName: 'Ahmed',
+          unitId: 'unit-gone',
+        } as any),
+      ).rejects.toThrow(new BadRequestException('Invalid unit selected'));
+      expect(leadRepo.save).not.toHaveBeenCalled();
+    });
+
+    it('refuses assign', async () => {
+      leadRepo.findOne.mockResolvedValue(leadOnArchivedUnit());
+      userRepo.findOne.mockResolvedValue({
+        id: 'agent-uuid-1',
+        name: 'Agent One',
+      } as User);
+      seedLocked('unit-archived', { 'unit-archived': archivedUnit });
+
+      await expect(
+        service.assign('lead-uuid-1', companyId, 'agent-uuid-1'),
+      ).rejects.toThrow(lockedMessage);
+      expectLeadLock('pessimistic_write');
+      expectUnitShareLock('unit-archived');
+      expect(leadRepo.save).not.toHaveBeenCalled();
+      expect(activityRepo.save).not.toHaveBeenCalled();
+    });
+
+    it('refuses convert', async () => {
+      leadRepo.findOne.mockResolvedValue(leadOnArchivedUnit());
+      seedLocked('unit-archived', { 'unit-archived': archivedUnit });
+
+      await expect(service.convert('lead-uuid-1', companyId)).rejects.toThrow(
+        lockedMessage,
+      );
+      expectLeadLock('pessimistic_write');
+      expectUnitShareLock('unit-archived');
+      expect(leadRepo.save).not.toHaveBeenCalled();
+    });
+
+    it('refuses addActivity', async () => {
+      leadRepo.findOne.mockResolvedValue(leadOnArchivedUnit());
+      activityRepo.create.mockReturnValue(mockActivity as LeadActivity);
+      seedLocked('unit-archived', { 'unit-archived': archivedUnit });
+
+      await expect(
+        service.addActivity('lead-uuid-1', companyId, {
+          type: ActivityType.NOTE,
+          notes: 'x',
+        }),
+      ).rejects.toThrow(lockedMessage);
+      expectLeadLock('pessimistic_read');
+      expectUnitShareLock('unit-archived');
+      expect(activityRepo.save).not.toHaveBeenCalled();
     });
   });
 

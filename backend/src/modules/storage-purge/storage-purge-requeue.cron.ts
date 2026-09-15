@@ -1,7 +1,14 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Cron, CronExpression } from '@nestjs/schedule';
-import { LessThan, Repository } from 'typeorm';
+import {
+  And,
+  Equal,
+  FindOptionsWhere,
+  LessThan,
+  MoreThan,
+  Repository,
+} from 'typeorm';
 import {
   StoragePurgeJob,
   StoragePurgeStatus,
@@ -30,21 +37,43 @@ export class StoragePurgeRequeueCron {
     const cutoff = new Date(Date.now() - STALE_AFTER_MS);
 
     let total = 0;
-    for (let skip = 0; ; skip += BATCH_SIZE) {
+    let cursor: { createdAt: Date; id: string } | null = null;
+    for (;;) {
+      // Keyset pagination on (createdAt, id) ascending: page N+1 resumes strictly
+      // after the last row of page N, so rows workers mutate mid-scan are never skipped.
+      const where: FindOptionsWhere<StoragePurgeJob>[] = cursor
+        ? [
+            {
+              status: StoragePurgeStatus.PENDING,
+              createdAt: And(LessThan(cutoff), MoreThan(cursor.createdAt)),
+            },
+            {
+              status: StoragePurgeStatus.PENDING,
+              createdAt: And(LessThan(cutoff), Equal(cursor.createdAt)),
+              id: MoreThan(cursor.id),
+            },
+          ]
+        : [
+            {
+              status: StoragePurgeStatus.PENDING,
+              createdAt: LessThan(cutoff),
+            },
+          ];
+
       const batch = await this.purgeJobRepository.find({
-        where: {
-          status: StoragePurgeStatus.PENDING,
-          createdAt: LessThan(cutoff),
-        },
-        select: { id: true },
+        where,
+        select: { id: true, createdAt: true },
         order: { createdAt: 'ASC', id: 'ASC' },
-        skip,
         take: BATCH_SIZE,
       });
       if (batch.length === 0) break;
 
       await this.storagePurge.dispatch(batch.map((row) => row.id));
       total += batch.length;
+
+      const last = batch[batch.length - 1];
+      cursor = { createdAt: last.createdAt, id: last.id };
+
       if (batch.length < BATCH_SIZE) break;
     }
 

@@ -91,13 +91,23 @@ export class StoragePurgeService {
       ids = saved.map((row) => row.id);
     }
 
-    if (media.length > 0) {
-      await manager.delete(PropertyMedia, { id: In(media.map((m) => m.id)) });
+    const idsByCompany = <T extends { id: string; companyId: string }>(
+      rows: T[],
+    ) => {
+      const map = new Map<string, string[]>();
+      for (const row of rows) {
+        const list = map.get(row.companyId) ?? [];
+        list.push(row.id);
+        map.set(row.companyId, list);
+      }
+      return map;
+    };
+
+    for (const [companyId, rowIds] of idsByCompany(media)) {
+      await manager.delete(PropertyMedia, { companyId, id: In(rowIds) });
     }
-    if (documents.length > 0) {
-      await manager.delete(PropertyDocument, {
-        id: In(documents.map((d) => d.id)),
-      });
+    for (const [companyId, rowIds] of idsByCompany(documents)) {
+      await manager.delete(PropertyDocument, { companyId, id: In(rowIds) });
     }
 
     // Sorted so concurrent purges lock company rows in the same order.

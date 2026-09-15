@@ -16,7 +16,7 @@ export class CreateStoragePurgeJobs1779700000001 implements MigrationInterface {
                 "status" varchar(20) NOT NULL DEFAULT 'PENDING',
                 "attempts" integer NOT NULL DEFAULT 0,
                 "last_error" text,
-                "created_at" TIMESTAMP NOT NULL DEFAULT now(),
+                "created_at" TIMESTAMPTZ NOT NULL DEFAULT now(),
                 "processed_at" timestamptz,
                 CONSTRAINT "PK_storage_purge_jobs" PRIMARY KEY ("id")
             )

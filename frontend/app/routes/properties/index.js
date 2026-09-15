@@ -7,6 +7,7 @@ export default class PropertiesIndexRoute extends AuthenticatedRoute {
   queryParams = {
     page: { refreshModel: true },
     limit: { refreshModel: true },
+    archived: { refreshModel: true },
   };
 
   async model({ page = 1, limit = 20 }) {

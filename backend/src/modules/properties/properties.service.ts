@@ -19,10 +19,16 @@ import { Unit, UnitStatus } from './entities/unit.entity';
 import { PropertyMedia } from './entities/property-media.entity';
 import { PropertyDocument } from './entities/property-document.entity';
 import { Lease, LeaseStatus } from '../leases/entities/lease.entity';
-import { Cheque } from '../cheques/entities/cheque.entity';
-import { Transaction } from '../financial/entities/transaction.entity';
-import { WorkOrder } from '../maintenance/entities/work-order.entity';
-import { Lead } from '../leads/entities/lead.entity';
+import { Cheque, ChequeStatus } from '../cheques/entities/cheque.entity';
+import {
+  Transaction,
+  TransactionStatus,
+} from '../financial/entities/transaction.entity';
+import {
+  WorkOrder,
+  WorkOrderStatus,
+} from '../maintenance/entities/work-order.entity';
+import { Lead, LeadStatus } from '../leads/entities/lead.entity';
 import { RecordHistoryService } from '../record-history/record-history.service';
 import { RecordHistoryAction } from '../record-history/entities/record-history.entity';
 import { StoragePurgeService } from '../storage-purge/storage-purge.service';
@@ -660,28 +666,39 @@ export class PropertiesService {
     userId?: string,
     user?: { userId: string; role: string; regionCodes: string[] },
   ): Promise<Unit> {
+    const archivedMessage =
+      'This unit is archived. Unarchive it before editing.';
     const unit = await this.findOneUnit(id, companyId, user);
     if (unit.deletedAt) {
-      throw new ConflictException(
-        'This unit is archived. Unarchive it before editing.',
-      );
+      throw new ConflictException(archivedMessage);
     }
     const { ownerId, owner, ...rest } = dto;
-    Object.assign(unit, rest);
-    if ('ownerId' in dto || hasContactIdentity(owner)) {
-      const resolvedId = await this.resolveOwnerId(
-        companyId,
-        ownerId ?? undefined,
-        owner,
-        userId,
-        unit.assetId,
-      );
-      unit.owner = resolvedId
-        ? await this.verifyContactBelongsToCompany(resolvedId, companyId)
-        : null;
-      unit.ownerId = resolvedId ?? null;
-    }
-    await this.unitRepository.save(unit);
+    const ownerChanged = 'ownerId' in dto || hasContactIdentity(owner);
+    const resolvedOwnerId = ownerChanged
+      ? await this.resolveOwnerId(
+          companyId,
+          ownerId ?? undefined,
+          owner,
+          userId,
+          unit.assetId,
+        )
+      : null;
+    const resolvedOwner = resolvedOwnerId
+      ? await this.verifyContactBelongsToCompany(resolvedOwnerId, companyId)
+      : null;
+
+    await this.dataSource.transaction(async (manager) => {
+      const locked = await this.lockUnit(manager, id, companyId, user);
+      if (locked.deletedAt) {
+        throw new ConflictException(archivedMessage);
+      }
+      Object.assign(locked, rest);
+      if (ownerChanged) {
+        locked.owner = resolvedOwner;
+        locked.ownerId = resolvedOwnerId;
+      }
+      await manager.save(Unit, locked);
+    });
     // Authorization happened above; this re-read only builds the response.
     return this.findOneUnit(id, companyId);
   }
@@ -796,12 +813,10 @@ export class PropertiesService {
       if (unit.deletedAt) {
         throw new ConflictException('This unit is already archived.');
       }
-      const activeLeases = await manager.count(Lease, {
-        where: { unitId: id, companyId, status: LeaseStatus.ACTIVE },
-      });
-      if (activeLeases > 0) {
+      const blockers = await this.unitArchiveBlockers(manager, id, companyId);
+      if (blockers.length > 0) {
         throw new ConflictException(
-          'This unit has an active lease. Terminate it before archiving.',
+          `This unit has ${joinList(blockers)}. Close them before archiving.`,
         );
       }
       await manager.update(Unit, { id, companyId }, { deletedAt: new Date() });
@@ -862,6 +877,62 @@ export class PropertiesService {
     const unit = await qb.getOne();
     if (!unit) throw new NotFoundException(`Property not found`);
     return unit;
+  }
+
+  private async unitArchiveBlockers(
+    manager: EntityManager,
+    unitId: string,
+    companyId: string,
+  ): Promise<string[]> {
+    const openCheque = In([
+      ChequeStatus.PENDING,
+      ChequeStatus.DEPOSITED,
+      ChequeStatus.BOUNCED,
+    ]);
+    const [leases, leads, cheques, workOrders, transactions] =
+      await Promise.all([
+        manager.count(Lease, {
+          where: { unitId, companyId, status: LeaseStatus.ACTIVE },
+        }),
+        manager.count(Lead, {
+          where: {
+            unitId,
+            companyId,
+            status: Not(In([LeadStatus.WON, LeadStatus.LOST])),
+          },
+        }),
+        manager.count(Cheque, {
+          where: [
+            { unitId, companyId, status: openCheque },
+            { lease: { unitId }, companyId, status: openCheque },
+          ],
+        }),
+        manager.count(WorkOrder, {
+          where: {
+            unitId,
+            companyId,
+            status: Not(
+              In([WorkOrderStatus.COMPLETED, WorkOrderStatus.CANCELLED]),
+            ),
+          },
+        }),
+        manager.count(Transaction, {
+          where: {
+            unitId,
+            companyId,
+            status: Not(
+              In([TransactionStatus.COMPLETED, TransactionStatus.CANCELLED]),
+            ),
+          },
+        }),
+      ]);
+    const blockers: string[] = [];
+    if (leases > 0) blockers.push('an active lease');
+    if (leads > 0) blockers.push('open leads');
+    if (cheques > 0) blockers.push('open cheques');
+    if (workOrders > 0) blockers.push('open work orders');
+    if (transactions > 0) blockers.push('open transactions');
+    return blockers;
   }
 
   private async unitDeleteBlockers(

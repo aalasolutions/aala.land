@@ -664,6 +664,10 @@ describe('UsersService', () => {
       expect(billingServiceMock.decrementSeat).toHaveBeenCalledWith(proCompany);
       // Advisory lock is taken before the provider decrement, which is before the local write.
       expect(order).toEqual(['lock', 'decrement', 'write']);
+      // FOR NO KEY UPDATE, so FK inserts pointing at the user are not blocked.
+      expect(repo.findOne).toHaveBeenCalledWith(
+        expect.objectContaining({ lock: { mode: 'for_no_key_update' } }),
+      );
       expect(managerMock.query).toHaveBeenCalledWith(
         'SELECT pg_advisory_xact_lock(hashtext($1))',
         [companyId],
@@ -1022,6 +1026,7 @@ describe('UsersService', () => {
         'user-uuid-2',
         companyId,
         Role.COMPANY_ADMIN,
+        'requester-uuid',
       );
 
       expect(managerMock.query).toHaveBeenCalledWith(
@@ -1050,6 +1055,7 @@ describe('UsersService', () => {
         'user-uuid-2',
         companyId,
         Role.COMPANY_ADMIN,
+        'requester-uuid',
       );
 
       expect(billingServiceMock.getLiveSeatQuantity).not.toHaveBeenCalled();
@@ -1064,7 +1070,12 @@ describe('UsersService', () => {
       companyRepo.findOne.mockResolvedValue(freeCompany as Company);
       repo.count.mockResolvedValue(1);
       await expect(
-        service.reactivateUser('user-uuid-2', companyId, Role.COMPANY_ADMIN),
+        service.reactivateUser(
+          'user-uuid-2',
+          companyId,
+          Role.COMPANY_ADMIN,
+          'requester-uuid',
+        ),
       ).rejects.toThrow(BadRequestException);
       expect(billingServiceMock.setSeatQuantity).not.toHaveBeenCalled();
     });
@@ -1072,7 +1083,12 @@ describe('UsersService', () => {
     it('rejects reactivating an already active user', async () => {
       repo.findOne.mockResolvedValueOnce(targetUser as User); // locked load: already active
       await expect(
-        service.reactivateUser('user-uuid-2', companyId, Role.COMPANY_ADMIN),
+        service.reactivateUser(
+          'user-uuid-2',
+          companyId,
+          Role.COMPANY_ADMIN,
+          'requester-uuid',
+        ),
       ).rejects.toThrow(BadRequestException);
     });
   });

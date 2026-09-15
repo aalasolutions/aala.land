@@ -63,7 +63,7 @@ export class StoragePurgeJob {
   @Column({ name: 'last_error', type: 'text', nullable: true })
   lastError: string | null;
 
-  @CreateDateColumn({ name: 'created_at' })
+  @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;
 
   @Column({ name: 'processed_at', type: 'timestamptz', nullable: true })

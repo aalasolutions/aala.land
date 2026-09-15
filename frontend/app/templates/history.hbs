@@ -46,7 +46,11 @@
 
   <:body>
     {{#if this.model.forbidden}}
-      <Nuvo::Alert @variant="danger" @icon="warning">
+      <Nuvo::Alert
+        @variant="danger"
+        @icon="warning"
+        data-test-history-forbidden
+      >
         You don't have permission to view history.
       </Nuvo::Alert>
     {{else if this.model.error}}
@@ -79,6 +83,7 @@
                   <Nuvo::Tag
                     @variant={{entry.actionVariant}}
                     @text={{entry.actionLabel}}
+                    data-test-history-action
                   />
                 </td>
                 <td class="text-sm">{{entry.entityTypeLabel}}</td>
@@ -108,7 +113,7 @@
         data-test-history-pagination
       />
     {{else}}
-      <Nuvo::EmptyState @title="No history found" />
+      <Nuvo::EmptyState @title="No history found" data-test-history-empty />
     {{/if}}
   </:body>
 </Nuvo::Card>

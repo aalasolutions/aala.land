@@ -152,14 +152,26 @@ export class LeasesController {
     Role.ACCOUNTANT,
   )
   @ApiOperation({ summary: 'Get all leases for a specific unit' })
+  @ApiQuery({
+    name: 'archived',
+    required: false,
+    enum: LeaseArchivedFilter,
+    description: 'Archived leases: exclude, only or include (default)',
+  })
   findByUnit(
     @Param('unitId', ParseUUIDPipe) unitId: string,
     @Request() req: AuthenticatedRequest,
+    @Query(
+      'archived',
+      new ParseEnumPipe(LeaseArchivedFilter, { optional: true }),
+    )
+    archived?: LeaseArchivedFilter,
   ) {
     return this.leasesService.findByUnit(
       unitId,
       requireCompanyId(req.user),
       req.user,
+      archived ?? LeaseArchivedFilter.INCLUDE,
     );
   }
 
@@ -226,7 +238,7 @@ export class LeasesController {
   }
 
   @Post(':id/archive')
-  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER)
+  @Roles(Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Archive a non-active lease (reason required)',
@@ -246,7 +258,7 @@ export class LeasesController {
   }
 
   @Post(':id/unarchive')
-  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER)
+  @Roles(Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Unarchive a lease (reason optional)' })
   unarchive(

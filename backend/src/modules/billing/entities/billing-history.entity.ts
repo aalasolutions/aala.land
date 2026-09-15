@@ -69,6 +69,6 @@ export class BillingHistory {
   @Column({ name: 'occurred_at', type: 'timestamptz' })
   occurredAt: Date;
 
-  @CreateDateColumn({ name: 'created_at' })
+  @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;
 }

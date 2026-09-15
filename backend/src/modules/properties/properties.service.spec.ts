@@ -167,6 +167,7 @@ describe('PropertiesService', () => {
       findOne: jest.fn().mockResolvedValue(null),
       update: jest.fn().mockResolvedValue({ affected: 1 }),
       delete: jest.fn().mockResolvedValue({ affected: 1 }),
+      save: jest.fn(async (_entity: unknown, row: unknown) => row),
     };
     dataSource = {
       transaction: jest.fn(async (cb: (m: unknown) => unknown) => {
@@ -535,7 +536,7 @@ describe('PropertiesService', () => {
           owner: { ...mockOwner } as Contact,
         } as Unit);
       contactRepo.findOne.mockResolvedValue(mockOwner as Contact);
-      unitRepo.save.mockImplementation(async (u: Unit) => u);
+      unitLockQb.getOne.mockResolvedValue({ ...mockUnit });
 
       const result = await service.updateUnit('unit-uuid-1', companyId, {
         ownerId: 'owner-uuid-1',
@@ -544,7 +545,8 @@ describe('PropertiesService', () => {
       expect(contactRepo.findOne).toHaveBeenCalledWith({
         where: { id: 'owner-uuid-1', companyId },
       });
-      expect(unitRepo.save).toHaveBeenCalledWith(
+      expect(manager.save).toHaveBeenCalledWith(
+        Unit,
         expect.objectContaining({ ownerId: 'owner-uuid-1' }),
       );
       expect(unitRepo.findOne).toHaveBeenCalledTimes(2);
@@ -563,14 +565,18 @@ describe('PropertiesService', () => {
           ownerId: null,
           owner: null,
         } as unknown as Unit);
-      unitRepo.save.mockImplementation(async (u: Unit) => u);
+      unitLockQb.getOne.mockResolvedValue({
+        ...mockUnit,
+        ownerId: 'owner-uuid-1',
+      });
 
       const result = await service.updateUnit('unit-uuid-1', companyId, {
         ownerId: null,
       });
 
       expect(contactRepo.findOne).not.toHaveBeenCalled();
-      expect(unitRepo.save).toHaveBeenCalledWith(
+      expect(manager.save).toHaveBeenCalledWith(
+        Unit,
         expect.objectContaining({ ownerId: null }),
       );
       expect(result.ownerId).toBeNull();
@@ -601,7 +607,7 @@ describe('PropertiesService', () => {
         id: 'owner-uuid-1',
       } as Contact);
       contactRepo.findOne.mockResolvedValue(mockOwner as Contact);
-      unitRepo.save.mockImplementation(async (u: Unit) => u);
+      unitLockQb.getOne.mockResolvedValue({ ...mockUnit });
 
       const result = await service.updateUnit(
         'unit-uuid-1',
@@ -1296,9 +1302,7 @@ describe('PropertiesService', () => {
 
       it('updateUnit still returns the row for a unit inside the caller regions', async () => {
         stubFindOne(unitRepo, [punjabUnit, makkahUnit]);
-        (unitRepo.save as jest.Mock).mockImplementation((u: Unit) =>
-          Promise.resolve(u),
-        );
+        unitLockQb.getOne.mockResolvedValue({ ...makkahUnit });
 
         const result = await service.updateUnit(
           'unit-makkah',
@@ -1309,7 +1313,8 @@ describe('PropertiesService', () => {
         );
 
         expect(result.id).toBe('unit-makkah');
-        expect(unitRepo.save).toHaveBeenCalledWith(
+        expect(manager.save).toHaveBeenCalledWith(
+          Unit,
           expect.objectContaining({ unitNumber: '2B' }),
         );
       });
@@ -1665,6 +1670,57 @@ describe('PropertiesService', () => {
         expect(recordHistory.record).not.toHaveBeenCalled();
       });
 
+      it.each([
+        [Lead, 'open leads'],
+        [Cheque, 'open cheques'],
+        [WorkOrder, 'open work orders'],
+        [Transaction, 'open transactions'],
+      ])('refuses with 409 while a %p is open', async (entity, label) => {
+        unitLockQb.getOne.mockResolvedValue(lockedUnit());
+        manager.count.mockImplementation((target: unknown) =>
+          Promise.resolve(target === entity ? 1 : 0),
+        );
+
+        await expect(
+          service.archiveUnit('unit-uuid-1', companyId, 'Sold', actorId),
+        ).rejects.toThrow(
+          `This unit has ${label}. Close them before archiving.`,
+        );
+        expect(manager.update).not.toHaveBeenCalled();
+      });
+
+      it('names every open kind in one message', async () => {
+        unitLockQb.getOne.mockResolvedValue(lockedUnit());
+        manager.count.mockImplementation((target: unknown) =>
+          Promise.resolve(
+            target === Lease || target === Lead || target === Cheque ? 1 : 0,
+          ),
+        );
+
+        await expect(
+          service.archiveUnit('unit-uuid-1', companyId, 'Sold', actorId),
+        ).rejects.toThrow(
+          'This unit has an active lease, open leads and open cheques. Close them before archiving.',
+        );
+      });
+
+      it('counts cheques on the unit and on its leases', async () => {
+        unitLockQb.getOne.mockResolvedValue(lockedUnit());
+        unitRepo.findOne.mockResolvedValue(lockedUnit());
+
+        await service.archiveUnit('unit-uuid-1', companyId, 'Sold', actorId);
+
+        expect(manager.count).toHaveBeenCalledWith(Cheque, {
+          where: [
+            expect.objectContaining({ unitId: 'unit-uuid-1', companyId }),
+            expect.objectContaining({
+              lease: { unitId: 'unit-uuid-1' },
+              companyId,
+            }),
+          ],
+        });
+      });
+
       it('sets deletedAt and records ARCHIVE in the same transaction', async () => {
         unitLockQb.getOne.mockResolvedValue(lockedUnit());
         unitRepo.findOne.mockResolvedValue({
@@ -1750,6 +1806,24 @@ describe('PropertiesService', () => {
           service.updateUnit('unit-uuid-1', companyId, { floor: '3' }),
         ).rejects.toThrow(ConflictException);
         expect(unitRepo.save).not.toHaveBeenCalled();
+      });
+
+      it('updateUnit refuses a unit archived after the first read', async () => {
+        unitRepo.findOne.mockResolvedValue({ ...mockUnit } as Unit);
+        unitLockQb.getOne.mockResolvedValue({
+          ...mockUnit,
+          deletedAt: new Date(),
+        });
+
+        await expect(
+          service.updateUnit('unit-uuid-1', companyId, { floor: '3' }),
+        ).rejects.toThrow(ConflictException);
+        expect(unitLockQb.setLock).toHaveBeenCalledWith(
+          'pessimistic_write',
+          undefined,
+          ['u'],
+        );
+        expect(manager.save).not.toHaveBeenCalled();
       });
 
       it('findOneUnit still returns an archived unit with deletedAt', async () => {

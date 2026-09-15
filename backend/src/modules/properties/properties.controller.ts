@@ -548,7 +548,7 @@ export class PropertiesController {
   }
 
   @Post('units/:id/archive')
-  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER)
+  @Roles(Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary:
@@ -569,7 +569,7 @@ export class PropertiesController {
   }
 
   @Post('units/:id/unarchive')
-  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER)
+  @Roles(Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Unarchive unit. 409 when not archived.' })
   unarchiveUnit(

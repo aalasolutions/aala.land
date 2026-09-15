@@ -42,6 +42,8 @@ const REASSIGNMENT_TARGETS: ReassignmentTarget[] = [
     entity: Unit,
     setProperty: 'assignedAgentId',
     column: 'assigned_agent_id',
+    // Archived units keep the departed agent.
+    extraWhere: 'AND deleted_at IS NULL',
   },
   {
     type: 'commission',
@@ -65,6 +67,16 @@ const REASSIGNMENT_TARGETS: ReassignmentTarget[] = [
     setProperty: 'createdBy',
     column: 'created_by',
   },
+];
+
+// Execution order is lock-safe: lead and work order before unit, unit before document.
+const REASSIGNMENT_EXECUTION_ORDER: ReassignedEntityType[] = [
+  'lead',
+  'work_order',
+  'unit',
+  'document',
+  'commission',
+  'contact',
 ];
 
 // WhatsApp rows are NOT in the list above. They move in reassignWhatsappRows(), outside
@@ -231,9 +243,13 @@ export class UserReassignmentService {
     // Otherwise rely on the driver's affected-row count, so a large tenant does not
     // pull tens of thousands of UUIDs into memory for a payload nobody reads.
     const collectIds = options.collectIds ?? false;
-    const entities: ReassignmentReport['entities'] = [];
+    const byType = new Map<
+      ReassignedEntityType,
+      ReassignmentReport['entities'][number]
+    >();
 
-    for (const target of REASSIGNMENT_TARGETS) {
+    for (const type of REASSIGNMENT_EXECUTION_ORDER) {
+      const target = REASSIGNMENT_TARGETS.find((t) => t.type === type)!;
       const query = manager
         .createQueryBuilder()
         .update(target.entity)
@@ -249,15 +265,13 @@ export class UserReassignmentService {
 
       if (collectIds) {
         const ids = (result.raw as Array<{ id: string }>).map((row) => row.id);
-        entities.push({ type: target.type, count: ids.length, ids });
+        byType.set(type, { type, count: ids.length, ids });
       } else {
-        entities.push({
-          type: target.type,
-          count: result.affected ?? 0,
-          ids: [],
-        });
+        byType.set(type, { type, count: result.affected ?? 0, ids: [] });
       }
     }
+
+    const entities = REASSIGNMENT_TARGETS.map((t) => byType.get(t.type)!);
 
     const summary = entities.map((e) => `${e.type}=${e.count}`).join(', ');
     this.logger.log(

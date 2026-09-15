@@ -92,8 +92,5 @@ export class StoragePurgeProcessor extends WorkerHost {
 }
 
 function isNotFound(err: unknown): boolean {
-  if (!(err instanceof Error)) return false;
-  const status = (err as { $metadata?: { httpStatusCode?: number } }).$metadata
-    ?.httpStatusCode;
-  return err.name === 'NoSuchKey' || err.name === 'NotFound' || status === 404;
+  return err instanceof Error && err.name === 'NoSuchKey';
 }

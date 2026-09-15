@@ -442,7 +442,7 @@ export class UsersService {
         deletedAt: IsNull(),
         ...(requesterCompanyId ? { companyId: requesterCompanyId } : {}),
       },
-      lock: { mode: 'pessimistic_write' },
+      lock: { mode: 'for_no_key_update' },
     });
     if (!target) {
       throw new NotFoundException('User not found');
@@ -474,7 +474,7 @@ export class UsersService {
         isActive: true,
         deletedAt: IsNull(),
       },
-      lock: { mode: 'pessimistic_write' },
+      lock: { mode: 'for_no_key_update' },
     });
     if (!reassignee) {
       throw new NotFoundException(
@@ -679,7 +679,7 @@ export class UsersService {
       async (manager) => {
         const keeper = await manager.findOne(User, {
           where: { id: dto.keepUserId, companyId, isActive: true },
-          lock: { mode: 'pessimistic_write' },
+          lock: { mode: 'for_no_key_update' },
         });
         if (!keeper) {
           throw new NotFoundException(
@@ -702,7 +702,7 @@ export class UsersService {
         const others = await manager.find(User, {
           where: { companyId, isActive: true, id: Not(dto.keepUserId) },
           order: { createdAt: 'ASC' },
-          lock: { mode: 'pessimistic_write' },
+          lock: { mode: 'for_no_key_update' },
         });
         if (others.length === 0) {
           return { deactivatedCount: 0, reports: [] };
@@ -802,7 +802,7 @@ export class UsersService {
     targetUserId: string,
     requesterCompanyId: string | undefined,
     requesterRole: Role,
-    requesterId?: string,
+    requesterId: string,
     reason?: string,
   ): Promise<User> {
     const lockCompanyId = await this.resolveRemovalLockCompanyId(
@@ -816,7 +816,7 @@ export class UsersService {
           deletedAt: IsNull(),
           ...(requesterCompanyId ? { companyId: requesterCompanyId } : {}),
         },
-        lock: { mode: 'pessimistic_write' },
+        lock: { mode: 'for_no_key_update' },
       });
       if (!target) {
         throw new NotFoundException('User not found');
@@ -906,7 +906,7 @@ export class UsersService {
     companyId: string,
     target: User,
     action: RecordHistoryAction,
-    requesterId: string | undefined,
+    requesterId: string,
     reason?: string | null,
     metadata?: Record<string, unknown>,
   ): Promise<void> {
@@ -917,10 +917,11 @@ export class UsersService {
       entityId: target.id,
       entityTitle: target.name?.trim() || target.email,
       reason: reason ?? null,
-      actorId: requesterId ?? null,
-      actorName: requesterId
-        ? await this.recordHistoryService.resolveActorName(manager, requesterId)
-        : 'System',
+      actorId: requesterId,
+      actorName: await this.recordHistoryService.resolveActorName(
+        manager,
+        requesterId,
+      ),
       regionCode: null,
       metadata: metadata ?? null,
     });

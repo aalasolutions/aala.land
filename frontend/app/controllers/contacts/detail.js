@@ -8,12 +8,7 @@ import {
 } from '../../utils/contact-form';
 import { ROLES } from '../../utils/roles';
 
-const HISTORY_ROLES = [
-  ROLES.SUPER_ADMIN,
-  ROLES.COMPANY_ADMIN,
-  ROLES.ADMIN,
-  ROLES.MANAGER,
-];
+const HISTORY_ROLES = [ROLES.COMPANY_ADMIN, ROLES.ADMIN, ROLES.MANAGER];
 
 export default class ContactsDetailController extends Controller {
   @service auth;

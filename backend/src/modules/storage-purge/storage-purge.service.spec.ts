@@ -1,4 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { In } from 'typeorm';
 import { getQueueToken } from '@nestjs/bullmq';
 import { StoragePurgeService } from './storage-purge.service';
 import {
@@ -128,7 +129,7 @@ describe('StoragePurgeService', () => {
       ]);
     });
 
-    it('deletes the media and document rows by id', async () => {
+    it('deletes the media and document rows by id, scoped to their company', async () => {
       await service.purge(manager, {
         media: [media(), media({ id: 'media-2' })],
         documents: [document()],
@@ -136,10 +137,26 @@ describe('StoragePurgeService', () => {
 
       const [mediaEntity, mediaWhere] = manager.delete.mock.calls[0];
       expect(mediaEntity).toBe(PropertyMedia);
+      expect(mediaWhere.companyId).toBe(COMPANY_A);
       expect(mediaWhere.id.value).toEqual(['media-1', 'media-2']);
       const [docEntity, docWhere] = manager.delete.mock.calls[1];
       expect(docEntity).toBe(PropertyDocument);
+      expect(docWhere.companyId).toBe(COMPANY_A);
       expect(docWhere.id.value).toEqual(['doc-1']);
+    });
+
+    it('deletes rows from two companies with their own companyId scope', async () => {
+      await service.purge(manager, {
+        media: [media(), media({ id: 'media-2', companyId: COMPANY_B })],
+      });
+
+      expect(manager.delete).toHaveBeenCalledTimes(2);
+      const [entityA, whereA] = manager.delete.mock.calls[0];
+      expect(entityA).toBe(PropertyMedia);
+      expect(whereA).toEqual({ companyId: COMPANY_A, id: In(['media-1']) });
+      const [entityB, whereB] = manager.delete.mock.calls[1];
+      expect(entityB).toBe(PropertyMedia);
+      expect(whereB).toEqual({ companyId: COMPANY_B, id: In(['media-2']) });
     });
 
     it('decrements quota once per company by the summed bytes', async () => {

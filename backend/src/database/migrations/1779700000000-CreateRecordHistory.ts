@@ -18,12 +18,12 @@ export class CreateRecordHistory1779700000000 implements MigrationInterface {
                 "actor_name" varchar(255) NOT NULL,
                 "region_code" varchar(50),
                 "metadata" jsonb,
-                "created_at" TIMESTAMP NOT NULL DEFAULT now(),
+                "created_at" TIMESTAMPTZ NOT NULL DEFAULT now(),
                 CONSTRAINT "PK_record_history" PRIMARY KEY ("id")
             )
         `);
     await queryRunner.query(
-      `CREATE INDEX IF NOT EXISTS "IDX_record_history_company_created" ON "record_history" ("company_id", "created_at" DESC)`,
+      `CREATE INDEX IF NOT EXISTS "IDX_record_history_company_created" ON "record_history" ("company_id", "created_at")`,
     );
     await queryRunner.query(
       `CREATE INDEX IF NOT EXISTS "IDX_record_history_entity" ON "record_history" ("entity_type", "entity_id")`,

@@ -808,7 +808,7 @@
     @message="{{this.company.name}} returns to standard pricing at the next cycle. This does not lock the account."
     @confirmText="End deal early"
     @confirmingText="Ending…"
-    @cancelText="Keep deal"
+    @cancelText="I changed my mind"
     @confirmVariant="danger"
     @isConfirming={{this.endDealBusy}}
     @onConfirm={{this.confirmEndDeal}}
@@ -821,7 +821,7 @@
     @message="The write lock re-applies immediately. Their admin sees the 'reduce or pay' banner again."
     @confirmText="End lift now"
     @confirmingText="Ending…"
-    @cancelText="Keep lift"
+    @cancelText="I changed my mind"
     @confirmVariant="danger"
     @isConfirming={{this.endLiftBusy}}
     @onConfirm={{this.confirmEndLift}}

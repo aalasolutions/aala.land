@@ -51,7 +51,7 @@ export default class MaintenanceController extends PaginatedController {
 
   statusOptions = MAINTENANCE_STATUS_OPTIONS;
 
-  get isCancelling() {
+  get isCancellingWorkOrder() {
     return (
       !!this.editWorkOrder &&
       this.formStatus === 'CANCELLED' &&
@@ -139,6 +139,10 @@ export default class MaintenanceController extends PaginatedController {
   @action setFieldValue(fieldName, value) {
     this[fieldName] = value;
 
+    if (fieldName === 'formReason') {
+      this.reasonError = '';
+    }
+
     // Keep selected vendor valid when category changes and vendor options narrow.
     if (fieldName === 'formCategory' && this.formVendorId) {
       const validVendorIds = this.vendorOptions.map((opt) => opt.value);
@@ -177,6 +181,7 @@ export default class MaintenanceController extends PaginatedController {
     this.formStatus = 'OPEN';
     this.editWorkOrder = null;
     this.errorMsg = '';
+    this.reasonError = '';
     this.showModal = true;
   }
 
@@ -198,6 +203,7 @@ export default class MaintenanceController extends PaginatedController {
     this.formReason = '';
     this.editWorkOrder = wo;
     this.errorMsg = '';
+    this.reasonError = '';
     this.showModal = true;
   }
 
@@ -205,6 +211,7 @@ export default class MaintenanceController extends PaginatedController {
     this.showModal = false;
     this.editWorkOrder = null;
     this.errorMsg = '';
+    this.reasonError = '';
   }
 
   @action async saveWorkOrder(event) {
@@ -217,13 +224,14 @@ export default class MaintenanceController extends PaginatedController {
       return;
     }
     const reason = this.formReason.trim();
-    if (this.isCancelling && !reason) {
-      this.errorMsg = 'A reason is required to cancel a work order.';
+    if (this.isCancellingWorkOrder && !reason) {
+      this.reasonError = 'A reason is required to cancel a work order.';
       return;
     }
 
     this.isSaving = true;
     this.errorMsg = '';
+    this.reasonError = '';
 
     const path = isEdit
       ? `/maintenance/${this.editWorkOrder.id}`
@@ -235,7 +243,7 @@ export default class MaintenanceController extends PaginatedController {
       priority: this.formPriority,
       category: this.formCategory,
       ...(isEdit ? { status: this.formStatus } : {}),
-      ...(this.isCancelling ? { reason } : {}),
+      ...(this.isCancellingWorkOrder ? { reason } : {}),
       ...(this.formEstimatedCost
         ? { estimatedCost: parseFloat(this.formEstimatedCost) }
         : {}),

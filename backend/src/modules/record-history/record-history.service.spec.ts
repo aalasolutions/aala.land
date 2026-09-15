@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { EntityManager } from 'typeorm';
+import { InternalServerErrorException } from '@nestjs/common';
 import { RecordHistoryService } from './record-history.service';
 import {
   RecordHistory,
@@ -130,6 +131,9 @@ describe('RecordHistoryService', () => {
     });
 
     it('rejects a missing companyId for a company-scoped type', async () => {
+      await expect(
+        service.record(manager, { ...baseInput, companyId: null }),
+      ).rejects.toThrow(InternalServerErrorException);
       await expect(
         service.record(manager, { ...baseInput, companyId: null }),
       ).rejects.toThrow('requires companyId');

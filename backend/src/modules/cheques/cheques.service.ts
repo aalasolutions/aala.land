@@ -31,11 +31,17 @@ import {
 } from '../../shared/utils/region-visibility.util';
 import { paginationOptions } from '../../shared/utils/pagination.util';
 import { Unit } from '../properties/entities/unit.entity';
+import { Lease } from '../leases/entities/lease.entity';
 import { Company } from '../companies/entities/company.entity';
 import { NotificationsService } from '../notifications/notifications.service';
 import { UsersService } from '../users/users.service';
 import { NotificationType } from '../notifications/entities/notification.entity';
 import { NotificationsGateway } from '../notifications/notifications.gateway';
+
+const ARCHIVED_UNIT_LOCKED_MESSAGE =
+  'This unit is archived. Its records can no longer be edited.';
+const ARCHIVED_LEASE_LOCKED_MESSAGE =
+  'This lease is archived. Its records can no longer be edited.';
 
 @Injectable()
 export class ChequesService {
@@ -46,6 +52,8 @@ export class ChequesService {
     private readonly chequeRepository: Repository<Cheque>,
     @InjectRepository(Unit)
     private readonly unitRepository: Repository<Unit>,
+    @InjectRepository(Lease)
+    private readonly leaseRepository: Repository<Lease>,
     @InjectRepository(Company)
     private readonly companyRepository: Repository<Company>,
     private readonly notificationsService: NotificationsService,
@@ -62,6 +70,7 @@ export class ChequesService {
     caller?: RegionScope,
   ): Promise<Cheque> {
     await this.assertUnitInCallerRegions(dto.unitId, companyId, caller, true);
+    await this.assertLeaseOpenForCheque(dto.leaseId, companyId);
     const regionCode = await this.resolveChequeRegion(
       companyId,
       dto.unitId,
@@ -73,7 +82,15 @@ export class ChequesService {
       companyId,
       regionCode,
     });
-    const saved = await this.chequeRepository.save(cheque);
+    const saved = await this.dataSource.transaction(async (manager) => {
+      await this.assertChequeEditable(
+        manager,
+        dto.unitId ?? null,
+        dto.leaseId ?? null,
+        companyId,
+      );
+      return manager.getRepository(Cheque).save(cheque);
+    });
 
     this.notificationsGateway.broadcastToCompany(companyId, 'chequeUpdated', {
       id: saved.id,
@@ -140,6 +157,71 @@ export class ChequesService {
     }
     if (rejectArchived && unit.deletedAt) {
       throw new ConflictException('This unit is archived.');
+    }
+  }
+
+  private async assertLeaseOpenForCheque(
+    leaseId: string | undefined,
+    companyId: string,
+  ): Promise<void> {
+    if (!leaseId) {
+      return;
+    }
+    const lease = await this.leaseRepository.findOne({
+      where: { id: leaseId, companyId },
+      select: { id: true, unitId: true, deletedAt: true },
+    });
+    if (!lease) {
+      throw new NotFoundException('Lease not found');
+    }
+    if (lease.deletedAt) {
+      throw new ConflictException('This lease is archived.');
+    }
+    const unit = await this.unitRepository.findOne({
+      where: { id: lease.unitId, companyId },
+      select: { id: true, deletedAt: true },
+    });
+    if (unit?.deletedAt) {
+      throw new ConflictException('This unit is archived.');
+    }
+  }
+
+  // FOR SHARE so an archive cannot commit in between.
+  private async assertChequeEditable(
+    manager: EntityManager,
+    unitId: string | null,
+    leaseId: string | null,
+    companyId: string,
+  ): Promise<void> {
+    const unitIds = new Set<string>(unitId ? [unitId] : []);
+    if (leaseId) {
+      const lease = await manager.findOne(Lease, {
+        where: { id: leaseId, companyId },
+        select: { id: true, unitId: true, deletedAt: true },
+        lock: { mode: 'pessimistic_read' },
+      });
+      if (!lease) {
+        throw new NotFoundException('Lease not found');
+      }
+      if (lease.deletedAt) {
+        throw new ConflictException(ARCHIVED_LEASE_LOCKED_MESSAGE);
+      }
+      if (lease.unitId) {
+        unitIds.add(lease.unitId);
+      }
+    }
+    for (const id of unitIds) {
+      const unit = await manager.findOne(Unit, {
+        where: { id, companyId },
+        select: { id: true, deletedAt: true },
+        lock: { mode: 'pessimistic_read' },
+      });
+      if (!unit) {
+        throw new NotFoundException('Unit not found');
+      }
+      if (unit.deletedAt) {
+        throw new ConflictException(ARCHIVED_UNIT_LOCKED_MESSAGE);
+      }
     }
   }
 
@@ -281,6 +363,25 @@ export class ChequesService {
     // re-assert the previously-read status and terminal exclusion, so a status
     // move can only commit from the exact state we validated.
     await this.dataSource.transaction(async (manager) => {
+      await this.assertChequeEditable(
+        manager,
+        oldUnitId,
+        cheque.leaseId,
+        companyId,
+      );
+      if (cheque.unitId && cheque.unitId !== oldUnitId) {
+        const target = await manager.findOne(Unit, {
+          where: { id: cheque.unitId, companyId },
+          select: { id: true, deletedAt: true },
+          lock: { mode: 'pessimistic_read' },
+        });
+        if (!target) {
+          throw new NotFoundException('Unit not found');
+        }
+        if (target.deletedAt) {
+          throw new ConflictException('This unit is archived.');
+        }
+      }
       const qb = manager
         .getRepository(Cheque)
         .createQueryBuilder()
@@ -427,6 +528,12 @@ export class ChequesService {
     const cheque = await this.findOne(id, companyId, caller);
 
     await this.dataSource.transaction(async (manager) => {
+      await this.assertChequeEditable(
+        manager,
+        cheque.unitId,
+        cheque.leaseId,
+        companyId,
+      );
       // Atomic increment: compute bounce_count in the database (SET col = col + 1)
       // so concurrent bounces do not lose increments via a JS read-modify-write.
       // The other bounce fields are written in the same UPDATE statement.
@@ -559,11 +666,19 @@ export class ChequesService {
     userId: string,
     caller?: RegionScope,
   ): Promise<void> {
-    await this.findOne(id, companyId, caller);
+    const scopedCodes = scopedRegionCodes(caller);
+    // No assignment means no access, and an empty IN () is invalid SQL.
+    if (scopedCodes?.length === 0) {
+      throw new NotFoundException('Cheque not found');
+    }
 
     await this.dataSource.transaction(async (manager) => {
       const cheque = await manager.findOne(Cheque, {
-        where: { id, companyId },
+        where: {
+          id,
+          companyId,
+          ...(scopedCodes ? { regionCode: In(scopedCodes) } : {}),
+        },
         lock: { mode: 'pessimistic_write' },
       });
       if (!cheque) {

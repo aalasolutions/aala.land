@@ -2,7 +2,7 @@ import PaginatedController from './paginated-base';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
-import { canManageFinancials, isAdminRole } from '../utils/roles';
+import { ROLES, isAdminRole } from '../utils/roles';
 import {
   openDeleteModal,
   closeDeleteModal,
@@ -75,8 +75,14 @@ export default class ChequesController extends PaginatedController {
   @tracked isDeleting = false;
   @tracked reasonError = '';
 
-  get isAdmin() {
-    return canManageFinancials(this.auth.currentUser?.role);
+  // Matches POST and PATCH /cheques roles; ACCOUNTANT is read-only.
+  get canWriteCheques() {
+    return [
+      ROLES.SUPER_ADMIN,
+      ROLES.COMPANY_ADMIN,
+      ROLES.ADMIN,
+      ROLES.MANAGER,
+    ].includes(this.auth.currentUser?.role);
   }
 
   get canDeleteCheque() {
