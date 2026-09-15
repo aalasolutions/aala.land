@@ -10,6 +10,7 @@ import { UserReassignmentService } from './reassignment/user-reassignment.servic
 import { StrandedWhatsappRowsCron } from './reassignment/stranded-whatsapp-rows.cron';
 import { WhatsappModule } from '../whatsapp/whatsapp.module';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { RecordHistoryModule } from '../record-history/record-history.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { NotificationsModule } from '../notifications/notifications.module';
     BillingModule,
     WhatsappModule,
     NotificationsModule,
+    RecordHistoryModule,
   ],
   controllers: [UsersController],
   providers: [UsersService, UserReassignmentService, StrandedWhatsappRowsCron],

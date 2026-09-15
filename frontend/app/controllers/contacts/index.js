@@ -64,6 +64,8 @@ export default class ContactsIndexController extends PaginatedController {
     this.showDeleteModal = false;
     this.contactToDelete = null;
     this.isDeleting = false;
+    this.deleteReason = '';
+    this.reasonError = '';
   }
 
   get agentOptions() {
@@ -105,6 +107,8 @@ export default class ContactsIndexController extends PaginatedController {
   @tracked showDeleteModal = false;
   @tracked contactToDelete = null;
   @tracked isDeleting = false;
+  @tracked deleteReason = '';
+  @tracked reasonError = '';
 
   // Nuvo::Input/Select/Textarea call onInput/onChange as (value, event),
   // not the raw DOM event a legacy setField(fieldName, e) expects.
@@ -235,6 +239,8 @@ export default class ContactsIndexController extends PaginatedController {
   }
 
   @action openDelete(contact) {
+    this.deleteReason = '';
+    this.reasonError = '';
     openDeleteModal(this, 'contactToDelete', contact);
   }
 
@@ -243,11 +249,17 @@ export default class ContactsIndexController extends PaginatedController {
   }
 
   @action async confirmDelete() {
+    const reason = this.deleteReason.trim();
+    if (!reason) {
+      this.reasonError = 'Reason is required.';
+      return;
+    }
     await confirmDeleteModal(this, {
       itemKey: 'contactToDelete',
       resourcePath: '/contacts',
       successMessage: 'Contact deleted',
       refreshRoute: 'contacts.index',
+      body: { reason },
     });
   }
 }

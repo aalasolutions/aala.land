@@ -2,7 +2,12 @@ import PaginatedController from './paginated-base';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
-import { canManageFinancials } from '../utils/roles';
+import { ROLES, isAdminRole } from '../utils/roles';
+import {
+  openDeleteModal,
+  closeDeleteModal,
+  confirmDeleteModal,
+} from '../utils/delete-modal';
 import { CHEQUE_TYPE_OPTIONS, EMPTY_UNIT_OPTION } from 'land/constants';
 
 export default class ChequesController extends PaginatedController {
@@ -60,8 +65,28 @@ export default class ChequesController extends PaginatedController {
   @tracked bounceChequeItem = null;
   @tracked formBounceReason = '';
 
-  get isAdmin() {
-    return canManageFinancials(this.auth.currentUser?.role);
+  @tracked showCancelModal = false;
+  @tracked chequeToCancel = null;
+  @tracked cancelReason = '';
+  @tracked isCancelling = false;
+  @tracked showDeleteModal = false;
+  @tracked chequeToDelete = null;
+  @tracked deleteReason = '';
+  @tracked isDeleting = false;
+  @tracked reasonError = '';
+
+  // Matches POST and PATCH /cheques roles; ACCOUNTANT is read-only.
+  get canWriteCheques() {
+    return [
+      ROLES.SUPER_ADMIN,
+      ROLES.COMPANY_ADMIN,
+      ROLES.ADMIN,
+      ROLES.MANAGER,
+    ].includes(this.auth.currentUser?.role);
+  }
+
+  get canDeleteCheque() {
+    return isAdminRole(this.auth.currentUser?.role);
   }
 
   get chequeTypeOptions() {
@@ -193,6 +218,67 @@ export default class ChequesController extends PaginatedController {
     } catch (e) {
       this.notifications.error(e.message);
     }
+  }
+
+  @action openCancel(cheque) {
+    this.chequeToCancel = cheque;
+    this.cancelReason = '';
+    this.reasonError = '';
+    this.showCancelModal = true;
+  }
+
+  @action closeCancelModal() {
+    this.showCancelModal = false;
+    this.chequeToCancel = null;
+  }
+
+  @action async confirmCancel() {
+    if (!this.chequeToCancel || this.isCancelling) return;
+    const reason = this.cancelReason.trim();
+    if (!reason) {
+      this.reasonError = 'Reason is required.';
+      return;
+    }
+
+    this.isCancelling = true;
+    try {
+      await this.auth.fetchJson(`/cheques/${this.chequeToCancel.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status: 'CANCELLED', reason }),
+      });
+      this.notifications.success('Cheque cancelled');
+      this.closeCancelModal();
+      this.router.refresh('cheques');
+    } catch (e) {
+      this.notifications.error(e.message || 'Failed to cancel cheque');
+    } finally {
+      this.isCancelling = false;
+    }
+  }
+
+  @action openDelete(cheque) {
+    this.deleteReason = '';
+    this.reasonError = '';
+    openDeleteModal(this, 'chequeToDelete', cheque);
+  }
+
+  @action closeDeleteModal() {
+    closeDeleteModal(this, 'chequeToDelete');
+  }
+
+  @action async confirmDelete() {
+    const reason = this.deleteReason.trim();
+    if (!reason) {
+      this.reasonError = 'Reason is required.';
+      return;
+    }
+    await confirmDeleteModal(this, {
+      itemKey: 'chequeToDelete',
+      resourcePath: '/cheques',
+      successMessage: 'Cheque deleted',
+      refreshRoute: 'cheques',
+      body: { reason },
+    });
   }
 
   @action async confirmBounce() {

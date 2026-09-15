@@ -9,7 +9,7 @@
       <p class="text-muted">{{format-number @model.total unit="cheque record"}}</p>
     </:meta>
     <:actions>
-      {{#if this.isAdmin}}
+      {{#if this.canWriteCheques}}
         <Nuvo::Button
           @variant="primary"
           data-test-new-cheque
@@ -67,7 +67,7 @@
                   </td>
                   <td>
                     <div class="flex gap-2">
-                      {{#if this.isAdmin}}
+                      {{#if this.canWriteCheques}}
                         <Nuvo::Button
                           @variant="secondary"
                           @size="xs"
@@ -133,6 +133,38 @@
                             Replace
                           </Nuvo::Button>
                         {{/if}}
+                        {{#if
+                          (or
+                            (eq cheque.status "PENDING")
+                            (eq cheque.status "DEPOSITED")
+                            (eq cheque.status "BOUNCED")
+                          )
+                        }}
+                          <Nuvo::Button
+                            @variant="secondary"
+                            @size="xs"
+                            @icon="prohibit"
+                            data-test-cancel-cheque
+                            {{on "click" (fn this.openCancel cheque)}}
+                          >
+                            Cancel cheque
+                          </Nuvo::Button>
+                        {{/if}}
+                      {{/if}}
+                      {{#if
+                        (and
+                          this.canDeleteCheque (not (eq cheque.status "CLEARED"))
+                        )
+                      }}
+                        <Nuvo::Button
+                          @variant="danger"
+                          @size="xs"
+                          @icon="trash"
+                          data-test-delete-cheque
+                          {{on "click" (fn this.openDelete cheque)}}
+                        >
+                          Delete
+                        </Nuvo::Button>
                       {{/if}}
                     </div>
                   </td>
@@ -363,3 +395,55 @@
     >Confirm Bounce</Nuvo::Button>
   </Nuvo::FormActions>
 </Nuvo::Modal>
+
+<ConfirmModal
+  @open={{this.showCancelModal}}
+  @title="Cancel Cheque"
+  @message="Cancel this cheque? It stays in history as cancelled."
+  @confirmText="Cancel cheque"
+  @confirmVariant="danger"
+  @isConfirming={{this.isCancelling}}
+  @confirmingText="Cancelling..."
+  @onClose={{this.closeCancelModal}}
+  @onConfirm={{this.confirmCancel}}
+>
+  <Nuvo::Field class="mt-4" @label="Reason" @required={{true}} @error={{this.reasonError}}>
+    <Nuvo::Textarea
+      id="cheque-cancel-reason"
+      rows="2"
+      maxlength="500"
+      placeholder="e.g. Tenant replaced payment method"
+      @value={{this.cancelReason}}
+      @onInput={{fn this.setFieldValue "cancelReason"}}
+      @invalid={{if this.reasonError true false}}
+      aria-label="Reason"
+      data-test-reason-input
+    />
+  </Nuvo::Field>
+</ConfirmModal>
+
+<ConfirmModal
+  @open={{this.showDeleteModal}}
+  @title="Delete Cheque"
+  @message="Delete this cheque? This cannot be undone."
+  @confirmText="Delete"
+  @confirmVariant="danger"
+  @isConfirming={{this.isDeleting}}
+  @confirmingText="Deleting..."
+  @onClose={{this.closeDeleteModal}}
+  @onConfirm={{this.confirmDelete}}
+>
+  <Nuvo::Field class="mt-4" @label="Reason" @required={{true}} @error={{this.reasonError}}>
+    <Nuvo::Textarea
+      id="cheque-delete-reason"
+      rows="2"
+      maxlength="500"
+      placeholder="e.g. Entered by mistake"
+      @value={{this.deleteReason}}
+      @onInput={{fn this.setFieldValue "deleteReason"}}
+      @invalid={{if this.reasonError true false}}
+      aria-label="Reason"
+      data-test-reason-input
+    />
+  </Nuvo::Field>
+</ConfirmModal>

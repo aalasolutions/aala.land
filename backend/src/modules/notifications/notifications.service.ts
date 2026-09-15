@@ -410,6 +410,7 @@ export class NotificationsService {
       .leftJoinAndSelect('lease.contact', 'tenant')
       .where('lease.company_id = :companyId', { companyId })
       .andWhere('lease.status = :status', { status: LeaseStatus.ACTIVE })
+      .andWhere('lease.deleted_at IS NULL')
       .andWhere('lease.end_date >= :now', {
         now: now.toISOString().split('T')[0],
       })
@@ -525,14 +526,7 @@ export class NotificationsService {
       companyIds: items.map((item) => item.companyId),
       entityIds: items.map((item) => item.id),
       type,
-      // Dedup day window MUST match the UQ_notifications_reminder_dedup_daily
-      // index, which buckets by (created_at)::date. created_at is a plain
-      // timestamp storing the UTC wall-clock, so (created_at)::date is the UTC
-      // calendar date. Using a UTC start-of-day here (rather than
-      // app-server-local midnight) keeps the in-memory prefilter and the DB
-      // index on the same calendar day near the midnight boundary; otherwise the
-      // two could disagree and a duplicate would slip past the prefilter only to
-      // lose to a swallowed 23505.
+      // UTC day to match the UQ_notifications_reminder_dedup_daily bucket.
       since: this.startOfUtcToday(),
     });
 
@@ -635,14 +629,7 @@ export class NotificationsService {
     return this.startOfDay(new Date());
   }
 
-  /**
-   * UTC midnight of the current day. Used only for the reminder dedup `since`
-   * lower bound so the app-side day window matches the UTC day bucket of the
-   * UQ_notifications_reminder_dedup_daily index ((created_at)::date, where
-   * created_at is a plain timestamp storing the UTC wall-clock). Kept separate
-   * from startOfToday() (app-server-local, used for cheque date-column queries)
-   * so those queries are not shifted.
-   */
+  /** UTC midnight, matches the reminder dedup index day bucket. */
   private startOfUtcToday(): Date {
     const now = new Date();
     return new Date(

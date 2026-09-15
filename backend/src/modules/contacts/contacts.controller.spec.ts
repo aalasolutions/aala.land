@@ -2,6 +2,9 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ContactsController } from './contacts.controller';
 import { ContactsService } from './contacts.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { plainToInstance } from 'class-transformer';
+import { validate } from 'class-validator';
+import { DeleteContactDto } from './dto/delete-contact.dto';
 
 describe('ContactsController', () => {
   let controller: ContactsController;
@@ -167,17 +170,48 @@ describe('ContactsController', () => {
   });
 
   describe('remove', () => {
-    it('removes contact', async () => {
+    it('POST :id/delete passes the body DTO and actor', async () => {
       service.remove.mockResolvedValue(undefined);
+      const dto = {
+        reason: 'Duplicate',
+        transferToContactId: 'contact-uuid-2',
+      };
 
-      await controller.remove('contact-uuid-1', mockReq);
+      await controller.remove('contact-uuid-1', dto, mockReq);
 
       expect(service.remove).toHaveBeenCalledWith(
         'contact-uuid-1',
         companyId,
-        undefined,
+        dto,
+        'user-uuid-1',
         caller,
       );
+    });
+  });
+
+  describe('DeleteContactDto', () => {
+    const errorsFor = (body: object) =>
+      validate(plainToInstance(DeleteContactDto, body));
+
+    it('requires a non-blank reason', async () => {
+      expect(await errorsFor({})).not.toHaveLength(0);
+      expect(await errorsFor({ reason: '  ' })).not.toHaveLength(0);
+    });
+
+    it('rejects a non-uuid transfer target', async () => {
+      expect(
+        await errorsFor({ reason: 'Duplicate', transferToContactId: 'x' }),
+      ).not.toHaveLength(0);
+    });
+
+    it('accepts a reason with an optional uuid target', async () => {
+      expect(await errorsFor({ reason: 'Duplicate' })).toHaveLength(0);
+      expect(
+        await errorsFor({
+          reason: 'Duplicate',
+          transferToContactId: '9460c4c5-344a-4782-963e-8ec3b2b52479',
+        }),
+      ).toHaveLength(0);
     });
   });
 });

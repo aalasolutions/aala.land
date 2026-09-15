@@ -55,6 +55,6 @@ export class WhatsappAiConversation {
   @Column({ name: 'period_start', type: 'timestamptz' })
   periodStart: Date;
 
-  @CreateDateColumn({ name: 'created_at' })
+  @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;
 }

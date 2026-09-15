@@ -13,7 +13,7 @@
 
   <:footer>
     <Nuvo::Button @variant="secondary" {{on "click" this.close}}>
-      {{@cancelText}}
+      {{this.cancelText}}
     </Nuvo::Button>
     <Nuvo::Button
       @variant={{if @confirmVariant @confirmVariant "primary"}}

@@ -7,12 +7,17 @@ import {
   UUID_PATTERN,
   LEASE_TYPE_OPTIONS,
   LEASE_STATUS_OPTIONS,
+  LEASE_ARCHIVED_OPTIONS,
 } from 'land/constants';
 import {
   closeDeleteModal,
   confirmDeleteModal,
   openDeleteModal,
 } from '../utils/delete-modal';
+import { ROLES } from '../utils/roles';
+
+const ARCHIVE_ROLES = [ROLES.COMPANY_ADMIN, ROLES.ADMIN, ROLES.MANAGER];
+const DELETE_ROLES = [ROLES.SUPER_ADMIN, ROLES.COMPANY_ADMIN, ROLES.ADMIN];
 
 export default class LeasesController extends PaginatedController {
   @service auth;
@@ -27,7 +32,9 @@ export default class LeasesController extends PaginatedController {
     'search',
     'dateFrom',
     'dateTo',
+    'archived',
   ];
+  @tracked archived = '';
   @tracked status = '';
   @tracked type = '';
   @tracked search = '';
@@ -56,12 +63,23 @@ export default class LeasesController extends PaginatedController {
   @tracked showDeleteModal = false;
   @tracked leaseToDelete = null;
   @tracked isDeleting = false;
+  @tracked terminateReason = '';
+  @tracked deleteReason = '';
+  @tracked reasonError = '';
+  @tracked showArchiveModal = false;
+  @tracked leaseToArchive = null;
+  @tracked archiveMode = 'archive';
+  @tracked archiveReason = '';
+  @tracked isArchiving = false;
+  @tracked historyLease = null;
 
   leaseTypeOptions = LEASE_TYPE_OPTIONS;
   statusTabs = LEASE_STATUS_OPTIONS;
+  archivedTabs = LEASE_ARCHIVED_OPTIONS;
 
   resetState() {
     this.page = 1;
+    this.archived = '';
     this.status = '';
     this.type = '';
     this.search = '';
@@ -77,10 +95,40 @@ export default class LeasesController extends PaginatedController {
     this.showDeleteModal = false;
     this.leaseToDelete = null;
     this.isDeleting = false;
+    this.terminateReason = '';
+    this.deleteReason = '';
+    this.reasonError = '';
+    this.showArchiveModal = false;
+    this.leaseToArchive = null;
+    this.archiveReason = '';
+    this.isArchiving = false;
+    this.historyLease = null;
   }
 
   get hasActiveFilters() {
-    return Boolean(this.type || this.search || this.dateFrom || this.dateTo);
+    return Boolean(
+      this.type || this.search || this.dateFrom || this.dateTo || this.archived,
+    );
+  }
+
+  get editLeaseUnitArchivedMessage() {
+    if (!this.editLease?.unit?.deletedAt) return '';
+    return this.editLease.status === 'DRAFT'
+      ? 'This unit is archived and no longer active. Select another unit.'
+      : 'This unit is archived. Its leases can no longer be edited.';
+  }
+
+  get canArchiveLease() {
+    return ARCHIVE_ROLES.includes(this.auth.currentUser?.role);
+  }
+
+  get canDeleteLease() {
+    return DELETE_ROLES.includes(this.auth.currentUser?.role);
+  }
+
+  // Same roles as GET /record-history.
+  get canViewHistory() {
+    return ARCHIVE_ROLES.includes(this.auth.currentUser?.role);
   }
 
   get typeFilterOptions() {
@@ -112,7 +160,7 @@ export default class LeasesController extends PaginatedController {
     const current = this.editLease?.status;
     const map = {
       DRAFT: ['DRAFT', 'ACTIVE'],
-      ACTIVE: ['DRAFT', 'ACTIVE', 'EXPIRED'],
+      ACTIVE: ['ACTIVE', 'EXPIRED'],
       EXPIRED: ['ACTIVE', 'EXPIRED'],
       TERMINATED: ['TERMINATED'],
       RENEWED: ['RENEWED'],
@@ -130,6 +178,11 @@ export default class LeasesController extends PaginatedController {
   // Native <input type="date"> still emits a raw DOM event.
   @action setFieldValueFromEvent(fieldName, event) {
     this[fieldName] = event.target.value;
+  }
+
+  @action setArchivedTab(tabId) {
+    this.archived = tabId;
+    this.page = 1;
   }
 
   @action setStatusTab(tabId) {
@@ -166,6 +219,7 @@ export default class LeasesController extends PaginatedController {
     this.search = '';
     this.dateFrom = '';
     this.dateTo = '';
+    this.archived = '';
     this.page = 1;
   }
 
@@ -255,6 +309,9 @@ export default class LeasesController extends PaginatedController {
           ...(this.formTenantContactId
             ? { contactId: this.formTenantContactId }
             : {}),
+          ...(this.formUnitId && this.formUnitId !== this.editLease.unitId
+            ? { unitId: this.formUnitId }
+            : {}),
           type: this.formType,
           startDate: this.formStartDate,
           endDate: this.formEndDate,
@@ -328,6 +385,8 @@ export default class LeasesController extends PaginatedController {
 
   @action openTerminate(lease) {
     this.leaseToTerminate = lease;
+    this.terminateReason = '';
+    this.reasonError = '';
     this.showTerminateModal = true;
   }
 
@@ -338,12 +397,17 @@ export default class LeasesController extends PaginatedController {
 
   @action async confirmTerminate() {
     if (!this.leaseToTerminate || this.isTerminating) return;
+    const reason = this.terminateReason.trim();
+    if (!reason) {
+      this.reasonError = 'Reason is required.';
+      return;
+    }
 
     this.isTerminating = true;
     try {
       await this.auth.fetchJson(
         `/leases/${this.leaseToTerminate.id}/terminate`,
-        { method: 'POST' },
+        { method: 'POST', body: JSON.stringify({ reason }) },
       );
       this.notifications.success('Lease terminated');
       this.closeTerminateModal();
@@ -356,6 +420,8 @@ export default class LeasesController extends PaginatedController {
   }
 
   @action openDelete(lease) {
+    this.deleteReason = '';
+    this.reasonError = '';
     openDeleteModal(this, 'leaseToDelete', lease);
   }
 
@@ -364,11 +430,71 @@ export default class LeasesController extends PaginatedController {
   }
 
   @action async confirmDelete() {
+    const reason = this.deleteReason.trim();
+    if (!reason) {
+      this.reasonError = 'Reason is required.';
+      return;
+    }
     await confirmDeleteModal(this, {
       itemKey: 'leaseToDelete',
       resourcePath: '/leases',
       successMessage: 'Lease deleted',
       refreshRoute: 'leases',
+      body: { reason },
     });
+  }
+
+  @action openArchive(lease, mode) {
+    this.leaseToArchive = lease;
+    this.archiveMode = mode;
+    this.archiveReason = '';
+    this.reasonError = '';
+    this.showArchiveModal = true;
+  }
+
+  @action closeArchiveModal() {
+    this.showArchiveModal = false;
+    this.leaseToArchive = null;
+  }
+
+  @action async confirmArchive() {
+    if (!this.leaseToArchive || this.isArchiving) return;
+    const isArchive = this.archiveMode === 'archive';
+    const reason = this.archiveReason.trim();
+    if (isArchive && !reason) {
+      this.reasonError = 'Reason is required.';
+      return;
+    }
+
+    this.isArchiving = true;
+    try {
+      await this.auth.fetchJson(
+        `/leases/${this.leaseToArchive.id}/${this.archiveMode}`,
+        {
+          method: 'POST',
+          body: JSON.stringify(reason ? { reason } : {}),
+        },
+      );
+      this.notifications.success(
+        isArchive ? 'Lease archived' : 'Lease unarchived',
+      );
+      this.closeArchiveModal();
+      this.router.refresh('leases');
+    } catch (e) {
+      this.notifications.error(
+        e.message ||
+          (isArchive ? 'Failed to archive lease' : 'Failed to unarchive lease'),
+      );
+    } finally {
+      this.isArchiving = false;
+    }
+  }
+
+  @action openHistory(lease) {
+    this.historyLease = lease;
+  }
+
+  @action closeHistory() {
+    this.historyLease = null;
   }
 }

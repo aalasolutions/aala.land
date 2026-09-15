@@ -280,7 +280,14 @@
                   {{#each @model.leases as |lease|}}
                     <tr data-test-lease-row>
                       <td class="font-bold">{{lease.unit.unitNumber}}</td>
-                      <td><Nuvo::Tag class="tag-lease-{{lowercase lease.status}}" @text={{lease.status}} /></td>
+                      <td>
+                        <div class="flex gap-1 wrap">
+                          <Nuvo::Tag class="tag-lease-{{lowercase lease.status}}" @text={{lease.status}} />
+                          {{#if lease.deletedAt}}
+                            <Nuvo::Tag @variant="secondary" @text="Archived" data-test-lease-archived-badge />
+                          {{/if}}
+                        </div>
+                      </td>
                       <td>{{format-date lease.startDate}}</td>
                       <td>{{format-date lease.endDate}}</td>
                       <td>{{format-currency lease.monthlyRent}}</td>
@@ -362,6 +369,12 @@
           {{else}}
             <Nuvo::EmptyState @description="No lead requirements found." />
           {{/if}}
+        </Nuvo::Card>
+      {{/if}}
+
+      {{#if this.canViewHistory}}
+        <Nuvo::Card @title="History" data-test-contact-history>
+          <RecordHistoryList @entityType="Contact" @entityId={{@model.contact.id}} />
         </Nuvo::Card>
       {{/if}}
     </div>

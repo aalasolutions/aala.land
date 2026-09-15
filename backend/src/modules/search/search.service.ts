@@ -54,7 +54,7 @@ export class SearchService {
                   WHERE LOWER(c.name) LIKE $1
                     /* REGION_FILTER */
                     AND (b.company_id = $2
-                         OR EXISTS (SELECT 1 FROM units u WHERE u.asset_id = b.id AND u.company_id = $2))
+                         OR EXISTS (SELECT 1 FROM units u WHERE u.asset_id = b.id AND u.company_id = $2 AND u.deleted_at IS NULL))
                     ORDER BY name_lower
                     LIMIT 5`,
 
@@ -69,7 +69,7 @@ export class SearchService {
                  WHERE LOWER(l.name) LIKE $1
                    /* REGION_FILTER */
                    AND (b.company_id = $2
-                        OR EXISTS (SELECT 1 FROM units u WHERE u.asset_id = b.id AND u.company_id = $2))
+                        OR EXISTS (SELECT 1 FROM units u WHERE u.asset_id = b.id AND u.company_id = $2 AND u.deleted_at IS NULL))
                   GROUP BY l.id, l.name, c.name
                   ORDER BY LOWER(l.name)
                   LIMIT 5`,
@@ -84,7 +84,7 @@ export class SearchService {
                   WHERE LOWER(b.name) LIKE $1
                     /* REGION_FILTER */
                     AND (b.company_id = $2
-                         OR EXISTS (SELECT 1 FROM units u WHERE u.asset_id = b.id AND u.company_id = $2))
+                         OR EXISTS (SELECT 1 FROM units u WHERE u.asset_id = b.id AND u.company_id = $2 AND u.deleted_at IS NULL))
                   ORDER BY LOWER(b.name)
                   LIMIT 5`,
         [term, companyId],

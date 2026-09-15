@@ -6,7 +6,6 @@ import {
   Body,
   Param,
   Patch,
-  Delete,
   UseGuards,
   Request,
   Query,
@@ -29,6 +28,7 @@ import { Roles } from '@shared/decorators/roles.decorator';
 import { Role } from '@shared/enums/roles.enum';
 import { CreateContactDto } from './dto/create-contact.dto';
 import { UpdateContactDto } from './dto/update-contact.dto';
+import { DeleteContactDto } from './dto/delete-contact.dto';
 import { AuthenticatedRequest } from '@shared/interfaces/authenticated-request.interface';
 import { requireCompanyId } from '@shared/utils/auth.util';
 
@@ -178,28 +178,23 @@ export class ContactsController {
     });
   }
 
-  @Delete(':id')
+  @Post(':id/delete')
   @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN)
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({
-    summary: 'Delete a contact (SUPER_ADMIN, COMPANY_ADMIN, ADMIN)',
-  })
-  @ApiQuery({
-    name: 'transferToContactId',
-    required: false,
-    description:
-      'Required when the contact has leads, units, leases or chats: their edges move to this contact first.',
+    summary:
+      'Delete a contact with a reason (SUPER_ADMIN, COMPANY_ADMIN, ADMIN)',
   })
   remove(
     @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: DeleteContactDto,
     @Request() req: AuthenticatedRequest,
-    @Query('transferToContactId', new ParseUUIDPipe({ optional: true }))
-    transferToContactId?: string,
   ) {
     return this.contactsService.remove(
       id,
       requireCompanyId(req.user),
-      transferToContactId,
+      dto,
+      req.user.userId,
       { role: req.user.role, regionCodes: req.user.regionCodes },
     );
   }

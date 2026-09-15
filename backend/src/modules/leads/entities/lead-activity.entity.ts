@@ -56,6 +56,6 @@ export class LeadActivity {
   @JoinColumn({ name: 'performed_by' })
   performer?: User | null;
 
-  @CreateDateColumn({ name: 'created_at' })
+  @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;
 }

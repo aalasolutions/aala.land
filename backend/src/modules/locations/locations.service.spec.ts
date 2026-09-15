@@ -467,6 +467,19 @@ describe('LocationsService', () => {
       expect(result).toEqual([]);
     });
   });
+  describe('getCompanyLocalities archived units', () => {
+    it('joins only non-archived units into the counts', async () => {
+      dataSource.query.mockResolvedValue([]);
+
+      await service.getCompanyLocalities('company-1');
+
+      const [sql] = dataSource.query.mock.calls[0];
+      expect(sql).toContain(
+        'LEFT JOIN units u ON u.asset_id = ast.id AND u.company_id = $1 AND u.deleted_at IS NULL',
+      );
+    });
+  });
+
   describe('getCompanyLocalities region scoping', () => {
     const makkahManager = { role: 'manager', regionCodes: ['makkah'] };
     const twoRegionManager = {

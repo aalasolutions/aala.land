@@ -114,12 +114,12 @@ export class Transaction {
   @Column({ name: 'due_date', type: 'date', nullable: true })
   dueDate: Date;
 
-  @Column({ name: 'paid_at', type: 'timestamp', nullable: true })
+  @Column({ name: 'paid_at', type: 'timestamptz', nullable: true })
   paidAt: Date;
 
-  @CreateDateColumn({ name: 'created_at' })
+  @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;
 
-  @UpdateDateColumn({ name: 'updated_at' })
+  @UpdateDateColumn({ name: 'updated_at', type: 'timestamptz' })
   updatedAt: Date;
 }

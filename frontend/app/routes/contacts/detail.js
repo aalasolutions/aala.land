@@ -21,7 +21,9 @@ export default class ContactsDetailRoute extends AuthenticatedRoute {
         : null,
       tags.includes('tenant')
         ? this.auth
-            .fetchJson(`/leases?contactId=${contact_id}&limit=100`)
+            .fetchJson(
+              `/leases?contactId=${contact_id}&limit=100&archived=include`,
+            )
             .catch(() => null)
         : null,
       tags.includes('lead')

@@ -2,6 +2,8 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { MaintenanceController } from './maintenance.controller';
 import { MaintenanceService } from './maintenance.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RequestMethod } from '@nestjs/common';
+import { METHOD_METADATA, PATH_METADATA } from '@nestjs/common/constants';
 import {
   WorkOrderStatus,
   WorkOrderPriority,
@@ -174,19 +176,30 @@ describe('MaintenanceController', () => {
         companyId,
         { status: WorkOrderStatus.COMPLETED },
         mockReq.user,
+        'user-uuid-1',
       );
     });
   });
 
   describe('remove', () => {
-    it('removes work order', async () => {
+    it('is served on POST /maintenance/:id/delete', () => {
+      const handler = MaintenanceController.prototype.remove;
+      expect(Reflect.getMetadata(PATH_METADATA, handler)).toBe(':id/delete');
+      expect(Reflect.getMetadata(METHOD_METADATA, handler)).toBe(
+        RequestMethod.POST,
+      );
+    });
+
+    it('forwards the reason and actor', async () => {
       service.remove.mockResolvedValue(undefined);
 
-      await controller.remove('order-uuid-1', mockReq);
+      await controller.remove('order-uuid-1', { reason: 'Duplicate' }, mockReq);
 
       expect(service.remove).toHaveBeenCalledWith(
         'order-uuid-1',
         companyId,
+        'Duplicate',
+        'user-uuid-1',
         mockReq.user,
       );
     });

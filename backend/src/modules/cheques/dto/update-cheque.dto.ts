@@ -8,6 +8,7 @@ import {
   MaxLength,
   IsUUID,
 } from 'class-validator';
+import { Transform } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
 import { ChequeStatus, ChequeType } from '../entities/cheque.entity';
 
@@ -62,4 +63,17 @@ export class UpdateChequeDto {
   @IsOptional()
   @IsString()
   notes?: string;
+
+  @ApiProperty({
+    required: false,
+    maxLength: 500,
+    description: 'Required when the new status is CANCELLED',
+  })
+  @IsOptional()
+  @Transform(({ value }: { value: unknown }) =>
+    typeof value === 'string' ? value.trim() : value,
+  )
+  @IsString()
+  @MaxLength(500)
+  reason?: string;
 }

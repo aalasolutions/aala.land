@@ -286,9 +286,8 @@
 <ConfirmModal
   @open={{this.showDeleteModal}}
   @title="Delete Vendor"
-  @message="Are you sure you want to delete {{this.vendorToDelete.name}}? This action cannot be undone."
+  @message="Delete {{this.vendorToDelete.name}}? This cannot be undone."
   @confirmText="Delete"
-  @cancelText="Cancel"
   @confirmVariant="danger"
   @isConfirming={{this.isDeleting}}
   @confirmingText="Deleting..."

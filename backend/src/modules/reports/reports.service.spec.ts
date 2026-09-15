@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { IsNull, Repository } from 'typeorm';
 import { ReportsService } from './reports.service';
 import { Lead, LeadStatus } from '../leads/entities/lead.entity';
 import {
@@ -10,7 +10,7 @@ import {
 import { Transaction } from '../financial/entities/transaction.entity';
 import { Unit } from '../properties/entities/unit.entity';
 import { Commission } from '../commissions/entities/commission.entity';
-import { Lease } from '../leases/entities/lease.entity';
+import { Lease, LeaseStatus } from '../leases/entities/lease.entity';
 import { Cheque } from '../cheques/entities/cheque.entity';
 import { AuditLog } from '../audit/entities/audit-log.entity';
 import { User } from '../users/entities/user.entity';
@@ -231,6 +231,68 @@ describe('ReportsService', () => {
       expect(result.length).toBeGreaterThanOrEqual(1);
       expect(result[0].type).toBe('UNTOUCHED_LEAD_48H');
       expect(result[0].severity).toBe('HIGH');
+    });
+
+    it('excludes archived units from vacant units', async () => {
+      leadRepo.find.mockResolvedValue([]);
+      leadRepo.createQueryBuilder.mockReturnValue(createMockQueryBuilder([]));
+      unitRepo.find.mockResolvedValue([]);
+
+      await service.getRedFlags(companyId);
+
+      expect(unitRepo.find).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ deletedAt: IsNull() }),
+        }),
+      );
+    });
+
+    it('excludes archived units from region-scoped vacant units', async () => {
+      leadRepo.find.mockResolvedValue([]);
+      leadRepo.createQueryBuilder.mockReturnValue(createMockQueryBuilder([]));
+      const unitQb = createMockQueryBuilder([]);
+      unitRepo.createQueryBuilder.mockReturnValue(unitQb);
+
+      await service.getRedFlags(companyId, undefined, {
+        role: 'manager',
+        regionCodes: ['makkah'],
+      } as any);
+
+      expect(unitQb.andWhere).toHaveBeenCalledWith('u.deleted_at IS NULL');
+    });
+  });
+
+  describe('getDashboardKpis archived units', () => {
+    it('counts only non-archived units', async () => {
+      leadRepo.count.mockResolvedValue(0);
+      unitRepo.count.mockResolvedValue(0);
+      leaseRepo.count.mockResolvedValue(0);
+      chequeRepo.count.mockResolvedValue(0);
+      transactionRepo.createQueryBuilder.mockReturnValue(
+        createMockQueryBuilder({ total: '0' }),
+      );
+
+      await service.getDashboardKpis(companyId);
+
+      expect(unitRepo.count).toHaveBeenCalledWith({
+        where: { companyId, deletedAt: IsNull() },
+      });
+    });
+
+    it('counts only non-archived active leases', async () => {
+      leadRepo.count.mockResolvedValue(0);
+      unitRepo.count.mockResolvedValue(0);
+      leaseRepo.count.mockResolvedValue(0);
+      chequeRepo.count.mockResolvedValue(0);
+      transactionRepo.createQueryBuilder.mockReturnValue(
+        createMockQueryBuilder({ total: '0' }),
+      );
+
+      await service.getDashboardKpis(companyId);
+
+      expect(leaseRepo.count).toHaveBeenCalledWith({
+        where: { companyId, status: LeaseStatus.ACTIVE, deletedAt: IsNull() },
+      });
     });
   });
 
@@ -562,9 +624,7 @@ describe('ReportsService', () => {
           makkahManager,
         );
 
-        expect(
-          result.some((a) => a.agentId === 'agent-punjab'),
-        ).toBe(false);
+        expect(result.some((a) => a.agentId === 'agent-punjab')).toBe(false);
         expect(result[0].commissionsEarned).toBe(0);
       });
 
@@ -713,6 +773,15 @@ describe('ReportsService', () => {
         expect(leadRepo.count).not.toHaveBeenCalled();
         expect(unitRepo.count).not.toHaveBeenCalled();
         expect(unitRepo.createQueryBuilder).not.toHaveBeenCalled();
+      });
+
+      it('excludes archived leases from the region-scoped active count', async () => {
+        seed();
+        const leaseQb = leaseRepo.createQueryBuilder();
+
+        await service.getDashboardKpis(companyId, undefined, makkahManager);
+
+        expect(leaseQb.andWhere).toHaveBeenCalledWith('l.deleted_at IS NULL');
       });
     });
 

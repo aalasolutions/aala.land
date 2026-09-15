@@ -1,0 +1,117 @@
+{{page-title "History"}}
+<Nuvo::PageHeader
+  @title="History"
+  @subtitle="Deletes, archives, cancellations and other lifecycle actions"
+/>
+
+<Nuvo::Card data-test-history-page>
+  <:header>
+    <Nuvo::Toolbar class="flex-wrap">
+      <Nuvo::Field @label="Action">
+        <Nuvo::Dropdown
+          @searchable={{true}}
+          @align="start"
+          @value={{this.filterAction}}
+          @onSelect={{this.setFilterAction}}
+          @options={{this.actionOptions}}
+          @placeholder="All Actions"
+          data-test-history-filter-action
+        />
+      </Nuvo::Field>
+
+      <Nuvo::Field @label="Record type">
+        <Nuvo::Dropdown
+          @searchable={{true}}
+          @align="start"
+          @value={{this.filterEntityType}}
+          @onSelect={{this.setFilterEntityType}}
+          @options={{this.entityTypeOptions}}
+          @placeholder="All Entities"
+          data-test-history-filter-entity
+        />
+      </Nuvo::Field>
+
+      {{#if (or this.filterAction this.filterEntityType)}}
+        <Nuvo::Button
+          @variant="secondary"
+          @text="Clear Filters"
+          data-test-history-clear-filters
+          {{on "click" this.clearFilters}}
+        />
+      {{/if}}
+    </Nuvo::Toolbar>
+  </:header>
+
+  <:body>
+    {{#if this.model.forbidden}}
+      <Nuvo::Alert
+        @variant="danger"
+        @icon="warning"
+        data-test-history-forbidden
+      >
+        You don't have permission to view history.
+      </Nuvo::Alert>
+    {{else if this.model.error}}
+      <Nuvo::Alert
+        @variant="danger"
+        @description={{this.model.error}}
+        data-test-history-error
+      />
+    {{else if this.rows.length}}
+      <div class="nu-table-wrapper">
+        <table class="nu-table" data-test-history-table>
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Action</th>
+              <th>Type</th>
+              <th>Record</th>
+              <th>Context</th>
+              <th>Reason</th>
+              <th>By</th>
+            </tr>
+          </thead>
+          <tbody>
+            {{#each this.rows key="id" as |entry|}}
+              <tr data-test-history-row={{entry.id}}>
+                <td class="text-sm text-muted">{{format-date-time
+                    entry.createdAt
+                  }}</td>
+                <td>
+                  <Nuvo::Tag
+                    @variant={{entry.actionVariant}}
+                    @text={{entry.actionLabel}}
+                    data-test-history-action
+                  />
+                </td>
+                <td class="text-sm">{{entry.entityTypeLabel}}</td>
+                <td class="font-bold">{{entry.entityTitle}}</td>
+                <td class="text-sm text-muted">{{if
+                    entry.contextTitle
+                    entry.contextTitle
+                    "-"
+                  }}</td>
+                <td class="text-sm">{{if entry.reason entry.reason "-"}}</td>
+                <td class="text-sm text-muted">{{entry.actorName}}</td>
+              </tr>
+            {{/each}}
+          </tbody>
+        </table>
+      </div>
+
+      <Nuvo::Pagination
+        @selectId="history-limit"
+        @page={{this.page}}
+        @limit={{this.limit}}
+        @total={{this.model.total}}
+        @onLimitChange={{this.setLimit}}
+        @onPageChange={{this.goToPage}}
+        @onPrevious={{this.goToPreviousPage}}
+        @onNext={{this.goToNextPage}}
+        data-test-history-pagination
+      />
+    {{else}}
+      <Nuvo::EmptyState @title="No history found" data-test-history-empty />
+    {{/if}}
+  </:body>
+</Nuvo::Card>

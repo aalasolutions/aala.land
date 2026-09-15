@@ -1179,7 +1179,6 @@
       @title="Publish listing?"
       @message="Unit 1204 will become visible on all connected portals."
       @confirmText="Publish"
-      @cancelText="Cancel"
       @onClose={{this.closeConfirm}}
       @onConfirm={{this.closeConfirm}}
     />
@@ -1187,9 +1186,8 @@
     <ConfirmModal
       @open={{this.confirmDangerOpen}}
       @title="Delete vendor"
-      @message="Are you sure you want to delete Gulf Maintenance LLC? This action cannot be undone."
+      @message="Delete Gulf Maintenance LLC? This cannot be undone."
       @confirmText="Delete"
-      @cancelText="Cancel"
       @confirmVariant="danger"
       @onClose={{this.closeConfirmDanger}}
       @onConfirm={{this.closeConfirmDanger}}

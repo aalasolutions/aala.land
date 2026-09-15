@@ -35,6 +35,8 @@ import { ConsoleModule } from '@modules/console/console.module';
 import { EmailModule } from '@modules/email/email.module';
 import { RedisModule } from '@modules/redis/redis.module';
 import { getRedisConnection } from '@modules/redis/redis.config';
+import { StoragePurgeModule } from '@modules/storage-purge/storage-purge.module';
+import { RecordHistoryModule } from '@modules/record-history/record-history.module';
 import { RegionScopeInterceptor } from '@shared/interceptors/region-scope.interceptor';
 
 @Module({
@@ -87,6 +89,8 @@ import { RegionScopeInterceptor } from '@shared/interceptors/region-scope.interc
     ConsoleModule,
     EmailModule,
     RedisModule,
+    StoragePurgeModule,
+    RecordHistoryModule,
   ],
   controllers: [AppController],
   providers: [

@@ -38,10 +38,6 @@ export function canManageFinancials(role) {
   ].includes(role);
 }
 
-export function canDelete(role) {
-  return [ROLES.SUPER_ADMIN, ROLES.COMPANY_ADMIN].includes(role);
-}
-
 export const SIDEBAR_ROLES = {
   properties: [
     ROLES.COMPANY_ADMIN,
@@ -80,6 +76,7 @@ export const SIDEBAR_ROLES = {
     ROLES.ACCOUNTANT,
   ],
   team: [ROLES.SUPER_ADMIN, ROLES.COMPANY_ADMIN, ROLES.ADMIN],
+  history: [ROLES.COMPANY_ADMIN, ROLES.ADMIN, ROLES.MANAGER],
   admin: [ROLES.SUPER_ADMIN],
 };
 

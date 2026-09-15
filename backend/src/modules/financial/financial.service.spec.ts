@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { NotFoundException } from '@nestjs/common';
+import { DataSource, Repository } from 'typeorm';
+import { ConflictException, NotFoundException } from '@nestjs/common';
 import { FinancialService } from './financial.service';
 import {
   Transaction,
@@ -9,10 +9,13 @@ import {
   TransactionStatus,
   PaymentMethod,
 } from './entities/transaction.entity';
+import { Unit } from '../properties/entities/unit.entity';
 
 describe('FinancialService', () => {
   let service: FinancialService;
   let repo: jest.Mocked<Repository<Transaction>>;
+  let unitRepo: jest.Mocked<Repository<Unit>>;
+  let manager: { getRepository: jest.Mock; findOne: jest.Mock };
 
   const companyId = 'company-uuid-1';
 
@@ -29,9 +32,19 @@ describe('FinancialService', () => {
   };
 
   beforeEach(async () => {
+    manager = {
+      getRepository: jest.fn(() => repo),
+      findOne: jest.fn().mockResolvedValue(null),
+    };
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         FinancialService,
+        {
+          provide: DataSource,
+          useValue: {
+            transaction: jest.fn((cb: (m: unknown) => unknown) => cb(manager)),
+          },
+        },
         {
           provide: getRepositoryToken(Transaction),
           useValue: {
@@ -43,11 +56,136 @@ describe('FinancialService', () => {
             createQueryBuilder: jest.fn(),
           },
         },
+        {
+          provide: getRepositoryToken(Unit),
+          useValue: {
+            findOne: jest.fn(),
+          },
+        },
       ],
     }).compile();
 
     service = module.get<FinancialService>(FinancialService);
     repo = module.get(getRepositoryToken(Transaction));
+    unitRepo = module.get(getRepositoryToken(Unit));
+  });
+
+  describe('archived unit', () => {
+    const archivedUnit = { id: 'unit-archived', deletedAt: new Date() } as Unit;
+    const shareLock = (id: string) => ({
+      where: { id, companyId },
+      select: { id: true, deletedAt: true },
+      lock: { mode: 'pessimistic_read' },
+    });
+
+    it('refuses creating a transaction on an archived unit', async () => {
+      unitRepo.findOne.mockResolvedValue(archivedUnit);
+
+      await expect(
+        service.create(companyId, {
+          type: TransactionType.INCOME,
+          amount: 100,
+          unitId: 'unit-archived',
+        } as any),
+      ).rejects.toThrow(ConflictException);
+      expect(unitRepo.findOne).toHaveBeenCalledWith({
+        where: { id: 'unit-archived', companyId },
+        select: { id: true, deletedAt: true },
+      });
+      expect(repo.save).not.toHaveBeenCalled();
+    });
+
+    it('404s a unit of another company on create', async () => {
+      unitRepo.findOne.mockResolvedValue(null);
+
+      await expect(
+        service.create(companyId, {
+          type: TransactionType.INCOME,
+          amount: 100,
+          unitId: 'unit-foreign',
+        } as any),
+      ).rejects.toThrow(new NotFoundException('Unit not found'));
+      expect(unitRepo.findOne).toHaveBeenCalledWith({
+        where: { id: 'unit-foreign', companyId },
+        select: { id: true, deletedAt: true },
+      });
+      expect(repo.save).not.toHaveBeenCalled();
+    });
+
+    it('refuses create when the unit is archived after the first read', async () => {
+      unitRepo.findOne.mockResolvedValue({
+        id: 'unit-archived',
+        deletedAt: null,
+      } as Unit);
+      manager.findOne.mockResolvedValue(archivedUnit);
+      repo.create.mockReturnValue(mockTransaction as Transaction);
+
+      await expect(
+        service.create(companyId, { unitId: 'unit-archived' } as any),
+      ).rejects.toThrow('This unit is archived.');
+      expect(manager.findOne).toHaveBeenCalledWith(
+        Unit,
+        shareLock('unit-archived'),
+      );
+      expect(repo.save).not.toHaveBeenCalled();
+    });
+
+    it('refuses create when the unit is deleted while waiting for the lock', async () => {
+      unitRepo.findOne.mockResolvedValue({
+        id: 'unit-gone',
+        deletedAt: null,
+      } as Unit);
+      manager.findOne.mockResolvedValue(null);
+      repo.create.mockReturnValue(mockTransaction as Transaction);
+
+      await expect(
+        service.create(companyId, { unitId: 'unit-gone' } as any),
+      ).rejects.toThrow(new NotFoundException('Unit not found'));
+      expect(repo.save).not.toHaveBeenCalled();
+    });
+
+    it('refuses updating a transaction on an archived unit', async () => {
+      repo.findOne.mockResolvedValue({
+        ...mockTransaction,
+        unitId: 'unit-archived',
+      } as Transaction);
+      manager.findOne.mockResolvedValue(archivedUnit);
+
+      await expect(
+        service.update('txn-uuid-1', companyId, {
+          status: TransactionStatus.COMPLETED,
+        }),
+      ).rejects.toThrow(
+        'This unit is archived. Its records can no longer be edited.',
+      );
+      expect(repo.findOne).toHaveBeenLastCalledWith({
+        where: { id: 'txn-uuid-1', companyId },
+        lock: { mode: 'pessimistic_write' },
+      });
+      expect(manager.findOne).toHaveBeenCalledWith(
+        Unit,
+        shareLock('unit-archived'),
+      );
+      expect(repo.save).not.toHaveBeenCalled();
+    });
+
+    it('allows a transaction on a live unit', async () => {
+      unitRepo.findOne.mockResolvedValue({
+        id: 'unit-live',
+        deletedAt: null,
+      } as Unit);
+      manager.findOne.mockResolvedValue({ id: 'unit-live', deletedAt: null });
+      repo.create.mockReturnValue(mockTransaction as Transaction);
+      repo.save.mockResolvedValue(mockTransaction as Transaction);
+
+      await expect(
+        service.create(companyId, { unitId: 'unit-live' } as any),
+      ).resolves.toEqual(mockTransaction);
+      expect(manager.findOne).toHaveBeenCalledWith(
+        Unit,
+        shareLock('unit-live'),
+      );
+    });
   });
 
   it('should be defined', () => {

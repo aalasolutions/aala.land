@@ -116,6 +116,7 @@ export class CommissionsController {
       id,
       requireCompanyId(req.user),
       req.user,
+      req.user.userId,
     );
   }
 
@@ -130,6 +131,7 @@ export class CommissionsController {
       id,
       requireCompanyId(req.user),
       req.user,
+      req.user.userId,
     );
   }
 
@@ -160,6 +162,7 @@ export class CommissionsController {
       requireCompanyId(req.user),
       dto,
       req.user,
+      req.user.userId,
     );
   }
 }

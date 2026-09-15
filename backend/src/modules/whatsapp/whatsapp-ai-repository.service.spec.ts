@@ -1,3 +1,4 @@
+import { IsNull } from 'typeorm';
 import { WhatsappAiRepositoryService } from './whatsapp-ai-repository.service';
 import { UnitStatus } from '../properties/entities/unit.entity';
 import { PropertyType } from '../properties/entities/property-type.enum';
@@ -124,7 +125,11 @@ describe('WhatsappAiRepositoryService', () => {
       await service.getCompanyAndUnits('c1');
       expect(repos.unitRepo.find).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: { companyId: 'c1', status: UnitStatus.AVAILABLE },
+          where: {
+            companyId: 'c1',
+            status: UnitStatus.AVAILABLE,
+            deletedAt: IsNull(),
+          },
           take: 40,
         }),
       );
@@ -525,6 +530,15 @@ describe('WhatsappAiRepositoryService', () => {
             companyId: 'c1',
             status: UnitStatus.AVAILABLE,
           }),
+        }),
+      );
+    });
+
+    it('excludes archived units', async () => {
+      await service.searchProperties('c1', {});
+      expect(repos.unitRepo.find).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ deletedAt: IsNull() }),
         }),
       );
     });

@@ -134,10 +134,10 @@ export class WorkOrder {
   @Column({ type: 'varchar', length: 3, default: 'AED' })
   currency: string;
 
-  @Column({ name: 'scheduled_date', type: 'timestamp', nullable: true })
+  @Column({ name: 'scheduled_date', type: 'timestamptz', nullable: true })
   scheduledDate: Date | null;
 
-  @Column({ name: 'completed_at', type: 'timestamp', nullable: true })
+  @Column({ name: 'completed_at', type: 'timestamptz', nullable: true })
   completedAt: Date | null;
 
   @Column({ name: 'cost_notes', type: 'text', nullable: true })
@@ -160,12 +160,12 @@ export class WorkOrder {
   })
   scheduleFrequency: ScheduleFrequency | null;
 
-  @Column({ name: 'next_scheduled_date', type: 'timestamp', nullable: true })
+  @Column({ name: 'next_scheduled_date', type: 'timestamptz', nullable: true })
   nextScheduledDate: Date | null;
 
-  @CreateDateColumn({ name: 'created_at' })
+  @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;
 
-  @UpdateDateColumn({ name: 'updated_at' })
+  @UpdateDateColumn({ name: 'updated_at', type: 'timestamptz' })
   updatedAt: Date;
 }

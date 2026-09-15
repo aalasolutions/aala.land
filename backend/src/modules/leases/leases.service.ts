@@ -2,22 +2,34 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  ConflictException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { attachDisplayName } from '../../shared/utils/contact.util';
+import {
+  attachDisplayName,
+  contactDisplayName,
+} from '../../shared/utils/contact.util';
 import { ContactsService } from '../contacts/contacts.service';
 import {
   DataSource,
   EntityManager,
   FindOptionsWhere,
   In,
+  IsNull,
+  Not,
   QueryFailedError,
   Repository,
 } from 'typeorm';
 import { Lease, LeaseStatus, LeaseType } from './entities/lease.entity';
 import { CreateLeaseDto } from './dto/create-lease.dto';
 import { UpdateLeaseDto } from './dto/update-lease.dto';
+import { LeaseReasonDto, OptionalLeaseReasonDto } from './dto/lease-reason.dto';
+import { LeaseArchivedFilter } from './dto/lease-archived-filter.enum';
 import { Unit } from '../properties/entities/unit.entity';
+import { Contact } from '../contacts/entities/contact.entity';
+import { Cheque } from '../cheques/entities/cheque.entity';
+import { RecordHistoryService } from '../record-history/record-history.service';
+import { RecordHistoryAction } from '../record-history/entities/record-history.entity';
 import {
   REGION_FILTER_SUBQUERY_MULTI,
   unitInRegionsWhere,
@@ -34,7 +46,14 @@ export interface LeaseFilters {
   search?: string;
   dateFrom?: string;
   dateTo?: string;
+  archived?: LeaseArchivedFilter;
 }
+
+const ARCHIVED_LEASE_MESSAGE = 'This lease is archived. Unarchive it first.';
+const ARCHIVED_UNIT_MESSAGE =
+  'This unit is archived and no longer active. Select another unit.';
+const ARCHIVED_UNIT_LOCKED_MESSAGE =
+  'This unit is archived. Its leases can no longer be edited.';
 
 /**
  * Partial unique index name from migration 1779500000043
@@ -52,6 +71,7 @@ export class LeasesService {
     private readonly unitRepository: Repository<Unit>,
     private readonly dataSource: DataSource,
     private readonly contactsService: ContactsService,
+    private readonly recordHistoryService: RecordHistoryService,
   ) {}
 
   /**
@@ -150,6 +170,7 @@ export class LeasesService {
     unitId: string | null | undefined,
     companyId: string,
     caller?: RegionScope,
+    rejectArchived = false,
   ): Promise<void> {
     if (!unitId) {
       return;
@@ -168,10 +189,35 @@ export class LeasesService {
 
     const unit = await this.unitRepository.findOne({
       where,
-      select: { id: true },
+      select: { id: true, deletedAt: true },
     });
     if (!unit) {
       throw new NotFoundException('Unit not found');
+    }
+    if (rejectArchived && unit.deletedAt) {
+      throw new ConflictException(
+        'This unit is archived. Unarchive it before adding a lease.',
+      );
+    }
+  }
+
+  // FOR SHARE so archiveUnit (FOR UPDATE on the unit) cannot commit in between.
+  private async assertUnitNotArchivedLocked(
+    manager: EntityManager,
+    unitId: string,
+    companyId: string,
+    message: string,
+  ): Promise<void> {
+    const unit = await manager.findOne(Unit, {
+      where: { id: unitId, companyId },
+      select: { id: true, deletedAt: true },
+      lock: { mode: 'pessimistic_read' },
+    });
+    if (!unit) {
+      throw new NotFoundException('Unit not found');
+    }
+    if (unit.deletedAt) {
+      throw new ConflictException(message);
     }
   }
 
@@ -194,9 +240,17 @@ export class LeasesService {
     caller?: RegionScope,
   ): Promise<Lease> {
     await this.assertContactInCompany(dto.contactId, companyId, caller);
-    await this.assertUnitInCallerRegions(dto.unitId, companyId, caller);
+    await this.assertUnitInCallerRegions(dto.unitId, companyId, caller, true);
     const lease = this.leaseRepository.create({ ...dto, companyId });
-    const saved = await this.leaseRepository.save(lease);
+    const saved = await this.dataSource.transaction(async (manager) => {
+      await this.assertUnitNotArchivedLocked(
+        manager,
+        dto.unitId,
+        companyId,
+        'This unit is archived. Unarchive it before adding a lease.',
+      );
+      return manager.save(Lease, lease);
+    });
     // Re-read of a row this caller just wrote, so it stays unscoped.
     return this.findOne(saved.id, companyId);
   }
@@ -230,6 +284,12 @@ export class LeasesService {
       qb.andWhere(`l.unitId IN (${REGION_FILTER_SUBQUERY_MULTI})`, {
         regionCodes,
       });
+    }
+    const archived = filters?.archived ?? LeaseArchivedFilter.EXCLUDE;
+    if (archived === LeaseArchivedFilter.EXCLUDE) {
+      qb.andWhere('l.deletedAt IS NULL');
+    } else if (archived === LeaseArchivedFilter.ONLY) {
+      qb.andWhere('l.deletedAt IS NOT NULL');
     }
     if (contactId) {
       qb.andWhere('l.contactId = :contactId', { contactId });
@@ -293,10 +353,17 @@ export class LeasesService {
     unitId: string,
     companyId: string,
     caller?: RegionScope,
+    archived: LeaseArchivedFilter = LeaseArchivedFilter.INCLUDE,
   ): Promise<Lease[]> {
     await this.assertUnitInCallerRegions(unitId, companyId, caller);
+    const where: FindOptionsWhere<Lease> = { unitId, companyId };
+    if (archived === LeaseArchivedFilter.EXCLUDE) {
+      where.deletedAt = IsNull();
+    } else if (archived === LeaseArchivedFilter.ONLY) {
+      where.deletedAt = Not(IsNull());
+    }
     const leases = await this.leaseRepository.find({
-      where: { unitId, companyId },
+      where,
       relations: ['contact'],
       order: { startDate: 'DESC' },
     });
@@ -308,6 +375,7 @@ export class LeasesService {
     id: string,
     companyId: string,
     dto: UpdateLeaseDto,
+    actorId: string,
     caller?: RegionScope,
   ): Promise<Lease> {
     await this.assertContactInCompany(dto.contactId, companyId, caller);
@@ -320,6 +388,38 @@ export class LeasesService {
       if (!lease) {
         throw new NotFoundException('Lease not found');
       }
+      if (lease.deletedAt) {
+        throw new ConflictException(ARCHIVED_LEASE_MESSAGE);
+      }
+
+      if (dto.unitId !== undefined && dto.unitId !== lease.unitId) {
+        if (lease.status !== LeaseStatus.DRAFT) {
+          throw new BadRequestException(
+            'Only a draft lease can move to another unit.',
+          );
+        }
+        await this.assertUnitInCallerRegions(
+          dto.unitId,
+          companyId,
+          caller,
+          true,
+        );
+        await this.assertUnitNotArchivedLocked(
+          manager,
+          dto.unitId,
+          companyId,
+          ARCHIVED_UNIT_MESSAGE,
+        );
+      } else {
+        await this.assertUnitNotArchivedLocked(
+          manager,
+          lease.unitId,
+          companyId,
+          lease.status === LeaseStatus.DRAFT
+            ? ARCHIVED_UNIT_MESSAGE
+            : ARCHIVED_UNIT_LOCKED_MESSAGE,
+        );
+      }
 
       if (dto.status && dto.status !== lease.status) {
         const terminal = [LeaseStatus.TERMINATED, LeaseStatus.RENEWED];
@@ -328,8 +428,14 @@ export class LeasesService {
             `Cannot change status of a ${lease.status} lease`,
           );
         }
+        if (dto.status === LeaseStatus.DRAFT) {
+          throw new ConflictException(
+            `A ${lease.status} lease cannot move back to DRAFT`,
+          );
+        }
       }
 
+      const fromStatus = lease.status;
       Object.assign(lease, dto);
 
       // update() is the write path that flips a lease TO ACTIVE. Under the row
@@ -348,6 +454,17 @@ export class LeasesService {
         await manager.save(Lease, lease);
       }
 
+      if (lease.status !== fromStatus) {
+        await this.recordLeaseHistory(
+          manager,
+          lease,
+          RecordHistoryAction.STATUS_CHANGE,
+          actorId,
+          null,
+          { from: fromStatus, to: lease.status },
+        );
+      }
+
       return this.reloadWithContact(manager, id, companyId);
     });
   }
@@ -359,7 +476,7 @@ export class LeasesService {
     caller?: RegionScope,
   ): Promise<{ oldLease: Lease; newLease: Lease }> {
     await this.assertContactInCompany(dto.contactId, companyId, caller);
-    await this.assertUnitInCallerRegions(dto.unitId, companyId, caller);
+    await this.assertUnitInCallerRegions(dto.unitId, companyId, caller, true);
     const regionWhere = this.regionScopedWhere(caller);
     return this.dataSource.transaction(async (manager) => {
       const oldLease = await manager.findOne(Lease, {
@@ -369,6 +486,9 @@ export class LeasesService {
       if (!oldLease) {
         throw new NotFoundException('Lease not found');
       }
+      if (oldLease.deletedAt) {
+        throw new ConflictException(ARCHIVED_LEASE_MESSAGE);
+      }
       if (
         oldLease.status !== LeaseStatus.ACTIVE &&
         oldLease.status !== LeaseStatus.EXPIRED
@@ -377,6 +497,14 @@ export class LeasesService {
           'Only ACTIVE or EXPIRED leases can be renewed',
         );
       }
+
+      // Lease row, then the new unit FOR SHARE.
+      await this.assertUnitNotArchivedLocked(
+        manager,
+        dto.unitId,
+        companyId,
+        'This unit is archived. Unarchive it before adding a lease.',
+      );
 
       oldLease.status = LeaseStatus.RENEWED;
       const savedOldLease = await manager.save(Lease, oldLease);
@@ -413,22 +541,28 @@ export class LeasesService {
   async terminate(
     id: string,
     companyId: string,
+    dto: LeaseReasonDto,
+    actorId: string,
     caller?: RegionScope,
   ): Promise<Lease> {
     const regionWhere = this.regionScopedWhere(caller);
     return this.dataSource.transaction(async (manager) => {
-      const lease = await manager.findOne(Lease, {
-        where: { id, companyId, ...regionWhere },
-        lock: { mode: 'pessimistic_write' },
-      });
-      if (!lease) {
-        throw new NotFoundException('Lease not found');
+      const lease = await this.lockLease(manager, id, companyId, regionWhere);
+      if (lease.deletedAt) {
+        throw new ConflictException(ARCHIVED_LEASE_MESSAGE);
       }
       if (lease.status !== LeaseStatus.ACTIVE) {
         throw new BadRequestException('Only ACTIVE leases can be terminated');
       }
       lease.status = LeaseStatus.TERMINATED;
       await manager.save(Lease, lease);
+      await this.recordLeaseHistory(
+        manager,
+        lease,
+        RecordHistoryAction.TERMINATE,
+        actorId,
+        dto.reason,
+      );
       return this.reloadWithContact(manager, id, companyId);
     });
   }
@@ -436,9 +570,152 @@ export class LeasesService {
   async remove(
     id: string,
     companyId: string,
+    dto: LeaseReasonDto,
+    actorId: string,
     caller?: RegionScope,
   ): Promise<void> {
-    const lease = await this.findOne(id, companyId, caller);
-    await this.leaseRepository.remove(lease);
+    const regionWhere = this.regionScopedWhere(caller);
+    await this.dataSource.transaction(async (manager) => {
+      const lease = await this.lockLease(manager, id, companyId, regionWhere);
+      if (lease.status !== LeaseStatus.DRAFT) {
+        throw new ConflictException(
+          'Only draft leases can be deleted. Archive it instead.',
+        );
+      }
+      const chequeCount = await manager.count(Cheque, {
+        where: { leaseId: id, companyId },
+      });
+      if (chequeCount > 0) {
+        throw new ConflictException(
+          `This lease has ${chequeCount} linked cheque(s). Remove them before deleting the lease.`,
+        );
+      }
+      await this.recordLeaseHistory(
+        manager,
+        lease,
+        RecordHistoryAction.DELETE,
+        actorId,
+        dto.reason,
+        { status: lease.status },
+      );
+      await manager.remove(Lease, lease);
+    });
+  }
+
+  async archive(
+    id: string,
+    companyId: string,
+    dto: LeaseReasonDto,
+    actorId: string,
+    caller?: RegionScope,
+  ): Promise<Lease> {
+    const regionWhere = this.regionScopedWhere(caller);
+    return this.dataSource.transaction(async (manager) => {
+      const lease = await this.lockLease(manager, id, companyId, regionWhere);
+      if (lease.deletedAt) {
+        throw new ConflictException('This lease is already archived');
+      }
+      if (lease.status === LeaseStatus.ACTIVE) {
+        throw new ConflictException(
+          'Active leases cannot be archived. Terminate it first.',
+        );
+      }
+      lease.deletedAt = new Date();
+      await manager.save(Lease, lease);
+      await this.recordLeaseHistory(
+        manager,
+        lease,
+        RecordHistoryAction.ARCHIVE,
+        actorId,
+        dto.reason,
+        { status: lease.status },
+      );
+      return this.reloadWithContact(manager, id, companyId);
+    });
+  }
+
+  async unarchive(
+    id: string,
+    companyId: string,
+    dto: OptionalLeaseReasonDto,
+    actorId: string,
+    caller?: RegionScope,
+  ): Promise<Lease> {
+    const regionWhere = this.regionScopedWhere(caller);
+    return this.dataSource.transaction(async (manager) => {
+      const lease = await this.lockLease(manager, id, companyId, regionWhere);
+      if (!lease.deletedAt) {
+        throw new ConflictException('This lease is not archived');
+      }
+      lease.deletedAt = null;
+      await manager.save(Lease, lease);
+      await this.recordLeaseHistory(
+        manager,
+        lease,
+        RecordHistoryAction.UNARCHIVE,
+        actorId,
+        dto.reason,
+        { status: lease.status },
+      );
+      return this.reloadWithContact(manager, id, companyId);
+    });
+  }
+
+  private async lockLease(
+    manager: EntityManager,
+    id: string,
+    companyId: string,
+    regionWhere: FindOptionsWhere<Lease>,
+  ): Promise<Lease> {
+    const lease = await manager.findOne(Lease, {
+      where: { id, companyId, ...regionWhere },
+      lock: { mode: 'pessimistic_write' },
+    });
+    if (!lease) {
+      throw new NotFoundException('Lease not found');
+    }
+    return lease;
+  }
+
+  private async recordLeaseHistory(
+    manager: EntityManager,
+    lease: Lease,
+    action: RecordHistoryAction,
+    actorId: string,
+    reason?: string | null,
+    metadata?: Record<string, unknown>,
+  ): Promise<void> {
+    const unit = await manager.findOne(Unit, {
+      where: { id: lease.unitId, companyId: lease.companyId },
+      relations: { asset: { locality: { city: true } } },
+    });
+    const contact = lease.contactId
+      ? await manager.findOne(Contact, {
+          where: { id: lease.contactId, companyId: lease.companyId },
+        })
+      : null;
+    const actorName = await this.recordHistoryService.resolveActorName(
+      manager,
+      actorId,
+    );
+
+    let entityTitle = unit?.unitNumber ? `Lease ${unit.unitNumber}` : 'Lease';
+    if (lease.ejariNumber) {
+      entityTitle += ` (Ejari ${lease.ejariNumber})`;
+    }
+
+    await this.recordHistoryService.record(manager, {
+      companyId: lease.companyId,
+      action,
+      entityType: 'Lease',
+      entityId: lease.id,
+      entityTitle,
+      contextTitle: contactDisplayName(contact),
+      reason: reason ?? null,
+      actorId,
+      actorName,
+      regionCode: unit?.asset?.locality?.city?.regionCode ?? undefined,
+      metadata: metadata ?? null,
+    });
   }
 }

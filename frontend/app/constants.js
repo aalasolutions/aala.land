@@ -213,6 +213,20 @@ export const LEASE_STATUS_OPTIONS = [
   { id: 'RENEWED', label: 'Renewed' },
 ];
 
+// Leases send a different archived value, so ARCHIVED_FILTER_OPTIONS is not shared.
+export const LEASE_ARCHIVED_OPTIONS = [
+  { value: '', label: 'Active' },
+  { value: 'only', label: 'Archived' },
+  { value: 'include', label: 'All' },
+];
+
+// Shared by properties/index and properties/detail (both send archived=exclude/only/include).
+export const ARCHIVED_FILTER_OPTIONS = [
+  { value: 'exclude', label: 'Active' },
+  { value: 'only', label: 'Archived' },
+  { value: 'include', label: 'All' },
+];
+
 export const MAINTENANCE_STATUS_OPTIONS = [
   { value: '', label: 'All Statuses' },
   { value: 'OPEN', label: 'New / Unassigned' },

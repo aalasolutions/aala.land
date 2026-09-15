@@ -393,12 +393,25 @@
 <ConfirmModal
   @open={{this.showDeleteModal}}
   @title="Delete Contact"
-  @message="Are you sure you want to delete {{this.contactToDelete.displayName}}? This action cannot be undone."
+  @message="Delete {{this.contactToDelete.displayName}}? This cannot be undone."
   @confirmText="Delete"
-  @cancelText="Cancel"
   @confirmVariant="danger"
   @isConfirming={{this.isDeleting}}
   @confirmingText="Deleting..."
   @onClose={{this.closeDeleteModal}}
   @onConfirm={{this.confirmDelete}}
-/>
+>
+  <Nuvo::Field class="mt-4" @label="Reason" @required={{true}} @error={{this.reasonError}}>
+    <Nuvo::Textarea
+      id="contact-delete-reason"
+      rows="2"
+      maxlength="500"
+      placeholder="e.g. Duplicate contact"
+      @value={{this.deleteReason}}
+      @onInput={{fn this.setFieldValue "deleteReason"}}
+      @invalid={{if this.reasonError true false}}
+      aria-label="Reason"
+      data-test-reason-input
+    />
+  </Nuvo::Field>
+</ConfirmModal>

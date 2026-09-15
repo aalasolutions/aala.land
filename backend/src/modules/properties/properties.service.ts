@@ -5,11 +5,34 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, FindOptionsWhere, In, Not } from 'typeorm';
-import { PropertyArea } from './entities/property-area.entity';
+import {
+  DataSource,
+  EntityManager,
+  Repository,
+  FindOptionsWhere,
+  In,
+  IsNull,
+  Not,
+} from 'typeorm';
 import { Asset } from './entities/asset.entity';
 import { Unit, UnitStatus } from './entities/unit.entity';
 import { PropertyMedia } from './entities/property-media.entity';
+import { PropertyDocument } from './entities/property-document.entity';
+import { Lease, LeaseStatus } from '../leases/entities/lease.entity';
+import { Cheque, ChequeStatus } from '../cheques/entities/cheque.entity';
+import {
+  Transaction,
+  TransactionStatus,
+} from '../financial/entities/transaction.entity';
+import {
+  WorkOrder,
+  WorkOrderStatus,
+} from '../maintenance/entities/work-order.entity';
+import { Lead, LeadStatus } from '../leads/entities/lead.entity';
+import { RecordHistoryService } from '../record-history/record-history.service';
+import { RecordHistoryAction } from '../record-history/entities/record-history.entity';
+import { StoragePurgeService } from '../storage-purge/storage-purge.service';
+import { UnitArchivedFilter } from './dto/unit-archived-filter.enum';
 import { Contact } from '../contacts/entities/contact.entity';
 import { ContactsService } from '../contacts/contacts.service';
 import { ContactIdentityDto } from '../contacts/dto/contact-identity.dto';
@@ -17,8 +40,6 @@ import {
   attachDisplayName,
   contactDisplayName,
 } from '../../shared/utils/contact.util';
-import { CreateAreaDto } from './dto/create-area.dto';
-import { UpdateAreaDto } from './dto/update-area.dto';
 import { CreateAssetDto } from './dto/create-asset.dto';
 import { UpdateAssetDto } from './dto/update-asset.dto';
 import { CreateUnitDto } from './dto/create-unit.dto';
@@ -33,10 +54,7 @@ import {
   sanitizeName,
   isUniqueViolation,
 } from '../../shared/utils/name-normalization.util';
-import {
-  effectiveRegionCodes,
-  scopedRegionCodes,
-} from '../../shared/utils/region-visibility.util';
+import { scopedRegionCodes } from '../../shared/utils/region-visibility.util';
 import { errorMessage } from '@shared/utils/error.util';
 
 // True when inline owner details carry at least one identifying value. An empty
@@ -47,6 +65,12 @@ function hasContactIdentity(
   return Boolean(
     owner && (owner.firstName || owner.lastName || owner.phone || owner.email),
   );
+}
+
+function joinList(items: string[]): string {
+  return items.length <= 1
+    ? items.join('')
+    : `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}`;
 }
 
 // Absent or non-numeric stays unknown (null); an explicit "0" is a real studio.
@@ -67,8 +91,6 @@ const UNIT_SORT_COLUMNS: Record<string, string[]> = {
 @Injectable()
 export class PropertiesService {
   constructor(
-    @InjectRepository(PropertyArea)
-    private readonly areaRepository: Repository<PropertyArea>,
     @InjectRepository(Asset)
     private readonly assetRepository: Repository<Asset>,
     @InjectRepository(Unit)
@@ -78,84 +100,10 @@ export class PropertiesService {
     @InjectRepository(Contact)
     private readonly contactRepository: Repository<Contact>,
     private readonly contactsService: ContactsService,
+    private readonly dataSource: DataSource,
+    private readonly recordHistory: RecordHistoryService,
+    private readonly storagePurge: StoragePurgeService,
   ) {}
-
-  // Areas
-  async createArea(
-    companyId: string,
-    dto: CreateAreaDto,
-  ): Promise<PropertyArea> {
-    const area = this.areaRepository.create({ ...dto, companyId });
-    return this.areaRepository.save(area);
-  }
-
-  async findAllAreas(
-    companyId: string,
-    page = 1,
-    limit = 20,
-    regionCode?: string,
-    user?: { role: string; regionCodes: string[] },
-  ) {
-    const codes = effectiveRegionCodes(regionCode, user);
-    if (codes?.length === 0) {
-      return { data: [], total: 0, page, limit };
-    }
-
-    const where: FindOptionsWhere<PropertyArea> = { companyId };
-    if (codes) where.regionCode = In(codes);
-
-    const [areas, total] = await this.areaRepository.findAndCount({
-      where,
-      ...paginationOptions(page, limit),
-      order: { createdAt: 'DESC' },
-    });
-
-    const data = areas.map((area) => ({
-      ...area,
-      assetCount: 0,
-      unitCount: 0,
-    }));
-
-    return { data, total, page, limit };
-  }
-
-  async findOneArea(
-    id: string,
-    companyId: string,
-    user?: { userId: string; role: string; regionCodes: string[] },
-  ): Promise<PropertyArea> {
-    const scopedCodes = scopedRegionCodes(user);
-    // No assignments means nothing is visible, and an empty IN () is invalid SQL.
-    if (scopedCodes?.length === 0)
-      throw new NotFoundException(`Area not found`);
-
-    const where: FindOptionsWhere<PropertyArea> = { id, companyId };
-    if (scopedCodes) where.regionCode = In(scopedCodes);
-
-    const area = await this.areaRepository.findOne({ where });
-    if (!area) throw new NotFoundException(`Area not found`);
-    return area;
-  }
-
-  async updateArea(
-    id: string,
-    companyId: string,
-    dto: UpdateAreaDto,
-    user?: { userId: string; role: string; regionCodes: string[] },
-  ): Promise<PropertyArea> {
-    const area = await this.findOneArea(id, companyId, user);
-    Object.assign(area, dto);
-    return this.areaRepository.save(area);
-  }
-
-  async removeArea(
-    id: string,
-    companyId: string,
-    user?: { userId: string; role: string; regionCodes: string[] },
-  ): Promise<void> {
-    const area = await this.findOneArea(id, companyId, user);
-    await this.areaRepository.remove(area);
-  }
 
   // Assets
   async createAsset(companyId: string, dto: CreateAssetDto): Promise<Asset> {
@@ -211,7 +159,11 @@ export class PropertiesService {
       : {};
     const [data, total] = await this.assetRepository.findAndCount({
       where: [
-        { localityId, units: { companyId }, ...regionWhere },
+        {
+          localityId,
+          units: { companyId, deletedAt: IsNull() },
+          ...regionWhere,
+        },
         { localityId, createdByCompanyId: companyId, ...regionWhere },
       ],
       relations: ['locality', 'locality.city', 'units'],
@@ -221,7 +173,9 @@ export class PropertiesService {
 
     const filtered = data.map((a) => ({
       ...a,
-      units: (a.units || []).filter((u) => u.companyId === companyId),
+      units: (a.units || []).filter(
+        (u) => u.companyId === companyId && !u.deletedAt,
+      ),
     }));
 
     return { data: filtered, total, page, limit };
@@ -243,7 +197,7 @@ export class PropertiesService {
       : {};
     const [data, total] = await this.assetRepository.findAndCount({
       where: [
-        { units: { companyId }, ...regionWhere },
+        { units: { companyId, deletedAt: IsNull() }, ...regionWhere },
         { createdByCompanyId: companyId, ...regionWhere },
       ],
       relations: ['locality', 'locality.city', 'units'],
@@ -253,7 +207,9 @@ export class PropertiesService {
 
     const filtered = data.map((a) => ({
       ...a,
-      units: (a.units || []).filter((u) => u.companyId === companyId),
+      units: (a.units || []).filter(
+        (u) => u.companyId === companyId && !u.deletedAt,
+      ),
     }));
 
     return { data: filtered, total, page, limit };
@@ -336,7 +292,7 @@ export class PropertiesService {
     const asset = await this.assetRepository.findOne({
       where: companyId
         ? [
-            { id, units: { companyId }, ...regionWhere },
+            { id, units: { companyId, deletedAt: IsNull() }, ...regionWhere },
             { id, createdByCompanyId: companyId, ...regionWhere },
           ]
         : { id, ...regionWhere },
@@ -388,10 +344,48 @@ export class PropertiesService {
     }
   }
 
-  async removeAsset(id: string): Promise<void> {
-    const asset = await this.assetRepository.findOne({ where: { id } });
-    if (!asset) throw new NotFoundException(`Asset not found`);
-    await this.assetRepository.remove(asset);
+  // Asset rows are shared, so the unit count and file purge span companies.
+  async removeAsset(
+    id: string,
+    reason: string,
+    actorId: string,
+  ): Promise<void> {
+    const purgeIds = await this.dataSource.transaction(async (manager) => {
+      const asset = await manager.findOne(Asset, {
+        where: { id },
+        lock: { mode: 'pessimistic_write' },
+      });
+      if (!asset) throw new NotFoundException(`Asset not found`);
+
+      const unitCount = await manager.count(Unit, { where: { assetId: id } });
+      if (unitCount > 0) {
+        throw new ConflictException(
+          `This asset still has ${unitCount} unit${unitCount === 1 ? '' : 's'}. Delete them first.`,
+        );
+      }
+
+      const [media, documents] = await Promise.all([
+        manager.find(PropertyMedia, { where: { assetId: id } }),
+        manager.find(PropertyDocument, { where: { assetId: id } }),
+      ]);
+      const ids = await this.storagePurge.purge(manager, { media, documents });
+
+      await this.recordHistory.record(manager, {
+        companyId: null,
+        action: RecordHistoryAction.DELETE,
+        entityType: 'Asset',
+        entityId: asset.id,
+        entityTitle: asset.name,
+        reason,
+        actorId,
+        actorName: await this.recordHistory.resolveActorName(manager, actorId),
+        metadata: { fileCount: media.length + documents.length },
+      });
+
+      await manager.delete(Asset, { id });
+      return ids;
+    });
+    void this.storagePurge.dispatch(purgeIds);
   }
 
   private findAssetByNormalizedName(
@@ -427,6 +421,7 @@ export class PropertiesService {
       localityId?: string;
       regionCode?: string;
       ownerId?: string;
+      archived?: UnitArchivedFilter;
     },
     sort?: { field?: string; direction?: string },
   ) {
@@ -485,6 +480,12 @@ export class PropertiesService {
     if (filters?.ownerId) {
       qb.andWhere('u.ownerId = :ownerId', { ownerId: filters.ownerId });
     }
+    const archived = filters?.archived ?? UnitArchivedFilter.EXCLUDE;
+    if (archived === UnitArchivedFilter.EXCLUDE) {
+      qb.andWhere('u.deletedAt IS NULL');
+    } else if (archived === UnitArchivedFilter.ONLY) {
+      qb.andWhere('u.deletedAt IS NOT NULL');
+    }
 
     qb.skip(pageSkip(page, limit)).take(limit);
 
@@ -536,6 +537,7 @@ export class PropertiesService {
       areaId: u.asset?.locality?.id ?? '',
       areaName: u.asset?.locality?.name ?? '',
       ownerName: contactDisplayName(u.owner),
+      deletedAt: u.deletedAt ?? null,
     }));
 
     return { data, total, page, limit };
@@ -573,6 +575,7 @@ export class PropertiesService {
     page = 1,
     limit = 20,
     user?: { userId: string; role: string; regionCodes: string[] },
+    archived: UnitArchivedFilter = UnitArchivedFilter.EXCLUDE,
   ) {
     const scopedCodes = scopedRegionCodes(user);
     if (scopedCodes?.length === 0) {
@@ -580,6 +583,11 @@ export class PropertiesService {
     }
 
     const where: FindOptionsWhere<Unit> = { assetId, companyId };
+    if (archived === UnitArchivedFilter.EXCLUDE) {
+      where.deletedAt = IsNull();
+    } else if (archived === UnitArchivedFilter.ONLY) {
+      where.deletedAt = Not(IsNull());
+    }
     if (scopedCodes) {
       where.asset = { locality: { city: { regionCode: In(scopedCodes) } } };
     }
@@ -611,6 +619,7 @@ export class PropertiesService {
       .select('ci.regionCode', 'regionCode')
       .addSelect('COUNT(u.id)', 'count')
       .where('u.companyId = :companyId', { companyId })
+      .andWhere('u.deletedAt IS NULL')
       .groupBy('ci.regionCode');
 
     if (scopedCodes) {
@@ -658,23 +667,39 @@ export class PropertiesService {
     userId?: string,
     user?: { userId: string; role: string; regionCodes: string[] },
   ): Promise<Unit> {
+    const archivedMessage =
+      'This unit is archived. Unarchive it before editing.';
     const unit = await this.findOneUnit(id, companyId, user);
-    const { ownerId, owner, ...rest } = dto;
-    Object.assign(unit, rest);
-    if ('ownerId' in dto || hasContactIdentity(owner)) {
-      const resolvedId = await this.resolveOwnerId(
-        companyId,
-        ownerId ?? undefined,
-        owner,
-        userId,
-        unit.assetId,
-      );
-      unit.owner = resolvedId
-        ? await this.verifyContactBelongsToCompany(resolvedId, companyId)
-        : null;
-      unit.ownerId = resolvedId ?? null;
+    if (unit.deletedAt) {
+      throw new ConflictException(archivedMessage);
     }
-    await this.unitRepository.save(unit);
+    const { ownerId, owner, ...rest } = dto;
+    const ownerChanged = 'ownerId' in dto || hasContactIdentity(owner);
+    const resolvedOwnerId = ownerChanged
+      ? await this.resolveOwnerId(
+          companyId,
+          ownerId ?? undefined,
+          owner,
+          userId,
+          unit.assetId,
+        )
+      : null;
+    const resolvedOwner = resolvedOwnerId
+      ? await this.verifyContactBelongsToCompany(resolvedOwnerId, companyId)
+      : null;
+
+    await this.dataSource.transaction(async (manager) => {
+      const locked = await this.lockUnit(manager, id, companyId, user);
+      if (locked.deletedAt) {
+        throw new ConflictException(archivedMessage);
+      }
+      Object.assign(locked, rest);
+      if (ownerChanged) {
+        locked.owner = resolvedOwner;
+        locked.ownerId = resolvedOwnerId;
+      }
+      await manager.save(Unit, locked);
+    });
     // Authorization happened above; this re-read only builds the response.
     return this.findOneUnit(id, companyId);
   }
@@ -744,10 +769,222 @@ export class PropertiesService {
   async removeUnit(
     id: string,
     companyId: string,
+    reason: string,
+    actorId: string,
     user?: { userId: string; role: string; regionCodes: string[] },
   ): Promise<void> {
-    const unit = await this.findOneUnit(id, companyId, user);
-    await this.unitRepository.remove(unit);
+    const purgeIds = await this.dataSource.transaction(async (manager) => {
+      const unit = await this.lockUnit(manager, id, companyId, user);
+
+      const blockers = await this.unitDeleteBlockers(manager, id, companyId);
+      if (blockers.length > 0) {
+        throw new ConflictException(
+          `This unit has linked ${joinList(blockers)}. Archive it instead.`,
+        );
+      }
+
+      const [media, documents] = await Promise.all([
+        manager.find(PropertyMedia, { where: { unitId: id, companyId } }),
+        manager.find(PropertyDocument, { where: { unitId: id, companyId } }),
+      ]);
+      const ids = await this.storagePurge.purge(manager, { media, documents });
+
+      await this.recordUnitHistory(manager, unit, {
+        action: RecordHistoryAction.DELETE,
+        reason,
+        actorId,
+        metadata: { fileCount: media.length + documents.length },
+      });
+
+      await manager.delete(Unit, { id, companyId });
+      return ids;
+    });
+    void this.storagePurge.dispatch(purgeIds);
+  }
+
+  async archiveUnit(
+    id: string,
+    companyId: string,
+    reason: string,
+    actorId: string,
+    user?: { userId: string; role: string; regionCodes: string[] },
+  ): Promise<Unit> {
+    await this.dataSource.transaction(async (manager) => {
+      const unit = await this.lockUnit(manager, id, companyId, user);
+      if (unit.deletedAt) {
+        throw new ConflictException('This unit is already archived.');
+      }
+      const blockers = await this.unitArchiveBlockers(manager, id, companyId);
+      if (blockers.length > 0) {
+        throw new ConflictException(
+          `This unit has ${joinList(blockers)}. Close them before archiving.`,
+        );
+      }
+      await manager.update(Unit, { id, companyId }, { deletedAt: new Date() });
+      await this.recordUnitHistory(manager, unit, {
+        action: RecordHistoryAction.ARCHIVE,
+        reason,
+        actorId,
+      });
+    });
+    return this.findOneUnit(id, companyId);
+  }
+
+  async unarchiveUnit(
+    id: string,
+    companyId: string,
+    reason: string | undefined,
+    actorId: string,
+    user?: { userId: string; role: string; regionCodes: string[] },
+  ): Promise<Unit> {
+    await this.dataSource.transaction(async (manager) => {
+      const unit = await this.lockUnit(manager, id, companyId, user);
+      if (!unit.deletedAt) {
+        throw new ConflictException('This unit is not archived.');
+      }
+      await manager.update(Unit, { id, companyId }, { deletedAt: null });
+      await this.recordUnitHistory(manager, unit, {
+        action: RecordHistoryAction.UNARCHIVE,
+        reason,
+        actorId,
+      });
+    });
+    return this.findOneUnit(id, companyId);
+  }
+
+  // Locks only the unit row; the joins supply region scope and history titles.
+  private async lockUnit(
+    manager: EntityManager,
+    id: string,
+    companyId: string,
+    user?: { role: string; regionCodes: string[] },
+  ): Promise<Unit> {
+    const scopedCodes = scopedRegionCodes(user);
+    if (scopedCodes?.length === 0)
+      throw new NotFoundException(`Property not found`);
+
+    const qb = manager
+      .createQueryBuilder(Unit, 'u')
+      .innerJoinAndSelect('u.asset', 'a')
+      .innerJoinAndSelect('a.locality', 'loc')
+      .innerJoinAndSelect('loc.city', 'ci')
+      .where('u.id = :id', { id })
+      .andWhere('u.companyId = :companyId', { companyId })
+      .setLock('pessimistic_write', undefined, ['u']);
+    if (scopedCodes) {
+      qb.andWhere('ci.regionCode IN (:...scopedCodes)', { scopedCodes });
+    }
+
+    const unit = await qb.getOne();
+    if (!unit) throw new NotFoundException(`Property not found`);
+    return unit;
+  }
+
+  private async unitArchiveBlockers(
+    manager: EntityManager,
+    unitId: string,
+    companyId: string,
+  ): Promise<string[]> {
+    const openCheque = In([
+      ChequeStatus.PENDING,
+      ChequeStatus.DEPOSITED,
+      ChequeStatus.BOUNCED,
+    ]);
+    const [leases, leads, cheques, workOrders, transactions] =
+      await Promise.all([
+        manager.count(Lease, {
+          where: { unitId, companyId, status: LeaseStatus.ACTIVE },
+        }),
+        manager.count(Lead, {
+          where: {
+            unitId,
+            companyId,
+            status: Not(In([LeadStatus.WON, LeadStatus.LOST])),
+          },
+        }),
+        manager.count(Cheque, {
+          where: [
+            { unitId, companyId, status: openCheque },
+            { lease: { unitId }, companyId, status: openCheque },
+          ],
+        }),
+        manager.count(WorkOrder, {
+          where: {
+            unitId,
+            companyId,
+            status: Not(
+              In([WorkOrderStatus.COMPLETED, WorkOrderStatus.CANCELLED]),
+            ),
+          },
+        }),
+        manager.count(Transaction, {
+          where: {
+            unitId,
+            companyId,
+            status: Not(
+              In([TransactionStatus.COMPLETED, TransactionStatus.CANCELLED]),
+            ),
+          },
+        }),
+      ]);
+    const blockers: string[] = [];
+    if (leases > 0) blockers.push('an active lease');
+    if (leads > 0) blockers.push('open leads');
+    if (cheques > 0) blockers.push('open cheques');
+    if (workOrders > 0) blockers.push('open work orders');
+    if (transactions > 0) blockers.push('open transactions');
+    return blockers;
+  }
+
+  private async unitDeleteBlockers(
+    manager: EntityManager,
+    unitId: string,
+    companyId: string,
+  ): Promise<string[]> {
+    const where = { unitId, companyId };
+    const [leases, cheques, transactions, workOrders, leads] =
+      await Promise.all([
+        manager.count(Lease, { where }),
+        manager.count(Cheque, { where }),
+        manager.count(Transaction, { where }),
+        manager.count(WorkOrder, { where }),
+        manager.count(Lead, { where }),
+      ]);
+    const blockers: string[] = [];
+    if (leases > 0) blockers.push('leases');
+    if (cheques > 0) blockers.push('cheques');
+    if (transactions > 0) blockers.push('transactions');
+    if (workOrders > 0) blockers.push('work orders');
+    if (leads > 0) blockers.push('leads');
+    return blockers;
+  }
+
+  private async recordUnitHistory(
+    manager: EntityManager,
+    unit: Unit,
+    input: {
+      action: RecordHistoryAction;
+      reason?: string;
+      actorId: string;
+      metadata?: Record<string, unknown>;
+    },
+  ): Promise<void> {
+    await this.recordHistory.record(manager, {
+      companyId: unit.companyId,
+      action: input.action,
+      entityType: 'Unit',
+      entityId: unit.id,
+      entityTitle: unit.unitNumber,
+      contextTitle: unit.asset?.name ?? null,
+      reason: input.reason ?? null,
+      actorId: input.actorId,
+      actorName: await this.recordHistory.resolveActorName(
+        manager,
+        input.actorId,
+      ),
+      regionCode: unit.asset?.locality?.city?.regionCode ?? null,
+      metadata: input.metadata ?? null,
+    });
   }
 
   async bulkImportUnits(
@@ -863,6 +1100,7 @@ export class PropertiesService {
         'availableUnits',
       )
       .where('u.companyId = :companyId', { companyId })
+      .andWhere('u.deletedAt IS NULL')
       .setParameter('rented', UnitStatus.RENTED)
       .setParameter('available', UnitStatus.AVAILABLE)
       .groupBy('a.id')

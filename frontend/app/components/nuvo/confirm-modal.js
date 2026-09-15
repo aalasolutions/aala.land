@@ -7,7 +7,7 @@ export default class NuConfirmModalComponent extends Component {
   }
 
   get cancelText() {
-    return this.args.cancelText ?? 'Cancel';
+    return this.args.cancelText ?? 'I changed my mind';
   }
 
   get confirmingText() {

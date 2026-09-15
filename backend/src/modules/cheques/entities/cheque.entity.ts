@@ -113,7 +113,7 @@ export class Cheque {
   })
   bounceReason: string | null;
 
-  @Column({ name: 'last_bounce_date', type: 'timestamp', nullable: true })
+  @Column({ name: 'last_bounce_date', type: 'timestamptz', nullable: true })
   lastBounceDate: Date | null;
 
   @Column({ type: 'text', nullable: true })
@@ -126,9 +126,9 @@ export class Cheque {
   @Column({ name: 'version', type: 'int', default: 1 })
   version: number;
 
-  @CreateDateColumn({ name: 'created_at' })
+  @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;
 
-  @UpdateDateColumn({ name: 'updated_at' })
+  @UpdateDateColumn({ name: 'updated_at', type: 'timestamptz' })
   updatedAt: Date;
 }

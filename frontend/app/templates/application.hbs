@@ -333,6 +333,21 @@
           {{/unless}}
         {{/if}}
 
+        {{#if this.sidebarGroups.history}}
+          {{#unless this.isSuperAdmin}}
+            <LinkTo
+              @route="history"
+              class="nu-sidebar__link"
+              data-tooltip={{if this.desktopCollapsed "History"}}
+              data-tooltip-position="end"
+              data-test-nav-history
+            >
+              <Ui::Ph @icon="clock-counter-clockwise" />
+              <span class="nu-sidebar__link-label">History</span>
+            </LinkTo>
+          {{/unless}}
+        {{/if}}
+
         {{! Admin Group (Super Admin only) }}
         {{#if this.sidebarGroups.admin}}
           <div
@@ -699,7 +714,6 @@
   @title="Logout"
   @message="Are you sure you want to logout?"
   @confirmText="Logout"
-  @cancelText="Cancel"
   @confirmVariant="danger"
   @onClose={{this.closeLogoutModal}}
   @onConfirm={{this.confirmLogout}}

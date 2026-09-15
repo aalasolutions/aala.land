@@ -20,27 +20,7 @@ export default class DialogsService extends Service {
     return this.current !== null;
   }
 
-  /**
-   * Ask the user to confirm something.
-   *
-   * @param {object} options
-   * @param {string} options.title
-   * @param {string} [options.message]
-   * @param {string} [options.confirmVariant='primary'] Any Nuvo::Button
-   *   variant. `danger` is opt-in: confirming is not automatically deleting.
-   * @param {string} [options.confirmText='Confirm']
-   * @param {string} [options.cancelText='Cancel']
-   * @param {string} [options.confirmingText] Label while `onConfirm` runs.
-   * @param {boolean} [options.showCancel=true] `false` renders an alert.
-   * @param {Function} [options.onConfirm] Optional async handler. When given,
-   *   the dialog shows a pending state and stays open until it settles, so the
-   *   user cannot double-submit. If it throws, the dialog STAYS OPEN with the
-   *   spinner cleared so the user can retry or cancel. `onConfirm` owns its own
-   *   error reporting, exactly as `utils/delete-modal.js` did before this: it
-   *   toasted the failure and deliberately left the dialog up.
-   * @returns {Promise<boolean>} true if confirmed, false if dismissed. It
-   *   reports the user's decision only, and never rejects on a handler error.
-   */
+  /** Opens a confirm dialog; resolves true on confirm. Options: title, message, confirmVariant, confirmText, cancelText, confirmingText, showCancel, onConfirm. */
   confirm(options = {}) {
     if (this.isOpen) {
       return Promise.reject(new Error('A dialog is already open'));

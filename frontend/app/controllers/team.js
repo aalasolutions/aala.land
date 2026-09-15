@@ -41,6 +41,7 @@ export default class TeamController extends PaginatedController {
   @tracked removeTargetId = '';
   @tracked removeReason = '';
   @tracked removeError = '';
+  @tracked removeReasonError = '';
   @tracked isRemoving = false;
   @tracked reassignCandidates = [];
 
@@ -50,10 +51,14 @@ export default class TeamController extends PaginatedController {
   @tracked trimKeepId = '';
   @tracked trimReason = '';
   @tracked trimError = '';
+  @tracked trimReasonError = '';
   @tracked isTrimming = false;
   @tracked trimCandidates = [];
 
   @tracked reactivatingUserId = null;
+  @tracked showReactivateModal = false;
+  @tracked userToReactivate = null;
+  @tracked reactivateReason = '';
 
   get isSuperAdmin() {
     return this.auth.currentUser?.role === 'super_admin';
@@ -305,6 +310,7 @@ export default class TeamController extends PaginatedController {
     this.removeTargetId = '';
     this.removeReason = '';
     this.removeError = '';
+    this.removeReasonError = '';
     this.reassignCandidates = [];
     this.showRemoveModal = true;
     try {
@@ -337,10 +343,12 @@ export default class TeamController extends PaginatedController {
       return;
     }
     if (!this.removeReason.trim()) {
-      this.removeError = 'A reason is required.';
+      this.removeError = '';
+      this.removeReasonError = 'A reason is required.';
       return;
     }
     this.removeError = '';
+    this.removeReasonError = '';
     this.removeStep = 2;
   }
 
@@ -384,12 +392,38 @@ export default class TeamController extends PaginatedController {
     }
   }
 
-  @action async reactivateUser(user) {
+  @action openReactivate(user) {
+    this.userToReactivate = user;
+    this.reactivateReason = '';
+    this.showReactivateModal = true;
+  }
+
+  @action closeReactivateModal() {
+    if (this.isReactivating) return;
+    this.showReactivateModal = false;
+    this.userToReactivate = null;
+  }
+
+  @action async confirmReactivate() {
+    if (!this.userToReactivate) return;
+    const reactivated = await this.reactivateUser(
+      this.userToReactivate,
+      this.reactivateReason,
+    );
+    if (reactivated) {
+      this.showReactivateModal = false;
+      this.userToReactivate = null;
+    }
+  }
+
+  @action async reactivateUser(user, reason = '') {
     if (this.reactivatingUserId) return false;
     this.reactivatingUserId = user.id;
+    const trimmed = typeof reason === 'string' ? reason.trim() : '';
     try {
       await this.auth.fetchJson(`/users/${user.id}/reactivate`, {
         method: 'POST',
+        body: JSON.stringify(trimmed ? { reason: trimmed } : {}),
       });
       this.notifications.success(`${user.name} reactivated`);
       this.router.refresh('team');
@@ -409,6 +443,7 @@ export default class TeamController extends PaginatedController {
     this.trimKeepId = this.auth.currentUser?.id ?? '';
     this.trimReason = 'Downgrading to the Free plan';
     this.trimError = '';
+    this.trimReasonError = '';
     this.trimCandidates = [];
     this.showTrimModal = true;
     try {
@@ -434,10 +469,12 @@ export default class TeamController extends PaginatedController {
       return;
     }
     if (!this.trimReason.trim()) {
-      this.trimError = 'A reason is required.';
+      this.trimError = '';
+      this.trimReasonError = 'A reason is required.';
       return;
     }
     this.trimError = '';
+    this.trimReasonError = '';
     this.trimStep = 2;
   }
 
