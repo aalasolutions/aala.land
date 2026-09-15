@@ -137,6 +137,7 @@ export default class ApplicationController extends Controller {
     vendors: 'operations',
     team: 'admin',
     audit: 'admin',
+    history: 'admin',
     'admin.overview': 'admin',
     'admin.companies': 'admin',
     'admin.companies.index': 'admin',

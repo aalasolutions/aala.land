@@ -130,14 +130,28 @@
                     />
                   </td>
                   <td>
-                    <Nuvo::Button
-                      @variant="secondary"
-                      @size="xs"
-                      @icon="pencil-simple"
-                      {{on "click" (fn this.openEdit wo)}}
-                    >
-                      Edit
-                    </Nuvo::Button>
+                    <div class="flex gap-2">
+                      <Nuvo::Button
+                        @variant="secondary"
+                        @size="xs"
+                        @icon="pencil-simple"
+                        data-test-edit-work-order
+                        {{on "click" (fn this.openEdit wo)}}
+                      >
+                        Edit
+                      </Nuvo::Button>
+                      {{#if (this.canDeleteWorkOrder wo)}}
+                        <Nuvo::Button
+                          @variant="danger"
+                          @size="xs"
+                          @icon="trash"
+                          data-test-delete-work-order
+                          {{on "click" (fn this.openDelete wo)}}
+                        >
+                          Delete
+                        </Nuvo::Button>
+                      {{/if}}
+                    </div>
                   </td>
                 </tr>
               {{/each}}
@@ -301,6 +315,21 @@
             @placeholder="Select status..."
           />
         </Nuvo::Field>
+        {{#if this.isCancellingWorkOrder}}
+          <Nuvo::Field @label="Cancellation Reason" @required={{true}} @error={{this.reasonError}}>
+            <Nuvo::Textarea
+              id="wo-cancel-reason"
+              rows="2"
+              maxlength="500"
+              placeholder="e.g. Tenant resolved the issue"
+              @value={{this.formReason}}
+              @onInput={{fn this.setFieldValue "formReason"}}
+              @invalid={{if this.reasonError true false}}
+              aria-label="Reason"
+              data-test-reason-input
+            />
+          </Nuvo::Field>
+        {{/if}}
       {{/if}}
 
       {{#if this.editWorkOrder}}
@@ -416,3 +445,29 @@
     </Nuvo::Button>
   </:footer>
 </Nuvo::Drawer>
+
+<ConfirmModal
+  @open={{this.showDeleteModal}}
+  @title="Delete Work Order"
+  @message="Delete this work order? This cannot be undone."
+  @confirmText="Delete"
+  @confirmVariant="danger"
+  @isConfirming={{this.isDeleting}}
+  @confirmingText="Deleting..."
+  @onClose={{this.closeDeleteModal}}
+  @onConfirm={{this.confirmDelete}}
+>
+  <Nuvo::Field class="mt-4" @label="Reason" @required={{true}} @error={{this.reasonError}}>
+    <Nuvo::Textarea
+      id="wo-delete-reason"
+      rows="2"
+      maxlength="500"
+      placeholder="e.g. Created by mistake"
+      @value={{this.deleteReason}}
+      @onInput={{fn this.setFieldValue "deleteReason"}}
+      @invalid={{if this.reasonError true false}}
+      aria-label="Reason"
+      data-test-reason-input
+    />
+  </Nuvo::Field>
+</ConfirmModal>

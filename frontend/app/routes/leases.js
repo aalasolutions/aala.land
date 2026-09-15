@@ -13,6 +13,7 @@ export default class LeasesRoute extends AuthenticatedRoute {
     search: { refreshModel: true },
     dateFrom: { refreshModel: true },
     dateTo: { refreshModel: true },
+    archived: { refreshModel: true },
   };
 
   async model({
@@ -23,8 +24,10 @@ export default class LeasesRoute extends AuthenticatedRoute {
     search = '',
     dateFrom = '',
     dateTo = '',
+    archived = '',
   }) {
     const params = new URLSearchParams({ page, limit });
+    if (archived) params.set('archived', archived);
     if (status) params.set('status', status);
     if (type) params.set('type', type);
     if (search) params.set('search', search);

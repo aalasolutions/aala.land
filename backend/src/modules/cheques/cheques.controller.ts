@@ -3,7 +3,6 @@ import {
   Get,
   Post,
   Patch,
-  Delete,
   Body,
   Param,
   Query,
@@ -26,6 +25,7 @@ import { CreateChequeDto } from './dto/create-cheque.dto';
 import { UpdateChequeDto } from './dto/update-cheque.dto';
 import { BounceChequeDto } from './dto/bounce-cheque.dto';
 import { ProcessOcrDto } from './dto/process-ocr.dto';
+import { DeleteChequeDto } from './dto/delete-cheque.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '@shared/guards/roles.guard';
 import { Roles } from '@shared/decorators/roles.decorator';
@@ -173,14 +173,24 @@ export class ChequesController {
     );
   }
 
-  @Delete(':id')
+  @Post(':id/delete')
   @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN)
   @HttpCode(HttpStatus.NO_CONTENT)
-  @ApiOperation({ summary: 'Delete a cheque (COMPANY_ADMIN+)' })
+  @ApiOperation({
+    summary: 'Delete a cheque with a reason (COMPANY_ADMIN+)',
+    description: '409 when the cheque is CLEARED.',
+  })
   remove(
     @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: DeleteChequeDto,
     @Request() req: AuthenticatedRequest,
   ) {
-    return this.chequesService.remove(id, requireCompanyId(req.user), req.user);
+    return this.chequesService.remove(
+      id,
+      requireCompanyId(req.user),
+      dto.reason,
+      req.user.userId,
+      req.user,
+    );
   }
 }

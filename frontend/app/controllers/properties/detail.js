@@ -9,14 +9,30 @@ import {
   AMENITY_OPTIONS,
   PROPERTY_STATUS_OPTIONS,
   PROPERTY_TYPE_OPTIONS,
+  ARCHIVED_FILTER_OPTIONS,
 } from 'land/constants';
 import { toggleArrayItem } from '../../utils/toggle-array-item';
 
 export default class PropertiesDetailController extends Controller {
+  queryParams = ['archived'];
   @service auth;
   @service notifications;
   @service router;
   @service preferences;
+
+  @tracked archived = 'exclude';
+
+  archivedFilterOptions = ARCHIVED_FILTER_OPTIONS;
+
+  get archivedFilterValue() {
+    return ARCHIVED_FILTER_OPTIONS.some((o) => o.value === this.archived)
+      ? this.archived
+      : 'exclude';
+  }
+
+  @action setArchivedFilter(value) {
+    this.archived = value || 'exclude';
+  }
 
   @tracked detailView = null;
 

@@ -30,6 +30,8 @@ import { BillingService } from '../billing/billing.service';
 import { UserReassignmentService } from './reassignment/user-reassignment.service';
 import { WhatsappService } from '../whatsapp/whatsapp.service';
 import { OWNERSHIP_TRANSFER_RECORDER } from './reassignment/ownership-transfer-recorder';
+import { RecordHistoryService } from '../record-history/record-history.service';
+import { RecordHistoryAction } from '../record-history/entities/record-history.entity';
 
 jest.mock('bcryptjs');
 jest.mock('crypto');
@@ -65,6 +67,7 @@ let reassignmentServiceMock: {
   reassignWhatsappRows: jest.Mock;
 };
 let whatsappServiceMock: { logout: jest.Mock };
+let recordHistoryMock: { record: jest.Mock; resolveActorName: jest.Mock };
 
 const emptyReport = {
   fromUserId: 'user-uuid-2',
@@ -224,6 +227,10 @@ describe('UsersService', () => {
     whatsappServiceMock = {
       logout: jest.fn().mockResolvedValue({ success: true }),
     };
+    recordHistoryMock = {
+      record: jest.fn().mockResolvedValue(undefined),
+      resolveActorName: jest.fn().mockResolvedValue('Requester Name'),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -251,6 +258,10 @@ describe('UsersService', () => {
         {
           provide: WhatsappService,
           useValue: whatsappServiceMock,
+        },
+        {
+          provide: RecordHistoryService,
+          useValue: recordHistoryMock,
         },
         {
           provide: OWNERSHIP_TRANSFER_RECORDER,
@@ -653,6 +664,10 @@ describe('UsersService', () => {
       expect(billingServiceMock.decrementSeat).toHaveBeenCalledWith(proCompany);
       // Advisory lock is taken before the provider decrement, which is before the local write.
       expect(order).toEqual(['lock', 'decrement', 'write']);
+      // FOR NO KEY UPDATE, so FK inserts pointing at the user are not blocked.
+      expect(repo.findOne).toHaveBeenCalledWith(
+        expect.objectContaining({ lock: { mode: 'for_no_key_update' } }),
+      );
       expect(managerMock.query).toHaveBeenCalledWith(
         'SELECT pg_advisory_xact_lock(hashtext($1))',
         [companyId],
@@ -1011,6 +1026,7 @@ describe('UsersService', () => {
         'user-uuid-2',
         companyId,
         Role.COMPANY_ADMIN,
+        'requester-uuid',
       );
 
       expect(managerMock.query).toHaveBeenCalledWith(
@@ -1039,6 +1055,7 @@ describe('UsersService', () => {
         'user-uuid-2',
         companyId,
         Role.COMPANY_ADMIN,
+        'requester-uuid',
       );
 
       expect(billingServiceMock.getLiveSeatQuantity).not.toHaveBeenCalled();
@@ -1053,7 +1070,12 @@ describe('UsersService', () => {
       companyRepo.findOne.mockResolvedValue(freeCompany as Company);
       repo.count.mockResolvedValue(1);
       await expect(
-        service.reactivateUser('user-uuid-2', companyId, Role.COMPANY_ADMIN),
+        service.reactivateUser(
+          'user-uuid-2',
+          companyId,
+          Role.COMPANY_ADMIN,
+          'requester-uuid',
+        ),
       ).rejects.toThrow(BadRequestException);
       expect(billingServiceMock.setSeatQuantity).not.toHaveBeenCalled();
     });
@@ -1061,8 +1083,196 @@ describe('UsersService', () => {
     it('rejects reactivating an already active user', async () => {
       repo.findOne.mockResolvedValueOnce(targetUser as User); // locked load: already active
       await expect(
-        service.reactivateUser('user-uuid-2', companyId, Role.COMPANY_ADMIN),
+        service.reactivateUser(
+          'user-uuid-2',
+          companyId,
+          Role.COMPANY_ADMIN,
+          'requester-uuid',
+        ),
       ).rejects.toThrow(BadRequestException);
+    });
+  });
+
+  describe('record history', () => {
+    it('records DEACTIVATE for each user trimmed, inside the trim transaction', async () => {
+      const keeper = {
+        ...mockUser,
+        id: 'keeper-uuid',
+        role: Role.COMPANY_ADMIN,
+        isActive: true,
+      };
+      repo.findOne.mockResolvedValueOnce(keeper as User);
+      companyRepo.findOne.mockResolvedValue(proCompanyNoSub as Company);
+      repo.find.mockResolvedValue([
+        { ...mockUser, id: 'u-a', name: 'Agent A' },
+        { ...mockUser, id: 'u-b', name: 'Agent B' },
+      ] as User[]);
+      repo.count.mockResolvedValue(1);
+
+      await service.trimToOneActiveUser(companyId, 'keeper-uuid', {
+        keepUserId: 'keeper-uuid',
+        reason: 'Downgrading to the Free plan',
+      });
+
+      expect(recordHistoryMock.record).toHaveBeenCalledTimes(2);
+      for (const [id, name] of [
+        ['u-a', 'Agent A'],
+        ['u-b', 'Agent B'],
+      ]) {
+        expect(recordHistoryMock.record).toHaveBeenCalledWith(managerMock, {
+          companyId,
+          action: RecordHistoryAction.DEACTIVATE,
+          entityType: 'User',
+          entityId: id,
+          entityTitle: name,
+          reason: 'Downgrading to the Free plan',
+          actorId: 'keeper-uuid',
+          actorName: 'Requester Name',
+          regionCode: null,
+          metadata: { reassignToUserId: 'keeper-uuid' },
+        });
+      }
+      expect(recordHistoryMock.resolveActorName).toHaveBeenCalledTimes(1);
+    });
+
+    it('records DEACTIVATE inside the removal transaction', async () => {
+      primeRemovalLookups(proCompany);
+
+      await service.deactivateUser(
+        'user-uuid-2',
+        'requester-uuid',
+        companyId,
+        Role.COMPANY_ADMIN,
+        removeDto,
+      );
+
+      expect(recordHistoryMock.record).toHaveBeenCalledWith(managerMock, {
+        companyId,
+        action: RecordHistoryAction.DEACTIVATE,
+        entityType: 'User',
+        entityId: 'user-uuid-2',
+        entityTitle: 'Test Agent',
+        reason: 'left',
+        actorId: 'requester-uuid',
+        actorName: 'Requester Name',
+        regionCode: null,
+        metadata: { reassignToUserId: 'user-uuid-3' },
+      });
+      expect(recordHistoryMock.resolveActorName).toHaveBeenCalledWith(
+        managerMock,
+        'requester-uuid',
+      );
+    });
+
+    it('compensates the seat and rethrows when the history write fails', async () => {
+      primeRemovalLookups(proCompany);
+      const compensate = jest.fn().mockResolvedValue(undefined);
+      billingServiceMock.decrementSeat.mockResolvedValue({ compensate });
+      recordHistoryMock.record.mockRejectedValue(new Error('history down'));
+
+      await expect(
+        service.deactivateUser(
+          'user-uuid-2',
+          'requester-uuid',
+          companyId,
+          Role.COMPANY_ADMIN,
+          removeDto,
+        ),
+      ).rejects.toThrow('history down');
+
+      expect(compensate).toHaveBeenCalledTimes(1);
+      expect(whatsappServiceMock.logout).not.toHaveBeenCalled();
+    });
+
+    it('records DELETE with the email when the name is blank', async () => {
+      primeRemovalLookups(proCompany, { ...targetUser, name: '  ' });
+
+      await service.softDeleteUserWithReassignment(
+        'user-uuid-2',
+        'requester-uuid',
+        companyId,
+        Role.COMPANY_ADMIN,
+        removeDto,
+      );
+
+      expect(recordHistoryMock.record).toHaveBeenCalledWith(
+        managerMock,
+        expect.objectContaining({
+          action: RecordHistoryAction.DELETE,
+          entityId: 'user-uuid-2',
+          entityTitle: 'agent@test.com',
+          reason: 'left',
+          actorId: 'requester-uuid',
+        }),
+      );
+    });
+
+    it('records REACTIVATE with the optional reason', async () => {
+      repo.findOne
+        .mockResolvedValueOnce({ ...targetUser, isActive: false } as User)
+        .mockResolvedValueOnce(targetUser as User);
+      companyRepo.findOne.mockResolvedValue(proCompanyNoSub as Company);
+
+      await service.reactivateUser(
+        'user-uuid-2',
+        companyId,
+        Role.COMPANY_ADMIN,
+        'requester-uuid',
+        'Rejoined',
+      );
+
+      expect(recordHistoryMock.record).toHaveBeenCalledWith(
+        managerMock,
+        expect.objectContaining({
+          companyId,
+          action: RecordHistoryAction.REACTIVATE,
+          entityId: 'user-uuid-2',
+          reason: 'Rejoined',
+          actorId: 'requester-uuid',
+          actorName: 'Requester Name',
+        }),
+      );
+    });
+
+    it('records REACTIVATE with a null reason when none is given', async () => {
+      repo.findOne
+        .mockResolvedValueOnce({ ...targetUser, isActive: false } as User)
+        .mockResolvedValueOnce(targetUser as User);
+      companyRepo.findOne.mockResolvedValue(proCompanyNoSub as Company);
+
+      await service.reactivateUser(
+        'user-uuid-2',
+        companyId,
+        Role.COMPANY_ADMIN,
+        'requester-uuid',
+      );
+
+      expect(recordHistoryMock.record).toHaveBeenCalledWith(
+        managerMock,
+        expect.objectContaining({
+          action: RecordHistoryAction.REACTIVATE,
+          reason: null,
+        }),
+      );
+    });
+
+    it('writes no history when reactivation is refused', async () => {
+      repo.findOne.mockResolvedValueOnce({
+        ...targetUser,
+        isActive: false,
+      } as User);
+      companyRepo.findOne.mockResolvedValue(freeCompany as Company);
+      repo.count.mockResolvedValue(1);
+
+      await expect(
+        service.reactivateUser(
+          'user-uuid-2',
+          companyId,
+          Role.COMPANY_ADMIN,
+          'requester-uuid',
+        ),
+      ).rejects.toThrow(BadRequestException);
+      expect(recordHistoryMock.record).not.toHaveBeenCalled();
     });
   });
 

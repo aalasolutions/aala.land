@@ -225,7 +225,7 @@ export class LocationsService {
             FROM localities l
             INNER JOIN cities c ON l.city_id = c.id
             INNER JOIN assets ast ON ast.locality_id = l.id
-            LEFT JOIN units u ON u.asset_id = ast.id AND u.company_id = $1
+            LEFT JOIN units u ON u.asset_id = ast.id AND u.company_id = $1 AND u.deleted_at IS NULL
             WHERE (u.company_id = $1 OR ast.company_id = $1)
         `;
     const params: (string | string[])[] = [companyId];

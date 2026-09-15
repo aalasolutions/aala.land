@@ -1,11 +1,23 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, LessThan, Between, FindOptionsWhere } from 'typeorm';
+import {
+  DataSource,
+  EntityManager,
+  Repository,
+  LessThan,
+  Between,
+  FindOptionsWhere,
+} from 'typeorm';
 import {
   Transaction,
   TransactionType,
   TransactionStatus,
 } from './entities/transaction.entity';
+import { Unit } from '../properties/entities/unit.entity';
 import { CreateTransactionDto } from './dto/create-transaction.dto';
 import { UpdateTransactionDto } from './dto/update-transaction.dto';
 import { REGION_FILTER_SUBQUERY_MULTI } from '../../shared/utils/region-filter.util';
@@ -27,17 +39,40 @@ export class FinancialService {
   constructor(
     @InjectRepository(Transaction)
     private readonly transactionRepository: Repository<Transaction>,
+    @InjectRepository(Unit)
+    private readonly unitRepository: Repository<Unit>,
+    private readonly dataSource: DataSource,
   ) {}
 
   async create(
     companyId: string,
     dto: CreateTransactionDto,
   ): Promise<Transaction> {
+    if (dto.unitId) {
+      const unit = await this.unitRepository.findOne({
+        where: { id: dto.unitId, companyId },
+        select: { id: true, deletedAt: true },
+      });
+      if (!unit) {
+        throw new NotFoundException('Unit not found');
+      }
+      if (unit.deletedAt) {
+        throw new ConflictException('This unit is archived.');
+      }
+    }
     const transaction = this.transactionRepository.create({
       ...dto,
       companyId,
     });
-    return this.transactionRepository.save(transaction);
+    return this.dataSource.transaction(async (manager) => {
+      await this.assertUnitNotArchivedLocked(
+        manager,
+        dto.unitId,
+        companyId,
+        'This unit is archived.',
+      );
+      return manager.getRepository(Transaction).save(transaction);
+    });
   }
 
   async findAll(
@@ -119,14 +154,54 @@ export class FinancialService {
     companyId: string,
     dto: UpdateTransactionDto,
   ): Promise<Transaction> {
-    const transaction = await this.findOne(id, companyId);
+    await this.findOne(id, companyId);
 
-    if (dto.status === TransactionStatus.COMPLETED && !transaction.paidAt) {
-      transaction.paidAt = new Date();
+    return this.dataSource.transaction(async (manager) => {
+      const repo = manager.getRepository(Transaction);
+      const transaction = await repo.findOne({
+        where: { id, companyId },
+        lock: { mode: 'pessimistic_write' },
+      });
+      if (!transaction) {
+        throw new NotFoundException('Transaction not found');
+      }
+      await this.assertUnitNotArchivedLocked(
+        manager,
+        transaction.unitId,
+        companyId,
+        'This unit is archived. Its records can no longer be edited.',
+      );
+
+      if (dto.status === TransactionStatus.COMPLETED && !transaction.paidAt) {
+        transaction.paidAt = new Date();
+      }
+
+      Object.assign(transaction, dto);
+      return repo.save(transaction);
+    });
+  }
+
+  // FOR SHARE so archiveUnit cannot commit in between.
+  private async assertUnitNotArchivedLocked(
+    manager: EntityManager,
+    unitId: string | null | undefined,
+    companyId: string,
+    message: string,
+  ): Promise<void> {
+    if (!unitId) {
+      return;
     }
-
-    Object.assign(transaction, dto);
-    return this.transactionRepository.save(transaction);
+    const unit = await manager.findOne(Unit, {
+      where: { id: unitId, companyId },
+      select: { id: true, deletedAt: true },
+      lock: { mode: 'pessimistic_read' },
+    });
+    if (!unit) {
+      throw new NotFoundException('Unit not found');
+    }
+    if (unit.deletedAt) {
+      throw new ConflictException(message);
+    }
   }
 
   async getSummary(companyId: string): Promise<TransactionSummary> {

@@ -103,7 +103,7 @@ export class User {
   @Column({ type: 'varchar', length: 50, default: 'Asia/Dubai' })
   timezone: string;
 
-  @Column({ name: 'last_login_at', type: 'timestamp', nullable: true })
+  @Column({ name: 'last_login_at', type: 'timestamptz', nullable: true })
   lastLoginAt: Date | null;
 
   @Column({ name: 'is_active', type: 'boolean', default: true })
@@ -133,15 +133,15 @@ export class User {
 
   @Column({
     name: 'reset_password_expires',
-    type: 'timestamp',
+    type: 'timestamptz',
     nullable: true,
     select: false,
   })
   resetPasswordExpires: Date | null;
 
-  @CreateDateColumn({ name: 'created_at' })
+  @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;
 
-  @UpdateDateColumn({ name: 'updated_at' })
+  @UpdateDateColumn({ name: 'updated_at', type: 'timestamptz' })
   updatedAt: Date;
 }

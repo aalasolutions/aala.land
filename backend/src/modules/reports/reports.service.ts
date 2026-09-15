@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, LessThan, In, FindOptionsWhere } from 'typeorm';
+import { Repository, LessThan, In, IsNull, FindOptionsWhere } from 'typeorm';
 import { Lead, LeadStatus } from '../leads/entities/lead.entity';
 import {
   LeadActivity,
@@ -172,6 +172,7 @@ export class ReportsService {
         .innerJoin('localities', 'loc', 'ast.locality_id = loc.id')
         .innerJoin('cities', 'ci', 'loc.city_id = ci.id')
         .where('u.company_id = :companyId', { companyId })
+        .andWhere('u.deleted_at IS NULL')
         .andWhere('ci.region_code IN (:...regionCodes)', { regionCodes })
         .getCount();
 
@@ -197,6 +198,7 @@ export class ReportsService {
         .innerJoin('cities', 'ci', 'loc.city_id = ci.id')
         .where('l.company_id = :companyId', { companyId })
         .andWhere('l.status = :status', { status: LeaseStatus.ACTIVE })
+        .andWhere('l.deleted_at IS NULL')
         .andWhere('ci.region_code IN (:...regionCodes)', { regionCodes })
         .getCount();
 
@@ -211,7 +213,9 @@ export class ReportsService {
         .andWhere('ci.region_code IN (:...regionCodes)', { regionCodes })
         .getCount();
     } else {
-      totalUnitsPromise = this.unitRepository.count({ where: { companyId } });
+      totalUnitsPromise = this.unitRepository.count({
+        where: { companyId, deletedAt: IsNull() },
+      });
       revenuePromise = this.transactionRepository
         .createQueryBuilder('t')
         .select('COALESCE(SUM(t.amount), 0)', 'total')
@@ -221,7 +225,7 @@ export class ReportsService {
         .andWhere('t.createdAt >= :startOfMonth', { startOfMonth })
         .getRawOne();
       activeLeasesPromise = this.leaseRepository.count({
-        where: { companyId, status: LeaseStatus.ACTIVE },
+        where: { companyId, status: LeaseStatus.ACTIVE, deletedAt: IsNull() },
       });
       pendingChequesPromise = this.chequeRepository.count({
         where: { companyId, status: ChequeStatus.PENDING },
@@ -420,6 +424,7 @@ export class ReportsService {
         .innerJoin('cities', 'ci', 'loc.city_id = ci.id')
         .where('u.company_id = :companyId', { companyId })
         .andWhere('u.status = :status', { status: UnitStatus.AVAILABLE })
+        .andWhere('u.deleted_at IS NULL')
         .andWhere('u.updated_at < :days30Ago', { days30Ago })
         .andWhere('ci.region_code IN (:...regionCodes)', { regionCodes })
         .take(20)
@@ -430,6 +435,7 @@ export class ReportsService {
           companyId,
           status: UnitStatus.AVAILABLE,
           updatedAt: LessThan(days30Ago),
+          deletedAt: IsNull(),
         },
         select: ['id', 'unitNumber', 'updatedAt'],
         take: 20,
@@ -488,8 +494,7 @@ export class ReportsService {
       flags.push({
         type: 'UNTOUCHED_LEAD_48H',
         severity: 'HIGH',
-        message:
-          `${this.leadFlagName(lead)} untouched for 48+ hours`,
+        message: `${this.leadFlagName(lead)} untouched for 48+ hours`,
         entityType: 'Lead',
         entityId: lead.id,
         createdAt: lead.createdAt,
@@ -503,8 +508,7 @@ export class ReportsService {
       flags.push({
         type: 'UNTOUCHED_LEAD_24H',
         severity: 'MEDIUM',
-        message:
-          `${this.leadFlagName(lead)} untouched for 24+ hours`,
+        message: `${this.leadFlagName(lead)} untouched for 24+ hours`,
         entityType: 'Lead',
         entityId: lead.id,
         createdAt: lead.createdAt,
@@ -515,8 +519,7 @@ export class ReportsService {
       flags.push({
         type: 'STALLED_PIPELINE',
         severity: 'MEDIUM',
-        message:
-          `${this.leadFlagName(lead)} stuck in ${lead.status} for 14+ days`,
+        message: `${this.leadFlagName(lead)} stuck in ${lead.status} for 14+ days`,
         entityType: 'Lead',
         entityId: lead.id,
         createdAt: lead.updatedAt,
@@ -527,8 +530,7 @@ export class ReportsService {
       flags.push({
         type: 'OVERDUE_FOLLOWUP',
         severity: 'MEDIUM',
-        message:
-          `${this.leadFlagName(lead)} in ${lead.status}, no update for 7+ days`,
+        message: `${this.leadFlagName(lead)} in ${lead.status}, no update for 7+ days`,
         entityType: 'Lead',
         entityId: lead.id,
         createdAt: lead.updatedAt,
@@ -806,9 +808,13 @@ export class ReportsService {
   }
 
   // The contact carries the name; a lead has none of its own.
-  private leadFlagName(
-    lead: { contact?: { firstName?: string | null; lastName?: string | null; phone?: string | null } | null },
-  ): string {
+  private leadFlagName(lead: {
+    contact?: {
+      firstName?: string | null;
+      lastName?: string | null;
+      phone?: string | null;
+    } | null;
+  }): string {
     const c = lead.contact;
     const name = [c?.firstName, c?.lastName].filter(Boolean).join(' ').trim();
     return name || c?.phone || 'Lead';

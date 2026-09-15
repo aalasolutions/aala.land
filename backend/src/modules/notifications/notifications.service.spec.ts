@@ -564,6 +564,7 @@ describe('NotificationsService', () => {
       expect(result.data[0].leaseId).toBe('lease-uuid-1');
       expect(result.data[0].tenantName).toBe('Fatima Hassan');
       expect(result.data[0].daysRemaining).toBeLessThanOrEqual(60);
+      expect(qb.andWhere).toHaveBeenCalledWith('lease.deleted_at IS NULL');
     });
 
     it('returns empty data when no leases expiring soon', async () => {

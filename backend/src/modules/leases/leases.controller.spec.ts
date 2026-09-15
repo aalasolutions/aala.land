@@ -1,5 +1,14 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { ForbiddenException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  ParseEnumPipe,
+  PipeTransform,
+} from '@nestjs/common';
+import { LeaseArchivedFilter } from './dto/lease-archived-filter.enum';
+import { plainToInstance } from 'class-transformer';
+import { validate } from 'class-validator';
+import { LeaseReasonDto, OptionalLeaseReasonDto } from './dto/lease-reason.dto';
 import { LeasesController } from './leases.controller';
 import { LeasesService } from './leases.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -45,6 +54,9 @@ describe('LeasesController', () => {
             findByUnit: jest.fn(),
             update: jest.fn(),
             remove: jest.fn(),
+            terminate: jest.fn(),
+            archive: jest.fn(),
+            unarchive: jest.fn(),
           },
         },
       ],
@@ -97,6 +109,7 @@ describe('LeasesController', () => {
           search: undefined,
           dateFrom: undefined,
           dateTo: undefined,
+          archived: undefined,
         },
         mockReq.user,
       );
@@ -135,6 +148,7 @@ describe('LeasesController', () => {
           search: undefined,
           dateFrom: undefined,
           dateTo: undefined,
+          archived: undefined,
         },
         agentReq.user,
       );
@@ -158,6 +172,7 @@ describe('LeasesController', () => {
           search: undefined,
           dateFrom: undefined,
           dateTo: undefined,
+          archived: undefined,
         },
         accountantReq.user,
       );
@@ -211,6 +226,24 @@ describe('LeasesController', () => {
         'unit-uuid-1',
         companyId,
         mockReq.user,
+        'include',
+      );
+    });
+
+    it('passes through an explicit archived filter', async () => {
+      service.findByUnit.mockResolvedValue([mockLease] as any);
+
+      await controller.findByUnit(
+        'unit-uuid-1',
+        mockReq,
+        'exclude' as any,
+      );
+
+      expect(service.findByUnit).toHaveBeenCalledWith(
+        'unit-uuid-1',
+        companyId,
+        mockReq.user,
+        'exclude',
       );
     });
   });
@@ -246,22 +279,143 @@ describe('LeasesController', () => {
         'lease-uuid-1',
         companyId,
         { status: LeaseStatus.EXPIRED },
+        'user-uuid-1',
         mockReq.user,
       );
     });
   });
 
+  describe('findAll archived param', () => {
+    const call = (archived?: string) =>
+      controller.findAll(
+        mockReq,
+        1,
+        20,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        archived as any,
+      );
+
+    it('passes archived to the service filters', async () => {
+      service.findAll.mockResolvedValue(paginated as any);
+
+      await call('only');
+
+      expect(service.findAll.mock.calls[0][5]).toMatchObject({
+        archived: 'only',
+      });
+    });
+
+    it('rejects an unknown archived value', async () => {
+      const pipe: PipeTransform = new ParseEnumPipe(LeaseArchivedFilter, {
+        optional: true,
+      });
+      const meta = { type: 'query', data: 'archived' } as const;
+
+      await expect(pipe.transform('all', meta)).rejects.toThrow(
+        BadRequestException,
+      );
+      await expect(pipe.transform(undefined, meta)).resolves.toBeUndefined();
+      await expect(pipe.transform('only', meta)).resolves.toBe(
+        LeaseArchivedFilter.ONLY,
+      );
+    });
+  });
+
+  const reason = { reason: 'Tenant left' };
+
   describe('remove', () => {
-    it('removes lease', async () => {
+    it('POST :id/delete passes reason and actor', async () => {
       service.remove.mockResolvedValue(undefined);
 
-      await controller.remove('lease-uuid-1', mockReq);
+      await controller.remove('lease-uuid-1', reason, mockReq);
 
       expect(service.remove).toHaveBeenCalledWith(
         'lease-uuid-1',
         companyId,
+        reason,
+        'user-uuid-1',
         mockReq.user,
       );
+    });
+  });
+
+  describe('terminate, archive, unarchive', () => {
+    it('terminate passes reason and actor', async () => {
+      service.terminate.mockResolvedValue(mockLease as any);
+
+      await controller.terminate('lease-uuid-1', reason, mockReq);
+
+      expect(service.terminate).toHaveBeenCalledWith(
+        'lease-uuid-1',
+        companyId,
+        reason,
+        'user-uuid-1',
+        mockReq.user,
+      );
+    });
+
+    it('archive passes reason and actor', async () => {
+      service.archive.mockResolvedValue(mockLease as any);
+
+      await controller.archive('lease-uuid-1', reason, mockReq);
+
+      expect(service.archive).toHaveBeenCalledWith(
+        'lease-uuid-1',
+        companyId,
+        reason,
+        'user-uuid-1',
+        mockReq.user,
+      );
+    });
+
+    it('unarchive accepts an empty body', async () => {
+      service.unarchive.mockResolvedValue(mockLease as any);
+
+      await controller.unarchive('lease-uuid-1', {}, mockReq);
+
+      expect(service.unarchive).toHaveBeenCalledWith(
+        'lease-uuid-1',
+        companyId,
+        {},
+        'user-uuid-1',
+        mockReq.user,
+      );
+    });
+  });
+
+  describe('reason DTOs', () => {
+    const errorsFor = async (cls: any, body: object) =>
+      validate(plainToInstance(cls, body) as object);
+
+    it('LeaseReasonDto requires a non-blank reason', async () => {
+      expect(await errorsFor(LeaseReasonDto, {})).not.toHaveLength(0);
+      expect(
+        await errorsFor(LeaseReasonDto, { reason: '   ' }),
+      ).not.toHaveLength(0);
+    });
+
+    it('LeaseReasonDto caps reason at 500 characters', async () => {
+      expect(
+        await errorsFor(LeaseReasonDto, { reason: 'a'.repeat(501) }),
+      ).not.toHaveLength(0);
+      expect(
+        await errorsFor(LeaseReasonDto, { reason: 'a'.repeat(500) }),
+      ).toHaveLength(0);
+    });
+
+    it('LeaseReasonDto trims the reason', () => {
+      const dto = plainToInstance(LeaseReasonDto, { reason: '  left  ' });
+      expect(dto.reason).toBe('left');
+    });
+
+    it('OptionalLeaseReasonDto accepts no reason', async () => {
+      expect(await errorsFor(OptionalLeaseReasonDto, {})).toHaveLength(0);
     });
   });
 });

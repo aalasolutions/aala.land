@@ -144,6 +144,15 @@
               data-test-filter-beds
             />
           </Nuvo::Field>
+          <Nuvo::Field @label="Visibility">
+            <Nuvo::Dropdown
+              @align="start"
+              @value={{this.archivedFilterValue}}
+              @onSelect={{this.setArchivedFilter}}
+              @options={{this.archivedFilterOptions}}
+              data-test-archived-filter
+            />
+          </Nuvo::Field>
           <Nuvo::Field @label="Min Price">
             <Nuvo::Input
               type="number"
@@ -276,10 +285,19 @@
             <div class="pt-4 flex col gap-2">
               <div class="flex between x-center">
                 <p class="font-bold">Property {{unit.unitNumber}}</p>
-                <Nuvo::Tag
-                  class="tag-unit-{{lowercase unit.status}}"
-                  @text={{capitalize unit.status}}
-                />
+                <div class="flex gap-1 x-center">
+                  {{#if unit.deletedAt}}
+                    <Nuvo::Tag
+                      @variant="secondary"
+                      @text="Archived"
+                      data-test-archived-badge
+                    />
+                  {{/if}}
+                  <Nuvo::Tag
+                    class="tag-unit-{{lowercase unit.status}}"
+                    @text={{capitalize unit.status}}
+                  />
+                </div>
               </div>
               <p class="text-xs text-muted">{{unit.assetName}}
                 &middot;
@@ -538,74 +556,3 @@
     {{/if}}
   </:footer>
 </Nuvo::Drawer>
-
-{{! Bulk import modal }}
-<Nuvo::Modal
-  @open={{this.showImportModal}}
-  @title="Bulk Import Properties"
-  @onClose={{this.closeImportModal}}
-  @size="md"
->
-  <div class="flex col gap-4">
-    <p class="text-muted">Import multiple property areas from a CSV file.</p>
-
-    <Nuvo::Button @variant="secondary" {{on "click" this.downloadTemplate}}>
-      Download CSV Template
-    </Nuvo::Button>
-
-    <Nuvo::Field @label="Select CSV File" @required={{true}}>
-      <input
-        id="import-file"
-        type="file"
-        accept=".csv"
-        class="nu-input"
-        {{on "change" this.handleFileSelect}}
-      />
-    </Nuvo::Field>
-
-    {{#if this.importPreview}}
-      <div class="flex col gap-2">
-        <p class="text-sm font-bold">Preview (first 10 rows):</p>
-        <div class="import-preview import-preview--scroll">
-          {{#each this.importPreview as |row|}}
-            <p class="text-xs">{{row.areaName}}, {{row.location}}</p>
-          {{/each}}
-        </div>
-      </div>
-    {{/if}}
-
-    {{#if this.importResults}}
-      <div class="import-results">
-        <p class="text-sm font-bold">Import Results:</p>
-        <p class="text-sm text-success">{{this.importResults.created}}
-          areas created</p>
-        {{#if this.importResults.failed}}
-          <p class="text-sm text-danger">{{this.importResults.failed}}
-            failed</p>
-        {{/if}}
-        {{#if this.importResults.errors}}
-          <div class="import-errors mt-2">
-            <p class="text-xs text-muted">Errors:</p>
-            {{#each this.importResults.errors as |error|}}
-              <p class="text-xs text-danger">{{error}}</p>
-            {{/each}}
-          </div>
-        {{/if}}
-      </div>
-    {{/if}}
-
-    <Nuvo::FormActions>
-      <Nuvo::Button @variant="secondary" {{on "click" this.closeImportModal}}>
-        Cancel
-      </Nuvo::Button>
-      <Nuvo::Button
-        @variant="primary"
-        @disabled={{or this.isImporting (not this.importFile)}}
-        @loading={{this.isImporting}}
-        {{on "click" this.importProperties}}
-      >
-        {{if this.isImporting "Importing..." "Import"}}
-      </Nuvo::Button>
-    </Nuvo::FormActions>
-  </div>
-</Nuvo::Modal>

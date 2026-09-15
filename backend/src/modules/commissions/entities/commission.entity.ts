@@ -107,7 +107,7 @@ export class Commission {
   @Column({ type: 'varchar', length: 3, default: 'AED' })
   currency: string;
 
-  @Column({ name: 'paid_at', type: 'timestamp', nullable: true })
+  @Column({ name: 'paid_at', type: 'timestamptz', nullable: true })
   paidAt: Date | null;
 
   @Column({ type: 'text', nullable: true })
@@ -116,9 +116,9 @@ export class Commission {
   @Column({ name: 'region_code', type: 'varchar', length: 50 })
   regionCode: string;
 
-  @CreateDateColumn({ name: 'created_at' })
+  @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;
 
-  @UpdateDateColumn({ name: 'updated_at' })
+  @UpdateDateColumn({ name: 'updated_at', type: 'timestamptz' })
   updatedAt: Date;
 }

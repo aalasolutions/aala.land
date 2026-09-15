@@ -1,7 +1,13 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { NotFoundException, BadRequestException } from '@nestjs/common';
+import { DataSource, Repository } from 'typeorm';
+import {
+  NotFoundException,
+  BadRequestException,
+  ConflictException,
+} from '@nestjs/common';
+import { RecordHistoryService } from '../record-history/record-history.service';
+import { RecordHistoryAction } from '../record-history/entities/record-history.entity';
 import { NotificationsService } from '../notifications/notifications.service';
 import { NotificationType } from '../notifications/entities/notification.entity';
 import { UsersService } from '../users/users.service';
@@ -9,14 +15,22 @@ import { NotificationsGateway } from '../notifications/notifications.gateway';
 import { ChequesService } from './cheques.service';
 import { Cheque, ChequeStatus, ChequeType } from './entities/cheque.entity';
 import { Unit } from '../properties/entities/unit.entity';
+import { Lease } from '../leases/entities/lease.entity';
 import { Company } from '../companies/entities/company.entity';
 
 describe('ChequesService', () => {
   let service: ChequesService;
   let repo: jest.Mocked<Repository<Cheque>>;
   let unitRepo: jest.Mocked<Repository<Unit>>;
+  let leaseRepo: jest.Mocked<Repository<Lease>>;
   let companyRepo: jest.Mocked<Repository<Company>>;
   let module: TestingModule;
+  let manager: {
+    getRepository: jest.Mock;
+    findOne: jest.Mock;
+    remove: jest.Mock;
+  };
+  let recordHistory: { record: jest.Mock; resolveActorName: jest.Mock };
   let updateBuilder: {
     update: jest.Mock;
     set: jest.Mock;
@@ -84,9 +98,32 @@ describe('ChequesService', () => {
   };
 
   beforeEach(async () => {
+    manager = {
+      getRepository: jest.fn(() => repo),
+      // Locked reads find live rows unless a test says otherwise.
+      findOne: jest.fn((entity: unknown, opts: any) =>
+        Promise.resolve(
+          entity === Lease
+            ? { id: opts?.where?.id, unitId: 'unit-live', deletedAt: null }
+            : { id: opts?.where?.id, deletedAt: null },
+        ),
+      ),
+      remove: jest.fn(),
+    };
+    recordHistory = {
+      record: jest.fn().mockResolvedValue(undefined),
+      resolveActorName: jest.fn().mockResolvedValue('Actor Name'),
+    };
     module = await Test.createTestingModule({
       providers: [
         ChequesService,
+        {
+          provide: DataSource,
+          useValue: {
+            transaction: jest.fn((cb: (m: unknown) => unknown) => cb(manager)),
+          },
+        },
+        { provide: RecordHistoryService, useValue: recordHistory },
         {
           provide: getRepositoryToken(Cheque),
           useValue: {
@@ -104,6 +141,12 @@ describe('ChequesService', () => {
           useValue: {
             findOne: jest.fn(),
             createQueryBuilder: jest.fn(),
+          },
+        },
+        {
+          provide: getRepositoryToken(Lease),
+          useValue: {
+            findOne: jest.fn(),
           },
         },
         {
@@ -136,6 +179,7 @@ describe('ChequesService', () => {
     service = module.get<ChequesService>(ChequesService);
     repo = module.get(getRepositoryToken(Cheque));
     unitRepo = module.get(getRepositoryToken(Unit));
+    leaseRepo = module.get(getRepositoryToken(Lease));
     companyRepo = module.get(getRepositoryToken(Company));
 
     companyRepo.findOne.mockResolvedValue({
@@ -471,7 +515,7 @@ describe('ChequesService', () => {
       await service.update(
         'cheque-uuid-1',
         companyId,
-        { status: ChequeStatus.CANCELLED },
+        { status: ChequeStatus.CANCELLED, reason: 'Replaced by transfer' },
         'user-1',
       );
 
@@ -646,6 +690,496 @@ describe('ChequesService', () => {
       );
 
       loggerErrorSpy.mockRestore();
+    });
+  });
+
+  describe('record history', () => {
+    const primeUpdate = (next: Partial<Cheque>) => {
+      repo.findOne
+        .mockResolvedValueOnce({ ...mockCheque } as Cheque)
+        .mockResolvedValueOnce({ ...mockCheque, ...next } as Cheque);
+    };
+
+    it('rejects cancelling without a reason before writing', async () => {
+      repo.findOne.mockResolvedValue({ ...mockCheque } as Cheque);
+
+      await expect(
+        service.update(
+          'cheque-uuid-1',
+          companyId,
+          { status: ChequeStatus.CANCELLED },
+          'user-1',
+        ),
+      ).rejects.toThrow(BadRequestException);
+      await expect(
+        service.update(
+          'cheque-uuid-1',
+          companyId,
+          { status: ChequeStatus.CANCELLED, reason: '   ' },
+          'user-1',
+        ),
+      ).rejects.toThrow(BadRequestException);
+      expect(updateBuilder.execute).not.toHaveBeenCalled();
+      expect(recordHistory.record).not.toHaveBeenCalled();
+    });
+
+    it('records CANCEL with the reason in the update transaction', async () => {
+      primeUpdate({ status: ChequeStatus.CANCELLED });
+
+      await service.update(
+        'cheque-uuid-1',
+        companyId,
+        { status: ChequeStatus.CANCELLED, reason: 'Tenant paid by transfer' },
+        'user-1',
+      );
+
+      expect(manager.getRepository).toHaveBeenCalledWith(Cheque);
+      expect(recordHistory.record).toHaveBeenCalledWith(
+        manager,
+        expect.objectContaining({
+          companyId,
+          action: RecordHistoryAction.CANCEL,
+          entityType: 'Cheque',
+          entityId: 'cheque-uuid-1',
+          entityTitle: 'Cheque CHQ001',
+          contextTitle: 'Ahmed Al-Rashid',
+          reason: 'Tenant paid by transfer',
+          actorId: 'user-1',
+          actorName: 'Actor Name',
+          metadata: {
+            from: ChequeStatus.PENDING,
+            to: ChequeStatus.CANCELLED,
+          },
+        }),
+      );
+    });
+
+    it('records REPLACE when the cheque is replaced', async () => {
+      primeUpdate({ status: ChequeStatus.REPLACED });
+
+      await service.update(
+        'cheque-uuid-1',
+        companyId,
+        { status: ChequeStatus.REPLACED },
+        'user-1',
+      );
+
+      expect(recordHistory.record).toHaveBeenCalledWith(
+        manager,
+        expect.objectContaining({
+          action: RecordHistoryAction.REPLACE,
+          reason: null,
+        }),
+      );
+    });
+
+    it('records STATUS_CHANGE with from and to for other statuses', async () => {
+      primeUpdate({ status: ChequeStatus.DEPOSITED });
+
+      await service.update(
+        'cheque-uuid-1',
+        companyId,
+        { status: ChequeStatus.DEPOSITED },
+        'user-1',
+      );
+
+      expect(recordHistory.record).toHaveBeenCalledWith(
+        manager,
+        expect.objectContaining({
+          action: RecordHistoryAction.STATUS_CHANGE,
+          metadata: {
+            from: ChequeStatus.PENDING,
+            to: ChequeStatus.DEPOSITED,
+          },
+        }),
+      );
+    });
+
+    it('records nothing for an edit that keeps the status', async () => {
+      primeUpdate({ bankName: 'New Bank' });
+
+      await service.update(
+        'cheque-uuid-1',
+        companyId,
+        { bankName: 'New Bank' },
+        'user-1',
+      );
+
+      expect(updateBuilder.execute).toHaveBeenCalledTimes(1);
+      expect(recordHistory.record).not.toHaveBeenCalled();
+    });
+
+    it('records nothing when the guarded UPDATE loses the race', async () => {
+      repo.findOne.mockResolvedValueOnce({ ...mockCheque } as Cheque);
+      updateBuilder = makeUpdateBuilder(0);
+      repo.createQueryBuilder.mockReturnValue(updateBuilder as any);
+
+      await expect(
+        service.update(
+          'cheque-uuid-1',
+          companyId,
+          { status: ChequeStatus.DEPOSITED },
+          'user-1',
+        ),
+      ).rejects.toThrow(BadRequestException);
+      expect(recordHistory.record).not.toHaveBeenCalled();
+    });
+
+    it('records BOUNCE with the bounce reason', async () => {
+      primeUpdate({ status: ChequeStatus.BOUNCED });
+
+      await service.bounce(
+        'cheque-uuid-1',
+        companyId,
+        { bounceReason: 'Insufficient funds' },
+        'user-1',
+      );
+
+      expect(recordHistory.record).toHaveBeenCalledWith(
+        manager,
+        expect.objectContaining({
+          action: RecordHistoryAction.BOUNCE,
+          entityTitle: 'Cheque CHQ001',
+          reason: 'Insufficient funds',
+          actorId: 'user-1',
+        }),
+      );
+    });
+  });
+
+  describe('archived unit', () => {
+    const archivedUnit = { id: 'unit-archived', deletedAt: new Date() } as Unit;
+
+    it('refuses creating a cheque on an archived unit', async () => {
+      unitRepo.findOne.mockResolvedValue(archivedUnit);
+
+      await expect(
+        service.create(
+          companyId,
+          { chequeNumber: 'CHQ009', unitId: 'unit-archived' } as any,
+          'user-1',
+        ),
+      ).rejects.toThrow(ConflictException);
+      expect(repo.save).not.toHaveBeenCalled();
+    });
+
+    it('refuses moving a cheque onto an archived unit', async () => {
+      repo.findOne.mockResolvedValue({
+        ...mockCheque,
+        unitId: 'unit-live',
+      } as Cheque);
+      unitRepo.findOne.mockResolvedValue(archivedUnit);
+
+      await expect(
+        service.update(
+          'cheque-uuid-1',
+          companyId,
+          { unitId: 'unit-archived' },
+          'user-1',
+        ),
+      ).rejects.toThrow(ConflictException);
+      expect(updateBuilder.execute).not.toHaveBeenCalled();
+    });
+
+    const lockedMessage =
+      'This unit is archived. Its records can no longer be edited.';
+
+    it('refuses editing a cheque already on an archived unit', async () => {
+      repo.findOne.mockResolvedValue({
+        ...mockCheque,
+        unitId: 'unit-archived',
+      } as Cheque);
+      unitRepo.findOne.mockResolvedValue(archivedUnit);
+      manager.findOne.mockImplementation((entity: unknown) =>
+        Promise.resolve(
+          entity === Unit
+            ? archivedUnit
+            : { id: 'lease-uuid-1', unitId: 'unit-archived', deletedAt: null },
+        ),
+      );
+
+      await expect(
+        service.update(
+          'cheque-uuid-1',
+          companyId,
+          { unitId: 'unit-archived', notes: 'Checked' },
+          'user-1',
+        ),
+      ).rejects.toThrow(lockedMessage);
+      expect(manager.findOne).toHaveBeenCalledWith(Unit, {
+        where: { id: 'unit-archived', companyId },
+        select: { id: true, deletedAt: true },
+        lock: { mode: 'pessimistic_read' },
+      });
+      expect(updateBuilder.execute).not.toHaveBeenCalled();
+    });
+
+    it('refuses editing a cheque whose lease is archived', async () => {
+      repo.findOne.mockResolvedValue({ ...mockCheque } as Cheque);
+      manager.findOne.mockImplementation((entity: unknown) =>
+        Promise.resolve(
+          entity === Lease
+            ? { id: 'lease-uuid-1', unitId: 'unit-live', deletedAt: new Date() }
+            : null,
+        ),
+      );
+
+      await expect(
+        service.update('cheque-uuid-1', companyId, { notes: 'Checked' }),
+      ).rejects.toThrow(
+        'This lease is archived. Its records can no longer be edited.',
+      );
+      expect(updateBuilder.execute).not.toHaveBeenCalled();
+    });
+
+    it('refuses editing a cheque whose lease sits on an archived unit', async () => {
+      repo.findOne.mockResolvedValue({ ...mockCheque } as Cheque);
+      manager.findOne.mockImplementation((entity: unknown) =>
+        Promise.resolve(
+          entity === Lease
+            ? { id: 'lease-uuid-1', unitId: 'unit-archived', deletedAt: null }
+            : archivedUnit,
+        ),
+      );
+
+      await expect(
+        service.update('cheque-uuid-1', companyId, { notes: 'Checked' }),
+      ).rejects.toThrow(lockedMessage);
+      expect(updateBuilder.execute).not.toHaveBeenCalled();
+    });
+
+    it('refuses bouncing a cheque on an archived unit', async () => {
+      repo.findOne.mockResolvedValue({
+        ...mockCheque,
+        unitId: 'unit-archived',
+      } as Cheque);
+      manager.findOne.mockImplementation((entity: unknown) =>
+        Promise.resolve(
+          entity === Unit
+            ? archivedUnit
+            : { id: 'lease-uuid-1', unitId: 'unit-archived', deletedAt: null },
+        ),
+      );
+
+      await expect(
+        service.bounce('cheque-uuid-1', companyId, {}),
+      ).rejects.toThrow(lockedMessage);
+      expect(updateBuilder.execute).not.toHaveBeenCalled();
+      expect(recordHistory.record).not.toHaveBeenCalled();
+    });
+
+    it('refuses bouncing a cheque whose lease is archived', async () => {
+      repo.findOne.mockResolvedValue({ ...mockCheque } as Cheque);
+      manager.findOne.mockImplementation((entity: unknown) =>
+        Promise.resolve(
+          entity === Lease
+            ? { id: 'lease-uuid-1', unitId: 'unit-live', deletedAt: new Date() }
+            : null,
+        ),
+      );
+
+      await expect(
+        service.bounce('cheque-uuid-1', companyId, {}),
+      ).rejects.toThrow(ConflictException);
+      expect(updateBuilder.execute).not.toHaveBeenCalled();
+    });
+
+    const shareLock = (id: string) => ({
+      where: { id, companyId },
+      select: { id: true, deletedAt: true },
+      lock: { mode: 'pessimistic_read' },
+    });
+
+    it('refuses create when the unit is archived after the first read', async () => {
+      unitRepo.findOne.mockResolvedValue({
+        id: 'unit-late',
+        deletedAt: null,
+      } as Unit);
+      repo.create.mockReturnValue(mockCheque as Cheque);
+      manager.findOne.mockImplementation((entity: unknown) =>
+        Promise.resolve(
+          entity === Unit ? { id: 'unit-late', deletedAt: new Date() } : null,
+        ),
+      );
+
+      await expect(
+        service.create(companyId, {
+          chequeNumber: 'CHQ011',
+          unitId: 'unit-late',
+        } as any),
+      ).rejects.toThrow(lockedMessage);
+      expect(manager.findOne).toHaveBeenCalledWith(Unit, shareLock('unit-late'));
+      expect(repo.save).not.toHaveBeenCalled();
+    });
+
+    it('refuses create when the lease unit is archived after the first read', async () => {
+      leaseRepo.findOne.mockResolvedValue({
+        id: 'lease-uuid-1',
+        unitId: 'unit-late',
+        deletedAt: null,
+      } as Lease);
+      unitRepo.findOne.mockResolvedValue({
+        id: 'unit-late',
+        deletedAt: null,
+      } as Unit);
+      repo.create.mockReturnValue(mockCheque as Cheque);
+      manager.findOne.mockImplementation((entity: unknown) =>
+        Promise.resolve(
+          entity === Lease
+            ? { id: 'lease-uuid-1', unitId: 'unit-late', deletedAt: null }
+            : { id: 'unit-late', deletedAt: new Date() },
+        ),
+      );
+
+      await expect(
+        service.create(companyId, {
+          chequeNumber: 'CHQ012',
+          leaseId: 'lease-uuid-1',
+        } as any),
+      ).rejects.toThrow(lockedMessage);
+      expect(manager.findOne).toHaveBeenCalledWith(Lease, {
+        where: { id: 'lease-uuid-1', companyId },
+        select: { id: true, unitId: true, deletedAt: true },
+        lock: { mode: 'pessimistic_read' },
+      });
+      expect(manager.findOne).toHaveBeenCalledWith(Unit, shareLock('unit-late'));
+      expect(
+        manager.findOne.mock.calls.findIndex(([e]) => e === Lease),
+      ).toBeLessThan(manager.findOne.mock.calls.findIndex(([e]) => e === Unit));
+      expect(repo.save).not.toHaveBeenCalled();
+    });
+
+    it('refuses create when the unit is deleted while waiting for the lock', async () => {
+      unitRepo.findOne.mockResolvedValue({
+        id: 'unit-gone',
+        deletedAt: null,
+      } as Unit);
+      repo.create.mockReturnValue(mockCheque as Cheque);
+      manager.findOne.mockResolvedValue(null);
+
+      await expect(
+        service.create(companyId, {
+          chequeNumber: 'CHQ013',
+          unitId: 'unit-gone',
+        } as any),
+      ).rejects.toThrow(new NotFoundException('Unit not found'));
+      expect(repo.save).not.toHaveBeenCalled();
+    });
+
+    it('refuses create when the lease is deleted while waiting for the lock', async () => {
+      leaseRepo.findOne.mockResolvedValue({
+        id: 'lease-gone',
+        unitId: 'unit-live',
+        deletedAt: null,
+      } as Lease);
+      unitRepo.findOne.mockResolvedValue({
+        id: 'unit-live',
+        deletedAt: null,
+      } as Unit);
+      repo.create.mockReturnValue(mockCheque as Cheque);
+      manager.findOne.mockResolvedValue(null);
+
+      await expect(
+        service.create(companyId, {
+          chequeNumber: 'CHQ014',
+          leaseId: 'lease-gone',
+        } as any),
+      ).rejects.toThrow(new NotFoundException('Lease not found'));
+      expect(repo.save).not.toHaveBeenCalled();
+    });
+
+    it('refuses moving a cheque onto a unit archived after the first read', async () => {
+      repo.findOne.mockResolvedValue({
+        ...mockCheque,
+        unitId: 'unit-live',
+      } as Cheque);
+      unitRepo.findOne.mockResolvedValue({
+        id: 'unit-late',
+        deletedAt: null,
+      } as Unit);
+      manager.findOne.mockImplementation((entity: unknown, opts: any) =>
+        Promise.resolve(
+          entity === Lease
+            ? { id: 'lease-uuid-1', unitId: 'unit-live', deletedAt: null }
+            : {
+                id: opts.where.id,
+                deletedAt: opts.where.id === 'unit-late' ? new Date() : null,
+              },
+        ),
+      );
+
+      await expect(
+        service.update(
+          'cheque-uuid-1',
+          companyId,
+          { unitId: 'unit-late' },
+          'user-1',
+        ),
+      ).rejects.toThrow('This unit is archived.');
+      expect(manager.findOne).toHaveBeenCalledWith(Unit, shareLock('unit-late'));
+      expect(updateBuilder.execute).not.toHaveBeenCalled();
+    });
+
+    describe('create with a lease', () => {
+      const dto = { chequeNumber: 'CHQ010', leaseId: 'lease-uuid-1' } as any;
+
+      it('404s a lease of another company', async () => {
+        leaseRepo.findOne.mockResolvedValue(null);
+
+        await expect(service.create(companyId, dto)).rejects.toThrow(
+          NotFoundException,
+        );
+        expect(leaseRepo.findOne).toHaveBeenCalledWith({
+          where: { id: 'lease-uuid-1', companyId },
+          select: { id: true, unitId: true, deletedAt: true },
+        });
+        expect(repo.save).not.toHaveBeenCalled();
+      });
+
+      it('refuses an archived lease', async () => {
+        leaseRepo.findOne.mockResolvedValue({
+          id: 'lease-uuid-1',
+          unitId: 'unit-live',
+          deletedAt: new Date(),
+        } as Lease);
+
+        await expect(service.create(companyId, dto)).rejects.toThrow(
+          ConflictException,
+        );
+        expect(repo.save).not.toHaveBeenCalled();
+      });
+
+      it('refuses a lease on an archived unit', async () => {
+        leaseRepo.findOne.mockResolvedValue({
+          id: 'lease-uuid-1',
+          unitId: 'unit-archived',
+          deletedAt: null,
+        } as Lease);
+        unitRepo.findOne.mockResolvedValue(archivedUnit);
+
+        await expect(service.create(companyId, dto)).rejects.toThrow(
+          'This unit is archived.',
+        );
+        expect(repo.save).not.toHaveBeenCalled();
+      });
+
+      it('creates against a live lease', async () => {
+        leaseRepo.findOne.mockResolvedValue({
+          id: 'lease-uuid-1',
+          unitId: 'unit-live',
+          deletedAt: null,
+        } as Lease);
+        unitRepo.findOne.mockResolvedValue({
+          id: 'unit-live',
+          deletedAt: null,
+        } as Unit);
+        repo.create.mockReturnValue(mockCheque as Cheque);
+        repo.save.mockResolvedValue(mockCheque as Cheque);
+
+        await expect(service.create(companyId, dto)).resolves.toEqual(
+          mockCheque,
+        );
+      });
     });
   });
 
@@ -846,13 +1380,104 @@ describe('ChequesService', () => {
   });
 
   describe('remove', () => {
-    it('removes cheque', async () => {
-      repo.findOne.mockResolvedValue(mockCheque as Cheque);
-      repo.remove.mockResolvedValue(mockCheque as Cheque);
+    const lockRow = (overrides: Partial<Cheque> = {}) => {
+      const row = {
+        ...mockCheque,
+        regionCode: 'dubai',
+        ...overrides,
+      } as Cheque;
+      repo.findOne.mockResolvedValue(row);
+      manager.findOne.mockImplementation((entity: unknown) =>
+        Promise.resolve(
+          entity === Cheque ? row : { id: 'unit-1', unitNumber: 'A-1204' },
+        ),
+      );
+      return row;
+    };
 
-      await service.remove('cheque-uuid-1', companyId);
+    it('locks the row, records DELETE, then removes it', async () => {
+      const row = lockRow();
 
-      expect(repo.remove).toHaveBeenCalledWith(mockCheque);
+      await service.remove(
+        'cheque-uuid-1',
+        companyId,
+        'Entered twice',
+        'user-1',
+      );
+
+      expect(manager.findOne).toHaveBeenCalledWith(Cheque, {
+        where: { id: 'cheque-uuid-1', companyId },
+        lock: { mode: 'pessimistic_write' },
+      });
+      expect(recordHistory.record).toHaveBeenCalledWith(
+        manager,
+        expect.objectContaining({
+          companyId,
+          action: RecordHistoryAction.DELETE,
+          entityType: 'Cheque',
+          entityTitle: 'Cheque CHQ001',
+          reason: 'Entered twice',
+          actorId: 'user-1',
+          regionCode: 'dubai',
+        }),
+      );
+      expect(manager.remove).toHaveBeenCalledWith(row);
+      expect(recordHistory.record.mock.invocationCallOrder[0]).toBeLessThan(
+        manager.remove.mock.invocationCallOrder[0],
+      );
+    });
+
+    it.each([
+      ChequeStatus.PENDING,
+      ChequeStatus.DEPOSITED,
+      ChequeStatus.BOUNCED,
+      ChequeStatus.CANCELLED,
+      ChequeStatus.REPLACED,
+    ])('allows deleting a %s cheque', async (status: ChequeStatus) => {
+      lockRow({ status });
+
+      await service.remove('cheque-uuid-1', companyId, 'Wrong entry', 'user-1');
+
+      expect(manager.remove).toHaveBeenCalled();
+    });
+
+    it('refuses a CLEARED cheque with 409 and writes nothing', async () => {
+      lockRow({ status: ChequeStatus.CLEARED });
+
+      await expect(
+        service.remove('cheque-uuid-1', companyId, 'Wrong entry', 'user-1'),
+      ).rejects.toThrow(
+        new ConflictException('Cleared cheques cannot be deleted.'),
+      );
+      expect(recordHistory.record).not.toHaveBeenCalled();
+      expect(manager.remove).not.toHaveBeenCalled();
+    });
+
+    it('uses the unit number as context when there is no drawer name', async () => {
+      lockRow({ accountHolder: '', unitId: 'unit-1' });
+
+      await service.remove('cheque-uuid-1', companyId, 'Wrong entry', 'user-1');
+
+      expect(recordHistory.record).toHaveBeenCalledWith(
+        manager,
+        expect.objectContaining({ contextTitle: 'Unit A-1204' }),
+      );
+    });
+
+    it('throws NotFoundException for a cheque from another company', async () => {
+      // Locked read itself enforces companyId, so it returns null here.
+      manager.findOne.mockImplementation((entity: unknown, opts: any) =>
+        Promise.resolve(
+          entity === Cheque && opts?.where?.companyId === 'other-company'
+            ? null
+            : undefined,
+        ),
+      );
+
+      await expect(
+        service.remove('cheque-uuid-1', 'other-company', 'x', 'user-1'),
+      ).rejects.toThrow(NotFoundException);
+      expect(manager.remove).not.toHaveBeenCalled();
     });
   });
   describe('region scoping', () => {
@@ -977,12 +1602,30 @@ describe('ChequesService', () => {
     });
 
     it('denies remove on a cheque outside the caller assigned regions', async () => {
-      seedCheque('punjab', 'unit-punjab');
+      const row = seedCheque('punjab', 'unit-punjab');
+      // remove() locks via manager.findOne, so the region filter must be
+      // enforced there too, not just on repo.findOne.
+      manager.findOne.mockImplementation((entity: unknown, opts: any) => {
+        if (entity !== Cheque) {
+          return Promise.resolve({ id: opts?.where?.id, deletedAt: null });
+        }
+        const codes = opts?.where?.regionCode?.value as string[] | undefined;
+        if (codes && !codes.includes('punjab')) {
+          return Promise.resolve(null);
+        }
+        return Promise.resolve(row);
+      });
 
       await expect(
-        service.remove('cheque-uuid-1', companyId, makkahManager),
+        service.remove(
+          'cheque-uuid-1',
+          companyId,
+          'Wrong entry',
+          'user-uuid-1',
+          makkahManager,
+        ),
       ).rejects.toThrow(NotFoundException);
-      expect(repo.remove).not.toHaveBeenCalled();
+      expect(manager.remove).not.toHaveBeenCalled();
     });
 
     it('denies every by-id read when the caller has no assigned region', async () => {

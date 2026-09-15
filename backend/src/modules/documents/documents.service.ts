@@ -1,10 +1,11 @@
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, IsNull, Repository } from 'typeorm';
+import { DataSource, EntityManager, In, IsNull, Repository } from 'typeorm';
 import {
   PropertyDocument,
   DocumentCategory,
@@ -20,6 +21,7 @@ import {
 } from '../../shared/utils/resolve-region-code.util';
 import { UpdateDocumentDto } from './dto/update-document.dto';
 import { MediaService } from '../properties/media.service';
+import { StoragePurgeService } from '../storage-purge/storage-purge.service';
 import { UploadDocumentDto } from './dto/upload-document.dto';
 import { Role } from '@shared/enums/roles.enum';
 import {
@@ -59,6 +61,8 @@ export class DocumentsService {
     @InjectRepository(Company)
     private readonly companyRepository: Repository<Company>,
     private readonly mediaService: MediaService,
+    private readonly dataSource: DataSource,
+    private readonly storagePurge: StoragePurgeService,
   ) {}
 
   async uploadAndCreate(
@@ -68,6 +72,11 @@ export class DocumentsService {
     dto: UploadDocumentDto,
     caller: RegionScope,
   ): Promise<SanitizedDocument> {
+    // Checked before the storage write so a refusal leaves no object behind.
+    if (dto.unitId) {
+      await this.assertUnitNotArchived(companyId, dto.unitId, 'uploading');
+    }
+    const regionCode = await this.resolveDocumentRegion(companyId, dto, caller);
     const { url, s3Key, fileSize } =
       await this.mediaService.uploadDocumentToStorage(companyId, file);
 
@@ -82,11 +91,23 @@ export class DocumentsService {
       category: dto.category,
       accessLevel: dto.accessLevel,
       companyId,
-      regionCode: await this.resolveDocumentRegion(companyId, dto, caller),
+      regionCode,
       uploadedBy: userId,
       version: 1,
     });
-    return this.sanitize(await this.documentRepository.save(doc));
+    return this.sanitize(
+      await this.dataSource.transaction(async (manager) => {
+        if (dto.unitId) {
+          await this.assertUnitNotArchived(
+            companyId,
+            dto.unitId,
+            'uploading',
+            manager,
+          );
+        }
+        return manager.getRepository(PropertyDocument).save(doc);
+      }),
+    );
   }
 
   async findAll(
@@ -273,8 +294,20 @@ export class DocumentsService {
       userRole,
       regionCodes,
     );
-    Object.assign(existing, dto);
-    return this.sanitize(await this.documentRepository.save(existing));
+    return this.sanitize(
+      await this.dataSource.transaction(async (manager) => {
+        if (existing.unitId) {
+          await this.assertUnitNotArchived(
+            companyId,
+            existing.unitId,
+            'editing',
+            manager,
+          );
+        }
+        Object.assign(existing, dto);
+        return manager.getRepository(PropertyDocument).save(existing);
+      }),
+    );
   }
 
   async remove(
@@ -285,15 +318,15 @@ export class DocumentsService {
   ): Promise<void> {
     const doc = await this.findOneEntity(id, companyId, userRole, regionCodes);
 
-    if (doc.s3Key) {
-      await this.mediaService.deleteDocumentFromStorage(
-        doc.s3Key,
-        companyId,
-        doc.fileSize,
-      );
-    }
-
-    await this.documentRepository.remove(doc);
+    const purgeIds = await this.dataSource.transaction(async (manager) => {
+      const locked = await manager.findOne(PropertyDocument, {
+        where: { id: doc.id, companyId },
+        lock: { mode: 'pessimistic_write' },
+      });
+      if (!locked) throw new NotFoundException('Document not found');
+      return this.storagePurge.purge(manager, { documents: [locked] });
+    });
+    void this.storagePurge.dispatch(purgeIds);
   }
 
   async downloadStream(
@@ -383,6 +416,33 @@ export class DocumentsService {
     return ownRegion;
   }
 
+  private async assertUnitNotArchived(
+    companyId: string,
+    unitId: string,
+    verb: 'uploading' | 'editing',
+    manager?: EntityManager,
+  ): Promise<void> {
+    // With a manager, FOR SHARE so archiveUnit cannot commit in between.
+    const unit = manager
+      ? await manager.findOne(Unit, {
+          where: { id: unitId, companyId },
+          select: { id: true, deletedAt: true },
+          lock: { mode: 'pessimistic_read' },
+        })
+      : await this.unitRepository.findOne({
+          where: { id: unitId, companyId },
+          select: { id: true, deletedAt: true },
+        });
+    if (!unit) {
+      throw new BadRequestException('Invalid property selected');
+    }
+    if (unit.deletedAt) {
+      throw new ConflictException(
+        `This unit is archived. Unarchive it before ${verb} documents.`,
+      );
+    }
+  }
+
   // A document may only attach to a property this company can see, so an
   // unresolvable id is rejected rather than falling through to another region.
   private async regionOfProperty(
@@ -416,7 +476,7 @@ export class DocumentsService {
         .select('ci.regionCode', 'regionCode')
         .where('a.id = :assetId', { assetId })
         .andWhere(
-          '(a.createdByCompanyId = :companyId OR EXISTS (SELECT 1 FROM units u2 WHERE u2.asset_id = a.id AND u2.company_id = :companyId))',
+          '(a.createdByCompanyId = :companyId OR EXISTS (SELECT 1 FROM units u2 WHERE u2.asset_id = a.id AND u2.company_id = :companyId AND u2.deleted_at IS NULL))',
           { companyId },
         )
         .getRawOne<{ regionCode: string }>();

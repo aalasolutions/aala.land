@@ -70,25 +70,47 @@
                 </td>
                 <td>
                   {{#if (eq comm.status "PENDING")}}
-                    <Nuvo::Button
-                      @variant="primary"
-                      @size="xs"
-                      data-test-approve-btn
-                      @icon="check"
-                      {{on "click" (fn this.approveCommission comm)}}
-                    >
-                      Approve
-                    </Nuvo::Button>
+                    <div class="flex gap-2">
+                      <Nuvo::Button
+                        @variant="primary"
+                        @size="xs"
+                        data-test-approve-btn
+                        @icon="check"
+                        {{on "click" (fn this.approveCommission comm)}}
+                      >
+                        Approve
+                      </Nuvo::Button>
+                      <Nuvo::Button
+                        @variant="secondary"
+                        @size="xs"
+                        @icon="prohibit"
+                        data-test-cancel-commission
+                        {{on "click" (fn this.openCancel comm)}}
+                      >
+                        Cancel commission
+                      </Nuvo::Button>
+                    </div>
                   {{else if (eq comm.status "APPROVED")}}
-                    <Nuvo::Button
-                      @variant="primary"
-                      @size="xs"
-                      data-test-pay-btn
-                      @icon="currency-dollar"
-                      {{on "click" (fn this.payCommission comm)}}
-                    >
-                      Mark Paid
-                    </Nuvo::Button>
+                    <div class="flex gap-2">
+                      <Nuvo::Button
+                        @variant="primary"
+                        @size="xs"
+                        data-test-pay-btn
+                        @icon="currency-dollar"
+                        {{on "click" (fn this.payCommission comm)}}
+                      >
+                        Mark Paid
+                      </Nuvo::Button>
+                      <Nuvo::Button
+                        @variant="secondary"
+                        @size="xs"
+                        @icon="prohibit"
+                        data-test-cancel-commission
+                        {{on "click" (fn this.openCancel comm)}}
+                      >
+                        Cancel commission
+                      </Nuvo::Button>
+                    </div>
                   {{else if (eq comm.status "PAID")}}
                     <span class="text-xs text-muted">
                       {{#if comm.paidAt}}
@@ -221,3 +243,29 @@
     >{{if this.isSaving "Saving..." "Create"}}</Nuvo::Button>
   </:footer>
 </Nuvo::Drawer>
+
+<ConfirmModal
+  @open={{this.showCancelModal}}
+  @title="Cancel Commission"
+  @message="Cancel this commission? It stays in history as cancelled."
+  @confirmText="Cancel commission"
+  @confirmVariant="danger"
+  @isConfirming={{this.isCancelling}}
+  @confirmingText="Cancelling..."
+  @onClose={{this.closeCancelModal}}
+  @onConfirm={{this.confirmCancel}}
+>
+  <Nuvo::Field class="mt-4" @label="Reason" @required={{true}} @error={{this.reasonError}}>
+    <Nuvo::Textarea
+      id="commission-cancel-reason"
+      rows="2"
+      maxlength="500"
+      placeholder="e.g. Deal fell through"
+      @value={{this.cancelReason}}
+      @onInput={{fn this.setFieldValue "cancelReason"}}
+      @invalid={{if this.reasonError true false}}
+      aria-label="Reason"
+      data-test-reason-input
+    />
+  </Nuvo::Field>
+</ConfirmModal>

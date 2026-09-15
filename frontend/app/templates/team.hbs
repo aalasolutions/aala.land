@@ -113,7 +113,7 @@
                           @icon="user-plus"
                           @disabled={{this.isReactivating}}
                           data-test-reactivate-user
-                          {{on "click" (fn this.reactivateUser user)}}
+                          {{on "click" (fn this.openReactivate user)}}
                         >
                           {{if
                             (eq this.reactivatingUserId user.id)
@@ -481,14 +481,20 @@
         />
       </Nuvo::Field>
 
-      <Nuvo::Field @label="Reason" @required={{true}}>
+      <Nuvo::Field
+        @label="Reason"
+        @required={{true}}
+        @error={{this.removeReasonError}}
+      >
         <Nuvo::Textarea
           id="remove-reason"
           rows="2"
           placeholder="e.g. Agent left the company"
           @value={{this.removeReason}}
           @onInput={{fn this.setFieldValue "removeReason"}}
+          @invalid={{if this.removeReasonError true false}}
           required={{true}}
+          aria-label="Reason"
           data-test-remove-reason
         />
       </Nuvo::Field>
@@ -594,13 +600,19 @@
         />
       </Nuvo::Field>
 
-      <Nuvo::Field @label="Reason" @required={{true}}>
+      <Nuvo::Field
+        @label="Reason"
+        @required={{true}}
+        @error={{this.trimReasonError}}
+      >
         <Nuvo::Textarea
           id="trim-reason"
           rows="2"
           @value={{this.trimReason}}
           @onInput={{fn this.setFieldValue "trimReason"}}
+          @invalid={{if this.trimReasonError true false}}
           required={{true}}
+          aria-label="Reason"
           data-test-trim-reason
         />
       </Nuvo::Field>
@@ -664,3 +676,28 @@
     </div>
   {{/if}}
 </Nuvo::Modal>
+
+<ConfirmModal
+  @open={{this.showReactivateModal}}
+  @title="Reactivate User"
+  @message="Restore access for this team member?"
+  @confirmText="Reactivate"
+  @confirmVariant="primary"
+  @isConfirming={{this.isReactivating}}
+  @confirmingText="Reactivating..."
+  @onClose={{this.closeReactivateModal}}
+  @onConfirm={{this.confirmReactivate}}
+>
+  <Nuvo::Field class="mt-4" @label="Reason (optional)">
+    <Nuvo::Textarea
+      id="team-reactivate-reason"
+      rows="2"
+      maxlength="500"
+      placeholder="e.g. Returned from leave"
+      @value={{this.reactivateReason}}
+      @onInput={{fn this.setFieldValue "reactivateReason"}}
+      aria-label="Reason"
+      data-test-reason-input
+    />
+  </Nuvo::Field>
+</ConfirmModal>

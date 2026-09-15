@@ -24,10 +24,10 @@ export class StripeEvent {
   @Column({ type: 'jsonb' })
   payload: Record<string, unknown>;
 
-  @CreateDateColumn({ name: 'received_at' })
+  @CreateDateColumn({ name: 'received_at', type: 'timestamptz' })
   receivedAt: Date;
 
   /** Set when all handlers completed. NULL means received but not (fully) processed. */
-  @Column({ name: 'processed_at', type: 'timestamp', nullable: true })
+  @Column({ name: 'processed_at', type: 'timestamptz', nullable: true })
   processedAt: Date | null;
 }

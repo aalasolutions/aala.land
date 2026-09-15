@@ -6,6 +6,9 @@ import {
   contactFormToBody,
   contactToFormFields,
 } from '../../utils/contact-form';
+import { ROLES } from '../../utils/roles';
+
+const HISTORY_ROLES = [ROLES.COMPANY_ADMIN, ROLES.ADMIN, ROLES.MANAGER];
 
 export default class ContactsDetailController extends Controller {
   @service auth;
@@ -38,6 +41,11 @@ export default class ContactsDetailController extends Controller {
     this.expandedLeadId = null;
     this.leadActivities = {};
     this.loadingActivitiesFor = null;
+  }
+
+  // Same roles as GET /record-history.
+  get canViewHistory() {
+    return HISTORY_ROLES.includes(this.auth.currentUser?.role);
   }
 
   @action goBack() {

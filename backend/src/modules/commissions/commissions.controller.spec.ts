@@ -45,6 +45,8 @@ describe('CommissionsController', () => {
             findByAgent: jest.fn(),
             findOne: jest.fn(),
             update: jest.fn(),
+            approve: jest.fn(),
+            pay: jest.fn(),
             getSummary: jest.fn(),
           },
         },
@@ -131,6 +133,30 @@ describe('CommissionsController', () => {
     });
   });
 
+  describe('approve and pay', () => {
+    it('forwards the actor on approve', async () => {
+      await controller.approve('commission-uuid-1', mockReq);
+
+      expect(service.approve).toHaveBeenCalledWith(
+        'commission-uuid-1',
+        companyId,
+        mockReq.user,
+        'user-uuid-1',
+      );
+    });
+
+    it('forwards the actor on pay', async () => {
+      await controller.pay('commission-uuid-1', mockReq);
+
+      expect(service.pay).toHaveBeenCalledWith(
+        'commission-uuid-1',
+        companyId,
+        mockReq.user,
+        'user-uuid-1',
+      );
+    });
+  });
+
   describe('update', () => {
     it('updates commission status', async () => {
       service.update.mockResolvedValue({
@@ -149,6 +175,7 @@ describe('CommissionsController', () => {
         companyId,
         { status: CommissionStatus.APPROVED },
         mockReq.user,
+        'user-uuid-1',
       );
     });
   });

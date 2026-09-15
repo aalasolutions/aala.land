@@ -8,6 +8,7 @@ import { Lead } from '../leads/entities/lead.entity';
 import { Unit } from '../properties/entities/unit.entity';
 import { Lease } from '../leases/entities/lease.entity';
 import { WhatsappChat } from '../whatsapp/entities/whatsapp-chat.entity';
+import { RecordHistoryModule } from '../record-history/record-history.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { WhatsappChat } from '../whatsapp/entities/whatsapp-chat.entity';
       WhatsappChat,
       Company,
     ]),
+    RecordHistoryModule,
   ],
   controllers: [ContactsController],
   providers: [ContactsService],

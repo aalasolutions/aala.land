@@ -4,7 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, In, Repository } from 'typeorm';
+import { DataSource, EntityManager, In, Repository } from 'typeorm';
 import { Contact } from './entities/contact.entity';
 import { Company } from '../companies/entities/company.entity';
 import {
@@ -17,6 +17,9 @@ import { Lease } from '../leases/entities/lease.entity';
 import { WhatsappChat } from '../whatsapp/entities/whatsapp-chat.entity';
 import { CreateContactDto } from './dto/create-contact.dto';
 import { UpdateContactDto } from './dto/update-contact.dto';
+import { DeleteContactDto } from './dto/delete-contact.dto';
+import { RecordHistoryService } from '../record-history/record-history.service';
+import { RecordHistoryAction } from '../record-history/entities/record-history.entity';
 import {
   contactDisplayName,
   emailEqualsWhere,
@@ -75,6 +78,7 @@ export class ContactsService {
     private readonly chatRepository: Repository<WhatsappChat>,
     @InjectRepository(Company)
     private readonly companyRepository: Repository<Company>,
+    private readonly recordHistoryService: RecordHistoryService,
   ) {}
 
   // Adding a contact honors the same one-number-one-contact rule as lead
@@ -308,7 +312,7 @@ export class ContactsService {
       // Both are company-scoped through the same :companyId already bound.
       qb.andWhere(
         `(EXISTS (SELECT 1 FROM leads l WHERE l.contact_id = c.id AND l.company_id = :companyId AND l.assigned_to = :agentId)
-          OR EXISTS (SELECT 1 FROM units u WHERE u.owner_id = c.id AND u.company_id = :companyId AND u.assigned_agent_id = :agentId))`,
+          OR EXISTS (SELECT 1 FROM units u WHERE u.owner_id = c.id AND u.company_id = :companyId AND u.assigned_agent_id = :agentId AND u.deleted_at IS NULL))`,
         { agentId: filters.agentId },
       );
     }
@@ -411,13 +415,15 @@ export class ContactsService {
   // leases and chats move to another contact, then the source is removed. All of
   // it in ONE transaction so a failed delete cannot leave the edges moved and
   // the source contact alive owning nothing. A contact with nothing to move
-  // deletes outright.
+  // deletes outright. Either way the history row lands in the same transaction.
   async remove(
     id: string,
     companyId: string,
-    transferToContactId?: string,
+    dto: DeleteContactDto,
+    actorId: string,
     caller?: RegionScope,
   ): Promise<void> {
+    const { transferToContactId, reason } = dto;
     if (transferToContactId === id) {
       throw new BadRequestException('Cannot transfer a contact to itself');
     }
@@ -425,7 +431,7 @@ export class ContactsService {
     // Verify the source exists in this company first. Without this, a wrong id
     // (or another company's) yields zero edge counts and a delete that touches
     // nothing, reported as success instead of 404.
-    await this.findOneEntity(id, companyId, caller);
+    const source = await this.findOneEntity(id, companyId, caller);
 
     const [leadCount, unitCount, leaseCount, chatCount] = await Promise.all([
       this.leadRepository.count({ where: { contactId: id, companyId } }),
@@ -441,24 +447,70 @@ export class ContactsService {
       );
     }
 
+    const recordDelete = async (
+      manager: EntityManager,
+      target: Contact | null,
+    ) => {
+      await this.recordHistoryService.record(manager, {
+        companyId,
+        action: RecordHistoryAction.DELETE,
+        entityType: 'Contact',
+        entityId: id,
+        entityTitle:
+          contactDisplayName(source) || source.email || 'Unnamed contact',
+        contextTitle: target
+          ? contactDisplayName(target) || target.email || null
+          : null,
+        reason,
+        actorId,
+        actorName: await this.recordHistoryService.resolveActorName(
+          manager,
+          actorId,
+        ),
+        regionCode: source.regionCode,
+        metadata: {
+          transferToContactId: target?.id ?? null,
+          movedCounts: {
+            leads: leadCount,
+            units: unitCount,
+            leases: leaseCount,
+            chats: chatCount,
+          },
+        },
+      });
+    };
+
     if (!hasEdges) {
-      // Nothing to move: a plain delete needs no transaction.
-      await this.contactRepository.delete({ id, companyId });
+      await this.dataSource.transaction(async (manager) => {
+        await recordDelete(manager, null);
+        await manager.delete(Contact, { id, companyId });
+      });
       return;
     }
 
     // Transfer the edges AND delete the source in one transaction, so a failed
     // delete cannot leave the edges moved and the source contact alive owning
     // nothing.
+    const scopedCodes = scopedRegionCodes(caller);
     await this.dataSource.transaction(async (manager) => {
       const target = await manager.findOne(Contact, {
-        where: { id: transferToContactId!, companyId },
+        where: {
+          id: transferToContactId!,
+          companyId,
+          ...(scopedCodes ? { regionCode: In(scopedCodes) } : {}),
+        },
       });
       if (!target) {
         throw new NotFoundException('Transfer target contact not found');
       }
+      await recordDelete(manager, target);
       await manager.update(
         Lead,
+        { contactId: id, companyId },
+        { contactId: target.id },
+      );
+      await manager.update(
+        Lease,
         { contactId: id, companyId },
         { contactId: target.id },
       );
@@ -466,11 +518,6 @@ export class ContactsService {
         Unit,
         { ownerId: id, companyId },
         { ownerId: target.id },
-      );
-      await manager.update(
-        Lease,
-        { contactId: id, companyId },
-        { contactId: target.id },
       );
       await manager.update(
         WhatsappChat,
@@ -490,11 +537,11 @@ export class ContactsService {
       case 'lead':
         return `EXISTS (SELECT 1 FROM leads l WHERE l.contact_id = ${contactCol} AND l.company_id = :companyId)`;
       case 'tenant':
-        return `EXISTS (SELECT 1 FROM leases le WHERE le.contact_id = ${contactCol} AND le.company_id = :companyId)`;
+        return `EXISTS (SELECT 1 FROM leases le WHERE le.contact_id = ${contactCol} AND le.company_id = :companyId AND le.deleted_at IS NULL)`;
       case 'owner':
-        return `EXISTS (SELECT 1 FROM units u WHERE u.owner_id = ${contactCol} AND u.company_id = :companyId)`;
+        return `EXISTS (SELECT 1 FROM units u WHERE u.owner_id = ${contactCol} AND u.company_id = :companyId AND u.deleted_at IS NULL)`;
       case 'vendor':
-        return `(SELECT COUNT(*) FROM units u WHERE u.owner_id = ${contactCol} AND u.company_id = :companyId) >= 2`;
+        return `(SELECT COUNT(*) FROM units u WHERE u.owner_id = ${contactCol} AND u.company_id = :companyId AND u.deleted_at IS NULL) >= 2`;
     }
   }
 
@@ -521,6 +568,7 @@ export class ContactsService {
         .select('DISTINCT le.contact_id', 'id')
         .where('le.company_id = :companyId', { companyId })
         .andWhere('le.contact_id IN (:...ids)', { ids })
+        .andWhere('le.deleted_at IS NULL')
         .getRawMany<{ id: string }>(),
       this.unitRepository
         .createQueryBuilder('u')
@@ -528,6 +576,7 @@ export class ContactsService {
         .addSelect('COUNT(*)', 'n')
         .where('u.company_id = :companyId', { companyId })
         .andWhere('u.owner_id IN (:...ids)', { ids })
+        .andWhere('u.deleted_at IS NULL')
         .groupBy('u.owner_id')
         .getRawMany<{ id: string; n: string }>(),
     ]);

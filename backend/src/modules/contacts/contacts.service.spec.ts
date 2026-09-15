@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { Role } from '@shared/enums/roles.enum';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { Repository, DataSource, EntityManager } from 'typeorm';
+import { Repository, DataSource, EntityManager, In } from 'typeorm';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { ContactsService } from './contacts.service';
 import { Contact } from './entities/contact.entity';
@@ -10,6 +10,8 @@ import { Unit } from '../properties/entities/unit.entity';
 import { Lease } from '../leases/entities/lease.entity';
 import { WhatsappChat } from '../whatsapp/entities/whatsapp-chat.entity';
 import { Company } from '../companies/entities/company.entity';
+import { RecordHistoryService } from '../record-history/record-history.service';
+import { RecordHistoryAction } from '../record-history/entities/record-history.entity';
 
 // A query-builder mock that records the chained fluent calls and resolves from
 // the given result. Used for findAll + the tag-derivation sub-queries.
@@ -75,7 +77,15 @@ describe('ContactsService', () => {
     updatedAt: new Date(),
   } as Contact;
 
+  let recordHistory: { record: jest.Mock; resolveActorName: jest.Mock };
+  const actorId = 'user-uuid-1';
+  const deleteDto = { reason: 'Duplicate' };
+
   beforeEach(async () => {
+    recordHistory = {
+      record: jest.fn().mockResolvedValue(undefined),
+      resolveActorName: jest.fn().mockResolvedValue('Admin User'),
+    };
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ContactsService,
@@ -120,6 +130,7 @@ describe('ContactsService', () => {
           },
         },
         { provide: DataSource, useValue: { transaction: jest.fn() } },
+        { provide: RecordHistoryService, useValue: recordHistory },
       ],
     }).compile();
 
@@ -388,6 +399,23 @@ describe('ContactsService', () => {
       expect(sql).toContain('l.assigned_to = :agentId');
       expect(sql).toContain('FROM units u');
       expect(sql).toContain('u.assigned_agent_id = :agentId');
+      expect(sql).toContain('u.deleted_at IS NULL');
+    });
+
+    it('ignores archived units and leases when deriving tags', async () => {
+      const qb = stubQueryBuilders();
+      const leaseQb = qbMock({ getRawMany: [] });
+      const unitQb = qbMock({ getRawMany: [] });
+      leaseRepo.createQueryBuilder.mockReturnValue(leaseQb as any);
+      unitRepo.createQueryBuilder.mockReturnValue(unitQb as any);
+
+      await service.findAll(companyId, 1, 20, undefined, 'owner');
+
+      expect(qb.andWhere).toHaveBeenCalledWith(
+        expect.stringContaining('u.deleted_at IS NULL'),
+      );
+      expect(leaseQb.andWhere).toHaveBeenCalledWith('le.deleted_at IS NULL');
+      expect(unitQb.andWhere).toHaveBeenCalledWith('u.deleted_at IS NULL');
     });
 
     it('filters by isWhatsapp', async () => {
@@ -431,26 +459,65 @@ describe('ContactsService', () => {
   describe('remove', () => {
     it('throws NotFound when the contact does not exist (no silent success)', async () => {
       repo.findOne.mockResolvedValue(null);
-      await expect(service.remove('missing-id', companyId)).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(
+        service.remove('missing-id', companyId, deleteDto, actorId),
+      ).rejects.toThrow(NotFoundException);
       expect(repo.delete).not.toHaveBeenCalled();
+      expect(recordHistory.record).not.toHaveBeenCalled();
     });
 
-    it('deletes outright when the contact has no edges', async () => {
-      repo.findOne.mockResolvedValue(mockContact);
+    it('deletes with a history row in one transaction when the contact has no edges', async () => {
+      repo.findOne.mockResolvedValue({
+        ...mockContact,
+        regionCode: 'dubai',
+      } as Contact);
       leadRepo.count.mockResolvedValue(0);
       unitRepo.count.mockResolvedValue(0);
       leaseRepo.count.mockResolvedValue(0);
       chatRepo.count.mockResolvedValue(0);
+      const manager = { delete: jest.fn() };
+      dataSource.transaction.mockImplementation(
+        (cb: (m: EntityManager) => Promise<void>) =>
+          cb(manager as unknown as EntityManager),
+      );
 
-      await service.remove('contact-uuid-1', companyId);
+      await service.remove('contact-uuid-1', companyId, deleteDto, actorId);
 
-      expect(repo.delete).toHaveBeenCalledWith({
+      expect(recordHistory.record).toHaveBeenCalledWith(manager, {
+        companyId,
+        action: RecordHistoryAction.DELETE,
+        entityType: 'Contact',
+        entityId: 'contact-uuid-1',
+        entityTitle: 'Ahmed Al-Rashid',
+        contextTitle: null,
+        reason: 'Duplicate',
+        actorId,
+        actorName: 'Admin User',
+        regionCode: 'dubai',
+        metadata: {
+          transferToContactId: null,
+          movedCounts: { leads: 0, units: 0, leases: 0, chats: 0 },
+        },
+      });
+      expect(manager.delete).toHaveBeenCalledWith(Contact, {
         id: 'contact-uuid-1',
         companyId,
       });
-      expect(dataSource.transaction).not.toHaveBeenCalled();
+      expect(repo.delete).not.toHaveBeenCalled();
+    });
+
+    it('refuses transferring a contact to itself', async () => {
+      await expect(
+        service.remove(
+          'contact-uuid-1',
+          companyId,
+          {
+            ...deleteDto,
+            transferToContactId: 'contact-uuid-1',
+          },
+          actorId,
+        ),
+      ).rejects.toThrow(BadRequestException);
     });
 
     it('requires a transfer target when the contact has edges', async () => {
@@ -460,9 +527,10 @@ describe('ContactsService', () => {
       leaseRepo.count.mockResolvedValue(0);
       chatRepo.count.mockResolvedValue(0);
 
-      await expect(service.remove('contact-uuid-1', companyId)).rejects.toThrow(
-        BadRequestException,
-      );
+      await expect(
+        service.remove('contact-uuid-1', companyId, deleteDto, actorId),
+      ).rejects.toThrow(BadRequestException);
+      expect(recordHistory.record).not.toHaveBeenCalled();
     });
 
     it('transfers edges and deletes the source atomically when a target is given', async () => {
@@ -482,17 +550,104 @@ describe('ContactsService', () => {
           cb(manager as unknown as EntityManager),
       );
 
-      await service.remove('contact-uuid-1', companyId, 'contact-uuid-2');
+      await service.remove(
+        'contact-uuid-1',
+        companyId,
+        { ...deleteDto, transferToContactId: 'contact-uuid-2' },
+        actorId,
+      );
 
       expect(manager.update).toHaveBeenCalledWith(
         Lead,
         { contactId: 'contact-uuid-1', companyId },
         { contactId: 'contact-uuid-2' },
       );
+      // Leases before units, matching lease then unit locks elsewhere.
+      expect(manager.update.mock.calls.map(([entity]) => entity)).toEqual([
+        Lead,
+        Lease,
+        Unit,
+        WhatsappChat,
+      ]);
       expect(manager.delete).toHaveBeenCalledWith(Contact, {
         id: 'contact-uuid-1',
         companyId,
       });
+      expect(recordHistory.record).toHaveBeenCalledWith(
+        manager,
+        expect.objectContaining({
+          action: RecordHistoryAction.DELETE,
+          entityType: 'Contact',
+          entityTitle: 'Ahmed Al-Rashid',
+          reason: 'Duplicate',
+          metadata: {
+            transferToContactId: 'contact-uuid-2',
+            movedCounts: { leads: 1, units: 0, leases: 0, chats: 0 },
+          },
+        }),
+      );
+    });
+
+    it('scopes the transfer target to the caller regions', async () => {
+      const target = { ...mockContact, id: 'contact-uuid-2' } as Contact;
+      repo.findOne.mockResolvedValue(mockContact);
+      leadRepo.count.mockResolvedValue(1);
+      unitRepo.count.mockResolvedValue(0);
+      leaseRepo.count.mockResolvedValue(0);
+      chatRepo.count.mockResolvedValue(0);
+      const manager = {
+        update: jest.fn(),
+        delete: jest.fn(),
+        findOne: jest.fn().mockResolvedValue(target),
+      };
+      dataSource.transaction.mockImplementation(
+        (cb: (m: EntityManager) => Promise<void>) =>
+          cb(manager as unknown as EntityManager),
+      );
+
+      await service.remove(
+        'contact-uuid-1',
+        companyId,
+        { ...deleteDto, transferToContactId: 'contact-uuid-2' },
+        actorId,
+        { role: Role.MANAGER, regionCodes: ['makkah'] },
+      );
+
+      expect(manager.findOne).toHaveBeenCalledWith(Contact, {
+        where: {
+          id: 'contact-uuid-2',
+          companyId,
+          regionCode: In(['makkah']),
+        },
+      });
+    });
+
+    it('writes no history when the transfer target is missing', async () => {
+      repo.findOne.mockResolvedValue(mockContact);
+      leadRepo.count.mockResolvedValue(1);
+      unitRepo.count.mockResolvedValue(0);
+      leaseRepo.count.mockResolvedValue(0);
+      chatRepo.count.mockResolvedValue(0);
+      const manager = {
+        update: jest.fn(),
+        delete: jest.fn(),
+        findOne: jest.fn().mockResolvedValue(null),
+      };
+      dataSource.transaction.mockImplementation(
+        (cb: (m: EntityManager) => Promise<void>) =>
+          cb(manager as unknown as EntityManager),
+      );
+
+      await expect(
+        service.remove(
+          'contact-uuid-1',
+          companyId,
+          { ...deleteDto, transferToContactId: 'contact-uuid-9' },
+          actorId,
+        ),
+      ).rejects.toThrow(NotFoundException);
+      expect(recordHistory.record).not.toHaveBeenCalled();
+      expect(manager.delete).not.toHaveBeenCalled();
     });
   });
   describe('region scoping', () => {
@@ -559,7 +714,13 @@ describe('ContactsService', () => {
         seedContactInRegion('punjab');
 
         await expect(
-          service.remove('contact-uuid-1', companyId, undefined, makkahManager),
+          service.remove(
+            'contact-uuid-1',
+            companyId,
+            deleteDto,
+            actorId,
+            makkahManager,
+          ),
         ).rejects.toThrow(NotFoundException);
         expect(repo.delete).not.toHaveBeenCalled();
       });

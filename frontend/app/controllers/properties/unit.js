@@ -12,6 +12,7 @@ import {
   openDeleteModal,
 } from '../../utils/delete-modal';
 import { toggleArrayItem } from '../../utils/toggle-array-item';
+import { ROLES } from '../../utils/roles';
 import {
   PROPERTY_STATUS_OPTIONS,
   PROPERTY_TYPE_OPTIONS,
@@ -19,6 +20,44 @@ import {
   CATEGORIES,
   ACCESS_LEVELS,
 } from 'land/constants';
+
+const ARCHIVE_ROLES = [ROLES.COMPANY_ADMIN, ROLES.ADMIN, ROLES.MANAGER];
+const DELETE_ROLES = [ROLES.COMPANY_ADMIN, ROLES.ADMIN];
+
+const UNIT_ACTIONS = {
+  archive: {
+    title: 'Archive Property',
+    message:
+      'Archive this property? It becomes read-only and hidden from lists. You can unarchive it later.',
+    confirmText: 'Archive',
+    confirmingText: 'Archiving...',
+    confirmVariant: 'primary',
+    reasonRequired: true,
+    successMessage: 'Property archived',
+    errorMessage: 'Archive failed',
+  },
+  unarchive: {
+    title: 'Unarchive Property',
+    message: 'Unarchive this property? It becomes active and editable again.',
+    confirmText: 'Unarchive',
+    confirmingText: 'Unarchiving...',
+    confirmVariant: 'primary',
+    reasonRequired: false,
+    successMessage: 'Property unarchived',
+    errorMessage: 'Unarchive failed',
+  },
+  delete: {
+    title: 'Delete Property',
+    message:
+      'Delete this property? Its photos and documents are deleted too. This cannot be undone.',
+    confirmText: 'Delete',
+    confirmingText: 'Deleting...',
+    confirmVariant: 'danger',
+    reasonRequired: true,
+    successMessage: 'Property deleted',
+    errorMessage: 'Delete failed',
+  },
+};
 
 export default class PropertiesUnitController extends Controller {
   @service auth;
@@ -56,6 +95,12 @@ export default class PropertiesUnitController extends Controller {
   @tracked showDeleteDocumentModal = false;
   @tracked documentToDelete = null;
   @tracked isDeletingDocument = false;
+
+  // Archive / unarchive / delete state
+  @tracked pendingUnitAction = null;
+  @tracked unitActionReason = '';
+  @tracked reasonError = '';
+  @tracked isSubmittingUnitAction = false;
 
   // Form fields
   @tracked formUnitNumber = '';
@@ -278,6 +323,79 @@ export default class PropertiesUnitController extends Controller {
       this.errorMsg = e.message;
     } finally {
       this.isSaving = false;
+    }
+  }
+
+  // ── Archive / unarchive / delete ──────────────────────────────────────
+
+  get isArchived() {
+    return Boolean(this.model?.unit?.deletedAt);
+  }
+
+  get canArchiveUnit() {
+    return ARCHIVE_ROLES.includes(this.auth.currentUser?.role);
+  }
+
+  get canDeleteUnit() {
+    return DELETE_ROLES.includes(this.auth.currentUser?.role);
+  }
+
+  // Same roles as GET /record-history.
+  get canViewHistory() {
+    return ARCHIVE_ROLES.includes(this.auth.currentUser?.role);
+  }
+
+  get unitActionConfig() {
+    return UNIT_ACTIONS[this.pendingUnitAction] ?? null;
+  }
+
+  get showUnitActionModal() {
+    return Boolean(this.unitActionConfig);
+  }
+
+  @action openUnitAction(kind) {
+    this.pendingUnitAction = kind;
+    this.unitActionReason = '';
+    this.reasonError = '';
+  }
+
+  @action closeUnitAction() {
+    this.pendingUnitAction = null;
+    this.unitActionReason = '';
+    this.reasonError = '';
+  }
+
+  @action async confirmUnitAction() {
+    const kind = this.pendingUnitAction;
+    const config = this.unitActionConfig;
+    const unit = this.model?.unit;
+    if (!config || !unit || this.isSubmittingUnitAction) return;
+
+    const reason = this.unitActionReason.trim();
+    if (config.reasonRequired && !reason) {
+      this.reasonError = 'A reason is required.';
+      return;
+    }
+
+    this.isSubmittingUnitAction = true;
+    this.reasonError = '';
+
+    try {
+      await this.auth.fetchJson(`/properties/units/${unit.id}/${kind}`, {
+        method: 'POST',
+        body: JSON.stringify(reason ? { reason } : {}),
+      });
+      this.notifications.success(config.successMessage);
+      this.closeUnitAction();
+      if (kind === 'delete') {
+        this.router.transitionTo('properties');
+      } else {
+        this.router.refresh('properties.unit');
+      }
+    } catch (e) {
+      this.notifications.error(e.message || config.errorMessage);
+    } finally {
+      this.isSubmittingUnitAction = false;
     }
   }
 

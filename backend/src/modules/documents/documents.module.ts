@@ -8,11 +8,13 @@ import { Asset } from '../properties/entities/asset.entity';
 import { User } from '../users/entities/user.entity';
 import { Company } from '../companies/entities/company.entity';
 import { PropertiesModule } from '../properties/properties.module';
+import { StoragePurgeModule } from '../storage-purge/storage-purge.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([PropertyDocument, Unit, Asset, User, Company]),
     PropertiesModule,
+    StoragePurgeModule,
   ],
   controllers: [DocumentsController],
   providers: [DocumentsService],

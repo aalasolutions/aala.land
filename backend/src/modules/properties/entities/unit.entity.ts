@@ -108,9 +108,12 @@ export class Unit {
   @Column({ type: 'jsonb', default: '[]' })
   photos: string[];
 
-  @CreateDateColumn({ name: 'created_at' })
+  @Column({ name: 'deleted_at', type: 'timestamptz', nullable: true })
+  deletedAt: Date | null;
+
+  @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;
 
-  @UpdateDateColumn({ name: 'updated_at' })
+  @UpdateDateColumn({ name: 'updated_at', type: 'timestamptz' })
   updatedAt: Date;
 }

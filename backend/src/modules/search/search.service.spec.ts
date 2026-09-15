@@ -80,6 +80,20 @@ describe('SearchService', () => {
     expect(dataSource.query).toHaveBeenCalledTimes(4);
   });
 
+  it('does not reveal assets through archived units', async () => {
+    dataSource.query.mockResolvedValue([]);
+
+    await service.search('tower', 'company2');
+
+    const unitScoped = dataSource.query.mock.calls
+      .map(([sql]: [string]) => sql)
+      .filter((sql: string) => sql.includes('FROM units u'));
+    expect(unitScoped).toHaveLength(3);
+    for (const sql of unitScoped) {
+      expect(sql).toContain('u.deleted_at IS NULL');
+    }
+  });
+
   it('should filter by companyId', async () => {
     const companyId = 'company2';
     const q = 'test';
@@ -227,7 +241,12 @@ describe('SearchService', () => {
     it('confines properties to the caller regions with no regionCode argument', async () => {
       seedRegions();
 
-      const result = await service.search('test', 'company1', undefined, makkahManager);
+      const result = await service.search(
+        'test',
+        'company1',
+        undefined,
+        makkahManager,
+      );
 
       expect(result.properties.map((p: any) => p.id)).toEqual([
         'city-makkah',
@@ -239,7 +258,12 @@ describe('SearchService', () => {
     it('returns no properties from a region outside the caller assignments', async () => {
       seedRegions();
 
-      const result = await service.search('test', 'company1', 'punjab', makkahManager);
+      const result = await service.search(
+        'test',
+        'company1',
+        'punjab',
+        makkahManager,
+      );
 
       expect(result.properties).toEqual([]);
     });

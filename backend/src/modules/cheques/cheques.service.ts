@@ -2,10 +2,21 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  ConflictException,
   Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, LessThan, Between, In, FindOptionsWhere } from 'typeorm';
+import {
+  Repository,
+  LessThan,
+  Between,
+  In,
+  FindOptionsWhere,
+  DataSource,
+  EntityManager,
+} from 'typeorm';
+import { RecordHistoryService } from '../record-history/record-history.service';
+import { RecordHistoryAction } from '../record-history/entities/record-history.entity';
 import { Cheque, ChequeStatus } from './entities/cheque.entity';
 import { CreateChequeDto } from './dto/create-cheque.dto';
 import { UpdateChequeDto } from './dto/update-cheque.dto';
@@ -20,11 +31,17 @@ import {
 } from '../../shared/utils/region-visibility.util';
 import { paginationOptions } from '../../shared/utils/pagination.util';
 import { Unit } from '../properties/entities/unit.entity';
+import { Lease } from '../leases/entities/lease.entity';
 import { Company } from '../companies/entities/company.entity';
 import { NotificationsService } from '../notifications/notifications.service';
 import { UsersService } from '../users/users.service';
 import { NotificationType } from '../notifications/entities/notification.entity';
 import { NotificationsGateway } from '../notifications/notifications.gateway';
+
+const ARCHIVED_UNIT_LOCKED_MESSAGE =
+  'This unit is archived. Its records can no longer be edited.';
+const ARCHIVED_LEASE_LOCKED_MESSAGE =
+  'This lease is archived. Its records can no longer be edited.';
 
 @Injectable()
 export class ChequesService {
@@ -35,11 +52,15 @@ export class ChequesService {
     private readonly chequeRepository: Repository<Cheque>,
     @InjectRepository(Unit)
     private readonly unitRepository: Repository<Unit>,
+    @InjectRepository(Lease)
+    private readonly leaseRepository: Repository<Lease>,
     @InjectRepository(Company)
     private readonly companyRepository: Repository<Company>,
     private readonly notificationsService: NotificationsService,
     private readonly usersService: UsersService,
     private readonly notificationsGateway: NotificationsGateway,
+    private readonly dataSource: DataSource,
+    private readonly recordHistoryService: RecordHistoryService,
   ) {}
 
   async create(
@@ -48,7 +69,8 @@ export class ChequesService {
     userId?: string,
     caller?: RegionScope,
   ): Promise<Cheque> {
-    await this.assertUnitInCallerRegions(dto.unitId, companyId, caller);
+    await this.assertUnitInCallerRegions(dto.unitId, companyId, caller, true);
+    await this.assertLeaseOpenForCheque(dto.leaseId, companyId);
     const regionCode = await this.resolveChequeRegion(
       companyId,
       dto.unitId,
@@ -60,7 +82,15 @@ export class ChequesService {
       companyId,
       regionCode,
     });
-    const saved = await this.chequeRepository.save(cheque);
+    const saved = await this.dataSource.transaction(async (manager) => {
+      await this.assertChequeEditable(
+        manager,
+        dto.unitId ?? null,
+        dto.leaseId ?? null,
+        companyId,
+      );
+      return manager.getRepository(Cheque).save(cheque);
+    });
 
     this.notificationsGateway.broadcastToCompany(companyId, 'chequeUpdated', {
       id: saved.id,
@@ -101,6 +131,7 @@ export class ChequesService {
     unitId: string | null | undefined,
     companyId: string,
     caller?: RegionScope,
+    rejectArchived = false,
   ): Promise<void> {
     if (!unitId) {
       return;
@@ -119,10 +150,78 @@ export class ChequesService {
 
     const unit = await this.unitRepository.findOne({
       where,
-      select: { id: true },
+      select: { id: true, deletedAt: true },
     });
     if (!unit) {
       throw new NotFoundException('Unit not found');
+    }
+    if (rejectArchived && unit.deletedAt) {
+      throw new ConflictException('This unit is archived.');
+    }
+  }
+
+  private async assertLeaseOpenForCheque(
+    leaseId: string | undefined,
+    companyId: string,
+  ): Promise<void> {
+    if (!leaseId) {
+      return;
+    }
+    const lease = await this.leaseRepository.findOne({
+      where: { id: leaseId, companyId },
+      select: { id: true, unitId: true, deletedAt: true },
+    });
+    if (!lease) {
+      throw new NotFoundException('Lease not found');
+    }
+    if (lease.deletedAt) {
+      throw new ConflictException('This lease is archived.');
+    }
+    const unit = await this.unitRepository.findOne({
+      where: { id: lease.unitId, companyId },
+      select: { id: true, deletedAt: true },
+    });
+    if (unit?.deletedAt) {
+      throw new ConflictException('This unit is archived.');
+    }
+  }
+
+  // FOR SHARE so an archive cannot commit in between.
+  private async assertChequeEditable(
+    manager: EntityManager,
+    unitId: string | null,
+    leaseId: string | null,
+    companyId: string,
+  ): Promise<void> {
+    const unitIds = new Set<string>(unitId ? [unitId] : []);
+    if (leaseId) {
+      const lease = await manager.findOne(Lease, {
+        where: { id: leaseId, companyId },
+        select: { id: true, unitId: true, deletedAt: true },
+        lock: { mode: 'pessimistic_read' },
+      });
+      if (!lease) {
+        throw new NotFoundException('Lease not found');
+      }
+      if (lease.deletedAt) {
+        throw new ConflictException(ARCHIVED_LEASE_LOCKED_MESSAGE);
+      }
+      if (lease.unitId) {
+        unitIds.add(lease.unitId);
+      }
+    }
+    for (const id of unitIds) {
+      const unit = await manager.findOne(Unit, {
+        where: { id, companyId },
+        select: { id: true, deletedAt: true },
+        lock: { mode: 'pessimistic_read' },
+      });
+      if (!unit) {
+        throw new NotFoundException('Unit not found');
+      }
+      if (unit.deletedAt) {
+        throw new ConflictException(ARCHIVED_UNIT_LOCKED_MESSAGE);
+      }
     }
   }
 
@@ -197,7 +296,13 @@ export class ChequesService {
     caller?: RegionScope,
   ): Promise<Cheque> {
     const cheque = await this.findOne(id, companyId, caller);
-    await this.assertUnitInCallerRegions(dto.unitId, companyId, caller);
+    const { reason, ...changes } = dto;
+    await this.assertUnitInCallerRegions(
+      changes.unitId,
+      companyId,
+      caller,
+      changes.unitId !== cheque.unitId,
+    );
 
     const terminalStatuses = [
       ChequeStatus.CLEARED,
@@ -205,7 +310,7 @@ export class ChequesService {
       ChequeStatus.REPLACED,
     ];
     const isStatusChange =
-      dto.status !== undefined && dto.status !== cheque.status;
+      changes.status !== undefined && changes.status !== cheque.status;
 
     if (terminalStatuses.includes(cheque.status) && isStatusChange) {
       throw new BadRequestException(
@@ -213,9 +318,17 @@ export class ChequesService {
       );
     }
 
-    const hasRealChanges = Object.keys(dto).some((key) => {
-      const k = key as keyof UpdateChequeDto;
-      return dto[k] !== undefined && dto[k] !== cheque[k];
+    if (
+      isStatusChange &&
+      changes.status === ChequeStatus.CANCELLED &&
+      !reason?.trim()
+    ) {
+      throw new BadRequestException('A reason is required to cancel a cheque.');
+    }
+
+    const hasRealChanges = Object.keys(changes).some((key) => {
+      const k = key as keyof typeof changes;
+      return changes[k] !== undefined && changes[k] !== cheque[k];
     });
 
     if (!hasRealChanges) {
@@ -225,13 +338,13 @@ export class ChequesService {
     const oldStatus = cheque.status;
     const oldUnitId = cheque.unitId;
     const expectedVersion = cheque.version;
-    Object.assign(cheque, dto);
+    Object.assign(cheque, changes);
 
     // The region follows the unit, so moving the cheque moves the row.
-    if (dto.unitId !== undefined && dto.unitId !== oldUnitId) {
+    if (changes.unitId !== undefined && changes.unitId !== oldUnitId) {
       cheque.regionCode = await this.resolveChequeRegion(
         companyId,
-        dto.unitId,
+        changes.unitId,
         undefined,
         caller,
       );
@@ -249,43 +362,76 @@ export class ChequesService {
     // fails the version compare-and-set. When this IS a status change we also
     // re-assert the previously-read status and terminal exclusion, so a status
     // move can only commit from the exact state we validated.
-    const qb = this.chequeRepository
-      .createQueryBuilder()
-      .update(Cheque)
-      .set({
-        status: cheque.status,
-        depositDate: cheque.depositDate,
-        dueDate: cheque.dueDate,
-        amount: cheque.amount,
-        chequeNumber: cheque.chequeNumber,
-        bankName: cheque.bankName,
-        unitId: cheque.unitId,
-        regionCode: cheque.regionCode,
-        type: cheque.type,
-        notes: cheque.notes,
-        version: () => 'version + 1',
-        updatedAt: () => 'now()',
-      })
-      .where('id = :id', { id })
-      .andWhere('company_id = :companyId', { companyId })
-      .andWhere('version = :expectedVersion', { expectedVersion });
-
-    if (isStatusChange) {
-      qb.andWhere('status = :oldStatus', { oldStatus }).andWhere(
-        'status NOT IN (:...terminalStatuses)',
-        { terminalStatuses },
+    await this.dataSource.transaction(async (manager) => {
+      await this.assertChequeEditable(
+        manager,
+        oldUnitId,
+        cheque.leaseId,
+        companyId,
       );
-    }
+      if (cheque.unitId && cheque.unitId !== oldUnitId) {
+        const target = await manager.findOne(Unit, {
+          where: { id: cheque.unitId, companyId },
+          select: { id: true, deletedAt: true },
+          lock: { mode: 'pessimistic_read' },
+        });
+        if (!target) {
+          throw new NotFoundException('Unit not found');
+        }
+        if (target.deletedAt) {
+          throw new ConflictException('This unit is archived.');
+        }
+      }
+      const qb = manager
+        .getRepository(Cheque)
+        .createQueryBuilder()
+        .update(Cheque)
+        .set({
+          status: cheque.status,
+          depositDate: cheque.depositDate,
+          dueDate: cheque.dueDate,
+          amount: cheque.amount,
+          chequeNumber: cheque.chequeNumber,
+          bankName: cheque.bankName,
+          unitId: cheque.unitId,
+          regionCode: cheque.regionCode,
+          type: cheque.type,
+          notes: cheque.notes,
+          version: () => 'version + 1',
+          updatedAt: () => 'now()',
+        })
+        .where('id = :id', { id })
+        .andWhere('company_id = :companyId', { companyId })
+        .andWhere('version = :expectedVersion', { expectedVersion });
 
-    const result = await qb.execute();
+      if (isStatusChange) {
+        qb.andWhere('status = :oldStatus', { oldStatus }).andWhere(
+          'status NOT IN (:...terminalStatuses)',
+          { terminalStatuses },
+        );
+      }
 
-    if (!result.affected) {
-      // The row changed (status or any other column) between our read and
-      // write, so the version no longer matches.
-      throw new BadRequestException(
-        'Cheque was modified concurrently. Please refresh and try again.',
-      );
-    }
+      const result = await qb.execute();
+
+      if (!result.affected) {
+        // The row changed (status or any other column) between our read and
+        // write, so the version no longer matches.
+        throw new BadRequestException(
+          'Cheque was modified concurrently. Please refresh and try again.',
+        );
+      }
+
+      if (isStatusChange) {
+        await this.recordChequeHistory(
+          manager,
+          cheque,
+          this.statusHistoryAction(cheque.status),
+          userId,
+          reason,
+          { from: oldStatus, to: cheque.status },
+        );
+      }
+    });
 
     // Re-read of a row this caller just wrote, so it stays unscoped.
     const saved = await this.findOne(id, companyId);
@@ -379,31 +525,48 @@ export class ChequesService {
     caller?: RegionScope,
   ): Promise<Cheque> {
     // Existence + tenant check.
-    await this.findOne(id, companyId, caller);
+    const cheque = await this.findOne(id, companyId, caller);
 
-    // Atomic increment: compute bounce_count in the database (SET col = col + 1)
-    // so concurrent bounces do not lose increments via a JS read-modify-write.
-    // The other bounce fields are written in the same UPDATE statement.
-    const result = await this.chequeRepository
-      .createQueryBuilder()
-      .update(Cheque)
-      .set({
-        bounceCount: () => 'bounce_count + 1',
-        bounceReason: dto.bounceReason || null,
-        lastBounceDate: new Date(),
-        status: ChequeStatus.BOUNCED,
-        // Bump the optimistic-lock version so a concurrent update() that read an
-        // older version fails its version guard and cannot revert this BOUNCED row.
-        version: () => 'version + 1',
-        updatedAt: () => 'now()',
-      })
-      .where('id = :id', { id })
-      .andWhere('company_id = :companyId', { companyId })
-      .execute();
+    await this.dataSource.transaction(async (manager) => {
+      await this.assertChequeEditable(
+        manager,
+        cheque.unitId,
+        cheque.leaseId,
+        companyId,
+      );
+      // Atomic increment: compute bounce_count in the database (SET col = col + 1)
+      // so concurrent bounces do not lose increments via a JS read-modify-write.
+      // The other bounce fields are written in the same UPDATE statement.
+      const result = await manager
+        .getRepository(Cheque)
+        .createQueryBuilder()
+        .update(Cheque)
+        .set({
+          bounceCount: () => 'bounce_count + 1',
+          bounceReason: dto.bounceReason || null,
+          lastBounceDate: new Date(),
+          status: ChequeStatus.BOUNCED,
+          // Bump the optimistic-lock version so a concurrent update() that read an
+          // older version fails its version guard and cannot revert this BOUNCED row.
+          version: () => 'version + 1',
+          updatedAt: () => 'now()',
+        })
+        .where('id = :id', { id })
+        .andWhere('company_id = :companyId', { companyId })
+        .execute();
 
-    if (!result.affected) {
-      throw new NotFoundException('Cheque not found');
-    }
+      if (!result.affected) {
+        throw new NotFoundException('Cheque not found');
+      }
+
+      await this.recordChequeHistory(
+        manager,
+        cheque,
+        RecordHistoryAction.BOUNCE,
+        userId,
+        dto.bounceReason,
+      );
+    });
 
     // Re-read of a row this caller just wrote, so it stays unscoped.
     const saved = await this.findOne(id, companyId);
@@ -499,10 +662,91 @@ export class ChequesService {
   async remove(
     id: string,
     companyId: string,
+    reason: string,
+    userId: string,
     caller?: RegionScope,
   ): Promise<void> {
-    const cheque = await this.findOne(id, companyId, caller);
-    await this.chequeRepository.remove(cheque);
+    const scopedCodes = scopedRegionCodes(caller);
+    // No assignment means no access, and an empty IN () is invalid SQL.
+    if (scopedCodes?.length === 0) {
+      throw new NotFoundException('Cheque not found');
+    }
+
+    await this.dataSource.transaction(async (manager) => {
+      const cheque = await manager.findOne(Cheque, {
+        where: {
+          id,
+          companyId,
+          ...(scopedCodes ? { regionCode: In(scopedCodes) } : {}),
+        },
+        lock: { mode: 'pessimistic_write' },
+      });
+      if (!cheque) {
+        throw new NotFoundException('Cheque not found');
+      }
+      if (cheque.status === ChequeStatus.CLEARED) {
+        throw new ConflictException('Cleared cheques cannot be deleted.');
+      }
+
+      await this.recordChequeHistory(
+        manager,
+        cheque,
+        RecordHistoryAction.DELETE,
+        userId,
+        reason,
+      );
+      await manager.remove(cheque);
+    });
+  }
+
+  private statusHistoryAction(status: ChequeStatus): RecordHistoryAction {
+    if (status === ChequeStatus.CANCELLED) return RecordHistoryAction.CANCEL;
+    if (status === ChequeStatus.REPLACED) return RecordHistoryAction.REPLACE;
+    return RecordHistoryAction.STATUS_CHANGE;
+  }
+
+  private async recordChequeHistory(
+    manager: EntityManager,
+    cheque: Cheque,
+    action: RecordHistoryAction,
+    userId: string | undefined,
+    reason?: string | null,
+    metadata?: Record<string, unknown>,
+  ): Promise<void> {
+    await this.recordHistoryService.record(manager, {
+      companyId: cheque.companyId,
+      action,
+      entityType: 'Cheque',
+      entityId: cheque.id,
+      entityTitle: `Cheque ${cheque.chequeNumber}`,
+      contextTitle: await this.chequeContextTitle(manager, cheque),
+      reason: reason ?? null,
+      actorId: userId ?? null,
+      actorName: userId
+        ? await this.recordHistoryService.resolveActorName(manager, userId)
+        : 'System',
+      regionCode: cheque.regionCode,
+      metadata: metadata ?? null,
+    });
+  }
+
+  // Drawer name, else the unit number.
+  private async chequeContextTitle(
+    manager: EntityManager,
+    cheque: Cheque,
+  ): Promise<string | null> {
+    const holder = cheque.accountHolder?.trim();
+    if (holder) {
+      return holder;
+    }
+    if (!cheque.unitId) {
+      return null;
+    }
+    const unit = await manager.findOne(Unit, {
+      where: { id: cheque.unitId, companyId: cheque.companyId },
+      select: { id: true, unitNumber: true },
+    });
+    return unit ? `Unit ${unit.unitNumber}` : null;
   }
 
   private async runOcrExtraction(

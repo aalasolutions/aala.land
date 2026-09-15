@@ -79,6 +79,6 @@ export class PaymentRemedy {
   @Column({ name: 'created_by_email', type: 'varchar', length: 255 })
   createdByEmail: string;
 
-  @CreateDateColumn({ name: 'created_at' })
+  @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;
 }

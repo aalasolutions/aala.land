@@ -213,6 +213,21 @@ export const LEASE_STATUS_OPTIONS = [
   { id: 'RENEWED', label: 'Renewed' },
 ];
 
+// Active stays '' (backend omits the param); leases sends a different
+// archived value than properties, so this cannot share ARCHIVED_FILTER_OPTIONS.
+export const LEASE_ARCHIVED_OPTIONS = [
+  { value: '', label: 'Active' },
+  { value: 'only', label: 'Archived' },
+  { value: 'include', label: 'All' },
+];
+
+// Shared by properties/index and properties/detail (both send archived=exclude/only/include).
+export const ARCHIVED_FILTER_OPTIONS = [
+  { value: 'exclude', label: 'Active' },
+  { value: 'only', label: 'Archived' },
+  { value: 'include', label: 'All' },
+];
+
 export const MAINTENANCE_STATUS_OPTIONS = [
   { value: '', label: 'All Statuses' },
   { value: 'OPEN', label: 'New / Unassigned' },
