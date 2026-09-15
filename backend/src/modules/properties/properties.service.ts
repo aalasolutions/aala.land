@@ -54,7 +54,10 @@ import {
   sanitizeName,
   isUniqueViolation,
 } from '../../shared/utils/name-normalization.util';
-import { scopedRegionCodes } from '../../shared/utils/region-visibility.util';
+import {
+  effectiveRegionCodes,
+  scopedRegionCodes,
+} from '../../shared/utils/region-visibility.util';
 
 // True when inline owner details carry at least one identifying value. An empty
 // object must not reach resolveOrCreate, which would insert an all-null contact.
@@ -147,8 +150,9 @@ export class PropertiesService {
     page = 1,
     limit = 20,
     user?: { userId: string; role: string; regionCodes: string[] },
+    regionCode?: string,
   ) {
-    const scopedCodes = scopedRegionCodes(user);
+    const scopedCodes = effectiveRegionCodes(regionCode, user);
     if (scopedCodes?.length === 0) {
       return { data: [], total: 0, page, limit };
     }
@@ -575,8 +579,9 @@ export class PropertiesService {
     limit = 20,
     user?: { userId: string; role: string; regionCodes: string[] },
     archived: UnitArchivedFilter = UnitArchivedFilter.EXCLUDE,
+    regionCode?: string,
   ) {
-    const scopedCodes = scopedRegionCodes(user);
+    const scopedCodes = effectiveRegionCodes(regionCode, user);
     if (scopedCodes?.length === 0) {
       return { data: [], total: 0, page, limit };
     }
