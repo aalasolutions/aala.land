@@ -130,25 +130,26 @@ export class StoragePurgeService {
 
   // Never throws: StoragePurgeRequeueCron re-dispatches anything left PENDING.
   async dispatch(ids: string[]): Promise<void> {
-    for (const id of ids) {
-      try {
-        await this.queue.add(
-          STORAGE_PURGE_JOB_NAME,
-          { id },
-          {
+    if (ids.length === 0) return;
+    try {
+      await this.queue.addBulk(
+        ids.map((id) => ({
+          name: STORAGE_PURGE_JOB_NAME,
+          data: { id },
+          opts: {
             jobId: id,
             attempts: STORAGE_PURGE_MAX_ATTEMPTS,
             backoff: { type: 'exponential', delay: 30_000 },
             removeOnComplete: true,
             removeOnFail: true,
           },
-        );
-      } catch (err) {
-        this.logger.error(
-          `Failed to enqueue storage purge job ${id}: ` +
-            (err instanceof Error ? err.message : String(err)),
-        );
-      }
+        })),
+      );
+    } catch (err) {
+      this.logger.error(
+        `Failed to enqueue ${ids.length} storage purge job(s): ` +
+          (err instanceof Error ? err.message : String(err)),
+      );
     }
   }
 }

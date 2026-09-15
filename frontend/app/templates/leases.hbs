@@ -480,6 +480,8 @@
       placeholder="e.g. Tenant moved out early"
       @value={{this.terminateReason}}
       @onInput={{fn this.setFieldValue "terminateReason"}}
+      @invalid={{if this.reasonError true false}}
+      aria-label="Reason"
       data-test-reason-input
     />
   </Nuvo::Field>
@@ -505,6 +507,8 @@
       placeholder="e.g. Created by mistake"
       @value={{this.deleteReason}}
       @onInput={{fn this.setFieldValue "deleteReason"}}
+      @invalid={{if this.reasonError true false}}
+      aria-label="Reason"
       data-test-reason-input
     />
   </Nuvo::Field>
@@ -547,6 +551,8 @@
       placeholder="e.g. Contract closed"
       @value={{this.archiveReason}}
       @onInput={{fn this.setFieldValue "archiveReason"}}
+      @invalid={{if this.reasonError true false}}
+      aria-label="Reason"
       data-test-reason-input
     />
   </Nuvo::Field>

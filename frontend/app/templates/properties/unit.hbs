@@ -780,6 +780,8 @@
       placeholder="e.g. Sold, no longer managed"
       @value={{this.unitActionReason}}
       @onInput={{fn this.setFieldValue "unitActionReason"}}
+      @invalid={{if this.reasonError true false}}
+      aria-label="Reason"
       data-test-reason-input
     />
   </Nuvo::Field>

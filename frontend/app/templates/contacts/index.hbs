@@ -409,6 +409,8 @@
       placeholder="e.g. Duplicate contact"
       @value={{this.deleteReason}}
       @onInput={{fn this.setFieldValue "deleteReason"}}
+      @invalid={{if this.reasonError true false}}
+      aria-label="Reason"
       data-test-reason-input
     />
   </Nuvo::Field>

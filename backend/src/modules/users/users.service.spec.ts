@@ -1132,6 +1132,7 @@ describe('UsersService', () => {
           metadata: { reassignToUserId: 'keeper-uuid' },
         });
       }
+      expect(recordHistoryMock.resolveActorName).toHaveBeenCalledTimes(1);
     });
 
     it('records DEACTIVATE inside the removal transaction', async () => {

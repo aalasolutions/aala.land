@@ -41,6 +41,7 @@ export default class TeamController extends PaginatedController {
   @tracked removeTargetId = '';
   @tracked removeReason = '';
   @tracked removeError = '';
+  @tracked removeReasonError = '';
   @tracked isRemoving = false;
   @tracked reassignCandidates = [];
 
@@ -50,6 +51,7 @@ export default class TeamController extends PaginatedController {
   @tracked trimKeepId = '';
   @tracked trimReason = '';
   @tracked trimError = '';
+  @tracked trimReasonError = '';
   @tracked isTrimming = false;
   @tracked trimCandidates = [];
 
@@ -308,6 +310,7 @@ export default class TeamController extends PaginatedController {
     this.removeTargetId = '';
     this.removeReason = '';
     this.removeError = '';
+    this.removeReasonError = '';
     this.reassignCandidates = [];
     this.showRemoveModal = true;
     try {
@@ -340,10 +343,12 @@ export default class TeamController extends PaginatedController {
       return;
     }
     if (!this.removeReason.trim()) {
-      this.removeError = 'A reason is required.';
+      this.removeError = '';
+      this.removeReasonError = 'A reason is required.';
       return;
     }
     this.removeError = '';
+    this.removeReasonError = '';
     this.removeStep = 2;
   }
 
@@ -438,6 +443,7 @@ export default class TeamController extends PaginatedController {
     this.trimKeepId = this.auth.currentUser?.id ?? '';
     this.trimReason = 'Downgrading to the Free plan';
     this.trimError = '';
+    this.trimReasonError = '';
     this.trimCandidates = [];
     this.showTrimModal = true;
     try {
@@ -463,10 +469,12 @@ export default class TeamController extends PaginatedController {
       return;
     }
     if (!this.trimReason.trim()) {
-      this.trimError = 'A reason is required.';
+      this.trimError = '';
+      this.trimReasonError = 'A reason is required.';
       return;
     }
     this.trimError = '';
+    this.trimReasonError = '';
     this.trimStep = 2;
   }
 

@@ -7,8 +7,7 @@
 <Nuvo::Card data-test-history-page>
   <:header>
     <Nuvo::Toolbar class="flex-wrap">
-      <Nuvo::Field>
-        <span class="nu-field__label-spacer" aria-hidden="true"></span>
+      <Nuvo::Field @label="Action">
         <Nuvo::Dropdown
           @searchable={{true}}
           @align="start"
@@ -20,8 +19,7 @@
         />
       </Nuvo::Field>
 
-      <Nuvo::Field>
-        <span class="nu-field__label-spacer" aria-hidden="true"></span>
+      <Nuvo::Field @label="Record type">
         <Nuvo::Dropdown
           @searchable={{true}}
           @align="start"

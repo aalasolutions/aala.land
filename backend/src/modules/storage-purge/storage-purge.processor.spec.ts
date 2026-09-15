@@ -17,7 +17,7 @@ jest.mock('@aws-sdk/client-s3', () => ({
 
 describe('StoragePurgeProcessor', () => {
   let processor: StoragePurgeProcessor;
-  let repo: { findOne: jest.Mock; update: jest.Mock };
+  let repo: { findOne: jest.Mock; update: jest.Mock; delete: jest.Mock };
   const originalEnv = process.env;
 
   const row = (overrides: Partial<StoragePurgeJob> = {}) =>
@@ -48,6 +48,7 @@ describe('StoragePurgeProcessor', () => {
     repo = {
       findOne: jest.fn().mockResolvedValue(row()),
       update: jest.fn().mockResolvedValue({ affected: 1 }),
+      delete: jest.fn().mockResolvedValue({ affected: 1 }),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -65,18 +66,15 @@ describe('StoragePurgeProcessor', () => {
     jest.clearAllMocks();
   });
 
-  it('deletes a media object from the media bucket and marks the row DONE', async () => {
+  it('deletes a media object from the media bucket and removes the row', async () => {
     await processor.process(job());
 
     expect(DeleteObjectCommand).toHaveBeenCalledWith({
       Bucket: 'test-media-bucket',
       Key: 'land/companies/c1/properties/u1/123-photo.jpg',
     });
-    expect(repo.update).toHaveBeenCalledWith('purge-1', {
-      status: StoragePurgeStatus.DONE,
-      processedAt: expect.any(Date),
-      lastError: null,
-    });
+    expect(repo.delete).toHaveBeenCalledWith('purge-1');
+    expect(repo.update).not.toHaveBeenCalled();
   });
 
   it('deletes a document object from the documents bucket', async () => {
@@ -92,24 +90,16 @@ describe('StoragePurgeProcessor', () => {
     });
   });
 
-  it('skips a row that is already DONE', async () => {
-    repo.findOne.mockResolvedValue(row({ status: StoragePurgeStatus.DONE }));
-
-    await processor.process(job());
-
-    expect(mockSend).not.toHaveBeenCalled();
-    expect(repo.update).not.toHaveBeenCalled();
-  });
-
   it('skips a job whose outbox row no longer exists', async () => {
     repo.findOne.mockResolvedValue(null);
     jest.spyOn(processor['logger'], 'warn').mockImplementation(() => undefined);
 
     await expect(processor.process(job())).resolves.toBeUndefined();
     expect(mockSend).not.toHaveBeenCalled();
+    expect(repo.delete).not.toHaveBeenCalled();
   });
 
-  it('treats a missing object as success', async () => {
+  it('treats a missing object as success and removes the row', async () => {
     mockSend.mockRejectedValue(
       Object.assign(new Error('not found'), {
         name: 'NoSuchKey',
@@ -119,10 +109,8 @@ describe('StoragePurgeProcessor', () => {
 
     await processor.process(job());
 
-    expect(repo.update).toHaveBeenCalledWith(
-      'purge-1',
-      expect.objectContaining({ status: StoragePurgeStatus.DONE }),
-    );
+    expect(repo.delete).toHaveBeenCalledWith('purge-1');
+    expect(repo.update).not.toHaveBeenCalled();
   });
 
   it('does not treat a missing bucket as success', async () => {
@@ -133,10 +121,7 @@ describe('StoragePurgeProcessor', () => {
     mockSend.mockRejectedValue(err);
 
     await expect(processor.process(job(1))).rejects.toBe(err);
-    expect(repo.update).not.toHaveBeenCalledWith(
-      'purge-1',
-      expect.objectContaining({ status: StoragePurgeStatus.DONE }),
-    );
+    expect(repo.delete).not.toHaveBeenCalled();
   });
 
   it('records the attempt and error, then rethrows so BullMQ retries', async () => {

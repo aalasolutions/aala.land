@@ -12,13 +12,8 @@ import {
   FILTER_BEDS_OPTIONS,
   PROPERTY_TYPE_OPTIONS,
   PROPERTY_STATUS_OPTIONS,
+  ARCHIVED_FILTER_OPTIONS,
 } from 'land/constants';
-
-const ARCHIVED_FILTER_OPTIONS = [
-  { value: 'exclude', label: 'Active' },
-  { value: 'only', label: 'Archived' },
-  { value: 'include', label: 'All' },
-];
 
 export default class PropertiesIndexController extends Controller {
   queryParams = ['archived'];
@@ -196,7 +191,9 @@ export default class PropertiesIndexController extends Controller {
   @action async loadBrowseUnits() {
     this.isLoadingBrowse = true;
     try {
-      let params = `page=${this.browsePage}&limit=20&archived=${this.archivedFilterValue}`;
+      let params = `page=${this.browsePage}&limit=20`;
+      if (this.archivedFilterValue !== 'exclude')
+        params += `&archived=${this.archivedFilterValue}`;
       if (this.filterType) params += `&propertyType=${this.filterType}`;
       if (this.filterStatus) params += `&status=${this.filterStatus}`;
       if (this.filterMinPrice) params += `&minPrice=${this.filterMinPrice}`;

@@ -16,7 +16,7 @@ const COMPANY_B = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
 
 describe('StoragePurgeService', () => {
   let service: StoragePurgeService;
-  let queue: { add: jest.Mock };
+  let queue: { add: jest.Mock; addBulk: jest.Mock };
   let manager: any;
   let qbs: any[];
 
@@ -63,7 +63,10 @@ describe('StoragePurgeService', () => {
       delete: jest.fn().mockResolvedValue({ affected: 1 }),
       createQueryBuilder: jest.fn(() => makeQb()),
     };
-    queue = { add: jest.fn().mockResolvedValue({}) };
+    queue = {
+      add: jest.fn().mockResolvedValue({}),
+      addBulk: jest.fn().mockResolvedValue([]),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -212,26 +215,36 @@ describe('StoragePurgeService', () => {
   });
 
   describe('dispatch', () => {
-    it('enqueues one job per id with the id as jobId, 5 attempts and exponential backoff', async () => {
+    it('enqueues all jobs in one addBulk call, each with its id as jobId, 5 attempts and exponential backoff', async () => {
       await service.dispatch(['purge-1', 'purge-2']);
 
-      expect(queue.add).toHaveBeenCalledTimes(2);
-      expect(queue.add).toHaveBeenCalledWith(
-        'purge',
-        { id: 'purge-1' },
+      expect(queue.addBulk).toHaveBeenCalledTimes(1);
+      expect(queue.addBulk).toHaveBeenCalledWith([
         expect.objectContaining({
-          jobId: 'purge-1',
-          attempts: 5,
-          backoff: expect.objectContaining({ type: 'exponential' }),
+          name: 'purge',
+          data: { id: 'purge-1' },
+          opts: expect.objectContaining({
+            jobId: 'purge-1',
+            attempts: 5,
+            backoff: expect.objectContaining({ type: 'exponential' }),
+          }),
         }),
-      );
-      expect(queue.add.mock.calls[1][2].jobId).toBe('purge-2');
+        expect.objectContaining({
+          name: 'purge',
+          data: { id: 'purge-2' },
+          opts: expect.objectContaining({ jobId: 'purge-2' }),
+        }),
+      ]);
     });
 
-    it('logs and continues when an enqueue fails', async () => {
-      queue.add
-        .mockRejectedValueOnce(new Error('connection refused'))
-        .mockResolvedValueOnce({});
+    it('does nothing for an empty id list', async () => {
+      await service.dispatch([]);
+
+      expect(queue.addBulk).not.toHaveBeenCalled();
+    });
+
+    it('logs and swallows the error when addBulk fails', async () => {
+      queue.addBulk.mockRejectedValueOnce(new Error('connection refused'));
       const error = jest
         .spyOn(service['logger'], 'error')
         .mockImplementation(() => undefined);
@@ -239,7 +252,7 @@ describe('StoragePurgeService', () => {
       await expect(
         service.dispatch(['purge-1', 'purge-2']),
       ).resolves.toBeUndefined();
-      expect(queue.add).toHaveBeenCalledTimes(2);
+      expect(queue.addBulk).toHaveBeenCalledTimes(1);
       expect(error).toHaveBeenCalledTimes(1);
     });
   });

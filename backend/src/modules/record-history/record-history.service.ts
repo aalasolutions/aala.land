@@ -4,6 +4,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { EntityManager, Repository } from 'typeorm';
+import { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity';
 import {
   RecordHistory,
   RecordHistoryAction,
@@ -27,7 +28,7 @@ export interface RecordHistoryInput {
   actorId?: string | null;
   actorName: string;
   regionCode?: string | null;
-  metadata?: Record<string, any> | null;
+  metadata?: Record<string, unknown> | null;
 }
 
 const GLOBAL_ENTITY_TYPES = new Set(['asset']);
@@ -76,7 +77,8 @@ export class RecordHistoryService {
       actorId: input.actorId ?? null,
       actorName: input.actorName.slice(0, TITLE_MAX),
       regionCode,
-      metadata: input.metadata ?? null,
+      metadata: (input.metadata ??
+        null) as QueryDeepPartialEntity<RecordHistory>['metadata'],
     });
   }
 

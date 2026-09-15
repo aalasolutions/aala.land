@@ -734,6 +734,10 @@ export class UsersService {
         }
 
         try {
+          const actorName = await this.recordHistoryService.resolveActorName(
+            manager,
+            requesterId,
+          );
           const collected: ReassignmentReport[] = [];
           for (const user of others) {
             await manager.update(User, user.id, { isActive: false });
@@ -745,6 +749,7 @@ export class UsersService {
               requesterId,
               dto.reason,
               { reassignToUserId: keeper.id },
+              actorName,
             );
             const report = await this.reassignmentService.reassignOwnedRecords(
               manager,
@@ -909,6 +914,7 @@ export class UsersService {
     requesterId: string,
     reason?: string | null,
     metadata?: Record<string, unknown>,
+    actorName?: string,
   ): Promise<void> {
     await this.recordHistoryService.record(manager, {
       companyId,
@@ -918,10 +924,12 @@ export class UsersService {
       entityTitle: target.name?.trim() || target.email,
       reason: reason ?? null,
       actorId: requesterId,
-      actorName: await this.recordHistoryService.resolveActorName(
-        manager,
-        requesterId,
-      ),
+      actorName:
+        actorName ??
+        (await this.recordHistoryService.resolveActorName(
+          manager,
+          requesterId,
+        )),
       regionCode: null,
       metadata: metadata ?? null,
     });

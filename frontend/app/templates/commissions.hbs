@@ -87,7 +87,7 @@
                         data-test-cancel-commission
                         {{on "click" (fn this.openCancel comm)}}
                       >
-                        Cancel
+                        Cancel commission
                       </Nuvo::Button>
                     </div>
                   {{else if (eq comm.status "APPROVED")}}
@@ -108,7 +108,7 @@
                         data-test-cancel-commission
                         {{on "click" (fn this.openCancel comm)}}
                       >
-                        Cancel
+                        Cancel commission
                       </Nuvo::Button>
                     </div>
                   {{else if (eq comm.status "PAID")}}
@@ -263,6 +263,8 @@
       placeholder="e.g. Deal fell through"
       @value={{this.cancelReason}}
       @onInput={{fn this.setFieldValue "cancelReason"}}
+      @invalid={{if this.reasonError true false}}
+      aria-label="Reason"
       data-test-reason-input
     />
   </Nuvo::Field>

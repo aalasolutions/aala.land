@@ -43,7 +43,6 @@ export class StoragePurgeProcessor extends WorkerHost {
       this.logger.warn(`Storage purge row ${job.data.id} not found, skipping`);
       return;
     }
-    if (row.status === StoragePurgeStatus.DONE) return;
 
     try {
       const { client, bucket } = this.targetFor(row.bucketKind);
@@ -74,11 +73,7 @@ export class StoragePurgeProcessor extends WorkerHost {
       throw err;
     }
 
-    await this.purgeJobRepository.update(row.id, {
-      status: StoragePurgeStatus.DONE,
-      processedAt: new Date(),
-      lastError: null,
-    });
+    await this.purgeJobRepository.delete(row.id);
   }
 
   private targetFor(kind: StorageBucketKind): StorageTarget {

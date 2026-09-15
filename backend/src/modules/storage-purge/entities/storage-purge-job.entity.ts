@@ -8,7 +8,6 @@ import {
 
 export enum StoragePurgeStatus {
   PENDING = 'PENDING',
-  DONE = 'DONE',
   FAILED = 'FAILED',
 }
 
@@ -65,7 +64,4 @@ export class StoragePurgeJob {
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;
-
-  @Column({ name: 'processed_at', type: 'timestamptz', nullable: true })
-  processedAt: Date | null;
 }

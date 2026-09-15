@@ -481,14 +481,20 @@
         />
       </Nuvo::Field>
 
-      <Nuvo::Field @label="Reason" @required={{true}}>
+      <Nuvo::Field
+        @label="Reason"
+        @required={{true}}
+        @error={{this.removeReasonError}}
+      >
         <Nuvo::Textarea
           id="remove-reason"
           rows="2"
           placeholder="e.g. Agent left the company"
           @value={{this.removeReason}}
           @onInput={{fn this.setFieldValue "removeReason"}}
+          @invalid={{if this.removeReasonError true false}}
           required={{true}}
+          aria-label="Reason"
           data-test-remove-reason
         />
       </Nuvo::Field>
@@ -594,13 +600,19 @@
         />
       </Nuvo::Field>
 
-      <Nuvo::Field @label="Reason" @required={{true}}>
+      <Nuvo::Field
+        @label="Reason"
+        @required={{true}}
+        @error={{this.trimReasonError}}
+      >
         <Nuvo::Textarea
           id="trim-reason"
           rows="2"
           @value={{this.trimReason}}
           @onInput={{fn this.setFieldValue "trimReason"}}
+          @invalid={{if this.trimReasonError true false}}
           required={{true}}
+          aria-label="Reason"
           data-test-trim-reason
         />
       </Nuvo::Field>
@@ -684,6 +696,7 @@
       placeholder="e.g. Returned from leave"
       @value={{this.reactivateReason}}
       @onInput={{fn this.setFieldValue "reactivateReason"}}
+      aria-label="Reason"
       data-test-reason-input
     />
   </Nuvo::Field>

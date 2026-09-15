@@ -147,7 +147,7 @@
                             data-test-cancel-cheque
                             {{on "click" (fn this.openCancel cheque)}}
                           >
-                            Cancel
+                            Cancel cheque
                           </Nuvo::Button>
                         {{/if}}
                       {{/if}}
@@ -415,6 +415,8 @@
       placeholder="e.g. Tenant replaced payment method"
       @value={{this.cancelReason}}
       @onInput={{fn this.setFieldValue "cancelReason"}}
+      @invalid={{if this.reasonError true false}}
+      aria-label="Reason"
       data-test-reason-input
     />
   </Nuvo::Field>
@@ -439,6 +441,8 @@
       placeholder="e.g. Entered by mistake"
       @value={{this.deleteReason}}
       @onInput={{fn this.setFieldValue "deleteReason"}}
+      @invalid={{if this.reasonError true false}}
+      aria-label="Reason"
       data-test-reason-input
     />
   </Nuvo::Field>
