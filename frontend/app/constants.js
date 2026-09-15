@@ -213,6 +213,12 @@ export const LEASE_STATUS_OPTIONS = [
   { id: 'RENEWED', label: 'Renewed' },
 ];
 
+export const LEASE_ARCHIVED_OPTIONS = [
+  { id: '', label: 'Active' },
+  { id: 'only', label: 'Archived' },
+  { id: 'include', label: 'All' },
+];
+
 export const MAINTENANCE_STATUS_OPTIONS = [
   { value: '', label: 'All Statuses' },
   { value: 'OPEN', label: 'New / Unassigned' },

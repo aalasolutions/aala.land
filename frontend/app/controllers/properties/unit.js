@@ -12,6 +12,7 @@ import {
   openDeleteModal,
 } from '../../utils/delete-modal';
 import { toggleArrayItem } from '../../utils/toggle-array-item';
+import { ROLES } from '../../utils/roles';
 import {
   PROPERTY_STATUS_OPTIONS,
   PROPERTY_TYPE_OPTIONS,
@@ -19,6 +20,50 @@ import {
   CATEGORIES,
   ACCESS_LEVELS,
 } from 'land/constants';
+
+const ARCHIVE_ROLES = [
+  ROLES.SUPER_ADMIN,
+  ROLES.COMPANY_ADMIN,
+  ROLES.ADMIN,
+  ROLES.MANAGER,
+];
+const DELETE_ROLES = [ROLES.COMPANY_ADMIN, ROLES.ADMIN];
+
+const UNIT_ACTIONS = {
+  archive: {
+    title: 'Archive Property',
+    message:
+      'Archived properties are hidden from lists and pickers and become read-only. Leases, money records and history are kept.',
+    confirmText: 'Archive',
+    confirmingText: 'Archiving...',
+    confirmVariant: 'primary',
+    reasonRequired: true,
+    successMessage: 'Property archived',
+    errorMessage: 'Archive failed',
+  },
+  unarchive: {
+    title: 'Unarchive Property',
+    message:
+      'This property will return to lists and pickers and become editable again.',
+    confirmText: 'Unarchive',
+    confirmingText: 'Unarchiving...',
+    confirmVariant: 'primary',
+    reasonRequired: false,
+    successMessage: 'Property unarchived',
+    errorMessage: 'Unarchive failed',
+  },
+  delete: {
+    title: 'Delete Property',
+    message:
+      'This permanently deletes the property with its photos and documents. It is refused while leases, cheques, transactions, work orders or leads are linked.',
+    confirmText: 'Delete',
+    confirmingText: 'Deleting...',
+    confirmVariant: 'danger',
+    reasonRequired: true,
+    successMessage: 'Property deleted',
+    errorMessage: 'Delete failed',
+  },
+};
 
 export default class PropertiesUnitController extends Controller {
   @service auth;
@@ -56,6 +101,12 @@ export default class PropertiesUnitController extends Controller {
   @tracked showDeleteDocumentModal = false;
   @tracked documentToDelete = null;
   @tracked isDeletingDocument = false;
+
+  // Archive / unarchive / delete state
+  @tracked pendingUnitAction = null;
+  @tracked unitActionReason = '';
+  @tracked unitActionError = '';
+  @tracked isSubmittingUnitAction = false;
 
   // Form fields
   @tracked formUnitNumber = '';
@@ -278,6 +329,79 @@ export default class PropertiesUnitController extends Controller {
       this.errorMsg = e.message;
     } finally {
       this.isSaving = false;
+    }
+  }
+
+  // ── Archive / unarchive / delete ──────────────────────────────────────
+
+  get isArchived() {
+    return Boolean(this.model?.unit?.deletedAt);
+  }
+
+  get canArchiveUnit() {
+    return ARCHIVE_ROLES.includes(this.auth.currentUser?.role);
+  }
+
+  get canDeleteUnit() {
+    return DELETE_ROLES.includes(this.auth.currentUser?.role);
+  }
+
+  // Same roles as GET /record-history.
+  get canViewHistory() {
+    return ARCHIVE_ROLES.includes(this.auth.currentUser?.role);
+  }
+
+  get unitActionConfig() {
+    return UNIT_ACTIONS[this.pendingUnitAction] ?? null;
+  }
+
+  get showUnitActionModal() {
+    return Boolean(this.unitActionConfig);
+  }
+
+  @action openUnitAction(kind) {
+    this.pendingUnitAction = kind;
+    this.unitActionReason = '';
+    this.unitActionError = '';
+  }
+
+  @action closeUnitAction() {
+    this.pendingUnitAction = null;
+    this.unitActionReason = '';
+    this.unitActionError = '';
+  }
+
+  @action async confirmUnitAction() {
+    const kind = this.pendingUnitAction;
+    const config = this.unitActionConfig;
+    const unit = this.model?.unit;
+    if (!config || !unit || this.isSubmittingUnitAction) return;
+
+    const reason = this.unitActionReason.trim();
+    if (config.reasonRequired && !reason) {
+      this.unitActionError = 'A reason is required.';
+      return;
+    }
+
+    this.isSubmittingUnitAction = true;
+    this.unitActionError = '';
+
+    try {
+      await this.auth.fetchJson(`/properties/units/${unit.id}/${kind}`, {
+        method: 'POST',
+        body: JSON.stringify(reason ? { reason } : {}),
+      });
+      this.notifications.success(config.successMessage);
+      this.closeUnitAction();
+      if (kind === 'delete') {
+        this.router.transitionTo('properties');
+      } else {
+        this.router.refresh('properties.unit');
+      }
+    } catch (e) {
+      this.notifications.error(e.message || config.errorMessage);
+    } finally {
+      this.isSubmittingUnitAction = false;
     }
   }
 

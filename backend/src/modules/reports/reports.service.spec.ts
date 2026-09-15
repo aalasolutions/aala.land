@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { IsNull, Repository } from 'typeorm';
 import { ReportsService } from './reports.service';
 import { Lead, LeadStatus } from '../leads/entities/lead.entity';
 import {
@@ -231,6 +231,52 @@ describe('ReportsService', () => {
       expect(result.length).toBeGreaterThanOrEqual(1);
       expect(result[0].type).toBe('UNTOUCHED_LEAD_48H');
       expect(result[0].severity).toBe('HIGH');
+    });
+
+    it('excludes archived units from vacant units', async () => {
+      leadRepo.find.mockResolvedValue([]);
+      leadRepo.createQueryBuilder.mockReturnValue(createMockQueryBuilder([]));
+      unitRepo.find.mockResolvedValue([]);
+
+      await service.getRedFlags(companyId);
+
+      expect(unitRepo.find).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ deletedAt: IsNull() }),
+        }),
+      );
+    });
+
+    it('excludes archived units from region-scoped vacant units', async () => {
+      leadRepo.find.mockResolvedValue([]);
+      leadRepo.createQueryBuilder.mockReturnValue(createMockQueryBuilder([]));
+      const unitQb = createMockQueryBuilder([]);
+      unitRepo.createQueryBuilder.mockReturnValue(unitQb);
+
+      await service.getRedFlags(companyId, undefined, {
+        role: 'manager',
+        regionCodes: ['makkah'],
+      } as any);
+
+      expect(unitQb.andWhere).toHaveBeenCalledWith('u.deleted_at IS NULL');
+    });
+  });
+
+  describe('getDashboardKpis archived units', () => {
+    it('counts only non-archived units', async () => {
+      leadRepo.count.mockResolvedValue(0);
+      unitRepo.count.mockResolvedValue(0);
+      leaseRepo.count.mockResolvedValue(0);
+      chequeRepo.count.mockResolvedValue(0);
+      transactionRepo.createQueryBuilder.mockReturnValue(
+        createMockQueryBuilder({ total: '0' }),
+      );
+
+      await service.getDashboardKpis(companyId);
+
+      expect(unitRepo.count).toHaveBeenCalledWith({
+        where: { companyId, deletedAt: IsNull() },
+      });
     });
   });
 
@@ -562,9 +608,7 @@ describe('ReportsService', () => {
           makkahManager,
         );
 
-        expect(
-          result.some((a) => a.agentId === 'agent-punjab'),
-        ).toBe(false);
+        expect(result.some((a) => a.agentId === 'agent-punjab')).toBe(false);
         expect(result[0].commissionsEarned).toBe(0);
       });
 

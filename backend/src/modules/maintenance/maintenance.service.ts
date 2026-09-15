@@ -1,6 +1,19 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { FindOptionsWhere, In, Repository } from 'typeorm';
+import {
+  DataSource,
+  EntityManager,
+  FindOptionsWhere,
+  In,
+  Repository,
+} from 'typeorm';
+import { RecordHistoryService } from '../record-history/record-history.service';
+import { RecordHistoryAction } from '../record-history/entities/record-history.entity';
 import { WorkOrder, WorkOrderStatus } from './entities/work-order.entity';
 import { CreateWorkOrderDto } from './dto/create-work-order.dto';
 import { UpdateWorkOrderDto } from './dto/update-work-order.dto';
@@ -26,6 +39,8 @@ export class MaintenanceService {
     private readonly workOrderRepository: Repository<WorkOrder>,
     @InjectRepository(Unit)
     private readonly unitRepository: Repository<Unit>,
+    private readonly dataSource: DataSource,
+    private readonly recordHistoryService: RecordHistoryService,
   ) {}
 
   async create(
@@ -36,7 +51,7 @@ export class MaintenanceService {
     if (!dto.unitId) {
       throw new BadRequestException('Property is required for work orders');
     }
-    await this.validateUnitOwnership(dto.unitId, companyId, caller);
+    await this.validateUnitOwnership(dto.unitId, companyId, caller, true);
     const regionCode = await this.regionOfUnit(dto.unitId, companyId);
     if (!regionCode) {
       throw new BadRequestException('Invalid unit selected');
@@ -181,38 +196,135 @@ export class MaintenanceService {
     companyId: string,
     dto: UpdateWorkOrderDto,
     caller?: RegionScope,
+    userId?: string,
   ): Promise<WorkOrder> {
     const order = await this.findOne(id, companyId, caller);
-    if (dto.unitId !== undefined) {
-      if (!dto.unitId) {
+    const { reason, ...changes } = dto;
+    const oldStatus = order.status;
+    const isStatusChange =
+      changes.status !== undefined && changes.status !== oldStatus;
+
+    if (
+      isStatusChange &&
+      changes.status === WorkOrderStatus.CANCELLED &&
+      !reason?.trim()
+    ) {
+      throw new BadRequestException(
+        'A reason is required to cancel a work order.',
+      );
+    }
+
+    if (changes.unitId !== undefined) {
+      if (!changes.unitId) {
         throw new BadRequestException('Property is required for work orders');
       }
-      await this.validateUnitOwnership(dto.unitId, companyId, caller);
+      await this.validateUnitOwnership(
+        changes.unitId,
+        companyId,
+        caller,
+        changes.unitId !== order.unitId,
+      );
       // The region follows the unit, so moving the work order moves the row.
-      if (dto.unitId !== order.unitId) {
-        const regionCode = await this.regionOfUnit(dto.unitId, companyId);
+      if (changes.unitId !== order.unitId) {
+        const regionCode = await this.regionOfUnit(changes.unitId, companyId);
         if (!regionCode) {
           throw new BadRequestException('Invalid unit selected');
         }
         order.regionCode = regionCode;
       }
     }
-    Object.assign(order, dto);
+    Object.assign(order, changes);
 
-    if (dto.status === WorkOrderStatus.COMPLETED && !order.completedAt) {
+    if (changes.status === WorkOrderStatus.COMPLETED && !order.completedAt) {
       order.completedAt = new Date();
     }
 
-    return this.workOrderRepository.save(order);
+    return this.dataSource.transaction(async (manager) => {
+      const saved = await manager.getRepository(WorkOrder).save(order);
+      if (isStatusChange) {
+        await this.recordWorkOrderHistory(
+          manager,
+          order,
+          order.status === WorkOrderStatus.CANCELLED
+            ? RecordHistoryAction.CANCEL
+            : RecordHistoryAction.STATUS_CHANGE,
+          userId,
+          reason,
+          { from: oldStatus, to: order.status },
+        );
+      }
+      return saved;
+    });
   }
 
   async remove(
     id: string,
     companyId: string,
+    reason: string,
+    userId: string,
     caller?: RegionScope,
   ): Promise<void> {
-    const order = await this.findOne(id, companyId, caller);
-    await this.workOrderRepository.remove(order);
+    await this.findOne(id, companyId, caller);
+
+    await this.dataSource.transaction(async (manager) => {
+      const order = await manager.findOne(WorkOrder, {
+        where: { id, companyId },
+        lock: { mode: 'pessimistic_write' },
+      });
+      if (!order) {
+        throw new NotFoundException('Work order not found');
+      }
+      const actualCost =
+        order.actualCost == null ? 0 : Number(order.actualCost);
+      if (
+        order.status !== WorkOrderStatus.OPEN ||
+        order.vendorId ||
+        actualCost !== 0
+      ) {
+        throw new ConflictException('Cancel this work order instead.');
+      }
+
+      await this.recordWorkOrderHistory(
+        manager,
+        order,
+        RecordHistoryAction.DELETE,
+        userId,
+        reason,
+      );
+      await manager.remove(order);
+    });
+  }
+
+  private async recordWorkOrderHistory(
+    manager: EntityManager,
+    order: WorkOrder,
+    action: RecordHistoryAction,
+    userId: string | undefined,
+    reason?: string | null,
+    metadata?: Record<string, unknown>,
+  ): Promise<void> {
+    const unit = order.unitId
+      ? await manager.findOne(Unit, {
+          where: { id: order.unitId, companyId: order.companyId },
+          select: { id: true, unitNumber: true },
+        })
+      : null;
+
+    await this.recordHistoryService.record(manager, {
+      companyId: order.companyId,
+      action,
+      entityType: 'WorkOrder',
+      entityId: order.id,
+      entityTitle: order.title,
+      contextTitle: unit ? `Unit ${unit.unitNumber}` : null,
+      reason: reason ?? null,
+      actorId: userId ?? null,
+      actorName: userId
+        ? await this.recordHistoryService.resolveActorName(manager, userId)
+        : 'System',
+      regionCode: order.regionCode,
+      metadata: metadata ?? null,
+    });
   }
 
   async getCostSummary(
@@ -294,6 +406,7 @@ export class MaintenanceService {
     unitId: string,
     companyId: string,
     caller?: RegionScope,
+    rejectArchived = false,
   ): Promise<void> {
     const scopedCodes = scopedRegionCodes(caller);
     // No assignment means no access, and an empty IN () is invalid SQL.
@@ -309,6 +422,9 @@ export class MaintenanceService {
     const unit = await this.unitRepository.findOne({ where });
     if (!unit) {
       throw new BadRequestException('Invalid unit selected');
+    }
+    if (rejectArchived && unit.deletedAt) {
+      throw new ConflictException('This unit is archived.');
     }
   }
 

@@ -54,6 +54,9 @@ export default class TeamController extends PaginatedController {
   @tracked trimCandidates = [];
 
   @tracked reactivatingUserId = null;
+  @tracked showReactivateModal = false;
+  @tracked userToReactivate = null;
+  @tracked reactivateReason = '';
 
   get isSuperAdmin() {
     return this.auth.currentUser?.role === 'super_admin';
@@ -384,12 +387,38 @@ export default class TeamController extends PaginatedController {
     }
   }
 
-  @action async reactivateUser(user) {
+  @action openReactivate(user) {
+    this.userToReactivate = user;
+    this.reactivateReason = '';
+    this.showReactivateModal = true;
+  }
+
+  @action closeReactivateModal() {
+    if (this.isReactivating) return;
+    this.showReactivateModal = false;
+    this.userToReactivate = null;
+  }
+
+  @action async confirmReactivate() {
+    if (!this.userToReactivate) return;
+    const reactivated = await this.reactivateUser(
+      this.userToReactivate,
+      this.reactivateReason,
+    );
+    if (reactivated) {
+      this.showReactivateModal = false;
+      this.userToReactivate = null;
+    }
+  }
+
+  @action async reactivateUser(user, reason = '') {
     if (this.reactivatingUserId) return false;
     this.reactivatingUserId = user.id;
+    const trimmed = typeof reason === 'string' ? reason.trim() : '';
     try {
       await this.auth.fetchJson(`/users/${user.id}/reactivate`, {
         method: 'POST',
+        body: JSON.stringify(trimmed ? { reason: trimmed } : {}),
       });
       this.notifications.success(`${user.name} reactivated`);
       this.router.refresh('team');

@@ -19,6 +19,13 @@
       <span class="text-muted">/</span>
     </:breadcrumb>
     <:actions>
+      <Nuvo::Dropdown
+        @align="start"
+        @value={{this.archivedFilterValue}}
+        @onSelect={{this.setArchivedFilter}}
+        @options={{this.archivedFilterOptions}}
+        data-test-archived-filter
+      />
       <Nuvo::BtnGroup @attached={{true}}>
         <Nuvo::Button
           @variant={{if (eq this.currentDetailView "cards") "primary" "secondary"}}
@@ -120,6 +127,13 @@
 
                     <div class="flex between x-center">
                       <p class="text-muted text-sm flex x-center gap-1">
+                        {{#if unit.deletedAt}}
+                          <Nuvo::Tag
+                            @variant="secondary"
+                            @text="Archived"
+                            data-test-archived-badge
+                          />
+                        {{/if}}
                         <Nuvo::Tag
                           class="tag-unit-{{lowercase unit.status}}"
                           @text={{capitalize unit.status}}
@@ -173,14 +187,16 @@
                       >
                         View Details
                       </Nuvo::Button>
-                      <Nuvo::Button
-                        @variant="secondary"
-                        @size="sm"
-                        aria-label="Edit property"
-                        title="Edit property"
-                        @icon="pencil"
-                        {{on "click" (fn this.openEditUnit unit asset.id)}}
-                      />
+                      {{#unless unit.deletedAt}}
+                        <Nuvo::Button
+                          @variant="secondary"
+                          @size="sm"
+                          aria-label="Edit property"
+                          title="Edit property"
+                          @icon="pencil"
+                          {{on "click" (fn this.openEditUnit unit asset.id)}}
+                        />
+                      {{/unless}}
                     </div>
                   </div>
                 {{/each}}
@@ -229,10 +245,21 @@
                 <tr>
                   <td class="font-bold">{{asset.name}}</td>
                   <td>{{unit.unitNumber}}</td>
-                  <td><Nuvo::Tag
-                      class="tag-unit-{{lowercase unit.status}}"
-                      @text={{capitalize unit.status}}
-                    /></td>
+                  <td>
+                    <div class="flex x-center gap-1">
+                      {{#if unit.deletedAt}}
+                        <Nuvo::Tag
+                          @variant="secondary"
+                          @text="Archived"
+                          data-test-archived-badge
+                        />
+                      {{/if}}
+                      <Nuvo::Tag
+                        class="tag-unit-{{lowercase unit.status}}"
+                        @text={{capitalize unit.status}}
+                      />
+                    </div>
+                  </td>
                   <td>
                     {{#if unit.propertyType}}
                       <Nuvo::Tag
@@ -269,11 +296,13 @@
                         @route="properties.unit"
                         @models={{array @model.localityId unit.id}}
                       >View</Nuvo::Button>
-                      <Nuvo::Button
-                        @variant="secondary"
-                        @size="xs"
-                        {{on "click" (fn this.openEditUnit unit asset.id)}}
-                      >Edit</Nuvo::Button>
+                      {{#unless unit.deletedAt}}
+                        <Nuvo::Button
+                          @variant="secondary"
+                          @size="xs"
+                          {{on "click" (fn this.openEditUnit unit asset.id)}}
+                        >Edit</Nuvo::Button>
+                      {{/unless}}
                     </div>
                   </td>
                 </tr>

@@ -3,6 +3,11 @@ import { ChequesController } from './cheques.controller';
 import { ChequesService } from './cheques.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { ChequeStatus, ChequeType } from './entities/cheque.entity';
+import { RequestMethod } from '@nestjs/common';
+import { METHOD_METADATA, PATH_METADATA } from '@nestjs/common/constants';
+import { plainToInstance } from 'class-transformer';
+import { validate } from 'class-validator';
+import { DeleteChequeDto } from './dto/delete-cheque.dto';
 
 describe('ChequesController', () => {
   let controller: ChequesController;
@@ -202,16 +207,42 @@ describe('ChequesController', () => {
   });
 
   describe('remove', () => {
-    it('removes cheque', async () => {
+    it('is served on POST /cheques/:id/delete', () => {
+      const handler = ChequesController.prototype.remove;
+      expect(Reflect.getMetadata(PATH_METADATA, handler)).toBe(':id/delete');
+      expect(Reflect.getMetadata(METHOD_METADATA, handler)).toBe(
+        RequestMethod.POST,
+      );
+    });
+
+    it('forwards the reason and actor', async () => {
       service.remove.mockResolvedValue(undefined);
 
-      await controller.remove('cheque-uuid-1', mockReq);
+      await controller.remove(
+        'cheque-uuid-1',
+        { reason: 'Entered twice' },
+        mockReq,
+      );
 
       expect(service.remove).toHaveBeenCalledWith(
         'cheque-uuid-1',
         companyId,
+        'Entered twice',
+        'user-uuid-1',
         mockReq.user,
       );
+    });
+
+    it('rejects a blank or missing reason and trims a real one', async () => {
+      expect(
+        await validate(plainToInstance(DeleteChequeDto, { reason: '   ' })),
+      ).not.toHaveLength(0);
+      expect(
+        await validate(plainToInstance(DeleteChequeDto, {})),
+      ).not.toHaveLength(0);
+      const dto = plainToInstance(DeleteChequeDto, { reason: '  Duplicate ' });
+      expect(await validate(dto)).toHaveLength(0);
+      expect(dto.reason).toBe('Duplicate');
     });
   });
 });

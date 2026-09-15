@@ -1,6 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
+import { RecordHistoryService } from '../record-history/record-history.service';
+import { RecordHistoryAction } from '../record-history/entities/record-history.entity';
 import {
   NotFoundException,
   ConflictException,
@@ -19,6 +21,8 @@ describe('CommissionsService', () => {
   let service: CommissionsService;
   let repo: jest.Mocked<Repository<Commission>>;
   let companyRepo: jest.Mocked<Repository<Company>>;
+  let manager: { getRepository: jest.Mock };
+  let recordHistory: { record: jest.Mock; resolveActorName: jest.Mock };
 
   const companyId = 'company-uuid-1';
   const agentId = 'agent-uuid-1';
@@ -37,9 +41,23 @@ describe('CommissionsService', () => {
   };
 
   beforeEach(async () => {
+    manager = { getRepository: jest.fn(() => repo) };
+    recordHistory = {
+      record: jest.fn().mockResolvedValue(undefined),
+      resolveActorName: jest.fn((_m: unknown, id: string) =>
+        Promise.resolve(id === agentId ? 'Agent Name' : 'Actor Name'),
+      ),
+    };
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         CommissionsService,
+        {
+          provide: DataSource,
+          useValue: {
+            transaction: jest.fn((cb: (m: unknown) => unknown) => cb(manager)),
+          },
+        },
+        { provide: RecordHistoryService, useValue: recordHistory },
         {
           provide: getRepositoryToken(Commission),
           useValue: {
@@ -293,6 +311,188 @@ describe('CommissionsService', () => {
         }),
       ).rejects.toThrow(NotFoundException);
       expect(repo.update).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('update history', () => {
+    it('rejects cancelling without a reason before writing', async () => {
+      repo.findOne.mockResolvedValue({ ...mockCommission } as Commission);
+
+      await expect(
+        service.update('commission-uuid-1', companyId, {
+          status: CommissionStatus.CANCELLED,
+        }),
+      ).rejects.toThrow(BadRequestException);
+      await expect(
+        service.update('commission-uuid-1', companyId, {
+          status: CommissionStatus.CANCELLED,
+          reason: ' ',
+        }),
+      ).rejects.toThrow(BadRequestException);
+      expect(repo.update).not.toHaveBeenCalled();
+      expect(recordHistory.record).not.toHaveBeenCalled();
+    });
+
+    it('records CANCEL with the reason inside the update transaction', async () => {
+      repo.findOne
+        .mockResolvedValueOnce({
+          ...mockCommission,
+          regionCode: 'dubai',
+        } as Commission)
+        .mockResolvedValueOnce({
+          ...mockCommission,
+          status: CommissionStatus.CANCELLED,
+        } as Commission);
+      repo.update.mockResolvedValue({ affected: 1 } as any);
+
+      await service.update(
+        'commission-uuid-1',
+        companyId,
+        { status: CommissionStatus.CANCELLED, reason: 'Deal fell through' },
+        undefined,
+        'user-1',
+      );
+
+      expect(manager.getRepository).toHaveBeenCalledWith(Commission);
+      expect(repo.update).toHaveBeenCalledWith(
+        { id: 'commission-uuid-1', companyId },
+        { status: CommissionStatus.CANCELLED },
+      );
+      expect(recordHistory.record).toHaveBeenCalledWith(
+        manager,
+        expect.objectContaining({
+          companyId,
+          action: RecordHistoryAction.CANCEL,
+          entityType: 'Commission',
+          entityId: 'commission-uuid-1',
+          entityTitle: 'Commission 10000 AED',
+          contextTitle: 'Agent Name',
+          reason: 'Deal fell through',
+          actorId: 'user-1',
+          actorName: 'Actor Name',
+          regionCode: 'dubai',
+          metadata: {
+            from: CommissionStatus.PENDING,
+            to: CommissionStatus.CANCELLED,
+          },
+        }),
+      );
+    });
+
+    it('records STATUS_CHANGE for other status moves', async () => {
+      repo.findOne.mockResolvedValue({ ...mockCommission } as Commission);
+      repo.update.mockResolvedValue({ affected: 1 } as any);
+
+      await service.update(
+        'commission-uuid-1',
+        companyId,
+        { status: CommissionStatus.APPROVED },
+        undefined,
+        'user-1',
+      );
+
+      expect(recordHistory.record).toHaveBeenCalledWith(
+        manager,
+        expect.objectContaining({
+          action: RecordHistoryAction.STATUS_CHANGE,
+          reason: null,
+        }),
+      );
+    });
+
+    it('records nothing for a notes-only edit', async () => {
+      repo.findOne.mockResolvedValue({ ...mockCommission } as Commission);
+      repo.update.mockResolvedValue({ affected: 1 } as any);
+
+      await service.update('commission-uuid-1', companyId, {
+        notes: 'Checked',
+      });
+
+      expect(repo.update).toHaveBeenCalled();
+      expect(recordHistory.record).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('approve and pay history', () => {
+    const row = {
+      ...mockCommission,
+      regionCode: 'dubai',
+    } as Commission;
+
+    it('records STATUS_CHANGE PENDING to APPROVED inside the approve transaction', async () => {
+      repo.update.mockResolvedValue({ affected: 1 } as any);
+      repo.findOne.mockResolvedValue({
+        ...row,
+        status: CommissionStatus.APPROVED,
+      } as Commission);
+
+      await service.approve(
+        'commission-uuid-1',
+        companyId,
+        undefined,
+        'user-1',
+      );
+
+      expect(manager.getRepository).toHaveBeenCalledWith(Commission);
+      expect(recordHistory.record).toHaveBeenCalledWith(manager, {
+        companyId,
+        action: RecordHistoryAction.STATUS_CHANGE,
+        entityType: 'Commission',
+        entityId: 'commission-uuid-1',
+        entityTitle: 'Commission 10000 AED',
+        contextTitle: 'Agent Name',
+        reason: null,
+        actorId: 'user-1',
+        actorName: 'Actor Name',
+        regionCode: 'dubai',
+        metadata: {
+          from: CommissionStatus.PENDING,
+          to: CommissionStatus.APPROVED,
+        },
+      });
+    });
+
+    it('records STATUS_CHANGE APPROVED to PAID inside the pay transaction', async () => {
+      repo.update.mockResolvedValue({ affected: 1 } as any);
+      repo.findOne.mockResolvedValue({
+        ...row,
+        status: CommissionStatus.PAID,
+      } as Commission);
+
+      await service.pay('commission-uuid-1', companyId, undefined, 'user-1');
+
+      expect(recordHistory.record).toHaveBeenCalledWith(
+        manager,
+        expect.objectContaining({
+          action: RecordHistoryAction.STATUS_CHANGE,
+          reason: null,
+          actorId: 'user-1',
+          metadata: {
+            from: CommissionStatus.APPROVED,
+            to: CommissionStatus.PAID,
+          },
+        }),
+      );
+    });
+
+    it('records nothing when the approve guard refuses', async () => {
+      repo.update.mockResolvedValue({ affected: 0 } as any);
+      repo.findOne.mockResolvedValue(row);
+
+      await expect(
+        service.approve('commission-uuid-1', companyId, undefined, 'user-1'),
+      ).rejects.toThrow(ConflictException);
+      expect(recordHistory.record).not.toHaveBeenCalled();
+    });
+
+    it('records nothing when the pay guard refuses', async () => {
+      repo.update.mockResolvedValue({ affected: 0 } as any);
+      repo.findOne.mockResolvedValue(null);
+
+      await expect(
+        service.pay('commission-uuid-1', companyId, undefined, 'user-1'),
+      ).rejects.toThrow(NotFoundException);
+      expect(recordHistory.record).not.toHaveBeenCalled();
     });
   });
 

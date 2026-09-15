@@ -255,12 +255,29 @@ describe('UsersController', () => {
       );
     });
 
-    it('POST /users/:id/reactivate forwards to reactivateUser', async () => {
-      await controller.reactivate('user-uuid-2', reqAdmin as never);
+    it('POST /users/:id/reactivate forwards the actor and optional reason', async () => {
+      await controller.reactivate(
+        'user-uuid-2',
+        { reason: 'Rejoined' },
+        reqAdmin as never,
+      );
       expect(service.reactivateUser).toHaveBeenCalledWith(
         'user-uuid-2',
         'company-uuid-1',
         'company_admin',
+        'requester-uuid',
+        'Rejoined',
+      );
+    });
+
+    it('POST /users/:id/reactivate accepts an empty body', async () => {
+      await controller.reactivate('user-uuid-2', {}, reqAdmin as never);
+      expect(service.reactivateUser).toHaveBeenCalledWith(
+        'user-uuid-2',
+        'company-uuid-1',
+        'company_admin',
+        'requester-uuid',
+        undefined,
       );
     });
 
@@ -274,7 +291,7 @@ describe('UsersController', () => {
         },
       };
       expect(() =>
-        controller.reactivate('user-uuid-2', reqNoCompany as never),
+        controller.reactivate('user-uuid-2', {}, reqNoCompany as never),
       ).toThrow(BadRequestException);
       expect(service.reactivateUser).not.toHaveBeenCalled();
     });

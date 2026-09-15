@@ -9,6 +9,7 @@ import {
   Query,
   ParseIntPipe,
   ParseUUIDPipe,
+  ParseEnumPipe,
   DefaultValuePipe,
   UseGuards,
   Request,
@@ -32,12 +33,15 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '@shared/guards/roles.guard';
 import { Roles } from '@shared/decorators/roles.decorator';
 import { Role } from '@shared/enums/roles.enum';
-import { CreateAreaDto } from './dto/create-area.dto';
-import { UpdateAreaDto } from './dto/update-area.dto';
 import { CreateAssetDto } from './dto/create-asset.dto';
 import { UpdateAssetDto } from './dto/update-asset.dto';
 import { CreateUnitDto } from './dto/create-unit.dto';
 import { UpdateUnitDto } from './dto/update-unit.dto';
+import {
+  OptionalPropertyReasonDto,
+  PropertyReasonDto,
+} from './dto/property-reason.dto';
+import { UnitArchivedFilter } from './dto/unit-archived-filter.enum';
 import { AuthenticatedRequest } from '@shared/interfaces/authenticated-request.interface';
 import { requireCompanyId, scopedCompanyId } from '@shared/utils/auth.util';
 import { FileInterceptor } from '@nestjs/platform-express';
@@ -180,101 +184,6 @@ export class PropertiesController {
     );
   }
 
-  // Areas (deprecated, kept for backward compat)
-  @Post('areas')
-  @Roles(Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT)
-  @ApiOperation({ summary: 'Create a new property area (ADMIN+, AGENT)' })
-  @ApiQuery({ name: 'regionCode', required: false, type: String })
-  createArea(
-    @Body() dto: CreateAreaDto,
-    @Request() req: AuthenticatedRequest,
-    @Query('regionCode') regionCode?: string,
-  ) {
-    const enrichedDto = regionCode ? { ...dto, regionCode } : dto;
-    return this.propertiesService.createArea(
-      requireCompanyId(req.user),
-      enrichedDto,
-    );
-  }
-
-  @Get('areas')
-  @Roles(
-    Role.COMPANY_ADMIN,
-    Role.ADMIN,
-    Role.MANAGER,
-    Role.AGENT,
-    Role.ACCOUNTANT,
-  )
-  @ApiOperation({ summary: 'List all property areas (paginated)' })
-  @ApiQuery({ name: 'page', required: false, type: Number })
-  @ApiQuery({ name: 'limit', required: false, type: Number })
-  @ApiQuery({ name: 'regionCode', required: false, type: String })
-  findAllAreas(
-    @Request() req: AuthenticatedRequest,
-    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
-    @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
-    @Query('regionCode') regionCode?: string,
-  ) {
-    return this.propertiesService.findAllAreas(
-      requireCompanyId(req.user),
-      page,
-      limit,
-      regionCode,
-      req.user,
-    );
-  }
-
-  @Get('areas/:id')
-  @Roles(
-    Role.COMPANY_ADMIN,
-    Role.ADMIN,
-    Role.MANAGER,
-    Role.AGENT,
-    Role.ACCOUNTANT,
-  )
-  @ApiOperation({ summary: 'Get area by ID' })
-  findOneArea(
-    @Param('id', ParseUUIDPipe) id: string,
-    @Request() req: AuthenticatedRequest,
-  ) {
-    return this.propertiesService.findOneArea(
-      id,
-      requireCompanyId(req.user),
-      req.user,
-    );
-  }
-
-  @Patch('areas/:id')
-  @Roles(Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.AGENT)
-  @ApiOperation({ summary: 'Update area (ADMIN+, AGENT)' })
-  updateArea(
-    @Param('id', ParseUUIDPipe) id: string,
-    @Body() dto: UpdateAreaDto,
-    @Request() req: AuthenticatedRequest,
-  ) {
-    return this.propertiesService.updateArea(
-      id,
-      requireCompanyId(req.user),
-      dto,
-      req.user,
-    );
-  }
-
-  @Delete('areas/:id')
-  @Roles(Role.COMPANY_ADMIN, Role.ADMIN)
-  @HttpCode(HttpStatus.NO_CONTENT)
-  @ApiOperation({ summary: 'Delete area (COMPANY_ADMIN+)' })
-  removeArea(
-    @Param('id', ParseUUIDPipe) id: string,
-    @Request() req: AuthenticatedRequest,
-  ) {
-    return this.propertiesService.removeArea(
-      id,
-      requireCompanyId(req.user),
-      req.user,
-    );
-  }
-
   // Assets (shared, community-seeded)
   @Get('assets/search')
   @Roles(
@@ -394,12 +303,19 @@ export class PropertiesController {
     return this.propertiesService.updateAsset(id, dto);
   }
 
-  @Delete('assets/:id')
+  @Post('assets/:id/delete')
   @Roles(Role.SUPER_ADMIN)
   @HttpCode(HttpStatus.NO_CONTENT)
-  @ApiOperation({ summary: 'Delete asset (SUPER_ADMIN only, shared entity)' })
-  removeAsset(@Param('id', ParseUUIDPipe) id: string) {
-    return this.propertiesService.removeAsset(id);
+  @ApiOperation({
+    summary:
+      'Delete asset (SUPER_ADMIN only, shared entity). 409 while any unit exists; purges its photos and documents.',
+  })
+  removeAsset(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: PropertyReasonDto,
+    @Request() req: AuthenticatedRequest,
+  ) {
+    return this.propertiesService.removeAsset(id, dto.reason, req.user.userId);
   }
 
   // Units
@@ -444,6 +360,12 @@ export class PropertiesController {
     description: 'One of: name, price, area, added. Anything else is ignored.',
   })
   @ApiQuery({ name: 'order', required: false, enum: ['asc', 'desc'] })
+  @ApiQuery({
+    name: 'archived',
+    required: false,
+    enum: UnitArchivedFilter,
+    description: 'Defaults to exclude',
+  })
   findAllUnits(
     @Request() req: AuthenticatedRequest,
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
@@ -460,6 +382,11 @@ export class PropertiesController {
     @Query('ownerId', new ParseUUIDPipe({ optional: true })) ownerId?: string,
     @Query('sort') sort?: string,
     @Query('order') order?: string,
+    @Query(
+      'archived',
+      new ParseEnumPipe(UnitArchivedFilter, { optional: true }),
+    )
+    archived?: UnitArchivedFilter,
   ) {
     const filters = {
       amenities: amenitiesStr
@@ -477,6 +404,7 @@ export class PropertiesController {
       localityId: localityId || undefined,
       regionCode: regionCode || undefined,
       ownerId: ownerId || undefined,
+      archived,
     };
     return this.propertiesService.findAllUnits(
       requireCompanyId(req.user),
@@ -554,11 +482,22 @@ export class PropertiesController {
   @ApiOperation({ summary: 'List units in an asset (paginated)' })
   @ApiQuery({ name: 'page', required: false, type: Number })
   @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiQuery({
+    name: 'archived',
+    required: false,
+    enum: UnitArchivedFilter,
+    description: 'Defaults to exclude',
+  })
   findUnitsByAsset(
     @Param('assetId', ParseUUIDPipe) assetId: string,
     @Request() req: AuthenticatedRequest,
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
     @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
+    @Query(
+      'archived',
+      new ParseEnumPipe(UnitArchivedFilter, { optional: true }),
+    )
+    archived?: UnitArchivedFilter,
   ) {
     return this.propertiesService.findUnitsByAsset(
       assetId,
@@ -566,6 +505,7 @@ export class PropertiesController {
       page,
       limit,
       req.user,
+      archived,
     );
   }
 
@@ -586,17 +526,62 @@ export class PropertiesController {
     );
   }
 
-  @Delete('units/:id')
+  @Post('units/:id/delete')
   @Roles(Role.COMPANY_ADMIN, Role.ADMIN)
   @HttpCode(HttpStatus.NO_CONTENT)
-  @ApiOperation({ summary: 'Delete unit (COMPANY_ADMIN+)' })
+  @ApiOperation({
+    summary:
+      'Delete unit (COMPANY_ADMIN+). 409 when leases, cheques, transactions, work orders or leads reference it; purges its photos and documents.',
+  })
   removeUnit(
     @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: PropertyReasonDto,
     @Request() req: AuthenticatedRequest,
   ) {
     return this.propertiesService.removeUnit(
       id,
       requireCompanyId(req.user),
+      dto.reason,
+      req.user.userId,
+      req.user,
+    );
+  }
+
+  @Post('units/:id/archive')
+  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary:
+      'Archive unit. 409 when already archived or under an ACTIVE lease.',
+  })
+  archiveUnit(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: PropertyReasonDto,
+    @Request() req: AuthenticatedRequest,
+  ) {
+    return this.propertiesService.archiveUnit(
+      id,
+      requireCompanyId(req.user),
+      dto.reason,
+      req.user.userId,
+      req.user,
+    );
+  }
+
+  @Post('units/:id/unarchive')
+  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Unarchive unit. 409 when not archived.' })
+  unarchiveUnit(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: OptionalPropertyReasonDto,
+    @Request() req: AuthenticatedRequest,
+  ) {
+    return this.propertiesService.unarchiveUnit(
+      id,
+      requireCompanyId(req.user),
+      dto.reason,
+      req.user.userId,
       req.user,
     );
   }

@@ -1,7 +1,13 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { NotFoundException, BadRequestException } from '@nestjs/common';
+import { DataSource, Repository } from 'typeorm';
+import {
+  NotFoundException,
+  BadRequestException,
+  ConflictException,
+} from '@nestjs/common';
+import { RecordHistoryService } from '../record-history/record-history.service';
+import { RecordHistoryAction } from '../record-history/entities/record-history.entity';
 import { NotificationsService } from '../notifications/notifications.service';
 import { NotificationType } from '../notifications/entities/notification.entity';
 import { UsersService } from '../users/users.service';
@@ -17,6 +23,12 @@ describe('ChequesService', () => {
   let unitRepo: jest.Mocked<Repository<Unit>>;
   let companyRepo: jest.Mocked<Repository<Company>>;
   let module: TestingModule;
+  let manager: {
+    getRepository: jest.Mock;
+    findOne: jest.Mock;
+    remove: jest.Mock;
+  };
+  let recordHistory: { record: jest.Mock; resolveActorName: jest.Mock };
   let updateBuilder: {
     update: jest.Mock;
     set: jest.Mock;
@@ -84,9 +96,25 @@ describe('ChequesService', () => {
   };
 
   beforeEach(async () => {
+    manager = {
+      getRepository: jest.fn(() => repo),
+      findOne: jest.fn(),
+      remove: jest.fn(),
+    };
+    recordHistory = {
+      record: jest.fn().mockResolvedValue(undefined),
+      resolveActorName: jest.fn().mockResolvedValue('Actor Name'),
+    };
     module = await Test.createTestingModule({
       providers: [
         ChequesService,
+        {
+          provide: DataSource,
+          useValue: {
+            transaction: jest.fn((cb: (m: unknown) => unknown) => cb(manager)),
+          },
+        },
+        { provide: RecordHistoryService, useValue: recordHistory },
         {
           provide: getRepositoryToken(Cheque),
           useValue: {
@@ -471,7 +499,7 @@ describe('ChequesService', () => {
       await service.update(
         'cheque-uuid-1',
         companyId,
-        { status: ChequeStatus.CANCELLED },
+        { status: ChequeStatus.CANCELLED, reason: 'Replaced by transfer' },
         'user-1',
       );
 
@@ -646,6 +674,218 @@ describe('ChequesService', () => {
       );
 
       loggerErrorSpy.mockRestore();
+    });
+  });
+
+  describe('record history', () => {
+    const primeUpdate = (next: Partial<Cheque>) => {
+      repo.findOne
+        .mockResolvedValueOnce({ ...mockCheque } as Cheque)
+        .mockResolvedValueOnce({ ...mockCheque, ...next } as Cheque);
+    };
+
+    it('rejects cancelling without a reason before writing', async () => {
+      repo.findOne.mockResolvedValue({ ...mockCheque } as Cheque);
+
+      await expect(
+        service.update(
+          'cheque-uuid-1',
+          companyId,
+          { status: ChequeStatus.CANCELLED },
+          'user-1',
+        ),
+      ).rejects.toThrow(BadRequestException);
+      await expect(
+        service.update(
+          'cheque-uuid-1',
+          companyId,
+          { status: ChequeStatus.CANCELLED, reason: '   ' },
+          'user-1',
+        ),
+      ).rejects.toThrow(BadRequestException);
+      expect(updateBuilder.execute).not.toHaveBeenCalled();
+      expect(recordHistory.record).not.toHaveBeenCalled();
+    });
+
+    it('records CANCEL with the reason in the update transaction', async () => {
+      primeUpdate({ status: ChequeStatus.CANCELLED });
+
+      await service.update(
+        'cheque-uuid-1',
+        companyId,
+        { status: ChequeStatus.CANCELLED, reason: 'Tenant paid by transfer' },
+        'user-1',
+      );
+
+      expect(manager.getRepository).toHaveBeenCalledWith(Cheque);
+      expect(recordHistory.record).toHaveBeenCalledWith(
+        manager,
+        expect.objectContaining({
+          companyId,
+          action: RecordHistoryAction.CANCEL,
+          entityType: 'Cheque',
+          entityId: 'cheque-uuid-1',
+          entityTitle: 'Cheque CHQ001',
+          contextTitle: 'Ahmed Al-Rashid',
+          reason: 'Tenant paid by transfer',
+          actorId: 'user-1',
+          actorName: 'Actor Name',
+          metadata: {
+            from: ChequeStatus.PENDING,
+            to: ChequeStatus.CANCELLED,
+          },
+        }),
+      );
+    });
+
+    it('records REPLACE when the cheque is replaced', async () => {
+      primeUpdate({ status: ChequeStatus.REPLACED });
+
+      await service.update(
+        'cheque-uuid-1',
+        companyId,
+        { status: ChequeStatus.REPLACED },
+        'user-1',
+      );
+
+      expect(recordHistory.record).toHaveBeenCalledWith(
+        manager,
+        expect.objectContaining({
+          action: RecordHistoryAction.REPLACE,
+          reason: null,
+        }),
+      );
+    });
+
+    it('records STATUS_CHANGE with from and to for other statuses', async () => {
+      primeUpdate({ status: ChequeStatus.DEPOSITED });
+
+      await service.update(
+        'cheque-uuid-1',
+        companyId,
+        { status: ChequeStatus.DEPOSITED },
+        'user-1',
+      );
+
+      expect(recordHistory.record).toHaveBeenCalledWith(
+        manager,
+        expect.objectContaining({
+          action: RecordHistoryAction.STATUS_CHANGE,
+          metadata: {
+            from: ChequeStatus.PENDING,
+            to: ChequeStatus.DEPOSITED,
+          },
+        }),
+      );
+    });
+
+    it('records nothing for an edit that keeps the status', async () => {
+      primeUpdate({ bankName: 'New Bank' });
+
+      await service.update(
+        'cheque-uuid-1',
+        companyId,
+        { bankName: 'New Bank' },
+        'user-1',
+      );
+
+      expect(updateBuilder.execute).toHaveBeenCalledTimes(1);
+      expect(recordHistory.record).not.toHaveBeenCalled();
+    });
+
+    it('records nothing when the guarded UPDATE loses the race', async () => {
+      repo.findOne.mockResolvedValueOnce({ ...mockCheque } as Cheque);
+      updateBuilder = makeUpdateBuilder(0);
+      repo.createQueryBuilder.mockReturnValue(updateBuilder as any);
+
+      await expect(
+        service.update(
+          'cheque-uuid-1',
+          companyId,
+          { status: ChequeStatus.DEPOSITED },
+          'user-1',
+        ),
+      ).rejects.toThrow(BadRequestException);
+      expect(recordHistory.record).not.toHaveBeenCalled();
+    });
+
+    it('records BOUNCE with the bounce reason', async () => {
+      primeUpdate({ status: ChequeStatus.BOUNCED });
+
+      await service.bounce(
+        'cheque-uuid-1',
+        companyId,
+        { bounceReason: 'Insufficient funds' },
+        'user-1',
+      );
+
+      expect(recordHistory.record).toHaveBeenCalledWith(
+        manager,
+        expect.objectContaining({
+          action: RecordHistoryAction.BOUNCE,
+          entityTitle: 'Cheque CHQ001',
+          reason: 'Insufficient funds',
+          actorId: 'user-1',
+        }),
+      );
+    });
+  });
+
+  describe('archived unit', () => {
+    const archivedUnit = { id: 'unit-archived', deletedAt: new Date() } as Unit;
+
+    it('refuses creating a cheque on an archived unit', async () => {
+      unitRepo.findOne.mockResolvedValue(archivedUnit);
+
+      await expect(
+        service.create(
+          companyId,
+          { chequeNumber: 'CHQ009', unitId: 'unit-archived' } as any,
+          'user-1',
+        ),
+      ).rejects.toThrow(ConflictException);
+      expect(repo.save).not.toHaveBeenCalled();
+    });
+
+    it('refuses moving a cheque onto an archived unit', async () => {
+      repo.findOne.mockResolvedValue({
+        ...mockCheque,
+        unitId: 'unit-live',
+      } as Cheque);
+      unitRepo.findOne.mockResolvedValue(archivedUnit);
+
+      await expect(
+        service.update(
+          'cheque-uuid-1',
+          companyId,
+          { unitId: 'unit-archived' },
+          'user-1',
+        ),
+      ).rejects.toThrow(ConflictException);
+      expect(updateBuilder.execute).not.toHaveBeenCalled();
+    });
+
+    it('still edits a cheque already on an archived unit', async () => {
+      repo.findOne
+        .mockResolvedValueOnce({
+          ...mockCheque,
+          unitId: 'unit-archived',
+        } as Cheque)
+        .mockResolvedValueOnce({
+          ...mockCheque,
+          unitId: 'unit-archived',
+          notes: 'Checked',
+        } as Cheque);
+      unitRepo.findOne.mockResolvedValue(archivedUnit);
+
+      await service.update(
+        'cheque-uuid-1',
+        companyId,
+        { unitId: 'unit-archived', notes: 'Checked' },
+        'user-1',
+      );
+
+      expect(updateBuilder.execute).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -846,13 +1086,97 @@ describe('ChequesService', () => {
   });
 
   describe('remove', () => {
-    it('removes cheque', async () => {
-      repo.findOne.mockResolvedValue(mockCheque as Cheque);
-      repo.remove.mockResolvedValue(mockCheque as Cheque);
+    const lockRow = (overrides: Partial<Cheque> = {}) => {
+      const row = {
+        ...mockCheque,
+        regionCode: 'dubai',
+        ...overrides,
+      } as Cheque;
+      repo.findOne.mockResolvedValue(row);
+      manager.findOne.mockImplementation((entity: unknown) =>
+        Promise.resolve(
+          entity === Cheque ? row : { id: 'unit-1', unitNumber: 'A-1204' },
+        ),
+      );
+      return row;
+    };
 
-      await service.remove('cheque-uuid-1', companyId);
+    it('locks the row, records DELETE, then removes it', async () => {
+      const row = lockRow();
 
-      expect(repo.remove).toHaveBeenCalledWith(mockCheque);
+      await service.remove(
+        'cheque-uuid-1',
+        companyId,
+        'Entered twice',
+        'user-1',
+      );
+
+      expect(manager.findOne).toHaveBeenCalledWith(Cheque, {
+        where: { id: 'cheque-uuid-1', companyId },
+        lock: { mode: 'pessimistic_write' },
+      });
+      expect(recordHistory.record).toHaveBeenCalledWith(
+        manager,
+        expect.objectContaining({
+          companyId,
+          action: RecordHistoryAction.DELETE,
+          entityType: 'Cheque',
+          entityTitle: 'Cheque CHQ001',
+          reason: 'Entered twice',
+          actorId: 'user-1',
+          regionCode: 'dubai',
+        }),
+      );
+      expect(manager.remove).toHaveBeenCalledWith(row);
+      expect(recordHistory.record.mock.invocationCallOrder[0]).toBeLessThan(
+        manager.remove.mock.invocationCallOrder[0],
+      );
+    });
+
+    it.each([
+      ChequeStatus.PENDING,
+      ChequeStatus.DEPOSITED,
+      ChequeStatus.BOUNCED,
+      ChequeStatus.CANCELLED,
+      ChequeStatus.REPLACED,
+    ])('allows deleting a %s cheque', async (status: ChequeStatus) => {
+      lockRow({ status });
+
+      await service.remove('cheque-uuid-1', companyId, 'Wrong entry', 'user-1');
+
+      expect(manager.remove).toHaveBeenCalled();
+    });
+
+    it('refuses a CLEARED cheque with 409 and writes nothing', async () => {
+      lockRow({ status: ChequeStatus.CLEARED });
+
+      await expect(
+        service.remove('cheque-uuid-1', companyId, 'Wrong entry', 'user-1'),
+      ).rejects.toThrow(
+        new ConflictException('Cleared cheques cannot be deleted.'),
+      );
+      expect(recordHistory.record).not.toHaveBeenCalled();
+      expect(manager.remove).not.toHaveBeenCalled();
+    });
+
+    it('uses the unit number as context when there is no drawer name', async () => {
+      lockRow({ accountHolder: '', unitId: 'unit-1' });
+
+      await service.remove('cheque-uuid-1', companyId, 'Wrong entry', 'user-1');
+
+      expect(recordHistory.record).toHaveBeenCalledWith(
+        manager,
+        expect.objectContaining({ contextTitle: 'Unit A-1204' }),
+      );
+    });
+
+    it('throws NotFoundException for another company before locking', async () => {
+      repo.findOne.mockResolvedValue(null);
+
+      await expect(
+        service.remove('cheque-uuid-1', 'other-company', 'x', 'user-1'),
+      ).rejects.toThrow(NotFoundException);
+      expect(manager.findOne).not.toHaveBeenCalled();
     });
   });
   describe('region scoping', () => {
@@ -980,9 +1304,15 @@ describe('ChequesService', () => {
       seedCheque('punjab', 'unit-punjab');
 
       await expect(
-        service.remove('cheque-uuid-1', companyId, makkahManager),
+        service.remove(
+          'cheque-uuid-1',
+          companyId,
+          'Wrong entry',
+          'user-uuid-1',
+          makkahManager,
+        ),
       ).rejects.toThrow(NotFoundException);
-      expect(repo.remove).not.toHaveBeenCalled();
+      expect(manager.remove).not.toHaveBeenCalled();
     });
 
     it('denies every by-id read when the caller has no assigned region', async () => {

@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -573,6 +574,9 @@ export class LeadsService {
     });
     if (!unit) {
       throw new BadRequestException('Invalid unit selected');
+    }
+    if (unit.deletedAt) {
+      throw new ConflictException('This unit is archived.');
     }
   }
 

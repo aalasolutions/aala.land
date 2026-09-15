@@ -7,12 +7,14 @@ import { Unit } from '../properties/entities/unit.entity';
 import { Company } from '../companies/entities/company.entity';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { UsersModule } from '../users/users.module';
+import { RecordHistoryModule } from '../record-history/record-history.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Cheque, Unit, Company]),
     NotificationsModule,
     UsersModule,
+    RecordHistoryModule,
   ],
   controllers: [ChequesController],
   providers: [ChequesService],

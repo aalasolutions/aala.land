@@ -2,6 +2,12 @@ import PaginatedController from './paginated-base';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
+import { isAdminRole } from '../utils/roles';
+import {
+  openDeleteModal,
+  closeDeleteModal,
+  confirmDeleteModal,
+} from '../utils/delete-modal';
 import {
   MAINTENANCE_STATUS_OPTIONS,
   MONTH_OPTIONS,
@@ -36,8 +42,32 @@ export default class MaintenanceController extends PaginatedController {
   @tracked isSaving = false;
   @tracked errorMsg = '';
   @tracked activeSection = 'orders';
+  @tracked formReason = '';
+  @tracked showDeleteModal = false;
+  @tracked workOrderToDelete = null;
+  @tracked deleteReason = '';
+  @tracked isDeleting = false;
+  @tracked reasonError = '';
 
   statusOptions = MAINTENANCE_STATUS_OPTIONS;
+
+  get isCancelling() {
+    return (
+      !!this.editWorkOrder &&
+      this.formStatus === 'CANCELLED' &&
+      this.editWorkOrder.status !== 'CANCELLED'
+    );
+  }
+
+  // Mirrors the backend delete guard.
+  @action canDeleteWorkOrder(wo) {
+    return (
+      isAdminRole(this.auth.currentUser?.role) &&
+      wo.status === 'OPEN' &&
+      !wo.vendorId &&
+      !Number(wo.actualCost)
+    );
+  }
 
   get workOrderStatusOptions() {
     return this.statusOptions.filter((o) => o.value);
@@ -165,6 +195,7 @@ export default class MaintenanceController extends PaginatedController {
     this.formUnitId = wo.unitId ?? '';
     this.formVendorId = wo.vendorId ?? '';
     this.formStatus = wo.status || 'OPEN';
+    this.formReason = '';
     this.editWorkOrder = wo;
     this.errorMsg = '';
     this.showModal = true;
@@ -185,6 +216,11 @@ export default class MaintenanceController extends PaginatedController {
       this.errorMsg = 'Please select a property before saving the work order.';
       return;
     }
+    const reason = this.formReason.trim();
+    if (this.isCancelling && !reason) {
+      this.errorMsg = 'A reason is required to cancel a work order.';
+      return;
+    }
 
     this.isSaving = true;
     this.errorMsg = '';
@@ -199,6 +235,7 @@ export default class MaintenanceController extends PaginatedController {
       priority: this.formPriority,
       category: this.formCategory,
       ...(isEdit ? { status: this.formStatus } : {}),
+      ...(this.isCancelling ? { reason } : {}),
       ...(this.formEstimatedCost
         ? { estimatedCost: parseFloat(this.formEstimatedCost) }
         : {}),
@@ -232,5 +269,30 @@ export default class MaintenanceController extends PaginatedController {
     } finally {
       this.isSaving = false;
     }
+  }
+
+  @action openDelete(wo) {
+    this.deleteReason = '';
+    this.reasonError = '';
+    openDeleteModal(this, 'workOrderToDelete', wo);
+  }
+
+  @action closeDeleteModal() {
+    closeDeleteModal(this, 'workOrderToDelete');
+  }
+
+  @action async confirmDelete() {
+    const reason = this.deleteReason.trim();
+    if (!reason) {
+      this.reasonError = 'Reason is required.';
+      return;
+    }
+    await confirmDeleteModal(this, {
+      itemKey: 'workOrderToDelete',
+      resourcePath: '/maintenance',
+      successMessage: 'Work order deleted',
+      refreshRoute: 'maintenance',
+      body: { reason },
+    });
   }
 }

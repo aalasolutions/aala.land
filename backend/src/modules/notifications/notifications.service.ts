@@ -413,6 +413,7 @@ export class NotificationsService {
       .leftJoinAndSelect('lease.contact', 'tenant')
       .where('lease.company_id = :companyId', { companyId })
       .andWhere('lease.status = :status', { status: LeaseStatus.ACTIVE })
+      .andWhere('lease.deleted_at IS NULL')
       .andWhere('lease.end_date >= :now', {
         now: now.toISOString().split('T')[0],
       })

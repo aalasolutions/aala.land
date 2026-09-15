@@ -4,12 +4,12 @@ import {
   Get,
   Post,
   Patch,
-  Delete,
   Body,
   Param,
   Query,
   UseGuards,
   Request,
+  ParseEnumPipe,
   ParseIntPipe,
   ParseUUIDPipe,
   DefaultValuePipe,
@@ -24,8 +24,10 @@ import {
   ApiQuery,
 } from '@nestjs/swagger';
 import { LeasesService } from './leases.service';
+import { LeaseArchivedFilter } from './dto/lease-archived-filter.enum';
 import { CreateLeaseDto } from './dto/create-lease.dto';
 import { UpdateLeaseDto } from './dto/update-lease.dto';
+import { LeaseReasonDto, OptionalLeaseReasonDto } from './dto/lease-reason.dto';
 import { LeaseStatus, LeaseType } from './entities/lease.entity';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '@shared/guards/roles.guard';
@@ -87,6 +89,12 @@ export class LeasesController {
     type: String,
     description: 'ISO date, inclusive upper bound on startDate',
   })
+  @ApiQuery({
+    name: 'archived',
+    required: false,
+    enum: LeaseArchivedFilter,
+    description: 'Archived leases: exclude (default), only or include',
+  })
   findAll(
     @Request() req: AuthenticatedRequest,
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
@@ -99,6 +107,11 @@ export class LeasesController {
     @Query('search') search?: string,
     @Query('dateFrom') dateFrom?: string,
     @Query('dateTo') dateTo?: string,
+    @Query(
+      'archived',
+      new ParseEnumPipe(LeaseArchivedFilter, { optional: true }),
+    )
+    archived?: LeaseArchivedFilter,
   ) {
     if (req.user.role === Role.AGENT && !contactId) {
       throw new ForbiddenException(
@@ -123,6 +136,7 @@ export class LeasesController {
         search: search || undefined,
         dateFrom: dateFrom || undefined,
         dateTo: dateTo || undefined,
+        archived: archived || undefined,
       },
       req.user,
     );
@@ -171,6 +185,7 @@ export class LeasesController {
       id,
       requireCompanyId(req.user),
       dto,
+      req.user.userId,
       req.user,
     );
   }
@@ -195,26 +210,76 @@ export class LeasesController {
 
   @Post(':id/terminate')
   @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER)
-  @ApiOperation({ summary: 'Terminate a lease early' })
+  @ApiOperation({ summary: 'Terminate a lease early (reason required)' })
   terminate(
     @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: LeaseReasonDto,
     @Request() req: AuthenticatedRequest,
   ) {
     return this.leasesService.terminate(
       id,
       requireCompanyId(req.user),
+      dto,
+      req.user.userId,
       req.user,
     );
   }
 
-  @Delete(':id')
-  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN)
-  @HttpCode(HttpStatus.NO_CONTENT)
-  @ApiOperation({ summary: 'Delete a lease (COMPANY_ADMIN+)' })
-  remove(
+  @Post(':id/archive')
+  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Archive a non-active lease (reason required)',
+  })
+  archive(
     @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: LeaseReasonDto,
     @Request() req: AuthenticatedRequest,
   ) {
-    return this.leasesService.remove(id, requireCompanyId(req.user), req.user);
+    return this.leasesService.archive(
+      id,
+      requireCompanyId(req.user),
+      dto,
+      req.user.userId,
+      req.user,
+    );
+  }
+
+  @Post(':id/unarchive')
+  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Unarchive a lease (reason optional)' })
+  unarchive(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: OptionalLeaseReasonDto,
+    @Request() req: AuthenticatedRequest,
+  ) {
+    return this.leasesService.unarchive(
+      id,
+      requireCompanyId(req.user),
+      dto,
+      req.user.userId,
+      req.user,
+    );
+  }
+
+  @Post(':id/delete')
+  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({
+    summary: 'Delete a draft lease with no cheques (reason required)',
+  })
+  remove(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: LeaseReasonDto,
+    @Request() req: AuthenticatedRequest,
+  ) {
+    return this.leasesService.remove(
+      id,
+      requireCompanyId(req.user),
+      dto,
+      req.user.userId,
+      req.user,
+    );
   }
 }

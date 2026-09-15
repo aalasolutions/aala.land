@@ -1,0 +1,91 @@
+<div
+  class="flex col gap-3"
+  data-test-record-history
+  {{this.reloadOn @reloadKey}}
+>
+  {{#if this.isLoading}}
+    <div
+      class="flex x-center gap-2 text-sm text-muted"
+      data-test-record-history-loading
+    >
+      <Nuvo::Spinner @size="sm" />
+      <span>Loading history...</span>
+    </div>
+  {{else if this.errorMessage}}
+    <Nuvo::Alert
+      @variant="danger"
+      @description={{this.errorMessage}}
+      data-test-record-history-error
+    />
+  {{else if this.rows.length}}
+    <div class="nu-table-wrapper">
+      <table class="nu-table">
+        <thead>
+          <tr>
+            <th>Action</th>
+            <th>Record</th>
+            <th>Reason</th>
+            <th>By</th>
+            <th>Date</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{#each this.rows key="id" as |entry|}}
+            <tr data-test-record-history-row={{entry.id}}>
+              <td>
+                <Nuvo::Tag
+                  @variant={{entry.actionVariant}}
+                  @text={{entry.actionLabel}}
+                  data-test-record-history-action
+                />
+              </td>
+              <td>
+                <div class="flex col gap-1">
+                  <span
+                    class="font-bold"
+                    data-test-record-history-title
+                  >{{entry.entityTitle}}</span>
+                  {{#if entry.contextTitle}}
+                    <span
+                      class="text-xs text-muted"
+                      data-test-record-history-context
+                    >{{entry.contextTitle}}</span>
+                  {{/if}}
+                </div>
+              </td>
+              <td class="text-sm" data-test-record-history-reason>{{if
+                  entry.reason
+                  entry.reason
+                  "-"
+                }}</td>
+              <td
+                class="text-sm text-muted"
+                data-test-record-history-actor
+              >{{entry.actorName}}</td>
+              <td
+                class="text-sm text-muted"
+                data-test-record-history-date
+              >{{format-date-time entry.createdAt}}</td>
+            </tr>
+          {{/each}}
+        </tbody>
+      </table>
+    </div>
+
+    {{#if this.hasPages}}
+      <Nuvo::Pagination
+        @page={{this.page}}
+        @limit={{this.limit}}
+        @total={{this.total}}
+        @onPageChange={{this.goToPage}}
+        data-test-record-history-pagination
+      />
+    {{/if}}
+  {{else}}
+    <Nuvo::EmptyState
+      @size="sm"
+      @title="No history yet"
+      data-test-record-history-empty
+    />
+  {{/if}}
+</div>

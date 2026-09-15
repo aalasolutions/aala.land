@@ -1,5 +1,12 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { plainToInstance } from 'class-transformer';
+import { validate } from 'class-validator';
 import { PropertiesController } from './properties.controller';
+import {
+  OptionalPropertyReasonDto,
+  PropertyReasonDto,
+} from './dto/property-reason.dto';
+import { UnitArchivedFilter } from './dto/unit-archived-filter.enum';
 import { PropertiesService } from './properties.service';
 import { MediaService } from './media.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -21,7 +28,6 @@ describe('PropertiesController', () => {
     },
   };
 
-  const mockArea = { id: 'area-uuid-1', name: 'Downtown Dubai', companyId };
   const mockAsset = {
     id: 'asset-uuid-1',
     name: 'Burj View',
@@ -35,7 +41,6 @@ describe('PropertiesController', () => {
     companyId,
   };
 
-  const paginatedAreas = { data: [mockArea], total: 1, page: 1, limit: 20 };
   const paginatedAssets = { data: [mockAsset], total: 1, page: 1, limit: 20 };
   const paginatedUnits = { data: [mockUnit], total: 1, page: 1, limit: 20 };
 
@@ -46,11 +51,6 @@ describe('PropertiesController', () => {
         {
           provide: PropertiesService,
           useValue: {
-            createArea: jest.fn(),
-            findAllAreas: jest.fn(),
-            findOneArea: jest.fn(),
-            updateArea: jest.fn(),
-            removeArea: jest.fn(),
             createAsset: jest.fn(),
             findAssetsByLocality: jest.fn(),
             findOneAsset: jest.fn(),
@@ -61,6 +61,9 @@ describe('PropertiesController', () => {
             findUnitsByAsset: jest.fn(),
             updateUnit: jest.fn(),
             removeUnit: jest.fn(),
+            archiveUnit: jest.fn(),
+            unarchiveUnit: jest.fn(),
+            findAllUnits: jest.fn(),
             bulkImportUnits: jest.fn(),
           },
         },
@@ -87,39 +90,6 @@ describe('PropertiesController', () => {
 
   it('should be defined', () => {
     expect(controller).toBeDefined();
-  });
-
-  describe('createArea', () => {
-    it('creates area with companyId from request', async () => {
-      service.createArea.mockResolvedValue(mockArea as any);
-
-      const result = await controller.createArea(
-        { name: 'Downtown Dubai' },
-        mockReq,
-      );
-
-      expect(service.createArea).toHaveBeenCalledWith(companyId, {
-        name: 'Downtown Dubai',
-      });
-      expect(result).toEqual(mockArea);
-    });
-  });
-
-  describe('findAllAreas', () => {
-    it('returns paginated areas for company', async () => {
-      service.findAllAreas.mockResolvedValue(paginatedAreas as any);
-
-      const result = await controller.findAllAreas(mockReq, 1, 20);
-
-      expect(service.findAllAreas).toHaveBeenCalledWith(
-        companyId,
-        1,
-        20,
-        undefined,
-        mockReq.user,
-      );
-      expect(result).toEqual(paginatedAreas);
-    });
   });
 
   describe('createAsset', () => {
@@ -200,60 +170,34 @@ describe('PropertiesController', () => {
         1,
         20,
         mockReq.user,
+        undefined,
       );
       expect(result).toEqual(paginatedUnits);
     });
-  });
 
-  describe('updateArea', () => {
-    it('updates area', async () => {
-      service.updateArea.mockResolvedValue({
-        ...mockArea,
-        name: 'Updated',
-      } as any);
+    it('forwards the archived query param', async () => {
+      service.findUnitsByAsset.mockResolvedValue(paginatedUnits as any);
 
-      const result = await controller.updateArea(
-        'area-uuid-1',
-        { name: 'Updated' },
+      await controller.findUnitsByAsset(
+        'asset-uuid-1',
         mockReq,
+        1,
+        20,
+        UnitArchivedFilter.ONLY,
       );
 
-      expect(service.updateArea).toHaveBeenCalledWith(
-        'area-uuid-1',
+      expect(service.findUnitsByAsset).toHaveBeenCalledWith(
+        'asset-uuid-1',
         companyId,
-        { name: 'Updated' },
+        1,
+        20,
         mockReq.user,
-      );
-    });
-  });
-
-  describe('removeArea', () => {
-    it('removes area', async () => {
-      service.removeArea.mockResolvedValue(undefined);
-
-      await controller.removeArea('area-uuid-1', mockReq);
-
-      expect(service.removeArea).toHaveBeenCalledWith(
-        'area-uuid-1',
-        companyId,
-        mockReq.user,
+        UnitArchivedFilter.ONLY,
       );
     });
   });
 
   describe('region set threading', () => {
-    it('findOneArea passes the caller region set to the service', async () => {
-      service.findOneArea.mockResolvedValue(mockArea as any);
-
-      await controller.findOneArea('area-uuid-1', mockReq);
-
-      expect(service.findOneArea).toHaveBeenCalledWith(
-        'area-uuid-1',
-        companyId,
-        mockReq.user,
-      );
-    });
-
     it('findOneAsset passes the caller region set to the service', async () => {
       service.findOneAsset.mockResolvedValue(mockAsset as any);
 
@@ -292,16 +236,129 @@ describe('PropertiesController', () => {
       );
     });
 
-    it('removeUnit passes the caller region set to the service', async () => {
+    it('removeUnit passes the reason, actor and caller region set to the service', async () => {
       service.removeUnit.mockResolvedValue(undefined);
 
-      await controller.removeUnit('unit-uuid-1', mockReq);
+      await controller.removeUnit(
+        'unit-uuid-1',
+        { reason: 'Mistake' },
+        mockReq,
+      );
 
       expect(service.removeUnit).toHaveBeenCalledWith(
         'unit-uuid-1',
         companyId,
+        'Mistake',
+        userId,
         mockReq.user,
       );
+    });
+
+    it('archiveUnit passes the reason and actor to the service', async () => {
+      service.archiveUnit.mockResolvedValue(mockUnit as any);
+
+      await controller.archiveUnit('unit-uuid-1', { reason: 'Sold' }, mockReq);
+
+      expect(service.archiveUnit).toHaveBeenCalledWith(
+        'unit-uuid-1',
+        companyId,
+        'Sold',
+        userId,
+        mockReq.user,
+      );
+    });
+
+    it('unarchiveUnit accepts a missing reason', async () => {
+      service.unarchiveUnit.mockResolvedValue(mockUnit as any);
+
+      await controller.unarchiveUnit('unit-uuid-1', {}, mockReq);
+
+      expect(service.unarchiveUnit).toHaveBeenCalledWith(
+        'unit-uuid-1',
+        companyId,
+        undefined,
+        userId,
+        mockReq.user,
+      );
+    });
+  });
+
+  describe('removeAsset', () => {
+    it('passes the reason and actor to the service', async () => {
+      service.removeAsset.mockResolvedValue(undefined);
+
+      await controller.removeAsset(
+        'asset-uuid-1',
+        { reason: 'Duplicate' },
+        mockReq,
+      );
+
+      expect(service.removeAsset).toHaveBeenCalledWith(
+        'asset-uuid-1',
+        'Duplicate',
+        userId,
+      );
+    });
+  });
+
+  describe('findAllUnits archived filter', () => {
+    it('forwards the archived query param', async () => {
+      service.findAllUnits.mockResolvedValue(paginatedUnits as any);
+
+      await controller.findAllUnits(
+        mockReq,
+        1,
+        20,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        UnitArchivedFilter.ONLY,
+      );
+
+      expect(service.findAllUnits).toHaveBeenCalledWith(
+        companyId,
+        1,
+        20,
+        expect.objectContaining({ archived: UnitArchivedFilter.ONLY }),
+        expect.anything(),
+      );
+    });
+  });
+
+  describe('reason DTOs', () => {
+    const errorsFor = async (cls: any, body: object) =>
+      validate(plainToInstance(cls, body) as object);
+
+    it('rejects a missing or whitespace-only reason', async () => {
+      expect(await errorsFor(PropertyReasonDto, {})).not.toHaveLength(0);
+      expect(
+        await errorsFor(PropertyReasonDto, { reason: '   ' }),
+      ).not.toHaveLength(0);
+    });
+
+    it('rejects a reason over 500 characters', async () => {
+      expect(
+        await errorsFor(PropertyReasonDto, { reason: 'x'.repeat(501) }),
+      ).not.toHaveLength(0);
+    });
+
+    it('trims and accepts a valid reason', async () => {
+      const dto = plainToInstance(PropertyReasonDto, { reason: '  Sold  ' });
+      expect(await validate(dto)).toHaveLength(0);
+      expect(dto.reason).toBe('Sold');
+    });
+
+    it('allows unarchive without a reason', async () => {
+      expect(await errorsFor(OptionalPropertyReasonDto, {})).toHaveLength(0);
     });
   });
 

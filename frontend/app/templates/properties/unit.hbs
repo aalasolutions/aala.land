@@ -30,6 +30,29 @@
   </div>
 
   {{#if @model.unit}}
+    {{#if this.isArchived}}
+      <Nuvo::Alert
+        @variant="warning"
+        @title="Archived"
+        @description="This property is archived and read-only. Photos and documents can still be removed."
+        data-test-archived-banner
+      >
+        <:actions>
+          {{#if this.canArchiveUnit}}
+            <Nuvo::Button
+              @variant="secondary"
+              @size="sm"
+              @icon="arrow-counter-clockwise"
+              data-test-unarchive-unit
+              {{on "click" (fn this.openUnitAction "unarchive")}}
+            >
+              Unarchive
+            </Nuvo::Button>
+          {{/if}}
+        </:actions>
+      </Nuvo::Alert>
+    {{/if}}
+
     {{! Two column: Gallery + Info }}
     <div class="unit-detail-grid">
       {{! Left: Photo gallery }}
@@ -38,15 +61,41 @@
           <div class="flex between x-center">
             <h2 data-test-unit-title class="text-2xl font-bold">Property
               {{@model.unit.unitNumber}}</h2>
-            <Nuvo::Button
-              @variant="secondary"
-              @size="sm"
-              @icon="pencil-simple"
-              data-test-edit-btn
-              {{on "click" this.openEdit}}
-            >
-              Edit
-            </Nuvo::Button>
+            <div class="flex gap-2 wrap">
+              {{#unless this.isArchived}}
+                <Nuvo::Button
+                  @variant="secondary"
+                  @size="sm"
+                  @icon="pencil-simple"
+                  data-test-edit-btn
+                  {{on "click" this.openEdit}}
+                >
+                  Edit
+                </Nuvo::Button>
+                {{#if this.canArchiveUnit}}
+                  <Nuvo::Button
+                    @variant="secondary"
+                    @size="sm"
+                    @icon="archive"
+                    data-test-archive-unit
+                    {{on "click" (fn this.openUnitAction "archive")}}
+                  >
+                    Archive
+                  </Nuvo::Button>
+                {{/if}}
+              {{/unless}}
+              {{#if this.canDeleteUnit}}
+                <Nuvo::Button
+                  @variant="danger"
+                  @size="sm"
+                  @icon="trash"
+                  data-test-delete-unit
+                  {{on "click" (fn this.openUnitAction "delete")}}
+                >
+                  Delete
+                </Nuvo::Button>
+              {{/if}}
+            </div>
           </div>
 
           {{#if @model.unit.asset}}
@@ -140,23 +189,26 @@
       <Nuvo::Card class="flex col gap-4">
         <div class="flex between x-center mb-2">
           <h4 class="text-sm font-bold uppercase text-muted">Photos</h4>
-          <label
-            class="nu-btn m-primary m-sm {{if this.isUploading 'is-disabled'}}"
-            data-test-upload-photo-btn
-          >
-            <Ui::Ph @icon="camera-plus" />
-            <span class="nu-btn__label">{{if
-                this.isUploading
-                this.uploadStatus
-                "Add Photo"
-              }}</span>
-            <input
-              type="file"
-              class="sr-only"
-              accept="image/jpeg,image/png,image/webp"
-              {{on "change" this.uploadPhoto}}
-            />
-          </label>
+          {{#unless this.isArchived}}
+            <label
+              class="nu-btn m-primary m-sm
+                {{if this.isUploading 'is-disabled'}}"
+              data-test-upload-photo-btn
+            >
+              <Ui::Ph @icon="camera-plus" />
+              <span class="nu-btn__label">{{if
+                  this.isUploading
+                  this.uploadStatus
+                  "Add Photo"
+                }}</span>
+              <input
+                type="file"
+                class="sr-only"
+                accept="image/jpeg,image/png,image/webp"
+                {{on "change" this.uploadPhoto}}
+              />
+            </label>
+          {{/unless}}
         </div>
 
         {{#if this.isUploading}}
@@ -252,15 +304,17 @@
       <div class="flex between x-center mb-3">
         <h4 class="text-md font-bold"><Ui::Ph @icon="file-text" />
           Documents</h4>
-        <Nuvo::Button
-          @variant="primary"
-          @size="sm"
-          data-test-upload-document-btn
-          @icon="upload-simple"
-          {{on "click" this.openDocumentCreate}}
-        >
-          Upload
-        </Nuvo::Button>
+        {{#unless this.isArchived}}
+          <Nuvo::Button
+            @variant="primary"
+            @size="sm"
+            data-test-upload-document-btn
+            @icon="upload-simple"
+            {{on "click" this.openDocumentCreate}}
+          >
+            Upload
+          </Nuvo::Button>
+        {{/unless}}
       </div>
 
       {{#if @model.documents.length}}
@@ -350,9 +404,20 @@
                   <td>{{format-date lease.startDate}}</td>
                   <td>{{format-date lease.endDate}}</td>
                   <td>{{format-currency lease.monthlyRent}}</td>
-                  <td><Nuvo::Tag class="tag-lease-{{lowercase lease.status}}">
-                      {{lease.status}}
-                    </Nuvo::Tag></td>
+                  <td>
+                    <div class="flex gap-1 wrap">
+                      <Nuvo::Tag class="tag-lease-{{lowercase lease.status}}">
+                        {{lease.status}}
+                      </Nuvo::Tag>
+                      {{#if lease.deletedAt}}
+                        <Nuvo::Tag
+                          @variant="secondary"
+                          @text="Archived"
+                          data-test-lease-archived-badge
+                        />
+                      {{/if}}
+                    </div>
+                  </td>
                 </tr>
               {{/each}}
             </tbody>
@@ -362,6 +427,20 @@
         <p class="text-muted text-sm">No lease history for this property.</p>
       {{/if}}
     </Nuvo::Card>
+
+    {{#if this.canViewHistory}}
+      <Nuvo::Card data-test-unit-history>
+        <h4 class="text-md font-bold mb-3"><Ui::Ph
+            @icon="clock-counter-clockwise"
+          />
+          History</h4>
+        <RecordHistoryList
+          @entityType="Unit"
+          @entityId={{@model.unit.id}}
+          @reloadKey={{this.isArchived}}
+        />
+      </Nuvo::Card>
+    {{/if}}
   {{else}}
     <Nuvo::EmptyState
       @title="Property not found"
@@ -673,3 +752,41 @@
   @onClose={{this.closeDeleteDocumentModal}}
   @onConfirm={{this.confirmDeleteDocument}}
 />
+
+<ConfirmModal
+  @open={{this.showUnitActionModal}}
+  @title={{this.unitActionConfig.title}}
+  @message={{this.unitActionConfig.message}}
+  @confirmText={{this.unitActionConfig.confirmText}}
+  @cancelText="Cancel"
+  @confirmVariant={{this.unitActionConfig.confirmVariant}}
+  @isConfirming={{this.isSubmittingUnitAction}}
+  @confirmingText={{this.unitActionConfig.confirmingText}}
+  @onClose={{this.closeUnitAction}}
+  @onConfirm={{this.confirmUnitAction}}
+>
+  <Nuvo::Field
+    @label={{if
+      this.unitActionConfig.reasonRequired
+      "Reason"
+      "Reason (optional)"
+    }}
+    @required={{this.unitActionConfig.reasonRequired}}
+    class="mt-3"
+  >
+    <Nuvo::Textarea
+      @rows={{3}}
+      @maxlength={{500}}
+      @placeholder="Why is this needed?"
+      @value={{this.unitActionReason}}
+      @invalid={{if this.unitActionError true false}}
+      @onInput={{fn this.setFieldValue "unitActionReason"}}
+      data-test-reason-input
+    />
+  </Nuvo::Field>
+  {{#if this.unitActionError}}
+    <p class="text-sm text-danger mt-2" data-test-reason-error>
+      {{this.unitActionError}}
+    </p>
+  {{/if}}
+</ConfirmModal>

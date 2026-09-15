@@ -2,9 +2,18 @@ import {
   Injectable,
   NotFoundException,
   ConflictException,
+  BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, FindOptionsWhere, In } from 'typeorm';
+import {
+  Repository,
+  FindOptionsWhere,
+  In,
+  DataSource,
+  EntityManager,
+} from 'typeorm';
+import { RecordHistoryService } from '../record-history/record-history.service';
+import { RecordHistoryAction } from '../record-history/entities/record-history.entity';
 import { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity';
 import { Commission, CommissionStatus } from './entities/commission.entity';
 import { CreateCommissionDto } from './dto/create-commission.dto';
@@ -27,6 +36,8 @@ export class CommissionsService {
     private readonly commissionRepository: Repository<Commission>,
     @InjectRepository(Company)
     private readonly companyRepository: Repository<Company>,
+    private readonly dataSource: DataSource,
+    private readonly recordHistoryService: RecordHistoryService,
   ) {}
 
   async create(
@@ -141,9 +152,22 @@ export class CommissionsService {
     companyId: string,
     dto: UpdateCommissionDto,
     caller?: RegionScope,
+    userId?: string,
   ): Promise<Commission> {
     // Confirm existence + tenant scope, and give a NotFound (not a silent no-op) for a bad id.
     const commission = await this.findOne(id, companyId, caller);
+    const isStatusChange =
+      dto.status !== undefined && dto.status !== commission.status;
+
+    if (
+      isStatusChange &&
+      dto.status === CommissionStatus.CANCELLED &&
+      !dto.reason?.trim()
+    ) {
+      throw new BadRequestException(
+        'A reason is required to cancel a commission.',
+      );
+    }
 
     // Only persist the columns this DTO can change, so a concurrent state
     // transition (approve/pay) is not clobbered by a stale whole-entity save.
@@ -155,7 +179,24 @@ export class CommissionsService {
     }
 
     if (Object.keys(patch).length > 0) {
-      await this.commissionRepository.update({ id, companyId }, patch);
+      await this.dataSource.transaction(async (manager) => {
+        await manager
+          .getRepository(Commission)
+          .update({ id, companyId }, patch);
+
+        if (isStatusChange) {
+          await this.recordCommissionHistory(
+            manager,
+            commission,
+            dto.status === CommissionStatus.CANCELLED
+              ? RecordHistoryAction.CANCEL
+              : RecordHistoryAction.STATUS_CHANGE,
+            userId,
+            dto.reason,
+            { from: commission.status, to: dto.status },
+          );
+        }
+      });
     }
 
     // Re-read of a row this caller just wrote, so it stays unscoped.
@@ -166,22 +207,32 @@ export class CommissionsService {
     id: string,
     companyId: string,
     caller?: RegionScope,
+    userId?: string,
   ): Promise<Commission> {
-    // Guarded conditional transition: only flips PENDING -> APPROVED atomically.
-    const result = await this.commissionRepository.update(
-      {
+    const regionWhere = this.regionScopedWhere(caller);
+
+    await this.dataSource.transaction(async (manager) => {
+      const repo = manager.getRepository(Commission);
+      // Guarded conditional transition: only flips PENDING -> APPROVED atomically.
+      const result = await repo.update(
+        { id, companyId, status: CommissionStatus.PENDING, ...regionWhere },
+        { status: CommissionStatus.APPROVED },
+      );
+
+      if (result.affected !== 1) {
+        await this.assertExists(id, companyId, caller);
+        throw new ConflictException('Only PENDING commissions can be approved');
+      }
+
+      await this.recordTransitionHistory(
+        manager,
         id,
         companyId,
-        status: CommissionStatus.PENDING,
-        ...this.regionScopedWhere(caller),
-      },
-      { status: CommissionStatus.APPROVED },
-    );
-
-    if (result.affected !== 1) {
-      await this.assertExists(id, companyId, caller);
-      throw new ConflictException('Only PENDING commissions can be approved');
-    }
+        CommissionStatus.PENDING,
+        CommissionStatus.APPROVED,
+        userId,
+      );
+    });
 
     // Re-read of a row this caller just wrote, so it stays unscoped.
     return this.findOne(id, companyId);
@@ -191,28 +242,90 @@ export class CommissionsService {
     id: string,
     companyId: string,
     caller?: RegionScope,
+    userId?: string,
   ): Promise<Commission> {
-    // Guarded conditional transition: only flips APPROVED -> PAID atomically,
-    // stamping paidAt in the same statement so amount edits cannot be clobbered.
-    const result = await this.commissionRepository.update(
-      {
+    const regionWhere = this.regionScopedWhere(caller);
+
+    await this.dataSource.transaction(async (manager) => {
+      const repo = manager.getRepository(Commission);
+      // Guarded conditional transition: only flips APPROVED -> PAID atomically,
+      // stamping paidAt in the same statement so amount edits cannot be clobbered.
+      const result = await repo.update(
+        { id, companyId, status: CommissionStatus.APPROVED, ...regionWhere },
+        { status: CommissionStatus.PAID, paidAt: new Date() },
+      );
+
+      if (result.affected !== 1) {
+        await this.assertExists(id, companyId, caller);
+        throw new ConflictException(
+          'Only APPROVED commissions can be marked as paid',
+        );
+      }
+
+      await this.recordTransitionHistory(
+        manager,
         id,
         companyId,
-        status: CommissionStatus.APPROVED,
-        ...this.regionScopedWhere(caller),
-      },
-      { status: CommissionStatus.PAID, paidAt: new Date() },
-    );
-
-    if (result.affected !== 1) {
-      await this.assertExists(id, companyId, caller);
-      throw new ConflictException(
-        'Only APPROVED commissions can be marked as paid',
+        CommissionStatus.APPROVED,
+        CommissionStatus.PAID,
+        userId,
       );
-    }
+    });
 
     // Re-read of a row this caller just wrote, so it stays unscoped.
     return this.findOne(id, companyId);
+  }
+
+  private async recordTransitionHistory(
+    manager: EntityManager,
+    id: string,
+    companyId: string,
+    from: CommissionStatus,
+    to: CommissionStatus,
+    userId: string | undefined,
+  ): Promise<void> {
+    const commission = await manager
+      .getRepository(Commission)
+      .findOne({ where: { id, companyId } });
+    if (!commission) {
+      throw new NotFoundException('Commission not found');
+    }
+    await this.recordCommissionHistory(
+      manager,
+      commission,
+      RecordHistoryAction.STATUS_CHANGE,
+      userId,
+      null,
+      { from, to },
+    );
+  }
+
+  private async recordCommissionHistory(
+    manager: EntityManager,
+    commission: Commission,
+    action: RecordHistoryAction,
+    userId: string | undefined,
+    reason: string | null | undefined,
+    metadata: Record<string, unknown>,
+  ): Promise<void> {
+    await this.recordHistoryService.record(manager, {
+      companyId: commission.companyId,
+      action,
+      entityType: 'Commission',
+      entityId: commission.id,
+      entityTitle: `Commission ${commission.commissionAmount} ${commission.currency}`,
+      contextTitle: await this.recordHistoryService.resolveActorName(
+        manager,
+        commission.agentId,
+      ),
+      reason: reason ?? null,
+      actorId: userId ?? null,
+      actorName: userId
+        ? await this.recordHistoryService.resolveActorName(manager, userId)
+        : 'System',
+      regionCode: commission.regionCode,
+      metadata,
+    });
   }
 
   private async assertExists(

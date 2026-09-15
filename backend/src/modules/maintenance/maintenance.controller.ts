@@ -3,7 +3,6 @@ import {
   Get,
   Post,
   Patch,
-  Delete,
   Body,
   Param,
   Query,
@@ -24,6 +23,7 @@ import {
 import { MaintenanceService } from './maintenance.service';
 import { CreateWorkOrderDto } from './dto/create-work-order.dto';
 import { UpdateWorkOrderDto } from './dto/update-work-order.dto';
+import { DeleteWorkOrderDto } from './dto/delete-work-order.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '@shared/guards/roles.guard';
 import { Roles } from '@shared/decorators/roles.decorator';
@@ -168,20 +168,28 @@ export class MaintenanceController {
       requireCompanyId(req.user),
       dto,
       req.user,
+      req.user.userId,
     );
   }
 
-  @Delete(':id')
+  @Post(':id/delete')
   @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN)
   @HttpCode(HttpStatus.NO_CONTENT)
-  @ApiOperation({ summary: 'Delete a work order (COMPANY_ADMIN+)' })
+  @ApiOperation({
+    summary: 'Delete a work order with a reason (COMPANY_ADMIN+)',
+    description:
+      'Only OPEN work orders with no vendor and no actual cost; otherwise 409.',
+  })
   remove(
     @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: DeleteWorkOrderDto,
     @Request() req: AuthenticatedRequest,
   ) {
     return this.maintenanceService.remove(
       id,
       requireCompanyId(req.user),
+      dto.reason,
+      req.user.userId,
       req.user,
     );
   }

@@ -1,7 +1,13 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { DataSource, Repository } from 'typeorm';
+import {
+  BadRequestException,
+  ConflictException,
+  NotFoundException,
+} from '@nestjs/common';
+import { RecordHistoryService } from '../record-history/record-history.service';
+import { RecordHistoryAction } from '../record-history/entities/record-history.entity';
 import { MaintenanceService } from './maintenance.service';
 import {
   WorkOrder,
@@ -16,6 +22,8 @@ describe('MaintenanceService', () => {
   let service: MaintenanceService;
   let repo: any;
   let unitRepo: any;
+  let manager: any;
+  let recordHistory: { record: jest.Mock; resolveActorName: jest.Mock };
 
   const companyId = 'company-uuid-1';
 
@@ -79,9 +87,25 @@ describe('MaintenanceService', () => {
   };
 
   beforeEach(async () => {
+    manager = {
+      getRepository: jest.fn(() => repo),
+      findOne: jest.fn(),
+      remove: jest.fn(),
+    };
+    recordHistory = {
+      record: jest.fn().mockResolvedValue(undefined),
+      resolveActorName: jest.fn().mockResolvedValue('Actor Name'),
+    };
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         MaintenanceService,
+        {
+          provide: DataSource,
+          useValue: {
+            transaction: jest.fn((cb: (m: unknown) => unknown) => cb(manager)),
+          },
+        },
+        { provide: RecordHistoryService, useValue: recordHistory },
         {
           provide: getRepositoryToken(WorkOrder),
           useValue: {
@@ -271,13 +295,236 @@ describe('MaintenanceService', () => {
   });
 
   describe('remove', () => {
-    it('removes work order', async () => {
-      repo.findOne.mockResolvedValue(mockOrder as WorkOrder);
-      repo.remove.mockResolvedValue(mockOrder as WorkOrder);
+    const lockRow = (overrides: Partial<WorkOrder> = {}) => {
+      const row = {
+        ...mockOrder,
+        vendorId: null,
+        actualCost: null,
+        regionCode: 'dubai',
+        ...overrides,
+      } as WorkOrder;
+      repo.findOne.mockResolvedValue(row);
+      manager.findOne.mockImplementation((entity: unknown) =>
+        Promise.resolve(
+          entity === WorkOrder
+            ? row
+            : { id: 'unit-uuid-1', unitNumber: 'A-1204' },
+        ),
+      );
+      return row;
+    };
 
-      await service.remove('order-uuid-1', companyId);
+    const expectRefused = async () => {
+      await expect(
+        service.remove('order-uuid-1', companyId, 'Wrong entry', 'user-1'),
+      ).rejects.toThrow(
+        new ConflictException('Cancel this work order instead.'),
+      );
+      expect(recordHistory.record).not.toHaveBeenCalled();
+      expect(manager.remove).not.toHaveBeenCalled();
+    };
 
-      expect(repo.remove).toHaveBeenCalledWith(mockOrder);
+    it('deletes an OPEN order with no vendor and no cost, recording DELETE first', async () => {
+      const row = lockRow();
+
+      await service.remove('order-uuid-1', companyId, 'Duplicate', 'user-1');
+
+      expect(manager.findOne).toHaveBeenCalledWith(WorkOrder, {
+        where: { id: 'order-uuid-1', companyId },
+        lock: { mode: 'pessimistic_write' },
+      });
+      expect(recordHistory.record).toHaveBeenCalledWith(
+        manager,
+        expect.objectContaining({
+          companyId,
+          action: RecordHistoryAction.DELETE,
+          entityType: 'WorkOrder',
+          entityId: 'order-uuid-1',
+          entityTitle: 'Fix AC',
+          contextTitle: 'Unit A-1204',
+          reason: 'Duplicate',
+          actorId: 'user-1',
+          actorName: 'Actor Name',
+          regionCode: 'dubai',
+        }),
+      );
+      expect(manager.remove).toHaveBeenCalledWith(row);
+      expect(recordHistory.record.mock.invocationCallOrder[0]).toBeLessThan(
+        manager.remove.mock.invocationCallOrder[0],
+      );
+    });
+
+    it('treats a zero actual cost as no cost', async () => {
+      lockRow({ actualCost: '0.00' as unknown as number });
+
+      await service.remove('order-uuid-1', companyId, 'Duplicate', 'user-1');
+
+      expect(manager.remove).toHaveBeenCalled();
+    });
+
+    it.each([
+      WorkOrderStatus.IN_PROGRESS,
+      WorkOrderStatus.PENDING_APPROVAL,
+      WorkOrderStatus.COMPLETED,
+      WorkOrderStatus.CANCELLED,
+    ])('refuses a %s order with 409', async (status: WorkOrderStatus) => {
+      lockRow({ status });
+      await expectRefused();
+    });
+
+    it('refuses an order with a vendor', async () => {
+      lockRow({ vendorId: 'vendor-uuid-1' });
+      await expectRefused();
+    });
+
+    it('refuses an order with an actual cost', async () => {
+      lockRow({ actualCost: '150.00' as unknown as number });
+      await expectRefused();
+    });
+  });
+
+  describe('status history', () => {
+    it('rejects cancelling without a reason before saving', async () => {
+      repo.findOne.mockResolvedValue({ ...mockOrder } as WorkOrder);
+
+      await expect(
+        service.update('order-uuid-1', companyId, {
+          status: WorkOrderStatus.CANCELLED,
+        }),
+      ).rejects.toThrow(BadRequestException);
+      await expect(
+        service.update('order-uuid-1', companyId, {
+          status: WorkOrderStatus.CANCELLED,
+          reason: '  ',
+        }),
+      ).rejects.toThrow(BadRequestException);
+      expect(repo.save).not.toHaveBeenCalled();
+      expect(recordHistory.record).not.toHaveBeenCalled();
+    });
+
+    it('records CANCEL with the reason in the save transaction', async () => {
+      repo.findOne.mockResolvedValue({
+        ...mockOrder,
+        regionCode: 'dubai',
+      } as WorkOrder);
+      repo.save.mockImplementation(async (o: WorkOrder) => o);
+      manager.findOne.mockResolvedValue({
+        id: 'unit-uuid-1',
+        unitNumber: 'A-1204',
+      });
+
+      await service.update(
+        'order-uuid-1',
+        companyId,
+        { status: WorkOrderStatus.CANCELLED, reason: 'Tenant fixed it' },
+        undefined,
+        'user-1',
+      );
+
+      expect(manager.getRepository).toHaveBeenCalledWith(WorkOrder);
+      expect(recordHistory.record).toHaveBeenCalledWith(
+        manager,
+        expect.objectContaining({
+          companyId,
+          action: RecordHistoryAction.CANCEL,
+          entityType: 'WorkOrder',
+          entityId: 'order-uuid-1',
+          entityTitle: 'Fix AC',
+          contextTitle: 'Unit A-1204',
+          reason: 'Tenant fixed it',
+          actorId: 'user-1',
+          actorName: 'Actor Name',
+          metadata: {
+            from: WorkOrderStatus.OPEN,
+            to: WorkOrderStatus.CANCELLED,
+          },
+        }),
+      );
+    });
+
+    it('records STATUS_CHANGE for other status moves', async () => {
+      repo.findOne.mockResolvedValue({ ...mockOrder } as WorkOrder);
+      repo.save.mockImplementation(async (o: WorkOrder) => o);
+
+      await service.update(
+        'order-uuid-1',
+        companyId,
+        { status: WorkOrderStatus.IN_PROGRESS },
+        undefined,
+        'user-1',
+      );
+
+      expect(recordHistory.record).toHaveBeenCalledWith(
+        manager,
+        expect.objectContaining({
+          action: RecordHistoryAction.STATUS_CHANGE,
+          reason: null,
+          metadata: {
+            from: WorkOrderStatus.OPEN,
+            to: WorkOrderStatus.IN_PROGRESS,
+          },
+        }),
+      );
+    });
+
+    it('records nothing when the status is unchanged', async () => {
+      repo.findOne.mockResolvedValue({ ...mockOrder } as WorkOrder);
+      repo.save.mockImplementation(async (o: WorkOrder) => o);
+
+      await service.update(
+        'order-uuid-1',
+        companyId,
+        { title: 'Fix AC now', status: WorkOrderStatus.OPEN },
+        undefined,
+        'user-1',
+      );
+
+      expect(repo.save).toHaveBeenCalled();
+      expect(recordHistory.record).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('archived unit', () => {
+    const archivedUnit = (id: string) => ({
+      id,
+      companyId,
+      deletedAt: new Date(),
+    });
+
+    it('refuses creating a work order on an archived unit', async () => {
+      unitRepo.findOne.mockResolvedValue(archivedUnit('unit-uuid-1'));
+
+      await expect(
+        service.create(companyId, {
+          title: 'Fix AC',
+          description: 'AC not cooling',
+          unitId: 'unit-uuid-1',
+        } as any),
+      ).rejects.toThrow(ConflictException);
+      expect(repo.save).not.toHaveBeenCalled();
+    });
+
+    it('refuses moving a work order onto an archived unit', async () => {
+      repo.findOne.mockResolvedValue({ ...mockOrder } as WorkOrder);
+      unitRepo.findOne.mockResolvedValue(archivedUnit('unit-makkah'));
+
+      await expect(
+        service.update('order-uuid-1', companyId, { unitId: 'unit-makkah' }),
+      ).rejects.toThrow(ConflictException);
+      expect(repo.save).not.toHaveBeenCalled();
+    });
+
+    it('still edits a work order already on an archived unit', async () => {
+      repo.findOne.mockResolvedValue({ ...mockOrder } as WorkOrder);
+      repo.save.mockImplementation(async (o: WorkOrder) => o);
+      unitRepo.findOne.mockResolvedValue(archivedUnit('unit-uuid-1'));
+
+      const result = await service.update('order-uuid-1', companyId, {
+        unitId: 'unit-uuid-1',
+        notes: 'Checked',
+      });
+
+      expect(result.notes).toBe('Checked');
     });
   });
 
@@ -441,9 +688,15 @@ describe('MaintenanceService', () => {
       seedOrder('punjab', 'unit-punjab');
 
       await expect(
-        service.remove('order-uuid-1', companyId, makkahManager),
+        service.remove(
+          'order-uuid-1',
+          companyId,
+          'Wrong entry',
+          'user-uuid-1',
+          makkahManager,
+        ),
       ).rejects.toThrow(NotFoundException);
-      expect(repo.remove).not.toHaveBeenCalled();
+      expect(manager.remove).not.toHaveBeenCalled();
     });
 
     it('denies every by-id read when the caller has no assigned region', async () => {

@@ -42,6 +42,8 @@ import {
   OwnershipTransferRecorder,
   OWNERSHIP_TRANSFER_RECORDER,
 } from './reassignment/ownership-transfer-recorder';
+import { RecordHistoryService } from '../record-history/record-history.service';
+import { RecordHistoryAction } from '../record-history/entities/record-history.entity';
 
 /** Safety bound on the reassignment/trim picker list. Realistic teams are far smaller. */
 const ACTIVE_MEMBERS_LIMIT = 500;
@@ -60,6 +62,7 @@ export class UsersService {
     private readonly billingService: BillingService,
     private readonly reassignmentService: UserReassignmentService,
     private readonly whatsappService: WhatsappService,
+    private readonly recordHistoryService: RecordHistoryService,
     @Optional()
     @Inject(OWNERSHIP_TRANSFER_RECORDER)
     private readonly transferRecorder?: OwnershipTransferRecorder,
@@ -521,6 +524,15 @@ export class UsersService {
 
       try {
         await manager.update(User, target.id, { isActive: false });
+        await this.recordUserHistory(
+          manager,
+          company.id,
+          target,
+          RecordHistoryAction.DEACTIVATE,
+          requesterId,
+          dto.reason,
+          { reassignToUserId: reassignee.id },
+        );
         const report = await this.reassignmentService.reassignOwnedRecords(
           manager,
           company.id,
@@ -578,6 +590,15 @@ export class UsersService {
           resetPasswordToken: null,
           resetPasswordExpires: null,
         });
+        await this.recordUserHistory(
+          manager,
+          company.id,
+          target,
+          RecordHistoryAction.DELETE,
+          requesterId,
+          dto.reason,
+          { reassignToUserId: reassignee.id },
+        );
         const report = await this.reassignmentService.reassignOwnedRecords(
           manager,
           company.id,
@@ -716,6 +737,15 @@ export class UsersService {
           const collected: ReassignmentReport[] = [];
           for (const user of others) {
             await manager.update(User, user.id, { isActive: false });
+            await this.recordUserHistory(
+              manager,
+              companyId,
+              user,
+              RecordHistoryAction.DEACTIVATE,
+              requesterId,
+              dto.reason,
+              { reassignToUserId: keeper.id },
+            );
             const report = await this.reassignmentService.reassignOwnedRecords(
               manager,
               companyId,
@@ -772,6 +802,8 @@ export class UsersService {
     targetUserId: string,
     requesterCompanyId: string | undefined,
     requesterRole: Role,
+    requesterId?: string,
+    reason?: string,
   ): Promise<User> {
     const lockCompanyId = await this.resolveRemovalLockCompanyId(
       targetUserId,
@@ -847,6 +879,14 @@ export class UsersService {
 
       try {
         await manager.update(User, target.id, { isActive: true });
+        await this.recordUserHistory(
+          manager,
+          company.id,
+          target,
+          RecordHistoryAction.REACTIVATE,
+          requesterId,
+          reason,
+        );
       } catch (err) {
         if (compensate) await compensate();
         throw err;
@@ -858,6 +898,31 @@ export class UsersService {
         throw new NotFoundException('User not found');
       }
       return refreshed;
+    });
+  }
+
+  private async recordUserHistory(
+    manager: EntityManager,
+    companyId: string,
+    target: User,
+    action: RecordHistoryAction,
+    requesterId: string | undefined,
+    reason?: string | null,
+    metadata?: Record<string, unknown>,
+  ): Promise<void> {
+    await this.recordHistoryService.record(manager, {
+      companyId,
+      action,
+      entityType: 'User',
+      entityId: target.id,
+      entityTitle: target.name?.trim() || target.email,
+      reason: reason ?? null,
+      actorId: requesterId ?? null,
+      actorName: requesterId
+        ? await this.recordHistoryService.resolveActorName(manager, requesterId)
+        : 'System',
+      regionCode: null,
+      metadata: metadata ?? null,
     });
   }
 

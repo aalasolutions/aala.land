@@ -103,6 +103,10 @@ export class Lease {
   @Column({ type: 'text', nullable: true })
   notes: string | null;
 
+  // Archive marker; filtered explicitly.
+  @Column({ name: 'deleted_at', type: 'timestamptz', nullable: true })
+  deletedAt: Date | null;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 

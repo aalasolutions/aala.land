@@ -2,11 +2,14 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import {
   BadRequestException,
+  ConflictException,
   InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
 import { MediaService } from './media.service';
 import { SystemEmailService } from '../email/system-email.service';
+import { StoragePurgeService } from '../storage-purge/storage-purge.service';
+import { DataSource, IsNull } from 'typeorm';
 import { PropertyMedia } from './entities/property-media.entity';
 import { Unit } from './entities/unit.entity';
 import { Asset } from './entities/asset.entity';
@@ -83,6 +86,8 @@ describe('MediaService', () => {
   let unitRepo: any;
   let systemEmail: { sendQuotaExceededToCompany: jest.Mock };
   let mockQb: any;
+  let manager: { findOne: jest.Mock };
+  let storagePurge: { purge: jest.Mock; dispatch: jest.Mock };
 
   const companyId = 'company-uuid-1';
   const unitId = 'unit-uuid-1';
@@ -116,6 +121,12 @@ describe('MediaService', () => {
       where: jest.fn().mockReturnThis(),
       andWhere: jest.fn().mockReturnThis(),
       execute: jest.fn().mockResolvedValue({ affected: 1 }),
+    };
+
+    manager = { findOne: jest.fn().mockResolvedValue(null) };
+    storagePurge = {
+      purge: jest.fn().mockResolvedValue(['purge-1', 'purge-2']),
+      dispatch: jest.fn().mockResolvedValue(undefined),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -153,6 +164,13 @@ describe('MediaService', () => {
           provide: SystemEmailService,
           useValue: { sendQuotaExceededToCompany: jest.fn() },
         },
+        {
+          provide: DataSource,
+          useValue: {
+            transaction: jest.fn((cb: (m: unknown) => unknown) => cb(manager)),
+          },
+        },
+        { provide: StoragePurgeService, useValue: storagePurge },
       ],
     }).compile();
 
@@ -172,6 +190,31 @@ describe('MediaService', () => {
   afterEach(() => {
     process.env = originalEnv;
     jest.clearAllMocks();
+  });
+
+  describe('uploadImage — archived unit', () => {
+    it('refuses an upload to an archived unit with 409 before any storage write', async () => {
+      unitRepo.findOne.mockResolvedValue({
+        id: unitId,
+        companyId,
+        deletedAt: new Date(),
+      });
+
+      await expect(
+        service.uploadImage(companyId, makeFile(), { unitId }),
+      ).rejects.toThrow(ConflictException);
+      expect(mockSend).not.toHaveBeenCalled();
+    });
+
+    it('does not accept an asset upload through archived units only', async () => {
+      unitRepo.findOne.mockResolvedValue(null);
+      await expect(
+        service.uploadImage(companyId, makeFile(), { assetId: 'asset-1' }),
+      ).rejects.toThrow(NotFoundException);
+      expect(unitRepo.findOne).toHaveBeenCalledWith({
+        where: { assetId: 'asset-1', companyId, deletedAt: IsNull() },
+      });
+    });
   });
 
   describe('uploadImage — validation', () => {
@@ -516,36 +559,78 @@ describe('MediaService', () => {
       const putCalls = (PutObjectCommand as unknown as jest.Mock).mock.calls;
       putCalls.forEach(([arg]) => expect(arg.Key).toMatch(/^land\//));
     });
+  });
 
-    it('deletes media (photo + thumbnail) from the media bucket', async () => {
-      mediaRepo.findOne.mockResolvedValue({
-        id: 'media-1',
-        companyId,
-        s3Key: 'companies/c1/properties/u1/123-photo.jpg',
-        fileSize: 100,
-        thumbnailSize: 50,
+  describe('deleteMedia', () => {
+    const media = {
+      id: 'media-1',
+      companyId,
+      s3Key: 'companies/c1/properties/u1/123-photo.jpg',
+      fileSize: 100,
+      thumbnailSize: 50,
+    };
+
+    it('locks the row in a transaction, purges it, then dispatches after commit', async () => {
+      manager.findOne.mockResolvedValue(media);
+      const order: string[] = [];
+      storagePurge.purge.mockImplementation(async () => {
+        order.push('purge');
+        return ['purge-1', 'purge-2'];
+      });
+      storagePurge.dispatch.mockImplementation(async () => {
+        order.push('dispatch');
       });
 
       await service.deleteMedia('media-1', companyId);
 
-      const deleteCalls = (DeleteObjectCommand as unknown as jest.Mock).mock
-        .calls;
-      expect(deleteCalls.length).toBe(2);
-      deleteCalls.forEach(([arg]) =>
-        expect(arg.Bucket).toBe('test-media-bucket'),
-      );
+      expect(manager.findOne).toHaveBeenCalledWith(PropertyMedia, {
+        where: { id: 'media-1', companyId },
+        lock: { mode: 'pessimistic_write' },
+      });
+      expect(storagePurge.purge).toHaveBeenCalledWith(manager, {
+        media: [media],
+      });
+      expect(storagePurge.dispatch).toHaveBeenCalledWith([
+        'purge-1',
+        'purge-2',
+      ]);
+      expect(order).toEqual(['purge', 'dispatch']);
     });
 
-    it('deletes documents from the documents bucket', async () => {
-      await service.deleteDocumentFromStorage(
-        'companies/c1/documents/123-doc.pdf',
-        companyId,
-        100,
-      );
+    it('never touches storage directly', async () => {
+      manager.findOne.mockResolvedValue(media);
 
-      expect(DeleteObjectCommand).toHaveBeenCalledWith(
-        expect.objectContaining({ Bucket: 'test-documents-bucket' }),
+      await service.deleteMedia('media-1', companyId);
+
+      expect(DeleteObjectCommand).not.toHaveBeenCalled();
+      expect(mockSend).not.toHaveBeenCalled();
+      expect(mediaRepo.remove).not.toHaveBeenCalled();
+    });
+
+    it('throws NotFoundException for media of another company and purges nothing', async () => {
+      manager.findOne.mockResolvedValue(null);
+
+      await expect(
+        service.deleteMedia('media-1', 'other-company'),
+      ).rejects.toThrow(NotFoundException);
+      expect(manager.findOne).toHaveBeenCalledWith(
+        PropertyMedia,
+        expect.objectContaining({
+          where: { id: 'media-1', companyId: 'other-company' },
+        }),
       );
+      expect(storagePurge.purge).not.toHaveBeenCalled();
+      expect(storagePurge.dispatch).not.toHaveBeenCalled();
+    });
+
+    it('does not dispatch when the transaction fails', async () => {
+      manager.findOne.mockResolvedValue(media);
+      storagePurge.purge.mockRejectedValue(new Error('deadlock detected'));
+
+      await expect(service.deleteMedia('media-1', companyId)).rejects.toThrow(
+        'deadlock detected',
+      );
+      expect(storagePurge.dispatch).not.toHaveBeenCalled();
     });
   });
 
@@ -574,15 +659,7 @@ describe('MediaService', () => {
     });
 
     it('builds the media client with the media-scoped key', async () => {
-      mediaRepo.findOne.mockResolvedValue({
-        id: 'media-1',
-        companyId,
-        s3Key: 'companies/c1/properties/u1/123-photo.jpg',
-        fileSize: 100,
-        thumbnailSize: 50,
-      });
-
-      await service.deleteMedia('media-1', companyId);
+      await service.uploadImage(companyId, makeFile(), { unitId });
 
       expect(s3Configs()).toContainEqual(
         expect.objectContaining({

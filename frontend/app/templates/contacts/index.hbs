@@ -401,4 +401,16 @@
   @confirmingText="Deleting..."
   @onClose={{this.closeDeleteModal}}
   @onConfirm={{this.confirmDelete}}
-/>
+>
+  <Nuvo::Field class="mt-4" @label="Reason" @required={{true}} @error={{this.deleteReasonError}}>
+    <Nuvo::Textarea
+      id="contact-delete-reason"
+      rows="2"
+      maxlength="500"
+      placeholder="e.g. Duplicate contact"
+      @value={{this.deleteReason}}
+      @onInput={{fn this.setFieldValue "deleteReason"}}
+      data-test-delete-contact-reason
+    />
+  </Nuvo::Field>
+</ConfirmModal>

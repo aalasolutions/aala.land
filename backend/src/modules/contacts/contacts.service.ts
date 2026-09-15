@@ -4,7 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, In, Repository } from 'typeorm';
+import { DataSource, EntityManager, In, Repository } from 'typeorm';
 import { Contact } from './entities/contact.entity';
 import { Company } from '../companies/entities/company.entity';
 import {
@@ -17,6 +17,9 @@ import { Lease } from '../leases/entities/lease.entity';
 import { WhatsappChat } from '../whatsapp/entities/whatsapp-chat.entity';
 import { CreateContactDto } from './dto/create-contact.dto';
 import { UpdateContactDto } from './dto/update-contact.dto';
+import { DeleteContactDto } from './dto/delete-contact.dto';
+import { RecordHistoryService } from '../record-history/record-history.service';
+import { RecordHistoryAction } from '../record-history/entities/record-history.entity';
 import {
   contactDisplayName,
   emailEqualsWhere,
@@ -75,6 +78,7 @@ export class ContactsService {
     private readonly chatRepository: Repository<WhatsappChat>,
     @InjectRepository(Company)
     private readonly companyRepository: Repository<Company>,
+    private readonly recordHistoryService: RecordHistoryService,
   ) {}
 
   // Adding a contact honors the same one-number-one-contact rule as lead
@@ -411,13 +415,15 @@ export class ContactsService {
   // leases and chats move to another contact, then the source is removed. All of
   // it in ONE transaction so a failed delete cannot leave the edges moved and
   // the source contact alive owning nothing. A contact with nothing to move
-  // deletes outright.
+  // deletes outright. Either way the history row lands in the same transaction.
   async remove(
     id: string,
     companyId: string,
-    transferToContactId?: string,
+    dto: DeleteContactDto,
+    actorId: string,
     caller?: RegionScope,
   ): Promise<void> {
+    const { transferToContactId, reason } = dto;
     if (transferToContactId === id) {
       throw new BadRequestException('Cannot transfer a contact to itself');
     }
@@ -425,7 +431,7 @@ export class ContactsService {
     // Verify the source exists in this company first. Without this, a wrong id
     // (or another company's) yields zero edge counts and a delete that touches
     // nothing, reported as success instead of 404.
-    await this.findOneEntity(id, companyId, caller);
+    const source = await this.findOneEntity(id, companyId, caller);
 
     const [leadCount, unitCount, leaseCount, chatCount] = await Promise.all([
       this.leadRepository.count({ where: { contactId: id, companyId } }),
@@ -441,9 +447,44 @@ export class ContactsService {
       );
     }
 
+    const recordDelete = async (
+      manager: EntityManager,
+      target: Contact | null,
+    ) => {
+      await this.recordHistoryService.record(manager, {
+        companyId,
+        action: RecordHistoryAction.DELETE,
+        entityType: 'Contact',
+        entityId: id,
+        entityTitle:
+          contactDisplayName(source) || source.email || 'Unnamed contact',
+        contextTitle: target
+          ? contactDisplayName(target) || target.email || null
+          : null,
+        reason,
+        actorId,
+        actorName: await this.recordHistoryService.resolveActorName(
+          manager,
+          actorId,
+        ),
+        regionCode: source.regionCode ?? undefined,
+        metadata: {
+          transferToContactId: target?.id ?? null,
+          movedCounts: {
+            leads: leadCount,
+            units: unitCount,
+            leases: leaseCount,
+            chats: chatCount,
+          },
+        },
+      });
+    };
+
     if (!hasEdges) {
-      // Nothing to move: a plain delete needs no transaction.
-      await this.contactRepository.delete({ id, companyId });
+      await this.dataSource.transaction(async (manager) => {
+        await recordDelete(manager, null);
+        await manager.delete(Contact, { id, companyId });
+      });
       return;
     }
 
@@ -457,6 +498,7 @@ export class ContactsService {
       if (!target) {
         throw new NotFoundException('Transfer target contact not found');
       }
+      await recordDelete(manager, target);
       await manager.update(
         Lead,
         { contactId: id, companyId },

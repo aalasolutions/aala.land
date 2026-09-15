@@ -3,6 +3,7 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository, IsNull } from 'typeorm';
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   NotFoundException,
 } from '@nestjs/common';
@@ -251,6 +252,18 @@ describe('LeadsService', () => {
       expect(unitRepo.findOne).toHaveBeenCalledWith({
         where: { id: 'other-company-unit', companyId },
       });
+    });
+
+    it('refuses to link an archived unit with 409', async () => {
+      unitRepo.findOne.mockResolvedValue({
+        id: 'archived-unit',
+        companyId,
+        deletedAt: new Date(),
+      } as Unit);
+
+      await expect(
+        service.create(companyId, { unitId: 'archived-unit' } as any),
+      ).rejects.toThrow(ConflictException);
     });
 
     it('broadcasts a leadUpdated event on create', async () => {

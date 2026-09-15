@@ -14,7 +14,14 @@ import {
   PROPERTY_STATUS_OPTIONS,
 } from 'land/constants';
 
+const ARCHIVED_FILTER_OPTIONS = [
+  { value: 'exclude', label: 'Active' },
+  { value: 'only', label: 'Archived' },
+  { value: 'include', label: 'All' },
+];
+
 export default class PropertiesIndexController extends Controller {
+  queryParams = ['archived'];
   @service auth;
   @service notifications;
   @service router;
@@ -46,6 +53,15 @@ export default class PropertiesIndexController extends Controller {
   @tracked filterMinPrice = '';
   @tracked filterMaxPrice = '';
   @tracked filterAmenities = [];
+  @tracked archived = 'exclude';
+
+  archivedFilterOptions = ARCHIVED_FILTER_OPTIONS;
+
+  get archivedFilterValue() {
+    return ARCHIVED_FILTER_OPTIONS.some((o) => o.value === this.archived)
+      ? this.archived
+      : 'exclude';
+  }
 
   // Empty field means the backend's default order (locality, asset, unit number).
   @tracked sortField = '';
@@ -82,7 +98,8 @@ export default class PropertiesIndexController extends Controller {
         this.filterBeds ||
         this.filterMinPrice ||
         this.filterMaxPrice ||
-        this.filterAmenities.length,
+        this.filterAmenities.length ||
+        this.archivedFilterValue !== 'exclude',
     );
   }
 
@@ -118,6 +135,11 @@ export default class PropertiesIndexController extends Controller {
     this.applyFilters();
   }
 
+  @action setArchivedFilter(value) {
+    this.archived = value || 'exclude';
+    this.applyFilters();
+  }
+
   @action applyFilters() {
     this.browsePage = 1;
     this.loadBrowseUnits();
@@ -140,6 +162,7 @@ export default class PropertiesIndexController extends Controller {
     this.filterMinPrice = '';
     this.filterMaxPrice = '';
     this.filterAmenities = [];
+    this.archived = 'exclude';
     this.browsePage = 1;
     this.loadBrowseUnits();
   }
@@ -173,7 +196,7 @@ export default class PropertiesIndexController extends Controller {
   @action async loadBrowseUnits() {
     this.isLoadingBrowse = true;
     try {
-      let params = `page=${this.browsePage}&limit=20`;
+      let params = `page=${this.browsePage}&limit=20&archived=${this.archivedFilterValue}`;
       if (this.filterType) params += `&propertyType=${this.filterType}`;
       if (this.filterStatus) params += `&status=${this.filterStatus}`;
       if (this.filterMinPrice) params += `&minPrice=${this.filterMinPrice}`;

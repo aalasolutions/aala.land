@@ -177,4 +177,35 @@ describe('AuditInterceptor region attribution', () => {
     expect(row.regionCode).toBe('makkah');
     expect(companyRepository.findOne).toHaveBeenCalledTimes(1);
   });
+
+  it.each([
+    ['/v1/properties/units/:id/delete', 'DELETE', 'delete'],
+    ['/v1/properties/assets/:id/delete', 'DELETE', 'delete'],
+    ['/v1/users/:id/delete', 'DELETE', 'delete'],
+    ['/v1/properties/units/:id/archive', 'UPDATE', 'archive'],
+    ['/v1/leases/:id/unarchive', 'UPDATE', 'unarchive'],
+  ])(
+    'POST %s logs %s with the path entity id',
+    async (template, expectedAction, subAction) => {
+      const row = await run(
+        {
+          method: 'POST',
+          path: template.replace(':id', LEASE_ID),
+          headers: {},
+          query: {},
+          body: { reason: 'Duplicate' },
+          user: {
+            userId: USER_ID,
+            companyId: COMPANY_ID,
+            role: 'company_admin',
+          },
+        },
+        { data: { id: 'response-id' } },
+      );
+
+      expect(row.action).toBe(expectedAction);
+      expect(row.entityId).toBe(LEASE_ID);
+      expect(row.newValue).toEqual({ reason: 'Duplicate', _action: subAction });
+    },
+  );
 });

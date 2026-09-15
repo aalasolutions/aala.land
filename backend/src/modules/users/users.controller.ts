@@ -30,6 +30,7 @@ import { UpdateUserRegionsDto } from './dto/update-user-regions.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { InviteUserDto } from './dto/invite-user.dto';
 import { RemoveUserDto } from './dto/remove-user.dto';
+import { ReactivateUserDto } from './dto/reactivate-user.dto';
 import { TrimCompanyUsersDto } from './dto/trim-company-users.dto';
 import {
   ReassignmentReport,
@@ -297,6 +298,7 @@ export class UsersController {
   })
   reactivate(
     @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: ReactivateUserDto,
     @Request() req: AuthenticatedRequest,
   ) {
     const companyId = scopedCompanyId(req.user);
@@ -304,6 +306,8 @@ export class UsersController {
       id,
       companyId,
       req.user.role as Role,
+      req.user.userId,
+      dto?.reason,
     );
   }
 

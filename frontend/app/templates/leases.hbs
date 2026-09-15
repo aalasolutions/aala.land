@@ -23,6 +23,13 @@
     data-test-lease-status-tabs
   />
 
+  <Nuvo::Segmented
+    @options={{this.archivedTabs}}
+    @value={{this.archived}}
+    @onChange={{this.setArchivedTab}}
+    data-test-archived-filter
+  />
+
   <Nuvo::Accordion
     @items={{array
       (hash
@@ -130,18 +137,47 @@
                 <td class="text-muted">{{format-currency lease.monthlyRent}}/mo</td>
                 <td class="text-muted">{{format-date lease.startDate}} - {{format-date lease.endDate}}</td>
                 <td>
-                  <Nuvo::Tag
-                    class="tag-lease-{{lowercase lease.status}}"
-                    @text={{lease.status}}
-                  />
+                  <div class="flex gap-1 wrap">
+                    <Nuvo::Tag
+                      class="tag-lease-{{lowercase lease.status}}"
+                      @text={{lease.status}}
+                    />
+                    {{#if lease.deletedAt}}
+                      <Nuvo::Tag @variant="secondary" @text="Archived" data-test-lease-archived-badge />
+                    {{/if}}
+                  </div>
                 </td>
                 <td class="text-muted">{{or lease.ejariNumber "-"}}</td>
                 <td>
                   <div class="flex gap-2 wrap">
+                    {{#if this.canViewHistory}}
+                      <Nuvo::Button
+                        @variant="secondary"
+                        @size="xs"
+                        @icon="clock-counter-clockwise"
+                        aria-label="History for lease of {{lease.contact.displayName}}"
+                        data-test-lease-history
+                        {{on "click" (fn this.openHistory lease)}}
+                      />
+                    {{/if}}
+                    {{#if lease.deletedAt}}
+                      {{#if this.canArchiveLease}}
+                        <Nuvo::Button
+                          data-test-unarchive-lease
+                          @variant="secondary"
+                          @size="xs"
+                          @icon="arrow-counter-clockwise"
+                          {{on "click" (fn this.openArchive lease "unarchive")}}
+                        >
+                          Unarchive
+                        </Nuvo::Button>
+                      {{/if}}
+                    {{else}}
                     <Nuvo::Button
                       @variant="secondary"
                       @size="xs"
                       @icon="pencil-simple"
+                      data-test-edit-lease
                       {{on "click" (fn this.openEdit lease)}}
                     >
                       Edit
@@ -177,14 +213,31 @@
                         Renew
                       </Nuvo::Button>
                     {{/if}}
-                    <Nuvo::Button
-                      @variant="danger"
-                      @size="xs"
-                      @icon="trash"
-                      aria-label="Delete lease for {{lease.contact.displayName}}"
-                      data-test-delete-lease
-                      {{on "click" (fn this.openDelete lease)}}
-                    />
+                    {{#if (eq lease.status "DRAFT")}}
+                      {{#if this.canDeleteLease}}
+                        <Nuvo::Button
+                          @variant="danger"
+                          @size="xs"
+                          @icon="trash"
+                          aria-label="Delete lease for {{lease.contact.displayName}}"
+                          data-test-delete-lease
+                          {{on "click" (fn this.openDelete lease)}}
+                        />
+                      {{/if}}
+                    {{else if this.canArchiveLease}}
+                      {{#unless (eq lease.status "ACTIVE")}}
+                        <Nuvo::Button
+                          data-test-archive-lease
+                          @variant="secondary"
+                          @size="xs"
+                          @icon="archive"
+                          {{on "click" (fn this.openArchive lease "archive")}}
+                        >
+                          Archive
+                        </Nuvo::Button>
+                      {{/unless}}
+                    {{/if}}
+                    {{/if}}
                   </div>
                 </td>
               </tr>
@@ -408,12 +461,24 @@
   @confirmingText="Terminating..."
   @onClose={{this.closeTerminateModal}}
   @onConfirm={{this.confirmTerminate}}
-/>
+>
+  <Nuvo::Field class="mt-4" @label="Reason" @required={{true}} @error={{this.reasonError}}>
+    <Nuvo::Textarea
+      id="lease-terminate-reason"
+      rows="2"
+      maxlength="500"
+      placeholder="e.g. Tenant moved out early"
+      @value={{this.terminateReason}}
+      @onInput={{fn this.setFieldValue "terminateReason"}}
+      data-test-terminate-reason
+    />
+  </Nuvo::Field>
+</ConfirmModal>
 
 <ConfirmModal
   @open={{this.showDeleteModal}}
   @title="Delete Lease"
-  @message="Are you sure you want to delete this lease agreement? This action cannot be undone."
+  @message="Are you sure you want to delete this draft lease? This action cannot be undone."
   @confirmText="Delete"
   @cancelText="Cancel"
   @confirmVariant="danger"
@@ -421,4 +486,64 @@
   @confirmingText="Deleting..."
   @onClose={{this.closeDeleteModal}}
   @onConfirm={{this.confirmDelete}}
-/>
+>
+  <Nuvo::Field class="mt-4" @label="Reason" @required={{true}} @error={{this.reasonError}}>
+    <Nuvo::Textarea
+      id="lease-delete-reason"
+      rows="2"
+      maxlength="500"
+      placeholder="e.g. Created by mistake"
+      @value={{this.deleteReason}}
+      @onInput={{fn this.setFieldValue "deleteReason"}}
+      data-test-reason-input
+    />
+  </Nuvo::Field>
+</ConfirmModal>
+
+<ConfirmModal
+  @open={{this.showArchiveModal}}
+  @title={{if (eq this.archiveMode "archive") "Archive Lease" "Unarchive Lease"}}
+  @message={{if
+    (eq this.archiveMode "archive")
+    "Archived leases are hidden from active lists and cannot be edited. History and reports keep them."
+    "The lease returns to active lists."
+  }}
+  @confirmText={{if (eq this.archiveMode "archive") "Archive" "Unarchive"}}
+  @cancelText="Cancel"
+  @confirmVariant="primary"
+  @isConfirming={{this.isArchiving}}
+  @confirmingText={{if (eq this.archiveMode "archive") "Archiving..." "Unarchiving..."}}
+  @onClose={{this.closeArchiveModal}}
+  @onConfirm={{this.confirmArchive}}
+>
+  <Nuvo::Field
+    class="mt-4"
+    @label={{if (eq this.archiveMode "archive") "Reason" "Reason (optional)"}}
+    @required={{eq this.archiveMode "archive"}}
+    @error={{this.reasonError}}
+  >
+    <Nuvo::Textarea
+      id="lease-archive-reason"
+      rows="2"
+      maxlength="500"
+      placeholder="e.g. Contract closed"
+      @value={{this.archiveReason}}
+      @onInput={{fn this.setFieldValue "archiveReason"}}
+      data-test-reason-input
+    />
+  </Nuvo::Field>
+</ConfirmModal>
+
+<Nuvo::Drawer
+  @open={{if this.historyLease true false}}
+  @title="Lease History"
+  @placement="end"
+  @size="lg"
+  @onClose={{this.closeHistory}}
+>
+  <:body>
+    {{#if this.historyLease}}
+      <RecordHistoryList @entityType="Lease" @entityId={{this.historyLease.id}} />
+    {{/if}}
+  </:body>
+</Nuvo::Drawer>

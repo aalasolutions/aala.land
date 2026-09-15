@@ -21,6 +21,11 @@ export default class CommissionsController extends PaginatedController {
   @tracked formLeadId = '';
   @tracked formTransactionId = '';
   @tracked formNotes = '';
+  @tracked showCancelModal = false;
+  @tracked commissionToCancel = null;
+  @tracked cancelReason = '';
+  @tracked isCancelling = false;
+  @tracked reasonError = '';
 
   filterStatusOptions = FILTER_STATUS_OPTIONS;
 
@@ -123,6 +128,42 @@ export default class CommissionsController extends PaginatedController {
       this.router.refresh('commissions');
     } catch (e) {
       this.notifications.error(e.message || 'Failed to mark as paid');
+    }
+  }
+
+  @action openCancel(commission) {
+    this.commissionToCancel = commission;
+    this.cancelReason = '';
+    this.reasonError = '';
+    this.showCancelModal = true;
+  }
+
+  @action closeCancelModal() {
+    this.showCancelModal = false;
+    this.commissionToCancel = null;
+  }
+
+  @action async confirmCancel() {
+    if (!this.commissionToCancel || this.isCancelling) return;
+    const reason = this.cancelReason.trim();
+    if (!reason) {
+      this.reasonError = 'Reason is required.';
+      return;
+    }
+
+    this.isCancelling = true;
+    try {
+      await this.auth.fetchJson(`/commissions/${this.commissionToCancel.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status: 'CANCELLED', reason }),
+      });
+      this.notifications.success('Commission cancelled');
+      this.closeCancelModal();
+      this.router.refresh('commissions');
+    } catch (e) {
+      this.notifications.error(e.message || 'Failed to cancel commission');
+    } finally {
+      this.isCancelling = false;
     }
   }
 }

@@ -43,6 +43,9 @@ const ACTION_OVERRIDES: Record<string, AuditAction> = {
   send: AuditAction.CREATE,
   deactivate: AuditAction.UPDATE,
   reactivate: AuditAction.UPDATE,
+  delete: AuditAction.DELETE,
+  archive: AuditAction.UPDATE,
+  unarchive: AuditAction.UPDATE,
   'trim-to-one': AuditAction.BULK_UPDATE,
 };
 

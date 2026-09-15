@@ -17,7 +17,6 @@ const ENTITY_TYPES = [
   { value: '', label: 'All Entities' },
   { value: 'User', label: 'User' },
   { value: 'Lead', label: 'Lead' },
-  { value: 'PropertyArea', label: 'Area' },
   { value: 'Asset', label: 'Asset' },
   { value: 'Unit', label: 'Property' },
   { value: 'Owner', label: 'Owner' },

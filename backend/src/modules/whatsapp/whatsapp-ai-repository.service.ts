@@ -145,7 +145,7 @@ export class WhatsappAiRepositoryService
     const [company, units] = await Promise.all([
       this.getCompany(companyId),
       this.unitRepo.find({
-        where: { companyId, status: UnitStatus.AVAILABLE },
+        where: { companyId, status: UnitStatus.AVAILABLE, deletedAt: IsNull() },
         relations: ['asset', 'asset.locality', 'asset.locality.city'],
         order: { createdAt: 'DESC' },
         take: 40,
@@ -162,6 +162,7 @@ export class WhatsappAiRepositoryService
     const where: FindOptionsWhere<Unit> = {
       companyId,
       status: UnitStatus.AVAILABLE,
+      deletedAt: IsNull(),
     };
 
     if (filters.type) {

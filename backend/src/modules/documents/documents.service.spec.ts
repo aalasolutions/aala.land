@@ -1,6 +1,10 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  NotFoundException,
+} from '@nestjs/common';
 import { DocumentsService } from './documents.service';
 import {
   PropertyDocument,
@@ -11,22 +15,23 @@ import { Unit } from '../properties/entities/unit.entity';
 import { Asset } from '../properties/entities/asset.entity';
 import { User } from '../users/entities/user.entity';
 import { MediaService } from '../properties/media.service';
+import { StoragePurgeService } from '../storage-purge/storage-purge.service';
+import { DataSource } from 'typeorm';
 import { Role } from '@shared/enums/roles.enum';
 import { Company } from '../companies/entities/company.entity';
 
 describe('DocumentsService', () => {
   let service: DocumentsService;
   let repo: any;
+  let unitRepo: any;
   let unitQb: any;
   let assetQb: any;
   let mockMediaService: jest.Mocked<
-    Pick<
-      MediaService,
-      | 'uploadDocumentToStorage'
-      | 'deleteDocumentFromStorage'
-      | 'getDocumentStream'
-    >
+    Pick<MediaService, 'uploadDocumentToStorage' | 'getDocumentStream'>
   >;
+  let manager: { findOne: jest.Mock };
+  let dataSource: { transaction: jest.Mock };
+  let storagePurge: { purge: jest.Mock; dispatch: jest.Mock };
 
   const companyId = 'company-uuid-1';
   const userId = 'user-uuid-1';
@@ -58,8 +63,15 @@ describe('DocumentsService', () => {
   beforeEach(async () => {
     mockMediaService = {
       uploadDocumentToStorage: jest.fn(),
-      deleteDocumentFromStorage: jest.fn(),
       getDocumentStream: jest.fn(),
+    };
+    manager = { findOne: jest.fn().mockResolvedValue(mockDoc) };
+    dataSource = {
+      transaction: jest.fn((cb: (m: unknown) => unknown) => cb(manager)),
+    };
+    storagePurge = {
+      purge: jest.fn().mockResolvedValue(['purge-1']),
+      dispatch: jest.fn().mockResolvedValue(undefined),
     };
 
     const mockQueryBuilder = {
@@ -118,6 +130,7 @@ describe('DocumentsService', () => {
           provide: getRepositoryToken(Unit),
           useValue: {
             createQueryBuilder: jest.fn().mockReturnValue(unitQb),
+            findOne: jest.fn().mockResolvedValue(null),
           },
         },
         {
@@ -139,11 +152,14 @@ describe('DocumentsService', () => {
           provide: MediaService,
           useValue: mockMediaService,
         },
+        { provide: DataSource, useValue: dataSource },
+        { provide: StoragePurgeService, useValue: storagePurge },
       ],
     }).compile();
 
     service = module.get<DocumentsService>(DocumentsService);
     repo = module.get(getRepositoryToken(PropertyDocument));
+    unitRepo = module.get(getRepositoryToken(Unit));
   });
 
   it('should be defined', () => {
@@ -151,6 +167,53 @@ describe('DocumentsService', () => {
   });
 
   describe('uploadAndCreate', () => {
+    it('refuses an upload to an archived unit with 409 before the storage write', async () => {
+      unitRepo.findOne.mockResolvedValue({
+        id: 'unit-archived',
+        deletedAt: new Date(),
+      });
+
+      await expect(
+        service.uploadAndCreate(
+          companyId,
+          userId,
+          { mimetype: 'application/pdf' } as Express.Multer.File,
+          { name: 'Contract', unitId: 'unit-archived' } as any,
+          { role: Role.COMPANY_ADMIN, regionCodes: callerRegions },
+        ),
+      ).rejects.toThrow(ConflictException);
+      expect(unitRepo.findOne).toHaveBeenCalledWith({
+        where: { id: 'unit-archived', companyId },
+        select: { id: true, deletedAt: true },
+      });
+      expect(mockMediaService.uploadDocumentToStorage).not.toHaveBeenCalled();
+      expect(repo.save).not.toHaveBeenCalled();
+    });
+
+    it('does not resolve an asset through archived units only', async () => {
+      assetQb.row = { regionCode: 'dubai' };
+      mockMediaService.uploadDocumentToStorage.mockResolvedValue({
+        url: 'u',
+        s3Key: 'k',
+        fileSize: 1,
+      });
+      repo.create.mockReturnValue(mockDoc);
+      repo.save.mockResolvedValue(mockDoc);
+
+      await service.uploadAndCreate(
+        companyId,
+        userId,
+        { mimetype: 'application/pdf' } as Express.Multer.File,
+        { name: 'Contract', assetId: 'asset-1' } as any,
+        { role: Role.COMPANY_ADMIN, regionCodes: callerRegions },
+      );
+
+      expect(assetQb.andWhere).toHaveBeenCalledWith(
+        expect.stringContaining('u2.deleted_at IS NULL'),
+        { companyId },
+      );
+    });
+
     it('calls mediaService.uploadDocumentToStorage and creates a document record', async () => {
       const mockUploadResult = {
         url: 'https://s3.us-east-005.backblazeb2.com/aala-cloud/companies/c1/doc.pdf',
@@ -384,9 +447,15 @@ describe('DocumentsService', () => {
   });
 
   describe('remove', () => {
-    it('calls deleteDocumentFromStorage when s3Key is present, then removes record', async () => {
-      mockMediaService.deleteDocumentFromStorage.mockResolvedValue(undefined);
-      repo.remove.mockResolvedValue(mockDoc);
+    it('locks the row in a transaction, purges it, then dispatches after commit', async () => {
+      const order: string[] = [];
+      storagePurge.purge.mockImplementation(async () => {
+        order.push('purge');
+        return ['purge-1'];
+      });
+      storagePurge.dispatch.mockImplementation(async () => {
+        order.push('dispatch');
+      });
 
       await service.remove(
         'doc-uuid-1',
@@ -395,29 +464,64 @@ describe('DocumentsService', () => {
         callerRegions,
       );
 
-      expect(mockMediaService.deleteDocumentFromStorage).toHaveBeenCalledWith(
-        mockDoc.s3Key,
-        companyId,
-        mockDoc.fileSize,
-      );
-      expect(repo.remove).toHaveBeenCalledWith(mockDoc);
+      expect(manager.findOne).toHaveBeenCalledWith(PropertyDocument, {
+        where: { id: 'doc-uuid-1', companyId },
+        lock: { mode: 'pessimistic_write' },
+      });
+      expect(storagePurge.purge).toHaveBeenCalledWith(manager, {
+        documents: [mockDoc],
+      });
+      expect(storagePurge.dispatch).toHaveBeenCalledWith(['purge-1']);
+      expect(order).toEqual(['purge', 'dispatch']);
+      expect(repo.remove).not.toHaveBeenCalled();
     });
 
-    it('skips storage cleanup when s3Key is absent', async () => {
-      const docWithoutKey = { ...mockDoc, s3Key: null };
+    it('throws NotFoundException when the row is gone by the time it is locked', async () => {
+      manager.findOne.mockResolvedValue(null);
+
+      await expect(
+        service.remove(
+          'doc-uuid-1',
+          companyId,
+          Role.COMPANY_ADMIN,
+          callerRegions,
+        ),
+      ).rejects.toThrow(NotFoundException);
+      expect(storagePurge.purge).not.toHaveBeenCalled();
+      expect(storagePurge.dispatch).not.toHaveBeenCalled();
+    });
+
+    it('does not dispatch when the transaction fails', async () => {
+      storagePurge.purge.mockRejectedValue(new Error('deadlock detected'));
+
+      await expect(
+        service.remove(
+          'doc-uuid-1',
+          companyId,
+          Role.COMPANY_ADMIN,
+          callerRegions,
+        ),
+      ).rejects.toThrow('deadlock detected');
+      expect(storagePurge.dispatch).not.toHaveBeenCalled();
+    });
+
+    it('purges nothing for a document of another company', async () => {
       const qb = repo.createQueryBuilder();
-      qb.getOne.mockResolvedValue(docWithoutKey);
-      repo.remove.mockResolvedValue(docWithoutKey);
+      qb.getOne.mockResolvedValue(null);
 
-      await service.remove(
-        'doc-uuid-1',
-        companyId,
-        Role.COMPANY_ADMIN,
-        callerRegions,
-      );
-
-      expect(mockMediaService.deleteDocumentFromStorage).not.toHaveBeenCalled();
-      expect(repo.remove).toHaveBeenCalledWith(docWithoutKey);
+      await expect(
+        service.remove(
+          'doc-uuid-1',
+          'other-company',
+          Role.COMPANY_ADMIN,
+          callerRegions,
+        ),
+      ).rejects.toThrow(NotFoundException);
+      expect(qb.andWhere).toHaveBeenCalledWith('doc.company_id = :companyId', {
+        companyId: 'other-company',
+      });
+      expect(dataSource.transaction).not.toHaveBeenCalled();
+      expect(storagePurge.purge).not.toHaveBeenCalled();
     });
   });
 
@@ -724,10 +828,8 @@ describe('DocumentsService', () => {
         await expect(
           service.remove('doc-uuid-1', companyId, Role.MANAGER, makkah),
         ).rejects.toThrow(NotFoundException);
-        expect(
-          mockMediaService.deleteDocumentFromStorage,
-        ).not.toHaveBeenCalled();
-        expect(repo.remove).not.toHaveBeenCalled();
+        expect(storagePurge.purge).not.toHaveBeenCalled();
+        expect(storagePurge.dispatch).not.toHaveBeenCalled();
       });
 
       it('denies getVersionHistory on a document outside the caller assigned regions', async () => {

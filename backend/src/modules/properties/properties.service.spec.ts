@@ -10,17 +10,27 @@ import {
   FindOperator,
   FindOptionsRelations,
   FindOptionsWhere,
-  In,
   ObjectLiteral,
   QueryFailedError,
   Repository,
   getMetadataArgsStorage,
+  IsNull,
+  Not,
 } from 'typeorm';
 import { PropertiesService } from './properties.service';
-import { PropertyArea } from './entities/property-area.entity';
 import { Asset } from './entities/asset.entity';
 import { Unit } from './entities/unit.entity';
 import { PropertyMedia } from './entities/property-media.entity';
+import { PropertyDocument } from './entities/property-document.entity';
+import { Lease, LeaseStatus } from '../leases/entities/lease.entity';
+import { Cheque } from '../cheques/entities/cheque.entity';
+import { Transaction } from '../financial/entities/transaction.entity';
+import { WorkOrder } from '../maintenance/entities/work-order.entity';
+import { Lead } from '../leads/entities/lead.entity';
+import { RecordHistoryService } from '../record-history/record-history.service';
+import { RecordHistoryAction } from '../record-history/entities/record-history.entity';
+import { StoragePurgeService } from '../storage-purge/storage-purge.service';
+import { UnitArchivedFilter } from './dto/unit-archived-filter.enum';
 import { Locality } from '../locations/entities/locality.entity';
 import { City } from '../locations/entities/city.entity';
 import { Company } from '../companies/entities/company.entity';
@@ -51,6 +61,7 @@ function matchesWhere(row: unknown, where: unknown): boolean {
     ([key, expected]) => {
       const actual = (row as Record<string, unknown>)[key];
       if (expected instanceof FindOperator) {
+        if (expected.type === 'isNull') return actual == null;
         return (expected.value as unknown[]).includes(actual);
       }
       if (expected !== null && typeof expected === 'object') {
@@ -70,12 +81,17 @@ function inRegion(regionCode: string) {
 
 describe('PropertiesService', () => {
   let service: PropertiesService;
-  let areaRepo: jest.Mocked<Repository<PropertyArea>>;
   let assetRepo: jest.Mocked<Repository<Asset>>;
   let unitRepo: jest.Mocked<Repository<Unit>>;
   let mediaRepo: jest.Mocked<Repository<PropertyMedia>>;
   let contactRepo: jest.Mocked<Repository<Contact>>;
   let contactsService: jest.Mocked<ContactsService>;
+  let unitLockQb: Record<string, jest.Mock>;
+  let manager: Record<string, jest.Mock>;
+  let dataSource: { transaction: jest.Mock };
+  let recordHistory: { record: jest.Mock; resolveActorName: jest.Mock };
+  let storagePurge: { purge: jest.Mock; dispatch: jest.Mock };
+  let events: string[];
 
   // A query-builder chain mock matching findAllUnits' fluent calls.
   function qbMock(units: Partial<Unit>[], total: number) {
@@ -101,12 +117,6 @@ describe('PropertiesService', () => {
   }
 
   const companyId = 'company-uuid-1';
-
-  const mockArea: Partial<PropertyArea> = {
-    id: 'area-uuid-1',
-    name: 'Downtown Dubai',
-    companyId,
-  };
 
   const mockAsset: Partial<Asset> = {
     id: 'asset-uuid-1',
@@ -144,13 +154,44 @@ describe('PropertiesService', () => {
   }
 
   beforeEach(async () => {
+    events = [];
+    unitLockQb = {};
+    ['innerJoinAndSelect', 'where', 'andWhere', 'setLock'].forEach((key) => {
+      unitLockQb[key] = jest.fn().mockReturnValue(unitLockQb);
+    });
+    unitLockQb.getOne = jest.fn().mockResolvedValue(null);
+    manager = {
+      createQueryBuilder: jest.fn().mockReturnValue(unitLockQb),
+      count: jest.fn().mockResolvedValue(0),
+      find: jest.fn().mockResolvedValue([]),
+      findOne: jest.fn().mockResolvedValue(null),
+      update: jest.fn().mockResolvedValue({ affected: 1 }),
+      delete: jest.fn().mockResolvedValue({ affected: 1 }),
+    };
+    dataSource = {
+      transaction: jest.fn(async (cb: (m: unknown) => unknown) => {
+        const result = await cb(manager);
+        events.push('commit');
+        return result;
+      }),
+    };
+    recordHistory = {
+      record: jest.fn().mockResolvedValue(undefined),
+      resolveActorName: jest.fn().mockResolvedValue('Aamir'),
+    };
+    storagePurge = {
+      purge: jest.fn().mockResolvedValue(['purge-1']),
+      dispatch: jest.fn(async () => {
+        events.push('dispatch');
+      }),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         PropertiesService,
-        {
-          provide: getRepositoryToken(PropertyArea),
-          useValue: createRepositoryMock<PropertyArea>(),
-        },
+        { provide: DataSource, useValue: dataSource },
+        { provide: RecordHistoryService, useValue: recordHistory },
+        { provide: StoragePurgeService, useValue: storagePurge },
         {
           provide: getRepositoryToken(Asset),
           useValue: createRepositoryMock<Asset>(),
@@ -175,7 +216,6 @@ describe('PropertiesService', () => {
     }).compile();
 
     service = module.get<PropertiesService>(PropertiesService);
-    areaRepo = module.get(getRepositoryToken(PropertyArea));
     assetRepo = module.get(getRepositoryToken(Asset));
     // resolveOwnerId() derives the owner contact region from the asset chain, so
     // this builder has to be chainable by default.
@@ -193,23 +233,6 @@ describe('PropertiesService', () => {
 
   it('should be defined', () => {
     expect(service).toBeDefined();
-  });
-
-  describe('createArea', () => {
-    it('creates and returns an area', async () => {
-      areaRepo.create.mockReturnValue(mockArea as PropertyArea);
-      areaRepo.save.mockResolvedValue(mockArea as PropertyArea);
-
-      const result = await service.createArea(companyId, {
-        name: 'Downtown Dubai',
-      });
-
-      expect(areaRepo.create).toHaveBeenCalledWith({
-        name: 'Downtown Dubai',
-        companyId,
-      });
-      expect(result).toEqual(mockArea);
-    });
   });
 
   describe('createAsset', () => {
@@ -312,64 +335,6 @@ describe('PropertiesService', () => {
       await expect(
         service.updateAsset('missing-asset', { name: 'Bay Tower' }),
       ).rejects.toThrow(NotFoundException);
-    });
-  });
-
-  describe('findAllAreas region confinement', () => {
-    it('confines a scoped caller to their assigned regions', async () => {
-      (areaRepo.findAndCount as jest.Mock).mockResolvedValue([[], 0]);
-
-      await service.findAllAreas(companyId, 1, 20, undefined, {
-        role: Role.AGENT,
-        regionCodes: ['makkah', 'punjab'],
-      });
-
-      const opts = (areaRepo.findAndCount as jest.Mock).mock.calls[0][0];
-      expect(opts.where.regionCode).toEqual(In(['makkah', 'punjab']));
-    });
-
-    it('narrows the assigned set to the region asked for', async () => {
-      (areaRepo.findAndCount as jest.Mock).mockResolvedValue([[], 0]);
-
-      await service.findAllAreas(companyId, 1, 20, 'makkah', {
-        role: Role.AGENT,
-        regionCodes: ['makkah', 'punjab'],
-      });
-
-      const opts = (areaRepo.findAndCount as jest.Mock).mock.calls[0][0];
-      expect(opts.where.regionCode).toEqual(In(['makkah']));
-    });
-
-    it('returns nothing when the caller asks for a region they do not hold', async () => {
-      const result = await service.findAllAreas(companyId, 1, 20, 'punjab', {
-        role: Role.AGENT,
-        regionCodes: ['makkah'],
-      });
-
-      expect(result.data).toEqual([]);
-      expect(areaRepo.findAndCount).not.toHaveBeenCalled();
-    });
-
-    it('returns nothing when the caller has no assigned region', async () => {
-      const result = await service.findAllAreas(companyId, 1, 20, undefined, {
-        role: Role.AGENT,
-        regionCodes: [],
-      });
-
-      expect(result.data).toEqual([]);
-      expect(areaRepo.findAndCount).not.toHaveBeenCalled();
-    });
-
-    it('leaves an admin unconfined', async () => {
-      (areaRepo.findAndCount as jest.Mock).mockResolvedValue([[], 0]);
-
-      await service.findAllAreas(companyId, 1, 20, undefined, {
-        role: Role.COMPANY_ADMIN,
-        regionCodes: [],
-      });
-
-      const opts = (areaRepo.findAndCount as jest.Mock).mock.calls[0][0];
-      expect(opts.where.regionCode).toBeUndefined();
     });
   });
 
@@ -797,7 +762,8 @@ describe('PropertiesService', () => {
         regionCodes: [],
       });
 
-      expect(qb.andWhere).not.toHaveBeenCalled();
+      expect(qb.andWhere).toHaveBeenCalledTimes(1);
+      expect(qb.andWhere).toHaveBeenCalledWith('u.deletedAt IS NULL');
       expect(result).toEqual({ makkah: 9, punjab: 1 });
     });
 
@@ -899,7 +865,7 @@ describe('PropertiesService', () => {
 
       const { where } = (assetRepo.findOne as jest.Mock).mock.calls[0][0];
       expect(where).toEqual([
-        { id: 'a1', units: { companyId } },
+        { id: 'a1', units: { companyId, deletedAt: IsNull() } },
         { id: 'a1', createdByCompanyId: companyId },
       ]);
     });
@@ -1001,7 +967,8 @@ describe('PropertiesService', () => {
         regionCodes: [],
       });
 
-      expect(qb.andWhere).not.toHaveBeenCalled();
+      expect(qb.andWhere).toHaveBeenCalledTimes(1);
+      expect(qb.andWhere).toHaveBeenCalledWith('u.deletedAt IS NULL');
     });
 
     it('returns nothing for a scoped caller with no assignments', async () => {
@@ -1069,17 +1036,6 @@ describe('PropertiesService', () => {
       role: Role.COMPANY_ADMIN,
       regionCodes: [],
     };
-
-    const punjabArea = {
-      id: 'area-punjab',
-      companyId,
-      regionCode: 'punjab',
-    } as PropertyArea;
-    const makkahArea = {
-      id: 'area-makkah',
-      companyId,
-      regionCode: 'makkah',
-    } as PropertyArea;
 
     const punjabAsset = {
       id: 'asset-punjab',
@@ -1202,77 +1158,6 @@ describe('PropertiesService', () => {
           service.findOneAsset('asset-makkah', companyId, unassignedAgent),
         ).rejects.toThrow(NotFoundException);
         expect(assetRepo.findOne).not.toHaveBeenCalled();
-      });
-    });
-
-    describe('findOneArea', () => {
-      beforeEach(() => stubFindOne(areaRepo, [punjabArea, makkahArea]));
-
-      it('denies a by-id read outside the caller regions', async () => {
-        await expect(
-          service.findOneArea('area-punjab', companyId, makkahAgent),
-        ).rejects.toThrow(NotFoundException);
-      });
-
-      it('allows a by-id read inside the caller regions', async () => {
-        const area = await service.findOneArea(
-          'area-makkah',
-          companyId,
-          makkahAgent,
-        );
-
-        expect(area.id).toBe('area-makkah');
-      });
-
-      it('leaves an admin unconfined', async () => {
-        const area = await service.findOneArea('area-punjab', companyId, admin);
-
-        expect(area.id).toBe('area-punjab');
-      });
-
-      it('denies everything for a caller with no assignments', async () => {
-        await expect(
-          service.findOneArea('area-makkah', companyId, unassignedAgent),
-        ).rejects.toThrow(NotFoundException);
-        expect(areaRepo.findOne).not.toHaveBeenCalled();
-      });
-    });
-
-    describe('updateArea and removeArea guards', () => {
-      beforeEach(() => stubFindOne(areaRepo, [punjabArea, makkahArea]));
-
-      it('refuses to update an area outside the caller regions', async () => {
-        await expect(
-          service.updateArea(
-            'area-punjab',
-            companyId,
-            { name: 'Renamed' },
-            makkahAgent,
-          ),
-        ).rejects.toThrow(NotFoundException);
-        expect(areaRepo.save).not.toHaveBeenCalled();
-      });
-
-      it('still updates an area inside the caller regions', async () => {
-        (areaRepo.save as jest.Mock).mockImplementation((area: PropertyArea) =>
-          Promise.resolve(area),
-        );
-
-        const result = await service.updateArea(
-          'area-makkah',
-          companyId,
-          { name: 'Renamed' },
-          makkahAgent,
-        );
-
-        expect(result.name).toBe('Renamed');
-      });
-
-      it('refuses to remove an area outside the caller regions', async () => {
-        await expect(
-          service.removeArea('area-punjab', companyId, makkahAgent),
-        ).rejects.toThrow(NotFoundException);
-        expect(areaRepo.remove).not.toHaveBeenCalled();
       });
     });
 
@@ -1430,12 +1315,20 @@ describe('PropertiesService', () => {
       });
 
       it('removeUnit refuses a unit outside the caller regions', async () => {
-        stubFindOne(unitRepo, [punjabUnit, makkahUnit]);
-
         await expect(
-          service.removeUnit('unit-punjab', companyId, makkahAgent),
+          service.removeUnit(
+            'unit-punjab',
+            companyId,
+            'Mistake',
+            'agent-1',
+            makkahAgent,
+          ),
         ).rejects.toThrow(NotFoundException);
-        expect(unitRepo.remove).not.toHaveBeenCalled();
+        expect(unitLockQb.andWhere).toHaveBeenCalledWith(
+          'ci.regionCode IN (:...scopedCodes)',
+          { scopedCodes: ['makkah'] },
+        );
+        expect(manager.delete).not.toHaveBeenCalled();
       });
     });
 
@@ -1447,16 +1340,7 @@ describe('PropertiesService', () => {
       beforeAll(async () => {
         dataSource = new DataSource({
           type: 'postgres',
-          entities: [
-            Unit,
-            Asset,
-            PropertyArea,
-            Locality,
-            City,
-            Contact,
-            Company,
-            User,
-          ],
+          entities: [Unit, Asset, Locality, City, Contact, Company, User],
         });
         await (
           dataSource as unknown as { buildMetadatas: () => Promise<void> }
@@ -1496,6 +1380,34 @@ describe('PropertiesService', () => {
         expect(Object.values(params)).toContain('makkah');
       });
 
+      it('lockUnit locks only the unit row behind inner joins', async () => {
+        let sql = '';
+        manager.createQueryBuilder.mockImplementation(
+          (target: new () => Unit, alias: string) => {
+            const qb = dataSource.createQueryBuilder(target, alias);
+            (qb as any).getOne = jest.fn(async () => {
+              sql = qb.getQuery();
+              return null;
+            });
+            return qb;
+          },
+        );
+
+        await expect(
+          service.removeUnit(
+            'unit-1',
+            companyId,
+            'Mistake',
+            'agent-1',
+            makkahAgent,
+          ),
+        ).rejects.toThrow(NotFoundException);
+
+        expect(sql).not.toContain('LEFT JOIN');
+        expect(sql).toMatch(/FOR UPDATE OF u$/);
+        expect(sql).toContain('"u"."company_id" = :companyId');
+      });
+
       it('findOneAsset carries the region predicate in every OR branch', async () => {
         stubFindOne(assetRepo, []);
 
@@ -1515,24 +1427,457 @@ describe('PropertiesService', () => {
         expect(sql).not.toContain('makkah');
         expect(Object.values(params)).toContain('makkah');
       });
+    });
+  });
 
-      it('findOneArea filters region_code on the row itself, with no join', async () => {
-        stubFindOne(areaRepo, []);
+  describe('unit and asset lifecycle', () => {
+    const actorId = 'user-uuid-1';
+    const lockedUnit = () =>
+      ({
+        id: 'unit-uuid-1',
+        unitNumber: 'A-1204',
+        companyId,
+        assetId: 'asset-uuid-1',
+        deletedAt: null,
+        asset: {
+          id: 'asset-uuid-1',
+          name: 'Bay Tower',
+          locality: { city: { regionCode: 'dubai' } },
+        },
+      }) as unknown as Unit;
+
+    describe('removeUnit', () => {
+      it.each([
+        [Lease, 'leases'],
+        [Cheque, 'cheques'],
+        [Transaction, 'transactions'],
+        [WorkOrder, 'work orders'],
+        [Lead, 'leads'],
+      ])(
+        'refuses with 409 when a %p references the unit',
+        async (entity, label) => {
+          unitLockQb.getOne.mockResolvedValue(lockedUnit());
+          manager.count.mockImplementation((target: unknown) =>
+            Promise.resolve(target === entity ? 1 : 0),
+          );
+
+          const attempt = service.removeUnit(
+            'unit-uuid-1',
+            companyId,
+            'Mistake',
+            actorId,
+          );
+
+          await expect(attempt).rejects.toThrow(ConflictException);
+          await expect(attempt).rejects.toThrow(
+            `This unit has linked ${label}. Archive it instead.`,
+          );
+          expect(manager.count).toHaveBeenCalledWith(entity, {
+            where: { unitId: 'unit-uuid-1', companyId },
+          });
+          expect(storagePurge.purge).not.toHaveBeenCalled();
+          expect(recordHistory.record).not.toHaveBeenCalled();
+          expect(manager.delete).not.toHaveBeenCalled();
+          expect(storagePurge.dispatch).not.toHaveBeenCalled();
+        },
+      );
+
+      it('names every blocking type in one message', async () => {
+        unitLockQb.getOne.mockResolvedValue(lockedUnit());
+        manager.count.mockImplementation((target: unknown) =>
+          Promise.resolve(target === Lease || target === Lead ? 2 : 0),
+        );
 
         await expect(
-          service.findOneArea('area-1', companyId, makkahAgent),
-        ).rejects.toThrow(NotFoundException);
+          service.removeUnit('unit-uuid-1', companyId, 'Mistake', actorId),
+        ).rejects.toThrow(
+          'This unit has linked leases and leads. Archive it instead.',
+        );
+      });
 
-        const { sql, params } = compile(
-          PropertyArea,
-          (areaRepo.findOne as jest.Mock).mock.calls[0][0],
+      it('purges files, records history, removes the unit, then dispatches after commit', async () => {
+        unitLockQb.getOne.mockResolvedValue(lockedUnit());
+        const media = [{ id: 'm1', companyId }];
+        const documents = [{ id: 'd1', companyId }];
+        manager.find.mockImplementation((target: unknown) =>
+          Promise.resolve(
+            target === PropertyMedia
+              ? media
+              : target === PropertyDocument
+                ? documents
+                : [],
+          ),
         );
-        expect(sql).not.toContain('JOIN');
-        expect(sql).toMatch(
-          /"PropertyArea"\."region_code" IN \(:orm_param_\d+\)/,
+
+        await service.removeUnit('unit-uuid-1', companyId, 'Mistake', actorId);
+
+        expect(unitLockQb.setLock).toHaveBeenCalledWith(
+          'pessimistic_write',
+          undefined,
+          ['u'],
         );
-        expect(sql).not.toContain('makkah');
-        expect(Object.values(params)).toContain('makkah');
+        expect(unitLockQb.andWhere).toHaveBeenCalledWith(
+          'u.companyId = :companyId',
+          { companyId },
+        );
+        expect(manager.find).toHaveBeenCalledWith(PropertyMedia, {
+          where: { unitId: 'unit-uuid-1', companyId },
+        });
+        expect(manager.find).toHaveBeenCalledWith(PropertyDocument, {
+          where: { unitId: 'unit-uuid-1', companyId },
+        });
+        expect(storagePurge.purge).toHaveBeenCalledWith(manager, {
+          media,
+          documents,
+        });
+        expect(recordHistory.record).toHaveBeenCalledWith(manager, {
+          companyId,
+          action: RecordHistoryAction.DELETE,
+          entityType: 'Unit',
+          entityId: 'unit-uuid-1',
+          entityTitle: 'A-1204',
+          contextTitle: 'Bay Tower',
+          reason: 'Mistake',
+          actorId,
+          actorName: 'Aamir',
+          regionCode: 'dubai',
+          metadata: { fileCount: 2 },
+        });
+        expect(manager.delete).toHaveBeenCalledWith(Unit, {
+          id: 'unit-uuid-1',
+          companyId,
+        });
+        expect(storagePurge.dispatch).toHaveBeenCalledWith(['purge-1']);
+        expect(events).toEqual(['commit', 'dispatch']);
+      });
+
+      it('throws NotFoundException for a unit of another company', async () => {
+        unitLockQb.getOne.mockResolvedValue(null);
+
+        await expect(
+          service.removeUnit(
+            'unit-uuid-1',
+            'other-company',
+            'Mistake',
+            actorId,
+          ),
+        ).rejects.toThrow(NotFoundException);
+        expect(unitLockQb.andWhere).toHaveBeenCalledWith(
+          'u.companyId = :companyId',
+          { companyId: 'other-company' },
+        );
+        expect(storagePurge.dispatch).not.toHaveBeenCalled();
+      });
+    });
+
+    describe('removeAsset', () => {
+      const asset = { id: 'asset-uuid-1', name: 'Bay Tower' };
+
+      it('refuses with 409 while the asset has units in any company', async () => {
+        manager.findOne.mockResolvedValue(asset);
+        manager.count.mockResolvedValue(3);
+
+        await expect(
+          service.removeAsset('asset-uuid-1', 'Duplicate', actorId),
+        ).rejects.toThrow(ConflictException);
+        expect(manager.count).toHaveBeenCalledWith(Unit, {
+          where: { assetId: 'asset-uuid-1' },
+        });
+        expect(storagePurge.purge).not.toHaveBeenCalled();
+        expect(manager.delete).not.toHaveBeenCalled();
+      });
+
+      it('purges files across companies, records global history, removes the asset', async () => {
+        manager.findOne.mockResolvedValue(asset);
+        const media = [
+          { id: 'm1', companyId },
+          { id: 'm2', companyId: 'company-uuid-2' },
+        ];
+        manager.find.mockImplementation((target: unknown) =>
+          Promise.resolve(target === PropertyMedia ? media : []),
+        );
+
+        await service.removeAsset('asset-uuid-1', 'Duplicate', actorId);
+
+        expect(manager.findOne).toHaveBeenCalledWith(Asset, {
+          where: { id: 'asset-uuid-1' },
+          lock: { mode: 'pessimistic_write' },
+        });
+        expect(manager.find).toHaveBeenCalledWith(PropertyMedia, {
+          where: { assetId: 'asset-uuid-1' },
+        });
+        expect(storagePurge.purge).toHaveBeenCalledWith(manager, {
+          media,
+          documents: [],
+        });
+        expect(recordHistory.record).toHaveBeenCalledWith(
+          manager,
+          expect.objectContaining({
+            companyId: null,
+            action: RecordHistoryAction.DELETE,
+            entityType: 'Asset',
+            entityTitle: 'Bay Tower',
+            reason: 'Duplicate',
+            metadata: { fileCount: 2 },
+          }),
+        );
+        expect(manager.delete).toHaveBeenCalledWith(Asset, {
+          id: 'asset-uuid-1',
+        });
+        expect(events).toEqual(['commit', 'dispatch']);
+      });
+
+      it('throws NotFoundException when the asset does not exist', async () => {
+        await expect(
+          service.removeAsset('missing', 'Duplicate', actorId),
+        ).rejects.toThrow(NotFoundException);
+      });
+    });
+
+    describe('archiveUnit', () => {
+      it('refuses with 409 when the unit is already archived', async () => {
+        unitLockQb.getOne.mockResolvedValue({
+          ...lockedUnit(),
+          deletedAt: new Date(),
+        });
+
+        await expect(
+          service.archiveUnit('unit-uuid-1', companyId, 'Sold', actorId),
+        ).rejects.toThrow(ConflictException);
+        expect(manager.update).not.toHaveBeenCalled();
+      });
+
+      it('refuses with 409 while the unit has an ACTIVE lease', async () => {
+        unitLockQb.getOne.mockResolvedValue(lockedUnit());
+        manager.count.mockResolvedValue(1);
+
+        await expect(
+          service.archiveUnit('unit-uuid-1', companyId, 'Sold', actorId),
+        ).rejects.toThrow('This unit has an active lease');
+        expect(manager.count).toHaveBeenCalledWith(Lease, {
+          where: {
+            unitId: 'unit-uuid-1',
+            companyId,
+            status: LeaseStatus.ACTIVE,
+          },
+        });
+        expect(manager.update).not.toHaveBeenCalled();
+        expect(recordHistory.record).not.toHaveBeenCalled();
+      });
+
+      it('sets deletedAt and records ARCHIVE in the same transaction', async () => {
+        unitLockQb.getOne.mockResolvedValue(lockedUnit());
+        unitRepo.findOne.mockResolvedValue({
+          ...lockedUnit(),
+          deletedAt: new Date(),
+          owner: null,
+        } as Unit);
+
+        const result = await service.archiveUnit(
+          'unit-uuid-1',
+          companyId,
+          'Sold',
+          actorId,
+        );
+
+        expect(manager.update).toHaveBeenCalledWith(
+          Unit,
+          { id: 'unit-uuid-1', companyId },
+          { deletedAt: expect.any(Date) },
+        );
+        expect(recordHistory.record).toHaveBeenCalledWith(
+          manager,
+          expect.objectContaining({
+            action: RecordHistoryAction.ARCHIVE,
+            entityType: 'Unit',
+            reason: 'Sold',
+          }),
+        );
+        expect(result.deletedAt).toBeInstanceOf(Date);
+      });
+    });
+
+    describe('unarchiveUnit', () => {
+      it('refuses with 409 when the unit is not archived', async () => {
+        unitLockQb.getOne.mockResolvedValue(lockedUnit());
+
+        await expect(
+          service.unarchiveUnit('unit-uuid-1', companyId, undefined, actorId),
+        ).rejects.toThrow(ConflictException);
+        expect(manager.update).not.toHaveBeenCalled();
+      });
+
+      it('clears deletedAt and records UNARCHIVE without a reason', async () => {
+        unitLockQb.getOne.mockResolvedValue({
+          ...lockedUnit(),
+          deletedAt: new Date(),
+        });
+        unitRepo.findOne.mockResolvedValue({
+          ...lockedUnit(),
+          owner: null,
+        } as Unit);
+
+        await service.unarchiveUnit(
+          'unit-uuid-1',
+          companyId,
+          undefined,
+          actorId,
+        );
+
+        expect(manager.update).toHaveBeenCalledWith(
+          Unit,
+          { id: 'unit-uuid-1', companyId },
+          { deletedAt: null },
+        );
+        expect(recordHistory.record).toHaveBeenCalledWith(
+          manager,
+          expect.objectContaining({
+            action: RecordHistoryAction.UNARCHIVE,
+            reason: null,
+          }),
+        );
+      });
+    });
+
+    describe('archived unit rules', () => {
+      it('updateUnit refuses an archived unit with 409', async () => {
+        unitRepo.findOne.mockResolvedValue({
+          ...mockUnit,
+          deletedAt: new Date(),
+        } as Unit);
+
+        await expect(
+          service.updateUnit('unit-uuid-1', companyId, { floor: '3' }),
+        ).rejects.toThrow(ConflictException);
+        expect(unitRepo.save).not.toHaveBeenCalled();
+      });
+
+      it('findOneUnit still returns an archived unit with deletedAt', async () => {
+        const deletedAt = new Date();
+        unitRepo.findOne.mockResolvedValue({
+          ...mockUnit,
+          deletedAt,
+          owner: null,
+        } as Unit);
+
+        const unit = await service.findOneUnit('unit-uuid-1', companyId);
+
+        expect(unit.deletedAt).toBe(deletedAt);
+      });
+
+      it('findAllUnits excludes archived units by default', async () => {
+        const qb = qbMock([mockUnit], 1);
+        unitRepo.createQueryBuilder.mockReturnValue(qb as any);
+        mediaRepo.find.mockResolvedValue([]);
+
+        const result = await service.findAllUnits(companyId, 1, 20, {});
+
+        expect(qb.andWhere).toHaveBeenCalledWith('u.deletedAt IS NULL');
+        expect(result.data[0]).toHaveProperty('deletedAt', null);
+      });
+
+      it('findAllUnits returns only archived units for archived=only', async () => {
+        const qb = qbMock([], 0);
+        unitRepo.createQueryBuilder.mockReturnValue(qb as any);
+
+        await service.findAllUnits(companyId, 1, 20, {
+          archived: UnitArchivedFilter.ONLY,
+        });
+
+        expect(qb.andWhere).toHaveBeenCalledWith('u.deletedAt IS NOT NULL');
+        expect(qb.andWhere).not.toHaveBeenCalledWith('u.deletedAt IS NULL');
+      });
+
+      it('findAllUnits applies no archive clause for archived=include', async () => {
+        const qb = qbMock([], 0);
+        unitRepo.createQueryBuilder.mockReturnValue(qb as any);
+
+        await service.findAllUnits(companyId, 1, 20, {
+          archived: UnitArchivedFilter.INCLUDE,
+        });
+
+        expect(
+          qb.andWhere.mock.calls.some(([sql]: [string]) =>
+            sql.includes('deletedAt'),
+          ),
+        ).toBe(false);
+      });
+
+      it('findUnitsByAsset excludes archived units', async () => {
+        (unitRepo.findAndCount as jest.Mock).mockResolvedValue([[], 0]);
+
+        await service.findUnitsByAsset('asset-uuid-1', companyId);
+
+        expect(unitRepo.findAndCount).toHaveBeenCalledWith(
+          expect.objectContaining({
+            where: expect.objectContaining({ deletedAt: IsNull() }),
+          }),
+        );
+      });
+
+      it('findUnitsByAsset returns only archived units with deletedAt for archived=only', async () => {
+        const deletedAt = new Date('2026-09-01T00:00:00Z');
+        (unitRepo.findAndCount as jest.Mock).mockResolvedValue([
+          [{ ...mockUnit, deletedAt }],
+          1,
+        ]);
+
+        const result = await service.findUnitsByAsset(
+          'asset-uuid-1',
+          companyId,
+          1,
+          20,
+          undefined,
+          UnitArchivedFilter.ONLY,
+        );
+
+        expect(unitRepo.findAndCount).toHaveBeenCalledWith(
+          expect.objectContaining({
+            where: expect.objectContaining({
+              assetId: 'asset-uuid-1',
+              companyId,
+              deletedAt: Not(IsNull()),
+            }),
+          }),
+        );
+        expect(result.data[0]).toHaveProperty('deletedAt', deletedAt);
+      });
+
+      it('findUnitsByAsset applies no archive clause for archived=include', async () => {
+        (unitRepo.findAndCount as jest.Mock).mockResolvedValue([[], 0]);
+
+        await service.findUnitsByAsset(
+          'asset-uuid-1',
+          companyId,
+          1,
+          20,
+          undefined,
+          UnitArchivedFilter.INCLUDE,
+        );
+
+        const { where } = (unitRepo.findAndCount as jest.Mock).mock.calls[0][0];
+        expect(where).toEqual({ assetId: 'asset-uuid-1', companyId });
+      });
+
+      it('findAllAssets does not reveal an asset through archived units only', async () => {
+        (assetRepo.findAndCount as jest.Mock).mockResolvedValue([
+          [
+            {
+              id: 'a1',
+              units: [
+                { id: 'u1', companyId, deletedAt: new Date() },
+                { id: 'u2', companyId, deletedAt: null },
+              ],
+            },
+          ],
+          1,
+        ]);
+
+        const result = await service.findAllAssets(companyId);
+
+        const opts = (assetRepo.findAndCount as jest.Mock).mock.calls[0][0];
+        expect(opts.where[0].units).toEqual({ companyId, deletedAt: IsNull() });
+        expect(result.data[0].units.map((u) => u.id)).toEqual(['u2']);
       });
     });
   });

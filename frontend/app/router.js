@@ -44,6 +44,7 @@ Router.map(function () {
   this.route('whatsapp');
   this.route('reports');
   this.route('audit');
+  this.route('history');
   this.route('profile');
   this.route('company');
   this.route('billing', function () {

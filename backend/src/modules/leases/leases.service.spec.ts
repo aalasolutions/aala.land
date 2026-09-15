@@ -6,11 +6,20 @@ import {
   QueryFailedError,
   Repository,
 } from 'typeorm';
-import { NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  NotFoundException,
+  BadRequestException,
+  ConflictException,
+} from '@nestjs/common';
 import { LeasesService } from './leases.service';
+import { LeaseArchivedFilter } from './dto/lease-archived-filter.enum';
 import { ContactsService } from '../contacts/contacts.service';
 import { Lease, LeaseStatus, LeaseType } from './entities/lease.entity';
 import { Unit } from '../properties/entities/unit.entity';
+import { Contact } from '../contacts/entities/contact.entity';
+import { Cheque } from '../cheques/entities/cheque.entity';
+import { RecordHistoryService } from '../record-history/record-history.service';
+import { RecordHistoryAction } from '../record-history/entities/record-history.entity';
 
 describe('LeasesService', () => {
   let service: LeasesService;
@@ -23,11 +32,16 @@ describe('LeasesService', () => {
     save: jest.Mock;
     create: jest.Mock;
     createQueryBuilder: jest.Mock;
+    count: jest.Mock;
+    remove: jest.Mock;
   };
+  let recordHistory: { record: jest.Mock; resolveActorName: jest.Mock };
   // The count re-check inside the locked transaction resolves through this.
   let activeLeaseCount: number;
 
   const companyId = 'company-uuid-1';
+  const actorId = 'user-uuid-1';
+  const reasonDto = { reason: 'Tenant left' };
 
   // Build a QueryFailedError shaped like a Postgres unique-index violation, with
   // an optional driver `code`/`constraint` and message so the service's 23505
@@ -79,6 +93,12 @@ describe('LeasesService', () => {
       save: jest.fn(),
       create: jest.fn(),
       createQueryBuilder: jest.fn().mockReturnValue(qb),
+      count: jest.fn().mockResolvedValue(0),
+      remove: jest.fn(),
+    };
+    recordHistory = {
+      record: jest.fn().mockResolvedValue(undefined),
+      resolveActorName: jest.fn().mockResolvedValue('Admin User'),
     };
 
     // transaction(fn) runs the callback with the mocked EntityManager, mirroring
@@ -123,6 +143,7 @@ describe('LeasesService', () => {
               .mockResolvedValue({ id: 'contact-uuid-1' }),
           },
         },
+        { provide: RecordHistoryService, useValue: recordHistory },
       ],
     }).compile();
 
@@ -194,7 +215,9 @@ describe('LeasesService', () => {
       expect(qb.where).toHaveBeenCalledWith('l.companyId = :companyId', {
         companyId,
       });
-      expect(qb.andWhere).not.toHaveBeenCalled();
+      // Only the default archived=exclude predicate.
+      expect(qb.andWhere).toHaveBeenCalledTimes(1);
+      expect(qb.andWhere).toHaveBeenCalledWith('l.deletedAt IS NULL');
       expect(result.total).toBe(1);
       expect(result.data).toEqual([mockLease]);
     });
@@ -296,6 +319,38 @@ describe('LeasesService', () => {
       );
     });
 
+    it.each([
+      [LeaseArchivedFilter.ONLY, 'l.deletedAt IS NOT NULL'],
+      [LeaseArchivedFilter.EXCLUDE, 'l.deletedAt IS NULL'],
+    ] as const)('archived=%s adds %s', async (archived, sql) => {
+      const qb = qbMock([mockLease as Lease], 1);
+      (repo.createQueryBuilder as unknown as jest.Mock) = jest
+        .fn()
+        .mockReturnValue(qb);
+
+      await service.findAll(companyId, 1, 20, undefined, undefined, {
+        archived,
+      });
+
+      expect(qb.andWhere).toHaveBeenCalledWith(sql);
+    });
+
+    it('archived=include adds no archive predicate', async () => {
+      const qb = qbMock([mockLease as Lease], 1);
+      (repo.createQueryBuilder as unknown as jest.Mock) = jest
+        .fn()
+        .mockReturnValue(qb);
+
+      await service.findAll(companyId, 1, 20, undefined, 'contact-uuid-1', {
+        archived: LeaseArchivedFilter.INCLUDE,
+      });
+
+      expect(qb.andWhere).toHaveBeenCalledTimes(1);
+      expect(qb.andWhere).toHaveBeenCalledWith('l.contactId = :contactId', {
+        contactId: 'contact-uuid-1',
+      });
+    });
+
     it('combines status, type, search and date range filters together', async () => {
       const qb = qbMock([mockLease as Lease], 1);
       (repo.createQueryBuilder as unknown as jest.Mock) = jest
@@ -387,9 +442,12 @@ describe('LeasesService', () => {
       manager.findOne.mockResolvedValue({ ...mockLease } as Lease);
       manager.save.mockImplementation(async (_e: unknown, l: Lease) => l);
 
-      const result = await service.update('lease-uuid-1', companyId, {
-        status: LeaseStatus.EXPIRED,
-      });
+      const result = await service.update(
+        'lease-uuid-1',
+        companyId,
+        { status: LeaseStatus.EXPIRED },
+        actorId,
+      );
 
       // The row is loaded FOR UPDATE, not through the plain repository.
       expect(manager.findOne).toHaveBeenCalledWith(Lease, {
@@ -400,11 +458,72 @@ describe('LeasesService', () => {
       expect(result.status).toBe(LeaseStatus.EXPIRED);
     });
 
+    it('records STATUS_CHANGE history when the status changes', async () => {
+      seedLocked({ status: LeaseStatus.ACTIVE, ejariNumber: 'EJ-1' });
+
+      await service.update(
+        'lease-uuid-1',
+        companyId,
+        { status: LeaseStatus.EXPIRED },
+        actorId,
+      );
+
+      expect(recordHistory.record).toHaveBeenCalledTimes(1);
+      expect(recordHistory.record).toHaveBeenCalledWith(manager, {
+        companyId,
+        action: RecordHistoryAction.STATUS_CHANGE,
+        entityType: 'Lease',
+        entityId: 'lease-uuid-1',
+        entityTitle: 'Lease A-1204 (Ejari EJ-1)',
+        contextTitle: 'Zainab Qureshi',
+        reason: null,
+        actorId,
+        actorName: 'Admin User',
+        regionCode: 'dubai',
+        metadata: { from: LeaseStatus.ACTIVE, to: LeaseStatus.EXPIRED },
+      });
+    });
+
+    it('records no history when the status is unchanged or absent', async () => {
+      seedLocked({ status: LeaseStatus.EXPIRED });
+
+      await service.update(
+        'lease-uuid-1',
+        companyId,
+        { status: LeaseStatus.EXPIRED, notes: 'x' },
+        actorId,
+      );
+      await service.update('lease-uuid-1', companyId, { notes: 'y' }, actorId);
+
+      expect(manager.save).toHaveBeenCalledTimes(2);
+      expect(recordHistory.record).not.toHaveBeenCalled();
+    });
+
+    it('records no history when the status change fails', async () => {
+      seedLocked({ status: LeaseStatus.DRAFT });
+      activeLeaseCount = 1;
+
+      await expect(
+        service.update(
+          'lease-uuid-1',
+          companyId,
+          { status: LeaseStatus.ACTIVE },
+          actorId,
+        ),
+      ).rejects.toThrow(BadRequestException);
+      expect(recordHistory.record).not.toHaveBeenCalled();
+    });
+
     it('throws NotFoundException when lease not found', async () => {
       manager.findOne.mockResolvedValue(null);
 
       await expect(
-        service.update('bad-id', companyId, { status: LeaseStatus.EXPIRED }),
+        service.update(
+          'bad-id',
+          companyId,
+          { status: LeaseStatus.EXPIRED },
+          actorId,
+        ),
       ).rejects.toThrow(NotFoundException);
     });
 
@@ -416,9 +535,12 @@ describe('LeasesService', () => {
       activeLeaseCount = 1; // another ACTIVE lease already exists on the unit
 
       await expect(
-        service.update('lease-uuid-1', companyId, {
-          status: LeaseStatus.ACTIVE,
-        }),
+        service.update(
+          'lease-uuid-1',
+          companyId,
+          { status: LeaseStatus.ACTIVE },
+          actorId,
+        ),
       ).rejects.toThrow(BadRequestException);
       expect(manager.save).not.toHaveBeenCalled();
     });
@@ -440,9 +562,12 @@ describe('LeasesService', () => {
       );
 
       await expect(
-        service.update('lease-uuid-1', companyId, {
-          status: LeaseStatus.ACTIVE,
-        }),
+        service.update(
+          'lease-uuid-1',
+          companyId,
+          { status: LeaseStatus.ACTIVE },
+          actorId,
+        ),
       ).rejects.toThrow(BadRequestException);
     });
 
@@ -459,9 +584,12 @@ describe('LeasesService', () => {
       manager.save.mockRejectedValue(other);
 
       await expect(
-        service.update('lease-uuid-1', companyId, {
-          status: LeaseStatus.ACTIVE,
-        }),
+        service.update(
+          'lease-uuid-1',
+          companyId,
+          { status: LeaseStatus.ACTIVE },
+          actorId,
+        ),
       ).rejects.toBe(other);
     });
   });
@@ -707,7 +835,12 @@ describe('LeasesService', () => {
       manager.findOne.mockResolvedValue(activeLease);
       manager.save.mockImplementation(async (_e: unknown, l: Lease) => l);
 
-      const result = await service.terminate('lease-uuid-1', companyId);
+      const result = await service.terminate(
+        'lease-uuid-1',
+        companyId,
+        reasonDto,
+        actorId,
+      );
 
       expect(manager.findOne).toHaveBeenCalledWith(Lease, {
         where: { id: 'lease-uuid-1', companyId },
@@ -715,6 +848,17 @@ describe('LeasesService', () => {
       });
       expect(dataSource.transaction).toHaveBeenCalledTimes(1);
       expect(result.status).toBe(LeaseStatus.TERMINATED);
+      expect(recordHistory.record).toHaveBeenCalledWith(
+        manager,
+        expect.objectContaining({
+          action: RecordHistoryAction.TERMINATE,
+          entityType: 'Lease',
+          entityId: 'lease-uuid-1',
+          reason: 'Tenant left',
+          actorId,
+          actorName: 'Admin User',
+        }),
+      );
     });
 
     it('throws BadRequestException when lease is not ACTIVE', async () => {
@@ -722,7 +866,7 @@ describe('LeasesService', () => {
       manager.findOne.mockResolvedValue(expired);
 
       await expect(
-        service.terminate('lease-uuid-1', companyId),
+        service.terminate('lease-uuid-1', companyId, reasonDto, actorId),
       ).rejects.toThrow(BadRequestException);
     });
 
@@ -731,27 +875,310 @@ describe('LeasesService', () => {
       manager.findOne.mockResolvedValue(draft);
 
       await expect(
-        service.terminate('lease-uuid-1', companyId),
+        service.terminate('lease-uuid-1', companyId, reasonDto, actorId),
       ).rejects.toThrow(BadRequestException);
     });
 
     it('throws NotFoundException when lease not found', async () => {
       manager.findOne.mockResolvedValue(null);
 
-      await expect(service.terminate('bad-id', companyId)).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(
+        service.terminate('bad-id', companyId, reasonDto, actorId),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 
+  // Entity-aware manager.findOne: the locked lease plus history snapshots.
+  function seedLocked(overrides: Partial<Lease> = {}): Lease {
+    const lease = {
+      ...mockLease,
+      deletedAt: null,
+      ejariNumber: null,
+      ...overrides,
+    } as Lease;
+    manager.findOne.mockImplementation(async (entity: unknown) => {
+      if (entity === Lease) return lease;
+      if (entity === Unit) {
+        return {
+          id: 'unit-uuid-1',
+          unitNumber: 'A-1204',
+          asset: { locality: { city: { regionCode: 'dubai' } } },
+        };
+      }
+      if (entity === Contact) {
+        return {
+          id: 'contact-uuid-1',
+          firstName: 'Zainab',
+          lastName: 'Qureshi',
+        };
+      }
+      return null;
+    });
+    manager.save.mockImplementation(async (_e: unknown, l: Lease) => l);
+    return lease;
+  }
+
   describe('remove', () => {
-    it('removes lease', async () => {
-      repo.findOne.mockResolvedValue(mockLease as Lease);
-      repo.remove.mockResolvedValue(mockLease as Lease);
+    it('deletes a DRAFT lease with no cheques and records history first', async () => {
+      const lease = seedLocked({
+        status: LeaseStatus.DRAFT,
+        ejariNumber: 'EJ-1',
+      });
 
-      await service.remove('lease-uuid-1', companyId);
+      await service.remove('lease-uuid-1', companyId, reasonDto, actorId);
 
-      expect(repo.remove).toHaveBeenCalledWith(mockLease);
+      expect(manager.findOne).toHaveBeenCalledWith(Lease, {
+        where: { id: 'lease-uuid-1', companyId },
+        lock: { mode: 'pessimistic_write' },
+      });
+      expect(manager.count).toHaveBeenCalledWith(Cheque, {
+        where: { leaseId: 'lease-uuid-1', companyId },
+      });
+      expect(recordHistory.record).toHaveBeenCalledWith(manager, {
+        companyId,
+        action: RecordHistoryAction.DELETE,
+        entityType: 'Lease',
+        entityId: 'lease-uuid-1',
+        entityTitle: 'Lease A-1204 (Ejari EJ-1)',
+        contextTitle: 'Zainab Qureshi',
+        reason: 'Tenant left',
+        actorId,
+        actorName: 'Admin User',
+        regionCode: 'dubai',
+        metadata: { status: LeaseStatus.DRAFT },
+      });
+      expect(manager.remove).toHaveBeenCalledWith(Lease, lease);
+      expect(recordHistory.record.mock.invocationCallOrder[0]).toBeLessThan(
+        manager.remove.mock.invocationCallOrder[0],
+      );
+    });
+
+    it.each([
+      LeaseStatus.ACTIVE,
+      LeaseStatus.EXPIRED,
+      LeaseStatus.TERMINATED,
+      LeaseStatus.RENEWED,
+    ])('refuses a %s lease with 409', async (status) => {
+      seedLocked({ status });
+
+      await expect(
+        service.remove('lease-uuid-1', companyId, reasonDto, actorId),
+      ).rejects.toThrow(
+        new ConflictException(
+          'Only draft leases can be deleted. Archive it instead.',
+        ),
+      );
+      expect(manager.remove).not.toHaveBeenCalled();
+      expect(recordHistory.record).not.toHaveBeenCalled();
+    });
+
+    it('refuses a DRAFT lease with linked cheques with 409', async () => {
+      seedLocked({ status: LeaseStatus.DRAFT });
+      manager.count.mockResolvedValue(2);
+
+      await expect(
+        service.remove('lease-uuid-1', companyId, reasonDto, actorId),
+      ).rejects.toThrow(ConflictException);
+      expect(manager.remove).not.toHaveBeenCalled();
+      expect(recordHistory.record).not.toHaveBeenCalled();
+    });
+
+    it('throws NotFoundException for a lease in another company', async () => {
+      manager.findOne.mockResolvedValue(null);
+
+      await expect(
+        service.remove('lease-uuid-1', 'other-company', reasonDto, actorId),
+      ).rejects.toThrow(NotFoundException);
+      expect(manager.remove).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('archive', () => {
+    it('archives an EXPIRED lease and records history', async () => {
+      const lease = seedLocked({ status: LeaseStatus.EXPIRED });
+
+      const result = await service.archive(
+        'lease-uuid-1',
+        companyId,
+        reasonDto,
+        actorId,
+      );
+
+      expect(lease.deletedAt).toBeInstanceOf(Date);
+      expect(manager.save).toHaveBeenCalledWith(Lease, lease);
+      expect(recordHistory.record).toHaveBeenCalledWith(
+        manager,
+        expect.objectContaining({
+          action: RecordHistoryAction.ARCHIVE,
+          entityId: 'lease-uuid-1',
+          reason: 'Tenant left',
+          companyId,
+        }),
+      );
+      expect(result.deletedAt).toBeInstanceOf(Date);
+    });
+
+    it('refuses an ACTIVE lease with 409', async () => {
+      seedLocked({ status: LeaseStatus.ACTIVE });
+
+      await expect(
+        service.archive('lease-uuid-1', companyId, reasonDto, actorId),
+      ).rejects.toThrow(
+        new ConflictException(
+          'Active leases cannot be archived. Terminate it first.',
+        ),
+      );
+      expect(manager.save).not.toHaveBeenCalled();
+      expect(recordHistory.record).not.toHaveBeenCalled();
+    });
+
+    it('refuses an already archived lease with 409', async () => {
+      seedLocked({ status: LeaseStatus.TERMINATED, deletedAt: new Date() });
+
+      await expect(
+        service.archive('lease-uuid-1', companyId, reasonDto, actorId),
+      ).rejects.toThrow(ConflictException);
+      expect(manager.save).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('unarchive', () => {
+    it('clears deletedAt and records history with an optional reason', async () => {
+      const lease = seedLocked({
+        status: LeaseStatus.TERMINATED,
+        deletedAt: new Date(),
+      });
+
+      await service.unarchive('lease-uuid-1', companyId, {}, actorId);
+
+      expect(lease.deletedAt).toBeNull();
+      expect(manager.save).toHaveBeenCalledWith(Lease, lease);
+      expect(recordHistory.record).toHaveBeenCalledWith(
+        manager,
+        expect.objectContaining({
+          action: RecordHistoryAction.UNARCHIVE,
+          reason: null,
+        }),
+      );
+    });
+
+    it('refuses a lease that is not archived with 409', async () => {
+      seedLocked({ status: LeaseStatus.EXPIRED });
+
+      await expect(
+        service.unarchive('lease-uuid-1', companyId, {}, actorId),
+      ).rejects.toThrow(ConflictException);
+      expect(recordHistory.record).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('archived lease guards', () => {
+    const archivedAt = new Date('2026-09-01');
+
+    it('update returns 409', async () => {
+      seedLocked({ status: LeaseStatus.EXPIRED, deletedAt: archivedAt });
+
+      await expect(
+        service.update('lease-uuid-1', companyId, { notes: 'x' }, actorId),
+      ).rejects.toThrow(ConflictException);
+      expect(manager.save).not.toHaveBeenCalled();
+    });
+
+    it('renew returns 409', async () => {
+      seedLocked({ status: LeaseStatus.EXPIRED, deletedAt: archivedAt });
+
+      await expect(
+        service.renew('lease-uuid-1', companyId, {
+          unitId: 'unit-uuid-1',
+        } as any),
+      ).rejects.toThrow(ConflictException);
+      expect(manager.save).not.toHaveBeenCalled();
+    });
+
+    it('terminate returns 409', async () => {
+      seedLocked({ status: LeaseStatus.EXPIRED, deletedAt: archivedAt });
+
+      await expect(
+        service.terminate('lease-uuid-1', companyId, reasonDto, actorId),
+      ).rejects.toThrow(ConflictException);
+      expect(manager.save).not.toHaveBeenCalled();
+      expect(recordHistory.record).not.toHaveBeenCalled();
+    });
+
+    it('findOne still returns an archived lease with deletedAt', async () => {
+      repo.findOne.mockResolvedValue({
+        ...mockLease,
+        deletedAt: archivedAt,
+      } as Lease);
+
+      const result = await service.findOne('lease-uuid-1', companyId);
+
+      expect(result.deletedAt).toBe(archivedAt);
+    });
+  });
+
+  describe('status move to DRAFT', () => {
+    it.each([LeaseStatus.ACTIVE, LeaseStatus.EXPIRED])(
+      'refuses %s to DRAFT with 409',
+      async (status) => {
+        seedLocked({ status });
+
+        await expect(
+          service.update(
+            'lease-uuid-1',
+            companyId,
+            { status: LeaseStatus.DRAFT },
+            actorId,
+          ),
+        ).rejects.toThrow(ConflictException);
+        expect(manager.save).not.toHaveBeenCalled();
+      },
+    );
+
+    it('keeps the terminal-status guard for TERMINATED', async () => {
+      seedLocked({ status: LeaseStatus.TERMINATED });
+
+      await expect(
+        service.update(
+          'lease-uuid-1',
+          companyId,
+          { status: LeaseStatus.DRAFT },
+          actorId,
+        ),
+      ).rejects.toThrow(BadRequestException);
+    });
+  });
+
+  describe('archived unit', () => {
+    const dto = {
+      unitId: 'unit-uuid-1',
+      startDate: '2026-01-01',
+      endDate: '2026-12-31',
+      monthlyRent: 5000,
+    } as any;
+
+    it('create refuses an archived unit with 409', async () => {
+      unitRepo.findOne.mockResolvedValue({
+        id: 'unit-uuid-1',
+        deletedAt: new Date(),
+      } as Unit);
+
+      await expect(service.create(companyId, dto)).rejects.toThrow(
+        ConflictException,
+      );
+      expect(repo.save).not.toHaveBeenCalled();
+    });
+
+    it('findByUnit still lists leases of an archived unit', async () => {
+      unitRepo.findOne.mockResolvedValue({
+        id: 'unit-uuid-1',
+        deletedAt: new Date(),
+      } as Unit);
+      repo.find.mockResolvedValue([mockLease as Lease]);
+
+      const result = await service.findByUnit('unit-uuid-1', companyId);
+
+      expect(result).toHaveLength(1);
     });
   });
   describe('region scoping', () => {
@@ -818,6 +1245,7 @@ describe('LeasesService', () => {
           'lease-uuid-1',
           companyId,
           { monthlyRent: 9000 },
+          actorId,
           makkahManager,
         ),
       ).rejects.toThrow(NotFoundException);
@@ -847,7 +1275,13 @@ describe('LeasesService', () => {
       seedLeaseOnUnit('unit-punjab');
 
       await expect(
-        service.terminate('lease-uuid-1', companyId, makkahManager),
+        service.terminate(
+          'lease-uuid-1',
+          companyId,
+          reasonDto,
+          actorId,
+          makkahManager,
+        ),
       ).rejects.toThrow(NotFoundException);
       expect(manager.save).not.toHaveBeenCalled();
     });
@@ -858,6 +1292,8 @@ describe('LeasesService', () => {
       const result = await service.terminate(
         'lease-uuid-1',
         companyId,
+        reasonDto,
+        actorId,
         twoRegionManager,
       );
 
@@ -869,9 +1305,15 @@ describe('LeasesService', () => {
       seedLeaseOnUnit('unit-punjab');
 
       await expect(
-        service.remove('lease-uuid-1', companyId, makkahManager),
+        service.remove(
+          'lease-uuid-1',
+          companyId,
+          reasonDto,
+          actorId,
+          makkahManager,
+        ),
       ).rejects.toThrow(NotFoundException);
-      expect(repo.remove).not.toHaveBeenCalled();
+      expect(manager.remove).not.toHaveBeenCalled();
     });
 
     it('denies every by-id read when the caller has no assigned region', async () => {
@@ -948,6 +1390,7 @@ describe('LeasesService', () => {
             'lease-uuid-1',
             companyId,
             { contactId: 'contact-uuid-1' },
+            actorId,
             makkahManager,
           ),
         ).rejects.toThrow(NotFoundException);
@@ -962,6 +1405,7 @@ describe('LeasesService', () => {
           'lease-uuid-1',
           companyId,
           { contactId: 'contact-uuid-1' },
+          actorId,
           makkahManager,
         );
 

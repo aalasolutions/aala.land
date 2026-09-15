@@ -2,13 +2,14 @@ import {
   Injectable,
   Logger,
   BadRequestException,
+  ConflictException,
   NotFoundException,
   InternalServerErrorException,
   HttpException,
   HttpStatus,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { DataSource, IsNull, Repository } from 'typeorm';
 import {
   S3Client,
   PutObjectCommand,
@@ -25,6 +26,14 @@ import {
   reserveStorage,
 } from '@shared/utils/storage-quota.util';
 import { SystemEmailService } from '../email/system-email.service';
+import { StoragePurgeService } from '../storage-purge/storage-purge.service';
+import {
+  buildDocumentsClient,
+  buildMediaClient,
+  getDocumentsBucket,
+  getMediaBucket,
+  getThumbnailKey,
+} from '../storage-purge/storage-targets.util';
 import { createReadStream } from 'fs';
 import { unlink } from 'fs/promises';
 import sharp from 'sharp';
@@ -102,6 +111,8 @@ export class MediaService {
     @InjectRepository(Asset)
     private readonly assetRepository: Repository<Asset>,
     private readonly systemEmail: SystemEmailService,
+    private readonly dataSource: DataSource,
+    private readonly storagePurge: StoragePurgeService,
   ) {}
 
   /** Reserve storage; on an over-quota rejection notify the company (best-effort,
@@ -154,77 +165,30 @@ export class MediaService {
 
   // S3 plumbing
 
-  private buildClient(
-    accessKeyId: string | undefined,
-    secretAccessKey: string | undefined,
-    label: string,
-  ): S3Client {
-    if (!accessKeyId || !secretAccessKey) {
-      throw new BadRequestException(`S3 is not configured. Set ${label}.`);
-    }
-    const region = process.env.AWS_REGION ?? 'us-east-005';
-    const endpoint = process.env.S3_ENDPOINT;
-    return new S3Client({
-      region,
-      credentials: { accessKeyId, secretAccessKey },
-      requestChecksumCalculation: 'WHEN_REQUIRED',
-      responseChecksumValidation: 'WHEN_REQUIRED',
-      ...(endpoint ? { endpoint, forcePathStyle: true } : {}),
-    });
-  }
-
   private getMediaClient(): S3Client {
     if (!this.mediaClient) {
-      this.mediaClient = this.buildClient(
-        process.env.AWS_ACCESS_KEY_ID,
-        process.env.AWS_SECRET_ACCESS_KEY,
-        'AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY',
-      );
+      this.mediaClient = buildMediaClient();
     }
     return this.mediaClient;
   }
 
   private getDocumentsClient(): S3Client {
     if (!this.documentsClient) {
-      this.documentsClient = this.buildClient(
-        process.env.AWS_DOCUMENTS_ACCESS_KEY_ID,
-        process.env.AWS_DOCUMENTS_SECRET_ACCESS_KEY,
-        'AWS_DOCUMENTS_ACCESS_KEY_ID and AWS_DOCUMENTS_SECRET_ACCESS_KEY',
-      );
+      this.documentsClient = buildDocumentsClient();
     }
     return this.documentsClient;
-  }
-
-  // Public, property photos/thumbnails only.
-  private getMediaBucket(): string {
-    const bucket = process.env.AWS_S3_BUCKET;
-    if (!bucket)
-      throw new BadRequestException('AWS_S3_BUCKET is not configured.');
-    return bucket;
-  }
-
-  // Private — documents only. Must never be made public-read; the app serves
-  // documents exclusively through DocumentsService.downloadStream, which
-  // re-checks accessLevel before this bucket is touched.
-  private getDocumentsBucket(): string {
-    const bucket = process.env.AWS_S3_DOCUMENTS_BUCKET;
-    if (!bucket)
-      throw new BadRequestException(
-        'AWS_S3_DOCUMENTS_BUCKET is not configured.',
-      );
-    return bucket;
   }
 
   // Pair each bucket with its own credentials so an operation can never use the
   // wrong key for a bucket.
   private mediaTarget(): { client: S3Client; bucket: string } {
-    return { client: this.getMediaClient(), bucket: this.getMediaBucket() };
+    return { client: this.getMediaClient(), bucket: getMediaBucket() };
   }
 
   private documentsTarget(): { client: S3Client; bucket: string } {
     return {
       client: this.getDocumentsClient(),
-      bucket: this.getDocumentsBucket(),
+      bucket: getDocumentsBucket(),
     };
   }
 
@@ -234,17 +198,6 @@ export class MediaService {
     return endpoint
       ? `${endpoint}/${bucket}/${key}`
       : `https://${bucket}.s3.${region}.amazonaws.com/${key}`;
-  }
-
-  private getThumbnailKey(originalKey: string): string {
-    const parts = originalKey.split('/');
-    const fileName = parts.pop();
-    if (!fileName) {
-      throw new InternalServerErrorException(
-        'Invalid S3 key format: empty filename segment',
-      );
-    }
-    return [...parts, 'thumbs', `thumb-${fileName}`].join('/');
   }
 
   // Storage counter helpers
@@ -276,6 +229,11 @@ export class MediaService {
         'Property not found or does not belong to this company',
       );
     }
+    if (unit.deletedAt) {
+      throw new ConflictException(
+        'This unit is archived. Unarchive it before uploading photos.',
+      );
+    }
   }
 
   private async verifyAssetOwnership(
@@ -284,7 +242,7 @@ export class MediaService {
   ): Promise<void> {
     // Assets are shared (community-seeded); no companyId on Asset entity.
     const unit = await this.unitRepository.findOne({
-      where: { assetId, companyId },
+      where: { assetId, companyId, deletedAt: IsNull() },
     });
     if (!unit) {
       throw new NotFoundException(
@@ -412,7 +370,7 @@ export class MediaService {
       .slice(0, 200);
     const folder = dto.unitId ?? dto.assetId!;
     const originalKey = `${BUCKET_ROOT_FOLDER}/companies/${companyId}/properties/${folder}/${timestamp}-${safeName}`;
-    const thumbKey = this.getThumbnailKey(originalKey);
+    const thumbKey = getThumbnailKey(originalKey);
 
     // 10. Upload original and thumbnail to B2.
     //     Output is always JPEG regardless of input format — record it as such.
@@ -770,83 +728,15 @@ export class MediaService {
   // Delete
 
   async deleteMedia(id: string, companyId: string): Promise<void> {
-    const media = await this.mediaRepository.findOne({
-      where: { id, companyId },
-    });
-    if (!media) throw new NotFoundException('Media not found');
-
-    const { client, bucket } = this.mediaTarget();
-    let bytesFreed = 0;
-
-    if (media.s3Key) {
-      try {
-        await client.send(
-          new DeleteObjectCommand({ Bucket: bucket, Key: media.s3Key }),
-        );
-        bytesFreed += media.fileSize ?? 0;
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        this.logger.error(`Failed to delete B2 object ${media.s3Key}: ${msg}`);
-        throw new InternalServerErrorException(
-          `Could not delete file from storage: ${msg}`,
-        );
-      }
-
-      const thumbKey = this.getThumbnailKey(media.s3Key);
-      try {
-        await client.send(
-          new DeleteObjectCommand({ Bucket: bucket, Key: thumbKey }),
-        );
-        bytesFreed += media.thumbnailSize ?? 0;
-      } catch (err) {
-        // Thumbnail delete failure is non-fatal — log and continue.
-        this.logger.warn(
-          `Failed to delete thumbnail ${thumbKey}: ` +
-            (err instanceof Error ? err.message : String(err)),
-        );
-      }
-    }
-
-    await this.mediaRepository.remove(media);
-
-    if (bytesFreed > 0) {
-      this.decrementStorage(companyId, bytesFreed).catch((err) => {
-        this.logger.error(
-          `Failed to decrement storage on media delete for company ${companyId}: ` +
-            (err instanceof Error ? err.message : String(err)),
-        );
+    const purgeIds = await this.dataSource.transaction(async (manager) => {
+      const media = await manager.findOne(PropertyMedia, {
+        where: { id, companyId },
+        lock: { mode: 'pessimistic_write' },
       });
-    }
-  }
-
-  async deleteDocumentFromStorage(
-    s3Key: string | null,
-    companyId: string,
-    fileSize: number | null,
-  ): Promise<void> {
-    if (!s3Key) return;
-
-    const { client, bucket } = this.documentsTarget();
-
-    try {
-      await client.send(
-        new DeleteObjectCommand({ Bucket: bucket, Key: s3Key }),
-      );
-      if (fileSize && fileSize > 0) {
-        this.decrementStorage(companyId, fileSize).catch((err) => {
-          this.logger.error(
-            `Failed to decrement storage on document delete for company ${companyId}: ` +
-              (err instanceof Error ? err.message : String(err)),
-          );
-        });
-      }
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      this.logger.error(`Failed to delete document B2 object ${s3Key}: ${msg}`);
-      throw new InternalServerErrorException(
-        `Could not delete document from storage: ${msg}`,
-      );
-    }
+      if (!media) throw new NotFoundException('Media not found');
+      return this.storagePurge.purge(manager, { media: [media] });
+    });
+    void this.storagePurge.dispatch(purgeIds);
   }
 
   // Streams a document's bytes from the private documents bucket. Callers must go
