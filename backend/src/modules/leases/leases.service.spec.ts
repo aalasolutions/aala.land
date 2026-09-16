@@ -73,8 +73,8 @@ describe('LeasesService', () => {
     monthlyRent: 5000,
     currency: 'AED',
     numberOfCheques: 4,
-    startDate: new Date('2026-01-01'),
-    endDate: new Date('2026-12-31'),
+    startDate: '2026-01-01',
+    endDate: '2026-12-31',
   };
 
   beforeEach(async () => {
@@ -1881,7 +1881,10 @@ describe('LeasesService', () => {
         seedUnitLookup();
         const row = { ...mockLease, unitId: 'unit-punjab' } as Lease;
         repo.create.mockReturnValue(row);
-        manager.findOne.mockResolvedValue({ id: 'unit-punjab', deletedAt: null });
+        manager.findOne.mockResolvedValue({
+          id: 'unit-punjab',
+          deletedAt: null,
+        });
         manager.save.mockResolvedValue(row);
         repo.findOne.mockResolvedValue(row);
 

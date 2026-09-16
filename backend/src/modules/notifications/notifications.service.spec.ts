@@ -1,6 +1,13 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { Repository, IsNull, MoreThanOrEqual } from 'typeorm';
+import {
+  Repository,
+  In,
+  IsNull,
+  LessThan,
+  LessThanOrEqual,
+  MoreThanOrEqual,
+} from 'typeorm';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { CronExpression } from '@nestjs/schedule';
 import { NotificationsService } from './notifications.service';
@@ -29,6 +36,36 @@ import {
   LeadSource,
 } from '../leads/entities/lead.entity';
 import { NotificationsGateway } from './notifications.gateway';
+import {
+  regionCodesAtLocalHour,
+  regionTimezone,
+  hourInZone,
+  regionTodaySql,
+} from '../../shared/utils/region-time.util';
+
+// 05:00Z is 09:00 in Asia/Dubai, the reminder hour.
+const FIXED_NOW = new Date('2026-09-16T05:00:00Z');
+const REGIONS_AT_NINE = regionCodesAtLocalHour(9, FIXED_NOW);
+// 21:00Z is already the next calendar day in Dubai (UTC+4).
+const LATE_UTC = new Date('2026-09-16T21:00:00Z').getTime();
+
+// Freezes only Date so promise scheduling stays real.
+const freezeDate = (now: number) =>
+  jest.useFakeTimers({
+    now,
+    doNotFake: [
+      'hrtime',
+      'nextTick',
+      'performance',
+      'queueMicrotask',
+      'setImmediate',
+      'clearImmediate',
+      'setInterval',
+      'clearInterval',
+      'setTimeout',
+      'clearTimeout',
+    ],
+  });
 
 describe('NotificationsService', () => {
   let service: NotificationsService;
@@ -483,16 +520,17 @@ describe('NotificationsService', () => {
   // ---- Reminder check tests ----
 
   describe('checkRentDueReminders', () => {
-    it('returns pending cheques due within specified days', async () => {
-      const tomorrow = new Date();
-      tomorrow.setDate(tomorrow.getDate() + 1);
+    beforeEach(() => freezeDate(LATE_UTC));
+    afterEach(() => jest.useRealTimers());
 
+    it('returns pending cheques due within specified days', async () => {
       const mockCheque = {
         id: 'cheque-uuid-1',
         chequeNumber: 'CHQ-001',
         amount: 5000,
         currency: 'AED',
-        dueDate: tomorrow,
+        regionCode: 'dubai',
+        dueDate: '2026-09-18',
         accountHolder: 'Ahmed Al-Rashid',
         status: ChequeStatus.PENDING,
         companyId,
@@ -510,10 +548,46 @@ describe('NotificationsService', () => {
 
       const result = await service.checkRentDueReminders(companyId, 3);
 
+      const today = regionTodaySql('cheque.region_code');
+      expect(qb.where).toHaveBeenCalledWith('cheque.company_id = :companyId', {
+        companyId,
+      });
+      expect(qb.andWhere).toHaveBeenCalledWith('cheque.status = :status', {
+        status: ChequeStatus.PENDING,
+      });
+      expect(qb.andWhere).toHaveBeenCalledWith(
+        `cheque.due_date BETWEEN ${today} AND ${today} + CAST(:days AS int)`,
+        { days: 3 },
+      );
       expect(result.data).toHaveLength(1);
       expect(result.data[0].chequeId).toBe('cheque-uuid-1');
       expect(result.data[0].amount).toBe(5000);
-      expect(result.data[0].daysUntilDue).toBeGreaterThanOrEqual(0);
+      expect(result.data[0].dueDate).toBe('2026-09-18');
+      // Dubai is already on 2026-09-17.
+      expect(result.data[0].daysUntilDue).toBe(1);
+    });
+
+    it('counts days from the UTC calendar day for a cheque with no region', async () => {
+      const qb = {
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        orderBy: jest.fn().mockReturnThis(),
+        getMany: jest.fn().mockResolvedValue([
+          {
+            id: 'cheque-uuid-2',
+            regionCode: null,
+            dueDate: '2026-09-18',
+            status: ChequeStatus.PENDING,
+            companyId,
+          },
+        ]),
+      };
+      const chequeRepo = module.get(getRepositoryToken(Cheque));
+      (chequeRepo.createQueryBuilder as jest.Mock).mockReturnValue(qb);
+
+      const result = await service.checkRentDueReminders(companyId, 3);
+
+      expect(result.data[0].daysUntilDue).toBe(2);
     });
 
     it('returns empty data when no pending cheques due soon', async () => {
@@ -534,15 +608,16 @@ describe('NotificationsService', () => {
   });
 
   describe('checkLeaseExpiryAlerts', () => {
-    it('returns active leases expiring within specified days', async () => {
-      const endDate = new Date();
-      endDate.setDate(endDate.getDate() + 30);
+    beforeEach(() => freezeDate(LATE_UTC));
+    afterEach(() => jest.useRealTimers());
 
+    it('returns active leases expiring within specified days', async () => {
       const mockLease = {
         id: 'lease-uuid-1',
         unitId: 'unit-uuid-1',
         contact: { firstName: 'Fatima', lastName: 'Hassan', phone: null },
-        endDate,
+        unit: { asset: { locality: { city: { regionCode: 'dubai' } } } },
+        endDate: '2026-10-17',
         status: LeaseStatus.ACTIVE,
         companyId,
       };
@@ -563,8 +638,48 @@ describe('NotificationsService', () => {
       expect(result.data).toHaveLength(1);
       expect(result.data[0].leaseId).toBe('lease-uuid-1');
       expect(result.data[0].tenantName).toBe('Fatima Hassan');
-      expect(result.data[0].daysRemaining).toBeLessThanOrEqual(60);
+      expect(result.data[0].endDate).toBe('2026-10-17');
+      // Dubai is already on 2026-09-17.
+      expect(result.data[0].daysRemaining).toBe(30);
       expect(qb.andWhere).toHaveBeenCalledWith('lease.deleted_at IS NULL');
+      const today = regionTodaySql('city.region_code');
+      expect(qb.andWhere).toHaveBeenCalledWith(
+        `lease.end_date BETWEEN ${today} AND ${today} + CAST(:days AS int)`,
+        { days: 60 },
+      );
+      expect(qb.leftJoinAndSelect.mock.calls).toEqual([
+        ['lease.contact', 'tenant'],
+        ['lease.unit', 'unit'],
+        ['unit.asset', 'asset'],
+        ['asset.locality', 'locality'],
+        ['locality.city', 'city'],
+      ]);
+    });
+
+    it('counts days from the UTC calendar day when the lease has no city region', async () => {
+      const qb = {
+        leftJoinAndSelect: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        orderBy: jest.fn().mockReturnThis(),
+        getMany: jest.fn().mockResolvedValue([
+          {
+            id: 'lease-uuid-2',
+            unitId: 'unit-uuid-2',
+            contact: { firstName: 'Omar', lastName: 'Ali', phone: null },
+            unit: null,
+            endDate: '2026-10-17',
+            status: LeaseStatus.ACTIVE,
+            companyId,
+          },
+        ]),
+      };
+      const leaseRepo = module.get(getRepositoryToken(Lease));
+      (leaseRepo.createQueryBuilder as jest.Mock).mockReturnValue(qb);
+
+      const result = await service.checkLeaseExpiryAlerts(companyId, 60);
+
+      expect(result.data[0].daysRemaining).toBe(31);
     });
 
     it('returns empty data when no leases expiring soon', async () => {
@@ -586,15 +701,16 @@ describe('NotificationsService', () => {
   });
 
   describe('checkMaintenanceReminders', () => {
-    it('returns preventive work orders with upcoming next_scheduled_date', async () => {
-      const nextDate = new Date();
-      nextDate.setDate(nextDate.getDate() + 3);
+    beforeEach(() => freezeDate(LATE_UTC));
+    afterEach(() => jest.useRealTimers());
 
+    it('returns preventive work orders with upcoming next_scheduled_date', async () => {
       const mockWorkOrder = {
         id: 'wo-uuid-1',
         title: 'HVAC Filter Replacement',
         unitId: 'unit-uuid-1',
-        nextScheduledDate: nextDate,
+        regionCode: 'dubai',
+        nextScheduledDate: '2026-09-20',
         category: WorkOrderCategory.HVAC,
         priority: WorkOrderPriority.MEDIUM,
         isPreventive: true,
@@ -616,7 +732,21 @@ describe('NotificationsService', () => {
       expect(result.data).toHaveLength(1);
       expect(result.data[0].workOrderId).toBe('wo-uuid-1');
       expect(result.data[0].title).toBe('HVAC Filter Replacement');
-      expect(result.data[0].daysUntilDue).toBeLessThanOrEqual(7);
+      expect(result.data[0].nextScheduledDate).toBe('2026-09-20');
+      // Dubai is already on 2026-09-17.
+      expect(result.data[0].daysUntilDue).toBe(3);
+      const today = regionTodaySql('wo.region_code');
+      expect(qb.andWhere).toHaveBeenCalledWith(
+        'wo.is_preventive = :isPreventive',
+        { isPreventive: true },
+      );
+      expect(qb.andWhere).toHaveBeenCalledWith(
+        'wo.next_scheduled_date IS NOT NULL',
+      );
+      expect(qb.andWhere).toHaveBeenCalledWith(
+        `wo.next_scheduled_date BETWEEN ${today} AND ${today} + CAST(:days AS int)`,
+        { days: 7 },
+      );
     });
 
     it('returns empty data when no preventive maintenance due', async () => {
@@ -639,7 +769,7 @@ describe('NotificationsService', () => {
   // ---- Daily reminder cron tests ----
 
   describe('runDailyReminders', () => {
-    it('should have a cron expression set to EVERY_DAY_AT_9AM', () => {
+    it('runs every hour on a UTC schedule', () => {
       // @nestjs/schedule's @Cron stores { cronTime } under SCHEDULE_CRON_OPTIONS
       // on the prototype method.
       const cronMeta = Reflect.getMetadata(
@@ -648,7 +778,62 @@ describe('NotificationsService', () => {
       );
 
       expect(cronMeta).toBeDefined();
-      expect(cronMeta.cronTime).toBe(CronExpression.EVERY_DAY_AT_9AM);
+      expect(cronMeta.cronTime).toBe(CronExpression.EVERY_30_MINUTES);
+      expect(cronMeta.timeZone).toBe('UTC');
+    });
+
+    it('fixture instant puts the Dubai regions at 09:00 local', () => {
+      expect(REGIONS_AT_NINE).toContain('dubai');
+      for (const code of REGIONS_AT_NINE) {
+        expect(hourInZone(regionTimezone(code), FIXED_NOW)).toBe(9);
+      }
+    });
+
+    it('passes the regions at 09:00 local, grouped by their calendar day', async () => {
+      const spies = [
+        'notifyUpcomingCheques',
+        'notifyOverdueCheques',
+        'notifyDelayedCheques',
+        'notifyUnassignedLeads',
+      ].map((name) =>
+        jest.spyOn(service as any, name).mockResolvedValue(undefined),
+      );
+
+      await service.runDailyReminders(FIXED_NOW);
+
+      const groups = [{ today: '2026-09-16', regionCodes: REGIONS_AT_NINE }];
+      expect(spies[0]).toHaveBeenCalledWith(groups);
+      expect(spies[1]).toHaveBeenCalledWith(groups);
+      expect(spies[2]).toHaveBeenCalledWith(groups);
+      expect(spies[3]).toHaveBeenCalledWith(REGIONS_AT_NINE);
+    });
+
+    it('queries nothing when no region is at 09:00 local', async () => {
+      // 12:00Z is mid-afternoon in every supported zone.
+      const noon = new Date('2026-09-16T12:00:00Z');
+      expect(regionCodesAtLocalHour(9, noon)).toEqual([]);
+
+      await service.runDailyReminders(noon);
+
+      expect(
+        module.get(getRepositoryToken(Cheque)).find,
+      ).not.toHaveBeenCalled();
+      expect(module.get(getRepositoryToken(Lead)).find).not.toHaveBeenCalled();
+      expect(module.get(getRepositoryToken(User)).find).not.toHaveBeenCalled();
+      expect(repo.find).not.toHaveBeenCalled();
+      expect(repo.create).not.toHaveBeenCalled();
+    });
+
+    it('splits regions on different calendar days into separate groups', () => {
+      const groups = (service as any).groupRegionsByToday(
+        ['dubai', 'unknown-region', 'sharjah'],
+        new Date(LATE_UTC),
+      );
+
+      expect(groups).toEqual([
+        { today: '2026-09-17', regionCodes: ['dubai', 'sharjah'] },
+        { today: '2026-09-16', regionCodes: ['unknown-region'] },
+      ]);
     });
 
     it('runs all reminder methods when triggered (no crash)', async () => {
@@ -665,7 +850,7 @@ describe('NotificationsService', () => {
         .spyOn(service as any, 'notifyUnassignedLeads')
         .mockResolvedValue(undefined);
 
-      await service.runDailyReminders();
+      await service.runDailyReminders(FIXED_NOW);
 
       expect(notifyUpcomingSpy).toHaveBeenCalled();
       expect(notifyOverdueSpy).toHaveBeenCalled();
@@ -675,12 +860,15 @@ describe('NotificationsService', () => {
   });
 
   describe('notifyUpcomingCheques', () => {
-    const today = new Date();
-    // The service queries startOfDay(now + 3 days), so the expected target date
-    // is midnight-normalized to match.
-    const threeDaysFromNow = new Date(today);
-    threeDaysFromNow.setDate(threeDaysFromNow.getDate() + 3);
-    threeDaysFromNow.setHours(0, 0, 0, 0);
+    const upcomingWhere = {
+      where: [
+        {
+          status: ChequeStatus.PENDING,
+          regionCode: In(REGIONS_AT_NINE),
+          dueDate: '2026-09-19',
+        },
+      ],
+    };
 
     const mockAdmin = {
       id: 'admin-uuid-1',
@@ -698,7 +886,7 @@ describe('NotificationsService', () => {
       chequeNumber: 'CHQ-UPCOMING',
       amount: 10000,
       currency: 'AED',
-      dueDate: threeDaysFromNow,
+      dueDate: '2026-09-19',
       accountHolder: 'Test Holder',
       status: ChequeStatus.PENDING,
     };
@@ -725,11 +913,11 @@ describe('NotificationsService', () => {
       repo.create.mockReturnValue({ id: 'notif-1' } as Notification);
       repo.save.mockResolvedValue({ id: 'notif-1' } as Notification);
 
-      await service.runDailyReminders();
+      await service.runDailyReminders(FIXED_NOW);
 
-      expect(module.get(getRepositoryToken(Cheque)).find).toHaveBeenCalledWith({
-        where: { status: ChequeStatus.PENDING, dueDate: threeDaysFromNow },
-      });
+      expect(module.get(getRepositoryToken(Cheque)).find).toHaveBeenCalledWith(
+        upcomingWhere,
+      );
       expect(repo.create).toHaveBeenCalledWith(
         expect.objectContaining({
           userId: mockAdmin.id,
@@ -745,11 +933,11 @@ describe('NotificationsService', () => {
       const chequeRepo = module.get(getRepositoryToken(Cheque));
       (chequeRepo.find as jest.Mock).mockResolvedValue([]);
 
-      await service.runDailyReminders();
+      await service.runDailyReminders(FIXED_NOW);
 
-      expect(module.get(getRepositoryToken(Cheque)).find).toHaveBeenCalledWith({
-        where: { status: ChequeStatus.PENDING, dueDate: threeDaysFromNow },
-      });
+      expect(module.get(getRepositoryToken(Cheque)).find).toHaveBeenCalledWith(
+        upcomingWhere,
+      );
     });
 
     it('swallows a unique-violation from create (cross-replica dedup backstop) without crashing the cron', async () => {
@@ -772,7 +960,7 @@ describe('NotificationsService', () => {
       repo.save.mockRejectedValue(uniqueViolation);
 
       // Must not throw: the losing replica silently skips.
-      await expect(service.runDailyReminders()).resolves.not.toThrow();
+      await expect(service.runDailyReminders(FIXED_NOW)).resolves.not.toThrow();
       expect(repo.save).toHaveBeenCalled();
     });
 
@@ -789,7 +977,7 @@ describe('NotificationsService', () => {
       repo.create.mockReturnValue({ id: 'notif-1' } as Notification);
       repo.save.mockRejectedValue(new Error('connection reset'));
 
-      await expect(service.runDailyReminders()).rejects.toThrow(
+      await expect(service.runDailyReminders(FIXED_NOW)).rejects.toThrow(
         'connection reset',
       );
     });
@@ -810,7 +998,7 @@ describe('NotificationsService', () => {
       repo.create.mockReturnValue({ id: 'notif-1' } as Notification);
       repo.save.mockResolvedValue({ id: 'notif-1' } as Notification);
 
-      await service.runDailyReminders();
+      await service.runDailyReminders(FIXED_NOW);
 
       // The reminder-key set drives dedup; verify the lookup ran.
       expect(findExistingSpy).toHaveBeenCalled();
@@ -834,7 +1022,7 @@ describe('NotificationsService', () => {
       repo.create.mockReturnValue({ id: 'notif-1' } as Notification);
       repo.save.mockResolvedValue({ id: 'notif-1' } as Notification);
 
-      await service.runDailyReminders();
+      await service.runDailyReminders(FIXED_NOW);
 
       // The `since` boundary must be UTC midnight of today, NOT app-server-local
       // midnight, so it lines up with the index bucket (created_at)::date
@@ -873,25 +1061,20 @@ describe('NotificationsService', () => {
       password: 'hashed',
     };
 
-    const threeDaysAgo = new Date();
-    threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
-
     const mockDelayedCheque: Partial<Cheque> = {
       id: 'delayed-uuid-1',
       companyId,
       chequeNumber: 'CHQ-Delayed',
       amount: 15000,
       currency: 'AED',
-      dueDate: new Date(),
-      depositDate: threeDaysAgo,
+      dueDate: '2026-09-10',
+      depositDate: '2026-09-13',
       accountHolder: 'Test Holder',
       status: ChequeStatus.DEPOSITED,
     };
 
     it('selects DEPOSITED cheques not cleared for more than 3 days', async () => {
       const chequeRepo = module.get(getRepositoryToken(Cheque));
-      const { LessThanOrEqual } = require('typeorm');
-
       (chequeRepo.find as jest.Mock).mockResolvedValue([
         mockDelayedCheque as Cheque,
       ]);
@@ -901,13 +1084,16 @@ describe('NotificationsService', () => {
       repo.create.mockReturnValue({ id: 'notif-1' } as Notification);
       repo.save.mockResolvedValue({ id: 'notif-1' } as Notification);
 
-      await service.runDailyReminders();
+      await service.runDailyReminders(FIXED_NOW);
 
       expect(module.get(getRepositoryToken(Cheque)).find).toHaveBeenCalledWith({
-        where: {
-          status: ChequeStatus.DEPOSITED,
-          depositDate: LessThanOrEqual(expect.any(Date)),
-        },
+        where: [
+          {
+            status: ChequeStatus.DEPOSITED,
+            regionCode: In(REGIONS_AT_NINE),
+            depositDate: LessThanOrEqual('2026-09-13'),
+          },
+        ],
       });
     });
 
@@ -918,23 +1104,20 @@ describe('NotificationsService', () => {
         module.get(getRepositoryToken(User)).find as jest.Mock
       ).mockResolvedValue([]);
 
-      await service.runDailyReminders();
+      await service.runDailyReminders(FIXED_NOW);
 
       expect(module.get(getRepositoryToken(Cheque)).find).toHaveBeenCalled();
     });
 
     it('skips cheques cleared within the last 3 days', async () => {
       const chequeRepo = module.get(getRepositoryToken(Cheque));
-      const yesterday = new Date();
-      yesterday.setDate(yesterday.getDate() - 1);
-
       const recentCheque: Partial<Cheque> = {
         id: 'recent-uuid-1',
         companyId,
         chequeNumber: 'CHQ-Recent',
         amount: 5000,
         currency: 'AED',
-        depositDate: yesterday,
+        depositDate: '2026-09-15',
         status: ChequeStatus.DEPOSITED,
       };
       (chequeRepo.find as jest.Mock).mockResolvedValue([
@@ -944,7 +1127,7 @@ describe('NotificationsService', () => {
         module.get(getRepositoryToken(User)).find as jest.Mock
       ).mockResolvedValue([]);
 
-      await service.runDailyReminders();
+      await service.runDailyReminders(FIXED_NOW);
 
       expect(module.get(getRepositoryToken(Cheque)).find).toHaveBeenCalled();
     });
@@ -961,8 +1144,7 @@ describe('NotificationsService', () => {
       password: 'hashed',
     };
 
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterday = '2026-09-15';
 
     const mockOverdueCheque: Partial<Cheque> = {
       id: 'overdue-uuid-1',
@@ -975,13 +1157,8 @@ describe('NotificationsService', () => {
       status: ChequeStatus.PENDING,
     };
 
-    const todayMidnight = new Date();
-    todayMidnight.setHours(0, 0, 0, 0);
-
     it('selects only cheques with dueDate strictly before today (not today itself)', async () => {
       const chequeRepo = module.get(getRepositoryToken(Cheque));
-      const { LessThan } = require('typeorm');
-
       (chequeRepo.find as jest.Mock).mockResolvedValue([
         mockOverdueCheque as Cheque,
       ]);
@@ -991,14 +1168,17 @@ describe('NotificationsService', () => {
       repo.create.mockReturnValue({ id: 'notif-1' } as Notification);
       repo.save.mockResolvedValue({ id: 'notif-1' } as Notification);
 
-      await service.runDailyReminders();
+      await service.runDailyReminders(FIXED_NOW);
 
       // Verify it uses LessThan, not LessThanOrEqual
       expect(module.get(getRepositoryToken(Cheque)).find).toHaveBeenCalledWith({
-        where: {
-          status: ChequeStatus.PENDING,
-          dueDate: LessThan(todayMidnight),
-        },
+        where: [
+          {
+            status: ChequeStatus.PENDING,
+            regionCode: In(REGIONS_AT_NINE),
+            dueDate: LessThan('2026-09-16'),
+          },
+        ],
       });
     });
 
@@ -1009,7 +1189,7 @@ describe('NotificationsService', () => {
         module.get(getRepositoryToken(User)).find as jest.Mock
       ).mockResolvedValue([]);
 
-      await service.runDailyReminders();
+      await service.runDailyReminders(FIXED_NOW);
 
       // Find the overdue-cheque query (status PENDING + a LessThan due-date
       // operator). Multiple cheque.find calls run in the cron; pick the one
@@ -1018,13 +1198,14 @@ describe('NotificationsService', () => {
         .map((call) => call[0])
         .find(
           (arg) =>
-            arg?.where?.status === ChequeStatus.PENDING &&
-            arg?.where?.dueDate?.type === 'lessThan',
+            arg?.where?.[0]?.status === ChequeStatus.PENDING &&
+            arg?.where?.[0]?.dueDate?.type === 'lessThan',
         );
 
       // The where clause must use LessThan, so a cheque due today is excluded.
       expect(overdueCall).toBeDefined();
-      expect(overdueCall.where.dueDate.type).toBe('lessThan');
+      expect(overdueCall.where[0].dueDate.type).toBe('lessThan');
+      expect(overdueCall.where[0].dueDate.value).toBe('2026-09-16');
     });
 
     it('does NOT include non-PENDING cheques', async () => {
@@ -1045,10 +1226,16 @@ describe('NotificationsService', () => {
         module.get(getRepositoryToken(User)).find as jest.Mock
       ).mockResolvedValue([]);
 
-      await service.runDailyReminders();
+      await service.runDailyReminders(FIXED_NOW);
 
       expect(module.get(getRepositoryToken(Cheque)).find).toHaveBeenCalledWith({
-        where: { status: ChequeStatus.PENDING, dueDate: expect.anything() },
+        where: [
+          {
+            status: ChequeStatus.PENDING,
+            regionCode: In(REGIONS_AT_NINE),
+            dueDate: expect.anything(),
+          },
+        ],
       });
     });
   });
@@ -1086,12 +1273,13 @@ describe('NotificationsService', () => {
       repo.create.mockReturnValue({ id: 'notif-1' } as Notification);
       repo.save.mockResolvedValue({ id: 'notif-1' } as Notification);
 
-      await service.runDailyReminders();
+      await service.runDailyReminders(FIXED_NOW);
 
       expect(module.get(getRepositoryToken(Lead)).find).toHaveBeenCalledWith({
         where: {
           status: LeadStatus.NEW,
           assignedTo: IsNull(),
+          regionCode: In(REGIONS_AT_NINE),
         },
         relations: ['contact'],
       });
@@ -1114,12 +1302,13 @@ describe('NotificationsService', () => {
         module.get(getRepositoryToken(User)).find as jest.Mock
       ).mockResolvedValue([]);
 
-      await service.runDailyReminders();
+      await service.runDailyReminders(FIXED_NOW);
 
       expect(module.get(getRepositoryToken(Lead)).find).toHaveBeenCalledWith({
         where: {
           status: LeadStatus.NEW,
           assignedTo: IsNull(),
+          regionCode: In(REGIONS_AT_NINE),
         },
         relations: ['contact'],
       });
@@ -1142,12 +1331,13 @@ describe('NotificationsService', () => {
         module.get(getRepositoryToken(User)).find as jest.Mock
       ).mockResolvedValue([]);
 
-      await service.runDailyReminders();
+      await service.runDailyReminders(FIXED_NOW);
 
       expect(module.get(getRepositoryToken(Lead)).find).toHaveBeenCalledWith({
         where: {
           status: LeadStatus.NEW,
           assignedTo: IsNull(),
+          regionCode: In(REGIONS_AT_NINE),
         },
         relations: ['contact'],
       });
@@ -1189,7 +1379,7 @@ describe('NotificationsService', () => {
         .spyOn((service as any).logger, 'log')
         .mockImplementation(() => {});
 
-      await service.runDailyReminders();
+      await service.runDailyReminders(FIXED_NOW);
 
       // Verify that "Fatima " and "Ahmed Hassan" appear in message
       const createCallArgs = repo.create.mock.calls[0][0];
@@ -1216,7 +1406,7 @@ describe('NotificationsService', () => {
       repo.create.mockReturnValue({ id: 'notif-duplicate' } as Notification);
       repo.save.mockResolvedValue({ id: 'notif-duplicate' } as Notification);
 
-      await service.runDailyReminders();
+      await service.runDailyReminders(FIXED_NOW);
 
       // The notification should NOT be created because a reminder already exists for admin-uuid-1 + unassigned-uuid-1 today
       // Find the calls to create within the notifyUnassignedLeads flow
@@ -1248,7 +1438,7 @@ describe('NotificationsService', () => {
       repo.create.mockReturnValue({ id: 'notif-1' } as Notification);
       repo.save.mockResolvedValue({ id: 'notif-1' } as Notification);
 
-      await service.runDailyReminders();
+      await service.runDailyReminders(FIXED_NOW);
 
       expect(repo.create).toHaveBeenCalledWith(
         expect.objectContaining({

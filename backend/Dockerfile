@@ -22,6 +22,8 @@ RUN pnpm install --frozen-lockfile --prod
 
 COPY --from=builder /app/dist ./dist
 
+ENV TZ=UTC
+
 EXPOSE 3010
 
 CMD ["node", "dist/main.js"]

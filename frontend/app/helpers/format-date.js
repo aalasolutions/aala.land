@@ -1,16 +1,18 @@
 import { helper } from '@ember/component/helper';
+import { formatCalendarDate } from '../utils/local-date';
 
-export default helper(function formatDate([date], { format }) {
-  if (!date) return '';
+const OPTIONS = {
+  short: { month: 'short', day: 'numeric' },
+  medium: { year: 'numeric', month: 'short', day: 'numeric' },
+  long: { year: 'numeric', month: 'long', day: 'numeric' },
+};
 
-  const d = new Date(date);
-  if (isNaN(d.getTime())) return '';
+export function formatDate(date, format) {
+  return (
+    formatCalendarDate(date, 'en-US', OPTIONS[format] || OPTIONS.medium) ?? ''
+  );
+}
 
-  const options = {
-    short: { month: 'short', day: 'numeric' },
-    medium: { year: 'numeric', month: 'short', day: 'numeric' },
-    long: { year: 'numeric', month: 'long', day: 'numeric' },
-  };
-
-  return d.toLocaleDateString('en-US', options[format] || options.medium);
+export default helper(function ([date], { format }) {
+  return formatDate(date, format);
 });

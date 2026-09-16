@@ -74,10 +74,10 @@ export class Cheque {
   currency: string;
 
   @Column({ name: 'due_date', type: 'date' })
-  dueDate: Date;
+  dueDate: string;
 
   @Column({ name: 'deposit_date', type: 'date', nullable: true })
-  depositDate: Date | null;
+  depositDate: string | null;
 
   @Column({
     type: 'enum',

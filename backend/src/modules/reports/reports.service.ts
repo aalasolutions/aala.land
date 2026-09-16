@@ -25,6 +25,7 @@ import {
   effectiveRegionCodes,
   isAdminRole,
 } from '../../shared/utils/region-visibility.util';
+import { regionTimezoneSql } from '../../shared/utils/region-time.util';
 
 export interface DashboardKpis {
   totalLeads: number;
@@ -155,8 +156,9 @@ export class ReportsService {
       };
     }
 
-    const now = new Date();
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    // Month start in each transaction's own region.
+    const zone = regionTimezoneSql('t.region_code');
+    const inRegionMonth = `t.created_at >= (date_trunc('month', now() AT TIME ZONE ${zone}) AT TIME ZONE ${zone})`;
 
     // Leads and Commissions have direct regionCode
     const leadWhere: FindOptionsWhere<Lead> = { companyId };
@@ -186,7 +188,7 @@ export class ReportsService {
         .where('t.companyId = :companyId', { companyId })
         .andWhere('t.type = :type', { type: TransactionType.INCOME })
         .andWhere('t.status = :status', { status: TransactionStatus.COMPLETED })
-        .andWhere('t.createdAt >= :startOfMonth', { startOfMonth })
+        .andWhere(inRegionMonth)
         .andWhere('t.regionCode IN (:...regionCodes)', { regionCodes })
         .getRawOne();
 
@@ -219,7 +221,7 @@ export class ReportsService {
         .where('t.companyId = :companyId', { companyId })
         .andWhere('t.type = :type', { type: TransactionType.INCOME })
         .andWhere('t.status = :status', { status: TransactionStatus.COMPLETED })
-        .andWhere('t.createdAt >= :startOfMonth', { startOfMonth })
+        .andWhere(inRegionMonth)
         .getRawOne();
       activeLeasesPromise = this.leaseRepository.count({
         where: { companyId, status: LeaseStatus.ACTIVE, deletedAt: IsNull() },

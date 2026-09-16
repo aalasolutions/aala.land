@@ -1,3 +1,4 @@
+import './shared/utils/utc-runtime';
 import { DataSource } from 'typeorm';
 import { join } from 'path';
 
@@ -18,4 +19,5 @@ export const TestDataSource = new DataSource({
   migrations: [join(__dirname, '/database/migrations/*{.ts,.js}')],
   synchronize: false,
   logging: true,
+  extra: { options: '-c timezone=UTC' },
 });

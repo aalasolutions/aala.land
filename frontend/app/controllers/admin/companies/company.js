@@ -3,6 +3,7 @@ import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
 import { runTask } from 'ember-lifeline';
+import { formatCalendarDate, localDateString } from 'land/utils/local-date';
 
 const TABS = [
   { id: 'overview', label: 'Overview' },
@@ -250,7 +251,9 @@ export default class AdminCompaniesCompanyController extends Controller {
       this.dealBasis = d.basis;
       this.dealSeatCap = String(d.seatCap);
       this.dealLifetime = !!d.lifetime;
-      this.dealUntil = d.untilDate ? d.untilDate.slice(0, 10) : '';
+      this.dealUntil = d.untilDate
+        ? localDateString(new Date(d.untilDate))
+        : '';
       this.dealWhy = d.whyNote;
     } else {
       this.dealPrice = '';
@@ -555,8 +558,7 @@ export default class AdminCompaniesCompanyController extends Controller {
 
   @action
   openPaymentModal() {
-    const now = new Date();
-    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    const today = localDateString();
     this.payAmount = '';
     this.payCurrency = this.deal?.currency || this.billing?.currency || 'usd';
     this.payReceivedAt = today;
@@ -849,12 +851,12 @@ export default class AdminCompaniesCompanyController extends Controller {
 
   formatDate(value) {
     if (!value) return '';
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return String(value);
-    return date.toLocaleDateString(navigator.language || 'en', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    });
+    return (
+      formatCalendarDate(value, navigator.language || 'en', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+      }) ?? String(value)
+    );
   }
 }

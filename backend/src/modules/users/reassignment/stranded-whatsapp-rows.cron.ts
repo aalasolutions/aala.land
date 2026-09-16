@@ -22,7 +22,7 @@ export class StrandedWhatsappRowsCron {
     private readonly reassignment: UserReassignmentService,
   ) {}
 
-  @Cron('0 4 * * *')
+  @Cron('0 4 * * *', { timeZone: 'UTC' })
   async run(): Promise<void> {
     // Without this, a removed seat keeps receiving and spending AI credits until restart
     try {

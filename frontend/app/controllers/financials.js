@@ -8,6 +8,7 @@ import {
   PAYMENT_METHOD_OPTIONS,
   TRANSACTION_STATUS_OPTIONS,
 } from 'land/constants';
+import { localDateString } from 'land/utils/local-date';
 
 export default class FinancialsController extends PaginatedController {
   @service auth;
@@ -64,7 +65,7 @@ export default class FinancialsController extends PaginatedController {
     this.formCategory = 'OTHER';
     this.formAmount = '';
     this.formDescription = '';
-    this.formDate = new Date().toISOString().split('T')[0];
+    this.formDate = localDateString();
     this.formStatus = 'PENDING';
     this.formPaymentMethod = 'CASH';
     this.editTransaction = null;

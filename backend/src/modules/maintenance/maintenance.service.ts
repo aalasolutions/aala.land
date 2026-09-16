@@ -22,6 +22,10 @@ import {
   effectiveRegionCodes,
   scopedRegionCodes,
 } from '../../shared/utils/region-visibility.util';
+import {
+  regionTimezoneSql,
+  regionTodaySql,
+} from '../../shared/utils/region-time.util';
 import { Unit } from '../properties/entities/unit.entity';
 
 const ARCHIVED_UNIT_LOCKED_MESSAGE =
@@ -105,29 +109,22 @@ export class MaintenanceService {
       qb.andWhere('wo.status = :status', { status });
     }
 
-    const now = new Date();
-    if (period === 'this_month') {
-      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-      const nextMonthStart = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-      qb.andWhere(
-        'COALESCE(wo.scheduled_date, wo.created_at) >= :monthStart AND COALESCE(wo.scheduled_date, wo.created_at) < :nextMonthStart',
-        { monthStart, nextMonthStart },
-      );
-    } else if (period === 'last_month') {
-      const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-      const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-      qb.andWhere(
-        'COALESCE(wo.scheduled_date, wo.created_at) >= :lastMonthStart AND COALESCE(wo.scheduled_date, wo.created_at) < :thisMonthStart',
-        { lastMonthStart, thisMonthStart },
-      );
-    } else if (period === 'last_3_months') {
-      const threeMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 3, 1);
-      qb.andWhere(
-        'COALESCE(wo.scheduled_date, wo.created_at) >= :threeMonthsAgo',
-        {
-          threeMonthsAgo,
-        },
-      );
+    if (period) {
+      // Period months are the work order's region months, not the server's.
+      const zone = regionTimezoneSql('wo.region_code');
+      const day = `COALESCE(wo.scheduled_date, (wo.created_at AT TIME ZONE ${zone})::date)`;
+      const monthStart = `date_trunc('month', ${regionTodaySql('wo.region_code')})::date`;
+      if (period === 'this_month') {
+        qb.andWhere(
+          `${day} >= ${monthStart} AND ${day} < (${monthStart} + interval '1 month')::date`,
+        );
+      } else if (period === 'last_month') {
+        qb.andWhere(
+          `${day} >= (${monthStart} - interval '1 month')::date AND ${day} < ${monthStart}`,
+        );
+      } else if (period === 'last_3_months') {
+        qb.andWhere(`${day} >= (${monthStart} - interval '3 months')::date`);
+      }
     }
 
     qb.skip((page - 1) * limit)
@@ -441,16 +438,13 @@ export class MaintenanceService {
       return [];
     }
 
-    const thirtyDaysFromNow = new Date();
-    thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
-
     const qb = this.workOrderRepository
       .createQueryBuilder('wo')
       .where('wo.company_id = :companyId', { companyId })
       .andWhere('wo.is_preventive = true')
-      .andWhere('wo.next_scheduled_date <= :thirtyDays', {
-        thirtyDays: thirtyDaysFromNow,
-      })
+      .andWhere(
+        `wo.next_scheduled_date <= ${regionTodaySql('wo.region_code')} + 30`,
+      )
       .orderBy('wo.next_scheduled_date', 'ASC');
 
     if (regionCodes) {

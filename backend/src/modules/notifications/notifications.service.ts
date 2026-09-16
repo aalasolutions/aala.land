@@ -31,6 +31,16 @@ import { Role } from '../../shared/enums/roles.enum';
 import { paginationOptions } from '../../shared/utils/pagination.util';
 import { isUniqueViolation } from '../../shared/utils/name-normalization.util';
 import { NotificationsGateway } from './notifications.gateway';
+import {
+  addDays,
+  daysBetween,
+  regionCodesAtLocalHour,
+  regionToday,
+  regionTodaySql,
+} from '../../shared/utils/region-time.util';
+
+// Reminders reach each region at this local hour.
+const REMINDER_LOCAL_HOUR = 9;
 
 export interface NotificationResult {
   channel: NotificationChannel;
@@ -229,23 +239,48 @@ export class NotificationsService {
     }
   }
 
-  @Cron(CronExpression.EVERY_DAY_AT_9AM)
-  async runDailyReminders() {
-    this.logger.log('Running daily notification reminders...');
-    await this.notifyUpcomingCheques();
-    await this.notifyOverdueCheques();
-    await this.notifyDelayedCheques();
-    await this.notifyUnassignedLeads();
+  // Half-hourly so half-hour offset zones also get their reminders at 09:00 local.
+  @Cron(CronExpression.EVERY_30_MINUTES, { timeZone: 'UTC' })
+  async runDailyReminders(at?: Date) {
+    // The scheduler may pass its own callback argument, never a Date.
+    const now = at instanceof Date ? at : new Date();
+    const regionCodes = regionCodesAtLocalHour(REMINDER_LOCAL_HOUR, now);
+    if (regionCodes.length === 0) return;
+    this.logger.log(
+      `Running daily notification reminders for ${regionCodes.length} regions...`,
+    );
+    const groups = this.groupRegionsByToday(regionCodes, now);
+    await this.notifyUpcomingCheques(groups);
+    await this.notifyOverdueCheques(groups);
+    await this.notifyDelayedCheques(groups);
+    await this.notifyUnassignedLeads(regionCodes);
   }
 
-  private async notifyUpcomingCheques() {
-    const targetDate = this.startOfDay(this.addDays(new Date(), 3));
+  // Zones sharing a local hour can still be on different calendar days.
+  private groupRegionsByToday(
+    regionCodes: string[],
+    now: Date,
+  ): Array<{ today: string; regionCodes: string[] }> {
+    const byDay = new Map<string, string[]>();
+    for (const code of regionCodes) {
+      const today = regionToday(code, now);
+      byDay.set(today, [...(byDay.get(today) ?? []), code]);
+    }
+    return [...byDay.entries()].map(([today, codes]) => ({
+      today,
+      regionCodes: codes,
+    }));
+  }
 
+  private async notifyUpcomingCheques(
+    groups: Array<{ today: string; regionCodes: string[] }>,
+  ) {
     const upcomingCheques = await this.chequeRepository.find({
-      where: {
+      where: groups.map((g) => ({
         status: ChequeStatus.PENDING,
-        dueDate: targetDate,
-      },
+        regionCode: In(g.regionCodes),
+        dueDate: addDays(g.today, 3),
+      })),
     });
 
     await this.notifyAdminsOncePerDay(
@@ -258,18 +293,20 @@ export class NotificationsService {
         type: NotificationType.CHEQUE_DUE,
         entityType: 'cheque',
         entityId: cheque.id,
+        regionCode: cheque.regionCode,
       }),
     );
   }
 
-  private async notifyOverdueCheques() {
-    const today = this.startOfToday();
-
+  private async notifyOverdueCheques(
+    groups: Array<{ today: string; regionCodes: string[] }>,
+  ) {
     const overdueCheques = await this.chequeRepository.find({
-      where: {
+      where: groups.map((g) => ({
         status: ChequeStatus.PENDING,
-        dueDate: LessThan(today),
-      },
+        regionCode: In(g.regionCodes),
+        dueDate: LessThan(g.today),
+      })),
     });
 
     await this.notifyAdminsOncePerDay(
@@ -282,18 +319,20 @@ export class NotificationsService {
         type: NotificationType.CHEQUE_OVERDUE,
         entityType: 'cheque',
         entityId: cheque.id,
+        regionCode: cheque.regionCode,
       }),
     );
   }
 
-  private async notifyDelayedCheques() {
-    const threeDaysAgo = this.startOfDay(this.addDays(new Date(), -3));
-
+  private async notifyDelayedCheques(
+    groups: Array<{ today: string; regionCodes: string[] }>,
+  ) {
     const delayedCheques = await this.chequeRepository.find({
-      where: {
+      where: groups.map((g) => ({
         status: ChequeStatus.DEPOSITED,
-        depositDate: LessThanOrEqual(threeDaysAgo),
-      },
+        regionCode: In(g.regionCodes),
+        depositDate: LessThanOrEqual(addDays(g.today, -3)),
+      })),
     });
 
     await this.notifyAdminsOncePerDay(
@@ -306,15 +345,17 @@ export class NotificationsService {
         type: NotificationType.CHEQUE_DELAYED,
         entityType: 'cheque',
         entityId: cheque.id,
+        regionCode: cheque.regionCode,
       }),
     );
   }
 
-  private async notifyUnassignedLeads() {
+  private async notifyUnassignedLeads(regionCodes: string[]) {
     const unassignedLeads = await this.leadRepository.find({
       where: {
         status: LeadStatus.NEW,
         assignedTo: IsNull(),
+        regionCode: In(regionCodes),
       },
       relations: ['contact'],
     });
@@ -331,6 +372,7 @@ export class NotificationsService {
           type: NotificationType.LEAD_UNASSIGNED,
           entityType: 'lead',
           entityId: lead.id,
+          regionCode: lead.regionCode,
         };
       },
     );
@@ -345,31 +387,27 @@ export class NotificationsService {
       chequeNumber: string;
       amount: number;
       currency: string;
-      dueDate: Date;
+      dueDate: string;
       accountHolder: string;
       daysUntilDue: number;
     }>;
   }> {
-    const now = new Date();
-    const futureDate = new Date();
-    futureDate.setDate(now.getDate() + daysBefore);
-
+    const today = regionTodaySql('cheque.region_code');
     const cheques = await this.chequeRepository
       .createQueryBuilder('cheque')
       .where('cheque.company_id = :companyId', { companyId })
       .andWhere('cheque.status = :status', { status: ChequeStatus.PENDING })
-      .andWhere('cheque.due_date >= :now', {
-        now: now.toISOString().split('T')[0],
-      })
-      .andWhere('cheque.due_date <= :futureDate', {
-        futureDate: futureDate.toISOString().split('T')[0],
-      })
+      .andWhere(
+        `cheque.due_date BETWEEN ${today} AND ${today} + CAST(:days AS int)`,
+        {
+          days: daysBefore,
+        },
+      )
       .orderBy('cheque.due_date', 'ASC')
       .getMany();
 
     const data = cheques.map((c) => {
-      const dueMs = new Date(c.dueDate).getTime() - now.getTime();
-      const daysUntilDue = Math.ceil(dueMs / (1000 * 60 * 60 * 24));
+      const daysUntilDue = daysBetween(regionToday(c.regionCode), c.dueDate);
       return {
         chequeId: c.id,
         chequeNumber: c.chequeNumber,
@@ -392,32 +430,34 @@ export class NotificationsService {
       leaseId: string;
       unitId: string;
       tenantName: string;
-      endDate: Date;
+      endDate: string;
       daysRemaining: number;
     }>;
   }> {
-    const now = new Date();
-    const futureDate = new Date();
-    futureDate.setDate(now.getDate() + daysAhead);
-
+    // A lease's region comes from its unit's city.
+    const today = regionTodaySql('city.region_code');
     const leases = await this.leaseRepository
       .createQueryBuilder('lease')
       .leftJoinAndSelect('lease.contact', 'tenant')
+      .leftJoinAndSelect('lease.unit', 'unit')
+      .leftJoinAndSelect('unit.asset', 'asset')
+      .leftJoinAndSelect('asset.locality', 'locality')
+      .leftJoinAndSelect('locality.city', 'city')
       .where('lease.company_id = :companyId', { companyId })
       .andWhere('lease.status = :status', { status: LeaseStatus.ACTIVE })
       .andWhere('lease.deleted_at IS NULL')
-      .andWhere('lease.end_date >= :now', {
-        now: now.toISOString().split('T')[0],
-      })
-      .andWhere('lease.end_date <= :futureDate', {
-        futureDate: futureDate.toISOString().split('T')[0],
-      })
+      .andWhere(
+        `lease.end_date BETWEEN ${today} AND ${today} + CAST(:days AS int)`,
+        {
+          days: daysAhead,
+        },
+      )
       .orderBy('lease.end_date', 'ASC')
       .getMany();
 
     const data = leases.map((l) => {
-      const endMs = new Date(l.endDate).getTime() - now.getTime();
-      const daysRemaining = Math.ceil(endMs / (1000 * 60 * 60 * 24));
+      const regionCode = l.unit?.asset?.locality?.city?.regionCode;
+      const daysRemaining = daysBetween(regionToday(regionCode), l.endDate);
       return {
         leaseId: l.id,
         unitId: l.unitId,
@@ -438,33 +478,30 @@ export class NotificationsService {
       workOrderId: string;
       title: string;
       unitId: string | null;
-      nextScheduledDate: Date | null;
+      nextScheduledDate: string | null;
       daysUntilDue: number;
       category: string;
       priority: string;
     }>;
   }> {
-    const now = new Date();
-    const futureDate = new Date();
-    futureDate.setDate(now.getDate() + daysAhead);
-
+    const today = regionTodaySql('wo.region_code');
     const workOrders = await this.workOrderRepository
       .createQueryBuilder('wo')
       .where('wo.company_id = :companyId', { companyId })
       .andWhere('wo.is_preventive = :isPreventive', { isPreventive: true })
       .andWhere('wo.next_scheduled_date IS NOT NULL')
-      .andWhere('wo.next_scheduled_date >= :now', {
-        now: now.toISOString().split('T')[0],
-      })
-      .andWhere('wo.next_scheduled_date <= :futureDate', {
-        futureDate: futureDate.toISOString().split('T')[0],
-      })
+      .andWhere(
+        `wo.next_scheduled_date BETWEEN ${today} AND ${today} + CAST(:days AS int)`,
+        { days: daysAhead },
+      )
       .orderBy('wo.next_scheduled_date', 'ASC')
       .getMany();
 
     const data = workOrders.map((wo) => {
-      const dueMs = new Date(wo.nextScheduledDate!).getTime() - now.getTime();
-      const daysUntilDue = Math.ceil(dueMs / (1000 * 60 * 60 * 24));
+      const daysUntilDue = daysBetween(
+        regionToday(wo.regionCode),
+        wo.nextScheduledDate!,
+      );
       return {
         workOrderId: wo.id,
         title: wo.title,
@@ -668,25 +705,7 @@ export class NotificationsService {
     return `${userId}:${entityId}`;
   }
 
-  private addDays(date: Date, days: number): Date {
-    const value = new Date(date);
-    value.setDate(value.getDate() + days);
-    return value;
-  }
-
-  private startOfDay(date: Date): Date {
-    const value = new Date(date);
-    value.setHours(0, 0, 0, 0);
-    return value;
-  }
-
-  private startOfToday(): Date {
-    return this.startOfDay(new Date());
-  }
-
-  /**
-   * Separate from startOfToday() so the dedup window matches the UTC index bucket.
-   */
+  // Must stay UTC to match the dedup index day bucket.
   private startOfUtcToday(): Date {
     const now = new Date();
     return new Date(
