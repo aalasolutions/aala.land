@@ -261,6 +261,39 @@ $shell-sidebar-collapsed: 3.75rem;
   background-color: var(--bg-alternate);
   color: var(--text-muted);
   flex-shrink: 0;
+
+  // Per-type colour, keyed off the notification type the template stamps on
+  // (`notification-icon {{notif.type}}`). SYSTEM keeps the neutral default.
+  &.LEAD_ASSIGNED,
+  &.LEAD_UNASSIGNED,
+  &.LEAD_STATUS_CHANGED {
+    background-color: var(--primary-50);
+    color: var(--primary-700);
+  }
+
+  &.CHEQUE_BOUNCED {
+    background-color: var(--danger-50);
+    color: var(--danger-700);
+  }
+
+  &.CHEQUE_DUE,
+  &.CHEQUE_OVERDUE,
+  &.CHEQUE_DELAYED,
+  &.LEASE_EXPIRING {
+    background-color: var(--warning-50);
+    color: var(--warning-700);
+  }
+
+  &.CHEQUE_DEPOSITED,
+  &.PAYMENT_RECEIVED {
+    background-color: var(--success-50);
+    color: var(--success-700);
+  }
+
+  &.MAINTENANCE_UPDATE {
+    background-color: var(--info-50);
+    color: var(--info-700);
+  }
 }
 
 .notification-content {

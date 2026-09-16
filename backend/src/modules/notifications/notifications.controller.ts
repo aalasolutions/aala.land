@@ -83,8 +83,10 @@ export class NotificationsController {
   )
   @ApiOperation({ summary: 'Get unread notification count for current user' })
   getUnreadCount(@Request() req: AuthenticatedRequest) {
+    // A super admin carries no company, and the app shell polls this on every
+    // page, so an empty count beats rejecting the request.
     return this.notificationsService.getUnreadCount(
-      requireCompanyId(req.user),
+      req.user.companyId,
       req.user.userId,
     );
   }

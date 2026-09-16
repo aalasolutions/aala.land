@@ -153,9 +153,12 @@ export class NotificationsService {
   }
 
   async getUnreadCount(
-    companyId: string,
+    companyId: string | null | undefined,
     userId: string,
   ): Promise<{ count: number }> {
+    if (!companyId) {
+      return { count: 0 };
+    }
     const count = await this.notificationRepository.count({
       where: { companyId, userId, isRead: false },
     });
