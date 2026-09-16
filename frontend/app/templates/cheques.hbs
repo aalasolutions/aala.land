@@ -36,6 +36,7 @@
             <thead>
               <tr>
                 <th>Cheque #</th>
+                <th>Unit</th>
                 <th>Bank</th>
                 <th>Account Holder</th>
                 <th>Amount</th>
@@ -49,6 +50,13 @@
               {{#each @model.cheques as |cheque|}}
                 <tr data-test-cheque-row>
                   <td class="font-bold">{{cheque.chequeNumber}}</td>
+                  <td data-test-cheque-unit>
+                    {{#if cheque.unit}}
+                      {{cheque.unit.unitNumber}}
+                    {{else}}
+                      <span class="text-muted">No Unit</span>
+                    {{/if}}
+                  </td>
                   <td>{{cheque.bankName}}</td>
                   <td>{{cheque.accountHolder}}</td>
                   <td class="font-bold">{{format-currency cheque.amount}}</td>

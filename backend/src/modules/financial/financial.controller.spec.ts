@@ -70,7 +70,12 @@ describe('FinancialController', () => {
       const dto = { type: TransactionType.INCOME, amount: 15000 };
       const result = await controller.create(dto as any, mockReq);
 
-      expect(service.create).toHaveBeenCalledWith(companyId, dto);
+      expect(service.create).toHaveBeenCalledWith(
+        companyId,
+        dto,
+        undefined,
+        mockReq.user,
+      );
       expect(result).toEqual(mockTransaction);
     });
   });
@@ -106,7 +111,11 @@ describe('FinancialController', () => {
 
       const result = await controller.getSummary(mockReq);
 
-      expect(service.getSummary).toHaveBeenCalledWith(companyId);
+      expect(service.getSummary).toHaveBeenCalledWith(
+        companyId,
+        undefined,
+        mockReq.user,
+      );
       expect(result).toEqual(summary);
     });
   });
@@ -117,7 +126,12 @@ describe('FinancialController', () => {
 
       const result = await controller.findOne('txn-uuid-1', mockReq);
 
-      expect(service.findOne).toHaveBeenCalledWith('txn-uuid-1', companyId);
+      expect(service.findOne).toHaveBeenCalledWith(
+        'txn-uuid-1',
+        companyId,
+        undefined,
+        mockReq.user,
+      );
       expect(result).toEqual(mockTransaction);
     });
 
@@ -143,9 +157,13 @@ describe('FinancialController', () => {
         mockReq,
       );
 
-      expect(service.update).toHaveBeenCalledWith('txn-uuid-1', companyId, {
-        status: TransactionStatus.COMPLETED,
-      });
+      expect(service.update).toHaveBeenCalledWith(
+        'txn-uuid-1',
+        companyId,
+        { status: TransactionStatus.COMPLETED },
+        undefined,
+        mockReq.user,
+      );
     });
   });
 
@@ -161,7 +179,11 @@ describe('FinancialController', () => {
 
       const result = await controller.getDepositReminders(mockReq);
 
-      expect(service.getDepositReminders).toHaveBeenCalledWith(companyId);
+      expect(service.getDepositReminders).toHaveBeenCalledWith(
+        companyId,
+        undefined,
+        mockReq.user,
+      );
       expect(result).toEqual(reminders);
     });
   });

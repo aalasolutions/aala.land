@@ -27,6 +27,35 @@ export class SearchService {
     );
   }
 
+  // Staff are filtered by their own assignments, not by the unit chain, so the
+  // region predicate is an overlap test on users.region_codes.
+  private agentQuery(
+    term: string,
+    companyId: string,
+    regionCodes: string[] | null,
+  ) {
+    if (regionCodes?.length === 0) {
+      return Promise.resolve([]);
+    }
+
+    const regionPredicate = regionCodes
+      ? `AND EXISTS (SELECT 1 FROM jsonb_array_elements_text(region_codes) rc WHERE rc = ANY($3))`
+      : '';
+
+    return this.dataSource.query(
+      `SELECT id, name, role
+                 FROM users
+                  WHERE LOWER(name) LIKE $1
+                    AND company_id = $2
+                    AND is_active = true
+                    AND role != 'super_admin'
+                    ${regionPredicate}
+                  ORDER BY LOWER(name)
+                  LIMIT 5`,
+      regionCodes ? [term, companyId, regionCodes] : [term, companyId],
+    );
+  }
+
   async search(
     q: string,
     companyId: string,
@@ -90,17 +119,7 @@ export class SearchService {
         [term, companyId],
         regionCodes,
       ),
-      this.dataSource.query(
-        `SELECT id, name, role
-                 FROM users
-                  WHERE LOWER(name) LIKE $1
-                    AND company_id = $2
-                    AND is_active = true
-                    AND role != 'super_admin'
-                  ORDER BY LOWER(name)
-                  LIMIT 5`,
-        [term, companyId],
-      ),
+      this.agentQuery(term, companyId, regionCodes),
     ]);
 
     return {

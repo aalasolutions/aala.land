@@ -43,12 +43,17 @@ export class ChequesController {
   @Post()
   @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER)
   @ApiOperation({ summary: 'Create a cheque record (ADMIN+)' })
-  create(@Body() dto: CreateChequeDto, @Request() req: AuthenticatedRequest) {
+  create(
+    @Body() dto: CreateChequeDto,
+    @Request() req: AuthenticatedRequest,
+    @Query('regionCode') regionCode?: string,
+  ) {
     return this.chequesService.create(
       requireCompanyId(req.user),
       dto,
       req.user.userId,
       req.user,
+      regionCode || undefined,
     );
   }
 

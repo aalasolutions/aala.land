@@ -21,7 +21,10 @@ import { Cheque, ChequeStatus } from '../cheques/entities/cheque.entity';
 import { AuditLog } from '../audit/entities/audit-log.entity';
 import { User } from '../users/entities/user.entity';
 import { RegionScope } from '../../shared/utils/resolve-region-code.util';
-import { effectiveRegionCodes } from '../../shared/utils/region-visibility.util';
+import {
+  effectiveRegionCodes,
+  isAdminRole,
+} from '../../shared/utils/region-visibility.util';
 
 export interface DashboardKpis {
   totalLeads: number;
@@ -176,18 +179,15 @@ export class ReportsService {
         .andWhere('ci.region_code IN (:...regionCodes)', { regionCodes })
         .getCount();
 
+      // Own column, not the unit chain, so this matches financial.getSummary.
       revenuePromise = this.transactionRepository
         .createQueryBuilder('t')
         .select('COALESCE(SUM(t.amount), 0)', 'total')
-        .innerJoin('units', 'u', 't.unit_id = u.id')
-        .innerJoin('assets', 'ast', 'u.asset_id = ast.id')
-        .innerJoin('localities', 'loc', 'ast.locality_id = loc.id')
-        .innerJoin('cities', 'ci', 'loc.city_id = ci.id')
         .where('t.companyId = :companyId', { companyId })
         .andWhere('t.type = :type', { type: TransactionType.INCOME })
         .andWhere('t.status = :status', { status: TransactionStatus.COMPLETED })
         .andWhere('t.createdAt >= :startOfMonth', { startOfMonth })
-        .andWhere('ci.region_code IN (:...regionCodes)', { regionCodes })
+        .andWhere('t.regionCode IN (:...regionCodes)', { regionCodes })
         .getRawOne();
 
       activeLeasesPromise = this.leaseRepository
@@ -202,15 +202,12 @@ export class ReportsService {
         .andWhere('ci.region_code IN (:...regionCodes)', { regionCodes })
         .getCount();
 
+      // Cheques carry their own region, so a cheque with no unit still counts.
       pendingChequesPromise = this.chequeRepository
         .createQueryBuilder('c')
-        .innerJoin('units', 'u', 'c.unit_id = u.id')
-        .innerJoin('assets', 'ast', 'u.asset_id = ast.id')
-        .innerJoin('localities', 'loc', 'ast.locality_id = loc.id')
-        .innerJoin('cities', 'ci', 'loc.city_id = ci.id')
         .where('c.company_id = :companyId', { companyId })
         .andWhere('c.status = :status', { status: ChequeStatus.PENDING })
-        .andWhere('ci.region_code IN (:...regionCodes)', { regionCodes })
+        .andWhere('c.region_code IN (:...regionCodes)', { regionCodes })
         .getCount();
     } else {
       totalUnitsPromise = this.unitRepository.count({
@@ -562,10 +559,26 @@ export class ReportsService {
 
   async getActivityFeed(
     companyId: string,
-    _regionCode?: string,
+    regionCode?: string,
+    caller?: RegionScope,
   ): Promise<ActivityFeedItem[]> {
+    const regionCodes = effectiveRegionCodes(regionCode, caller);
+    if (regionCodes?.length === 0) {
+      return [];
+    }
+
+    // A NULL region marks a global row such as billing, which stays admin-only.
+    const regionWhere: FindOptionsWhere<AuditLog>[] | undefined = regionCodes
+      ? [
+          { companyId, regionCode: In(regionCodes) },
+          ...(caller && isAdminRole(caller.role)
+            ? [{ companyId, regionCode: IsNull() }]
+            : []),
+        ]
+      : undefined;
+
     const logs = await this.auditLogRepository.find({
-      where: { companyId },
+      where: regionWhere ?? { companyId },
       order: { createdAt: 'DESC' },
       take: 25,
       select: ['id', 'action', 'entityType', 'entityId', 'userId', 'createdAt'],
@@ -664,11 +677,17 @@ export class ReportsService {
 
   async getResponseTimeMetrics(
     companyId: string,
-    _regionCode?: string,
+    regionCode?: string,
+    caller?: RegionScope,
   ): Promise<AgentResponseTime[]> {
+    const regionCodes = effectiveRegionCodes(regionCode, caller);
+    if (regionCodes?.length === 0) {
+      return [];
+    }
+
     // Find the first STATUS_CHANGE activity per lead, then calculate diff from lead.createdAt
     // Uses lead_activities table for historical accuracy
-    const results = await this.activityRepository
+    const qb = this.activityRepository
       .createQueryBuilder('a')
       .select('l.assigned_to', 'agentId')
       .addSelect('COUNT(DISTINCT a.lead_id)::int', 'totalLeadsHandled')
@@ -696,8 +715,13 @@ export class ReportsService {
       .andWhere('l.assigned_to IS NOT NULL')
       .setParameter('companyId', companyId)
       .setParameter('statusChangeType', ActivityType.STATUS_CHANGE)
-      .groupBy('l.assigned_to')
-      .getRawMany();
+      .groupBy('l.assigned_to');
+
+    if (regionCodes) {
+      qb.andWhere('l.region_code IN (:...regionCodes)', { regionCodes });
+    }
+
+    const results = await qb.getRawMany();
 
     return results.map((r) => ({
       agentId: r.agentId,

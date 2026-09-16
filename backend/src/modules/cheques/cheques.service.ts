@@ -68,13 +68,14 @@ export class ChequesService {
     dto: CreateChequeDto,
     userId?: string,
     caller?: RegionScope,
+    activeRegionCode?: string,
   ): Promise<Cheque> {
     await this.assertUnitInCallerRegions(dto.unitId, companyId, caller, true);
     await this.assertLeaseOpenForCheque(dto.leaseId, companyId);
     const regionCode = await this.resolveChequeRegion(
       companyId,
       dto.unitId,
-      dto.regionCode,
+      dto.regionCode ?? activeRegionCode,
       caller,
     );
     const cheque = this.chequeRepository.create({
@@ -119,6 +120,7 @@ export class ChequesService {
         companyId,
         ...(regionCodes ? { regionCode: In(regionCodes) } : {}),
       },
+      relations: { unit: true },
       ...paginationOptions(page, limit),
       order: { dueDate: 'ASC' },
     });
@@ -225,8 +227,8 @@ export class ChequesService {
     }
   }
 
-  // A cheque takes the region of its unit. With no unit it falls back to the
-  // supplied region, then to the company default.
+  // A cheque takes the region of its unit. With no unit it takes the region
+  // the caller is working in, then the company default.
   private async resolveChequeRegion(
     companyId: string,
     unitId: string | null | undefined,
