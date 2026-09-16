@@ -5,8 +5,7 @@ async function dropSchema(): Promise<void> {
   const queryRunner = AppDataSource.createQueryRunner();
 
   try {
-    // Drop all user tables in public schema (CASCADE handles FK dependencies).
-    // pg_tables only lists real tables, so extension-owned views are never touched.
+    // pg_tables excludes extension-owned views, so CASCADE only hits real tables
     await queryRunner.query(`
       DO $$ DECLARE
         r RECORD;

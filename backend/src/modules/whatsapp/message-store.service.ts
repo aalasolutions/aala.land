@@ -1,4 +1,3 @@
-// backend/src/modules/whatsapp/message-store.service.ts
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -83,9 +82,7 @@ export class MessageStoreService {
         .orIgnore()
         .execute();
 
-      // Raw SQL: orUpdate() cannot express the conditional preview columns. Column names
-      // here are not checked by tsc, so mirror any rename in whatsapp-chat.entity.ts.
-      // chat_name equal to chat_id is a placeholder, replaceable by a real pushName.
+      // Raw SQL: orUpdate() can't express conditional columns; mirror renames in the entity
       await manager.query(
         `INSERT INTO "whatsapp_chats"
          ("company_id", "user_id", "chat_id", "chat_name", "is_group", "last_body", "last_ts", "last_from_me")
@@ -113,12 +110,7 @@ export class MessageStoreService {
         ],
       );
 
-      // Resolve the chat to a contact by its number, at most once per chat. The
-      // JID for an individual chat is <number>@s.whatsapp.net (optionally
-      // <number>:<device>@...); group chats (@g.us) have no person. Strip the
-      // device suffix and host before normalising digits, then match on the last
-      // 9. contact_resolution_attempted records that this ran, so an unsaved
-      // number does not re-trigger the correlated subquery on every message.
+      // At most once per chat; contact_resolution_attempted stops it re-running every message
       if (!msg.isGroup) {
         await manager.query(
           `UPDATE "whatsapp_chats"
@@ -237,9 +229,7 @@ export class MessageStoreService {
     }));
   }
 
-  // Driven off whatsapp_chats, never whatsapp_messages: addMessage writes both in one
-  // transaction, so a message owner always has a chat row, and chats do not grow with
-  // message volume.
+  // Driven off whatsapp_chats: addMessage writes both, so chats don't grow with messages
   async findOwnersNeedingRecovery(): Promise<
     Array<{ companyId: string; userId: string }>
   > {

@@ -1,10 +1,4 @@
-// nu-kanban - draggable board with columns and cards.
-//
-// Page-level, not part of the kit. Every kit entry pairs a stylesheet with an
-// Ember component; this one has none, and only the three boards in leads.hbs
-// use it, via hand-written markup. It keeps the `nu-` prefix so the existing
-// markup did not have to change. Promote it back into uikit/ if and when a
-// <Nuvo::Kanban> component exists.
+// nu-kanban is page-level, not kit, since it has no Ember component; kept the `nu-` prefix.
 @use "../uikit/mixins/bem" as *;
 @use "../uikit/mixins/var" as *;
 @use "../uikit/common/var" as *;
@@ -21,8 +15,6 @@
   gap: nu-var("kanban", "Gap");
   padding-block-end: nu-var("kanban", "PaddingBlockEnd");
   overflow-x: auto;
-
-  // ---- column ----
 
   @include e(column) {
     @include nu-root-el("kanban", "column", (
@@ -119,8 +111,6 @@
     overflow-y: auto;
   }
 
-  // ---- card ----
-
   @include e(card) {
     @include nu-root-el("kanban", "card", (
       "Padding": nu-space(3),
@@ -193,15 +183,14 @@
   }
 }
 
-// ---- column accent colour variants: uniform, looped ----
+// Column accent colour variants are uniform, so looped.
 
 @each $variant in $nu-variants {
   .nu-kanban__column.m-#{$variant} {
     --nu-kanban__column--BorderColor: var(--#{$variant}-200);
     --nu-kanban__column--BackgroundColor: var(--#{$variant}-50);
 
-    // Accent and count re-declare these on themselves, so an inherited value
-    // from the column loses. Set them on the elements.
+    // Accent/count re-declare these; an inherited value from the column would lose.
     .nu-kanban__column-accent {
       --nu-kanban__column-accent--Color: var(--#{$variant});
     }
@@ -213,15 +202,12 @@
   }
 }
 
-// ---- states ----
-
 .nu-kanban__card.is-dragging {
   opacity: 0.5;
   transform: scale(1.03);
 }
 
-// Keys off [draggable] because a card is not always `.nu-kanban__card`.
-// Descendant, so the column's own draggable attribute is not matched.
+// Keys off [draggable], not `.nu-kanban__card`, so the column's own attribute isn't matched.
 .nu-kanban__column [draggable="true"] {
   cursor: grab;
 

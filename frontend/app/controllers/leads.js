@@ -30,7 +30,6 @@ export default class LeadsController extends Controller {
 
   setupSocket() {
     this.leadUpdatedHandler = (data) => {
-      // Only refresh if the update was from another user
       if (data.updatedBy !== this.auth.currentUser?.id) {
         if (this.router.isActive('leads')) {
           this.router.refresh('leads');
@@ -431,7 +430,6 @@ export default class LeadsController extends Controller {
     this[key] = null;
   }
 
-  // Temperature Board drag-drop
   @action handleTempDragOver(temperature, event) {
     event.preventDefault();
     event.dataTransfer.dropEffect = 'move';
@@ -464,9 +462,7 @@ export default class LeadsController extends Controller {
     }
   }
 
-  // Agent Board drag-drop
-  // Sentinel, not null: the Unassigned column's own id is null, so a null
-  // drop target would mark it active whenever nothing is being dragged.
+  // Sentinel, not null: Unassigned column's id is null, so null would falsely mark it active.
   @action handleAgentDragOver(agentId, event) {
     event.preventDefault();
     event.dataTransfer.dropEffect = 'move';
@@ -489,7 +485,6 @@ export default class LeadsController extends Controller {
           body: JSON.stringify({ agentId: newAgentId }),
         });
       } else {
-        // Unassign: PATCH assignedTo to null
         await this.auth.fetchJson(`/leads/${this.draggedLead.id}`, {
           method: 'PATCH',
           body: JSON.stringify({ assignedTo: null }),
@@ -549,9 +544,7 @@ export default class LeadsController extends Controller {
       await this.auth.fetchJson(path, {
         method: isEdit ? 'PATCH' : 'POST',
         body: JSON.stringify({
-          // Identity (name/phone/email) lives on the contact. Create resolves or
-          // creates the contact from these; edit must NOT send them (UpdateLeadDto
-          // no longer declares them, and forbidNonWhitelisted would 400).
+          // Edit must omit identity fields (name/phone/email) or forbidNonWhitelisted 400s.
           ...(isEdit
             ? {}
             : this.contactSelection.contactId

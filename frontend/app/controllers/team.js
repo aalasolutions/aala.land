@@ -33,7 +33,6 @@ export default class TeamController extends PaginatedController {
 
   @tracked selectedRegionCodes = [];
 
-  // Remove flow (deactivate or delete, double-confirm)
   @tracked showRemoveModal = false;
   @tracked removeStep = 1;
   @tracked userToRemove = null;
@@ -45,7 +44,6 @@ export default class TeamController extends PaginatedController {
   @tracked isRemoving = false;
   @tracked reassignCandidates = [];
 
-  // Trim-to-one flow (downgrade preparation, double-confirm)
   @tracked showTrimModal = false;
   @tracked trimStep = 1;
   @tracked trimKeepId = '';
@@ -68,8 +66,7 @@ export default class TeamController extends PaginatedController {
     return this.auth.isImpersonating;
   }
 
-  // Any reactivation in flight. The handler blocks concurrent reactivations, so every
-  // Reactivate button is disabled while one runs (not just the clicked row).
+  // Blocks concurrent reactivations; all Reactivate buttons disable while one is running.
   get isReactivating() {
     return !!this.reactivatingUserId;
   }
@@ -82,9 +79,7 @@ export default class TeamController extends PaginatedController {
   }
 
   get canTrim() {
-    // Trim exists to prepare a paid -> Free downgrade, so it is meaningless on
-    // Free. Only hide the button when we positively know the tier is FREE; if
-    // seatInfo failed to load we still show it (the server enforces the gate).
+    // Hide only when tier is confirmed FREE; server still enforces the gate if seatInfo failed.
     return (
       this.auth.currentUser?.role === 'company_admin' &&
       (this.model?.total ?? 0) > 1 &&
@@ -127,9 +122,7 @@ export default class TeamController extends PaginatedController {
   }
 
   async loadActiveUsers({ excludeId = null, companyId = null } = {}) {
-    // The server scopes to active, non-super-admin members of the company (and caps the
-    // list), so the pickers can't miss a valid candidate the way a client-side filter
-    // over a single /users page could. Only the removed user is excluded here.
+    // Server scopes to active company members so pickers can't miss a valid candidate.
     const path = companyId
       ? `/users/active-members?companyId=${encodeURIComponent(companyId)}`
       : '/users/active-members';
@@ -142,8 +135,7 @@ export default class TeamController extends PaginatedController {
     this[fieldName] = e.target.value;
   }
 
-  // Nuvo::Input/Select/Textarea call onInput/onChange as (value, event),
-  // not the raw DOM event setField expects.
+  // Nuvo inputs call onInput/onChange as (value, event), not the raw DOM event setField expects.
   @action setFieldValue(fieldName, value) {
     this[fieldName] = value;
   }
@@ -162,8 +154,7 @@ export default class TeamController extends PaginatedController {
     this.showModal = true;
   }
 
-  // Only admins reach this page, and an admin bootstrap carries every company
-  // region.
+  // Only admins reach this page, and an admin bootstrap carries every company region.
   get assignableRegions() {
     return this.region.regions;
   }
@@ -301,8 +292,6 @@ export default class TeamController extends PaginatedController {
     }
   }
 
-  // ---- Remove flow ----
-
   @action async openRemove(user) {
     this.userToRemove = user;
     this.removeStep = 1;
@@ -435,8 +424,6 @@ export default class TeamController extends PaginatedController {
       this.reactivatingUserId = null;
     }
   }
-
-  // ---- Trim flow ----
 
   @action async openTrim() {
     this.trimStep = 1;

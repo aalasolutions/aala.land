@@ -47,8 +47,7 @@ export class Lease {
   @JoinColumn({ name: 'unit_id' })
   unit: Unit;
 
-  // The tenant is a contact. The flat tenant_* strings are gone; identity and
-  // national ID live on the contact.
+  // The tenant is a contact; identity and national ID live there, not on the lease.
   @Index()
   @Column({ name: 'contact_id', type: 'uuid', nullable: true })
   contactId: string | null;

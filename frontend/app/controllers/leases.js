@@ -169,8 +169,7 @@ export default class LeasesController extends PaginatedController {
     return statuses.map((s) => ({ value: s, label: s }));
   }
 
-  // Nuvo::Input/Select/Textarea call onInput/onChange as (value, event),
-  // not the raw DOM event setField expects.
+  // Nuvo inputs call onInput/onChange as (value, event), not the raw DOM event setField expects.
   @action setFieldValue(fieldName, value) {
     this[fieldName] = value;
   }
@@ -281,9 +280,7 @@ export default class LeasesController extends PaginatedController {
       return;
     }
 
-    // A new lease must name a tenant. The Nuvo dropdown's `required` is not
-    // native-validated, so enforce it here or the body omits contactId and the
-    // lease is created with a blank tenant.
+    // Nuvo dropdown's `required` isn't native-validated, so tenant presence is enforced here.
     if (!isEdit && !UUID_PATTERN.test(this.formTenantContactId)) {
       this.errorMsg = 'Please select a tenant.';
       return;

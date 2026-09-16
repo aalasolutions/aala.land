@@ -111,9 +111,7 @@ export default class CompanyController extends Controller {
     const activeUsers = this.billing?.activeUsers ?? 0;
     const seatWord = seats === 1 ? 'seat' : 'seats';
     const userWord = activeUsers === 1 ? 'user' : 'users';
-    // "purchased" only when there is a real paid subscription. FREE and
-    // comped/admin-set tiers have seats but did not buy them, so the word
-    // would misread as "you are paying for these".
+    // "purchased" only for real paid subs; comped/FREE tiers have seats but didn't buy them.
     const seatPhrase = this.billing?.hasSubscription
       ? `${seats} ${seatWord} purchased`
       : `${seats} ${seatWord}`;
@@ -153,16 +151,12 @@ export default class CompanyController extends Controller {
     }));
   }
 
-  // Downgrade is blocked while a billing request is in flight, or when the
-  // backend gate would 409 (more than 1 active user). Disabling here avoids a
-  // guaranteed-fail request and a pointless confirmation modal.
+  // Downgrade blocked mid-request or when backend would 409, to avoid a guaranteed-fail confirm.
   get isDowngradeDisabled() {
     return this.isBillingBusy || !this.billing?.canDowngradeToFree;
   }
 
-  // A queued downgrade: the subscription is set to end at period close and reverts
-  // to FREE then. Drives the scheduled-cancellation banner and the Reactivate Pro
-  // button in place of Downgrade to Free.
+  // Queued downgrade: ends at period close, reverts to FREE; drives the banner/button swap.
   get isScheduledToCancel() {
     return !!this.billing?.cancelAtPeriodEnd;
   }
@@ -230,8 +224,7 @@ export default class CompanyController extends Controller {
     this[fieldName] = value;
   }
 
-  // Stripe spells the cancelled status `canceled` (one L); the app's badge
-  // vocabulary only ships the correct `cancelled` spelling.
+  // Stripe spells it `canceled` (one L); app badges use the correct `cancelled` spelling.
   get billingStatusBadgeValue() {
     const status = this.billing?.billingStatus;
     if (!status) return null;
@@ -363,8 +356,6 @@ export default class CompanyController extends Controller {
     }
   }
 
-  // -- Billing history pagination (in place, no query params) --------------
-
   get billingHistoryHasNext() {
     return (
       this.billingHistoryPage * this.billingHistoryLimit <
@@ -476,7 +467,6 @@ export default class CompanyController extends Controller {
         }),
       });
 
-      // Re-initialize region service with updated active regions
       const allRegions = this.model?.regions || [];
       const newActiveRegions = allRegions.filter((r) =>
         this.formActiveRegions.includes(r.code),

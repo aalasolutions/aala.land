@@ -26,8 +26,7 @@ export default class NuDropdownComponent extends Component {
   searchTimer = null;
   searchSeq = 0;
 
-  // Controlled when @value is passed, uncontrolled otherwise. Without this an
-  // uncontrolled dropdown would never mark anything selected after a pick.
+  // Controlled when @value is passed; otherwise falls back to internal state after a pick.
   get currentValue() {
     return this.args.value !== undefined ? this.args.value : this.internalValue;
   }
@@ -58,8 +57,7 @@ export default class NuDropdownComponent extends Component {
     if (ALIGNMENTS.includes(this.args.align)) {
       parts.push(`m-align-${this.args.align}`);
     }
-    // Independent of the trigger: a [...] menu can centre its options while a
-    // select-like dropdown keeps them at start.
+    // Independent of the trigger: a menu can centre options while a select keeps them at start.
     if (ALIGNMENTS.includes(this.args.optionsAlign)) {
       parts.push(`m-options-${this.args.optionsAlign}`);
     }
@@ -97,8 +95,7 @@ export default class NuDropdownComponent extends Component {
     });
   }
 
-  // Separators are decoration: they must never be selectable or land under the
-  // keyboard cursor, so they are excluded from the navigable list entirely.
+  // Separators are decoration: they must never be selectable or land under the keyboard cursor.
   @cached
   get matchedOptions() {
     const term = this.searchText.trim().toLowerCase();
@@ -118,8 +115,7 @@ export default class NuDropdownComponent extends Component {
       return matched;
     }
 
-    // Keep same-group entries contiguous so the flat keyboard index matches
-    // the visual order. Preserves first-seen group order.
+    // Keep same-group entries contiguous so the flat keyboard index matches the visual order.
     const order = [];
     const byGroup = new Map();
     matched.forEach((o) => {
@@ -169,8 +165,7 @@ export default class NuDropdownComponent extends Component {
     return row ? [row, ...this.matchedOptions] : this.matchedOptions;
   }
 
-  // Separators render only in the unfiltered, ungrouped list. Once a search
-  // term or grouping reorders things, a fixed divider position is meaningless.
+  // Separators only make sense in the unfiltered, ungrouped list order.
   @cached
   get flatRows() {
     if (this.args.remote || this.args.allowCreate || this.args.filterable) {
@@ -413,8 +408,7 @@ export default class NuDropdownComponent extends Component {
       return;
     }
 
-    // A native <button> trigger also fires click on Enter/Space. Without this
-    // the menu would close then immediately reopen.
+    // A native button also fires click on Enter/Space, which would close then reopen the menu.
     if (['Enter', ' ', 'Spacebar'].includes(event.key)) {
       event.stopPropagation();
     }

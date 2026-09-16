@@ -4,8 +4,7 @@ export class AddPropertyToLeads1773025200000 implements MigrationInterface {
   name = 'AddPropertyToLeads1773025200000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
-    // Columns and foreign keys already exist in database
-    // This migration file exists to track the schema state
+    // No-op: columns and foreign keys already exist, this file only tracks schema state.
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {

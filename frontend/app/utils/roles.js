@@ -102,8 +102,7 @@ export function canUpdateUser(role, targetRole) {
   return currentRoleIndex < targetRoleIndex;
 }
 
-// The bootstrap already narrows `regions` to what the user is assigned, so
-// more than one means switchable and exactly one means pinned.
+// Bootstrap already narrows `regions` to what the user is assigned; >1 means switchable.
 export function canSwitchRegion(assignedRegionCount) {
   return assignedRegionCount > 1;
 }

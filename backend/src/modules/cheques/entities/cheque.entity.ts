@@ -119,10 +119,7 @@ export class Cheque {
   @Column({ type: 'text', nullable: true })
   notes: string | null;
 
-  // Optimistic-lock counter. Guarded manually via a conditional raw UPDATE
-  // (WHERE version = :version, SET version = version + 1), NOT @VersionColumn,
-  // so both status and non-status edits serialize and a concurrent edit that
-  // leaves status unchanged is rejected instead of silently last-write-wins.
+  // Manual conditional UPDATE: rejects unchanged-status races instead of last-write-wins.
   @Column({ name: 'version', type: 'int', default: 1 })
   version: number;
 

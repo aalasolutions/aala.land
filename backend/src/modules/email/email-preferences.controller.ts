@@ -24,8 +24,6 @@ import { UpdateEmailPreferencesDto } from './dto/update-email-preferences.dto';
 export class EmailPreferencesController {
   constructor(private readonly preferences: EmailPreferencesService) {}
 
-  // ---- In-app (authenticated) --------------------------------------------
-
   @Get('me')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
@@ -44,8 +42,6 @@ export class EmailPreferencesController {
   ) {
     return this.preferences.update(req.user.userId, dto);
   }
-
-  // ---- Token-gated (from email footer links, no login) -------------------
 
   @Get('resolve')
   @ApiOperation({ summary: 'Resolve current preferences from an email token' })

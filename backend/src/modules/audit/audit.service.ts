@@ -24,8 +24,7 @@ export class AuditService {
     private readonly companyRepository: Repository<Company>,
   ) {}
 
-  // NULL means the event has no region to filter on. A caller passing no
-  // region at all still falls back to the company default.
+  // A caller passing no region at all falls back to the company default.
   async log(dto: CreateAuditLogDto): Promise<AuditLog> {
     const regionCode =
       dto.regionCode !== undefined

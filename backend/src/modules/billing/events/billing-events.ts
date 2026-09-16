@@ -1,7 +1,6 @@
 import type { BillingPlan } from '../provider/billing-provider.interface';
 
-/** The seven normalized billing event names. FROZEN by the billing contract
- *  (section 7). Adding, trimming, or merging names requires a contract revision. */
+/** Frozen: adding, trimming, or merging names is a breaking change to every registered handler. */
 export type BillingEventName =
   | 'SubscriptionActivated'
   | 'SubscriptionUpdated'
@@ -56,15 +55,12 @@ export interface SubscriptionCanceledEvent extends BillingEventBase {
   endedAt: Date | null;
 }
 
-/** Invoice detail carried on payment events, sourced straight from the Stripe
- *  invoice object. Used to record billing history; all fields default null when
- *  Stripe omits them. */
+/** All fields default null when Stripe omits them. */
 export interface InvoiceDetail {
   /** Stripe hosted invoice page (view / download link). */
   hostedInvoiceUrl: string | null;
   /** Stripe-generated invoice PDF link. */
   invoicePdfUrl: string | null;
-  /** Invoice billing period bounds. */
   periodStart: Date | null;
   periodEnd: Date | null;
 }

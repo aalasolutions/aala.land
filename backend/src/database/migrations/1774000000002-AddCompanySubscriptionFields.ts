@@ -4,7 +4,6 @@ export class AddCompanySubscriptionFields1774000000002 implements MigrationInter
   name = 'AddCompanySubscriptionFields1774000000002';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
-    // Add subscription-related columns to companies table
     await queryRunner.query(`
             ALTER TABLE "companies"
             ADD COLUMN "subscription_tier" varchar(50) DEFAULT 'FREE',
@@ -18,7 +17,6 @@ export class AddCompanySubscriptionFields1774000000002 implements MigrationInter
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    // Remove subscription-related columns from companies table
     await queryRunner.query(`
             ALTER TABLE "companies"
             DROP COLUMN "default_region_code",

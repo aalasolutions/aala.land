@@ -7,13 +7,7 @@ type BillingHandlerFor<N extends BillingEventName> = (
   event: Extract<NormalizedBillingEvent, { name: N }>,
 ) => Promise<void>;
 
-/**
- * In-process billing event registry. Unit 2 registers the company-sync handlers;
- * units 3 to 5 register their own reactions on the same instance (exported from
- * BillingModule). Deliberately not @nestjs/event-emitter: dispatch must be awaited
- * and failures must propagate to the webhook response, which fire-and-forget
- * emitters do not give us.
- */
+/** Not @nestjs/event-emitter: awaited so failures propagate to the webhook response. */
 @Injectable()
 export class BillingEventDispatcher {
   private readonly logger = new Logger(BillingEventDispatcher.name);
@@ -28,11 +22,7 @@ export class BillingEventDispatcher {
     this.handlers.set(name, list);
   }
 
-  /**
-   * Runs every registered handler for the event, sequentially, in registration
-   * order. Rethrows the first failure; the caller decides what a failure means
-   * (the webhook service returns 500 and leaves processed_at NULL).
-   */
+  /** Rethrows the first failure; webhook service returns 500 and leaves processed_at NULL. */
   async dispatch(event: NormalizedBillingEvent): Promise<void> {
     const list = this.handlers.get(event.name) ?? [];
     if (list.length === 0) {

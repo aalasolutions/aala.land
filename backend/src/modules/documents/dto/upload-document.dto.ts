@@ -26,9 +26,6 @@ export class UploadDocumentDto {
   @MaxLength(50)
   fileType?: string;
 
-  /**
-   * Maps to PropertyDocument.unitId (DB column: unit_id).
-   */
   @ApiProperty({ required: false })
   @Transform(({ value }) => value || undefined)
   @IsOptional()

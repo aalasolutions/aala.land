@@ -4,7 +4,6 @@ export class AddMissingColumnsToPropertyMedia1774000000012 implements MigrationI
   name = 'AddMissingColumnsToPropertyMedia1774000000012';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
-    // Add missing columns to property_media table
     await queryRunner.query(
       `ALTER TABLE "property_media" ADD COLUMN "thumbnail_url" varchar(255)`,
     );
@@ -23,7 +22,6 @@ export class AddMissingColumnsToPropertyMedia1774000000012 implements MigrationI
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    // Drop the added columns
     await queryRunner.query(
       `ALTER TABLE "property_media" DROP COLUMN "file_size"`,
     );

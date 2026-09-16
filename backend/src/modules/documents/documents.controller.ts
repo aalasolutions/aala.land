@@ -95,9 +95,7 @@ export class DocumentsController {
   })
   @UseInterceptors(
     FileInterceptor('file', {
-      // Spooled to a temp file on disk rather than buffered in RAM — with a 50 MB
-      // limit, buffering in memory lets concurrent uploads add up to significant
-      // process memory pressure.
+      // Spooled to disk, not RAM, so concurrent uploads can't build significant memory pressure.
       storage: diskStorage({
         destination: tmpdir(),
         filename: (_req, file, cb) => {
@@ -107,7 +105,7 @@ export class DocumentsController {
           cb(null, `doc-upload-${randomUUID()}-${safeName}`);
         },
       }),
-      limits: { fileSize: 50 * 1024 * 1024 }, // 50 MB
+      limits: { fileSize: 50 * 1024 * 1024 },
       fileFilter: (_req, file, cb) => {
         if (
           !(ALLOWED_DOCUMENT_TYPES as readonly string[]).includes(file.mimetype)
@@ -261,7 +259,7 @@ export class DocumentsController {
   )
   @ApiOperation({
     summary:
-      "Stream a document's file bytes. Re-checks accessLevel before serving — " +
+      "Stream a document's file bytes. Re-checks accessLevel before serving; " +
       'the S3 URL is never exposed to the client.',
   })
   async download(
@@ -275,8 +273,7 @@ export class DocumentsController {
       req.user.role,
       req.user.regionCodes,
     );
-    // Strip quotes and control characters (including CR/LF) so a document name
-    // can never inject extra headers or break the Content-Disposition value.
+    // Strips quotes/control chars so a name can't inject headers or break Content-Disposition.
     const safeFileName = (doc.name || 'document').replace(
       /[\x00-\x1f\x7f"]/g,
       '_',

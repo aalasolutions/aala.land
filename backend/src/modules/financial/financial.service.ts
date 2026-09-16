@@ -8,6 +8,7 @@ import {
   DataSource,
   EntityManager,
   Repository,
+  In,
   LessThan,
   Between,
   FindOptionsWhere,
@@ -20,8 +21,11 @@ import {
 import { Unit } from '../properties/entities/unit.entity';
 import { CreateTransactionDto } from './dto/create-transaction.dto';
 import { UpdateTransactionDto } from './dto/update-transaction.dto';
-import { REGION_FILTER_SUBQUERY_MULTI } from '../../shared/utils/region-filter.util';
-import { RegionScope } from '../../shared/utils/resolve-region-code.util';
+import {
+  RegionScope,
+  resolveRegionCode,
+} from '../../shared/utils/resolve-region-code.util';
+import { Company } from '../companies/entities/company.entity';
 import { effectiveRegionCodes } from '../../shared/utils/region-visibility.util';
 import {
   paginationOptions,
@@ -41,12 +45,16 @@ export class FinancialService {
     private readonly transactionRepository: Repository<Transaction>,
     @InjectRepository(Unit)
     private readonly unitRepository: Repository<Unit>,
+    @InjectRepository(Company)
+    private readonly companyRepository: Repository<Company>,
     private readonly dataSource: DataSource,
   ) {}
 
   async create(
     companyId: string,
     dto: CreateTransactionDto,
+    activeRegionCode?: string,
+    caller?: RegionScope,
   ): Promise<Transaction> {
     if (dto.unitId) {
       const unit = await this.unitRepository.findOne({
@@ -63,6 +71,12 @@ export class FinancialService {
     const transaction = this.transactionRepository.create({
       ...dto,
       companyId,
+      regionCode: await this.resolveTransactionRegion(
+        companyId,
+        dto.unitId,
+        activeRegionCode,
+        caller,
+      ),
     });
     return this.dataSource.transaction(async (manager) => {
       await this.assertUnitNotArchivedLocked(
@@ -96,15 +110,12 @@ export class FinancialService {
     }
 
     if (regionCodes) {
-      // Show transactions that either belong to a unit in the region OR have no unit linked
+      // Rows without a region stay hidden until the region selector offers Show All.
       const qb = this.transactionRepository
         .createQueryBuilder('t')
         .leftJoinAndSelect('t.unit', 'unit')
         .where('t.companyId = :companyId', { companyId })
-        .andWhere(
-          `(t.unitId IS NULL OR t.unitId IN (${REGION_FILTER_SUBQUERY_MULTI}))`,
-          { regionCodes },
-        );
+        .andWhere('t.regionCode IN (:...regionCodes)', { regionCodes });
 
       if (ownerId) {
         qb.andWhere('unit.ownerId = :ownerId', { ownerId });
@@ -139,9 +150,23 @@ export class FinancialService {
     return { data, total, page, limit };
   }
 
-  async findOne(id: string, companyId: string): Promise<Transaction> {
+  async findOne(
+    id: string,
+    companyId: string,
+    regionCode?: string,
+    caller?: RegionScope,
+  ): Promise<Transaction> {
+    const regionCodes = effectiveRegionCodes(regionCode, caller);
+    if (regionCodes?.length === 0) {
+      throw new NotFoundException('Transaction not found');
+    }
+
     const transaction = await this.transactionRepository.findOne({
-      where: { id, companyId },
+      where: {
+        id,
+        companyId,
+        ...(regionCodes ? { regionCode: In(regionCodes) } : {}),
+      },
     });
     if (!transaction) {
       throw new NotFoundException('Transaction not found');
@@ -153,8 +178,10 @@ export class FinancialService {
     id: string,
     companyId: string,
     dto: UpdateTransactionDto,
+    regionCode?: string,
+    caller?: RegionScope,
   ): Promise<Transaction> {
-    await this.findOne(id, companyId);
+    await this.findOne(id, companyId, regionCode, caller);
 
     return this.dataSource.transaction(async (manager) => {
       const repo = manager.getRepository(Transaction);
@@ -181,6 +208,48 @@ export class FinancialService {
     });
   }
 
+  // Unit region first; caller region validated like a cheque's; with neither, row stays unregioned.
+  private async resolveTransactionRegion(
+    companyId: string,
+    unitId: string | null | undefined,
+    regionCode: string | undefined,
+    caller?: RegionScope,
+  ): Promise<string | null> {
+    const unitRegion = await this.regionOfUnit(unitId, companyId);
+    if (unitRegion) {
+      return unitRegion;
+    }
+    if (!regionCode) {
+      return null;
+    }
+    return resolveRegionCode(
+      this.companyRepository,
+      companyId,
+      regionCode,
+      caller,
+    );
+  }
+
+  // Transaction takes its unit's region, same chain cheque/work-order columns were backfilled from.
+  private async regionOfUnit(
+    unitId: string | null | undefined,
+    companyId: string,
+  ): Promise<string | undefined> {
+    if (!unitId) {
+      return undefined;
+    }
+    const row = await this.unitRepository
+      .createQueryBuilder('u')
+      .innerJoin('u.asset', 'a')
+      .innerJoin('a.locality', 'loc')
+      .innerJoin('loc.city', 'ci')
+      .select('ci.regionCode', 'regionCode')
+      .where('u.id = :unitId', { unitId })
+      .andWhere('u.companyId = :companyId', { companyId })
+      .getRawOne<{ regionCode: string }>();
+    return row?.regionCode ?? undefined;
+  }
+
   // FOR SHARE so archiveUnit cannot commit in between.
   private async assertUnitNotArchivedLocked(
     manager: EntityManager,
@@ -204,8 +273,17 @@ export class FinancialService {
     }
   }
 
-  async getSummary(companyId: string): Promise<TransactionSummary> {
-    const result = await this.transactionRepository
+  async getSummary(
+    companyId: string,
+    regionCode?: string,
+    caller?: RegionScope,
+  ): Promise<TransactionSummary> {
+    const regionCodes = effectiveRegionCodes(regionCode, caller);
+    if (regionCodes?.length === 0) {
+      return { totalIncome: 0, totalExpense: 0, net: 0 };
+    }
+
+    const qb = this.transactionRepository
       .createQueryBuilder('t')
       .select(
         'COALESCE(SUM(CASE WHEN t.type = :income THEN t.amount ELSE 0 END), 0)',
@@ -228,8 +306,13 @@ export class FinancialService {
       .setParameters({
         income: TransactionType.INCOME,
         expense: TransactionType.EXPENSE,
-      })
-      .getRawOne();
+      });
+
+    if (regionCodes) {
+      qb.andWhere('t.regionCode IN (:...regionCodes)', { regionCodes });
+    }
+
+    const result = await qb.getRawOne();
 
     const totalIncome = Number(result?.totalIncome ?? 0);
     const totalExpense = Number(result?.totalExpense ?? 0);
@@ -241,12 +324,21 @@ export class FinancialService {
     };
   }
 
-  async getDepositReminders(companyId: string): Promise<{
+  async getDepositReminders(
+    companyId: string,
+    regionCode?: string,
+    caller?: RegionScope,
+  ): Promise<{
     overdue: Transaction[];
     dueToday: Transaction[];
     dueThisWeek: Transaction[];
     dueThisMonth: Transaction[];
   }> {
+    const regionCodes = effectiveRegionCodes(regionCode, caller);
+    if (regionCodes?.length === 0) {
+      return { overdue: [], dueToday: [], dueThisWeek: [], dueThisMonth: [] };
+    }
+
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const tomorrow = new Date(today);
@@ -259,6 +351,7 @@ export class FinancialService {
       companyId,
       type: TransactionType.INCOME,
       status: TransactionStatus.PENDING,
+      ...(regionCodes ? { regionCode: In(regionCodes) } : {}),
     };
 
     const [overdue, dueToday, dueThisWeek, dueThisMonth] = await Promise.all([

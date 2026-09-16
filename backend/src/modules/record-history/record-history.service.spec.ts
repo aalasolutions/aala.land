@@ -35,7 +35,7 @@ describe('RecordHistoryService', () => {
     entityId,
     entityTitle: 'Unit A-1204',
     actorId,
-    actorName: 'Aamir',
+    actorName: 'Test User',
   };
 
   const buildQueryBuilder = () => ({
@@ -89,7 +89,7 @@ describe('RecordHistoryService', () => {
         contextTitle: 'Marina Tower',
         reason: 'duplicate entry',
         actorId,
-        actorName: 'Aamir',
+        actorName: 'Test User',
         regionCode: 'dubai',
         metadata: { fileCount: 2 },
       });
@@ -187,12 +187,12 @@ describe('RecordHistoryService', () => {
     it('returns the user name', async () => {
       mockManager.findOne.mockResolvedValueOnce({
         id: actorId,
-        name: 'Aamir',
-        email: 'aamir@test.com',
+        name: 'Test User',
+        email: 'user@example.com',
       });
 
       await expect(service.resolveActorName(manager, actorId)).resolves.toBe(
-        'Aamir',
+        'Test User',
       );
       expect(mockManager.findOne).toHaveBeenCalledWith(User, {
         where: { id: actorId },
@@ -204,11 +204,11 @@ describe('RecordHistoryService', () => {
       mockManager.findOne.mockResolvedValueOnce({
         id: actorId,
         name: ' ',
-        email: 'aamir@test.com',
+        email: 'user@example.com',
       });
 
       await expect(service.resolveActorName(manager, actorId)).resolves.toBe(
-        'aamir@test.com',
+        'user@example.com',
       );
     });
 

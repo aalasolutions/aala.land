@@ -174,8 +174,6 @@ export default class UikitController extends Controller {
     { term: 'Lease Ends', description: '31 Dec 2026' },
   ];
 
-  // ---- accordion ----
-
   accordionItems = [
     {
       id: 'unit-details',
@@ -200,8 +198,6 @@ export default class UikitController extends Controller {
     },
   ];
 
-  // ---- tabs ----
-
   @tracked activeUnitTab = 'overview';
 
   unitTabs = [
@@ -215,8 +211,6 @@ export default class UikitController extends Controller {
   updateUnitTab(tabId) {
     this.activeUnitTab = tabId;
   }
-
-  // ---- segmented ----
 
   @tracked segmentedView = 'pipeline';
   @tracked segmentedPeriod = 'week';
@@ -258,15 +252,11 @@ export default class UikitController extends Controller {
     this.segmentedAmenities = values;
   }
 
-  // ---- breadcrumb ----
-
   breadcrumbItems = [
     { label: 'Properties', href: '#' },
     { label: 'Marina Tower', href: '#' },
     { label: 'Unit 1204' },
   ];
-
-  // ---- pagination ----
 
   @tracked paginationPage = 1;
   @tracked paginationPerPage = 10;
@@ -283,8 +273,6 @@ export default class UikitController extends Controller {
     this.paginationPerPage = perPage;
     this.paginationPage = 1;
   }
-
-  // ---- app shell ----
 
   @tracked sidebarCollapsed = false;
   @tracked sidebarOpen = false;
@@ -382,8 +370,6 @@ export default class UikitController extends Controller {
     document.getElementById(id)?.scrollIntoView({ block: 'start' });
   }
 
-  // ---- modal ----
-
   @tracked modalOpen = false;
   @tracked modalFullOpen = false;
 
@@ -406,8 +392,6 @@ export default class UikitController extends Controller {
   closeModalFull() {
     this.modalFullOpen = false;
   }
-
-  // ---- confirm modal ----
 
   @tracked confirmOpen = false;
   @tracked confirmDangerOpen = false;
@@ -463,8 +447,6 @@ export default class UikitController extends Controller {
     );
   }
 
-  // ---- drawer ----
-
   @tracked drawerOpen = false;
   @tracked drawerPlacement = 'end';
 
@@ -479,12 +461,9 @@ export default class UikitController extends Controller {
     this.drawerOpen = false;
   }
 
-  // ---- popover ----
-
   @tracked popoverOpen = false;
 
-  // Controlled mode needs BOTH directions. Without a toggle the popover could
-  // only ever be closed, never opened.
+  // Controlled mode needs both directions, or the popover could only close, never open.
   @action
   togglePopover() {
     this.popoverOpen = !this.popoverOpen;
@@ -495,8 +474,6 @@ export default class UikitController extends Controller {
     this.popoverOpen = false;
   }
 
-  // ---- selectable tags ----
-
   chipOptions = ['Parking', 'Pool', 'Gym', 'Balcony', 'Furnished'];
   @tracked selectedChips = ['Pool'];
 
@@ -506,8 +483,6 @@ export default class UikitController extends Controller {
       ? this.selectedChips.filter((c) => c !== chip)
       : [...this.selectedChips, chip];
   }
-
-  // ---- filter row ----
 
   @tracked filterStatus = '';
   @tracked filterSearch = '';
@@ -533,8 +508,6 @@ export default class UikitController extends Controller {
     this.filterStatus = '';
     this.filterSearch = '';
   }
-
-  // ---- modal sizes ----
 
   @tracked sizedModal = null;
 

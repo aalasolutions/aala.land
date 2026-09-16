@@ -10,7 +10,7 @@ import { ManualPayment } from '@modules/console/entities/manual-payment.entity';
 const PAYING_STATUSES = ['active', 'trialing'];
 
 export interface CompanyLockState {
-  /** Writes blocked; reads and export stay (ratified lock scope, ruling 9). */
+  /** Writes blocked; reads and export stay. */
   locked: boolean;
   /** A super admin lifted the lock; writes work until liftUntil. */
   lifted: boolean;
@@ -26,18 +26,7 @@ export const UNLOCKED: CompanyLockState = {
   dealExpiredAt: null,
 };
 
-/**
- * READ-TIME lock evaluation (no scheduler, owner preference). A company is
- * write-locked when its custom deal expired (until-date passed) and nothing
- * re-opened it:
- *   1. a live paying card subscription (a genuinely paying company is never
- *      locked by a stale deal record),
- *   2. a manual payment whose covers-period reaches today ("unless a deal or
- *      payment lands", design 8.1),
- *   3. an unexpired, un-ended lock lift (grace, auto re-lock at lift_until).
- * Ending a deal early (ended_at set) removes the deal entirely and never
- * locks; only EXPIRY locks (ruling 9).
- */
+// Write-locks when a deal expires unless subscription, manual payment, or lock lift reopens it.
 @Injectable()
 export class LockStateService {
   constructor(
@@ -79,10 +68,7 @@ export class LockStateService {
     return { locked: true, lifted: false, liftUntil: null, dealExpiredAt };
   }
 
-  /**
-   * Batch evaluation for the console companies list. Also returns each
-   * company's active deal so the list can render badges without re-querying.
-   */
+  // Also returns each company's active deal so the list can render badges without re-querying.
   async getLockStates(companies: Company[]): Promise<{
     states: Map<string, CompanyLockState>;
     activeDeals: Map<string, CustomDeal>;

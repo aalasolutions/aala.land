@@ -55,8 +55,7 @@ export default class NuPopoverComponent extends Component {
     this.rootElement = element;
   }
 
-  // In controlled mode the caller owns the state, so opening is reported via
-  // @onToggle rather than silently mutating internalOpen (which would be ignored).
+  // Controlled mode: caller owns state, so report via @onToggle, not internalOpen.
   @action
   toggle() {
     if (this.isOpen) {

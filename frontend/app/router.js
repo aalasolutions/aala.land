@@ -28,9 +28,7 @@ Router.map(function () {
   this.route('vendors');
   this.route('cheques');
   this.route('team');
-  // Owners is retired as a destination; both legs redirect into Contacts
-  // (see routes/owners/index.js, routes/owners/detail.js) so old links and
-  // bookmarks still land somewhere real instead of 404ing.
+  // Retired Owners routes redirect into Contacts so old links and bookmarks do not 404.
   this.route('owners', function () {
     this.route('index', { path: '/' });
     this.route('detail', { path: '/:owner_id' });

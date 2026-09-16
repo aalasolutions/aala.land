@@ -178,7 +178,7 @@ describe('PropertiesService', () => {
     };
     recordHistory = {
       record: jest.fn().mockResolvedValue(undefined),
-      resolveActorName: jest.fn().mockResolvedValue('Aamir'),
+      resolveActorName: jest.fn().mockResolvedValue('Test User'),
     };
     storagePurge = {
       purge: jest.fn().mockResolvedValue(['purge-1']),
@@ -1571,7 +1571,7 @@ describe('PropertiesService', () => {
           contextTitle: 'Bay Tower',
           reason: 'Mistake',
           actorId,
-          actorName: 'Aamir',
+          actorName: 'Test User',
           regionCode: 'dubai',
           metadata: { fileCount: 2 },
         });

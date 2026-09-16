@@ -1,11 +1,7 @@
 import Route from '@ember/routing/route';
 import { service } from '@ember/service';
 
-/**
- * Full-page company detail (design section 4, option C1). Real URL, browser
- * back works. The billing state is best-effort on the backend (null when the
- * provider is down), so the page never blanks.
- */
+/** Real URL so back works; billing state is best-effort (null if provider is down). */
 export default class AdminCompaniesCompanyRoute extends Route {
   @service auth;
 
@@ -18,8 +14,7 @@ export default class AdminCompaniesCompanyRoute extends Route {
 
   setupController(controller, model) {
     super.setupController(controller, model);
-    // Per-company reset: clears tab state, forms and stale sub-lists so a
-    // switch between two detail pages never leaks the previous company.
+    // Clears tab state, forms and sub-lists so switching companies never leaks the old one.
     controller.resetForCompany(model);
   }
 }

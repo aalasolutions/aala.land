@@ -28,8 +28,7 @@ export function buildS3Client(
   });
 }
 
-// Each bucket is paired with its own credentials so an operation can never use
-// the wrong key for a bucket.
+// Each bucket is paired with its own credentials to avoid using the wrong key
 export function buildMediaClient(): S3Client {
   return buildS3Client(
     process.env.AWS_ACCESS_KEY_ID,
@@ -54,9 +53,7 @@ export function getMediaBucket(): string {
   return bucket;
 }
 
-// Private — documents only. Must never be made public-read; the app serves
-// documents exclusively through DocumentsService.downloadStream, which
-// re-checks accessLevel before this bucket is touched.
+// Private, documents only; served exclusively through DocumentsService.downloadStream
 export function getDocumentsBucket(): string {
   const bucket = process.env.AWS_S3_DOCUMENTS_BUCKET;
   if (!bucket)

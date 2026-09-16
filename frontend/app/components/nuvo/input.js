@@ -40,8 +40,7 @@ export default class NuInputComponent extends Component {
     return value !== undefined && value !== null && value !== '';
   }
 
-  // Rendered whenever there is something to clear: a hover gate would keep the
-  // button out of the tab order for keyboard and touch users.
+  // No hover gate: that would keep the button out of tab order for keyboard and touch users.
   get showClear() {
     return Boolean(
       this.args.clearable &&

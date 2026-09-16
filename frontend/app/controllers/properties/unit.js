@@ -64,23 +64,19 @@ export default class PropertiesUnitController extends Controller {
   @service notifications;
   @service router;
 
-  // Edit modal state
   @tracked showEditModal = false;
   @tracked isSaving = false;
   @tracked errorMsg = '';
 
-  // Photo upload state
   @tracked isUploading = false;
   @tracked uploadStatus = '';
   @tracked previewUrl = null;
   @tracked activePhotoId = null;
 
-  // Delete confirmation state (photos)
   @tracked showDeleteModal = false;
   @tracked itemToDelete = null;
   @tracked isDeleting = false;
 
-  // Document upload/edit modal state
   @tracked showDocumentModal = false;
   @tracked editDocument = null;
   @tracked formDocName = '';
@@ -91,18 +87,15 @@ export default class PropertiesUnitController extends Controller {
   @tracked documentErrorMsg = '';
   @tracked uploadProgress = 0;
 
-  // Document delete confirmation state
   @tracked showDeleteDocumentModal = false;
   @tracked documentToDelete = null;
   @tracked isDeletingDocument = false;
 
-  // Archive / unarchive / delete state
   @tracked pendingUnitAction = null;
   @tracked unitActionReason = '';
   @tracked reasonError = '';
   @tracked isSubmittingUnitAction = false;
 
-  // Form fields
   @tracked formUnitNumber = '';
   @tracked formStatus = 'available';
   @tracked formPropertyType = '';
@@ -204,8 +197,7 @@ export default class PropertiesUnitController extends Controller {
       formData.append('unitId', unit.id);
       formData.append('type', 'image'); // lowercase matches MediaType.IMAGE = 'image'
 
-      // Do NOT set Content-Type in the options object when sending FormData.
-      // The browser sets multipart/form-data with the boundary automatically.
+      // Do NOT set Content-Type for FormData; the browser sets multipart boundary automatically.
       await this.auth.fetchJson('/properties/media/upload', {
         method: 'POST',
         body: formData,
@@ -326,8 +318,6 @@ export default class PropertiesUnitController extends Controller {
     }
   }
 
-  // ── Archive / unarchive / delete ──────────────────────────────────────
-
   get isArchived() {
     return Boolean(this.model?.unit?.deletedAt);
   }
@@ -398,8 +388,6 @@ export default class PropertiesUnitController extends Controller {
       this.isSubmittingUnitAction = false;
     }
   }
-
-  // ── Documents ─────────────────────────────────────────────────────────
 
   @action onDocFileSelect(e) {
     const file = e.target.files?.[0];
@@ -536,8 +524,7 @@ export default class PropertiesUnitController extends Controller {
         throw new Error('Download failed');
       }
 
-      // The endpoint re-checks accessLevel and streams bytes directly — the S3 URL
-      // is never exposed to the client, so a blob download replaces window.open(doc.url).
+      // Blob download avoids exposing the S3 URL; endpoint re-checks access and streams bytes.
       const blob = await res.blob();
       const blobUrl = URL.createObjectURL(blob);
       const link = document.createElement('a');

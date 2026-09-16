@@ -38,7 +38,6 @@ export default class DocumentsController extends PaginatedController {
   @tracked isSaving = false;
   @tracked errorMsg = '';
 
-  // Upload state
   @tracked selectedFile = null;
   @tracked uploadProgress = '';
   @tracked showDeleteModal = false;
@@ -86,8 +85,7 @@ export default class DocumentsController extends PaginatedController {
     this[fieldName] = e.target.value;
   }
 
-  // Nuvo::Input/Select/Textarea call onInput/onChange as (value, event),
-  // not the raw DOM event setField expects.
+  // Nuvo inputs call onInput/onChange as (value, event), not the raw DOM event setField expects.
   @action setFieldValue(fieldName, value) {
     this[fieldName] = value;
   }
@@ -193,7 +191,6 @@ export default class DocumentsController extends PaginatedController {
         });
         this.notifications.success('Document updated');
       } else {
-        // Create path: single multipart POST.
         if (!this.selectedFile) {
           throw new Error('Please select a file to upload');
         }
@@ -253,8 +250,7 @@ export default class DocumentsController extends PaginatedController {
         throw new Error('Download failed');
       }
 
-      // The endpoint re-checks accessLevel and streams bytes directly — the S3 URL
-      // is never exposed to the client, so a blob download replaces window.open(doc.url).
+      // Blob download avoids exposing the S3 URL; endpoint re-checks access and streams bytes.
       const blob = await res.blob();
       const blobUrl = URL.createObjectURL(blob);
       const link = document.createElement('a');

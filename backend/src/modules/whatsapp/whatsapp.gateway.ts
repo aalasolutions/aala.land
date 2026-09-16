@@ -1,4 +1,3 @@
-// backend/src/modules/whatsapp/whatsapp.gateway.ts
 import {
   WebSocketGateway,
   WebSocketServer,

@@ -11,8 +11,7 @@
     </option>
   {{/if}}
 
-  {{! Block param must NOT be named `option`: inside the loop it would shadow
-      the <option> element and Glimmer would try to invoke it as a component. }}
+  {{! Must not be named `option`: Glimmer would shadow the element as a component. }}
   {{#each this.normalizedOptions as |item|}}
     <option
       value={{item.value}}

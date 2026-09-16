@@ -1,18 +1,11 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-// Contacts becomes the single identity table. owners is dropped; units.owner_id,
-// leads.contact_id, leases.contact_id and whatsapp_chats.contact_id all point at
-// contacts.
-//
-// Production is empty, so this is a pure schema reshape: no backfill, no
-// dual-write. The Dubai default on leads.region_code is dropped here too (a
-// region-less lead silently filed under Dubai regardless of company region).
+// Contacts becomes the single identity table, replacing owners; prod is empty, no backfill needed
 export class ContactsDomainModel1779600000000 implements MigrationInterface {
   name = 'ContactsDomainModel1779600000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
-    // 1. contacts: new identity fields + first_name nullable (a WhatsApp contact
-    //    may have a number and no name).
+    // 1. first_name nullable: a WhatsApp contact may have a number and no name
     await queryRunner.query(
       `ALTER TABLE "contacts" ADD COLUMN "nationality" varchar(100)`,
     );
@@ -26,7 +19,6 @@ export class ContactsDomainModel1779600000000 implements MigrationInterface {
       `ALTER TABLE "contacts" ALTER COLUMN "first_name" DROP NOT NULL`,
     );
 
-    // 2. contacts: drop the dead columns and the ContactType enum.
     await queryRunner.query(
       `ALTER TABLE "contacts" DROP COLUMN "whatsapp_number"`,
     );
@@ -35,8 +27,7 @@ export class ContactsDomainModel1779600000000 implements MigrationInterface {
     await queryRunner.query(`ALTER TABLE "contacts" DROP COLUMN "type"`);
     await queryRunner.query(`DROP TYPE "contacts_type_enum"`);
 
-    // 3. units: assigned_agent_id moves here from owners (assignment lives on
-    //    the thing, not the person).
+    // 3. assigned_agent_id moves to units: assignment lives on the thing, not the person
     await queryRunner.query(
       `ALTER TABLE "units" ADD COLUMN "assigned_agent_id" uuid`,
     );
@@ -82,8 +73,7 @@ export class ContactsDomainModel1779600000000 implements MigrationInterface {
       `ALTER TABLE "whatsapp_chats" ADD CONSTRAINT "fk_wa_chats_contact" FOREIGN KEY ("contact_id") REFERENCES "contacts"("id") ON DELETE SET NULL`,
     );
 
-    // 7. units.owner_id: repoint the FK from owners to contacts. The column and
-    //    its IDX_UNITS_OWNER_ID index stay valid.
+    // 7. repoints owner_id FK from owners to contacts; column and its index stay valid
     await queryRunner.query(
       `ALTER TABLE "units" DROP CONSTRAINT "fk_units_owner"`,
     );
@@ -91,8 +81,7 @@ export class ContactsDomainModel1779600000000 implements MigrationInterface {
       `ALTER TABLE "units" ADD CONSTRAINT "fk_units_owner" FOREIGN KEY ("owner_id") REFERENCES "contacts"("id") ON DELETE SET NULL`,
     );
 
-    // 8. leads: drop the identity columns (identity now lives on contacts) and
-    //    the Dubai default on region_code.
+    // 8. drops lead identity columns: identity now lives on contacts
     await queryRunner.query(`ALTER TABLE "leads" DROP COLUMN "first_name"`);
     await queryRunner.query(`ALTER TABLE "leads" DROP COLUMN "last_name"`);
     await queryRunner.query(`ALTER TABLE "leads" DROP COLUMN "email"`);
@@ -104,7 +93,6 @@ export class ContactsDomainModel1779600000000 implements MigrationInterface {
       `ALTER TABLE "leads" ALTER COLUMN "region_code" DROP DEFAULT`,
     );
 
-    // 9. leases: drop the flat tenant_* strings.
     await queryRunner.query(`ALTER TABLE "leases" DROP COLUMN "tenant_name"`);
     await queryRunner.query(`ALTER TABLE "leases" DROP COLUMN "tenant_email"`);
     await queryRunner.query(`ALTER TABLE "leases" DROP COLUMN "tenant_phone"`);
@@ -112,14 +100,12 @@ export class ContactsDomainModel1779600000000 implements MigrationInterface {
       `ALTER TABLE "leases" DROP COLUMN "tenant_national_id"`,
     );
 
-    // 10. owners table goes. Its own FKs and indexes drop with it; the units FK
-    //     was already repointed above.
+    // 10. owners table goes; FKs/indexes drop with it, units FK already repointed above
     await queryRunner.query(`DROP TABLE "owners"`);
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    // Recreate owners exactly as migration 1774000000004 did, so reverting past
-    // this point leaves the schema consistent with the prior migrations.
+    // Recreates owners as migration 1774000000004 did, to stay consistent on revert
     await queryRunner.query(`
             CREATE TABLE "owners" (
                 "id" uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -141,9 +127,7 @@ export class ContactsDomainModel1779600000000 implements MigrationInterface {
       `CREATE INDEX "IDX_OWNERS_COMPANY_ID" ON "owners"("company_id")`,
     );
 
-    // 9. leases tenant_* back. The columns were dropped irreversibly by up(), so
-    //    existing rows get a placeholder for the NOT NULL name before the
-    //    constraint goes on.
+    // 9. tenant_name was dropped irreversibly; backfill a placeholder before NOT NULL
     await queryRunner.query(
       `ALTER TABLE "leases" ADD COLUMN "tenant_national_id" varchar(50)`,
     );
@@ -163,8 +147,7 @@ export class ContactsDomainModel1779600000000 implements MigrationInterface {
       `ALTER TABLE "leases" ALTER COLUMN "tenant_name" SET NOT NULL`,
     );
 
-    // 8. leads identity columns + Dubai default back. Same placeholder treatment
-    //    for the NOT NULL first_name.
+    // 8. restores lead identity columns, same placeholder treatment for first_name
     await queryRunner.query(
       `ALTER TABLE "leads" ALTER COLUMN "region_code" SET DEFAULT 'dubai'`,
     );
@@ -188,9 +171,7 @@ export class ContactsDomainModel1779600000000 implements MigrationInterface {
       `ALTER TABLE "leads" ALTER COLUMN "first_name" SET NOT NULL`,
     );
 
-    // 7. units.owner_id FK back to owners. Owner identity was lost by up(), so
-    //    null out the dangling contact refs before the FK goes to the recreated
-    //    (empty) owners table.
+    // 7. owner identity was lost by up(); null dangling refs before FK to empty owners
     await queryRunner.query(
       `UPDATE "units" SET "owner_id" = NULL WHERE "owner_id" IS NOT NULL`,
     );
@@ -201,7 +182,6 @@ export class ContactsDomainModel1779600000000 implements MigrationInterface {
       `ALTER TABLE "units" ADD CONSTRAINT "fk_units_owner" FOREIGN KEY ("owner_id") REFERENCES "owners"("id")`,
     );
 
-    // 6. whatsapp_chats contact_id off.
     await queryRunner.query(
       `ALTER TABLE "whatsapp_chats" DROP CONSTRAINT "fk_wa_chats_contact"`,
     );
@@ -210,14 +190,12 @@ export class ContactsDomainModel1779600000000 implements MigrationInterface {
       `ALTER TABLE "whatsapp_chats" DROP COLUMN "contact_id"`,
     );
 
-    // 5. leases contact_id off.
     await queryRunner.query(
       `ALTER TABLE "leases" DROP CONSTRAINT "fk_leases_contact"`,
     );
     await queryRunner.query(`DROP INDEX "IDX_LEASES_CONTACT_ID"`);
     await queryRunner.query(`ALTER TABLE "leases" DROP COLUMN "contact_id"`);
 
-    // 4. leads contact_id + city_id off.
     await queryRunner.query(
       `ALTER TABLE "leads" DROP CONSTRAINT "fk_leads_city"`,
     );
@@ -229,7 +207,6 @@ export class ContactsDomainModel1779600000000 implements MigrationInterface {
     await queryRunner.query(`ALTER TABLE "leads" DROP COLUMN "city_id"`);
     await queryRunner.query(`ALTER TABLE "leads" DROP COLUMN "contact_id"`);
 
-    // 3. units assigned_agent_id off.
     await queryRunner.query(
       `ALTER TABLE "units" DROP CONSTRAINT "fk_units_assigned_agent"`,
     );
@@ -237,7 +214,6 @@ export class ContactsDomainModel1779600000000 implements MigrationInterface {
       `ALTER TABLE "units" DROP COLUMN "assigned_agent_id"`,
     );
 
-    // 2. contacts dead columns + ContactType enum back.
     await queryRunner.query(
       `CREATE TYPE "contacts_type_enum" AS ENUM('LEAD', 'TENANT', 'OWNER', 'VENDOR', 'OTHER')`,
     );
@@ -254,9 +230,7 @@ export class ContactsDomainModel1779600000000 implements MigrationInterface {
       `ALTER TABLE "contacts" ADD COLUMN "whatsapp_number" varchar(50)`,
     );
 
-    // 1. contacts identity fields off, first_name NOT NULL again. A nameless
-    //    WhatsApp contact (first_name null) would block SET NOT NULL, so
-    //    backfill it first, like leads.first_name and leases.tenant_name above.
+    // 1. backfill first_name before SET NOT NULL, same as leads/leases above
     await queryRunner.query(
       `UPDATE "contacts" SET "first_name" = 'Unknown' WHERE "first_name" IS NULL`,
     );

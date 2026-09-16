@@ -8,9 +8,7 @@ import {
 } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
-// Inline details for a person being attached to something (unit owner, lease
-// tenant). Resolved through ContactsService.resolveOrCreate, so a number
-// already on file reuses its contact instead of duplicating it.
+// Inline details for attaching a person; resolveOrCreate reuses the contact if number is on file.
 export class ContactIdentityDto {
   @ApiPropertyOptional({ example: 'Ahmed' })
   @IsString()

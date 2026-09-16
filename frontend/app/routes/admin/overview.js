@@ -1,11 +1,7 @@
 import Route from '@ember/routing/route';
 import { service } from '@ember/service';
 
-/**
- * Scoreboard (design section 2). Loads the business numbers and the upcoming
- * manual-payments rollup in one pass; a failure of either surface degrades to
- * an empty state rather than blanking the page.
- */
+/** Loads business numbers and payments rollup together; either failure degrades gracefully. */
 export default class AdminOverviewRoute extends Route {
   @service auth;
 

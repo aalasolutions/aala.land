@@ -32,9 +32,7 @@ export async function resolveRegionCode(
   return company.defaultRegionCode;
 }
 
-// A caller-supplied region is rejected when it sits outside what the
-// caller may write to. Admins are checked against the company active
-// regions, everyone else against their own assignments.
+// Admins checked against company active regions, everyone else against their own assignments
 async function assertRegionAllowed(
   companyRepository: Repository<Company>,
   companyId: string,

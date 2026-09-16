@@ -1,6 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-// Replaces the unused Twilio-era whatsapp_messages. down() restores the schema, not the rows.
+// Replaces the unused Twilio-era table; down() restores schema only, not rows
 export class RebuildWhatsappMessagesAndChats1779500000057 implements MigrationInterface {
   name = 'RebuildWhatsappMessagesAndChats1779500000057';
 
@@ -53,8 +53,7 @@ export class RebuildWhatsappMessagesAndChats1779500000057 implements MigrationIn
             )
         `);
 
-    // user_id is part of the key: a WhatsApp message id is minted by the sender, so two
-    // agents in one company can receive the same id. Without it, one copy is dropped.
+    // Message ids are sender-minted, so two agents can receive the same id
     await queryRunner.query(
       `CREATE UNIQUE INDEX IF NOT EXISTS "UQ_wa_messages_company_user_wa_id" ON "whatsapp_messages" ("company_id", "user_id", "wa_message_id")`,
     );

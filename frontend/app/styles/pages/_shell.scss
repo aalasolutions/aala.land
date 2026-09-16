@@ -1,10 +1,4 @@
-// App shell: the frame every authenticated route renders inside.
-//
-// The sidebar and topbar themselves are kit components (`.nu-sidebar`,
-// `.nu-topbar`), both carrying `m-plain` so they sit flat on the shell
-// background. This file holds only the glue that is genuinely app-specific:
-// offsetting the main column past the fixed sidebar, the raised routed panel,
-// the collapse affordance, the brand lockup, and the two full-width banners.
+// App shell holds only app-specific glue; sidebar/topbar are kit components with `m-plain`.
 @use "../uikit/common/var" as *;
 @use "../uikit/mixins/bem" as *;
 
@@ -14,21 +8,16 @@ $shell-sidebar-collapsed: 3.75rem;
 .app-shell {
   display: flex;
   min-block-size: 100vh;
-  // background: #f7f7f7;
-  /* Fallback for older browsers */
   background-color: #0d1b2a;
 
 
-  /* The gradient engine */
   background-image: radial-gradient(circle at center, #344244 0%, #0b212d 90%, #2b1818 100%);
-  /* Crucial settings for full-page view */
   background-repeat: no-repeat;
   background-attachment: fixed;
   min-height: 100vh;
 }
 
-// `.nu-sidebar` is position:fixed and therefore out of flow, so the main
-// column carries its own offset rather than relying on a flex sibling.
+// `.nu-sidebar` is position:fixed, so main column carries its own offset, not a flex sibling.
 .app-shell__main {
   display: flex;
   flex-direction: column;
@@ -45,8 +34,6 @@ $shell-sidebar-collapsed: 3.75rem;
 .app-shell.is-collapsed .app-shell__main {
   margin-inline-start: $shell-sidebar-collapsed;
 }
-
-// ---- brand lockup ----
 
 .app-shell__brand-mark {
   inline-size: 2.25rem;
@@ -70,10 +57,7 @@ $shell-sidebar-collapsed: 3.75rem;
   }
 }
 
-// ---- collapse affordance ----
-
-// The nav above already grows to fill, so this must not compete with it for
-// height; it only separates the nav from the collapse button.
+// Nav above already grows to fill; this only separates it from the collapse button.
 .app-shell__spacer {
   flex: 0 0 auto;
 }
@@ -107,17 +91,8 @@ $shell-sidebar-collapsed: 3.75rem;
   }
 }
 
-// ---- routed page content ----
-
-// Every route renders in here. The padding lives on the shell rather than on
-// each page, so a page template never has to remember it.
-//
-// The sidebar and topbar carry `m-plain`, so this panel is the only raised
-// surface and the app reads as this. Logical corner and edges so it tucks
-// against the sidebar in RTL too. The shadow is an ambient glow rather than a
-// drop shadow, which no kit token covers, so it stays literal.
+// The only raised surface, since sidebar/topbar carry `m-plain`; shadow has no kit token.
 .content-area {
-  // flex: 1;
   height: calc(100vh - 65px);
   position: relative;
   overflow: auto;
@@ -127,15 +102,10 @@ $shell-sidebar-collapsed: 3.75rem;
 
   background: #f9fcfe;
   border-start-start-radius: nu-radius(lg);
-  // border-block-start: 1px solid var(--border-base);
-  // border-inline-start: 1px solid var(--border-base);
   box-shadow: 0 0 20px 10px rgba(0, 0, 0, 0.35)
 }
 
-// ---- topbar: region switcher ----
-
-// `.nu-topbar-menu` is position:absolute, so its trigger must establish the
-// containing block or the menu anchors to the viewport.
+// `.nu-topbar-menu` is absolute; trigger must be the containing block or it anchors to viewport.
 .region-switcher,
 .notification-wrapper,
 .nu-topbar__search {
@@ -186,8 +156,6 @@ $shell-sidebar-collapsed: 3.75rem;
   z-index: nu-z(sticky);
 }
 
-// ---- topbar: dropdown internals ----
-
 .app-shell__menu-list {
   max-block-size: 24rem;
   overflow-y: auto;
@@ -236,8 +204,7 @@ $shell-sidebar-collapsed: 3.75rem;
   white-space: nowrap;
 }
 
-// Unread notification: tinted row plus a leading marker, so the state does not
-// rely on colour alone.
+// Tinted row plus a leading marker so unread state doesn't rely on colour alone.
 .nu-topbar-menu__item.unread {
   background-color: var(--primary-50);
 
@@ -261,6 +228,38 @@ $shell-sidebar-collapsed: 3.75rem;
   background-color: var(--bg-alternate);
   color: var(--text-muted);
   flex-shrink: 0;
+
+  // Per-type colour keyed off `notification-icon {{notif.type}}`; SYSTEM stays neutral.
+  &.LEAD_ASSIGNED,
+  &.LEAD_UNASSIGNED,
+  &.LEAD_STATUS_CHANGED {
+    background-color: var(--primary-50);
+    color: var(--primary-700);
+  }
+
+  &.CHEQUE_BOUNCED {
+    background-color: var(--danger-50);
+    color: var(--danger-700);
+  }
+
+  &.CHEQUE_DUE,
+  &.CHEQUE_OVERDUE,
+  &.CHEQUE_DELAYED,
+  &.LEASE_EXPIRING {
+    background-color: var(--warning-50);
+    color: var(--warning-700);
+  }
+
+  &.CHEQUE_DEPOSITED,
+  &.PAYMENT_RECEIVED {
+    background-color: var(--success-50);
+    color: var(--success-700);
+  }
+
+  &.MAINTENANCE_UPDATE {
+    background-color: var(--info-50);
+    color: var(--info-700);
+  }
 }
 
 .notification-content {
@@ -288,13 +287,10 @@ $shell-sidebar-collapsed: 3.75rem;
   font-size: nu-font-size(xs);
 }
 
-// The menu is wider than the kit default: notification bodies are prose, not
-// menu labels.
+// The menu is wider than the kit default: notification bodies are prose, not menu labels.
 .notification-wrapper .nu-topbar-menu {
   inline-size: 22rem;
 }
-
-// ---- full-width banners, above the topbar ----
 
 .impersonation-banner {
   display: flex;
@@ -316,8 +312,6 @@ $shell-sidebar-collapsed: 3.75rem;
   font-size: nu-font-size(sm);
   font-weight: nu-font-weight(medium);
 }
-
-// ---- mobile: sidebar becomes an overlay drawer ----
 
 @include media-down(md) {
   .app-shell__main {

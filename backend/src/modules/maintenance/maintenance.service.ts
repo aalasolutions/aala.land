@@ -33,6 +33,8 @@ export interface CostSummary {
   variance: number;
   workOrderCount: number;
   avgCostPerOrder: number;
+  // Estimated cost still outstanding: everything not completed or cancelled.
+  pendingCost: number;
 }
 
 @Injectable()
@@ -389,6 +391,7 @@ export class MaintenanceService {
         variance: 0,
         workOrderCount: 0,
         avgCostPerOrder: 0,
+        pendingCost: 0,
       };
     }
 
@@ -397,7 +400,15 @@ export class MaintenanceService {
       .select('COALESCE(SUM(wo.estimated_cost), 0)', 'totalEstimated')
       .addSelect('COALESCE(SUM(wo.actual_cost), 0)', 'totalActual')
       .addSelect('COUNT(*)::int', 'workOrderCount')
-      .where('wo.company_id = :companyId', { companyId });
+      .addSelect(
+        `COALESCE(SUM(wo.estimated_cost) FILTER (WHERE wo.status NOT IN (:...settledStatuses)), 0)`,
+        'pendingCost',
+      )
+      .where('wo.company_id = :companyId', { companyId })
+      .setParameter('settledStatuses', [
+        WorkOrderStatus.COMPLETED,
+        WorkOrderStatus.CANCELLED,
+      ]);
 
     if (regionCodes) {
       qb.andWhere('wo.region_code IN (:...regionCodes)', { regionCodes });
@@ -415,6 +426,7 @@ export class MaintenanceService {
       variance: totalEstimated - totalActual,
       workOrderCount,
       avgCostPerOrder: workOrderCount > 0 ? totalActual / workOrderCount : 0,
+      pendingCost: parseFloat(result.pendingCost),
     };
   }
 
@@ -448,8 +460,7 @@ export class MaintenanceService {
     return qb.take(100).getMany();
   }
 
-  // A work order's region is its unit's, so a unit the caller cannot read must
-  // not be bound to one.
+  // A work order's region is its unit's, so a unit the caller cannot read must not be bound to one.
   private async validateUnitOwnership(
     unitId: string,
     companyId: string,

@@ -39,7 +39,6 @@ export default class AdminCompaniesCompanyController extends Controller {
   // Guards against a stale async response landing on a different company.
   loadToken = 0;
 
-  // Deal modal
   @tracked dealModalOpen = false;
   @tracked dealEditing = false;
   @tracked dealPrice = '';
@@ -53,20 +52,17 @@ export default class AdminCompaniesCompanyController extends Controller {
   @tracked endDealConfirmOpen = false;
   @tracked endDealBusy = false;
 
-  // Lock lift
   @tracked liftDate = '';
   @tracked liftBusy = false;
   @tracked endLiftConfirmOpen = false;
   @tracked endLiftBusy = false;
 
-  // Limits modal
   @tracked limitsModalOpen = false;
   @tracked limitMaxUsers = '';
   @tracked limitMaxRegions = '';
   @tracked limitMaxProperties = '';
   @tracked limitsBusy = false;
 
-  // Payments
   @tracked paymentsLoading = false;
   @tracked paymentsLoaded = false;
   @tracked paymentRows = [];
@@ -81,7 +77,6 @@ export default class AdminCompaniesCompanyController extends Controller {
   @tracked payReceiptName = '';
   @tracked payBusy = false;
 
-  // Make it right (remedy)
   @tracked remedyModalOpen = false;
   @tracked remedyAnchor = null;
   @tracked remedyKind = 'discount_next_bill';
@@ -90,7 +85,6 @@ export default class AdminCompaniesCompanyController extends Controller {
   @tracked remedyWhy = '';
   @tracked remedyBusy = false;
 
-  // History
   @tracked historyLoading = false;
   @tracked historyLoaded = false;
   @tracked historyRows = [];
@@ -98,10 +92,7 @@ export default class AdminCompaniesCompanyController extends Controller {
   tabs = TABS;
   basisOptions = BASIS_OPTIONS;
 
-  /**
-   * Wipe every per-company surface. Called from the route on model change so
-   * switching between two detail pages never leaks state.
-   */
+  /** Resets all per-company state on model change so switching companies never leaks data. */
   resetForCompany(model) {
     this.loadToken++;
     this.detail = model;
@@ -125,8 +116,6 @@ export default class AdminCompaniesCompanyController extends Controller {
     this.historyLoaded = false;
     this.historyRows = [];
   }
-
-  // --- Derived state --------------------------------------------------------
 
   get company() {
     return this.detail;
@@ -220,8 +209,6 @@ export default class AdminCompaniesCompanyController extends Controller {
     return `On ${date} this account LOCKS: writing stops, reading and export stay. Their admin sees the "reduce or pay" banner. It never silently drops to Free. A super admin can lift the lock.`;
   }
 
-  // --- Tabs -----------------------------------------------------------------
-
   @action
   selectTab(value) {
     this.activeTab = value;
@@ -252,8 +239,6 @@ export default class AdminCompaniesCompanyController extends Controller {
     if (token !== this.loadToken) return;
     if (res?.data) this.detail = res.data;
   }
-
-  // --- Deal modal -----------------------------------------------------------
 
   @action
   openDealModal() {
@@ -339,8 +324,7 @@ export default class AdminCompaniesCompanyController extends Controller {
     if (this.dealLifetime) {
       body.lifetime = true;
     } else {
-      // End-of-day LOCAL time, so picking today is still "in the future"
-      // (UTC midnight would already be past and 400 on the backend).
+      // End-of-day local time; UTC midnight would already be past and 400 on the backend.
       body.untilDate = new Date(`${this.dealUntil}T23:59:59`).toISOString();
     }
 
@@ -393,8 +377,6 @@ export default class AdminCompaniesCompanyController extends Controller {
       this.endDealBusy = false;
     }
   }
-
-  // --- Lock lift ------------------------------------------------------------
 
   @action
   setLiftDate(event) {
@@ -458,8 +440,6 @@ export default class AdminCompaniesCompanyController extends Controller {
     }
   }
 
-  // --- Limits modal ---------------------------------------------------------
-
   @action
   openLimitsModal() {
     const l = this.detail?.limits ?? {};
@@ -511,8 +491,6 @@ export default class AdminCompaniesCompanyController extends Controller {
       this.limitsBusy = false;
     }
   }
-
-  // --- Payments -------------------------------------------------------------
 
   async loadPayments() {
     const token = this.loadToken;
@@ -665,8 +643,7 @@ export default class AdminCompaniesCompanyController extends Controller {
 
   @action
   async viewReceipt(paymentId) {
-    // Open the window synchronously inside the click gesture so popup
-    // blockers allow it; the blob URL lands in it once fetched.
+    // Opens window synchronously in the click gesture so popup blockers allow it.
     const viewer = window.open('about:blank', '_blank');
     if (viewer) viewer.opener = null;
     try {
@@ -688,8 +665,6 @@ export default class AdminCompaniesCompanyController extends Controller {
       this.notifications.error(e.message || 'Could not open the receipt');
     }
   }
-
-  // --- Make it right (remedy) ----------------------------------------------
 
   @action
   openRemedy(row) {
@@ -788,8 +763,6 @@ export default class AdminCompaniesCompanyController extends Controller {
     }
   }
 
-  // --- History --------------------------------------------------------------
-
   async loadHistory() {
     const token = this.loadToken;
     this.historyLoading = true;
@@ -832,8 +805,6 @@ export default class AdminCompaniesCompanyController extends Controller {
     }
     return `${row.action} ${row.entityType}`;
   }
-
-  // --- Number + date helpers ------------------------------------------------
 
   minorDigits(currency) {
     const code = (currency || 'usd').toUpperCase();

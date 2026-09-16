@@ -1,8 +1,7 @@
 import AuthenticatedRoute from '../authenticated';
 import { service } from '@ember/service';
 
-// Owners is retired as its own page. Contacts (filtered to the Owner tab) is
-// the one hub now; this route only exists so old /owners links still land
+// Owners page retired in favor of Contacts' Owner tab; route kept so old /owners links land.
 export default class OwnersIndexRoute extends AuthenticatedRoute {
   @service router;
 

@@ -1,4 +1,3 @@
-// backend/src/modules/whatsapp/dto/list-wa-messages.dto.ts
 import { IsOptional, IsInt, IsString, Min, Max } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
@@ -19,8 +18,7 @@ export class ListWaMessagesDto {
   @Max(500)
   limit?: number = 500;
 
-  // Injected by RegionScopeInterceptor. Unused here, but the global
-  // ValidationPipe runs forbidNonWhitelisted and would reject it.
+  // Injected by RegionScopeInterceptor; required or forbidNonWhitelisted rejects it
   @ApiProperty({ required: false, type: String })
   @IsOptional()
   @IsString()

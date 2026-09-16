@@ -1,4 +1,3 @@
-// backend/src/modules/whatsapp/whatsapp.controller.ts
 import {
   Controller,
   Get,
@@ -41,8 +40,6 @@ export class WhatsappController {
     return candidate.startsWith(resolve(root) + sep);
   }
 
-  // ── Connection ────────────────────────────────────────────────────────
-
   @Get('connection')
   @ApiOperation({ summary: 'WhatsApp connection status' })
   getConnection(@Request() req: AuthenticatedRequest) {
@@ -65,8 +62,6 @@ export class WhatsappController {
   logout(@Request() req: AuthenticatedRequest) {
     return this.wa.logout(req.user.userId, req.user.companyId!);
   }
-
-  // ── Chats / Messages ──────────────────────────────────────────────────
 
   @Get('chats')
   @ApiOperation({ summary: 'Chat list with last-message preview' })
@@ -109,8 +104,6 @@ export class WhatsappController {
       ),
     };
   }
-
-  // ── Sending ───────────────────────────────────────────────────────────
 
   @Post('send')
   @ApiOperation({ summary: 'Send a text message' })
@@ -155,8 +148,6 @@ export class WhatsappController {
     return this.wa.typing(req.user.userId, req.user.companyId!, dto.chatId);
   }
 
-  // ── AI ────────────────────────────────────────────────────────────────
-
   @Get('ai')
   @ApiOperation({ summary: 'AI config and enabled state' })
   getAi(@Request() req: AuthenticatedRequest) {
@@ -190,8 +181,6 @@ export class WhatsappController {
   ) {
     return { chatId, history: this.wa.getAiHistory(req.user.userId, chatId) };
   }
-
-  // ── Media serving ─────────────────────────────────────────────────────
 
   @Get('media/:type/:filename')
   @ApiOperation({ summary: 'Serve downloaded media file' })

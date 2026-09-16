@@ -1,7 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-// Nullable: region here is a relevance filter, not a security boundary.
-// NULL means company-wide and stays visible in every region.
+// Nullable: region is a relevance filter not a security boundary, NULL is company-wide
 export class AddRegionCodeToNotifications1779600000007 implements MigrationInterface {
   name = 'AddRegionCodeToNotifications1779600000007';
 

@@ -46,8 +46,7 @@
     data-test-nu-dropdown-menu
   >
     {{#if this.showSearch}}
-      {{! No keydown here: it bubbles to the root handler. Binding both would
-          fire the handler twice and step the highlight by 2. }}
+      {{! No keydown here: bubbles to the root handler; binding both double-steps the highlight. }}
       <div class="nu-menu__search">
         <Nuvo::Input
           @value={{this.searchText}}

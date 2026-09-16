@@ -28,8 +28,6 @@ export default class PropertiesIndexController extends Controller {
   get currentView() {
     // Other views are not yet implemented, so always default to browse for now
     return 'browse';
-    // if (this.activeView) return this.activeView;
-    // return this.preferences.get('properties-index-view', 'browse');
   }
 
   viewTabs = [
@@ -223,7 +221,6 @@ export default class PropertiesIndexController extends Controller {
     }
   }
 
-  // New Unit modal (cascading: city > location > asset > unit fields)
   @tracked showNewUnitModal = false;
   @tracked selectedCity = null;
   @tracked selectedLocality = null;

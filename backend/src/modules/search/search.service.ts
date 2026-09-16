@@ -27,6 +27,34 @@ export class SearchService {
     );
   }
 
+  // Staff are filtered by their own assignments, not the unit chain
+  private agentQuery(
+    term: string,
+    companyId: string,
+    regionCodes: string[] | null,
+  ) {
+    if (regionCodes?.length === 0) {
+      return Promise.resolve([]);
+    }
+
+    const regionPredicate = regionCodes
+      ? `AND EXISTS (SELECT 1 FROM jsonb_array_elements_text(region_codes) rc WHERE rc = ANY($3))`
+      : '';
+
+    return this.dataSource.query(
+      `SELECT id, name, role
+                 FROM users
+                  WHERE LOWER(name) LIKE $1
+                    AND company_id = $2
+                    AND is_active = true
+                    AND role != 'super_admin'
+                    ${regionPredicate}
+                  ORDER BY LOWER(name)
+                  LIMIT 5`,
+      regionCodes ? [term, companyId, regionCodes] : [term, companyId],
+    );
+  }
+
   async search(
     q: string,
     companyId: string,
@@ -42,11 +70,7 @@ export class SearchService {
     const term = `${query.toLowerCase()}%`;
     const [cities, localities, assets, agents] = await Promise.all([
       this.queryWithOptionalRegion(
-        // LOWER(c.name) is aliased into the SELECT so it can be used in
-        // ORDER BY under SELECT DISTINCT (Postgres requires DISTINCT
-        // ORDER BY expressions to appear in the select list, else the
-        // whole /v1/search request 500s). The extra column is ignored
-        // by the result mapper below.
+        // Postgres requires the ORDER BY expression in SELECT DISTINCT, or this 500s
         `SELECT DISTINCT c.id, c.name, LOWER(c.name) AS name_lower
                  FROM cities c
                  INNER JOIN localities l ON l.city_id = c.id
@@ -90,17 +114,7 @@ export class SearchService {
         [term, companyId],
         regionCodes,
       ),
-      this.dataSource.query(
-        `SELECT id, name, role
-                 FROM users
-                  WHERE LOWER(name) LIKE $1
-                    AND company_id = $2
-                    AND is_active = true
-                    AND role != 'super_admin'
-                  ORDER BY LOWER(name)
-                  LIMIT 5`,
-        [term, companyId],
-      ),
+      this.agentQuery(term, companyId, regionCodes),
     ]);
 
     return {

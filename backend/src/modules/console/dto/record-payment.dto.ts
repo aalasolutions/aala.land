@@ -10,12 +10,7 @@ import {
 import { Type } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
 
-/**
- * Manual-rail payment record (requirement 2.4). Multipart form: fields arrive
- * as strings, hence the Type() coercion. The receipt image travels as the
- * multipart "receipt" file field. At least one of notes/receipt is required
- * ("DOCUMENT IT"), enforced in the service where the file is visible.
- */
+// Multipart fields arrive as strings, hence Type() coercion; notes-or-receipt enforced in service.
 export class RecordPaymentDto {
   @ApiProperty({
     description: 'Amount in MINOR units of the payment currency',

@@ -1,10 +1,7 @@
-// Layout for the /uikit showcase route. Presentation surface only, not part of
-// the shipped kit.
+// Layout for the /uikit showcase route only, not part of the shipped kit.
 @use "./uikit/common/var" as *;
 
-// The showcase is an app shell built from the kit itself.
-// nu-sidebar is position:fixed (it owns its own placement), so the main region
-// reserves space with a margin rather than relying on flex flow.
+// nu-sidebar is position:fixed, so main region reserves space via margin, not flex flow.
 .nuvo-shell {
   min-block-size: 100vh;
 

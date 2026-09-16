@@ -230,6 +230,7 @@ describe('ChequesService', () => {
 
       expect(repo.findAndCount).toHaveBeenCalledWith({
         where: { companyId },
+        relations: { unit: true },
         skip: 0,
         take: 20,
         order: { dueDate: 'ASC' },

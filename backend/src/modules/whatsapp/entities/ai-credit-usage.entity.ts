@@ -7,9 +7,7 @@ import {
   Index,
 } from 'typeorm';
 
-// Do NOT add user_id here: the allowance check locks this single row, and a
-// per-agent split turns it into a SUM that cannot be locked atomically.
-// Per-agent numbers come from whatsapp_ai_conversations.
+// No user_id: a per-agent split would turn the locked allowance check into an unlockable SUM
 @Entity('ai_credit_usage')
 @Index('UQ_ai_credit_usage_company_period', ['companyId', 'periodStart'], {
   unique: true,

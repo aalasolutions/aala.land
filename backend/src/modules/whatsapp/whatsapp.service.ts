@@ -1,4 +1,3 @@
-// backend/src/modules/whatsapp/whatsapp.service.ts
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
@@ -37,14 +36,11 @@ export class WhatsappService implements OnModuleInit {
     private readonly users: Repository<User>,
   ) {}
 
-  // ── Boot wiring ────────────────────────────────────────────────────────
-
   async onModuleInit(): Promise<void> {
-    // Before wiring: BaileysManagerService auto-starts every session directory on boot,
-    // so a removal whose logout failed comes back live on every deploy.
+    // Runs before wiring: auto-start on boot would revive a removal whose logout failed
     await this.dropSessionsWithoutActiveSeat();
 
-    // BaileysManagerService.onModuleInit already ran — wire any pre-started instances
+    // BaileysManagerService.onModuleInit already ran; wires any pre-started instances.
     for (const [userId, inst] of this.manager.getAll()) {
       const companyId = this.readPersistedCompanyId(userId);
       if (companyId) {
@@ -55,16 +51,7 @@ export class WhatsappService implements OnModuleInit {
     }
   }
 
-  /**
-   * Stops any running session whose user is gone or deactivated. A session directory is
-   * not authority to connect: the seat may have been removed while this instance was
-   * down, or the logout on the removal path may have failed.
-   *
-   * Stops WITHOUT erasing credentials. Only a real removal deletes those. This runs
-   * automatically at boot on the result of a seat lookup, so a wrong database, a stale
-   * restore or a half-applied migration would classify every session as an orphan; the
-   * cost of that must be a restart, not every agent in every company re-pairing by hand.
-   */
+  /** Stops sessions for gone/deactivated users, keeps credentials; re-pairing stays manual. */
   async dropSessionsWithoutActiveSeat(): Promise<number> {
     const userIds = [...this.manager.getAll().keys()];
     if (userIds.length === 0) return 0;
@@ -109,8 +96,6 @@ export class WhatsappService implements OnModuleInit {
     return connected;
   }
 
-  // ── Instance wiring ────────────────────────────────────────────────────
-
   private async ensureInstance(
     userId: string,
     companyId: string,
@@ -153,24 +138,16 @@ export class WhatsappService implements OnModuleInit {
     inst: BaileysInstance,
   ): void {
     void this.ai.loadEnabledState(userId, companyId);
-    // Track message IDs sent by AI so when Baileys re-emits them as fromMe events
-    // we don't mistakenly treat them as a human reply and trigger the silence window.
+    // So a Baileys fromMe re-emission of an AI send isn't mistaken for a human reply
     const aiSentIds = new Set<string>();
-    // Content fallback: Baileys sendMessage may return without a key.id, so the echo
-    // can't be matched by id. Track a short-lived (chatId + body) fingerprint of each
-    // AI send so we still recognise the echo and don't treat it as a human reply.
-    // A Map counter (not a Set) so N identical AI sends within the window are matched by
-    // exactly N echoes: two identical sends must not collapse to one entry (which would
-    // let the second echo be misread as a human reply and falsely mute the AI).
+    // Counter not a Set: N identical AI sends must match N echoes, not collapse to one
     const aiSentFingerprints = new Map<string, number>();
     const fingerprint = (chatId: string, body: string) =>
       `${chatId} ${body ?? ''}`;
-    // Increment the fingerprint counter for one AI send.
     const addFingerprint = (fp: string) => {
       aiSentFingerprints.set(fp, (aiSentFingerprints.get(fp) ?? 0) + 1);
       setTimeout(() => decrementFingerprint(fp), 60_000);
     };
-    // Consume one matching echo: decrement, delete the key when the count reaches 0.
     const decrementFingerprint = (fp: string): boolean => {
       const count = aiSentFingerprints.get(fp);
       if (!count) return false;
@@ -187,11 +164,7 @@ export class WhatsappService implements OnModuleInit {
       this.gateway.emitMessage(userId, msg);
       if (msg.fromMe) {
         const fp = fingerprint(msg.chatId, msg.body);
-        // messageId match is the PRIMARY signal; the fingerprint counter is the fallback
-        // for sends with no messageId. Consume exactly one fingerprint slot per matched
-        // echo (whether matched by id or by fingerprint) so N identical AI sends are
-        // matched by N echoes and a genuine later human message with identical text
-        // (count already drained to 0) is still recorded as a human reply.
+        // messageId is primary, fingerprint is fallback; one slot consumed per matched echo
         const idMatch = aiSentIds.has(msg.id);
         const fpMatch = decrementFingerprint(fp);
         const isAiEcho = idMatch || fpMatch;
@@ -204,8 +177,7 @@ export class WhatsappService implements OnModuleInit {
             companyId,
             userId,
             async (chatId, message, meta) => {
-              // Register the echo fingerprint BEFORE sending so the fromMe re-emission
-              // (which can arrive before or without a messageId) is always recognised.
+              // Registered before sending: the fromMe re-emission can arrive without a messageId
               const fp = fingerprint(chatId, message);
               addFingerprint(fp);
               const result = await inst.sendMessage(chatId, message);
@@ -232,8 +204,7 @@ export class WhatsappService implements OnModuleInit {
               };
               void this.persistMessage(companyId, userId, aiMsg);
               this.gateway.emitMessage(userId, aiMsg);
-              // Only a newly opened window moves these numbers; reuse turns would
-              // requery twice per reply to emit what the client already has.
+              // Only a newly opened window moves these; reuse turns already have the numbers
               if (meta?.creditCharged) {
                 void this.ai
                   .getCreditUsage(companyId)
@@ -270,8 +241,6 @@ export class WhatsappService implements OnModuleInit {
       );
     }
   }
-
-  // ── Connection ────────────────────────────────────────────────────────
 
   async getConnection(userId: string, companyId: string): Promise<WaStatus> {
     const inst = await this.ensureInstance(userId, companyId);
@@ -315,8 +284,6 @@ export class WhatsappService implements OnModuleInit {
     await this.manager.remove(userId);
     return { success: true };
   }
-
-  // ── Messages / Chats ──────────────────────────────────────────────────
 
   getChats(companyId: string, userId: string): Promise<WaChat[]> {
     return this.store.getChatList(companyId, userId);
@@ -388,8 +355,6 @@ export class WhatsappService implements OnModuleInit {
     return inst.sendTyping(chatId);
   }
 
-  // ── AI ────────────────────────────────────────────────────────────────
-
   getAiConfig(userId: string, companyId: string) {
     return this.ai.getConfigWithUsage(userId, companyId);
   }
@@ -416,8 +381,6 @@ export class WhatsappService implements OnModuleInit {
     });
     return { enabled: next };
   }
-
-  // ── Media ─────────────────────────────────────────────────────────────
 
   getMediaDirs(userId: string): Record<string, string> {
     const mediaBase = join(this.dataDir, 'media', userId);

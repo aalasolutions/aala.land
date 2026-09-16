@@ -123,6 +123,7 @@ describe('ReportsController', () => {
       expect(service.getActivityFeed).toHaveBeenCalledWith(
         companyId,
         undefined,
+        mockReq.user,
       );
       expect(result).toEqual([]);
     });
@@ -173,6 +174,7 @@ describe('ReportsController', () => {
       expect(service.getResponseTimeMetrics).toHaveBeenCalledWith(
         companyId,
         undefined,
+        mockReq.user,
       );
       expect(result).toEqual(mockTimes);
     });

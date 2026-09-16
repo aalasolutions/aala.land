@@ -28,9 +28,7 @@ export class WhatsappChat {
   @Column({ name: 'chat_id', type: 'varchar', length: 255 })
   chatId: string;
 
-  // Resolved when the chat's number matches a contact in this company. An
-  // inbound message from a known number points here; an unknown number stays
-  // null until an operator saves it.
+  // Stays null until an operator saves an unknown number or a match resolves it
   @Column({ name: 'contact_id', type: 'uuid', nullable: true })
   contactId: string | null;
 
@@ -38,9 +36,7 @@ export class WhatsappChat {
   @JoinColumn({ name: 'contact_id' })
   contact: Contact | null;
 
-  // True once contact_id resolution has been attempted for this chat, whether or
-  // not it matched. Stops the resolution UPDATE re-running on every inbound
-  // message for a number that has no contact yet.
+  // True once resolution was attempted; stops the UPDATE re-running for a still-unmatched number
   @Column({
     name: 'contact_resolution_attempted',
     type: 'boolean',

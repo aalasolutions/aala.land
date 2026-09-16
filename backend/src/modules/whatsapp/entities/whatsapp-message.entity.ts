@@ -6,8 +6,7 @@ import {
   Index,
 } from 'typeorm';
 
-// Retention: none by design (owner ruling 2026-07-27). Unlike whatsapp_ai_conversations,
-// which AiConversationRetentionCron prunes at 13 months.
+// No retention pruning by design, unlike whatsapp_ai_conversations (pruned at 13 months).
 @Entity('whatsapp_messages')
 @Index(
   'UQ_wa_messages_company_user_wa_id',
@@ -57,7 +56,7 @@ export class WhatsappMessage {
   @Column({ name: 'media_type', type: 'varchar', length: 32, default: '' })
   mediaType: string;
 
-  // Bare filenames on local disk until Unit 3 moves media to S3.
+  // Bare filenames on local disk, not object-storage keys.
   @Column({ name: 'media_urls', type: 'jsonb', default: () => `'[]'` })
   mediaUrls: string[];
 

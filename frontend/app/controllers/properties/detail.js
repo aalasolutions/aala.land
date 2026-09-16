@@ -119,7 +119,6 @@ export default class PropertiesDetailController extends Controller {
 
   @service region;
 
-  // Asset modal
   @tracked showAssetModal = false;
   @tracked editAsset = null;
   @tracked formAssetName = '';
@@ -165,7 +164,6 @@ export default class PropertiesDetailController extends Controller {
     this.selectedLocality = null;
   }
 
-  // Unit modal
   @tracked showUnitModal = false;
   @tracked editUnit = null;
   @tracked activeAssetId = null;

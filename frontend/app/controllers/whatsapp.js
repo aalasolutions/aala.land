@@ -1,4 +1,3 @@
-// land/app/controllers/whatsapp.js
 import Controller from '@ember/controller';
 import { service } from '@ember/service';
 import { tracked } from '@glimmer/tracking';
@@ -12,8 +11,6 @@ export default class WhatsappController extends Controller {
   get isCompanyAdmin() {
     return this.auth.currentUser?.role === 'company_admin';
   }
-
-  // ── State ─────────────────────────────────────────────────────────────
 
   @tracked connection = 'disconnected';
   @tracked hasCredentials = false;
@@ -36,8 +33,6 @@ export default class WhatsappController extends Controller {
   @tracked errorMsg = '';
 
   _pollQRGeneration = 0;
-
-  // ── Computed ──────────────────────────────────────────────────────────
 
   get isConnected() {
     return this.connection === 'connected';
@@ -70,8 +65,6 @@ export default class WhatsappController extends Controller {
     const chat = this.chats.find((c) => c.chatId === this.currentChatId);
     return chat?.chatName ?? this.currentChatId?.split('@')[0] ?? '';
   }
-
-  // ── Lifecycle ─────────────────────────────────────────────────────────
 
   async setup() {
     const setupGen = this._pollQRGeneration;
@@ -176,8 +169,6 @@ export default class WhatsappController extends Controller {
     }
   }
 
-  // ── Socket events ─────────────────────────────────────────────────────
-
   handleSocketEvent(type, data) {
     if (type === 'status') {
       this.connection = data.connection ?? 'disconnected';
@@ -267,8 +258,6 @@ export default class WhatsappController extends Controller {
       ];
     }
   }
-
-  // ── Actions ───────────────────────────────────────────────────────────
 
   @action
   selectChat(chatId) {
@@ -371,8 +360,7 @@ export default class WhatsappController extends Controller {
         'Your current session will be cleared and you will need to scan a new QR code to reconnect.',
       confirmText: 'Re-pair',
       confirmingText: 'Clearing session...',
-      // Swallowed rather than rethrown so the dialog closes and the existing
-      // inline error banner is what reports the failure, as it did before.
+      // Swallowed so the dialog closes; the inline error banner already reports the failure.
       onConfirm: async () => {
         try {
           await this.whatsapp.logout();

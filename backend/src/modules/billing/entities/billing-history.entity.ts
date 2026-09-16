@@ -8,17 +8,7 @@ import {
 
 export type BillingHistoryType = 'payment_succeeded' | 'payment_failed';
 
-/**
- * Append-style record of subscription payment outcomes, sourced from Stripe
- * invoice webhooks. Additive to the billing model: this table is NOT one of the
- * single-writer company columns (purchasedSeats/billingStatus/billingSubscriptionId).
- *
- * Idempotency key is (stripe_invoice_id, type), NOT the Stripe event id, because a
- * single successful payment fires BOTH invoice.paid AND invoice.payment_succeeded
- * (two event ids, one invoice); recording per event id would double-count. The
- * unique index lets recordPayment() upsert (latest-event-wins), which also collapses
- * dunning retries and survives webhook re-dispatch.
- */
+/** Keys on (stripe_invoice_id, type), not event id: one payment fires two events. */
 @Entity('billing_history')
 @Index('UQ_billing_history_invoice_type', ['stripeInvoiceId', 'type'], {
   unique: true,
