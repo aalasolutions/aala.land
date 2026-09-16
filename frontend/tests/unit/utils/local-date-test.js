@@ -11,6 +11,9 @@ module('Unit | Utility | local-date', function () {
     assert.true(isDateOnly('2026-09-16'));
     assert.false(isDateOnly('2026-09-16T00:00:00Z'));
     assert.false(isDateOnly(null));
+    assert.false(isDateOnly('2026-02-31'));
+    assert.false(isDateOnly('2026-13-01'));
+    assert.true(isDateOnly('2028-02-29'));
   });
 
   test('localDateString uses the browser-local calendar date', function (assert) {
@@ -35,6 +38,8 @@ module('Unit | Utility | local-date', function () {
     );
     assert.strictEqual(localMidnightIso(''), null);
     assert.strictEqual(localMidnightIso('garbage'), null);
+    assert.strictEqual(localMidnightIso('2026-02-31'), null);
+    assert.strictEqual(localMidnightIso('2026-02-31', 1), null);
   });
 
   test('formatCalendarDate does not shift a date-only value', function (assert) {
@@ -46,5 +51,6 @@ module('Unit | Utility | local-date', function () {
       'Sep 16',
     );
     assert.strictEqual(formatCalendarDate('bad', 'en-US'), null);
+    assert.strictEqual(formatCalendarDate('2026-02-31', 'en-US'), null);
   });
 });

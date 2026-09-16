@@ -1,7 +1,22 @@
 const DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/;
 
+// Rejects impossible days such as 2026-02-31 instead of letting Date roll them over.
+function parseDateOnly(value) {
+  if (typeof value !== 'string' || !DATE_ONLY.test(value)) return null;
+  const [y, m, d] = value.split('-').map(Number);
+  const date = new Date(Date.UTC(y, m - 1, d));
+  if (
+    date.getUTCFullYear() !== y ||
+    date.getUTCMonth() !== m - 1 ||
+    date.getUTCDate() !== d
+  ) {
+    return null;
+  }
+  return { y, m, d };
+}
+
 export function isDateOnly(value) {
-  return typeof value === 'string' && DATE_ONLY.test(value);
+  return parseDateOnly(value) !== null;
 }
 
 export function localDateString(date = new Date()) {
@@ -13,19 +28,18 @@ export function localDateString(date = new Date()) {
 
 // ISO instant of browser-local midnight of a YYYY-MM-DD date, shifted by dayOffset days.
 export function localMidnightIso(dateString, dayOffset = 0) {
-  if (!isDateOnly(dateString)) return null;
-  const [y, m, d] = dateString.split('-').map(Number);
-  const date = new Date(y, m - 1, d + dayOffset);
-  if (Number.isNaN(date.getTime())) return null;
-  return date.toISOString();
+  const parts = parseDateOnly(dateString);
+  if (!parts) return null;
+  return new Date(parts.y, parts.m - 1, parts.d + dayOffset).toISOString();
 }
 
 // A YYYY-MM-DD value is a calendar date, so it is rendered in UTC to avoid a timezone shift.
 export function formatCalendarDate(value, locale, options = {}) {
   if (!value) return null;
-  if (isDateOnly(value)) {
-    const date = new Date(`${value}T00:00:00Z`);
-    if (Number.isNaN(date.getTime())) return null;
+  if (typeof value === 'string' && DATE_ONLY.test(value)) {
+    const parts = parseDateOnly(value);
+    if (!parts) return null;
+    const date = new Date(Date.UTC(parts.y, parts.m - 1, parts.d));
     return date.toLocaleDateString(locale, { ...options, timeZone: 'UTC' });
   }
   const date = new Date(value);

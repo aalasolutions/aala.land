@@ -769,7 +769,7 @@ describe('NotificationsService', () => {
   // ---- Daily reminder cron tests ----
 
   describe('runDailyReminders', () => {
-    it('runs every hour on a UTC schedule', () => {
+    it('runs every 30 minutes on a UTC schedule', () => {
       // @nestjs/schedule's @Cron stores { cronTime } under SCHEDULE_CRON_OPTIONS
       // on the prototype method.
       const cronMeta = Reflect.getMetadata(
