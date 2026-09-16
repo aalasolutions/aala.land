@@ -1,30 +1,6 @@
 import { DataSource, EntityManager } from 'typeorm';
 
-/**
- * Serialize a per-company critical section behind a Postgres transaction-scoped
- * advisory lock.
- *
- * Postgres runs at READ COMMITTED and the codebase has no version columns, so
- * the seat/cap/removal flows are all check-then-act sequences that can otherwise
- * interleave: two concurrent user adds both read `purchasedSeats = 5`, both push
- * Stripe to 6, and a real paid seat silently vanishes from billing (race audit
- * 2026-07-07, P1/P2/P3). Wrapping every one of those mutations in this helper,
- * keyed on the companyId, makes them mutually exclusive per company.
- *
- * `pg_advisory_xact_lock(hashtext($1))` takes an exclusive lock bound to the
- * enclosing transaction; Postgres releases it automatically on COMMIT or
- * ROLLBACK, so there is no unlock to leak even if `fn` throws. hashtext maps the
- * uuid string to the bigint the lock API needs; a hash collision only means two
- * unrelated companies briefly serialize, which is harmless.
- *
- * Scope the callback to the seat/cap/removal work only. A Stripe call inside is
- * acceptable for these low-frequency, per-company operations, but do NOT run
- * unrelated long work under the held lock.
- *
- * @param dataSource TypeORM DataSource used to open the transaction.
- * @param companyId  Tenant key the lock is bound to.
- * @param fn         Critical section; receives the transaction's EntityManager.
- */
+/** Serializes per-company writes; READ COMMITTED lets check-then-act race without a lock. */
 export function withCompanyLock<T>(
   dataSource: DataSource,
   companyId: string,
@@ -36,14 +12,7 @@ export function withCompanyLock<T>(
   });
 }
 
-/**
- * Same lock as `withCompanyLock`, for callers that already own a transaction.
- * The key derivation MUST stay identical or the two sites take different lock
- * keys and stop excluding each other.
- *
- * @param manager   EntityManager of an open transaction; the lock dies with it.
- * @param companyId Tenant key the lock is bound to.
- */
+/** Same lock as withCompanyLock; key derivation must match exactly or the two stop excluding. */
 export function acquireCompanyLock(
   manager: EntityManager,
   companyId: string,

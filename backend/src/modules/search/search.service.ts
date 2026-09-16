@@ -27,8 +27,7 @@ export class SearchService {
     );
   }
 
-  // Staff are filtered by their own assignments, not by the unit chain, so the
-  // region predicate is an overlap test on users.region_codes.
+  // Staff are filtered by their own assignments, not the unit chain
   private agentQuery(
     term: string,
     companyId: string,
@@ -71,11 +70,7 @@ export class SearchService {
     const term = `${query.toLowerCase()}%`;
     const [cities, localities, assets, agents] = await Promise.all([
       this.queryWithOptionalRegion(
-        // LOWER(c.name) is aliased into the SELECT so it can be used in
-        // ORDER BY under SELECT DISTINCT (Postgres requires DISTINCT
-        // ORDER BY expressions to appear in the select list, else the
-        // whole /v1/search request 500s). The extra column is ignored
-        // by the result mapper below.
+        // Postgres requires the ORDER BY expression in SELECT DISTINCT, or this 500s
         `SELECT DISTINCT c.id, c.name, LOWER(c.name) AS name_lower
                  FROM cities c
                  INNER JOIN localities l ON l.city_id = c.id

@@ -9,7 +9,6 @@ export interface Region {
 }
 
 export const COUNTRY_NAMES: Record<string, string> = {
-  // MENA (alphabetical)
   AE: 'United Arab Emirates',
   SA: 'Saudi Arabia',
   BH: 'Bahrain',
@@ -19,13 +18,11 @@ export const COUNTRY_NAMES: Record<string, string> = {
   LB: 'Lebanon',
   OM: 'Oman',
   QA: 'Qatar',
-  // Asia (alphabetical)
   IN: 'India',
   PK: 'Pakistan',
 };
 
 export const REGIONS: Region[] = [
-  // United Arab Emirates (AED) — 7 emirates
   {
     code: 'dubai',
     name: 'Dubai',
@@ -83,7 +80,6 @@ export const REGIONS: Region[] = [
     timezone: 'Asia/Dubai',
   },
 
-  // Saudi Arabia (SAR) — 13 administrative regions
   {
     code: 'riyadh',
     name: 'Riyadh',
@@ -189,7 +185,6 @@ export const REGIONS: Region[] = [
     timezone: 'Asia/Riyadh',
   },
 
-  // Bahrain (BHD) — 4 governorates
   {
     code: 'capital-bh',
     name: 'Capital',
@@ -223,7 +218,6 @@ export const REGIONS: Region[] = [
     timezone: 'Asia/Bahrain',
   },
 
-  // Oman (OMR) — 11 governorates
   {
     code: 'muscat',
     name: 'Muscat',
@@ -313,7 +307,6 @@ export const REGIONS: Region[] = [
     timezone: 'Asia/Muscat',
   },
 
-  // Qatar (QAR) — 8 municipalities
   {
     code: 'doha',
     name: 'Doha',
@@ -379,7 +372,6 @@ export const REGIONS: Region[] = [
     timezone: 'Asia/Qatar',
   },
 
-  // Kuwait (KWD) — 6 governorates
   {
     code: 'capital-kw',
     name: 'Capital',
@@ -429,7 +421,6 @@ export const REGIONS: Region[] = [
     timezone: 'Asia/Kuwait',
   },
 
-  // Egypt (EGP) — 27 governorates
   {
     code: 'cairo',
     name: 'Cairo',
@@ -647,7 +638,6 @@ export const REGIONS: Region[] = [
     timezone: 'Africa/Cairo',
   },
 
-  // Jordan (JOD) — 12 governorates
   {
     code: 'amman',
     name: 'Amman',
@@ -745,7 +735,6 @@ export const REGIONS: Region[] = [
     timezone: 'Asia/Amman',
   },
 
-  // Lebanon (LBP) — 8 governorates
   {
     code: 'beirut',
     name: 'Beirut',
@@ -811,7 +800,6 @@ export const REGIONS: Region[] = [
     timezone: 'Asia/Beirut',
   },
 
-  // Pakistan (PKR) — 6 administrative units
   {
     code: 'punjab',
     name: 'Punjab',
@@ -861,7 +849,6 @@ export const REGIONS: Region[] = [
     timezone: 'Asia/Karachi',
   },
 
-  // India (INR) — 28 states + 8 union territories (major ones)
   {
     code: 'andhra-pradesh',
     name: 'Andhra Pradesh',

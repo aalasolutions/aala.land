@@ -1,7 +1,6 @@
 {{page-title "Dashboard"}}
 
 <div data-test-dashboard class="dashboard-page">
-  {{! Header }}
   <Nuvo::PageHeader class="dashboard-header" @title="Command Center" @subtitle="Live overview of your property operation.">
     <:actions>
       <Nuvo::Tag class="dashboard-region-badge">
@@ -11,7 +10,6 @@
     </:actions>
   </Nuvo::PageHeader>
 
-  {{! KPI Cards }}
   {{#if @model.kpis}}
     <div class="kpi-grid">
       <Nuvo::Stat data-test-kpi="total-units" @variant="primary" @label="Total Properties" @value={{format-number @model.kpis.totalUnits}} />
@@ -20,7 +18,6 @@
       <Nuvo::Stat data-test-kpi="occupancy" @variant="success" @label="Occupancy Rate" @value="{{if @model.kpis.totalUnits this.occupancyRate 0}}%" />
     </div>
 
-    {{! Second row: Won + Leases + Cheques }}
     <div class="kpi-grid kpi-grid-3">
       <Nuvo::Stat data-test-kpi="won-leads" @variant="success" @label="Deals Won" @value={{format-number @model.kpis.wonLeads}} />
       <Nuvo::Stat data-test-kpi="active-leases" @variant="primary" @label="Active Leases" @value={{format-number @model.kpis.activeLeases}} />
@@ -32,9 +29,7 @@
     </Nuvo::Panel>
   {{/if}}
 
-  {{! Bottom row: Activity Feed + Pipeline }}
   <div class="dashboard-panels">
-    {{! Activity Feed }}
     <Nuvo::Panel class="dashboard-panel">
       <:header>
         <h3 class="nu-panel__title"><Ui::Ph @icon="lightning" @size="18px" />
@@ -60,7 +55,6 @@
       </:body>
     </Nuvo::Panel>
 
-    {{! Pipeline Funnel }}
     <Nuvo::Panel class="dashboard-panel">
       <:header>
         <h3 class="nu-panel__title"><Ui::Ph @icon="funnel" @size="18px" />

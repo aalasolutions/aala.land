@@ -59,7 +59,7 @@ export class ConvertTimestampsToTimestamptz1779700000004 implements MigrationInt
   name = 'ConvertTimestampsToTimestamptz1779700000004';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
-    // (created_at)::date is not IMMUTABLE on timestamptz, so the index is rebuilt on an explicit UTC day.
+    // (created_at)::date is not IMMUTABLE on timestamptz; rebuild on explicit UTC day
     await queryRunner.query(`DROP INDEX IF EXISTS "${DEDUP_INDEX}"`);
     await this.convert(
       queryRunner,

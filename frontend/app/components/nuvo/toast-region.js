@@ -4,8 +4,7 @@ import { action } from '@ember/object';
 
 const POSITIONS = ['top-start', 'top-end', 'bottom-start', 'bottom-end'];
 
-// The service speaks in outcomes, the kit speaks in variants. `error` is the
-// only name that differs.
+// Service speaks in outcomes, kit speaks in variants; `error` is the only name that differs.
 const VARIANTS = {
   success: 'success',
   warning: 'warning',

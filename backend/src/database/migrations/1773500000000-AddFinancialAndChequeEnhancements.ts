@@ -2,7 +2,6 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
 
 export class AddFinancialAndChequeEnhancements1773500000000 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
-    // 1. Add payment_method enum and column to transactions
     const hasPaymentMethodType = await queryRunner.query(
       `SELECT 1 FROM pg_type WHERE typname = 'transactions_payment_method_enum'`,
     );
@@ -21,7 +20,6 @@ export class AddFinancialAndChequeEnhancements1773500000000 implements Migration
       );
     }
 
-    // 2. Add bounce_count to cheques
     const hasBounceCount = await queryRunner.query(
       `SELECT 1 FROM information_schema.columns WHERE table_name = 'cheques' AND column_name = 'bounce_count'`,
     );
@@ -31,7 +29,6 @@ export class AddFinancialAndChequeEnhancements1773500000000 implements Migration
       );
     }
 
-    // 3. Add bounce_reason to cheques
     const hasBounceReason = await queryRunner.query(
       `SELECT 1 FROM information_schema.columns WHERE table_name = 'cheques' AND column_name = 'bounce_reason'`,
     );
@@ -41,7 +38,6 @@ export class AddFinancialAndChequeEnhancements1773500000000 implements Migration
       );
     }
 
-    // 4. Add last_bounce_date to cheques
     const hasLastBounceDate = await queryRunner.query(
       `SELECT 1 FROM information_schema.columns WHERE table_name = 'cheques' AND column_name = 'last_bounce_date'`,
     );
@@ -51,7 +47,6 @@ export class AddFinancialAndChequeEnhancements1773500000000 implements Migration
       );
     }
 
-    // 5. Ensure BOUNCED is in cheque status enum (idempotent)
     const hasBounced = await queryRunner.query(
       `SELECT 1 FROM pg_enum WHERE enumlabel = 'BOUNCED' AND enumtypid = (SELECT oid FROM pg_type WHERE typname = 'cheques_status_enum')`,
     );

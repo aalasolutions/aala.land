@@ -12,14 +12,7 @@ function planLabel(plan: BillingPlan): string {
   return plan === 'ENTERPRISE' ? 'Enterprise' : 'Pro';
 }
 
-/**
- * Sends billing emails off the normalized billing events. Registers as an
- * ADDITIONAL consumer on the shared dispatcher, alongside the company-sync
- * handlers, without touching them. Every handler is best-effort: an email
- * failure is logged and swallowed so it can never fail the webhook (which would
- * make Stripe retry and leave processed_at NULL). Recipient resolution lives in
- * SystemEmailService (the company-level send methods).
- */
+// Best-effort: failure is logged and swallowed so it can't fail the webhook or trigger a retry.
 @Injectable()
 export class BillingEmailListener implements OnModuleInit {
   private readonly logger = new Logger(BillingEmailListener.name);

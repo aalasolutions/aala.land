@@ -1,11 +1,6 @@
-// Admin console: overview, system, marketers, companies list + detail.
-// See AGENT_BRIEF.md. Bespoke `.console-*` layout classes are kept here,
-// rewritten onto kit tokens; anything a kit component covers uses the
-// component instead. Badges use the domains in _tags.scss.
+// Bespoke `.console-*` classes on kit tokens; badges use domains from _tags.scss.
 @use "../uikit/common/var" as *;
 @use "../uikit/mixins/bem" as *;
-
-// ---- Overview: hero band ----
 
 .console-hero {
   display: flex;
@@ -48,8 +43,6 @@
   gap: nu-space(2);
 }
 
-// ---- chips ----
-
 .console-chip {
   display: inline-flex;
   align-items: center;
@@ -68,8 +61,6 @@
   color: var(--text-color);
 }
 
-// ---- Overview: tile grid + rollups ----
-
 .console-tiles {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
@@ -85,8 +76,6 @@
     grid-template-columns: 1fr;
   }
 }
-
-// ---- Overview: region distribution bars ----
 
 .console-region-row {
   display: flex;
@@ -121,8 +110,6 @@
   font-weight: nu-font-weight(semibold);
 }
 
-// ---- Companies list: filter bar + clickable rows ----
-
 .console-list-filters {
   display: flex;
   flex-wrap: wrap;
@@ -139,8 +126,7 @@
   min-inline-size: 8.75rem;
 }
 
-// Whole-row click is the ratified affordance (design section 3); the company
-// name is also a real link, so keyboard users are not stranded.
+// Row is clickable, but company name is also a real link so keyboard users aren't stranded.
 .console-row {
   cursor: pointer;
 
@@ -157,8 +143,6 @@
     color: var(--primary);
   }
 }
-
-// ---- Marketers: expandable detail row ----
 
 .console-expand-row td {
   background: var(--bg-alternate);

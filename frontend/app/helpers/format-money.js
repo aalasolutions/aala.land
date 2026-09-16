@@ -1,13 +1,6 @@
 import { helper } from '@ember/component/helper';
 
-/**
- * Formats a minor-unit amount (cents/fils/halalas) in its own currency.
- * Unlike {{format-currency}}, the currency is explicit per value, not the
- * active region: a billing invoice is charged in the currency pinned at
- * checkout, which can differ from the region currently being viewed.
- *
- * Usage: {{format-money row.amount row.currency}}
- */
+// Currency is explicit per value: invoices bill in the currency pinned at checkout.
 export default helper(function formatMoney([minorAmount, currency]) {
   const num = Number(minorAmount);
   if (isNaN(num) || minorAmount === null || minorAmount === undefined)
@@ -21,8 +14,7 @@ export default helper(function formatMoney([minorAmount, currency]) {
       style: 'currency',
       currency: code,
     });
-    // Minor-to-major divisor is currency-specific: 2 decimals for USD/AED/SAR,
-    // 0 for JPY, 3 for KWD/BHD. Derive it rather than assuming /100.
+    // Minor-to-major divisor is currency-specific; derive it rather than assuming /100.
     const digits = formatter.resolvedOptions().maximumFractionDigits ?? 2;
     return formatter.format(num / 10 ** digits);
   } catch {

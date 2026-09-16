@@ -94,7 +94,7 @@
                     >
                       Edit
                     </Nuvo::Button>
-                    {{! Removal flows require a company context; the backend rejects a user with no companyId (e.g. SUPER_ADMIN rows). }}
+                    {{! Removal needs a company context; backend rejects users with no companyId. }}
                     {{#if user.companyId}}
                       {{#if user.isActive}}
                         <Nuvo::Button
@@ -423,7 +423,6 @@
   </:footer>
 </Nuvo::Drawer>
 
-{{! Remove flow: step 1 configures, step 2 confirms }}
 <Nuvo::Modal
   @open={{this.showRemoveModal}}
   @title={{if (eq this.removeStep 1) "Remove Team Member" "Confirm Removal"}}
@@ -571,7 +570,6 @@
   {{/if}}
 </Nuvo::Modal>
 
-{{! Trim-to-one flow: downgrade preparation }}
 <Nuvo::Modal
   @open={{this.showTrimModal}}
   @title={{if (eq this.trimStep 1) "Prepare Downgrade" "Confirm Trim"}}

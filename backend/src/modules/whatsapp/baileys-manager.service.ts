@@ -1,4 +1,3 @@
-// backend/src/modules/whatsapp/baileys-manager.service.ts
 import {
   Injectable,
   Logger,
@@ -11,8 +10,6 @@ import { join, basename } from 'path';
 import * as QRCode from 'qrcode';
 import { WaMessage, WaStatus } from './wa-types';
 
-// ── Types for injected Baileys functions ─────────────────────────────────────
-
 interface BaileysFns {
   makeWASocket: (opts: any) => any;
   useMultiFileAuthState: (
@@ -23,8 +20,7 @@ interface BaileysFns {
   jidNormalizedUser: (jid: string) => string;
 }
 
-// ── BaileysInstance (plain class, NOT a NestJS provider) ─────────────────────
-
+// Not a NestJS provider: instantiated directly per user session instead of resolved via DI.
 export class BaileysInstance {
   public readonly emitter = new EventEmitter();
 
@@ -49,12 +45,8 @@ export class BaileysInstance {
     private readonly logger: Logger,
   ) {}
 
-  // ── Lifecycle ───────────────────────────────────────────────────────────
-
   async start(): Promise<void> {
-    // Clean up any existing socket BEFORE creating a new one.
-    // Without this, the old socket's event handlers keep firing after reconnect,
-    // triggering another close → another reconnect → infinite loop.
+    // Leftover listeners would keep firing after reconnect, causing a close-reconnect loop
     if (this.sock) {
       const old = this.sock;
       this.sock = null;
@@ -164,8 +156,7 @@ export class BaileysInstance {
     this.sock.ev.on('messages.upsert', async ({ messages, type }: any) => {
       if (type !== 'notify' && type !== 'append') return;
       for (const raw of messages) {
-        // For append (messages sent from phone), only process messages sent after we connected
-        // to avoid replaying the full history on every reconnect
+        // Only process phone-sent messages after we connected, to avoid replaying history
         if (type === 'append') {
           const ts = raw.messageTimestamp ? Number(raw.messageTimestamp) : 0;
           if (ts < this.connectedAt) continue;
@@ -212,16 +203,12 @@ export class BaileysInstance {
     this.shouldReconnect = true;
   }
 
-  // ── Status ──────────────────────────────────────────────────────────────
-
   getStatus(): WaStatus {
     return { ...this.status };
   }
   hasCredentials(): boolean {
     return this.status.hasCredentials;
   }
-
-  // ── Sending ─────────────────────────────────────────────────────────────
 
   async sendMessage(
     chatId: string,
@@ -230,9 +217,7 @@ export class BaileysInstance {
   ) {
     this.assertConnected();
     const content: any = { text: message };
-    // opts.replyTo is accepted by the API but silently dropped here: Baileys requires a full
-    // WAProto.IWebMessageInfo object for `quoted`, and we don't store raw protos.
-    // Passing only { key: {...} } crashes normalizeMessageContent with a TypeError.
+    // opts.replyTo dropped: Baileys needs a full IWebMessageInfo for `quoted`, which we don't store
     const result = await this.sock.sendMessage(chatId, content);
     return { success: true, messageId: result?.key?.id as string | undefined };
   }
@@ -278,8 +263,6 @@ export class BaileysInstance {
       name: chatId.split('@')[0],
     };
   }
-
-  // ── Internal ────────────────────────────────────────────────────────────
 
   private assertConnected() {
     if (!this.sock || this.status.connection !== 'connected') {
@@ -411,8 +394,6 @@ export class BaileysInstance {
   }
 }
 
-// ── BaileysManagerService ────────────────────────────────────────────────────
-
 @Injectable()
 export class BaileysManagerService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(BaileysManagerService.name);
@@ -424,8 +405,6 @@ export class BaileysManagerService implements OnModuleInit, OnModuleDestroy {
   private baileysFns: BaileysFns | null = null;
   private dataDir: string =
     process.env.WHATSAPP_DATA_DIR ?? join(process.cwd(), 'data', 'whatsapp');
-
-  // ── Lifecycle ───────────────────────────────────────────────────────────
 
   async onModuleInit(): Promise<void> {
     // Import Baileys ESM once
@@ -442,7 +421,6 @@ export class BaileysManagerService implements OnModuleInit, OnModuleDestroy {
       jidNormalizedUser: b.jidNormalizedUser,
     };
 
-    // Scan sessions/ dir and auto-start existing sessions
     const sessionsRoot = join(this.dataDir, 'sessions');
     mkdirSync(sessionsRoot, { recursive: true });
 
@@ -479,8 +457,6 @@ export class BaileysManagerService implements OnModuleInit, OnModuleDestroy {
     await Promise.all(stops);
     this.instances.clear();
   }
-
-  // ── Public API ──────────────────────────────────────────────────────────
 
   async getOrCreate(userId: string): Promise<BaileysInstance> {
     const existing = this.instances.get(userId);
@@ -523,8 +499,6 @@ export class BaileysManagerService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  // ── Private ─────────────────────────────────────────────────────────────
-
   private async _create(userId: string): Promise<BaileysInstance> {
     if (!this.baileysFns) {
       throw new Error(
@@ -540,7 +514,6 @@ export class BaileysManagerService implements OnModuleInit, OnModuleDestroy {
       DOCUMENT_DIR: join(this.dataDir, 'media', userId, 'documents'),
     };
 
-    // Ensure directories exist
     mkdirSync(sessionDir, { recursive: true });
     for (const dir of Object.values(mediaDirs)) {
       mkdirSync(dir, { recursive: true });

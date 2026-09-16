@@ -15,10 +15,7 @@ import type {
   RemedySource,
 } from '../entities/payment-remedy.entity';
 
-/**
- * "Make it right" (design section 7): always anchored to one real payment.
- * Cross-field rules (scope/amount requiredness) enforced in the service.
- */
+// Always anchored to one real payment; cross-field rules are enforced in the service, not here.
 export class ApplyRemedyDto {
   @ApiProperty({
     enum: ['card', 'manual'],

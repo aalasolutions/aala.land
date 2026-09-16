@@ -1,5 +1,4 @@
-// Shared between ContactsIndexController's edit-mode save and
-// ContactsDetailController's save so the form<->DTO mapping only exists once.
+// Shared so the form<->DTO mapping only exists once across both save paths.
 export function contactToFormFields(contact) {
   return {
     formFirstName: contact?.firstName ?? '',

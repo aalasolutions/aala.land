@@ -1,6 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-// ADMIN replaces OWNER_ONLY + ADMIN_ONLY; TEAM replaces COMPANY + PUBLIC (owner-ruled rename).
+// ADMIN replaces OWNER_ONLY + ADMIN_ONLY; TEAM replaces COMPANY + PUBLIC.
 export class SimplifyDocumentAccessLevels1779500000059
   implements MigrationInterface
 {

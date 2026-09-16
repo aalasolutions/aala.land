@@ -1,10 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-// NULL means company-wide and stays visible in every region, matching
-// audit_logs and notifications. A company-level document such as a trade
-// licence belongs to no single region.
-// Existing rows keep the region they were stamped with: clearing them would
-// widen who can see them.
+// NULL means company-wide, matching audit_logs/notifications; existing rows keep their region
 export class MakePropertyDocumentsRegionCodeNullable1779600000009 implements MigrationInterface {
   name = 'MakePropertyDocumentsRegionCodeNullable1779600000009';
 
@@ -15,8 +11,7 @@ export class MakePropertyDocumentsRegionCodeNullable1779600000009 implements Mig
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    // NULLs must go before NOT NULL can be restored. Same derivation order as
-    // 1779600000004: unit chain, asset chain, company default, then dubai.
+    // NULLs must go before NOT NULL restores; same derivation order as 1779600000004
     await queryRunner.query(
       `UPDATE "property_documents" d SET "region_code" = ci."region_code"
        FROM "units" u

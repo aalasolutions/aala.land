@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-// Nullable, unlike cheques and work orders: a transaction with no unit has no
-// region to derive, and AAMIR ruled those rows stay hidden until the region
-// selector gains a Show All option.
+// Nullable: a unit-less transaction has no region, stays hidden until Show All
 export class AddRegionCodeToTransactions1779700000005
   implements MigrationInterface
 {

@@ -1,5 +1,3 @@
-// backend/src/modules/whatsapp/wa-types.ts
-
 export interface WaMessage {
   id: string;
   chatId: string;

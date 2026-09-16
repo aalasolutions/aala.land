@@ -1,5 +1,4 @@
-// Property unit detail. Only the photo gallery is bespoke; everything else
-// resolves to a kit component.
+// Only the photo gallery is bespoke; everything else resolves to a kit component.
 @use "../uikit/common/var" as *;
 @use "../uikit/mixins/bem" as *;
 

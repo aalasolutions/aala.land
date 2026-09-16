@@ -12,19 +12,7 @@ interface RenewalRow {
   currency: string | null;
 }
 
-/**
- * Daily reminder for subscriptions renewing soon. Reads the renewal date from
- * our own billing_history (the latest paid invoice's period_end) instead of a
- * Stripe invoice.upcoming webhook, so it needs no new normalized billing event
- * and never touches the frozen billing contract.
- *
- * Dedup without a marker column: the query only matches renewals that are
- * between 2 and 3 days away. Because the cron runs once a day, each subscription
- * falls inside that 24h band on exactly one run, so it is reminded once (about
- * 2-3 days before renewal). period_end alone is enough. NOTE: this assumes a
- * single scheduler instance (prod runs one backend container); a horizontally
- * scaled deployment would need a distributed lock to avoid duplicate sends.
- */
+// Reads renewal date from billing_history, not a webhook; dedup crosses the window once daily.
 @Injectable()
 export class UpcomingInvoiceCron {
   private readonly logger = new Logger(UpcomingInvoiceCron.name);
@@ -60,12 +48,7 @@ export class UpcomingInvoiceCron {
     }
   }
 
-  /**
-   * Active subscribers whose latest paid invoice period ends 2-3 days out.
-   * Scheduled downgrades (cancel_at_period_end) are not tracked on the company,
-   * so a company ending its plan this period may still get one reminder; that is
-   * an accepted limitation until cancel state is persisted.
-   */
+  // Scheduled downgrades aren't tracked on the company; an ending plan may still get a reminder.
   private async findRenewingSoon(): Promise<RenewalRow[]> {
     return this.companyRepo.query(
       `

@@ -9,12 +9,7 @@ import { UserReassignmentService } from './user-reassignment.service';
 // Ordered: COMPANY_ADMIN preferred, ADMIN as fallback.
 const RECIPIENT_ROLES = [Role.COMPANY_ADMIN, Role.ADMIN];
 
-/**
- * Recovers both halves of a removal whose WhatsApp teardown failed: the live session that
- * should not still be connected, and the rows left on a user who is gone or deactivated.
- * Nothing reads those rows, so the loss is otherwise silent.
- * Assumes a single scheduler instance, as the other crons do.
- */
+/** Recovers a failed teardown: a lingering session, and orphaned rows nothing else reads. */
 @Injectable()
 export class StrandedWhatsappRowsCron {
   private readonly logger = new Logger(StrandedWhatsappRowsCron.name);
@@ -29,8 +24,7 @@ export class StrandedWhatsappRowsCron {
 
   @Cron('0 4 * * *')
   async run(): Promise<void> {
-    // The removal path logs and continues when logout fails, which would otherwise leave
-    // a removed seat receiving and spending AI credits until the next restart.
+    // Without this, a removed seat keeps receiving and spending AI credits until restart
     try {
       await this.whatsapp.dropSessionsWithoutActiveSeat();
     } catch (err) {

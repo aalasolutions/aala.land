@@ -64,10 +64,6 @@ export class BillingController {
     private readonly billingHistoryService: BillingHistoryService,
   ) {}
 
-  // -------------------------------------------------------------------------
-  // Unit 1 endpoint (unchanged)
-  // -------------------------------------------------------------------------
-
   @Post('prices/sync')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.SUPER_ADMIN)
@@ -78,10 +74,6 @@ export class BillingController {
   syncPrices() {
     return this.billingService.syncPrices();
   }
-
-  // -------------------------------------------------------------------------
-  // COMPANY_ADMIN endpoints (self-serve — PRO only)
-  // -------------------------------------------------------------------------
 
   @Get('subscription')
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -121,10 +113,7 @@ export class BillingController {
     @Query('companyId', new ParseUUIDPipe({ optional: true }))
     companyId?: string,
   ) {
-    // COMPANY_ADMIN is always scoped to its own company; only SUPER_ADMIN
-    // may target another company (or all companies) via the query param. A
-    // non-super-admin without a company context is rejected, never allowed to
-    // fall through to an all-company list.
+    // Reject non-super-admins lacking company context; don't fall through to an all-company list.
     if (req.user.role !== Role.SUPER_ADMIN && !req.user.companyId) {
       throw new BadRequestException('This endpoint requires a company context');
     }
@@ -192,10 +181,6 @@ export class BillingController {
     }
     return this.billingService.resumeSubscription(req.user.companyId);
   }
-
-  // -------------------------------------------------------------------------
-  // SUPER_ADMIN endpoints (admin-initiated checkout / plan management)
-  // -------------------------------------------------------------------------
 
   @Post('admin/checkout')
   @UseGuards(JwtAuthGuard, RolesGuard)

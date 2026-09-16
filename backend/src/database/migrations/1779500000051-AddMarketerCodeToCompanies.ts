@@ -1,11 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-/**
- * First-touch immutable attribution column, captured only at signup (register
- * and google-signup). Some environments already have this column and this
- * exact migration name recorded from an earlier run; IF NOT EXISTS lets fresh
- * and existing databases converge on the same schema.
- */
+// First-touch attribution, captured only at signup, immutable after
 export class AddMarketerCodeToCompanies1779500000051 implements MigrationInterface {
   name = 'AddMarketerCodeToCompanies1779500000051';
 

@@ -1,7 +1,4 @@
-/**
- * Utility for region-based filtering via FK chain
- * Used by services that filter by regionCode through the Unit > Asset > Locality > City chain
- */
+// Filters by regionCode via the Unit > Asset > Locality > City FK chain.
 
 import { Raw, SelectQueryBuilder } from 'typeorm';
 
@@ -21,23 +18,13 @@ export const REGION_FILTER_SUBQUERY_MULTI = `
   WHERE c.region_code IN (:...regionCodes)
 `;
 
-/**
- * FindOperator for a unit reference column, for by-id reads that use find
- * options instead of a QueryBuilder. A row whose unit is NULL does not match,
- * which is how the list filters treat it too.
- */
+// For by-id reads using find options instead of a QueryBuilder; NULL unit doesn't match
 export function unitInRegionsWhere(regionCodes: string[]) {
   return Raw((alias) => `${alias} IN (${REGION_FILTER_SUBQUERY_MULTI})`, {
     regionCodes,
   });
 }
 
-/**
- * Appends region filter to a QueryBuilder if regionCode is provided
- * @param qb - QueryBuilder instance
- * @param entityIdColumn - The column name holding unit reference (e.g., 'unitId', 'l.unitId')
- * @param regionCode - The region code to filter by
- */
 export function appendRegionFilter(
   qb: SelectQueryBuilder<any>,
   entityIdColumn: string,

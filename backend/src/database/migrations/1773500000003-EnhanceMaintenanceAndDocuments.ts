@@ -2,8 +2,6 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
 
 export class EnhanceMaintenanceAndDocuments1773500000003 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
-    // === Work Orders: photos, costNotes, preventive maintenance ===
-
     const woColumns = await queryRunner.query(
       `SELECT column_name FROM information_schema.columns WHERE table_name = 'work_orders'`,
     );
@@ -27,7 +25,6 @@ export class EnhanceMaintenanceAndDocuments1773500000003 implements MigrationInt
       );
     }
 
-    // Create schedule_frequency enum if not exists
     const hasEnum = await queryRunner.query(
       `SELECT 1 FROM pg_type WHERE typname = 'work_orders_schedule_frequency_enum'`,
     );
@@ -49,14 +46,11 @@ export class EnhanceMaintenanceAndDocuments1773500000003 implements MigrationInt
       );
     }
 
-    // === Property Documents: category, access_level, version, previous_version_id, uploaded_by ===
-
     const pdColumns = await queryRunner.query(
       `SELECT column_name FROM information_schema.columns WHERE table_name = 'property_documents'`,
     );
     const pdColumnNames = pdColumns.map((c: any) => c.column_name);
 
-    // Create category enum if not exists
     const hasCategoryEnum = await queryRunner.query(
       `SELECT 1 FROM pg_type WHERE typname = 'property_documents_category_enum'`,
     );
@@ -72,7 +66,6 @@ export class EnhanceMaintenanceAndDocuments1773500000003 implements MigrationInt
       );
     }
 
-    // Create access_level enum if not exists
     const hasAccessEnum = await queryRunner.query(
       `SELECT 1 FROM pg_type WHERE typname = 'property_documents_access_level_enum'`,
     );
@@ -109,7 +102,7 @@ export class EnhanceMaintenanceAndDocuments1773500000003 implements MigrationInt
       );
     }
 
-    // Rename fileType column to file_type if needed (fix snake_case convention)
+    // Legacy camelCase column, renamed to keep snake_case convention.
     if (
       pdColumnNames.includes('filetype') &&
       !pdColumnNames.includes('file_type')
@@ -121,7 +114,6 @@ export class EnhanceMaintenanceAndDocuments1773500000003 implements MigrationInt
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    // Property Documents columns
     await queryRunner.query(
       `ALTER TABLE "property_documents" DROP CONSTRAINT IF EXISTS "FK_property_documents_previous_version"`,
     );
@@ -147,7 +139,6 @@ export class EnhanceMaintenanceAndDocuments1773500000003 implements MigrationInt
       `DROP TYPE IF EXISTS "property_documents_category_enum"`,
     );
 
-    // Work Orders columns
     await queryRunner.query(
       `ALTER TABLE "work_orders" DROP COLUMN IF EXISTS "next_scheduled_date"`,
     );

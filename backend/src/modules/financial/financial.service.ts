@@ -110,8 +110,7 @@ export class FinancialService {
     }
 
     if (regionCodes) {
-      // A row with no region is invisible until the region selector gains a
-      // Show All option (AAMIR, 2026-09-16).
+      // Rows without a region stay hidden until the region selector offers Show All.
       const qb = this.transactionRepository
         .createQueryBuilder('t')
         .leftJoinAndSelect('t.unit', 'unit')
@@ -209,8 +208,7 @@ export class FinancialService {
     });
   }
 
-  // Unit region first. A caller-supplied region is validated the same way a
-  // cheque validates its own; with neither, the row stays unregioned.
+  // Unit region first; caller region validated like a cheque's; with neither, row stays unregioned.
   private async resolveTransactionRegion(
     companyId: string,
     unitId: string | null | undefined,
@@ -232,8 +230,7 @@ export class FinancialService {
     );
   }
 
-  // A transaction takes the region of its unit, the same chain the cheque and
-  // work order columns were backfilled from.
+  // Transaction takes its unit's region, same chain cheque/work-order columns were backfilled from.
   private async regionOfUnit(
     unitId: string | null | undefined,
     companyId: string,

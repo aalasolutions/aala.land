@@ -19,9 +19,7 @@ import {
   LeadSource,
 } from '../entities/lead.entity';
 
-// Identity lives on the contact, not the lead. A lead is created against either
-// an existing contact (contactId) or inline details that resolve/create a
-// contact (one number resolves to one contact within the company).
+// A lead resolves an existing contactId or inline details; one phone number maps to one contact.
 export class CreateLeadDto {
   @ApiPropertyOptional({ example: 'uuid-of-contact' })
   @IsUUID()

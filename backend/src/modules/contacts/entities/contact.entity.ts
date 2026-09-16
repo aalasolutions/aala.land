@@ -10,9 +10,7 @@ import {
 } from 'typeorm';
 import { Company } from '../../companies/entities/company.entity';
 
-// Contacts is the single place a person's identity lives. Roles (Lead, Tenant,
-// Owner, Vendor) are DERIVED from which rows reference the contact, never stored
-// here.
+// Single place identity lives; roles derive from referencing rows, never stored here.
 @Entity('contacts')
 export class Contact {
   @PrimaryGeneratedColumn('uuid')
@@ -26,8 +24,7 @@ export class Contact {
   @JoinColumn({ name: 'company_id' })
   company: Company;
 
-  // Nullable: a contact created from an inbound WhatsApp message may have a
-  // number and no name. The UI falls back to the number for display.
+  // Nullable: an inbound WhatsApp contact may have a number, no name; UI falls back to the number.
   @Column({ name: 'first_name', type: 'varchar', length: 100, nullable: true })
   firstName: string | null;
 
@@ -40,8 +37,7 @@ export class Contact {
   @Column({ type: 'varchar', length: 50, nullable: true })
   phone: string | null;
 
-  // Whether `phone` is reachable on WhatsApp. One number field, not two: the
-  // old whatsapp_number column duplicated what is nearly always one number.
+  // Whether phone is reachable on WhatsApp; replaces whatsapp_number, almost always one number.
   @Column({
     name: 'is_whatsapp',
     type: 'boolean',
@@ -49,14 +45,11 @@ export class Contact {
   })
   isWhatsapp: boolean;
 
-  // Free-text nationality (no nationalities lookup table exists). Renamed from
-  // owners.nationality_id, which was a varchar despite the _id suffix.
+  // Free-text; no nationalities lookup table exists.
   @Column({ type: 'varchar', length: 100, nullable: true })
   nationality: string | null;
 
-  // The ID document number (EID / passport). Absorbed from leases' flat
-  // tenant_national_id string. Stored plain; the same number already sits in
-  // attached document scans, so encrypting one varchar buys nothing.
+  // Stored plain: the same number already sits in attached document scans, encrypting buys nothing.
   @Column({ name: 'national_id', type: 'varchar', length: 50, nullable: true })
   nationalId: string | null;
 

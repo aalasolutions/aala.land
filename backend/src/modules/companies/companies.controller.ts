@@ -93,7 +93,6 @@ export class CompaniesController {
     @Param('id', ParseUUIDPipe) id: string,
     @Request() req: AuthenticatedRequest,
   ) {
-    // Users can only view their own company, SUPER_ADMIN can view any
     if (
       req.user.role !== Role.SUPER_ADMIN &&
       requireCompanyId(req.user) !== id
@@ -166,7 +165,6 @@ export class CompaniesController {
     @Body() updateDto: UpdateCompanyDto,
     @Request() req: AuthenticatedRequest,
   ) {
-    // Users can only update their own company, SUPER_ADMIN can update any
     if (
       req.user.role !== Role.SUPER_ADMIN &&
       requireCompanyId(req.user) !== id

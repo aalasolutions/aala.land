@@ -50,8 +50,7 @@ const REASSIGNMENT_TARGETS: ReassignmentTarget[] = [
     entity: Commission,
     setProperty: 'agentId',
     column: 'agent_id',
-    // PENDING only. APPROVED, PAID, and CANCELLED are financial records and
-    // must keep their agent attribution.
+    // PENDING only: APPROVED/PAID/CANCELLED are financial records, keep their attribution
     extraWhere: 'AND status = :pendingStatus',
     extraParams: { pendingStatus: CommissionStatus.PENDING },
   },
@@ -79,10 +78,7 @@ const REASSIGNMENT_EXECUTION_ORDER: ReassignedEntityType[] = [
   'contact',
 ];
 
-// WhatsApp rows are NOT in the list above. They move in reassignWhatsappRows(), outside
-// the per-company advisory lock: whatsapp_messages has no retention policy, so its row
-// count is unbounded, and holding the lock across it would stall the tenant's AI replies
-// and billing writes (both take the same key).
+// Moved outside the advisory lock: an unbounded UPDATE here would stall AI replies/billing
 const WA_BATCH = 5000;
 
 @Injectable()
@@ -91,18 +87,7 @@ export class UserReassignmentService {
 
   constructor(private readonly dataSource: DataSource) {}
 
-  /**
-   * Moves a departing agent's WhatsApp rows to the reassignee.
-   *
-   * Runs OUTSIDE the per-company advisory lock, because whatsapp_messages has no
-   * retention policy and an unbounded UPDATE under that lock would stall the tenant's
-   * AI replies and billing writes.
-   *
-   * Callers run it AFTER the removal has committed: the authorization for a removal
-   * lives inside the locked transaction, so moving first would act before permission
-   * is checked. The trade-off is that a failure here strands rows on the departing
-   * user_id. It is idempotent, and StrandedWhatsappRowsCron re-runs it for those rows.
-   */
+  /** Run after removal commits; idempotent, a failure here gets retried by the cron. */
   async reassignWhatsappRows(
     companyId: string,
     fromUserId: string,
@@ -114,8 +99,7 @@ export class UserReassignmentService {
     // One transaction so a partial move cannot leave previews describing a moved thread.
     const { chats, messages } = await this.dataSource.transaction(
       async (manager) => {
-        // Only these chats can end up with a stale preview, so the refresh is scoped to
-        // them rather than sorting the reassignee's whole history.
+        // Scoped to these chats only, not the reassignee's whole history
         const affectedChats: Array<{ chat_id: string }> = await manager.query(
           `SELECT DISTINCT "chat_id" FROM "whatsapp_chats"
             WHERE "company_id" = $1 AND "user_id" = $2`,
@@ -124,7 +108,6 @@ export class UserReassignmentService {
         const chatIds = affectedChats.map((r) => r.chat_id);
 
         // A collision means the reassignee already holds this exact message
-        // (same company_id + wa_message_id), so the departing copy is redundant.
         await manager.query(
           `DELETE FROM "whatsapp_messages" m
             WHERE m."company_id" = $1 AND m."user_id" = $2
@@ -142,8 +125,7 @@ export class UserReassignmentService {
           toUserId,
         );
 
-        // Colliding chats are dropped, not moved: the reassignee already has a preview
-        // row for that conversation, and it is recomputed below.
+        // Colliding chats are dropped, not moved; reassignee's preview is recomputed below
         await manager.query(
           `DELETE FROM "whatsapp_chats" c
             WHERE c."company_id" = $1 AND c."user_id" = $2
@@ -198,8 +180,7 @@ export class UserReassignmentService {
     return moved;
   }
 
-  // Messages can move without their preview row, so last_body/last_ts stop describing
-  // the thread the reassignee now holds. Scoped to the chats that actually moved.
+  // Messages can move without their preview row; scoped to chats that actually moved
   private async refreshChatPreviews(
     manager: EntityManager,
     companyId: string,
@@ -226,11 +207,7 @@ export class UserReassignmentService {
     );
   }
 
-  /**
-   * Reassigns every company-scoped record owned by fromUserId to toUserId.
-   * MUST be called with the manager of an open transaction; this service
-   * never commits or rolls back on its own.
-   */
+  /** MUST use the manager of an open transaction; never commits or rolls back on its own. */
   async reassignOwnedRecords(
     manager: EntityManager,
     companyId: string,
@@ -239,9 +216,7 @@ export class UserReassignmentService {
     reason: string,
     options: { collectIds?: boolean } = {},
   ): Promise<ReassignmentReport> {
-    // Only materialize the reassigned row ids when a recorder will consume them.
-    // Otherwise rely on the driver's affected-row count, so a large tenant does not
-    // pull tens of thousands of UUIDs into memory for a payload nobody reads.
+    // Only materialize ids when a recorder consumes them; avoids loading UUIDs nobody reads
     const collectIds = options.collectIds ?? false;
     const byType = new Map<
       ReassignedEntityType,

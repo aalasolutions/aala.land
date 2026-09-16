@@ -1,11 +1,4 @@
-/**
- * Branded HTML for AALA.LAND system (account + billing) emails. These are the
- * product's own voice, fixed and not tenant-editable. CRM outreach templates
- * (company-editable, PRO gated) live in the email-templates module instead.
- *
- * All CSS is inline: email clients strip <style> and external sheets. The logo
- * is referenced by absolute URL off APP_URL (the frontend serves /logo.png).
- */
+// Fixed system emails, not tenant-editable; CSS stays inline since clients strip <style> tags.
 
 const BRAND = {
   teal: '#0f9d94',
@@ -25,7 +18,6 @@ export interface LayoutOptions {
   title: string;
   previewText: string;
   bodyHtml: string;
-  /** Optional call-to-action button. */
   cta?: { label: string; url: string };
   /** Absolute URL for the one-click unsubscribe link. Omit for account emails. */
   unsubscribeUrl?: string;
@@ -55,7 +47,6 @@ function button(label: string, url: string): string {
     </table>`;
 }
 
-/** Wraps content in the shared AALA.LAND shell (header logo + footer). */
 export function renderLayout(opts: LayoutOptions): string {
   const logo = `${appUrl()}/logo.png`;
   const cta = opts.cta ? button(opts.cta.label, opts.cta.url) : '';
@@ -108,7 +99,6 @@ export function renderLayout(opts: LayoutOptions): string {
 </html>`;
 }
 
-/** Plain paragraph helper for email body content. */
 export function p(html: string): string {
   return `<p style="margin: 0 0 14px;">${html}</p>`;
 }

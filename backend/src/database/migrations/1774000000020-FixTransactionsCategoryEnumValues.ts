@@ -4,15 +4,13 @@ export class FixTransactionsCategoryEnumValues1774000000020 implements Migration
   name = 'FixTransactionsCategoryEnumValues1774000000020';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
-    // The category column appears to use text type in the database, but let's ensure consistency
-    // Update existing data to use uppercase values for consistency
+    // The category column is text, not an enum, so casing must be normalized manually.
     await queryRunner.query(
       `UPDATE "transactions" SET "category" = upper("category"::text) WHERE "category" IS NOT NULL`,
     );
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    // Revert data changes
     await queryRunner.query(
       `UPDATE "transactions" SET "category" = lower("category"::text) WHERE "category" IS NOT NULL`,
     );

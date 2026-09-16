@@ -32,11 +32,11 @@ export class AuditLog {
   user: User | null;
 
   @Column({ type: 'varchar', length: 50 })
-  action: string; // CREATE, UPDATE, DELETE, ASSIGN, LOGIN, LOGOUT, etc.
+  action: string;
 
   @Index()
   @Column({ name: 'entity_type', type: 'varchar', length: 100 })
-  entityType: string; // lead, property, user, lease, etc.
+  entityType: string;
 
   @Index()
   @Column({ name: 'entity_id', type: 'uuid', nullable: true })

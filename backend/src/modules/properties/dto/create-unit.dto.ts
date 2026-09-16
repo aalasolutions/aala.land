@@ -34,8 +34,7 @@ export class CreateUnitDto {
   @IsOptional()
   ownerId?: string;
 
-  // Used only when ownerId is absent: resolves to an existing contact by phone
-  // or email, or creates one.
+  // Used only when ownerId is absent: resolves or creates a contact by phone/email
   @ApiPropertyOptional({ type: ContactIdentityDto })
   @ValidateNested()
   @Type(() => ContactIdentityDto)

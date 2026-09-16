@@ -47,14 +47,12 @@ export class Unit {
   @Column({ name: 'owner_id', type: 'uuid', nullable: true })
   ownerId: string | null;
 
-  // A unit's owner is a contact. One unit has at most one owner (no
-  // co-ownership). The old owners table is gone.
+  // A unit's owner is a contact, with at most one owner per unit (no co-ownership).
   @ManyToOne(() => Contact, { nullable: true })
   @JoinColumn({ name: 'owner_id' })
   owner: Contact | null;
 
-  // Assignment lives on the thing, not the person: the same contact can be a
-  // lead handled by one agent and own a unit handled by another.
+  // Assignment lives on the unit, not the person: owner and agent can differ
   @Column({ name: 'assigned_agent_id', type: 'uuid', nullable: true })
   assignedAgentId: string | null;
 

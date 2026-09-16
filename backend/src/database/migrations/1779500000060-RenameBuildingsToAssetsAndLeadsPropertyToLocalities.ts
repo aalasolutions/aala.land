@@ -1,13 +1,8 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-// Pure renames, no data move. The TS side already speaks "asset" and the lead
-// relation already targets localities; only the DB column and table names lied.
-//   1. buildings renamed to assets; building_id renamed to asset_id on
-//      units, property_media, property_documents
-//   2. leads.property_id renamed to locality_id, plus its FK and index
+// Pure rename: TS already speaks "asset"/"locality", only DB names lagged
 export class RenameBuildingsToAssetsAndLeadsPropertyToLocalities1779500000060 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
-    // 1. buildings renamed to assets
     await queryRunner.query(`ALTER TABLE "buildings" RENAME TO "assets"`);
     await queryRunner.query(
       `ALTER TABLE "units" RENAME COLUMN "building_id" TO "asset_id"`,
@@ -19,7 +14,6 @@ export class RenameBuildingsToAssetsAndLeadsPropertyToLocalities1779500000060 im
       `ALTER TABLE "property_documents" RENAME COLUMN "building_id" TO "asset_id"`,
     );
 
-    // 2. leads.property_id renamed to locality_id (+ FK + index)
     await queryRunner.query(
       `ALTER TABLE "leads" RENAME COLUMN "property_id" TO "locality_id"`,
     );
@@ -30,11 +24,7 @@ export class RenameBuildingsToAssetsAndLeadsPropertyToLocalities1779500000060 im
       `ALTER INDEX "IDX_LEADS_PROPERTY_ID" RENAME TO "IDX_LEADS_LOCALITY_ID"`,
     );
 
-    // 3. Dependent objects that still carried the old name: the locality FK,
-    //    NOT NULL checks, the name indexes, and the property_type enum.
-    //    PostgreSQL keeps them valid through a table rename, but the schema must
-    //    read "asset" so a later migration referencing FK_assets_locality cannot
-    //    fail. assets_locality_id_not_null also drops a stale "area_id" label.
+    // Keeps names consistent so a later migration referencing FK_assets_locality works
     await queryRunner.query(
       `ALTER TABLE "assets" RENAME CONSTRAINT "FK_buildings_locality" TO "FK_assets_locality"`,
     );

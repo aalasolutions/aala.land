@@ -5,8 +5,7 @@ import { guidFor } from '@ember/object/internals';
 const DEFAULT_PER_PAGE_OPTIONS = [10, 25, 50, 100];
 
 export default class NuPaginationComponent extends Component {
-  // Per-instance so two paginations on one page (top and bottom of a table)
-  // do not emit duplicate ids and break their labels.
+  // Per-instance so two paginations on one page do not emit duplicate ids and break their labels.
   get selectId() {
     return this.args.selectId ?? `${guidFor(this)}-per-page`;
   }
@@ -54,8 +53,7 @@ export default class NuPaginationComponent extends Component {
     return this.page >= this.totalPages;
   }
 
-  // Builds a compact page list with ellipsis markers: always show first,
-  // last, current, and one neighbour on each side.
+  // Compact list: first, last, current, one neighbour each side, ellipsis between.
   get pages() {
     const total = this.totalPages;
     const current = this.page;
@@ -110,9 +108,7 @@ export default class NuPaginationComponent extends Component {
     this.args.onPageChange?.(page);
   }
 
-  // Prev/next accept their own callbacks so a controller that only knows how to
-  // step (goToPreviousPage/goToNextPage) can use this component without being
-  // rewritten to a page-number model. Falls back to @onPageChange when absent.
+  // Own callbacks let a step-only controller work without a page-number model.
   @action
   goToPrevious() {
     if (this.page <= 1) {

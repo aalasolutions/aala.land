@@ -12,8 +12,7 @@ export default class NuSelectComponent extends Component {
     return parts.join(' ');
   }
 
-  // Normalizes `{value, label}` objects and plain strings into one shape, and
-  // resolves selection here so the template stays declarative.
+  // Resolves selection here, not in the template, so the template stays declarative.
   get normalizedOptions() {
     const options = this.args.options || [];
     return options.map((option) => {

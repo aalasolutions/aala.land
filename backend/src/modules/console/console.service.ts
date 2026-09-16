@@ -40,16 +40,15 @@ import { LiftLockDto } from './dto/lift-lock.dto';
 import { RecordPaymentDto } from './dto/record-payment.dto';
 import { ApplyRemedyDto } from './dto/apply-remedy.dto';
 
-/** Operator identity stamped on every intent (assistants act with full power, ruling 13). */
+// Operator identity stamped on every intent; assistants act with full power under this identity.
 export interface OperatorActor {
   userId: string;
   email: string;
 }
 
-/** Statuses that count a card subscription as genuinely paying. */
 const PAYING_STATUSES = ['active', 'trialing'];
 
-/** Overdue manual entries older than this drop off the Upcoming panel (F3 ruling). */
+// Overdue manual entries older than this drop off the Upcoming panel.
 const OVERDUE_WINDOW_DAYS = 90;
 
 type Rail = 'card' | 'manual' | null;
@@ -61,12 +60,7 @@ interface CompanyMrr {
   rail: Rail;
 }
 
-/**
- * Operator console v2 (S2702 ratified design). Every method is a SUPER_ADMIN
- * business intent: give a deal, record a payment, make it right, lift a lock.
- * No provider vocabulary crosses this boundary (ruling 7); card-rail money
- * mechanics live behind BillingService and the provider port.
- */
+// SUPER_ADMIN business intent only; provider vocabulary stays behind BillingService.
 @Injectable()
 export class ConsoleService {
   private readonly logger = new Logger(ConsoleService.name);
@@ -99,16 +93,7 @@ export class ConsoleService {
     private readonly whatsappService: WhatsappService,
   ) {}
 
-  // -------------------------------------------------------------------------
-  // E. Scoreboard (Overview)
-  // -------------------------------------------------------------------------
-
-  /**
-   * The business numbers before any click. Extensible response: metric keys
-   * are additive; the frontend renders whatever tiles it knows. MRR is
-   * per-currency with NO FX conversion (ruling 11); manual-rail companies
-   * count (ruling 11); ARR is MRR x 12, computed by the frontend.
-   */
+  // Additive metric keys avoid frontend contract changes; MRR is per-currency, no FX conversion.
   async getOverview(): Promise<Record<string, unknown>> {
     const companies = await this.companyRepo.find();
     const mrrMap = await this.computeMrrMap(companies);
@@ -166,8 +151,7 @@ export class ConsoleService {
         .map(([regionCode, customers]) => ({ regionCode, customers }))
         .sort((a, b) => b.customers - a.customers),
       totalStorageBytes,
-      // Credits are per-company billing periods, so this sums whichever period each
-      // company is currently in rather than a shared calendar window.
+      // Sums each company's current billing period, not a shared calendar window.
       aiCreditsUsedCurrentPeriods: Number(aiCreditsRaw?.total ?? 0),
       aiConversationsLast30Days: Number(aiConversationsRaw?.conversations ?? 0),
       aiMessagesLast30Days: Number(aiConversationsRaw?.messages ?? 0),
@@ -175,10 +159,6 @@ export class ConsoleService {
       generatedAt: new Date().toISOString(),
     };
   }
-
-  // -------------------------------------------------------------------------
-  // Companies list + detail
-  // -------------------------------------------------------------------------
 
   async listCompanies(
     page = 1,
@@ -256,7 +236,7 @@ export class ConsoleService {
       }),
       this.dealRepo.findOne({ where: { companyId, endedAt: IsNull() } }),
       this.lockStateService.getLockState(companyId),
-      // Login-as target (design 4): impersonation needs the admin's userId.
+      // Login-as target: impersonation needs the admin's userId.
       this.userRepo.findOne({
         where: { companyId, role: Role.COMPANY_ADMIN, isActive: true },
         select: ['id', 'email', 'name'],
@@ -289,7 +269,6 @@ export class ConsoleService {
     };
   }
 
-  /** Operator event log for the History tab; sourced from the audit trail. */
   async getCompanyHistory(
     companyId: string,
     page = 1,
@@ -298,10 +277,6 @@ export class ConsoleService {
     await this.findCompany(companyId);
     return this.auditService.findAll(companyId, { page, limit });
   }
-
-  // -------------------------------------------------------------------------
-  // A. Custom deals
-  // -------------------------------------------------------------------------
 
   async grantDeal(
     companyId: string,
@@ -335,8 +310,7 @@ export class ConsoleService {
         }),
       );
     } catch (err) {
-      // A concurrent grant loses the race on UQ_custom_deals_active_company;
-      // surface it as the same 409 the pre-check path returns.
+      // Concurrent grant loses the active-deal UNIQUE race; return the same 409 as the pre-check.
       if (this.isUniqueViolation(err)) {
         throw new ConflictException(
           'This company already has an active deal. Edit it or end it first.',
@@ -421,17 +395,12 @@ export class ConsoleService {
     deal.endedAt = new Date();
     deal.endedBy = actor.userId;
     await this.dealRepo.save(deal);
-    // Entitlements deliberately untouched: ending a deal is a pricing event,
-    // not a capacity event; the operator adjusts Limits when needed.
+    // Entitlements deliberately untouched: ending a deal is a pricing event, not a capacity event.
     await this.audit(companyId, actor, AuditAction.UPDATE, 'ConsoleDeal', {
       entityId: deal.id,
       newValue: { event: 'deal_ended' },
     });
   }
-
-  // -------------------------------------------------------------------------
-  // B. Lift lock
-  // -------------------------------------------------------------------------
 
   async liftLock(
     companyId: string,
@@ -477,10 +446,6 @@ export class ConsoleService {
     });
   }
 
-  // -------------------------------------------------------------------------
-  // C. Manual payments
-  // -------------------------------------------------------------------------
-
   async recordPayment(
     companyId: string,
     dto: RecordPaymentDto,
@@ -494,8 +459,7 @@ export class ConsoleService {
       );
     }
     const notes = dto.notes?.trim() || null;
-    // "DOCUMENT IT" (requirement 2.4): a payment with no paper trail is a
-    // forgotten promise waiting to happen.
+    // Require notes or a receipt: a payment with no paper trail becomes a forgotten promise.
     if (!notes && !receipt) {
       throw new BadRequestException(
         'Document the payment: notes or a receipt image is required.',
@@ -510,8 +474,7 @@ export class ConsoleService {
         receipt,
       );
       receiptKey = uploaded.s3Key;
-      // Mime already magic-byte verified by the upload; persist it so the
-      // stream endpoint can serve a proper Content-Type.
+      // Mime is magic-byte verified at upload; persisted so the stream endpoint sets Content-Type.
       receiptMime = receipt.mimetype;
     }
 
@@ -593,14 +556,7 @@ export class ConsoleService {
     };
   }
 
-  /**
-   * "Upcoming manual payments" operator surface (ruling 12): manual-rail
-   * companies whose covered period ends within the lookahead window; overdue
-   * ones pinned on top. Companies that moved to a live card subscription are
-   * skipped, and entries more than OVERDUE_WINDOW_DAYS past their covers-end
-   * drop out (a churned one-time payer must not sit as Overdue forever;
-   * review ruling F3, 2026-07-19).
-   */
+  // Manual-rail, overdue first; drops past OVERDUE_WINDOW_DAYS so churn isn't Overdue forever.
   async getUpcomingManualPayments(days = 14): Promise<{
     days: number;
     overdueWindowDays: number;
@@ -672,10 +628,6 @@ export class ConsoleService {
     return { days, overdueWindowDays: OVERDUE_WINDOW_DAYS, rows };
   }
 
-  // -------------------------------------------------------------------------
-  // D. Make it right
-  // -------------------------------------------------------------------------
-
   async applyRemedy(
     dto: ApplyRemedyDto,
     actor: OperatorActor,
@@ -718,8 +670,7 @@ export class ConsoleService {
       );
     }
 
-    // Card rail: real money moves through the provider port. Manual rail:
-    // the record IS the remedy; the operator settles outside the system.
+    // Card rail moves real money via provider; manual rail's record IS the remedy, settled outside.
     let providerRef: string | null = null;
     if (dto.source === 'card') {
       try {
@@ -788,24 +739,14 @@ export class ConsoleService {
     return remedy;
   }
 
-  // -------------------------------------------------------------------------
-  // F. System health (price catalogue)
-  // -------------------------------------------------------------------------
-
-  /**
-   * Per-row registration status with the provider's last error VERBATIM.
-   * Auto-sync on read: when rows are missing their registration, run the
-   * idempotent sync first (failures are persisted per-row, never thrown), so
-   * the operator almost never needs the manual Fix button.
-   */
+  // Auto-syncs missing rows on read; per-row failures persist, not throw, so Fix is rarely needed.
   async getPriceHealth(): Promise<Record<string, unknown>> {
     let rows = await this.activePricesSorted();
     if (rows.some((r) => !r.providerPriceId)) {
       try {
         await this.billingService.syncPrices();
       } catch (err) {
-        // Sync-level failure (e.g. provider auth): each pending row keeps or
-        // gains its own persisted error via syncPrices; log and fall through.
+        // Sync-level failure: each row keeps its persisted error via syncPrices; log and continue.
         this.logger.error(
           `Auto price sync failed: ${err instanceof Error ? err.message : String(err)}`,
         );
@@ -838,16 +779,7 @@ export class ConsoleService {
     };
   }
 
-  // -------------------------------------------------------------------------
-  // G. Marketers report
-  // -------------------------------------------------------------------------
-
-  /**
-   * MRR by marketer code, numbers only (requirement 2.5). List price, no
-   * coupon subtraction; expired/locked deals excluded from paying. The null
-   * group aggregates un-attributed companies so the table reconciles against
-   * the Overview totals (design section 9).
-   */
+  // List price only, no coupons; excludes expired/locked deals; null group is unattributed.
   async getMarketersReport(): Promise<{ rows: Record<string, unknown>[] }> {
     const companies = await this.companyRepo.find();
     const mrrMap = await this.computeMrrMap(companies);
@@ -902,8 +834,7 @@ export class ConsoleService {
         companyIds: g.companyIds,
       }))
       .sort((a, b) => {
-        // Attributed rows first (by paying desc, then companies desc); the
-        // un-attributed aggregate row last.
+        // Attributed rows first (paying desc, then companies desc); unattributed row goes last.
         if ((a.marketerCode === null) !== (b.marketerCode === null)) {
           return a.marketerCode === null ? 1 : -1;
         }
@@ -913,24 +844,7 @@ export class ConsoleService {
     return { rows };
   }
 
-  // -------------------------------------------------------------------------
-  // Shared MRR read model
-  // -------------------------------------------------------------------------
-
-  /**
-   * Per-company monthly revenue, both rails, no FX (ruling 11). Precedence:
-   *   1. Active unexpired deal: the negotiated price IS the MRR (per-seat x
-   *      cap, or flat total), in the deal currency; rail follows the live
-   *      subscription if one exists.
-   *   2. Expired deal without a covering payment (locked or lifted): NOT
-   *      paying, unless a live card subscription exists (then list price).
-   *   3. Live active/trialing subscription: list price from billing_prices
-   *      (PRO: seats x seat; ENTERPRISE: base + (seats - 1) x seat), no
-   *      coupon subtraction.
-   *   4. No deal, no subscription, but a manual payment covering today: that
-   *      payment's amount counts as the month, in its own currency.
-   *   5. Otherwise: not paying.
-   */
+  // Precedence: active deal, expired deal w/o sub = not paying, subscription, then manual payment.
   private async computeMrrMap(
     companies: Company[],
   ): Promise<Map<string, CompanyMrr>> {
@@ -958,9 +872,7 @@ export class ConsoleService {
           deal.basis === 'per_seat'
             ? deal.priceAmount * deal.seatCap
             : deal.priceAmount;
-        // Zero-cost deals count as customers, never as paying (review ruling
-        // F2, 2026-07-19): a free arrangement must not inflate the Paying
-        // tile or the marketers paying count.
+        // Zero-cost deals count as customers, never paying, so they don't inflate Paying counts.
         result.set(company.id, {
           paying: dealMonthly > 0,
           currency: dealMonthly > 0 ? deal.currency : null,
@@ -1017,7 +929,6 @@ export class ConsoleService {
     return result;
   }
 
-  /** Latest manual payment per company whose covers-period reaches today. */
   private async latestCoveringPayments(
     companyIds: string[],
   ): Promise<Map<string, { amount: number; currency: string }>> {
@@ -1042,10 +953,6 @@ export class ConsoleService {
       ]),
     );
   }
-
-  // -------------------------------------------------------------------------
-  // Private helpers
-  // -------------------------------------------------------------------------
 
   private async findCompany(companyId: string): Promise<Company> {
     const company = await this.companyRepo.findOne({
@@ -1087,7 +994,7 @@ export class ConsoleService {
     return 'active';
   }
 
-  /** One of untilDate / lifetime, never both (deal form rule, design 5). */
+  // One of untilDate or lifetime is set, never both.
   private resolveUntilDate(dto: GrantDealDto): Date | null {
     if (dto.lifetime) {
       if (dto.untilDate) {
@@ -1111,13 +1018,7 @@ export class ConsoleService {
     return until;
   }
 
-  /**
-   * A deal implies entitlements for a company that has no live subscription:
-   * FREE rises to PRO (with PRO caps), and maxUsers pins to the deal's seat
-   * cap ("each seat comes with a cost", ruling 4). A company with a live
-   * subscription is untouched: the webhook stays the single writer of
-   * gateway-owned columns.
-   */
+  // Deal grants entitlements only without a live subscription; webhook stays sole writer otherwise.
   private async applyDealEntitlements(
     company: Company,
     seatCap: number,
@@ -1216,9 +1117,7 @@ export class ConsoleService {
       newValue?: Record<string, unknown>;
     },
   ): Promise<void> {
-    // Console intents are audited explicitly (the global interceptor skips
-    // requests without a caller companyId; a super admin has none). An audit
-    // failure must never roll back the intent itself.
+    // Explicit audit: interceptor skips no-companyId requests; failure must not roll back intent.
     try {
       await this.auditService.log({
         companyId,

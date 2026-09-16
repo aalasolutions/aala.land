@@ -1,7 +1,6 @@
 {{page-title (if this.company this.company.name "Company")}}
 
 {{#if this.company}}
-  {{! Header }}
   <div class="console-detail-header">
     <button
       type="button"
@@ -39,7 +38,6 @@
     </div>
   </div>
 
-  {{! Lock card }}
   {{#if this.showLockCard}}
     {{#if this.isLocked}}
       <div class="alert alert-error console-lock-card" data-test-lock-card>
@@ -121,7 +119,6 @@
     {{/if}}
   {{/if}}
 
-  {{! Tabs }}
   <Nuvo::Tabs
     @tabs={{this.tabs}}
     @activeTab={{this.activeTab}}
@@ -131,7 +128,6 @@
 
   {{#if (eq this.activeTab "overview")}}
     <div class="console-cards">
-      {{! Live billing state }}
       <Nuvo::Panel @title="Billing state" data-test-company-plan-card>
         {{#if this.billing}}
           <dl class="console-kv">
@@ -164,7 +160,6 @@
         {{/if}}
       </Nuvo::Panel>
 
-      {{! Active deal summary }}
       {{#if this.deal}}
         <Nuvo::Panel @title="Active deal" data-test-company-deal-card>
           <dl class="console-kv">
@@ -186,7 +181,6 @@
         </Nuvo::Panel>
       {{/if}}
 
-      {{! Limits }}
       <Nuvo::Panel>
         <:header>
           <h3 class="nu-panel__title">Limits</h3>
@@ -378,7 +372,6 @@
     </Nuvo::Panel>
   {{/if}}
 
-  {{! ---- Deal modal ---- }}
   <Nuvo::Drawer
     @open={{this.dealModalOpen}}
     @title="{{if this.dealEditing 'Edit' 'Give'}} {{this.company.name}} a deal"
@@ -504,7 +497,6 @@
     </:footer>
   </Nuvo::Drawer>
 
-  {{! ---- Record payment modal ---- }}
   <Nuvo::Drawer
     @open={{this.paymentModalOpen}}
     @title="Record a payment from {{this.company.name}}"
@@ -624,7 +616,6 @@
     </:footer>
   </Nuvo::Drawer>
 
-  {{! ---- Make it right modal ---- }}
   <Nuvo::Drawer
     @open={{this.remedyModalOpen}}
     @title="Make it right for {{this.company.name}}"
@@ -738,7 +729,6 @@
     </:footer>
   </Nuvo::Drawer>
 
-  {{! ---- Limits modal ---- }}
   <Nuvo::Drawer
     @open={{this.limitsModalOpen}}
     @title="Edit limits"
@@ -801,7 +791,6 @@
     </:footer>
   </Nuvo::Drawer>
 
-  {{! ---- Confirms ---- }}
   <ConfirmModal
     @open={{this.endDealConfirmOpen}}
     @title="End this deal early?"

@@ -8,11 +8,7 @@ import { ManualPayment } from '@modules/console/entities/manual-payment.entity';
 import { LockStateService } from './lock-state.service';
 import { WriteLockInterceptor } from './write-lock.interceptor';
 
-/**
- * Deliberately import-light (entities only) so AuthModule and ConsoleModule
- * can both depend on it without cycles. The write-lock interceptor is global;
- * it no-ops for reads, super admins, and companies without a deal.
- */
+// Import-light (entities only) so AuthModule and ConsoleModule can depend on it without cycles.
 @Module({
   imports: [
     TypeOrmModule.forFeature([Company, CustomDeal, LockLift, ManualPayment]),

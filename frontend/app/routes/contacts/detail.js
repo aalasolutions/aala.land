@@ -11,8 +11,7 @@ export default class ContactsDetailRoute extends AuthenticatedRoute {
     const contact = contactResult?.data || null;
     const tags = contact?.tags || [];
 
-    // Owner and Vendor share the same "units owned" data (Vendor is just
-    // Owner with 2+ units), so one fetch covers both tags.
+    // Vendor is just Owner with 2+ units, so one fetch of "units owned" covers both tags.
     const [unitsResult, leasesResult, leadsResult] = await Promise.all([
       tags.includes('owner')
         ? this.auth

@@ -8,7 +8,6 @@ export function closeDeleteModal(controller, itemKey) {
   controller[itemKey] = null;
 }
 
-// `body` given: POST {resourcePath}/{id}/delete with it. Otherwise DELETE.
 export async function confirmDeleteModal(
   controller,
   {

@@ -4,7 +4,6 @@ export class FixLeadActivitiesTypeEnumValues1774000000017 implements MigrationIn
   name = 'FixLeadActivitiesTypeEnumValues1774000000017';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
-    // Add new uppercase values to the enum
     await queryRunner.query(
       `ALTER TYPE "lead_activities_type_enum" ADD VALUE 'CALL' BEFORE 'call'`,
     );
@@ -27,18 +26,17 @@ export class FixLeadActivitiesTypeEnumValues1774000000017 implements MigrationIn
       `ALTER TYPE "lead_activities_type_enum" ADD VALUE 'ASSIGNMENT' BEFORE 'assignment'`,
     );
 
-    // Update existing data to use uppercase values using text conversion workaround
+    // Casts through text: Postgres cannot compare/assign enum values directly.
     await queryRunner.query(
       `UPDATE "lead_activities" SET "type" = upper("type"::text)::lead_activities_type_enum`,
     );
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    // Revert data changes
     await queryRunner.query(
       `UPDATE "lead_activities" SET "type" = lower("type"::text)::lead_activities_type_enum`,
     );
 
-    // Note: PostgreSQL doesn't support removing enum values easily, so we leave them
+    // PostgreSQL cannot remove enum values, so old lowercase values are left in place.
   }
 }

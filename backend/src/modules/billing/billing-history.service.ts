@@ -19,18 +19,7 @@ export class BillingHistoryService {
     private readonly historyRepo: Repository<BillingHistory>,
   ) {}
 
-  /**
-   * Record one payment outcome. Idempotent by (stripeInvoiceId, type):
-   * - invoice.paid + invoice.payment_succeeded (two events, one invoice) collapse to one row,
-   * - a dunning retry updates the failed row's amount/attemptCount rather than duplicating,
-   * - webhook re-dispatch (processed_at NULL path) is a no-op re-write.
-   *
-   * Recency-guarded on occurredAt so an out-of-order or concurrent redelivery of an
-   * OLDER event can never regress a newer row (mirrors applyRecencyGuardedSync's
-   * billing_last_event_at discipline on the company columns; race audit 2026-07-07).
-   * TypeORM's upsert() cannot express a conditional UPDATE, so this is a raw
-   * ON CONFLICT ... DO UPDATE ... WHERE. An invoice with no id can't be keyed, so it's skipped.
-   */
+  /** Raw SQL: TypeORM upsert() can't express the recency-guarded conditional UPDATE needed here. */
   async recordPayment(event: PaymentEvent): Promise<void> {
     if (!event.invoiceId) {
       this.logger.warn(
@@ -81,10 +70,7 @@ export class BillingHistoryService {
     );
   }
 
-  /**
-   * Paginated billing history. companyId undefined = SUPER_ADMIN, all companies;
-   * otherwise scoped to the one company. Newest first.
-   */
+  /** undefined companyId means SUPER_ADMIN viewing all companies. */
   async listBillingHistory(
     companyId: string | undefined,
     page = 1,
@@ -95,8 +81,7 @@ export class BillingHistoryService {
     page: number;
     limit: number;
   }> {
-    // Clamp so a caller (notably the SUPER_ADMIN all-companies path) can't
-    // request the whole table or a negative OFFSET (page<=0 -> 500).
+    // Clamp so a caller can't request the whole table or a negative OFFSET.
     const safePage = Math.max(1, Math.trunc(page) || 1);
     const safeLimit = Math.min(100, Math.max(1, Math.trunc(limit) || 20));
     const [data, total] = await this.historyRepo.findAndCount({

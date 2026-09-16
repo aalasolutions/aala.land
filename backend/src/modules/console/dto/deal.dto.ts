@@ -13,11 +13,7 @@ import {
 import { ApiProperty } from '@nestjs/swagger';
 import type { DealBasis } from '../entities/custom-deal.entity';
 
-/**
- * "Give {company} a deal" (design section 5). One of untilDate / lifetime is
- * required (cross-field rule enforced in the service). Used for both grant
- * and edit; an edit is a full re-statement of the deal.
- */
+// untilDate/lifetime required, enforced in the service; an edit is a full re-statement of the deal.
 export class GrantDealDto {
   @ApiProperty({
     description:
@@ -41,7 +37,7 @@ export class GrantDealDto {
   basis: DealBasis;
 
   @ApiProperty({
-    description: 'Seat cap; every deal carries one (ruling 4)',
+    description: 'Seat cap; every deal carries one',
     minimum: 1,
   })
   @IsInt()
@@ -63,7 +59,7 @@ export class GrantDealDto {
 
   @ApiProperty({
     description:
-      'Why this company pays what it pays (required deal memory, ruling 3)',
+      'Why this company pays what it pays (required deal memory)',
   })
   @IsString()
   @IsNotEmpty()

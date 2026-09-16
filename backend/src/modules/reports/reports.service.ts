@@ -339,7 +339,6 @@ export class ReportsService {
       }
     }
 
-    // Resolve agent UUIDs to names
     const agentIds = Array.from(agentMap.keys());
     if (agentIds.length > 0) {
       const users = await this.userRepository
@@ -383,11 +382,9 @@ export class ReportsService {
     const days14Ago = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
     const days30Ago = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
-    // Lead where clause (direct regionCode)
     const leadWhere: FindOptionsWhere<Lead> = { companyId };
     if (regionCodes) leadWhere.regionCode = In(regionCodes);
 
-    // Overdue followups QBuilder
     const overdueQb = this.leadRepository
       .createQueryBuilder('l')
       .leftJoinAndSelect('l.contact', 'c')
@@ -446,7 +443,6 @@ export class ReportsService {
       overdueFollowups,
       vacantUnits,
     ] = await Promise.all([
-      // Leads sitting in NEW for 48+ hours
       this.leadRepository.find({
         where: {
           ...leadWhere,
@@ -457,7 +453,6 @@ export class ReportsService {
         relations: ['contact'],
         take: 20,
       }),
-      // Leads sitting in NEW for 24+ hours (but less than 48)
       this.leadRepository.find({
         where: {
           ...leadWhere,
@@ -468,7 +463,6 @@ export class ReportsService {
         relations: ['contact'],
         take: 20,
       }),
-      // Leads stuck in same pipeline stage for 14+ days
       this.leadRepository.find({
         where: {
           ...leadWhere,
@@ -479,9 +473,7 @@ export class ReportsService {
         relations: ['contact'],
         take: 20,
       }),
-      // Leads in active stages not updated for 7+ days
       overdueQb.getMany(),
-      // Units vacant for 30+ days
       vacantUnitsPromise,
     ]);
 
@@ -545,7 +537,6 @@ export class ReportsService {
       });
     }
 
-    // Sort by severity (HIGH first) then by date (oldest first)
     const severityOrder = { HIGH: 0, MEDIUM: 1, LOW: 2 };
     flags.sort((a, b) => {
       const sevDiff =
@@ -617,7 +608,6 @@ export class ReportsService {
 
     const results = await qb.getRawMany();
 
-    // Return in pipeline order
     const countMap = new Map(results.map((r) => [r.stage, Number(r.count)]));
 
     return PIPELINE_STAGE_ORDER.map((stage) => ({
@@ -639,7 +629,6 @@ export class ReportsService {
 
     const now = new Date();
 
-    // Get active leads (not WON/LOST) with stageEnteredAt set, grouped by status
     const qb = this.leadRepository
       .createQueryBuilder('l')
       .select('l.status', 'stage')
@@ -685,8 +674,7 @@ export class ReportsService {
       return [];
     }
 
-    // Find the first STATUS_CHANGE activity per lead, then calculate diff from lead.createdAt
-    // Uses lead_activities table for historical accuracy
+    // lead.createdAt alone can't show the diff to the first status change
     const qb = this.activityRepository
       .createQueryBuilder('a')
       .select('l.assigned_to', 'agentId')
@@ -744,7 +732,6 @@ export class ReportsService {
 
     if (agents.length === 0) return achievements;
 
-    // Best conversion rate
     const bestConverter = agents.reduce(
       (best, a) => (a.conversionRate > best.conversionRate ? a : best),
       agents[0],
@@ -758,7 +745,6 @@ export class ReportsService {
       });
     }
 
-    // Most leads won
     const mostWins = agents.reduce(
       (best, a) => (a.leadsWon > best.leadsWon ? a : best),
       agents[0],
@@ -772,7 +758,6 @@ export class ReportsService {
       });
     }
 
-    // Top earner
     const topEarner = agents.reduce(
       (best, a) => (a.commissionsEarned > best.commissionsEarned ? a : best),
       agents[0],
@@ -786,7 +771,6 @@ export class ReportsService {
       });
     }
 
-    // Most active (most leads assigned)
     const mostActive = agents.reduce(
       (best, a) => (a.leadsAssigned > best.leadsAssigned ? a : best),
       agents[0],
@@ -814,7 +798,6 @@ export class ReportsService {
       caller,
     );
 
-    // Rank by conversion rate, then by leads won as tiebreaker
     const sorted = [...agents].sort((a, b) => {
       if (b.conversionRate !== a.conversionRate)
         return b.conversionRate - a.conversionRate;

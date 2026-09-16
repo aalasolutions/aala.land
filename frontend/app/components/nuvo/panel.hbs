@@ -1,5 +1,4 @@
-{{! Named blocks <:header>/<:body>/<:footer> take priority; a plain default
-    block renders straight into the body slot. }}
+{{! Named blocks take priority; a plain default block renders into the body slot. }}
 <div class={{this.classes}} data-test-nu-panel ...attributes>
   {{#if (has-block "header")}}
     <div class="nu-panel__header" data-test-nu-panel-header>

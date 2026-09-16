@@ -13,8 +13,7 @@ export default class NuSegmentedComponent extends Component {
     return Boolean(this.args.multiple);
   }
 
-  // Controlled when @value is passed, uncontrolled otherwise. Same pattern as
-  // NuTabs. In multiple mode the value is an array.
+  // Controlled when @value is passed; multiple mode holds an array value.
   get currentValue() {
     const value =
       this.args.value !== undefined ? this.args.value : this.internalValue;
@@ -28,8 +27,7 @@ export default class NuSegmentedComponent extends Component {
     return this.normalized.filter((option) => !option.disabled);
   }
 
-  // Accepts `id` or `value` as the key so it drops into either existing
-  // convention (nu-tabs uses `id`, nu-dropdown uses `value`).
+  // Accepts `id` or `value` as the key so it drops into either existing convention.
   get normalized() {
     return (this.args.options || []).map((option) => ({
       ...option,
@@ -99,8 +97,7 @@ export default class NuSegmentedComponent extends Component {
 
     event.preventDefault();
 
-    // In multiple mode nothing is "current", so arrows walk from the focused
-    // segment rather than from the selection.
+    // Multiple mode has no "current": arrows walk from the focused segment.
     const focused = this.rootElement?.querySelector(
       '.nu-segmented__item:focus',
     );
@@ -122,8 +119,7 @@ export default class NuSegmentedComponent extends Component {
     }
 
     const next = enabled[nextIndex];
-    // Single-select moves the value with focus (the standard radio-group
-    // behaviour); multi-select only moves focus, so Space can toggle.
+    // Single-select moves the value with focus; multi-select only moves focus, so Space can toggle.
     if (!this.multiple) {
       this.select(next);
     }

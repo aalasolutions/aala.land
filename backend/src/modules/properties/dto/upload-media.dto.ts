@@ -4,9 +4,7 @@ import { ApiProperty } from '@nestjs/swagger';
 import { MediaType } from '../entities/property-media.entity';
 
 export class UploadMediaDto {
-  /**
-   * Maps to PropertyMedia.unitId (DB column: unit_id).
-   */
+  /** Maps to PropertyMedia.unitId (DB column: unit_id). */
   @ApiProperty({
     description: 'Property UUID this photo belongs to',
     required: false,

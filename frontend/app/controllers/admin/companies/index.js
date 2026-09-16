@@ -71,8 +71,7 @@ export default class AdminCompaniesIndexController extends Controller {
 
   @action
   openCompany(id, event) {
-    // The company name is a real LinkTo (keyboard path); let it own its own
-    // click so the row handler does not fire the same transition twice.
+    // LinkTo owns its own click so the row handler doesn't fire the same transition twice.
     if (event?.target?.closest('a')) return;
     this.router.transitionTo('admin.companies.company', id);
   }

@@ -1,10 +1,7 @@
 import Route from '@ember/routing/route';
 import { service } from '@ember/service';
 
-/**
- * MRR by marketer code (design section 9). The report returns companyIds only,
- * so we also load the companies list to resolve names for the row expand.
- */
+/** Report returns companyIds only; loads companies list to resolve names for row expand. */
 export default class AdminMarketersRoute extends Route {
   @service auth;
 
@@ -19,11 +16,7 @@ export default class AdminMarketersRoute extends Route {
     };
   }
 
-  /**
-   * Name map for the row expand. Pages through the companies list until
-   * exhausted (capped at 10 pages / 2000 companies) so the expand never
-   * shows raw UUIDs once the fleet outgrows one page.
-   */
+  /** Name map for row expand; pages companies list (capped 2000) to avoid raw UUIDs. */
   async loadCompanyNames() {
     const names = {};
     const limit = 200;

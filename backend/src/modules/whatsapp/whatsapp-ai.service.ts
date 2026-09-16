@@ -46,8 +46,7 @@ interface PendingChat {
   deadlineAt: number;
 }
 
-// NOTE: Single-instance only — all Maps below are process-local and not shared across replicas.
-// If horizontal scaling is needed, move histories/humanReplyAt to the shared Redis store.
+// Single-instance only: Maps below are process-local, not shared across replicas
 @Injectable()
 export class WhatsappAiService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(WhatsappAiService.name);
@@ -56,11 +55,7 @@ export class WhatsappAiService implements OnModuleInit, OnModuleDestroy {
   private pendingByChat = new Map<string, PendingChat>();
   private humanReplyAt = new Map<string, number>();
   private lastActivityAt = new Map<string, number>();
-  // Serializes AI turns per chat (keyed by `${userId}:${chatId}`). Each turn chains
-  // after the previous one for the same key, so only ONE processMessage runs at a time
-  // per chat. This prevents two concurrent turns from interleaving push/pop/splice on the
-  // shared history array or double-charging a credit when a follow-up message
-  // arrives mid-turn (after the pending entry was already flushed).
+  // Serializes AI turns per chat: prevents interleaving history or double-charging a credit
   private chatLocks = new Map<string, Promise<void>>();
   private readonly AI_STATE_TTL_MS = 24 * 60 * 60 * 1000;
   private sweepInterval: ReturnType<typeof setInterval> | null = null;
@@ -214,7 +209,7 @@ export class WhatsappAiService implements OnModuleInit, OnModuleDestroy {
       const enabled = await this.repo.loadAiEnabled(companyId);
       if (enabled !== null) this.enabledByUser.set(userId, enabled);
     } catch {
-      /* non-fatal — env default applies */
+      /* non-fatal: env default applies */
     }
   }
 
@@ -243,8 +238,7 @@ export class WhatsappAiService implements OnModuleInit, OnModuleDestroy {
     this.enabledByUser.delete(userId);
   }
 
-  // Called by whatsapp.service when the human operator manually sends a message.
-  // Cancels any pending debounced AI response for that chat and starts a silence window.
+  // Called on a manual operator send; cancels any pending debounced AI response
   recordHumanReply(userId: string, chatId: string): void {
     this.humanReplyAt.set(`${userId}:${chatId}`, Date.now());
     this.lastActivityAt.set(`${userId}:${chatId}`, Date.now());
@@ -296,8 +290,7 @@ export class WhatsappAiService implements OnModuleInit, OnModuleDestroy {
         existing.messageIds.push(evt.id);
       }
       clearTimeout(existing.timer);
-      // Deadline caps the extension: messaging faster than debounceMs would
-      // otherwise restart the countdown forever and the turn would never run.
+      // Caps the extension so rapid messaging can't restart the countdown forever
       const remaining = existing.deadlineAt - Date.now();
       if (remaining <= 0) {
         void this.flushPending(pendingKey);
@@ -344,9 +337,7 @@ export class WhatsappAiService implements OnModuleInit, OnModuleDestroy {
     );
   }
 
-  // Runs `task` after any in-flight turn for the same chat key has settled, so turns for
-  // one chat never overlap. The chain link is stored back in `chatLocks`; the map entry is
-  // cleaned up once this link is the tail (nothing else queued behind it).
+  // Runs after the in-flight turn for this chat settles; chain link cleaned up once it's the tail
   private runSerializedPerChat(
     key: string,
     task: () => Promise<void>,
@@ -372,10 +363,7 @@ export class WhatsappAiService implements OnModuleInit, OnModuleDestroy {
     return Date.now() - lastReply < silenceMs;
   }
 
-  // A human reply that landed AFTER this AI turn started reading the chat means the
-  // operator has taken over mid-stream. The initial isHumanSilenceActive() check at the
-  // top of processMessage happens before several seconds of LLM awaits, so we must
-  // re-check immediately before each send() and abort if the human jumped in.
+  // The initial silence check happens before seconds of LLM awaits; re-check before each send
   private humanTookOverSince(
     userId: string,
     chatId: string,
@@ -401,8 +389,7 @@ export class WhatsappAiService implements OnModuleInit, OnModuleDestroy {
 
     const { cleaned, needsDirectContact } = sanitizeInput(text);
     if (needsDirectContact) {
-      // Same mid-turn human-takeover guard the other send paths use: if the operator
-      // jumped in after this turn started, do not send the canned direct-contact reply.
+      // Same takeover guard other send paths use: skip if the operator jumped in mid-turn
       if (this.humanTookOverSince(userId, chatId, flushStartedAt)) return;
       await send(chatId, DIRECT_CONTACT_RESPONSE);
       return;
@@ -422,11 +409,7 @@ export class WhatsappAiService implements OnModuleInit, OnModuleDestroy {
       this.histories.set(histKey, history);
     }
 
-    // Index-safe recovery baseline: the number of messages present BEFORE this turn
-    // appended anything. On any early-return or error we truncate back to exactly this
-    // length, removing only what this turn added — never the "last N" (which a concurrent
-    // turn could have contributed). Serialization already prevents overlap, but this makes
-    // the recovery correct even if the assumption is ever violated.
+    // Recovery baseline: truncate to pre-turn length on error, not an assumed entry count
     const historyLenBefore = history.length;
 
     let conversationId: string | null = null;
@@ -467,8 +450,7 @@ export class WhatsappAiService implements OnModuleInit, OnModuleDestroy {
         conversationId = result.conversationId;
         creditCharged = result.charged;
       } catch (err) {
-        // Fail closed. The transaction rolled back so nothing was charged, and running
-        // the turn anyway would serve unmetered AI for as long as the fault lasts.
+        // Fails closed: nothing was charged, running the turn anyway serves unmetered AI
         this.logger.error(
           'Credit check failed, refusing the AI turn',
           err instanceof Error ? err.message : err,
@@ -576,8 +558,7 @@ export class WhatsappAiService implements OnModuleInit, OnModuleDestroy {
       await this.recordDelivery(companyId, conversationId);
       this.trimHistory(userId, chatId, history);
     } catch (err) {
-      // Index-safe rollback: truncate to the captured baseline so only what this turn
-      // appended is removed, rather than assuming it is the last -2 entries.
+      // Truncates to the captured baseline rather than assuming the last -2 entries
       this.rollbackTurn(history, historyLenBefore);
       const cause = (err as any)?.cause;
       const causeStr =
@@ -595,8 +576,7 @@ export class WhatsappAiService implements OnModuleInit, OnModuleDestroy {
     if (history.length > lenBefore) history.length = lenBefore;
   }
 
-  // Rebuilds history after a restart or the 24h sweep. fromMe maps to `assistant` for
-  // human-agent messages too, so the AI inherits what an agent promised.
+  // Rebuilds history after restart or sweep; human-agent fromMe also maps to assistant
   private async seedHistoryFromDb(
     companyId: string,
     userId: string,
@@ -709,8 +689,7 @@ export class WhatsappAiService implements OnModuleInit, OnModuleDestroy {
 
     const timeout = parseInt(process.env.AI_REQUEST_TIMEOUT_MS ?? '300000', 10);
     const maxRetries = parseInt(process.env.AI_MAX_RETRIES ?? '2', 10);
-    // Per-attempt timeouts alone let one turn hold a spent credit and the chat lock for
-    // retries x timeout, so cap the whole call instead.
+    // Caps the whole call; per-attempt timeouts alone let retries x timeout hold the lock
     const budgetMs = parseInt(process.env.AI_TOTAL_BUDGET_MS ?? '120000', 10);
     const deadline = Date.now() + budgetMs;
     const TRANSIENT_CODES = new Set([
@@ -837,8 +816,7 @@ export class WhatsappAiService implements OnModuleInit, OnModuleDestroy {
         }
       }
     } finally {
-      // cancel(), not just releaseLock(): after `break outer` the body is not at EOF
-      // and an undrained body pins its undici socket until GC.
+      // cancel(), not releaseLock(): body is not at EOF, an undrained body pins the socket
       await reader.cancel().catch(() => undefined);
       reader.releaseLock();
     }

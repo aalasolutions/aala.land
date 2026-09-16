@@ -182,8 +182,7 @@ export class CommissionsService {
       this.assertPatchTransition(commission.status, dto.status!);
     }
 
-    // Only persist the columns this DTO can change, so a concurrent state
-    // transition (approve/pay) is not clobbered by a stale whole-entity save.
+    // Persist only DTO-changed columns so a concurrent approve/pay transition isn't clobbered.
     const patch: QueryDeepPartialEntity<Commission> = {};
     if (dto.status !== undefined) patch.status = dto.status;
     if (dto.notes !== undefined) patch.notes = dto.notes;
@@ -268,8 +267,7 @@ export class CommissionsService {
 
     await this.dataSource.transaction(async (manager) => {
       const repo = manager.getRepository(Commission);
-      // Guarded conditional transition: only flips APPROVED -> PAID atomically,
-      // stamping paidAt in the same statement so amount edits cannot be clobbered.
+      // Guarded conditional transition: flips APPROVED to PAID and stamps paidAt in one statement.
       const result = await repo.update(
         { id, companyId, status: CommissionStatus.APPROVED, ...regionWhere },
         { status: CommissionStatus.PAID, paidAt: new Date() },
@@ -349,8 +347,7 @@ export class CommissionsService {
     });
   }
 
-  // PATCH only cancels or un-approves. Approve and pay have their own guarded
-  // routes, and PAID is final.
+  // PATCH only cancels or un-approves; approve and pay have their own guarded routes.
   private assertPatchTransition(
     from: CommissionStatus,
     to: CommissionStatus,

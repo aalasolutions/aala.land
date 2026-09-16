@@ -180,9 +180,7 @@ export class UsersController {
     @Query('companyId', new ParseUUIDPipe({ optional: true }))
     companyId?: string,
   ) {
-    // COMPANY_ADMIN/ADMIN are always scoped to their own company; only SUPER_ADMIN
-    // may target another company via the query param. A non-super-admin without a
-    // company context must be rejected, never fall through to an all-company list.
+    // Non-super-admin without a company context must be rejected, never list all companies
     if (req.user.role !== Role.SUPER_ADMIN && !req.user.companyId) {
       throw new BadRequestException('This endpoint requires a company context');
     }
@@ -334,12 +332,7 @@ export class UsersController {
       }));
   }
 
-  /**
-   * Strip the per-record ids from a reassignment report before returning it to the
-   * client. The ids can be thousands of UUIDs on a large tenant and the UI only needs
-   * the counts; the full report (with ids) still reaches the OwnershipTransferRecorder
-   * server-side inside the removal transaction.
-   */
+  /** UI only needs counts; the full report with ids stays server-side for the recorder. */
   private toClientReport(report: ReassignmentReport): ClientReassignmentReport {
     return {
       fromUserId: report.fromUserId,

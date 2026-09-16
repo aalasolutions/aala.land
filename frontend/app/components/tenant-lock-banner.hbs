@@ -1,6 +1,4 @@
-{{! Tenant write-lock / grace banner (design section 8.2, ruling 9).
-Locked: writes blocked server-side, reads and export stay. Lifted: grace
-until the lift date, then the lock re-applies automatically. }}
+{{! Lock blocks writes server-side; lifted grants expire at the lift date and it re-locks. }}
 {{#if @lockState.locked}}
   <div
     class="alert alert-error tenant-lock-banner"

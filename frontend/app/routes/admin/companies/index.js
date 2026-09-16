@@ -1,12 +1,7 @@
 import Route from '@ember/routing/route';
 import { service } from '@ember/service';
 
-/**
- * Operator console list (design section 3). The old tier+expiry edit modal is
- * absorbed by the company detail page; this page is now the console list.
- * Server-side search + pagination; rail/status are client refinements on the
- * loaded page.
- */
+/** Server-side search/pagination; rail/status filters are client-side on the loaded page. */
 export default class AdminCompaniesIndexRoute extends Route {
   @service auth;
 

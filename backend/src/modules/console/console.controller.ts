@@ -43,10 +43,7 @@ import { ApplyRemedyDto } from './dto/apply-remedy.dto';
 
 const MAX_RECEIPT_BYTES = 10 * 1024 * 1024;
 
-/**
- * SUPER_ADMIN operator console (S2702 ratified design). Every route is an
- * owner intent; company-admin self-serve is never duplicated here (ruling 6).
- */
+// Every route here is an owner intent; never duplicates company-admin self-serve.
 @ApiTags('Console')
 @ApiBearerAuth()
 @Controller('console')
@@ -59,16 +56,13 @@ export class ConsoleController {
     return { userId: req.user.userId, email: req.user.email };
   }
 
-  // ---- Overview -----------------------------------------------------------
-
   @Get('overview')
   @ApiOperation({ summary: 'Scoreboard: customers, per-currency MRR, tiles' })
   getOverview() {
     return this.consoleService.getOverview();
   }
 
-  // ---- Payments rollup (declared before parameterized payment routes) -----
-
+  // Declared before the parameterized payment routes so ':id' doesn't swallow this path.
   @Get('payments/upcoming')
   @ApiOperation({
     summary: 'Manual payments due within the lookahead window; overdue first',
@@ -93,8 +87,6 @@ export class ConsoleController {
     res.setHeader('X-Content-Type-Options', 'nosniff');
     stream.pipe(res);
   }
-
-  // ---- Companies ----------------------------------------------------------
 
   @Get('companies')
   @ApiOperation({
@@ -132,8 +124,6 @@ export class ConsoleController {
     return this.consoleService.getCompanyHistory(companyId, page, limit);
   }
 
-  // ---- Deals --------------------------------------------------------------
-
   @Post('companies/:companyId/deal')
   @ApiOperation({ summary: 'Give this company a deal' })
   @ApiBody({ type: GrantDealDto })
@@ -166,8 +156,6 @@ export class ConsoleController {
     return this.consoleService.endDeal(companyId, this.actor(req));
   }
 
-  // ---- Lock lift ----------------------------------------------------------
-
   @Post('companies/:companyId/lift')
   @ApiOperation({
     summary: 'Lift the write lock until a date (let them breathe)',
@@ -192,8 +180,6 @@ export class ConsoleController {
   ) {
     return this.consoleService.endLift(companyId, this.actor(req));
   }
-
-  // ---- Manual payments ----------------------------------------------------
 
   @Get('companies/:companyId/payments')
   @ApiOperation({ summary: 'Manual payment ledger for a company' })
@@ -236,8 +222,6 @@ export class ConsoleController {
     );
   }
 
-  // ---- Make it right ------------------------------------------------------
-
   @Post('remedies')
   @ApiOperation({
     summary:
@@ -251,8 +235,6 @@ export class ConsoleController {
     return this.consoleService.applyRemedy(dto, this.actor(req));
   }
 
-  // ---- System health ------------------------------------------------------
-
   @Get('system/price-health')
   @ApiOperation({
     summary:
@@ -261,8 +243,6 @@ export class ConsoleController {
   getPriceHealth() {
     return this.consoleService.getPriceHealth();
   }
-
-  // ---- Marketers ----------------------------------------------------------
 
   @Get('reports/marketers')
   @ApiOperation({

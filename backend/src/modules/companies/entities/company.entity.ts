@@ -12,9 +12,7 @@ export enum SubscriptionTier {
   ENTERPRISE = 'ENTERPRISE',
 }
 
-// Caps live on Free only. 999 is the frozen finite "uncapped" sentinel (contract
-// section 11): the webhook cap-column sync writes these values into int NOT NULL
-// columns, so no value here may be Infinity.
+// 999 is a finite sentinel, not Infinity: webhook sync writes it into int NOT NULL columns.
 export const TIER_LIMITS: Record<
   SubscriptionTier,
   {
@@ -40,14 +38,14 @@ export const TIER_LIMITS: Record<
   },
 };
 
-export const FREE_STORAGE_BYTES = 2 * 1024 * 1024 * 1024; // 2 GB flat (FREE tier)
-export const BYTES_PER_SEAT = 5 * 1024 * 1024 * 1024; // 5 GB per purchased seat (PRO)
-export const ENTERPRISE_BYTES_PER_SEAT = 10 * 1024 * 1024 * 1024; // 10 GB per purchased seat (ENTERPRISE)
+export const FREE_STORAGE_BYTES = 2 * 1024 * 1024 * 1024;
+export const BYTES_PER_SEAT = 5 * 1024 * 1024 * 1024;
+export const ENTERPRISE_BYTES_PER_SEAT = 10 * 1024 * 1024 * 1024;
 
 // 1 AI credit = one 24-hour conversation window between one agent and one lead.
-export const FREE_AI_CREDITS = 50; // flat per period (FREE tier)
-export const AI_CREDITS_PER_SEAT = 200; // per purchased seat (PRO)
-export const ENTERPRISE_AI_CREDITS_PER_SEAT = 500; // per purchased seat (ENTERPRISE)
+export const FREE_AI_CREDITS = 50;
+export const AI_CREDITS_PER_SEAT = 200;
+export const ENTERPRISE_AI_CREDITS_PER_SEAT = 500;
 export const AI_CONVERSATION_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 @Entity('companies')
@@ -145,11 +143,7 @@ export class Company {
   })
   billingStatus: string | null;
 
-  /**
-   * Currency the subscription is billed in (lowercase ISO: usd/aed/sar).
-   * Webhook-pinned from Stripe; null until subscribed (reads fall back to the
-   * region default). Decoupled from defaultRegionCode.
-   */
+  // Webhook-pinned from Stripe, null until subscribed; decoupled from defaultRegionCode by design.
   @Column({
     name: 'billing_currency',
     type: 'varchar',
@@ -161,11 +155,7 @@ export class Company {
   @Column({ name: 'billing_meta', type: 'jsonb', nullable: true })
   billingMeta: Record<string, unknown> | null;
 
-  /**
-   * Marketer/referral attribution code. FIRST-TOUCH IMMUTABLE: written only
-   * by the two signup create paths (register, google-signup), absent from
-   * every update DTO. Payouts are manual (requirement 2.5).
-   */
+  // First-touch immutable: set only at signup, never present in the update DTO.
   @Column({
     name: 'marketer_code',
     type: 'varchar',
@@ -174,13 +164,7 @@ export class Company {
   })
   marketerCode: string | null;
 
-  /**
-   * Stripe event.created timestamp of the last seat/subscription sync applied
-   * to this company. The webhook uses it as a recency guard so an out-of-order
-   * or retried event cannot overwrite purchasedSeats/status with a stale value
-   * (race audit 2026-07-07, P1c). Written only by the webhook, alongside the
-   * other billing_* columns it owns.
-   */
+  // Recency guard: stops an out-of-order/retried webhook from overwriting purchasedSeats/status.
   @Column({
     name: 'billing_last_event_at',
     type: 'timestamptz',
@@ -188,10 +172,7 @@ export class Company {
   })
   billingLastEventAt: Date | null;
 
-  /**
-   * When the company was last emailed about hitting storage quota. Claimed
-   * atomically to dedup the quota-exceeded email to at most once per 24h.
-   */
+  // Claimed atomically to dedup the quota-exceeded email to at most once per 24h.
   @Column({
     name: 'storage_quota_notified_at',
     type: 'timestamptz',

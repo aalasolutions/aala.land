@@ -10,12 +10,7 @@ import { EmailPreferencesController } from './email-preferences.controller';
 import { BillingEmailListener } from './billing-email.listener';
 import { UpcomingInvoiceCron } from './upcoming-invoice.cron';
 
-/**
- * System (account + billing) email. Provides the branded sender and the
- * preference center, and registers the billing-email listener on the shared
- * billing dispatcher. Imports BillingModule for the dispatcher; BillingModule
- * must never import this one (would be circular).
- */
+// Imports BillingModule for the shared dispatcher; BillingModule must never import this back.
 @Module({
   imports: [TypeOrmModule.forFeature([User, Company]), BillingModule],
   controllers: [EmailPreferencesController],

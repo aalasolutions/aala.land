@@ -4,7 +4,6 @@
   <div
     class="app-shell {{if this.desktopCollapsed 'is-collapsed'}}"
   >
-    {{! Sidebar }}
     <aside
       class="nu-sidebar m-plain
         {{if this.desktopCollapsed 'is-collapsed'}}
@@ -22,7 +21,6 @@
       </div>
 
       <nav data-test-sidebar-nav class="nu-sidebar__nav">
-        {{! Dashboard (direct link) }}
         <LinkTo
           @route="dashboard"
           class="nu-sidebar__link"
@@ -34,7 +32,6 @@
           <span class="nu-sidebar__link-label">Dashboard</span>
         </LinkTo>
 
-        {{! Properties Group }}
         {{#if this.sidebarGroups.properties}}
           <div
             class="nu-sidebar__group
@@ -88,7 +85,6 @@
           </div>
         {{/if}}
 
-        {{! Leads / CRM Group }}
         {{#if this.sidebarGroups.crm}}
           <div
             class="nu-sidebar__group
@@ -136,7 +132,6 @@
           </div>
         {{/if}}
 
-        {{! Documents (direct link) }}
         {{#if this.sidebarGroups.documents}}
           <LinkTo
             @route="documents"
@@ -150,7 +145,6 @@
           </LinkTo>
         {{/if}}
 
-        {{! Finance Group }}
         {{#if this.sidebarGroups.finance}}
           <div
             class="nu-sidebar__group
@@ -211,7 +205,6 @@
           </div>
         {{/if}}
 
-        {{! WhatsApp (direct link) }}
         {{#if this.sidebarGroups.outreach}}
           <LinkTo
             @route="whatsapp"
@@ -225,7 +218,6 @@
           </LinkTo>
         {{/if}}
 
-        {{! Operations Group }}
         {{#if this.sidebarGroups.operations}}
           <div
             class="nu-sidebar__group
@@ -279,7 +271,6 @@
           </div>
         {{/if}}
 
-        {{! Reports (direct link) }}
         {{#if this.sidebarGroups.reports}}
           <LinkTo
             @route="reports"
@@ -293,7 +284,6 @@
           </LinkTo>
         {{/if}}
 
-        {{! Team (direct link for Company Admin and Admin) }}
         {{#if this.sidebarGroups.team}}
           {{#unless this.isSuperAdmin}}
             <LinkTo
@@ -309,7 +299,6 @@
           {{/unless}}
         {{/if}}
 
-        {{! History (direct link for company roles) }}
         {{#if this.sidebarGroups.history}}
           {{#unless this.isSuperAdmin}}
             <LinkTo
@@ -325,7 +314,6 @@
           {{/unless}}
         {{/if}}
 
-        {{! Admin Group (Super Admin only) }}
         {{#if this.sidebarGroups.admin}}
           <div
             class="nu-sidebar__group
@@ -422,7 +410,6 @@
 
       <div class="app-shell__spacer"></div>
 
-      {{! Collapse toggle }}
       <button
         type="button"
         class="app-shell__collapse"
@@ -449,7 +436,6 @@
       ></button>
     {{/if}}
 
-    {{! Main Content }}
     <main class="app-shell__main">
       {{#if this.session.isImpersonating}}
         <div class="impersonation-banner" data-test-impersonation-banner>
@@ -469,7 +455,6 @@
         </div>
       {{/if}}
       <TenantLockBanner @lockState={{this.session.lockState}} />
-      {{! Top Bar }}
       <header class="nu-topbar m-sticky m-plain">
         <button
           type="button"
@@ -671,7 +656,6 @@
         </div>
       </header>
 
-      {{! Route Outlet }}
       <section class="content-area">
         {{outlet}}
       </section>

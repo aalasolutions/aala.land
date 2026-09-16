@@ -2,7 +2,6 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
 
 export class AddLeadPipelineAnalytics1773500000001 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
-    // Add stage_entered_at column
     const hasStageEnteredAt = await queryRunner.query(`
       SELECT column_name FROM information_schema.columns
       WHERE table_name = 'leads' AND column_name = 'stage_entered_at'
@@ -13,7 +12,6 @@ export class AddLeadPipelineAnalytics1773500000001 implements MigrationInterface
       `);
     }
 
-    // Add transfer_reason column
     const hasTransferReason = await queryRunner.query(`
       SELECT column_name FROM information_schema.columns
       WHERE table_name = 'leads' AND column_name = 'transfer_reason'
@@ -24,7 +22,6 @@ export class AddLeadPipelineAnalytics1773500000001 implements MigrationInterface
       `);
     }
 
-    // Add previous_agent column
     const hasPreviousAgent = await queryRunner.query(`
       SELECT column_name FROM information_schema.columns
       WHERE table_name = 'leads' AND column_name = 'previous_agent'

@@ -4,7 +4,6 @@ export class CreateLocationsModule1774000000000 implements MigrationInterface {
   name = 'CreateLocationsModule1774000000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
-    // === Create cities table ===
     await queryRunner.query(`
             CREATE TABLE "cities" (
                 "id" uuid NOT NULL DEFAULT uuid_generate_v4(),
@@ -17,12 +16,10 @@ export class CreateLocationsModule1774000000000 implements MigrationInterface {
             )
         `);
 
-    // Unique index: one city name per region
     await queryRunner.query(`
             CREATE UNIQUE INDEX "IDX_cities_name_region" ON "cities" ("name", "region_code")
         `);
 
-    // === Create localities table ===
     await queryRunner.query(`
             CREATE TABLE "localities" (
                 "id" uuid NOT NULL DEFAULT uuid_generate_v4(),
@@ -35,20 +32,16 @@ export class CreateLocationsModule1774000000000 implements MigrationInterface {
             )
         `);
 
-    // Unique index: one locality name per city
     await queryRunner.query(`
             CREATE UNIQUE INDEX "IDX_localities_name_city" ON "localities" ("name", "city_id")
         `);
 
-    // === Alter buildings: area_id → locality_id ===
-
-    // Check if area_id column exists (it may have been renamed already)
+    // Guards against re-running on a database where area_id was already renamed.
     const hasAreaId = await queryRunner.query(
       `SELECT column_name FROM information_schema.columns WHERE table_name = 'buildings' AND column_name = 'area_id'`,
     );
 
     if (hasAreaId.length) {
-      // Drop the old FK constraint on area_id specifically
       const fkConstraints = await queryRunner.query(
         `SELECT con.conname AS constraint_name
                  FROM pg_constraint con
@@ -63,13 +56,11 @@ export class CreateLocationsModule1774000000000 implements MigrationInterface {
         );
       }
 
-      // Rename column
       await queryRunner.query(
         `ALTER TABLE "buildings" RENAME COLUMN "area_id" TO "locality_id"`,
       );
     }
 
-    // Add FK to localities (if not already present)
     const existingFk = await queryRunner.query(
       `SELECT constraint_name FROM information_schema.table_constraints
              WHERE table_name = 'buildings' AND constraint_type = 'FOREIGN KEY'
@@ -84,7 +75,6 @@ export class CreateLocationsModule1774000000000 implements MigrationInterface {
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    // Revert buildings FK
     await queryRunner.query(
       `ALTER TABLE "buildings" DROP CONSTRAINT IF EXISTS "FK_buildings_locality"`,
     );
@@ -92,17 +82,14 @@ export class CreateLocationsModule1774000000000 implements MigrationInterface {
       `ALTER TABLE "buildings" RENAME COLUMN "locality_id" TO "area_id"`,
     );
 
-    // Add back FK to property_areas
     await queryRunner.query(`
             ALTER TABLE "buildings"
             ADD CONSTRAINT "FK_buildings_area" FOREIGN KEY ("area_id") REFERENCES "property_areas"("id") ON DELETE NO ACTION ON UPDATE NO ACTION
         `);
 
-    // Drop localities
     await queryRunner.query(`DROP INDEX IF EXISTS "IDX_localities_name_city"`);
     await queryRunner.query(`DROP TABLE "localities"`);
 
-    // Drop cities
     await queryRunner.query(`DROP INDEX IF EXISTS "IDX_cities_name_region"`);
     await queryRunner.query(`DROP TABLE "cities"`);
   }

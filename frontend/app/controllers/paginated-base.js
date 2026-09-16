@@ -11,8 +11,7 @@ export default class PaginatedController extends Controller {
     return Math.max(1, Math.ceil(this.model.total / this.limit));
   }
 
-  // Accepts either a raw change event (legacy Ui::Pagination) or a number
-  // (Nuvo::Pagination), so pages can move to the kit component one at a time.
+  // Accepts a raw event (legacy Ui::Pagination) or a number (Nuvo::Pagination) during migration.
   @action setLimit(input) {
     const raw = typeof input === 'object' && input !== null
       ? input.target?.value

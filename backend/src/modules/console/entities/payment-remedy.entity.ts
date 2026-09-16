@@ -10,13 +10,7 @@ export type RemedyKind = 'discount_next_bill' | 'refund';
 export type RemedyScope = 'partial' | 'full';
 export type RemedySource = 'card' | 'manual';
 
-/**
- * "Make it right" record (requirement 2.3): always anchored to one real
- * payment. Card rail: discount = provider customer-balance credit, refund =
- * provider refund (both inside stripe-billing.provider.ts). Manual rail: a
- * recorded obligation the operator settles outside the system. The 24-48h SLA
- * is process, not automation (ruling 10): status stays 'initiated'.
- */
+// Manual rail stays 'initiated': settlement is a process, not an automated status transition.
 @Entity('payment_remedies')
 export class PaymentRemedy {
   @PrimaryGeneratedColumn('uuid')

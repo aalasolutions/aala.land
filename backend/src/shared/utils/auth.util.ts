@@ -9,13 +9,7 @@ export function requireCompanyId(user: JwtUserPayload): string {
   return user.companyId;
 }
 
-/**
- * Resolve the company scope for a request. SUPER_ADMIN operates across all companies
- * (returns undefined); every other role MUST carry a company context, so a missing
- * companyId is rejected here rather than silently falling through to an unscoped,
- * cross-company operation. Use this anywhere the SUPER_ADMIN-is-unscoped rule applies;
- * use requireCompanyId when the operation is company-scoped for every role.
- */
+/** SUPER_ADMIN resolves unscoped; every other role without a companyId is rejected here. */
 export function scopedCompanyId(user: JwtUserPayload): string | undefined {
   if (user.role === Role.SUPER_ADMIN) return undefined;
   if (!user.companyId) {

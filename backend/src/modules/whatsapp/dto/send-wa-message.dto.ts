@@ -1,4 +1,3 @@
-// backend/src/modules/whatsapp/dto/send-wa-message.dto.ts
 import {
   IsString,
   IsNotEmpty,

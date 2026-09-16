@@ -1,17 +1,7 @@
-// WhatsApp. A full-bleed chat shell: the only page that fills the content area
-// edge to edge instead of scrolling inside it.
-//
-// Layout intent taken from the pre-kit backup in app.new.scss, NOT ported
-// verbatim. Seven of the ten tokens that block used no longer exist
-// (--border-light, --border-medium, --bg-muted, --text-primary,
-// --text-secondary, --color-primary, --color-info), so a literal port would
-// have shipped an unstyled page a second time. Everything the kit already
-// solves is a component now: status dot, tags, buttons, textarea, empty states.
+// The only page that fills the content area edge to edge, instead of scrolling inside it.
 @use "../uikit/common/var" as *;
 
-// The shell owns the viewport budget, so the content area must stop padding and
-// stop scrolling. `:has()` outranks the bare `.content-area` rule on its own, so
-// no `!important` is needed here.
+// `:has()` outranks the bare `.content-area` rule, so no `!important` is needed here.
 .content-area:has(.wa-shell) {
   padding: 0;
   overflow: hidden;
@@ -24,8 +14,7 @@
   min-block-size: 0;
 }
 
-// Header sits outside the scroll panes, so it supplies its own gutter now that
-// the content area has none.
+// Outside the scroll panes, so header supplies its own gutter now content-area has none.
 .wa-shell__header {
   flex-shrink: 0;
   padding: nu-space(4) nu-space(6);
@@ -39,8 +28,6 @@
   overflow: hidden;
   background: var(--bg-base);
 }
-
-// ---- sidebar ----
 
 .wa-sidebar {
   display: flex;
@@ -85,8 +72,6 @@
   color: var(--text-muted);
 }
 
-// ---- pairing ----
-
 .wa-qr-pane {
   display: flex;
   flex: 1;
@@ -105,8 +90,7 @@
   color: var(--text-color);
 }
 
-// A QR must stay high-contrast dark-on-white to remain scannable, so this panel
-// is deliberately NOT themed. Do not swap --white for a surface token.
+// QR must stay dark-on-white to remain scannable; do not swap --white for a surface token.
 .wa-qr-frame {
   display: flex;
   align-items: center;
@@ -137,8 +121,6 @@
     line-height: 1.5;
   }
 }
-
-// ---- chat list ----
 
 .wa-chat-list {
   flex: 1;
@@ -192,8 +174,6 @@
   font-size: nu-font-size(xs);
   color: var(--text-muted);
 }
-
-// ---- conversation ----
 
 .wa-chat-area {
   display: flex;
@@ -263,8 +243,7 @@
     color: var(--text-inverted);
   }
 
-  // An AI reply is still outgoing, but must be distinguishable at a glance from
-  // something a human on the team actually typed.
+  // AI reply is still outgoing, but must look distinguishable from a human team reply.
   .m-outgoing.m-ai & {
     background: var(--info);
     color: var(--text-inverted);
@@ -323,8 +302,6 @@
   }
 }
 
-// ---- composer ----
-
 .wa-input-area {
   flex-shrink: 0;
   padding: nu-space(3) nu-space(4);
@@ -338,8 +315,7 @@
   gap: nu-space(2);
 }
 
-// The kit textarea defaults to a form-field block size; the composer wants a
-// single line that grows to a few before scrolling.
+// Kit textarea defaults to form-field size; composer needs one line that grows to a few.
 .wa-input-row .nu-textarea {
   flex: 1;
   min-block-size: 2.5rem;

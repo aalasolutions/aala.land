@@ -17,9 +17,7 @@ export default class RegionService extends Service {
     return this.activeRegion?.code ?? null;
   }
 
-  // Dropdown options tagged with a country `group`, sorted country then region
-  // so Nuvo::Dropdown renders one header per country. Matches the topbar
-  // switcher grouping in application.js `groupedRegions`.
+  // Sorted country then region to match the topbar switcher's per-country grouping.
   get regionOptions() {
     return this.regions
       .map((r) => ({

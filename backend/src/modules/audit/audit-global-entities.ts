@@ -1,5 +1,4 @@
-// Company-global entity types, never region-scoped. Billing is global and
-// admin-only.
+// Company-global entity types are never region-scoped; billing is admin-only.
 const GLOBAL_ENTITY_TYPES = new Set(['billing']);
 
 export function isGlobalEntityType(entityType: string): boolean {

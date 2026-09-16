@@ -37,7 +37,6 @@ export class CompaniesService {
   async create(dto: CreateCompanyDto): Promise<Company> {
     this.validateRegionCode(dto.defaultRegionCode);
 
-    // If activeRegions not provided, default to [defaultRegionCode]
     if (!dto.activeRegions) {
       dto.activeRegions = [dto.defaultRegionCode];
     } else {
@@ -160,12 +159,7 @@ export class CompaniesService {
     const company = await this.findOne(id);
 
     if (role === Role.SUPER_ADMIN) {
-      // No restrictions. NOTE: subscriptionTier is intentionally settable
-      // here without touching Stripe -- this is the SUPER_ADMIN comp /
-      // entitlement override (free or discounted tier grants), not a bug.
-      // It is the one deliberate exception to the billing single-writer
-      // rule (contract section 8); it can desync from a live Stripe
-      // subscription by design when used for a comp account.
+      // SUPER_ADMIN sets subscriptionTier directly for comp grants; may desync from Stripe.
     } else if (role === Role.COMPANY_ADMIN || role === Role.ADMIN) {
       const superAdminOnlyFields = [
         'isActive',
@@ -206,8 +200,7 @@ export class CompaniesService {
       this.validateRegionCode(dto.defaultRegionCode);
     }
 
-    // Enforce region limit — use stored company limit, but respect tier upgrade and explicit override.
-    // FREE caps to a single region (one state/emirate); paid tiers are effectively unlimited.
+    // FREE caps to one region; paid tiers are unlimited, but this request's override still applies.
     if (dto.activeRegions) {
       const storedMaxRegions =
         company.maxRegions ??
@@ -232,7 +225,6 @@ export class CompaniesService {
       }
     }
 
-    // Cross-validate: defaultRegionCode must be in activeRegions
     const finalActiveRegions = dto.activeRegions ?? company.activeRegions;
     const finalDefaultRegion =
       dto.defaultRegionCode ?? company.defaultRegionCode;
@@ -274,8 +266,7 @@ export class CompaniesService {
     return saved;
   }
 
-  // A dropped company region must also leave every user assigned to it,
-  // or the assignment keeps granting access.
+  // Dropped region must be stripped from every user, or stale assignment keeps granting access.
   private async pruneUserRegions(
     companyId: string,
     activeRegions: string[],
@@ -336,7 +327,7 @@ export class CompaniesService {
             slug: dto.slug,
             defaultRegionCode: dto.regionCode,
             activeRegions: [dto.regionCode],
-            // First-touch attribution; immutable after this write (requirement 2.5).
+            // First-touch attribution; immutable after this write.
             marketerCode: dto.marketerCode?.trim() || null,
           });
           const savedCompany = await companyRepo.save(company);

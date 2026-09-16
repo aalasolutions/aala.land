@@ -1,9 +1,6 @@
-// Properties detail. `_owners.scss` owns `.unit-card` / `.unit-number` /
-// `.units-grid` for a different tile; these names are deliberately distinct.
+// Names distinct from `_owners.scss`, which owns similar classes for a different tile.
 @use "../uikit/common/var" as *;
 @use "../uikit/mixins/bem" as *;
-
-// ---- units grid inside an asset card ----
 
 .grid-cols-3 {
   display: grid;
@@ -19,8 +16,7 @@
   }
 }
 
-// No kit component covers this compound tile (icon box + status/type tags +
-// amenities strip + actions), so it stays bespoke, built from card tokens.
+// No kit component covers this compound tile, so it stays bespoke, built from card tokens.
 .unit-card-premium {
   background-color: var(--bg-surface);
   border: 1px solid var(--border-base);

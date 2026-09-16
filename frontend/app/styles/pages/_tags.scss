@@ -1,11 +1,4 @@
-// Domain tag vocabulary. Each rule only reassigns `.nu-tag` variables, so a
-// domain tag is `<Nuvo::Tag>` plus one of these classes.
-//
-// Names carry a domain because values collide across enums: MAINTENANCE is a
-// property status, a cheque type, a document category and a transaction
-// category, and they must not share a colour.
-//
-// Values come from `app/constants.js`. Add there first, not here.
+// Domain prefix avoids enum collisions (e.g. MAINTENANCE); values come from app/constants.js.
 @use "sass:map";
 @use "../uikit/common/var" as *;
 
@@ -84,7 +77,7 @@ $tag-domains: (
     "cancelled": "neutral",
   ),
 
-  // PRIORITY_OPTIONS. Legacy rendered these through `status-`; not a status.
+  // PRIORITY_OPTIONS (not a status).
   "priority": (
     "low": "neutral",
     "medium": "info",
@@ -114,7 +107,7 @@ $tag-domains: (
     "other": "neutral",
   ),
 
-  // Cheque lifecycle. Not in constants.js; from migration 1772684930871.
+  // Cheque lifecycle; not in constants.js, tracked in a migration instead.
   "chequestate": (
     "pending": "warning",
     "deposited": "info",
@@ -236,7 +229,7 @@ $tag-domains: (
     "export": "primary",
   ),
 
-  // Derived in `controllers/admin/companies/company.js` -> `statusView`.
+  // Derived in `controllers/admin/companies/company.js`'s `statusView`.
   "account": (
     "locked": "danger",
     "lifted": "warning",

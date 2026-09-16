@@ -19,7 +19,7 @@ function deal(overrides: Partial<CustomDeal> = {}): CustomDeal {
     untilDate: new Date(Date.now() - DAY),
     whyNote: 'PK team',
     grantedBy: 'op-1',
-    grantedByEmail: 'aamir@aala.land',
+    grantedByEmail: 'operator@example.com',
     updatedBy: null,
     updatedByEmail: null,
     endedAt: null,

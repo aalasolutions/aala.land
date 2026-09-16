@@ -9,8 +9,7 @@ export default class NuTabsComponent extends Component {
 
   rootElement = null;
 
-  // Controlled when @activeTab is passed, uncontrolled otherwise - same
-  // pattern as NuDropdown's currentValue getter.
+  // Controlled when @activeTab is passed, uncontrolled otherwise.
   get currentTab() {
     return this.args.activeTab !== undefined
       ? this.args.activeTab

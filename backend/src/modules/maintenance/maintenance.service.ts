@@ -460,8 +460,7 @@ export class MaintenanceService {
     return qb.take(100).getMany();
   }
 
-  // A work order's region is its unit's, so a unit the caller cannot read must
-  // not be bound to one.
+  // A work order's region is its unit's, so a unit the caller cannot read must not be bound to one.
   private async validateUnitOwnership(
     unitId: string,
     companyId: string,

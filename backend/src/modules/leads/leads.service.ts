@@ -110,8 +110,7 @@ export class LeadsService {
       );
     }
 
-    // Resolved before the contact so a contact created here inherits the lead
-    // region.
+    // Resolved before the contact so a contact created here inherits the lead region.
     const regionCode = await resolveRegionCode(
       this.companyRepository,
       companyId,
@@ -149,7 +148,6 @@ export class LeadsService {
 
     const clientName = contactDisplayNameOr(contact);
 
-    // Broadcast update to all users in the company
     this.notificationsGateway.broadcastToCompany(companyId, 'leadUpdated', {
       id: saved.id,
       status: saved.status,
@@ -325,7 +323,6 @@ export class LeadsService {
 
     const clientName = contactDisplayNameOr(lead.contact);
 
-    // Broadcast update to all users in the company
     this.notificationsGateway.broadcastToCompany(companyId, 'leadUpdated', {
       id,
       status: lead.status,
@@ -344,7 +341,6 @@ export class LeadsService {
         }),
       );
 
-      // Notify assigned agent about status change (only if it's not the performer)
       if (lead.assignedTo && lead.assignedTo !== userId) {
         await this.notificationsService.create(companyId, {
           userId: lead.assignedTo,
@@ -382,7 +378,6 @@ export class LeadsService {
           regionCode: lead.regionCode,
         });
       } else if (assignmentChanged && !dto.assignedTo) {
-        // Notify admins about unassigned lead (only if not the performer)
         const admins = await this.usersService.findAdmins(companyId);
         for (const admin of admins) {
           if (admin.id !== userId) {
@@ -435,7 +430,6 @@ export class LeadsService {
 
     const clientName = contactDisplayNameOr(lead.contact);
 
-    // Broadcast update to all users in the company
     this.notificationsGateway.broadcastToCompany(companyId, 'leadUpdated', {
       id,
       status: lead.status,
@@ -492,7 +486,6 @@ export class LeadsService {
       return manager.getRepository(Lead).save(lead);
     });
 
-    // Broadcast update to all users in the company
     this.notificationsGateway.broadcastToCompany(companyId, 'leadUpdated', {
       id,
       status: updated.status,
@@ -685,8 +678,7 @@ export class LeadsService {
 
   private serializeLead(lead: Lead): LeadResponse {
     const { assignedAgent, ...leadWithoutAssignedAgent } = lead;
-    // The contact is a raw relation; attach displayName so a phone-only contact
-    // (e.g. a WhatsApp lead) renders instead of blanking.
+    // Contact is a raw relation; attach displayName so a phone-only contact renders, not blank.
     attachDisplayName(lead.contact);
     return {
       ...leadWithoutAssignedAgent,

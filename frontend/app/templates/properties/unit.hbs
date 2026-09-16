@@ -3,7 +3,6 @@
 }}
 
 <div data-test-unit-detail class="flex col gap-6">
-  {{! Breadcrumb }}
   <div data-test-breadcrumb class="flex x-center gap-2 text-sm text-muted">
     <LinkTo
       @route="properties"
@@ -53,9 +52,7 @@
       </Nuvo::Alert>
     {{/if}}
 
-    {{! Two column: Gallery + Info }}
     <div class="unit-detail-grid">
-      {{! Left: Photo gallery }}
       <div class="flex col gap-4">
         <Nuvo::Card class="flex col gap-3">
           <div class="flex between x-center">
@@ -115,7 +112,6 @@
             >{{format-currency @model.unit.price}}</p>
           {{/if}}
 
-          {{! Specs row }}
           <div class="flex gap-4 text-sm flex wrap" data-test-unit-specs>
             {{#if @model.unit.bedrooms}}
               <span class="flex x-center gap-1"><Ui::Ph @icon="bed" />
@@ -139,7 +135,6 @@
             {{/if}}
           </div>
 
-          {{! Status + Property Type badges }}
           <div class="flex gap-3 x-center" data-test-unit-badges>
             <Nuvo::Tag class="tag-unit-{{lowercase @model.unit.status}}">
               {{capitalize @model.unit.status}}
@@ -157,7 +152,6 @@
             {{/if}}
           </div>
 
-          {{! Owner }}
           {{#if @model.unit.owner}}
             <div class="flex x-center gap-2 text-sm" data-test-unit-owner>
               <Ui::Ph @icon="user" />
@@ -173,7 +167,6 @@
           {{/if}}
         </Nuvo::Card>
 
-        {{! Amenities card }}
         {{#if @model.unit.amenities.length}}
           <Nuvo::Card data-test-amenities-card>
             <h4
@@ -184,7 +177,6 @@
         {{/if}}
       </div>
 
-      {{! Right: Property info panel }}
 
       <Nuvo::Card class="flex col gap-4">
         <div class="flex between x-center mb-2">
@@ -290,7 +282,6 @@
       </Nuvo::Card>
     </div>
 
-    {{! Description }}
     {{#if @model.unit.description}}
       <Nuvo::Card data-test-description>
         <h4 class="text-md font-bold mb-3"><Ui::Ph @icon="text-align-left" />
@@ -299,7 +290,6 @@
       </Nuvo::Card>
     {{/if}}
 
-    {{! Documents }}
     <Nuvo::Card data-test-unit-documents>
       <div class="flex between x-center mb-3">
         <h4 class="text-md font-bold"><Ui::Ph @icon="file-text" />
@@ -383,7 +373,6 @@
       {{/if}}
     </Nuvo::Card>
 
-    {{! Lease History }}
     <Nuvo::Card data-test-lease-history>
       <h4 class="text-md font-bold mb-3"><Ui::Ph @icon="file-text" />
         Lease History</h4>
@@ -457,7 +446,6 @@
   {{/if}}
 </div>
 
-{{! Edit Modal }}
 <Nuvo::Drawer
   @open={{this.showEditModal}}
   @title="Edit Property"
@@ -635,7 +623,6 @@
   @onConfirm={{this.confirmDeletePhoto}}
 />
 
-{{! Upload/Edit Document Modal }}
 <Nuvo::Drawer
   @open={{this.showDocumentModal}}
   @title={{if this.editDocument "Update Document" "Upload Document"}}

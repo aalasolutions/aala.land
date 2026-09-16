@@ -39,9 +39,7 @@ export class AuthController {
     private readonly googleService: AuthGoogleService,
   ) {}
 
-  // Auth endpoints get a stricter per-IP throttle than the global 100/min so
-  // credential stuffing, signup spam, and reset-email bombing are curbed. This
-  // is app-level (IP-based) so it still applies when the origin is hit directly.
+  // Stricter per-IP throttle than the global 100/min to curb credential stuffing and signup spam.
   @Post('register')
   @Throttle({ default: { limit: 5, ttl: 60000 } })
   @HttpCode(HttpStatus.CREATED)

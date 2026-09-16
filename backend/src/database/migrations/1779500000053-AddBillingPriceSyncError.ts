@@ -1,10 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-/**
- * Persist the provider's last sync error VERBATIM per price row so a failed
- * registration is never silent (System screen, design section 10; the prod
- * bootstrap sync once failed silently).
- */
+// Keeps the provider's last sync error so a failed registration is never silent
 export class AddBillingPriceSyncError1779500000053 implements MigrationInterface {
   name = 'AddBillingPriceSyncError1779500000053';
 

@@ -4,24 +4,19 @@ export class UserRemovalSchema1779500000041 implements MigrationInterface {
   name = 'UserRemovalSchema1779500000041';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
-    // 1. contacts.created_by ownership column (contract section 12).
-    //    Existing rows stay NULL and are skipped by reassignment.
+    // Used for reassignment on user removal; existing rows stay NULL and are skipped
     await queryRunner.query(`
       ALTER TABLE "contacts" ADD COLUMN IF NOT EXISTS "created_by" uuid
     `);
     await queryRunner.query(`
       CREATE INDEX IF NOT EXISTS "IDX_contacts_created_by" ON "contacts" ("created_by")
     `);
-    // Composite matching the reassignment WHERE (created_by = :from AND company_id = :co),
-    // consistent with the other reassignment-target indexes added below.
+    // Matches the reassignment WHERE clause, like the other indexes below
     await queryRunner.query(
       `CREATE INDEX IF NOT EXISTS "IDX_contacts_company_created_by" ON "contacts" ("company_id", "created_by")`,
     );
 
-    // 2 and 3. Repoint history FKs to ON DELETE SET NULL so hard delete is
-    //    physically possible while history rows stay unreassigned.
-    //    Constraint names on existing databases are TypeORM-generated hashes,
-    //    so discover and drop them dynamically, then add a named replacement.
+    // Constraint names are TypeORM-generated hashes, so discover and drop them dynamically
     await this.repointUserFk(
       queryRunner,
       'lead_activities',
@@ -35,13 +30,7 @@ export class UserRemovalSchema1779500000041 implements MigrationInterface {
       'FK_audit_logs_user_id_users',
     );
 
-    // 4. Composite indexes matching the reassignment WHERE clause
-    //    (<owner_col> = :fromUserId AND company_id = :companyId) and the
-    //    delete-block commission count. These three tables index neither the
-    //    owner column nor company_id, so without this the reassignment UPDATEs
-    //    degrade to a full-table scan on every user removal, deactivation, and
-    //    trim. leads.assigned_to and owners.assigned_agent_id already have a
-    //    company_id index (tenant-bounded), so they are left as is.
+    // Without these, user removal/deactivation full-scans these tables
     await queryRunner.query(
       `CREATE INDEX IF NOT EXISTS "IDX_commissions_company_agent" ON "commissions" ("company_id", "agent_id")`,
     );
@@ -54,7 +43,6 @@ export class UserRemovalSchema1779500000041 implements MigrationInterface {
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    // Drop the reassignment composite indexes.
     await queryRunner.query(
       `DROP INDEX IF EXISTS "IDX_property_documents_company_uploaded"`,
     );
@@ -65,7 +53,6 @@ export class UserRemovalSchema1779500000041 implements MigrationInterface {
       `DROP INDEX IF EXISTS "IDX_commissions_company_agent"`,
     );
 
-    // Restore plain NO ACTION FKs.
     await queryRunner.query(
       `ALTER TABLE "lead_activities" DROP CONSTRAINT IF EXISTS "FK_lead_activities_performed_by_users"`,
     );

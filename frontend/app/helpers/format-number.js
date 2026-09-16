@@ -1,7 +1,6 @@
 import { helper } from '@ember/component/helper';
 
-// `unit` appends a noun pluralised against the count: 1 document, 2 documents.
-// Irregular plurals pass `plural` explicitly, e.g. unit="property" plural="properties".
+// `unit` appends a noun pluralised against the count; irregular plurals pass `plural` explicitly.
 export function formatNumber([num], hash = {}) {
   const decimals = hash.decimals ?? 0;
   const isEmpty = num === null || num === undefined || num === '';

@@ -184,7 +184,6 @@ export class PropertiesController {
     );
   }
 
-  // Assets (shared, community-seeded)
   @Get('assets/search')
   @Roles(
     Role.SUPER_ADMIN,
@@ -321,7 +320,6 @@ export class PropertiesController {
     return this.propertiesService.removeAsset(id, dto.reason, req.user.userId);
   }
 
-  // Units
   @Get('units')
   @Roles(
     Role.COMPANY_ADMIN,
