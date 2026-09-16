@@ -184,7 +184,6 @@ export class PropertiesController {
     );
   }
 
-  // Assets (shared, community-seeded)
   @Get('assets/search')
   @Roles(
     Role.SUPER_ADMIN,
@@ -257,11 +256,13 @@ export class PropertiesController {
   })
   @ApiQuery({ name: 'page', required: false, type: Number })
   @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiQuery({ name: 'regionCode', required: false, type: String })
   findAssetsByLocality(
     @Param('localityId', ParseUUIDPipe) localityId: string,
     @Request() req: AuthenticatedRequest,
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
     @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
+    @Query('regionCode') regionCode?: string,
   ) {
     return this.propertiesService.findAssetsByLocality(
       localityId,
@@ -269,6 +270,7 @@ export class PropertiesController {
       page,
       limit,
       req.user,
+      regionCode || undefined,
     );
   }
 
@@ -318,7 +320,6 @@ export class PropertiesController {
     return this.propertiesService.removeAsset(id, dto.reason, req.user.userId);
   }
 
-  // Units
   @Get('units')
   @Roles(
     Role.COMPANY_ADMIN,
@@ -488,6 +489,7 @@ export class PropertiesController {
     enum: UnitArchivedFilter,
     description: 'Defaults to exclude',
   })
+  @ApiQuery({ name: 'regionCode', required: false, type: String })
   findUnitsByAsset(
     @Param('assetId', ParseUUIDPipe) assetId: string,
     @Request() req: AuthenticatedRequest,
@@ -498,6 +500,7 @@ export class PropertiesController {
       new ParseEnumPipe(UnitArchivedFilter, { optional: true }),
     )
     archived?: UnitArchivedFilter,
+    @Query('regionCode') regionCode?: string,
   ) {
     return this.propertiesService.findUnitsByAsset(
       assetId,
@@ -506,6 +509,7 @@ export class PropertiesController {
       limit,
       req.user,
       archived,
+      regionCode || undefined,
     );
   }
 

@@ -27,7 +27,6 @@
   </Nuvo::PageHeader>
 
   {{#if (eq this.currentView "cards")}}
-    {{! CARDS VIEW }}
     {{#if @model.length}}
       <div class="flex col gap-3">
         {{#each @model as |loc|}}
@@ -57,7 +56,6 @@
       />
     {{/if}}
   {{else if (eq this.currentView "list")}}
-    {{! LIST VIEW }}
     {{#if @model.length}}
       <div class="nu-table-wrapper">
         <table class="nu-table">
@@ -99,7 +97,6 @@
       />
     {{/if}}
   {{else}}
-    {{! BROWSE UNITS VIEW }}
     <Nuvo::Accordion
       @items={{array
         (hash
@@ -307,8 +304,7 @@
                     unit.price
                   }}</p>
               {{/if}}
-              {{! Every stat always renders; a missing value shows a dash so the
-                  row never collapses and the sort controls stay explicable. }}
+              {{! Missing value shows a dash so the row never collapses and stays sortable. }}
               <div class="flex gap-3 text-xs text-muted">
                 <span
                   class="unit-stat
@@ -391,7 +387,6 @@
   {{/if}}
 </div>
 
-{{! New Property drawer (cascading: city > location > asset > unit) }}
 <Nuvo::Drawer
   @open={{this.showNewUnitModal}}
   @title="New Property"

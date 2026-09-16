@@ -55,11 +55,7 @@ const ARCHIVED_UNIT_MESSAGE =
 const ARCHIVED_UNIT_LOCKED_MESSAGE =
   'This unit is archived. Its leases can no longer be edited.';
 
-/**
- * Partial unique index name from migration 1779500000043
- * (leases(unit_id) WHERE status='ACTIVE'). The DB backstop that makes a second
- * ACTIVE lease on a unit physically impossible.
- */
+// Partial unique index name; makes a second ACTIVE lease on one unit impossible at the DB level.
 const ACTIVE_LEASE_UNIQUE_INDEX = 'UQ_leases_active_unit';
 
 @Injectable()
@@ -74,18 +70,7 @@ export class LeasesService {
     private readonly recordHistoryService: RecordHistoryService,
   ) {}
 
-  /**
-   * Assert no other ACTIVE lease already exists on this unit, INSIDE the locked
-   * transaction, before a lifecycle transition creates or keeps one ACTIVE.
-   * Postgres runs at READ COMMITTED with no version columns, so renew/terminate
-   * are otherwise check-then-act read-modify-save sequences: two concurrent
-   * renews on the same unit both read the old lease as ACTIVE, both pass the
-   * guard, and each creates a successor -> two ACTIVE leases on one unit (race
-   * audit 2026-07-07, P4). The lock on the transitioning lease row serializes
-   * the two flows; this count is the invariant re-check under that lock. A
-   * partial unique index leases(unit_id) WHERE status='ACTIVE' (migration
-   * 1779500000043) is the database backstop.
-   */
+  // Re-checks under the row lock: READ COMMITTED lets two renews both pass a stale check.
   private async assertNoOtherActiveLease(
     manager: EntityManager,
     unitId: string,
@@ -104,19 +89,7 @@ export class LeasesService {
     }
   }
 
-  /**
-   * Save a lease that is (or is becoming) ACTIVE, mapping the partial-unique-index
-   * violation to a clean 400.
-   *
-   * assertNoOtherActiveLease + the FOR UPDATE lock serialize transitions on ONE
-   * lease row, but two renews driven by DIFFERENT old leases lock different rows
-   * and each creates a successor pointed at the SAME unit: neither count sees the
-   * other's uncommitted successor, so both pass the guard and the second COMMIT
-   * trips UQ_leases_active_unit with a raw 23505 (race audit 2026-07-07, P4-lease
-   * follow-up). Translate that unique violation on the active-lease index into the
-   * same BadRequestException the in-transaction guard raises, so callers get a 400
-   * instead of a 500. Any other error is rethrown untouched.
-   */
+  // Catches the unique-index violation from two renews on the same unit; maps it to 400, not 500.
   private async saveActiveLease(
     manager: EntityManager,
     lease: Lease,
@@ -142,9 +115,7 @@ export class LeasesService {
     }
   }
 
-  // A tenant contactId must belong to the lease's company, or loading the
-  // contact relation would surface another tenant's PII. The caller is passed on
-  // so a contact outside their regions cannot be bound either.
+  // contactId must belong to lease's company and caller's regions, else it surfaces another's PII.
   private async assertContactInCompany(
     contactId: string | null | undefined,
     companyId: string,
@@ -164,8 +135,7 @@ export class LeasesService {
     return scopedCodes ? { unitId: unitInRegionsWhere(scopedCodes) } : {};
   }
 
-  // A lease's region is its unit's, so a unit the caller cannot read must not
-  // be bound to one, nor its leases listed.
+  // Lease's region is its unit's; a unit the caller can't read must not be boundable or listed.
   private async assertUnitInCallerRegions(
     unitId: string | null | undefined,
     companyId: string,
@@ -438,10 +408,7 @@ export class LeasesService {
       const fromStatus = lease.status;
       Object.assign(lease, dto);
 
-      // update() is the write path that flips a lease TO ACTIVE. Under the row
-      // lock, re-check that no other lease on the same unit is already ACTIVE so
-      // two DRAFT->ACTIVE flips cannot both land (matches the partial unique
-      // index leases(unit_id) WHERE status='ACTIVE').
+      // Re-check under the row lock so two DRAFT->ACTIVE flips on the same unit cannot both land.
       if (lease.status === LeaseStatus.ACTIVE) {
         await this.assertNoOtherActiveLease(
           manager,

@@ -182,8 +182,7 @@ export class CommissionsService {
       this.assertPatchTransition(commission.status, dto.status!);
     }
 
-    // Only persist the columns this DTO can change, so a concurrent state
-    // transition (approve/pay) is not clobbered by a stale whole-entity save.
+    // Persist only DTO-changed columns so a concurrent approve/pay transition isn't clobbered.
     const patch: QueryDeepPartialEntity<Commission> = {};
     if (dto.status !== undefined) patch.status = dto.status;
     if (dto.notes !== undefined) patch.notes = dto.notes;

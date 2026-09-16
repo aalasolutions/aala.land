@@ -109,6 +109,7 @@ describe('MaintenanceController', () => {
         variance: 3000,
         workOrderCount: 5,
         avgCostPerOrder: 2400,
+        pendingCost: 4000,
       };
       service.getCostSummary.mockResolvedValue(summary);
 

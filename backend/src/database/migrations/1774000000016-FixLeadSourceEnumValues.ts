@@ -4,7 +4,6 @@ export class FixLeadSourceEnumValues1774000000016 implements MigrationInterface 
   name = 'FixLeadSourceEnumValues1774000000016';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
-    // Add new uppercase values to the enum
     await queryRunner.query(
       `ALTER TYPE "leads_source_enum" ADD VALUE 'WEBSITE' BEFORE 'website'`,
     );
@@ -24,14 +23,13 @@ export class FixLeadSourceEnumValues1774000000016 implements MigrationInterface 
       `ALTER TYPE "leads_source_enum" ADD VALUE 'OTHER' BEFORE 'other'`,
     );
 
-    // Update existing data to use uppercase values using text conversion workaround
+    // Casts through text: Postgres cannot compare/assign enum values directly.
     await queryRunner.query(
       `UPDATE "leads" SET "source" = upper("source"::text)::leads_source_enum`,
     );
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    // Revert data changes
     await queryRunner.query(
       `UPDATE "leads" SET "source" = 'website' WHERE "source" = 'WEBSITE'`,
     );
@@ -51,6 +49,6 @@ export class FixLeadSourceEnumValues1774000000016 implements MigrationInterface 
       `UPDATE "leads" SET "source" = 'other' WHERE "source" = 'OTHER'`,
     );
 
-    // Note: PostgreSQL doesn't support removing enum values easily, so we leave them
+    // PostgreSQL cannot remove enum values, so old lowercase values are left in place.
   }
 }

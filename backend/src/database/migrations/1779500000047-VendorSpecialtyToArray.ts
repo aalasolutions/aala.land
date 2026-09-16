@@ -9,8 +9,6 @@ export class VendorSpecialtyToArray1779500000047 implements MigrationInterface {
       return;
     }
 
-    // Add the jsonb array column, backfill each existing single specialty as a one-element array,
-    // then drop the old enum column and its type.
     await queryRunner.query(
       `ALTER TABLE "vendors" ADD COLUMN "specialties" jsonb NOT NULL DEFAULT '[]'`,
     );
@@ -38,7 +36,7 @@ export class VendorSpecialtyToArray1779500000047 implements MigrationInterface {
     await queryRunner.query(
       `ALTER TABLE "vendors" ADD COLUMN "specialty" "vendors_specialty_enum" NOT NULL DEFAULT 'GENERAL'`,
     );
-    // Restore the first specialty when it maps to a valid enum value, otherwise keep the GENERAL default.
+    // Restores the first specialty if valid, else keeps GENERAL
     await queryRunner.query(`
       UPDATE "vendors"
       SET "specialty" = ("specialties"->>0)::"vendors_specialty_enum"

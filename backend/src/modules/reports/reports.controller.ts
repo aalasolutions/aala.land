@@ -104,6 +104,7 @@ export class ReportsController {
     return this.reportsService.getActivityFeed(
       requireCompanyId(req.user),
       regionCode,
+      req.user,
     );
   }
 
@@ -174,6 +175,7 @@ export class ReportsController {
     return this.reportsService.getResponseTimeMetrics(
       requireCompanyId(req.user),
       regionCode,
+      req.user,
     );
   }
 

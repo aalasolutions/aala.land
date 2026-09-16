@@ -46,8 +46,7 @@ export default class EmailTemplatesController extends Controller {
     return EMAIL_FILTER_CATEGORIES;
   }
 
-  // Nuvo::Input/Select/Textarea/Checkbox call onInput/onChange as
-  // (value, event), not a raw DOM event.
+  // Nuvo inputs call onInput/onChange as (value, event), not a raw DOM event.
   @action setFieldValue(fieldName, value) {
     this[fieldName] = value;
   }

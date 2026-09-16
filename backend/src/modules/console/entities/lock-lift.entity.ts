@@ -6,12 +6,7 @@ import {
   Index,
 } from 'typeorm';
 
-/**
- * A temporary unlock granted on a write-locked company ("let them breathe",
- * design section 8). Re-lock is automatic: LockStateService evaluates
- * lift_until at read time, no scheduler. Rows are never deleted; every lift
- * and end-lift stays visible in the company History tab.
- */
+// Re-lock is automatic, read-time evaluated, no scheduler; rows are never deleted, kept in History.
 @Entity('lock_lifts')
 export class LockLift {
   @PrimaryGeneratedColumn('uuid')

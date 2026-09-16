@@ -126,8 +126,30 @@ describe('PropertiesController', () => {
         1,
         20,
         mockReq.user,
+        undefined,
       );
       expect(result).toEqual(paginatedAssets);
+    });
+
+    it('forwards the regionCode query param', async () => {
+      service.findAssetsByLocality.mockResolvedValue(paginatedAssets as any);
+
+      await controller.findAssetsByLocality(
+        'locality-uuid-1',
+        mockReq,
+        1,
+        20,
+        'makkah',
+      );
+
+      expect(service.findAssetsByLocality).toHaveBeenCalledWith(
+        'locality-uuid-1',
+        companyId,
+        1,
+        20,
+        mockReq.user,
+        'makkah',
+      );
     });
   });
 
@@ -171,11 +193,12 @@ describe('PropertiesController', () => {
         20,
         mockReq.user,
         undefined,
+        undefined,
       );
       expect(result).toEqual(paginatedUnits);
     });
 
-    it('forwards the archived query param', async () => {
+    it('forwards the archived and regionCode query params', async () => {
       service.findUnitsByAsset.mockResolvedValue(paginatedUnits as any);
 
       await controller.findUnitsByAsset(
@@ -184,6 +207,7 @@ describe('PropertiesController', () => {
         1,
         20,
         UnitArchivedFilter.ONLY,
+        'makkah',
       );
 
       expect(service.findUnitsByAsset).toHaveBeenCalledWith(
@@ -193,6 +217,7 @@ describe('PropertiesController', () => {
         20,
         mockReq.user,
         UnitArchivedFilter.ONLY,
+        'makkah',
       );
     });
   });

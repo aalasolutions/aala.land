@@ -1,7 +1,6 @@
 {{page-title "NuvoUI UIKit"}}
 
-{{! The showcase is itself built from the kit: real sidebar, real topbar,
-    real collapse. Dogfooding proves the shell components actually work. }}
+{{! Showcase itself uses real kit components (sidebar/topbar/collapse) to dogfood them. }}
 <div class="nuvo-shell">
   <Nuvo::Sidebar
     @collapsed={{this.sidebarCollapsed}}
@@ -11,8 +10,7 @@
     @brandTitle="NuvoUI"
     @brandSubtitle="UI Kit"
   >
-    {{! Named blocks are all-or-nothing: once <:footer> exists the nav must
-        live in an explicit <:default>. }}
+    {{! Named blocks are all-or-nothing: <:footer> forces an explicit <:default>. }}
     <:default>
       {{#each this.navSections as |group|}}
         <div class="nu-sidebar__section-label">{{group.label}}</div>
@@ -36,7 +34,7 @@
     <Nuvo::Topbar
       @sticky={{true}}
       @onToggle={{this.toggleSidebar}}
-      @userName="Aamir"
+      @userName="Test User"
       @userRole="Owner"
     >
       <:brand>
@@ -1246,8 +1244,7 @@
     <div class="nuvo-row">
       <Nuvo::Popover @title="Quick actions" @placement="bottom" @open={{this.popoverOpen}} @onClose={{this.closePopover}}>
         <:trigger as |toggle|>
-          {{! Controlled mode: the caller owns the state, so the trigger calls
-              the controller's toggle, not the yielded one. }}
+          {{! Controlled mode: trigger calls the controller's toggle, not the yielded one. }}
           <Nuvo::Button @text="Unit actions" @variant="secondary" @onClick={{this.togglePopover}} data-test-open-popover />
         </:trigger>
         <:body>

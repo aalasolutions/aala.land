@@ -9,8 +9,7 @@ import {
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateContactDto {
-  // Nullable on the entity; a contact may start as a number only. When provided
-  // it must be non-empty.
+  // Nullable: a contact may start as a number only, but if provided it must be non-empty.
   @ApiPropertyOptional({ example: 'Ahmed' })
   @IsString()
   @IsNotEmpty()

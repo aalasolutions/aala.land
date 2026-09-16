@@ -38,7 +38,6 @@ export class EmailPreferencesService {
     return `${Buffer.from(userId).toString('base64url')}.${mac}`;
   }
 
-  /** Returns the userId if the token is valid, else null. */
   verifyToken(token: string): string | null {
     const parts = token.split('.');
     if (parts.length !== 2) return null;

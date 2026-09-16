@@ -78,6 +78,7 @@ describe('MaintenanceService', () => {
     addSelect: jest.fn().mockReturnThis(),
     where: jest.fn().mockReturnThis(),
     andWhere: jest.fn().mockReturnThis(),
+    setParameter: jest.fn().mockReturnThis(),
     skip: jest.fn().mockReturnThis(),
     take: jest.fn().mockReturnThis(),
     orderBy: jest.fn().mockReturnThis(),
@@ -634,6 +635,7 @@ describe('MaintenanceService', () => {
         totalEstimated: '15000.00',
         totalActual: '12000.00',
         workOrderCount: '5',
+        pendingCost: '4000.00',
       });
 
       const result = await service.getCostSummary(companyId);
@@ -643,6 +645,7 @@ describe('MaintenanceService', () => {
       expect(result.variance).toBe(3000);
       expect(result.workOrderCount).toBe(5);
       expect(result.avgCostPerOrder).toBe(2400);
+      expect(result.pendingCost).toBe(4000);
     });
 
     it('returns zero averages when no work orders exist', async () => {
@@ -650,6 +653,7 @@ describe('MaintenanceService', () => {
         totalEstimated: '0',
         totalActual: '0',
         workOrderCount: '0',
+        pendingCost: '0',
       });
 
       const result = await service.getCostSummary(companyId);
@@ -864,11 +868,17 @@ describe('MaintenanceService', () => {
       const matched = () =>
         codes ? rows.filter((row) => codes!.includes(row.regionCode)) : rows;
       const chain: any = {};
-      ['select', 'addSelect', 'where', 'skip', 'take', 'orderBy'].forEach(
-        (key) => {
-          chain[key] = jest.fn().mockReturnValue(chain);
-        },
-      );
+      [
+        'select',
+        'addSelect',
+        'where',
+        'setParameter',
+        'skip',
+        'take',
+        'orderBy',
+      ].forEach((key) => {
+        chain[key] = jest.fn().mockReturnValue(chain);
+      });
       chain.andWhere = jest
         .fn()
         .mockImplementation((_sql: string, params?: any) => {
@@ -890,6 +900,7 @@ describe('MaintenanceService', () => {
           totalEstimated: String(matched().length * 100),
           totalActual: String(matched().length * 60),
           workOrderCount: String(matched().length),
+          pendingCost: String(matched().length * 100),
         }),
       );
       repo.createQueryBuilder.mockReturnValue(chain);
@@ -1070,6 +1081,7 @@ describe('MaintenanceService', () => {
         variance: 0,
         workOrderCount: 0,
         avgCostPerOrder: 0,
+        pendingCost: 0,
       });
       expect(repo.createQueryBuilder).not.toHaveBeenCalled();
     });

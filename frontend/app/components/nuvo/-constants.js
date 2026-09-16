@@ -1,5 +1,4 @@
-// Mirrors $nu-variants in app/styles/uikit/common/_var.scss, which is the source
-// of truth for which m-{variant} classes actually exist.
+// Mirrors $nu-variants in _var.scss; keep both lists in sync.
 export const VARIANTS = Object.freeze([
   'primary',
   'secondary',

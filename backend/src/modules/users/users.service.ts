@@ -94,11 +94,7 @@ export class UsersService {
 
     const hashedPassword = await bcrypt.hash(dto.password, 12);
 
-    // Serialize the whole cap-check -> seat-reserve -> save critical section per
-    // company (race audit 2026-07-07, P1/P2): otherwise two concurrent adds both
-    // pass the FREE cap or both derive the same seat quantity. The email UNIQUE
-    // index is the DB backstop for the email dup; the advisory lock is the
-    // backstop for the active-user count and the seat counter.
+    // Serializes cap-check/seat-reserve/save per company so two adds can't pass the same cap
     return withCompanyLock(this.dataSource, companyId, async (manager) => {
       const company = await this.enforceUserLimit(companyId, manager);
 
@@ -109,8 +105,7 @@ export class UsersService {
         throw new ConflictException('Email already exists');
       }
 
-      // Provider-first seat gate (contract section 9), now inside the held lock so
-      // the live seat quantity read + increment cannot interleave with another add.
+      // Held inside the lock so the live seat read and increment can't interleave
       const seat: SeatReservation | null = company
         ? await this.billingService.reserveSeat(company)
         : null;
@@ -118,10 +113,7 @@ export class UsersService {
       try {
         const { regionCodes, ...userFields } = dto;
 
-        // A member with no regions would slip past region scoping entirely, so
-        // an explicit set is used when given, then the company default, then any
-        // region the company operates. Only a company with no regions at all
-        // yields an empty set.
+        // Falls back to company default, then any active region; else scoping is escaped
         const codes = regionCodes?.length
           ? this.validateRegionCodes(regionCodes, company?.activeRegions ?? [])
           : this.fallbackRegionCodes(company);
@@ -156,8 +148,7 @@ export class UsersService {
       Object.assign(findOptions, { relations: ['company'] });
     }
     const [data, total] = await this.userRepository.findAndCount(findOptions);
-    // Sorted for the client; the stored order is the assignment order, whose
-    // first element is the region the scoping layer falls back to.
+    // Stored order is assignment order; its first element is the region scoping fallback
     const withRegions = data.map((user) => ({
       ...user,
       regionCodes: [...(user.regionCodes ?? [])].sort(),
@@ -190,8 +181,7 @@ export class UsersService {
     return requested;
   }
 
-  // Replaces assignments wholesale. Codes outside the company active regions
-  // are rejected, not silently dropped.
+  // Replaces regions wholesale; codes outside active regions are rejected, not dropped
   async setRegions(
     id: string,
     companyId: string | undefined,
@@ -339,7 +329,6 @@ export class UsersService {
     const targetLevel = getRoleLevel(user.role as Role);
     const isSelfUpdate = targetUserId === requesterId;
 
-    // 🔒 Prevent unauthorized updates (except SUPER_ADMIN override and self-updates)
     if (
       !isSelfUpdate &&
       requesterRole !== Role.SUPER_ADMIN &&
@@ -352,7 +341,6 @@ export class UsersService {
 
     const updates: Partial<User> = { ...dto };
 
-    // 🔒 Role change validation
     if (updates.role) {
       if (isSelfUpdate) {
         throw new ForbiddenException('You cannot change your own role');
@@ -370,7 +358,6 @@ export class UsersService {
       }
     }
 
-    // 🔐 Password hashing
     if (updates.password) {
       updates.password = await bcrypt.hash(updates.password, 12);
     }
@@ -380,32 +367,13 @@ export class UsersService {
     return this.userRepository.save(user);
   }
 
-  // ------------------------------------------------------------------
-  // Removal lifecycle helpers (billing unit 5)
-  //
-  // CONCURRENCY (race audit 2026-07-07, P1/P3): every removal below runs its
-  // validation, seat mutation, and local writes inside ONE withCompanyLock
-  // transaction. The target and reassignee are re-loaded FOR UPDATE inside that
-  // transaction, and the delete's non-PENDING commission count is re-checked
-  // there too, so a commission that flips PENDING->APPROVED mid-flight, or a
-  // concurrent deactivate of the reassignee, cannot slip past a stale pre-check.
-  // The seat provider call is issued inside the held lock and derives its target
-  // from the LIVE provider quantity (billing.decrementSeat / setSeatQuantity),
-  // never from the lagged purchasedSeats. purchasedSeats itself is written only
-  // by the unit 2 webhook.
-  // ------------------------------------------------------------------
+  // Runs inside one locked transaction with FOR-UPDATE reloads so no stale pre-check slips through
 
   private isPaidTier(company: Company): boolean {
     return company.subscriptionTier !== SubscriptionTier.FREE;
   }
 
-  /**
-   * Resolve the companyId to lock on. For a company-scoped requester it is the
-   * requester's own company; for SUPER_ADMIN (no company context) it is the
-   * target user's company, resolved with a cheap immutable read. Returns null
-   * only when the target does not exist or carries no company, in which case the
-   * caller runs its validation without a lock to surface the correct error.
-   */
+  /** Requester's company when scoped, target's for SUPER_ADMIN; null lets validation run. */
   private async resolveRemovalLockCompanyId(
     targetUserId: string,
     requesterCompanyId: string | undefined,
@@ -418,12 +386,7 @@ export class UsersService {
     return target?.companyId ?? null;
   }
 
-  /**
-   * Shared validation for deactivate and delete, run INSIDE the locked
-   * transaction. Re-loads the target and reassignee FOR UPDATE so their state
-   * (isActive, company, role) is the state at write time, and enforces self,
-   * company-scope, and role-hierarchy rules.
-   */
+  /** Shared deactivate/delete validation; runs locked with FOR-UPDATE for current state. */
   private async loadRemovalContext(
     manager: EntityManager,
     targetUserId: string,
@@ -470,9 +433,7 @@ export class UsersService {
       );
     }
 
-    // Re-load + lock the reassignee inside the txn and assert it is still
-    // active, so a concurrent deactivate of the recipient cannot land records
-    // on an inactive user (race audit P3).
+    // Guards against a concurrent deactivate of the recipient landing records on it
     const reassignee = await manager.findOne(User, {
       where: {
         id: dto.reassignToUserId,
@@ -498,11 +459,7 @@ export class UsersService {
     return { target, reassignee, company };
   }
 
-  /**
-   * Deactivate: isActive false + reassignment + seat -1 on paid plans.
-   * The user row, its history, and its financial records survive.
-   * Returns the ReassignmentReport (persisted later by ownership-transfer-logs).
-   */
+  /** Deactivates with reassignment and a seat -1 on paid plans; row and history survive. */
   async deactivateUser(
     targetUserId: string,
     requesterId: string,
@@ -641,7 +598,7 @@ export class UsersService {
     }
   }
 
-  // Disconnects the seat outside the lock and tells Meta to stop sending its webhooks; chats stay with the agent.
+  // Disconnects the seat outside the lock and stops Meta webhooks; chats stay with the agent.
   private async disconnectWhatsappAfterRemoval(
     companyId: string | null,
     report: ReassignmentReport,
@@ -662,23 +619,7 @@ export class UsersService {
     }
   }
 
-  /**
-   * Downgrade preparation: deactivate every active user except keepUserId
-   * and reassign all their records to that user, in one locked transaction.
-   * This is what satisfies the unit 3 downgrade-to-Free gate (409 until exactly
-   * one active user remains).
-   *
-   * Provider handling: one call setting the seat quantity to 1, only when the
-   * company is a paid tier WITH a live subscription. A comp account (paid tier,
-   * no subscription) skips the provider call and trims freely (owner decision
-   * 2026-07-07, Option B). Post external-cancel companies are already FREE
-   * (contract section 8) and take the FREE branch.
-   *
-   * The keeper, the "others" set, and the final active-count are all read
-   * inside the lock, so a user created or invited mid-trim (which takes the
-   * same company lock) cannot survive undetected and break the one-active-user
-   * invariant (race audit P3).
-   */
+  /** Deactivates all but keepUserId; re-reads counts locked so a concurrent add can't slip past. */
   async trimToOneActiveUser(
     companyId: string,
     requesterId: string,
@@ -719,9 +660,7 @@ export class UsersService {
           return { deactivatedCount: 0, reports: [] };
         }
 
-        // Seat line -> the target for a single remaining user, inside the lock.
-        // ENTERPRISE's $250 base covers that keeper (0 extra seats); PRO bills it
-        // (1 seat). Comp accounts with no subscription skip it.
+        // ENTERPRISE's base plan covers the keeper at 0 extra seats, PRO bills 1
         let compensate: (() => Promise<void>) | null = null;
         if (
           this.isPaidTier(company) &&
@@ -776,10 +715,7 @@ export class UsersService {
             collected.push(report);
           }
 
-          // Backstop: confirm exactly one active user remains before commit.
-          // Anything else means a concurrent add slipped in (should be
-          // impossible under the shared lock) and the downgrade invariant
-          // would be broken, so abort and roll back.
+          // Backstop: rolls back if more than one active user remains before commit
           const remainingActive = await manager.count(User, {
             where: { companyId, isActive: true },
           });
@@ -800,20 +736,14 @@ export class UsersService {
       },
     );
 
-    // Same ordering as the other two removal paths: outside the lock, because
-    // whatsapp_messages is unbounded.
+    // Runs outside the lock, like the other removal paths, since this table is unbounded
     for (const report of result.reports) {
       await this.disconnectWhatsappAfterRemoval(companyId, report);
     }
     return result;
   }
 
-  /**
-   * Reactivate a deactivated user. Mirror of deactivateUser: on paid plans
-   * the provider seat +1 happens inside the lock (derived from the live
-   * quantity) before the local write; FREE plans are gated by the same
-   * active-user cap as create and invite, counted inside the lock.
-   */
+  /** Mirrors deactivateUser: seat +1 on paid, FREE gated by active-user cap, both locked. */
   async reactivateUser(
     targetUserId: string,
     requesterCompanyId: string | undefined,
@@ -861,10 +791,7 @@ export class UsersService {
         throw new NotFoundException(`Company ${target.companyId} not found`);
       }
 
-      // Provider seat +1 (live-derived) on a paid tier WITH a live
-      // subscription; comp accounts (paid tier, no subscription) skip it
-      // (Option B). FREE tiers are gated by the active-user cap, counted
-      // inside the lock so it cannot race a concurrent add/reactivate.
+      // FREE tiers gated by the active-user cap, counted inside the lock to avoid a race
       let compensate: (() => Promise<void>) | null = null;
       if (
         this.isPaidTier(company) &&
@@ -946,13 +873,7 @@ export class UsersService {
     });
   }
 
-  /**
-   * Run a single-target removal/reactivation critical section under the company
-   * advisory lock. When the lock company could not be resolved (target missing
-   * or company-less), run without the advisory lock so the inner validation
-   * still throws the correct NotFound/BadRequest; a FOR UPDATE row lock inside
-   * the transaction still applies in that path.
-   */
+  /** Runs under the company lock, or without one so validation still throws the right error. */
   private runRemoval<T>(
     lockCompanyId: string | null,
     fn: (manager: EntityManager) => Promise<T>,
@@ -996,13 +917,7 @@ export class UsersService {
     });
   }
 
-  /**
-   * Active, non-super-admin members of a company, for the reassignment and trim
-   * pickers. Filtering by isActive and company on the SERVER means the pickers never
-   * miss a valid candidate the way a client-side filter over a single /users page
-   * could (a company with many inactive users, or a SUPER_ADMIN viewing one company).
-   * Capped at 500 as a safety bound.
-   */
+  /** Active non-super-admin members for reassignment/trim pickers; capped at 500. */
   async findActiveMembers(companyId: string | undefined): Promise<User[]> {
     return this.userRepository.find({
       where: companyId
@@ -1049,10 +964,7 @@ export class UsersService {
     );
     const name = `${dto.firstName} ${dto.lastName}`;
 
-    // Same serialized cap-check -> seat-reserve -> save section as create()
-    // (race audit 2026-07-07, P1/P2). Token generation and the invite email run
-    // AFTER the lock: once the row exists the billed seat correctly mirrors a real
-    // user, so a later token or email failure must NOT release the seat.
+    // Token generation and invite email run after the lock so a failure can't release a billed seat
     const saved: User = await withCompanyLock(
       this.dataSource,
       companyId,
@@ -1118,20 +1030,7 @@ export class UsersService {
     return saved;
   }
 
-  /**
-   * The maxUsers COLUMN caps FREE companies and paid companies WITHOUT a live
-   * subscription (comp/custom-deal accounts, where the column carries the deal
-   * seat cap; console S2702). Paid companies WITH a subscription are billed
-   * per seat by the gate in create/inviteUser instead of being capped. The
-   * column (not the TIER_LIMITS constant) is read so the SUPER_ADMIN override
-   * and the deal seat cap both keep working. Returns the loaded company so
-   * callers can hand it to BillingService.reserveSeat without a second fetch;
-   * null when there is no companyId.
-   *
-   * Callers pass the locked transaction's manager so the count + subsequent save run
-   * serialized behind the company advisory lock (race audit 2026-07-07, P2): a plain
-   * unlocked count-then-save lets two different-email adds both pass a cap of 1.
-   */
+  /** Caps FREE/no-sub companies; subscribed ones bill per seat. Pass the locked manager. */
   private async enforceUserLimit(
     companyId: string | undefined,
     manager: EntityManager,
@@ -1171,8 +1070,7 @@ export class UsersService {
     name: string,
     inviteToken: string,
   ): Promise<void> {
-    // Inviting a teammate is an ACCOUNT email, not tenant CRM outreach: it uses
-    // the fixed system-branded template, never a company-editable one.
+    // Account email, not tenant CRM outreach, so it always uses the fixed system template
     const appUrl = envString('APP_URL', 'http://localhost:4200').replace(
       /\/$/,
       '',

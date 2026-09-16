@@ -1,4 +1,3 @@
-// backend/src/modules/whatsapp/message-store.service.ts
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -136,9 +135,7 @@ export class MessageStoreService {
       // orIgnore returns an empty raw array when the unique index already held the row.
       inserted = Array.isArray(insertResult.raw) && insertResult.raw.length > 0;
 
-      // Raw SQL: orUpdate() cannot express the conditional preview columns. Column names
-      // here are not checked by tsc, so mirror any rename in whatsapp-chat.entity.ts.
-      // chat_name equal to chat_id is a placeholder, replaceable by a real pushName.
+      // Raw SQL: orUpdate() can't express conditional columns; mirror renames in the entity
       const chatRows: ChatUnreadRow[] | undefined = await manager.query(
         `INSERT INTO "whatsapp_chats"
          ("company_id", "user_id", "chat_id", "chat_name", "is_group", "last_body", "last_ts", "last_from_me", "phone_number_id", "last_inbound_at", "unread_count")

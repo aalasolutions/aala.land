@@ -31,10 +31,7 @@ import {
   resolveBillingCurrency,
 } from './billing-currency.util';
 
-/**
- * Handle returned by reserveSeat for a successful provider-side seat increment.
- * The caller performs its local write and calls release() ONLY if that write fails.
- */
+/** Call release() only if the caller's local write, made after reserveSeat, fails. */
 export interface SeatReservation {
   subscriptionId: string;
   targetQuantity: number;
@@ -42,7 +39,6 @@ export interface SeatReservation {
   release(): Promise<void>;
 }
 
-/** Shape returned by getSubscriptionState. */
 export interface SubscriptionState {
   tier: SubscriptionTier;
   billingStatus: string | null;
@@ -52,18 +48,17 @@ export interface SubscriptionState {
   /** Pinned billing currency for a subscribed company; the region-derived fallback otherwise. */
   currency: string;
   seatAmount: number | null;
-  /** The $250 base-fee amount (minor units) that covers the first ENTERPRISE seat; null if none for the currency. */
+  /** $250 base fee (minor units) for the first ENTERPRISE seat; null if unavailable in currency. */
   baseAmount: number | null;
   /** Per-currency seat prices for the checkout selector; empty once subscribed. */
   currencyOptions: { currency: string; seatAmount: number }[];
   canDowngradeToFree: boolean;
-  /** True when the subscription is scheduled to cancel at period end (a queued downgrade to FREE). */
+  /** True when the subscription is scheduled to cancel at period end (queued downgrade to FREE). */
   cancelAtPeriodEnd: boolean;
   /** ISO date the plan reverts to FREE (the paid-through / period-end date), or null. */
   cancelAt: string | null;
 }
 
-/** Shape returned by startCheckout / adminCheckout. */
 export interface CheckoutResult {
   checkoutUrl: string;
   /** Always null: subscriptionId arrives via webhook (single writer). */
@@ -85,15 +80,7 @@ export class BillingService {
     private readonly dataSource: DataSource,
   ) {}
 
-  // -------------------------------------------------------------------------
-  // Unit 1 methods (unchanged)
-  // -------------------------------------------------------------------------
-
-  /**
-   * Idempotent get-or-create. Race-safe (audit P5): serialized behind the
-   * company lock with a re-read inside it, plus Stripe idempotency key and
-   * a UNIQUE index on billing_customer_id as backstops.
-   */
+  /** Race-safe via company lock, re-read, Stripe idempotency key, and UNIQUE index as backstops. */
   async ensureCompanyCustomer(company: Company): Promise<string> {
     // Fast path: already resolved, no lock needed.
     if (company.billingCustomerId) return company.billingCustomerId;
@@ -122,13 +109,7 @@ export class BillingService {
     );
   }
 
-  /**
-   * Creates the provider Price for any active row that has no
-   * provider_price_id yet. A per-row failure is persisted VERBATIM
-   * (last_sync_error + timestamp) and never aborts the other rows, so a
-   * failed registration is visible on the System screen instead of silent
-   * (design section 10). A later success clears the recorded error.
-   */
+  /** Per-row failures persist, not throw, so one bad row doesn't abort the rest. */
   async syncPrices(): Promise<{
     synced: number;
     failed: number;
@@ -166,11 +147,6 @@ export class BillingService {
     return { synced, failed, total: rows.length };
   }
 
-  // -------------------------------------------------------------------------
-  // Unit 3 methods (subscription lifecycle)
-  // -------------------------------------------------------------------------
-
-  /** Return the current billing-relevant snapshot for a company. */
   async getSubscriptionState(companyId: string): Promise<SubscriptionState> {
     const company = await this.findCompany(companyId);
     const currency = this.effectiveBillingCurrency(company);
@@ -231,11 +207,7 @@ export class BillingService {
     };
   }
 
-  /**
-   * Open a hosted Checkout session for PRO (self-serve, COMPANY_ADMIN).
-   * ENTERPRISE is SUPER_ADMIN only, gated in the controller. subscriptionId
-   * is null here; it arrives via the webhook.
-   */
+  /** ENTERPRISE is gated in the controller; subscriptionId is null here, it arrives via webhook. */
   async startCheckout(
     companyId: string,
     successUrl: string,
@@ -248,8 +220,7 @@ export class BillingService {
         'This company already has an active subscription.',
       );
     }
-    // FREE -> PRO only; blocks a comped company from opening a checkout
-    // the webhook would then re-tier.
+    // FREE to PRO only; blocks a comped company opening a checkout the webhook would then re-tier.
     if (company.subscriptionTier !== SubscriptionTier.FREE) {
       throw new ConflictException(
         'Checkout is only available for companies on the FREE plan.',
@@ -278,10 +249,7 @@ export class BillingService {
     return result;
   }
 
-  /**
-   * Open a hosted Checkout session for any plan (SUPER_ADMIN only).
-   * ENTERPRISE requires basePriceId; PRO does not.
-   */
+  /** ENTERPRISE requires basePriceId; PRO does not. */
   async adminStartCheckout(
     companyId: string,
     plan: BillingPlan,
@@ -324,10 +292,7 @@ export class BillingService {
     return result;
   }
 
-  /**
-   * Change plan (PRO <-> ENTERPRISE). SUPER_ADMIN only. Provider carries over
-   * the LIVE subscription quantity, not company.purchasedSeats (stale read model).
-   */
+  /** Uses the LIVE provider quantity, not company.purchasedSeats, which is a stale read model. */
   async changePlanForCompany(
     companyId: string,
     plan: BillingPlan,
@@ -355,10 +320,7 @@ export class BillingService {
     });
   }
 
-  /**
-   * Cancel at period end (COMPANY_ADMIN or SUPER_ADMIN). Blocked 409 if more
-   * than 1 active user; trim to 1 first.
-   */
+  /** Blocked 409 if more than 1 active user; trim to 1 first. */
   async cancelSubscription(companyId: string): Promise<void> {
     const company = await this.findCompany(companyId);
     if (!company.billingSubscriptionId || !company.billingCustomerId) {
@@ -381,10 +343,7 @@ export class BillingService {
     });
   }
 
-  /**
-   * Undo a queued downgrade (COMPANY_ADMIN): clears cancel_at_period_end so the
-   * subscription keeps renewing and the plan stays.
-   */
+  /** Clears cancel_at_period_end so the subscription keeps renewing and the plan stays. */
   async resumeSubscription(companyId: string): Promise<void> {
     const company = await this.findCompany(companyId);
     if (!company.billingSubscriptionId || !company.billingCustomerId) {
@@ -398,21 +357,9 @@ export class BillingService {
     });
   }
 
-  // -------------------------------------------------------------------------
-  // Unit 4 methods (seat lifecycle)
-  //
-  // Race audit P1: every mutation derives its target from the LIVE provider
-  // quantity, never Company.purchasedSeats (lags, webhook-synced). Callers
-  // MUST run inside withCompanyLock to serialize read->set->write per company.
-  // These methods write NO Company column; the webhook is the single writer
-  // of purchasedSeats/billingStatus/billingSubscriptionId.
-  // -------------------------------------------------------------------------
+  // Derives target from LIVE provider quantity, not purchasedSeats; run inside withCompanyLock.
 
-  /**
-   * Reserve one seat with the provider before the local user write.
-   * FREE or comp-without-subscription (Option B, owner decision): no provider
-   * call, returns null. Paid + subscribed: live + 1, HTTP 402 on rejection.
-   */
+  /** FREE/comp-without-subscription returns null; paid+subscribed does live+1, 402 on rejection. */
   async reserveSeat(company: Company): Promise<SeatReservation | null> {
     const ctx = this.seatContext(company);
     if (!ctx) return null;
@@ -452,11 +399,7 @@ export class BillingService {
     };
   }
 
-  /**
-   * Decrement seat quantity by one on user removal. MUST run inside
-   * withCompanyLock. Returns a compensator, or null if no provider call
-   * was made (FREE / comp without subscription, Option B).
-   */
+  /** Must run inside withCompanyLock; returns a compensator, or null if no provider call made. */
   async decrementSeat(
     company: Company,
   ): Promise<{ compensate: () => Promise<void> } | null> {
@@ -479,11 +422,7 @@ export class BillingService {
     };
   }
 
-  /**
-   * Live seat quantity for compensation baselines before an absolute
-   * setSeatQuantity. MUST run inside withCompanyLock. HTTP 402 if paid tier
-   * with no live subscription.
-   */
+  /** Must run inside withCompanyLock. HTTP 402 if paid tier with no live subscription. */
   async getLiveSeatQuantity(company: Company): Promise<number> {
     if (!company.billingSubscriptionId || !company.billingCustomerId) {
       throw new HttpException(
@@ -498,11 +437,7 @@ export class BillingService {
     return this.readLiveSeatQuantity(ref, company.id);
   }
 
-  /**
-   * Sets an absolute seat quantity (e.g. trim-to-one). MUST run inside
-   * withCompanyLock. Does not write purchasedSeats; the webhook does.
-   * HTTP 402 if paid tier with no live subscription.
-   */
+  /** Must run inside withCompanyLock. Does not write purchasedSeats; the webhook does. */
   async setSeatQuantity(
     company: Company,
     quantity: number,
@@ -522,10 +457,7 @@ export class BillingService {
     return ref;
   }
 
-  /**
-   * Resolves the subscription ref when the company actually bills per seat.
-   * Null for FREE and for a paid comp account with no subscription (Option B).
-   */
+  /** Null for FREE and for a paid comp account with no subscription. */
   private seatContext(company: Company): { ref: SubscriptionRef } | null {
     if (company.subscriptionTier === SubscriptionTier.FREE) return null;
     const subscriptionId = company.billingSubscriptionId;
@@ -534,10 +466,7 @@ export class BillingService {
     return { ref: { subscriptionId, customerId } };
   }
 
-  /**
-   * The SEAT ($25) provider price id for a company's billing currency. Required to
-   * create the seat line the first time a solo ENTERPRISE adds an extra seat.
-   */
+  /** Required to create the seat line the first time a solo ENTERPRISE adds an extra seat. */
   private async resolveSeatPriceId(company: Company): Promise<string> {
     return this.getProviderPriceId(
       'SEAT',
@@ -566,7 +495,6 @@ export class BillingService {
     return currency;
   }
 
-  /** Read the authoritative live seat quantity from the provider. */
   private async readLiveSeatQuantity(
     ref: SubscriptionRef,
     companyId: string,
@@ -631,11 +559,7 @@ export class BillingService {
     }
   }
 
-  // -------------------------------------------------------------------------
-  // "Make it right" pass-throughs (operator console). Thin by design: the
-  // provider port stays confined to the billing module, so the console never
-  // holds the BILLING_PROVIDER token.
-  // -------------------------------------------------------------------------
+  // Thin by design: provider port stays confined to billing module; console never holds the token.
 
   /** Refund a past card payment (partial: amountMinor, full: null). */
   async refundCardPayment(
@@ -658,10 +582,6 @@ export class BillingService {
     );
   }
 
-  // -------------------------------------------------------------------------
-  // Private helpers
-  // -------------------------------------------------------------------------
-
   private async findCompany(companyId: string): Promise<Company> {
     const company = await this.companyRepo.findOne({
       where: { id: companyId },
@@ -682,7 +602,7 @@ export class BillingService {
     return origins.map((o) => o.replace(/\/+$/, ''));
   }
 
-  /** Guard client-supplied redirect URLs against open-redirect; must be http(s) on an allowed origin. */
+  /** Guards against open-redirect: client URL must be http(s) on an allowed origin. */
   private assertAllowedRedirectUrl(url: string, field: string): void {
     let parsed: URL;
     try {
@@ -700,15 +620,11 @@ export class BillingService {
     }
   }
 
-  /** Count active (isActive=true) users for a company. */
   private async countActiveUsers(companyId: string): Promise<number> {
     return this.userRepo.count({ where: { companyId, isActive: true } });
   }
 
-  /**
-   * Resolve the provider price id for (kind, currency). Throws if not found or
-   * not yet synced to Stripe (providerPriceId is null).
-   */
+  /** Throws if not found or not yet synced to Stripe (providerPriceId is null). */
   private async getProviderPriceId(
     kind: 'SEAT' | 'ENTERPRISE_BASE',
     currency: string,

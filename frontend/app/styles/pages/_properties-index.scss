@@ -1,13 +1,6 @@
-// Properties index: cards / list / browse views. See AGENT_BRIEF.md.
-//
-// Only the browse grid and its photo tile are bespoke. Everything else on this
-// page resolves to a kit component: the filter dropdowns are `<Nuvo::Dropdown>`,
-// the amenity picker is `.nu-tag.m-selectable`, and the unit tile is a
-// `.nu-card.m-interactive` with the photo block below layered on top.
+// Only the browse grid and photo tile are bespoke; everything else resolves to a kit component.
 @use "../uikit/common/var" as *;
 @use "../uikit/mixins/bem" as *;
-
-// ---- browse toolbar ----
 
 .browse-toolbar {
   display: flex;
@@ -22,8 +15,7 @@
   }
 }
 
-// Label inline, not stacked: <Nuvo::Field> carries a 16px block-end margin
-// that pushes the attached direction button out of line.
+// Label inline, not stacked: <Nuvo::Field>'s margin pushes the direction button out of line.
 .browse-toolbar__sort {
   display: flex;
   gap: nu-space(2);
@@ -37,13 +29,10 @@
   white-space: nowrap;
 }
 
-// Stats render unconditionally so the row never collapses; a missing value
-// shows a dash.
+// Stats render unconditionally so the row never collapses; a missing value shows a dash.
 .unit-stat.is-unset {
   opacity: 0.55;
 }
-
-// ---- browse grid ----
 
 .browse-unit-grid {
   display: grid;
@@ -59,8 +48,7 @@
   }
 }
 
-// The card's own padding is removed so the photo can bleed to the edges; the
-// text block below re-adds it.
+// Card padding removed so the photo bleeds to the edges; text block below re-adds it.
 .unit-browse-card {
   --nu-card--Padding: 0;
 
@@ -98,8 +86,6 @@
   color: var(--text-muted);
   font-size: 2rem;
 }
-
-// ---- CSV import preview ----
 
 .import-preview--scroll {
   max-block-size: 12.5rem;

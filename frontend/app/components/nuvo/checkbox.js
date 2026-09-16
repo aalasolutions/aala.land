@@ -14,8 +14,7 @@ export default class NuCheckboxComponent extends Component {
     return parts.join(' ');
   }
 
-  // `indeterminate` is a DOM property, not an attribute - it must be set
-  // directly on the element. did-insert/did-update give us that element.
+  // `indeterminate` is a DOM property, not an attribute, so it must be set directly on the element.
   @action
   syncIndeterminate(element) {
     element.indeterminate = Boolean(this.args.indeterminate);

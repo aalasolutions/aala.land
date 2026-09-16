@@ -15,7 +15,6 @@ export class AddPropertyType1773120867892 implements MigrationInterface {
       buildingsTable?.findColumnByName('property_type');
     const unitHasPropertyType = unitsTable?.findColumnByName('property_type');
 
-    // Add property_type to buildings table if not exists
     if (!buildingHasPropertyType) {
       await queryRunner.addColumn(
         'buildings',
@@ -29,7 +28,7 @@ export class AddPropertyType1773120867892 implements MigrationInterface {
       );
     }
 
-    // Add property_type to units table if not exists (nullable for inheritance)
+    // Nullable on units so a unit can inherit property_type from its building.
     if (!unitHasPropertyType) {
       await queryRunner.addColumn(
         'units',

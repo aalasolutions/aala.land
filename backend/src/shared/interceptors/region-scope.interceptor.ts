@@ -15,8 +15,7 @@ export class RegionScopeInterceptor implements NestInterceptor {
     const request = context.switchToHttp().getRequest();
     const user = request.user;
 
-    // Unauthenticated routes and admins are left alone; seesAllRegions already
-    // encodes admin visibility for the query layer.
+    // seesAllRegions already encodes admin visibility, so those requests skip scoping
     if (!user?.userId || seesAllRegions(user.role)) {
       return next.handle();
     }
@@ -37,9 +36,7 @@ export class RegionScopeInterceptor implements NestInterceptor {
     return next.handle();
   }
 
-  // Express 5 exposes `req.query` as a getter that re-parses the query string on
-  // every access, so assigning `req.query.regionCode` is silently discarded.
-  // The whole object has to be redefined for the rewrite to stick.
+  // Express 5's req.query getter re-parses on access; a direct assignment is silently discarded
   private overwriteRegionCode(request: any, regionCode: string): void {
     const current = { ...(request.query ?? {}) };
     current.regionCode = regionCode;

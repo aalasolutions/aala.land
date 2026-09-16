@@ -34,7 +34,7 @@ module('Integration | Component | record-history-list', function (hooks) {
             entityTitle: 'Unit A-1204',
             contextTitle: 'Marina Tower',
             reason: 'Under renovation',
-            actorName: 'Aamir',
+            actorName: 'Test User',
             createdAt: '2026-09-15T10:00:00.000Z',
           },
           {
@@ -83,7 +83,7 @@ module('Integration | Component | record-history-list', function (hooks) {
       .dom(
         '[data-test-record-history-row="h-1"] [data-test-record-history-actor]',
       )
-      .hasText('Aamir');
+      .hasText('Test User');
     assert
       .dom(
         '[data-test-record-history-row="h-1"] [data-test-record-history-context]',

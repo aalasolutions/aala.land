@@ -56,8 +56,7 @@ interface CompanyCache {
   cachedAt: number;
 }
 
-// NOTE: Single-instance only — caches below are process-local.
-// On multi-instance deploys, prompt edits will be stale on other replicas until TTL expires.
+// Caches are process-local: on multi-instance deploys, prompt edits stay stale until TTL
 @Injectable()
 export class WhatsappAiRepositoryService
   implements OnModuleInit, OnModuleDestroy
@@ -102,8 +101,7 @@ export class WhatsappAiRepositoryService
     if (this.sweepInterval) clearInterval(this.sweepInterval);
   }
 
-  // TTL alone is only enforced on re-read, so a company that goes quiet would keep its
-  // Company row and up to 40 hydrated Unit graphs pinned for the process lifetime.
+  // TTL is enforced only on re-read; a quiet company would keep hydrated data pinned forever
   private sweepExpired(): void {
     const now = Date.now();
     const drop = <V extends { cachedAt: number }>(
@@ -141,8 +139,7 @@ export class WhatsappAiRepositoryService
     if (cached && Date.now() - cached.cachedAt < this.CONTEXT_TTL_MS) {
       return { company: await this.getCompany(companyId), units: cached.units };
     }
-    // Company comes from getCompany so there is one cached copy on one TTL. Caching it
-    // here too let the enforcement path and the UI path read allowances that expire apart.
+    // Reuses getCompany's cache so enforcement and UI paths don't read allowances that expire apart
     const [company, units] = await Promise.all([
       this.getCompany(companyId),
       this.unitRepo.find({
@@ -237,8 +234,7 @@ export class WhatsappAiRepositoryService
     return anchor;
   }
 
-  // Advisory lock, NOT the usage row: that row's key includes period_start, so two
-  // turns either side of a boundary lock different rows and double-charge.
+  // Not the usage row: its key includes period_start, so boundary turns would lock different rows
   async consumeConversationCredit(
     companyId: string,
     userId: string,
@@ -330,8 +326,7 @@ export class WhatsappAiRepositoryService
     });
   }
 
-  // Counts an AI reply the lead actually received. Kept out of
-  // consumeConversationCredit so turns that die at the LLM never inflate the number.
+  // Kept out of consumeConversationCredit so turns that die at the LLM never inflate the count
   async recordTurnDelivered(
     companyId: string,
     conversationId: string,
@@ -352,8 +347,7 @@ export class WhatsappAiRepositoryService
         where: { companyId, periodStart },
         select: { creditsUsed: true },
       }),
-      // Period-scoped so `used` and `openWindows` describe the same set. A window
-      // opened late in the previous period stays open into this one but was charged there.
+      // Period-scoped so `used` and `openWindows` describe the same set of charged windows
       this.conversationRepo.count({
         where: { companyId, periodStart, expiresAt: MoreThan(new Date()) },
       }),

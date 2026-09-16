@@ -39,8 +39,7 @@ export default class ApplicationController extends Controller {
     return this.uiSettings.sidebarCollapsed;
   }
 
-  // Desktop collapse (icon rail) only applies above the responsive breakpoint.
-  // Below it the sidebar is always a rail that expands as an overlay instead.
+  // Icon-rail collapse only applies above the breakpoint; below it sidebar is an overlay.
   get desktopCollapsed() {
     return this.sidebarCollapsed && !this.isNarrow;
   }
@@ -100,15 +99,13 @@ export default class ApplicationController extends Controller {
     );
   }
 
-  // Regions grouped by country for the switcher, sorted by country then region.
   get groupedRegions() {
     const counts = this.regionUnitCounts;
     const groups = new Map();
     for (const r of this.region.regions) {
       const countryName = r.countryName || r.country || 'Other';
       if (!groups.has(countryName)) groups.set(countryName, []);
-      // null until a fetch succeeds, so a loading or failed region shows no badge
-      // while a genuinely empty one shows a muted 0.
+      // null until fetch succeeds, distinguishing loading/failed (no badge) from a real 0.
       groups
         .get(countryName)
         .push({ ...r, unitCount: counts ? (counts[r.code] ?? 0) : null });
@@ -121,8 +118,7 @@ export default class ApplicationController extends Controller {
       .sort((a, b) => a.countryName.localeCompare(b.countryName));
   }
 
-  // Counts are company-scoped, and impersonation swaps company without a page
-  // reload, so the cache is keyed on the resulting user.
+  // Company-scoped counts; impersonation swaps company without reload, so cache keys on user.
   get regionContextKey() {
     const user = this.auth.currentUser;
     if (!user) return null;
@@ -220,7 +216,6 @@ export default class ApplicationController extends Controller {
     this.routeDidChangeHandler = () => {
       const group = this.activeGroup;
       if (group) this.expandedGroup = group;
-      // Close the mobile overlay after navigating.
       this.sidebarMobileOpen = false;
 
       if (this.session.isAuthenticated) {
@@ -233,10 +228,7 @@ export default class ApplicationController extends Controller {
 
     this.router.on('routeDidChange', this.routeDidChangeHandler);
 
-    // Must mirror `@include media-down(md)` in styles/pages/_shell.scss, which
-    // is where the rail actually goes off-canvas. Core's md is 768px, so
-    // media-down(md) is max-width 767.98px. A wider value here opens the
-    // backdrop over a desktop layout.
+    // Must mirror _shell.scss media-down(md) breakpoint or backdrop opens over desktop layout.
     if (typeof window !== 'undefined' && window.matchMedia) {
       this.sidebarMedia = window.matchMedia('(max-width: 767.98px)');
       this.isNarrow = this.sidebarMedia.matches;
@@ -398,7 +390,6 @@ export default class ApplicationController extends Controller {
       this.unreadCount = Math.max(0, this.unreadCount - 1);
       this.notifications = [...this.notifications];
 
-      // Smart Navigation
       this.handleNotificationNavigation(notification);
     } catch (e) {
       console.error(
@@ -449,8 +440,7 @@ export default class ApplicationController extends Controller {
       this.showRegionDropdown &&
       this.regionUnitCountsKey !== this.regionContextKey
     ) {
-      // Cleared first so a company switch shows no badge while the refetch is
-      // in flight, rather than the previous company's counts.
+      // Cleared first so a company switch shows no badge instead of the old company's counts.
       this.regionUnitCounts = null;
       this.loadRegionUnitCounts();
     }

@@ -6,12 +6,7 @@ import {
   Index,
 } from 'typeorm';
 
-/**
- * A payment received OUTSIDE the card gateway (requirement 2.4): bank transfer,
- * JazzCash, wire, cash. First-class rail, any currency, recorded in its own
- * currency with no FX (ruling 11). At least one of notes/receipt is required
- * ("DOCUMENT IT"), enforced in the service.
- */
+// Payment outside the card gateway; first-class rail, own currency, no FX; enforced in service.
 @Entity('manual_payments')
 @Index('IDX_manual_payments_company_covers', ['companyId', 'coversEnd'])
 export class ManualPayment {

@@ -110,8 +110,7 @@ export default class ContactsIndexController extends PaginatedController {
   @tracked deleteReason = '';
   @tracked reasonError = '';
 
-  // Nuvo::Input/Select/Textarea call onInput/onChange as (value, event),
-  // not the raw DOM event a legacy setField(fieldName, e) expects.
+  // Nuvo inputs pass (value, event), not the raw DOM event legacy setField expects.
   @action setFieldValue(fieldName, value) {
     this[fieldName] = value;
   }

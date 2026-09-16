@@ -19,7 +19,7 @@
       <span class="text-muted">/</span>
     </:breadcrumb>
     <:actions>
-      {{! No filter panel on this page. }}
+      {{! No filter panel on this page, so the visibility control lives in the header. }}
       <Nuvo::Field @label="Visibility">
         <Nuvo::Dropdown
           @align="start"
@@ -62,7 +62,6 @@
 
   {{#if this.assetsWithHistory.length}}
     {{#if (eq this.currentDetailView "cards")}}
-      {{! CARDS VIEW }}
       <div class="flex col gap-4">
         {{#each this.assetsWithHistory as |asset|}}
           <Nuvo::Card data-test-asset-card>
@@ -227,7 +226,6 @@
         {{/each}}
       </div>
     {{else}}
-      {{! LIST VIEW }}
       <div class="nu-table-wrapper">
         <table class="nu-table">
           <thead>

@@ -91,8 +91,7 @@ export default class TooltipService extends Service {
     );
   }
 
-  // Delegation calls this on every pointer move that misses a trigger, and a
-  // tracked setter dirties even when the value is unchanged.
+  // Called on every missed pointer move; guard avoids dirtying tracked state when unchanged.
   hide() {
     if (!this.#trigger && !this.#openTask && this.content === null) {
       return;

@@ -24,7 +24,7 @@ import {
 } from '../events/billing-events';
 import { errorMessage } from '@shared/utils/error.util';
 
-/** Tolerant shapes: Stripe SDK types drift across API versions (current_period_end moved to item, invoice.subscription moved under parent.subscription_details). */
+/** Tolerant shapes: Stripe SDK field locations drift across API versions. */
 interface StripeSubscriptionItemLike {
   quantity?: number | null;
   current_period_end?: number | null;
@@ -77,9 +77,7 @@ export function idOf(
   return typeof ref === 'string' ? ref : (ref.id ?? null);
 }
 
-/** Keep only https URLs; anything else (javascript:, data:, http:, junk) becomes
- *  null so a compromised/misrouted payload can never be persisted or rendered
- *  into an href. Stripe invoice URLs are always https. */
+/** Anything but https becomes null so a bad payload can't be persisted or rendered into an href. */
 export function httpsUrlOrNull(
   value: string | null | undefined,
 ): string | null {
@@ -100,7 +98,7 @@ export function epochToDate(
   return new Date(epochSeconds * 1000);
 }
 
-/** Derives (plan, quantity, currentPeriodEnd) from line items. PRO = SEAT item only; ENTERPRISE = ENTERPRISE_BASE + SEAT. No metadata (legacy/fixture prices) falls back to base-presence detection. */
+/** Derives plan from line items; no metadata falls back to base-item presence (legacy prices). */
 export function deriveSubscriptionShape(sub: StripeSubscriptionLike): {
   plan: BillingPlan;
   quantity: number;
@@ -112,7 +110,7 @@ export function deriveSubscriptionShape(sub: StripeSubscriptionLike): {
   );
   const seatItem =
     items.find((i) => i.price?.metadata?.kind === 'SEAT') ?? null;
-  // Plan: subscription metadata is primary; base-item presence is the fallback (only ENTERPRISE has a base).
+  // Plan: metadata is primary; base-item presence is the fallback (only ENTERPRISE has a base).
   const metaPlan = sub.metadata?.plan;
   const plan: BillingPlan =
     metaPlan === 'PRO' || metaPlan === 'ENTERPRISE'
@@ -120,7 +118,7 @@ export function deriveSubscriptionShape(sub: StripeSubscriptionLike): {
       : baseItem
         ? 'ENTERPRISE'
         : 'PRO';
-  // SEAT line = extra seats for ENTERPRISE (base includes first seat), ALL seats for PRO. Return total people count.
+  // SEAT line is extra seats for ENTERPRISE (base includes one), all seats for PRO; totals people.
   const seatLineQty = seatItem?.quantity ?? 0;
   const quantity = Math.max(
     plan === 'ENTERPRISE' ? seatLineQty + 1 : seatLineQty,
@@ -140,7 +138,7 @@ export class StripeBillingProvider implements BillingProvider {
   private productIdCache: string | null = null;
 
   constructor(private readonly config: ConfigService) {
-    // Race audit 2026-07-07: seat ops hold a PG advisory lock across these calls; cap timeout so a hung request can't pin the lock.
+    // Seat ops hold a PG advisory lock; cap timeout so a hung request can't pin it forever.
     this.stripe = new Stripe(
       this.config.getOrThrow<string>('STRIPE_SECRET_KEY'),
       {
@@ -294,9 +292,7 @@ export class StripeBillingProvider implements BillingProvider {
     };
     const out: NormalizedBillingEvent[] = [updated];
 
-    // `items` only appears in previous_attributes when line items changed. Derive the
-    // prior shape (prior items + prior metadata) to emit SeatQuantityChanged/PlanChanged
-    // only for real changes; incomplete prior data falls back to emitting both.
+    // items appears in previous_attributes only when line items changed; detects real changes.
     const previousItems =
       previous && 'items' in previous
         ? (
@@ -307,8 +303,7 @@ export class StripeBillingProvider implements BillingProvider {
         : undefined;
 
     if (previousItems !== undefined) {
-      // Stripe puts the OLD value of a changed metadata key in previous_attributes.metadata;
-      // reconstruct the prior plan tag, else the prior shape reads the NEW plan and misses the switch.
+      // previous_attributes.metadata holds the OLD value; else prior shape reads the NEW plan.
       const previousMetadata =
         previous && previous.metadata
           ? {
@@ -370,8 +365,7 @@ export class StripeBillingProvider implements BillingProvider {
     }
 
     const base = { companyId, customerId, subscriptionId, occurredAt };
-    // Warn (don't fail) if a money-bearing field is absent: recording it as
-    // 0/usd is indistinguishable from a real $0 invoice, so surface the drift.
+    // Warn, don't fail, if absent: recording as 0/usd would look like a real $0 invoice.
     if (invoice.currency == null) {
       this.logger.warn(
         `Webhook ${event.id} (${event.type}): invoice ${invoice.id ?? '?'} has no currency; defaulting to usd`,
@@ -387,8 +381,7 @@ export class StripeBillingProvider implements BillingProvider {
       );
     }
     const currency = (invoice.currency ?? 'usd').toLowerCase();
-    // Invoice detail for billing history, carried on both outcomes.
-    // URLs are https-guarded before they can be persisted / rendered into an href.
+    // URLs are https-guarded before they can be persisted or rendered into an href.
     const detail = {
       hostedInvoiceUrl: httpsUrlOrNull(invoice.hosted_invoice_url),
       invoicePdfUrl: httpsUrlOrNull(invoice.invoice_pdf),
@@ -420,7 +413,7 @@ export class StripeBillingProvider implements BillingProvider {
     return [succeeded];
   }
 
-  /** Resolution order: subscription/invoice metadata, then customer metadata. Null if neither resolves. */
+  /** Resolution order: subscription/invoice metadata, then customer metadata; null if neither. */
   private async resolveCompanyId(
     metadataCompanyId: string | null,
     customerId: string | null,
@@ -441,7 +434,7 @@ export class StripeBillingProvider implements BillingProvider {
     }
   }
 
-  /** Find-or-create one shared Product. Search API indexing lag can create a rare duplicate; harmless since prices resolve by id, not Product. */
+  /** Search API lag can create a rare duplicate Product; harmless since prices resolve by id. */
   private async ensureProduct(): Promise<string> {
     if (this.productIdCache) return this.productIdCache;
     const found = await this.stripe.products.search({
@@ -460,10 +453,6 @@ export class StripeBillingProvider implements BillingProvider {
     return product.id;
   }
 
-  // -------------------------------------------------------------------------
-  // Subscription lifecycle methods
-  // -------------------------------------------------------------------------
-
   async createSubscription(
     input: CreateSubscriptionInput,
   ): Promise<CreateSubscriptionResult> {
@@ -473,7 +462,6 @@ export class StripeBillingProvider implements BillingProvider {
       lineItems.push({ price: input.basePriceId, quantity: 1 });
     }
     if (input.quantity > 0) {
-      // $25 SEAT units: all seats (PRO) or seats beyond the base-included first (ENTERPRISE).
       // Omitted at 0 since Checkout rejects a quantity-0 line item.
       lineItems.push({
         price: input.seatPriceId,
@@ -511,8 +499,7 @@ export class StripeBillingProvider implements BillingProvider {
   ): Promise<void> {
     const item = await this.findSeatItem(ref.subscriptionId);
     if (quantity <= 0) {
-      // Drop to solo ENTERPRISE: delete the seat line (base still covers it). No-op if absent.
-      // PRO never reaches 0, it floors at 1.
+      // Drop to solo ENTERPRISE deletes the seat line; PRO never reaches 0, floors at 1.
       if (item) {
         await this.stripe.subscriptionItems.del(item.id, {
           proration_behavior: 'create_prorations',
@@ -567,15 +554,13 @@ export class StripeBillingProvider implements BillingProvider {
     const currentBaseItem = sub.items.data.find(
       (i) => i.price?.metadata?.kind === 'ENTERPRISE_BASE',
     );
-    // Prefer SEAT-metadata item; fall back to first non-base item for un-metadata'd (legacy) prices.
+    // Prefer SEAT-metadata item; fall back to first non-base item for legacy un-metadata'd prices.
     const currentSeatItem =
       sub.items.data.find((i) => i.price?.metadata?.kind === 'SEAT') ??
       sub.items.data.find((i) => i !== currentBaseItem);
     const currentSeatQty = Math.max(currentSeatItem?.quantity ?? 0, 0);
 
-    // Model A: PRO line = every seat, ENTERPRISE line = seats beyond base-covered first.
-    // Switching keeps headcount but shifts the line by 1: PRO->ENTERPRISE drops it (base absorbs
-    // a seat), ENTERPRISE->PRO raises it (base removed). Read the LIVE quantity, never a DB value.
+    // Plan switch shifts seat line by 1 as base absorbs/releases a seat; reads LIVE qty, never DB.
     const toEnterprise = input.plan === 'ENTERPRISE';
     const newSeatQty = toEnterprise
       ? Math.max(currentSeatQty - 1, 0)
@@ -611,7 +596,6 @@ export class StripeBillingProvider implements BillingProvider {
           : { price: input.basePriceId, quantity: 1 },
       );
     } else if (currentBaseItem) {
-      // ENTERPRISE->PRO: remove the base line item.
       items.push({ id: currentBaseItem.id, deleted: true });
     }
 
@@ -635,7 +619,7 @@ export class StripeBillingProvider implements BillingProvider {
     const sub = (await this.stripe.subscriptions.retrieve(ref.subscriptionId, {
       expand: ['items'],
     })) as unknown as StripeSubscriptionLike;
-    // current_period_end lives on the line item on current API versions, so read it via the shared deriver.
+    // current_period_end now lives on the line item; read via the shared deriver.
     const { currentPeriodEnd } = deriveSubscriptionShape(sub);
     return {
       cancelAtPeriodEnd: sub.cancel_at_period_end === true,
@@ -648,10 +632,6 @@ export class StripeBillingProvider implements BillingProvider {
       cancel_at_period_end: false,
     });
   }
-
-  // -------------------------------------------------------------------------
-  // "Make it right" methods (operator console, requirement 2.3)
-  // -------------------------------------------------------------------------
 
   async refundInvoicePayment(
     invoiceId: string,
@@ -671,8 +651,7 @@ export class StripeBillingProvider implements BillingProvider {
       } | null;
     };
 
-    // Tolerant across API versions: classic invoice.payment_intent, or the
-    // newer payments list (prefer the paid entry).
+    // Tolerant across versions: classic payment_intent, or the newer payments list (paid entry).
     let paymentIntentId = idOf(invoice.payment_intent ?? null);
     if (!paymentIntentId) {
       const payments = invoice.payments?.data ?? [];
@@ -711,11 +690,7 @@ export class StripeBillingProvider implements BillingProvider {
     return { creditId: credit.id };
   }
 
-  // -------------------------------------------------------------------------
-  // Private helpers
-  // -------------------------------------------------------------------------
-
-  /** SEAT ($25) line item, or null for a solo ENTERPRISE (base-only). Never fall back to the base item. */
+  /** SEAT line item, or null for solo ENTERPRISE (base-only). Never falls back to the base item. */
   private async findSeatItem(
     subscriptionId: string,
   ): Promise<{ id: string; quantity?: number | null } | null> {

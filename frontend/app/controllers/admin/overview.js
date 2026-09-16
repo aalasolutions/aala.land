@@ -30,7 +30,7 @@ export default class AdminOverviewController extends Controller {
     return this.mrrCurrencies.length > 0;
   }
 
-  /** ARR = MRR x 12, no independent calculation (design 2.1). */
+  /** ARR = MRR x 12, no independent calculation. */
   get dominantArrMinor() {
     return this.dominant ? this.dominant.mrrMinor * 12 : 0;
   }
@@ -40,10 +40,7 @@ export default class AdminOverviewController extends Controller {
     return this.mrrCurrencies.length > 1;
   }
 
-  /**
-   * Extensible tile grid (ruling 14): each metric is one entry rendered by a
-   * single loop, so a new metric is a new entry and never a relayout.
-   */
+  /** Tile grid loops over entries so a new metric is just a new entry, no relayout. */
   get tiles() {
     const o = this.overview;
     if (!o) return [];

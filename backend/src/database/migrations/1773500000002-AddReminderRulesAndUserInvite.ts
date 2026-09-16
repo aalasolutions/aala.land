@@ -2,7 +2,6 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
 
 export class AddReminderRulesAndUserInvite1773500000002 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
-    // 1. Add mustChangePassword to users
     const userCols = await queryRunner.query(
       `SELECT column_name FROM information_schema.columns WHERE table_name = 'users'`,
     );
@@ -14,7 +13,6 @@ export class AddReminderRulesAndUserInvite1773500000002 implements MigrationInte
       );
     }
 
-    // 2. Create reminder_rules_type_enum if not exists
     const enumExists = await queryRunner.query(
       `SELECT 1 FROM pg_type WHERE typname = 'reminder_rules_type_enum'`,
     );
@@ -24,7 +22,6 @@ export class AddReminderRulesAndUserInvite1773500000002 implements MigrationInte
       );
     }
 
-    // 3. Create reminder_rules table if not exists
     const tableExists = await queryRunner.query(
       `SELECT 1 FROM information_schema.tables WHERE table_name = 'reminder_rules'`,
     );
@@ -52,7 +49,6 @@ export class AddReminderRulesAndUserInvite1773500000002 implements MigrationInte
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    // Drop reminder_rules table
     const tableExists = await queryRunner.query(
       `SELECT 1 FROM information_schema.tables WHERE table_name = 'reminder_rules'`,
     );
@@ -60,7 +56,6 @@ export class AddReminderRulesAndUserInvite1773500000002 implements MigrationInte
       await queryRunner.query(`DROP TABLE "reminder_rules"`);
     }
 
-    // Drop enum
     const enumExists = await queryRunner.query(
       `SELECT 1 FROM pg_type WHERE typname = 'reminder_rules_type_enum'`,
     );
@@ -68,7 +63,6 @@ export class AddReminderRulesAndUserInvite1773500000002 implements MigrationInte
       await queryRunner.query(`DROP TYPE "reminder_rules_type_enum"`);
     }
 
-    // Remove mustChangePassword from users
     const userCols = await queryRunner.query(
       `SELECT column_name FROM information_schema.columns WHERE table_name = 'users'`,
     );

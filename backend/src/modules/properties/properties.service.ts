@@ -54,11 +54,13 @@ import {
   sanitizeName,
   isUniqueViolation,
 } from '../../shared/utils/name-normalization.util';
-import { scopedRegionCodes } from '../../shared/utils/region-visibility.util';
+import {
+  effectiveRegionCodes,
+  scopedRegionCodes,
+} from '../../shared/utils/region-visibility.util';
 import { errorMessage } from '@shared/utils/error.util';
 
-// True when inline owner details carry at least one identifying value. An empty
-// object must not reach resolveOrCreate, which would insert an all-null contact.
+// An empty object must not reach resolveOrCreate, which would insert an all-null contact
 function hasContactIdentity(
   owner: ContactIdentityDto | undefined,
 ): owner is ContactIdentityDto {
@@ -105,7 +107,6 @@ export class PropertiesService {
     private readonly storagePurge: StoragePurgeService,
   ) {}
 
-  // Assets
   async createAsset(companyId: string, dto: CreateAssetDto): Promise<Asset> {
     const sanitizedName = sanitizeName(dto.name);
     if (!sanitizedName) {
@@ -148,8 +149,9 @@ export class PropertiesService {
     page = 1,
     limit = 20,
     user?: { userId: string; role: string; regionCodes: string[] },
+    regionCode?: string,
   ) {
-    const scopedCodes = scopedRegionCodes(user);
+    const scopedCodes = effectiveRegionCodes(regionCode, user);
     if (scopedCodes?.length === 0) {
       return { data: [], total: 0, page, limit };
     }
@@ -274,9 +276,7 @@ export class PropertiesService {
     return results;
   }
 
-  // companyId is optional only because SUPER_ADMIN reads across tenants.
-  // The company predicate mirrors findAllAssets: an asset is visible either
-  // because this company created it or because it owns units inside it.
+  // companyId optional only for SUPER_ADMIN; predicate mirrors findAllAssets
   async findOneAsset(
     id: string,
     companyId?: string,
@@ -405,7 +405,6 @@ export class PropertiesService {
     return this.assetRepository.findOne({ where });
   }
 
-  // Units
   async findAllUnits(
     companyId: string,
     page = 1,
@@ -564,8 +563,7 @@ export class PropertiesService {
       companyId,
     });
     const saved = await this.unitRepository.save(unit);
-    // Re-read of a row this caller just wrote, so it stays unscoped: a create
-    // must not succeed in the database and then 404 on the way out.
+    // Unscoped re-read: a create must not succeed and then 404 on the way out
     return this.findOneUnit(saved.id, companyId);
   }
 
@@ -576,8 +574,9 @@ export class PropertiesService {
     limit = 20,
     user?: { userId: string; role: string; regionCodes: string[] },
     archived: UnitArchivedFilter = UnitArchivedFilter.EXCLUDE,
+    regionCode?: string,
   ) {
-    const scopedCodes = scopedRegionCodes(user);
+    const scopedCodes = effectiveRegionCodes(regionCode, user);
     if (scopedCodes?.length === 0) {
       return { data: [], total: 0, page, limit };
     }
@@ -654,8 +653,7 @@ export class PropertiesService {
       relations: ['asset', 'asset.locality', 'owner'],
     });
     if (!unit) throw new NotFoundException(`Property not found`);
-    // owner is a raw Contact relation; attach displayName so a phone-only owner
-    // renders instead of blanking.
+    // Attach displayName so a phone-only owner renders instead of blanking
     attachDisplayName(unit.owner);
     return unit;
   }
@@ -725,10 +723,7 @@ export class PropertiesService {
     return contact.id;
   }
 
-  // A new owner contact takes the region of the unit, not the company default,
-  // or region-scoped users would never see that owner.
-  // A unit inherits its region from its asset, so writing one under an asset
-  // outside the caller regions would create a row they cannot read back.
+  // A unit inherits its region from its asset; block writes to assets outside caller regions
   private async assertAssetInCallerRegions(
     assetId: string | undefined,
     user?: { role: string; regionCodes: string[] },

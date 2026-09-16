@@ -85,6 +85,28 @@ describe('ChequesController', () => {
         dto,
         'user-uuid-1',
         mockReq.user,
+        undefined,
+      );
+    });
+
+    it('forwards the active region to the service', async () => {
+      service.create.mockResolvedValue(mockCheque as any);
+
+      const dto = {
+        chequeNumber: 'CHQ002',
+        bankName: 'Emirates NBD',
+        accountHolder: 'Ahmed',
+        amount: 15000,
+        dueDate: '2026-03-01',
+      };
+      await controller.create(dto as any, mockReq, 'punjab');
+
+      expect(service.create).toHaveBeenCalledWith(
+        companyId,
+        dto,
+        'user-uuid-1',
+        mockReq.user,
+        'punjab',
       );
     });
   });

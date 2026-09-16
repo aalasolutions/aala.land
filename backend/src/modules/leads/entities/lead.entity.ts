@@ -53,9 +53,7 @@ export class Lead {
   @JoinColumn({ name: 'company_id' })
   company?: Company;
 
-  // The person this lead belongs to. Identity (name, phone, email) lives on the
-  // contact, not the lead. One lead per property: a contact interested in three
-  // properties is three leads rows.
+  // One lead per property: a contact interested in three properties creates three lead rows.
   @Index()
   @Column({ name: 'contact_id', type: 'uuid', nullable: true })
   contactId: string | null;
@@ -72,8 +70,7 @@ export class Lead {
   @JoinColumn({ name: 'locality_id' })
   locality: Locality | null;
 
-  // City is the rung above locality: a lead can name a city but no area. The
-  // full hierarchy is region -> city -> locality -> unit.
+  // City is above locality: a lead can name a city but no area (region, city, locality, unit).
   @Index()
   @Column({ name: 'city_id', type: 'uuid', nullable: true })
   cityId: string | null;

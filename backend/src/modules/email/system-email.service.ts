@@ -29,16 +29,7 @@ function appUrl(): string {
   return envString('APP_URL', 'http://localhost:4200').replace(/\/$/, '');
 }
 
-/**
- * Sends AALA.LAND's own account + billing emails. Every message is built from a
- * default content template (system-email.content.ts) wrapped in the single shared
- * shell (system-email.templates.ts). Account emails always send; suppressible
- * categories check the recipient's preferences and carry an unsubscribe footer.
- *
- * Two entry shapes: account emails take an explicit {email, name} (the caller
- * has the user), while company-level emails (billing, quota) resolve the
- * company's billing contact here so callers need only a companyId.
- */
+// Account emails take explicit {email, name}; company emails resolve contact from companyId.
 @Injectable()
 export class SystemEmailService {
   private readonly logger = new Logger(SystemEmailService.name);
@@ -59,8 +50,7 @@ export class SystemEmailService {
     });
   }
 
-  /** The company admin is the billing/notification contact; oldest active user
-   *  is the fallback. Returns null if the company has no reachable user. */
+  // The company admin is the billing/notification contact, with the oldest active user as fallback.
   private async billingContact(
     companyId: string,
   ): Promise<EmailRecipient | null> {
@@ -78,8 +68,6 @@ export class SystemEmailService {
       }));
     return user ? { id: user.id, email: user.email, name: user.name } : null;
   }
-
-  // ---- Account emails (always send) --------------------------------------
 
   async sendWelcome(
     recipient: { email: string; name: string },
@@ -141,8 +129,6 @@ export class SystemEmailService {
       }),
     );
   }
-
-  // ---- Billing emails (resolve the company billing contact) --------------
 
   async sendPurchaseConfirmationToCompany(
     companyId: string,

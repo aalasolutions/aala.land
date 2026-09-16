@@ -50,7 +50,6 @@ export default class SignupFormComponent extends Component {
     this[field] = value;
     this.errorMessage = '';
 
-    // Auto-generate slug from company name
     if (field === 'companyName') {
       this.companySlug = value
         .toLowerCase()

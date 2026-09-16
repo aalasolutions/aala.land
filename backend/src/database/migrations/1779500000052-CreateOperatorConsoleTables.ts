@@ -1,9 +1,5 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-/**
- * Operator console v2 (S2702 ratified design): custom deals, lock lifts,
- * manual payments, payment remedies.
- */
 export class CreateOperatorConsoleTables1779500000052 implements MigrationInterface {
   name = 'CreateOperatorConsoleTables1779500000052';
 

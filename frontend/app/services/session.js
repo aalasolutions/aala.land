@@ -26,7 +26,7 @@ export default class SessionService extends Service {
     this.restoreFromStorage();
   }
 
-  /** Tenant write-lock state from the auth bundle (design 8.2 banner). */
+  /** Tenant write-lock state from the auth bundle, used to render the lock/grace banner. */
   get lockState() {
     return this.data.authenticated?.lockState ?? null;
   }
@@ -57,7 +57,6 @@ export default class SessionService extends Service {
           'aala-impersonator-session',
         );
       } catch {
-        // If restore fails, clear corrupt data and start fresh
         localStorage.removeItem('aala-session');
         localStorage.removeItem('aala-region');
         localStorage.removeItem('aala-impersonator-session');
@@ -97,9 +96,7 @@ export default class SessionService extends Service {
     );
   }
 
-  // Refreshes user/regions/tier from a fresh /auth/profile fetch without
-  // touching the tokens. Keeps the app in sync with server-side changes
-  // (role, regions, tier) made outside the current session.
+  // Syncs user/regions/tier from a fresh profile fetch without touching tokens.
   hydrate(bundle) {
     this.data = {
       authenticated: {
@@ -174,7 +171,6 @@ export default class SessionService extends Service {
   }
 
   async invalidate() {
-    // Call backend logout to invalidate refresh token and log audit event
     if (this.data.authenticated?.refreshToken) {
       try {
         await fetch(`${config.APP.API_BASE}/auth/logout`, {

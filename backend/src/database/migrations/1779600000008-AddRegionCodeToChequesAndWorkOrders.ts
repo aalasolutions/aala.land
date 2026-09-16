@@ -1,11 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-// NOT NULL: both rows are company operations that belong to exactly one
-// region. A NULL never matches the region_code IN (...) read filter, so it
-// would hide the row from every region-confined user.
-// Region is derivable through unit > asset > locality > city, and for a
-// cheque also through its lease. Anything with neither link falls back to the
-// company default.
+// NOT NULL: a NULL would never match the region_code IN (...) read filter
 export class AddRegionCodeToChequesAndWorkOrders1779600000008 implements MigrationInterface {
   name = 'AddRegionCodeToChequesAndWorkOrders1779600000008';
 

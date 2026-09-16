@@ -263,8 +263,7 @@ export class WhatsappAiService {
     await this.redis.delByPattern(this.humanKey(userId, '*'));
   }
 
-  // Called by whatsapp.service when the human operator manually sends a message.
-  // Cancels any pending debounced AI response for that chat and starts a silence window.
+  // Called on a manual operator send; cancels any pending debounced AI response.
   async recordHumanReply(userId: string, chatId: string): Promise<void> {
     await this.redis.setNumber(
       this.humanKey(userId, chatId),
@@ -624,10 +623,7 @@ export class WhatsappAiService {
     return Date.now() - lastReply < silenceMs;
   }
 
-  // A human reply that landed AFTER this AI turn started reading the chat means the
-  // operator has taken over mid-stream. The initial isHumanSilenceActive() check at the
-  // top of processMessage happens before several seconds of LLM awaits, so we must
-  // re-check immediately before each send() and abort if the human jumped in.
+  // The initial silence check happens before seconds of LLM awaits; re-check before each send
   private async humanTookOverSince(
     userId: string,
     chatId: string,
@@ -663,8 +659,7 @@ export class WhatsappAiService {
 
     const { cleaned, needsDirectContact } = sanitizeInput(text);
     if (needsDirectContact) {
-      // Same mid-turn human-takeover guard the other send paths use: if the operator
-      // jumped in after this turn started, do not send the canned direct-contact reply.
+      // Same takeover guard other send paths use: skip if the operator jumped in mid-turn
       if (
         !isLockHeld() ||
         (await this.humanTookOverSince(userId, chatId, flushStartedAt))
@@ -723,8 +718,7 @@ export class WhatsappAiService {
         conversationId = result.conversationId;
         creditCharged = result.charged;
       } catch (err) {
-        // Fail closed. The transaction rolled back so nothing was charged, and running
-        // the turn anyway would serve unmetered AI for as long as the fault lasts.
+        // Fails closed: nothing was charged, running the turn anyway serves unmetered AI
         this.logger.error(
           'Credit check failed, refusing the AI turn',
           errorMessage(err),
@@ -853,8 +847,7 @@ export class WhatsappAiService {
     }
   }
 
-  // Rebuilds history after a restart or the 24h sweep. fromMe maps to `assistant` for
-  // human-agent messages too, so the AI inherits what an agent promised.
+  // Rebuilds history after restart or sweep; human-agent fromMe also maps to assistant
   private async seedHistoryFromDb(
     companyId: string,
     userId: string,
@@ -960,8 +953,7 @@ export class WhatsappAiService {
     const timeout = envInt('AI_REQUEST_TIMEOUT_MS', 300000, 1);
     // Zero means a single attempt, a legitimate setting.
     const maxRetries = envInt('AI_MAX_RETRIES', 2, 0);
-    // Per-attempt timeouts alone let one turn hold a spent credit and the chat lock for
-    // retries x timeout, so cap the whole call instead.
+    // Caps the whole call; per-attempt timeouts alone let retries x timeout hold the lock
     const budgetMs = envInt('AI_TOTAL_BUDGET_MS', 120000, 1);
     const deadline = Date.now() + budgetMs;
     const TRANSIENT_CODES = new Set([
@@ -1089,8 +1081,7 @@ export class WhatsappAiService {
         }
       }
     } finally {
-      // cancel(), not just releaseLock(): after `break outer` the body is not at EOF
-      // and an undrained body pins its undici socket until GC.
+      // cancel(), not releaseLock(): body is not at EOF, an undrained body pins the socket
       await reader.cancel().catch(() => undefined);
       reader.releaseLock();
     }

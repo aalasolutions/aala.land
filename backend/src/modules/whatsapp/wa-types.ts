@@ -1,4 +1,3 @@
-// backend/src/modules/whatsapp/wa-types.ts
 import { WhatsappConnectionStatus } from './entities/whatsapp-connection.entity';
 import { WhatsappMessageStatus } from './entities/whatsapp-message.entity';
 

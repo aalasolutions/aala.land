@@ -62,16 +62,11 @@ export class NotificationsService {
     private readonly notificationsGateway: NotificationsGateway,
   ) {}
 
-  // ---- Persistence methods ----
-
   async create(
     companyId: string,
     dto: CreateNotificationDto,
   ): Promise<Notification> {
-    // Multi-tenant guard: the target user must belong to the caller's company.
-    // Otherwise a notification (and its live socket push to `user_<id>`) could be
-    // injected into another tenant's user by supplying their userId. NotFound
-    // (not Forbidden) so a foreign userId is not confirmable across tenants.
+    // NotFound not Forbidden, so a foreign userId is not confirmable across tenants
     const targetUser = await this.userRepository.findOne({
       where: { id: dto.userId, companyId },
       select: { id: true },
@@ -108,8 +103,7 @@ export class NotificationsService {
     page: number;
     limit: number;
   }> {
-    // Region here is relevance, not access: the row is already addressed to this
-    // user. Company-wide notices (NULL region) stay visible everywhere.
+    // Region is relevance not access: NULL-region company-wide notices stay visible everywhere
     const [data, total] = await this.notificationRepository.findAndCount({
       where: regionCode
         ? [
@@ -153,16 +147,17 @@ export class NotificationsService {
   }
 
   async getUnreadCount(
-    companyId: string,
+    companyId: string | null | undefined,
     userId: string,
   ): Promise<{ count: number }> {
+    if (!companyId) {
+      return { count: 0 };
+    }
     const count = await this.notificationRepository.count({
       where: { companyId, userId, isRead: false },
     });
     return { count };
   }
-
-  // ---- Send methods (existing) ----
 
   async send(dto: SendNotificationDto): Promise<NotificationResult> {
     return this.sendEmail(dto);
@@ -231,8 +226,6 @@ export class NotificationsService {
     }
   }
 
-  // ---- Reminder check methods ----
-
   @Cron(CronExpression.EVERY_DAY_AT_9AM)
   async runDailyReminders() {
     this.logger.log('Running daily notification reminders...');
@@ -293,7 +286,6 @@ export class NotificationsService {
   private async notifyDelayedCheques() {
     const threeDaysAgo = this.startOfDay(this.addDays(new Date(), -3));
 
-    // Cheques that are DEPOSITED but not CLEARED for more than 3 days
     const delayedCheques = await this.chequeRepository.find({
       where: {
         status: ChequeStatus.DEPOSITED,
@@ -539,12 +531,7 @@ export class NotificationsService {
           continue;
         }
 
-        // The in-memory key set above deduplicates within a single process. The
-        // UQ_notifications_reminder_dedup_daily partial unique index is the
-        // cross-replica backstop: if another instance's cron inserted the same
-        // reminder concurrently, our INSERT loses with a 23505 which we swallow
-        // and treat as "already sent" (single-instance behaviour is unchanged
-        // because the key set short-circuits before we ever reach the INSERT).
+        // Unique index is the cross-replica backstop; a losing 23505 here means already sent
         try {
           await this.create(item.companyId, buildDto(item, admin));
         } catch (err) {

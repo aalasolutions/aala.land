@@ -34,7 +34,6 @@
     />
   {{/unless}}
 
-  {{! PIPELINE KANBAN VIEW }}
   {{#if (eq this.viewMode "pipeline")}}
     <div class="nu-kanban {{if this.draggedLead 'is-dragging'}}">
       {{#each this.columns as |column|}}
@@ -135,7 +134,6 @@
     </div>
   {{/if}}
 
-  {{! TEMPERATURE BOARD VIEW }}
   {{#if (eq this.viewMode "temperature")}}
     <div
       data-test-temperature-board
@@ -237,7 +235,6 @@
     </div>
   {{/if}}
 
-  {{! AGENT BOARD VIEW }}
   {{#if (eq this.viewMode "agent")}}
     <div data-test-agent-board class="nu-kanban {{if this.draggedLead 'is-dragging'}}">
       {{#each this.agentColumns as |column|}}
@@ -261,7 +258,6 @@
             <span class="nu-kanban__column-count">{{column.leads.length}}</span>
           </div>
 
-          {{! Load indicator bar }}
           <div class="agent-load-bar">
             <div
               class="agent-load-fill
@@ -337,7 +333,6 @@
     </div>
   {{/if}}
 
-  {{! LIST VIEW }}
   {{#if (eq this.viewMode "list")}}
     <div class="nu-table-wrapper">
       <table class="nu-table">
@@ -449,7 +444,6 @@
   {{/if}}
 </div>
 
-{{! Edit Modal }}
 <Nuvo::Drawer
   @open={{this.showModal}}
   @title={{if this.editLead "Edit Lead" "New Lead"}}
@@ -577,7 +571,6 @@
   </:footer>
 </Nuvo::Drawer>
 
-{{! Assign Modal }}
 <Nuvo::Modal
   @open={{this.showAssignModal}}
   @title="Assign Lead"
@@ -607,7 +600,6 @@
   </form>
 </Nuvo::Modal>
 
-{{! Lead Detail Modal }}
 <Nuvo::Modal
   @open={{this.showDetailModal}}
   @title={{if this.detailLead this.detailLead.contact.displayName "Lead Details"}}
@@ -643,7 +635,6 @@
 
   <:body>
     <div class="lead-detail flex gap-6 x-stretch">
-      {{! Left: Lead Info }}
       <div class="lead-detail__info flex col gap-4 min-w-0">
         <section class="flex col">
           <h4 class="nu-title m-xs text-muted mb-1">Contact</h4>
@@ -735,7 +726,6 @@
         </section>
       </div>
 
-      {{! Right: Activity Timeline }}
       <div class="lead-detail__timeline flex col grow min-w-0">
         <h4 class="nu-title m-xs text-muted mb-1">Activity History</h4>
         <div class="lead-detail__scroll grow">

@@ -51,7 +51,7 @@
       </thead>
       <tbody>
         {{#each this.rows as |row|}}
-          {{! Whole-row click is the ratified affordance (design section 3);
+          {{! Whole row is clickable, but the company name is also a real link, so
           keyboard users reach the detail via the company-name link below. }}
           {{! template-lint-disable no-invalid-interactive }}
           <tr

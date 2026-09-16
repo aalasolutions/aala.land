@@ -1,12 +1,4 @@
-/**
- * Default content for each system email. One function per email = one overridable
- * unit. Every function routes its body through renderLayout (the single shared
- * header/footer shell), so a footer change in system-email.templates.ts
- * propagates to all of them at once.
- *
- * Each builder returns { subject, html, text }. The text fallback exists because
- * MailService always sends a text/plain part alongside the HTML.
- */
+// Routes through renderLayout so footer changes propagate; returns a text fallback for MailService.
 import { renderLayout, esc, p } from './system-email.templates';
 
 export interface RenderedEmail {
@@ -19,8 +11,6 @@ function money(amountMinor: number, currency: string): string {
   const major = (amountMinor / 100).toFixed(2);
   return `${currency.toUpperCase()} ${major}`;
 }
-
-// ---- Account emails (never suppressed) -----------------------------------
 
 export function welcomeEmail(vars: {
   name: string;
@@ -148,8 +138,6 @@ export function quotaExceededEmail(vars: {
     ].join('\n'),
   };
 }
-
-// ---- Billing emails -------------------------------------------------------
 
 export function purchaseConfirmationEmail(vars: {
   name: string;

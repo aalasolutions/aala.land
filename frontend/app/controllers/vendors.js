@@ -46,8 +46,7 @@ export default class VendorsController extends PaginatedController {
 
   specialtyOptions = SPECIALTY_OPTIONS;
 
-  // Nuvo::Input/Select/Textarea call onInput/onChange as (value, event),
-  // not the raw DOM event setField expects.
+  // Nuvo inputs call onInput/onChange as (value, event), not the raw DOM event setField expects.
   @action setFieldValue(fieldName, value) {
     this[fieldName] = value;
   }

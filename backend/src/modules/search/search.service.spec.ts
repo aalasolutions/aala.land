@@ -312,9 +312,8 @@ describe('SearchService', () => {
       );
 
       expect(result.properties).toEqual([]);
-      // The agent lookup carries no region predicate, so it still runs.
-      expect(result.agents).toHaveLength(1);
-      expect(dataSource.query).toHaveBeenCalledTimes(1);
+      expect(result.agents).toEqual([]);
+      expect(dataSource.query).not.toHaveBeenCalled();
     });
   });
 });

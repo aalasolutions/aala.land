@@ -6,9 +6,7 @@ import {
   Index,
 } from 'typeorm';
 
-// One row is exactly one consumed credit, never reversed: the credit buys the 24h
-// window, not the reply, so a failed turn keeps its window. Rows are only ever removed
-// wholesale by AiConversationRetentionCron.
+// One row is one consumed credit, never reversed: buys the 24h window, not the reply
 @Entity('whatsapp_ai_conversations')
 @Index('IDX_wa_ai_conversations_window', [
   'companyId',

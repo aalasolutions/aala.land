@@ -1,4 +1,3 @@
-// land/app/controllers/whatsapp.js
 import Controller from '@ember/controller';
 import { service } from '@ember/service';
 import { tracked } from '@glimmer/tracking';
@@ -92,7 +91,6 @@ export default class WhatsappController extends Controller {
       : 'No AI key configured';
   }
 
-  // ── State ─────────────────────────────────────────────────────────────
 
   @tracked chats = [];
   @tracked currentChatId = null;
@@ -137,7 +135,6 @@ export default class WhatsappController extends Controller {
     chats: (chats) => this.applyResyncChats(chats),
   };
 
-  // ── Computed ──────────────────────────────────────────────────────────
 
   get creditUsageLabel() {
     if (this.creditsLimit === null) return null;
@@ -307,8 +304,6 @@ export default class WhatsappController extends Controller {
       detail: '',
     };
   }
-
-  // ── Lifecycle ─────────────────────────────────────────────────────────
 
   async setup() {
     const setupGen = this._setupGeneration;
@@ -706,8 +701,6 @@ export default class WhatsappController extends Controller {
     }
   }
 
-  // ── Socket events ─────────────────────────────────────────────────────
-
   applyAi(data) {
     if (data.enabled !== undefined) this.aiEnabled = data.enabled;
     if (data.keyConfigured !== undefined)
@@ -846,8 +839,6 @@ export default class WhatsappController extends Controller {
       ];
     }
   }
-
-  // ── Actions ───────────────────────────────────────────────────────────
 
   // Meta's exchange code lives only 30 seconds, so the POST fires immediately after the flow finishes.
   @action

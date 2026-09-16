@@ -12,12 +12,7 @@ export default class ApplicationRoute extends Route {
 
     this.auth.loadUiSettings();
 
-    // Refresh account state on boot so a role/region/tier change made
-    // outside this session (e.g. by a super admin) doesn't require a
-    // re-login to take effect. Fails open: a network/server error, or a
-    // request that hangs past the timeout, keeps the cached session data
-    // rather than blocking app load. An invalid token still gets caught
-    // by authorizedFetch's existing 401 handling.
+    // Refreshes account on boot so role/tier changes apply without re-login; fails open on error.
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 5000);
     try {

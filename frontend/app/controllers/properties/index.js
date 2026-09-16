@@ -28,8 +28,6 @@ export default class PropertiesIndexController extends Controller {
   get currentView() {
     // Other views are not yet implemented, so always default to browse for now
     return 'browse';
-    // if (this.activeView) return this.activeView;
-    // return this.preferences.get('properties-index-view', 'browse');
   }
 
   viewTabs = [
@@ -41,6 +39,7 @@ export default class PropertiesIndexController extends Controller {
   @tracked browseTotal = 0;
   @tracked browsePage = 1;
   @tracked isLoadingBrowse = false;
+  browseRequestId = 0;
 
   @tracked filterType = '';
   @tracked filterStatus = '';
@@ -189,6 +188,7 @@ export default class PropertiesIndexController extends Controller {
   }
 
   @action async loadBrowseUnits() {
+    const requestId = ++this.browseRequestId;
     this.isLoadingBrowse = true;
     try {
       let params = `page=${this.browsePage}&limit=20`;
@@ -207,17 +207,20 @@ export default class PropertiesIndexController extends Controller {
       if (this.sortField)
         params += `&sort=${this.sortField}&order=${this.sortDirection}`;
       const json = await this.auth.fetchJson(`/properties/units?${params}`);
+      if (requestId !== this.browseRequestId) return;
       this.browseUnits = json.data?.data ?? [];
       this.browseTotal = json.data?.total ?? 0;
     } catch {
+      if (requestId !== this.browseRequestId) return;
       this.browseUnits = [];
       this.browseTotal = 0;
     } finally {
-      this.isLoadingBrowse = false;
+      if (requestId === this.browseRequestId) {
+        this.isLoadingBrowse = false;
+      }
     }
   }
 
-  // New Unit modal (cascading: city > location > asset > unit fields)
   @tracked showNewUnitModal = false;
   @tracked selectedCity = null;
   @tracked selectedLocality = null;

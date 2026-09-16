@@ -26,7 +26,7 @@ import { ManualPayment } from './entities/manual-payment.entity';
 import { PaymentRemedy } from './entities/payment-remedy.entity';
 
 const DAY = 24 * 60 * 60 * 1000;
-const ACTOR: OperatorActor = { userId: 'op-1', email: 'aamir@aala.land' };
+const ACTOR: OperatorActor = { userId: 'op-1', email: 'operator@example.com' };
 
 function futureIso(days: number): string {
   return new Date(Date.now() + days * DAY).toISOString();

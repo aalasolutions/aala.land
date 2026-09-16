@@ -1,7 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-// A jsonb array on the user, matching companies.active_regions. Backfilled
-// from each company active_regions so no user loses access on deploy.
+// Backfilled from company active_regions so no user loses access on deploy
 export class AddUserRegions1779600000006 implements MigrationInterface {
   name = 'AddUserRegions1779600000006';
 

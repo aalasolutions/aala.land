@@ -1,7 +1,4 @@
-{{!
-  Icon grows (is-large) only when a description is present - a title-only
-  alert is one line and keeps the small centred icon.
-}}
+{{! Icon grows only when a description is present; title-only alerts stay small. }}
 <div class={{this.classes}} role="alert" data-test-nu-alert ...attributes>
   {{#if this.showIcon}}
     <span class={{this.iconClasses}} aria-hidden="true" data-test-nu-alert-icon>

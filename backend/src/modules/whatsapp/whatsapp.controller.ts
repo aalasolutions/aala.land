@@ -1,4 +1,3 @@
-// backend/src/modules/whatsapp/whatsapp.controller.ts
 import {
   BadRequestException,
   Controller,
@@ -45,8 +44,6 @@ export class WhatsappController {
     private readonly signup: WhatsappSignupService,
   ) {}
 
-  // ── Connection ────────────────────────────────────────────────────────
-
   @Get('connection')
   @ApiOperation({
     summary: "The caller's own connected number, or null when none exists",
@@ -87,8 +84,6 @@ export class WhatsappController {
   ): Promise<{ success: boolean }> {
     return this.signup.disconnect(req.user.userId, requireCompanyId(req.user));
   }
-
-  // ── Chats / Messages ──────────────────────────────────────────────────
 
   @Get('chats')
   @ApiOperation({ summary: 'Chat list with last-message preview' })
@@ -176,8 +171,6 @@ export class WhatsappController {
       dto.body,
     );
   }
-
-  // ── AI ────────────────────────────────────────────────────────────────
 
   @Get('ai')
   @ApiOperation({ summary: 'AI config and enabled state' })

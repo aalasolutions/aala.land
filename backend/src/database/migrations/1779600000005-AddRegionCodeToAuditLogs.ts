@@ -1,9 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-// Nullable: billing is global and admin-only, so billing rows keep NULL.
-// Historical rows are backfilled from each company default; a company with
-// no default keeps NULL. The billing test lowercases to match
-// isGlobalEntityType.
+// Nullable: billing rows are global/admin-only and stay NULL, others backfill from company default
 export class AddRegionCodeToAuditLogs1779600000005 implements MigrationInterface {
   name = 'AddRegionCodeToAuditLogs1779600000005';
 

@@ -178,7 +178,7 @@ describe('PropertiesService', () => {
     };
     recordHistory = {
       record: jest.fn().mockResolvedValue(undefined),
-      resolveActorName: jest.fn().mockResolvedValue('Aamir'),
+      resolveActorName: jest.fn().mockResolvedValue('Test User'),
     };
     storagePurge = {
       purge: jest.fn().mockResolvedValue(['purge-1']),
@@ -1207,6 +1207,20 @@ describe('PropertiesService', () => {
         expect(result.data.map((u) => u.id)).toEqual(['unit-punjab']);
       });
 
+      it('narrows an admin to the active region', async () => {
+        const result = await service.findUnitsByAsset(
+          'asset-punjab',
+          companyId,
+          1,
+          20,
+          admin,
+          undefined,
+          'makkah',
+        );
+
+        expect(result.data).toEqual([]);
+      });
+
       it('returns nothing for a caller with no assignments', async () => {
         const result = await service.findUnitsByAsset(
           'asset-makkah',
@@ -1254,6 +1268,19 @@ describe('PropertiesService', () => {
           'asset-punjab',
           'asset-makkah',
         ]);
+      });
+
+      it('narrows an admin to the active region', async () => {
+        const result = await service.findAssetsByLocality(
+          'locality-1',
+          companyId,
+          1,
+          20,
+          admin,
+          'makkah',
+        );
+
+        expect(result.data.map((a) => a.id)).toEqual(['asset-makkah']);
       });
 
       it('returns nothing for a caller with no assignments', async () => {
@@ -1544,7 +1571,7 @@ describe('PropertiesService', () => {
           contextTitle: 'Bay Tower',
           reason: 'Mistake',
           actorId,
-          actorName: 'Aamir',
+          actorName: 'Test User',
           regionCode: 'dubai',
           metadata: { fileCount: 2 },
         });

@@ -322,8 +322,7 @@
                         <span class="text-sm">{{lead.locality.name}}</span>
                       {{/if}}
                     </div>
-                    {{! A real, focusable button so keyboard/AT users can reach this -
-                        no own click handler, the click bubbles to the Panel's. }}
+                    {{! Real button for keyboard/AT; click bubbles to the Panel's handler. }}
                     <Nuvo::Button
                       @variant="secondary"
                       @size="xs"

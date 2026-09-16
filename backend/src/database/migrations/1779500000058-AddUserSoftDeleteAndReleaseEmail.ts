@@ -8,8 +8,7 @@ export class AddUserSoftDeleteAndReleaseEmail1779500000058 implements MigrationI
       `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "deleted_at" timestamptz`,
     );
 
-    // Partial unique: a deleted row stops reserving its email, so the address
-    // is reusable while the row stays for the audit trail.
+    // A deleted row keeps its audit trail but frees its email for reuse
     await queryRunner.query(
       `ALTER TABLE "users" DROP CONSTRAINT IF EXISTS "UQ_97672ac88f789774dd47f7c8be3"`,
     );

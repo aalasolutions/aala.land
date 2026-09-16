@@ -26,5 +26,4 @@
 @use "./pages/vendors";
 @use "./pages/whatsapp";
 
-// No app-level rules live here. Everything belongs to a package (uikit),
-// the shell, the shared badge vocabulary, or a named page file above.
+// No app-level rules here; everything belongs to uikit, the shell, tags, or a page file.

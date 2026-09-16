@@ -1,4 +1,3 @@
-// backend/src/modules/whatsapp/whatsapp.service.ts
 import {
   BadGatewayException,
   BadRequestException,
@@ -43,8 +42,6 @@ export class WhatsappService {
     private readonly cloud: WhatsappCloudApiService,
   ) {}
 
-  // ── Connection ────────────────────────────────────────────────────────
-
   // Field-by-field on purpose: accessTokenCiphertext must never reach a response.
   async getConnection(
     userId: string,
@@ -81,8 +78,6 @@ export class WhatsappService {
     this.ai.clearPromptCache(companyId);
     return { success: true };
   }
-
-  // ── Messages / Chats ──────────────────────────────────────────────────
 
   getChats(companyId: string, userId: string): Promise<WaChat[]> {
     return this.store.getChatList(companyId, userId);
@@ -212,8 +207,6 @@ export class WhatsappService {
     this.gateway.emitMessage(userId, msg);
     return msg;
   }
-
-  // ── AI ────────────────────────────────────────────────────────────────
 
   getAiConfig(companyId: string) {
     return this.ai.getConfigWithUsage(companyId);

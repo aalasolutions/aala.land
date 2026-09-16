@@ -39,11 +39,18 @@ export class FinancialController {
   @Post('transactions')
   @Roles(Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.ACCOUNTANT)
   @ApiOperation({ summary: 'Create a new transaction (ADMIN+ or Accountant)' })
+  @ApiQuery({ name: 'regionCode', required: false, type: String })
   create(
     @Body() dto: CreateTransactionDto,
     @Request() req: AuthenticatedRequest,
+    @Query('regionCode') regionCode?: string,
   ) {
-    return this.financialService.create(requireCompanyId(req.user), dto);
+    return this.financialService.create(
+      requireCompanyId(req.user),
+      dto,
+      regionCode || undefined,
+      req.user,
+    );
   }
 
   @Get('transactions')
@@ -76,8 +83,16 @@ export class FinancialController {
   @Get('transactions/summary')
   @Roles(Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.ACCOUNTANT)
   @ApiOperation({ summary: 'Get financial summary for company' })
-  getSummary(@Request() req: AuthenticatedRequest) {
-    return this.financialService.getSummary(requireCompanyId(req.user));
+  @ApiQuery({ name: 'regionCode', required: false, type: String })
+  getSummary(
+    @Request() req: AuthenticatedRequest,
+    @Query('regionCode') regionCode?: string,
+  ) {
+    return this.financialService.getSummary(
+      requireCompanyId(req.user),
+      regionCode,
+      req.user,
+    );
   }
 
   @Get('deposit-reminders')
@@ -85,30 +100,51 @@ export class FinancialController {
   @ApiOperation({
     summary: 'Get deposit reminders grouped by due date proximity',
   })
-  getDepositReminders(@Request() req: AuthenticatedRequest) {
+  @ApiQuery({ name: 'regionCode', required: false, type: String })
+  getDepositReminders(
+    @Request() req: AuthenticatedRequest,
+    @Query('regionCode') regionCode?: string,
+  ) {
     return this.financialService.getDepositReminders(
       requireCompanyId(req.user),
+      regionCode,
+      req.user,
     );
   }
 
   @Get('transactions/:id')
   @Roles(Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.ACCOUNTANT)
   @ApiOperation({ summary: 'Get transaction by ID' })
+  @ApiQuery({ name: 'regionCode', required: false, type: String })
   findOne(
     @Param('id', ParseUUIDPipe) id: string,
     @Request() req: AuthenticatedRequest,
+    @Query('regionCode') regionCode?: string,
   ) {
-    return this.financialService.findOne(id, requireCompanyId(req.user));
+    return this.financialService.findOne(
+      id,
+      requireCompanyId(req.user),
+      regionCode,
+      req.user,
+    );
   }
 
   @Patch('transactions/:id')
   @Roles(Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.ACCOUNTANT)
   @ApiOperation({ summary: 'Update transaction (ADMIN+ or Accountant)' })
+  @ApiQuery({ name: 'regionCode', required: false, type: String })
   update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateTransactionDto,
     @Request() req: AuthenticatedRequest,
+    @Query('regionCode') regionCode?: string,
   ) {
-    return this.financialService.update(id, requireCompanyId(req.user), dto);
+    return this.financialService.update(
+      id,
+      requireCompanyId(req.user),
+      dto,
+      regionCode,
+      req.user,
+    );
   }
 }

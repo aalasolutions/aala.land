@@ -86,7 +86,7 @@ interface CompanyContext {
   regions: Region[];
   defaultRegionCode: string;
   subscriptionTier: SubscriptionTier | null;
-  /** Write-lock/banner state for the tenant app (design 8.2); null without a company. */
+  /** Write-lock/banner state for the tenant app; null without a company. */
   lockState: CompanyLockState | null;
   /** Server-level: whether WhatsApp env vars are configured. Same for every company. */
   whatsappConfigured: boolean;
@@ -133,8 +133,7 @@ export class AuthService {
     return null;
   }
 
-  // Regions a user may actually work in, intersected with what the company
-  // still operates so a stale assignment cannot resurface a dropped region.
+  // Intersected with company regions so a stale assignment cannot resurface a dropped region.
   private assignedRegionCodes(
     userCodes: string[],
     companyCodes: string[],
@@ -152,15 +151,13 @@ export class AuthService {
       : null;
 
     const companyCodes = company?.activeRegions ?? [];
-    // Admins keep every company region; everyone else only what they are
-    // assigned, so the switcher cannot offer a region they cannot read.
+    // Non-admins only get assigned regions, so the switcher cannot offer a region they cannot read.
     const codes =
       !user || seesAllRegions(user.role)
         ? companyCodes
         : this.assignedRegionCodes(user.regionCodes, companyCodes);
 
-    // A default the user is not assigned to would be rewritten away on the
-    // first request, so it is not offered.
+    // A default the user is not assigned to would be rewritten away on the first request.
     const companyDefault = company?.defaultRegionCode ?? '';
     const defaultRegionCode =
       companyDefault && codes.includes(companyDefault)
@@ -171,7 +168,7 @@ export class AuthService {
       regions: resolveRegions(codes),
       defaultRegionCode,
       subscriptionTier: company?.subscriptionTier ?? null,
-      // Read-time evaluation; drives the tenant lock/grace banner (design 8.2).
+      // Read-time evaluation; drives the tenant lock/grace banner.
       lockState: companyId
         ? await this.lockStateService.getLockState(companyId)
         : null,
@@ -283,7 +280,7 @@ export class AuthService {
 
     if (user) {
       const token = crypto.randomBytes(32).toString('hex');
-      const expires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+      const expires = new Date(Date.now() + 60 * 60 * 1000);
 
       await this.usersService.updateResetToken(user.id, token, expires);
 
@@ -292,8 +289,7 @@ export class AuthService {
         '',
       );
       const resetUrl = `${appUrl}/reset-password?token=${token}`;
-      // Best-effort: MailService swallows transport errors, but never let an
-      // email failure change the generic response below.
+      // Best-effort: never let an email failure change the generic response below.
       try {
         await this.systemEmail.sendPasswordReset(
           { email: user.email, name: user.name },
@@ -356,7 +352,7 @@ export class AuthService {
         slug: dto.companySlug,
         defaultRegionCode: dto.defaultRegionCode,
         activeRegions: [dto.defaultRegionCode],
-        // First-touch attribution; immutable after this write (requirement 2.5).
+        // First-touch attribution; immutable after this write.
         marketerCode: dto.marketerCode?.trim() || null,
       });
       const savedCompany = await companyRepo.save(company);
@@ -397,8 +393,7 @@ export class AuthService {
       };
     });
 
-    // Welcome email is best-effort and sent post-commit so it never holds the
-    // transaction open or blocks signup on a mail failure.
+    // Sent post-commit so a mail failure never blocks signup or holds the transaction open.
     try {
       await this.systemEmail.sendWelcome(
         { email: result.user.email, name: result.user.name },

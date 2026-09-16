@@ -30,10 +30,7 @@ import {
   scopedRegionCodes,
 } from '@shared/utils/region-visibility.util';
 
-// Client-facing shape: the internal storage pointers (url, s3Key) are never
-// serialized to the client. Documents are served only through the streaming
-// download endpoint, so these fields have no use outside the service and would
-// only leak the private bucket's path structure.
+// Storage pointers stripped before reaching client; documents serve only via streaming download.
 export type SanitizedDocument = Omit<
   PropertyDocument,
   'url' | 's3Key' | 'unit'
@@ -193,7 +190,7 @@ export class DocumentsService {
 
     const [data, total] = await qb.getManyAndCount();
 
-    // Separate lookup instead of a JOIN — simpler, and page size bounds the cost.
+    // Separate lookup instead of a JOIN: simpler, and page size bounds the cost.
     const uploaderIds = [
       ...new Set(
         data.map((d) => d.uploadedBy).filter((id): id is string => id !== null),
@@ -231,7 +228,6 @@ export class DocumentsService {
     };
   }
 
-  // Client-facing single fetch — strips the storage pointers.
   async findOne(
     id: string,
     companyId: string,
@@ -243,9 +239,7 @@ export class DocumentsService {
     );
   }
 
-  // Internal full-entity fetch (keeps url/s3Key) for callers that touch storage:
-  // update (save), remove (delete object), downloadStream (read object),
-  // getVersionHistory (walk the chain). Never returned to the client directly.
+  // Internal fetch keeps url/s3Key for storage-facing callers; never returned to client.
   private async findOneEntity(
     id: string,
     companyId: string,
@@ -379,9 +373,7 @@ export class DocumentsService {
     return versions.map((v) => this.sanitize(v));
   }
 
-  // NULL is company-wide, so only an admin may file one. A document attached
-  // to a property takes that property region, matching the derivation in
-  // migration 1779600000004.
+  // NULL is company-wide, admin-only; property-attached takes that property's region.
   private async resolveDocumentRegion(
     companyId: string,
     dto: UploadDocumentDto,
@@ -443,8 +435,7 @@ export class DocumentsService {
     }
   }
 
-  // A document may only attach to a property this company can see, so an
-  // unresolvable id is rejected rather than falling through to another region.
+  // Document may only attach to a visible property; unresolvable id is rejected, not falls through.
   private async regionOfProperty(
     companyId: string,
     unitId?: string,
@@ -467,8 +458,7 @@ export class DocumentsService {
     }
 
     if (assetId) {
-      // An asset is shared: visible when this company created it or owns units
-      // inside it, matching findAllAssets.
+      // Asset shared: visible if company created it or owns units inside; matches findAllAssets.
       const row = await this.assetRepository
         .createQueryBuilder('a')
         .innerJoin('a.locality', 'loc')
@@ -489,9 +479,7 @@ export class DocumentsService {
     return undefined;
   }
 
-  // Strips the private storage pointers (url, s3Key) from a document before it
-  // is returned to the client. Mirrors the omit-by-rest pattern used elsewhere
-  // (e.g. companies.controller adminEmail).
+  // Mirrors the omit-by-rest sanitize pattern used elsewhere (companies.controller adminEmail).
   private sanitize(doc: PropertyDocument): SanitizedDocument {
     const { url: _url, s3Key: _s3Key, unit: _unit, ...rest } = doc;
     return rest;

@@ -18,12 +18,9 @@ interface AuditRequestContext {
   user?: { role?: string };
 }
 
-// Path segments that should never be audited (matched against normalized path)
-// billing/webhook: public provider callback with no user context and large raw
-// payloads; the billing module persists every event in stripe_events instead.
+// billing/webhook skipped: billing module already persists every event in stripe_events.
 const SKIP_SEGMENTS = ['auth/refresh', 'health', 'docs', 'billing/webhook'];
 
-// Map special sub-paths to audit actions
 const ACTION_OVERRIDES: Record<string, AuditAction> = {
   login: AuditAction.LOGIN,
   logout: AuditAction.LOGOUT,
@@ -50,7 +47,6 @@ const ACTION_OVERRIDES: Record<string, AuditAction> = {
   'trim-to-one': AuditAction.BULK_UPDATE,
 };
 
-// Map URL segments to clean entity type names
 const ENTITY_TYPE_MAP: Record<string, string> = {
   leads: 'Lead',
   properties: 'Property',
@@ -85,21 +81,17 @@ export class AuditInterceptor implements NestInterceptor {
     const request = context.switchToHttp().getRequest();
     const method = request.method;
 
-    // Only audit mutations (POST, PATCH, DELETE)
     if (!['POST', 'PATCH', 'DELETE'].includes(method)) {
       return next.handle();
     }
 
     const rawPath: string = request.path || request.url || '';
-    // Normalize: strip /v1/ prefix and leading slashes
     const path = rawPath.replace(/^\/v1\//, '/').replace(/^\/+/, '');
 
-    // Skip internal paths
     if (SKIP_SEGMENTS.some((skip) => path.startsWith(skip))) {
       return next.handle();
     }
 
-    // Parse segments
     const segments = path.split('/').filter(Boolean);
     if (segments.length === 0) {
       return next.handle();
@@ -110,7 +102,6 @@ export class AuditInterceptor implements NestInterceptor {
     const lastSegment = segments[segments.length - 1];
     const action = this.getAction(method, segments);
 
-    // Extract entity ID (first UUID found after the base segment)
     const uuidRegex =
       /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     let entityId: string | undefined;
@@ -160,12 +151,10 @@ export class AuditInterceptor implements NestInterceptor {
             }
           }
 
-          // Skip if no company context
           if (!logCompanyId) {
             return;
           }
 
-          // Extract entity ID from response for CREATE actions
           if (!logEntityId) {
             const payload = responseData?.data || responseData;
             if (payload?.id) {
@@ -173,7 +162,6 @@ export class AuditInterceptor implements NestInterceptor {
             }
           }
 
-          // Include sub-action detail when applicable
           const actionDetail =
             ACTION_OVERRIDES[lastSegment] && segments.length > 1
               ? lastSegment
@@ -214,9 +202,7 @@ export class AuditInterceptor implements NestInterceptor {
     );
   }
 
-  // A region-scoped role has query.regionCode pinned by
-  // RegionScopeInterceptor. An admin gets no such param, so the acted-on
-  // entity is the only source, and NULL when it has none.
+  // Admin requests carry no query.regionCode; the acted-on entity is the only source, may be NULL.
   private resolveRegionCode(
     entityType: string,
     request: AuditRequestContext,
@@ -244,8 +230,7 @@ export class AuditInterceptor implements NestInterceptor {
     return role && seesAllRegions(role) ? null : undefined;
   }
 
-  // The response is either the entity itself or the ResponseInterceptor
-  // envelope around it.
+  // The response may be the entity itself or the ResponseInterceptor envelope around it.
   private entityRegionCode(responseData: unknown): string | undefined {
     const envelope = responseData as { data?: unknown } | null | undefined;
     const payload = (envelope?.data ?? responseData) as

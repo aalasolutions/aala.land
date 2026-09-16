@@ -7,17 +7,7 @@ import { WhatsappAiConversation } from './entities/whatsapp-ai-conversation.enti
 const RETENTION_MONTHS = 13;
 const BATCH_SIZE = 5000;
 
-/**
- * Prunes whatsapp_ai_conversations, which holds one row per consumed AI credit and
- * would otherwise grow forever. Nothing reads past the current billing period plus
- * the console's trailing 30 days; 13 months keeps a full year for billing disputes.
- *
- * The rows carry chat_id (effectively a lead's phone number) and user_id, so this is
- * the data-retention path for that PII as well as a storage measure.
- *
- * Deletes in batches so the table is never locked for long. Assumes a single
- * scheduler instance, as UpcomingInvoiceCron does.
- */
+/** Prunes at 13 months: a year for billing disputes, limits PII retention, deletes in batches. */
 @Injectable()
 export class AiConversationRetentionCron {
   private readonly logger = new Logger(AiConversationRetentionCron.name);

@@ -251,11 +251,7 @@ export default class AuthService extends Service {
     return response;
   }
 
-  /**
-   * Re-reads the bootstrap bundle so session.lockState (and tier/regions)
-   * reflect a lock applied or lifted while the tenant is logged in. Failures
-   * keep the cached state; the next 423 retries.
-   */
+  // Re-reads the bootstrap bundle so lockState reflects a lock applied or lifted mid-session.
   async refreshLockState() {
     try {
       const res = await this.authorizedFetch(`${this.apiBase}/auth/profile`);
@@ -286,8 +282,7 @@ export default class AuthService extends Service {
     if (!res.ok) {
       const { message, body } = await parseErrorPayload(res, 'Request failed');
       if (res.status === 423) {
-        // Write lock (COMPANY_LOCKED). Surface the reduce-or-pay message and
-        // pull fresh lockState so the banner appears mid-session (design 8.2).
+        // Write lock: pull fresh lockState so the reduce-or-pay banner appears mid-session.
         this.notifications.error(message);
         void this.refreshLockState();
       }
@@ -305,8 +300,7 @@ export default class AuthService extends Service {
     return res.json();
   }
 
-  // fetch() cannot report upload progress for a request body, so a real percentage
-  // needs XMLHttpRequest's upload.progress event instead.
+  // fetch() cannot report upload progress; needs XMLHttpRequest's upload.progress event.
   uploadWithProgress(path, formData, onProgress) {
     return new Promise((resolve, reject) => {
       const xhr = new XMLHttpRequest();

@@ -3,10 +3,7 @@ import { action } from '@ember/object';
 import { tracked } from '@glimmer/tracking';
 import { guidFor } from '@ember/object/internals';
 
-// Attach a person: search the company's contacts and pick one, or type a name
-// that has no match and fill the details so the backend creates the contact on
-// save. Used for the unit owner and for lead capture; the parent decides
-// whether that becomes an id or inline details.
+// Parent decides whether the result becomes an id or inline details.
 export default class ContactPickerComponent extends Component {
   @tracked isCreating = false;
 
@@ -33,8 +30,7 @@ export default class ContactPickerComponent extends Component {
     return '/contacts';
   }
 
-  // Contacts loaded through a relation carry no displayName, so fall back the
-  // same way the backend serializer does.
+  // Relation-loaded contacts lack displayName; fall back like the backend serializer.
   get selectedName() {
     const contact = this.contact;
     if (!contact) return '';

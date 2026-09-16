@@ -9,12 +9,7 @@ import {
 
 export type DealBasis = 'per_seat' | 'total_month';
 
-/**
- * Per-company hand-shaken pricing arrangement (operator console, requirement 2.2).
- * One ACTIVE deal per company (partial unique index where ended_at IS NULL).
- * Expiry never drops the tier; it write-locks the account (ruling 9), evaluated
- * at read time by LockStateService.
- */
+// One active deal per company; expiry write-locks, never drops tier; read by LockStateService.
 @Entity('custom_deals')
 @Index('UQ_custom_deals_active_company', ['companyId'], {
   unique: true,
@@ -28,7 +23,7 @@ export class CustomDeal {
   @Column({ name: 'company_id', type: 'uuid' })
   companyId: string;
 
-  /** Minor units in the deal currency (PKR 1000 = 100000). No FX (ruling 11). */
+  // Minor units in the deal currency (PKR 1000 = 100000); no FX conversion.
   @Column({
     name: 'price_amount',
     type: 'bigint',
@@ -43,11 +38,10 @@ export class CustomDeal {
   @Column({ type: 'varchar', length: 3 })
   currency: string;
 
-  /** per_seat: priceAmount per seat. total_month: priceAmount for the whole team. */
   @Column({ type: 'varchar', length: 16 })
   basis: DealBasis;
 
-  /** Ruling 4: every deal carries a seat cap, no exceptions. */
+  // Every deal carries a seat cap; no exceptions.
   @Column({ name: 'seat_cap', type: 'int' })
   seatCap: number;
 
@@ -55,7 +49,7 @@ export class CustomDeal {
   @Column({ name: 'until_date', type: 'timestamptz', nullable: true })
   untilDate: Date | null;
 
-  /** Ruling 3: the institutional memory. Why they pay what they pay. */
+  // Institutional memory: why they pay what they pay.
   @Column({ name: 'why_note', type: 'text' })
   whyNote: string;
 

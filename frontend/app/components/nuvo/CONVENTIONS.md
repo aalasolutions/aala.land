@@ -114,7 +114,7 @@ Interactive components must actually work on the page (state lives in
 ## Verification (required, not optional)
 
 ```
-cd /Users/aamir/Projects/aala.land/Main/frontend
+cd frontend
 npx ember build --environment=development
 ```
 

@@ -69,14 +69,14 @@ export const ALLOWED_DOCUMENT_TYPES = [
   'image/gif',
 ] as const;
 
-// No magic-byte signature exists for these — verifyTextFile below checks them instead.
+// No magic-byte signature exists for these; verifyTextFile below checks them instead.
 const TEXT_DOCUMENT_TYPES = new Set<string>([
   'text/plain',
   'text/markdown',
   'text/csv',
 ]);
 
-// <html> deliberately excluded (owner call).
+// <html> deliberately excluded from the binary-signature list.
 const TEXT_FILE_BINARY_SIGNATURES: ReadonlyArray<{
   bytes: Buffer;
   caseInsensitive?: boolean;
@@ -117,8 +117,7 @@ export class MediaService {
     private readonly storagePurge: StoragePurgeService,
   ) {}
 
-  /** Reserve storage; on an over-quota rejection notify the company (best-effort,
-   *  deduped once per 24h) before rethrowing the 507. */
+  /** On over-quota rejection, notifies the company (best-effort, deduped 24h) then rethrows 507. */
   private async reserveStorageOrNotify(
     companyId: string,
     bytes: number,
@@ -165,8 +164,6 @@ export class MediaService {
     );
   }
 
-  // S3 plumbing
-
   private getMediaClient(): S3Client {
     if (!this.mediaClient) {
       this.mediaClient = buildMediaClient();
@@ -181,8 +178,7 @@ export class MediaService {
     return this.documentsClient;
   }
 
-  // Pair each bucket with its own credentials so an operation can never use the
-  // wrong key for a bucket.
+  // Pairs each bucket with its own credentials to avoid using the wrong key
   private mediaTarget(): { client: S3Client; bucket: string } {
     return { client: this.getMediaClient(), bucket: getMediaBucket() };
   }
@@ -202,8 +198,6 @@ export class MediaService {
       : `https://${bucket}.s3.${region}.amazonaws.com/${key}`;
   }
 
-  // Storage counter helpers
-
   async decrementStorage(companyId: string, bytes: number): Promise<void> {
     if (bytes <= 0) return;
     await this.companyRepository
@@ -216,8 +210,6 @@ export class MediaService {
       .where('id = :companyId', { companyId })
       .execute();
   }
-
-  // Ownership verification
 
   private async verifyUnitOwnership(
     unitId: string,
@@ -253,21 +245,18 @@ export class MediaService {
     }
   }
 
-  // Image upload (primary scope)
-
   async uploadImage(
     companyId: string,
     file: Express.Multer.File,
     dto: UploadMediaDto,
   ): Promise<PropertyMedia> {
-    // 1. Require exactly one of unitId or assetId.
     if ((dto.unitId && dto.assetId) || (!dto.unitId && !dto.assetId)) {
       throw new BadRequestException(
         'Provide either unitId or assetId (but not both).',
       );
     }
 
-    // 2. Validate content-type against allowlist (client-supplied MIME).
+    // Client-supplied header only; real content is verified against magic bytes below
     if (!(ALLOWED_IMAGE_TYPES as readonly string[]).includes(file.mimetype)) {
       throw new BadRequestException(
         `File type "${file.mimetype}" is not allowed. ` +
@@ -275,7 +264,7 @@ export class MediaService {
       );
     }
 
-    // 3. Secondary size check. Multer limit is the primary gate.
+    // Secondary size check; the Multer limit is the primary gate.
     if (file.size > MAX_IMAGE_BYTES) {
       throw new BadRequestException(
         `Image must be under 5 MB. ` +
@@ -283,7 +272,7 @@ export class MediaService {
       );
     }
 
-    // 4. Magic byte validation (file-type v21, pure ESM, dynamic import required).
+    // Magic-byte validation against the real file content, not just the declared MIME.
     const { fileTypeFromBuffer } = await import('file-type');
     const detected = await fileTypeFromBuffer(file.buffer);
     if (
@@ -297,14 +286,13 @@ export class MediaService {
       );
     }
 
-    // 5. Verify ownership.
     if (dto.unitId) {
       await this.verifyUnitOwnership(dto.unitId, companyId);
     } else if (dto.assetId) {
       await this.verifyAssetOwnership(dto.assetId, companyId);
     }
 
-    // 6. Decompression bomb check (header read only, no full pixel decode).
+    // Decompression bomb check: header read only, no full pixel decode.
     let meta: sharp.Metadata;
     try {
       meta = await sharp(file.buffer).metadata();
@@ -322,12 +310,7 @@ export class MediaService {
       );
     }
 
-    // 7. Process with sharp.
-    //    Original: rotate() corrects orientation and strips EXIF, resize() caps the
-    //    longest dimension at 2560 px (never upscales). All images are re-encoded
-    //    as JPEG at quality 80 — PNG/WebP inputs lose transparency (flattened to white).
-    //    Thumbnail: 400x400 cover crop, JPEG quality 80.
-    //    Both are generated from the raw in-memory buffer; B2 is never re-downloaded.
+    // Both original and thumbnail come from the in-memory buffer; B2 is never re-downloaded
     let processedBuffer: Buffer;
     let thumbnailBuffer: Buffer;
     try {
@@ -358,14 +341,10 @@ export class MediaService {
     const actualThumbBytes = thumbnailBuffer.length;
     const totalActualBytes = actualOriginalBytes + actualThumbBytes;
 
-    // 8. Atomically reserve storage using actual post-processing bytes (more accurate
-    //    than raw file.size, which excludes the thumbnail and may differ from the JPEG
-    //    output). Reserving before any S3 PUT closes the TOCTOU gap between the quota
-    //    check and the counter update — the check and increment are one conditional
-    //    UPDATE, so concurrent uploads cannot both pass and overshoot the quota.
+    // Reserves actual post-processing bytes before the S3 PUT, closing the quota TOCTOU gap
     await this.reserveStorageOrNotify(companyId, totalActualBytes);
 
-    // 9. Build S3 keys. safeName truncated to 200 chars to stay under s3Key varchar(500).
+    // safeName truncated to 200 chars to stay under the s3Key varchar(500) column.
     const timestamp = Date.now();
     const safeName = file.originalname
       .replace(/[^a-zA-Z0-9._-]/g, '_')
@@ -374,8 +353,6 @@ export class MediaService {
     const originalKey = `${BUCKET_ROOT_FOLDER}/companies/${companyId}/properties/${folder}/${timestamp}-${safeName}`;
     const thumbKey = getThumbnailKey(originalKey);
 
-    // 10. Upload original and thumbnail to B2.
-    //     Output is always JPEG regardless of input format — record it as such.
     const { client, bucket } = this.mediaTarget();
     let originalUploaded = false;
 
@@ -391,7 +368,7 @@ export class MediaService {
       );
       originalUploaded = true;
 
-      // 11. Upload thumbnail. If this fails, roll back the original.
+      // If the thumbnail upload fails, the original upload is rolled back below.
       await client.send(
         new PutObjectCommand({
           Bucket: bucket,
@@ -413,7 +390,7 @@ export class MediaService {
             );
           });
       }
-      // Release the reservation made in step 8 — no bytes actually landed in storage.
+      // Releases the reservation since no bytes actually landed in storage.
       await this.decrementStorage(companyId, totalActualBytes).catch((e) => {
         this.logger.error(
           `Failed to release storage reservation for company ${companyId}: ${errorMessage(e)}`,
@@ -423,7 +400,6 @@ export class MediaService {
       throw new InternalServerErrorException(`Storage upload failed: ${msg}`);
     }
 
-    // 12. Save media record. Output is always JPEG — store the actual content type.
     const media = this.mediaRepository.create({
       url: this.buildFileUrl(bucket, originalKey),
       thumbnailUrl: this.buildFileUrl(bucket, thumbKey),
@@ -432,8 +408,7 @@ export class MediaService {
       contentType: 'image/jpeg',
       fileSize: actualOriginalBytes,
       thumbnailSize: actualThumbBytes,
-      // This endpoint always processes and stores a JPEG image — dto.type is
-      // ignored so a caller can't persist a video/virtual_tour record here.
+      // dto.type is ignored: this endpoint only ever stores a processed JPEG
       type: MediaType.IMAGE,
       isPrimary: dto.isPrimary ?? false,
       unitId: dto.unitId,
@@ -485,15 +460,11 @@ export class MediaService {
     }
   }
 
-  // Document upload to storage (secondary scope)
-
   async uploadDocumentToStorage(
     companyId: string,
     file: Express.Multer.File,
   ): Promise<DocumentUploadResult> {
-    // Documents are spooled to a temp file on disk by multer (see
-    // documents.controller.ts), not buffered in memory — the temp file must be
-    // removed on every exit path once this function is done with it.
+    // Multer spools to a temp file on disk; must be removed on every exit path
     try {
       return await this.uploadDocumentFile(companyId, file);
     } finally {
@@ -557,7 +528,7 @@ export class MediaService {
     companyId: string,
     file: Express.Multer.File,
   ): Promise<DocumentUploadResult> {
-    // 1. MIME allowlist check (client-supplied header).
+    // Client-supplied header only; content is verified against real bytes below
     if (
       !(ALLOWED_DOCUMENT_TYPES as readonly string[]).includes(file.mimetype)
     ) {
@@ -567,7 +538,7 @@ export class MediaService {
       );
     }
 
-    // 2. Content validation — confirms file bytes match the declared MIME type.
+    // Content validation confirms file bytes match the declared MIME type.
     if (TEXT_DOCUMENT_TYPES.has(file.mimetype)) {
       await this.verifyTextFile(file.path);
     } else {
@@ -586,8 +557,7 @@ export class MediaService {
       }
     }
 
-    // 3. Atomically reserve storage before any S3 PUT (TOCTOU-safe — see
-    //    reserveStorage). Closing this gap here mirrors the fix in uploadImage.
+    // Reserves storage atomically before any S3 PUT, TOCTOU-safe like uploadImage's check.
     await this.reserveStorageOrNotify(companyId, file.size);
 
     const { client, bucket } = this.documentsTarget();
@@ -597,9 +567,7 @@ export class MediaService {
       .slice(0, 200);
     const key = `${BUCKET_ROOT_FOLDER}/companies/${companyId}/documents/${timestamp}-${safeName}`;
 
-    // Attach an error listener before handing the stream to the SDK — an
-    // unlistened 'error' event on a Readable crashes the process, and we don't
-    // control exactly when/whether the SDK's internal pipe consumes this stream.
+    // An unlistened 'error' event on a Readable crashes the process
     const bodyStream = createReadStream(file.path);
     bodyStream.on('error', (err) => {
       this.logger.error(
@@ -619,7 +587,7 @@ export class MediaService {
         }),
       );
     } catch (err) {
-      // Release the reservation — no bytes actually landed in storage.
+      // Releases the reservation since no bytes actually landed in storage.
       await this.decrementStorage(companyId, file.size).catch((e) => {
         this.logger.error(
           `Failed to release storage reservation for company ${companyId}: ${errorMessage(e)}`,
@@ -636,13 +604,7 @@ export class MediaService {
     };
   }
 
-  /**
-   * Operator console receipt image (manual payment proof). Same private
-   * documents bucket and magic-byte validation as tenant documents, but
-   * image-only and WITHOUT tenant storage-quota accounting: the upload is an
-   * operator artifact, and an over-quota company must never be able to block
-   * the recording of its own payment.
-   */
+  /** Manual payment proof: image-only, no quota so an over-quota company can still pay. */
   async uploadConsoleReceipt(
     companyId: string,
     file: Express.Multer.File,
@@ -701,8 +663,6 @@ export class MediaService {
       });
     }
   }
-
-  // Find and set-primary
 
   async findByUnit(
     companyId: string,
@@ -776,9 +736,7 @@ export class MediaService {
     void this.storagePurge.dispatch(purgeIds);
   }
 
-  // Streams a document's bytes from the private documents bucket. Callers must go
-  // through DocumentsService.downloadStream, which re-checks accessLevel before
-  // this runs.
+  // Callers must go through DocumentsService.downloadStream, which re-checks accessLevel
   async getDocumentStream(s3Key: string): Promise<NodeJS.ReadableStream> {
     const { client, bucket } = this.documentsTarget();
 

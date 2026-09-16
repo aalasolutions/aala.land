@@ -1,7 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-// Region is derivable through unit > asset > locality > city. Anything not
-// linked to a property falls back to the company default.
+// Derived via unit > asset > locality > city; unlinked docs fall back to company default
 export class AddRegionCodeToPropertyDocuments1779600000004 implements MigrationInterface {
   name = 'AddRegionCodeToPropertyDocuments1779600000004';
 

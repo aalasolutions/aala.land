@@ -8,17 +8,7 @@ import {
   ENTERPRISE_BYTES_PER_SEAT,
 } from '@modules/companies/entities/company.entity';
 
-/**
- * Returns the total storage quota in bytes for a given company.
- * Pure function, no I/O. Safe to call from any module that has the Company object.
- *
- * FREE tier:       2 GB flat, regardless of seat count.
- * PRO tier:        purchasedSeats * 5 GB.
- * ENTERPRISE tier: purchasedSeats * 10 GB.
- *
- * purchasedSeats defaults to 1 and is synced from the Stripe subscription
- * quantity by the webhook handler (unit 4).
- */
+// Pure function, safe to call from anywhere with a Company object
 export function getStorageQuotaBytes(company: Company): number {
   const tier = company.subscriptionTier as SubscriptionTier;
   if (tier === SubscriptionTier.FREE) {
@@ -31,16 +21,7 @@ export function getStorageQuotaBytes(company: Company): number {
   return Math.max(company.purchasedSeats, 1) * BYTES_PER_SEAT;
 }
 
-/**
- * Atomically checks and reserves storage for a company: the quota comparison and
- * the counter increment happen in a single conditional UPDATE, so two concurrent
- * uploads can never both read the same pre-upload usage, both pass, and jointly
- * push the company over quota. If the update matches zero rows, the reservation
- * was rejected and storageUsedBytes was left untouched.
- *
- * Callers that fail after reserving (e.g. the S3 PUT throws) must roll back with
- * their own decrement helper — this function only ever adds.
- */
+// One conditional UPDATE: concurrent uploads can't both pass and push the company over quota
 export async function reserveStorage(
   companyRepository: Repository<Company>,
   companyId: string,

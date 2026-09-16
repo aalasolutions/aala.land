@@ -18,7 +18,6 @@ export class CleanLeadEnums1779300000002 implements MigrationInterface {
       `UPDATE "lead_activities" SET "type" = UPPER("type"::text)::"public"."lead_activities_type_enum" WHERE "type"::text != UPPER("type"::text)`,
     );
 
-    // --- leads_status_enum ---
     await queryRunner.query(
       `ALTER TABLE "leads" ALTER COLUMN "status" DROP DEFAULT`,
     );
@@ -36,7 +35,6 @@ export class CleanLeadEnums1779300000002 implements MigrationInterface {
     );
     await queryRunner.query(`DROP TYPE "public"."leads_status_enum_old"`);
 
-    // --- leads_temperature_enum ---
     await queryRunner.query(
       `ALTER TABLE "leads" ALTER COLUMN "temperature" DROP DEFAULT`,
     );
@@ -54,7 +52,6 @@ export class CleanLeadEnums1779300000002 implements MigrationInterface {
     );
     await queryRunner.query(`DROP TYPE "public"."leads_temperature_enum_old"`);
 
-    // --- leads_source_enum ---
     await queryRunner.query(
       `ALTER TABLE "leads" ALTER COLUMN "source" DROP DEFAULT`,
     );
@@ -72,7 +69,6 @@ export class CleanLeadEnums1779300000002 implements MigrationInterface {
     );
     await queryRunner.query(`DROP TYPE "public"."leads_source_enum_old"`);
 
-    // --- lead_activities_type_enum ---
     await queryRunner.query(
       `ALTER TABLE "lead_activities" ALTER COLUMN "type" DROP DEFAULT`,
     );
@@ -94,7 +90,6 @@ export class CleanLeadEnums1779300000002 implements MigrationInterface {
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    // Restore leads_status_enum with both cases
     await queryRunner.query(
       `ALTER TABLE "leads" ALTER COLUMN "status" DROP DEFAULT`,
     );
@@ -112,7 +107,6 @@ export class CleanLeadEnums1779300000002 implements MigrationInterface {
     );
     await queryRunner.query(`DROP TYPE "public"."leads_status_enum_clean"`);
 
-    // Restore leads_temperature_enum with both cases
     await queryRunner.query(
       `ALTER TABLE "leads" ALTER COLUMN "temperature" DROP DEFAULT`,
     );
@@ -132,7 +126,6 @@ export class CleanLeadEnums1779300000002 implements MigrationInterface {
       `DROP TYPE "public"."leads_temperature_enum_clean"`,
     );
 
-    // Restore leads_source_enum with both cases
     await queryRunner.query(
       `ALTER TABLE "leads" ALTER COLUMN "source" DROP DEFAULT`,
     );
@@ -150,7 +143,6 @@ export class CleanLeadEnums1779300000002 implements MigrationInterface {
     );
     await queryRunner.query(`DROP TYPE "public"."leads_source_enum_clean"`);
 
-    // Restore lead_activities_type_enum with both cases
     await queryRunner.query(
       `ALTER TABLE "lead_activities" ALTER COLUMN "type" DROP DEFAULT`,
     );

@@ -60,7 +60,6 @@
 
   <div class="wa-page">
 
-    {{! ── Left sidebar ─────────────────────────────────────────────── }}
     <aside class="wa-sidebar">
 
       <div class="wa-sidebar-header">
@@ -94,7 +93,6 @@
         </div>
       {{/if}}
 
-      {{! Chat list }}
       <div class="wa-chat-list">
         {{#each this.chats as |chat|}}
           <button
@@ -137,7 +135,6 @@
 
     </aside>
 
-    {{! ── Main chat area ────────────────────────────────────────────── }}
     <section class="wa-chat-area" aria-label="Conversation">
 
       {{#if this.currentChatId}}

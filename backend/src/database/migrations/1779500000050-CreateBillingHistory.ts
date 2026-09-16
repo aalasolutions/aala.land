@@ -22,13 +22,11 @@ export class CreateBillingHistory1779500000050 implements MigrationInterface {
                 CONSTRAINT "PK_billing_history" PRIMARY KEY ("id")
             )
         `);
-    // Idempotency key: one row per (invoice, outcome). Lets the webhook upsert
-    // instead of duplicating on invoice.paid + invoice.payment_succeeded double-fire.
+    // Lets the webhook upsert instead of duplicating on a double-fired Stripe event
     await queryRunner.query(
       `CREATE UNIQUE INDEX IF NOT EXISTS "UQ_billing_history_invoice_type" ON "billing_history" ("stripe_invoice_id", "type")`,
     );
-    // Composite (company_id, occurred_at DESC) serves the scoped list query:
-    // WHERE company_id = $1 ORDER BY occurred_at DESC.
+    // Serves the scoped list query ordered by occurred_at DESC
     await queryRunner.query(
       `CREATE INDEX IF NOT EXISTS "IDX_billing_history_company_occurred" ON "billing_history" ("company_id", "occurred_at" DESC)`,
     );

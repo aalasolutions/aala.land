@@ -31,8 +31,7 @@ import {
   scopedRegionCodes,
 } from '../../shared/utils/region-visibility.util';
 
-// Derived role tags. Never stored on the contact; computed from which rows
-// reference it.
+// Derived role tags; never stored on the contact, computed from which rows reference it.
 export type ContactTag = 'lead' | 'tenant' | 'owner' | 'vendor';
 
 export type ContactResponse = Omit<Contact, 'company'> & {
@@ -51,8 +50,7 @@ export interface ContactFilters {
   regionCode?: string;
 }
 
-// Identity carried inline when attaching a person (lead capture, unit owner,
-// lease tenant). Either an existing contact id, or details to resolve/create.
+// Identity carried inline attaching a person: existing contact id, or details to resolve/create.
 export interface ContactIdentity {
   contactId?: string | null;
   firstName?: string | null;
@@ -81,12 +79,7 @@ export class ContactsService {
     private readonly recordHistoryService: RecordHistoryService,
   ) {}
 
-  // Adding a contact honors the same one-number-one-contact rule as lead
-  // capture: a number that already belongs to a contact resolves to it rather
-  // than creating a duplicate. Resolving does NOT discard what the operator
-  // typed: the supplied fields fill the existing contact's empty slots (existing
-  // data is never overwritten), so the input is never silently lost. Contacts
-  // with neither phone nor email are the plain-contact case, created as-is.
+  // One-number-one-contact: an existing number resolves to it and fills empty fields, no duplicate.
   async create(
     companyId: string,
     dto: CreateContactDto,
@@ -126,15 +119,7 @@ export class ContactsService {
     return this.findOne(saved.id, companyId);
   }
 
-  // One number is one contact, within a company. Used wherever a person is
-  // attached: entering a number that already belongs to a contact resolves to
-  // that contact with no prompt and no second row. The match is done in SQL on
-  // the last 9 digits so a stored number with spaces, dashes or brackets still
-  // resolves. Contacts with no phone match on lowercased email; a contact with
-  // neither is just created (the plain-contact case). On resolve, identity
-  // fields fill the existing contact's empty slots.
-  // `regionCode` is the region of whatever created this contact (a lead, a unit
-  // owner). Falls back to the company default when the caller has none.
+  // Matches last 9 digits or lowercased email, fills empty fields; regionCode defaults to company.
   async resolveOrCreate(
     companyId: string,
     identity: ContactIdentity,
@@ -202,9 +187,7 @@ export class ContactsService {
     return saved;
   }
 
-  // Fill an existing contact's empty fields from a partial input. Existing data
-  // is never overwritten, so resolving a number already on file still records
-  // anything new the operator supplied. Returns the (saved) contact.
+  // Only empty fields are filled from the input; existing data is never overwritten.
   private async mergeEmpty(
     existing: Contact,
     input: Partial<Record<keyof Contact, string | boolean | null>>,
@@ -241,12 +224,7 @@ export class ContactsService {
     return saved;
   }
 
-  // Link every chat in the company whose JID number matches this contact's
-  // phone, and clear the resolution-attempted latch. This is what unblocks a
-  // stranger chat after the operator saves the person: the chat was latched
-  // attempted=true with contact_id NULL on first contact (no match yet), so the
-  // per-message resolver never retries. Creating or updating the contact is the
-  // signal that a match may now exist, so we resolve those chats here.
+  // Clears the attempted latch: resolver never retries once true; this unblocks a stale chat.
   private async linkMatchingChats(contact: Contact): Promise<void> {
     const digits = normalizePhone(contact.phone);
     if (!digits) return;
@@ -302,14 +280,12 @@ export class ContactsService {
     }
 
     if (tag) {
-      // companyId is already bound on the qb; the EXISTS subqueries reuse it so
-      // every role check stays company-scoped.
+      // companyId bound on the qb; EXISTS subqueries reuse it, keeping role checks company-scoped.
       qb.andWhere(this.tagExistsSql('c.id', tag));
     }
 
     if (filters?.agentId) {
-      // An agent may be assigned via a lead OR via a unit this contact owns.
-      // Both are company-scoped through the same :companyId already bound.
+      // Agent assigned via a lead OR a unit this contact owns; both scoped via bound :companyId.
       qb.andWhere(
         `(EXISTS (SELECT 1 FROM leads l WHERE l.contact_id = c.id AND l.company_id = :companyId AND l.assigned_to = :agentId)
           OR EXISTS (SELECT 1 FROM units u WHERE u.owner_id = c.id AND u.company_id = :companyId AND u.assigned_agent_id = :agentId AND u.deleted_at IS NULL))`,
@@ -424,9 +400,7 @@ export class ContactsService {
       throw new BadRequestException('Cannot transfer a contact to itself');
     }
 
-    // Verify the source exists in this company first. Without this, a wrong id
-    // (or another company's) yields zero edge counts and a delete that touches
-    // nothing, reported as success instead of 404.
+    // Verify source exists first, else a wrong id yields zero edges, a no-op reported as success.
     const source = await this.findOneEntity(id, companyId, caller);
 
     const [leadCount, unitCount, leaseCount, chatCount] = await Promise.all([
@@ -484,9 +458,7 @@ export class ContactsService {
       return;
     }
 
-    // Transfer the edges AND delete the source in one transaction, so a failed
-    // delete cannot leave the edges moved and the source contact alive owning
-    // nothing.
+    // Transfers edges and deletes source in one transaction so failure can't strand moved edges.
     const scopedCodes = scopedRegionCodes(caller);
     await this.dataSource.transaction(async (manager) => {
       const target = await manager.findOne(Contact, {
@@ -524,10 +496,7 @@ export class ContactsService {
     });
   }
 
-  // -- role tag derivation -------------------------------------------------
-
-  // EXISTS / COUNT subqueries. companyId is bound on the owning query builder,
-  // so these reuse :companyId and stay company-scoped.
+  // companyId is bound on the owning qb; EXISTS/COUNT subqueries reuse it, staying company-scoped.
   private tagExistsSql(contactCol: string, tag: ContactTag): string {
     switch (tag) {
       case 'lead':
@@ -541,8 +510,7 @@ export class ContactsService {
     }
   }
 
-  // Batch-compute tags for a page of contacts: 3 queries (lead ids, tenant ids,
-  // owner counts) instead of N+1. Every subquery is company-scoped.
+  // Batch-computes tags for a page as 3 queries instead of N+1; every subquery is company-scoped.
   private async attachTags(
     companyId: string,
     contacts: Contact[],

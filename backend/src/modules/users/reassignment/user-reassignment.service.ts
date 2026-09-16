@@ -50,8 +50,7 @@ const REASSIGNMENT_TARGETS: ReassignmentTarget[] = [
     entity: Commission,
     setProperty: 'agentId',
     column: 'agent_id',
-    // PENDING only. APPROVED, PAID, and CANCELLED are financial records and
-    // must keep their agent attribution.
+    // PENDING only: APPROVED/PAID/CANCELLED are financial records, keep their attribution
     extraWhere: 'AND status = :pendingStatus',
     extraParams: { pendingStatus: CommissionStatus.PENDING },
   },
@@ -85,11 +84,7 @@ const REASSIGNMENT_EXECUTION_ORDER: ReassignedEntityType[] = [
 export class UserReassignmentService {
   private readonly logger = new Logger(UserReassignmentService.name);
 
-  /**
-   * Reassigns every company-scoped record owned by fromUserId to toUserId.
-   * MUST be called with the manager of an open transaction; this service
-   * never commits or rolls back on its own.
-   */
+  /** MUST use the manager of an open transaction; never commits or rolls back on its own. */
   async reassignOwnedRecords(
     manager: EntityManager,
     companyId: string,
@@ -98,9 +93,7 @@ export class UserReassignmentService {
     reason: string,
     options: { collectIds?: boolean } = {},
   ): Promise<ReassignmentReport> {
-    // Only materialize the reassigned row ids when a recorder will consume them.
-    // Otherwise rely on the driver's affected-row count, so a large tenant does not
-    // pull tens of thousands of UUIDs into memory for a payload nobody reads.
+    // Only materialize ids when a recorder consumes them; avoids loading UUIDs nobody reads
     const collectIds = options.collectIds ?? false;
     const byType = new Map<
       ReassignedEntityType,

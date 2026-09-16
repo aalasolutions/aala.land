@@ -1,6 +1,4 @@
-// Audit log page - bespoke layout for the expandable log list.
-// Accordion could not carry this markup (see AGENT_BRIEF report); the
-// expand/collapse row stays hand-rolled, styled with kit tokens.
+// Bespoke expandable log list; Accordion couldn't carry this markup, so it's hand-rolled.
 @use "../uikit/mixins/var" as *;
 @use "../uikit/common/var" as *;
 

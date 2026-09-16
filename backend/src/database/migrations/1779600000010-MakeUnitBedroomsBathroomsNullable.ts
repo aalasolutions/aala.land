@@ -1,7 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-// NULL means unknown, 0 means a genuine zero such as a studio.
-// Existing 0s are left as they are.
+// NULL means unknown, 0 means a genuine zero such as a studio; existing 0s are left as they are.
 export class MakeUnitBedroomsBathroomsNullable1779600000010 implements MigrationInterface {
   name = 'MakeUnitBedroomsBathroomsNullable1779600000010';
 

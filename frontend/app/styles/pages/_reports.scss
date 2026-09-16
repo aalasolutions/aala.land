@@ -17,8 +17,6 @@
   border-radius: nu-radius(lg);
 }
 
-// Severity tints. The `--bg-*-soft` / `--border-light` names these carried in
-// app.new.scss do not exist in the token set, so they rendered unstyled.
 .red-flag-high {
   background: var(--danger-50);
   border: 1px solid var(--danger-200);

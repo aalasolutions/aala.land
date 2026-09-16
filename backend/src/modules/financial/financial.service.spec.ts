@@ -1,7 +1,11 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
-import { ConflictException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  NotFoundException,
+} from '@nestjs/common';
 import { FinancialService } from './financial.service';
 import {
   Transaction,
@@ -10,6 +14,7 @@ import {
   PaymentMethod,
 } from './entities/transaction.entity';
 import { Unit } from '../properties/entities/unit.entity';
+import { Company } from '../companies/entities/company.entity';
 
 describe('FinancialService', () => {
   let service: FinancialService;
@@ -57,9 +62,22 @@ describe('FinancialService', () => {
           },
         },
         {
+          provide: getRepositoryToken(Company),
+          useValue: {
+            findOne: jest.fn(),
+          },
+        },
+        {
           provide: getRepositoryToken(Unit),
           useValue: {
             findOne: jest.fn(),
+            createQueryBuilder: jest.fn(() => ({
+              innerJoin: jest.fn().mockReturnThis(),
+              select: jest.fn().mockReturnThis(),
+              where: jest.fn().mockReturnThis(),
+              andWhere: jest.fn().mockReturnThis(),
+              getRawOne: jest.fn().mockResolvedValue(undefined),
+            })),
           },
         },
       ],
@@ -200,8 +218,41 @@ describe('FinancialService', () => {
       const dto = { type: TransactionType.INCOME, amount: 15000 };
       const result = await service.create(companyId, dto as any);
 
-      expect(repo.create).toHaveBeenCalledWith({ ...dto, companyId });
+      expect(repo.create).toHaveBeenCalledWith({
+        ...dto,
+        companyId,
+        regionCode: null,
+      });
       expect(result).toEqual(mockTransaction);
+    });
+
+    it('refuses a region the caller is not assigned to', async () => {
+      const dto = { type: TransactionType.INCOME, amount: 15000 };
+
+      await expect(
+        service.create(companyId, dto as any, 'punjab', {
+          role: 'manager',
+          regionCodes: ['makkah'],
+        }),
+      ).rejects.toThrow(BadRequestException);
+      expect(repo.create).not.toHaveBeenCalled();
+    });
+
+    it('stores the caller active region when no unit is linked', async () => {
+      repo.create.mockReturnValue(mockTransaction as Transaction);
+      repo.save.mockResolvedValue(mockTransaction as Transaction);
+
+      const dto = { type: TransactionType.INCOME, amount: 15000 };
+      await service.create(companyId, dto as any, 'makkah', {
+        role: 'manager',
+        regionCodes: ['makkah'],
+      });
+
+      expect(repo.create).toHaveBeenCalledWith({
+        ...dto,
+        companyId,
+        regionCode: 'makkah',
+      });
     });
   });
 

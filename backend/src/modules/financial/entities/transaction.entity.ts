@@ -101,6 +101,10 @@ export class Transaction {
   })
   referenceNumber: string;
 
+  @Index()
+  @Column({ name: 'region_code', type: 'varchar', length: 50, nullable: true })
+  regionCode: string | null;
+
   @Column({ name: 'unit_id', type: 'uuid', nullable: true })
   unitId: string;
 

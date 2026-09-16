@@ -328,7 +328,6 @@
     />
   {{else}}
     <div class="company-settings-grid">
-      {{! Left: Company Info }}
       <Nuvo::Card>
         <h3 class="text-lg font-bold mb-4">Company Information</h3>
         <form
@@ -414,7 +413,6 @@
         </form>
       </Nuvo::Card>
 
-      {{! Right: Operating Regions }}
       {{#if this.model.regions.length}}
         <Nuvo::Card
           class="{{unless this.isAdmin 'region-settings-readonly'}}"
@@ -436,7 +434,6 @@
             }}.
           </p>
 
-          {{! Default Region (above the list) }}
           {{#if this.formActiveRegions.length}}
             <Nuvo::Field @label="Default Region" class="mb-4">
               <Nuvo::Dropdown

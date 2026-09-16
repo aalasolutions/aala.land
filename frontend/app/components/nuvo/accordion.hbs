@@ -1,4 +1,4 @@
-{{! Block param is `entry`, never `item` shadowing risk avoided by not using `item` as tag name - safe here but kept explicit for consistency. }}
+{{! Block param is `entry`, avoiding a shadowing risk with `item`. }}
 <div class={{this.classes}} data-test-nu-accordion ...attributes>
   {{#each this.items key="id" as |entry|}}
     <div
@@ -18,9 +18,7 @@
       </button>
 
       <div class="nu-accordion__panel" data-test-nu-accordion-panel={{entry.id}}>
-        {{! Unpadded clip layer. Padding on the clipped element itself keeps
-            the collapsed panel that many pixels tall, showing a strip of the
-            content through it. }}
+        {{! Padding on this clipped layer would keep the collapsed panel visibly tall. }}
         <div>
           <div class="nu-accordion__content">
             {{#if (has-block)}}

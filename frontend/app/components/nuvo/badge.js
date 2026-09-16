@@ -32,8 +32,7 @@ export default class NuBadgeComponent extends Component {
     return parts.join(' ');
   }
 
-  // Renders the count bubble on its own instead of the pill badge, since
-  // without a block there is nothing to anchor it to.
+  // Count bubble has no block content to anchor a pill badge to.
   get isCount() {
     return Boolean(this.args.count);
   }
@@ -51,8 +50,7 @@ export default class NuBadgeComponent extends Component {
     return parts.join(' ');
   }
 
-  // @text is an alias for @value. Both read naturally depending on whether the
-  // badge is a count or a label, and callers reach for either.
+  // @text aliases @value, whichever reads naturally for count vs label.
   get resolvedValue() {
     return this.args.value !== undefined && this.args.value !== null
       ? this.args.value

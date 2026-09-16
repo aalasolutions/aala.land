@@ -70,13 +70,14 @@ export class ChequesService {
     dto: CreateChequeDto,
     userId?: string,
     caller?: RegionScope,
+    activeRegionCode?: string,
   ): Promise<Cheque> {
     await this.assertUnitInCallerRegions(dto.unitId, companyId, caller, true);
     await this.assertLeaseOpenForCheque(dto.leaseId, companyId);
     const regionCode = await this.resolveChequeRegion(
       companyId,
       dto.unitId,
-      dto.regionCode,
+      dto.regionCode ?? activeRegionCode,
       caller,
     );
     const cheque = this.chequeRepository.create({
@@ -121,14 +122,14 @@ export class ChequesService {
         companyId,
         ...(regionCodes ? { regionCode: In(regionCodes) } : {}),
       },
+      relations: { unit: true },
       ...paginationOptions(page, limit),
       order: { dueDate: 'ASC' },
     });
     return { data, total, page, limit };
   }
 
-  // A cheque's region is its unit's, so a unit the caller cannot read must not
-  // be bound to one.
+  // A cheque's region is its unit's, so a unit the caller cannot read must not be bound to one.
   private async assertUnitInCallerRegions(
     unitId: string | null | undefined,
     companyId: string,
@@ -227,8 +228,7 @@ export class ChequesService {
     }
   }
 
-  // A cheque takes the region of its unit. With no unit it falls back to the
-  // supplied region, then to the company default.
+  // Cheque region: unit's region, else caller's working region, else company default.
   private async resolveChequeRegion(
     companyId: string,
     unitId: string | null | undefined,
@@ -334,7 +334,7 @@ export class ChequesService {
     });
 
     if (!hasRealChanges) {
-      return cheque; // Exit early: nothing actually changed
+      return cheque;
     }
 
     const oldStatus = cheque.status;
@@ -356,14 +356,7 @@ export class ChequesService {
       cheque.depositDate = new Date();
     }
 
-    // Single guarded conditional UPDATE for BOTH status and non-status edits.
-    // The optimistic-lock version guard (WHERE version = :expectedVersion,
-    // SET version = version + 1) rejects any concurrent edit in either
-    // direction: a concurrent non-status edit that leaves status unchanged
-    // no longer wins last-write, and a concurrent status transition still
-    // fails the version compare-and-set. When this IS a status change we also
-    // re-assert the previously-read status and terminal exclusion, so a status
-    // move can only commit from the exact state we validated.
+    // Version guard rejects concurrent edits; status change re-checks status and terminal state.
     await this.dataSource.transaction(async (manager) => {
       await this.assertChequeEditable(
         manager,
