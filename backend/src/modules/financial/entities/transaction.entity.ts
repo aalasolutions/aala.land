@@ -113,10 +113,10 @@ export class Transaction {
   unit: Unit;
 
   @Column({ name: 'transaction_date', type: 'date', nullable: true })
-  transactionDate: Date;
+  transactionDate: string | null;
 
   @Column({ name: 'due_date', type: 'date', nullable: true })
-  dueDate: Date;
+  dueDate: string | null;
 
   @Column({ name: 'paid_at', type: 'timestamptz', nullable: true })
   paidAt: Date;

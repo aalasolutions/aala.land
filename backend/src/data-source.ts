@@ -1,3 +1,4 @@
+import './shared/utils/utc-runtime';
 import { DataSource } from 'typeorm';
 import { join, resolve } from 'path';
 import * as dotenv from 'dotenv';
@@ -36,4 +37,5 @@ export const AppDataSource = new DataSource({
   migrations: migrationPaths,
   synchronize: process.env.DB_SYNC === 'true',
   logging: process.env.NODE_ENV !== 'production',
+  extra: { options: '-c timezone=UTC' },
 });

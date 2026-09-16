@@ -8,8 +8,6 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import {
   Repository,
-  LessThan,
-  Between,
   In,
   FindOptionsWhere,
   DataSource,
@@ -29,6 +27,10 @@ import {
   effectiveRegionCodes,
   scopedRegionCodes,
 } from '../../shared/utils/region-visibility.util';
+import {
+  regionToday,
+  regionTodaySql,
+} from '../../shared/utils/region-time.util';
 import { paginationOptions } from '../../shared/utils/pagination.util';
 import { Unit } from '../properties/entities/unit.entity';
 import { Lease } from '../leases/entities/lease.entity';
@@ -351,7 +353,7 @@ export class ChequesService {
     }
 
     if (cheque.status === ChequeStatus.DEPOSITED && !cheque.depositDate) {
-      cheque.depositDate = new Date();
+      cheque.depositDate = regionToday(cheque.regionCode);
     }
 
     // Version guard rejects concurrent edits; status change re-checks status and terminal state.
@@ -608,41 +610,34 @@ export class ChequesService {
       return { overdue: [], thisWeek: [], nextWeek: [], thisMonth: [] };
     }
 
-    const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const endOfWeek = new Date(today);
-    endOfWeek.setDate(endOfWeek.getDate() + (7 - endOfWeek.getDay()));
-    const endOfNextWeek = new Date(endOfWeek);
-    endOfNextWeek.setDate(endOfNextWeek.getDate() + 7);
-    const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+    const today = regionTodaySql('cheque.region_code');
+    const weekEnd = `(${today} + (7 - EXTRACT(DOW FROM ${today}))::int)`;
+    const nextWeekEnd = `(${weekEnd} + 7)`;
+    const monthEnd = `((date_trunc('month', ${today}) + interval '1 month - 1 day')::date)`;
 
-    const baseWhere = {
-      companyId,
-      status: ChequeStatus.PENDING,
-      ...(scopedCodes ? { regionCode: In(scopedCodes) } : {}),
+    const bucket = (condition: string) => {
+      const qb = this.chequeRepository
+        .createQueryBuilder('cheque')
+        .where('cheque.company_id = :companyId', { companyId })
+        .andWhere('cheque.status = :status', { status: ChequeStatus.PENDING })
+        .andWhere(condition)
+        .orderBy('cheque.due_date', 'ASC')
+        .take(100);
+      if (scopedCodes) {
+        qb.andWhere('cheque.region_code IN (:...scopedCodes)', { scopedCodes });
+      }
+      return qb.getMany();
     };
 
     const [overdue, thisWeek, nextWeek, thisMonth] = await Promise.all([
-      this.chequeRepository.find({
-        where: { ...baseWhere, dueDate: LessThan(today) },
-        order: { dueDate: 'ASC' },
-        take: 100,
-      }),
-      this.chequeRepository.find({
-        where: { ...baseWhere, dueDate: Between(today, endOfWeek) },
-        order: { dueDate: 'ASC' },
-        take: 100,
-      }),
-      this.chequeRepository.find({
-        where: { ...baseWhere, dueDate: Between(endOfWeek, endOfNextWeek) },
-        order: { dueDate: 'ASC' },
-        take: 100,
-      }),
-      this.chequeRepository.find({
-        where: { ...baseWhere, dueDate: Between(endOfNextWeek, endOfMonth) },
-        order: { dueDate: 'ASC' },
-        take: 100,
-      }),
+      bucket(`cheque.due_date < ${today}`),
+      bucket(`cheque.due_date BETWEEN ${today} AND ${weekEnd}`),
+      bucket(
+        `cheque.due_date > ${weekEnd} AND cheque.due_date <= ${nextWeekEnd}`,
+      ),
+      bucket(
+        `cheque.due_date > ${nextWeekEnd} AND cheque.due_date <= ${monthEnd}`,
+      ),
     ]);
 
     return { overdue, thisWeek, nextWeek, thisMonth };

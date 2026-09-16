@@ -930,38 +930,42 @@ describe('ConsoleService', () => {
   // ---- Upcoming manual payments -------------------------------------------
 
   describe('getUpcomingManualPayments', () => {
+    // pg returns DATE columns as 'YYYY-MM-DD' strings.
+    const dayOffset = (days: number) =>
+      new Date(Date.now() + days * DAY).toISOString().slice(0, 10);
+
     it('returns due and overdue rows, overdue pinned first, card-rail companies skipped', async () => {
       paymentRepo.query.mockResolvedValue([
         {
           companyId: 'co-due',
           amount: '90000',
           currency: 'pkr',
-          coversEnd: new Date(Date.now() + 5 * DAY),
+          coversEnd: dayOffset(5),
         },
         {
           companyId: 'co-overdue',
           amount: '50000',
           currency: 'pkr',
-          coversEnd: new Date(Date.now() - 3 * DAY),
+          coversEnd: dayOffset(-3),
         },
         {
           companyId: 'co-far',
           amount: '10000',
           currency: 'usd',
-          coversEnd: new Date(Date.now() + 60 * DAY),
+          coversEnd: dayOffset(60),
         },
         {
           companyId: 'co-card',
           amount: '10000',
           currency: 'usd',
-          coversEnd: new Date(Date.now() + 2 * DAY),
+          coversEnd: dayOffset(2),
         },
         // Churned one-time payer: > 90 days past covers-end, must drop out (F3).
         {
           companyId: 'co-stale',
           amount: '5000',
           currency: 'usd',
-          coversEnd: new Date(Date.now() - 120 * DAY),
+          coversEnd: dayOffset(-120),
         },
       ]);
       companyRepo.find.mockResolvedValue([
@@ -1001,7 +1005,15 @@ describe('ConsoleService', () => {
         'co-overdue',
         'co-due',
       ]);
-      expect(result.rows[0]).toMatchObject({ overdue: true, amount: 50000 });
+      expect(result.rows[0]).toMatchObject({
+        overdue: true,
+        amount: 50000,
+        coversEnd: dayOffset(-3),
+      });
+      expect(result.rows[1]).toMatchObject({
+        overdue: false,
+        coversEnd: dayOffset(5),
+      });
       expect(result.overdueWindowDays).toBe(90);
     });
   });

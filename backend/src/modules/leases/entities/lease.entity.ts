@@ -71,10 +71,10 @@ export class Lease {
   status: LeaseStatus;
 
   @Column({ name: 'start_date', type: 'date' })
-  startDate: Date;
+  startDate: string;
 
   @Column({ name: 'end_date', type: 'date' })
-  endDate: Date;
+  endDate: string;
 
   @Column({ name: 'monthly_rent', type: 'decimal', precision: 12, scale: 2 })
   monthlyRent: number;

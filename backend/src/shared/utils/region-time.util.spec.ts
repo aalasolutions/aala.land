@@ -1,0 +1,191 @@
+import { REGIONS } from '../constants/regions';
+import {
+  FALLBACK_TIMEZONE,
+  addDays,
+  dateInZone,
+  daysBetween,
+  hourInZone,
+  isDateOnly,
+  regionCodesAtLocalHour,
+  regionTimezone,
+  regionTimezoneSql,
+  regionToday,
+  regionTodaySql,
+} from './region-time.util';
+
+describe('region-time.util', () => {
+  describe('regionTimezone', () => {
+    it('maps a known region to its IANA zone', () => {
+      expect(regionTimezone('dubai')).toBe('Asia/Dubai');
+      expect(regionTimezone('punjab')).toBe('Asia/Karachi');
+    });
+
+    it('falls back to UTC for unknown, empty, null and undefined codes', () => {
+      expect(FALLBACK_TIMEZONE).toBe('UTC');
+      expect(regionTimezone('atlantis')).toBe('UTC');
+      expect(regionTimezone('')).toBe('UTC');
+      expect(regionTimezone(null)).toBe('UTC');
+      expect(regionTimezone(undefined)).toBe('UTC');
+    });
+  });
+
+  describe('dateInZone', () => {
+    it('gives different calendar days either side of the date line at one instant', () => {
+      const at = new Date('2026-09-16T10:30:00Z');
+
+      expect(dateInZone('Pacific/Kiritimati', at)).toBe('2026-09-17');
+      expect(dateInZone('America/Los_Angeles', at)).toBe('2026-09-16');
+      expect(dateInZone('UTC', at)).toBe('2026-09-16');
+    });
+
+    it('rolls over at local midnight, not UTC midnight', () => {
+      expect(dateInZone('Asia/Dubai', new Date('2026-09-16T19:59:59Z'))).toBe(
+        '2026-09-16',
+      );
+      expect(dateInZone('Asia/Dubai', new Date('2026-09-16T20:00:00Z'))).toBe(
+        '2026-09-17',
+      );
+    });
+  });
+
+  describe('regionToday', () => {
+    it('reads the calendar day in the region zone', () => {
+      const at = new Date('2026-12-31T21:00:00Z');
+
+      expect(regionToday('dubai', at)).toBe('2027-01-01');
+      expect(regionToday(null, at)).toBe('2026-12-31');
+    });
+  });
+
+  describe('hourInZone', () => {
+    it('truncates a half-hour offset to the local hour', () => {
+      // Asia/Kolkata is UTC+05:30.
+      expect(hourInZone('Asia/Kolkata', new Date('2026-09-16T05:00:00Z'))).toBe(
+        10,
+      );
+      expect(hourInZone('Asia/Kolkata', new Date('2026-09-16T03:29:00Z'))).toBe(
+        8,
+      );
+      expect(hourInZone('Asia/Kolkata', new Date('2026-09-16T03:30:00Z'))).toBe(
+        9,
+      );
+    });
+
+    it('reports local midnight as 0, never 24', () => {
+      expect(hourInZone('Asia/Kolkata', new Date('2026-09-16T18:30:00Z'))).toBe(
+        0,
+      );
+    });
+  });
+
+  describe('isDateOnly', () => {
+    it('accepts YYYY-MM-DD only', () => {
+      expect(isDateOnly('2026-09-16')).toBe(true);
+      expect(isDateOnly('2026-09-16T00:00:00Z')).toBe(false);
+      expect(isDateOnly('2026-9-16')).toBe(false);
+      expect(isDateOnly('')).toBe(false);
+    });
+  });
+
+  describe('addDays', () => {
+    it('crosses a month end', () => {
+      expect(addDays('2026-09-30', 1)).toBe('2026-10-01');
+      expect(addDays('2026-10-01', -1)).toBe('2026-09-30');
+    });
+
+    it('crosses a year end in both directions', () => {
+      expect(addDays('2026-12-30', 3)).toBe('2027-01-02');
+      expect(addDays('2027-01-02', -3)).toBe('2026-12-30');
+    });
+
+    it('handles leap and non-leap February', () => {
+      expect(addDays('2028-02-28', 1)).toBe('2028-02-29');
+      expect(addDays('2026-02-28', 1)).toBe('2026-03-01');
+    });
+
+    it('returns the same day for zero', () => {
+      expect(addDays('2026-09-16', 0)).toBe('2026-09-16');
+    });
+  });
+
+  describe('daysBetween', () => {
+    it('counts whole calendar days, signed', () => {
+      expect(daysBetween('2026-09-16', '2026-09-16')).toBe(0);
+      expect(daysBetween('2026-09-16', '2026-09-19')).toBe(3);
+      expect(daysBetween('2026-09-19', '2026-09-16')).toBe(-3);
+    });
+
+    it('crosses a year end and a leap day', () => {
+      expect(daysBetween('2026-12-31', '2027-01-01')).toBe(1);
+      expect(daysBetween('2028-02-28', '2028-03-01')).toBe(2);
+    });
+
+    it('is not skewed by a DST change in the host zone', () => {
+      expect(daysBetween('2026-03-07', '2026-03-09')).toBe(2);
+      expect(daysBetween('2026-10-31', '2026-11-02')).toBe(2);
+    });
+  });
+
+  describe('regionCodesAtLocalHour', () => {
+    it('includes the Dubai regions at 05:00Z and excludes other offsets', () => {
+      const at = new Date('2026-09-16T05:00:00Z');
+      const codes = regionCodesAtLocalHour(9, at);
+
+      expect(codes).toContain('dubai');
+      expect(codes).not.toContain('punjab');
+      const expected = REGIONS.filter(
+        (r) => hourInZone(r.timezone, at) === 9,
+      ).map((r) => r.code);
+      expect(codes).toEqual(expected);
+    });
+
+    it('reaches half-hour zones at local 09:00 on the half-hour tick, once', () => {
+      const atNine = regionCodesAtLocalHour(
+        9,
+        new Date('2026-09-16T03:30:00Z'),
+      );
+      const atNineThirty = regionCodesAtLocalHour(
+        9,
+        new Date('2026-09-16T04:00:00Z'),
+      );
+
+      expect(atNine).toContain('andhra-pradesh');
+      expect(atNineThirty).not.toContain('andhra-pradesh');
+    });
+
+    it('returns nothing when no supported zone is at that hour', () => {
+      expect(
+        regionCodesAtLocalHour(9, new Date('2026-09-16T12:00:00Z')),
+      ).toEqual([]);
+    });
+  });
+
+  describe('regionTimezoneSql', () => {
+    const sql = regionTimezoneSql('c.region_code');
+
+    it('maps the dubai code to Asia/Dubai', () => {
+      expect(sql).toMatch(
+        /WHEN c\.region_code IN \([^)]*'dubai'[^)]*\) THEN 'Asia\/Dubai'/,
+      );
+    });
+
+    it('falls back to UTC for anything else', () => {
+      expect(sql.startsWith('(CASE WHEN ')).toBe(true);
+      expect(sql.endsWith(" ELSE 'UTC' END)")).toBe(true);
+    });
+
+    it('lists every region code exactly once', () => {
+      for (const region of REGIONS) {
+        expect(sql.split(`'${region.code}'`)).toHaveLength(2);
+      }
+    });
+  });
+
+  describe('regionTodaySql', () => {
+    it('casts now() in the row region zone to a date', () => {
+      expect(regionTodaySql('c.region_code')).toBe(
+        `((now() AT TIME ZONE ${regionTimezoneSql('c.region_code')})::date)`,
+      );
+    });
+  });
+});

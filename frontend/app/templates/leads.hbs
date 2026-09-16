@@ -734,7 +734,10 @@
               {{#each this.leadActivities as |activity|}}
                 <Nuvo::TimelineItem
                   @title={{activity.type}}
-                  @timestamp={{format-date-time activity.createdAt}}
+                  @timestamp={{format-date-time
+                    activity.createdAt
+                    region=this.detailLead.regionCode
+                  }}
                   @description={{activity.notes}}
                   @meta={{if
                     activity.performedByName

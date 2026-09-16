@@ -23,8 +23,8 @@ export class UpcomingInvoiceCron {
     private readonly email: SystemEmailService,
   ) {}
 
-  // 09:00 server time daily.
-  @Cron('0 9 * * *')
+  // 09:00 UTC daily.
+  @Cron('0 9 * * *', { timeZone: 'UTC' })
   async run(): Promise<void> {
     const candidates = await this.findRenewingSoon();
     if (candidates.length === 0) return;

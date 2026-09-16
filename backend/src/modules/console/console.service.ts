@@ -567,7 +567,7 @@ export class ConsoleService {
       companyId: string;
       amount: string;
       currency: string;
-      coversEnd: string | Date;
+      coversEnd: string;
     }[] = await this.paymentRepo.query(
       `SELECT DISTINCT ON (company_id)
               company_id AS "companyId",
@@ -597,7 +597,6 @@ export class ConsoleService {
     const rows = latest
       .map((r) => ({
         ...r,
-        coversEnd: this.dateOnly(new Date(r.coversEnd)),
         amount: Number(r.amount),
       }))
       .filter((r) => {

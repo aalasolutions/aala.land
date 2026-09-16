@@ -1,22 +1,46 @@
-import { helper } from '@ember/component/helper';
+import Helper from '@ember/component/helper';
+import { service } from '@ember/service';
 
-export default helper(function formatDateTime([date], { withSeconds }) {
-  if (!date) return '';
+function browserTimeZone() {
+  return Intl.DateTimeFormat().resolvedOptions().timeZone;
+}
 
-  const d = new Date(date);
-  if (isNaN(d.getTime())) return '';
+export default class FormatDateTime extends Helper {
+  @service region;
 
-  const options = {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  };
+  compute([date], { withSeconds, region }) {
+    if (!date) return '';
 
-  if (withSeconds) {
-    options.second = '2-digit';
+    const d = new Date(date);
+    if (isNaN(d.getTime())) return '';
+
+    const options = {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    };
+
+    if (withSeconds) {
+      options.second = '2-digit';
+    }
+
+    const local = d.toLocaleString('en-US', options);
+    if (!region) return local;
+
+    const record = (this.region.regions ?? []).find((r) => r.code === region);
+    const timeZone = record?.timezone;
+    if (!timeZone || timeZone === browserTimeZone()) return local;
+
+    let regional;
+    try {
+      regional = d.toLocaleString('en-US', { ...options, timeZone });
+    } catch {
+      return local;
+    }
+    if (regional === local) return local;
+
+    return `${local} (${record.name || record.code}: ${regional})`;
   }
-
-  return d.toLocaleString('en-US', options);
-});
+}
