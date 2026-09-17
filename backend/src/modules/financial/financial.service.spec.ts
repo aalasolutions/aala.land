@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, In, Repository } from 'typeorm';
 import {
   BadRequestException,
   ConflictException,
@@ -129,6 +129,60 @@ describe('FinancialService', () => {
         select: { id: true, deletedAt: true },
       });
       expect(repo.save).not.toHaveBeenCalled();
+    });
+
+    describe('unit region scope on create', () => {
+      const dto = {
+        type: TransactionType.INCOME,
+        amount: 100,
+        unitId: 'unit-punjab',
+      } as any;
+      const agent = { role: 'agent', regionCodes: ['dubai'] };
+
+      it('404s a unit outside the caller assigned regions', async () => {
+        unitRepo.findOne.mockResolvedValue(null);
+
+        await expect(
+          service.create(companyId, dto, undefined, agent as any),
+        ).rejects.toThrow(new NotFoundException('Unit not found'));
+        expect(unitRepo.findOne).toHaveBeenCalledWith({
+          where: {
+            id: 'unit-punjab',
+            companyId,
+            asset: {
+              locality: { city: { regionCode: In(['dubai']) } },
+            },
+          },
+          select: { id: true, deletedAt: true },
+        });
+        expect(repo.save).not.toHaveBeenCalled();
+      });
+
+      it('404s without a query when the caller has no regions', async () => {
+        await expect(
+          service.create(companyId, dto, undefined, {
+            role: 'agent',
+            regionCodes: [],
+          } as any),
+        ).rejects.toThrow(new NotFoundException('Unit not found'));
+        expect(unitRepo.findOne).not.toHaveBeenCalled();
+        expect(repo.save).not.toHaveBeenCalled();
+      });
+
+      it('does not scope the unit lookup for an admin', async () => {
+        unitRepo.findOne.mockResolvedValue(null);
+
+        await expect(
+          service.create(companyId, dto, undefined, {
+            role: 'company_admin',
+            regionCodes: ['dubai'],
+          } as any),
+        ).rejects.toThrow(NotFoundException);
+        expect(unitRepo.findOne).toHaveBeenCalledWith({
+          where: { id: 'unit-punjab', companyId },
+          select: { id: true, deletedAt: true },
+        });
+      });
     });
 
     it('refuses create when the unit is archived after the first read', async () => {

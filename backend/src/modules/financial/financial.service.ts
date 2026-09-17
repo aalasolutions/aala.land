@@ -24,7 +24,10 @@ import {
   resolveRegionCode,
 } from '../../shared/utils/resolve-region-code.util';
 import { Company } from '../companies/entities/company.entity';
-import { effectiveRegionCodes } from '../../shared/utils/region-visibility.util';
+import {
+  effectiveRegionCodes,
+  scopedRegionCodes,
+} from '../../shared/utils/region-visibility.util';
 import { regionTodaySql } from '../../shared/utils/region-time.util';
 import {
   paginationOptions,
@@ -56,8 +59,17 @@ export class FinancialService {
     caller?: RegionScope,
   ): Promise<Transaction> {
     if (dto.unitId) {
+      const scopedCodes = scopedRegionCodes(caller);
+      // No assignment means no access, and an empty IN () is invalid SQL.
+      if (scopedCodes?.length === 0) {
+        throw new NotFoundException('Unit not found');
+      }
+      const where: FindOptionsWhere<Unit> = { id: dto.unitId, companyId };
+      if (scopedCodes) {
+        where.asset = { locality: { city: { regionCode: In(scopedCodes) } } };
+      }
       const unit = await this.unitRepository.findOne({
-        where: { id: dto.unitId, companyId },
+        where,
         select: { id: true, deletedAt: true },
       });
       if (!unit) {
