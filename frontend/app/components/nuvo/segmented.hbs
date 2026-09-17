@@ -16,6 +16,7 @@
       disabled={{option.disabled}}
       tabindex={{if this.multiple "0" (if option.active "0" "-1")}}
       title={{if @iconOnly option.label}}
+      data-segment-id={{option.id}}
       data-test-nu-segmented-item={{option.id}}
       {{on "click" (fn this.select option)}}
     >

@@ -101,7 +101,7 @@ export default class NuSegmentedComponent extends Component {
     const focused = this.rootElement?.querySelector(
       '.nu-segmented__item:focus',
     );
-    const focusedId = focused?.getAttribute('data-test-nu-segmented-item');
+    const focusedId = focused?.getAttribute('data-segment-id');
     const from = this.multiple ? focusedId : this.currentValue;
     const currentIndex = enabled.findIndex(
       (option) => String(option.id) === String(from),
@@ -123,8 +123,6 @@ export default class NuSegmentedComponent extends Component {
     if (!this.multiple) {
       this.select(next);
     }
-    this.rootElement
-      ?.querySelector(`[data-test-nu-segmented-item="${next.id}"]`)
-      ?.focus();
+    this.rootElement?.querySelector(`[data-segment-id="${next.id}"]`)?.focus();
   }
 }
