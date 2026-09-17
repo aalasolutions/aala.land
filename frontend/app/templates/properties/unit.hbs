@@ -336,6 +336,7 @@
                         @variant="secondary"
                         @size="xs"
                         title="Download"
+                        aria-label="Download {{doc.name}}"
                         data-test-download-document-btn
                         @icon="download-simple"
                         {{on "click" (fn this.downloadDocument doc)}}
@@ -345,6 +346,7 @@
                           @variant="secondary"
                           @size="xs"
                           title="Edit"
+                          aria-label="Edit {{doc.name}}"
                           data-test-edit-document-btn
                           @icon="pencil-simple"
                           {{on "click" (fn this.openDocumentEdit doc)}}
@@ -354,6 +356,7 @@
                         @variant="danger"
                         @size="xs"
                         title="Delete"
+                        aria-label="Delete {{doc.name}}"
                         data-test-delete-document-btn
                         @icon="trash"
                         {{on "click" (fn this.openDeleteDocument doc)}}

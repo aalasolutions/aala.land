@@ -170,6 +170,8 @@
                     <Nuvo::Button
                       @variant="secondary"
                       @size="xs"
+                      aria-label="Download {{doc.name}}"
+                      title="Download"
                       data-test-download-btn
                       @icon="download-simple"
                       {{on "click" (fn this.downloadDocument doc)}}
@@ -177,6 +179,8 @@
                     <Nuvo::Button
                       @variant="secondary"
                       @size="xs"
+                      aria-label="Edit {{doc.name}}"
+                      title="Edit"
                       data-test-edit-btn
                       @icon="pencil-simple"
                       {{on "click" (fn this.openEdit doc)}}
@@ -184,6 +188,8 @@
                     <Nuvo::Button
                       @variant="danger"
                       @size="xs"
+                      aria-label="Delete {{doc.name}}"
+                      title="Delete"
                       data-test-delete-btn
                       @icon="trash"
                       {{on "click" (fn this.openDelete doc)}}
@@ -204,6 +210,7 @@
         @onLimitChange={{this.setLimit}}
         @onPrevious={{this.goToPreviousPage}}
         @onNext={{this.goToNextPage}}
+        @onPageChange={{this.goToPage}}
       />
     </Nuvo::Card>
   {{else}}
@@ -221,6 +228,7 @@
         @onLimitChange={{this.setLimit}}
         @onPrevious={{this.goToPreviousPage}}
         @onNext={{this.goToNextPage}}
+        @onPageChange={{this.goToPage}}
       />
     {{else}}
       <Nuvo::Card>
@@ -240,6 +248,7 @@
   @placement="end"
   @size="lg"
   @onClose={{this.closeModal}}
+  @onClosed={{this.resetDrawer}}
 >
   <:body>
     <form id="document-form" class="flex col gap-4" {{on "submit" this.saveDocument}}>

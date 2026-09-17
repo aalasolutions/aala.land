@@ -45,7 +45,10 @@ export default class NuFieldComponent extends Component {
       return;
     }
 
-    const fallback = element.querySelector(FALLBACK_CONTROLS);
+    // The tooltip button is a button inside the field but never the control.
+    const fallback = Array.from(element.querySelectorAll(FALLBACK_CONTROLS)).find(
+      (candidate) => !candidate.classList.contains('nu-field__info'),
+    );
     if (
       fallback &&
       !fallback.getAttribute('aria-label') &&

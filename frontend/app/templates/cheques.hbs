@@ -190,6 +190,7 @@
           @onLimitChange={{this.setLimit}}
           @onPrevious={{this.goToPreviousPage}}
           @onNext={{this.goToNextPage}}
+          @onPageChange={{this.goToPage}}
         />
       {{else}}
         {{#if @model.total}}
@@ -204,6 +205,7 @@
             @onLimitChange={{this.setLimit}}
             @onPrevious={{this.goToPreviousPage}}
             @onNext={{this.goToNextPage}}
+            @onPageChange={{this.goToPage}}
           />
         {{else}}
           <Nuvo::EmptyState

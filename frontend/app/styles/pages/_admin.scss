@@ -154,3 +154,23 @@
   gap: nu-space(4);
   padding-block: nu-space(2);
 }
+
+// Side by side fields inside the console drawers; wraps on narrow screens.
+.console-form-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: nu-space(4);
+
+  > * {
+    flex: 1 1 10rem;
+  }
+
+  .flex-2 {
+    flex-grow: 2;
+  }
+
+  &.x-end {
+    align-items: flex-end;
+  }
+}

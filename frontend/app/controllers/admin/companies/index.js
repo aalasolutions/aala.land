@@ -88,6 +88,12 @@ export default class AdminCompaniesIndexController extends Controller {
   }
 
   @action
+  goToPage(page) {
+    const target = Number(page);
+    if (target >= 1) this.page = target;
+  }
+
+  @action
   changeLimit(value) {
     this.limit = Number(value);
     this.page = 1;

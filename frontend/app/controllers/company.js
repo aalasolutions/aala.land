@@ -380,6 +380,12 @@ export default class CompanyController extends Controller {
     }
   }
 
+  @action billingHistoryGoToPage(page) {
+    const target = Number(page);
+    if (!target || target < 1) return;
+    this.fetchBillingHistory(target, this.billingHistoryLimit);
+  }
+
   @action billingHistoryNext() {
     if (!this.billingHistoryHasNext) return;
     this.fetchBillingHistory(

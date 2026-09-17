@@ -1,9 +1,25 @@
 <div
   class={{this.backdropClasses}}
   data-test-nu-drawer-backdrop
-  {{did-update this.syncOpen @open}}
-  {{on "click" this.onBackdropClick}}
+  {{dialog-transition
+    @open
+    onOpen=this.onOpen
+    onVisible=this.onVisible
+    onHide=this.onHide
+    onHidden=this.onHidden
+  }}
 >
+  {{#if this.closeOnBackdrop}}
+    {{! A button, not a click handler on the backdrop: only interactive elements take clicks. }}
+    <button
+      type="button"
+      class="nu-dialog-dismiss"
+      tabindex="-1"
+      aria-hidden="true"
+      data-test-nu-drawer-backdrop-dismiss
+      {{on "click" this.onClose}}
+    ></button>
+  {{/if}}
   {{#if this.isMounted}}
     <div
       class={{this.drawerClasses}}
@@ -12,7 +28,7 @@
       aria-labelledby={{if (or (has-block "header") @title) this.titleId}}
       tabindex="-1"
       data-test-nu-drawer
-      {{did-insert this.registerDrawer}}
+      {{dialog onEscape=this.onClose closeOnEsc=@closeOnEsc}}
       ...attributes
     >
       {{#if (has-block "header")}}

@@ -26,6 +26,12 @@ export default class PaginatedController extends Controller {
     this.page = page - 1;
   }
 
+  @action goToPage(page) {
+    const target = Number(page);
+    if (!target || target < 1 || target > this.totalPages) return;
+    this.page = target;
+  }
+
   @action goToNextPage() {
     const page = Number(this.page) || 1;
     if (page >= this.totalPages) return;

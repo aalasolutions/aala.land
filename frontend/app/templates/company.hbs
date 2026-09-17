@@ -310,6 +310,7 @@
             @onLimitChange={{this.setBillingHistoryLimit}}
             @onPrevious={{this.billingHistoryPrevious}}
             @onNext={{this.billingHistoryNext}}
+            @onPageChange={{this.billingHistoryGoToPage}}
           />
         {{else}}
           <p class="text-muted" data-test-billing-history-empty>No payments yet.
