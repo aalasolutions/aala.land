@@ -419,7 +419,22 @@
       <Nuvo::Field @label="Region" @horizontal={{true}} @flush={{true}}>
         <Nuvo::Select @options={{this.regionOptions}} @placeholder="Choose a region" />
       </Nuvo::Field>
+
+      <Nuvo::Field
+        @label="Tenancy Registration Ref"
+        @tooltip="e.g., Ejari in Dubai, Tawtheeq in Abu Dhabi, or your local government lease registry number."
+      >
+        <Nuvo::Input @placeholder="TR-2026-00001" />
+      </Nuvo::Field>
     </div>
+
+    <h3 class="nuvo-subtitle">Label tooltip</h3>
+    <p class="nuvo-note"><code>@tooltip</code> adds a question-mark button beside
+      the label, carrying the text on hover and focus.
+      <code>@tooltipPosition</code> overrides the default
+      <code>top</code>. The button renders OUTSIDE the
+      <code>label</code>
+      on purpose: anything inside a label joins the control's accessible name.</p>
 
     <h3 class="nuvo-subtitle">Filter row</h3>
     <p class="nuvo-note">Auto-fitting grid; column count follows the viewport.

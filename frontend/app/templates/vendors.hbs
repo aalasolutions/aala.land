@@ -128,7 +128,10 @@
       {{on "submit" this.saveVendor}}
     >
       {{#if this.showRegionField}}
-        <Nuvo::Field @label="Region">
+        <Nuvo::Field
+          @label="Region"
+          @tooltip="The region this vendor works in. Staff in other regions cannot find or assign them."
+        >
           <Nuvo::Dropdown
             id="vendor-region"
             @align="start"

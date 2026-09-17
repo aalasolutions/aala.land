@@ -54,7 +54,11 @@
             data-test-category-filter
           />
         </Nuvo::Field>
-        <Nuvo::Field class="grow" @label="Access Level">
+        <Nuvo::Field
+          class="grow"
+          @label="Access Level"
+          @tooltip="Filter by who can open a file. Team files are open to all staff, Admin files only to admins."
+        >
           <Nuvo::Dropdown
             id="document-access-filter"
             @align="start"
@@ -283,7 +287,11 @@
             data-test-field-category
           />
         </Nuvo::Field>
-        <Nuvo::Field class="grow" @label="Access Level">
+        <Nuvo::Field
+          class="grow"
+          @label="Access Level"
+          @tooltip="Team means every staff member can open this file. Admin means only admins can."
+        >
           <Nuvo::Dropdown
             id="d-access"
             @align="start"

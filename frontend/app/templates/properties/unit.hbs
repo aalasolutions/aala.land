@@ -478,7 +478,11 @@
         </Nuvo::Field>
       </div>
 
-      <Nuvo::Field @label="Listing Type">
+      <Nuvo::Field
+        @label="Listing
+        Type"
+        @tooltip="Choose how this property is listed. For Rent and For Sale make it searchable. Not Listed keeps it hidden."
+      >
         <Nuvo::Dropdown
           @searchable={{true}}
           @align="start"
@@ -491,7 +495,11 @@
       </Nuvo::Field>
 
       <div class="flex gap-4">
-        <Nuvo::Field @label="Price" class="grow">
+        <Nuvo::Field
+          @label="Price"
+          class="grow"
+          @tooltip="For a rental, enter the rent per month. For a sale, enter the full asking price."
+        >
           <Nuvo::Input
             type="number"
             min="0"
@@ -681,7 +689,12 @@
             data-test-document-field-category
           />
         </Nuvo::Field>
-        <Nuvo::Field @label="Access Level" class="grow">
+        <Nuvo::Field
+          @label="Access
+          Level"
+          class="grow"
+          @tooltip="Team means every staff member can open this file. Admin means only admins can."
+        >
           <Nuvo::Dropdown
             @searchable={{true}}
             @align="start"

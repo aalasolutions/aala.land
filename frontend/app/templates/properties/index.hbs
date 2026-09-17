@@ -141,7 +141,10 @@
               data-test-filter-beds
             />
           </Nuvo::Field>
-          <Nuvo::Field @label="Visibility">
+          <Nuvo::Field
+            @label="Visibility"
+            @tooltip="Shows active properties, archived ones, or both. It does not change whether a property is listed."
+          >
             <Nuvo::Dropdown
               @align="start"
               @value={{this.archivedFilterValue}}
@@ -460,7 +463,11 @@
 
         <div class="flex gap-4">
           <div class="flex col gap-2 grow">
-            <Nuvo::Field @label="Listing Type">
+            <Nuvo::Field
+              @label="Listing
+              Type"
+              @tooltip="Choose how this property is listed. For Rent and For Sale make it searchable. Not Listed keeps it hidden."
+            >
               <Nuvo::Dropdown
                 id="nu-type"
                 @align="start"
@@ -487,7 +494,10 @@
 
         <div class="flex gap-4">
           <div class="flex col gap-2 grow">
-            <Nuvo::Field @label="Price">
+            <Nuvo::Field
+              @label="Price"
+              @tooltip="For a rental, enter the rent per month. For a sale, enter the full asking price."
+            >
               <Nuvo::Input
                 id="nu-price"
                 @type="number"

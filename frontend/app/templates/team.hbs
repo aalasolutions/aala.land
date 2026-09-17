@@ -250,7 +250,10 @@
         </Nuvo::Field>
       {{/unless}}
 
-      <Nuvo::Field @label="Role">
+      <Nuvo::Field
+        @label="Role"
+        @tooltip="What this person can do. Company admins manage billing, team and settings. Agents work only on their own records."
+      >
         <Nuvo::Dropdown
           id="t-role"
           @align="start"
@@ -372,7 +375,10 @@
         />
       </Nuvo::Field>
 
-      <Nuvo::Field @label="Role">
+      <Nuvo::Field
+        @label="Role"
+        @tooltip="What this person can do. Company admins manage billing, team and settings. Agents work only on their own records."
+      >
         <Nuvo::Dropdown
           id="i-role"
           @align="start"
@@ -468,7 +474,11 @@
         </label>
       </div>
 
-      <Nuvo::Field @label="Reassign records to" @required={{true}}>
+      <Nuvo::Field
+        @label="Reassign records to"
+        @required={{true}}
+        @tooltip="Who takes over this person's leads, documents, commissions and work orders. Someone must be chosen."
+      >
         <Nuvo::Dropdown
           id="remove-target"
           @align="start"
@@ -585,6 +595,7 @@
 
       <Nuvo::Field
         @label="Member who stays active (must be a company admin)"
+        @tooltip="The Free plan allows one user. Everyone else loses access as soon as you confirm."
         @required={{true}}
       >
         <Nuvo::Dropdown

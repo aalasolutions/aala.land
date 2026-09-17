@@ -454,7 +454,10 @@
   <:body>
     <form id="lead-form" class="flex col gap-4" {{on "submit" this.saveLead}}>
       {{#if this.showRegionField}}
-        <Nuvo::Field @label="Region">
+        <Nuvo::Field
+          @label="Region"
+          @tooltip="The region that owns this record. Staff who work in other regions will not see it."
+        >
           <Nuvo::Dropdown
             id="lead-region"
             @align="start"
@@ -504,7 +507,10 @@
           </Nuvo::Field>
         </div>
         <div class="grow">
-          <Nuvo::Field @label="Temperature">
+          <Nuvo::Field
+            @label="Temperature"
+            @tooltip="How close this lead is to buying or renting. Hot is ready now, warm is still looking, cold is months away, dead has gone quiet."
+          >
             <Nuvo::Dropdown
               id="lead-temp"
               @align="start"
@@ -516,7 +522,10 @@
           </Nuvo::Field>
         </div>
       </div>
-      <Nuvo::Field @label="Source">
+      <Nuvo::Field
+        @label="Source"
+        @tooltip="Where this lead came from. It shows you which channels bring in the most business."
+      >
         <Nuvo::Dropdown
           id="lead-source"
           @align="start"

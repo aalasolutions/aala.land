@@ -474,7 +474,11 @@
           </Nuvo::Field>
         </div>
       </div>
-      <Nuvo::Field @label="Property Type">
+      <Nuvo::Field
+        @label="Property
+        Type"
+        @tooltip="Choose how this property is listed. For Rent and For Sale make it searchable. Not Listed keeps it hidden."
+      >
         <Nuvo::Dropdown
           id="u-property-type"
           @align="start"
@@ -486,7 +490,10 @@
       </Nuvo::Field>
       <div class="flex gap-4">
         <div class="flex col gap-2 grow">
-          <Nuvo::Field @label="Price">
+          <Nuvo::Field
+            @label="Price"
+            @tooltip="For a rental, enter the rent per month. For a sale, enter the full asking price."
+          >
             <Nuvo::Input
               id="u-price"
               @type="number"

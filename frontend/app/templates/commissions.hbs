@@ -191,7 +191,12 @@
         />
       </Nuvo::Field>
 
-      <Nuvo::Field @label="Gross Amount" @required={{true}}>
+      <Nuvo::Field
+        @label="Gross
+        Amount"
+        @required={{true}}
+        @tooltip="The full value of the deal before any deductions. The commission is worked out from this, so it is not the payout."
+      >
         <Nuvo::Input
           id="commission-gross"
           type="number"
@@ -203,7 +208,13 @@
         />
       </Nuvo::Field>
 
-      <Nuvo::Field @label="Commission Rate %" @required={{true}}>
+      <Nuvo::Field
+        @label="Commission
+        Rate
+        %"
+        @required={{true}}
+        @tooltip="The share of the gross amount paid as commission. A rate of 2 on a gross of 100,000 pays 2,000."
+      >
         <Nuvo::Input
           id="commission-rate"
           type="number"
