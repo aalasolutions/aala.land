@@ -45,6 +45,7 @@ export class EmailTemplate {
   @Column({
     type: 'enum',
     enum: EmailTemplateCategory,
+    enumName: 'email_template_category_enum',
     default: EmailTemplateCategory.CUSTOM,
   })
   category: EmailTemplateCategory;

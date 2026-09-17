@@ -104,7 +104,10 @@ export class WorkOrder {
   assignedTo: string | null;
 
   @ManyToOne(() => User, { nullable: true })
-  @JoinColumn({ name: 'assigned_to' })
+  @JoinColumn({
+    name: 'assigned_to',
+    foreignKeyConstraintName: 'FK_work_orders_assigned_to',
+  })
   assignee: User | null;
 
   @Column({ name: 'vendor_id', type: 'uuid', nullable: true })

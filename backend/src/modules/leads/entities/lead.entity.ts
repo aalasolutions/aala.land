@@ -116,7 +116,10 @@ export class Lead {
   assignedTo: string | null;
 
   @ManyToOne(() => User, { nullable: true })
-  @JoinColumn({ name: 'assigned_to' })
+  @JoinColumn({
+    name: 'assigned_to',
+    foreignKeyConstraintName: 'FK_leads_assigned_to',
+  })
   assignedAgent: User | null;
 
   @Column({ name: 'property_interest', type: 'text', nullable: true })

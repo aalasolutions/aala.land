@@ -9,6 +9,7 @@ import {
   Index,
 } from 'typeorm';
 import { Company } from '../../companies/entities/company.entity';
+import { User } from '../../users/entities/user.entity';
 
 export enum NotificationType {
   LEAD_ASSIGNED = 'LEAD_ASSIGNED',
@@ -41,6 +42,13 @@ export class Notification {
   @Index()
   @Column({ name: 'user_id', type: 'uuid' })
   userId: string;
+
+  @ManyToOne(() => User, { onDelete: 'CASCADE' })
+  @JoinColumn({
+    name: 'user_id',
+    foreignKeyConstraintName: 'FK_9a8a82462cab47c73d25f49261f',
+  })
+  user: User;
 
   @Column({ type: 'varchar', length: 200 })
   title: string;
