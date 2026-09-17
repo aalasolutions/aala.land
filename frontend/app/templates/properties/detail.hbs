@@ -558,6 +558,12 @@
                   (includes this.formUnitAmenities opt.key)
                   'is-selected'
                 }}"
+              data-test-amenity={{opt.key}}
+              aria-pressed={{if
+                (includes this.formUnitAmenities opt.key)
+                "true"
+                "false"
+              }}
               {{on "click" (fn this.toggleAmenity opt.key)}}
             >
               <Ui::Ph @icon={{opt.icon}} />

@@ -169,6 +169,11 @@
                 tag-trade-{{lowercase opt.value}}
                 {{if (includes this.formSpecialties opt.value) 'is-selected'}}"
               data-test-specialty-chip={{opt.value}}
+              aria-pressed={{if
+                (includes this.formSpecialties opt.value)
+                "true"
+                "false"
+              }}
               {{on "click" (fn this.toggleSpecialty opt.value)}}
             >{{opt.label}}</button>
           {{/each}}

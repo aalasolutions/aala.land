@@ -184,6 +184,11 @@
                     'is-selected'
                   }}"
                 data-test-amenity-filter={{opt.key}}
+                aria-pressed={{if
+                  (includes this.filterAmenities opt.key)
+                  "true"
+                  "false"
+                }}
                 {{on "click" (fn this.toggleBrowseAmenity opt.key)}}
               >
                 <Ui::Ph @icon={{opt.icon}} />
