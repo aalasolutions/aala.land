@@ -12,17 +12,20 @@ const OPTIONS = {
   minute: '2-digit',
 };
 
+// Native Intl may emit U+202F before AM/PM; the helper renders plain spaces.
+function native(value, options) {
+  return new Date(value).toLocaleString('en-US', options).replace(/\s/g, ' ');
+}
+
 function browserTimeZone() {
   return Intl.DateTimeFormat().resolvedOptions().timeZone;
 }
 
 // Pick a zone far from the machine zone so the two renderings always differ.
 function otherTimeZone() {
-  const local = new Date(VALUE).toLocaleString('en-US', OPTIONS);
+  const local = native(VALUE, OPTIONS);
   return ['Pacific/Kiritimati', 'Pacific/Pago_Pago'].find(
-    (tz) =>
-      new Date(VALUE).toLocaleString('en-US', { ...OPTIONS, timeZone: tz }) !==
-      local,
+    (tz) => native(VALUE, { ...OPTIONS, timeZone: tz }) !== local,
   );
 }
 
@@ -30,11 +33,12 @@ module('Integration | Helper | format-date-time', function (hooks) {
   setupRenderingTest(hooks);
 
   hooks.beforeEach(function () {
-    this.local = new Date(VALUE).toLocaleString('en-US', OPTIONS);
+    this.local = native(VALUE, OPTIONS);
     this.otherZone = otherTimeZone();
     this.owner.lookup('service:region').regions = [
       { code: 'same', name: 'Home', timezone: browserTimeZone() },
       { code: 'far', name: 'Faraway', timezone: this.otherZone },
+      { code: 'utc', name: 'Greenwich', timezone: 'UTC' },
     ];
     this.set('value', VALUE);
   });
@@ -50,13 +54,23 @@ module('Integration | Helper | format-date-time', function (hooks) {
     await render(
       hbs`<span data-test-out>{{format-date-time this.value region="far"}}</span>`,
     );
-    const regional = new Date(VALUE).toLocaleString('en-US', {
-      ...OPTIONS,
-      timeZone: this.otherZone,
-    });
+    const regional = native(VALUE, { ...OPTIONS, timeZone: this.otherZone });
     assert
       .dom('[data-test-out]')
       .hasText(`${this.local} (Faraway: ${regional})`);
+  });
+
+  test('a UTC region renders plain spaces and appends only when the time differs', async function (assert) {
+    await render(
+      hbs`<span data-test-out>{{format-date-time this.value region="utc"}}</span>`,
+    );
+    const regional = native(VALUE, { ...OPTIONS, timeZone: 'UTC' });
+    const expected =
+      regional === this.local
+        ? this.local
+        : `${this.local} (Greenwich: ${regional})`;
+    assert.dom('[data-test-out]').hasText(expected);
+    assert.false(/\u202f/.test(this.element.textContent));
   });
 
   test('a region in the browser timezone renders local time only', async function (assert) {
@@ -78,10 +92,7 @@ module('Integration | Helper | format-date-time', function (hooks) {
     await render(
       hbs`<span data-test-out>{{format-date-time this.value withSeconds=true}}</span>`,
     );
-    const expected = new Date(VALUE).toLocaleString('en-US', {
-      ...OPTIONS,
-      second: '2-digit',
-    });
+    const expected = native(VALUE, { ...OPTIONS, second: '2-digit' });
     assert.dom('[data-test-out]').hasText(expected);
   });
 });

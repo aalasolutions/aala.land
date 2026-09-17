@@ -8,11 +8,12 @@ import {
   PAYMENT_METHOD_OPTIONS,
   TRANSACTION_STATUS_OPTIONS,
 } from 'land/constants';
-import { localDateString } from 'land/utils/local-date';
+import { toDateOnly, todayInZone } from 'land/utils/local-date';
 
 export default class FinancialsController extends PaginatedController {
   @service auth;
   @service notifications;
+  @service region;
   @service router;
   queryParams = ['page', 'limit', 'activeTab'];
   @tracked showModal = false;
@@ -65,7 +66,7 @@ export default class FinancialsController extends PaginatedController {
     this.formCategory = 'OTHER';
     this.formAmount = '';
     this.formDescription = '';
-    this.formDate = localDateString();
+    this.formDate = todayInZone(this.region.activeRegion?.timezone);
     this.formStatus = 'PENDING';
     this.formPaymentMethod = 'CASH';
     this.editTransaction = null;
@@ -78,7 +79,7 @@ export default class FinancialsController extends PaginatedController {
     this.formCategory = tx.category ?? 'OTHER';
     this.formAmount = String(tx.amount);
     this.formDescription = tx.description ?? '';
-    this.formDate = tx.transactionDate ? tx.transactionDate.split('T')[0] : '';
+    this.formDate = toDateOnly(tx.transactionDate);
     this.formStatus = tx.status;
     this.formPaymentMethod = tx.paymentMethod ?? 'CASH';
     this.editTransaction = tx;

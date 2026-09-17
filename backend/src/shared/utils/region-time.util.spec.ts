@@ -2,15 +2,20 @@ import { REGIONS } from '../constants/regions';
 import {
   FALLBACK_TIMEZONE,
   addDays,
+  addMonthsToInstant,
   dateInZone,
   daysBetween,
+  formatDateLong,
   hourInZone,
   isDateOnly,
+  monthsBetweenInstants,
   regionCodesAtLocalHour,
   regionTimezone,
   regionTimezoneSql,
   regionToday,
   regionTodaySql,
+  startOfDayInZone,
+  subtractDaysFromInstant,
 } from './region-time.util';
 
 describe('region-time.util', () => {
@@ -84,6 +89,32 @@ describe('region-time.util', () => {
       expect(isDateOnly('2026-09-16T00:00:00Z')).toBe(false);
       expect(isDateOnly('2026-9-16')).toBe(false);
       expect(isDateOnly('')).toBe(false);
+    });
+
+    it('rejects impossible calendar dates and non-strings', () => {
+      expect(isDateOnly('2026-02-31')).toBe(false);
+      expect(isDateOnly('2026-13-01')).toBe(false);
+      expect(isDateOnly('2026-02-29')).toBe(false);
+      expect(isDateOnly('2028-02-29')).toBe(true);
+      expect(isDateOnly('0000-01-01')).toBe(false);
+      expect(isDateOnly(null)).toBe(false);
+      expect(isDateOnly(20260916)).toBe(false);
+    });
+  });
+
+  describe('invalid input', () => {
+    it('throws instead of rolling an impossible date over', () => {
+      expect(() => addDays('2026-02-31', 1)).toThrow(RangeError);
+      expect(() => addDays('2026-09-16', 1e9)).toThrow(RangeError);
+      expect(() => addDays('2026-09-16', 3000000)).toThrow(RangeError);
+      expect(() => addDays('2026-09-16', 1.5)).toThrow(RangeError);
+      expect(() => addDays('2026-09-16', NaN)).toThrow(RangeError);
+      expect(() => daysBetween('2026-09-16', 'garbage')).toThrow(RangeError);
+    });
+
+    it('throws for an unknown IANA zone', () => {
+      expect(() => dateInZone('Not/AZone', new Date())).toThrow(RangeError);
+      expect(() => hourInZone('Not/AZone', new Date())).toThrow(RangeError);
     });
   });
 
@@ -178,6 +209,85 @@ describe('region-time.util', () => {
       for (const region of REGIONS) {
         expect(sql.split(`'${region.code}'`)).toHaveLength(2);
       }
+    });
+  });
+
+  describe('startOfDayInZone', () => {
+    it('returns local midnight of the instant as an instant', () => {
+      const at = new Date('2026-09-16T21:15:00Z');
+
+      expect(startOfDayInZone('UTC', at).toISOString()).toBe(
+        '2026-09-16T00:00:00.000Z',
+      );
+      expect(startOfDayInZone('Asia/Dubai', at).toISOString()).toBe(
+        '2026-09-16T20:00:00.000Z',
+      );
+    });
+  });
+
+  describe('formatDateLong', () => {
+    it('writes the long US form on the UTC calendar day by default', () => {
+      expect(formatDateLong(new Date('2026-08-20T23:59:59Z'))).toBe(
+        'August 20, 2026',
+      );
+      expect(formatDateLong(new Date('2027-01-01T00:00:00Z'))).toBe(
+        'January 1, 2027',
+      );
+    });
+
+    it('uses the given zone for the calendar day', () => {
+      expect(
+        formatDateLong(new Date('2026-08-20T21:00:00Z'), 'Asia/Dubai'),
+      ).toBe('August 21, 2026');
+    });
+  });
+
+  describe('addMonthsToInstant', () => {
+    it('keeps the UTC time and clamps to the target month end', () => {
+      expect(
+        addMonthsToInstant(new Date('2026-01-31T10:20:30.456Z'), 1),
+      ).toEqual(new Date('2026-02-28T10:20:30.456Z'));
+      expect(addMonthsToInstant(new Date('2027-03-31T00:00:00Z'), 11)).toEqual(
+        new Date('2028-02-29T00:00:00Z'),
+      );
+    });
+
+    it('goes backwards across a year end', () => {
+      expect(addMonthsToInstant(new Date('2026-03-31T05:00:00Z'), -13)).toEqual(
+        new Date('2025-02-28T05:00:00Z'),
+      );
+    });
+
+    it('propagates an invalid Date instead of throwing', () => {
+      expect(addMonthsToInstant(new Date(NaN), 1).getTime()).toBeNaN();
+    });
+  });
+
+  describe('monthsBetweenInstants', () => {
+    it('counts UTC calendar months, ignoring day and time', () => {
+      expect(
+        monthsBetweenInstants(
+          new Date('2026-01-31T23:00:00Z'),
+          new Date('2026-02-01T00:00:00Z'),
+        ),
+      ).toBe(1);
+      expect(
+        monthsBetweenInstants(
+          new Date('2026-09-16T00:00:00Z'),
+          new Date('2025-11-30T00:00:00Z'),
+        ),
+      ).toBe(-10);
+    });
+  });
+
+  describe('subtractDaysFromInstant', () => {
+    it('subtracts whole 24-hour UTC days', () => {
+      expect(
+        subtractDaysFromInstant(new Date('2026-03-10T12:00:00Z'), 30),
+      ).toEqual(new Date('2026-02-08T12:00:00Z'));
+      expect(
+        subtractDaysFromInstant(new Date('2026-11-02T08:00:00Z'), 7),
+      ).toEqual(new Date('2026-10-26T08:00:00Z'));
     });
   });
 

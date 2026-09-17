@@ -6,11 +6,11 @@ import {
   IsEnum,
   IsNumber,
   Min,
-  IsDateString,
   MaxLength,
   IsArray,
   IsBoolean,
 } from 'class-validator';
+import { IsDateOnly } from '@shared/decorators/is-date-only.decorator';
 import { ApiProperty } from '@nestjs/swagger';
 import {
   WorkOrderPriority,
@@ -67,9 +67,9 @@ export class CreateWorkOrderDto {
   @Min(0)
   estimatedCost?: number;
 
-  @ApiProperty({ required: false })
+  @ApiProperty({ required: false, format: 'date', example: '2026-02-15' })
   @IsOptional()
-  @IsDateString()
+  @IsDateOnly()
   scheduledDate?: string;
 
   @ApiProperty({ required: false })
@@ -104,8 +104,8 @@ export class CreateWorkOrderDto {
   @IsEnum(ScheduleFrequency)
   scheduleFrequency?: ScheduleFrequency;
 
-  @ApiProperty({ required: false })
+  @ApiProperty({ required: false, format: 'date', example: '2026-03-15' })
   @IsOptional()
-  @IsDateString()
+  @IsDateOnly()
   nextScheduledDate?: string;
 }
