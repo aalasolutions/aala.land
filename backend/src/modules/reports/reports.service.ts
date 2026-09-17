@@ -25,7 +25,10 @@ import {
   effectiveRegionCodes,
   isAdminRole,
 } from '../../shared/utils/region-visibility.util';
-import { regionTimezoneSql } from '../../shared/utils/region-time.util';
+import {
+  regionTimezoneSql,
+  subtractDaysFromInstant,
+} from '../../shared/utils/region-time.util';
 
 export interface DashboardKpis {
   totalLeads: number;
@@ -378,11 +381,11 @@ export class ReportsService {
     }
 
     const now = new Date();
-    const hours24Ago = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-    const hours48Ago = new Date(now.getTime() - 48 * 60 * 60 * 1000);
-    const days7Ago = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-    const days14Ago = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
-    const days30Ago = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    const hours24Ago = subtractDaysFromInstant(now, 1);
+    const hours48Ago = subtractDaysFromInstant(now, 2);
+    const days7Ago = subtractDaysFromInstant(now, 7);
+    const days14Ago = subtractDaysFromInstant(now, 14);
+    const days30Ago = subtractDaysFromInstant(now, 30);
 
     const leadWhere: FindOptionsWhere<Lead> = { companyId };
     if (regionCodes) leadWhere.regionCode = In(regionCodes);

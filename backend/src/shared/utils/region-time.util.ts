@@ -1,8 +1,31 @@
+import { DateTime } from 'luxon';
 import { getRegionByCode, REGIONS } from '../constants/regions';
+
+// The only backend file allowed to import luxon; only plain values leave it.
 
 export const FALLBACK_TIMEZONE = 'UTC';
 
 const DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/;
+
+function parseDateOnly(value: unknown): DateTime<true> | null {
+  if (typeof value !== 'string' || !DATE_ONLY.test(value)) return null;
+  const date = DateTime.fromISO(value, { zone: 'utc' });
+  return date.isValid && date.year >= 1 ? date : null;
+}
+
+function requireDateOnly(value: string): DateTime<true> {
+  const date = parseDateOnly(value);
+  if (!date) throw new RangeError(`Invalid calendar date: ${value}`);
+  return date;
+}
+
+function inZone(timeZone: string, at: Date): DateTime<true> {
+  const local = DateTime.fromJSDate(at, { zone: timeZone });
+  if (!local.isValid) {
+    throw new RangeError(`Invalid time zone or instant: ${timeZone}`);
+  }
+  return local;
+}
 
 export function regionTimezone(regionCode?: string | null): string {
   return (
@@ -12,13 +35,7 @@ export function regionTimezone(regionCode?: string | null): string {
 
 /** Calendar date (YYYY-MM-DD) of an instant as seen in the given IANA zone. */
 export function dateInZone(timeZone: string, at: Date = new Date()): string {
-  // en-CA formats as YYYY-MM-DD.
-  return new Intl.DateTimeFormat('en-CA', {
-    timeZone,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).format(at);
+  return inZone(timeZone, at).toISODate();
 }
 
 export function regionToday(regionCode?: string | null, at?: Date): string {
@@ -26,31 +43,67 @@ export function regionToday(regionCode?: string | null, at?: Date): string {
 }
 
 export function hourInZone(timeZone: string, at: Date = new Date()): number {
-  const hour = new Intl.DateTimeFormat('en-GB', {
-    timeZone,
-    hour: '2-digit',
-    hourCycle: 'h23',
-  }).format(at);
-  return Number(hour);
+  return inZone(timeZone, at).hour;
 }
 
-export function isDateOnly(value: string): boolean {
-  return DATE_ONLY.test(value);
+/** True only for a real calendar date in YYYY-MM-DD form. */
+export function isDateOnly(value: unknown): boolean {
+  return parseDateOnly(value) !== null;
 }
 
 /** Pure calendar arithmetic; no zone is involved. */
 export function addDays(date: string, days: number): string {
-  const [y, m, d] = date.split('-').map(Number);
-  return new Date(Date.UTC(y, m - 1, d + days)).toISOString().slice(0, 10);
+  if (!Number.isInteger(days)) {
+    throw new RangeError(`Invalid day count: ${days}`);
+  }
+  const result = requireDateOnly(date).plus({ days }).toISODate();
+  if (!isDateOnly(result)) throw new RangeError(`Date out of range: ${days}`);
+  return result;
 }
 
 /** Whole calendar days from one date to another. */
 export function daysBetween(from: string, to: string): number {
-  const toUtc = (d: string) => {
-    const [y, m, day] = d.split('-').map(Number);
-    return Date.UTC(y, m - 1, day);
-  };
-  return Math.round((toUtc(to) - toUtc(from)) / 86_400_000);
+  return Math.round(
+    requireDateOnly(to).diff(requireDateOnly(from), 'days').days,
+  );
+}
+
+/** Midnight of the instant's calendar day in the given zone, as an instant. */
+export function startOfDayInZone(
+  timeZone: string,
+  at: Date = new Date(),
+): Date {
+  return inZone(timeZone, at).startOf('day').toJSDate();
+}
+
+/** Long calendar date such as "August 20, 2026". */
+export function formatDateLong(
+  at: Date,
+  timeZone = 'UTC',
+  locale = 'en-US',
+): string {
+  return inZone(timeZone, at)
+    .setLocale(locale)
+    .toLocaleString(DateTime.DATE_FULL);
+}
+
+// An invalid Date yields an invalid Date or NaN here rather than throwing.
+const utcInstant = (at: Date) => DateTime.fromJSDate(at, { zone: 'utc' });
+
+/** Calendar months added in UTC; the day clamps to the target month end. */
+export function addMonthsToInstant(at: Date, months: number): Date {
+  return utcInstant(at).plus({ months }).toJSDate();
+}
+
+/** Difference in UTC calendar months, ignoring day and time. */
+export function monthsBetweenInstants(from: Date, to: Date): number {
+  const start = utcInstant(from);
+  const end = utcInstant(to);
+  return (end.year - start.year) * 12 + (end.month - start.month);
+}
+
+export function subtractDaysFromInstant(at: Date, days: number): Date {
+  return utcInstant(at).minus({ days }).toJSDate();
 }
 
 const sqlLiteral = (value: string) => `'${value.replace(/'/g, "''")}'`;
@@ -77,17 +130,9 @@ export function regionTodaySql(column: string): string {
   return `((now() AT TIME ZONE ${regionTimezoneSql(column)})::date)`;
 }
 
-/** Region codes whose local clock currently shows the given hour. */
 function minutesOfDayInZone(timeZone: string, at: Date): number {
-  const parts = new Intl.DateTimeFormat('en-GB', {
-    timeZone,
-    hour: '2-digit',
-    minute: '2-digit',
-    hourCycle: 'h23',
-  }).formatToParts(at);
-  const get = (type: string) =>
-    Number(parts.find((p) => p.type === type)?.value);
-  return get('hour') * 60 + get('minute');
+  const local = inZone(timeZone, at);
+  return local.hour * 60 + local.minute;
 }
 
 /** Region codes whose local time is within the first 30 minutes of the given hour. */

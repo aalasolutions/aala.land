@@ -1,5 +1,6 @@
 // Routes through renderLayout so footer changes propagate; returns a text fallback for MailService.
 import { renderLayout, esc, p } from './system-email.templates';
+import { formatDateLong } from '../../shared/utils/region-time.util';
 
 export interface RenderedEmail {
   subject: string;
@@ -178,16 +179,6 @@ export function purchaseConfirmationEmail(vars: {
   };
 }
 
-const MONTHS = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December',
-];
-
-/** Format a date as "August 20, 2026" in UTC (no locale/timezone surprises). */
-function formatRenewalDate(date: Date): string {
-  return `${MONTHS[date.getUTCMonth()]} ${date.getUTCDate()}, ${date.getUTCFullYear()}`;
-}
-
 export function upcomingInvoiceEmail(vars: {
   name: string;
   renewalDate: Date;
@@ -196,7 +187,7 @@ export function upcomingInvoiceEmail(vars: {
   billingUrl: string;
   unsubscribeUrl?: string;
 }): RenderedEmail {
-  const when = formatRenewalDate(vars.renewalDate);
+  const when = formatDateLong(vars.renewalDate);
   const amountLine =
     vars.amountMinor != null && vars.currency
       ? p(

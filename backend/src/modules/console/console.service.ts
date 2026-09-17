@@ -16,6 +16,11 @@ import {
 import { User } from '@modules/users/entities/user.entity';
 import { Role } from '@shared/enums/roles.enum';
 import { paginationOptions } from '@shared/utils/pagination.util';
+import {
+  addDays,
+  dateInZone,
+  subtractDaysFromInstant,
+} from '@shared/utils/region-time.util';
 import { BillingPrice } from '@modules/billing/entities/billing-price.entity';
 import { BillingHistory } from '@modules/billing/entities/billing-history.entity';
 import { BillingService } from '@modules/billing/billing.service';
@@ -136,7 +141,7 @@ export class ConsoleService {
         .select('COUNT(*)', 'conversations')
         .addSelect('COALESCE(SUM(c.messages_count), 0)', 'messages')
         .where('c.started_at >= :cutoff', {
-          cutoff: new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000),
+          cutoff: subtractDaysFromInstant(now, 30),
         })
         .getRawOne<{ conversations: string; messages: string }>(),
     ]);
@@ -588,12 +593,8 @@ export class ConsoleService {
     const companyById = new Map(companies.map((c) => [c.id, c]));
 
     const today = this.dateOnly(new Date());
-    const horizon = this.dateOnly(
-      new Date(Date.now() + days * 24 * 60 * 60 * 1000),
-    );
-    const overdueFloor = this.dateOnly(
-      new Date(Date.now() - OVERDUE_WINDOW_DAYS * 24 * 60 * 60 * 1000),
-    );
+    const horizon = addDays(today, days);
+    const overdueFloor = addDays(today, -OVERDUE_WINDOW_DAYS);
     const rows = latest
       .map((r) => ({
         ...r,
@@ -1102,7 +1103,7 @@ export class ConsoleService {
   }
 
   private dateOnly(d: Date): string {
-    return d.toISOString().slice(0, 10);
+    return dateInZone('UTC', d);
   }
 
   private async audit(

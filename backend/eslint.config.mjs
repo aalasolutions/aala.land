@@ -30,6 +30,29 @@ export default tseslint.config(
       '@typescript-eslint/no-floating-promises': 'warn',
       '@typescript-eslint/no-unsafe-argument': 'warn',
       "prettier/prettier": ["error", { endOfLine: "auto" }],
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: 'luxon',
+              message: 'Use src/shared/utils/region-time.util.ts instead.',
+            },
+          ],
+          patterns: [
+            {
+              group: ['luxon/*'],
+              message: 'Use src/shared/utils/region-time.util.ts instead.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: ['src/shared/utils/region-time.util.ts'],
+    rules: {
+      'no-restricted-imports': 'off',
     },
   },
 );

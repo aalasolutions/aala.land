@@ -4,10 +4,10 @@ import {
   IsEnum,
   IsNumber,
   Min,
-  IsDateString,
   MaxLength,
   IsUUID,
 } from 'class-validator';
+import { IsDateOnly } from '@shared/decorators/is-date-only.decorator';
 import { Transform } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
 import { ChequeStatus, ChequeType } from '../entities/cheque.entity';
@@ -18,14 +18,14 @@ export class UpdateChequeDto {
   @IsEnum(ChequeStatus)
   status?: ChequeStatus;
 
-  @ApiProperty({ required: false })
+  @ApiProperty({ required: false, format: 'date', example: '2026-02-15' })
   @IsOptional()
-  @IsDateString()
+  @IsDateOnly()
   dueDate?: string;
 
-  @ApiProperty({ required: false })
+  @ApiProperty({ required: false, format: 'date', example: '2026-02-15' })
   @IsOptional()
-  @IsDateString()
+  @IsDateOnly()
   depositDate?: string;
 
   @ApiProperty({ required: false })
