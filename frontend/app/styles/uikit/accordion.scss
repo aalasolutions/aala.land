@@ -23,6 +23,13 @@
   &:has(.nu-accordion__item.is-expanded) {
     overflow: visible;
     transition: overflow 0s linear nu-duration(fast);
+    background: white;
+
+    box-shadow: nu-shadow(sm);
+    &:hover {
+      box-shadow: nu-shadow(md);
+      border-color: var(--border-base);
+    }
 
     @include reduced-motion {
       transition: none;
@@ -149,7 +156,7 @@
   }
 
   @include e(content) {
-    padding-block: nu-space(0) nu-space(4);
+    padding-block: nu-space(4);
     padding-inline: nu-space(4);
     font-size: nu-font-size(sm);
     color: var(--text-muted);

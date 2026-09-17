@@ -985,19 +985,19 @@
         @onChange={{this.updateSegmentedView}}
       />
 
-      <Nuvo::Text @text="Label only" @variant="muted" @size="sm" />
-      <Nuvo::Segmented
-        @options={{this.segmentedPlain}}
-        @value={{this.segmentedPeriod}}
-        @onChange={{this.updateSegmentedPeriod}}
-      />
-
       <Nuvo::Text @text="Icon only" @variant="muted" @size="sm" />
       <Nuvo::Segmented
         @options={{this.segmentedViews}}
         @value={{this.segmentedView}}
         @onChange={{this.updateSegmentedView}}
         @iconOnly={{true}}
+      />
+
+      <Nuvo::Text @text="Label only" @variant="muted" @size="sm" />
+      <Nuvo::Segmented
+        @options={{this.segmentedPlain}}
+        @value={{this.segmentedPeriod}}
+        @onChange={{this.updateSegmentedPeriod}}
       />
 
       <Nuvo::Text @text="Sizes: sm, default, lg" @variant="muted" @size="sm" />

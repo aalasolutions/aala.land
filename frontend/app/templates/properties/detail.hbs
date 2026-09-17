@@ -20,15 +20,13 @@
     </:breadcrumb>
     <:actions>
       {{! No filter panel on this page, so the visibility control lives in the header. }}
-      <Nuvo::Field @label="Visibility">
-        <Nuvo::Dropdown
-          @align="start"
-          @value={{this.archivedFilterValue}}
-          @onSelect={{this.setArchivedFilter}}
-          @options={{this.archivedFilterOptions}}
-          data-test-archived-filter
-        />
-      </Nuvo::Field>
+      <Nuvo::Dropdown
+        @size="sm"
+        @value={{this.archivedFilterValue}}
+        @onSelect={{this.setArchivedFilter}}
+        @options={{this.archivedFilterOptions}}
+        data-test-archived-filter
+      />
       <Nuvo::BtnGroup @attached={{true}}>
         <Nuvo::Button
           @variant={{if (eq this.currentDetailView "cards") "primary" "secondary"}}
