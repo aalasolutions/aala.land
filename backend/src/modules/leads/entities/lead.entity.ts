@@ -45,7 +45,7 @@ export class Lead {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Index()
+  @Index('IDX_LEADS_COMPANY_ID')
   @Column({ name: 'company_id', type: 'uuid' })
   companyId: string;
 
@@ -111,6 +111,7 @@ export class Lead {
   @Column({ type: 'integer', default: 0 })
   score: number;
 
+  @Index('IDX_LEADS_ASSIGNED_TO')
   @Column({ name: 'assigned_to', type: 'uuid', nullable: true })
   assignedTo: string | null;
 

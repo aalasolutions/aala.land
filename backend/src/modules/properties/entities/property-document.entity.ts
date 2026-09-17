@@ -44,6 +44,7 @@ export class PropertyDocument {
   @Column({ name: 'file_type', type: 'varchar', length: 50, nullable: true })
   fileType: string | null;
 
+  @Index('IDX_PROPERTY_DOCUMENTS_UNIT_ID')
   @Column({ name: 'unit_id', type: 'uuid', nullable: true })
   unitId: string | null;
 
@@ -51,6 +52,7 @@ export class PropertyDocument {
   @JoinColumn({ name: 'unit_id' })
   unit: Unit;
 
+  @Index('IDX_PROPERTY_DOCUMENTS_ASSET_ID')
   @Column({ name: 'asset_id', type: 'uuid', nullable: true })
   assetId: string | null;
 

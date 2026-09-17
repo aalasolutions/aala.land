@@ -6,6 +6,7 @@ import {
   UpdateDateColumn,
   ManyToOne,
   JoinColumn,
+  Index,
 } from 'typeorm';
 import { Company } from '../../companies/entities/company.entity';
 import { Unit } from './unit.entity';
@@ -63,6 +64,7 @@ export class PropertyMedia {
   @Column({ name: 'is_primary', type: 'boolean', default: false })
   isPrimary: boolean;
 
+  @Index('IDX_PROPERTY_MEDIA_UNIT_ID')
   @Column({ name: 'unit_id', type: 'uuid', nullable: true })
   unitId: string;
 
@@ -70,6 +72,7 @@ export class PropertyMedia {
   @JoinColumn({ name: 'unit_id' })
   unit: Unit;
 
+  @Index('IDX_PROPERTY_MEDIA_ASSET_ID')
   @Column({ name: 'asset_id', type: 'uuid', nullable: true })
   assetId: string;
 
@@ -77,6 +80,7 @@ export class PropertyMedia {
   @JoinColumn({ name: 'asset_id' })
   asset: Asset;
 
+  @Index('IDX_PROPERTY_MEDIA_COMPANY_ID')
   @Column({ name: 'company_id', type: 'uuid' })
   companyId: string;
 

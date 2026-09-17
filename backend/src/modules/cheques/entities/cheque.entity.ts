@@ -33,6 +33,7 @@ export class Cheque {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
+  @Index('IDX_CHEQUES_COMPANY_ID')
   @Column({ name: 'company_id', type: 'uuid' })
   companyId: string;
 
@@ -40,9 +41,11 @@ export class Cheque {
   @JoinColumn({ name: 'company_id' })
   company: Company;
 
+  @Index('IDX_CHEQUES_LEASE_ID')
   @Column({ name: 'lease_id', type: 'uuid', nullable: true })
   leaseId: string | null;
 
+  @Index('IDX_CHEQUES_UNIT_ID')
   @Column({ name: 'unit_id', type: 'uuid', nullable: true })
   unitId: string | null;
 
