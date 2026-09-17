@@ -307,11 +307,6 @@ export default class LeadsController extends Controller {
     }
   }
 
-  formatActivityDate(dateStr) {
-    const date = new Date(dateStr);
-    return date.toLocaleString();
-  }
-
   @action closeAssignModal() {
     this.showAssignModal = false;
     this.assignLead = null;

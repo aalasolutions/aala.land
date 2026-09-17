@@ -3,10 +3,10 @@ import {
   IsNumber,
   IsOptional,
   IsString,
-  IsDateString,
   MaxLength,
   Min,
 } from 'class-validator';
+import { IsDateOnly } from '@shared/decorators/is-date-only.decorator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import {
   TransactionStatus,
@@ -41,13 +41,13 @@ export class UpdateTransactionDto {
   @IsOptional()
   paymentMethod?: PaymentMethod;
 
-  @ApiPropertyOptional({ example: '2026-02-15' })
-  @IsDateString()
+  @ApiPropertyOptional({ format: 'date', example: '2026-02-15' })
+  @IsDateOnly()
   @IsOptional()
   dueDate?: string;
 
-  @ApiPropertyOptional({ example: '2026-02-15' })
-  @IsDateString()
+  @ApiPropertyOptional({ format: 'date', example: '2026-02-15' })
+  @IsDateOnly()
   @IsOptional()
   transactionDate?: string;
 }

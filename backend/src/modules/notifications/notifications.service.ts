@@ -37,6 +37,7 @@ import {
   regionCodesAtLocalHour,
   regionToday,
   regionTodaySql,
+  startOfDayInZone,
 } from '../../shared/utils/region-time.util';
 
 // Reminders reach each region at this local hour.
@@ -707,9 +708,6 @@ export class NotificationsService {
 
   // Must stay UTC to match the dedup index day bucket.
   private startOfUtcToday(): Date {
-    const now = new Date();
-    return new Date(
-      Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
-    );
+    return startOfDayInZone('UTC');
   }
 }

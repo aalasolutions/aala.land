@@ -15,6 +15,7 @@ import {
   openDeleteModal,
 } from '../utils/delete-modal';
 import { ROLES } from '../utils/roles';
+import { toDateOnly } from '../utils/local-date';
 
 const ARCHIVE_ROLES = [ROLES.COMPANY_ADMIN, ROLES.ADMIN, ROLES.MANAGER];
 const DELETE_ROLES = [ROLES.SUPER_ADMIN, ROLES.COMPANY_ADMIN, ROLES.ADMIN];
@@ -244,8 +245,8 @@ export default class LeasesController extends PaginatedController {
     this.formTenantContactId = lease.contactId ?? lease.contact?.id ?? '';
     this.formUnitId = lease.unitId ?? '';
     this.formType = lease.type ?? 'RESIDENTIAL';
-    this.formStartDate = lease.startDate ? lease.startDate.split('T')[0] : '';
-    this.formEndDate = lease.endDate ? lease.endDate.split('T')[0] : '';
+    this.formStartDate = toDateOnly(lease.startDate);
+    this.formEndDate = toDateOnly(lease.endDate);
     this.formMonthlyRent = String(lease.monthlyRent);
     this.formSecurityDeposit = lease.securityDeposit
       ? String(lease.securityDeposit)
@@ -365,7 +366,7 @@ export default class LeasesController extends PaginatedController {
     this.formTenantContactId = lease.contactId ?? lease.contact?.id ?? '';
     this.formUnitId = lease.unitId ?? '';
     this.formType = lease.type ?? 'RESIDENTIAL';
-    this.formStartDate = lease.endDate ? lease.endDate.split('T')[0] : '';
+    this.formStartDate = toDateOnly(lease.endDate);
     this.formEndDate = '';
     this.formMonthlyRent = String(lease.monthlyRent);
     this.formSecurityDeposit = lease.securityDeposit

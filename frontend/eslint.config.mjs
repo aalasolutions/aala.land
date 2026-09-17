@@ -69,6 +69,29 @@ export default [
     },
   },
   {
+    files: ['app/**/*.{js,gjs}', 'tests/**/*.{js,gjs}'],
+    ignores: ['app/utils/local-date.js'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: 'luxon',
+              message: 'Use app/utils/local-date.js instead.',
+            },
+          ],
+          patterns: [
+            {
+              group: ['luxon/*'],
+              message: 'Use app/utils/local-date.js instead.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
     files: ['tests/**/*-test.{js,gjs}'],
     plugins: {
       qunit,

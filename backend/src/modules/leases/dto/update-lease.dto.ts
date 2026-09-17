@@ -4,11 +4,11 @@ import {
   IsEnum,
   IsNumber,
   Min,
-  IsDateString,
   IsInt,
   IsUUID,
   MaxLength,
 } from 'class-validator';
+import { IsDateOnly } from '@shared/decorators/is-date-only.decorator';
 import { ApiProperty } from '@nestjs/swagger';
 import { LeaseStatus, LeaseType } from '../entities/lease.entity';
 
@@ -33,14 +33,14 @@ export class UpdateLeaseDto {
   @IsUUID()
   contactId?: string;
 
-  @ApiProperty({ required: false })
+  @ApiProperty({ required: false, format: 'date', example: '2026-01-01' })
   @IsOptional()
-  @IsDateString()
+  @IsDateOnly()
   startDate?: string;
 
-  @ApiProperty({ required: false })
+  @ApiProperty({ required: false, format: 'date', example: '2026-12-31' })
   @IsOptional()
-  @IsDateString()
+  @IsDateOnly()
   endDate?: string;
 
   @ApiProperty({ required: false })

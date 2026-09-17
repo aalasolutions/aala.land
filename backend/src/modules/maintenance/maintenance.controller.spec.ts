@@ -130,7 +130,7 @@ describe('MaintenanceController', () => {
         ...mockOrder,
         isPreventive: true,
         scheduleFrequency: ScheduleFrequency.MONTHLY,
-        nextScheduledDate: new Date(),
+        nextScheduledDate: '2026-09-20',
       };
       service.getUpcoming.mockResolvedValue([preventiveOrder] as any);
 

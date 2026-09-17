@@ -45,7 +45,7 @@ export class Lead {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Index()
+  @Index('IDX_LEADS_COMPANY_ID')
   @Column({ name: 'company_id', type: 'uuid' })
   companyId: string;
 
@@ -111,11 +111,15 @@ export class Lead {
   @Column({ type: 'integer', default: 0 })
   score: number;
 
+  @Index('IDX_LEADS_ASSIGNED_TO')
   @Column({ name: 'assigned_to', type: 'uuid', nullable: true })
   assignedTo: string | null;
 
   @ManyToOne(() => User, { nullable: true })
-  @JoinColumn({ name: 'assigned_to' })
+  @JoinColumn({
+    name: 'assigned_to',
+    foreignKeyConstraintName: 'FK_leads_assigned_to',
+  })
   assignedAgent: User | null;
 
   @Column({ name: 'property_interest', type: 'text', nullable: true })

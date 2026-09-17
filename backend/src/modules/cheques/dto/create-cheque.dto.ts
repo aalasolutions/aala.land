@@ -6,9 +6,9 @@ import {
   IsEnum,
   IsNumber,
   Min,
-  IsDateString,
   MaxLength,
 } from 'class-validator';
+import { IsDateOnly } from '@shared/decorators/is-date-only.decorator';
 import { ApiProperty } from '@nestjs/swagger';
 import { ChequeType } from '../entities/cheque.entity';
 
@@ -42,8 +42,12 @@ export class CreateChequeDto {
   @MaxLength(3)
   currency?: string;
 
-  @ApiProperty({ description: 'Cheque due date (ISO 8601)' })
-  @IsDateString()
+  @ApiProperty({
+    description: 'Cheque due date',
+    format: 'date',
+    example: '2026-02-15',
+  })
+  @IsDateOnly()
   dueDate: string;
 
   @ApiProperty({ enum: ChequeType, default: ChequeType.RENT })

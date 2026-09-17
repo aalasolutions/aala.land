@@ -56,11 +56,17 @@ export class Commission {
   transactionId: string | null;
 
   @ManyToOne(() => Lead, { nullable: true })
-  @JoinColumn({ name: 'lead_id' })
+  @JoinColumn({
+    name: 'lead_id',
+    foreignKeyConstraintName: 'FK_commissions_lead',
+  })
   lead: Lead | null;
 
   @ManyToOne(() => Transaction, { nullable: true })
-  @JoinColumn({ name: 'transaction_id' })
+  @JoinColumn({
+    name: 'transaction_id',
+    foreignKeyConstraintName: 'FK_commissions_transaction',
+  })
   transaction: Transaction | null;
 
   @Column({

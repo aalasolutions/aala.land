@@ -12,6 +12,7 @@ import {
   isAdminRole,
   seesAllRegions,
 } from '@shared/utils/region-visibility.util';
+import { subtractDaysFromInstant } from '@shared/utils/region-time.util';
 import { CreateAuditLogDto } from './dto/create-audit-log.dto';
 import { QueryAuditLogsDto } from './dto/query-audit-logs.dto';
 
@@ -129,8 +130,7 @@ export class AuditService {
       throw new BadRequestException('Minimum retention period is 30 days');
     }
 
-    const cutoffDate = new Date();
-    cutoffDate.setDate(cutoffDate.getDate() - olderThanDays);
+    const cutoffDate = subtractDaysFromInstant(new Date(), olderThanDays);
 
     const result = await this.auditLogRepository.delete({
       companyId,

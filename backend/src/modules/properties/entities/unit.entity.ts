@@ -22,6 +22,13 @@ export enum UnitStatus {
 }
 
 @Entity('units')
+@Index(
+  'IDX_units_company_agent_active_rows',
+  ['companyId', 'assignedAgentId'],
+  {
+    where: '"deleted_at" IS NULL',
+  },
+)
 export class Unit {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -29,6 +36,7 @@ export class Unit {
   @Column({ name: 'unit_number', type: 'varchar', length: 50 })
   unitNumber: string;
 
+  @Index('IDX_UNITS_ASSET_ID')
   @Column({ name: 'asset_id', type: 'uuid' })
   assetId: string;
 

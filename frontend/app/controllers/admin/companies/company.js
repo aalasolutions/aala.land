@@ -3,7 +3,12 @@ import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
 import { runTask } from 'ember-lifeline';
-import { formatCalendarDate, localDateString } from 'land/utils/local-date';
+import {
+  formatCalendarDate,
+  localDateString,
+  localEndOfDayIso,
+  toEpochMs,
+} from 'land/utils/local-date';
 
 const TABS = [
   { id: 'overview', label: 'Overview' },
@@ -251,9 +256,7 @@ export default class AdminCompaniesCompanyController extends Controller {
       this.dealBasis = d.basis;
       this.dealSeatCap = String(d.seatCap);
       this.dealLifetime = !!d.lifetime;
-      this.dealUntil = d.untilDate
-        ? localDateString(new Date(d.untilDate))
-        : '';
+      this.dealUntil = d.untilDate ? localDateString(d.untilDate) : '';
       this.dealWhy = d.whyNote;
     } else {
       this.dealPrice = '';
@@ -308,7 +311,11 @@ export default class AdminCompaniesCompanyController extends Controller {
       this.notifications.error('Seats included must be at least 1.');
       return;
     }
-    if (!this.dealLifetime && !this.dealUntil) {
+    // End-of-day local time; UTC midnight would already be past and 400 on the backend.
+    const untilDate = this.dealLifetime
+      ? null
+      : localEndOfDayIso(this.dealUntil);
+    if (!this.dealLifetime && !untilDate) {
       this.notifications.error('Pick an expiry date, or mark it lifetime.');
       return;
     }
@@ -327,8 +334,7 @@ export default class AdminCompaniesCompanyController extends Controller {
     if (this.dealLifetime) {
       body.lifetime = true;
     } else {
-      // End-of-day local time; UTC midnight would already be past and 400 on the backend.
-      body.untilDate = new Date(`${this.dealUntil}T23:59:59`).toISOString();
+      body.untilDate = untilDate;
     }
 
     this.dealBusy = true;
@@ -389,7 +395,8 @@ export default class AdminCompaniesCompanyController extends Controller {
   @action
   async submitLift() {
     if (this.liftBusy) return;
-    if (!this.liftDate) {
+    const liftUntil = localEndOfDayIso(this.liftDate);
+    if (!liftUntil) {
       this.notifications.error('Pick a date to lift the lock until.');
       return;
     }
@@ -398,7 +405,7 @@ export default class AdminCompaniesCompanyController extends Controller {
       await this.auth.fetchJson(`/console/companies/${this.detail.id}/lift`, {
         method: 'POST',
         body: JSON.stringify({
-          liftUntil: new Date(`${this.liftDate}T23:59:59`).toISOString(),
+          liftUntil,
         }),
       });
       this.notifications.success('Lock lifted');
@@ -540,7 +547,7 @@ export default class AdminCompaniesCompanyController extends Controller {
         invoiceUrl: h.hostedInvoiceUrl,
       }));
       this.paymentRows = [...manual, ...card].sort(
-        (a, b) => new Date(b.date) - new Date(a.date),
+        (a, b) => toEpochMs(b.date) - toEpochMs(a.date),
       );
       this.paymentsLoaded = true;
     } catch (e) {

@@ -45,9 +45,9 @@ export class Asset {
     name: 'property_type',
     type: 'enum',
     enum: PropertyType,
-    nullable: true,
+    default: PropertyType.RENTAL,
   })
-  propertyType: PropertyType | null;
+  propertyType: PropertyType;
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;

@@ -58,11 +58,15 @@ export class WorkOrder {
   @JoinColumn({ name: 'company_id' })
   company: Company;
 
+  @Index('IDX_WORK_ORDERS_UNIT_ID')
   @Column({ name: 'unit_id', type: 'uuid', nullable: true })
   unitId: string | null;
 
   @ManyToOne(() => Unit, { nullable: true })
-  @JoinColumn({ name: 'unit_id' })
+  @JoinColumn({
+    name: 'unit_id',
+    foreignKeyConstraintName: 'FK_work_orders_unit',
+  })
   unit: Unit | null;
 
   @Index('IDX_WORK_ORDERS_REGION_CODE')
@@ -100,7 +104,10 @@ export class WorkOrder {
   assignedTo: string | null;
 
   @ManyToOne(() => User, { nullable: true })
-  @JoinColumn({ name: 'assigned_to' })
+  @JoinColumn({
+    name: 'assigned_to',
+    foreignKeyConstraintName: 'FK_work_orders_assigned_to',
+  })
   assignee: User | null;
 
   @Column({ name: 'vendor_id', type: 'uuid', nullable: true })

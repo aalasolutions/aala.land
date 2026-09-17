@@ -45,7 +45,7 @@ export class Transaction {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Index()
+  @Index('IDX_TRANSACTIONS_COMPANY_ID')
   @Column({ name: 'company_id', type: 'uuid' })
   companyId: string;
 
@@ -105,11 +105,15 @@ export class Transaction {
   @Column({ name: 'region_code', type: 'varchar', length: 50, nullable: true })
   regionCode: string | null;
 
+  @Index('IDX_TRANSACTIONS_UNIT_ID')
   @Column({ name: 'unit_id', type: 'uuid', nullable: true })
   unitId: string;
 
   @ManyToOne(() => Unit)
-  @JoinColumn({ name: 'unit_id' })
+  @JoinColumn({
+    name: 'unit_id',
+    foreignKeyConstraintName: 'FK_transactions_unit',
+  })
   unit: Unit;
 
   @Column({ name: 'transaction_date', type: 'date', nullable: true })

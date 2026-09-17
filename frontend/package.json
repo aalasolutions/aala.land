@@ -90,6 +90,7 @@
   },
   "dependencies": {
     "ember-lifeline": "^7.1.0",
+    "luxon": "3.7.2",
     "socket.io-client": "^4.8.3"
   }
 }

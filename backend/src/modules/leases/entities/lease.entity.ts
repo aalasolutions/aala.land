@@ -40,11 +40,12 @@ export class Lease {
   @JoinColumn({ name: 'company_id' })
   company: Company;
 
+  @Index('IDX_LEASES_UNIT_ID')
   @Column({ name: 'unit_id', type: 'uuid' })
   unitId: string;
 
   @ManyToOne(() => Unit)
-  @JoinColumn({ name: 'unit_id' })
+  @JoinColumn({ name: 'unit_id', foreignKeyConstraintName: 'FK_leases_unit' })
   unit: Unit;
 
   // The tenant is a contact; identity and national ID live there, not on the lease.
