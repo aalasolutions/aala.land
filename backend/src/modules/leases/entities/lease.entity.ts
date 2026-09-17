@@ -40,6 +40,7 @@ export class Lease {
   @JoinColumn({ name: 'company_id' })
   company: Company;
 
+  @Index('IDX_LEASES_UNIT_ID')
   @Column({ name: 'unit_id', type: 'uuid' })
   unitId: string;
 

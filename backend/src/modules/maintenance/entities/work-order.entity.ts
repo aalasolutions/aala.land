@@ -58,6 +58,7 @@ export class WorkOrder {
   @JoinColumn({ name: 'company_id' })
   company: Company;
 
+  @Index('IDX_WORK_ORDERS_UNIT_ID')
   @Column({ name: 'unit_id', type: 'uuid', nullable: true })
   unitId: string | null;
 
