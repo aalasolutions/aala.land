@@ -27,19 +27,20 @@ export enum NotificationType {
 }
 
 @Entity('notifications')
+@Index('UQ_notifications_reminder_dedup_daily', { synchronize: false })
 export class Notification {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Index()
+  @Index('IDX_NOTIFICATIONS_COMPANY_ID')
   @Column({ name: 'company_id', type: 'uuid' })
   companyId: string;
 
-  @ManyToOne(() => Company)
+  @ManyToOne(() => Company, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'company_id' })
   company: Company;
 
-  @Index()
+  @Index('IDX_NOTIFICATIONS_USER_ID')
   @Column({ name: 'user_id', type: 'uuid' })
   userId: string;
 
@@ -80,6 +81,7 @@ export class Notification {
   @Column({ name: 'read_at', type: 'timestamptz', nullable: true })
   readAt: Date | null;
 
+  @Index('IDX_NOTIFICATIONS_CREATED_AT')
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;
 

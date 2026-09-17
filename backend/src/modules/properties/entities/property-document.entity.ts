@@ -31,6 +31,7 @@ export enum DocumentAccessLevel {
 }
 
 @Entity('property_documents')
+@Index('IDX_property_documents_company_uploaded', ['companyId', 'uploadedBy'])
 export class PropertyDocument {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -57,7 +58,10 @@ export class PropertyDocument {
   assetId: string | null;
 
   @ManyToOne(() => Asset, { nullable: true, onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'asset_id' })
+  @JoinColumn({
+    name: 'asset_id',
+    foreignKeyConstraintName: 'FK_c7f883c7b620726dc402fcaf43f',
+  })
   asset: Asset;
 
   @Column({ name: 'company_id', type: 'uuid' })
@@ -93,8 +97,11 @@ export class PropertyDocument {
   @Column({ name: 'previous_version_id', type: 'uuid', nullable: true })
   previousVersionId: string | null;
 
-  @ManyToOne(() => PropertyDocument, { nullable: true })
-  @JoinColumn({ name: 'previous_version_id' })
+  @ManyToOne(() => PropertyDocument, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({
+    name: 'previous_version_id',
+    foreignKeyConstraintName: 'FK_property_documents_previous_version',
+  })
   previousVersion: PropertyDocument | null;
 
   @Column({ name: 'uploaded_by', type: 'uuid', nullable: true })

@@ -54,37 +54,43 @@ export class Lead {
   company?: Company;
 
   // One lead per property: a contact interested in three properties creates three lead rows.
-  @Index()
+  @Index('IDX_LEADS_CONTACT_ID')
   @Column({ name: 'contact_id', type: 'uuid', nullable: true })
   contactId: string | null;
 
-  @ManyToOne(() => Contact, { nullable: true })
-  @JoinColumn({ name: 'contact_id' })
+  @ManyToOne(() => Contact, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({
+    name: 'contact_id',
+    foreignKeyConstraintName: 'fk_leads_contact',
+  })
   contact: Contact | null;
 
-  @Index()
+  @Index('IDX_LEADS_LOCALITY_ID')
   @Column({ name: 'locality_id', type: 'uuid', nullable: true })
   localityId: string | null;
 
   @ManyToOne(() => Locality, { nullable: true })
-  @JoinColumn({ name: 'locality_id' })
+  @JoinColumn({
+    name: 'locality_id',
+    foreignKeyConstraintName: 'fk_leads_locality',
+  })
   locality: Locality | null;
 
   // City is above locality: a lead can name a city but no area (region, city, locality, unit).
-  @Index()
+  @Index('IDX_LEADS_CITY_ID')
   @Column({ name: 'city_id', type: 'uuid', nullable: true })
   cityId: string | null;
 
-  @ManyToOne(() => City, { nullable: true })
-  @JoinColumn({ name: 'city_id' })
+  @ManyToOne(() => City, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'city_id', foreignKeyConstraintName: 'fk_leads_city' })
   city: City | null;
 
-  @Index()
+  @Index('IDX_LEADS_UNIT_ID')
   @Column({ name: 'unit_id', type: 'uuid', nullable: true })
   unitId: string | null;
 
   @ManyToOne(() => Unit, { nullable: true })
-  @JoinColumn({ name: 'unit_id' })
+  @JoinColumn({ name: 'unit_id', foreignKeyConstraintName: 'fk_leads_unit' })
   unit: Unit | null;
 
   @Column({
@@ -160,6 +166,7 @@ export class Lead {
   @Column({ name: 'previous_agent', type: 'uuid', nullable: true })
   previousAgent: string | null;
 
+  @Index('IDX_LEADS_REGION_CODE')
   @Column({ name: 'region_code', type: 'varchar', length: 50 })
   regionCode: string;
 

@@ -60,6 +60,7 @@ export class Transaction {
   })
   type: TransactionType;
 
+  @Index('IDX_TRANSACTIONS_CATEGORY')
   @Column({
     type: 'enum',
     enum: TransactionCategory,
@@ -101,7 +102,7 @@ export class Transaction {
   })
   referenceNumber: string;
 
-  @Index()
+  @Index('IDX_TRANSACTIONS_REGION_CODE')
   @Column({ name: 'region_code', type: 'varchar', length: 50, nullable: true })
   regionCode: string | null;
 

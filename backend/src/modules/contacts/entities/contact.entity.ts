@@ -12,16 +12,20 @@ import { Company } from '../../companies/entities/company.entity';
 
 // Single place identity lives; roles derive from referencing rows, never stored here.
 @Entity('contacts')
+@Index('IDX_contacts_company_created_by', ['companyId', 'createdBy'])
 export class Contact {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Index()
+  @Index('IDX_contacts_company_id')
   @Column({ name: 'company_id', type: 'uuid' })
   companyId: string;
 
-  @ManyToOne(() => Company)
-  @JoinColumn({ name: 'company_id' })
+  @ManyToOne(() => Company, { onDelete: 'CASCADE' })
+  @JoinColumn({
+    name: 'company_id',
+    foreignKeyConstraintName: 'FK_contacts_company',
+  })
   company: Company;
 
   // Nullable: an inbound WhatsApp contact may have a number, no name; UI falls back to the number.

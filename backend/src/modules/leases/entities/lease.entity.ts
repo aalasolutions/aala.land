@@ -29,6 +29,10 @@ export enum LeaseType {
 @Index('IDX_leases_company_active_rows', ['companyId'], {
   where: '"deleted_at" IS NULL',
 })
+@Index('UQ_leases_active_unit', ['unitId'], {
+  unique: true,
+  where: `"status" = 'ACTIVE'`,
+})
 export class Lease {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -49,12 +53,15 @@ export class Lease {
   unit: Unit;
 
   // The tenant is a contact; identity and national ID live there, not on the lease.
-  @Index()
+  @Index('IDX_LEASES_CONTACT_ID')
   @Column({ name: 'contact_id', type: 'uuid', nullable: true })
   contactId: string | null;
 
-  @ManyToOne(() => Contact, { nullable: true })
-  @JoinColumn({ name: 'contact_id' })
+  @ManyToOne(() => Contact, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({
+    name: 'contact_id',
+    foreignKeyConstraintName: 'fk_leases_contact',
+  })
   contact: Contact | null;
 
   @Column({

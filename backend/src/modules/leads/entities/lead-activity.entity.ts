@@ -53,7 +53,10 @@ export class LeadActivity {
   performedBy: string | null;
 
   @ManyToOne(() => User, { nullable: true, onDelete: 'SET NULL' })
-  @JoinColumn({ name: 'performed_by' })
+  @JoinColumn({
+    name: 'performed_by',
+    foreignKeyConstraintName: 'FK_lead_activities_performed_by_users',
+  })
   performer?: User | null;
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })

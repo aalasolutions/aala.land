@@ -69,7 +69,7 @@ export class User {
   })
   role: Role;
 
-  @Index()
+  @Index('IDX_USERS_COMPANY_ID')
   @Column({ name: 'company_id', type: 'uuid', nullable: true })
   companyId: string | null;
 

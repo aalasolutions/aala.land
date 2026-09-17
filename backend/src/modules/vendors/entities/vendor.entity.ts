@@ -27,12 +27,15 @@ export class Vendor {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Index()
+  @Index('IDX_vendors_company_id')
   @Column({ name: 'company_id', type: 'uuid' })
   companyId: string;
 
-  @ManyToOne(() => Company)
-  @JoinColumn({ name: 'company_id' })
+  @ManyToOne(() => Company, { onDelete: 'CASCADE' })
+  @JoinColumn({
+    name: 'company_id',
+    foreignKeyConstraintName: 'FK_vendors_company',
+  })
   company: Company;
 
   @Column({ type: 'varchar', length: 255 })
@@ -79,6 +82,7 @@ export class Vendor {
   @Column({ type: 'text', nullable: true })
   notes: string | null;
 
+  @Index('IDX_VENDORS_REGION_CODE')
   @Column({ name: 'region_code', type: 'varchar', length: 50 })
   regionCode: string;
 

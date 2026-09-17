@@ -77,7 +77,10 @@ export class PropertyMedia {
   assetId: string;
 
   @ManyToOne(() => Asset, { nullable: true, onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'asset_id' })
+  @JoinColumn({
+    name: 'asset_id',
+    foreignKeyConstraintName: 'FK_f64263a84a1565153406400aca8',
+  })
   asset: Asset;
 
   @Index('IDX_PROPERTY_MEDIA_COMPANY_ID')

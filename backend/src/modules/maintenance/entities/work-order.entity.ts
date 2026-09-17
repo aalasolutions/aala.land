@@ -47,6 +47,7 @@ export enum ScheduleFrequency {
 }
 
 @Entity('work_orders')
+@Index('IDX_work_orders_company_assigned', ['companyId', 'assignedTo'])
 export class WorkOrder {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -113,8 +114,11 @@ export class WorkOrder {
   @Column({ name: 'vendor_id', type: 'uuid', nullable: true })
   vendorId: string | null;
 
-  @ManyToOne(() => Vendor, { nullable: true })
-  @JoinColumn({ name: 'vendor_id' })
+  @ManyToOne(() => Vendor, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({
+    name: 'vendor_id',
+    foreignKeyConstraintName: 'FK_work_orders_vendor',
+  })
   vendor: Vendor;
 
   @Column({ name: 'reported_by', type: 'varchar', length: 255, nullable: true })
