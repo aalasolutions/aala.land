@@ -52,7 +52,7 @@ export default class LeasesController extends PaginatedController {
   @tracked formMonthlyRent = '';
   @tracked formSecurityDeposit = '';
   @tracked formNumberOfCheques = '4';
-  @tracked formEjariNumber = '';
+  @tracked formTenancyRegistrationRef = '';
   @tracked formNotes = '';
   @tracked renewingLeaseId = null;
   @tracked isSaving = false;
@@ -232,7 +232,7 @@ export default class LeasesController extends PaginatedController {
     this.formMonthlyRent = '';
     this.formSecurityDeposit = '';
     this.formNumberOfCheques = '4';
-    this.formEjariNumber = '';
+    this.formTenancyRegistrationRef = '';
     this.formNotes = '';
     this.editLease = null;
     this.renewingLeaseId = null;
@@ -252,7 +252,7 @@ export default class LeasesController extends PaginatedController {
       ? String(lease.securityDeposit)
       : '';
     this.formNumberOfCheques = String(lease.numberOfCheques ?? 4);
-    this.formEjariNumber = lease.ejariNumber ?? '';
+    this.formTenancyRegistrationRef = lease.tenancyRegistrationRef ?? '';
     this.formNotes = lease.notes ?? '';
     this.editLease = lease;
     this.formStatus = lease.status ?? 'DRAFT';
@@ -318,8 +318,8 @@ export default class LeasesController extends PaginatedController {
             ? { securityDeposit: parseFloat(this.formSecurityDeposit) }
             : {}),
           numberOfCheques: parseInt(this.formNumberOfCheques, 10),
-          ...(this.formEjariNumber
-            ? { ejariNumber: this.formEjariNumber }
+          ...(this.formTenancyRegistrationRef
+            ? { tenancyRegistrationRef: this.formTenancyRegistrationRef }
             : {}),
           ...(this.formNotes ? { notes: this.formNotes } : {}),
           status: this.formStatus,
@@ -337,8 +337,8 @@ export default class LeasesController extends PaginatedController {
             ? { securityDeposit: parseFloat(this.formSecurityDeposit) }
             : {}),
           numberOfCheques: parseInt(this.formNumberOfCheques, 10),
-          ...(this.formEjariNumber
-            ? { ejariNumber: this.formEjariNumber }
+          ...(this.formTenancyRegistrationRef
+            ? { tenancyRegistrationRef: this.formTenancyRegistrationRef }
             : {}),
           ...(this.formNotes ? { notes: this.formNotes } : {}),
         };
@@ -373,7 +373,7 @@ export default class LeasesController extends PaginatedController {
       ? String(lease.securityDeposit)
       : '';
     this.formNumberOfCheques = String(lease.numberOfCheques ?? 4);
-    this.formEjariNumber = '';
+    this.formTenancyRegistrationRef = '';
     this.formNotes = '';
     this.editLease = null;
     this.renewingLeaseId = lease.id;

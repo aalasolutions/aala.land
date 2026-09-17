@@ -266,6 +266,31 @@
     line-height: 1;
   }
 
+  // Holds the label plus its optional tooltip button on one line.
+  @include e(label-row) {
+    display: flex;
+    align-items: center;
+    gap: nu-space(1);
+  }
+
+  // Question-mark button that carries an explanatory tooltip beside the label.
+  @include e(info) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--text-muted);
+    cursor: help;
+    line-height: 1;
+
+    &:hover,
+    &:focus-visible {
+      color: var(--primary);
+    }
+  }
+
   @include e(hint) {
     font-size: nu-font-size(xs);
     color: var(--text-muted);

@@ -61,7 +61,7 @@ Browser / Mobile (Capacitor)
 | `properties` | `PropertyArea` (area/community) → `Asset` (building) → `Unit`. Units hold status, price, sq ft, amenities, photos. |
 | `owners` | Property owners linked to units. |
 | `leads` | CRM pipeline. Statuses: NEW → CONTACTED → VIEWING → NEGOTIATING → WON/LOST. Temperature: HOT/WARM/COLD/DEAD. Sources: WEBSITE, WHATSAPP, REFERRAL, etc. Kanban views by pipeline, temperature, agent, list. |
-| `leases` | Lease lifecycle (DRAFT → ACTIVE → EXPIRED/TERMINATED/RENEWED). Stores tenant info, monthly rent, currency, security deposit, cheque count, Ejari number. |
+| `leases` | Lease lifecycle (DRAFT → ACTIVE → EXPIRED/TERMINATED/RENEWED). Stores tenant info, monthly rent, currency, security deposit, cheque count, tenancy registration ref. |
 | `financial` | Income/expense `Transaction` records with payment method, category, date. |
 | `cheques` | Post-dated cheque management: bounce tracking, collection schedule. |
 | `commissions` | Agent commission workflow: create → approve → pay. |

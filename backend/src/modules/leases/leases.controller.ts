@@ -75,7 +75,8 @@ export class LeasesController {
     name: 'search',
     required: false,
     type: String,
-    description: 'Matches tenant name, unit number or Ejari number',
+    description:
+      'Matches tenant name, unit number or tenancy registration reference',
   })
   @ApiQuery({
     name: 'dateFrom',

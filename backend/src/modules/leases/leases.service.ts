@@ -272,7 +272,7 @@ export class LeasesService {
     }
     if (filters?.search) {
       qb.andWhere(
-        `(tenant.firstName ILIKE :s OR tenant.lastName ILIKE :s OR unit.unitNumber ILIKE :s OR l.ejariNumber ILIKE :s)`,
+        `(tenant.firstName ILIKE :s OR tenant.lastName ILIKE :s OR unit.unitNumber ILIKE :s OR l.tenancyRegistrationRef ILIKE :s)`,
         { s: `%${filters.search}%` },
       );
     }
@@ -668,8 +668,8 @@ export class LeasesService {
     );
 
     let entityTitle = unit?.unitNumber ? `Lease ${unit.unitNumber}` : 'Lease';
-    if (lease.ejariNumber) {
-      entityTitle += ` (Ejari ${lease.ejariNumber})`;
+    if (lease.tenancyRegistrationRef) {
+      entityTitle += ` (Tenancy Registration ${lease.tenancyRegistrationRef})`;
     }
 
     await this.recordHistoryService.record(manager, {

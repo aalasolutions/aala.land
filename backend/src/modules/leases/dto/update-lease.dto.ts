@@ -65,7 +65,7 @@ export class UpdateLeaseDto {
   @IsOptional()
   @IsString()
   @MaxLength(100)
-  ejariNumber?: string;
+  tenancyRegistrationRef?: string;
 
   @ApiProperty({ required: false })
   @IsOptional()

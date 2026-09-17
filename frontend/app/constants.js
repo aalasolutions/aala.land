@@ -98,7 +98,7 @@ export const CONTACT_TYPES = [
 export const CATEGORIES = [
   { value: '', label: 'All Categories' },
   { value: 'LEASE', label: 'Lease / Tenancy Contract' },
-  { value: 'EJARI', label: 'Ejari Certificate' },
+  { value: 'TENANCY_REGISTRATION', label: 'Tenancy Registration' },
   { value: 'TITLE_DEED', label: 'Title Deed' },
   { value: 'ID_COPY', label: 'Passport Copy' },
   { value: 'NOC', label: 'No Objection Certificate (NOC)' },

@@ -37,7 +37,7 @@
         <Nuvo::Input
           type="text"
           autocomplete="off"
-          placeholder="Search tenant, unit number, Ejari..."
+          placeholder="Search tenant, unit number, registration ref..."
           class="grow"
           value={{this.search}}
           {{on "input" (fn this.updateFilter "search")}}
@@ -115,7 +115,7 @@
               <th>Rent</th>
               <th>Period</th>
               <th>Status</th>
-              <th>Ejari #</th>
+              <th>Tenancy Reg. Ref</th>
               <th>Actions</th>
             </tr>
           </thead>
@@ -149,7 +149,7 @@
                     {{/if}}
                   </div>
                 </td>
-                <td class="text-muted">{{or lease.ejariNumber "-"}}</td>
+                <td class="text-muted">{{or lease.tenancyRegistrationRef "-"}}</td>
                 <td>
                   <div class="flex gap-2 wrap">
                     {{#if this.canViewHistory}}
@@ -412,13 +412,16 @@
         </Nuvo::Field>
       </div>
 
-      <Nuvo::Field @label="Ejari Number">
+      <Nuvo::Field
+        @label="Tenancy Registration Ref"
+        @tooltip="e.g., Ejari in Dubai, Tawtheeq in Abu Dhabi, or your local government lease registry number."
+      >
         <Nuvo::Input
-          id="lease-ejari"
+          id="lease-tenancy-registration-ref"
           type="text"
-          placeholder="e.g. EJARI-2026-00001"
-          @value={{this.formEjariNumber}}
-          @onInput={{fn this.setFieldValue "formEjariNumber"}}
+          placeholder="e.g. TR-2026-00001"
+          @value={{this.formTenancyRegistrationRef}}
+          @onInput={{fn this.setFieldValue "formTenancyRegistrationRef"}}
         />
       </Nuvo::Field>
 
