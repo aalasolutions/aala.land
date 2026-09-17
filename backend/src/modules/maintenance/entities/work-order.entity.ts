@@ -63,7 +63,10 @@ export class WorkOrder {
   unitId: string | null;
 
   @ManyToOne(() => Unit, { nullable: true })
-  @JoinColumn({ name: 'unit_id' })
+  @JoinColumn({
+    name: 'unit_id',
+    foreignKeyConstraintName: 'FK_work_orders_unit',
+  })
   unit: Unit | null;
 
   @Index('IDX_WORK_ORDERS_REGION_CODE')

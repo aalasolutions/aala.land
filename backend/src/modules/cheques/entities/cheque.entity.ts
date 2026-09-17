@@ -50,11 +50,14 @@ export class Cheque {
   unitId: string | null;
 
   @ManyToOne(() => Lease, { nullable: true })
-  @JoinColumn({ name: 'lease_id' })
+  @JoinColumn({
+    name: 'lease_id',
+    foreignKeyConstraintName: 'FK_cheques_lease',
+  })
   lease: Lease | null;
 
   @ManyToOne(() => Unit, { nullable: true })
-  @JoinColumn({ name: 'unit_id' })
+  @JoinColumn({ name: 'unit_id', foreignKeyConstraintName: 'FK_cheques_unit' })
   unit: Unit | null;
 
   @Index('IDX_CHEQUES_REGION_CODE')

@@ -110,7 +110,10 @@ export class Transaction {
   unitId: string;
 
   @ManyToOne(() => Unit)
-  @JoinColumn({ name: 'unit_id' })
+  @JoinColumn({
+    name: 'unit_id',
+    foreignKeyConstraintName: 'FK_transactions_unit',
+  })
   unit: Unit;
 
   @Column({ name: 'transaction_date', type: 'date', nullable: true })

@@ -22,6 +22,17 @@ const INDEXES: Array<[name: string, definition: string]> = [
   ['IDX_LEADS_ASSIGNED_TO', `"leads" ("assigned_to")`],
 ];
 
+// NO ACTION: the app already blocks deleting a unit or lease that still has linked rows.
+const FOREIGN_KEYS: Array<
+  [name: string, table: string, column: string, target: string]
+> = [
+  ['FK_leases_unit', 'leases', 'unit_id', 'units'],
+  ['FK_cheques_unit', 'cheques', 'unit_id', 'units'],
+  ['FK_cheques_lease', 'cheques', 'lease_id', 'leases'],
+  ['FK_transactions_unit', 'transactions', 'unit_id', 'units'],
+  ['FK_work_orders_unit', 'work_orders', 'unit_id', 'units'],
+];
+
 export class AddMissingForeignKeyIndexes1779700000007 implements MigrationInterface {
   name = 'AddMissingForeignKeyIndexes1779700000007';
 
@@ -31,9 +42,19 @@ export class AddMissingForeignKeyIndexes1779700000007 implements MigrationInterf
         `CREATE INDEX IF NOT EXISTS "${name}" ON ${definition}`,
       );
     }
+    for (const [name, table, column, target] of FOREIGN_KEYS) {
+      await queryRunner.query(
+        `ALTER TABLE "${table}" ADD CONSTRAINT "${name}" FOREIGN KEY ("${column}") REFERENCES "${target}"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`,
+      );
+    }
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
+    for (const [name, table] of [...FOREIGN_KEYS].reverse()) {
+      await queryRunner.query(
+        `ALTER TABLE "${table}" DROP CONSTRAINT IF EXISTS "${name}"`,
+      );
+    }
     for (const [name] of [...INDEXES].reverse()) {
       await queryRunner.query(`DROP INDEX IF EXISTS "${name}"`);
     }
