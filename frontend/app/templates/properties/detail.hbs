@@ -148,22 +148,19 @@
 
                     <div class="unit-amenities-strip">
                       <span
-                        class="flex x-center gap-1
-                          {{unless (has-value unit.bedrooms) 'opacity-50'}}"
+                        class="flex x-center gap-1 {{unless (has-value unit.bedrooms) 'opacity-50'}}"
                       >
                         <Ui::Ph @icon="bed" />
                         {{if (has-value unit.bedrooms) unit.bedrooms "-"}}
                       </span>
                       <span
-                        class="flex x-center gap-1
-                          {{unless (has-value unit.bathrooms) 'opacity-50'}}"
+                        class="flex x-center gap-1 {{unless (has-value unit.bathrooms) 'opacity-50'}}"
                       >
                         <Ui::Ph @icon="bathtub" />
                         {{if (has-value unit.bathrooms) unit.bathrooms "-"}}
                       </span>
                       <span
-                        class="flex x-center gap-1
-                          {{unless (has-value unit.sqFt) 'opacity-50'}}"
+                        class="flex x-center gap-1 {{unless (has-value unit.sqFt) 'opacity-50'}}"
                       >
                         <Ui::Ph @icon="selection" />
                         {{if
@@ -475,8 +472,7 @@
         </div>
       </div>
       <Nuvo::Field
-        @label="Property
-        Type"
+        @label="Property Listing Type"
         @tooltip="Choose how this property is listed. For Rent and For Sale make it searchable. Not Listed keeps it hidden."
       >
         <Nuvo::Dropdown
@@ -558,11 +554,7 @@
           {{#each this.amenityOptions as |opt|}}
             <button
               type="button"
-              class="nu-tag m-pill m-selectable
-                {{if
-                  (includes this.formUnitAmenities opt.key)
-                  'is-selected'
-                }}"
+              class="nu-tag m-pill m-selectable {{if (includes this.formUnitAmenities opt.key) 'is-selected' }}"
               data-test-amenity={{opt.key}}
               aria-pressed={{if
                 (includes this.formUnitAmenities opt.key)

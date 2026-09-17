@@ -273,8 +273,7 @@
           {{#each this.assignableRegions as |r|}}
             <button
               type="button"
-              class="nu-tag m-pill m-selectable
-                {{if (includes this.selectedRegionCodes r.code) 'is-selected'}}"
+              class="nu-tag m-pill m-selectable {{if (includes this.selectedRegionCodes r.code) 'is-selected'}}"
               data-test-region-choice={{r.code}}
               aria-pressed={{if
                 (includes this.selectedRegionCodes r.code)

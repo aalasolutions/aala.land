@@ -168,9 +168,7 @@
           {{#each this.specialtyOptions as |opt|}}
             <button
               type="button"
-              class="nu-tag m-pill m-selectable vendor-specialty-chip
-                tag-trade-{{lowercase opt.value}}
-                {{if (includes this.formSpecialties opt.value) 'is-selected'}}"
+              class="nu-tag m-pill m-selectable vendor-specialty-chip tag-trade-{{lowercase opt.value}} {{if (includes this.formSpecialties opt.value) 'is-selected'}}"
               data-test-specialty-chip={{opt.value}}
               aria-pressed={{if
                 (includes this.formSpecialties opt.value)

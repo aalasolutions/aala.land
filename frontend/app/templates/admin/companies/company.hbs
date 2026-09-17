@@ -382,33 +382,44 @@
     <:body>
       <div class="flex col gap-4" data-test-deal-form>
         <div class="console-form-row">
-          <div class="flex col gap-2 flex-2">
-            <label class="text-sm text-muted" for="deal-price">Price</label>
-            <input
+          <Nuvo::Field
+            @label="Price"
+            @tooltip="Enter the amount that matches the Basis below, either per seat each month or one flat total each month."
+            @flush={{true}}
+            class="flex-2"
+          >
+            <Nuvo::Input
               id="deal-price"
               type="number"
               min="0"
               step="0.01"
-              class="form-input"
-              value={{this.dealPrice}}
+              @value={{this.dealPrice}}
               data-test-deal-price
               {{on "input" (fn this.setDealField "dealPrice")}}
             />
-          </div>
-          <div class="flex col gap-2 grow">
-            <label class="text-sm text-muted" for="deal-currency">Currency</label>
-            <input
+          </Nuvo::Field>
+          <Nuvo::Field
+            @label="Currency"
+            @tooltip="Three letter code such as AED or USD. This is what the company is billed in from now on."
+            @flush={{true}}
+            class="grow console-currency-field"
+          >
+            <Nuvo::Input
               id="deal-currency"
               type="text"
               maxlength="3"
-              class="form-input console-currency-input"
-              value={{this.dealCurrency}}
+              class="console-currency-input"
+              @value={{this.dealCurrency}}
               data-test-deal-currency
               {{on "input" (fn this.setDealField "dealCurrency")}}
             />
-          </div>
-          <div class="flex col gap-2 flex-2">
-            <label class="text-sm text-muted" for="deal-basis">Basis</label>
+          </Nuvo::Field>
+          <Nuvo::Field
+            @label="Basis"
+            @tooltip="Per seat charges the price for every active user each month. Flat charges the price once each month, whatever the seat count."
+            @flush={{true}}
+            class="flex-2"
+          >
             <Nuvo::Dropdown
               id="deal-basis"
               data-test-deal-basis
@@ -417,36 +428,41 @@
               @value={{this.dealBasis}}
               @onSelect={{this.setDealBasis}}
             />
-          </div>
+          </Nuvo::Field>
         </div>
 
-        <div class="flex col gap-2">
-          <label class="text-sm text-muted" for="deal-seats">Seats included</label>
-          <input
+        <Nuvo::Field
+          @label="Seats included"
+          @tooltip="How many active users this price covers. Extra users above this are billed at the normal per seat rate."
+          @flush={{true}}
+        >
+          <Nuvo::Input
             id="deal-seats"
             type="number"
             min="1"
             step="1"
-            class="form-input"
-            value={{this.dealSeatCap}}
+            @value={{this.dealSeatCap}}
             data-test-deal-seats
             {{on "input" (fn this.setDealField "dealSeatCap")}}
           />
-        </div>
+        </Nuvo::Field>
 
         <div class="console-form-row x-end">
-          <div class="flex col gap-2 flex-2">
-            <label class="text-sm text-muted" for="deal-until">Until</label>
-            <input
+          <Nuvo::Field
+            @label="Until"
+            @tooltip="The last day this price applies. After it, the company goes back to standard plan pricing."
+            @flush={{true}}
+            class="flex-2"
+          >
+            <Nuvo::Input
               id="deal-until"
               type="date"
-              class="form-input"
-              value={{this.dealUntil}}
+              @value={{this.dealUntil}}
               disabled={{this.dealLifetime}}
               data-test-deal-until
               {{on "input" (fn this.setDealField "dealUntil")}}
             />
-          </div>
+          </Nuvo::Field>
           <label class="console-checkbox grow">
             <input
               type="checkbox"
@@ -458,16 +474,15 @@
           </label>
         </div>
 
-        <div class="flex col gap-2">
-          <label class="text-sm text-muted" for="deal-why">Why (required)</label>
-          <textarea
+        <Nuvo::Field @label="Why" @required={{true}} @flush={{true}}>
+          <Nuvo::Textarea
             id="deal-why"
-            class="form-input"
             rows="2"
             data-test-deal-why
+            @value={{this.dealWhy}}
             {{on "input" (fn this.setDealField "dealWhy")}}
-          >{{this.dealWhy}}</textarea>
-        </div>
+          />
+        </Nuvo::Field>
 
         <div class="alert alert-warning" data-test-deal-expiry-preview>
           <div>
@@ -507,80 +522,85 @@
     <:body>
       <div class="flex col gap-4" data-test-payment-form>
         <div class="console-form-row">
-          <div class="flex col gap-2 flex-2">
-            <label class="text-sm text-muted" for="pay-amount">Amount</label>
-            <input
+          <Nuvo::Field @label="Amount" @flush={{true}} class="flex-2">
+            <Nuvo::Input
               id="pay-amount"
               type="number"
               min="0"
               step="0.01"
-              class="form-input"
-              value={{this.payAmount}}
+              @value={{this.payAmount}}
               data-test-payment-amount
               {{on "input" (fn this.setPayField "payAmount")}}
             />
-          </div>
-          <div class="flex col gap-2 grow">
-            <label class="text-sm text-muted" for="pay-currency">Currency</label>
-            <input
+          </Nuvo::Field>
+          <Nuvo::Field
+            @label="Currency"
+            @tooltip="Three letter code such as AED or USD. It must match the currency the money actually arrived in."
+            @flush={{true}}
+            class="grow console-currency-field"
+          >
+            <Nuvo::Input
               id="pay-currency"
               type="text"
               maxlength="3"
-              class="form-input console-currency-input"
-              value={{this.payCurrency}}
+              class="console-currency-input"
+              @value={{this.payCurrency}}
               data-test-payment-currency
               {{on "input" (fn this.setPayField "payCurrency")}}
             />
-          </div>
+          </Nuvo::Field>
         </div>
 
         <div class="console-form-row">
-          <div class="flex col gap-2 grow">
-            <label class="text-sm text-muted" for="pay-received">Date received</label>
-            <input
+          <Nuvo::Field @label="Date received" @flush={{true}} class="grow">
+            <Nuvo::Input
               id="pay-received"
               type="date"
-              class="form-input"
-              value={{this.payReceivedAt}}
+              @value={{this.payReceivedAt}}
               data-test-payment-date
               {{on "input" (fn this.setPayField "payReceivedAt")}}
             />
-          </div>
-          <div class="flex col gap-2 grow">
-            <label class="text-sm text-muted" for="pay-covers-start">Covers from</label>
-            <input
+          </Nuvo::Field>
+          <Nuvo::Field
+            @label="Covers from"
+            @tooltip="First day of the period this payment pays for. Paid access runs from here."
+            @flush={{true}}
+            class="grow"
+          >
+            <Nuvo::Input
               id="pay-covers-start"
               type="date"
-              class="form-input"
-              value={{this.payCoversStart}}
+              @value={{this.payCoversStart}}
               data-test-payment-covers
               {{on "input" (fn this.setPayField "payCoversStart")}}
             />
-          </div>
-          <div class="flex col gap-2 grow">
-            <label class="text-sm text-muted" for="pay-covers-end">Covers to</label>
-            <input
+          </Nuvo::Field>
+          <Nuvo::Field
+            @label="Covers to"
+            @tooltip="Last day of the period this payment pays for. Access lapses after this date unless it is renewed."
+            @flush={{true}}
+            class="grow"
+          >
+            <Nuvo::Input
               id="pay-covers-end"
               type="date"
-              class="form-input"
-              value={{this.payCoversEnd}}
+              @value={{this.payCoversEnd}}
               data-test-payment-covers-end
               {{on "input" (fn this.setPayField "payCoversEnd")}}
             />
-          </div>
+          </Nuvo::Field>
         </div>
 
-        <div class="flex col gap-2">
-          <label class="text-sm text-muted" for="pay-notes">Notes</label>
-          <textarea
+        <Nuvo::Field @label="Notes" @flush={{true}}>
+          <Nuvo::Textarea
             id="pay-notes"
-            class="form-input"
             rows="2"
             placeholder="JazzCash transfer, txn 8842"
             data-test-payment-notes
+            @value={{this.payNotes}}
             {{on "input" (fn this.setPayField "payNotes")}}
-          >{{this.payNotes}}</textarea>
-        </div>
+          />
+        </Nuvo::Field>
 
         <div class="flex col gap-2">
           <label class="text-sm text-muted" for="pay-receipt">Receipt image</label>
@@ -676,32 +696,29 @@
         {{/if}}
 
         {{#if this.showRemedyAmount}}
-          <div class="flex col gap-2">
-            <label class="text-sm text-muted" for="remedy-amount">Amount</label>
-            <input
+          <Nuvo::Field @label="Amount" @flush={{true}}>
+            <Nuvo::Input
               id="remedy-amount"
               type="number"
               min="0"
               step="0.01"
-              class="form-input"
-              value={{this.remedyAmount}}
+              @value={{this.remedyAmount}}
               data-test-remedy-amount
               data-test-remedy-partial-amount={{if this.remedyIsRefund true}}
               {{on "input" (fn this.setRemedyField "remedyAmount")}}
             />
-          </div>
+          </Nuvo::Field>
         {{/if}}
 
-        <div class="flex col gap-2">
-          <label class="text-sm text-muted" for="remedy-why">Why (required)</label>
-          <textarea
+        <Nuvo::Field @label="Why" @required={{true}} @flush={{true}}>
+          <Nuvo::Textarea
             id="remedy-why"
-            class="form-input"
             rows="2"
             data-test-remedy-why
+            @value={{this.remedyWhy}}
             {{on "input" (fn this.setRemedyField "remedyWhy")}}
-          >{{this.remedyWhy}}</textarea>
-        </div>
+          />
+        </Nuvo::Field>
 
         {{#if this.remedyIsRefund}}
           <div class="alert alert-warning" data-test-remedy-sla-alert>
@@ -738,42 +755,48 @@
   >
     <:body>
       <div class="flex col gap-4">
-        <div class="flex col gap-2">
-          <label class="text-sm text-muted" for="limit-users">Max users</label>
-          <input
+        <Nuvo::Field
+          @label="Max users"
+          @tooltip="A hard cap on active team members for this company. It overrides the seat limit that comes with their plan."
+          @flush={{true}}
+        >
+          <Nuvo::Input
             id="limit-users"
             type="number"
             min="1"
             step="1"
-            class="form-input"
-            value={{this.limitMaxUsers}}
+            @value={{this.limitMaxUsers}}
             {{on "input" (fn this.setLimitField "limitMaxUsers")}}
           />
-        </div>
-        <div class="flex col gap-2">
-          <label class="text-sm text-muted" for="limit-regions">Max regions</label>
-          <input
+        </Nuvo::Field>
+        <Nuvo::Field
+          @label="Max regions"
+          @tooltip="A hard cap on how many regions this company can switch on. It overrides the region limit from their plan."
+          @flush={{true}}
+        >
+          <Nuvo::Input
             id="limit-regions"
             type="number"
             min="1"
             step="1"
-            class="form-input"
-            value={{this.limitMaxRegions}}
+            @value={{this.limitMaxRegions}}
             {{on "input" (fn this.setLimitField "limitMaxRegions")}}
           />
-        </div>
-        <div class="flex col gap-2">
-          <label class="text-sm text-muted" for="limit-properties">Max properties</label>
-          <input
+        </Nuvo::Field>
+        <Nuvo::Field
+          @label="Max properties"
+          @tooltip="A hard cap on how many properties this company can create. It overrides the limit from their plan."
+          @flush={{true}}
+        >
+          <Nuvo::Input
             id="limit-properties"
             type="number"
             min="1"
             step="1"
-            class="form-input"
-            value={{this.limitMaxProperties}}
+            @value={{this.limitMaxProperties}}
             {{on "input" (fn this.setLimitField "limitMaxProperties")}}
           />
-        </div>
+        </Nuvo::Field>
       </div>
     </:body>
     <:footer>

@@ -71,9 +71,7 @@
     <Nuvo::Card class="max-w-lg">
       <form aria-label="AI Settings" {{on "submit" this.saveAISettings}}>
         <Nuvo::Field
-          @label="AI
-          System
-          Prompt"
+          @label="AI System Prompt"
           @tooltip="Your own instructions for the AI when it answers leads on WhatsApp. Leave it empty to use the built-in instructions."
         >
           <Nuvo::Textarea
@@ -445,8 +443,7 @@
 
           {{#if this.formActiveRegions.length}}
             <Nuvo::Field
-              @label="Default
-              Region"
+              @label="Default Region"
               class="mb-4"
               @tooltip="Used when a record is created without a region of its own."
             >
@@ -467,8 +464,7 @@
 
           {{#each this.model.groupedRegions as |group|}}
             <div
-              class="region-country-group mb-2
-                {{unless this.isAdmin 'is-readonly'}}"
+              class="region-country-group mb-2 {{unless this.isAdmin 'is-readonly'}}"
               data-test-country-group={{group.country}}
             >
               <button
@@ -500,8 +496,7 @@
                 <div class="region-grid mt-2 mb-2 ms-2">
                   {{#each group.regions as |r|}}
                     <div
-                      class="region-checkbox
-                        {{unless this.isAdmin 'is-readonly'}}"
+                      class="region-checkbox {{unless this.isAdmin 'is-readonly'}}"
                       data-test-region-checkbox={{r.code}}
                     >
                       <Nuvo::Checkbox

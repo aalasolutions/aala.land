@@ -183,8 +183,7 @@
           <h4 class="text-sm font-bold uppercase text-muted">Photos</h4>
           {{#unless this.isArchived}}
             <label
-              class="nu-btn m-primary m-sm
-                {{if this.isUploading 'is-disabled'}}"
+              class="nu-btn m-primary m-sm {{if this.isUploading 'is-disabled'}}"
               data-test-upload-photo-btn
             >
               <Ui::Ph @icon="camera-plus" />
@@ -218,9 +217,7 @@
           <div class="flex gap-2 wrap">
             {{#each @model.media as |media|}}
               <div
-                class="unit-thumb
-                  {{if media.isPrimary 'unit-thumb-primary'}}
-                  {{if (eq media.id this.activePhoto.id) 'is-active'}}"
+                class="unit-thumb {{if media.isPrimary 'unit-thumb-primary'}} {{if (eq media.id this.activePhoto.id) 'is-active'}}"
                 data-test-photo-thumb
               >
                 <img
@@ -479,8 +476,7 @@
       </div>
 
       <Nuvo::Field
-        @label="Listing
-        Type"
+        @label="Property Listing Type"
         @tooltip="Choose how this property is listed. For Rent and For Sale make it searchable. Not Listed keeps it hidden."
       >
         <Nuvo::Dropdown
@@ -581,11 +577,7 @@
           {{#each this.amenityOptions as |opt|}}
             <button
               type="button"
-              class="nu-tag m-pill m-selectable
-                {{if
-                  (includes this.formAmenities opt.key)
-                  'is-selected'
-                }}"
+              class="nu-tag m-pill m-selectable {{if (includes this.formAmenities opt.key) 'is-selected' }}"
               data-test-amenity={{opt.key}}
               aria-pressed={{if
                 (includes this.formAmenities opt.key)
@@ -690,8 +682,7 @@
           />
         </Nuvo::Field>
         <Nuvo::Field
-          @label="Access
-          Level"
+          @label="Access Level"
           class="grow"
           @tooltip="Team means every staff member can open this file. Admin means only admins can."
         >

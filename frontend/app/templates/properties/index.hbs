@@ -181,11 +181,7 @@
             {{#each this.amenityOptions as |opt|}}
               <button
                 type="button"
-                class="nu-tag m-pill m-selectable
-                  {{if
-                    (includes this.filterAmenities opt.key)
-                    'is-selected'
-                  }}"
+                class="nu-tag m-pill m-selectable {{if (includes this.filterAmenities opt.key) 'is-selected' }}"
                 data-test-amenity-filter={{opt.key}}
                 aria-pressed={{if
                   (includes this.filterAmenities opt.key)
@@ -315,8 +311,7 @@
               {{! Missing value shows a dash so the row never collapses and stays sortable. }}
               <div class="flex gap-3 text-xs text-muted">
                 <span
-                  class="unit-stat
-                    {{unless (has-value unit.bedrooms) 'is-unset'}}"
+                  class="unit-stat {{unless (has-value unit.bedrooms) 'is-unset'}}"
                   data-test-unit-beds
                 ><Ui::Ph @icon="bed" />
                   {{#if (has-value unit.bedrooms)}}
@@ -325,8 +320,7 @@
                   bed
                 </span>
                 <span
-                  class="unit-stat
-                    {{unless (has-value unit.bathrooms) 'is-unset'}}"
+                  class="unit-stat {{unless (has-value unit.bathrooms) 'is-unset'}}"
                   data-test-unit-baths
                 ><Ui::Ph @icon="bathtub" />
                   {{#if (has-value unit.bathrooms)}}
@@ -464,8 +458,7 @@
         <div class="flex gap-4">
           <div class="flex col gap-2 grow">
             <Nuvo::Field
-              @label="Listing
-              Type"
+              @label="Property Listing Type"
               @tooltip="Choose how this property is listed. For Rent and For Sale make it searchable. Not Listed keeps it hidden."
             >
               <Nuvo::Dropdown
