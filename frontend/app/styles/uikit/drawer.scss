@@ -28,8 +28,13 @@
   background-color: nu-var("drawer", "BackgroundColor");
   border-inline-start: 1px solid nu-var("drawer", "BorderColor");
   box-shadow: nu-var("drawer", "BoxShadow");
-  transform: translateX(nu-var("drawer", "TranslateX"));
+  // translateX is physical; --nu-drawer--Dir flips the sign in RTL.
+  transform: translateX(calc(var(--nu-drawer--Dir, 1) * nu-var("drawer", "TranslateX")));
   transition: transform nu-var("drawer", "TransitionDuration") $nu-ease;
+
+  [dir="rtl"] & {
+    --nu-drawer--Dir: -1;
+  }
 
   @include reduced-motion {
     transition: none;

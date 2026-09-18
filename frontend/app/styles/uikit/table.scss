@@ -145,6 +145,10 @@
   tbody tr.is-selected {
     background-color: nu-var("table", "selected--RowBackgroundColor");
     box-shadow: inset 2px 0 0 nu-var("table", "selected--RowBorderColor");
+
+    [dir="rtl"] & {
+      box-shadow: inset -2px 0 0 nu-var("table", "selected--RowBorderColor");
+    }
   }
 
   tbody td {

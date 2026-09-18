@@ -12,6 +12,12 @@ $nu-utility-prefix: "" !default;
   text-align: end;
 }
 
+// Directional glyphs (carets, arrows) that are not bidi-mirrored by the font.
+[dir="rtl"] .#{$nu-utility-prefix}flip-rtl {
+  display: inline-block;
+  transform: scaleX(-1);
+}
+
 @each $key, $value in $nu-space {
   .#{$nu-utility-prefix}ms-#{$key} {
     margin-inline-start: $value;

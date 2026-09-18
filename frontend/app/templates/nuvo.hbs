@@ -60,6 +60,17 @@
           />
         {{/each}}
 
+        <span class="nu-text m-sm m-muted ms-4">Dir</span>
+        {{#each this.dirs as |dir|}}
+          <Nuvo::Button
+            @variant={{if (eq this.dir dir) "primary" "secondary"}}
+            @size="xs"
+            @text={{dir}}
+            @onClick={{fn this.setDir dir}}
+            data-test-nuvo-dir={{dir}}
+          />
+        {{/each}}
+
         <Nuvo::Badge @variant="danger" @value={{3}}>
           <Nuvo::Button @variant="ghost" @shape="square" @icon="🔔" />
         </Nuvo::Badge>

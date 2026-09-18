@@ -163,9 +163,17 @@
     inset-inline-end: 0;
     transform: translate(50%, -50%);
     box-shadow: 0 0 0 nu-var("badge-count", "RingWidth") nu-var("badge-count", "RingColor");
+
+    [dir="rtl"] & {
+      transform: translate(-50%, -50%);
+    }
   }
 
   &.is-fixed.m-dot {
     transform: translate(25%, -25%);
+
+    [dir="rtl"] & {
+      transform: translate(-25%, -25%);
+    }
   }
 }

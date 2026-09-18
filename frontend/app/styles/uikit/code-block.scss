@@ -72,6 +72,9 @@ $nu-code-font-stack: ui-monospace, "SFMono-Regular", "Menlo", "Consolas", monosp
     font-size: nu-var("code-block", "FontSize");
     line-height: 1.6;
     white-space: pre;
+    // Source code never reflows with the page direction.
+    direction: ltr;
+    text-align: start;
   }
 
   @include e(actions) {

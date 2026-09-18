@@ -79,11 +79,12 @@
     }
   }
 
+  // left/right are physical: the host resolves start/end before choosing them.
   @include m(left) {
     transform: translateY(-50%);
 
     .nu-tooltip__arrow {
-      inset-inline-end: calc(#{nu-var("tooltip", "ArrowSize")} / -2);
+      right: calc(#{nu-var("tooltip", "ArrowSize")} / -2);
       inset-block-start: 50%;
       margin-block-start: calc(#{nu-var("tooltip", "ArrowSize")} / -2);
       translate: 0 nu-var("tooltip", "ArrowShiftY");
@@ -94,7 +95,7 @@
     transform: translateY(-50%);
 
     .nu-tooltip__arrow {
-      inset-inline-start: calc(#{nu-var("tooltip", "ArrowSize")} / -2);
+      left: calc(#{nu-var("tooltip", "ArrowSize")} / -2);
       inset-block-start: 50%;
       margin-block-start: calc(#{nu-var("tooltip", "ArrowSize")} / -2);
       translate: 0 nu-var("tooltip", "ArrowShiftY");

@@ -62,8 +62,18 @@ export default class NuTabsComponent extends Component {
       return;
     }
 
-    const forwardKey = this.args.vertical ? 'ArrowDown' : 'ArrowRight';
-    const backwardKey = this.args.vertical ? 'ArrowUp' : 'ArrowLeft';
+    // Horizontal arrows follow the reading direction.
+    const rtl = document.documentElement.dir === 'rtl';
+    const forwardKey = this.args.vertical
+      ? 'ArrowDown'
+      : rtl
+        ? 'ArrowLeft'
+        : 'ArrowRight';
+    const backwardKey = this.args.vertical
+      ? 'ArrowUp'
+      : rtl
+        ? 'ArrowRight'
+        : 'ArrowLeft';
 
     if (![forwardKey, backwardKey, 'Home', 'End'].includes(event.key)) {
       return;

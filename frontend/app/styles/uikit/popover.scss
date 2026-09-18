@@ -52,6 +52,11 @@
     border-inline-start: 1px solid nu-var("popover", "BorderColor");
     border-block-start: 1px solid nu-var("popover", "BorderColor");
     transform: rotate(45deg);
+
+    // Logical borders swap sides; the rotation must swap with them.
+    [dir="rtl"] & {
+      transform: rotate(-45deg);
+    }
   }
 
   @include e(header) {
@@ -123,10 +128,15 @@
 
   // ---- placement modifiers: position body + arrow ----
 
+  // Centring transform is physical; its sign flips with the reading direction.
   @include m(top) {
     inset-block-end: calc(100% + #{nu-space(2)});
     inset-inline-start: 50%;
     transform: translateX(-50%);
+
+    [dir="rtl"] & {
+      transform: translateX(50%);
+    }
 
     .nu-popover__arrow {
       inset-block-end: nu-var("popover", "ArrowOffset");
@@ -144,10 +154,32 @@
     inset-inline-start: 50%;
     transform: translateX(-50%);
 
+    [dir="rtl"] & {
+      transform: translateX(50%);
+    }
+
     .nu-popover__arrow {
       inset-block-start: nu-var("popover", "ArrowOffset");
       inset-inline-start: 50%;
       margin-inline-start: calc(-1 * nu-var("popover", "ArrowSize") / 2);
+    }
+  }
+
+  // Top/bottom only: pin the body to the trigger's end edge instead of centring,
+  // for triggers that sit at the end of a toolbar or card.
+  @include m(align-end) {
+    inset-inline-start: auto;
+    inset-inline-end: 0;
+    transform: none;
+
+    [dir="rtl"] & {
+      transform: none;
+    }
+
+    .nu-popover__arrow {
+      inset-inline-start: auto;
+      inset-inline-end: nu-space(4);
+      margin-inline-start: 0;
     }
   }
 
@@ -176,7 +208,59 @@
       inset-inline-start: nu-var("popover", "ArrowOffset");
       inset-block-start: 50%;
       margin-block-start: calc(-1 * nu-var("popover", "ArrowSize") / 2);
+      border-block-start: none;
+      border-block-end: 1px solid nu-var("popover", "BorderColor");
     }
+  }
+
+  // ---- anchored on .nu-layer: the anchor modifier writes fixed coordinates
+  // and data-placement (physical); the arrow tracks the trigger centre ----
+
+  // Physical borders: the logical longhands above no longer decide the corner.
+  &[data-placement] .nu-popover__arrow {
+    inset: auto;
+    margin: 0;
+    border-style: solid;
+    border-color: nu-var("popover", "BorderColor");
+    transform: rotate(45deg);
+  }
+
+  &[data-placement="bottom"] .nu-popover__arrow,
+  &[data-placement="top"] .nu-popover__arrow {
+    left: clamp(
+      nu-space(3),
+      calc(var(--nu-anchor--ArrowX) - nu-var("popover", "ArrowSize") / 2),
+      calc(100% - #{nu-space(3)} - nu-var("popover", "ArrowSize"))
+    );
+  }
+
+  &[data-placement="bottom"] .nu-popover__arrow {
+    top: nu-var("popover", "ArrowOffset");
+    border-width: 1px 0 0 1px;
+  }
+
+  &[data-placement="top"] .nu-popover__arrow {
+    bottom: nu-var("popover", "ArrowOffset");
+    border-width: 0 1px 1px 0;
+  }
+
+  &[data-placement="left"] .nu-popover__arrow,
+  &[data-placement="right"] .nu-popover__arrow {
+    top: clamp(
+      nu-space(3),
+      calc(var(--nu-anchor--ArrowY) - nu-var("popover", "ArrowSize") / 2),
+      calc(100% - #{nu-space(3)} - nu-var("popover", "ArrowSize"))
+    );
+  }
+
+  &[data-placement="right"] .nu-popover__arrow {
+    left: nu-var("popover", "ArrowOffset");
+    border-width: 0 0 1px 1px;
+  }
+
+  &[data-placement="left"] .nu-popover__arrow {
+    right: nu-var("popover", "ArrowOffset");
+    border-width: 1px 1px 0 0;
   }
 
   // ---- states ----

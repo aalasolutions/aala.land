@@ -22,7 +22,8 @@ async function fillEmailForm() {
   await fillIn('[data-test-password-input]', 'Password123!');
   await fillIn('[data-test-confirm-password]', 'Password123!');
   await click('[data-test-region-select] [data-test-nu-dropdown-trigger]');
-  await click('[data-test-region-select] [data-test-nu-dropdown-item]');
+  // The menu is hosted on .nu-layer, outside the component subtree.
+  await click(document.querySelector('[data-test-nu-dropdown-item]'));
 }
 
 module('Integration | Component | signup-form', function (hooks) {
@@ -113,7 +114,7 @@ module('Integration | Component | signup-form', function (hooks) {
     // Google signup needs company name + region only
     await fillIn('[data-test-company-name]', 'Acme Realty');
     await click('[data-test-region-select] [data-test-nu-dropdown-trigger]');
-    await click('[data-test-region-select] [data-test-nu-dropdown-item]');
+    await click(document.querySelector('[data-test-nu-dropdown-item]'));
 
     assert.ok(tokenCallback, 'google button rendered with a token callback');
     await tokenCallback('fake-id-token');

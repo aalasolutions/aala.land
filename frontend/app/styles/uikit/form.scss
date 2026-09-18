@@ -186,11 +186,10 @@
     &::before {
       content: "";
       position: absolute;
-      inset-block-start: 50%;
-      inset-inline-start: 50%;
+      inset-block-start: calc(50% - nu-var("input-wrap", "clear--HitArea") / 2);
+      inset-inline-start: calc(50% - nu-var("input-wrap", "clear--HitArea") / 2);
       inline-size: nu-var("input-wrap", "clear--HitArea");
       block-size: nu-var("input-wrap", "clear--HitArea");
-      transform: translate(-50%, -50%);
     }
 
     &:hover {
@@ -237,6 +236,10 @@
   background-repeat: no-repeat;
   background-position: right nu-space(3) center;
   background-size: 1rem;
+
+  [dir="rtl"] & {
+    background-position: left nu-space(3) center;
+  }
 }
 
 // Shared by the label and the row that holds it plus a tooltip button.
@@ -459,10 +462,10 @@ $nu-row-min-column-width: 10rem;
     &::after {
       content: "";
       position: absolute;
-      inset-block-start: 1px;
-      inset-inline-start: 5px;
+      inset: 0;
       inline-size: 5px;
       block-size: 10px;
+      margin: auto;
       border: solid nu-var("check", "MarkColor");
       border-width: 0 2px 2px 0;
       transform: rotate(45deg);
@@ -473,15 +476,15 @@ $nu-row-min-column-width: 10rem;
     background-color: nu-var("check", "checked--BackgroundColor");
     border-color: nu-var("check", "checked--BorderColor");
 
+    // Centred without a transform so RTL cannot offset it.
     &::after {
       content: "";
       position: absolute;
-      inset-block-start: 50%;
-      inset-inline-start: 50%;
+      inset: 0;
       inline-size: 60%;
       block-size: 2px;
+      margin: auto;
       background-color: nu-var("check", "MarkColor");
-      transform: translate(-50%, -50%);
     }
   }
 
@@ -494,14 +497,14 @@ $nu-row-min-column-width: 10rem;
     --nu-check--BorderRadius: #{nu-radius(full)};
 
     &:checked::after {
-      inset-block-start: 50%;
-      inset-inline-start: 50%;
+      inset: 0;
       inline-size: 0.5rem;
       block-size: 0.5rem;
+      margin: auto;
       border: none;
       border-radius: nu-radius(full);
       background-color: nu-var("check", "MarkColor");
-      transform: translate(-50%, -50%);
+      transform: none;
     }
   }
 }

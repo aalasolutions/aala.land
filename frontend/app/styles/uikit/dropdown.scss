@@ -142,6 +142,8 @@
     "focus--BoxShadow": 0 0 0 3px #{nu-tint(primary, 35%)},
   ));
 
+  // Inline fallback position; the anchor modifier overrides it with fixed
+  // viewport coordinates when the menu is hosted on .nu-layer.
   position: absolute;
   inset-block-start: 100%;
   inset-inline-start: 0;
@@ -149,7 +151,9 @@
   display: none;
   flex-direction: column;
   gap: nu-var("menu", "Gap");
+  inline-size: max-content;
   min-inline-size: nu-var("menu", "MinWidth");
+  max-inline-size: min(24rem, 90vw);
   max-block-size: nu-var("menu", "MaxHeight");
   margin-block-start: nu-space(1);
   padding-block: nu-var("menu", "PaddingBlock");
@@ -311,6 +315,25 @@
     --nu-menu__item--hover--BackgroundColor: var(--primary-50);
     font-weight: nu-font-weight(medium);
     border-block-end: 1px solid var(--border-base);
+  }
+
+  // ---- option alignment, on the menu itself (it may be hosted away from its
+  // .nu-dropdown root) ----
+
+  @include m(options-center) {
+    .nu-menu__item {
+      justify-content: center;
+      text-align: center;
+      padding-inline-start: nu-var-el("menu", "item", "PaddingInline");
+    }
+  }
+
+  @include m(options-end) {
+    .nu-menu__item {
+      justify-content: flex-end;
+      text-align: end;
+      padding-inline-start: nu-var-el("menu", "item", "PaddingInline");
+    }
   }
 
   // ---- menu open state ----

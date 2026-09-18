@@ -25,6 +25,16 @@ export default class UikitController extends Controller {
     document.documentElement.style.setProperty('--primary', THEMES[name]);
   }
 
+  @tracked dir = document.documentElement.dir || 'ltr';
+
+  dirs = ['ltr', 'rtl'];
+
+  @action
+  setDir(dir) {
+    this.dir = dir;
+    document.documentElement.dir = dir;
+  }
+
   @action
   toggleLoading() {
     this.loadingDemo = !this.loadingDemo;
