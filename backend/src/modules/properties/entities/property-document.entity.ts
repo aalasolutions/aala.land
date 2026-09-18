@@ -14,7 +14,7 @@ import { Asset } from './asset.entity';
 
 export enum DocumentCategory {
   LEASE = 'LEASE',
-  EJARI = 'EJARI',
+  TENANCY_REGISTRATION = 'TENANCY_REGISTRATION',
   TITLE_DEED = 'TITLE_DEED',
   ID_COPY = 'ID_COPY',
   NOC = 'NOC',

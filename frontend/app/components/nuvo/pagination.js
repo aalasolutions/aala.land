@@ -1,6 +1,7 @@
 import Component from '@glimmer/component';
 import { action } from '@ember/object';
 import { guidFor } from '@ember/object/internals';
+import { validPage } from 'land/components/nuvo/-page-number';
 
 const DEFAULT_PER_PAGE_OPTIONS = [10, 25, 50, 100];
 
@@ -102,10 +103,11 @@ export default class NuPaginationComponent extends Component {
 
   @action
   goToPage(page) {
-    if (page < 1 || page > this.totalPages || page === this.page) {
+    const target = validPage(page, this.totalPages);
+    if (target === null || target === this.page) {
       return;
     }
-    this.args.onPageChange?.(page);
+    this.args.onPageChange?.(target);
   }
 
   // Own callbacks let a step-only controller work without a page-number model.

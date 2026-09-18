@@ -207,6 +207,9 @@ export default class MaintenanceController extends PaginatedController {
 
   @action closeModal() {
     this.showModal = false;
+  }
+
+  @action resetDrawer() {
     this.editWorkOrder = null;
     this.errorMsg = '';
     this.reasonError = '';

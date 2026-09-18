@@ -1,23 +1,12 @@
 import PaginatedController from './paginated-base';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
-import { HISTORY_ACTIONS, HISTORY_ENTITY_TYPES } from '../routes/history';
-
-const ACTION_VARIANTS = {
-  DELETE: 'danger',
-  CANCEL: 'danger',
-  BOUNCE: 'danger',
-  TERMINATE: 'danger',
-  DEACTIVATE: 'danger',
-  ARCHIVE: 'warning',
-  REPLACE: 'warning',
-  UNARCHIVE: 'success',
-  REACTIVATE: 'success',
-  STATUS_CHANGE: 'info',
-};
-
-const labelFor = (options, value) =>
-  options.find((o) => o.value === value)?.label ?? value;
+import {
+  HISTORY_ACTIONS,
+  HISTORY_ENTITY_TYPES,
+  HISTORY_ACTION_VARIANTS as ACTION_VARIANTS,
+  optionLabelFor as labelFor,
+} from 'land/constants';
 
 export default class HistoryController extends PaginatedController {
   queryParams = [
@@ -40,10 +29,6 @@ export default class HistoryController extends PaginatedController {
       actionVariant: ACTION_VARIANTS[entry.action] ?? 'secondary',
       entityTypeLabel: labelFor(HISTORY_ENTITY_TYPES, entry.entityType),
     }));
-  }
-
-  @action goToPage(page) {
-    this.page = page;
   }
 
   @action setFilterAction(value) {

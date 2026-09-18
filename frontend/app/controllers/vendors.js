@@ -90,6 +90,9 @@ export default class VendorsController extends PaginatedController {
 
   @action closeModal() {
     this.showModal = false;
+  }
+
+  @action resetDrawer() {
     this.editVendor = null;
     this.errorMsg = '';
   }

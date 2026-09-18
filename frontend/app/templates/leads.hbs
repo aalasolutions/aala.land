@@ -40,8 +40,7 @@
         <div
           data-test-kanban-column
           data-test-column-status={{column.status}}
-          class="nu-kanban__column
-            {{if (eq this.dropTargetStatus column.status) 'is-drag-over'}}"
+          class="nu-kanban__column {{if (eq this.dropTargetStatus column.status) 'is-drag-over'}}"
           role="button"
           draggable="true"
           {{on "dragover" (fn this.handleDragOver column.status)}}
@@ -143,11 +142,7 @@
         <div
           data-test-kanban-column
           data-test-column-temp={{column.temperature}}
-          class="nu-kanban__column column-temp-{{lowercase column.temperature}}
-            {{if
-              (eq this.dropTargetTemp column.temperature)
-              'is-drag-over'
-            }}"
+          class="nu-kanban__column column-temp-{{lowercase column.temperature}} {{if (eq this.dropTargetTemp column.temperature) 'is-drag-over'}}"
           {{on "dragover" (fn this.handleTempDragOver column.temperature)}}
           {{on "dragleave" (fn this.clearDropTarget "dropTargetTemp")}}
           {{on "drop" (fn this.handleTempDrop column.temperature)}}
@@ -241,11 +236,7 @@
         <div
           data-test-kanban-column
           data-test-column-agent={{or column.agentId "unassigned"}}
-          class="nu-kanban__column
-            {{if
-              (eq this.dropTargetAgent (or column.agentId "unassigned"))
-              'is-drag-over'
-            }}"
+          class="nu-kanban__column {{if (eq this.dropTargetAgent (or column.agentId "unassigned")) 'is-drag-over'}}"
           {{on "dragover" (fn this.handleAgentDragOver column.agentId)}}
           {{on "dragleave" (fn this.clearDropTarget "dropTargetAgent")}}
           {{on "drop" (fn this.handleAgentDrop column.agentId)}}
@@ -259,14 +250,7 @@
           </div>
 
           <div class="agent-load-bar">
-            <div
-              class="agent-load-fill
-                {{if
-                  (gt column.leads.length 8)
-                  'load-high'
-                  (if (gt column.leads.length 4) 'load-medium' 'load-low')
-                }}"
-            ></div>
+            <div class="agent-load-fill {{column.loadClass}}"></div>
           </div>
 
           {{#each column.leads as |lead|}}
@@ -450,11 +434,15 @@
   @placement="end"
   @size="lg"
   @onClose={{this.closeModal}}
+  @onClosed={{this.resetDrawer}}
 >
   <:body>
     <form id="lead-form" class="flex col gap-4" {{on "submit" this.saveLead}}>
       {{#if this.showRegionField}}
-        <Nuvo::Field @label="Region">
+        <Nuvo::Field
+          @label="Region"
+          @tooltip="The region that owns this record. Staff who work in other regions will not see it."
+        >
           <Nuvo::Dropdown
             id="lead-region"
             @align="start"
@@ -504,7 +492,10 @@
           </Nuvo::Field>
         </div>
         <div class="grow">
-          <Nuvo::Field @label="Temperature">
+          <Nuvo::Field
+            @label="Temperature"
+            @tooltip="How close this lead is to buying or renting. Hot is ready now, warm is still looking, cold is months away, dead has gone quiet."
+          >
             <Nuvo::Dropdown
               id="lead-temp"
               @align="start"
@@ -516,7 +507,10 @@
           </Nuvo::Field>
         </div>
       </div>
-      <Nuvo::Field @label="Source">
+      <Nuvo::Field
+        @label="Source"
+        @tooltip="Where this lead came from. It shows you which channels bring in the most business."
+      >
         <Nuvo::Dropdown
           id="lead-source"
           @align="start"

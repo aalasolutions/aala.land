@@ -37,7 +37,7 @@
         <Nuvo::Input
           type="text"
           autocomplete="off"
-          placeholder="Search tenant, unit number, Ejari..."
+          placeholder="Search tenant, unit number, registration ref..."
           class="grow"
           value={{this.search}}
           {{on "input" (fn this.updateFilter "search")}}
@@ -115,7 +115,7 @@
               <th>Rent</th>
               <th>Period</th>
               <th>Status</th>
-              <th>Ejari #</th>
+              <th>Tenancy Reg. Ref</th>
               <th>Actions</th>
             </tr>
           </thead>
@@ -149,7 +149,7 @@
                     {{/if}}
                   </div>
                 </td>
-                <td class="text-muted">{{or lease.ejariNumber "-"}}</td>
+                <td class="text-muted">{{or lease.tenancyRegistrationRef "-"}}</td>
                 <td>
                   <div class="flex gap-2 wrap">
                     {{#if this.canViewHistory}}
@@ -247,7 +247,19 @@
           </tbody>
         </table>
       </div>
+    {{else}}
+      {{#if @model.total}}
+        <Nuvo::EmptyState
+          @description="No leases on page {{this.page}}. Navigate back or adjust your filters."
+        />
+      {{else}}
+        <Nuvo::EmptyState
+          @description="No leases yet. Create your first lease agreement."
+        />
+      {{/if}}
+    {{/if}}
 
+    {{#if @model.total}}
       <Nuvo::Pagination
         @selectId="leases-limit"
         @page={{this.page}}
@@ -256,26 +268,8 @@
         @onLimitChange={{this.setLimit}}
         @onPrevious={{this.goToPreviousPage}}
         @onNext={{this.goToNextPage}}
+        @onPageChange={{this.goToPage}}
       />
-    {{else}}
-      {{#if @model.total}}
-        <Nuvo::EmptyState
-          @description="No leases on page {{this.page}}. Navigate back or adjust your filters."
-        />
-        <Nuvo::Pagination
-          @selectId="leases-limit"
-          @page={{this.page}}
-          @limit={{this.limit}}
-          @total={{@model.total}}
-          @onLimitChange={{this.setLimit}}
-          @onPrevious={{this.goToPreviousPage}}
-          @onNext={{this.goToNextPage}}
-        />
-      {{else}}
-        <Nuvo::EmptyState
-          @description="No leases yet. Create your first lease agreement."
-        />
-      {{/if}}
     {{/if}}
   </Nuvo::Card>
 </div>
@@ -290,6 +284,7 @@
   @placement="end"
   @size="lg"
   @onClose={{this.closeModal}}
+  @onClosed={{this.resetDrawer}}
 >
   <:body>
     <form
@@ -351,7 +346,11 @@
             @placeholder="Select property type..."
           />
         </Nuvo::Field>
-        <Nuvo::Field class="grow" @label="Number of Cheques">
+        <Nuvo::Field
+          class="grow"
+          @label="Number of Cheques"
+          @tooltip="How many post-dated rent cheques the tenant gives, such as 4 for quarterly or 12 for monthly. Add each cheque under Cheques."
+        >
           <Nuvo::Input
             id="lease-cheques"
             type="number"
@@ -412,13 +411,16 @@
         </Nuvo::Field>
       </div>
 
-      <Nuvo::Field @label="Ejari Number">
+      <Nuvo::Field
+        @label="Tenancy Registration Ref"
+        @tooltip="e.g. Ejari in Dubai, Tawtheeq in Abu Dhabi, or your local government lease registry number."
+      >
         <Nuvo::Input
-          id="lease-ejari"
+          id="lease-tenancy-registration-ref"
           type="text"
-          placeholder="e.g. EJARI-2026-00001"
-          @value={{this.formEjariNumber}}
-          @onInput={{fn this.setFieldValue "formEjariNumber"}}
+          placeholder="e.g. TR-2026-00001"
+          @value={{this.formTenancyRegistrationRef}}
+          @onInput={{fn this.setFieldValue "formTenancyRegistrationRef"}}
         />
       </Nuvo::Field>
 

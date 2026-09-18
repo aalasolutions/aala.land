@@ -220,6 +220,9 @@ export default class PropertiesDetailController extends Controller {
 
   @action closeAssetModal() {
     this.showAssetModal = false;
+  }
+
+  @action resetAssetDrawer() {
     this.editAsset = null;
     this.assetError = '';
   }
@@ -299,6 +302,9 @@ export default class PropertiesDetailController extends Controller {
 
   @action closeUnitModal() {
     this.showUnitModal = false;
+  }
+
+  @action resetUnitDrawer() {
     this.editUnit = null;
     this.unitError = '';
   }

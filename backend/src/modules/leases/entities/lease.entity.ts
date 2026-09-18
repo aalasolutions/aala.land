@@ -103,12 +103,12 @@ export class Lease {
   numberOfCheques: number;
 
   @Column({
-    name: 'ejari_number',
+    name: 'tenancy_registration_ref',
     length: 100,
     nullable: true,
     type: 'varchar',
   })
-  ejariNumber: string | null;
+  tenancyRegistrationRef: string | null;
 
   @Column({ type: 'text', nullable: true })
   notes: string | null;

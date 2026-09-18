@@ -54,7 +54,11 @@
             data-test-category-filter
           />
         </Nuvo::Field>
-        <Nuvo::Field class="grow" @label="Access Level">
+        <Nuvo::Field
+          class="grow"
+          @label="Access Level"
+          @tooltip="Filter by who can open a file. Team files are open to all staff, Admin files only to admins."
+        >
           <Nuvo::Dropdown
             id="document-access-filter"
             @align="start"
@@ -166,6 +170,8 @@
                     <Nuvo::Button
                       @variant="secondary"
                       @size="xs"
+                      aria-label="Download {{doc.name}}"
+                      data-tooltip="Download"
                       data-test-download-btn
                       @icon="download-simple"
                       {{on "click" (fn this.downloadDocument doc)}}
@@ -173,6 +179,8 @@
                     <Nuvo::Button
                       @variant="secondary"
                       @size="xs"
+                      aria-label="Edit {{doc.name}}"
+                      data-tooltip="Edit"
                       data-test-edit-btn
                       @icon="pencil-simple"
                       {{on "click" (fn this.openEdit doc)}}
@@ -180,6 +188,8 @@
                     <Nuvo::Button
                       @variant="danger"
                       @size="xs"
+                      aria-label="Delete {{doc.name}}"
+                      data-tooltip="Delete"
                       data-test-delete-btn
                       @icon="trash"
                       {{on "click" (fn this.openDelete doc)}}
@@ -191,16 +201,6 @@
           </tbody>
         </table>
       </div>
-
-      <Nuvo::Pagination
-        @selectId="documents-limit"
-        @page={{this.page}}
-        @limit={{this.limit}}
-        @total={{@model.total}}
-        @onLimitChange={{this.setLimit}}
-        @onPrevious={{this.goToPreviousPage}}
-        @onNext={{this.goToNextPage}}
-      />
     </Nuvo::Card>
   {{else}}
     {{#if @model.total}}
@@ -209,15 +209,6 @@
           @description="No documents on page {{this.page}}. Navigate back to find documents."
         />
       </Nuvo::Card>
-      <Nuvo::Pagination
-        @selectId="documents-limit"
-        @page={{this.page}}
-        @limit={{this.limit}}
-        @total={{@model.total}}
-        @onLimitChange={{this.setLimit}}
-        @onPrevious={{this.goToPreviousPage}}
-        @onNext={{this.goToNextPage}}
-      />
     {{else}}
       <Nuvo::Card>
         <div class="flex col x-center gap-2 py-8" data-test-documents-empty>
@@ -228,6 +219,19 @@
       </Nuvo::Card>
     {{/if}}
   {{/if}}
+
+  {{#if @model.total}}
+    <Nuvo::Pagination
+      @selectId="documents-limit"
+      @page={{this.page}}
+      @limit={{this.limit}}
+      @total={{@model.total}}
+      @onLimitChange={{this.setLimit}}
+      @onPrevious={{this.goToPreviousPage}}
+      @onNext={{this.goToNextPage}}
+      @onPageChange={{this.goToPage}}
+    />
+  {{/if}}
 </div>
 
 <Nuvo::Drawer
@@ -236,6 +240,7 @@
   @placement="end"
   @size="lg"
   @onClose={{this.closeModal}}
+  @onClosed={{this.resetDrawer}}
 >
   <:body>
     <form id="document-form" class="flex col gap-4" {{on "submit" this.saveDocument}}>
@@ -283,7 +288,11 @@
             data-test-field-category
           />
         </Nuvo::Field>
-        <Nuvo::Field class="grow" @label="Access Level">
+        <Nuvo::Field
+          class="grow"
+          @label="Access Level"
+          @tooltip="Team means every staff member can open this file. Admin means only admins can."
+        >
           <Nuvo::Dropdown
             id="d-access"
             @align="start"

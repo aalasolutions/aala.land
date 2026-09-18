@@ -89,6 +89,9 @@ export default class FinancialsController extends PaginatedController {
 
   @action closeModal() {
     this.showModal = false;
+  }
+
+  @action resetDrawer() {
     this.editTransaction = null;
     this.errorMsg = '';
   }

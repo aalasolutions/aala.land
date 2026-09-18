@@ -238,7 +238,7 @@
                     <tr data-test-owned-unit-row>
                       <td class="font-bold">{{unit.unitNumber}}</td>
                       <td>{{unit.areaName}}</td>
-                      <td>{{unit.propertyType}}</td>
+                      <td>{{#if unit.propertyType}}{{property-type-label unit.propertyType}}{{/if}}</td>
                       <td><Nuvo::Tag class="tag-unit-{{lowercase unit.status}}" @text={{unit.status}} /></td>
                       <td>{{format-currency unit.price}}</td>
                       <td>

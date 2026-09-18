@@ -154,3 +154,9 @@
   gap: nu-space(4);
   padding-block: nu-space(2);
 }
+
+// A three letter code needs far less room than the amount beside it.
+.console-currency-input {
+  max-inline-size: nu-space(24);
+  text-transform: uppercase;
+}

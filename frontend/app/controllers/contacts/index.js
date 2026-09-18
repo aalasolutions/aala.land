@@ -185,6 +185,9 @@ export default class ContactsIndexController extends PaginatedController {
 
   @action closeModal() {
     this.showModal = false;
+  }
+
+  @action resetDrawer() {
     this.editContact = null;
     this.errorMsg = '';
   }

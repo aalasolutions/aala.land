@@ -279,7 +279,7 @@ describe('LeasesService', () => {
       });
     });
 
-    it('filters by search against tenant name, unit number and ejari number', async () => {
+    it('filters by search against tenant name, unit number and tenancy registration reference', async () => {
       const qb = qbMock([mockLease as Lease], 1);
       (repo.createQueryBuilder as unknown as jest.Mock) = jest
         .fn()
@@ -290,7 +290,7 @@ describe('LeasesService', () => {
       });
 
       expect(qb.andWhere).toHaveBeenCalledWith(
-        '(tenant.firstName ILIKE :s OR tenant.lastName ILIKE :s OR unit.unitNumber ILIKE :s OR l.ejariNumber ILIKE :s)',
+        '(tenant.firstName ILIKE :s OR tenant.lastName ILIKE :s OR unit.unitNumber ILIKE :s OR l.tenancyRegistrationRef ILIKE :s)',
         { s: '%zainab%' },
       );
     });
@@ -379,7 +379,7 @@ describe('LeasesService', () => {
         type: LeaseType.RESIDENTIAL,
       });
       expect(qb.andWhere).toHaveBeenCalledWith(
-        '(tenant.firstName ILIKE :s OR tenant.lastName ILIKE :s OR unit.unitNumber ILIKE :s OR l.ejariNumber ILIKE :s)',
+        '(tenant.firstName ILIKE :s OR tenant.lastName ILIKE :s OR unit.unitNumber ILIKE :s OR l.tenancyRegistrationRef ILIKE :s)',
         { s: '%zainab%' },
       );
       expect(qb.andWhere).toHaveBeenCalledWith('l.startDate >= :dateFrom', {
@@ -511,7 +511,10 @@ describe('LeasesService', () => {
     });
 
     it('records STATUS_CHANGE history when the status changes', async () => {
-      seedLocked({ status: LeaseStatus.ACTIVE, ejariNumber: 'EJ-1' });
+      seedLocked({
+        status: LeaseStatus.ACTIVE,
+        tenancyRegistrationRef: 'EJ-1',
+      });
 
       await service.update(
         'lease-uuid-1',
@@ -526,7 +529,7 @@ describe('LeasesService', () => {
         action: RecordHistoryAction.STATUS_CHANGE,
         entityType: 'Lease',
         entityId: 'lease-uuid-1',
-        entityTitle: 'Lease A-1204 (Ejari EJ-1)',
+        entityTitle: 'Lease A-1204 (Tenancy Registration EJ-1)',
         contextTitle: 'Zainab Qureshi',
         reason: null,
         actorId,
@@ -1118,7 +1121,7 @@ describe('LeasesService', () => {
     const lease = {
       ...mockLease,
       deletedAt: null,
-      ejariNumber: null,
+      tenancyRegistrationRef: null,
       ...overrides,
     } as Lease;
     manager.findOne.mockImplementation(async (entity: unknown) => {
@@ -1147,7 +1150,7 @@ describe('LeasesService', () => {
     it('deletes a DRAFT lease with no cheques and records history first', async () => {
       const lease = seedLocked({
         status: LeaseStatus.DRAFT,
-        ejariNumber: 'EJ-1',
+        tenancyRegistrationRef: 'EJ-1',
       });
 
       await service.remove('lease-uuid-1', companyId, reasonDto, actorId);
@@ -1164,7 +1167,7 @@ describe('LeasesService', () => {
         action: RecordHistoryAction.DELETE,
         entityType: 'Lease',
         entityId: 'lease-uuid-1',
-        entityTitle: 'Lease A-1204 (Ejari EJ-1)',
+        entityTitle: 'Lease A-1204 (Tenancy Registration EJ-1)',
         contextTitle: 'Zainab Qureshi',
         reason: 'Tenant left',
         actorId,

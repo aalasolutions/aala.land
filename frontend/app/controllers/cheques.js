@@ -147,6 +147,9 @@ export default class ChequesController extends PaginatedController {
 
   @action closeModal() {
     this.showModal = false;
+  }
+
+  @action resetDrawer() {
     this.editCheque = null;
     this.errorMsg = '';
   }

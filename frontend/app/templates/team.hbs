@@ -166,7 +166,19 @@
           </tbody>
         </table>
       </div>
+    {{else}}
+      {{#if @model.total}}
+        <Nuvo::EmptyState
+          @description="No team members on page {{this.page}}. Navigate back to find members."
+        />
+      {{else}}
+        <Nuvo::EmptyState
+          @description="No team members yet. Add your first team member to get started."
+        />
+      {{/if}}
+    {{/if}}
 
+    {{#if @model.total}}
       <Nuvo::Pagination
         @selectId="team-limit"
         @page={{this.page}}
@@ -175,26 +187,8 @@
         @onLimitChange={{this.setLimit}}
         @onPrevious={{this.goToPreviousPage}}
         @onNext={{this.goToNextPage}}
+        @onPageChange={{this.goToPage}}
       />
-    {{else}}
-      {{#if @model.total}}
-        <Nuvo::EmptyState
-          @description="No team members on page {{this.page}}. Navigate back to find members."
-        />
-        <Nuvo::Pagination
-          @selectId="team-limit"
-          @page={{this.page}}
-          @limit={{this.limit}}
-          @total={{@model.total}}
-          @onLimitChange={{this.setLimit}}
-          @onPrevious={{this.goToPreviousPage}}
-          @onNext={{this.goToNextPage}}
-        />
-      {{else}}
-        <Nuvo::EmptyState
-          @description="No team members yet. Add your first team member to get started."
-        />
-      {{/if}}
     {{/if}}
   </Nuvo::Card>
 </div>
@@ -205,6 +199,7 @@
   @placement="end"
   @size="lg"
   @onClose={{this.closeModal}}
+  @onClosed={{this.resetDrawer}}
 >
   <:body>
     {{#unless this.editUser}}
@@ -250,7 +245,10 @@
         </Nuvo::Field>
       {{/unless}}
 
-      <Nuvo::Field @label="Role">
+      <Nuvo::Field
+        @label="Role"
+        @tooltip="What this person can do. Company admins manage billing, team and settings. Agents work only on their own records."
+      >
         <Nuvo::Dropdown
           id="t-role"
           @align="start"
@@ -262,16 +260,18 @@
         />
       </Nuvo::Field>
 
-      <Nuvo::Field
-        @label="Regions"
-        @hint="Which regions this member can work in. Selecting more than one lets them switch."
-      >
-        <div class="flex gap-2 wrap" data-test-region-picker>
+      <div class="nu-field">
+        <span id="team-regions-label" class="nu-field__label">Regions</span>
+        <div
+          class="flex gap-2 wrap"
+          role="group"
+          aria-labelledby="team-regions-label"
+          data-test-region-picker
+        >
           {{#each this.assignableRegions as |r|}}
             <button
               type="button"
-              class="nu-tag m-pill m-selectable
-                {{if (includes this.selectedRegionCodes r.code) 'is-selected'}}"
+              class="nu-tag m-pill m-selectable {{if (includes this.selectedRegionCodes r.code) 'is-selected'}}"
               data-test-region-choice={{r.code}}
               aria-pressed={{if
                 (includes this.selectedRegionCodes r.code)
@@ -285,7 +285,9 @@
             </button>
           {{/each}}
         </div>
-      </Nuvo::Field>
+        <span class="nu-field__hint">Which regions this member can work in.
+          Selecting more than one lets them switch.</span>
+      </div>
 
       {{#if this.hasNoRegionsSelected}}
         <Nuvo::Alert
@@ -372,7 +374,10 @@
         />
       </Nuvo::Field>
 
-      <Nuvo::Field @label="Role">
+      <Nuvo::Field
+        @label="Role"
+        @tooltip="What this person can do. Company admins manage billing, team and settings. Agents work only on their own records."
+      >
         <Nuvo::Dropdown
           id="i-role"
           @align="start"
@@ -468,7 +473,11 @@
         </label>
       </div>
 
-      <Nuvo::Field @label="Reassign records to" @required={{true}}>
+      <Nuvo::Field
+        @label="Reassign records to"
+        @required={{true}}
+        @tooltip="Who takes over this person's leads, documents, commissions and work orders. Someone must be chosen."
+      >
         <Nuvo::Dropdown
           id="remove-target"
           @align="start"
@@ -585,6 +594,7 @@
 
       <Nuvo::Field
         @label="Member who stays active (must be a company admin)"
+        @tooltip="The Free plan allows one user. Everyone else loses access as soon as you confirm."
         @required={{true}}
       >
         <Nuvo::Dropdown

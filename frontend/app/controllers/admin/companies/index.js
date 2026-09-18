@@ -1,6 +1,7 @@
 import Controller from '@ember/controller';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
+import { validPage } from 'land/utils/page-number';
 import { service } from '@ember/service';
 import { debounceTask } from 'ember-lifeline';
 
@@ -85,6 +86,17 @@ export default class AdminCompaniesIndexController extends Controller {
   @action
   nextPage() {
     this.page = (Number(this.page) || 1) + 1;
+  }
+
+  get totalPages() {
+    return Math.max(1, Math.ceil(this.total / this.limit));
+  }
+
+  @action
+  goToPage(page) {
+    const target = validPage(page, this.totalPages);
+    if (target === null) return;
+    this.page = target;
   }
 
   @action
