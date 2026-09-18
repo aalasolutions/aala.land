@@ -247,7 +247,19 @@
           </tbody>
         </table>
       </div>
+    {{else}}
+      {{#if @model.total}}
+        <Nuvo::EmptyState
+          @description="No leases on page {{this.page}}. Navigate back or adjust your filters."
+        />
+      {{else}}
+        <Nuvo::EmptyState
+          @description="No leases yet. Create your first lease agreement."
+        />
+      {{/if}}
+    {{/if}}
 
+    {{#if @model.total}}
       <Nuvo::Pagination
         @selectId="leases-limit"
         @page={{this.page}}
@@ -258,26 +270,6 @@
         @onNext={{this.goToNextPage}}
         @onPageChange={{this.goToPage}}
       />
-    {{else}}
-      {{#if @model.total}}
-        <Nuvo::EmptyState
-          @description="No leases on page {{this.page}}. Navigate back or adjust your filters."
-        />
-        <Nuvo::Pagination
-          @selectId="leases-limit"
-          @page={{this.page}}
-          @limit={{this.limit}}
-          @total={{@model.total}}
-          @onLimitChange={{this.setLimit}}
-          @onPrevious={{this.goToPreviousPage}}
-          @onNext={{this.goToNextPage}}
-          @onPageChange={{this.goToPage}}
-        />
-      {{else}}
-        <Nuvo::EmptyState
-          @description="No leases yet. Create your first lease agreement."
-        />
-      {{/if}}
     {{/if}}
   </Nuvo::Card>
 </div>
@@ -292,6 +284,7 @@
   @placement="end"
   @size="lg"
   @onClose={{this.closeModal}}
+  @onClosed={{this.resetDrawer}}
 >
   <:body>
     <form
@@ -420,7 +413,7 @@
 
       <Nuvo::Field
         @label="Tenancy Registration Ref"
-        @tooltip="e.g., Ejari in Dubai, Tawtheeq in Abu Dhabi, or your local government lease registry number."
+        @tooltip="e.g. Ejari in Dubai, Tawtheeq in Abu Dhabi, or your local government lease registry number."
       >
         <Nuvo::Input
           id="lease-tenancy-registration-ref"

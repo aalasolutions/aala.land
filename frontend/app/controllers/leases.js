@@ -262,6 +262,9 @@ export default class LeasesController extends PaginatedController {
 
   @action closeModal() {
     this.showModal = false;
+  }
+
+  @action resetDrawer() {
     this.editLease = null;
     this.renewingLeaseId = null;
     this.errorMsg = '';

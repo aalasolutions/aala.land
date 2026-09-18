@@ -1,31 +1,73 @@
-import { modifier } from 'ember-modifier';
+import Modifier from 'ember-modifier';
+import { registerDestructor } from '@ember/destroyable';
+import { runTask, cancelTask } from 'ember-lifeline';
 
-// Drives a dialog's enter and leave transition from an `open` flag.
-// Opening is two steps on purpose: `onOpen` mounts the element in its closed
-// position, then `onVisible` runs after the next paint so the CSS transition has
-// a start frame to move from. Mount and reveal in one step gives no animation.
-// Closing mirrors it: `onHide` starts the leave transition, `onHidden` unmounts
-// once the element's own transition-duration has passed.
-export default modifier(function dialogTransition(element, [open], named = {}) {
-  const { onOpen, onVisible, onHide, onHidden } = named;
-  let firstFrame = null;
-  let secondFrame = null;
-  let hideTimer = null;
+// Enter and leave transitions driven by an `open` flag, all as run-loop tasks so
+// `settled()` awaits every step. The reveal forces a style flush first, which
+// commits the closed position as the transition's start point without a frame.
+export default class DialogTransitionModifier extends Modifier {
+  openTask = null;
+  revealTask = null;
+  hideTask = null;
+  hideTimer = null;
 
-  if (open) {
-    onOpen?.();
-    firstFrame = requestAnimationFrame(() => {
-      secondFrame = requestAnimationFrame(() => onVisible?.());
-    });
-  } else {
-    onHide?.();
-    const duration = parseFloat(getComputedStyle(element).transitionDuration) || 0;
-    hideTimer = setTimeout(() => onHidden?.(), duration * 1000);
+  constructor(owner, args) {
+    super(owner, args);
+    registerDestructor(this, () => this.clearPending());
   }
 
-  return () => {
-    if (firstFrame !== null) cancelAnimationFrame(firstFrame);
-    if (secondFrame !== null) cancelAnimationFrame(secondFrame);
-    if (hideTimer !== null) clearTimeout(hideTimer);
-  };
-});
+  modify(element, [open], named) {
+    this.clearPending();
+    const { onOpen, onVisible, onHide, onHidden } = named;
+
+    if (open) {
+      this.openTask = runTask(
+        this,
+        () => {
+          this.openTask = null;
+          onOpen?.();
+          // Runs after the mount has rendered.
+          this.revealTask = runTask(
+            this,
+            () => {
+              this.revealTask = null;
+              void element.offsetWidth;
+              onVisible?.();
+            },
+            0,
+          );
+        },
+        0,
+      );
+      return;
+    }
+
+    this.hideTask = runTask(
+      this,
+      () => {
+        this.hideTask = null;
+        onHide?.();
+        const duration =
+          parseFloat(getComputedStyle(element).transitionDuration) || 0;
+        this.hideTimer = runTask(
+          this,
+          () => {
+            this.hideTimer = null;
+            onHidden?.();
+          },
+          duration * 1000,
+        );
+      },
+      0,
+    );
+  }
+
+  clearPending() {
+    for (const key of ['openTask', 'revealTask', 'hideTask', 'hideTimer']) {
+      if (this[key] !== null) {
+        cancelTask(this, this[key]);
+        this[key] = null;
+      }
+    }
+  }
+}

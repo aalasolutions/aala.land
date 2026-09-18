@@ -81,7 +81,19 @@
           </tbody>
         </table>
       </div>
+    {{else}}
+      {{#if @model.total}}
+        <Nuvo::EmptyState
+          @description="No vendors on page {{this.page}}. Navigate back to find vendors."
+        />
+      {{else}}
+        <Nuvo::EmptyState
+          @description="No vendors yet. Add your first vendor above."
+        />
+      {{/if}}
+    {{/if}}
 
+    {{#if @model.total}}
       <Nuvo::Pagination
         @selectId="vendors-limit"
         @page={{this.page}}
@@ -92,26 +104,6 @@
         @onNext={{this.goToNextPage}}
         @onPageChange={{this.goToPage}}
       />
-    {{else}}
-      {{#if @model.total}}
-        <Nuvo::EmptyState
-          @description="No vendors on page {{this.page}}. Navigate back to find vendors."
-        />
-        <Nuvo::Pagination
-          @selectId="vendors-limit"
-          @page={{this.page}}
-          @limit={{this.limit}}
-          @total={{@model.total}}
-          @onLimitChange={{this.setLimit}}
-          @onPrevious={{this.goToPreviousPage}}
-          @onNext={{this.goToNextPage}}
-          @onPageChange={{this.goToPage}}
-        />
-      {{else}}
-        <Nuvo::EmptyState
-          @description="No vendors yet. Add your first vendor above."
-        />
-      {{/if}}
     {{/if}}
   </Nuvo::Card>
 </div>
@@ -122,6 +114,7 @@
   @placement="end"
   @size="lg"
   @onClose={{this.closeModal}}
+  @onClosed={{this.resetDrawer}}
 >
   <:body>
     <form

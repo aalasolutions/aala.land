@@ -104,6 +104,7 @@
   @placement="end"
   @size="lg"
   @onClose={{this.closeModal}}
+  @onClosed={{this.resetDrawer}}
 >
   <:body>
     <form id="email-template-form" class="flex col gap-4" {{on "submit" this.saveTemplate}}>

@@ -53,6 +53,8 @@ export default class DocumentsController extends PaginatedController {
     this.dateTo = '';
     this.showModal = false;
     this.editDocument = null;
+    this.selectedFile = null;
+    this.uploadProgress = '';
     this.errorMsg = '';
     this.showDeleteModal = false;
     this.documentToDelete = null;
@@ -165,8 +167,6 @@ export default class DocumentsController extends PaginatedController {
     this.showModal = false;
   }
 
-  // Runs once the drawer has finished sliding out, so the edit form does not
-  // turn back into the upload form while it is still on screen.
   @action resetDrawer() {
     this.editDocument = null;
     this.errorMsg = '';

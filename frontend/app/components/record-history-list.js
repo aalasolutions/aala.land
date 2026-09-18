@@ -3,34 +3,14 @@ import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
 import { modifier } from 'ember-modifier';
+import { validPage } from 'land/utils/page-number';
+import {
+  HISTORY_ACTIONS,
+  HISTORY_ACTION_VARIANTS as ACTION_VARIANTS,
+  optionLabelFor,
+} from 'land/constants';
 
 const PAGE_LIMIT = 10;
-
-const ACTION_LABELS = {
-  DELETE: 'Deleted',
-  ARCHIVE: 'Archived',
-  UNARCHIVE: 'Unarchived',
-  CANCEL: 'Cancelled',
-  REPLACE: 'Replaced',
-  BOUNCE: 'Bounced',
-  STATUS_CHANGE: 'Status changed',
-  TERMINATE: 'Terminated',
-  DEACTIVATE: 'Deactivated',
-  REACTIVATE: 'Reactivated',
-};
-
-const ACTION_VARIANTS = {
-  DELETE: 'danger',
-  CANCEL: 'danger',
-  BOUNCE: 'danger',
-  TERMINATE: 'danger',
-  DEACTIVATE: 'danger',
-  ARCHIVE: 'warning',
-  REPLACE: 'warning',
-  UNARCHIVE: 'success',
-  REACTIVATE: 'success',
-  STATUS_CHANGE: 'info',
-};
 
 export default class RecordHistoryListComponent extends Component {
   @service auth;
@@ -55,7 +35,7 @@ export default class RecordHistoryListComponent extends Component {
   get rows() {
     return this.entries.map((entry) => ({
       ...entry,
-      actionLabel: ACTION_LABELS[entry.action] ?? entry.action,
+      actionLabel: optionLabelFor(HISTORY_ACTIONS, entry.action),
       actionVariant: ACTION_VARIANTS[entry.action] ?? 'secondary',
     }));
   }
@@ -64,8 +44,14 @@ export default class RecordHistoryListComponent extends Component {
     return this.total > this.limit;
   }
 
+  get totalPages() {
+    return Math.max(1, Math.ceil(this.total / this.limit));
+  }
+
   @action goToPage(page) {
-    this.fetchPage(page);
+    const target = validPage(page, this.totalPages);
+    if (target === null) return;
+    this.fetchPage(target);
   }
 
   // Refetch when @reloadKey, @entityType or @entityId changes.
@@ -100,14 +86,14 @@ export default class RecordHistoryListComponent extends Component {
     this.isLoading = true;
     this.errorMessage = '';
 
-    const params = new URLSearchParams({
-      entityType,
-      entityId,
-      page: String(page),
-      limit: String(this.limit),
-    });
-
+    // Everything past this point is inside the try, so no caller can leak a rejection.
     try {
+      const params = new URLSearchParams({
+        entityType,
+        entityId,
+        page: String(page),
+        limit: String(this.limit),
+      });
       const json = await this.auth.fetchJson(
         `/record-history?${params.toString()}`,
       );

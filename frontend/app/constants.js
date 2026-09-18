@@ -281,3 +281,45 @@ export const ALL_ROLES = [
   { value: 'agent', label: 'Agent' },
   { value: 'accountant', label: 'Accountant' },
 ];
+
+export const HISTORY_ACTIONS = [
+  { value: '', label: 'All Actions' },
+  { value: 'DELETE', label: 'Deleted' },
+  { value: 'ARCHIVE', label: 'Archived' },
+  { value: 'UNARCHIVE', label: 'Unarchived' },
+  { value: 'CANCEL', label: 'Cancelled' },
+  { value: 'REPLACE', label: 'Replaced' },
+  { value: 'BOUNCE', label: 'Bounced' },
+  { value: 'STATUS_CHANGE', label: 'Status changed' },
+  { value: 'TERMINATE', label: 'Terminated' },
+  { value: 'DEACTIVATE', label: 'Deactivated' },
+  { value: 'REACTIVATE', label: 'Reactivated' },
+];
+
+export const HISTORY_ACTION_VARIANTS = {
+  DELETE: 'danger',
+  CANCEL: 'danger',
+  BOUNCE: 'danger',
+  TERMINATE: 'danger',
+  DEACTIVATE: 'danger',
+  ARCHIVE: 'warning',
+  REPLACE: 'warning',
+  UNARCHIVE: 'success',
+  REACTIVATE: 'success',
+  STATUS_CHANGE: 'info',
+};
+
+export const HISTORY_ENTITY_TYPES = [
+  { value: '', label: 'All Entities' },
+  { value: 'Unit', label: 'Property' },
+  { value: 'Asset', label: 'Asset' },
+  { value: 'Lease', label: 'Lease' },
+  { value: 'Contact', label: 'Contact' },
+  { value: 'Cheque', label: 'Cheque' },
+  { value: 'WorkOrder', label: 'Work Order' },
+  { value: 'Commission', label: 'Commission' },
+  { value: 'User', label: 'User' },
+];
+
+export const optionLabelFor = (options, value) =>
+  options.find((o) => o.value === value)?.label ?? value;

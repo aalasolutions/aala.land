@@ -84,6 +84,9 @@ export default class EmailTemplatesController extends Controller {
 
   @action closeModal() {
     this.showModal = false;
+  }
+
+  @action resetDrawer() {
     this.editTemplate = null;
     this.errorMsg = '';
   }

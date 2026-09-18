@@ -300,7 +300,7 @@
                   <td class="console-notes-cell">{{if
                       row.notes
                       row.notes
-                      "—"
+                      "-"
                     }}</td>
                   <td>
                     {{#if row.hasReceipt}}
@@ -317,7 +317,7 @@
                         class="link"
                       >Invoice</a>
                     {{else}}
-                      <span class="text-muted">—</span>
+                      <span class="text-muted">-</span>
                     {{/if}}
                   </td>
                   <td class="text-end">
@@ -381,12 +381,12 @@
   >
     <:body>
       <div class="flex col gap-4" data-test-deal-form>
-        <div class="console-form-row">
+        <div class="nu-field-row">
           <Nuvo::Field
             @label="Price"
             @tooltip="Enter the amount that matches the Basis below, either per seat each month or one flat total each month."
             @flush={{true}}
-            class="flex-2"
+            class="nu-field-row__wide"
           >
             <Nuvo::Input
               id="deal-price"
@@ -402,7 +402,7 @@
             @label="Currency"
             @tooltip="Three letter code such as AED or USD. This is what the company is billed in from now on."
             @flush={{true}}
-            class="grow console-currency-field"
+            class="nu-field-row__narrow"
           >
             <Nuvo::Input
               id="deal-currency"
@@ -418,7 +418,7 @@
             @label="Basis"
             @tooltip="Per seat charges the price for every active user each month. Flat charges the price once each month, whatever the seat count."
             @flush={{true}}
-            class="flex-2"
+            class="nu-field-row__wide"
           >
             <Nuvo::Dropdown
               id="deal-basis"
@@ -447,12 +447,12 @@
           />
         </Nuvo::Field>
 
-        <div class="console-form-row x-end">
+        <div class="nu-field-row m-end">
           <Nuvo::Field
             @label="Until"
             @tooltip="The last day this price applies. After it, the company goes back to standard plan pricing."
             @flush={{true}}
-            class="flex-2"
+            class="nu-field-row__wide"
           >
             <Nuvo::Input
               id="deal-until"
@@ -478,6 +478,7 @@
           <Nuvo::Textarea
             id="deal-why"
             rows="2"
+            required={{true}}
             data-test-deal-why
             @value={{this.dealWhy}}
             {{on "input" (fn this.setDealField "dealWhy")}}
@@ -521,8 +522,8 @@
   >
     <:body>
       <div class="flex col gap-4" data-test-payment-form>
-        <div class="console-form-row">
-          <Nuvo::Field @label="Amount" @flush={{true}} class="flex-2">
+        <div class="nu-field-row">
+          <Nuvo::Field @label="Amount" @flush={{true}} class="nu-field-row__wide">
             <Nuvo::Input
               id="pay-amount"
               type="number"
@@ -537,7 +538,7 @@
             @label="Currency"
             @tooltip="Three letter code such as AED or USD. It must match the currency the money actually arrived in."
             @flush={{true}}
-            class="grow console-currency-field"
+            class="nu-field-row__narrow"
           >
             <Nuvo::Input
               id="pay-currency"
@@ -551,7 +552,7 @@
           </Nuvo::Field>
         </div>
 
-        <div class="console-form-row">
+        <div class="nu-field-row">
           <Nuvo::Field @label="Date received" @flush={{true}} class="grow">
             <Nuvo::Input
               id="pay-received"
@@ -602,20 +603,19 @@
           />
         </Nuvo::Field>
 
-        <div class="flex col gap-2">
-          <label class="text-sm text-muted" for="pay-receipt">Receipt image</label>
+        <Nuvo::Field @label="Receipt image" @flush={{true}}>
           <input
             id="pay-receipt"
             type="file"
             accept="image/jpeg,image/png,image/webp"
-            class="form-input"
+            class="nu-input"
             data-test-payment-receipt
             {{on "change" this.setPayReceipt}}
           />
           {{#if this.payReceiptName}}
             <span class="text-sm text-muted">{{this.payReceiptName}}</span>
           {{/if}}
-        </div>
+        </Nuvo::Field>
         <p class="text-sm text-muted">Document it: notes or a receipt image is
           required.</p>
       </div>
@@ -714,6 +714,7 @@
           <Nuvo::Textarea
             id="remedy-why"
             rows="2"
+            required={{true}}
             data-test-remedy-why
             @value={{this.remedyWhy}}
             {{on "input" (fn this.setRemedyField "remedyWhy")}}

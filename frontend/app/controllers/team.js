@@ -187,6 +187,9 @@ export default class TeamController extends PaginatedController {
 
   @action closeModal() {
     this.showModal = false;
+  }
+
+  @action resetDrawer() {
     this.editUser = null;
     this.errorMsg = '';
   }

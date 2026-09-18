@@ -155,22 +155,8 @@
   padding-block: nu-space(2);
 }
 
-// Side by side fields inside the console drawers; wraps on narrow screens.
-.console-form-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  gap: nu-space(4);
-
-  > * {
-    flex: 1 1 10rem;
-  }
-
-  .flex-2 {
-    flex-grow: 2;
-  }
-
-  &.x-end {
-    align-items: flex-end;
-  }
+// A three letter code needs far less room than the amount beside it.
+.console-currency-input {
+  max-inline-size: nu-space(24);
+  text-transform: uppercase;
 }

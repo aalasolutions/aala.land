@@ -171,7 +171,7 @@
                       @variant="secondary"
                       @size="xs"
                       aria-label="Download {{doc.name}}"
-                      title="Download"
+                      data-tooltip="Download"
                       data-test-download-btn
                       @icon="download-simple"
                       {{on "click" (fn this.downloadDocument doc)}}
@@ -180,7 +180,7 @@
                       @variant="secondary"
                       @size="xs"
                       aria-label="Edit {{doc.name}}"
-                      title="Edit"
+                      data-tooltip="Edit"
                       data-test-edit-btn
                       @icon="pencil-simple"
                       {{on "click" (fn this.openEdit doc)}}
@@ -189,7 +189,7 @@
                       @variant="danger"
                       @size="xs"
                       aria-label="Delete {{doc.name}}"
-                      title="Delete"
+                      data-tooltip="Delete"
                       data-test-delete-btn
                       @icon="trash"
                       {{on "click" (fn this.openDelete doc)}}
@@ -201,17 +201,6 @@
           </tbody>
         </table>
       </div>
-
-      <Nuvo::Pagination
-        @selectId="documents-limit"
-        @page={{this.page}}
-        @limit={{this.limit}}
-        @total={{@model.total}}
-        @onLimitChange={{this.setLimit}}
-        @onPrevious={{this.goToPreviousPage}}
-        @onNext={{this.goToNextPage}}
-        @onPageChange={{this.goToPage}}
-      />
     </Nuvo::Card>
   {{else}}
     {{#if @model.total}}
@@ -220,16 +209,6 @@
           @description="No documents on page {{this.page}}. Navigate back to find documents."
         />
       </Nuvo::Card>
-      <Nuvo::Pagination
-        @selectId="documents-limit"
-        @page={{this.page}}
-        @limit={{this.limit}}
-        @total={{@model.total}}
-        @onLimitChange={{this.setLimit}}
-        @onPrevious={{this.goToPreviousPage}}
-        @onNext={{this.goToNextPage}}
-        @onPageChange={{this.goToPage}}
-      />
     {{else}}
       <Nuvo::Card>
         <div class="flex col x-center gap-2 py-8" data-test-documents-empty>
@@ -239,6 +218,19 @@
         </div>
       </Nuvo::Card>
     {{/if}}
+  {{/if}}
+
+  {{#if @model.total}}
+    <Nuvo::Pagination
+      @selectId="documents-limit"
+      @page={{this.page}}
+      @limit={{this.limit}}
+      @total={{@model.total}}
+      @onLimitChange={{this.setLimit}}
+      @onPrevious={{this.goToPreviousPage}}
+      @onNext={{this.goToNextPage}}
+      @onPageChange={{this.goToPage}}
+    />
   {{/if}}
 </div>
 

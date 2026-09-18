@@ -1,13 +1,14 @@
-import Component from '@glimmer/component';
 import { action } from '@ember/object';
 import { tracked } from '@glimmer/tracking';
 import { guidFor } from '@ember/object/internals';
-import { isDestroyed } from '@ember/destroyable';
+import { isDestroyed, registerDestructor } from '@ember/destroyable';
+import { next } from '@ember/runloop';
+import NuDialogBaseComponent from 'land/components/nuvo/-dialog-base';
 
 const PLACEMENTS = ['start', 'end', 'top', 'bottom'];
 const SIZES = ['sm', 'md', 'lg'];
 
-export default class NuDrawerComponent extends Component {
+export default class NuDrawerComponent extends NuDialogBaseComponent {
   titleId = `nu-drawer-title-${guidFor(this)}`;
 
   @tracked isMounted = false;
@@ -17,12 +18,19 @@ export default class NuDrawerComponent extends Component {
     super(...arguments);
     this.isMounted = Boolean(this.args.open);
     this.isVisible = Boolean(this.args.open);
+    // Torn down before the leave timer fires, so resolve the close here. Queued,
+    // because the consumer's reset must not run inside the destroying render.
+    registerDestructor(this, () => {
+      if (!this.isMounted) return;
+      const onClosed = this.args.onClosed;
+      // ember-lifeline cannot schedule on an object being destroyed, so plain `next`.
+      // eslint-disable-next-line ember/no-runloop
+      if (onClosed) next(() => onClosed());
+    });
   }
 
   get backdropClasses() {
-    return this.isVisible
-      ? 'nu-drawer-backdrop is-open'
-      : 'nu-drawer-backdrop';
+    return this.isVisible ? 'nu-drawer-backdrop is-open' : 'nu-drawer-backdrop';
   }
 
   get drawerClasses() {
@@ -37,10 +45,6 @@ export default class NuDrawerComponent extends Component {
       parts.push('is-open');
     }
     return parts.join(' ');
-  }
-
-  get closeOnBackdrop() {
-    return this.args.closeOnBackdrop !== false;
   }
 
   // Mounted while open or still animating out; visible drives the open classes.
@@ -69,10 +73,5 @@ export default class NuDrawerComponent extends Component {
     this.isMounted = false;
     // Pages clear their form state here, so it does not flash during the slide out.
     if (wasMounted) this.args.onClosed?.();
-  }
-
-  @action
-  onClose() {
-    this.args.onClose?.();
   }
 }

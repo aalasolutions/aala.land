@@ -181,7 +181,19 @@
             </tbody>
           </table>
         </div>
+      {{else}}
+        {{#if @model.total}}
+          <Nuvo::EmptyState
+            @description="No cheques on this page. Navigate to find cheques or adjust filters."
+          />
+        {{else}}
+          <Nuvo::EmptyState
+            @description="No cheques yet. Add your first cheque record."
+          />
+        {{/if}}
+      {{/if}}
 
+      {{#if @model.total}}
         <Nuvo::Pagination
           @selectId="cheques-limit"
           @page={{this.page}}
@@ -192,26 +204,6 @@
           @onNext={{this.goToNextPage}}
           @onPageChange={{this.goToPage}}
         />
-      {{else}}
-        {{#if @model.total}}
-          <Nuvo::EmptyState
-            @description="No cheques on this page. Navigate to find cheques or adjust filters."
-          />
-          <Nuvo::Pagination
-            @selectId="cheques-limit"
-            @page={{this.page}}
-            @limit={{this.limit}}
-            @total={{@model.total}}
-            @onLimitChange={{this.setLimit}}
-            @onPrevious={{this.goToPreviousPage}}
-            @onNext={{this.goToNextPage}}
-            @onPageChange={{this.goToPage}}
-          />
-        {{else}}
-          <Nuvo::EmptyState
-            @description="No cheques yet. Add your first cheque record."
-          />
-        {{/if}}
       {{/if}}
     </Nuvo::Card>
   {{/if}}
@@ -265,6 +257,7 @@
   @placement="end"
   @size="lg"
   @onClose={{this.closeModal}}
+  @onClosed={{this.resetDrawer}}
 >
   <:body>
     <form

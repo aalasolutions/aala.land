@@ -19,6 +19,7 @@
     {{/if}}
     {{#if @model.unit.asset}}
       <LinkTo
+        data-test-breadcrumb-location
         @route="properties.detail"
         @model={{@model.areaId}}
       >{{@model.unit.asset.name}}</LinkTo>
@@ -56,8 +57,8 @@
       <div class="flex col gap-4">
         <Nuvo::Card class="flex col gap-3">
           <div class="flex between x-center">
-            <h2 data-test-unit-title class="text-2xl font-bold">Property
-              {{@model.unit.unitNumber}}</h2>
+            <h1 data-test-unit-title class="text-2xl font-bold">Property
+              {{@model.unit.unitNumber}}</h1>
             <div class="flex gap-2 wrap">
               {{#unless this.isArchived}}
                 <Nuvo::Button
@@ -143,11 +144,7 @@
               <Nuvo::Tag
                 class="tag-proptype-{{lowercase @model.unit.propertyType}}"
               >
-                {{if
-                  (eq @model.unit.propertyType "FOR_SALE")
-                  "For Sale"
-                  "For Rent"
-                }}
+                {{property-type-label @model.unit.propertyType}}
               </Nuvo::Tag>
             {{/if}}
           </div>
@@ -157,6 +154,7 @@
               <Ui::Ph @icon="user" />
               <span class="text-muted">Owner:</span>
               <LinkTo
+                data-test-owner-link
                 @route="contacts.detail"
                 @model={{@model.unit.owner.id}}
                 class="text-primary owner-link"
@@ -169,9 +167,9 @@
 
         {{#if @model.unit.amenities.length}}
           <Nuvo::Card data-test-amenities-card>
-            <h4
+            <h2
               class="text-sm font-bold uppercase text-muted mb-3"
-            >Amenities</h4>
+            >Amenities</h2>
             <Unit::AmenitiesPrint @amenities={{@model.unit.amenities}} />
           </Nuvo::Card>
         {{/if}}
@@ -180,7 +178,7 @@
 
       <Nuvo::Card class="flex col gap-4">
         <div class="flex between x-center mb-2">
-          <h4 class="text-sm font-bold uppercase text-muted">Photos</h4>
+          <h2 class="text-sm font-bold uppercase text-muted">Photos</h2>
           {{#unless this.isArchived}}
             <label
               class="nu-btn m-primary m-sm {{if this.isUploading 'is-disabled'}}"
@@ -193,6 +191,7 @@
                   "Add Photo"
                 }}</span>
               <input
+                data-test-photo-upload-input
                 type="file"
                 class="sr-only"
                 accept="image/jpeg,image/png,image/webp"
@@ -212,7 +211,12 @@
 
         {{#if @model.media.length}}
           <div class="unit-main-photo" data-test-main-photo>
-            <img src={{this.activePhoto.url}} alt="Property photo" />
+            <img
+              src={{this.activePhoto.url}}
+              alt={{or this.activePhoto.fileName "Property photo"}}
+              width="1600"
+              height="1000"
+            />
           </div>
           <div class="flex gap-2 wrap">
             {{#each @model.media as |media|}}
@@ -223,6 +227,9 @@
                 <img
                   src={{or media.thumbnailUrl media.url}}
                   alt={{media.fileName}}
+                  width="80"
+                  height="60"
+                  loading="lazy"
                 />
                 <button
                   type="button"
@@ -238,7 +245,9 @@
                       @shape="circle"
                       @size="xs"
                       @icon="star"
-                      title="Set as primary"
+                      aria-label="Set {{media.fileName}} as the primary photo"
+                      data-tooltip="Set as primary"
+                      data-test-set-primary-photo-btn={{media.id}}
                       {{on "click" (fn this.setPrimaryPhoto media)}}
                     />
                   {{/unless}}
@@ -247,7 +256,9 @@
                     @shape="circle"
                     @size="xs"
                     @icon="trash"
-                    title="Delete"
+                    aria-label="Delete {{media.fileName}}"
+                    data-tooltip="Delete photo"
+                    data-test-delete-photo-btn={{media.id}}
                     {{on "click" (fn this.openDeletePhoto media)}}
                   />
                 </div>
@@ -259,7 +270,12 @@
                 class="unit-thumb upload-preview-thumb"
                 data-test-upload-preview
               >
-                <img src={{this.previewUrl}} alt="Uploading preview" />
+                <img
+                  src={{this.previewUrl}}
+                  alt="Uploading preview"
+                  width="80"
+                  height="60"
+                />
               </div>
             {{/if}}
           </div>
@@ -268,7 +284,12 @@
             class="unit-main-photo upload-preview-active"
             data-test-upload-preview
           >
-            <img src={{this.previewUrl}} alt="Uploading preview" />
+            <img
+              src={{this.previewUrl}}
+              alt="Uploading preview"
+              width="1600"
+              height="1000"
+            />
           </div>
         {{else}}
           <div class="unit-photo-placeholder" data-test-photo-placeholder>
@@ -281,16 +302,16 @@
 
     {{#if @model.unit.description}}
       <Nuvo::Card data-test-description>
-        <h4 class="text-md font-bold mb-3"><Ui::Ph @icon="text-align-left" />
-          Description</h4>
+        <h2 class="text-md font-bold mb-3"><Ui::Ph @icon="text-align-left" />
+          Description</h2>
         <p class="text-muted">{{@model.unit.description}}</p>
       </Nuvo::Card>
     {{/if}}
 
     <Nuvo::Card data-test-unit-documents>
       <div class="flex between x-center mb-3">
-        <h4 class="text-md font-bold"><Ui::Ph @icon="file-text" />
-          Documents</h4>
+        <h2 class="text-md font-bold"><Ui::Ph @icon="file-text" />
+          Documents</h2>
         {{#unless this.isArchived}}
           <Nuvo::Button
             @variant="primary"
@@ -329,13 +350,13 @@
                   <td
                     class="text-sm text-muted"
                     data-test-document-uploader
-                  >{{if doc.uploadedByName doc.uploadedByName "—"}}</td>
+                  >{{if doc.uploadedByName doc.uploadedByName "-"}}</td>
                   <td>
                     <div class="flex gap-2">
                       <Nuvo::Button
                         @variant="secondary"
                         @size="xs"
-                        title="Download"
+                        data-tooltip="Download"
                         aria-label="Download {{doc.name}}"
                         data-test-download-document-btn
                         @icon="download-simple"
@@ -345,7 +366,7 @@
                         <Nuvo::Button
                           @variant="secondary"
                           @size="xs"
-                          title="Edit"
+                          data-tooltip="Edit"
                           aria-label="Edit {{doc.name}}"
                           data-test-edit-document-btn
                           @icon="pencil-simple"
@@ -355,7 +376,7 @@
                       <Nuvo::Button
                         @variant="danger"
                         @size="xs"
-                        title="Delete"
+                        data-tooltip="Delete"
                         aria-label="Delete {{doc.name}}"
                         data-test-delete-document-btn
                         @icon="trash"
@@ -374,8 +395,8 @@
     </Nuvo::Card>
 
     <Nuvo::Card data-test-lease-history>
-      <h4 class="text-md font-bold mb-3"><Ui::Ph @icon="file-text" />
-        Lease History</h4>
+      <h2 class="text-md font-bold mb-3"><Ui::Ph @icon="file-text" />
+        Lease History</h2>
       {{#if @model.leases.length}}
         <div class="nu-table-wrapper">
           <table class="nu-table">
@@ -421,10 +442,10 @@
 
     {{#if this.canViewHistory}}
       <Nuvo::Card data-test-unit-history>
-        <h4 class="text-md font-bold mb-3"><Ui::Ph
+        <h2 class="text-md font-bold mb-3"><Ui::Ph
             @icon="clock-counter-clockwise"
           />
-          History</h4>
+          History</h2>
         <RecordHistoryList
           @entityType="Unit"
           @entityId={{@model.unit.id}}
@@ -439,8 +460,11 @@
     >
       <:icon><Ui::Ph @icon="warning" /></:icon>
       <:actions>
-        <Nuvo::Button @variant="primary" @route="properties">Back to
-          Properties</Nuvo::Button>
+        <Nuvo::Button
+          @variant="primary"
+          @route="properties"
+          data-test-not-found-back
+        >Back to Properties</Nuvo::Button>
       </:actions>
     </Nuvo::EmptyState>
   {{/if}}
@@ -467,7 +491,6 @@
         </Nuvo::Field>
         <Nuvo::Field @label="Status" class="grow">
           <Nuvo::Dropdown
-            @searchable={{true}}
             @align="start"
             @value={{this.formStatus}}
             @onSelect={{fn this.setFieldValue "formStatus"}}
@@ -483,7 +506,6 @@
         @tooltip="Choose how this property is listed. For Rent and For Sale make it searchable. Not Listed keeps it hidden."
       >
         <Nuvo::Dropdown
-          @searchable={{true}}
           @align="start"
           @value={{this.formPropertyType}}
           @onSelect={{fn this.setFieldValue "formPropertyType"}}
@@ -575,12 +597,17 @@
       />
 
       <div class="flex col gap-2">
-        <label class="text-sm text-muted">Amenities</label>
-        <div class="flex gap-2 wrap" data-test-amenities-picker>
+        <span id="unit-form-amenities-label" class="text-sm text-muted">Amenities</span>
+        <div
+          class="flex gap-2 wrap"
+          role="group"
+          aria-labelledby="unit-form-amenities-label"
+          data-test-amenities-picker
+        >
           {{#each this.amenityOptions as |opt|}}
             <button
               type="button"
-              class="nu-tag m-pill m-selectable {{if (includes this.formAmenities opt.key) 'is-selected' }}"
+              class="nu-tag m-pill m-selectable {{if (includes this.formAmenities opt.key) 'is-selected'}}"
               data-test-amenity={{opt.key}}
               aria-pressed={{if
                 (includes this.formAmenities opt.key)
@@ -637,6 +664,7 @@
   @placement="end"
   @size="lg"
   @onClose={{this.closeDocumentModal}}
+  @onClosed={{this.resetDocumentDrawer}}
 >
   <:body>
     <form
@@ -644,7 +672,7 @@
       class="flex col gap-4"
       {{on "submit" this.saveDocument}}
     >
-      <Nuvo::Field @label="File {{unless this.editDocument '*'}}">
+      <Nuvo::Field @label="File" @required={{unless this.editDocument true false}}>
         <input
           id="ud-file"
           type="file"
@@ -675,7 +703,6 @@
       <div class="flex gap-4">
         <Nuvo::Field @label="Category" class="grow">
           <Nuvo::Dropdown
-            @searchable={{true}}
             @align="start"
             @value={{this.formDocCategory}}
             @onSelect={{fn this.setFieldValue "formDocCategory"}}
@@ -690,7 +717,6 @@
           @tooltip="Team means every staff member can open this file. Admin means only admins can."
         >
           <Nuvo::Dropdown
-            @searchable={{true}}
             @align="start"
             @value={{this.formDocAccessLevel}}
             @onSelect={{fn this.setFieldValue "formDocAccessLevel"}}
@@ -721,6 +747,7 @@
   </:body>
   <:footer>
     <Nuvo::Button
+      data-test-document-cancel
       @variant="secondary"
       {{on "click" this.closeDocumentModal}}
     >Cancel</Nuvo::Button>
@@ -780,7 +807,6 @@
       @value={{this.unitActionReason}}
       @onInput={{fn this.setFieldValue "unitActionReason"}}
       @invalid={{if this.reasonError true false}}
-      aria-label="Reason"
       data-test-reason-input
     />
   </Nuvo::Field>

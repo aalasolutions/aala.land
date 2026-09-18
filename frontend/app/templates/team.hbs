@@ -166,7 +166,19 @@
           </tbody>
         </table>
       </div>
+    {{else}}
+      {{#if @model.total}}
+        <Nuvo::EmptyState
+          @description="No team members on page {{this.page}}. Navigate back to find members."
+        />
+      {{else}}
+        <Nuvo::EmptyState
+          @description="No team members yet. Add your first team member to get started."
+        />
+      {{/if}}
+    {{/if}}
 
+    {{#if @model.total}}
       <Nuvo::Pagination
         @selectId="team-limit"
         @page={{this.page}}
@@ -177,26 +189,6 @@
         @onNext={{this.goToNextPage}}
         @onPageChange={{this.goToPage}}
       />
-    {{else}}
-      {{#if @model.total}}
-        <Nuvo::EmptyState
-          @description="No team members on page {{this.page}}. Navigate back to find members."
-        />
-        <Nuvo::Pagination
-          @selectId="team-limit"
-          @page={{this.page}}
-          @limit={{this.limit}}
-          @total={{@model.total}}
-          @onLimitChange={{this.setLimit}}
-          @onPrevious={{this.goToPreviousPage}}
-          @onNext={{this.goToNextPage}}
-          @onPageChange={{this.goToPage}}
-        />
-      {{else}}
-        <Nuvo::EmptyState
-          @description="No team members yet. Add your first team member to get started."
-        />
-      {{/if}}
     {{/if}}
   </Nuvo::Card>
 </div>
@@ -207,6 +199,7 @@
   @placement="end"
   @size="lg"
   @onClose={{this.closeModal}}
+  @onClosed={{this.resetDrawer}}
 >
   <:body>
     {{#unless this.editUser}}
@@ -267,11 +260,14 @@
         />
       </Nuvo::Field>
 
-      <Nuvo::Field
-        @label="Regions"
-        @hint="Which regions this member can work in. Selecting more than one lets them switch."
-      >
-        <div class="flex gap-2 wrap" data-test-region-picker>
+      <div class="nu-field">
+        <span id="team-regions-label" class="nu-field__label">Regions</span>
+        <div
+          class="flex gap-2 wrap"
+          role="group"
+          aria-labelledby="team-regions-label"
+          data-test-region-picker
+        >
           {{#each this.assignableRegions as |r|}}
             <button
               type="button"
@@ -289,7 +285,9 @@
             </button>
           {{/each}}
         </div>
-      </Nuvo::Field>
+        <span class="nu-field__hint">Which regions this member can work in.
+          Selecting more than one lets them switch.</span>
+      </div>
 
       {{#if this.hasNoRegionsSelected}}
         <Nuvo::Alert

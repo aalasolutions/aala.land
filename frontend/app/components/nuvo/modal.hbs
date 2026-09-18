@@ -1,7 +1,7 @@
 {{#if @open}}
   <div class={{this.backdropClasses}} data-test-nu-modal-backdrop>
     {{#if this.closeOnBackdrop}}
-      {{! A button, not a click handler on the backdrop: only interactive elements take clicks. }}
+      {{! A button, not a click handler: only interactive elements take clicks. }}
       <button
         type="button"
         class="nu-dialog-dismiss"

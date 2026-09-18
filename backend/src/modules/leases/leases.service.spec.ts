@@ -511,7 +511,10 @@ describe('LeasesService', () => {
     });
 
     it('records STATUS_CHANGE history when the status changes', async () => {
-      seedLocked({ status: LeaseStatus.ACTIVE, tenancyRegistrationRef: 'EJ-1' });
+      seedLocked({
+        status: LeaseStatus.ACTIVE,
+        tenancyRegistrationRef: 'EJ-1',
+      });
 
       await service.update(
         'lease-uuid-1',

@@ -18,10 +18,17 @@
     "Shadow": #{nu-shadow(md)},
     "ArrowSize": 8px,
     "TransitionDuration": nu-duration(fast),
+    // Written inline by the tooltip-fit modifier when the box would leave the viewport.
+    "ShiftX": 0px,
+    "ShiftY": 0px,
+    "ArrowShiftX": 0px,
+    "ArrowShiftY": 0px,
   ));
 
   position: fixed;
   z-index: nu-var("tooltip", "ZIndex");
+  // Kept off `transform`, which the placement modifiers own.
+  translate: nu-var("tooltip", "ShiftX") nu-var("tooltip", "ShiftY");
   inline-size: max-content;
   max-inline-size: nu-var("tooltip", "MaxWidth");
   padding-block: nu-var("tooltip", "PaddingBlock");
@@ -55,6 +62,8 @@
       inset-block-end: calc(#{nu-var("tooltip", "ArrowSize")} / -2);
       inset-inline-start: 50%;
       margin-inline-start: calc(#{nu-var("tooltip", "ArrowSize")} / -2);
+      // Physical shift, so it matches the box shift under RTL too.
+      translate: nu-var("tooltip", "ArrowShiftX") 0;
     }
   }
 
@@ -65,6 +74,8 @@
       inset-block-start: calc(#{nu-var("tooltip", "ArrowSize")} / -2);
       inset-inline-start: 50%;
       margin-inline-start: calc(#{nu-var("tooltip", "ArrowSize")} / -2);
+      // Physical shift, so it matches the box shift under RTL too.
+      translate: nu-var("tooltip", "ArrowShiftX") 0;
     }
   }
 
@@ -75,6 +86,7 @@
       inset-inline-end: calc(#{nu-var("tooltip", "ArrowSize")} / -2);
       inset-block-start: 50%;
       margin-block-start: calc(#{nu-var("tooltip", "ArrowSize")} / -2);
+      translate: 0 nu-var("tooltip", "ArrowShiftY");
     }
   }
 
@@ -85,6 +97,7 @@
       inset-inline-start: calc(#{nu-var("tooltip", "ArrowSize")} / -2);
       inset-block-start: 50%;
       margin-block-start: calc(#{nu-var("tooltip", "ArrowSize")} / -2);
+      translate: 0 nu-var("tooltip", "ArrowShiftY");
     }
   }
 

@@ -67,7 +67,11 @@ export class CreateLeaseDto {
   @Min(1)
   numberOfCheques?: number;
 
-  @ApiProperty({ required: false })
+  @ApiProperty({
+    required: false,
+    description:
+      'Government lease registry reference, for example Ejari in Dubai or Tawtheeq in Abu Dhabi.',
+  })
   @IsOptional()
   @IsString()
   @MaxLength(100)

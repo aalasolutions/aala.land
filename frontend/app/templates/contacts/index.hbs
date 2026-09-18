@@ -198,7 +198,19 @@
           </tbody>
         </table>
       </div>
+    {{else}}
+      {{#if @model.total}}
+        <Nuvo::EmptyState
+          @description="No contacts on page {{this.page}}. Navigate back or adjust your filters."
+        />
+      {{else}}
+        <Nuvo::EmptyState
+          @description="No contacts match these filters."
+        />
+      {{/if}}
+    {{/if}}
 
+    {{#if @model.total}}
       <Nuvo::Pagination
         @selectId="contacts-limit"
         @page={{this.page}}
@@ -209,26 +221,6 @@
         @onNext={{this.goToNextPage}}
         @onPageChange={{this.goToPage}}
       />
-    {{else}}
-      {{#if @model.total}}
-        <Nuvo::EmptyState
-          @description="No contacts on page {{this.page}}. Navigate back or adjust your filters."
-        />
-        <Nuvo::Pagination
-          @selectId="contacts-limit"
-          @page={{this.page}}
-          @limit={{this.limit}}
-          @total={{@model.total}}
-          @onLimitChange={{this.setLimit}}
-          @onPrevious={{this.goToPreviousPage}}
-          @onNext={{this.goToNextPage}}
-          @onPageChange={{this.goToPage}}
-        />
-      {{else}}
-        <Nuvo::EmptyState
-          @description="No contacts match these filters."
-        />
-      {{/if}}
     {{/if}}
   </Nuvo::Card>
 </div>
@@ -239,6 +231,7 @@
   @placement="end"
   @size="lg"
   @onClose={{this.closeModal}}
+  @onClosed={{this.resetDrawer}}
 >
   <:body>
     <form

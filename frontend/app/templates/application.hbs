@@ -11,11 +11,17 @@
       data-test-sidebar
     >
       <div class="nu-sidebar__brand">
-        <img src="/logo.png" alt="AALA.LAND" class="app-shell__brand-mark" />
+        <img
+          src="/logo.png"
+          alt="AALA.LAND"
+          class="app-shell__brand-mark"
+          width="36"
+          height="36"
+        />
         <div class="app-shell__brand-text">
-          <h1 class="nu-sidebar__brand-title">AALA<span
+          <p class="nu-sidebar__brand-title">AALA<span
               class="app-shell__brand-dot"
-            >.</span>LAND</h1>
+            >.</span>LAND</p>
           <p class="nu-sidebar__brand-subtitle">Property Management</p>
         </div>
       </div>
@@ -45,6 +51,7 @@
               {{if (eq this.activeGroup 'properties') 'is-active-group'}}"
           >
             <button
+              data-test-nav-group-toggle="properties"
               type="button"
               class="nu-sidebar__group-toggle
                 {{if
@@ -95,6 +102,7 @@
               {{if (eq this.activeGroup 'crm') 'is-active-group'}}"
           >
             <button
+              data-test-nav-group-toggle="crm"
               type="button"
               class="nu-sidebar__group-toggle
                 {{if (eq this.activeGroup 'crm') 'is-active'}}"
@@ -158,6 +166,7 @@
               {{if (eq this.activeGroup 'finance') 'is-active-group'}}"
           >
             <button
+              data-test-nav-group-toggle="finance"
               type="button"
               class="nu-sidebar__group-toggle
                 {{if (eq this.activeGroup 'finance') 'is-active'}}"
@@ -231,6 +240,7 @@
               {{if (eq this.activeGroup 'operations') 'is-active-group'}}"
           >
             <button
+              data-test-nav-group-toggle="operations"
               type="button"
               class="nu-sidebar__group-toggle
                 {{if
@@ -326,6 +336,7 @@
               {{if (eq this.activeGroup 'admin') 'is-active-group'}}"
           >
             <button
+              data-test-nav-group-toggle="admin"
               type="button"
               class="nu-sidebar__group-toggle
                 {{if (eq this.activeGroup 'admin') 'is-active'}}"
@@ -368,7 +379,13 @@
                   <Ui::Ph @icon="megaphone" />
                   <span class="nu-sidebar__link-label">Marketers</span>
                 </LinkTo>
-                <LinkTo @route="team" class="nu-sidebar__sublink" data-tooltip={{if this.desktopCollapsed "Team"}} data-tooltip-position="end" data-test-nav-team>
+                <LinkTo
+                  @route="team"
+                  class="nu-sidebar__sublink"
+                  data-tooltip={{if this.desktopCollapsed "Team"}}
+                  data-tooltip-position="end"
+                  data-test-nav-team
+                >
                   <Ui::Ph @icon="users-three" />
                   <span class="nu-sidebar__link-label">Team</span>
                 </LinkTo>
@@ -411,6 +428,7 @@
       <div class="app-shell__spacer"></div>
 
       <button
+        data-test-sidebar-collapse
         type="button"
         class="app-shell__collapse"
         aria-label="Toggle sidebar"
@@ -436,7 +454,8 @@
       ></button>
     {{/if}}
 
-    <main class="app-shell__main">
+    {{! tabindex so a dialog can hand focus back here when its trigger is gone. }}
+    <main class="app-shell__main" tabindex="-1">
       {{#if this.session.isImpersonating}}
         <div class="impersonation-banner" data-test-impersonation-banner>
           <span>
@@ -467,14 +486,17 @@
           <Ui::Ph @icon="list" @size="20px" />
         </button>
         <div class="nu-topbar__search">
+          {{! Explicit combobox is the ARIA pattern for a text box that owns a listbox. }}
+          {{! template-lint-disable no-redundant-role }}
           <input
             type="text"
+            role="combobox"
             autocomplete="off"
             aria-label="Search"
             placeholder="Search..."
             class="nu-topbar__search-input"
             aria-autocomplete="list"
-            aria-haspopup="listbox"
+            data-test-global-search
             aria-expanded={{if this.showSearchDropdown "true" "false"}}
             aria-controls="search-results"
             aria-activedescendant={{this.activeSearchResultId}}
@@ -482,6 +504,7 @@
             {{on "input" this.onSearchInput}}
             {{on "keydown" this.onSearchKeydown}}
           />
+          {{! template-lint-enable no-redundant-role }}
           {{#if this.showSearchDropdown}}
             <SearchDropdown
               @results={{this.searchResults}}
@@ -492,17 +515,19 @@
           {{/if}}
         </div>
         {{#if this.showSearchDropdown}}
-          <div
+          <button
+            type="button"
             class="search-overlay"
-            tabindex="-1"
-            aria-hidden="true"
+            aria-label="Close search"
+            data-test-search-overlay
             {{on "click" this.closeSearch}}
-          ></div>
+          ></button>
         {{/if}}
         <div class="nu-topbar__actions">
           {{#if this.showRegionSwitcher}}
             <div class="region-switcher" data-test-region-switcher>
               <button
+                data-test-region-trigger
                 type="button"
                 class="app-shell__region-btn"
                 {{on "click" this.toggleRegionDropdown}}
@@ -517,6 +542,8 @@
                 <button
                   type="button"
                   class="region-overlay"
+                  aria-label="Close region menu"
+                  data-test-region-overlay
                   {{on "click" this.closeRegionDropdown}}
                 ></button>
                 <div class="nu-topbar-menu" data-test-region-dropdown>
@@ -561,6 +588,7 @@
           {{/if}}
           <div class="notification-wrapper">
             <button
+              data-test-notifications-trigger
               type="button"
               class="nu-topbar__icon-btn"
               aria-label="Notifications"
@@ -574,6 +602,7 @@
 
             {{#if this.showNotifications}}
               <button
+                data-test-notifications-overlay
                 type="button"
                 class="notification-overlay"
                 aria-label="Close notifications"
@@ -584,6 +613,7 @@
                   <span class="text-sm font-bold">Notifications</span>
                   {{#if this.unreadCount}}
                     <button
+                      data-test-mark-all-read
                       type="button"
                       class="btn-link text-xs"
                       {{on "click" this.markAllRead}}
@@ -593,6 +623,7 @@
                 <div class="app-shell__menu-list">
                   {{#each this.notifications as |notif|}}
                     <button
+                      data-test-notification-item={{notif.id}}
                       type="button"
                       class="nu-topbar-menu__item
                         {{unless notif.isRead 'unread'}}"
@@ -631,6 +662,7 @@
           </div>
           {{#unless this.isSuperAdmin}}
             <LinkTo
+              data-test-nav-company
               @route="company"
               class="nu-topbar__icon-btn"
               aria-label="Company settings"
@@ -639,6 +671,7 @@
             </LinkTo>
           {{/unless}}
           <LinkTo
+            data-test-nav-profile
             @route="profile"
             class="nu-topbar__icon-btn"
             aria-label="My profile"

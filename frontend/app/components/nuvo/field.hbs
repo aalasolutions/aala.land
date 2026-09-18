@@ -5,10 +5,13 @@
   ...attributes
 >
   {{#if @label}}
-    {{! The tooltip button sits OUTSIDE the label: anything inside a label is
-    read as part of the control's own name. }}
+    {{! The tooltip button sits outside the label: label content becomes the control's name. }}
     <span class="nu-field__label-row">
-      <label class="nu-field__label" id={{this.labelId}} data-test-nu-field-label>
+      <label
+        class="nu-field__label"
+        id={{this.labelId}}
+        data-test-nu-field-label
+      >
         {{@label}}
         {{#if @required}}
           <span

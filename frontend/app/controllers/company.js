@@ -1,6 +1,7 @@
 import Controller from '@ember/controller';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
+import { validPage } from 'land/utils/page-number';
 import { service } from '@ember/service';
 import { isAdminRole } from '../utils/roles';
 import { TIER_LIMITS } from '../utils/subscription-plans';
@@ -380,9 +381,16 @@ export default class CompanyController extends Controller {
     }
   }
 
+  get billingHistoryTotalPages() {
+    return Math.max(
+      1,
+      Math.ceil(this.billingHistoryTotal / this.billingHistoryLimit),
+    );
+  }
+
   @action billingHistoryGoToPage(page) {
-    const target = Number(page);
-    if (!target || target < 1) return;
+    const target = validPage(page, this.billingHistoryTotalPages);
+    if (target === null) return;
     this.fetchBillingHistory(target, this.billingHistoryLimit);
   }
 
