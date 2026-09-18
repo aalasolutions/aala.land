@@ -40,7 +40,7 @@ module('Unit | Service | auth', function (hooks) {
 
   test('isAuthenticated delegates to session service', function (assert) {
     const service = this.owner.lookup('service:auth');
-    assert.strictEqual(service.isAuthenticated, true);
+    assert.true(service.isAuthenticated);
   });
 
   test('token returns accessToken from session data', function (assert) {
@@ -78,7 +78,7 @@ module('Unit | Service | auth', function (hooks) {
 
   test('isImpersonating delegates to session service', function (assert) {
     const service = this.owner.lookup('service:auth');
-    assert.strictEqual(service.isImpersonating, false);
+    assert.false(service.isImpersonating);
   });
 
   test('impersonate calls POST /auth/impersonate and calls session.impersonate with response data', async function (assert) {

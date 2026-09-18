@@ -115,7 +115,7 @@ Interactive components must actually work on the page (state lives in
 
 ```
 cd frontend
-npx ember build --environment=development
+pnpm exec vite build --mode development
 ```
 
 Must exit clean. Then confirm your component's classes appear in the built

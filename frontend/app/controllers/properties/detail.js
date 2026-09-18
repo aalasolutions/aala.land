@@ -100,7 +100,8 @@ export default class PropertiesDetailController extends Controller {
   }
 
   get assetsWithHistory() {
-    const version = this._historyVersion;
+    // tracked dependency for the Map cache
+    this._historyVersion;
     const assets = this.model?.assets || [];
 
     return assets.map((asset) => ({

@@ -1,4 +1,4 @@
-FROM node:20-alpine3.22 AS builder
+FROM node:26-alpine3.23 AS builder
 
 WORKDIR /app
 
@@ -11,7 +11,7 @@ COPY . .
 RUN pnpm run build
 
 # Production stage
-FROM node:20-alpine3.22
+FROM node:26-alpine3.23
 
 WORKDIR /app
 

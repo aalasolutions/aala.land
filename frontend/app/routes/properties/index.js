@@ -10,7 +10,7 @@ export default class PropertiesIndexRoute extends AuthenticatedRoute {
     archived: { refreshModel: true },
   };
 
-  async model({ page = 1, limit = 20 }) {
+  async model() {
     try {
       const json = await this.auth.fetchJson('/locations/company/localities');
       return json.data ?? [];
