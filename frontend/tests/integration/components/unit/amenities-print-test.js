@@ -11,7 +11,7 @@ module('Integration | Component | unit/amenities-print', function (hooks) {
       hbs`<Unit::AmenitiesPrint @amenities={{array "private_dock" "rooftop_garden"}} />`,
     );
 
-    assert.dom('.amenity-tag').exists({ count: 2 });
+    assert.dom('[data-test-amenity-tag]').exists({ count: 2 });
     assert.dom().containsText('Private Dock');
     assert.dom().containsText('Rooftop Garden');
   });
@@ -19,6 +19,6 @@ module('Integration | Component | unit/amenities-print', function (hooks) {
   test('renders no tags when no amenities are provided', async function (assert) {
     await render(hbs`<Unit::AmenitiesPrint />`);
 
-    assert.dom('.amenity-tag').doesNotExist();
+    assert.dom('[data-test-amenity-tag]').doesNotExist();
   });
 });

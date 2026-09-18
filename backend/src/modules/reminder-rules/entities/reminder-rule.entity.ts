@@ -23,12 +23,15 @@ export class ReminderRule {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Index()
+  @Index('IDX_reminder_rules_company_id')
   @Column({ name: 'company_id', type: 'uuid' })
   companyId: string;
 
-  @ManyToOne(() => Company)
-  @JoinColumn({ name: 'company_id' })
+  @ManyToOne(() => Company, { onDelete: 'CASCADE' })
+  @JoinColumn({
+    name: 'company_id',
+    foreignKeyConstraintName: 'FK_reminder_rules_company',
+  })
   company: Company;
 
   @Column({ type: 'varchar', length: 255 })

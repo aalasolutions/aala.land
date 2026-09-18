@@ -1,4 +1,5 @@
 import { module, test } from 'qunit';
+import { settled } from '@ember/test-helpers';
 import { setupTest } from 'land/tests/helpers';
 
 module('Unit | Service | notifications', function (hooks) {
@@ -35,6 +36,15 @@ module('Unit | Service | notifications', function (hooks) {
     service.error('Failed!', 0);
 
     assert.strictEqual(service.toasts[0].type, 'error');
+  });
+
+  test('error() without a duration stays until removed', async function (assert) {
+    const service = this.owner.lookup('service:notifications');
+    service.error('Failed!');
+
+    await settled();
+
+    assert.strictEqual(service.toasts.length, 1);
   });
 
   test('warning() creates a warning toast', function (assert) {

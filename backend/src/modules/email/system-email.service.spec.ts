@@ -163,6 +163,21 @@ describe('SystemEmailService', () => {
       expect(arg.html).toContain('USD 75.00');
     });
 
+    it('formats the renewal date on its UTC calendar day', async () => {
+      (userRepo.findOne as jest.Mock).mockResolvedValueOnce(admin);
+      (prefs.accepts as jest.Mock).mockResolvedValueOnce(true);
+      await service.sendUpcomingInvoiceToCompany(
+        'co-1',
+        new Date('2026-12-31T23:59:59Z'),
+        null,
+        null,
+      );
+      const arg = mail.sendMail.mock.calls[0][0];
+      expect(arg.subject).toBe(
+        'Your AALA.LAND subscription renews on December 31, 2026',
+      );
+    });
+
     it('skips when billing emails are muted', async () => {
       (userRepo.findOne as jest.Mock).mockResolvedValueOnce(admin);
       (prefs.accepts as jest.Mock).mockResolvedValueOnce(false);

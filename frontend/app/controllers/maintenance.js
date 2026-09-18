@@ -14,6 +14,7 @@ import {
   PRIORITY_OPTIONS,
   MAINTENANCE_CATEGORY_OPTIONS,
 } from 'land/constants';
+import { toDateOnly } from 'land/utils/local-date';
 
 export default class MaintenanceController extends PaginatedController {
   @service auth;
@@ -193,9 +194,7 @@ export default class MaintenanceController extends PaginatedController {
     this.formEstimatedCost = wo.estimatedCost ? String(wo.estimatedCost) : '';
     this.formActualCost = wo.actualCost ? String(wo.actualCost) : '';
     this.formCostNotes = wo.costNotes ?? '';
-    this.formScheduledDate = wo.scheduledDate
-      ? wo.scheduledDate.split('T')[0]
-      : '';
+    this.formScheduledDate = toDateOnly(wo.scheduledDate);
     this.formUnitId = wo.unitId ?? '';
     this.formVendorId = wo.vendorId ?? '';
     this.formStatus = wo.status || 'OPEN';
@@ -208,6 +207,9 @@ export default class MaintenanceController extends PaginatedController {
 
   @action closeModal() {
     this.showModal = false;
+  }
+
+  @action resetDrawer() {
     this.editWorkOrder = null;
     this.errorMsg = '';
     this.reasonError = '';

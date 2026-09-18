@@ -67,6 +67,7 @@ module('Integration | Component | login-form', function (hooks) {
     assert.dom('[data-test-error-message]').hasText('Invalid credentials');
   });
 
+  // eslint-disable-next-line qunit/require-expect -- assertions run inside the stubbed service
   test('renders configured Google sign-in and handles credential callback', async function (assert) {
     assert.expect(4);
 

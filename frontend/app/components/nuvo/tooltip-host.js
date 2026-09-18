@@ -18,6 +18,8 @@ const PHYSICAL = {
   'bottom-start': ['bottom-left', 'bottom-right'],
   'bottom-end': ['bottom-right', 'bottom-left'],
 };
+// Width a side-placed tooltip needs before it flips to the other side.
+const SIDE_ROOM = 260;
 
 export default class NuTooltipHostComponent extends Component {
   @service tooltip;
@@ -69,7 +71,17 @@ export default class NuTooltipHostComponent extends Component {
       }
     };
 
+    // Touch fires no mouseout, so a tap elsewhere is what dismisses it.
+    this.onTouchStart = (event) => {
+      if (!event.target?.closest?.('[data-tooltip]')) {
+        this.tooltip.hide();
+      }
+    };
+
     document.addEventListener('mouseover', this.onPointerOver, {
+      passive: true,
+    });
+    document.addEventListener('touchstart', this.onTouchStart, {
       passive: true,
     });
     document.addEventListener('mouseout', this.onPointerOut, { passive: true });
@@ -86,6 +98,7 @@ export default class NuTooltipHostComponent extends Component {
   willDestroy() {
     super.willDestroy(...arguments);
     document.removeEventListener('mouseover', this.onPointerOver);
+    document.removeEventListener('touchstart', this.onTouchStart);
     document.removeEventListener('mouseout', this.onPointerOut);
     document.removeEventListener('focusin', this.onFocusIn);
     document.removeEventListener('focusout', this.onFocusOut);
@@ -96,6 +109,21 @@ export default class NuTooltipHostComponent extends Component {
 
   get isRtl() {
     return document.documentElement.dir === 'rtl';
+  }
+
+  // A side placement with no room flips to the other side, so the hint never
+  // has to be slid on top of the control it describes.
+  #flipSide(side, rect) {
+    if (!rect) return side;
+    const roomLeft = rect.left >= SIDE_ROOM;
+    const roomRight = rect.right <= window.innerWidth - SIDE_ROOM;
+    // Neither side fits, as on a phone: use the block axis instead.
+    if (!roomLeft && !roomRight) {
+      return rect.top < window.innerHeight / 2 ? 'bottom' : 'top';
+    }
+    if (side === 'left' && !roomLeft) return 'right';
+    if (side === 'right' && !roomRight) return 'left';
+    return side;
   }
 
   get resolvedPlacement() {
@@ -109,7 +137,11 @@ export default class NuTooltipHostComponent extends Component {
       return placement;
     }
 
-    return this.#flipHorizontal(this.#flipVertical(placement, rect), rect);
+    if (placement === 'left' || placement === 'right') {
+      return this.#flipSide(placement, rect);
+    }
+
+    return this.#flipCorner(this.#flipVertical(placement, rect), rect);
   }
 
   // A `top` box grows upward, so it flips only when the trigger sits near the top edge.
@@ -135,7 +167,7 @@ export default class NuTooltipHostComponent extends Component {
   }
 
   // `-left` extends leftward from the trigger, so it is the one that overflows on the left.
-  #flipHorizontal(placement, rect) {
+  #flipCorner(placement, rect) {
     const fitsLeftward = this.#cornerAnchor(rect, false) - MAX_WIDTH >= EDGE;
     const fitsRightward =
       this.#cornerAnchor(rect, true) + MAX_WIDTH <= window.innerWidth - EDGE;

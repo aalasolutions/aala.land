@@ -81,7 +81,19 @@
           </tbody>
         </table>
       </div>
+    {{else}}
+      {{#if @model.total}}
+        <Nuvo::EmptyState
+          @description="No vendors on page {{this.page}}. Navigate back to find vendors."
+        />
+      {{else}}
+        <Nuvo::EmptyState
+          @description="No vendors yet. Add your first vendor above."
+        />
+      {{/if}}
+    {{/if}}
 
+    {{#if @model.total}}
       <Nuvo::Pagination
         @selectId="vendors-limit"
         @page={{this.page}}
@@ -90,26 +102,8 @@
         @onLimitChange={{this.setLimit}}
         @onPrevious={{this.goToPreviousPage}}
         @onNext={{this.goToNextPage}}
+        @onPageChange={{this.goToPage}}
       />
-    {{else}}
-      {{#if @model.total}}
-        <Nuvo::EmptyState
-          @description="No vendors on page {{this.page}}. Navigate back to find vendors."
-        />
-        <Nuvo::Pagination
-          @selectId="vendors-limit"
-          @page={{this.page}}
-          @limit={{this.limit}}
-          @total={{@model.total}}
-          @onLimitChange={{this.setLimit}}
-          @onPrevious={{this.goToPreviousPage}}
-          @onNext={{this.goToNextPage}}
-        />
-      {{else}}
-        <Nuvo::EmptyState
-          @description="No vendors yet. Add your first vendor above."
-        />
-      {{/if}}
     {{/if}}
   </Nuvo::Card>
 </div>
@@ -120,6 +114,7 @@
   @placement="end"
   @size="lg"
   @onClose={{this.closeModal}}
+  @onClosed={{this.resetDrawer}}
 >
   <:body>
     <form
@@ -128,7 +123,10 @@
       {{on "submit" this.saveVendor}}
     >
       {{#if this.showRegionField}}
-        <Nuvo::Field @label="Region">
+        <Nuvo::Field
+          @label="Region"
+          @tooltip="The region this vendor works in. Staff in other regions cannot find or assign them."
+        >
           <Nuvo::Dropdown
             id="vendor-region"
             @align="start"
@@ -165,10 +163,13 @@
           {{#each this.specialtyOptions as |opt|}}
             <button
               type="button"
-              class="nu-tag m-pill m-selectable vendor-specialty-chip
-                tag-trade-{{lowercase opt.value}}
-                {{if (includes this.formSpecialties opt.value) 'is-selected'}}"
+              class="nu-tag m-pill m-selectable vendor-specialty-chip tag-trade-{{lowercase opt.value}} {{if (includes this.formSpecialties opt.value) 'is-selected'}}"
               data-test-specialty-chip={{opt.value}}
+              aria-pressed={{if
+                (includes this.formSpecialties opt.value)
+                "true"
+                "false"
+              }}
               {{on "click" (fn this.toggleSpecialty opt.value)}}
             >{{opt.label}}</button>
           {{/each}}

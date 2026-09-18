@@ -29,6 +29,10 @@ export enum LeaseType {
 @Index('IDX_leases_company_active_rows', ['companyId'], {
   where: '"deleted_at" IS NULL',
 })
+@Index('UQ_leases_active_unit', ['unitId'], {
+  unique: true,
+  where: `"status" = 'ACTIVE'`,
+})
 export class Lease {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -40,20 +44,24 @@ export class Lease {
   @JoinColumn({ name: 'company_id' })
   company: Company;
 
+  @Index('IDX_LEASES_UNIT_ID')
   @Column({ name: 'unit_id', type: 'uuid' })
   unitId: string;
 
   @ManyToOne(() => Unit)
-  @JoinColumn({ name: 'unit_id' })
+  @JoinColumn({ name: 'unit_id', foreignKeyConstraintName: 'FK_leases_unit' })
   unit: Unit;
 
   // The tenant is a contact; identity and national ID live there, not on the lease.
-  @Index()
+  @Index('IDX_LEASES_CONTACT_ID')
   @Column({ name: 'contact_id', type: 'uuid', nullable: true })
   contactId: string | null;
 
-  @ManyToOne(() => Contact, { nullable: true })
-  @JoinColumn({ name: 'contact_id' })
+  @ManyToOne(() => Contact, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({
+    name: 'contact_id',
+    foreignKeyConstraintName: 'fk_leases_contact',
+  })
   contact: Contact | null;
 
   @Column({
@@ -71,10 +79,10 @@ export class Lease {
   status: LeaseStatus;
 
   @Column({ name: 'start_date', type: 'date' })
-  startDate: Date;
+  startDate: string;
 
   @Column({ name: 'end_date', type: 'date' })
-  endDate: Date;
+  endDate: string;
 
   @Column({ name: 'monthly_rent', type: 'decimal', precision: 12, scale: 2 })
   monthlyRent: number;
@@ -95,12 +103,12 @@ export class Lease {
   numberOfCheques: number;
 
   @Column({
-    name: 'ejari_number',
+    name: 'tenancy_registration_ref',
     length: 100,
     nullable: true,
     type: 'varchar',
   })
-  ejariNumber: string | null;
+  tenancyRegistrationRef: string | null;
 
   @Column({ type: 'text', nullable: true })
   notes: string | null;

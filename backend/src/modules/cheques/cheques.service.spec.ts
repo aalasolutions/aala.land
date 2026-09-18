@@ -17,6 +17,7 @@ import { Cheque, ChequeStatus, ChequeType } from './entities/cheque.entity';
 import { Unit } from '../properties/entities/unit.entity';
 import { Lease } from '../leases/entities/lease.entity';
 import { Company } from '../companies/entities/company.entity';
+import { regionTodaySql } from '../../shared/utils/region-time.util';
 
 describe('ChequesService', () => {
   let service: ChequesService;
@@ -89,7 +90,7 @@ describe('ChequesService', () => {
     accountHolder: 'Ahmed Al-Rashid',
     amount: 15000,
     currency: 'AED',
-    dueDate: new Date('2026-03-01'),
+    dueDate: '2026-03-01',
     status: ChequeStatus.PENDING,
     type: ChequeType.RENT,
     ocrProcessed: false,
@@ -409,7 +410,7 @@ describe('ChequesService', () => {
       const updated = {
         ...mockCheque,
         status: ChequeStatus.DEPOSITED,
-        depositDate: new Date(),
+        depositDate: '2026-09-16',
       } as Cheque;
       repo.findOne
         .mockResolvedValueOnce({ ...mockCheque } as Cheque)
@@ -443,7 +444,7 @@ describe('ChequesService', () => {
       const updated = {
         ...mockCheque,
         status: ChequeStatus.DEPOSITED,
-        depositDate: new Date(),
+        depositDate: '2026-09-16',
       } as Cheque;
       repo.findOne
         .mockResolvedValueOnce({ ...mockCheque } as Cheque)
@@ -562,30 +563,95 @@ describe('ChequesService', () => {
       );
     });
 
-    it('sets depositDate to now when status is DEPOSITED and depositDate is null', async () => {
-      const chequeNoDepositDate = {
-        ...mockCheque,
-        depositDate: null,
-      } as Cheque;
-      const persisted = {
-        ...mockCheque,
-        status: ChequeStatus.DEPOSITED,
-        depositDate: new Date(),
-      } as Cheque;
-      repo.findOne
-        .mockResolvedValueOnce(chequeNoDepositDate)
-        .mockResolvedValueOnce(persisted);
+    describe('depositDate stamping', () => {
+      // 21:00Z is already the next calendar day in Dubai (UTC+4).
+      const instant = new Date('2026-09-16T21:00:00Z').getTime();
 
-      const result = await service.update('cheque-uuid-1', companyId, {
-        status: ChequeStatus.DEPOSITED,
+      beforeEach(() => {
+        jest.useFakeTimers({
+          now: instant,
+          doNotFake: [
+            'hrtime',
+            'nextTick',
+            'performance',
+            'queueMicrotask',
+            'setImmediate',
+            'clearImmediate',
+            'setInterval',
+            'clearInterval',
+            'setTimeout',
+            'clearTimeout',
+          ],
+        });
       });
 
-      // depositDate is stamped in the conditional UPDATE's SET clause.
-      const setArg = updateBuilder.set.mock.calls[0][0];
-      expect(setArg.depositDate).toBeInstanceOf(Date);
-      expect(setArg.status).toBe(ChequeStatus.DEPOSITED);
-      // Returned entity is the fresh re-read.
-      expect(result.depositDate).toBeInstanceOf(Date);
+      afterEach(() => {
+        jest.useRealTimers();
+      });
+
+      it('stamps the region calendar day when status is DEPOSITED and depositDate is null', async () => {
+        const chequeNoDepositDate = {
+          ...mockCheque,
+          regionCode: 'dubai',
+          depositDate: null,
+        } as Cheque;
+        const persisted = {
+          ...mockCheque,
+          regionCode: 'dubai',
+          status: ChequeStatus.DEPOSITED,
+          depositDate: '2026-09-17',
+        } as Cheque;
+        repo.findOne
+          .mockResolvedValueOnce(chequeNoDepositDate)
+          .mockResolvedValueOnce(persisted);
+
+        const result = await service.update('cheque-uuid-1', companyId, {
+          status: ChequeStatus.DEPOSITED,
+        });
+
+        // depositDate is stamped in the conditional UPDATE's SET clause.
+        const setArg = updateBuilder.set.mock.calls[0][0];
+        expect(setArg.depositDate).toBe('2026-09-17');
+        expect(setArg.status).toBe(ChequeStatus.DEPOSITED);
+        // Returned entity is the fresh re-read.
+        expect(result.depositDate).toBe('2026-09-17');
+      });
+
+      it('falls back to the UTC calendar day when the cheque has no region', async () => {
+        const chequeNoRegion = {
+          ...mockCheque,
+          regionCode: null,
+          depositDate: null,
+        } as unknown as Cheque;
+        repo.findOne
+          .mockResolvedValueOnce(chequeNoRegion)
+          .mockResolvedValueOnce({ ...chequeNoRegion } as Cheque);
+
+        await service.update('cheque-uuid-1', companyId, {
+          status: ChequeStatus.DEPOSITED,
+        });
+
+        const setArg = updateBuilder.set.mock.calls[0][0];
+        expect(setArg.depositDate).toBe('2026-09-16');
+      });
+
+      it('keeps an existing depositDate', async () => {
+        const chequeWithDate = {
+          ...mockCheque,
+          regionCode: 'dubai',
+          depositDate: '2026-09-01',
+        } as Cheque;
+        repo.findOne
+          .mockResolvedValueOnce(chequeWithDate)
+          .mockResolvedValueOnce({ ...chequeWithDate } as Cheque);
+
+        await service.update('cheque-uuid-1', companyId, {
+          status: ChequeStatus.DEPOSITED,
+        });
+
+        const setArg = updateBuilder.set.mock.calls[0][0];
+        expect(setArg.depositDate).toBe('2026-09-01');
+      });
     });
 
     it('does not allow changing status of a terminal cheque (CLEARED)', async () => {
@@ -662,7 +728,7 @@ describe('ChequesService', () => {
       const updated = {
         ...mockCheque,
         status: ChequeStatus.DEPOSITED,
-        depositDate: new Date(),
+        depositDate: '2026-09-16',
       } as Cheque;
       repo.findOne
         .mockResolvedValueOnce({ ...mockCheque } as Cheque)
@@ -1009,7 +1075,10 @@ describe('ChequesService', () => {
           unitId: 'unit-late',
         } as any),
       ).rejects.toThrow(lockedMessage);
-      expect(manager.findOne).toHaveBeenCalledWith(Unit, shareLock('unit-late'));
+      expect(manager.findOne).toHaveBeenCalledWith(
+        Unit,
+        shareLock('unit-late'),
+      );
       expect(repo.save).not.toHaveBeenCalled();
     });
 
@@ -1043,7 +1112,10 @@ describe('ChequesService', () => {
         select: { id: true, unitId: true, deletedAt: true },
         lock: { mode: 'pessimistic_read' },
       });
-      expect(manager.findOne).toHaveBeenCalledWith(Unit, shareLock('unit-late'));
+      expect(manager.findOne).toHaveBeenCalledWith(
+        Unit,
+        shareLock('unit-late'),
+      );
       expect(
         manager.findOne.mock.calls.findIndex(([e]) => e === Lease),
       ).toBeLessThan(manager.findOne.mock.calls.findIndex(([e]) => e === Unit));
@@ -1117,7 +1189,10 @@ describe('ChequesService', () => {
           'user-1',
         ),
       ).rejects.toThrow('This unit is archived.');
-      expect(manager.findOne).toHaveBeenCalledWith(Unit, shareLock('unit-late'));
+      expect(manager.findOne).toHaveBeenCalledWith(
+        Unit,
+        shareLock('unit-late'),
+      );
       expect(updateBuilder.execute).not.toHaveBeenCalled();
     });
 
@@ -1335,17 +1410,47 @@ describe('ChequesService', () => {
   });
 
   describe('getCollectionSchedule', () => {
+    const today = regionTodaySql('cheque.region_code');
+    const weekEnd = `(${today} + (7 - EXTRACT(DOW FROM ${today}))::int)`;
+    const nextWeekEnd = `(${weekEnd} + 7)`;
+    const monthEnd = `((date_trunc('month', ${today}) + interval '1 month - 1 day')::date)`;
+    const bucketConditions = [
+      `cheque.due_date < ${today}`,
+      `cheque.due_date BETWEEN ${today} AND ${weekEnd}`,
+      `cheque.due_date > ${weekEnd} AND cheque.due_date <= ${nextWeekEnd}`,
+      `cheque.due_date > ${nextWeekEnd} AND cheque.due_date <= ${monthEnd}`,
+    ];
+
+    // One builder per bucket, resolved in call order.
+    function seedBuckets(results: Cheque[][]) {
+      const builders: any[] = [];
+      repo.createQueryBuilder.mockImplementation((() => {
+        const rows = results[builders.length] ?? [];
+        const qb: any = {
+          where: jest.fn().mockReturnThis(),
+          andWhere: jest.fn().mockReturnThis(),
+          orderBy: jest.fn().mockReturnThis(),
+          take: jest.fn().mockReturnThis(),
+          getMany: jest.fn().mockResolvedValue(rows),
+        };
+        builders.push(qb);
+        return qb;
+      }) as any);
+      return builders;
+    }
+
     it('returns cheques grouped by due date schedule', async () => {
       const overdueCheque = { ...mockCheque, id: 'overdue-1' } as Cheque;
       const thisWeekCheque = { ...mockCheque, id: 'week-1' } as Cheque;
       const nextWeekCheque = { ...mockCheque, id: 'next-week-1' } as Cheque;
       const monthCheque = { ...mockCheque, id: 'month-1' } as Cheque;
 
-      repo.find
-        .mockResolvedValueOnce([overdueCheque])
-        .mockResolvedValueOnce([thisWeekCheque])
-        .mockResolvedValueOnce([nextWeekCheque])
-        .mockResolvedValueOnce([monthCheque]);
+      const builders = seedBuckets([
+        [overdueCheque],
+        [thisWeekCheque],
+        [nextWeekCheque],
+        [monthCheque],
+      ]);
 
       const result = await service.getCollectionSchedule(companyId);
 
@@ -1353,11 +1458,25 @@ describe('ChequesService', () => {
       expect(result.thisWeek).toEqual([thisWeekCheque]);
       expect(result.nextWeek).toEqual([nextWeekCheque]);
       expect(result.thisMonth).toEqual([monthCheque]);
-      expect(repo.find).toHaveBeenCalledTimes(4);
+      expect(repo.createQueryBuilder).toHaveBeenCalledTimes(4);
+      expect(repo.createQueryBuilder).toHaveBeenCalledWith('cheque');
+      expect(repo.find).not.toHaveBeenCalled();
+      expect(builders).toHaveLength(4);
+    });
+
+    it('uses non-overlapping region-day buckets in the row region zone', async () => {
+      const builders = seedBuckets([]);
+
+      await service.getCollectionSchedule(companyId);
+
+      expect(today).toContain("WHEN cheque.region_code IN ('dubai'");
+      expect(today).toContain('now() AT TIME ZONE');
+      const conditions = builders.map((qb) => qb.andWhere.mock.calls[1][0]);
+      expect(conditions).toEqual(bucketConditions);
     });
 
     it('returns empty arrays when no pending cheques', async () => {
-      repo.find.mockResolvedValue([]);
+      seedBuckets([]);
 
       const result = await service.getCollectionSchedule(companyId);
 
@@ -1367,15 +1486,27 @@ describe('ChequesService', () => {
       expect(result.thisMonth).toEqual([]);
     });
 
-    it('filters by PENDING status only', async () => {
-      repo.find.mockResolvedValue([]);
+    it('filters by company and PENDING status only, ordered and capped', async () => {
+      const builders = seedBuckets([]);
 
       await service.getCollectionSchedule(companyId);
 
-      for (const call of repo.find.mock.calls) {
-        const where = (call[0] as any).where;
-        expect(where.companyId).toBe(companyId);
-        expect(where.status).toBe(ChequeStatus.PENDING);
+      for (const qb of builders) {
+        expect(qb.where).toHaveBeenCalledWith(
+          'cheque.company_id = :companyId',
+          {
+            companyId,
+          },
+        );
+        expect(qb.andWhere).toHaveBeenCalledWith('cheque.status = :status', {
+          status: ChequeStatus.PENDING,
+        });
+        expect(qb.orderBy).toHaveBeenCalledWith('cheque.due_date', 'ASC');
+        expect(qb.take).toHaveBeenCalledWith(100);
+        expect(qb.andWhere).not.toHaveBeenCalledWith(
+          'cheque.region_code IN (:...scopedCodes)',
+          expect.anything(),
+        );
       }
     });
   });
@@ -1694,6 +1825,37 @@ describe('ChequesService', () => {
       return rows;
     }
 
+    // Stands in for Postgres on the schedule reads: every bucket admits the
+    // seeded cheques whose region_code the scoped IN clause allows.
+    function seedScheduleCheques(
+      seeds: Array<{ id: string; regionCode: string; unitId: string | null }>,
+    ) {
+      const rows = seeds.map((seed) => ({ ...mockCheque, ...seed }) as Cheque);
+      const builders: any[] = [];
+      repo.createQueryBuilder.mockImplementation((() => {
+        let codes: string[] | undefined;
+        const qb: any = {
+          where: jest.fn().mockReturnThis(),
+          andWhere: jest.fn((_sql: string, params?: any) => {
+            if (params?.scopedCodes) codes = params.scopedCodes;
+            return qb;
+          }),
+          orderBy: jest.fn().mockReturnThis(),
+          take: jest.fn().mockReturnThis(),
+          getMany: jest.fn(() =>
+            Promise.resolve(
+              codes
+                ? rows.filter((row) => codes!.includes(row.regionCode))
+                : rows,
+            ),
+          ),
+        };
+        builders.push(qb);
+        return qb;
+      }) as any);
+      return builders;
+    }
+
     // A cheque with no unit is the case the column exists for: under the unit
     // chain filter it matched no region at all.
     const listSeeds = [
@@ -1802,7 +1964,7 @@ describe('ChequesService', () => {
     });
 
     it('confines the collection schedule to the caller assigned regions', async () => {
-      seedCheques(listSeeds);
+      const builders = seedScheduleCheques(listSeeds);
 
       const result = await service.getCollectionSchedule(
         companyId,
@@ -1817,10 +1979,17 @@ describe('ChequesService', () => {
         'cheque-makkah',
         'cheque-makkah-no-unit',
       ]);
+      expect(builders).toHaveLength(4);
+      for (const qb of builders) {
+        expect(qb.andWhere).toHaveBeenCalledWith(
+          'cheque.region_code IN (:...scopedCodes)',
+          { scopedCodes: ['makkah'] },
+        );
+      }
     });
 
     it('leaves the collection schedule unfiltered for admins', async () => {
-      seedCheques(listSeeds);
+      const builders = seedScheduleCheques(listSeeds);
 
       const result = await service.getCollectionSchedule(companyId, admin);
 
@@ -1829,10 +1998,16 @@ describe('ChequesService', () => {
         'cheque-makkah-no-unit',
         'cheque-punjab',
       ]);
+      for (const qb of builders) {
+        expect(qb.andWhere).not.toHaveBeenCalledWith(
+          'cheque.region_code IN (:...scopedCodes)',
+          expect.anything(),
+        );
+      }
     });
 
     it('returns an empty collection schedule when the caller has no assigned region', async () => {
-      seedCheques(listSeeds);
+      seedScheduleCheques(listSeeds);
 
       const result = await service.getCollectionSchedule(companyId, {
         role: 'manager',
@@ -1845,7 +2020,7 @@ describe('ChequesService', () => {
         nextWeek: [],
         thisMonth: [],
       });
-      expect(repo.find).not.toHaveBeenCalled();
+      expect(repo.createQueryBuilder).not.toHaveBeenCalled();
     });
 
     describe('unit binding', () => {

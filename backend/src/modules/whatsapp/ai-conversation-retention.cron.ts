@@ -17,7 +17,7 @@ export class AiConversationRetentionCron {
     private readonly conversationRepo: Repository<WhatsappAiConversation>,
   ) {}
 
-  @Cron('0 3 * * *')
+  @Cron('0 3 * * *', { timeZone: 'UTC' })
   async run(): Promise<void> {
     const cutoff = new Date();
     cutoff.setUTCMonth(cutoff.getUTCMonth() - RETENTION_MONTHS);

@@ -26,7 +26,7 @@ export default class NotificationsService extends Service {
     return this.add(message, 'info', duration);
   }
 
-  error(message, duration) {
+  error(message, duration = 0) {
     return this.add(message, 'error', duration);
   }
 

@@ -1,9 +1,16 @@
 {{#if @open}}
-  <div
-    class={{this.backdropClasses}}
-    data-test-nu-modal-backdrop
-    {{on "click" this.onBackdropClick}}
-  >
+  <div class={{this.backdropClasses}} data-test-nu-modal-backdrop>
+    {{#if this.closeOnBackdrop}}
+      {{! A button, not a click handler: only interactive elements take clicks. }}
+      <button
+        type="button"
+        class="nu-dialog-dismiss"
+        tabindex="-1"
+        aria-hidden="true"
+        data-test-nu-modal-backdrop-dismiss
+        {{on "click" this.onClose}}
+      ></button>
+    {{/if}}
     <div
       class={{this.modalClasses}}
       role="dialog"
@@ -11,7 +18,7 @@
       aria-labelledby={{if (or (has-block "header") @title) this.titleId}}
       tabindex="-1"
       data-test-nu-modal
-      {{did-insert this.registerModal}}
+      {{dialog onEscape=this.onClose closeOnEsc=@closeOnEsc}}
       ...attributes
     >
       {{#if (has-block "header")}}

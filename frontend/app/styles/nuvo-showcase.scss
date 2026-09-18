@@ -77,10 +77,11 @@
   align-items: center;
   gap: nu-space(3);
   margin-block-end: nu-space(4);
-}
 
-.nuvo-row--divider-demo {
-  block-size: 4rem;
+  // Gives a progress or bar demo room to show its full height.
+  &--full-height {
+    block-size: nu-space(16);
+  }
 }
 
 .nuvo-stack {

@@ -33,6 +33,7 @@ export class Cheque {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
+  @Index('IDX_CHEQUES_COMPANY_ID')
   @Column({ name: 'company_id', type: 'uuid' })
   companyId: string;
 
@@ -40,18 +41,23 @@ export class Cheque {
   @JoinColumn({ name: 'company_id' })
   company: Company;
 
+  @Index('IDX_CHEQUES_LEASE_ID')
   @Column({ name: 'lease_id', type: 'uuid', nullable: true })
   leaseId: string | null;
 
+  @Index('IDX_CHEQUES_UNIT_ID')
   @Column({ name: 'unit_id', type: 'uuid', nullable: true })
   unitId: string | null;
 
   @ManyToOne(() => Lease, { nullable: true })
-  @JoinColumn({ name: 'lease_id' })
+  @JoinColumn({
+    name: 'lease_id',
+    foreignKeyConstraintName: 'FK_cheques_lease',
+  })
   lease: Lease | null;
 
   @ManyToOne(() => Unit, { nullable: true })
-  @JoinColumn({ name: 'unit_id' })
+  @JoinColumn({ name: 'unit_id', foreignKeyConstraintName: 'FK_cheques_unit' })
   unit: Unit | null;
 
   @Index('IDX_CHEQUES_REGION_CODE')
@@ -74,10 +80,10 @@ export class Cheque {
   currency: string;
 
   @Column({ name: 'due_date', type: 'date' })
-  dueDate: Date;
+  dueDate: string;
 
   @Column({ name: 'deposit_date', type: 'date', nullable: true })
-  depositDate: Date | null;
+  depositDate: string | null;
 
   @Column({
     type: 'enum',

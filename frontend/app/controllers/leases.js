@@ -15,6 +15,7 @@ import {
   openDeleteModal,
 } from '../utils/delete-modal';
 import { ROLES } from '../utils/roles';
+import { toDateOnly } from '../utils/local-date';
 
 const ARCHIVE_ROLES = [ROLES.COMPANY_ADMIN, ROLES.ADMIN, ROLES.MANAGER];
 const DELETE_ROLES = [ROLES.SUPER_ADMIN, ROLES.COMPANY_ADMIN, ROLES.ADMIN];
@@ -51,7 +52,7 @@ export default class LeasesController extends PaginatedController {
   @tracked formMonthlyRent = '';
   @tracked formSecurityDeposit = '';
   @tracked formNumberOfCheques = '4';
-  @tracked formEjariNumber = '';
+  @tracked formTenancyRegistrationRef = '';
   @tracked formNotes = '';
   @tracked renewingLeaseId = null;
   @tracked isSaving = false;
@@ -231,7 +232,7 @@ export default class LeasesController extends PaginatedController {
     this.formMonthlyRent = '';
     this.formSecurityDeposit = '';
     this.formNumberOfCheques = '4';
-    this.formEjariNumber = '';
+    this.formTenancyRegistrationRef = '';
     this.formNotes = '';
     this.editLease = null;
     this.renewingLeaseId = null;
@@ -244,14 +245,14 @@ export default class LeasesController extends PaginatedController {
     this.formTenantContactId = lease.contactId ?? lease.contact?.id ?? '';
     this.formUnitId = lease.unitId ?? '';
     this.formType = lease.type ?? 'RESIDENTIAL';
-    this.formStartDate = lease.startDate ? lease.startDate.split('T')[0] : '';
-    this.formEndDate = lease.endDate ? lease.endDate.split('T')[0] : '';
+    this.formStartDate = toDateOnly(lease.startDate);
+    this.formEndDate = toDateOnly(lease.endDate);
     this.formMonthlyRent = String(lease.monthlyRent);
     this.formSecurityDeposit = lease.securityDeposit
       ? String(lease.securityDeposit)
       : '';
     this.formNumberOfCheques = String(lease.numberOfCheques ?? 4);
-    this.formEjariNumber = lease.ejariNumber ?? '';
+    this.formTenancyRegistrationRef = lease.tenancyRegistrationRef ?? '';
     this.formNotes = lease.notes ?? '';
     this.editLease = lease;
     this.formStatus = lease.status ?? 'DRAFT';
@@ -261,6 +262,9 @@ export default class LeasesController extends PaginatedController {
 
   @action closeModal() {
     this.showModal = false;
+  }
+
+  @action resetDrawer() {
     this.editLease = null;
     this.renewingLeaseId = null;
     this.errorMsg = '';
@@ -317,8 +321,8 @@ export default class LeasesController extends PaginatedController {
             ? { securityDeposit: parseFloat(this.formSecurityDeposit) }
             : {}),
           numberOfCheques: parseInt(this.formNumberOfCheques, 10),
-          ...(this.formEjariNumber
-            ? { ejariNumber: this.formEjariNumber }
+          ...(this.formTenancyRegistrationRef
+            ? { tenancyRegistrationRef: this.formTenancyRegistrationRef }
             : {}),
           ...(this.formNotes ? { notes: this.formNotes } : {}),
           status: this.formStatus,
@@ -336,8 +340,8 @@ export default class LeasesController extends PaginatedController {
             ? { securityDeposit: parseFloat(this.formSecurityDeposit) }
             : {}),
           numberOfCheques: parseInt(this.formNumberOfCheques, 10),
-          ...(this.formEjariNumber
-            ? { ejariNumber: this.formEjariNumber }
+          ...(this.formTenancyRegistrationRef
+            ? { tenancyRegistrationRef: this.formTenancyRegistrationRef }
             : {}),
           ...(this.formNotes ? { notes: this.formNotes } : {}),
         };
@@ -365,14 +369,14 @@ export default class LeasesController extends PaginatedController {
     this.formTenantContactId = lease.contactId ?? lease.contact?.id ?? '';
     this.formUnitId = lease.unitId ?? '';
     this.formType = lease.type ?? 'RESIDENTIAL';
-    this.formStartDate = lease.endDate ? lease.endDate.split('T')[0] : '';
+    this.formStartDate = toDateOnly(lease.endDate);
     this.formEndDate = '';
     this.formMonthlyRent = String(lease.monthlyRent);
     this.formSecurityDeposit = lease.securityDeposit
       ? String(lease.securityDeposit)
       : '';
     this.formNumberOfCheques = String(lease.numberOfCheques ?? 4);
-    this.formEjariNumber = '';
+    this.formTenancyRegistrationRef = '';
     this.formNotes = '';
     this.editLease = null;
     this.renewingLeaseId = lease.id;

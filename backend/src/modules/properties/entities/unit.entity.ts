@@ -22,6 +22,14 @@ export enum UnitStatus {
 }
 
 @Entity('units')
+@Index('IDX_units_amenities', { synchronize: false })
+@Index(
+  'IDX_units_company_agent_active_rows',
+  ['companyId', 'assignedAgentId'],
+  {
+    where: '"deleted_at" IS NULL',
+  },
+)
 export class Unit {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -29,11 +37,15 @@ export class Unit {
   @Column({ name: 'unit_number', type: 'varchar', length: 50 })
   unitNumber: string;
 
+  @Index('IDX_UNITS_ASSET_ID')
   @Column({ name: 'asset_id', type: 'uuid' })
   assetId: string;
 
   @ManyToOne(() => Asset, (asset) => asset.units)
-  @JoinColumn({ name: 'asset_id' })
+  @JoinColumn({
+    name: 'asset_id',
+    foreignKeyConstraintName: 'FK_173b4aee6c28c4db7e929760d80',
+  })
   asset: Asset;
 
   @Column({ name: 'company_id', type: 'uuid' })
@@ -43,21 +55,24 @@ export class Unit {
   @JoinColumn({ name: 'company_id' })
   company: Company;
 
-  @Index()
+  @Index('IDX_UNITS_OWNER_ID')
   @Column({ name: 'owner_id', type: 'uuid', nullable: true })
   ownerId: string | null;
 
   // A unit's owner is a contact, with at most one owner per unit (no co-ownership).
-  @ManyToOne(() => Contact, { nullable: true })
-  @JoinColumn({ name: 'owner_id' })
+  @ManyToOne(() => Contact, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'owner_id', foreignKeyConstraintName: 'fk_units_owner' })
   owner: Contact | null;
 
   // Assignment lives on the unit, not the person: owner and agent can differ
   @Column({ name: 'assigned_agent_id', type: 'uuid', nullable: true })
   assignedAgentId: string | null;
 
-  @ManyToOne(() => User, { nullable: true })
-  @JoinColumn({ name: 'assigned_agent_id' })
+  @ManyToOne(() => User, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({
+    name: 'assigned_agent_id',
+    foreignKeyConstraintName: 'fk_units_assigned_agent',
+  })
   assignedAgent: User | null;
 
   @Column({

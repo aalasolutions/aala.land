@@ -69,7 +69,7 @@ export class User {
   })
   role: Role;
 
-  @Index()
+  @Index('IDX_USERS_COMPANY_ID')
   @Column({ name: 'company_id', type: 'uuid', nullable: true })
   companyId: string | null;
 
@@ -78,7 +78,7 @@ export class User {
   company: Company;
 
   // Regions this user may work in. jsonb to match companies.active_regions.
-  @Column({ name: 'region_codes', type: 'jsonb', default: () => "'[]'::jsonb" })
+  @Column({ name: 'region_codes', type: 'jsonb', default: [] })
   regionCodes: string[];
 
   @Column({ type: 'varchar', length: 50, nullable: true })
@@ -118,7 +118,7 @@ export class User {
   @Column({
     name: 'email_preferences',
     type: 'jsonb',
-    default: () => `'${JSON.stringify(DEFAULT_EMAIL_PREFERENCES)}'`,
+    default: DEFAULT_EMAIL_PREFERENCES,
   })
   emailPreferences: EmailPreferences;
 

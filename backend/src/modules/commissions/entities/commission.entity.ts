@@ -6,6 +6,7 @@ import {
   UpdateDateColumn,
   ManyToOne,
   JoinColumn,
+  Index,
 } from 'typeorm';
 import { Company } from '../../companies/entities/company.entity';
 import { User } from '../../users/entities/user.entity';
@@ -31,6 +32,7 @@ const decimalTransformer = {
 };
 
 @Entity('commissions')
+@Index('IDX_commissions_company_agent', ['companyId', 'agentId'])
 export class Commission {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -45,8 +47,11 @@ export class Commission {
   @Column({ name: 'agent_id', type: 'uuid' })
   agentId: string;
 
-  @ManyToOne(() => User)
-  @JoinColumn({ name: 'agent_id' })
+  @ManyToOne(() => User, { onDelete: 'RESTRICT' })
+  @JoinColumn({
+    name: 'agent_id',
+    foreignKeyConstraintName: 'FK_commissions_agent_users',
+  })
   agent: User;
 
   @Column({ name: 'lead_id', type: 'uuid', nullable: true })
@@ -56,11 +61,17 @@ export class Commission {
   transactionId: string | null;
 
   @ManyToOne(() => Lead, { nullable: true })
-  @JoinColumn({ name: 'lead_id' })
+  @JoinColumn({
+    name: 'lead_id',
+    foreignKeyConstraintName: 'FK_commissions_lead',
+  })
   lead: Lead | null;
 
   @ManyToOne(() => Transaction, { nullable: true })
-  @JoinColumn({ name: 'transaction_id' })
+  @JoinColumn({
+    name: 'transaction_id',
+    foreignKeyConstraintName: 'FK_commissions_transaction',
+  })
   transaction: Transaction | null;
 
   @Column({
@@ -113,6 +124,7 @@ export class Commission {
   @Column({ type: 'text', nullable: true })
   notes: string | null;
 
+  @Index('IDX_COMMISSIONS_REGION_CODE')
   @Column({ name: 'region_code', type: 'varchar', length: 50 })
   regionCode: string;
 

@@ -23,7 +23,7 @@ module('Unit | Service | session', function (hooks) {
 
   test('isImpersonating returns false when no impersonator session exists', function (assert) {
     const service = this.owner.lookup('service:session');
-    assert.strictEqual(service.isImpersonating, false);
+    assert.false(service.isImpersonating);
   });
 
   test('isImpersonating returns true when impersonator session exists on restore', function (assert) {
@@ -49,7 +49,7 @@ module('Unit | Service | session', function (hooks) {
     );
 
     const service = this.owner.lookup('service:session');
-    assert.strictEqual(service.isImpersonating, true);
+    assert.true(service.isImpersonating);
   });
 
   test('impersonate saves current in-memory session to impersonator slot and establishes new session', function (assert) {

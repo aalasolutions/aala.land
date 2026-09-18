@@ -25,12 +25,15 @@ export class EmailTemplate {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Index()
+  @Index('IDX_EMAIL_TEMPLATES_COMPANY_ID')
   @Column({ name: 'company_id', type: 'uuid' })
   companyId: string;
 
-  @ManyToOne(() => Company)
-  @JoinColumn({ name: 'company_id' })
+  @ManyToOne(() => Company, { onDelete: 'CASCADE' })
+  @JoinColumn({
+    name: 'company_id',
+    foreignKeyConstraintName: 'FK_email_templates_company',
+  })
   company: Company;
 
   @Column({ type: 'varchar', length: 200 })
@@ -42,9 +45,11 @@ export class EmailTemplate {
   @Column({ type: 'text' })
   body: string;
 
+  @Index('IDX_EMAIL_TEMPLATES_CATEGORY')
   @Column({
     type: 'enum',
     enum: EmailTemplateCategory,
+    enumName: 'email_template_category_enum',
     default: EmailTemplateCategory.CUSTOM,
   })
   category: EmailTemplateCategory;

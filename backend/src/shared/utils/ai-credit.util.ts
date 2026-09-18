@@ -5,6 +5,7 @@ import {
   AI_CREDITS_PER_SEAT,
   ENTERPRISE_AI_CREDITS_PER_SEAT,
 } from '@modules/companies/entities/company.entity';
+import { addMonthsToInstant, monthsBetweenInstants } from './region-time.util';
 
 export function getAiCreditAllowance(company: Company): number {
   const tier = company.subscriptionTier;
@@ -17,26 +18,6 @@ export function getAiCreditAllowance(company: Company): number {
   return Math.max(company.purchasedSeats, 1) * AI_CREDITS_PER_SEAT;
 }
 
-function addMonthsClamped(base: Date, months: number): Date {
-  const day = base.getUTCDate();
-  const target = new Date(
-    Date.UTC(
-      base.getUTCFullYear(),
-      base.getUTCMonth() + months,
-      1,
-      base.getUTCHours(),
-      base.getUTCMinutes(),
-      base.getUTCSeconds(),
-      base.getUTCMilliseconds(),
-    ),
-  );
-  const lastDayOfTargetMonth = new Date(
-    Date.UTC(target.getUTCFullYear(), target.getUTCMonth() + 1, 0),
-  ).getUTCDate();
-  target.setUTCDate(Math.min(day, lastDayOfTargetMonth));
-  return target;
-}
-
 export function getCreditPeriod(
   anchor: Date,
   now: Date = new Date(),
@@ -44,25 +25,23 @@ export function getCreditPeriod(
   const base = new Date(anchor);
 
   if (now.getTime() < base.getTime()) {
-    return { start: base, end: addMonthsClamped(base, 1) };
+    return { start: base, end: addMonthsToInstant(base, 1) };
   }
 
-  let months =
-    (now.getUTCFullYear() - base.getUTCFullYear()) * 12 +
-    (now.getUTCMonth() - base.getUTCMonth());
+  let months = monthsBetweenInstants(base, now);
   if (months < 0) months = 0;
 
-  let start = addMonthsClamped(base, months);
+  let start = addMonthsToInstant(base, months);
   while (start.getTime() > now.getTime()) {
     months -= 1;
-    start = addMonthsClamped(base, months);
+    start = addMonthsToInstant(base, months);
   }
 
-  let end = addMonthsClamped(base, months + 1);
+  let end = addMonthsToInstant(base, months + 1);
   while (end.getTime() <= now.getTime()) {
     months += 1;
-    start = addMonthsClamped(base, months);
-    end = addMonthsClamped(base, months + 1);
+    start = addMonthsToInstant(base, months);
+    end = addMonthsToInstant(base, months + 1);
   }
 
   return { start, end };

@@ -15,7 +15,7 @@ export class StrandedWhatsappRowsCron {
     private readonly whatsapp: WhatsappSignupService,
   ) {}
 
-  @Cron('0 4 * * *')
+  @Cron('0 4 * * *', { timeZone: 'UTC' })
   async run(): Promise<void> {
     const stranded = await this.findLiveConnectionsOfDepartedUsers();
     if (stranded.length === 0) return;

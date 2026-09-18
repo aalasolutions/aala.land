@@ -1,5 +1,6 @@
 import AuthenticatedRoute from '../authenticated';
 import { service } from '@ember/service';
+import { localMidnightIso } from 'land/utils/local-date';
 
 export default class ContactsIndexRoute extends AuthenticatedRoute {
   @service auth;
@@ -36,8 +37,10 @@ export default class ContactsIndexRoute extends AuthenticatedRoute {
     if (isWhatsapp) params.set('isWhatsapp', 'true');
     if (company) params.set('company', company);
     if (nationality) params.set('nationality', nationality);
-    if (dateFrom) params.set('dateFrom', dateFrom);
-    if (dateTo) params.set('dateTo', dateTo);
+    const fromIso = localMidnightIso(dateFrom);
+    const toIso = localMidnightIso(dateTo, 1);
+    if (fromIso) params.set('dateFrom', fromIso);
+    if (toIso) params.set('dateTo', toIso);
 
     const [contactsResult, agentsResult] = await Promise.all([
       this.auth.fetchJson(`/contacts?${params.toString()}`).catch(() => null),

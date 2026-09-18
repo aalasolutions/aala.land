@@ -29,6 +29,7 @@ import {
   isAdminRole,
   scopedRegionCodes,
 } from '@shared/utils/region-visibility.util';
+import { isDateOnly } from '../../shared/utils/region-time.util';
 
 // Storage pointers stripped before reaching client; documents serve only via streaming download.
 export type SanitizedDocument = Omit<
@@ -179,7 +180,11 @@ export class DocumentsService {
     }
 
     if (filters?.dateTo) {
-      qb.andWhere("doc.created_at < :dateTo::date + interval '1 day'", {
+      // Browsers send the next local midnight as an instant; a bare date is a UTC day.
+      const upper = isDateOnly(filters.dateTo)
+        ? ":dateTo::date + interval '1 day'"
+        : ':dateTo::timestamptz';
+      qb.andWhere(`doc.created_at < ${upper}`, {
         dateTo: filters.dateTo,
       });
     }

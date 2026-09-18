@@ -4,10 +4,13 @@ import {
   Column,
   CreateDateColumn,
   OneToMany,
+  Index,
 } from 'typeorm';
 import { Locality } from './locality.entity';
 
 @Entity('cities')
+@Index('IDX_cities_region_normalized_name_unique', { synchronize: false })
+@Index('IDX_cities_name_trgm', { synchronize: false })
 export class City {
   @PrimaryGeneratedColumn('uuid')
   id: string;

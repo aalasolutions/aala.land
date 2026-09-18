@@ -14,6 +14,9 @@ import {
   NONE_OPTION,
 } from 'land/constants';
 
+const HIGH_LOAD = 8;
+const MEDIUM_LOAD = 4;
+
 export default class LeadsController extends Controller {
   @service auth;
   @service notifications;
@@ -183,19 +186,35 @@ export default class LeadsController extends Controller {
     }));
   }
 
+  // Workload buckets for the column bar: a business rule, so not in the template.
+  loadClassFor(count) {
+    if (count > HIGH_LOAD) return 'load-high';
+    if (count > MEDIUM_LOAD) return 'load-medium';
+    return 'load-low';
+  }
+
   get agentColumns() {
     const leads = this.allLeads;
-    const unassigned = {
-      agentId: null,
-      agentName: 'Unassigned',
-      leads: leads.filter((l) => !l.assignedTo),
-    };
+    const column = (agentId, agentName, ownLeads) => ({
+      agentId,
+      agentName,
+      leads: ownLeads,
+      loadClass: this.loadClassFor(ownLeads.length),
+    });
 
-    const agentCols = this.agents.map((agent) => ({
-      agentId: agent.id,
-      agentName: agent.name,
-      leads: leads.filter((l) => l.assignedTo === agent.id),
-    }));
+    const unassigned = column(
+      null,
+      'Unassigned',
+      leads.filter((l) => !l.assignedTo),
+    );
+
+    const agentCols = this.agents.map((agent) =>
+      column(
+        agent.id,
+        agent.name,
+        leads.filter((l) => l.assignedTo === agent.id),
+      ),
+    );
 
     return [unassigned, ...agentCols];
   }
@@ -307,11 +326,6 @@ export default class LeadsController extends Controller {
     }
   }
 
-  formatActivityDate(dateStr) {
-    const date = new Date(dateStr);
-    return date.toLocaleString();
-  }
-
   @action closeAssignModal() {
     this.showAssignModal = false;
     this.assignLead = null;
@@ -320,6 +334,9 @@ export default class LeadsController extends Controller {
 
   @action closeModal() {
     this.showModal = false;
+  }
+
+  @action resetDrawer() {
     this.editLead = null;
     this.errorMsg = '';
   }

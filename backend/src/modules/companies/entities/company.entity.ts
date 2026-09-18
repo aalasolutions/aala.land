@@ -4,6 +4,7 @@ import {
   Column,
   CreateDateColumn,
   UpdateDateColumn,
+  Index,
 } from 'typeorm';
 
 export enum SubscriptionTier {
@@ -49,6 +50,10 @@ export const ENTERPRISE_AI_CREDITS_PER_SEAT = 500;
 export const AI_CONVERSATION_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 @Entity('companies')
+@Index('UQ_companies_billing_customer_id', ['billingCustomerId'], {
+  unique: true,
+  where: 'billing_customer_id IS NOT NULL',
+})
 export class Company {
   @PrimaryGeneratedColumn('uuid')
   id: string;

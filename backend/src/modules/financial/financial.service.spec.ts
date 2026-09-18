@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, In, Repository } from 'typeorm';
 import {
   BadRequestException,
   ConflictException,
@@ -15,6 +15,7 @@ import {
 } from './entities/transaction.entity';
 import { Unit } from '../properties/entities/unit.entity';
 import { Company } from '../companies/entities/company.entity';
+import { regionTodaySql } from '../../shared/utils/region-time.util';
 
 describe('FinancialService', () => {
   let service: FinancialService;
@@ -128,6 +129,60 @@ describe('FinancialService', () => {
         select: { id: true, deletedAt: true },
       });
       expect(repo.save).not.toHaveBeenCalled();
+    });
+
+    describe('unit region scope on create', () => {
+      const dto = {
+        type: TransactionType.INCOME,
+        amount: 100,
+        unitId: 'unit-punjab',
+      } as any;
+      const agent = { role: 'agent', regionCodes: ['dubai'] };
+
+      it('404s a unit outside the caller assigned regions', async () => {
+        unitRepo.findOne.mockResolvedValue(null);
+
+        await expect(
+          service.create(companyId, dto, undefined, agent as any),
+        ).rejects.toThrow(new NotFoundException('Unit not found'));
+        expect(unitRepo.findOne).toHaveBeenCalledWith({
+          where: {
+            id: 'unit-punjab',
+            companyId,
+            asset: {
+              locality: { city: { regionCode: In(['dubai']) } },
+            },
+          },
+          select: { id: true, deletedAt: true },
+        });
+        expect(repo.save).not.toHaveBeenCalled();
+      });
+
+      it('404s without a query when the caller has no regions', async () => {
+        await expect(
+          service.create(companyId, dto, undefined, {
+            role: 'agent',
+            regionCodes: [],
+          } as any),
+        ).rejects.toThrow(new NotFoundException('Unit not found'));
+        expect(unitRepo.findOne).not.toHaveBeenCalled();
+        expect(repo.save).not.toHaveBeenCalled();
+      });
+
+      it('does not scope the unit lookup for an admin', async () => {
+        unitRepo.findOne.mockResolvedValue(null);
+
+        await expect(
+          service.create(companyId, dto, undefined, {
+            role: 'company_admin',
+            regionCodes: ['dubai'],
+          } as any),
+        ).rejects.toThrow(NotFoundException);
+        expect(unitRepo.findOne).toHaveBeenCalledWith({
+          where: { id: 'unit-punjab', companyId },
+          select: { id: true, deletedAt: true },
+        });
+      });
     });
 
     it('refuses create when the unit is archived after the first read', async () => {
@@ -361,11 +416,39 @@ describe('FinancialService', () => {
   });
 
   describe('getDepositReminders', () => {
+    const today = regionTodaySql('t.region_code');
+    const weekEnd = `(${today} + (7 - EXTRACT(DOW FROM ${today}))::int)`;
+    const monthEnd = `((date_trunc('month', ${today}) + interval '1 month - 1 day')::date)`;
+    const bucketConditions = [
+      `t.due_date < ${today}`,
+      `t.due_date = ${today}`,
+      `t.due_date > ${today} AND t.due_date <= ${weekEnd}`,
+      `t.due_date > ${weekEnd} AND t.due_date <= ${monthEnd}`,
+    ];
+
+    // One builder per bucket, resolved in call order.
+    function seedBuckets(results: Transaction[][]) {
+      const builders: any[] = [];
+      repo.createQueryBuilder.mockImplementation((() => {
+        const rows = results[builders.length] ?? [];
+        const qb: any = {
+          where: jest.fn().mockReturnThis(),
+          andWhere: jest.fn().mockReturnThis(),
+          orderBy: jest.fn().mockReturnThis(),
+          take: jest.fn().mockReturnThis(),
+          getMany: jest.fn().mockResolvedValue(rows),
+        };
+        builders.push(qb);
+        return qb;
+      }) as any);
+      return builders;
+    }
+
     it('returns transactions grouped by due date proximity', async () => {
       const overdueTransaction = {
         ...mockTransaction,
         id: 'txn-overdue',
-        dueDate: new Date('2025-01-01'),
+        dueDate: '2025-01-01',
       } as Transaction;
       const todayTransaction = {
         ...mockTransaction,
@@ -380,11 +463,12 @@ describe('FinancialService', () => {
         id: 'txn-month',
       } as Transaction;
 
-      repo.find
-        .mockResolvedValueOnce([overdueTransaction])
-        .mockResolvedValueOnce([todayTransaction])
-        .mockResolvedValueOnce([weekTransaction])
-        .mockResolvedValueOnce([monthTransaction]);
+      const builders = seedBuckets([
+        [overdueTransaction],
+        [todayTransaction],
+        [weekTransaction],
+        [monthTransaction],
+      ]);
 
       const result = await service.getDepositReminders(companyId);
 
@@ -392,11 +476,27 @@ describe('FinancialService', () => {
       expect(result.dueToday).toEqual([todayTransaction]);
       expect(result.dueThisWeek).toEqual([weekTransaction]);
       expect(result.dueThisMonth).toEqual([monthTransaction]);
-      expect(repo.find).toHaveBeenCalledTimes(4);
+      expect(repo.createQueryBuilder).toHaveBeenCalledTimes(4);
+      expect(repo.createQueryBuilder).toHaveBeenCalledWith('t');
+      expect(repo.find).not.toHaveBeenCalled();
+      builders.forEach((qb, i) => {
+        expect(qb.andWhere).toHaveBeenCalledWith(bucketConditions[i]);
+      });
+    });
+
+    it('uses non-overlapping region-day buckets in the row region zone', async () => {
+      const builders = seedBuckets([]);
+
+      await service.getDepositReminders(companyId);
+
+      expect(today).toContain("WHEN t.region_code IN ('dubai'");
+      expect(today).toContain('now() AT TIME ZONE');
+      const conditions = builders.map((qb) => qb.andWhere.mock.calls[2][0]);
+      expect(conditions).toEqual(bucketConditions);
     });
 
     it('returns empty arrays when no matching transactions', async () => {
-      repo.find.mockResolvedValue([]);
+      seedBuckets([]);
 
       const result = await service.getDepositReminders(companyId);
 
@@ -406,17 +506,73 @@ describe('FinancialService', () => {
       expect(result.dueThisMonth).toEqual([]);
     });
 
-    it('filters by INCOME type and PENDING status', async () => {
-      repo.find.mockResolvedValue([]);
+    it('filters by company, INCOME type and PENDING status, ordered and capped', async () => {
+      const builders = seedBuckets([]);
 
       await service.getDepositReminders(companyId);
 
-      for (const call of repo.find.mock.calls) {
-        const where = (call[0] as any).where;
-        expect(where.companyId).toBe(companyId);
-        expect(where.type).toBe(TransactionType.INCOME);
-        expect(where.status).toBe(TransactionStatus.PENDING);
+      expect(builders).toHaveLength(4);
+      for (const qb of builders) {
+        expect(qb.where).toHaveBeenCalledWith('t.company_id = :companyId', {
+          companyId,
+        });
+        expect(qb.andWhere).toHaveBeenCalledWith('t.type = :type', {
+          type: TransactionType.INCOME,
+        });
+        expect(qb.andWhere).toHaveBeenCalledWith('t.status = :status', {
+          status: TransactionStatus.PENDING,
+        });
+        expect(qb.orderBy).toHaveBeenCalledWith('t.due_date', 'ASC');
+        expect(qb.take).toHaveBeenCalledWith(100);
+        expect(qb.andWhere).not.toHaveBeenCalledWith(
+          't.region_code IN (:...regionCodes)',
+          expect.anything(),
+        );
       }
+    });
+
+    it('narrows every bucket to the requested region', async () => {
+      const builders = seedBuckets([]);
+
+      await service.getDepositReminders(companyId, 'dubai');
+
+      for (const qb of builders) {
+        expect(qb.andWhere).toHaveBeenCalledWith(
+          't.region_code IN (:...regionCodes)',
+          { regionCodes: ['dubai'] },
+        );
+      }
+    });
+
+    it('narrows every bucket to a scoped caller regions', async () => {
+      const builders = seedBuckets([]);
+
+      await service.getDepositReminders(companyId, undefined, {
+        role: 'manager',
+        regionCodes: ['makkah', 'punjab'],
+      });
+
+      for (const qb of builders) {
+        expect(qb.andWhere).toHaveBeenCalledWith(
+          't.region_code IN (:...regionCodes)',
+          { regionCodes: ['makkah', 'punjab'] },
+        );
+      }
+    });
+
+    it('queries nothing when the caller has no assigned region', async () => {
+      const result = await service.getDepositReminders(companyId, undefined, {
+        role: 'manager',
+        regionCodes: [],
+      });
+
+      expect(result).toEqual({
+        overdue: [],
+        dueToday: [],
+        dueThisWeek: [],
+        dueThisMonth: [],
+      });
+      expect(repo.createQueryBuilder).not.toHaveBeenCalled();
     });
   });
   describe('region scoping', () => {
@@ -448,7 +604,8 @@ describe('FinancialService', () => {
       const visible = () =>
         codes
           ? rows.filter(
-              (r) => r.unitId === null || codes!.includes(r.regionCode as string),
+              (r) =>
+                r.unitId === null || codes!.includes(r.regionCode as string),
             )
           : rows;
       const qb: any = {

@@ -55,6 +55,17 @@
   }
 }
 
+// Covers the scrim so a click outside the dialog closes it. A button, because a
+// bare div with a click handler is neither focusable nor announced.
+.nu-dialog-dismiss {
+  position: absolute;
+  inset: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: default;
+}
+
 @include b(modal) {
   @include nu-root("modal", (
     "Display": flex,
@@ -71,6 +82,7 @@
     "focus--BoxShadow": 0 0 0 3px #{nu-tint(primary, 35%)},
   ));
 
+  position: relative;
   display: nu-var("modal", "Display");
   flex-direction: column;
   inline-size: 100%;

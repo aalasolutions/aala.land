@@ -86,8 +86,6 @@ export default class NuTabsComponent extends Component {
 
     const nextTab = enabled[nextIndex];
     this.selectTab(nextTab);
-    this.rootElement
-      ?.querySelector(`[data-test-nu-tabs-trigger="${nextTab.id}"]`)
-      ?.focus();
+    this.rootElement?.querySelector(`[data-tab-id="${nextTab.id}"]`)?.focus();
   }
 }

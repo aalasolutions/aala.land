@@ -30,6 +30,7 @@ import {
   effectiveRegionCodes,
   scopedRegionCodes,
 } from '../../shared/utils/region-visibility.util';
+import { isDateOnly } from '../../shared/utils/region-time.util';
 
 // Derived role tags; never stored on the contact, computed from which rows reference it.
 export type ContactTag = 'lead' | 'tenant' | 'owner' | 'vendor';
@@ -318,7 +319,11 @@ export class ContactsService {
     }
 
     if (filters?.dateTo) {
-      qb.andWhere("c.created_at < :dateTo::date + interval '1 day'", {
+      // Browsers send the next local midnight as an instant; a bare date is a UTC day.
+      const upper = isDateOnly(filters.dateTo)
+        ? ":dateTo::date + interval '1 day'"
+        : ':dateTo::timestamptz';
+      qb.andWhere(`c.created_at < ${upper}`, {
         dateTo: filters.dateTo,
       });
     }

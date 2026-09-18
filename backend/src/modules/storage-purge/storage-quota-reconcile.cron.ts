@@ -9,7 +9,7 @@ export class StorageQuotaReconcileCron {
 
   constructor(private readonly dataSource: DataSource) {}
 
-  @Cron('0 5 * * *')
+  @Cron('0 5 * * *', { timeZone: 'UTC' })
   async run(): Promise<void> {
     // WITH ... SELECT so the driver returns plain rows, not [rows, count].
     const rows: Array<{ id: string; old_bytes: string; new_bytes: string }> =

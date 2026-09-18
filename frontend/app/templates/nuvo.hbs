@@ -421,6 +421,23 @@
       </Nuvo::Field>
     </div>
 
+    <h3 class="nuvo-subtitle">Label tooltip</h3>
+    <p class="nuvo-note"><code>@tooltip</code> adds a question-mark button beside
+      the label, carrying the text on hover and focus.
+      <code>@tooltipPosition</code> overrides the default
+      <code>top</code>. The button renders OUTSIDE the
+      <code>label</code>
+      on purpose: anything inside a label joins the control's accessible name.</p>
+
+    <div class="nuvo-stack">
+      <Nuvo::Field
+        @label="Tenancy Registration Ref"
+        @tooltip="e.g. Ejari in Dubai, Tawtheeq in Abu Dhabi, or your local government lease registry number."
+      >
+        <Nuvo::Input @placeholder="TR-2026-00001" />
+      </Nuvo::Field>
+    </div>
+
     <h3 class="nuvo-subtitle">Filter row</h3>
     <p class="nuvo-note">Auto-fitting grid; column count follows the viewport.
       The unlabelled control uses
@@ -543,7 +560,7 @@
       <Nuvo::Divider @labelPosition="end">Section end</Nuvo::Divider>
     </div>
 
-    <div class="nuvo-row nuvo-row--divider-demo">
+    <div class="nuvo-row nuvo-row--full-height">
       <span class="nu-text m-sm">Left</span>
       <Nuvo::Divider @vertical={{true}} />
       <span class="nu-text m-sm">Right</span>
@@ -985,19 +1002,19 @@
         @onChange={{this.updateSegmentedView}}
       />
 
-      <Nuvo::Text @text="Label only" @variant="muted" @size="sm" />
-      <Nuvo::Segmented
-        @options={{this.segmentedPlain}}
-        @value={{this.segmentedPeriod}}
-        @onChange={{this.updateSegmentedPeriod}}
-      />
-
       <Nuvo::Text @text="Icon only" @variant="muted" @size="sm" />
       <Nuvo::Segmented
         @options={{this.segmentedViews}}
         @value={{this.segmentedView}}
         @onChange={{this.updateSegmentedView}}
         @iconOnly={{true}}
+      />
+
+      <Nuvo::Text @text="Label only" @variant="muted" @size="sm" />
+      <Nuvo::Segmented
+        @options={{this.segmentedPlain}}
+        @value={{this.segmentedPeriod}}
+        @onChange={{this.updateSegmentedPeriod}}
       />
 
       <Nuvo::Text @text="Sizes: sm, default, lg" @variant="muted" @size="sm" />

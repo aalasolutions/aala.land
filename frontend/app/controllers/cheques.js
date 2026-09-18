@@ -8,6 +8,7 @@ import {
   closeDeleteModal,
   confirmDeleteModal,
 } from '../utils/delete-modal';
+import { toDateOnly } from '../utils/local-date';
 import { CHEQUE_TYPE_OPTIONS, EMPTY_UNIT_OPTION } from 'land/constants';
 
 export default class ChequesController extends PaginatedController {
@@ -135,7 +136,7 @@ export default class ChequesController extends PaginatedController {
     this.formBankName = cheque.bankName;
     this.formAccountHolder = cheque.accountHolder;
     this.formAmount = String(cheque.amount);
-    this.formDueDate = cheque.dueDate ? cheque.dueDate.split('T')[0] : '';
+    this.formDueDate = toDateOnly(cheque.dueDate);
     this.formType = cheque.type ?? 'RENT';
     this.formLeaseId = cheque.leaseId ?? '';
     this.formUnitId = cheque.unitId ?? '';
@@ -146,6 +147,9 @@ export default class ChequesController extends PaginatedController {
 
   @action closeModal() {
     this.showModal = false;
+  }
+
+  @action resetDrawer() {
     this.editCheque = null;
     this.errorMsg = '';
   }

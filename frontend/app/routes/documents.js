@@ -1,5 +1,6 @@
 import AuthenticatedRoute from './authenticated';
 import { service } from '@ember/service';
+import { localMidnightIso } from 'land/utils/local-date';
 
 export default class DocumentsRoute extends AuthenticatedRoute {
   @service auth;
@@ -28,8 +29,10 @@ export default class DocumentsRoute extends AuthenticatedRoute {
       if (category) params.set('category', category);
       if (search) params.set('search', search);
       if (accessLevel) params.set('accessLevel', accessLevel);
-      if (dateFrom) params.set('dateFrom', dateFrom);
-      if (dateTo) params.set('dateTo', dateTo);
+      const fromIso = localMidnightIso(dateFrom);
+      const toIso = localMidnightIso(dateTo, 1);
+      if (fromIso) params.set('dateFrom', fromIso);
+      if (toIso) params.set('dateTo', toIso);
 
       const result = await this.auth.fetchJson(
         `/documents?${params.toString()}`,

@@ -5,11 +5,14 @@ const config: Config = {
   rootDir: 'src',
   testRegex: '.*\\.spec\\.ts$',
   transform: {
-    '^.+\\.(t|j)s$': ['ts-jest', {
-      tsconfig: {
-        types: ['node', 'jest'],
+    '^.+\\.(t|j)s$': [
+      'ts-jest',
+      {
+        tsconfig: {
+          types: ['node', 'jest'],
+        },
       },
-    }],
+    ],
   },
   moduleNameMapper: {
     '^@modules/(.*)$': '<rootDir>/modules/$1',
@@ -20,6 +23,7 @@ const config: Config = {
   collectCoverageFrom: ['**/*.(t|j)s'],
   coverageDirectory: '../coverage',
   testEnvironment: 'node',
+  setupFiles: ['<rootDir>/shared/utils/utc-runtime.ts'],
 };
 
 export default config;

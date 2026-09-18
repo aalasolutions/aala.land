@@ -7,6 +7,7 @@ import {
   OneToMany,
   ManyToOne,
   JoinColumn,
+  Index,
 } from 'typeorm';
 import { Company } from '../../companies/entities/company.entity';
 import { Locality } from '../../locations/entities/locality.entity';
@@ -14,6 +15,8 @@ import { Unit } from './unit.entity';
 import { PropertyType } from './property-type.enum';
 
 @Entity('assets')
+@Index('IDX_assets_locality_normalized_name_unique', { synchronize: false })
+@Index('IDX_assets_name_trgm', { synchronize: false })
 export class Asset {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -25,14 +28,20 @@ export class Asset {
   localityId: string;
 
   @ManyToOne(() => Locality)
-  @JoinColumn({ name: 'locality_id' })
+  @JoinColumn({
+    name: 'locality_id',
+    foreignKeyConstraintName: 'FK_assets_locality',
+  })
   locality: Locality;
 
   @Column({ name: 'company_id', type: 'uuid' })
   createdByCompanyId: string;
 
   @ManyToOne(() => Company)
-  @JoinColumn({ name: 'company_id' })
+  @JoinColumn({
+    name: 'company_id',
+    foreignKeyConstraintName: 'FK_5eba2a0d7830341f2c8d0394d3d',
+  })
   company: Company;
 
   @OneToMany(() => Unit, (unit) => unit.asset)
@@ -45,9 +54,9 @@ export class Asset {
     name: 'property_type',
     type: 'enum',
     enum: PropertyType,
-    nullable: true,
+    default: PropertyType.RENTAL,
   })
-  propertyType: PropertyType | null;
+  propertyType: PropertyType;
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;

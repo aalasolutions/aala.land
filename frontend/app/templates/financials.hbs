@@ -121,29 +121,10 @@
           </tbody>
         </table>
       </div>
-
-      <Nuvo::Pagination
-        @selectId="financials-limit"
-        @page={{this.page}}
-        @limit={{this.limit}}
-        @total={{@model.total}}
-        @onLimitChange={{this.setLimit}}
-        @onPrevious={{this.goToPreviousPage}}
-        @onNext={{this.goToNextPage}}
-      />
     {{else}}
       {{#if @model.total}}
         <Nuvo::EmptyState
           @description="No transactions on this page with current filters. Adjust filters or navigate to find transactions."
-        />
-        <Nuvo::Pagination
-          @selectId="financials-limit"
-          @page={{this.page}}
-          @limit={{this.limit}}
-          @total={{@model.total}}
-          @onLimitChange={{this.setLimit}}
-          @onPrevious={{this.goToPreviousPage}}
-          @onNext={{this.goToNextPage}}
         />
       {{else}}
         <Nuvo::EmptyState
@@ -159,6 +140,19 @@
         />
       {{/if}}
     {{/if}}
+
+    {{#if @model.total}}
+      <Nuvo::Pagination
+        @selectId="financials-limit"
+        @page={{this.page}}
+        @limit={{this.limit}}
+        @total={{@model.total}}
+        @onLimitChange={{this.setLimit}}
+        @onPrevious={{this.goToPreviousPage}}
+        @onNext={{this.goToNextPage}}
+        @onPageChange={{this.goToPage}}
+      />
+    {{/if}}
   </Nuvo::Card>
 </div>
 
@@ -168,6 +162,7 @@
   @placement="end"
   @size="lg"
   @onClose={{this.closeModal}}
+  @onClosed={{this.resetDrawer}}
 >
   <:body>
     <form

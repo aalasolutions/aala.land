@@ -15,20 +15,22 @@
     }}
   >
     <:breadcrumb>
-      <LinkTo @route="properties" class="text-muted text-sm">Properties</LinkTo>
+      <LinkTo
+        @route="properties"
+        class="text-muted text-sm"
+        data-test-breadcrumb-properties
+      >Properties</LinkTo>
       <span class="text-muted">/</span>
     </:breadcrumb>
     <:actions>
       {{! No filter panel on this page, so the visibility control lives in the header. }}
-      <Nuvo::Field @label="Visibility">
-        <Nuvo::Dropdown
-          @align="start"
-          @value={{this.archivedFilterValue}}
-          @onSelect={{this.setArchivedFilter}}
-          @options={{this.archivedFilterOptions}}
-          data-test-archived-filter
-        />
-      </Nuvo::Field>
+      <Nuvo::Dropdown
+        @size="sm"
+        @value={{this.archivedFilterValue}}
+        @onSelect={{this.setArchivedFilter}}
+        @options={{this.archivedFilterOptions}}
+        data-test-archived-filter
+      />
       <Nuvo::BtnGroup @attached={{true}}>
         <Nuvo::Button
           @variant={{if (eq this.currentDetailView "cards") "primary" "secondary"}}
@@ -76,6 +78,7 @@
               </div>
               <div class="flex gap-2">
                 <Nuvo::Button
+                  data-test-edit-asset
                   @variant="secondary"
                   @size="sm"
                   @icon="pencil-simple"
@@ -84,6 +87,7 @@
                   Edit
                 </Nuvo::Button>
                 <Nuvo::Button
+                  data-test-add-unit
                   @variant="primary"
                   @size="sm"
                   @icon="plus"
@@ -114,15 +118,7 @@
                       {{#if unit.propertyType}}
                         <Nuvo::Tag
                           class="tag-proptype-{{lowercase unit.propertyType}}"
-                          @text={{if
-                            (eq unit.propertyType "FOR_SALE")
-                            "For Sale"
-                            (if
-                              (eq unit.propertyType "RENTAL")
-                              "For Rent"
-                              "Not Listed"
-                            )
-                          }}
+                          @text={{property-type-label unit.propertyType}}
                         />
                       {{/if}}
                     </div>
@@ -150,22 +146,19 @@
 
                     <div class="unit-amenities-strip">
                       <span
-                        class="flex x-center gap-1
-                          {{unless (has-value unit.bedrooms) 'opacity-50'}}"
+                        class="flex x-center gap-1 {{unless (has-value unit.bedrooms) 'opacity-50'}}"
                       >
                         <Ui::Ph @icon="bed" />
                         {{if (has-value unit.bedrooms) unit.bedrooms "-"}}
                       </span>
                       <span
-                        class="flex x-center gap-1
-                          {{unless (has-value unit.bathrooms) 'opacity-50'}}"
+                        class="flex x-center gap-1 {{unless (has-value unit.bathrooms) 'opacity-50'}}"
                       >
                         <Ui::Ph @icon="bathtub" />
                         {{if (has-value unit.bathrooms) unit.bathrooms "-"}}
                       </span>
                       <span
-                        class="flex x-center gap-1
-                          {{unless (has-value unit.sqFt) 'opacity-50'}}"
+                        class="flex x-center gap-1 {{unless (has-value unit.sqFt) 'opacity-50'}}"
                       >
                         <Ui::Ph @icon="selection" />
                         {{if
@@ -194,7 +187,7 @@
                           @variant="secondary"
                           @size="sm"
                           aria-label="Edit property"
-                          title="Edit property"
+                          data-tooltip="Edit property"
                           @icon="pencil"
                           data-test-edit-unit
                           {{on "click" (fn this.openEditUnit unit asset.id)}}
@@ -212,6 +205,7 @@
                 <:icon><Ui::Ph @icon="house-line" /></:icon>
                 <:actions>
                   <Nuvo::Button
+                    data-test-add-unit
                     @variant="primary"
                     @size="sm"
                     @icon="plus"
@@ -266,15 +260,7 @@
                     {{#if unit.propertyType}}
                       <Nuvo::Tag
                         class="tag-proptype-{{lowercase unit.propertyType}}"
-                        @text={{if
-                          (eq unit.propertyType "FOR_SALE")
-                          "For Sale"
-                          (if
-                            (eq unit.propertyType "RENTAL")
-                            "For Rent"
-                            "Not Listed"
-                          )
-                        }}
+                        @text={{property-type-label unit.propertyType}}
                       />
                     {{/if}}
                   </td>
@@ -293,6 +279,7 @@
                   <td class="text-end">
                     <div class="flex gap-1">
                       <Nuvo::Button
+                        data-test-view-unit
                         @variant="primary"
                         @size="xs"
                         @route="properties.unit"
@@ -319,6 +306,7 @@
                       <:icon><Ui::Ph @icon="door" /></:icon>
                       <:actions>
                         <Nuvo::Button
+                          data-test-add-unit
                           @variant="primary"
                           @size="xs"
                           @icon="plus"
@@ -344,6 +332,7 @@
       <:icon><Ui::Ph @icon="buildings" /></:icon>
       <:actions>
         <Nuvo::Button
+          data-test-new-asset-empty
           @variant="primary"
           @icon="plus"
           {{on "click" this.openCreateAsset}}
@@ -361,6 +350,7 @@
   @placement="end"
   @size="lg"
   @onClose={{this.closeAssetModal}}
+  @onClosed={{this.resetAssetDrawer}}
 >
   <:body>
     <form
@@ -369,8 +359,7 @@
       {{on "submit" this.saveAsset}}
     >
       {{#unless this.editAsset}}
-        <div class="flex col gap-2">
-          <label class="text-sm text-muted">City *</label>
+        <Nuvo::Field @label="City" @required={{true}}>
           <Nuvo::Autocomplete
             @searchUrl={{this.citySearchUrl}}
             @createUrl="/locations/cities"
@@ -380,10 +369,9 @@
             @onSelect={{this.selectCity}}
             @onClear={{this.clearCity}}
           />
-        </div>
+        </Nuvo::Field>
         {{#if this.selectedCity}}
-          <div class="flex col gap-2">
-            <label class="text-sm text-muted">Location / Area *</label>
+          <Nuvo::Field @label="Location / Area" @required={{true}}>
             <Nuvo::Autocomplete
               @searchUrl={{this.localitySearchUrl}}
               @createUrl="/locations/localities"
@@ -393,11 +381,12 @@
               @onSelect={{this.selectLocality}}
               @onClear={{this.clearLocality}}
             />
-          </div>
+          </Nuvo::Field>
         {{/if}}
       {{/unless}}
       <Nuvo::Field @label="Asset Name" @required={{true}}>
         <Nuvo::Input
+          data-test-asset-name
           id="b-name"
           @type="text"
           @placeholder="e.g. Tower A"
@@ -408,6 +397,7 @@
       </Nuvo::Field>
       <Nuvo::Field @label="Address">
         <Nuvo::Input
+          data-test-asset-address
           id="b-address"
           @type="text"
           @placeholder="e.g. 123 Sheikh Zayed Road"
@@ -422,10 +412,12 @@
   </:body>
   <:footer>
     <Nuvo::Button
+      data-test-asset-cancel
       @variant="secondary"
       {{on "click" this.closeAssetModal}}
     >Cancel</Nuvo::Button>
     <Nuvo::Button
+      data-test-asset-save
       @type="submit"
       form="asset-form"
       @variant="primary"
@@ -447,6 +439,7 @@
   @placement="end"
   @size="lg"
   @onClose={{this.closeUnitModal}}
+  @onClosed={{this.resetUnitDrawer}}
 >
   <:body>
     <form id="unit-form" class="flex col gap-4" {{on "submit" this.saveUnit}}>
@@ -454,6 +447,7 @@
         <div class="flex col gap-2 grow">
           <Nuvo::Field @label="Property Number" @required={{true}}>
             <Nuvo::Input
+              data-test-unit-number
               id="u-number"
               @type="text"
               @placeholder="e.g. 101"
@@ -466,6 +460,7 @@
         <div class="flex col gap-2 grow">
           <Nuvo::Field @label="Status">
             <Nuvo::Dropdown
+              data-test-unit-status
               id="u-status"
               @align="start"
               @value={{this.formUnitStatus}}
@@ -476,20 +471,28 @@
           </Nuvo::Field>
         </div>
       </div>
-      <Nuvo::Field @label="Property Type">
+      <Nuvo::Field
+        @label="Property Listing Type"
+        @tooltip="Choose how this property is listed. For Rent and For Sale make it searchable. Not Listed keeps it hidden."
+      >
         <Nuvo::Dropdown
+          data-test-unit-listing-type
           id="u-property-type"
           @align="start"
           @value={{this.formUnitPropertyType}}
           @onSelect={{fn this.setFieldValue "formUnitPropertyType"}}
           @options={{this.propertyTypeOptions}}
-          @placeholder="Select type..."
+          @placeholder="Not Listed"
         />
       </Nuvo::Field>
       <div class="flex gap-4">
         <div class="flex col gap-2 grow">
-          <Nuvo::Field @label="Price">
+          <Nuvo::Field
+            @label="Price"
+            @tooltip="For a rental, enter the rent per month. For a sale, enter the full asking price."
+          >
             <Nuvo::Input
+              data-test-unit-price
               id="u-price"
               @type="number"
               @placeholder="e.g. 150000"
@@ -502,6 +505,7 @@
         <div class="flex col gap-2 grow">
           <Nuvo::Field @label="Sq Ft">
             <Nuvo::Input
+              data-test-unit-sqft
               id="u-sqft"
               @type="number"
               @placeholder="e.g. 850"
@@ -516,6 +520,7 @@
         <div class="flex col gap-2 grow">
           <Nuvo::Field @label="Bedrooms">
             <Nuvo::Input
+              data-test-unit-beds
               id="u-beds"
               @type="number"
               @placeholder="e.g. 2"
@@ -528,6 +533,7 @@
         <div class="flex col gap-2 grow">
           <Nuvo::Field @label="Bathrooms">
             <Nuvo::Input
+              data-test-unit-baths
               id="u-baths"
               @type="number"
               @placeholder="e.g. 2"
@@ -548,16 +554,22 @@
         @onIdentityChange={{this.ownerSelection.setField}}
       />
       <div class="flex col gap-2">
-        <label class="text-sm text-muted">Amenities</label>
-        <div class="flex wrap gap-2">
+        <span id="unit-amenities-label" class="text-sm text-muted">Amenities</span>
+        <div
+          class="flex wrap gap-2"
+          role="group"
+          aria-labelledby="unit-amenities-label"
+        >
           {{#each this.amenityOptions as |opt|}}
             <button
               type="button"
-              class="nu-tag m-pill m-selectable
-                {{if
-                  (includes this.formUnitAmenities opt.key)
-                  'is-selected'
-                }}"
+              class="nu-tag m-pill m-selectable {{if (includes this.formUnitAmenities opt.key) 'is-selected'}}"
+              data-test-amenity={{opt.key}}
+              aria-pressed={{if
+                (includes this.formUnitAmenities opt.key)
+                "true"
+                "false"
+              }}
               {{on "click" (fn this.toggleAmenity opt.key)}}
             >
               <Ui::Ph @icon={{opt.icon}} />
@@ -573,10 +585,12 @@
   </:body>
   <:footer>
     <Nuvo::Button
+      data-test-unit-cancel
       @variant="secondary"
       {{on "click" this.closeUnitModal}}
     >Cancel</Nuvo::Button>
     <Nuvo::Button
+      data-test-unit-save
       @type="submit"
       form="unit-form"
       @variant="primary"

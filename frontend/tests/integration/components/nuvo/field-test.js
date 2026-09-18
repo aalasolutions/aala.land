@@ -62,6 +62,29 @@ module('Integration | Component | nuvo/field', function (hooks) {
     assert.dom('button').doesNotHaveAttribute('aria-labelledby');
   });
 
+  test('a tooltip button never stands in for the control', async function (assert) {
+    await render(hbs`
+      <Nuvo::Field @label="Property" @tooltip="Pick the property this belongs to.">
+        <button type="button" role="combobox">Select a property...</button>
+      </Nuvo::Field>
+    `);
+
+    const label = this.element.querySelector('.nu-field__label');
+    const control = this.element.querySelector('[role="combobox"]');
+    const info = this.element.querySelector('[data-test-nu-field-tooltip]');
+
+    assert.dom(control).hasAttribute('aria-labelledby', label.id);
+    assert
+      .dom(info)
+      .doesNotHaveAttribute('aria-labelledby', 'the info button keeps its own name');
+    assert
+      .dom(info)
+      .hasAttribute('aria-label', 'More information about Property');
+    assert
+      .dom(info)
+      .hasAttribute('data-tooltip', 'Pick the property this belongs to.');
+  });
+
   test('a field with no label renders and wires nothing', async function (assert) {
     await render(hbs`
       <Nuvo::Field>

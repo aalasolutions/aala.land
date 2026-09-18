@@ -53,6 +53,8 @@ export default class DocumentsController extends PaginatedController {
     this.dateTo = '';
     this.showModal = false;
     this.editDocument = null;
+    this.selectedFile = null;
+    this.uploadProgress = '';
     this.errorMsg = '';
     this.showDeleteModal = false;
     this.documentToDelete = null;
@@ -163,6 +165,9 @@ export default class DocumentsController extends PaginatedController {
 
   @action closeModal() {
     this.showModal = false;
+  }
+
+  @action resetDrawer() {
     this.editDocument = null;
     this.errorMsg = '';
     this.selectedFile = null;

@@ -47,6 +47,7 @@ export enum ScheduleFrequency {
 }
 
 @Entity('work_orders')
+@Index('IDX_work_orders_company_assigned', ['companyId', 'assignedTo'])
 export class WorkOrder {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -58,11 +59,15 @@ export class WorkOrder {
   @JoinColumn({ name: 'company_id' })
   company: Company;
 
+  @Index('IDX_WORK_ORDERS_UNIT_ID')
   @Column({ name: 'unit_id', type: 'uuid', nullable: true })
   unitId: string | null;
 
   @ManyToOne(() => Unit, { nullable: true })
-  @JoinColumn({ name: 'unit_id' })
+  @JoinColumn({
+    name: 'unit_id',
+    foreignKeyConstraintName: 'FK_work_orders_unit',
+  })
   unit: Unit | null;
 
   @Index('IDX_WORK_ORDERS_REGION_CODE')
@@ -100,14 +105,20 @@ export class WorkOrder {
   assignedTo: string | null;
 
   @ManyToOne(() => User, { nullable: true })
-  @JoinColumn({ name: 'assigned_to' })
+  @JoinColumn({
+    name: 'assigned_to',
+    foreignKeyConstraintName: 'FK_work_orders_assigned_to',
+  })
   assignee: User | null;
 
   @Column({ name: 'vendor_id', type: 'uuid', nullable: true })
   vendorId: string | null;
 
-  @ManyToOne(() => Vendor, { nullable: true })
-  @JoinColumn({ name: 'vendor_id' })
+  @ManyToOne(() => Vendor, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({
+    name: 'vendor_id',
+    foreignKeyConstraintName: 'FK_work_orders_vendor',
+  })
   vendor: Vendor;
 
   @Column({ name: 'reported_by', type: 'varchar', length: 255, nullable: true })
@@ -134,8 +145,8 @@ export class WorkOrder {
   @Column({ type: 'varchar', length: 3, default: 'AED' })
   currency: string;
 
-  @Column({ name: 'scheduled_date', type: 'timestamptz', nullable: true })
-  scheduledDate: Date | null;
+  @Column({ name: 'scheduled_date', type: 'date', nullable: true })
+  scheduledDate: string | null;
 
   @Column({ name: 'completed_at', type: 'timestamptz', nullable: true })
   completedAt: Date | null;
@@ -160,8 +171,8 @@ export class WorkOrder {
   })
   scheduleFrequency: ScheduleFrequency | null;
 
-  @Column({ name: 'next_scheduled_date', type: 'timestamptz', nullable: true })
-  nextScheduledDate: Date | null;
+  @Column({ name: 'next_scheduled_date', type: 'date', nullable: true })
+  nextScheduledDate: string | null;
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;

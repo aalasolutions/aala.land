@@ -1,6 +1,7 @@
 import Controller from '@ember/controller';
 import { service } from '@ember/service';
 import { htmlSafe } from '@ember/template';
+import { timeAgo as formatTimeAgo } from '../utils/local-date';
 
 export default class DashboardController extends Controller {
   @service region;
@@ -54,17 +55,5 @@ export default class DashboardController extends Controller {
     return colors[entityType] || 'primary';
   };
 
-  timeAgo = (dateStr) => {
-    if (!dateStr) return '';
-    const now = new Date();
-    const date = new Date(dateStr);
-    const diffMs = now - date;
-    const diffMins = Math.floor(diffMs / 60000);
-    if (diffMins < 1) return 'just now';
-    if (diffMins < 60) return `${diffMins}m ago`;
-    const diffHours = Math.floor(diffMins / 60);
-    if (diffHours < 24) return `${diffHours}h ago`;
-    const diffDays = Math.floor(diffHours / 24);
-    return `${diffDays}d ago`;
-  };
+  timeAgo = (dateStr) => formatTimeAgo(dateStr);
 }

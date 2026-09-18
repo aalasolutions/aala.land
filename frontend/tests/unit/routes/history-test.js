@@ -32,7 +32,6 @@ module('Unit | Route | history', function (hooks) {
     ]);
     assert.deepEqual(model.entries, [{ id: 'h1' }]);
     assert.strictEqual(model.total, 1);
-    assert.strictEqual(model.page, 2);
   });
 
   test('omits empty filters', async function (assert) {
@@ -95,10 +94,27 @@ module('Unit | Controller | history', function (hooks) {
     assert.strictEqual(second.actionVariant, 'secondary');
   });
 
-  test('goToPage sets the page', function (assert) {
+  test('goToPage sets a page inside the range and refuses one outside it', function (assert) {
     const controller = this.owner.lookup('controller:history');
+    controller.model = { entries: [], total: 45 };
+    controller.limit = 10;
+
     controller.goToPage(3);
-    assert.strictEqual(controller.page, 3);
+    assert.strictEqual(controller.page, 3, 'a page inside the range is taken');
+
+    controller.goToPage(99);
+    assert.strictEqual(
+      controller.page,
+      3,
+      'a page past the last one is refused',
+    );
+
+    controller.goToPage('not a page');
+    assert.strictEqual(
+      controller.page,
+      3,
+      'and so is a value that is not a number',
+    );
   });
 
   test('changing a filter resets to page 1', function (assert) {

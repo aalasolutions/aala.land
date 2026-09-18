@@ -4,10 +4,10 @@ import {
   IsOptional,
   IsString,
   IsUUID,
-  IsDateString,
   MaxLength,
   Min,
 } from 'class-validator';
+import { IsDateOnly } from '@shared/decorators/is-date-only.decorator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   TransactionType,
@@ -45,8 +45,8 @@ export class CreateTransactionDto {
   @IsOptional()
   description?: string;
 
-  @ApiPropertyOptional({ example: '2026-01-31' })
-  @IsDateString()
+  @ApiPropertyOptional({ format: 'date', example: '2026-01-31' })
+  @IsDateOnly()
   @IsOptional()
   transactionDate?: string;
 
@@ -74,8 +74,8 @@ export class CreateTransactionDto {
   @IsOptional()
   paymentMethod?: PaymentMethod;
 
-  @ApiPropertyOptional({ example: '2026-02-15' })
-  @IsDateString()
+  @ApiPropertyOptional({ format: 'date', example: '2026-02-15' })
+  @IsDateOnly()
   @IsOptional()
   dueDate?: string;
 }

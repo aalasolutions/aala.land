@@ -1187,7 +1187,7 @@ describe('DocumentsService', () => {
           companyId,
           userId,
           mockFile,
-          { name: 'Ejari', unitId: 'unit-uuid-1' } as any,
+          { name: 'Tenancy Registration', unitId: 'unit-uuid-1' } as any,
           { role: Role.COMPANY_ADMIN, regionCodes: makkah },
         );
 
@@ -1223,7 +1223,7 @@ describe('DocumentsService', () => {
             'another-company-uuid',
             userId,
             mockFile,
-            { name: 'Ejari', unitId: 'unit-uuid-1' } as any,
+            { name: 'Tenancy Registration', unitId: 'unit-uuid-1' } as any,
             { role: Role.COMPANY_ADMIN, regionCodes: makkah },
           ),
         ).rejects.toThrow(BadRequestException);

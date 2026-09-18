@@ -35,7 +35,10 @@ export class RecordHistory {
   companyId: string | null;
 
   @ManyToOne(() => Company, { nullable: true })
-  @JoinColumn({ name: 'company_id' })
+  @JoinColumn({
+    name: 'company_id',
+    foreignKeyConstraintName: 'FK_record_history_company',
+  })
   company: Company | null;
 
   @Column({ type: 'varchar', length: 50 })
@@ -67,7 +70,10 @@ export class RecordHistory {
   actorId: string | null;
 
   @ManyToOne(() => User, { nullable: true, onDelete: 'SET NULL' })
-  @JoinColumn({ name: 'actor_id' })
+  @JoinColumn({
+    name: 'actor_id',
+    foreignKeyConstraintName: 'FK_record_history_actor',
+  })
   actor: User | null;
 
   @Column({ name: 'actor_name', type: 'varchar', length: 255 })

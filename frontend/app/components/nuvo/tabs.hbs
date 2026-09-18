@@ -18,6 +18,7 @@
         aria-selected={{if tab.active "true" "false"}}
         disabled={{tab.disabled}}
         tabindex={{if tab.active "0" "-1"}}
+        data-tab-id={{tab.id}}
         data-test-nu-tabs-trigger={{tab.id}}
         {{on "click" (fn this.selectTab tab)}}
       >

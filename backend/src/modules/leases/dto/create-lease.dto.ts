@@ -1,15 +1,14 @@
 import {
   IsString,
-  IsNotEmpty,
   IsOptional,
   IsUUID,
   IsEnum,
   IsNumber,
   Min,
-  IsDateString,
   IsInt,
   MaxLength,
 } from 'class-validator';
+import { IsDateOnly } from '@shared/decorators/is-date-only.decorator';
 import { ApiProperty } from '@nestjs/swagger';
 import { LeaseType } from '../entities/lease.entity';
 
@@ -29,12 +28,20 @@ export class CreateLeaseDto {
   @IsEnum(LeaseType)
   type?: LeaseType;
 
-  @ApiProperty({ description: 'Start date (ISO 8601)' })
-  @IsDateString()
+  @ApiProperty({
+    description: 'Start date',
+    format: 'date',
+    example: '2026-01-01',
+  })
+  @IsDateOnly()
   startDate: string;
 
-  @ApiProperty({ description: 'End date (ISO 8601)' })
-  @IsDateString()
+  @ApiProperty({
+    description: 'End date',
+    format: 'date',
+    example: '2026-12-31',
+  })
+  @IsDateOnly()
   endDate: string;
 
   @ApiProperty()
@@ -60,11 +67,15 @@ export class CreateLeaseDto {
   @Min(1)
   numberOfCheques?: number;
 
-  @ApiProperty({ required: false })
+  @ApiProperty({
+    required: false,
+    description:
+      'Government lease registry reference, for example Ejari in Dubai or Tawtheeq in Abu Dhabi.',
+  })
   @IsOptional()
   @IsString()
   @MaxLength(100)
-  ejariNumber?: string;
+  tenancyRegistrationRef?: string;
 
   @ApiProperty({ required: false })
   @IsOptional()

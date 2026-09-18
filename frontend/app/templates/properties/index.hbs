@@ -31,6 +31,7 @@
       <div class="flex col gap-3">
         {{#each @model as |loc|}}
           <LinkTo
+            data-test-locality-card
             @route="properties.detail"
             @model={{loc.id}}
             class="nu-card m-interactive flex between x-center"
@@ -77,6 +78,7 @@
                 <td>{{loc.unitCount}}</td>
                 <td class="text-end">
                   <Nuvo::Button
+                    data-test-view-locality
                     @variant="primary"
                     @size="xs"
                     @route="properties.detail"
@@ -110,7 +112,6 @@
         <div class="nu-filter-row">
           <Nuvo::Field @label="Type">
             <Nuvo::Dropdown
-              @searchable={{true}}
               @align="start"
               @value={{this.filterType}}
               @onSelect={{this.setFilterType}}
@@ -121,7 +122,6 @@
           </Nuvo::Field>
           <Nuvo::Field @label="Status">
             <Nuvo::Dropdown
-              @searchable={{true}}
               @align="start"
               @value={{this.filterStatus}}
               @onSelect={{this.setFilterStatus}}
@@ -132,7 +132,6 @@
           </Nuvo::Field>
           <Nuvo::Field @label="Bedrooms">
             <Nuvo::Dropdown
-              @searchable={{true}}
               @align="start"
               @value={{this.filterBeds}}
               @onSelect={{this.setFilterBeds}}
@@ -141,7 +140,10 @@
               data-test-filter-beds
             />
           </Nuvo::Field>
-          <Nuvo::Field @label="Visibility">
+          <Nuvo::Field
+            @label="Visibility"
+            @tooltip="Shows active properties, archived ones, or both. It does not change whether a property is listed."
+          >
             <Nuvo::Dropdown
               @align="start"
               @value={{this.archivedFilterValue}}
@@ -173,17 +175,22 @@
         </div>
 
         <div>
-          <label class="text-xs text-muted mb-1">Amenities</label>
-          <div class="flex gap-2 wrap">
+          <span id="amenity-filter-label" class="text-xs text-muted mb-1">Amenities</span>
+          <div
+            class="flex gap-2 wrap"
+            role="group"
+            aria-labelledby="amenity-filter-label"
+          >
             {{#each this.amenityOptions as |opt|}}
               <button
                 type="button"
-                class="nu-tag m-pill m-selectable
-                  {{if
-                    (includes this.filterAmenities opt.key)
-                    'is-selected'
-                  }}"
+                class="nu-tag m-pill m-selectable {{if (includes this.filterAmenities opt.key) 'is-selected'}}"
                 data-test-amenity-filter={{opt.key}}
+                aria-pressed={{if
+                  (includes this.filterAmenities opt.key)
+                  "true"
+                  "false"
+                }}
                 {{on "click" (fn this.toggleBrowseAmenity opt.key)}}
               >
                 <Ui::Ph @icon={{opt.icon}} />
@@ -220,35 +227,42 @@
         }}</p>
       <div class="browse-toolbar__sort">
         <span class="browse-toolbar__sort-label" id="browse-sort-label">Sort by</span>
-        <Nuvo::BtnGroup @attached={{true}}>
+        <Nuvo::BtnGroup
+          @attached={{true}}
+          role="group"
+          aria-labelledby="browse-sort-label"
+        >
           <Nuvo::Dropdown
             id="browse-sort-field"
             @align="end"
             @value={{this.sortField}}
             @onSelect={{this.setSortField}}
             @options={{this.sortFieldOptions}}
-            aria-labelledby="browse-sort-label"
             data-test-sort-field
           />
-          <Nuvo::Button
-            @variant="secondary"
-            @icon={{if
-              (eq this.sortDirection "desc")
-              "sort-descending"
-              "sort-ascending"
-            }}
-            @shape="square"
-            @disabled={{not this.sortField}}
+          {{! Tooltip on a wrapper: a disabled button receives no pointer events. }}
+          <span
             data-tooltip={{if
               (eq this.sortDirection "desc")
               "Descending, click for ascending"
               "Ascending, click for descending"
             }}
             data-tooltip-position="start"
-            aria-label="Toggle sort direction"
-            {{on "click" this.toggleSortDirection}}
-            data-test-sort-direction
-          />
+          >
+            <Nuvo::Button
+              @variant="secondary"
+              @icon={{if
+                (eq this.sortDirection "desc")
+                "sort-descending"
+                "sort-ascending"
+              }}
+              @shape="square"
+              @disabled={{not this.sortField}}
+              aria-label="Toggle sort direction"
+              {{on "click" this.toggleSortDirection}}
+              data-test-sort-direction
+            />
+          </span>
         </Nuvo::BtnGroup>
       </div>
     </div>
@@ -272,6 +286,9 @@
                 <img
                   src={{object-at unit.photos 0}}
                   alt="Property {{unit.unitNumber}}"
+                  width="1600"
+                  height="1000"
+                  loading="lazy"
                 />
               {{else}}
                 <div class="unit-card-photo-empty"><Ui::Ph
@@ -307,8 +324,7 @@
               {{! Missing value shows a dash so the row never collapses and stays sortable. }}
               <div class="flex gap-3 text-xs text-muted">
                 <span
-                  class="unit-stat
-                    {{unless (has-value unit.bedrooms) 'is-unset'}}"
+                  class="unit-stat {{unless (has-value unit.bedrooms) 'is-unset'}}"
                   data-test-unit-beds
                 ><Ui::Ph @icon="bed" />
                   {{#if (has-value unit.bedrooms)}}
@@ -317,8 +333,7 @@
                   bed
                 </span>
                 <span
-                  class="unit-stat
-                    {{unless (has-value unit.bathrooms) 'is-unset'}}"
+                  class="unit-stat {{unless (has-value unit.bathrooms) 'is-unset'}}"
                   data-test-unit-baths
                 ><Ui::Ph @icon="bathtub" />
                   {{#if (has-value unit.bathrooms)}}
@@ -343,7 +358,7 @@
               {{#if unit.propertyType}}
                 <Nuvo::Tag
                   class="tag-proptype-{{lowercase unit.propertyType}}"
-                  @text={{if (eq unit.propertyType "FOR_SALE") "Sale" "Rent"}}
+                  @text={{property-type-label unit.propertyType}}
                 />
               {{/if}}
             </div>
@@ -354,6 +369,7 @@
       {{#if this.browseHasNextPage}}
         <div class="flex center gap-4" data-test-browse-pagination>
           <Nuvo::Button
+            data-test-browse-prev
             @variant="secondary"
             @size="sm"
             @disabled={{eq this.browsePage 1}}
@@ -361,6 +377,7 @@
           >Previous</Nuvo::Button>
           <span class="text-sm text-muted">Page {{this.browsePage}}</span>
           <Nuvo::Button
+            data-test-browse-next
             @variant="secondary"
             @size="sm"
             {{on "click" this.browseNextPage}}
@@ -369,6 +386,7 @@
       {{else if (gt this.browsePage 1)}}
         <div class="flex center gap-4" data-test-browse-pagination>
           <Nuvo::Button
+            data-test-browse-prev-empty
             @variant="secondary"
             @size="sm"
             {{on "click" this.browsePrevPage}}
@@ -400,8 +418,7 @@
       class="flex col gap-4"
       {{on "submit" this.saveNewUnit}}
     >
-      <div class="flex col gap-2">
-        <label class="text-sm text-muted">City *</label>
+      <Nuvo::Field @label="City" @required={{true}}>
         <Nuvo::Autocomplete
           @searchUrl={{this.citySearchUrl}}
           @createUrl="/locations/cities"
@@ -411,10 +428,9 @@
           @onSelect={{this.selectCity}}
           @onClear={{this.clearCity}}
         />
-      </div>
+      </Nuvo::Field>
       {{#if this.selectedCity}}
-        <div class="flex col gap-2">
-          <label class="text-sm text-muted">Location / Area *</label>
+        <Nuvo::Field @label="Location / Area" @required={{true}}>
           <Nuvo::Autocomplete
             @searchUrl={{this.localitySearchUrl}}
             @createUrl="/locations/localities"
@@ -424,11 +440,10 @@
             @onSelect={{this.selectLocality}}
             @onClear={{this.clearLocality}}
           />
-        </div>
+        </Nuvo::Field>
       {{/if}}
       {{#if this.selectedLocality}}
-        <div class="flex col gap-2">
-          <label class="text-sm text-muted">Asset *</label>
+        <Nuvo::Field @label="Asset" @required={{true}}>
           <Nuvo::Autocomplete
             @searchUrl={{this.assetSearchUrl}}
             @createUrl="/properties/assets"
@@ -438,12 +453,13 @@
             @onSelect={{this.selectAsset}}
             @onClear={{this.clearAsset}}
           />
-        </div>
+        </Nuvo::Field>
       {{/if}}
       {{#if this.selectedAsset}}
         <hr class="border-t border-light" />
         <Nuvo::Field @label="Property Number" @required={{true}}>
           <Nuvo::Input
+            data-test-new-unit-number
             id="nu-number"
             @type="text"
             @placeholder="e.g. 101, Villa A"
@@ -455,8 +471,12 @@
 
         <div class="flex gap-4">
           <div class="flex col gap-2 grow">
-            <Nuvo::Field @label="Listing Type">
+            <Nuvo::Field
+              @label="Property Listing Type"
+              @tooltip="Choose how this property is listed. For Rent and For Sale make it searchable. Not Listed keeps it hidden."
+            >
               <Nuvo::Dropdown
+                data-test-new-unit-listing-type
                 id="nu-type"
                 @align="start"
                 @value={{this.newUnitType}}
@@ -469,6 +489,7 @@
           <div class="flex col gap-2 grow">
             <Nuvo::Field @label="Status">
               <Nuvo::Dropdown
+                data-test-new-unit-status
                 id="nu-status"
                 @align="start"
                 @value={{this.newUnitStatus}}
@@ -482,8 +503,12 @@
 
         <div class="flex gap-4">
           <div class="flex col gap-2 grow">
-            <Nuvo::Field @label="Price">
+            <Nuvo::Field
+              @label="Price"
+              @tooltip="For a rental, enter the rent per month. For a sale, enter the full asking price."
+            >
               <Nuvo::Input
+                data-test-new-unit-price
                 id="nu-price"
                 @type="number"
                 @placeholder="0"
@@ -496,6 +521,7 @@
           <div class="flex col gap-2 grow">
             <Nuvo::Field @label="Bedrooms">
               <Nuvo::Input
+                data-test-new-unit-beds
                 id="nu-beds"
                 @type="number"
                 @placeholder="0"
@@ -509,6 +535,7 @@
 
         <Nuvo::Field @label="Bathrooms">
           <Nuvo::Input
+            data-test-new-unit-baths
             id="nu-baths"
             @type="number"
             @placeholder="0"
@@ -536,12 +563,14 @@
   </:body>
   <:footer>
     <Nuvo::Button
+      data-test-new-unit-cancel
       @variant="secondary"
       @text="Cancel"
       @onClick={{this.closeNewUnitModal}}
     />
     {{#if this.selectedAsset}}
       <Nuvo::Button
+        data-test-new-unit-save
         @variant="primary"
         @type="submit"
         form="new-property-form"

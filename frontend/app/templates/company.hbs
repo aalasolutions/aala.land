@@ -70,7 +70,10 @@
 
     <Nuvo::Card class="max-w-lg">
       <form aria-label="AI Settings" {{on "submit" this.saveAISettings}}>
-        <Nuvo::Field @label="AI System Prompt">
+        <Nuvo::Field
+          @label="AI System Prompt"
+          @tooltip="Your own instructions for the AI when it answers leads on WhatsApp. Leave it empty to use the built-in instructions."
+        >
           <Nuvo::Textarea
             id="company-ai-prompt"
             data-test-ai-prompt
@@ -169,6 +172,7 @@
             <Nuvo::Field
               @label="Select your Payment currency"
               class="mb-3"
+              @tooltip="Pick the currency you will be billed in. It is locked to your account once you subscribe, so contact support to change it later."
               data-test-currency-select
             >
               <Nuvo::Dropdown
@@ -306,6 +310,7 @@
             @onLimitChange={{this.setBillingHistoryLimit}}
             @onPrevious={{this.billingHistoryPrevious}}
             @onNext={{this.billingHistoryNext}}
+            @onPageChange={{this.billingHistoryGoToPage}}
           />
         {{else}}
           <p class="text-muted" data-test-billing-history-empty>No payments yet.
@@ -357,7 +362,10 @@
             </Nuvo::Field>
           {{/if}}
 
-          <Nuvo::Field @label="Plan">
+          <Nuvo::Field
+            @label="Plan"
+            @tooltip="Your current subscription. It sets the limits on users, regions and storage shown below."
+          >
             <Nuvo::Input
               id="company-plan"
               type="text"
@@ -435,7 +443,11 @@
           </p>
 
           {{#if this.formActiveRegions.length}}
-            <Nuvo::Field @label="Default Region" class="mb-4">
+            <Nuvo::Field
+              @label="Default Region"
+              class="mb-4"
+              @tooltip="Used when a record is created without a region of its own."
+            >
               <Nuvo::Dropdown
                 @align="start"
                 @value={{this.formDefaultRegionCode}}
@@ -453,8 +465,7 @@
 
           {{#each this.model.groupedRegions as |group|}}
             <div
-              class="region-country-group mb-2
-                {{unless this.isAdmin 'is-readonly'}}"
+              class="region-country-group mb-2 {{unless this.isAdmin 'is-readonly'}}"
               data-test-country-group={{group.country}}
             >
               <button
@@ -486,8 +497,7 @@
                 <div class="region-grid mt-2 mb-2 ms-2">
                   {{#each group.regions as |r|}}
                     <div
-                      class="region-checkbox
-                        {{unless this.isAdmin 'is-readonly'}}"
+                      class="region-checkbox {{unless this.isAdmin 'is-readonly'}}"
                       data-test-region-checkbox={{r.code}}
                     >
                       <Nuvo::Checkbox

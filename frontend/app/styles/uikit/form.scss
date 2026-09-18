@@ -239,12 +239,23 @@
   background-size: 1rem;
 }
 
+// Shared by the label and the row that holds it plus a tooltip button.
+%nu-field-label-layout {
+  display: flex;
+  align-items: center;
+  gap: nu-space(1);
+}
+
 // ---- field wrapper ----
+
+$nu-field-label-line-height: calc(#{nu-font-size(sm)} * 1.1);
 
 @include b(field) {
   @include nu-root("field", (
     "Gap": nu-space(2),
     "MarginBlockEnd": nu-space(4),
+    // One label line; the label row and the labelless spacer both use it.
+    "LabelLineHeight": $nu-field-label-line-height,
   ));
 
   display: flex;
@@ -253,9 +264,7 @@
   margin-block-end: nu-var("field", "MarginBlockEnd");
 
   @include e(label) {
-    display: flex;
-    align-items: center;
-    gap: nu-space(1);
+    @extend %nu-field-label-layout;
     font-size: nu-font-size(sm);
     font-weight: nu-font-weight(medium);
     color: var(--text-color);
@@ -264,6 +273,31 @@
   @include e(required) {
     color: var(--danger);
     line-height: 1;
+  }
+
+  // Label plus its optional tooltip button, at the label's own height so a
+  // tooltip does not push it out of line with a labelless sibling.
+  @include e(label-row) {
+    @extend %nu-field-label-layout;
+    min-block-size: nu-var("field", "LabelLineHeight");
+  }
+
+  // Question-mark button that carries an explanatory tooltip beside the label.
+  @include e(info) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--text-muted);
+    cursor: help;
+    line-height: 1;
+
+    &:hover,
+    &:focus-visible {
+      color: var(--primary);
+    }
   }
 
   @include e(hint) {
@@ -284,7 +318,8 @@
     align-items: center;
     gap: nu-space(4);
 
-    .nu-field__label {
+    > .nu-field__label-row,
+    > .nu-field__label {
       flex-shrink: 0;
       min-inline-size: 8rem;
     }
@@ -299,16 +334,18 @@
   // `&nbsp;` overshoots.
   @include e(label-spacer) {
     display: block;
-    block-size: calc(#{nu-font-size(sm)} * 1.1);
+    block-size: nu-var("field", "LabelLineHeight", $nu-field-label-line-height);
     visibility: hidden;
   }
 }
+
+$nu-row-min-column-width: 10rem;
 
 // Auto-fitting row of filter controls; column count follows the viewport.
 @include b(filter-row) {
   @include nu-root("filter-row", (
     "Gap": nu-space(4),
-    "MinColumnWidth": 10rem,
+    "MinColumnWidth": $nu-row-min-column-width,
   ));
 
   display: grid;
@@ -327,6 +364,36 @@
   @include m(compact) {
     --nu-filter-row--MinColumnWidth: 7.5rem;
     --nu-filter-row--Gap: #{nu-space(3)};
+  }
+}
+
+// Side-by-side fields that wrap on narrow screens. Flex rather than the filter
+// row's grid, so one field can take a larger share (`__wide`).
+@include b(field-row) {
+  @include nu-root("field-row", (
+    "Gap": nu-space(4),
+    "MinColumnWidth": $nu-row-min-column-width,
+  ));
+
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: nu-var("field-row", "Gap");
+
+  > * {
+    flex: 1 1 nu-var("field-row", "MinColumnWidth");
+  }
+
+  > .nu-field-row__wide {
+    flex-grow: 2;
+  }
+
+  > .nu-field-row__narrow {
+    flex-grow: 0;
+  }
+
+  @include m(end) {
+    align-items: flex-end;
   }
 }
 

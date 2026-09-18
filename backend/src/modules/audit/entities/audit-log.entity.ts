@@ -15,30 +15,36 @@ export class AuditLog {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Index()
+  @Index('IDX_AUDIT_LOGS_COMPANY_ID')
   @Column({ name: 'company_id', type: 'uuid' })
   companyId: string;
 
-  @ManyToOne(() => Company)
-  @JoinColumn({ name: 'company_id' })
+  @ManyToOne(() => Company, { onDelete: 'CASCADE' })
+  @JoinColumn({
+    name: 'company_id',
+    foreignKeyConstraintName: 'FK_50d854b973295d7c51bcf346efe',
+  })
   company: Company | null;
 
-  @Index()
+  @Index('IDX_AUDIT_LOGS_USER_ID')
   @Column({ name: 'user_id', type: 'uuid', nullable: true })
   userId: string | null;
 
   @ManyToOne(() => User, { nullable: true, onDelete: 'SET NULL' })
-  @JoinColumn({ name: 'user_id' })
+  @JoinColumn({
+    name: 'user_id',
+    foreignKeyConstraintName: 'FK_audit_logs_user_id_users',
+  })
   user: User | null;
 
   @Column({ type: 'varchar', length: 50 })
   action: string;
 
-  @Index()
+  @Index('IDX_AUDIT_LOGS_ENTITY_TYPE')
   @Column({ name: 'entity_type', type: 'varchar', length: 100 })
   entityType: string;
 
-  @Index()
+  @Index('IDX_AUDIT_LOGS_ENTITY_ID')
   @Column({ name: 'entity_id', type: 'uuid', nullable: true })
   entityId: string | null;
 
@@ -59,6 +65,7 @@ export class AuditLog {
   @Column({ name: 'user_agent', type: 'text', nullable: true })
   userAgent: string | null;
 
+  @Index('IDX_AUDIT_LOGS_CREATED_AT')
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;
 }

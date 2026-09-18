@@ -45,7 +45,7 @@ export class Transaction {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Index()
+  @Index('IDX_TRANSACTIONS_COMPANY_ID')
   @Column({ name: 'company_id', type: 'uuid' })
   companyId: string;
 
@@ -60,6 +60,7 @@ export class Transaction {
   })
   type: TransactionType;
 
+  @Index('IDX_TRANSACTIONS_CATEGORY')
   @Column({
     type: 'enum',
     enum: TransactionCategory,
@@ -101,22 +102,26 @@ export class Transaction {
   })
   referenceNumber: string;
 
-  @Index()
+  @Index('IDX_TRANSACTIONS_REGION_CODE')
   @Column({ name: 'region_code', type: 'varchar', length: 50, nullable: true })
   regionCode: string | null;
 
+  @Index('IDX_TRANSACTIONS_UNIT_ID')
   @Column({ name: 'unit_id', type: 'uuid', nullable: true })
   unitId: string;
 
   @ManyToOne(() => Unit)
-  @JoinColumn({ name: 'unit_id' })
+  @JoinColumn({
+    name: 'unit_id',
+    foreignKeyConstraintName: 'FK_transactions_unit',
+  })
   unit: Unit;
 
   @Column({ name: 'transaction_date', type: 'date', nullable: true })
-  transactionDate: Date;
+  transactionDate: string | null;
 
   @Column({ name: 'due_date', type: 'date', nullable: true })
-  dueDate: Date;
+  dueDate: string | null;
 
   @Column({ name: 'paid_at', type: 'timestamptz', nullable: true })
   paidAt: Date;

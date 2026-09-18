@@ -423,6 +423,9 @@ export default class PropertiesUnitController extends Controller {
 
   @action closeDocumentModal() {
     this.showDocumentModal = false;
+  }
+
+  @action resetDocumentDrawer() {
     this.editDocument = null;
     this.documentErrorMsg = '';
     this.selectedDocFile = null;

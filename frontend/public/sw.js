@@ -1,12 +1,7 @@
-const CACHE_NAME = 'aala-land-v1';
+const CACHE_NAME = 'aala-land-v2';
 
-const STATIC_ASSETS = [
-  '/',
-  '/assets/vendor.css',
-  '/assets/land.css',
-  '/assets/vendor.js',
-  '/assets/land.js',
-];
+// Vite emits content-hashed asset names; they are cached on first fetch below
+const STATIC_ASSETS = ['/'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -33,8 +28,12 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
-  // Never cache API calls, always go to network
-  if (url.pathname.startsWith('/v1/') || url.pathname.startsWith('/api/')) {
+  // Never cache API calls or unhashed Embroider entry files, always go to network
+  if (
+    url.pathname.startsWith('/v1/') ||
+    url.pathname.startsWith('/api/') ||
+    url.pathname.startsWith('/@embroider/')
+  ) {
     event.respondWith(fetch(event.request));
     return;
   }

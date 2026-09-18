@@ -1,5 +1,4 @@
 import {
-  IsDateString,
   IsInt,
   IsOptional,
   IsString,
@@ -7,6 +6,7 @@ import {
   MaxLength,
   Min,
 } from 'class-validator';
+import { IsDateOnly } from '@shared/decorators/is-date-only.decorator';
 import { Type } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
 
@@ -29,18 +29,28 @@ export class RecordPaymentDto {
   @Matches(/^[a-zA-Z]{3}$/, { message: 'currency must be a 3-letter ISO code' })
   currency: string;
 
-  @ApiProperty({ description: 'Date the money was received (ISO date)' })
-  @IsDateString()
+  @ApiProperty({
+    description: 'Date the money was received',
+    format: 'date',
+    example: '2026-09-01',
+  })
+  @IsDateOnly()
   receivedAt: string;
 
   @ApiProperty({
     description: 'Start of the billing period this payment covers',
+    format: 'date',
+    example: '2026-09-01',
   })
-  @IsDateString()
+  @IsDateOnly()
   coversStart: string;
 
-  @ApiProperty({ description: 'End of the billing period this payment covers' })
-  @IsDateString()
+  @ApiProperty({
+    description: 'End of the billing period this payment covers',
+    format: 'date',
+    example: '2026-09-30',
+  })
+  @IsDateOnly()
   coversEnd: string;
 
   @ApiProperty({

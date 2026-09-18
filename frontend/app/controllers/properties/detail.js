@@ -5,6 +5,7 @@ import ContactSelection, {
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { service } from '@ember/service';
+import { formatCalendarDate } from '../../utils/local-date';
 import {
   AMENITY_OPTIONS,
   PROPERTY_STATUS_OPTIONS,
@@ -80,10 +81,10 @@ export default class PropertiesDetailController extends Controller {
         .map((lease) => ({
           tenantName: lease.contact?.displayName ?? 'Unknown tenant',
           startDate: lease.startDate
-            ? new Date(lease.startDate).toLocaleDateString()
+            ? formatCalendarDate(lease.startDate)
             : 'N/A',
           endDate: lease.endDate
-            ? new Date(lease.endDate).toLocaleDateString()
+            ? formatCalendarDate(lease.endDate)
             : 'Present',
         }));
 
@@ -99,7 +100,8 @@ export default class PropertiesDetailController extends Controller {
   }
 
   get assetsWithHistory() {
-    const version = this._historyVersion;
+    // tracked dependency for the Map cache
+    this._historyVersion;
     const assets = this.model?.assets || [];
 
     return assets.map((asset) => ({
@@ -219,6 +221,9 @@ export default class PropertiesDetailController extends Controller {
 
   @action closeAssetModal() {
     this.showAssetModal = false;
+  }
+
+  @action resetAssetDrawer() {
     this.editAsset = null;
     this.assetError = '';
   }
@@ -298,6 +303,9 @@ export default class PropertiesDetailController extends Controller {
 
   @action closeUnitModal() {
     this.showUnitModal = false;
+  }
+
+  @action resetUnitDrawer() {
     this.editUnit = null;
     this.unitError = '';
   }

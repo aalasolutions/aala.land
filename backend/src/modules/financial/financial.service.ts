@@ -9,8 +9,6 @@ import {
   EntityManager,
   Repository,
   In,
-  LessThan,
-  Between,
   FindOptionsWhere,
 } from 'typeorm';
 import {
@@ -26,7 +24,11 @@ import {
   resolveRegionCode,
 } from '../../shared/utils/resolve-region-code.util';
 import { Company } from '../companies/entities/company.entity';
-import { effectiveRegionCodes } from '../../shared/utils/region-visibility.util';
+import {
+  effectiveRegionCodes,
+  scopedRegionCodes,
+} from '../../shared/utils/region-visibility.util';
+import { regionTodaySql } from '../../shared/utils/region-time.util';
 import {
   paginationOptions,
   pageSkip,
@@ -57,8 +59,17 @@ export class FinancialService {
     caller?: RegionScope,
   ): Promise<Transaction> {
     if (dto.unitId) {
+      const scopedCodes = scopedRegionCodes(caller);
+      // No assignment means no access, and an empty IN () is invalid SQL.
+      if (scopedCodes?.length === 0) {
+        throw new NotFoundException('Unit not found');
+      }
+      const where: FindOptionsWhere<Unit> = { id: dto.unitId, companyId };
+      if (scopedCodes) {
+        where.asset = { locality: { city: { regionCode: In(scopedCodes) } } };
+      }
       const unit = await this.unitRepository.findOne({
-        where: { id: dto.unitId, companyId },
+        where,
         select: { id: true, deletedAt: true },
       });
       if (!unit) {
@@ -339,42 +350,30 @@ export class FinancialService {
       return { overdue: [], dueToday: [], dueThisWeek: [], dueThisMonth: [] };
     }
 
-    const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    const endOfWeek = new Date(today);
-    endOfWeek.setDate(endOfWeek.getDate() + (7 - endOfWeek.getDay()));
-    const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+    const today = regionTodaySql('t.region_code');
+    const weekEnd = `(${today} + (7 - EXTRACT(DOW FROM ${today}))::int)`;
+    const monthEnd = `((date_trunc('month', ${today}) + interval '1 month - 1 day')::date)`;
 
-    const baseWhere = {
-      companyId,
-      type: TransactionType.INCOME,
-      status: TransactionStatus.PENDING,
-      ...(regionCodes ? { regionCode: In(regionCodes) } : {}),
+    const bucket = (condition: string) => {
+      const qb = this.transactionRepository
+        .createQueryBuilder('t')
+        .where('t.company_id = :companyId', { companyId })
+        .andWhere('t.type = :type', { type: TransactionType.INCOME })
+        .andWhere('t.status = :status', { status: TransactionStatus.PENDING })
+        .andWhere(condition)
+        .orderBy('t.due_date', 'ASC')
+        .take(100);
+      if (regionCodes) {
+        qb.andWhere('t.region_code IN (:...regionCodes)', { regionCodes });
+      }
+      return qb.getMany();
     };
 
     const [overdue, dueToday, dueThisWeek, dueThisMonth] = await Promise.all([
-      this.transactionRepository.find({
-        where: { ...baseWhere, dueDate: LessThan(today) },
-        order: { dueDate: 'ASC' },
-        take: 100,
-      }),
-      this.transactionRepository.find({
-        where: { ...baseWhere, dueDate: Between(today, tomorrow) },
-        order: { dueDate: 'ASC' },
-        take: 100,
-      }),
-      this.transactionRepository.find({
-        where: { ...baseWhere, dueDate: Between(tomorrow, endOfWeek) },
-        order: { dueDate: 'ASC' },
-        take: 100,
-      }),
-      this.transactionRepository.find({
-        where: { ...baseWhere, dueDate: Between(endOfWeek, endOfMonth) },
-        order: { dueDate: 'ASC' },
-        take: 100,
-      }),
+      bucket(`t.due_date < ${today}`),
+      bucket(`t.due_date = ${today}`),
+      bucket(`t.due_date > ${today} AND t.due_date <= ${weekEnd}`),
+      bucket(`t.due_date > ${weekEnd} AND t.due_date <= ${monthEnd}`),
     ]);
 
     return { overdue, dueToday, dueThisWeek, dueThisMonth };
