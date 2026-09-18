@@ -173,9 +173,10 @@ module('Integration | Component | nuvo/tooltip-host', function (hooks) {
     const tooltip = await showTooltipFor(roomy);
 
     const box = tooltip.getBoundingClientRect();
+    assert.ok(box.left >= 0, 'the next tooltip starts inside the window');
     assert.ok(
-      box.left >= 0 && box.right <= window.innerWidth,
-      'the next tooltip is inside the window',
+      box.right <= window.innerWidth,
+      'the next tooltip ends inside the window',
     );
     assert.strictEqual(
       tooltip.style.getPropertyValue('--nu-tooltip--ShiftX'),

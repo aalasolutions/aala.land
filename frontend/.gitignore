@@ -1,6 +1,7 @@
 # compiled output
 /dist/
 /declarations/
+/tmp/
 
 # dependencies
 /node_modules/
@@ -8,6 +9,7 @@
 # misc
 /.env*
 !/.env.example
+*.local
 /.pnp*
 /.eslintcache
 /coverage/

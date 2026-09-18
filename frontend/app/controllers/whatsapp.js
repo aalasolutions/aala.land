@@ -312,7 +312,7 @@ export default class WhatsappController extends Controller {
               m.id === tempId ? { ...m, id: realId } : m,
             );
       }
-    } catch (err) {
+    } catch {
       this.messages = this.messages.filter((m) => m.id !== tempId);
       if (prevChat) {
         const idx = this.chats.findIndex(
