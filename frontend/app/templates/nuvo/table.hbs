@@ -44,13 +44,13 @@
       @layout="block"
       @code={{this.code.basic}}
     >
-      <DataTable @columns={{this.basicColumns}} @rows={{this.rows}} data-test-nuvo-dt-basic as |cell|>
+      <Nuvo::DataTable @columns={{this.basicColumns}} @rows={{this.rows}} data-test-nuvo-dt-basic as |cell|>
         {{#if (eq cell.key "role")}}
           <Nuvo::Badge @variant="info" @text={{cell.value}} />
         {{else}}
           {{cell.value}}
         {{/if}}
-      </DataTable>
+      </Nuvo::DataTable>
     </NuvoDocs::Example>
 
     <NuvoDocs::Example
@@ -59,7 +59,7 @@
       @layout="block"
       @code={{this.code.yieldBlock}}
     >
-      <DataTable @columns={{this.basicColumns}} @rows={{this.rows}} data-test-nuvo-dt-yield as |cell|>
+      <Nuvo::DataTable @columns={{this.basicColumns}} @rows={{this.rows}} data-test-nuvo-dt-yield as |cell|>
         {{#if (eq cell.key "displayName")}}
           <span class="text-primary font-bold">{{cell.value}}</span>
         {{else if (eq cell.key "role")}}
@@ -71,7 +71,7 @@
         {{else}}
           <span class="text-muted">{{cell.value}}</span>
         {{/if}}
-      </DataTable>
+      </Nuvo::DataTable>
     </NuvoDocs::Example>
 
     <h3 class="nuvo-subtitle">Column shape</h3>
@@ -87,13 +87,13 @@
       @layout="block"
       @code={{this.code.pinned}}
     >
-      <DataTable @columns={{this.pinnedColumns}} @rows={{this.rows}} @pinColumns={{true}} data-test-nuvo-dt-pinned as |cell|>
+      <Nuvo::DataTable @columns={{this.pinnedColumns}} @rows={{this.rows}} @pinColumns={{true}} data-test-nuvo-dt-pinned as |cell|>
         {{#if (eq cell.key "id")}}
           <Nuvo::Button @variant="secondary" @size="xs" @icon="pencil-simple" @text="Edit" />
         {{else}}
           {{cell.value}}
         {{/if}}
-      </DataTable>
+      </Nuvo::DataTable>
     </NuvoDocs::Example>
 
     <NuvoDocs::Example
@@ -102,9 +102,9 @@
       @layout="block"
       @code={{this.code.reorderable}}
     >
-      <DataTable @columns={{this.pinnedColumns}} @rows={{this.rows}} @pinColumns={{true}} @reorderable={{true}} data-test-nuvo-dt-reorder as |cell|>
+      <Nuvo::DataTable @columns={{this.pinnedColumns}} @rows={{this.rows}} @pinColumns={{true}} @reorderable={{true}} data-test-nuvo-dt-reorder as |cell|>
         {{cell.value}}
-      </DataTable>
+      </Nuvo::DataTable>
     </NuvoDocs::Example>
 
     <NuvoDocs::Example
@@ -113,9 +113,9 @@
       @layout="block"
       @code={{this.code.options}}
     >
-      <DataTable @columns={{this.pinnedColumns}} @rows={{this.rows}} @pinColumns={{true}} @showOptions={{true}} data-test-nuvo-dt-options as |cell|>
+      <Nuvo::DataTable @columns={{this.pinnedColumns}} @rows={{this.rows}} @pinColumns={{true}} @showOptions={{true}} data-test-nuvo-dt-options as |cell|>
         {{cell.value}}
-      </DataTable>
+      </Nuvo::DataTable>
     </NuvoDocs::Example>
 
     <NuvoDocs::Example
@@ -124,7 +124,7 @@
       @layout="block"
       @code={{this.code.tableId}}
     >
-      <DataTable
+      <Nuvo::DataTable
         @columns={{this.pinnedColumns}}
         @rows={{this.rows}}
         @pinColumns={{true}}
@@ -135,7 +135,7 @@
         as |cell|
       >
         {{cell.value}}
-      </DataTable>
+      </Nuvo::DataTable>
     </NuvoDocs::Example>
   </NuvoDocs::Section>
 
@@ -146,9 +146,9 @@
       @layout="block"
       @code={{this.code.sortable}}
     >
-      <DataTable @columns={{this.basicColumns}} @rows={{this.rows}} @sortable={{true}} @onSort={{this.noteSort}} data-test-nuvo-dt-sort as |cell|>
+      <Nuvo::DataTable @columns={{this.basicColumns}} @rows={{this.rows}} @sortable={{true}} @onSort={{this.noteSort}} data-test-nuvo-dt-sort as |cell|>
         {{cell.value}}
-      </DataTable>
+      </Nuvo::DataTable>
       <span class="nu-text m-sm m-muted" data-test-nuvo-dt-sort-state>onSort: {{this.lastSort}}</span>
     </NuvoDocs::Example>
   </NuvoDocs::Section>
@@ -160,7 +160,7 @@
       @layout="block"
       @code={{this.code.selection}}
     >
-      <DataTable
+      <Nuvo::DataTable
         @columns={{this.basicColumns}}
         @rows={{this.rows}}
         @selection={{this.selection}}
@@ -169,7 +169,7 @@
         as |cell|
       >
         {{cell.value}}
-      </DataTable>
+      </Nuvo::DataTable>
       <span class="nu-text m-sm m-muted" data-test-nuvo-dt-selection>Selected: {{this.selectionSummary}}</span>
     </NuvoDocs::Example>
 
@@ -179,7 +179,7 @@
       @layout="block"
       @code={{this.code.rowClickSelect}}
     >
-      <DataTable
+      <Nuvo::DataTable
         @columns={{this.basicColumns}}
         @rows={{this.rows}}
         @selection={{this.selection}}
@@ -189,7 +189,7 @@
         as |cell|
       >
         {{cell.value}}
-      </DataTable>
+      </Nuvo::DataTable>
     </NuvoDocs::Example>
 
     <NuvoDocs::Example
@@ -198,9 +198,9 @@
       @layout="block"
       @code={{this.code.rowClick}}
     >
-      <DataTable @columns={{this.basicColumns}} @rows={{this.rows}} @onRowClick={{this.noteRowClick}} data-test-nuvo-dt-row-click as |cell|>
+      <Nuvo::DataTable @columns={{this.basicColumns}} @rows={{this.rows}} @onRowClick={{this.noteRowClick}} data-test-nuvo-dt-row-click as |cell|>
         {{cell.value}}
-      </DataTable>
+      </Nuvo::DataTable>
       <span class="nu-text m-sm m-muted" data-test-nuvo-dt-clicked>Clicked: {{this.clickedRow}}</span>
     </NuvoDocs::Example>
   </NuvoDocs::Section>
@@ -212,7 +212,7 @@
       @layout="block"
       @code={{this.code.tree}}
     >
-      <DataTable @columns={{this.treeColumns}} @rows={{this.treeRows}} @tree={{true}} data-test-nuvo-dt-tree as |cell|>
+      <Nuvo::DataTable @columns={{this.treeColumns}} @rows={{this.treeRows}} @tree={{true}} data-test-nuvo-dt-tree as |cell|>
         {{#if (eq cell.key "name")}}
           {{cell.value}}
           {{#if cell.hasChildren}}
@@ -221,7 +221,7 @@
         {{else}}
           {{cell.value}}
         {{/if}}
-      </DataTable>
+      </Nuvo::DataTable>
     </NuvoDocs::Example>
   </NuvoDocs::Section>
 
@@ -232,13 +232,13 @@
       @layout="block"
       @code={{this.code.editing}}
     >
-      <DataTable @columns={{this.editableColumns}} @rows={{this.editableRows}} @onCellEdit={{this.saveCell}} data-test-nuvo-dt-edit as |cell|>
+      <Nuvo::DataTable @columns={{this.editableColumns}} @rows={{this.editableRows}} @onCellEdit={{this.saveCell}} data-test-nuvo-dt-edit as |cell|>
         {{#if (eq cell.key "owner")}}
           {{if cell.value.displayName cell.value.displayName cell.value}}
         {{else}}
           {{cell.value}}
         {{/if}}
-      </DataTable>
+      </Nuvo::DataTable>
       <span class="nu-text m-sm m-muted" data-test-nuvo-dt-edit-state>Last edit: {{this.lastEdit}}</span>
     </NuvoDocs::Example>
 
@@ -253,9 +253,9 @@
       @layout="block"
       @code={{this.code.dir}}
     >
-      <DataTable @columns={{this.rtlColumns}} @rows={{this.rtlRows}} @pinColumns={{true}} @dir="rtl" data-test-nuvo-dt-rtl as |cell|>
+      <Nuvo::DataTable @columns={{this.rtlColumns}} @rows={{this.rtlRows}} @pinColumns={{true}} @dir="rtl" data-test-nuvo-dt-rtl as |cell|>
         {{cell.value}}
-      </DataTable>
+      </Nuvo::DataTable>
     </NuvoDocs::Example>
   </NuvoDocs::Section>
 
@@ -266,7 +266,7 @@
       @layout="block"
       @code={{this.code.paged}}
     >
-      <DataTable
+      <Nuvo::DataTable
         @columns={{this.basicColumns}}
         @rows={{this.rows}}
         @sortable={{true}}
@@ -276,7 +276,7 @@
         as |cell|
       >
         {{cell.value}}
-      </DataTable>
+      </Nuvo::DataTable>
       <Nuvo::Pagination
         @page={{this.page}}
         @limit={{this.limit}}

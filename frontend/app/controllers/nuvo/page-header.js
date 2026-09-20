@@ -6,6 +6,9 @@ export default class NuvoPageHeaderController extends Controller {
     subtitle: `<Nuvo::PageHeader @title="Marina Tower" @subtitle="42 units - Dubai Marina" />`,
     icon: `<Nuvo::PageHeader @icon="buildings" @title="Properties" @subtitle="Every building in the active region" />`,
     bordered: `<Nuvo::PageHeader @title="Bordered" @subtitle="A rule under the header" @bordered={{true}} />`,
+    iconSlot: `<Nuvo::PageHeader @title="Properties">
+  <:icon><MyOwnIcon /></:icon>
+</Nuvo::PageHeader>`,
     breadcrumb: `<Nuvo::PageHeader @title="Marina Tower">
   <:breadcrumb>
     <Nuvo::Breadcrumb @items={{this.crumbs}} @compact={{true}} />

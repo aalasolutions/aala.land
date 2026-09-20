@@ -58,7 +58,7 @@
     {{/if}}
   {{else if (eq this.currentView "list")}}
     {{#if @model.length}}
-      <DataTable
+      <Nuvo::DataTable
         @columns={{this.columns}}
         @rows={{@model}}
         @pinColumns={{true}}
@@ -84,7 +84,7 @@
         {{else}}
           {{cell.value}}
         {{/if}}
-      </DataTable>
+      </Nuvo::DataTable>
     {{else}}
       <Nuvo::EmptyState
         @title="No assets yet"
@@ -412,7 +412,7 @@
       {{on "submit" this.saveNewUnit}}
     >
       <Nuvo::Field @label="City" @required={{true}}>
-        <Nuvo::Autocomplete
+        <RemoteAutocomplete
           @searchUrl={{this.citySearchUrl}}
           @createUrl="/locations/cities"
           @createPayload={{this.cityCreatePayload}}
@@ -424,7 +424,7 @@
       </Nuvo::Field>
       {{#if this.selectedCity}}
         <Nuvo::Field @label="Location / Area" @required={{true}}>
-          <Nuvo::Autocomplete
+          <RemoteAutocomplete
             @searchUrl={{this.localitySearchUrl}}
             @createUrl="/locations/localities"
             @createPayload={{this.localityCreatePayload}}
@@ -437,7 +437,7 @@
       {{/if}}
       {{#if this.selectedLocality}}
         <Nuvo::Field @label="Asset" @required={{true}}>
-          <Nuvo::Autocomplete
+          <RemoteAutocomplete
             @searchUrl={{this.assetSearchUrl}}
             @createUrl="/properties/assets"
             @createPayload={{this.assetCreatePayload}}

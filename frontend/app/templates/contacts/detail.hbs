@@ -221,7 +221,7 @@
       {{#if (includes @model.contact.tags "owner")}}
         <Nuvo::Card @title="Properties Owned">
           {{#if @model.units.length}}
-            <DataTable
+            <Nuvo::DataTable
               @columns={{this.unitColumns}}
               @rows={{@model.units}}
               @pinColumns={{true}}
@@ -253,7 +253,7 @@
               {{else}}
                 <span class="text-muted">{{cell.value}}</span>
               {{/if}}
-            </DataTable>
+            </Nuvo::DataTable>
           {{else}}
             <Nuvo::EmptyState @description="No properties found for this owner." />
           {{/if}}
@@ -263,7 +263,7 @@
       {{#if (includes @model.contact.tags "tenant")}}
         <Nuvo::Card @title="Leases">
           {{#if @model.leases.length}}
-            <DataTable
+            <Nuvo::DataTable
               @columns={{this.leaseColumns}}
               @rows={{@model.leases}}
               @pinColumns={{true}}
@@ -291,7 +291,7 @@
               {{else}}
                 <span class="text-muted">{{cell.value}}</span>
               {{/if}}
-            </DataTable>
+            </Nuvo::DataTable>
           {{else}}
             <Nuvo::EmptyState @description="No leases found for this tenant." />
           {{/if}}

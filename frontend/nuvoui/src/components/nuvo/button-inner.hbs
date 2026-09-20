@@ -1,0 +1,20 @@
+{{! Shared across tag modes so button, anchor and LinkTo cannot drift apart. }}
+{{#if (and (or @hasIconBlock @btn.hasIcon) (not @btn.iconAtEnd))}}
+  <span class={{@btn.iconClasses}} aria-hidden="true" data-test-nu-button-icon>
+    {{#if (and @hasIconBlock (not @btn.isLoading))}}{{yield to="icon"}}{{else if @btn.isPhosphorIcon}}<Nuvo::Icon @icon={{@btn.iconName}} />{{else}}{{@btn.iconName}}{{/if}}
+  </span>
+{{/if}}
+
+{{#unless @btn.isIconOnly}}
+  {{#if (or @hasBlock @text)}}
+    <span
+      class="nu-btn__label"
+    >{{#if @hasBlock}}{{yield}}{{else}}{{@text}}{{/if}}</span>
+  {{/if}}
+{{/unless}}
+
+{{#if (and (or @hasIconBlock @btn.hasIcon) @btn.iconAtEnd)}}
+  <span class={{@btn.iconClasses}} aria-hidden="true" data-test-nu-button-icon>
+    {{#if (and @hasIconBlock (not @btn.isLoading))}}{{yield to="icon"}}{{else if @btn.isPhosphorIcon}}<Nuvo::Icon @icon={{@btn.iconName}} />{{else}}{{@btn.iconName}}{{/if}}
+  </span>
+{{/if}}

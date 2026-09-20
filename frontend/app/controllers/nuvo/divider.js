@@ -7,7 +7,7 @@ export default class NuvoDividerController extends Controller {
     label: `<Nuvo::Divider @label="OR" />`,
     start: `<Nuvo::Divider @labelPosition="start" @label="Section start" />`,
     end: `<Nuvo::Divider @labelPosition="end" @label="Section end" />`,
-    block: `<Nuvo::Divider><Ui::Ph @icon="clock" /> Earlier today</Nuvo::Divider>`,
+    block: `<Nuvo::Divider><Nuvo::Icon @icon="clock" /> Earlier today</Nuvo::Divider>`,
     vertical: `<span class="nu-text m-sm">Start</span>
 <Nuvo::Divider @vertical={{true}} />
 <span class="nu-text m-sm">End</span>`,

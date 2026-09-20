@@ -150,10 +150,10 @@
   <NuvoDocs::Section @title="Icons" @id="icons">
     <NuvoDocs::Example
       @title="Directional icon"
-      @note="Ui::Ph renders the Phosphor web font. Names matching left or right get the flip-rtl class; switch the page to RTL and this arrow mirrors."
+      @note="Nuvo::Icon renders the Phosphor web font. Names matching left or right get the flip-rtl class; switch the page to RTL and this arrow mirrors."
       @code={{this.code.iconFlip}}
     >
-      <Ui::Ph @icon="arrow-right" @size="24px" />
+      <Nuvo::Icon @icon="arrow-right" @size="24px" />
     </NuvoDocs::Example>
 
     <NuvoDocs::Example
@@ -161,7 +161,7 @@
       @note="flip false keeps a directional icon fixed, for an arrow that points at something physical such as a map edge."
       @code={{this.code.iconNoFlip}}
     >
-      <Ui::Ph @icon="arrow-right" @size="24px" @flip={{false}} />
+      <Nuvo::Icon @icon="arrow-right" @size="24px" @flip={{false}} />
     </NuvoDocs::Example>
 
     <NuvoDocs::Example
@@ -169,7 +169,7 @@
       @note="size sets the font size and color the glyph colour; both default to inheriting from the text."
       @code={{this.code.iconSize}}
     >
-      <Ui::Ph @icon="house" @size="24px" @color="var(--primary)" />
+      <Nuvo::Icon @icon="house" @size="24px" @color="var(--primary)" />
     </NuvoDocs::Example>
     <NuvoDocs::Table @kind="args" @rows={{this.iconRows}} />
   </NuvoDocs::Section>

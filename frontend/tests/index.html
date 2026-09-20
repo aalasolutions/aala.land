@@ -34,6 +34,8 @@
     <script type="module">
       import { start } from './test-helper';
       import.meta.glob("./**/*.{js,ts,gjs,gts}", { eager: true });
+      // Kit tests live with the kit. They travel with it when it leaves this repo.
+      import.meta.glob("../nuvoui/tests/**/*.js", { eager: true });
       start();
     </script>
 

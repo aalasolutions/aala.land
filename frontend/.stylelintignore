@@ -3,3 +3,6 @@
 
 # compiled output
 /dist/
+
+# kit addon build output
+/nuvoui/dist/

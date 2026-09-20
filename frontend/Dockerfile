@@ -9,7 +9,10 @@ ENV GOOGLE_CLIENT_ID=$GOOGLE_CLIENT_ID
 
 RUN npm install -g pnpm@10
 
-COPY package.json pnpm-lock.yaml ./
+# The kit is a workspace package; pnpm needs the workspace manifest and the
+# addon's package.json before it can resolve `@nuvoui/ember: workspace:*`.
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY nuvoui/package.json ./nuvoui/
 RUN pnpm install --frozen-lockfile
 
 COPY . .

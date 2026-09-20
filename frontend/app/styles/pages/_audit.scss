@@ -1,6 +1,6 @@
 // Bespoke expandable log list; Accordion couldn't carry this markup, so it's hand-rolled.
-@use "../uikit/mixins/var" as *;
-@use "../uikit/common/var" as *;
+@use "@nuvoui/ember/styles/mixins/var" as *;
+@use "@nuvoui/ember/styles/common/var" as *;
 
 .audit-list {
   display: flex;

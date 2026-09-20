@@ -12,6 +12,7 @@ export default class AuthService extends Service {
   @service whatsapp;
   @service notifications;
   @service uiSettings;
+  @service nuvoStorage;
 
   get apiBase() {
     return config.APP.API_BASE;
@@ -39,6 +40,8 @@ export default class AuthService extends Service {
 
   loadUiSettings() {
     if (this.currentUser?.id) {
+      // Kit UI state (table layouts), namespaced per user under the configured prefix.
+      this.nuvoStorage.keyPrefix = `${config.nuvoStorage.keyPrefix}${this.currentUser.id}-`;
       this.uiSettings.load();
     }
   }
@@ -167,6 +170,7 @@ export default class AuthService extends Service {
     this.socket.disconnect();
     this.whatsapp.disconnectSocket();
     this.uiSettings.reset();
+    this.nuvoStorage.keyPrefix = config.nuvoStorage.keyPrefix;
     await this.session.invalidate();
   }
 

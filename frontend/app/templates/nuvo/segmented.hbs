@@ -37,6 +37,25 @@
     </NuvoDocs::Example>
 
     <NuvoDocs::Example
+      @title="Custom icons with the :icon slot"
+      @note="Icons come from the option objects, so the :icon block yields the option back and the host draws what it likes per option. Without the block, option.icon renders as a Phosphor name."
+      @layout="block"
+      @code={{this.code.iconSlot}}
+    >
+      <Nuvo::Segmented
+        @options={{this.segmentedViews}}
+        @value={{this.segmentedView}}
+        @onChange={{this.updateSegmentedView}}
+      >
+        <:icon as |option|>
+          <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
+            <rect x="1" y="1" width="10" height="10" rx="2" fill="none" stroke="currentColor" stroke-width="2" />
+          </svg>
+        </:icon>
+      </Nuvo::Segmented>
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
       @title="Icon only"
       @note="Labels hide but remain as titles and accessible names; for toolbars where the icons are universally understood."
       @layout="block"

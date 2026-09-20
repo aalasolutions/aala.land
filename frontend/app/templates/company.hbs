@@ -43,7 +43,7 @@
     {{#if this.hasCreditAgents}}
       <Nuvo::Card class="max-w-lg">
         <div class="text-sm font-bold mb-2">AI credits by agent</div>
-        <DataTable
+        <Nuvo::DataTable
           @columns={{this.creditAgentColumns}}
           @rows={{this.creditAgentRows}}
           @pinColumns={{true}}
@@ -61,7 +61,7 @@
           {{else}}
             {{cell.value}}
           {{/if}}
-        </DataTable>
+        </Nuvo::DataTable>
       </Nuvo::Card>
     {{/if}}
 
@@ -245,7 +245,7 @@
       <Nuvo::Card class="mt-4" data-test-billing-history-panel>
         <h3 class="text-lg font-bold mb-4">Billing History</h3>
         {{#if this.billingHistory.length}}
-          <DataTable
+          <Nuvo::DataTable
             @columns={{this.billingHistoryColumns}}
             @rows={{this.billingHistory}}
             @pinColumns={{true}}
@@ -296,7 +296,7 @@
             {{else}}
               {{cell.value}}
             {{/if}}
-          </DataTable>
+          </Nuvo::DataTable>
           <Nuvo::Pagination
             @selectId="billing-history-limit"
             @page={{this.billingHistoryPage}}

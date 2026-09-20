@@ -91,9 +91,9 @@ export default class NuvoInternalsController extends Controller {
 // later
 this.notifications.remove(id);`,
     clear: `this.notifications.clear();`,
-    iconFlip: `<Ui::Ph @icon="arrow-right" />`,
-    iconNoFlip: `<Ui::Ph @icon="arrow-right" @flip={{false}} />`,
-    iconSize: `<Ui::Ph @icon="house" @size="24px" @color="var(--primary)" />`,
+    iconFlip: `<Nuvo::Icon @icon="arrow-right" />`,
+    iconNoFlip: `<Nuvo::Icon @icon="arrow-right" @flip={{false}} />`,
+    iconSize: `<Nuvo::Icon @icon="house" @size="24px" @color="var(--primary)" />`,
   };
 
   hostRows = [

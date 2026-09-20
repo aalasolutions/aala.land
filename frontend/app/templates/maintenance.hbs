@@ -66,7 +66,7 @@
 
     <Nuvo::Card>
       {{#if this.filteredWorkOrders.length}}
-        <DataTable
+        <Nuvo::DataTable
           @columns={{this.columns}}
           @rows={{this.filteredWorkOrders}}
           @pinColumns={{true}}
@@ -144,7 +144,7 @@
           {{else}}
             <span class="text-muted">{{cell.value}}</span>
           {{/if}}
-        </DataTable>
+        </Nuvo::DataTable>
       {{else}}
         {{#if @model.total}}
           <Nuvo::EmptyState

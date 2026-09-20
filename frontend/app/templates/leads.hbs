@@ -319,7 +319,7 @@
 
   {{#if (eq this.viewMode "list")}}
     {{#if this.filteredLeads.length}}
-      <DataTable
+      <Nuvo::DataTable
         @columns={{this.listColumns}}
         @rows={{this.filteredLeads}}
         @onRowClick={{this.openDetailModal}}
@@ -405,7 +405,7 @@
         {{else}}
           {{cell.value}}
         {{/if}}
-      </DataTable>
+      </Nuvo::DataTable>
     {{else}}
       <p class="text-center text-muted py-8">No leads found</p>
     {{/if}}

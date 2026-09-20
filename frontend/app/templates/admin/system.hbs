@@ -31,7 +31,7 @@
     {{/if}}
 
     {{#if this.rows.length}}
-      <DataTable
+      <Nuvo::DataTable
         @columns={{this.columns}}
         @rows={{this.rows}}
         @pinColumns={{true}}
@@ -71,7 +71,7 @@
         {{else}}
           {{cell.value}}
         {{/if}}
-      </DataTable>
+      </Nuvo::DataTable>
     {{else}}
       <p class="text-muted">No active price rows.</p>
     {{/if}}

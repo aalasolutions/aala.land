@@ -6,7 +6,7 @@
 
   <Nuvo::Card>
     {{#if this.rows.length}}
-      <DataTable
+      <Nuvo::DataTable
         @columns={{this.columns}}
         @rows={{this.rows}}
         @tree={{true}}
@@ -50,7 +50,7 @@
         {{else}}
           {{cell.value}}
         {{/if}}
-      </DataTable>
+      </Nuvo::DataTable>
     {{else}}
       <p class="text-muted text-center p-4">No companies yet.</p>
     {{/if}}

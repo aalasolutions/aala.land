@@ -105,7 +105,7 @@
 
   <Nuvo::Card>
     {{#if @model.leases.length}}
-      <DataTable
+      <Nuvo::DataTable
         @columns={{this.columns}}
         @rows={{@model.leases}}
         @pinColumns={{true}}
@@ -248,7 +248,7 @@
         {{else}}
           <span class="text-muted">{{cell.value}}</span>
         {{/if}}
-      </DataTable>
+      </Nuvo::DataTable>
     {{else}}
       {{#if @model.total}}
         <Nuvo::EmptyState

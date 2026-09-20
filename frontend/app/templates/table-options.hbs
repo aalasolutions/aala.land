@@ -130,7 +130,7 @@
 
   <Nuvo::Card>
     {{#if @model.contacts.length}}
-      <DataTable
+      <Nuvo::DataTable
         @columns={{this.columns}}
         @rows={{@model.contacts}}
         @selection={{this.selection}}
@@ -189,7 +189,7 @@
         {{else}}
           <span class="text-muted">{{cell.value}}</span>
         {{/if}}
-      </DataTable>
+      </Nuvo::DataTable>
     {{else}}
       {{#if @model.total}}
         <Nuvo::EmptyState
@@ -219,7 +219,7 @@
   {{! TEMP DataTable variation demo, remove after review. }}
   <Nuvo::Card>
     <h3 class="nu-text m-sm font-bold">B: defaults (checkbox only, no pinning, no reorder, no options)</h3>
-    <DataTable
+    <Nuvo::DataTable
       @columns={{this.columns}}
       @rows={{@model.contacts}}
       @selection={{this.demoSelectionB}}
@@ -273,13 +273,13 @@
         {{else}}
           <span class="text-muted">{{cell.value}}</span>
         {{/if}}
-    </DataTable>
+    </Nuvo::DataTable>
     <p class="text-muted text-sm">{{this.demoSelectionB.length}} selected</p>
   </Nuvo::Card>
 
   <Nuvo::Card>
     <h3 class="nu-text m-sm font-bold">C: RTL, fake Arabic data, row click on</h3>
-    <DataTable
+    <Nuvo::DataTable
       @columns={{this.demoColumns}}
       @rows={{this.demoRtlRows}}
       @onCellEdit={{this.saveDemoCell}}
@@ -340,7 +340,7 @@
         {{else}}
           <span class="text-muted">{{cell.value}}</span>
         {{/if}}
-    </DataTable>
+    </Nuvo::DataTable>
     <p class="text-muted text-sm">{{this.demoSelectionRtl.length}} selected</p>
   </Nuvo::Card>
 </div>

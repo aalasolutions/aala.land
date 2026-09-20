@@ -59,6 +59,15 @@ export default class TableOptionsController extends PaginatedController {
     { id: 'rtl-4', displayName: 'نورة القحطاني', tags: [], email: '', phone: '+966504445566', isWhatsapp: false, contactCompany: '' },
   ];
 
+  // Column transport lives in the app; the kit only calls the function.
+  async searchContacts(term) {
+    const result = await this.auth.fetchJson(
+      `/contacts?search=${encodeURIComponent(term)}`,
+    );
+    const payload = result.data ?? result ?? [];
+    return Array.isArray(payload) ? payload : (payload.data ?? []);
+  }
+
   @action setDemoSelectionB(selection) {
     this.demoSelectionB = selection;
   }
@@ -80,7 +89,7 @@ export default class TableOptionsController extends PaginatedController {
   demoColumns = [
     { name: 'Name', valuePath: 'displayName', width: 250, isFixed: 'left', editable: 'text' },
     { name: 'Role', valuePath: 'tags', width: 220 },
-    { name: 'Email', valuePath: 'email', width: 240, editable: 'search', searchUrl: '/contacts', searchParam: 'search', labelKey: 'displayName' },
+    { name: 'Email', valuePath: 'email', width: 240, editable: 'search', onSearch: (term) => this.searchContacts(term), labelKey: 'displayName' },
     { name: 'Phone', valuePath: 'phone', width: 190, editable: 'text' },
     { name: 'Company', valuePath: 'contactCompany', width: 170, editable: 'select', options: ['شركة الرشيدي للعقارات', 'مؤسسة النور', 'مجموعة العتيبي القابضة للاستثمار'] },
     { name: 'Actions', valuePath: 'id', width: 110, isFixed: 'right', isSortable: false },

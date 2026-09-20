@@ -101,6 +101,36 @@
     >
       <Nuvo::Button @variant="secondary" @loading={{true}} @loadingIcon="circle-notch" @text="Custom spinner" />
     </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Custom icon with the :icon slot"
+      @note="The :icon block replaces the built-in icon entirely, so a host can pass its own SVG or icon component instead of a Phosphor name. Supplying the block means the label moves into :default. @icon keeps working when no block is given."
+      @code={{this.code.iconSlot}}
+    >
+      <Nuvo::Button @variant="primary">
+        <:icon>
+          <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true">
+            <circle cx="7" cy="7" r="6" fill="none" stroke="currentColor" stroke-width="2" />
+          </svg>
+        </:icon>
+        <:default>Custom icon</:default>
+      </Nuvo::Button>
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Loading still wins over the slot"
+      @note="A supplied :icon never replaces the spinner. While @loading is set the button shows its spinner and stays disabled, so a caller's icon cannot hide the busy state."
+      @code={{this.code.iconSlotLoading}}
+    >
+      <Nuvo::Button @variant="primary" @loading={{true}}>
+        <:icon>
+          <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true">
+            <circle cx="7" cy="7" r="6" fill="none" stroke="currentColor" stroke-width="2" />
+          </svg>
+        </:icon>
+        <:default>Saving</:default>
+      </Nuvo::Button>
+    </NuvoDocs::Example>
   </NuvoDocs::Section>
 
   <NuvoDocs::Section @title="States" @id="states">

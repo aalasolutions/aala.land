@@ -1,5 +1,5 @@
 // Auth pages; Google sign-in colours are brand-locked, the one hardcoded-colour exception here.
-@use "../uikit/common/var" as *;
+@use "@nuvoui/ember/styles/common/var" as *;
 
 .login-page {
   display: flex;

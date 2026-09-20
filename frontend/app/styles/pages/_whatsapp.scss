@@ -1,6 +1,6 @@
 // The only page that fills the content area edge to edge, instead of scrolling inside it.
-@use "../uikit/common/var" as *;
-@use "../uikit/mixins/bem" as *;
+@use "@nuvoui/ember/styles/common/var" as *;
+@use "@nuvoui/ember/styles/mixins/bem" as *;
 
 // No NuvoUI size token covers these.
 $wa-sidebar-width: 22.5rem;

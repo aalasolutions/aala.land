@@ -72,7 +72,7 @@
 
   <Nuvo::Card @title="Transactions">
     {{#if this.filteredTransactions.length}}
-      <DataTable
+      <Nuvo::DataTable
         @columns={{this.columns}}
         @rows={{this.filteredTransactions}}
         @pinColumns={{true}}
@@ -113,7 +113,7 @@
         {{else}}
           {{cell.value}}
         {{/if}}
-      </DataTable>
+      </Nuvo::DataTable>
     {{else}}
       {{#if @model.total}}
         <Nuvo::EmptyState

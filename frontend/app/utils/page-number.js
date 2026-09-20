@@ -1,1 +1,1 @@
-export { validPage } from 'land/components/nuvo/-page-number';
+export { validPage } from '@nuvoui/ember/components/nuvo/-page-number';

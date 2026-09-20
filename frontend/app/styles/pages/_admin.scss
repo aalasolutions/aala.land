@@ -1,6 +1,6 @@
 // Bespoke `.console-*` classes on kit tokens; badges use domains from _tags.scss.
-@use "../uikit/common/var" as *;
-@use "../uikit/mixins/bem" as *;
+@use "@nuvoui/ember/styles/common/var" as *;
+@use "@nuvoui/ember/styles/mixins/bem" as *;
 
 .console-hero {
   display: flex;

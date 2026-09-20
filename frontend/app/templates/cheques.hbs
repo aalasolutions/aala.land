@@ -31,7 +31,7 @@
   {{#if (eq this.activeTab "cheques")}}
     <Nuvo::Card>
       {{#if @model.cheques.length}}
-        <DataTable
+        <Nuvo::DataTable
           @columns={{this.columns}}
           @rows={{@model.cheques}}
           @pinColumns={{true}}
@@ -160,7 +160,7 @@
           {{else}}
             {{cell.value}}
           {{/if}}
-        </DataTable>
+        </Nuvo::DataTable>
       {{else}}
         {{#if @model.total}}
           <Nuvo::EmptyState

@@ -1,5 +1,5 @@
 // Layout and helpers for the /nuvo documentation routes only, not part of the shipped kit.
-@use "./uikit/common/var" as *;
+@use "@nuvoui/ember/styles/common/var" as *;
 
 // nu-sidebar is position:fixed, so main region reserves space via margin, not flex flow.
 .nuvo-shell {

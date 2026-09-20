@@ -1,6 +1,6 @@
 <div class="flex col gap-4" data-test-contact-picker>
   <Nuvo::Field @label={{this.label}} @required={{@required}}>
-    <Nuvo::Autocomplete
+    <RemoteAutocomplete
       @searchUrl={{this.searchUrl}}
       @searchParam="search"
       @labelKey="displayName"

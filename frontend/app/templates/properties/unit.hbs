@@ -326,7 +326,7 @@
       </div>
 
       {{#if @model.documents.length}}
-        <DataTable
+        <Nuvo::DataTable
           @columns={{this.documentColumns}}
           @rows={{@model.documents}}
           @pinColumns={{true}}
@@ -384,7 +384,7 @@
           {{else}}
             <span class="text-muted">{{cell.value}}</span>
           {{/if}}
-        </DataTable>
+        </Nuvo::DataTable>
       {{else}}
         <p class="text-muted text-sm">No documents uploaded for this property.</p>
       {{/if}}
@@ -394,7 +394,7 @@
       <h2 class="text-md font-bold mb-3"><Ui::Ph @icon="file-text" />
         Lease History</h2>
       {{#if @model.leases.length}}
-        <DataTable
+        <Nuvo::DataTable
           @columns={{this.leaseColumns}}
           @rows={{@model.leases}}
           @pinColumns={{true}}
@@ -428,7 +428,7 @@
           {{else}}
             <span class="text-muted">{{cell.value}}</span>
           {{/if}}
-        </DataTable>
+        </Nuvo::DataTable>
       {{else}}
         <p class="text-muted text-sm">No lease history for this property.</p>
       {{/if}}

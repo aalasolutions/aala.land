@@ -15,7 +15,7 @@
     "test": "tests"
   },
   "scripts": {
-    "build": "STRIP_TEST_SELECTORS=true vite build",
+    "build": "pnpm --filter @nuvoui/ember build && STRIP_TEST_SELECTORS=true vite build",
     "format": "prettier . --cache --write",
     "lint": "concurrently \"pnpm:lint:*(!fix)\" --names \"lint:\" --prefixColors auto",
     "lint:css": "stylelint \"**/*.css\"",
@@ -26,9 +26,11 @@
     "lint:hbs:fix": "ember-template-lint . --fix",
     "lint:js": "eslint . --cache",
     "lint:js:fix": "eslint . --fix",
-    "start": "vite",
+    "start": "concurrently \"pnpm:start:kit\" \"pnpm:start:app\" --names \"kit,app\" --prefixColors auto",
+    "start:app": "vite",
+    "start:kit": "pnpm --filter @nuvoui/ember start",
     "test": "concurrently \"pnpm:lint\" \"pnpm:test:*\" --names \"lint,test:\" --prefixColors auto",
-    "test:ember": "vite build --mode development && ember test --path dist"
+    "test:ember": "pnpm --filter @nuvoui/ember build && vite build --mode development && ember test --path dist"
   },
   "devDependencies": {
     "@babel/core": "^7.29.7",
@@ -63,7 +65,6 @@
     "ember-qunit": "^9.0.4",
     "ember-resolver": "^13.2.0",
     "ember-source": "~6.12.0",
-    "ember-table": "6.0.0-11",
     "ember-template-lint": "^7.9.3",
     "ember-truth-helpers": "^5.0.0",
     "eslint": "^9.39.5",
@@ -91,6 +92,7 @@
   },
   "dependencies": {
     "@ember/string": "^4.0.1",
+    "@nuvoui/ember": "workspace:*",
     "ember-lifeline": "^7.1.0",
     "luxon": "3.7.2",
     "socket.io-client": "^4.8.3"

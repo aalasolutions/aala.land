@@ -13,7 +13,7 @@ export default class NuvoEmptyStateController extends Controller {
   </:actions>
 </Nuvo::EmptyState>`,
     iconBlock: `<Nuvo::EmptyState @title="Nothing to review" @description="Documents you upload will appear here.">
-  <:icon><Ui::Ph @icon="tray" /></:icon>
+  <:icon><Nuvo::Icon @icon="tray" /></:icon>
 </Nuvo::EmptyState>`,
     sm: `<Nuvo::EmptyState @icon="🔍" @size="sm" @title="No results" @description="No units match this filter." />`,
     lg: `<Nuvo::EmptyState @icon="📄" @size="lg" @title="No lease documents" @description="Upload a signed lease PDF to attach it to this unit." />`,

@@ -1,6 +1,6 @@
 // Company settings: plan banner, billing card, region picker grid.
-@use "../uikit/common/var" as *;
-@use "../uikit/mixins/bem" as *;
+@use "@nuvoui/ember/styles/common/var" as *;
+@use "@nuvoui/ember/styles/mixins/bem" as *;
 
 // Colour comes from `tag-plan-*`; this only sets the box model.
 

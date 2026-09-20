@@ -31,7 +31,7 @@ export default class NuvoUtilitiesController extends Controller {
     ps: `<Nuvo::Panel class="ps-8">ps-8</Nuvo::Panel>`,
     pe: `<Nuvo::Panel class="pe-8">pe-8</Nuvo::Panel>`,
     flipGlyph: `<span class="flip-rtl">▸</span>`,
-    flipIcon: `<Ui::Ph @icon="arrow-right" />`,
+    flipIcon: `<Nuvo::Icon @icon="arrow-right" />`,
   };
 
   classRows = [
@@ -39,7 +39,7 @@ export default class NuvoUtilitiesController extends Controller {
     { name: 'text-end', description: 'text-align: end.' },
     { name: 'ms-{n} / me-{n}', description: 'margin-inline-start / margin-inline-end on the spacing scale.' },
     { name: 'ps-{n} / pe-{n}', description: 'padding-inline-start / padding-inline-end on the spacing scale.' },
-    { name: 'flip-rtl', description: 'Mirrors the element with scaleX(-1) under dir="rtl". Ui::Ph adds it to icons named left or right.' },
+    { name: 'flip-rtl', description: 'Mirrors the element with scaleX(-1) under dir="rtl". Nuvo::Icon adds it to icons named left or right.' },
   ];
 
   spacingRows = SPACING.map(([key, rem, px]) => ({

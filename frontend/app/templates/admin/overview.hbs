@@ -80,7 +80,7 @@
   <Nuvo::Card data-test-overview-upcoming-payments>
     <h3 class="text-lg font-bold mb-4">Upcoming manual payments</h3>
     {{#if this.upcomingRows.length}}
-      <DataTable
+      <Nuvo::DataTable
         @columns={{this.upcomingColumns}}
         @rows={{this.upcomingRows}}
         @pinColumns={{true}}
@@ -112,7 +112,7 @@
         {{else}}
           {{cell.value}}
         {{/if}}
-      </DataTable>
+      </Nuvo::DataTable>
     {{else}}
       <p class="text-muted">No manual payments due in the next
         {{this.upcomingDays}}

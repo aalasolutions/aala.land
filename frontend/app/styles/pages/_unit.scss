@@ -1,6 +1,6 @@
 // Only the photo gallery is bespoke; everything else resolves to a kit component.
-@use "../uikit/common/var" as *;
-@use "../uikit/mixins/bem" as *;
+@use "@nuvoui/ember/styles/common/var" as *;
+@use "@nuvoui/ember/styles/mixins/bem" as *;
 
 .unit-detail-grid {
   display: grid;

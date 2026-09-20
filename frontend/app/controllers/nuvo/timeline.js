@@ -41,7 +41,7 @@ export default class NuvoTimelineController extends Controller {
 </Nuvo::Timeline>`,
     blocks: `<Nuvo::Timeline>
   <Nuvo::TimelineItem @title="Payment received" @timestamp="Today">
-    <:icon><Ui::Ph @icon="check" /></:icon>
+    <:icon><Nuvo::Icon @icon="check" /></:icon>
     <:default><Nuvo::Badge @variant="success" @text="AED 8,500" /></:default>
   </Nuvo::TimelineItem>
 </Nuvo::Timeline>`,

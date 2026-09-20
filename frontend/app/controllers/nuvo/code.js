@@ -78,7 +78,7 @@ export default class NuvoCodeController extends Controller {
   <input class="nu-clipboard-copy__input" value={{this.apiKey}} readonly aria-label="API key" />
   {{#if this.copied}}<span class="nu-clipboard-copy__feedback">Copied</span>{{/if}}
   <button type="button" class="nu-clipboard-copy__button" aria-label="Copy" {{on "click" this.copyKey}}>
-    <Ui::Ph @icon="copy" />
+    <Nuvo::Icon @icon="copy" />
   </button>
 </div>`,
   };

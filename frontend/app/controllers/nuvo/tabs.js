@@ -41,6 +41,9 @@ export default class NuvoTabsController extends Controller {
     listOnly: `<Nuvo::Tabs @tabs={{this.plainTabs}} @activeTab={{this.activeUnitTab}} @onChange={{this.updateUnitTab}} />`,
     underline: `<Nuvo::Tabs @tabs={{this.unitTabs}} @variant="underline" @activeTab={{this.activeUnitTab}} @onChange={{this.updateUnitTab}} />`,
     pills: `<Nuvo::Tabs @tabs={{this.unitTabs}} @variant="pills" @activeTab={{this.activeUnitTab}} @onChange={{this.updateUnitTab}} />`,
+    iconSlot: `<Nuvo::Tabs @tabs={{this.unitTabs}} @activeTab={{this.activeUnitTab}} @onChange={{this.updateUnitTab}}>
+  <:icon as |tab|><MyOwnIcon @name={{tab.icon}} /></:icon>
+</Nuvo::Tabs>`,
     enclosed: `<Nuvo::Tabs @tabs={{this.unitTabs}} @variant="enclosed" @activeTab={{this.activeUnitTab}} @onChange={{this.updateUnitTab}} />`,
     vertical: `<Nuvo::Tabs @tabs={{this.unitTabs}} @vertical={{true}} @activeTab={{this.activeUnitTab}} @onChange={{this.updateUnitTab}} />`,
     fill: `<Nuvo::Tabs @tabs={{this.unitTabs}} @fill={{true}} @activeTab={{this.activeUnitTab}} @onChange={{this.updateUnitTab}} />`,

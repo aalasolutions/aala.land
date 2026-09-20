@@ -50,7 +50,7 @@ export default class NuvoTagController extends Controller {
     closable: `<Nuvo::Tag @variant="info" @closable={{true}} @text="Closable" @onClose={{fn this.noteClose "Closable"}} />`,
     disabled: `<Nuvo::Tag @variant="danger" @disabled={{true}} @closable={{true}} @text="Disabled" />`,
     block: `<Nuvo::Tag @variant="primary">
-  <Ui::Ph @icon="car" /> Parking
+  <Nuvo::Icon @icon="car" /> Parking
 </Nuvo::Tag>`,
     chips: `{{#each this.chipOptions as |chip|}}
   <button
