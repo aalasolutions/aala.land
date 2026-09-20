@@ -1,0 +1,18 @@
+<Nuvo::Autocomplete
+  @labelKey={{@labelKey}}
+  @size={{@size}}
+  @disabled={{@disabled}}
+  @placeholder={{@placeholder}}
+  @promptText={{@promptText}}
+  @emptyText={{@emptyText}}
+  @searchDebounce={{@searchDebounce}}
+  @minChars={{@minChars}}
+  @selectedName={{@selectedName}}
+  @value={{@value}}
+  @onSearch={{this.search}}
+  @onCreate={{if @createUrl this.create}}
+  @onSelect={{@onSelect}}
+  @onClear={{@onClear}}
+  data-test-remote-autocomplete
+  ...attributes
+/>

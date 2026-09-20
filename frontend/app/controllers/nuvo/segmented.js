@@ -50,6 +50,9 @@ export default class NuvoSegmentedController extends Controller {
   }
 
   code = {
+    iconSlot: `<Nuvo::Segmented @options={{this.segmentedViews}} @value={{this.segmentedView}} @onChange={{this.updateSegmentedView}}>
+  <:icon as |option|><MyOwnIcon @name={{option.icon}} /></:icon>
+</Nuvo::Segmented>`,
     icons: `<Nuvo::Segmented @options={{this.segmentedViews}} @value={{this.segmentedView}} @onChange={{this.updateSegmentedView}} />
 
 // segmentedViews: [{ id: 'pipeline', label: 'Pipeline', icon: 'squares-four' }, ...]`,

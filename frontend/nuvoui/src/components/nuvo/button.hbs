@@ -1,0 +1,52 @@
+{{! @route renders LinkTo, @href an anchor, else a button; all share button-inner. }}
+{{#if @route}}
+  <LinkTo
+    @route={{@route}}
+    @models={{this.linkModels}}
+    @query={{this.linkQuery}}
+    class={{this.classes}}
+    data-test-nu-button
+    ...attributes
+  >
+    <Nuvo::ButtonInner
+      @btn={{this}}
+      @hasBlock={{has-block}}
+      @hasIconBlock={{has-block "icon"}}
+      @text={{@text}}
+    >
+      <:icon>{{yield to="icon"}}</:icon>
+      <:default>{{yield}}</:default>
+    </Nuvo::ButtonInner>
+  </LinkTo>
+{{else if @href}}
+  <a href={{@href}} class={{this.classes}} ...attributes>
+    <Nuvo::ButtonInner
+      @btn={{this}}
+      @hasBlock={{has-block}}
+      @hasIconBlock={{has-block "icon"}}
+      @text={{@text}}
+    >
+      <:icon>{{yield to="icon"}}</:icon>
+      <:default>{{yield}}</:default>
+    </Nuvo::ButtonInner>
+  </a>
+{{else}}
+  <button
+    type={{this.type}}
+    class={{this.classes}}
+    disabled={{this.isDisabled}}
+    data-test-nu-button
+    {{on "click" this.onClick}}
+    ...attributes
+  >
+    <Nuvo::ButtonInner
+      @btn={{this}}
+      @hasBlock={{has-block}}
+      @hasIconBlock={{has-block "icon"}}
+      @text={{@text}}
+    >
+      <:icon>{{yield to="icon"}}</:icon>
+      <:default>{{yield}}</:default>
+    </Nuvo::ButtonInner>
+  </button>
+{{/if}}

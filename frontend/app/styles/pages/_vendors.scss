@@ -1,2 +1,2 @@
 // Selected chip keeps its trade tint instead of `is-selected`'s --primary, which would erase it.
-@use "../uikit/common/var" as *;
+@use "@nuvoui/ember/styles/common/var" as *;

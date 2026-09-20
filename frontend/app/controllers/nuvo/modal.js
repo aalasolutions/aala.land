@@ -1,7 +1,7 @@
 import Controller from '@ember/controller';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
-import { VARIANTS } from 'land/components/nuvo/-constants';
+import { VARIANTS } from '@nuvoui/ember/components/nuvo/-constants';
 
 const SIZE_NOTES = {
   sm: 'Confirmations and one-field prompts.',

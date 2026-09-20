@@ -1,6 +1,6 @@
 // Domain prefix avoids enum collisions (e.g. MAINTENANCE); values come from app/constants.js.
 @use "sass:map";
-@use "../uikit/common/var" as *;
+@use "@nuvoui/ember/styles/common/var" as *;
 
 $tag-intents: (
   "success": "success",

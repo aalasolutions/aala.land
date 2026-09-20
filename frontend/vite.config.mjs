@@ -21,6 +21,13 @@ export default defineConfig({
           new URL('./node_modules/@nuvoui/core/src/', import.meta.url),
         ),
       },
+      {
+        // Sass does not read the package exports map; point it at the kit stylesheets.
+        find: /^@nuvoui\/ember\/styles\//,
+        replacement: fileURLToPath(
+          new URL('./nuvoui/styles/', import.meta.url),
+        ),
+      },
     ],
   },
 });

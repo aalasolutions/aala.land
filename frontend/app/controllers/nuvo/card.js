@@ -87,7 +87,7 @@ export default class NuvoCardController extends Controller {
     interactive: `<Nuvo::Card @title="Interactive" @interactive={{true}}>...</Nuvo::Card>`,
     selected: `<Nuvo::Card @title="Selected" @selected={{true}}>...</Nuvo::Card>`,
     statIconBlock: `<Nuvo::Stat @variant="primary" @label="Occupancy rate" @value="94%" @delta="+2.1%">
-  <:icon><Ui::Ph @icon="buildings" /></:icon>
+  <:icon><Nuvo::Icon @icon="buildings" /></:icon>
 </Nuvo::Stat>`,
     statBare: `<Nuvo::Stat @label="Leases" @value="37" />`,
     infoRow: `<Nuvo::Card @title="Lease Summary">

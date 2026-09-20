@@ -1,3 +1,6 @@
+packages:
+  - "nuvoui"
+
 allowBuilds:
   "@parcel/watcher": true
   core-js: false

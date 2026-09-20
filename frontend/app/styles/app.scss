@@ -1,6 +1,6 @@
 @use "nuvoui" as *;
 @use "sass:color";
-@use "./uikit/index" as *;
+@use "@nuvoui/ember/styles/index" as *;
 @use "./nuvo-showcase";
 
 // Shared domain vocabulary. Read-only to page agents.
@@ -8,9 +8,6 @@
 
 // The frame every authenticated route renders inside.
 @use "./pages/shell";
-
-// App components wrapping third-party libraries.
-@use "./components/data-table";
 
 // Per-page layout. One file per migrated page, added as each lands.
 @use "./pages/admin";
@@ -29,4 +26,4 @@
 @use "./pages/vendors";
 @use "./pages/whatsapp";
 
-// No app-level rules here; everything belongs to uikit, the shell, tags, or a page file.
+// No app-level rules here; everything belongs to the kit, the shell, tags, or a page file.

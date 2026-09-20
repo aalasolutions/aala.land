@@ -1,6 +1,6 @@
 // Names distinct from `_owners.scss`, which owns similar classes for a different tile.
-@use "../uikit/common/var" as *;
-@use "../uikit/mixins/bem" as *;
+@use "@nuvoui/ember/styles/common/var" as *;
+@use "@nuvoui/ember/styles/mixins/bem" as *;
 
 .grid-cols-3 {
   display: grid;

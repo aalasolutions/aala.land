@@ -220,7 +220,7 @@
         {{/each}}
       </div>
     {{else}}
-      <DataTable
+      <Nuvo::DataTable
         @columns={{this.unitColumns}}
         @rows={{this.unitRows}}
         @tree={{true}}
@@ -307,7 +307,7 @@
         {{else}}
           {{cell.value}}
         {{/if}}
-      </DataTable>
+      </Nuvo::DataTable>
     {{/if}}
   {{else}}
     <Nuvo::EmptyState
@@ -345,7 +345,7 @@
     >
       {{#unless this.editAsset}}
         <Nuvo::Field @label="City" @required={{true}}>
-          <Nuvo::Autocomplete
+          <RemoteAutocomplete
             @searchUrl={{this.citySearchUrl}}
             @createUrl="/locations/cities"
             @createPayload={{this.cityCreatePayload}}
@@ -357,7 +357,7 @@
         </Nuvo::Field>
         {{#if this.selectedCity}}
           <Nuvo::Field @label="Location / Area" @required={{true}}>
-            <Nuvo::Autocomplete
+            <RemoteAutocomplete
               @searchUrl={{this.localitySearchUrl}}
               @createUrl="/locations/localities"
               @createPayload={{this.localityCreatePayload}}

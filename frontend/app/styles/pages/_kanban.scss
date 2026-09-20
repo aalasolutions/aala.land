@@ -1,7 +1,7 @@
 // nu-kanban is page-level, not kit, since it has no Ember component; kept the `nu-` prefix.
-@use "../uikit/mixins/bem" as *;
-@use "../uikit/mixins/var" as *;
-@use "../uikit/common/var" as *;
+@use "@nuvoui/ember/styles/mixins/bem" as *;
+@use "@nuvoui/ember/styles/mixins/var" as *;
+@use "@nuvoui/ember/styles/common/var" as *;
 
 @include b(kanban) {
   @include nu-root("kanban", (

@@ -1,5 +1,5 @@
 // Reports: pipeline funnel, red-flag alerts, activity feed.
-@use "../uikit/common/var" as *;
+@use "@nuvoui/ember/styles/common/var" as *;
 
 .funnel-grid {
   display: grid;

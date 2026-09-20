@@ -59,6 +59,14 @@ export default class NuvoButtonController extends Controller {
     iconEnd: `<Nuvo::Button @variant="secondary" @icon="arrow-right" @iconPosition="end" @text="Next" />`,
     glyph: `<Nuvo::Button @variant="secondary" @icon="+" @text="Literal glyph" />`,
     loadingIcon: `<Nuvo::Button @variant="secondary" @loading={{true}} @loadingIcon="circle-notch" @text="Custom spinner" />`,
+    iconSlot: `<Nuvo::Button @variant="primary">
+  <:icon><MyOwnIcon /></:icon>
+  <:default>Custom icon</:default>
+</Nuvo::Button>`,
+    iconSlotLoading: `<Nuvo::Button @variant="primary" @loading={{true}}>
+  <:icon><MyOwnIcon /></:icon>
+  <:default>Saving</:default>
+</Nuvo::Button>`,
     disabled: `<Nuvo::Button @variant="primary" @disabled={{true}} @text="Disabled" />`,
     loading: `<Nuvo::Button
   @variant="primary"

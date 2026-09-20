@@ -68,6 +68,19 @@
     >
       <Nuvo::Tabs @tabs={{this.plainTabs}} @activeTab={{this.activeUnitTab}} @onChange={{this.updateUnitTab}} />
     </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Custom icons with the :icon slot"
+      @note="Icons come from the tab objects, so the :icon block yields the tab back and the host decides what to draw per tab. Without the block, tab.icon renders as a Phosphor name."
+      @layout="block"
+      @code={{this.code.iconSlot}}
+    >
+      <Nuvo::Tabs @tabs={{this.unitTabs}} @activeTab={{this.activeUnitTab}} @onChange={{this.updateUnitTab}}>
+        <:icon as |tab|>
+          <span class="nu-tabs__icon" aria-hidden="true">{{if tab.count "*" "-"}}</span>
+        </:icon>
+      </Nuvo::Tabs>
+    </NuvoDocs::Example>
   </NuvoDocs::Section>
 
   <NuvoDocs::Section @title="Variants" @id="variants">

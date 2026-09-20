@@ -1,6 +1,6 @@
 // Boards are the kit's `.nu-kanban`; only temperature accents and load bar are page-specific.
-@use "../uikit/common/var" as *;
-@use "../uikit/mixins/bem" as *;
+@use "@nuvoui/ember/styles/common/var" as *;
+@use "@nuvoui/ember/styles/mixins/bem" as *;
 
 // Temperature accents match the `temp` domain in _tags.scss so column colour matches the badge.
 $lead-temps: (

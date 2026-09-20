@@ -20,6 +20,12 @@ module.exports = function (environment) {
       API_BASE: process.env.API_BASE || 'http://localhost:3010/v1',
       GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID || '',
     },
+
+    // Prefix for kit UI state kept in localStorage (Nuvo::DataTable layouts).
+    // Change it freely; keys are namespaced under it, per signed-in user.
+    nuvoStorage: {
+      keyPrefix: process.env.NUVO_STORAGE_PREFIX || 'nuvo-',
+    },
   };
 
   if (environment === 'development') {

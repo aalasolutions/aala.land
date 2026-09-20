@@ -58,7 +58,7 @@
         data-test-history-error
       />
     {{else if this.rows.length}}
-      <DataTable
+      <Nuvo::DataTable
         @columns={{this.columns}}
         @rows={{this.rows}}
         @pinColumns={{true}}
@@ -91,7 +91,7 @@
         {{else}}
           <span class="text-sm text-muted">{{cell.value}}</span>
         {{/if}}
-      </DataTable>
+      </Nuvo::DataTable>
 
       <Nuvo::Pagination
         @selectId="history-limit"

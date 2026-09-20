@@ -50,6 +50,20 @@
     </NuvoDocs::Example>
 
     <NuvoDocs::Example
+      @title="Custom icon with the :icon slot"
+      @note="The :icon block replaces @icon, so a host can lead the title with its own artwork. The slot content is wrapped in the element carrying nu-page-header__title-icon, so sizing and RTL mirroring still apply."
+      @code={{this.code.iconSlot}}
+    >
+      <Nuvo::PageHeader @title="Properties" @subtitle="Icon supplied by the host">
+        <:icon>
+          <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true">
+            <rect x="3" y="3" width="14" height="14" rx="3" fill="none" stroke="currentColor" stroke-width="2" />
+          </svg>
+        </:icon>
+      </Nuvo::PageHeader>
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
       @title="Bordered"
       @note="A rule under the header separates it from content that starts without its own surface."
       @layout="block"

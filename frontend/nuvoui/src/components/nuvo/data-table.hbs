@@ -1,0 +1,177 @@
+{{! Only file that touches ember-table; swap the library here. }}
+<div class="data-table-shell" dir={{if this.isRtl "rtl" "ltr"}} ...attributes>
+  {{#if (and @showOptions this.optionColumns.length)}}
+    <div class="data-table-shell__toolbar">
+      <Nuvo::Popover @title="Columns" @placement="bottom" @align="end">
+        <:trigger as |toggle|>
+          <Nuvo::Button
+            @variant="ghost"
+            @size="sm"
+            @icon="sliders-horizontal"
+            @onClick={{toggle}}
+            data-test-data-table-options
+          >Options</Nuvo::Button>
+        </:trigger>
+        <:body>
+          <div class="flex col gap-2" data-test-data-table-columns>
+            {{#each this.optionColumns key="key" as |option|}}
+              <Nuvo::Checkbox
+                @label={{option.name}}
+                @checked={{option.visible}}
+                @onChange={{fn this.toggleColumn option.key}}
+                data-test-data-table-column-toggle={{option.key}}
+              />
+            {{/each}}
+          </div>
+        </:body>
+        <:footer>
+          {{#if @tableId}}
+            <Nuvo::Button
+              @variant="ghost"
+              @size="sm"
+              @icon="arrow-counter-clockwise"
+              @onClick={{this.resetLayout}}
+              data-test-data-table-reset
+            >Reset columns</Nuvo::Button>
+          {{/if}}
+        </:footer>
+      </Nuvo::Popover>
+    </div>
+  {{/if}}
+
+  <EmberTable
+    class="data-table nu-table-wrapper
+      {{if this.isRtl 'data-table--rtl'}}
+      {{if this.isTree 'data-table--tree'}}
+      {{if this.hasRowClick 'data-table--row-click'}}"
+    {{this.startAtReadingEdge}}
+    as |t|
+  >
+    <t.head
+      @columns={{this.columns}}
+      @widthConstraint="gte-container"
+      @resizeMode={{if this.isRtl "fluid" "standard"}}
+      @sorts={{this.sorts}}
+      @onUpdateSorts={{if @sortable this.updateSorts}}
+      @enableReorder={{if @reorderable true false}}
+      @onReorder={{this.handleReorder}}
+      @onResize={{this.handleResize}}
+      as |h|
+    >
+      <h.row as |r|>
+        <r.cell as |column columnMeta|>
+          {{#if (eq column.valuePath "__select__")}}
+            <div class="data-table__select">
+              <Nuvo::Checkbox
+                @checked={{this.allSelected}}
+                @indeterminate={{this.someSelected}}
+                @onChange={{this.toggleAll}}
+                aria-label="Select all rows"
+                data-test-data-table-select-all
+              />
+            </div>
+          {{else}}
+            {{column.name}}
+            {{#if columnMeta.isSortable}}
+              <span
+                class="data-table__sort {{if columnMeta.isSorted 'is-active'}}"
+                aria-hidden="true"
+              >
+                <Nuvo::Icon
+                  @icon={{if
+                    columnMeta.isSorted
+                    (if columnMeta.isSortedAsc "caret-up" "caret-down")
+                    "caret-up-down"
+                  }}
+                  @size="12px"
+                />
+              </span>
+            {{/if}}
+            <EmberTh::ResizeHandle @columnMeta={{columnMeta}} />
+          {{/if}}
+        </r.cell>
+      </h.row>
+    </t.head>
+    <t.body
+      @rows={{@rows}}
+      @renderAll={{true}}
+      @enableTree={{this.isTree}}
+      @enableCollapse={{this.isTree}}
+      @checkboxSelectionMode="none"
+      @rowSelectionMode="none"
+      as |b|
+    >
+      <b.row
+        class="{{if (this.isRowSelected b.rowValue) 'is-selected'}}
+          {{if b.rowMeta.depth 'is-child'}}"
+        @onClick={{this.handleRowClick}}
+        data-test-data-table-row={{b.rowValue.id}}
+        as |r|
+      >
+        <r.cell as |value column row cellMeta columnMeta rowMeta|>
+          {{#if (eq column.valuePath "__select__")}}
+            <div class="data-table__select">
+              <Nuvo::Checkbox
+                @checked={{this.isRowSelected row}}
+                @onChange={{fn this.toggleRow row}}
+                aria-label="Select row"
+                data-test-data-table-select-row
+              />
+            </div>
+          {{else if (this.isEditing row column)}}
+            <div
+              class="data-table__editor"
+              data-key={{column.valuePath}}
+              data-test-data-table-editor={{column.valuePath}}
+              {{this.focusEditor}}
+              {{on "keydown" this.handleEditorKeydown}}
+              {{on "focusout" this.handleEditorFocusOut}}
+            >
+              {{#if (eq column.editable "select")}}
+                <Nuvo::Dropdown
+                  @filterable={{true}}
+                  @options={{column.options}}
+                  @value={{value}}
+                  @size="sm"
+                  @align="start"
+                  @onSelect={{this.commitPick}}
+                />
+              {{else if (eq column.editable "search")}}
+                <Nuvo::Autocomplete
+                  @onSearch={{column.onSearch}}
+                  @labelKey={{column.labelKey}}
+                  @selectedName={{this.searchLabel}}
+                  @size="sm"
+                  @onSelect={{this.commitSearchPick}}
+                />
+              {{else}}
+                <Nuvo::Input
+                  @type={{if (eq column.editable "number") "number" "text"}}
+                  @size="sm"
+                  @value={{this.draft}}
+                  @onInput={{this.setDraft}}
+                />
+              {{/if}}
+            </div>
+          {{else}}
+            <div
+              class="data-table__cell {{if (this.editorFor column) 'is-editable'}}"
+              {{on "dblclick" (fn this.startEdit row column)}}
+            >
+              {{yield
+                (hash
+                  key=column.valuePath
+                  value=value
+                  row=row
+                  depth=rowMeta.depth
+                  hasChildren=rowMeta.canCollapse
+                  isCollapsed=rowMeta.isCollapsed
+                )
+              }}
+            </div>
+          {{/if}}
+        </r.cell>
+      </b.row>
+    </t.body>
+  </EmberTable>
+</div>

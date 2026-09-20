@@ -1,0 +1,146 @@
+{
+  "name": "@nuvoui/ember",
+  "version": "0.1.0",
+  "description": "NuvoUI Glimmer component kit and SCSS layer for Ember.",
+  "keywords": [
+    "ember-addon"
+  ],
+  "license": "MIT",
+  "type": "module",
+  "exports": {
+    ".": "./dist/index.js",
+    "./*": "./dist/*.js",
+    "./styles/*": "./styles/*",
+    "./addon-main.js": "./addon-main.cjs"
+  },
+  "files": [
+    "dist",
+    "styles",
+    "addon-main.cjs",
+    "CONVENTIONS.md"
+  ],
+  "scripts": {
+    "build": "rollup --config",
+    "start": "rollup --config --watch --no-watch.clearScreen",
+    "prepack": "rollup --config"
+  },
+  "dependencies": {
+    "@ember/render-modifiers": "^3.0.0",
+    "@embroider/addon-shim": "^1.10.0",
+    "@embroider/macros": "^1.20.5",
+    "decorator-transforms": "^2.3.1",
+    "ember-lifeline": "^7.1.0",
+    "ember-modifier": "^4.3.0",
+    "ember-page-title": "^9.0.3",
+    "ember-table": "6.0.0-11",
+    "ember-truth-helpers": "^5.0.0"
+  },
+  "peerDependencies": {
+    "@ember/test-helpers": ">= 3.0.0",
+    "@glimmer/component": "^2.0.0",
+    "ember-cli-htmlbars": ">= 6.0.0",
+    "ember-qunit": ">= 8.0.0",
+    "ember-source": ">= 4.0.0",
+    "qunit": ">= 2.0.0"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.29.7",
+    "@babel/plugin-transform-runtime": "^7.29.7",
+    "@babel/runtime": "^7.29.7",
+    "@embroider/addon-dev": "^8.2.0",
+    "@rollup/plugin-babel": "^7.1.0",
+    "babel-plugin-ember-template-compilation": "^3.1.0",
+    "rollup": "^4.52.5"
+  },
+  "ember": {
+    "edition": "octane"
+  },
+  "ember-addon": {
+    "version": 2,
+    "type": "addon",
+    "main": "addon-main.cjs",
+    "app-js": {
+      "./components/nuvo/accordion.js": "./dist/_app_/components/nuvo/accordion.js",
+      "./components/nuvo/alert.js": "./dist/_app_/components/nuvo/alert.js",
+      "./components/nuvo/autocomplete.js": "./dist/_app_/components/nuvo/autocomplete.js",
+      "./components/nuvo/avatar-group.js": "./dist/_app_/components/nuvo/avatar-group.js",
+      "./components/nuvo/avatar.js": "./dist/_app_/components/nuvo/avatar.js",
+      "./components/nuvo/badge.js": "./dist/_app_/components/nuvo/badge.js",
+      "./components/nuvo/breadcrumb.js": "./dist/_app_/components/nuvo/breadcrumb.js",
+      "./components/nuvo/btn-group.js": "./dist/_app_/components/nuvo/btn-group.js",
+      "./components/nuvo/button-inner.js": "./dist/_app_/components/nuvo/button-inner.js",
+      "./components/nuvo/button.js": "./dist/_app_/components/nuvo/button.js",
+      "./components/nuvo/card.js": "./dist/_app_/components/nuvo/card.js",
+      "./components/nuvo/checkbox.js": "./dist/_app_/components/nuvo/checkbox.js",
+      "./components/nuvo/confirm-modal.js": "./dist/_app_/components/nuvo/confirm-modal.js",
+      "./components/nuvo/data-table.js": "./dist/_app_/components/nuvo/data-table.js",
+      "./components/nuvo/desc-list.js": "./dist/_app_/components/nuvo/desc-list.js",
+      "./components/nuvo/dialog-host.js": "./dist/_app_/components/nuvo/dialog-host.js",
+      "./components/nuvo/divider.js": "./dist/_app_/components/nuvo/divider.js",
+      "./components/nuvo/dot.js": "./dist/_app_/components/nuvo/dot.js",
+      "./components/nuvo/drawer.js": "./dist/_app_/components/nuvo/drawer.js",
+      "./components/nuvo/dropdown.js": "./dist/_app_/components/nuvo/dropdown.js",
+      "./components/nuvo/empty-state.js": "./dist/_app_/components/nuvo/empty-state.js",
+      "./components/nuvo/field.js": "./dist/_app_/components/nuvo/field.js",
+      "./components/nuvo/form-actions.js": "./dist/_app_/components/nuvo/form-actions.js",
+      "./components/nuvo/icon.js": "./dist/_app_/components/nuvo/icon.js",
+      "./components/nuvo/info-row.js": "./dist/_app_/components/nuvo/info-row.js",
+      "./components/nuvo/input-group.js": "./dist/_app_/components/nuvo/input-group.js",
+      "./components/nuvo/input.js": "./dist/_app_/components/nuvo/input.js",
+      "./components/nuvo/layer-host.js": "./dist/_app_/components/nuvo/layer-host.js",
+      "./components/nuvo/list-item.js": "./dist/_app_/components/nuvo/list-item.js",
+      "./components/nuvo/list.js": "./dist/_app_/components/nuvo/list.js",
+      "./components/nuvo/modal.js": "./dist/_app_/components/nuvo/modal.js",
+      "./components/nuvo/page-header.js": "./dist/_app_/components/nuvo/page-header.js",
+      "./components/nuvo/pagination.js": "./dist/_app_/components/nuvo/pagination.js",
+      "./components/nuvo/panel.js": "./dist/_app_/components/nuvo/panel.js",
+      "./components/nuvo/popover.js": "./dist/_app_/components/nuvo/popover.js",
+      "./components/nuvo/progress-circle.js": "./dist/_app_/components/nuvo/progress-circle.js",
+      "./components/nuvo/progress.js": "./dist/_app_/components/nuvo/progress.js",
+      "./components/nuvo/radio.js": "./dist/_app_/components/nuvo/radio.js",
+      "./components/nuvo/segmented.js": "./dist/_app_/components/nuvo/segmented.js",
+      "./components/nuvo/select.js": "./dist/_app_/components/nuvo/select.js",
+      "./components/nuvo/sidebar-link.js": "./dist/_app_/components/nuvo/sidebar-link.js",
+      "./components/nuvo/sidebar.js": "./dist/_app_/components/nuvo/sidebar.js",
+      "./components/nuvo/skeleton.js": "./dist/_app_/components/nuvo/skeleton.js",
+      "./components/nuvo/spinner.js": "./dist/_app_/components/nuvo/spinner.js",
+      "./components/nuvo/stat-inner.js": "./dist/_app_/components/nuvo/stat-inner.js",
+      "./components/nuvo/stat.js": "./dist/_app_/components/nuvo/stat.js",
+      "./components/nuvo/tabs.js": "./dist/_app_/components/nuvo/tabs.js",
+      "./components/nuvo/tag.js": "./dist/_app_/components/nuvo/tag.js",
+      "./components/nuvo/text.js": "./dist/_app_/components/nuvo/text.js",
+      "./components/nuvo/textarea.js": "./dist/_app_/components/nuvo/textarea.js",
+      "./components/nuvo/timeline-item.js": "./dist/_app_/components/nuvo/timeline-item.js",
+      "./components/nuvo/timeline.js": "./dist/_app_/components/nuvo/timeline.js",
+      "./components/nuvo/title.js": "./dist/_app_/components/nuvo/title.js",
+      "./components/nuvo/toast-region.js": "./dist/_app_/components/nuvo/toast-region.js",
+      "./components/nuvo/toggle.js": "./dist/_app_/components/nuvo/toggle.js",
+      "./components/nuvo/toolbar.js": "./dist/_app_/components/nuvo/toolbar.js",
+      "./components/nuvo/tooltip-host.js": "./dist/_app_/components/nuvo/tooltip-host.js",
+      "./components/nuvo/topbar.js": "./dist/_app_/components/nuvo/topbar.js",
+      "./modifiers/anchor.js": "./dist/_app_/modifiers/anchor.js",
+      "./modifiers/dialog-transition.js": "./dist/_app_/modifiers/dialog-transition.js",
+      "./modifiers/dialog.js": "./dist/_app_/modifiers/dialog.js",
+      "./modifiers/tooltip-fit.js": "./dist/_app_/modifiers/tooltip-fit.js",
+      "./services/dialogs.js": "./dist/_app_/services/dialogs.js",
+      "./services/layer.js": "./dist/_app_/services/layer.js",
+      "./services/notifications.js": "./dist/_app_/services/notifications.js",
+      "./services/nuvo-storage.js": "./dist/_app_/services/nuvo-storage.js",
+      "./services/tooltip.js": "./dist/_app_/services/tooltip.js"
+    }
+  },
+  "peerDependenciesMeta": {
+    "@ember/test-helpers": {
+      "optional": true
+    },
+    "ember-cli-htmlbars": {
+      "optional": true
+    },
+    "ember-qunit": {
+      "optional": true
+    },
+    "qunit": {
+      "optional": true
+    }
+  }
+}

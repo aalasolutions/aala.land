@@ -72,7 +72,7 @@ export default class NuvoTypographyController extends Controller {
 <Nuvo::Title @tag="h4" @size="lg" @text="An h4 at the same size" />`,
     titleWeight: `<Nuvo::Title @size="xl" @weight="semibold" @text="Marina Tower" />`,
     titleTruncate: `<Nuvo::Title @size="md" @tag="h4" @truncate={{true}} @text="A very long unit description that should truncate with an ellipsis when the container is narrow" />`,
-    titleBlock: `<Nuvo::Title @size="sm" @tag="h5"><Ui::Ph @icon="buildings" /> Block content</Nuvo::Title>`,
+    titleBlock: `<Nuvo::Title @size="sm" @tag="h5"><Nuvo::Icon @icon="buildings" /> Block content</Nuvo::Title>`,
     textTag: `<Nuvo::Text @tag="span" @size="xs" @text="Inline span" />`,
     muted: `<Nuvo::Text @muted={{true}} @text="Last synced 4 minutes ago." />`,
     subtle: `<Nuvo::Text @subtle={{true}} @text="Optional note." />`,

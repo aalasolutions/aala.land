@@ -2,6 +2,13 @@ import Controller from '@ember/controller';
 import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 
+const OWNERS = [
+  { id: 'o1', displayName: 'Amina Rashid' },
+  { id: 'o2', displayName: 'Daniel Okafor' },
+  { id: 'o3', displayName: 'Mei Lin' },
+  { id: 'o4', displayName: 'Priya Nair' },
+];
+
 const COMPANIES = ['Emaar Properties', 'Damac', 'Nakheel', 'Sobha Realty'];
 
 function makeRows() {
@@ -50,7 +57,7 @@ export default class NuvoTableController extends Controller {
     { name: 'Name', valuePath: 'displayName', width: 200, editable: 'text' },
     { name: 'Units', valuePath: 'units', width: 100, editable: 'number' },
     { name: 'Company', valuePath: 'companyName', width: 200, editable: 'select', options: COMPANIES },
-    { name: 'Owner', valuePath: 'owner', width: 220, editable: 'search', searchUrl: '/contacts', searchParam: 'search', labelKey: 'displayName' },
+    { name: 'Owner', valuePath: 'owner', width: 220, editable: 'search', onSearch: (term) => this.searchOwners(term), labelKey: 'displayName' },
   ];
 
   @tracked editableRows = [
@@ -103,6 +110,12 @@ export default class NuvoTableController extends Controller {
     return this.selection.length
       ? this.selection.map((row) => row.displayName).join(', ')
       : 'none';
+  }
+
+  // Docs pages have no backend; the demo resolves from a local list.
+  async searchOwners(term) {
+    const needle = String(term ?? '').toLowerCase();
+    return OWNERS.filter((o) => o.displayName.toLowerCase().includes(needle));
   }
 
   @action
@@ -244,7 +257,7 @@ export default class NuvoTableController extends Controller {
 //   { name: 'Name',    valuePath: 'displayName', editable: 'text' }
 //   { name: 'Units',   valuePath: 'units',       editable: 'number' }
 //   { name: 'Company', valuePath: 'companyName', editable: 'select', options: ['Emaar Properties', 'Damac', ...] }
-//   { name: 'Owner',   valuePath: 'owner',       editable: 'search', searchUrl: '/contacts', searchParam: 'search', labelKey: 'displayName' }
+//   { name: 'Owner',   valuePath: 'owner',       editable: 'search', onSearch: searchOwners, labelKey: 'displayName' }
 // saveCell(row, key, value): value is a string, a number (or null), an option value, or the picked record`,
     dir: `<DataTable @columns={{this.rtlColumns}} @rows={{this.rtlRows}} @pinColumns={{true}} @dir="rtl" as |cell|>
   {{cell.value}}
@@ -310,8 +323,7 @@ export default class NuvoTableController extends Controller {
     { name: 'isResizable', type: 'boolean', default: 'true', description: 'Set false to lock the width.' },
     { name: 'editable', type: '"text" | "number" | "select" | "search"', default: '', description: 'Editor opened by double-click when @onCellEdit is set.' },
     { name: 'options', type: 'array', default: '', description: 'Choices for a select editor; strings or value/label objects.' },
-    { name: 'searchUrl', type: 'string', default: '', description: 'Endpoint for a search editor (Nuvo::Autocomplete).' },
-    { name: 'searchParam', type: 'string', default: '"q"', description: 'Query param for the search term.' },
+    { name: 'onSearch', type: 'function', default: '', description: 'async (term) => items, for a search editor (Nuvo::Autocomplete). The host owns transport.' },
     { name: 'labelKey', type: 'string', default: '"name"', description: 'Property of a search result, and of an object cell value, shown as the label.' },
   ];
 

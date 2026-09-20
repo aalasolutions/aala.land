@@ -274,7 +274,7 @@
       {{#if this.paymentsLoading}}
         <p class="text-muted">Loading payments…</p>
       {{else if this.paymentRows}}
-        <DataTable
+        <Nuvo::DataTable
           @columns={{this.paymentColumns}}
           @rows={{this.paymentRows}}
           @pinColumns={{true}}
@@ -323,7 +323,7 @@
           {{else}}
             {{cell.value}}
           {{/if}}
-        </DataTable>
+        </Nuvo::DataTable>
       {{else}}
         <p class="text-muted">No payments recorded yet.</p>
       {{/if}}
@@ -335,7 +335,7 @@
       {{#if this.historyLoading}}
         <p class="text-muted">Loading history…</p>
       {{else if this.historyRows}}
-        <DataTable
+        <Nuvo::DataTable
           @columns={{this.historyColumns}}
           @rows={{this.historyRows}}
           @pinColumns={{true}}
@@ -351,7 +351,7 @@
           {{else}}
             {{cell.value}}
           {{/if}}
-        </DataTable>
+        </Nuvo::DataTable>
       {{else}}
         <p class="text-muted">No operator events for this company yet.</p>
       {{/if}}
