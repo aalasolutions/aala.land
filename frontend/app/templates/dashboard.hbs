@@ -11,17 +11,42 @@
   </Nuvo::PageHeader>
 
   {{#if @model.kpis}}
-    <div class="kpi-grid">
-      <Nuvo::Stat data-test-kpi="total-units" @variant="primary" @label="Total Properties" @value={{format-number @model.kpis.totalUnits}} />
-      <Nuvo::Stat data-test-kpi="total-leads" @variant="secondary" @label="Active Leads" @value={{format-number @model.kpis.totalLeads}} />
-      <Nuvo::Stat data-test-kpi="monthly-revenue" @variant="primary" @label="Monthly Revenue" @value={{format-currency @model.kpis.monthlyRevenue}} />
-      <Nuvo::Stat data-test-kpi="occupancy" @variant="success" @label="Occupancy Rate" @value="{{if @model.kpis.totalUnits this.occupancyRate 0}}%" />
-    </div>
+    {{! Three tiers: what needs acting on, what it earned, what is merely true. }}
+    <div class="kpi-layout">
+      <div class="kpi-action">
+        <Nuvo::Stat
+          data-test-kpi="pending-cheques"
+          @route="cheques"
+          @variant="warning"
+          @size="lg"
+          @label="Pending Cheques"
+          @value={{format-number @model.kpis.pendingCheques}}
+          @delta="Needs action"
+        />
+        <Nuvo::Stat
+          data-test-kpi="total-leads"
+          @route="leads"
+          @variant="secondary"
+          @size="lg"
+          @label="Active Leads"
+          @value={{format-number @model.kpis.totalLeads}}
+          @delta="In pipeline"
+        />
+      </div>
 
-    <div class="kpi-grid kpi-grid-3">
-      <Nuvo::Stat data-test-kpi="won-leads" @variant="success" @label="Deals Won" @value={{format-number @model.kpis.wonLeads}} />
-      <Nuvo::Stat data-test-kpi="active-leases" @variant="primary" @label="Active Leases" @value={{format-number @model.kpis.activeLeases}} />
-      <Nuvo::Stat data-test-kpi="pending-cheques" @variant="warning" @label="Pending Cheques" @value={{format-number @model.kpis.pendingCheques}} />
+      <Nuvo::Stat
+        class="kpi-outcome"
+        data-test-kpi="monthly-revenue"
+        @label="Monthly Revenue"
+        @value={{format-currency @model.kpis.monthlyRevenue}}
+      />
+
+      <div class="kpi-status">
+        <Nuvo::Stat data-test-kpi="total-units" @row={{true}} @label="Total Properties" @value={{format-number @model.kpis.totalUnits}} />
+        <Nuvo::Stat data-test-kpi="occupancy" @row={{true}} @label="Occupancy Rate" @value="{{if @model.kpis.totalUnits this.occupancyRate 0}}%" />
+        <Nuvo::Stat data-test-kpi="won-leads" @row={{true}} @label="Deals Won" @value={{format-number @model.kpis.wonLeads}} />
+        <Nuvo::Stat data-test-kpi="active-leases" @row={{true}} @label="Active Leases" @value={{format-number @model.kpis.activeLeases}} />
+      </div>
     </div>
   {{else}}
     <Nuvo::Panel class="p-8 text-center">
@@ -32,7 +57,7 @@
   <div class="dashboard-panels">
     <Nuvo::Panel class="dashboard-panel">
       <:header>
-        <h3 class="nu-panel__title"><Ui::Ph @icon="lightning" @size="18px" />
+        <h3 class="nu-panel__title">
           Recent Activity</h3>
       </:header>
       <:body>
@@ -57,7 +82,7 @@
 
     <Nuvo::Panel class="dashboard-panel">
       <:header>
-        <h3 class="nu-panel__title"><Ui::Ph @icon="funnel" @size="18px" />
+        <h3 class="nu-panel__title">
           Lead Pipeline</h3>
       </:header>
       <:body>
