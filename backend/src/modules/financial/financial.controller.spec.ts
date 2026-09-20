@@ -94,6 +94,8 @@ describe('FinancialController', () => {
         undefined,
         undefined,
         mockReq.user,
+        undefined,
+        undefined,
       );
       expect(result).toEqual(paginated);
     });
@@ -115,6 +117,8 @@ describe('FinancialController', () => {
         companyId,
         undefined,
         mockReq.user,
+        undefined,
+        undefined,
       );
       expect(result).toEqual(summary);
     });

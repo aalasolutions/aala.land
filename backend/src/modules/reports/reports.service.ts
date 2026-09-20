@@ -29,6 +29,7 @@ import {
   regionTimezoneSql,
   subtractDaysFromInstant,
 } from '../../shared/utils/region-time.util';
+import { monthSeries } from '../../shared/utils/month-series.util';
 
 export interface DashboardKpis {
   totalLeads: number;
@@ -37,6 +38,11 @@ export interface DashboardKpis {
   monthlyRevenue: number;
   activeLeases: number;
   pendingCheques: number;
+}
+
+export interface RevenueTrendPoint {
+  month: string;
+  total: number;
 }
 
 export interface AgentPerformance {
@@ -260,6 +266,44 @@ export class ReportsService {
       activeLeases,
       pendingCheques,
     };
+  }
+
+  // Completed income per month, oldest first. Buckets on the business date, with
+  // created_at only as a fallback because transaction_date is nullable.
+  async getRevenueTrend(
+    companyId: string,
+    months = 6,
+    regionCode?: string,
+    caller?: RegionScope,
+  ): Promise<RevenueTrendPoint[]> {
+    const series = monthSeries(months);
+    const empty = series.map((month) => ({ month, total: 0 }));
+
+    const regionCodes = effectiveRegionCodes(regionCode, caller);
+    // No readable region means nothing to total, and an empty IN () is invalid SQL.
+    if (regionCodes?.length === 0) return empty;
+
+    const zone = regionTimezoneSql('t.region_code');
+    const bucket = `date_trunc('month', COALESCE(t.transaction_date, (t.created_at AT TIME ZONE ${zone})::date))`;
+
+    const qb = this.transactionRepository
+      .createQueryBuilder('t')
+      .select(`to_char(${bucket}, 'YYYY-MM')`, 'month')
+      .addSelect('COALESCE(SUM(t.amount), 0)', 'total')
+      .where('t.companyId = :companyId', { companyId })
+      .andWhere('t.type = :type', { type: TransactionType.INCOME })
+      .andWhere('t.status = :status', { status: TransactionStatus.COMPLETED })
+      .andWhere(`${bucket} >= :from`, { from: `${series[0]}-01` })
+      .groupBy(`to_char(${bucket}, 'YYYY-MM')`);
+
+    if (regionCodes) {
+      qb.andWhere('t.regionCode IN (:...regionCodes)', { regionCodes });
+    }
+
+    const rows = await qb.getRawMany<{ month: string; total: string }>();
+    const totals = new Map(rows.map((row) => [row.month, Number(row.total)]));
+
+    return series.map((month) => ({ month, total: totals.get(month) ?? 0 }));
   }
 
   async getAgentPerformance(

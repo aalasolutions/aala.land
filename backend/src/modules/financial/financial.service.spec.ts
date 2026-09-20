@@ -312,23 +312,73 @@ describe('FinancialService', () => {
   });
 
   describe('findAll', () => {
+    const listQb = () => ({
+      leftJoinAndSelect: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
+      skip: jest.fn().mockReturnThis(),
+      take: jest.fn().mockReturnThis(),
+      orderBy: jest.fn().mockReturnThis(),
+      getManyAndCount: jest
+        .fn()
+        .mockResolvedValue([[mockTransaction as Transaction], 1]),
+    });
+
     it('returns paginated transactions for company', async () => {
-      repo.findAndCount.mockResolvedValue([
-        [mockTransaction as Transaction],
-        1,
-      ]);
+      const qb: any = listQb();
+      (repo.createQueryBuilder as jest.Mock).mockReturnValue(qb);
 
       const result = await service.findAll(companyId, 1, 20);
 
-      expect(repo.findAndCount).toHaveBeenCalledWith({
-        where: { companyId },
-        skip: 0,
-        take: 20,
-        relations: ['unit'],
-        order: { createdAt: 'DESC' },
+      expect(qb.where).toHaveBeenCalledWith('t.companyId = :companyId', {
+        companyId,
       });
+      expect(qb.skip).toHaveBeenCalledWith(0);
+      expect(qb.take).toHaveBeenCalledWith(20);
+      expect(qb.orderBy).toHaveBeenCalledWith('t.createdAt', 'DESC');
       expect(result.data).toEqual([mockTransaction]);
       expect(result.total).toBe(1);
+    });
+
+    it('filters on the business date when a range is given', async () => {
+      const qb: any = listQb();
+      (repo.createQueryBuilder as jest.Mock).mockReturnValue(qb);
+
+      await service.findAll(
+        companyId,
+        1,
+        20,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        '2026-02-01',
+        '2026-02-28',
+      );
+
+      expect(qb.andWhere).toHaveBeenCalledWith(expect.any(String), {
+        from: '2026-02-01',
+        to: '2026-02-28',
+      });
+    });
+
+    it('ignores a range that is not a YYYY-MM-DD pair', async () => {
+      const qb: any = listQb();
+      (repo.createQueryBuilder as jest.Mock).mockReturnValue(qb);
+
+      await service.findAll(
+        companyId,
+        1,
+        20,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        'nonsense',
+        '2026-02-28',
+      );
+
+      expect(qb.andWhere).not.toHaveBeenCalled();
     });
   });
 

@@ -28,12 +28,31 @@ import {
   effectiveRegionCodes,
   scopedRegionCodes,
 } from '../../shared/utils/region-visibility.util';
-import { regionTodaySql } from '../../shared/utils/region-time.util';
 import {
-  paginationOptions,
-  pageSkip,
-  clampLimit,
-} from '../../shared/utils/pagination.util';
+  regionTimezoneSql,
+  regionTodaySql,
+} from '../../shared/utils/region-time.util';
+import {
+  dateRange,
+  monthSeries,
+} from '../../shared/utils/month-series.util';
+import { pageSkip, clampLimit } from '../../shared/utils/pagination.util';
+
+// The business date a transaction belongs to, falling back to when it was
+// recorded because transaction_date is nullable. Matches the dashboard trend.
+const BUSINESS_DATE = `COALESCE(t.transaction_date, (t.created_at AT TIME ZONE ${regionTimezoneSql('t.region_code')})::date)`;
+
+export interface CategoryTotal {
+  category: string;
+  type: TransactionType;
+  total: number;
+}
+
+export interface CashflowPoint {
+  month: string;
+  income: number;
+  expense: number;
+}
 
 export interface TransactionSummary {
   totalIncome: number;
@@ -109,6 +128,8 @@ export class FinancialService {
     ownerId?: string,
     regionCode?: string,
     caller?: RegionScope,
+    from?: string,
+    to?: string,
   ): Promise<{
     data: Transaction[];
     total: number;
@@ -121,46 +142,34 @@ export class FinancialService {
       return { data: [], total: 0, page, limit };
     }
 
+    const qb = this.transactionRepository
+      .createQueryBuilder('t')
+      .leftJoinAndSelect('t.unit', 'unit')
+      .where('t.companyId = :companyId', { companyId });
+
     if (regionCodes) {
       // Rows without a region stay hidden until the region selector offers Show All.
-      const qb = this.transactionRepository
-        .createQueryBuilder('t')
-        .leftJoinAndSelect('t.unit', 'unit')
-        .where('t.companyId = :companyId', { companyId })
-        .andWhere('t.regionCode IN (:...regionCodes)', { regionCodes });
-
-      if (ownerId) {
-        qb.andWhere('unit.ownerId = :ownerId', { ownerId });
-      }
-
-      if (type) {
-        qb.andWhere('t.type = :type', { type });
-      }
-
-      qb.skip(pageSkip(page, limit))
-        .take(clampLimit(limit))
-        .orderBy('t.createdAt', 'DESC');
-
-      const [data, total] = await qb.getManyAndCount();
-      return { data, total, page, limit };
+      qb.andWhere('t.regionCode IN (:...regionCodes)', { regionCodes });
     }
 
-    const where: FindOptionsWhere<Transaction> = { companyId };
-
     if (ownerId) {
-      where.unit = { ownerId };
+      qb.andWhere('unit.ownerId = :ownerId', { ownerId });
     }
 
     if (type) {
-      where.type = type as TransactionType;
+      qb.andWhere('t.type = :type', { type });
     }
 
-    const [data, total] = await this.transactionRepository.findAndCount({
-      where,
-      relations: ['unit'],
-      ...paginationOptions(page, limit),
-      order: { createdAt: 'DESC' },
-    });
+    const bounds = dateRange(from, to);
+    if (bounds) {
+      qb.andWhere(`${BUSINESS_DATE} BETWEEN :from AND :to`, bounds);
+    }
+
+    qb.skip(pageSkip(page, limit))
+      .take(clampLimit(limit))
+      .orderBy('t.createdAt', 'DESC');
+
+    const [data, total] = await qb.getManyAndCount();
     return { data, total, page, limit };
   }
 
@@ -291,6 +300,8 @@ export class FinancialService {
     companyId: string,
     regionCode?: string,
     caller?: RegionScope,
+    from?: string,
+    to?: string,
   ): Promise<TransactionSummary> {
     const regionCodes = effectiveRegionCodes(regionCode, caller);
     if (regionCodes?.length === 0) {
@@ -326,6 +337,11 @@ export class FinancialService {
       qb.andWhere('t.regionCode IN (:...regionCodes)', { regionCodes });
     }
 
+    const bounds = dateRange(from, to);
+    if (bounds) {
+      qb.andWhere(`${BUSINESS_DATE} BETWEEN :from AND :to`, bounds);
+    }
+
     const result = await qb.getRawOne();
 
     const totalIncome = Number(result?.totalIncome ?? 0);
@@ -336,6 +352,107 @@ export class FinancialService {
       totalExpense,
       net: totalIncome - totalExpense,
     };
+  }
+
+  // One row per category actually present, split by type, for the given month.
+  async getCategoryBreakdown(
+    companyId: string,
+    from?: string,
+    to?: string,
+    regionCode?: string,
+    caller?: RegionScope,
+  ): Promise<CategoryTotal[]> {
+    const regionCodes = effectiveRegionCodes(regionCode, caller);
+    if (regionCodes?.length === 0) return [];
+
+    const qb = this.transactionRepository
+      .createQueryBuilder('t')
+      .select('t.category', 'category')
+      .addSelect('t.type', 'type')
+      .addSelect('COALESCE(SUM(t.amount), 0)', 'total')
+      .where('t.companyId = :companyId', { companyId })
+      .andWhere('t.status NOT IN (:...excluded)', {
+        excluded: [TransactionStatus.CANCELLED, TransactionStatus.FAILED],
+      })
+      .groupBy('t.category')
+      .addGroupBy('t.type')
+      .orderBy('3', 'DESC');
+
+    if (regionCodes) {
+      qb.andWhere('t.regionCode IN (:...regionCodes)', { regionCodes });
+    }
+
+    const bounds = dateRange(from, to);
+    if (bounds) {
+      qb.andWhere(`${BUSINESS_DATE} BETWEEN :from AND :to`, bounds);
+    }
+
+    const rows = await qb.getRawMany<{
+      category: string | null;
+      type: TransactionType;
+      total: string;
+    }>();
+
+    return rows.map((row) => ({
+      category: row.category ?? 'OTHER',
+      type: row.type,
+      total: Number(row.total),
+    }));
+  }
+
+  // Income and expense per month, oldest first, zero-filled so a gap in the
+  // data does not shorten the series.
+  async getCashflowTrend(
+    companyId: string,
+    months = 6,
+    regionCode?: string,
+    caller?: RegionScope,
+  ): Promise<CashflowPoint[]> {
+    const series = monthSeries(months);
+    const empty = series.map((month) => ({ month, income: 0, expense: 0 }));
+
+    const regionCodes = effectiveRegionCodes(regionCode, caller);
+    if (regionCodes?.length === 0) return empty;
+
+    const bucket = `date_trunc('month', ${BUSINESS_DATE})`;
+    const qb = this.transactionRepository
+      .createQueryBuilder('t')
+      .select(`to_char(${bucket}, 'YYYY-MM')`, 'month')
+      .addSelect(
+        `COALESCE(SUM(CASE WHEN t.type = :income THEN t.amount ELSE 0 END), 0)`,
+        'income',
+      )
+      .addSelect(
+        `COALESCE(SUM(CASE WHEN t.type = :expense THEN t.amount ELSE 0 END), 0)`,
+        'expense',
+      )
+      .where('t.companyId = :companyId', { companyId })
+      .andWhere('t.status NOT IN (:...excluded)', {
+        excluded: [TransactionStatus.CANCELLED, TransactionStatus.FAILED],
+      })
+      .andWhere(`${bucket} >= :from`, { from: `${series[0]}-01` })
+      .groupBy(`to_char(${bucket}, 'YYYY-MM')`)
+      .setParameters({
+        income: TransactionType.INCOME,
+        expense: TransactionType.EXPENSE,
+      });
+
+    if (regionCodes) {
+      qb.andWhere('t.regionCode IN (:...regionCodes)', { regionCodes });
+    }
+
+    const rows = await qb.getRawMany<{
+      month: string;
+      income: string;
+      expense: string;
+    }>();
+    const found = new Map(rows.map((row) => [row.month, row]));
+
+    return series.map((month) => ({
+      month,
+      income: Number(found.get(month)?.income ?? 0),
+      expense: Number(found.get(month)?.expense ?? 0),
+    }));
   }
 
   async getDepositReminders(
