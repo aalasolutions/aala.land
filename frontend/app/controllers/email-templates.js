@@ -16,7 +16,7 @@ export default class EmailTemplatesController extends Controller {
 
   queryParams = ['page', 'limit', 'category'];
   @tracked page = 1;
-  @tracked limit = 20;
+  @tracked limit = 50;
   @tracked category = '';
 
   @tracked showModal = false;

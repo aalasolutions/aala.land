@@ -10,7 +10,7 @@ export default class EmailTemplatesRoute extends AuthenticatedRoute {
     category: { refreshModel: true },
   };
 
-  async model({ page = 1, limit = 20, category = '' }) {
+  async model({ page = 1, limit = 50, category = '' }) {
     try {
       const params = new URLSearchParams({ page, limit });
       if (category) params.set('category', category);

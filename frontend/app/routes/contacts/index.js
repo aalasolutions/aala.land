@@ -20,7 +20,7 @@ export default class ContactsIndexRoute extends AuthenticatedRoute {
 
   async model({
     page = 1,
-    limit = 10,
+    limit = 50,
     search = '',
     tag = '',
     agentId = '',

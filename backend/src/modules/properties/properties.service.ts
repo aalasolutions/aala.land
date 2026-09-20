@@ -47,6 +47,7 @@ import { UpdateUnitDto } from './dto/update-unit.dto';
 import {
   paginationOptions,
   pageSkip,
+  clampLimit,
 } from '../../shared/utils/pagination.util';
 import {
   normalizedNameSql,
@@ -485,7 +486,7 @@ export class PropertiesService {
       qb.andWhere('u.deletedAt IS NOT NULL');
     }
 
-    qb.skip(pageSkip(page, limit)).take(limit);
+    qb.skip(pageSkip(page, limit)).take(clampLimit(limit));
 
     const sortColumns = sort?.field ? UNIT_SORT_COLUMNS[sort.field] : undefined;
     if (sortColumns) {

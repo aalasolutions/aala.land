@@ -6,7 +6,7 @@ import {
   PaymentSucceededEvent,
   PaymentFailedEvent,
 } from './events/billing-events';
-import { paginationOptions } from '@shared/utils/pagination.util';
+import { clampLimit, paginationOptions } from '@shared/utils/pagination.util';
 
 type PaymentEvent = PaymentSucceededEvent | PaymentFailedEvent;
 
@@ -83,7 +83,7 @@ export class BillingHistoryService {
   }> {
     // Clamp so a caller can't request the whole table or a negative OFFSET.
     const safePage = Math.max(1, Math.trunc(page) || 1);
-    const safeLimit = Math.min(100, Math.max(1, Math.trunc(limit) || 20));
+    const safeLimit = clampLimit(limit);
     const [data, total] = await this.historyRepo.findAndCount({
       where: companyId ? { companyId } : {},
       order: { occurredAt: 'DESC' },

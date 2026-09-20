@@ -58,40 +58,33 @@
     {{/if}}
   {{else if (eq this.currentView "list")}}
     {{#if @model.length}}
-      <div class="nu-table-wrapper">
-        <table class="nu-table">
-          <thead>
-            <tr>
-              <th>Location</th>
-              <th>City</th>
-              <th>Assets</th>
-              <th>Properties</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {{#each @model as |loc|}}
-              <tr>
-                <td class="font-bold">{{loc.name}}</td>
-                <td class="text-muted">{{loc.cityName}}</td>
-                <td>{{loc.assetCount}}</td>
-                <td>{{loc.unitCount}}</td>
-                <td class="text-end">
-                  <Nuvo::Button
-                    data-test-view-locality
-                    @variant="primary"
-                    @size="xs"
-                    @route="properties.detail"
-                    @model={{loc.id}}
-                  >
-                    View
-                  </Nuvo::Button>
-                </td>
-              </tr>
-            {{/each}}
-          </tbody>
-        </table>
-      </div>
+      <DataTable
+        @columns={{this.columns}}
+        @rows={{@model}}
+        @pinColumns={{true}}
+        @reorderable={{true}}
+        @sortable={{true}}
+        @showOptions={{true}}
+        @tableId="properties-localities"
+        data-test-localities-table
+        as |cell|
+      >
+        {{#if (eq cell.key "name")}}
+          <span class="font-bold">{{cell.value}}</span>
+        {{else if (eq cell.key "cityName")}}
+          <span class="text-muted">{{cell.value}}</span>
+        {{else if (eq cell.key "id")}}
+          <Nuvo::Button
+            data-test-view-locality
+            @variant="primary"
+            @size="xs"
+            @route="properties.detail"
+            @model={{cell.value}}
+          >View</Nuvo::Button>
+        {{else}}
+          {{cell.value}}
+        {{/if}}
+      </DataTable>
     {{else}}
       <Nuvo::EmptyState
         @title="No assets yet"

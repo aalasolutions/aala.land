@@ -72,55 +72,48 @@
 
   <Nuvo::Card @title="Transactions">
     {{#if this.filteredTransactions.length}}
-      <div class="nu-table-wrapper">
-        <table class="nu-table" data-test-financials-table>
-          <thead>
-            <tr>
-              <th>Description</th>
-              <th>Category</th>
-              <th>Payment</th>
-              <th>Amount</th>
-              <th>Status</th>
-              <th>Date</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {{#each this.filteredTransactions as |tx|}}
-              <tr data-test-transaction>
-                <td>{{tx.description}}</td>
-                <td>{{tx.category}}</td>
-                <td>{{tx.paymentMethod}}</td>
-                <td
-                  class="font-bold
-                    {{if (eq tx.type 'INCOME') 'text-success' 'text-danger'}}"
-                >
-                  {{if (eq tx.type "INCOME") "+" "-"}}{{format-currency
-                    tx.amount
-                  }}
-                </td>
-                <td>
-                  <Nuvo::Tag
-                    class="tag-txn-{{lowercase tx.status}}"
-                    @text={{tx.status}}
-                  />
-                </td>
-                <td class="text-xs">{{format-date tx.transactionDate}}</td>
-                <td>
-                  <Nuvo::Button
-                    @variant="secondary"
-                    @size="xs"
-                    @icon="pencil-simple"
-                    {{on "click" (fn this.openEdit tx)}}
-                  >
-                    Edit
-                  </Nuvo::Button>
-                </td>
-              </tr>
-            {{/each}}
-          </tbody>
-        </table>
-      </div>
+      <DataTable
+        @columns={{this.columns}}
+        @rows={{this.filteredTransactions}}
+        @pinColumns={{true}}
+        @reorderable={{true}}
+        @sortable={{true}}
+        @showOptions={{true}}
+        @tableId="financials"
+        data-test-financials-table
+        as |cell|
+      >
+        {{#if (eq cell.key "description")}}
+          <span data-test-transaction>{{cell.value}}</span>
+        {{else if (eq cell.key "amount")}}
+          <span
+            class="font-bold
+              {{if (eq cell.row.type 'INCOME') 'text-success' 'text-danger'}}"
+          >
+            {{if (eq cell.row.type "INCOME") "+" "-"}}{{format-currency
+              cell.value
+            }}
+          </span>
+        {{else if (eq cell.key "status")}}
+          <Nuvo::Tag
+            class="tag-txn-{{lowercase cell.value}}"
+            @text={{cell.value}}
+          />
+        {{else if (eq cell.key "transactionDate")}}
+          <span class="text-xs">{{format-date cell.value}}</span>
+        {{else if (eq cell.key "id")}}
+          <Nuvo::Button
+            @variant="secondary"
+            @size="xs"
+            @icon="pencil-simple"
+            {{on "click" (fn this.openEdit cell.row)}}
+          >
+            Edit
+          </Nuvo::Button>
+        {{else}}
+          {{cell.value}}
+        {{/if}}
+      </DataTable>
     {{else}}
       {{#if @model.total}}
         <Nuvo::EmptyState

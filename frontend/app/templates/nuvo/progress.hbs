@@ -1,0 +1,189 @@
+<NuvoDocs::Page
+  @id="progress"
+  @title="Progress"
+  @subtitle="Linear bar and circular ring for determinate and indeterminate progress."
+  @components="Nuvo::Progress, Nuvo::ProgressCircle"
+>
+  <NuvoDocs::Section @title="Overview" @id="overview">
+    <p class="nuvo-doc__intro">
+      Both components clamp the value to 0..100 and expose it through
+      <code class="nu-code">role="progressbar"</code>. The bar width and the
+      ring dash offset are the only inline styles in the kit, because they
+      are genuinely dynamic values. Use the bar inside rows and forms, the
+      ring in KPI tiles and avatars.
+    </p>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Features" @id="features">
+    <ul class="nu-list">
+      <li class="nu-list__item">Six colours, three bar heights, two ring diameters.</li>
+      <li class="nu-list__item">Indeterminate sweep and striped fill.</li>
+      <li class="nu-list__item">Optional label, default "{value}%" or custom text.</li>
+      <li class="nu-list__item">Configurable ring stroke width.</li>
+    </ul>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Bar: value" @id="bar-value">
+    <NuvoDocs::Example
+      @title="Live value"
+      @note="The bar follows a tracked value; the tooltip on the button reads the same value live. Update it as the underlying work reports progress."
+      @layout="stack"
+      @code={{this.code.live}}
+    >
+      <Nuvo::Progress @value={{this.progressValue}} @variant="primary" @showText={{true}} />
+      <div>
+        <Nuvo::Button
+          @variant="secondary"
+          @size="sm"
+          @text="Bump progress"
+          @onClick={{this.bumpProgress}}
+          data-tooltip="Now at {{this.progressValue}}%"
+          data-test-nuvo-bump-progress
+        />
+      </div>
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Custom label"
+      @note="label replaces the percentage with a count, for quotas where the numbers mean more than the ratio."
+      @layout="stack"
+      @code={{this.code.label}}
+    >
+      <Nuvo::Progress @value={{35}} @showText={{true}} @label="7 of 20 units" />
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Clamped"
+      @note="Values outside 0..100 are clamped, so an over-quota figure renders as full rather than overflowing."
+      @layout="stack"
+      @code={{this.code.clamp}}
+    >
+      <Nuvo::Progress @value={{140}} @showText={{true}} />
+    </NuvoDocs::Example>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Bar: variants" @id="bar-variants">
+    {{#each this.barVariantExamples as |example|}}
+      <NuvoDocs::Example @title={{example.title}} @note={{example.note}} @layout="stack" @code={{example.code}}>
+        <Nuvo::Progress @value={{60}} @variant={{example.variant}} @showText={{true}} />
+      </NuvoDocs::Example>
+    {{/each}}
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Bar: sizes and styles" @id="bar-styles">
+    <NuvoDocs::Example
+      @title="Small"
+      @note="A thin track for table cells and list rows."
+      @layout="stack"
+      @code={{this.code.sm}}
+    >
+      <Nuvo::Progress @value={{50}} @size="sm" />
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Default"
+      @note="The standard track for cards and forms."
+      @layout="stack"
+      @code={{this.code.md}}
+    >
+      <Nuvo::Progress @value={{50}} />
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Large"
+      @note="A tall track for a page-level upload or import."
+      @layout="stack"
+      @code={{this.code.lg}}
+    >
+      <Nuvo::Progress @value={{50}} @size="lg" />
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Indeterminate"
+      @note="A sweeping bar when the total is unknown; stops under reduced motion. Prefer a real value as soon as one exists."
+      @layout="stack"
+      @code={{this.code.indeterminate}}
+    >
+      <Nuvo::Progress @indeterminate={{true}} />
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Striped"
+      @note="Diagonal stripes to mark a bar that is still moving, such as a queued job."
+      @layout="stack"
+      @code={{this.code.striped}}
+    >
+      <Nuvo::Progress @value={{60}} @striped={{true}} @variant="info" />
+    </NuvoDocs::Example>
+
+    <h3 class="nuvo-subtitle">Bar arguments</h3>
+    <NuvoDocs::Table @kind="args" @rows={{this.barArgRows}} />
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Circle: variants" @id="circle-variants">
+    {{#each this.circleVariantExamples as |example|}}
+      <NuvoDocs::Example @title={{example.title}} @note={{example.note}} @code={{example.code}}>
+        <Nuvo::ProgressCircle @value={{60}} @variant={{example.variant}} @showText={{true}} />
+      </NuvoDocs::Example>
+    {{/each}}
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Circle: sizes and stroke" @id="circle-styles">
+    <NuvoDocs::Example
+      @title="Small"
+      @note="A ring beside a value in a stat tile or a table row."
+      @code={{this.code.circleSm}}
+    >
+      <Nuvo::ProgressCircle @value={{45}} @variant="success" @showText={{true}} @size="sm" />
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Default"
+      @note="The standard ring for cards."
+      @code={{this.code.circleMd}}
+    >
+      <Nuvo::ProgressCircle @value={{75}} @showText={{true}} />
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Large"
+      @note="A hero ring for a dashboard headline."
+      @code={{this.code.circleLg}}
+    >
+      <Nuvo::ProgressCircle @value={{90}} @variant="danger" @showText={{true}} @size="lg" />
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Stroke width"
+      @note="strokeWidth in viewBox units; thicker rings read better at small sizes."
+      @code={{this.code.circleStroke}}
+    >
+      <Nuvo::ProgressCircle @value={{30}} @variant="warning" @strokeWidth={{10}} @showText={{true}} />
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Without text"
+      @note="The ring alone, when the value is printed elsewhere or the ring decorates an avatar."
+      @code={{this.code.circleNoText}}
+    >
+      <Nuvo::ProgressCircle @value={{30}} @variant="primary" />
+    </NuvoDocs::Example>
+
+    <h3 class="nuvo-subtitle">Circle arguments</h3>
+    <NuvoDocs::Table @kind="args" @rows={{this.circleArgRows}} />
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Accessibility" @id="accessibility">
+    <ul class="nu-list">
+      <li class="nu-list__item">Both render role="progressbar" with aria-valuenow, aria-valuemin="0" and aria-valuemax="100".</li>
+      <li class="nu-list__item">Pass aria-label through ...attributes to say what is progressing; the label text is visual only.</li>
+      <li class="nu-list__item">The indeterminate sweep and stripes stop under prefers-reduced-motion.</li>
+    </ul>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="RTL" @id="rtl">
+    <ul class="nu-list">
+      <li class="nu-list__item">The bar fills from the inline start. The indeterminate keyframe has a mirrored twin selected under dir="rtl", so the sweep travels with the reading direction.</li>
+    </ul>
+  </NuvoDocs::Section>
+</NuvoDocs::Page>

@@ -8,7 +8,43 @@ export default class Router extends EmberRouter {
 
 Router.map(function () {
   this.route('index', { path: '/' });
-  this.route('nuvo');
+  // Public component documentation; one child route per component family.
+  this.route('nuvo', function () {
+    this.route('internals');
+    this.route('shell');
+    this.route('typography');
+    this.route('utilities');
+    this.route('table');
+    this.route('code');
+    this.route('button');
+    this.route('badge');
+    this.route('tag');
+    this.route('avatar');
+    this.route('indicators');
+    this.route('divider');
+    this.route('input');
+    this.route('checkbox');
+    this.route('field');
+    this.route('card');
+    this.route('panel');
+    this.route('list');
+    this.route('page-header');
+    this.route('accordion');
+    this.route('tabs');
+    this.route('segmented');
+    this.route('breadcrumb');
+    this.route('pagination');
+    this.route('alert');
+    this.route('progress');
+    this.route('empty-state');
+    this.route('timeline');
+    this.route('dropdown');
+    this.route('popover');
+    this.route('tooltip');
+    this.route('modal');
+    this.route('confirm');
+    this.route('drawer');
+  });
   this.route('login');
   this.route('signup');
   this.route('accept-invite');
@@ -37,6 +73,8 @@ Router.map(function () {
     this.route('index', { path: '/' });
     this.route('detail', { path: '/:contact_id' });
   });
+  // Development-only DataTable option showcase, a copy of the contacts list.
+  this.route('table-options');
   this.route('documents');
   this.route('email-templates');
   this.route('whatsapp');

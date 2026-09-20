@@ -13,7 +13,7 @@ export default class AdminCompaniesIndexRoute extends Route {
 
   async model(params) {
     const page = params.page || 1;
-    const limit = params.limit || 20;
+    const limit = params.limit || 50;
     const query = new URLSearchParams({ page, limit });
     if (params.search) query.set('search', params.search.trim());
     const res = await this.auth.fetchJson(`/console/companies?${query}`);

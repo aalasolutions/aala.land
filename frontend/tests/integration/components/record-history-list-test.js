@@ -58,7 +58,7 @@ module('Integration | Component | record-history-list', function (hooks) {
     await render(
       hbs`<RecordHistoryList @entityType="Unit" @entityId="unit-1" />`,
     );
-    await waitFor('[data-test-record-history-row]');
+    await waitFor('[data-test-data-table-row]');
 
     assert.strictEqual(calls.length, 1);
     assert.true(calls[0].startsWith('/record-history?'));
@@ -68,30 +68,30 @@ module('Integration | Component | record-history-list', function (hooks) {
     assert.strictEqual(params.get('page'), '1');
 
     assert.dom('[data-test-record-history]').exists();
-    assert.dom('[data-test-record-history-row]').exists({ count: 2 });
+    assert.dom('[data-test-data-table-row]').exists({ count: 2 });
     assert
       .dom(
-        '[data-test-record-history-row="h-1"] [data-test-record-history-action]',
+        '[data-test-data-table-row="h-1"] [data-test-record-history-action]',
       )
       .hasText('Archived');
     assert
       .dom(
-        '[data-test-record-history-row="h-1"] [data-test-record-history-reason]',
+        '[data-test-data-table-row="h-1"] [data-test-record-history-reason]',
       )
       .hasText('Under renovation');
     assert
       .dom(
-        '[data-test-record-history-row="h-1"] [data-test-record-history-actor]',
+        '[data-test-data-table-row="h-1"] [data-test-record-history-actor]',
       )
       .hasText('Test User');
     assert
       .dom(
-        '[data-test-record-history-row="h-1"] [data-test-record-history-context]',
+        '[data-test-data-table-row="h-1"] [data-test-record-history-context]',
       )
       .hasText('Marina Tower');
     assert
       .dom(
-        '[data-test-record-history-row="h-2"] [data-test-record-history-reason]',
+        '[data-test-data-table-row="h-2"] [data-test-record-history-reason]',
       )
       .hasText('-');
     assert.dom('[data-test-record-history-empty]').doesNotExist();
@@ -110,7 +110,7 @@ module('Integration | Component | record-history-list', function (hooks) {
     await waitFor('[data-test-record-history-empty]');
 
     assert.dom('[data-test-record-history-empty]').exists();
-    assert.dom('[data-test-record-history-row]').doesNotExist();
+    assert.dom('[data-test-data-table-row]').doesNotExist();
     assert.dom('[data-test-record-history-loading]').doesNotExist();
   });
 

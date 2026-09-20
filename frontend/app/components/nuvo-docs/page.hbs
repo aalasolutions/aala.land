@@ -1,0 +1,19 @@
+{{page-title @title}}
+
+<Nuvo::PageHeader
+  @title={{@title}}
+  @subtitle={{@subtitle}}
+  @bordered={{true}}
+  class="nuvo-doc__header"
+  data-test-nuvo-doc-header
+>
+  <:meta>
+    {{#each this.components as |name|}}
+      <code class="nu-code" data-test-nuvo-doc-component>{{name}}</code>
+    {{/each}}
+  </:meta>
+</Nuvo::PageHeader>
+
+<div class="nuvo-doc" data-test-nuvo-doc={{@id}} ...attributes>
+  {{yield}}
+</div>

@@ -3,7 +3,7 @@ import { action } from '@ember/object';
 import { guidFor } from '@ember/object/internals';
 import { validPage } from 'land/components/nuvo/-page-number';
 
-const DEFAULT_PER_PAGE_OPTIONS = [10, 25, 50, 100];
+const DEFAULT_PER_PAGE_OPTIONS = [50, 100, 250];
 
 export default class NuPaginationComponent extends Component {
   // Per-instance so two paginations on one page do not emit duplicate ids and break their labels.
@@ -35,7 +35,7 @@ export default class NuPaginationComponent extends Component {
   }
 
   get perPage() {
-    return Number(this.args.perPage ?? this.args.limit) || 10;
+    return Number(this.args.perPage ?? this.args.limit) || 50;
   }
 
   get total() {

@@ -10,7 +10,7 @@ export default class FinancialsRoute extends AuthenticatedRoute {
     activeTab: { refreshModel: true },
   };
 
-  async model({ page = 1, limit = 10, activeTab = 'all' }) {
+  async model({ page = 1, limit = 50, activeTab = 'all' }) {
     try {
       const params = new URLSearchParams({ page, limit });
       if (activeTab !== 'all') {

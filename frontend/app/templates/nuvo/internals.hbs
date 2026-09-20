@@ -1,0 +1,199 @@
+<NuvoDocs::Page
+  @id="internals"
+  @title="Hosts and services"
+  @subtitle="Everything behind the components: the four hosts, the services they drive, and the modifiers that position and trap."
+  @components="Nuvo::LayerHost, Nuvo::TooltipHost, Nuvo::DialogHost, Nuvo::ToastRegion"
+>
+  <NuvoDocs::Section @title="Overview" @id="overview">
+    <p class="nuvo-doc__intro">
+      Three floating mechanisms exist: tooltip, anchored layer (menus and
+      popovers) and dialogs (modal, drawer, confirm). Each is one host, one
+      service and one or two modifiers. Toasts are a fourth host driven by
+      the notifications service. Nothing else floats; do not add a fifth.
+    </p>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Features" @id="features">
+    <ul class="nu-list">
+      <li class="nu-list__item">One mount contract: four hosts, once, in a fixed order.</li>
+      <li class="nu-list__item">A layer service and anchor modifier that position any body-level panel.</li>
+      <li class="nu-list__item">A tooltip service, host and fit modifier driven by data attributes.</li>
+      <li class="nu-list__item">A dialog focus util plus dialog and dialog-transition modifiers shared by modal and drawer.</li>
+      <li class="nu-list__item">A notifications service with typed toasts and a positioned region.</li>
+    </ul>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Mount contract" @id="mount">
+    <NuvoDocs::Example
+      @title="The four hosts"
+      @note="Once, at the end of the application template. Order matters because tooltip, layer and modal share one z-index level and rely on paint order: layer before tooltip so a tooltip on a menu item paints above the menu."
+      @layout="block"
+      @code={{this.code.mount}}
+    >
+      <NuvoDocs::Table @kind="api" @rows={{this.hostRows}} />
+    </NuvoDocs::Example>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Anchored layer" @id="layer">
+    <NuvoDocs::Example
+      @title="Hosting a panel on the layer"
+      @note="A panel renders into the layer with in-element while open and carries the anchor modifier. insertBefore=null is mandatory: without it in-element clears the host and wipes every other open panel. The dropdown and popover on this site are live examples."
+      @layout="block"
+      @code={{this.code.anchor}}
+    >
+      <Nuvo::Dropdown @options={{array "Villa" "Apartment" "Townhouse"}} @placeholder="A menu hosted on the layer" />
+    </NuvoDocs::Example>
+
+    <h3 class="nuvo-subtitle">layer service</h3>
+    <NuvoDocs::Table @kind="api" @rows={{this.layerRows}} />
+
+    <h3 class="nuvo-subtitle">anchor modifier arguments</h3>
+    <NuvoDocs::Table @kind="args" @rows={{this.anchorRows}} />
+    <h3 class="nuvo-subtitle">What it writes on the element</h3>
+    <NuvoDocs::Table @kind="classes" @rows={{this.anchorWritesRows}} />
+
+    <h3 class="nuvo-subtitle">Rules for a hosted panel</h3>
+    <ul class="nu-list">
+      <li class="nu-list__item">Click-outside checks both the component root and the panel.</li>
+      <li class="nu-list__item">Bind keydown on the panel too; events do not bubble to the root.</li>
+      <li class="nu-list__item">Escape stops propagation so a drawer underneath stays open.</li>
+      <li class="nu-list__item">close() returns focus to the trigger when focus was inside the panel.</li>
+      <li class="nu-list__item">Query panel children through the panel element, never the root. Tests select the panel from document.</li>
+      <li class="nu-list__item">aria-controls keeps working across the portal; do not add aria-owns.</li>
+    </ul>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Tooltip internals" @id="tooltip-internals">
+    <p class="nuvo-note">The host listens on the document for mouseover, mouseout, focusin, focusout, keydown (Escape) and touchstart, and on the window for scroll (capture) and resize, which hide rather than reposition. See the Tooltip page for the trigger API and live examples.</p>
+
+    <h3 class="nuvo-subtitle">tooltip service</h3>
+    <NuvoDocs::Table @kind="api" @rows={{this.tooltipRows}} />
+
+    <h3 class="nuvo-subtitle">tooltip-fit modifier</h3>
+    <NuvoDocs::Table @kind="args" @rows={{this.tooltipFitRows}} />
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Dialogs" @id="dialogs">
+    <p class="nuvo-note">Modal and Drawer extend a shared base (<code>@closeOnBackdrop</code>, <code>@onClose</code>) and put the <code>dialog</code> modifier on their panel. The drawer adds <code>dialog-transition</code> on its backdrop to stay mounted through the leave animation. The <code>dialogs</code> service and <code>Nuvo::DialogHost</code> are documented with live examples on the Confirm dialog page.</p>
+
+    <h3 class="nuvo-subtitle">dialog-focus util</h3>
+    <NuvoDocs::Table @kind="api" @rows={{this.dialogFocusRows}} />
+    <ul class="nu-list">
+      <li class="nu-list__item">The Tab trap only intercepts Tab, so a panel hosted on the layer can take focus by click; on Tab inside such a panel the panel closes itself and refocuses its trigger.</li>
+      <li class="nu-list__item">Positive tabindex inside a dialog is not supported: tab order is document order.</li>
+      <li class="nu-list__item">Detached dialogs are swept from the stack so a dialog removed without releasing never holds the scroll lock.</li>
+    </ul>
+
+    <NuvoDocs::Example
+      @title="dialog modifier"
+      @note="On the dialog panel: locks scroll, traps Tab, focuses the first control, and calls onEscape when this dialog is topmost. Named arguments are read at event time."
+      @layout="block"
+      @code={{this.code.dialog}}
+    >
+      <NuvoDocs::Table @kind="args" @rows={{this.dialogModifierRows}} />
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="dialog-transition modifier"
+      @note="On the drawer backdrop: enter and leave as run-loop tasks so tests can await them, with a style flush before the reveal and the computed transition-duration timing onHidden."
+      @layout="block"
+      @code={{this.code.transition}}
+    >
+      <NuvoDocs::Table @kind="args" @rows={{this.transitionRows}} />
+    </NuvoDocs::Example>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Toasts" @id="toasts">
+    <p class="nuvo-note">The region is mounted at the top of this site, so these fire for real.</p>
+    {{#each this.toastExamples as |example|}}
+      <NuvoDocs::Example @title={{example.title}} @note={{example.note}} @code={{example.code}}>
+        <Nuvo::Button
+          @variant="secondary"
+          @size="sm"
+          @text="Fire {{example.type}}"
+          @onClick={{fn this.toast example.type}}
+          data-test-nuvo-toast={{example.type}}
+        />
+      </NuvoDocs::Example>
+    {{/each}}
+
+    <NuvoDocs::Example
+      @title="Sticky with manual removal"
+      @note="add with duration 0 keeps a toast until remove is called with its id, for progress that ends on its own."
+      @code={{this.code.sticky}}
+    >
+      <Nuvo::Button @variant="secondary" @size="sm" @text="Start sync toast" @onClick={{this.addSticky}} data-test-nuvo-toast-sticky />
+      <Nuvo::Button @variant="secondary" @size="sm" @text="Finish sync" @onClick={{this.removeSticky}} data-test-nuvo-toast-remove />
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Clear all"
+      @note="clear dismisses every toast at once, for a route change or a sign-out."
+      @code={{this.code.clear}}
+    >
+      <Nuvo::Button @variant="ghost" @size="sm" @text="Clear all" @onClick={{this.clearToasts}} data-test-nuvo-toast-clear />
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Region position"
+      @note="The region takes a corner; this site mounts it at the default. Bottom corners suit apps with a top bar full of actions."
+      @layout="block"
+      @code={{this.code.toastPosition}}
+    >
+      <Nuvo::Text @size="sm" @muted={{true}} @text="Positions: top-start, top-end, bottom-start, bottom-end." />
+    </NuvoDocs::Example>
+
+    <h3 class="nuvo-subtitle">notifications service</h3>
+    <NuvoDocs::Table @kind="api" @rows={{this.notificationRows}} />
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Icons" @id="icons">
+    <NuvoDocs::Example
+      @title="Directional icon"
+      @note="Ui::Ph renders the Phosphor web font. Names matching left or right get the flip-rtl class; switch the page to RTL and this arrow mirrors."
+      @code={{this.code.iconFlip}}
+    >
+      <Ui::Ph @icon="arrow-right" @size="24px" />
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Flip suppressed"
+      @note="flip false keeps a directional icon fixed, for an arrow that points at something physical such as a map edge."
+      @code={{this.code.iconNoFlip}}
+    >
+      <Ui::Ph @icon="arrow-right" @size="24px" @flip={{false}} />
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Size and colour"
+      @note="size sets the font size and color the glyph colour; both default to inheriting from the text."
+      @code={{this.code.iconSize}}
+    >
+      <Ui::Ph @icon="house" @size="24px" @color="var(--primary)" />
+    </NuvoDocs::Example>
+    <NuvoDocs::Table @kind="args" @rows={{this.iconRows}} />
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Dependencies and test hooks" @id="dependencies">
+    <NuvoDocs::Table @kind="api" @rows={{this.dependencyRows}} />
+    <ul class="nu-list">
+      <li class="nu-list__item">Every component root and interactive child carries a data-test-nu-* attribute; ember-test-selectors strips them from production builds. Tests must not rely on any other attribute.</li>
+      <li class="nu-list__item">The VARIANTS constant in -constants.js mirrors $nu-variants in the kit's _var.scss; keep both lists in sync.</li>
+      <li class="nu-list__item">core-bridge.scss points core's --tooltip-* variables at kit tokens so the pure-CSS core tooltip and the kit tooltip look identical; it is optional for a consuming app.</li>
+    </ul>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Accessibility" @id="accessibility">
+    <ul class="nu-list">
+      <li class="nu-list__item">The toast region is role="log" with aria-live="polite", so new toasts are announced without interrupting.</li>
+      <li class="nu-list__item">The tooltip host owns role="tooltip" and aria-describedby; the dialog util owns the focus trap and restore. Components never duplicate either.</li>
+    </ul>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="RTL" @id="rtl">
+    <ul class="nu-list">
+      <li class="nu-list__item">The anchor modifier resolves start and end against the trigger's computed direction and copies dir onto the panel; the tooltip host resolves once per show from the html dir.</li>
+      <li class="nu-list__item">The icon component mirrors left and right names automatically; the flip rule and the name regex are the only two places to touch when the icon set changes.</li>
+    </ul>
+  </NuvoDocs::Section>
+</NuvoDocs::Page>

@@ -1,0 +1,144 @@
+<NuvoDocs::Page
+  @id="code"
+  @title="Code"
+  @subtitle="Inline code, code blocks and a clipboard-copy control, as raw markup classes."
+  @components="code-block.scss"
+>
+  <NuvoDocs::Section @title="Overview" @id="overview">
+    <p class="nuvo-doc__intro">
+      These are stylesheet-only surfaces consumed as markup; every snippet
+      on this site is a
+      <code class="nu-code">nu-code-block</code>. Code content is pinned to
+      left-to-right inside the block because source never reflows with the
+      page direction.
+    </p>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Features" @id="features">
+    <ul class="nu-list">
+      <li class="nu-list__item">Inline code with six tinted variants.</li>
+      <li class="nu-list__item">Block with optional header and actions, scroll cap, and opt-in line numbers.</li>
+      <li class="nu-list__item">Clipboard-copy group with a copied state and feedback slot.</li>
+    </ul>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Inline code" @id="inline">
+    <NuvoDocs::Example
+      @title="Default"
+      @note="A code span inside prose for commands, paths and identifiers."
+      @code={{this.code.inline}}
+    >
+      <span>Run <code class="nu-code">pnpm install</code> first.</span>
+    </NuvoDocs::Example>
+
+    {{#each this.variantExamples as |example|}}
+      <NuvoDocs::Example @title={{example.title}} @note={{example.note}} @code={{example.code}}>
+        <code class="nu-code m-{{example.variant}}">nu-code m-{{example.variant}}</code>
+      </NuvoDocs::Example>
+    {{/each}}
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Code block" @id="block">
+    <NuvoDocs::Example
+      @title="Plain block"
+      @note="A bordered container around a pre element; whitespace is preserved and long lines scroll sideways."
+      @layout="block"
+      @code={{this.code.block}}
+    >
+      <div class="nu-code-block">
+        <pre class="nu-code-block__content">this.route('nuvo', function () {
+  this.route('button');
+});</pre>
+      </div>
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Header with actions"
+      @note="A caption bar names the file and holds controls such as a copy button."
+      @layout="block"
+      @code={{this.code.header}}
+    >
+      <div class="nu-code-block">
+        <div class="nu-code-block__header">
+          <span>app/router.js</span>
+          <div class="nu-code-block__actions">
+            <Nuvo::Button @variant="ghost" @size="xs" @text="Copy" />
+          </div>
+        </div>
+        <pre class="nu-code-block__content">this.route('nuvo', function () {
+  this.route('button');
+});</pre>
+      </div>
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Scrollable"
+      @note="m-scrollable caps the height at 20rem, for long logs and generated output."
+      @layout="block"
+      @code={{this.code.scrollable}}
+    >
+      <div class="nu-code-block m-scrollable">
+        <pre class="nu-code-block__content">{{#each this.scrollLines as |line|}}{{line}}
+{{/each}}</pre>
+      </div>
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Numbered lines"
+      @note="Wrap each line in nu-code-block__line and add m-numbered; the counter lives on the modifier, so a block without it stays unnumbered."
+      @layout="block"
+      @code={{this.code.numbered}}
+    >
+      <div class="nu-code-block m-numbered">
+        <pre class="nu-code-block__content">{{#each this.numberedLines as |line|}}<span class="nu-code-block__line">{{line}}</span>{{/each}}</pre>
+      </div>
+    </NuvoDocs::Example>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Clipboard copy" @id="clipboard">
+    <NuvoDocs::Example
+      @title="Copy a value"
+      @note="A read-only input beside a copy button; writes to the clipboard through navigator.clipboard and shows the copied state for a moment. For keys, ids and links."
+      @code={{this.code.copy}}
+    >
+      <div class={{this.copyClasses}} data-test-nuvo-clipboard>
+        <input
+          class="nu-clipboard-copy__input"
+          value={{this.apiKey}}
+          readonly
+          aria-label="API key"
+          data-test-nuvo-clipboard-input
+        />
+        {{#if this.copied}}
+          <span class="nu-clipboard-copy__feedback" data-test-nuvo-clipboard-feedback>Copied</span>
+        {{/if}}
+        <button
+          type="button"
+          class="nu-clipboard-copy__button"
+          aria-label="Copy API key"
+          data-test-nuvo-clipboard-button
+          {{on "click" this.copyKey}}
+        >
+          <Ui::Ph @icon="copy" />
+        </button>
+      </div>
+    </NuvoDocs::Example>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Classes" @id="classes">
+    <NuvoDocs::Table @kind="classes" @rows={{this.classRows}} />
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Accessibility" @id="accessibility">
+    <ul class="nu-list">
+      <li class="nu-list__item">Use a real pre element for block content so whitespace is preserved for assistive technology too.</li>
+      <li class="nu-list__item">The copy button is icon-only; give it an aria-label and announce the copied feedback in text.</li>
+    </ul>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="RTL" @id="rtl">
+    <ul class="nu-list">
+      <li class="nu-list__item">nu-code-block__content sets direction: ltr and text-align: start, so code reads correctly inside an RTL page while the surrounding header still mirrors.</li>
+    </ul>
+  </NuvoDocs::Section>
+</NuvoDocs::Page>

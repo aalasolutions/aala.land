@@ -1,3 +1,4 @@
+import { MAX_PAGE_LIMIT } from '@shared/constants/pagination';
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
@@ -164,9 +165,9 @@ describe('RecordHistoryController (e2e)', () => {
         .expect(400);
     });
 
-    it('rejects a limit above 100', async () => {
+    it('rejects a limit above the maximum page size', async () => {
       await request(app.getHttpServer())
-        .get('/record-history?limit=500')
+        .get(`/record-history?limit=${MAX_PAGE_LIMIT + 1}`)
         .expect(400);
     });
 

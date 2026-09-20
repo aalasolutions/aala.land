@@ -44,6 +44,23 @@ export default class DocumentsController extends PaginatedController {
   @tracked documentToDelete = null;
   @tracked isDeleting = false;
 
+  columns = [
+    { name: 'Name', valuePath: 'name', width: 250, isFixed: 'left' },
+    { name: 'Category', valuePath: 'category', width: 140 },
+    { name: 'Access', valuePath: 'accessLevel', width: 120 },
+    { name: 'Property', valuePath: 'unit.assetName', width: 220 },
+    { name: 'Size', valuePath: 'fileSize', width: 120 },
+    { name: 'Uploaded By', valuePath: 'uploadedByName', width: 180 },
+    { name: 'Uploaded', valuePath: 'createdAt', width: 140 },
+    {
+      name: 'Actions',
+      valuePath: 'id',
+      width: 240,
+      isFixed: 'right',
+      isSortable: false,
+    },
+  ];
+
   resetState() {
     this.page = 1;
     this.category = '';

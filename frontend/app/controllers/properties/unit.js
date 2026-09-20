@@ -68,6 +68,33 @@ export default class PropertiesUnitController extends Controller {
   @tracked isSaving = false;
   @tracked errorMsg = '';
 
+  documentColumns = [
+    { name: 'Title', valuePath: 'name', width: 250, isFixed: 'left' },
+    { name: 'Size', valuePath: 'fileSize', width: 120 },
+    { name: 'Document Type', valuePath: 'category', width: 160 },
+    { name: 'Uploaded By', valuePath: 'uploadedByName', width: 180 },
+    {
+      name: 'Actions',
+      valuePath: 'id',
+      width: 240,
+      isFixed: 'right',
+      isSortable: false,
+    },
+  ];
+
+  leaseColumns = [
+    {
+      name: 'Tenant',
+      valuePath: 'contact.displayName',
+      width: 220,
+      isFixed: 'left',
+    },
+    { name: 'Start', valuePath: 'startDate', width: 140 },
+    { name: 'End', valuePath: 'endDate', width: 140 },
+    { name: 'Rent', valuePath: 'monthlyRent', width: 140 },
+    { name: 'Status', valuePath: 'status', width: 160 },
+  ];
+
   @tracked isUploading = false;
   @tracked uploadStatus = '';
   @tracked previewUrl = null;

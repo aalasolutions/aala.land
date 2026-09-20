@@ -1,0 +1,297 @@
+<NuvoDocs::Page
+  @id="dropdown"
+  @title="Dropdown"
+  @subtitle="Select-like menu with groups, search, keyboard navigation, remote options and creation."
+  @components="Nuvo::Dropdown, Nuvo::Autocomplete"
+>
+  <NuvoDocs::Section @title="Overview" @id="overview">
+    <p class="nuvo-doc__intro">
+      The menu renders on the anchored layer, outside the trigger's subtree,
+      so no ancestor with overflow, a mask or a transform can clip it. It is
+      mounted only while open, positioned by the anchor modifier against the
+      trigger, flips when the preferred side does not fit, and dismisses on
+      outside scroll, resize or click. Use it wherever a native select is
+      too limited: groups, icons, search, remote data.
+    </p>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Features" @id="features">
+    <ul class="nu-list">
+      <li class="nu-list__item">Grouped options kept contiguous so keyboard order matches visual order.</li>
+      <li class="nu-list__item">Type-to-filter search that appears automatically past eight options.</li>
+      <li class="nu-list__item">Arrow, Enter, Escape and Tab handling; Escape stops at the menu so a drawer underneath stays open.</li>
+      <li class="nu-list__item">Filterable combobox mode, remote search with debounce and stale-result protection, create-on-the-fly.</li>
+      <li class="nu-list__item">Icons, danger items, disabled items and separators; custom trigger block.</li>
+      <li class="nu-list__item">Focus returns to the trigger on close.</li>
+    </ul>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Options and value" @id="value">
+    <NuvoDocs::Example
+      @title="Controlled, grouped, searchable"
+      @note="Ten grouped options: the in-menu search appears because the count passes the threshold of eight. value and onSelect keep the selection in the controller."
+      @code={{this.code.controlled}}
+    >
+      <Nuvo::Dropdown
+        @options={{this.areaOptions}}
+        @value={{this.dropdownValue}}
+        @placeholder="Select an area"
+        @onSelect={{this.updateDropdown}}
+      />
+      <span class="nu-text m-sm m-muted" data-test-nuvo-dropdown-value>Value: {{this.dropdownValue}}</span>
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Uncontrolled"
+      @note="Without value the dropdown remembers its own pick after the first select. onSelect still fires, so a page can react without owning the state."
+      @code={{this.code.uncontrolled}}
+    >
+      <Nuvo::Dropdown @options={{this.propertyTypeOptions}} @placeholder="Pick a type" @onSelect={{this.notePick}} />
+      <span class="nu-text m-sm m-muted" data-test-nuvo-dropdown-pick>Picked: {{this.uncontrolledPick}}</span>
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="String options"
+      @note="Plain strings are both value and label. Three options stay under the search threshold, so the menu is a simple list."
+      @code={{this.code.strings}}
+    >
+      <Nuvo::Dropdown @options={{this.propertyTypeOptions}} @placeholder="No search (3 options)" />
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Icons and a disabled option"
+      @note="Objects may carry an icon glyph before the label; a disabled option is shown but cannot be picked or highlighted."
+      @code={{this.code.icons}}
+    >
+      <Nuvo::Dropdown @options={{this.iconOptions}} @placeholder="With icons" />
+    </NuvoDocs::Example>
+
+    <h3 class="nuvo-subtitle">Option shape</h3>
+    <NuvoDocs::Table @kind="args" @rows={{this.optionRows}} />
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Search" @id="search">
+    <NuvoDocs::Example
+      @title="Search suppressed"
+      @note="searchable false hides the in-menu search even past the threshold, for action menus where typing makes no sense."
+      @code={{this.code.searchableOff}}
+    >
+      <Nuvo::Dropdown @options={{this.areaOptions}} @placeholder="Search suppressed" @searchable={{false}} />
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Threshold and placeholder"
+      @note="searchThreshold lowers the count at which the search appears; searchPlaceholder labels it. For short lists whose labels are long."
+      @code={{this.code.threshold}}
+    >
+      <Nuvo::Dropdown
+        @options={{this.propertyTypeOptions}}
+        @placeholder="Search from 2 options"
+        @searchThreshold={{2}}
+        @searchPlaceholder="Filter types"
+      />
+    </NuvoDocs::Example>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Placement" @id="placement">
+    <NuvoDocs::Example
+      @title="Opens upward"
+      @note="placement up prefers the space above the trigger, for controls near the bottom of a page or a drawer footer. It still flips down when there is no room."
+      @code={{this.code.up}}
+    >
+      <Nuvo::Dropdown @options={{this.areaOptions}} @placeholder="Opens upward" @placement="up" />
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Start edge"
+      @note="The menu's start edge meets the trigger's start edge; the default when nothing is set."
+      @code={{this.code.placementStart}}
+    >
+      <Nuvo::Dropdown @options={{this.propertyTypeOptions}} @placeholder="Menu at start edge" @placement="start" />
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="End edge"
+      @note="The menu hangs from the trigger's end edge, for a control at the end of a toolbar so the menu stays on screen."
+      @code={{this.code.placementEnd}}
+    >
+      <Nuvo::Dropdown @options={{this.propertyTypeOptions}} @placeholder="Menu at end edge" @placement="end" />
+    </NuvoDocs::Example>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Alignment" @id="alignment">
+    {{#each this.alignExamples as |example|}}
+      <NuvoDocs::Example @title={{example.title}} @note={{example.note}} @layout="stack" @code={{example.code}}>
+        <Nuvo::Dropdown @options={{this.propertyTypeOptions}} @placeholder="Align {{example.align}}" @align={{example.align}} />
+      </NuvoDocs::Example>
+    {{/each}}
+
+    <NuvoDocs::Example
+      @title="Options alignment"
+      @note="optionsAlign aligns the text inside the menu independently of the trigger."
+      @layout="stack"
+      @code={{this.code.optionsAlign}}
+    >
+      <Nuvo::Dropdown
+        @options={{this.propertyTypeOptions}}
+        @placeholder="Centred options"
+        @align="end"
+        @optionsAlign="center"
+      />
+    </NuvoDocs::Example>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Trigger" @id="trigger">
+    <NuvoDocs::Example
+      @title="Disabled"
+      @note="The trigger renders disabled and the menu never opens."
+      @code={{this.code.disabled}}
+    >
+      <Nuvo::Dropdown @options={{this.propertyTypeOptions}} @placeholder="Disabled" @disabled={{true}} />
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Size"
+      @note="size forwards to the trigger button or the filter input, so the dropdown matches neighbouring sm controls."
+      @code={{this.code.size}}
+    >
+      <Nuvo::Dropdown @options={{this.propertyTypeOptions}} @placeholder="Small" @size="sm" />
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Trigger variant"
+      @note="triggerVariant restyles the default button; primary for a dropdown that is the page's main action, such as a split Create menu."
+      @code={{this.code.triggerVariant}}
+    >
+      <Nuvo::Dropdown @options={{this.propertyTypeOptions}} @placeholder="Primary trigger" @triggerVariant="primary" />
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Custom trigger, action menu"
+      @note="The trigger block yields toggle and isOpen for any control. Separators, a disabled item and a danger item make a row action menu."
+      @code={{this.code.trigger}}
+    >
+      <Nuvo::Dropdown
+        @options={{this.rowActions}}
+        @onSelect={{this.runAction}}
+        @searchable={{false}}
+        @optionsAlign="center"
+      >
+        <:trigger as |toggle isOpen|>
+          <Nuvo::Button
+            @variant="secondary"
+            @icon="dots-three"
+            @shape="square"
+            @onClick={{toggle}}
+            aria-label="Row actions"
+            aria-expanded={{if isOpen "true" "false"}}
+            data-test-nuvo-row-actions
+          />
+        </:trigger>
+      </Nuvo::Dropdown>
+      <span class="nu-text m-sm m-muted" data-test-nuvo-action-result>Last action: {{this.actionResult}}</span>
+    </NuvoDocs::Example>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Combobox modes" @id="combobox">
+    <NuvoDocs::Example
+      @title="Filterable"
+      @note="The trigger becomes an input; typing filters the options and clearing it calls onClear. For long static lists such as countries."
+      @layout="stack"
+      @code={{this.code.filterable}}
+    >
+      <Nuvo::Dropdown
+        @filterable={{true}}
+        @options={{this.areaOptions}}
+        @value={{this.filterValue}}
+        @placeholder="Type to filter areas"
+        @onSelect={{this.updateFilter}}
+        @onClear={{this.clearFilter}}
+      />
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Remote search"
+      @note="remote takes options from onSearch after minChars and a debounce; promptText and emptyText label the empty menu, selectedLabel shows a value the options no longer contain. The demo resolves after a short delay; a real page fetches."
+      @layout="stack"
+      @code={{this.code.remote}}
+    >
+      <Nuvo::Dropdown
+        @filterable={{true}}
+        @remote={{true}}
+        @minChars={{2}}
+        @searchDebounce={{250}}
+        @promptText="Type two letters"
+        @emptyText="No areas match"
+        @value={{this.remoteValue}}
+        @selectedLabel={{this.remoteLabel}}
+        @placeholder="Search areas (remote)"
+        @onSearch={{this.searchAreas}}
+        @onSelect={{this.selectRemote}}
+        @onClear={{this.clearRemote}}
+      />
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Create on the fly"
+      @note="allowCreate offers an Add row for a term that matches no option; onCreate returns the new option and it becomes the selection."
+      @layout="stack"
+      @code={{this.code.create}}
+    >
+      <Nuvo::Dropdown
+        @filterable={{true}}
+        @allowCreate={{true}}
+        @options={{this.creatableOptions}}
+        @placeholder="Pick or add a type"
+        @onCreate={{this.createType}}
+        @onSelect={{this.selectCreated}}
+      />
+    </NuvoDocs::Example>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Arguments" @id="arguments">
+    <NuvoDocs::Table @kind="args" @rows={{this.argRows}} />
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Callbacks" @id="callbacks">
+    <NuvoDocs::Table @kind="callbacks" @rows={{this.callbackRows}} />
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Blocks" @id="blocks">
+    <NuvoDocs::Table @kind="blocks" @rows={{this.blockRows}} />
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Autocomplete" @id="autocomplete">
+    <p class="nuvo-note">
+      <code>Nuvo::Autocomplete</code> is a remote, filterable dropdown bound
+      to an HTTP search endpoint through the application's
+      <code>auth</code> service. It maps each result to
+      <code>{ value: item.id, label: item[labelKey] }</code> and reports the
+      full record on select. It needs a backend, so there is no live demo here;
+      the Table page's search editor is one in place.
+    </p>
+    <div class="nu-code-block">
+      <pre class="nu-code-block__content">{{this.code.autocomplete}}</pre>
+    </div>
+    <h3 class="nuvo-subtitle">Autocomplete arguments</h3>
+    <NuvoDocs::Table @kind="args" @rows={{this.autocompleteArgRows}} />
+    <h3 class="nuvo-subtitle">Autocomplete callbacks</h3>
+    <NuvoDocs::Table @kind="callbacks" @rows={{this.autocompleteCallbackRows}} />
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Accessibility" @id="accessibility">
+    <ul class="nu-list">
+      <li class="nu-list__item">The default trigger is a button with aria-haspopup="listbox" and aria-expanded; the menu is role="listbox" with role="option" items and aria-selected.</li>
+      <li class="nu-list__item">Filterable mode renders role="combobox" with aria-expanded, aria-controls and aria-autocomplete="list".</li>
+      <li class="nu-list__item">Arrow keys move the highlight, Enter selects, Escape and Tab close; closing returns focus to the trigger.</li>
+      <li class="nu-list__item">Highlight is visual only; aria-activedescendant is not set on the combobox.</li>
+    </ul>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="RTL" @id="rtl">
+    <ul class="nu-list">
+      <li class="nu-list__item">Placement is logical: start and end are resolved against the trigger's computed direction, and the menu copies the trigger's dir attribute.</li>
+      <li class="nu-list__item">Verify with the Dir switch: the menu's edge alignment and the caret swap sides.</li>
+    </ul>
+  </NuvoDocs::Section>
+</NuvoDocs::Page>

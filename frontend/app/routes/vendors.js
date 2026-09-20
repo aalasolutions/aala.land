@@ -9,7 +9,7 @@ export default class VendorsRoute extends AuthenticatedRoute {
     limit: { refreshModel: true },
   };
 
-  async model({ page = 1, limit = 10 }) {
+  async model({ page = 1, limit = 50 }) {
     try {
       const result = await this.auth.fetchJson(
         `/vendors?page=${page}&limit=${limit}`,

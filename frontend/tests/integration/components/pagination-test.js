@@ -61,10 +61,10 @@ module('Integration | Component | pagination', function (hooks) {
     assert.true(this.element.querySelector('option[value="20"]').selected);
   });
 
-  test('it falls back to 10 per page when @limit is missing', async function (assert) {
+  test('it falls back to 50 per page when @limit is missing', async function (assert) {
     this.setProperties({
       page: 1,
-      total: 25,
+      total: 120,
       onLimitChange: () => {},
     });
 
@@ -76,8 +76,8 @@ module('Integration | Component | pagination', function (hooks) {
       />
     `);
 
-    assert.dom('[data-test-nu-pagination-status]').hasText('1-10 of 25');
-    assert.dom('[data-test-nu-pagination-select]').hasValue('10');
-    assert.true(this.element.querySelector('option[value="10"]').selected);
+    assert.dom('[data-test-nu-pagination-status]').hasText('1-50 of 120');
+    assert.dom('[data-test-nu-pagination-select]').hasValue('50');
+    assert.true(this.element.querySelector('option[value="50"]').selected);
   });
 });

@@ -38,7 +38,7 @@ export default class CompanyRoute extends AuthenticatedRoute {
         ? safeJson(this.auth, '/billing/subscription', 'COMPANY')
         : Promise.resolve(null),
       isCompanyAdmin
-        ? safeJson(this.auth, '/billing/history?page=1&limit=10', 'COMPANY')
+        ? safeJson(this.auth, '/billing/history?page=1&limit=50', 'COMPANY')
         : Promise.resolve(null),
     ]);
 
@@ -92,7 +92,7 @@ export default class CompanyRoute extends AuthenticatedRoute {
     controller.billingHistory = history?.data ?? [];
     controller.billingHistoryTotal = history?.total ?? 0;
     controller.billingHistoryPage = history?.page ?? 1;
-    controller.billingHistoryLimit = history?.limit ?? 10;
+    controller.billingHistoryLimit = history?.limit ?? 50;
     controller.activeTab = 'general';
     controller.aiPrompt = model?.ai?.aiPrompt ?? '';
     controller.creditsLimit = model?.ai?.creditsLimit ?? null;

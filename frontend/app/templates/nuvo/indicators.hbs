@@ -1,0 +1,133 @@
+<NuvoDocs::Page
+  @id="indicators"
+  @title="Dot, Spinner, Skeleton"
+  @subtitle="Presence, loading and placeholder indicators."
+  @components="Nuvo::Dot, Nuvo::Spinner, Nuvo::Skeleton"
+>
+  <NuvoDocs::Section @title="Overview" @id="overview">
+    <p class="nuvo-doc__intro">
+      Three stateless indicators. A dot marks presence or status beside
+      text, a spinner marks an in-flight request, and a skeleton holds the
+      shape of content that has not arrived yet. Use a skeleton when the
+      layout is known and a spinner when it is not.
+    </p>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Features" @id="features">
+    <ul class="nu-list">
+      <li class="nu-list__item">Dot: six colours, four sizes, pulse and ring decorations.</li>
+      <li class="nu-list__item">Spinner: six colours, four sizes, announced as a status region.</li>
+      <li class="nu-list__item">Skeleton: text, title, circle and rect shapes, fractional widths, multi-line groups.</li>
+      <li class="nu-list__item">Every animation honours prefers-reduced-motion.</li>
+    </ul>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Dot variants" @id="dot-variants">
+    {{#each this.dotVariantExamples as |example|}}
+      <NuvoDocs::Example @title={{example.title}} @note={{example.note}} @code={{example.code}}>
+        <Nuvo::Dot @variant={{example.variant}} />
+        <span class="nu-text m-sm">{{example.title}}</span>
+      </NuvoDocs::Example>
+    {{/each}}
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Dot sizes and decorations" @id="dot-sizes">
+    {{#each this.dotSizeExamples as |example|}}
+      <NuvoDocs::Example @title={{example.title}} @note={{example.note}} @code={{example.code}}>
+        <Nuvo::Dot @variant="primary" @size={{example.size}} />
+      </NuvoDocs::Example>
+    {{/each}}
+
+    <NuvoDocs::Example
+      @title="Ring"
+      @note="A static halo that separates the dot from a busy background, such as an avatar corner."
+      @code={{this.code.ring}}
+    >
+      <Nuvo::Dot @variant="success" @ring={{true}} />
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Pulse"
+      @note="An animated pulse for live activity: recording, streaming, an incoming call. Stops under reduced motion."
+      @code={{this.code.pulse}}
+    >
+      <Nuvo::Dot @variant="danger" @pulse={{true}} />
+    </NuvoDocs::Example>
+
+    <h3 class="nuvo-subtitle">Dot arguments</h3>
+    <NuvoDocs::Table @kind="args" @rows={{this.dotArgRows}} />
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Spinner variants" @id="spinner-variants">
+    {{#each this.spinnerVariantExamples as |example|}}
+      <NuvoDocs::Example @title={{example.title}} @note={{example.note}} @code={{example.code}}>
+        <Nuvo::Spinner @variant={{example.variant}} />
+      </NuvoDocs::Example>
+    {{/each}}
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Spinner sizes" @id="spinner-sizes">
+    {{#each this.spinnerSizeExamples as |example|}}
+      <NuvoDocs::Example @title={{example.title}} @note={{example.note}} @code={{example.code}}>
+        <Nuvo::Spinner @size={{example.size}} />
+      </NuvoDocs::Example>
+    {{/each}}
+
+    <h3 class="nuvo-subtitle">Spinner arguments</h3>
+    <NuvoDocs::Table @kind="args" @rows={{this.spinnerArgRows}} />
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Skeleton shapes" @id="skeleton-shapes">
+    {{#each this.shapeExamples as |example|}}
+      <NuvoDocs::Example @title={{example.title}} @note={{example.note}} @layout="stack" @code={{example.code}}>
+        <Nuvo::Skeleton @shape={{example.shape}} />
+      </NuvoDocs::Example>
+    {{/each}}
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Skeleton widths and lines" @id="skeleton-widths">
+    {{#each this.widthExamples as |example|}}
+      <NuvoDocs::Example @title={{example.title}} @note={{example.note}} @layout="block" @code={{example.code}}>
+        <Nuvo::Skeleton @shape="text" @width={{example.width}} />
+      </NuvoDocs::Example>
+    {{/each}}
+
+    <NuvoDocs::Example
+      @title="Multiple lines"
+      @note="lines above 1 renders a group of text lines with the last one shorter, standing in for a paragraph."
+      @layout="block"
+      @code={{this.code.lines}}
+    >
+      <Nuvo::Skeleton @shape="text" @lines={{3}} />
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Composed placeholder"
+      @note="Combine shapes to mirror the real layout: a circle for the avatar, a title bar, then text lines. Swap it for the content in place so nothing jumps."
+      @layout="block"
+      @code={{this.code.composed}}
+    >
+      <div class="nuvo-row">
+        <Nuvo::Skeleton @shape="circle" />
+        <Nuvo::Skeleton @shape="title" @width="50" />
+      </div>
+      <Nuvo::Skeleton @shape="text" @lines={{2}} />
+    </NuvoDocs::Example>
+
+    <h3 class="nuvo-subtitle">Skeleton arguments</h3>
+    <NuvoDocs::Table @kind="args" @rows={{this.skeletonArgRows}} />
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Accessibility" @id="accessibility">
+    <ul class="nu-list">
+      <li class="nu-list__item">Spinner renders role="status" with the label "Loading"; pass aria-label to describe what is loading.</li>
+      <li class="nu-list__item">Dot and Skeleton are decorative spans with no role. Pair a dot with visible text; hide a skeleton once real content renders.</li>
+    </ul>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="RTL" @id="rtl">
+    <ul class="nu-list">
+      <li class="nu-list__item">The skeleton shimmer is an x-axis keyframe and runs mirrored under dir="rtl". Dot and spinner are symmetric.</li>
+    </ul>
+  </NuvoDocs::Section>
+</NuvoDocs::Page>

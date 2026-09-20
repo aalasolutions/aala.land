@@ -1,0 +1,361 @@
+<NuvoDocs::Page
+  @id="table"
+  @title="Table"
+  @subtitle="DataTable, the ember-table wrapper with the kit's table look: pinning, reorder, sort, column options, selection, trees and inline editing."
+  @components="DataTable, table.scss"
+>
+  <NuvoDocs::Section @title="Overview" @id="overview">
+    <p class="nuvo-doc__intro">
+      DataTable is the only file that touches ember-table. It renders the
+      kit's
+      <code class="nu-code">nu-table</code>
+      look, keeps one stable copy per column so widths survive re-renders,
+      persists layout per user, and yields one block per cell so pages
+      decide how each value renders. Every option below is switched on by
+      an argument; a table with only columns and rows is a plain list.
+    </p>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Features" @id="features">
+    <ul class="nu-list">
+      <li class="nu-list__item">Pinned first and last columns, drag reorder, resize, and a Columns menu with per-user persistence.</li>
+      <li class="nu-list__item">Client-side sort on the loaded rows with a server hook.</li>
+      <li class="nu-list__item">Checkbox selection with a tri-state header, optional row-click selection, and a row click callback.</li>
+      <li class="nu-list__item">Tree rows with collapse carets and depth in the yield.</li>
+      <li class="nu-list__item">Double-click cell editing with text, number, select and search editors.</li>
+      <li class="nu-list__item">RTL by mirroring columns, per table or from the page direction.</li>
+    </ul>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="App-wide rules" @id="rules">
+    <p class="nuvo-note">How the application's lists use the table today.</p>
+    <ul class="nu-list">
+      <li class="nu-list__item">Every list passes pinColumns, reorderable, sortable, showOptions and a tableId; Options is everywhere.</li>
+      <li class="nu-list__item">The first column and the Actions column are pinned; the Actions column is not sortable.</li>
+      <li class="nu-list__item">Product lists do not edit inline and do not show checkboxes; the contacts list is the reference that carries selection and inline editing.</li>
+      <li class="nu-list__item">Lists are server-paged at 50 rows by default with 50, 100 and 250 as choices, and Nuvo::Pagination sits under the table.</li>
+    </ul>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Columns and rows" @id="columns">
+    <NuvoDocs::Example
+      @title="Plain table"
+      @note="Columns name the header and the value path; rows carry a unique id. Dotted paths such as company.name read nested values. Choose this when a page only lists records."
+      @layout="block"
+      @code={{this.code.basic}}
+    >
+      <DataTable @columns={{this.basicColumns}} @rows={{this.rows}} data-test-nuvo-dt-basic as |cell|>
+        {{#if (eq cell.key "role")}}
+          <Nuvo::Badge @variant="info" @text={{cell.value}} />
+        {{else}}
+          {{cell.value}}
+        {{/if}}
+      </DataTable>
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="The cell block"
+      @note="Branch on cell.key to render links, chips or buttons; cell.row gives the whole record. The data-table__chips class keeps tag cells on one line."
+      @layout="block"
+      @code={{this.code.yieldBlock}}
+    >
+      <DataTable @columns={{this.basicColumns}} @rows={{this.rows}} data-test-nuvo-dt-yield as |cell|>
+        {{#if (eq cell.key "displayName")}}
+          <span class="text-primary font-bold">{{cell.value}}</span>
+        {{else if (eq cell.key "role")}}
+          <div class="data-table__chips">
+            {{#each cell.row.tags as |tag|}}
+              <Nuvo::Tag @size="sm" @text={{tag}} />
+            {{/each}}
+          </div>
+        {{else}}
+          <span class="text-muted">{{cell.value}}</span>
+        {{/if}}
+      </DataTable>
+    </NuvoDocs::Example>
+
+    <h3 class="nuvo-subtitle">Column shape</h3>
+    <NuvoDocs::Table @kind="args" @rows={{this.columnRows}} />
+    <h3 class="nuvo-subtitle">Cell block</h3>
+    <NuvoDocs::Table @kind="classes" @rows={{this.cellRows}} />
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Layout options" @id="layout">
+    <NuvoDocs::Example
+      @title="Pinned columns"
+      @note="pinColumns honours isFixed on the column: left keeps the identity column in view while the rest scroll, right keeps actions reachable. Pinned columns cannot be hidden or moved. Scroll the table sideways to see it."
+      @layout="block"
+      @code={{this.code.pinned}}
+    >
+      <DataTable @columns={{this.pinnedColumns}} @rows={{this.rows}} @pinColumns={{true}} data-test-nuvo-dt-pinned as |cell|>
+        {{#if (eq cell.key "id")}}
+          <Nuvo::Button @variant="secondary" @size="xs" @icon="pencil-simple" @text="Edit" />
+        {{else}}
+          {{cell.value}}
+        {{/if}}
+      </DataTable>
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Reorderable"
+      @note="Drag a header to move the column; pinned columns stay put. Use it on wide lists where users compare different fields."
+      @layout="block"
+      @code={{this.code.reorderable}}
+    >
+      <DataTable @columns={{this.pinnedColumns}} @rows={{this.rows}} @pinColumns={{true}} @reorderable={{true}} data-test-nuvo-dt-reorder as |cell|>
+        {{cell.value}}
+      </DataTable>
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Column options"
+      @note="showOptions adds the Options button with a Columns menu of the non-pinned columns. Without a tableId the choice lasts for the page visit only."
+      @layout="block"
+      @code={{this.code.options}}
+    >
+      <DataTable @columns={{this.pinnedColumns}} @rows={{this.rows}} @pinColumns={{true}} @showOptions={{true}} data-test-nuvo-dt-options as |cell|>
+        {{cell.value}}
+      </DataTable>
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Persisted layout"
+      @note="tableId stores order, hidden columns and widths per user in the preferences service and adds Reset columns to the menu. Reorder, hide or resize something, reload the page, and the layout is back."
+      @layout="block"
+      @code={{this.code.tableId}}
+    >
+      <DataTable
+        @columns={{this.pinnedColumns}}
+        @rows={{this.rows}}
+        @pinColumns={{true}}
+        @reorderable={{true}}
+        @showOptions={{true}}
+        @tableId="docs-demo"
+        data-test-nuvo-dt-persisted
+        as |cell|
+      >
+        {{cell.value}}
+      </DataTable>
+    </NuvoDocs::Example>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Sorting" @id="sorting">
+    <NuvoDocs::Example
+      @title="Client-side sort"
+      @note="sortable turns headers into sort toggles on the loaded rows: ascending, then descending, then cleared. It sorts the raw field, so a formatted cell still orders by its value. Use onSort to sort on the server for paged lists."
+      @layout="block"
+      @code={{this.code.sortable}}
+    >
+      <DataTable @columns={{this.basicColumns}} @rows={{this.rows}} @sortable={{true}} @onSort={{this.noteSort}} data-test-nuvo-dt-sort as |cell|>
+        {{cell.value}}
+      </DataTable>
+      <span class="nu-text m-sm m-muted" data-test-nuvo-dt-sort-state>onSort: {{this.lastSort}}</span>
+    </NuvoDocs::Example>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Selection and row click" @id="selection">
+    <NuvoDocs::Example
+      @title="Checkbox selection"
+      @note="Passing onSelect adds a pinned checkbox column. The header checkbox selects or clears the loaded rows and shows the indeterminate state for a partial selection; rows already selected on other pages are kept."
+      @layout="block"
+      @code={{this.code.selection}}
+    >
+      <DataTable
+        @columns={{this.basicColumns}}
+        @rows={{this.rows}}
+        @selection={{this.selection}}
+        @onSelect={{this.setSelection}}
+        data-test-nuvo-dt-select
+        as |cell|
+      >
+        {{cell.value}}
+      </DataTable>
+      <span class="nu-text m-sm m-muted" data-test-nuvo-dt-selection>Selected: {{this.selectionSummary}}</span>
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Select on row click"
+      @note="selectOnRowClick toggles the row from anywhere in it, except on controls. Choose it for bulk-action lists; it is ignored while the table is editable."
+      @layout="block"
+      @code={{this.code.rowClickSelect}}
+    >
+      <DataTable
+        @columns={{this.basicColumns}}
+        @rows={{this.rows}}
+        @selection={{this.selection}}
+        @onSelect={{this.setSelection}}
+        @selectOnRowClick={{true}}
+        data-test-nuvo-dt-row-select
+        as |cell|
+      >
+        {{cell.value}}
+      </DataTable>
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Row click callback"
+      @note="onRowClick opens a detail or navigates. Clicks on inputs, buttons, links and editors inside the row never fire it, and selection wins when both are set."
+      @layout="block"
+      @code={{this.code.rowClick}}
+    >
+      <DataTable @columns={{this.basicColumns}} @rows={{this.rows}} @onRowClick={{this.noteRowClick}} data-test-nuvo-dt-row-click as |cell|>
+        {{cell.value}}
+      </DataTable>
+      <span class="nu-text m-sm m-muted" data-test-nuvo-dt-clicked>Clicked: {{this.clickedRow}}</span>
+    </NuvoDocs::Example>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Tree rows" @id="tree">
+    <NuvoDocs::Example
+      @title="Nested children"
+      @note="tree nests rows that carry a children array and gives parents a collapse caret. The block receives depth, hasChildren and isCollapsed so a page can indent or badge parents. A row with isCollapsed: true starts closed."
+      @layout="block"
+      @code={{this.code.tree}}
+    >
+      <DataTable @columns={{this.treeColumns}} @rows={{this.treeRows}} @tree={{true}} data-test-nuvo-dt-tree as |cell|>
+        {{#if (eq cell.key "name")}}
+          {{cell.value}}
+          {{#if cell.hasChildren}}
+            <Nuvo::Badge @size="sm" @text={{if cell.isCollapsed "collapsed" "open"}} />
+          {{/if}}
+        {{else}}
+          {{cell.value}}
+        {{/if}}
+      </DataTable>
+    </NuvoDocs::Example>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Inline editing" @id="editing">
+    <NuvoDocs::Example
+      @title="Every editor type"
+      @note="onCellEdit enables the editors declared on columns. Double-click Name for text, Units for a number, Company for a select that opens on the layer, and Owner for a search editor backed by an endpoint (it opens here; results need the API). Enter, Tab or blur commit text; picks commit at once; Escape cancels; Tab walks to the next editable cell."
+      @layout="block"
+      @code={{this.code.editing}}
+    >
+      <DataTable @columns={{this.editableColumns}} @rows={{this.editableRows}} @onCellEdit={{this.saveCell}} data-test-nuvo-dt-edit as |cell|>
+        {{#if (eq cell.key "owner")}}
+          {{if cell.value.displayName cell.value.displayName cell.value}}
+        {{else}}
+          {{cell.value}}
+        {{/if}}
+      </DataTable>
+      <span class="nu-text m-sm m-muted" data-test-nuvo-dt-edit-state>Last edit: {{this.lastEdit}}</span>
+    </NuvoDocs::Example>
+
+    <h3 class="nuvo-subtitle">Editing behaviour</h3>
+    <NuvoDocs::Table @kind="classes" @rows={{this.editingRows}} />
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Direction" @id="direction">
+    <NuvoDocs::Example
+      @title="Per-table RTL"
+      @note="ember-table's math is left-to-right, so RTL mirrors the column order and swaps the pinned sides instead; cells read right-to-left and the table starts scrolled to the reading edge. dir overrides the page direction for one table; without it the html dir applies."
+      @layout="block"
+      @code={{this.code.dir}}
+    >
+      <DataTable @columns={{this.rtlColumns}} @rows={{this.rtlRows}} @pinColumns={{true}} @dir="rtl" data-test-nuvo-dt-rtl as |cell|>
+        {{cell.value}}
+      </DataTable>
+    </NuvoDocs::Example>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="With pagination" @id="pagination">
+    <NuvoDocs::Example
+      @title="Server-paged list"
+      @note="The table shows one page of rows; Nuvo::Pagination under it drives page and limit on the controller, which reloads the model. Sorting a paged list belongs on the server through onSort."
+      @layout="block"
+      @code={{this.code.paged}}
+    >
+      <DataTable
+        @columns={{this.basicColumns}}
+        @rows={{this.rows}}
+        @sortable={{true}}
+        @showOptions={{true}}
+        @tableId="docs-paged"
+        data-test-nuvo-dt-paged
+        as |cell|
+      >
+        {{cell.value}}
+      </DataTable>
+      <Nuvo::Pagination
+        @page={{this.page}}
+        @limit={{this.limit}}
+        @total={{this.total}}
+        @onPageChange={{this.setPage}}
+        @onLimitChange={{this.setLimit}}
+      />
+    </NuvoDocs::Example>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Arguments" @id="arguments">
+    <NuvoDocs::Table @kind="args" @rows={{this.argRows}} />
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Callbacks" @id="callbacks">
+    <NuvoDocs::Table @kind="callbacks" @rows={{this.callbackRows}} />
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Classes and test hooks" @id="classes">
+    <NuvoDocs::Table @kind="classes" @rows={{this.classRows}} />
+    <h3 class="nuvo-subtitle">Test hooks</h3>
+    <NuvoDocs::Table @kind="classes" @rows={{this.hookRows}} />
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="The look it extends" @id="raw">
+    <NuvoDocs::Example
+      @title="Raw nu-table markup"
+      @note="The same classes on a plain HTML table, for static or tiny lists that do not need ember-table. DataTable's table extends nu-table, so both render identically."
+      @layout="block"
+      @code={{this.code.raw}}
+    >
+      <div class="nu-table-wrapper">
+        <table class="nu-table m-striped" data-test-nuvo-raw-table>
+          <thead>
+            <tr>
+              <th class="is-sortable is-sorted" aria-sort="ascending">
+                <button type="button" class="nuvo-sort-button" data-test-nuvo-raw-sort>Unit</button>
+              </th>
+              <th class="m-align-end">Rent (AED)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="is-hoverable is-selected">
+              <td>Unit 204</td>
+              <td class="m-align-end">8,500</td>
+            </tr>
+            <tr class="is-hoverable">
+              <td>Unit 512</td>
+              <td class="m-align-end">11,200</td>
+            </tr>
+            <tr class="nu-table__empty-row">
+              <td colspan="2">No more units match.</td>
+            </tr>
+          </tbody>
+          <tfoot>
+            <tr>
+              <td>Total</td>
+              <td class="m-align-end">19,700</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </NuvoDocs::Example>
+    <NuvoDocs::Table @kind="classes" @rows={{this.rawRows}} />
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Accessibility" @id="accessibility">
+    <ul class="nu-list">
+      <li class="nu-list__item">ember-table renders a real table with thead and tbody; header and row checkboxes are labelled ("Select all rows", "Select row").</li>
+      <li class="nu-list__item">Sort arrows are aria-hidden; the header cell itself is the sort control. Editing needs a pointer for the double-click, so keep an Edit action for keyboard users.</li>
+      <li class="nu-list__item">The collapse caret in a tree is a native checkbox styled as an arrow, so it stays keyboard-operable.</li>
+    </ul>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="RTL" @id="rtl">
+    <ul class="nu-list">
+      <li class="nu-list__item">Columns are reversed and isFixed sides swapped in RTL; resizing switches to fluid mode and the wrapper starts scrolled to the reading edge.</li>
+      <li class="nu-list__item">The table element stays LTR while th and td set direction: rtl, and the cell fade mask flips to the other edge. The tree caret flips with a direction sign token.</li>
+      <li class="nu-list__item">Raw nu-table alignment is logical, and the selected-row bar flips to the inline-start edge.</li>
+    </ul>
+  </NuvoDocs::Section>
+</NuvoDocs::Page>

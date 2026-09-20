@@ -3,6 +3,7 @@ import {
   InternalServerErrorException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { clampLimit, pageSkip } from '@shared/utils/pagination.util';
 import { EntityManager, Repository } from 'typeorm';
 import { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity';
 import {
@@ -155,8 +156,8 @@ export class RecordHistoryService {
     }
 
     const [data, total] = await queryBuilder
-      .skip((page - 1) * limit)
-      .take(limit)
+      .skip(pageSkip(page, limit))
+      .take(clampLimit(limit))
       .getManyAndCount();
 
     return { data, total, page, limit };

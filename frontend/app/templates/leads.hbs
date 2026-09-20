@@ -318,113 +318,97 @@
   {{/if}}
 
   {{#if (eq this.viewMode "list")}}
-    <div class="nu-table-wrapper">
-      <table class="nu-table">
-        <thead>
-          <tr>
-            <th>Name</th>
-            <th>Contact</th>
-            <th>Status</th>
-            <th>Temperature</th>
-            <th>Property</th>
-            <th>Assigned</th>
-            <th>Created</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {{#each this.filteredLeads as |lead|}}
-            <tr
-              data-test-lead-row
-              data-test-lead-id={{lead.id}}
-              class="lead-row-clickable"
-              {{on "click" (fn this.openDetailModal lead)}}
-            >
-              <td>
-                <span class="font-bold">{{lead.contact.displayName}}</span>
-              </td>
-              <td>
-                <div class="flex col gap-1">
-                  <div class="flex gap-2 x-center">
-                    <span class="text-xs">{{lead.contact.phone}}</span>
-                    {{#if (and lead.contact.phone lead.contact.isWhatsapp)}}
-                      <a
-                        href={{wa-link lead.contact.phone}}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        class="wa-link"
-                        aria-label="Open WhatsApp chat with {{lead.contact.displayName}}"
-                        data-test-wa-link
-                        {{on "click" this.stopPropagation}}
-                      >
-                        <Ui::Ph @icon="whatsapp-logo" @size="14px" />
-                      </a>
-                    {{/if}}
-                  </div>
-                  <span class="text-xs text-muted">{{lead.contact.email}}</span>
-                </div>
-              </td>
-              <td>
-                <Nuvo::Tag class="tag-lead-{{lowercase lead.status}}" @text={{lead.status}} />
-              </td>
-              <td>
-                <Nuvo::Tag class="tag-temp-{{lowercase lead.temperature}}" @text={{lead.temperature}} />
-              </td>
-              <td>
-                {{#if lead.locality}}
-                  <span>{{lead.locality.name}}</span>
-                  {{#if lead.unit}}
-                    <span class="text-muted text-xs">
-                      - Property
-                      {{lead.unit.unitNumber}}</span>
-                  {{/if}}
-                {{else}}
-                  <span class="text-muted">-</span>
-                {{/if}}
-              </td>
-              <td>
-                {{#if lead.assignedAgentName}}
-                  <span
-                    class="lead-assign m-sm"
-                  >{{lead.assignedAgentName}}</span>
-                {{else}}
-                  <span class="text-muted">Unassigned</span>
-                {{/if}}
-              </td>
-              <td>
-                <span class="text-xs text-muted">{{format-date
-                    lead.createdAt
-                  }}</span>
-              </td>
-              <td>
-                <Nuvo::BtnGroup @attached={{true}} {{on "click" this.stopPropagation}}>
-                  <Nuvo::Button
-                    @variant="secondary"
-                    @size="xs"
-                    {{on "click" (fn this.openEdit lead)}}
-                  >
-                    Edit
-                  </Nuvo::Button>
-                  <Nuvo::Button
-                    @variant="secondary"
-                    @size="xs"
-                    {{on "click" (fn this.openAssignModal lead)}}
-                  >
-                    Assign
-                  </Nuvo::Button>
-                </Nuvo::BtnGroup>
-              </td>
-            </tr>
+    {{#if this.filteredLeads.length}}
+      <DataTable
+        @columns={{this.listColumns}}
+        @rows={{this.filteredLeads}}
+        @onRowClick={{this.openDetailModal}}
+        @pinColumns={{true}}
+        @reorderable={{true}}
+        @sortable={{true}}
+        @showOptions={{true}}
+        @tableId="leads-list"
+        data-test-leads-table
+        as |cell|
+      >
+        {{#if (eq cell.key "contact.displayName")}}
+          <span
+            class="font-bold"
+            data-test-lead-row
+            data-test-lead-id={{cell.row.id}}
+          >{{cell.value}}</span>
+        {{else if (eq cell.key "contact.phone")}}
+          <div class="flex col gap-1">
+            <div class="flex gap-2 x-center">
+              <span class="text-xs">{{cell.value}}</span>
+              {{#if (and cell.value cell.row.contact.isWhatsapp)}}
+                <a
+                  href={{wa-link cell.value}}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="wa-link"
+                  aria-label="Open WhatsApp chat with {{cell.row.contact.displayName}}"
+                  data-test-wa-link
+                >
+                  <Ui::Ph @icon="whatsapp-logo" @size="14px" />
+                </a>
+              {{/if}}
+            </div>
+            <span class="text-xs text-muted">{{cell.row.contact.email}}</span>
+          </div>
+        {{else if (eq cell.key "status")}}
+          <Nuvo::Tag
+            class="tag-lead-{{lowercase cell.value}}"
+            @text={{cell.value}}
+          />
+        {{else if (eq cell.key "temperature")}}
+          <Nuvo::Tag
+            class="tag-temp-{{lowercase cell.value}}"
+            @text={{cell.value}}
+          />
+        {{else if (eq cell.key "locality.name")}}
+          {{#if cell.row.locality}}
+            <span>{{cell.value}}</span>
+            {{#if cell.row.unit}}
+              <span class="text-muted text-xs">
+                - Property
+                {{cell.row.unit.unitNumber}}</span>
+            {{/if}}
           {{else}}
-            <tr>
-              <td colspan="8" class="text-center text-muted py-8">
-                No leads found
-              </td>
-            </tr>
-          {{/each}}
-        </tbody>
-      </table>
-    </div>
+            <span class="text-muted">-</span>
+          {{/if}}
+        {{else if (eq cell.key "assignedAgentName")}}
+          {{#if cell.value}}
+            <span class="lead-assign m-sm">{{cell.value}}</span>
+          {{else}}
+            <span class="text-muted">Unassigned</span>
+          {{/if}}
+        {{else if (eq cell.key "createdAt")}}
+          <span class="text-xs text-muted">{{format-date cell.value}}</span>
+        {{else if (eq cell.key "id")}}
+          <Nuvo::BtnGroup @attached={{true}}>
+            <Nuvo::Button
+              @variant="secondary"
+              @size="xs"
+              {{on "click" (fn this.openEdit cell.row)}}
+            >
+              Edit
+            </Nuvo::Button>
+            <Nuvo::Button
+              @variant="secondary"
+              @size="xs"
+              {{on "click" (fn this.openAssignModal cell.row)}}
+            >
+              Assign
+            </Nuvo::Button>
+          </Nuvo::BtnGroup>
+        {{else}}
+          {{cell.value}}
+        {{/if}}
+      </DataTable>
+    {{else}}
+      <p class="text-center text-muted py-8">No leads found</p>
+    {{/if}}
   {{/if}}
 </div>
 

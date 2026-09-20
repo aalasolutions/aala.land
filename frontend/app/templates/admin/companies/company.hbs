@@ -274,67 +274,56 @@
       {{#if this.paymentsLoading}}
         <p class="text-muted">Loading payments…</p>
       {{else if this.paymentRows}}
-        <div class="nu-table-wrapper">
-          <table class="nu-table" data-test-company-payments-table>
-            <thead>
-              <tr>
-                <th>Date</th>
-                <th>Amount</th>
-                <th>Covers</th>
-                <th>Source</th>
-                <th>Notes</th>
-                <th>Receipt</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {{#each this.paymentRows as |row|}}
-                <tr>
-                  <td>{{format-date row.date}}</td>
-                  <td class="font-bold">{{format-money
-                      row.amount
-                      row.currency
-                    }}</td>
-                  <td>{{row.coversLabel}}</td>
-                  <td>{{row.source}}</td>
-                  <td class="console-notes-cell">{{if
-                      row.notes
-                      row.notes
-                      "-"
-                    }}</td>
-                  <td>
-                    {{#if row.hasReceipt}}
-                      <button
-                        type="button"
-                        class="btn-link"
-                        {{on "click" (fn this.viewReceipt row.id)}}
-                      >View</button>
-                    {{else if row.invoiceUrl}}
-                      <a
-                        href={{row.invoiceUrl}}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        class="link"
-                      >Invoice</a>
-                    {{else}}
-                      <span class="text-muted">-</span>
-                    {{/if}}
-                  </td>
-                  <td class="text-end">
-                    {{#if row.paid}}
-                      <button
-                        type="button"
-                        class="btn btn-secondary btn-xs"
-                        data-test-company-make-right={{row.id}}
-                        {{on "click" (fn this.openRemedy row)}}
-                      >Make it right</button>
-                    {{/if}}
-                  </td>
-                </tr>
-              {{/each}}
-            </tbody>
-          </table>
-        </div>
+        <DataTable
+          @columns={{this.paymentColumns}}
+          @rows={{this.paymentRows}}
+          @pinColumns={{true}}
+          @reorderable={{true}}
+          @sortable={{true}}
+          @showOptions={{true}}
+          @tableId="console-company-payments"
+          data-test-company-payments-table
+          as |cell|
+        >
+          {{#if (eq cell.key "date")}}
+            {{format-date cell.value}}
+          {{else if (eq cell.key "amount")}}
+            <span class="font-bold">{{format-money
+                cell.value
+                cell.row.currency
+              }}</span>
+          {{else if (eq cell.key "notes")}}
+            <span class="console-notes-cell">{{if cell.value cell.value "-"}}</span>
+          {{else if (eq cell.key "hasReceipt")}}
+            {{#if cell.value}}
+              <button
+                type="button"
+                class="btn-link"
+                {{on "click" (fn this.viewReceipt cell.row.id)}}
+              >View</button>
+            {{else if cell.row.invoiceUrl}}
+              <a
+                href={{cell.row.invoiceUrl}}
+                target="_blank"
+                rel="noopener noreferrer"
+                class="link"
+              >Invoice</a>
+            {{else}}
+              <span class="text-muted">-</span>
+            {{/if}}
+          {{else if (eq cell.key "id")}}
+            {{#if cell.row.paid}}
+              <button
+                type="button"
+                class="btn btn-secondary btn-xs"
+                data-test-company-make-right={{cell.row.id}}
+                {{on "click" (fn this.openRemedy cell.row)}}
+              >Make it right</button>
+            {{/if}}
+          {{else}}
+            {{cell.value}}
+          {{/if}}
+        </DataTable>
       {{else}}
         <p class="text-muted">No payments recorded yet.</p>
       {{/if}}
@@ -346,26 +335,23 @@
       {{#if this.historyLoading}}
         <p class="text-muted">Loading history…</p>
       {{else if this.historyRows}}
-        <div class="nu-table-wrapper">
-          <table class="nu-table" data-test-company-history-table>
-            <thead>
-              <tr>
-                <th>When</th>
-                <th>Who</th>
-                <th>What</th>
-              </tr>
-            </thead>
-            <tbody>
-              {{#each this.historyRows as |row|}}
-                <tr>
-                  <td>{{format-date-time row.when}}</td>
-                  <td>{{row.who}}</td>
-                  <td>{{row.what}}</td>
-                </tr>
-              {{/each}}
-            </tbody>
-          </table>
-        </div>
+        <DataTable
+          @columns={{this.historyColumns}}
+          @rows={{this.historyRows}}
+          @pinColumns={{true}}
+          @reorderable={{true}}
+          @sortable={{true}}
+          @showOptions={{true}}
+          @tableId="console-company-history"
+          data-test-company-history-table
+          as |cell|
+        >
+          {{#if (eq cell.key "when")}}
+            {{format-date-time cell.value}}
+          {{else}}
+            {{cell.value}}
+          {{/if}}
+        </DataTable>
       {{else}}
         <p class="text-muted">No operator events for this company yet.</p>
       {{/if}}

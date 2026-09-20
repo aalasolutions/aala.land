@@ -12,7 +12,7 @@ export default class MaintenanceRoute extends AuthenticatedRoute {
     filterMonth: { refreshModel: true },
   };
 
-  async model({ page = 1, limit = 10, filterStatus = '', filterMonth = '' }) {
+  async model({ page = 1, limit = 50, filterStatus = '', filterMonth = '' }) {
     const maintenanceParams = new URLSearchParams({ page, limit });
     if (filterStatus) {
       maintenanceParams.set('status', filterStatus);

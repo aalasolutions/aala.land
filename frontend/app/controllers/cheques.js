@@ -62,6 +62,29 @@ export default class ChequesController extends PaginatedController {
     { id: 'cheques', label: 'Cheques', icon: 'list-checks' },
     { id: 'schedule', label: 'Collection Schedule', icon: 'calendar-check' },
   ];
+
+  columns = [
+    {
+      name: 'Cheque #',
+      valuePath: 'chequeNumber',
+      width: 160,
+      isFixed: 'left',
+    },
+    { name: 'Unit', valuePath: 'unit.unitNumber', width: 140 },
+    { name: 'Bank', valuePath: 'bankName', width: 180 },
+    { name: 'Account Holder', valuePath: 'accountHolder', width: 200 },
+    { name: 'Amount', valuePath: 'amount', width: 140 },
+    { name: 'Due Date', valuePath: 'dueDate', width: 140 },
+    { name: 'Type', valuePath: 'type', width: 140 },
+    { name: 'Status', valuePath: 'status', width: 140 },
+    {
+      name: 'Actions',
+      valuePath: 'id',
+      width: 480,
+      isFixed: 'right',
+      isSortable: false,
+    },
+  ];
   @tracked showBounceModal = false;
   @tracked bounceChequeItem = null;
   @tracked formBounceReason = '';

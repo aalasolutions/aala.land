@@ -5,6 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { clampLimit, pageSkip } from '@shared/utils/pagination.util';
 import { DataSource, EntityManager, In, IsNull, Repository } from 'typeorm';
 import {
   PropertyDocument,
@@ -189,8 +190,8 @@ export class DocumentsService {
       });
     }
 
-    qb.skip((page - 1) * limit)
-      .take(limit)
+    qb.skip(pageSkip(page, limit))
+      .take(clampLimit(limit))
       .orderBy('doc.createdAt', 'DESC');
 
     const [data, total] = await qb.getManyAndCount();

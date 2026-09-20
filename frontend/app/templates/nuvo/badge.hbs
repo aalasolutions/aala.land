@@ -1,0 +1,213 @@
+<NuvoDocs::Page
+  @id="badge"
+  @title="Badge"
+  @subtitle="Inline status label, standalone count bubble, or a corner bubble anchored to wrapped content."
+  @components="Nuvo::Badge"
+>
+  <NuvoDocs::Section @title="Overview" @id="overview">
+    <p class="nuvo-doc__intro">
+      The same component renders three shapes decided by how it is invoked:
+      a pill when standing alone, a count bubble with
+      <code class="nu-code">@count</code>, and a fixed corner bubble when it
+      wraps a block. A numeric
+      <code class="nu-code">@max</code>
+      caps the display at "max+". Use a badge for state and counts; use a Tag
+      for categories the user can add or remove.
+    </p>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Features" @id="features">
+    <ul class="nu-list">
+      <li class="nu-list__item">Six colour variants plus a neutral default.</li>
+      <li class="nu-list__item">Solid, outline, pill and quiet styles; two extra sizes.</li>
+      <li class="nu-list__item">Dot form for presence without a value.</li>
+      <li class="nu-list__item">Overflow cap: value 120 with max 99 renders 99+.</li>
+      <li class="nu-list__item">Zero displays; null and undefined hide the bubble.</li>
+    </ul>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Variants" @id="variants">
+    {{#each this.variantExamples as |example|}}
+      <NuvoDocs::Example @title={{example.title}} @note={{example.note}} @code={{example.code}}>
+        <Nuvo::Badge @variant={{example.variant}} @value={{example.title}} />
+      </NuvoDocs::Example>
+    {{/each}}
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Styles" @id="styles">
+    <NuvoDocs::Example
+      @title="Solid"
+      @note="Filled with the variant colour and inverted text. Higher contrast for a badge that must be read at a glance, such as a status column."
+      @code={{this.code.solid}}
+    >
+      <Nuvo::Badge @variant="primary" @solid={{true}} @value="Solid" />
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Outline"
+      @note="Coloured border on a transparent background. Lighter weight for secondary labels beside a filled badge."
+      @code={{this.code.outline}}
+    >
+      <Nuvo::Badge @variant="success" @outline={{true}} @value="Outline" />
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Pill"
+      @note="Fully rounded ends. Reads as a chip; pair it with Tag chips so the row looks consistent."
+      @code={{this.code.pill}}
+    >
+      <Nuvo::Badge @variant="info" @pill={{true}} @value="Pill" />
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Quiet"
+      @note="Lower-contrast surface for badges that appear on every row and would otherwise dominate the table."
+      @code={{this.code.quiet}}
+    >
+      <Nuvo::Badge @variant="warning" @quiet={{true}} @value="Quiet" />
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Text alias"
+      @note="text is an alias of value that reads naturally for labels; value wins when both are given."
+      @code={{this.code.text}}
+    >
+      <Nuvo::Badge @variant="success" @text="Active" />
+    </NuvoDocs::Example>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Sizes" @id="sizes">
+    <NuvoDocs::Example
+      @title="Small"
+      @note="For dense table cells and inline use inside small text."
+      @code={{this.code.sm}}
+    >
+      <Nuvo::Badge @variant="danger" @size="sm" @value="Small" />
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Large"
+      @note="For headers and cards where the badge is a primary signal."
+      @code={{this.code.lg}}
+    >
+      <Nuvo::Badge @variant="danger" @size="lg" @value="Large" />
+    </NuvoDocs::Example>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Values" @id="values">
+    <NuvoDocs::Example
+      @title="Zero"
+      @note="0 is a real value and displays. Only null or undefined hides the badge, so an empty count never renders an empty pill."
+      @code={{this.code.zero}}
+    >
+      <Nuvo::Badge @variant="warning" @value={{0}} />
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Overflow cap"
+      @note="max caps a numeric value at max+. Use it for unread counts and anything that can grow past two digits."
+      @code={{this.code.max}}
+    >
+      <Nuvo::Badge @variant="danger" @value={{120}} @max={{99}} />
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Dot"
+      @note="Presence without a number: online, has unread, needs attention. Never hidden for lacking a value."
+      @code={{this.code.dot}}
+    >
+      <Nuvo::Badge @variant="secondary" @isDot={{true}} />
+    </NuvoDocs::Example>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Count bubbles" @id="counts">
+    <NuvoDocs::Example
+      @title="Standalone count"
+      @note="count renders the round bubble inline, without an anchor. For tab labels and list rows that show a number beside text."
+      @code={{this.code.count}}
+    >
+      <Nuvo::Badge @count={{true}} @value={{3}} />
+      <Nuvo::Badge @count={{true}} @variant="primary" @value={{12}} />
+      <Nuvo::Badge @count={{true}} @variant="success" @value={{99}} />
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Count with cap"
+      @note="The same overflow rule applies to bubbles."
+      @code={{this.code.countMax}}
+    >
+      <Nuvo::Badge @count={{true}} @variant="info" @value={{250}} @max={{99}} />
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Count dot"
+      @note="A bubble reduced to a dot, for a compact unread marker."
+      @code={{this.code.countDot}}
+    >
+      <Nuvo::Badge @count={{true}} @variant="danger" @isDot={{true}} />
+    </NuvoDocs::Example>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Wrapped content" @id="wrapped">
+    <NuvoDocs::Example
+      @title="Corner count"
+      @note="A block turns the badge into a fixed bubble on the wrapped element's corner. The classic unread marker on an icon button."
+      @code={{this.code.wrapped}}
+    >
+      <Nuvo::Badge @variant="danger" @value={{5}}>
+        <Nuvo::Button @variant="secondary" @icon="envelope" @shape="square" aria-label="Messages" />
+      </Nuvo::Badge>
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Corner dot"
+      @note="Presence on a control without a number."
+      @code={{this.code.wrappedDot}}
+    >
+      <Nuvo::Badge @variant="success" @isDot={{true}}>
+        <Nuvo::Button @variant="secondary" @icon="bell" @shape="square" aria-label="Notifications" />
+      </Nuvo::Badge>
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Corner zero"
+      @note="Zero still renders on a wrapped badge, so a count that dropped to none stays visible as 0 until you hide it."
+      @code={{this.code.wrappedZero}}
+    >
+      <Nuvo::Badge @variant="primary" @value={{0}}>
+        <Nuvo::Button @variant="secondary" @icon="star" @shape="square" aria-label="Favourites" />
+      </Nuvo::Badge>
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Hidden"
+      @note="hidden removes the bubble but keeps the wrapped control in place, so the layout does not shift when a count clears."
+      @code={{this.code.hidden}}
+    >
+      <Nuvo::Badge @variant="danger" @value={{7}} @hidden={{true}}>
+        <Nuvo::Button @variant="secondary" @icon="chat-circle" @shape="square" aria-label="Chats" />
+      </Nuvo::Badge>
+    </NuvoDocs::Example>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Arguments" @id="arguments">
+    <NuvoDocs::Table @kind="args" @rows={{this.argRows}} />
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Blocks" @id="blocks">
+    <NuvoDocs::Table @kind="blocks" @rows={{this.blockRows}} />
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Accessibility" @id="accessibility">
+    <ul class="nu-list">
+      <li class="nu-list__item">The badge is a plain span; it carries no role and is read as part of the surrounding text.</li>
+      <li class="nu-list__item">A dot badge has no text. Convey the state in the wrapped control's label or a tooltip.</li>
+    </ul>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="RTL" @id="rtl">
+    <ul class="nu-list">
+      <li class="nu-list__item">The fixed corner bubble is placed with a logical inset and its translate sign flips under dir="rtl", so it stays on the trailing corner.</li>
+    </ul>
+  </NuvoDocs::Section>
+</NuvoDocs::Page>

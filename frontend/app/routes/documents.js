@@ -17,7 +17,7 @@ export default class DocumentsRoute extends AuthenticatedRoute {
 
   async model({
     page = 1,
-    limit = 10,
+    limit = 50,
     category = '',
     search = '',
     accessLevel = '',

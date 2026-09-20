@@ -66,98 +66,85 @@
 
     <Nuvo::Card>
       {{#if this.filteredWorkOrders.length}}
-        <div class="nu-table-wrapper">
-          <table class="nu-table" data-test-work-orders-table>
-            <thead>
-              <tr>
-                <th>Title</th>
-                <th>Property</th>
-                <th>Category</th>
-                <th>Priority</th>
-                <th>Est. Cost</th>
-                <th>Actual Cost</th>
-                <th>Scheduled</th>
-                <th>Status</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {{#each this.filteredWorkOrders as |wo|}}
-                <tr data-test-work-order>
-                  <td>
-                    <p class="text-sm font-bold">{{wo.title}}</p>
-                    {{#if wo.vendorId}}<p class="text-muted text-xs"><Ui::Ph
-                          @icon="toolbox"
-                        />
-                        Vendor assigned</p>{{/if}}
-                  </td>
-                  <td class="text-sm text-muted">
-                    {{#if wo.unitNumber}}
-                      {{wo.areaName}}
-                      /
-                      {{wo.assetName}}
-                      /
-                      {{wo.unitNumber}}
-                    {{else}}
-                      <span class="text-muted">-</span>
-                    {{/if}}
-                  </td>
-                  <td>
-                    <Nuvo::Tag
-                      class="tag-trade-{{lowercase wo.category}}"
-                      @text={{wo.category}}
-                    />
-                  </td>
-                  <td>
-                    <Nuvo::Tag
-                      class="tag-priority-{{lowercase wo.priority}}"
-                      @text={{wo.priority}}
-                    />
-                  </td>
-                  <td>{{#if wo.estimatedCost}}{{format-currency
-                        wo.estimatedCost
-                      }}{{else}}-{{/if}}</td>
-                  <td>{{#if wo.actualCost}}{{format-currency
-                        wo.actualCost
-                      }}{{else}}-{{/if}}</td>
-                  <td class="text-xs">{{#if wo.scheduledDate}}{{format-date
-                        wo.scheduledDate
-                      }}{{else}}-{{/if}}</td>
-                  <td>
-                    <Nuvo::Tag
-                      class="tag-wo-{{lowercase wo.status}}"
-                      @text={{wo.status}}
-                    />
-                  </td>
-                  <td>
-                    <div class="flex gap-2">
-                      <Nuvo::Button
-                        @variant="secondary"
-                        @size="xs"
-                        @icon="pencil-simple"
-                        data-test-edit-work-order
-                        {{on "click" (fn this.openEdit wo)}}
-                      >
-                        Edit
-                      </Nuvo::Button>
-                      {{#if (this.canDeleteWorkOrder wo)}}
-                        <Nuvo::Button
-                          @variant="danger"
-                          @size="xs"
-                          @icon="trash"
-                          data-test-delete-work-order
-                          {{on "click" (fn this.openDelete wo)}}
-                        >
-                          Delete
-                        </Nuvo::Button>
-                      {{/if}}
-                    </div>
-                  </td>
-                </tr>
-              {{/each}}
-            </tbody>
-          </table>
-        </div>
+        <DataTable
+          @columns={{this.columns}}
+          @rows={{this.filteredWorkOrders}}
+          @pinColumns={{true}}
+          @reorderable={{true}}
+          @sortable={{true}}
+          @showOptions={{true}}
+          @tableId="maintenance"
+          data-test-work-orders-table
+          as |cell|
+        >
+          {{#if (eq cell.key "title")}}
+            <p class="text-sm font-bold" data-test-work-order>{{cell.value}}</p>
+            {{#if cell.row.vendorId}}<p class="text-muted text-xs"><Ui::Ph
+                  @icon="toolbox"
+                />
+                Vendor assigned</p>{{/if}}
+          {{else if (eq cell.key "assetName")}}
+            <span class="text-sm text-muted">
+              {{#if cell.row.unitNumber}}
+                {{cell.row.areaName}}
+                /
+                {{cell.row.assetName}}
+                /
+                {{cell.row.unitNumber}}
+              {{else}}
+                <span class="text-muted">-</span>
+              {{/if}}
+            </span>
+          {{else if (eq cell.key "category")}}
+            <Nuvo::Tag
+              class="tag-trade-{{lowercase cell.value}}"
+              @text={{cell.value}}
+            />
+          {{else if (eq cell.key "priority")}}
+            <Nuvo::Tag
+              class="tag-priority-{{lowercase cell.value}}"
+              @text={{cell.value}}
+            />
+          {{else if (eq cell.key "estimatedCost")}}
+            {{#if cell.value}}{{format-currency cell.value}}{{else}}-{{/if}}
+          {{else if (eq cell.key "actualCost")}}
+            {{#if cell.value}}{{format-currency cell.value}}{{else}}-{{/if}}
+          {{else if (eq cell.key "scheduledDate")}}
+            <span class="text-xs">{{#if cell.value}}{{format-date
+                  cell.value
+                }}{{else}}-{{/if}}</span>
+          {{else if (eq cell.key "status")}}
+            <Nuvo::Tag
+              class="tag-wo-{{lowercase cell.value}}"
+              @text={{cell.value}}
+            />
+          {{else if (eq cell.key "id")}}
+            <div class="flex gap-2">
+              <Nuvo::Button
+                @variant="secondary"
+                @size="xs"
+                @icon="pencil-simple"
+                data-test-edit-work-order
+                {{on "click" (fn this.openEdit cell.row)}}
+              >
+                Edit
+              </Nuvo::Button>
+              {{#if (this.canDeleteWorkOrder cell.row)}}
+                <Nuvo::Button
+                  @variant="danger"
+                  @size="xs"
+                  @icon="trash"
+                  data-test-delete-work-order
+                  {{on "click" (fn this.openDelete cell.row)}}
+                >
+                  Delete
+                </Nuvo::Button>
+              {{/if}}
+            </div>
+          {{else}}
+            <span class="text-muted">{{cell.value}}</span>
+          {{/if}}
+        </DataTable>
       {{else}}
         {{#if @model.total}}
           <Nuvo::EmptyState

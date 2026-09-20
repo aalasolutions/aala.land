@@ -25,6 +25,20 @@ export default class PropertiesIndexController extends Controller {
 
   @tracked activeView = null;
 
+  columns = [
+    { name: 'Location', valuePath: 'name', width: 220, isFixed: 'left' },
+    { name: 'City', valuePath: 'cityName', width: 180 },
+    { name: 'Assets', valuePath: 'assetCount', width: 120 },
+    { name: 'Properties', valuePath: 'unitCount', width: 130 },
+    {
+      name: 'Actions',
+      valuePath: 'id',
+      width: 110,
+      isFixed: 'right',
+      isSortable: false,
+    },
+  ];
+
   get currentView() {
     // Other views are not yet implemented, so always default to browse for now
     return 'browse';

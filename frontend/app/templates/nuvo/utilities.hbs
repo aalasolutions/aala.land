@@ -1,0 +1,133 @@
+<NuvoDocs::Page
+  @id="utilities"
+  @title="Utilities"
+  @subtitle="Logical-direction classes that fill the one gap in core."
+  @components="utilities.scss"
+>
+  <NuvoDocs::Section @title="Overview" @id="overview">
+    <p class="nuvo-doc__intro">
+      Core ships physical alignment and margin utilities (text-left, ml-*),
+      which pin to the viewport rather than the reading direction under RTL.
+      The kit adds the logical equivalents and nothing more. Use these in
+      new markup; every other utility comes from core unchanged. Switch the
+      page to RTL while reading this page to see each one mirror.
+    </p>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Features" @id="features">
+    <ul class="nu-list">
+      <li class="nu-list__item">Logical text alignment.</li>
+      <li class="nu-list__item">Inline-start and inline-end margin and padding on the core spacing scale.</li>
+      <li class="nu-list__item">A mirror class for glyphs that the font does not bidi-mirror.</li>
+      <li class="nu-list__item">Loaded last, so a utility on a component wins over the component's own alignment.</li>
+    </ul>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Text alignment" @id="alignment">
+    <NuvoDocs::Example
+      @title="text-start"
+      @note="Aligns to the reading start: left in LTR, right in RTL. The default for prose and labels."
+      @layout="block"
+      @code={{this.code.start}}
+    >
+      <Nuvo::Panel class="text-start">text-start</Nuvo::Panel>
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="text-end"
+      @note="Aligns to the reading end, for numbers and amounts in a column."
+      @layout="block"
+      @code={{this.code.end}}
+    >
+      <Nuvo::Panel class="text-end">text-end</Nuvo::Panel>
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="text-center (core)"
+      @note="Centre needs no logical twin; core's class is the one to use."
+      @layout="block"
+      @code={{this.code.center}}
+    >
+      <Nuvo::Panel class="text-center">text-center (core)</Nuvo::Panel>
+    </NuvoDocs::Example>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Inline margin" @id="margin">
+    <NuvoDocs::Example
+      @title="ms-{n}"
+      @note="margin-inline-start, for indenting from the reading edge, such as a nested item."
+      @layout="block"
+      @code={{this.code.ms}}
+    >
+      <Nuvo::Panel class="ms-8">ms-8</Nuvo::Panel>
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="me-{n}"
+      @note="margin-inline-end, for spacing before a trailing control."
+      @layout="block"
+      @code={{this.code.me}}
+    >
+      <Nuvo::Panel class="me-8">me-8</Nuvo::Panel>
+    </NuvoDocs::Example>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Inline padding" @id="padding">
+    <NuvoDocs::Example
+      @title="ps-{n}"
+      @note="padding-inline-start, for content that must clear a leading icon or rail."
+      @layout="block"
+      @code={{this.code.ps}}
+    >
+      <Nuvo::Panel class="ps-8">ps-8</Nuvo::Panel>
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="pe-{n}"
+      @note="padding-inline-end, for content that must clear a trailing control."
+      @layout="block"
+      @code={{this.code.pe}}
+    >
+      <Nuvo::Panel class="pe-8">pe-8</Nuvo::Panel>
+    </NuvoDocs::Example>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Mirrored glyphs" @id="flip">
+    <NuvoDocs::Example
+      @title="flip-rtl on a glyph"
+      @note="A plain span with a glyph the font does not mirror; the class flips it with scaleX(-1) under RTL so it keeps pointing along the reading direction."
+      @code={{this.code.flipGlyph}}
+    >
+      <span class="flip-rtl nu-title m-lg" data-test-nuvo-flip-glyph>▸</span>
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Automatic on icons"
+      @note="Ui::Ph adds flip-rtl to any icon named left or right, so this arrow mirrors with no extra class."
+      @code={{this.code.flipIcon}}
+    >
+      <Ui::Ph @icon="arrow-right" @size="24px" />
+    </NuvoDocs::Example>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Classes" @id="classes">
+    <NuvoDocs::Table @kind="classes" @rows={{this.classRows}} />
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Spacing scale" @id="scale">
+    <p class="nuvo-note">Keys for <code>ms-</code>, <code>me-</code>, <code>ps-</code> and <code>pe-</code>, straight from core's spacing map.</p>
+    <NuvoDocs::Table @kind="api" @rows={{this.spacingRows}} />
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Accessibility" @id="accessibility">
+    <ul class="nu-list">
+      <li class="nu-list__item">These classes affect layout only; they carry no semantics and need no ARIA.</li>
+    </ul>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="RTL" @id="rtl">
+    <ul class="nu-list">
+      <li class="nu-list__item">These classes exist for RTL. Reach for them instead of text-left, text-right, ml-* or mr-* whenever the side depends on reading direction.</li>
+    </ul>
+  </NuvoDocs::Section>
+</NuvoDocs::Page>

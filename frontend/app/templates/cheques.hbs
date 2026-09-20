@@ -31,156 +31,136 @@
   {{#if (eq this.activeTab "cheques")}}
     <Nuvo::Card>
       {{#if @model.cheques.length}}
-        <div class="nu-table-wrapper">
-          <table class="nu-table" data-test-cheques-table>
-            <thead>
-              <tr>
-                <th>Cheque #</th>
-                <th>Unit</th>
-                <th>Bank</th>
-                <th>Account Holder</th>
-                <th>Amount</th>
-                <th>Due Date</th>
-                <th>Type</th>
-                <th>Status</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {{#each @model.cheques as |cheque|}}
-                <tr data-test-cheque-row>
-                  <td class="font-bold">{{cheque.chequeNumber}}</td>
-                  <td data-test-cheque-unit>
-                    {{#if cheque.unit}}
-                      {{cheque.unit.unitNumber}}
-                    {{else}}
-                      <span class="text-muted">No Unit</span>
-                    {{/if}}
-                  </td>
-                  <td>{{cheque.bankName}}</td>
-                  <td>{{cheque.accountHolder}}</td>
-                  <td class="font-bold">{{format-currency cheque.amount}}</td>
-                  <td>{{format-date cheque.dueDate}}</td>
-                  <td>
-                    <Nuvo::Tag
-                      class="tag-cheque-{{lowercase cheque.type}}"
-                      @text={{cheque.type}}
-                    />
-                  </td>
-                  <td>
-                    <Nuvo::Tag
-                      class="tag-chequestate-{{lowercase cheque.status}}"
-                      @text={{cheque.status}}
-                    />
-                  </td>
-                  <td>
-                    <div class="flex gap-2">
-                      {{#if this.canWriteCheques}}
-                        <Nuvo::Button
-                          @variant="secondary"
-                          @size="xs"
-                          @icon="pencil-simple"
-                          {{on "click" (fn this.openEdit cheque)}}
-                        >
-                          Edit
-                        </Nuvo::Button>
-                        {{#if (eq cheque.status "PENDING")}}
-                          <Nuvo::Button
-                            @variant="success"
-                            @size="xs"
-                            @icon="bank"
-                            {{on
-                              "click"
-                              (fn this.updateStatus cheque "DEPOSITED")
-                            }}
-                          >
-                            Deposit
-                          </Nuvo::Button>
-                          <Nuvo::Button
-                            @variant="danger"
-                            @size="xs"
-                            data-test-bounce
-                            @icon="x-circle"
-                            {{on "click" (fn this.openBounceModal cheque)}}
-                          >
-                            Bounce
-                          </Nuvo::Button>
-                        {{/if}}
-                        {{#if (eq cheque.status "DEPOSITED")}}
-                          <Nuvo::Button
-                            @variant="success"
-                            @size="xs"
-                            @icon="check-circle"
-                            {{on
-                              "click"
-                              (fn this.updateStatus cheque "CLEARED")
-                            }}
-                          >
-                            Clear
-                          </Nuvo::Button>
-                          <Nuvo::Button
-                            @variant="danger"
-                            @size="xs"
-                            data-test-bounce
-                            @icon="x-circle"
-                            {{on "click" (fn this.openBounceModal cheque)}}
-                          >
-                            Bounce
-                          </Nuvo::Button>
-                        {{/if}}
-                        {{#if (eq cheque.status "BOUNCED")}}
-                          <Nuvo::Button
-                            @variant="secondary"
-                            @size="xs"
-                            @icon="arrows-clockwise"
-                            {{on
-                              "click"
-                              (fn this.updateStatus cheque "REPLACED")
-                            }}
-                          >
-                            Replace
-                          </Nuvo::Button>
-                        {{/if}}
-                        {{#if
-                          (or
-                            (eq cheque.status "PENDING")
-                            (eq cheque.status "DEPOSITED")
-                            (eq cheque.status "BOUNCED")
-                          )
-                        }}
-                          <Nuvo::Button
-                            @variant="secondary"
-                            @size="xs"
-                            @icon="prohibit"
-                            data-test-cancel-cheque
-                            {{on "click" (fn this.openCancel cheque)}}
-                          >
-                            Cancel cheque
-                          </Nuvo::Button>
-                        {{/if}}
-                      {{/if}}
-                      {{#if
-                        (and
-                          this.canDeleteCheque (not (eq cheque.status "CLEARED"))
-                        )
-                      }}
-                        <Nuvo::Button
-                          @variant="danger"
-                          @size="xs"
-                          @icon="trash"
-                          data-test-delete-cheque
-                          {{on "click" (fn this.openDelete cheque)}}
-                        >
-                          Delete
-                        </Nuvo::Button>
-                      {{/if}}
-                    </div>
-                  </td>
-                </tr>
-              {{/each}}
-            </tbody>
-          </table>
-        </div>
+        <DataTable
+          @columns={{this.columns}}
+          @rows={{@model.cheques}}
+          @pinColumns={{true}}
+          @reorderable={{true}}
+          @sortable={{true}}
+          @showOptions={{true}}
+          @tableId="cheques"
+          data-test-cheques-table
+          as |cell|
+        >
+          {{#if (eq cell.key "chequeNumber")}}
+            <span class="font-bold" data-test-cheque-row>{{cell.value}}</span>
+          {{else if (eq cell.key "unit.unitNumber")}}
+            <span data-test-cheque-unit>
+              {{#if cell.row.unit}}
+                {{cell.row.unit.unitNumber}}
+              {{else}}
+                <span class="text-muted">No Unit</span>
+              {{/if}}
+            </span>
+          {{else if (eq cell.key "amount")}}
+            <span class="font-bold">{{format-currency cell.value}}</span>
+          {{else if (eq cell.key "dueDate")}}
+            {{format-date cell.value}}
+          {{else if (eq cell.key "type")}}
+            <Nuvo::Tag
+              class="tag-cheque-{{lowercase cell.value}}"
+              @text={{cell.value}}
+            />
+          {{else if (eq cell.key "status")}}
+            <Nuvo::Tag
+              class="tag-chequestate-{{lowercase cell.value}}"
+              @text={{cell.value}}
+            />
+          {{else if (eq cell.key "id")}}
+            <div class="flex gap-2">
+              {{#if this.canWriteCheques}}
+                <Nuvo::Button
+                  @variant="secondary"
+                  @size="xs"
+                  @icon="pencil-simple"
+                  {{on "click" (fn this.openEdit cell.row)}}
+                >
+                  Edit
+                </Nuvo::Button>
+                {{#if (eq cell.row.status "PENDING")}}
+                  <Nuvo::Button
+                    @variant="success"
+                    @size="xs"
+                    @icon="bank"
+                    {{on "click" (fn this.updateStatus cell.row "DEPOSITED")}}
+                  >
+                    Deposit
+                  </Nuvo::Button>
+                  <Nuvo::Button
+                    @variant="danger"
+                    @size="xs"
+                    data-test-bounce
+                    @icon="x-circle"
+                    {{on "click" (fn this.openBounceModal cell.row)}}
+                  >
+                    Bounce
+                  </Nuvo::Button>
+                {{/if}}
+                {{#if (eq cell.row.status "DEPOSITED")}}
+                  <Nuvo::Button
+                    @variant="success"
+                    @size="xs"
+                    @icon="check-circle"
+                    {{on "click" (fn this.updateStatus cell.row "CLEARED")}}
+                  >
+                    Clear
+                  </Nuvo::Button>
+                  <Nuvo::Button
+                    @variant="danger"
+                    @size="xs"
+                    data-test-bounce
+                    @icon="x-circle"
+                    {{on "click" (fn this.openBounceModal cell.row)}}
+                  >
+                    Bounce
+                  </Nuvo::Button>
+                {{/if}}
+                {{#if (eq cell.row.status "BOUNCED")}}
+                  <Nuvo::Button
+                    @variant="secondary"
+                    @size="xs"
+                    @icon="arrows-clockwise"
+                    {{on "click" (fn this.updateStatus cell.row "REPLACED")}}
+                  >
+                    Replace
+                  </Nuvo::Button>
+                {{/if}}
+                {{#if
+                  (or
+                    (eq cell.row.status "PENDING")
+                    (eq cell.row.status "DEPOSITED")
+                    (eq cell.row.status "BOUNCED")
+                  )
+                }}
+                  <Nuvo::Button
+                    @variant="secondary"
+                    @size="xs"
+                    @icon="prohibit"
+                    data-test-cancel-cheque
+                    {{on "click" (fn this.openCancel cell.row)}}
+                  >
+                    Cancel cheque
+                  </Nuvo::Button>
+                {{/if}}
+              {{/if}}
+              {{#if
+                (and this.canDeleteCheque (not (eq cell.row.status "CLEARED")))
+              }}
+                <Nuvo::Button
+                  @variant="danger"
+                  @size="xs"
+                  @icon="trash"
+                  data-test-delete-cheque
+                  {{on "click" (fn this.openDelete cell.row)}}
+                >
+                  Delete
+                </Nuvo::Button>
+              {{/if}}
+            </div>
+          {{else}}
+            {{cell.value}}
+          {{/if}}
+        </DataTable>
       {{else}}
         {{#if @model.total}}
           <Nuvo::EmptyState

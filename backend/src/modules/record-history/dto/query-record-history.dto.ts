@@ -1,3 +1,4 @@
+import { MAX_PAGE_LIMIT } from '@shared/constants/pagination';
 import {
   IsOptional,
   IsString,
@@ -26,7 +27,7 @@ export class QueryRecordHistoryDto {
   @Type(() => Number)
   @IsInt()
   @Min(1)
-  @Max(100)
+  @Max(MAX_PAGE_LIMIT)
   limit?: number = 20;
 
   @ApiProperty({ required: false, enum: RecordHistoryAction })

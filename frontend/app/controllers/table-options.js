@@ -1,0 +1,335 @@
+import PaginatedController from './paginated-base';
+import { tracked } from '@glimmer/tracking';
+import { action } from '@ember/object';
+import { service } from '@ember/service';
+import { debounceTask } from 'ember-lifeline';
+import {
+  closeDeleteModal,
+  confirmDeleteModal,
+  openDeleteModal,
+} from '../utils/delete-modal';
+import {
+  contactFormToBody,
+  contactToFormFields,
+} from '../utils/contact-form';
+import { CONTACT_TAG_LABELS } from '../helpers/contact-tag-label';
+
+const ROLE_TABS = [
+  { id: '', label: 'All' },
+  ...Object.entries(CONTACT_TAG_LABELS).map(([id, label]) => ({ id, label })),
+];
+
+export default class TableOptionsController extends PaginatedController {
+  @service auth;
+  @service notifications;
+  @service router;
+
+  queryParams = [
+    'page',
+    'limit',
+    'search',
+    'tag',
+    'agentId',
+    'isWhatsapp',
+    'company',
+    'nationality',
+    'dateFrom',
+    'dateTo',
+  ];
+  @tracked search = '';
+  @tracked tag = '';
+  @tracked agentId = '';
+  @tracked isWhatsapp = false;
+  @tracked company = '';
+  @tracked nationality = '';
+  @tracked dateFrom = '';
+  @tracked dateTo = '';
+
+  roleTabs = ROLE_TABS;
+
+  @tracked selection = [];
+
+  // TEMP DataTable variation demo, remove after review.
+  @tracked demoSelectionB = [];
+  @tracked demoSelectionRtl = [];
+  @tracked demoRtlRows = [
+    { id: 'rtl-1', displayName: 'أحمد بن سعيد الرشيدي', tags: ['owner', 'lead'], email: 'ahmed.alrashidi@example.com', phone: '+966501112233', isWhatsapp: true, contactCompany: 'شركة الرشيدي للعقارات' },
+    { id: 'rtl-2', displayName: 'فاطمة عبد الله', tags: ['tenant'], email: 'fatima@example.com', phone: '+966502223344', isWhatsapp: false, contactCompany: 'مؤسسة النور' },
+    { id: 'rtl-3', displayName: 'خالد العتيبي', tags: ['lead', 'owner', 'tenant'], email: 'khalid.alotaibi.long.address@example.com', phone: '+966503334455', isWhatsapp: true, contactCompany: 'مجموعة العتيبي القابضة للاستثمار' },
+    { id: 'rtl-4', displayName: 'نورة القحطاني', tags: [], email: '', phone: '+966504445566', isWhatsapp: false, contactCompany: '' },
+  ];
+
+  @action setDemoSelectionB(selection) {
+    this.demoSelectionB = selection;
+  }
+
+  @action setDemoSelectionRtl(selection) {
+    this.demoSelectionRtl = selection;
+  }
+
+  columns = [
+    { name: 'Name', valuePath: 'displayName', width: 250, isFixed: 'left' },
+    { name: 'Role', valuePath: 'tags', width: 220 },
+    { name: 'Email', valuePath: 'email', width: 240, editable: 'text' },
+    { name: 'Phone', valuePath: 'phone', width: 190, editable: 'text' },
+    { name: 'Company', valuePath: 'contactCompany', width: 170, editable: 'text' },
+    { name: 'Actions', valuePath: 'id', width: 110, isFixed: 'right', isSortable: false },
+  ];
+
+  // TEMP demo columns: every editor type in one table, remove after review.
+  demoColumns = [
+    { name: 'Name', valuePath: 'displayName', width: 250, isFixed: 'left', editable: 'text' },
+    { name: 'Role', valuePath: 'tags', width: 220 },
+    { name: 'Email', valuePath: 'email', width: 240, editable: 'search', searchUrl: '/contacts', searchParam: 'search', labelKey: 'displayName' },
+    { name: 'Phone', valuePath: 'phone', width: 190, editable: 'text' },
+    { name: 'Company', valuePath: 'contactCompany', width: 170, editable: 'select', options: ['شركة الرشيدي للعقارات', 'مؤسسة النور', 'مجموعة العتيبي القابضة للاستثمار'] },
+    { name: 'Actions', valuePath: 'id', width: 110, isFixed: 'right', isSortable: false },
+  ];
+
+  @action saveDemoCell(row, key, value) {
+    const next =
+      value && typeof value === 'object'
+        ? value.email || value.displayName
+        : value;
+    this.demoRtlRows = this.demoRtlRows.map((item) =>
+      item.id === row.id ? { ...item, [key]: next } : item,
+    );
+  }
+
+  // Inline edit from the list: one field per PATCH, then the list reloads.
+  @action async saveCell(row, key, value) {
+    try {
+      await this.auth.fetchJson(`/contacts/${row.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ [key]: value || null }),
+      });
+      this.notifications.success('Contact updated');
+      this.router.refresh('table-options');
+    } catch (e) {
+      this.notifications.error(e.message);
+    }
+  }
+
+  resetState() {
+    this.search = '';
+    this.tag = '';
+    this.agentId = '';
+    this.isWhatsapp = false;
+    this.company = '';
+    this.nationality = '';
+    this.dateFrom = '';
+    this.dateTo = '';
+    this.page = 1;
+    this.showModal = false;
+    this.editContact = null;
+    this.errorMsg = '';
+    this.isSaving = false;
+    this.showDeleteModal = false;
+    this.contactToDelete = null;
+    this.isDeleting = false;
+    this.deleteReason = '';
+    this.reasonError = '';
+    this.selection = [];
+  }
+
+  get agentOptions() {
+    return [
+      { value: '', label: 'Any agent' },
+      ...(this.model?.agents || []).map((agent) => ({
+        value: agent.id,
+        label: agent.name,
+      })),
+    ];
+  }
+
+  get hasActiveFilters() {
+    return Boolean(
+      this.agentId ||
+        this.isWhatsapp ||
+        this.company ||
+        this.nationality ||
+        this.dateFrom ||
+        this.dateTo,
+    );
+  }
+
+  @tracked showModal = false;
+  @tracked editContact = null;
+  @tracked formFirstName = '';
+  @tracked formLastName = '';
+  @tracked formEmail = '';
+  @tracked formPhone = '';
+  @tracked formIsWhatsapp = false;
+  @tracked formNationality = '';
+  @tracked formNationalId = '';
+  @tracked formContactCompany = '';
+  @tracked formJobTitle = '';
+  @tracked formAddress = '';
+  @tracked formNotes = '';
+  @tracked isSaving = false;
+  @tracked errorMsg = '';
+  @tracked showDeleteModal = false;
+  @tracked contactToDelete = null;
+  @tracked isDeleting = false;
+  @tracked deleteReason = '';
+  @tracked reasonError = '';
+
+  // Nuvo inputs pass (value, event), not the raw DOM event legacy setField expects.
+  @action setFieldValue(fieldName, value) {
+    this[fieldName] = value;
+  }
+
+  @action setSelection(selection) {
+    this.selection = selection;
+  }
+
+  @action setTag(tabId) {
+    this.tag = tabId;
+    this.page = 1;
+  }
+
+  @action setAgentFilter(value) {
+    this.agentId = value;
+    this.page = 1;
+  }
+
+  @action toggleWhatsappFilter(checked) {
+    this.isWhatsapp = checked;
+    this.page = 1;
+  }
+
+  @action updateFilter(fieldName, e) {
+    debounceTask(this, 'applyFilter', fieldName, e.target.value, 500);
+  }
+
+  applyFilter(fieldName, value) {
+    this[fieldName] = value;
+    this.page = 1;
+  }
+
+  @action setDateFrom(e) {
+    this.dateFrom = e.target.value;
+    this.page = 1;
+  }
+
+  @action setDateTo(e) {
+    this.dateTo = e.target.value;
+    this.page = 1;
+  }
+
+  @action clearFilters() {
+    this.agentId = '';
+    this.isWhatsapp = false;
+    this.company = '';
+    this.nationality = '';
+    this.dateFrom = '';
+    this.dateTo = '';
+    this.page = 1;
+  }
+
+  @action openCreate() {
+    this.formFirstName = '';
+    this.formLastName = '';
+    this.formEmail = '';
+    this.formPhone = '';
+    this.formIsWhatsapp = false;
+    this.formNationality = '';
+    this.formNationalId = '';
+    this.formContactCompany = '';
+    this.formJobTitle = '';
+    this.formAddress = '';
+    this.formNotes = '';
+    this.editContact = null;
+    this.errorMsg = '';
+    this.showModal = true;
+  }
+
+  @action openEdit(contact) {
+    Object.assign(this, contactToFormFields(contact));
+    this.editContact = contact;
+    this.errorMsg = '';
+    this.showModal = true;
+  }
+
+  @action closeModal() {
+    this.showModal = false;
+  }
+
+  @action resetDrawer() {
+    this.editContact = null;
+    this.errorMsg = '';
+  }
+
+  @action async saveContact(event) {
+    event.preventDefault();
+    if (this.isSaving) return;
+    this.isSaving = true;
+    this.errorMsg = '';
+
+    const isEdit = !!this.editContact;
+    const path = isEdit ? `/contacts/${this.editContact.id}` : '/contacts';
+
+    const body = isEdit
+      ? contactFormToBody(this)
+      : {
+          ...(this.formFirstName ? { firstName: this.formFirstName } : {}),
+          ...(this.formLastName ? { lastName: this.formLastName } : {}),
+          ...(this.formEmail ? { email: this.formEmail } : {}),
+          ...(this.formPhone ? { phone: this.formPhone } : {}),
+          isWhatsapp: this.formIsWhatsapp,
+          ...(this.formNationality
+            ? { nationality: this.formNationality }
+            : {}),
+          ...(this.formNationalId
+            ? { nationalId: this.formNationalId }
+            : {}),
+          ...(this.formContactCompany
+            ? { contactCompany: this.formContactCompany }
+            : {}),
+          ...(this.formJobTitle ? { jobTitle: this.formJobTitle } : {}),
+          ...(this.formAddress ? { address: this.formAddress } : {}),
+          ...(this.formNotes ? { notes: this.formNotes } : {}),
+        };
+
+    try {
+      await this.auth.fetchJson(path, {
+        method: isEdit ? 'PATCH' : 'POST',
+        body: JSON.stringify(body),
+      });
+      this.notifications.success(
+        isEdit ? 'Contact updated' : 'Contact created',
+      );
+      this.closeModal();
+      this.router.refresh('table-options');
+    } catch (e) {
+      this.errorMsg = e.message;
+    } finally {
+      this.isSaving = false;
+    }
+  }
+
+  @action openDelete(contact) {
+    this.deleteReason = '';
+    this.reasonError = '';
+    openDeleteModal(this, 'contactToDelete', contact);
+  }
+
+  @action closeDeleteModal() {
+    closeDeleteModal(this, 'contactToDelete');
+  }
+
+  @action async confirmDelete() {
+    const reason = this.deleteReason.trim();
+    if (!reason) {
+      this.reasonError = 'Reason is required.';
+      return;
+    }
+    await confirmDeleteModal(this, {
+      itemKey: 'contactToDelete',
+      resourcePath: '/contacts',
+      successMessage: 'Contact deleted',
+      refreshRoute: 'table-options',
+      body: { reason },
+    });
+  }
+}

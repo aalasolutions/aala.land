@@ -5,78 +5,54 @@
   </Nuvo::PageHeader>
 
   <Nuvo::Card>
-    <div class="nu-table-wrapper">
-      <table class="nu-table" data-test-marketers-table>
-        <thead>
-          <tr>
-            <th></th>
-            <th>Code</th>
-            <th>Companies</th>
-            <th>Paying</th>
-            <th>MRR</th>
-            <th>Last signup</th>
-          </tr>
-        </thead>
-        <tbody>
-          {{#each this.rows as |row|}}
-            <tr data-test-marketers-row={{row.key}}>
-              <td>
-                {{#if row.companyLinks.length}}
-                  <Nuvo::Button
-                    @variant="link"
-                    @size="xs"
-                    @icon={{if
-                      (eq this.expanded row.key)
-                      "caret-down"
-                      "caret-right"
-                    }}
-                    data-test-marketers-expand={{row.key}}
-                    {{on "click" (fn this.toggle row.key)}}
-                  />
-                {{/if}}
-              </td>
-              <td class="font-bold">{{row.code}}</td>
-              <td>{{row.companies}}</td>
-              <td>{{row.paying}}</td>
-              <td>
-                {{#if row.mrr}}
-                  <span class="console-chip-row">
-                    {{#each row.mrr as |band|}}
-                      <span class="console-chip">
-                        <strong
-                          class="console-chip__code"
-                        >{{band.currency}}</strong>
-                        {{format-money band.mrrMinor band.currency}}
-                      </span>
-                    {{/each}}
-                  </span>
-                {{else}}
-                  <span class="text-muted">—</span>
-                {{/if}}
-              </td>
-              <td>{{if row.lastSignupAt (format-date row.lastSignupAt) "—"}}</td>
-            </tr>
-            {{#if (eq this.expanded row.key)}}
-              <tr class="console-expand-row">
-                <td colspan="6">
-                  <div class="console-expand">
-                    {{#each row.companyLinks as |company|}}
-                      <LinkTo
-                        @route="admin.companies.company"
-                        @model={{company.id}}
-                      >{{company.name}}</LinkTo>
-                    {{/each}}
-                  </div>
-                </td>
-              </tr>
-            {{/if}}
+    {{#if this.rows.length}}
+      <DataTable
+        @columns={{this.columns}}
+        @rows={{this.rows}}
+        @tree={{true}}
+        @pinColumns={{true}}
+        @reorderable={{true}}
+        @sortable={{true}}
+        @showOptions={{true}}
+        @tableId="console-marketers"
+        data-test-marketers-table
+        as |cell|
+      >
+        {{#if (eq cell.key "code")}}
+          {{#if cell.depth}}
+            <LinkTo
+              @route="admin.companies.company"
+              @model={{cell.row.companyId}}
+            >{{cell.value}}</LinkTo>
           {{else}}
-            <tr>
-              <td colspan="6" class="text-muted text-center p-4">No companies yet.</td>
-            </tr>
-          {{/each}}
-        </tbody>
-      </table>
-    </div>
+            <span
+              class="font-bold"
+              data-test-marketers-row={{cell.row.key}}
+            >{{cell.value}}</span>
+          {{/if}}
+        {{else if cell.depth}}
+          {{! Child rows carry only the company link in the first column. }}
+        {{else if (eq cell.key "mrr")}}
+          {{#if cell.value}}
+            <span class="console-chip-row">
+              {{#each cell.value as |band|}}
+                <span class="console-chip">
+                  <strong class="console-chip__code">{{band.currency}}</strong>
+                  {{format-money band.mrrMinor band.currency}}
+                </span>
+              {{/each}}
+            </span>
+          {{else}}
+            <span class="text-muted">—</span>
+          {{/if}}
+        {{else if (eq cell.key "lastSignupAt")}}
+          {{if cell.value (format-date cell.value) "—"}}
+        {{else}}
+          {{cell.value}}
+        {{/if}}
+      </DataTable>
+    {{else}}
+      <p class="text-muted text-center p-4">No companies yet.</p>
+    {{/if}}
   </Nuvo::Card>
 </div>
