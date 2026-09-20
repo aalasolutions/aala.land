@@ -10,6 +10,13 @@ export default class DashboardController extends Controller {
     return this.region.activeRegion?.name ?? 'All Regions';
   }
 
+  get revenuePoints() {
+    return (this.model?.revenueTrend ?? []).map((point) => ({
+      month: point.month,
+      value: Number(point.total) || 0,
+    }));
+  }
+
   get occupancyRate() {
     const kpis = this.model?.kpis;
     if (!kpis || !kpis.totalUnits) return 0;

@@ -42,6 +42,29 @@ export class ReportsController {
     );
   }
 
+  @Get('revenue-trend')
+  @Roles(
+    Role.SUPER_ADMIN,
+    Role.COMPANY_ADMIN,
+    Role.ADMIN,
+    Role.MANAGER,
+    Role.AGENT,
+    Role.ACCOUNTANT,
+  )
+  @ApiOperation({ summary: 'Completed income per month, last 6 months' })
+  @ApiQuery({ name: 'regionCode', required: false, type: String })
+  getRevenueTrend(
+    @Request() req: AuthenticatedRequest,
+    @Query('regionCode') regionCode?: string,
+  ) {
+    return this.reportsService.getRevenueTrend(
+      requireCompanyId(req.user),
+      6,
+      regionCode,
+      req.user,
+    );
+  }
+
   @Get('agent-performance')
   @Roles(
     Role.SUPER_ADMIN,

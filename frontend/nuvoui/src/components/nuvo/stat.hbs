@@ -14,7 +14,11 @@
       @value={{@value}}
       @delta={{@delta}}
       @hasIconBlock={{has-block "icon"}}
-    >{{yield to="icon"}}</Nuvo::StatInner>
+      @hasContentBlock={{has-block "content"}}
+    >
+      <:icon>{{yield to="icon"}}</:icon>
+      <:content>{{yield to="content"}}</:content>
+    </Nuvo::StatInner>
   </LinkTo>
 {{else if @href}}
   <a href={{@href}} class={{this.classes}} data-test-nu-stat ...attributes>
@@ -24,7 +28,11 @@
       @value={{@value}}
       @delta={{@delta}}
       @hasIconBlock={{has-block "icon"}}
-    >{{yield to="icon"}}</Nuvo::StatInner>
+      @hasContentBlock={{has-block "content"}}
+    >
+      <:icon>{{yield to="icon"}}</:icon>
+      <:content>{{yield to="content"}}</:content>
+    </Nuvo::StatInner>
   </a>
 {{else}}
   <div class={{this.classes}} data-test-nu-stat ...attributes>
@@ -34,6 +42,10 @@
       @value={{@value}}
       @delta={{@delta}}
       @hasIconBlock={{has-block "icon"}}
-    >{{yield to="icon"}}</Nuvo::StatInner>
+      @hasContentBlock={{has-block "content"}}
+    >
+      <:icon>{{yield to="icon"}}</:icon>
+      <:content>{{yield to="content"}}</:content>
+    </Nuvo::StatInner>
   </div>
 {{/if}}

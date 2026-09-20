@@ -936,4 +936,60 @@ describe('ReportsService', () => {
       });
     });
   });
+  describe('getRevenueTrend', () => {
+    it('returns a zero-filled series of six months, oldest first', async () => {
+      transactionRepo.createQueryBuilder.mockReturnValue(
+        createMockQueryBuilder([]),
+      );
+
+      const result = await service.getRevenueTrend(companyId);
+
+      expect(result).toHaveLength(6);
+      expect(result.every((point) => point.total === 0)).toBe(true);
+      const months = result.map((point) => point.month);
+      expect([...months].sort()).toEqual(months);
+      expect(months.every((month) => /^\d{4}-\d{2}$/.test(month))).toBe(true);
+    });
+
+    it('maps a returned month onto the series and leaves the rest at zero', async () => {
+      transactionRepo.createQueryBuilder.mockReturnValue(
+        createMockQueryBuilder([]),
+      );
+      const series = await service.getRevenueTrend(companyId);
+      const latest = series[series.length - 1].month;
+
+      transactionRepo.createQueryBuilder.mockReturnValue(
+        createMockQueryBuilder([{ month: latest, total: '112459.50' }]),
+      );
+
+      const result = await service.getRevenueTrend(companyId);
+
+      expect(result[result.length - 1]).toEqual({
+        month: latest,
+        total: 112459.5,
+      });
+      expect(result[0].total).toBe(0);
+    });
+
+    it('honours the requested span', async () => {
+      transactionRepo.createQueryBuilder.mockReturnValue(
+        createMockQueryBuilder([]),
+      );
+
+      const result = await service.getRevenueTrend(companyId, 3);
+
+      expect(result).toHaveLength(3);
+    });
+
+    it('returns a zero-filled series without querying when the caller has no regions', async () => {
+      const result = await service.getRevenueTrend(companyId, 6, undefined, {
+        role: 'manager',
+        regionCodes: [],
+      } as any);
+
+      expect(result).toHaveLength(6);
+      expect(result.every((point) => point.total === 0)).toBe(true);
+      expect(transactionRepo.createQueryBuilder).not.toHaveBeenCalled();
+    });
+  });
 });

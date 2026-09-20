@@ -61,6 +61,8 @@ export class FinancialController {
   @ApiQuery({ name: 'type', required: false, type: String })
   @ApiQuery({ name: 'ownerId', required: false, type: String })
   @ApiQuery({ name: 'regionCode', required: false, type: String })
+  @ApiQuery({ name: 'from', required: false, type: String })
+  @ApiQuery({ name: 'to', required: false, type: String })
   findAll(
     @Request() req: AuthenticatedRequest,
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
@@ -68,6 +70,8 @@ export class FinancialController {
     @Query('type') type?: string,
     @Query('ownerId') ownerId?: string,
     @Query('regionCode') regionCode?: string,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
   ) {
     return this.financialService.findAll(
       requireCompanyId(req.user),
@@ -77,6 +81,8 @@ export class FinancialController {
       ownerId,
       regionCode,
       req.user,
+      from,
+      to,
     );
   }
 
@@ -84,12 +90,55 @@ export class FinancialController {
   @Roles(Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.ACCOUNTANT)
   @ApiOperation({ summary: 'Get financial summary for company' })
   @ApiQuery({ name: 'regionCode', required: false, type: String })
+  @ApiQuery({ name: 'from', required: false, type: String })
+  @ApiQuery({ name: 'to', required: false, type: String })
   getSummary(
     @Request() req: AuthenticatedRequest,
     @Query('regionCode') regionCode?: string,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
   ) {
     return this.financialService.getSummary(
       requireCompanyId(req.user),
+      regionCode,
+      req.user,
+      from,
+      to,
+    );
+  }
+
+  @Get('category-breakdown')
+  @Roles(Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.ACCOUNTANT)
+  @ApiOperation({ summary: 'Transaction totals by category for a date range' })
+  @ApiQuery({ name: 'regionCode', required: false, type: String })
+  @ApiQuery({ name: 'from', required: false, type: String })
+  @ApiQuery({ name: 'to', required: false, type: String })
+  getCategoryBreakdown(
+    @Request() req: AuthenticatedRequest,
+    @Query('regionCode') regionCode?: string,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+  ) {
+    return this.financialService.getCategoryBreakdown(
+      requireCompanyId(req.user),
+      from,
+      to,
+      regionCode,
+      req.user,
+    );
+  }
+
+  @Get('cashflow-trend')
+  @Roles(Role.COMPANY_ADMIN, Role.ADMIN, Role.MANAGER, Role.ACCOUNTANT)
+  @ApiOperation({ summary: 'Income and expense per month, last 6 months' })
+  @ApiQuery({ name: 'regionCode', required: false, type: String })
+  getCashflowTrend(
+    @Request() req: AuthenticatedRequest,
+    @Query('regionCode') regionCode?: string,
+  ) {
+    return this.financialService.getCashflowTrend(
+      requireCompanyId(req.user),
+      6,
       regionCode,
       req.user,
     );

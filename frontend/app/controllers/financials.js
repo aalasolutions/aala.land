@@ -8,14 +8,25 @@ import {
   PAYMENT_METHOD_OPTIONS,
   TRANSACTION_STATUS_OPTIONS,
 } from 'land/constants';
-import { toDateOnly, todayInZone } from 'land/utils/local-date';
+import {
+  DEFAULT_RANGE,
+  formatCalendarDate,
+  isDateOnly,
+  rangeBounds,
+  resolveRange,
+  toDateOnly,
+  todayInZone,
+} from 'land/utils/local-date';
 
 export default class FinancialsController extends PaginatedController {
   @service auth;
   @service notifications;
   @service region;
   @service router;
-  queryParams = ['page', 'limit', 'activeTab'];
+  queryParams = ['page', 'limit', 'activeTab', 'range', 'from', 'to'];
+  @tracked range = DEFAULT_RANGE;
+  @tracked from = null;
+  @tracked to = null;
   @tracked showModal = false;
   @tracked editTransaction = null;
   @tracked formType = 'INCOME';
@@ -71,6 +82,89 @@ export default class FinancialsController extends PaginatedController {
   @action setTab(tab) {
     this.activeTab = tab;
     this.page = 1;
+  }
+
+  get cashflow() {
+    return this.model?.cashflow ?? [];
+  }
+
+  get incomePoints() {
+    return this.cashflow.map((point) => ({
+      month: point.month,
+      value: Number(point.income) || 0,
+    }));
+  }
+
+  get expensePoints() {
+    return this.cashflow.map((point) => ({
+      month: point.month,
+      value: Number(point.expense) || 0,
+    }));
+  }
+
+  get netPoints() {
+    return this.cashflow.map((point) => ({
+      month: point.month,
+      value: (Number(point.income) || 0) - (Number(point.expense) || 0),
+    }));
+  }
+
+  rangeOptions = [
+    { id: 'last7', label: 'Last 7 days' },
+    { id: 'last30', label: 'Last 30 days' },
+    { id: 'thisMonth', label: 'This month' },
+    { id: 'lastMonth', label: 'Last month' },
+    { id: 'custom', label: 'Custom' },
+  ];
+
+  get isCustomRange() {
+    return this.range === 'custom';
+  }
+
+  get bounds() {
+    return resolveRange(this.range, this.from, this.to);
+  }
+
+  // What the stat cards say they are counting.
+  get rangeLabel() {
+    if (this.range === 'thisMonth' || this.range === 'lastMonth') {
+      return this.dayLabel(this.bounds.from, { month: 'long', year: 'numeric' });
+    }
+    const preset = this.rangeOptions.find((o) => o.id === this.range);
+    if (this.range !== 'custom') return preset?.label ?? '';
+    return `${this.dayLabel(this.bounds.from)} to ${this.dayLabel(this.bounds.to)}`;
+  }
+
+  dayLabel(date, options = { day: 'numeric', month: 'short', year: 'numeric' }) {
+    return formatCalendarDate(date, navigator.language || 'en', options) ?? date;
+  }
+
+  // Switching into Custom seeds the inputs from the period already on screen,
+  // so the table does not jump before anything is typed.
+  @action setRange(range) {
+    if (range === 'custom') {
+      const seed = rangeBounds(this.range === 'custom' ? DEFAULT_RANGE : this.range);
+      this.from = this.from ?? seed.from;
+      this.to = this.to ?? seed.to;
+    }
+    this.range = range;
+    this.page = 1;
+  }
+
+  @action setRangeStart(event) {
+    const value = event.target.value;
+    if (isDateOnly(value)) {
+      this.from = value;
+      this.page = 1;
+    }
+  }
+
+  @action setRangeEnd(event) {
+    const value = event.target.value;
+    if (isDateOnly(value)) {
+      this.to = value;
+      this.page = 1;
+    }
   }
 
   @action setField(fieldName, e) {
