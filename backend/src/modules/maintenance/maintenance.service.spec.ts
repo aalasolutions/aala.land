@@ -790,8 +790,7 @@ describe('MaintenanceService', () => {
 
     it('denies remove on a work order outside the caller assigned regions', async () => {
       const row = seedOrder('punjab', 'unit-punjab');
-      // remove() locks via manager.findOne, so the region filter must be
-      // enforced there too, not just on repo.findOne.
+      // remove() locks via manager.findOne, so the region filter is asserted there.
       manager.findOne.mockImplementation((entity: unknown, opts: any) => {
         if (entity !== WorkOrder) {
           return Promise.resolve({ id: opts?.where?.id, deletedAt: null });

@@ -1,5 +1,7 @@
 // Fixed system emails, not tenant-editable; CSS stays inline since clients strip <style> tags.
 
+import { envString } from '@shared/utils/env.util';
+
 const BRAND = {
   teal: '#0f9d94',
   darkTeal: '#0d3b37',
@@ -11,7 +13,7 @@ const BRAND = {
 };
 
 function appUrl(): string {
-  return (process.env.APP_URL || 'http://localhost:4200').replace(/\/$/, '');
+  return envString('APP_URL', 'http://localhost:4200').replace(/\/$/, '');
 }
 
 export interface LayoutOptions {

@@ -6,6 +6,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as crypto from 'crypto';
+import { envRequired, envString } from '@shared/utils/env.util';
 import {
   DEFAULT_EMAIL_PREFERENCES,
   EmailPreferences,
@@ -25,11 +26,7 @@ export class EmailPreferencesService {
   ) {}
 
   private secret(): string {
-    const secret = process.env.JWT_SECRET;
-    if (!secret) {
-      throw new Error('JWT_SECRET is required for email preference tokens');
-    }
-    return secret;
+    return envRequired('JWT_SECRET');
   }
 
   /** Stable, non-expiring token binding an unsubscribe link to one user. */
@@ -67,7 +64,7 @@ export class EmailPreferencesService {
 
   /** URL a footer links to for one-click unsubscribe from a category. */
   unsubscribeUrl(userId: string, category: EmailCategory): string {
-    const base = (process.env.APP_URL || 'http://localhost:4200').replace(
+    const base = envString('APP_URL', 'http://localhost:4200').replace(
       /\/$/,
       '',
     );

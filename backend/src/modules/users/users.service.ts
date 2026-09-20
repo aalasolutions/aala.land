@@ -28,6 +28,7 @@ import * as bcrypt from 'bcryptjs';
 import * as crypto from 'crypto';
 import { paginationOptions } from '../../shared/utils/pagination.util';
 import { getRoleLevel } from '../../shared/utils/auth.util';
+import { envString } from '../../shared/utils/env.util';
 import { SystemEmailService } from '../email/system-email.service';
 import { Role } from '../../shared/enums/roles.enum';
 import {
@@ -36,8 +37,11 @@ import {
 } from '../companies/entities/company.entity';
 import { BillingService, SeatReservation } from '../billing/billing.service';
 import { UserReassignmentService } from './reassignment/user-reassignment.service';
-import { WhatsappService } from '../whatsapp/whatsapp.service';
+import { WhatsappSignupService } from '../whatsapp/whatsapp-signup.service';
+import { WhatsappGateway } from '../whatsapp/whatsapp.gateway';
+import { NotificationsGateway } from '../notifications/notifications.gateway';
 import { ReassignmentReport } from './reassignment/reassignment-report';
+import { errorMessage } from '@shared/utils/error.util';
 import {
   OwnershipTransferRecorder,
   OWNERSHIP_TRANSFER_RECORDER,
@@ -61,7 +65,9 @@ export class UsersService {
     private readonly systemEmail: SystemEmailService,
     private readonly billingService: BillingService,
     private readonly reassignmentService: UserReassignmentService,
-    private readonly whatsappService: WhatsappService,
+    private readonly whatsappSignupService: WhatsappSignupService,
+    private readonly whatsappGateway: WhatsappGateway,
+    private readonly notificationsGateway: NotificationsGateway,
     private readonly recordHistoryService: RecordHistoryService,
     @Optional()
     @Inject(OWNERSHIP_TRANSFER_RECORDER)
@@ -508,7 +514,7 @@ export class UsersService {
       }
     });
 
-    await this.moveWhatsappRowsAfterRemoval(lockCompanyId, report);
+    await this.disconnectWhatsappAfterRemoval(lockCompanyId, report);
     return report;
   }
 
@@ -574,34 +580,41 @@ export class UsersService {
       }
     });
 
-    await this.moveWhatsappRowsAfterRemoval(lockCompanyId, report);
+    await this.disconnectWhatsappAfterRemoval(lockCompanyId, report);
     return report;
   }
 
-  // Logs out first, else a removed seat keeps its socket and keeps spending AI credits
-  private async moveWhatsappRowsAfterRemoval(
+  // Server-initiated disconnect is not recoverable, so no session is saved for replay.
+  private disconnectLiveSockets(userId: string): void {
+    for (const gateway of [this.whatsappGateway, this.notificationsGateway]) {
+      try {
+        gateway.disconnectUser(userId);
+      } catch (err) {
+        this.logger.error(
+          `Live sockets not disconnected for removed user ${userId}`,
+          errorMessage(err),
+        );
+      }
+    }
+  }
+
+  // Disconnects the seat outside the lock and stops Meta webhooks; chats stay with the agent.
+  private async disconnectWhatsappAfterRemoval(
     companyId: string | null,
     report: ReassignmentReport,
   ): Promise<void> {
+    this.disconnectLiveSockets(report.fromUserId);
     if (!companyId) return;
     try {
-      await this.whatsappService.logout(report.fromUserId, companyId);
+      await this.whatsappSignupService.disconnect(
+        report.fromUserId,
+        companyId,
+        'SEAT_REMOVED',
+      );
     } catch (err) {
       this.logger.error(
         `WhatsApp session not torn down for removed user ${report.fromUserId} in company ${companyId}; it may keep receiving and spending AI credits`,
-        err instanceof Error ? err.message : err,
-      );
-    }
-    try {
-      await this.reassignmentService.reassignWhatsappRows(
-        companyId,
-        report.fromUserId,
-        report.toUserId,
-      );
-    } catch (err) {
-      this.logger.error(
-        `WhatsApp rows not moved for company ${companyId} from ${report.fromUserId} to ${report.toUserId}; re-run the move`,
-        err instanceof Error ? err.message : err,
+        errorMessage(err),
       );
     }
   }
@@ -664,7 +677,7 @@ export class UsersService {
               await this.billingService.setSeatQuantity(company, previous);
             } catch (err) {
               this.logger.error(
-                `Trim seat compensation to ${previous} failed for company ${company.id}: ${err instanceof Error ? err.message : String(err)}`,
+                `Trim seat compensation to ${previous} failed for company ${company.id}: ${errorMessage(err)}`,
               );
             }
           };
@@ -725,7 +738,7 @@ export class UsersService {
 
     // Runs outside the lock, like the other removal paths, since this table is unbounded
     for (const report of result.reports) {
-      await this.moveWhatsappRowsAfterRemoval(companyId, report);
+      await this.disconnectWhatsappAfterRemoval(companyId, report);
     }
     return result;
   }
@@ -792,7 +805,7 @@ export class UsersService {
             await this.billingService.setSeatQuantity(company, previous);
           } catch (err) {
             this.logger.error(
-              `Reactivation seat compensation failed for company ${company.id}: ${err instanceof Error ? err.message : String(err)}`,
+              `Reactivation seat compensation failed for company ${company.id}: ${errorMessage(err)}`,
             );
           }
         };
@@ -1010,7 +1023,7 @@ export class UsersService {
       inviteToken,
     ).catch((err) => {
       this.logger.error(
-        `Failed to send invite email to ${dto.email}: ${err instanceof Error ? err.message : String(err)}`,
+        `Failed to send invite email to ${dto.email}: ${errorMessage(err)}`,
       );
     });
 
@@ -1058,7 +1071,7 @@ export class UsersService {
     inviteToken: string,
   ): Promise<void> {
     // Account email, not tenant CRM outreach, so it always uses the fixed system template
-    const appUrl = (process.env.APP_URL || 'http://localhost:4200').replace(
+    const appUrl = envString('APP_URL', 'http://localhost:4200').replace(
       /\/$/,
       '',
     );

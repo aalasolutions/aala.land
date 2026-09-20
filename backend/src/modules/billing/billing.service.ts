@@ -12,6 +12,7 @@ import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, Repository } from 'typeorm';
 import { withCompanyLock } from '@shared/utils/company-lock.util';
+import { errorMessage } from '@shared/utils/error.util';
 import {
   Company,
   SubscriptionTier,
@@ -132,7 +133,7 @@ export class BillingService {
         });
         synced++;
       } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
+        const message = errorMessage(err);
         this.logger.error(
           `Price sync failed for ${row.kind}/${row.currency}: ${message}`,
         );
@@ -186,7 +187,7 @@ export class BillingService {
       } catch (err) {
         this.logger.warn(
           `Could not read cancellation state for company ${companyId}: ` +
-            `${err instanceof Error ? err.message : String(err)}`,
+            `${errorMessage(err)}`,
         );
       }
     }
@@ -374,7 +375,7 @@ export class BillingService {
       this.logger.error(
         `Seat increment rejected by billing provider for company ${company.id} ` +
           `(subscription ${ref.subscriptionId}, target ${targetQuantity}): ` +
-          `${err instanceof Error ? err.message : String(err)}`,
+          `${errorMessage(err)}`,
       );
       throw new HttpException(
         {
@@ -503,7 +504,7 @@ export class BillingService {
     } catch (err) {
       this.logger.error(
         `Failed to read live seat quantity for company ${companyId} ` +
-          `(subscription ${ref.subscriptionId}): ${err instanceof Error ? err.message : String(err)}`,
+          `(subscription ${ref.subscriptionId}): ${errorMessage(err)}`,
       );
       throw new HttpException(
         {
@@ -530,10 +531,10 @@ export class BillingService {
     } catch (err) {
       this.logger.error(
         `Seat update to ${quantity} rejected by billing provider for company ${companyId} ` +
-          `(subscription ${ref.subscriptionId}): ${err instanceof Error ? err.message : String(err)}`,
+          `(subscription ${ref.subscriptionId}): ${errorMessage(err)}`,
       );
       throw new HttpException(
-        `The billing provider rejected the seat change: ${err instanceof Error ? err.message : String(err)}`,
+        `The billing provider rejected the seat change: ${errorMessage(err)}`,
         HttpStatus.PAYMENT_REQUIRED,
       );
     }
@@ -552,7 +553,7 @@ export class BillingService {
       this.logger.error(
         `Compensating seat rollback FAILED for company ${companyId} ` +
           `(subscription ${ref.subscriptionId}, quantity ${quantity}): ` +
-          `${rollbackErr instanceof Error ? rollbackErr.message : String(rollbackErr)}. ` +
+          `${errorMessage(rollbackErr)}. ` +
           `Reconcile manually against the provider dashboard.`,
       );
     }

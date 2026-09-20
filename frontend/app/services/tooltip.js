@@ -2,9 +2,32 @@ import Service from '@ember/service';
 import { tracked } from '@glimmer/tracking';
 import { cancelTask, runTask } from 'ember-lifeline';
 
-const PLACEMENTS = ['top', 'bottom', 'start', 'end'];
+// Logical only. TooltipHost resolves these to physical modifiers per `dir`.
+const PLACEMENTS = [
+  'top',
+  'bottom',
+  'start',
+  'end',
+  'top-start',
+  'top-end',
+  'bottom-start',
+  'bottom-end',
+];
 const DEFAULT_PLACEMENT = 'top';
 const OPEN_DELAY = 120;
+
+function normalizePlacement(raw) {
+  const value = String(raw ?? '').trim().toLowerCase();
+  if (!value) {
+    return DEFAULT_PLACEMENT;
+  }
+
+  if (PLACEMENTS.includes(value)) {
+    return value;
+  }
+
+  return DEFAULT_PLACEMENT;
+}
 
 export const TOOLTIP_ID = 'nu-tooltip-active';
 
@@ -41,7 +64,7 @@ export default class TooltipService extends Service {
         }
 
         const raw = trigger.getAttribute('data-tooltip-position');
-        this.placement = PLACEMENTS.includes(raw) ? raw : DEFAULT_PLACEMENT;
+        this.placement = normalizePlacement(raw);
         this.light = trigger.hasAttribute('data-tooltip-light');
         this.anchor = trigger.getBoundingClientRect();
         this.content = content;

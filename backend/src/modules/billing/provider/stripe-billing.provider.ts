@@ -22,6 +22,7 @@ import {
   SubscriptionCanceledEvent,
   SubscriptionUpdatedEvent,
 } from '../events/billing-events';
+import { errorMessage } from '@shared/utils/error.util';
 
 /** Tolerant shapes: Stripe SDK field locations drift across API versions. */
 interface StripeSubscriptionItemLike {
@@ -427,7 +428,7 @@ export class StripeBillingProvider implements BillingProvider {
       return metadata?.companyId ?? null;
     } catch (err) {
       this.logger.warn(
-        `Customer lookup failed for ${customerId}: ${(err as Error).message}`,
+        `Customer lookup failed for ${customerId}: ${errorMessage(err)}`,
       );
       return null;
     }

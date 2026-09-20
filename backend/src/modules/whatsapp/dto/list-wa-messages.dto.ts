@@ -10,13 +10,13 @@ export class ListWaMessagesDto {
   @Min(1)
   page?: number = 1;
 
-  @ApiProperty({ required: false, type: Number, default: 500, maximum: 500 })
+  @ApiProperty({ required: false, type: Number, default: 50, maximum: 200 })
   @IsOptional()
   @Type(() => Number)
   @IsInt()
   @Min(1)
-  @Max(500)
-  limit?: number = 500;
+  @Max(200)
+  limit?: number = 50;
 
   // Injected by RegionScopeInterceptor; required or forbidNonWhitelisted rejects it
   @ApiProperty({ required: false, type: String })

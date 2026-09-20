@@ -645,7 +645,6 @@ export class LeasesService {
     return lease;
   }
 
-  // Snapshot unit, tenant and region for the history row.
   private async recordLeaseHistory(
     manager: EntityManager,
     lease: Lease,

@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { DataSource } from 'typeorm';
 
-/** Recomputes storage_used_bytes using the same SUM as migration 1779300000009. */
+/** Recomputes storage_used_bytes from media and document rows; single scheduler assumed. */
 @Injectable()
 export class StorageQuotaReconcileCron {
   private readonly logger = new Logger(StorageQuotaReconcileCron.name);

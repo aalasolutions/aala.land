@@ -1,6 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-// Replaces the unused Twilio-era table; down() restores schema only, not rows
+// Replaces the unused legacy whatsapp_messages. down() restores the schema, not the rows.
 export class RebuildWhatsappMessagesAndChats1779500000057 implements MigrationInterface {
   name = 'RebuildWhatsappMessagesAndChats1779500000057';
 

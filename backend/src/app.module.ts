@@ -33,6 +33,8 @@ import { BillingModule } from '@modules/billing/billing.module';
 import { LockModule } from '@modules/lock/lock.module';
 import { ConsoleModule } from '@modules/console/console.module';
 import { EmailModule } from '@modules/email/email.module';
+import { RedisModule } from '@modules/redis/redis.module';
+import { getRedisConnection } from '@modules/redis/redis.config';
 import { StoragePurgeModule } from '@modules/storage-purge/storage-purge.module';
 import { RecordHistoryModule } from '@modules/record-history/record-history.module';
 import { RegionScopeInterceptor } from '@shared/interceptors/region-scope.interceptor';
@@ -49,12 +51,7 @@ import { RegionScopeInterceptor } from '@shared/interceptors/region-scope.interc
     }),
 
     BullModule.forRootAsync({
-      useFactory: () => ({
-        connection: {
-          host: process.env.REDIS_HOST || 'localhost',
-          port: parseInt(process.env.REDIS_PORT || '6470', 10),
-        },
-      }),
+      useFactory: () => ({ connection: getRedisConnection() }),
     }),
 
     ThrottlerModule.forRoot([
@@ -91,6 +88,7 @@ import { RegionScopeInterceptor } from '@shared/interceptors/region-scope.interc
     LockModule,
     ConsoleModule,
     EmailModule,
+    RedisModule,
     StoragePurgeModule,
     RecordHistoryModule,
   ],

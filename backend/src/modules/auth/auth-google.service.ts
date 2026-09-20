@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { OAuth2Client } from 'google-auth-library';
+import { errorMessage } from '@shared/utils/error.util';
 import { AuthService } from './auth.service';
 import { CompaniesService } from '../companies/companies.service';
 import { UsersService } from '../users/users.service';
@@ -170,7 +171,7 @@ export class AuthGoogleService {
       }
 
       this.logger.warn(
-        `Google token verification failed: ${(error as Error)?.message ?? 'Unknown error'}`,
+        `Google token verification failed: ${errorMessage(error)}`,
       );
       throw new UnauthorizedException('Invalid Google token');
     }

@@ -24,7 +24,7 @@ import { Lead } from '../leads/entities/lead.entity';
     ]),
     JwtModule.registerAsync({
       imports: [ConfigModule],
-      useFactory: async (configService: ConfigService) => ({
+      useFactory: (configService: ConfigService) => ({
         secret: configService.getOrThrow<string>('JWT_SECRET'),
       }),
       inject: [ConfigService],

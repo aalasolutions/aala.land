@@ -1,4 +1,5 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { errorMessage } from '@shared/utils/error.util';
 import { BillingEventDispatcher } from '../billing/events/billing-event-dispatcher';
 import { BillingEventName } from '../billing/events/billing-events';
 import { WhatsappAiRepositoryService } from './whatsapp-ai-repository.service';
@@ -29,7 +30,7 @@ export class WhatsappBillingListener implements OnModuleInit {
         } catch (err) {
           this.logger.error(
             `Failed to clear AI caches for company ${event.companyId}`,
-            err instanceof Error ? err.message : err,
+            errorMessage(err),
           );
         }
         return Promise.resolve();

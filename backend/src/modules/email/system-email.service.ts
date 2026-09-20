@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { MailService } from '../../shared/services/mail.service';
+import { envString } from '@shared/utils/env.util';
 import { User } from '../users/entities/user.entity';
 import { Role } from '../../shared/enums/roles.enum';
 import { EmailPreferencesService } from './email-preferences.service';
@@ -25,7 +26,7 @@ export interface EmailRecipient {
 }
 
 function appUrl(): string {
-  return (process.env.APP_URL || 'http://localhost:4200').replace(/\/$/, '');
+  return envString('APP_URL', 'http://localhost:4200').replace(/\/$/, '');
 }
 
 // Account emails take explicit {email, name}; company emails resolve contact from companyId.

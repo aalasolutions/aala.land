@@ -14,6 +14,7 @@ import { Company } from '../companies/entities/company.entity';
 import { ImpersonateService } from './impersonate.service';
 import { LockModule } from '@modules/lock/lock.module';
 import { EmailModule } from '@modules/email/email.module';
+import { jwtExpiresIn } from './jwt-expires-in';
 
 @Module({
   imports: [
@@ -25,10 +26,10 @@ import { EmailModule } from '@modules/email/email.module';
     PassportModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
-      useFactory: async (configService: ConfigService) => ({
+      useFactory: (configService: ConfigService) => ({
         secret: configService.getOrThrow<string>('JWT_SECRET'),
         signOptions: {
-          expiresIn: '24h',
+          expiresIn: jwtExpiresIn(),
         },
       }),
       inject: [ConfigService],

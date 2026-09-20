@@ -28,7 +28,9 @@ import {
 import { Commission } from '../commissions/entities/commission.entity';
 import { BillingService } from '../billing/billing.service';
 import { UserReassignmentService } from './reassignment/user-reassignment.service';
-import { WhatsappService } from '../whatsapp/whatsapp.service';
+import { WhatsappSignupService } from '../whatsapp/whatsapp-signup.service';
+import { WhatsappGateway } from '../whatsapp/whatsapp.gateway';
+import { NotificationsGateway } from '../notifications/notifications.gateway';
 import { OWNERSHIP_TRANSFER_RECORDER } from './reassignment/ownership-transfer-recorder';
 import { RecordHistoryService } from '../record-history/record-history.service';
 import { RecordHistoryAction } from '../record-history/entities/record-history.entity';
@@ -56,6 +58,7 @@ let managerMock: {
 };
 let commissionRepoMock: { count: jest.Mock };
 let dataSourceMock: { transaction: jest.Mock; getRepository: jest.Mock };
+let transactionCommitted: jest.Mock;
 let billingServiceMock: {
   reserveSeat: jest.Mock;
   setSeatQuantity: jest.Mock;
@@ -64,9 +67,10 @@ let billingServiceMock: {
 };
 let reassignmentServiceMock: {
   reassignOwnedRecords: jest.Mock;
-  reassignWhatsappRows: jest.Mock;
 };
-let whatsappServiceMock: { logout: jest.Mock };
+let whatsappServiceMock: { disconnect: jest.Mock };
+let whatsappGatewayMock: { disconnectUser: jest.Mock };
+let notificationsGatewayMock: { disconnectUser: jest.Mock };
 let recordHistoryMock: { record: jest.Mock; resolveActorName: jest.Mock };
 
 const emptyReport = {
@@ -205,10 +209,13 @@ describe('UsersService', () => {
       insert: jest.fn(),
       getRepository: jest.fn().mockReturnValue(commissionRepoMock),
     };
+    transactionCommitted = jest.fn();
     dataSourceMock = {
-      transaction: jest.fn(async (cb: (m: unknown) => Promise<unknown>) =>
-        cb(managerMock),
-      ),
+      transaction: jest.fn(async (cb: (m: unknown) => Promise<unknown>) => {
+        const result = await cb(managerMock);
+        transactionCommitted();
+        return result;
+      }),
       getRepository: jest.fn().mockReturnValue(commissionRepoMock),
     };
     billingServiceMock = {
@@ -219,14 +226,12 @@ describe('UsersService', () => {
     };
     reassignmentServiceMock = {
       reassignOwnedRecords: jest.fn().mockResolvedValue(emptyReport),
-      reassignWhatsappRows: jest.fn().mockResolvedValue({
-        chats: 0,
-        messages: 0,
-      }),
     };
     whatsappServiceMock = {
-      logout: jest.fn().mockResolvedValue({ success: true }),
+      disconnect: jest.fn().mockResolvedValue({ success: true }),
     };
+    whatsappGatewayMock = { disconnectUser: jest.fn() };
+    notificationsGatewayMock = { disconnectUser: jest.fn() };
     recordHistoryMock = {
       record: jest.fn().mockResolvedValue(undefined),
       resolveActorName: jest.fn().mockResolvedValue('Requester Name'),
@@ -256,8 +261,16 @@ describe('UsersService', () => {
           useValue: reassignmentServiceMock,
         },
         {
-          provide: WhatsappService,
+          provide: WhatsappSignupService,
           useValue: whatsappServiceMock,
+        },
+        {
+          provide: WhatsappGateway,
+          useValue: whatsappGatewayMock,
+        },
+        {
+          provide: NotificationsGateway,
+          useValue: notificationsGatewayMock,
         },
         {
           provide: RecordHistoryService,
@@ -585,26 +598,37 @@ describe('UsersService', () => {
 
         await run();
 
-        expect(whatsappServiceMock.logout).toHaveBeenCalledWith(
+        expect(whatsappServiceMock.disconnect).toHaveBeenCalledWith(
           'user-uuid-2',
           companyId,
+          'SEAT_REMOVED',
         );
       },
     );
 
-    it('logs out before moving the rows, so no message can land after the move', async () => {
+    it.each(removalPaths)(
+      '%s leaves the chats and messages on the departing agent, it is the company record',
+      async (_name, run) => {
+        primeRemovalLookups(proCompany);
+
+        await run();
+
+        // The real service exposes nothing that rewrites user_id on a whatsapp row.
+        expect(
+          Object.getOwnPropertyNames(UserReassignmentService.prototype).filter(
+            (n) => /whatsapp/i.test(n),
+          ),
+        ).toEqual([]);
+        expect(reassignmentServiceMock.reassignOwnedRecords).toHaveBeenCalled();
+        expect(managerMock.query).not.toHaveBeenCalledWith(
+          expect.stringContaining('whatsapp_'),
+          expect.anything(),
+        );
+      },
+    );
+
+    it('reassigns the lead while the conversation stays put', async () => {
       primeRemovalLookups(proCompany);
-      const order: string[] = [];
-      whatsappServiceMock.logout.mockImplementation(async () => {
-        order.push('logout');
-        return { success: true };
-      });
-      reassignmentServiceMock.reassignWhatsappRows.mockImplementation(
-        async () => {
-          order.push('move');
-          return { chats: 0, messages: 0 };
-        },
-      );
 
       await service.deactivateUser(
         'user-uuid-2',
@@ -614,26 +638,141 @@ describe('UsersService', () => {
         removeDto,
       );
 
-      expect(order).toEqual(['logout', 'move']);
-    });
-
-    it('still moves the rows when the logout fails', async () => {
-      primeRemovalLookups(proCompany);
-      whatsappServiceMock.logout.mockRejectedValue(new Error('socket gone'));
-
-      await service.deactivateUser(
-        'user-uuid-2',
-        'requester-uuid',
-        companyId,
-        Role.COMPANY_ADMIN,
-        removeDto,
-      );
-
-      expect(reassignmentServiceMock.reassignWhatsappRows).toHaveBeenCalledWith(
+      // The lead moves to the new agent through the ordinary owned-records pass.
+      expect(reassignmentServiceMock.reassignOwnedRecords).toHaveBeenCalledWith(
+        managerMock,
         companyId,
         'user-uuid-2',
         'user-uuid-3',
+        'left',
+        { collectIds: false },
       );
+    });
+
+    it('does not fail the removal when the disconnect fails', async () => {
+      primeRemovalLookups(proCompany);
+      whatsappServiceMock.disconnect.mockRejectedValue(new Error('socket gone'));
+
+      await expect(
+        service.deactivateUser(
+          'user-uuid-2',
+          'requester-uuid',
+          companyId,
+          Role.COMPANY_ADMIN,
+          removeDto,
+        ),
+      ).resolves.toBeDefined();
+    });
+  });
+
+  describe('live socket disconnect on removal', () => {
+    const removalPaths: Array<[string, () => Promise<unknown>, string]> = [
+      [
+        'deactivateUser',
+        () => {
+          primeRemovalLookups(proCompany);
+          return service.deactivateUser(
+            'user-uuid-2',
+            'requester-uuid',
+            companyId,
+            Role.COMPANY_ADMIN,
+            removeDto,
+          );
+        },
+        'user-uuid-2',
+      ],
+      [
+        'softDeleteUserWithReassignment',
+        () => {
+          primeRemovalLookups(proCompany);
+          return service.softDeleteUserWithReassignment(
+            'user-uuid-2',
+            'requester-uuid',
+            companyId,
+            Role.COMPANY_ADMIN,
+            removeDto,
+          );
+        },
+        'user-uuid-2',
+      ],
+      [
+        'trimToOneActiveUser',
+        () => {
+          repo.findOne.mockResolvedValueOnce({
+            ...mockUser,
+            id: 'keeper-uuid',
+            role: Role.COMPANY_ADMIN,
+          } as User);
+          companyRepo.findOne.mockResolvedValue(freeCompany);
+          repo.find.mockResolvedValue([{ ...mockUser, id: 'u-a' }] as User[]);
+          repo.count.mockResolvedValue(1);
+          reassignmentServiceMock.reassignOwnedRecords.mockResolvedValueOnce({
+            ...emptyReport,
+            fromUserId: 'u-a',
+          });
+          return service.trimToOneActiveUser(companyId, 'keeper-uuid', {
+            keepUserId: 'keeper-uuid',
+            reason: 'downgrade',
+          });
+        },
+        'u-a',
+      ],
+    ];
+
+    it.each(removalPaths)(
+      '%s disconnects the removed user on both gateways after commit',
+      async (_name, run, removedId) => {
+        await run();
+
+        expect(whatsappGatewayMock.disconnectUser).toHaveBeenCalledWith(
+          removedId,
+        );
+        expect(notificationsGatewayMock.disconnectUser).toHaveBeenCalledWith(
+          removedId,
+        );
+        const commits = transactionCommitted.mock.invocationCallOrder;
+        expect(commits.length).toBeGreaterThan(0);
+        const lastCommit = Math.max(...commits);
+        for (const gateway of [whatsappGatewayMock, notificationsGatewayMock]) {
+          expect(
+            gateway.disconnectUser.mock.invocationCallOrder[0],
+          ).toBeGreaterThan(lastCommit);
+        }
+      },
+    );
+
+    it.each(removalPaths)(
+      '%s still succeeds when a socket disconnect throws',
+      async (_name, run) => {
+        whatsappGatewayMock.disconnectUser.mockImplementation(() => {
+          throw new Error('adapter down');
+        });
+        notificationsGatewayMock.disconnectUser.mockImplementation(() => {
+          throw new Error('adapter down');
+        });
+
+        await expect(run()).resolves.toBeDefined();
+        expect(whatsappServiceMock.disconnect).toHaveBeenCalled();
+      },
+    );
+
+    it('does not disconnect sockets when the removal fails', async () => {
+      primeRemovalLookups(proCompany);
+      reassignmentServiceMock.reassignOwnedRecords.mockRejectedValueOnce(
+        new Error('db'),
+      );
+
+      await expect(
+        service.deactivateUser(
+          'user-uuid-2',
+          'requester-uuid',
+          companyId,
+          Role.COMPANY_ADMIN,
+          removeDto,
+        ),
+      ).rejects.toThrow('db');
+      expect(whatsappGatewayMock.disconnectUser).not.toHaveBeenCalled();
+      expect(notificationsGatewayMock.disconnectUser).not.toHaveBeenCalled();
     });
   });
 
@@ -868,9 +1007,10 @@ describe('UsersService', () => {
         removeDto,
       );
 
-      expect(whatsappServiceMock.logout).toHaveBeenCalledWith(
+      expect(whatsappServiceMock.disconnect).toHaveBeenCalledWith(
         'user-uuid-2',
         companyId,
+        'SEAT_REMOVED',
       );
     });
   });
@@ -1181,7 +1321,7 @@ describe('UsersService', () => {
       ).rejects.toThrow('history down');
 
       expect(compensate).toHaveBeenCalledTimes(1);
-      expect(whatsappServiceMock.logout).not.toHaveBeenCalled();
+      expect(whatsappServiceMock.disconnect).not.toHaveBeenCalled();
     });
 
     it('records DELETE with the email when the name is blank', async () => {

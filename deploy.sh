@@ -1,11 +1,5 @@
 #!/usr/bin/env bash
-# KISS deploy. Bring up the backend stack (Postgres + Dragonfly + backend) and
-# wait until it is healthy, apply migrations, then build and serve the frontend.
-# Run from the repo root:  ./deploy.sh
-#
-# Docker-only: both images build inside Docker, so the host needs no node/pnpm.
-# Config lives in backend/.env (colocated with backend/docker-compose.yml), so
-# there is no root .env to keep in sync.
+# Docker-only deploy; config lives only in backend/.env, no root .env to sync.
 set -euo pipefail
 cd "$(dirname "$0")"
 
@@ -14,8 +8,8 @@ env_get() { grep -E "^$1=" "$2" 2>/dev/null | cut -d= -f2- || true; }
 echo "==> [backend] build image"
 ( cd backend && docker compose build )
 
-echo "==> [backend] start Postgres + Dragonfly, wait for healthy"
-( cd backend && docker compose up -d --wait postgres dragonfly )
+echo "==> [backend] start Postgres + Valkey, wait for healthy"
+( cd backend && docker compose up -d --wait postgres valkey )
 
 echo "==> [backend] run migrations (before the app serves traffic)"
 ( cd backend && docker compose run --rm --no-deps backend npm run db:migration:run )

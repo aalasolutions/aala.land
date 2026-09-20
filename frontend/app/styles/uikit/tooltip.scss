@@ -17,6 +17,7 @@
     "BorderRadius": nu-radius(md),
     "Shadow": #{nu-shadow(md)},
     "ArrowSize": 8px,
+    "ArrowInset": nu-space(4),
     "TransitionDuration": nu-duration(fast),
     // Written inline by the tooltip-fit modifier when the box would leave the viewport.
     "ShiftX": 0px,
@@ -55,14 +56,35 @@
     transform: rotate(45deg);
   }
 
+  // Offsets below are physical on purpose: the host applies the RTL swap before it writes the modifier.
   @include m(top) {
     transform: translateX(-50%);
 
     .nu-tooltip__arrow {
-      inset-block-end: calc(#{nu-var("tooltip", "ArrowSize")} / -2);
-      inset-inline-start: 50%;
-      margin-inline-start: calc(#{nu-var("tooltip", "ArrowSize")} / -2);
-      // Physical shift, so it matches the box shift under RTL too.
+      bottom: calc(#{nu-var("tooltip", "ArrowSize")} / -2);
+      left: 50%;
+      margin-left: calc(#{nu-var("tooltip", "ArrowSize")} / -2);
+      translate: nu-var("tooltip", "ArrowShiftX") 0;
+    }
+  }
+
+  // Corner modifiers name where the box SITS: m-top-left extends leftward from the trigger.
+  @include m(top-left) {
+    transform: translate(-100%, -100%);
+
+    .nu-tooltip__arrow {
+      bottom: calc(#{nu-var("tooltip", "ArrowSize")} / -2);
+      right: nu-var("tooltip", "ArrowInset");
+      translate: nu-var("tooltip", "ArrowShiftX") 0;
+    }
+  }
+
+  @include m(top-right) {
+    transform: translateY(-100%);
+
+    .nu-tooltip__arrow {
+      bottom: calc(#{nu-var("tooltip", "ArrowSize")} / -2);
+      left: nu-var("tooltip", "ArrowInset");
       translate: nu-var("tooltip", "ArrowShiftX") 0;
     }
   }
@@ -71,10 +93,27 @@
     transform: translateX(-50%);
 
     .nu-tooltip__arrow {
-      inset-block-start: calc(#{nu-var("tooltip", "ArrowSize")} / -2);
-      inset-inline-start: 50%;
-      margin-inline-start: calc(#{nu-var("tooltip", "ArrowSize")} / -2);
-      // Physical shift, so it matches the box shift under RTL too.
+      top: calc(#{nu-var("tooltip", "ArrowSize")} / -2);
+      left: 50%;
+      margin-left: calc(#{nu-var("tooltip", "ArrowSize")} / -2);
+      translate: nu-var("tooltip", "ArrowShiftX") 0;
+    }
+  }
+
+  @include m(bottom-left) {
+    transform: translateX(-100%);
+
+    .nu-tooltip__arrow {
+      top: calc(#{nu-var("tooltip", "ArrowSize")} / -2);
+      right: nu-var("tooltip", "ArrowInset");
+      translate: nu-var("tooltip", "ArrowShiftX") 0;
+    }
+  }
+
+  @include m(bottom-right) {
+    .nu-tooltip__arrow {
+      top: calc(#{nu-var("tooltip", "ArrowSize")} / -2);
+      left: nu-var("tooltip", "ArrowInset");
       translate: nu-var("tooltip", "ArrowShiftX") 0;
     }
   }

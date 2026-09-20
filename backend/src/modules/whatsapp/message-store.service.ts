@@ -1,15 +1,41 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { WaMessage, WaChat } from './wa-types';
-import { WhatsappMessage } from './entities/whatsapp-message.entity';
+import { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity';
+import { WaMessage, WaChat, WaMessageWindow, WaUnreadState } from './wa-types';
+import {
+  WhatsappMessage,
+  WhatsappMessageStatus,
+} from './entities/whatsapp-message.entity';
 import { WhatsappChat } from './entities/whatsapp-chat.entity';
 
-const ALL_MESSAGES_LIMIT = 500;
-const CHAT_MESSAGES_LIMIT = 200;
+const MESSAGES_PAGE_DEFAULT = 50;
+const MESSAGES_PAGE_MAX = 200;
 const CHAT_LIST_LIMIT = 300;
 // last_ts is a one-way GREATEST latch: a future timestamp would freeze the preview.
 const MAX_TS_SKEW_S = 300;
+
+// Delivery ladder, forward only: failed tops it so a redelivered sent cannot resurrect.
+const STATUS_RANK: Record<WhatsappMessageStatus, number> = {
+  [WhatsappMessageStatus.SENT]: 1,
+  [WhatsappMessageStatus.DELIVERED]: 2,
+  [WhatsappMessageStatus.READ]: 3,
+  [WhatsappMessageStatus.PLAYED]: 4,
+  [WhatsappMessageStatus.FAILED]: 5,
+};
+
+// failed is a terminal fact that must land even on top of a read row; played wins by rank.
+const ALWAYS_WRITE_STATUSES: WhatsappMessageStatus[] = [
+  WhatsappMessageStatus.FAILED,
+];
+
+interface ChatUnreadRow {
+  unread_count: number | string;
+  last_read_message_id: string | null;
+}
+
+// Same ladder in SQL, so the no-downgrade guard is evaluated inside the UPDATE.
+const STATUS_RANK_SQL = `COALESCE(CASE "status" WHEN 'sent' THEN 1 WHEN 'delivered' THEN 2 WHEN 'read' THEN 3 WHEN 'played' THEN 4 WHEN 'failed' THEN 5 ELSE 0 END, 0)`;
 
 @Injectable()
 export class MessageStoreService {
@@ -19,6 +45,13 @@ export class MessageStoreService {
     @InjectRepository(WhatsappChat)
     private readonly chats: Repository<WhatsappChat>,
   ) {}
+
+  // timestamptz reads back as a Date; the wire format on this module is epoch seconds.
+  private toEpochSeconds(value: Date | null | undefined): number | null {
+    if (!value) return null;
+    const ms = value instanceof Date ? value.getTime() : Date.parse(String(value));
+    return Number.isFinite(ms) ? Math.floor(ms / 1000) : null;
+  }
 
   private toWaMessage(row: WhatsappMessage): WaMessage {
     return {
@@ -38,24 +71,40 @@ export class MessageStoreService {
       aiGenerated: row.aiGenerated,
       timestamp: Number(row.timestamp),
       originUserId: row.originUserId ?? row.userId,
+      status: row.status ?? null,
+      statusAt: this.toEpochSeconds(row.statusAt),
+      errorCode: row.errorCode ?? null,
+      editedAt: this.toEpochSeconds(row.editedAt),
+      // Deliberately not filtered out of the read: the UI renders a deleted stub.
+      deletedAt: this.toEpochSeconds(row.deletedAt),
     };
   }
 
+  // inserted is false when the row already existed (a Meta redelivery), true only on first insert.
   async addMessage(
     companyId: string,
     userId: string,
     msg: WaMessage,
-  ): Promise<void> {
+    phoneNumberId?: string | null,
+  ): Promise<{ inserted: boolean; unread: WaUnreadState }> {
     const safeTs = String(
       Math.min(
         msg.timestamp ?? 0,
         Math.floor(Date.now() / 1000) + MAX_TS_SKEW_S,
       ),
     );
+    // Meta's reply-window clock opens on inbound customer messages only.
+    const lastInboundAt = msg.fromMe ? null : new Date(Number(safeTs) * 1000);
+    let inserted = false;
+    let unread: WaUnreadState = {
+      chatId: msg.chatId,
+      unreadCount: 0,
+      lastReadMessageId: null,
+    };
 
     // Both writes or neither: a message whose chat row is missing is invisible in the list.
     await this.messages.manager.transaction(async (manager) => {
-      await manager
+      const insertResult = await manager
         .createQueryBuilder()
         .insert()
         .into(WhatsappMessage)
@@ -77,16 +126,20 @@ export class MessageStoreService {
           quotedParticipant: msg.quotedParticipant ?? '',
           fromMe: msg.fromMe ?? false,
           aiGenerated: msg.aiGenerated ?? false,
+          phoneNumberId: phoneNumberId ?? null,
           timestamp: safeTs,
         })
         .orIgnore()
         .execute();
 
+      // orIgnore returns an empty raw array when the unique index already held the row.
+      inserted = Array.isArray(insertResult.raw) && insertResult.raw.length > 0;
+
       // Raw SQL: orUpdate() can't express conditional columns; mirror renames in the entity
-      await manager.query(
+      const chatRows: ChatUnreadRow[] | undefined = await manager.query(
         `INSERT INTO "whatsapp_chats"
-         ("company_id", "user_id", "chat_id", "chat_name", "is_group", "last_body", "last_ts", "last_from_me")
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+         ("company_id", "user_id", "chat_id", "chat_name", "is_group", "last_body", "last_ts", "last_from_me", "phone_number_id", "last_inbound_at", "unread_count")
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
        ON CONFLICT ("company_id", "user_id", "chat_id") DO UPDATE SET
          "chat_name" = COALESCE(
            NULLIF(NULLIF("whatsapp_chats"."chat_name", ''), "whatsapp_chats"."chat_id"),
@@ -97,7 +150,11 @@ export class MessageStoreService {
          "last_body" = CASE WHEN EXCLUDED."last_ts" >= "whatsapp_chats"."last_ts" THEN EXCLUDED."last_body" ELSE "whatsapp_chats"."last_body" END,
          "last_from_me" = CASE WHEN EXCLUDED."last_ts" >= "whatsapp_chats"."last_ts" THEN EXCLUDED."last_from_me" ELSE "whatsapp_chats"."last_from_me" END,
          "last_ts" = GREATEST(EXCLUDED."last_ts", "whatsapp_chats"."last_ts"),
-         "updated_at" = now()`,
+         "phone_number_id" = COALESCE(EXCLUDED."phone_number_id", "whatsapp_chats"."phone_number_id"),
+         "last_inbound_at" = GREATEST(EXCLUDED."last_inbound_at", "whatsapp_chats"."last_inbound_at"),
+         "unread_count" = "whatsapp_chats"."unread_count" + EXCLUDED."unread_count",
+         "updated_at" = now()
+       RETURNING "unread_count", "last_read_message_id"`,
         [
           companyId,
           userId,
@@ -107,10 +164,20 @@ export class MessageStoreService {
           msg.body ?? '',
           safeTs,
           msg.fromMe ?? false,
+          phoneNumberId ?? null,
+          lastInboundAt,
+          // Only a first delivery of a customer message counts as unread.
+          inserted && !msg.fromMe ? 1 : 0,
         ],
       );
+      const chat = chatRows?.[0];
+      unread = {
+        chatId: msg.chatId,
+        unreadCount: Number(chat?.unread_count ?? 0),
+        lastReadMessageId: chat?.last_read_message_id ?? null,
+      };
 
-      // At most once per chat; contact_resolution_attempted stops it re-running every message
+      // chat_id may be a legacy JID; contact_resolution_attempted stops the subquery from re-running per chat.
       if (!msg.isGroup) {
         await manager.query(
           `UPDATE "whatsapp_chats"
@@ -141,6 +208,106 @@ export class MessageStoreService {
         );
       }
     });
+
+    return { inserted, unread };
+  }
+
+  // Moves the read marker forward only and recomputes unread_count; null when the message is unknown.
+  async markChatRead(
+    companyId: string,
+    userId: string,
+    chatId: string,
+    waMessageId: string,
+  ): Promise<WaUnreadState | null> {
+    return this.messages.manager.transaction(async (manager) => {
+      const [target]: { timestamp: string; wa_message_id: string }[] =
+        await manager.query(
+          `SELECT "timestamp", "wa_message_id" FROM "whatsapp_messages"
+            WHERE "company_id" = $1 AND "user_id" = $2 AND "chat_id" = $3 AND "wa_message_id" = $4`,
+          [companyId, userId, chatId, waMessageId],
+        );
+      if (!target) return null;
+
+      // Lock in its own statement; a lock wait rechecks only the locked row, so the compare needs a fresh snapshot.
+      const [chat]: ChatUnreadRow[] = await manager.query(
+        `SELECT "unread_count", "last_read_message_id" FROM "whatsapp_chats"
+          WHERE "company_id" = $1 AND "user_id" = $2 AND "chat_id" = $3
+          FOR UPDATE`,
+        [companyId, userId, chatId],
+      );
+      if (!chat) return null;
+
+      const [{ ahead }]: { ahead: boolean }[] = await manager.query(
+        `SELECT EXISTS (
+           SELECT 1 FROM "whatsapp_messages"
+            WHERE "company_id" = $1 AND "user_id" = $2 AND "chat_id" = $3
+              AND "wa_message_id" = $4
+              AND ("timestamp", "wa_message_id") >= ($5::bigint, $6::varchar)
+         ) AS "ahead"`,
+        [
+          companyId,
+          userId,
+          chatId,
+          chat.last_read_message_id,
+          target.timestamp,
+          target.wa_message_id,
+        ],
+      );
+      if (ahead) {
+        return {
+          chatId,
+          unreadCount: Number(chat.unread_count),
+          lastReadMessageId: chat.last_read_message_id,
+        };
+      }
+
+      const [{ count }]: { count: number }[] = await manager.query(
+        `SELECT COUNT(*)::int AS "count" FROM "whatsapp_messages"
+          WHERE "company_id" = $1 AND "user_id" = $2 AND "chat_id" = $3
+            AND "from_me" = false
+            AND ("timestamp", "wa_message_id") > ($4::bigint, $5::varchar)`,
+        [companyId, userId, chatId, target.timestamp, target.wa_message_id],
+      );
+      await manager.query(
+        `UPDATE "whatsapp_chats"
+            SET "last_read_message_id" = $4, "unread_count" = $5, "updated_at" = now()
+          WHERE "company_id" = $1 AND "user_id" = $2 AND "chat_id" = $3`,
+        [companyId, userId, chatId, target.wa_message_id, count],
+      );
+      return {
+        chatId,
+        unreadCount: Number(count),
+        lastReadMessageId: target.wa_message_id,
+      };
+    });
+  }
+
+  // Status callbacks arrive out of order/redelivered; this only ever moves the status forward on the ladder.
+  async applyMessageStatus(
+    companyId: string,
+    userId: string,
+    waMessageId: string,
+    status: WhatsappMessageStatus,
+    statusAt: Date,
+    errorCode: string | null,
+  ): Promise<boolean> {
+    const patch: QueryDeepPartialEntity<WhatsappMessage> = { status, statusAt };
+    if (errorCode) patch.errorCode = errorCode;
+
+    const result = await this.messages.manager
+      .createQueryBuilder()
+      .update(WhatsappMessage)
+      .set(patch)
+      .where('company_id = :companyId', { companyId })
+      .andWhere('user_id = :userId', { userId })
+      .andWhere('wa_message_id = :waMessageId', { waMessageId })
+      .andWhere(`(:always = true OR ${STATUS_RANK_SQL} < :rank)`, {
+        always: ALWAYS_WRITE_STATUSES.includes(status),
+        rank: STATUS_RANK[status],
+      })
+      .execute();
+
+    return (result.affected ?? 0) > 0;
   }
 
   // Page 1 is the newest slice; each page is returned oldest-first for rendering.
@@ -148,9 +315,9 @@ export class MessageStoreService {
     companyId: string,
     userId: string,
     page = 1,
-    limit = ALL_MESSAGES_LIMIT,
+    limit = MESSAGES_PAGE_DEFAULT,
   ): Promise<{ messages: WaMessage[]; hasMore: boolean }> {
-    const size = Math.min(Math.max(limit, 1), ALL_MESSAGES_LIMIT);
+    const size = Math.min(Math.max(limit, 1), MESSAGES_PAGE_MAX);
     const rows = await this.messages.find({
       where: { companyId, userId },
       order: { timestamp: 'DESC', createdAt: 'DESC' },
@@ -165,18 +332,160 @@ export class MessageStoreService {
     };
   }
 
+  private pageSize(limit: number): number {
+    return Math.min(Math.max(limit, 1), MESSAGES_PAGE_MAX);
+  }
+
+  private chatMessagesQuery(companyId: string, userId: string, chatId: string) {
+    return this.messages
+      .createQueryBuilder('m')
+      .where('m.company_id = :companyId', { companyId })
+      .andWhere('m.user_id = :userId', { userId })
+      .andWhere('m.chat_id = :chatId', { chatId });
+  }
+
+  private async findCursor(
+    companyId: string,
+    userId: string,
+    chatId: string,
+    waMessageId: string,
+  ): Promise<WhatsappMessage> {
+    const cursor = await this.messages.findOne({
+      where: { companyId, userId, chatId, waMessageId },
+    });
+    if (!cursor) throw new BadRequestException('Unknown message cursor');
+    return cursor;
+  }
+
+  // Newest first when cursor is omitted.
+  private olderRows(
+    companyId: string,
+    userId: string,
+    chatId: string,
+    take: number,
+    cursor?: WhatsappMessage,
+  ): Promise<WhatsappMessage[]> {
+    const qb = this.chatMessagesQuery(companyId, userId, chatId);
+    if (cursor) {
+      qb.andWhere('(m.timestamp, m.wa_message_id) < (:cursorTs, :cursorId)', {
+        cursorTs: cursor.timestamp,
+        cursorId: cursor.waMessageId,
+      });
+    }
+    return qb
+      .orderBy('m.timestamp', 'DESC')
+      .addOrderBy('m.wa_message_id', 'DESC')
+      .take(take)
+      .getMany();
+  }
+
+  private newerRows(
+    companyId: string,
+    userId: string,
+    chatId: string,
+    take: number,
+    cursor: WhatsappMessage,
+  ): Promise<WhatsappMessage[]> {
+    return this.chatMessagesQuery(companyId, userId, chatId)
+      .andWhere('(m.timestamp, m.wa_message_id) > (:cursorTs, :cursorId)', {
+        cursorTs: cursor.timestamp,
+        cursorId: cursor.waMessageId,
+      })
+      .orderBy('m.timestamp', 'ASC')
+      .addOrderBy('m.wa_message_id', 'ASC')
+      .take(take)
+      .getMany();
+  }
+
+  // Keyset pagination
   async getMessagesForChat(
     companyId: string,
     userId: string,
     chatId: string,
-    limit = CHAT_MESSAGES_LIMIT,
-  ): Promise<WaMessage[]> {
-    const rows = await this.messages.find({
-      where: { companyId, userId, chatId },
-      order: { timestamp: 'DESC', createdAt: 'DESC' },
-      take: limit,
-    });
-    return rows.reverse().map((r) => this.toWaMessage(r));
+    limit = MESSAGES_PAGE_DEFAULT,
+    before?: string,
+  ): Promise<{ messages: WaMessage[]; hasMore: boolean }> {
+    const size = this.pageSize(limit);
+    const cursor =
+      before === undefined
+        ? undefined
+        : await this.findCursor(companyId, userId, chatId, before);
+    const rows = await this.olderRows(
+      companyId,
+      userId,
+      chatId,
+      size + 1,
+      cursor,
+    );
+    const hasMore = rows.length > size;
+    if (hasMore) rows.pop();
+    return {
+      messages: rows.reverse().map((r) => this.toWaMessage(r)),
+      hasMore,
+    };
+  }
+
+  // The page immediately newer than `after`, ascending.
+  async getMessagesAfter(
+    companyId: string,
+    userId: string,
+    chatId: string,
+    after: string,
+    limit = MESSAGES_PAGE_DEFAULT,
+  ): Promise<{ messages: WaMessage[]; hasMore: boolean }> {
+    const size = this.pageSize(limit);
+    const cursor = await this.findCursor(companyId, userId, chatId, after);
+    const rows = await this.newerRows(
+      companyId,
+      userId,
+      chatId,
+      size + 1,
+      cursor,
+    );
+    const hasMore = rows.length > size;
+    if (hasMore) rows.pop();
+    return { messages: rows.map((r) => this.toWaMessage(r)), hasMore };
+  }
+
+  // floor(limit/2) older, the anchor itself, the rest newer; ascending.
+  async getMessagesAround(
+    companyId: string,
+    userId: string,
+    chatId: string,
+    around: string,
+    limit = MESSAGES_PAGE_DEFAULT,
+  ): Promise<WaMessageWindow> {
+    const size = this.pageSize(limit);
+    const olderSize = Math.floor(size / 2);
+    const newerSize = size - olderSize - 1;
+    const anchor = await this.findCursor(companyId, userId, chatId, around);
+
+    const older = await this.olderRows(
+      companyId,
+      userId,
+      chatId,
+      olderSize + 1,
+      anchor,
+    );
+    const newer = await this.newerRows(
+      companyId,
+      userId,
+      chatId,
+      newerSize + 1,
+      anchor,
+    );
+    const hasMoreOlder = older.length > olderSize;
+    if (hasMoreOlder) older.pop();
+    const hasMoreNewer = newer.length > newerSize;
+    if (hasMoreNewer) newer.pop();
+
+    return {
+      messages: [...older.reverse(), anchor, ...newer].map((r) =>
+        this.toWaMessage(r),
+      ),
+      hasMoreOlder,
+      hasMoreNewer,
+    };
   }
 
   // excludeWaIds: the current turn's messages, which the caller appends itself.
@@ -226,20 +535,9 @@ export class MessageStoreService {
       lastBody: c.lastBody,
       lastTs: Number(c.lastTs),
       lastFromMe: c.lastFromMe,
+      lastInboundAt: this.toEpochSeconds(c.lastInboundAt),
+      unreadCount: Number(c.unreadCount ?? 0),
+      lastReadMessageId: c.lastReadMessageId ?? null,
     }));
-  }
-
-  // Driven off whatsapp_chats: addMessage writes both, so chats don't grow with messages
-  async findOwnersNeedingRecovery(): Promise<
-    Array<{ companyId: string; userId: string }>
-  > {
-    const rows: Array<{ company_id: string; user_id: string }> =
-      await this.chats.query(
-        `SELECT DISTINCT c."company_id", c."user_id"
-           FROM "whatsapp_chats" c
-           LEFT JOIN "users" u ON u."id" = c."user_id"
-          WHERE u."id" IS NULL OR u."is_active" = false`,
-      );
-    return rows.map((r) => ({ companyId: r.company_id, userId: r.user_id }));
   }
 }

@@ -1,11 +1,48 @@
 import Service, { service } from '@ember/service';
+import { tracked } from '@glimmer/tracking';
 import { io } from 'socket.io-client';
+import { isDestroying } from '@ember/destroyable';
+import { runTask, cancelTask } from 'ember-lifeline';
 import ENV from 'land/config/environment';
+
+const REOPEN_DELAYS_MS = [2000, 5000, 15000, 30000, 60000];
+const READ_THROTTLE_MS = 1000;
+const LAST_CHAT_KEY_PREFIX = 'wa:lastChat:';
 
 export default class WhatsappService extends Service {
   @service auth;
+  @service notifications;
+
+  // Replaced on write.
+  @tracked unread = new Map();
+  // Chat open on the WhatsApp page.
+  activeChatId = null;
+  _toastIds = new Map();
+  _pendingRead = new Map();
+  _readTimers = new Map();
+  // Last marker emitted per chat.
+  _sentRead = new Map();
+  _unackedRead = new Map();
+  _unreadWrites = 0;
+  _seedSeq = 0;
+  _appliedSeedSeq = 0;
+  // chatId to write number.
+  _liveUnreadWrites = new Map();
+  _lastChatLocked = false;
 
   _socket = null;
+  _resyncGeneration = 0;
+  _resyncInFlight = false;
+  _resyncPending = false;
+  _wanted = false;
+  _reopenTimer = null;
+  _reopenAttempts = 0;
+  _listeners = {
+    message: new Set(),
+    status: new Set(),
+    ai: new Set(),
+    chats: new Set(),
+  };
 
   get apiUrl() {
     const base =
@@ -13,43 +50,348 @@ export default class WhatsappService extends Service {
     return new URL(base, window.location.origin).origin;
   }
 
-  connectSocket(onEvent) {
-    if (this._socket) return this._socket;
+  connectSocket() {
+    this._wanted = true;
+    this._lastChatLocked = false;
+    if (this._socket?.active) return this._socket;
+    // Replace a server-closed socket.
+    this._closeSocket();
+    this._cancelReopen();
 
-    this._socket = io(`${this.apiUrl}/whatsapp`, {
-      auth: { token: this.auth.token },
+    const socket = this._openSocket();
+    this._socket = socket;
+
+    socket.on('connect', () => this._requeueUnackedRead());
+    socket.on('connect_error', (err) => {
+      console.error('WhatsApp socket connect failed:', err.message);
+      // Inactive means middleware rejection.
+      if (!socket.active) this._scheduleReopen(socket);
+    });
+    socket.on('disconnect', (reason) => {
+      if (reason === 'io server disconnect') this._scheduleReopen(socket);
     });
 
-    this._socket.on('whatsapp:status', (data) => onEvent('status', data));
-    this._socket.on('whatsapp:qr', (data) => onEvent('qr', data));
-    this._socket.on('whatsapp:message', (data) => onEvent('message', data));
-    this._socket.on('whatsapp:ai', (data) => onEvent('ai', data));
+    socket.on('whatsapp:status', (data) => this._emit('status', data));
+    socket.on('whatsapp:message', (data) => {
+      this._toastInbound(data);
+      this._emit('message', data);
+    });
+    socket.on('whatsapp:ai', (data) => this._emit('ai', data));
+    socket.on('whatsapp:unread', (data) => this._applyUnread(data));
+    socket.on('whatsapp:ready', (payload) => this._onReady(payload));
 
-    return this._socket;
+    return socket;
   }
 
-  disconnectSocket() {
+  get totalUnread() {
+    let total = 0;
+    for (const state of this.unread.values()) total += state.unreadCount;
+    return total;
+  }
+
+  // Take before the chats request.
+  beginUnreadSeed() {
+    return { seq: ++this._seedSeq, since: this._unreadWrites };
+  }
+
+  // Replaces the map.
+  seedUnread(chats, ticket = this.beginUnreadSeed()) {
+    if (ticket.seq < this._appliedSeedSeq) return;
+    const since = ticket.since;
+    const next = new Map();
+    for (const chat of chats ?? []) {
+      next.set(chat.chatId, {
+        unreadCount: chat.unreadCount ?? 0,
+        lastReadMessageId: chat.lastReadMessageId ?? null,
+        chatName: chat.chatName ?? null,
+      });
+    }
+    for (const [chatId, write] of this._liveUnreadWrites) {
+      if (write > since && this.unread.has(chatId)) {
+        next.set(chatId, this.unread.get(chatId));
+      } else {
+        this._liveUnreadWrites.delete(chatId);
+      }
+    }
+    this._appliedSeedSeq = ticket.seq;
+    this.unread = next;
+  }
+
+  _markSeeded() {
+    this._appliedSeedSeq = ++this._seedSeq;
+    this._liveUnreadWrites.clear();
+  }
+
+  _applyUnread(data) {
+    if (!data?.chatId) return;
+    const next = new Map(this.unread);
+    next.set(data.chatId, {
+      chatName: next.get(data.chatId)?.chatName ?? null,
+      unreadCount: data.unreadCount ?? 0,
+      lastReadMessageId: data.lastReadMessageId ?? null,
+    });
+    this._liveUnreadWrites.set(data.chatId, ++this._unreadWrites);
+    this.unread = next;
+  }
+
+  // Edits and deletes do not toast.
+  _toastInbound(msg) {
+    if (!msg?.chatId || msg.fromMe || msg.editedAt || msg.deletedAt) return;
+    if (msg.chatId === this.activeChatId) return;
+    const name =
+      msg.chatName || this.unread.get(msg.chatId)?.chatName || msg.chatId;
+    const previous = this._toastIds.get(msg.chatId);
+    if (previous !== undefined) this.notifications.remove(previous);
+    this._toastIds.set(
+      msg.chatId,
+      this.notifications.success(`New WhatsApp message from ${name}`, 0),
+    );
+  }
+
+  // Newest marker, one emit per second.
+  markRead(chatId, messageId) {
+    if (!chatId || !messageId) return;
+    if (this._sentRead.get(chatId) === messageId) return;
+    this._pendingRead.set(chatId, messageId);
+    if (!this._readTimers.has(chatId)) this._flushRead(chatId);
+  }
+
+  _flushRead(chatId) {
+    const messageId = this._pendingRead.get(chatId);
+    const socket = this._socket;
+    // Left pending for the next ready.
+    if (!messageId || !socket?.connected) return;
+    this._pendingRead.delete(chatId);
+    if (this._sentRead.get(chatId) === messageId) return;
+    this._sentRead.set(chatId, messageId);
+    this._unackedRead.set(chatId, messageId);
+    socket.emit('whatsapp:read', { chatId, messageId }, (ack) => {
+      if (this._unackedRead.get(chatId) === messageId) {
+        this._unackedRead.delete(chatId);
+      }
+      if (!ack?.chatId || ack.error) {
+        console.error('WhatsApp mark read failed', ack);
+        // Allows a retry of the same marker.
+        if (this._sentRead.get(chatId) === messageId) {
+          this._sentRead.delete(chatId);
+        }
+        return;
+      }
+      this._applyUnread(ack);
+    });
+    this._readTimers.set(
+      chatId,
+      this._later(() => {
+        this._readTimers.delete(chatId);
+        this._flushRead(chatId);
+      }, READ_THROTTLE_MS),
+    );
+  }
+
+  // Resent after reconnect.
+  _requeueUnackedRead() {
+    for (const [chatId, messageId] of this._unackedRead) {
+      if (this._sentRead.get(chatId) === messageId) {
+        this._sentRead.delete(chatId);
+      }
+      if (!this._pendingRead.has(chatId)) {
+        this._pendingRead.set(chatId, messageId);
+      }
+    }
+    this._unackedRead.clear();
+  }
+
+  _cancelReadTimers() {
+    if (!isDestroying(this)) {
+      for (const timer of this._readTimers.values()) cancelTask(this, timer);
+    }
+    this._readTimers.clear();
+  }
+
+  _openSocket() {
+    return io(`${this.apiUrl}/whatsapp`, {
+      // Function form: called on each reconnect, so a fresh token replaces the first-connect one.
+      auth: (cb) => cb({ token: this.auth.token }),
+    });
+  }
+
+  _later(fn, ms) {
+    return runTask(this, fn, ms);
+  }
+
+  _scheduleReopen(socket) {
+    if (!this._wanted || socket !== this._socket || this._reopenTimer !== null)
+      return;
+    const delay =
+      REOPEN_DELAYS_MS[
+        Math.min(this._reopenAttempts, REOPEN_DELAYS_MS.length - 1)
+      ];
+    this._reopenAttempts++;
+    this._reopenTimer = this._later(() => {
+      this._reopenTimer = null;
+      if (this._wanted) this.connectSocket();
+    }, delay);
+  }
+
+  _cancelReopen() {
+    if (this._reopenTimer !== null) {
+      // Lifeline cleans up on destroy.
+      if (!isDestroying(this)) cancelTask(this, this._reopenTimer);
+      this._reopenTimer = null;
+    }
+  }
+
+  _closeSocket() {
     if (this._socket) {
       this._socket.disconnect();
       this._socket = null;
+    }
+    // Drops any in-flight resync.
+    this._resyncGeneration++;
+    this._resyncInFlight = false;
+    this._resyncPending = false;
+  }
+
+  // Logout and access loss only.
+  disconnectSocket() {
+    this._stopSocket();
+    this._clearUserState();
+    this._lastChatLocked = true;
+  }
+
+  _stopSocket() {
+    this._wanted = false;
+    this._cancelReopen();
+    this._cancelReadTimers();
+    this._pendingRead.clear();
+    this._sentRead.clear();
+    this._unackedRead.clear();
+    this._reopenAttempts = 0;
+    this._closeSocket();
+  }
+
+  _clearUserState() {
+    this._markSeeded();
+    if (this.unread.size) this.unread = new Map();
+    if (this._toastIds.size) {
+      for (const id of this._toastIds.values()) this.notifications.remove(id);
+      this._toastIds.clear();
+    }
+    this.activeChatId = null;
+    this.clearLastChat();
+  }
+
+  _lastChatKey() {
+    const userId = this.auth.currentUser?.id;
+    return userId ? `${LAST_CHAT_KEY_PREFIX}${userId}` : null;
+  }
+
+  // { chatId, anchorMessageId, anchorOffset, atBottom }
+  saveLastChat(entry) {
+    const key = this._lastChatKey();
+    if (!key || this._lastChatLocked) return;
+    try {
+      localStorage.setItem(key, JSON.stringify(entry));
+    } catch {
+      // Storage blocked or full.
+    }
+  }
+
+  readLastChat() {
+    const key = this._lastChatKey();
+    if (!key) return null;
+    try {
+      const entry = JSON.parse(localStorage.getItem(key));
+      return typeof entry?.chatId === 'string' ? entry : null;
+    } catch {
+      return null;
+    }
+  }
+
+  clearLastChat() {
+    const key = this._lastChatKey();
+    if (!key) return;
+    try {
+      localStorage.removeItem(key);
+    } catch {
+      // Storage blocked.
+    }
+  }
+
+  on(type, fn) {
+    this._listeners[type]?.add(fn);
+  }
+
+  off(type, fn) {
+    this._listeners[type]?.delete(fn);
+  }
+
+  _emit(type, data) {
+    for (const fn of [...this._listeners[type]]) fn(data);
+  }
+
+  // Unrecovered ready may have missed events.
+  _onReady(payload) {
+    this._reopenAttempts = 0;
+    for (const chatId of [...this._pendingRead.keys()]) {
+      if (!this._readTimers.has(chatId)) this._flushRead(chatId);
+    }
+    if (payload?.recovered) return;
+    this._resync();
+  }
+
+  async _resync() {
+    if (this._resyncInFlight) {
+      this._resyncPending = true;
+      return;
+    }
+    const generation = this._resyncGeneration;
+    const seedTicket = this.beginUnreadSeed();
+    this._resyncInFlight = true;
+    try {
+      const chats = await this.getChats();
+      if (generation !== this._resyncGeneration) return;
+      const list = chats?.data?.chats ?? chats?.chats ?? [];
+      this.seedUnread(list, seedTicket);
+      this._emit('chats', list);
+    } catch (err) {
+      console.error('WhatsApp resync failed', err);
+    } finally {
+      if (generation === this._resyncGeneration) {
+        this._resyncInFlight = false;
+        if (this._resyncPending) {
+          this._resyncPending = false;
+          this._resync();
+        }
+      }
     }
   }
 
   getConnection() {
     return this.auth.fetchJson('/whatsapp/connection');
   }
-  getQR() {
-    return this.auth.fetchJson('/whatsapp/qr');
+  getSignupConfig() {
+    return this.auth.fetchJson('/whatsapp/signup-config');
+  }
+  connect({ code, wabaId, phoneNumberId }) {
+    return this.auth.fetchJson('/whatsapp/connect', {
+      method: 'POST',
+      body: JSON.stringify({ code, wabaId, phoneNumberId }),
+    });
+  }
+  disconnect() {
+    return this.auth.fetchJson('/whatsapp/connection', { method: 'DELETE' });
   }
   getChats() {
     return this.auth.fetchJson('/whatsapp/chats');
   }
-  getAllMessages() {
-    return this.auth.fetchJson('/whatsapp/messages');
-  }
-  getMessages(chatId) {
+  getMessages(chatId, { before, after, around, limit = 50 } = {}) {
+    const params = new URLSearchParams({ limit: String(limit) });
+    if (before) params.set('before', before);
+    if (after) params.set('after', after);
+    if (around) params.set('around', around);
     return this.auth.fetchJson(
-      `/whatsapp/messages/${encodeURIComponent(chatId)}`,
+      `/whatsapp/messages/${encodeURIComponent(chatId)}?${params}`,
     );
   }
   getAi() {
@@ -59,14 +401,10 @@ export default class WhatsappService extends Service {
     return this.auth.fetchJson('/whatsapp/settings');
   }
 
-  logout() {
-    return this.auth.fetchJson('/whatsapp/logout', { method: 'POST' });
-  }
-
-  sendMessage(chatId, message, replyTo) {
+  sendMessage(chatId, body) {
     return this.auth.fetchJson('/whatsapp/send', {
       method: 'POST',
-      body: JSON.stringify({ chatId, message, replyTo }),
+      body: JSON.stringify({ chatId, body }),
     });
   }
 
@@ -84,21 +422,8 @@ export default class WhatsappService extends Service {
     });
   }
 
-  mediaUrl(type, filename) {
-    const typeMap = {
-      image: 'images',
-      sticker: 'images',
-      video: 'videos',
-      audio: 'audio',
-      ptt: 'audio',
-      document: 'documents',
-    };
-    const subdir = typeMap[type] ?? 'documents';
-    return `${this.apiUrl}/v1/whatsapp/media/${subdir}/${encodeURIComponent(filename.split(/[/\\]/).pop())}`;
-  }
-
   willDestroy() {
     super.willDestroy(...arguments);
-    this.disconnectSocket();
+    this._stopSocket();
   }
 }

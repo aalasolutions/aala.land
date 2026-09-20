@@ -393,7 +393,7 @@ export class ContactsService {
     return this.findOne(id, companyId);
   }
 
-  // Transfers edges to target then deletes source in one transaction so failure can't strand edges.
+  // Moves edges to the target and deletes the source in one transaction.
   async remove(
     id: string,
     companyId: string,

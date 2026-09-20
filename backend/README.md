@@ -9,7 +9,7 @@ NestJS 11 API powering the AALA.LAND property management platform.
 | Framework | NestJS 11, TypeScript |
 | ORM | TypeORM 0.3 |
 | Database | PostgreSQL 18 |
-| Cache | Dragonfly (Redis-compatible) via ioredis |
+| Cache | Valkey (Redis-compatible) via ioredis |
 | Queue | BullMQ |
 | Auth | JWT (Passport) with role-based access |
 | Storage | AWS S3 (presigned URLs) + Sharp for thumbnails |
@@ -74,7 +74,7 @@ src/
 - Node.js 20+
 - pnpm
 - PostgreSQL 18 (via Docker or native)
-- Dragonfly or Redis (via Docker or native)
+- Valkey or Redis (via Docker or native)
 
 ### Setup
 
@@ -95,7 +95,12 @@ DB_DATABASE=aala_land
 JWT_SECRET=your-secret-key      # Generate: openssl rand -base64 64
 
 # Optional
-WHATSAPP_TOKEN=your-meta-token
+# WhatsApp (Meta Cloud API) - see backend/.env.example for the full list
+WHATSAPP_APP_ID=your-meta-app-id
+WHATSAPP_APP_SECRET=your-meta-app-secret
+WHATSAPP_ES_CONFIG_ID=your-embedded-signup-config-id
+WHATSAPP_VERIFY_TOKEN=your-webhook-verify-token
+WHATSAPP_TOKEN_ENC_KEY=generate-me   # 32 bytes base64
 AWS_ACCESS_KEY_ID=your-media-key      # key scoped to the media (public) bucket only
 AWS_SECRET_ACCESS_KEY=your-media-secret
 AWS_S3_BUCKET=aala-land-media         # public: property photos/thumbnails

@@ -9,6 +9,7 @@ export default class AuthService extends Service {
   @service region;
   @service router;
   @service socket;
+  @service whatsapp;
   @service notifications;
   @service uiSettings;
 
@@ -164,6 +165,7 @@ export default class AuthService extends Service {
 
   async logout() {
     this.socket.disconnect();
+    this.whatsapp.disconnectSocket();
     this.uiSettings.reset();
     await this.session.invalidate();
   }

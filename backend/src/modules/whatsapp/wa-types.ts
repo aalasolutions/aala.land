@@ -1,3 +1,6 @@
+import { WhatsappConnectionStatus } from './entities/whatsapp-connection.entity';
+import { WhatsappMessageStatus } from './entities/whatsapp-message.entity';
+
 export interface WaMessage {
   id: string;
   chatId: string;
@@ -15,6 +18,14 @@ export interface WaMessage {
   aiGenerated: boolean;
   timestamp: number;
   originUserId?: string;
+  // Outbound only. Inbound rows carry no delivery status.
+  status?: WhatsappMessageStatus | null;
+  // Epoch SECONDS, like timestamp above, not an ISO string.
+  statusAt?: number | null;
+  errorCode?: string | null;
+  editedAt?: number | null;
+  // Set means Meta revoked the message; the row and its stub are still returned.
+  deletedAt?: number | null;
 }
 
 export interface WaChat {
@@ -24,13 +35,42 @@ export interface WaChat {
   lastBody: string;
   lastTs: number;
   lastFromMe: boolean;
+  // Epoch SECONDS of last inbound message, or null; Meta's 24h window is measured from here.
+  lastInboundAt: number | null;
+  unreadCount: number;
+  lastReadMessageId: string | null;
 }
 
-export interface WaStatus {
-  connection: 'disconnected' | 'connecting' | 'connected';
-  hasCredentials: boolean;
-  me: { id: string; name: string } | null;
-  qr: string | null;
+// Payload of the whatsapp:read ack and the whatsapp:unread event.
+export interface WaUnreadState {
+  chatId: string;
+  unreadCount: number;
+  lastReadMessageId: string | null;
+}
+
+export interface WaMessageWindow {
+  messages: WaMessage[];
+  hasMoreOlder: boolean;
+  hasMoreNewer: boolean;
+}
+
+// Pinned deliberately and shared here so the send path and Embedded Signup path can't drift apart.
+export const GRAPH_VERSION = 'v26.0';
+
+// Public by design: Meta already exposes appId and configId in its client-side SDK call.
+export interface WaSignupConfig {
+  appId: string | null;
+  configId: string | null;
+  graphVersion: string;
+}
+
+// The caller's own connected number. Never carries the access token.
+export interface WaConnectionInfo {
+  status: WhatsappConnectionStatus;
+  displayPhoneNumber: string;
+  connectedAt: string | null;
+  disconnectedAt: string | null;
+  disconnectReason: string | null;
 }
 
 export interface AiCreditAgentUsage {
@@ -53,9 +93,36 @@ export interface AiCreditUsageWithAgents extends AiCreditUsageSummary {
   agents: AiCreditAgentUsage[];
 }
 
+export interface AiToolCall {
+  id: string;
+  type: 'function';
+  function: { name: string; arguments: string };
+}
+
 export interface AiHistoryMessage {
   role: 'user' | 'assistant' | 'system' | 'tool';
   content: string | null;
   tool_call_id?: string;
-  tool_calls?: any[];
+  tool_calls?: AiToolCall[];
+}
+
+export const WA_AI_DEBOUNCE_QUEUE = 'wa-ai-debounce';
+
+export interface DebounceJobData {
+  userId: string;
+  chatId: string;
+  companyId: string;
+  deadlineAt: number;
+}
+
+export interface DebouncedBuffer {
+  combinedText: string;
+  messageIds: string[];
+}
+
+export const WA_WEBHOOK_EVENTS_QUEUE = 'wa-webhook-events';
+
+export interface WaWebhookJobData {
+  // Parsed Meta envelope, signature already verified at the HTTP edge.
+  envelope: unknown;
 }

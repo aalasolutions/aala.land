@@ -31,6 +31,7 @@ import {
   SubscriptionCanceledEvent,
   SubscriptionUpdatedEvent,
 } from './events/billing-events';
+import { errorMessage } from '@shared/utils/error.util';
 
 /** Falls back to PRO as a safety net for any unrecognised plan string arriving from the webhook. */
 export function planToTier(plan: BillingPlan): SubscriptionTier {
@@ -91,7 +92,7 @@ export class BillingWebhookService implements OnModuleInit {
       parsed = await this.provider.parseWebhook(rawBody, signature);
     } catch (err) {
       // Never log the raw body. The error message is enough for diagnosis.
-      this.logger.warn(`Webhook rejected: ${(err as Error).message}`);
+      this.logger.warn(`Webhook rejected: ${errorMessage(err)}`);
       throw new BadRequestException('Webhook signature verification failed');
     }
 
@@ -128,7 +129,7 @@ export class BillingWebhookService implements OnModuleInit {
     } catch (err) {
       // processed_at stays NULL so a failed handler can be inspected and retried.
       this.logger.error(
-        `Handler failed for ${parsed.providerEventId} (${parsed.providerEventType}): ${(err as Error).message}`,
+        `Handler failed for ${parsed.providerEventId} (${parsed.providerEventType}): ${errorMessage(err)}`,
       );
       throw new InternalServerErrorException('Webhook processing failed');
     }

@@ -9,6 +9,7 @@ import { BillingModule } from '../billing/billing.module';
 import { UserReassignmentService } from './reassignment/user-reassignment.service';
 import { StrandedWhatsappRowsCron } from './reassignment/stranded-whatsapp-rows.cron';
 import { WhatsappModule } from '../whatsapp/whatsapp.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 import { RecordHistoryModule } from '../record-history/record-history.module';
 
 @Module({
@@ -17,6 +18,7 @@ import { RecordHistoryModule } from '../record-history/record-history.module';
     EmailModule,
     BillingModule,
     WhatsappModule,
+    NotificationsModule,
     RecordHistoryModule,
   ],
   controllers: [UsersController],

@@ -17,6 +17,7 @@ export default class SessionService extends Service {
       defaultRegionCode: null,
       subscriptionTier: null,
       lockState: null,
+      whatsappConfigured: false,
     },
   };
 
@@ -28,6 +29,11 @@ export default class SessionService extends Service {
   /** Tenant write-lock state from the auth bundle, used to render the lock/grace banner. */
   get lockState() {
     return this.data.authenticated?.lockState ?? null;
+  }
+
+  // Strict: missing or false both mean not configured; only the server knows env validity.
+  get whatsappConfigured() {
+    return this.data.authenticated?.whatsappConfigured === true;
   }
 
   restoreFromStorage() {
@@ -78,6 +84,7 @@ export default class SessionService extends Service {
         defaultRegionCode: authData.defaultRegionCode || null,
         subscriptionTier: authData.subscriptionTier ?? null,
         lockState: authData.lockState ?? null,
+        whatsappConfigured: authData.whatsappConfigured === true,
       },
     };
     this.isAuthenticated = true;
@@ -99,6 +106,7 @@ export default class SessionService extends Service {
         defaultRegionCode: bundle.defaultRegionCode || null,
         subscriptionTier: bundle.subscriptionTier ?? null,
         lockState: bundle.lockState ?? null,
+        whatsappConfigured: bundle.whatsappConfigured === true,
       },
     };
     this.saveToStorage();
@@ -190,6 +198,7 @@ export default class SessionService extends Service {
         regions: [],
         defaultRegionCode: null,
         subscriptionTier: null,
+        whatsappConfigured: false,
       },
     };
     localStorage.removeItem('aala-session');

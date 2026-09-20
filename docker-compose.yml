@@ -19,15 +19,17 @@ services:
       timeout: 5s
       retries: 5
 
-  dragonfly:
-    image: docker.dragonflydb.io/dragonflydb/dragonfly:latest
-    container_name: aala-land-dragonfly
+  valkey:
+    image: valkey/valkey:9.1-alpine
+    container_name: aala-land-valkey
+    # BullMQ cannot work correctly if the store evicts keys.
+    command: ["valkey-server", "--maxmemory-policy", "noeviction"]
     ports:
       - "6470:6379"
     volumes:
-      - dragonfly_data:/data
+      - valkey_data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "-p", "6379", "ping"]
+      test: ["CMD", "valkey-cli", "-p", "6379", "ping"]
       interval: 5s
       timeout: 3s
       retries: 5
@@ -52,5 +54,5 @@ services:
 
 volumes:
   postgres_data:
-  dragonfly_data:
+  valkey_data:
   minio_data:

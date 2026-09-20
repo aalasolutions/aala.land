@@ -3,7 +3,12 @@ import { service } from '@ember/service';
 import { action } from '@ember/object';
 import { tracked } from '@glimmer/tracking';
 import { cancelDebounce, debounceTask, runTask } from 'ember-lifeline';
-import { isAdminRole, getVisibleGroups, canSwitchRegion } from '../utils/roles';
+import {
+  isAdminRole,
+  getVisibleGroups,
+  canSwitchRegion,
+  canAccessWhatsapp,
+} from '../utils/roles';
 import config from 'land/config/environment';
 
 export default class ApplicationController extends Controller {
@@ -12,6 +17,7 @@ export default class ApplicationController extends Controller {
   @service router;
   @service region;
   @service socket;
+  @service whatsapp;
   @service uiSettings;
 
   // Development-only navigation (Table Options showcase).
@@ -42,6 +48,23 @@ export default class ApplicationController extends Controller {
   // Icon-rail collapse only applies above the breakpoint; below it sidebar is an overlay.
   get desktopCollapsed() {
     return this.sidebarCollapsed && !this.isNarrow;
+  }
+
+  // Disabled until WhatsApp env vars are confirmed; page, sidebar, and redirect all share this flag.
+  get whatsappDisabled() {
+    return !this.session.whatsappConfigured;
+  }
+
+  // data-tooltip carries both the collapsed-rail label and disabled explanation; disabled wins.
+  get whatsappTooltip() {
+    if (this.whatsappDisabled) {
+      return 'WhatsApp is not configured. Check system variables or contact your admin.';
+    }
+    return this.desktopCollapsed ? 'WhatsApp' : null;
+  }
+
+  get whatsappUnreadCount() {
+    return this.whatsapp.totalUnread;
   }
 
   // True when the sidebar is visually a rail (drives the toggle button caret).
@@ -206,6 +229,7 @@ export default class ApplicationController extends Controller {
       } else {
         this.teardownSocket();
       }
+      this.syncWhatsappSocket();
     };
 
     this.router.on('routeDidChange', this.routeDidChangeHandler);
@@ -226,6 +250,20 @@ export default class ApplicationController extends Controller {
       this.setupSocket();
     } else {
       this.teardownSocket();
+    }
+    this.syncWhatsappSocket();
+  }
+
+  // Same gates as routes/whatsapp.js.
+  syncWhatsappSocket() {
+    if (
+      this.session.isAuthenticated &&
+      this.session.whatsappConfigured &&
+      canAccessWhatsapp(this.auth.currentUser?.role)
+    ) {
+      this.whatsapp.connectSocket();
+    } else {
+      this.whatsapp.disconnectSocket();
     }
   }
 
@@ -294,6 +332,7 @@ export default class ApplicationController extends Controller {
     }
 
     this.socket.disconnect();
+    this.whatsapp.disconnectSocket();
 
     this.showNotifications = false;
     this.notifications = [];

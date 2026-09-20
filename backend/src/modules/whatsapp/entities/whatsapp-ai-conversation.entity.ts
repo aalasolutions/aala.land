@@ -29,6 +29,15 @@ export class WhatsappAiConversation {
   @Column({ name: 'chat_id', type: 'varchar', length: 255 })
   chatId: string;
 
+  // Same identity as whatsapp_messages/chats, so AI and Meta reply windows can reconcile per number.
+  @Column({
+    name: 'phone_number_id',
+    type: 'varchar',
+    length: 64,
+    nullable: true,
+  })
+  phoneNumberId: string | null;
+
   @Column({ name: 'lead_id', type: 'uuid', nullable: true })
   leadId: string | null;
 

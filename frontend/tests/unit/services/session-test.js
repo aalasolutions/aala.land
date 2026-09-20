@@ -124,6 +124,58 @@ module('Unit | Service | session', function (hooks) {
     assert.false(service.isImpersonating);
   });
 
+  test('whatsappConfigured defaults to false with no session established', function (assert) {
+    const service = this.owner.lookup('service:session');
+    assert.false(service.whatsappConfigured);
+  });
+
+  test('establish stores whatsappConfigured strictly: missing reads as not configured', function (assert) {
+    const service = this.owner.lookup('service:session');
+
+    service.establish({
+      user: null,
+      accessToken: 'tok',
+      refreshToken: null,
+      regions: [],
+      defaultRegionCode: null,
+      whatsappConfigured: true,
+    });
+    assert.true(service.whatsappConfigured);
+
+    service.establish({
+      user: null,
+      accessToken: 'tok',
+      refreshToken: null,
+      regions: [],
+      defaultRegionCode: null,
+    });
+    assert.false(
+      service.whatsappConfigured,
+      'a missing flag reads as not configured',
+    );
+  });
+
+  test('hydrate updates whatsappConfigured from a fresh bootstrap bundle', function (assert) {
+    const service = this.owner.lookup('service:session');
+    service.establish({
+      user: null,
+      accessToken: 'tok',
+      refreshToken: null,
+      regions: [],
+      defaultRegionCode: null,
+      whatsappConfigured: false,
+    });
+
+    service.hydrate({
+      user: null,
+      regions: [],
+      defaultRegionCode: null,
+      whatsappConfigured: true,
+    });
+
+    assert.true(service.whatsappConfigured);
+  });
+
   test('invalidate clears both session slots', async function (assert) {
     const service = this.owner.lookup('service:session');
     localStorage.setItem('aala-session', 'something');

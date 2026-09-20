@@ -10,6 +10,8 @@ import { CompaniesService } from '../companies/companies.service';
 import { User } from '../users/entities/user.entity';
 import { Region, resolveRegions } from '@shared/constants/regions';
 import { seesAllRegions } from '@shared/utils/region-visibility.util';
+import { isWhatsappConfigured } from '@shared/utils/whatsapp-config.util';
+import { envString } from '@shared/utils/env.util';
 import { RegisterDto } from './dto/register.dto';
 import { Role } from '@shared/enums/roles.enum';
 import { SubscriptionTier } from '../companies/entities/company.entity';
@@ -18,6 +20,7 @@ import {
   LockStateService,
 } from '@modules/lock/lock-state.service';
 import { SystemEmailService } from '@modules/email/system-email.service';
+import { errorMessage } from '@shared/utils/error.util';
 import { DataSource } from 'typeorm';
 import * as bcrypt from 'bcryptjs';
 import * as crypto from 'crypto';
@@ -61,6 +64,7 @@ interface LoginResponse {
   defaultRegionCode: string;
   subscriptionTier: SubscriptionTier | null;
   lockState: CompanyLockState | null;
+  whatsappConfigured: boolean;
 }
 
 interface BootstrapResponse {
@@ -75,6 +79,7 @@ interface BootstrapResponse {
   defaultRegionCode: string;
   subscriptionTier: SubscriptionTier | null;
   lockState: CompanyLockState | null;
+  whatsappConfigured: boolean;
 }
 
 interface CompanyContext {
@@ -83,6 +88,8 @@ interface CompanyContext {
   subscriptionTier: SubscriptionTier | null;
   /** Write-lock/banner state for the tenant app; null without a company. */
   lockState: CompanyLockState | null;
+  /** Server-level: whether WhatsApp env vars are configured. Same for every company. */
+  whatsappConfigured: boolean;
 }
 
 interface JwtPayload {
@@ -165,6 +172,7 @@ export class AuthService {
       lockState: companyId
         ? await this.lockStateService.getLockState(companyId)
         : null,
+      whatsappConfigured: isWhatsappConfigured(),
     };
   }
 
@@ -276,7 +284,7 @@ export class AuthService {
 
       await this.usersService.updateResetToken(user.id, token, expires);
 
-      const appUrl = (process.env.APP_URL || 'http://localhost:4200').replace(
+      const appUrl = envString('APP_URL', 'http://localhost:4200').replace(
         /\/$/,
         '',
       );
@@ -290,7 +298,7 @@ export class AuthService {
         );
       } catch (err) {
         this.logger.error(
-          `Password reset email failed for ${email}: ${err instanceof Error ? err.message : String(err)}`,
+          `Password reset email failed for ${email}: ${errorMessage(err)}`,
         );
       }
     }
@@ -381,6 +389,7 @@ export class AuthService {
         subscriptionTier: savedCompany.subscriptionTier,
         // A company created this instant cannot be locked.
         lockState: null,
+        whatsappConfigured: isWhatsappConfigured(),
       };
     });
 
@@ -392,7 +401,7 @@ export class AuthService {
       );
     } catch (err) {
       this.logger.error(
-        `Welcome email failed for ${result.user.email}: ${err instanceof Error ? err.message : String(err)}`,
+        `Welcome email failed for ${result.user.email}: ${errorMessage(err)}`,
       );
     }
 

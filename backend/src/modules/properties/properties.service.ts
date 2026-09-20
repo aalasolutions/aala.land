@@ -59,6 +59,7 @@ import {
   effectiveRegionCodes,
   scopedRegionCodes,
 } from '../../shared/utils/region-visibility.util';
+import { errorMessage } from '@shared/utils/error.util';
 
 // An empty object must not reach resolveOrCreate, which would insert an all-null contact
 function hasContactIdentity(
@@ -1051,7 +1052,7 @@ export class PropertiesService {
         });
         unitsToCreate.push(unit);
       } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
+        const message = errorMessage(err);
         results.failed++;
         results.errors.push(`Row ${i}: ${message}`);
       }
@@ -1062,7 +1063,7 @@ export class PropertiesService {
         await this.unitRepository.save(unitsToCreate);
         results.created = unitsToCreate.length;
       } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
+        const message = errorMessage(err);
         results.errors.push(`Batch insert failed: ${message}`);
         results.failed += unitsToCreate.length;
       }

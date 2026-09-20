@@ -5,6 +5,19 @@ import { TOOLTIP_ID } from '../../services/tooltip';
 
 const GAP = 8;
 const EDGE = 8;
+const FLIP_MARGIN = 64;
+const MAX_WIDTH = 256; // keep in sync with --nu-tooltip--MaxWidth (16rem)
+const ARROW_LEAD = 20; // --nu-tooltip--ArrowInset (16) + half --nu-tooltip--ArrowSize (4)
+
+// Physical modifier per logical placement, as [ltr, rtl].
+const PHYSICAL = {
+  start: ['left', 'right'],
+  end: ['right', 'left'],
+  'top-start': ['top-left', 'top-right'],
+  'top-end': ['top-right', 'top-left'],
+  'bottom-start': ['bottom-left', 'bottom-right'],
+  'bottom-end': ['bottom-right', 'bottom-left'],
+};
 // Width a side-placed tooltip needs before it flips to the other side.
 const SIDE_ROOM = 260;
 
@@ -100,7 +113,7 @@ export default class NuTooltipHostComponent extends Component {
 
   // A side placement with no room flips to the other side, so the hint never
   // has to be slid on top of the control it describes.
-  #flipHorizontal(side, rect) {
+  #flipSide(side, rect) {
     if (!rect) return side;
     const roomLeft = rect.left >= SIDE_ROOM;
     const roomRight = rect.right <= window.innerWidth - SIDE_ROOM;
@@ -114,24 +127,56 @@ export default class NuTooltipHostComponent extends Component {
   }
 
   get resolvedPlacement() {
-    const placement = this.tooltip.placement;
     const rect = this.tooltip.anchor;
+    const pair = PHYSICAL[this.tooltip.placement];
+    const placement = pair
+      ? pair[this.isRtl ? 1 : 0]
+      : this.tooltip.placement;
 
-    if (placement === 'start') {
-      return this.#flipHorizontal(this.isRtl ? 'right' : 'left', rect);
+    if (!rect) {
+      return placement;
     }
-    if (placement === 'end') {
-      return this.#flipHorizontal(this.isRtl ? 'left' : 'right', rect);
+
+    if (placement === 'left' || placement === 'right') {
+      return this.#flipSide(placement, rect);
     }
-    if (placement === 'top' && rect && rect.top < 64) {
-      return 'bottom';
+
+    return this.#flipCorner(this.#flipVertical(placement, rect), rect);
+  }
+
+  // A `top` box grows upward, so it flips only when the trigger sits near the top edge.
+  #flipVertical(placement, rect) {
+    if (placement.startsWith('top') && rect.top < FLIP_MARGIN) {
+      return placement.replace('top', 'bottom');
     }
     if (
-      placement === 'bottom' &&
-      rect &&
-      rect.bottom > window.innerHeight - 64
+      placement.startsWith('bottom') &&
+      rect.bottom > window.innerHeight - FLIP_MARGIN
     ) {
-      return 'top';
+      return placement.replace('bottom', 'top');
+    }
+    return placement;
+  }
+
+  // Leading edge of the panel, placed so the arrow lands just inside the trigger's leading edge.
+  #cornerAnchor(rect, extendsRight) {
+    const lead = Math.min(ARROW_LEAD, rect.width / 2);
+    return extendsRight
+      ? rect.right - lead - ARROW_LEAD
+      : rect.left + lead + ARROW_LEAD;
+  }
+
+  // `-left` extends leftward from the trigger, so it is the one that overflows on the left.
+  #flipCorner(placement, rect) {
+    const fitsLeftward = this.#cornerAnchor(rect, false) - MAX_WIDTH >= EDGE;
+    const fitsRightward =
+      this.#cornerAnchor(rect, true) + MAX_WIDTH <= window.innerWidth - EDGE;
+
+    if (placement.endsWith('-left') && !fitsLeftward && fitsRightward) {
+      return placement.replace('-left', '-right');
+    }
+    if (placement.endsWith('-right') && !fitsRightward && fitsLeftward) {
+      return placement.replace('-right', '-left');
     }
     return placement;
   }
@@ -157,6 +202,22 @@ export default class NuTooltipHostComponent extends Component {
     const centerY = rect.top + rect.height / 2;
 
     switch (this.resolvedPlacement) {
+      case 'top-left':
+        return htmlSafe(
+          `left:${this.#cornerAnchor(rect, false)}px;top:${rect.top - GAP}px;`,
+        );
+      case 'top-right':
+        return htmlSafe(
+          `left:${this.#cornerAnchor(rect, true)}px;top:${rect.top - GAP}px;`,
+        );
+      case 'bottom-left':
+        return htmlSafe(
+          `left:${this.#cornerAnchor(rect, false)}px;top:${rect.bottom + GAP}px;`,
+        );
+      case 'bottom-right':
+        return htmlSafe(
+          `left:${this.#cornerAnchor(rect, true)}px;top:${rect.bottom + GAP}px;`,
+        );
       case 'bottom':
         return htmlSafe(`left:${centerX}px;top:${rect.bottom + GAP}px;`);
       case 'left':

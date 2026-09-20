@@ -1,16 +1,5 @@
-import { IsString, IsNotEmpty, IsOptional, IsObject } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
-
-export class WebhookPayloadDto {
-  @ApiProperty({ description: 'WhatsApp webhook object type' })
-  @IsString()
-  @IsNotEmpty()
-  object: string;
-
-  @ApiProperty({ description: 'Webhook entry array', type: 'array' })
-  @IsObject({ each: true })
-  entry: Record<string, unknown>[];
-}
 
 export class WebhookVerifyDto {
   @ApiProperty()
@@ -27,4 +16,20 @@ export class WebhookVerifyDto {
   @IsString()
   @IsNotEmpty()
   'hub.challenge': string;
+
+  // Meta sends each param twice, dotted and underscored; extras are 400'd by forbidNonWhitelisted.
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  hub_mode?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  hub_verify_token?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  hub_challenge?: string;
 }

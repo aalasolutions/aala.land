@@ -4,6 +4,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Job, UnrecoverableError } from 'bullmq';
 import { Repository } from 'typeorm';
 import { DeleteObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import { errorMessage } from '@shared/utils/error.util';
 import {
   StorageBucketKind,
   StoragePurgeJob,
@@ -52,7 +53,7 @@ export class StoragePurgeProcessor extends WorkerHost {
           if (!isNotFound(err)) throw err;
         });
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
+      const message = errorMessage(err);
       const attempts = row.attempts + 1;
       const exhausted =
         attempts >= STORAGE_PURGE_MAX_ATTEMPTS ||

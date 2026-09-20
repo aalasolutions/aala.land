@@ -62,7 +62,6 @@ export default class RecordHistoryListComponent extends Component {
     this.fetchPage(target);
   }
 
-  // Refetch when @reloadKey, @entityType or @entityId changes.
   reloadOn = modifier((element, [key, entityType, entityId]) => {
     if (
       key === this.reloadKey &&

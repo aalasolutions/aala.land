@@ -1,7 +1,7 @@
 import {
   WebSocketGateway,
   WebSocketServer,
-  OnGatewayConnection,
+  OnGatewayInit,
   OnGatewayDisconnect,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
@@ -9,13 +9,11 @@ import { Logger, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { errorMessage } from '@shared/utils/error.util';
+import { envList } from '@shared/utils/env.util';
 import { User } from '../users/entities/user.entity';
 
-const websocketCorsOrigins = process.env.CORS_ORIGIN
-  ? process.env.CORS_ORIGIN.split(',')
-      .map((origin) => origin.trim())
-      .filter(Boolean)
-  : ['http://localhost:4200'];
+const websocketCorsOrigins = envList('CORS_ORIGIN', ['http://localhost:4200']);
 
 @WebSocketGateway({
   cors: {
@@ -24,7 +22,7 @@ const websocketCorsOrigins = process.env.CORS_ORIGIN
   },
 })
 export class NotificationsGateway
-  implements OnGatewayConnection, OnGatewayDisconnect
+  implements OnGatewayInit, OnGatewayDisconnect
 {
   @WebSocketServer()
   server: Server;
@@ -37,12 +35,20 @@ export class NotificationsGateway
     private readonly usersRepository: Repository<User>,
   ) {}
 
-  async handleConnection(client: Socket) {
+  afterInit(server: Server) {
+    // Runs before CONNECT is sent, so the rooms are joined first.
+    server.use((client, next) => {
+      void this.authenticate(client).then(next);
+    });
+  }
+
+  private async authenticate(client: Socket): Promise<Error | undefined> {
     try {
       const token = this.getSocketToken(client);
       const payload = await this.jwtService.verifyAsync<{
         sub: string;
         companyId: string;
+        exp?: number;
       }>(token);
       const user = await this.usersRepository.findOne({
         where: {
@@ -61,22 +67,36 @@ export class NotificationsGateway
         throw new UnauthorizedException('User no longer exists or is inactive');
       }
 
-      client.join(`user_${user.id}`);
-      client.join(`company_${user.companyId}`);
+      client.data = {
+        userId: user.id,
+        companyId: user.companyId,
+        tokenExp: payload.exp,
+      };
+      await client.join(`user_${user.id}`);
+      await client.join(`company_${user.companyId}`);
       this.logger.log(
         `Client connected: ${client.id}, joined user_${user.id} and company_${user.companyId}`,
       );
+      return undefined;
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
+      const message = errorMessage(error);
       this.logger.warn(
         `Socket authentication failed for client ${client.id}: ${message}`,
       );
-      client.disconnect();
+      return new Error('Unauthorized');
     }
   }
 
   handleDisconnect(client: Socket) {
     this.logger.log(`Client disconnected: ${client.id}`);
+  }
+
+  disconnectUser(userId: string) {
+    this.server?.in(`user_${userId}`).disconnectSockets(true);
+  }
+
+  disconnectCompany(companyId: string) {
+    this.server?.in(`company_${companyId}`).disconnectSockets(true);
   }
 
   sendNotificationToUser(userId: string, notification: any) {
