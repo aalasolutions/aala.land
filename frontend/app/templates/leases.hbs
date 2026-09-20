@@ -105,148 +105,150 @@
 
   <Nuvo::Card>
     {{#if @model.leases.length}}
-      <div class="nu-table-wrapper">
-        <table class="nu-table">
-          <thead>
-            <tr>
-              <th>Tenant</th>
-              <th>Unit</th>
-              <th>Type</th>
-              <th>Rent</th>
-              <th>Period</th>
-              <th>Status</th>
-              <th>Tenancy Reg. Ref</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {{#each @model.leases as |lease|}}
-              <tr data-test-lease-row>
-                <td class="font-bold">{{or lease.contact.displayName "Unknown tenant"}}</td>
-                <td class="text-muted">
-                  {{#if lease.unit}}
-                    <Nuvo::Button
-                      @variant="secondary"
-                      @size="xs"
-                      @route="properties.unit"
-                      @models={{array lease.unit.areaId lease.unit.id}}
-                      @text={{lease.unit.unitNumber}}
-                      data-test-view-lease-unit
-                    />
-                  {{/if}}
-                </td>
-                <td class="text-muted">{{lease.type}}</td>
-                <td class="text-muted">{{format-currency lease.monthlyRent}}/mo</td>
-                <td class="text-muted">{{format-date lease.startDate}} - {{format-date lease.endDate}}</td>
-                <td>
-                  <div class="flex gap-1 wrap">
-                    <Nuvo::Tag
-                      class="tag-lease-{{lowercase lease.status}}"
-                      @text={{lease.status}}
-                    />
-                    {{#if lease.deletedAt}}
-                      <Nuvo::Tag @variant="secondary" @text="Archived" data-test-lease-archived-badge />
-                    {{/if}}
-                  </div>
-                </td>
-                <td class="text-muted">{{or lease.tenancyRegistrationRef "-"}}</td>
-                <td>
-                  <div class="flex gap-2 wrap">
-                    {{#if this.canViewHistory}}
-                      <Nuvo::Button
-                        @variant="secondary"
-                        @size="xs"
-                        @icon="clock-counter-clockwise"
-                        aria-label="History for lease of {{or lease.contact.displayName "Unknown tenant"}}"
-                        data-test-lease-history
-                        {{on "click" (fn this.openHistory lease)}}
-                      />
-                    {{/if}}
-                    {{#if lease.deletedAt}}
-                      {{#if this.canArchiveLease}}
-                        <Nuvo::Button
-                          data-test-unarchive-lease
-                          @variant="secondary"
-                          @size="xs"
-                          @icon="arrow-counter-clockwise"
-                          {{on "click" (fn this.openArchive lease "unarchive")}}
-                        >
-                          Unarchive
-                        </Nuvo::Button>
-                      {{/if}}
-                    {{else}}
-                      <Nuvo::Button
-                        @variant="secondary"
-                        @size="xs"
-                        @icon="pencil-simple"
-                        data-test-edit-lease
-                        {{on "click" (fn this.openEdit lease)}}
-                      >
-                        Edit
-                      </Nuvo::Button>
-                      {{#if (eq lease.status "ACTIVE")}}
-                        <Nuvo::Button
-                          data-test-renew-lease
-                          @variant="secondary"
-                          @size="xs"
-                          @icon="arrows-clockwise"
-                          {{on "click" (fn this.renewLease lease)}}
-                        >
-                          Renew
-                        </Nuvo::Button>
-                        <Nuvo::Button
-                          data-test-terminate-lease
-                          @variant="danger"
-                          @size="xs"
-                          @icon="x-circle"
-                          {{on "click" (fn this.openTerminate lease)}}
-                        >
-                          Terminate
-                        </Nuvo::Button>
-                      {{/if}}
-                      {{#if (eq lease.status "EXPIRED")}}
-                        <Nuvo::Button
-                          data-test-renew-lease
-                          @variant="secondary"
-                          @size="xs"
-                          @icon="arrows-clockwise"
-                          {{on "click" (fn this.renewLease lease)}}
-                        >
-                          Renew
-                        </Nuvo::Button>
-                      {{/if}}
-                      {{#if (eq lease.status "DRAFT")}}
-                        {{#if this.canDeleteLease}}
-                          <Nuvo::Button
-                            @variant="danger"
-                            @size="xs"
-                            @icon="trash"
-                            aria-label="Delete lease for {{lease.contact.displayName}}"
-                            data-test-delete-lease
-                            {{on "click" (fn this.openDelete lease)}}
-                          />
-                        {{/if}}
-                      {{else if this.canArchiveLease}}
-                        {{#unless (eq lease.status "ACTIVE")}}
-                          <Nuvo::Button
-                            data-test-archive-lease
-                            @variant="secondary"
-                            @size="xs"
-                            @icon="archive"
-                            {{on "click" (fn this.openArchive lease "archive")}}
-                          >
-                            Archive
-                          </Nuvo::Button>
-                        {{/unless}}
-                      {{/if}}
-                    {{/if}}
-                  </div>
-                </td>
-              </tr>
-            {{/each}}
-          </tbody>
-        </table>
-      </div>
+      <DataTable
+        @columns={{this.columns}}
+        @rows={{@model.leases}}
+        @pinColumns={{true}}
+        @reorderable={{true}}
+        @sortable={{true}}
+        @showOptions={{true}}
+        @tableId="leases"
+        as |cell|
+      >
+        {{#if (eq cell.key "contact.displayName")}}
+          <span class="font-bold" data-test-lease-row>{{or
+              cell.value
+              "Unknown tenant"
+            }}</span>
+        {{else if (eq cell.key "unit.unitNumber")}}
+          {{#if cell.row.unit}}
+            <Nuvo::Button
+              @variant="secondary"
+              @size="xs"
+              @route="properties.unit"
+              @models={{array cell.row.unit.areaId cell.row.unit.id}}
+              @text={{cell.row.unit.unitNumber}}
+              data-test-view-lease-unit
+            />
+          {{/if}}
+        {{else if (eq cell.key "monthlyRent")}}
+          <span class="text-muted">{{format-currency cell.value}}/mo</span>
+        {{else if (eq cell.key "startDate")}}
+          <span class="text-muted">{{format-date cell.value}} - {{format-date cell.row.endDate}}</span>
+        {{else if (eq cell.key "status")}}
+          <div class="flex gap-1 wrap">
+            <Nuvo::Tag
+              class="tag-lease-{{lowercase cell.value}}"
+              @text={{cell.value}}
+            />
+            {{#if cell.row.deletedAt}}
+              <Nuvo::Tag
+                @variant="secondary"
+                @text="Archived"
+                data-test-lease-archived-badge
+              />
+            {{/if}}
+          </div>
+        {{else if (eq cell.key "tenancyRegistrationRef")}}
+          <span class="text-muted">{{or cell.value "-"}}</span>
+        {{else if (eq cell.key "id")}}
+          <div class="flex gap-2 wrap">
+            {{#if this.canViewHistory}}
+              <Nuvo::Button
+                @variant="secondary"
+                @size="xs"
+                @icon="clock-counter-clockwise"
+                aria-label="History for lease of {{or
+                  cell.row.contact.displayName
+                  'Unknown tenant'
+                }}"
+                data-test-lease-history
+                {{on "click" (fn this.openHistory cell.row)}}
+              />
+            {{/if}}
+            {{#if cell.row.deletedAt}}
+              {{#if this.canArchiveLease}}
+                <Nuvo::Button
+                  data-test-unarchive-lease
+                  @variant="secondary"
+                  @size="xs"
+                  @icon="arrow-counter-clockwise"
+                  {{on "click" (fn this.openArchive cell.row "unarchive")}}
+                >
+                  Unarchive
+                </Nuvo::Button>
+              {{/if}}
+            {{else}}
+              <Nuvo::Button
+                @variant="secondary"
+                @size="xs"
+                @icon="pencil-simple"
+                data-test-edit-lease
+                {{on "click" (fn this.openEdit cell.row)}}
+              >
+                Edit
+              </Nuvo::Button>
+              {{#if (eq cell.row.status "ACTIVE")}}
+                <Nuvo::Button
+                  data-test-renew-lease
+                  @variant="secondary"
+                  @size="xs"
+                  @icon="arrows-clockwise"
+                  {{on "click" (fn this.renewLease cell.row)}}
+                >
+                  Renew
+                </Nuvo::Button>
+                <Nuvo::Button
+                  data-test-terminate-lease
+                  @variant="danger"
+                  @size="xs"
+                  @icon="x-circle"
+                  {{on "click" (fn this.openTerminate cell.row)}}
+                >
+                  Terminate
+                </Nuvo::Button>
+              {{/if}}
+              {{#if (eq cell.row.status "EXPIRED")}}
+                <Nuvo::Button
+                  data-test-renew-lease
+                  @variant="secondary"
+                  @size="xs"
+                  @icon="arrows-clockwise"
+                  {{on "click" (fn this.renewLease cell.row)}}
+                >
+                  Renew
+                </Nuvo::Button>
+              {{/if}}
+              {{#if (eq cell.row.status "DRAFT")}}
+                {{#if this.canDeleteLease}}
+                  <Nuvo::Button
+                    @variant="danger"
+                    @size="xs"
+                    @icon="trash"
+                    aria-label="Delete lease for {{cell.row.contact.displayName}}"
+                    data-test-delete-lease
+                    {{on "click" (fn this.openDelete cell.row)}}
+                  />
+                {{/if}}
+              {{else if this.canArchiveLease}}
+                {{#unless (eq cell.row.status "ACTIVE")}}
+                  <Nuvo::Button
+                    data-test-archive-lease
+                    @variant="secondary"
+                    @size="xs"
+                    @icon="archive"
+                    {{on "click" (fn this.openArchive cell.row "archive")}}
+                  >
+                    Archive
+                  </Nuvo::Button>
+                {{/unless}}
+              {{/if}}
+            {{/if}}
+          </div>
+        {{else}}
+          <span class="text-muted">{{cell.value}}</span>
+        {{/if}}
+      </DataTable>
     {{else}}
       {{#if @model.total}}
         <Nuvo::EmptyState

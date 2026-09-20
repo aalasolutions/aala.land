@@ -43,28 +43,25 @@
     {{#if this.hasCreditAgents}}
       <Nuvo::Card class="max-w-lg">
         <div class="text-sm font-bold mb-2">AI credits by agent</div>
-        <div class="nu-table-wrapper">
-          <table class="nu-table" data-test-credit-agents>
-            <thead>
-              <tr>
-                <th>Agent</th>
-                <th>Credits</th>
-                <th>Leads</th>
-                <th>AI turns</th>
-              </tr>
-            </thead>
-            <tbody>
-              {{#each this.creditAgents as |agent|}}
-                <tr data-test-credit-agent-row={{agent.userId}}>
-                  <td>{{agent.name}}</td>
-                  <td>{{agent.credits}}</td>
-                  <td>{{agent.leads}}</td>
-                  <td>{{agent.aiTurns}}</td>
-                </tr>
-              {{/each}}
-            </tbody>
-          </table>
-        </div>
+        <DataTable
+          @columns={{this.creditAgentColumns}}
+          @rows={{this.creditAgentRows}}
+          @pinColumns={{true}}
+          @reorderable={{true}}
+          @sortable={{true}}
+          @showOptions={{true}}
+          @tableId="company-credits"
+          data-test-credit-agents
+          as |cell|
+        >
+          {{#if (eq cell.key "name")}}
+            <span
+              data-test-credit-agent-row={{cell.row.userId}}
+            >{{cell.value}}</span>
+          {{else}}
+            {{cell.value}}
+          {{/if}}
+        </DataTable>
       </Nuvo::Card>
     {{/if}}
 
@@ -248,60 +245,58 @@
       <Nuvo::Card class="mt-4" data-test-billing-history-panel>
         <h3 class="text-lg font-bold mb-4">Billing History</h3>
         {{#if this.billingHistory.length}}
-          <div class="nu-table-wrapper">
-            <table class="nu-table">
-              <thead>
-                <tr>
-                  <th>Date</th>
-                  <th>Amount</th>
-                  <th>Status</th>
-                  <th>Invoice</th>
-                </tr>
-              </thead>
-              <tbody>
-                {{#each this.billingHistory as |record|}}
-                  <tr data-test-billing-history-row>
-                    <td>{{format-date record.occurredAt}}</td>
-                    <td class="font-bold">{{format-money
-                        record.amount
-                        record.currency
-                      }}</td>
-                    <td>
-                      {{#if (eq record.type "payment_succeeded")}}
-                        <Nuvo::Tag
-                          class="tag-txn-completed"
-                          @text="Paid"
-                          data-test-history-status
-                        />
-                      {{else}}
-                        <Nuvo::Tag
-                          class="tag-txn-failed"
-                          @text="Failed"
-                          data-test-history-status
-                        />
-                      {{/if}}
-                    </td>
-                    <td>
-                      {{#if record.hostedInvoiceUrl}}
-                        <a
-                          href={{record.hostedInvoiceUrl}}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          class="link"
-                          data-test-history-invoice-link
-                        >
-                          <Ui::Ph @icon="receipt" />
-                          View
-                        </a>
-                      {{else}}
-                        <span class="text-muted">&mdash;</span>
-                      {{/if}}
-                    </td>
-                  </tr>
-                {{/each}}
-              </tbody>
-            </table>
-          </div>
+          <DataTable
+            @columns={{this.billingHistoryColumns}}
+            @rows={{this.billingHistory}}
+            @pinColumns={{true}}
+            @reorderable={{true}}
+            @sortable={{true}}
+            @showOptions={{true}}
+            @tableId="company-billing"
+            as |cell|
+          >
+            {{#if (eq cell.key "occurredAt")}}
+              <span data-test-billing-history-row>{{format-date
+                  cell.value
+                }}</span>
+            {{else if (eq cell.key "amount")}}
+              <span class="font-bold">{{format-money
+                  cell.value
+                  cell.row.currency
+                }}</span>
+            {{else if (eq cell.key "type")}}
+              {{#if (eq cell.value "payment_succeeded")}}
+                <Nuvo::Tag
+                  class="tag-txn-completed"
+                  @text="Paid"
+                  data-test-history-status
+                />
+              {{else}}
+                <Nuvo::Tag
+                  class="tag-txn-failed"
+                  @text="Failed"
+                  data-test-history-status
+                />
+              {{/if}}
+            {{else if (eq cell.key "hostedInvoiceUrl")}}
+              {{#if cell.value}}
+                <a
+                  href={{cell.value}}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="link"
+                  data-test-history-invoice-link
+                >
+                  <Ui::Ph @icon="receipt" />
+                  View
+                </a>
+              {{else}}
+                <span class="text-muted">&mdash;</span>
+              {{/if}}
+            {{else}}
+              {{cell.value}}
+            {{/if}}
+          </DataTable>
           <Nuvo::Pagination
             @selectId="billing-history-limit"
             @page={{this.billingHistoryPage}}

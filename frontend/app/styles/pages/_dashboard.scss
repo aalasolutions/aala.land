@@ -17,24 +17,49 @@
   gap: nu-space(1);
 }
 
-.kpi-grid {
+// Action tier and outcome tier stack on the left, status rail runs down the right.
+.kpi-layout {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: 2fr 1fr;
+  grid-template-areas:
+    "action status"
+    "outcome status";
   gap: nu-space(4);
 
   @media (max-width: 1024px) {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "action"
+      "outcome"
+      "status";
   }
-  @media (max-width: 768px) {
+}
+
+.kpi-action {
+  grid-area: action;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: nu-space(4);
+
+  @media (max-width: 640px) {
     grid-template-columns: 1fr;
   }
 }
 
-.kpi-grid-3 {
-  grid-template-columns: repeat(3, 1fr);
+.kpi-outcome {
+  grid-area: outcome;
+}
 
-  @media (max-width: 768px) {
-    grid-template-columns: 1fr;
+// Rows share the rail's height equally so the gaps stay on the scale instead of
+// being inflated by leftover space.
+.kpi-status {
+  grid-area: status;
+  display: flex;
+  flex-direction: column;
+  gap: nu-space(2);
+
+  > * {
+    flex: 1;
   }
 }
 

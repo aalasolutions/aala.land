@@ -27,7 +27,7 @@ export default class AdminCompaniesIndexController extends Controller {
   queryParams = ['page', 'limit', 'search'];
 
   @tracked page = 1;
-  @tracked limit = 20;
+  @tracked limit = 50;
   @tracked search = '';
 
   // Client-side refinements on the loaded page (backend filters by search).
@@ -36,6 +36,22 @@ export default class AdminCompaniesIndexController extends Controller {
 
   railOptions = RAIL_OPTIONS;
   statusOptions = STATUS_OPTIONS;
+
+  columns = [
+    { name: 'Company', valuePath: 'name', width: 240, isFixed: 'left' },
+    { name: 'Plan', valuePath: 'tier', width: 120 },
+    { name: 'Rail', valuePath: 'rail', width: 120 },
+    { name: 'Seats', valuePath: 'seatsUsed', width: 120 },
+    { name: 'MRR', valuePath: 'mrr.amountMinor', width: 140 },
+    { name: 'Status', valuePath: 'status', width: 160 },
+    {
+      name: 'Actions',
+      valuePath: 'id',
+      width: 110,
+      isFixed: 'right',
+      isSortable: false,
+    },
+  ];
 
   get rows() {
     const rows = this.model.rows ?? [];
@@ -71,10 +87,8 @@ export default class AdminCompaniesIndexController extends Controller {
   }
 
   @action
-  openCompany(id, event) {
-    // LinkTo owns its own click so the row handler doesn't fire the same transition twice.
-    if (event?.target?.closest('a')) return;
-    this.router.transitionTo('admin.companies.company', id);
+  openCompany(row) {
+    this.router.transitionTo('admin.companies.company', row.id);
   }
 
   @action

@@ -38,7 +38,7 @@ module('Integration | Component | pagination', function (hooks) {
     assert.dom('[data-test-nu-pagination-status]').hasText('21-25 of 25');
   });
 
-  test('it marks the current limit option as selected', async function (assert) {
+  test('it shows the current limit on the per-page trigger', async function (assert) {
     this.setProperties({
       page: 1,
       limit: '20',
@@ -57,14 +57,14 @@ module('Integration | Component | pagination', function (hooks) {
       />
     `);
 
-    assert.dom('[data-test-nu-pagination-select]').hasValue('20');
-    assert.true(this.element.querySelector('option[value="20"]').selected);
+    assert.dom('[data-test-nu-pagination-select]').containsText('20');
+    assert.dom('[data-test-nu-pagination-select]').hasAria('haspopup', 'listbox');
   });
 
-  test('it falls back to 10 per page when @limit is missing', async function (assert) {
+  test('it falls back to 50 per page when @limit is missing', async function (assert) {
     this.setProperties({
       page: 1,
-      total: 25,
+      total: 120,
       onLimitChange: () => {},
     });
 
@@ -76,8 +76,7 @@ module('Integration | Component | pagination', function (hooks) {
       />
     `);
 
-    assert.dom('[data-test-nu-pagination-status]').hasText('1-10 of 25');
-    assert.dom('[data-test-nu-pagination-select]').hasValue('10');
-    assert.true(this.element.querySelector('option[value="10"]').selected);
+    assert.dom('[data-test-nu-pagination-status]').hasText('1-50 of 120');
+    assert.dom('[data-test-nu-pagination-select]').containsText('50');
   });
 });

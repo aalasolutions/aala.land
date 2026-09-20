@@ -1,0 +1,172 @@
+<NuvoDocs::Page
+  @id="segmented"
+  @title="Segmented"
+  @subtitle="Single- or multi-choice control rendered as one joined switch."
+  @components="Nuvo::Segmented"
+>
+  <NuvoDocs::Section @title="Overview" @id="overview">
+    <p class="nuvo-doc__intro">
+      A segmented control sets a value. Unlike Tabs, which navigate between
+      panels, it behaves as a radio group in single mode and as a set of
+      checkboxes in multiple mode, and announces itself that way. Use it for
+      two to five short choices that change a view or a filter at once.
+    </p>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Features" @id="features">
+    <ul class="nu-list">
+      <li class="nu-list__item">Icon plus label, icon only, or label only per option.</li>
+      <li class="nu-list__item">Single or multiple selection; controlled or uncontrolled.</li>
+      <li class="nu-list__item">Two extra sizes and a fill layout.</li>
+      <li class="nu-list__item">Arrow, Home and End keys; disabled options are skipped.</li>
+    </ul>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Options" @id="options">
+    <NuvoDocs::Example
+      @title="Icon and label"
+      @note="Each option carries a Phosphor icon and a label. The richest form, for view switchers at the top of a page."
+      @layout="block"
+      @code={{this.code.icons}}
+    >
+      <Nuvo::Segmented
+        @options={{this.segmentedViews}}
+        @value={{this.segmentedView}}
+        @onChange={{this.updateSegmentedView}}
+      />
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Icon only"
+      @note="Labels hide but remain as titles and accessible names; for toolbars where the icons are universally understood."
+      @layout="block"
+      @code={{this.code.iconOnly}}
+    >
+      <Nuvo::Segmented
+        @options={{this.segmentedViews}}
+        @value={{this.segmentedView}}
+        @onChange={{this.updateSegmentedView}}
+        @iconOnly={{true}}
+      />
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Label only with a disabled option"
+      @note="Plain text segments; a disabled option stays visible so the user knows the choice exists."
+      @layout="block"
+      @code={{this.code.plain}}
+    >
+      <Nuvo::Segmented
+        @options={{this.segmentedPlain}}
+        @value={{this.segmentedPeriod}}
+        @onChange={{this.updateSegmentedPeriod}}
+      />
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="value keys"
+      @note="Options keyed by value instead of id work the same, so an existing options array drops in unchanged."
+      @layout="block"
+      @code={{this.code.valueKeyed}}
+    >
+      <Nuvo::Segmented
+        @options={{this.segmentedValueKeyed}}
+        @value={{this.segmentedPeriod}}
+        @onChange={{this.updateSegmentedPeriod}}
+      />
+    </NuvoDocs::Example>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Modes" @id="modes">
+    <NuvoDocs::Example
+      @title="Uncontrolled"
+      @note="Without value the control starts on the first enabled option and keeps its own state."
+      @layout="block"
+      @code={{this.code.uncontrolled}}
+    >
+      <Nuvo::Segmented @options={{this.segmentedPlain}} />
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Multiple"
+      @note="Several segments raised at once; the value is an array and each segment is a checkbox. For filters such as amenities."
+      @layout="block"
+      @code={{this.code.multiple}}
+    >
+      <Nuvo::Segmented
+        @options={{this.segmentedAmenityOptions}}
+        @value={{this.segmentedAmenities}}
+        @onChange={{this.updateSegmentedAmenities}}
+        @multiple={{true}}
+      />
+      <span class="nu-text m-sm m-muted" data-test-nuvo-segmented-values>Selected: {{this.segmentedAmenities}}</span>
+    </NuvoDocs::Example>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Sizes and layout" @id="sizes">
+    <NuvoDocs::Example
+      @title="Small"
+      @note="Matches sm buttons in toolbars and card headers."
+      @layout="block"
+      @code={{this.code.sm}}
+    >
+      <Nuvo::Segmented
+        @options={{this.segmentedPlain}}
+        @value={{this.segmentedPeriod}}
+        @onChange={{this.updateSegmentedPeriod}}
+        @size="sm"
+      />
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Large"
+      @note="For a prominent mode switch at the top of a screen."
+      @layout="block"
+      @code={{this.code.lg}}
+    >
+      <Nuvo::Segmented
+        @options={{this.segmentedPlain}}
+        @value={{this.segmentedPeriod}}
+        @onChange={{this.updateSegmentedPeriod}}
+        @size="lg"
+      />
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Fill"
+      @note="Segments split the container width equally, for phones and narrow cards."
+      @layout="block"
+      @code={{this.code.fill}}
+    >
+      <Nuvo::Segmented
+        @options={{this.segmentedPlain}}
+        @value={{this.segmentedPeriod}}
+        @onChange={{this.updateSegmentedPeriod}}
+        @fill={{true}}
+      />
+    </NuvoDocs::Example>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Arguments" @id="arguments">
+    <NuvoDocs::Table @kind="args" @rows={{this.argRows}} />
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Callbacks" @id="callbacks">
+    <NuvoDocs::Table @kind="callbacks" @rows={{this.callbackRows}} />
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Accessibility" @id="accessibility">
+    <ul class="nu-list">
+      <li class="nu-list__item">Single mode renders role="radiogroup" with role="radio" buttons; multiple mode renders role="group" with role="checkbox" buttons. Both set aria-checked.</li>
+      <li class="nu-list__item">Single mode uses a roving tabindex and moves the value with focus; multiple mode keeps every segment tabbable and only moves focus, so Space toggles.</li>
+      <li class="nu-list__item">Icon-only segments keep their label in the title attribute; icons are aria-hidden.</li>
+    </ul>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="RTL" @id="rtl">
+    <ul class="nu-list">
+      <li class="nu-list__item">Arrow keys follow the reading direction, as in Tabs.</li>
+      <li class="nu-list__item">Segment borders and radii are logical, so the rounded ends stay on the outer segments in both directions.</li>
+    </ul>
+  </NuvoDocs::Section>
+</NuvoDocs::Page>

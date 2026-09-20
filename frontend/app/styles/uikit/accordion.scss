@@ -121,6 +121,11 @@
     color: nu-var-el("accordion", "icon", "Color");
     transition: transform nu-var-el("accordion", "icon", "TransitionDuration") $nu-ease;
 
+    // The glyph is not bidi-mirrored; point it at the content.
+    [dir="rtl"] & {
+      transform: scaleX(-1);
+    }
+
     @include reduced-motion {
       transition: none;
     }
@@ -181,6 +186,10 @@
 
       .nu-accordion__icon {
         transform: rotate(90deg);
+
+        [dir="rtl"] & {
+          transform: scaleX(-1) rotate(90deg);
+        }
       }
     }
 

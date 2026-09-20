@@ -5,6 +5,7 @@ import {
   ConflictException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { clampLimit, pageSkip } from '@shared/utils/pagination.util';
 import {
   attachDisplayName,
   contactDisplayName,
@@ -247,8 +248,8 @@ export class LeasesService {
       .leftJoinAndSelect('unit.asset', 'asset')
       .leftJoinAndSelect('asset.locality', 'locality')
       .where('l.companyId = :companyId', { companyId })
-      .skip((page - 1) * limit)
-      .take(limit)
+      .skip(pageSkip(page, limit))
+      .take(clampLimit(limit))
       .orderBy('l.createdAt', 'DESC');
     if (regionCodes) {
       qb.andWhere(`l.unitId IN (${REGION_FILTER_SUBQUERY_MULTI})`, {

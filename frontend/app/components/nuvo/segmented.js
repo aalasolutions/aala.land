@@ -107,10 +107,15 @@ export default class NuSegmentedComponent extends Component {
       (option) => String(option.id) === String(from),
     );
 
+    // Arrows follow the reading direction.
+    const rtl = document.documentElement.dir === 'rtl';
+    const forwardKey = rtl ? 'ArrowLeft' : 'ArrowRight';
+    const backwardKey = rtl ? 'ArrowRight' : 'ArrowLeft';
+
     let nextIndex = currentIndex;
-    if (event.key === 'ArrowRight') {
+    if (event.key === forwardKey) {
       nextIndex = (currentIndex + 1) % enabled.length;
-    } else if (event.key === 'ArrowLeft') {
+    } else if (event.key === backwardKey) {
       nextIndex = (currentIndex - 1 + enabled.length) % enabled.length;
     } else if (event.key === 'Home') {
       nextIndex = 0;

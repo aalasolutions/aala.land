@@ -1,0 +1,285 @@
+// DataTable: ember-table markup with the Nuvo table look.
+@use "../uikit/table";
+@use "../uikit/mixins/bem" as *;
+@use "../uikit/common/var" as *;
+
+.data-table table {
+  @extend .nu-table;
+
+  // ember-table sizes columns itself.
+  min-inline-size: 0;
+
+  // Pinned cells need a solid fill.
+  td.is-fixed-left,
+  td.is-fixed-right {
+    background-color: var(--bg-surface);
+  }
+
+  th.is-fixed-left,
+  th.is-fixed-right {
+    background-color: var(--bg-alternate);
+  }
+
+  .is-fixed-left {
+    box-shadow: inset -1px 0 0 var(--border-base);
+  }
+
+  .is-fixed-right {
+    box-shadow: inset 1px 0 0 var(--border-base);
+  }
+}
+
+// RTL: table stays LTR (columns are mirrored), cell content reads RTL.
+.data-table--rtl table {
+  direction: ltr;
+}
+
+.data-table--rtl td,
+.data-table--rtl th {
+  direction: rtl;
+}
+
+.data-table--row-click tbody tr {
+  cursor: pointer;
+}
+
+// Selected tint layered over the solid pinned fill.
+.data-table tbody tr.is-selected td.is-fixed-left,
+.data-table tbody tr.is-selected td.is-fixed-right {
+  background-image: linear-gradient(
+    var(--nu-table--selected--RowBackgroundColor),
+    var(--nu-table--selected--RowBackgroundColor)
+  );
+}
+
+.data-table .et-cell-container {
+  display: flex;
+  align-items: center;
+  gap: nu-space(3);
+}
+
+// Tree indent only on tree tables (`@tree`).
+.data-table:not(.data-table--tree) .et-depth-placeholder {
+  display: none;
+}
+
+.data-table--tree .et-depth-indent {
+  flex-shrink: 0;
+}
+
+@for $depth from 1 through 4 {
+  .data-table--tree .et-depth-indent.depth-#{$depth} {
+    margin-inline-start: calc(#{$depth} * #{nu-space(5)});
+  }
+}
+
+// Parent rows: ember-table renders a checkbox as the collapse toggle; it becomes a caret.
+// Checked means collapsed (caret points along the reading direction), unchecked means open (caret down).
+.data-table--tree .et-toggle-collapse {
+  --data-table--Dir: 1;
+
+  display: inline-flex;
+  align-items: center;
+
+  input {
+    appearance: none;
+    inline-size: 1rem;
+    block-size: 1rem;
+    margin: 0;
+    cursor: pointer;
+    background-color: var(--text-muted);
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M6 3l5 5-5 5' fill='none' stroke='%23000' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")
+      center / 1rem no-repeat;
+    transform: scaleX(var(--data-table--Dir)) rotate(90deg);
+    transition: transform nu-duration(fast) $nu-ease;
+
+    &:checked {
+      transform: scaleX(var(--data-table--Dir));
+    }
+
+    @include reduced-motion {
+      transition: none;
+    }
+  }
+
+  span {
+    display: none;
+  }
+
+  [dir="rtl"] & {
+    --data-table--Dir: -1;
+  }
+}
+
+.data-table--tree tbody tr.is-child td {
+  background-color: var(--bg-base);
+}
+
+// Checkbox column.
+.data-table td:has(.data-table__select),
+.data-table th:has(.data-table__select) {
+  padding-inline: 0;
+}
+
+.data-table__select {
+  display: flex;
+  justify-content: center;
+}
+
+// Reorder ghost and drop line; ember-table ships no styles for them.
+.data-table .ember-table-overflow {
+  position: relative;
+}
+
+.data-table .et-reorder-main-indicator {
+  position: absolute;
+  inset-block-end: 0;
+  z-index: 7;
+  pointer-events: none;
+  background-color: color-mix(in srgb, var(--primary) 6%, transparent);
+  border: 1px solid var(--primary);
+  border-radius: nu-radius(sm);
+  box-shadow: nu-shadow(md);
+
+  // Cloned header cell, outside its table.
+  th {
+    display: block;
+    padding-block: nu-space(3);
+    padding-inline: nu-space(4);
+    font-size: nu-font-size(xs);
+    font-weight: nu-font-weight(semibold);
+    color: var(--text-muted);
+    text-align: start;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    background-color: var(--bg-alternate);
+  }
+}
+
+.data-table .et-reorder-drop-indicator {
+  position: absolute;
+  inset-block-end: 0;
+  z-index: 6;
+  pointer-events: none;
+
+  &.et-reorder-direction-left {
+    border-left: 3px solid var(--primary);
+  }
+
+  &.et-reorder-direction-right {
+    border-right: 3px solid var(--primary);
+  }
+}
+
+.data-table thead th.is-reorderable {
+  cursor: grab;
+
+  &:active {
+    cursor: grabbing;
+  }
+}
+
+// Resize handle.
+.data-table .et-header-resize-area {
+  width: 2px;
+  background-color: var(--border-base);
+  transition: background-color nu-duration(fast) $nu-ease;
+
+  &:hover,
+  &:active {
+    background-color: var(--primary);
+  }
+
+  @include reduced-motion {
+    transition: none;
+  }
+}
+
+// One line per cell, clipped at the end edge.
+.data-table table td,
+.data-table .et-cell-content {
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.data-table .et-cell-content {
+  min-inline-size: 0;
+  flex: 1;
+}
+
+.data-table__cell {
+  overflow: hidden;
+}
+
+// Parked: a pinned last column paints over its neighbour, so the mask lands at
+// the cell edge rather than at the visible cutoff.
+// .data-table__cell {
+//   mask-image: linear-gradient(
+//     to right,
+//     #000 calc(100% - #{nu-space(2)}),
+//     transparent
+//   );
+// }
+//
+// [dir="rtl"] .data-table__cell {
+//   mask-image: linear-gradient(
+//     to left,
+//     #000 calc(100% - #{nu-space(2)}),
+//     transparent
+//   );
+// }
+
+// Inline cell editor (double-click). The dropdown menu is hosted on .nu-layer,
+// so the cell overflow never clips it.
+// An empty cell still needs a line-high target for the double-click.
+.data-table__cell.is-editable {
+  min-block-size: 1lh;
+  cursor: text;
+}
+
+.data-table__editor {
+  flex: 1;
+  min-inline-size: 0;
+}
+
+.data-table td:has(.data-table__editor) {
+  padding-block: nu-space(1);
+}
+
+// Tag or badge cells.
+.data-table__chips {
+  display: flex;
+  gap: nu-space(1);
+}
+
+.data-table__chips > * {
+  flex-shrink: 0;
+}
+
+// Options toolbar above the table.
+.data-table-shell__toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-block-end: nu-space(2);
+}
+
+// Header titles truncate instead of spilling into the next column. Flex is not
+// an option here: it drops the cell out of the table formatting context and the
+// columns collapse onto one edge.
+.data-table thead th {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+// Sort direction arrow.
+.data-table__sort {
+  display: inline-flex;
+  margin-inline-start: nu-space(1);
+  color: var(--text-subtle);
+  vertical-align: middle;
+
+  &.is-active {
+    color: var(--primary);
+  }
+}

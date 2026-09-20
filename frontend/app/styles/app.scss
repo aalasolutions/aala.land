@@ -9,6 +9,9 @@
 // The frame every authenticated route renders inside.
 @use "./pages/shell";
 
+// App components wrapping third-party libraries.
+@use "./components/data-table";
+
 // Per-page layout. One file per migrated page, added as each lands.
 @use "./pages/admin";
 @use "./pages/audit";

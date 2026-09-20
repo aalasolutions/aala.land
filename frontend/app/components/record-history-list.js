@@ -10,7 +10,7 @@ import {
   optionLabelFor,
 } from 'land/constants';
 
-const PAGE_LIMIT = 10;
+const PAGE_LIMIT = 50;
 
 export default class RecordHistoryListComponent extends Component {
   @service auth;
@@ -23,6 +23,14 @@ export default class RecordHistoryListComponent extends Component {
 
   limit = PAGE_LIMIT;
   requestId = 0;
+
+  columns = [
+    { name: 'Action', valuePath: 'actionLabel', width: 160, isFixed: 'left' },
+    { name: 'Record', valuePath: 'entityTitle', width: 220 },
+    { name: 'Reason', valuePath: 'reason', width: 220 },
+    { name: 'By', valuePath: 'actorName', width: 180 },
+    { name: 'Date', valuePath: 'createdAt', width: 180 },
+  ];
 
   constructor(owner, args) {
     super(owner, args);

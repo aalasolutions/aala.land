@@ -128,76 +128,63 @@
 
   <Nuvo::Card>
     {{#if @model.contacts.length}}
-      <div class="nu-table-wrapper">
-        <table class="nu-table">
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Role</th>
-              <th>Email</th>
-              <th>Phone</th>
-              <th>Company</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {{#each @model.contacts as |contact|}}
-              <tr data-test-contact-row>
-                <td>
-                  <LinkTo
-                    @route="contacts.detail"
-                    @model={{contact.id}}
-                    class="text-primary font-bold"
-                    data-test-view-contact
-                  >{{contact.displayName}}</LinkTo>
-                </td>
-                <td>
-                  <div class="flex gap-1 flex-wrap">
-                    {{#each contact.tags as |tag|}}
-                      <Nuvo::Tag class="tag-contact-{{tag}}" @text={{contact-tag-label tag}} />
-                    {{else}}
-                      <span class="text-muted text-sm">Contact</span>
-                    {{/each}}
-                  </div>
-                </td>
-                <td class="text-muted">{{contact.email}}</td>
-                <td class="text-muted">
-                  {{#if contact.phone}}
-                    <span class="flex gap-2 x-center">
-                      <span>{{contact.phone}}</span>
-                      {{#if contact.isWhatsapp}}
-                        <a
-                          href={{wa-link contact.phone}}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          class="wa-link"
-                          title="Open WhatsApp"
-                          aria-label="Open WhatsApp chat with {{contact.displayName}}"
-                          data-test-wa-link
-                        ><Ui::Ph @icon="whatsapp-logo" @size="14px" /></a>
-                      {{/if}}
-                    </span>
-                  {{/if}}
-                </td>
-                <td class="text-muted">{{contact.contactCompany}}</td>
-                <td>
-                  <div class="flex gap-2">
-                    <Nuvo::Button
-                      @variant="secondary"
-                      @size="xs"
-                      @icon="pencil-simple"
-                      data-test-edit-contact
-                      {{on "click" (fn this.openEdit contact)}}
-                    >
-                      Edit
-                    </Nuvo::Button>
-                  </div>
-                </td>
-              </tr>
+      <DataTable
+        @columns={{this.columns}}
+        @rows={{@model.contacts}}
+        @pinColumns={{true}}
+        @reorderable={{true}}
+        @sortable={{true}}
+        @showOptions={{true}}
+        @tableId="contacts"
+        data-test-contacts-table
+        as |cell|
+      >
+        {{#if (eq cell.key "displayName")}}
+          <LinkTo
+            @route="contacts.detail"
+            @model={{cell.row.id}}
+            class="text-primary font-bold whitespace-nowrap"
+            data-test-view-contact
+          >{{cell.value}}</LinkTo>
+        {{else if (eq cell.key "tags")}}
+          <div class="data-table__chips">
+            {{#each cell.value as |tag|}}
+              <Nuvo::Tag class="tag-contact-{{tag}}" @text={{contact-tag-label tag}} />
+            {{else}}
+              <span class="text-muted text-sm">Contact</span>
             {{/each}}
-          </tbody>
-        </table>
-      </div>
+          </div>
+        {{else if (eq cell.key "phone")}}
+          {{#if cell.value}}
+            <span class="flex gap-2 x-center text-muted">
+              <span>{{cell.value}}</span>
+              {{#if cell.row.isWhatsapp}}
+                <a
+                  href={{wa-link cell.value}}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="wa-link"
+                  title="Open WhatsApp"
+                  aria-label="Open WhatsApp chat with {{cell.row.displayName}}"
+                  data-test-wa-link
+                ><Ui::Ph @icon="whatsapp-logo" @size="14px" /></a>
+              {{/if}}
+            </span>
+          {{/if}}
+        {{else if (eq cell.key "id")}}
+          <Nuvo::Button
+            @variant="secondary"
+            @size="xs"
+            @icon="pencil-simple"
+            data-test-edit-contact
+            {{on "click" (fn this.openEdit cell.row)}}
+          >
+            Edit
+          </Nuvo::Button>
+        {{else}}
+          <span class="text-muted">{{cell.value}}</span>
+        {{/if}}
+      </DataTable>
     {{else}}
       {{#if @model.total}}
         <Nuvo::EmptyState

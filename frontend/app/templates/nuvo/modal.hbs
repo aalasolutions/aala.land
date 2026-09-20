@@ -1,0 +1,273 @@
+<NuvoDocs::Page
+  @id="modal"
+  @title="Modal"
+  @subtitle="Centred dialog with backdrop, focus trap and scroll lock."
+  @components="Nuvo::Modal"
+>
+  <NuvoDocs::Section @title="Overview" @id="overview">
+    <p class="nuvo-doc__intro">
+      The modal renders inline where it is used and only while open. The
+      dialog modifier locks page scroll, traps Tab, focuses the first
+      control, listens for Escape only when this dialog is topmost, and
+      restores focus to the opener on close. Menus and popovers opened
+      inside it paint above it because they render on the layer host. Use a
+      modal for a task that must finish before the page continues; use a
+      drawer for a side task that keeps the page in view.
+    </p>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Features" @id="features">
+    <ul class="nu-list">
+      <li class="nu-list__item">Five widths including full screen; scrollable body with pinned header and footer.</li>
+      <li class="nu-list__item">Backdrop click, Escape and close button, each individually switchable.</li>
+      <li class="nu-list__item">Blur and top-aligned backdrop options.</li>
+      <li class="nu-list__item">Custom header block that receives the title id.</li>
+      <li class="nu-list__item">Stacked dialogs: Escape and the Tab trap apply to the topmost only.</li>
+    </ul>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Basic" @id="basic">
+    <NuvoDocs::Example
+      @title="Header, body, footer"
+      @note="Title and subtitle in the header, body content, and an action row. The opener sets open; every close path reports through onClose."
+      @code={{this.code.basic}}
+    >
+      <Nuvo::Button @text="Open modal" @onClick={{this.openModal}} data-test-open-modal />
+
+      <Nuvo::Modal
+        @open={{this.modalOpen}}
+        @title="Cancel lease?"
+        @subtitle="Unit 1204, Marina Tower"
+        @size="md"
+        @onClose={{this.closeModal}}
+      >
+        <:body>
+          <Nuvo::Text @text="This will end the lease for Ahmed Khalid effective today. Post-dated cheques on file will need to be voided manually." />
+        </:body>
+        <:footer>
+          <Nuvo::Button @text="Keep lease" @variant="secondary" @onClick={{this.closeModal}} />
+          <Nuvo::Button @text="Cancel lease" @variant="danger" @onClick={{this.closeModal}} />
+        </:footer>
+      </Nuvo::Modal>
+    </NuvoDocs::Example>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Sizes" @id="sizes">
+    {{#each this.sizeExamples as |example|}}
+      <NuvoDocs::Example @title={{example.title}} @note={{example.note}} @code={{example.code}}>
+        <Nuvo::Button
+          @variant="secondary"
+          @text="Open {{example.size}}"
+          @onClick={{fn this.openSizedModal example.size}}
+          data-test-nuvo-modal-size={{example.size}}
+        />
+      </NuvoDocs::Example>
+    {{/each}}
+
+    <Nuvo::Modal
+      @open={{this.sizedModal}}
+      @title="Size: {{this.sizedModal}}"
+      @size={{this.sizedModal}}
+      @onClose={{this.closeSizedModal}}
+    >
+      <:body>
+        {{#each this.fillerRows as |variant|}}
+          <p>Row for {{variant}}, repeated so a small panel overflows and scrolls.</p>
+        {{/each}}
+      </:body>
+      <:footer>
+        <Nuvo::Button @variant="secondary" @text="Close" @onClick={{this.closeSizedModal}} />
+      </:footer>
+    </Nuvo::Modal>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Body and backdrop" @id="backdrop">
+    <NuvoDocs::Example
+      @title="Full screen, scrollable"
+      @note="size full covers the viewport and scrollable lets a long body scroll under a pinned header, for an editor or a record's full detail."
+      @code={{this.code.full}}
+    >
+      <Nuvo::Button
+        @text="Open full-screen modal"
+        @variant="secondary"
+        @onClick={{fn this.setOpen "modalFullOpen" true}}
+        data-test-open-modal-full
+      />
+      <Nuvo::Modal
+        @open={{this.modalFullOpen}}
+        @title="Unit 1204 - full detail"
+        @size="full"
+        @scrollable={{true}}
+        @onClose={{fn this.setOpen "modalFullOpen" false}}
+      >
+        <Nuvo::Text @text="Full-screen modal body, scrollable when content overflows." />
+      </Nuvo::Modal>
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Scrollable"
+      @note="The body scrolls while header and footer stay pinned, so the actions never leave the screen on long content."
+      @code={{this.code.scrollable}}
+    >
+      <Nuvo::Button
+        @variant="secondary"
+        @text="Open scrollable"
+        @onClick={{fn this.setOpen "scrollableOpen" true}}
+        data-test-nuvo-open-scrollable
+      />
+      <Nuvo::Modal
+        @open={{this.scrollableOpen}}
+        @title="Scrollable body"
+        @size="sm"
+        @scrollable={{true}}
+        @onClose={{fn this.setOpen "scrollableOpen" false}}
+      >
+        <:body>
+          {{#each this.fillerRows as |variant|}}
+            <p>Row for {{variant}}.</p>
+            <p>Second row for {{variant}}.</p>
+            <p>Third row for {{variant}}.</p>
+          {{/each}}
+        </:body>
+        <:footer>
+          <Nuvo::Button @variant="secondary" @text="Close" @onClick={{fn this.setOpen "scrollableOpen" false}} />
+        </:footer>
+      </Nuvo::Modal>
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Blurred backdrop"
+      @note="Blurs the page behind the dialog to pull attention in, for dialogs that interrupt a busy screen."
+      @code={{this.code.blur}}
+    >
+      <Nuvo::Button
+        @variant="secondary"
+        @text="Open blurred"
+        @onClick={{fn this.setOpen "blurOpen" true}}
+        data-test-nuvo-open-blur
+      />
+      <Nuvo::Modal @open={{this.blurOpen}} @title="Blurred backdrop" @blur={{true}} @onClose={{fn this.setOpen "blurOpen" false}}>
+        <Nuvo::Text @text="The page behind is blurred." />
+      </Nuvo::Modal>
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Top aligned"
+      @note="Pins the panel near the top instead of centring it, so a dialog whose height changes (a search, a growing form) does not jump around."
+      @code={{this.code.top}}
+    >
+      <Nuvo::Button
+        @variant="secondary"
+        @text="Open top aligned"
+        @onClick={{fn this.setOpen "topOpen" true}}
+        data-test-nuvo-open-top
+      />
+      <Nuvo::Modal @open={{this.topOpen}} @title="Top aligned" @top={{true}} @onClose={{fn this.setOpen "topOpen" false}}>
+        <Nuvo::Text @text="Anchored near the top of the viewport." />
+      </Nuvo::Modal>
+    </NuvoDocs::Example>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Dismissal" @id="dismissal">
+    <NuvoDocs::Example
+      @title="No close button"
+      @note="showClose false removes the header X, for dialogs that must end through their own buttons."
+      @code={{this.code.noClose}}
+    >
+      <Nuvo::Button
+        @variant="secondary"
+        @text="Open without close button"
+        @onClick={{fn this.setOpen "noCloseOpen" true}}
+        data-test-nuvo-open-no-close
+      />
+      <Nuvo::Modal @open={{this.noCloseOpen}} @title="No close button" @showClose={{false}} @onClose={{fn this.setOpen "noCloseOpen" false}}>
+        <:body><Nuvo::Text @text="Use the footer button, the backdrop or Escape." /></:body>
+        <:footer><Nuvo::Button @text="Done" @onClick={{fn this.setOpen "noCloseOpen" false}} /></:footer>
+      </Nuvo::Modal>
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Backdrop click ignored"
+      @note="closeOnBackdrop false keeps a half-filled form from vanishing on a stray click outside it."
+      @code={{this.code.noBackdrop}}
+    >
+      <Nuvo::Button
+        @variant="secondary"
+        @text="Open, backdrop locked"
+        @onClick={{fn this.setOpen "noBackdropOpen" true}}
+        data-test-nuvo-open-no-backdrop
+      />
+      <Nuvo::Modal @open={{this.noBackdropOpen}} @title="Backdrop click ignored" @closeOnBackdrop={{false}} @onClose={{fn this.setOpen "noBackdropOpen" false}}>
+        <Nuvo::Text @text="Click outside: nothing happens. Escape or the X still close it." />
+      </Nuvo::Modal>
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Escape ignored"
+      @note="closeOnEsc false for a dialog that owns an in-progress request; pair it with a disabled close while busy."
+      @code={{this.code.noEsc}}
+    >
+      <Nuvo::Button
+        @variant="secondary"
+        @text="Open, Escape locked"
+        @onClick={{fn this.setOpen "noEscOpen" true}}
+        data-test-nuvo-open-no-esc
+      />
+      <Nuvo::Modal @open={{this.noEscOpen}} @title="Escape ignored" @closeOnEsc={{false}} @onClose={{fn this.setOpen "noEscOpen" false}}>
+        <Nuvo::Text @text="Press Escape: nothing happens. The X and the backdrop still close it." />
+      </Nuvo::Modal>
+    </NuvoDocs::Example>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Custom header" @id="header">
+    <NuvoDocs::Example
+      @title="Header block"
+      @note="The header block receives the generated title id; put it on your heading so the dialog keeps its accessible name. For a header with a badge or a status."
+      @code={{this.code.header}}
+    >
+      <Nuvo::Button
+        @variant="secondary"
+        @text="Open custom header"
+        @onClick={{fn this.setOpen "headerOpen" true}}
+        data-test-nuvo-open-header
+      />
+      <Nuvo::Modal @open={{this.headerOpen}} @onClose={{fn this.setOpen "headerOpen" false}}>
+        <:header as |titleId|>
+          <div>
+            <h2 id={{titleId}} class="nu-modal__title">Custom header</h2>
+            <Nuvo::Badge @variant="warning" @text="Draft" />
+          </div>
+        </:header>
+        <:body><Nuvo::Text @text="The heading above carries the yielded id." /></:body>
+        <:footer><Nuvo::Button @variant="secondary" @text="Close" @onClick={{fn this.setOpen "headerOpen" false}} /></:footer>
+      </Nuvo::Modal>
+    </NuvoDocs::Example>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Arguments" @id="arguments">
+    <NuvoDocs::Table @kind="args" @rows={{this.argRows}} />
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Callbacks" @id="callbacks">
+    <NuvoDocs::Table @kind="callbacks" @rows={{this.callbackRows}} />
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Blocks" @id="blocks">
+    <NuvoDocs::Table @kind="blocks" @rows={{this.blockRows}} />
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Accessibility" @id="accessibility">
+    <ul class="nu-list">
+      <li class="nu-list__item">role="dialog" with aria-modal="true", labelled by the title or the header block's heading.</li>
+      <li class="nu-list__item">Tab is trapped inside the topmost dialog; the first meaningful control is focused on open, skipping the close button; focus returns to the opener on close.</li>
+      <li class="nu-list__item">Body scroll is locked while any dialog is open and restored when the last one closes.</li>
+      <li class="nu-list__item">The backdrop dismiss is a real button, aria-hidden and out of the tab order, so only a click can trigger it.</li>
+    </ul>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="RTL" @id="rtl">
+    <ul class="nu-list">
+      <li class="nu-list__item">The panel is centred with inset and auto margins rather than a translate, so it needs no direction-specific rule; header and footer use logical gaps.</li>
+    </ul>
+  </NuvoDocs::Section>
+</NuvoDocs::Page>

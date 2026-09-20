@@ -32,6 +32,7 @@ import { regionTodaySql } from '../../shared/utils/region-time.util';
 import {
   paginationOptions,
   pageSkip,
+  clampLimit,
 } from '../../shared/utils/pagination.util';
 
 export interface TransactionSummary {
@@ -136,7 +137,9 @@ export class FinancialService {
         qb.andWhere('t.type = :type', { type });
       }
 
-      qb.skip(pageSkip(page, limit)).take(limit).orderBy('t.createdAt', 'DESC');
+      qb.skip(pageSkip(page, limit))
+        .take(clampLimit(limit))
+        .orderBy('t.createdAt', 'DESC');
 
       const [data, total] = await qb.getManyAndCount();
       return { data, total, page, limit };

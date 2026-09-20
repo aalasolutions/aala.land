@@ -46,6 +46,10 @@
   animation: nu-skeleton-shimmer nu-var("skeleton", "Duration")
     cubic-bezier(0.4, 0, 0.6, 1) infinite;
 
+  [dir="rtl"] & {
+    animation-direction: reverse;
+  }
+
   @include reduced-motion {
     animation: none;
     background-image: none;

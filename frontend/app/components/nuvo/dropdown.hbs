@@ -39,11 +39,24 @@
     </Nuvo::Button>
   {{/if}}
 
+  {{! Hosted on .nu-layer so no ancestor can clip it; mounted only while open. }}
+  {{#if this.isOpen}}
+  {{#in-element this.layer.element insertBefore=null}}
   <div
     class={{this.menuClasses}}
     id={{this.menuId}}
     role="listbox"
     data-test-nu-dropdown-menu
+    {{did-insert this.registerMenu}}
+    {{will-destroy this.forgetMenu}}
+    {{on "keydown" this.handleKeydown}}
+    {{anchor
+      this.rootElement
+      placement=this.anchorPlacement
+      align=this.anchorAlign
+      matchWidth=this.matchWidth
+      onDismiss=this.close
+    }}
   >
     {{#if this.showSearch}}
       {{! No keydown here: bubbles to the root handler; binding both double-steps the highlight. }}
@@ -126,4 +139,6 @@
       </div>
     {{/if}}
   </div>
+  {{/in-element}}
+  {{/if}}
 </div>

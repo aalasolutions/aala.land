@@ -326,69 +326,65 @@
       </div>
 
       {{#if @model.documents.length}}
-        <div class="nu-table-wrapper">
-          <table class="nu-table">
-            <thead>
-              <tr>
-                <th>Title</th>
-                <th>Size</th>
-                <th>Document Type</th>
-                <th>Uploaded By</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {{#each @model.documents as |doc|}}
-                <tr data-test-document-row>
-                  <td class="font-bold">{{doc.name}}</td>
-                  <td class="text-sm text-muted">{{format-bytes
-                      doc.fileSize
-                    }}</td>
-                  <td><Nuvo::Tag class="tag-doc-{{lowercase doc.category}}">
-                      {{doc.category}}
-                    </Nuvo::Tag></td>
-                  <td
-                    class="text-sm text-muted"
-                    data-test-document-uploader
-                  >{{if doc.uploadedByName doc.uploadedByName "-"}}</td>
-                  <td>
-                    <div class="flex gap-2">
-                      <Nuvo::Button
-                        @variant="secondary"
-                        @size="xs"
-                        data-tooltip="Download"
-                        aria-label="Download {{doc.name}}"
-                        data-test-download-document-btn
-                        @icon="download-simple"
-                        {{on "click" (fn this.downloadDocument doc)}}
-                      />
-                      {{#unless this.isArchived}}
-                        <Nuvo::Button
-                          @variant="secondary"
-                          @size="xs"
-                          data-tooltip="Edit"
-                          aria-label="Edit {{doc.name}}"
-                          data-test-edit-document-btn
-                          @icon="pencil-simple"
-                          {{on "click" (fn this.openDocumentEdit doc)}}
-                        />
-                      {{/unless}}
-                      <Nuvo::Button
-                        @variant="danger"
-                        @size="xs"
-                        data-tooltip="Delete"
-                        aria-label="Delete {{doc.name}}"
-                        data-test-delete-document-btn
-                        @icon="trash"
-                        {{on "click" (fn this.openDeleteDocument doc)}}
-                      />
-                    </div>
-                  </td>
-                </tr>
-              {{/each}}
-            </tbody>
-          </table>
-        </div>
+        <DataTable
+          @columns={{this.documentColumns}}
+          @rows={{@model.documents}}
+          @pinColumns={{true}}
+          @reorderable={{true}}
+          @sortable={{true}}
+          @showOptions={{true}}
+          @tableId="unit-documents"
+          as |cell|
+        >
+          {{#if (eq cell.key "name")}}
+            <span class="font-bold" data-test-document-row>{{cell.value}}</span>
+          {{else if (eq cell.key "fileSize")}}
+            <span class="text-sm text-muted">{{format-bytes cell.value}}</span>
+          {{else if (eq cell.key "category")}}
+            <Nuvo::Tag class="tag-doc-{{lowercase cell.value}}">
+              {{cell.value}}
+            </Nuvo::Tag>
+          {{else if (eq cell.key "uploadedByName")}}
+            <span
+              class="text-sm text-muted"
+              data-test-document-uploader
+            >{{if cell.value cell.value "-"}}</span>
+          {{else if (eq cell.key "id")}}
+            <div class="flex gap-2">
+              <Nuvo::Button
+                @variant="secondary"
+                @size="xs"
+                data-tooltip="Download"
+                aria-label="Download {{cell.row.name}}"
+                data-test-download-document-btn
+                @icon="download-simple"
+                {{on "click" (fn this.downloadDocument cell.row)}}
+              />
+              {{#unless this.isArchived}}
+                <Nuvo::Button
+                  @variant="secondary"
+                  @size="xs"
+                  data-tooltip="Edit"
+                  aria-label="Edit {{cell.row.name}}"
+                  data-test-edit-document-btn
+                  @icon="pencil-simple"
+                  {{on "click" (fn this.openDocumentEdit cell.row)}}
+                />
+              {{/unless}}
+              <Nuvo::Button
+                @variant="danger"
+                @size="xs"
+                data-tooltip="Delete"
+                aria-label="Delete {{cell.row.name}}"
+                data-test-delete-document-btn
+                @icon="trash"
+                {{on "click" (fn this.openDeleteDocument cell.row)}}
+              />
+            </div>
+          {{else}}
+            <span class="text-muted">{{cell.value}}</span>
+          {{/if}}
+        </DataTable>
       {{else}}
         <p class="text-muted text-sm">No documents uploaded for this property.</p>
       {{/if}}
@@ -398,43 +394,41 @@
       <h2 class="text-md font-bold mb-3"><Ui::Ph @icon="file-text" />
         Lease History</h2>
       {{#if @model.leases.length}}
-        <div class="nu-table-wrapper">
-          <table class="nu-table">
-            <thead>
-              <tr>
-                <th>Tenant</th>
-                <th>Start</th>
-                <th>End</th>
-                <th>Rent</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {{#each @model.leases as |lease|}}
-                <tr data-test-lease-row>
-                  <td>{{or lease.contact.displayName "Unknown tenant"}}</td>
-                  <td>{{format-date lease.startDate}}</td>
-                  <td>{{format-date lease.endDate}}</td>
-                  <td>{{format-currency lease.monthlyRent}}</td>
-                  <td>
-                    <div class="flex gap-1 wrap">
-                      <Nuvo::Tag class="tag-lease-{{lowercase lease.status}}">
-                        {{lease.status}}
-                      </Nuvo::Tag>
-                      {{#if lease.deletedAt}}
-                        <Nuvo::Tag
-                          @variant="secondary"
-                          @text="Archived"
-                          data-test-lease-archived-badge
-                        />
-                      {{/if}}
-                    </div>
-                  </td>
-                </tr>
-              {{/each}}
-            </tbody>
-          </table>
-        </div>
+        <DataTable
+          @columns={{this.leaseColumns}}
+          @rows={{@model.leases}}
+          @pinColumns={{true}}
+          @reorderable={{true}}
+          @sortable={{true}}
+          @showOptions={{true}}
+          @tableId="unit-leases"
+          as |cell|
+        >
+          {{#if (eq cell.key "contact.displayName")}}
+            <span data-test-lease-row>{{or cell.value "Unknown tenant"}}</span>
+          {{else if (eq cell.key "startDate")}}
+            {{format-date cell.value}}
+          {{else if (eq cell.key "endDate")}}
+            {{format-date cell.value}}
+          {{else if (eq cell.key "monthlyRent")}}
+            {{format-currency cell.value}}
+          {{else if (eq cell.key "status")}}
+            <div class="flex gap-1 wrap">
+              <Nuvo::Tag class="tag-lease-{{lowercase cell.value}}">
+                {{cell.value}}
+              </Nuvo::Tag>
+              {{#if cell.row.deletedAt}}
+                <Nuvo::Tag
+                  @variant="secondary"
+                  @text="Archived"
+                  data-test-lease-archived-badge
+                />
+              {{/if}}
+            </div>
+          {{else}}
+            <span class="text-muted">{{cell.value}}</span>
+          {{/if}}
+        </DataTable>
       {{else}}
         <p class="text-muted text-sm">No lease history for this property.</p>
       {{/if}}

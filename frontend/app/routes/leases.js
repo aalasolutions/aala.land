@@ -18,7 +18,7 @@ export default class LeasesRoute extends AuthenticatedRoute {
 
   async model({
     page = 1,
-    limit = 10,
+    limit = 50,
     status = '',
     type = '',
     search = '',

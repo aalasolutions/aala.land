@@ -11,7 +11,7 @@ export default class CommissionsRoute extends AuthenticatedRoute {
     filterStatus: { refreshModel: true },
   };
 
-  async model({ page = 1, limit = 10, filterStatus = '' }) {
+  async model({ page = 1, limit = 50, filterStatus = '' }) {
     const params = new URLSearchParams({ page, limit });
     if (filterStatus) {
       params.set('status', filterStatus);

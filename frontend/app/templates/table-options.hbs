@@ -1,0 +1,532 @@
+{{page-title "Table Options"}}
+
+{{! Development-only copy of the contacts list: every DataTable option in one place. }}
+<div data-test-table-options class="flex col gap-6">
+  <Nuvo::PageHeader
+    @icon="table"
+    @title="Table Options"
+    @subtitle="DataTable showcase on live contacts. A: all options on. B: defaults. C: RTL with fake rows and every editor type."
+  >
+    <:meta>
+      <p class="text-muted">{{format-number @model.total unit="contact"}}{{#if this.selection.length}}
+          · {{this.selection.length}} selected{{/if}}</p>
+    </:meta>
+    <:actions>
+      <Nuvo::Button
+        @variant="primary"
+        @icon="plus"
+        data-test-new-contact
+        {{on "click" this.openCreate}}
+      >
+        New Contact
+      </Nuvo::Button>
+    </:actions>
+  </Nuvo::PageHeader>
+
+  <Nuvo::Segmented
+    @options={{this.roleTabs}}
+    @value={{this.tag}}
+    @onChange={{this.setTag}}
+    data-test-role-tabs
+  />
+
+  <Nuvo::Accordion
+    @items={{array
+      (hash
+        id="filters"
+        title=(if this.hasActiveFilters "Filters · active" "Filters")
+      )
+    }}
+    data-test-filters-accordion
+  >
+    <div class="flex col gap-4">
+      <div class="flex gap-3 wrap">
+        <Nuvo::Input
+          type="text"
+          autocomplete="off"
+          placeholder="Search name, email, phone..."
+          class="grow"
+          value={{this.search}}
+          {{on "input" (fn this.updateFilter "search")}}
+          data-test-contacts-search
+        />
+      </div>
+
+      <div class="flex gap-3 wrap x-end">
+        <Nuvo::Field class="grow" @label="Assigned agent">
+          <Nuvo::Dropdown
+            id="contacts-agent-filter"
+            @align="start"
+            @value={{this.agentId}}
+            @onSelect={{this.setAgentFilter}}
+            @options={{this.agentOptions}}
+            data-test-agent-filter
+          />
+        </Nuvo::Field>
+        <Nuvo::Field class="grow" @label="Company">
+          <Nuvo::Input
+            type="text"
+            autocomplete="off"
+            placeholder="e.g. Emaar Properties"
+            value={{this.company}}
+            {{on "input" (fn this.updateFilter "company")}}
+            data-test-company-filter
+          />
+        </Nuvo::Field>
+        <Nuvo::Field class="grow" @label="Nationality">
+          <Nuvo::Input
+            type="text"
+            autocomplete="off"
+            placeholder="e.g. Emirati"
+            value={{this.nationality}}
+            {{on "input" (fn this.updateFilter "nationality")}}
+            data-test-nationality-filter
+          />
+        </Nuvo::Field>
+        <Nuvo::Field @label="Added from">
+          <input
+            type="date"
+            class="nu-input"
+            aria-label="Added from"
+            value={{this.dateFrom}}
+            {{on "change" this.setDateFrom}}
+            data-test-date-from-filter
+          />
+        </Nuvo::Field>
+        <Nuvo::Field @label="Added to">
+          <input
+            type="date"
+            class="nu-input"
+            aria-label="Added to"
+            value={{this.dateTo}}
+            {{on "change" this.setDateTo}}
+            data-test-date-to-filter
+          />
+        </Nuvo::Field>
+      </div>
+
+      <div class="flex gap-3 x-center between">
+        <Nuvo::Toggle
+          @checked={{this.isWhatsapp}}
+          @onChange={{this.toggleWhatsappFilter}}
+          data-test-whatsapp-filter
+        >
+          Has WhatsApp
+        </Nuvo::Toggle>
+        {{#if this.hasActiveFilters}}
+          <Nuvo::Button
+            @variant="danger"
+            @size="sm"
+            @icon="x"
+            {{on "click" this.clearFilters}}
+            data-test-clear-filters
+          >
+            Clear filters
+          </Nuvo::Button>
+        {{/if}}
+      </div>
+    </div>
+  </Nuvo::Accordion>
+
+  <Nuvo::Card>
+    {{#if @model.contacts.length}}
+      <DataTable
+        @columns={{this.columns}}
+        @rows={{@model.contacts}}
+        @selection={{this.selection}}
+        @onSelect={{this.setSelection}}
+        @selectOnRowClick={{true}}
+        @pinColumns={{true}}
+        @reorderable={{true}}
+        @showOptions={{true}}
+        @tableId="table-options-a"
+        @onCellEdit={{this.saveCell}}
+        data-test-contacts-table
+        as |cell|
+      >
+        {{#if (eq cell.key "displayName")}}
+          <LinkTo
+            @route="contacts.detail"
+            @model={{cell.row.id}}
+            class="text-primary font-bold whitespace-nowrap"
+            data-test-view-contact
+          >{{cell.value}}</LinkTo>
+        {{else if (eq cell.key "tags")}}
+          <div class="data-table__chips">
+            {{#each cell.value as |tag|}}
+              <Nuvo::Tag class="tag-contact-{{tag}}" @text={{contact-tag-label tag}} />
+            {{else}}
+              <span class="text-muted text-sm">Contact</span>
+            {{/each}}
+          </div>
+        {{else if (eq cell.key "phone")}}
+          {{#if cell.value}}
+            <span class="flex gap-2 x-center text-muted">
+              <span>{{cell.value}}</span>
+              {{#if cell.row.isWhatsapp}}
+                <a
+                  href={{wa-link cell.value}}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="wa-link"
+                  title="Open WhatsApp"
+                  aria-label="Open WhatsApp chat with {{cell.row.displayName}}"
+                  data-test-wa-link
+                ><Ui::Ph @icon="whatsapp-logo" @size="14px" /></a>
+              {{/if}}
+            </span>
+          {{/if}}
+        {{else if (eq cell.key "id")}}
+          <Nuvo::Button
+            @variant="secondary"
+            @size="xs"
+            @icon="pencil-simple"
+            data-test-edit-contact
+            {{on "click" (fn this.openEdit cell.row)}}
+          >
+            Edit
+          </Nuvo::Button>
+        {{else}}
+          <span class="text-muted">{{cell.value}}</span>
+        {{/if}}
+      </DataTable>
+    {{else}}
+      {{#if @model.total}}
+        <Nuvo::EmptyState
+          @description="No contacts on page {{this.page}}. Navigate back or adjust your filters."
+        />
+      {{else}}
+        <Nuvo::EmptyState
+          @description="No contacts match these filters."
+        />
+      {{/if}}
+    {{/if}}
+
+    {{#if @model.total}}
+      <Nuvo::Pagination
+        @selectId="contacts-limit"
+        @page={{this.page}}
+        @limit={{this.limit}}
+        @total={{@model.total}}
+        @onLimitChange={{this.setLimit}}
+        @onPrevious={{this.goToPreviousPage}}
+        @onNext={{this.goToNextPage}}
+        @onPageChange={{this.goToPage}}
+      />
+    {{/if}}
+  </Nuvo::Card>
+
+  {{! TEMP DataTable variation demo, remove after review. }}
+  <Nuvo::Card>
+    <h3 class="nu-text m-sm font-bold">B: defaults (checkbox only, no pinning, no reorder, no options)</h3>
+    <DataTable
+      @columns={{this.columns}}
+      @rows={{@model.contacts}}
+      @selection={{this.demoSelectionB}}
+      @onSelect={{this.setDemoSelectionB}}
+      @onCellEdit={{this.saveCell}}
+      data-test-demo-table-b
+      as |cell|
+    >
+        {{#if (eq cell.key "displayName")}}
+          <LinkTo
+            @route="contacts.detail"
+            @model={{cell.row.id}}
+            class="text-primary font-bold whitespace-nowrap"
+            data-test-view-contact
+          >{{cell.value}}</LinkTo>
+        {{else if (eq cell.key "tags")}}
+          <div class="data-table__chips">
+            {{#each cell.value as |tag|}}
+              <Nuvo::Tag class="tag-contact-{{tag}}" @text={{contact-tag-label tag}} />
+            {{else}}
+              <span class="text-muted text-sm">Contact</span>
+            {{/each}}
+          </div>
+        {{else if (eq cell.key "phone")}}
+          {{#if cell.value}}
+            <span class="flex gap-2 x-center text-muted">
+              <span>{{cell.value}}</span>
+              {{#if cell.row.isWhatsapp}}
+                <a
+                  href={{wa-link cell.value}}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="wa-link"
+                  title="Open WhatsApp"
+                  aria-label="Open WhatsApp chat with {{cell.row.displayName}}"
+                  data-test-wa-link
+                ><Ui::Ph @icon="whatsapp-logo" @size="14px" /></a>
+              {{/if}}
+            </span>
+          {{/if}}
+        {{else if (eq cell.key "id")}}
+          <Nuvo::Button
+            @variant="secondary"
+            @size="xs"
+            @icon="pencil-simple"
+            data-test-edit-contact
+            {{on "click" (fn this.openEdit cell.row)}}
+          >
+            Edit
+          </Nuvo::Button>
+        {{else}}
+          <span class="text-muted">{{cell.value}}</span>
+        {{/if}}
+    </DataTable>
+    <p class="text-muted text-sm">{{this.demoSelectionB.length}} selected</p>
+  </Nuvo::Card>
+
+  <Nuvo::Card>
+    <h3 class="nu-text m-sm font-bold">C: RTL, fake Arabic data, row click on</h3>
+    <DataTable
+      @columns={{this.demoColumns}}
+      @rows={{this.demoRtlRows}}
+      @onCellEdit={{this.saveDemoCell}}
+      @selection={{this.demoSelectionRtl}}
+      @onSelect={{this.setDemoSelectionRtl}}
+      @selectOnRowClick={{true}}
+      @pinColumns={{true}}
+      @reorderable={{true}}
+      @showOptions={{true}}
+      @tableId="demo-rtl"
+      @sortable={{true}}
+      @dir="rtl"
+      data-test-demo-table-rtl
+      as |cell|
+    >
+        {{#if (eq cell.key "displayName")}}
+          <LinkTo
+            @route="contacts.detail"
+            @model={{cell.row.id}}
+            class="text-primary font-bold whitespace-nowrap"
+            data-test-view-contact
+          >{{cell.value}}</LinkTo>
+        {{else if (eq cell.key "tags")}}
+          <div class="data-table__chips">
+            {{#each cell.value as |tag|}}
+              <Nuvo::Tag class="tag-contact-{{tag}}" @text={{contact-tag-label tag}} />
+            {{else}}
+              <span class="text-muted text-sm">Contact</span>
+            {{/each}}
+          </div>
+        {{else if (eq cell.key "phone")}}
+          {{#if cell.value}}
+            <span class="flex gap-2 x-center text-muted">
+              <span>{{cell.value}}</span>
+              {{#if cell.row.isWhatsapp}}
+                <a
+                  href={{wa-link cell.value}}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="wa-link"
+                  title="Open WhatsApp"
+                  aria-label="Open WhatsApp chat with {{cell.row.displayName}}"
+                  data-test-wa-link
+                ><Ui::Ph @icon="whatsapp-logo" @size="14px" /></a>
+              {{/if}}
+            </span>
+          {{/if}}
+        {{else if (eq cell.key "id")}}
+          <Nuvo::Button
+            @variant="secondary"
+            @size="xs"
+            @icon="pencil-simple"
+            data-test-edit-contact
+            {{on "click" (fn this.openEdit cell.row)}}
+          >
+            Edit
+          </Nuvo::Button>
+        {{else}}
+          <span class="text-muted">{{cell.value}}</span>
+        {{/if}}
+    </DataTable>
+    <p class="text-muted text-sm">{{this.demoSelectionRtl.length}} selected</p>
+  </Nuvo::Card>
+</div>
+
+<Nuvo::Drawer
+  @open={{this.showModal}}
+  @title={{if this.editContact "Edit Contact" "New Contact"}}
+  @placement="end"
+  @size="lg"
+  @onClose={{this.closeModal}}
+  @onClosed={{this.resetDrawer}}
+>
+  <:body>
+    <form
+      id="contact-form"
+      class="flex col gap-4"
+      {{on "submit" this.saveContact}}
+    >
+      <div class="flex gap-4">
+        <Nuvo::Field class="grow" @label="First Name">
+          <Nuvo::Input
+            id="c-fname"
+            type="text"
+            placeholder="Ahmed"
+            @value={{this.formFirstName}}
+            @onInput={{fn this.setFieldValue "formFirstName"}}
+            data-test-input-first-name
+          />
+        </Nuvo::Field>
+        <Nuvo::Field class="grow" @label="Last Name">
+          <Nuvo::Input
+            id="c-lname"
+            type="text"
+            placeholder="Al-Rashid"
+            @value={{this.formLastName}}
+            @onInput={{fn this.setFieldValue "formLastName"}}
+            data-test-input-last-name
+          />
+        </Nuvo::Field>
+      </div>
+
+      <div class="flex gap-4">
+        <Nuvo::Field class="grow" @label="Email">
+          <Nuvo::Input
+            id="c-email"
+            type="email"
+            placeholder="ahmed@example.com"
+            @value={{this.formEmail}}
+            @onInput={{fn this.setFieldValue "formEmail"}}
+            data-test-input-email
+          />
+        </Nuvo::Field>
+        <Nuvo::Field class="grow" @label="Nationality">
+          <Nuvo::Input
+            id="c-nationality"
+            type="text"
+            placeholder="e.g. Emirati"
+            @value={{this.formNationality}}
+            @onInput={{fn this.setFieldValue "formNationality"}}
+            data-test-input-nationality
+          />
+        </Nuvo::Field>
+      </div>
+
+      <div class="flex gap-4">
+        <Nuvo::Field class="grow" @label="Phone">
+          <Nuvo::Input
+            id="c-phone"
+            type="text"
+            placeholder="+971501234567"
+            @value={{this.formPhone}}
+            @onInput={{fn this.setFieldValue "formPhone"}}
+            data-test-input-phone
+          />
+        </Nuvo::Field>
+        <Nuvo::Field class="grow" @label="National ID">
+          <Nuvo::Input
+            id="c-national-id"
+            type="text"
+            placeholder="EID / passport number"
+            @value={{this.formNationalId}}
+            @onInput={{fn this.setFieldValue "formNationalId"}}
+            data-test-input-national-id
+          />
+        </Nuvo::Field>
+      </div>
+
+      <Nuvo::Checkbox
+        @checked={{this.formIsWhatsapp}}
+        @label="This phone number is on WhatsApp"
+        @onChange={{fn this.setFieldValue "formIsWhatsapp"}}
+        data-test-input-is-whatsapp
+      />
+
+      <div class="flex gap-4">
+        <Nuvo::Field class="grow" @label="Company">
+          <Nuvo::Input
+            id="c-company"
+            type="text"
+            placeholder="Emaar Properties"
+            @value={{this.formContactCompany}}
+            @onInput={{fn this.setFieldValue "formContactCompany"}}
+            data-test-input-company
+          />
+        </Nuvo::Field>
+        <Nuvo::Field class="grow" @label="Job Title">
+          <Nuvo::Input
+            id="c-job"
+            type="text"
+            placeholder="Property Manager"
+            @value={{this.formJobTitle}}
+            @onInput={{fn this.setFieldValue "formJobTitle"}}
+            data-test-input-job-title
+          />
+        </Nuvo::Field>
+      </div>
+
+      <Nuvo::Field @label="Address">
+        <Nuvo::Input
+          id="c-address"
+          type="text"
+          placeholder="e.g. Gulberg, Lahore"
+          @value={{this.formAddress}}
+          @onInput={{fn this.setFieldValue "formAddress"}}
+          data-test-input-address
+        />
+      </Nuvo::Field>
+
+      <Nuvo::Field @label="Notes">
+        <Nuvo::Textarea
+          id="c-notes"
+          placeholder="Additional notes..."
+          rows="3"
+          @value={{this.formNotes}}
+          @onInput={{fn this.setFieldValue "formNotes"}}
+          data-test-input-notes
+        />
+      </Nuvo::Field>
+
+      {{#if this.errorMsg}}
+        <p class="text-sm text-danger" data-test-error>{{this.errorMsg}}</p>
+      {{/if}}
+    </form>
+  </:body>
+  <:footer>
+    <Nuvo::Button
+      @variant="secondary"
+      @onClick={{this.closeModal}}
+      data-test-cancel-contact-form
+    >Cancel</Nuvo::Button>
+    <Nuvo::Button
+      @variant="primary"
+      @type="submit"
+      form="contact-form"
+      @loading={{this.isSaving}}
+      data-test-save-contact
+    >{{if
+        this.isSaving
+        "Saving..."
+        (if this.editContact "Update" "Create Contact")
+      }}</Nuvo::Button>
+  </:footer>
+</Nuvo::Drawer>
+
+<ConfirmModal
+  @open={{this.showDeleteModal}}
+  @title="Delete Contact"
+  @message="Delete {{this.contactToDelete.displayName}}? This cannot be undone."
+  @confirmText="Delete"
+  @confirmVariant="danger"
+  @isConfirming={{this.isDeleting}}
+  @confirmingText="Deleting..."
+  @onClose={{this.closeDeleteModal}}
+  @onConfirm={{this.confirmDelete}}
+>
+  <Nuvo::Field class="mt-4" @label="Reason" @required={{true}} @error={{this.reasonError}}>
+    <Nuvo::Textarea
+      id="contact-delete-reason"
+      rows="2"
+      maxlength="500"
+      placeholder="e.g. Duplicate contact"
+      @value={{this.deleteReason}}
+      @onInput={{fn this.setFieldValue "deleteReason"}}
+      @invalid={{if this.reasonError true false}}
+      aria-label="Reason"
+      data-test-reason-input
+    />
+  </Nuvo::Field>
+</ConfirmModal>

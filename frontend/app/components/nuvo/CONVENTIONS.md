@@ -94,6 +94,59 @@ Rules:
 - **Content is read at hover time**, so state-dependent text needs no special
   handling. Text only; the attribute cannot carry markup.
 
+## Anchored layer (dropdown menus, popovers)
+
+There is exactly one mechanism for floating panels that must not be clipped.
+Do not position a menu inside its trigger's subtree with `position: absolute`;
+any ancestor with `overflow`, a `mask-image` or a `transform` (every drawer)
+clips or re-anchors it.
+
+- `Nuvo::LayerHost` is mounted once in `application.hbs`, after modals and
+  drawers and before `Nuvo::TooltipHost`, so menus paint above dialogs and
+  tooltips paint above menus. The `layer` service exposes its element (with a
+  body-level fallback for rendering tests).
+- The panel renders inside `{{#if isOpen}}{{#in-element this.layer.element
+  insertBefore=null}}` (mount on open, zero idle DOM, entry fade only) and
+  carries the `anchor` modifier: `{{anchor trigger placement=.. align=.. gap=..
+  matchWidth=.. onDismiss=..}}`. Placement is logical (`top|bottom|start|end`),
+  resolved against the trigger's computed direction; the modifier writes fixed
+  coordinates, flips when the preferred side does not fit, clamps to the
+  viewport, sets `data-placement` (physical) and `--nu-anchor--ArrowX/Y`, and
+  dismisses on outside scroll or resize.
+- The panel is outside the component root, so: click-outside checks both root
+  and panel; keydown is bound on the panel too; Escape stops propagation (a
+  drawer underneath stays open); `close()` returns focus to the trigger;
+  queries for menu children go through the panel element, never the root.
+- Tests select the panel from `document`, not the component subtree.
+
+## Right-to-left
+
+The kit runs under `<html dir="rtl">` with no per-use changes. Two layers, each
+RTL on its own: the SCSS (shipped as the HTML/CSS kit) and the components.
+
+- **SCSS: logical properties only** (`inset-inline-*`, `margin-inline-*`,
+  `padding-inline-*`, `border-inline-*`, `text-align: start/end`). Never
+  `left`/`right`, except under a class that is already physical
+  (`.nu-tooltip.m-left`, chosen by the host after resolving start/end).
+- **Transforms are physical.** A logical inset plus `translateX(-50%)` breaks in
+  RTL. Centre an element smaller than its box with `inset: 0; margin: auto`;
+  centre a larger one (hit areas) with `inset-*-start: calc(50% - size / 2)`;
+  otherwise flip the sign under `[dir="rtl"] &` (drawer, badge, popover).
+  Negative auto margins do not split evenly, so `margin: auto` cannot centre
+  an element wider than its container.
+- **`[dir="rtl"] &` is the override idiom.** Mind specificity: an override on
+  a modifier can outrank a later state rule (`.is-open`). Prefer a sign
+  multiplier variable (`--nu-drawer--Dir`) over re-setting the state's value.
+- **Sweeps and glyphs.** X-axis keyframes get a mirrored twin or
+  `animation-direction: reverse`. Glyphs that are not bidi-mirrored (`▸`,
+  Phosphor `*-left`/`*-right`) get `scaleX(-1)` in RTL; `Ui::Ph` adds
+  `flip-rtl` automatically for names containing left/right, `@flip` overrides.
+- **Arrow keys follow the reading direction.** Horizontal ArrowLeft/ArrowRight
+  handlers read `document.documentElement.dir` (tabs, segmented).
+- **Data that stays LTR.** `Nuvo::Input` sets `dir="ltr"` for `tel`, `number`,
+  `email` and `url`; code blocks are pinned to `direction: ltr`.
+- **Verify on `/nuvo`** with the Dir switch, in both directions.
+
 ## Showcase
 
 Every component gets a section appended to `app/templates/uikit.hbs`:

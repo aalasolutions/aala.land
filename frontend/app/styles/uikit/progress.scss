@@ -102,6 +102,10 @@
     .nu-progress__bar {
       inline-size: 40%;
       animation: nu-progress-indeterminate nu-duration(slow) * 3.5 $nu-ease infinite;
+
+      [dir="rtl"] & {
+        animation-name: nu-progress-indeterminate-rtl;
+      }
     }
 
     @include reduced-motion {
@@ -118,6 +122,15 @@
   }
   100% {
     transform: translateX(350%);
+  }
+}
+
+@keyframes nu-progress-indeterminate-rtl {
+  0% {
+    transform: translateX(100%);
+  }
+  100% {
+    transform: translateX(-350%);
   }
 }
 

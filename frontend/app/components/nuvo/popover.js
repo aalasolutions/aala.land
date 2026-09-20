@@ -3,15 +3,20 @@ import { tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { guidFor } from '@ember/object/internals';
 import { registerDestructor } from '@ember/destroyable';
+import { service } from '@ember/service';
 
 const PLACEMENTS = ['top', 'bottom', 'start', 'end'];
+const TRIGGER_FOCUSABLE = 'input, button, [tabindex]';
 
 export default class NuPopoverComponent extends Component {
+  @service layer;
+
   @tracked internalOpen = false;
 
   titleId = `nu-popover-title-${guidFor(this)}`;
 
   rootElement = null;
+  panelElement = null;
   clickOutsideHandler = null;
 
   // Controlled when @open is passed, uncontrolled otherwise - same pattern as nu-dropdown.
@@ -25,7 +30,8 @@ export default class NuPopoverComponent extends Component {
       if (
         this.isOpen &&
         this.rootElement &&
-        !this.rootElement.contains(event.target)
+        !this.rootElement.contains(event.target) &&
+        !this.panelElement?.contains(event.target)
       ) {
         this.close();
       }
@@ -37,12 +43,24 @@ export default class NuPopoverComponent extends Component {
     });
   }
 
+  get placement() {
+    return PLACEMENTS.includes(this.args.placement)
+      ? this.args.placement
+      : 'bottom';
+  }
+
+  get anchorPlacement() {
+    return this.placement;
+  }
+
+  get anchorAlign() {
+    return this.args.align === 'end' ? 'end' : 'center';
+  }
+
   get classes() {
-    const parts = ['nu-popover'];
-    if (PLACEMENTS.includes(this.args.placement)) {
-      parts.push(`m-${this.args.placement}`);
-    } else {
-      parts.push('m-bottom');
+    const parts = ['nu-popover', `m-${this.placement}`];
+    if (this.args.align === 'end') {
+      parts.push('m-align-end');
     }
     if (this.isOpen) {
       parts.push('is-visible');
@@ -53,6 +71,16 @@ export default class NuPopoverComponent extends Component {
   @action
   registerRoot(element) {
     this.rootElement = element;
+  }
+
+  @action
+  registerPanel(element) {
+    this.panelElement = element;
+  }
+
+  @action
+  forgetPanel() {
+    this.panelElement = null;
   }
 
   // Controlled mode: caller owns state, so report via @onToggle, not internalOpen.
@@ -71,6 +99,10 @@ export default class NuPopoverComponent extends Component {
 
   @action
   close() {
+    const active = document.activeElement;
+    if (active && this.panelElement?.contains(active)) {
+      this.rootElement?.querySelector(TRIGGER_FOCUSABLE)?.focus();
+    }
     this.internalOpen = false;
     this.args.onClose?.();
   }
@@ -78,6 +110,7 @@ export default class NuPopoverComponent extends Component {
   @action
   onKeydown(event) {
     if (event.key === 'Escape' && this.isOpen) {
+      event.stopPropagation();
       this.close();
     }
   }

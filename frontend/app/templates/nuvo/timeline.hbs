@@ -1,0 +1,159 @@
+<NuvoDocs::Page
+  @id="timeline"
+  @title="Timeline"
+  @subtitle="Vertical sequence of events with coloured markers."
+  @components="Nuvo::Timeline, Nuvo::TimelineItem"
+>
+  <NuvoDocs::Section @title="Overview" @id="overview">
+    <p class="nuvo-doc__intro">
+      Timeline is an ordered list; each TimelineItem is a list item with a
+      marker, a connector to the next item, and a heading row of title,
+      timestamp and optional icon. Item titles render as h5, so place the
+      timeline under an h4 to keep the heading order. Use it for activity
+      logs and lead histories.
+    </p>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Features" @id="features">
+    <ul class="nu-list">
+      <li class="nu-list__item">Marker colours in six variants, plus active and complete states.</li>
+      <li class="nu-list__item">Title, timestamp, description and meta line per item.</li>
+      <li class="nu-list__item">Compact and alternating layouts.</li>
+      <li class="nu-list__item">Block content and icon slot per item.</li>
+    </ul>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Items" @id="items">
+    <NuvoDocs::Example
+      @title="Title, timestamp, description, meta"
+      @note="The full item: a heading row with the time, body text, and a small meta line for the actor."
+      @layout="block"
+      @code={{this.code.basic}}
+    >
+      <Nuvo::Timeline>
+        <Nuvo::TimelineItem
+          @title="Created"
+          @timestamp="09:14"
+          @description="Lead captured from the website form."
+          @meta="by Sara"
+        />
+        <Nuvo::TimelineItem @title="Contacted" @timestamp="11:02" @description="First WhatsApp message sent." />
+      </Nuvo::Timeline>
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Icon and block content"
+      @note="The icon slot puts a glyph in the heading row; block content replaces the description for badges and links."
+      @layout="block"
+      @code={{this.code.blocks}}
+    >
+      <Nuvo::Timeline>
+        <Nuvo::TimelineItem @title="Payment received" @timestamp="Today">
+          <:icon><Ui::Ph @icon="check" /></:icon>
+          <:default><Nuvo::Badge @variant="success" @text="AED 8,500" /></:default>
+        </Nuvo::TimelineItem>
+      </Nuvo::Timeline>
+    </NuvoDocs::Example>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="States" @id="states">
+    <NuvoDocs::Example
+      @title="Complete"
+      @note="Marks a step as done; past events in a process such as a lease signing."
+      @layout="block"
+      @code={{this.code.complete}}
+    >
+      <Nuvo::Timeline>
+        <Nuvo::TimelineItem
+          @title="Created"
+          @timestamp="09:14"
+          @complete={{true}}
+          @description="Lead captured from the website form."
+        />
+      </Nuvo::Timeline>
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Active"
+      @note="Highlights the current step so the eye lands on what happens next."
+      @layout="block"
+      @code={{this.code.active}}
+    >
+      <Nuvo::Timeline>
+        <Nuvo::TimelineItem
+          @title="Site visit"
+          @timestamp="14:30"
+          @active={{true}}
+          @variant="warning"
+          @description="Scheduled for Thursday."
+        />
+      </Nuvo::Timeline>
+    </NuvoDocs::Example>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Marker variants" @id="variants">
+    {{#each this.variantExamples as |example|}}
+      <NuvoDocs::Example @title={{example.title}} @note={{example.note}} @layout="block" @code={{example.code}}>
+        <Nuvo::Timeline @compact={{true}}>
+          <Nuvo::TimelineItem
+            @title={{example.title}}
+            @variant={{example.variant}}
+            @timestamp="12:00"
+            @description="{{example.title}} marker."
+          />
+        </Nuvo::Timeline>
+      </NuvoDocs::Example>
+    {{/each}}
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Layouts" @id="layouts">
+    <NuvoDocs::Example
+      @title="Compact"
+      @note="Tighter rows for long activity logs in a sidebar."
+      @layout="block"
+      @code={{this.code.compact}}
+    >
+      <Nuvo::Timeline @compact={{true}}>
+        <Nuvo::TimelineItem @title="Created" @timestamp="09:14" @description="Compact row." />
+        <Nuvo::TimelineItem @title="Contacted" @timestamp="11:02" @description="Compact row." />
+      </Nuvo::Timeline>
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Alternate"
+      @note="Items alternate sides of a centred line, for a wide overview of a process."
+      @layout="block"
+      @code={{this.code.alternate}}
+    >
+      <Nuvo::Timeline @alternate={{true}}>
+        <Nuvo::TimelineItem @title="First" @description="Alternating layout." />
+        <Nuvo::TimelineItem @title="Second" @description="Second item flips." />
+        <Nuvo::TimelineItem @title="Third" @description="Third returns." />
+      </Nuvo::Timeline>
+    </NuvoDocs::Example>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Arguments" @id="arguments">
+    <h3 class="nuvo-subtitle">Nuvo::Timeline</h3>
+    <NuvoDocs::Table @kind="args" @rows={{this.timelineArgRows}} />
+    <h3 class="nuvo-subtitle">Nuvo::TimelineItem</h3>
+    <NuvoDocs::Table @kind="args" @rows={{this.itemArgRows}} />
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Blocks" @id="blocks">
+    <NuvoDocs::Table @kind="blocks" @rows={{this.itemBlockRows}} />
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Accessibility" @id="accessibility">
+    <ul class="nu-list">
+      <li class="nu-list__item">Renders an ol of li items, so order and count are announced.</li>
+      <li class="nu-list__item">Marker, connector and icon are aria-hidden; state is conveyed by the title and description text.</li>
+    </ul>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="RTL" @id="rtl">
+    <ul class="nu-list">
+      <li class="nu-list__item">The line and markers sit on the inline-start edge using logical insets, so the timeline hangs from the right under dir="rtl"; the alternate layout mirrors likewise.</li>
+    </ul>
+  </NuvoDocs::Section>
+</NuvoDocs::Page>

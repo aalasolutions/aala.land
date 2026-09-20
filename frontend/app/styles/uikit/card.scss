@@ -96,6 +96,8 @@
     "BorderRadius": nu-radius(xl),
     "BoxShadow": nu-shadow(sm),
     "ValueColor": var(--text-color),
+    "ValueFontSize": nu-font-size(3xl),
+    "LabelColor": var(--text-muted),
     "IconColor": var(--primary),
     "IconBackgroundColor": #{nu-tint(primary, 10%)},
   ));
@@ -123,13 +125,13 @@
     margin-block-end: nu-space(1);
     font-size: nu-font-size(xs);
     font-weight: nu-font-weight(semibold);
-    color: var(--text-muted);
+    color: nu-var("stat", "LabelColor");
     text-transform: uppercase;
     letter-spacing: 0.05em;
   }
 
   @include e(value) {
-    font-size: nu-font-size(3xl);
+    font-size: nu-var("stat", "ValueFontSize");
     font-weight: nu-font-weight(bold);
     line-height: 1.2;
     color: nu-var("stat", "ValueColor");
@@ -150,9 +152,62 @@
       --nu-stat--BackgroundColor: var(--#{$variant}-50);
       --nu-stat--BorderColor: var(--#{$variant}-200);
       --nu-stat--ValueColor: var(--#{$variant}-700);
+      // The tinted surface drops --text-muted under 4.5:1; the 700 shade clears it.
+      --nu-stat--LabelColor: var(--#{$variant}-700);
       --nu-stat--IconColor: var(--#{$variant});
       --nu-stat--IconBackgroundColor: #{nu-tint(#{$variant}, 12%)};
     }
+  }
+
+  @include m(lg) {
+    --nu-stat--Padding: #{nu-space(6)};
+    --nu-stat--ValueFontSize: #{nu-font-size(4xl)};
+  }
+
+  @include m(sm) {
+    --nu-stat--Padding: #{nu-space(3)};
+    --nu-stat--ValueFontSize: #{nu-font-size(lg)};
+  }
+
+  // Row form: label and value on one line, for a dense list of secondary stats.
+  @include m(row) {
+    --nu-stat--Padding: #{nu-space(3)};
+    --nu-stat--ValueFontSize: #{nu-font-size(lg)};
+
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: nu-space(3);
+
+    @include en(label) {
+      margin-block-end: 0;
+    }
+  }
+
+  // Linked stats keep the card look and gain a pointer affordance.
+  &:is(a) {
+    display: block;
+    text-decoration: none;
+    transition: box-shadow nu-duration(fast) $nu-ease,
+      border-color nu-duration(fast) $nu-ease;
+
+    &:hover {
+      box-shadow: nu-shadow(md);
+      border-color: nu-var("stat", "IconColor");
+    }
+
+    &:focus-visible {
+      outline: none;
+      box-shadow: 0 0 0 3px #{nu-tint(primary, 35%)};
+    }
+
+    @include reduced-motion {
+      transition: none;
+    }
+  }
+
+  &:is(a).m-row {
+    display: flex;
   }
 }
 

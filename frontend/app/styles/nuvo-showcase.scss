@@ -1,4 +1,4 @@
-// Layout for the /uikit showcase route only, not part of the shipped kit.
+// Layout and helpers for the /nuvo documentation routes only, not part of the shipped kit.
 @use "./uikit/common/var" as *;
 
 // nu-sidebar is position:fixed, so main region reserves space via margin, not flex flow.
@@ -39,19 +39,38 @@
   max-inline-size: 72rem;
   margin-inline: auto;
   padding: nu-space(8) nu-space(6);
+}
 
+// One documentation page: header, intro, sections.
+.nuvo-doc {
   &__header {
-    margin-block-end: nu-space(10);
-    padding-block-end: nu-space(5);
-    border-block-end: 1px solid var(--border-base);
+    margin-block-end: nu-space(8);
   }
 
-  &__themes {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: nu-space(2);
-    margin-block-start: nu-space(4);
+  &__intro {
+    max-inline-size: 48rem;
+    margin-block: 0 nu-space(8);
+    font-size: nu-font-size(md);
+    line-height: 1.6;
+    color: var(--text-muted);
+  }
+
+  // Reference tables wrap their description column instead of scrolling.
+  &__table {
+    margin-block-end: nu-space(4);
+
+    .nu-table {
+      min-inline-size: 100%;
+    }
+
+    td {
+      vertical-align: top;
+    }
+
+    th:first-child,
+    td:first-child {
+      white-space: nowrap;
+    }
   }
 }
 
@@ -71,14 +90,88 @@
   }
 }
 
+// Live preview box with the invocation snippet attached underneath.
+.nuvo-example {
+  margin-block-end: nu-space(6);
+
+  &__preview {
+    padding: nu-space(5);
+    background-color: var(--bg-surface);
+    border: 1px solid var(--border-base);
+    border-radius: nu-radius(lg);
+
+    &.has-code {
+      border-end-start-radius: 0;
+      border-end-end-radius: 0;
+      border-block-end: none;
+    }
+
+    &.m-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: nu-space(3);
+    }
+
+    // Narrow column for form controls.
+    &.m-stack {
+      display: flex;
+      flex-direction: column;
+      gap: nu-space(3);
+
+      > * {
+        max-inline-size: 26rem;
+      }
+    }
+
+    // Full-width column for panels, alerts and headers.
+    &.m-block {
+      display: flex;
+      flex-direction: column;
+      gap: nu-space(4);
+    }
+  }
+
+  &__code {
+    --nu-code-block--BorderRadius: 0 0 #{nu-radius(lg)} #{nu-radius(lg)};
+  }
+}
+
+// Overview page index of every documented page.
+.nuvo-toc {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+  gap: nu-space(2);
+  margin-block-end: nu-space(6);
+
+  &__link {
+    display: block;
+    padding: nu-space(2) nu-space(3);
+    color: var(--text-color);
+    text-decoration: none;
+    background-color: var(--bg-surface);
+    border: 1px solid var(--border-base);
+    border-radius: nu-radius(md);
+
+    &:hover {
+      color: var(--primary);
+      border-color: var(--primary);
+    }
+
+    &:focus-visible {
+      outline: none;
+      box-shadow: 0 0 0 3px var(--primary-200);
+    }
+  }
+}
+
 .nuvo-row {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: nu-space(3);
-  margin-block-end: nu-space(4);
 
-  // Gives a progress or bar demo room to show its full height.
+  // Gives a vertical divider demo room to show its full height.
   &--full-height {
     block-size: nu-space(16);
   }
@@ -111,4 +204,24 @@
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.05em;
+}
+
+// Sort control inside a raw nu-table header cell; inherits the cell's type styles.
+.nuvo-sort-button {
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+// A demo that must show a scrolling body or sticky header inside a bounded box.
+.nuvo-scroll-box {
+  max-block-size: 14rem;
+  overflow: auto;
+  border: 1px solid var(--border-base);
+  border-radius: nu-radius(lg);
 }

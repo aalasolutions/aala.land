@@ -108,99 +108,91 @@
 
   {{#if @model.documents.length}}
     <Nuvo::Card>
-      <div class="nu-table-wrapper">
-        <table class="nu-table">
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Category</th>
-              <th>Access</th>
-              <th>Property</th>
-              <th>Size</th>
-              <th>Uploaded By</th>
-              <th>Uploaded</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {{#each @model.documents as |doc|}}
-              <tr data-test-document-row>
-                <td>
-                  <div class="flex x-center gap-2">
-                    <Ui::Ph @icon="file-text" />
-                    <span class="font-bold">{{doc.name}}</span>
-                  </div>
-                </td>
-                <td><Nuvo::Tag
-                    class="tag-doc-{{lowercase doc.category}}"
-                    @text={{doc.category}}
-                  /></td>
-                <td><Nuvo::Tag
-                    class="tag-access-{{lowercase doc.accessLevel}}"
-                    @text={{doc.accessLevel}}
-                  /></td>
-                <td class="text-sm" data-test-document-property>
-                  {{#if doc.unit}}
-                    <LinkTo
-                      @route="properties.unit"
-                      @models={{array doc.unit.areaId doc.unit.id}}
-                      class="text-primary"
-                    >{{doc.unit.assetName}}
-                      -
-                      {{doc.unit.unitNumber}}</LinkTo>
-                  {{else}}
-                    <span class="text-muted">—</span>
-                  {{/if}}
-                </td>
-                <td class="text-sm text-muted">{{format-bytes
-                    doc.fileSize
-                  }}</td>
-                <td class="text-sm text-muted" data-test-document-uploader>
-                  {{#if (eq doc.uploadedBy this.auth.currentUser.id)}}
-                    ME
-                  {{else}}
-                    {{or doc.uploadedByName "—"}}
-                  {{/if}}
-                </td>
-                <td class="text-sm text-muted">{{format-date
-                    doc.createdAt
-                  }}</td>
-                <td>
-                  <div class="flex gap-2">
-                    <Nuvo::Button
-                      @variant="secondary"
-                      @size="xs"
-                      aria-label="Download {{doc.name}}"
-                      data-tooltip="Download"
-                      data-test-download-btn
-                      @icon="download-simple"
-                      {{on "click" (fn this.downloadDocument doc)}}
-                    />
-                    <Nuvo::Button
-                      @variant="secondary"
-                      @size="xs"
-                      aria-label="Edit {{doc.name}}"
-                      data-tooltip="Edit"
-                      data-test-edit-btn
-                      @icon="pencil-simple"
-                      {{on "click" (fn this.openEdit doc)}}
-                    />
-                    <Nuvo::Button
-                      @variant="danger"
-                      @size="xs"
-                      aria-label="Delete {{doc.name}}"
-                      data-tooltip="Delete"
-                      data-test-delete-btn
-                      @icon="trash"
-                      {{on "click" (fn this.openDelete doc)}}
-                    />
-                  </div>
-                </td>
-              </tr>
-            {{/each}}
-          </tbody>
-        </table>
-      </div>
+      <DataTable
+        @columns={{this.columns}}
+        @rows={{@model.documents}}
+        @pinColumns={{true}}
+        @reorderable={{true}}
+        @sortable={{true}}
+        @showOptions={{true}}
+        @tableId="documents"
+        as |cell|
+      >
+        {{#if (eq cell.key "name")}}
+          <div class="flex x-center gap-2" data-test-document-row>
+            <Ui::Ph @icon="file-text" />
+            <span class="font-bold">{{cell.value}}</span>
+          </div>
+        {{else if (eq cell.key "category")}}
+          <Nuvo::Tag
+            class="tag-doc-{{lowercase cell.value}}"
+            @text={{cell.value}}
+          />
+        {{else if (eq cell.key "accessLevel")}}
+          <Nuvo::Tag
+            class="tag-access-{{lowercase cell.value}}"
+            @text={{cell.value}}
+          />
+        {{else if (eq cell.key "unit.assetName")}}
+          <span class="text-sm" data-test-document-property>
+            {{#if cell.row.unit}}
+              <LinkTo
+                @route="properties.unit"
+                @models={{array cell.row.unit.areaId cell.row.unit.id}}
+                class="text-primary"
+              >{{cell.row.unit.assetName}}
+                -
+                {{cell.row.unit.unitNumber}}</LinkTo>
+            {{else}}
+              <span class="text-muted">—</span>
+            {{/if}}
+          </span>
+        {{else if (eq cell.key "fileSize")}}
+          <span class="text-sm text-muted">{{format-bytes cell.value}}</span>
+        {{else if (eq cell.key "uploadedByName")}}
+          <span class="text-sm text-muted" data-test-document-uploader>
+            {{#if (eq cell.row.uploadedBy this.auth.currentUser.id)}}
+              ME
+            {{else}}
+              {{or cell.value "—"}}
+            {{/if}}
+          </span>
+        {{else if (eq cell.key "createdAt")}}
+          <span class="text-sm text-muted">{{format-date cell.value}}</span>
+        {{else if (eq cell.key "id")}}
+          <div class="flex gap-2">
+            <Nuvo::Button
+              @variant="secondary"
+              @size="xs"
+              aria-label="Download {{cell.row.name}}"
+              data-tooltip="Download"
+              data-test-download-btn
+              @icon="download-simple"
+              {{on "click" (fn this.downloadDocument cell.row)}}
+            />
+            <Nuvo::Button
+              @variant="secondary"
+              @size="xs"
+              aria-label="Edit {{cell.row.name}}"
+              data-tooltip="Edit"
+              data-test-edit-btn
+              @icon="pencil-simple"
+              {{on "click" (fn this.openEdit cell.row)}}
+            />
+            <Nuvo::Button
+              @variant="danger"
+              @size="xs"
+              aria-label="Delete {{cell.row.name}}"
+              data-tooltip="Delete"
+              data-test-delete-btn
+              @icon="trash"
+              {{on "click" (fn this.openDelete cell.row)}}
+            />
+          </div>
+        {{else}}
+          <span class="text-muted">{{cell.value}}</span>
+        {{/if}}
+      </DataTable>
     </Nuvo::Card>
   {{else}}
     {{#if @model.total}}

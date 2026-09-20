@@ -7,11 +7,24 @@
 >
   {{yield this.toggle this.isOpen to="trigger"}}
 
+  {{! Hosted on .nu-layer so no ancestor can clip it; mounted only while open. }}
+  {{#if this.isOpen}}
+  {{#in-element this.layer.element insertBefore=null}}
   <div
     class={{this.classes}}
     role="dialog"
     aria-labelledby={{if @title this.titleId}}
     data-test-nu-popover-content
+    {{did-insert this.registerPanel}}
+    {{will-destroy this.forgetPanel}}
+    {{on "keydown" this.onKeydown}}
+    {{anchor
+      this.rootElement
+      placement=this.anchorPlacement
+      align=this.anchorAlign
+      gap=8
+      onDismiss=this.close
+    }}
   >
     <span class="nu-popover__arrow" aria-hidden="true"></span>
 
@@ -42,4 +55,6 @@
       </div>
     {{/if}}
   </div>
+  {{/in-element}}
+  {{/if}}
 </div>

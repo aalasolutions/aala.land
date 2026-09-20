@@ -191,6 +191,28 @@ export default class CompanyController extends Controller {
     return (this.creditAgents?.length ?? 0) > 0;
   }
 
+  creditAgentColumns = [
+    { name: 'Agent', valuePath: 'name', width: 220, isFixed: 'left' },
+    { name: 'Credits', valuePath: 'credits', width: 120 },
+    { name: 'Leads', valuePath: 'leads', width: 120 },
+    { name: 'AI turns', valuePath: 'aiTurns', width: 130 },
+  ];
+
+  // Credit rows carry `userId`, not the `id` DataTable keys rows by.
+  get creditAgentRows() {
+    return (this.creditAgents ?? []).map((agent) => ({
+      ...agent,
+      id: agent.userId,
+    }));
+  }
+
+  billingHistoryColumns = [
+    { name: 'Date', valuePath: 'occurredAt', width: 140, isFixed: 'left' },
+    { name: 'Amount', valuePath: 'amount', width: 140 },
+    { name: 'Status', valuePath: 'type', width: 140 },
+    { name: 'Invoice', valuePath: 'hostedInvoiceUrl', width: 160 },
+  ];
+
   get maxRegions() {
     return this.company?.maxRegions ?? 1;
   }
@@ -412,7 +434,7 @@ export default class CompanyController extends Controller {
 
   @action setBillingHistoryLimit(e) {
     // Ui::Pagination binds this to the <select>'s change event, not a value.
-    this.fetchBillingHistory(1, Number(e?.target?.value) || 10);
+    this.fetchBillingHistory(1, Number(e?.target?.value) || 50);
   }
 
   @action toggleRegionChecked(code) {

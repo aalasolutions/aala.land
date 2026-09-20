@@ -1,0 +1,32 @@
+<div
+  class="nu-table-wrapper nuvo-doc__table"
+  data-test-nuvo-table={{@kind}}
+  ...attributes
+>
+  <table class="nu-table m-compact">
+    <thead>
+      <tr>
+        {{#each this.columns as |column|}}
+          <th scope="col">{{column.label}}</th>
+        {{/each}}
+      </tr>
+    </thead>
+    <tbody>
+      {{#each this.rows as |row|}}
+        <tr>
+          {{#each row.cells as |cell|}}
+            <td>
+              {{#if cell.value}}
+                {{#if cell.code}}
+                  <code class="nu-code">{{cell.value}}</code>
+                {{else}}
+                  {{cell.value}}
+                {{/if}}
+              {{/if}}
+            </td>
+          {{/each}}
+        </tr>
+      {{/each}}
+    </tbody>
+  </table>
+</div>

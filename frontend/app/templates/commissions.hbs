@@ -26,107 +26,104 @@
 
   <Nuvo::Card>
     {{#if this.filteredCommissions.length}}
-      <div class="nu-table-wrapper">
-        <table class="nu-table" data-test-commissions-table>
-          <thead>
-            <tr>
-              <th>Agent</th>
-              <th>Deal ID</th>
-              <th>Type</th>
-              <th>Amount</th>
-              <th>Rate</th>
-              <th>Status</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {{#each this.filteredCommissions as |comm|}}
-              <tr data-test-commission-row>
-                <td class="text-xs">{{truncate-id comm.agentId}}</td>
-                <td class="text-xs">
-                  {{#if comm.leadId}}
-                    {{truncate-id comm.leadId}}
-                  {{else if comm.transactionId}}
-                    {{truncate-id comm.transactionId}}
-                  {{else}}
-                    <span class="text-muted">N/A</span>
-                  {{/if}}
-                </td>
-                <td>
-                  <Nuvo::Tag
-                    class="tag-commtype-{{lowercase comm.type}}"
-                    @text={{comm.type}}
-                  />
-                </td>
-                <td class="font-bold">{{format-currency comm.commissionAmount}}
-                  /
-                  {{format-currency comm.grossAmount}}</td>
-                <td>{{comm.commissionRate}}%</td>
-                <td>
-                  <Nuvo::Tag
-                    class="tag-commission-{{lowercase comm.status}}"
-                    @text={{comm.status}}
-                  />
-                </td>
-                <td>
-                  {{#if (eq comm.status "PENDING")}}
-                    <div class="flex gap-2">
-                      <Nuvo::Button
-                        @variant="primary"
-                        @size="xs"
-                        data-test-approve-btn
-                        @icon="check"
-                        {{on "click" (fn this.approveCommission comm)}}
-                      >
-                        Approve
-                      </Nuvo::Button>
-                      <Nuvo::Button
-                        @variant="secondary"
-                        @size="xs"
-                        @icon="prohibit"
-                        data-test-cancel-commission
-                        {{on "click" (fn this.openCancel comm)}}
-                      >
-                        Cancel commission
-                      </Nuvo::Button>
-                    </div>
-                  {{else if (eq comm.status "APPROVED")}}
-                    <div class="flex gap-2">
-                      <Nuvo::Button
-                        @variant="primary"
-                        @size="xs"
-                        data-test-pay-btn
-                        @icon="currency-dollar"
-                        {{on "click" (fn this.payCommission comm)}}
-                      >
-                        Mark Paid
-                      </Nuvo::Button>
-                      <Nuvo::Button
-                        @variant="secondary"
-                        @size="xs"
-                        @icon="prohibit"
-                        data-test-cancel-commission
-                        {{on "click" (fn this.openCancel comm)}}
-                      >
-                        Cancel commission
-                      </Nuvo::Button>
-                    </div>
-                  {{else if (eq comm.status "PAID")}}
-                    <span class="text-xs text-muted">
-                      {{#if comm.paidAt}}
-                        Paid
-                        {{format-date comm.paidAt}}
-                      {{else}}
-                        Paid
-                      {{/if}}
-                    </span>
-                  {{/if}}
-                </td>
-              </tr>
-            {{/each}}
-          </tbody>
-        </table>
-      </div>
+      <DataTable
+        @columns={{this.columns}}
+        @rows={{this.filteredCommissions}}
+        @pinColumns={{true}}
+        @reorderable={{true}}
+        @sortable={{true}}
+        @showOptions={{true}}
+        @tableId="commissions"
+        data-test-commissions-table
+        as |cell|
+      >
+        {{#if (eq cell.key "agentId")}}
+          <span class="text-xs" data-test-commission-row>{{truncate-id
+              cell.value
+            }}</span>
+        {{else if (eq cell.key "leadId")}}
+          <span class="text-xs">
+            {{#if cell.row.leadId}}
+              {{truncate-id cell.row.leadId}}
+            {{else if cell.row.transactionId}}
+              {{truncate-id cell.row.transactionId}}
+            {{else}}
+              <span class="text-muted">N/A</span>
+            {{/if}}
+          </span>
+        {{else if (eq cell.key "type")}}
+          <Nuvo::Tag
+            class="tag-commtype-{{lowercase cell.value}}"
+            @text={{cell.value}}
+          />
+        {{else if (eq cell.key "commissionAmount")}}
+          <span class="font-bold">{{format-currency cell.value}}
+            /
+            {{format-currency cell.row.grossAmount}}</span>
+        {{else if (eq cell.key "commissionRate")}}
+          {{cell.value}}%
+        {{else if (eq cell.key "status")}}
+          <Nuvo::Tag
+            class="tag-commission-{{lowercase cell.value}}"
+            @text={{cell.value}}
+          />
+        {{else if (eq cell.key "id")}}
+          {{#if (eq cell.row.status "PENDING")}}
+            <div class="flex gap-2">
+              <Nuvo::Button
+                @variant="primary"
+                @size="xs"
+                data-test-approve-btn
+                @icon="check"
+                {{on "click" (fn this.approveCommission cell.row)}}
+              >
+                Approve
+              </Nuvo::Button>
+              <Nuvo::Button
+                @variant="secondary"
+                @size="xs"
+                @icon="prohibit"
+                data-test-cancel-commission
+                {{on "click" (fn this.openCancel cell.row)}}
+              >
+                Cancel commission
+              </Nuvo::Button>
+            </div>
+          {{else if (eq cell.row.status "APPROVED")}}
+            <div class="flex gap-2">
+              <Nuvo::Button
+                @variant="primary"
+                @size="xs"
+                data-test-pay-btn
+                @icon="currency-dollar"
+                {{on "click" (fn this.payCommission cell.row)}}
+              >
+                Mark Paid
+              </Nuvo::Button>
+              <Nuvo::Button
+                @variant="secondary"
+                @size="xs"
+                @icon="prohibit"
+                data-test-cancel-commission
+                {{on "click" (fn this.openCancel cell.row)}}
+              >
+                Cancel commission
+              </Nuvo::Button>
+            </div>
+          {{else if (eq cell.row.status "PAID")}}
+            <span class="text-xs text-muted">
+              {{#if cell.row.paidAt}}
+                Paid
+                {{format-date cell.row.paidAt}}
+              {{else}}
+                Paid
+              {{/if}}
+            </span>
+          {{/if}}
+        {{else}}
+          {{cell.value}}
+        {{/if}}
+      </DataTable>
     {{else}}
       {{#if @model.total}}
         <Nuvo::EmptyState

@@ -107,8 +107,25 @@ export default class AdminOverviewController extends Controller {
     }));
   }
 
+  upcomingColumns = [
+    { name: 'Company', valuePath: 'companyName', width: 220, isFixed: 'left' },
+    { name: 'Amount', valuePath: 'amount', width: 140 },
+    { name: 'Due', valuePath: 'coversEnd', width: 140 },
+    {
+      name: 'Actions',
+      valuePath: 'companyId',
+      width: 110,
+      isFixed: 'right',
+      isSortable: false,
+    },
+  ];
+
+  /** One row per company, so the company id doubles as the row key. */
   get upcomingRows() {
-    return this.model.upcoming?.rows ?? [];
+    return (this.model.upcoming?.rows ?? []).map((row) => ({
+      ...row,
+      id: row.companyId,
+    }));
   }
 
   get upcomingDays() {

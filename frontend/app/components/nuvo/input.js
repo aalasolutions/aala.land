@@ -2,6 +2,7 @@ import Component from '@glimmer/component';
 import { action } from '@ember/object';
 
 const SIZES = ['sm', 'lg'];
+const LTR_TYPES = ['tel', 'number', 'email', 'url'];
 
 export default class NuInputComponent extends Component {
   get wrapClasses() {
@@ -33,6 +34,11 @@ export default class NuInputComponent extends Component {
 
   get type() {
     return this.args.type || 'text';
+  }
+
+  // Numbers, phones and addresses read LTR inside an RTL page.
+  get dir() {
+    return LTR_TYPES.includes(this.type) ? 'ltr' : undefined;
   }
 
   get hasValue() {

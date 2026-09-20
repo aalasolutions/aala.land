@@ -1,0 +1,13 @@
+// nu-layer - body-level host for anchored menus and popovers (Nuvo::LayerHost)
+@use "./mixins/bem" as *;
+@use "./common/var" as *;
+
+// Zero-size stacking context at modal level; children are viewport-fixed by
+// the anchor modifier. Mounted after modals and drawers so it paints above
+// them, and before the tooltip host so tooltips paint above it.
+@include b(layer) {
+  position: fixed;
+  inset-block-start: 0;
+  inset-inline-start: 0;
+  z-index: nu-z(modal);
+}

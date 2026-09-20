@@ -13,6 +13,7 @@
     maxlength={{@maxlength}}
     autocomplete={{if @autocomplete @autocomplete "off"}}
     aria-invalid={{if @invalid "true"}}
+    dir={{this.dir}}
     data-test-nu-input
     {{on "input" this.handleInput}}
     {{on "change" this.handleChange}}

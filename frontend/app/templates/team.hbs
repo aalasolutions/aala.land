@@ -38,134 +38,124 @@
 
   <Nuvo::Card>
     {{#if this.model.users.length}}
-      <div class="nu-table-wrapper">
-        <table class="nu-table">
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Email</th>
-              <th>Role</th>
-              <th>Regions</th>
-              {{#if this.isSuperAdmin}}
-                <th>Company</th>
+      <DataTable
+        @columns={{this.columns}}
+        @rows={{this.model.users}}
+        @pinColumns={{true}}
+        @reorderable={{true}}
+        @sortable={{true}}
+        @showOptions={{true}}
+        @tableId="team"
+        as |cell|
+      >
+        {{#if (eq cell.key "name")}}
+          <span class="font-bold" data-test-user-id={{cell.row.id}}>{{cell.value}}</span>
+        {{else if (eq cell.key "email")}}
+          <span class="text-muted">{{cell.value}}</span>
+        {{else if (eq cell.key "role")}}
+          <Nuvo::Tag @text={{format-role cell.value}} />
+        {{else if (eq cell.key "regionCodes")}}
+          {{#if cell.value.length}}
+            <div class="flex gap-1 wrap" data-test-user-regions={{cell.row.id}}>
+              {{#each cell.value as |code|}}
+                <Nuvo::Tag @text={{code}} @size="sm" />
+              {{/each}}
+            </div>
+          {{else}}
+            <span
+              class="text-xs text-muted"
+              data-test-user-regions-empty={{cell.row.id}}
+            >None</span>
+          {{/if}}
+        {{else if (eq cell.key "company.name")}}
+          <span class="text-muted">{{or cell.value "—"}}</span>
+        {{else if (eq cell.key "isActive")}}
+          {{#if cell.value}}
+            <Nuvo::Tag class="tag-enabled-active" @text="Active" />
+          {{else}}
+            <Nuvo::Tag class="tag-enabled-inactive" @text="Inactive" />
+          {{/if}}
+        {{else if (eq cell.key "id")}}
+          <div class="flex gap-2">
+            <Nuvo::Button
+              @variant="secondary"
+              @size="xs"
+              @icon="pencil-simple"
+              data-test-edit-user
+              {{on "click" (fn this.openEdit cell.row)}}
+            >
+              Edit
+            </Nuvo::Button>
+            {{! Removal needs a company context; backend rejects users with no companyId. }}
+            {{#if cell.row.companyId}}
+              {{#if cell.row.isActive}}
+                <Nuvo::Button
+                  @variant="danger"
+                  @size="xs"
+                  @icon="user-minus"
+                  data-test-remove-user
+                  {{on "click" (fn this.openRemove cell.row)}}
+                >
+                  Remove
+                </Nuvo::Button>
+              {{else}}
+                <Nuvo::Button
+                  @variant="secondary"
+                  @size="xs"
+                  @icon="user-plus"
+                  @disabled={{this.isReactivating}}
+                  data-test-reactivate-user
+                  {{on "click" (fn this.openReactivate cell.row)}}
+                >
+                  {{if
+                    (eq this.reactivatingUserId cell.row.id)
+                    "Reactivating..."
+                    "Reactivate"
+                  }}
+                </Nuvo::Button>
+                <Nuvo::Button
+                  @variant="danger"
+                  @size="xs"
+                  @icon="trash"
+                  data-test-delete-user
+                  {{on "click" (fn this.openRemove cell.row)}}
+                >
+                  Delete
+                </Nuvo::Button>
               {{/if}}
-              <th>Status</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {{#each this.model.users as |user|}}
-              <tr data-test-user-id={{user.id}}>
-                <td class="font-bold">{{user.name}}</td>
-                <td class="text-muted">{{user.email}}</td>
-                <td><Nuvo::Tag @text={{format-role user.role}} /></td>
-                <td>
-                  {{#if user.regionCodes.length}}
-                    <div class="flex gap-1 wrap" data-test-user-regions={{user.id}}>
-                      {{#each user.regionCodes as |code|}}
-                        <Nuvo::Tag @text={{code}} @size="sm" />
-                      {{/each}}
-                    </div>
-                  {{else}}
-                    <span
-                      class="text-xs text-muted"
-                      data-test-user-regions-empty={{user.id}}
-                    >None</span>
-                  {{/if}}
-                </td>
-                {{#if this.isSuperAdmin}}
-                  <td class="text-muted">{{or user.company.name "—"}}</td>
-                {{/if}}
-                <td>
-                  {{#if user.isActive}}
-                    <Nuvo::Tag class="tag-enabled-active" @text="Active" />
-                  {{else}}
-                    <Nuvo::Tag class="tag-enabled-inactive" @text="Inactive" />
-                  {{/if}}
-                </td>
-                <td>
-                  <div class="flex gap-2">
-                    <Nuvo::Button
-                      @variant="secondary"
-                      @size="xs"
-                      @icon="pencil-simple"
-                      data-test-edit-user
-                      {{on "click" (fn this.openEdit user)}}
-                    >
-                      Edit
-                    </Nuvo::Button>
-                    {{! Removal needs a company context; backend rejects users with no companyId. }}
-                    {{#if user.companyId}}
-                      {{#if user.isActive}}
-                        <Nuvo::Button
-                          @variant="danger"
-                          @size="xs"
-                          @icon="user-minus"
-                          data-test-remove-user
-                          {{on "click" (fn this.openRemove user)}}
-                        >
-                          Remove
-                        </Nuvo::Button>
-                      {{else}}
-                        <Nuvo::Button
-                          @variant="secondary"
-                          @size="xs"
-                          @icon="user-plus"
-                          @disabled={{this.isReactivating}}
-                          data-test-reactivate-user
-                          {{on "click" (fn this.openReactivate user)}}
-                        >
-                          {{if
-                            (eq this.reactivatingUserId user.id)
-                            "Reactivating..."
-                            "Reactivate"
-                          }}
-                        </Nuvo::Button>
-                        <Nuvo::Button
-                          @variant="danger"
-                          @size="xs"
-                          @icon="trash"
-                          data-test-delete-user
-                          {{on "click" (fn this.openRemove user)}}
-                        >
-                          Delete
-                        </Nuvo::Button>
-                      {{/if}}
-                    {{/if}}
-                    {{#if this.isSuperAdmin}}
-                      {{#unless (eq user.role "super_admin")}}
-                        <Nuvo::Button
-                          @variant="secondary"
-                          @size="xs"
-                          @icon={{if
-                            (eq this.impersonatingUserId user.id)
-                            "↻"
-                            "⇄"
-                          }}
-                          @loading={{eq this.impersonatingUserId user.id}}
-                          @disabled={{or
-                            (eq user.isActive false)
-                            this.isImpersonating
-                            (eq this.impersonatingUserId user.id)
-                          }}
-                          data-test-impersonate-user
-                          {{on "click" (fn this.impersonateUser user)}}
-                        >
-                          {{if
-                            (eq this.impersonatingUserId user.id)
-                            "Impersonating..."
-                            "Impersonate"
-                          }}
-                        </Nuvo::Button>
-                      {{/unless}}
-                    {{/if}}
-                  </div>
-                </td>
-              </tr>
-            {{/each}}
-          </tbody>
-        </table>
-      </div>
+            {{/if}}
+            {{#if this.isSuperAdmin}}
+              {{#unless (eq cell.row.role "super_admin")}}
+                <Nuvo::Button
+                  @variant="secondary"
+                  @size="xs"
+                  @icon={{if
+                    (eq this.impersonatingUserId cell.row.id)
+                    "↻"
+                    "⇄"
+                  }}
+                  @loading={{eq this.impersonatingUserId cell.row.id}}
+                  @disabled={{or
+                    (eq cell.row.isActive false)
+                    this.isImpersonating
+                    (eq this.impersonatingUserId cell.row.id)
+                  }}
+                  data-test-impersonate-user
+                  {{on "click" (fn this.impersonateUser cell.row)}}
+                >
+                  {{if
+                    (eq this.impersonatingUserId cell.row.id)
+                    "Impersonating..."
+                    "Impersonate"
+                  }}
+                </Nuvo::Button>
+              {{/unless}}
+            {{/if}}
+          </div>
+        {{else}}
+          <span class="text-muted">{{cell.value}}</span>
+        {{/if}}
+      </DataTable>
     {{else}}
       {{#if @model.total}}
         <Nuvo::EmptyState

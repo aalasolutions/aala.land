@@ -113,6 +113,47 @@ export default class PropertiesDetailController extends Controller {
     }));
   }
 
+  unitColumns = [
+    { name: 'Asset', valuePath: 'assetName', width: 220, isFixed: 'left' },
+    { name: 'Property', valuePath: 'unitNumber', width: 160 },
+    { name: 'Status', valuePath: 'status', width: 160 },
+    { name: 'Type', valuePath: 'propertyType', width: 150 },
+    { name: 'Beds', valuePath: 'bedrooms', width: 90 },
+    { name: 'Baths', valuePath: 'bathrooms', width: 90 },
+    { name: 'Size', valuePath: 'sqFt', width: 120 },
+    { name: 'Price', valuePath: 'price', width: 140 },
+    {
+      name: 'Actions',
+      valuePath: 'id',
+      width: 170,
+      isFixed: 'right',
+      isSortable: false,
+    },
+  ];
+
+  // One parent row per asset, its units as tree children.
+  get unitRows() {
+    return this.assetsWithHistory.map((asset) => ({
+      id: asset.id,
+      assetId: asset.id,
+      assetName: asset.name,
+      unitCount: (asset.units ?? []).length,
+      children: (asset.units ?? []).map((unit) => ({
+        id: unit.id,
+        assetId: asset.id,
+        unit,
+        unitNumber: unit.unitNumber,
+        status: unit.status,
+        propertyType: unit.propertyType,
+        bedrooms: unit.bedrooms,
+        bathrooms: unit.bathrooms,
+        sqFt: unit.sqFt,
+        price: unit.price,
+        deletedAt: unit.deletedAt,
+      })),
+    }));
+  }
+
   statusOptions = PROPERTY_STATUS_OPTIONS;
 
   propertyTypeOptions = PROPERTY_TYPE_OPTIONS;

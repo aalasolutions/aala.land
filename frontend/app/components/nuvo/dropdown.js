@@ -3,14 +3,18 @@ import { cached, tracked } from '@glimmer/tracking';
 import { action } from '@ember/object';
 import { isDestroyed, registerDestructor } from '@ember/destroyable';
 import { guidFor } from '@ember/object/internals';
+import { service } from '@ember/service';
 import { cancelTask, runTask } from 'ember-lifeline';
 
 const PLACEMENTS = ['start', 'end', 'up'];
 const ALIGNMENTS = ['start', 'center', 'end'];
 
 const CREATE_VALUE = '__nu_dropdown_create__';
+const TRIGGER_FOCUSABLE = 'input, button, [tabindex]';
 
 export default class NuDropdownComponent extends Component {
+  @service layer;
+
   menuId = `nu-menu-${guidFor(this)}`;
 
   @tracked isOpen = false;
@@ -22,9 +26,24 @@ export default class NuDropdownComponent extends Component {
   @tracked isCreating = false;
 
   rootElement = null;
+  menuElement = null;
   clickOutsideHandler = null;
   searchTimer = null;
   searchSeq = 0;
+
+  // The menu lives on .nu-layer; these map the kit's placement args to the anchor.
+  get anchorPlacement() {
+    return this.args.placement === 'up' ? 'top' : 'bottom';
+  }
+
+  get anchorAlign() {
+    return this.args.placement === 'end' ? 'end' : 'start';
+  }
+
+  // Select-like dropdowns keep the menu at least as wide as the trigger.
+  get matchWidth() {
+    return ALIGNMENTS.includes(this.args.align);
+  }
 
   // Controlled when @value is passed; otherwise falls back to internal state after a pick.
   get currentValue() {
@@ -37,7 +56,8 @@ export default class NuDropdownComponent extends Component {
       if (
         this.isOpen &&
         this.rootElement &&
-        !this.rootElement.contains(event.target)
+        !this.rootElement.contains(event.target) &&
+        !this.menuElement?.contains(event.target)
       ) {
         this.close();
       }
@@ -68,7 +88,14 @@ export default class NuDropdownComponent extends Component {
   }
 
   get menuClasses() {
-    return this.isOpen ? 'nu-menu is-open' : 'nu-menu';
+    const parts = ['nu-menu'];
+    if (ALIGNMENTS.includes(this.args.optionsAlign)) {
+      parts.push(`m-options-${this.args.optionsAlign}`);
+    }
+    if (this.isOpen) {
+      parts.push('is-open');
+    }
+    return parts.join(' ');
   }
 
   get optionSource() {
@@ -256,6 +283,24 @@ export default class NuDropdownComponent extends Component {
   }
 
   @action
+  registerMenu(element) {
+    this.menuElement = element;
+  }
+
+  @action
+  forgetMenu() {
+    this.menuElement = null;
+  }
+
+  // Focus that was inside the hosted menu goes back to the trigger.
+  returnFocus() {
+    const active = document.activeElement;
+    if (active && this.menuElement?.contains(active)) {
+      this.rootElement?.querySelector(TRIGGER_FOCUSABLE)?.focus();
+    }
+  }
+
+  @action
   toggle() {
     if (this.args.disabled) {
       return;
@@ -273,7 +318,7 @@ export default class NuDropdownComponent extends Component {
     runTask(
       this,
       () => {
-        this.rootElement?.querySelector('.nu-menu__search input')?.focus();
+        this.menuElement?.querySelector('.nu-menu__search input')?.focus();
       },
       0,
     );
@@ -281,6 +326,7 @@ export default class NuDropdownComponent extends Component {
 
   @action
   close() {
+    this.returnFocus();
     this.isOpen = false;
     this.searchText = '';
     this.highlightedIndex = -1;
@@ -438,6 +484,8 @@ export default class NuDropdownComponent extends Component {
         break;
       case 'Escape':
         event.preventDefault();
+        // The menu is the innermost layer; a drawer underneath must stay open.
+        event.stopPropagation();
         this.close();
         break;
       case 'Tab':
@@ -450,7 +498,7 @@ export default class NuDropdownComponent extends Component {
     runTask(
       this,
       () => {
-        this.rootElement
+        this.menuElement
           ?.querySelector('.nu-menu__item.is-highlighted')
           ?.scrollIntoView({ block: 'nearest' });
       },

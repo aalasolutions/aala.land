@@ -1,0 +1,142 @@
+<NuvoDocs::Page
+  @id="tag"
+  @title="Tag"
+  @subtitle="Compact label for categories and filters, optionally removable or selectable."
+  @components="Nuvo::Tag"
+>
+  <NuvoDocs::Section @title="Overview" @id="overview">
+    <p class="nuvo-doc__intro">
+      A tag is a label span with an optional remove button. Selection is
+      not part of the component: a selectable chip is a real button carrying
+      the
+      <code class="nu-code">m-selectable</code>
+      and
+      <code class="nu-code">is-selected</code>
+      classes, so it stays keyboard-operable. Use tags for things a user
+      attaches to a record; use a Badge for a state the system reports.
+    </p>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Features" @id="features">
+    <ul class="nu-list">
+      <li class="nu-list__item">Six colour variants plus a neutral default.</li>
+      <li class="nu-list__item">Outline style and two extra sizes.</li>
+      <li class="nu-list__item">Closable form with a labelled remove button.</li>
+      <li class="nu-list__item">Disabled state blocks the remove callback.</li>
+      <li class="nu-list__item">Pill and selectable classes for chip groups built on native buttons.</li>
+    </ul>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Variants" @id="variants">
+    {{#each this.variantExamples as |example|}}
+      <NuvoDocs::Example @title={{example.title}} @note={{example.note}} @code={{example.code}}>
+        <Nuvo::Tag @variant={{example.variant}} @text={{example.title}} />
+      </NuvoDocs::Example>
+    {{/each}}
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Styles and sizes" @id="styles">
+    <NuvoDocs::Example
+      @title="Outline"
+      @note="Coloured border on a transparent background, for a lighter tag beside filled ones."
+      @code={{this.code.outline}}
+    >
+      <Nuvo::Tag @variant="primary" @outline={{true}} @text="Outline" />
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Small"
+      @note="For table cells and dense chip rows."
+      @code={{this.code.sm}}
+    >
+      <Nuvo::Tag @variant="success" @size="sm" @text="Small" />
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Large"
+      @note="For headers and filter summaries where the tag is a primary signal."
+      @code={{this.code.lg}}
+    >
+      <Nuvo::Tag @variant="success" @size="lg" @text="Large" />
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Block content"
+      @note="A block replaces text, for an icon before the label."
+      @code={{this.code.block}}
+    >
+      <Nuvo::Tag @variant="primary">
+        <Ui::Ph @icon="car" /> Parking
+      </Nuvo::Tag>
+    </NuvoDocs::Example>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Removal" @id="removal">
+    <NuvoDocs::Example
+      @title="Closable"
+      @note="Adds a labelled remove button and reports through onClose; the caller drops the tag from its list. For editable attribute sets and active filter chips."
+      @code={{this.code.closable}}
+    >
+      <Nuvo::Tag
+        @variant="info"
+        @closable={{true}}
+        @text="Closable"
+        @onClose={{fn this.noteClose "Closable"}}
+      />
+      <span class="nu-text m-sm m-muted" data-test-nuvo-tag-closed>Last closed: {{this.lastClosed}}</span>
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Disabled"
+      @note="Keeps the tag visible but disables the remove button and blocks the callback, for tags the current user may not change."
+      @code={{this.code.disabled}}
+    >
+      <Nuvo::Tag @variant="danger" @disabled={{true}} @closable={{true}} @text="Disabled" />
+    </NuvoDocs::Example>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Selectable chips" @id="chips">
+    <NuvoDocs::Example
+      @title="Chip group"
+      @note="Multi-select filters built on native buttons with the pill and selectable classes; is-selected drives the state and aria-pressed announces it. Choose this over checkboxes when the choices are short words."
+      @code={{this.code.chips}}
+    >
+      {{#each this.chipOptions as |chip|}}
+        <button
+          type="button"
+          class="nu-tag m-pill m-selectable
+            {{if (includes this.selectedChips chip) 'is-selected'}}"
+          aria-pressed={{if (includes this.selectedChips chip) "true" "false"}}
+          data-test-nuvo-chip={{chip}}
+          {{on "click" (fn this.toggleChip chip)}}
+        >{{chip}}</button>
+      {{/each}}
+    </NuvoDocs::Example>
+    <NuvoDocs::Table @kind="classes" @rows={{this.classRows}} />
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Arguments" @id="arguments">
+    <NuvoDocs::Table @kind="args" @rows={{this.argRows}} />
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Callbacks" @id="callbacks">
+    <NuvoDocs::Table @kind="callbacks" @rows={{this.callbackRows}} />
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Blocks" @id="blocks">
+    <NuvoDocs::Table @kind="blocks" @rows={{this.blockRows}} />
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Accessibility" @id="accessibility">
+    <ul class="nu-list">
+      <li class="nu-list__item">The remove control is a native button labelled "Remove tag" and carries the disabled attribute when the tag is disabled.</li>
+      <li class="nu-list__item">Selectable chips are native buttons; set aria-pressed from the same state that sets is-selected.</li>
+    </ul>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="RTL" @id="rtl">
+    <ul class="nu-list">
+      <li class="nu-list__item">Label and remove button sit in a flex row spaced by gap, so the button trails the label in both directions.</li>
+    </ul>
+  </NuvoDocs::Section>
+</NuvoDocs::Page>

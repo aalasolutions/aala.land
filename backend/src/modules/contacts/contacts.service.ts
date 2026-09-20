@@ -4,6 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { clampLimit, pageSkip } from '@shared/utils/pagination.util';
 import { DataSource, EntityManager, In, Repository } from 'typeorm';
 import { Contact } from './entities/contact.entity';
 import { Company } from '../companies/entities/company.entity';
@@ -328,8 +329,8 @@ export class ContactsService {
       });
     }
 
-    qb.skip((page - 1) * limit)
-      .take(limit)
+    qb.skip(pageSkip(page, limit))
+      .take(clampLimit(limit))
       .orderBy('c.created_at', 'DESC');
 
     const [rows, total] = await qb.getManyAndCount();

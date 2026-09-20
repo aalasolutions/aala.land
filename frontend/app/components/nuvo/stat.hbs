@@ -1,21 +1,39 @@
-<div class={{this.classes}} data-test-nu-stat ...attributes>
-  {{#if (has-block "icon")}}
-    <div class="nu-stat__icon" aria-hidden="true" data-test-nu-stat-icon>
-      {{yield to="icon"}}
-    </div>
-  {{else if @icon}}
-    <div class="nu-stat__icon" aria-hidden="true" data-test-nu-stat-icon>
-      {{@icon}}
-    </div>
-  {{/if}}
-
-  {{#if @label}}
-    <div class="nu-stat__label" data-test-nu-stat-label>{{@label}}</div>
-  {{/if}}
-
-  <div class="nu-stat__value" data-test-nu-stat-value>{{@value}}</div>
-
-  {{#if @delta}}
-    <div class="nu-stat__delta" data-test-nu-stat-delta>{{@delta}}</div>
-  {{/if}}
-</div>
+{{! @route renders LinkTo, @href an anchor, else a div; all share stat-inner. }}
+{{#if @route}}
+  <LinkTo
+    @route={{@route}}
+    @models={{this.linkModels}}
+    @query={{this.linkQuery}}
+    class={{this.classes}}
+    data-test-nu-stat
+    ...attributes
+  >
+    <Nuvo::StatInner
+      @icon={{@icon}}
+      @label={{@label}}
+      @value={{@value}}
+      @delta={{@delta}}
+      @hasIconBlock={{has-block "icon"}}
+    >{{yield to="icon"}}</Nuvo::StatInner>
+  </LinkTo>
+{{else if @href}}
+  <a href={{@href}} class={{this.classes}} data-test-nu-stat ...attributes>
+    <Nuvo::StatInner
+      @icon={{@icon}}
+      @label={{@label}}
+      @value={{@value}}
+      @delta={{@delta}}
+      @hasIconBlock={{has-block "icon"}}
+    >{{yield to="icon"}}</Nuvo::StatInner>
+  </a>
+{{else}}
+  <div class={{this.classes}} data-test-nu-stat ...attributes>
+    <Nuvo::StatInner
+      @icon={{@icon}}
+      @label={{@label}}
+      @value={{@value}}
+      @delta={{@delta}}
+      @hasIconBlock={{has-block "icon"}}
+    >{{yield to="icon"}}</Nuvo::StatInner>
+  </div>
+{{/if}}

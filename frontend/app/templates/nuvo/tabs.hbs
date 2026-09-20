@@ -1,0 +1,148 @@
+<NuvoDocs::Page
+  @id="tabs"
+  @title="Tabs"
+  @subtitle="Tab list with an optional panel, controlled or uncontrolled."
+  @components="Nuvo::Tabs"
+>
+  <NuvoDocs::Section @title="Overview" @id="overview">
+    <p class="nuvo-doc__intro">
+      Tabs navigate between panels of content. Pass
+      <code class="nu-code">@activeTab</code>
+      to control the selection from outside, or omit it and the component
+      keeps its own. The block receives the active id so one template can
+      render every panel. For a control that sets a value rather than
+      showing a panel, use Segmented.
+    </p>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Features" @id="features">
+    <ul class="nu-list">
+      <li class="nu-list__item">Underline, pills and enclosed variants; vertical and fill layouts.</li>
+      <li class="nu-list__item">Icons and counts per tab; disabled tabs are skipped by the keyboard.</li>
+      <li class="nu-list__item">Roving tabindex with arrow, Home and End keys.</li>
+      <li class="nu-list__item">Controlled and uncontrolled modes.</li>
+    </ul>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Modes" @id="modes">
+    <NuvoDocs::Example
+      @title="Controlled with panel"
+      @note="activeTab comes from the controller and onChange writes it back, so the route can put the tab in a query param. Icons, counts and a disabled tab are declared on the items."
+      @layout="block"
+      @code={{this.code.controlled}}
+    >
+      <Nuvo::Tabs
+        @tabs={{this.unitTabs}}
+        @activeTab={{this.activeUnitTab}}
+        @onChange={{this.updateUnitTab}}
+        as |tabId|
+      >
+        {{#if (eq tabId "overview")}}
+          <Nuvo::Text @text="Unit 1204, Marina Tower - 2BR, sea view, currently leased." />
+        {{else if (eq tabId "lease")}}
+          <Nuvo::Text @text="Leased to Ahmed Khalid, AED 8,500/month, renews 31 Dec 2026." />
+        {{else if (eq tabId "cheques")}}
+          <Nuvo::Text @text="4 post-dated cheques on file, next due 1 Sep 2026." />
+        {{else if (eq tabId "maintenance")}}
+          <Nuvo::Text @text="No open maintenance requests." />
+        {{/if}}
+      </Nuvo::Tabs>
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Uncontrolled"
+      @note="Without activeTab the component starts on the first enabled tab and keeps its own state. Fine for local panels that nothing else needs to know about."
+      @layout="block"
+      @code={{this.code.uncontrolled}}
+    >
+      <Nuvo::Tabs @tabs={{this.plainTabs}} as |tabId|>
+        <Nuvo::Text @text="Active: {{tabId}}" />
+      </Nuvo::Tabs>
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="List only"
+      @note="Without a block only the tab list renders; the page shows the content elsewhere, for example a routed outlet."
+      @layout="block"
+      @code={{this.code.listOnly}}
+    >
+      <Nuvo::Tabs @tabs={{this.plainTabs}} @activeTab={{this.activeUnitTab}} @onChange={{this.updateUnitTab}} />
+    </NuvoDocs::Example>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Variants" @id="variants">
+    <NuvoDocs::Example
+      @title="Underline"
+      @note="A bar under the active tab; the default and the lightest, for page-level sections."
+      @layout="block"
+      @code={{this.code.underline}}
+    >
+      <Nuvo::Tabs @tabs={{this.unitTabs}} @variant="underline" @activeTab={{this.activeUnitTab}} @onChange={{this.updateUnitTab}} />
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Pills"
+      @note="A filled pill on the active tab, for compact switchers inside cards and toolbars."
+      @layout="block"
+      @code={{this.code.pills}}
+    >
+      <Nuvo::Tabs @tabs={{this.unitTabs}} @variant="pills" @activeTab={{this.activeUnitTab}} @onChange={{this.updateUnitTab}} />
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Enclosed"
+      @note="Folder-style tabs joined to the panel below, for settings pages where the panel has its own border."
+      @layout="block"
+      @code={{this.code.enclosed}}
+    >
+      <Nuvo::Tabs @tabs={{this.unitTabs}} @variant="enclosed" @activeTab={{this.activeUnitTab}} @onChange={{this.updateUnitTab}} />
+    </NuvoDocs::Example>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Layouts" @id="layouts">
+    <NuvoDocs::Example
+      @title="Vertical"
+      @note="The list stacks on the inline-start side and arrow keys switch to up and down. For long lists of sections in a settings area."
+      @layout="block"
+      @code={{this.code.vertical}}
+    >
+      <Nuvo::Tabs @tabs={{this.unitTabs}} @vertical={{true}} @activeTab={{this.activeUnitTab}} @onChange={{this.updateUnitTab}} />
+    </NuvoDocs::Example>
+
+    <NuvoDocs::Example
+      @title="Fill"
+      @note="Tabs share the full width equally, for two to four tabs on a narrow card or a phone."
+      @layout="block"
+      @code={{this.code.fill}}
+    >
+      <Nuvo::Tabs @tabs={{this.unitTabs}} @fill={{true}} @activeTab={{this.activeUnitTab}} @onChange={{this.updateUnitTab}} />
+    </NuvoDocs::Example>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Arguments" @id="arguments">
+    <NuvoDocs::Table @kind="args" @rows={{this.argRows}} />
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Callbacks" @id="callbacks">
+    <NuvoDocs::Table @kind="callbacks" @rows={{this.callbackRows}} />
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Blocks" @id="blocks">
+    <NuvoDocs::Table @kind="blocks" @rows={{this.blockRows}} />
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="Accessibility" @id="accessibility">
+    <ul class="nu-list">
+      <li class="nu-list__item">The list has role="tablist" with aria-orientation; each tab is a button with role="tab" and aria-selected.</li>
+      <li class="nu-list__item">Only the active tab is in the tab order; arrows, Home and End move between enabled tabs and focus follows selection.</li>
+      <li class="nu-list__item">The panel has role="tabpanel" and tabindex="0" so it can be reached from the list.</li>
+    </ul>
+  </NuvoDocs::Section>
+
+  <NuvoDocs::Section @title="RTL" @id="rtl">
+    <ul class="nu-list">
+      <li class="nu-list__item">Horizontal arrow keys follow the reading direction: under dir="rtl" ArrowLeft moves forward and ArrowRight moves back.</li>
+      <li class="nu-list__item">Layout uses logical properties; the vertical variant keeps the list on the inline-start side.</li>
+    </ul>
+  </NuvoDocs::Section>
+</NuvoDocs::Page>

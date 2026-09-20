@@ -41,6 +41,27 @@ export default class FinancialsController extends PaginatedController {
     return this.model?.transactions ?? [];
   }
 
+  columns = [
+    {
+      name: 'Description',
+      valuePath: 'description',
+      width: 260,
+      isFixed: 'left',
+    },
+    { name: 'Category', valuePath: 'category', width: 160 },
+    { name: 'Payment', valuePath: 'paymentMethod', width: 160 },
+    { name: 'Amount', valuePath: 'amount', width: 140 },
+    { name: 'Status', valuePath: 'status', width: 140 },
+    { name: 'Date', valuePath: 'transactionDate', width: 140 },
+    {
+      name: 'Actions',
+      valuePath: 'id',
+      width: 110,
+      isFixed: 'right',
+      isSortable: false,
+    },
+  ];
+
   transactionTabs = [
     { id: 'all', label: 'All' },
     { id: 'INCOME', label: 'Income' },

@@ -98,6 +98,33 @@ export default class AdminCompaniesCompanyController extends Controller {
   tabs = TABS;
   basisOptions = BASIS_OPTIONS;
 
+  paymentColumns = [
+    { name: 'Date', valuePath: 'date', width: 140, isFixed: 'left' },
+    { name: 'Amount', valuePath: 'amount', width: 140 },
+    { name: 'Covers', valuePath: 'coversLabel', width: 200 },
+    { name: 'Source', valuePath: 'source', width: 120 },
+    { name: 'Notes', valuePath: 'notes', width: 220 },
+    {
+      name: 'Receipt',
+      valuePath: 'hasReceipt',
+      width: 120,
+      isSortable: false,
+    },
+    {
+      name: 'Actions',
+      valuePath: 'id',
+      width: 150,
+      isFixed: 'right',
+      isSortable: false,
+    },
+  ];
+
+  historyColumns = [
+    { name: 'When', valuePath: 'when', width: 180, isFixed: 'left' },
+    { name: 'Who', valuePath: 'who', width: 200 },
+    { name: 'What', valuePath: 'what', width: 240 },
+  ];
+
   /** Resets all per-company state on model change so switching companies never leaks data. */
   resetForCompany(model) {
     this.loadToken++;

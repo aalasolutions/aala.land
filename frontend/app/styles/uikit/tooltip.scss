@@ -118,13 +118,14 @@
     }
   }
 
+  // left/right are physical: the host resolves start/end before choosing them.
   @include m(left) {
     transform: translateY(-50%);
 
     .nu-tooltip__arrow {
       right: calc(#{nu-var("tooltip", "ArrowSize")} / -2);
-      top: 50%;
-      margin-top: calc(#{nu-var("tooltip", "ArrowSize")} / -2);
+      inset-block-start: 50%;
+      margin-block-start: calc(#{nu-var("tooltip", "ArrowSize")} / -2);
       translate: 0 nu-var("tooltip", "ArrowShiftY");
     }
   }
@@ -134,8 +135,8 @@
 
     .nu-tooltip__arrow {
       left: calc(#{nu-var("tooltip", "ArrowSize")} / -2);
-      top: 50%;
-      margin-top: calc(#{nu-var("tooltip", "ArrowSize")} / -2);
+      inset-block-start: 50%;
+      margin-block-start: calc(#{nu-var("tooltip", "ArrowSize")} / -2);
       translate: 0 nu-var("tooltip", "ArrowShiftY");
     }
   }

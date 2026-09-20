@@ -47,6 +47,15 @@ export default class ContactsIndexController extends PaginatedController {
 
   roleTabs = ROLE_TABS;
 
+  columns = [
+    { name: 'Name', valuePath: 'displayName', width: 250, isFixed: 'left' },
+    { name: 'Role', valuePath: 'tags', width: 220 },
+    { name: 'Email', valuePath: 'email', width: 240 },
+    { name: 'Phone', valuePath: 'phone', width: 190 },
+    { name: 'Company', valuePath: 'contactCompany', width: 170 },
+    { name: 'Actions', valuePath: 'id', width: 110, isFixed: 'right', isSortable: false },
+  ];
+
   resetState() {
     this.search = '';
     this.tag = '';

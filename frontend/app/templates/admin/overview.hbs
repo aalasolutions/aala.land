@@ -80,43 +80,39 @@
   <Nuvo::Card data-test-overview-upcoming-payments>
     <h3 class="text-lg font-bold mb-4">Upcoming manual payments</h3>
     {{#if this.upcomingRows.length}}
-      <div class="nu-table-wrapper">
-        <table class="nu-table">
-          <thead>
-            <tr>
-              <th>Company</th>
-              <th>Amount</th>
-              <th>Due</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {{#each this.upcomingRows as |row|}}
-              <tr data-test-overview-upcoming-row>
-                <td>{{row.companyName}}</td>
-                <td class="font-bold">{{format-money
-                    row.amount
-                    row.currency
-                  }}</td>
-                <td>
-                  {{#if row.overdue}}
-                    <Nuvo::Tag class="tag-txn-failed" @text="Overdue" />
-                  {{else}}
-                    {{format-date row.coversEnd}}
-                  {{/if}}
-                </td>
-                <td>
-                  <LinkTo
-                    @route="admin.companies.company"
-                    @model={{row.companyId}}
-                    class="link"
-                  >Open</LinkTo>
-                </td>
-              </tr>
-            {{/each}}
-          </tbody>
-        </table>
-      </div>
+      <DataTable
+        @columns={{this.upcomingColumns}}
+        @rows={{this.upcomingRows}}
+        @pinColumns={{true}}
+        @reorderable={{true}}
+        @sortable={{true}}
+        @showOptions={{true}}
+        @tableId="admin-overview-upcoming"
+        as |cell|
+      >
+        {{#if (eq cell.key "companyName")}}
+          <span data-test-overview-upcoming-row>{{cell.value}}</span>
+        {{else if (eq cell.key "amount")}}
+          <span class="font-bold">{{format-money
+              cell.value
+              cell.row.currency
+            }}</span>
+        {{else if (eq cell.key "coversEnd")}}
+          {{#if cell.row.overdue}}
+            <Nuvo::Tag class="tag-txn-failed" @text="Overdue" />
+          {{else}}
+            {{format-date cell.value}}
+          {{/if}}
+        {{else if (eq cell.key "companyId")}}
+          <LinkTo
+            @route="admin.companies.company"
+            @model={{cell.value}}
+            class="link"
+          >Open</LinkTo>
+        {{else}}
+          {{cell.value}}
+        {{/if}}
+      </DataTable>
     {{else}}
       <p class="text-muted">No manual payments due in the next
         {{this.upcomingDays}}
